@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
@@ -185,12 +186,21 @@ public class GearGameTest {
 
 			GearConfigStore.loadFrom(file);
 			helper.assertTrue(Files.exists(file), "the default config file was not written");
-			helper.assertValueEqual(Integer.valueOf(GearConfigStore.get().entities().size()), Integer.valueOf(4), "default entry count");
-			helper.assertTrue(GearConfigStore.get().loadoutFor(Identifier.parse("minecraft:zombie")) != null, "the default config has no zombie entry");
+			String written = Files.readString(file, StandardCharsets.UTF_8);
+			helper.assertTrue(written.contains("\"entities\": {}"), "the default config still pins exact kits");
+			helper.assertTrue(written.contains("\"rolls\""), "the default config has no rolls block");
+			helper.assertValueEqual(
+				Integer.valueOf(GearConfigStore.get().entities().size()), Integer.valueOf(0), "default exact entry count"
+			);
 			helper.assertValueEqual(
 				Double.valueOf(GearConfigStore.get().rollFor(Identifier.parse("minecraft:zombie")).rollChance()),
 				Double.valueOf(0.15),
 				"the default roll chance"
+			);
+			helper.assertValueEqual(
+				GearConfigStore.get().roleFor(Identifier.parse("minecraft:evoker")).role(),
+				CombatRole.MAGIC,
+				"the default evoker role"
 			);
 
 			Files.writeString(file, PLAIN_SWORD_CONFIG, StandardCharsets.UTF_8);
