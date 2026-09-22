@@ -1,6 +1,8 @@
 package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
+import com.stella.mobs.config.CombatRole;
+import com.stella.mobs.config.RoleSpec;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -23,6 +25,9 @@ public final class ReactiveState {
 	private long nextPlayerCheckTick;
 	private boolean playerNearby;
 	private int lastDefendedHurtTimestamp;
+	private CombatRole role = CombatRole.MELEE;
+	private double nearDistance;
+	private double farDistance;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -96,5 +101,23 @@ public final class ReactiveState {
 
 	public void setLastDefendedHurtTimestamp(final int lastDefendedHurtTimestamp) {
 		this.lastDefendedHurtTimestamp = lastDefendedHurtTimestamp;
+	}
+
+	public CombatRole getRole() {
+		return this.role;
+	}
+
+	public void setRoleSpec(final RoleSpec spec) {
+		this.role = spec.role();
+		this.nearDistance = spec.nearDistance();
+		this.farDistance = spec.farDistance();
+	}
+
+	public double getNearDistance() {
+		return this.nearDistance;
+	}
+
+	public double getFarDistance() {
+		return this.farDistance;
 	}
 }

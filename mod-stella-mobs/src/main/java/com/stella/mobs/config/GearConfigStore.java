@@ -57,6 +57,10 @@ public final class GearConfigStore {
 					},
 					"drop_chance": 0.085
 				}
+			},
+			"roles": {
+				"minecraft:skeleton": "ranged",
+				"minecraft:evoker": "magic"
 			}
 		}""";
 	private static volatile GearConfig config = GearConfig.EMPTY;
