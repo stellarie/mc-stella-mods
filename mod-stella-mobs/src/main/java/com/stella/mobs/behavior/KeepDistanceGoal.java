@@ -67,6 +67,10 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
+		if (this.mob.getHealth() <= this.mob.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {
+			return false;
+		}
+
 		LivingEntity target = this.mob.getTarget();
 		if (target == null || !target.isAlive()) {
 			return false;
