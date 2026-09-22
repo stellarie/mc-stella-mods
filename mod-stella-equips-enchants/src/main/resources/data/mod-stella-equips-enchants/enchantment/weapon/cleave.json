@@ -1,0 +1,35 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.cleave" },
+	"supported_items": "#minecraft:enchantable/sharp_weapon",
+	"primary_items": "#minecraft:enchantable/sharp_weapon",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 2,
+	"min_cost": { "base": 5, "per_level_above_first": 10 },
+	"max_cost": { "base": 25, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:explode",
+					"radius": 1.0,
+					"block_interaction": "none",
+					"attribute_to_user": true,
+					"damage_type": "minecraft:explosion",
+					"small_particle": { "type": "minecraft:poof" },
+					"large_particle": { "type": "minecraft:explosion" },
+					"sound": "minecraft:entity.generic.explode"
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_direct": true
+					}
+				}
+			}
+		]
+	}
+}

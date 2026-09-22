@@ -1,0 +1,33 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.wounding" },
+	"supported_items": "#minecraft:axes",
+	"primary_items": "#minecraft:axes",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 2,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:apply_exhaustion",
+					"amount": {
+						"type": "minecraft:linear",
+						"base": 2.0,
+						"per_level_above_first": 2.0
+					}
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_direct": true
+					}
+				}
+			}
+		]
+	}
+}

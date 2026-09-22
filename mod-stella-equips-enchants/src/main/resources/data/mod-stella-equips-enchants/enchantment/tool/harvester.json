@@ -1,0 +1,21 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.harvester" },
+	"supported_items": "#minecraft:hoes",
+	"primary_items": "#minecraft:hoes",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 3,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:harvester"
+				}
+			}
+		]
+	}
+}

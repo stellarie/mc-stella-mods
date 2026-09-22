@@ -1,0 +1,38 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.bow.bodkin" },
+	"supported_items": "#minecraft:enchantable/bow",
+	"primary_items": "#minecraft:enchantable/bow",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 3,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:projectile_piercing": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:clamped",
+						"value": {
+							"type": "minecraft:linear",
+							"base": 1.0,
+							"per_level_above_first": 1.0
+						},
+						"min": 1.0,
+						"max": 3.0
+					}
+				}
+			}
+		],
+		"minecraft:ammo_use": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": 1.0
+				}
+			}
+		]
+	}
+}

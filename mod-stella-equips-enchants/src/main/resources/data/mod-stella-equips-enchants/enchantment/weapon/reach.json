@@ -1,0 +1,25 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.reach" },
+	"supported_items": "#minecraft:spears",
+	"primary_items": "#minecraft:spears",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 3,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 0.5,
+					"per_level_above_first": 0.5
+				},
+				"attribute": "minecraft:entity_interaction_range",
+				"id": "mod-stella-equips-enchants:enchantment.reach",
+				"operation": "add_value"
+			}
+		]
+	}
+}
