@@ -17,9 +17,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class BehaviorInstaller {
-	public static final int KEEP_DISTANCE_PRIORITY = 0;
-	public static final int SHIELD_PRIORITY = 1;
-	public static final int RETREAT_PRIORITY = 2;
+	public static final int KEEP_DISTANCE_PRIORITY = 1;
+	public static final int SHIELD_PRIORITY = 2;
+	// The retreat must beat every vanilla MOVE goal, and no monster claims MOVE at 0.
+	public static final int RETREAT_PRIORITY = 0;
 	public static final int DEFEND_PRIORITY = 3;
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
@@ -55,7 +56,7 @@ public final class BehaviorInstaller {
 				mob.getGoalSelector().addGoal(KEEP_DISTANCE_PRIORITY, new KeepDistanceGoal<>(monster));
 			} else {
 				StellaMobs.LOGGER.warn(
-					"Role {} cannot be performed by {}, which holds no bow and no crossbow and casts no spell; no distance goal was added",
+					"Role {} cannot be performed by {}, which holds no bow, no crossbow, and no trident, and casts no spell; no distance goal was added",
 					state.getRole(),
 					entityType
 				);
@@ -76,6 +77,6 @@ public final class BehaviorInstaller {
 	}
 
 	private static boolean isRangedWeapon(final ItemStack stack) {
-		return stack.is(Items.BOW) || stack.is(Items.CROSSBOW);
+		return stack.is(Items.BOW) || stack.is(Items.CROSSBOW) || stack.is(Items.TRIDENT);
 	}
 }

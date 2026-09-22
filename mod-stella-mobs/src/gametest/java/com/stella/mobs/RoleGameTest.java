@@ -1,19 +1,24 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.DefendAllyGoal;
 import com.stella.mobs.behavior.KeepDistanceGoal;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.config.CombatRole;
+import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.config.RoleSpec;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
@@ -236,6 +241,128 @@ public class RoleGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = MAX_TICKS)
+	public void rangedUnitYieldsBelowTheRetreatFraction(final GameTestHelper helper) {
+		prepare(helper, skeletonBand(4.0, 6.0));
+		Zombie attacker = spawnAttacker(helper, 4, 3);
+		Mob skeleton = helper.spawnMob(EntityTypes.SKELETON, 2, 3, 3).spawn();
+		skeleton.getGoalSelector().removeAllGoals(goal -> !(goal instanceof KeepDistanceGoal));
+		skeleton.setTarget(attacker);
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(isRunning(skeleton, KeepDistanceGoal.class), "the distance goal never ran"))
+			.thenExecute(() -> skeleton.setHealth(6.0F))
+			.thenIdle(4)
+			.thenExecute(() -> helper.assertFalse(
+				isRunning(skeleton, KeepDistanceGoal.class), "the distance goal kept MOVE below the retreat fraction"
+			))
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void rangedRoleAcceptsATrident(final GameTestHelper helper) {
+		prepare(helper, config("""
+			"entities": {
+				"minecraft:drowned": { "slots": { "mainhand": { "item": "minecraft:trident" } } }
+			}""", """
+			"roles": { "minecraft:drowned": "ranged" }"""));
+		Mob drowned = helper.spawnMob(EntityTypes.DROWNED, 2, 3, 2).spawn();
+
+		helper.runAfterDelay(2L, () -> {
+			helper.assertValueEqual(ReactiveState.get(drowned).getRole(), CombatRole.RANGED, "the drowned role");
+			helper.assertTrue(hasGoal(drowned, KeepDistanceGoal.class), "a trident holder got no distance goal");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void lowHealthDrownedRetreats(final GameTestHelper helper) {
+		prepare(helper, plainConfig());
+		Zombie attacker = spawnAttacker(helper, 7, 7);
+		Mob drowned = helper.spawnMob(EntityTypes.DROWNED, 4, 3, 4).spawn();
+		drowned.getGoalSelector().removeAllGoals(goal -> goal instanceof TargetGoal || goal instanceof RandomStrollGoal);
+		drowned.setHealth(6.0F);
+		drowned.setTarget(attacker);
+		double start = drowned.position().distanceTo(attacker.position());
+		double[] closest = {start};
+
+		helper.onEachTick(() -> closest[0] = Math.min(
+			closest[0], drowned.position().distanceTo(attacker.position())
+		));
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				isSoleMover(drowned, RetreatGoal.class),
+				"the retreat never took MOVE from the attack goal: movers=" + runningMovers(drowned)
+			))
+			.thenWaitUntil(() -> helper.assertTrue(
+				drowned.position().distanceTo(attacker.position()) > start + 0.5,
+				"the drowned did not move away: " + drowned.position().distanceTo(attacker.position()) + " from " + start
+			))
+			.thenExecute(() -> helper.assertTrue(
+				closest[0] > start - 1.5,
+				"the drowned closed in to " + closest[0] + " from " + start + ", so the retreat lost the flag race"
+			))
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void unshieldedMobTakesArrowDamage(final GameTestHelper helper) {
+		prepare(helper, plainConfig());
+		Zombie attacker = spawnAttacker(helper, 4, 5);
+		Zombie defender = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 3).spawn();
+		defender.getGoalSelector().removeAllGoals(goal -> true);
+		float[] before = new float[1];
+
+		helper.startSequence()
+			.thenIdle(8)
+			.thenExecute(() -> {
+				before[0] = defender.getHealth();
+				Arrow arrow = helper.spawn(EntityTypes.ARROW, 2, 2, 6);
+				arrow.setOwner(attacker);
+				arrow.setDeltaMovement(0.0, 0.0, -1.5);
+			})
+			.thenIdle(6)
+			.thenExecute(() -> helper.assertTrue(
+				defender.getHealth() < before[0], "the unshielded zombie took no arrow damage"
+			))
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void shippedBandDefaultsArePinned(final GameTestHelper helper) {
+		GearConfig config = GearConfigParser.parse(config("""
+			"entities": {}""", """
+			"roles": {
+				"minecraft:skeleton": "ranged",
+				"minecraft:evoker": "magic"
+			}"""));
+		RoleSpec ranged = config.roleFor(Identifier.parse("minecraft:skeleton"));
+		RoleSpec magic = config.roleFor(Identifier.parse("minecraft:evoker"));
+
+		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(8.0), "ranged near band");
+		helper.assertValueEqual(Double.valueOf(ranged.farDistance()), Double.valueOf(15.0), "ranged far band");
+		helper.assertValueEqual(Double.valueOf(magic.nearDistance()), Double.valueOf(8.0), "magic near band");
+		helper.assertValueEqual(Double.valueOf(magic.farDistance()), Double.valueOf(12.0), "magic far band");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void retreatOutranksEveryVanillaMoveGoal(final GameTestHelper helper) {
+		helper.assertTrue(
+			BehaviorInstaller.RETREAT_PRIORITY < 1,
+			"the retreat priority " + BehaviorInstaller.RETREAT_PRIORITY
+				+ " ties or loses to the vanilla MOVE goals at priority 1, such as Pillager, Vindicator, Raider, Drowned, and ZombifiedPiglin"
+		);
+		helper.assertTrue(
+			BehaviorInstaller.RETREAT_PRIORITY < BehaviorInstaller.KEEP_DISTANCE_PRIORITY
+				&& BehaviorInstaller.KEEP_DISTANCE_PRIORITY < BehaviorInstaller.SHIELD_PRIORITY
+				&& BehaviorInstaller.SHIELD_PRIORITY < BehaviorInstaller.DEFEND_PRIORITY,
+			"the goal priorities are not strictly ordered, so two goals can tie on MOVE"
+		);
+		helper.succeed();
+	}
+
 	private static void prepare(final GameTestHelper helper, final String config) {
 		prepareWithoutPlayer(helper, config);
 		addCreativePlayer(helper);
@@ -261,6 +388,12 @@ public class RoleGameTest {
 			"entities": {
 				"minecraft:zombie": { "slots": { "offhand": { "item": "minecraft:shield" } } }
 			}""", """
+			"roles": {}""");
+	}
+
+	private static String plainConfig() {
+		return config("""
+			"entities": {}""", """
 			"roles": {}""");
 	}
 
@@ -311,6 +444,31 @@ public class RoleGameTest {
 		}
 
 		return false;
+	}
+
+	private static boolean isSoleMover(final Mob mob, final Class<? extends Goal> goalClass) {
+		for (WrappedGoal wrapped : mob.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.isRunning() && wrapped.getFlags().contains(Goal.Flag.MOVE) && !goalClass.isInstance(wrapped.getGoal())) {
+				return false;
+			}
+		}
+
+		return isRunning(mob, goalClass);
+	}
+
+	private static String runningMovers(final Mob mob) {
+		StringBuilder text = new StringBuilder();
+
+		for (WrappedGoal wrapped : mob.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.isRunning() && wrapped.getFlags().contains(Goal.Flag.MOVE)) {
+				text.append(wrapped.getGoal().getClass().getSimpleName())
+					.append(':')
+					.append(wrapped.getPriority())
+					.append(' ');
+			}
+		}
+
+		return text.length() == 0 ? "none" : text.toString();
 	}
 
 	private static String nearestPlayer(final Mob mob) {
