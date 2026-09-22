@@ -6,6 +6,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
+			"com.stella.mobs.GearGameTest",
 			"com.stella.mobs.MobHarnessGameTest"
 		]
 	}
