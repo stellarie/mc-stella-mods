@@ -1,0 +1,37 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.probe_explode_block" },
+	"supported_items": "#minecraft:enchantable/bow",
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": { "base": 1, "per_level_above_first": 0 },
+	"max_cost": { "base": 1, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"slots": ["mainhand"],
+	"effects": {
+		"minecraft:projectile_spawned": [
+			{
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:probe_count_spawned"
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:explode",
+					"radius": 2.0,
+					"block_interaction": "block",
+					"attribute_to_user": false,
+					"create_fire": false,
+					"knockback_multiplier": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 0.0
+					},
+					"small_particle": { "type": "minecraft:poof" },
+					"large_particle": { "type": "minecraft:explosion" },
+					"sound": "minecraft:entity.generic.explode"
+				}
+			}
+		]
+	}
+}
