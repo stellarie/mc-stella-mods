@@ -12,52 +12,7 @@ public final class GearConfigStore {
 	private static final String DEFAULT_JSON = """
 		{
 			"version": 1,
-			"entities": {
-				"minecraft:zombie": {
-					"slots": {
-						"mainhand": {
-							"item": "minecraft:diamond_sword",
-							"enchantments": { "minecraft:sharpness": 3 }
-						},
-						"offhand": { "item": "minecraft:shield" },
-						"head": { "item": "minecraft:iron_helmet" },
-						"chest": { "item": "minecraft:iron_chestplate" },
-						"legs": { "item": "minecraft:iron_leggings" },
-						"feet": { "item": "minecraft:iron_boots" }
-					},
-					"drop_chance": 0.085
-				},
-				"minecraft:husk": {
-					"slots": {
-						"mainhand": {
-							"item": "minecraft:iron_sword",
-							"enchantments": { "minecraft:sharpness": 2 }
-						},
-						"head": { "item": "minecraft:iron_helmet" }
-					},
-					"drop_chance": 0.085
-				},
-				"minecraft:skeleton": {
-					"slots": {
-						"mainhand": {
-							"item": "minecraft:bow",
-							"enchantments": { "minecraft:power": 2 }
-						},
-						"chest": { "item": "minecraft:leather_chestplate" }
-					},
-					"drop_chance": 0.085
-				},
-				"minecraft:wither_skeleton": {
-					"slots": {
-						"mainhand": {
-							"item": "minecraft:stone_sword",
-							"enchantments": { "minecraft:sharpness": 2 }
-						},
-						"head": { "item": "minecraft:iron_helmet" }
-					},
-					"drop_chance": 0.085
-				}
-			},
+			"entities": {},
 			"roles": {
 				"minecraft:evoker": "magic"
 			},
