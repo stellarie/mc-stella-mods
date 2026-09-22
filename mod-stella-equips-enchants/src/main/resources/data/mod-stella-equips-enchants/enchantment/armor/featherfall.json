@@ -1,0 +1,35 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.featherfall" },
+	"supported_items": "#minecraft:enchantable/foot_armor",
+	"primary_items": "#minecraft:enchantable/foot_armor",
+	"slots": ["feet"],
+	"weight": 2,
+	"max_level": 3,
+	"min_cost": { "base": 10, "per_level_above_first": 10 },
+	"max_cost": { "base": 25, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 2.0,
+					"per_level_above_first": 2.0
+				},
+				"attribute": "minecraft:safe_fall_distance",
+				"id": "mod-stella-equips-enchants:enchantment.featherfall.safe_fall",
+				"operation": "add_value"
+			},
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": -0.25,
+					"per_level_above_first": -0.25
+				},
+				"attribute": "minecraft:fall_damage_multiplier",
+				"id": "mod-stella-equips-enchants:enchantment.featherfall.fall_damage",
+				"operation": "add_multiplied_base"
+			}
+		]
+	}
+}

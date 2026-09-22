@@ -1,0 +1,21 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.green_thumb" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/green_thumb",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/green_thumb",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 2,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:green_thumb"
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,27 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.bow.bomb_arrows" },
+	"supported_items": "#minecraft:enchantable/bow",
+	"primary_items": "#minecraft:enchantable/bow",
+	"slots": ["mainhand"],
+	"weight": 2,
+	"max_level": 1,
+	"min_cost": { "base": 20, "per_level_above_first": 0 },
+	"max_cost": { "base": 50, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:explode",
+					"radius": 2.0,
+					"block_interaction": "none",
+					"attribute_to_user": true,
+					"damage_type": "minecraft:explosion",
+					"small_particle": { "type": "minecraft:poof" },
+					"large_particle": { "type": "minecraft:explosion" },
+					"sound": "minecraft:entity.generic.explode"
+				}
+			}
+		]
+	}
+}
