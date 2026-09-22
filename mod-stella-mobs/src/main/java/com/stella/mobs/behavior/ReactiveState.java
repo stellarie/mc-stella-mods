@@ -20,6 +20,7 @@ public final class ReactiveState {
 	private boolean gearApplied;
 	private long shieldReadyTick;
 	private long retreatReadyTick;
+	private long keepDistanceReadyTick;
 	private long nextArrowScanTick;
 	private long nextAllyScanTick;
 	private long nextPlayerCheckTick;
@@ -78,6 +79,14 @@ public final class ReactiveState {
 
 	public void setRetreatReadyTick(final long retreatReadyTick) {
 		this.retreatReadyTick = retreatReadyTick;
+	}
+
+	public long getKeepDistanceReadyTick() {
+		return this.keepDistanceReadyTick;
+	}
+
+	public void setKeepDistanceReadyTick(final long keepDistanceReadyTick) {
+		this.keepDistanceReadyTick = keepDistanceReadyTick;
 	}
 
 	public long getNextArrowScanTick() {

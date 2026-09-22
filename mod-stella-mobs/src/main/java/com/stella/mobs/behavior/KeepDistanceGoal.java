@@ -22,6 +22,10 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		this.setFlags(EnumSet.of(Goal.Flag.MOVE));
 	}
 
+	public boolean isRetreatExhausted() {
+		return this.mob.level().getGameTime() < ReactiveState.get(this.mob).getKeepDistanceReadyTick();
+	}
+
 	@Override
 	public boolean canUse() {
 		ReactiveState state = ReactiveState.get(this.mob);
@@ -43,6 +47,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		double distance = this.mob.distanceTo(target);
+
 		if (distance < state.getNearDistance() - ENTRY_DEAD_ZONE) {
 			Vec3 away = FleePositions.away(this.mob, target.position());
 			if (away == null) {

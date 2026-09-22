@@ -1,7 +1,7 @@
 package com.stella.mobs.config;
 
 public record RoleSpec(CombatRole role, double nearDistance, double farDistance) {
-	public static final double RANGED_NEAR = 8.0;
+	public static final double RANGED_NEAR = 7.0;
 	public static final double RANGED_FAR = 15.0;
 	public static final double MAGIC_NEAR = 8.0;
 	public static final double MAGIC_FAR = 12.0;

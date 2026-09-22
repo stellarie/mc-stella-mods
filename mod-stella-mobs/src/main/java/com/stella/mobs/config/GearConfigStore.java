@@ -17,7 +17,7 @@ public final class GearConfigStore {
 				"minecraft:evoker": "magic"
 			},
 			"rolls": {
-				"roll_chance": 0.15,
+				"roll_chance": 0.30,
 				"drop_chance_multiplier": 1.0
 			}
 		}""";

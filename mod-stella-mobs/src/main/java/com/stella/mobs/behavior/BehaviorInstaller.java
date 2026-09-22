@@ -17,11 +17,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class BehaviorInstaller {
-	public static final int KEEP_DISTANCE_PRIORITY = 1;
-	public static final int SHIELD_PRIORITY = 2;
 	// The retreat must beat every vanilla MOVE goal, and no monster claims MOVE at 0.
 	public static final int RETREAT_PRIORITY = 0;
-	public static final int DEFEND_PRIORITY = 3;
+	// A tie never preempts, and the vanilla melee goals sit at priority 2 and above.
+	public static final int SHIELD_PRIORITY = 1;
+	public static final int KEEP_DISTANCE_PRIORITY = 2;
+	public static final int STANDOFF_PRIORITY = 3;
+	public static final int DEFEND_PRIORITY = 4;
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
 	);
@@ -53,6 +55,7 @@ public final class BehaviorInstaller {
 		if (state.getRole() != CombatRole.MELEE) {
 			if (supports(mob, state.getRole())) {
 				mob.getGoalSelector().addGoal(KEEP_DISTANCE_PRIORITY, new KeepDistanceGoal<>(monster));
+				mob.getGoalSelector().addGoal(STANDOFF_PRIORITY, new HoldStandoffGoal<>(monster));
 			} else {
 				StellaMobs.LOGGER.warn(
 					"Role {} cannot be performed by {}, which holds no bow, no crossbow, and no trident, and casts no spell; no distance goal was added",
@@ -80,7 +83,13 @@ public final class BehaviorInstaller {
 			return configured != null && configured.role() == rolled ? configured.withRole(rolled) : RoleSpec.of(rolled);
 		}
 
-		return configured != null ? configured : RoleSpec.of(CombatRole.MELEE);
+		if (configured != null) {
+			return configured;
+		}
+
+		return isRangedWeapon(mainHand) || isRangedWeapon(mob.getOffhandItem())
+			? RoleSpec.of(CombatRole.RANGED)
+			: RoleSpec.of(CombatRole.MELEE);
 	}
 
 	private static boolean supports(final Mob mob, final CombatRole role) {

@@ -17,24 +17,27 @@ import org.jspecify.annotations.Nullable;
 
 public final class EnchantRoller {
 	private static final Map<Item, List<Holder<Enchantment>>> POOLS = new HashMap<>();
+	private static final Object LOCK = new Object();
 	private static @Nullable Registry<Enchantment> cachedRegistry;
 
 	private EnchantRoller() {
 	}
 
 	public static List<Holder<Enchantment>> poolFor(final ItemStack stack, final Registry<Enchantment> registry) {
-		if (cachedRegistry != registry) {
-			POOLS.clear();
-			cachedRegistry = registry;
-		}
+		synchronized (LOCK) {
+			if (cachedRegistry != registry) {
+				POOLS.clear();
+				cachedRegistry = registry;
+			}
 
-		return POOLS.computeIfAbsent(
-			stack.getItem(),
-			item -> registry.listElements()
-				.filter(holder -> holder.value().canEnchant(stack))
-				.map(holder -> (Holder<Enchantment>) holder)
-				.toList()
-		);
+			return POOLS.computeIfAbsent(
+				stack.getItem(),
+				item -> registry.listElements()
+					.filter(holder -> holder.value().canEnchant(stack))
+					.map(holder -> (Holder<Enchantment>) holder)
+					.toList()
+			);
+		}
 	}
 
 	public static ItemStack enchant(
@@ -56,7 +59,9 @@ public final class EnchantRoller {
 	}
 
 	public static void clearCache() {
-		POOLS.clear();
-		cachedRegistry = null;
+		synchronized (LOCK) {
+			POOLS.clear();
+			cachedRegistry = null;
+		}
 	}
 }

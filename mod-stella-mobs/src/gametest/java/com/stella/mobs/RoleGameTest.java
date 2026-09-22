@@ -330,7 +330,7 @@ public class RoleGameTest {
 		RoleSpec ranged = config.roleFor(Identifier.parse("minecraft:skeleton"));
 		RoleSpec magic = config.roleFor(Identifier.parse("minecraft:evoker"));
 
-		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(8.0), "ranged near band");
+		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(7.0), "ranged near band");
 		helper.assertValueEqual(Double.valueOf(ranged.farDistance()), Double.valueOf(15.0), "ranged far band");
 		helper.assertValueEqual(Double.valueOf(magic.nearDistance()), Double.valueOf(8.0), "magic near band");
 		helper.assertValueEqual(Double.valueOf(magic.farDistance()), Double.valueOf(12.0), "magic far band");
@@ -345,9 +345,10 @@ public class RoleGameTest {
 				+ " ties or loses to the vanilla MOVE goals at priority 1, such as Pillager, Vindicator, Raider, Drowned, and ZombifiedPiglin"
 		);
 		helper.assertTrue(
-			BehaviorInstaller.RETREAT_PRIORITY < BehaviorInstaller.KEEP_DISTANCE_PRIORITY
-				&& BehaviorInstaller.KEEP_DISTANCE_PRIORITY < BehaviorInstaller.SHIELD_PRIORITY
-				&& BehaviorInstaller.SHIELD_PRIORITY < BehaviorInstaller.DEFEND_PRIORITY,
+			BehaviorInstaller.RETREAT_PRIORITY < BehaviorInstaller.SHIELD_PRIORITY
+				&& BehaviorInstaller.SHIELD_PRIORITY < BehaviorInstaller.KEEP_DISTANCE_PRIORITY
+				&& BehaviorInstaller.KEEP_DISTANCE_PRIORITY < BehaviorInstaller.STANDOFF_PRIORITY
+				&& BehaviorInstaller.STANDOFF_PRIORITY < BehaviorInstaller.DEFEND_PRIORITY,
 			"the goal priorities are not strictly ordered, so two goals can tie on MOVE"
 		);
 		helper.succeed();
