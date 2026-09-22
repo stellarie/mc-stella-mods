@@ -13,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StrictJsonParser;
 import net.minecraft.world.entity.EquipmentSlot;
+import org.jspecify.annotations.Nullable;
 
 public final class GearConfigParser {
 	private static final int MAX_ENCHANTMENT_LEVEL = 255;
@@ -56,7 +57,83 @@ public final class GearConfigParser {
 			}
 		}
 
-		return new GearConfig(entities);
+		Map<Identifier, RoleSpec> roles = new HashMap<>();
+		JsonElement rolesElement = root.get("roles");
+
+		if (rolesElement != null && rolesElement.isJsonObject()) {
+			for (Map.Entry<String, JsonElement> entry : rolesElement.getAsJsonObject().entrySet()) {
+				Identifier entityType = Identifier.tryParse(entry.getKey());
+				if (entityType == null) {
+					warn("skipping role for '" + entry.getKey() + "': the key is not a valid identifier");
+					continue;
+				}
+
+				RoleSpec spec = parseRole(entry.getKey(), entry.getValue());
+				if (spec != null) {
+					roles.put(entityType, spec);
+				}
+			}
+		}
+
+		return new GearConfig(entities, roles);
+	}
+
+	private static @Nullable RoleSpec parseRole(final String entityType, final JsonElement element) {
+		if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+			return buildRole(entityType, element.getAsString(), null, null);
+		}
+
+		if (!element.isJsonObject()) {
+			warn("skipping role for entity type '" + entityType + "': the entry is not a role name or an object");
+			return null;
+		}
+
+		JsonObject entry = element.getAsJsonObject();
+		JsonElement roleElement = entry.get("role");
+		if (roleElement == null || !roleElement.isJsonPrimitive() || !roleElement.getAsJsonPrimitive().isString()) {
+			warn("skipping role for entity type '" + entityType + "': the 'role' key is missing or is not a string");
+			return null;
+		}
+
+		return buildRole(
+			entityType,
+			roleElement.getAsString(),
+			optionalDistance(entityType, entry.get("near")),
+			optionalDistance(entityType, entry.get("far"))
+		);
+	}
+
+	private static @Nullable RoleSpec buildRole(
+		final String entityType, final String name, final @Nullable Double near, final @Nullable Double far
+	) {
+		CombatRole role = CombatRole.byName(name);
+		if (role == null) {
+			warn("skipping role for entity type '" + entityType + "': unknown role '" + name + "'");
+			return null;
+		}
+
+		RoleSpec defaults = RoleSpec.of(role);
+		double nearDistance = near != null ? near : defaults.nearDistance();
+		double farDistance = far != null ? far : defaults.farDistance();
+		if (nearDistance < 0.0 || farDistance < nearDistance) {
+			warn("skipping role for entity type '" + entityType + "': the band " + nearDistance + " to " + farDistance + " is not valid");
+			return null;
+		}
+
+		return defaults.withBand(nearDistance, farDistance);
+	}
+
+	private static @Nullable Double optionalDistance(final String entityType, final @Nullable JsonElement element) {
+		if (element == null) {
+			return null;
+		}
+
+		if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+			warn("ignoring a band distance for entity type '" + entityType + "': the value is not a number");
+			return null;
+		}
+
+		return element.getAsDouble();
 	}
 
 	private static Loadout parseLoadout(final String entityType, final JsonElement element) {

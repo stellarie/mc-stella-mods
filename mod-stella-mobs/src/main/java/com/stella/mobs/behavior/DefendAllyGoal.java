@@ -1,6 +1,5 @@
 package com.stella.mobs.behavior;
 
-import java.util.EnumSet;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,7 +18,6 @@ public class DefendAllyGoal<T extends PathfinderMob> extends Goal {
 
 	public DefendAllyGoal(final T mob) {
 		this.mob = mob;
-		this.setFlags(EnumSet.of(Goal.Flag.MOVE));
 	}
 
 	@Override

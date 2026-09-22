@@ -4,7 +4,6 @@ import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -13,9 +12,6 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 	private static final int DURATION_TICKS = 100;
 	private static final int REARM_TICKS = 100;
 	private static final double SPEED_MODIFIER = 1.2;
-	private static final double MINIMUM_AWAY_DISTANCE = 1.0;
-	private static final double MAXIMUM_LEVEL_DIFFERENCE = 1.0;
-	private static final int[][] FLEE_DISTANCES = {{16, 7}, {8, 4}, {4, 2}};
 
 	private final T mob;
 	private @Nullable Vec3 awayPos;
@@ -87,18 +83,6 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 	}
 
 	private @Nullable Vec3 findAwayPos(final LivingEntity attacker) {
-		Vec3 attackerPosition = attacker.position();
-		double currentDistance = this.mob.position().distanceTo(attackerPosition);
-
-		for (int[] distance : FLEE_DISTANCES) {
-			Vec3 candidate = LandRandomPos.getPosAway(this.mob, distance[0], distance[1], attackerPosition);
-			if (candidate != null
-				&& Math.abs(candidate.y - this.mob.getY()) <= MAXIMUM_LEVEL_DIFFERENCE
-				&& candidate.distanceTo(attackerPosition) > currentDistance + MINIMUM_AWAY_DISTANCE) {
-				return candidate;
-			}
-		}
-
-		return null;
+		return FleePositions.away(this.mob, attacker.position());
 	}
 }
