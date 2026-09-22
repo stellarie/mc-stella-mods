@@ -1,4 +1,4 @@
-# mc-stella-mobs
+# mc-stella-mods
 
 Server-side Minecraft mods for a private Fabric server.
 
@@ -6,7 +6,7 @@ Server-side Minecraft mods for a private Fabric server.
 
 | Directory | Purpose | Status |
 |---|---|---|
-| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | planned |
+| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | phase 0 |
 
 ## Target platform
 
