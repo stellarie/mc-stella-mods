@@ -19,10 +19,13 @@ mod is required.
 
 ## Anvil cost
 
-One mixin clamps `AnvilMenu.getCost()` to 1. `AnvilMenu` exists on the client
-and the server, so the displayed cost equals the charged cost. The clamp leaves
-`min_cost` and `max_cost` alone, so the enchanting table keeps its
-per-enchantment rarity.
+One mixin clamps the anvil cost to 1 level. `AnvilMenuMixin` holds an
+`@Accessor("cost")` on the private cost slot, plus one `@Inject` at the RETURN of
+`createResult` that writes `AnvilCost.clamp(cost)` back into the slot.
+`AnvilMenu` exists on the client and the server, and both sides read that one
+field, so the display and the charge cannot disagree: the anvil shows 1 and takes
+1. The clamp leaves `min_cost` and `max_cost` alone, so the enchanting table
+keeps its per-enchantment rarity.
 
 ## Game tests
 
