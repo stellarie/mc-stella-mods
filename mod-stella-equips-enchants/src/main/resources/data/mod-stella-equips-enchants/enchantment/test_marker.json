@@ -1,0 +1,11 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.test_marker" },
+	"supported_items": "#minecraft:enchantable/durability",
+	"weight": 10,
+	"max_level": 1,
+	"min_cost": { "base": 1, "per_level_above_first": 0 },
+	"max_cost": { "base": 1, "per_level_above_first": 0 },
+	"anvil_cost": 10,
+	"slots": ["mainhand"],
+	"effects": {}
+}

@@ -1,0 +1,12 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-equips-enchants-test-mod-stella-equips-enchants",
+	"version": "1.0.0",
+	"name": "Stella Equips and Enchants game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.equips.AnvilCostGameTest"
+		]
+	}
+}
