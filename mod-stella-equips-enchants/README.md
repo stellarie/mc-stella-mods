@@ -20,8 +20,10 @@ mod is required.
 ## Anvil cost
 
 One mixin clamps the anvil cost to 1 level. `AnvilMenuMixin` holds an
-`@Accessor("cost")` on the private cost slot, plus one `@Inject` at the RETURN of
-`createResult` that writes `AnvilCost.clamp(cost)` back into the slot.
+`@Accessor("cost")` on the private cost slot, a `@ModifyExpressionValue` on the
+cost read inside the "Too Expensive" gate, and one `@Inject` at the RETURN of
+`createResult` that writes `AnvilCost.clamp(cost)` back into the slot. The gate
+reads the clamped value, so a heavily repaired item still assembles.
 `AnvilMenu` exists on the client and the server, and both sides read that one
 field, so the display and the charge cannot disagree: the anvil shows 1 and takes
 1. The clamp leaves `min_cost` and `max_cost` alone, so the enchanting table
