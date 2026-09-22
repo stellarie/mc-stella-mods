@@ -3,6 +3,7 @@ package com.stella.equips;
 import com.stella.equips.anvil.AnvilCost;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
@@ -27,6 +28,8 @@ public class AnvilCostGameTest {
 	private static final int PICKAXE_DAMAGE = 500;
 	private static final int LEVEL_BEFORE_TAKE = 10;
 	private static final int LEVEL_AFTER_TAKE = 9;
+	private static final int TAXED_REPAIR_COST = 20;
+	private static final int VANILLA_TAXED_COST = 42;
 
 	@GameTest
 	public void testMarkerEnchantmentIsRegistered(final GameTestHelper helper) {
@@ -67,7 +70,7 @@ public class AnvilCostGameTest {
 	@SuppressWarnings("removal")
 	@GameTest
 	public void anvilMenuCostIsClampedToOne(final GameTestHelper helper) {
-		AnvilMenu menu = populatedMenu(helper.makeMockServerPlayerInLevel());
+		AnvilMenu menu = populatedMenu(helper.makeMockServerPlayerInLevel(), 0);
 		int cost = menu.getCost();
 		helper.assertTrue(
 			cost == CLAMPED_COST,
@@ -84,7 +87,7 @@ public class AnvilCostGameTest {
 	@GameTest
 	public void anvilTakeChargesOneLevel(final GameTestHelper helper) {
 		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
-		AnvilMenu menu = populatedMenu(player);
+		AnvilMenu menu = populatedMenu(player, 0);
 		player.experienceLevel = LEVEL_BEFORE_TAKE;
 		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
 		int charged = LEVEL_BEFORE_TAKE - player.experienceLevel;
@@ -101,6 +104,35 @@ public class AnvilCostGameTest {
 	}
 
 	@GameTest
+	public void heavilyRepairedCombineStillAssembles(final GameTestHelper helper) {
+		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		AnvilMenu menu = populatedMenu(player, TAXED_REPAIR_COST);
+		ItemStack result = menu.getSlot(AnvilMenu.RESULT_SLOT).getItem();
+		helper.assertTrue(
+			!result.isEmpty(),
+			"the result slot was empty: the Too Expensive gate fired on a vanilla cost of "
+				+ VANILLA_TAXED_COST
+		);
+		helper.assertTrue(
+			menu.getCost() == CLAMPED_COST,
+			"cost of a taxed merge: expected " + CLAMPED_COST + " but was " + menu.getCost()
+		);
+		player.experienceLevel = LEVEL_BEFORE_TAKE;
+		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
+		int charged = LEVEL_BEFORE_TAKE - player.experienceLevel;
+		helper.assertTrue(
+			player.experienceLevel == LEVEL_AFTER_TAKE,
+			"the taxed merge charged " + charged + " levels: expected level " + LEVEL_AFTER_TAKE
+				+ " but was " + player.experienceLevel
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=taxedCombine RESULT resultEmpty={} cost={} vanillaCost={} charged={}",
+			result.isEmpty(), CLAMPED_COST, VANILLA_TAXED_COST, charged
+		);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void clampFunctionKeepsOneAsTheCeiling(final GameTestHelper helper) {
 		helper.assertTrue(AnvilCost.clamp(0) == 0, "clamp(0) changed a free operation to " + AnvilCost.clamp(0));
 		helper.assertTrue(AnvilCost.clamp(1) == 1, "clamp(1) changed an exact cost to " + AnvilCost.clamp(1));
@@ -112,19 +144,20 @@ public class AnvilCostGameTest {
 		helper.succeed();
 	}
 
-	private static AnvilMenu populatedMenu(final Player player) {
+	private static AnvilMenu populatedMenu(final Player player, final int repairCost) {
 		Inventory inventory = player.getInventory();
 		AnvilMenu menu = new AnvilMenu(1, inventory, ContainerLevelAccess.NULL);
-		menu.getSlot(AnvilMenu.INPUT_SLOT).set(damagedPickaxe());
-		menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).set(damagedPickaxe());
+		menu.getSlot(AnvilMenu.INPUT_SLOT).set(damagedPickaxe(repairCost));
+		menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).set(damagedPickaxe(repairCost));
 		menu.createResult();
 		return menu;
 	}
 
-	private static ItemStack damagedPickaxe() {
+	private static ItemStack damagedPickaxe(final int repairCost) {
 		ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
 		pickaxe.setDamageValue(PICKAXE_DAMAGE);
 		EnchantmentHelper.setEnchantments(pickaxe, ItemEnchantments.EMPTY);
+		pickaxe.set(DataComponents.REPAIR_COST, repairCost);
 		return pickaxe;
 	}
 
