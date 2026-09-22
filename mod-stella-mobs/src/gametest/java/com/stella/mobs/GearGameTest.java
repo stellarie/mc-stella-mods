@@ -3,6 +3,7 @@ package com.stella.mobs;
 import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.gear.GearTier;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -47,7 +48,7 @@ public class GearGameTest {
 				}
 			}
 		}""";
-	private static final String SKELETON_CONFIG = """
+	private static final String NO_ROLL_CONFIG = """
 		{
 			"entities": {
 				"minecraft:skeleton": {
@@ -56,7 +57,18 @@ public class GearGameTest {
 					},
 					"drop_chance": 1.0
 				}
-			}
+			},
+			"rolls": { "roll_chance": 0.0 }
+		}""";
+	private static final String ROLLING_CONFIG = """
+		{
+			"entities": {
+				"minecraft:zombie": {
+					"slots": { "mainhand": { "item": "minecraft:golden_hoe" } },
+					"drop_chance": 0.5
+				}
+			},
+			"rolls": { "roll_chance": 1.0 }
 		}""";
 
 	@GameTest
@@ -109,15 +121,58 @@ public class GearGameTest {
 	}
 
 	@GameTest
-	public void keepsVanillaEquipmentWithoutAConfigEntry(final GameTestHelper helper) {
-		GearConfigStore.set(GearConfigParser.parse(SKELETON_CONFIG));
+	public void keepsVanillaEquipmentWhenRollsAreOff(final GameTestHelper helper) {
+		GearConfigStore.set(GearConfigParser.parse(NO_ROLL_CONFIG));
 
 		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 1).spawnReason(EntitySpawnReason.NATURAL).spawn();
 		ItemStack held = zombie.getItemBySlot(EquipmentSlot.MAINHAND);
 
 		helper.assertFalse(held.is(Items.DIAMOND_SWORD), "the skeleton entry was applied to a zombie: " + held);
-		helper.assertValueEqual(Float.valueOf(zombie.getDropChances().byEquipment(EquipmentSlot.MAINHAND)), Float.valueOf(0.085F), "main hand drop chance");
+		helper.assertValueEqual(
+			Float.valueOf(zombie.getDropChances().byEquipment(EquipmentSlot.MAINHAND)),
+			Float.valueOf(0.085F),
+			"the vanilla main hand drop chance with rolls off"
+		);
 		helper.succeed();
+	}
+
+	@GameTest
+	public void rollsGearForAMobWithoutAnEntry(final GameTestHelper helper) {
+		GearConfigStore.set(GearConfigParser.parse(ROLLING_CONFIG));
+
+		Zombie husk = helper.spawnMob(EntityTypes.HUSK, 1, 1, 1).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		ItemStack held = husk.getItemBySlot(EquipmentSlot.MAINHAND);
+		float chance = husk.getDropChances().byEquipment(EquipmentSlot.MAINHAND);
+
+		helper.assertFalse(held.isEmpty(), "a mob with no entry did not roll a main hand");
+		helper.assertTrue(isATierDropChance(chance), "the rolled main hand kept a non-tier drop chance: " + chance);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void exactEntryStillWinsWithRollsOn(final GameTestHelper helper) {
+		GearConfigStore.set(GearConfigParser.parse(ROLLING_CONFIG));
+
+		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 1).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		ItemStack held = zombie.getItemBySlot(EquipmentSlot.MAINHAND);
+
+		helper.assertTrue(held.is(Items.GOLDEN_HOE), "the exact entry stopped winning: " + held);
+		helper.assertValueEqual(
+			Float.valueOf(zombie.getDropChances().byEquipment(EquipmentSlot.MAINHAND)),
+			Float.valueOf(0.5F),
+			"the exact main hand drop chance"
+		);
+		helper.succeed();
+	}
+
+	private static boolean isATierDropChance(final float chance) {
+		for (GearTier tier : GearTier.values()) {
+			if (chance == tier.dropChance()) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	@GameTest
@@ -132,6 +187,11 @@ public class GearGameTest {
 			helper.assertTrue(Files.exists(file), "the default config file was not written");
 			helper.assertValueEqual(Integer.valueOf(GearConfigStore.get().entities().size()), Integer.valueOf(4), "default entry count");
 			helper.assertTrue(GearConfigStore.get().loadoutFor(Identifier.parse("minecraft:zombie")) != null, "the default config has no zombie entry");
+			helper.assertValueEqual(
+				Double.valueOf(GearConfigStore.get().rollFor(Identifier.parse("minecraft:zombie")).rollChance()),
+				Double.valueOf(0.15),
+				"the default roll chance"
+			);
 
 			Files.writeString(file, PLAIN_SWORD_CONFIG, StandardCharsets.UTF_8);
 			GearConfigStore.loadFrom(file);

@@ -75,7 +75,78 @@ public final class GearConfigParser {
 			}
 		}
 
-		return new GearConfig(entities, roles);
+		RollSpec rollDefaults = RollSpec.DEFAULT;
+		Map<Identifier, RollSpec> rolls = new HashMap<>();
+		JsonElement rollsElement = root.get("rolls");
+
+		if (rollsElement != null && rollsElement.isJsonObject()) {
+			JsonObject rollsObject = rollsElement.getAsJsonObject();
+			rollDefaults = rollDefaults.overriddenBy(
+				readChance(rollsObject.get("roll_chance")), readMultiplier(rollsObject.get("drop_chance_multiplier"))
+			);
+			JsonElement rollEntities = rollsObject.get("entities");
+
+			if (rollEntities != null && rollEntities.isJsonObject()) {
+				for (Map.Entry<String, JsonElement> entry : rollEntities.getAsJsonObject().entrySet()) {
+					Identifier entityType = Identifier.tryParse(entry.getKey());
+					if (entityType == null) {
+						warn("skipping roll override for '" + entry.getKey() + "': the key is not a valid identifier");
+						continue;
+					}
+
+					if (!entry.getValue().isJsonObject()) {
+						warn("skipping roll override for entity type '" + entry.getKey() + "': the entry is not an object");
+						continue;
+					}
+
+					JsonObject override = entry.getValue().getAsJsonObject();
+					rolls.put(
+						entityType,
+						rollDefaults.overriddenBy(
+							readChance(override.get("roll_chance")), readMultiplier(override.get("drop_chance_multiplier"))
+						)
+					);
+				}
+			}
+		}
+
+		return new GearConfig(entities, roles, rollDefaults, rolls);
+	}
+
+	private static @Nullable Double readChance(final @Nullable JsonElement element) {
+		Double value = readDouble(element);
+		if (value == null) {
+			return null;
+		}
+
+		if (value < 0.0 || value > 1.0) {
+			warn("ignoring a roll chance outside 0 to 1: " + value);
+			return null;
+		}
+
+		return value;
+	}
+
+	private static @Nullable Double readMultiplier(final @Nullable JsonElement element) {
+		Double value = readDouble(element);
+		if (value == null) {
+			return null;
+		}
+
+		if (value < 0.0) {
+			warn("ignoring a negative drop chance multiplier: " + value);
+			return null;
+		}
+
+		return value;
+	}
+
+	private static @Nullable Double readDouble(final @Nullable JsonElement element) {
+		if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+			return null;
+		}
+
+		return element.getAsDouble();
 	}
 
 	private static @Nullable RoleSpec parseRole(final String entityType, final JsonElement element) {
