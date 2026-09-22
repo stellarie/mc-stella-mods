@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-mobs",
+	"version": "${version}",
+	"name": "Stella Mobs",
+	"description": "Server-side mob AI, gear, and behavior changes for a private server.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.mobs.StellaMobs"
+		]
+	},
+	"mixins": [
+		"mod-stella-mobs.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

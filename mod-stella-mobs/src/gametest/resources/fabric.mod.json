@@ -1,0 +1,12 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-mobs-test-mod-stella-mobs",
+	"version": "1.0.0",
+	"name": "Stella Mobs game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.mobs.MobHarnessGameTest"
+		]
+	}
+}
