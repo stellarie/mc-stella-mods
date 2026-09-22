@@ -194,7 +194,7 @@ public class GearGameTest {
 			);
 			helper.assertValueEqual(
 				Double.valueOf(GearConfigStore.get().rollFor(Identifier.parse("minecraft:zombie")).rollChance()),
-				Double.valueOf(0.15),
+				Double.valueOf(0.30),
 				"the default roll chance"
 			);
 			helper.assertValueEqual(

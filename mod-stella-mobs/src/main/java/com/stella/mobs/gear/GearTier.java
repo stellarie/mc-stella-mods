@@ -105,6 +105,6 @@ public enum GearTier {
 	}
 
 	public boolean allowsShield() {
-		return this.ordinal() >= IRON.ordinal();
+		return this.ordinal() >= CHAINMAIL.ordinal();
 	}
 }

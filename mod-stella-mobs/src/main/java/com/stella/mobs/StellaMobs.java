@@ -56,7 +56,7 @@ public class StellaMobs implements ModInitializer {
 					GearApplier.apply(mob, loadout, level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT));
 					state.setGearApplied(true);
 				}
-			} else if (mob instanceof Monster && !state.isGearApplied()) {
+			} else if (GearRoller.canRoll(mob) && !state.isGearApplied()) {
 				GearRoller.roll(
 					mob,
 					GearConfigStore.get().rollFor(entityType),
