@@ -1,5 +1,7 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.BehaviorInstaller;
+import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.Loadout;
 import com.stella.mobs.gear.GearApplier;
@@ -22,6 +24,7 @@ public class StellaMobs implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ReactiveState.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
@@ -32,21 +35,25 @@ public class StellaMobs implements ModInitializer {
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
-	private static void onEntityLoad(final Entity entity, final ServerLevel level) {
-		if (entity instanceof EntityLoadData loadData && loadData.isLoadedFromDisk()) {
-			return;
-		}
-
+	static void onEntityLoad(final Entity entity, final ServerLevel level) {
 		if (!(entity instanceof Mob mob)) {
 			return;
 		}
 
-		Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
-		Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
-		if (loadout == null) {
-			return;
+		boolean loadedFromDisk = entity instanceof EntityLoadData loadData && loadData.isLoadedFromDisk();
+
+		if (!loadedFromDisk) {
+			Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
+			Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
+			if (loadout != null) {
+				ReactiveState state = ReactiveState.get(mob);
+				if (!state.isGearApplied()) {
+					GearApplier.apply(mob, loadout, level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT));
+					state.setGearApplied(true);
+				}
+			}
 		}
 
-		GearApplier.apply(mob, loadout, level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT));
+		BehaviorInstaller.install(mob);
 	}
 }
