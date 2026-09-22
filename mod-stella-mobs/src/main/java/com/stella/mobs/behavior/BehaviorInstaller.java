@@ -42,8 +42,7 @@ public final class BehaviorInstaller {
 		state.setInstalled(true);
 
 		Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
-		RoleSpec spec = GearConfigStore.get().roleFor(entityType);
-		state.setRoleSpec(spec != null ? spec : RoleSpec.DEFAULT);
+		state.setRoleSpec(resolveRole(mob, state, entityType));
 
 		if (!RETREAT_EXEMPT.contains(mob.getType())) {
 			mob.getGoalSelector().addGoal(RETREAT_PRIORITY, new RetreatGoal<>(monster));
@@ -66,6 +65,22 @@ public final class BehaviorInstaller {
 		if (mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
 			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new ShieldUseGoal<>(monster));
 		}
+	}
+
+	private static RoleSpec resolveRole(final Mob mob, final ReactiveState state, final Identifier entityType) {
+		if (mob instanceof SpellcasterIllager) {
+			return RoleSpec.of(CombatRole.MAGIC);
+		}
+
+		RoleSpec configured = GearConfigStore.get().roleFor(entityType);
+		ItemStack mainHand = mob.getMainHandItem();
+
+		if (state.isMainHandRolled() && !mainHand.isEmpty()) {
+			CombatRole rolled = isRangedWeapon(mainHand) ? CombatRole.RANGED : CombatRole.MELEE;
+			return configured != null && configured.role() == rolled ? configured.withRole(rolled) : RoleSpec.of(rolled);
+		}
+
+		return configured != null ? configured : RoleSpec.of(CombatRole.MELEE);
 	}
 
 	private static boolean supports(final Mob mob, final CombatRole role) {

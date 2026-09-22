@@ -28,6 +28,7 @@ public final class ReactiveState {
 	private CombatRole role = CombatRole.MELEE;
 	private double nearDistance;
 	private double farDistance;
+	private boolean mainHandRolled;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -119,5 +120,13 @@ public final class ReactiveState {
 
 	public double getFarDistance() {
 		return this.farDistance;
+	}
+
+	public boolean isMainHandRolled() {
+		return this.mainHandRolled;
+	}
+
+	public void setMainHandRolled(final boolean mainHandRolled) {
+		this.mainHandRolled = mainHandRolled;
 	}
 }

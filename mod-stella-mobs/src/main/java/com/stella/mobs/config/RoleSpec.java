@@ -18,4 +18,8 @@ public record RoleSpec(CombatRole role, double nearDistance, double farDistance)
 	public RoleSpec withBand(final double near, final double far) {
 		return new RoleSpec(this.role, near, far);
 	}
+
+	public RoleSpec withRole(final CombatRole newRole) {
+		return new RoleSpec(newRole, this.nearDistance, this.farDistance);
+	}
 }
