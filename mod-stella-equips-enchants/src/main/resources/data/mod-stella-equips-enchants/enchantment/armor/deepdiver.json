@@ -1,0 +1,35 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.deepdiver" },
+	"supported_items": "#minecraft:enchantable/head_armor",
+	"primary_items": "#minecraft:enchantable/head_armor",
+	"slots": ["head"],
+	"weight": 2,
+	"max_level": 3,
+	"min_cost": { "base": 10, "per_level_above_first": 10 },
+	"max_cost": { "base": 30, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 1.0,
+					"per_level_above_first": 1.0
+				},
+				"attribute": "minecraft:oxygen_bonus",
+				"id": "mod-stella-equips-enchants:enchantment.deepdiver.oxygen",
+				"operation": "add_value"
+			},
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 0.33333334,
+					"per_level_above_first": 0.33333334
+				},
+				"attribute": "minecraft:water_movement_efficiency",
+				"id": "mod-stella-equips-enchants:enchantment.deepdiver.swim",
+				"operation": "add_value"
+			}
+		]
+	}
+}

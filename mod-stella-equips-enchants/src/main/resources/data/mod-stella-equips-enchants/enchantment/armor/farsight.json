@@ -1,0 +1,35 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.farsight" },
+	"supported_items": "#minecraft:enchantable/head_armor",
+	"primary_items": "#minecraft:enchantable/head_armor",
+	"slots": ["head"],
+	"weight": 5,
+	"max_level": 2,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 1.0,
+					"per_level_above_first": 1.0
+				},
+				"attribute": "minecraft:entity_interaction_range",
+				"id": "mod-stella-equips-enchants:enchantment.farsight.entity",
+				"operation": "add_value"
+			},
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 1.0,
+					"per_level_above_first": 1.0
+				},
+				"attribute": "minecraft:block_interaction_range",
+				"id": "mod-stella-equips-enchants:enchantment.farsight.block",
+				"operation": "add_value"
+			}
+		]
+	}
+}

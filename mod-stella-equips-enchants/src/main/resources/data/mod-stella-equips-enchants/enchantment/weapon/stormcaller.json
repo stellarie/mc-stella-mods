@@ -1,0 +1,52 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.stormcaller" },
+	"supported_items": "#minecraft:axes",
+	"primary_items": "#minecraft:axes",
+	"slots": ["mainhand"],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": { "base": 20, "per_level_above_first": 0 },
+	"max_cost": { "base": 50, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:stormcaller"
+				},
+				"requirements": {
+					"type": "minecraft:all_of",
+					"terms": [
+						{
+							"type": "minecraft:damage_source_properties",
+							"predicate": {
+								"is_direct": true
+							}
+						},
+						{
+							"type": "minecraft:any_of",
+							"terms": [
+								{
+									"type": "minecraft:weather_check",
+									"raining": true
+								},
+								{
+									"type": "minecraft:entity_properties",
+									"entity": "this",
+									"predicate": {
+										"minecraft:flags": {
+											"is_in_water": true
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		]
+	}
+}

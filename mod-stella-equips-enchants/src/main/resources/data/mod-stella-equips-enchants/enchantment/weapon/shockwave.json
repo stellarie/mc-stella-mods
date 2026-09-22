@@ -1,0 +1,45 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.shockwave" },
+	"supported_items": "#minecraft:enchantable/mace",
+	"primary_items": "#minecraft:enchantable/mace",
+	"slots": ["mainhand"],
+	"weight": 2,
+	"max_level": 2,
+	"min_cost": { "base": 10, "per_level_above_first": 20 },
+	"max_cost": { "base": 50, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:explode",
+							"radius": 3.0,
+							"block_interaction": "none",
+							"attribute_to_user": true,
+							"small_particle": { "type": "minecraft:poof" },
+							"large_particle": { "type": "minecraft:explosion" },
+							"sound": "minecraft:entity.generic.explode"
+						},
+						{
+							"type": "minecraft:damage_entity",
+							"damage_type": "mod-stella-equips-enchants:enchant_bonus",
+							"min_damage": 4.0,
+							"max_damage": 4.0
+						}
+					]
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_direct": true
+					}
+				}
+			}
+		]
+	}
+}
