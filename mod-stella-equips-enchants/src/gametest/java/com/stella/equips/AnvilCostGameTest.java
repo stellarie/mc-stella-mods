@@ -6,8 +6,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
@@ -15,6 +15,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.level.GameType;
 
 public class AnvilCostGameTest {
 	private static final Identifier TEST_MARKER =
@@ -22,8 +23,10 @@ public class AnvilCostGameTest {
 	private static final int FIXTURE_ANVIL_COST = 10;
 	private static final int FIXTURE_MIN_COST = 1;
 	private static final int CLAMPED_COST = 1;
-	private static final int MERGE_COST = 2;
+	private static final int VANILLA_MERGE_COST = 2;
 	private static final int PICKAXE_DAMAGE = 500;
+	private static final int LEVEL_BEFORE_TAKE = 10;
+	private static final int LEVEL_AFTER_TAKE = 9;
 
 	@GameTest
 	public void testMarkerEnchantmentIsRegistered(final GameTestHelper helper) {
@@ -61,17 +64,38 @@ public class AnvilCostGameTest {
 		helper.succeed();
 	}
 
+	@SuppressWarnings("removal")
 	@GameTest
 	public void anvilMenuCostIsClampedToOne(final GameTestHelper helper) {
-		AnvilMenu menu = populatedMenu(helper);
+		AnvilMenu menu = populatedMenu(helper.makeMockServerPlayerInLevel());
 		int cost = menu.getCost();
 		helper.assertTrue(
 			cost == CLAMPED_COST,
-			"AnvilMenu.getCost() of a merge worth " + MERGE_COST + ": expected " + CLAMPED_COST + " but was " + cost
+			"AnvilMenu.getCost() of a merge worth " + VANILLA_MERGE_COST + ": expected " + CLAMPED_COST
+				+ " but was " + cost
 		);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=anvilCostClamped RESULT cost={} vanillaCost={}",
-			cost, MERGE_COST
+			cost, VANILLA_MERGE_COST
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anvilTakeChargesOneLevel(final GameTestHelper helper) {
+		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		AnvilMenu menu = populatedMenu(player);
+		player.experienceLevel = LEVEL_BEFORE_TAKE;
+		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
+		int charged = LEVEL_BEFORE_TAKE - player.experienceLevel;
+		helper.assertTrue(
+			player.experienceLevel == LEVEL_AFTER_TAKE,
+			"the anvil charged " + charged + " levels: expected level " + LEVEL_AFTER_TAKE
+				+ " but was " + player.experienceLevel
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=anvilTakeCharge RESULT levelBefore={} levelAfter={} charged={}",
+			LEVEL_BEFORE_TAKE, player.experienceLevel, charged
 		);
 		helper.succeed();
 	}
@@ -88,9 +112,7 @@ public class AnvilCostGameTest {
 		helper.succeed();
 	}
 
-	@SuppressWarnings("removal")
-	private static AnvilMenu populatedMenu(final GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+	private static AnvilMenu populatedMenu(final Player player) {
 		Inventory inventory = player.getInventory();
 		AnvilMenu menu = new AnvilMenu(1, inventory, ContainerLevelAccess.NULL);
 		menu.getSlot(AnvilMenu.INPUT_SLOT).set(damagedPickaxe());
