@@ -34,9 +34,16 @@ keeps its per-enchantment rarity.
 The player has a level from 1 to 50. Survivability scales with travel, so the far
 world stays tankable: `max_health`, `armor`, and `knockback_resistance` grow with
 distance walked and depth reached. Output scales with combat only, so damage is
-earned and never granted by walking: `attack_damage` and `attack_speed` grow with
-kills and bosses. Nothing is gated, and a low level player who beats a strong mob
-is paid up to 4 times the base reward.
+earned and never granted by walking. Nothing is gated, and a low level player who
+beats a strong mob is paid up to 4 times the base reward.
+
+The two axes read different things on purpose. Survivability reads the travel
+points, so it follows the player's position. Output reads the level, which is
+capped at 50, so it cannot run away: a kill buys progress toward the cap and the
+cap bounds what a kill buys. Nine times the combat points of a capped player
+change his damage by nothing, and a test pins that. The two output maxima are
+stated in the config as `attack_damage_max` and `attack_speed_max`, reach 0 at
+level 1, and are reached exactly at level 50.
 
 The level comes from points. A level L costs `base + per_level * (L - 1)`, and
 level 50 costs 3969 points. Distance pays 1 point per 5 blocks up to 2000 points,
@@ -44,6 +51,19 @@ depth pays 1 point per 16 blocks below y 63 up to 8 points, a kill pays 1 point,
 and a boss pays 4. Travel alone therefore reaches level 35, 70 percent of the cap,
 and the rest is earned in combat. The reward for a kill is scaled by
 `clamp(even_fight + per_level_gap * (mob_level - player_level), min, max)`.
+
+A rise in the maximum health carries the current health with it, so a level up in
+the middle of a fight leaves the player at the same absolute health rather than at
+a bigger bar over the same wound. The heal fires only on a level up: walking
+inside one level grows the bar and heals nothing, and a test pins both halves.
+
+Two survivability terms reach their ceiling early. `armor` reaches the vanilla
+maximum of 30 at 125 travel points, which is 625 blocks, so the remaining 94
+percent of the armor curve is absorbed, and `knockback_resistance` reaches 1.0 at
+167 points. `max_health` carries the far world to 1020 at the travel ceiling. The
+applied modifier stops at the attribute's own ceiling as well, so no modifier is
+written that the game would only clamp. This is a deliberate early-game ramp and
+not a scaling stat across the whole curve.
 
 The mob level is `min(cap, floor(scaled_distance / blocks_per_level))` plus up to
 `depth_bonus_cap` levels for depth, capped at `level_cap`. `dimension_scale`
@@ -54,10 +74,15 @@ overworld blocks.
 The config is `config/mod-stella-equips-enchants/power.json`. The mod writes it on
 the first start and re-reads it when the data pack reloads. A hand edit wins, a
 bad entry logs and keeps the previous value, and every tuning number lives there.
-Four keys are worth naming because they are not obvious: `depth_bonus_blocks` and
-`depth_reference_y` set how fast the mob level grows with depth, `level_cap` is
-the mob level ceiling, `boss_types` lists the entity types that pay
-`points_per_boss`, and `bands` holds the readout thresholds that slice 4 reads.
+An existing file is never upgraded: a key you set wins, a key you delete falls
+back to the bundled document, and a key you leave stale stays stale, which the
+`_note` in the file says as well. Four keys are worth naming because they are not
+obvious: `depth_bonus_blocks` and `depth_reference_y` set how fast the mob level
+grows with depth, `level_cap` is the mob level ceiling, `boss_types` lists the
+entity types that pay `points_per_boss`, and `bands` holds the readout thresholds
+that slice 4 reads. The band ladder is red at 20 or more, yellow at 10, orange at
+6, green within 5 either way, and white below that, so a gap of -6 through -9 is
+white.
 
 A player meets the system by walking out and by fighting. The health bar, the
 damage reduction, and the damage dealt all move, and the level itself is written

@@ -3,14 +3,17 @@ package com.stella.equips;
 import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerState;
+import com.stella.equips.power.PowerTracker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -19,20 +22,25 @@ import net.minecraft.world.level.storage.ValueInput;
 
 public class PowerApplyGameTest {
 	private static final long SURVIVABILITY_POINTS = 1000L;
-	private static final double COMBAT_POINTS = 200.0;
+	private static final int OUTPUT_LEVEL = 50;
 	private static final float STARTING_HEALTH = 10.0F;
 	private static final double TOLERANCE = 1.0E-9;
 	private static final int SAVED_LEVEL = 30;
 	private static final double SAVED_COMBAT_POINTS = 123.5;
+	private static final double RUNAWAY_COMBAT_POINTS = 1_000_000.0;
+	private static final Identifier MAX_HEALTH_MODIFIER = modifier("max_health");
+	private static final Identifier ARMOR_MODIFIER = modifier("armor");
+	private static final Identifier ATTACK_DAMAGE_MODIFIER = modifier("attack_damage");
+	private static final Identifier ATTACK_SPEED_MODIFIER = modifier("attack_speed");
 
 	@GameTest
 	public void applyingTwiceLeavesEachAttributeAtItsSingleApplicationValue(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, COMBAT_POINTS, config);
+		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
 		double[] once = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, COMBAT_POINTS, config);
+		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
 		double[] twice = values(player);
 		int changed = differences(once, twice);
 		int applied = differences(vanilla, once);
@@ -57,7 +65,7 @@ public class PowerApplyGameTest {
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
 		double[] baseValues = baseValues(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, COMBAT_POINTS, config);
+		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
 		double[] applied = values(player);
 		PowerAttributes.remove(player);
 		double[] after = values(player);
@@ -84,41 +92,75 @@ public class PowerApplyGameTest {
 	}
 
 	@GameTest
-	public void aMaxHealthIncreaseRaisesTheCurrentHealthByTheSameAmount(final GameTestHelper helper) {
+	public void theOutputAxisStopsAtItsStatedMaximum(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
-		float vanillaMax = player.getMaxHealth();
-		player.setHealth(STARTING_HEALTH);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 0.0, config);
-		float healthGained = player.getHealth() - STARTING_HEALTH;
-		float maxGained = player.getMaxHealth() - vanillaMax;
-		helper.assertTrue(maxGained > 0.0F, "the maximum health did not rise at all");
+		double vanillaDamage = value(player, Attributes.ATTACK_DAMAGE);
+		double vanillaSpeed = value(player, Attributes.ATTACK_SPEED);
+		PowerState.set(player, new PowerState(RUNAWAY_COMBAT_POINTS, 1));
+		PowerTracker.scanPlayer(player, config);
+		int level = PowerState.get(player).level();
+		double damageAtCap = value(player, Attributes.ATTACK_DAMAGE) - vanillaDamage;
+		double speedAtCap = value(player, Attributes.ATTACK_SPEED) - vanillaSpeed;
+		PowerState.set(player, new PowerState(RUNAWAY_COMBAT_POINTS * 9.0, level));
+		PowerTracker.scanPlayer(player, config);
+		double damageAfterMore = value(player, Attributes.ATTACK_DAMAGE) - vanillaDamage;
+		double speedAfterMore = value(player, Attributes.ATTACK_SPEED) - vanillaSpeed;
 		helper.assertTrue(
-			Math.abs(healthGained - maxGained) < TOLERANCE,
-			"the maximum rose by " + maxGained + " but the current health rose by " + healthGained
+			level == config.levelCap(),
+			RUNAWAY_COMBAT_POINTS + " combat points reached level " + level + " instead of the cap " + config.levelCap()
+		);
+		helper.assertTrue(
+			Math.abs(damageAtCap - PowerFixtures.ATTACK_DAMAGE_MAX) < TOLERANCE,
+			"at the cap the attack damage bonus was " + damageAtCap + " instead of " + PowerFixtures.ATTACK_DAMAGE_MAX
+		);
+		helper.assertTrue(
+			Math.abs(speedAtCap - PowerFixtures.ATTACK_SPEED_MAX) < TOLERANCE,
+			"at the cap the attack speed bonus was " + speedAtCap + " instead of " + PowerFixtures.ATTACK_SPEED_MAX
+		);
+		helper.assertTrue(
+			Math.abs(damageAfterMore - damageAtCap) < TOLERANCE && Math.abs(speedAfterMore - speedAtCap) < TOLERANCE,
+			"nine times the combat points bought damage " + damageAfterMore + " and speed " + speedAfterMore
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=healthFollowsMaximum RESULT startingHealth={} healthAfter={} maxGained={} healthGained={}",
-			STARTING_HEALTH, player.getHealth(), maxGained, healthGained
+			"[BEHAVIOR] test=outputCeiling RESULT combatPoints={} level={} damageBonus={} speedBonus={} damageAfterNineTimes={} speedAfterNineTimes={}",
+			RUNAWAY_COMBAT_POINTS, level, damageAtCap, speedAtCap, damageAfterMore, speedAfterMore
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aSecondApplicationDoesNotHealAgain(final GameTestHelper helper) {
+	public void theArmorTermPlateausAtTheVanillaCeiling(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
-		player.setHealth(STARTING_HEALTH);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 0.0, config);
-		float afterFirst = player.getHealth();
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 0.0, config);
-		helper.assertTrue(afterFirst > STARTING_HEALTH, "the first application healed nothing");
+		double vanillaArmor = value(player, Attributes.ARMOR);
+		PowerAttributes.apply(player, (long) PowerFixtures.ARMOR_PLATEAU_POINTS, 1, config);
+		double armorValueAtPlateau = value(player, Attributes.ARMOR) - vanillaArmor;
+		double modifierAtPlateau = modifierAmount(player, ARMOR_MODIFIER);
+		PowerAttributes.apply(player, PowerFixtures.DISTANCE_CAP_POINTS + PowerFixtures.DEPTH_CAP_POINTS, 1, config);
+		double armorValueAtTravelCeiling = value(player, Attributes.ARMOR) - vanillaArmor;
+		double modifierAtTravelCeiling = modifierAmount(player, ARMOR_MODIFIER);
 		helper.assertTrue(
-			player.getHealth() == afterFirst,
-			"the second application healed from " + afterFirst + " to " + player.getHealth()
+			Math.abs(armorValueAtPlateau - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
+			"at " + PowerFixtures.ARMOR_PLATEAU_POINTS + " points the armor value was " + armorValueAtPlateau
+		);
+		helper.assertTrue(
+			Math.abs(modifierAtPlateau - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
+			"at " + PowerFixtures.ARMOR_PLATEAU_POINTS + " points the armor modifier was " + modifierAtPlateau
+		);
+		helper.assertTrue(
+			Math.abs(modifierAtTravelCeiling - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
+			"the armor modifier at the travel ceiling was " + modifierAtTravelCeiling + " instead of the ceiling "
+				+ PowerFixtures.ARMOR_CEILING
+		);
+		helper.assertTrue(
+			Math.abs(armorValueAtTravelCeiling - armorValueAtPlateau) < TOLERANCE,
+			"the armor value moved from " + armorValueAtPlateau + " to " + armorValueAtTravelCeiling + " past the plateau"
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=noDoubleHeal RESULT afterFirst={} afterSecond={}", afterFirst, player.getHealth()
+			"[BEHAVIOR] test=armorPlateau RESULT plateauPoints={} modifierAtPlateau={} modifierAtTravelCeiling={} valueAtPlateau={} valueAtTravelCeiling={}",
+			PowerFixtures.ARMOR_PLATEAU_POINTS, modifierAtPlateau, modifierAtTravelCeiling,
+			armorValueAtPlateau, armorValueAtTravelCeiling
 		);
 		helper.succeed();
 	}
@@ -128,7 +170,7 @@ public class PowerApplyGameTest {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 0.0, config);
+		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 1, config);
 		double[] after = values(player);
 		helper.assertTrue(after[0] > vanilla[0], "the survivability axis did not raise max health");
 		helper.assertTrue(
@@ -147,7 +189,7 @@ public class PowerApplyGameTest {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
-		PowerAttributes.apply(player, 0L, COMBAT_POINTS, config);
+		PowerAttributes.apply(player, 0L, OUTPUT_LEVEL, config);
 		double[] after = values(player);
 		helper.assertTrue(
 			after[3] > vanilla[3] && after[4] > vanilla[4],
@@ -234,8 +276,30 @@ public class PowerApplyGameTest {
 		helper.succeed();
 	}
 
+	private static Identifier modifier(final String name) {
+		return Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_" + name);
+	}
+
 	private static ServerPlayer mockPlayer(final GameTestHelper helper) {
 		return (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
+	}
+
+	private static double modifierAmount(final ServerPlayer player, final Identifier id) {
+		AttributeInstance instance = player.getAttribute(Attributes.ARMOR);
+		if (id.equals(ATTACK_DAMAGE_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
+		} else if (id.equals(ATTACK_SPEED_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ATTACK_SPEED);
+		} else if (id.equals(MAX_HEALTH_MODIFIER)) {
+			instance = player.getAttribute(Attributes.MAX_HEALTH);
+		}
+
+		if (instance == null) {
+			return 0.0;
+		}
+
+		AttributeModifier modifier = instance.getModifier(id);
+		return modifier == null ? 0.0 : modifier.amount();
 	}
 
 	private static double[] values(final ServerPlayer player) {
