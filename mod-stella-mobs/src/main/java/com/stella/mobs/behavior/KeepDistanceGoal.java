@@ -31,7 +31,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	}
 
 	public boolean isRetreatExhausted() {
-		return this.mob.level().getGameTime() < ReactiveState.get(this.mob).getKeepDistanceReadyTick();
+		return ReactiveState.get(this.mob).isRetreatCoolingDown();
 	}
 
 	@Override
@@ -113,7 +113,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public void stop() {
 		this.mob.getNavigation().stop();
 		ReactiveState state = ReactiveState.get(this.mob);
-		state.setKeepDistanceReadyTick(this.mob.level().getGameTime() + COOLDOWN_TICKS);
+		state.armRetreatCooldown(COOLDOWN_TICKS);
 	}
 
 	@Override

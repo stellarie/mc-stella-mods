@@ -39,7 +39,10 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (this.mob.level().getGameTime() < state.getRetreatReadyTick()) {
+		// The shared rearm budget, counted in ticks. This goal sits at rank 0, so it is evaluated first
+		// on every tick a MOVE goal is considered, and it is the single place the budget decreases.
+		if (state.isRetreatCoolingDown()) {
+			state.tickRetreatCooldown();
 			return false;
 		}
 
@@ -112,7 +115,7 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 
 		if (this.gainedDistance) {
 			ReactiveState state = ReactiveState.get(this.mob);
-			state.setRetreatReadyTick(this.mob.level().getGameTime() + REARM_TICKS);
+			state.armRetreatCooldown(REARM_TICKS);
 		}
 
 		this.gainedDistance = false;
