@@ -19,6 +19,7 @@ import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.RingOfFireGoal;
 import com.stella.mobs.behavior.WarlordRoarGoal;
@@ -1440,6 +1441,125 @@ public class BossAbilityGameTest {
 		return GearConfigStore.get()
 			.rollFor(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(EntityTypes.PIGLIN))
 			.warCallBruteChance();
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void elitePillagerBoltsCarryTheSlow(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Mob pillager = markedElite(helper, EntityTypes.PILLAGER, 3, 3, 3);
+		pillager.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+		Mob victim = durableTarget(helper, 3, 7);
+		helper.onEachTick(() -> pillager.setTarget(victim));
+		int[] fired = new int[1];
+
+		helper.succeedWhen(() -> {
+			int inFlight = helper.getLevel().getEntitiesOfClass(
+				Arrow.class, pillager.getBoundingBox().inflate(32.0), arrow -> arrow.getOwner() == pillager
+			).size();
+			fired[0] = Math.max(fired[0], inFlight);
+			MobEffectInstance slow = victim.getEffect(MobEffects.SLOWNESS);
+			ItemStack ammo = pillager.getOffhandItem();
+			PotionContents contents = ammo.get(DataComponents.POTION_CONTENTS);
+			if (slow != null || helper.getTick() < 4L) {
+				result(
+					"pillagerBolts",
+					"ammo=" + ammo.getCount() + " tipped="
+						+ (contents != null && contents.potion().orElse(null) == Potions.STRONG_SLOWNESS) + " mainhand="
+						+ pillager.getMainHandItem().getItem() + " boltsInFlightPeak=" + fired[0] + " victimSlow="
+						+ (slow == null ? "none" : slow.getAmplifier()) + " victimHealth=" + victim.getHealth()
+						+ " amplifier=" + EliteKits.SLOWNESS_AMPLIFIER + " shippedTicks=" + EliteKits.SLOWNESS_TICKS
+						+ " remaining=" + (slow == null ? 0 : slow.getDuration())
+				);
+			}
+
+			helper.assertTrue(slow != null, "the bolt never slowed the victim");
+			helper.assertValueEqual(
+				Integer.valueOf(slow.getAmplifier()), Integer.valueOf(EliteKits.SLOWNESS_AMPLIFIER),
+				"the slowness amplifier the bolt landed"
+			);
+			helper.assertTrue(
+				slow.getDuration() > 0 && slow.getDuration() <= EliteKits.SLOWNESS_TICKS,
+				"the slowness had " + slow.getDuration() + " ticks, outside 1 to " + EliteKits.SLOWNESS_TICKS
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void eliteStrayArrowsFreezeAndSlow(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Mob stray = markedElite(helper, EntityTypes.STRAY, 3, 3, 3);
+		stray.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		Mob victim = durableTarget(helper, 3, 7);
+		helper.onEachTick(() -> stray.setTarget(victim));
+		// The freeze decays by two a tick, so a check for the threshold can miss the spike it sits on.
+		int[] peak = new int[1];
+		helper.onEachTick(() -> peak[0] = Math.max(peak[0], victim.getTicksFrozen()));
+
+		helper.succeedWhen(() -> {
+			MobEffectInstance slow = victim.getEffect(MobEffects.SLOWNESS);
+			helper.assertTrue(
+				peak[0] >= EliteKits.FREEZE_ON_HIT,
+				"the freeze peaked at " + peak[0] + ", under the " + EliteKits.FREEZE_ON_HIT + " threshold"
+			);
+			helper.assertTrue(slow != null, "the arrow never slowed the victim");
+			helper.assertValueEqual(
+				Integer.valueOf(slow.getAmplifier()), Integer.valueOf(EliteKits.SLOWNESS_AMPLIFIER),
+				"the slowness amplifier on top of vanilla's own 600 tick slow"
+			);
+			result(
+				"strayFreeze",
+				"freezePeak=" + peak[0] + " threshold=" + victim.getTicksRequiredToFreeze() + " thawTicks="
+					+ (peak[0] / 2) + " frozenNow=" + victim.getTicksFrozen() + " fullyFrozenNow="
+					+ victim.isFullyFrozen() + " amplifier=" + slow.getAmplifier() + " vanillaSlowTicks=600"
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void freeTierEffectsRideTheirElite(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Mob slime = markedElite(helper, EntityTypes.ZOMBIE, 2, 3, 2);
+		Mob silverfish = markedElite(helper, EntityTypes.SKELETON, 4, 3, 2);
+		Mob spider = markedElite(helper, EntityTypes.SPIDER, 6, 3, 2);
+		MobEffectInstance oozing = slime.getEffect(MobEffects.OOZING);
+		MobEffectInstance infested = silverfish.getEffect(MobEffects.INFESTED);
+		MobEffectInstance weaving = spider.getEffect(MobEffects.WEAVING);
+
+		result(
+			"freeTierElite",
+			"oozing=" + (oozing != null) + " infinite=" + (oozing != null && oozing.isInfiniteDuration())
+				+ " infested=" + (infested != null) + " weaving=" + (weaving != null) + " goalsWritten=0"
+		);
+		helper.assertTrue(
+			oozing != null && oozing.isInfiniteDuration(), "the elite slime carries no infinite oozing"
+		);
+		helper.assertTrue(
+			infested != null && infested.isInfiniteDuration(), "the elite silverfish carries no infinite infested"
+		);
+		helper.assertTrue(
+			weaving != null && weaving.isInfiniteDuration(), "the elite spider carries no infinite weaving"
+		);
+		helper.succeed();
+	}
+
+	/** An elite marked by hand, so an ability fixture does not depend on the elite roll. */
+	private static Mob markedElite(
+		final GameTestHelper helper, final EntityType<? extends Mob> type, final int x, final int y, final int z
+	) {
+		Mob mob = ordinary(helper, type, x, y, z);
+		Elite.mark(mob, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+		return mob;
+	}
+
+	/** A target that outlives the ability under test, so a clause cannot pass by killing it early. */
+	private static Mob durableTarget(final GameTestHelper helper, final int x, final int z) {
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, x, 3, z).spawn();
+		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
+		target.setHealth(Arena.OPPONENT_HEALTH);
+		target.setPersistenceRequired();
+		return target;
 	}
 
 	private static void result(final String test, final String detail) {

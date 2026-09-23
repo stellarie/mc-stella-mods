@@ -7,6 +7,7 @@ import com.stella.mobs.behavior.BroodMother;
 import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.GolemElite;
@@ -68,6 +69,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(GolemElite::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinSmash::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinWarCall::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(EliteKits::strayFreeze);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
