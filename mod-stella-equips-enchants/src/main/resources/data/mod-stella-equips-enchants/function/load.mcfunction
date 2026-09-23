@@ -20,3 +20,5 @@ scoreboard players set #five ench_scratch 5
 scoreboard objectives add ench_cd_berserk dummy
 scoreboard objectives add ench_berserk_tier dummy
 scoreboard objectives add ench_cd_regen dummy
+scoreboard objectives add echo_life dummy
+scoreboard objectives add echo_scratch dummy

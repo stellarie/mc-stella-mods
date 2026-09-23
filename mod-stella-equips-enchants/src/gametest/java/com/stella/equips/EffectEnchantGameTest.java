@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,6 +20,11 @@ import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.entity.EntityTypeTest;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundExplodePacket;
@@ -62,6 +68,19 @@ public class EffectEnchantGameTest {
 	private static final int YIELD_BREAKS = 60;
 	private static final int FUNCTION_WAIT_TICKS = 60;
 	private static final int SHOT_WAIT_TICKS = 25;
+
+	/**
+	 * The spark life the datapack sets in `echolocation_tick.mcfunction`, mirrored here so
+	 * the test and the function move together. Changing one without the other fails this.
+	 */
+	private static final class SparkDurationTicks {
+		private static final int TOTAL = 40;
+		private static final int HALF = TOTAL / 2;
+		private static final int START_CLOCK = 1000;
+
+		private SparkDurationTicks() {
+		}
+	}
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
 		"weapon/void_brand", "weapon/meteor", "weapon/impale", "weapon/undertow",
@@ -617,6 +636,153 @@ public class EffectEnchantGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
+	public void echolocationMarksTheOreAroundTheBrokenBlock(final GameTestHelper helper) {
+		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+		ServerLevel level = helper.getLevel();
+		BlockPos slab = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
+		level.setBlockAndUpdate(slab, Blocks.STONE.defaultBlockState());
+		BlockPos underfoot = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y - 1, 1));
+		level.setBlockAndUpdate(underfoot, Blocks.DIAMOND_ORE.defaultBlockState());
+		BlockPos beside = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 1));
+		level.setBlockAndUpdate(beside, Blocks.GOLD_ORE.defaultBlockState());
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/echolocation", 1));
+		miner.setPos(slab.getX() + 0.5, slab.getY(), slab.getZ() + 0.5);
+		rearmCooldown(helper, miner, "ench_cd_echo", 40);
+		int cooldownBefore = score(helper, miner, "ench_cd_echo");
+		breakBlock(miner, slab, level);
+		int cooldownAfter = score(helper, miner, "ench_cd_echo");
+		List<String> markers = sparkMarkers(level);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=echolocationMarks RESULT feet={} underfoot={} beside={} cooldownBefore={}"
+				+ " cooldownAfter={} sparkMarkers={}",
+			miner.position(), underfoot, beside, cooldownBefore, cooldownAfter, markers
+		);
+		helper.assertTrue(cooldownAfter == cooldownBefore + 40, "the pulse never ran");
+		List<String> allMarkers = new ArrayList<>();
+		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
+			for (String tag : candidate.entityTags()) {
+				allMarkers.add(tag + "@" + candidate.blockPosition());
+			}
+		}
+
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=echolocationAllMarkers RESULT markers={}", allMarkers);
+		runCommand(
+			helper, miner, "summon minecraft:marker ~ ~ ~ {Tags:[\"echo_spark\"],data:{echo_life:40}}"
+		);
+		int plainEcho = sparkMarkers(level).size();
+		runCommand(
+			helper, miner,
+			"execute if block ~ ~-1 ~ #minecraft:ores run summon minecraft:marker ~ ~-1 ~ "
+				+ "{Tags:[\"echo_spark\"],data:{echo_life:40}}"
+		);
+		int conditionalEcho = sparkMarkers(level).size();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=echolocationSummonShape RESULT plainEcho={} conditionalEcho={}",
+			plainEcho, conditionalEcho
+		);
+
+		helper.assertTrue(
+			markers.equals(Stream.of(underfoot, beside).map(String::valueOf).sorted().toList()),
+			"the sparks sat at " + markers + " instead of the two ores " + underfoot + " and " + beside
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void echolocationKeepsTheSparkLitForTwoSeconds(final GameTestHelper helper) {
+		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+		ServerLevel level = helper.getLevel();
+		BlockPos slab = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
+		level.setBlockAndUpdate(slab, Blocks.STONE.defaultBlockState());
+		BlockPos underfoot = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y - 1, 1));
+		level.setBlockAndUpdate(underfoot, Blocks.DIAMOND_ORE.defaultBlockState());
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/echolocation", 1));
+		miner.setPos(slab.getX() + 0.5, slab.getY(), slab.getZ() + 0.5);
+		// The datapack tick does not run in a game test, so the clock is driven by hand and
+		// the pulse and the decay are both called directly. That measures the rule itself.
+		runCommand(helper, miner, "scoreboard players set #clock ench_clock " + SparkDurationTicks.START_CLOCK);
+		rearmCooldown(helper, miner, "ench_cd_echo", SparkDurationTicks.TOTAL);
+		breakBlock(miner, slab, level);
+		List<String> samples = new ArrayList<>();
+		samples.add("0=" + sparkMarkers(level).size());
+		for (int advance = 1; advance <= SparkDurationTicks.TOTAL + 3; advance++) {
+			runCommand(helper, miner, "scoreboard players add #clock ench_clock 1");
+			runFunction(helper, miner, "mod-stella-equips-enchants:echolocation_tick");
+			if (advance <= 2 || advance == SparkDurationTicks.HALF || advance >= SparkDurationTicks.TOTAL - 1) {
+				int lit = sparkMarkers(level).size();
+				samples.add(advance + "=" + lit);
+				if (advance == SparkDurationTicks.TOTAL && lit != 1) {
+					throw new AssertionError("the spark died before its two seconds, at tick " + advance);
+				}
+
+				if (advance == SparkDurationTicks.TOTAL + 1 && lit != 0) {
+					throw new AssertionError("the spark outlived its two seconds, still lit at tick " + advance);
+				}
+			}
+		}
+
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=echolocationSparkLife RESULT sparkDurationTicks={} samples={}",
+			SparkDurationTicks.TOTAL, samples
+		);
+		assertSparkLife(samples);
+		helper.succeed();
+	}
+	/** A spark must be lit at once, still lit at half its life, and gone by its full life. */
+	private static void assertSparkLife(final List<String> samples) {
+		int litAtHalf = -1;
+		int litAfter = -1;
+		for (String sample : samples) {
+			String[] parts = sample.split("=");
+			int tick = Integer.parseInt(parts[0]);
+			if (tick == SparkDurationTicks.HALF) {
+				litAtHalf = Integer.parseInt(parts[1]);
+			}
+
+			if (tick == SparkDurationTicks.TOTAL + 1) {
+				litAfter = Integer.parseInt(parts[1]);
+			}
+		}
+
+		if (!samples.get(0).endsWith("=1")) {
+			throw new AssertionError("the pulse lit no spark: " + samples);
+		}
+
+		if (litAtHalf != 1) {
+			throw new AssertionError("the spark went out before half its life: " + samples);
+		}
+
+		if (litAfter != 0) {
+			throw new AssertionError("the spark outlived two seconds: " + samples);
+		}
+	}
+	/** The stored birth clock of the first spark, or -1 when nothing is lit. */
+	private static long sparkLifeScore(final GameTestHelper helper, final ServerLevel level) {
+		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
+			if (candidate.entityTags().contains("echo_spark")) {
+				var scores = helper.getLevel().getServer().getScoreboard();
+				var objective = scores.getObjective("echo_life");
+				return objective == null ? -2L
+					: scores.getOrCreatePlayerScore(ScoreHolder.forNameOnly(candidate.getStringUUID()), objective).get();
+			}
+		}
+
+		return -1L;
+	}
+
+	private static List<String> sparkMarkers(final ServerLevel level) {
+		List<String> markers = new ArrayList<>();
+		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
+			if (candidate.entityTags().contains("echo_spark")) {
+				markers.add(String.valueOf(candidate.blockPosition()));
+			}
+		}
+
+		markers.sort(String::compareTo);
+		return markers;
+	}
+
+	@GameTest(maxTicks = 200)
 	public void enchantedYieldPaysMoreExperienceAtAHigherLevel(final GameTestHelper helper) {
 		int atOne = experienceFromBreaks(helper, 1);
 		int atFive = experienceFromBreaks(helper, 5);
@@ -950,6 +1116,7 @@ public class EffectEnchantGameTest {
 			.withLevel(helper.getLevel())
 			.withEntity(entity)
 			.withPosition(entity.position())
+			.withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER)
 			.withSuppressedOutput();
 		server.getCommands().performPrefixedCommand(source, command);
 	}
