@@ -277,6 +277,48 @@ public class PowerCurveGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void everyGapBelowGreenIsWhite(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		int wrong = 0;
+		int firstWrong = 0;
+		PowerCurve.Band firstBand = PowerCurve.Band.WHITE;
+
+		for (int gap = -5; gap >= -40; gap--) {
+			PowerCurve.Band band = PowerCurve.band(gap, config);
+			boolean whiteExpected = gap <= -6;
+
+			if (whiteExpected && band != PowerCurve.Band.WHITE && wrong == 0) {
+				wrong++;
+				firstWrong = gap;
+				firstBand = band;
+			}
+		}
+
+		helper.assertTrue(
+			wrong == 0,
+			"gap " + firstWrong + " read " + firstBand + " instead of WHITE"
+		);
+		helper.assertTrue(
+			PowerCurve.band(-5, config) == PowerCurve.Band.GREEN,
+			"gap -5 read " + PowerCurve.band(-5, config) + " instead of GREEN"
+		);
+		helper.assertTrue(
+			PowerCurve.band(-6, config) == PowerCurve.Band.WHITE,
+			"gap -6 read " + PowerCurve.band(-6, config) + " instead of WHITE"
+		);
+		helper.assertTrue(
+			PowerCurve.band(-9, config) == PowerCurve.Band.WHITE,
+			"gap -9 read " + PowerCurve.band(-9, config) + " instead of WHITE"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=bandBelowGreen RESULT gapMinusFive={} gapMinusSix={} gapMinusNine={} gapMinusForty={} wrong={}",
+			PowerCurve.band(-5, config), PowerCurve.band(-6, config),
+			PowerCurve.band(-9, config), PowerCurve.band(-40, config), wrong
+		);
+		helper.succeed();
+	}
+
 	private static int mobLevelAt(final double x, final double y, final net.minecraft.resources.Identifier dimension, final PowerConfig config) {
 		double scaled = PowerCurve.scaledDistance(x, 0.0, 0.0, 0.0, dimension, config);
 		return PowerCurve.mobLevel((int) Math.floor(scaled), (int) Math.floor(y), config);

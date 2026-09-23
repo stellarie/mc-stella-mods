@@ -82,16 +82,19 @@ untouched.
 The gap is the mob level minus the owner's level. The color bands come from the
 `bands` block of `power.json`, the same thresholds the kill reward reads: red at
 20 above, yellow at 10 above, orange at 6 above, green from 5 above to 5 below,
-orange again from 6 below, and white at 10 or more below. `/stellaequips readout
-off` clears the readouts of one player and stops new ones; `on` restores them.
+and white at 6 or more below. `/stellaequips readout off` clears the readouts of
+one player and stops new ones; `on` restores them.
+
+A readout follows its mob. The display moves with the mob on every tick, so a
+walking mob never leaves its label behind, and the text is re-sent only when the
+band or the mob level changes.
 
 Two guards bound the cost. A readout exists only for a mob within 32 blocks of its
-owner, and one player holds at most 40 readouts, nearest first. The text is
-re-sent only when the band or the mob level changes, so a scan that finds nothing
-new sends nothing. A readout is removed when its mob dies, when it leaves the
-radius, when the cap drops it, when the owner disconnects, and when the owner opts
-out. The `readout` block of `power.json` holds `enabled_by_default`, `radius`,
-`max_per_player`, `height_offset`, and `view_range`.
+owner, and one player holds at most 40 readouts, nearest first. A readout is
+removed when its mob dies, when it leaves the radius, when the cap drops it, when
+the owner disconnects, and when the owner opts out. The `readout` block of
+`power.json` holds `enabled_by_default`, `radius`, `max_per_player`,
+`height_offset`, and `view_range`.
 
 ## Game tests
 

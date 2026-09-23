@@ -14,6 +14,7 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
@@ -96,6 +97,12 @@ public final class PacketRecorder extends ServerGamePacketListenerImpl {
 		return countMatching(
 			packet -> packet instanceof ClientboundRemoveEntitiesPacket remove
 				&& remove.entityIds().contains(entityId)
+		);
+	}
+
+	public int teleportPackets(final int entityId) {
+		return countMatching(
+			packet -> packet instanceof ClientboundTeleportEntityPacket teleport && teleport.id() == entityId
 		);
 	}
 
