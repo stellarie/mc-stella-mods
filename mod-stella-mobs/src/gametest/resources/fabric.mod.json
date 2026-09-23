@@ -8,6 +8,7 @@
 		"fabric-gametest": [
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
+			"com.stella.mobs.BossGameTest",
 			"com.stella.mobs.EliteGameTest",
 			"com.stella.mobs.EliteFrameworkGameTest",
 			"com.stella.mobs.GearGameTest",

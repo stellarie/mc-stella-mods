@@ -27,6 +27,11 @@ public final class SpawnScaling {
 	public static final double DAMAGE_DEPTH_WEIGHT = 0.125;
 	public static final Identifier HEALTH_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "spawn_scale_health");
 	public static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "spawn_scale_damage");
+	public static final int LEVEL_DISTANCE_POINTS = 10;
+	public static final int LEVEL_DEPTH_POINTS = 5;
+	/** R12's own distance weight divided by its own level count, so ten levels are exactly that weight. */
+	public static final double LEVEL_HEALTH_BONUS = HEALTH_DISTANCE_WEIGHT / LEVEL_DISTANCE_POINTS;
+	public static final double LEVEL_DAMAGE_BONUS = DAMAGE_DISTANCE_WEIGHT / LEVEL_DISTANCE_POINTS;
 	// A scaled boss breaks an encounter budget, so the four mobs with a scripted fight stay vanilla.
 	private static final Set<EntityType<?>> EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.ENDER_DRAGON
@@ -43,6 +48,18 @@ public final class SpawnScaling {
 	public static double damageMultiplier(final double distance, final double depth) {
 		return 1.0 + share(distance, DISTANCE_CAP) * DAMAGE_DISTANCE_WEIGHT
 			+ share(depth, DEPTH_CAP) * DAMAGE_DEPTH_WEIGHT;
+	}
+
+	/**
+	 * The area level a boss is measured against, 0 to 15, derived from the same shares R12 scales by so
+	 * the two systems cannot disagree about how far out a mob is.
+	 */
+	public static int areaLevel(final Mob mob) {
+		double distance = distanceFromSpawn(mob);
+		double depth = Math.max(0.0, mob.level().getSeaLevel() - mob.getY());
+		return (int) Math.floor(
+			share(distance, DISTANCE_CAP) * LEVEL_DISTANCE_POINTS + share(depth, DEPTH_CAP) * LEVEL_DEPTH_POINTS
+		);
 	}
 
 	/** Applies both multipliers once. A second call replaces rather than stacks, so a reload is safe. */
