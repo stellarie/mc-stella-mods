@@ -30,6 +30,12 @@ public final class ReactiveState {
 	private double nearDistance;
 	private double farDistance;
 	private boolean mainHandRolled;
+	private long witchActionUntilTick;
+	private long witchNextOffensiveTick;
+	private long witchNextAllyScanTick;
+	private int witchThrowIndex;
+	private boolean witchInvisibilityCast;
+	private boolean elite;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -137,5 +143,53 @@ public final class ReactiveState {
 
 	public void setMainHandRolled(final boolean mainHandRolled) {
 		this.mainHandRolled = mainHandRolled;
+	}
+
+	public long getWitchActionUntilTick() {
+		return this.witchActionUntilTick;
+	}
+
+	public void setWitchActionUntilTick(final long witchActionUntilTick) {
+		this.witchActionUntilTick = witchActionUntilTick;
+	}
+
+	public long getWitchNextOffensiveTick() {
+		return this.witchNextOffensiveTick;
+	}
+
+	public void setWitchNextOffensiveTick(final long witchNextOffensiveTick) {
+		this.witchNextOffensiveTick = witchNextOffensiveTick;
+	}
+
+	public long getWitchNextAllyScanTick() {
+		return this.witchNextAllyScanTick;
+	}
+
+	public void setWitchNextAllyScanTick(final long witchNextAllyScanTick) {
+		this.witchNextAllyScanTick = witchNextAllyScanTick;
+	}
+
+	public int getWitchThrowIndex() {
+		return this.witchThrowIndex;
+	}
+
+	public void setWitchThrowIndex(final int witchThrowIndex) {
+		this.witchThrowIndex = witchThrowIndex;
+	}
+
+	public boolean isWitchInvisibilityCast() {
+		return this.witchInvisibilityCast;
+	}
+
+	public void setWitchInvisibilityCast(final boolean witchInvisibilityCast) {
+		this.witchInvisibilityCast = witchInvisibilityCast;
+	}
+
+	public boolean isElite() {
+		return this.elite;
+	}
+
+	public void setElite(final boolean elite) {
+		this.elite = elite;
 	}
 }
