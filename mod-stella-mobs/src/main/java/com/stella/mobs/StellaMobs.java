@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BehaviorInstaller;
+import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
@@ -33,6 +34,7 @@ public class StellaMobs implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ReactiveState.register();
+		EliteState.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
