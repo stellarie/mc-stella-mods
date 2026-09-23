@@ -131,12 +131,12 @@ public class EffectEnchantGameTest {
 		}
 
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=catalogueCount RESULT catalogue={} cutPresent={} expected=71",
+			"[BEHAVIOR] test=catalogueCount RESULT catalogue={} cutPresent={} expected=72",
 			catalogue.size(), present.size()
 		);
 		helper.assertTrue(
-			catalogue.size() == 71,
-			"the catalogue holds " + catalogue.size() + " enchantments instead of 71"
+			catalogue.size() == 72,
+			"the catalogue holds " + catalogue.size() + " enchantments instead of 72"
 		);
 		helper.assertTrue(present.isEmpty(), "a cut enchantment is still registered: " + present);
 		helper.succeed();

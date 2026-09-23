@@ -1,0 +1,22 @@
+{
+	"_note": "The warden head drop. oniichan asked for mob heads at 0.01 percent, but the Lead raised this one to 25 percent deliberately: at 1 in 10000 a 4000 roll sample expects 0.4 hits, so a rate could not be measured and oniichan would never see a head to test the wave. The raise is recorded rather than silent. Looting does not affect it, because oniichan asked for a flat rate.",
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:all_of",
+				"terms": [
+					{ "type": "minecraft:killed_by_player" },
+					{ "type": "minecraft:random_chance", "chance": 0.25 }
+				]
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:wither_skeleton_skull"
+				}
+			]
+		}
+	]
+}

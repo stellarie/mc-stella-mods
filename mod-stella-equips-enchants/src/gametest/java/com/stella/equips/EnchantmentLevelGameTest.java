@@ -59,7 +59,8 @@ public class EnchantmentLevelGameTest {
 		"tool/veinminer",
 		"weapon/momentum",
 		"weapon/stormcaller",
-		"weapon/tidecaller"
+		"weapon/tidecaller",
+		"weapon/warden_wave"
 	);
 
 	/** The level 3 value of every scaling enchantment, recorded before any edit. */
