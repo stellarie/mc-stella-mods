@@ -43,8 +43,8 @@ public class PowerApplyGameTest {
 		double damage = modifierAmount(player, ATTACK_DAMAGE_MODIFIER);
 		double speed = modifierAmount(player, ATTACK_SPEED_MODIFIER);
 		helper.assertTrue(
-			Math.abs(health - PowerFixtures.MAX_HEALTH_AT_CAP) < TOLERANCE,
-			"the maximum health at the cap was " + health + " instead of " + PowerFixtures.MAX_HEALTH_AT_CAP
+			Math.abs(health - PowerFixtures.HEALTH_GAIN_AT_CAP) < TOLERANCE,
+			"the maximum health gain at the cap was " + health + " instead of " + PowerFixtures.HEALTH_GAIN_AT_CAP
 		);
 		helper.assertTrue(
 			Math.abs(armor - PowerFixtures.ARMOR_AT_CAP) < TOLERANCE,

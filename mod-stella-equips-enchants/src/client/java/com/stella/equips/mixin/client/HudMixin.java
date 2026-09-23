@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 public class HudMixin {
 	/** The bar packs ten hearts to a row, so 100 containers is ten rows of ten. */
 	private static final int MAX_DRAWN_CONTAINERS = 100;
+	private static final float MAX_DRAWN_HEALTH = MAX_DRAWN_CONTAINERS * 2.0F;
 
 	/**
 	 * Caps the value the row count, the row height, the regeneration offset, the armour
@@ -23,9 +24,13 @@ public class HudMixin {
 		at = @At(value = "INVOKE", target = "Ljava/lang/Math;max(FF)F")
 	)
 	private static float stellaEquipsCapLayout(final float maxHealth) {
-		return Math.min(maxHealth, MAX_DRAWN_CONTAINERS * 2.0F);
+		return Math.min(maxHealth, MAX_DRAWN_HEALTH);
 	}
 
+	/**
+	 * The second cap, because the caller lays out the greater of the attribute and the
+	 * health on screen, so a health value above the cap would otherwise escape the first.
+	 */
 	@ModifyExpressionValue(
 		method = "extractHearts(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/entity/player/Player;IIIIFIIIZ)V",
 		at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;ceil(D)I", ordinal = 0)
