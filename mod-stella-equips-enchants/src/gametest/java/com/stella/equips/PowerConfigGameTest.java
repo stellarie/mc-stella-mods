@@ -21,7 +21,7 @@ public class PowerConfigGameTest {
 		"{",
 		"{\"version\": 1",
 		"{\"level_cap\": \"fifty\"}",
-		"{\"points_per_level\": 6}"
+		"{\"curve\": 6}"
 	};
 	private static final int EDITED_LEVEL_CAP = 7;
 	private static final int EDITED_SCAN_INTERVAL = 20;
@@ -39,40 +39,43 @@ public class PowerConfigGameTest {
 			levelFifty == PowerFixtures.LEVEL_50_POINTS,
 			"the bundled document puts level 50 at " + levelFifty + " points"
 		);
+		helper.assertTrue(
+			Math.abs(actual.curve().growth() - PowerFixtures.GROWTH) < 1.0E-9,
+			"the bundled growth is " + actual.curve().growth()
+		);
+		helper.assertTrue(
+			Math.abs(actual.attributes().maxHealthAtCap() - PowerFixtures.MAX_HEALTH_AT_CAP) < 1.0E-9,
+			"the bundled maximum health at the cap is " + actual.attributes().maxHealthAtCap()
+		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} pointsForLevel50={} distanceMax={} depthMax={} mobLevelCap={} scanInterval={}",
+			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} pointsForLevel50={} growth={} awardDivisor={} mobLevelCap={} maxHealthAtCap={} scanInterval={}",
 			actual.levelCap(),
 			levelFifty,
-			actual.distance().maxPoints(),
-			actual.depth().maxPoints(),
+			actual.curve().growth(),
+			actual.award().divisor(),
 			actual.mobLevel().levelCap(),
+			actual.attributes().maxHealthAtCap(),
 			actual.tracker().scanIntervalTicks()
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void bundledNoteNamesTheUnitOfEachKeyAndTheAxisDrivers(final GameTestHelper helper) {
+	public void bundledNoteNamesTheUnitAndTheSourceOfPower(final GameTestHelper helper) {
 		String document = PowerConfigStore.DEFAULT_JSON;
 		boolean note = document.contains("\"_note\"");
-		boolean healthUnit = document.contains("max_health_per_point");
-		boolean armorUnit = document.contains("armor_per_level");
-		boolean knockbackUnit = document.contains("knockback_resistance_per_level");
-		boolean travelAxis = document.contains("travel level");
-		boolean combatAxis = document.contains("combat level");
+		boolean valueAtCap = document.contains("value at level 50");
+		boolean killsOnly = document.contains("Kills are the only source of power");
+		boolean awardUnit = document.contains("mobLevel times divisor");
+		boolean deathRule = document.contains("removes 5 percent");
 		helper.assertTrue(note, "the bundled document carries no _note");
-		helper.assertTrue(
-			healthUnit && armorUnit && knockbackUnit,
-			"the surviving keys do not name their unit: per point " + healthUnit + ", per level " + armorUnit
-				+ " and " + knockbackUnit
-		);
-		helper.assertTrue(
-			travelAxis && combatAxis,
-			"the note does not name which quantity drives which axis: travel " + travelAxis + ", combat " + combatAxis
-		);
+		helper.assertTrue(valueAtCap, "the note does not name the unit of the attribute keys");
+		helper.assertTrue(killsOnly, "the note does not name kills as the only source of power");
+		helper.assertTrue(awardUnit, "the note does not name the award unit");
+		helper.assertTrue(deathRule, "the note does not name the death rule");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=unitNote RESULT note={} healthPerPointKey={} armorPerLevelKey={} knockbackPerLevelKey={} travelDriver={} combatDriver={}",
-			note, healthUnit, armorUnit, knockbackUnit, travelAxis, combatAxis
+			"[BEHAVIOR] test=unitNote RESULT note={} valueAtCapUnit={} killsOnly={} awardUnit={} deathRule={}",
+			note, valueAtCap, killsOnly, awardUnit, deathRule
 		);
 		helper.succeed();
 	}

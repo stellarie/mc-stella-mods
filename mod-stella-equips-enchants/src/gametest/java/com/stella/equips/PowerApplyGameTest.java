@@ -4,7 +4,6 @@ import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerCurve;
 import com.stella.equips.power.PowerState;
-import com.stella.equips.power.PowerTracker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -22,13 +21,11 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 
 public class PowerApplyGameTest {
-	private static final long SURVIVABILITY_POINTS = 1000L;
-	private static final int OUTPUT_LEVEL = 50;
-	private static final float STARTING_HEALTH = 10.0F;
+	private static final int LEVEL_AT_CAP = 50;
+	private static final int LEVEL_HALFWAY = 25;
 	private static final double TOLERANCE = 1.0E-9;
 	private static final int SAVED_LEVEL = 30;
 	private static final double SAVED_COMBAT_POINTS = 123.5;
-	private static final double RUNAWAY_COMBAT_POINTS = 1_000_000.0;
 	private static final Identifier MAX_HEALTH_MODIFIER = modifier("max_health");
 	private static final Identifier ARMOR_MODIFIER = modifier("armor");
 	private static final Identifier KNOCKBACK_MODIFIER = modifier("knockback_resistance");
@@ -36,16 +33,107 @@ public class PowerApplyGameTest {
 	private static final Identifier ATTACK_SPEED_MODIFIER = modifier("attack_speed");
 
 	@GameTest
+	public void everyAttributeReachesItsStatedValueAtTheCap(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		ServerPlayer player = mockPlayer(helper);
+		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
+		double health = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		double armor = modifierAmount(player, ARMOR_MODIFIER);
+		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
+		double damage = modifierAmount(player, ATTACK_DAMAGE_MODIFIER);
+		double speed = modifierAmount(player, ATTACK_SPEED_MODIFIER);
+		helper.assertTrue(
+			Math.abs(health - PowerFixtures.MAX_HEALTH_AT_CAP) < TOLERANCE,
+			"the maximum health at the cap was " + health + " instead of " + PowerFixtures.MAX_HEALTH_AT_CAP
+		);
+		helper.assertTrue(
+			Math.abs(armor - PowerFixtures.ARMOR_AT_CAP) < TOLERANCE,
+			"the armor at the cap was " + armor + " instead of " + PowerFixtures.ARMOR_AT_CAP
+		);
+		helper.assertTrue(
+			Math.abs(knockback - PowerFixtures.KNOCKBACK_RESISTANCE_AT_CAP) < TOLERANCE,
+			"the knockback resistance at the cap was " + knockback
+		);
+		helper.assertTrue(
+			Math.abs(damage - PowerFixtures.ATTACK_DAMAGE_AT_CAP) < TOLERANCE,
+			"the attack damage at the cap was " + damage + " instead of " + PowerFixtures.ATTACK_DAMAGE_AT_CAP
+		);
+		helper.assertTrue(
+			Math.abs(speed - PowerFixtures.ATTACK_SPEED_AT_CAP) < TOLERANCE,
+			"the attack speed at the cap was " + speed + " instead of " + PowerFixtures.ATTACK_SPEED_AT_CAP
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=attributeCap RESULT level={} health={} armor={} knockback={} damage={} speed={}",
+			LEVEL_AT_CAP, health, armor, knockback, damage, speed
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyAttributeIsZeroAtLevelOneAndHalfwayAtTheMiddle(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		ServerPlayer atOne = mockPlayer(helper);
+		ServerPlayer halfway = mockPlayer(helper);
+		PowerAttributes.apply(atOne, 1, config);
+		PowerAttributes.apply(halfway, LEVEL_HALFWAY, config);
+		double fraction = PowerCurve.levelFraction(LEVEL_HALFWAY, config);
+		double damageAtOne = modifierAmount(atOne, ATTACK_DAMAGE_MODIFIER);
+		double armorAtOne = modifierAmount(atOne, ARMOR_MODIFIER);
+		double damageHalfway = modifierAmount(halfway, ATTACK_DAMAGE_MODIFIER);
+		double armorHalfway = modifierAmount(halfway, ARMOR_MODIFIER);
+		helper.assertTrue(
+			damageAtOne == 0.0 && armorAtOne == 0.0,
+			"a level 1 player carried damage " + damageAtOne + " and armor " + armorAtOne
+		);
+		helper.assertTrue(
+			Math.abs(damageHalfway - PowerFixtures.ATTACK_DAMAGE_AT_CAP * fraction) < TOLERANCE,
+			"the damage at level " + LEVEL_HALFWAY + " was " + damageHalfway
+		);
+		helper.assertTrue(
+			Math.abs(armorHalfway - PowerFixtures.ARMOR_AT_CAP * fraction) < TOLERANCE,
+			"the armor at level " + LEVEL_HALFWAY + " was " + armorHalfway
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=attributeRamp RESULT fraction={} damageAtLevel1={} armorAtLevel1={} damageHalfway={} armorHalfway={}",
+			fraction, damageAtOne, armorAtOne, damageHalfway, armorHalfway
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theArmorAndKnockbackTermsLeaveRoomForTheEnchantments(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		ServerPlayer player = mockPlayer(helper);
+		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
+		double armor = modifierAmount(player, ARMOR_MODIFIER);
+		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
+		helper.assertTrue(
+			armor < PowerFixtures.ARMOR_CEILING,
+			"the armor modifier " + armor + " fills the vanilla ceiling of " + PowerFixtures.ARMOR_CEILING
+		);
+		helper.assertTrue(
+			knockback < PowerFixtures.KNOCKBACK_CEILING,
+			"the knockback modifier " + knockback + " fills the vanilla ceiling of " + PowerFixtures.KNOCKBACK_CEILING
+		);
+		helper.assertTrue(armor > 0.0 && knockback > 0.0, "a capped player carried no armor or knockback resistance");
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=enchantmentHeadroom RESULT armor={} armorHeadroom={} knockback={} knockbackHeadroom={}",
+			armor, PowerFixtures.ARMOR_CEILING - armor, knockback, PowerFixtures.KNOCKBACK_CEILING - knockback
+		);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void applyingTwiceLeavesEachAttributeAtItsSingleApplicationValue(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
+		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
 		double[] once = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
+		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
 		double[] twice = values(player);
-		int changed = differences(once, twice);
 		int applied = differences(vanilla, once);
+		int changed = differences(once, twice);
 		helper.assertTrue(
 			applied == 5,
 			"the first application moved " + applied + " of the 5 attributes: " + describe(once)
@@ -67,20 +155,15 @@ public class PowerApplyGameTest {
 		ServerPlayer player = mockPlayer(helper);
 		double[] vanilla = values(player);
 		double[] baseValues = baseValues(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, OUTPUT_LEVEL, config);
+		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
 		double[] applied = values(player);
 		PowerAttributes.remove(player);
 		double[] after = values(player);
 		int appliedCount = differences(vanilla, applied);
 		int changed = differences(vanilla, after);
 		int basesChanged = differences(baseValues, baseValues(player));
-		helper.assertTrue(
-			appliedCount == 5, "the application moved only " + appliedCount + " attributes before removal"
-		);
-		helper.assertTrue(
-			changed == 0,
-			"removal left " + changed + " attributes moved: vanilla=" + describe(vanilla) + " after=" + describe(after)
-		);
+		helper.assertTrue(appliedCount == 5, "the application moved only " + appliedCount + " attributes");
+		helper.assertTrue(changed == 0, "removal left " + changed + " attributes moved: " + describe(after));
 		helper.assertTrue(basesChanged == 0, "removal changed " + basesChanged + " base values");
 		helper.assertTrue(
 			player.getHealth() <= player.getMaxHealth(),
@@ -89,122 +172,6 @@ public class PowerApplyGameTest {
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=removeRestores RESULT applied={} changed={} health={} maxHealth={} vanillaMaxHealth={}",
 			appliedCount, changed, player.getHealth(), player.getMaxHealth(), vanilla[0]
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theOutputAxisStopsAtItsStatedMaximum(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		ServerPlayer player = mockPlayer(helper);
-		double vanillaDamage = value(player, Attributes.ATTACK_DAMAGE);
-		double vanillaSpeed = value(player, Attributes.ATTACK_SPEED);
-		PowerState.set(player, new PowerState(RUNAWAY_COMBAT_POINTS, 1));
-		PowerTracker.scanPlayer(player, config);
-		int level = PowerState.get(player).level();
-		double damageAtCap = value(player, Attributes.ATTACK_DAMAGE) - vanillaDamage;
-		double speedAtCap = value(player, Attributes.ATTACK_SPEED) - vanillaSpeed;
-		PowerState.set(player, new PowerState(RUNAWAY_COMBAT_POINTS * 9.0, level));
-		PowerTracker.scanPlayer(player, config);
-		double damageAfterMore = value(player, Attributes.ATTACK_DAMAGE) - vanillaDamage;
-		double speedAfterMore = value(player, Attributes.ATTACK_SPEED) - vanillaSpeed;
-		helper.assertTrue(
-			level == config.levelCap(),
-			RUNAWAY_COMBAT_POINTS + " combat points reached level " + level + " instead of the cap " + config.levelCap()
-		);
-		helper.assertTrue(
-			Math.abs(damageAtCap - PowerFixtures.ATTACK_DAMAGE_MAX) < TOLERANCE,
-			"at the cap the attack damage bonus was " + damageAtCap + " instead of " + PowerFixtures.ATTACK_DAMAGE_MAX
-		);
-		helper.assertTrue(
-			Math.abs(speedAtCap - PowerFixtures.ATTACK_SPEED_MAX) < TOLERANCE,
-			"at the cap the attack speed bonus was " + speedAtCap + " instead of " + PowerFixtures.ATTACK_SPEED_MAX
-		);
-		helper.assertTrue(
-			Math.abs(damageAfterMore - damageAtCap) < TOLERANCE && Math.abs(speedAfterMore - speedAtCap) < TOLERANCE,
-			"nine times the combat points bought damage " + damageAfterMore + " and speed " + speedAfterMore
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=outputCeiling RESULT combatPoints={} level={} damageBonus={} speedBonus={} damageAfterNineTimes={} speedAfterNineTimes={}",
-			RUNAWAY_COMBAT_POINTS, level, damageAtCap, speedAtCap, damageAfterMore, speedAfterMore
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theArmorAndKnockbackTermsLeaveRoomForTheEnchantments(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		ServerPlayer player = mockPlayer(helper);
-		long travelPoints = PowerFixtures.DISTANCE_CAP_POINTS + PowerFixtures.DEPTH_CAP_POINTS;
-		int travelLevel = PowerCurve.levelFor(travelPoints, config);
-		double expectedArmor = config.attributes().distance().armorPerLevel() * (travelLevel - 1);
-		double expectedKnockback =
-			config.attributes().distance().knockbackResistancePerLevel() * (travelLevel - 1);
-		PowerAttributes.apply(player, travelPoints, 1, config);
-		double armor = modifierAmount(player, ARMOR_MODIFIER);
-		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
-		helper.assertTrue(travelLevel == 35, "the travel ceiling read level " + travelLevel + " instead of 35");
-		helper.assertTrue(
-			Math.abs(armor - expectedArmor) < TOLERANCE,
-			"the armor modifier was " + armor + " instead of " + expectedArmor
-		);
-		helper.assertTrue(
-			Math.abs(knockback - expectedKnockback) < TOLERANCE,
-			"the knockback modifier was " + knockback + " instead of " + expectedKnockback
-		);
-		helper.assertTrue(
-			armor < PowerFixtures.ARMOR_CEILING,
-			"the armor modifier " + armor + " fills the vanilla ceiling of " + PowerFixtures.ARMOR_CEILING
-		);
-		helper.assertTrue(
-			knockback < PowerFixtures.KNOCKBACK_CEILING,
-			"the knockback modifier " + knockback + " fills the vanilla ceiling of " + PowerFixtures.KNOCKBACK_CEILING
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=enchantmentHeadroom RESULT travelLevel={} armor={} armorHeadroom={} knockback={} knockbackHeadroom={}",
-			travelLevel, armor, PowerFixtures.ARMOR_CEILING - armor, knockback,
-			PowerFixtures.KNOCKBACK_CEILING - knockback
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theSurvivabilityAxisLeavesOutputAlone(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		ServerPlayer player = mockPlayer(helper);
-		double[] vanilla = values(player);
-		PowerAttributes.apply(player, SURVIVABILITY_POINTS, 1, config);
-		double[] after = values(player);
-		helper.assertTrue(after[0] > vanilla[0], "the survivability axis did not raise max health");
-		helper.assertTrue(
-			Math.abs(after[3] - vanilla[3]) < TOLERANCE && Math.abs(after[4] - vanilla[4]) < TOLERANCE,
-			"travel changed the output axis: damage " + vanilla[3] + " to " + after[3] + ", speed " + vanilla[4] + " to " + after[4]
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=survivabilityAxisOnly RESULT healthGained={} armorGained={} damageGained={} speedGained={}",
-			after[0] - vanilla[0], after[1] - vanilla[1], after[3] - vanilla[3], after[4] - vanilla[4]
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theCombatAxisLeavesSurvivabilityAlone(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		ServerPlayer player = mockPlayer(helper);
-		double[] vanilla = values(player);
-		PowerAttributes.apply(player, 0L, OUTPUT_LEVEL, config);
-		double[] after = values(player);
-		helper.assertTrue(
-			after[3] > vanilla[3] && after[4] > vanilla[4],
-			"the combat axis did not raise the output: damage " + after[3] + ", speed " + after[4]
-		);
-		helper.assertTrue(
-			Math.abs(after[0] - vanilla[0]) < TOLERANCE && Math.abs(after[1] - vanilla[1]) < TOLERANCE,
-			"kills changed survivability: health " + vanilla[0] + " to " + after[0] + ", armor " + vanilla[1] + " to " + after[1]
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=combatAxisOnly RESULT damageGained={} speedGained={} healthGained={} armorGained={}",
-			after[3] - vanilla[3], after[4] - vanilla[4], after[0] - vanilla[0], after[1] - vanilla[1]
 		);
 		helper.succeed();
 	}
@@ -230,7 +197,7 @@ public class PowerApplyGameTest {
 		);
 		helper.assertTrue(
 			Math.abs(restored.combatPoints() - SAVED_COMBAT_POINTS) < TOLERANCE,
-			"the saved combat points " + SAVED_COMBAT_POINTS + " loaded as " + restored.combatPoints()
+			"the saved points " + SAVED_COMBAT_POINTS + " loaded as " + restored.combatPoints()
 		);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=saveLoadLevel RESULT savedLevel={} loadedLevel={} savedPoints={} loadedPoints={} tagBytes={}",
@@ -255,7 +222,7 @@ public class PowerApplyGameTest {
 	}
 
 	@GameTest
-	public void theRespawnCopyCarriesTheLevelToTheNewPlayer(final GameTestHelper helper) {
+	public void theRespawnCopyCarriesThePointsToTheNewPlayer(final GameTestHelper helper) {
 		ServerPlayer died = helper.makeMockServerPlayerInLevel();
 		PowerState.set(died, new PowerState(SAVED_COMBAT_POINTS, SAVED_LEVEL));
 		ServerPlayer reborn = helper.getLevel().getServer().getPlayerList().respawn(
@@ -265,16 +232,12 @@ public class PowerApplyGameTest {
 		boolean replaced = reborn != died;
 		helper.assertTrue(replaced, "the respawn returned the same player object");
 		helper.assertTrue(
-			carried.level() == SAVED_LEVEL,
-			"the respawn copy carried level " + carried.level() + " instead of " + SAVED_LEVEL
-		);
-		helper.assertTrue(
 			Math.abs(carried.combatPoints() - SAVED_COMBAT_POINTS) < TOLERANCE,
 			"the respawn copy carried " + carried.combatPoints() + " points instead of " + SAVED_COMBAT_POINTS
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=respawnCopy RESULT levelBefore={} levelAfter={} pointsAfter={} newPlayer={}",
-			SAVED_LEVEL, carried.level(), carried.combatPoints(), replaced
+			"[BEHAVIOR] test=respawnCopy RESULT pointsBefore={} pointsAfter={} newPlayer={}",
+			SAVED_COMBAT_POINTS, carried.combatPoints(), replaced
 		);
 		helper.succeed();
 	}
@@ -288,13 +251,13 @@ public class PowerApplyGameTest {
 	}
 
 	private static double modifierAmount(final ServerPlayer player, final Identifier id) {
-		AttributeInstance instance = player.getAttribute(Attributes.ARMOR);
+		AttributeInstance instance = player.getAttribute(Attributes.MAX_HEALTH);
 		if (id.equals(ATTACK_DAMAGE_MODIFIER)) {
 			instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
 		} else if (id.equals(ATTACK_SPEED_MODIFIER)) {
 			instance = player.getAttribute(Attributes.ATTACK_SPEED);
-		} else if (id.equals(MAX_HEALTH_MODIFIER)) {
-			instance = player.getAttribute(Attributes.MAX_HEALTH);
+		} else if (id.equals(ARMOR_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ARMOR);
 		} else if (id.equals(KNOCKBACK_MODIFIER)) {
 			instance = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
 		}

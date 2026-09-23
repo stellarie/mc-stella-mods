@@ -74,30 +74,16 @@ public final class PowerConfigParser {
 			int version = intValue(object, "version", 0, PowerConfig::version);
 			int levelCap = intValueAtLeast(object, "level_cap", 1, PowerConfig::levelCap);
 
-			JsonObject points = enter("points_per_level");
-			PowerConfig.PointsPerLevel pointsPerLevel = new PowerConfig.PointsPerLevel(
-				longValueAtLeast(points, "base", 0L, config -> config.pointsPerLevel().base()),
-				longValueAtLeast(points, "per_level", 0L, config -> config.pointsPerLevel().perLevel())
+			JsonObject curve = enter("curve");
+			PowerConfig.Curve curveSpec = new PowerConfig.Curve(
+				doubleValueAbove(curve, "base", 0.0, config -> config.curve().base()),
+				doubleValueAbove(curve, "growth", 0.0, config -> config.curve().growth())
 			);
 
-			JsonObject distance = enter("distance");
-			PowerConfig.Distance distanceSpec = new PowerConfig.Distance(
-				doubleValueAbove(distance, "blocks_per_point", 0.0, config -> config.distance().blocksPerPoint()),
-				longValueAtLeast(distance, "max_points", 0L, config -> config.distance().maxPoints())
-			);
-
-			JsonObject depth = enter("depth");
-			PowerConfig.Depth depthSpec = new PowerConfig.Depth(
-				doubleValueAbove(depth, "blocks_per_point", 0.0, config -> config.depth().blocksPerPoint()),
-				doubleValue(depth, "min_y", 0.0, config -> config.depth().minY()),
-				longValueAtLeast(depth, "max_points", 0L, config -> config.depth().maxPoints())
-			);
-
-			JsonObject kills = enter("kills");
-			PowerConfig.Kills killsSpec = new PowerConfig.Kills(
-				longValueAtLeast(kills, "points_per_kill", 0L, config -> config.kills().pointsPerKill()),
-				longValueAtLeast(kills, "points_per_boss", 0L, config -> config.kills().pointsPerBoss()),
-				identifiers(kills, "boss_types", config -> config.kills().bossTypes())
+			JsonObject award = enter("award");
+			PowerConfig.Award awardSpec = new PowerConfig.Award(
+				doubleValueAbove(award, "divisor", 0.0, config -> config.award().divisor()),
+				intValueAtLeast(award, "minimum", 0, config -> config.award().minimum())
 			);
 
 			JsonObject mob = enter("mob_level");
@@ -110,14 +96,6 @@ public final class PowerConfigParser {
 				intValueAtLeast(mob, "level_cap", 0, config -> config.mobLevel().levelCap()),
 				doubleValueAbove(mob, "other_dimension_scale", 0.0, config -> config.mobLevel().otherDimensionScale()),
 				scaleMap(mob, "dimension_scale", config -> config.mobLevel().dimensionScale())
-			);
-
-			JsonObject xp = enter("xp_multiplier");
-			PowerConfig.XpMultiplier xpMultiplier = new PowerConfig.XpMultiplier(
-				doubleValue(xp, "even_fight", 0.0, config -> config.xpMultiplier().evenFight()),
-				doubleValueAtLeast(xp, "per_level_gap", 0.0, config -> config.xpMultiplier().perLevelGap()),
-				doubleValue(xp, "min", 0.0, config -> config.xpMultiplier().min()),
-				doubleValue(xp, "max", 0.0, config -> config.xpMultiplier().max())
 			);
 
 			JsonObject bands = enter("bands");
@@ -134,29 +112,23 @@ public final class PowerConfigParser {
 				intValueAtLeast(tracker, "heartbeat_ticks", 1, config -> config.tracker().heartbeatTicks())
 			);
 
-			JsonObject distanceAttributes = enter("attributes.distance");
-			PowerConfig.Survivability survivability = new PowerConfig.Survivability(
+			JsonObject attributes = enter("attributes");
+			PowerConfig.Attributes attributeSpec = new PowerConfig.Attributes(
 				doubleValueAtLeast(
-					distanceAttributes, "max_health_per_point", 0.0,
-					config -> config.attributes().distance().maxHealthPerPoint()
+					attributes, "max_health_at_cap", 0.0, config -> config.attributes().maxHealthAtCap()
 				),
 				doubleValueAtLeast(
-					distanceAttributes, "armor_per_level", 0.0,
-					config -> config.attributes().distance().armorPerLevel()
+					attributes, "armor_at_cap", 0.0, config -> config.attributes().armorAtCap()
 				),
 				doubleValueAtLeast(
-					distanceAttributes, "knockback_resistance_per_level", 0.0,
-					config -> config.attributes().distance().knockbackResistancePerLevel()
-				)
-			);
-
-			JsonObject combatAttributes = enter("attributes.combat");
-			PowerConfig.Combat combat = new PowerConfig.Combat(
-				doubleValueAtLeast(
-					combatAttributes, "attack_damage_max", 0.0, config -> config.attributes().combat().attackDamageMax()
+					attributes, "knockback_resistance_at_cap", 0.0,
+					config -> config.attributes().knockbackResistanceAtCap()
 				),
 				doubleValueAtLeast(
-					combatAttributes, "attack_speed_max", 0.0, config -> config.attributes().combat().attackSpeedMax()
+					attributes, "attack_damage_at_cap", 0.0, config -> config.attributes().attackDamageAtCap()
+				),
+				doubleValueAtLeast(
+					attributes, "attack_speed_at_cap", 0.0, config -> config.attributes().attackSpeedAtCap()
 				)
 			);
 
@@ -172,15 +144,12 @@ public final class PowerConfigParser {
 			return new PowerConfig(
 				version,
 				levelCap,
-				pointsPerLevel,
-				distanceSpec,
-				depthSpec,
-				killsSpec,
+				curveSpec,
+				awardSpec,
 				mobSpec,
-				xpMultiplier,
 				bandSpec,
 				trackerSpec,
-				new PowerConfig.Attributes(survivability, combat),
+				attributeSpec,
 				readoutSpec
 			);
 		}
@@ -331,29 +300,6 @@ public final class PowerConfigParser {
 			return value;
 		}
 
-		private Set<Identifier> identifiers(
-			final @Nullable JsonObject parent, final String key, final Function<PowerConfig, Set<Identifier>> fromFallback
-		) {
-			JsonElement element = value(parent, key);
-			if (element == null || !element.isJsonArray()) {
-				bad(parent, key);
-				return this.fallback == null ? Set.of() : fromFallback.apply(this.fallback);
-			}
-
-			Set<Identifier> found = new LinkedHashSet<>();
-			for (JsonElement entry : element.getAsJsonArray()) {
-				Identifier id = identifier(entry);
-				if (id == null) {
-					problem("skipping an entry in '" + this.path + "." + key + "': it is not an identifier");
-					continue;
-				}
-
-				found.add(id);
-			}
-
-			return found;
-		}
-
 		private Map<Identifier, Double> scaleMap(
 			final @Nullable JsonObject parent, final String key, final Function<PowerConfig, Map<Identifier, Double>> fromFallback
 		) {
@@ -418,13 +364,5 @@ public final class PowerConfigParser {
 
 	private static boolean isBoolean(final @Nullable JsonElement element) {
 		return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean();
-	}
-
-	private static @Nullable Identifier identifier(final @Nullable JsonElement element) {
-		if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
-			return null;
-		}
-
-		return Identifier.tryParse(element.getAsString());
 	}
 }

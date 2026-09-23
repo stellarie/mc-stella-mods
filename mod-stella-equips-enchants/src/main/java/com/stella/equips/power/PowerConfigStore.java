@@ -11,17 +11,11 @@ public final class PowerConfigStore {
 	public static final String FILE_NAME = "power.json";
 	public static final String DEFAULT_JSON = """
 		{
-			"_note": "Units, per key. max_health_per_point is per travel point. armor_per_level and knockback_resistance_per_level are per travel level, so level 35 pays 8.16 armor and 0.204 knockback resistance and the rest of both vanilla attributes stays free for enchantments. attack_damage_max and attack_speed_max are the value at level 50. Drivers. Survivability reads travel only. Output reads the combat level only, so no walk can buy damage. Levels. The player level is built from travel plus combat; the travel contribution caps at 35 and the combat contribution at 50. Upgrades. An older copy of this file is never upgraded: a key you set wins and a deleted key falls back to this document.",
+			"_note": "Kills are the only source of power. The player banks points from kills and nothing else; distance and depth buy no points, they only decide how strong the mob is, and a deep kill pays more than a shallow one. Curve. The cost of the step from level L to L+1 is base times growth to the power of L-1, so level 2 costs 1 point and level 50 costs 6275 in total. Award. A kill pays max(minimum, ceil(mobLevel times divisor)), so a level 0 mob pays 1, a level 32 mob pays 16 and the mob level cap of 36 pays 18. Death. A death removes 5 percent of the banked points and zero stays zero. Attributes. Every attribute key below is the value at level 50 and scales linearly from 0 at level 1, so there is one unit for all five. Upgrades. An older copy of this file is never upgraded: a key you set wins and a deleted key falls back to this document.",
 			"version": 1,
 			"level_cap": 50,
-			"points_per_level": { "base": 6, "per_level": 3 },
-			"distance": { "blocks_per_point": 5, "max_points": 2000 },
-			"depth": { "blocks_per_point": 16, "min_y": 63, "max_points": 8 },
-			"kills": {
-				"points_per_kill": 1,
-				"points_per_boss": 4,
-				"boss_types": [ "minecraft:wither", "minecraft:ender_dragon", "minecraft:warden" ]
-			},
+			"curve": { "base": 1.0, "growth": 1.15 },
+			"award": { "divisor": 0.5, "minimum": 1 },
 			"mob_level": {
 				"blocks_per_level": 300,
 				"cap": 32,
@@ -36,7 +30,6 @@ public final class PowerConfigStore {
 					"minecraft:the_end": 1.0
 				}
 			},
-			"xp_multiplier": { "even_fight": 1.0, "per_level_gap": 0.15, "min": 0.05, "max": 4.0 },
 			"bands": {
 				"red_above": 20,
 				"yellow_above": 10,
@@ -45,12 +38,11 @@ public final class PowerConfigStore {
 			},
 			"tracker": { "scan_interval_ticks": 40, "heartbeat_ticks": 5 },
 			"attributes": {
-				"distance": {
-					"max_health_per_point": 0.5,
-					"armor_per_level": 0.24,
-					"knockback_resistance_per_level": 0.006
-				},
-				"combat": { "attack_damage_max": 20.0, "attack_speed_max": 1.0 }
+				"max_health_at_cap": 1004.0,
+				"armor_at_cap": 11.76,
+				"knockback_resistance_at_cap": 0.294,
+				"attack_damage_at_cap": 20.0,
+				"attack_speed_at_cap": 1.0
 			},
 			"readout": {
 				"enabled_by_default": true,
