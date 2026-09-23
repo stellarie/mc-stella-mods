@@ -1,0 +1,126 @@
+{
+	"type": "minecraft:chest",
+	"_note": "The ordinary randomly enchanted equipment roll. Each pool is 30 percent and gates on a tier band taken from PowerConfig.MobLevel, so exactly one band is eligible per chest. Tier 3 is 8 levels out or the depth bonus cap, tier 2 is 4 levels out or half the depth bonus, tier 1 is everything nearer. A level is blocks_per_level 300 of axis distance, or depth_bonus_blocks 16 below depth_reference_y 0. The empty entry weighs 70 times the 27 tag members, because an expanded tag entry adds its members weights together: 1890 against 27 times 30 keeps the pool at 30 percent. A chest sees its own position only: this is axis distance, not euclidean distance from world spawn.",
+	"pools": [
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:any_of",
+				"terms": [
+					{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "min": 2400 } } } },
+					{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "max": -2400 } } } },
+					{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "min": 2400 } } } },
+					{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "max": -2400 } } } },
+					{ "type": "minecraft:location_check", "predicate": { "position": { "y": { "max": -64 } } } }
+				]
+			},
+			"entries": [
+				{ "type": "minecraft:empty", "weight": 1890 },
+				{
+					"type": "minecraft:tag",
+					"items": "#mod-stella-equips-enchants:chest_gear",
+					"expand": true,
+					"weight": 30,
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 3
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:all_of",
+				"terms": [
+					{
+						"type": "minecraft:inverted",
+						"term": {
+							"type": "minecraft:any_of",
+							"terms": [
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "min": 2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "max": -2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "min": 2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "max": -2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "y": { "max": -64 } } } }
+							]
+						}
+					},
+					{
+						"type": "minecraft:any_of",
+						"terms": [
+							{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "min": 1200 } } } },
+							{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "max": -1200 } } } },
+							{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "min": 1200 } } } },
+							{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "max": -1200 } } } },
+							{ "type": "minecraft:location_check", "predicate": { "position": { "y": { "max": -32 } } } }
+						]
+					}
+				]
+			},
+			"entries": [
+				{ "type": "minecraft:empty", "weight": 1890 },
+				{
+					"type": "minecraft:tag",
+					"items": "#mod-stella-equips-enchants:chest_gear",
+					"expand": true,
+					"weight": 30,
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:all_of",
+				"terms": [
+					{
+						"type": "minecraft:inverted",
+						"term": {
+							"type": "minecraft:any_of",
+							"terms": [
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "min": 2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "max": -2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "min": 2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "max": -2400 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "y": { "max": -64 } } } }
+							]
+						}
+					},
+					{
+						"type": "minecraft:inverted",
+						"term": {
+							"type": "minecraft:any_of",
+							"terms": [
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "min": 1200 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "x": { "max": -1200 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "min": 1200 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "z": { "max": -1200 } } } },
+								{ "type": "minecraft:location_check", "predicate": { "position": { "y": { "max": -32 } } } }
+							]
+						}
+					}
+				]
+			},
+			"entries": [
+				{ "type": "minecraft:empty", "weight": 1890 },
+				{
+					"type": "minecraft:tag",
+					"items": "#mod-stella-equips-enchants:chest_gear",
+					"expand": true,
+					"weight": 30,
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 1
+					}
+				}
+			]
+		}
+	]
+}
