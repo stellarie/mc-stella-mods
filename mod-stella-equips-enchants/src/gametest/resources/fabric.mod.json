@@ -12,6 +12,7 @@
 			"com.stella.equips.EmeraldCostGameTest",
 			"com.stella.equips.EnchantAuditGameTest",
 			"com.stella.equips.EnchantDataGameTest",
+			"com.stella.equips.EnchantmentDescriptionGameTest",
 			"com.stella.equips.EnchantmentLevelGameTest",
 			"com.stella.equips.PowerApplyGameTest",
 			"com.stella.equips.PowerConfigGameTest",

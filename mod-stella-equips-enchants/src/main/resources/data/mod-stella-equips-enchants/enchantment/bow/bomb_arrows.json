@@ -17,8 +17,22 @@
 					"block_interaction": "none",
 					"attribute_to_user": true,
 					"damage_type": "minecraft:explosion",
-					"small_particle": { "type": "minecraft:poof" },
-					"large_particle": { "type": "minecraft:explosion" },
+					"small_particle": { "type": "minecraft:explosion_emitter" },
+					"large_particle": { "type": "minecraft:explosion_emitter" },
+					"block_particles": [
+						{
+							"particle": { "type": "minecraft:poof" },
+							"scaling": 0.5,
+							"speed": 1.0,
+							"weight": 1
+						},
+						{
+							"particle": { "type": "minecraft:smoke" },
+							"scaling": 1.0,
+							"speed": 1.0,
+							"weight": 1
+						}
+					],
 					"sound": "minecraft:entity.generic.explode"
 				}
 			}
