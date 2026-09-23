@@ -1,0 +1,17 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.curse.berserker" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": ["mainhand"],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": { "base": 1, "per_level_above_first": 0 },
+	"max_cost": { "base": 1, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:tick": [
+			{ "effect": { "type": "minecraft:run_function", "function": "mod-stella-equips-enchants:curse/berserker" } },
+			{ "effect": { "type": "minecraft:run_function", "function": "mod-stella-equips-enchants:curse/berserker_regen" } }
+		]
+	}
+}

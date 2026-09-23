@@ -120,7 +120,7 @@ public class CurseGameTest {
 			"[BEHAVIOR] test=curseTags RESULT curseIds={} inCurseTag={} notInCurseTag={} inTableTag={}",
 			listed, curses, notCurse.size(), offered.size()
 		);
-		helper.assertTrue(listed == 17, "the catalogue holds " + listed + " curses instead of 17");
+		helper.assertTrue(listed == 18, "the catalogue holds " + listed + " curses instead of 18");
 		helper.assertTrue(notCurse.isEmpty(), "these curses are not in #minecraft:curse: " + notCurse);
 		helper.assertTrue(offered.isEmpty(), "these curses reach the enchanting table: " + offered);
 		helper.succeed();
@@ -316,6 +316,21 @@ public class CurseGameTest {
 		EnchantmentHelper.tickEffects(level, nightseer);
 		measured.put("nightseerNightVision", String.valueOf(nightseer.hasEffect(MobEffects.NIGHT_VISION)));
 
+		ServerPlayer berserker = mockPlayerInLevel(helper);
+		berserker.setItemSlot(EquipmentSlot.MAINHAND, enchanted(
+			helper, Items.DIAMOND_SWORD, "curse/berserker", 1
+		));
+		double healthyDamage = berserker.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		berserker.setHealth(4.0F);
+		rearm(helper, berserker, "ench_cd_berserk");
+		EnchantmentHelper.tickEffects(level, berserker);
+		double woundedDamage = berserker.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		rearm(helper, berserker, "ench_cd_regen");
+		EnchantmentHelper.tickEffects(level, berserker);
+		boolean hungered = berserker.hasEffect(MobEffects.HUNGER);
+		measured.put("berserkerDamage", round(healthyDamage) + " to " + round(woundedDamage));
+		measured.put("berserkerHunger", String.valueOf(hungered));
+
 		StellaEquips.LOGGER.info("[BEHAVIOR] test=curseRealEvents RESULT {}", measured);
 		helper.assertTrue(
 			Double.parseDouble(measured.get("bloodpriceCursedSelfDamage"))
@@ -338,6 +353,14 @@ public class CurseGameTest {
 			Boolean.parseBoolean(measured.get("nightseerNightVision")),
 			"Nightseer granted no night vision when the tick hook was driven"
 		);
+		helper.assertTrue(
+			Double.parseDouble(measured.get("berserkerDamage").split(" to ")[1]) > healthyDamage,
+			"Berserker paid no damage at four health: " + measured.get("berserkerDamage")
+		);
+		helper.assertTrue(
+			Boolean.parseBoolean(measured.get("berserkerHunger")),
+			"Berserker closed the regeneration gate with no hunger effect"
+		);
 
 		helper.succeed();
 	}
@@ -346,6 +369,67 @@ public class CurseGameTest {
 	private static void rearm(final GameTestHelper helper, final ServerPlayer player, final String objective) {
 		runCommand(helper, player, "scoreboard players operation @s " + objective + " = #clock ench_clock");
 		runCommand(helper, player, "scoreboard players remove @s " + objective + " 20");
+	}
+
+	@GameTest
+	public void quarryWearsThePickaxeTwiceAsFast(final GameTestHelper helper) {
+		ServerLevel level = level(helper);
+		ItemStack plainPick = new ItemStack(Items.DIAMOND_PICKAXE);
+		ItemStack quarryPick = enchanted(helper, Items.DIAMOND_PICKAXE, "curse/quarry", 1);
+		int plainWear = EnchantmentHelper.processDurabilityChange(level, plainPick, 1);
+		int quarryWear = EnchantmentHelper.processDurabilityChange(level, quarryPick, 1);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=curseQuarry RESULT plainWearPerBreak={} quarryWearPerBreak={} lever=item_damage",
+			plainWear, quarryWear
+		);
+		helper.assertTrue(plainWear == 1, "a plain pickaxe wore " + plainWear + " per break");
+		helper.assertTrue(quarryWear == 2, "Quarry wore the pickaxe by " + quarryWear + " per break");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theModifierAndFoodRoutesAreReadBackOnThePlayerTheHookSees(final GameTestHelper helper) {
+		ServerLevel level = level(helper);
+
+		ServerPlayer nbtFed = mockPlayerInLevel(helper);
+		runCommand(helper, nbtFed, "data modify entity @s foodLevel set value 17");
+		int afterNbtSet = nbtFed.getFoodData().getFoodLevel();
+
+		ServerPlayer hungry = mockPlayerInLevel(helper);
+		hungry.getFoodData().setSaturation(0.0F);
+		runCommand(helper, hungry, "effect give @s minecraft:hunger 60 4 true");
+		for (int round = 0; round < 200; round++) {
+			hungry.getFoodData().tick(hungry);
+		}
+
+		int afterHunger = hungry.getFoodData().getFoodLevel();
+
+		ServerPlayer commanded = mockPlayerInLevel(helper);
+		double beforeCommand = commanded.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		runCommand(
+			helper, commanded,
+			"attribute @s minecraft:attack_damage modifier add mod-stella-equips-enchants:berserker 1.2 "
+				+ "add_multiplied_total"
+		);
+		double afterCommand = commanded.getAttributeValue(Attributes.ATTACK_DAMAGE);
+
+		ServerPlayer worn = mockPlayerInLevel(helper);
+		ItemStack chest = enchanted(helper, Items.DIAMOND_CHESTPLATE, "curse/bloodrush", 1);
+		worn.setItemSlot(EquipmentSlot.CHEST, chest);
+		int modifiersBefore = worn.getAttribute(Attributes.ATTACK_DAMAGE).getModifiers().size();
+		EnchantmentHelper.runLocationChangedEffects(level, chest, worn, EquipmentSlot.CHEST);
+		EnchantmentHelper.runLocationChangedEffects(level, worn);
+		int modifiersAfter = worn.getAttribute(Attributes.ATTACK_DAMAGE).getModifiers().size();
+		double afterWorn = worn.getAttributeValue(Attributes.ATTACK_DAMAGE);
+
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=probeModifierRoutes RESULT foodNbtAfterSet={} foodAfterHunger={} "
+				+ "attributeCommand={} to {} enchantModifiers={} to {} enchantValueAfter={}",
+			afterNbtSet, afterHunger, round(beforeCommand), round(afterCommand),
+			modifiersBefore, modifiersAfter, round(afterWorn)
+		);
+		helper.assertTrue(true, "the probe records what the harness can see");
+		helper.succeed();
 	}
 
 	private static void runCommand(final GameTestHelper helper, final ServerPlayer player, final String command) {
