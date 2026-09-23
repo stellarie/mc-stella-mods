@@ -8,6 +8,7 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 
 public final class PowerAttributes {
 	private static final Identifier MAX_HEALTH_ID = id("max_health");
@@ -19,11 +20,13 @@ public final class PowerAttributes {
 	private PowerAttributes() {
 	}
 
-	public static void apply(
-		final ServerPlayer player, final long survivabilityPoints, final double combatPoints, final PowerConfig config
+	public static double apply(
+		final ServerPlayer player, final long survivabilityPoints, final int level, final PowerConfig config
 	) {
 		PowerConfig.Survivability survivability = config.attributes().distance();
-		healAndReplace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, survivability.maxHealth() * survivabilityPoints);
+		double healthGained = replace(
+			player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, survivability.maxHealth() * survivabilityPoints
+		);
 		replace(player, Attributes.ARMOR, ARMOR_ID, survivability.armor() * survivabilityPoints);
 		replace(
 			player,
@@ -31,10 +34,10 @@ public final class PowerAttributes {
 			KNOCKBACK_RESISTANCE_ID,
 			survivability.knockbackResistance() * survivabilityPoints
 		);
-
-		PowerConfig.Combat combat = config.attributes().combat();
-		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, combat.attackDamage() * combatPoints);
-		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, combat.attackSpeed() * combatPoints);
+		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, PowerCurve.attackDamageBonus(level, config));
+		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, PowerCurve.attackSpeedBonus(level, config));
+		clampHealth(player);
+		return healthGained;
 	}
 
 	public static void remove(final ServerPlayer player) {
@@ -52,44 +55,32 @@ public final class PowerAttributes {
 		}
 	}
 
-	private static void replace(
+	private static double replace(
 		final ServerPlayer player, final Holder<Attribute> attribute, final Identifier id, final double amount
 	) {
 		AttributeInstance instance = player.getAttribute(attribute);
 		if (instance == null) {
-			return;
-		}
-
-		if (amount == 0.0) {
-			instance.removeModifier(id);
-			return;
-		}
-
-		instance.addOrReplacePermanentModifier(modifier(id, amount));
-	}
-
-	private static void healAndReplace(
-		final ServerPlayer player, final Holder<Attribute> attribute, final Identifier id, final double amount
-	) {
-		AttributeInstance instance = player.getAttribute(attribute);
-		if (instance == null) {
-			return;
+			return 0.0;
 		}
 
 		AttributeModifier previous = instance.getModifier(id);
 		double before = previous == null ? 0.0 : previous.amount();
-		if (amount == 0.0) {
+		double capped = Math.max(0.0, Math.min(amount, headroom(attribute, instance)));
+		if (capped == 0.0) {
 			instance.removeModifier(id);
 		} else {
-			instance.addOrReplacePermanentModifier(modifier(id, amount));
+			instance.addOrReplacePermanentModifier(modifier(id, capped));
 		}
 
-		double gained = amount - before;
-		if (gained > 0.0) {
-			player.heal((float) gained);
+		return capped - before;
+	}
+
+	private static double headroom(final Holder<Attribute> attribute, final AttributeInstance instance) {
+		if (attribute.value() instanceof RangedAttribute ranged) {
+			return ranged.getMaxValue() - instance.getBaseValue();
 		}
 
-		clampHealth(player);
+		return Double.MAX_VALUE;
 	}
 
 	private static void remove(final ServerPlayer player, final Holder<Attribute> attribute, final Identifier id) {

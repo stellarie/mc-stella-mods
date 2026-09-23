@@ -78,6 +78,24 @@ public final class PowerCurve {
 		return Math.max(multiplier.min(), Math.min(multiplier.max(), value));
 	}
 
+	public static double attackDamageBonus(final int level, final PowerConfig config) {
+		return config.attributes().combat().attackDamageMax() * outputFraction(level, config);
+	}
+
+	public static double attackSpeedBonus(final int level, final PowerConfig config) {
+		return config.attributes().combat().attackSpeedMax() * outputFraction(level, config);
+	}
+
+	private static double outputFraction(final int level, final PowerConfig config) {
+		int span = config.levelCap() - 1;
+		if (span <= 0) {
+			return 0.0;
+		}
+
+		double climbed = Math.max(0, Math.min(config.levelCap(), level) - 1);
+		return climbed / span;
+	}
+
 	public static Band band(final int gap, final PowerConfig config) {
 		PowerConfig.Bands bands = config.bands();
 		if (gap >= bands.redAbove()) {
@@ -94,11 +112,6 @@ public final class PowerCurve {
 
 		if (gap >= -bands.greenWithin()) {
 			return Band.GREEN;
-		}
-
-		// White is the last row, so white holds from white_below down.
-		if (gap >= bands.whiteBelow()) {
-			return Band.WHITE;
 		}
 
 		return Band.WHITE;
