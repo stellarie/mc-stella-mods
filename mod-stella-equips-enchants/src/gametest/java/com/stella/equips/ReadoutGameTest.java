@@ -1,5 +1,6 @@
 package com.stella.equips;
 
+import com.stella.equips.power.HealthLine;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
@@ -1108,7 +1109,7 @@ public class ReadoutGameTest {
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void theHealthLineReadsLevelAndHealthAsNumbers(final GameTestHelper helper) {
-		String rendered = ReadoutText.selfLine(12, 155.5F, 172.0F).getString();
+		String rendered = HealthLine.of(12, 155.5F, 172.0F).getString();
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=selfLineText RESULT text={} level=12 health=155.5 max=172", rendered
 		);
