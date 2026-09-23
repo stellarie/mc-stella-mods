@@ -35,7 +35,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 public class GearRollGameTest {
 	private static final int MAX_TICKS = 200;
-	private static final int ROLLS = 32;
+	private static final int ROLLS = 256;
 	private static final long WEIGHT_SEED = 0xC0FFEEL;
 	private static final int WEIGHT_ROLLS = 1000;
 
@@ -266,7 +266,7 @@ public class GearRollGameTest {
 
 			if (archer) {
 				helper.assertValueEqual(
-					Double.valueOf(ReactiveState.get(skeleton).getNearDistance()), Double.valueOf(3.0), "the archer near band"
+					Double.valueOf(ReactiveState.get(skeleton).getNearDistance()), Double.valueOf(5.0), "the archer near band"
 				);
 				helper.assertValueEqual(
 					Double.valueOf(ReactiveState.get(skeleton).getFarDistance()), Double.valueOf(15.0), "the archer far band"

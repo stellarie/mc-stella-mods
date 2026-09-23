@@ -24,6 +24,8 @@ public final class BehaviorInstaller {
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
 	public static final int DEFEND_PRIORITY = 4;
+	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
+	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE);
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
 	);
@@ -87,17 +89,23 @@ public final class BehaviorInstaller {
 			return configured;
 		}
 
-		return isRangedWeapon(mainHand) || isRangedWeapon(mob.getOffhandItem())
+		return isInnatelyRanged(mob) || isRangedWeapon(mainHand) || isRangedWeapon(mob.getOffhandItem())
 			? RoleSpec.of(CombatRole.RANGED)
 			: RoleSpec.of(CombatRole.MELEE);
 	}
 
 	private static boolean supports(final Mob mob, final CombatRole role) {
 		return switch (role) {
-			case RANGED -> isRangedWeapon(mob.getMainHandItem()) || isRangedWeapon(mob.getOffhandItem());
+			case RANGED -> isInnatelyRanged(mob)
+				|| isRangedWeapon(mob.getMainHandItem())
+				|| isRangedWeapon(mob.getOffhandItem());
 			case MAGIC -> mob instanceof SpellcasterIllager;
 			case MELEE -> true;
 		};
+	}
+
+	private static boolean isInnatelyRanged(final Mob mob) {
+		return INNATE_RANGED.contains(mob.getType());
 	}
 
 	private static boolean isRangedWeapon(final ItemStack stack) {

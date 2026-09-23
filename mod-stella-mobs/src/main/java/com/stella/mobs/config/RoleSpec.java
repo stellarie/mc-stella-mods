@@ -2,7 +2,7 @@ package com.stella.mobs.config;
 
 public record RoleSpec(CombatRole role, double nearDistance, double farDistance) {
 	// A player's melee reach is about three blocks, so an archer holding here is inside swing range.
-	public static final double RANGED_NEAR = 3.0;
+	public static final double RANGED_NEAR = 5.0;
 	public static final double RANGED_FAR = 15.0;
 	public static final double MAGIC_NEAR = 8.0;
 	public static final double MAGIC_FAR = 12.0;
