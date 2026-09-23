@@ -307,8 +307,8 @@ public class PowerTrackerGameTest {
 				"the respawned player read attack damage " + damage
 			);
 			helper.assertTrue(
-				Math.abs(health - PowerFixtures.MAX_HEALTH_AT_CAP) < TOLERANCE,
-				"the respawned player read maximum health " + health
+				Math.abs(health - PowerFixtures.HEALTH_GAIN_AT_CAP) < TOLERANCE,
+				"the respawned player read maximum health gain " + health
 			);
 			helper.assertTrue(level == config.levelCap(), "the respawned player read level " + level);
 			StellaEquips.LOGGER.info(

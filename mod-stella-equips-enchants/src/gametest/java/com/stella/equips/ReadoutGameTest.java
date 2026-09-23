@@ -17,11 +17,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
@@ -73,6 +76,11 @@ public class ReadoutGameTest {
 	private static final double HEALTH_MOVE_TEST_X = 26200.0;
 	private static final double TARGET_DISTANCE = 2.0;
 	private static final float HEALTH_DAMAGE = 5.0F;
+	private static final double HEALTH_LINE_TEST_X = 29000.0;
+	private static final Predicate<Packet<?>> THE_HEALTH_LINE = packet ->
+		packet instanceof ClientboundSystemChatPacket line
+			&& line.overlay()
+			&& line.content().getString().startsWith("Lv ");
 	private static final String SPAWN_LINE = "readout spawn";
 	private static final String BAND_LINE = "readout band";
 	private static final String REMOVE_LINE = "readout remove";
@@ -1096,6 +1104,62 @@ public class ReadoutGameTest {
 			.replace("\"max_per_player\": 40", "\"max_per_player\": " + STAGED_CAP)
 			.replace("\"height_offset\": 0.9", "\"height_offset\": " + STAGED_HEIGHT_OFFSET)
 			.replace("\"view_range\": 0.5", "\"view_range\": " + STAGED_VIEW_RANGE);
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theHealthLineReadsLevelAndHealthAsNumbers(final GameTestHelper helper) {
+		String rendered = ReadoutText.selfLine(12, 155.5F, 172.0F).getString();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=selfLineText RESULT text={} level=12 health=155.5 max=172", rendered
+		);
+		helper.assertTrue(
+			"Lv 12  156/172 HP".equals(rendered),
+			"the self line read '" + rendered + "' instead of 'Lv 12  156/172 HP'"
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theHealthLineArrivesWithTheMobReadoutOff(final GameTestHelper helper) {
+		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			owner.level().getServer().getCommands().performPrefixedCommand(
+				owner.createCommandSourceStack(), "stellaequips readout off"
+			);
+			boolean enabled = ReadoutService.owner(owner).enabled();
+			int before = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
+			PowerTracker.scanPlayer(owner, liveConfig());
+			PowerTracker.sendSelfLine(owner, liveConfig());
+			int after = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
+			String last = lastHealthLine(owner);
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=selfLineOff RESULT enabled={} before={} after={} text={}",
+				enabled, before, after, last
+			);
+			helper.assertTrue(!enabled, "the opt out command left the mob readout enabled");
+			helper.assertTrue(
+				after > before,
+				"the tick path sent no health line to an opted out player (" + before + " to " + after + ")"
+			);
+			helper.assertTrue(
+				last.startsWith("Lv " + PowerTracker.playerLevel(owner, liveConfig()) + "  "),
+				"the tick path line read '" + last + "' without the owner level"
+			);
+			helper.succeed();
+		});
+	}
+
+	private static String lastHealthLine(final ServerPlayer player) {
+		String found = "";
+
+		for (Packet<?> packet : PacketRecorder.of(player).snapshot()) {
+			if (packet instanceof ClientboundSystemChatPacket line && line.overlay()) {
+				found = line.content().getString();
+			}
+		}
+
+		return found;
 	}
 
 	private static PowerConfig liveConfig() {

@@ -16,7 +16,10 @@ public final class PowerFixtures {
 	public static final double BASE = 1.0;
 	public static final double AWARD_DIVISOR = 0.5;
 	public static final int AWARD_MINIMUM = 1;
-	public static final double MAX_HEALTH_AT_CAP = 1004.0;
+	public static final double HEALTH_BASE = 20.0;
+	public static final double HEALTH_PER_LEVEL = 4.0;
+	public static final double HEALTH_AT_CAP = 216.0;
+	public static final double HEALTH_GAIN_AT_CAP = 196.0;
 	public static final double ARMOR_AT_CAP = 11.76;
 	public static final double KNOCKBACK_RESISTANCE_AT_CAP = 0.294;
 	public static final double ATTACK_DAMAGE_AT_CAP = 20.0;
@@ -46,7 +49,8 @@ public final class PowerFixtures {
 			new PowerConfig.Bands(20, 10, 6, 5),
 			new PowerConfig.Tracker(40, 5),
 			new PowerConfig.Attributes(
-				MAX_HEALTH_AT_CAP,
+				HEALTH_BASE,
+				HEALTH_PER_LEVEL,
 				ARMOR_AT_CAP,
 				KNOCKBACK_RESISTANCE_AT_CAP,
 				ATTACK_DAMAGE_AT_CAP,
