@@ -18,19 +18,20 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.GameType;
 
+/** Slice 6. The anvil price is emeralds per applied enchantment, never levels. */
 public class AnvilCostGameTest {
 	private static final Identifier TEST_MARKER =
 		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "test_marker");
 	private static final int FIXTURE_ANVIL_COST = 10;
 	private static final int FIXTURE_MIN_COST = 1;
-	private static final int CLAMPED_COST = 1;
 	private static final int VANILLA_MERGE_COST = 2;
 	private static final int PICKAXE_DAMAGE = 500;
-	private static final int LEVEL_BEFORE_TAKE = 10;
-	private static final int LEVEL_AFTER_TAKE = 9;
+	private static final int LEVELS_BEFORE = 10;
 	private static final int REPAIR_COST_PER_INPUT = 20;
 	private static final int GATE_THRESHOLD = 40;
 	private static final int VANILLA_TAXED_COST = 42;
+	private static final int EMERALDS = 16;
+	private static final int FREE = 0;
 
 	@GameTest
 	public void testMarkerEnchantmentIsRegistered(final GameTestHelper helper) {
@@ -68,48 +69,45 @@ public class AnvilCostGameTest {
 		helper.succeed();
 	}
 
-	@SuppressWarnings("removal")
 	@GameTest
-	public void anvilMenuCostIsClampedToOne(final GameTestHelper helper) {
-		AnvilMenu menu = populatedMenu(helper.makeMockServerPlayerInLevel(), 0);
-		int cost = menu.getCost();
-		helper.assertTrue(
-			cost == CLAMPED_COST,
-			"AnvilMenu.getCost() of a merge worth " + VANILLA_MERGE_COST + ": expected " + CLAMPED_COST
-				+ " but was " + cost
-		);
+	public void priceIsOneEmeraldPerAppliedEnchantment(final GameTestHelper helper) {
+		helper.assertTrue(AnvilCost.price(0) == 0, "price(0) is " + AnvilCost.price(0));
+		helper.assertTrue(AnvilCost.price(1) == 1, "price(1) is " + AnvilCost.price(1));
+		helper.assertTrue(AnvilCost.price(3) == 3, "price(3) is " + AnvilCost.price(3));
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=anvilCostClamped RESULT cost={} vanillaCost={}",
-			cost, VANILLA_MERGE_COST
+			"[BEHAVIOR] test=pricePerAppliedEnchantment RESULT price0={} price1={} price3={}",
+			AnvilCost.price(0), AnvilCost.price(1), AnvilCost.price(3)
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void anvilTakeChargesOneLevel(final GameTestHelper helper) {
+	public void aMergeThatAppliesNoEnchantmentIsFree(final GameTestHelper helper) {
 		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
 		AnvilMenu menu = populatedMenu(player, 0);
-		player.experienceLevel = LEVEL_BEFORE_TAKE;
+		int price = menu.getCost();
+		player.getInventory().add(new ItemStack(Items.EMERALD, EMERALDS));
+		player.experienceLevel = LEVELS_BEFORE;
+		boolean takeable = menu.getSlot(AnvilMenu.RESULT_SLOT).mayPickup(player);
 		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
-		int charged = LEVEL_BEFORE_TAKE - player.experienceLevel;
+		int left = countEmeralds(player);
 		helper.assertTrue(
-			player.experienceLevel == LEVEL_AFTER_TAKE,
-			"the anvil charged " + charged + " levels: expected level " + LEVEL_AFTER_TAKE
-				+ " but was " + player.experienceLevel
+			price == FREE && takeable && left == EMERALDS && player.experienceLevel == LEVELS_BEFORE,
+			"plain merge: price=" + price + " takeable=" + takeable + " emeraldsLeft=" + left
+				+ " level=" + player.experienceLevel
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=anvilTakeCharge RESULT levelBefore={} levelAfter={} charged={}",
-			LEVEL_BEFORE_TAKE, player.experienceLevel, charged
+			"[BEHAVIOR] test=plainMergeIsFree RESULT price={} takeable={} emeraldsLeft={} level={}",
+			price, takeable, left, player.experienceLevel
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void heavilyRepairedCombineStillAssembles(final GameTestHelper helper) {
+	public void theTaxedMergeStillAssemblesWithoutLevels(final GameTestHelper helper) {
 		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
 		AnvilMenu menu = populatedMenu(player, REPAIR_COST_PER_INPUT);
-		int inputTax = repairCostOf(menu, AnvilMenu.INPUT_SLOT)
-			+ repairCostOf(menu, AnvilMenu.ADDITIONAL_SLOT);
+		int inputTax = repairCostOf(menu, AnvilMenu.INPUT_SLOT) + repairCostOf(menu, AnvilMenu.ADDITIONAL_SLOT);
 		int vanillaCost = inputTax + VANILLA_MERGE_COST;
 		helper.assertTrue(
 			vanillaCost == VANILLA_TAXED_COST && vanillaCost >= GATE_THRESHOLD,
@@ -118,46 +116,37 @@ public class AnvilCostGameTest {
 				+ " gateThreshold=" + GATE_THRESHOLD
 		);
 		ItemStack result = menu.getSlot(AnvilMenu.RESULT_SLOT).getItem();
-		helper.assertTrue(
-			!result.isEmpty(),
-			"the result slot was empty: the Too Expensive gate fired on a vanilla cost of "
-				+ vanillaCost
-		);
-		helper.assertTrue(
-			menu.getCost() == CLAMPED_COST,
-			"cost of a taxed merge: expected " + CLAMPED_COST + " but was " + menu.getCost()
-		);
-		player.experienceLevel = LEVEL_BEFORE_TAKE;
+		int price = menu.getCost();
+		player.experienceLevel = LEVELS_BEFORE;
 		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
-		int charged = LEVEL_BEFORE_TAKE - player.experienceLevel;
 		helper.assertTrue(
-			player.experienceLevel == LEVEL_AFTER_TAKE,
-			"the taxed merge charged " + charged + " levels: expected level " + LEVEL_AFTER_TAKE
-				+ " but was " + player.experienceLevel
+			!result.isEmpty() && price == FREE && player.experienceLevel == LEVELS_BEFORE,
+			"taxed merge: resultEmpty=" + result.isEmpty() + " price=" + price
+				+ " level=" + player.experienceLevel
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=taxedCombine RESULT inputTax={} mergePrice={} vanillaCost={} gateThreshold={}"
-				+ " resultEmpty={} cost={} charged={}",
-			inputTax, VANILLA_MERGE_COST, vanillaCost, GATE_THRESHOLD,
-			result.isEmpty(), CLAMPED_COST, charged
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void clampFunctionKeepsOneAsTheCeiling(final GameTestHelper helper) {
-		helper.assertTrue(AnvilCost.clamp(0) == 0, "clamp(0) changed a free operation to " + AnvilCost.clamp(0));
-		helper.assertTrue(AnvilCost.clamp(1) == 1, "clamp(1) changed an exact cost to " + AnvilCost.clamp(1));
-		helper.assertTrue(AnvilCost.clamp(40) == 1, "clamp(40) returned " + AnvilCost.clamp(40));
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=clampFunction RESULT clamp0={} clamp1={} clamp40={}",
-			AnvilCost.clamp(0), AnvilCost.clamp(1), AnvilCost.clamp(40)
+			"[BEHAVIOR] test=taxedMergeAssembles RESULT inputTax={} vanillaCost={} gateThreshold={} "
+				+ "resultEmpty={} price={} level={}",
+			inputTax, vanillaCost, GATE_THRESHOLD, result.isEmpty(), price, player.experienceLevel
 		);
 		helper.succeed();
 	}
 
 	private static int repairCostOf(final AnvilMenu menu, final int slot) {
 		return menu.getSlot(slot).getItem().getOrDefault(DataComponents.REPAIR_COST, 0);
+	}
+
+	private static int countEmeralds(final Player player) {
+		Inventory inventory = player.getInventory();
+		int count = 0;
+		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+			ItemStack stack = inventory.getItem(slot);
+			if (stack.is(Items.EMERALD)) {
+				count += stack.getCount();
+			}
+		}
+
+		return count;
 	}
 
 	private static AnvilMenu populatedMenu(final Player player, final int repairCost) {
