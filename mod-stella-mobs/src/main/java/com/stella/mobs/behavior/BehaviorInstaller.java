@@ -168,7 +168,11 @@ public final class BehaviorInstaller {
 
 		mob.getGoalSelector().addGoal(DEFEND_PRIORITY, new DefendAllyGoal<>(monster));
 
-		if (state.getRole() != CombatRole.MELEE) {
+		// T02: a crossbow is its own answer to the ranged role, so the band is not installed and the
+		// cadence goal takes the vanilla crossbow slot instead. The exemption is read from the hand.
+		boolean crossbow = CrossbowCadenceGoal.holdsCrossbow(mob);
+
+		if (state.getRole() != CombatRole.MELEE && !crossbow) {
 			if (supports(mob, state.getRole())) {
 				mob.getGoalSelector().addGoal(KEEP_DISTANCE_PRIORITY, new KeepDistanceGoal<>(monster));
 				mob.getGoalSelector().addGoal(STANDOFF_PRIORITY, new HoldStandoffGoal<>(monster));
@@ -182,6 +186,7 @@ public final class BehaviorInstaller {
 		}
 
 		installShield(mob);
+		CrossbowCadenceGoal.install(mob);
 
 		// R25: armed at install, and the goal's own guard reads the elite flag, which is already set
 		// for a mob that rolled elite before this install runs.
