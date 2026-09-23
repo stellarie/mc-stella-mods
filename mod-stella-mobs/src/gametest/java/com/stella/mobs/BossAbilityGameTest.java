@@ -4,6 +4,7 @@ import com.stella.mobs.behavior.BoneFanGoal;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.KeepDistanceGoal;
+import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.DecayAuraGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.behavior.BossAbilities;
@@ -374,6 +375,55 @@ public class BossAbilityGameTest {
 			helper.assertValueEqual(Integer.valueOf(goals[0]), Integer.valueOf(1), "band goals on the archer");
 			helper.assertFalse(arrows.isEmpty(), "the cornered archer never fired, so the band goal starved the bow");
 			result("corneredArcher", "arrows=" + arrows.size() + " bandGoals=" + goals[0] + " penned=true");
+		});
+	}
+
+	/**
+	 * The rearm, observed rather than implied: the goal stops, its budget is spent, and a second window
+	 * opens. Without a tick counted budget the third assertion could never hold, because the cooldown
+	 * would never run out.
+	 */
+	@GameTest(maxTicks = 400)
+	@SuppressWarnings("removal")
+	public void theBandGoalRearmsAfterItsCooldown(final GameTestHelper helper) {
+		prepare(helper, RANGED_ARCHER);
+		// The player is placed before the archer: ReactiveState caches its player check, and the harness
+		// clock barely advances, so a player who arrives later is never seen.
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 spot = helper.absoluteVec(new Vec3(8.0, 1.0, 8.0));
+		player.setPos(spot.x, spot.y, spot.z);
+		Skeleton archer = ordinary(helper, EntityTypes.SKELETON, 2, 3, 2);
+		// Walls on every side, so the band goal stops on the tick it starts and arms its cooldown at once.
+		Arena.contain(helper, archer, 2, 2);
+		Mob target = ordinary(helper, EntityTypes.ZOMBIE, 5, 3, 2);
+		helper.onEachTick(() -> archer.setTarget(target));
+		ReactiveState state = ReactiveState.get(archer);
+		boolean[] armed = {false};
+		boolean[] spent = {false};
+		boolean[] rearmed = {false};
+
+		helper.onEachTick(() -> {
+			boolean cooling = state.isRetreatCoolingDown();
+
+			if (cooling) {
+				armed[0] = true;
+			}
+
+			if (armed[0] && !cooling) {
+				spent[0] = true;
+			}
+
+			if (spent[0] && cooling) {
+				rearmed[0] = true;
+			}
+		});
+
+		helper.runAfterDelay(150L, () -> {
+			helper.assertTrue(armed[0], "the goal never stopped, so its cooldown was never armed");
+			helper.assertTrue(spent[0], "the rearm budget never ran out");
+			helper.assertTrue(rearmed[0], "the goal never took a second window after the budget was spent");
+			result("bandRearm", "armed=true spent=true rearmed=true cooldown=40");
+			helper.succeed();
 		});
 	}
 
