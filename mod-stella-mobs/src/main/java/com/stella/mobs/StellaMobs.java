@@ -18,6 +18,7 @@ import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
+import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
@@ -142,6 +143,8 @@ public class StellaMobs implements ModInitializer {
 			}
 
 			SpawnScaling.apply(mob);
+			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
+			Traits.apply(mob);
 
 			// O01: a fresh natural dolphin over an ocean may start a skeleton band.
 			if (mob instanceof Dolphin

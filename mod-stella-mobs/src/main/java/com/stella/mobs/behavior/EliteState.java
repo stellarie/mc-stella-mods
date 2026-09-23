@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.gear.GearTier;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -29,7 +30,8 @@ public record EliteState(
 	boolean stormCast,
 	boolean broodBorn,
 	boolean secondPhaseUsed,
-	boolean warCallUsed
+	boolean warCallUsed,
+	List<String> traits
 ) {
 	public static final Codec<EliteState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("summoned", false).forGetter(EliteState::summoned),
@@ -40,14 +42,15 @@ public record EliteState(
 		Codec.BOOL.optionalFieldOf("storm_cast", false).forGetter(EliteState::stormCast),
 		Codec.BOOL.optionalFieldOf("brood_born", false).forGetter(EliteState::broodBorn),
 		Codec.BOOL.optionalFieldOf("second_phase_used", false).forGetter(EliteState::secondPhaseUsed),
-		Codec.BOOL.optionalFieldOf("war_call_used", false).forGetter(EliteState::warCallUsed)
+		Codec.BOOL.optionalFieldOf("war_call_used", false).forGetter(EliteState::warCallUsed),
+		Codec.STRING.listOf().optionalFieldOf("traits", List.of()).forGetter(EliteState::traits)
 	).apply(instance, EliteState::new));
 	public static final AttachmentType<EliteState> TYPE = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_state"), CODEC
 	);
 
 	public EliteState() {
-		this(false, false, Optional.empty(), 0, false, false, false, false, false);
+		this(false, false, Optional.empty(), 0, false, false, false, false, false, List.of());
 	}
 
 	public static void register() {
@@ -141,59 +144,85 @@ public record EliteState(
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withWarCallUsed(warCallUsed));
 	}
 
-	public EliteState withSummoned(final boolean value) {
+	/** The location traits taken at spawn, durable so a reload cannot lose one or roll a second. */
+	public static List<String> traits(final Mob mob) {
+		return get(mob).traits();
+	}
+
+	public static void setTraits(final Mob mob, final List<String> traits) {
+		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withTraits(traits));
+	}
+
+	/** Every late field is threaded through every wither, so one missed copy would drop a flag silently. */
+	private EliteState with(final boolean summoned, final boolean elite, final Optional<GearTier> eliteTier,
+		final int pearlsLeft, final boolean boss, final boolean stormCast, final boolean broodBorn,
+		final boolean secondPhaseUsed, final boolean warCallUsed, final List<String> traits
+	) {
 		return new EliteState(
-			value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed, this.warCallUsed
+			summoned, elite, eliteTier, pearlsLeft, boss, stormCast, broodBorn, secondPhaseUsed, warCallUsed, traits
+		);
+	}
+
+	public EliteState withSummoned(final boolean value) {
+		return with(
+			value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState asElite(final GearTier tier) {
-		return new EliteState(
-			this.summoned, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed, this.warCallUsed
+		return with(
+			this.summoned, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withPearlsLeft(final int value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, value, this.boss, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed, this.warCallUsed
+		return with(
+			this.summoned, this.elite, this.eliteTier, value, this.boss, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withBoss(final boolean value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed, this.warCallUsed
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withStormCast(final boolean value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value,
-			this.broodBorn, this.secondPhaseUsed, this.warCallUsed
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withBroodBorn(final boolean value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			value, this.secondPhaseUsed, this.warCallUsed
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast, value,
+			this.secondPhaseUsed, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withSecondPhaseUsed(final boolean value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn, value, this.warCallUsed
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast, this.broodBorn,
+			value, this.warCallUsed, this.traits
 		);
 	}
 
 	public EliteState withWarCallUsed(final boolean value) {
-		return new EliteState(
-			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed, value
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, value, this.traits
+		);
+	}
+
+	public EliteState withTraits(final List<String> value) {
+		return with(
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast, this.broodBorn,
+			this.secondPhaseUsed, this.warCallUsed, value
 		);
 	}
 }

@@ -31,6 +31,7 @@
 			"com.stella.mobs.SpiderEliteGameTest",
 			"com.stella.mobs.SnowGolemGameTest",
 			"com.stella.mobs.StormGameTest",
+			"com.stella.mobs.TraitsGameTest",
 			"com.stella.mobs.WitchGameTest"
 		]
 	}
