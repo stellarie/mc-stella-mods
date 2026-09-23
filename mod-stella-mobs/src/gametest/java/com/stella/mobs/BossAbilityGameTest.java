@@ -35,6 +35,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -62,13 +63,13 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
-import org.jspecify.annotations.Nullable;
 
 /**
  * The seven boss signature abilities. Each test owns its clause and its own config, and every number in
@@ -78,8 +79,10 @@ public class BossAbilityGameTest {
 	private static final String TEST = "bossAbility";
 	/** The spec's numbers, restated as literals so a test cannot inherit a typo from the code. */
 	private static final int SPEC_ARROWS = 5;
-	/** Bounded retry of the production roll while a neighbouring arena holds the chunk's boss slot. */
-	private static final int ROLL_RETRY_TICKS = 40;
+	/** The roll test's private chunk, far outside the grid of arenas. See the test's javadoc. */
+	private static final int FAR_SPOT = 400;
+	/** The arena's own floor level, so the far pad repeats the vertical arrangement that is proven. */
+	private static final int FAR_PAD_Y = 0;
 	private static final int SPEC_SPIDERS = 4;
 	/** The arena's own area, which is the cap on a field that only replaces a replaceable block. */
 	private static final int ARENA_TILES = 8 * 8;
@@ -225,49 +228,79 @@ public class BossAbilityGameTest {
 	/**
 	 * The production path, and the one test that must not touch the hand: a skeleton rolled to boss
 	 * through the real load hook must receive the ranged kit, or its signature fan cannot leave the
-	 * string. The tagged fixture writes its own bow, which is why this defect shipped green. The one
-	 * retry below is the same production roll with this test's own pinned chance, and it is counted.
+	 * string. The tagged fixture writes its own bow, which is why this defect shipped green.
+	 *
+	 * <p>The subject stands in a chunk of its own, four hundred blocks out. The boss guard is once per
+	 * chunk and the arenas are about fifteen blocks apart, so a neighbouring test's subject can hold
+	 * this arena's chunk for a whole window. The private chunk is asserted entity ticking and asserted
+	 * free of foreign bosses before the spawn, so a refused roll reads as a fixture fault and not as
+	 * the defect. Two cheaper routes were tried and dropped: moving the subject between this arena's
+	 * two chunks only moves the problem, and clearing the foreign boss discards a neighbour's subject.
 	 */
 	@GameTest(maxTicks = 400)
 	@SuppressWarnings("removal")
 	public void aRolledBossSkeletonFans(final GameTestHelper helper) {
 		prepare(helper, BOSS_ROLL);
-		helper.makeMockServerPlayerInLevel();
-		Skeleton boss = helper.spawnMob(EntityTypes.SKELETON, 1, 3, 1).spawn();
-		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 7).withNoFreeWill().spawn();
-		target.setPersistenceRequired();
-		helper.onEachTick(() -> boss.setTarget(target));
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		BlockPos pad = BlockPos.containing(helper.absoluteVec(new Vec3(FAR_SPOT, FAR_PAD_Y, FAR_SPOT)));
+		level.setChunkForced(pad.getX() >> 4, pad.getZ() >> 4, true);
 
-		// Two harness races sit in front of the load hook's own roll: the config store is global, so a
-		// concurrent test can leave its own chances in force at the spawn, and the chunk guard refuses a
-		// second boss where a neighbouring arena already holds one. The call below is the same production
-		// entry the hook calls, with this test's pinned chance, retried while the chunk says no. A retry
-		// count of zero is the hook's own roll landing.
-		int[] rolls = new int[1];
-		helper.onEachTick(() -> {
-			if (!Bosses.isBoss(boss) && rolls[0] < ROLL_RETRY_TICKS) {
-				rolls[0]++;
-				prepare(helper, BOSS_ROLL);
-				Bosses.rollAtSpawn(boss, helper.getLevel(), 1.0);
-			}
-		});
-
+		Mob[] subject = new Mob[1];
+		Mob[] quarry = new Mob[1];
+		int[] foreign = new int[1];
+		int[] waited = new int[1];
 		Set<java.util.UUID> loosed = new HashSet<>();
+
+		// A forced chunk reaches entity ticking a tick or two after its ticket lands, so the pad is built
+		// and the subject spawned from the first tick the private chunk is really ticking: spawning into a
+		// chunk that does not tick would leave the fan silently unrun. The pin is written again in the same
+		// breath as the spawn, because the config store is shared with every test in the batch.
 		helper.onEachTick(() -> {
-			for (Arrow arrow : arrowsNear(helper, boss)) {
-				loosed.add(arrow.getUUID());
+			if (subject[0] != null) {
+				subject[0].setTarget(quarry[0]);
+
+				for (Arrow arrow : arrowsNear(helper, (Skeleton) subject[0])) {
+					loosed.add(arrow.getUUID());
+				}
+
+				return;
 			}
+
+			waited[0]++;
+			if (!level.isPositionEntityTicking(pad)) {
+				return;
+			}
+
+			GearConfigStore.set(GearConfigParser.parse(BOSS_ROLL));
+			floorAt(helper, FAR_SPOT, FAR_PAD_Y, FAR_SPOT, 3);
+			foreign[0] = bossesIn(level, pad).size();
+			Mob boss = helper.spawnMob(EntityTypes.SKELETON, FAR_SPOT, FAR_PAD_Y + 3, FAR_SPOT).spawn();
+			boss.setPersistenceRequired();
+			quarry[0] = helper.spawnMob(EntityTypes.ZOMBIE, FAR_SPOT, FAR_PAD_Y + 3, FAR_SPOT + 7)
+				.withNoFreeWill()
+				.spawn();
+			quarry[0].setPersistenceRequired();
+			// The fan arms only with a player in range, and the arena's own player is four hundred out.
+			Vec3 beside = helper.absoluteVec(new Vec3(FAR_SPOT + 4.0, FAR_PAD_Y + 1.0, FAR_SPOT));
+			player.setPos(beside.x, beside.y, beside.z);
+			subject[0] = boss;
 		});
 
 		helper.succeedWhen(() -> {
+			Skeleton boss = (Skeleton) subject[0];
+			helper.assertTrue(boss != null, "the private chunk never came up, waited " + waited[0] + " ticks");
 			boolean bossFlag = Bosses.isBoss(boss);
 			boolean holdingBow = boss.isHolding(Items.BOW);
 			int fans = BossAbilities.copiesOf(boss, BoneFanGoal.class);
 			result(
 				"bossSkeletonFan",
 				"bossFlag=" + bossFlag + " elite=" + Elite.isElite(boss) + " mainHand=" + boss.getMainHandItem()
-					+ " fanGoals=" + fans + " arrows=" + loosed.size() + " rolls=" + rolls[0]
-					+ " chunkBoss=" + Bosses.chunkHasBoss(boss)
+					+ " fanGoals=" + fans + " arrows=" + loosed.size() + " foreign=" + foreign[0]
+					+ " waited=" + waited[0] + " chunkBoss=" + Bosses.chunkHasBoss(boss)
+					+ " target=" + (boss.getTarget() != null) + " playerNear=" + ReactiveState.get(boss).playerInRange(boss)
+					+ " playerDist=" + player.distanceTo(boss) + " quarryDist=" + boss.distanceTo(quarry[0])
+					+ " mobTicks=" + boss.tickCount + " los=" + boss.getSensing().hasLineOfSight(quarry[0])
 			);
 			helper.assertTrue(bossFlag, "the rolled skeleton is not a boss, so the roll never ran");
 			helper.assertTrue(
@@ -879,6 +912,32 @@ public class BossAbilityGameTest {
 		}
 	}
 
+	/**
+	 * A stone pad for a subject that stands outside every arena. The height is read from the heightmap
+	 * first, so the pad lands on the surface of whatever the private chunk answered with.
+	 */
+	private static void floorAt(final GameTestHelper helper, final int x, final int y, final int z, final int radius) {
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dz = -radius; dz <= radius; dz++) {
+				helper.setBlock(x + dx, y, z + dz, Blocks.STONE);
+			}
+		}
+	}
+
+	/**
+	 * Every boss already standing in the chunk, read through the flag reader that creates no state on a
+	 * stranger. This is the guard's own question asked before the spawn, so the log proves the chunk was
+	 * private rather than leaving it to be inferred from a failed roll.
+	 */
+	private static List<Mob> bossesIn(final ServerLevel level, final BlockPos pos) {
+		ChunkPos chunk = ChunkPos.containing(pos);
+		AABB box = new AABB(
+			chunk.getMinBlockX(), level.getMinY(), chunk.getMinBlockZ(),
+			chunk.getMaxBlockX() + 1.0, level.getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
+		);
+		return level.getEntities(EntityTypeTest.forClass(Mob.class), box, EliteState::hasBossFlag);
+	}
+
 	@GameTest(maxTicks = 200)
 	@SuppressWarnings("removal")
 	public void ringOfFireSpreadsTwelveFireballsAndBurns(final GameTestHelper helper) {
@@ -978,10 +1037,6 @@ public class BossAbilityGameTest {
 		});
 	}
 
-	/** Four spawn spots, two per chunk half, so a blocked chunk can be left by moving within the arena. */
-	private static final int[][] ROLL_SPOTS = {{3, 3}, {3, 6}, {6, 3}, {6, 6}};
-
-
 	/** A boss promoted by hand, which reaches the same end state as a rolled one through blessAsBoss. */
 	private static <T extends Mob> T blessed(		final GameTestHelper helper, final EntityType<T> type, final int x, final int y, final int z
 	) {
@@ -1006,8 +1061,16 @@ public class BossAbilityGameTest {
 		GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
 		helper.setTime(Arena.NIGHT_TIME);
 		Arena.buildFloor(helper);
-		helper.makeMockServerPlayerInLevel();
+		// The roar arms only while a player stands within reach, and the warband hits that player. A
+		// participant that dies or wanders reads as a roar defect, so it is placed before the spawn, made
+		// to survive, held in place for the window, and asserted present at the end of it.
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
+		player.setHealth(Arena.OPPONENT_HEALTH);
+		player.getAbilities().invulnerable = true;
+		Vec3 beside = helper.absoluteVec(new Vec3(6.0, 1.0, 3.0));
 		PiglinBrute warlord = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 3, 3);
+		helper.onEachTick(() -> player.setPos(beside.x, beside.y, beside.z));
 		int[] firstDuration = new int[1];
 		int[] lastDuration = new int[1];
 		long[] firstTick = new long[1];
@@ -1029,6 +1092,12 @@ public class BossAbilityGameTest {
 		});
 
 		helper.runAfterDelay(SAMPLE_WINDOW_TICKS, () -> {
+			double distance = player.distanceTo(warlord);
+			helper.assertTrue(player.isAlive(), "the participant died, so the roar had no player to arm on");
+			helper.assertTrue(
+				ReactiveState.get(warlord).playerInRange(warlord),
+				"the roar's own arming condition is false at the end of the window, player at " + distance
+			);
 			helper.assertTrue(
 				firstDuration[0] > 0,
 				"the warlord never gained Strength inside " + SAMPLE_WINDOW_TICKS + " ticks"
@@ -1047,6 +1116,7 @@ public class BossAbilityGameTest {
 				"pulseTicks=" + WarlordRoarGoal.INTERVAL_TICKS + " firstSeenTick=" + firstTick[0] + " durationFirst="
 					+ firstDuration[0] + " lastSeenTick=" + lastTick[0] + " durationLast=" + lastDuration[0]
 					+ " elapsed=" + elapsed + " reapplied=" + (firstDuration[0] - lastDuration[0] != elapsed)
+					+ " playerAlive=" + player.isAlive() + " playerDistance=" + distance
 			);
 			helper.succeed();
 		});
@@ -1192,50 +1262,5 @@ public class BossAbilityGameTest {
 
 	private static void result(final String test, final String detail) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={}.{} RESULT {}", TEST, test, detail);
-	}
-
-	/**
-	 * A subject that reaches boss through the roll, which is the only path that fills the ability slot.
-	 * A boss another running test left in this chunk blocks the roll, so a failed candidate is discarded
-	 * and the next tick tries again. The spawner must be called from within a waiting assertion.
-	 */
-	private static final class Subject {
-		private final GameTestHelper helper;
-		private final EntityType<? extends Mob> type;
-		private final int y;
-		private @Nullable Mob mob;
-		private int attempt;
-
-		private Subject(final GameTestHelper helper, final EntityType<? extends Mob> type, final int y) {
-			this.helper = helper;
-			this.type = type;
-			this.y = y;
-		}
-
-		private @Nullable Mob mob() {
-			return this.mob;
-		}
-
-		private Mob ready(final GameTestHelper helper) {
-			if (this.mob == null) {
-				// The arena straddles two chunks, so a blocked chunk can be left by moving to the other
-				// half of it: the spots cycle, and each attempt is a fresh mob with its own roll.
-				int[] spot = ROLL_SPOTS[this.attempt % ROLL_SPOTS.length];
-				this.attempt++;
-				Mob candidate = this.helper.spawnMob(this.type, spot[0], this.y, spot[1])
-					.spawnReason(EntitySpawnReason.NATURAL)
-					.spawn();
-				candidate.setPersistenceRequired();
-
-				if (!EliteState.isBoss(candidate)) {
-					candidate.discard();
-				} else {
-					this.mob = candidate;
-				}
-			}
-
-			helper.assertTrue(this.mob != null, "the subject never became a boss in this chunk");
-			return this.mob;
-		}
 	}
 }
