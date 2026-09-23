@@ -7,35 +7,71 @@ folder under that directory becomes part of the id, so
 `enchantment/bow/marksman.json` is the id
 `mod-stella-equips-enchants:bow/marksman`.
 
-Every one of them carries `anvil_cost` 1. Every one of them is a table
-candidate for at least one item, so all 44 can appear in play. No enchantment
-carries an `exclusive_set`, so no pair blocks another pair.
+Every one of them carries `anvil_cost` 1. Every one of them is listed in the
+enchanting table tag and is a cost candidate for at least one item, so all 44
+can be rolled at a table. No enchantment carries an `exclusive_set`, so no pair
+blocks another pair.
 
 ## Adding another one
 
 1. Write the JSON file. Copy a neighbour in the same folder and change the
    fields.
-2. Add the name to `assets/mod-stella-equips-enchants/lang/en_us.json` under
+2. Add the id to `data/minecraft/tags/enchantment/in_enchanting_table.json`.
+   The enchanting table reads that tag, not the registry. An enchantment that
+   is absent from the tag loads, passes every other check, and can never be
+   rolled by a player.
+3. Add the name to `assets/mod-stella-equips-enchants/lang/en_us.json` under
    the same `enchantment.<namespace>.<path>` key.
-3. Run `.\gradlew.bat runGameTest --rerun --console=plain`. The data tests read
-   the registry, so a broken file, an empty item tag, a missing cost field, or
-   an enchantment that joins no roll pool fails the run.
-4. If the enchantment uses `run_function`, follow the function rules in
+4. Run `.\gradlew.bat runGameTest --rerun --console=plain`. The data tests read
+   the registry and the tag, so a broken file, an empty item tag, a missing
+   cost field, an enchantment that joins no roll pool, or an enchantment that
+   is absent from the table tag fails the run.
+5. If the enchantment uses `run_function`, follow the function rules in
    [EFFECT-VOCABULARY.md](EFFECT-VOCABULARY.md).
 
 ## The rates
 
-A vanilla table offer is a weighted draw from the enchantments that accept the
-item and that the enchantment power reaches. The candidate rule, read from
-`EnchantmentHelper.getAvailableEnchantmentResults`, is: the item accepts the
-enchantment, and some level of it has `min_cost(level) <= power <=
-max_cost(level)`.
+The enchanting table draws from one pool: the `#minecraft:in_enchanting_table`
+enchantment tag. `EnchantmentMenu.getEnchantmentList` reads that tag and passes
+it to `EnchantmentHelper.selectEnchantment`, which keeps an enchantment when the
+item is a `primary_items` match and some level satisfies
+`min_cost(level) <= cost <= max_cost(level)`.
 
-The table below uses power 30, the power of a level 30 offer with a full
-bookshelf ring, and a reference item per slot. `Share` is
-`weight / sum(weights of the candidates for that item)`. The `rollRates` game
-test computes the same numbers from the registry and asserts that every
-enchantment is a candidate somewhere and that the shares of each pool sum to 1.
+An offer is therefore a weighted draw from the enchantments that accept the
+item and that the offer's cost reaches. The table rolls three offers, and
+`EnchantmentHelper.getEnchantmentCost` sets each cost:
+
+```text
+bookshelfCount = min(bookshelves, 15)
+j = random(8) + 1 + (bookshelfCount / 2) + random(bookshelfCount + 1)
+offer 1 cost = max(j / 3, 1)
+offer 2 cost = j * 2 / 3 + 1
+offer 3 cost = max(j, bookshelfCount * 2)
+```
+
+At a maxed table `bookshelfCount` is 15, so `j` runs from 8 to 30, offer 1 runs
+from 2 to 10, offer 2 runs from 6 to 21, and offer 3 is `max(j, 30)` = 30 for
+every roll. Offer 3 is the one that reaches the rare bands, so 30 is the cost
+every test uses.
+
+Every band in this catalogue is reachable at cost 30:
+
+| `min_cost` and `max_cost` shape | Levels | Level that contains 30 |
+|---|---|---|
+| base 1, +11 | 2 | level 2, range 12 to 32 |
+| base 5, +8 | 3 | level 3, range 21 to 41 |
+| base 5, +8 | 2 | level 2, range 13 to 33 |
+| base 5, +10 | 2 | level 2, range 15 to 35 |
+| base 5, +8 | 5 | level 4, range 29 to 57 |
+| base 5, max 30 (Prospector) | 1 | level 1, range 5 to 30 |
+| base 10, +20, max 50 | 2 | level 1, range 10 to 50 |
+| base 10, +10 | 2 or 3 | level 1, range 10 to 40 |
+| base 15 or 20, max 45 or 50 | 1 | level 1, contains 30 |
+
+The `enchantingTableTag` test asserts the tag membership of every catalogue id
+and its reachability at cost 30. The `rollRates` test computes the draw share
+of every candidate at the same cost, with a reference item per slot. `Share` is
+`weight / sum(weights of the candidates for that item)`.
 
 | Reference item | Candidates | Total weight |
 |---|---|---|
@@ -175,6 +211,8 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | Harvester | `replace_disk` | function with `setblock ... destroy` | `ReplaceDisk` replaces blocks through `ServerLevel.setBlockAndUpdate` and drops nothing, so the plan's version would delete the harvest |
 | Arachnid's Bane | `damage_entity` | `damage` hook | A second damage in the same tick is dropped by the victim's damage cooldown. The damage hook is how vanilla bane of arthropods adds damage |
 | Bomb Arrows | `projectile_spawned` | `hit_block` | The probe proved that an explosion on `projectile_spawned` fires in the air at the bow and reaches no block |
+| Arrow Shower, Bomb Arrows | not stated | in the table tag, like the other 42 | The table pool is a tag. Both carry `min_cost` 20 and `max_cost` 50, so both need a third offer at a maxed table, which is the rarest draw the table makes. Leaving them out would hide the two enchantments oniichan named from the hunt he asked for |
+| the table tag path | `data/mod-stella-equips-enchants/tags/enchantment/` | `data/minecraft/tags/enchantment/in_enchanting_table.json` | The table reads `EnchantmentTags.IN_ENCHANTING_TABLE`, whose id is `minecraft:in_enchanting_table`. A mod namespaced tag of that name is never read |
 
 ## What the tests prove
 
@@ -184,6 +222,7 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `everyCatalogueEnchantmentAssemblesForOneLevel` | every `anvil_cost` is 1 |
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
+| `everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable` | every catalogue id is in `#minecraft:in_enchanting_table`, and every id is reachable at cost 30 |
 | `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 11 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command |
 | `catalogueRollRatesFollowCostAndWeight` | the pools above, and that every enchantment is a table candidate at power 30 |
 | `arrowShowerFiresTheWholeVolley` | one bow shot fires 7 arrows and costs the bow 7 durability |
