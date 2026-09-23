@@ -22,6 +22,7 @@
 			"com.stella.mobs.GhastEliteGameTest",
 			"com.stella.mobs.GolemEliteGameTest",
 			"com.stella.mobs.MobHarnessGameTest",
+			"com.stella.mobs.OceanBandGameTest",
 			"com.stella.mobs.PiglinBruteGameTest",
 			"com.stella.mobs.RiderPearlGameTest",
 			"com.stella.mobs.RoleGameTest",
