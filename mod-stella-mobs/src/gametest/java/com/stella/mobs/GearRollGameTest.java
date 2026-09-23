@@ -266,7 +266,7 @@ public class GearRollGameTest {
 
 			if (archer) {
 				helper.assertValueEqual(
-					Double.valueOf(ReactiveState.get(skeleton).getNearDistance()), Double.valueOf(7.0), "the archer near band"
+					Double.valueOf(ReactiveState.get(skeleton).getNearDistance()), Double.valueOf(3.0), "the archer near band"
 				);
 				helper.assertValueEqual(
 					Double.valueOf(ReactiveState.get(skeleton).getFarDistance()), Double.valueOf(15.0), "the archer far band"

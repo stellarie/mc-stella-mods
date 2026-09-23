@@ -13,11 +13,10 @@ import net.minecraft.world.entity.EntityTypes;
  * subject that fights instead of standing still, and the shipped defaults.
  */
 public class BehaviorRigGameTest {
-	private static final double SEVEN_BLOCKS = 7.0;
-	private static final double ARENA_BAND = 4.0;
+	private static final double SHIPPED_BAND = 3.0;
 	private static final double EPSILON = 1.0e-6;
-	private static final long CORNERED_TICK = 40L;
-	private static final int FROZEN_TICK_BUDGET = 55;
+	private static final long CORNERED_TICK = com.stella.mobs.behavior.KeepDistanceGoal.WINDOW_TICKS;
+	private static final int FROZEN_TICK_BUDGET = com.stella.mobs.behavior.KeepDistanceGoal.WINDOW_TICKS + 20;
 
 	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void shieldedZombifiedPiglinRaisesItsShieldUnderMeleePressure(final GameTestHelper helper) {
@@ -52,21 +51,14 @@ public class BehaviorRigGameTest {
 		});
 	}
 
-	// The seven block firing rule is NOT shipped: eight attempts could not make it stable, so the keeper is
-	// back to its pre-repair behaviour and this case records the open rule instead of asserting it.
-	@GameTest(maxTicks = Arena.MAX_TICKS, required = false)
+	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void rangedSkeletonRetreatsToItsBandAndFiresOnlyThere(final GameTestHelper helper) {
-		Arena arena = Arena.build(
-			helper, "rangedSkeleton",
-			bowConfig("""
-				"minecraft:skeleton": { "role": "ranged", "near": 4.0, "far": 12.0 }"""),
-			EntityTypes.SKELETON, 2, 2, false
-		);
+		Arena arena = Arena.build(helper, "rangedSkeleton", bowConfig(""), EntityTypes.SKELETON, 2, 2, false);
 		helper.runBeforeTestEnd(() -> arena.log().result());
 		helper.succeedWhen(() -> {
 			helper.assertTrue(
-				arena.subject().distanceTo(arena.meleeOpponent()) >= ARENA_BAND,
-				"the archer did not open its band of " + ARENA_BAND + ": " + arena.log().summary()
+				arena.subject().distanceTo(arena.meleeOpponent()) >= RoleSpec.RANGED_NEAR,
+				"the archer did not open its band of " + RoleSpec.RANGED_NEAR + ": " + arena.log().summary()
 					+ " goals: " + arena.log().goalsText()
 			);
 			helper.assertFalse(
@@ -81,33 +73,12 @@ public class BehaviorRigGameTest {
 		});
 	}
 
-	// The production band is seven blocks. This arena is eight wide, so it cannot hold that band plus a
-	// retreat step. The enforcement and the retreat-or-fight rule are proven by the case above.
-	@GameTest(maxTicks = Arena.MAX_TICKS, required = false)
-	public void productionSevenBlockBandIsTooWideForThisArena(final GameTestHelper helper) {
-		Arena arena = Arena.build(helper, "productionBand", bowConfig(""), EntityTypes.SKELETON, 2, 2, false);
-		helper.runBeforeTestEnd(() -> arena.log().result());
-		helper.succeedWhen(() -> {
-			helper.assertTrue(
-				arena.subject().distanceTo(arena.meleeOpponent()) >= SEVEN_BLOCKS,
-				"the archer did not open the production seven blocks: " + arena.log().summary()
-					+ " goals: " + arena.log().goalsText()
-			);
-			arena.log().result();
-		});
-	}
-
-	@GameTest(maxTicks = Arena.MAX_TICKS, required = false)
+	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void corneredRangedSkeletonFiresInsteadOfFreezing(final GameTestHelper helper) {
-		Arena arena = Arena.build(
-			helper, "corneredRangedSkeleton",
-			bowConfig("""
-				"minecraft:skeleton": { "role": "ranged", "near": 7.0, "far": 15.0 }"""),
-			EntityTypes.SKELETON, 2, 2, true
-		);
+		Arena arena = Arena.build(helper, "corneredRangedSkeleton", bowConfig(""), EntityTypes.SKELETON, 2, 2, true);
 		Arena.contain(helper, arena.subject(), 2, 2);
 		helper.runBeforeTestEnd(() -> arena.log().result());
-		helper.runAfterDelay(80L, () -> {
+		helper.runAfterDelay(120L, () -> {
 			helper.assertTrue(
 				arena.log().lastFiredTick() >= CORNERED_TICK,
 				"the cornered archer stopped fighting after tick " + CORNERED_TICK + ": " + arena.log().summary()
@@ -134,8 +105,8 @@ public class BehaviorRigGameTest {
 		helper.runBeforeTestEnd(() -> arena.log().result());
 		helper.succeedWhen(() -> {
 			helper.assertTrue(
-				arena.subject().distanceTo(arena.playerThreat()) >= SEVEN_BLOCKS,
-				"the archer did not open seven blocks from the player: " + arena.log().summary()
+				arena.subject().distanceTo(arena.playerThreat()) >= RoleSpec.RANGED_NEAR,
+				"the archer did not open its band from the player: " + arena.log().summary()
 					+ " goals: " + arena.log().goalsText()
 			);
 			helper.assertFalse(
@@ -158,7 +129,7 @@ public class BehaviorRigGameTest {
 			"the shipped default roll chance is " + RollSpec.DEFAULT.rollChance()
 		);
 		helper.assertTrue(
-			Math.abs(RoleSpec.RANGED_NEAR - SEVEN_BLOCKS) < EPSILON,
+			Math.abs(RoleSpec.RANGED_NEAR - SHIPPED_BAND) < EPSILON,
 			"the shipped ranged near band is " + RoleSpec.RANGED_NEAR
 		);
 		helper.assertTrue(

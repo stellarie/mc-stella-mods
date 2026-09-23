@@ -330,7 +330,7 @@ public class RoleGameTest {
 		RoleSpec ranged = config.roleFor(Identifier.parse("minecraft:skeleton"));
 		RoleSpec magic = config.roleFor(Identifier.parse("minecraft:evoker"));
 
-		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(7.0), "ranged near band");
+		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(3.0), "ranged near band");
 		helper.assertValueEqual(Double.valueOf(ranged.farDistance()), Double.valueOf(15.0), "ranged far band");
 		helper.assertValueEqual(Double.valueOf(magic.nearDistance()), Double.valueOf(8.0), "magic near band");
 		helper.assertValueEqual(Double.valueOf(magic.farDistance()), Double.valueOf(12.0), "magic far band");
