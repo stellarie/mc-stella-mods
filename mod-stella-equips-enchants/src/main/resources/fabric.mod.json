@@ -11,7 +11,11 @@
 		]
 	},
 	"mixins": [
-		"mod-stella-equips-enchants.mixins.json"
+		"mod-stella-equips-enchants.mixins.json",
+		{
+			"config": "mod-stella-equips-enchants.client.mixins.json",
+			"environment": "client"
+		}
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",
