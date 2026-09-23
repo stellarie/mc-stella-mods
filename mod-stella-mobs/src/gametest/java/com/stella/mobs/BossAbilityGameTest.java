@@ -34,6 +34,7 @@ import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
 import net.minecraft.world.entity.monster.Enderman;
+import net.minecraft.world.entity.monster.illager.Evoker;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -50,6 +51,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -329,6 +331,61 @@ public class BossAbilityGameTest {
 	private static void strike(final GameTestHelper helper, final Mob boss, final ServerPlayer player) {
 		boss.setInvulnerableTime(0);
 		boss.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F);
+	}
+
+	/** The spec's floor on the return distance: the boss picks the first clear of eight directions. */
+	private static final int SPEC_RETURN_BLOCKS = 8;
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void evokerReturnsOnceFromALethalHit(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		// The return lands sixteen blocks out, so the ground has to be there for it to stand on.
+		pad(helper, 20);
+		Evoker evoker = blessed(helper, EntityTypes.EVOKER, 3, 3, 3);
+		Vec3 before = evoker.position();
+		float half = evoker.getMaxHealth() * 0.5F;
+		strike(helper, evoker, 1000.0F);
+		boolean survived = evoker.isAlive();
+		float health = evoker.getHealth();
+		double moved = Math.hypot(evoker.getX() - before.x, evoker.getZ() - before.z);
+		boolean flag = EliteState.isSecondPhaseUsed(evoker);
+		int phases = 0;
+
+		// The second hit comes after the damage cooldown: 26.3 drops a hit whose damage is not greater
+		// than the last one while damageCooldownTime runs, so two hits in one tick cannot work.
+		helper.runAfterDelay(25L, () -> {
+			strike(helper, evoker, 1000.0F);
+			boolean diedAtLast = !evoker.isAlive();
+
+			helper.assertTrue(survived, "the first lethal hit killed the boss evoker instead of returning it");
+			helper.assertValueEqual(
+				Double.valueOf(health), Double.valueOf(half), "health after the return, against half the maximum"
+			);
+			helper.assertTrue(moved >= SPEC_RETURN_BLOCKS, "the evoker returned only " + moved + " blocks");
+			helper.assertTrue(flag, "the durable second phase flag was not set");
+			helper.assertTrue(diedAtLast, "the second lethal hit did not kill the evoker");
+			result(
+				"evokerSecondPhase",
+				"firstHitLethal=true survived=" + survived + " health=" + health + " half=" + half + " movedBlocks="
+					+ Math.round(moved) + " flag=" + flag + " secondHitDied=" + diedAtLast
+			);
+			helper.succeed();
+		});
+	}
+
+	/** A stone pad in every direction, wide enough for a sixteen block return to land on. */
+	private static void pad(final GameTestHelper helper, final int radius) {
+		for (int x = -radius; x <= radius; x++) {
+			for (int z = -radius; z <= radius; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
+	}
+
+	private static void strike(final GameTestHelper helper, final Mob mob, final float amount) {
+		mob.setInvulnerableTime(0);
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), amount);
 	}
 
 	private static void prepare(final GameTestHelper helper, final String config) {
