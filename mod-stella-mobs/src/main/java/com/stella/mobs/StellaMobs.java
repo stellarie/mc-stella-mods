@@ -1,6 +1,8 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BehaviorInstaller;
+import com.stella.mobs.behavior.BossCompanion;
+import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
@@ -30,6 +32,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,10 +46,13 @@ public class StellaMobs implements ModInitializer {
 		EliteState.register();
 		EscortSquad.register();
 		RiderSquad.register();
+		BossCompanion.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
+		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
+		ServerTickEvents.END_LEVEL_TICK.register(StellaMobs::tickBosses);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
@@ -84,6 +90,9 @@ public class StellaMobs implements ModInitializer {
 				state.setGearApplied(true);
 			}
 
+			// B01 and B02: the boss roll runs before the elite roll, which returns at its own guard.
+			Bosses.rollAtSpawn(mob, level, GearConfigStore.get().rollFor(entityType).bossChance());
+
 			Elite.rollAtSpawn(
 				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
 			);
@@ -108,6 +117,16 @@ public class StellaMobs implements ModInitializer {
 
 		BehaviorInstaller.install(mob);
 	}
+
+	/** Keeps every boss bar live while its boss is loaded and in range of a player. */
+	private static void tickBosses(final ServerLevel level) {
+		for (Mob mob : level.getEntitiesOfClass(Mob.class, BOSS_BAR_AREA, Bosses::isBoss)) {
+			Bosses.updateBossBar(level, mob);
+		}
+	}
+
+	// A boss bar is only visible within 64 blocks, so the sweep covers the loaded world and no more.
+	private static final AABB BOSS_BAR_AREA = new AABB(-3.0E7, -3000.0, -3.0E7, 3.0E7, 3000.0, 3.0E7);
 
 	/** W10: a witch drops one of every potion it carries, read from the one potion list. */
 	private static void onEntityDeath(final LivingEntity entity, final DamageSource source) {

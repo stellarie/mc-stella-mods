@@ -20,6 +20,7 @@ public final class GearConfigStore {
 				"roll_chance": 0.30,
 				"drop_chance_multiplier": 1.0,
 				"elite_chance": 0.05,
+				"boss_chance": 0.01,
 				"entities": {
 					"minecraft:witch": { "elite_chance": 0.10 }
 				}

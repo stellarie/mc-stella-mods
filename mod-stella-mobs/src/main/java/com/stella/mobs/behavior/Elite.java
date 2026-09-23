@@ -69,6 +69,8 @@ public final class Elite {
 
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		if (health != null) {
+			// The bare base times the multiplier. R12's area scaling rides its own modifier, so it is
+			// deliberately not folded in here: an elite's doubled health is the documented number.
 			double boosted = health.getBaseValue() * healthMultiplier;
 			health.setBaseValue(boosted);
 			mob.setHealth((float) boosted);

@@ -7,7 +7,9 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.world.entity.Mob;
+import org.jspecify.annotations.Nullable;
 
 public final class ReactiveState {
 	public static final AttachmentType<ReactiveState> TYPE = AttachmentRegistry.createDefaulted(
@@ -36,6 +38,10 @@ public final class ReactiveState {
 	private int witchThrowIndex;
 	private boolean witchInvisibilityCast;
 	private boolean elite;
+	private @Nullable ServerBossEvent bossBar;
+	private float bossBarProgress;
+	private boolean companionSpawned;
+	private @Nullable String companionId;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -191,5 +197,40 @@ public final class ReactiveState {
 
 	public void setElite(final boolean elite) {
 		this.elite = elite;
+	}
+
+	/** The boss bar is transient: a reloaded boss rebuilds it from its health on the next tick. */
+	public @Nullable ServerBossEvent bossBar() {
+		return this.bossBar;
+	}
+
+	public void setBossBar(final ServerBossEvent bossBar) {
+		this.bossBar = bossBar;
+	}
+
+	public float bossBarProgress() {
+		return this.bossBarProgress;
+	}
+
+	public void setBossBarProgress(final float bossBarProgress) {
+		this.bossBarProgress = bossBarProgress;
+	}
+
+	/** B05: one companion per boss, so a re-queue cannot double the squad. */
+	public boolean isCompanionSpawned() {
+		return this.companionSpawned;
+	}
+
+	public void setCompanionSpawned(final boolean companionSpawned) {
+		this.companionSpawned = companionSpawned;
+	}
+
+	/** The companion this boss was given, recorded so the pair can be found after either one moves. */
+	public @Nullable String companionId() {
+		return this.companionId;
+	}
+
+	public void setCompanionId(final String companionId) {
+		this.companionId = companionId;
 	}
 }
