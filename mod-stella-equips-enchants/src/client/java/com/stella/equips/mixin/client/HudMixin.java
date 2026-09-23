@@ -17,7 +17,9 @@ public class HudMixin {
 
 	/**
 	 * Caps the value the row count, the row height, the regeneration offset, the armour
-	 * strip and the heart loop all derive from, so the whole bar shrinks together.
+	 * strip and the heart loop all derive from, so the whole bar shrinks together. The
+	 * caller takes the greater of the attribute and the health on screen, and this caps
+	 * whichever of the two won.
 	 */
 	@ModifyExpressionValue(
 		method = "extractPlayerHealth",
@@ -28,8 +30,8 @@ public class HudMixin {
 	}
 
 	/**
-	 * The second cap, because the caller lays out the greater of the attribute and the
-	 * health on screen, so a health value above the cap would otherwise escape the first.
+	 * The containers the heart loop walks, capped to the same limit so the two cannot
+	 * disagree. The value is already capped above, so this holds only if that cap is gone.
 	 */
 	@ModifyExpressionValue(
 		method = "extractHearts(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/entity/player/Player;IIIIFIIIZ)V",

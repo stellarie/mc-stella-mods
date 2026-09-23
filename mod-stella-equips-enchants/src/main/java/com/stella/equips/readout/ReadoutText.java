@@ -28,11 +28,6 @@ public final class ReadoutText {
 		return text.withStyle(color(band));
 	}
 
-	/** The owner's own line: level and health as numbers, in the mob readout's style. */
-	public static Component selfLine(final int level, final float health, final float maxHealth) {
-		return Component.literal("Lv " + level + "  " + shown(health) + "/" + shown(maxHealth) + " HP");
-	}
-
 	/** A live mob never reads as zero, and a whole number never grows a decimal tail. */
 	public static int shown(final float health) {
 		return (int) Math.ceil(health);

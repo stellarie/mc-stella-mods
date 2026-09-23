@@ -1,6 +1,5 @@
 package com.stella.equips.power;
 
-import com.stella.equips.readout.ReadoutText;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
@@ -67,8 +66,7 @@ public final class PowerTracker {
 	/** The owner's own level and health as one line, on the interval that already runs. */
 	public static void sendSelfLine(final ServerPlayer player, final PowerConfig config) {
 		int level = playerLevel(player, config);
-		// TODO: slot pending; line vs kept hearts undecided.
-		player.sendSystemMessage(ReadoutText.selfLine(level, player.getHealth(), player.getMaxHealth()), true);
+		player.sendSystemMessage(HealthLine.of(level, player.getHealth(), player.getMaxHealth()), true);
 	}
 
 	public static void onDeath(final LivingEntity entity, final DamageSource source) {
