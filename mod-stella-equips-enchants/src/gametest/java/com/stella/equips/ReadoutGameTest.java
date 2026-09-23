@@ -69,6 +69,10 @@ public class ReadoutGameTest {
 	private static final double LAG_TOLERANCE = 1.0;
 	private static final float LETHAL_DAMAGE = 1000.0F;
 	private static final float READOUT_DAMAGE = 100.0F;
+	private static final double HEALTH_TEST_X = 26000.0;
+	private static final double HEALTH_MOVE_TEST_X = 26200.0;
+	private static final double TARGET_DISTANCE = 2.0;
+	private static final float HEALTH_DAMAGE = 5.0F;
 	private static final String SPAWN_LINE = "readout spawn";
 	private static final String BAND_LINE = "readout band";
 	private static final String REMOVE_LINE = "readout remove";
@@ -441,6 +445,105 @@ public class ReadoutGameTest {
 					ReadoutText.colorName(readout.band())
 				);
 				helper.succeed();
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theMobUnderTheCrosshairShowsItsHealthAndTheOthersDoNot(final GameTestHelper helper) {
+		PowerRecorder.install();
+		PowerConfig config = liveConfig();
+		ServerPlayer owner = ownerAt(helper, HEALTH_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob looked = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ() + TARGET_DISTANCE);
+			Mob aside = spawnStill(helper, owner.getX() + TARGET_DISTANCE, owner.getY(), owner.getZ());
+			owner.setYRot(0.0F);
+			owner.setXRot(0.0F);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				ReadoutOwner.Readout lookedReadout = ReadoutService.owner(owner).get(looked.getUUID());
+				ReadoutOwner.Readout asideReadout = ReadoutService.owner(owner).get(aside.getUUID());
+				helper.assertTrue(lookedReadout != null, "the mob under the crosshair holds no readout");
+				helper.assertTrue(asideReadout != null, "the mob beside the crosshair holds no readout");
+				String health = ReadoutText.shown(looked.getHealth()) + "/" + ReadoutText.shown(looked.getMaxHealth());
+				String plain = "[" + PowerTracker.mobLevel(aside, config) + "] " + aside.getDisplayName().getString();
+				helper.assertTrue(
+					lookedReadout.text().endsWith(" " + health),
+					"the mob under the crosshair read '" + lookedReadout.text() + "' without its health " + health
+				);
+				helper.assertTrue(
+					plain.equals(asideReadout.text()),
+					"the mob beside the crosshair read '" + asideReadout.text() + "' instead of '" + plain + "'"
+				);
+				StellaEquips.LOGGER.info(
+					"[BEHAVIOR] test=readoutHealth RESULT lookedText={} health={} asideText={} distance={} reach={}",
+					lookedReadout.text(), health, asideReadout.text(), TARGET_DISTANCE,
+					owner.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE)
+				);
+				helper.succeed();
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aTargetedMobHealthChangeMovesTheReadoutText(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerLevel level = helper.getLevel();
+		ServerPlayer owner = ownerAt(helper, HEALTH_MOVE_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob looked = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ() + TARGET_DISTANCE);
+			Mob aside = spawnStill(helper, owner.getX() + TARGET_DISTANCE, owner.getY(), owner.getZ());
+			owner.setYRot(0.0F);
+			owner.setXRot(0.0F);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				ReadoutOwner.Readout before = ReadoutService.owner(owner).get(looked.getUUID());
+				ReadoutOwner.Readout asideBefore = ReadoutService.owner(owner).get(aside.getUUID());
+				helper.assertTrue(before != null, "the targeted mob held no readout before the hit");
+				helper.assertTrue(asideBefore != null, "the untargeted mob held no readout before the hit");
+				int packetsBefore = PacketRecorder.of(owner).dataPackets(before.display().getId());
+				float startHealth = looked.getHealth();
+				looked.hurtServer(level, level.damageSources().generic(), HEALTH_DAMAGE);
+				aside.hurtServer(level, level.damageSources().generic(), HEALTH_DAMAGE);
+				float afterHealth = looked.getHealth();
+				helper.assertTrue(
+					afterHealth < startHealth,
+					"the hit left " + afterHealth + " health of the " + startHealth + " the mob started with"
+				);
+
+				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+					ReadoutOwner.Readout after = ReadoutService.owner(owner).get(looked.getUUID());
+					ReadoutOwner.Readout asideAfter = ReadoutService.owner(owner).get(aside.getUUID());
+					helper.assertTrue(after != null, "the targeted mob lost its readout after the hit");
+					helper.assertTrue(asideAfter != null, "the untargeted mob lost its readout after the hit");
+					String moved = ReadoutText.shown(afterHealth) + "/" + ReadoutText.shown(looked.getMaxHealth());
+					helper.assertTrue(
+						!before.text().equals(after.text()),
+						"the targeted mob kept the text '" + after.text() + "' at " + afterHealth + " health"
+					);
+					helper.assertTrue(
+						after.text().endsWith(" " + moved),
+						"the targeted mob read '" + after.text() + "' instead of ending in " + moved
+					);
+					helper.assertTrue(
+						asideBefore.text().equals(asideAfter.text()),
+						"an untargeted mob moved its text from '" + asideBefore.text() + "' to '" + asideAfter.text() + "'"
+					);
+					int packetsAfter = PacketRecorder.of(owner).dataPackets(after.display().getId());
+					helper.assertTrue(
+						packetsAfter > packetsBefore,
+						"the health change sent " + (packetsAfter - packetsBefore) + " data packets to the owner"
+					);
+					StellaEquips.LOGGER.info(
+						"[BEHAVIOR] test=readoutHealthMove RESULT before='{}' after='{}' healthBefore={} "
+							+ "healthAfter={} asideText='{}' dataPackets={}",
+						before.text(), after.text(), startHealth, afterHealth, asideAfter.text(),
+						packetsAfter - packetsBefore
+					);
+					helper.succeed();
+				});
 			});
 		});
 	}
