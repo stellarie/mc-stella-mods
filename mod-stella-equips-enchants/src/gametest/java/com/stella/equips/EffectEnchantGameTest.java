@@ -1,11 +1,14 @@
 package com.stella.equips;
 
 import com.stella.equips.power.PowerConfigStore;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,6 +71,20 @@ public class EffectEnchantGameTest {
 	private static final int YIELD_BREAKS = 60;
 	private static final int FUNCTION_WAIT_TICKS = 60;
 	private static final int SHOT_WAIT_TICKS = 25;
+	/** Cloudstep grants Jump Boost 3, which is 0.3 of jump power, about two blocks. */
+	private static final int CLOUDSTEP_JUMP_AMPLIFIER = 2;
+	private static final double CLOUDSTEP_JUMP_POWER = 0.1 * (CLOUDSTEP_JUMP_AMPLIFIER + 1);
+	private static final int CLOUDSTEP_EFFECT_TICKS = 40;
+	private static final int CLOUDSTEP_GATE_TICKS = 20;
+	private static final double GRAVITY = 0.08;
+	private static final double VANILLA_JUMP_POWER = 0.42;
+	private static final double CLOUDSTEP_EXPECTED_EXTRA =
+		(VANILLA_JUMP_POWER + CLOUDSTEP_JUMP_POWER) * (VANILLA_JUMP_POWER + CLOUDSTEP_JUMP_POWER) / (2.0 * GRAVITY)
+			- VANILLA_JUMP_POWER * VANILLA_JUMP_POWER / (2.0 * GRAVITY);
+	private static final double CLOUDSTEP_MINIMUM_EXTRA_HEIGHT = 1.5;
+	private static final int JUMP_SAMPLE_TICKS = 40;
+	/** Veinminer breaks the mined block and one neighbour each way along the plane axis. */
+	private static final int VEINMINER_BLOCKS_PER_SWING = 3;
 
 	/**
 	 * The spark life the datapack sets in `echolocation_tick.mcfunction`, mirrored here so
@@ -472,38 +489,82 @@ public class EffectEnchantGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void cloudstepLiftsTheWearerWhileSneakingAndNotWhileStanding(final GameTestHelper helper) {
+	public void cloudstepRaisesTheJumpWhileSneakingAndNotWhileStanding(final GameTestHelper helper) {
 		ServerPlayer wearer = mockPlayerInLevel(helper);
 		wearer.setItemSlot(EquipmentSlot.FEET, enchanted(helper, Items.DIAMOND_BOOTS, "armor/cloudstep", 3));
 		BlockPos origin = helper.absolutePos(new BlockPos(1, 4, 1));
 		wearer.setPos(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5);
 		helper.runAfterDelay(FUNCTION_WAIT_TICKS, () -> {
-			boolean standing = wearer.hasEffect(MobEffects.LEVITATION);
+			boolean standingJump = wearer.hasEffect(MobEffects.JUMP_BOOST);
+			boolean standingGravity = wearer.hasEffect(MobEffects.SLOW_FALLING);
 			wearer.setShiftKeyDown(true);
 			wearer.setPose(Pose.CROUCHING);
 			helper.runAfterDelay(FUNCTION_WAIT_TICKS, () -> {
 				int hooked = score(helper, wearer, "ench_cd_cloud");
 				wearer.setShiftKeyDown(true);
 				wearer.setPose(Pose.CROUCHING);
-				for (int pulse = 0; pulse < 3; pulse++) {
-					EnchantmentHelper.tickEffects(helper.getLevel(), wearer);
-				}
+				rearmCooldown(helper, wearer, "ench_cd_cloud", CLOUDSTEP_GATE_TICKS);
+				EnchantmentHelper.tickEffects(helper.getLevel(), wearer);
 
-				boolean sneaking = wearer.hasEffect(MobEffects.LEVITATION);
+				boolean sneakingJump = wearer.hasEffect(MobEffects.JUMP_BOOST);
+				boolean sneakingGravity = wearer.hasEffect(MobEffects.SLOW_FALLING);
+				int jumpAmplifier = sneakingJump ? wearer.getEffect(MobEffects.JUMP_BOOST).getAmplifier() : -1;
+				int gravityDuration = sneakingGravity ? wearer.getEffect(MobEffects.SLOW_FALLING).getDuration() : 0;
 				StellaEquips.LOGGER.info(
-					"[BEHAVIOR] test=cloudstep RESULT levitatingStanding={} levitatingSneaking={} "
-						+ "tickCount={} hookCooldown={} sneaking={} inFunctionPredicate={} tickEntries={}",
-					standing, sneaking, wearer.tickCount, hooked, wearer.isShiftKeyDown(),
+					"[BEHAVIOR] test=cloudstep RESULT jumpStanding={} gravityStanding={} jumpSneaking={} "
+						+ "gravitySneaking={} jumpAmplifier={} gravityDuration={} tickCount={} hookCooldown={} "
+						+ "sneaking={} inFunctionPredicate={} tickEntries={} mentionsLevitation={}",
+					standingJump, standingGravity, sneakingJump, sneakingGravity, jumpAmplifier, gravityDuration,
+					wearer.tickCount, hooked, wearer.isShiftKeyDown(),
 					scratchScore(helper, "#cloud_pred"),
-					enchantment(helper, "armor/cloudstep").getEffects(EnchantmentEffectComponents.TICK).size()
+					enchantment(helper, "armor/cloudstep").getEffects(EnchantmentEffectComponents.TICK).size(),
+					resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction").contains("levitation")
 				);
-				helper.assertTrue(!standing, "the wearer levitated while standing");
-				helper.assertTrue(sneaking, "the sneaking wearer did not levitate");
+				helper.assertTrue(!standingJump, "the standing wearer carried the jump effect");
+				helper.assertTrue(!standingGravity, "the standing wearer carried the gravity effect");
+				helper.assertTrue(sneakingJump, "the sneaking wearer carried no jump effect");
+				helper.assertTrue(sneakingGravity, "the sneaking wearer carried no gravity effect");
+				helper.assertTrue(
+					jumpAmplifier == CLOUDSTEP_JUMP_AMPLIFIER,
+					"the jump effect was amplifier " + jumpAmplifier + " instead of " + CLOUDSTEP_JUMP_AMPLIFIER
+				);
+				helper.assertTrue(
+					!resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction").contains("levitation"),
+					"the cloudstep function still mentions levitation"
+				);
 				helper.succeed();
 			});
 		});
 	}
 
+	/** The shipped function must name the two new effects and no longer grant levitation. */
+	@GameTest
+	public void cloudstepFunctionGrantsJumpAndGravityWithoutLevitation(final GameTestHelper helper) {
+		String text = resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction");
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=cloudstepFunction RESULT hasJumpBoost={} hasSlowFalling={} hasLevitation={} "
+				+ "effectTicks={} amplifier={} bytes={}",
+			text.contains("jump_boost"), text.contains("slow_falling"), text.contains("levitation"),
+			CLOUDSTEP_EFFECT_TICKS, CLOUDSTEP_JUMP_AMPLIFIER, text.length()
+		);
+		helper.assertTrue(text.contains("jump_boost"), "the function grants no jump boost");
+		helper.assertTrue(text.contains("slow_falling"), "the function grants no slow falling");
+		helper.assertTrue(!text.contains("levitation"), "the function still grants levitation");
+		helper.assertTrue(
+			text.contains("effect give @s minecraft:jump_boost " + CLOUDSTEP_EFFECT_TICKS + " "
+				+ CLOUDSTEP_JUMP_AMPLIFIER + " true"),
+			"the jump effect is not " + CLOUDSTEP_EFFECT_TICKS + " ticks at amplifier " + CLOUDSTEP_JUMP_AMPLIFIER
+		);
+		helper.succeed();
+	}
+
+	private static String resource(final String path) {
+		try (InputStream stream = EffectEnchantGameTest.class.getClassLoader().getResourceAsStream(path)) {
+			return stream == null ? "" : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			return "";
+		}
+	}
 	@GameTest
 	public void voidBrandDamageIgnoresArmour(final GameTestHelper helper) {
 		float plainArmoured = healthLostToPlainHit(helper, 20.0);
@@ -594,20 +655,63 @@ public class EffectEnchantGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void veinminerBreaksTheVeinUpToItsLevelCap(final GameTestHelper helper) {
-		int atOne = veinBlocksBroken(helper, 1);
-		int atFive = veinBlocksBroken(helper, 5);
+	public void veinminerBreaksAThreeBlockPlaneAlongTheLookingDirection(final GameTestHelper helper) {
+		Map<String, String> planes = new LinkedHashMap<>();
+		planes.put("south yaw 0", planeOf(helper, 0.0F, 0.0F, "x"));
+		planes.put("west yaw 90", planeOf(helper, 90.0F, 0.0F, "z"));
+		planes.put("north yaw 180", planeOf(helper, 180.0F, 0.0F, "x"));
+		planes.put("east yaw 270 as -90", planeOf(helper, -90.0F, 0.0F, "z"));
+		planes.put("down pitch 90", planeOf(helper, 0.0F, 90.0F, "x"));
+		planes.put("up pitch -90", planeOf(helper, 0.0F, -90.0F, "x"));
+		Enchantment veinminer = enchantment(helper, "tool/veinminer");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=veinminer RESULT brokenAtLevel1={} brokenAtLevel5={} slot={} inventory={} "
-				+ "equipment={} selectedItem={} components={} enchantments={} levels={} idKey={} levelRead={}",
-			atOne, atFive, scratchScore(helper, "#probe_slot"), scratchScore(helper, "#probe_inv"),
-			scratchScore(helper, "#probe_equip"), scratchScore(helper, "#probe_sel"),
-			scratchScore(helper, "#probe_comp"), scratchScore(helper, "#probe_ench"),
-			scratchScore(helper, "#probe_lvls"), scratchScore(helper, "#probe_id"),
-			scratchScore(helper, "#probe_lvl")
+			"[BEHAVIOR] test=veinminerPlane RESULT blocksPerSwing={} broken={} planes={} maxLevel={} "
+				+ "anvilCost={} weight={}",
+			VEINMINER_BLOCKS_PER_SWING, planes.size(), planes, veinminer.getMaxLevel(),
+			veinminer.getAnvilCost(), veinminer.getWeight()
 		);
-		helper.assertTrue(atOne > 0, "Veinminer at level 1 broke no neighbour");
-		helper.assertTrue(atFive > atOne, "the cap did not grow: " + atOne + " then " + atFive);
+		helper.assertTrue(
+			veinminer.getMaxLevel() == 1,
+			"veinminer reports " + veinminer.getMaxLevel() + " levels instead of one"
+		);
+
+		for (Map.Entry<String, String> plane : planes.entrySet()) {
+			helper.assertTrue(
+				plane.getValue().equals("x") || plane.getValue().equals("z"),
+				"looking " + plane.getKey() + " broke " + plane.getValue()
+			);
+		}
+
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void veinminerGuardsAgainstItsOwnSecondPulse(final GameTestHelper helper) {
+		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+		BlockPos centre = helper.absolutePos(new BlockPos(3, (int) SPAWN_Y, 3));
+		List<BlockPos> field = oreField(helper, centre);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/veinminer", 1));
+		miner.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
+		miner.setYRot(0.0F);
+		rearmCooldown(helper, miner, "ench_cd_vein", 20);
+		runCommand(helper, miner, "function mod-stella-equips-enchants:veinminer");
+		int afterFirst = brokenIn(helper, field).size();
+		int cooldownAfterFirst = score(helper, miner, "ench_cd_vein");
+		runCommand(helper, miner, "function mod-stella-equips-enchants:veinminer");
+		int afterSecond = brokenIn(helper, field).size();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=veinminerGuard RESULT afterFirstPulse={} afterSecondPulse={} "
+				+ "cooldownAfterFirst={} fieldSize={} expectedPerSwing={}",
+			afterFirst, afterSecond, cooldownAfterFirst, field.size(), VEINMINER_BLOCKS_PER_SWING
+		);
+		helper.assertTrue(
+			afterFirst == VEINMINER_BLOCKS_PER_SWING,
+			"one pulse broke " + afterFirst + " blocks instead of " + VEINMINER_BLOCKS_PER_SWING
+		);
+		helper.assertTrue(
+			afterSecond == VEINMINER_BLOCKS_PER_SWING,
+			"the second pulse broke more: " + afterSecond + " blocks, so the guard let it re-enter"
+		);
 		helper.succeed();
 	}
 
@@ -1004,33 +1108,80 @@ public class EffectEnchantGameTest {
 		return before - wearer.getHealth();
 	}
 
-	private static int veinBlocksBroken(final GameTestHelper helper, final int level) {
+	/** The axis the three broken blocks spread on, or the count when it is not three. */
+	private static String planeOf(
+		final GameTestHelper helper, final float yaw, final float pitch, final String expected
+	) {
 		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
 		BlockPos centre = helper.absolutePos(new BlockPos(3, (int) SPAWN_Y, 3));
-		List<BlockPos> vein = new ArrayList<>();
-		for (BlockPos offset : List.of(
-			new BlockPos(-1, 0, 0), new BlockPos(0, -1, 0), new BlockPos(0, 0, -1),
-			new BlockPos(0, 0, 1), new BlockPos(0, 1, 0), new BlockPos(1, 0, 0)
-		)) {
-			BlockPos ore = centre.offset(offset);
-			helper.getLevel().setBlockAndUpdate(ore, Blocks.DIAMOND_ORE.defaultBlockState());
-			vein.add(ore);
+		List<BlockPos> field = oreField(helper, centre);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/veinminer", 1));
+		miner.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
+		miner.setYRot(yaw);
+		miner.setXRot(pitch);
+		rearmCooldown(helper, miner, "ench_cd_vein", 20);
+		breakBlock(miner, centre, helper.getLevel());
+		List<BlockPos> broken = brokenIn(helper, field);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=veinminerSwing RESULT yaw={} pitch={} expectedAxis={} brokenCount={} broken={}",
+			yaw, pitch, expected, broken.size(), coordinates(centre, broken)
+		);
+
+		if (broken.size() != VEINMINER_BLOCKS_PER_SWING) {
+			return broken.size() + " blocks";
 		}
 
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/veinminer", level));
-		miner.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
-		helper.getLevel().setBlockAndUpdate(centre, Blocks.DIAMOND_ORE.defaultBlockState());
-		rearmCooldown(helper, miner, "ench_cd_vein", 20);
-		probeHeldItemPaths(helper, miner);
-		breakBlock(miner, centre, helper.getLevel());
-		int broken = 0;
-		for (BlockPos ore : vein) {
-			if (!helper.getLevel().getBlockState(ore).is(Blocks.DIAMOND_ORE)) {
-				broken++;
+		Set<String> axes = new LinkedHashSet<>();
+
+		for (BlockPos pos : broken) {
+			BlockPos offset = pos.subtract(centre);
+			axes.add(Math.abs(offset.getX()) + Math.abs(offset.getY()) + Math.abs(offset.getZ()) == 0
+				? "centre"
+				: offset.getX() != 0 ? "x" : offset.getZ() != 0 ? "z" : "y");
+		}
+
+		axes.remove("centre");
+		return axes.size() == 1 && axes.contains(expected) ? expected : axes.toString();
+	}
+
+	private static List<BlockPos> oreField(final GameTestHelper helper, final BlockPos centre) {
+		List<BlockPos> field = new ArrayList<>();
+
+		for (int dx = -2; dx <= 2; dx++) {
+			for (int dy = -1; dy <= 1; dy++) {
+				for (int dz = -2; dz <= 2; dz++) {
+					BlockPos pos = centre.offset(dx, dy, dz);
+					helper.getLevel().setBlockAndUpdate(pos, Blocks.DIAMOND_ORE.defaultBlockState());
+					field.add(pos);
+				}
+			}
+		}
+
+		return field;
+	}
+
+	private static List<BlockPos> brokenIn(final GameTestHelper helper, final List<BlockPos> field) {
+		List<BlockPos> broken = new ArrayList<>();
+
+		for (BlockPos pos : field) {
+			if (!helper.getLevel().getBlockState(pos).is(Blocks.DIAMOND_ORE)) {
+				broken.add(pos);
 			}
 		}
 
 		return broken;
+	}
+
+	private static String coordinates(final BlockPos centre, final List<BlockPos> broken) {
+		List<String> offsets = new ArrayList<>();
+
+		for (BlockPos pos : broken) {
+			BlockPos offset = pos.subtract(centre);
+			offsets.add(offset.getX() + "," + offset.getY() + "," + offset.getZ());
+		}
+
+		java.util.Collections.sort(offsets);
+		return offsets.toString();
 	}
 
 	private static int experienceFromBreaks(final GameTestHelper helper, final int level) {

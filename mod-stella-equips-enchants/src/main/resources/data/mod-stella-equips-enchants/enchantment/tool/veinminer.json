@@ -4,7 +4,7 @@
 	"primary_items": "#mod-stella-equips-enchants:enchantable/veinminer",
 	"slots": ["mainhand"],
 	"weight": 3,
-	"max_level": 5,
+	"max_level": 1,
 	"min_cost": { "base": 10, "per_level_above_first": 8 },
 	"max_cost": { "base": 35, "per_level_above_first": 8 },
 	"anvil_cost": 1,
