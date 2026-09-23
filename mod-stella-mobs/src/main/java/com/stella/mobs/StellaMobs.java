@@ -6,6 +6,7 @@ import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
+import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.WitchPotions;
@@ -47,11 +48,14 @@ public class StellaMobs implements ModInitializer {
 		EscortSquad.register();
 		RiderSquad.register();
 		BossCompanion.register();
+		EvokerStorm.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(EvokerStorm::afterDamage);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
+		ServerTickEvents.END_LEVEL_TICK.register(EvokerStorm::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(StellaMobs::tickBosses);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
