@@ -94,6 +94,16 @@ works on one. They are the standard, not a suggestion.
   `tickInternal`. Register the per-tick work from the test body instead. This cost
   one crashed server on 2026-09-23; the report is in
   `build/run/gameTest/crash-reports/`.
+- A test that writes the global config store leaves a weapon behind it. Restore the
+  previous config in a `finally`, and never pin a value that is not the code
+  default unless the test needs it, because a leak of a non-default value quietly
+  breaks someone else's test. A leak of `roll_chance` 0.0 read as "no shield
+  appeared over 256 seeded rolls", which looks like a gear defect and is not one.
+- Never remove a goal from inside `GoalSelector.tick`. `start()` runs inside the
+  iteration over `availableGoals`, so removing a goal there nulls an entry the loop
+  then dereferences, and the server dies with a null goal. This cost one crashed
+  server on 2026-09-23. To preempt a vanilla goal, add yours at the same rank
+  instead: `availableGoals` is insertion ordered, and a tie never preempts.
 - A suite that slows down has a cause. Find it rather than working around it. The
   boss slice's runs took 2.6 minutes and the storm's 1200 tick window was blamed
   for it. The real cause was a whole-level entity sweep on every level tick, for
@@ -106,6 +116,15 @@ works on one. They are the standard, not a suggestion.
 - One writer per file. Gradle runs serialize; one worker holds the token.
 - Waiting on another worker is a poll, not a vigil. Wait ten minutes, then re-check
   the agents and the task board, and keep useful work moving between polls.
+- Gate before you give the writer its next slice, never after. A writer that has
+  already started the next change leaves the tree mid-edit, and the gate then
+  measures a partial tree. On 2026-09-23 a rerun failed to compile against a
+  half-written test file for the next ability, after a green gate minutes earlier.
+- Deploy every working milestone. After a slice passes the gate and is committed,
+  copy the jar into the Prism instance at
+  `%APPDATA%\PrismLauncher\instances\Fabulously Optimized\minecraft\mods`, then
+  hash the deployed copy and report it. A milestone that is not deployed is not
+  delivered, and oniichan plays from that copy.
 - Every phase gets an independent review by someone other than its author.
 - Record a deviation from a locked plan in the task thread, with its reason.
 - Keep the config editable by hand. An exact entry wins over a generated one,
