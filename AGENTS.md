@@ -94,6 +94,11 @@ works on one. They are the standard, not a suggestion.
   `tickInternal`. Register the per-tick work from the test body instead. This cost
   one crashed server on 2026-09-23; the report is in
   `build/run/gameTest/crash-reports/`.
+- When a test counts neighbours, make the predicate name the **subject**, not the
+  kind. A box query over a shared level plus a predicate that describes what a mob
+  is will count a stranger: four separate flakes in one block were this shape, the
+  escort count, the summoned near list, the boss kit drop and the companion.
+  Counting escorts through the follow goal's leader is the pattern that holds.
 - A test that writes the global config store leaves a weapon behind it. Restore the
   previous config in a `finally`, and never pin a value that is not the code
   default unless the test needs it, because a leak of a non-default value quietly

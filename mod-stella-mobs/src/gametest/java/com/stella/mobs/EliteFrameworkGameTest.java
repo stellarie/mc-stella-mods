@@ -3,6 +3,7 @@ package com.stella.mobs;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
+import com.stella.mobs.behavior.FollowAllyGoal;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.behavior.WitchElite;
 import com.stella.mobs.config.GearConfigParser;
@@ -23,7 +24,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 
@@ -431,7 +434,12 @@ public class EliteFrameworkGameTest {
 	private static List<Zombie> escortsOf(final GameTestHelper helper, final Zombie elite) {
 		List<Zombie> candidates = helper.getLevel()
 			.getEntitiesOfClass(Zombie.class, elite.getBoundingBox().inflate(ESCORT_BOX), candidate -> candidate != elite);
-		List<Zombie> escorts = candidates.stream().filter(EliteState::isSummoned).toList();
+		// The box reaches into neighbouring arenas, and their escorts are summoned too. The escort that
+		// belongs to THIS elite is the one whose follow goal names it, so the count cannot drift.
+		List<Zombie> escorts = candidates.stream()
+			.filter(EliteState::isSummoned)
+			.filter(candidate -> follows(candidate, elite))
+			.toList();
 
 		if (escorts.size() != EscortSquad.ESCORT_COUNT && CANDIDATE_LOGS.getAndIncrement() < CANDIDATE_LOG_CAP) {
 			if (candidates.isEmpty()) {
@@ -462,13 +470,24 @@ public class EliteFrameworkGameTest {
 		return escorts;
 	}
 
+	/** True when this mob carries the follow goal bound to that elite, which is the escort's identity. */
+	private static boolean follows(final Mob candidate, final Mob elite) {
+		for (WrappedGoal wrapped : candidate.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.getGoal() instanceof FollowAllyGoal ally && ally.leader() == elite) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	/** The same identity rule for the summoned-mob test: it counts escorts, not the neighbourhood. */
 	private static List<Zombie> summonedNear(final GameTestHelper helper, final Zombie subject) {
 		return helper.getLevel()
 			.getEntitiesOfClass(
 				Zombie.class,
 				subject.getBoundingBox().inflate(ESCORT_BOX),
-				candidate -> candidate != subject && EliteState.isSummoned(candidate)
+				candidate -> candidate != subject && EliteState.isSummoned(candidate) && follows(candidate, subject)
 			);
 	}
 
