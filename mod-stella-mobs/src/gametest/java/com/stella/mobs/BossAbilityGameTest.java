@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.DecayAuraGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
@@ -32,6 +33,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
+import net.minecraft.world.entity.monster.Enderman;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -43,6 +45,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
@@ -254,6 +257,80 @@ public class BossAbilityGameTest {
 			GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
 		});
 	}
+	@GameTest(maxTicks = 400)
+	@SuppressWarnings("removal")
+	public void voidDragPullsAPlayerAndThenHoldsItsCooldown(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Enderman boss = blessed(helper, EntityTypes.ENDERMAN, 3, 1, 3);
+		player.setPos(boss.getX() + 20.0, boss.getY(), boss.getZ());
+		double[] before = {player.distanceTo(boss)};
+
+		helper.runAfterDelay(20L, () -> {
+			strike(helper, boss, player);
+			double afterFirst = player.distanceTo(boss);
+			boolean blinded = player.hasEffect(MobEffects.BLINDNESS);
+			// The second strike lands inside the cooldown and must move nobody.
+			strike(helper, boss, player);
+			double afterSecond = player.distanceTo(boss);
+
+			helper.assertTrue(before[0] > 15.0, "the player did not start far enough away at " + before[0]);
+			helper.assertTrue(afterFirst < 3.0, "the drag left the player " + afterFirst + " blocks away");
+			helper.assertTrue(blinded, "the dragged player was not blinded");
+			helper.assertValueEqual(
+				Double.valueOf(afterSecond), Double.valueOf(afterFirst), "distance after a hit inside the cooldown"
+			);
+			result(
+				"voidDrag",
+				"distanceBefore=" + Math.round(before[0]) + " distanceAfter="
+					+ String.format(java.util.Locale.ROOT, "%.1f", afterFirst) + " blinded=" + blinded
+					+ " cooldownBlocked=true cooldownTicks=" + VoidDrag.COOLDOWN_TICKS
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 400)
+	@SuppressWarnings("removal")
+	public void voidDragPullsACreativePlayer(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Enderman boss = blessed(helper, EntityTypes.ENDERMAN, 3, 1, 3);
+		player.setPos(boss.getX() + 20.0, boss.getY(), boss.getZ());
+		GameType mode = player.gameMode();
+
+		helper.runAfterDelay(20L, () -> {
+			strike(helper, boss, player);
+			double after = player.distanceTo(boss);
+
+			helper.assertTrue(mode == GameType.CREATIVE, "the mock player was not creative, so this proves nothing");
+			helper.assertTrue(after < 3.0, "the creative player stayed " + after + " blocks away");
+			result("voidDragCreative", "gameMode=" + mode + " distanceAfter=" + Math.round(after) + " dragged=true");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aHandPromotedBossCarriesAWorkingShield(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		WitherSkeleton boss = blessed(helper, EntityTypes.WITHER_SKELETON, 3, 1, 3);
+		boolean shield = boss.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS);
+		int shieldGoals = BossAbilities.copiesOf(boss, ShieldUseGoal.class);
+
+		helper.assertTrue(shield, "the hand promoted boss carries no shield in its off hand");
+		helper.assertValueEqual(
+			Integer.valueOf(shieldGoals), Integer.valueOf(1),
+			"ShieldUseGoal goals on a hand promoted boss, which the installer owes it"
+		);
+		result("handPromotedShield", "shield=" + shield + " shieldGoals=" + shieldGoals);
+		helper.succeed();
+	}
+
+	private static void strike(final GameTestHelper helper, final Mob boss, final ServerPlayer player) {
+		boss.setInvulnerableTime(0);
+		boss.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1.0F);
+	}
+
 	private static void prepare(final GameTestHelper helper, final String config) {
 		GearConfigStore.set(GearConfigParser.parse(config));
 		helper.setTime(Arena.NIGHT_TIME);

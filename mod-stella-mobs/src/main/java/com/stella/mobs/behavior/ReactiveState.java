@@ -40,6 +40,7 @@ public final class ReactiveState {
 	private boolean witchInvisibilityCast;
 	private boolean elite;
 	private @Nullable ServerBossEvent bossBar;
+	private long voidDragReadyTick;
 	private boolean companionSpawned;
 	private @Nullable UUID companionId;
 
@@ -206,6 +207,15 @@ public final class ReactiveState {
 
 	public void setBossBar(final @Nullable ServerBossEvent bossBar) {
 		this.bossBar = bossBar;
+	}
+
+	/** R25 style cooldown for the void drag: transient, because a reload may arm it again. */
+	public long getVoidDragReadyTick() {
+		return this.voidDragReadyTick;
+	}
+
+	public void setVoidDragReadyTick(final long voidDragReadyTick) {
+		this.voidDragReadyTick = voidDragReadyTick;
 	}
 
 	/** B05: one companion per boss, so a re-queue cannot double the squad. */

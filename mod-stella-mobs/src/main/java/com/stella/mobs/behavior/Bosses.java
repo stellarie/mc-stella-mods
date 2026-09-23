@@ -217,6 +217,9 @@ public final class Bosses {
 			mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
 		}
 
+		// A boss promoted by hand reaches this after the installer, so the shield goal is invited here too.
+		BehaviorInstaller.installShield(mob);
+
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			if (!mob.getItemBySlot(slot).isEmpty()) {
 				mob.setDropChance(slot, DROP_CHANCE);
