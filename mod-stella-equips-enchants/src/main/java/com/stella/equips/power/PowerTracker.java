@@ -44,10 +44,7 @@ public final class PowerTracker {
 		}
 
 		if (!changed && serverTicks % config.tracker().heartbeatTicks() == 0) {
-			PowerLog.line(
-				"[BEHAVIOR] power heartbeat tick=%d players=%d",
-				serverTicks, server.getPlayerList().getPlayers().size()
-			);
+			PowerLog.recorder().powerHeartbeat(serverTicks, server.getPlayerList().getPlayers().size());
 		}
 	}
 
@@ -62,8 +59,7 @@ public final class PowerTracker {
 			return false;
 		}
 
-		PowerLog.line(
-			"[BEHAVIOR] power level player=%s level=%d from=%d survivabilityPoints=%d combatPoints=%.2f",
+		PowerLog.recorder().powerLevel(
 			player.getScoreboardName(), level, state.level(), survivabilityPoints, state.combatPoints()
 		);
 		return true;
@@ -85,9 +81,8 @@ public final class PowerTracker {
 		PowerState state = PowerState.get(player);
 		double total = state.combatPoints() + awarded;
 		PowerState.set(player, new PowerState(total, state.level()));
-		PowerLog.line(
-			"[BEHAVIOR] power kill mob=%s boss=%s mobLevel=%d playerLevel=%d multiplier=%.3f points=%.3f totalCombatPoints=%.3f",
-			entityType, boss, mobLevel, playerLevel, multiplier, awarded, total
+		PowerLog.recorder().powerKill(
+			entityType.toString(), boss, mobLevel, playerLevel, multiplier, awarded, total
 		);
 	}
 
