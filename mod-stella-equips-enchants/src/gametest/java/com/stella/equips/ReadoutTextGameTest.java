@@ -44,6 +44,31 @@ public class ReadoutTextGameTest {
 	}
 
 	@GameTest
+	public void theHealthTextIsTheLevelPrefixTheNameAndTheHealth(final GameTestHelper helper) {
+		float health = 13.5F;
+		float maxHealth = 20.0F;
+		String expected = "[" + MOB_LEVEL + "] " + MOB_NAME + " 14/20";
+		Component text = ReadoutText.build(
+			MOB_LEVEL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN, health, maxHealth
+		);
+		String rendered = text.getString();
+		helper.assertTrue(
+			expected.equals(rendered),
+			"a mob at " + health + " of " + maxHealth + " rendered as '" + rendered + "' instead of '" + expected + "'"
+		);
+		helper.assertTrue(
+			ReadoutText.shown(0.5F) == 1,
+			"a mob at half a health point rendered as " + ReadoutText.shown(0.5F)
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=readoutTextHealth RESULT mobLevel={} mobName={} health={} maxHealth={} text={} "
+				+ "halfShown={}",
+			MOB_LEVEL, MOB_NAME, health, maxHealth, rendered, ReadoutText.shown(0.5F)
+		);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void everyBandCarriesItsOwnColorOverTheWholeLine(final GameTestHelper helper) {
 		Map<PowerCurve.Band, Integer> measured = new LinkedHashMap<>();
 		String broken = "none";
