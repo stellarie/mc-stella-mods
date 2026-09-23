@@ -1,0 +1,68 @@
+{
+	"type": "minecraft:chest",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:book",
+					"modifier": {
+						"type": "minecraft:enchant_with_levels",
+						"levels": {
+							"type": "minecraft:uniform",
+							"min": 1,
+							"max": 5
+						},
+						"options": [
+							"mod-stella-equips-enchants:armor/asbestos",
+							"mod-stella-equips-enchants:armor/bulwark",
+							"mod-stella-equips-enchants:armor/deepdiver",
+							"mod-stella-equips-enchants:armor/farsight",
+							"mod-stella-equips-enchants:armor/featherfall",
+							"mod-stella-equips-enchants:armor/fleetfoot",
+							"mod-stella-equips-enchants:armor/guarding_ward",
+							"mod-stella-equips-enchants:armor/insulated",
+							"mod-stella-equips-enchants:armor/reactive_plating",
+							"mod-stella-equips-enchants:armor/second_wind",
+							"mod-stella-equips-enchants:armor/warded",
+							"mod-stella-equips-enchants:bow/arrow_shower",
+							"mod-stella-equips-enchants:bow/bodkin",
+							"mod-stella-equips-enchants:bow/bomb_arrows",
+							"mod-stella-equips-enchants:bow/longshot",
+							"mod-stella-equips-enchants:bow/marksman",
+							"mod-stella-equips-enchants:bow/rangers_mark",
+							"mod-stella-equips-enchants:crossbow/quickdraw",
+							"mod-stella-equips-enchants:crossbow/repeater",
+							"mod-stella-equips-enchants:crossbow/siege_bolt",
+							"mod-stella-equips-enchants:elytra/glider",
+							"mod-stella-equips-enchants:shield/aegis",
+							"mod-stella-equips-enchants:shield/shield_bash",
+							"mod-stella-equips-enchants:tool/anglers_fortune",
+							"mod-stella-equips-enchants:tool/blockfeast",
+							"mod-stella-equips-enchants:tool/burrow",
+							"mod-stella-equips-enchants:tool/green_thumb",
+							"mod-stella-equips-enchants:tool/harvester",
+							"mod-stella-equips-enchants:tool/lumberjack",
+							"mod-stella-equips-enchants:tool/prospector",
+							"mod-stella-equips-enchants:weapon/aegis_breaker",
+							"mod-stella-equips-enchants:weapon/arachnids_bane",
+							"mod-stella-equips-enchants:weapon/cleave",
+							"mod-stella-equips-enchants:weapon/feathered_edge",
+							"mod-stella-equips-enchants:weapon/hooked",
+							"mod-stella-equips-enchants:weapon/momentum",
+							"mod-stella-equips-enchants:weapon/reach",
+							"mod-stella-equips-enchants:weapon/returning",
+							"mod-stella-equips-enchants:weapon/shockwave",
+							"mod-stella-equips-enchants:weapon/slam",
+							"mod-stella-equips-enchants:weapon/stormcaller",
+							"mod-stella-equips-enchants:weapon/stunning_blow",
+							"mod-stella-equips-enchants:weapon/tidecaller",
+							"mod-stella-equips-enchants:weapon/wounding"
+						]
+					}
+				}
+			]
+		}
+	]
+}
