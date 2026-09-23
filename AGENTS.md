@@ -104,11 +104,24 @@ works on one. They are the standard, not a suggestion.
   refreshes. A test that needs elapsed ticks advances the clock itself or asserts
   on framework tick counts, and a cooldown keyed on `getGameTime()` cannot be
   asserted headlessly. This single fact caused four intermittent tests.
+- When an ability spawns something, have it **record the identities it spawned** and
+  assert against that record. A box query over the shared level admits a neighbour's
+  mob and loses its own to a despawn, while a recorded set can do neither. Five
+  separate flakes were that one shape: the escorts, the brood, the reinforcements,
+  the war call and its band. Record only what was actually added, so the record is
+  what the ability produced rather than what it intended.
+- `succeedWhen` treats a callback that **returns** as success, so an early `return` used
+  as "not yet" makes the test pass on its first tick and assert nothing. A wait inside
+  `succeedWhen` must fail loudly until the condition holds, and a window that has to
+  elapse belongs in `runAfterDelay` with the sampling in `onEachTick`. This passed a
+  five-run gate vacuously on 2026-09-23: the only evidence was the missing summary
+  line, because a test that never reaches its own log line never ran its clause.
 - When a test counts neighbours, make the predicate name the **subject**, not the
   kind. A box query over a shared level plus a predicate that describes what a mob
-  is will count a stranger: four separate flakes in one block were this shape, the
-  escort count, the summoned near list, the boss kit drop and the companion.
-  Counting escorts through the follow goal's leader is the pattern that holds.
+  is will count a stranger: five separate flakes were this shape, the escort count,
+  the summoned near list, the boss kit drop, the companion and the rider. Counting
+  escorts through the follow goal's leader is the pattern that holds, and so is
+  reading the summon flag, which is how a mod rider is told from vanilla's jockey.
 - A test that writes the global config store leaves a weapon behind it. Restore the
   previous config in a `finally`, and never pin a value that is not the code
   default unless the test needs it, because a leak of a non-default value quietly
