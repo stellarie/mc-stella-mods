@@ -15,4 +15,8 @@ scoreboard objectives add ench_cd_cloud dummy
 scoreboard objectives add ench_cd_vein dummy
 scoreboard objectives add ench_cd_echo dummy
 scoreboard objectives add ench_cd_yield dummy
+scoreboard objectives add ench_cd_night dummy
+scoreboard objectives add ench_cd_berserk dummy
+scoreboard objectives add ench_berserk_tier dummy
+scoreboard objectives add ench_cd_regen dummy
 scoreboard players set #five ench_scratch 5

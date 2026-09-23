@@ -1,0 +1,57 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.curse.sureshot"
+	},
+	"supported_items": "#minecraft:enchantable/leg_armor",
+	"primary_items": "#minecraft:enchantable/leg_armor",
+	"slots": [
+		"legs"
+	],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"max_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:damage": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": 2.0,
+						"per_level_above_first": 0.1
+					}
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_projectile": true
+					}
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": -1.0,
+						"per_level_above_first": -0.05
+					}
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_projectile": false
+					}
+				}
+			}
+		]
+	}
+}

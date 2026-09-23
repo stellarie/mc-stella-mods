@@ -1,0 +1,51 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.curse.voidstep"
+	},
+	"supported_items": "#minecraft:enchantable/leg_armor",
+	"primary_items": "#minecraft:enchantable/leg_armor",
+	"slots": [
+		"legs"
+	],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"max_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:damage_immunity": [
+			{
+				"effect": {},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"tags": [
+							{
+								"expected": true,
+								"id": "#minecraft:is_fall"
+							}
+						]
+					}
+				}
+			}
+		],
+		"minecraft:attributes": [
+			{
+				"attribute": "minecraft:max_health",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": -0.1,
+					"per_level_above_first": -0.01
+				},
+				"operation": "add_multiplied_total",
+				"id": "mod-stella-equips-enchants:curse/voidstep_cost"
+			}
+		]
+	}
+}

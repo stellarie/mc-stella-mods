@@ -1,0 +1,45 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.curse.mirewalker"
+	},
+	"supported_items": "#minecraft:enchantable/foot_armor",
+	"primary_items": "#minecraft:enchantable/foot_armor",
+	"slots": [
+		"feet"
+	],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"max_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"attribute": "minecraft:water_movement_efficiency",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 0.6,
+					"per_level_above_first": 0.01
+				},
+				"operation": "add_value",
+				"id": "mod-stella-equips-enchants:curse/mirewalker_gain"
+			},
+			{
+				"attribute": "minecraft:movement_speed",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": -0.01,
+					"per_level_above_first": -0.001
+				},
+				"operation": "add_value",
+				"id": "mod-stella-equips-enchants:curse/mirewalker_cost"
+			}
+		]
+	}
+}

@@ -1,0 +1,23 @@
+{
+	"description": { "translate": "enchantment.probe.both_wear" },
+	"supported_items": "#minecraft:enchantable/durability",
+	"primary_items": "#minecraft:enchantable/durability",
+	"slots": ["any"],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": { "base": 1, "per_level_above_first": 0 },
+	"max_cost": { "base": 1, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:item_damage": [
+			{
+				"effect": { "type": "minecraft:multiply", "factor": 2.0 }
+			}
+		],
+		"minecraft:hit_block": [
+			{
+				"effect": { "type": "minecraft:change_item_damage", "amount": 1 }
+			}
+		]
+	}
+}
