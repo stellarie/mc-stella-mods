@@ -88,22 +88,37 @@ public final class SnowGolemGameTest {
 		ServerLevel level = helper.getLevel();
 		SnowGolem sheltered = helper.spawnMob(EntityTypes.SNOW_GOLEM, 4, 1, 4).spawn();
 		sheltered.setPersistenceRequired();
+		boolean[] anchored = new boolean[1];
+		long[] shelterTick = new long[1];
+		float[] healthAtShelter = new float[1];
 
-		helper.runAfterDelay(WINDOW_TICKS, () -> {
-			boolean skyOverHead = level.canSeeSky(sheltered.blockPosition());
+		// Sampling runs from the test body, and the window starts at the observable: a tick of melting
+		// before the roof counts would read as one missing health point, which is the setup, not the clause.
+		helper.onEachTick(() -> {
+			if (!anchored[0] && !level.canSeeSky(sheltered.blockPosition())) {
+				anchored[0] = true;
+				shelterTick[0] = helper.getTick();
+				healthAtShelter[0] = sheltered.getHealth();
+			}
+		});
+
+		helper.runAfterDelay(WINDOW_TICKS * 2L, () -> {
+			helper.assertTrue(anchored[0], "the golem was never observably sheltered, so no window started");
+			long span = helper.getTick() - shelterTick[0];
+			helper.assertTrue(span >= WINDOW_TICKS, "the sheltered window was only " + span + " ticks long");
 			boolean shelter = SnowGolemCold.keepsItsSnow(sheltered);
 			boolean meltsHere = melts(level, sheltered);
 			result(
 				"keepsItsSnow",
-				"sheltered=" + shelter + " canSeeSky=" + skyOverHead + " melts=" + meltsHere
-					+ " health=" + sheltered.getHealth() + " max=" + sheltered.getMaxHealth()
+				"sheltered=" + shelter + " canSeeSky=" + level.canSeeSky(sheltered.blockPosition()) + " melts="
+					+ meltsHere + " health=" + sheltered.getHealth() + " healthAtShelter=" + healthAtShelter[0]
+					+ " max=" + sheltered.getMaxHealth() + " span=" + span
 			);
 			helper.assertTrue(meltsHere, "the world does not melt a snow golem here, so the roof proves nothing");
-			helper.assertFalse(skyOverHead, "the roof left the golem under the sky, so nothing is sheltered");
 			helper.assertTrue(shelter, "the shelter rule says this golem is not indoors");
 			helper.assertValueEqual(
-				Float.valueOf(sheltered.getHealth()), Float.valueOf(sheltered.getMaxHealth()),
-				"a sheltered golem's health after " + WINDOW_TICKS + " ticks"
+				Float.valueOf(sheltered.getHealth()), Float.valueOf(healthAtShelter[0]),
+				"a sheltered golem's health over " + span + " ticks from the tick it was sheltered"
 			);
 			helper.succeed();
 		});

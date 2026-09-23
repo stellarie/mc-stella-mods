@@ -11,6 +11,7 @@ import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.GolemElite;
 import com.stella.mobs.behavior.PiglinSmash;
+import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
@@ -56,6 +57,7 @@ public class StellaMobs implements ModInitializer {
 		BossCompanion.register();
 		Bosses.register();
 		EvokerStorm.register();
+		PiglinWarCall.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
@@ -65,6 +67,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(GolemElite::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinSmash::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinWarCall::afterDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);

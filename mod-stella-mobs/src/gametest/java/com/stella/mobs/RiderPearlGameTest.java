@@ -97,20 +97,22 @@ public class RiderPearlGameTest {
 		Spider spider = spawnSpider(helper, RIDERS_ALWAYS);
 
 		helper.succeedWhen(() -> {
-			Skeleton rider = skeletonRider(helper, spider);
-			helper.assertTrue(rider != null, "the spider never gained a rider: " + describe(spider));
+			// Vanilla's own jockey can be the passenger, so the clause is the mod's rider and the summon
+			// flag is what tells them apart. The raw passenger count stays in the log for the next red.
+			Skeleton rider = summonedRider(spider);
 			result(
 				"riderIsSeatedOnTheMount",
-				"rider=" + name(rider.getType()) + " seated=" + (rider.getVehicle() == spider)
-					+ " alive=" + rider.isAlive() + " distance=" + spider.distanceTo(rider)
+				"passengers=" + spider.getPassengers().size() + " modRider="
+					+ (rider == null ? "none" : name(rider.getType())) + " seated="
+					+ (rider != null && rider.getVehicle() == spider) + " distance="
+					+ (rider == null ? -1.0 : spider.distanceTo(rider))
 			);
-			helper.assertTrue(rider.getVehicle() == spider, "the rider is not seated on the spider");
-			helper.assertTrue(rider.isAlive(), "the rider is not alive");
-			// The flag the negative case keys on: this mod's riders are summoned before they are added,
-			// which is what tells them apart from vanilla's own spider jockey.
 			helper.assertTrue(
-				EliteState.isSummoned(rider), "the seated rider is not flagged summoned, so the flag is not a rider mark"
+				rider != null,
+				"no summoned rider took a seat within " + MAX_TICKS + " ticks: " + describe(spider)
 			);
+			helper.assertTrue(rider.isAlive(), "the rider is not alive");
+			helper.assertTrue(rider.getVehicle() == spider, "the rider is not seated on the spider");
 			helper.assertTrue(
 				spider.distanceTo(rider) < 1.5, "the rider is " + spider.distanceTo(rider) + " blocks from the spider"
 			);
@@ -293,6 +295,20 @@ public class RiderPearlGameTest {
 		target.setPersistenceRequired();
 		target.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
 		return target;
+	}
+
+	/**
+	 * This mod's rider: a passenger that carries the summon flag. Vanilla's jockey does not, and no
+	 * radius fallback is used, because a skeleton standing nearby is not a seated rider.
+	 */
+	private static Skeleton summonedRider(final Spider spider) {
+		for (var passenger : spider.getPassengers()) {
+			if (passenger instanceof Skeleton skeleton && EliteState.isSummoned(skeleton)) {
+				return skeleton;
+			}
+		}
+
+		return null;
 	}
 
 	private static boolean hasSkeletonRider(final GameTestHelper helper, final Spider spider) {

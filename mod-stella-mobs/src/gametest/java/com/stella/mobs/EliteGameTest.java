@@ -25,6 +25,7 @@ public class EliteGameTest {
 		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 2).spawn();
 
 		EliteState.setSummoned(zombie, true);
+		EliteState.setWarCallUsed(zombie, true);
 		EliteState.markElite(zombie, GearTier.NETHERITE);
 		ReactiveState.get(zombie).setShieldReadyTick(TIMING_SENTINEL);
 
@@ -33,19 +34,21 @@ public class EliteGameTest {
 		EliteState decoded = roundTrip(EliteState.get(zombie));
 
 		StellaMobs.LOGGER.info(
-			"[BEHAVIOR] test={} RESULT eliteStorePersists={} timingStorePersists={} summoned={} elite={} tier={}",
+			"[BEHAVIOR] test={} RESULT eliteStorePersists={} timingStorePersists={} summoned={} elite={} tier={} warCallUsed={}",
 			TEST,
 			eliteStorePersists,
 			timingStorePersists,
 			decoded.summoned(),
 			decoded.elite(),
-			decoded.eliteTier().orElse(null)
+			decoded.eliteTier().orElse(null),
+			decoded.warCallUsed()
 		);
 
 		helper.assertTrue(eliteStorePersists, "the elite state attachment is not persistent");
 		helper.assertFalse(timingStorePersists, "the timing state attachment became persistent");
 		helper.assertTrue(decoded.summoned(), "summoned did not survive the codec round trip");
 		helper.assertTrue(decoded.elite(), "elite did not survive the codec round trip");
+		helper.assertTrue(decoded.warCallUsed(), "warCallUsed did not survive the codec round trip");
 		helper.assertValueEqual(decoded.eliteTier().orElse(null), GearTier.NETHERITE, "the elite tier after a round trip");
 		helper.assertValueEqual(
 			Long.valueOf(ReactiveState.get(zombie).getShieldReadyTick()),

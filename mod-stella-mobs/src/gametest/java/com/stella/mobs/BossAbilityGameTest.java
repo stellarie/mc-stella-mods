@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.KeepDistanceGoal;
@@ -27,6 +28,7 @@ import com.stella.mobs.config.GearConfigStore;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -128,6 +130,32 @@ public class BossAbilityGameTest {
 				"boss_level_bonus": 1.0
 			}
 		}""";
+	/** R24: the called piglins are plain, so the band and its kit are the only variables. */
+	private static final String NO_BRUTE = """
+		{
+			"entities": {},
+			"rolls": {
+				"roll_chance": 0.0,
+				"drop_chance_multiplier": 1.0,
+				"elite_chance": 0.0,
+				"boss_chance": 0.0,
+				"war_call_brute_chance": 0.0
+			}
+		}""";
+	/** R24: every called piglin arrives as an elite brute instead. */
+	private static final String ALWAYS_BRUTE = """
+		{
+			"entities": {},
+			"rolls": {
+				"roll_chance": 0.0,
+				"drop_chance_multiplier": 1.0,
+				"elite_chance": 0.0,
+				"boss_chance": 0.0,
+				"war_call_brute_chance": 1.0
+			}
+		}""";
+	/** Wide enough for the scatter, tight enough to exclude the next test's structure. */
+	private static final double WAR_BAND_BOX = 12.0;
 
 	@GameTest(maxTicks = 200)
 	public void aHandBlessedBossCarriesItsAbility(final GameTestHelper helper) {
@@ -1258,6 +1286,160 @@ public class BossAbilityGameTest {
 	private static boolean isHarming(final Arrow arrow) {
 		PotionContents contents = arrow.getPickupItemStackOrigin().get(DataComponents.POTION_CONTENTS);
 		return contents != null && contents.potion().orElse(null) == Potions.HARMING;
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void warCallSummonsATenToFifteenBand(final GameTestHelper helper) {
+		prepare(helper, NO_BRUTE);
+		ServerPlayer attacker = helper.makeMockServerPlayerInLevel();
+		Piglin caller = warCaller(helper);
+		call(helper, caller, attacker);
+
+		helper.succeedWhen(() -> {
+			List<UUID> band = PiglinWarCall.bandOf(caller);
+			List<Mob> live = members(helper, caller, band);
+			int summoned = 0;
+			int brutes = 0;
+			boolean kitted = live.size() > 0;
+
+			for (Mob member : live) {
+				if (EliteState.isSummoned(member)) {
+					summoned++;
+				}
+
+				if (member instanceof PiglinBrute) {
+					brutes++;
+				}
+
+				ItemStack chest = member.getItemBySlot(EquipmentSlot.CHEST);
+				kitted &= Elite.KIT_TIERS.stream().anyMatch(tier -> chest.is(tier.armorFor(EquipmentSlot.CHEST)))
+					&& chest.isEnchanted();
+			}
+
+			helper.assertTrue(
+				band.size() >= PiglinWarCall.MIN_SUMMONS && band.size() <= PiglinWarCall.MAX_SUMMONS,
+				"the war call recorded " + band.size() + " piglins, outside ten to fifteen"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(summoned), Integer.valueOf(live.size()), "summoned piglins among the recorded band"
+			);
+			helper.assertValueEqual(Integer.valueOf(brutes), Integer.valueOf(0), "brutes at a pinned chance of 0.0");
+			helper.assertTrue(kitted, "a called piglin carries no enchanted diamond or netherite chest");
+			result(
+				"warCallBand",
+				"recorded=" + band.size() + " live=" + live.size() + " summoned=" + summoned + " brutes=" + brutes
+					+ " kitTiers=" + Elite.KIT_TIERS.size() + " bruteChance=" + bruteChance()
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void warCallFiresOnceOnly(final GameTestHelper helper) {
+		prepare(helper, NO_BRUTE);
+		ServerPlayer attacker = helper.makeMockServerPlayerInLevel();
+		Piglin caller = warCaller(helper);
+		call(helper, caller, attacker);
+		int[] first = new int[1];
+
+		helper.runAfterDelay(5L, () -> first[0] = PiglinWarCall.bandSize(caller));
+		helper.runAfterDelay(10L, () -> call(helper, caller, attacker));
+		helper.runAfterDelay(40L, () -> {
+			int second = PiglinWarCall.bandSize(caller);
+			boolean spent = EliteState.isWarCallUsed(caller);
+			result(
+				"warCallOnce",
+				"first=" + first[0] + " second=" + second + " warCallUsed=" + spent + " delta=" + (second - first[0])
+			);
+			helper.assertTrue(first[0] >= PiglinWarCall.MIN_SUMMONS, "the first call recorded only " + first[0]);
+			helper.assertValueEqual(
+				Integer.valueOf(second), Integer.valueOf(first[0]), "the recorded band after a second damage event"
+			);
+			helper.assertTrue(spent, "the war call flag was never set");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void warCallPinnedBruteChanceArrivesElite(final GameTestHelper helper) {
+		prepare(helper, ALWAYS_BRUTE);
+		ServerPlayer attacker = helper.makeMockServerPlayerInLevel();
+		Piglin caller = warCaller(helper);
+		call(helper, caller, attacker);
+
+		helper.succeedWhen(() -> {
+			List<UUID> band = PiglinWarCall.bandOf(caller);
+			List<Mob> live = members(helper, caller, band);
+			int summoned = 0;
+			int elite = 0;
+
+			for (Mob member : live) {
+				summoned += EliteState.isSummoned(member) ? 1 : 0;
+				elite += Elite.isElite(member) ? 1 : 0;
+			}
+
+			helper.assertTrue(
+				band.size() >= PiglinWarCall.MIN_SUMMONS,
+				"the war call recorded only " + band.size()
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(elite), Integer.valueOf(band.size()),
+				"elite brutes against the recorded band at a pinned 1.0"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(summoned), Integer.valueOf(live.size()),
+				"summoned members among the recorded band, so none brought escorts"
+			);
+			result(
+				"warCallBrutes",
+				"recorded=" + band.size() + " live=" + live.size() + " elite=" + elite + " summoned=" + summoned
+					+ " bruteChance=" + bruteChance()
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void warCallNeedsDamageFromAPlayerOrAMob(final GameTestHelper helper) {
+		prepare(helper, NO_BRUTE);
+		Piglin caller = warCaller(helper);
+		helper.runAfterDelay(20L, () -> {
+			int band = PiglinWarCall.bandSize(caller);
+			boolean spent = EliteState.isWarCallUsed(caller);
+			result("warCallUntouched", "recorded=" + band + " warCallUsed=" + spent);
+			helper.assertValueEqual(Integer.valueOf(band), Integer.valueOf(0), "the band with no attacker at all");
+			helper.assertFalse(spent, "the flag was set with no attacker");
+			helper.succeed();
+		});
+	}
+
+	/** R24: an elite piglin is the caller, marked by hand so the fixture does not depend on the roll. */
+	private static Piglin warCaller(final GameTestHelper helper) {
+		Piglin caller = ordinary(helper, EntityTypes.PIGLIN, 3, 3, 3);
+		Elite.mark(caller, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+		return caller;
+	}
+
+	private static void call(final GameTestHelper helper, final Piglin caller, final ServerPlayer attacker) {
+		caller.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(attacker), 1.0F);
+	}
+
+	/**
+	 * The recorded band, found in the level by identity. The box only locates the members it names; the
+	 * set decides who is in the band, so a neighbouring test's summoned piglin can never be counted.
+	 */
+	private static List<Mob> members(final GameTestHelper helper, final Piglin caller, final List<UUID> band) {
+		return helper.getLevel().getEntitiesOfClass(
+			Mob.class, caller.getBoundingBox().inflate(WAR_BAND_BOX), member -> band.contains(member.getUUID())
+		);
+	}
+
+	private static double bruteChance() {
+		return GearConfigStore.get()
+			.rollFor(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(EntityTypes.PIGLIN))
+			.warCallBruteChance();
 	}
 
 	private static void result(final String test, final String detail) {

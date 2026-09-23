@@ -87,7 +87,8 @@ public final class GearConfigParser {
 				readChance(rollsObject.get("elite_chance")),
 				readChance(rollsObject.get("boss_chance")),
 				readMultiplier(rollsObject.get("boss_health_multiplier")),
-				readMultiplier(rollsObject.get("boss_level_bonus"))
+				readMultiplier(rollsObject.get("boss_level_bonus")),
+				readChance(rollsObject.get("war_call_brute_chance"))
 			);
 			JsonElement rollEntities = rollsObject.get("entities");
 
@@ -113,7 +114,8 @@ public final class GearConfigParser {
 							readChance(override.get("elite_chance")),
 							readChance(override.get("boss_chance")),
 							readMultiplier(override.get("boss_health_multiplier")),
-							readMultiplier(override.get("boss_level_bonus"))
+							readMultiplier(override.get("boss_level_bonus")),
+							readChance(override.get("war_call_brute_chance"))
 						)
 					);
 				}
