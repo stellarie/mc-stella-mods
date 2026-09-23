@@ -47,6 +47,13 @@ public final class PowerConfigStore {
 			"attributes": {
 				"distance": { "max_health": 0.5, "armor": 0.24, "knockback_resistance": 0.006 },
 				"combat": { "attack_damage": 0.03, "attack_speed": 0.004 }
+			},
+			"readout": {
+				"enabled_by_default": true,
+				"radius": 32,
+				"max_per_player": 40,
+				"height_offset": 0.9,
+				"view_range": 0.5
 			}
 		}""";
 	private static volatile PowerConfig config;

@@ -106,7 +106,7 @@ public final class PowerTracker {
 		);
 	}
 
-	private static int mobLevel(final LivingEntity entity, final PowerConfig config) {
+	public static int mobLevel(final LivingEntity entity, final PowerConfig config) {
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return 0;
 		}
@@ -115,7 +115,7 @@ public final class PowerTracker {
 		return PowerCurve.mobLevel((int) Math.floor(scaled), entity.getBlockY(), config);
 	}
 
-	private static int playerLevel(final ServerPlayer player, final PowerConfig config) {
+	public static int playerLevel(final ServerPlayer player, final PowerConfig config) {
 		PowerState state = PowerState.get(player);
 		return PowerCurve.levelFor(
 			survivabilityPoints(player, config) + (long) Math.floor(state.combatPoints()), config

@@ -15,7 +15,8 @@ public record PowerConfig(
 	XpMultiplier xpMultiplier,
 	Bands bands,
 	Tracker tracker,
-	Attributes attributes
+	Attributes attributes,
+	Readout readout
 ) {
 	public record PointsPerLevel(long base, long perLevel) {
 	}
@@ -71,5 +72,14 @@ public record PowerConfig(
 	}
 
 	public record Combat(double attackDamage, double attackSpeed) {
+	}
+
+	public record Readout(
+		boolean enabledByDefault,
+		double radius,
+		int maxPerPlayer,
+		double heightOffset,
+		double viewRange
+	) {
 	}
 }
