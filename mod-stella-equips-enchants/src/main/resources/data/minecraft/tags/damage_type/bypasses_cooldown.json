@@ -2,6 +2,8 @@
 	"values": [
 		"mod-stella-equips-enchants:enchant_bonus",
 		"mod-stella-equips-enchants:siege_bolt",
-		"mod-stella-equips-enchants:aegis_breaker"
+		"mod-stella-equips-enchants:aegis_breaker",
+		"minecraft:freeze",
+		"minecraft:magic"
 	]
 }

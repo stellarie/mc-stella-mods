@@ -34,19 +34,28 @@ public class EnchantmentLevelGameTest {
 	private static final int LEVEL_FIVE = 5;
 
 	/**
-	 * Enchantments with no lever a level can reach: eight whose effect is
-	 * `run_function` and two whose effect is a `damage_immunity` flag. second_wind
-	 * is one of the eight, and its only number is `periodic_tick` inside a
-	 * predicate, which no level reaches either.
+	 * Enchantments with no lever a level can reach: thirteen whose effect is
+	 * `run_function`, three whose effect is a `damage_immunity` flag, and
+	 * Deflection, whose negation moved to a listener so the cancel and its flash
+	 * share one branch. second_wind is one of the thirteen, and its only number is
+	 * `periodic_tick` inside a predicate, which no level reaches either. A data
+	 * particle adds no lever: its `speed` is a FloatProvider, not a LevelBasedValue.
 	 */
 	private static final Set<String> CAPPED = Set.of(
+		"armor/cloudstep",
+		"armor/deflection",
+		"armor/dread_aura",
+		"armor/ender_ward",
 		"armor/guarding_ward",
 		"armor/insulated",
 		"armor/reactive_plating",
 		"armor/second_wind",
+		"tool/echolocation",
+		"tool/enchanted_yield",
 		"tool/harvester",
 		"tool/lumberjack",
 		"tool/prospector",
+		"tool/veinminer",
 		"weapon/momentum",
 		"weapon/stormcaller",
 		"weapon/tidecaller"

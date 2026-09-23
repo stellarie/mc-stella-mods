@@ -37,7 +37,7 @@ public class BookLootGameTest {
 	private static final int CATALOGUE_ROLLS = 1200;
 	private static final int MAXIMA_ROLLS = 1200;
 	private static final int CHEST_ROLLS = 600;
-	private static final Identifier MAX_ONE = enchantment("tool/prospector");
+	private static final Identifier MAX_ONE = enchantment("armor/second_wind");
 	private static final Identifier MAX_TWO = enchantment("bow/marksman");
 	private static final Identifier MAX_THREE = enchantment("tool/blockfeast");
 	private static final Identifier MAX_FIVE = enchantment("weapon/stunning_blow");
@@ -150,7 +150,7 @@ public class BookLootGameTest {
 				&& highest(observed, MAX_TWO) == declaredMax(registry, MAX_TWO)
 				&& highest(observed, MAX_THREE) == declaredMax(registry, MAX_THREE)
 				&& highest(observed, MAX_FIVE) == declaredMax(registry, MAX_FIVE),
-			"declared maxima not reached: prospector=" + highest(observed, MAX_ONE)
+			"declared maxima not reached: maxOne=" + highest(observed, MAX_ONE)
 				+ "/" + declaredMax(registry, MAX_ONE) + " marksman=" + highest(observed, MAX_TWO)
 				+ "/" + declaredMax(registry, MAX_TWO) + " blockfeast=" + highest(observed, MAX_THREE)
 				+ "/" + declaredMax(registry, MAX_THREE) + " stunningBlow=" + highest(observed, MAX_FIVE)
@@ -162,7 +162,7 @@ public class BookLootGameTest {
 		);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=lootedLevelsStayInsideTheirOwnMaximum RESULT rolls={} books={} observed={} "
-				+ "overDeclared={} prospector={} marksman={} blockfeast={} stunningBlow={}",
+				+ "overDeclared={} maxOne={} marksman={} blockfeast={} stunningBlow={}",
 			MAXIMA_ROLLS, books, observed.size(), overDeclared.size(),
 			levels(observed, MAX_ONE), levels(observed, MAX_TWO),
 			levels(observed, MAX_THREE), levels(observed, MAX_FIVE)
