@@ -30,6 +30,8 @@ public final class Elite {
 	/** The elite kit roll: diamond is four times as likely as netherite, per the tier weights. */
 	public static final List<GearTier> KIT_TIERS = List.of(GearTier.DIAMOND, GearTier.NETHERITE);
 	public static final float KIT_DROP_CHANCE = 0.10F;
+	/** O01: the ocean band drops ten percentage points above normal, applied at its own call sites. */
+	public static final float GEAR_DROP_BONUS = 0.10F;
 	private static final Set<EntityType<?>> BOSS_TYPES = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.ENDER_DRAGON
 	);

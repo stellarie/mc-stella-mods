@@ -13,6 +13,7 @@ import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.GolemElite;
 import com.stella.mobs.behavior.PiglinSmash;
 import com.stella.mobs.behavior.PiglinWarCall;
+import com.stella.mobs.behavior.OceanBand;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
@@ -37,9 +38,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.dolphin.Dolphin;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
 import org.slf4j.Logger;
@@ -74,6 +77,7 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
+		ServerTickEvents.END_LEVEL_TICK.register(OceanBand::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(EvokerStorm::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
@@ -138,6 +142,13 @@ public class StellaMobs implements ModInitializer {
 			}
 
 			SpawnScaling.apply(mob);
+
+			// O01: a fresh natural dolphin over an ocean may start a skeleton band.
+			if (mob instanceof Dolphin
+				&& entity instanceof EntityLoadData loadData
+				&& loadData.spawnReason() == EntitySpawnReason.NATURAL) {
+				OceanBand.trySpawn(level, (Dolphin) mob);
+			}
 		}
 
 		// B1: a boss joins its level's bar watch list here, which covers both the roll above and a boss
