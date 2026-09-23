@@ -9,6 +9,7 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
+import com.stella.mobs.behavior.GolemElite;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
@@ -60,6 +61,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(GolemElite::afterDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
@@ -139,6 +141,9 @@ public class StellaMobs implements ModInitializer {
 		BehaviorInstaller.install(mob);
 		// R24: a ghast is not a Monster, so the installer returns before this and the ghast path is its own.
 		BehaviorInstaller.installGhastFireball(mob);
+		// G01: an iron golem is not an Enemy, so it cannot roll elite and is forced here instead. The call
+		// is idempotent and its modifiers are guarded, so a reload can neither mark nor stack it twice.
+		GolemElite.force(mob);
 	}
 
 	/** B1: a boss that leaves the level loses its bar, because the sweep can no longer reach it. */
