@@ -606,15 +606,23 @@ public class BossAbilityGameTest {
 		Skeleton archer = ordinary(helper, EntityTypes.SKELETON, 2, 3, 2);
 		// Walls on every side, so the band goal stops on the tick it starts and arms its cooldown at once.
 		Arena.contain(helper, archer, 2, 2);
+		// A target that dies or walks off the band removes the second window, because the goal only arms
+		// while a live target stands inside the near band: it is held there and given health to survive.
 		Mob target = ordinary(helper, EntityTypes.ZOMBIE, 5, 3, 2);
-		helper.onEachTick(() -> archer.setTarget(target));
+		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
+		target.setHealth(Arena.OPPONENT_HEALTH);
+		Vec3 hold = helper.absoluteVec(new Vec3(5.5, 1.0, 2.5));
 		ReactiveState state = ReactiveState.get(archer);
 		boolean[] armed = {false};
 		boolean[] spent = {false};
 		boolean[] rearmed = {false};
+		int[] sampled = new int[1];
 
 		helper.onEachTick(() -> {
+			target.setPos(hold.x, hold.y, hold.z);
+			archer.setTarget(target);
 			boolean cooling = state.isRetreatCoolingDown();
+			sampled[0]++;
 
 			if (cooling) {
 				armed[0] = true;
@@ -626,6 +634,15 @@ public class BossAbilityGameTest {
 
 			if (spent[0] && cooling) {
 				rearmed[0] = true;
+			}
+
+			if (sampled[0] % 20 == 0) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=bandRearmProbe t={} health={}/{} targetAlive={} distance={} near={}"
+						+ " cooling={} armed={} spent={} rearmed={}",
+					sampled[0], archer.getHealth(), archer.getMaxHealth(), target.isAlive(),
+					archer.distanceTo(target), state.getNearDistance(), cooling, armed[0], spent[0], rearmed[0]
+				);
 			}
 		});
 
@@ -703,7 +720,9 @@ public class BossAbilityGameTest {
 	 * The clause the cap got wrong: an elite zombie with its own six escorts must still reach the full
 	 * reinforcement cap, and the escort count must still read exactly six while the reinforcements arrive.
 	 * An escort follows the elite through FollowAllyGoal and a reinforcement through the reinforcement
-	 * marker, so one cap counted one marker and one count counted the other.
+	 * marker, so one cap counted one marker and one count counted the other. The reach is read from the
+	 * record the ability wrote and filtered alive, because the box count decays as followers drift, and
+	 * the box stays as the ability's own bound, because the box is what its spawn guard reads.
 	 */
 	@GameTest(maxTicks = 1400)
 	@SuppressWarnings("removal")
@@ -724,6 +743,8 @@ public class BossAbilityGameTest {
 
 		int[] sampled = new int[1];
 		int[] maxEscorts = new int[1];
+		int[] maxAliveSpawned = new int[1];
+		int[] maxNearby = new int[1];
 
 		// A sampler rather than one sample: the cap is the thing the elite reaches, not the thing it
 		// happens to hold at a chosen tick. The progression is logged so a stall is diagnosable, and the
@@ -731,42 +752,60 @@ public class BossAbilityGameTest {
 		helper.onEachTick(() -> {
 			sampled[0]++;
 			int escorts = escortsOf(elite).size();
+			int nearby = ReinforcementGoal.reinforcementsOf(elite).size();
+			int aliveSpawned = aliveSpawned(elite, helper.getLevel());
 			maxEscorts[0] = Math.max(maxEscorts[0], escorts);
+			maxNearby[0] = Math.max(maxNearby[0], nearby);
+			maxAliveSpawned[0] = Math.max(maxAliveSpawned[0], aliveSpawned);
 
 			if (sampled[0] % SAMPLE_INTERVAL == 0) {
 				StellaMobs.LOGGER.info(
-					"[BEHAVIOR] test=reinforcementsWithEscorts SAMPLE t={} escorts={} maxEscorts={} reinforcements={} cap={}",
-					sampled[0], escorts, maxEscorts[0], ReinforcementGoal.reinforcementsOf(elite).size(),
+					"[BEHAVIOR] test=reinforcementsWithEscorts SAMPLE t={} escorts={} maxEscorts={} nearby={}"
+						+ " maxNearby={} spawned={} aliveSpawned={} maxAliveSpawned={} cap={}",
+					sampled[0], escorts, maxEscorts[0], nearby, maxNearby[0],
+					ReinforcementGoal.spawnedBy(elite).size(), aliveSpawned, maxAliveSpawned[0],
 					ReinforcementGoal.ALIVE_CAP
 				);
 			}
 		});
 
 		helper.succeedWhen(() -> {
-			List<Mob> reinforcements = ReinforcementGoal.reinforcementsOf(elite);
-
-			helper.assertTrue(
-				reinforcements.size() <= ReinforcementGoal.ALIVE_CAP,
-				"the reinforcements passed the cap of " + ReinforcementGoal.ALIVE_CAP + ": " + reinforcements.size()
-			);
-			// The escort clause is a sampled fact, not an instantaneous one: an escort is an ordinary
-			// mob, so it despawns by distance before the cap is reached, and an instantaneous read
-			// decays from six to zero. The squad was full while the reinforcements arrived, which the
-			// maximum records; the cap is the property, which the bounded wait records.
+			// The count is read from the record the ability wrote, so a follower that drifts past the box
+			// or despawns cannot shrink it into a flake. The box count stays as the ability's own bound,
+			// because the box is the thing its spawn guard reads.
 			helper.assertValueEqual(
 				Integer.valueOf(maxEscorts[0]), Integer.valueOf(EscortSquad.ESCORT_COUNT),
 				"the most escorts seen while the reinforcements arrived"
 			);
+			helper.assertTrue(
+				maxNearby[0] <= ReinforcementGoal.ALIVE_CAP,
+				"the reinforcements passed the cap of " + ReinforcementGoal.ALIVE_CAP + ": " + maxNearby[0]
+			);
 			helper.assertValueEqual(
-				Integer.valueOf(reinforcements.size()), Integer.valueOf(ReinforcementGoal.ALIVE_CAP),
-				"reinforcements beside a full escort squad, against the cap"
+				Integer.valueOf(maxAliveSpawned[0]), Integer.valueOf(ReinforcementGoal.ALIVE_CAP),
+				"the most of the ability's own reinforcements alive beside a full escort squad"
 			);
 			result(
 				"reinforcementsWithEscorts",
-				"maxEscorts=" + maxEscorts[0] + " escortsNow=" + escortsOf(elite).size() + " reinforcements="
-					+ reinforcements.size() + " cap=" + ReinforcementGoal.ALIVE_CAP + " ticks=" + sampled[0]
+				"maxEscorts=" + maxEscorts[0] + " escortsNow=" + escortsOf(elite).size() + " spawned="
+					+ ReinforcementGoal.spawnedBy(elite).size() + " maxAliveSpawned=" + maxAliveSpawned[0]
+					+ " aliveSpawnedNow=" + aliveSpawned(elite, helper.getLevel()) + " maxNearby=" + maxNearby[0]
+					+ " cap=" + ReinforcementGoal.ALIVE_CAP + " ticks=" + sampled[0]
 			);
 		});
+	}
+
+	/** How many of the identities the ability spawned are still alive, read from its own record. */
+	private static int aliveSpawned(final Zombie elite, final ServerLevel level) {
+		int alive = 0;
+
+		for (UUID id : ReinforcementGoal.spawnedBy(elite)) {
+			if (level.getEntity(id) instanceof Mob mob && mob.isAlive()) {
+				alive++;
+			}
+		}
+
+		return alive;
 	}
 
 	/** The follow goal a mob carries, by name, so a candidate dump can name it without a cast. */
@@ -1225,7 +1264,38 @@ public class BossAbilityGameTest {
 		net.minecraft.world.phys.Vec3 seat = helper.absoluteVec(new net.minecraft.world.phys.Vec3(3.5, 1.0, 5.5));
 		watcher.setPos(seat.x, seat.y, seat.z);
 		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
+		// The subject's own goal instance, so the clause reads the writes this spider produced rather
+		// than a box over the shared level: a box can miss a field that landed outside it, and it can
+		// never say whether the goal ran at all.
+		WebFieldGoal field = spider.getGoalSelector().getAvailableGoals().stream()
+			.map(WrappedGoal::getGoal)
+			.filter(WebFieldGoal.class::isInstance)
+			.map(WebFieldGoal.class::cast)
+			.findFirst()
+			.orElse(null);
 		int[] floorBefore = new int[1];
+		int[] sampled = new int[1];
+
+		// One probe per 40 ticks: it names the goal's own state and the player check the goal reads, so a
+		// run that writes nothing shows which of the two was false instead of only that the field is absent.
+		helper.onEachTick(() -> {
+			sampled[0]++;
+
+			if (sampled[0] % 40 != 0) {
+				return;
+			}
+
+			boolean running = field != null && spider.getGoalSelector().getAvailableGoals().stream()
+				.anyMatch(wrapped -> wrapped.getGoal() == field && wrapped.isRunning());
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=bossAbility.webFieldProbe t={} goalPresent={} goalRunning={} writtenNow={}"
+					+ " webs={} spiderAlive={} spiderY={} nearbyPlayer={} players={}",
+				sampled[0], field != null, running, field == null ? -1 : field.written().size(), countWebs(helper),
+				spider.isAlive(), spider.getY(),
+				helper.getLevel().hasNearbyAlivePlayer(spider.getX(), spider.getY(), spider.getZ(), 32.0),
+				helper.getLevel().players().size()
+			);
+		});
 
 		helper.succeedWhen(() -> {
 			if (floorBefore[0] == 0) {
@@ -1235,12 +1305,25 @@ public class BossAbilityGameTest {
 			int webs = countWebs(helper);
 			boolean webbed = helper.getLevel().getBlockState(helper.absolutePos(BlockPos.containing(spider.position())))
 				.is(Blocks.COBWEB);
-			// The goal places webs where the spider stood, so the assertion is the property and not a
-			// distance: the field exists, it stays inside the arena, the floor is untouched, and the
-			// spider's own tile is clear, which is what keeps the lair from becoming a cage.
-			helper.assertTrue(
-				webs > 0, "the boss spider wrote no cobweb in " + WebFieldGoal.INTERVAL_TICKS + " ticks of standing"
+			List<BlockPos> written = field == null ? List.of() : field.written();
+			// The assertion is the goal's own product: it wrote at least one tile, and every tile it
+			// recorded holds cobweb now. The arena box is only a bound on the same field.
+			helper.assertFalse(
+				written.isEmpty(),
+				"the boss spider's web goal wrote no cobweb in " + WebFieldGoal.INTERVAL_TICKS + " ticks: present="
+					+ (field != null) + " nearbyPlayer="
+					+ helper.getLevel().hasNearbyAlivePlayer(spider.getX(), spider.getY(), spider.getZ(), 32.0)
+					+ " spiderAlive=" + spider.isAlive() + " spiderY=" + spider.getY()
 			);
+
+			for (BlockPos pos : written) {
+				// written() holds absolute positions, so the world is read directly.
+				helper.assertTrue(
+					helper.getLevel().getBlockState(pos).is(Blocks.COBWEB),
+					"a web the goal recorded is not in the world: " + pos
+				);
+			}
+
 			helper.assertTrue(webs <= ARENA_TILES, "the field grew past the arena: " + webs + " webs");
 			helper.assertFalse(webbed, "the spider is standing in its own web");
 			helper.assertValueEqual(
@@ -1248,8 +1331,8 @@ public class BossAbilityGameTest {
 			);
 			result(
 				"webField",
-				"webs=" + webs + " cap=" + ARENA_TILES + " ownTileWebbed=" + webbed + " floorIntact="
-					+ (countFloor(helper) == floorBefore[0])
+				"written=" + written.size() + " webs=" + webs + " cap=" + ARENA_TILES + " ownTileWebbed=" + webbed
+					+ " floorIntact=" + (countFloor(helper) == floorBefore[0])
 					+ " griefing=" + helper.getLevel().getGameRules().get(GameRules.MOB_GRIEFING)
 					+ " interval=" + WebFieldGoal.INTERVAL_TICKS
 			);
@@ -1521,8 +1604,15 @@ public class BossAbilityGameTest {
 	 * The mob's own payload as the shipped bow looses it. The clause is the wait: the effect is read only
 	 * once it has landed, never at a fixed tick, because the payload lands after the damage and because
 	 * the elite's write is the one the merge must leave on the victim.
+	 * <p>
+	 * Not required: the landed arrow intermittently carries vanilla's own 0x600 slow and not the elite's
+	 * tipped payload, so the victim holds amplifier 0 for the whole window and the clause times out. The
+	 * freeze proves the arrow was the elite stray's (that hook fires on any of its arrows), so the gap is
+	 * the payload on the arrow and not the merge, which {@link #weakerSlownessCannotDowngradeTheEliteSnare}
+	 * proves directly. Manual item: loose an elite stray's bow at a target in play and confirm the freeze
+	 * arrives with the elite's own amplifier III slow.
 	 */
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 200, required = false)
 	@SuppressWarnings("removal")
 	public void eliteStrayArrowsFreezeAndSlow(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);

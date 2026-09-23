@@ -10,7 +10,9 @@ import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.scaling.SpawnScaling;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -387,6 +389,121 @@ public class TraitsGameTest {
 			"a mob that was not hit is burning: " + bystanderFire
 		);
 		helper.succeed();
+	}
+
+	/**
+	 * T06: an end mob can negate a hit, and the negation shows the tell. The clause refuses to be an
+	 * absence alone: it asserts that a real hit through the damage pipeline took no health, that the
+	 * enderman teleport sound played, and that the portal particle spawned at the mob. The chance is
+	 * pinned to certainty for the positive case and to never for the negative, and the control is a real
+	 * mob of the same kind without the trait, so a negation is the trait and not a hook that eats hits.
+	 */
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void endTraitNegatesTheHitAndShowsTheTell(final GameTestHelper helper) {
+		prepare(helper);
+		Mob end = spawnedWithTrait(helper, EntityTypes.ZOMBIE, "end", 3, 3);
+		Mob plain = spawn(helper, DEEP_Y, 5, 5);
+		double shippedRoll = Traits.endRoll();
+		float endHealthBefore = end.getHealth();
+		float plainHealthBefore = plain.getHealth();
+		long tellsBefore = Traits.endTellCount();
+		boolean negated;
+		boolean missed;
+		boolean plainHit;
+		float endAfterNegate;
+		float endAfterMiss;
+		float plainAfter;
+		long tellsAfterNegate;
+		long tellsAfterMiss;
+		long tellsAfterPlain;
+		double negateX;
+		double negateZ;
+		double tellX;
+		double tellZ;
+
+		try {
+			// Certainty: the roll cannot miss, so the negation and its tell are reached by the pin.
+			Traits.pinEndRoll(1.0);
+			negated = hurt(helper, end, 3.0F);
+			endAfterNegate = end.getHealth();
+			tellsAfterNegate = Traits.endTellCount();
+			negateX = end.getX();
+			negateZ = end.getZ();
+			tellX = Traits.lastEndTellX();
+			tellZ = Traits.lastEndTellZ();
+			// Never: the roll cannot land, so the same hit lands and plays no tell.
+			Traits.pinEndRoll(0.0);
+			missed = hurt(helper, end, 3.0F);
+			endAfterMiss = end.getHealth();
+			tellsAfterMiss = Traits.endTellCount();
+			// The control: a mob without the trait must not negate even at a pinned certainty.
+			Traits.pinEndRoll(1.0);
+			plainHit = hurt(helper, plain, 3.0F);
+			plainAfter = plain.getHealth();
+			tellsAfterPlain = Traits.endTellCount();
+		} finally {
+			Traits.pinEndRoll(shippedRoll);
+		}
+
+		result(
+			"endNegate",
+			"shippedChance=" + Traits.END_NEGATE_CHANCE + " shippedRoll=" + shippedRoll + " negated=" + negated
+				+ " healthBefore=" + endHealthBefore + " healthAfterNegate=" + endAfterNegate + " sound="
+				+ Traits.lastEndTellSound() + " particle=" + Traits.lastEndTellParticle() + " tells="
+				+ tellsAfterNegate + " tellsBefore=" + tellsBefore + " missed=" + missed + " healthAfterMiss="
+				+ endAfterMiss + " tellsAfterMiss=" + tellsAfterMiss + " plainHit=" + plainHit + " plainHealthBefore="
+				+ plainHealthBefore + " plainHealthAfter=" + plainAfter + " tellsAfterPlain=" + tellsAfterPlain
+		);
+		helper.assertTrue(
+			shippedRoll == Traits.END_NEGATE_CHANCE && shippedRoll > 0.0 && shippedRoll < 1.0,
+			"the shipped negation roll is not the named chance: " + shippedRoll
+		);
+		helper.assertFalse(negated, "a pinned certainty still applied the hit");
+		helper.assertTrue(
+			endAfterNegate == endHealthBefore,
+			"the negated hit still took health: " + endAfterNegate + " against " + endHealthBefore
+		);
+		helper.assertValueEqual(
+			Long.valueOf(tellsAfterNegate), Long.valueOf(tellsBefore + 1L), "tells after the negation"
+		);
+		helper.assertTrue(
+			Traits.lastEndTellSound() == SoundEvents.ENDERMAN_TELEPORT,
+			"the negation played " + Traits.lastEndTellSound() + " rather than the enderman teleport sound"
+		);
+		helper.assertTrue(
+			Traits.lastEndTellParticle() == ParticleTypes.PORTAL,
+			"the negation spawned " + Traits.lastEndTellParticle() + " rather than the portal particle"
+		);
+		helper.assertTrue(
+			Math.abs(tellX - negateX) <= 1.0 && Math.abs(tellZ - negateZ) <= 1.0,
+			"the tell played away from the mob: tell=" + tellX + "/" + tellZ + " mob=" + negateX + "/" + negateZ
+		);
+		// The pinned never: the same hit lands on the same mob, and no tell is played for it.
+		helper.assertTrue(missed, "a pinned never refused the hit");
+		helper.assertTrue(
+			endAfterMiss < endAfterNegate,
+			"the unpinned hit took no health: " + endAfterMiss + " against " + endAfterNegate
+		);
+		helper.assertValueEqual(
+			Long.valueOf(tellsAfterMiss), Long.valueOf(tellsAfterNegate), "tells after the pinned never"
+		);
+		// The control: the same certainty, one real mob of the same kind without the trait.
+		helper.assertTrue(plainHit, "a mob without the end trait refused a hit at a pinned certainty");
+		helper.assertTrue(
+			plainAfter < plainHealthBefore,
+			"a mob without the end trait took no damage: " + plainAfter + " against " + plainHealthBefore
+		);
+		helper.assertValueEqual(
+			Long.valueOf(tellsAfterPlain), Long.valueOf(tellsAfterMiss), "tells from a mob without the trait"
+		);
+		helper.succeed();
+	}
+
+	/** One real hit through the damage pipeline, with the invulnerability window cleared first. */
+	private static boolean hurt(final GameTestHelper helper, final Mob mob, final float amount) {
+		mob.setInvulnerableTime(0);
+		return mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), amount);
 	}
 
 	/** A floor under the deep subject, and one under the high control at its own height. */
