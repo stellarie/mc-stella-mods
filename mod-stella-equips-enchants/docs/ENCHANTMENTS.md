@@ -69,9 +69,18 @@ Every band in this catalogue is reachable at cost 30:
 | base 15 or 20, max 45 or 50 | 1 | level 1, contains 30 |
 
 The `enchantingTableTag` test asserts the tag membership of every catalogue id
-and its reachability at cost 30. The `rollRates` test computes the draw share
-of every candidate at the same cost, with a reference item per slot. `Share` is
-`weight / sum(weights of the candidates for that item)`.
+and its reachability at cost 30. The `catalogueWeightSharesAtCost30` test
+computes the weight share of every candidate at the same cost, with a reference
+item per slot.
+
+The share is a **weight share**, not a realized drop rate. A real offer costs
+1 to 10, 6 to 21, or 30 plus a jitter, so the rare bands are reachable on a
+fraction of the third offers alone. Prospector's `max_cost` is exactly 30, so
+it is a candidate on the rolls whose third offer lands at 30 and not on the
+ones that land higher. Read the share as the weight of the enchantment inside
+its candidate pool, and nothing more.
+
+`Share` is `weight / sum(weights of the candidates for that item)`.
 
 | Reference item | Candidates | Total weight |
 |---|---|---|
@@ -96,7 +105,8 @@ of every candidate at the same cost, with a reference item per slot. `Share` is
 ## The enchantments
 
 `min` is `min_cost` at level 1. `max` is `max_cost` at the top level. `Share`
-is the draw rate at power 30 for the item in the reference column.
+is the weight share inside the candidate pool at cost 30, not a realized drop
+rate. The rate section below says why.
 
 ### Bow
 
@@ -104,7 +114,7 @@ is the draw rate at power 30 for the item in the reference column.
 |---|---|---|---|---|---|---|---|
 | Arrow Shower | 2 | 1 | 20 | 50 | 0.077 | `projectile_count` add 6, `projectile_spread` add 10, `item_damage` add 1 | two durability points per arrow, so a seven-arrow volley wears the bow fourteen times |
 | Bomb Arrows | 2 | 1 | 20 | 50 | 0.077 | `hit_block` `explode`, radius 2, `block_interaction` `none` | the blast reaches anything inside two blocks, the shooter included |
-| Marksman | 10 | 2 | 1 | 32 | 0.385 | `projectile_spread` multiply 0.5 | `item_damage` add 1, so the bow wears twice as fast |
+| Marksman | 10 | 2 | 1 | 32 | 0.385 | `damage` add 1 per level on an arrow hit | `item_damage` add 1, so the bow wears twice as fast |
 | Longshot | 5 | 3 | 5 | 41 | 0.192 | `projectile_spread` multiply 0.4 and `projectile_piercing` add 1 | `damage` add -1, so every arrow hits softer |
 | Bodkin | 5 | 3 | 5 | 41 | 0.192 | `projectile_piercing` clamped to 3 | `ammo_use` add 1, so each shot spends a second arrow |
 | Ranger's Mark | 2 | 1 | 15 | 45 | 0.077 | `post_attack` `run_function` for 4 bonus damage | the bonus pays only while the target is above half health, and once per 20 ticks |
@@ -114,7 +124,7 @@ is the draw rate at power 30 for the item in the reference column.
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
 | Quickdraw | 5 | 3 | 5 | 41 | 0.625 | `crossbow_charge_time` add -0.15 seconds per level | none |
-| Repeater | 2 | 2 | 10 | 50 | 0.25 | `crossbow_charge_time` add -0.25 seconds per level | `projectile_spread` add 4 degrees, plus 2 per level |
+| Repeater | 2 | 2 | 10 | 50 | 0.25 | `crossbow_charge_time` add -0.25 seconds per level | `item_damage` add 1, so the fast mechanism wears the crossbow |
 | Siege Bolt | 1 | 1 | 20 | 50 | 0.125 | `post_attack` `damage_entity` for 3 damage through armor, plus `knockback` add 1 | `crossbow_charge_time` add 0.75 seconds, so the charge takes 40 ticks |
 
 ### Weapon
@@ -171,17 +181,17 @@ book and a shield combine at an anvil is not verified by a test in this slice.
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Burrow | 5 | 2 | 5 | 33 | pickaxe 0.25, shovel 0.5 | `hit_block` `replace_disk` radius 1 over `#minecraft:mineable/shovel` | soft blocks only, and the cleared blocks drop nothing |
+| Burrow | 5 | 2 | 5 | 33 | pickaxe 0.25, shovel 0.5 | `hit_block` `replace_disk` radius 2 over `#minecraft:mineable/shovel` | soft blocks only, up to 26 blocks per swing, and the cleared blocks drop nothing |
 | Prospector | 5 | 1 | 5 | 30 | pickaxe 0.25 | `hit_block` `run_function` that marks the broken block with 12 particles and a chime | a marker, not a reveal, and once per 40 ticks |
 | Blockfeast | 10 | 3 | 1 | 43 | pickaxe 0.5, axe 0.286 | `block_experience` add 1 per level | none |
 | Lumberjack | 2 | 3 | 10 | 50 | axe 0.057 | `hit_block` `run_function` that fells up to 8 logs above the broken block | one trunk per second, and the logs drop their own loot |
 | Harvester | 5 | 3 | 5 | 41 | hoe 0.5 | `hit_block` `run_function` that harvests the crops in a 3 by 3 patch | up to 9 blocks per activation, and unripe crops go too |
 | Angler's Fortune | 2 | 3 | 10 | 50 | 1.0 | `fishing_time_reduction` add 3 seconds and `fishing_luck_bonus` add 1 per level | none |
-| Green Thumb | 5 | 2 | 5 | 33 | hoe 0.5, shovel 0.5 | `hit_block` `run_function` that harvests a mature crop and replants it | a quarter chance, not a guarantee, and once per 20 ticks |
+| Green Thumb | 5 | 2 | 5 | 33 | hoe 0.5, shovel 0.5 | `hit_block` `replace_disk` radius 2 that turns dirt into farmland | dirt and grass only, and the tilled blocks drop nothing |
 
 ## Wiring
 
-- `function/load.mcfunction` creates the 13 scoreboard objectives. The
+- `function/load.mcfunction` creates the 12 scoreboard objectives. The
   `#minecraft:load` tag runs it.
 - `function/tick.mcfunction` adds 1 to `#clock ench_clock` every tick. The
   `#minecraft:tick` tag runs it. Every cooldown is a comparison against that
@@ -198,11 +208,14 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | Enchantment | Plan | Shipped | Reason |
 |---|---|---|---|
 | Quickdraw | bow | crossbow | `BowItem` reads no enchantment at all. Only `CrossbowItem.getChargeDuration` reads `crossbow_charge_time`, so a bow row would have shipped a decorative effect |
-| Marksman | bow draws slower | `item_damage` add 1 | The bow has no draw-time hook. Extra wear per shot is the one real cost available |
+| Marksman | spread multiply 0.5, and a slower draw | `damage` add 1 per level, `item_damage` add 1 | `ProjectileWeaponItem` zeroes the spread for a single projectile, so the benefit did nothing while the wear cost stayed real. The bow has no draw-time hook, so the wear is the cost |
 | Longshot | lower arrow speed | `damage` add -1 | An arrow's speed is set by the charge, not by data. The damage hook does read arrow hits, so the cost is real |
 | Ranger's Mark | full victim health only | pays while the target is above half health | The arrow damages the victim before `post_attack` runs, so a full health gate is false for every real arrow. The written gate has to measure the victim after the hit |
 | Hooked | pull the victim | slowness II on the target | No data effect can pull a target toward the thrower. `AbstractArrow.doKnockback` skips a knockback at or below zero, and `LivingEntity.knockback` returns early on a strength at or below zero. A `tp` in a function moves the victim, who can be another player |
 | Arrow Shower | `projectile_spawned` `change_item_damage` | `item_damage` add 1 | `change_item_damage` on `projectile_spawned` charges a copy of the bow, so it never reaches the item. `item_damage` is the value hook that `ItemStack.hurtAndBreak` reads |
+| Green Thumb | `hit_block` function that replants the crop it breaks | `hit_block` `replace_disk` that tills dirt | `hit_block` fires before the break, so the break destroys anything the function plants at the hit position. Nothing placed at that position survives the tick |
+| Repeater | `projectile_spread` add as its cost | `item_damage` add 1 | The spread is zeroed for a single bolt, so the cost was inert |
+| Burrow, Green Thumb | radius 1 | radius 2 | `ReplaceDisk` floors the radius to an integer and keeps a block only when its squared distance is below the squared radius. Radius 1 keeps the centre block alone, which is the block the break removes |
 | Bomb Arrows | `projectile_spawned` | `hit_block` | The probe proved that an explosion on `projectile_spawned` fires in the air at the bow and reaches no block |
 | Siege Bolt | 40 tick charge | `crossbow_charge_time` add 0.75 | One unit of the hook is one second, and the base charge is 1.25 seconds |
 | Cleave | radius 2 | radius 1 | An explosion reaches about twice its radius. Radius 2 damaged the wielder 19 health at one block. Radius 1 spares a wielder at 3 blocks and still hits a mob at 1 block |
@@ -225,9 +238,13 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
 | `everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable` | every catalogue id is in `#minecraft:in_enchanting_table`, and every id is reachable at cost 30 |
 | `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 10 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
-| `catalogueRollRatesFollowCostAndWeight` | the pools above, and that every enchantment is a table candidate at cost 30 |
+| `catalogueWeightSharesAtCost30` | the pools above, the weight share of each candidate, and that every enchantment is a candidate at cost 30 |
+| `everyCatalogueEnchantmentHasALangName` | every catalogue id has an `en_us` name, so no enchantment renders as a raw key |
 | `arrowShowerCostsMoreDurabilityThanAPlainShot` | one plain shot fires 1 arrow for 1 durability, and one Arrow Shower shot fires 7 arrows for 14 durability |
+| `marksmanArrowsHitHarderThanPlainArrows` | an arrow from a Marksman bow hit harder than an arrow from a plain bow |
+| `repeaterShortensTheCrossbowCharge` | a Repeater crossbow charges in 15 ticks against the plain 25 |
+| `greenThumbTillsTheGroundAroundTheBrokenBlock` | a real block break with a Green Thumb hoe turned the ground around it into farmland |
+| `hookedTridentSlowsTheTargetItHits` | a real thrown trident left the target it hit slowed |
 | `bombArrowsBlastLeavesTheBlockIntactAndStillHurtsAMob` | a real Bomb Arrows arrow hits a wall, the wall stays intact, and a mob one block away takes the blast |
 | `cleaveBlastReachesANearbyMobAndSparesTheWielder` | the cleave blast hits a mob one block away and leaves a wielder three blocks away unharmed |
-| `hookedTridentSlowsTheTargetItHits` | a real thrown trident left the target it hit slowed |
 | `rangersMarkPaysWhileTheTargetIsAboveHalfHealth` | a real arrow paid 4 more damage on a fresh target than on one below half health |

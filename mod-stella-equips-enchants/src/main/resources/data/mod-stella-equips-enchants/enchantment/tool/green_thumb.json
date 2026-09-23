@@ -12,8 +12,16 @@
 		"minecraft:hit_block": [
 			{
 				"effect": {
-					"type": "minecraft:run_function",
-					"function": "mod-stella-equips-enchants:green_thumb"
+					"type": "minecraft:replace_disk",
+					"radius": 2.0,
+					"height": 1.0,
+					"offset": [0, 0, 0],
+					"block_state": { "id": "minecraft:farmland" },
+					"predicate": {
+						"type": "minecraft:matching_block_tag",
+						"tag": "minecraft:dirt"
+					},
+					"trigger_game_event": "minecraft:block_place"
 				}
 			}
 		]
