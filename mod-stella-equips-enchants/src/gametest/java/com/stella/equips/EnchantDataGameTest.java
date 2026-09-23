@@ -32,6 +32,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
@@ -67,6 +69,7 @@ public class EnchantDataGameTest {
 	private static final float WOUNDED_HEALTH = 4.0F;
 	private static final int CLOCK_START = 10000;
 	private static final int PARTIAL_DRAW = 71990;
+	private static final double TRAVELLED_RESISTANCE = 0.3;
 	private static final List<Item> POOL_ITEMS = List.of(
 		Items.BOW,
 		Items.CROSSBOW,
@@ -362,7 +365,7 @@ public class EnchantDataGameTest {
 		tiller.setItemInHand(InteractionHand.MAIN_HAND, hoe);
 		for (int x = 1; x < 4; x++) {
 			for (int z = 1; z < 4; z++) {
-				helper.setBlock(x, SPAWN_Y, z, Blocks.DIRT);
+				helper.setBlock(x, SPAWN_Y, z, Blocks.GRASS_BLOCK);
 			}
 		}
 		BlockPos hit = BlockPos.containing(helper.absoluteVec(new Vec3(2.5, SPAWN_Y + 0.5, 2.5)));
@@ -423,18 +426,59 @@ public class EnchantDataGameTest {
 
 	@GameTest
 	public void repeaterShortensTheCrossbowCharge(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
 		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		ItemStack repeaterStack = enchanted(Items.CROSSBOW, enchantment(helper, "crossbow/repeater"), 2);
 		int plain = CrossbowItem.getChargeDuration(new ItemStack(Items.CROSSBOW), shooter);
-		int repeater = CrossbowItem.getChargeDuration(
-			enchanted(Items.CROSSBOW, enchantment(helper, "crossbow/repeater"), 2), shooter
-		);
+		int repeater = CrossbowItem.getChargeDuration(repeaterStack, shooter);
+		int plainWear = EnchantmentHelper.processDurabilityChange(level, new ItemStack(Items.CROSSBOW), 1);
+		int repeaterWear = EnchantmentHelper.processDurabilityChange(level, repeaterStack, 1);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=repeaterCharge RESULT plainTicks={} repeaterTicks={} saved={}",
-			plain, repeater, plain - repeater
+			"[BEHAVIOR] test=repeaterCharge RESULT plainTicks={} repeaterTicks={} saved={} plainWear={} repeaterWear={}",
+			plain, repeater, plain - repeater, plainWear, repeaterWear
 		);
 		helper.assertTrue(
 			repeater < plain,
 			"the repeater crossbow charges in " + repeater + " ticks, no faster than " + plain
+		);
+		helper.assertTrue(
+			repeaterWear == plainWear + 1,
+			"one wear event costs the repeater " + repeaterWear + " against the plain " + plainWear
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void bulwarkAndAegisAddResistanceAboveThePowerTerm(final GameTestHelper helper) {
+		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		AttributeInstance instance = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
+		instance.setBaseValue(TRAVELLED_RESISTANCE);
+		ItemStack chestplate = enchanted(Items.DIAMOND_CHESTPLATE, enchantment(helper, "armor/bulwark"), 2);
+		ItemStack shield = enchanted(Items.SHIELD, enchantment(helper, "shield/aegis"), 2);
+		EnchantmentHelper.forEachModifier(chestplate, EquipmentSlot.CHEST, (attribute, modifier) -> {
+			if (attribute.value() == Attributes.KNOCKBACK_RESISTANCE.value()) {
+				instance.addTransientModifier(modifier);
+			}
+		});
+		double withBulwark = instance.getValue();
+		EnchantmentHelper.forEachModifier(shield, EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+			if (attribute.value() == Attributes.KNOCKBACK_RESISTANCE.value()) {
+				instance.addTransientModifier(modifier);
+			}
+		});
+		double withBoth = instance.getValue();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=resistanceHeadroom RESULT powerTerm={} withBulwark={} withBoth={} headroom={}",
+			TRAVELLED_RESISTANCE, withBulwark, withBoth, 1.0 - withBoth
+		);
+		helper.assertTrue(
+			withBulwark > TRAVELLED_RESISTANCE,
+			"Bulwark added no resistance on top of the power term at " + TRAVELLED_RESISTANCE
+		);
+		helper.assertTrue(withBoth > withBulwark, "Aegis added no resistance on top of Bulwark");
+		helper.assertTrue(
+			withBoth < 1.0,
+			"the two enchantments saturate the attribute ceiling at " + withBoth
 		);
 		helper.succeed();
 	}
@@ -468,8 +512,9 @@ public class EnchantDataGameTest {
 			"arrow shower fired " + showerArrows + " arrows: expected " + ARROW_SHOWER_ARROWS
 		);
 		helper.assertTrue(
-			showerWear > plainWear,
-			"the arrow shower bow lost " + showerWear + " durability, no more than the plain bow's " + plainWear
+			showerWear == 2 * showerArrows,
+			"the arrow shower bow lost " + showerWear + " durability for " + showerArrows
+				+ " arrows: expected twice the arrow count, so the item_damage cost is gone"
 		);
 		helper.succeed();
 	}
