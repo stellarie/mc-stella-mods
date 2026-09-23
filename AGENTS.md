@@ -88,6 +88,10 @@ works on one. They are the standard, not a suggestion.
 - A mob spawned exactly on a surface never registers `onGround`, so
   `GroundPathNavigation.createPath` returns null. Spawn two blocks up.
 - One assertion per test method where possible.
+- One gate run per command, and copy the log before starting the next. A chain of
+  runs in a single command overwrites the log of the first failure, and a red with
+  no log is a red nobody can diagnose. This happened on 2026-09-23: a clean build
+  failed, two reruns passed, and the evidence was gone by the time anyone looked.
 - Never call `helper.onEachTick` from inside a `runAfterDelay` callback. It
   registers into `GameTestInfo`'s `runAtTickTimeMap` while the framework is
   iterating that map, which corrupts it and kills the test server in
