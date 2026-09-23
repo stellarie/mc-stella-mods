@@ -12,6 +12,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * G05: vanilla melts a snow golem with one call inside its own aiStep, so the suppression wraps that call
  * and nothing else. The alternative, cancelling fire damage from an event, cannot tell the melt from a
  * golem that is genuinely on fire, because vanilla reuses the same damage source for both.
+ *
+ * <p>Both mixins are listed in the common array, not the server array, and that is deliberate: a server
+ * array mixin does not apply in an integrated server, so singleplayer would still melt.
  */
 @Mixin(SnowGolem.class)
 public class SnowGolemMeltMixin {
