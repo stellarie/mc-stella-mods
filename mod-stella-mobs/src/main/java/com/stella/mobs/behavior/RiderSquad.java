@@ -12,7 +12,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * R09: a mountable mob spawns with a rider. The rider is always added to the level explicitly, because
@@ -32,7 +35,7 @@ public final class RiderSquad {
 	private RiderSquad() {
 	}
 
-	private record Pending(Mob mount, EntityType<? extends Mob> riderType) {
+	private record Pending(Mob mount, EntityType<? extends Mob> riderType, boolean armed) {
 	}
 
 	public static void register() {
@@ -44,8 +47,17 @@ public final class RiderSquad {
 	}
 
 	public static void queue(final Mob mount, final EntityType<? extends Mob> riderType) {
+		queue(mount, riderType, false);
+	}
+
+	/** R23: the guaranteed rider takes the same path, with a sword placed before the installer reads it. */
+	public static void queueArmed(final Mob mount, final EntityType<? extends Mob> riderType) {
+		queue(mount, riderType, true);
+	}
+
+	private static void queue(final Mob mount, final EntityType<? extends Mob> riderType, final boolean armed) {
 		if (mount.level() instanceof ServerLevel level) {
-			((AttachmentTarget) level).getAttachedOrCreate(QUEUE).add(new Pending(mount, riderType));
+			((AttachmentTarget) level).getAttachedOrCreate(QUEUE).add(new Pending(mount, riderType, armed));
 		}
 	}
 
@@ -61,12 +73,14 @@ public final class RiderSquad {
 
 		for (Pending item : batch) {
 			if (item.mount().isAlive() && !item.mount().isRemoved()) {
-				seat(level, item.mount(), item.riderType());
+				seat(level, item.mount(), item.riderType(), item.armed());
 			}
 		}
 	}
 
-	private static void seat(final ServerLevel level, final Mob mount, final EntityType<? extends Mob> riderType) {
+	private static void seat(
+		final ServerLevel level, final Mob mount, final EntityType<? extends Mob> riderType, final boolean armed
+	) {
 		Mob rider = riderType.create(level, EntitySpawnReason.JOCKEY);
 		if (rider == null) {
 			return;
@@ -76,6 +90,11 @@ public final class RiderSquad {
 		rider.finalizeSpawn(
 			level, level.getCurrentDifficultyAt(rider.blockPosition()), EntitySpawnReason.JOCKEY, null
 		);
+		// The sword is placed before the installer reads the hand, so the role resolves as melee.
+		if (armed) {
+			rider.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+		}
+
 		// Both flags must exist before the add: ENTITY_LOAD fires inside addFreshEntity.
 		EliteState.setSummoned(rider, true);
 		ReactiveState.get(rider).setGearApplied(true);

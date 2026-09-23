@@ -14,6 +14,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
+import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -83,6 +84,20 @@ public final class BehaviorInstaller {
 		mob.getGoalSelector().addGoal(ReinforcementGoal.PRIORITY, new ReinforcementGoal(zombie));
 	}
 
+	/** R23: an elite spider that is not a summon breeds poison spiders on its own cadence. Idempotent. */
+	public static void installSpiderBrood(final Mob mob) {
+		if (!(mob instanceof Spider spider) || EliteState.isSummoned(mob) || !Elite.isElite(spider)) {
+			return;
+		}
+
+		if (mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof SpiderBroodGoal)) {
+			return;
+		}
+
+		mob.getGoalSelector().addGoal(SpiderBroodGoal.PRIORITY, new SpiderBroodGoal(spider));
+	}
+
 	public static void install(final Mob mob) {
 		if (!(mob instanceof Monster monster)) {
 			return;
@@ -128,6 +143,8 @@ public final class BehaviorInstaller {
 		}
 
 		BossAbilities.install(mob);
+		installReinforcements(mob);
+		installSpiderBrood(mob);
 	}
 
 	/**

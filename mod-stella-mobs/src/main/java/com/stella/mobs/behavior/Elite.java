@@ -122,5 +122,11 @@ public final class Elite {
 		}
 
 		EscortSquad.queue(mob, tier);
+
+		// R23: an elite spider's sword skeleton is guaranteed rather than a chance roll, and it rides the
+		// shipped seating path, so the create-and-flag recipe is the one riders already use.
+		if (mob.getType() == EntityTypes.SPIDER) {
+			RiderSquad.queueArmed(mob, EntityTypes.SKELETON);
+		}
 	}
 }

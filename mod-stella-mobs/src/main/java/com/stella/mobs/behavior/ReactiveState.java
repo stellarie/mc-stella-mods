@@ -53,10 +53,14 @@ public final class ReactiveState {
 		return ((AttachmentTarget) mob).getAttachedOrCreate(TYPE);
 	}
 
+	/**
+	 * Cached for PLAYER_CHECK_INTERVAL_TICKS, keyed on the mob's own tick counter rather than the level
+	 * clock: the counter advances in play and under the game test runner alike, while the runner's level
+	 * clock barely moves, which used to freeze this answer on the first check.
+	 */
 	public boolean playerInRange(final Mob mob) {
-		long now = mob.level().getGameTime();
-		if (now >= this.nextPlayerCheckTick) {
-			this.nextPlayerCheckTick = now + PLAYER_CHECK_INTERVAL_TICKS;
+		if (mob.tickCount >= this.nextPlayerCheckTick) {
+			this.nextPlayerCheckTick = mob.tickCount + PLAYER_CHECK_INTERVAL_TICKS;
 			this.playerNearby = mob.level().hasNearbyAlivePlayer(mob.getX(), mob.getY(), mob.getZ(), PLAYER_RADIUS);
 		}
 
