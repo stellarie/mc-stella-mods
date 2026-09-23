@@ -71,14 +71,21 @@ public class ChestLootGameTest {
 		"chests/village/village_plains_house", "chests/village/village_savanna_house", "chests/village/village_shepherd",
 		"chests/village/village_snowy_house", "chests/village/village_taiga_house", "chests/village/village_tannery",
 		"chests/village/village_temple", "chests/village/village_toolsmith", "chests/village/village_weaponsmith",
+		"chests/spawn_bonus_chest",
 		"chests/woodland_mansion"
 	);
 	private static final Set<String> NOT_TARGETED = Set.of(
-		"chests/spawn_bonus_chest", "chests/jungle_temple_dispenser", "chests/trial_chambers/intersection_barrel"
+		"chests/jungle_temple_dispenser", "chests/trial_chambers/intersection_barrel"
 	);
+	/** oniichan's head start: the seven iron pieces the bonus chest is guaranteed to carry. */
+	private static final List<String> STARTER_KIT = List.of(
+		"minecraft:iron_sword", "minecraft:iron_pickaxe", "minecraft:iron_axe", "minecraft:iron_helmet",
+		"minecraft:iron_chestplate", "minecraft:iron_leggings", "minecraft:iron_boots"
+	);
+	private static final int STARTER_ENCHANTS = 2;
 
 	@GameTest
-	public void theTargetedTablesAreTheVanillaChestFolderMinusThree(final GameTestHelper helper) {
+	public void theTargetedTablesAreTheVanillaChestFolderMinusTwo(final GameTestHelper helper) {
 		Set<String> found = new LinkedHashSet<>();
 
 		for (ResourceKey<LootTable> key : lootTableKeys(helper)) {
@@ -100,7 +107,7 @@ public class ChestLootGameTest {
 			found.size(), targeted.size(), NOT_TARGETED
 		);
 		helper.assertTrue(found.size() == 58, "the jar holds " + found.size() + " chest tables, not 58");
-		helper.assertTrue(targeted.size() == 55, "the hook targets " + targeted.size() + " chest tables, not 55");
+		helper.assertTrue(targeted.size() == 56, "the hook targets " + targeted.size() + " chest tables, not 56");
 		helper.assertTrue(
 			targeted.equals(TARGETED_CHESTS),
 			"the targeted set differs from the written list: " + difference(targeted, TARGETED_CHESTS)
@@ -503,6 +510,53 @@ public class ChestLootGameTest {
 			supported.size() == 36,
 			"the chest item types number " + supported.size() + ", not 36"
 		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theBonusChestCarriesTheHeadStartAndNothingRandom(final GameTestHelper helper) {
+		List<ItemStack> drops = roll(helper, chest("spawn_bonus_chest"), NEAR);
+		List<String> found = new ArrayList<>();
+		int wrongCount = 0;
+		int unenchanted = 0;
+		int offTag = 0;
+
+		for (ItemStack stack : drops) {
+			String id = itemId(stack);
+			if (!STARTER_KIT.contains(id)) {
+				continue;
+			}
+
+			found.add(id);
+			if (enchantments(stack).size() != STARTER_ENCHANTS) {
+				wrongCount++;
+			}
+
+			if (enchantments(stack).isEmpty()) {
+				unenchanted++;
+			}
+
+			if (!fromOurTag(stack, lootTag(helper))) {
+				offTag++;
+			}
+		}
+
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=starterKit RESULT rolls=1 kitItems={} kitTypes={} eachWithEnchants={} wrongCount={}"
+				+ " unenchanted={} offTag={}",
+			found.size(), STARTER_KIT.size(), STARTER_ENCHANTS, wrongCount, unenchanted, offTag
+		);
+		helper.assertTrue(
+			found.size() == STARTER_KIT.size(),
+			"the bonus chest carried " + found + " instead of the " + STARTER_KIT.size() + " kit pieces"
+		);
+		helper.assertTrue(
+			found.containsAll(STARTER_KIT),
+			"the kit is missing: " + STARTER_KIT.stream().filter(id -> !found.contains(id)).toList()
+		);
+		helper.assertTrue(wrongCount == 0, wrongCount + " kit pieces did not carry exactly " + STARTER_ENCHANTS);
+		helper.assertTrue(unenchanted == 0, unenchanted + " kit pieces were unenchanted");
+		helper.assertTrue(offTag == 0, offTag + " kit pieces carried an enchantment outside the chest tag");
 		helper.succeed();
 	}
 
