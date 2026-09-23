@@ -13,27 +13,33 @@ import net.minecraft.world.entity.Mob;
 
 /**
  * The durable half of an elite's identity: whether the mob was summoned, whether its one war call is
- * spent, whether it is an elite plus the tier its kit rolled, and how many ender pearls its budget has
- * left. Registered persistent, so a chunk unload and reload cannot turn a summon into a fresh elite
- * roll, give a warband a second call, or refill a spent pearl budget. Timing state stays in
- * {@link ReactiveState}, where losing a cooldown is harmless.
+ * spent, whether it is an elite plus the tier its kit rolled, how many ender pearls its budget has left,
+ * and whether it is a boss. Registered persistent, so a chunk unload and reload cannot turn a summon into
+ * a fresh elite roll, give a warband a second call, or refill a spent pearl budget. Every field is an
+ * optional codec field, so a save written before a later field existed still decodes.
  */
 public record EliteState(
-	boolean summoned, boolean warCallUsed, boolean elite, Optional<GearTier> eliteTier, int pearlsLeft
+	boolean summoned,
+	boolean warCallUsed,
+	boolean elite,
+	Optional<GearTier> eliteTier,
+	int pearlsLeft,
+	boolean boss
 ) {
 	public static final Codec<EliteState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("summoned", false).forGetter(EliteState::summoned),
 		Codec.BOOL.optionalFieldOf("war_call_used", false).forGetter(EliteState::warCallUsed),
 		Codec.BOOL.optionalFieldOf("elite", false).forGetter(EliteState::elite),
 		GearTier.CODEC.optionalFieldOf("elite_tier").forGetter(EliteState::eliteTier),
-		Codec.INT.optionalFieldOf("pearls_left", 0).forGetter(EliteState::pearlsLeft)
+		Codec.INT.optionalFieldOf("pearls_left", 0).forGetter(EliteState::pearlsLeft),
+		Codec.BOOL.optionalFieldOf("boss", false).forGetter(EliteState::boss)
 	).apply(instance, EliteState::new));
 	public static final AttachmentType<EliteState> TYPE = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_state"), CODEC
 	);
 
 	public EliteState() {
-		this(false, false, false, Optional.empty(), 0);
+		this(false, false, false, Optional.empty(), 0, false);
 	}
 
 	public static void register() {
@@ -68,6 +74,15 @@ public record EliteState(
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).asElite(tier));
 	}
 
+	/** B01 to B05: the boss flag is durable, so a reloaded boss is still a boss. */
+	public static boolean isBoss(final Mob mob) {
+		return get(mob).boss();
+	}
+
+	public static void setBoss(final Mob mob, final boolean boss) {
+		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withBoss(boss));
+	}
+
 	/** R25: the pearl budget's reader and writer. The budget is durable, so a reload cannot refill it. */
 	public static int pearlsLeft(final Mob mob) {
 		return get(mob).pearlsLeft();
@@ -78,18 +93,22 @@ public record EliteState(
 	}
 
 	public EliteState withSummoned(final boolean value) {
-		return new EliteState(value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft);
+		return new EliteState(value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss);
 	}
 
 	public EliteState withWarCallUsed(final boolean value) {
-		return new EliteState(this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft);
+		return new EliteState(this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft, this.boss);
 	}
 
 	public EliteState asElite(final GearTier tier) {
-		return new EliteState(this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft);
+		return new EliteState(this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft, this.boss);
 	}
 
 	public EliteState withPearlsLeft(final int value) {
-		return new EliteState(this.summoned, this.warCallUsed, this.elite, this.eliteTier, value);
+		return new EliteState(this.summoned, this.warCallUsed, this.elite, this.eliteTier, value, this.boss);
+	}
+
+	public EliteState withBoss(final boolean value) {
+		return new EliteState(this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, value);
 	}
 }
