@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.WitchElite;
+import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.behavior.WitchOffensiveThrowGoal;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.behavior.WitchSelfHealGoal;
@@ -42,7 +43,7 @@ public class WitchGameTest {
 		{
 			"version": 1,
 			"entities": {},
-			"rolls": { "roll_chance": 0.0 }
+			"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 		}""";
 	private static final int SPAWN_Y = 3;
 	private static final long NIGHT_TIME = 18000L;
@@ -210,7 +211,7 @@ public class WitchGameTest {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
 		helper.onEachTick(() -> witch.setTarget(enemy));
-		WitchElite.mark(witch);
+		WitchElite.mark(witch, GearTier.DIAMOND);
 		float expected = (float) WitchElite.eliteHealth(WITCH_BASE_HEALTH);
 
 		helper.succeedWhen(() -> {

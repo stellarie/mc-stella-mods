@@ -91,10 +91,6 @@ public final class BehaviorInstaller {
 	 * own witch goals, which hold MOVE and LOOK from rank 1 to 3.
 	 */
 	private static void installWitch(final Witch witch) {
-		if (WitchElite.roll(witch.getRandom(), WitchElite.DEFAULT_CHANCE)) {
-			WitchElite.mark(witch);
-		}
-
 		witch.getGoalSelector().addGoal(WITCH_SELF_HEAL_PRIORITY, new WitchSelfHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_SUPPORT_PRIORITY, new WitchSupportHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));

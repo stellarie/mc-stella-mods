@@ -35,7 +35,7 @@ public class GearRateGameTest {
 			"version": 1,
 			"entities": {},
 			"roles": {},
-			"rolls": { "roll_chance": 1.0 }
+			"rolls": { "roll_chance": 1.0, "elite_chance": 0.0 }
 		}""";
 
 	@GameTest(maxTicks = 200)

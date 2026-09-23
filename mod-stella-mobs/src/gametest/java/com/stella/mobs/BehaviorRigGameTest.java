@@ -152,7 +152,7 @@ public class BehaviorRigGameTest {
 						}
 					}
 				},
-				"rolls": { "roll_chance": 0.0 }
+				"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 			}""".formatted(subjectId);
 	}
 
@@ -164,7 +164,7 @@ public class BehaviorRigGameTest {
 					"minecraft:skeleton": { "slots": { "mainhand": { "item": "minecraft:bow" } } }
 				},
 				"roles": {%s},
-				"rolls": { "roll_chance": 0.0 }
+				"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 			}""".formatted(roles);
 	}
 }

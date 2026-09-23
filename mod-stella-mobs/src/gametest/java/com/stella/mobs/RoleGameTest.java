@@ -367,7 +367,7 @@ public class RoleGameTest {
 	}
 
 	private static String config(final String entities, final String roles) {
-		return "{\n\t\"version\": 1,\n\t" + entities + ",\n\t" + roles + ",\n\t\"rolls\": { \"roll_chance\": 0.0 }\n}";
+		return "{\n\t\"version\": 1,\n\t" + entities + ",\n\t" + roles + ",\n\t\"rolls\": { \"roll_chance\": 0.0, \"elite_chance\": 0.0 }\n}";
 	}
 
 	private static String skeletonBand(final double near, final double far) {
