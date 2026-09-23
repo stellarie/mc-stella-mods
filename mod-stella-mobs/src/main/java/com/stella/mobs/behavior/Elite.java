@@ -115,7 +115,9 @@ public final class Elite {
 		mark(mob, tier, HEALTH_MULTIPLIER);
 		EliteState.setPearlsLeft(mob, PearlThrowGoal.PEARL_COUNT);
 
-		if (applyKit) {
+		// The kit gate is the same usability gate as the ordinary roll: a mob that cannot equip and use
+		// gear takes only the marker, the health and the ability. This is what keeps an elite ghast bare.
+		if (applyKit && GearRoller.canRoll(mob)) {
 			GearRoller.rollSet(
 				mob, tier, KIT_DROP_CHANCE, mob.getRandom(), level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
 			);
