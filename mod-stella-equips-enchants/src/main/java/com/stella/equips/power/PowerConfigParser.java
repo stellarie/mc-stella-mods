@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
@@ -150,6 +151,15 @@ public final class PowerConfigParser {
 				doubleValueAtLeast(combatAttributes, "attack_speed", 0.0, config -> config.attributes().combat().attackSpeed())
 			);
 
+			JsonObject readout = enter("readout");
+			PowerConfig.Readout readoutSpec = new PowerConfig.Readout(
+				booleanValue(readout, "enabled_by_default", true, config -> config.readout().enabledByDefault()),
+				doubleValueAbove(readout, "radius", 0.0, config -> config.readout().radius()),
+				intValueAtLeast(readout, "max_per_player", 0, config -> config.readout().maxPerPlayer()),
+				doubleValueAtLeast(readout, "height_offset", 0.0, config -> config.readout().heightOffset()),
+				doubleValueAbove(readout, "view_range", 0.0, config -> config.readout().viewRange())
+			);
+
 			return new PowerConfig(
 				version,
 				levelCap,
@@ -161,7 +171,8 @@ public final class PowerConfigParser {
 				xpMultiplier,
 				bandSpec,
 				trackerSpec,
-				new PowerConfig.Attributes(survivability, combat)
+				new PowerConfig.Attributes(survivability, combat),
+				readoutSpec
 			);
 		}
 
@@ -244,6 +255,29 @@ public final class PowerConfigParser {
 			}
 
 			return element.getAsDouble();
+		}
+
+		private boolean booleanValue(
+			final @Nullable JsonObject parent,
+			final String key,
+			final boolean neutral,
+			final Predicate<PowerConfig> fromFallback
+		) {
+			JsonElement element = value(parent, key);
+			if (!isBoolean(element)) {
+				badBoolean(parent, key);
+				return this.fallback == null ? neutral : fromFallback.test(this.fallback);
+			}
+
+			return element.getAsBoolean();
+		}
+
+		private void badBoolean(final @Nullable JsonObject parent, final String key) {
+			if (parent == null) {
+				return;
+			}
+
+			problem("'" + this.path + "." + key + "' is missing or is not a boolean");
 		}
 
 		private double doubleValueAtLeast(
@@ -371,6 +405,10 @@ public final class PowerConfigParser {
 
 	private static boolean isNumber(final @Nullable JsonElement element) {
 		return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber();
+	}
+
+	private static boolean isBoolean(final @Nullable JsonElement element) {
+		return element != null && element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean();
 	}
 
 	private static @Nullable Identifier identifier(final @Nullable JsonElement element) {

@@ -2,6 +2,8 @@ package com.stella.equips;
 
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerTracker;
+import com.stella.equips.readout.ReadoutCommand;
+import com.stella.equips.readout.ReadoutService;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.slf4j.Logger;
@@ -14,6 +16,8 @@ public class StellaEquips implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		PowerTracker.register();
+		ReadoutService.register();
+		ReadoutCommand.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {

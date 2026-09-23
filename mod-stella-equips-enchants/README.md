@@ -1,7 +1,7 @@
 # mod-stella-equips-enchants
 
 A server-side Fabric mod. Every enchantment costs at most one level to assemble
-at an anvil. Later slices add the enchantment catalogue, a player power system,
+at an anvil. The mod also holds the enchantment catalogue, a player power system,
 and a per-player mob level readout.
 
 Build and test:
@@ -59,12 +59,39 @@ bad entry logs and keeps the previous value, and every tuning number lives there
 Four keys are worth naming because they are not obvious: `depth_bonus_blocks` and
 `depth_reference_y` set how fast the mob level grows with depth, `level_cap` is
 the mob level ceiling, `boss_types` lists the entity types that pay
-`points_per_boss`, and `bands` holds the readout thresholds that slice 4 reads.
+`points_per_boss`, and `bands` holds the readout thresholds.
 
 A player meets the system by walking out and by fighting. The health bar, the
 damage reduction, and the damage dealt all move, and the level itself is written
 into the player attachment, which survives a death and a restart. The level
-number on screen is slice 4's readout and is not built here.
+number on screen is the readout below.
+
+## Mob level readout
+
+Each player sees the level of nearby mobs, colored by the threat that mob poses
+to that player. The color is relative, so one mob can read green for one player
+and red for another. A vanilla name tag cannot do this, because one entity
+carries one name for every viewer.
+
+A readout is a text display entity. It never joins the level, so the vanilla
+tracking broadcast cannot reach a second player. The mod sends the add packet and
+the data packet to the owner alone, through `ServerPlayer.connection`. The mob
+keeps its own name and its name tag, and the gear roll in `mod-stella-mobs` is
+untouched.
+
+The gap is the mob level minus the owner's level. The color bands come from the
+`bands` block of `power.json`, the same thresholds the kill reward reads: red at
+20 above, yellow at 10 above, orange at 6 above, green from 5 above to 5 below,
+orange again from 6 below, and white at 10 or more below. `/stellaequips readout
+off` clears the readouts of one player and stops new ones; `on` restores them.
+
+Two guards bound the cost. A readout exists only for a mob within 32 blocks of its
+owner, and one player holds at most 40 readouts, nearest first. The text is
+re-sent only when the band or the mob level changes, so a scan that finds nothing
+new sends nothing. A readout is removed when its mob dies, when it leaves the
+radius, when the cap drops it, when the owner disconnects, and when the owner opts
+out. The `readout` block of `power.json` holds `enabled_by_default`, `radius`,
+`max_per_player`, `height_offset`, and `view_range`.
 
 ## Game tests
 
@@ -75,7 +102,10 @@ number on screen is slice 4's readout and is not built here.
 The game tests run a headless server. They check the fixture enchantment
 `mod-stella-equips-enchants:test_marker`, its cost fields, the clamped anvil
 cost, the 44 catalogue enchantments, the power curve, the config parser, the
-attribute modifiers, the player attachment, and the tracker.
+attribute modifiers, the player attachment, the tracker, and the readout: its
+text and colors, its radius, its cap, its band updates, its removal on death, on
+range, and on disconnect, its invisibility to a second player, and the opt-out
+command.
 
 ## Target platform
 
