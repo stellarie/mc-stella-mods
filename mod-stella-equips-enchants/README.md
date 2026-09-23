@@ -1,21 +1,24 @@
 # mod-stella-equips-enchants
 
-A server-side Fabric mod. Enchanting costs emeralds and never experience. The
-mod also holds the enchantment catalogue, a player power system, and a
-per-player mob level readout.
+A Fabric mod with server-side gameplay and an optional client heart layout cap.
+Enchanting costs emeralds and never experience. The mod also holds the
+enchantment catalogue, player power, and a per-player mob level readout.
 
 Build and test:
 
 ```powershell
 cd mod-stella-equips-enchants
 .\gradlew.bat clean build
-.\gradlew.bat runGameTest
+.\gradlew.bat runGameTest --rerun
 ```
+
+Run `runGameTest --rerun` five separate times for the completion gate. Save each
+run log before the next run.
 
 The built jar is
 `mod-stella-equips-enchants/build/libs/mod-stella-equips-enchants-0.1.0+26.3.jar`.
-Copy it into a Fabric server's `mods` folder. The mod needs Fabric API. No client
-mod is required.
+Copy it into a Fabric server's `mods` folder. The mod needs Fabric API. Install
+it on a client only to cap the drawn heart rows for high-health players.
 
 ## Enchanting prices
 
@@ -36,7 +39,8 @@ assembles. `EnchantmentMenuMixin` puts the price in the table's `costs` array,
 which is the array the client renders, and takes the emeralds from the currency
 slot, which becomes an emerald slot.
 
-Two client side limits remain, because the mod is server side only:
+Two enchanting UI limits remain on vanilla clients. The optional client mixin
+only changes the heart layout:
 
 - A vanilla client reads its own copy of `costs` and its own experience level
   when it decides whether to draw a table offer and whether to send the click. A
