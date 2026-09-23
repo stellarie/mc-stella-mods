@@ -11,7 +11,9 @@
 			"com.stella.equips.PowerApplyGameTest",
 			"com.stella.equips.PowerConfigGameTest",
 			"com.stella.equips.PowerCurveGameTest",
-			"com.stella.equips.PowerTrackerGameTest"
+			"com.stella.equips.PowerTrackerGameTest",
+			"com.stella.equips.ReadoutGameTest",
+			"com.stella.equips.ReadoutTextGameTest"
 		]
 	}
 }

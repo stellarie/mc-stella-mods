@@ -48,7 +48,8 @@ public final class PowerFixtures {
 			new PowerConfig.Attributes(
 				new PowerConfig.Survivability(0.5, 0.24, 0.006),
 				new PowerConfig.Combat(0.03, 0.004)
-			)
+			),
+			new PowerConfig.Readout(true, 32.0, 40, 0.9, 0.5)
 		);
 	}
 }
