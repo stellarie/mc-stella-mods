@@ -30,12 +30,13 @@ import net.minecraft.world.phys.Vec3;
  */
 public class BookLootProbeGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
+	private static final String TEST_MOD_ID = "mod-stella-equips-enchants-test-mod-stella-equips-enchants";
 	private static final int WIDE_ROLLS = 800;
 	private static final int CATALOGUE_ROLLS = 1200;
 	private static final int LEVEL5_ROLLS = 2000;
 
-	private static final Identifier RANDOMLY_WIDE = table("probe_book_randomly_wide");
-	private static final Identifier RANDOMLY_CATALOGUE = table("probe_book_randomly_catalogue");
+	private static final Identifier RANDOMLY_WIDE = table("fixture_maxima");
+	private static final Identifier RANDOMLY_CATALOGUE = table("fixture_catalogue");
 	private static final Identifier RANDOMLY_LEVEL5 = table("probe_book_randomly_level5");
 	private static final Identifier RANDOMLY_TAG = table("probe_book_randomly_tag");
 	private static final Identifier WITH_LEVELS_WIDE = table("probe_book_with_levels_wide");
@@ -412,7 +413,7 @@ public class BookLootProbeGameTest {
 	}
 
 	private static Identifier table(final String path) {
-		return Identifier.fromNamespaceAndPath(MOD_ID, path);
+		return Identifier.fromNamespaceAndPath(TEST_MOD_ID, path);
 	}
 
 	private static Identifier enchantment(final String path) {

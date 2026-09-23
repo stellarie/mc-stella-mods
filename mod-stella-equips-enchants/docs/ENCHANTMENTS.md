@@ -12,6 +12,15 @@ enchanting table tag and is a cost candidate for at least one item, so all 44
 can be rolled at a table. No enchantment carries an `exclusive_set`, so no pair
 blocks another pair.
 
+## Prices
+
+The anvil and the table charge emeralds, not experience. The anvil price is the
+number of enchantments the operation applies, at one emerald each, so
+`anvil_cost` no longer decides what a player pays. The table price is the
+offered enchantment's level, so `min_cost` and `max_cost` still shape which
+offers appear while the offered level sets the price. The README records the two
+client side limits that a server side mod cannot close.
+
 ## Adding another one
 
 1. Write the JSON file. Copy a neighbour in the same folder and change the

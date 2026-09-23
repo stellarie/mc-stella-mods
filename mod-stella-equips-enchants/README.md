@@ -1,8 +1,8 @@
 # mod-stella-equips-enchants
 
-A server-side Fabric mod. Every enchantment costs at most one level to assemble
-at an anvil. The mod also holds the enchantment catalogue, a player power system,
-and a per-player mob level readout.
+A server-side Fabric mod. Enchanting costs emeralds and never experience. The
+mod also holds the enchantment catalogue, a player power system, and a
+per-player mob level readout.
 
 Build and test:
 
@@ -17,19 +17,38 @@ The built jar is
 Copy it into a Fabric server's `mods` folder. The mod needs Fabric API. No client
 mod is required.
 
-## Anvil cost
+## Enchanting prices
 
-One mixin clamps the anvil cost to 1 level. `AnvilMenuMixin` holds an
-`@Accessor("cost")` on the private cost slot, a `@ModifyExpressionValue` on the
-cost read inside the "Too Expensive" gate, and one `@Inject` at the RETURN of
-`createResult` that writes `AnvilCost.clamp(cost)` back into the slot. The gate
-reads the clamped value, so a heavily repaired item still assembles.
-`AnvilMenu` exists on the client and the server, and both sides read that one
-field, so the display and the charge cannot disagree once the menu has finished
-computing: the anvil shows 1 and takes 1. The in-method sync runs before the
-clamp, so a client can hold the pre-clamp value for one tick. The clamp leaves
-`min_cost` and `max_cost` alone, so the enchanting table keeps its per-enchantment
-rarity.
+Enchanting costs emeralds and spends no experience, at either container.
+
+- **Anvil.** The price is the number of enchantments the operation applies, at
+  one emerald each. One enchantment costs 1, a combine that applies two costs 2,
+  and a repair that applies none is free.
+- **Table.** The price is the offered enchantment's level. A level 1 offer costs
+  1 emerald and a level 5 offer costs 5. `min_cost` and `max_cost` still decide
+  which offers appear; they are no longer a price.
+
+`AnvilMenuMixin` writes the price into the anvil's `cost` slot, which feeds
+`getCost`, `mayPickup` and `onTake`, so the display and the charge cannot
+disagree once the menu has finished computing. It also replaces the level price
+that the vanilla "Too Expensive" gate reads, so a heavily repaired item still
+assembles. `EnchantmentMenuMixin` puts the price in the table's `costs` array,
+which is the array the client renders, and takes the emeralds from the currency
+slot, which becomes an emerald slot.
+
+Two client side limits remain, because the mod is server side only:
+
+- A vanilla client reads its own copy of `costs` and its own experience level
+  when it decides whether to draw a table offer and whether to send the click. A
+  player holding fewer experience levels than the price sees a disabled row and
+  the red level line, although the server would accept the emeralds. Levels are
+  never spent.
+- The table's tooltip still names lapis lazuli, because that text is client code.
+  The slot itself takes emeralds.
+
+Emeralds are the enchanting currency, so a villager hall becomes the engine of
+enchanting and a player with no emerald supply cannot enchant at all. That is
+the intended shape.
 
 ## Player power
 
