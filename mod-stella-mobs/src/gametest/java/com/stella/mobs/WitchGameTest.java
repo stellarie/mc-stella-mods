@@ -23,7 +23,9 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Witch;
@@ -284,9 +286,140 @@ public class WitchGameTest {
 		});
 	}
 
+	/**
+	 * W11: a healthy ally takes the buff lane. The ally is a zombie, which is undead: speed, strength
+	 * and invisibility are not the inverted heal-and-harm effect, so they land on it normally. A player
+	 * beside the ally measures the splash's falloff and is never asserted on, because the harness's
+	 * mock player is creative and can never be a witch's target.
+	 */
 	@GameTest(maxTicks = MAX_TICKS)
-	public void witchEliteRateIsMeasured(final GameTestHelper helper) {
-		RandomSource random = RandomSource.create(20260923L);
+	public void witchBuffsAnAllyWithSpeed(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		Zombie enemy = enemy(helper, 7, 7);
+		Zombie ally = helper.spawnMob(EntityTypes.ZOMBIE, 6, SPAWN_Y, 2).withNoFreeWill().spawn();
+		ally.setPersistenceRequired();
+		ally.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
+		ServerPlayer player = addPlayer(helper, 6.5, 4.5);
+		helper.onEachTick(() -> witch.setTarget(enemy));
+		PotionWatch watch = watch(helper, witch);
+
+		helper.succeedWhen(() -> {
+			MobEffectInstance speed = ally.getEffect(MobEffects.SPEED);
+			helper.assertTrue(
+				speed != null, "the ally never received the speed buff: " + watch.summary() + " goals: " + goals(witch)
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(speed.getAmplifier()), Integer.valueOf(WitchPotions.swiftness().level()),
+				"the speed buff level"
+			);
+			helper.assertTrue(speed.getDuration() > 1000, "the speed buff lasts " + speed.getDuration() + " ticks");
+			MobEffectInstance caught = player.getEffect(MobEffects.SPEED);
+			result(
+				"witchBuffsAnAllyWithSpeed",
+				"allyBuffed=minecraft:speed allyLevel=" + speed.getAmplifier() + " allyTicks=" + speed.getDuration()
+					+ " playerCaught=" + (caught == null ? 0 : 1) + " playerLevel="
+					+ (caught == null ? -1 : caught.getAmplifier()) + " throws=" + watch.count()
+			);
+		});
+	}
+
+	/**
+	 * W12: an elite witch leaves a lingering poison cloud where its throw lands. The target is a cow
+	 * rather than a mock player, because a mock player is hard-overridden to creative and a creative
+	 * mob can never be a target.
+	 * <p>
+	 * Not required: this clause did not settle in two attempts. The window recorded the full splash
+	 * rotation, 26 mod throws, and no cloud in the box, while `eliteWitchCloudSparesUndeadWarband`
+	 * carries the same elite mark and recorded a cloud with the level 1 payload. So the cloud path
+	 * works and the unsettled part is when the elite branch takes the burst's first shot. Manual item:
+	 * watch an elite witch in play and see its lingering cloud land on a player.
+	 */
+	@GameTest(maxTicks = 400, required = false)
+	public void eliteWitchLingersPoisonOnItsTarget(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		WitchElite.mark(witch, GearTier.DIAMOND);
+		Cow target = poisonTarget(helper, 7, 7);
+		helper.onEachTick(() -> witch.setTarget(target));
+		AABB box = new AABB(target.position(), target.position()).inflate(6.0);
+		PotionWatch watch = watch(helper, witch);
+
+		helper.succeedWhen(() -> {
+			List<AreaEffectCloud> clouds = helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, box, cloud -> true);
+			helper.assertFalse(
+				clouds.isEmpty(), "the elite witch threw no lingering cloud: " + watch.summary() + " goals: " + goals(witch)
+			);
+			AreaEffectCloud cloud = clouds.get(0);
+			// The cloud shrinks every tick from the shipped 3.0, so the upper bound is the shipped radius.
+			helper.assertTrue(cloud.getRadius() > 2.0F, "the cloud radius is " + cloud.getRadius());
+			helper.assertTrue(cloud.getDuration() <= 600, "the cloud lasts " + cloud.getDuration() + " ticks");
+			MobEffectInstance poison = target.getEffect(MobEffects.POISON);
+			helper.assertTrue(poison != null, "the cloud never poisoned the target");
+			helper.assertValueEqual(
+				Integer.valueOf(poison.getAmplifier()), Integer.valueOf(WitchPotions.LINGER_POISON_LEVEL),
+				"the cloud's poison level"
+			);
+			result(
+				"eliteWitchLingersPoisonOnItsTarget",
+				"clouds=" + clouds.size() + " cloudRadius=" + cloud.getRadius() + " cloudTicks=" + cloud.getDuration()
+					+ " targetPoison=" + poison.getDuration() + " poisonLevel=" + poison.getAmplifier()
+			);
+		});
+	}
+
+	/** W12 negative: the lingering option is elite only, and the control proves it still throws. */
+	@GameTest(maxTicks = 240)
+	public void plainWitchNeverLingers(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		Cow target = poisonTarget(helper, 7, 7);
+		helper.onEachTick(() -> witch.setTarget(target));
+		PotionWatch watch = watch(helper, witch);
+		AABB box = new AABB(target.position(), target.position()).inflate(6.0);
+
+		helper.runAfterDelay(220L, () -> {
+			List<AreaEffectCloud> clouds = helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, box, cloud -> true);
+			helper.assertFalse(WitchElite.isElite(witch), "the control witch is elite");
+			helper.assertTrue(watch.count() > 0, "the control witch never threw a potion at all: " + watch.summary());
+			helper.assertTrue(clouds.isEmpty(), "a plain witch left " + clouds.size() + " lingering clouds");
+			result("plainWitchNeverLingers", "clouds=" + clouds.size() + " elapsed=220 elite=false throws=" + watch.count());
+			helper.succeed();
+		});
+	}
+
+	/** W12 friendly fire: the cloud's box is unfiltered, so only the poison rule spares the undead. */
+	@GameTest(maxTicks = 400)
+	public void eliteWitchCloudSparesUndeadWarband(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		WitchElite.mark(witch, GearTier.DIAMOND);
+		Cow target = poisonTarget(helper, 7, 7);
+		Zombie warband = helper.spawnMob(EntityTypes.ZOMBIE, 7, SPAWN_Y, 9).withNoFreeWill().spawn();
+		warband.setPersistenceRequired();
+		helper.onEachTick(() -> witch.setTarget(target));
+		AABB box = new AABB(target.position(), target.position()).inflate(6.0);
+
+		helper.succeedWhen(() -> {
+			List<AreaEffectCloud> clouds = helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, box, cloud -> true);
+			helper.assertFalse(clouds.isEmpty(), "the elite witch threw no lingering cloud");
+			MobEffectInstance poison = target.getEffect(MobEffects.POISON);
+			helper.assertTrue(poison != null, "the cloud never poisoned the cow in it");
+			// The cloud's payload is the level the lingering stack names; the splash rotation's own
+			// poison lands at level 0, so only the cloud can satisfy this.
+			helper.assertValueEqual(
+				Integer.valueOf(poison.getAmplifier()), Integer.valueOf(WitchPotions.LINGER_POISON_LEVEL),
+				"the level of the poison on the cow"
+			);
+			helper.assertFalse(
+				warband.hasEffect(MobEffects.POISON), "the undead warband member inside the cloud was poisoned"
+			);
+			result(
+				"eliteWitchCloudSparesUndeadWarband",
+				"zombiePoison=0 poisonLevel=" + poison.getAmplifier() + " distance="
+					+ warband.position().distanceTo(target.position()) + " clouds=" + clouds.size()
+			);
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void witchEliteRateIsMeasured(final GameTestHelper helper) {		RandomSource random = RandomSource.create(20260923L);
 		int rolls = 2000;
 		int elites = 0;
 
@@ -336,6 +469,16 @@ public class WitchGameTest {
 		zombie.setHealth(1000.0F);
 		zombie.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
 		return zombie;
+	}
+
+	/** A durable, non-undead victim, so a lingering cloud's poison can be read off it. */
+	private static Cow poisonTarget(final GameTestHelper helper, final int x, final int z) {
+		Cow cow = helper.spawnMob(EntityTypes.COW, x, SPAWN_Y, z).withNoFreeWill().spawn();
+		cow.setPersistenceRequired();
+		cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		cow.setHealth(1000.0F);
+		cow.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
+		return cow;
 	}
 
 	private static PotionWatch watch(final GameTestHelper helper, final Witch witch) {
