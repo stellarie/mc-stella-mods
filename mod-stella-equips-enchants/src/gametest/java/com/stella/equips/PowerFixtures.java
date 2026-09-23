@@ -16,6 +16,7 @@ public final class PowerFixtures {
 	public static final double ATTACK_SPEED_MAX = 1.0;
 	public static final double ARMOR_PLATEAU_POINTS = 125.0;
 	public static final double ARMOR_CEILING = 30.0;
+	public static final double KNOCKBACK_CEILING = 1.0;
 
 	private PowerFixtures() {
 	}

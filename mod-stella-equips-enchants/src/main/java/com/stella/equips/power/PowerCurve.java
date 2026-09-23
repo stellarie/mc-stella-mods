@@ -78,12 +78,12 @@ public final class PowerCurve {
 		return Math.max(multiplier.min(), Math.min(multiplier.max(), value));
 	}
 
-	public static double attackDamageBonus(final int level, final PowerConfig config) {
-		return config.attributes().combat().attackDamageMax() * outputFraction(level, config);
+	public static double attackDamageBonus(final int combatLevel, final PowerConfig config) {
+		return config.attributes().combat().attackDamageMax() * outputFraction(combatLevel, config);
 	}
 
-	public static double attackSpeedBonus(final int level, final PowerConfig config) {
-		return config.attributes().combat().attackSpeedMax() * outputFraction(level, config);
+	public static double attackSpeedBonus(final int combatLevel, final PowerConfig config) {
+		return config.attributes().combat().attackSpeedMax() * outputFraction(combatLevel, config);
 	}
 
 	private static double outputFraction(final int level, final PowerConfig config) {

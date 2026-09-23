@@ -136,11 +136,17 @@ public final class PowerConfigParser {
 
 			JsonObject distanceAttributes = enter("attributes.distance");
 			PowerConfig.Survivability survivability = new PowerConfig.Survivability(
-				doubleValueAtLeast(distanceAttributes, "max_health", 0.0, config -> config.attributes().distance().maxHealth()),
-				doubleValueAtLeast(distanceAttributes, "armor", 0.0, config -> config.attributes().distance().armor()),
 				doubleValueAtLeast(
-					distanceAttributes, "knockback_resistance", 0.0,
-					config -> config.attributes().distance().knockbackResistance()
+					distanceAttributes, "max_health_per_point", 0.0,
+					config -> config.attributes().distance().maxHealthPerPoint()
+				),
+				doubleValueAtLeast(
+					distanceAttributes, "armor_per_level", 0.0,
+					config -> config.attributes().distance().armorPerLevel()
+				),
+				doubleValueAtLeast(
+					distanceAttributes, "knockback_resistance_per_level", 0.0,
+					config -> config.attributes().distance().knockbackResistancePerLevel()
 				)
 			);
 
