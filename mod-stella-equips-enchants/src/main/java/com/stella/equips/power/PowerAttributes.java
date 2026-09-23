@@ -20,26 +20,20 @@ public final class PowerAttributes {
 	private PowerAttributes() {
 	}
 
-	public static double apply(
-		final ServerPlayer player, final long travelPoints, final int combatLevel, final PowerConfig config
-	) {
-		PowerConfig.Survivability survivability = config.attributes().distance();
-		int travelLevel = PowerCurve.levelFor(travelPoints, config);
-		long climbed = Math.max(0L, travelLevel - 1L);
-		double healthGained = replace(
-			player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, survivability.maxHealthPerPoint() * travelPoints
-		);
-		replace(player, Attributes.ARMOR, ARMOR_ID, survivability.armorPerLevel() * climbed);
+	public static void apply(final ServerPlayer player, final int level, final PowerConfig config) {
+		PowerConfig.Attributes attributes = config.attributes();
+		double fraction = PowerCurve.levelFraction(level, config);
+		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, attributes.maxHealthAtCap() * fraction);
+		replace(player, Attributes.ARMOR, ARMOR_ID, attributes.armorAtCap() * fraction);
 		replace(
 			player,
 			Attributes.KNOCKBACK_RESISTANCE,
 			KNOCKBACK_RESISTANCE_ID,
-			survivability.knockbackResistancePerLevel() * climbed
+			attributes.knockbackResistanceAtCap() * fraction
 		);
-		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, PowerCurve.attackDamageBonus(combatLevel, config));
-		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, PowerCurve.attackSpeedBonus(combatLevel, config));
+		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, attributes.attackDamageAtCap() * fraction);
+		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, attributes.attackSpeedAtCap() * fraction);
 		clampHealth(player);
-		return healthGained;
 	}
 
 	public static void remove(final ServerPlayer player) {
@@ -57,24 +51,22 @@ public final class PowerAttributes {
 		}
 	}
 
-	private static double replace(
+	private static void replace(
 		final ServerPlayer player, final Holder<Attribute> attribute, final Identifier id, final double amount
 	) {
 		AttributeInstance instance = player.getAttribute(attribute);
 		if (instance == null) {
-			return 0.0;
+			return;
 		}
 
-		AttributeModifier previous = instance.getModifier(id);
-		double before = previous == null ? 0.0 : previous.amount();
 		double capped = Math.max(0.0, Math.min(amount, headroom(attribute, instance)));
 		if (capped == 0.0) {
 			instance.removeModifier(id);
 		} else {
-			instance.addOrReplacePermanentModifier(modifier(id, capped));
+			instance.addOrReplacePermanentModifier(new AttributeModifier(
+				id, capped, AttributeModifier.Operation.ADD_VALUE
+			));
 		}
-
-		return capped - before;
 	}
 
 	private static double headroom(final Holder<Attribute> attribute, final AttributeInstance instance) {
@@ -90,10 +82,6 @@ public final class PowerAttributes {
 		if (instance != null) {
 			instance.removeModifier(id);
 		}
-	}
-
-	private static AttributeModifier modifier(final Identifier id, final double amount) {
-		return new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_VALUE);
 	}
 
 	private static Identifier id(final String name) {

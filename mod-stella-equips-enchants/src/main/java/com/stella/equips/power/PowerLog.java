@@ -10,20 +10,23 @@ public final class PowerLog {
 			final String player,
 			final int level,
 			final int from,
-			final long survivabilityPoints,
-			final double combatPoints,
-			final double healthGained
+			final double points
 		) {
 		}
 
 		default void powerKill(
 			final String mob,
-			final boolean boss,
 			final int mobLevel,
-			final int playerLevel,
-			final double multiplier,
+			final int award,
+			final double points
+		) {
+		}
+
+		default void powerDeath(
+			final String player,
+			final double lost,
 			final double points,
-			final double totalCombatPoints
+			final int level
 		) {
 		}
 

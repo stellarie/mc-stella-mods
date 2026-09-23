@@ -2,19 +2,25 @@ package com.stella.equips;
 
 import com.stella.equips.power.PowerConfig;
 import java.util.Map;
-import java.util.Set;
 import net.minecraft.resources.Identifier;
 
 public final class PowerFixtures {
 	public static final Identifier OVERWORLD = Identifier.fromNamespaceAndPath("minecraft", "overworld");
 	public static final Identifier NETHER = Identifier.fromNamespaceAndPath("minecraft", "the_nether");
 	public static final Identifier END = Identifier.fromNamespaceAndPath("minecraft", "the_end");
-	public static final long LEVEL_50_POINTS = 3969L;
-	public static final int DISTANCE_CAP_POINTS = 2000;
-	public static final int DEPTH_CAP_POINTS = 8;
-	public static final double ATTACK_DAMAGE_MAX = 20.0;
-	public static final double ATTACK_SPEED_MAX = 1.0;
-	public static final double ARMOR_PLATEAU_POINTS = 125.0;
+	public static final long LEVEL_50_POINTS = 6275L;
+	public static final long STEP_49_TO_50_POINTS = 819L;
+	public static final long LEVEL_49_POINTS = 5456L;
+	public static final double LEVEL_50_SHARE = 0.13;
+	public static final double GROWTH = 1.15;
+	public static final double BASE = 1.0;
+	public static final double AWARD_DIVISOR = 0.5;
+	public static final int AWARD_MINIMUM = 1;
+	public static final double MAX_HEALTH_AT_CAP = 1004.0;
+	public static final double ARMOR_AT_CAP = 11.76;
+	public static final double KNOCKBACK_RESISTANCE_AT_CAP = 0.294;
+	public static final double ATTACK_DAMAGE_AT_CAP = 20.0;
+	public static final double ATTACK_SPEED_AT_CAP = 1.0;
 	public static final double ARMOR_CEILING = 30.0;
 	public static final double KNOCKBACK_CEILING = 1.0;
 
@@ -25,18 +31,8 @@ public final class PowerFixtures {
 		return new PowerConfig(
 			1,
 			50,
-			new PowerConfig.PointsPerLevel(6L, 3L),
-			new PowerConfig.Distance(5.0, DISTANCE_CAP_POINTS),
-			new PowerConfig.Depth(16.0, 63.0, DEPTH_CAP_POINTS),
-			new PowerConfig.Kills(
-				1L,
-				4L,
-				Set.of(
-					Identifier.fromNamespaceAndPath("minecraft", "wither"),
-					Identifier.fromNamespaceAndPath("minecraft", "ender_dragon"),
-					Identifier.fromNamespaceAndPath("minecraft", "warden")
-				)
-			),
+			new PowerConfig.Curve(BASE, GROWTH),
+			new PowerConfig.Award(AWARD_DIVISOR, AWARD_MINIMUM),
 			new PowerConfig.MobLevel(
 				300.0,
 				32,
@@ -47,12 +43,14 @@ public final class PowerFixtures {
 				1.0,
 				Map.of(NETHER, 8.0, OVERWORLD, 1.0, END, 1.0)
 			),
-			new PowerConfig.XpMultiplier(1.0, 0.15, 0.05, 4.0),
 			new PowerConfig.Bands(20, 10, 6, 5),
 			new PowerConfig.Tracker(40, 5),
 			new PowerConfig.Attributes(
-				new PowerConfig.Survivability(0.5, 0.24, 0.006),
-				new PowerConfig.Combat(ATTACK_DAMAGE_MAX, ATTACK_SPEED_MAX)
+				MAX_HEALTH_AT_CAP,
+				ARMOR_AT_CAP,
+				KNOCKBACK_RESISTANCE_AT_CAP,
+				ATTACK_DAMAGE_AT_CAP,
+				ATTACK_SPEED_AT_CAP
 			),
 			new PowerConfig.Readout(true, 32.0, 40, 0.9, 0.5)
 		);
