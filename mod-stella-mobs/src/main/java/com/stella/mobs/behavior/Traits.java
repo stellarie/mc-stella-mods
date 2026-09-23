@@ -1,10 +1,13 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.StellaMobs;
 import com.stella.mobs.scaling.SpawnScaling;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -40,6 +43,28 @@ public final class Traits {
 	public static final double HEAT_CHANCE = 0.25;
 	/** T06: the chance an end mob negates a hit entirely, shown by the teleport tell. */
 	public static final double END_NEGATE_CHANCE = 0.25;
+	private static double heatRoll = HEAT_CHANCE;
+	private static double endRoll = END_NEGATE_CHANCE;
+
+	/**
+	 * Pins the two chances, so a chance clause is never reached by luck. A test sets these and restores
+	 * the shipped values in a finally, which is the same shape the global config store already uses.
+	 */
+	public static void pinHeatRoll(final double chance) {
+		heatRoll = chance;
+	}
+
+	public static double heatRoll() {
+		return heatRoll;
+	}
+
+	public static void pinEndRoll(final double chance) {
+		endRoll = chance;
+	}
+
+	public static double endRoll() {
+		return endRoll;
+	}
 
 	private Traits() {
 	}
@@ -128,5 +153,54 @@ public final class Traits {
 	/** Whether this mob took the named trait at spawn. */
 	public static boolean has(final Mob mob, final String trait) {
 		return EliteState.traits(mob).contains(trait);
+	}
+
+	/** T05 and T06: the heat ignition and the end negation, both read through their pinned rolls. */
+	public static boolean rolls(final double chance, final net.minecraft.util.RandomSource random) {
+		return random.nextDouble() < chance;
+	}
+
+	/**
+	 * T05: the heat trait sets what it hits alight. The roll is a named constant a test pins, so the
+	 * clause is reached by a pinned certainty rather than by luck, and the fire is read as fire ticks.
+	 */
+	public static void afterDamage(
+		final LivingEntity entity,
+		final DamageSource source,
+		final float baseDamageTaken,
+		final float damageTaken,
+		final boolean blocked
+	) {
+		if (blocked || !(source.getEntity() instanceof Mob hitter)) {
+			return;
+		}
+
+		if (hitter == entity) {
+			return;
+		}
+
+		if (has(hitter, "windy")) {
+			windyPush(entity, source, damageTaken, hitter);
+		}
+
+		if (has(hitter, "heat") && entity.getRandom().nextDouble() < heatRoll) {
+			entity.igniteForSeconds(HEAT_BURN_SECONDS);
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=traitHeat t={} IGNITE seconds={} victim={} fireTicks={}",
+				hitter.level().getGameTime(), HEAT_BURN_SECONDS, entity.getType(), entity.getRemainingFireTicks()
+			);
+		}
+	}
+
+	private static void windyPush(
+		final LivingEntity entity, final DamageSource source, final float damageTaken, final Mob hitter
+	) {
+		double xd = hitter.getX() - entity.getX();
+		double zd = hitter.getZ() - entity.getZ();
+		entity.knockback(WINDY_PUSH, xd, zd, source, damageTaken);
+		StellaMobs.LOGGER.info(
+			"[BEHAVIOR] test=traitWindy t={} PUSH power={} victim={} delta={} grounded={}",
+			hitter.level().getGameTime(), WINDY_PUSH, entity.getType(), entity.getDeltaMovement(), entity.onGround()
+		);
 	}
 }
