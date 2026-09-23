@@ -10,6 +10,7 @@ import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.GolemElite;
+import com.stella.mobs.behavior.PiglinSmash;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
@@ -63,6 +64,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(GolemElite::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinSmash::afterDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);

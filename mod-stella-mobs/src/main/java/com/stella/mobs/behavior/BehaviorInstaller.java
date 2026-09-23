@@ -195,6 +195,8 @@ public final class BehaviorInstaller {
 		installReinforcements(mob);
 		installSpiderBrood(mob);
 		installBlazeVolley(mob);
+		// R24: the elite brute's permanent movement, which the shared elite mark alone does not add.
+		PiglinSmash.install(mob);
 	}
 
 	/**
