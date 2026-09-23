@@ -88,6 +88,15 @@ works on one. They are the standard, not a suggestion.
 - A mob spawned exactly on a surface never registers `onGround`, so
   `GroundPathNavigation.createPath` returns null. Spawn two blocks up.
 - One assertion per test method where possible.
+- Never call `helper.onEachTick` from inside a `runAfterDelay` callback. It
+  registers into `GameTestInfo`'s `runAtTickTimeMap` while the framework is
+  iterating that map, which corrupts it and kills the test server in
+  `tickInternal`. Register the per-tick work from the test body instead. This cost
+  one crashed server on 2026-09-23; the report is in
+  `build/run/gameTest/crash-reports/`.
+- A test that observes a real duration costs that duration. The storm's 1200 tick
+  window took the suite from about 50 seconds a run to about 2.6 minutes, so the
+  five-run gate needs two tool calls.
 
 ## Work standard
 
