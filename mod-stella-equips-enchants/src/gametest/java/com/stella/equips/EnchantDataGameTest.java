@@ -22,6 +22,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
@@ -52,7 +53,7 @@ public class EnchantDataGameTest {
 	private static final int CATALOGUE_SIZE = 44;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
-	private static final int REFERENCE_POWER = 30;
+	private static final int MAXED_TABLE_COST = 30;
 	private static final int MIN_COOLDOWN_TICKS = 20;
 	private static final int FLOOR_Y = 2;
 	private static final int SPAWN_Y = 3;
@@ -272,10 +273,53 @@ public class EnchantDataGameTest {
 		}
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=rollRates RESULT power={} pools={} covered={} smallestShare={} largestShare={}",
-			REFERENCE_POWER, pools.toString().trim(), catalogue.size() - uncovered.size(), smallest, largest
+			MAXED_TABLE_COST, pools.toString().trim(), catalogue.size() - uncovered.size(), smallest, largest
 		);
 		helper.assertTrue(badSums.isEmpty(), "candidate weight shares do not sum to 1: " + badSums);
-		helper.assertTrue(uncovered.isEmpty(), "never a table candidate at power " + REFERENCE_POWER + ": " + uncovered);
+		helper.assertTrue(uncovered.isEmpty(), "never a table candidate at cost " + MAXED_TABLE_COST + ": " + uncovered);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable(final GameTestHelper helper) {
+		Registry<Enchantment> registry = enchantments(helper);
+		List<Holder.Reference<Enchantment>> catalogue = catalogue(registry);
+		Optional<HolderSet.Named<Enchantment>> pool = registry.get(EnchantmentTags.IN_ENCHANTING_TABLE);
+		List<String> missing = new ArrayList<>();
+		List<String> unreachable = new ArrayList<>();
+		int inTag = 0;
+		int reachable = 0;
+		for (Holder.Reference<Enchantment> holder : catalogue) {
+			if (pool.isPresent() && pool.get().contains(holder)) {
+				inTag++;
+			} else {
+				missing.add(holder.key().identifier().toString());
+			}
+			boolean candidate = false;
+			for (Item item : POOL_ITEMS) {
+				if (isTableCandidate(holder.value(), new ItemStack(item))) {
+					candidate = true;
+					break;
+				}
+			}
+			if (candidate) {
+				reachable++;
+			} else {
+				unreachable.add(holder.key().identifier().toString());
+			}
+		}
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=enchantingTableTag RESULT catalogueCount={} inTag={} missing={} reachableAtCost{}={}",
+			catalogue.size(), inTag, missing.size(), MAXED_TABLE_COST, reachable
+		);
+		helper.assertTrue(
+			missing.isEmpty(),
+			"absent from #minecraft:in_enchanting_table: " + missing
+		);
+		helper.assertTrue(
+			unreachable.isEmpty(),
+			"never an offer at cost " + MAXED_TABLE_COST + ": " + unreachable
+		);
 		helper.succeed();
 	}
 
@@ -409,7 +453,7 @@ public class EnchantDataGameTest {
 			return false;
 		}
 		for (int level = enchantment.getMinLevel(); level <= enchantment.getMaxLevel(); level++) {
-			if (REFERENCE_POWER >= enchantment.getMinCost(level) && REFERENCE_POWER <= enchantment.getMaxCost(level)) {
+			if (MAXED_TABLE_COST >= enchantment.getMinCost(level) && MAXED_TABLE_COST <= enchantment.getMaxCost(level)) {
 				return true;
 			}
 		}
