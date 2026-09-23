@@ -10,6 +10,7 @@
 			"com.stella.equips.BookLootGameTest",
 			"com.stella.equips.BookLootProbeGameTest",
 			"com.stella.equips.EmeraldCostGameTest",
+			"com.stella.equips.EnchantAuditGameTest",
 			"com.stella.equips.EnchantDataGameTest",
 			"com.stella.equips.EnchantmentLevelGameTest",
 			"com.stella.equips.PowerApplyGameTest",

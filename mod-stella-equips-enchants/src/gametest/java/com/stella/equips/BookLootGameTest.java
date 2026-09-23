@@ -40,7 +40,7 @@ public class BookLootGameTest {
 	private static final Identifier MAX_ONE = enchantment("tool/prospector");
 	private static final Identifier MAX_TWO = enchantment("bow/marksman");
 	private static final Identifier MAX_THREE = enchantment("tool/blockfeast");
-	private static final Identifier MAX_FIVE = enchantment("weapon/arachnids_bane");
+	private static final Identifier MAX_FIVE = enchantment("weapon/stunning_blow");
 	private static final List<Integer> LEVELS_ONE_TO_FIVE = List.of(1, 2, 3, 4, 5);
 
 	@GameTest(maxTicks = 200)
@@ -153,16 +153,16 @@ public class BookLootGameTest {
 			"declared maxima not reached: prospector=" + highest(observed, MAX_ONE)
 				+ "/" + declaredMax(registry, MAX_ONE) + " marksman=" + highest(observed, MAX_TWO)
 				+ "/" + declaredMax(registry, MAX_TWO) + " blockfeast=" + highest(observed, MAX_THREE)
-				+ "/" + declaredMax(registry, MAX_THREE) + " arachnidsBane=" + highest(observed, MAX_FIVE)
+				+ "/" + declaredMax(registry, MAX_THREE) + " stunningBlow=" + highest(observed, MAX_FIVE)
 				+ "/" + declaredMax(registry, MAX_FIVE)
 		);
 		helper.assertTrue(
 			levels(observed, MAX_FIVE).equals(LEVELS_ONE_TO_FIVE),
-			"arachnids_bane rolled " + levels(observed, MAX_FIVE) + ", expected " + LEVELS_ONE_TO_FIVE
+			"stunning_blow rolled " + levels(observed, MAX_FIVE) + ", expected " + LEVELS_ONE_TO_FIVE
 		);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=lootedLevelsStayInsideTheirOwnMaximum RESULT rolls={} books={} observed={} "
-				+ "overDeclared={} prospector={} marksman={} blockfeast={} arachnidsBane={}",
+				+ "overDeclared={} prospector={} marksman={} blockfeast={} stunningBlow={}",
 			MAXIMA_ROLLS, books, observed.size(), overDeclared.size(),
 			levels(observed, MAX_ONE), levels(observed, MAX_TWO),
 			levels(observed, MAX_THREE), levels(observed, MAX_FIVE)

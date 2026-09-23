@@ -59,7 +59,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantDataGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String FIXTURE_PATH = "test_marker";
-	private static final int CATALOGUE_SIZE = 44;
+	private static final int CATALOGUE_SIZE = 32;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
 	private static final int MAXED_TABLE_COST = 30;
@@ -67,7 +67,6 @@ public class EnchantDataGameTest {
 	private static final int FLOOR_Y = 2;
 	private static final int SPAWN_Y = 3;
 	private static final float WOUNDED_HEALTH = 4.0F;
-	private static final int CLOCK_START = 10000;
 	private static final int PARTIAL_DRAW = 71990;
 	private static final double TRAVELLED_RESISTANCE = 0.3;
 	private static final List<Item> POOL_ITEMS = List.of(
@@ -555,65 +554,6 @@ public class EnchantDataGameTest {
 			helper.assertTrue(
 				closest >= 0.0 && closest < 4.0,
 				"the arrow came to rest " + closest + " squared blocks from the impact"
-			);
-			helper.succeed();
-		});
-	}
-
-	@GameTest
-	public void cleaveBlastReachesANearbyMobAndSparesTheWielder(final GameTestHelper helper) {
-		buildFloor(helper);
-		Mob wielder = helper.spawnMob(EntityTypes.ZOMBIE, 0, SPAWN_Y, 3).withNoFreeWill().spawn();
-		Mob victim = helper.spawnMob(EntityTypes.ZOMBIE, 3, SPAWN_Y, 3).withNoFreeWill().spawn();
-		Mob bystander = helper.spawnMob(EntityTypes.ZOMBIE, 3, SPAWN_Y, 4).withNoFreeWill().spawn();
-		Enchantment cleave = enchantment(helper, "weapon/cleave");
-		wielder.setItemInHand(InteractionHand.MAIN_HAND, enchanted(Items.DIAMOND_AXE, cleave, 1));
-		float wielderBefore = wielder.getHealth();
-		float bystanderBefore = bystander.getHealth();
-		boolean hit = wielder.doHurtTarget(helper.getLevel(), victim);
-		float wielderLost = wielderBefore - wielder.getHealth();
-		float bystanderLost = bystanderBefore - bystander.getHealth();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=cleaveBlast RESULT hit={} wielderLost={} bystanderLost={} victimLost={}",
-			hit, wielderLost, bystanderLost, victim.getMaxHealth() - victim.getHealth()
-		);
-		helper.assertTrue(hit, "the axe swing did not land on the victim");
-		helper.assertTrue(bystanderLost > 0.0F, "the cleave blast did not reach the bystander one block away");
-		helper.assertTrue(wielderLost == 0.0F, "the cleave blast damaged its own wielder by " + wielderLost);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void rangersMarkPaysWhileTheTargetIsAboveHalfHealth(final GameTestHelper helper) {
-		buildFloor(helper);
-		ServerLevel level = helper.getLevel();
-		MinecraftServer server = level.getServer();
-		runCommand(server, level, null, "scoreboard players set #clock ench_clock " + CLOCK_START);
-		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
-		Vec3 origin = helper.absoluteVec(new Vec3(0.5, SPAWN_Y, 0.5));
-		shooter.setPos(origin.x, origin.y, origin.z);
-		shooter.setXRot(0.0F);
-		ItemStack bow = enchanted(Items.BOW, enchantment(helper, "bow/rangers_mark"), 1);
-		shooter.setItemInHand(InteractionHand.MAIN_HAND, bow);
-		shooter.getInventory().add(new ItemStack(Items.ARROW, 64));
-		Mob fresh = helper.spawnMob(EntityTypes.RAVAGER, 0, SPAWN_Y, 4).withNoFreeWill().spawn();
-		Mob weakened = helper.spawnMob(EntityTypes.RAVAGER, 3, SPAWN_Y, 4).withNoFreeWill().spawn();
-		weakened.setHealth(weakened.getMaxHealth() / 4.0F);
-		shooter.setYRot(0.0F);
-		Items.BOW.releaseUsing(bow, level, shooter, PARTIAL_DRAW);
-		shooter.setYRot(-36.87F);
-		Items.BOW.releaseUsing(bow, level, shooter, PARTIAL_DRAW);
-		helper.runAfterDelay(8L, () -> {
-			float onFresh = fresh.getMaxHealth() - fresh.getHealth();
-			float onWeakened = weakened.getMaxHealth() / 4.0F - weakened.getHealth();
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=rangersMarkBand RESULT aboveHalfHealth={} belowHalfHealth={} bonus={}",
-				onFresh, onWeakened, onFresh - onWeakened
-			);
-			helper.assertTrue(onWeakened > 0.0F, "the arrow missed the weakened target");
-			helper.assertTrue(
-				onFresh - onWeakened >= 3.5F,
-				"the arrow paid only " + (onFresh - onWeakened) + " more on the fresh target"
 			);
 			helper.succeed();
 		});
