@@ -163,6 +163,28 @@ public class RiderPearlGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void shippedRiderChanceIsHalved(final GameTestHelper helper) {
+		// T01. The literal is deliberate: an assertion against the constant would follow any change to it
+		// and could never fail, which is what this test exists to prevent.
+		GearConfigStore.set(GearConfig.EMPTY);
+		double shipped = GearConfigStore.get().riderDefaults().chance();
+
+		result(
+			"shippedRiderChanceIsHalved",
+			"shipped=" + shipped + " constant=" + RiderSpec.DEFAULT_CHANCE + " expected=0.175"
+		);
+
+		helper.assertTrue(
+			Math.abs(RiderSpec.DEFAULT_CHANCE - 0.175) < 1.0e-9,
+			"the rider chance constant is " + RiderSpec.DEFAULT_CHANCE + ", not the halved 0.175"
+		);
+		helper.assertTrue(
+			Math.abs(shipped - 0.175) < 1.0e-9, "the shipped rider chance is " + shipped + ", not 0.175"
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void shippedDefaultCarriesTheRiderChance(final GameTestHelper helper) {
 		// Read the shipped default, not whatever config a previously run test left behind.
 		GearConfigStore.set(GearConfig.EMPTY);
