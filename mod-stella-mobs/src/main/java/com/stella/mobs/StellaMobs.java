@@ -15,6 +15,7 @@ import com.stella.mobs.behavior.PiglinSmash;
 import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.OceanBand;
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.behavior.ReinforcementGoal;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
@@ -61,6 +62,7 @@ public class StellaMobs implements ModInitializer {
 		RiderSquad.register();
 		BossCompanion.register();
 		Bosses.register();
+		ReinforcementGoal.register();
 		EvokerStorm.register();
 		PiglinWarCall.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
@@ -76,6 +78,8 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EliteKits::strayFreeze);
 		// T04: the windy trait shoves what this mob hits, read through the source so a windy victim cannot.
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Traits::afterDamage);
+		// T06: the end trait negates a hit itself, so it rides the allow hook rather than the after hook.
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register(Traits::allowDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);

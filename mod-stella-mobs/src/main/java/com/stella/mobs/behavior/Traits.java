@@ -5,7 +5,13 @@ import com.stella.mobs.scaling.SpawnScaling;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.Holder;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -14,6 +20,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 
 /**
  * T03 to T06: the four location traits. Each is taken once, at spawn, from where the mob appeared and
@@ -43,7 +50,18 @@ public final class Traits {
 	public static final double HEAT_CHANCE = 0.25;
 	/** T06: the chance an end mob negates a hit entirely, shown by the teleport tell. */
 	public static final double END_NEGATE_CHANCE = 0.25;
+	/** T06: the tell is the enderman teleport sound and the portal particles, at the mob. */
+	public static final float END_TELL_VOLUME = 1.0F;
+	public static final int END_TELL_PARTICLES = 64;
+	public static final double END_TELL_SPREAD = 0.5;
 	private static double heatRoll = HEAT_CHANCE;
+	private static double endRoll = END_NEGATE_CHANCE;
+	private static long endTellCount;
+	private static @Nullable SoundEvent lastEndTellSound;
+	private static @Nullable ParticleOptions lastEndTellParticle;
+	private static double lastEndTellX;
+	private static double lastEndTellY;
+	private static double lastEndTellZ;
 
 	/**
 	 * Pins the heat chance, so a chance clause is never reached by luck. A test sets this and restores the
@@ -55,6 +73,40 @@ public final class Traits {
 
 	public static double heatRoll() {
 		return heatRoll;
+	}
+
+	/** Pins the end negation chance, the same shape as the heat pin. */
+	public static void pinEndRoll(final double chance) {
+		endRoll = chance;
+	}
+
+	public static double endRoll() {
+		return endRoll;
+	}
+
+	/** The tells the negation has played, as a record, so a test reads what the ability produced. */
+	public static long endTellCount() {
+		return endTellCount;
+	}
+
+	public static @Nullable SoundEvent lastEndTellSound() {
+		return lastEndTellSound;
+	}
+
+	public static @Nullable ParticleOptions lastEndTellParticle() {
+		return lastEndTellParticle;
+	}
+
+	public static double lastEndTellX() {
+		return lastEndTellX;
+	}
+
+	public static double lastEndTellY() {
+		return lastEndTellY;
+	}
+
+	public static double lastEndTellZ() {
+		return lastEndTellZ;
 	}
 
 	private Traits() {
@@ -188,5 +240,51 @@ public final class Traits {
 			"[BEHAVIOR] test=traitWindy t={} PUSH power={} victim={} delta={} grounded={}",
 			hitter.level().getGameTime(), WINDY_PUSH, entity.getType(), entity.getDeltaMovement(), entity.onGround()
 		);
+	}
+
+	/**
+	 * T06: a mob that took the end trait can negate a hit. The roll is a named constant a test pins to
+	 * certainty or to never, so the clause is not reached by luck. A negation plays the tell: the enderman
+	 * teleport sound and the portal particles at the mob, and the tell is recorded so a clause reads it.
+	 */
+	public static boolean allowDamage(final LivingEntity entity, final DamageSource source, final float amount) {
+		if (!(entity instanceof Mob mob) || !has(mob, "end")) {
+			return true;
+		}
+
+		if (mob.getRandom().nextDouble() >= endRoll) {
+			return true;
+		}
+
+		tell(mob);
+		StellaMobs.LOGGER.info(
+			"[BEHAVIOR] test=traitEnd t={} NEGATE amount={} roll={} sound={} particle={} at={}/{}/{}",
+			mob.level().getGameTime(), amount, endRoll, SoundEvents.ENDERMAN_TELEPORT.location(), ParticleTypes.PORTAL,
+			mob.getX(), mob.getY(), mob.getZ()
+		);
+		return false;
+	}
+
+	/** The tell itself: the sound first, then the particles, then the record of what was played. */
+	private static void tell(final Mob mob) {
+		SoundEvent sound = SoundEvents.ENDERMAN_TELEPORT;
+		ParticleOptions particle = ParticleTypes.PORTAL;
+		double x = mob.getX();
+		double y = mob.getY() + mob.getBbHeight() * 0.5;
+		double z = mob.getZ();
+		mob.level().playSound(null, x, mob.getY(), z, sound, SoundSource.HOSTILE, END_TELL_VOLUME, 1.0F);
+
+		if (mob.level() instanceof ServerLevel server) {
+			server.sendParticles(
+				particle, x, y, z, END_TELL_PARTICLES, END_TELL_SPREAD, END_TELL_SPREAD, END_TELL_SPREAD, 0.0
+			);
+		}
+
+		endTellCount++;
+		lastEndTellSound = sound;
+		lastEndTellParticle = particle;
+		lastEndTellX = x;
+		lastEndTellY = y;
+		lastEndTellZ = z;
 	}
 }
