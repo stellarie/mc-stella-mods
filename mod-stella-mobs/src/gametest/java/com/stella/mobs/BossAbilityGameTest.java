@@ -48,6 +48,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
@@ -103,6 +104,17 @@ public class BossAbilityGameTest {
 	/** Vanilla's own slow on a stray's arrow, from Stray.getArrow: amplifier zero, six hundred ticks. */
 	private static final int VANILLA_STRAY_SLOW_AMPLIFIER = 0;
 	private static final int VANILLA_STRAY_SLOW_TICKS = 600;
+	/**
+	 * The snare's landed duration, restated from the spec so a typo in a constant cannot be inherited.
+	 * The clause reads this number off the victim, never off the potion the off hand stack names.
+	 */
+	private static final int SPEC_LANDED_SLOWNESS_TICKS = 200;
+	/** The ticks the landed effect may lose before the clause reads it: the shot's own flight. */
+	private static final int LANDED_SLACK_TICKS = 2;
+	/** The ranged attack method is driven this many times, so one scattered shot cannot carry the clause. */
+	private static final int SHOTS_PER_CLAUSE = 3;
+	/** The ticks between two driven attacks, so each shot leaves the string before the next is asked for. */
+	private static final long SHOT_SPACING_TICKS = 10L;
 	/**
 	 * The ticks the merged effect may lose before the clause reads it: the arrow's own flight plus the
 	 * tick the effect spends counting down. A hand written allowance, named so it is not hidden.
@@ -1452,40 +1464,44 @@ public class BossAbilityGameTest {
 	}
 
 	/**
-	 * Tagged, about one run in three: the aimed bolt carries CrossbowItem's own scatter, and a scattered
-	 * bolt lands nothing, so the wait can expire with no slow on the victim even though every other
-	 * clause in the case holds. Three fixes were attempted and each was measured: a pinned victim, a
-	 * pinned archer, and a wide victim, and none removed it. The mechanism is the archer's aim, not the
-	 * payload: the elite's off hand is the tipped stack in every run and the stray's own bolt clause
-	 * proves the same payload lands. Manual item: an elite pillager's bolt slows what it hits.
+	 * The elite pillager's bolt carries the same snare as the stray's arrow, and the attack is driven
+	 * directly so the clause measures the payload rather than the marksmanship: an aimed bolt scatters,
+	 * and a scattered bolt applies nothing. The victim stands one step away for the same reason.
 	 */
-	@GameTest(maxTicks = 400, required = false)
+	@GameTest(maxTicks = 400)
 	@SuppressWarnings("removal")
 	public void elitePillagerBoltsCarryTheSlow(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
 		Mob pillager = markedElite(helper, EntityTypes.PILLAGER, 3, 3, 3);
 		pillager.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
-		Mob victim = durableTarget(helper, 3, 7);
-		helper.onEachTick(() -> pillager.setTarget(victim));
+		Mob victim = durableTarget(helper, 3, 6);
 		int[] fired = new int[1];
+		helper.onEachTick(() -> {
+			pillager.setTarget(victim);
+			fired[0] = Math.max(fired[0], helper.getLevel().getEntitiesOfClass(
+				Arrow.class, pillager.getBoundingBox().inflate(32.0), arrow -> arrow.getOwner() == pillager
+			).size());
+		});
 
 		// The crossbow charges, holds 20 + nextInt(20) ticks, and only then fires, so a look before the
-		// cycle has produced a bolt reads no slow and is not the clause. The wait is the assertion: it
-		// fails loudly until a bolt has landed, and the window holds several cycles.
+		// cycle has produced a bolt reads no slow and is not the clause. The attack is driven directly and
+		// the victim stands one step away, so the clause measures the payload and not the marksmanship.
+		fireOwnAttack(pillager, victim, helper);
+
 		helper.succeedWhen(() -> {
-			int inFlight = helper.getLevel().getEntitiesOfClass(
-				Arrow.class, pillager.getBoundingBox().inflate(32.0), arrow -> arrow.getOwner() == pillager
-			).size();
-			fired[0] = Math.max(fired[0], inFlight);
 			MobEffectInstance slow = victim.getEffect(MobEffects.SLOWNESS);
 			helper.assertTrue(slow != null, "the bolt never slowed the victim");
 			helper.assertValueEqual(
 				Integer.valueOf(slow.getAmplifier()), Integer.valueOf(EliteKits.SLOWNESS_AMPLIFIER),
 				"the slowness amplifier the bolt landed"
 			);
+			// The clause is the landed number, read off the victim: the stack names the potion, and what
+			// the arrow scales it to is what a player feels.
 			helper.assertTrue(
-				slow.getDuration() > 0 && slow.getDuration() <= EliteKits.SLOWNESS_TICKS,
-				"the slowness had " + slow.getDuration() + " ticks, outside 1 to " + EliteKits.SLOWNESS_TICKS
+				slow.getDuration() > SPEC_LANDED_SLOWNESS_TICKS - LANDED_SLACK_TICKS
+					&& slow.getDuration() <= SPEC_LANDED_SLOWNESS_TICKS,
+				"the bolt landed " + slow.getDuration() + " ticks of slowness, and the spec is "
+					+ SPEC_LANDED_SLOWNESS_TICKS + " less at most " + LANDED_SLACK_TICKS + " ticks of flight"
 			);
 			ItemStack ammo = pillager.getOffhandItem();
 			PotionContents contents = ammo.get(DataComponents.POTION_CONTENTS);
@@ -1494,9 +1510,9 @@ public class BossAbilityGameTest {
 				"ammo=" + ammo.getCount() + " tipped="
 					+ (contents != null && contents.potion().orElse(null) == Potions.STRONG_SLOWNESS) + " mainhand="
 					+ pillager.getMainHandItem().getItem() + " boltsInFlightPeak=" + fired[0] + " victimSlow="
-					+ slow.getAmplifier() + " victimHealth=" + victim.getHealth()
-					+ " amplifier=" + EliteKits.SLOWNESS_AMPLIFIER + " shippedTicks=" + EliteKits.SLOWNESS_TICKS
-					+ " remaining=" + slow.getDuration()
+					+ slow.getAmplifier() + " victimHealth=" + victim.getHealth() + " amplifier="
+					+ EliteKits.SLOWNESS_AMPLIFIER + " landedTicks=" + slow.getDuration() + " specLandedTicks="
+					+ SPEC_LANDED_SLOWNESS_TICKS + " payloadTicks=" + EliteKits.PAYLOAD_SLOWNESS_TICKS
 			);
 		});
 	}
@@ -1513,8 +1529,7 @@ public class BossAbilityGameTest {
 		Mob stray = markedElite(helper, EntityTypes.STRAY, 3, 3, 3);
 		stray.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
 		Mob victim = durableTarget(helper, 3, 7);
-		helper.onEachTick(() -> stray.setTarget(victim));
-		// The freeze decays by two a tick, so a check for the threshold can miss the spike it sits on.
+		helper.onEachTick(() -> stray.setTarget(victim));		// The freeze decays by two a tick, so a check for the threshold can miss the spike it sits on.
 		int[] peak = new int[1];
 		helper.onEachTick(() -> peak[0] = Math.max(peak[0], victim.getTicksFrozen()));
 		int[] slowPeak = new int[1];
@@ -1537,8 +1552,8 @@ public class BossAbilityGameTest {
 		// amplifier is the elite's, which is what the merge leaves on the victim.
 		ItemStack arrowAmmo = stray.getOffhandItem();
 		PotionContents arrowPotion = arrowAmmo.get(DataComponents.POTION_CONTENTS);
-		// The arrow's own stack scales every payload it carries, so the elite's 400 tick write lands
-		// shorter than vanilla's 600 tick one. The amplifier is the clause; the duration rides the scale.
+		// The arrow's own stack scales every payload it carries, so the potion's number is the recipe and
+		// the landed number is what the victim reads. Both are logged; the clause asserts the landed one.
 		float scale = arrowAmmo.getOrDefault(DataComponents.POTION_DURATION_SCALE, 1.0F);
 		int[] payloadTicks = {0};
 
@@ -1550,13 +1565,9 @@ public class BossAbilityGameTest {
 			}
 		}
 
-		// Vanilla's own write on the arrow, from Stray.getArrow, placed first so the merge is measured
-		// rather than assumed. The allowance is the ticks the arrow spends in flight plus its own decay.
-		helper.runAfterDelay(5L, () -> victim.addEffect(
-			new MobEffectInstance(MobEffects.SLOWNESS, VANILLA_STRAY_SLOW_TICKS, VANILLA_STRAY_SLOW_AMPLIFIER),
-			stray
-		));
-		long mergedFloor = VANILLA_STRAY_SLOW_TICKS - MERGE_SLACK_TICKS;
+		// The elite payload is driven through the shipped attack method, so the snipe lands on the first
+		// cycle and the clause measures the payload rather than the bow's scatter.
+		fireOwnAttack(stray, victim, helper);
 
 		helper.succeedWhen(() -> {
 			MobEffectInstance slow = victim.getEffect(MobEffects.SLOWNESS);
@@ -1569,10 +1580,13 @@ public class BossAbilityGameTest {
 				Integer.valueOf(slow.getAmplifier()), Integer.valueOf(EliteKits.SLOWNESS_AMPLIFIER),
 				"the slowness amplifier on top of vanilla's own 600 tick slow"
 			);
+			// The landed number, read off the victim and never off the potion the stack names: the arrow
+			// scales what the stack carries, and this peak is the snare the fight actually sees.
 			helper.assertTrue(
-				slowPeak[0] >= mergedFloor,
-				"the merged slowness peaked at " + slowPeak[0] + " ticks, under vanilla's own "
-					+ VANILLA_STRAY_SLOW_TICKS + " less " + MERGE_SLACK_TICKS + " ticks of flight"
+				slowPeak[0] > SPEC_LANDED_SLOWNESS_TICKS - LANDED_SLACK_TICKS
+					&& slowPeak[0] <= VANILLA_STRAY_SLOW_TICKS,
+				"the snare landed " + slowPeak[0] + " ticks on the victim, and the spec is "
+					+ SPEC_LANDED_SLOWNESS_TICKS + " less at most " + LANDED_SLACK_TICKS + " ticks of flight"
 			);
 			result(
 				"strayFreeze",
@@ -1580,23 +1594,45 @@ public class BossAbilityGameTest {
 					+ (peak[0] / 2) + " frozenNow=" + victim.getTicksFrozen() + " fullyFrozenNow="
 					+ victim.isFullyFrozen() + " amplifier=" + slow.getAmplifier() + " vanillaSlowTicks="
 					+ VANILLA_STRAY_SLOW_TICKS + " payloadScale=" + scale + " payloadTicks=" + payloadTicks[0]
-					+ " landedTicks=" + slow.getDuration() + " slowPeak=" + slowPeak[0] + " mergedFloor="
-					+ mergedFloor + " slowStates=" + slowStates
+					+ " specLandedTicks=" + SPEC_LANDED_SLOWNESS_TICKS + " landedTicks=" + slow.getDuration()
+					+ " slowPeak=" + slowPeak[0] + " slowStates=" + slowStates
 			);
 		});
 	}
 
 	/**
-	 * The property the stray clause rests on, asserted directly: the elite's 3x400 write cannot be
-	 * downgraded by vanilla's own 0x600, because LivingEntity.addEffect merges through
-	 * MobEffectInstance.update. A weaker write with a longer duration does not even extend the visible
-	 * effect, it goes to the hidden one, so both writers' clauses are asserted here. The two numbers are
-	 * the two writers on a stray's arrow: the elite's off hand and Stray.getArrow.
+	 * The mob's own ranged attack, driven directly so the clause measures the payload rather than the
+	 * archer's footwork. This is the shape the snow golem ball and the bone fan already use: the shipped
+	 * attack method builds the shipped projectile with the shipped ammo. The victim stands one step away,
+	 * so the shot is a shot and not a lottery, and the method is driven again every few ticks because the
+	 * attack is defensive about mutating the mob's own projectile state mid flight.
+	 */
+	private static void fireOwnAttack(final Mob shooter, final Mob victim, final GameTestHelper helper) {
+		int[] shots = {0};
+		helper.onEachTick(() -> {
+			if (shots[0] >= SHOTS_PER_CLAUSE || helper.getTick() % SHOT_SPACING_TICKS != 0L) {
+				return;
+			}
+
+			shots[0]++;
+
+			if (shooter instanceof RangedAttackMob ranged) {
+				ranged.performRangedAttack(victim, 1.0F);
+			}
+		});
+	}
+
+	/**
+	 * The property the stray clause rests on, asserted directly: the elite's write cannot be downgraded
+	 * by vanilla's own 0x600, because LivingEntity.addEffect merges through MobEffectInstance.update.
+	 * A weaker write with a longer duration does not even extend the visible effect, it goes to the
+	 * hidden one, so both writers' clauses are asserted here. The stronger writer's duration is the
+	 * landed snare the arrow carries, which is what the merge has to preserve.
 	 */
 	@GameTest(maxTicks = 20)
 	public void weakerSlownessCannotDowngradeTheEliteSnare(final GameTestHelper helper) {
 		MobEffectInstance eliteFirst = new MobEffectInstance(
-			MobEffects.SLOWNESS, EliteKits.SLOWNESS_TICKS, EliteKits.SLOWNESS_AMPLIFIER
+			MobEffects.SLOWNESS, EliteKits.PAYLOAD_SLOWNESS_TICKS, EliteKits.SLOWNESS_AMPLIFIER
 		);
 		boolean merged = eliteFirst.update(
 			new MobEffectInstance(MobEffects.SLOWNESS, VANILLA_STRAY_SLOW_TICKS, VANILLA_STRAY_SLOW_AMPLIFIER)
@@ -1605,12 +1641,12 @@ public class BossAbilityGameTest {
 			MobEffects.SLOWNESS, VANILLA_STRAY_SLOW_TICKS, VANILLA_STRAY_SLOW_AMPLIFIER
 		);
 		boolean upgraded = vanillaFirst.update(
-			new MobEffectInstance(MobEffects.SLOWNESS, EliteKits.SLOWNESS_TICKS, EliteKits.SLOWNESS_AMPLIFIER)
+			new MobEffectInstance(MobEffects.SLOWNESS, EliteKits.PAYLOAD_SLOWNESS_TICKS, EliteKits.SLOWNESS_AMPLIFIER)
 		);
 
 		result(
 			"slowMerge",
-			"elite=" + EliteKits.SLOWNESS_AMPLIFIER + "x" + EliteKits.SLOWNESS_TICKS + " vanilla="
+			"elite=" + EliteKits.SLOWNESS_AMPLIFIER + "x" + EliteKits.PAYLOAD_SLOWNESS_TICKS + " vanilla="
 				+ VANILLA_STRAY_SLOW_AMPLIFIER + "x" + VANILLA_STRAY_SLOW_TICKS + " merged=" + merged
 				+ " weakerFirstAmplifier=" + eliteFirst.getAmplifier() + " weakerFirstDuration="
 				+ eliteFirst.getDuration() + " upgraded=" + upgraded + " strongerAmplifier="
@@ -1625,7 +1661,7 @@ public class BossAbilityGameTest {
 			"the amplifier left when the elite's stronger slowness arrives second"
 		);
 		helper.assertTrue(
-			eliteFirst.getDuration() >= EliteKits.SLOWNESS_TICKS,
+			eliteFirst.getDuration() >= EliteKits.PAYLOAD_SLOWNESS_TICKS,
 			"vanilla's weaker slowness cut the elite's duration to " + eliteFirst.getDuration()
 		);
 		helper.succeed();
