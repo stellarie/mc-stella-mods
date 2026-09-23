@@ -9,5 +9,4 @@ scoreboard objectives add ench_cd_plating dummy
 scoreboard objectives add ench_cd_prospect dummy
 scoreboard objectives add ench_cd_lumber dummy
 scoreboard objectives add ench_cd_harvest dummy
-scoreboard objectives add ench_cd_thumb dummy
 scoreboard players set #two ench_scratch 2

@@ -15,9 +15,11 @@ import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -33,6 +35,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -62,6 +66,7 @@ public class EnchantDataGameTest {
 	private static final int SPAWN_Y = 3;
 	private static final float WOUNDED_HEALTH = 4.0F;
 	private static final int CLOCK_START = 10000;
+	private static final int PARTIAL_DRAW = 71990;
 	private static final List<Item> POOL_ITEMS = List.of(
 		Items.BOW,
 		Items.CROSSBOW,
@@ -237,7 +242,7 @@ public class EnchantDataGameTest {
 	}
 
 	@GameTest
-	public void catalogueRollRatesFollowCostAndWeight(final GameTestHelper helper) {
+	public void catalogueWeightSharesAtCost30(final GameTestHelper helper) {
 		Registry<Enchantment> registry = enchantments(helper);
 		List<Holder.Reference<Enchantment>> catalogue = catalogue(registry);
 		StringBuilder pools = new StringBuilder();
@@ -276,7 +281,7 @@ public class EnchantDataGameTest {
 			}
 		}
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=rollRates RESULT power={} pools={} covered={} smallestShare={} largestShare={}",
+			"[BEHAVIOR] test=weightShares RESULT cost={} pools={} covered={} smallestShare={} largestShare={}",
 			MAXED_TABLE_COST, pools.toString().trim(), catalogue.size() - uncovered.size(), smallest, largest
 		);
 		helper.assertTrue(badSums.isEmpty(), "candidate weight shares do not sum to 1: " + badSums);
@@ -323,6 +328,113 @@ public class EnchantDataGameTest {
 		helper.assertTrue(
 			unreachable.isEmpty(),
 			"never an offer at cost " + MAXED_TABLE_COST + ": " + unreachable
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyCatalogueEnchantmentHasALangName(final GameTestHelper helper) {
+		String lang = readResource("assets/" + MOD_ID + "/lang/en_us.json");
+		List<String> missing = new ArrayList<>();
+		for (Holder.Reference<Enchantment> holder : catalogue(enchantments(helper))) {
+			Identifier id = holder.key().identifier();
+			String key = "enchantment." + id.getNamespace() + "." + id.getPath().replace('/', '.');
+			if (lang == null || !lang.contains("\"" + key + "\"")) {
+				missing.add(key);
+			}
+		}
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=langNames RESULT catalogueCount={} langFileRead={} missing={}",
+			catalogue(enchantments(helper)).size(), lang != null, missing.size()
+		);
+		helper.assertTrue(missing.isEmpty(), "no lang key for: " + missing);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void greenThumbTillsTheGroundAroundTheBrokenBlock(final GameTestHelper helper) {
+		buildFloor(helper);
+		ServerLevel level = helper.getLevel();
+		ServerPlayer tiller = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
+		Vec3 origin = helper.absoluteVec(new Vec3(2.5, SPAWN_Y + 1, 2.5));
+		tiller.setPos(origin.x, origin.y, origin.z);
+		ItemStack hoe = enchanted(Items.DIAMOND_HOE, enchantment(helper, "tool/green_thumb"), 1);
+		tiller.setItemInHand(InteractionHand.MAIN_HAND, hoe);
+		for (int x = 1; x < 4; x++) {
+			for (int z = 1; z < 4; z++) {
+				helper.setBlock(x, SPAWN_Y, z, Blocks.DIRT);
+			}
+		}
+		BlockPos hit = BlockPos.containing(helper.absoluteVec(new Vec3(2.5, SPAWN_Y + 0.5, 2.5)));
+		tiller.gameMode.handleBlockBreakAction(
+			hit, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, Direction.UP, level.getMaxY(), 0
+		);
+		int farmland = 0;
+		for (int x = 1; x < 4; x++) {
+			for (int z = 1; z < 4; z++) {
+				BlockPos pos = BlockPos.containing(helper.absoluteVec(new Vec3(x + 0.5, SPAWN_Y + 0.5, z + 0.5)));
+				if (level.getBlockState(pos).is(Blocks.FARMLAND)) {
+					farmland++;
+				}
+			}
+		}
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=greenThumbTill RESULT tilledNeighbours={} of=8", farmland
+		);
+		helper.assertTrue(farmland > 0, "the broken block tilled no neighbour");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void marksmanArrowsHitHarderThanPlainArrows(final GameTestHelper helper) {
+		buildFloor(helper);
+		ServerLevel level = helper.getLevel();
+		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		Vec3 origin = helper.absoluteVec(new Vec3(0.5, SPAWN_Y, 0.5));
+		shooter.setPos(origin.x, origin.y, origin.z);
+		shooter.setXRot(0.0F);
+		ItemStack plain = new ItemStack(Items.BOW);
+		shooter.setItemInHand(InteractionHand.MAIN_HAND, plain);
+		shooter.getInventory().add(new ItemStack(Items.ARROW, 64));
+		Mob first = helper.spawnMob(EntityTypes.RAVAGER, 0, SPAWN_Y, 4).withNoFreeWill().spawn();
+		Mob second = helper.spawnMob(EntityTypes.RAVAGER, 3, SPAWN_Y, 4).withNoFreeWill().spawn();
+		shooter.setYRot(0.0F);
+		Items.BOW.releaseUsing(plain, level, shooter, PARTIAL_DRAW);
+		ItemStack marksman = enchanted(Items.BOW, enchantment(helper, "bow/marksman"), 1);
+		shooter.setItemInHand(InteractionHand.MAIN_HAND, marksman);
+		shooter.setYRot(-36.87F);
+		Items.BOW.releaseUsing(marksman, level, shooter, PARTIAL_DRAW);
+		helper.runAfterDelay(8L, () -> {
+			float plainDamage = first.getMaxHealth() - first.getHealth();
+			float marksmanDamage = second.getMaxHealth() - second.getHealth();
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=marksmanArrow RESULT plainDamage={} marksmanDamage={} gain={}",
+				plainDamage, marksmanDamage, marksmanDamage - plainDamage
+			);
+			helper.assertTrue(plainDamage > 0.0F, "the plain arrow missed");
+			helper.assertTrue(marksmanDamage > 0.0F, "the marksman arrow missed");
+			helper.assertTrue(
+				marksmanDamage - plainDamage >= 0.5F,
+				"the marksman bow hit no harder than the plain bow"
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void repeaterShortensTheCrossbowCharge(final GameTestHelper helper) {
+		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		int plain = CrossbowItem.getChargeDuration(new ItemStack(Items.CROSSBOW), shooter);
+		int repeater = CrossbowItem.getChargeDuration(
+			enchanted(Items.CROSSBOW, enchantment(helper, "crossbow/repeater"), 2), shooter
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=repeaterCharge RESULT plainTicks={} repeaterTicks={} saved={}",
+			plain, repeater, plain - repeater
+		);
+		helper.assertTrue(
+			repeater < plain,
+			"the repeater crossbow charges in " + repeater + " ticks, no faster than " + plain
 		);
 		helper.succeed();
 	}
@@ -443,9 +555,9 @@ public class EnchantDataGameTest {
 		Mob weakened = helper.spawnMob(EntityTypes.RAVAGER, 3, SPAWN_Y, 4).withNoFreeWill().spawn();
 		weakened.setHealth(weakened.getMaxHealth() / 4.0F);
 		shooter.setYRot(0.0F);
-		Items.BOW.releaseUsing(bow, level, shooter, 0);
+		Items.BOW.releaseUsing(bow, level, shooter, PARTIAL_DRAW);
 		shooter.setYRot(-36.87F);
-		Items.BOW.releaseUsing(bow, level, shooter, 0);
+		Items.BOW.releaseUsing(bow, level, shooter, PARTIAL_DRAW);
 		helper.runAfterDelay(8L, () -> {
 			float onFresh = fresh.getMaxHealth() - fresh.getHealth();
 			float onWeakened = weakened.getMaxHealth() / 4.0F - weakened.getHealth();
