@@ -29,6 +29,10 @@ works on one. They are the standard, not a suggestion.
   proves. Mark it not required, and let it fail visibly in every run.
 - A tagged case is evidence, not a pass. Say plainly which check the user now
   performs by hand, and record it as a manual acceptance item.
+- A behaviour the harness cannot observe at all is tagged the same way, without
+  waiting for three failures. Write the test, mark it not required, give it a name
+  that states the gap, and add the manual item. Do not drop the test, and do not
+  claim the behaviour.
 - Never leave a required test that fails intermittently. Tagging is how a phase
   ships with a known gap instead of stalling on it.
 - Fix the test before the behavior only when the test measures the wrong thing.
