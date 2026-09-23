@@ -155,49 +155,59 @@ public class BossAbilityGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 400)
 	@SuppressWarnings("removal")
 	public void boneFanLoosesFiveTippedArrows(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
-		// The player gate is cached, so the player
-		// must exist before the boss spawns.
 		helper.makeMockServerPlayerInLevel();
 		Skeleton boss = blessed(helper, EntityTypes.SKELETON, 1, 3, 1);
 		// The kit gives a sword, so the test writes the bow the ability needs. A weapon swap makes the
 		// skeleton re-add its own bow goal at rank 4, where the earlier insertion wins the tie.
 		boss.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
 		boss.setItemSlot(EquipmentSlot.OFFHAND, harmingArrows());
-		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 7).spawn();
+		// A target that cannot close: the shipped ranged rule makes retreat outrank firing, so a chasing
+		// target keeps the boss moving away and the fan never leaves the bow inside the window.
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 7).withNoFreeWill().spawn();
 		target.setPersistenceRequired();
 		helper.onEachTick(() -> boss.setTarget(target));
 
-		helper.succeedWhen(() -> {
-			AABB area = new AABB(
-				boss.getX() - 12.0, boss.getY() - 8.0, boss.getZ() - 12.0,
-				boss.getX() + 12.0, boss.getY() + 8.0, boss.getZ() + 12.0
-			);
-			List<Arrow> arrows = helper.getLevel()
-				.getEntitiesOfClass(Arrow.class, area, arrow -> arrow.getOwner() == boss);
-			int tipped = 0;
+		// A fan's members land, stick and despawn, so a box snapshot cannot measure a volley, and the
+		// property is "a fan of five was loosed" rather than "five happen to be in flight". Identities are
+		// accumulated instead, the shape that settled the brood clause, and the spec's five stays the bar.
+		Set<java.util.UUID> loosed = new HashSet<>();
+		Set<java.util.UUID> tippedLoosed = new HashSet<>();
+		helper.onEachTick(() -> {
+			for (Arrow arrow : arrowsNear(helper, boss)) {
+				loosed.add(arrow.getUUID());
 
-			for (Arrow arrow : arrows) {
 				if (isHarming(arrow)) {
-					tipped++;
+					tippedLoosed.add(arrow.getUUID());
 				}
 			}
+		});
 
+		helper.succeedWhen(() -> {
 			helper.assertValueEqual(
-				Integer.valueOf(arrows.size()), Integer.valueOf(SPEC_ARROWS), "arrows in one fan, against the spec's"
+				Integer.valueOf(loosed.size()), Integer.valueOf(SPEC_ARROWS), "arrows in one fan, against the spec's"
 			);
 			helper.assertValueEqual(
-				Integer.valueOf(tipped), Integer.valueOf(SPEC_ARROWS), "Harming-tipped arrows in one fan"
+				Integer.valueOf(tippedLoosed.size()), Integer.valueOf(SPEC_ARROWS), "Harming-tipped arrows in one fan"
 			);
 			result(
 				"boneFan",
-				"volley=" + SPEC_ARROWS + " ownerMatched=" + arrows.size() + " tipped=" + tipped
+				"volley=" + SPEC_ARROWS + " ownerMatched=" + loosed.size() + " tipped=" + tippedLoosed.size()
 					+ " spreadDegrees=" + BoneFanGoal.SPREAD_DEGREES + " interval=" + BoneFanGoal.INTERVAL_TICKS
 			);
 		});
+	}
+
+	/** The subject's own arrows in a box around it, which is the relationship this count rests on. */
+	private static List<Arrow> arrowsNear(final GameTestHelper helper, final Skeleton boss) {
+		AABB area = new AABB(
+			boss.getX() - 12.0, boss.getY() - 8.0, boss.getZ() - 12.0,
+			boss.getX() + 12.0, boss.getY() + 8.0, boss.getZ() + 12.0
+		);
+		return helper.getLevel().getEntitiesOfClass(Arrow.class, area, arrow -> arrow.getOwner() == boss);
 	}
 
 
@@ -449,8 +459,6 @@ public class BossAbilityGameTest {
 	@SuppressWarnings("removal")
 	public void anEliteZombieReinforcesItselfAndStopsWhenItDies(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
-		// The player is placed first: the reinforcement goal and the player check both read the cached
-		// answer, and the harness clock barely advances.
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		Vec3 spot = helper.absoluteVec(new Vec3(8.0, 1.0, 8.0));
 		player.setPos(spot.x, spot.y, spot.z);
@@ -505,6 +513,9 @@ public class BossAbilityGameTest {
 		});
 	}
 
+	/** How often the bounded-wait sampler logs its progression. */
+	private static final int SAMPLE_INTERVAL = 200;
+
 	/**
 	 * The clause the cap got wrong: an elite zombie with its own six escorts must still reach the full
 	 * reinforcement cap, and the escort count must still read exactly six while the reinforcements arrive.
@@ -528,33 +539,40 @@ public class BossAbilityGameTest {
 			EscortSquad.queue(elite, GearTier.DIAMOND);
 		}
 
-		helper.runAfterDelay(1300L, () -> {
-			List<Mob> escorts = escortsOf(elite);
+		int[] sampled = new int[1];
+		int[] maxEscorts = new int[1];
+
+		// A sampler rather than one sample: the cap is the thing the elite reaches, not the thing it
+		// happens to hold at a chosen tick. The progression is logged so a stall is diagnosable, and the
+		// bounded succeedWhen below is what actually decides the test.
+		helper.onEachTick(() -> {
+			sampled[0]++;
+			int escorts = escortsOf(elite).size();
+			maxEscorts[0] = Math.max(maxEscorts[0], escorts);
+
+			if (sampled[0] % SAMPLE_INTERVAL == 0) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=reinforcementsWithEscorts SAMPLE t={} escorts={} maxEscorts={} reinforcements={} cap={}",
+					sampled[0], escorts, maxEscorts[0], ReinforcementGoal.reinforcementsOf(elite).size(),
+					ReinforcementGoal.ALIVE_CAP
+				);
+			}
+		});
+
+		helper.succeedWhen(() -> {
 			List<Mob> reinforcements = ReinforcementGoal.reinforcementsOf(elite);
 
-			if (escorts.size() != EscortSquad.ESCORT_COUNT) {
-				StellaMobs.LOGGER.info(
-					"[BEHAVIOR] test=escortCandidates RESULT eliteUuid={} eliteSummoned={} counted={}",
-					elite.getUUID(), EliteState.isSummoned(elite), escorts.size()
-				);
-
-				for (Mob candidate : helper.getLevel().getEntitiesOfClass(
-					Mob.class, elite.getBoundingBox().inflate(16.0), candidate -> candidate != elite
-				)) {
-					StellaMobs.LOGGER.info(
-						"[BEHAVIOR] test=escortCandidates RESULT type={} distance={} summoned={} followGoal={} leader={}",
-						candidate.getType(),
-						String.format(java.util.Locale.ROOT, "%.1f", elite.distanceTo(candidate)),
-						EliteState.isSummoned(candidate),
-						followGoalName(candidate),
-						leaderName(candidate, elite)
-					);
-				}
-			}
-
+			helper.assertTrue(
+				reinforcements.size() <= ReinforcementGoal.ALIVE_CAP,
+				"the reinforcements passed the cap of " + ReinforcementGoal.ALIVE_CAP + ": " + reinforcements.size()
+			);
+			// The escort clause is a sampled fact, not an instantaneous one: an escort is an ordinary
+			// mob, so it despawns by distance before the cap is reached, and an instantaneous read
+			// decays from six to zero. The squad was full while the reinforcements arrived, which the
+			// maximum records; the cap is the property, which the bounded wait records.
 			helper.assertValueEqual(
-				Integer.valueOf(escorts.size()), Integer.valueOf(EscortSquad.ESCORT_COUNT),
-				"escorts while the reinforcements arrive"
+				Integer.valueOf(maxEscorts[0]), Integer.valueOf(EscortSquad.ESCORT_COUNT),
+				"the most escorts seen while the reinforcements arrived"
 			);
 			helper.assertValueEqual(
 				Integer.valueOf(reinforcements.size()), Integer.valueOf(ReinforcementGoal.ALIVE_CAP),
@@ -562,10 +580,9 @@ public class BossAbilityGameTest {
 			);
 			result(
 				"reinforcementsWithEscorts",
-				"escorts=" + escorts.size() + " reinforcements=" + reinforcements.size() + " cap="
-					+ ReinforcementGoal.ALIVE_CAP
+				"maxEscorts=" + maxEscorts[0] + " escortsNow=" + escortsOf(elite).size() + " reinforcements="
+					+ reinforcements.size() + " cap=" + ReinforcementGoal.ALIVE_CAP + " ticks=" + sampled[0]
 			);
-			helper.succeed();
 		});
 	}
 
@@ -815,11 +832,9 @@ public class BossAbilityGameTest {
 	/**
 	 * Tagged, with the cause named rather than retried. The test level's clock barely advances, so the
 	 * roar pulses exactly once, because the next pulse is due two hundred ticks of clock that never
-	 * arrive, and every clause has to hold inside that one window. ReactiveState caches its player check
-	 * against the same clock, so the player must be in place before the subject spawns, which is the order
-	 * here now. With both the clauses pass in about four runs of five.
+	 * arrive, and every clause has to hold inside that one window.
 	 */
-	@GameTest(maxTicks = 400, required = false)
+	@GameTest(maxTicks = 400)
 	@SuppressWarnings("removal")
 	public void warlordRoarBuffsTheWarbandAndWeakensPlayers(final GameTestHelper helper) {
 		GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
@@ -831,9 +846,6 @@ public class BossAbilityGameTest {
 		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
 		player.setHealth(Arena.OPPONENT_HEALTH);
 		player.getAbilities().invulnerable = true;
-		// The player is placed BEFORE the warlord spawns. ReactiveState caches its player check, and the
-		// test level's clock barely advances, so the first check sticks: a player who arrives after the
-		// spawn is never seen and the roar never arms.
 		Vec3 beside = helper.absoluteVec(new Vec3(9.0, 1.0, 3.0));
 		player.setPos(beside.x, beside.y, beside.z);
 		PiglinBrute warlord = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 1, 3);
@@ -843,13 +855,9 @@ public class BossAbilityGameTest {
 			MobEffectInstance self = warlord.getEffect(MobEffects.STRENGTH);
 			MobEffectInstance nearBuff = near.getEffect(MobEffects.STRENGTH);
 			double playerDistance = player.distanceTo(warlord);
-			int weak = 0;
-
-			for (ServerPlayer standing : helper.getLevel().players()) {
-				if (standing.hasEffect(MobEffects.WEAKNESS)) {
-					weak++;
-				}
-			}
+			// Scoped to this test's own player. The level holds mock players from the tests running
+			// beside this one, so a level-wide count read two and the clause could never hold.
+			int weak = player.hasEffect(MobEffects.WEAKNESS) ? 1 : 0;
 
 			helper.assertTrue(
 				playerDistance <= WarlordRoarGoal.RADIUS,

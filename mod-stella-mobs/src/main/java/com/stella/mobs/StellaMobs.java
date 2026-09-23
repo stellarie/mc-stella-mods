@@ -110,7 +110,9 @@ public class StellaMobs implements ModInitializer {
 				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
 			);
 
-			if (RiderSquad.canMount(mob) && !EliteState.isSummoned(mob)) {
+			// R23: an elite spider's rider is guaranteed by the elite path, so the chance roll skips it
+			// and the mount cannot end up with two riders.
+			if (RiderSquad.canMount(mob) && !EliteState.isSummoned(mob) && !Elite.isElite(mob)) {
 				EntityType<? extends Mob> riderType = RiderSquad.RIDER_TYPES.get(mob.getType());
 				double riderChance = GearConfigStore.get().riderFor(entityType).chance();
 				if (riderType != null && riderChance > 0.0 && mob.getRandom().nextFloat() < (float) riderChance) {
