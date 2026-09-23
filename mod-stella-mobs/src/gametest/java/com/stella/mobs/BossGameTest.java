@@ -61,7 +61,7 @@ public class BossGameTest {
 		// NbtOps.empty() is the end tag rather than an empty map, so this half runs on the JSON ops.
 		EliteState legacy = EliteState.CODEC.parse(JsonOps.INSTANCE, new JsonObject()).resultOrPartial().orElseThrow();
 		EliteState marked = new EliteState(
-			false, true, Optional.of(GearTier.NETHERITE), 3, true, false, false, false, false
+			false, true, Optional.of(GearTier.NETHERITE), 3, true, false, false, false, false, java.util.List.of("hardened")
 		);
 		var encoded = EliteState.CODEC.encodeStart(JsonOps.INSTANCE, marked).resultOrPartial().orElseThrow();
 		EliteState decoded = EliteState.CODEC.parse(JsonOps.INSTANCE, encoded).resultOrPartial().orElseThrow();

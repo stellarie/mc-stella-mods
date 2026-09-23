@@ -88,6 +88,10 @@ works on one. They are the standard, not a suggestion.
 - A mob spawned exactly on a surface never registers `onGround`, so
   `GroundPathNavigation.createPath` returns null. Spawn two blocks up.
 - One assertion per test method where possible.
+- A gate run that dies in two to five seconds is not a test failure. A stale Gradle
+  daemon can hold `build/run/gameTest/logs/latest.log`, so the test server never
+  starts and the run fails before any test runs. Run `gradlew.bat --stop`, delete
+  the log, and rerun before reading anything into it.
 - One gate run per command, and copy the log before starting the next. A chain of
   runs in a single command overwrites the log of the first failure, and a red with
   no log is a red nobody can diagnose. This happened on 2026-09-23: a clean build
