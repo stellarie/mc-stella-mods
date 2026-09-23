@@ -11,6 +11,7 @@ public final class PowerConfigStore {
 	public static final String FILE_NAME = "power.json";
 	public static final String DEFAULT_JSON = """
 		{
+			"_note": "An older copy of this file is never upgraded. A key you set here wins and a key you delete falls back to this document. Armor reaches the vanilla ceiling of 30 at 125 distance points, which is 625 blocks; the rest of the armor curve is absorbed and max_health carries the far world.",
 			"version": 1,
 			"level_cap": 50,
 			"points_per_level": { "base": 6, "per_level": 3 },
@@ -40,13 +41,12 @@ public final class PowerConfigStore {
 				"red_above": 20,
 				"yellow_above": 10,
 				"orange_above": 6,
-				"green_within": 5,
-				"white_below": -10
+				"green_within": 5
 			},
 			"tracker": { "scan_interval_ticks": 40, "heartbeat_ticks": 5 },
 			"attributes": {
 				"distance": { "max_health": 0.5, "armor": 0.24, "knockback_resistance": 0.006 },
-				"combat": { "attack_damage": 0.03, "attack_speed": 0.004 }
+				"combat": { "attack_damage_max": 20.0, "attack_speed_max": 1.0 }
 			}
 		}""";
 	private static volatile PowerConfig config;

@@ -10,6 +10,7 @@ public class PowerCurveGameTest {
 	private static final int BEYOND_DISTANCE_CAP_BLOCKS = 12000;
 	private static final int MOB_OVERALL_CAP = 36;
 	private static final int MONOTONIC_SAMPLE_POINTS = 10000;
+	private static final double TOLERANCE = 1.0E-9;
 
 	@GameTest
 	public void levelRisesMonotonicallyOverTheFirstTenThousandPoints(final GameTestHelper helper) {
@@ -231,16 +232,53 @@ public class PowerCurveGameTest {
 		PowerCurve.Band atTwenty = PowerCurve.band(20, config);
 		PowerCurve.Band atFive = PowerCurve.band(5, config);
 		PowerCurve.Band atMinusFive = PowerCurve.band(-5, config);
+		PowerCurve.Band atMinusSix = PowerCurve.band(-6, config);
+		PowerCurve.Band atMinusNine = PowerCurve.band(-9, config);
 		PowerCurve.Band atMinusTen = PowerCurve.band(-10, config);
 		helper.assertTrue(atSix == PowerCurve.Band.ORANGE, "gap 6 read " + atSix + " instead of ORANGE");
 		helper.assertTrue(atTen == PowerCurve.Band.YELLOW, "gap 10 read " + atTen + " instead of YELLOW");
 		helper.assertTrue(atTwenty == PowerCurve.Band.RED, "gap 20 read " + atTwenty + " instead of RED");
 		helper.assertTrue(atFive == PowerCurve.Band.GREEN, "gap 5 read " + atFive + " instead of GREEN");
 		helper.assertTrue(atMinusFive == PowerCurve.Band.GREEN, "gap -5 read " + atMinusFive + " instead of GREEN");
+		helper.assertTrue(
+			atMinusSix == PowerCurve.Band.WHITE, "gap -6 read " + atMinusSix + " instead of WHITE"
+		);
+		helper.assertTrue(
+			atMinusNine == PowerCurve.Band.WHITE, "gap -9 read " + atMinusNine + " instead of WHITE"
+		);
 		helper.assertTrue(atMinusTen == PowerCurve.Band.WHITE, "gap -10 read " + atMinusTen + " instead of WHITE");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bandColors RESULT gap6={} gap10={} gap20={} gap5={} gap-5={} gap-10={}",
-			atSix, atTen, atTwenty, atFive, atMinusFive, atMinusTen
+			"[BEHAVIOR] test=bandColors RESULT gap6={} gap10={} gap20={} gap5={} gap-5={} gap-6={} gap-9={} gap-10={}",
+			atSix, atTen, atTwenty, atFive, atMinusFive, atMinusSix, atMinusNine, atMinusTen
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theOutputBonusesRunFromZeroToTheirMaxima(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		double damageAtOne = PowerCurve.attackDamageBonus(1, config);
+		double damageAtCap = PowerCurve.attackDamageBonus(config.levelCap(), config);
+		double damageAboveCap = PowerCurve.attackDamageBonus(config.levelCap() + 10, config);
+		double speedAtOne = PowerCurve.attackSpeedBonus(1, config);
+		double speedAtCap = PowerCurve.attackSpeedBonus(config.levelCap(), config);
+		helper.assertTrue(damageAtOne == 0.0, "a level 1 player earned " + damageAtOne + " attack damage");
+		helper.assertTrue(speedAtOne == 0.0, "a level 1 player earned " + speedAtOne + " attack speed");
+		helper.assertTrue(
+			Math.abs(damageAtCap - PowerFixtures.ATTACK_DAMAGE_MAX) < TOLERANCE,
+			"at level " + config.levelCap() + " the attack damage bonus was " + damageAtCap
+		);
+		helper.assertTrue(
+			Math.abs(speedAtCap - PowerFixtures.ATTACK_SPEED_MAX) < TOLERANCE,
+			"at level " + config.levelCap() + " the attack speed bonus was " + speedAtCap
+		);
+		helper.assertTrue(
+			Math.abs(damageAboveCap - damageAtCap) < TOLERANCE,
+			"level " + (config.levelCap() + 10) + " earned " + damageAboveCap + " attack damage past the cap"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=outputBonuses RESULT damageAtLevel1={} damageAtCap={} damageAboveCap={} speedAtLevel1={} speedAtCap={}",
+			damageAtOne, damageAtCap, damageAboveCap, speedAtOne, speedAtCap
 		);
 		helper.succeed();
 	}

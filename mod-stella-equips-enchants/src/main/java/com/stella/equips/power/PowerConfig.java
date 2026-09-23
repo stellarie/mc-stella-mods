@@ -58,7 +58,7 @@ public record PowerConfig(
 	public record XpMultiplier(double evenFight, double perLevelGap, double min, double max) {
 	}
 
-	public record Bands(int redAbove, int yellowAbove, int orangeAbove, int greenWithin, int whiteBelow) {
+	public record Bands(int redAbove, int yellowAbove, int orangeAbove, int greenWithin) {
 	}
 
 	public record Tracker(int scanIntervalTicks, int heartbeatTicks) {
@@ -70,6 +70,6 @@ public record PowerConfig(
 	public record Survivability(double maxHealth, double armor, double knockbackResistance) {
 	}
 
-	public record Combat(double attackDamage, double attackSpeed) {
+	public record Combat(double attackDamageMax, double attackSpeedMax) {
 	}
 }

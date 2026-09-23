@@ -124,8 +124,7 @@ public final class PowerConfigParser {
 				intValueAtLeast(bands, "red_above", 0, config -> config.bands().redAbove()),
 				intValueAtLeast(bands, "yellow_above", 0, config -> config.bands().yellowAbove()),
 				intValueAtLeast(bands, "orange_above", 0, config -> config.bands().orangeAbove()),
-				intValueAtLeast(bands, "green_within", 0, config -> config.bands().greenWithin()),
-				intValue(bands, "white_below", 0, config -> config.bands().whiteBelow())
+				intValueAtLeast(bands, "green_within", 0, config -> config.bands().greenWithin())
 			);
 
 			JsonObject tracker = enter("tracker");
@@ -146,8 +145,12 @@ public final class PowerConfigParser {
 
 			JsonObject combatAttributes = enter("attributes.combat");
 			PowerConfig.Combat combat = new PowerConfig.Combat(
-				doubleValueAtLeast(combatAttributes, "attack_damage", 0.0, config -> config.attributes().combat().attackDamage()),
-				doubleValueAtLeast(combatAttributes, "attack_speed", 0.0, config -> config.attributes().combat().attackSpeed())
+				doubleValueAtLeast(
+					combatAttributes, "attack_damage_max", 0.0, config -> config.attributes().combat().attackDamageMax()
+				),
+				doubleValueAtLeast(
+					combatAttributes, "attack_speed_max", 0.0, config -> config.attributes().combat().attackSpeedMax()
+				)
 			);
 
 			return new PowerConfig(
