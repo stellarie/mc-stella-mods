@@ -94,6 +94,12 @@ works on one. They are the standard, not a suggestion.
   `tickInternal`. Register the per-tick work from the test body instead. This cost
   one crashed server on 2026-09-23; the report is in
   `build/run/gameTest/crash-reports/`.
+- The game test level's clock barely advances. `getGameTime()` sat at 3, 4 and 5
+  while a test ran past tick 400, so anything measured in elapsed game ticks
+  behaves as if time were frozen, and a check cached against that clock never
+  refreshes. A test that needs elapsed ticks advances the clock itself or asserts
+  on framework tick counts, and a cooldown keyed on `getGameTime()` cannot be
+  asserted headlessly. This single fact caused four intermittent tests.
 - When a test counts neighbours, make the predicate name the **subject**, not the
   kind. A box query over a shared level plus a predicate that describes what a mob
   is will count a stranger: four separate flakes in one block were this shape, the
