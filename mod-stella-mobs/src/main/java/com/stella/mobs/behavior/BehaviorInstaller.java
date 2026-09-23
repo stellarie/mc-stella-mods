@@ -4,6 +4,7 @@ import com.stella.mobs.StellaMobs;
 import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.RoleSpec;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -11,8 +12,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.entity.monster.spider.Spider;
@@ -41,6 +44,8 @@ public final class BehaviorInstaller {
 	public static final int WITCH_OFFENSE_PRIORITY = WITCH_BLOCK_START + 2;
 	// Rank 8 stays free. The aura sits at the top of the block, as planned.
 	public static final int WITCH_AURA_PRIORITY = WITCH_BLOCK_START + 4;
+	/** Vanilla's ghast holds its look goal and its shoot goal at rank 7; both are replaced together. */
+	public static final int GHAST_SHOOT_PRIORITY = 7;
 	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
 	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE);
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
@@ -112,6 +117,34 @@ public final class BehaviorInstaller {
 
 		mob.getGoalSelector().removeAllGoals(goal -> goal.getClass().getEnclosingClass() == Blaze.class);
 		mob.getGoalSelector().addGoal(MELEE_PRIORITY, new BlazeVolleyGoal(blaze, Elite.isElite(blaze)));
+	}
+
+	/**
+	 * R24: the ghast's rank 7 shoot goal is a package private nested class, so the replacement goes
+	 * through the wrapped goals and re-adds the public look goal beside ours. This runs for every ghast,
+	 * elite or not, and the flag inside the goal chooses the power and the payload.
+	 */
+	public static void installGhastFireball(final Mob mob) {
+		if (!(mob instanceof Ghast ghast)) {
+			return;
+		}
+
+		if (mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof GhastFireballGoal)) {
+			return;
+		}
+
+		// The copy matters: getAvailableGoals returns the live set, and removing while iterating throws.
+		for (WrappedGoal wrapped : List.copyOf(ghast.getGoalSelector().getAvailableGoals())) {
+			if (wrapped.getPriority() == GHAST_SHOOT_PRIORITY) {
+				ghast.getGoalSelector().removeGoal(wrapped.getGoal());
+			}
+		}
+
+		ghast.getGoalSelector().addGoal(GHAST_SHOOT_PRIORITY, new Ghast.GhastLookGoal(ghast));
+		ghast.getGoalSelector().addGoal(
+			GHAST_SHOOT_PRIORITY, new GhastFireballGoal(ghast, Elite.isElite(ghast))
+		);
 	}
 
 	public static void install(final Mob mob) {
