@@ -106,20 +106,38 @@ public class RiderPearlGameTest {
 			);
 			helper.assertTrue(rider.getVehicle() == spider, "the rider is not seated on the spider");
 			helper.assertTrue(rider.isAlive(), "the rider is not alive");
+			// The flag the negative case keys on: this mod's riders are summoned before they are added,
+			// which is what tells them apart from vanilla's own spider jockey.
+			helper.assertTrue(
+				EliteState.isSummoned(rider), "the seated rider is not flagged summoned, so the flag is not a rider mark"
+			);
 			helper.assertTrue(
 				spider.distanceTo(rider) < 1.5, "the rider is " + spider.distanceTo(rider) + " blocks from the spider"
 			);
 		});
 	}
 
+	/**
+	 * The clause is "this mod seats no rider", not "the spider carries no passenger". Vanilla's own
+	 * `Spider.finalizeSpawn` rolls a one percent skeleton jockey with `EntitySpawnReason.JOCKEY`, so a
+	 * plain passenger count measures vanilla's dice. Every rider this mod seats is flagged summoned
+	 * before it is added, so that flag is what tells the two apart.
+	 */
 	@GameTest(maxTicks = MAX_TICKS)
 	public void zeroChanceSpawnsNoRider(final GameTestHelper helper) {
 		Spider spider = spawnSpider(helper, RIDERS_NEVER);
 
 		helper.runAfterDelay(60L, () -> {
-			boolean rider = spider.isVehicle();
-			result("zeroChanceSpawnsNoRider", "riders=" + spider.getPassengers().size() + " ridersOff=" + !rider);
-			helper.assertFalse(rider, "a zero rider chance still seated a rider: " + describe(spider));
+			boolean modRider = spider.getPassengers().stream()
+				.anyMatch(passenger -> passenger instanceof Mob mob && EliteState.isSummoned(mob));
+			result(
+				"zeroChanceSpawnsNoRider",
+				"modRiders=" + (modRider ? 1 : 0) + " ridersOff=" + !spider.isVehicle()
+					+ " passengers=" + spider.getPassengers().size()
+			);
+			helper.assertFalse(
+				modRider, "a zero rider chance still seated a summoned rider: " + describe(spider)
+			);
 			helper.succeed();
 		});
 	}
