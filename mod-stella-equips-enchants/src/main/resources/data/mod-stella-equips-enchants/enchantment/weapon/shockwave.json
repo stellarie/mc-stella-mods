@@ -4,7 +4,7 @@
 	"primary_items": "#minecraft:enchantable/mace",
 	"slots": ["mainhand"],
 	"weight": 2,
-	"max_level": 2,
+	"max_level": 5,
 	"min_cost": { "base": 10, "per_level_above_first": 20 },
 	"max_cost": { "base": 50, "per_level_above_first": 0 },
 	"anvil_cost": 1,
@@ -18,7 +18,7 @@
 					"effects": [
 						{
 							"type": "minecraft:explode",
-							"radius": 3.0,
+							"radius": { "type": "minecraft:lookup", "values": [3.0, 3.0, 3.0, 3.5, 4.0], "fallback": 4.0 },
 							"block_interaction": "none",
 							"attribute_to_user": true,
 							"small_particle": { "type": "minecraft:poof" },
@@ -28,8 +28,8 @@
 						{
 							"type": "minecraft:damage_entity",
 							"damage_type": "mod-stella-equips-enchants:enchant_bonus",
-							"min_damage": 4.0,
-							"max_damage": 4.0
+							"min_damage": { "type": "minecraft:lookup", "values": [4.0, 4.0, 4.0, 5.0, 6.0], "fallback": 6.0 },
+							"max_damage": { "type": "minecraft:lookup", "values": [4.0, 4.0, 4.0, 5.0, 6.0], "fallback": 6.0 }
 						}
 					]
 				},

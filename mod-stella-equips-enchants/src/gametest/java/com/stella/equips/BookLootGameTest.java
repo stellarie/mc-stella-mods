@@ -146,11 +146,15 @@ public class BookLootGameTest {
 		helper.assertTrue(books == MAXIMA_ROLLS, "only " + books + " of " + MAXIMA_ROLLS + " rolls minted a book");
 		helper.assertTrue(overDeclared.isEmpty(), "a roll beat its declared maximum: " + overDeclared);
 		helper.assertTrue(
-			highest(observed, MAX_ONE) == 1 && highest(observed, MAX_TWO) == 2
-				&& highest(observed, MAX_THREE) == 3 && highest(observed, MAX_FIVE) == 5,
+			highest(observed, MAX_ONE) == declaredMax(registry, MAX_ONE)
+				&& highest(observed, MAX_TWO) == declaredMax(registry, MAX_TWO)
+				&& highest(observed, MAX_THREE) == declaredMax(registry, MAX_THREE)
+				&& highest(observed, MAX_FIVE) == declaredMax(registry, MAX_FIVE),
 			"declared maxima not reached: prospector=" + highest(observed, MAX_ONE)
-				+ " marksman=" + highest(observed, MAX_TWO) + " blockfeast=" + highest(observed, MAX_THREE)
-				+ " arachnidsBane=" + highest(observed, MAX_FIVE)
+				+ "/" + declaredMax(registry, MAX_ONE) + " marksman=" + highest(observed, MAX_TWO)
+				+ "/" + declaredMax(registry, MAX_TWO) + " blockfeast=" + highest(observed, MAX_THREE)
+				+ "/" + declaredMax(registry, MAX_THREE) + " arachnidsBane=" + highest(observed, MAX_FIVE)
+				+ "/" + declaredMax(registry, MAX_FIVE)
 		);
 		helper.assertTrue(
 			levels(observed, MAX_FIVE).equals(LEVELS_ONE_TO_FIVE),
@@ -239,6 +243,12 @@ public class BookLootGameTest {
 
 	private static int highest(final Map<String, Map<Integer, Integer>> observed, final Identifier id) {
 		return levels(observed, id).stream().mapToInt(Integer::intValue).max().orElse(0);
+	}
+
+	private static int declaredMax(final Registry<Enchantment> registry, final Identifier id) {
+		Enchantment enchantment = registry.getValue(id);
+
+		return enchantment == null ? -1 : enchantment.getMaxLevel();
 	}
 
 	private static Set<String> catalogueIds(final Registry<Enchantment> registry) {
