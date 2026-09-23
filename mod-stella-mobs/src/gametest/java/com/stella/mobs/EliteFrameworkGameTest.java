@@ -9,6 +9,7 @@ import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.RollSpec;
 import com.stella.mobs.gear.GearTier;
+import com.stella.mobs.scaling.SpawnScaling;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -67,21 +68,25 @@ public class EliteFrameworkGameTest {
 	public void eliteRollsWithMarkerAndDoubledHealth(final GameTestHelper helper) {
 		Zombie elite = spawn(helper, ALWAYS_ELITE);
 		boolean eliteFlag = Elite.isElite(elite);
-		float expectedHealth = ZOMBIE_BASE_HEALTH * (float) Elite.HEALTH_MULTIPLIER;
 		float health = elite.getMaxHealth();
+		// R12 scales the maximum too, so divide it out and assert the elite multiplier alone.
+		double unscaledHealth = health / SpawnScaling.healthMultiplierOf(elite);
 		float scale = elite.getScale();
 		boolean markedOnce = elite.getAttribute(Attributes.SCALE).getModifier(Elite.SCALE_ID) != null;
 		double bonus = markedOnce ? elite.getAttribute(Attributes.SCALE).getModifier(Elite.SCALE_ID).amount() : 0.0;
 
 		result(
 			"eliteRollsWithMarkerAndDoubledHealth",
-			"elite=" + eliteFlag + " health=" + health + " expected=" + expectedHealth + " scale=" + scale
+			"elite=" + eliteFlag + " health=" + health + " unscaled=" + unscaledHealth + " expected="
+				+ ZOMBIE_BASE_HEALTH * Elite.HEALTH_MULTIPLIER + " scale=" + scale
 				+ " bonus=" + bonus + " tier=" + Elite.kitTier(elite)
 		);
 
 		helper.assertTrue(eliteFlag, "the elite roll did not mark the zombie");
 		helper.assertTrue(
-			Math.abs(health - expectedHealth) < EPSILON, "the elite has " + health + " health, not " + expectedHealth
+			Math.abs(unscaledHealth - ZOMBIE_BASE_HEALTH * Elite.HEALTH_MULTIPLIER) < 1.0e-4,
+			"the elite has " + unscaledHealth + " health unscaled, not " + ZOMBIE_BASE_HEALTH * Elite.HEALTH_MULTIPLIER
+				+ " (maximum " + health + ")"
 		);
 		helper.assertTrue(
 			Math.abs(scale - (1.0F + (float) Elite.SCALE_BONUS)) < EPSILON,

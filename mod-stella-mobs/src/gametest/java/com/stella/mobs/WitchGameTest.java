@@ -8,6 +8,7 @@ import com.stella.mobs.behavior.WitchSelfHealGoal;
 import com.stella.mobs.behavior.WitchSupportHealGoal;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.scaling.SpawnScaling;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -213,11 +214,13 @@ public class WitchGameTest {
 		helper.onEachTick(() -> witch.setTarget(enemy));
 		WitchElite.mark(witch, GearTier.DIAMOND);
 		float expected = (float) WitchElite.eliteHealth(WITCH_BASE_HEALTH);
-
 		helper.succeedWhen(() -> {
+			// R12 scales the maximum too, so divide it out and assert the elite multiplier alone.
+			float unscaled = (float) (witch.getMaxHealth() / SpawnScaling.healthMultiplierOf(witch));
 			helper.assertTrue(
-				Math.abs(witch.getMaxHealth() - expected) < EPSILON,
-				"the elite witch has " + witch.getMaxHealth() + " health, not " + expected
+				Math.abs(unscaled - expected) < EPSILON,
+				"the elite witch has " + unscaled + " health before scaling, not " + expected
+					+ " (maximum " + witch.getMaxHealth() + ")"
 			);
 			helper.assertTrue(
 				!blindedPlayers(helper).equals("none"),
