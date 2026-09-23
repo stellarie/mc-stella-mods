@@ -14,6 +14,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -64,6 +65,20 @@ public final class BehaviorInstaller {
 	private static boolean hasShieldGoal(final Mob mob) {
 		return mob.getGoalSelector().getAvailableGoals().stream()
 			.anyMatch(wrapped -> wrapped.getGoal() instanceof ShieldUseGoal);
+	}
+
+	/** R21: an elite zombie that is not a summon brings its own reinforcements. Idempotent. */
+	public static void installReinforcements(final Mob mob) {
+		if (!(mob instanceof Zombie zombie) || EliteState.isSummoned(mob) || !Elite.isElite(zombie)) {
+			return;
+		}
+
+		if (mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof ReinforcementGoal)) {
+			return;
+		}
+
+		mob.getGoalSelector().addGoal(ReinforcementGoal.PRIORITY, new ReinforcementGoal(zombie));
 	}
 
 	public static void install(final Mob mob) {

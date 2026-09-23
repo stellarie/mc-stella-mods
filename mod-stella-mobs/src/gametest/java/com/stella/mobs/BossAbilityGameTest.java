@@ -5,6 +5,11 @@ import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.KeepDistanceGoal;
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.behavior.EscortSquad;
+import com.stella.mobs.behavior.FollowAllyGoal;
+import com.stella.mobs.behavior.ReinforcementFollowGoal;
+import com.stella.mobs.behavior.ReinforcementGoal;
+import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.behavior.DecayAuraGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.behavior.BossAbilities;
@@ -76,6 +81,8 @@ public class BossAbilityGameTest {
 	private static final int MIN_SECTORS = 10;
 	/** Wither II is amplifier one; Wither I is amplifier zero. */
 	private static final int SPEC_WITHER_TWO = 1;
+	/** Two arrivals inside the window prove the cadence ran more than once. */
+	private static final int SPEC_REINFORCEMENTS = 2;
 	/**
 	 * The roll-path config, used by the one test that pins the production path. Every other test promotes
 	 * its subject by hand, which is deterministic and reaches the same end state through blessAsBoss.
@@ -425,6 +432,168 @@ public class BossAbilityGameTest {
 			result("bandRearm", "armed=true spent=true rearmed=true cooldown=40");
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = 600)
+	@SuppressWarnings("removal")
+	public void anEliteZombieReinforcesItselfAndStopsWhenItDies(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		// The player is placed first: the reinforcement goal and the player check both read the cached
+		// answer, and the harness clock barely advances.
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 spot = helper.absoluteVec(new Vec3(8.0, 1.0, 8.0));
+		player.setPos(spot.x, spot.y, spot.z);
+		player.getAbilities().invulnerable = true;
+		Zombie elite = ordinary(helper, EntityTypes.ZOMBIE, 3, 3, 3);
+		Elite.mark(elite, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+		int[] before = new int[1];
+		int[] slow = new int[1];
+		Set<java.util.UUID> atDeath = new HashSet<>();
+
+		helper.runAfterDelay(350L, () -> {
+			List<Mob> arrived = ReinforcementGoal.reinforcementsOf(elite);
+			before[0] = arrived.size();
+			arrived.forEach(summon -> atDeath.add(summon.getUUID()));
+			slow[0] = 0;
+
+			for (Mob summon : arrived) {
+				if (summon.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(ReinforcementGoal.SLOW_ID) != null) {
+					slow[0]++;
+				}
+			}
+
+			elite.setInvulnerableTime(0);
+			elite.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), Float.MAX_VALUE);
+		});
+		helper.runAfterDelay(560L, () -> {
+			int[] after = new int[1];
+
+			helper.assertTrue(!elite.isAlive(), "the elite survived, so the stop clause proves nothing");
+			helper.assertTrue(
+				before[0] >= SPEC_REINFORCEMENTS, "the elite brought only " + before[0] + " reinforcements in 350 ticks"
+			);
+			helper.assertTrue(before[0] <= ReinforcementGoal.ALIVE_CAP, "the elite passed its cap of " + before[0]);
+			helper.assertValueEqual(
+				Integer.valueOf(slow[0]), Integer.valueOf(before[0]), "reinforcements carrying the slow modifier"
+			);
+			// A reinforcement that leaves the world between the two reads is not an arrival, so the clause
+			// is "no new reinforcement appears", which a despawn cannot break and a spawn cannot pass.
+			List<Mob> appeared = ReinforcementGoal.reinforcementsOf(elite).stream()
+				.filter(summon -> !atDeath.contains(summon.getUUID()))
+				.toList();
+			after[0] = appeared.size();
+			helper.assertValueEqual(
+				Integer.valueOf(appeared.size()), Integer.valueOf(0), "reinforcements that appeared after the elite died"
+			);
+			result(
+				"eliteReinforcements",
+				"arrived=" + before[0] + " cap=" + ReinforcementGoal.ALIVE_CAP + " slowed=" + slow[0]
+					+ " afterDeath=" + after[0] + " cadenceTicks=" + ReinforcementGoal.CADENCE_GOAL_TICKS * 2
+			);
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * The clause the cap got wrong: an elite zombie with its own six escorts must still reach the full
+	 * reinforcement cap, and the escort count must still read exactly six while the reinforcements arrive.
+	 * An escort follows the elite through FollowAllyGoal and a reinforcement through the reinforcement
+	 * marker, so one cap counted one marker and one count counted the other.
+	 */
+	@GameTest(maxTicks = 1400)
+	@SuppressWarnings("removal")
+	public void anEliteWithEscortsStillReachesTheReinforcementCap(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 spot = helper.absoluteVec(new Vec3(8.0, 1.0, 8.0));
+		player.setPos(spot.x, spot.y, spot.z);
+		player.getAbilities().invulnerable = true;
+		Zombie elite = ordinary(helper, EntityTypes.ZOMBIE, 3, 3, 3);
+		// The config store is global, so a concurrent test can leave an elite chance in front of this
+		// spawn; when the roll fires it marks the mob and queues one squad, and a second queue would make
+		// twelve escorts out of a fixture that means six.
+		if (!Elite.isElite(elite)) {
+			Elite.mark(elite, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+			EscortSquad.queue(elite, GearTier.DIAMOND);
+		}
+
+		helper.runAfterDelay(1300L, () -> {
+			List<Mob> escorts = escortsOf(elite);
+			List<Mob> reinforcements = ReinforcementGoal.reinforcementsOf(elite);
+
+			if (escorts.size() != EscortSquad.ESCORT_COUNT) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=escortCandidates RESULT eliteUuid={} eliteSummoned={} counted={}",
+					elite.getUUID(), EliteState.isSummoned(elite), escorts.size()
+				);
+
+				for (Mob candidate : helper.getLevel().getEntitiesOfClass(
+					Mob.class, elite.getBoundingBox().inflate(16.0), candidate -> candidate != elite
+				)) {
+					StellaMobs.LOGGER.info(
+						"[BEHAVIOR] test=escortCandidates RESULT type={} distance={} summoned={} followGoal={} leader={}",
+						candidate.getType(),
+						String.format(java.util.Locale.ROOT, "%.1f", elite.distanceTo(candidate)),
+						EliteState.isSummoned(candidate),
+						followGoalName(candidate),
+						leaderName(candidate, elite)
+					);
+				}
+			}
+
+			helper.assertValueEqual(
+				Integer.valueOf(escorts.size()), Integer.valueOf(EscortSquad.ESCORT_COUNT),
+				"escorts while the reinforcements arrive"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(reinforcements.size()), Integer.valueOf(ReinforcementGoal.ALIVE_CAP),
+				"reinforcements beside a full escort squad, against the cap"
+			);
+			result(
+				"reinforcementsWithEscorts",
+				"escorts=" + escorts.size() + " reinforcements=" + reinforcements.size() + " cap="
+					+ ReinforcementGoal.ALIVE_CAP
+			);
+			helper.succeed();
+		});
+	}
+
+	/** The follow goal a mob carries, by name, so a candidate dump can name it without a cast. */
+	private static String followGoalName(final Mob candidate) {
+		return candidate.getGoalSelector().getAvailableGoals().stream()
+			.map(wrapped -> wrapped.getGoal())
+			.filter(goal -> goal instanceof FollowAllyGoal || goal instanceof ReinforcementFollowGoal)
+			.map(goal -> goal.getClass().getSimpleName())
+			.findFirst()
+			.orElse("none");
+	}
+
+	/** Whether that goal points at this elite or at another mob, which is the identity the count uses. */
+	private static String leaderName(final Mob candidate, final Mob elite) {
+		for (var wrapped : candidate.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.getGoal() instanceof ReinforcementFollowGoal marker) {
+				return marker.leader() == elite ? "this-elite(reinforcement)" : "other-mob(reinforcement)";
+			}
+
+			if (wrapped.getGoal() instanceof FollowAllyGoal marker) {
+				return marker.leader() == elite ? "this-elite(escort)" : "other-mob(escort)";
+			}
+		}
+
+		return "none";
+	}
+
+	/** The elite's escorts, by their own marker: a plain follow goal bound to this elite. */
+	private static List<Mob> escortsOf(final Zombie elite) {
+		return elite.level().getEntitiesOfClass(
+			Mob.class,
+			elite.getBoundingBox().inflate(16.0),
+			candidate -> candidate.getGoalSelector().getAvailableGoals().stream().anyMatch(
+				wrapped -> wrapped.getGoal() instanceof FollowAllyGoal marker
+					&& !(wrapped.getGoal() instanceof ReinforcementFollowGoal)
+					&& marker.leader() == elite
+			)
+		);
 	}
 
 	private static void prepare(final GameTestHelper helper, final String config) {

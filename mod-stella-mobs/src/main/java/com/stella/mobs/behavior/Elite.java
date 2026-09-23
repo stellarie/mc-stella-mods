@@ -66,6 +66,8 @@ public final class Elite {
 		}
 
 		EliteState.markElite(mob, tier);
+		// R21: an elite zombie brings reinforcements, and the mark is the moment it becomes one.
+		BehaviorInstaller.installReinforcements(mob);
 
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		if (health != null) {

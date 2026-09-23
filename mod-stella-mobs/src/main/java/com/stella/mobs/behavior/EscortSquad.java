@@ -61,6 +61,10 @@ public final class EscortSquad {
 		pending.clear();
 
 		for (Pending item : batch) {
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=escortDrain RESULT elite={} uuid={} alive={}",
+				item.elite().getType(), item.elite().getUUID(), item.elite().isAlive()
+			);
 			if (item.elite().isAlive() && !item.elite().isRemoved()) {
 				spawnSquad(level, item.elite(), item.tier());
 			}
