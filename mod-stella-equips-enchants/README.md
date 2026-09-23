@@ -154,7 +154,7 @@ the owner disconnects, and when the owner opts out. The `readout` block of
 
 The game tests run a headless server. They check the fixture enchantment
 `mod-stella-equips-enchants:test_marker`, its cost fields, the clamped anvil
-cost, the 44 catalogue enchantments, the power curve, the config parser, the
+cost, the 32 catalogue enchantments, the power curve, the config parser, the
 attribute modifiers, the player attachment, the tracker, and the readout: its
 text and colors, its radius, its cap, its band updates, its removal on death, on
 range, and on disconnect, its invisibility to a second player, and the opt-out

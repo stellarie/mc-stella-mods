@@ -35,11 +35,11 @@ public class EnchantmentLevelGameTest {
 
 	/**
 	 * Enchantments with no lever a level can reach: eight whose effect is
-	 * `run_function`, three whose effect is a `damage_immunity` flag, and
-	 * second_wind, whose only number is `periodic_tick` inside a predicate.
+	 * `run_function` and two whose effect is a `damage_immunity` flag. second_wind
+	 * is one of the eight, and its only number is `periodic_tick` inside a
+	 * predicate, which no level reaches either.
 	 */
 	private static final Set<String> CAPPED = Set.of(
-		"armor/asbestos",
 		"armor/guarding_ward",
 		"armor/insulated",
 		"armor/reactive_plating",
@@ -48,7 +48,6 @@ public class EnchantmentLevelGameTest {
 		"tool/lumberjack",
 		"tool/prospector",
 		"weapon/momentum",
-		"bow/rangers_mark",
 		"weapon/stormcaller",
 		"weapon/tidecaller"
 	);
@@ -58,35 +57,25 @@ public class EnchantmentLevelGameTest {
 
 	static {
 		LEVEL_THREE_BASELINE.put("armor/bulwark", "0.3");
-		LEVEL_THREE_BASELINE.put("armor/deepdiver", "1.0,3.0");
 		LEVEL_THREE_BASELINE.put("armor/farsight", "3.0");
-		LEVEL_THREE_BASELINE.put("armor/featherfall", "-0.75,6.0");
 		LEVEL_THREE_BASELINE.put("armor/fleetfoot", "0.3");
-		LEVEL_THREE_BASELINE.put("armor/warded", "6.0");
 		LEVEL_THREE_BASELINE.put("bow/arrow_shower", "1.0,10.0,6.0");
-		LEVEL_THREE_BASELINE.put("bow/bodkin", "1.0,3.0");
 		LEVEL_THREE_BASELINE.put("bow/bomb_arrows", "2.0");
 		LEVEL_THREE_BASELINE.put("bow/longshot", "-1.0,0.4,1.0");
 		LEVEL_THREE_BASELINE.put("bow/marksman", "1.0,3.0");
-		LEVEL_THREE_BASELINE.put("crossbow/quickdraw", "-0.45000002");
 		LEVEL_THREE_BASELINE.put("crossbow/repeater", "-0.75,1.0");
 		LEVEL_THREE_BASELINE.put("crossbow/siege_bolt", "0.75,1.0,3.0");
 		LEVEL_THREE_BASELINE.put("elytra/glider", "6.0");
 		LEVEL_THREE_BASELINE.put("shield/aegis", "0.3");
 		LEVEL_THREE_BASELINE.put("shield/shield_bash", "1.2");
-		LEVEL_THREE_BASELINE.put("tool/anglers_fortune", "3.0,9.0");
 		LEVEL_THREE_BASELINE.put("tool/blockfeast", "3.0");
 		LEVEL_THREE_BASELINE.put("tool/burrow", "1.0,2.0");
 		LEVEL_THREE_BASELINE.put("tool/green_thumb", "1.0,2.0");
 		LEVEL_THREE_BASELINE.put("weapon/aegis_breaker", "2.0");
-		LEVEL_THREE_BASELINE.put("weapon/arachnids_bane", "2.0,2.5,3.0,7.5");
-		LEVEL_THREE_BASELINE.put("weapon/cleave", "1.0");
 		LEVEL_THREE_BASELINE.put("weapon/feathered_edge", "-1.5,3.0");
 		LEVEL_THREE_BASELINE.put("weapon/hooked", "3.0,4.0");
 		LEVEL_THREE_BASELINE.put("weapon/reach", "1.5");
-		LEVEL_THREE_BASELINE.put("weapon/returning", "3.0");
 		LEVEL_THREE_BASELINE.put("weapon/shockwave", "3.0,4.0");
-		LEVEL_THREE_BASELINE.put("weapon/slam", "1.5");
 		LEVEL_THREE_BASELINE.put("weapon/stunning_blow", "0.0,1.0,3.0,4.0");
 		LEVEL_THREE_BASELINE.put("weapon/wounding", "6.0");
 	}
