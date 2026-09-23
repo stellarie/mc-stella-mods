@@ -13,6 +13,7 @@ import com.stella.mobs.behavior.GolemElite;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
+import com.stella.mobs.behavior.SnowGolemCold;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
@@ -144,6 +145,9 @@ public class StellaMobs implements ModInitializer {
 		// G01: an iron golem is not an Enemy, so it cannot roll elite and is forced here instead. The call
 		// is idempotent and its modifiers are guarded, so a reload can neither mark nor stack it twice.
 		GolemElite.force(mob);
+		// G07: a snow golem is not an Enemy either, so its one in ten arrival rolls on the same per-type
+		// chance key and marks through the shared marker.
+		SnowGolemCold.rollElite(mob);
 	}
 
 	/** B1: a boss that leaves the level loses its bar, because the sweep can no longer reach it. */

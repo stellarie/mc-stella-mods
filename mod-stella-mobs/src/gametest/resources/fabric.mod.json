@@ -26,6 +26,7 @@
 			"com.stella.mobs.RoleGameTest",
 			"com.stella.mobs.SpawnScalingGameTest",
 			"com.stella.mobs.SpiderEliteGameTest",
+			"com.stella.mobs.SnowGolemGameTest",
 			"com.stella.mobs.StormGameTest",
 			"com.stella.mobs.WitchGameTest"
 		]
