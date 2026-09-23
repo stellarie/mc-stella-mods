@@ -22,6 +22,8 @@ public class EliteAuraGoal<T extends Mob> extends Goal {
 	public static final double RADIUS = 16.0;
 	public static final int DURATION_TICKS = 100;
 	public static final int INTERVAL_TICKS = 20;
+	/** Every aura effect lands at this amplifier, so a clause can name it instead of a literal. */
+	public static final int AMPLIFIER = 0;
 	/** The most players the record keeps, because a guardian writes for as long as it lives. */
 	public static final int RECORD_LIMIT = 64;
 
@@ -74,7 +76,7 @@ public class EliteAuraGoal<T extends Mob> extends Goal {
 			}
 
 			for (Holder<MobEffect> effect : this.effects) {
-				player.addEffect(new MobEffectInstance(effect, DURATION_TICKS, 0), this.mob);
+				player.addEffect(new MobEffectInstance(effect, DURATION_TICKS, AMPLIFIER), this.mob);
 			}
 
 			if (this.affected.size() < RECORD_LIMIT) {

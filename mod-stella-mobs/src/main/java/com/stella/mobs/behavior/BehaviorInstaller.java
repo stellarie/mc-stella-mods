@@ -58,7 +58,8 @@ public final class BehaviorInstaller {
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
 	);
-	private static final List<Holder<MobEffect>> GUARDIAN_AURA_EFFECTS = List.of(MobEffects.BLINDNESS);
+	private static final List<Holder<MobEffect>> GUARDIAN_AURA_EFFECTS =
+		List.of(MobEffects.BLINDNESS, MobEffects.SLOWNESS);
 	private static final List<Holder<MobEffect>> ELDER_AURA_EFFECTS =
 		List.of(MobEffects.BLINDNESS, MobEffects.WEAKNESS);
 
@@ -220,9 +221,10 @@ public final class BehaviorInstaller {
 
 	/**
 	 * O02 and O03: the guardian's blindness aura at the free rank 8, with the witch's rank 9 untouched,
-	 * and the elder's wider aura with Weakness beside the blindness. The beam cooldown and the movement
-	 * bonus belong to the plain guardian: the elder's beam is already faster than a guardian's, so
-	 * "attacks slowly" is not its clause.
+	 * and the elder's wider aura with Weakness beside the blindness. P6: the plain guardian's aura also
+	 * applies Slowness, which is the tether that keeps a runner where the 80 tick beam can land. The
+	 * beam cooldown and the movement bonus belong to the plain guardian: the elder's beam is already
+	 * faster than a guardian's, so "attacks slowly" is not its clause.
 	 */
 	private static void installGuardian(final Guardian guardian) {
 		boolean elder = guardian instanceof ElderGuardian;

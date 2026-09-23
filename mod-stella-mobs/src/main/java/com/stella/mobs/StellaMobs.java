@@ -11,6 +11,8 @@ import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.GolemElite;
+import com.stella.mobs.behavior.Harpooner;
+import com.stella.mobs.behavior.OceanSpecials;
 import com.stella.mobs.behavior.PiglinSmash;
 import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.OceanBand;
@@ -78,6 +80,8 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EliteKits::strayFreeze);
 		// T04: the windy trait shoves what this mob hits, read through the source so a windy victim cannot.
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Traits::afterDamage);
+		// P2: an elite drowned's trident pulls what it hits, which Loyalty does not do.
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(Harpooner::afterDamage);
 		// T06: the end trait negates a hit itself, so it rides the allow hook rather than the after hook.
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register(Traits::allowDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
@@ -130,6 +134,9 @@ public class StellaMobs implements ModInitializer {
 			Elite.rollAtSpawn(
 				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
 			);
+
+			// P3 and P4: a glow squid and a pufferfish are not Enemies, so their roll lives here.
+			OceanSpecials.roll(mob, GearConfigStore.get().rollFor(entityType).eliteChance());
 
 			// R23: an elite spider's rider is guaranteed by the elite path, so the chance roll skips it
 			// and the mount cannot end up with two riders.
