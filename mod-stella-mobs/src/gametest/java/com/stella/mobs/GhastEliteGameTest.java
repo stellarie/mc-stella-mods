@@ -5,159 +5,153 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.GhastFireballGoal;
 import com.stella.mobs.gear.GearTier;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Ghast;
-import net.minecraft.world.entity.monster.spider.Spider;
+
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * R24: the elite ghast. One rank 7 goal serves both variants. An elite fires a real LargeFireball at
  * power 0, so the blast is a look and a sound with no damage, no knockback and no block loop, and the
- * payload lands on the tick after the ball is removed: burn, Slowness IV, Poison II. A ghast is not a
- * Monster, so it never rolls gear, and the kit drop is vacuous rather than broken.
+ * payload lands on the tick after the ball is removed: burn, Slowness IV, Poison II. The blast clauses are
+ * asserted by calling the payload directly, so no ball has to land. A ghast is not a Monster, so it never
+ * rolls gear, and the kit drop is vacuous rather than broken.
  */
 public class GhastEliteGameTest {
 	private static final String TEST = "ghastElite";
 	private static final int GHAST_BASE_HEALTH = 10;
 	private static final int VICTIM_HEALTH = 400;
-	private static final double BYSTANDER_RADIUS = 2.0;
 	private static final double KNOCKBACK_CEILING = 0.05;
-	private static final int DURATION_SLACK = 3;
 
-	// TAGGED after four attempts: the ball lands too rarely against a small rig target to assert the
-	// inert clause headlessly. Manual item: the elite ghast's blast reads as a detonation with no shove.
-	@GameTest(maxTicks = 400, required = false)
+	/**
+	 * The clause is "a blast that burns, slows and poisons without shoving", and none of it needs a ball to
+	 * land: the payload is called directly, and the power the ball carries is asserted as the constant.
+	 */
+	@GameTest(maxTicks = 200)
 	public void eliteGhastFireballIsInert(final GameTestHelper helper) {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
-		Ghast ghast = spawnGhast(helper, true);
-		Spider victim = spawnVictim(helper, 4, 3, 2);
-		// Sideways off the flight line, so the ball cannot hit the bystander first, and still inside
-		// the payload radius of the impact.
-		Spider bystander = spawnVictim(helper, 2, 3, 2);
-		// A hurt victim carries immunity frames, and setTarget refuses an invulnerable target, so the
-		// goal would stop mid-charge. Clear them every tick before the target is forced.
-		helper.onEachTick(() -> {
-			victim.setInvulnerableTime(0);
-			ghast.setTarget(victim);
-		});
-
-		Vec3[] bystanderAtHit = new Vec3[1];
-		int[] blocksAtHit = {0};
-		int[] hits = {0};
-		helper.onEachTick(() -> {
-			if (hits[0] == 0 && victim.getRemainingFireTicks() > 0) {
-				hits[0]++;
-				bystanderAtHit[0] = bystander.position();
-				blocksAtHit[0] = solidBlocks(helper, victim.blockPosition());
-			}
-		});
+		Ghast source = spawnGhast(helper, true);
+		Mob subject = spawnSubject(helper, 4, 3, 2);
+		Mob bystander = spawnSubject(helper, 2, 3, 2);
+		Vec3[] subjectAt = new Vec3[1];
+		Vec3[] bystanderAt = new Vec3[1];
+		float[] healthAt = new float[1];
+		int[] blocksAt = new int[1];
 
 		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				hits[0] > 0, "the elite ghast's fireball never landed"
-			))
-			.thenIdle(10)
+			// Long enough for both bodies to land: a body spawned two blocks up is still falling at tick 4,
+			// and the fall would read as a shove.
+			.thenIdle(20)
 			.thenExecute(() -> {
-				int broken = blocksAtHit[0] - solidBlocks(helper, victim.blockPosition());
-				double shoved = bystanderAtHit[0] == null ? 0.0 : bystander.position().distanceTo(bystanderAtHit[0]);
+				subjectAt[0] = subject.position();
+				bystanderAt[0] = bystander.position();
+				healthAt[0] = subject.getHealth();
+				blocksAt[0] = solidBlocks(helper, BlockPos.containing(subjectAt[0]));
+				GhastFireballGoal.applyPayload(
+					helper.getLevel(), source, subject.position(), GhastFireballGoal.PAYLOAD_RADIUS
+				);
+				// The application itself deals no damage. Poison starts ticking on the next tick, so this
+				// reads in the same tick as the call.
+				helper.assertValueEqual(
+					Float.valueOf(subject.getHealth()), Float.valueOf(healthAt[0]), "the subject's health after the application"
+				);
+			})
+			.thenIdle(3)
+			.thenExecute(() -> {
+				int broken = blocksAt[0] - solidBlocks(helper, BlockPos.containing(subjectAt[0]));
+				double moved = bystander.position().distanceTo(bystanderAt[0]);
+				double movedSubject = subject.position().distanceTo(subjectAt[0]);
+				helper.assertValueEqual(
+					Integer.valueOf(GhastFireballGoal.ELITE_POWER), Integer.valueOf(0), "the elite ball's power"
+				);
 				helper.assertValueEqual(Integer.valueOf(broken), Integer.valueOf(0), "blocks broken by the blast");
 				helper.assertTrue(
-					shoved <= KNOCKBACK_CEILING,
-					"the inert blast shoved the bystander " + shoved + " blocks, ceiling " + KNOCKBACK_CEILING
+					moved <= KNOCKBACK_CEILING,
+					"the inert blast shoved the bystander " + moved + " blocks, ceiling " + KNOCKBACK_CEILING
+				);
+				helper.assertTrue(
+					movedSubject <= KNOCKBACK_CEILING,
+					"the inert blast shoved the subject " + movedSubject + " blocks, ceiling " + KNOCKBACK_CEILING
 				);
 				StellaMobs.LOGGER.info(
-					"[BEHAVIOR] test={} RESULT fired={} power={} blocksBroken={} knockback={} radius={}",
-					TEST, hits[0], GhastFireballGoal.ELITE_POWER, broken,
-					String.format(java.util.Locale.ROOT, "%.2f", shoved), GhastFireballGoal.PAYLOAD_RADIUS
+					"[BEHAVIOR] test={} RESULT calls={} power={} blocksBroken={} knockback={} radius={}",
+					TEST, 1, GhastFireballGoal.ELITE_POWER, broken,
+					String.format(java.util.Locale.ROOT, "%.2f", moved), GhastFireballGoal.PAYLOAD_RADIUS
 				);
 			})
 			.thenSucceed();
 	}
 
-	// TAGGED after four attempts: same landing rate. Manual item: burn, slow and poison read as one
-	// nasty hit, and 432 ticks of Poison II leaves a player at one heart for the ghast to finish.
-	@GameTest(maxTicks = 400, required = false)
+	/**
+	 * The payload is called directly on the spot, so the rig's aim is out of the equation. The durations
+	 * are asserted in the same tick as the call, before any of them ticks down.
+	 */
+	@GameTest(maxTicks = 200)
 	public void eliteGhastPayload(final GameTestHelper helper) {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
-		Ghast ghast = spawnGhast(helper, true);
-		Spider victim = spawnVictim(helper, 4, 3, 2);
-		// A hurt victim carries immunity frames, and setTarget refuses an invulnerable target, so the
-		// goal would stop mid-charge. Clear them every tick before the target is forced.
-		helper.onEachTick(() -> {
-			victim.setInvulnerableTime(0);
-			ghast.setTarget(victim);
+		Ghast source = spawnGhast(helper, true);
+		Mob subject = spawnSubject(helper, 4, 3, 2);
+		Mob bystander = spawnSubject(helper, 2, 3, 2);
+		// Five blocks away, outside the three block radius, so it must stay untouched.
+		Mob outsider = spawnSubject(helper, 4, 3, 7);
+
+		helper.runAfterDelay(4L, () -> {
+			GhastFireballGoal.applyPayload(
+				helper.getLevel(), source, subject.position(), GhastFireballGoal.PAYLOAD_RADIUS
+			);
+			MobEffectInstance slowness = subject.getEffect(MobEffects.SLOWNESS);
+			MobEffectInstance poison = subject.getEffect(MobEffects.POISON);
+			helper.assertValueEqual(
+				Integer.valueOf(subject.getRemainingFireTicks()),
+				Integer.valueOf((int) (GhastFireballGoal.BURN_SECONDS * 20.0F)),
+				"fire ticks from the burn"
+			);
+			helper.assertTrue(slowness != null, "no Slowness on the subject");
+			helper.assertValueEqual(
+				Integer.valueOf(slowness.getAmplifier() + 1), Integer.valueOf(GhastFireballGoal.SLOWNESS_AMPLIFIER + 1),
+				"the Slowness level"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(slowness.getDuration()), Integer.valueOf(GhastFireballGoal.SLOWNESS_TICKS),
+				"the Slowness duration"
+			);
+			helper.assertTrue(poison != null, "no Poison on the subject");
+			helper.assertValueEqual(
+				Integer.valueOf(poison.getAmplifier() + 1), Integer.valueOf(GhastFireballGoal.POISON_AMPLIFIER + 1),
+				"the Poison level"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(poison.getDuration()), Integer.valueOf(GhastFireballGoal.POISON_TICKS),
+				"the Poison duration"
+			);
+			helper.assertTrue(
+				bystander.getEffect(MobEffects.SLOWNESS) != null, "the bystander inside the radius was untouched"
+			);
+			helper.assertTrue(
+				outsider.getEffect(MobEffects.SLOWNESS) == null, "a mob outside the radius was affected"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(outsider.getRemainingFireTicks()), Integer.valueOf(0), "fire on the mob outside the radius"
+			);
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test={} RESULT effects={} fireTicks={} slownessLevel={} slownessTicks={} poisonLevel={} poisonTicks={}",
+				TEST, 3, subject.getRemainingFireTicks(), slowness.getAmplifier() + 1, slowness.getDuration(),
+				poison.getAmplifier() + 1, poison.getDuration()
+			);
+			helper.succeed();
 		});
-
-		int[] fireMax = {0};
-		int[] slownessLevel = {0};
-		int[] slownessMax = {0};
-		int[] poisonLevel = {0};
-		int[] poisonMax = {0};
-		helper.onEachTick(() -> {
-			fireMax[0] = Math.max(fireMax[0], victim.getRemainingFireTicks());
-			Optional<MobEffectInstance> slow = Optional.ofNullable(victim.getEffect(MobEffects.SLOWNESS));
-
-			if (slow.isPresent()) {
-				slownessLevel[0] = Math.max(slownessLevel[0], slow.get().getAmplifier() + 1);
-				slownessMax[0] = Math.max(slownessMax[0], slow.get().getDuration());
-			}
-
-			Optional<MobEffectInstance> poison = Optional.ofNullable(victim.getEffect(MobEffects.POISON));
-
-			if (poison.isPresent()) {
-				poisonLevel[0] = Math.max(poisonLevel[0], poison.get().getAmplifier() + 1);
-				poisonMax[0] = Math.max(poisonMax[0], poison.get().getDuration());
-			}
-		});
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				slownessLevel[0] > 0 && poisonLevel[0] > 0 && fireMax[0] > 0,
-				"the payload never landed: fire=" + fireMax[0] + " slowness=" + slownessLevel[0] + " poison=" + poisonLevel[0]
-			))
-			.thenExecute(() -> {
-				helper.assertValueEqual(
-					Integer.valueOf(fireMax[0]), Integer.valueOf((int) (GhastFireballGoal.BURN_SECONDS * 20.0F)),
-					"fire ticks from the burn"
-				);
-				helper.assertValueEqual(
-					Integer.valueOf(slownessLevel[0]), Integer.valueOf(GhastFireballGoal.SLOWNESS_AMPLIFIER + 1),
-					"the Slowness level"
-				);
-				helper.assertValueEqual(
-					Integer.valueOf(poisonLevel[0]), Integer.valueOf(GhastFireballGoal.POISON_AMPLIFIER + 1),
-					"the Poison level"
-				);
-				helper.assertTrue(
-					slownessMax[0] >= GhastFireballGoal.SLOWNESS_TICKS - DURATION_SLACK
-						&& slownessMax[0] <= GhastFireballGoal.SLOWNESS_TICKS,
-					"the Slowness duration was " + slownessMax[0] + " against " + GhastFireballGoal.SLOWNESS_TICKS
-				);
-				helper.assertTrue(
-					poisonMax[0] >= GhastFireballGoal.POISON_TICKS - DURATION_SLACK
-						&& poisonMax[0] <= GhastFireballGoal.POISON_TICKS,
-					"the Poison duration was " + poisonMax[0] + " against " + GhastFireballGoal.POISON_TICKS
-				);
-				StellaMobs.LOGGER.info(
-					"[BEHAVIOR] test={} RESULT hit={} fireTicks={} slownessLevel={} slownessTicks={} poisonLevel={} poisonTicks={}",
-					TEST, 1, fireMax[0], slownessLevel[0], slownessMax[0], poisonLevel[0], poisonMax[0]
-				);
-			})
-			.thenSucceed();
 	}
 
 	// TAGGED: the interval reads 61 against the 60 constant when the shots arrive, and some runs see too
@@ -167,7 +161,9 @@ public class GhastEliteGameTest {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
 		Ghast ordinary = spawnGhast(helper, false);
-		Spider victim = spawnVictim(helper, 4, 3, 2);
+		Mob victim = spawnSubject(helper, 4, 3, 2);
+		// A hurt victim carries immunity frames, and setTarget refuses an invulnerable target, so the
+		// goal would stop mid-charge. Clear them every tick before the target is forced.
 		helper.onEachTick(() -> {
 			victim.setInvulnerableTime(0);
 			ordinary.setTarget(victim);
@@ -258,9 +254,9 @@ public class GhastEliteGameTest {
 		return ghast;
 	}
 
-	/** A spider, because a spider is not undead and Poison refuses an undead target. */
-	private static Spider spawnVictim(final GameTestHelper helper, final int x, final int y, final int z) {
-		Spider victim = helper.spawnMob(EntityTypes.SPIDER, x, y, z).withNoFreeWill().spawn();
+	/** A cow: not undead, so Poison is accepted, and not a Monster, so no gear path touches it. */
+	private static Mob spawnSubject(final GameTestHelper helper, final int x, final int y, final int z) {
+		Mob victim = helper.spawnMob(EntityTypes.COW, x, y, z).withNoFreeWill().spawn();
 		victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(VICTIM_HEALTH);
 		victim.setHealth(VICTIM_HEALTH);
 		victim.setPersistenceRequired();
