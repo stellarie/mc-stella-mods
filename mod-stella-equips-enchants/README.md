@@ -25,9 +25,11 @@ cost read inside the "Too Expensive" gate, and one `@Inject` at the RETURN of
 `createResult` that writes `AnvilCost.clamp(cost)` back into the slot. The gate
 reads the clamped value, so a heavily repaired item still assembles.
 `AnvilMenu` exists on the client and the server, and both sides read that one
-field, so the display and the charge cannot disagree: the anvil shows 1 and takes
-1. The clamp leaves `min_cost` and `max_cost` alone, so the enchanting table
-keeps its per-enchantment rarity.
+field, so the display and the charge cannot disagree once the menu has finished
+computing: the anvil shows 1 and takes 1. The in-method sync runs before the
+clamp, so a client can hold the pre-clamp value for one tick. The clamp leaves
+`min_cost` and `max_cost` alone, so the enchanting table keeps its per-enchantment
+rarity.
 
 ## Game tests
 

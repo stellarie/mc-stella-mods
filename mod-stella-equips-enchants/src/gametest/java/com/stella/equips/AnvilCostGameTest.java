@@ -28,7 +28,8 @@ public class AnvilCostGameTest {
 	private static final int PICKAXE_DAMAGE = 500;
 	private static final int LEVEL_BEFORE_TAKE = 10;
 	private static final int LEVEL_AFTER_TAKE = 9;
-	private static final int TAXED_REPAIR_COST = 20;
+	private static final int REPAIR_COST_PER_INPUT = 20;
+	private static final int GATE_THRESHOLD = 40;
 	private static final int VANILLA_TAXED_COST = 42;
 
 	@GameTest
@@ -106,12 +107,21 @@ public class AnvilCostGameTest {
 	@GameTest
 	public void heavilyRepairedCombineStillAssembles(final GameTestHelper helper) {
 		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
-		AnvilMenu menu = populatedMenu(player, TAXED_REPAIR_COST);
+		AnvilMenu menu = populatedMenu(player, REPAIR_COST_PER_INPUT);
+		int inputTax = repairCostOf(menu, AnvilMenu.INPUT_SLOT)
+			+ repairCostOf(menu, AnvilMenu.ADDITIONAL_SLOT);
+		int vanillaCost = inputTax + VANILLA_MERGE_COST;
+		helper.assertTrue(
+			vanillaCost == VANILLA_TAXED_COST && vanillaCost >= GATE_THRESHOLD,
+			"the fixture no longer reaches the Too Expensive gate: inputTax=" + inputTax
+				+ " mergePrice=" + VANILLA_MERGE_COST + " vanillaCost=" + vanillaCost
+				+ " gateThreshold=" + GATE_THRESHOLD
+		);
 		ItemStack result = menu.getSlot(AnvilMenu.RESULT_SLOT).getItem();
 		helper.assertTrue(
 			!result.isEmpty(),
 			"the result slot was empty: the Too Expensive gate fired on a vanilla cost of "
-				+ VANILLA_TAXED_COST
+				+ vanillaCost
 		);
 		helper.assertTrue(
 			menu.getCost() == CLAMPED_COST,
@@ -126,8 +136,10 @@ public class AnvilCostGameTest {
 				+ " but was " + player.experienceLevel
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=taxedCombine RESULT resultEmpty={} cost={} vanillaCost={} charged={}",
-			result.isEmpty(), CLAMPED_COST, VANILLA_TAXED_COST, charged
+			"[BEHAVIOR] test=taxedCombine RESULT inputTax={} mergePrice={} vanillaCost={} gateThreshold={}"
+				+ " resultEmpty={} cost={} charged={}",
+			inputTax, VANILLA_MERGE_COST, vanillaCost, GATE_THRESHOLD,
+			result.isEmpty(), CLAMPED_COST, charged
 		);
 		helper.succeed();
 	}
@@ -142,6 +154,10 @@ public class AnvilCostGameTest {
 			AnvilCost.clamp(0), AnvilCost.clamp(1), AnvilCost.clamp(40)
 		);
 		helper.succeed();
+	}
+
+	private static int repairCostOf(final AnvilMenu menu, final int slot) {
+		return menu.getSlot(slot).getItem().getOrDefault(DataComponents.REPAIR_COST, 0);
 	}
 
 	private static AnvilMenu populatedMenu(final Player player, final int repairCost) {
