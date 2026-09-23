@@ -70,9 +70,11 @@ public final class Elite {
 		BehaviorInstaller.installReinforcements(mob);
 
 		// R22: the elite skeleton's kit goes on here, before the installer runs, so the shield it writes
-		// is in the off hand when the installer decides whether to add ShieldUseGoal.
+		// is in the off hand when the installer decides whether to add ShieldUseGoal. A boss is skipped:
+		// its sword would replace the boss kit's bow and close the fan.
 		if (mob.getType() == net.minecraft.world.entity.EntityTypes.SKELETON
 			&& !EliteState.isSummoned(mob)
+			&& !EliteState.isBoss(mob)
 			&& !SkeletonEliteKit.applied(mob)) {
 			SkeletonEliteKit.apply(mob);
 		}

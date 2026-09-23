@@ -177,8 +177,9 @@ public final class Bosses {
 		// The mark runs before the elite roll, which then returns at its own isElite guard. The plain
 		// mark is correct here: it scales the bare base and leaves R12's area modifier in place, so the
 		// area multiplier is applied exactly once by R12 itself.
-		Elite.mark(mob, GearTier.NETHERITE, healthMultiplier);
+		// Boss flag first: the elite kit then skips a boss.
 		EliteState.setBoss(mob, true);
+		Elite.mark(mob, GearTier.NETHERITE, healthMultiplier);
 		applyKit(mob, registry);
 		applyLevelBonus(mob, registry);
 		updateBossBar(level, mob);
@@ -205,7 +206,9 @@ public final class Bosses {
 			mob.setItemSlot(slot, fullyEnchant(new ItemStack(GearTier.NETHERITE.armorFor(slot)), registry));
 		}
 
-		Item weapon = switch (configuredRole(mob)) {
+		// A skeleton boss takes the bow, not a sword.
+		CombatRole role = mob.getType() == EntityTypes.SKELETON ? CombatRole.RANGED : configuredRole(mob);
+		Item weapon = switch (role) {
 			case RANGED -> GearTier.NETHERITE.rangedWeapon();
 			case MELEE, MAGIC -> GearTier.NETHERITE.meleeWeapon();
 		};
