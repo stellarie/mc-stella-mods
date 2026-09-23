@@ -46,8 +46,18 @@ public class PowerTrackerGameTest {
 	private static final double SAVED_COMBAT_POINTS = 123.5;
 	private static final Identifier MAX_HEALTH_MODIFIER =
 		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_max_health");
+	private static final Identifier ARMOR_MODIFIER =
+		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_armor");
+	private static final Identifier KNOCKBACK_MODIFIER =
+		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_knockback_resistance");
 	private static final Identifier ATTACK_DAMAGE_MODIFIER =
 		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_attack_damage");
+	private static final Identifier ATTACK_SPEED_MODIFIER =
+		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_attack_speed");
+	private static final int THRESHOLD_BLOCKS = 500;
+	private static final int BELOW_THRESHOLD_BLOCKS = 490;
+	private static final int OSCILLATION_CROSSINGS = 8;
+	private static final double PARTIAL_COMBAT_POINTS = 200.0;
 	private static final String LEVEL_LINE = "power level";
 	private static final String KILL_LINE = "power kill";
 	private static final String HEARTBEAT_LINE = "power heartbeat";
@@ -412,7 +422,7 @@ public class PowerTrackerGameTest {
 		);
 		long expectedPoints = PowerCurve.distancePoints(scaled, config) + PowerCurve.depthPoints(player.getY(), config);
 		int expectedLevel = PowerCurve.levelFor(expectedPoints, config);
-		double expectedHealth = config.attributes().distance().maxHealth() * expectedPoints;
+		double expectedHealth = config.attributes().distance().maxHealthPerPoint() * expectedPoints;
 		double healthModifier = modifierAmount(player, MAX_HEALTH_MODIFIER);
 		helper.assertTrue(changed, "the first nether scan reported no level change");
 		helper.assertTrue(
@@ -447,7 +457,7 @@ public class PowerTrackerGameTest {
 			file = Files.createTempDirectory("power-reload-config").resolve(PowerConfigStore.FILE_NAME);
 			Files.writeString(
 				file,
-				PowerConfigStore.DEFAULT_JSON.replace("\"max_health\": 0.5", "\"max_health\": 1.0"),
+				PowerConfigStore.DEFAULT_JSON.replace("\"max_health_per_point\": 0.5", "\"max_health_per_point\": 1.0"),
 				StandardCharsets.UTF_8
 			);
 			after = PowerConfigStore.loadFrom(file);
@@ -466,7 +476,8 @@ public class PowerTrackerGameTest {
 		);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=reloadReentry RESULT rateBefore={} rateAfter={} modifierBefore={} modifierAfter={}",
-			before.attributes().distance().maxHealth(), after.attributes().distance().maxHealth(), beforeReload, afterReload
+			before.attributes().distance().maxHealthPerPoint(), after.attributes().distance().maxHealthPerPoint(),
+			beforeReload, afterReload
 		);
 		helper.succeed();
 	}
@@ -510,6 +521,103 @@ public class PowerTrackerGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void aTravelOnlyPlayerGetsSurvivabilityAndNoOutput(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		placeAtDistance(player, helper, FAR_DISTANCE);
+		PowerTracker.scanPlayer(player, config);
+		double health = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		double armor = modifierAmount(player, ARMOR_MODIFIER);
+		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
+		double damage = modifierAmount(player, ATTACK_DAMAGE_MODIFIER);
+		double speed = modifierAmount(player, ATTACK_SPEED_MODIFIER);
+		helper.assertTrue(
+			health > 0.0 && armor > 0.0 && knockback > 0.0,
+			"a travelled player got health " + health + ", armor " + armor + ", knockback " + knockback
+		);
+		helper.assertTrue(
+			damage == 0.0 && speed == 0.0,
+			"travel alone paid damage " + damage + " and speed " + speed + " with no kills"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=travelOnly RESULT blocks={} health={} armor={} knockback={} damage={} speed={} level={}",
+			FAR_DISTANCE, health, armor, knockback, damage, speed, PowerState.get(player).level()
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theSameCombatPaysTheSameOutputWhereverThePlayerStands(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer home = mockPlayer(helper);
+		ServerPlayer travelled = mockPlayer(helper);
+		PowerState.set(home, new PowerState(PARTIAL_COMBAT_POINTS, 1));
+		PowerState.set(travelled, new PowerState(PARTIAL_COMBAT_POINTS, 1));
+		placeAtDistance(home, helper, 0);
+		placeAtDistance(travelled, helper, FAR_DISTANCE);
+		PowerTracker.scanPlayer(home, config);
+		PowerTracker.scanPlayer(travelled, config);
+		double homeDamage = modifierAmount(home, ATTACK_DAMAGE_MODIFIER);
+		double travelledDamage = modifierAmount(travelled, ATTACK_DAMAGE_MODIFIER);
+		double homeSpeed = modifierAmount(home, ATTACK_SPEED_MODIFIER);
+		double travelledSpeed = modifierAmount(travelled, ATTACK_SPEED_MODIFIER);
+		double homeHealth = modifierAmount(home, MAX_HEALTH_MODIFIER);
+		double travelledHealth = modifierAmount(travelled, MAX_HEALTH_MODIFIER);
+		helper.assertTrue(homeDamage > 0.0, "the combat points paid no damage at home");
+		helper.assertTrue(
+			Math.abs(travelledDamage - homeDamage) < TOLERANCE && Math.abs(travelledSpeed - homeSpeed) < TOLERANCE,
+			"travel changed the output: damage " + homeDamage + " to " + travelledDamage
+				+ ", speed " + homeSpeed + " to " + travelledSpeed
+		);
+		helper.assertTrue(
+			travelledHealth > homeHealth,
+			"travel did not raise survivability: health " + homeHealth + " to " + travelledHealth
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=outPutIsPositionFree RESULT combatPoints={} damageHome={} damageTravelled={} speedHome={} speedTravelled={} healthHome={} healthTravelled={}",
+			PARTIAL_COMBAT_POINTS, homeDamage, travelledDamage, homeSpeed, travelledSpeed, homeHealth, travelledHealth
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void walkingBackAndForthAcrossAThresholdHealsNothing(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		placeAtDistance(player, helper, THRESHOLD_BLOCKS);
+		PowerTracker.scanPlayer(player, config);
+		int level = PowerState.get(player).level();
+		player.setHealth(STARTING_HEALTH);
+		int crossings = 0;
+		for (int round = 0; round < OSCILLATION_CROSSINGS / 2; round++) {
+			placeAtDistance(player, helper, BELOW_THRESHOLD_BLOCKS);
+			if (PowerTracker.scanPlayer(player, config)) {
+				crossings++;
+			}
+
+			placeAtDistance(player, helper, THRESHOLD_BLOCKS);
+			if (PowerTracker.scanPlayer(player, config)) {
+				crossings++;
+			}
+		}
+
+		float healthAfter = player.getHealth();
+		helper.assertTrue(
+			crossings == OSCILLATION_CROSSINGS,
+			"the walk crossed the threshold " + crossings + " times instead of " + OSCILLATION_CROSSINGS
+		);
+		helper.assertTrue(
+			healthAfter == STARTING_HEALTH,
+			"walking back and forth across level " + level + " healed " + (healthAfter - STARTING_HEALTH) + " health"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=noOscillationHeal RESULT level={} crossings={} healthBefore={} healthAfter={}",
+			level, crossings, STARTING_HEALTH, healthAfter
+		);
+		helper.succeed();
+	}
+
 	private static PowerConfig bundledConfig(final GameTestHelper helper) {
 		try {
 			Path file = Files.createTempDirectory("power-live-config").resolve(PowerConfigStore.FILE_NAME);
@@ -540,6 +648,12 @@ public class PowerTrackerGameTest {
 		AttributeInstance instance = player.getAttribute(Attributes.MAX_HEALTH);
 		if (id.equals(ATTACK_DAMAGE_MODIFIER)) {
 			instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
+		} else if (id.equals(ATTACK_SPEED_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ATTACK_SPEED);
+		} else if (id.equals(ARMOR_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ARMOR);
+		} else if (id.equals(KNOCKBACK_MODIFIER)) {
+			instance = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
 		}
 
 		if (instance == null) {

@@ -37,13 +37,18 @@ distance walked and depth reached. Output scales with combat only, so damage is
 earned and never granted by walking. Nothing is gated, and a low level player who
 beats a strong mob is paid up to 4 times the base reward.
 
-The two axes read different things on purpose. Survivability reads the travel
-points, so it follows the player's position. Output reads the level, which is
-capped at 50, so it cannot run away: a kill buys progress toward the cap and the
-cap bounds what a kill buys. Nine times the combat points of a capped player
-change his damage by nothing, and a test pins that. The two output maxima are
-stated in the config as `attack_damage_max` and `attack_speed_max`, reach 0 at
-level 1, and are reached exactly at level 50.
+The two axes read different quantities, and neither reads the other. Survivability
+reads a travel level, built from distance and depth points only. Output reads a
+combat level, built from kill and boss points only. The player level that the
+reward and the readout use is built from both, because that is what a level means,
+but no attribute reads it: a player who only walks gets survivability and zero
+damage, a player who only fights gets damage and zero survivability, and the same
+combat points pay the same output wherever he stands. Tests pin all three.
+
+Output cannot run away for the same reason. The combat contribution caps at level
+50, the config states the value there as `attack_damage_max` and
+`attack_speed_max`, and nine times the combat points of a capped player change his
+damage by nothing.
 
 The level comes from points. A level L costs `base + per_level * (L - 1)`, and
 level 50 costs 3969 points. Distance pays 1 point per 5 blocks up to 2000 points,
@@ -54,16 +59,31 @@ and the rest is earned in combat. The reward for a kill is scaled by
 
 A rise in the maximum health carries the current health with it, so a level up in
 the middle of a fight leaves the player at the same absolute health rather than at
-a bigger bar over the same wound. The heal fires only on a level up: walking
-inside one level grows the bar and heals nothing, and a test pins both halves.
+a bigger bar over the same wound. The heal fires only on a level the player has
+never reached before, which is what keeps it from being a health source: the
+highest level reached is remembered in the player state next to the points, so
+walking home and back out again heals nothing, and a test walks back and forth
+across a level boundary eight times and measures no healing at all. Walking inside
+one level grows the bar and heals nothing either.
 
-Two survivability terms reach their ceiling early. `armor` reaches the vanilla
-maximum of 30 at 125 travel points, which is 625 blocks, so the remaining 94
-percent of the armor curve is absorbed, and `knockback_resistance` reaches 1.0 at
-167 points. `max_health` carries the far world to 1020 at the travel ceiling. The
-applied modifier stops at the attribute's own ceiling as well, so no modifier is
-written that the game would only clamp. This is a deliberate early-game ramp and
-not a scaling stat across the whole curve.
+The units differ per key, and the config names each one. `max_health_per_point` is
+indeed per travel point and carries the far world: 0.5 times the 2008 point
+ceiling is 1004, which is exactly the headroom to the vanilla maximum health of
+1024. `armor_per_level` and `knockback_resistance_per_level` are per travel level,
+so the travel ceiling of level 35 pays 8.16 armor and 0.204 knockback resistance
+and leaves 21.84 armor and 0.796 knockback resistance for enchantments to use.
+That headroom is the point: a term that fills its vanilla attribute kills every
+enchantment that adds only that attribute. The applied modifier stops at the
+attribute's own ceiling as well, so no modifier is written that the game would
+only clamp.
+
+One consequence of the two-axis design is worth stating so it is not a surprise: a
+veteran who has earned a high combat level and then stands at the world spawn has
+full output and almost no survivability, because output is permanent and
+survivability follows his position. He hits for his maximum and has about 20
+health until he walks back out. That is the design oniichan approved, and the
+alternative is to let the survivability terms read the combat level too, which
+would undo the separation.
 
 The mob level is `min(cap, floor(scaled_distance / blocks_per_level))` plus up to
 `depth_bonus_cap` levels for depth, capped at `level_cap`. `dimension_scale`
@@ -76,7 +96,10 @@ the first start and re-reads it when the data pack reloads. A hand edit wins, a
 bad entry logs and keeps the previous value, and every tuning number lives there.
 An existing file is never upgraded: a key you set wins, a key you delete falls
 back to the bundled document, and a key you leave stale stays stale, which the
-`_note` in the file says as well. Four keys are worth naming because they are not
+`_note` in the file says as well. The `_note` also names the unit of every
+attribute key and which quantity drives each axis, because a per-point and a
+per-level rate that look alike cost this package two review rounds. Four more keys
+are worth naming because they are not
 obvious: `depth_bonus_blocks` and `depth_reference_y` set how fast the mob level
 grows with depth, `level_cap` is the mob level ceiling, `boss_types` lists the
 entity types that pay `points_per_boss`, and `bands` holds the readout thresholds

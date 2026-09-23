@@ -11,7 +11,7 @@ public final class PowerConfigStore {
 	public static final String FILE_NAME = "power.json";
 	public static final String DEFAULT_JSON = """
 		{
-			"_note": "An older copy of this file is never upgraded. A key you set here wins and a key you delete falls back to this document. Armor reaches the vanilla ceiling of 30 at 125 distance points, which is 625 blocks; the rest of the armor curve is absorbed and max_health carries the far world.",
+			"_note": "Units, per key. max_health_per_point is per travel point. armor_per_level and knockback_resistance_per_level are per travel level, so level 35 pays 8.16 armor and 0.204 knockback resistance and the rest of both vanilla attributes stays free for enchantments. attack_damage_max and attack_speed_max are the value at level 50. Drivers. Survivability reads travel only. Output reads the combat level only, so no walk can buy damage. Levels. The player level is built from travel plus combat; the travel contribution caps at 35 and the combat contribution at 50. Upgrades. An older copy of this file is never upgraded: a key you set wins and a deleted key falls back to this document.",
 			"version": 1,
 			"level_cap": 50,
 			"points_per_level": { "base": 6, "per_level": 3 },
@@ -45,7 +45,11 @@ public final class PowerConfigStore {
 			},
 			"tracker": { "scan_interval_ticks": 40, "heartbeat_ticks": 5 },
 			"attributes": {
-				"distance": { "max_health": 0.5, "armor": 0.24, "knockback_resistance": 0.006 },
+				"distance": {
+					"max_health_per_point": 0.5,
+					"armor_per_level": 0.24,
+					"knockback_resistance_per_level": 0.006
+				},
 				"combat": { "attack_damage_max": 20.0, "attack_speed_max": 1.0 }
 			}
 		}""";

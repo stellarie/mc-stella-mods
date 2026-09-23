@@ -2,6 +2,7 @@ package com.stella.equips;
 
 import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
+import com.stella.equips.power.PowerCurve;
 import com.stella.equips.power.PowerState;
 import com.stella.equips.power.PowerTracker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -30,6 +31,7 @@ public class PowerApplyGameTest {
 	private static final double RUNAWAY_COMBAT_POINTS = 1_000_000.0;
 	private static final Identifier MAX_HEALTH_MODIFIER = modifier("max_health");
 	private static final Identifier ARMOR_MODIFIER = modifier("armor");
+	private static final Identifier KNOCKBACK_MODIFIER = modifier("knockback_resistance");
 	private static final Identifier ATTACK_DAMAGE_MODIFIER = modifier("attack_damage");
 	private static final Identifier ATTACK_SPEED_MODIFIER = modifier("attack_speed");
 
@@ -130,37 +132,38 @@ public class PowerApplyGameTest {
 	}
 
 	@GameTest
-	public void theArmorTermPlateausAtTheVanillaCeiling(final GameTestHelper helper) {
+	public void theArmorAndKnockbackTermsLeaveRoomForTheEnchantments(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
-		double vanillaArmor = value(player, Attributes.ARMOR);
-		PowerAttributes.apply(player, (long) PowerFixtures.ARMOR_PLATEAU_POINTS, 1, config);
-		double armorValueAtPlateau = value(player, Attributes.ARMOR) - vanillaArmor;
-		double modifierAtPlateau = modifierAmount(player, ARMOR_MODIFIER);
-		PowerAttributes.apply(player, PowerFixtures.DISTANCE_CAP_POINTS + PowerFixtures.DEPTH_CAP_POINTS, 1, config);
-		double armorValueAtTravelCeiling = value(player, Attributes.ARMOR) - vanillaArmor;
-		double modifierAtTravelCeiling = modifierAmount(player, ARMOR_MODIFIER);
+		long travelPoints = PowerFixtures.DISTANCE_CAP_POINTS + PowerFixtures.DEPTH_CAP_POINTS;
+		int travelLevel = PowerCurve.levelFor(travelPoints, config);
+		double expectedArmor = config.attributes().distance().armorPerLevel() * (travelLevel - 1);
+		double expectedKnockback =
+			config.attributes().distance().knockbackResistancePerLevel() * (travelLevel - 1);
+		PowerAttributes.apply(player, travelPoints, 1, config);
+		double armor = modifierAmount(player, ARMOR_MODIFIER);
+		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
+		helper.assertTrue(travelLevel == 35, "the travel ceiling read level " + travelLevel + " instead of 35");
 		helper.assertTrue(
-			Math.abs(armorValueAtPlateau - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
-			"at " + PowerFixtures.ARMOR_PLATEAU_POINTS + " points the armor value was " + armorValueAtPlateau
+			Math.abs(armor - expectedArmor) < TOLERANCE,
+			"the armor modifier was " + armor + " instead of " + expectedArmor
 		);
 		helper.assertTrue(
-			Math.abs(modifierAtPlateau - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
-			"at " + PowerFixtures.ARMOR_PLATEAU_POINTS + " points the armor modifier was " + modifierAtPlateau
+			Math.abs(knockback - expectedKnockback) < TOLERANCE,
+			"the knockback modifier was " + knockback + " instead of " + expectedKnockback
 		);
 		helper.assertTrue(
-			Math.abs(modifierAtTravelCeiling - PowerFixtures.ARMOR_CEILING) < TOLERANCE,
-			"the armor modifier at the travel ceiling was " + modifierAtTravelCeiling + " instead of the ceiling "
-				+ PowerFixtures.ARMOR_CEILING
+			armor < PowerFixtures.ARMOR_CEILING,
+			"the armor modifier " + armor + " fills the vanilla ceiling of " + PowerFixtures.ARMOR_CEILING
 		);
 		helper.assertTrue(
-			Math.abs(armorValueAtTravelCeiling - armorValueAtPlateau) < TOLERANCE,
-			"the armor value moved from " + armorValueAtPlateau + " to " + armorValueAtTravelCeiling + " past the plateau"
+			knockback < PowerFixtures.KNOCKBACK_CEILING,
+			"the knockback modifier " + knockback + " fills the vanilla ceiling of " + PowerFixtures.KNOCKBACK_CEILING
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=armorPlateau RESULT plateauPoints={} modifierAtPlateau={} modifierAtTravelCeiling={} valueAtPlateau={} valueAtTravelCeiling={}",
-			PowerFixtures.ARMOR_PLATEAU_POINTS, modifierAtPlateau, modifierAtTravelCeiling,
-			armorValueAtPlateau, armorValueAtTravelCeiling
+			"[BEHAVIOR] test=enchantmentHeadroom RESULT travelLevel={} armor={} armorHeadroom={} knockback={} knockbackHeadroom={}",
+			travelLevel, armor, PowerFixtures.ARMOR_CEILING - armor, knockback,
+			PowerFixtures.KNOCKBACK_CEILING - knockback
 		);
 		helper.succeed();
 	}
@@ -292,6 +295,8 @@ public class PowerApplyGameTest {
 			instance = player.getAttribute(Attributes.ATTACK_SPEED);
 		} else if (id.equals(MAX_HEALTH_MODIFIER)) {
 			instance = player.getAttribute(Attributes.MAX_HEALTH);
+		} else if (id.equals(KNOCKBACK_MODIFIER)) {
+			instance = player.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
 		}
 
 		if (instance == null) {

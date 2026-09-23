@@ -52,6 +52,32 @@ public class PowerConfigGameTest {
 	}
 
 	@GameTest
+	public void bundledNoteNamesTheUnitOfEachKeyAndTheAxisDrivers(final GameTestHelper helper) {
+		String document = PowerConfigStore.DEFAULT_JSON;
+		boolean note = document.contains("\"_note\"");
+		boolean healthUnit = document.contains("max_health_per_point");
+		boolean armorUnit = document.contains("armor_per_level");
+		boolean knockbackUnit = document.contains("knockback_resistance_per_level");
+		boolean travelAxis = document.contains("travel level");
+		boolean combatAxis = document.contains("combat level");
+		helper.assertTrue(note, "the bundled document carries no _note");
+		helper.assertTrue(
+			healthUnit && armorUnit && knockbackUnit,
+			"the surviving keys do not name their unit: per point " + healthUnit + ", per level " + armorUnit
+				+ " and " + knockbackUnit
+		);
+		helper.assertTrue(
+			travelAxis && combatAxis,
+			"the note does not name which quantity drives which axis: travel " + travelAxis + ", combat " + combatAxis
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=unitNote RESULT note={} healthPerPointKey={} armorPerLevelKey={} knockbackPerLevelKey={} travelDriver={} combatDriver={}",
+			note, healthUnit, armorUnit, knockbackUnit, travelAxis, combatAxis
+		);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void parserKeepsAGoodEntryAndReplacesABadOne(final GameTestHelper helper) {
 		PowerConfig fallback = PowerFixtures.acceptanceConfig();
 		PowerConfig edited = PowerConfigParser.parse(
