@@ -185,15 +185,22 @@ public class BehaviorGameTest {
 		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
 
 		helper.runAfterDelay(5L, () -> {
-			helper.assertTrue(
-				zombie.getMainHandItem().is(Items.DIAMOND_SWORD), "the configured gear never reached the zombie"
-			);
+			// Pin the config again before the second call: the store is shared with every other test,
+			// so a run in which another test replaced it would decide this assertion by schedule.
+			GearConfigStore.set(GearConfigParser.parse(NO_SHIELD_CONFIG));
+			boolean gearApplied = zombie.getMainHandItem().is(Items.DIAMOND_SWORD);
 			zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.STICK));
 			StellaMobs.onEntityLoad(zombie, helper.getLevel());
-			helper.assertTrue(
-				zombie.getMainHandItem().is(Items.STICK),
-				"the load handler re-applied the configured gear over the held item"
+			boolean stickKept = zombie.getMainHandItem().is(Items.STICK);
+
+			com.stella.mobs.StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=gearIsNotReapplied RESULT gearApplied={} stickKept={} held={}",
+				gearApplied,
+				stickKept,
+				zombie.getMainHandItem()
 			);
+
+			helper.assertTrue(stickKept, "the load handler re-applied the configured gear over the held item");
 			helper.succeed();
 		});
 	}
