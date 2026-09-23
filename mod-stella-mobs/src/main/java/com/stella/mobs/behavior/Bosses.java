@@ -7,8 +7,12 @@ import com.stella.mobs.config.RoleSpec;
 import com.stella.mobs.gear.EnchantRoller;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.scaling.SpawnScaling;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -18,6 +22,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
@@ -56,7 +61,13 @@ public final class Bosses {
 		SpawnScaling.LEVEL_DAMAGE_BONUS * SpawnScaling.LEVEL_DISTANCE_POINTS;
 	public static final Identifier LEVEL_HEALTH_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_health");
 	public static final Identifier LEVEL_DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_damage");
-	private static final double BAR_RADIUS_SQR = 64.0 * 64.0;
+	/** The bar radius in blocks: a player further away than this is taken off the bar. */
+	public static final double BAR_RADIUS = 64.0;
+	private static final double BAR_RADIUS_SQR = BAR_RADIUS * BAR_RADIUS;
+	/** B1: the bosses whose bar is live. One entry per boss, so the sweep never walks the level. */
+	private static final AttachmentType<Set<Mob>> WATCHED = AttachmentRegistry.createDefaulted(
+		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_bar_watchers"), HashSet::new
+	);
 	/** B04: the mobs that may be bosses. */
 	private static final Set<EntityType<?>> ELIGIBLE = Set.of(
 		EntityTypes.SKELETON,
@@ -69,6 +80,62 @@ public final class Bosses {
 	);
 
 	private Bosses() {
+	}
+
+	public static void register() {
+		StellaMobs.LOGGER.debug("Registered the boss bar watch list {}", WATCHED.identifier());
+	}
+
+	/** B1: adds a boss to its level's watch list, so the sweep visits bosses and not every entity. */
+	public static void watch(final Mob mob) {
+		if (mob.level() instanceof ServerLevel level) {
+			Set<Mob> watched = ((AttachmentTarget) level).getAttachedOrCreate(WATCHED);
+			if (watched.add(mob)) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=bossBarWatch t={} WATCH uuid={} type={} watched={}",
+					level.getGameTime(), mob.getUUID(), typeOf(mob), watched.size()
+				);
+			}
+		}
+	}
+
+	/** B1: drops the watch entry and clears the bar. Runs on death, on unload, and on a lost boss. */
+	public static void unwatch(final Mob mob) {
+		ReactiveState state = ReactiveState.get(mob);
+		ServerBossEvent bar = state.bossBar();
+		if (bar != null) {
+			// removeAllPlayers sends one remove packet per player; the bar is then dropped so the
+			// next sweep cannot rebuild it and hand a ghost bar back.
+			bar.removeAllPlayers();
+			bar.setVisible(false);
+			state.setBossBar(null);
+		}
+
+		if (mob.level() instanceof ServerLevel level) {
+			Set<Mob> watched = ((AttachmentTarget) level).getAttached(WATCHED);
+			if (watched != null && watched.remove(mob)) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=bossBarWatch t={} UNWATCH uuid={} type={} watched={}",
+					level.getGameTime(), mob.getUUID(), typeOf(mob), watched.size()
+				);
+			}
+		}
+	}
+
+	/** B1: the bar sweep. The cost is one entry per watched boss, and nothing at all with no boss. */
+	public static void tick(final ServerLevel level) {
+		Set<Mob> watched = ((AttachmentTarget) level).getAttached(WATCHED);
+		if (watched == null || watched.isEmpty()) {
+			return;
+		}
+
+		for (Mob mob : List.copyOf(watched)) {
+			if (mob.isAlive() && !mob.isRemoved()) {
+				updateBossBar(level, mob);
+			} else {
+				unwatch(mob);
+			}
+		}
 	}
 
 	public static boolean canBeBoss(final Mob mob) {
@@ -91,7 +158,9 @@ public final class Bosses {
 			return;
 		}
 
-		if (chunkHasBoss(mob) || !Elite.roll(mob.getRandom(), chance)) {
+		// M1: the roll runs first, so the chunk query and the chunk load it forces are paid by the one
+		// eligible spawn in a hundred that can become a boss, and not by the ninety-nine that cannot.
+		if (!Elite.roll(mob.getRandom(), chance) || chunkHasBoss(mob)) {
 			return;
 		}
 
@@ -99,10 +168,7 @@ public final class Bosses {
 		BossCompanion.queue(mob);
 	}
 
-	/**
-	 * B03 to B08 for one mob: the mark, the champion title, the kit, the ten level bonus, and the bar.
-	 * Also the path the companion takes, because a section champion is a boss without a roll of its own.
-	 */
+	/** B03 to B08 for one mob: the mark, the kit, the ten level bonus, the bar, and the watch entry. */
 	public static void blessAsBoss(final Mob mob, final ServerLevel level, final double chance) {
 		Registry<Enchantment> registry = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
 		double healthMultiplier = GearConfigStore.get().rollFor(typeOf(mob)).bossHealthMultiplier();
@@ -114,6 +180,7 @@ public final class Bosses {
 		applyKit(mob, registry);
 		applyLevelBonus(mob, registry);
 		updateBossBar(level, mob);
+		watch(mob);
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test=bossSpawn t={} BOSS type={} chance={} health={} areaLevel={} levelBonus={} companion={}",
@@ -158,6 +225,12 @@ public final class Bosses {
 		ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
 
 		for (Holder<Enchantment> candidate : EnchantRoller.poolFor(stack, registry)) {
+			// I2: a curse carries no exclusive set, so this walk always landed it, and a vanishing
+			// piece never drops because Mob's drop path reads PREVENT_EQUIPMENT_DROP.
+			if (candidate.is(EnchantmentTags.CURSE)) {
+				continue;
+			}
+
 			boolean compatible = mutable.keySet().stream().allMatch(held -> Enchantment.areCompatible(held, candidate));
 			if (compatible) {
 				mutable.upgrade(candidate, candidate.value().getMaxLevel());
@@ -237,14 +310,19 @@ public final class Bosses {
 
 		float progress = mob.getMaxHealth() <= 0.0F ? 0.0F : mob.getHealth() / mob.getMaxHealth();
 		bar.setProgress(progress);
-		state.setBossBarProgress(progress);
 		bar.setVisible(true);
+
+		// Removal runs first, over the bar's own player set: a player who changed level, left the
+		// server, or walked out of range is absent from level.players(), so the loop below misses them.
+		for (ServerPlayer player : List.copyOf(bar.getPlayers())) {
+			if (!level.players().contains(player) || player.distanceToSqr(mob) > BAR_RADIUS_SQR) {
+				bar.removePlayer(player);
+			}
+		}
 
 		for (ServerPlayer player : level.players()) {
 			if (player.distanceToSqr(mob) <= BAR_RADIUS_SQR) {
 				bar.addPlayer(player);
-			} else {
-				bar.removePlayer(player);
 			}
 		}
 	}

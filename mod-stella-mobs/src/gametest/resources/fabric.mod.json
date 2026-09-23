@@ -10,6 +10,7 @@
 			"com.stella.mobs.BehaviorRigGameTest",
 			"com.stella.mobs.BossBehaviourGameTest",
 			"com.stella.mobs.BossGameTest",
+			"com.stella.mobs.ConfigMigrationGameTest",
 			"com.stella.mobs.EliteGameTest",
 			"com.stella.mobs.EliteFrameworkGameTest",
 			"com.stella.mobs.GearGameTest",
