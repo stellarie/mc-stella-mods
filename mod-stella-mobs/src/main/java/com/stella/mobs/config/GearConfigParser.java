@@ -114,7 +114,42 @@ public final class GearConfigParser {
 			}
 		}
 
-		return new GearConfig(entities, roles, rollDefaults, rolls);
+		Map<Identifier, RiderSpec> riders = new HashMap<>();
+		RiderSpec riderDefaults = parseRiders(root, riders);
+
+		return new GearConfig(entities, roles, rollDefaults, rolls, riderDefaults, riders);
+	}
+
+	private static RiderSpec parseRiders(final JsonObject root, final Map<Identifier, RiderSpec> riders) {
+		JsonElement ridersElement = root.get("riders");
+		if (ridersElement == null || !ridersElement.isJsonObject()) {
+			return RiderSpec.DEFAULT;
+		}
+
+		JsonObject ridersObject = ridersElement.getAsJsonObject();
+		RiderSpec defaults = RiderSpec.DEFAULT.overriddenBy(readChance(ridersObject.get("chance")));
+		JsonElement riderEntities = ridersObject.get("entities");
+
+		if (riderEntities != null && riderEntities.isJsonObject()) {
+			for (Map.Entry<String, JsonElement> entry : riderEntities.getAsJsonObject().entrySet()) {
+				Identifier entityType = Identifier.tryParse(entry.getKey());
+				if (entityType == null) {
+					warn("skipping rider override for '" + entry.getKey() + "': the key is not a valid identifier");
+					continue;
+				}
+
+				if (!entry.getValue().isJsonObject()) {
+					warn("skipping rider override for entity type '" + entry.getKey() + "': the entry is not an object");
+					continue;
+				}
+
+				riders.put(
+					entityType, defaults.overriddenBy(readChance(entry.getValue().getAsJsonObject().get("chance")))
+				);
+			}
+		}
+
+		return defaults;
 	}
 
 	private static @Nullable Double readChance(final @Nullable JsonElement element) {

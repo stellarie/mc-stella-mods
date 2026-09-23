@@ -5,6 +5,7 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.Loadout;
@@ -24,6 +25,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
@@ -40,9 +42,11 @@ public class StellaMobs implements ModInitializer {
 		ReactiveState.register();
 		EliteState.register();
 		EscortSquad.register();
+		RiderSquad.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
+		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
@@ -83,6 +87,21 @@ public class StellaMobs implements ModInitializer {
 			Elite.rollAtSpawn(
 				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
 			);
+
+			if (RiderSquad.canMount(mob) && !EliteState.isSummoned(mob)) {
+				EntityType<? extends Mob> riderType = RiderSquad.RIDER_TYPES.get(mob.getType());
+				double riderChance = GearConfigStore.get().riderFor(entityType).chance();
+				if (riderType != null && riderChance > 0.0 && mob.getRandom().nextFloat() < (float) riderChance) {
+					RiderSquad.queue(mob, riderType);
+					LOGGER.info(
+						"[BEHAVIOR] test=riders t={} RIDER mount={} chance={} rider={}",
+						level.getGameTime(),
+						entityType,
+						riderChance,
+						BuiltInRegistries.ENTITY_TYPE.getKey(riderType)
+					);
+				}
+			}
 
 			SpawnScaling.apply(mob);
 		}

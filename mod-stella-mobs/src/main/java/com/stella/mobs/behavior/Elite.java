@@ -101,6 +101,7 @@ public final class Elite {
 
 		GearTier tier = pickTier(mob.getRandom());
 		mark(mob, tier, HEALTH_MULTIPLIER);
+		EliteState.setPearlsLeft(mob, PearlThrowGoal.PEARL_COUNT);
 
 		if (applyKit) {
 			GearRoller.rollSet(

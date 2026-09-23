@@ -25,6 +25,8 @@ public final class BehaviorInstaller {
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
 	public static final int DEFEND_PRIORITY = 4;
+	// R25: the pearl throw claims no flags, so it sits above the shared block and can tie nothing.
+	public static final int PEARL_PRIORITY = 5;
 	// The witch block starts above the shared block. Ranks 0 to 4 are retreat,
 	// shield, distance, standoff, and ally defense, and the witch does not touch
 	// them. A tie never preempts, so the witch goals claim no flags at all.
@@ -80,6 +82,10 @@ public final class BehaviorInstaller {
 		if (mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
 			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new ShieldUseGoal<>(monster));
 		}
+
+		// R25: armed at install, and the goal's own guard reads the elite flag, which is already set
+		// for a mob that rolled elite before this install runs.
+		mob.getGoalSelector().addGoal(PEARL_PRIORITY, new PearlThrowGoal(mob));
 
 		if (mob instanceof Witch witch) {
 			installWitch(witch);
