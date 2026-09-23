@@ -3,6 +3,17 @@
 These rules apply to every mod in this repository, and to every session that
 works on one. They are the standard, not a suggestion.
 
+## Integration branches
+
+- `main-mobs` is the integration branch for `mod-stella-mobs`.
+- `main-equip-ench` is the integration branch for `mod-stella-equips-enchants`.
+- Every agent creates a work branch from the current tip of the integration
+  branch for the mod it changes.
+- Do not branch from `master` or another work branch unless oniichan explicitly
+  requests stacked work.
+- Keep each mod's changes on its own integration branch. Do not merge the two
+  integration branches into each other.
+
 ## Verification standard
 
 - Prove every behavior change with a headless server-side game test. Do not use
@@ -161,6 +172,7 @@ works on one. They are the standard, not a suggestion.
 - Record a deviation from a locked plan in the task thread, with its reason.
 - Keep the config editable by hand. An exact entry wins over a generated one,
   and a bad entry logs and skips rather than stops the server.
-- The mod stays server side. No client-only class in the main source set.
+- Gameplay stays server side. Put optional client code in `src/client`, never
+  client-only classes in the main source set.
 - Commit by path, never `git add -A`. This repository holds more than one mod,
   and other sessions work in it.
