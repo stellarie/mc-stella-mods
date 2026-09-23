@@ -1,0 +1,45 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.undertow" },
+	"supported_items": "#minecraft:enchantable/trident",
+	"primary_items": "#minecraft:enchantable/trident",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 3,
+	"min_cost": { "base": 8, "per_level_above_first": 8 },
+	"max_cost": { "base": 30, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "attacker",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:apply_impulse",
+							"direction": [0.0, 0.0, 1.0],
+							"coordinate_scale": [1.0, 0.0, 1.0],
+							"magnitude": { "type": "minecraft:linear", "base": 0.45, "per_level_above_first": 0.25 }
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:bubble" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.6 },
+							"vertical_velocity": { "base": 0.05 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:item.trident.riptide_1",
+							"volume": 0.8,
+							"pitch": 1.0
+						}
+					]
+				}
+			}
+		]
+	}
+}

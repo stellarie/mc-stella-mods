@@ -1,0 +1,40 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.enchanted_yield" },
+	"supported_items": "#minecraft:enchantable/mining_loot",
+	"primary_items": "#minecraft:enchantable/mining_loot",
+	"slots": ["mainhand"],
+	"weight": 4,
+	"max_level": 5,
+	"min_cost": { "base": 8, "per_level_above_first": 8 },
+	"max_cost": { "base": 30, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:enchanted_yield"
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:spawn_particles",
+					"particle": { "type": "minecraft:happy_villager" },
+					"horizontal_position": { "type": "in_bounding_box" },
+					"horizontal_velocity": { "base": 0.0 },
+					"vertical_position": { "type": "entity_position", "offset": 0.8 },
+					"vertical_velocity": { "base": 0.05 },
+					"speed": 0.05
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:play_sound",
+					"sound": "minecraft:entity.experience_orb.pickup",
+					"volume": 0.5,
+					"pitch": 1.6
+				}
+			}
+		]
+	}
+}

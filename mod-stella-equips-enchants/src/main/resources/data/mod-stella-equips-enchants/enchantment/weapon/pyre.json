@@ -1,0 +1,43 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.pyre" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 6 },
+	"max_cost": { "base": 25, "per_level_above_first": 6 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:ignite",
+							"duration": { "type": "minecraft:linear", "base": 4.0, "per_level_above_first": 3.0 }
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:flame" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.6 },
+							"vertical_velocity": { "base": 0.08 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:item.firecharge.use",
+							"volume": 0.6,
+							"pitch": 1.4
+						}
+					]
+				}
+			}
+		]
+	}
+}
