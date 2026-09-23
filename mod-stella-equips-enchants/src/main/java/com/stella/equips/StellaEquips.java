@@ -2,6 +2,7 @@ package com.stella.equips;
 
 import com.stella.equips.enchant.Deflection;
 import com.stella.equips.loot.ChestLoot;
+import com.stella.equips.loot.HeadDrops;
 import com.stella.equips.loot.RandomEnchantmentsFunction;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerTracker;
@@ -24,6 +25,7 @@ public class StellaEquips implements ModInitializer {
 		ReadoutCommand.register();
 		RandomEnchantmentsFunction.register();
 		ChestLoot.register();
+		HeadDrops.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
