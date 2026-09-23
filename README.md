@@ -1,12 +1,19 @@
 # mc-stella-mods
 
-Server-side Minecraft mods for a private Fabric server.
+Minecraft mods for a private Fabric server.
 
 ## Mods
 
-| Directory | Purpose | Status |
+| Directory | Purpose | Integration branch |
 |---|---|---|
-| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | phase 3 |
+| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
+| `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
+
+Each mod has its own integration branch. Create new work branches from the current
+tip of the branch for that mod. The two branches do not merge into each other.
+Use a worktree from the matching branch before editing a mod. The other mod's
+directory may be absent or older in that checkout.
+`master` is the original repository baseline, not a development target.
 
 ## mod-stella-mobs
 
@@ -18,9 +25,12 @@ Build and test:
 
 ```powershell
 cd mod-stella-mobs
-.\gradlew.bat build
-.\gradlew.bat runGameTest
+.\gradlew.bat clean build
+.\gradlew.bat runGameTest --rerun
 ```
+
+Run the game test command five separate times and save each run log before the
+next run. Use the same gate from the equips mod directory on `main-equip-ench`.
 
 The built jar is `mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar`.
 Copy it into a Fabric client instance's `mods` folder, or a server's `mods`

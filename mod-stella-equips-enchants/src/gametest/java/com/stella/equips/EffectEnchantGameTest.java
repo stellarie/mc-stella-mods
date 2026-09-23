@@ -468,6 +468,7 @@ public class EffectEnchantGameTest {
 			away.setYHeadRot(-90.0F);
 			facing.setYRot(180.0F);
 			facing.setYHeadRot(180.0F);
+			rearmCooldown(helper, wearer, "ench_cd_dread", 20);
 			for (int pulse = 0; pulse < 3; pulse++) {
 				EnchantmentHelper.tickEffects(helper.getLevel(), wearer);
 			}
