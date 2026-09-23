@@ -28,7 +28,8 @@ public record EliteState(
 	int pearlsLeft,
 	boolean boss,
 	boolean stormCast,
-	boolean broodBorn
+	boolean broodBorn,
+	boolean secondPhaseUsed
 ) {
 	public static final Codec<EliteState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("summoned", false).forGetter(EliteState::summoned),
@@ -38,14 +39,15 @@ public record EliteState(
 		Codec.INT.optionalFieldOf("pearls_left", 0).forGetter(EliteState::pearlsLeft),
 		Codec.BOOL.optionalFieldOf("boss", false).forGetter(EliteState::boss),
 		Codec.BOOL.optionalFieldOf("storm_cast", false).forGetter(EliteState::stormCast),
-		Codec.BOOL.optionalFieldOf("brood_born", false).forGetter(EliteState::broodBorn)
+		Codec.BOOL.optionalFieldOf("brood_born", false).forGetter(EliteState::broodBorn),
+		Codec.BOOL.optionalFieldOf("second_phase_used", false).forGetter(EliteState::secondPhaseUsed)
 	).apply(instance, EliteState::new));
 	public static final AttachmentType<EliteState> TYPE = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_state"), CODEC
 	);
 
 	public EliteState() {
-		this(false, false, false, Optional.empty(), 0, false, false, false);
+		this(false, false, false, Optional.empty(), 0, false, false, false, false);
 	}
 
 	public static void register() {
@@ -132,49 +134,65 @@ public record EliteState(
 	public EliteState withSummoned(final boolean value) {
 		return new EliteState(
 			value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withWarCallUsed(final boolean value) {
 		return new EliteState(
 			this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState asElite(final GearTier tier) {
 		return new EliteState(
 			this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withPearlsLeft(final int value) {
 		return new EliteState(
 			this.summoned, this.warCallUsed, this.elite, this.eliteTier, value, this.boss, this.stormCast,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withBoss(final boolean value) {
 		return new EliteState(
 			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withStormCast(final boolean value) {
 		return new EliteState(
 			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value,
-			this.broodBorn
+			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withBroodBorn(final boolean value) {
 		return new EliteState(
 			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			value
+			value, this.secondPhaseUsed
+		);
+	}
+
+	/** The evoker's one return: its own field, because the storm is the other once-only ability it owns. */
+	public static boolean isSecondPhaseUsed(final Mob mob) {
+		return get(mob).secondPhaseUsed();
+	}
+
+	public static void setSecondPhaseUsed(final Mob mob, final boolean secondPhaseUsed) {
+		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withSecondPhaseUsed(secondPhaseUsed));
+	}
+
+	public EliteState withSecondPhaseUsed(final boolean value) {
+		return new EliteState(
+			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			this.broodBorn, value
 		);
 	}
 }

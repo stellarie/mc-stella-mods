@@ -11,6 +11,7 @@ import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RiderSquad;
+import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
@@ -59,6 +60,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);
+		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
