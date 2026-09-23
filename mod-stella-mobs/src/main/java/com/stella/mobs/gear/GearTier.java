@@ -1,5 +1,7 @@
 package com.stella.mobs.gear;
 
+import com.mojang.serialization.Codec;
+import com.stella.mobs.StellaMobs;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -41,6 +43,8 @@ public enum GearTier {
 		Items.NETHERITE_SWORD, Items.BOW
 	);
 
+	public static final Codec<GearTier> CODEC = Codec.STRING.xmap(GearTier::byName, GearTier::name);
+
 	private static final EquipmentSlot[] ARMOR_SLOTS = {
 		EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
@@ -76,6 +80,18 @@ public enum GearTier {
 
 	public static EquipmentSlot[] armorSlots() {
 		return ARMOR_SLOTS.clone();
+	}
+
+	/** A saved tier name that no longer resolves falls back to leather instead of failing the load. */
+	public static GearTier byName(final String name) {
+		for (GearTier tier : values()) {
+			if (tier.name().equalsIgnoreCase(name)) {
+				return tier;
+			}
+		}
+
+		StellaMobs.LOGGER.warn("Unknown gear tier '{}' in a saved elite state, using {}", name, LEATHER);
+		return LEATHER;
 	}
 
 	public int weight() {
