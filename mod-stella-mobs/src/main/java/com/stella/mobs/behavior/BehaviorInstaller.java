@@ -90,6 +90,8 @@ public final class BehaviorInstaller {
 		if (mob instanceof Witch witch) {
 			installWitch(witch);
 		}
+
+		BossAbilities.install(mob);
 	}
 
 	/**

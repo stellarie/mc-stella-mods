@@ -19,7 +19,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.goal.FollowMobGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.item.enchantment.Enchantment;
 
@@ -115,7 +114,7 @@ public final class BossCompanion {
 
 		companion.getGoalSelector().removeAllGoals(goal -> goal instanceof WaterAvoidingRandomStrollGoal);
 		companion.getGoalSelector().addGoal(
-			FOLLOW_PRIORITY, new FollowMobGoal(boss, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
+			FOLLOW_PRIORITY, new FollowAllyGoal(companion, boss, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
 		);
 		level.addFreshEntity(companion);
 		ReactiveState.get(boss).setCompanionId(companion.getUUID());

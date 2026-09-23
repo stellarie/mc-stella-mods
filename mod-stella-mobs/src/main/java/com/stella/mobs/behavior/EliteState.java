@@ -14,10 +14,11 @@ import net.minecraft.world.entity.Mob;
 /**
  * The durable half of an elite's identity: whether the mob was summoned, whether its one war call is
  * spent, whether it is an elite plus the tier its kit rolled, how many ender pearls its budget has left,
- * whether it is a boss, and whether its one-shot storm is spent. Registered persistent, so a chunk unload
- * and reload cannot turn a summon into a fresh elite roll, give a warband a second call, refill a spent
- * pearl budget, or let a storm re-arm. Every field is an optional codec field, so a save written before a
- * later field existed still decodes.
+ * whether it is a boss, whether its one-shot storm is spent, and whether the brood mother has given
+ * birth. Registered persistent, so a chunk unload and reload cannot turn a summon into a fresh elite
+ * roll, give a warband a second call, refill a spent pearl budget, re-arm a storm, or birth a second
+ * brood. Every field is an optional codec field, so a save written before a later field existed still
+ * decodes.
  */
 public record EliteState(
 	boolean summoned,
@@ -26,7 +27,8 @@ public record EliteState(
 	Optional<GearTier> eliteTier,
 	int pearlsLeft,
 	boolean boss,
-	boolean stormCast
+	boolean stormCast,
+	boolean broodBorn
 ) {
 	public static final Codec<EliteState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("summoned", false).forGetter(EliteState::summoned),
@@ -35,14 +37,15 @@ public record EliteState(
 		GearTier.CODEC.optionalFieldOf("elite_tier").forGetter(EliteState::eliteTier),
 		Codec.INT.optionalFieldOf("pearls_left", 0).forGetter(EliteState::pearlsLeft),
 		Codec.BOOL.optionalFieldOf("boss", false).forGetter(EliteState::boss),
-		Codec.BOOL.optionalFieldOf("storm_cast", false).forGetter(EliteState::stormCast)
+		Codec.BOOL.optionalFieldOf("storm_cast", false).forGetter(EliteState::stormCast),
+		Codec.BOOL.optionalFieldOf("brood_born", false).forGetter(EliteState::broodBorn)
 	).apply(instance, EliteState::new));
 	public static final AttachmentType<EliteState> TYPE = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_state"), CODEC
 	);
 
 	public EliteState() {
-		this(false, false, false, Optional.empty(), 0, false, false);
+		this(false, false, false, Optional.empty(), 0, false, false, false);
 	}
 
 	public static void register() {
@@ -117,39 +120,61 @@ public record EliteState(
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withStormCast(stormCast));
 	}
 
+	/** The brood mother's one birth. Its own field, because a spider has no other once-only ability. */
+	public static boolean isBroodBorn(final Mob mob) {
+		return get(mob).broodBorn();
+	}
+
+	public static void setBroodBorn(final Mob mob, final boolean broodBorn) {
+		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withBroodBorn(broodBorn));
+	}
+
 	public EliteState withSummoned(final boolean value) {
 		return new EliteState(
-			value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast
+			value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			this.broodBorn
 		);
 	}
 
 	public EliteState withWarCallUsed(final boolean value) {
 		return new EliteState(
-			this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast
+			this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			this.broodBorn
 		);
 	}
 
 	public EliteState asElite(final GearTier tier) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast
+			this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast,
+			this.broodBorn
 		);
 	}
 
 	public EliteState withPearlsLeft(final int value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, value, this.boss, this.stormCast
+			this.summoned, this.warCallUsed, this.elite, this.eliteTier, value, this.boss, this.stormCast,
+			this.broodBorn
 		);
 	}
 
 	public EliteState withBoss(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast
+			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast,
+			this.broodBorn
 		);
 	}
 
 	public EliteState withStormCast(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value
+			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value,
+			this.broodBorn
+		);
+	}
+
+	public EliteState withBroodBorn(final boolean value) {
+		return new EliteState(
+			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			value
 		);
 	}
 }

@@ -181,6 +181,9 @@ public final class Bosses {
 		applyLevelBonus(mob, registry);
 		updateBossBar(level, mob);
 		watch(mob);
+		// The ability slot is filled here as well as from the installer, so a boss promoted by hand and a
+		// boss promoted by its own roll end in the same state. The second call adds nothing.
+		BossAbilities.install(mob);
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test=bossSpawn t={} BOSS type={} chance={} health={} areaLevel={} levelBonus={} companion={}",
