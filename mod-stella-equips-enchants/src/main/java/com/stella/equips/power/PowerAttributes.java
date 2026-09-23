@@ -21,21 +21,23 @@ public final class PowerAttributes {
 	}
 
 	public static double apply(
-		final ServerPlayer player, final long survivabilityPoints, final int level, final PowerConfig config
+		final ServerPlayer player, final long travelPoints, final int combatLevel, final PowerConfig config
 	) {
 		PowerConfig.Survivability survivability = config.attributes().distance();
+		int travelLevel = PowerCurve.levelFor(travelPoints, config);
+		long climbed = Math.max(0L, travelLevel - 1L);
 		double healthGained = replace(
-			player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, survivability.maxHealth() * survivabilityPoints
+			player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, survivability.maxHealthPerPoint() * travelPoints
 		);
-		replace(player, Attributes.ARMOR, ARMOR_ID, survivability.armor() * survivabilityPoints);
+		replace(player, Attributes.ARMOR, ARMOR_ID, survivability.armorPerLevel() * climbed);
 		replace(
 			player,
 			Attributes.KNOCKBACK_RESISTANCE,
 			KNOCKBACK_RESISTANCE_ID,
-			survivability.knockbackResistance() * survivabilityPoints
+			survivability.knockbackResistancePerLevel() * climbed
 		);
-		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, PowerCurve.attackDamageBonus(level, config));
-		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, PowerCurve.attackSpeedBonus(level, config));
+		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, PowerCurve.attackDamageBonus(combatLevel, config));
+		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, PowerCurve.attackSpeedBonus(combatLevel, config));
 		clampHealth(player);
 		return healthGained;
 	}

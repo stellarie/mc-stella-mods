@@ -68,7 +68,7 @@ public record PowerConfig(
 	public record Attributes(Survivability distance, Combat combat) {
 	}
 
-	public record Survivability(double maxHealth, double armor, double knockbackResistance) {
+	public record Survivability(double maxHealthPerPoint, double armorPerLevel, double knockbackResistancePerLevel) {
 	}
 
 	public record Combat(double attackDamageMax, double attackSpeedMax) {
