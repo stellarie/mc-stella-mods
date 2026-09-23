@@ -223,6 +223,42 @@ public class EliteFrameworkGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void anOrdinaryZombieIsNotCountedAsAnEscort(final GameTestHelper helper) {
+		Zombie elite = spawn(helper, ALWAYS_ELITE);
+
+		helper.runAfterDelay(20L, () -> {
+			int before = escortsOf(helper, elite).size();
+			// A plain zombie standing in the same box: not summoned, so not an escort. The config is
+			// pinned to zero elite chance first, or the wanderer would roll elite and queue its own squad.
+			GearConfigStore.set(GearConfigParser.parse(NEVER_ELITE));
+			Zombie wanderer = helper.spawnMob(EntityTypes.ZOMBIE, SPAWN_X + 2, SPAWN_Y, SPAWN_Z + 2).spawn();
+			wanderer.setPersistenceRequired();
+			int after = escortsOf(helper, elite).size();
+			int nearby = helper.getLevel()
+				.getEntitiesOfClass(
+					Zombie.class, elite.getBoundingBox().inflate(ESCORT_BOX), candidate -> candidate != elite
+				)
+				.size();
+
+			result(
+				"escortIdentity",
+				"before=" + before + " nearbyZombies=" + nearby + " counted=" + after
+					+ " wandererSummoned=" + EliteState.isSummoned(wanderer)
+					+ " wandererVehicle=" + (wanderer.getVehicle() == null ? "none" : "yes")
+			);
+
+			helper.assertValueEqual(
+				Integer.valueOf(before), Integer.valueOf(EscortSquad.ESCORT_COUNT), "escort count before the wanderer"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(after), Integer.valueOf(EscortSquad.ESCORT_COUNT),
+				"escort count with an ordinary zombie in the box"
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void escortKitIsOneGradeBelowTheElite(final GameTestHelper helper) {
 		Zombie elite = spawn(helper, ALWAYS_ELITE);
 		GearTier eliteTier = Elite.kitTier(elite);
@@ -343,9 +379,29 @@ public class EliteFrameworkGameTest {
 		Elite.rollAtSpawn(summoned, helper.getLevel(), 1.0, true);
 
 		helper.runAfterDelay(5L, () -> {
-			List<Zombie> queued = helper.getLevel()
-				.getEntitiesOfClass(Zombie.class, summoned.getBoundingBox().inflate(ESCORT_BOX), candidate -> true);
+			// Escorts only, by identity: a wandering zombie in the box is not a queued escort. This
+			// query used to accept any zombie, so a neighbour made a summon look like it queued a squad.
+			List<Zombie> queued = summonedNear(helper, summoned);
 			boolean eliteFlag = Elite.isElite(summoned);
+
+			// A non-zero count here is either a real escort or the neighbourhood, so name every mob.
+			if (!queued.isEmpty()) {
+				for (Zombie candidate : queued) {
+					StellaMobs.LOGGER.info(
+						"[BEHAVIOR] test=summonNeighbours RESULT candidate={} distance={} summoned={} vehicle={} "
+							+ "chest={} drop={} eliteFlag={} isSubject={} tick={}",
+						candidate.getType(),
+						String.format(Locale.ROOT, "%.2f", summoned.distanceTo(candidate)),
+						EliteState.isSummoned(candidate),
+						candidate.getVehicle() == null ? "none" : candidate.getVehicle().getType(),
+						candidate.getItemBySlot(EquipmentSlot.CHEST),
+						candidate.getDropChances().byEquipment(EquipmentSlot.CHEST),
+						Elite.isElite(candidate),
+						candidate == summoned,
+						helper.getTick()
+					);
+				}
+			}
 
 			result(
 				"summonedMobNeverRollsElite",
@@ -367,10 +423,58 @@ public class EliteFrameworkGameTest {
 		return zombie;
 	}
 
+	/**
+	 * The elite's escorts, by identity rather than by neighbourhood: only a summoned mob counts, because
+	 * {@link EscortSquad} flags every escort before it enters the level. A wandering zombie or a jockey
+	 * inside the box is not an escort. While the count is wrong the method names every candidate it saw.
+	 */
 	private static List<Zombie> escortsOf(final GameTestHelper helper, final Zombie elite) {
-		return helper.getLevel()
+		List<Zombie> candidates = helper.getLevel()
 			.getEntitiesOfClass(Zombie.class, elite.getBoundingBox().inflate(ESCORT_BOX), candidate -> candidate != elite);
+		List<Zombie> escorts = candidates.stream().filter(EliteState::isSummoned).toList();
+
+		if (escorts.size() != EscortSquad.ESCORT_COUNT && CANDIDATE_LOGS.getAndIncrement() < CANDIDATE_LOG_CAP) {
+			if (candidates.isEmpty()) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=escortCandidates RESULT elite={} candidates=0 tick={}",
+					Elite.kitTier(elite), helper.getTick()
+				);
+			}
+
+			for (Zombie candidate : candidates) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=escortCandidates RESULT eliteTier={} candidate={} distance={} summoned={} "
+						+ "vehicle={} chest={} drop={} eliteFlag={} baby={} tick={}",
+					Elite.kitTier(elite),
+					candidate.getType(),
+					String.format(Locale.ROOT, "%.2f", elite.distanceTo(candidate)),
+					EliteState.isSummoned(candidate),
+					candidate.getVehicle() == null ? "none" : candidate.getVehicle().getType(),
+					candidate.getItemBySlot(EquipmentSlot.CHEST),
+					candidate.getDropChances().byEquipment(EquipmentSlot.CHEST),
+					Elite.isElite(candidate),
+					candidate.isBaby(),
+					helper.getTick()
+				);
+			}
+		}
+
+		return escorts;
 	}
+
+	/** The same identity rule for the summoned-mob test: it counts escorts, not the neighbourhood. */
+	private static List<Zombie> summonedNear(final GameTestHelper helper, final Zombie subject) {
+		return helper.getLevel()
+			.getEntitiesOfClass(
+				Zombie.class,
+				subject.getBoundingBox().inflate(ESCORT_BOX),
+				candidate -> candidate != subject && EliteState.isSummoned(candidate)
+			);
+	}
+
+	private static final java.util.concurrent.atomic.AtomicInteger CANDIDATE_LOGS =
+		new java.util.concurrent.atomic.AtomicInteger();
+	private static final int CANDIDATE_LOG_CAP = 24;
 
 	private static void result(final String test, final String detail) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", test, detail);

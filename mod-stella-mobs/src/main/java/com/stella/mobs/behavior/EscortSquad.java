@@ -69,6 +69,11 @@ public final class EscortSquad {
 	}
 
 	private static void spawnSquad(final ServerLevel level, final Mob elite, final GearTier eliteTier) {
+		// B05: a boss takes one companion and no six mob escort, so a boss never queues a squad here.
+		if (EliteState.isBoss(elite)) {
+			return;
+		}
+
 		GearTier tier = Elite.escortTier(eliteTier);
 
 		for (int i = 0; i < ESCORT_COUNT; i++) {
