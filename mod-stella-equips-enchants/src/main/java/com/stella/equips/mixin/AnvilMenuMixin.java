@@ -2,30 +2,80 @@ package com.stella.equips.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.stella.equips.anvil.AnvilCost;
+import com.stella.equips.anvil.EmeraldPurse;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.DataSlot;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(AnvilMenu.class)
 public abstract class AnvilMenuMixin {
 	@Accessor("cost")
 	protected abstract DataSlot stellaEquips$costSlot();
 
+	/** The Too Expensive gate compares the emerald price, never the level price. */
 	@ModifyExpressionValue(
 		method = "createResult",
 		at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/DataSlot;get()I", ordinal = 1)
 	)
-	private int stellaEquips$clampBeforeTooExpensive(final int original) {
-		return AnvilCost.clamp(original);
+	private int stellaEquips$priceAtTheGate(final int original) {
+		return AnvilCost.price(EmeraldPurse.offeredEnchantments(this.stellaEquips$input(), this.stellaEquips$addition()));
 	}
 
+	/** One field, and the display, the pickup check and the charge all read it. */
 	@Inject(method = "createResult", at = @At("RETURN"))
-	private void stellaEquips$clampCost(final CallbackInfo ci) {
-		DataSlot cost = this.stellaEquips$costSlot();
-		cost.set(AnvilCost.clamp(cost.get()));
+	private void stellaEquips$writeThePrice(final CallbackInfo ci) {
+		this.stellaEquips$costSlot().set(
+			AnvilCost.price(EmeraldPurse.appliedEnchantments(this.stellaEquips$input(), this.stellaEquips$result()))
+		);
+	}
+
+	@Inject(method = "mayPickup", at = @At("HEAD"), cancellable = true)
+	private void stellaEquips$mayPickupOnEmeralds(
+		final Player player,
+		final boolean hasItem,
+		final CallbackInfoReturnable<Boolean> cir
+	) {
+		int price = this.stellaEquips$costSlot().get();
+		cir.setReturnValue(
+			hasItem && (player.hasInfiniteMaterials() || EmeraldPurse.count(player) >= price)
+		);
+	}
+
+	@Inject(method = "onTake", at = @At("HEAD"))
+	private void stellaEquips$spendEmeralds(final Player player, final ItemStack carried, final CallbackInfo ci) {
+		EmeraldPurse.spend(player, this.stellaEquips$costSlot().get());
+	}
+
+	@ModifyArg(
+		method = "onTake",
+		at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;giveExperienceLevels(I)V"),
+		index = 0
+	)
+	private int stellaEquips$spendNoLevels(final int levels) {
+		return 0;
+	}
+
+	@Unique
+	private ItemStack stellaEquips$input() {
+		return ((AnvilMenu) (Object) this).getSlot(AnvilMenu.INPUT_SLOT).getItem();
+	}
+
+	@Unique
+	private ItemStack stellaEquips$addition() {
+		return ((AnvilMenu) (Object) this).getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem();
+	}
+
+	@Unique
+	private ItemStack stellaEquips$result() {
+		return ((AnvilMenu) (Object) this).getSlot(AnvilMenu.RESULT_SLOT).getItem();
 	}
 }

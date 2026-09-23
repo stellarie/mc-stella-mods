@@ -7,7 +7,9 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"com.stella.equips.AnvilCostGameTest",
+			"com.stella.equips.BookLootGameTest",
 			"com.stella.equips.BookLootProbeGameTest",
+			"com.stella.equips.EmeraldCostGameTest",
 			"com.stella.equips.EnchantDataGameTest",
 			"com.stella.equips.PowerApplyGameTest",
 			"com.stella.equips.PowerConfigGameTest",
