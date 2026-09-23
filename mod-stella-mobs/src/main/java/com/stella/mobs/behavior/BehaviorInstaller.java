@@ -45,6 +45,27 @@ public final class BehaviorInstaller {
 	private BehaviorInstaller() {
 	}
 
+	/**
+	 * The one clause a boss promoted by hand owes the installer: an off hand that blocks needs its goal.
+	 * A boss rolled by its own path is installed after the kit, so for it this is already done.
+	 */
+	public static void installShield(final Mob mob) {
+		if (!(mob instanceof Monster monster) || !mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
+			return;
+		}
+
+		if (hasShieldGoal(mob)) {
+			return;
+		}
+
+		mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new ShieldUseGoal<>(monster));
+	}
+
+	private static boolean hasShieldGoal(final Mob mob) {
+		return mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof ShieldUseGoal);
+	}
+
 	public static void install(final Mob mob) {
 		if (!(mob instanceof Monster monster)) {
 			return;
@@ -79,9 +100,7 @@ public final class BehaviorInstaller {
 			}
 		}
 
-		if (mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
-			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new ShieldUseGoal<>(monster));
-		}
+		installShield(mob);
 
 		// R25: armed at install, and the goal's own guard reads the elite flag, which is already set
 		// for a mob that rolled elite before this install runs.
