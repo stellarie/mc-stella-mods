@@ -46,7 +46,7 @@ public final class GearRoller {
 		for (EquipmentSlot slot : GearTier.armorSlots()) {
 			if (random.nextFloat() < spec.rollChance()) {
 				GearTier tier = TierRoller.pick(random);
-				apply(mob, slot, tier.armorFor(slot), tier, spec, random, registry);
+				apply(mob, slot, tier.armorFor(slot), tierDrop(tier, spec), random, registry);
 			}
 		}
 
@@ -66,7 +66,7 @@ public final class GearRoller {
 			return;
 		}
 
-		apply(mob, EquipmentSlot.MAINHAND, weapon, tier, spec, random, registry);
+		apply(mob, EquipmentSlot.MAINHAND, weapon, tierDrop(tier, spec), random, registry);
 		ReactiveState.get(mob).setMainHandRolled(true);
 
 		if (ranged || wanted == CombatRole.MAGIC || !tier.allowsShield()) {
@@ -74,8 +74,48 @@ public final class GearRoller {
 		}
 
 		if (random.nextFloat() < SHIELD_CHANCE) {
-			apply(mob, EquipmentSlot.OFFHAND, Items.SHIELD, tier, spec, random, registry);
+			apply(mob, EquipmentSlot.OFFHAND, Items.SHIELD, tierDrop(tier, spec), random, registry);
 		}
+	}
+
+	/**
+	 * Applies one tier to the whole kit: four armour slots, a weapon, and a shield when the role allows.
+	 * The drop chance is flat, because an elite and its escorts drop at a fixed rate rather than a tier rate.
+	 */
+	public static void rollSet(
+		final Mob mob, final GearTier tier, final float dropChance, final RandomSource random, final Registry<Enchantment> registry
+	) {
+		CombatRole wanted = configuredWeaponClass(mob);
+
+		for (EquipmentSlot slot : GearTier.armorSlots()) {
+			apply(mob, slot, tier.armorFor(slot), dropChance, random, registry);
+		}
+
+		boolean ranged = switch (wanted) {
+			case RANGED -> true;
+			case MELEE, MAGIC -> false;
+			case null -> mob.canUseNonMeleeWeapon(new ItemStack(tier.rangedWeapon())) && random.nextBoolean();
+		};
+		Item weapon = ranged ? tier.rangedWeapon() : tier.meleeWeapon();
+
+		if (ranged && !mob.canUseNonMeleeWeapon(new ItemStack(weapon))) {
+			return;
+		}
+
+		apply(mob, EquipmentSlot.MAINHAND, weapon, dropChance, random, registry);
+		ReactiveState.get(mob).setMainHandRolled(true);
+
+		if (ranged || wanted == CombatRole.MAGIC || !tier.allowsShield()) {
+			return;
+		}
+
+		if (random.nextFloat() < SHIELD_CHANCE) {
+			apply(mob, EquipmentSlot.OFFHAND, Items.SHIELD, dropChance, random, registry);
+		}
+	}
+
+	private static float tierDrop(final GearTier tier, final RollSpec spec) {
+		return (float) (tier.dropChance() * spec.dropChanceMultiplier());
 	}
 
 	private static @Nullable CombatRole configuredWeaponClass(final Mob mob) {
@@ -92,13 +132,12 @@ public final class GearRoller {
 		final Mob mob,
 		final EquipmentSlot slot,
 		final Item item,
-		final GearTier tier,
-		final RollSpec spec,
+		final float dropChance,
 		final RandomSource random,
 		final Registry<Enchantment> registry
 	) {
 		ItemStack stack = EnchantRoller.enchant(new ItemStack(item), random, registry);
 		mob.setItemSlot(slot, stack);
-		mob.setDropChance(slot, (float) (tier.dropChance() * spec.dropChanceMultiplier()));
+		mob.setDropChance(slot, dropChance);
 	}
 }

@@ -1,7 +1,9 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BehaviorInstaller;
+import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
@@ -14,6 +16,7 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.EntityLoadData;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -35,8 +38,10 @@ public class StellaMobs implements ModInitializer {
 	public void onInitialize() {
 		ReactiveState.register();
 		EliteState.register();
+		EscortSquad.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
+		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
@@ -73,6 +78,10 @@ public class StellaMobs implements ModInitializer {
 				);
 				state.setGearApplied(true);
 			}
+
+			Elite.rollAtSpawn(
+				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
+			);
 		}
 
 		BehaviorInstaller.install(mob);

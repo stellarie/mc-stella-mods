@@ -59,7 +59,7 @@ public class GearGameTest {
 					"drop_chance": 1.0
 				}
 			},
-			"rolls": { "roll_chance": 0.0 }
+			"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 		}""";
 	private static final String ROLLING_CONFIG = """
 		{
@@ -69,7 +69,7 @@ public class GearGameTest {
 					"drop_chance": 0.5
 				}
 			},
-			"rolls": { "roll_chance": 1.0 }
+			"rolls": { "roll_chance": 1.0, "elite_chance": 0.0 }
 		}""";
 
 	@GameTest

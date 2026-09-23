@@ -59,6 +59,11 @@ works on one. They are the standard, not a suggestion.
   line when reporting a result.
 - Copy the run log out of `build/` before a `clean build`. The clean deletes it,
   and a lost log turns evidence into a claim.
+- **Copy the log the moment a run exits non-zero.** The next run overwrites it,
+  so a failure investigated after the fact is a failure with no name. This cost a
+  night: a required test failed once in fourteen runs, and because the following
+  runs overwrote the log, the test could never be identified and the flake could
+  not be tagged or fixed.
 
 ## Tests
 

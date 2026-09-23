@@ -29,7 +29,8 @@ public class BehaviorGameTest {
 						"offhand": { "item": "minecraft:shield" }
 					}
 				}
-			}
+			},
+			"rolls": { "elite_chance": 0.0 }
 		}""";
 	private static final String NO_SHIELD_CONFIG = """
 		{
@@ -40,7 +41,8 @@ public class BehaviorGameTest {
 						"mainhand": { "item": "minecraft:diamond_sword" }
 					}
 				}
-			}
+			},
+			"rolls": { "elite_chance": 0.0 }
 		}""";
 	private static final float MELEE_DAMAGE = 5.0F;
 	private static final int SETTLE_TICKS = 8;

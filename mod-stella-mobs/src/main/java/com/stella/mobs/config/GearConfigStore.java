@@ -18,7 +18,11 @@ public final class GearConfigStore {
 			},
 			"rolls": {
 				"roll_chance": 0.30,
-				"drop_chance_multiplier": 1.0
+				"drop_chance_multiplier": 1.0,
+				"elite_chance": 0.05,
+				"entities": {
+					"minecraft:witch": { "elite_chance": 0.10 }
+				}
 			}
 		}""";
 	private static volatile GearConfig config = GearConfig.EMPTY;

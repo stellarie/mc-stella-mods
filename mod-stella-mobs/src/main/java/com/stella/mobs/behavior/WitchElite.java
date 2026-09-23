@@ -1,12 +1,12 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.gear.GearTier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
- * The elite witch: one flag in the attachment, 1.5 times health derived from the mob's own base,
- * and a 16 block blindness aura. Phase 7 owns the general elite framework.
+ * The elite witch: 1.5 times health from the mob's own base, a 16 block blindness aura, and the shared
+ * marker. She reads and writes the one elite answer, so the framework and the witch cannot disagree.
  */
 public final class WitchElite {
 	public static final double HEALTH_MULTIPLIER = 1.5;
@@ -26,20 +26,12 @@ public final class WitchElite {
 		return baseHealth * HEALTH_MULTIPLIER;
 	}
 
-	/** Marks the mob elite and raises its health once, from the base it already carries. */
-	public static void mark(final Mob witch) {
-		ReactiveState state = ReactiveState.get(witch);
-		if (state.isElite()) {
-			return;
-		}
-
-		state.setElite(true);
-		double boosted = eliteHealth(witch.getAttribute(Attributes.MAX_HEALTH).getBaseValue());
-		witch.getAttribute(Attributes.MAX_HEALTH).setBaseValue(boosted);
-		witch.setHealth((float) boosted);
+	/** Marks the witch elite through the shared marker, then applies her own health multiplier. */
+	public static void mark(final Mob witch, final GearTier tier) {
+		Elite.mark(witch, tier, HEALTH_MULTIPLIER);
 	}
 
 	public static boolean isElite(final Mob witch) {
-		return ReactiveState.get(witch).isElite();
+		return Elite.isElite(witch);
 	}
 }

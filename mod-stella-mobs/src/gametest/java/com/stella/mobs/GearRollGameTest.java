@@ -175,7 +175,7 @@ public class GearRollGameTest {
 						"drop_chance": 0.5
 					}
 				},
-				"rolls": { "roll_chance": 1.0 }
+				"rolls": { "roll_chance": 1.0, "elite_chance": 0.0 }
 			}""");
 		Mob exact = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 2).spawn();
 		Mob rolling = helper.spawnMob(EntityTypes.HUSK, 4, 3, 4).spawn();
@@ -248,7 +248,7 @@ public class GearRollGameTest {
 		useConfig("""
 			{
 				"entities": {},
-				"rolls": { "roll_chance": 1.0 }
+				"rolls": { "roll_chance": 1.0, "elite_chance": 0.0 }
 			}""");
 		Mob skeleton = helper.spawnMob(EntityTypes.SKELETON, 2, 3, 2).spawn();
 		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 4, 3, 4).spawn();

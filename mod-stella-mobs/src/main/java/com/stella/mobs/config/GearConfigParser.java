@@ -82,7 +82,9 @@ public final class GearConfigParser {
 		if (rollsElement != null && rollsElement.isJsonObject()) {
 			JsonObject rollsObject = rollsElement.getAsJsonObject();
 			rollDefaults = rollDefaults.overriddenBy(
-				readChance(rollsObject.get("roll_chance")), readMultiplier(rollsObject.get("drop_chance_multiplier"))
+				readChance(rollsObject.get("roll_chance")),
+				readMultiplier(rollsObject.get("drop_chance_multiplier")),
+				readChance(rollsObject.get("elite_chance"))
 			);
 			JsonElement rollEntities = rollsObject.get("entities");
 
@@ -103,7 +105,9 @@ public final class GearConfigParser {
 					rolls.put(
 						entityType,
 						rollDefaults.overriddenBy(
-							readChance(override.get("roll_chance")), readMultiplier(override.get("drop_chance_multiplier"))
+							readChance(override.get("roll_chance")),
+							readMultiplier(override.get("drop_chance_multiplier")),
+							readChance(override.get("elite_chance"))
 						)
 					);
 				}
