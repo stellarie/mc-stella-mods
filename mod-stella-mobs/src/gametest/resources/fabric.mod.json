@@ -12,7 +12,8 @@
 			"com.stella.mobs.GearRateGameTest",
 			"com.stella.mobs.GearRollGameTest",
 			"com.stella.mobs.MobHarnessGameTest",
-			"com.stella.mobs.RoleGameTest"
+			"com.stella.mobs.RoleGameTest",
+			"com.stella.mobs.WitchGameTest"
 		]
 	}
 }

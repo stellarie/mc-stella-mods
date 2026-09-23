@@ -12,6 +12,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -24,6 +25,15 @@ public final class BehaviorInstaller {
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
 	public static final int DEFEND_PRIORITY = 4;
+	// The witch block starts above the shared block. Ranks 0 to 4 are retreat,
+	// shield, distance, standoff, and ally defense, and the witch does not touch
+	// them. A tie never preempts, so the witch goals claim no flags at all.
+	public static final int WITCH_BLOCK_START = 5;
+	public static final int WITCH_SELF_HEAL_PRIORITY = WITCH_BLOCK_START;
+	public static final int WITCH_SUPPORT_PRIORITY = WITCH_BLOCK_START + 1;
+	public static final int WITCH_OFFENSE_PRIORITY = WITCH_BLOCK_START + 2;
+	// Rank 8 stays free. The aura sits at the top of the block, as planned.
+	public static final int WITCH_AURA_PRIORITY = WITCH_BLOCK_START + 4;
 	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
 	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE);
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
@@ -70,6 +80,25 @@ public final class BehaviorInstaller {
 		if (mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
 			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new ShieldUseGoal<>(monster));
 		}
+
+		if (mob instanceof Witch witch) {
+			installWitch(witch);
+		}
+	}
+
+	/**
+	 * The witch's four goals claim no flags, so they can neither starve nor be starved by vanilla's
+	 * own witch goals, which hold MOVE and LOOK from rank 1 to 3.
+	 */
+	private static void installWitch(final Witch witch) {
+		if (WitchElite.roll(witch.getRandom(), WitchElite.DEFAULT_CHANCE)) {
+			WitchElite.mark(witch);
+		}
+
+		witch.getGoalSelector().addGoal(WITCH_SELF_HEAL_PRIORITY, new WitchSelfHealGoal<>(witch));
+		witch.getGoalSelector().addGoal(WITCH_SUPPORT_PRIORITY, new WitchSupportHealGoal<>(witch));
+		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));
+		witch.getGoalSelector().addGoal(WITCH_AURA_PRIORITY, new WitchEliteAuraGoal<>(witch));
 	}
 
 	private static RoleSpec resolveRole(final Mob mob, final ReactiveState state, final Identifier entityType) {
