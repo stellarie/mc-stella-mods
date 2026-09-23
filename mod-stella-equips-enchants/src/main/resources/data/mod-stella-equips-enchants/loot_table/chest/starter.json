@@ -1,0 +1,104 @@
+{
+	"type": "minecraft:chest",
+	"_note": "oniichan's head start. Seven guaranteed iron pieces, one of each, and each carries two random enchantments from the same chest tag the rest of the slice uses, so no curse and no test fixture can appear. This is deliberately NOT the ordinary gear roll: the ordinary roll is random, tiered and 30 percent, and this is neither. It attaches only to minecraft:chests/spawn_bonus_chest and never to a found chest. Items are literal rather than a tag because the ask names them exactly: sword, pickaxe, axe, and the four armour pieces.",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_sword",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_pickaxe",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_axe",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_helmet",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_chestplate",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_leggings",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:iron_boots",
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 2
+					}
+				}
+			]
+		}
+	]
+}

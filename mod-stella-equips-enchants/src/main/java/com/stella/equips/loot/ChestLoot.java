@@ -16,20 +16,39 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
 
 /**
- * Attaches the chest pools to the vanilla chest tables. The pools themselves are loot table JSON.
+ * Attaches the chest pools to every container loot table, vanilla or modded. The pools
+ * themselves are loot table JSON.
  */
 public final class ChestLoot {
-	private static final String CHEST_FOLDER = "chests/";
+	private static final String BONUS_CHEST = "spawn_bonus_chest";
 	private static final List<Identifier> POOLS = List.of(
 		id("chest/gear"),
 		id("chest/book"),
 		id("chest/jackpot")
 	);
-	/** A tutorial chest, an arrow trap, and a barrel are not chests a player searches. */
-	private static final Set<String> EXCLUDED = Set.of(
-		"chests/spawn_bonus_chest",
-		"chests/jungle_temple_dispenser",
-		"chests/trial_chambers/intersection_barrel"
+	/** The head start a new player gets, which replaces the ordinary rolls in the bonus chest. */
+	private static final List<Identifier> STARTER_POOLS = List.of(id("chest/starter"));
+	/** Vanilla files every chest a player searches under this one folder. */
+	private static final String VANILLA_CHEST_FOLDER = "chests";
+	/**
+	 * The words a container is named with, matched anywhere in the path and in any
+	 * namespace. This is what reaches the structure mods, which file their containers
+	 * under folders of their own or at the root: Repurposed Structures uses `barrels`,
+	 * `trapped_chests` and `shulker_boxes`, Towns and Towers uses `village` and `outpost`,
+	 * and the Moogs mods name tables like `desert_temple_crypt_chest` with no folder.
+	 */
+	private static final List<String> CONTAINER_WORDS = List.of(
+		"chest", "barrel", "crate", "shulker", "cache", "stash", "supply", "treasure", "reward", "pot"
+	);
+	/** An arrow trap is not a container a player searches, and a trial spawner is not one either. */
+	private static final Set<String> EXCLUDED_FOLDERS = Set.of("dispensers", "spawners");
+	/** Two vanilla tables sit in the chest folder but are not containers worth filling. */
+	private static final Set<String> EXCLUDED_TABLES = Set.of(
+		"chests/jungle_temple_dispenser", "chests/trial_chambers/intersection_barrel"
+	);
+	/** Nothing of ours is a container to fill, and a test fixture must never reach play. */
+	private static final Set<String> EXCLUDED_NAMESPACES = Set.of(
+		StellaEquips.MOD_ID, StellaEquips.MOD_ID + "-test-" + StellaEquips.MOD_ID
 	);
 
 	private ChestLoot() {
@@ -39,12 +58,45 @@ public final class ChestLoot {
 		LootTableEvents.MODIFY.register(ChestLoot::modifyLootTable);
 	}
 
-	/** True for a vanilla chest table that a player can find and open. */
+	/** The folder a path is filed under, or the path itself when it has no folder. */
+	private static String folder(final Identifier location) {
+		String path = location.getPath();
+		return path.contains("/") ? path.substring(0, path.indexOf('/')) : path;
+	}
+
+	private static boolean namesAContainer(final String path) {
+		for (String word : CONTAINER_WORDS) {
+			if (path.contains(word)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/** True for a container table a player can find and open, in any namespace. */
 	public static boolean targetsChest(final ResourceKey<LootTable> key) {
 		Identifier location = key.identifier();
-		return location.getNamespace().equals("minecraft")
-			&& location.getPath().startsWith(CHEST_FOLDER)
-			&& !EXCLUDED.contains(location.getPath());
+		if (EXCLUDED_NAMESPACES.contains(location.getNamespace())) {
+			return false;
+		}
+
+		String folder = folder(location);
+		if (EXCLUDED_FOLDERS.contains(folder) || EXCLUDED_TABLES.contains(location.getPath())) {
+			return false;
+		}
+
+		// Vanilla keeps every searched chest in one folder, whatever the table is called.
+		if (location.getNamespace().equals("minecraft") && folder.equals(VANILLA_CHEST_FOLDER)) {
+			return true;
+		}
+
+		return namesAContainer(location.getPath());
+	}
+
+	/** The pools a table receives. The bonus chest gets the head start instead of the random rolls. */
+	public static List<Identifier> poolsFor(final ResourceKey<LootTable> key) {
+		return key.identifier().getPath().endsWith(BONUS_CHEST) ? STARTER_POOLS : POOLS;
 	}
 
 	private static void modifyLootTable(
@@ -59,7 +111,7 @@ public final class ChestLoot {
 
 		HolderGetter<LootTable> tables = registries.lookupOrThrow(Registries.LOOT_TABLE);
 
-		for (Identifier pool : POOLS) {
+		for (Identifier pool : poolsFor(key)) {
 			Holder<LootTable> table = tables.getOrThrow(ResourceKey.create(Registries.LOOT_TABLE, pool));
 			builder.withPool(LootPool.lootPool().add(NestedLootTable.lootTableReference(table)));
 		}
