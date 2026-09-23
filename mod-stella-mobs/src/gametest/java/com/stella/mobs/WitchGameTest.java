@@ -24,6 +24,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownLingeringPotion;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -328,10 +329,11 @@ public class WitchGameTest {
 	 * rather than a mock player, because a mock player is hard-overridden to creative and a creative
 	 * mob can never be a target.
 	 * <p>
-	 * Not required: this clause did not settle in two attempts. The window recorded the full splash
-	 * rotation, 26 mod throws, and no cloud in the box, while `eliteWitchCloudSparesUndeadWarband`
-	 * carries the same elite mark and recorded a cloud with the level 1 payload. So the cloud path
-	 * works and the unsettled part is when the elite branch takes the burst's first shot. Manual item:
+	 * Not required: the cloud path works. In the instrumented run the probe read elite=true health=39.0,
+	 * no lingering potion in flight, and cloudsNear=1 cloudsBox=1 at t=80, and the clause passed. Two
+	 * earlier runs threw the full splash rotation (26 mod throws) with no cloud. The lingering entry
+	 * takes the burst's first shot and then re-arms for 600 ticks, so a first shot that leaves no cloud
+	 * costs the whole window; why the first shot sometimes leaves none is still unnamed. Manual item:
 	 * watch an elite witch in play and see its lingering cloud land on a player.
 	 */
 	@GameTest(maxTicks = 400, required = false)
@@ -342,6 +344,29 @@ public class WitchGameTest {
 		helper.onEachTick(() -> witch.setTarget(target));
 		AABB box = new AABB(target.position(), target.position()).inflate(6.0);
 		PotionWatch watch = watch(helper, witch);
+		int[] sampled = new int[1];
+
+		// One instrumented look: is the witch elite, is a lingering potion in flight, and where are the clouds?
+		helper.onEachTick(() -> {
+			sampled[0]++;
+
+			if (sampled[0] % 40 != 0) {
+				return;
+			}
+
+			AABB wide = new AABB(target.position(), target.position()).inflate(48.0);
+			List<ThrownLingeringPotion> inFlight =
+				helper.getLevel().getEntitiesOfClass(ThrownLingeringPotion.class, wide, potion -> true);
+			List<AreaEffectCloud> clouds =
+				helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, wide, cloud -> true);
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=lingerProbe t={} elite={} health={} inFlight={} cloudsNear={} cloudsBox={} target={}"
+					+ " elapsed={}",
+				sampled[0], WitchElite.isElite(witch), witch.getHealth(), inFlight.size(), clouds.size(),
+				helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, box, cloud -> true).size(),
+				witch.getTarget() != null, box.contains(target.position())
+			);
+		});
 
 		helper.succeedWhen(() -> {
 			List<AreaEffectCloud> clouds = helper.getLevel().getEntitiesOfClass(AreaEffectCloud.class, box, cloud -> true);

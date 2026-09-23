@@ -42,6 +42,7 @@ public final class ReactiveState {
 	private boolean elite;
 	private @Nullable ServerBossEvent bossBar;
 	private long voidDragReadyTick;
+	private long harpoonReadyTick;
 	private int retreatCooldownTicks;
 	private boolean companionSpawned;
 	private @Nullable UUID companionId;
@@ -252,6 +253,15 @@ public final class ReactiveState {
 
 	public void setVoidDragReadyTick(final long voidDragReadyTick) {
 		this.voidDragReadyTick = voidDragReadyTick;
+	}
+
+	/** P2: the harpoon's rearm, so one drowned cannot chain pulls with a fast throw. */
+	public long getHarpoonReadyTick() {
+		return this.harpoonReadyTick;
+	}
+
+	public void setHarpoonReadyTick(final long harpoonReadyTick) {
+		this.harpoonReadyTick = harpoonReadyTick;
 	}
 
 	/** B05: one companion per boss, so a re-queue cannot double the squad. */

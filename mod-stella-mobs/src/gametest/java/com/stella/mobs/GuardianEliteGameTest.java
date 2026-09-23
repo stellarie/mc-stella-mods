@@ -17,6 +17,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -399,6 +400,42 @@ public class GuardianEliteGameTest {
 	private static void pin(final GameTestHelper helper, final Mob mob, final double x, final double y, final double z) {
 		Vec3 spot = helper.absoluteVec(new Vec3(x, y, z));
 		helper.onEachTick(() -> mob.setPos(spot.x, spot.y, spot.z));
+	}
+
+	/** P6: the elite guardian's aura also slows, which is the tether that holds a runner for the beam. */
+	@GameTest(maxTicks = 200)
+	public void guardianTetherSlowsNearbyPlayers(final GameTestHelper helper) {
+		GearConfig previous = GearConfigStore.get();
+		try {
+			GearConfigStore.set(GearConfigParser.parse(NO_ROLL));
+			buildArena(helper, 4, 4);
+			Guardian guardian = spawnGuardian(helper, 4, 4);
+			ServerPlayer near = target(helper, 4, 3, 4 + NEAR_DISTANCE);
+			pin(helper, guardian, 4.5, 3.0, 4.5);
+
+			helper.runAfterDelay(60L, () -> {
+				helper.assertFalse(near.hasEffect(MobEffects.SLOWNESS), "a plain guardian tethered a player");
+				Elite.mark(guardian, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+			});
+
+			helper.succeedWhen(() -> {
+				MobEffectInstance slow = near.getEffect(MobEffects.SLOWNESS);
+				helper.assertTrue(
+					slow != null, "the tether never slowed the player inside " + EliteAuraGoal.RADIUS + " blocks"
+				);
+				helper.assertValueEqual(
+					Integer.valueOf(slow.getAmplifier()), Integer.valueOf(EliteAuraGoal.AMPLIFIER),
+					"the tether's slow level"
+				);
+				result(
+					"guardianTetherSlows",
+					"radius=" + EliteAuraGoal.RADIUS + " slowLevel=" + slow.getAmplifier() + " slowTicks="
+						+ slow.getDuration()
+				);
+			});
+		} finally {
+			GearConfigStore.set(previous);
+		}
 	}
 
 	/** The rank the aura goal was given, so the free slot below the witch's 9 is asserted, not assumed. */
