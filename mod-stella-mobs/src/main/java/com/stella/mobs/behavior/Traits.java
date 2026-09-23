@@ -44,11 +44,10 @@ public final class Traits {
 	/** T06: the chance an end mob negates a hit entirely, shown by the teleport tell. */
 	public static final double END_NEGATE_CHANCE = 0.25;
 	private static double heatRoll = HEAT_CHANCE;
-	private static double endRoll = END_NEGATE_CHANCE;
 
 	/**
-	 * Pins the two chances, so a chance clause is never reached by luck. A test sets these and restores
-	 * the shipped values in a finally, which is the same shape the global config store already uses.
+	 * Pins the heat chance, so a chance clause is never reached by luck. A test sets this and restores the
+	 * shipped value in a finally, which is the same shape the global config store already uses.
 	 */
 	public static void pinHeatRoll(final double chance) {
 		heatRoll = chance;
@@ -56,14 +55,6 @@ public final class Traits {
 
 	public static double heatRoll() {
 		return heatRoll;
-	}
-
-	public static void pinEndRoll(final double chance) {
-		endRoll = chance;
-	}
-
-	public static double endRoll() {
-		return endRoll;
 	}
 
 	private Traits() {
@@ -153,11 +144,6 @@ public final class Traits {
 	/** Whether this mob took the named trait at spawn. */
 	public static boolean has(final Mob mob, final String trait) {
 		return EliteState.traits(mob).contains(trait);
-	}
-
-	/** T05 and T06: the heat ignition and the end negation, both read through their pinned rolls. */
-	public static boolean rolls(final double chance, final net.minecraft.util.RandomSource random) {
-		return random.nextDouble() < chance;
 	}
 
 	/**
