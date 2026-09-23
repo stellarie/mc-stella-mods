@@ -34,7 +34,7 @@ public final class BroodMother {
 			return;
 		}
 
-		if (!Bosses.isBoss(spider) || EliteState.isBroodBorn(spider)) {
+		if (!EliteState.hasBossFlag(spider) || EliteState.isBroodBorn(spider)) {
 			return;
 		}
 

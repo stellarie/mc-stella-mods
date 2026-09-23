@@ -26,6 +26,8 @@ public final class BehaviorInstaller {
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
 	public static final int DEFEND_PRIORITY = 4;
+	/** The vanilla melee and bow slot, which a replacement takes. */
+	public static final int MELEE_PRIORITY = 4;
 	// R25: the pearl throw claims no flags, so it sits above the shared block and can tie nothing.
 	public static final int PEARL_PRIORITY = 5;
 	// The witch block starts above the shared block. Ranks 0 to 4 are retreat,

@@ -229,6 +229,12 @@ public class EliteFrameworkGameTest {
 	public void anOrdinaryZombieIsNotCountedAsAnEscort(final GameTestHelper helper) {
 		Zombie elite = spawn(helper, ALWAYS_ELITE);
 
+		// The squad drains a tick after the queue, so the count waits for it rather than sampling a fixed
+		// tick: the wanderer clause comes after, when the state has settled.
+		helper.succeedWhen(() -> helper.assertValueEqual(
+			Integer.valueOf(escortsOf(helper, elite).size()), Integer.valueOf(EscortSquad.ESCORT_COUNT),
+			"escort count before the wanderer"
+		));
 		helper.runAfterDelay(20L, () -> {
 			int before = escortsOf(helper, elite).size();
 			// A plain zombie standing in the same box: not summoned, so not an escort. The config is

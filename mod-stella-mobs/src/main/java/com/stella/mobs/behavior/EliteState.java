@@ -22,7 +22,6 @@ import net.minecraft.world.entity.Mob;
  */
 public record EliteState(
 	boolean summoned,
-	boolean warCallUsed,
 	boolean elite,
 	Optional<GearTier> eliteTier,
 	int pearlsLeft,
@@ -33,7 +32,6 @@ public record EliteState(
 ) {
 	public static final Codec<EliteState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("summoned", false).forGetter(EliteState::summoned),
-		Codec.BOOL.optionalFieldOf("war_call_used", false).forGetter(EliteState::warCallUsed),
 		Codec.BOOL.optionalFieldOf("elite", false).forGetter(EliteState::elite),
 		GearTier.CODEC.optionalFieldOf("elite_tier").forGetter(EliteState::eliteTier),
 		Codec.INT.optionalFieldOf("pearls_left", 0).forGetter(EliteState::pearlsLeft),
@@ -47,7 +45,7 @@ public record EliteState(
 	);
 
 	public EliteState() {
-		this(false, false, false, Optional.empty(), 0, false, false, false, false);
+		this(false, false, Optional.empty(), 0, false, false, false, false);
 	}
 
 	public static void register() {
@@ -68,14 +66,6 @@ public record EliteState(
 
 	public static void setSummoned(final Mob mob, final boolean summoned) {
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withSummoned(summoned));
-	}
-
-	public static boolean isWarCallUsed(final Mob mob) {
-		return get(mob).warCallUsed();
-	}
-
-	public static void setWarCallUsed(final Mob mob, final boolean warCallUsed) {
-		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withWarCallUsed(warCallUsed));
 	}
 
 	public static void markElite(final Mob mob, final GearTier tier) {
@@ -133,49 +123,42 @@ public record EliteState(
 
 	public EliteState withSummoned(final boolean value) {
 		return new EliteState(
-			value, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
 			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
-	public EliteState withWarCallUsed(final boolean value) {
+		public EliteState asElite(final GearTier tier) {
 		return new EliteState(
-			this.summoned, value, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
-			this.broodBorn, this.secondPhaseUsed
-		);
-	}
-
-	public EliteState asElite(final GearTier tier) {
-		return new EliteState(
-			this.summoned, this.warCallUsed, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast,
+			this.summoned, true, Optional.of(tier), this.pearlsLeft, this.boss, this.stormCast,
 			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withPearlsLeft(final int value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, value, this.boss, this.stormCast,
+			this.summoned, this.elite, this.eliteTier, value, this.boss, this.stormCast,
 			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withBoss(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast,
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, value, this.stormCast,
 			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withStormCast(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value,
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, value,
 			this.broodBorn, this.secondPhaseUsed
 		);
 	}
 
 	public EliteState withBroodBorn(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
 			value, this.secondPhaseUsed
 		);
 	}
@@ -191,7 +174,7 @@ public record EliteState(
 
 	public EliteState withSecondPhaseUsed(final boolean value) {
 		return new EliteState(
-			this.summoned, this.warCallUsed, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
+			this.summoned, this.elite, this.eliteTier, this.pearlsLeft, this.boss, this.stormCast,
 			this.broodBorn, value
 		);
 	}
