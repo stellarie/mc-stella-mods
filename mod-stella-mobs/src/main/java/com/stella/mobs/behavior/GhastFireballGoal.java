@@ -135,26 +135,34 @@ public class GhastFireballGoal extends Goal {
 	}
 
 	private void applyPayload(final Vec3 hit) {
-		if (!(this.ghast.level() instanceof ServerLevel level)) {
-			return;
-		}
-
-		AABB box = new AABB(hit, hit).inflate(PAYLOAD_RADIUS);
-
-		// A direct predicate, not TargetingConditions: a target the blast just hurt carries immunity
-		// frames, and the combat conditions refuse an invulnerable target, which is exactly the victim.
-		for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, box, this::isPayloadTarget)) {
-			victim.igniteForSeconds(BURN_SECONDS);
-			victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOWNESS_TICKS, SLOWNESS_AMPLIFIER), this.ghast);
-			victim.addEffect(new MobEffectInstance(MobEffects.POISON, POISON_TICKS, POISON_AMPLIFIER), this.ghast);
+		if (this.ghast.level() instanceof ServerLevel level) {
+			applyPayload(level, this.ghast, hit, PAYLOAD_RADIUS);
 		}
 	}
 
-	private boolean isPayloadTarget(final LivingEntity candidate) {
-		return candidate != this.ghast
+	/**
+	 * The payload as a call that takes a level, a source, a position and a radius, so a test can assert
+	 * what a blast does without a fireball ever landing.
+	 */
+	public static void applyPayload(
+		final ServerLevel level, final LivingEntity source, final Vec3 hit, final double radius
+	) {
+		AABB box = new AABB(hit, hit).inflate(radius);
+
+		// A direct predicate, not TargetingConditions: a target the blast just hurt carries immunity
+		// frames, and the combat conditions refuse an invulnerable target, which is exactly the victim.
+		for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, box, candidate -> isPayloadTarget(source, candidate))) {
+			victim.igniteForSeconds(BURN_SECONDS);
+			victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOWNESS_TICKS, SLOWNESS_AMPLIFIER), source);
+			victim.addEffect(new MobEffectInstance(MobEffects.POISON, POISON_TICKS, POISON_AMPLIFIER), source);
+		}
+	}
+
+	private static boolean isPayloadTarget(final LivingEntity source, final LivingEntity candidate) {
+		return candidate != source
 			&& candidate.isAlive()
 			&& !candidate.isSpectator()
-			&& !this.ghast.isAlliedTo(candidate);
+			&& !source.isAlliedTo(candidate);
 	}
 
 	private void playSound(final net.minecraft.sounds.SoundEvent event) {
