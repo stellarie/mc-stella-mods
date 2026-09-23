@@ -15,6 +15,7 @@
 			"com.stella.mobs.GearRollGameTest",
 			"com.stella.mobs.MobHarnessGameTest",
 			"com.stella.mobs.RoleGameTest",
+			"com.stella.mobs.SpawnScalingGameTest",
 			"com.stella.mobs.WitchGameTest"
 		]
 	}

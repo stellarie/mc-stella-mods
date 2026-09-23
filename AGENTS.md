@@ -41,6 +41,13 @@ works on one. They are the standard, not a suggestion.
   stays green with the code removed tests nothing, and this was proven the hard
   way: a ranged-retreat test passed for a whole night because the subject spawned
   outside the band it was supposed to test.
+- **A new gametest class must be listed in `src/gametest/resources/fabric.mod.json`.**
+  A class that is not listed is never executed and the suite still reports green.
+  This happened too: three new tests were written, the suite passed at exactly
+  the count it had before, and the tests had never run.
+- So when you add a test class, confirm its name appears in the run log and
+  confirm the required count changed. A green suite at an unchanged count is not
+  evidence about the new test.
 - Assert against the constant that ships, not a copy of its value, so moving the
   constant moves the test with it.
 - Keep every test bound derived from the constant it measures. A bound written

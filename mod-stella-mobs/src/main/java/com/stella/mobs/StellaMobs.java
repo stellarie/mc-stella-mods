@@ -11,6 +11,7 @@ import com.stella.mobs.config.Loadout;
 import com.stella.mobs.gear.EnchantRoller;
 import com.stella.mobs.gear.GearApplier;
 import com.stella.mobs.gear.GearRoller;
+import com.stella.mobs.scaling.SpawnScaling;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.EntityLoadData;
@@ -82,6 +83,8 @@ public class StellaMobs implements ModInitializer {
 			Elite.rollAtSpawn(
 				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
 			);
+
+			SpawnScaling.apply(mob);
 		}
 
 		BehaviorInstaller.install(mob);
