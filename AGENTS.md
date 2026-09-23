@@ -94,13 +94,18 @@ works on one. They are the standard, not a suggestion.
   `tickInternal`. Register the per-tick work from the test body instead. This cost
   one crashed server on 2026-09-23; the report is in
   `build/run/gameTest/crash-reports/`.
-- A test that observes a real duration costs that duration. The storm's 1200 tick
-  window took the suite from about 50 seconds a run to about 2.6 minutes, so the
-  five-run gate needs two tool calls.
+- A suite that slows down has a cause. Find it rather than working around it. The
+  boss slice's runs took 2.6 minutes and the storm's 1200 tick window was blamed
+  for it. The real cause was a whole-level entity sweep on every level tick, for
+  the boss bar. With a watch list instead, the same 113 tests complete in about
+  9 seconds. An earlier version of this note carried the wrong cause; the
+  measurement that corrected it is in `mc-stella-mods-bosses.work/W005-rin-impl.md`.
 
 ## Work standard
 
 - One writer per file. Gradle runs serialize; one worker holds the token.
+- Waiting on another worker is a poll, not a vigil. Wait ten minutes, then re-check
+  the agents and the task board, and keep useful work moving between polls.
 - Every phase gets an independent review by someone other than its author.
 - Record a deviation from a locked plan in the task thread, with its reason.
 - Keep the config editable by hand. An exact entry wins over a generated one,
