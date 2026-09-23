@@ -6,6 +6,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
+import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.entity.monster.spider.Spider;
 
 /**
@@ -38,6 +39,10 @@ public final class BossAbilities {
 
 		if (mob instanceof Blaze blaze && !alreadyInstalled(mob, RingOfFireGoal.class)) {
 			mob.getGoalSelector().addGoal(RingOfFireGoal.PRIORITY, new RingOfFireGoal(blaze));
+		}
+
+		if (mob instanceof WitherSkeleton skeleton && !alreadyInstalled(mob, DecayAuraGoal.class)) {
+			mob.getGoalSelector().addGoal(FLAGLESS_PRIORITY, new DecayAuraGoal(skeleton));
 		}
 	}
 

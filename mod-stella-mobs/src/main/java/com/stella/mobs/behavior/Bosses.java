@@ -31,7 +31,9 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -208,6 +210,12 @@ public final class Bosses {
 			case MELEE, MAGIC -> GearTier.NETHERITE.meleeWeapon();
 		};
 		mob.setItemSlot(EquipmentSlot.MAINHAND, fullyEnchant(new ItemStack(weapon), registry));
+
+		// The decay boss fights behind a shield, and the installer that runs after the kit sees it and adds
+		// ShieldUseGoal. A shield is not netherite, which is the one deliberate exception to the kit's grade.
+		if (mob instanceof WitherSkeleton) {
+			mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+		}
 
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			if (!mob.getItemBySlot(slot).isEmpty()) {
