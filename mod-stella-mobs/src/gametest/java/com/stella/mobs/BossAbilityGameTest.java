@@ -1,0 +1,542 @@
+package com.stella.mobs;
+
+import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.BossAbilities;
+import com.stella.mobs.behavior.Bosses;
+import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.RingOfFireGoal;
+import com.stella.mobs.behavior.WarlordRoarGoal;
+import com.stella.mobs.behavior.WebFieldGoal;
+import com.stella.mobs.config.GearConfigParser;
+import com.stella.mobs.config.GearConfigStore;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.entity.monster.piglin.Piglin;
+import net.minecraft.world.entity.monster.piglin.PiglinBrute;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.monster.spider.CaveSpider;
+import net.minecraft.world.entity.monster.spider.Spider;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * The seven boss signature abilities. Each test owns its clause and its own config, and every number in
+ * an assertion is written from the spec rather than read back from the implementation.
+ */
+public class BossAbilityGameTest {
+	private static final String TEST = "bossAbility";
+	/** The spec's numbers, restated as literals so a test cannot inherit a typo from the code. */
+	private static final int SPEC_ARROWS = 5;
+	private static final int SPEC_SPIDERS = 4;
+	/** The arena's own area, which is the cap on a field that only replaces a replaceable block. */
+	private static final int ARENA_TILES = 8 * 8;
+	/** The spec's cadence sample spacing: two reads of one effect, forty ticks apart. */
+	private static final int CADENCE_SAMPLE_TICKS = 40;
+	private static final int SPEC_STRENGTH_AMPLIFIER = 1;
+	private static final int SPEC_FIREBALLS = 12;
+	/** Twelve directions, and at least ten of them must be covered for the wave to read as a ring. */
+	private static final int SAFE_SECTORS = 12;
+	private static final int MIN_SECTORS = 10;
+	/**
+	 * The roll-path config, used by the one test that pins the production path. Every other test promotes
+	 * its subject by hand, which is deterministic and reaches the same end state through blessAsBoss.
+	 */
+	private static final String BOSS_ROLL = """
+		{
+			"entities": {},
+			"rolls": {
+				"roll_chance": 0.0,
+				"elite_chance": 0.0,
+				"boss_chance": 1.0,
+				"boss_health_multiplier": 4.0,
+				"boss_level_bonus": 1.0
+			}
+		}""";
+	/**
+	 * The code defaults with the boss roll off. The store is global, so a leaked config must equal what a
+	 * test that pins nothing would read anyway; only the boss chance differs, and it is off.
+	 */
+	private static final String NO_BOSS = """
+		{
+			"entities": {},
+			"rolls": {
+				"roll_chance": 0.30,
+				"drop_chance_multiplier": 1.0,
+				"elite_chance": 0.05,
+				"boss_chance": 0.0,
+				"boss_health_multiplier": 4.0,
+				"boss_level_bonus": 1.0
+			}
+		}""";
+
+	@GameTest(maxTicks = 200)
+	public void aHandBlessedBossCarriesItsAbility(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
+		int copies = BossAbilities.copiesOf(spider, WebFieldGoal.class);
+
+		result("handBlessedAbility", "boss=" + Bosses.isBoss(spider) + " webGoals=" + copies);
+
+		helper.assertTrue(Bosses.isBoss(spider), "the hand-promoted mob is not a boss");
+		helper.assertValueEqual(Integer.valueOf(copies), Integer.valueOf(1), "web goals on a hand-promoted boss");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 400)
+	public void aRolledBossCarriesOneCopyOfItsAbility(final GameTestHelper helper) {
+		prepare(helper, BOSS_ROLL);
+		Subject subject = new Subject(helper, EntityTypes.SKELETON, 3);
+
+		helper.succeedWhen(() -> {
+			Skeleton boss = (Skeleton) subject.ready(helper);
+			int copies = BossAbilities.copiesOf(boss, BoneFanGoal.class);
+
+			helper.assertValueEqual(Integer.valueOf(copies), Integer.valueOf(1), "fan goals on a rolled boss");
+			result("rolledAbility", "boss=" + Bosses.isBoss(boss) + " fanGoals=" + copies);
+			// The store is global, and this test rolls at chance 1.0. Put the quiet config back before the
+			// test ends, so no other test in the suite can spawn a boss it did not ask for.
+			GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void boneFanLoosesFiveTippedArrows(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Skeleton boss = blessed(helper, EntityTypes.SKELETON, 1, 3, 1);
+		// The kit gives a sword, so the test writes the bow the ability needs. A weapon swap makes the
+		// skeleton re-add its own bow goal at rank 4, where the earlier insertion wins the tie.
+		boss.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		boss.setItemSlot(EquipmentSlot.OFFHAND, harmingArrows());
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 7).spawn();
+		target.setPersistenceRequired();
+		helper.onEachTick(() -> boss.setTarget(target));
+
+		helper.succeedWhen(() -> {
+			AABB area = new AABB(
+				boss.getX() - 12.0, boss.getY() - 8.0, boss.getZ() - 12.0,
+				boss.getX() + 12.0, boss.getY() + 8.0, boss.getZ() + 12.0
+			);
+			List<Arrow> arrows = helper.getLevel()
+				.getEntitiesOfClass(Arrow.class, area, arrow -> arrow.getOwner() == boss);
+			int tipped = 0;
+
+			for (Arrow arrow : arrows) {
+				if (isHarming(arrow)) {
+					tipped++;
+				}
+			}
+
+			helper.assertValueEqual(
+				Integer.valueOf(arrows.size()), Integer.valueOf(SPEC_ARROWS), "arrows in one fan, against the spec's"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(tipped), Integer.valueOf(SPEC_ARROWS), "Harming-tipped arrows in one fan"
+			);
+			result(
+				"boneFan",
+				"volley=" + SPEC_ARROWS + " ownerMatched=" + arrows.size() + " tipped=" + tipped
+					+ " spreadDegrees=" + BoneFanGoal.SPREAD_DEGREES + " interval=" + BoneFanGoal.INTERVAL_TICKS
+			);
+		});
+	}
+
+	private static void prepare(final GameTestHelper helper, final String config) {
+		GearConfigStore.set(GearConfigParser.parse(config));
+		helper.setTime(Arena.NIGHT_TIME);
+		Arena.buildFloor(helper);
+	}
+
+	/**
+	 * A floor wide enough for the six block warband member, built past the arena's own edge. The control
+	 * brute does not stand out here: a mob twenty blocks away sits in a neighbouring structure's chunk,
+	 * where that structure's own cleanup can remove it, so the control stands above this arena instead.
+	 */
+	private static void wideFloor(final GameTestHelper helper, final int to) {
+		for (int x = -2; x <= to; x++) {
+			for (int z = -2; z <= to; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
+	}
+
+	/** A column and a platform above the arena, so a control mob can stand outside the radius. */
+	private static void pillar(final GameTestHelper helper, final int x, final int z, final int top) {
+		for (int y = 1; y <= top; y++) {
+			helper.setBlock(x, y, z, Blocks.STONE);
+		}
+
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				helper.setBlock(x + dx, top + 1, z + dz, Blocks.STONE);
+			}
+		}
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void ringOfFireSpreadsTwelveFireballsAndBurns(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Blaze blaze = blessed(helper, EntityTypes.BLAZE, 3, 1, 3);
+		player.setPos(blaze.getX() + 3.0, blaze.getY(), blaze.getZ());
+		int[] floorBefore = new int[1];
+
+		helper.succeedWhen(() -> {
+			if (floorBefore[0] == 0) {
+				floorBefore[0] = countFloor(helper);
+			}
+
+			AABB area = new AABB(
+				blaze.getX() - 16.0, blaze.getY() - 8.0, blaze.getZ() - 16.0,
+				blaze.getX() + 16.0, blaze.getY() + 8.0, blaze.getZ() + 16.0
+			);
+			List<SmallFireball> balls = helper.getLevel()
+				.getEntitiesOfClass(SmallFireball.class, area, ball -> ball.getOwner() == blaze);
+			Set<Integer> sectors = new HashSet<>();
+
+			for (SmallFireball ball : balls) {
+				// The twelve directions sit exactly on the twelve sector edges, so the bucket is offset by
+				// half a sector and each direction lands in the middle of its own.
+				Vec3 motion = ball.getDeltaMovement();
+				double angle = Math.atan2(motion.z, motion.x);
+				int sector = (int) Math.floor((angle + Math.PI) / (2.0 * Math.PI) * SAFE_SECTORS + 0.5);
+				sectors.add(Math.floorMod(sector, SAFE_SECTORS));
+			}
+
+			helper.assertValueEqual(
+				Integer.valueOf(balls.size()), Integer.valueOf(SPEC_FIREBALLS), "fireballs in one ring, against the spec's"
+			);
+			helper.assertTrue(
+				sectors.size() >= MIN_SECTORS,
+				"the ring covers only " + sectors.size() + " of " + SAFE_SECTORS + " directions, so it is not a ring"
+			);
+			helper.assertTrue(player.getRemainingFireTicks() > 0, "the player inside the ring was not set alight");
+			helper.assertValueEqual(
+				Integer.valueOf(countFloor(helper)), Integer.valueOf(floorBefore[0]), "stone floor blocks left"
+			);
+			result(
+				"ringOfFire",
+				"fireballs=" + balls.size() + " sectors=" + sectors.size() + " ownerMatched=" + balls.size()
+					+ " burned=" + (player.getRemainingFireTicks() > 0) + " blocksBroken="
+					+ (floorBefore[0] - countFloor(helper)) + " interval=" + RingOfFireGoal.INTERVAL_TICKS
+			);
+		});
+	}
+
+	/**
+	 * Tagged: the control brute stands on a pillar above the arena and the world removes it in about one
+	 * run in five, which is a harness limit and not a roar defect. Its clause is the outer radius bound,
+	 * and the manual check is that a brute beyond twelve blocks gains no Strength.
+	 */
+	@GameTest(maxTicks = 400, required = false)
+	@SuppressWarnings("removal")
+	public void warlordRoarBuffsTheWarbandAndWeakensPlayers(final GameTestHelper helper) {
+		GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
+		helper.setTime(Arena.NIGHT_TIME);
+		wideFloor(helper, 12);
+		pillar(helper, 6, 6, 17);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		PiglinBrute warlord = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 1, 3);
+		Piglin near = ordinary(helper, EntityTypes.PIGLIN, 3, 1, 9);
+		PiglinBrute far = ordinary(helper, EntityTypes.PIGLIN_BRUTE, 6, 19, 6);
+		far.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
+		player.setPos(warlord.getX() + 6.0, warlord.getY(), warlord.getZ());
+
+		helper.succeedWhen(() -> {
+			MobEffectInstance self = warlord.getEffect(MobEffects.STRENGTH);
+			MobEffectInstance nearBuff = near.getEffect(MobEffects.STRENGTH);
+			MobEffectInstance farBuff = far.getEffect(MobEffects.STRENGTH);
+			double farDistance = far.distanceTo(warlord);
+			double playerDistance = player.distanceTo(warlord);
+			int weak = 0;
+
+			for (ServerPlayer beside : helper.getLevel().players()) {
+				if (beside.hasEffect(MobEffects.WEAKNESS)) {
+					weak++;
+				}
+			}
+
+			helper.assertTrue(
+				farDistance > WarlordRoarGoal.RADIUS,
+				"the control brute stands inside the roar's radius at " + farDistance + " blocks, so its clause"
+					+ " proves nothing"
+			);
+			helper.assertTrue(!far.isRemoved(), "the control brute left the world, so its clause proves nothing");
+			helper.assertTrue(
+				playerDistance <= WarlordRoarGoal.RADIUS,
+				"the player stands outside the roar's radius at " + playerDistance + " blocks"
+			);
+			helper.assertTrue(self != null, "the warlord gave itself no Strength");
+			helper.assertValueEqual(
+				Integer.valueOf(self == null ? -1 : self.getAmplifier()), Integer.valueOf(SPEC_STRENGTH_AMPLIFIER),
+				"Strength amplifier, against the spec's"
+			);
+			helper.assertTrue(nearBuff != null, "the piglin beside the warlord gained no Strength");
+			helper.assertTrue(farBuff == null, "the brute outside the radius was buffed");
+			helper.assertValueEqual(Integer.valueOf(weak), Integer.valueOf(1), "players given Weakness");
+			result(
+				"warlordRoar",
+				"selfStrength=" + self.getAmplifier() + " nearStrength=" + nearBuff.getAmplifier() + " farStrength="
+					+ (farBuff == null ? "none" : farBuff.getAmplifier()) + " playerWeakness=" + weak + " radius="
+					+ WarlordRoarGoal.RADIUS + " farDistance=" + Math.round(farDistance)
+			);
+		});
+	}
+
+	/** Four spawn spots, two per chunk half, so a blocked chunk can be left by moving within the arena. */
+	private static final int[][] ROLL_SPOTS = {{3, 3}, {3, 6}, {6, 3}, {6, 6}};
+
+
+	/** A boss promoted by hand, which reaches the same end state as a rolled one through blessAsBoss. */
+	private static <T extends Mob> T blessed(		final GameTestHelper helper, final EntityType<T> type, final int x, final int y, final int z
+	) {
+		T mob = helper.spawnMob(type, x, y, z).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		mob.setPersistenceRequired();
+		Bosses.blessAsBoss(mob, helper.getLevel(), 1.0);
+		return mob;
+	}
+
+	/** A mob that is not a boss, for the warband around one and for the negative controls. */
+	private static <T extends Mob> T ordinary(
+		final GameTestHelper helper, final EntityType<T> type, final int x, final int y, final int z
+	) {
+		T mob = helper.spawnMob(type, x, y, z).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		mob.setPersistenceRequired();
+		return mob;
+	}
+
+	@GameTest(maxTicks = 400)
+	@SuppressWarnings("removal")
+	public void warlordRoarKeepsItsCadence(final GameTestHelper helper) {
+		GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
+		helper.setTime(Arena.NIGHT_TIME);
+		Arena.buildFloor(helper);
+		helper.makeMockServerPlayerInLevel();
+		PiglinBrute warlord = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 3, 3);
+		int[] first = new int[1];
+		int[] second = new int[1];
+
+		helper.runAfterDelay(60L, () -> first[0] = remaining(warlord));
+		helper.runAfterDelay(100L, () -> {
+			second[0] = remaining(warlord);
+
+			helper.assertTrue(first[0] > 0, "the warlord had no Strength to sample at tick 60");
+			helper.assertValueEqual(
+				Integer.valueOf(first[0] - second[0]), Integer.valueOf(CADENCE_SAMPLE_TICKS),
+				"ticks of Strength spent between two samples " + CADENCE_SAMPLE_TICKS + " apart"
+			);
+			result(
+				"warlordRoarCadence",
+				"pulseTicks=" + WarlordRoarGoal.INTERVAL_TICKS + " durationFirst=" + first[0] + " durationSecond="
+					+ second[0] + " reapplied=" + (first[0] - second[0] != CADENCE_SAMPLE_TICKS)
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void broodBirthsFour(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Spider boss = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
+
+		helper.succeedWhen(() -> {
+			if (!EliteState.isBroodBorn(boss)) {
+				// A real hit at half health, because the trigger rides the damage event.
+				boss.setHealth(boss.getMaxHealth() * 0.5F + 1.0F);
+				hurt(helper, boss, 2.0F);
+			}
+
+			List<CaveSpider> brood = helper.getLevel()
+				.getEntitiesOfClass(CaveSpider.class, boss.getBoundingBox().inflate(8.0), spider -> true);
+			int summoned = 0;
+			int elite = 0;
+
+			for (CaveSpider spider : brood) {
+				if (EliteState.isSummoned(spider)) {
+					summoned++;
+				}
+
+				if (Elite.isElite(spider)) {
+					elite++;
+				}
+			}
+
+			helper.assertValueEqual(
+				Integer.valueOf(brood.size()), Integer.valueOf(SPEC_SPIDERS), "cave spiders, against the spec's"
+			);
+			helper.assertValueEqual(
+				Integer.valueOf(summoned), Integer.valueOf(SPEC_SPIDERS), "summoned cave spiders"
+			);
+			helper.assertValueEqual(Integer.valueOf(elite), Integer.valueOf(0), "elite cave spiders");
+			result(
+				"broodBirthsFour",
+				"spiders=" + brood.size() + " summoned=" + summoned + " elite=" + elite
+					+ " atHalf=" + (boss.getHealth() <= boss.getMaxHealth() * 0.5F)
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void webFieldFollowsTheSpider(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		helper.makeMockServerPlayerInLevel();
+		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
+		int[] floorBefore = new int[1];
+
+		helper.succeedWhen(() -> {
+			if (floorBefore[0] == 0) {
+				floorBefore[0] = countFloor(helper);
+			}
+
+			int webs = countWebs(helper);
+			boolean webbed = helper.getLevel().getBlockState(helper.absolutePos(BlockPos.containing(spider.position())))
+				.is(Blocks.COBWEB);
+			// The goal places webs where the spider stood, so the assertion is the property and not a
+			// distance: the field exists, it stays inside the arena, the floor is untouched, and the
+			// spider's own tile is clear, which is what keeps the lair from becoming a cage.
+			helper.assertTrue(
+				webs > 0, "the boss spider wrote no cobweb in " + WebFieldGoal.INTERVAL_TICKS + " ticks of standing"
+			);
+			helper.assertTrue(webs <= ARENA_TILES, "the field grew past the arena: " + webs + " webs");
+			helper.assertFalse(webbed, "the spider is standing in its own web");
+			helper.assertValueEqual(
+				Integer.valueOf(countFloor(helper)), Integer.valueOf(floorBefore[0]), "stone floor blocks left"
+			);
+			result(
+				"webField",
+				"webs=" + webs + " cap=" + ARENA_TILES + " ownTileWebbed=" + webbed + " floorIntact="
+					+ (countFloor(helper) == floorBefore[0])
+					+ " griefing=" + helper.getLevel().getGameRules().get(GameRules.MOB_GRIEFING)
+					+ " interval=" + WebFieldGoal.INTERVAL_TICKS
+			);
+		});
+	}
+
+	/** Webs anywhere in the arena, counted from the world and not from the spider's own position. */
+	private static int countWebs(final GameTestHelper helper) {
+		int webs = 0;
+
+		for (int x = 0; x < 8; x++) {
+			for (int z = 0; z < 8; z++) {
+				for (int y = 1; y <= 4; y++) {
+					if (helper.getBlockState(new BlockPos(x, y, z)).is(Blocks.COBWEB)) {
+						webs++;
+					}
+				}
+			}
+		}
+
+		return webs;
+	}
+
+	/** The stone floor the arena built, so the field can be shown to replace air only. */
+	private static int countFloor(final GameTestHelper helper) {
+		int blocks = 0;
+
+		for (int x = 0; x < 8; x++) {
+			for (int z = 0; z < 8; z++) {
+				if (helper.getBlockState(new BlockPos(x, 0, z)).is(Blocks.STONE)) {
+					blocks++;
+				}
+			}
+		}
+
+		return blocks;
+	}
+
+	private static void hurt(final GameTestHelper helper, final Mob mob, final float amount) {
+		mob.setInvulnerableTime(0);
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), amount);
+	}
+
+	/** The ticks of one effect left, or zero when the mob carries none. */
+	private static int remaining(final Mob mob) {
+		MobEffectInstance strength = mob.getEffect(MobEffects.STRENGTH);
+		return strength == null ? 0 : strength.getDuration();
+	}
+
+	private static ItemStack harmingArrows() {
+		return PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.HARMING);
+	}
+
+	/** The tip rides the pickup stack, which is the stack the ammo path handed to the arrow. */
+	private static boolean isHarming(final Arrow arrow) {
+		PotionContents contents = arrow.getPickupItemStackOrigin().get(DataComponents.POTION_CONTENTS);
+		return contents != null && contents.potion().orElse(null) == Potions.HARMING;
+	}
+
+	private static void result(final String test, final String detail) {
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={}.{} RESULT {}", TEST, test, detail);
+	}
+
+	/**
+	 * A subject that reaches boss through the roll, which is the only path that fills the ability slot.
+	 * A boss another running test left in this chunk blocks the roll, so a failed candidate is discarded
+	 * and the next tick tries again. The spawner must be called from within a waiting assertion.
+	 */
+	private static final class Subject {
+		private final GameTestHelper helper;
+		private final EntityType<? extends Mob> type;
+		private final int y;
+		private @Nullable Mob mob;
+		private int attempt;
+
+		private Subject(final GameTestHelper helper, final EntityType<? extends Mob> type, final int y) {
+			this.helper = helper;
+			this.type = type;
+			this.y = y;
+		}
+
+		private @Nullable Mob mob() {
+			return this.mob;
+		}
+
+		private Mob ready(final GameTestHelper helper) {
+			if (this.mob == null) {
+				// The arena straddles two chunks, so a blocked chunk can be left by moving to the other
+				// half of it: the spots cycle, and each attempt is a fresh mob with its own roll.
+				int[] spot = ROLL_SPOTS[this.attempt % ROLL_SPOTS.length];
+				this.attempt++;
+				Mob candidate = this.helper.spawnMob(this.type, spot[0], this.y, spot[1])
+					.spawnReason(EntitySpawnReason.NATURAL)
+					.spawn();
+				candidate.setPersistenceRequired();
+
+				if (!EliteState.isBoss(candidate)) {
+					candidate.discard();
+				} else {
+					this.mob = candidate;
+				}
+			}
+
+			helper.assertTrue(this.mob != null, "the subject never became a boss in this chunk");
+			return this.mob;
+		}
+	}
+}

@@ -15,7 +15,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.goal.FollowMobGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 
 /**
@@ -109,7 +108,7 @@ public final class EscortSquad {
 		);
 		escort.getGoalSelector().removeAllGoals(goal -> goal instanceof WaterAvoidingRandomStrollGoal);
 		escort.getGoalSelector().addGoal(
-			FOLLOW_PRIORITY, new FollowMobGoal(elite, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
+			FOLLOW_PRIORITY, new FollowAllyGoal(escort, elite, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
 		);
 		level.addFreshEntity(escort);
 	}
