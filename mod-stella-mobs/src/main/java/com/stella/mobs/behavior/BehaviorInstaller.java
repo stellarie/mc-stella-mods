@@ -12,6 +12,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.entity.monster.spider.Spider;
@@ -98,6 +99,21 @@ public final class BehaviorInstaller {
 		mob.getGoalSelector().addGoal(SpiderBroodGoal.PRIORITY, new SpiderBroodGoal(spider));
 	}
 
+	/** R24: the elite blaze's volley replaces the vanilla attack goal, which is a private nested class. */
+	public static void installBlazeVolley(final Mob mob) {
+		if (!(mob instanceof Blaze blaze) || !Elite.isElite(blaze)) {
+			return;
+		}
+
+		if (mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof BlazeVolleyGoal)) {
+			return;
+		}
+
+		mob.getGoalSelector().removeAllGoals(goal -> goal.getClass().getEnclosingClass() == Blaze.class);
+		mob.getGoalSelector().addGoal(MELEE_PRIORITY, new BlazeVolleyGoal(blaze, Elite.isElite(blaze)));
+	}
+
 	public static void install(final Mob mob) {
 		if (!(mob instanceof Monster monster)) {
 			return;
@@ -145,6 +161,7 @@ public final class BehaviorInstaller {
 		BossAbilities.install(mob);
 		installReinforcements(mob);
 		installSpiderBrood(mob);
+		installBlazeVolley(mob);
 	}
 
 	/**

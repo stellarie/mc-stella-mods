@@ -8,6 +8,7 @@
 		"fabric-gametest": [
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
+			"com.stella.mobs.BlazeVolleyGameTest",
 			"com.stella.mobs.BossAbilityGameTest",
 			"com.stella.mobs.BossBehaviourGameTest",
 			"com.stella.mobs.BossGameTest",
