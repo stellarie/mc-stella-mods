@@ -1,6 +1,9 @@
 package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -26,10 +29,16 @@ public class SpiderBroodGoal extends Goal {
 	private static final double SCATTER = 1.5;
 
 	private final Spider spider;
+	private final Set<UUID> spawned = new HashSet<>();
 	private int ticks;
 
 	public SpiderBroodGoal(final Spider spider) {
 		this.spider = spider;
+	}
+
+	/** The identities this goal spawned itself, so a neighbour's brood can never appear in the answer. */
+	public Set<UUID> spawnedIds() {
+		return Set.copyOf(this.spawned);
 	}
 
 	@Override
@@ -102,5 +111,6 @@ public class SpiderBroodGoal extends Goal {
 		EliteState.setSummoned(spider, true);
 		ReactiveState.get(spider).setGearApplied(true);
 		level.addFreshEntity(spider);
+		this.spawned.add(spider.getUUID());
 	}
 }

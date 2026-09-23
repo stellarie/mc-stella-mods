@@ -96,13 +96,11 @@ public class SpiderEliteGameTest {
 
 		int[] ticks = new int[1];
 		int[] maxSeen = new int[1];
-		AABB[] frozen = new AABB[1];
 		Set<UUID> atDeath = new HashSet<>();
 		// Registered from the test body, never from a delayed callback.
 		helper.onEachTick(() -> {
 			ticks[0]++;
-			AABB box = frozen[0] != null ? frozen[0] : broodBox(spider);
-			int seen = broodIds(helper.getLevel(), box).size();
+			int seen = broodIds(helper.getLevel(), broodBox(spider)).size();
 			maxSeen[0] = Math.max(maxSeen[0], seen);
 
 			if (ticks[0] % SAMPLE_INTERVAL == 0) {
@@ -117,13 +115,15 @@ public class SpiderEliteGameTest {
 		helper.startSequence()
 			.thenIdle(SpiderBroodGoal.CADENCE_TICKS + 20)
 			.thenExecute(() -> {
-				int brood = broodCount(spider);
+				Set<UUID> spawned = broodGoal(spider).spawnedIds();
 				helper.assertTrue(Elite.isElite(spider), "the hand marked spider is not elite");
-				helper.assertTrue(brood >= 1, "no brood arrived by the first cadence of " + SpiderBroodGoal.CADENCE_TICKS);
+				helper.assertTrue(
+					!spawned.isEmpty(), "no brood arrived by the first cadence of " + SpiderBroodGoal.CADENCE_TICKS
+				);
 				helper.assertFalse(EliteState.isSummoned(wild), "the rig's wild cave spider became a summon");
 				StellaMobs.LOGGER.info(
 					"[BEHAVIOR] test={} RESULT cadence={} cap={} broodAfterFirstCadence={} wildSummoned={} radius={}",
-					TEST, SpiderBroodGoal.CADENCE_TICKS, SpiderBroodGoal.CAP, brood,
+					TEST, SpiderBroodGoal.CADENCE_TICKS, SpiderBroodGoal.CAP, spawned.size(),
 					EliteState.isSummoned(wild), SpiderBroodGoal.NEIGHBOUR_RADIUS
 				);
 			})
@@ -143,13 +143,13 @@ public class SpiderEliteGameTest {
 				);
 			})
 			.thenExecute(() -> {
-				frozen[0] = broodBox(spider);
-				atDeath.addAll(broodIds(helper.getLevel(), frozen[0]));
+				// The set is the spider's own record, so a neighbour's brood can never appear in it.
+				atDeath.addAll(broodGoal(spider).spawnedIds());
 				spider.kill(helper.getLevel());
 			})
 			.thenIdle(SpiderBroodGoal.CADENCE_TICKS * 2)
 			.thenExecute(() -> {
-				Set<UUID> arrived = new HashSet<>(broodIds(helper.getLevel(), frozen[0]));
+				Set<UUID> arrived = new HashSet<>(broodGoal(spider).spawnedIds());
 				arrived.removeAll(atDeath);
 				helper.assertValueEqual(
 					Integer.valueOf(arrived.size()), Integer.valueOf(0), "brood identifiers that appeared after the mother died"
@@ -172,12 +172,18 @@ public class SpiderEliteGameTest {
 		return false;
 	}
 
-	private static AABB broodBox(final Spider spider) {
-		return spider.getBoundingBox().inflate(SpiderBroodGoal.NEIGHBOUR_RADIUS);
+	private static SpiderBroodGoal broodGoal(final Spider spider) {
+		for (WrappedGoal wrapped : spider.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.getGoal() instanceof SpiderBroodGoal goal) {
+				return goal;
+			}
+		}
+
+		throw new IllegalStateException("the elite spider has no brood goal");
 	}
 
-	private static int broodCount(final Spider spider) {
-		return broodIds(spider.level(), broodBox(spider)).size();
+	private static AABB broodBox(final Spider spider) {
+		return spider.getBoundingBox().inflate(SpiderBroodGoal.NEIGHBOUR_RADIUS);
 	}
 
 	/** Summoned cave spiders in a box: the relationship, not the kind, is the filter. */
