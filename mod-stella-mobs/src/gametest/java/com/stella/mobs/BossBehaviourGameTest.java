@@ -104,7 +104,12 @@ public class BossBehaviourGameTest {
 				+ " firstChunk=" + first.chunkPosition() + " secondChunk=" + second.chunkPosition()
 		);
 
-		helper.assertTrue(firstIsBoss, "an eligible mob at a chance of 1.0 did not become a boss");
+		helper.assertTrue(
+			firstIsBoss,
+			"an eligible mob at a chance of 1.0 did not become a boss; bosses already in its chunk="
+				+ foreignBosses(helper, first) + " (the config store is global, so a neighbouring arena can"
+				+ " roll one while this test runs)"
+		);
 		helper.assertTrue(firstIsElite, "a boss is not elite");
 		helper.assertTrue(BossRoll.sameChunk(first, second), "the two subjects did not land in one chunk");
 		helper.assertFalse(secondIsBoss, "a second eligible spawn in a boss chunk became a boss too");
@@ -391,11 +396,37 @@ public class BossBehaviourGameTest {
 		clearBosses(helper);
 	}
 
+	private static int foreignBosses(final GameTestHelper helper, final Mob subject) {
+		var chunk = subject.chunkPosition();
+		var box = new net.minecraft.world.phys.AABB(
+			chunk.getMinBlockX(), helper.getLevel().getMinY(), chunk.getMinBlockZ(),
+			chunk.getMaxBlockX() + 1.0, helper.getLevel().getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
+		);
+		return helper.getLevel()
+			.getEntitiesOfClass(Mob.class, box, candidate -> candidate != subject && Bosses.isBoss(candidate))
+			.size();
+	}
+
 	private static void clearBosses(final GameTestHelper helper) {
 		var base = helper.absolutePos(new net.minecraft.core.BlockPos(3, 3, 3));
-		// Eight blocks: this arena and no further, so a neighbouring test's boss is left alone.
-		var box = new net.minecraft.world.phys.AABB(base).inflate(8.0);
-		for (Mob other : helper.getLevel().getEntitiesOfClass(Mob.class, box, Bosses::isBoss)) {
+		// The whole chunk, because the guard is chunk-exact and the level holds every arena at once: an
+		// eight block box misses a neighbouring arena's boss in the same chunk, and that boss then blocks
+		// this test's roll with "did not become a boss". Removed bosses are ignored by the guard, so the
+		// discard takes effect on the same tick.
+		var chunk = helper.getLevel().getChunkAt(base).getPos();
+		var box = new net.minecraft.world.phys.AABB(
+			chunk.getMinBlockX(), helper.getLevel().getMinY(), chunk.getMinBlockZ(),
+			chunk.getMaxBlockX() + 1.0, helper.getLevel().getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
+		);
+		List<Mob> foreign = helper.getLevel().getEntitiesOfClass(Mob.class, box, Bosses::isBoss);
+
+		if (!foreign.isEmpty()) {
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=bossBehaviour CLEAR chunk={} foreignBosses={}", chunk, foreign.size()
+			);
+		}
+
+		for (Mob other : foreign) {
 			other.discard();
 		}
 	}

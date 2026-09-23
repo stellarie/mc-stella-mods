@@ -60,7 +60,7 @@ public class BossGameTest {
 		// A save written before the boss field existed carries none of the keys, which is an empty object.
 		// NbtOps.empty() is the end tag rather than an empty map, so this half runs on the JSON ops.
 		EliteState legacy = EliteState.CODEC.parse(JsonOps.INSTANCE, new JsonObject()).resultOrPartial().orElseThrow();
-		EliteState marked = new EliteState(false, false, true, Optional.of(GearTier.NETHERITE), 3, true);
+		EliteState marked = new EliteState(false, false, true, Optional.of(GearTier.NETHERITE), 3, true, false);
 		var encoded = EliteState.CODEC.encodeStart(JsonOps.INSTANCE, marked).resultOrPartial().orElseThrow();
 		EliteState decoded = EliteState.CODEC.parse(JsonOps.INSTANCE, encoded).resultOrPartial().orElseThrow();
 
