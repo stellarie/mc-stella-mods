@@ -37,6 +37,7 @@ public final class ReactiveState {
 	private long witchNextOffensiveTick;
 	private long witchNextAllyScanTick;
 	private int witchThrowIndex;
+	private int witchBuffIndex;
 	private boolean witchInvisibilityCast;
 	private boolean elite;
 	private @Nullable ServerBossEvent bossBar;
@@ -187,6 +188,15 @@ public final class ReactiveState {
 
 	public void setWitchThrowIndex(final int witchThrowIndex) {
 		this.witchThrowIndex = witchThrowIndex;
+	}
+
+	/** W11: where the ally buff rotation starts, so the three buffs cycle in a fixed order. */
+	public int getWitchBuffIndex() {
+		return this.witchBuffIndex;
+	}
+
+	public void setWitchBuffIndex(final int witchBuffIndex) {
+		this.witchBuffIndex = witchBuffIndex;
 	}
 
 	public boolean isWitchInvisibilityCast() {

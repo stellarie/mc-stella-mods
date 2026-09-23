@@ -7,7 +7,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * W01, W02, W07, and W08: on aggro the witch splashes invisibility on itself, then throws the
- * offensive list at its target three at a time. No flags, so it never contends for MOVE or LOOK.
+ * offensive list at its target three at a time. W12: an elite witch leads its rotation with one
+ * lingering poison cloud on its own 600 tick rearm. No flags, so it never contends for MOVE or LOOK.
  */
 public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 	public static final int BURST_SIZE = 3;
@@ -16,10 +17,14 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 	public static final double THROW_RANGE = 10.0;
 	private static final int ACTION_TICKS = 10;
 
+	/** W12: one cloud per nonce, because the cloud itself lives 600 ticks. */
+	public static final int LINGER_REARM_TICKS = 600;
+
 	private final T witch;
 	private @Nullable LivingEntity target;
 	private int shotsLeft;
 	private long nextShotTick;
+	private long nextLingerTick;
 
 	public WitchOffensiveThrowGoal(final T witch) {
 		this.witch = witch;
@@ -103,14 +108,25 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 		}
 
 		ReactiveState state = ReactiveState.get(this.witch);
-		int index = state.getWitchThrowIndex() % WitchPotions.offensive().size();
-		WitchPotions.Carried carried = WitchPotions.offensive().get(index);
-		state.setWitchThrowIndex(state.getWitchThrowIndex() + 1);
 		state.setWitchActionUntilTick(now + ACTION_TICKS);
 
-		WitchThrow.atTarget(this.witch, WitchPotions.stack(carried), current);
+		// W12: the elite's lingering option is chosen before the splash rotation, on its own rearm.
+		if (WitchElite.isElite(this.witch) && now >= this.nextLingerTick) {
+			this.linger(now, current);
+		} else {
+			int index = state.getWitchThrowIndex() % WitchPotions.offensive().size();
+			WitchPotions.Carried carried = WitchPotions.offensive().get(index);
+			state.setWitchThrowIndex(state.getWitchThrowIndex() + 1);
+			WitchThrow.atTarget(this.witch, WitchPotions.stack(carried), current);
+		}
 
 		this.shotsLeft--;
 		this.nextShotTick = now + BURST_SPACING_TICKS;
+	}
+
+	/** W12: one lingering poison cloud, rearmed for the life of the cloud it leaves behind. */
+	private void linger(final long now, final LivingEntity current) {
+		this.nextLingerTick = now + LINGER_REARM_TICKS;
+		WitchThrow.lingerAtTarget(this.witch, WitchPotions.lingeringPoison(), current);
 	}
 }
