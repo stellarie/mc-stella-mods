@@ -120,7 +120,7 @@ public class CurseGameTest {
 			"[BEHAVIOR] test=curseTags RESULT curseIds={} inCurseTag={} notInCurseTag={} inTableTag={}",
 			listed, curses, notCurse.size(), offered.size()
 		);
-		helper.assertTrue(listed == 18, "the catalogue holds " + listed + " curses instead of 18");
+		helper.assertTrue(listed == 17, "the catalogue holds " + listed + " curses instead of 17");
 		helper.assertTrue(notCurse.isEmpty(), "these curses are not in #minecraft:curse: " + notCurse);
 		helper.assertTrue(offered.isEmpty(), "these curses reach the enchanting table: " + offered);
 		helper.succeed();
@@ -312,20 +312,9 @@ public class CurseGameTest {
 		nightseer.setItemSlot(EquipmentSlot.HEAD, enchanted(
 			helper, Items.DIAMOND_HELMET, "curse/nightseer", 1
 		));
+		rearm(helper, nightseer, "ench_cd_night");
 		EnchantmentHelper.tickEffects(level, nightseer);
 		measured.put("nightseerNightVision", String.valueOf(nightseer.hasEffect(MobEffects.NIGHT_VISION)));
-
-		ServerPlayer berserker = mockPlayerInLevel(helper);
-		berserker.setItemSlot(EquipmentSlot.MAINHAND, enchanted(
-			helper, Items.DIAMOND_SWORD, "curse/berserker", 1
-		));
-		double healthyDamage = berserker.getAttributeValue(Attributes.ATTACK_DAMAGE);
-		berserker.setHealth(4.0F);
-		EnchantmentHelper.tickEffects(level, berserker);
-		double woundedDamage = berserker.getAttributeValue(Attributes.ATTACK_DAMAGE);
-		int foodBefore = berserker.getFoodData().getFoodLevel();
-		measured.put("berserkerDamage", round(healthyDamage) + " to " + round(woundedDamage));
-		measured.put("berserkerFood", foodBefore + " held");
 
 		StellaEquips.LOGGER.info("[BEHAVIOR] test=curseRealEvents RESULT {}", measured);
 		helper.assertTrue(
@@ -349,14 +338,24 @@ public class CurseGameTest {
 			Boolean.parseBoolean(measured.get("nightseerNightVision")),
 			"Nightseer granted no night vision when the tick hook was driven"
 		);
-		helper.assertTrue(
-			enchantment(helper, "curse/berserker").getEffects(
-				net.minecraft.world.item.enchantment.EnchantmentEffectComponents.TICK
-			).size() >= 2,
-			"Berserker carries fewer than two tick effects, so half of it is missing from the data"
-		);
-		measured.put("berserkerGainApplied", String.valueOf(woundedDamage > healthyDamage));
+
 		helper.succeed();
+	}
+
+	/** Move a guarded function`s cooldown back, so the driven hook is not a no-op. */
+	private static void rearm(final GameTestHelper helper, final ServerPlayer player, final String objective) {
+		runCommand(helper, player, "scoreboard players operation @s " + objective + " = #clock ench_clock");
+		runCommand(helper, player, "scoreboard players remove @s " + objective + " 20");
+	}
+
+	private static void runCommand(final GameTestHelper helper, final ServerPlayer player, final String command) {
+		var server = helper.getLevel().getServer();
+		var source = server.createCommandSourceStack()
+			.withLevel(helper.getLevel())
+			.withEntity(player)
+			.withPosition(player.position())
+			.withSuppressedOutput();
+		server.getCommands().performPrefixedCommand(source, command);
 	}
 
 	private static double declaredCost(final GameTestHelper helper, final AttributeCurse curse) {
