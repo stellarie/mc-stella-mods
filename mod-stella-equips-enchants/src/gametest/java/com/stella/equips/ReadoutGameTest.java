@@ -283,6 +283,12 @@ public class ReadoutGameTest {
 
 		whenAreaLoaded(helper, owner, () -> {
 			Mob mob = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ());
+			int arrangedMobLevel = PowerTracker.mobLevel(mob, config);
+			int arrangedOwnerLevel = arrangedMobLevel - BAND_TEST_START_GAP;
+			PowerState.set(
+				owner,
+				new PowerState(PowerCurve.pointsForLevel(arrangedOwnerLevel, config), arrangedOwnerLevel)
+			);
 
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout before = ReadoutService.owner(owner).get(mob.getUUID());
@@ -354,6 +360,11 @@ public class ReadoutGameTest {
 
 		whenAreaLoaded(helper, owner, () -> {
 			Mob mob = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ());
+			int arrangedMobLevel = PowerTracker.mobLevel(mob, config);
+			PowerState.set(
+				owner,
+				new PowerState(PowerCurve.pointsForLevel(arrangedMobLevel, config), arrangedMobLevel)
+			);
 
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout first = ReadoutService.owner(owner).get(mob.getUUID());
@@ -801,6 +812,7 @@ public class ReadoutGameTest {
 			double walked = Math.hypot(mob.getX() - startX, mob.getZ() - startZ);
 
 			if (walked < WALK_MIN && waited < WALK_DEADLINE_TICKS) {
+				mob.getNavigation().moveTo(mob.getX() + WALK_DISTANCE, mob.getY(), mob.getZ(), WALK_SPEED);
 				waitForTheWalk(helper, owner, mob, startX, startZ, displayId, waited + WALK_POLL_TICKS);
 				return;
 			}

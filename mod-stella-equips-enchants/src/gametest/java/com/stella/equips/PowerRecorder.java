@@ -29,29 +29,37 @@ public final class PowerRecorder {
 				final String player,
 				final int level,
 				final int from,
-				final long survivabilityPoints,
-				final double combatPoints,
-				final double healthGained
+				final double points
 			) {
 				add(
-					"[BEHAVIOR] power level player=%s level=%d from=%d survivabilityPoints=%d combatPoints=%.2f healthGained=%.2f",
-					player, level, from, survivabilityPoints, combatPoints, healthGained
+					"[BEHAVIOR] power level player=%s level=%d from=%d points=%.2f",
+					player, level, from, points
 				);
 			}
 
 			@Override
 			public void powerKill(
 				final String mob,
-				final boolean boss,
 				final int mobLevel,
-				final int playerLevel,
-				final double multiplier,
-				final double points,
-				final double totalCombatPoints
+				final int award,
+				final double points
 			) {
 				add(
-					"[BEHAVIOR] power kill mob=%s boss=%s mobLevel=%d playerLevel=%d multiplier=%.3f points=%.3f totalCombatPoints=%.3f",
-					mob, boss, mobLevel, playerLevel, multiplier, points, totalCombatPoints
+					"[BEHAVIOR] power kill mob=%s mobLevel=%d award=%d points=%.2f",
+					mob, mobLevel, award, points
+				);
+			}
+
+			@Override
+			public void powerDeath(
+				final String player,
+				final double lost,
+				final double points,
+				final int level
+			) {
+				add(
+					"[BEHAVIOR] power death player=%s lost=%.2f points=%.2f level=%d",
+					player, lost, points, level
 				);
 			}
 
