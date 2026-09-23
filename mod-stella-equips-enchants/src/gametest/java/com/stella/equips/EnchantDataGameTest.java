@@ -59,7 +59,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantDataGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String FIXTURE_PATH = "test_marker";
-	private static final int CATALOGUE_SIZE = 53;
+	private static final int CATALOGUE_SIZE = 71;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
 	private static final int MAXED_TABLE_COST = 30;
@@ -246,7 +246,16 @@ public class EnchantDataGameTest {
 	@GameTest
 	public void catalogueWeightSharesAtCost30(final GameTestHelper helper) {
 		Registry<Enchantment> registry = enchantments(helper);
-		List<Holder.Reference<Enchantment>> catalogue = catalogue(registry);
+		List<Holder.Reference<Enchantment>> catalogue = new ArrayList<>();
+		int curses = 0;
+		for (Holder.Reference<Enchantment> holder : catalogue(registry)) {
+			if (holder.is(EnchantmentTags.CURSE)) {
+				curses++;
+			} else {
+				catalogue.add(holder);
+			}
+		}
+
 		StringBuilder pools = new StringBuilder();
 		List<String> uncovered = new ArrayList<>();
 		List<String> badSums = new ArrayList<>();
@@ -283,8 +292,9 @@ public class EnchantDataGameTest {
 			}
 		}
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=weightShares RESULT cost={} pools={} covered={} smallestShare={} largestShare={}",
-			MAXED_TABLE_COST, pools.toString().trim(), catalogue.size() - uncovered.size(), smallest, largest
+			"[BEHAVIOR] test=weightShares RESULT cost={} cursesSkipped={} pools={} covered={} smallestShare={} "
+				+ "largestShare={}",
+			MAXED_TABLE_COST, curses, pools.toString().trim(), catalogue.size() - uncovered.size(), smallest, largest
 		);
 		helper.assertTrue(badSums.isEmpty(), "candidate weight shares do not sum to 1: " + badSums);
 		helper.assertTrue(uncovered.isEmpty(), "never a table candidate at cost " + MAXED_TABLE_COST + ": " + uncovered);
@@ -294,13 +304,26 @@ public class EnchantDataGameTest {
 	@GameTest
 	public void everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable(final GameTestHelper helper) {
 		Registry<Enchantment> registry = enchantments(helper);
-		List<Holder.Reference<Enchantment>> catalogue = catalogue(registry);
+		List<Holder.Reference<Enchantment>> offered = new ArrayList<>();
+		for (Holder.Reference<Enchantment> holder : catalogue(registry)) {
+			if (!holder.is(EnchantmentTags.CURSE)) {
+				offered.add(holder);
+			}
+		}
+
 		Optional<HolderSet.Named<Enchantment>> pool = registry.get(EnchantmentTags.IN_ENCHANTING_TABLE);
 		List<String> missing = new ArrayList<>();
 		List<String> unreachable = new ArrayList<>();
 		int inTag = 0;
 		int reachable = 0;
-		for (Holder.Reference<Enchantment> holder : catalogue) {
+		int curses = 0;
+		for (Holder.Reference<Enchantment> holder : catalogue(registry)) {
+			if (holder.is(EnchantmentTags.CURSE)) {
+				curses++;
+			}
+		}
+
+		for (Holder.Reference<Enchantment> holder : offered) {
 			if (pool.isPresent() && pool.get().contains(holder)) {
 				inTag++;
 			} else {
@@ -320,8 +343,9 @@ public class EnchantDataGameTest {
 			}
 		}
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=enchantingTableTag RESULT catalogueCount={} inTag={} missing={} reachableAtCost{}={}",
-			catalogue.size(), inTag, missing.size(), MAXED_TABLE_COST, reachable
+			"[BEHAVIOR] test=enchantingTableTag RESULT catalogueCount={} cursesSkipped={} offered={} inTag={} "
+				+ "missing={} reachableAtCost{}={}",
+			offered.size() + curses, curses, offered.size(), inTag, missing.size(), MAXED_TABLE_COST, reachable
 		);
 		helper.assertTrue(
 			missing.isEmpty(),

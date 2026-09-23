@@ -1,0 +1,45 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.curse.reckless"
+	},
+	"supported_items": "#minecraft:enchantable/chest_armor",
+	"primary_items": "#minecraft:enchantable/chest_armor",
+	"slots": [
+		"chest"
+	],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"max_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"attribute": "minecraft:attack_damage",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 0.3,
+					"per_level_above_first": 0.01
+				},
+				"operation": "add_multiplied_total",
+				"id": "mod-stella-equips-enchants:curse/reckless_gain"
+			},
+			{
+				"attribute": "minecraft:max_health",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": -0.3,
+					"per_level_above_first": -0.01
+				},
+				"operation": "add_multiplied_total",
+				"id": "mod-stella-equips-enchants:curse/reckless_cost"
+			}
+		]
+	}
+}
