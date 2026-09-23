@@ -34,6 +34,7 @@ public final class GearConfigStore {
 				"drop_chance_multiplier": 1.0,
 				"elite_chance": 0.05,
 				"boss_chance": 0.01,
+				"war_call_brute_chance": 0.01,
 				"entities": {
 					"minecraft:witch": { "elite_chance": 0.10 },
 					"minecraft:snow_golem": { "elite_chance": 0.10 }
