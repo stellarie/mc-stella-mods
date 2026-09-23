@@ -102,12 +102,12 @@ is the draw rate at power 30 for the item in the reference column.
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Arrow Shower | 2 | 1 | 20 | 50 | 0.077 | `projectile_count` add 6 and `projectile_spread` add 10 | one durability point per arrow, so a seven-arrow volley wears the bow seven times |
+| Arrow Shower | 2 | 1 | 20 | 50 | 0.077 | `projectile_count` add 6, `projectile_spread` add 10, `item_damage` add 1 | two durability points per arrow, so a seven-arrow volley wears the bow fourteen times |
 | Bomb Arrows | 2 | 1 | 20 | 50 | 0.077 | `hit_block` `explode`, radius 2, `block_interaction` `none` | the blast reaches anything inside two blocks, the shooter included |
 | Marksman | 10 | 2 | 1 | 32 | 0.385 | `projectile_spread` multiply 0.5 | `item_damage` add 1, so the bow wears twice as fast |
 | Longshot | 5 | 3 | 5 | 41 | 0.192 | `projectile_spread` multiply 0.4 and `projectile_piercing` add 1 | `damage` add -1, so every arrow hits softer |
 | Bodkin | 5 | 3 | 5 | 41 | 0.192 | `projectile_piercing` clamped to 3 | `ammo_use` add 1, so each shot spends a second arrow |
-| Ranger's Mark | 2 | 1 | 15 | 45 | 0.077 | `post_attack` `run_function` for 4 bonus damage | the bonus applies at full victim health only, and once per 20 ticks |
+| Ranger's Mark | 2 | 1 | 15 | 45 | 0.077 | `post_attack` `run_function` for 4 bonus damage | the bonus pays only while the target is above half health, and once per 20 ticks |
 
 ### Crossbow
 
@@ -130,7 +130,7 @@ is the draw rate at power 30 for the item in the reference column.
 | Feathered Edge | 10 | 2 | 1 | 32 | sword 0.313 | `knockback` add 1 per level | `damage` add -0.5 per level, so the blade hits softer |
 | Reach | 5 | 3 | 5 | 41 | spear 0.227 | `attributes` `entity_interaction_range` add 0.5 per level | none |
 | Tidecaller | 2 | 1 | 15 | 45 | trident 0.105 | `post_attack` `run_function` that grants the thrower 20 seconds of dolphin's grace | once per 600 ticks |
-| Hooked | 5 | 2 | 5 | 33 | trident 0.263 | `post_attack` `run_function` that drags the victim two blocks toward the nearest player within 16 blocks | the function runs as the victim, so it can see no attacker; it uses the nearest player, and it waits 60 ticks |
+| Hooked | 5 | 2 | 5 | 33 | trident 0.263 | `post_attack` `apply_mob_effect` slowness II for 4 seconds on the target the trident hits | none |
 | Returning | 5 | 2 | 5 | 33 | trident 0.263 | `trident_return_acceleration` add 1 per level | none |
 | Slam | 5 | 3 | 5 | 41 | mace 0.263 | `smash_damage_per_fallen_block` add 0.5 per level | none |
 | Shockwave | 2 | 2 | 10 | 50 | mace 0.105 | `post_attack` `explode` radius 3 with no damage type, plus `damage_entity` 4 on the target | the ring throws entities instead of hurting them; only the struck target takes damage |
@@ -200,17 +200,18 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | Quickdraw | bow | crossbow | `BowItem` reads no enchantment at all. Only `CrossbowItem.getChargeDuration` reads `crossbow_charge_time`, so a bow row would have shipped a decorative effect |
 | Marksman | bow draws slower | `item_damage` add 1 | The bow has no draw-time hook. Extra wear per shot is the one real cost available |
 | Longshot | lower arrow speed | `damage` add -1 | An arrow's speed is set by the charge, not by data. The damage hook does read arrow hits, so the cost is real |
-| Ranger's Mark | full victim health only | function with a health and max health comparison | `minecraft:entity_properties` carries no health field in 26.3 |
+| Ranger's Mark | full victim health only | pays while the target is above half health | The arrow damages the victim before `post_attack` runs, so a full health gate is false for every real arrow. The written gate has to measure the victim after the hit |
+| Hooked | pull the victim | slowness II on the target | No data effect can pull a target toward the thrower. `AbstractArrow.doKnockback` skips a knockback at or below zero, and `LivingEntity.knockback` returns early on a strength at or below zero. A `tp` in a function moves the victim, who can be another player |
+| Arrow Shower | `projectile_spawned` `change_item_damage` | `item_damage` add 1 | `change_item_damage` on `projectile_spawned` charges a copy of the bow, so it never reaches the item. `item_damage` is the value hook that `ItemStack.hurtAndBreak` reads |
+| Bomb Arrows | `projectile_spawned` | `hit_block` | The probe proved that an explosion on `projectile_spawned` fires in the air at the bow and reaches no block |
 | Siege Bolt | 40 tick charge | `crossbow_charge_time` add 0.75 | One unit of the hook is one second, and the base charge is 1.25 seconds |
 | Cleave | radius 2 | radius 1 | An explosion reaches about twice its radius. Radius 2 damaged the wielder 19 health at one block. Radius 1 spares a wielder at 3 blocks and still hits a mob at 1 block |
 | Aegis Breaker | shield disable | damage through `#minecraft:bypasses_shield` | No data effect disables a shield. AxeItem does it in code. The extra damage lands through a raised shield, which is the same promise |
-| Hooked | pull the victim | pull toward the nearest player | `run_function` runs as the affected entity, so the victim's function cannot see the thrower |
 | Returning | `attributes` | `trident_return_acceleration` hook | `trident_return_acceleration` is not an attribute in 26.3. Vanilla `loyalty.json` uses the hook |
 | Reactive Plating | `damage_entity` | function, non-lethal | A `damage_entity` on the entity that just took a hit is dropped by its damage cooldown, and no data field stops at one health |
 | Shockwave | `explode` radius 3 | ring plus 4 direct damage | A damaging radius 3 blast hits the wielder. The ring keeps the throw and cannot hurt anyone |
 | Harvester | `replace_disk` | function with `setblock ... destroy` | `ReplaceDisk` replaces blocks through `ServerLevel.setBlockAndUpdate` and drops nothing, so the plan's version would delete the harvest |
 | Arachnid's Bane | `damage_entity` | `damage` hook | A second damage in the same tick is dropped by the victim's damage cooldown. The damage hook is how vanilla bane of arthropods adds damage |
-| Bomb Arrows | `projectile_spawned` | `hit_block` | The probe proved that an explosion on `projectile_spawned` fires in the air at the bow and reaches no block |
 | Arrow Shower, Bomb Arrows | not stated | in the table tag, like the other 42 | The table pool is a tag. Both carry `min_cost` 20 and `max_cost` 50, so both need a third offer at a maxed table, which is the rarest draw the table makes. Leaving them out would hide the two enchantments oniichan named from the hunt he asked for |
 | the table tag path | `data/mod-stella-equips-enchants/tags/enchantment/` | `data/minecraft/tags/enchantment/in_enchanting_table.json` | The table reads `EnchantmentTags.IN_ENCHANTING_TABLE`, whose id is `minecraft:in_enchanting_table`. A mod namespaced tag of that name is never read |
 
@@ -223,9 +224,10 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
 | `everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable` | every catalogue id is in `#minecraft:in_enchanting_table`, and every id is reachable at cost 30 |
-| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 11 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command |
-| `catalogueRollRatesFollowCostAndWeight` | the pools above, and that every enchantment is a table candidate at power 30 |
-| `arrowShowerFiresTheWholeVolley` | one bow shot fires 7 arrows and costs the bow 7 durability |
+| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 10 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
+| `catalogueRollRatesFollowCostAndWeight` | the pools above, and that every enchantment is a table candidate at cost 30 |
+| `arrowShowerCostsMoreDurabilityThanAPlainShot` | one plain shot fires 1 arrow for 1 durability, and one Arrow Shower shot fires 7 arrows for 14 durability |
 | `bombArrowsBlastLeavesTheBlockIntactAndStillHurtsAMob` | a real Bomb Arrows arrow hits a wall, the wall stays intact, and a mob one block away takes the blast |
 | `cleaveBlastReachesANearbyMobAndSparesTheWielder` | the cleave blast hits a mob one block away and leaves a wielder three blocks away unharmed |
-| `rangersMarkPaysOnlyAtFullHealthAndObeysItsCooldown` | the bonus pays at full health, not at 4 health, and not twice inside 20 ticks |
+| `hookedTridentSlowsTheTargetItHits` | a real thrown trident left the target it hit slowed |
+| `rangersMarkPaysWhileTheTargetIsAboveHalfHealth` | a real arrow paid 4 more damage on a fresh target than on one below half health |

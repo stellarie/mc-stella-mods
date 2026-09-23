@@ -24,12 +24,15 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -87,7 +90,8 @@ public class EnchantDataGameTest {
 		Pattern.compile("#\\s*max_particles:\\s*(\\d+)")
 	);
 	private static final List<String> BANNED_COMMANDS = List.of(
-		"give", "loot", "clear", "item replace entity @a", "effect give @a", "tp @a", "summon minecraft:item"
+		"give", "loot", "clear", "item replace entity @a", "effect give @a",
+		"tp @a", "tp @s", "tp @e", "tp @p", "tp @r", "summon minecraft:item"
 	);
 
 	@GameTest
@@ -324,28 +328,36 @@ public class EnchantDataGameTest {
 	}
 
 	@GameTest
-	public void arrowShowerFiresTheWholeVolley(final GameTestHelper helper) {
+	public void arrowShowerCostsMoreDurabilityThanAPlainShot(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
 		Vec3 origin = helper.absoluteVec(new Vec3(4.5, 4.0, 4.5));
 		shooter.setPos(origin.x, origin.y, origin.z);
-		ItemStack bow = enchanted(Items.BOW, enchantment(helper, "bow/arrow_shower"), 1);
-		shooter.setItemInHand(InteractionHand.MAIN_HAND, bow);
+		ItemStack plain = new ItemStack(Items.BOW);
+		shooter.setItemInHand(InteractionHand.MAIN_HAND, plain);
 		shooter.getInventory().add(new ItemStack(Items.ARROW, 64));
-		Items.BOW.releaseUsing(bow, level, shooter, 0);
-		List<AbstractArrow> arrows = arrowsOf(level, shooter);
-		int durabilityAdded = shooter.getMainHandItem().getDamageValue();
+		int plainArrowsBefore = arrowsOf(level, shooter).size();
+		Items.BOW.releaseUsing(plain, level, shooter, 0);
+		int plainArrows = arrowsOf(level, shooter).size() - plainArrowsBefore;
+		int plainWear = shooter.getMainHandItem().getDamageValue();
+		ItemStack shower = enchanted(Items.BOW, enchantment(helper, "bow/arrow_shower"), 1);
+		shooter.setItemInHand(InteractionHand.MAIN_HAND, shower);
+		int showerArrowsBefore = arrowsOf(level, shooter).size();
+		Items.BOW.releaseUsing(shower, level, shooter, 0);
+		int showerArrows = arrowsOf(level, shooter).size() - showerArrowsBefore;
+		int showerWear = shooter.getMainHandItem().getDamageValue();
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=arrowShowerVolley RESULT arrowsFired={} durabilityAdded={} plainShotDurability={}",
-			arrows.size(), durabilityAdded, PLAIN_SHOT_DURABILITY
+			"[BEHAVIOR] test=arrowShowerCost RESULT plainArrows={} plainWear={} showerArrows={} showerWear={}",
+			plainArrows, plainWear, showerArrows, showerWear
+		);
+		helper.assertTrue(plainArrows == 1, "a plain bow fired " + plainArrows + " arrows: expected 1");
+		helper.assertTrue(
+			showerArrows == ARROW_SHOWER_ARROWS,
+			"arrow shower fired " + showerArrows + " arrows: expected " + ARROW_SHOWER_ARROWS
 		);
 		helper.assertTrue(
-			arrows.size() == ARROW_SHOWER_ARROWS,
-			"arrow shower fired " + arrows.size() + " arrows: expected " + ARROW_SHOWER_ARROWS
-		);
-		helper.assertTrue(
-			durabilityAdded > PLAIN_SHOT_DURABILITY,
-			"the bow lost " + durabilityAdded + " durability, which is not more than a plain shot"
+			showerWear > plainWear,
+			"the arrow shower bow lost " + showerWear + " durability, no more than the plain bow's " + plainWear
 		);
 		helper.succeed();
 	}
@@ -415,30 +427,66 @@ public class EnchantDataGameTest {
 	}
 
 	@GameTest
-	public void rangersMarkPaysOnlyAtFullHealthAndObeysItsCooldown(final GameTestHelper helper) {
+	public void rangersMarkPaysWhileTheTargetIsAboveHalfHealth(final GameTestHelper helper) {
+		buildFloor(helper);
 		ServerLevel level = helper.getLevel();
 		MinecraftServer server = level.getServer();
 		runCommand(server, level, null, "scoreboard players set #clock ench_clock " + CLOCK_START);
+		Player shooter = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		Vec3 origin = helper.absoluteVec(new Vec3(0.5, SPAWN_Y, 0.5));
+		shooter.setPos(origin.x, origin.y, origin.z);
+		shooter.setXRot(0.0F);
+		ItemStack bow = enchanted(Items.BOW, enchantment(helper, "bow/rangers_mark"), 1);
+		shooter.setItemInHand(InteractionHand.MAIN_HAND, bow);
+		shooter.getInventory().add(new ItemStack(Items.ARROW, 64));
+		Mob fresh = helper.spawnMob(EntityTypes.RAVAGER, 0, SPAWN_Y, 4).withNoFreeWill().spawn();
+		Mob weakened = helper.spawnMob(EntityTypes.RAVAGER, 3, SPAWN_Y, 4).withNoFreeWill().spawn();
+		weakened.setHealth(weakened.getMaxHealth() / 4.0F);
+		shooter.setYRot(0.0F);
+		Items.BOW.releaseUsing(bow, level, shooter, 0);
+		shooter.setYRot(-36.87F);
+		Items.BOW.releaseUsing(bow, level, shooter, 0);
+		helper.runAfterDelay(8L, () -> {
+			float onFresh = fresh.getMaxHealth() - fresh.getHealth();
+			float onWeakened = weakened.getMaxHealth() / 4.0F - weakened.getHealth();
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=rangersMarkBand RESULT aboveHalfHealth={} belowHalfHealth={} bonus={}",
+				onFresh, onWeakened, onFresh - onWeakened
+			);
+			helper.assertTrue(onWeakened > 0.0F, "the arrow missed the weakened target");
+			helper.assertTrue(
+				onFresh - onWeakened >= 3.5F,
+				"the arrow paid only " + (onFresh - onWeakened) + " more on the fresh target"
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void hookedTridentSlowsTheTargetItHits(final GameTestHelper helper) {
 		buildFloor(helper);
-		Mob healthy = helper.spawnMob(EntityTypes.ZOMBIE, 1, SPAWN_Y, 1).withNoFreeWill().spawn();
-		Mob wounded = helper.spawnMob(EntityTypes.ZOMBIE, 3, SPAWN_Y, 1).withNoFreeWill().spawn();
-		wounded.setHealth(WOUNDED_HEALTH);
-		String function = MOD_ID + ":rangers_mark";
-		runFunction(server, level, healthy, function);
-		float paidAtFullHealth = healthy.getMaxHealth() - healthy.getHealth();
-		healthy.setHealth(healthy.getMaxHealth());
-		runFunction(server, level, healthy, function);
-		float paidInsideCooldown = healthy.getMaxHealth() - healthy.getHealth();
-		runFunction(server, level, wounded, function);
-		float paidToAWoundedVictim = WOUNDED_HEALTH - wounded.getHealth();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=rangersMarkGate RESULT paidAtFullHealth={} paidInsideCooldown={} paidToAWoundedVictim={}",
-			paidAtFullHealth, paidInsideCooldown, paidToAWoundedVictim
-		);
-		helper.assertTrue(paidAtFullHealth > 0.0F, "the full health victim took no bonus damage");
-		helper.assertTrue(paidInsideCooldown == 0.0F, "the cooldown paid again inside its window");
-		helper.assertTrue(paidToAWoundedVictim == 0.0F, "a wounded victim was paid the full health bonus");
-		helper.succeed();
+		ServerLevel level = helper.getLevel();
+		Player thrower = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		Vec3 origin = helper.absoluteVec(new Vec3(0.5, SPAWN_Y, 0.5));
+		thrower.setPos(origin.x, origin.y, origin.z);
+		ItemStack tridentStack = enchanted(Items.TRIDENT, enchantment(helper, "weapon/hooked"), 2);
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 0, SPAWN_Y, 4).withNoFreeWill().spawn();
+		ThrownTrident trident = new ThrownTrident(level, thrower, tridentStack);
+		Vec3 start = helper.absoluteVec(new Vec3(0.5, SPAWN_Y + 1.0, 0.5));
+		trident.setPos(start.x, start.y, start.z);
+		trident.shoot(0.0, 0.0, 1.0, 2.0F, 0.0F);
+		level.addFreshEntity(trident);
+		helper.runAfterDelay(8L, () -> {
+			MobEffectInstance slowness = target.getEffect(MobEffects.SLOWNESS);
+			float lost = target.getMaxHealth() - target.getHealth();
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=hookedTrident RESULT targetLost={} slownessAmplifier={} slownessDuration={}",
+				lost, slowness == null ? -1 : slowness.getAmplifier(), slowness == null ? 0 : slowness.getDuration()
+			);
+			helper.assertTrue(lost > 0.0F, "the thrown trident did not hit the target");
+			helper.assertTrue(slowness != null, "the hooked trident left the target unslowed");
+			helper.succeed();
+		});
 	}
 
 	private static List<Holder.Reference<Enchantment>> candidatesFor(

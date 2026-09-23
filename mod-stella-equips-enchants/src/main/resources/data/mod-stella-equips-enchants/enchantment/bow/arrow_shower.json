@@ -25,11 +25,11 @@
 				}
 			}
 		],
-		"minecraft:projectile_spawned": [
+		"minecraft:item_damage": [
 			{
 				"effect": {
-					"type": "minecraft:change_item_damage",
-					"amount": 1.0
+					"type": "minecraft:add",
+					"value": 1.0
 				}
 			}
 		]
