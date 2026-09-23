@@ -50,7 +50,6 @@ public class EnchantmentLevelGameTest {
 		"armor/insulated",
 		"armor/reactive_plating",
 		"armor/second_wind",
-		"curse/berserker",
 		"tool/echolocation",
 		"tool/enchanted_yield",
 		"tool/harvester",

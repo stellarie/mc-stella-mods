@@ -122,7 +122,6 @@
 	"enchantment.mod-stella-equips-enchants.curse.bloodprice": "Bloodprice",
 	"enchantment.mod-stella-equips-enchants.curse.leech": "Leech",
 	"enchantment.mod-stella-equips-enchants.curse.heavyweight": "Heavyweight",
-	"enchantment.mod-stella-equips-enchants.curse.berserker": "Berserker",
 	"enchantment.mod-stella-equips-enchants.curse.greed": "Greed",
 	"enchantment.mod-stella-equips-enchants.curse.deadeye": "Deadeye",
 	"enchantment.mod-stella-equips-enchants.curse.quarry": "Quarry",
@@ -140,7 +139,6 @@
 	"enchantment.mod-stella-equips-enchants.curse.bloodprice.desc": "More damage, and every swing draws your own blood.",
 	"enchantment.mod-stella-equips-enchants.curse.leech.desc": "Healing on every hit, paid for with maximum health.",
 	"enchantment.mod-stella-equips-enchants.curse.heavyweight.desc": "Heavy damage, slow swings.",
-	"enchantment.mod-stella-equips-enchants.curse.berserker.desc": "More damage as your health falls. Natural regeneration stays off.",
 	"enchantment.mod-stella-equips-enchants.curse.greed.desc": "Doubled chance a killed mob drops its gear, for less health.",
 	"enchantment.mod-stella-equips-enchants.curse.deadeye.desc": "Heavier arrows that wear the bow out faster.",
 	"enchantment.mod-stella-equips-enchants.curse.quarry.desc": "Faster mining, and the pickaxe wears out faster."
