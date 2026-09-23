@@ -20,8 +20,13 @@ public final class PowerCurve {
 		}
 
 		long steps = Math.min(level, config.levelCap()) - 1L;
-		return steps * config.pointsPerLevel().base()
-			+ config.pointsPerLevel().perLevel() * (steps * (steps + 1L) / 2L);
+		double base = config.curve().base();
+		double growth = config.curve().growth();
+		if (growth == 1.0) {
+			return (long) Math.floor(base * steps);
+		}
+
+		return (long) Math.floor(base * (Math.pow(growth, steps) - 1.0) / (growth - 1.0));
 	}
 
 	public static int levelFor(final long points, final PowerConfig config) {
@@ -31,6 +36,21 @@ public final class PowerCurve {
 		}
 
 		return level;
+	}
+
+	public static double levelFraction(final int level, final PowerConfig config) {
+		int span = config.levelCap() - 1;
+		if (span <= 0) {
+			return 0.0;
+		}
+
+		double climbed = Math.max(0, Math.min(config.levelCap(), level) - 1);
+		return climbed / span;
+	}
+
+	public static int awardFor(final int mobLevel, final PowerConfig config) {
+		double award = Math.ceil(mobLevel * config.award().divisor());
+		return (int) Math.max(config.award().minimum(), award);
 	}
 
 	public static double scaledDistance(
@@ -44,25 +64,6 @@ public final class PowerCurve {
 		return Math.hypot(x - spawnX, z - spawnZ) * config.mobLevel().scaleFor(dimension);
 	}
 
-	public static long distancePoints(final double scaledDistance, final PowerConfig config) {
-		if (scaledDistance <= 0.0) {
-			return 0L;
-		}
-
-		long raw = (long) Math.floor(scaledDistance / config.distance().blocksPerPoint());
-		return Math.min(raw, config.distance().maxPoints());
-	}
-
-	public static long depthPoints(final double y, final PowerConfig config) {
-		double below = config.depth().minY() - y;
-		if (below <= 0.0) {
-			return 0L;
-		}
-
-		long raw = (long) Math.floor(below / config.depth().blocksPerPoint());
-		return Math.min(raw, config.depth().maxPoints());
-	}
-
 	public static int mobLevel(final int scaledDistance, final int y, final PowerConfig config) {
 		PowerConfig.MobLevel mob = config.mobLevel();
 		double distanceSteps = Math.floor(scaledDistance / mob.blocksPerLevel());
@@ -70,30 +71,6 @@ public final class PowerCurve {
 		double depthSteps = Math.floor((mob.depthReferenceY() - y) / mob.depthBonusBlocks());
 		int fromDepth = (int) Math.max(0.0, Math.min(mob.depthBonusCap(), depthSteps));
 		return Math.min(mob.levelCap(), fromDistance + fromDepth);
-	}
-
-	public static double xpMultiplier(final int mobLevel, final int playerLevel, final PowerConfig config) {
-		PowerConfig.XpMultiplier multiplier = config.xpMultiplier();
-		double value = multiplier.evenFight() + multiplier.perLevelGap() * (mobLevel - playerLevel);
-		return Math.max(multiplier.min(), Math.min(multiplier.max(), value));
-	}
-
-	public static double attackDamageBonus(final int combatLevel, final PowerConfig config) {
-		return config.attributes().combat().attackDamageMax() * outputFraction(combatLevel, config);
-	}
-
-	public static double attackSpeedBonus(final int combatLevel, final PowerConfig config) {
-		return config.attributes().combat().attackSpeedMax() * outputFraction(combatLevel, config);
-	}
-
-	private static double outputFraction(final int level, final PowerConfig config) {
-		int span = config.levelCap() - 1;
-		if (span <= 0) {
-			return 0.0;
-		}
-
-		double climbed = Math.max(0, Math.min(config.levelCap(), level) - 1);
-		return climbed / span;
 	}
 
 	public static Band band(final int gap, final PowerConfig config) {

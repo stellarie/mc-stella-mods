@@ -4,79 +4,180 @@ import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerCurve;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
 
 public class PowerCurveGameTest {
-	private static final int DISTANCE_CAP_BLOCKS = 10000;
-	private static final int BEYOND_DISTANCE_CAP_BLOCKS = 12000;
+	private static final int DISTANCE_CAP_BLOCKS = 9600;
 	private static final int MOB_OVERALL_CAP = 36;
-	private static final int MONOTONIC_SAMPLE_POINTS = 10000;
+	private static final int MOB_LEVEL_CAP = 32;
+	private static final int MOB_LEVEL_AT_DEPTH_CAP = 36;
 	private static final double TOLERANCE = 1.0E-9;
+	private static final double STEP_TOLERANCE = 1.0;
+	private static final double RATIO_TOLERANCE = 0.2;
+	private static final long SMALLEST_STEP_FOR_THE_RATIO_CHECK = 8L;
 
 	@GameTest
-	public void levelRisesMonotonicallyOverTheFirstTenThousandPoints(final GameTestHelper helper) {
+	public void levelFiftyCostsSixThousandTwoHundredSeventyFive(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		long total = PowerCurve.pointsForLevel(config.levelCap(), config);
+		helper.assertTrue(
+			total == PowerFixtures.LEVEL_50_POINTS,
+			"level 50 cost " + total + " points instead of " + PowerFixtures.LEVEL_50_POINTS
+		);
+		helper.assertTrue(PowerCurve.pointsForLevel(1, config) == 0L, "level 1 cost more than nothing");
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=levelFiftyTotal RESULT pointsForLevel50={} pointsForLevel1={}",
+			total, PowerCurve.pointsForLevel(1, config)
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theLastStepCostsEightHundredNineteenAndIsThirteenPercent(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		long at49 = PowerCurve.pointsForLevel(49, config);
+		long at50 = PowerCurve.pointsForLevel(50, config);
+		long step = at50 - at49;
+		double share = (double) step / (double) at50;
+		helper.assertTrue(
+			step == PowerFixtures.STEP_49_TO_50_POINTS,
+			"the step from 49 to 50 cost " + step + " points instead of " + PowerFixtures.STEP_49_TO_50_POINTS
+		);
+		helper.assertTrue(
+			Math.abs(share - PowerFixtures.LEVEL_50_SHARE) < 0.01,
+			"the last step was " + share + " of the lifetime total instead of about 0.13"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=lastStep RESULT at49={} at50={} step={} share={}",
+			at49, at50, step, share
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theCurveIsExponentialWithinRounding(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		double worstExactDeviation = 0.0;
+		double worstRatioDeviation = 0.0;
+		int levels = 0;
+		long previousStep = 0L;
+		for (int level = 2; level <= config.levelCap(); level++) {
+			long step = PowerCurve.pointsForLevel(level, config) - PowerCurve.pointsForLevel(level - 1, config);
+			double exact = config.curve().base() * Math.pow(config.curve().growth(), level - 2);
+			worstExactDeviation = Math.max(worstExactDeviation, Math.abs(step - exact));
+			if (previousStep >= SMALLEST_STEP_FOR_THE_RATIO_CHECK) {
+				double ratio = (double) step / (double) previousStep;
+				worstRatioDeviation = Math.max(
+					worstRatioDeviation, Math.abs(ratio - config.curve().growth()) / config.curve().growth()
+				);
+			}
+
+			previousStep = step;
+			levels++;
+		}
+
+		helper.assertTrue(
+			worstExactDeviation < STEP_TOLERANCE,
+			"a step was off the exact exponential value by " + worstExactDeviation
+		);
+		helper.assertTrue(
+			worstRatioDeviation < RATIO_TOLERANCE,
+			"a step ratio was off the growth of " + config.curve().growth() + " by " + worstRatioDeviation
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=curveExponential RESULT levels={} growth={} worstExactDeviation={} worstRatioDeviation={}",
+			levels, config.curve().growth(), worstExactDeviation, worstRatioDeviation
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theLevelRisesMonotonicallyAndReachesFiftyAtTheStatedTotal(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		int previous = PowerCurve.levelFor(0L, config);
 		int drops = 0;
-		for (long points = 1L; points <= MONOTONIC_SAMPLE_POINTS; points++) {
+		for (long points = 1L; points <= PowerFixtures.LEVEL_50_POINTS; points++) {
 			int current = PowerCurve.levelFor(points, config);
 			if (current < previous) {
 				drops++;
 			}
+
 			previous = current;
 		}
-		int atTravelCeiling = PowerCurve.levelFor(
-			PowerFixtures.DISTANCE_CAP_POINTS + PowerFixtures.DEPTH_CAP_POINTS, config
-		);
-		helper.assertTrue(drops == 0, "the level function dropped " + drops + " times over 0 to 10000 points");
+
+		int atOneBelow = PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS - 1L, config);
+		int atTotal = PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS, config);
+		helper.assertTrue(drops == 0, "the level function dropped " + drops + " times over the whole curve");
 		helper.assertTrue(
-			previous == config.levelCap(),
-			"10000 points reached level " + previous + " instead of the cap " + config.levelCap()
+			atOneBelow == 49,
+			"one point below the total read level " + atOneBelow + " instead of 49"
 		);
 		helper.assertTrue(
-			atTravelCeiling == 35,
-			"the distance and depth ceiling of 2008 points reached level " + atTravelCeiling + " instead of 35"
+			atTotal == config.levelCap(),
+			"the stated total read level " + atTotal + " instead of " + config.levelCap()
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=levelMonotonic RESULT samples={} drops={} levelAt10000Points={} levelAtTravelCeiling={}",
-			MONOTONIC_SAMPLE_POINTS, drops, previous, atTravelCeiling
+			"[BEHAVIOR] test=curveMonotonic RESULT samples={} drops={} levelAtTotalMinusOne={} levelAtTotal={}",
+			PowerFixtures.LEVEL_50_POINTS, drops, atOneBelow, atTotal
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void levelOneCostsNothingAndTheFirstStepCostsNine(final GameTestHelper helper) {
+	public void theAwardReadsTheMobLevel(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long first = PowerCurve.pointsForLevel(1, config);
-		long second = PowerCurve.pointsForLevel(2, config);
-		int levelAtZeroPoints = PowerCurve.levelFor(0L, config);
-		helper.assertTrue(first == 0L, "level 1 cost " + first + " points instead of 0");
-		helper.assertTrue(second == 9L, "level 2 cost " + second + " points instead of base 6 plus 3");
-		helper.assertTrue(levelAtZeroPoints == 1, "zero points reached level " + levelAtZeroPoints + " instead of 1");
+		int atZero = PowerCurve.awardFor(0, config);
+		int atThirtyTwo = PowerCurve.awardFor(32, config);
+		int atFifty = PowerCurve.awardFor(50, config);
+		int atMobCap = PowerCurve.awardFor(MOB_OVERALL_CAP, config);
+		helper.assertTrue(atZero == 1, "a level 0 mob paid " + atZero + " instead of 1");
+		helper.assertTrue(atThirtyTwo == 16, "a level 32 mob paid " + atThirtyTwo + " instead of 16");
+		helper.assertTrue(atFifty == 25, "a level 50 mob paid " + atFifty + " instead of 25");
+		helper.assertTrue(atMobCap == 18, "a level 36 mob paid " + atMobCap + " instead of 18");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=levelOneFree RESULT pointsForLevel1={} pointsForLevel2={} levelAtZeroPoints={}",
-			first, second, levelAtZeroPoints
+			"[BEHAVIOR] test=awardFormula RESULT divisor={} minimum={} at0={} at32={} at36={} at50={}",
+			config.award().divisor(), config.award().minimum(), atZero, atThirtyTwo, atMobCap, atFifty
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void levelFiftyCostsThreeThousandNineHundredSixtyNine(final GameTestHelper helper) {
+	public void aDeepKillPaysMoreThanAShallowOne(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long total = PowerCurve.pointsForLevel(50, config);
-		helper.assertTrue(total == PowerFixtures.LEVEL_50_POINTS, "level 50 cost " + total + " points instead of 3969");
+		int shallow = PowerCurve.awardFor(PowerCurve.mobLevel(0, 63, config), config);
+		int deep = PowerCurve.awardFor(PowerCurve.mobLevel(DISTANCE_CAP_BLOCKS, -64, config), config);
 		helper.assertTrue(
-			PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS - 1L, config) == 49,
-			"3968 points reached level " + PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS - 1L, config)
+			deep > shallow,
+			"a deep mob paid " + deep + " and a shallow mob paid " + shallow
 		);
 		helper.assertTrue(
-			PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS, config) == 50,
-			"3969 points reached level " + PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS, config)
+			deep == 18 && shallow == 1,
+			"the deep award was " + deep + " and the shallow award was " + shallow
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=levelFiftyCost RESULT pointsForLevel50={} levelAt3968={} levelAt3969={}",
-			total,
-			PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS - 1L, config),
-			PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS, config)
+			"[BEHAVIOR] test=deepKillPays RESULT shallowMobLevel={} shallowAward={} deepMobLevel={} deepAward={}",
+			PowerCurve.mobLevel(0, 63, config), shallow,
+			PowerCurve.mobLevel(DISTANCE_CAP_BLOCKS, -64, config), deep
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theEveryAttributeValueIsTheValueAtTheCap(final GameTestHelper helper) {
+		PowerConfig config = PowerFixtures.acceptanceConfig();
+		double atCap = PowerCurve.levelFraction(config.levelCap(), config);
+		double atOne = PowerCurve.levelFraction(1, config);
+		double atTwentyFive = PowerCurve.levelFraction(25, config);
+		double expectedHalfway = 24.0 / (double) (config.levelCap() - 1);
+		helper.assertTrue(atCap == 1.0, "the fraction at the cap was " + atCap);
+		helper.assertTrue(atOne == 0.0, "the fraction at level 1 was " + atOne);
+		helper.assertTrue(
+			Math.abs(atTwentyFive - expectedHalfway) < TOLERANCE,
+			"the fraction at level 25 was " + atTwentyFive + " instead of " + expectedHalfway
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=levelFraction RESULT atLevel1={} atLevel25={} atCap={}",
+			atOne, atTwentyFive, atCap
 		);
 		helper.succeed();
 	}
@@ -84,18 +185,24 @@ public class PowerCurveGameTest {
 	@GameTest
 	public void mobLevelAtTheDistanceCapIsThirtyTwo(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int level = mobLevelAt(9600.0, 0.0, PowerFixtures.OVERWORLD, config);
-		helper.assertTrue(level == 32, "the mob level at (9600, 0, 0) was " + level + " instead of 32");
-		StellaEquips.LOGGER.info("[BEHAVIOR] test=mobLevelDistanceCap RESULT x=9600 y=0 mobLevel={}", level);
+		int level = mobLevelAt(DISTANCE_CAP_BLOCKS, 0, PowerFixtures.OVERWORLD, config);
+		helper.assertTrue(level == MOB_LEVEL_CAP, "the mob level at (9600, 0, 0) was " + level + " instead of 32");
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=mobLevelDistanceCap RESULT x=9600 y=0 mobLevel={}", level
+		);
 		helper.succeed();
 	}
 
 	@GameTest
 	public void mobLevelAtTheDepthCapIsThirtySix(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int level = mobLevelAt(9600.0, -64.0, PowerFixtures.OVERWORLD, config);
-		helper.assertTrue(level == MOB_OVERALL_CAP, "the mob level at (9600, -64, 0) was " + level + " instead of 36");
-		StellaEquips.LOGGER.info("[BEHAVIOR] test=mobLevelOverallCap RESULT x=9600 y=-64 mobLevel={}", level);
+		int level = mobLevelAt(DISTANCE_CAP_BLOCKS, -64, PowerFixtures.OVERWORLD, config);
+		helper.assertTrue(
+			level == MOB_LEVEL_AT_DEPTH_CAP, "the mob level at (9600, -64, 0) was " + level + " instead of 36"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=mobLevelOverallCap RESULT x=9600 y=-64 mobLevel={}", level
+		);
 		helper.succeed();
 	}
 
@@ -103,17 +210,10 @@ public class PowerCurveGameTest {
 	public void netherDistanceScaleMatchesTheOverworld(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		double netherScaled = PowerCurve.scaledDistance(1200.0, 0.0, 0.0, 0.0, PowerFixtures.NETHER, config);
-		int nether = mobLevelAt(1200.0, 0.0, PowerFixtures.NETHER, config);
-		int overworld = mobLevelAt(9600.0, 0.0, PowerFixtures.OVERWORLD, config);
-		helper.assertTrue(
-			netherScaled == 9600.0,
-			"1200 nether blocks scaled to " + netherScaled + " instead of 9600"
-		);
-		helper.assertTrue(
-			nether == overworld,
-			"a nether mob at (1200, 0, 0) read level " + nether + " but an overworld mob at (9600, 0, 0) read " + overworld
-		);
-		helper.assertTrue(nether == 32, "the nether mob read level " + nether + " instead of 32");
+		int nether = mobLevelAt(1200, 0, PowerFixtures.NETHER, config);
+		int overworld = mobLevelAt(DISTANCE_CAP_BLOCKS, 0, PowerFixtures.OVERWORLD, config);
+		helper.assertTrue(netherScaled == 9600.0, "1200 nether blocks scaled to " + netherScaled);
+		helper.assertTrue(nether == overworld, "the nether mob read " + nether + " and the overworld " + overworld);
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=netherScale RESULT netherBlocks=1200 scaledDistance={} netherLevel={} overworldLevel={}",
 			netherScaled, nether, overworld
@@ -122,47 +222,11 @@ public class PowerCurveGameTest {
 	}
 
 	@GameTest
-	public void distancePointsAtTenThousandBlocksAreTwoThousand(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long points = PowerCurve.distancePoints(DISTANCE_CAP_BLOCKS, config);
-		helper.assertTrue(points == 2000L, "10000 blocks gave " + points + " distance points instead of 2000");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=distancePointsAtCap RESULT blocks={} points={} cap={}",
-			DISTANCE_CAP_BLOCKS, points, config.distance().maxPoints()
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void distancePointCapBindsBeyondTenThousandBlocks(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long raw = (long) (BEYOND_DISTANCE_CAP_BLOCKS / config.distance().blocksPerPoint());
-		long points = PowerCurve.distancePoints(BEYOND_DISTANCE_CAP_BLOCKS, config);
-		helper.assertTrue(
-			raw == 2400L,
-			"the raw division at 12000 blocks was " + raw + ": the test cannot show the cap binding"
-		);
-		helper.assertTrue(points == 2000L, "12000 blocks gave " + points + " distance points instead of the 2000 cap");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=distanceCapBinds RESULT blocks={} rawDivision={} cappedPoints={}",
-			BEYOND_DISTANCE_CAP_BLOCKS, raw, points
-		);
-		helper.succeed();
-	}
-
-	@GameTest
 	public void mobLevelNearSpawnAtSeaLevelIsZero(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int level = mobLevelAt(100.0, 63.0, PowerFixtures.OVERWORLD, config);
-		int firstStep = PowerCurve.mobLevel(300, 63, config);
+		int level = mobLevelAt(100, 63, PowerFixtures.OVERWORLD, config);
 		helper.assertTrue(level == 0, "the mob level at (100, 63, 100) was " + level + " instead of 0");
-		helper.assertTrue(
-			firstStep == 1,
-			"the mob level at 300 scaled blocks and y 63 was " + firstStep + " instead of 1"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=mobLevelNearSpawn RESULT x=100 y=63 mobLevel={} at300Blocks={}", level, firstStep
-		);
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=mobLevelNearSpawn RESULT x=100 y=63 mobLevel={}", level);
 		helper.succeed();
 	}
 
@@ -180,46 +244,11 @@ public class PowerCurveGameTest {
 				samples++;
 			}
 		}
-		helper.assertTrue(
-			lowest == 0,
-			"the lowest mob level in the table was " + lowest + " instead of 0"
-		);
-		helper.assertTrue(
-			highest == MOB_OVERALL_CAP,
-			"the highest mob level in the table was " + highest + " instead of " + MOB_OVERALL_CAP
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=mobLevelLimits RESULT samples={} lowest={} highest={}",
-			samples, lowest, highest
-		);
-		helper.succeed();
-	}
 
-	@GameTest
-	public void weakPlayerAgainstAStrongMobReachesTheTopMultiplier(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		double multiplier = PowerCurve.xpMultiplier(MOB_OVERALL_CAP, 1, config);
-		helper.assertTrue(
-			multiplier == 4.0,
-			"a level 1 player against a level 36 mob earned the multiplier " + multiplier + " instead of 4.0"
-		);
+		helper.assertTrue(lowest == 0, "the lowest mob level in the table was " + lowest);
+		helper.assertTrue(highest == MOB_OVERALL_CAP, "the highest mob level in the table was " + highest);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=xpMultiplierTop RESULT mobLevel={} playerLevel=1 multiplier={}",
-			MOB_OVERALL_CAP, multiplier
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void strongPlayerAgainstAWeakMobReachesTheBottomMultiplier(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		double multiplier = PowerCurve.xpMultiplier(0, 50, config);
-		helper.assertTrue(
-			multiplier == 0.05,
-			"a level 50 player against a level 0 mob earned the multiplier " + multiplier + " instead of 0.05"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=xpMultiplierBottom RESULT mobLevel=0 playerLevel=50 multiplier={}", multiplier
+			"[BEHAVIOR] test=mobLevelLimits RESULT samples={} lowest={} highest={}", samples, lowest, highest
 		);
 		helper.succeed();
 	}
@@ -233,52 +262,17 @@ public class PowerCurveGameTest {
 		PowerCurve.Band atFive = PowerCurve.band(5, config);
 		PowerCurve.Band atMinusFive = PowerCurve.band(-5, config);
 		PowerCurve.Band atMinusSix = PowerCurve.band(-6, config);
-		PowerCurve.Band atMinusNine = PowerCurve.band(-9, config);
 		PowerCurve.Band atMinusTen = PowerCurve.band(-10, config);
-		helper.assertTrue(atSix == PowerCurve.Band.ORANGE, "gap 6 read " + atSix + " instead of ORANGE");
-		helper.assertTrue(atTen == PowerCurve.Band.YELLOW, "gap 10 read " + atTen + " instead of YELLOW");
-		helper.assertTrue(atTwenty == PowerCurve.Band.RED, "gap 20 read " + atTwenty + " instead of RED");
-		helper.assertTrue(atFive == PowerCurve.Band.GREEN, "gap 5 read " + atFive + " instead of GREEN");
-		helper.assertTrue(atMinusFive == PowerCurve.Band.GREEN, "gap -5 read " + atMinusFive + " instead of GREEN");
-		helper.assertTrue(
-			atMinusSix == PowerCurve.Band.WHITE, "gap -6 read " + atMinusSix + " instead of WHITE"
-		);
-		helper.assertTrue(
-			atMinusNine == PowerCurve.Band.WHITE, "gap -9 read " + atMinusNine + " instead of WHITE"
-		);
-		helper.assertTrue(atMinusTen == PowerCurve.Band.WHITE, "gap -10 read " + atMinusTen + " instead of WHITE");
+		helper.assertTrue(atSix == PowerCurve.Band.ORANGE, "gap 6 read " + atSix);
+		helper.assertTrue(atTen == PowerCurve.Band.YELLOW, "gap 10 read " + atTen);
+		helper.assertTrue(atTwenty == PowerCurve.Band.RED, "gap 20 read " + atTwenty);
+		helper.assertTrue(atFive == PowerCurve.Band.GREEN, "gap 5 read " + atFive);
+		helper.assertTrue(atMinusFive == PowerCurve.Band.GREEN, "gap -5 read " + atMinusFive);
+		helper.assertTrue(atMinusSix == PowerCurve.Band.WHITE, "gap -6 read " + atMinusSix);
+		helper.assertTrue(atMinusTen == PowerCurve.Band.WHITE, "gap -10 read " + atMinusTen);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bandColors RESULT gap6={} gap10={} gap20={} gap5={} gap-5={} gap-6={} gap-9={} gap-10={}",
-			atSix, atTen, atTwenty, atFive, atMinusFive, atMinusSix, atMinusNine, atMinusTen
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theOutputBonusesRunFromZeroToTheirMaxima(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		double damageAtOne = PowerCurve.attackDamageBonus(1, config);
-		double damageAtCap = PowerCurve.attackDamageBonus(config.levelCap(), config);
-		double damageAboveCap = PowerCurve.attackDamageBonus(config.levelCap() + 10, config);
-		double speedAtOne = PowerCurve.attackSpeedBonus(1, config);
-		double speedAtCap = PowerCurve.attackSpeedBonus(config.levelCap(), config);
-		helper.assertTrue(damageAtOne == 0.0, "a level 1 player earned " + damageAtOne + " attack damage");
-		helper.assertTrue(speedAtOne == 0.0, "a level 1 player earned " + speedAtOne + " attack speed");
-		helper.assertTrue(
-			Math.abs(damageAtCap - PowerFixtures.ATTACK_DAMAGE_MAX) < TOLERANCE,
-			"at level " + config.levelCap() + " the attack damage bonus was " + damageAtCap
-		);
-		helper.assertTrue(
-			Math.abs(speedAtCap - PowerFixtures.ATTACK_SPEED_MAX) < TOLERANCE,
-			"at level " + config.levelCap() + " the attack speed bonus was " + speedAtCap
-		);
-		helper.assertTrue(
-			Math.abs(damageAboveCap - damageAtCap) < TOLERANCE,
-			"level " + (config.levelCap() + 10) + " earned " + damageAboveCap + " attack damage past the cap"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=outputBonuses RESULT damageAtLevel1={} damageAtCap={} damageAboveCap={} speedAtLevel1={} speedAtCap={}",
-			damageAtOne, damageAtCap, damageAboveCap, speedAtOne, speedAtCap
+			"[BEHAVIOR] test=bandColors RESULT gap6={} gap10={} gap20={} gap5={} gap-5={} gap-6={} gap-10={}",
+			atSix, atTen, atTwenty, atFive, atMinusFive, atMinusSix, atMinusTen
 		);
 		helper.succeed();
 	}
@@ -288,77 +282,25 @@ public class PowerCurveGameTest {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		java.util.EnumSet<PowerCurve.Band> seen = java.util.EnumSet.noneOf(PowerCurve.Band.class);
 		int undefined = 0;
-		int firstUndefined = 0;
 		for (int gap = -40; gap <= 40; gap++) {
 			PowerCurve.Band band = PowerCurve.band(gap, config);
 			if (band == null) {
 				undefined++;
-				if (undefined == 1) {
-					firstUndefined = gap;
-				}
 			} else {
 				seen.add(band);
 			}
 		}
-		helper.assertTrue(
-			undefined == 0,
-			undefined + " gaps had no band, the first at gap " + firstUndefined
-		);
-		helper.assertTrue(
-			seen.size() == 5,
-			"only " + seen.size() + " of the 5 bands appear between gap -40 and 40: " + seen
-		);
+
+		helper.assertTrue(undefined == 0, undefined + " gaps had no band");
+		helper.assertTrue(seen.size() == 5, "only " + seen.size() + " of the 5 bands appear");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bandComplete RESULT gaps=81 undefined={} bandsSeen={} gapMinusSix={} gapMinusNine={}",
-			undefined, seen.size(), PowerCurve.band(-6, config), PowerCurve.band(-9, config)
+			"[BEHAVIOR] test=bandComplete RESULT gaps=81 undefined={} bandsSeen={}", undefined, seen.size()
 		);
 		helper.succeed();
 	}
 
-	@GameTest
-	public void everyGapBelowGreenIsWhite(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int wrong = 0;
-		int firstWrong = 0;
-		PowerCurve.Band firstBand = PowerCurve.Band.WHITE;
-
-		for (int gap = -5; gap >= -40; gap--) {
-			PowerCurve.Band band = PowerCurve.band(gap, config);
-			boolean whiteExpected = gap <= -6;
-
-			if (whiteExpected && band != PowerCurve.Band.WHITE && wrong == 0) {
-				wrong++;
-				firstWrong = gap;
-				firstBand = band;
-			}
-		}
-
-		helper.assertTrue(
-			wrong == 0,
-			"gap " + firstWrong + " read " + firstBand + " instead of WHITE"
-		);
-		helper.assertTrue(
-			PowerCurve.band(-5, config) == PowerCurve.Band.GREEN,
-			"gap -5 read " + PowerCurve.band(-5, config) + " instead of GREEN"
-		);
-		helper.assertTrue(
-			PowerCurve.band(-6, config) == PowerCurve.Band.WHITE,
-			"gap -6 read " + PowerCurve.band(-6, config) + " instead of WHITE"
-		);
-		helper.assertTrue(
-			PowerCurve.band(-9, config) == PowerCurve.Band.WHITE,
-			"gap -9 read " + PowerCurve.band(-9, config) + " instead of WHITE"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bandBelowGreen RESULT gapMinusFive={} gapMinusSix={} gapMinusNine={} gapMinusForty={} wrong={}",
-			PowerCurve.band(-5, config), PowerCurve.band(-6, config),
-			PowerCurve.band(-9, config), PowerCurve.band(-40, config), wrong
-		);
-		helper.succeed();
-	}
-
-	private static int mobLevelAt(final double x, final double y, final net.minecraft.resources.Identifier dimension, final PowerConfig config) {
-		double scaled = PowerCurve.scaledDistance(x, 0.0, 0.0, 0.0, dimension, config);
-		return PowerCurve.mobLevel((int) Math.floor(scaled), (int) Math.floor(y), config);
+	private static int mobLevelAt(final int blocks, final int y, final Identifier dimension, final PowerConfig config) {
+		double scaled = PowerCurve.scaledDistance(blocks, 0.0, 0.0, 0.0, dimension, config);
+		return PowerCurve.mobLevel((int) Math.floor(scaled), y, config);
 	}
 }

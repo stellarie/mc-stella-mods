@@ -33,59 +33,42 @@ rarity.
 
 ## Player power
 
-The player has a level from 1 to 50. Survivability scales with travel, so the far
-world stays tankable: `max_health`, `armor`, and `knockback_resistance` grow with
-distance walked and depth reached. Output scales with combat only, so damage is
-earned and never granted by walking. Nothing is gated, and a low level player who
-beats a strong mob is paid up to 4 times the base reward.
+The player has a level from 1 to 50, and the only source of power is killing.
+Distance and depth buy no points at all. They still decide how strong a mob is,
+and a kill pays by the mob level, so travel is worth something without granting
+power directly: a mob at level 0 pays 1 point and a mob at the mob level cap of 36
+pays 18, which is 18 times more.
 
-The two axes read different quantities, and neither reads the other. Survivability
-reads a travel level, built from distance and depth points only. Output reads a
-combat level, built from kill and boss points only. The player level that the
-reward and the readout use is built from both, because that is what a level means,
-but no attribute reads it: a player who only walks gets survivability and zero
-damage, a player who only fights gets damage and zero survivability, and the same
-combat points pay the same output wherever he stands. Tests pin all three.
+All five player attributes grow together from the level, because there is one
+input. `max_health`, `armor`, `knockback_resistance`, `attack_damage`, and
+`attack_speed` each reach a stated value at level 50 and scale linearly from zero
+at level 1. Nothing a player owns reads his position, so walking can neither raise
+nor lower his power: the walk-home health cliff and the oscillation heal that
+slices 3 and 4 had to defend against cannot exist here, because a player attribute
+never reads where he stands. A future change that makes one read position restores
+both, and it has to argue against this paragraph first.
 
-Output cannot run away for the same reason. The combat contribution caps at level
-50, the config states the value there as `attack_damage_max` and
-`attack_speed_max`, and nine times the combat points of a capped player change his
-damage by nothing.
+The curve is exponential. The cost of the step from level L to L+1 is
+`base * growth^(L-1)`, with a base of 1 point and a growth of 1.15, so level 2
+costs 1 point, the step from 49 to 50 costs 819, and the whole climb to level 50
+costs 6275. The last step alone is 13 percent of the lifetime total, which is what
+makes the end of the curve feel earned. The state stores the banked points and the
+level.
 
-The level comes from points. A level L costs `base + per_level * (L - 1)`, and
-level 50 costs 3969 points. Distance pays 1 point per 5 blocks up to 2000 points,
-depth pays 1 point per 16 blocks below y 63 up to 8 points, a kill pays 1 point,
-and a boss pays 4. Travel alone therefore reaches level 35, 70 percent of the cap,
-and the rest is earned in combat. The reward for a kill is scaled by
-`clamp(even_fight + per_level_gap * (mob_level - player_level), min, max)`.
+A kill pays `max(minimum, ceil(mobLevel * divisor))`, with a minimum of 1 point
+and a divisor of 0.5. A player who only farms level 0 mobs needs about 6275 kills
+to reach the cap; a player who hunts deep mobs needs about 392. A death removes 5
+percent of the banked points, and a death at zero stays zero. Losing points can
+cost a level, and that is intended.
 
-A rise in the maximum health carries the current health with it, so a level up in
-the middle of a fight leaves the player at the same absolute health rather than at
-a bigger bar over the same wound. The heal fires only on a level the player has
-never reached before, which is what keeps it from being a health source: the
-highest level reached is remembered in the player state next to the points, so
-walking home and back out again heals nothing, and a test walks back and forth
-across a level boundary eight times and measures no healing at all. Walking inside
-one level grows the bar and heals nothing either.
-
-The units differ per key, and the config names each one. `max_health_per_point` is
-indeed per travel point and carries the far world: 0.5 times the 2008 point
-ceiling is 1004, which is exactly the headroom to the vanilla maximum health of
-1024. `armor_per_level` and `knockback_resistance_per_level` are per travel level,
-so the travel ceiling of level 35 pays 8.16 armor and 0.204 knockback resistance
-and leaves 21.84 armor and 0.796 knockback resistance for enchantments to use.
-That headroom is the point: a term that fills its vanilla attribute kills every
-enchantment that adds only that attribute. The applied modifier stops at the
-attribute's own ceiling as well, so no modifier is written that the game would
-only clamp.
-
-One consequence of the two-axis design is worth stating so it is not a surprise: a
-veteran who has earned a high combat level and then stands at the world spawn has
-full output and almost no survivability, because output is permanent and
-survivability follows his position. He hits for his maximum and has about 20
-health until he walks back out. That is the design oniichan approved, and the
-alternative is to let the survivability terms read the combat level too, which
-would undo the separation.
+The attributes are stated in `power.json` as the value at level 50, so there is
+one unit for all five and no per-point and per-level mixture to get wrong. The
+armor and knockback resistance values leave room on purpose: `armor_at_cap` 11.76
+of the vanilla 30 and `knockback_resistance_at_cap` 0.294 of 1.0, so the rest of
+both attributes stays free for enchantments. A term that fills its vanilla
+attribute would kill every enchantment that adds only that attribute. The applied
+modifier also stops at the attribute's own ceiling, so no modifier is written that
+the game would only clamp.
 
 The mob level is `min(cap, floor(scaled_distance / blocks_per_level))` plus up to
 `depth_bonus_cap` levels for depth, capped at `level_cap`. `dimension_scale`
