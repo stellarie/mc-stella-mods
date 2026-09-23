@@ -3,6 +3,7 @@ package com.stella.mobs;
 import com.stella.mobs.behavior.BoneFanGoal;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
+import com.stella.mobs.behavior.KeepDistanceGoal;
 import com.stella.mobs.behavior.DecayAuraGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.behavior.BossAbilities;
@@ -337,6 +338,43 @@ public class BossAbilityGameTest {
 	private static void strike(final GameTestHelper helper, final Mob mob, final float amount) {
 		mob.setInvulnerableTime(0);
 		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), amount);
+	}
+
+	/** A ranged archer by loadout and by configured role, so the installer adds the band goal to it. */
+	private static final String RANGED_ARCHER = """
+		{
+			"entities": {
+				"minecraft:skeleton": {
+					"slots": { "mainhand": { "item": "minecraft:bow" } }
+				}
+			},
+			"roles": { "minecraft:skeleton": "ranged" },
+			"rolls": {
+				"roll_chance": 0.0,
+				"elite_chance": 0.0,
+				"boss_chance": 0.0
+			}
+		}""";
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void aCorneredArcherFiresInsteadOfStandingStill(final GameTestHelper helper) {
+		prepare(helper, RANGED_ARCHER);
+		Skeleton archer = ordinary(helper, EntityTypes.SKELETON, 2, 3, 2);
+		// Walls on every side, so the band goal has nowhere to retreat to and must let the bow fire.
+		Arena.contain(helper, archer, 2, 2);
+		Mob target = ordinary(helper, EntityTypes.ZOMBIE, 5, 3, 2);
+		helper.onEachTick(() -> archer.setTarget(target));
+		int[] goals = {BossAbilities.copiesOf(archer, KeepDistanceGoal.class)};
+
+		helper.succeedWhen(() -> {
+			List<Arrow> arrows = helper.getLevel()
+				.getEntitiesOfClass(Arrow.class, archer.getBoundingBox().inflate(12.0), arrow -> arrow.getOwner() == archer);
+
+			helper.assertValueEqual(Integer.valueOf(goals[0]), Integer.valueOf(1), "band goals on the archer");
+			helper.assertFalse(arrows.isEmpty(), "the cornered archer never fired, so the band goal starved the bow");
+			result("corneredArcher", "arrows=" + arrows.size() + " bandGoals=" + goals[0] + " penned=true");
+		});
 	}
 
 	private static void prepare(final GameTestHelper helper, final String config) {

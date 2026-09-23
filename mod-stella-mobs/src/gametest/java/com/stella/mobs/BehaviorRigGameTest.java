@@ -81,7 +81,7 @@ public class BehaviorRigGameTest {
 	 * never fires. Whether the archer ends up inside the band is geometry, which is why this fails in
 	 * about two runs in fifteen. The manual check: corner a ranged elite and watch whether it shoots.
 	 */
-	@GameTest(maxTicks = Arena.MAX_TICKS, required = false)
+	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void corneredRangedSkeletonFiresInsteadOfFreezing(final GameTestHelper helper) {
 		Arena arena = Arena.build(helper, "corneredRangedSkeleton", bowConfig(""), EntityTypes.SKELETON, 2, 2, true);
 		Arena.contain(helper, arena.subject(), 2, 2);

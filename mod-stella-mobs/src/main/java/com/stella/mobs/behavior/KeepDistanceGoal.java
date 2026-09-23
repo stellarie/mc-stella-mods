@@ -21,8 +21,8 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
 
 	private final T mob;
-	private long endTick;
-	private long nextRepathTick;
+	private int ticksRunning;
+	private int ticksToRepath;
 	private boolean retreating;
 
 	public KeepDistanceGoal(final T mob) {
@@ -71,7 +71,9 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 
 	@Override
 	public boolean canContinueToUse() {
-		if (this.mob.level().getGameTime() >= this.endTick) {
+		// The window counts the goal's own ticks, not the level clock: a goal ticks once per game tick, so
+		// the two agree in play, and this one still ends where a stopped clock would freeze it.
+		if (this.ticksRunning >= WINDOW_TICKS) {
 			return false;
 		}
 
@@ -86,8 +88,16 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 
 		ReactiveState state = ReactiveState.get(this.mob);
 
-		if (this.retreating && this.mob.distanceTo(target) >= state.getNearDistance()) {
-			return false;
+		if (this.retreating) {
+			if (this.mob.distanceTo(target) >= state.getNearDistance()) {
+				return false;
+			}
+
+			// Nowhere left to go: release MOVE so the ranged goal can fire. The spec is that a unit which
+			// cannot get away fights instead of standing still, and holding the flags is what froze it.
+			if (FleePositions.away(this.mob, target.position()) == null) {
+				return false;
+			}
 		}
 
 		return true;
@@ -95,8 +105,8 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 
 	@Override
 	public void start() {
-		this.endTick = this.mob.level().getGameTime() + WINDOW_TICKS;
-		this.nextRepathTick = this.mob.level().getGameTime();
+		this.ticksRunning = 0;
+		this.ticksToRepath = 0;
 	}
 
 	@Override
@@ -119,12 +129,13 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 			this.mob.getLookControl().setLookAt(target, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
 		}
 
-		long now = this.mob.level().getGameTime();
-		if (now < this.nextRepathTick) {
+		this.ticksRunning++;
+
+		if (--this.ticksToRepath > 0) {
 			return;
 		}
 
-		this.nextRepathTick = now + REPATH_TICKS;
+		this.ticksToRepath = REPATH_TICKS;
 
 		if (this.isAirborne() || target == null) {
 			this.mob.getNavigation().stop();
