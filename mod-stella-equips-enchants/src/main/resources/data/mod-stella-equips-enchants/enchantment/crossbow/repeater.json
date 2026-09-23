@@ -4,7 +4,7 @@
 	"primary_items": "#minecraft:enchantable/crossbow",
 	"slots": ["mainhand", "offhand"],
 	"weight": 2,
-	"max_level": 2,
+	"max_level": 5,
 	"min_cost": { "base": 10, "per_level_above_first": 20 },
 	"max_cost": { "base": 50, "per_level_above_first": 0 },
 	"anvil_cost": 1,
