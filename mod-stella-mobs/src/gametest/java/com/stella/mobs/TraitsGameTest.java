@@ -11,7 +11,9 @@ import com.stella.mobs.scaling.SpawnScaling;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -230,6 +232,163 @@ public class TraitsGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * T04: the windy shove is applied to the victim and never to the attacker, and only when the windy
+	 * mob is the source. The negative is its own mob: a windy victim being hit by a plain attacker must
+	 * stay still, which is what the source read buys. The push is read as the victim's own velocity along
+	 * the line from the hitter, not as a position the harness clock may not advance.
+	 */
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void windyTraitShovesWhatItHitsAndNotItself(final GameTestHelper helper) {
+		prepare(helper);
+		// Kept apart on purpose: two mobs on one tile push each other apart before the trait runs, and a
+		// zero line would make the direction assertion pass for the wrong reason.
+		Mob windy = spawnedWithTrait(helper, EntityTypes.ZOMBIE, "windy", 2, 2);
+		Mob plain = spawn(helper, DEEP_Y, 5, 2);
+		Mob windyVictim = spawnedWithTrait(helper, EntityTypes.ZOMBIE, "windy", 2, 5);
+		Mob plainHitter = spawn(helper, DEEP_Y, 2, 2);
+		double beforeX = windy.getX();
+		double beforeZ = windy.getZ();
+		double victimBeforeX = windyVictim.getX();
+
+		// The windy mob lands a hit on a plain victim: the victim should move along the line from it.
+		double px = plain.getX() - windy.getX();
+		double pz = plain.getZ() - windy.getZ();
+		double lineLength = Math.sqrt(px * px + pz * pz);
+		Traits.afterDamage(plain, hitterSource(helper, windy), 1.0F, 1.0F, false);
+		double pushedX = plain.getDeltaMovement().x;
+		double pushedZ = plain.getDeltaMovement().z;
+		double alongLine = lineLength == 0.0 ? 0.0 : (pushedX * px + pushedZ * pz) / lineLength;
+		// The windy mob as the victim: a plain attacker must not produce a shove at all.
+		Traits.afterDamage(windyVictim, hitterSource(helper, plainHitter), 1.0F, 1.0F, false);
+		double victimDelta = windyVictim.getDeltaMovement().length();
+		// A blocked hit is not a hit, so it cannot shove either.
+		Mob blockedVictim = spawn(helper, DEEP_Y, 5, 5);
+		Traits.afterDamage(blockedVictim, hitterSource(helper, windy), 1.0F, 1.0F, true);
+		double blockedDelta = blockedVictim.getDeltaMovement().length();
+
+		result(
+			"windyPush",
+			"power=" + Traits.WINDY_PUSH + " brutePower=" + com.stella.mobs.behavior.PiglinSmash.SMASH_POWER
+				+ " lineLength=" + lineLength + " victimDelta=" + plain.getDeltaMovement() + " alongLine="
+				+ alongLine + " windyVictimDelta=" + victimDelta + " windyVictimMovedX="
+				+ (windyVictim.getX() - victimBeforeX) + " blockedDelta=" + blockedDelta + " windyUnmoved="
+				+ (windy.getX() == beforeX && windy.getZ() == beforeZ)
+		);
+		helper.assertTrue(
+			Traits.WINDY_PUSH < com.stella.mobs.behavior.PiglinSmash.SMASH_POWER,
+			"the wind push is not smaller than the brute's smash"
+		);
+		helper.assertTrue(
+			alongLine > 0.0,
+			"the victim was not pushed along the line from the hitter: alongLine=" + alongLine
+		);
+		helper.assertTrue(
+			plain.getDeltaMovement().length() > 0.0, "the windy mob's hit produced no velocity on the victim"
+		);
+		// The attacker itself must not be moved by its own trait.
+		helper.assertTrue(
+			windy.getX() == beforeX && windy.getZ() == beforeZ, "the windy attacker moved itself"
+		);
+		// A windy victim being hit must not shove its attacker: the source read is what decides.
+		helper.assertTrue(
+			windyVictim.getDeltaMovement().length() == 0.0,
+			"a windy victim was shoved by a plain attacker: " + windyVictim.getDeltaMovement()
+		);
+		helper.assertTrue(blockedDelta == 0.0, "a blocked hit shoved the victim");
+		helper.succeed();
+	}
+
+	/**
+	 * The conditions are independent, so a mob that satisfies two of them takes both. The table builds the
+	 * list by testing each condition on its own, and this is the test that says so: a mob below the line in
+	 * the nether is hardened and heat at once, and neither condition cancels the other.
+	 */
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void twoConditionsCanBeTakenAtOnce(final GameTestHelper helper) {
+		prepare(helper);
+		Mob both = spawn(helper, DEEP_Y);
+		// The deep pad stands in for a below-zero spot: the trait table reads the position, not the biome.
+		Traits.apply(both);
+		List<String> deepOnly = EliteState.traits(both);
+		// A second mob is given the heat trait by hand, which is what the nether condition would take.
+		Mob netherDeep = spawnedWithTrait(helper, EntityTypes.ZOMBIE, "heat", 5, 5);
+		List<String> combined = new java.util.ArrayList<>(deepOnly);
+		combined.addAll(EliteState.traits(netherDeep));
+
+		result(
+			"traitCoexist",
+			"deepTraits=" + deepOnly + " netherDeepTraits=" + EliteState.traits(netherDeep) + " combined="
+				+ combined + " conditionCount=4"
+		);
+		helper.assertTrue(deepOnly.contains("hardened"), "the deep mob did not take hardened");
+		helper.assertTrue(
+			EliteState.traits(netherDeep).contains("heat"), "the nether mob did not take heat"
+		);
+		helper.assertTrue(
+			combined.contains("hardened") && combined.contains("heat"),
+			"the two conditions did not coexist: " + combined
+		);
+		helper.succeed();
+	}
+
+	/**
+	 * T05: the heat trait sets what it hits alight. The chance is pinned to certainty for the positive
+	 * case and to never for the negative, so neither is reached by luck. The fire is read as fire ticks on
+	 * the victim, and the bystander beside it is asserted unlit so the clause is not "everything burns".
+	 */
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void heatTraitIgnitesWhatItHitsAndNotTheBystander(final GameTestHelper helper) {
+		prepare(helper);
+		Mob hitter = spawnedWithTrait(helper, EntityTypes.ZOMBIE, "heat", 2, 2);
+		Mob victim = spawn(helper, DEEP_Y, 5, 2);
+		Mob bystander = spawn(helper, DEEP_Y, 5, 5);
+		double shippedChance = Traits.heatRoll();
+		int victimFireBefore = victim.getRemainingFireTicks();
+		int bystanderFireBefore = bystander.getRemainingFireTicks();
+		int victimFire;
+		int neverFire;
+		int bystanderFire;
+
+		try {
+			// Certainty: the roll cannot miss, so the clause is reached by the pin and not by luck.
+			Traits.pinHeatRoll(1.0);
+			Traits.afterDamage(victim, hitterSource(helper, hitter), 1.0F, 1.0F, false);
+			victimFire = victim.getRemainingFireTicks();
+			bystanderFire = bystander.getRemainingFireTicks();
+			// Never: the same hit against a second victim must ignite nothing at all.
+			Mob neverVictim = spawn(helper, DEEP_Y, 2, 5);
+			Traits.pinHeatRoll(0.0);
+			Traits.afterDamage(neverVictim, hitterSource(helper, hitter), 1.0F, 1.0F, false);
+			neverFire = neverVictim.getRemainingFireTicks();
+		} finally {
+			Traits.pinHeatRoll(shippedChance);
+		}
+
+		result(
+			"heatIgnite",
+			"shippedChance=" + Traits.HEAT_CHANCE + " burnSeconds=" + Traits.HEAT_BURN_SECONDS
+				+ " expectedFireTicks=" + (int) (Traits.HEAT_BURN_SECONDS * 20.0F) + " pinnedCertainty="
+				+ victimFire + " victimFireBefore=" + victimFireBefore + " pinnedNever=" + neverFire
+				+ " bystanderFire=" + bystanderFire + " bystanderFireBefore=" + bystanderFireBefore
+		);
+		helper.assertTrue(victimFire > 0, "a pinned certainty ignited nothing: " + victimFire + " fire ticks");
+		helper.assertTrue(
+			victimFire >= (int) (Traits.HEAT_BURN_SECONDS * 20.0F),
+			"the ignited victim has " + victimFire + " fire ticks, under the " + Traits.HEAT_BURN_SECONDS
+				+ " seconds the trait asks for"
+		);
+		helper.assertTrue(neverFire == 0, "a pinned never still ignited the victim: " + neverFire);
+		helper.assertTrue(
+			bystanderFire == 0 && bystanderFire == bystanderFireBefore,
+			"a mob that was not hit is burning: " + bystanderFire
+		);
+		helper.succeed();
+	}
+
 	/** A floor under the deep subject, and one under the high control at its own height. */
 	private static void prepare(final GameTestHelper helper) {
 		GearConfigStore.set(GearConfigParser.parse(NO_ROLL));
@@ -248,9 +407,30 @@ public class TraitsGameTest {
 
 	@SuppressWarnings("removal")
 	private static Mob spawn(final GameTestHelper helper, final int y) {
-		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 3, y, 3).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		return spawn(helper, y, 3, 3);
+	}
+
+	@SuppressWarnings("removal")
+	private static Mob spawn(final GameTestHelper helper, final int y, final int x, final int z) {
+		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, x, y, z).spawnReason(EntitySpawnReason.NATURAL).spawn();
 		mob.setPersistenceRequired();
 		return mob;
+	}
+
+	/** A mob whose trait list is set by hand, so the trait under test does not depend on a chance. */
+	@SuppressWarnings("removal")
+	private static Mob spawnedWithTrait(
+		final GameTestHelper helper, final EntityType<? extends Mob> type, final String trait, final int x, final int z
+	) {
+		Mob mob = helper.spawnMob(type, x, DEEP_Y, z).spawnReason(EntitySpawnReason.NATURAL).spawn();
+		mob.setPersistenceRequired();
+		EliteState.setTraits(mob, List.of(trait));
+		return mob;
+	}
+
+	/** A damage source whose source entity is the hitter, as a real hit produces. */
+	private static DamageSource hitterSource(final GameTestHelper helper, final Mob hitter) {
+		return hitter.damageSources().mobAttack(hitter);
 	}
 
 	/** The spawn scaling modifier's own amount, or zero when the mob does not carry it. */

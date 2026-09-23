@@ -74,6 +74,8 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinSmash::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinWarCall::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EliteKits::strayFreeze);
+		// T04: the windy trait shoves what this mob hits, read through the source so a windy victim cannot.
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(Traits::afterDamage);
 		ServerLivingEntityEvents.ALLOW_DEATH.register(SecondPhase::allowDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
