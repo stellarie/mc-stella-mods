@@ -8,6 +8,10 @@ import com.stella.equips.power.PowerTracker;
 import com.stella.equips.readout.ReadoutOwner;
 import com.stella.equips.readout.ReadoutService;
 import com.stella.equips.readout.ReadoutText;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +55,18 @@ public class ReadoutGameTest {
 	private static final double OPTOUT_TEST_X = 14000.0;
 	private static final double DAMAGE_TEST_X = 17000.0;
 	private static final double TEXT_TEST_X = 17200.0;
+	private static final double FOLLOW_TEST_X = 20000.0;
+	private static final double CONFIG_TEST_X = 23000.0;
+	private static final double STAGED_RADIUS = 20.0;
+	private static final int STAGED_CAP = 3;
+	private static final double STAGED_HEIGHT_OFFSET = 2.5;
+	private static final double STAGED_VIEW_RANGE = 0.25;
+	private static final double WALK_DISTANCE = 10.0;
+	private static final double WALK_SPEED = 1.0;
+	private static final double WALK_MIN = 3.0;
+	private static final int WALK_POLL_TICKS = 5;
+	private static final int WALK_DEADLINE_TICKS = 120;
+	private static final double LAG_TOLERANCE = 1.0;
 	private static final float LETHAL_DAMAGE = 1000.0F;
 	private static final float READOUT_DAMAGE = 100.0F;
 	private static final String SPAWN_LINE = "readout spawn";
@@ -307,8 +323,8 @@ public class ReadoutGameTest {
 							+ "; playerLevel=" + levelAfter
 					);
 					helper.assertTrue(
-						after.band() == PowerCurve.Band.ORANGE,
-						"gap " + gapAfter + " left the readout at " + after.band() + " instead of ORANGE"
+						after.band() == PowerCurve.Band.WHITE,
+						"gap " + gapAfter + " left the readout at " + after.band() + " instead of WHITE"
 					);
 					helper.assertTrue(
 						dataSent == 1,
@@ -741,6 +757,232 @@ public class ReadoutGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = MAX_TICKS)
+	public void aReadoutFollowsItsMobWhenTheMobWalks(final GameTestHelper helper) {
+		PowerRecorder.install();
+		PowerConfig config = liveConfig();
+		ServerPlayer owner = ownerAt(helper, FOLLOW_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob mob = spawnWalker(helper, owner);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				ReadoutOwner.Readout start = ReadoutService.owner(owner).get(mob.getUUID());
+				helper.assertTrue(start != null, "the follow test spawned no readout");
+				double startX = mob.getX();
+				double startZ = mob.getZ();
+				double startLag = horizontalLag(start.display(), mob);
+				helper.assertTrue(
+					startLag <= LAG_TOLERANCE,
+					"the readout sat " + startLag + " blocks from its mob before the walk"
+				);
+				boolean ordered = mob.getNavigation().moveTo(
+					mob.getX() + WALK_DISTANCE, mob.getY(), mob.getZ(), WALK_SPEED
+				);
+				helper.assertTrue(
+					ordered,
+					"the mob refused the walk order to " + (mob.getX() + WALK_DISTANCE) + ", so nothing was followed"
+				);
+				waitForTheWalk(helper, owner, mob, startX, startZ, start.display().getId(), 0);
+			});
+		});
+	}
+
+	private static void waitForTheWalk(
+		final GameTestHelper helper,
+		final ServerPlayer owner,
+		final Mob mob,
+		final double startX,
+		final double startZ,
+		final int displayId,
+		final int waited
+	) {
+		helper.runAfterDelay(WALK_POLL_TICKS, () -> {
+			double walked = Math.hypot(mob.getX() - startX, mob.getZ() - startZ);
+
+			if (walked < WALK_MIN && waited < WALK_DEADLINE_TICKS) {
+				waitForTheWalk(helper, owner, mob, startX, startZ, displayId, waited + WALK_POLL_TICKS);
+				return;
+			}
+
+			ReadoutOwner.Readout readout = ReadoutService.owner(owner).get(mob.getUUID());
+			helper.assertTrue(readout != null, "the readout vanished while its mob walked");
+			Display.TextDisplay display = readout.display();
+			double lag = horizontalLag(display, mob);
+			double height = mob.getY() + mob.getBbHeight() + PowerConfigStore.get().readout().heightOffset();
+			double heightError = Math.abs(display.getY() - height);
+			int moves = PacketRecorder.of(owner).teleportPackets(displayId);
+			helper.assertTrue(
+				walked >= WALK_MIN,
+				"the mob walked only " + walked + " blocks in " + (waited + WALK_POLL_TICKS)
+					+ " ticks, so the follow could not be measured"
+			);
+			helper.assertTrue(
+				lag <= LAG_TOLERANCE,
+				"the mob walked " + walked + " blocks and left its readout " + lag + " blocks behind"
+			);
+			helper.assertTrue(
+				heightError <= LAG_TOLERANCE,
+				"the readout sat " + heightError + " blocks off the mob's head height of " + height
+			);
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=readoutFollowsMob RESULT walked={} mobX={} mobZ={} displayX={} displayZ={} lag={} heightError={} movePackets={} ticks={} text={}",
+				walked, mob.getX(), mob.getZ(), display.getX(), display.getZ(), lag, heightError, moves,
+				waited + WALK_POLL_TICKS, readout.text()
+			);
+			helper.succeed();
+		});
+	}
+
+	private static double horizontalLag(final Display.TextDisplay display, final Mob mob) {
+		return Math.hypot(display.getX() - mob.getX(), display.getZ() - mob.getZ());
+	}
+
+	@GameTest
+	public void theReadoutConfigKeysParse(final GameTestHelper helper) throws IOException {
+		Path file = Files.createTempDirectory("readout-config").resolve(PowerConfigStore.FILE_NAME);
+		Files.writeString(file, stagedDocument(), StandardCharsets.UTF_8);
+		PowerConfig loaded = PowerConfigStore.loadFrom(file);
+		PowerConfigStore.load();
+		helper.assertTrue(
+			loaded.readout().radius() == STAGED_RADIUS,
+			"the staged radius of " + STAGED_RADIUS + " loaded as " + loaded.readout().radius()
+		);
+		helper.assertTrue(
+			loaded.readout().maxPerPlayer() == STAGED_CAP,
+			"the staged cap of " + STAGED_CAP + " loaded as " + loaded.readout().maxPerPlayer()
+		);
+		helper.assertTrue(
+			loaded.readout().heightOffset() == STAGED_HEIGHT_OFFSET,
+			"the staged height offset of " + STAGED_HEIGHT_OFFSET + " loaded as "
+				+ loaded.readout().heightOffset()
+		);
+		helper.assertTrue(
+			loaded.readout().viewRange() == STAGED_VIEW_RANGE,
+			"the staged view range of " + STAGED_VIEW_RANGE + " loaded as " + loaded.readout().viewRange()
+		);
+		helper.assertTrue(
+			!loaded.readout().enabledByDefault(),
+			"the staged disabled default loaded as " + loaded.readout().enabledByDefault()
+		);
+		helper.assertTrue(
+			loaded.readout().equals(new PowerConfig.Readout(false, STAGED_RADIUS, STAGED_CAP, STAGED_HEIGHT_OFFSET, STAGED_VIEW_RANGE)),
+			"the staged readout block loaded as " + loaded.readout()
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=readoutConfigParse RESULT radius={} maxPerPlayer={} heightOffset={} viewRange={} enabledByDefault={}",
+			loaded.readout().radius(), loaded.readout().maxPerPlayer(), loaded.readout().heightOffset(),
+			loaded.readout().viewRange(), loaded.readout().enabledByDefault()
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void theReadoutConfigKeysDriveTheScan(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = ownerAt(helper, CONFIG_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			List<Mob> near = new ArrayList<>();
+
+			for (int i = 0; i < 5; i++) {
+				near.add(spawnStill(helper, owner.getX() + 5.0 + i * 3.0, owner.getY(), owner.getZ()));
+			}
+
+			Mob beyond = spawnStill(helper, owner.getX() + STAGED_RADIUS + 5.0, owner.getY(), owner.getZ());
+			Path file = stageDocument();
+			PowerConfig staged = PowerConfigStore.loadFrom(file);
+			ServerPlayer stagedOwner = ownerAt(helper, CONFIG_TEST_X);
+			ReadoutService.scanPlayer(stagedOwner, staged);
+			ReadoutOwner ownerState = ReadoutService.owner(stagedOwner);
+			int held = ownerState.size();
+			boolean beyondPresent = ownerState.get(beyond.getUUID()) != null;
+			int viewRangeWrong = 0;
+			int heightWrong = 0;
+			double firstHeight = 0.0;
+
+			for (ReadoutOwner.Readout readout : ownerState.readouts().values()) {
+				if (readout.display().getViewRange() != (float) STAGED_VIEW_RANGE) {
+					viewRangeWrong++;
+				}
+			}
+
+			for (Mob mob : near) {
+				ReadoutOwner.Readout readout = ownerState.get(mob.getUUID());
+
+				if (readout == null) {
+					continue;
+				}
+
+				firstHeight = readout.display().getY();
+				double expected = mob.getY() + mob.getBbHeight() + STAGED_HEIGHT_OFFSET;
+
+				if (Math.abs(firstHeight - expected) > LAG_TOLERANCE) {
+					heightWrong++;
+				}
+			}
+
+			PowerConfig disabledConfig = PowerConfigStore.loadFrom(stageDocument(false));
+			ServerPlayer disabledOwner = ownerAt(helper, CONFIG_TEST_X);
+			ReadoutService.scanPlayer(disabledOwner, disabledConfig);
+			int disabledHeld = ReadoutService.owner(disabledOwner).size();
+			PowerConfigStore.load();
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=readoutConfigDrives RESULT stagedRadius={} stagedCap={} candidates={} held={} beyondPresent={} viewRangeWrong={} heightWrong={} firstHeight={} enabledByDefault={} disabledHeld={}",
+				staged.readout().radius(), staged.readout().maxPerPlayer(), near.size(), held, beyondPresent,
+				viewRangeWrong, heightWrong, firstHeight, disabledConfig.readout().enabledByDefault(), disabledHeld
+			);
+			helper.assertTrue(
+				held == STAGED_CAP,
+				near.size() + " candidates under a staged cap of " + STAGED_CAP + " produced " + held + " readouts"
+			);
+			helper.assertTrue(
+				!beyondPresent,
+				"a mob at " + (STAGED_RADIUS + 5.0) + " blocks carried a readout under a staged radius of "
+					+ STAGED_RADIUS
+			);
+			helper.assertTrue(
+				viewRangeWrong == 0,
+				viewRangeWrong + " readouts ignored the staged view range of " + STAGED_VIEW_RANGE
+			);
+			helper.assertTrue(
+				heightWrong == 0,
+				heightWrong + " readouts ignored the staged height offset of " + STAGED_HEIGHT_OFFSET
+			);
+			helper.assertTrue(
+				disabledHeld == 0,
+				"a staged enabled_by_default of false still produced " + disabledHeld + " readouts"
+			);
+			helper.succeed();
+		});
+	}
+
+	private static Path stageDocument() {
+		return stageDocument(true);
+	}
+
+	private static Path stageDocument(final boolean enabledByDefault) {		try {
+			Path file = Files.createTempDirectory("readout-staged").resolve(PowerConfigStore.FILE_NAME);
+			Files.writeString(file, stagedDocument(enabledByDefault), StandardCharsets.UTF_8);
+			return file;
+		} catch (IOException e) {
+			throw new IllegalStateException("could not stage the readout document: " + e.getMessage(), e);
+		}
+	}
+
+	private static String stagedDocument() {
+		return stagedDocument(false);
+	}
+
+	private static String stagedDocument(final boolean enabledByDefault) {
+		return PowerConfigStore.DEFAULT_JSON
+			.replace("\"enabled_by_default\": true", "\"enabled_by_default\": " + enabledByDefault)
+			.replace("\"radius\": 32", "\"radius\": " + (int) STAGED_RADIUS)
+			.replace("\"max_per_player\": 40", "\"max_per_player\": " + STAGED_CAP)
+			.replace("\"height_offset\": 0.9", "\"height_offset\": " + STAGED_HEIGHT_OFFSET)
+			.replace("\"view_range\": 0.5", "\"view_range\": " + STAGED_VIEW_RANGE);
+	}
+
 	private static PowerConfig liveConfig() {
 		PowerConfigStore.load();
 		return PowerConfigStore.get();
@@ -789,8 +1031,15 @@ public class ReadoutGameTest {
 		}
 	}
 
-	private static Mob spawnStill(final GameTestHelper helper, final double x, final double y, final double z) {
+	private static Mob spawnWalker(final GameTestHelper helper, final ServerPlayer owner) {
 		Mob mob = EntityTypes.COW.create(helper.getLevel(), EntitySpawnReason.STRUCTURE);
+		mob.setPos(owner.getX() + NEAR_DISTANCE, owner.getY() + 2.0, owner.getZ());
+		mob.setPersistenceRequired();
+		helper.assertTrue(helper.getLevel().addFreshEntity(mob), "the level refused the walking mob");
+		return mob;
+	}
+
+	private static Mob spawnStill(final GameTestHelper helper, final double x, final double y, final double z) {		Mob mob = EntityTypes.COW.create(helper.getLevel(), EntitySpawnReason.STRUCTURE);
 		mob.setPos(x, y, z);
 		mob.setNoAi(true);
 		mob.setPersistenceRequired();

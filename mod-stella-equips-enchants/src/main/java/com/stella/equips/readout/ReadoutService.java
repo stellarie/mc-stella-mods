@@ -18,6 +18,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +26,7 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -61,6 +63,10 @@ public final class ReadoutService {
 		serverTicks++;
 		PowerConfig config = PowerConfigStore.get();
 
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			syncPositions(player, config);
+		}
+
 		if (serverTicks % config.tracker().scanIntervalTicks() != 0) {
 			return;
 		}
@@ -76,6 +82,43 @@ public final class ReadoutService {
 			if (!online.contains(playerId)) {
 				forget(playerId);
 			}
+		}
+	}
+
+	/**
+	 * Moves every existing readout onto its mob. Only the owner's own readouts cost work, and a
+	 * mob outside the radius holds no readout, so the scan stays bounded by the cap.
+	 */
+	private static void syncPositions(final ServerPlayer player, final PowerConfig config) {
+		ReadoutOwner owner = OWNERS.get(player.getUUID());
+
+		if (owner == null || !owner.enabled() || owner.readouts().isEmpty()) {
+			return;
+		}
+
+		ServerLevel level = player.level();
+		double heightOffset = config.readout().heightOffset();
+
+		for (ReadoutOwner.Readout readout : owner.readouts().values()) {
+			Entity entity = level.getEntity(readout.mobEntityId());
+
+			if (!(entity instanceof Mob mob) || !mob.getUUID().equals(readout.mobId())) {
+				continue;
+			}
+
+			Display.TextDisplay display = readout.display();
+			double y = mob.getY() + mob.getBbHeight() + heightOffset;
+
+			if (display.getX() == mob.getX() && display.getY() == y && display.getZ() == mob.getZ()) {
+				continue;
+			}
+
+			display.setPos(mob.getX(), y, mob.getZ());
+			player.connection.send(
+				ClientboundTeleportEntityPacket.teleport(
+					display.getId(), PositionMoveRotation.of(display), Set.of(), display.onGround()
+				)
+			);
 		}
 	}
 
@@ -167,6 +210,7 @@ public final class ReadoutService {
 
 	public static void forget(final UUID playerId) {
 		ReadoutOwner owner = OWNERS.remove(playerId);
+		OPT_OUT.remove(playerId);
 
 		if (owner != null) {
 			owner.clear();
@@ -207,10 +251,9 @@ public final class ReadoutService {
 		player.connection.send(addPacket(display));
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().getNonDefaultValues()));
 		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, mobLevel, band, text.getString()));
-		PowerLog.line(
-			"[BEHAVIOR] readout spawn player=%s mob=%s name=%s entityId=%d mobLevel=%d playerLevel=%d gap=%d band=%s color=%s text=%s",
-			player.getScoreboardName(), mob.getUUID(), mob.getDisplayName().getString(), display.getId(),
-			mobLevel, playerLevel, gap, band, ReadoutText.colorName(band), text.getString()
+		PowerLog.recorder().readoutSpawn(
+			player.getScoreboardName(), mob.getUUID().toString(), mob.getDisplayName().getString(),
+			display.getId(), mobLevel, playerLevel, gap, band.name(), ReadoutText.colorName(band), text.getString()
 		);
 	}
 
@@ -229,10 +272,9 @@ public final class ReadoutService {
 		display.setText(text);
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().packDirty()));
 		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, mobLevel, band, text.getString()));
-		PowerLog.line(
-			"[BEHAVIOR] readout band player=%s mob=%s entityId=%d gap=%d bandFrom=%s bandTo=%s mobLevel=%d playerLevel=%d text=%s",
-			player.getScoreboardName(), mob.getUUID(), display.getId(), gap, existing.band(), band,
-			mobLevel, playerLevel, text.getString()
+		PowerLog.recorder().readoutBand(
+			player.getScoreboardName(), mob.getUUID().toString(), display.getId(), gap,
+			existing.band().name(), band.name(), mobLevel, playerLevel, text.getString()
 		);
 	}
 
@@ -244,9 +286,9 @@ public final class ReadoutService {
 	) {
 		owner.remove(readout.mobId());
 		player.connection.send(new ClientboundRemoveEntitiesPacket(readout.display().getId()));
-		PowerLog.line(
-			"[BEHAVIOR] readout remove player=%s mob=%s entityId=%d reason=%s remaining=%d",
-			player.getScoreboardName(), readout.mobId(), readout.display().getId(), reason, owner.size()
+		PowerLog.recorder().readoutRemove(
+			player.getScoreboardName(), readout.mobId().toString(), readout.display().getId(), reason,
+			owner.size()
 		);
 	}
 

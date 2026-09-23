@@ -1,22 +1,83 @@
 package com.stella.equips.power;
 
+/**
+ * The behaviour log seam. The recorder that names and formats a line lives in the gametest
+ * source set, so the shipped jar carries no behaviour string.
+ */
 public final class PowerLog {
-	public interface Sink {
-		void line(String format, Object... args);
+	public interface Recorder {
+		default void powerLevel(
+			final String player,
+			final int level,
+			final int from,
+			final long survivabilityPoints,
+			final double combatPoints
+		) {
+		}
+
+		default void powerKill(
+			final String mob,
+			final boolean boss,
+			final int mobLevel,
+			final int playerLevel,
+			final double multiplier,
+			final double points,
+			final double totalCombatPoints
+		) {
+		}
+
+		default void powerHeartbeat(final int tick, final int players) {
+		}
+
+		default void readoutSpawn(
+			final String player,
+			final String mob,
+			final String mobName,
+			final int entityId,
+			final int mobLevel,
+			final int playerLevel,
+			final int gap,
+			final String band,
+			final String color,
+			final String text
+		) {
+		}
+
+		default void readoutBand(
+			final String player,
+			final String mob,
+			final int entityId,
+			final int gap,
+			final String bandFrom,
+			final String bandTo,
+			final int mobLevel,
+			final int playerLevel,
+			final String text
+		) {
+		}
+
+		default void readoutRemove(
+			final String player,
+			final String mob,
+			final int entityId,
+			final String reason,
+			final int remaining
+		) {
+		}
 	}
 
-	private static final Sink SILENT = (format, args) -> {
+	private static final Recorder SILENT = new Recorder() {
 	};
-	private static volatile Sink sink = SILENT;
+	private static volatile Recorder recorder = SILENT;
 
 	private PowerLog() {
 	}
 
-	public static void setSink(final Sink newSink) {
-		sink = newSink == null ? SILENT : newSink;
+	public static void setRecorder(final Recorder newRecorder) {
+		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
-	public static void line(final String format, final Object... args) {
-		sink.line(format, args);
+	public static Recorder recorder() {
+		return recorder;
 	}
 }

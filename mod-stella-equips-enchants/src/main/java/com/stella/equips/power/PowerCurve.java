@@ -96,8 +96,9 @@ public final class PowerCurve {
 			return Band.GREEN;
 		}
 
-		if (gap > bands.whiteBelow()) {
-			return Band.ORANGE;
+		// White is the last row, so white holds from white_below down.
+		if (gap >= bands.whiteBelow()) {
+			return Band.WHITE;
 		}
 
 		return Band.WHITE;
