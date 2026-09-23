@@ -1,6 +1,6 @@
 # The enchantment catalogue
 
-The catalogue holds 44 enchantments: 42 written for this package and the two
+The catalogue holds 32 enchantments: 30 written for this package and the two
 that oniichan named, Arrow Shower and Bomb Arrows. One file per enchantment
 under `src/main/resources/data/mod-stella-equips-enchants/enchantment/`. The
 folder under that directory becomes part of the id, so
@@ -8,9 +8,42 @@ folder under that directory becomes part of the id, so
 `mod-stella-equips-enchants:bow/marksman`.
 
 Every one of them carries `anvil_cost` 1. Every one of them is listed in the
-enchanting table tag and is a cost candidate for at least one item, so all 44
+enchanting table tag and is a cost candidate for at least one item, so all 32
 can be rolled at a table. No enchantment carries an `exclusive_set`, so no pair
 blocks another pair.
+
+## The redundancy cut
+
+Twelve enchantments duplicated a vanilla enchantment and were cut in slice 7.
+The cut takes the catalogue from 44 to 32. These twelve are removed rather than
+reworked: a player who wants the effect has the vanilla enchantment. The pairs
+below are the ones the auditor matched on effect shape with the requirement
+condition kept in the key, so a reader can check a reason without re-running the
+audit.
+
+| Cut | It duplicated | Reason and replacement |
+|---|---|---|
+| Cleave | Sweeping Edge | the area blast. None needed, vanilla has it |
+| Returning | Loyalty | `trident_return_acceleration` add, the same hook vanilla Loyalty uses |
+| Featherfall | Feather Falling | `safe_fall_distance` and `fall_damage_multiplier` |
+| Asbestos | Fire Protection | `damage_immunity` on `#minecraft:is_fire`. Ember Guard retaliates instead |
+| Warded | **Projectile Protection, not Protection** | both are damage reduction gated on `is_projectile` and nothing else. Deflection is the chance-based replacement. The first auditor named Protection and Feather Falling because its key dropped the requirement predicates; the corrected key separates them |
+| Bodkin | Piercing | `projectile_piercing` |
+| Angler's Fortune | Lure and Luck of the Sea | `fishing_time_reduction` and `fishing_luck_bonus` |
+| Quickdraw | Quick Charge | `crossbow_charge_time` |
+| Deepdiver | Respiration and Aqua Affinity | `oxygen_bonus` and `water_movement_efficiency` |
+| Arachnid's Bane | Bane of Arthropods, and mob specific | `damage` against `#minecraft:arthropod`. Venom is general |
+| Ranger's Mark | Power | marginal against it rather than an exact shape match, and too close to a vanilla damage bonus to keep |
+| Slam | **Density** | both are `smash_damage_per_fallen_block` and nothing else. The auditor found this one last, which took the cut from 11 to 12 |
+
+The twelve files are deleted, their ids are gone from
+`in_enchanting_table.json` and `on_random_loot.json`, and their names are gone
+from `en_us.json`. Rows elsewhere in this file that describe a cut enchantment,
+including the deviations table, are history: that data no longer ships.
+
+**The derived numbers below are stale.** The candidate counts, the total weights,
+the shares, and the test claims that name a count were computed for the
+44-entry catalogue. Slice 7 recomputes them when the new enchantments land.
 
 ## Prices
 
@@ -24,7 +57,7 @@ client side limits that a server side mod cannot close.
 ## Levels 4 and 5
 
 An enchanted book rolls a level from 1 to the enchantment's own `max_level`.
-32 of the 44 enchantments reach level 5 with real effect. The other 12 are
+22 of the 32 enchantments reach level 5 with real effect. The other 10 are
 capped below 5 with a recorded reason, so no book roll lands on a level that
 does nothing.
 
@@ -35,29 +68,28 @@ The capped list is asserted by name, so it cannot grow without a test failing.
 
 Ten enchantments carried a constant where a level belongs. Each constant became
 a per-level table holding the original value at levels 1, 2 and 3, then two
-increments at 4 and 5. The level 3 value is pinned per enchantment against a
+increments at 4 and 5. Eight of those tables survive the cut; the bodkin and
+cleave rows are gone. The level 3 value is pinned per enchantment against a
 baseline recorded before the edit, so a silent change to the offered levels
 fails the run.
 
 | Enchantment | Level 3 | Level 5 |
 |---|---|---|
 | arrow_shower | 6.0 archery count | 8.0 |
-| bodkin | 3.0 piercing | 5.0 |
 | bomb_arrows | 2.0 blast radius | 3.0 |
 | longshot | 0.4 spread factor | 0.6 |
 | siege_bolt | 3.0 damage | 5.0 |
 | burrow | 2.0 radius | 4.0 |
 | green_thumb | 2.0 radius | 4.0 |
 | aegis_breaker | 2.0 damage | 4.0 |
-| cleave | 1.0 blast radius | 2.0 |
 | shockwave | 4.0 damage | 6.0 |
 
 Capped, with the reason:
 
 | Enchantment | Reason |
 |---|---|
-| harvester, lumberjack, momentum, prospector, rangers_mark, reactive_plating, stormcaller, tidecaller | the effect is `run_function`. It runs as the affected entity and carries no enchantment level, so no level above 1 can act. A later slice that wants a lever needs a new effect type or a scoreboard the level is written into |
-| asbestos, guarding_ward, insulated | the effect is a `damage_immunity` flag with no number to raise. A meaningful level 4 and 5 needs a new effect, which is a gameplay decision |
+| harvester, lumberjack, momentum, prospector, reactive_plating, stormcaller, tidecaller | the effect is `run_function`. It runs as the affected entity and carries no enchantment level, so no level above 1 can act. A later slice that wants a lever needs a new effect type or a scoreboard the level is written into |
+| guarding_ward, insulated | the effect is a `damage_immunity` flag with no number to raise. A meaningful level 4 and 5 needs a new effect, which is a gameplay decision |
 | second_wind | its only number is `periodic_tick` inside an `entity_properties` predicate, not a level value |
 
 A function-backed enchantment therefore has no reachable effect above level 1.
@@ -167,14 +199,11 @@ rate. The rate section below says why.
 | Bomb Arrows | 2 | 1 | 20 | 50 | 0.077 | `hit_block` `explode`, radius 2, `block_interaction` `none` | the blast reaches anything inside two blocks, the shooter included |
 | Marksman | 10 | 2 | 1 | 32 | 0.385 | `damage` add 1 per level on an arrow hit | `item_damage` add 1, so the bow wears twice as fast |
 | Longshot | 5 | 3 | 5 | 41 | 0.192 | `projectile_spread` multiply 0.4 and `projectile_piercing` add 1 | `damage` add -1, so every arrow hits softer |
-| Bodkin | 5 | 3 | 5 | 41 | 0.192 | `projectile_piercing` clamped to 3 | `ammo_use` add 1, so each shot spends a second arrow |
-| Ranger's Mark | 2 | 1 | 15 | 45 | 0.077 | `post_attack` `run_function` for 4 bonus damage | the bonus pays only while the target is above half health, and once per 20 ticks |
 
 ### Crossbow
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Quickdraw | 5 | 3 | 5 | 41 | 0.625 | `crossbow_charge_time` add -0.15 seconds per level | none |
 | Repeater | 2 | 2 | 10 | 50 | 0.25 | `crossbow_charge_time` add -0.25 seconds per level | `item_damage` add 1, so the fast mechanism wears the crossbow |
 | Siege Bolt | 1 | 1 | 20 | 50 | 0.125 | `post_attack` `damage_entity` for 3 damage through armor, plus `knockback` add 1 | `crossbow_charge_time` add 0.75 seconds, so the charge takes 40 ticks |
 
@@ -182,7 +211,6 @@ rate. The rate section below says why.
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Cleave | 5 | 2 | 5 | 35 | sword 0.156, axe 0.143, spear 0.227 | `post_attack` `explode`, radius 1, `block_interaction` `none` | the blast reaches about two blocks, so a wielder who stands inside it takes it |
 | Momentum | 5 | 3 | 5 | 41 | sword 0.156 | `post_attack` `run_function`: every sixth hit pays 4 damage, once per 40 ticks | the hit counter is one global counter, not a per-player one |
 | Stunning Blow | 5 | 2 | 5 | 35 | sword 0.156, axe 0.143, spear 0.227, mace 0.263 | `post_attack` slowness and weakness | none |
 | Wounding | 5 | 2 | 5 | 33 | axe 0.143 | `post_attack` `apply_exhaustion` 2 per level | a player only effect, so a mob victim loses nothing |
@@ -192,10 +220,7 @@ rate. The rate section below says why.
 | Reach | 5 | 3 | 5 | 41 | spear 0.227 | `attributes` `entity_interaction_range` add 0.5 per level | none |
 | Tidecaller | 2 | 1 | 15 | 45 | trident 0.105 | `post_attack` `run_function` that grants the thrower 20 seconds of dolphin's grace | once per 600 ticks |
 | Hooked | 5 | 2 | 5 | 33 | trident 0.263 | `post_attack` `apply_mob_effect` slowness II for 4 seconds on the target the trident hits | none |
-| Returning | 5 | 2 | 5 | 33 | trident 0.263 | `trident_return_acceleration` add 1 per level | none |
-| Slam | 5 | 3 | 5 | 41 | mace 0.263 | `smash_damage_per_fallen_block` add 0.5 per level | none |
 | Shockwave | 2 | 2 | 10 | 50 | mace 0.105 | `post_attack` `explode` radius 3 with no damage type, plus `damage_entity` 4 on the target | the ring throws entities instead of hurting them; only the struck target takes damage |
-| Arachnid's Bane | 5 | 5 | 5 | 57 | sword 0.156, axe 0.143, spear 0.227, trident 0.263, mace 0.263 | `damage` add 2.5 per level against `#minecraft:arthropod`, plus slowness | the bonus reaches spiders, cave spiders, silverfish, endermites, and bees only |
 
 ### Armor
 
@@ -204,13 +229,9 @@ rate. The rate section below says why.
 | Guarding Ward | 2 | 3 | 10 | 45 | 0.08 | `damage_immunity` for fall and for explosion | none |
 | Bulwark | 5 | 3 | 5 | 41 | 0.2 | `attributes` `knockback_resistance` add 0.1 per level, on top of the power term | none |
 | Reactive Plating | 2 | 2 | 10 | 35 | 0.08 | `post_attack` `run_function` that answers a hit with 3 damage | the answer never kills: it lands only on a target at 4 health or more, it skips players, and it waits 20 ticks |
-| Asbestos | 5 | 3 | 5 | 41 | 0.2 | `damage_immunity` for `#minecraft:is_fire` | none |
 | Insulated | 5 | 2 | 5 | 33 | 0.2 | `damage_immunity` for `#minecraft:is_freezing` | none |
 | Fleetfoot | 5 | 3 | 5 | 41 | 0.417 | `attributes` `movement_speed` add 10 percent of base per level | none |
-| Featherfall | 2 | 3 | 10 | 45 | 0.167 | `attributes` `safe_fall_distance` add 2 and `fall_damage_multiplier` -0.25 per level | none |
-| Deepdiver | 2 | 3 | 10 | 50 | 0.167 | `attributes` `oxygen_bonus` add 1 and `water_movement_efficiency` add a third per level | none |
 | Farsight | 5 | 2 | 5 | 33 | 0.417 | `attributes` `entity_interaction_range` and `block_interaction_range` add 1 per level | none |
-| Warded | 5 | 3 | 5 | 41 | helmet 0.417, chestplate 0.2, leggings 1.0, boots 0.417 | `damage_protection` add 2 per level against `#minecraft:is_projectile` | one damage family only |
 | Second Wind | 1 | 1 | 20 | 50 | 0.04 | `tick` `run_function` that grants regeneration II for 6 seconds at half health | a flat heal of about 6 health. It matters at low levels and is negligible against a level 50 health bar. Once per 2400 ticks |
 
 ### Shield and elytra
@@ -237,7 +258,6 @@ book and a shield combine at an anvil is not verified by a test in this slice.
 | Blockfeast | 10 | 3 | 1 | 43 | pickaxe 0.5, axe 0.286 | `block_experience` add 1 per level | none |
 | Lumberjack | 2 | 3 | 10 | 50 | axe 0.057 | `hit_block` `run_function` that fells up to 8 logs above the broken block | one trunk per second, and the logs drop their own loot |
 | Harvester | 5 | 3 | 5 | 41 | hoe 0.5 | `hit_block` `run_function` that harvests the crops in a 3 by 3 patch | up to 9 blocks per activation, and unripe crops go too |
-| Angler's Fortune | 2 | 3 | 10 | 50 | 1.0 | `fishing_time_reduction` add 3 seconds and `fishing_luck_bonus` add 1 per level | none |
 | Green Thumb | 5 | 2 | 5 | 33 | hoe 0.5, shovel 0.5 | `hit_block` `replace_disk` radius 2 that turns dirt and grass into farmland | up to 9 blocks per swing, and the tilled blocks drop nothing |
 
 ## Wiring
@@ -283,12 +303,12 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 
 | Test | Claim |
 |---|---|
-| `everyCatalogueEnchantmentLoads` | 44 catalogue enchantments load, and the namespace holds one more, the slice 1 fixture |
+| `everyCatalogueEnchantmentLoads` | 32 catalogue enchantments load, and the namespace holds one more, the slice 1 fixture |
 | `everyCatalogueEnchantmentAssemblesForOneLevel` | every `anvil_cost` is 1 |
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
 | `everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable` | every catalogue id is in `#minecraft:in_enchanting_table`, and every id is reachable at cost 30 |
-| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 10 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
+| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 8 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
 | `catalogueWeightSharesAtCost30` | the pools above, the weight share of each candidate, and that every enchantment is a candidate at cost 30 |
 | `everyCatalogueEnchantmentHasALangName` | every catalogue id has an `en_us` name, so no enchantment renders as a raw key |
 | `arrowShowerCostsMoreDurabilityThanAPlainShot` | one plain shot fires 1 arrow for 1 durability, and one Arrow Shower shot fires 7 arrows for 14 durability |

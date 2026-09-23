@@ -46,7 +46,7 @@ public class BookLootProbeGameTest {
 	private static final Identifier MAX_ONE = enchantment("tool/prospector");
 	private static final Identifier MAX_TWO = enchantment("bow/marksman");
 	private static final Identifier MAX_THREE = enchantment("tool/blockfeast");
-	private static final Identifier MAX_FIVE = enchantment("weapon/arachnids_bane");
+	private static final Identifier MAX_FIVE = enchantment("weapon/stunning_blow");
 
 	@GameTest
 	public void probeLootTablesLoad(final GameTestHelper helper) {
@@ -79,7 +79,7 @@ public class BookLootProbeGameTest {
 
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=probeRandomlyOwnRange RESULT rolls={} books={} maxEnchantmentsPerBook={} levels={} "
-				+ "prospectorMax1={} marksmanMax2={} blockfeastMax3={} arachnidsBaneMax5={} arachnidsBaneLevels={}",
+				+ "prospectorMax1={} marksmanMax2={} blockfeastMax3={} stunningBlowMax5={} stunningBlowLevels={}",
 			WIDE_ROLLS, tally.books, tally.maxPerBook(), tally.levelCounts(),
 			tally.observedLevels(MAX_ONE), tally.observedLevels(MAX_TWO),
 			tally.observedLevels(MAX_THREE), tally.observedLevels(MAX_FIVE),
@@ -99,7 +99,7 @@ public class BookLootProbeGameTest {
 			"declared maxima not reached: prospector=" + tally.highestLevel(MAX_ONE)
 				+ "/" + declaredMax(registry, MAX_ONE) + " marksman=" + tally.highestLevel(MAX_TWO)
 				+ "/" + declaredMax(registry, MAX_TWO) + " blockfeast=" + tally.highestLevel(MAX_THREE)
-				+ "/" + declaredMax(registry, MAX_THREE) + " arachnidsBane=" + tally.highestLevel(MAX_FIVE)
+				+ "/" + declaredMax(registry, MAX_THREE) + " stunningBlow=" + tally.highestLevel(MAX_FIVE)
 				+ "/" + declaredMax(registry, MAX_FIVE)
 		);
 		helper.assertTrue(
@@ -227,7 +227,7 @@ public class BookLootProbeGameTest {
 
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=probeWithLevelsWide RESULT rolls={} books={} unenchanted={} maxEnchantmentsPerBook={} "
-				+ "levels={} prospector={} marksman={} blockfeast={} arachnidsBane={} arachnidsBaneLevel5={}",
+				+ "levels={} prospector={} marksman={} blockfeast={} stunningBlow={} stunningBlowLevel5={}",
 			WIDE_ROLLS, tally.books, unenchanted, tally.maxPerBook(), tally.levelCounts(),
 			tally.observedLevels(MAX_ONE), tally.observedLevels(MAX_TWO),
 			tally.observedLevels(MAX_THREE), tally.observedLevels(MAX_FIVE), tally.count(MAX_FIVE, 5)
