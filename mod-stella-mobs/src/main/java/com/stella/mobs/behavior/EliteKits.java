@@ -2,6 +2,7 @@ package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -29,10 +30,22 @@ import org.jspecify.annotations.Nullable;
 public final class EliteKits {
 	/** Vanilla's own strong slowness: Slowness IV, sixty percent slower, for twenty seconds. */
 	public static final int SLOWNESS_AMPLIFIER = 3;
-	public static final int SLOWNESS_TICKS = 400;
+	/**
+	 * The snare's landed duration, ten seconds of Slowness IV: long enough to matter in a fight, short
+	 * enough not to be a death sentence. A tipped arrow scales every payload it carries, so the potion
+	 * the stack names is only the recipe and the payload is derived from this landed number.
+	 */
+	public static final int LANDED_SLOWNESS_TICKS = 200;
 	public static final int AMMO_STACK = 64;
 	/** The full-freeze threshold, so one hit freezes and the two per tick thaw takes about seventy ticks. */
 	public static final int FREEZE_ON_HIT = 140;
+	/**
+	 * The payload the potion carries so {@link #LANDED_SLOWNESS_TICKS} survive the arrow's own scale.
+	 * The scale is read from the tipped stack the game registers, never written here, so this product
+	 * moves with the game's number rather than with a copy of it.
+	 */
+	public static final int PAYLOAD_SLOWNESS_TICKS =
+		(int) Math.ceil((double) LANDED_SLOWNESS_TICKS / tippedArrowPayloadScale());
 
 	private EliteKits() {
 	}
@@ -76,12 +89,36 @@ public final class EliteKits {
 
 	/**
 	 * R24: the slow rides the off hand, which is the stack the crossbow and the bow read first, so one
-	 * tipped arrow per shot is consumed from this stack and the weapon code is untouched.
+	 * tipped arrow per shot is consumed from this stack and the weapon code is untouched. The stack names
+	 * vanilla's strong slowness and carries its own duration instead, so the snare lands the named number
+	 * of ticks rather than whatever the potion happens to be.
 	 */
 	private static void slowArrows(final Mob mob) {
-		ItemStack tipped = PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.STRONG_SLOWNESS)
-			.copyWithCount(AMMO_STACK);
+		ItemStack tipped = tippedArrows(AMMO_STACK);
 		mob.setItemSlot(EquipmentSlot.OFFHAND, tipped);
+	}
+
+	/** One tipped arrow whose payload lands at {@link #LANDED_SLOWNESS_TICKS}, at the elite's amplifier. */
+	public static ItemStack tippedArrows(final int count) {
+		ItemStack tipped = PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.STRONG_SLOWNESS);
+		PotionContents contents = tipped.get(DataComponents.POTION_CONTENTS);
+
+		if (contents != null) {
+			tipped.set(
+				DataComponents.POTION_CONTENTS,
+				contents.withEffectAdded(new MobEffectInstance(
+					MobEffects.SLOWNESS, PAYLOAD_SLOWNESS_TICKS, SLOWNESS_AMPLIFIER
+				))
+			);
+		}
+
+		return tipped.copyWithCount(count);
+	}
+
+	/** The scale a tipped arrow applies to every payload it carries, read from the item the game ships. */
+	private static double tippedArrowPayloadScale() {
+		return new ItemStack(Items.TIPPED_ARROW)
+			.getOrDefault(DataComponents.POTION_DURATION_SCALE, 1.0F);
 	}
 
 	/**
