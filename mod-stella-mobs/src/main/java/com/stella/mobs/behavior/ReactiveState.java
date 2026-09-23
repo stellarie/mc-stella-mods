@@ -41,6 +41,7 @@ public final class ReactiveState {
 	private boolean elite;
 	private @Nullable ServerBossEvent bossBar;
 	private long voidDragReadyTick;
+	private int retreatCooldownTicks;
 	private boolean companionSpawned;
 	private @Nullable UUID companionId;
 
@@ -209,7 +210,28 @@ public final class ReactiveState {
 		this.bossBar = bossBar;
 	}
 
-	/** R25 style cooldown for the void drag: transient, because a reload may arm it again. */
+	/**
+	 * The shared rearm cooldown for the two band goals, counted in the goals' own ticks rather than in
+	 * game time, because a goal ticks once per game tick and the harness clock does not advance. Exactly
+	 * one caller decrements it, RetreatGoal, which sits at rank 0 and is therefore evaluated first on
+	 * every tick where a MOVE goal is considered. Both goals read the same budget, so neither can call a
+	 * mob exhausted while the other calls it ready.
+	 */
+	public boolean isRetreatCoolingDown() {
+		return this.retreatCooldownTicks > 0;
+	}
+
+	public void armRetreatCooldown(final int ticks) {
+		this.retreatCooldownTicks = ticks;
+	}
+
+	public void tickRetreatCooldown() {
+		if (this.retreatCooldownTicks > 0) {
+			this.retreatCooldownTicks--;
+		}
+	}
+
+		/** R25 style cooldown for the void drag: transient, because a reload may arm it again. */
 	public long getVoidDragReadyTick() {
 		return this.voidDragReadyTick;
 	}
