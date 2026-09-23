@@ -1,0 +1,45 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.rime_guard" },
+	"supported_items": "#minecraft:enchantable/chest_armor",
+	"primary_items": "#minecraft:enchantable/chest_armor",
+	"slots": ["chest"],
+	"weight": 3,
+	"max_level": 3,
+	"min_cost": { "base": 8, "per_level_above_first": 8 },
+	"max_cost": { "base": 30, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "victim",
+				"affected": "damaging_entity",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:damage_entity",
+							"damage_type": "minecraft:freeze",
+							"min_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 },
+							"max_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 }
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:snowflake" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.6 },
+							"vertical_velocity": { "base": 0.06 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:entity.player.hurt_freeze",
+							"volume": 0.7,
+							"pitch": 1.2
+						}
+					]
+				}
+			}
+		]
+	}
+}

@@ -1,5 +1,6 @@
 package com.stella.equips;
 
+import com.stella.equips.enchant.Deflection;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerTracker;
 import com.stella.equips.readout.ReadoutCommand;
@@ -15,6 +16,7 @@ public class StellaEquips implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		Deflection.register();
 		PowerTracker.register();
 		ReadoutService.register();
 		ReadoutCommand.register();

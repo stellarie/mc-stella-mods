@@ -1,0 +1,63 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.meteor" },
+	"supported_items": "#minecraft:enchantable/mace",
+	"primary_items": "#minecraft:enchantable/mace",
+	"slots": ["mainhand"],
+	"weight": 2,
+	"max_level": 3,
+	"min_cost": { "base": 12, "per_level_above_first": 12 },
+	"max_cost": { "base": 40, "per_level_above_first": 12 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:explode",
+							"radius": 3.0,
+							"knockback_multiplier": { "type": "minecraft:linear", "base": 1.4, "per_level_above_first": 0.3 },
+							"block_interaction": "none",
+							"attribute_to_user": true,
+							"create_fire": false,
+							"small_particle": { "type": "minecraft:explosion_emitter" },
+							"large_particle": { "type": "minecraft:explosion_emitter" },
+							"block_particles": [
+								{
+									"particle": { "type": "minecraft:poof" },
+									"scaling": 0.5,
+									"speed": 1.0,
+									"weight": 1
+								},
+								{
+									"particle": { "type": "minecraft:smoke" },
+									"scaling": 1.0,
+									"speed": 1.0,
+									"weight": 1
+								}
+							],
+							"sound": "minecraft:entity.generic.explode"
+						},
+						{
+							"type": "minecraft:damage_entity",
+							"damage_type": "mod-stella-equips-enchants:enchant_bonus",
+							"min_damage": { "type": "minecraft:linear", "base": 4.0, "per_level_above_first": 1.0 },
+							"max_damage": { "type": "minecraft:linear", "base": 4.0, "per_level_above_first": 1.0 }
+						}
+					]
+				},
+				"requirements": {
+					"type": "minecraft:entity_properties",
+					"entity": "direct_attacker",
+					"predicate": {
+						"minecraft:flags": { "is_flying": false },
+						"minecraft:movement": { "fall_distance": { "min": 1.5 } }
+					}
+				}
+			}
+		]
+	}
+}
