@@ -137,6 +137,8 @@ public class StellaMobs implements ModInitializer {
 		}
 
 		BehaviorInstaller.install(mob);
+		// R24: a ghast is not a Monster, so the installer returns before this and the ghast path is its own.
+		BehaviorInstaller.installGhastFireball(mob);
 	}
 
 	/** B1: a boss that leaves the level loses its bar, because the sweep can no longer reach it. */
