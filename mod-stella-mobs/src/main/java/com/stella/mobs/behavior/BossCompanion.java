@@ -5,6 +5,7 @@ import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -117,7 +118,7 @@ public final class BossCompanion {
 			FOLLOW_PRIORITY, new FollowMobGoal(boss, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
 		);
 		level.addFreshEntity(companion);
-		ReactiveState.get(boss).setCompanionId(companion.getUUID().toString());
+		ReactiveState.get(boss).setCompanionId(companion.getUUID());
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test=bossCompanion t={} COMPANION boss={} type={} elite={} tier={} health={} bossFlag={} summoned={}",
@@ -134,12 +135,12 @@ public final class BossCompanion {
 
 	/** The companions of one boss: the one it was linked to at spawn, if it is still alive. */
 	public static List<Mob> companionsOf(final ServerLevel level, final Mob boss) {
-		String recorded = ReactiveState.get(boss).companionId();
+		UUID recorded = ReactiveState.get(boss).companionId();
 		if (recorded == null) {
 			return List.of();
 		}
 
-		Entity entity = level.getEntity(java.util.UUID.fromString(recorded));
+		Entity entity = level.getEntity(recorded);
 		return entity instanceof Mob companion ? List.of(companion) : List.of();
 	}
 }

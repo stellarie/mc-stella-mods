@@ -3,6 +3,7 @@ package com.stella.mobs.behavior;
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.RoleSpec;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -39,9 +40,8 @@ public final class ReactiveState {
 	private boolean witchInvisibilityCast;
 	private boolean elite;
 	private @Nullable ServerBossEvent bossBar;
-	private float bossBarProgress;
 	private boolean companionSpawned;
-	private @Nullable String companionId;
+	private @Nullable UUID companionId;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -204,16 +204,8 @@ public final class ReactiveState {
 		return this.bossBar;
 	}
 
-	public void setBossBar(final ServerBossEvent bossBar) {
+	public void setBossBar(final @Nullable ServerBossEvent bossBar) {
 		this.bossBar = bossBar;
-	}
-
-	public float bossBarProgress() {
-		return this.bossBarProgress;
-	}
-
-	public void setBossBarProgress(final float bossBarProgress) {
-		this.bossBarProgress = bossBarProgress;
 	}
 
 	/** B05: one companion per boss, so a re-queue cannot double the squad. */
@@ -226,11 +218,11 @@ public final class ReactiveState {
 	}
 
 	/** The companion this boss was given, recorded so the pair can be found after either one moves. */
-	public @Nullable String companionId() {
+	public @Nullable UUID companionId() {
 		return this.companionId;
 	}
 
-	public void setCompanionId(final String companionId) {
+	public void setCompanionId(final UUID companionId) {
 		this.companionId = companionId;
 	}
 }

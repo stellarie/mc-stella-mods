@@ -18,7 +18,9 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -27,6 +29,8 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 /**
@@ -42,6 +46,9 @@ public class BossBehaviourGameTest {
 	// Six blocks away, so the second subject lands in the same chunk as the first: a chunk is 16 wide.
 	private static final double OTHER_X = 9.5;
 	private static final double OTHER_Z = 9.5;
+	// The bar radius in play is 64 blocks, so this is unambiguously outside it. It is written here
+	// rather than read from the implementation, so the test measures the spec's radius and not a copy.
+	private static final double BAR_TEST_DISTANCE = 200.0;
 	private static final String BOSS_ONE = """
 		{
 			"entities": {},
@@ -72,6 +79,21 @@ public class BossBehaviourGameTest {
 				"boss_chance": 0.0
 			}
 		}""";
+	/**
+	 * The kit and mark config with the roll off. Three tests cover the roll and the chunk guard, and
+	 * they need a free chunk. Every other test takes the mark directly, so no neighbour can block it.
+	 */
+	private static final String BOSS_MARK = """
+		{
+			"entities": {},
+			"rolls": {
+				"roll_chance": 0.0,
+				"elite_chance": 0.0,
+				"boss_chance": 0.0,
+				"boss_health_multiplier": 4.0,
+				"boss_level_bonus": 1.0
+			}
+		}""";
 	private static final String BOSS_INELIGIBLE_ONLY = """
 		{
 			"entities": {},
@@ -92,28 +114,37 @@ public class BossBehaviourGameTest {
 		// The second subject shares the first one's block, so the pair is in one chunk whatever the
 		// structure origin is and the guard is the only thing under test.
 		Mob first = spawnAt(helper, base.getX() + 0.5, base.getY(), base.getZ() + 0.5);
-		Mob second = spawnAt(helper, base.getX() + 0.5, base.getY(), base.getZ() + 0.5);
-		boolean firstIsBoss = EliteState.isBoss(first);
-		boolean firstIsElite = Elite.isElite(first);
-		boolean secondIsBoss = EliteState.isBoss(second);
+		Mob[] second = new Mob[1];
 
-		result(
-			"bossRollAndChunkGuard",
-			"firstBoss=" + firstIsBoss + " firstElite=" + firstIsElite + " secondBoss=" + secondIsBoss
-				+ " secondElite=" + Elite.isElite(second) + " sameChunk=" + BossRoll.sameChunk(first, second)
-				+ " firstChunk=" + first.chunkPosition() + " secondChunk=" + second.chunkPosition()
-		);
+		helper.succeedWhen(() -> {
+			// A boss another running test left in this chunk blocks the roll. Roll again on the next tick
+			// instead of discarding that boss, which would take a live bar test's subject down with it.
+			if (!EliteState.isBoss(first)) {
+				Bosses.rollAtSpawn(first, helper.getLevel(), 1.0);
+			}
 
-		helper.assertTrue(
-			firstIsBoss,
-			"an eligible mob at a chance of 1.0 did not become a boss; bosses already in its chunk="
-				+ foreignBosses(helper, first) + " (the config store is global, so a neighbouring arena can"
-				+ " roll one while this test runs)"
-		);
-		helper.assertTrue(firstIsElite, "a boss is not elite");
-		helper.assertTrue(BossRoll.sameChunk(first, second), "the two subjects did not land in one chunk");
-		helper.assertFalse(secondIsBoss, "a second eligible spawn in a boss chunk became a boss too");
-		helper.succeed();
+			helper.assertTrue(
+				EliteState.isBoss(first),
+				"an eligible mob at a chance of 1.0 did not become a boss after a retry; bosses already in"
+					+ " its chunk=" + foreignBosses(first)
+			);
+			helper.assertTrue(Elite.isElite(first), "a boss is not elite");
+
+			if (second[0] == null) {
+				second[0] = spawnAt(helper, base.getX() + 0.5, base.getY(), base.getZ() + 0.5);
+			}
+
+			helper.assertTrue(BossRoll.sameChunk(first, second[0]), "the two subjects did not land in one chunk");
+			helper.assertFalse(EliteState.isBoss(second[0]), "a second eligible spawn in a boss chunk became a boss too");
+
+			result(
+				"bossRollAndChunkGuard",
+				"firstBoss=" + EliteState.isBoss(first) + " firstElite=" + Elite.isElite(first)
+					+ " secondBoss=" + EliteState.isBoss(second[0]) + " secondElite=" + Elite.isElite(second[0])
+					+ " sameChunk=" + BossRoll.sameChunk(first, second[0]) + " firstChunk=" + first.chunkPosition()
+					+ " secondChunk=" + second[0].chunkPosition()
+			);
+		});
 	}
 
 	@GameTest(maxTicks = 200)
@@ -123,16 +154,19 @@ public class BossBehaviourGameTest {
 		// Move the promoted mob out of the region under test, so the chunk is genuinely empty.
 		boss.discard();
 		Mob promoted = spawn(helper, SPAWN_X, SPAWN_Z);
-		boolean chunkHasBoss = BossRoll.chunkHasBoss(promoted);
-		boolean promotedIsBoss = EliteState.isBoss(promoted);
 
-		result(
-			"bossRollInAnEmptyChunk",
-			"promotedBoss=" + promotedIsBoss + " chunkHasBossBefore=" + chunkHasBoss
-		);
+		helper.succeedWhen(() -> {
+			if (!EliteState.isBoss(promoted)) {
+				Bosses.rollAtSpawn(promoted, helper.getLevel(), 1.0);
+			}
 
-		helper.assertTrue(promotedIsBoss, "the same spawn in an empty chunk did not become a boss");
-		helper.succeed();
+			helper.assertTrue(EliteState.isBoss(promoted), "the same spawn in an empty chunk did not become a boss");
+
+			result(
+				"bossRollInAnEmptyChunk",
+				"promotedBoss=" + EliteState.isBoss(promoted) + " chunkHasBossNow=" + BossRoll.chunkHasBoss(promoted)
+			);
+		});
 	}
 
 	@GameTest(maxTicks = 200)
@@ -144,25 +178,59 @@ public class BossBehaviourGameTest {
 		Mob skeleton = helper.spawnMob(EntityTypes.SKELETON, 6, 3, 2)
 			.spawnReason(EntitySpawnReason.NATURAL)
 			.spawn();
-		boolean creeperIsBoss = EliteState.isBoss(creeper);
-		boolean skeletonIsBoss = EliteState.isBoss(skeleton);
 
-		result(
-			"bossEligibility",
-			"creeperEligible=" + Bosses.canBeBoss(creeper) + " creeperBoss=" + creeperIsBoss
-				+ " skeletonEligible=" + Bosses.canBeBoss(skeleton) + " skeletonBoss=" + skeletonIsBoss
-		);
+		helper.succeedWhen(() -> {
+			if (!EliteState.isBoss(skeleton)) {
+				Bosses.rollAtSpawn(skeleton, helper.getLevel(), 1.0);
+			}
 
-		helper.assertFalse(Bosses.canBeBoss(creeper), "a creeper is treated as boss-eligible");
-		helper.assertFalse(creeperIsBoss, "a creeper became a boss at a chance of 1.0");
-		helper.assertTrue(skeletonIsBoss, "an eligible skeleton stayed ordinary at a chance of 1.0");
-		helper.succeed();
+			helper.assertFalse(Bosses.canBeBoss(creeper), "a creeper is treated as boss-eligible");
+			helper.assertFalse(EliteState.isBoss(creeper), "a creeper became a boss at a chance of 1.0");
+			helper.assertTrue(EliteState.isBoss(skeleton), "an eligible skeleton stayed ordinary at a chance of 1.0");
+
+			result(
+				"bossEligibility",
+				"creeperEligible=" + Bosses.canBeBoss(creeper) + " creeperBoss=" + EliteState.isBoss(creeper)
+					+ " skeletonEligible=" + Bosses.canBeBoss(skeleton) + " skeletonBoss=" + EliteState.isBoss(skeleton)
+			);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aBlockedRollWinsOnTheRetry(final GameTestHelper helper) {
+		useConfig(helper, BOSS_ONE);
+		// The blocker stands in the subject's chunk, which is the case the roll tests used to answer by
+		// discarding the neighbour's boss. Here the blocker leaves on its own, and the retry must win.
+		Mob blocker = blessedBoss(helper);
+		Mob subject = spawn(helper, SPAWN_X, SPAWN_Z);
+		boolean blockedByTheGuard = !EliteState.isBoss(subject) && BossRoll.chunkHasBoss(subject);
+		helper.runAfterDelay(2L, blocker::discard);
+
+		helper.succeedWhen(() -> {
+			if (!EliteState.isBoss(subject)) {
+				Bosses.rollAtSpawn(subject, helper.getLevel(), 1.0);
+			}
+
+			helper.assertTrue(
+				blockedByTheGuard,
+				"the chunk guard did not block the subject beside a boss, so the retry proves nothing"
+			);
+			helper.assertTrue(
+				EliteState.isBoss(subject), "the subject never won the roll after the blocker left its chunk"
+			);
+
+			result(
+				"bossBlockedRoll",
+				"blockedByTheGuard=" + blockedByTheGuard + " bossAfterRetry=" + EliteState.isBoss(subject)
+					+ " blockersNow=" + foreignBosses(subject)
+			);
+		});
 	}
 
 	@GameTest(maxTicks = 200)
 	public void aBossCarriesTwiceAnElitesHealthAndTheTenLevelBonus(final GameTestHelper helper) {
-		useConfig(helper, BOSS_ONE);
-		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
+		useConfig(helper, BOSS_MARK);
+		Mob boss = blessedBoss(helper);
 		float bossHealth = boss.getMaxHealth();
 		double bossBase = boss.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
 		double areaScale = SpawnScaling.healthMultiplierOf(boss);
@@ -269,8 +337,8 @@ public class BossBehaviourGameTest {
 
 	@GameTest(maxTicks = 200)
 	public void theBossKitIsFullyEnchantedNetherite(final GameTestHelper helper) {
-		useConfig(helper, BOSS_ONE);
-		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
+		useConfig(helper, BOSS_MARK);
+		Mob boss = blessedBoss(helper);
 		int minimum = Integer.MAX_VALUE;
 		boolean netherite = true;
 		boolean consistent = true;
@@ -320,8 +388,8 @@ public class BossBehaviourGameTest {
 
 	@GameTest(maxTicks = 200)
 	public void everyEquippedSlotDropsAtEightyPercent(final GameTestHelper helper) {
-		useConfig(helper, BOSS_ONE);
-		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
+		useConfig(helper, BOSS_MARK);
+		Mob boss = blessedBoss(helper);
 		boolean atRate = true;
 		StringBuilder seen = new StringBuilder();
 
@@ -342,9 +410,54 @@ public class BossBehaviourGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
+	public void theBossKitCarriesNoCurseAndEverySlotCanDrop(final GameTestHelper helper) {
+		useConfig(helper, BOSS_MARK);
+		Mob boss = blessedBoss(helper);
+		int cursed = 0;
+		int cannotDrop = 0;
+		StringBuilder slots = new StringBuilder();
+
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			ItemStack stack = boss.getItemBySlot(slot);
+			if (stack.isEmpty()) {
+				continue;
+			}
+
+			for (Holder<Enchantment> held : stack.getEnchantments().keySet()) {
+				if (held.is(EnchantmentTags.CURSE)) {
+					cursed++;
+					slots.append(slot).append('(')
+						.append(held.unwrapKey().orElseThrow().identifier()).append(") ");
+				}
+			}
+
+			// The clause that matters: Mob's drop path refuses a slot whose enchantment carries this
+			// component, so a cursed slot drops at 0 where B08 asks for 0.80.
+			if (EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_EQUIPMENT_DROP)) {
+				cannotDrop++;
+			}
+		}
+
+		result(
+			"bossKitCurse",
+			"cursedEnchantments=" + cursed + " slotsThatCannotDrop=" + cannotDrop + " cursedSlots=" + slots
+				+ " dropChance=" + Bosses.DROP_CHANCE
+		);
+
+		helper.assertValueEqual(Integer.valueOf(cursed), Integer.valueOf(0), "curse-tagged enchantments on the boss kit");
+		helper.assertValueEqual(
+			Integer.valueOf(cannotDrop), Integer.valueOf(0),
+			"equipped slots that cannot drop, against B08's " + Bosses.DROP_CHANCE
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
 	public void exactlyOneEliteCompanionSpawnsAndItIsNotABoss(final GameTestHelper helper) {
-		useConfig(helper, BOSS_ONE);
-		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
+		useConfig(helper, BOSS_MARK);
+		Mob boss = blessedBoss(helper);
+		// The mark path does not queue a companion; the roll does. The queue is the clause under test.
+		BossCompanion.queue(boss);
 		boolean bossFlag = EliteState.isBoss(boss);
 		helper.succeedWhen(() -> {
 			List<Mob> companions = BossCompanion.companionsOf(helper.getLevel(), boss);
@@ -369,72 +482,205 @@ public class BossBehaviourGameTest {
 
 	@GameTest(maxTicks = 200)
 	public void theBossBarReportsTheHealthFraction(final GameTestHelper helper) {
-		useConfig(helper, BOSS_ONE);
-		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
-		helper.runAfterDelay(2L, () -> {
-			float full = ReactiveState.get(boss).bossBarProgress();
-			boss.setHealth(boss.getMaxHealth() * 0.25F);
-			Bosses.updateBossBar((ServerLevel) helper.getLevel(), boss);
-			float quarter = ReactiveState.get(boss).bossBarProgress();
-
-			result("bossBar", "full=" + full + " quarter=" + quarter + " health=" + boss.getHealth());
-
+		useConfig(helper, BOSS_MARK);
+		Mob boss = barSubject(helper);
+		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
+		float full = bar == null ? -1.0F : bar.getProgress();
+		boss.setHealth(boss.getMaxHealth() * 0.25F);
+		// The level tick is the writer, so the test waits for the sweep instead of calling it itself.
+		helper.succeedWhen(() -> {
+			helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
 			helper.assertTrue(Math.abs(full - 1.0F) < 0.01F, "the boss bar does not start full: " + full);
 			helper.assertTrue(
-				Math.abs(quarter - 0.25F) < 0.01F, "the boss bar does not follow the health fraction: " + quarter
+				Math.abs(bar.getProgress() - 0.25F) < 0.01F,
+				"the boss bar does not follow the health fraction: " + bar.getProgress() + "; "
+					+ subjectState(helper, boss, bar)
 			);
-			helper.succeed();
+			result("bossBar", "full=" + full + " quarter=" + bar.getProgress() + " health=" + boss.getHealth());
 		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void theBossBarIsRemovedWhenTheBossDies(final GameTestHelper helper) {
+		useConfig(helper, BOSS_MARK);
+		Mob boss = barSubject(helper);
+		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
+		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
+		ServerPlayer player = playerBeside(helper, boss);
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				bar.getPlayers().contains(player),
+				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
+			))
+			.thenExecute(() -> kill(helper, boss))
+			.thenWaitUntil(() -> {
+				helper.assertFalse(
+					bar.isVisible(),
+					"the bar of a dead boss is still visible, so every player who fought it keeps a ghost bar"
+				);
+				helper.assertValueEqual(
+					Integer.valueOf(bar.getPlayers().size()), Integer.valueOf(0), "players left on the dead boss's bar"
+				);
+				helper.assertTrue(
+					ReactiveState.get(boss).bossBar() == null, "the dead boss still holds its bar object"
+				);
+				result(
+					"bossBarRemovalDeath",
+					"listedBefore=true dead=" + !boss.isAlive() + " visible=" + bar.isVisible()
+						+ " players=" + bar.getPlayers().size()
+				);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void theBossBarIsRemovedWhenTheBossUnloads(final GameTestHelper helper) {
+		useConfig(helper, BOSS_MARK);
+		Mob boss = barSubject(helper);
+		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
+		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
+		ServerPlayer player = playerBeside(helper, boss);
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				bar.getPlayers().contains(player),
+				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
+			))
+			.thenExecute(boss::discard)
+			.thenWaitUntil(() -> {
+				helper.assertFalse(
+					bar.isVisible(),
+					"the bar of an unloaded boss is still visible, so a chunk unload leaves a ghost bar"
+				);
+				helper.assertValueEqual(
+					Integer.valueOf(bar.getPlayers().size()), Integer.valueOf(0), "players left on an unloaded boss's bar"
+				);
+				result(
+					"bossBarRemovalUnload",
+					"removed=" + boss.isRemoved() + " visible=" + bar.isVisible() + " players=" + bar.getPlayers().size()
+				);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void theBossBarDropsAPlayerWhoLeavesTheRange(final GameTestHelper helper) {
+		useConfig(helper, BOSS_MARK);
+		Mob boss = barSubject(helper);
+		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
+		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
+		ServerPlayer player = playerBeside(helper, boss);
+		double away = boss.getX() + BAR_TEST_DISTANCE;
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				bar.getPlayers().contains(player),
+				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
+			))
+			.thenExecute(() -> player.setPos(away, boss.getY(), boss.getZ()))
+			.thenWaitUntil(() -> {
+				helper.assertFalse(
+					bar.getPlayers().contains(player),
+					"the bar kept a player who walked " + BAR_TEST_DISTANCE + " blocks away"
+				);
+				result(
+					"bossBarRemovalRange",
+					"distance=" + BAR_TEST_DISTANCE + " distanceSqr=" + player.distanceToSqr(boss)
+						+ " players=" + bar.getPlayers().size()
+				);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void theBossBarDropsAPlayerWhoLeavesTheLevel(final GameTestHelper helper) {
+		useConfig(helper, BOSS_MARK);
+		Mob boss = barSubject(helper);
+		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
+		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
+		ServerPlayer player = playerBeside(helper, boss);
+
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				bar.getPlayers().contains(player),
+				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
+			))
+			.thenExecute(() -> helper.getLevel().getServer().getPlayerList().remove(player))
+			.thenWaitUntil(() -> {
+				helper.assertFalse(
+					bar.getPlayers().contains(player),
+					"the bar kept a player who is no longer in the level, so a dimension change leaves a ghost bar"
+				);
+				result(
+					"bossBarRemovalLevel",
+					"stillInLevel=" + helper.getLevel().players().contains(player)
+						+ " players=" + bar.getPlayers().size()
+				);
+			})
+			.thenSucceed();
 	}
 
 	private static void useConfig(final GameTestHelper helper, final String config) {
 		GearConfigStore.set(GearConfigParser.parse(config));
 		helper.setTime(Arena.NIGHT_TIME);
 		Arena.buildFloor(helper);
-		// Another arena's boss can be standing in this structure's chunk, and the chunk guard would
-		// then leave this test's subject ordinary. Clear the ground before the subject arrives.
-		clearBosses(helper);
 	}
 
-	private static int foreignBosses(final GameTestHelper helper, final Mob subject) {
-		var chunk = subject.chunkPosition();
-		var box = new net.minecraft.world.phys.AABB(
-			chunk.getMinBlockX(), helper.getLevel().getMinY(), chunk.getMinBlockZ(),
-			chunk.getMaxBlockX() + 1.0, helper.getLevel().getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
-		);
-		return helper.getLevel()
-			.getEntitiesOfClass(Mob.class, box, candidate -> candidate != subject && Bosses.isBoss(candidate))
-			.size();
+	/**
+	 * A marked boss without the roll. A test that needs a live boss for two hundred ticks cannot let a
+	 * neighbour's boss block its promotion, and it must not discard that neighbour's boss either. The
+	 * roll and the chunk guard keep their own tests, which retry instead of clearing the ground.
+	 */
+	private static Mob blessedBoss(final GameTestHelper helper) {
+		Mob boss = spawn(helper, SPAWN_X, SPAWN_Z);
+		Bosses.blessAsBoss(boss, helper.getLevel(), 1.0);
+		return boss;
 	}
 
-	private static void clearBosses(final GameTestHelper helper) {
-		var base = helper.absolutePos(new net.minecraft.core.BlockPos(3, 3, 3));
-		// The whole chunk, because the guard is chunk-exact and the level holds every arena at once: an
-		// eight block box misses a neighbouring arena's boss in the same chunk, and that boss then blocks
-		// this test's roll with "did not become a boss". Removed bosses are ignored by the guard, so the
-		// discard takes effect on the same tick.
-		var chunk = helper.getLevel().getChunkAt(base).getPos();
-		var box = new net.minecraft.world.phys.AABB(
-			chunk.getMinBlockX(), helper.getLevel().getMinY(), chunk.getMinBlockZ(),
-			chunk.getMaxBlockX() + 1.0, helper.getLevel().getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
-		);
-		List<Mob> foreign = helper.getLevel().getEntitiesOfClass(Mob.class, box, Bosses::isBoss);
-
-		if (!foreign.isEmpty()) {
-			StellaMobs.LOGGER.info(
-				"[BEHAVIOR] test=bossBehaviour CLEAR chunk={} foreignBosses={}", chunk, foreign.size()
-			);
-		}
-
-		for (Mob other : foreign) {
-			other.discard();
-		}
+	/** The bosses that share the subject's chunk, for a failure message about a blocked roll. */
+	private static int foreignBosses(final Mob subject) {
+		return Bosses.bossesInChunk(subject).size();
 	}
 
 	private static Mob spawn(final GameTestHelper helper, final double x, final double z) {
 		return helper.spawnMob(EntityTypes.SKELETON, (int) x, 3, (int) z)
 			.spawnReason(EntitySpawnReason.NATURAL)
 			.spawn();
+	}
+
+	/** A real player in the level at the boss's feet, so the bar has somebody to add and to remove. */
+	@SuppressWarnings("removal")
+	private static ServerPlayer playerBeside(final GameTestHelper helper, final Mob mob) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(mob.getX(), mob.getY(), mob.getZ());
+		return player;
+	}
+
+	/**
+	 * The subject of a bar test. Its uuid is logged, because a bar test runs for two hundred ticks and
+	 * another test's setup can reach the subject's chunk in that window.
+	 */
+	private static Mob barSubject(final GameTestHelper helper) {
+		Mob boss = blessedBoss(helper);
+		StellaMobs.LOGGER.info(
+			"[BEHAVIOR] test=bossBehaviour SUBJECT uuid={} promoted={} barPresent={}",
+			boss.getUUID(), EliteState.isBoss(boss), ReactiveState.get(boss).bossBar() != null
+		);
+		return boss;
+	}
+
+	/** Everything a failed bar assertion needs to say why, in its own message. */
+	private static String subjectState(final GameTestHelper helper, final Mob boss, final ServerBossEvent bar) {
+		return "bossFlag=" + EliteState.isBoss(boss) + " alive=" + boss.isAlive() + " removed=" + boss.isRemoved()
+			+ " health=" + boss.getHealth() + " sameBar=" + (bar != null && ReactiveState.get(boss).bossBar() == bar)
+			+ " barPlayers=" + (bar == null ? -1 : bar.getPlayers().size())
+			+ " levelPlayers=" + helper.getLevel().players().size();
+	}
+
+	private static void kill(final GameTestHelper helper, final Mob mob) {
+		mob.setInvulnerableTime(0);
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), Float.MAX_VALUE);
 	}
 
 	private static Mob spawnAt(final GameTestHelper helper, final double x, final double y, final double z) {

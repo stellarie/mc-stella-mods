@@ -33,7 +33,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
-import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,15 +47,17 @@ public class StellaMobs implements ModInitializer {
 		EscortSquad.register();
 		RiderSquad.register();
 		BossCompanion.register();
+		Bosses.register();
 		EvokerStorm.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
+		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EvokerStorm::afterDamage);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(EvokerStorm::tick);
-		ServerTickEvents.END_LEVEL_TICK.register(StellaMobs::tickBosses);
+		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
@@ -119,21 +120,35 @@ public class StellaMobs implements ModInitializer {
 			SpawnScaling.apply(mob);
 		}
 
+		// B1: a boss joins its level's bar watch list here, which covers both the roll above and a boss
+		// read from disk, whose flag came back from the save.
+		if (EliteState.hasBossFlag(mob)) {
+			Bosses.watch(mob);
+		}
+
 		BehaviorInstaller.install(mob);
 	}
 
-	/** Keeps every boss bar live while its boss is loaded and in range of a player. */
-	private static void tickBosses(final ServerLevel level) {
-		for (Mob mob : level.getEntitiesOfClass(Mob.class, BOSS_BAR_AREA, Bosses::isBoss)) {
-			Bosses.updateBossBar(level, mob);
+	/** B1: a boss that leaves the level loses its bar, because the sweep can no longer reach it. */
+	private static void onEntityUnload(final Entity entity, final ServerLevel level) {
+		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=bossBarWatch t={} REMOVE uuid={} cause=unload", level.getGameTime(), mob.getUUID()
+			);
+			Bosses.unwatch(mob);
 		}
 	}
 
-	// A boss bar is only visible within 64 blocks, so the sweep covers the loaded world and no more.
-	private static final AABB BOSS_BAR_AREA = new AABB(-3.0E7, -3000.0, -3.0E7, 3.0E7, 3000.0, 3.0E7);
-
-	/** W10: a witch drops one of every potion it carries, read from the one potion list. */
+	/** W10 and B1: a witch drops one of every potion it carries, and a boss loses its bar. */
 	private static void onEntityDeath(final LivingEntity entity, final DamageSource source) {
+		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=bossBarWatch t={} REMOVE uuid={} cause=death source={}",
+				entity.level().getGameTime(), mob.getUUID(), source.getMsgId()
+			);
+			Bosses.unwatch(mob);
+		}
+
 		if (!(entity instanceof Witch witch) || !(witch.level() instanceof ServerLevel level)) {
 			return;
 		}

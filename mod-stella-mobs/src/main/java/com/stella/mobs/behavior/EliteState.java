@@ -82,6 +82,15 @@ public record EliteState(
 		return get(mob).boss();
 	}
 
+	/**
+	 * B1: the same flag, read without creating a state. The load path asks this of every monster,
+	 * and a created state would be written into the save of a mob that is not a boss.
+	 */
+	public static boolean hasBossFlag(final Mob mob) {
+		EliteState state = ((AttachmentTarget) mob).getAttached(TYPE);
+		return state != null && state.boss();
+	}
+
 	public static void setBoss(final Mob mob, final boolean boss) {
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withBoss(boss));
 	}
