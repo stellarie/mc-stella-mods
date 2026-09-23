@@ -12,12 +12,22 @@ import java.nio.file.Path;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 
 public class PowerTrackerGameTest {
 	private static final int FAR_DISTANCE = 10000;
@@ -28,6 +38,16 @@ public class PowerTrackerGameTest {
 	private static final int HEARTBEAT_TICKS = 5;
 	private static final int SCAN_WINDOW_TICKS = 45;
 	private static final double COMBAT_POINTS_FOR_A_LEVEL = 400.0;
+	private static final int INSIDE_LEVEL_BLOCKS = 500;
+	private static final int NEXT_LEVEL_BLOCKS = 700;
+	private static final float STARTING_HEALTH = 10.0F;
+	private static final float VANILLA_MAX_HEALTH = 20.0F;
+	private static final int SAVED_LEVEL = 30;
+	private static final double SAVED_COMBAT_POINTS = 123.5;
+	private static final Identifier MAX_HEALTH_MODIFIER =
+		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_max_health");
+	private static final Identifier ATTACK_DAMAGE_MODIFIER =
+		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "power_attack_damage");
 	private static final String LEVEL_LINE = "power level";
 	private static final String KILL_LINE = "power kill";
 	private static final String HEARTBEAT_LINE = "power heartbeat";
@@ -290,6 +310,206 @@ public class PowerTrackerGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void walkingWithinOneLevelDoesNotHeal(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		placeAtDistance(player, helper, INSIDE_LEVEL_BLOCKS);
+		PowerTracker.scanPlayer(player, config);
+		int level = PowerState.get(player).level();
+		player.setHealth(STARTING_HEALTH);
+		float maxBefore = player.getMaxHealth();
+		placeAtDistance(player, helper, INSIDE_LEVEL_BLOCKS + 100);
+		boolean changed = PowerTracker.scanPlayer(player, config);
+		float maxGained = player.getMaxHealth() - maxBefore;
+		float healthNow = player.getHealth();
+		helper.assertTrue(
+			!changed,
+			"walking 100 blocks inside level " + level + " reported a level change"
+		);
+		helper.assertTrue(
+			level == PowerState.get(player).level(),
+			"the level moved from " + level + " to " + PowerState.get(player).level()
+		);
+		helper.assertTrue(maxGained > 0.0F, "the maximum health did not rise at all");
+		helper.assertTrue(
+			healthNow == STARTING_HEALTH,
+			"walking inside one level healed " + (healthNow - STARTING_HEALTH) + " health"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=noWalkHeal RESULT level={} maxGained={} healthBefore={} healthAfter={} changed={}",
+			level, maxGained, STARTING_HEALTH, healthNow, changed
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aMaxHealthIncreaseRaisesTheCurrentHealthByTheSameAmount(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		placeAtDistance(player, helper, INSIDE_LEVEL_BLOCKS);
+		PowerTracker.scanPlayer(player, config);
+		player.setHealth(STARTING_HEALTH);
+		float maxBefore = player.getMaxHealth();
+		placeAtDistance(player, helper, NEXT_LEVEL_BLOCKS);
+		boolean changed = PowerTracker.scanPlayer(player, config);
+		float maxGained = player.getMaxHealth() - maxBefore;
+		float healthGained = player.getHealth() - STARTING_HEALTH;
+		helper.assertTrue(changed, "the level did not change at " + NEXT_LEVEL_BLOCKS + " blocks");
+		helper.assertTrue(maxGained > 0.0F, "the maximum health did not rise at all");
+		helper.assertTrue(
+			Math.abs(healthGained - maxGained) < TOLERANCE,
+			"the maximum rose by " + maxGained + " but the current health rose by " + healthGained
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=levelUpHeals RESULT level={} startingHealth={} healthAfter={} maxGained={} healthGained={}",
+			PowerState.get(player).level(), STARTING_HEALTH, player.getHealth(), maxGained, healthGained
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void theAttributesComeBackAfterARespawn(final GameTestHelper helper) {
+		bundledConfig(helper);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		PowerState.set(player, new PowerState(SAVED_COMBAT_POINTS, SAVED_LEVEL));
+		ServerPlayer reborn = helper.getLevel().getServer().getPlayerList().respawn(
+			player, false, Entity.RemovalReason.KILLED
+		);
+		helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+			double maxHealthModifier = modifierAmount(reborn, MAX_HEALTH_MODIFIER);
+			double damageModifier = modifierAmount(reborn, ATTACK_DAMAGE_MODIFIER);
+			double maxHealth = reborn.getMaxHealth();
+			helper.assertTrue(
+				maxHealthModifier > 0.0,
+				"the scan did not re-apply the max health modifier after a respawn"
+			);
+			helper.assertTrue(
+				damageModifier > 0.0,
+				"the scan did not re-apply the attack damage modifier after a respawn"
+			);
+			helper.assertTrue(maxHealth > VANILLA_MAX_HEALTH, "the respawned player kept " + maxHealth + " maximum health");
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=respawnReentry RESULT maxHealth={} maxHealthModifier={} damageModifier={} level={}",
+				maxHealth, maxHealthModifier, damageModifier, PowerState.get(reborn).level()
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void theAttributesFollowThePlayerIntoTheNether(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		ServerLevel nether = helper.getLevel().getServer().getLevel(Level.NETHER);
+		helper.assertTrue(nether != null, "the test server holds no nether level");
+		player.setServerLevel(nether);
+		BlockPos netherSpawn = nether.getRespawnData().pos();
+		player.setPos(netherSpawn.getX() + 100.0, 64.0, netherSpawn.getZ());
+		boolean changed = PowerTracker.scanPlayer(player, config);
+		double scaled = PowerCurve.scaledDistance(
+			player.getX(), player.getZ(), netherSpawn.getX(), netherSpawn.getZ(), Level.NETHER.identifier(), config
+		);
+		long expectedPoints = PowerCurve.distancePoints(scaled, config) + PowerCurve.depthPoints(player.getY(), config);
+		int expectedLevel = PowerCurve.levelFor(expectedPoints, config);
+		double expectedHealth = config.attributes().distance().maxHealth() * expectedPoints;
+		double healthModifier = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		helper.assertTrue(changed, "the first nether scan reported no level change");
+		helper.assertTrue(
+			scaled == 800.0,
+			"100 nether blocks scaled to " + scaled + " instead of 800"
+		);
+		helper.assertTrue(
+			PowerState.get(player).level() == expectedLevel,
+			"the nether level was " + PowerState.get(player).level() + " instead of " + expectedLevel
+		);
+		helper.assertTrue(
+			Math.abs(healthModifier - expectedHealth) < TOLERANCE,
+			"the nether max health modifier was " + healthModifier + " instead of " + expectedHealth
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=netherReentry RESULT dimension={} blocks=100 scaledDistance={} points={} level={} maxHealthModifier={}",
+			Level.NETHER.identifier(), scaled, expectedPoints, expectedLevel, healthModifier
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theAttributesFollowAConfigReload(final GameTestHelper helper) {
+		PowerConfig before = bundledConfig(helper);
+		ServerPlayer player = mockPlayer(helper);
+		placeAtDistance(player, helper, INSIDE_LEVEL_BLOCKS);
+		PowerTracker.scanPlayer(player, before);
+		double beforeReload = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		Path file;
+		PowerConfig after;
+		try {
+			file = Files.createTempDirectory("power-reload-config").resolve(PowerConfigStore.FILE_NAME);
+			Files.writeString(
+				file,
+				PowerConfigStore.DEFAULT_JSON.replace("\"max_health\": 0.5", "\"max_health\": 1.0"),
+				StandardCharsets.UTF_8
+			);
+			after = PowerConfigStore.loadFrom(file);
+		} catch (IOException e) {
+			helper.assertTrue(false, "could not stage the reload config: " + e.getMessage());
+			return;
+		}
+
+		PowerTracker.scanPlayer(player, after);
+		double afterReload = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		PowerConfigStore.load();
+		helper.assertTrue(beforeReload > 0.0, "the first scan applied no max health modifier");
+		helper.assertTrue(
+			Math.abs(afterReload - beforeReload * 2.0) < TOLERANCE,
+			"the reload changed the modifier from " + beforeReload + " to " + afterReload + " instead of doubling it"
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=reloadReentry RESULT rateBefore={} rateAfter={} modifierBefore={} modifierAfter={}",
+			before.attributes().distance().maxHealth(), after.attributes().distance().maxHealth(), beforeReload, afterReload
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theAttributesComeBackAfterARelogin(final GameTestHelper helper) {
+		PowerConfig config = bundledConfig(helper);
+		ServerPlayer original = mockPlayer(helper);
+		placeAtDistance(original, helper, INSIDE_LEVEL_BLOCKS);
+		PowerState.set(original, new PowerState(SAVED_COMBAT_POINTS, 1));
+		PowerTracker.scanPlayer(original, config);
+		double originalModifier = modifierAmount(original, MAX_HEALTH_MODIFIER);
+		TagValueOutput output = TagValueOutput.createWithContext(
+			ProblemReporter.DISCARDING, helper.getLevel().registryAccess()
+		);
+		original.saveWithoutId(output);
+		CompoundTag tag = output.buildResult();
+		ServerPlayer rejoined = mockPlayer(helper);
+		rejoined.load(TagValueInput.create(ProblemReporter.DISCARDING, helper.getLevel().registryAccess(), tag));
+		double beforeScan = modifierAmount(rejoined, MAX_HEALTH_MODIFIER);
+		int levelBeforeScan = PowerState.get(rejoined).level();
+		PowerTracker.scanPlayer(rejoined, config);
+		double afterScan = modifierAmount(rejoined, MAX_HEALTH_MODIFIER);
+		helper.assertTrue(originalModifier > 0.0, "the original scan applied no max health modifier");
+		helper.assertTrue(
+			Math.abs(beforeScan - originalModifier) < TOLERANCE,
+			"the re-login carried a max health modifier of " + beforeScan + " instead of " + originalModifier
+		);
+		helper.assertTrue(
+			Math.abs(afterScan - beforeScan) < TOLERANCE,
+			"the scan after the re-login moved the modifier from " + beforeScan + " to " + afterScan
+		);
+		helper.assertTrue(
+			PowerState.get(rejoined).level() == PowerState.get(original).level(),
+			"the reloaded player read level " + PowerState.get(rejoined).level()
+		);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=reloginReentry RESULT levelAfterLoad={} modifierAfterLoad={} modifierAfterScan={} originalModifier={} savedPoints={}",
+			levelBeforeScan, beforeScan, afterScan, originalModifier, PowerState.get(rejoined).combatPoints()
+		);
+		helper.succeed();
+	}
+
 	private static PowerConfig bundledConfig(final GameTestHelper helper) {
 		try {
 			Path file = Files.createTempDirectory("power-live-config").resolve(PowerConfigStore.FILE_NAME);
@@ -309,6 +529,25 @@ public class PowerTrackerGameTest {
 	private static void placeAtSpawn(final ServerPlayer player, final GameTestHelper helper) {
 		BlockPos spawn = spawn(helper);
 		player.setPos(spawn.getX(), 64.0, spawn.getZ());
+	}
+
+	private static void placeAtDistance(final ServerPlayer player, final GameTestHelper helper, final int blocks) {
+		BlockPos spawn = spawn(helper);
+		player.setPos(spawn.getX() + blocks, 64.0, spawn.getZ());
+	}
+
+	private static double modifierAmount(final ServerPlayer player, final Identifier id) {
+		AttributeInstance instance = player.getAttribute(Attributes.MAX_HEALTH);
+		if (id.equals(ATTACK_DAMAGE_MODIFIER)) {
+			instance = player.getAttribute(Attributes.ATTACK_DAMAGE);
+		}
+
+		if (instance == null) {
+			return 0.0;
+		}
+
+		AttributeModifier modifier = instance.getModifier(id);
+		return modifier == null ? 0.0 : modifier.amount();
 	}
 
 	private static BlockPos spawn(final GameTestHelper helper) {

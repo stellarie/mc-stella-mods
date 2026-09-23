@@ -11,7 +11,8 @@ public final class PowerLog {
 			final int level,
 			final int from,
 			final long survivabilityPoints,
-			final double combatPoints
+			final double combatPoints,
+			final double healthGained
 		) {
 		}
 

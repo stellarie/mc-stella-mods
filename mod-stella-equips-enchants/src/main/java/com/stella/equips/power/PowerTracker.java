@@ -51,16 +51,20 @@ public final class PowerTracker {
 	public static boolean scanPlayer(final ServerPlayer player, final PowerConfig config) {
 		long survivabilityPoints = survivabilityPoints(player, config);
 		PowerState state = PowerState.get(player);
-		PowerAttributes.apply(player, survivabilityPoints, state.combatPoints(), config);
 		int level = PowerCurve.levelFor(survivabilityPoints + (long) Math.floor(state.combatPoints()), config);
+		double healthGained = PowerAttributes.apply(player, survivabilityPoints, level, config);
 		PowerState.set(player, new PowerState(state.combatPoints(), level));
 
 		if (level == state.level()) {
 			return false;
 		}
 
+		if (level > state.level() && healthGained > 0.0) {
+			player.heal((float) healthGained);
+		}
+
 		PowerLog.recorder().powerLevel(
-			player.getScoreboardName(), level, state.level(), survivabilityPoints, state.combatPoints()
+			player.getScoreboardName(), level, state.level(), survivabilityPoints, state.combatPoints(), healthGained
 		);
 		return true;
 	}

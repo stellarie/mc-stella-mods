@@ -30,11 +30,12 @@ public final class PowerRecorder {
 				final int level,
 				final int from,
 				final long survivabilityPoints,
-				final double combatPoints
+				final double combatPoints,
+				final double healthGained
 			) {
 				add(
-					"[BEHAVIOR] power level player=%s level=%d from=%d survivabilityPoints=%d combatPoints=%.2f",
-					player, level, from, survivabilityPoints, combatPoints
+					"[BEHAVIOR] power level player=%s level=%d from=%d survivabilityPoints=%d combatPoints=%.2f healthGained=%.2f",
+					player, level, from, survivabilityPoints, combatPoints, healthGained
 				);
 			}
 
