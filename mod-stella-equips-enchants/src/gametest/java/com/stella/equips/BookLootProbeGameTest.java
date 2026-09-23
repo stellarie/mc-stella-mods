@@ -94,20 +94,13 @@ public class BookLootProbeGameTest {
 		);
 		helper.assertTrue(tally.badBooks.isEmpty(), "rolls produced non-books: " + tally.badBooks);
 		helper.assertTrue(
-			tally.highestLevel(MAX_ONE) == 1,
-			"prospector tops out at " + tally.highestLevel(MAX_ONE) + ", declared 1"
-		);
-		helper.assertTrue(
-			tally.highestLevel(MAX_TWO) == 2,
-			"marksman tops out at " + tally.highestLevel(MAX_TWO) + ", declared 2"
-		);
-		helper.assertTrue(
-			tally.highestLevel(MAX_THREE) == 3,
-			"blockfeast tops out at " + tally.highestLevel(MAX_THREE) + ", declared 3"
-		);
-		helper.assertTrue(
-			tally.highestLevel(MAX_FIVE) == 5,
-			"arachnids_bane tops out at " + tally.highestLevel(MAX_FIVE) + ", declared 5"
+			reachedDeclaredMax(tally, registry, MAX_ONE) && reachedDeclaredMax(tally, registry, MAX_TWO)
+				&& reachedDeclaredMax(tally, registry, MAX_THREE) && reachedDeclaredMax(tally, registry, MAX_FIVE),
+			"declared maxima not reached: prospector=" + tally.highestLevel(MAX_ONE)
+				+ "/" + declaredMax(registry, MAX_ONE) + " marksman=" + tally.highestLevel(MAX_TWO)
+				+ "/" + declaredMax(registry, MAX_TWO) + " blockfeast=" + tally.highestLevel(MAX_THREE)
+				+ "/" + declaredMax(registry, MAX_THREE) + " arachnidsBane=" + tally.highestLevel(MAX_FIVE)
+				+ "/" + declaredMax(registry, MAX_FIVE)
 		);
 		helper.assertTrue(
 			tally.exceedsDeclaredMax(registry).isEmpty(),
@@ -311,6 +304,20 @@ public class BookLootProbeGameTest {
 		helper.assertTrue(looted.is(Items.ENCHANTED_BOOK), "the loot stack is not an enchanted book");
 		helper.assertTrue(matches, "the loot book differs from EnchantmentHelper.createBook");
 		helper.succeed();
+	}
+
+	private static int declaredMax(final Registry<Enchantment> registry, final Identifier id) {
+		Enchantment enchantment = registry.getValue(id);
+
+		return enchantment == null ? -1 : enchantment.getMaxLevel();
+	}
+
+	private static boolean reachedDeclaredMax(
+		final Tally tally,
+		final Registry<Enchantment> registry,
+		final Identifier id
+	) {
+		return tally.highestLevel(id) == declaredMax(registry, id);
 	}
 
 	private static int countUnenchanted(final List<ItemStack> stacks) {

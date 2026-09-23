@@ -4,7 +4,7 @@
 	"primary_items": "#mod-stella-equips-enchants:enchantable/burrow",
 	"slots": ["mainhand"],
 	"weight": 5,
-	"max_level": 2,
+	"max_level": 5,
 	"min_cost": { "base": 5, "per_level_above_first": 8 },
 	"max_cost": { "base": 25, "per_level_above_first": 8 },
 	"anvil_cost": 1,
@@ -13,7 +13,7 @@
 			{
 				"effect": {
 					"type": "minecraft:replace_disk",
-					"radius": 2.0,
+					"radius": { "type": "minecraft:lookup", "values": [2.0, 2.0, 2.0, 3.0, 4.0], "fallback": 4.0 },
 					"height": 1.0,
 					"offset": [0, 0, 0],
 					"block_state": { "id": "minecraft:air" },

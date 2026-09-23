@@ -21,6 +21,48 @@ offered enchantment's level, so `min_cost` and `max_cost` still shape which
 offers appear while the offered level sets the price. The README records the two
 client side limits that a server side mod cannot close.
 
+## Levels 4 and 5
+
+An enchanted book rolls a level from 1 to the enchantment's own `max_level`.
+32 of the 44 enchantments reach level 5 with real effect. The other 12 are
+capped below 5 with a recorded reason, so no book roll lands on a level that
+does nothing.
+
+`EnchantmentLevelGameTest` is the measurement harness. It walks every catalogue
+enchantment's effects, reports the level 3 value, the level 5 value and the
+delta, and fails when an enchantment is neither scaling nor on the capped list.
+The capped list is asserted by name, so it cannot grow without a test failing.
+
+Ten enchantments carried a constant where a level belongs. Each constant became
+a per-level table holding the original value at levels 1, 2 and 3, then two
+increments at 4 and 5. The level 3 value is pinned per enchantment against a
+baseline recorded before the edit, so a silent change to the offered levels
+fails the run.
+
+| Enchantment | Level 3 | Level 5 |
+|---|---|---|
+| arrow_shower | 6.0 archery count | 8.0 |
+| bodkin | 3.0 piercing | 5.0 |
+| bomb_arrows | 2.0 blast radius | 3.0 |
+| longshot | 0.4 spread factor | 0.6 |
+| siege_bolt | 3.0 damage | 5.0 |
+| burrow | 2.0 radius | 4.0 |
+| green_thumb | 2.0 radius | 4.0 |
+| aegis_breaker | 2.0 damage | 4.0 |
+| cleave | 1.0 blast radius | 2.0 |
+| shockwave | 4.0 damage | 6.0 |
+
+Capped, with the reason:
+
+| Enchantment | Reason |
+|---|---|
+| harvester, lumberjack, momentum, prospector, rangers_mark, reactive_plating, stormcaller, tidecaller | the effect is `run_function`. It runs as the affected entity and carries no enchantment level, so no level above 1 can act. A later slice that wants a lever needs a new effect type or a scoreboard the level is written into |
+| asbestos, guarding_ward, insulated | the effect is a `damage_immunity` flag with no number to raise. A meaningful level 4 and 5 needs a new effect, which is a gameplay decision |
+| second_wind | its only number is `periodic_tick` inside an `entity_properties` predicate, not a level value |
+
+A function-backed enchantment therefore has no reachable effect above level 1.
+Its book rolls 1 to 3, which is every level its data declares.
+
 ## Adding another one
 
 1. Write the JSON file. Copy a neighbour in the same folder and change the

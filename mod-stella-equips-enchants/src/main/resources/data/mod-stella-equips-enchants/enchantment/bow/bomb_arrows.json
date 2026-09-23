@@ -4,7 +4,7 @@
 	"primary_items": "#minecraft:enchantable/bow",
 	"slots": ["mainhand"],
 	"weight": 2,
-	"max_level": 1,
+	"max_level": 5,
 	"min_cost": { "base": 20, "per_level_above_first": 0 },
 	"max_cost": { "base": 50, "per_level_above_first": 0 },
 	"anvil_cost": 1,
@@ -13,7 +13,7 @@
 			{
 				"effect": {
 					"type": "minecraft:explode",
-					"radius": 2.0,
+					"radius": { "type": "minecraft:lookup", "values": [2.0, 2.0, 2.0, 2.5, 3.0], "fallback": 3.0 },
 					"block_interaction": "none",
 					"attribute_to_user": true,
 					"damage_type": "minecraft:explosion",
