@@ -9,11 +9,22 @@
 	"max_cost": { "base": 21, "per_level_above_first": 11 },
 	"anvil_cost": 1,
 	"effects": {
-		"minecraft:projectile_spread": [
+		"minecraft:damage": [
 			{
 				"effect": {
-					"type": "minecraft:multiply",
-					"factor": 0.5
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 1.0
+					}
+				},
+				"requirements": {
+					"type": "minecraft:entity_properties",
+					"entity": "direct_attacker",
+					"predicate": {
+						"minecraft:entity_type": "#minecraft:arrows"
+					}
 				}
 			}
 		],
