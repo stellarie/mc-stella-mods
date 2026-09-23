@@ -1,5 +1,6 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.StellaMobs;
 import java.util.EnumSet;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -32,6 +33,8 @@ public class BoneFanGoal extends Goal {
 
 	private final Mob mob;
 	private int attackTime = -1;
+	/** The last gate answer, so the log carries one line per change rather than one per tick. */
+	private String lastGates;
 
 	public BoneFanGoal(final Mob mob) {
 		this.mob = mob;
@@ -52,10 +55,20 @@ public class BoneFanGoal extends Goal {
 	@Override
 	public boolean canUse() {
 		LivingEntity target = this.mob.getTarget();
-		return target != null
-			&& target.isAlive()
-			&& this.mob.isHolding(Items.BOW)
-			&& ReactiveState.get(this.mob).playerInRange(this.mob);
+		boolean holding = this.mob.isHolding(Items.BOW);
+		boolean inRange = ReactiveState.get(this.mob).playerInRange(this.mob);
+		boolean use = target != null && target.isAlive() && holding && inRange;
+		String gates = "target=" + (target != null) + " bow=" + holding + " player=" + inRange + " use=" + use;
+
+		if (!gates.equals(this.lastGates)) {
+			this.lastGates = gates;
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=boneFan GATE tick={} {} held={}",
+				this.mob.tickCount, gates, this.mob.getMainHandItem()
+			);
+		}
+
+		return use;
 	}
 
 	@Override
