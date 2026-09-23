@@ -701,6 +701,7 @@ public class EffectEnchantGameTest {
 				"[BEHAVIOR] test=meteor RESULT bystanderLost={} bystanderPushedSqr={} targetAlive={}",
 				lost, moved, target.isAlive()
 			);
+			helper.assertTrue(lost > 0.0F, "the falling smash hurt no nearby enemy");
 			helper.assertTrue(moved > 0.0, "the smash threw nobody outward");
 			helper.assertTrue(!target.isAlive(), "the falling smash did not take out the target beneath it");
 			helper.succeed();

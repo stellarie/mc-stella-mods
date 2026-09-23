@@ -1,28 +1,49 @@
 {
-	"description": { "translate": "enchantment.mod-stella-equips-enchants.crossbow.railgun" },
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.crossbow.railgun"
+	},
 	"supported_items": "#minecraft:enchantable/crossbow",
 	"primary_items": "#minecraft:enchantable/crossbow",
-	"slots": ["mainhand"],
+	"slots": [
+		"mainhand"
+	],
 	"weight": 2,
 	"max_level": 3,
-	"min_cost": { "base": 12, "per_level_above_first": 12 },
-	"max_cost": { "base": 45, "per_level_above_first": 12 },
+	"min_cost": {
+		"base": 12,
+		"per_level_above_first": 12
+	},
+	"max_cost": {
+		"base": 45,
+		"per_level_above_first": 12
+	},
 	"anvil_cost": 1,
 	"effects": {
 		"minecraft:crossbow_charge_time": {
 			"type": "minecraft:add",
-			"value": { "type": "minecraft:linear", "base": 0.5, "per_level_above_first": 0.25 }
+			"value": {
+				"type": "minecraft:linear",
+				"base": 0.5,
+				"per_level_above_first": 0.25
+			}
 		},
 		"minecraft:projectile_spread": [
 			{
-				"effect": { "type": "minecraft:multiply", "factor": 0.15 }
+				"effect": {
+					"type": "minecraft:multiply",
+					"factor": 0.15
+				}
 			}
 		],
 		"minecraft:projectile_piercing": [
 			{
 				"effect": {
 					"type": "minecraft:add",
-					"value": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 }
+					"value": {
+						"type": "minecraft:linear",
+						"base": 2.0,
+						"per_level_above_first": 1.0
+					}
 				}
 			}
 		],
@@ -35,23 +56,32 @@
 					"block_interaction": "none",
 					"attribute_to_user": true,
 					"create_fire": false,
-					"small_particle": { "type": "minecraft:explosion_emitter" },
-					"large_particle": { "type": "minecraft:explosion_emitter" },
+					"small_particle": {
+						"type": "minecraft:explosion_emitter"
+					},
+					"large_particle": {
+						"type": "minecraft:explosion_emitter"
+					},
 					"block_particles": [
 						{
-							"particle": { "type": "minecraft:poof" },
+							"particle": {
+								"type": "minecraft:poof"
+							},
 							"scaling": 0.5,
 							"speed": 1.0,
 							"weight": 1
 						},
 						{
-							"particle": { "type": "minecraft:smoke" },
+							"particle": {
+								"type": "minecraft:smoke"
+							},
 							"scaling": 1.0,
 							"speed": 1.0,
 							"weight": 1
 						}
 					],
-					"sound": "minecraft:entity.generic.explode"
+					"sound": "minecraft:entity.generic.explode",
+					"damage_type": "minecraft:explosion"
 				}
 			}
 		]

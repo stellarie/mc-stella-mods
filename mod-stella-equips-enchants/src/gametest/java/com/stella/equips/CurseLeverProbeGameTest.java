@@ -239,6 +239,27 @@ public class CurseLeverProbeGameTest {
 		return stack.getDamageValue();
 	}
 
+	@net.fabricmc.fabric.api.gametest.v1.GameTest(maxTicks = 300)
+	public void theAutomaticTickPathRunsOnASpawnedMob(final GameTestHelper helper) {
+		int before = marks(helper);
+		Mob mob = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(2, 2, 2));
+		ItemStack chest = probe(helper, Items.DIAMOND_CHESTPLATE, "probe/change_wear_tick_proof");
+		mob.setItemSlot(EquipmentSlot.CHEST, chest);
+		int startWear = wear(chest);
+
+		helper.runAfterDelay(TICK_WEAR_TICKS, () -> {
+			int ticks = marks(helper) - before;
+			int worn = wear(chest) - startWear;
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=probeAutomaticTick RESULT subject=zombie marks={} worn={} elapsedTicks={} "
+					+ "driven=false",
+				ticks, worn, TICK_WEAR_TICKS
+			);
+			helper.assertTrue(ticks > 0, "the automatic tick path never ran on a spawned mob");
+			helper.succeed();
+		});
+	}
+
 	private static int marks(final GameTestHelper helper) {
 		var scoreboard = helper.getLevel().getServer().getScoreboard();
 		var objective = scoreboard.getObjective("ench_scratch");

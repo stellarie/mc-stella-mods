@@ -330,6 +330,7 @@ public class CurseGameTest {
 		boolean hungered = berserker.hasEffect(MobEffects.HUNGER);
 		measured.put("berserkerDamage", round(healthyDamage) + " to " + round(woundedDamage));
 		measured.put("berserkerHunger", String.valueOf(hungered));
+		measured.put("berserkerGate", "FoodData:53 heals only at foodLevel >= 18");
 
 		StellaEquips.LOGGER.info("[BEHAVIOR] test=curseRealEvents RESULT {}", measured);
 		helper.assertTrue(
