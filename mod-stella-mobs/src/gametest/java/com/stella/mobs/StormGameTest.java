@@ -220,7 +220,7 @@ public class StormGameTest {
 	public void theStormFlagIsDurableAndAnOlderSaveStillDecodes(final GameTestHelper helper) {
 		// A save written before the storm field existed carries none of the keys.
 		EliteState legacy = EliteState.CODEC.parse(JsonOps.INSTANCE, new JsonObject()).resultOrPartial().orElseThrow();
-		EliteState marked = new EliteState(false, false, true, Optional.of(GearTier.DIAMOND), 0, false, true, false, false);
+		EliteState marked = new EliteState(false, true, Optional.of(GearTier.DIAMOND), 0, false, true, false, false);
 		var encoded = EliteState.CODEC.encodeStart(JsonOps.INSTANCE, marked).resultOrPartial().orElseThrow();
 		EliteState decoded = EliteState.CODEC.parse(JsonOps.INSTANCE, encoded).resultOrPartial().orElseThrow();
 

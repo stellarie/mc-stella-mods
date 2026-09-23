@@ -35,7 +35,7 @@ public final class VoidDrag {
 		final float taken,
 		final boolean blocked
 	) {
-		if (!(victim instanceof Enderman Enderman) || !Bosses.isBoss(Enderman)) {
+		if (!(victim instanceof Enderman Enderman) || !EliteState.hasBossFlag(Enderman)) {
 			return;
 		}
 

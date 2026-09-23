@@ -158,11 +158,19 @@ public class EscortFollowGameTest {
 		return mob;
 	}
 
-	/** The escorts of one elite: its own kind, and flagged summoned by the squad recipe. */
+	/**
+	 * The escorts of one elite, by the relationship and not by the kind: a summoned mob whose follow goal
+	 * names THIS elite. Two elites' squads share a box in a busy run, which a kind count cannot tell apart.
+	 */
 	private static List<Mob> escortsOf(final GameTestHelper helper, final Mob elite) {
 		return helper.getLevel().getEntitiesOfClass(
-			Mob.class, elite.getBoundingBox().inflate(16.0),
-			candidate -> candidate != elite && candidate.getType() == elite.getType() && EliteState.isSummoned(candidate)
+			Mob.class,
+			elite.getBoundingBox().inflate(16.0),
+			candidate -> candidate != elite
+				&& EliteState.isSummoned(candidate)
+				&& candidate.getGoalSelector().getAvailableGoals().stream().anyMatch(
+					wrapped -> wrapped.getGoal() instanceof FollowAllyGoal marker && marker.leader() == elite
+				)
 		);
 	}
 

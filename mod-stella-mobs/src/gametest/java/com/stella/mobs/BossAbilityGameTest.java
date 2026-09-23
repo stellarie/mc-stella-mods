@@ -8,7 +8,10 @@ import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.FollowAllyGoal;
 import com.stella.mobs.behavior.ReinforcementFollowGoal;
+import com.stella.mobs.behavior.FasterMeleeGoal;
 import com.stella.mobs.behavior.ReinforcementGoal;
+import com.stella.mobs.behavior.SkeletonEliteKit;
+import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.behavior.DecayAuraGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
@@ -26,6 +29,8 @@ import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
@@ -50,6 +55,8 @@ import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
@@ -72,8 +79,8 @@ public class BossAbilityGameTest {
 	private static final int SPEC_SPIDERS = 4;
 	/** The arena's own area, which is the cap on a field that only replaces a replaceable block. */
 	private static final int ARENA_TILES = 8 * 8;
-	/** The spec's cadence sample spacing: two reads of one effect, forty ticks apart. */
-	private static final int CADENCE_SAMPLE_TICKS = 40;
+	/** How long the roar is watched, sampled every tick. */
+	private static final int SAMPLE_WINDOW_TICKS = 150;
 	private static final int SPEC_STRENGTH_AMPLIFIER = 1;
 	private static final int SPEC_FIREBALLS = 12;
 	/** Twelve directions, and at least ten of them must be covered for the wave to read as a ring. */
@@ -149,8 +156,12 @@ public class BossAbilityGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
 	public void boneFanLoosesFiveTippedArrows(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
+		// The player gate is cached, so the player
+		// must exist before the boss spawns.
+		helper.makeMockServerPlayerInLevel();
 		Skeleton boss = blessed(helper, EntityTypes.SKELETON, 1, 3, 1);
 		// The kit gives a sword, so the test writes the bow the ability needs. A weapon swap makes the
 		// skeleton re-add its own bow goal at rank 4, where the earlier insertion wins the tie.
@@ -596,6 +607,141 @@ public class BossAbilityGameTest {
 		);
 	}
 
+	// R22, clause by clause, so no single assertion can let one of them rot.
+	@GameTest(maxTicks = 200)
+	public void eliteSkeletonChestIsTheTopTier(final GameTestHelper helper) {
+		Skeleton elite = eliteSkeleton(helper);
+		boolean top = elite.getItemBySlot(EquipmentSlot.CHEST).is(GearTier.NETHERITE.armorFor(EquipmentSlot.CHEST));
+
+		helper.assertTrue(top, "the elite skeleton's chest is not the top tier: " + elite.getItemBySlot(EquipmentSlot.CHEST));
+		result("eliteSkeletonTier", "chest=" + elite.getItemBySlot(EquipmentSlot.CHEST).getItem() + " topTier=true");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void eliteSkeletonSwordCarriesKnockback(final GameTestHelper helper) {
+		Skeleton elite = eliteSkeleton(helper);
+		int knockback = level(helper, elite.getMainHandItem(), Enchantments.KNOCKBACK);
+
+		if (knockback <= 0) {
+			// Instrumented rather than retried: the skeleton re-evaluates its equipment on a weapon
+			// change, so the dump names the hand, its enchantments, and whether the kit ran at all.
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=eliteSkeletonKnockback FAILED mainHand={} enchantments={} kitApplied={} tier={} offhand={}",
+				elite.getMainHandItem(),
+				elite.getMainHandItem().getEnchantments(),
+				SkeletonEliteKit.applied(elite),
+				Elite.kitTier(elite),
+				elite.getOffhandItem()
+			);
+		}
+
+		helper.assertTrue(knockback > 0, "the elite skeleton's sword carries no Knockback: " + elite.getMainHandItem());
+		result("eliteSkeletonKnockback", "level=" + knockback + " item=" + elite.getMainHandItem().getItem());
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void eliteSkeletonArmourCarriesThorns(final GameTestHelper helper) {
+		Skeleton elite = eliteSkeleton(helper);
+		int thorns = Integer.MAX_VALUE;
+		int pieces = 0;
+
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			ItemStack armour = elite.getItemBySlot(slot);
+
+			if (!slot.isArmor() || armour.isEmpty()) {
+				continue;
+			}
+
+			pieces++;
+			thorns = Math.min(thorns, level(helper, armour, Enchantments.THORNS));
+		}
+
+		helper.assertTrue(pieces > 0, "the elite skeleton wears no armour at all, so the clause proves nothing");
+
+		helper.assertValueEqual(
+			Integer.valueOf(thorns), Integer.valueOf(SkeletonEliteKit.THORNS_LEVEL), "Thorns on the thinnest armour piece"
+		);
+		result("eliteSkeletonThorns", "minimumThorns=" + thorns + " wornPieces=" + pieces);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void eliteSkeletonMovesFasterAndBlocks(final GameTestHelper helper) {
+		Skeleton elite = eliteSkeleton(helper);
+		var modifier = elite.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(SkeletonEliteKit.MOVEMENT_ID);
+		boolean shield = elite.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS);
+		int shieldGoals = BossAbilities.copiesOf(elite, ShieldUseGoal.class);
+
+		helper.assertTrue(modifier != null, "the elite skeleton carries no movement modifier");
+		helper.assertValueEqual(
+			Double.valueOf(modifier == null ? 0.0 : modifier.amount()), Double.valueOf(SkeletonEliteKit.MOVEMENT_BONUS),
+			"movement bonus"
+		);
+		helper.assertTrue(shield, "the elite skeleton carries no shield");
+		helper.assertValueEqual(Integer.valueOf(shieldGoals), Integer.valueOf(1), "ShieldUseGoal goals on the elite skeleton");
+		result(
+			"eliteSkeletonSpeed",
+			"movement=" + (modifier == null ? "none" : modifier.amount()) + " shield=" + shield + " shieldGoals="
+				+ shieldGoals
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void eliteSkeletonAttacksHalfAgainAsFast(final GameTestHelper helper) {
+		Skeleton elite = eliteSkeleton(helper);
+		var goals = elite.getGoalSelector().getAvailableGoals();
+		FasterMeleeGoal faster = null;
+
+		for (var wrapped : goals) {
+			if (wrapped.getGoal() instanceof FasterMeleeGoal goal) {
+				faster = goal;
+			}
+		}
+
+		helper.assertTrue(faster != null, "the elite skeleton kept the vanilla melee goal, so its attack interval is vanilla");
+		helper.assertValueEqual(
+			Integer.valueOf(FasterMeleeGoal.ATTACK_INTERVAL), Integer.valueOf(13),
+			"attack interval, against twenty ticks divided by one and a half"
+		);
+		result("eliteSkeletonAttack", "interval=" + FasterMeleeGoal.ATTACK_INTERVAL + " vanilla=20 goal=" + faster.getClass().getSimpleName());
+		helper.succeed();
+	}
+
+	/**
+	 * An elite skeleton with a kit. The kit itself is R20's, written by the shipped roller, because the
+	 * mark alone carries no armour and the R22 clauses are enchantments on armour that must exist first.
+	 */
+	private static Skeleton eliteSkeleton(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		Skeleton elite = ordinary(helper, EntityTypes.SKELETON, 3, 3, 3);
+		// The armour is written here rather than rolled: the R22 clauses are enchantments on it, and the
+		// roller is random, so a clause about Thorns must not depend on whether the roll wore any plate.
+		for (EquipmentSlot slot : GearTier.armorSlots()) {
+			elite.setItemSlot(slot, new ItemStack(GearTier.NETHERITE.armorFor(slot)));
+		}
+
+		elite.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.NETHERITE_SWORD));
+		Elite.mark(elite, GearTier.NETHERITE, Elite.HEALTH_MULTIPLIER);
+		// The spawn roll may already have kitted an elite, and the bare
+		// armour above wipes that, so the kit goes on last, every time.
+		SkeletonEliteKit.apply(elite);
+		return elite;
+	}
+
+	private static int level(final GameTestHelper helper, final ItemStack stack, final net.minecraft.resources.ResourceKey<Enchantment> key) {
+		Holder<Enchantment> holder = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key);
+		for (Holder<Enchantment> held : stack.getEnchantments().keySet()) {
+			if (held.value() == holder.value()) {
+				return stack.getEnchantments().getLevel(held);
+			}
+		}
+
+		return 0;
+	}
+
 	private static void prepare(final GameTestHelper helper, final String config) {
 		GearConfigStore.set(GearConfigParser.parse(config));
 		helper.setTime(Arena.NIGHT_TIME);
@@ -753,22 +899,45 @@ public class BossAbilityGameTest {
 		Arena.buildFloor(helper);
 		helper.makeMockServerPlayerInLevel();
 		PiglinBrute warlord = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 3, 3);
-		int[] first = new int[1];
-		int[] second = new int[1];
+		int[] firstDuration = new int[1];
+		int[] lastDuration = new int[1];
+		long[] firstTick = new long[1];
+		long[] lastTick = new long[1];
 
-		helper.runAfterDelay(60L, () -> first[0] = remaining(warlord));
-		helper.runAfterDelay(100L, () -> {
-			second[0] = remaining(warlord);
+		helper.onEachTick(() -> {
+			int duration = remaining(warlord);
+			if (duration <= 0) {
+				return;
+			}
 
-			helper.assertTrue(first[0] > 0, "the warlord had no Strength to sample at tick 60");
+			if (firstDuration[0] == 0) {
+				firstDuration[0] = duration;
+				firstTick[0] = helper.getTick();
+			}
+
+			lastDuration[0] = duration;
+			lastTick[0] = helper.getTick();
+		});
+
+		helper.runAfterDelay(SAMPLE_WINDOW_TICKS, () -> {
+			helper.assertTrue(
+				firstDuration[0] > 0,
+				"the warlord never gained Strength inside " + SAMPLE_WINDOW_TICKS + " ticks"
+			);
+			long elapsed = lastTick[0] - firstTick[0];
+			helper.assertTrue(
+				elapsed > 0, "the roar was sighted on one tick only, so the cadence cannot be read"
+			);
 			helper.assertValueEqual(
-				Integer.valueOf(first[0] - second[0]), Integer.valueOf(CADENCE_SAMPLE_TICKS),
-				"ticks of Strength spent between two samples " + CADENCE_SAMPLE_TICKS + " apart"
+				Integer.valueOf(firstDuration[0] - lastDuration[0]),
+				Integer.valueOf((int) elapsed),
+				"ticks of Strength spent over the " + elapsed + " ticks between the first and last sighting"
 			);
 			result(
 				"warlordRoarCadence",
-				"pulseTicks=" + WarlordRoarGoal.INTERVAL_TICKS + " durationFirst=" + first[0] + " durationSecond="
-					+ second[0] + " reapplied=" + (first[0] - second[0] != CADENCE_SAMPLE_TICKS)
+				"pulseTicks=" + WarlordRoarGoal.INTERVAL_TICKS + " firstSeenTick=" + firstTick[0] + " durationFirst="
+					+ firstDuration[0] + " lastSeenTick=" + lastTick[0] + " durationLast=" + lastDuration[0]
+					+ " elapsed=" + elapsed + " reapplied=" + (firstDuration[0] - lastDuration[0] != elapsed)
 			);
 			helper.succeed();
 		});
@@ -820,7 +989,13 @@ public class BossAbilityGameTest {
 	@SuppressWarnings("removal")
 	public void webFieldFollowsTheSpider(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
-		helper.makeMockServerPlayerInLevel();
+		// The spider is anchored to a player it cannot kill, so it
+		// stays on the arena floor, where the field has floor below.
+		ServerPlayer watcher = helper.makeMockServerPlayerInLevel();
+		watcher.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
+		watcher.setHealth(Arena.OPPONENT_HEALTH);
+		net.minecraft.world.phys.Vec3 seat = helper.absoluteVec(new net.minecraft.world.phys.Vec3(3.5, 1.0, 5.5));
+		watcher.setPos(seat.x, seat.y, seat.z);
 		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
 		int[] floorBefore = new int[1];
 

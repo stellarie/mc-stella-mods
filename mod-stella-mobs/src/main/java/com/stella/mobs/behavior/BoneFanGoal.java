@@ -52,7 +52,10 @@ public class BoneFanGoal extends Goal {
 	@Override
 	public boolean canUse() {
 		LivingEntity target = this.mob.getTarget();
-		return target != null && target.isAlive() && this.mob.isHolding(Items.BOW);
+		return target != null
+			&& target.isAlive()
+			&& this.mob.isHolding(Items.BOW)
+			&& ReactiveState.get(this.mob).playerInRange(this.mob);
 	}
 
 	@Override

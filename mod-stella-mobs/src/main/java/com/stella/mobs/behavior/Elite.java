@@ -69,6 +69,14 @@ public final class Elite {
 		// R21: an elite zombie brings reinforcements, and the mark is the moment it becomes one.
 		BehaviorInstaller.installReinforcements(mob);
 
+		// R22: the elite skeleton's kit goes on here, before the installer runs, so the shield it writes
+		// is in the off hand when the installer decides whether to add ShieldUseGoal.
+		if (mob.getType() == net.minecraft.world.entity.EntityTypes.SKELETON
+			&& !EliteState.isSummoned(mob)
+			&& !SkeletonEliteKit.applied(mob)) {
+			SkeletonEliteKit.apply(mob);
+		}
+
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		if (health != null) {
 			// The bare base times the multiplier. R12's area scaling rides its own modifier, so it is
