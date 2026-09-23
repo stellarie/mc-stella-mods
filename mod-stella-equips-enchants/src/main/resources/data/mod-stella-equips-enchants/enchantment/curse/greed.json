@@ -1,0 +1,45 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.curse.greed"
+	},
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": [
+		"mainhand"
+	],
+	"weight": 1,
+	"max_level": 1,
+	"min_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"max_cost": {
+		"base": 1,
+		"per_level_above_first": 0
+	},
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:equipment_drops": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:multiply",
+					"factor": 2.0
+				}
+			}
+		],
+		"minecraft:attributes": [
+			{
+				"attribute": "minecraft:max_health",
+				"amount": {
+					"type": "minecraft:linear",
+					"base": -0.15,
+					"per_level_above_first": -0.01
+				},
+				"operation": "add_multiplied_total",
+				"id": "mod-stella-equips-enchants:curse/greed_cost"
+			}
+		]
+	}
+}
