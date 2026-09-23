@@ -1,10 +1,17 @@
 package com.stella.equips;
 
+import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
+import com.stella.equips.power.PowerConfigParser;
+import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 
 public class PowerCurveGameTest {
 	private static final int DISTANCE_CAP_BLOCKS = 9600;
@@ -15,6 +22,104 @@ public class PowerCurveGameTest {
 	private static final double STEP_TOLERANCE = 1.0;
 	private static final double RATIO_TOLERANCE = 0.2;
 	private static final long SMALLEST_STEP_FOR_THE_RATIO_CHECK = 8L;
+
+	@GameTest
+	public void theHealthCurveIsFlatPerLevelToTheEngineCeiling(final GameTestHelper helper) {
+		PowerConfigStore.load();
+		PowerConfig config = PowerConfigStore.get();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		PacketRecorder.attach(player);
+		Map<Integer, Double> measured = new LinkedHashMap<>();
+		for (int level : List.of(2, 10, 50, 100)) {
+			PowerAttributes.apply(player, level, config);
+			measured.put(level, (double) player.getMaxHealth());
+		}
+
+		PowerAttributes.apply(player, 300, config);
+		double ceiling = player.getMaxHealth();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=healthCurve RESULT level2={} level10={} level50={} level100={} level300={} "
+				+ "engineCeiling=1024 rule=20+4*(level-1)",
+			measured.get(2), measured.get(10), measured.get(50), measured.get(100), ceiling
+		);
+		helper.assertTrue(Math.abs(measured.get(2) - 24.0) < 0.001, "level 2 read " + measured.get(2));
+		helper.assertTrue(Math.abs(measured.get(10) - 56.0) < 0.001, "level 10 read " + measured.get(10));
+		helper.assertTrue(Math.abs(measured.get(50) - 216.0) < 0.001, "level 50 read " + measured.get(50));
+		helper.assertTrue(Math.abs(measured.get(100) - 416.0) < 0.001, "level 100 read " + measured.get(100));
+		helper.assertTrue(
+			Math.abs(ceiling - 1024.0) < 0.001,
+			"level 300 read " + ceiling + " instead of the engine ceiling of 1024"
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theBundledDocumentRaisesNoFalseAlarm(final GameTestHelper helper) {
+		PowerConfigStore.bundled();
+		List<String> ignored = PowerConfigParser.ignoredKeys();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=bundledKeys RESULT ignoredCount={} keys={}", ignored.size(), ignored
+		);
+		helper.assertTrue(
+			ignored.isEmpty(),
+			"the mod warns about the file it wrote itself: " + ignored
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aStaleSchemaIsReportedWithItsIgnoredKeys(final GameTestHelper helper) {
+		String stale = """
+			{
+				"version": 1,
+				"level_cap": 50,
+				"distance": { "max_health_per_point": 0.5 },
+				"combat": { "attack_damage_max": 8.0, "attack": { "damage_max": 40.0 } },
+				"attributes": { "max_health_at_cap": 1004.0 },
+				"mob_level": { "dimension_scale": { "minecraft:the_nether": 8.0 } }
+			}
+			""";
+		PowerConfig parsed = PowerConfigParser.parse(stale, PowerFixtures.acceptanceConfig());
+		List<String> ignored = PowerConfigParser.ignoredKeys();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=staleSchema RESULT ignoredCount={} keys={} healthPerLevel={} levelCap={}",
+			ignored.size(), ignored, parsed.attributes().healthPerLevel(), parsed.levelCap()
+		);
+		helper.assertTrue(
+			ignored.contains("distance.max_health_per_point"),
+			"the stale travel-point key was not reported: " + ignored
+		);
+		helper.assertTrue(
+			ignored.contains("combat.attack_damage_max"),
+			"the stale combat key was not reported: " + ignored
+		);
+		helper.assertTrue(
+			ignored.contains("attributes.max_health_at_cap"),
+			"the retired health key was not reported: " + ignored
+		);
+		helper.assertTrue(
+			ignored.contains("combat.attack.damage_max"),
+			"a twice nested stale key was not reported: " + ignored
+		);
+		helper.assertTrue(
+			!ignored.contains("mob_level.dimension_scale.minecraft:the_nether"),
+			"a known dimension scale id was reported as stale: " + ignored
+		);
+		helper.assertTrue(
+			ignored.equals(List.of(
+				"distance.max_health_per_point",
+				"combat.attack_damage_max",
+				"combat.attack.damage_max",
+				"attributes.max_health_at_cap"
+			)),
+			"the stale document reported " + ignored + " instead of exactly its four stale keys"
+		);
+		helper.assertTrue(
+			Math.abs(parsed.attributes().healthPerLevel() - 4.0) < 1.0E-9,
+			"the bundled health per level lost to a stale file: " + parsed.attributes().healthPerLevel()
+		);
+		helper.succeed();
+	}
 
 	@GameTest
 	public void levelFiftyCostsSixThousandTwoHundredSeventyFive(final GameTestHelper helper) {

@@ -33,6 +33,9 @@ public final class PowerLog {
 		default void powerHeartbeat(final int tick, final int players) {
 		}
 
+		default void configProblem(final String message) {
+		}
+
 		default void readoutSpawn(
 			final String player,
 			final String mob,

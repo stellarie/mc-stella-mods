@@ -54,8 +54,83 @@ public final class PowerConfigParser {
 		}
 	}
 
+	private static volatile java.util.List<String> ignored = java.util.List.of();
+
+	/** The keys the last parse did not know, so a test can name them. */
+	public static java.util.List<String> ignoredKeys() {
+		return ignored;
+	}
+
+	private static final java.util.Set<String> KNOWN_KEYS = java.util.Set.of(
+		"_note", "version", "level_cap",
+		"curve.base", "curve.growth",
+		"award.divisor", "award.minimum",
+		"mob_level.blocks_per_level", "mob_level.cap", "mob_level.depth_bonus_cap",
+		"mob_level.depth_bonus_blocks", "mob_level.depth_reference_y", "mob_level.level_cap",
+		"mob_level.other_dimension_scale", "mob_level.dimension_scale",
+		"bands.red_above", "bands.yellow_above", "bands.orange_above", "bands.green_within",
+		"tracker.scan_interval_ticks", "tracker.heartbeat_ticks",
+		"attributes.health_base", "attributes.health_per_level", "attributes.armor_at_cap",
+		"attributes.knockback_resistance_at_cap", "attributes.attack_damage_at_cap",
+		"attributes.attack_speed_at_cap",
+		"readout.enabled_by_default", "readout.radius", "readout.max_per_player",
+		"readout.height_offset", "readout.view_range"
+	);
+
+	/** A key this build does not know is a key an older file wins with. Name them. */
+	private static void reportUnknownKeys(final JsonObject object) {
+		java.util.List<String> unknown = new java.util.ArrayList<>();
+		collectUnknown("", object, unknown);
+		ignored = java.util.List.copyOf(unknown);
+		if (!unknown.isEmpty()) {
+			warn("ignoring " + unknown.size() + " key(s) this build does not know, so the bundled value wins: "
+				+ String.join(", ", unknown));
+		}
+	}
+
+	/** A stale file nests sections, so walk to the leaves and name each one by its full path. */
+	private static void collectUnknown(
+		final String prefix, final JsonObject object, final java.util.List<String> unknown
+	) {
+		for (String key : object.keySet()) {
+			String path = prefix + key;
+			if (!(object.get(key) instanceof JsonObject nested)) {
+				if (!known(path)) {
+					unknown.add(path);
+				}
+
+				continue;
+			}
+
+			if (nested.isEmpty() && !known(path)) {
+				unknown.add(path);
+				continue;
+			}
+
+			collectUnknown(path + ".", nested, unknown);
+		}
+	}
+
+	/** A dimension scale holds one entry per dimension id, so its children are known by prefix. */
+	private static boolean known(final String path) {
+		if (KNOWN_KEYS.contains(path) || path.startsWith("mob_level.dimension_scale.")) {
+			return true;
+		}
+
+		String section = path + ".";
+
+		for (String key : KNOWN_KEYS) {
+			if (key.startsWith(section)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private static void warn(final String message) {
 		StellaEquips.LOGGER.warn("Power config: {}", message);
+		PowerLog.recorder().configProblem(message);
 	}
 
 	private static final class Reader {
@@ -71,7 +146,8 @@ public final class PowerConfigParser {
 
 		private PowerConfig build() {
 			JsonObject object = this.root;
-			int version = intValue(object, "version", 0, PowerConfig::version);
+			reportUnknownKeys(object);
+		int version = intValue(object, "version", 0, PowerConfig::version);
 			int levelCap = intValueAtLeast(object, "level_cap", 1, PowerConfig::levelCap);
 
 			JsonObject curve = enter("curve");
@@ -115,7 +191,10 @@ public final class PowerConfigParser {
 			JsonObject attributes = enter("attributes");
 			PowerConfig.Attributes attributeSpec = new PowerConfig.Attributes(
 				doubleValueAtLeast(
-					attributes, "max_health_at_cap", 0.0, config -> config.attributes().maxHealthAtCap()
+					attributes, "health_base", 0.0, config -> config.attributes().healthBase()
+				),
+				doubleValueAtLeast(
+					attributes, "health_per_level", 0.0, config -> config.attributes().healthPerLevel()
 				),
 				doubleValueAtLeast(
 					attributes, "armor_at_cap", 0.0, config -> config.attributes().armorAtCap()

@@ -44,17 +44,17 @@ public class PowerConfigGameTest {
 			"the bundled growth is " + actual.curve().growth()
 		);
 		helper.assertTrue(
-			Math.abs(actual.attributes().maxHealthAtCap() - PowerFixtures.MAX_HEALTH_AT_CAP) < 1.0E-9,
-			"the bundled maximum health at the cap is " + actual.attributes().maxHealthAtCap()
+			Math.abs(actual.attributes().healthPerLevel() - PowerFixtures.HEALTH_PER_LEVEL) < 1.0E-9,
+			"the bundled health per level is " + actual.attributes().healthPerLevel()
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} pointsForLevel50={} growth={} awardDivisor={} mobLevelCap={} maxHealthAtCap={} scanInterval={}",
+			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} pointsForLevel50={} growth={} awardDivisor={} mobLevelCap={} healthPerLevel={} scanInterval={}",
 			actual.levelCap(),
 			levelFifty,
 			actual.curve().growth(),
 			actual.award().divisor(),
 			actual.mobLevel().levelCap(),
-			actual.attributes().maxHealthAtCap(),
+			actual.attributes().healthPerLevel(),
 			actual.tracker().scanIntervalTicks()
 		);
 		helper.succeed();
