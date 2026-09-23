@@ -1,0 +1,40 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.veinminer" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/veinminer",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/veinminer",
+	"slots": ["mainhand"],
+	"weight": 3,
+	"max_level": 5,
+	"min_cost": { "base": 10, "per_level_above_first": 8 },
+	"max_cost": { "base": 35, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:run_function",
+					"function": "mod-stella-equips-enchants:veinminer"
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:spawn_particles",
+					"particle": { "type": "minecraft:crit" },
+					"horizontal_position": { "type": "in_bounding_box" },
+					"horizontal_velocity": { "base": 0.0 },
+					"vertical_position": { "type": "entity_position", "offset": 0.8 },
+					"vertical_velocity": { "base": 0.06 },
+					"speed": 0.08
+				}
+			},
+			{
+				"effect": {
+					"type": "minecraft:play_sound",
+					"sound": "minecraft:block.deepslate.break",
+					"volume": 0.7,
+					"pitch": 1.4
+				}
+			}
+		]
+	}
+}

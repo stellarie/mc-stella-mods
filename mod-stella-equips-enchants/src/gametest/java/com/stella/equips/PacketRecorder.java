@@ -63,6 +63,15 @@ public final class PacketRecorder extends ServerGamePacketListenerImpl {
 		this.sent.add(packet);
 	}
 
+	/**
+	 * `ServerPlayer.isInvulnerableTo` reads this, so a mock player without a real
+	 * client counts as loaded here. Otherwise every hit on it is negated.
+	 */
+	@Override
+	public boolean hasClientLoaded() {
+		return true;
+	}
+
 	public int count() {
 		return this.sent.size();
 	}
