@@ -4,6 +4,7 @@ import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.BossCompanion;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.BroodMother;
+import com.stella.mobs.behavior.Decay;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EscortSquad;
@@ -55,6 +56,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EvokerStorm::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerTickEvents.END_LEVEL_TICK.register(EscortSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(RiderSquad::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);

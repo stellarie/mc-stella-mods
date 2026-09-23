@@ -1,6 +1,9 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.Decay;
+import com.stella.mobs.behavior.DecayAuraGoal;
+import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
@@ -30,6 +33,8 @@ import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.monster.spider.CaveSpider;
 import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
@@ -62,6 +67,8 @@ public class BossAbilityGameTest {
 	/** Twelve directions, and at least ten of them must be covered for the wave to read as a ring. */
 	private static final int SAFE_SECTORS = 12;
 	private static final int MIN_SECTORS = 10;
+	/** Wither II is amplifier one; Wither I is amplifier zero. */
+	private static final int SPEC_WITHER_TWO = 1;
 	/**
 	 * The roll-path config, used by the one test that pins the production path. Every other test promotes
 	 * its subject by hand, which is deterministic and reaches the same end state through blessAsBoss.
@@ -165,6 +172,88 @@ public class BossAbilityGameTest {
 		});
 	}
 
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void decayBladeAppliesWitherTwo(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		WitherSkeleton boss = blessed(helper, EntityTypes.WITHER_SKELETON, 3, 1, 3);
+		Zombie victim = ordinary(helper, EntityTypes.ZOMBIE, 4, 1, 3);
+		boss.doHurtTarget(helper.getLevel(), victim);
+		MobEffectInstance wither = victim.getEffect(MobEffects.WITHER);
+
+		helper.assertTrue(wither != null, "the boss blade applied no Wither to the mob it hit");
+		helper.assertValueEqual(
+			Integer.valueOf(wither == null ? -1 : wither.getAmplifier()), Integer.valueOf(SPEC_WITHER_TWO),
+			"Wither amplifier from the blade, against the spec's"
+		);
+		helper.assertValueEqual(
+			Integer.valueOf(wither == null ? -1 : wither.getDuration()), Integer.valueOf(Decay.BLADE_TICKS),
+			"Wither duration from the blade"
+		);
+		result(
+			"decayWitherTwo",
+			"amplifier=" + (wither == null ? "none" : wither.getAmplifier()) + " duration="
+				+ (wither == null ? 0 : wither.getDuration()) + " source=melee"
+		);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	@SuppressWarnings("removal")
+	public void decayAuraWithersOnlyWhatItMay(final GameTestHelper helper) {
+		prepare(helper, NO_BOSS);
+		helper.makeMockServerPlayerInLevel();
+		WitherSkeleton boss = blessed(helper, EntityTypes.WITHER_SKELETON, 3, 1, 3);
+		// The two neighbours are identified by their own objects, not by their kind in a box: the aura
+		// decides by relationship, and a count by kind would collide with a neighbouring arena. The
+		// withered neighbour is a piglin because a zombie IS undead and the filter refuses it.
+		Piglin witting = ordinary(helper, EntityTypes.PIGLIN, 5, 1, 3);
+		WitherSkeleton immune = ordinary(helper, EntityTypes.WITHER_SKELETON, 3, 1, 5);
+
+		helper.succeedWhen(() -> {
+			helper.assertTrue(
+				witting.hasEffect(MobEffects.WITHER), "the piglin five blocks from the boss gained no Wither"
+			);
+			helper.assertFalse(
+				immune.hasEffect(MobEffects.WITHER),
+				"the wither skeleton beside the boss was withered, so the aura does not filter the undead"
+			);
+			helper.assertFalse(boss.hasEffect(MobEffects.WITHER), "the boss withered itself");
+			result(
+				"decayAura",
+				"radius=" + DecayAuraGoal.RADIUS + " withered=true undeadWithered=false selfWithered=false"
+					+ " amplifier=" + witting.getEffect(MobEffects.WITHER).getAmplifier()
+			);
+		});
+	}
+
+	/**
+	 * The shield is a load-path clause: the kit writes it and the installer, which runs after the kit,
+	 * adds ShieldUseGoal for an off hand that blocks. Only a rolled boss has that order, so this test
+	 * rolls its subject rather than promoting it by hand.
+	 */
+	@GameTest(maxTicks = 400)
+	public void decayBossCarriesTheShieldTheInstallerSees(final GameTestHelper helper) {
+		prepare(helper, BOSS_ROLL);
+		Subject subject = new Subject(helper, EntityTypes.WITHER_SKELETON, 1);
+
+		helper.succeedWhen(() -> {
+			WitherSkeleton boss = (WitherSkeleton) subject.ready(helper);
+			boolean shield = boss.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS);
+			int shieldGoals = BossAbilities.copiesOf(boss, ShieldUseGoal.class);
+
+			helper.assertTrue(shield, "the boss wither skeleton carries no shield in its off hand");
+			helper.assertValueEqual(
+				Integer.valueOf(shieldGoals), Integer.valueOf(1),
+				"ShieldUseGoal goals, which the installer adds only for an off hand that blocks"
+			);
+			result(
+				"decayShield", "shield=" + shield + " shieldGoals=" + shieldGoals + " mainHand=" + boss.getMainHandItem()
+			);
+			GearConfigStore.set(GearConfigParser.parse(NO_BOSS));
+		});
+	}
 	private static void prepare(final GameTestHelper helper, final String config) {
 		GearConfigStore.set(GearConfigParser.parse(config));
 		helper.setTime(Arena.NIGHT_TIME);
