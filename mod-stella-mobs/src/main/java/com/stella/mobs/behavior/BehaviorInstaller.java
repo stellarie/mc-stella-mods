@@ -6,16 +6,21 @@ import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.RoleSpec;
 import java.util.List;
 import java.util.Set;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.entity.monster.ElderGuardian;
 import net.minecraft.world.entity.monster.Ghast;
+import net.minecraft.world.entity.monster.Guardian;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.entity.monster.spider.Spider;
@@ -44,6 +49,8 @@ public final class BehaviorInstaller {
 	public static final int WITCH_OFFENSE_PRIORITY = WITCH_BLOCK_START + 2;
 	// Rank 8 stays free. The aura sits at the top of the block, as planned.
 	public static final int WITCH_AURA_PRIORITY = WITCH_BLOCK_START + 4;
+	/** O02 and O03: the free rank 8, below the witch's own aura, so the two can never preempt. */
+	public static final int OCEAN_AURA_PRIORITY = WITCH_BLOCK_START + 3;
 	/** Vanilla's ghast holds its look goal and its shoot goal at rank 7; both are replaced together. */
 	public static final int GHAST_SHOOT_PRIORITY = 7;
 	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
@@ -51,6 +58,9 @@ public final class BehaviorInstaller {
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
 	);
+	private static final List<Holder<MobEffect>> GUARDIAN_AURA_EFFECTS = List.of(MobEffects.BLINDNESS);
+	private static final List<Holder<MobEffect>> ELDER_AURA_EFFECTS =
+		List.of(MobEffects.BLINDNESS, MobEffects.WEAKNESS);
 
 	private BehaviorInstaller() {
 	}
@@ -202,6 +212,37 @@ public final class BehaviorInstaller {
 		installBlazeVolley(mob);
 		// R24: the elite brute's permanent movement, which the shared elite mark alone does not add.
 		PiglinSmash.install(mob);
+		// O02 and O03: the guardian auras, the elite guardian's slow beam, and its movement.
+		if (mob instanceof Guardian guardian) {
+			installGuardian(guardian);
+		}
+	}
+
+	/**
+	 * O02 and O03: the guardian's blindness aura at the free rank 8, with the witch's rank 9 untouched,
+	 * and the elder's wider aura with Weakness beside the blindness. The beam cooldown and the movement
+	 * bonus belong to the plain guardian: the elder's beam is already faster than a guardian's, so
+	 * "attacks slowly" is not its clause.
+	 */
+	private static void installGuardian(final Guardian guardian) {
+		boolean elder = guardian instanceof ElderGuardian;
+		guardian.getGoalSelector().addGoal(
+			OCEAN_AURA_PRIORITY,
+			new EliteAuraGoal<>(
+				guardian,
+				elder ? GuardianElite.ELDER_AURA_RADIUS : WitchElite.AURA_RADIUS,
+				elder ? ELDER_AURA_EFFECTS : GUARDIAN_AURA_EFFECTS
+			)
+		);
+
+		if (elder) {
+			return;
+		}
+
+		guardian.getGoalSelector().addGoal(
+			GuardianBeamCooldownGoal.PRIORITY, new GuardianBeamCooldownGoal(guardian)
+		);
+		GuardianElite.speed(guardian);
 	}
 
 	/**
@@ -212,7 +253,9 @@ public final class BehaviorInstaller {
 		witch.getGoalSelector().addGoal(WITCH_SELF_HEAL_PRIORITY, new WitchSelfHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_SUPPORT_PRIORITY, new WitchSupportHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));
-		witch.getGoalSelector().addGoal(WITCH_AURA_PRIORITY, new WitchEliteAuraGoal<>(witch));
+		witch.getGoalSelector().addGoal(
+			WITCH_AURA_PRIORITY, new EliteAuraGoal<>(witch, WitchElite.AURA_RADIUS, List.of(MobEffects.BLINDNESS))
+		);
 	}
 
 	private static RoleSpec resolveRole(final Mob mob, final ReactiveState state, final Identifier entityType) {

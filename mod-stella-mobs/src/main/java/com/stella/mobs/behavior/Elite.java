@@ -110,7 +110,12 @@ public final class Elite {
 	 * end of the tick. Runs for a fresh spawn only, so a summon cannot roll itself elite and recurse.
 	 */
 	public static void rollAtSpawn(final Mob mob, final ServerLevel level, final double chance, final boolean applyKit) {
-		if (EliteState.isSummoned(mob) || isElite(mob) || !canBeElite(mob) || !roll(mob.getRandom(), chance)) {
+		// O03: an elder guardian is elite every time, not by roll. The branch lives inside this one guard so
+		// no spawn path can miss it, and it still skips the escort squad at the tail.
+		boolean forced = mob.getType() == EntityTypes.ELDER_GUARDIAN;
+
+		if (EliteState.isSummoned(mob) || isElite(mob) || (!forced && !canBeElite(mob))
+			|| (!forced && !roll(mob.getRandom(), chance))) {
 			return;
 		}
 
@@ -126,7 +131,10 @@ public final class Elite {
 			);
 		}
 
-		EscortSquad.queue(mob, tier);
+		// O03: a forced path passes no escort count, because six guardians would change the fight.
+		if (!forced) {
+			EscortSquad.queue(mob, tier);
+		}
 
 		// R23: an elite spider's sword skeleton is guaranteed rather than a chance roll, and it rides the
 		// shipped seating path, so the create-and-flag recipe is the one riders already use.

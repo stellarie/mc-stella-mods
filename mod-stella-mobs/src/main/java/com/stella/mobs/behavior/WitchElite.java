@@ -11,9 +11,9 @@ import net.minecraft.world.entity.Mob;
 public final class WitchElite {
 	public static final double HEALTH_MULTIPLIER = 1.5;
 	public static final double DEFAULT_CHANCE = 0.10;
-	public static final double AURA_RADIUS = 16.0;
-	public static final int AURA_DURATION_TICKS = 100;
-	public static final int AURA_INTERVAL_TICKS = 20;
+	public static final double AURA_RADIUS = EliteAuraGoal.RADIUS;
+	public static final int AURA_DURATION_TICKS = EliteAuraGoal.DURATION_TICKS;
+	public static final int AURA_INTERVAL_TICKS = EliteAuraGoal.INTERVAL_TICKS;
 
 	private WitchElite() {
 	}
