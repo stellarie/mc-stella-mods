@@ -11,6 +11,8 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 
 public final class PowerAttributes {
+	/** The vanilla base of `minecraft:max_health`, which the modifier is measured against. */
+	private static final double VANILLA_MAX_HEALTH = 20.0;
 	private static final Identifier MAX_HEALTH_ID = id("max_health");
 	private static final Identifier ARMOR_ID = id("armor");
 	private static final Identifier KNOCKBACK_RESISTANCE_ID = id("knockback_resistance");
@@ -23,7 +25,8 @@ public final class PowerAttributes {
 	public static void apply(final ServerPlayer player, final int level, final PowerConfig config) {
 		PowerConfig.Attributes attributes = config.attributes();
 		double fraction = PowerCurve.levelFraction(level, config);
-		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, attributes.maxHealthAtCap() * fraction);
+		double health = attributes.healthBase() + attributes.healthPerLevel() * Math.max(0, level - 1);
+		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, health - VANILLA_MAX_HEALTH);
 		replace(player, Attributes.ARMOR, ARMOR_ID, attributes.armorAtCap() * fraction);
 		replace(
 			player,
