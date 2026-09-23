@@ -14,8 +14,20 @@
 				"enchanted": "attacker",
 				"affected": "victim",
 				"effect": {
-					"type": "minecraft:run_function",
-					"function": "mod-stella-equips-enchants:hooked"
+					"type": "minecraft:apply_mob_effect",
+					"to_apply": "minecraft:slowness",
+					"min_duration": 4.0,
+					"max_duration": 4.0,
+					"min_amplifier": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 1.0
+					},
+					"max_amplifier": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 1.0
+					}
 				}
 			}
 		]
