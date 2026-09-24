@@ -1,0 +1,40 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.bow.marksman" },
+	"supported_items": "#minecraft:enchantable/bow",
+	"primary_items": "#minecraft:enchantable/bow",
+	"slots": ["mainhand"],
+	"weight": 10,
+	"max_level": 5,
+	"min_cost": { "base": 1, "per_level_above_first": 11 },
+	"max_cost": { "base": 21, "per_level_above_first": 11 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:damage": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 1.0
+					}
+				},
+				"requirements": {
+					"type": "minecraft:entity_properties",
+					"entity": "direct_attacker",
+					"predicate": {
+						"minecraft:entity_type": "#minecraft:arrows"
+					}
+				}
+			}
+		],
+		"minecraft:item_damage": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": 1.0
+				}
+			}
+		]
+	}
+}

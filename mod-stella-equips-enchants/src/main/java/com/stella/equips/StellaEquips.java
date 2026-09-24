@@ -1,0 +1,39 @@
+package com.stella.equips;
+
+import com.stella.equips.enchant.Deflection;
+import com.stella.equips.enchant.OreRegeneration;
+import com.stella.equips.loot.ChestLoot;
+import com.stella.equips.loot.HeadDrops;
+import com.stella.equips.loot.RandomEnchantmentsFunction;
+import com.stella.equips.power.PowerConfigStore;
+import com.stella.equips.power.PowerTracker;
+import com.stella.equips.readout.ReadoutCommand;
+import com.stella.equips.readout.ReadoutService;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class StellaEquips implements ModInitializer {
+	public static final String MOD_ID = "mod-stella-equips-enchants";
+	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+
+	@Override
+	public void onInitialize() {
+		Deflection.register();
+		OreRegeneration.register();
+		PowerTracker.register();
+		ReadoutService.register();
+		ReadoutCommand.register();
+		RandomEnchantmentsFunction.register();
+		ChestLoot.register();
+		HeadDrops.register();
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
+		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
+			if (success) {
+				PowerConfigStore.load();
+			}
+		});
+		LOGGER.info("{} initialized", MOD_ID);
+	}
+}

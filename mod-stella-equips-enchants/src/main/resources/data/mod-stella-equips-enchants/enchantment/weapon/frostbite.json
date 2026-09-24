@@ -1,0 +1,49 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.frostbite" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 6 },
+	"max_cost": { "base": 25, "per_level_above_first": 6 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:damage_entity",
+							"damage_type": "minecraft:freeze",
+							"min_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 },
+							"max_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 }
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:snowflake" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.6 },
+							"vertical_velocity": { "base": 0.05 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:entity.player.hurt_freeze",
+							"volume": 0.7,
+							"pitch": 1.0
+						}
+					]
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": { "is_direct": true }
+				}
+			}
+		]
+	}
+}

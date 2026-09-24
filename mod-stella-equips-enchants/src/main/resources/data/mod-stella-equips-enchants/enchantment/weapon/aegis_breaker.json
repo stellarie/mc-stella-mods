@@ -1,0 +1,25 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.aegis_breaker" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": ["mainhand"],
+	"weight": 2,
+	"max_level": 5,
+	"min_cost": { "base": 15, "per_level_above_first": 0 },
+	"max_cost": { "base": 45, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:damage_entity",
+					"damage_type": "mod-stella-equips-enchants:aegis_breaker",
+					"min_damage": { "type": "minecraft:lookup", "values": [2.0, 2.0, 2.0, 3.0, 4.0], "fallback": 4.0 },
+					"max_damage": { "type": "minecraft:lookup", "values": [2.0, 2.0, 2.0, 3.0, 4.0], "fallback": 4.0 }
+				}
+			}
+		]
+	}
+}

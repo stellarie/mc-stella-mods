@@ -1,0 +1,37 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.feathered_edge" },
+	"supported_items": "#minecraft:swords",
+	"primary_items": "#minecraft:swords",
+	"slots": ["mainhand"],
+	"weight": 10,
+	"max_level": 5,
+	"min_cost": { "base": 1, "per_level_above_first": 11 },
+	"max_cost": { "base": 21, "per_level_above_first": 11 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:knockback": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": 1.0,
+						"per_level_above_first": 1.0
+					}
+				}
+			}
+		],
+		"minecraft:damage": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": {
+						"type": "minecraft:linear",
+						"base": -0.5,
+						"per_level_above_first": -0.5
+					}
+				}
+			}
+		]
+	}
+}

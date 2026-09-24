@@ -1,0 +1,22 @@
+{
+	"type": "minecraft:chest",
+	"_note": "The enchanted book roll: 30 percent per chest, independent of the equipment roll and of the jackpot.",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{ "type": "minecraft:empty", "weight": 70 },
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:book",
+					"weight": 30,
+					"modifier": {
+						"type": "mod-stella-equips-enchants:random_enchantments",
+						"options": "#mod-stella-equips-enchants:chest_loot",
+						"count": 1
+					}
+				}
+			]
+		}
+	]
+}

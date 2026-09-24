@@ -1,0 +1,12 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.ore_regeneration" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/ore_regeneration",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/ore_regeneration",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {}
+}
