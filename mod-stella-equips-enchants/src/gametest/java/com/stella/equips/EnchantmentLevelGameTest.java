@@ -20,27 +20,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.LevelBasedValue;
 
-/**
- * The measurement harness. It reads every catalogue enchantment's effects and
- * reports the level 3 value, the level 5 value, and the delta, so a level that
- * does nothing cannot pass. A walk over the effects object only sees
- * {@link LevelBasedValue}, so an enchantment whose lever lives elsewhere is
- * named in {@link #CAPPED} rather than read as a zero delta.
- */
 public class EnchantmentLevelGameTest {
 	private static final List<Integer> LEVELS = List.of(1, 2, 3, 4, 5);
 	private static final int MAX_DEPTH = 8;
 	private static final int LEVEL_THREE = 3;
 	private static final int LEVEL_FIVE = 5;
 
-	/**
-	 * Enchantments with no lever a level can reach: thirteen whose effect is
-	 * `run_function`, three whose effect is a `damage_immunity` flag, and
-	 * Deflection, whose negation moved to a listener so the cancel and its flash
-	 * share one branch. second_wind is one of the thirteen, and its only number is
-	 * `periodic_tick` inside a predicate, which no level reaches either. A data
-	 * particle adds no lever: its `speed` is a FloatProvider, not a LevelBasedValue.
-	 */
+	/** No level value; tests cover these effects. */
 	private static final Set<String> CAPPED = Set.of(
 		"armor/cloudstep",
 		"armor/deflection",
@@ -62,6 +48,7 @@ public class EnchantmentLevelGameTest {
 		"weapon/tidecaller",
 		"weapon/warden_wave"
 	);
+	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration");
 
 	/** The level 3 value of every scaling enchantment, recorded before any edit. */
 	private static final Map<String, String> LEVEL_THREE_BASELINE = new LinkedHashMap<>();
@@ -80,7 +67,6 @@ public class EnchantmentLevelGameTest {
 		LEVEL_THREE_BASELINE.put("shield/aegis", "0.3");
 		LEVEL_THREE_BASELINE.put("shield/shield_bash", "1.2");
 		LEVEL_THREE_BASELINE.put("tool/blockfeast", "3.0");
-		LEVEL_THREE_BASELINE.put("tool/burrow", "1.0,2.0");
 		LEVEL_THREE_BASELINE.put("tool/green_thumb", "1.0,2.0");
 		LEVEL_THREE_BASELINE.put("weapon/aegis_breaker", "2.0");
 		LEVEL_THREE_BASELINE.put("weapon/feathered_edge", "-1.5,3.0");
@@ -100,6 +86,7 @@ public class EnchantmentLevelGameTest {
 		Map<String, String> baselineDrift = new LinkedHashMap<>();
 		List<String> reported = new ArrayList<>();
 		int capped = 0;
+		int eventTested = 0;
 
 		for (Holder.Reference<Enchantment> holder : registry.listElements().toList()) {
 			Identifier id = holder.key().identifier();
@@ -112,7 +99,10 @@ public class EnchantmentLevelGameTest {
 			boolean isCapped = CAPPED.contains(path);
 
 			if (values.isEmpty()) {
-				if (!isCapped) {
+				if (EVENT_TESTED.contains(path)) {
+					eventTested++;
+					reported.add(path + " status=eventTested values=0");
+				} else if (!isCapped) {
 					unmeasurable.put(path, "no LevelBasedValue and not capped");
 				} else {
 					capped++;
@@ -151,13 +141,17 @@ public class EnchantmentLevelGameTest {
 		}
 
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=enchantmentLevels RESULT measured={} capped={} unmeasurable={} inert={} "
+			"[BEHAVIOR] test=enchantmentLevels RESULT measured={} capped={} eventTested={} unmeasurable={} inert={} "
 				+ "cappedButMeasurable={} baselineDrift={}",
-			reported.size(), capped, unmeasurable.size(), inert.size(),
+			reported.size(), capped, eventTested, unmeasurable.size(), inert.size(),
 			cappedButMeasurable.size(), baselineDrift.size()
 		);
 
 		helper.assertTrue(unmeasurable.isEmpty(), "no lever and not capped: " + unmeasurable);
+		helper.assertTrue(
+			eventTested == EVENT_TESTED.size(),
+			"function-tested IDs: " + eventTested + "/" + EVENT_TESTED.size()
+		);
 		helper.assertTrue(cappedButMeasurable.isEmpty(), "capped but measurable: " + cappedButMeasurable);
 		helper.assertTrue(inert.isEmpty(), "level 5 does nothing: " + inert);
 		helper.assertTrue(baselineDrift.isEmpty(), "the offered levels moved: " + baselineDrift);

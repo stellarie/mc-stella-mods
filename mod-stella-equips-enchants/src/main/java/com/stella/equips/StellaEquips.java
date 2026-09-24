@@ -1,6 +1,7 @@
 package com.stella.equips;
 
 import com.stella.equips.enchant.Deflection;
+import com.stella.equips.enchant.OreRegeneration;
 import com.stella.equips.loot.ChestLoot;
 import com.stella.equips.loot.HeadDrops;
 import com.stella.equips.loot.RandomEnchantmentsFunction;
@@ -20,6 +21,7 @@ public class StellaEquips implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		Deflection.register();
+		OreRegeneration.register();
 		PowerTracker.register();
 		ReadoutService.register();
 		ReadoutCommand.register();

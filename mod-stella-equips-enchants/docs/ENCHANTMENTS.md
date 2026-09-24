@@ -1,16 +1,14 @@
 # The enchantment catalogue
 
-The catalogue holds 32 enchantments: 30 written for this package and the two
-that oniichan named, Arrow Shower and Bomb Arrows. One file per enchantment
-under `src/main/resources/data/mod-stella-equips-enchants/enchantment/`. The
-folder under that directory becomes part of the id, so
+The catalogue holds 72 enchantments: 54 non-curses and 18 curses. Each
+enchantment has one file under `src/main/resources/data/mod-stella-equips-enchants/enchantment/`.
+The folder under that directory becomes part of the id, so
 `enchantment/bow/marksman.json` is the id
 `mod-stella-equips-enchants:bow/marksman`.
 
-Every one of them carries `anvil_cost` 1. Every one of them is listed in the
-enchanting table tag and is a cost candidate for at least one item, so all 32
-can be rolled at a table. No enchantment carries an `exclusive_set`, so no pair
-blocks another pair.
+Every enchantment carries `anvil_cost` 1. The table tag holds 54 non-curses,
+and the loot tag holds all 72. Curses stay out of the table. No enchantment
+carries an `exclusive_set`, so no pair blocks another pair.
 
 ## The redundancy cut
 
@@ -79,7 +77,6 @@ fails the run.
 | bomb_arrows | 2.0 blast radius | 3.0 |
 | longshot | 0.4 spread factor | 0.6 |
 | siege_bolt | 3.0 damage | 5.0 |
-| burrow | 2.0 radius | 4.0 |
 | green_thumb | 2.0 radius | 4.0 |
 | aegis_breaker | 2.0 damage | 4.0 |
 | shockwave | 4.0 damage | 6.0 |
@@ -253,7 +250,7 @@ book and a shield combine at an anvil is not verified by a test in this slice.
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Burrow | 5 | 2 | 5 | 33 | pickaxe 0.25, shovel 0.5 | `hit_block` `replace_disk` radius 2 over `#minecraft:mineable/shovel` | soft blocks only, up to 9 blocks per swing, and the cleared blocks drop nothing |
+| Ore Regeneration | 5 | 5 | 5 | 57 | pickaxe 0.25 | blocks in `#minecraft:ores` regrow at a 20% chance per level | one 20-tick cooldown covers all ores a player breaks |
 | Prospector | 5 | 1 | 5 | 30 | pickaxe 0.25 | `hit_block` `run_function` that marks the broken block with 12 particles and a chime | a marker, not a reveal, and once per 40 ticks |
 | Blockfeast | 10 | 3 | 1 | 43 | pickaxe 0.5, axe 0.286 | `block_experience` add 1 per level | none |
 | Lumberjack | 2 | 3 | 10 | 50 | axe 0.057 | `hit_block` `run_function` that fells up to 8 logs above the broken block | one trunk per second, and the logs drop their own loot |
@@ -262,7 +259,7 @@ book and a shield combine at an anvil is not verified by a test in this slice.
 
 ## Wiring
 
-- `function/load.mcfunction` creates the 12 scoreboard objectives. The
+- `function/load.mcfunction` creates the scoreboard objectives. The
   `#minecraft:load` tag runs it.
 - `function/tick.mcfunction` adds 1 to `#clock ench_clock` every tick. The
   `#minecraft:tick` tag runs it. Every cooldown is a comparison against that
@@ -286,7 +283,7 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | Arrow Shower | `projectile_spawned` `change_item_damage` | `item_damage` add 1 | `change_item_damage` on `projectile_spawned` charges a copy of the bow, so it never reaches the item. `item_damage` is the value hook that `ItemStack.hurtAndBreak` reads |
 | Green Thumb | `hit_block` function that replants the crop it breaks | `hit_block` `replace_disk` that tills dirt | `hit_block` fires before the break, so the break destroys anything the function plants at the hit position. Nothing placed at that position survives the tick |
 | Repeater | `projectile_spread` add as its cost | `item_damage` add 1 | The spread is zeroed for a single bolt, so the cost was inert |
-| Burrow, Green Thumb | radius 1 | radius 2 | `ReplaceDisk` floors the radius to an integer and keeps a block only when its squared distance is below the squared radius. Radius 1 keeps the centre block alone, which is the block the break removes |
+| Green Thumb | radius 1 | radius 2 | `ReplaceDisk` floors the radius to an integer and keeps a block only when its squared distance is below the squared radius. Radius 1 keeps the centre block alone, which is the block the break removes |
 | Bomb Arrows | `projectile_spawned` | `hit_block` | The probe proved that an explosion on `projectile_spawned` fires in the air at the bow and reaches no block |
 | Siege Bolt | 40 tick charge | `crossbow_charge_time` add 0.75 | One unit of the hook is one second, and the base charge is 1.25 seconds |
 | Cleave | radius 2 | radius 1 | An explosion reaches about twice its radius. Radius 2 damaged the wielder 19 health at one block. Radius 1 spares a wielder at 3 blocks and still hits a mob at 1 block |
@@ -307,7 +304,7 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 
 | Test | Claim |
 |---|---|
-| `everyCatalogueEnchantmentLoads` | 32 catalogue enchantments load, and the namespace holds one more, the slice 1 fixture |
+| `everyCatalogueEnchantmentLoads` | 72 catalogue enchantments load, and the namespace holds one more, the slice 1 fixture |
 | `everyCatalogueEnchantmentAssemblesForOneLevel` | every `anvil_cost` is 1 |
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
@@ -324,3 +321,4 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `bombArrowsBlastLeavesTheBlockIntactAndStillHurtsAMob` | a real Bomb Arrows arrow hits a wall, the wall stays intact, and a mob one block away takes the blast |
 | `cleaveBlastReachesANearbyMobAndSparesTheWielder` | the cleave blast hits a mob one block away and leaves a wielder three blocks away unharmed |
 | `rangersMarkPaysWhileTheTargetIsAboveHalfHealth` | a real arrow paid 4 more damage on a fresh target than on one below half health |
+| `oreRegenerationMeasuresRatesAfterCompletedBreaks` | measures regrowth after 250 completed breaks at levels 1 and 3; checks 20% chance per level, all tagged ore states, non-ore rejection, and the 20-tick cooldown |
