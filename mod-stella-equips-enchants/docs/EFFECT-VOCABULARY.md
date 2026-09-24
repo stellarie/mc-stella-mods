@@ -95,7 +95,7 @@ reader does nothing, so check the reader before you add a hook.
 | `minecraft:projectile_spawned` | conditional entity list | `Enchantment.onProjectileSpawned`, called by `Projectile` | Bomb Arrows |
 | `minecraft:post_attack` | targeted conditional entity list | `Enchantment.doPostAttack`, called by `Player`, `LivingEntity`, `AbstractArrow`, `ThrownTrident` | Cleave, Momentum, Stunning Blow, Wounding, Stormcaller, Aegis Breaker, Arachnid's Bane, Ranger's Mark, Reactive Plating, Shield Bash |
 | `minecraft:post_piercing_attack` | conditional entity list | `EnchantmentHelper.doPostPiercingAttackEffects`, called by `LivingEntity` | none |
-| `minecraft:hit_block` | conditional entity list | `Enchantment.onHitBlock`, called by `ServerPlayerGameMode` | Burrow, Harvester, Prospector, Lumberjack, Green Thumb |
+| `minecraft:hit_block` | conditional entity list | `Enchantment.onHitBlock`, called by `ServerPlayerGameMode` | Harvester, Prospector, Lumberjack, Green Thumb |
 | `minecraft:tick` | conditional entity list | `Enchantment` tick pass on a worn item | Second Wind |
 | `minecraft:block_experience` | conditional value list | `Enchantment.modifyBlockExperience`, called by `Block` | Blockfeast |
 | `minecraft:fishing_time_reduction` | conditional value list | `Enchantment.modifyFishingTimeReduction`, called by `FishingRodItem` | Angler's Fortune |
