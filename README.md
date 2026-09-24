@@ -13,6 +13,8 @@ Each mod has its own integration branch. Create new work branches from the curre
 tip of the branch for that mod. The two branches do not merge into each other.
 Use a worktree from the matching branch before editing a mod. The other mod's
 directory may be absent or older in that checkout.
+`main` combines the last verified deployed source for both mods. Start new mod
+work from the matching integration branch, then publish a verified snapshot.
 `master` is the original repository baseline, not a development target.
 
 ## mod-stella-mobs

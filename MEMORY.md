@@ -20,6 +20,7 @@ This repository develops two Fabric mods on separate integration branches.
 
 - `main-mobs` integrates `mod-stella-mobs` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-mobs]
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
+- `main` combines the verified deployed source trees for both mods. [status: active] [verified: 2026-09-24] [source: git log -1 main; git rev-parse main:mod-stella-mobs main:mod-stella-equips-enchants]
 
 ## Conventions
 
@@ -37,8 +38,15 @@ This repository develops two Fabric mods on separate integration branches.
 
 - Decision: Integrate mobs on `main-mobs` and equips on `main-equip-ench`.
 - Why: The two mods have independent source trees and development streams.
-- Alternatives: One shared `main` branch was superseded by oniichan's direction.
+- Alternatives: One shared development branch was superseded by oniichan's direction.
 - Evidence: `git branch --list main-mobs main-equip-ench` and `AGENTS.md`.
+
+### 2026-09-24 - Private publication branch
+
+- Decision: Publish both verified deployed mod sources together on `main` in a private repository.
+- Why: Active mod work continues on separate branches while `main` records a stable combined snapshot.
+- Alternatives: Publishing active worktree changes was rejected because those slices remain unfinished.
+- Evidence: `main` merge `c9cc9a6`, installed jar SHA-256 checks, and `gh repo view stellarie/mc-stella-mods`.
 
 ## Open Questions
 
@@ -46,9 +54,4 @@ This repository develops two Fabric mods on separate integration branches.
 
 ## Session Handoffs
 
-### 2026-09-24 - Reconcile mod branches
-
-- Done: Restored equips source in the root checkout and created both integration branches.
-- Pending: none.
-- Next: Create future work branches from the matching integration branch.
-- Verification: Both mods passed clean builds and five consecutive headless suite reruns; see the task blackboard.
+None.
