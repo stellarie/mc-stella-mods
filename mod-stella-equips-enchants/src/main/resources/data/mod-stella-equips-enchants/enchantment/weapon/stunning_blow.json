@@ -1,0 +1,54 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.stunning_blow" },
+	"supported_items": "#minecraft:enchantable/weapon",
+	"primary_items": "#minecraft:enchantable/weapon",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 10 },
+	"max_cost": { "base": 25, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:apply_mob_effect",
+							"to_apply": "minecraft:slowness",
+							"min_duration": {
+								"type": "minecraft:linear",
+								"base": 2.0,
+								"per_level_above_first": 1.0
+							},
+							"max_duration": {
+								"type": "minecraft:linear",
+								"base": 2.0,
+								"per_level_above_first": 1.0
+							},
+							"min_amplifier": 0.0,
+							"max_amplifier": 1.0
+						},
+						{
+							"type": "minecraft:apply_mob_effect",
+							"to_apply": "minecraft:weakness",
+							"min_duration": 3.0,
+							"max_duration": 3.0,
+							"min_amplifier": 0.0,
+							"max_amplifier": 0.0
+						}
+					]
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_direct": true
+					}
+				}
+			}
+		]
+	}
+}

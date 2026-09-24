@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-equips-enchants",
+	"version": "${version}",
+	"name": "Stella Equips and Enchants",
+	"description": "Server-side enchantments, cheap anvil assembly, and player power for a private server.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.equips.StellaEquips"
+		]
+	},
+	"mixins": [
+		"mod-stella-equips-enchants.mixins.json",
+		{
+			"config": "mod-stella-equips-enchants.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

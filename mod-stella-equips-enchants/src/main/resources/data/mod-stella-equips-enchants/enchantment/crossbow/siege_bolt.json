@@ -1,0 +1,44 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.crossbow.siege_bolt" },
+	"supported_items": "#minecraft:enchantable/crossbow",
+	"primary_items": "#minecraft:enchantable/crossbow",
+	"slots": ["mainhand", "offhand"],
+	"weight": 1,
+	"max_level": 5,
+	"min_cost": { "base": 20, "per_level_above_first": 0 },
+	"max_cost": { "base": 50, "per_level_above_first": 0 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:crossbow_charge_time": {
+			"type": "minecraft:add",
+			"value": { "type": "minecraft:lookup", "values": [0.75, 0.75, 0.75, 0.9, 1.0], "fallback": 1.0 }
+		},
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:damage_entity",
+					"damage_type": "mod-stella-equips-enchants:siege_bolt",
+					"min_damage": { "type": "minecraft:lookup", "values": [3.0, 3.0, 3.0, 4.0, 5.0], "fallback": 5.0 },
+					"max_damage": { "type": "minecraft:lookup", "values": [3.0, 3.0, 3.0, 4.0, 5.0], "fallback": 5.0 }
+				}
+			}
+		],
+		"minecraft:knockback": [
+			{
+				"effect": {
+					"type": "minecraft:add",
+					"value": 1.0
+				},
+				"requirements": {
+					"type": "minecraft:entity_properties",
+					"entity": "direct_attacker",
+					"predicate": {
+						"minecraft:entity_type": "#minecraft:arrows"
+					}
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.bulwark" },
+	"supported_items": "#minecraft:enchantable/chest_armor",
+	"primary_items": "#minecraft:enchantable/chest_armor",
+	"slots": ["chest"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:attributes": [
+			{
+				"amount": {
+					"type": "minecraft:linear",
+					"base": 0.1,
+					"per_level_above_first": 0.1
+				},
+				"attribute": "minecraft:knockback_resistance",
+				"id": "mod-stella-equips-enchants:enchantment.bulwark",
+				"operation": "add_value"
+			}
+		]
+	}
+}

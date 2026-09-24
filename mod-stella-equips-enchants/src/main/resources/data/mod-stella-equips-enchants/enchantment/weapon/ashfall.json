@@ -1,0 +1,77 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.weapon.ashfall" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/any_weapon",
+	"slots": ["mainhand"],
+	"weight": 3,
+	"max_level": 5,
+	"min_cost": { "base": 8, "per_level_above_first": 8 },
+	"max_cost": { "base": 30, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "attacker",
+				"affected": "victim",
+				"effect": {
+					"type": "minecraft:all_of",
+					"effects": [
+						{
+							"type": "minecraft:ignite",
+							"duration": { "type": "minecraft:linear", "base": 4.0, "per_level_above_first": 2.0 }
+						},
+						{
+							"type": "minecraft:damage_entity",
+							"damage_type": "minecraft:freeze",
+							"min_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 },
+							"max_damage": { "type": "minecraft:linear", "base": 2.0, "per_level_above_first": 1.0 }
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:smoke" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.9 },
+							"vertical_velocity": { "base": 0.1 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:flame" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.6 },
+							"vertical_velocity": { "base": 0.08 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:spawn_particles",
+							"particle": { "type": "minecraft:snowflake" },
+							"horizontal_position": { "type": "in_bounding_box" },
+							"horizontal_velocity": { "base": 0.0 },
+							"vertical_position": { "type": "entity_position", "offset": 0.3 },
+							"vertical_velocity": { "base": 0.04 },
+							"speed": 0.05
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:item.firecharge.use",
+							"volume": 1.0,
+							"pitch": 0.9
+						},
+						{
+							"type": "minecraft:play_sound",
+							"sound": "minecraft:entity.player.hurt_freeze",
+							"volume": 0.8,
+							"pitch": 0.9
+						}
+					]
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": { "is_direct": true }
+				}
+			}
+		]
+	}
+}

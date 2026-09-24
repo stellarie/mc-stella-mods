@@ -1,0 +1,23 @@
+{
+	"type": "minecraft:chest",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:book",
+					"modifier": {
+						"type": "minecraft:enchant_randomly",
+						"options": [
+							"mod-stella-equips-enchants:armor/second_wind",
+							"mod-stella-equips-enchants:bow/marksman",
+							"mod-stella-equips-enchants:tool/blockfeast",
+							"mod-stella-equips-enchants:weapon/stunning_blow"
+						]
+					}
+				}
+			]
+		}
+	]
+}

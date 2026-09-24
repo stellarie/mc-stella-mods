@@ -1,0 +1,35 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.shield.shield_bash" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/shield",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/shield",
+	"slots": ["hand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 10 },
+	"max_cost": { "base": 25, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:post_attack": [
+			{
+				"enchanted": "victim",
+				"affected": "attacker",
+				"effect": {
+					"type": "minecraft:apply_impulse",
+					"direction": [0.0, 0.0, -1.0],
+					"coordinate_scale": [1.0, 0.0, 1.0],
+					"magnitude": {
+						"type": "minecraft:linear",
+						"base": 0.6,
+						"per_level_above_first": 0.3
+					}
+				},
+				"requirements": {
+					"type": "minecraft:damage_source_properties",
+					"predicate": {
+						"is_direct": true
+					}
+				}
+			}
+		]
+	}
+}

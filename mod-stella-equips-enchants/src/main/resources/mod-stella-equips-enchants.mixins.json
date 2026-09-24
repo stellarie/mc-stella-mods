@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "com.stella.equips.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"AnvilMenuMixin",
+		"EnchantmentMenuMixin",
+		"ItemStackTooltipMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

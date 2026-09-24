@@ -1,0 +1,32 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.green_thumb" },
+	"supported_items": "#mod-stella-equips-enchants:enchantable/green_thumb",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/green_thumb",
+	"slots": ["mainhand"],
+	"weight": 5,
+	"max_level": 5,
+	"min_cost": { "base": 5, "per_level_above_first": 8 },
+	"max_cost": { "base": 25, "per_level_above_first": 8 },
+	"anvil_cost": 1,
+	"effects": {
+		"minecraft:hit_block": [
+			{
+				"effect": {
+					"type": "minecraft:replace_disk",
+					"radius": { "type": "minecraft:lookup", "values": [2.0, 2.0, 2.0, 3.0, 4.0], "fallback": 4.0 },
+					"height": 1.0,
+					"offset": [0, 0, 0],
+					"block_state": { "id": "minecraft:farmland" },
+					"predicate": {
+						"type": "minecraft:any_of",
+						"predicates": [
+							{ "type": "minecraft:matching_block_tag", "tag": "minecraft:dirt" },
+							{ "type": "minecraft:matching_blocks", "blocks": "minecraft:grass_block" }
+						]
+					},
+					"trigger_game_event": "minecraft:block_place"
+				}
+			}
+		]
+	}
+}
