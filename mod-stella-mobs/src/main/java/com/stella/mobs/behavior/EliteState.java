@@ -65,6 +65,11 @@ public record EliteState(
 		return get(mob).elite();
 	}
 
+	public static boolean hasEliteFlag(final Mob mob) {
+		EliteState state = ((AttachmentTarget) mob).getAttached(TYPE);
+		return state != null && state.elite();
+	}
+
 	public static boolean isSummoned(final Mob mob) {
 		return get(mob).summoned();
 	}

@@ -27,6 +27,7 @@
 			"com.stella.mobs.OceanBandGameTest",
 			"com.stella.mobs.OceanEliteGameTest",
 			"com.stella.mobs.PiglinBruteGameTest",
+			"com.stella.mobs.ReadoutRankGameTest",
 			"com.stella.mobs.RiderPearlGameTest",
 			"com.stella.mobs.RoleGameTest",
 			"com.stella.mobs.SpawnScalingGameTest",

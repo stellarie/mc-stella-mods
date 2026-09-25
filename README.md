@@ -21,6 +21,12 @@ A server-side Fabric mod. Mobs take configurable gear, block with a shield,
 retreat when hurt, defend each other, and fight at the distance their role
 wants.
 
+### Optional readout integration
+
+The mod publishes `mod-stella-mobs:readout-rank` through Fabric Loader ObjectShare. The value is a `Function<Entity, String>` that returns `normal`, `elite`, or `boss`. Boss takes precedence when both flags apply. A non-Mob entity returns `normal`.
+
+A consumer can read this optional value without a direct dependency on this mod. `ObjectShare.get` returns `Object`; consumers must check its type. A missing provider needs no tag.
+
 Build and test:
 
 ```powershell
