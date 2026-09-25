@@ -1,0 +1,18 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-spells-test-mod-stella-spells",
+	"version": "1.0.0",
+	"name": "Stella Spellbooks game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.spells.SparkShotGameTest",
+			"com.stella.spells.SpellbookLootGameTest",
+			"com.stella.spells.SpellLogGameTest",
+			"com.stella.spells.TintManualAcceptanceGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-spells": "*"
+	}
+}
