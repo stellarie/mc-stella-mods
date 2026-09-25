@@ -8,8 +8,10 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 
@@ -143,6 +145,194 @@ public final class VillagePersistenceGameTest {
 		} catch (ReflectiveOperationException | LinkageError error) {
 			PatrolTestSupport.result(test, "codec=MISSING detail=" + error);
 			helper.fail("missing_saved_data_codec: " + error);
+		}
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	@SuppressWarnings("unchecked")
+	public void missionLedgerRoundTrips(final GameTestHelper helper) {
+		String test = "missionLedgerRoundTrips";
+		try {
+			Class<?> dataClass = Class.forName("com.stella.villages.data.VillageWorldData");
+			Codec<Object> codec = (Codec<Object>) dataClass.getField("CODEC").get(null);
+			Object original = dataClass.getMethod("empty").invoke(null);
+			Class<?> missionClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionRecord");
+			Class<?> statusClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionStatus");
+			java.lang.reflect.Constructor<?> constructor = missionClass.getConstructor(
+				UUID.class, UUID.class, Identifier.class, BlockPos.class, Optional.class, statusClass
+			);
+			Object pendingStatus = statusClass.getField("TARGET_PENDING").get(null);
+			Object activeStatus = statusClass.getField("ACTIVE").get(null);
+
+			UUID pendingId = UUID.randomUUID();
+			UUID pendingOwner = UUID.randomUUID();
+			UUID activeId = UUID.randomUUID();
+			UUID activeOwner = UUID.randomUUID();
+			UUID activeEntityId = UUID.randomUUID();
+			Identifier pendingType = Identifier.parse("minecraft:zombie");
+			Identifier activeType = Identifier.parse("minecraft:pillager");
+			BlockPos pendingPosition = helper.absolutePos(new BlockPos(7, 1, 5));
+			BlockPos activePosition = helper.absolutePos(new BlockPos(13, 1, 9));
+			Object pending = constructor.newInstance(
+				pendingId, pendingOwner, pendingType, pendingPosition, Optional.empty(), pendingStatus
+			);
+			Object active = constructor.newInstance(
+				activeId, activeOwner, activeType, activePosition, Optional.of(activeEntityId), activeStatus
+			);
+			dataClass.getMethod("addMission", missionClass).invoke(original, pending);
+			dataClass.getMethod("addMission", missionClass).invoke(original, active);
+
+			RegistryOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess());
+			Tag encoded = codec.encodeStart(ops, original).getOrThrow();
+			Object decoded = codec.parse(ops, encoded).getOrThrow();
+			List<?> restoredMissions = (List<?>) dataClass.getMethod("missions").invoke(decoded);
+			Object restoredPending = null;
+			Object restoredActive = null;
+			for (Object mission : restoredMissions) {
+				UUID id = (UUID) missionClass.getMethod("id").invoke(mission);
+				if (pendingId.equals(id)) {
+					restoredPending = mission;
+				} else if (activeId.equals(id)) {
+					restoredActive = mission;
+				}
+			}
+
+			boolean pendingMatches = restoredPending != null
+				&& pendingOwner.equals(missionClass.getMethod("ownerId").invoke(restoredPending))
+				&& pendingType.equals(missionClass.getMethod("targetType").invoke(restoredPending))
+				&& pendingPosition.equals(missionClass.getMethod("targetPosition").invoke(restoredPending))
+				&& Optional.empty().equals(missionClass.getMethod("entityId").invoke(restoredPending))
+				&& pendingStatus.equals(missionClass.getMethod("status").invoke(restoredPending));
+			boolean activeMatches = restoredActive != null
+				&& activeOwner.equals(missionClass.getMethod("ownerId").invoke(restoredActive))
+				&& activeType.equals(missionClass.getMethod("targetType").invoke(restoredActive))
+				&& activePosition.equals(missionClass.getMethod("targetPosition").invoke(restoredActive))
+				&& Optional.of(activeEntityId).equals(missionClass.getMethod("entityId").invoke(restoredActive))
+				&& activeStatus.equals(missionClass.getMethod("status").invoke(restoredActive));
+			boolean stateMatches = restoredMissions.size() == 2 && pendingMatches && activeMatches;
+
+			PatrolTestSupport.result(test, "missionCount=" + restoredMissions.size()
+				+ " pendingId=" + pendingId + " pendingOwner=" + pendingOwner + " pendingType=" + pendingType
+				+ " pendingPosition=" + pendingPosition + " pendingEntityId=none pendingStatus=" + pendingStatus
+				+ " pendingMatches=" + pendingMatches + " activeId=" + activeId + " activeOwner=" + activeOwner
+				+ " activeType=" + activeType + " activePosition=" + activePosition
+				+ " activeEntityId=" + activeEntityId + " activeStatus=" + activeStatus
+				+ " activeMatches=" + activeMatches + " stateMatches=" + stateMatches);
+			helper.assertTrue(stateMatches, "mission ledger codec did not preserve mission state");
+			helper.succeed();
+		} catch (ReflectiveOperationException | LinkageError error) {
+			PatrolTestSupport.result(test, "ledger=MISSING detail=" + error);
+			helper.fail("missing_mission_ledger: " + error);
+		}
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	@SuppressWarnings("unchecked")
+	public void missionLedgerSkipsInvalidTargetPositions(final GameTestHelper helper) {
+		String test = "missionLedgerSkipsInvalidTargetPositions";
+		try {
+			Class<?> dataClass = Class.forName("com.stella.villages.data.VillageWorldData");
+			Codec<Object> codec = (Codec<Object>) dataClass.getField("CODEC").get(null);
+			Object original = dataClass.getMethod("empty").invoke(null);
+			Class<?> missionClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionRecord");
+			Class<?> statusClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionStatus");
+			java.lang.reflect.Constructor<?> constructor = missionClass.getConstructor(
+				UUID.class, UUID.class, Identifier.class, BlockPos.class, Optional.class, statusClass
+			);
+			Object activeStatus = statusClass.getField("ACTIVE").get(null);
+			UUID validId = UUID.randomUUID();
+			UUID missingPositionId = UUID.randomUUID();
+			UUID malformedPositionId = UUID.randomUUID();
+			UUID ownerId = UUID.randomUUID();
+			UUID entityId = UUID.randomUUID();
+			BlockPos validPosition = helper.absolutePos(new BlockPos(11, 1, 9));
+			BlockPos invalidPosition = helper.absolutePos(new BlockPos(15, 1, 13));
+			Identifier targetType = Identifier.parse("minecraft:zombie");
+			Object validMission = constructor.newInstance(
+				validId, ownerId, targetType, validPosition, Optional.of(entityId), activeStatus
+			);
+			Object missingPositionMission = constructor.newInstance(
+				missingPositionId, ownerId, targetType, invalidPosition, Optional.empty(), activeStatus
+			);
+			Object malformedPositionMission = constructor.newInstance(
+				malformedPositionId, ownerId, targetType, invalidPosition, Optional.empty(), activeStatus
+			);
+			dataClass.getMethod("addMission", missionClass).invoke(original, validMission);
+			dataClass.getMethod("addMission", missionClass).invoke(original, missingPositionMission);
+			dataClass.getMethod("addMission", missionClass).invoke(original, malformedPositionMission);
+
+			RegistryOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess());
+			CompoundTag missingPositionRoot = (CompoundTag) codec.encodeStart(ops, original).getOrThrow();
+			CompoundTag malformedPositionRoot = (CompoundTag) codec.encodeStart(ops, original).getOrThrow();
+			CompoundTag missingPositionTag = null;
+			for (Tag value : missingPositionRoot.getListOrEmpty("missions")) {
+				if (value instanceof CompoundTag missionTag
+					&& missingPositionId.toString().equals(missionTag.getStringOr("id", ""))) {
+					missingPositionTag = missionTag;
+					break;
+				}
+			}
+			CompoundTag malformedPositionTag = null;
+			for (Tag value : malformedPositionRoot.getListOrEmpty("missions")) {
+				if (value instanceof CompoundTag missionTag
+					&& malformedPositionId.toString().equals(missionTag.getStringOr("id", ""))) {
+					malformedPositionTag = missionTag;
+					break;
+				}
+			}
+			if (missingPositionTag == null || malformedPositionTag == null) {
+				PatrolTestSupport.result(test, "missingEntry=" + (missingPositionTag != null)
+					+ " malformedEntry=" + (malformedPositionTag != null));
+				helper.fail("mission codec did not serialize corrupt-position fixtures");
+				return;
+			}
+			missingPositionTag.remove("target_position");
+			malformedPositionTag.putString("target_position", "not a block position");
+
+			Object decodedMissingPosition = codec.parse(ops, missingPositionRoot).getOrThrow();
+			Object decodedMalformedPosition = codec.parse(ops, malformedPositionRoot).getOrThrow();
+			List<?> missingMissions = (List<?>) dataClass.getMethod("missions").invoke(decodedMissingPosition);
+			List<?> malformedMissions = (List<?>) dataClass.getMethod("missions").invoke(decodedMalformedPosition);
+			Optional<?> validAfterMissing = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMissingPosition, validId);
+			Optional<?> validAfterMalformed = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMalformedPosition, validId);
+			Optional<?> missingPositionMissionAfterDecode = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMissingPosition, missingPositionId);
+			Optional<?> malformedPositionMissionAfterDecode = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMalformedPosition, malformedPositionId);
+			Optional<?> malformedPositionInMissingRoot = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMissingPosition, malformedPositionId);
+			Optional<?> missingPositionInMalformedRoot = (Optional<?>) dataClass.getMethod("mission", UUID.class)
+				.invoke(decodedMalformedPosition, missingPositionId);
+			Object missingRecord = missingPositionMissionAfterDecode.orElse(null);
+			Object malformedRecord = malformedPositionMissionAfterDecode.orElse(null);
+			Object missingPositionValue = missingRecord == null ? "missing"
+				: missionClass.getMethod("targetPosition").invoke(missingRecord);
+			Object malformedPositionValue = malformedRecord == null ? "missing"
+				: missionClass.getMethod("targetPosition").invoke(malformedRecord);
+			boolean validMissionRetained = validAfterMissing.isPresent() && validAfterMalformed.isPresent();
+			boolean unmodifiedMissionRetained = malformedPositionInMissingRoot.isPresent()
+				&& missingPositionInMalformedRoot.isPresent();
+			boolean stateMatches = missingMissions.size() == 2 && malformedMissions.size() == 2
+				&& validMissionRetained && unmodifiedMissionRetained
+				&& missingPositionMissionAfterDecode.isEmpty() && malformedPositionMissionAfterDecode.isEmpty();
+
+			PatrolTestSupport.result(test, "missingPositionCount=" + missingMissions.size()
+				+ " missingPositionRetained=" + missingPositionMissionAfterDecode.isPresent()
+				+ " missingPosition=" + missingPositionValue
+				+ " malformedPositionInMissingRoot=" + malformedPositionInMissingRoot.isPresent()
+				+ " malformedPositionCount=" + malformedMissions.size()
+				+ " malformedPositionRetained=" + malformedPositionMissionAfterDecode.isPresent()
+				+ " malformedPosition=" + malformedPositionValue
+				+ " missingPositionInMalformedRoot=" + missingPositionInMalformedRoot.isPresent()
+				+ " validMissionRetained=" + validMissionRetained
+				+ " unmodifiedMissionRetained=" + unmodifiedMissionRetained + " stateMatches=" + stateMatches);
+			helper.assertTrue(stateMatches, "mission codec retained a missing or malformed target position");
+			helper.succeed();
+		} catch (ReflectiveOperationException | LinkageError error) {
+			PatrolTestSupport.result(test, "ledger=MISSING detail=" + error);
+			helper.fail("missing_mission_ledger: " + error);
 		}
 	}
 }
