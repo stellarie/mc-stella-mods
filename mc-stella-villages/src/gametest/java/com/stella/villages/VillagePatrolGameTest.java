@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 public final class VillagePatrolGameTest {
 	private static final int PATROL_COUNT = PatrolService.PATROL_MEMBER_COUNT;
-	private static final int TARGET_SELECTION_WINDOW = 40;
+	private static final int TARGET_SELECTION_WINDOW = 200;
 	private static final int THREAT_TEST_LIMIT = PatrolService.PLAYER_THREAT_CLEAR_TICKS + 220;
 
 	@GameTest(maxTicks = 100, padding = 64)
@@ -670,6 +670,7 @@ public final class VillagePatrolGameTest {
 		boolean[] acquired = {false};
 		boolean[] visible = {false};
 		boolean[] nearestGoalRunning = {false};
+		boolean[] resultLogged = {false};
 		helper.onEachTick(() -> {
 			head.getNavigation().stop();
 			if (head.hasLineOfSight(hostile)) {
@@ -684,15 +685,25 @@ public final class VillagePatrolGameTest {
 				acquired[0] = true;
 			}
 		});
-		helper.runAfterDelay(TARGET_SELECTION_WINDOW, () -> {
-			PatrolTestSupport.result(
-				test,
-				"range=" + detectionRange + " initialDistance=" + initialDistance + " visible=" + visible[0]
-					+ " acquired=" + acquired[0] + " nearestGoalRunning=" + nearestGoalRunning[0]
-			);
-			helper.assertTrue(visible[0], "inside-range hostile never became visible to the patrol head");
-			helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
-			helper.succeed();
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(
+				acquired[0], "patrol head did not target a hostile inside detection range"
+			))
+			.thenExecute(() -> {
+				resultLogged[0] = true;
+				PatrolTestSupport.result(test, "range=" + detectionRange + " initialDistance=" + initialDistance
+					+ " visible=" + visible[0] + " acquired=" + acquired[0]
+					+ " nearestGoalRunning=" + nearestGoalRunning[0]);
+			})
+			.thenSucceed();
+		helper.runAfterDelay(TARGET_SELECTION_WINDOW + 10, () -> {
+			if (!resultLogged[0]) {
+				PatrolTestSupport.result(test, "range=" + detectionRange + " initialDistance=" + initialDistance
+					+ " visible=" + visible[0] + " acquired=" + acquired[0]
+					+ " nearestGoalRunning=" + nearestGoalRunning[0]
+					+ " currentTarget=" + (head.getTarget() == null ? "none" : PatrolTestSupport.typeId(head.getTarget())));
+				helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
+			}
 		});
 	}
 

@@ -29,6 +29,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
 	private static final String VILLAGES_TAG = "villages";
+	private static final String MISSIONS_TAG = "missions";
 	public static final Codec<VillageWorldData> CODEC = CompoundTag.CODEC.xmap(
 		VillageWorldData::loadState,
 		VillageWorldData::serializeState
@@ -41,6 +42,7 @@ public final class VillageWorldData extends SavedData {
 	);
 
 	private final Map<UUID, VillageRecord> villages = new LinkedHashMap<>();
+	private final Map<UUID, MissionRecord> missionRecords = new LinkedHashMap<>();
 	private long lastAttemptedDay = -1L;
 
 	public VillageWorldData() {
@@ -139,6 +141,19 @@ public final class VillageWorldData extends SavedData {
 		return this.villages.values().stream().filter(village -> village.members.containsKey(entityId)).findFirst();
 	}
 
+	public void addMission(final MissionRecord mission) {
+		this.missionRecords.put(mission.id(), mission);
+		setDirty();
+	}
+
+	public Optional<MissionRecord> mission(final UUID missionId) {
+		return Optional.ofNullable(this.missionRecords.get(missionId));
+	}
+
+	public List<MissionRecord> missions() {
+		return List.copyOf(this.missionRecords.values());
+	}
+
 	public void startThreat(final VillageRecord village, final UUID attackerId) {
 		if (!village.threats.containsKey(attackerId)) {
 			village.threats.put(attackerId, new ThreatRecord(attackerId, 0));
@@ -178,6 +193,12 @@ public final class VillageWorldData extends SavedData {
 			.map(VillageWorldData::encodeVillage)
 			.forEach(records::add);
 		root.put(VILLAGES_TAG, records);
+		ListTag missionTags = new ListTag();
+		this.missionRecords.values().stream()
+			.sorted(Comparator.comparing(mission -> mission.id().toString()))
+			.map(VillageWorldData::encodeMission)
+			.forEach(missionTags::add);
+		root.put(MISSIONS_TAG, missionTags);
 		return root;
 	}
 
@@ -191,6 +212,16 @@ public final class VillageWorldData extends SavedData {
 					data.villages.put(village.id(), village);
 				} catch (IllegalArgumentException error) {
 					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_village_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
+				}
+			}
+		}
+		for (Tag value : root.getListOrEmpty(MISSIONS_TAG)) {
+			if (value instanceof CompoundTag missionTag) {
+				try {
+					MissionRecord mission = decodeMission(missionTag);
+					data.missionRecords.put(mission.id(), mission);
+				} catch (IllegalArgumentException error) {
+					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_mission_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
 				}
 			}
 		}
@@ -284,6 +315,32 @@ public final class VillageWorldData extends SavedData {
 		return new ThreatRecord(UUID.fromString(tag.getStringOr("attacker", "")), Math.max(0, tag.getIntOr("outside_ticks", 0)));
 	}
 
+	private static CompoundTag encodeMission(final MissionRecord mission) {
+		CompoundTag tag = new CompoundTag();
+		tag.putString("id", mission.id().toString());
+		tag.putString("owner", mission.ownerId().toString());
+		tag.putString("target_type", mission.targetType().toString());
+		tag.put("target_position", BlockPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, mission.targetPosition()).getOrThrow());
+		mission.entityId().ifPresent(entityId -> tag.putString("entity_id", entityId.toString()));
+		tag.putString("status", mission.status().name());
+		return tag;
+	}
+
+	private static MissionRecord decodeMission(final CompoundTag tag) {
+		String entityId = tag.getStringOr("entity_id", "");
+		Optional<UUID> optionalEntityId = entityId.isEmpty()
+			? Optional.empty()
+			: Optional.of(UUID.fromString(entityId));
+		return new MissionRecord(
+			UUID.fromString(tag.getStringOr("id", "")),
+			UUID.fromString(tag.getStringOr("owner", "")),
+			Identifier.parse(tag.getStringOr("target_type", "")),
+			tag.read("target_position", BlockPos.CODEC).orElseThrow(() -> new IllegalArgumentException("invalid mission target position")),
+			optionalEntityId,
+			MissionStatus.valueOf(tag.getStringOr("status", "TARGET_PENDING"))
+		);
+	}
+
 	public static final class VillageRecord {
 		private final UUID id;
 		private final ResourceKey<Level> dimension;
@@ -334,5 +391,23 @@ public final class VillageWorldData extends SavedData {
 	}
 
 	public record ThreatRecord(UUID attackerId, int outsideTicks) {
+	}
+
+	public record MissionRecord(
+		UUID id,
+		UUID ownerId,
+		Identifier targetType,
+		BlockPos targetPosition,
+		Optional<UUID> entityId,
+		MissionStatus status
+	) {
+		public MissionRecord {
+			targetPosition = targetPosition.immutable();
+		}
+	}
+
+	public enum MissionStatus {
+		TARGET_PENDING,
+		ACTIVE
 	}
 }
