@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.api.ReadoutRankProvider;
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.BossCompanion;
 import com.stella.mobs.behavior.Bosses;
@@ -60,6 +61,7 @@ public class StellaMobs implements ModInitializer {
 	public void onInitialize() {
 		ReactiveState.register();
 		EliteState.register();
+		ReadoutRankProvider.register();
 		EscortSquad.register();
 		RiderSquad.register();
 		BossCompanion.register();
