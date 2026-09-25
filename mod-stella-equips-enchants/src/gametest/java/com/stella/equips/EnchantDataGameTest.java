@@ -1,5 +1,7 @@
 package com.stella.equips;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -117,6 +119,60 @@ public class EnchantDataGameTest {
 			catalogue == CATALOGUE_SIZE,
 			"catalogue count: expected " + CATALOGUE_SIZE + " but was " + catalogue + " in namespace " + MOD_ID
 		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void oreMenderDefinitionMatchesItsContract(final GameTestHelper helper) {
+		Enchantment mender = enchantment(helper, "tool/ore_mender");
+		String jsonText = readResource("data/" + MOD_ID + "/enchantment/tool/ore_mender.json");
+		String languageText = readResource("assets/" + MOD_ID + "/lang/en_us.json");
+		if (jsonText == null || languageText == null) {
+			throw new AssertionError("Ore Mender data or language resource is missing");
+		}
+
+		JsonObject definition = JsonParser.parseString(jsonText).getAsJsonObject();
+		JsonObject minCost = definition.getAsJsonObject("min_cost");
+		JsonObject maxCost = definition.getAsJsonObject("max_cost");
+		String descriptionKey = "enchantment." + MOD_ID + ".tool.ore_mender";
+		String descriptionTranslateKey = definition.getAsJsonObject("description").get("translate").getAsString();
+		JsonObject language = JsonParser.parseString(languageText).getAsJsonObject();
+		boolean supportedPickaxe = mender.canEnchant(new ItemStack(Items.DIAMOND_PICKAXE));
+		boolean rejectedShovel = !mender.canEnchant(new ItemStack(Items.DIAMOND_SHOVEL));
+		boolean exactName = "Ore Mender".equals(language.get(descriptionKey).getAsString());
+		boolean exactDescription = "Mining an ore heals half a heart."
+			.equals(language.get(descriptionKey + ".desc").getAsString());
+		boolean exactDescriptionKey = descriptionKey.equals(descriptionTranslateKey);
+		boolean slots = definition.getAsJsonArray("slots").size() == 1
+			&& "mainhand".equals(definition.getAsJsonArray("slots").get(0).getAsString());
+		boolean supportedItems = "#minecraft:pickaxes".equals(definition.get("supported_items").getAsString());
+		boolean primaryItems = "#minecraft:pickaxes".equals(definition.get("primary_items").getAsString());
+		boolean costFields = minCost.get("base").getAsInt() == 5
+			&& minCost.get("per_level_above_first").getAsInt() == 0
+			&& maxCost.get("base").getAsInt() == 30
+			&& maxCost.get("per_level_above_first").getAsInt() == 0;
+		boolean definitionFields = mender.getMaxLevel() == 1
+			&& definition.get("weight").getAsInt() == 4
+			&& mender.getAnvilCost() == 1
+			&& definition.get("anvil_cost").getAsInt() == 1;
+
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=oreMenderDefinition RESULT level={} weight={} anvilCost={} "
+				+ "minCost=5+0 maxCost=30+0 supportedPickaxe={} rejectedShovel={} slotsMainhand={} "
+				+ "name={} descriptionKey={} description={} emptyEffects={}",
+			mender.getMaxLevel(), definition.get("weight").getAsInt(), mender.getAnvilCost(),
+			supportedPickaxe, rejectedShovel, slots, exactName, exactDescriptionKey, exactDescription,
+			definition.getAsJsonObject("effects").size() == 0
+		);
+		helper.assertTrue(definitionFields, "Ore Mender level, weight, or anvil cost is wrong");
+		helper.assertTrue(costFields, "Ore Mender enchanting cost fields are wrong");
+		helper.assertTrue(supportedItems && primaryItems, "Ore Mender must use pickaxe tags");
+		helper.assertTrue(supportedPickaxe && rejectedShovel, "Ore Mender item support is wrong");
+		helper.assertTrue(slots, "Ore Mender must use the main-hand slot");
+		helper.assertTrue(exactName, "Ore Mender name is missing or incorrect");
+		helper.assertTrue(exactDescriptionKey, "Ore Mender JSON has the wrong description key");
+		helper.assertTrue(exactDescription, "Ore Mender description is missing or incorrect");
+		helper.assertTrue(definition.getAsJsonObject("effects").size() == 0, "Ore Mender has a data effect");
 		helper.succeed();
 	}
 

@@ -63,10 +63,9 @@ public final class PowerTracker {
 		return true;
 	}
 
-	/** The owner's own level and health as one line, on the interval that already runs. */
 	public static void sendSelfLine(final ServerPlayer player, final PowerConfig config) {
 		int level = playerLevel(player, config);
-		player.sendSystemMessage(HealthLine.of(level, player.getHealth(), player.getMaxHealth()), true);
+		player.sendSystemMessage(PlayerLevelLine.of(level), true);
 	}
 
 	public static void onDeath(final LivingEntity entity, final DamageSource source) {
