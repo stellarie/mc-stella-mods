@@ -309,7 +309,11 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
 | `everyCatalogueEnchantmentIsOfferedAtTheEnchantingTable` | every catalogue id is in `#minecraft:in_enchanting_table`, and every id is reachable at cost 30 |
-| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 8 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
+| `oreMenderDefinitionMatchesItsContract` | Ore Mender keeps its exact item tags, costs, level, weight, name, and description |
+| `oreMenderHealsHalfAHeartOnEveryOreBreak` | each successful tagged ore break heals one health point, including consecutive breaks |
+| `oreMenderRejectsStoneAndUnenchantedOre` | stone and an ore broken with an unenchanted pickaxe do not heal |
+| `oreMenderDoesNotOverheal` | Ore Mender does not raise health above its maximum |
+| `everyFunctionBackedEnchantmentObeysTheFunctionRules` | all 7 functions load in the function manager, declare a cooldown of 20 ticks or more, declare a cap, and use no banned command, including no `tp` at any selector |
 | `catalogueWeightSharesAtCost30` | the pools above, the weight share of each candidate, and that every enchantment is a candidate at cost 30 |
 | `everyCatalogueEnchantmentHasALangName` | every catalogue id has an `en_us` name, so no enchantment renders as a raw key |
 | `arrowShowerCostsMoreDurabilityThanAPlainShot` | one plain shot fires 1 arrow for 1 durability, and one Arrow Shower shot fires 7 arrows for 14 durability |

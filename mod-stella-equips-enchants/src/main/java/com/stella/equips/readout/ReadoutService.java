@@ -162,15 +162,13 @@ public final class ReadoutService {
 			}
 		}
 
-		Mob targeted = ReadoutTarget.of(player, selected);
-
 		for (Mob mob : selected) {
 			int mobLevel = PowerTracker.mobLevel(mob, config);
 			int gap = mobLevel - playerLevel;
 			PowerCurve.Band band = PowerCurve.band(gap, config);
-			Component text = mob == targeted
-				? ReadoutText.build(mobLevel, mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth())
-				: ReadoutText.build(mobLevel, mob.getDisplayName(), band);
+			Component text = ReadoutText.build(
+				mobLevel, mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth()
+			);
 			ReadoutOwner.Readout existing = owner.get(mob.getUUID());
 
 			if (existing == null) {

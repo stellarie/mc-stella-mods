@@ -1,5 +1,5 @@
 {
-	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.echolocation" },
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.tool.ore_mender" },
 	"supported_items": "#minecraft:pickaxes",
 	"primary_items": "#minecraft:pickaxes",
 	"slots": ["mainhand"],
@@ -8,14 +8,5 @@
 	"min_cost": { "base": 5, "per_level_above_first": 0 },
 	"max_cost": { "base": 30, "per_level_above_first": 0 },
 	"anvil_cost": 1,
-	"effects": {
-		"minecraft:hit_block": [
-			{
-				"effect": {
-					"type": "minecraft:run_function",
-					"function": "mod-stella-equips-enchants:echolocation"
-				}
-			}
-		]
-	}
+	"effects": {}
 }
