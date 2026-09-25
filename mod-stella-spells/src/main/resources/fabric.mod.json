@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-spells",
+	"version": "${version}",
+	"name": "Stella Spellbooks",
+	"description": "Server-side spellbook casting and loot.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.spells.Spellbooks"
+		]
+	},
+	"mixins": [
+		"mod-stella-spells.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

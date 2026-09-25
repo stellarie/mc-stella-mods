@@ -1,0 +1,12 @@
+{
+	"parent": "minecraft:item/generated",
+	"textures": {
+		"layer0": "minecraft:item/book"
+	},
+	"tints": [
+		{
+			"type": "minecraft:constant",
+			"value": 4708351
+		}
+	]
+}
