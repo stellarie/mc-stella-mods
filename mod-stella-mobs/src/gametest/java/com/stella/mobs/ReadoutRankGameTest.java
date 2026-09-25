@@ -19,7 +19,8 @@ public class ReadoutRankGameTest {
 	public void normalMobKeepsItsAttachmentAbsent(final GameTestHelper helper) {
 		Mob zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.SPAWNER);
 		if (zombie == null) {
-			throw new AssertionError("the test zombie could not be created");
+			helper.fail("the test zombie could not be created");
+			return;
 		}
 
 		EliteState before = ((AttachmentTarget) zombie).getAttached(EliteState.TYPE);
@@ -38,7 +39,8 @@ public class ReadoutRankGameTest {
 	public void nonMobEntityReturnsNormal(final GameTestHelper helper) {
 		Entity armorStand = EntityTypes.ARMOR_STAND.create(helper.getLevel(), EntitySpawnReason.SPAWNER);
 		if (armorStand == null) {
-			throw new AssertionError("the test armor stand could not be created");
+			helper.fail("the test armor stand could not be created");
+			return;
 		}
 
 		String rank = provider(helper).apply(armorStand);
@@ -51,7 +53,8 @@ public class ReadoutRankGameTest {
 	public void eliteFlagReturnsElite(final GameTestHelper helper) {
 		Mob zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.SPAWNER);
 		if (zombie == null) {
-			throw new AssertionError("the test zombie could not be created");
+			helper.fail("the test zombie could not be created");
+			return;
 		}
 
 		EliteState.markElite(zombie, GearTier.DIAMOND);
@@ -65,7 +68,8 @@ public class ReadoutRankGameTest {
 	public void bossFlagTakesPrecedence(final GameTestHelper helper) {
 		Mob zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.SPAWNER);
 		if (zombie == null) {
-			throw new AssertionError("the test zombie could not be created");
+			helper.fail("the test zombie could not be created");
+			return;
 		}
 
 		EliteState.setBoss(zombie, true);
