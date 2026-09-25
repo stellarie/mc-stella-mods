@@ -1,0 +1,33 @@
+# Mc Stella Villages
+
+Mc Stella Villages adds patrol guards, Nemesis missions, and small raids to vanilla villages.
+
+## Requirements
+
+| Item | Version |
+|---|---|
+| Minecraft | 26.3 |
+| Fabric Loader | 0.19.5 |
+| Fabric API | 0.161.0+26.3 |
+| Java | 25 |
+
+Install the jar on the server and on each client. The client jar displays the patrol textures and mission screen. The mod-stella-mobs mod is optional.
+
+## Features
+
+- One ten-entity patrol per discovered vanilla village.
+- Three contracts at each elite vindicator head. Each contract creates one persistent Nemesis target.
+- One daily 10% roll for a single-wave village raid.
+
+## Build and test
+
+Run commands from this directory.
+
+```powershell
+.\gradlew.bat clean build
+.\gradlew.bat runGameTest --rerun
+```
+
+Run the GameTest command five separate times for final verification. Save each log before the next run.
+
+The jar is `build/libs/mc-stella-villages-0.1.0+26.3.jar`. Copy it to the `mods` folder on the server and the client.

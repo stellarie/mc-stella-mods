@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mc-stella-villages-test",
+	"version": "1.0.0",
+	"name": "Mc Stella Villages GameTests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.villages.VillagePatrolGameTest",
+			"com.stella.villages.VillagePersistenceGameTest"
+		]
+	},
+	"mixins": [
+		"mc-stella-villages-test.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

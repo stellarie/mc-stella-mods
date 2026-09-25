@@ -8,6 +8,7 @@ Minecraft mods for a private Fabric server.
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
 | `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
+| `mc-stella-villages/` | Village patrols; missions and raids are in development | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. The two branches do not merge into each other.
