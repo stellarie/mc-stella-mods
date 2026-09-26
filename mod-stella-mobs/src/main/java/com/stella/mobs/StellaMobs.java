@@ -10,6 +10,7 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EscortSquad;
+import com.stella.mobs.behavior.BloodMoon;
 import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.behavior.IllusionerKit;
 import com.stella.mobs.behavior.GolemElite;
@@ -101,6 +102,7 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(OceanBand::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(EvokerStorm::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(IllusionerKit::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(BloodMoon::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
@@ -151,8 +153,9 @@ public class StellaMobs implements ModInitializer {
 			}
 
 			if (!suppressed || Elite.isForced(mob)) {
+				// Surprise: under the Blood Moon the elite chance is tripled.
 				Elite.rollAtSpawn(
-					mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
+					mob, level, BloodMoon.eliteChance(level, GearConfigStore.get().rollFor(entityType).eliteChance()), loadout == null
 				);
 			}
 
@@ -177,6 +180,7 @@ public class StellaMobs implements ModInitializer {
 			}
 
 			SpawnScaling.apply(mob);
+			BloodMoon.empower(mob, level);
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
 
