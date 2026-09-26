@@ -77,10 +77,15 @@ public final class GearConfigParser {
 
 		RollSpec rollDefaults = RollSpec.DEFAULT;
 		Map<Identifier, RollSpec> rolls = new HashMap<>();
+		double spawnSafetyRadius = GearConfig.DEFAULT_SPAWN_SAFETY_RADIUS;
 		JsonElement rollsElement = root.get("rolls");
 
 		if (rollsElement != null && rollsElement.isJsonObject()) {
 			JsonObject rollsObject = rollsElement.getAsJsonObject();
+			Double radius = readMultiplier(rollsObject.get("spawn_safety_radius"));
+			if (radius != null) {
+				spawnSafetyRadius = radius;
+			}
 			rollDefaults = rollDefaults.overriddenBy(
 				readChance(rollsObject.get("roll_chance")),
 				readMultiplier(rollsObject.get("drop_chance_multiplier")),
@@ -125,7 +130,7 @@ public final class GearConfigParser {
 		Map<Identifier, RiderSpec> riders = new HashMap<>();
 		RiderSpec riderDefaults = parseRiders(root, riders);
 
-		return new GearConfig(entities, roles, rollDefaults, rolls, riderDefaults, riders);
+		return new GearConfig(entities, roles, rollDefaults, rolls, riderDefaults, riders, spawnSafetyRadius);
 	}
 
 	private static RiderSpec parseRiders(final JsonObject root, final Map<Identifier, RiderSpec> riders) {
