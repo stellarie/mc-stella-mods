@@ -87,7 +87,7 @@ public final class BehaviorInstaller {
 			.anyMatch(wrapped -> wrapped.getGoal() instanceof ShieldUseGoal);
 	}
 
-	/** R21: an elite zombie that is not a summon brings its own reinforcements. Idempotent. */
+	/** R21, retired by M7: elite zombies now afflict on hit instead. Kept for the saved record type. */
 	public static void installReinforcements(final Mob mob) {
 		if (!(mob instanceof Zombie zombie) || EliteState.isSummoned(mob) || !Elite.isElite(zombie)) {
 			return;
@@ -210,7 +210,6 @@ public final class BehaviorInstaller {
 		}
 
 		BossAbilities.install(mob);
-		installReinforcements(mob);
 		installSpiderBrood(mob);
 		installSpiderWebTrap(mob);
 		installBlazeVolley(mob);
@@ -265,6 +264,7 @@ public final class BehaviorInstaller {
 		witch.getGoalSelector().addGoal(WITCH_SELF_HEAL_PRIORITY, new WitchSelfHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_SUPPORT_PRIORITY, new WitchSupportHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));
+		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchBlinkGoal<>(witch));
 		witch.getGoalSelector().addGoal(
 			WITCH_AURA_PRIORITY, new EliteAuraGoal<>(witch, WitchElite.AURA_RADIUS, List.of(MobEffects.BLINDNESS))
 		);
