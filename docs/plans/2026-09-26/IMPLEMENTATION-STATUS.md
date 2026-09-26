@@ -1,6 +1,6 @@
 # Implementation status — 2026-09-26 session
 
-Eight slices are implemented, gated, and merged into `main`. Every result below comes from a saved
+Eleven slices are implemented, gated, and merged into `main`. Every result below comes from a saved
 run log. The per-run summary and the raw logs are on branch `evidence/2026-09-26-gates`.
 
 Environment: Linux container, JDK 25.0.4.1 (installed with `apt`), Gradle 9.5.1, Loom 1.17.21.
@@ -17,6 +17,9 @@ The gates ran here with `./gradlew`, not with `gradlew.bat` on Windows.
 | 5 | M5 Pillagers chase | `feat/pillager-chase` (carries M4) | 2 failed: stayed 9.97 away; never saw around the wall | clean build + 5/5 at 249 |
 | 6 | V1a W021 roster and crossbows | `feat/w021-roster-crossbows`, fast-forwarded into `feat/mc-stella-villages` | 4 failed: 3 Pillagers and 0 crossbows; Evoker and Witch present; the Ravager had a rider | clean build + 5/5 at 40 |
 | 7 | S1 W012 proofs, tag name, and a fixed flake | `feat/spells-w012-proofs`, fast-forwarded into `feat/spellbooks-and-enchantments` | 12 of 12 mutations caught (table below); the tag-name test failed naming `tag.item.mod-stella-spells.spellbooks` | clean build + combined suite + 5/5 at 73 |
+| 9 | V4 mobs compatibility (both mods) | `feat/mobs-no-spawn-roll` into `main-mobs`; `feat/villages-mobs-compat` into `feat/mc-stella-villages` | With mobs loaded, 3 village tests failed (crossbow lost, health off baseline, Nemesis profile); the tag test failed untagged | mobs: clean build + 5/5 at 261; villages: 5/5 alone and 5/5 with mobs at 44 |
+| 10 | V3 daily one-wave raids | `feat/village-daily-raids` into `feat/mc-stella-villages` | 4 failed against the inert stub; the vanilla control kept 5 waves | clean build + 14 consecutive green runs at 49, and green with mobs loaded |
+| 11 | S2 spells README | `feat/spells-readme` into `feat/spellbooks-and-enchantments` | docs only | values read from the catalogue, casting, modifier and loot code |
 | 8 | V1b legacy roster migration | `feat/w021-migration`, fast-forwarded into `feat/mc-stella-villages` | 2 failed: a legacy sealed roster stayed sealed; the retired Evoker stayed | clean build + 5/5 at 44 |
 
 Controls that pass on both commits, proving the changed input is the one that matters:
@@ -52,7 +55,7 @@ enchantments, both mod tags and the table tag, the lang file, loot in code, and 
 | Mod on `main` | Required | Optional failures | Jar SHA-256 (Linux build) |
 | --- | --- | --- | --- |
 | Mobs | 259 passed | 3 (existing tagged gaps) | `27C155159ADB53B2D4ED261F3DDBE06F4CA41CBC78E71A423BE78320A00F933E` |
-| Villages | 44 passed (was 2 failed) | 1 (survival-player manual gap) | `CD0E166ED7BFCCB6ACE51F9C9704E298A26FAB64EDEB4E5AF3166C6CBA2D8BDF` |
+| Villages | 49 passed (was 2 failed); 49 with mobs loaded | 1 (survival-player manual gap) | `CD0E166ED7BFCCB6ACE51F9C9704E298A26FAB64EDEB4E5AF3166C6CBA2D8BDF` |
 | Equips | 180 passed | 0 | `D5D954794F7380539AA4CDB2A7C4862193D6370E62405834FD75E73585C81973` |
 | Spells | 73 passed | 2 (tint manual items) | `02654484DB71AA434D1B31A1C8B6D630CBEC64573513D8D8E6B2D4058936F844` |
 
@@ -78,6 +81,10 @@ build may differ, so hash the jar you deploy.
 | M3 | The radius is `rolls.spawn_safety_radius`: code default 0, shipped 1000, migrated into older files. | The GameTest arenas sit about 430 blocks from spawn, so a hard-coded gate would have gated every existing natural-spawn test. |
 | V1 | Split into V1a (roster and crossbows) and V1b (migration); both are done. | Each got its own red run and gate. |
 | V1b | A retired Evoker or Witch is removed on the level tick after it loads, not inside the load event. | Removing an entity inside its own load event is unsafe. |
+| V4 | One shared entity tag, `mod-stella-mobs.no_spawn_roll`, instead of the plan's patrol-marker idea. | Plain entity data needs no compile dependency either way, and the Nemesis targets needed it too. |
+| V3 | One roll per world per day (the existing `last_attempted_day`), not one per village. | The README promises one daily roll; the save already carried that field. |
+| V3 | The first day a world is seen only records the day. | A server start never raids, and a GameTest run, which never crosses a day, cannot start a raid in a neighbour's arena. |
+| V3 | D-V3-1 taken as recommended: a day with no attended village is skipped. | Easy to change in `VillageRaids.onLevelTick` if oniichan prefers queueing. |
 
 ## Still open
 
@@ -87,10 +94,17 @@ build may differ, so hash the jar you deploy.
   cannot reach your PC.
 - **Manual acceptance:** sword Pillagers and the chase feel, readable potion names in a vanilla
   client, and a patrol with 5 crossbow Pillagers in a real village.
-- **Watched test:** `patrolTargetsHostilesInsideDetectionRange` failed once in 14 villages runs, on
-  the code before V1b, and passed every run since. Its failure line now names the head's AI flag,
-  UUID, and village, so the next failure identifies its cause.
+- **Watched test:** `patrolTargetsHostilesInsideDetectionRange` (W020) failed 4 times in about 70
+  village runs, once on code from before today. Each time the head was the test's own, awake, in
+  range and in sight, yet its target goal never started. Its failure line now also records the
+  head's ticks during the test and whether the head stands in an entity-ticking chunk, which should
+  name the cause the next time. The final V3 tree then passed 14 runs in a row.
+- **M1:** all 43 W002 test names appear in the `main` run with no required failure; deployment and
+  the manual water-escape checks remain.
 - **V1b manual check:** load a backed-up pre-W021 world. The Evoker and Witch should leave as their
   chunks load, and two Pillagers should join each patrol.
 - M2, M7, M8, M9, and M11 wait on the decisions in `README.md`. E1–E4 need the Stage 2 world checks.
+  V2 needs the approved mission-screen spec from the blackboard, and V5 needs the texture art.
+- **V3 manual check:** a raid day in a real world (advance the day with a player in a village) should
+  bring one wave and a victory.
 - S2's remaining steps: Sherry's review, the spells README, deployment, and the manual tint checks.
