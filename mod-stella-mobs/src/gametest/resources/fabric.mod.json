@@ -27,6 +27,7 @@
 			"com.stella.mobs.OceanBandGameTest",
 			"com.stella.mobs.OceanEliteGameTest",
 			"com.stella.mobs.PiglinBruteGameTest",
+			"com.stella.mobs.PillagerTacticsGameTest",
 			"com.stella.mobs.R02ControlGameTest",
 			"com.stella.mobs.R02StateGameTest",
 			"com.stella.mobs.ReadoutRankGameTest",
