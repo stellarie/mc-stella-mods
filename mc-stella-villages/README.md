@@ -11,12 +11,21 @@ Mc Stella Villages adds patrol guards, Nemesis missions, and small raids to vani
 | Fabric API | 0.161.0+26.3 |
 | Java | 25 |
 
-Install the jar on the server and on each client. The client jar displays the patrol textures and mission screen. The mod-stella-mobs mod is optional.
+Install the jar on the server and on each client. Everything a player sees uses vanilla assets and a vanilla chest menu, so a client without the mod can still read the board and see the patrols. The mod-stella-mobs mod is optional.
 
 ## Features
 
 - One ten-entity patrol per discovered vanilla village.
-- Three contracts at each elite vindicator head. Each contract creates one persistent Nemesis target.
+- Three contracts at each elite vindicator head. Right-click the head within 8 blocks to open the
+  Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
+  Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
+  board, or tells you why it refused. Each contract creates one persistent Nemesis target.
+- Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
+  green border), and every patrol member, the Ravager included, gives off a green village sparkle.
+  An ordinary illager keeps its vanilla look.
+- Ring a village's bell, within 48 blocks of the village's first bell, and its patrol rallies: every
+  member gets Speed II and Strength I for 30 seconds and runs to the bell. A village rallies once a
+  minute.
 - One daily 10% roll for a single-wave village raid. The roll is fixed by the world seed and the day,
   so a restart cannot reroll a day. On a raid day, the first village with a player within 64 blocks
   of its centre is raided with one wave and no bonus wave; if no village has a player nearby, the
