@@ -60,6 +60,7 @@ public final class MissionService {
 	);
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Mob> ACTIVE_NEMESES = new ConcurrentHashMap<>();
+	private static final Map<UUID, String> LAST_REJECTIONS = new ConcurrentHashMap<>();
 
 	private MissionService() {
 	}
@@ -77,6 +78,11 @@ public final class MissionService {
 	public static List<MissionOffer> offersFor(final UUID playerId) {
 		MissionBoard board = BOARDS.get(playerId);
 		return board == null ? List.of() : board.offers();
+	}
+
+	/** The reason the player's last offer was turned down, so the board can say why. */
+	public static String lastRejection(final UUID playerId) {
+		return LAST_REJECTIONS.getOrDefault(playerId, "unknown");
 	}
 
 	public static boolean acceptOffer(final ServerPlayer player, final UUID headId, final UUID offerId) {
@@ -189,6 +195,8 @@ public final class MissionService {
 		}
 		List<MissionOffer> offers = createOffers();
 		BOARDS.put(serverPlayer.getUUID(), new MissionBoard(head.getUUID(), head, offers));
+		// V2: the board is a chest menu, so a player without the mod reads and accepts offers too.
+		MissionBoardMenu.open(serverPlayer, head, offers);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=mission_board_opened owner={} head={} offers={}",
 			McStellaVillages.MOD_ID, serverPlayer.getUUID(), head.getUUID(), offers
@@ -366,6 +374,7 @@ public final class MissionService {
 		final UUID offerId,
 		final String reason
 	) {
+		LAST_REJECTIONS.put(player.getUUID(), reason);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=mission_rejected owner={} head={} offer={} reason={}",
 			McStellaVillages.MOD_ID, player.getUUID(), headId, offerId, reason
