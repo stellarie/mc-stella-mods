@@ -53,6 +53,7 @@ public class PillagerTacticsGameTest {
 			float lost = TARGET_HEALTH - target.getHealth();
 			helper.assertTrue(lost > 0.0F, "the sword Pillager never struck its target; distance=" + pillager.distanceTo(target));
 			result("swordPillagerClosesAndHitsItsTarget", "lost=" + lost + " tick=" + helper.getTick());
+			discard(pillager, target);
 		});
 	}
 
@@ -69,6 +70,7 @@ public class PillagerTacticsGameTest {
 		});
 		helper.runAfterDelay(WATCH_TICKS, () -> {
 			result("crossbowPillagerNeverClosesToMelee", "closest=" + closest[0]);
+			discard(pillager, target);
 			helper.assertTrue(closest[0] > MELEE_REACH, "a crossbow Pillager walked into melee reach: " + closest[0]);
 			helper.succeed();
 		});
@@ -84,6 +86,7 @@ public class PillagerTacticsGameTest {
 			double distance = pillager.distanceTo(target);
 			helper.assertTrue(distance <= CrossbowCadenceGoal.CHASE_RADIUS, "the crossbow Pillager stayed " + distance + " away");
 			result("crossbowPillagerClosesToItsFiringRange", "distance=" + distance + " tick=" + helper.getTick());
+			discard(pillager, target);
 		});
 	}
 
@@ -105,6 +108,7 @@ public class PillagerTacticsGameTest {
 		});
 		helper.runAfterDelay(WATCH_TICKS, () -> {
 			result("crossbowPillagerInsideItsRangeHoldsItsGround", "drift=" + drift[0] + " distance=" + pillager.distanceTo(target));
+			discard(pillager, target);
 			helper.assertTrue(drift[0] < HOLD_DRIFT, "a Pillager in range and in sight walked " + drift[0]);
 			helper.succeed();
 		});
@@ -125,6 +129,7 @@ public class PillagerTacticsGameTest {
 		helper.succeedWhen(() -> {
 			helper.assertTrue(pillager.getSensing().hasLineOfSight(target), "the Pillager never found a line of sight around the wall");
 			result("crossbowPillagerWalksAroundAWallToSeeItsTarget", "position=" + pillager.position() + " tick=" + helper.getTick());
+			discard(pillager, target);
 		});
 	}
 
@@ -185,6 +190,12 @@ public class PillagerTacticsGameTest {
 		cow.setHealth(TARGET_HEALTH);
 		cow.setPersistenceRequired();
 		return cow;
+	}
+
+	/** Removes the subjects at the end, so an armed Pillager never outlives its arena and shoots a neighbour's. */
+	private static void discard(final Pillager pillager, final Cow target) {
+		pillager.discard();
+		target.discard();
 	}
 
 	private static void result(final String test, final String detail) {
