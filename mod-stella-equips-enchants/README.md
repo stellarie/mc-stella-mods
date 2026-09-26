@@ -54,6 +54,19 @@ Emeralds are the enchanting currency, so a villager hall becomes the engine of
 enchanting and a player with no emerald supply cannot enchant at all. That is
 the intended shape.
 
+## Weapon enchantments and mastery
+
+- **Tempo** (any weapon, level 1). A direct hit slows the victim for 2 seconds and, when the attacker
+  is a player, gives the player Speed for 2 seconds. A thrown trident does not trigger it.
+- **Undertow** (trident, level 1). A hit pulls the wielder and the victim together, to their
+  midpoint, one block apart. Both move or neither does: a pair that is mounted, already close, or
+  blocked by a wall stays where it is.
+- **Weapon Mastery.** A sword, axe, spear, trident or mace counts the hostiles its wielder kills with
+  it in melee. At 10, 50, 150 and 400 kills it reaches Mastery I to IV, and each tier adds half a
+  point of attack damage. The tooltip shows the tier, the count and the next threshold. The count and
+  the bonus live on the item, so they survive trades, anvils and restarts. Peaceful kills and tools
+  never count.
+
 ## Player power
 
 Player power follows the vanilla experience level, capped at `level_cap` (50). The
