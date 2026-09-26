@@ -2,6 +2,7 @@ package com.stella.equips;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.stella.equips.enchant.UndertowPull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +49,7 @@ import net.minecraft.world.item.enchantment.ConditionalEffect;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.EnchantmentTarget;
 import net.minecraft.world.item.enchantment.Enchantable;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.enchantment.TargetedConditionalEffect;
@@ -102,6 +104,24 @@ public class EnchantDataGameTest {
 		"give", "loot", "clear", "item replace entity @a", "effect give @a",
 		"tp @a", "tp @s", "tp @e", "tp @p", "tp @r", "summon minecraft:item"
 	);
+
+	@GameTest
+	public void undertowDefinitionMatchesContract(final GameTestHelper helper) {
+		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		Enchantment undertow = registry.getValue(Identifier.fromNamespaceAndPath(MOD_ID, "weapon/undertow"));
+		var postAttack = undertow == null ? List.<TargetedConditionalEffect<?>>of()
+			: undertow.getEffects(EnchantmentEffectComponents.POST_ATTACK);
+		boolean pullOnVictim = postAttack.stream().anyMatch(effect -> effect.affected() == EnchantmentTarget.VICTIM
+			&& effect.effect() instanceof UndertowPull);
+		String seen = undertow == null ? "missing" : "maxLevel=" + undertow.getMaxLevel() + " postAttack=" + postAttack.size()
+			+ " pullOnVictim=" + pullOnVictim + " trident=" + undertow.canEnchant(new ItemStack(Items.TRIDENT));
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=undertowDefinition RESULT {}", seen);
+		helper.assertTrue(
+			undertow != null && undertow.getMaxLevel() == 1 && pullOnVictim && undertow.canEnchant(new ItemStack(Items.TRIDENT)),
+			"undertow reads " + seen
+		);
+		helper.succeed();
+	}
 
 	@GameTest
 	public void theTestMarkerLivesOnlyInTheTestNamespaceWithADisplayName(final GameTestHelper helper) {

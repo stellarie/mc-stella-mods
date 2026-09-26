@@ -44,6 +44,7 @@ public class EnchantmentLevelGameTest {
 		"weapon/momentum",
 		"weapon/stormcaller",
 		"weapon/tidecaller",
+		"weapon/undertow",
 		"weapon/warden_wave"
 	);
 	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration", "tool/ore_mender");
