@@ -30,4 +30,9 @@ Run commands from this directory.
 
 Run the GameTest command five separate times for final verification. Save each log before the next run.
 
+To run the same suite with `mod-stella-mobs` loaded, build that mod first, then run
+`.\gradlew.bat runGameTest --rerun -PwithStellaMobs=true`. The log must list `mod-stella-mobs` among the
+loaded mods. Patrol members and Nemesis targets carry the `mod-stella-mobs.no_spawn_roll` tag, so the
+mobs mod adds its combat goals but leaves their kit, health and rank alone.
+
 The jar is `build/libs/mc-stella-villages-0.1.0+26.3.jar`. Copy it to the `mods` folder on the server and the client.
