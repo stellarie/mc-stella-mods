@@ -157,8 +157,11 @@ works on one. They are the standard, not a suggestion.
 ## Work standard
 
 - One writer per file. Gradle runs serialize; one worker holds the token.
-- Waiting on another worker is a poll, not a vigil. Wait ten minutes, then re-check
-  the agents and the task board, and keep useful work moving between polls.
+- Do not use `wait_agent` in this repository.
+  Workers send completion and blocker notifications; the coordinator handles them between independent tasks.
+- While a dependency is busy, start useful work with a disjoint write scope or read-only scope.
+  Recheck worker status and the task board when notified, or within ten minutes of other work.
+  If no independent work exists, report the next action and return control instead of waiting.
 - Gate before you give the writer its next slice, never after. A writer that has
   already started the next change leaves the tree mid-edit, and the gate then
   measures a partial tree. On 2026-09-23 a rerun failed to compile against a

@@ -1,14 +1,14 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-24
+last_verified: 2026-09-26
 ---
 
 # Project Memory
 
 ## Purpose
 
-This repository develops two Fabric mods on separate integration branches.
+This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -20,7 +20,7 @@ This repository develops two Fabric mods on separate integration branches.
 
 - `main-mobs` integrates `mod-stella-mobs` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-mobs]
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
-- `main` combines the verified deployed source trees for both mods. [status: active] [verified: 2026-09-24] [source: git log -1 main; git rev-parse main:mod-stella-mobs main:mod-stella-equips-enchants]
+- `main` contains mobs, equips, spells, and villages source, including unfinished spells and villages changes. [status: active] [verified: 2026-09-26] [source: git ls-tree --name-only main]
 
 ## Conventions
 
@@ -48,10 +48,22 @@ This repository develops two Fabric mods on separate integration branches.
 - Alternatives: Publishing active worktree changes was rejected because those slices remain unfinished.
 - Evidence: `main` merge `c9cc9a6`, installed jar SHA-256 checks, and `gh repo view stellarie/mc-stella-mods`.
 
+### 2026-09-26 - Publish unfinished source on main
+
+- Decision: Include current unfinished spells and villages changes in `main` at oniichan's request.
+- Why: Preserve all active source for a later continuation.
+- Alternatives: Keep `main` limited to deployed snapshots; this was superseded by the new request.
+- Evidence: `HANDOFFS-2026-09-26.md` and the merged work branches.
+
 ## Open Questions
 
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
 
-None.
+### 2026-09-26 - Publish current work snapshot
+
+- Done: Archived nine handoff and plan records in `HANDOFFS-2026-09-26.md`.
+- Pending: Verify unfinished spells and villages work before gameplay acceptance.
+- Next: Follow the archived handoffs and rerun each mod's required gates.
+- Verification: Source snapshot and merge conflicts checked; feature gates remain unverified.
