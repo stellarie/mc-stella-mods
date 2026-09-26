@@ -1,0 +1,14 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-spells-test-mod-stella-spells.anvil_log_test"
+	},
+	"supported_items": "#mod-stella-spells:spellbooks",
+	"primary_items": "#mod-stella-spells:spellbooks",
+	"slots": ["mainhand"],
+	"weight": 1,
+	"max_level": 2,
+	"min_cost": { "base": 1, "per_level_above_first": 1 },
+	"max_cost": { "base": 10, "per_level_above_first": 1 },
+	"anvil_cost": 0,
+	"effects": {}
+}

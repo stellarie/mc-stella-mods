@@ -1,0 +1,12 @@
+{
+	"description": { "text": "Arcane Sight" },
+	"supported_items": "#minecraft:enchantable/head_armor",
+	"primary_items": "#minecraft:enchantable/head_armor",
+	"slots": ["head"],
+	"weight": 10,
+	"max_level": 3,
+	"min_cost": { "base": 1, "per_level_above_first": 11 },
+	"max_cost": { "base": 21, "per_level_above_first": 11 },
+	"anvil_cost": 0,
+	"effects": {}
+}

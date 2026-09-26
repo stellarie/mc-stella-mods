@@ -1,0 +1,12 @@
+{
+	"description": { "text": "Quickening" },
+	"supported_items": "#mod-stella-spells:spellbooks",
+	"primary_items": "#mod-stella-spells:spellbooks",
+	"slots": ["mainhand"],
+	"weight": 10,
+	"max_level": 3,
+	"min_cost": { "base": 1, "per_level_above_first": 11 },
+	"max_cost": { "base": 21, "per_level_above_first": 11 },
+	"anvil_cost": 0,
+	"effects": {}
+}

@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:slime_ball", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:slimebound", "count": 1}
+}
