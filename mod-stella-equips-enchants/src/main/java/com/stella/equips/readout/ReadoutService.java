@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.network.chat.Component;
@@ -22,11 +23,15 @@ import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -37,14 +42,21 @@ import net.minecraft.world.phys.Vec3;
 public final class ReadoutService {
 	private static final Map<UUID, ReadoutOwner> OWNERS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Boolean> OPT_OUT = new ConcurrentHashMap<>();
+	// Attacker and mob pairs to recheck, with the last server tick to recheck them on.
+	private static final Map<PendingPair, Integer> PENDING = new ConcurrentHashMap<>();
+	private static final int PENDING_TICKS = 3;
 	private static int serverTicks;
 	private static boolean registered;
 
 	private ReadoutService() {
 	}
 
+	private record PendingPair(UUID player, UUID mob) {
+	}
+
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(ReadoutService::onServerTick);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(ReadoutService::afterDamage);
 		ServerPlayConnectionEvents.DISCONNECT.register(
 			(listener, server) -> forget(listener.getPlayer().getUUID())
 		);
@@ -62,6 +74,7 @@ public final class ReadoutService {
 	public static void onServerTick(final MinecraftServer server) {
 		serverTicks++;
 		PowerConfig config = PowerConfigStore.get();
+		refreshPending(server, config);
 
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			syncPositions(player, config);
@@ -166,16 +179,81 @@ public final class ReadoutService {
 			int threat = PowerTracker.threat(mob, config);
 			int gap = PowerCurve.normalizedThreat(threat, config) - playerLevel;
 			PowerCurve.Band band = PowerCurve.band(gap, config);
-			Component text = ReadoutText.build(
-				threat, ReadoutRank.of(mob), mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth()
-			);
 			ReadoutOwner.Readout existing = owner.get(mob.getUUID());
 
 			if (existing == null) {
-				spawn(owner, player, mob, threat, playerLevel, gap, band, text, config);
-			} else if (existing.band() != band || existing.threat() != threat
-				|| !existing.text().equals(text.getString())) {
-				update(owner, player, existing, mob, threat, playerLevel, gap, band, text);
+				boolean hostile = hostile(mob, player);
+				spawn(owner, player, mob, threat, playerLevel, gap, band, textFor(mob, threat, band, hostile), hostile, config);
+			} else {
+				refresh(owner, player, existing, mob, threat, playerLevel, gap, band);
+			}
+		}
+	}
+
+	/** Red when the mob is an enemy by nature, targets this viewer, or is angry at this viewer. */
+	public static boolean hostile(final Mob mob, final ServerPlayer viewer) {
+		return mob instanceof Enemy
+			|| mob.getTarget() == viewer
+			|| mob instanceof NeutralMob neutral && neutral.isAngryAt(viewer, viewer.level());
+	}
+
+	private static Component textFor(final Mob mob, final int threat, final PowerCurve.Band band, final boolean hostile) {
+		return ReadoutText.build(
+			threat, ReadoutRank.of(mob), mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth(), hostile
+		);
+	}
+
+	private static void refresh(
+		final ReadoutOwner owner,
+		final ServerPlayer player,
+		final ReadoutOwner.Readout existing,
+		final Mob mob,
+		final int threat,
+		final int playerLevel,
+		final int gap,
+		final PowerCurve.Band band
+	) {
+		boolean hostile = hostile(mob, player);
+		Component text = textFor(mob, threat, band, hostile);
+		if (existing.band() != band || existing.threat() != threat || existing.hostile() != hostile
+			|| !existing.text().equals(text.getString())) {
+			update(owner, player, existing, mob, threat, playerLevel, gap, band, text, hostile);
+		}
+	}
+
+	/** A player's hit makes a neutral mob angry on its next goal tick, so the pair is rechecked for a few ticks. */
+	private static void afterDamage(
+		final LivingEntity entity, final DamageSource source, final float base, final float taken, final boolean blocked
+	) {
+		if (entity instanceof Mob mob && source.getEntity() instanceof ServerPlayer attacker) {
+			ReadoutOwner owner = OWNERS.get(attacker.getUUID());
+			if (owner != null && owner.get(mob.getUUID()) != null) {
+				PENDING.put(new PendingPair(attacker.getUUID(), mob.getUUID()), serverTicks + PENDING_TICKS);
+			}
+		}
+	}
+
+	private static void refreshPending(final MinecraftServer server, final PowerConfig config) {
+		if (PENDING.isEmpty()) {
+			return;
+		}
+
+		for (Map.Entry<PendingPair, Integer> entry : List.copyOf(PENDING.entrySet())) {
+			PendingPair pair = entry.getKey();
+			ServerPlayer player = server.getPlayerList().getPlayer(pair.player());
+			ReadoutOwner owner = player == null ? null : OWNERS.get(pair.player());
+			ReadoutOwner.Readout existing = owner == null ? null : owner.get(pair.mob());
+			Entity entity = existing == null ? null : player.level().getEntity(existing.mobEntityId());
+
+			if (entity instanceof Mob mob && mob.getUUID().equals(pair.mob()) && owner.enabled()) {
+				int playerLevel = PowerTracker.playerLevel(player, config);
+				int threat = PowerTracker.threat(mob, config);
+				int gap = PowerCurve.normalizedThreat(threat, config) - playerLevel;
+				refresh(owner, player, existing, mob, threat, playerLevel, gap, PowerCurve.band(gap, config));
+			}
+
+			if (entity == null || serverTicks >= entry.getValue()) {
+				PENDING.remove(pair);
 			}
 		}
 	}
@@ -237,6 +315,7 @@ public final class ReadoutService {
 		final int gap,
 		final PowerCurve.Band band,
 		final Component text,
+		final boolean hostile,
 		final PowerConfig config
 	) {
 		ServerLevel level = player.level();
@@ -253,7 +332,7 @@ public final class ReadoutService {
 		display.updateDataBeforeSync();
 		player.connection.send(addPacket(display));
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().getNonDefaultValues()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString()));
+		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString(), hostile));
 		PowerLog.recorder().readoutSpawn(
 			player.getScoreboardName(), mob.getUUID().toString(), mob.getDisplayName().getString(),
 			display.getId(), threat, playerLevel, gap, band.name(), ReadoutText.colorName(band), text.getString()
@@ -269,12 +348,18 @@ public final class ReadoutService {
 		final int playerLevel,
 		final int gap,
 		final PowerCurve.Band band,
-		final Component text
+		final Component text,
+		final boolean hostile
 	) {
 		Display.TextDisplay display = existing.display();
 		display.setText(text);
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().packDirty()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString()));
+		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString(), hostile));
+		if (existing.hostile() != hostile) {
+			PowerLog.recorder().readoutHostility(
+				player.getScoreboardName(), mob.getUUID().toString(), display.getId(), existing.hostile(), hostile
+			);
+		}
 		PowerLog.recorder().readoutBand(
 			player.getScoreboardName(), mob.getUUID().toString(), display.getId(), gap,
 			existing.band().name(), band.name(), threat, playerLevel, text.getString()

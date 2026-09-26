@@ -13,7 +13,16 @@ public final class ReadoutText {
 	public static Component build(
 		final int threat, final ReadoutRank rank, final Component mobName, final PowerCurve.Band band
 	) {
-		return prefix(threat, rank).append(mobName).withStyle(color(band));
+		return build(threat, rank, mobName, band, false);
+	}
+
+	/** Only the name carries the hostility color; the prefix keeps the band color. */
+	public static Component build(
+		final int threat, final ReadoutRank rank, final Component mobName, final PowerCurve.Band band, final boolean hostile
+	) {
+		return Component.empty()
+			.append(prefix(threat, rank).withStyle(color(band)))
+			.append(name(mobName, hostile));
 	}
 
 	/** Every readout also shows health, so the line reads `Threat 12 <Boss> Wither 200/200`. */
@@ -25,10 +34,27 @@ public final class ReadoutText {
 		final float health,
 		final float maxHealth
 	) {
-		return prefix(threat, rank)
-			.append(mobName)
-			.append(" " + shown(health) + "/" + shown(maxHealth))
-			.withStyle(color(band));
+		return build(threat, rank, mobName, band, health, maxHealth, false);
+	}
+
+	public static Component build(
+		final int threat,
+		final ReadoutRank rank,
+		final Component mobName,
+		final PowerCurve.Band band,
+		final float health,
+		final float maxHealth,
+		final boolean hostile
+	) {
+		return Component.empty()
+			.append(prefix(threat, rank).withStyle(color(band)))
+			.append(name(mobName, hostile))
+			.append(Component.literal(" " + shown(health) + "/" + shown(maxHealth)).withStyle(color(band)));
+	}
+
+	/** The name is flattened so a colored custom name still reads red or green. */
+	private static Component name(final Component mobName, final boolean hostile) {
+		return Component.literal(mobName.getString()).withStyle(hostile ? ChatFormatting.RED : ChatFormatting.GREEN);
 	}
 
 	private static MutableComponent prefix(final int threat, final ReadoutRank rank) {
