@@ -29,6 +29,9 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
+	/** W021: roster version 2 is the head, three Vindicators, five Pillagers and a Ravager; a missing key is version 1. */
+	public static final int ROSTER_VERSION = 2;
+	private static final int LEGACY_ROSTER_VERSION = 1;
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";
 	private static final ResourceKey<Level> DEFAULT_MISSION_DIMENSION = ResourceKey.create(
@@ -100,10 +103,23 @@ public final class VillageWorldData extends SavedData {
 	}
 
 	public void markRosterStarted(final VillageRecord village) {
-		if (!village.rosterStarted) {
+		if (!village.rosterStarted || village.rosterVersion != ROSTER_VERSION) {
 			village.rosterStarted = true;
+			village.rosterVersion = ROSTER_VERSION;
 			setDirty();
 		}
+	}
+
+	/** Drops a member record outright, for a retired role that must neither count nor respawn. */
+	public boolean removeMember(final UUID entityId) {
+		for (VillageRecord village : this.villages.values()) {
+			if (village.members.remove(entityId) != null) {
+				setDirty();
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public void addMember(
@@ -254,6 +270,7 @@ public final class VillageWorldData extends SavedData {
 		tag.putString("dimension", village.dimension().identifier().toString());
 		tag.put("anchor", BlockPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, village.anchor()).getOrThrow());
 		tag.putBoolean("roster_started", village.rosterStarted);
+		tag.putInt("roster_version", village.rosterVersion);
 
 		ListTag members = new ListTag();
 		village.members.values().stream()
@@ -280,6 +297,15 @@ public final class VillageWorldData extends SavedData {
 		BlockPos anchor = tag.read("anchor", BlockPos.CODEC).orElse(BlockPos.ZERO);
 		VillageRecord village = new VillageRecord(id, dimension, anchor);
 		village.rosterStarted = tag.getBooleanOr("roster_started", false);
+		village.rosterVersion = tag.getIntOr("roster_version", LEGACY_ROSTER_VERSION);
+		if (village.rosterVersion < ROSTER_VERSION && village.rosterStarted) {
+			// A roster sealed under the old layout reopens, so the next natural load adds only its missing roles.
+			village.rosterStarted = false;
+			McStellaVillages.LOGGER.info(
+				"[BEHAVIOR] mod={} event=roster_migration_reopened village={} from_version={} to_version={}",
+				McStellaVillages.MOD_ID, village.id(), village.rosterVersion, ROSTER_VERSION
+			);
+		}
 
 		for (Tag memberTag : tag.getListOrEmpty("members")) {
 			if (memberTag instanceof CompoundTag member) {
@@ -368,6 +394,7 @@ public final class VillageWorldData extends SavedData {
 		private final Map<UUID, MemberRecord> members = new LinkedHashMap<>();
 		private final Map<UUID, ThreatRecord> threats = new LinkedHashMap<>();
 		private boolean rosterStarted;
+		private int rosterVersion = ROSTER_VERSION;
 
 		private VillageRecord(final UUID id, final ResourceKey<Level> dimension, final BlockPos anchor) {
 			this.id = id;
@@ -389,6 +416,10 @@ public final class VillageWorldData extends SavedData {
 
 		public boolean rosterStarted() {
 			return this.rosterStarted;
+		}
+
+		public int rosterVersion() {
+			return this.rosterVersion;
 		}
 
 		public List<MemberRecord> members() {
