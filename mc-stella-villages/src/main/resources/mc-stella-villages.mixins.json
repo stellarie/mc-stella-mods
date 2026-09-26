@@ -4,7 +4,8 @@
 	"package": "com.stella.villages.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"MobPatrolMixin"
+		"MobPatrolMixin",
+		"RaidAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
