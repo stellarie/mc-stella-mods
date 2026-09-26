@@ -1,6 +1,7 @@
 package com.stella.villages;
 
 import com.mojang.serialization.Codec;
+import com.stella.villages.data.VillageWorldData;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +25,42 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillagePersistenceGameTest {
+	@GameTest
+	public void legacyCompleteRosterReopensOnLoad(final GameTestHelper helper) {
+		// A pre-W021 save carries no roster version, so a sealed roster must reopen to gain its new Pillagers.
+		boolean started = sealedRosterAfterLoad(helper, true);
+		PatrolTestSupport.result("legacyCompleteRosterReopensOnLoad", "rosterStartedAfterLoad=" + started);
+		helper.assertFalse(started, "a legacy sealed roster stayed sealed, so its Pillagers can never be topped up");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void currentRosterStaysSealedOnLoad(final GameTestHelper helper) {
+		boolean started = sealedRosterAfterLoad(helper, false);
+		PatrolTestSupport.result("currentRosterStaysSealedOnLoad", "rosterStartedAfterLoad=" + started);
+		helper.assertTrue(started, "a current sealed roster reopened on load and would respawn its dead");
+		helper.succeed();
+	}
+
+	/** Seals a pre-W021 roster, saves it, optionally strips the roster version as an old save lacks it, and reloads. */
+	private static boolean sealedRosterAfterLoad(final GameTestHelper helper, final boolean stripVersion) {
+		VillageWorldData data = VillageWorldData.empty();
+		VillageWorldData.VillageRecord village = data.findOrCreate(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 1, 3)));
+		for (String role : List.of("HEAD", "VINDICATOR", "VINDICATOR", "VINDICATOR", "PILLAGER", "PILLAGER", "PILLAGER", "RAVAGER", "EVOKER", "WITCH")) {
+			data.addMember(village, UUID.randomUUID(), role, helper.absolutePos(new BlockPos(4, 1, 4)));
+		}
+		data.markRosterStarted(village);
+		CompoundTag saved = data.serializeState();
+		if (stripVersion) {
+			for (Tag entry : saved.getListOrEmpty("villages")) {
+				if (entry instanceof CompoundTag villageTag) {
+					villageTag.remove("roster_version");
+				}
+			}
+		}
+		return VillageWorldData.loadState(saved).village(village.id()).map(VillageWorldData.VillageRecord::rosterStarted).orElse(true);
+	}
+
 	@GameTest
 	@SuppressWarnings("unchecked")
 	public void villageStateRoundTrips(final GameTestHelper helper) {

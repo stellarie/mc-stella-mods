@@ -1,7 +1,9 @@
 package com.stella.villages;
 
+import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.patrol.MobPatrolAccess;
 import com.stella.villages.patrol.PatrolService;
+import com.stella.villages.patrol.PatrolState;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -1194,6 +1196,72 @@ public final class VillagePatrolGameTest {
 					+ " crossbowsBefore=" + crossbowsBefore + " crossbowsAfter=" + crossbowsAfter[0]);
 			}
 		});
+	}
+
+	@GameTest(maxTicks = 200, padding = 64)
+	public void staleEvokerLeavesWhenItLoads(final GameTestHelper helper) {
+		String test = "staleEvokerLeavesWhenItLoads";
+		Mob member = loadLegacyMember(helper, test, EntityTypes.EVOKER, PatrolState.Role.EVOKER);
+		if (member == null) {
+			return;
+		}
+
+		UUID id = member.getUUID();
+		helper.succeedWhen(() -> {
+			boolean recordRemoved = VillageWorldData.get(helper.getLevel()).villageForMember(id).isEmpty();
+			helper.assertTrue(member.isRemoved() && recordRemoved,
+				"the pre-W021 Evoker stayed: removed=" + member.isRemoved() + " recordRemoved=" + recordRemoved);
+			PatrolTestSupport.result(test, "removed=true recordRemoved=true tick=" + helper.getTick());
+		});
+	}
+
+	@GameTest(maxTicks = 200, padding = 64)
+	public void patrolPillagerStaysWhenItLoads(final GameTestHelper helper) {
+		String test = "patrolPillagerStaysWhenItLoads";
+		Mob member = loadLegacyMember(helper, test, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER);
+		if (member == null) {
+			return;
+		}
+
+		// The same load with a W021 role must keep the member, so only the retired roles are removed.
+		helper.runAfterDelay(20, () -> {
+			boolean recordKept = VillageWorldData.get(helper.getLevel()).villageForMember(member.getUUID()).isPresent();
+			boolean alive = !member.isRemoved();
+			member.discard();
+			PatrolTestSupport.result(test, "alive=" + alive + " recordKept=" + recordKept);
+			helper.assertTrue(alive && recordKept, "a patrol Pillager was removed on load: alive=" + alive + " recordKept=" + recordKept);
+			helper.succeed();
+		});
+	}
+
+	/** Adds one marked patrol member of a given role to a loaded village, the way a saved member reloads. */
+	private static @Nullable Mob loadLegacyMember(
+		final GameTestHelper helper,
+		final String test,
+		final net.minecraft.world.entity.EntityType<? extends Mob> type,
+		final PatrolState.Role role
+	) {
+		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+			return null;
+		}
+
+		UUID villageId = PatrolTestSupport.villageId(helper);
+		VillageWorldData data = VillageWorldData.get(helper.getLevel());
+		VillageWorldData.VillageRecord village = data.village(villageId).orElse(null);
+		if (village == null) {
+			helper.fail("the loaded village has no record");
+			return null;
+		}
+
+		Mob mob = type.create(helper.getLevel(), EntitySpawnReason.EVENT);
+		Vec3 at = helper.absoluteVec(new Vec3(4.5, 2.0, 4.5));
+		mob.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		mob.setPersistenceRequired();
+		PatrolState.attach(mob, villageId, role);
+		((MobPatrolAccess) mob).setPatrolMarker(true);
+		data.addMember(village, mob.getUUID(), role.name(), mob.blockPosition());
+		helper.getLevel().addFreshEntity(mob);
+		return mob;
 	}
 
 	@GameTest(maxTicks = 5, required = false, padding = 64)
