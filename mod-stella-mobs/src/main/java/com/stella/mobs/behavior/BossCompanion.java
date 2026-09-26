@@ -24,7 +24,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 
 /**
  * B05: exactly one elite companion of the boss's own kind. It is queued at spawn and added on the level
- * tick boundary like {@link EscortSquad}, but a boss takes no six mob escort, so the count is one and the
+ * tick boundary like {@link EscortSquad}, but a boss takes no escort squad, so the count is one and the
  * companion is marked elite rather than left ordinary.
  */
 public final class BossCompanion {
