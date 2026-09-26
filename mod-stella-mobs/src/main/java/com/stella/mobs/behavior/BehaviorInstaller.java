@@ -22,6 +22,7 @@ import net.minecraft.world.entity.monster.ElderGuardian;
 import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.entity.monster.Guardian;
 import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.monster.illager.Illusioner;
 import net.minecraft.world.entity.monster.illager.Evoker;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.entity.monster.spider.Spider;
@@ -54,6 +55,8 @@ public final class BehaviorInstaller {
 	public static final int OCEAN_AURA_PRIORITY = WITCH_BLOCK_START + 3;
 	/** Vanilla's ghast holds its look goal and its shoot goal at rank 7; both are replaced together. */
 	public static final int GHAST_SHOOT_PRIORITY = 7;
+	/** M9: flagless, so the rank only orders it against the other flagless goals. */
+	public static final int ILLUSIONER_PRIORITY = WITCH_BLOCK_START;
 	/** M8: flagless, so the rank only orders it against the other flagless goals. */
 	public static final int EVOKER_OPENING_PRIORITY = WITCH_BLOCK_START;
 	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
@@ -212,6 +215,12 @@ public final class BehaviorInstaller {
 
 		if (mob instanceof Witch witch) {
 			installWitch(witch);
+		}
+
+		// M9: every Illusioner's aura and decoys; a decoy's own goals are stripped after it loads.
+		if (mob instanceof Illusioner illusioner && !IllusionerKit.isDecoy(illusioner)) {
+			illusioner.getGoalSelector().addGoal(ILLUSIONER_PRIORITY, new IllusionerAuraGoal(illusioner));
+			illusioner.getGoalSelector().addGoal(ILLUSIONER_PRIORITY, new IllusionerDecoyGoal(illusioner));
 		}
 
 		if (mob instanceof Evoker evoker) {
