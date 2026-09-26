@@ -1,4 +1,4 @@
-# E1 — Stage 2: compatibility gates, then execute the locked plan
+# E1 — Stage 2: compatibility gates, then execute the plan
 
 | Field | Value |
 |---|---|
@@ -7,19 +7,20 @@
 | Work branch | `feat/stage2-vanilla-xp-catalogue` (create only after both gates below pass) |
 | Depends on | nothing |
 | Blocks | E2, E3, E4 |
-| Source | `HANDOFFS-2026-09-26.md` → "mc-stella-mods-current-handoff.md" |
+| Source | [Stage 2 blackboard plan](Stage2-blackboard-plan.md) and `HANDOFFS-2026-09-26.md` |
 
 ## Objective
 
-Execute the locked Stage 2 plan (`mod-stella-equips-enchants-vanilla-xp-and-catalogue-cleanup`)
+Execute the Stage 2 plan (`mod-stella-equips-enchants-vanilla-xp-and-catalogue-cleanup`)
 without breaking an existing world. Two compatibility paths must be proven safe to remove first:
 the **player attachment** and the **Veinminer item** load path.
 
-## What this repository does and does not contain
+## Source plan and current status
 
-- The Stage 2 plan itself is **not** in this repository. It lives on the blackboard
-  (`C:/Users/Stella/notes/blackboard/`), and the archive only summarises it. This design does not
-  restate its contract. It covers the part the handoff leaves open: the two compatibility gates.
+- The full [Stage 2 blackboard plan](Stage2-blackboard-plan.md) is copied here without edits.
+  Its source SHA-256 is `F9A9C9091FC14D81984AEDEB6C4B58146D374762380E4B708AF2D202E57F037A`.
+  The copied task remains in `planning`; its compatibility gates are unverified.
+  This design covers those two compatibility gates.
 - The handoff gives three facts about Stage 2's content: the catalogue goes from 72 to 71
   (Tempo plan, acceptance line), the Kiku W009 fixes (config-reload XP setup, bundled-config test
   scope, `PowerFixtures`), and the four-identifier inventory going from 67 to 68 lines.
@@ -82,8 +83,7 @@ requires.
 
 ## Plan
 
-1. Recover the locked Stage 2 plan text from the blackboard and commit a copy beside this file,
-   so later sessions work from the repository and not from memory.
+1. Read the archived Stage 2 plan beside this file. Check the live blackboard status before execution.
 2. Prepare the duplicate world (Gate A step 1). Record hashes.
 3. Run Gate A, then Gate B. Save every server log outside `build/`.
 4. If either gate fails: stop, record the evidence in the task thread, ask oniichan.
