@@ -9,6 +9,7 @@ Minecraft mods for a private Fabric server.
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
 | `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
 | `mod-stella-spells/` | Spellbooks and spell-enhancing enchantments | `main-spells` |
+| `mc-stella-villages/` | Village patrols; missions and raids are in development | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.
@@ -16,8 +17,9 @@ tip of the branch for that mod. Do not merge integration branches into each othe
 Use a worktree from the matching branch before editing a mod. Other mod
 directories may be absent or older in that checkout.
 
-`main` combines the last verified deployed source for all mods. Start new mod
-work from the matching integration branch, then publish a verified snapshot.
+`main` contains the 2026-09-26 source snapshot, including unfinished spellbook
+and village work. See `HANDOFFS-2026-09-26.md` before resuming either mod.
+Start new mod work from the matching integration branch.
 `master` is the original repository baseline, not a development target.
 
 ## mod-stella-mobs
