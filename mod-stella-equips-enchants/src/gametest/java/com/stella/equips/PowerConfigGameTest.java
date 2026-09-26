@@ -3,7 +3,6 @@ package com.stella.equips;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigParser;
 import com.stella.equips.power.PowerConfigStore;
-import com.stella.equips.power.PowerCurve;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -30,52 +29,52 @@ public class PowerConfigGameTest {
 	public void bundledDocumentCarriesTheAcceptanceNumbers(final GameTestHelper helper) {
 		PowerConfig expected = PowerFixtures.acceptanceConfig();
 		PowerConfig actual = PowerConfigStore.bundled();
-		helper.assertTrue(
-			actual.equals(expected),
-			"the bundled document parsed to " + actual + " but the acceptance numbers are " + expected
-		);
-		long levelFifty = PowerCurve.pointsForLevel(50, actual);
-		helper.assertTrue(
-			levelFifty == PowerFixtures.LEVEL_50_POINTS,
-			"the bundled document puts level 50 at " + levelFifty + " points"
-		);
-		helper.assertTrue(
-			Math.abs(actual.curve().growth() - PowerFixtures.GROWTH) < 1.0E-9,
-			"the bundled growth is " + actual.curve().growth()
-		);
-		helper.assertTrue(
-			Math.abs(actual.attributes().healthPerLevel() - PowerFixtures.HEALTH_PER_LEVEL) < 1.0E-9,
-			"the bundled health per level is " + actual.attributes().healthPerLevel()
-		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} pointsForLevel50={} growth={} awardDivisor={} mobLevelCap={} healthPerLevel={} scanInterval={}",
-			actual.levelCap(),
-			levelFifty,
-			actual.curve().growth(),
-			actual.award().divisor(),
-			actual.mobLevel().levelCap(),
-			actual.attributes().healthPerLevel(),
-			actual.tracker().scanIntervalTicks()
+			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} threatCap={} bands={} tracker={} healthPerLevel={} readout={}",
+			actual.levelCap(), actual.mobLevel().levelCap(), actual.bands(), actual.tracker(),
+			actual.attributes().healthPerLevel(), actual.readout()
+		);
+		helper.assertTrue(
+			actual.levelCap() == expected.levelCap()
+				&& actual.mobLevel().equals(expected.mobLevel())
+				&& actual.bands().equals(expected.bands())
+				&& actual.tracker().equals(expected.tracker())
+				&& actual.attributes().equals(expected.attributes())
+				&& actual.readout().equals(expected.readout()),
+			"the bundled document parsed to " + actual + " but the acceptance numbers are " + expected
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void bundledNoteNamesTheUnitAndTheSourceOfPower(final GameTestHelper helper) {
-		String document = PowerConfigStore.DEFAULT_JSON;
-		boolean note = document.contains("\"_note\"");
-		boolean valueAtCap = document.contains("value at level 50");
-		boolean killsOnly = document.contains("Kills are the only source of power");
-		boolean awardUnit = document.contains("mobLevel times divisor");
-		boolean deathRule = document.contains("removes 5 percent");
-		helper.assertTrue(note, "the bundled document carries no _note");
-		helper.assertTrue(valueAtCap, "the note does not name the unit of the attribute keys");
-		helper.assertTrue(killsOnly, "the note does not name kills as the only source of power");
-		helper.assertTrue(awardUnit, "the note does not name the award unit");
-		helper.assertTrue(deathRule, "the note does not name the death rule");
+	public void bundledNoteNamesVanillaXpAsTheSourceOfPower(final GameTestHelper helper) {
+		String note = noteOf(PowerConfigStore.DEFAULT_JSON);
+		boolean vanilla = note.contains("vanilla experience level");
+		boolean valueAtCap = note.contains("value at level " + PowerConfigStore.bundled().levelCap());
+		boolean staleClaims = note.contains("Kills are the only source") || note.contains("removes 5 percent")
+			|| note.contains("divisor");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=unitNote RESULT note={} valueAtCapUnit={} killsOnly={} awardUnit={} deathRule={}",
-			note, valueAtCap, killsOnly, awardUnit, deathRule
+			"[BEHAVIOR] test=unitNote RESULT vanilla={} valueAtCap={} staleClaims={}", vanilla, valueAtCap, staleClaims
+		);
+		helper.assertTrue(vanilla && valueAtCap && !staleClaims, "the bundled note reads: " + note);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anOlderFileKeepsItsValuesAndReportsTheRetiredCurveAndAwardKeys(final GameTestHelper helper) {
+		PowerConfig fallback = PowerFixtures.acceptanceConfig();
+		String older = PowerConfigStore.DEFAULT_JSON
+			.replace("\"level_cap\": 50", "\"level_cap\": " + EDITED_LEVEL_CAP
+				+ ",\n\t\"curve\": { \"base\": 3.0, \"growth\": 1.5 },\n\t\"award\": { \"divisor\": 2.0, \"minimum\": 4 }");
+		PowerConfig parsed = PowerConfigParser.parse(older, fallback);
+		java.util.List<String> ignored = PowerConfigParser.ignoredKeys();
+		boolean reported = ignored.containsAll(java.util.List.of("curve.base", "curve.growth", "award.divisor", "award.minimum"));
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=retiredCurveAward RESULT levelCap={} ignored={} reported={}", parsed.levelCap(), ignored, reported
+		);
+		helper.assertTrue(
+			reported && parsed.levelCap() == EDITED_LEVEL_CAP,
+			"an older file parsed to level cap " + parsed.levelCap() + " and reported " + ignored
 		);
 		helper.succeed();
 	}
@@ -253,5 +252,11 @@ public class PowerConfigGameTest {
 			path, writtenByTheServerStartHook, written, loaded.levelCap()
 		);
 		helper.succeed();
+	}
+
+	private static String noteOf(final String document) {
+		int start = document.indexOf("\"_note\"");
+		int end = document.indexOf("\n", start);
+		return start < 0 ? "" : document.substring(start, end < 0 ? document.length() : end);
 	}
 }

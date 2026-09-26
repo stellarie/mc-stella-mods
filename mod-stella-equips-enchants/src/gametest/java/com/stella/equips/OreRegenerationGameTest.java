@@ -34,11 +34,14 @@ import net.minecraft.world.scores.Objective;
 public class OreRegenerationGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String HANDLER_CLASS = "com.stella.equips.enchant.OreRegeneration";
-	private static final int RATE_SAMPLES = 250;
+	private static final int RATE_SAMPLES = 1500;
 	private static final int FIRST_LEVEL = 1;
-	private static final int SCALED_LEVEL = 3;
-	private static final int RED_CHANCE_PER_LEVEL_PERCENT = 20;
+	private static final int SCALED_LEVEL = 5;
+	// The approved rate: 5 percent per level, so 25 percent at level 5.
+	private static final int APPROVED_CHANCE_PER_LEVEL_PERCENT = 5;
 	private static final int RED_COOLDOWN_TICKS = 20;
+	// 0.75 to the power of 64 is below one in a hundred million, so a healthy handler always regrows in budget.
+	private static final int REGROW_ATTEMPTS = 64;
 
 	@GameTest(maxTicks = 200)
 	public void oreRegenerationMeasuresRatesAfterCompletedBreaks(final GameTestHelper helper) {
@@ -115,18 +118,26 @@ public class OreRegenerationGameTest {
 		List<String> identityFailures = new ArrayList<>();
 		int oreBreaks = 0;
 		for (Block ore : oreBlocks) {
-			clock += cooldownTicks;
-			runCommand(helper, miner, "scoreboard players set #clock ench_clock " + clock);
-			level.setBlockAndUpdate(target, ore.defaultBlockState());
-			boolean destroyed = miner.gameMode.destroyBlock(target);
-			Block afterBreak = level.getBlockState(target).getBlock();
-			if (destroyed) {
-				oreBreaks++;
+			// At 25 percent an ore regrows within the attempt budget unless the handler is broken.
+			boolean regrew = false;
+			for (int attempt = 0; attempt < REGROW_ATTEMPTS && !regrew; attempt++) {
+				clock += cooldownTicks;
+				runCommand(helper, miner, "scoreboard players set #clock ench_clock " + clock);
+				level.setBlockAndUpdate(target, ore.defaultBlockState());
+				boolean destroyed = miner.gameMode.destroyBlock(target);
+				Block afterBreak = level.getBlockState(target).getBlock();
+				if (destroyed) {
+					oreBreaks++;
+				}
+				if (!destroyed || (afterBreak != ore && afterBreak != Blocks.AIR)) {
+					identityFailures.add(
+						BuiltInRegistries.BLOCK.getKey(ore) + "->" + BuiltInRegistries.BLOCK.getKey(afterBreak)
+					);
+				}
+				regrew = afterBreak == ore;
 			}
-			if (!destroyed || afterBreak != ore) {
-				identityFailures.add(
-					BuiltInRegistries.BLOCK.getKey(ore) + "->" + BuiltInRegistries.BLOCK.getKey(afterBreak)
-				);
+			if (!regrew) {
+				identityFailures.add(BuiltInRegistries.BLOCK.getKey(ore) + " never regrew");
 			}
 		}
 
@@ -136,35 +147,31 @@ public class OreRegenerationGameTest {
 		boolean nonOreDestroyed = miner.gameMode.destroyBlock(target);
 		boolean nonOreStayedAir = nonOreDestroyed && level.getBlockState(target).isAir();
 
-		clock += cooldownTicks;
-		runCommand(helper, miner, "scoreboard players set #clock ench_clock " + clock);
-		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
-		boolean cooldownReady = miner.gameMode.destroyBlock(target)
-			&& level.getBlockState(target).is(Blocks.DIAMOND_ORE);
+		boolean cooldownReady = false;
+		for (int attempt = 0; attempt < REGROW_ATTEMPTS && !cooldownReady; attempt++) {
+			clock += cooldownTicks;
+			runCommand(helper, miner, "scoreboard players set #clock ench_clock " + clock);
+			level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+			cooldownReady = miner.gameMode.destroyBlock(target) && level.getBlockState(target).is(Blocks.DIAMOND_ORE);
+		}
 		int cooldownStartedAt = score(helper, miner, "ench_cd_ore");
 
-		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
-		boolean blockedAtZero = miner.gameMode.destroyBlock(target)
-			&& level.getBlockState(target).isAir();
-		runCommand(
-			helper, miner,
-			"scoreboard players set #clock ench_clock " + (cooldownStartedAt + cooldownTicks - 1)
-		);
-		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
-		boolean blockedAtNineteen = miner.gameMode.destroyBlock(target)
-			&& level.getBlockState(target).isAir();
-		runCommand(
-			helper, miner,
-			"scoreboard players set #clock ench_clock " + (cooldownStartedAt + cooldownTicks)
-		);
-		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
-		boolean readyAtTwenty = miner.gameMode.destroyBlock(target)
-			&& level.getBlockState(target).is(Blocks.DIAMOND_ORE);
+		boolean blockedAtZero = regrowths(helper, miner, level, target, cooldownStartedAt) == 0;
+		boolean blockedAtNineteen = regrowths(helper, miner, level, target, cooldownStartedAt + cooldownTicks - 1) == 0;
+		boolean readyAtTwenty = false;
+		for (int attempt = 0; attempt < REGROW_ATTEMPTS && !readyAtTwenty; attempt++) {
+			runCommand(
+				helper, miner,
+				"scoreboard players set #clock ench_clock " + (score(helper, miner, "ench_cd_ore") + cooldownTicks)
+			);
+			level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+			readyAtTwenty = miner.gameMode.destroyBlock(target) && level.getBlockState(target).is(Blocks.DIAMOND_ORE);
+		}
 
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=oreRegeneration RESULT handlerPresent={} chancePerLevelPercent={} maxLevel={} "
-				+ "cooldownTicks={} controlAir={} level1={}/{} completed1={} rate1Percent={}% level3={}/{} "
-				+ "completed3={} rate3Percent={}% oreBlocks={} oreBreaks={} identityFailures={} "
+				+ "cooldownTicks={} controlAir={} level1={}/{} completed1={} rate1Percent={}% level5={}/{} "
+				+ "completed5={} rate5Percent={}% oreBlocks={} oreBreaks={} identityFailures={} "
 				+ "nonOreStayedAir={} cooldownReady={} blockedAtZero={} blockedAtNineteen={} readyAtTwenty={}",
 			rules.handlerPresent(), chancePerLevel, maxLevel, cooldownTicks, controlAir,
 			regenerated.get(FIRST_LEVEL), RATE_SAMPLES, completed.get(FIRST_LEVEL),
@@ -176,21 +183,24 @@ public class OreRegenerationGameTest {
 		);
 
 		helper.assertTrue(rules.handlerPresent(), "the after-break Ore Regeneration handler is missing");
-		helper.assertTrue(chancePerLevel == RED_CHANCE_PER_LEVEL_PERCENT, "chance per level changed from 20 percent");
+		helper.assertTrue(
+			chancePerLevel == APPROVED_CHANCE_PER_LEVEL_PERCENT,
+			"chance per level is " + chancePerLevel + " percent instead of " + APPROVED_CHANCE_PER_LEVEL_PERCENT
+		);
 		helper.assertTrue(cooldownTicks == RED_COOLDOWN_TICKS, "cooldown is not 20 ticks");
 		helper.assertTrue(completed.get(FIRST_LEVEL) == RATE_SAMPLES, "level 1 sample breaks did not all complete");
-		helper.assertTrue(completed.get(SCALED_LEVEL) == RATE_SAMPLES, "level 3 sample breaks did not all complete");
+		helper.assertTrue(completed.get(SCALED_LEVEL) == RATE_SAMPLES, "level " + SCALED_LEVEL + " sample breaks did not all complete");
 		helper.assertTrue(
-			withinFourStandardDeviations(regenerated.get(FIRST_LEVEL), RATE_SAMPLES, chancePerLevel),
-			"level 1 rate was " + regenerated.get(FIRST_LEVEL) + "/" + RATE_SAMPLES + ", expected 20 percent"
+			withinFourStandardDeviations(regenerated.get(FIRST_LEVEL), RATE_SAMPLES, APPROVED_CHANCE_PER_LEVEL_PERCENT),
+			"level 1 rate was " + regenerated.get(FIRST_LEVEL) + "/" + RATE_SAMPLES + ", expected "
+				+ APPROVED_CHANCE_PER_LEVEL_PERCENT + " percent"
 		);
-		int expectedLevelThree = Math.min(100, chancePerLevel * SCALED_LEVEL);
+		int expectedLevelThree = Math.min(100, APPROVED_CHANCE_PER_LEVEL_PERCENT * SCALED_LEVEL);
 		helper.assertTrue(
 			withinFourStandardDeviations(regenerated.get(SCALED_LEVEL), RATE_SAMPLES, expectedLevelThree),
-			"level 3 rate was " + regenerated.get(SCALED_LEVEL) + "/" + RATE_SAMPLES
+			"level " + SCALED_LEVEL + " rate was " + regenerated.get(SCALED_LEVEL) + "/" + RATE_SAMPLES
 				+ ", expected " + expectedLevelThree + " percent"
 		);
-		helper.assertTrue(oreBreaks == oreBlocks.size(), "not every minecraft:ores block break completed");
 		helper.assertTrue(identityFailures.isEmpty(), "ore identity changed: " + identityFailures);
 		helper.assertTrue(nonOreStayedAir, "stone regenerated as " + level.getBlockState(target));
 		helper.assertTrue(cooldownReady, "level 5 did not regenerate an ore when cooldown was ready");
@@ -198,6 +208,45 @@ public class OreRegenerationGameTest {
 		helper.assertTrue(blockedAtNineteen, "an ore regenerated before 20 cooldown ticks");
 		helper.assertTrue(readyAtTwenty, "an ore did not regenerate at 20 cooldown ticks");
 		helper.succeed();
+	}
+
+	@GameTest
+	public void theDescriptionNamesTheApprovedChancePerLevel(final GameTestHelper helper) {
+		String lang;
+		try (java.io.InputStream stream = OreRegenerationGameTest.class.getResourceAsStream(
+			"/assets/" + MOD_ID + "/lang/en_us.json"
+		)) {
+			lang = stream == null ? "" : new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+		} catch (java.io.IOException e) {
+			lang = "";
+		}
+
+		String key = "\"enchantment." + MOD_ID + ".tool.ore_regeneration.desc\": \"";
+		int start = lang.indexOf(key);
+		String description = start < 0 ? "" : lang.substring(start + key.length(), lang.indexOf('"', start + key.length()));
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=oreRegenerationText RESULT description={} approvedPercent={}",
+			description, APPROVED_CHANCE_PER_LEVEL_PERCENT
+		);
+		helper.assertTrue(
+			description.contains(" " + APPROVED_CHANCE_PER_LEVEL_PERCENT + "% chance per level"),
+			"the description reads '" + description + "' instead of naming " + APPROVED_CHANCE_PER_LEVEL_PERCENT + "% per level"
+		);
+		helper.succeed();
+	}
+
+	// Breaks a fresh ore REGROW_ATTEMPTS times with the clock held, and counts the regrowths.
+	private static int regrowths(
+		final GameTestHelper helper, final ServerPlayer miner, final ServerLevel level, final BlockPos target, final int clock
+	) {
+		int regrew = 0;
+		for (int attempt = 0; attempt < REGROW_ATTEMPTS; attempt++) {
+			runCommand(helper, miner, "scoreboard players set #clock ench_clock " + clock);
+			level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+			regrew += miner.gameMode.destroyBlock(target) && level.getBlockState(target).is(Blocks.DIAMOND_ORE) ? 1 : 0;
+		}
+
+		return regrew;
 	}
 
 	private static List<Block> oreBlocks(final ServerLevel level) {
@@ -233,7 +282,7 @@ public class OreRegenerationGameTest {
 			cooldown.setAccessible(true);
 			return new HandlerRules(true, chance.getInt(null), cooldown.getInt(null));
 		} catch (ReflectiveOperationException | LinkageError error) {
-			return new HandlerRules(false, RED_CHANCE_PER_LEVEL_PERCENT, RED_COOLDOWN_TICKS);
+			return new HandlerRules(false, -1, RED_COOLDOWN_TICKS);
 		}
 	}
 

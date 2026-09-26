@@ -25,42 +25,8 @@ public final class PowerRecorder {
 		installed = true;
 		PowerLog.setRecorder(new PowerLog.Recorder() {
 			@Override
-			public void powerLevel(
-				final String player,
-				final int level,
-				final int from,
-				final double points
-			) {
-				add(
-					"[BEHAVIOR] power level player=%s level=%d from=%d points=%.2f",
-					player, level, from, points
-				);
-			}
-
-			@Override
-			public void powerKill(
-				final String mob,
-				final int mobLevel,
-				final int award,
-				final double points
-			) {
-				add(
-					"[BEHAVIOR] power kill mob=%s mobLevel=%d award=%d points=%.2f",
-					mob, mobLevel, award, points
-				);
-			}
-
-			@Override
-			public void powerDeath(
-				final String player,
-				final double lost,
-				final double points,
-				final int level
-			) {
-				add(
-					"[BEHAVIOR] power death player=%s lost=%.2f points=%.2f level=%d",
-					player, lost, points, level
-				);
+			public void powerLevel(final String player, final int level, final int from) {
+				add("[BEHAVIOR] power level player=%s level=%d from=%d", player, level, from);
 			}
 
 			@Override
@@ -74,7 +40,7 @@ public final class PowerRecorder {
 				final String mob,
 				final String mobName,
 				final int entityId,
-				final int mobLevel,
+				final int threat,
 				final int playerLevel,
 				final int gap,
 				final String band,
@@ -82,8 +48,8 @@ public final class PowerRecorder {
 				final String text
 			) {
 				add(
-					"[BEHAVIOR] readout spawn player=%s mob=%s name=%s entityId=%d mobLevel=%d playerLevel=%d gap=%d band=%s color=%s text=%s",
-					player, mob, mobName, entityId, mobLevel, playerLevel, gap, band, color, text
+					"[BEHAVIOR] readout spawn player=%s mob=%s name=%s entityId=%d threat=%d playerLevel=%d gap=%d band=%s color=%s text=%s",
+					player, mob, mobName, entityId, threat, playerLevel, gap, band, color, text
 				);
 			}
 
@@ -95,13 +61,13 @@ public final class PowerRecorder {
 				final int gap,
 				final String bandFrom,
 				final String bandTo,
-				final int mobLevel,
+				final int threat,
 				final int playerLevel,
 				final String text
 			) {
 				add(
-					"[BEHAVIOR] readout band player=%s mob=%s entityId=%d gap=%d bandFrom=%s bandTo=%s mobLevel=%d playerLevel=%d text=%s",
-					player, mob, entityId, gap, bandFrom, bandTo, mobLevel, playerLevel, text
+					"[BEHAVIOR] readout band player=%s mob=%s entityId=%d gap=%d bandFrom=%s bandTo=%s threat=%d playerLevel=%d text=%s",
+					player, mob, entityId, gap, bandFrom, bandTo, threat, playerLevel, text
 				);
 			}
 

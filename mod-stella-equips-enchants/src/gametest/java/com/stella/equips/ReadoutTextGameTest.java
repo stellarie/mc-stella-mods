@@ -1,6 +1,7 @@
 package com.stella.equips;
 
 import com.stella.equips.power.PowerCurve;
+import com.stella.equips.readout.ReadoutRank;
 import com.stella.equips.readout.ReadoutText;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,9 +14,8 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
 public class ReadoutTextGameTest {
-	private static final int MOB_LEVEL = 12;
+	private static final int THREAT = 12;
 	private static final String MOB_NAME = "Zombie";
-	private static final String EXPECTED_TEXT = "[" + MOB_LEVEL + "] " + MOB_NAME;
 	private static final Map<PowerCurve.Band, ChatFormatting> EXPECTED_COLORS = new LinkedHashMap<>();
 
 	static {
@@ -27,43 +27,53 @@ public class ReadoutTextGameTest {
 	}
 
 	@GameTest
-	public void theTextIsTheLevelPrefixThenTheMobOwnDisplayName(final GameTestHelper helper) {
-		Component name = Component.literal(MOB_NAME);
-		Component text = ReadoutText.build(MOB_LEVEL, name, PowerCurve.Band.GREEN);
-		String rendered = text.getString();
+	public void theTextIsTheRawThreatThenTheMobOwnDisplayName(final GameTestHelper helper) {
+		String low = ReadoutText.build(THREAT, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN).getString();
+		String high = ReadoutText.build(THREAT + 1, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN).getString();
+		String renamed = ReadoutText.build(THREAT, ReadoutRank.NORMAL, Component.literal("Husk"), PowerCurve.Band.GREEN).getString();
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=readoutText RESULT low={} high={} renamed={}", low, high, renamed);
 		helper.assertTrue(
-			EXPECTED_TEXT.equals(rendered),
-			"a level " + MOB_LEVEL + " mob named " + MOB_NAME + " rendered as '" + rendered + "' instead of '"
-				+ EXPECTED_TEXT + "'"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=readoutText RESULT mobLevel={} mobName={} text={} color={}",
-			MOB_LEVEL, MOB_NAME, rendered, ReadoutText.colorName(PowerCurve.Band.GREEN)
+			low.startsWith("Threat " + THREAT + " ") && high.startsWith("Threat " + (THREAT + 1) + " ")
+				&& low.endsWith(MOB_NAME) && renamed.endsWith("Husk"),
+			"the threat and name did not follow their inputs: " + low + " / " + high + " / " + renamed
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theHealthTextIsTheLevelPrefixTheNameAndTheHealth(final GameTestHelper helper) {
-		float health = 13.5F;
-		float maxHealth = 20.0F;
-		String expected = "[" + MOB_LEVEL + "] " + MOB_NAME + " 14/20";
-		Component text = ReadoutText.build(
-			MOB_LEVEL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN, health, maxHealth
-		);
-		String rendered = text.getString();
-		helper.assertTrue(
-			expected.equals(rendered),
-			"a mob at " + health + " of " + maxHealth + " rendered as '" + rendered + "' instead of '" + expected + "'"
-		);
-		helper.assertTrue(
-			ReadoutText.shown(0.5F) == 1,
-			"a mob at half a health point rendered as " + ReadoutText.shown(0.5F)
-		);
+	public void theHealthTextRoundsUpAndFollowsTheMobHealth(final GameTestHelper helper) {
+		String hurt = ReadoutText.build(
+			THREAT, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN, 13.5F, 20.0F
+		).getString();
+		String whole = ReadoutText.build(
+			THREAT, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.GREEN, 20.0F, 20.0F
+		).getString();
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=readoutTextHealth RESULT mobLevel={} mobName={} health={} maxHealth={} text={} "
-				+ "halfShown={}",
-			MOB_LEVEL, MOB_NAME, health, maxHealth, rendered, ReadoutText.shown(0.5F)
+			"[BEHAVIOR] test=readoutTextHealth RESULT hurt={} whole={} halfShown={}", hurt, whole, ReadoutText.shown(0.5F)
+		);
+		helper.assertTrue(
+			hurt.endsWith(" 14/20") && whole.endsWith(" 20/20") && ReadoutText.shown(0.5F) == 1,
+			"the health text read " + hurt + " and " + whole + " and half a point showed " + ReadoutText.shown(0.5F)
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theRankTagFollowsTheRankAndSitsBetweenThreatAndName(final GameTestHelper helper) {
+		String boss = ReadoutText.build(
+			12, ReadoutRank.BOSS, Component.literal("Wither"), PowerCurve.Band.RED, 200.0F, 200.0F
+		).getString();
+		String elite = ReadoutText.build(
+			7, ReadoutRank.ELITE, Component.literal("Zombie"), PowerCurve.Band.GREEN, 40.0F, 40.0F
+		).getString();
+		String normal = ReadoutText.build(
+			7, ReadoutRank.NORMAL, Component.literal("Zombie"), PowerCurve.Band.GREEN, 40.0F, 40.0F
+		).getString();
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=readoutRankTag RESULT boss={} elite={} normal={}", boss, elite, normal);
+		helper.assertTrue(
+			boss.equals("Threat 12 <Boss> Wither 200/200") && elite.equals("Threat 7 <Elite> Zombie 40/40")
+				&& normal.equals("Threat 7 Zombie 40/40"),
+			"the three ranks read " + boss + " / " + elite + " / " + normal
 		);
 		helper.succeed();
 	}
@@ -74,7 +84,7 @@ public class ReadoutTextGameTest {
 		String broken = "none";
 
 		for (Map.Entry<PowerCurve.Band, ChatFormatting> entry : EXPECTED_COLORS.entrySet()) {
-			Component text = ReadoutText.build(MOB_LEVEL, Component.literal(MOB_NAME), entry.getKey());
+			Component text = ReadoutText.build(THREAT, ReadoutRank.ELITE, Component.literal(MOB_NAME), entry.getKey());
 			int expected = TextColor.fromLegacyFormat(entry.getValue()).getValue();
 			int covered = 0;
 			int colored = 0;

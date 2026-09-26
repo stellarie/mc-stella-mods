@@ -255,7 +255,7 @@ public class BookLootGameTest {
 		Set<String> ids = new TreeSet<>();
 		for (Holder.Reference<Enchantment> holder : registry.listElements().toList()) {
 			Identifier id = holder.key().identifier();
-			if (id.getNamespace().equals(StellaEquips.MOD_ID) && !id.getPath().equals("test_marker")) {
+			if (id.getNamespace().equals(StellaEquips.MOD_ID)) {
 				ids.add(id.toString());
 			}
 		}

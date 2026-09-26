@@ -71,18 +71,14 @@ public class EffectEnchantGameTest {
 	private static final int SHOT_WAIT_TICKS = 25;
 	/** Cloudstep grants Jump Boost 3, which is 0.3 of jump power, about two blocks. */
 	private static final int CLOUDSTEP_JUMP_AMPLIFIER = 2;
-	private static final double CLOUDSTEP_JUMP_POWER = 0.1 * (CLOUDSTEP_JUMP_AMPLIFIER + 1);
-	private static final int CLOUDSTEP_EFFECT_TICKS = 40;
+	/** Both effects last five seconds, so they fade within 100 ticks of the boots coming off. */
+	private static final int CLOUDSTEP_EFFECT_TICKS = 100;
+	/** The function refreshes both effects every 20 ticks while the boots are worn. */
 	private static final int CLOUDSTEP_GATE_TICKS = 20;
-	private static final double GRAVITY = 0.08;
-	private static final double VANILLA_JUMP_POWER = 0.42;
-	private static final double CLOUDSTEP_EXPECTED_EXTRA =
-		(VANILLA_JUMP_POWER + CLOUDSTEP_JUMP_POWER) * (VANILLA_JUMP_POWER + CLOUDSTEP_JUMP_POWER) / (2.0 * GRAVITY)
-			- VANILLA_JUMP_POWER * VANILLA_JUMP_POWER / (2.0 * GRAVITY);
-	private static final double CLOUDSTEP_MINIMUM_EXTRA_HEIGHT = 1.5;
-	private static final int JUMP_SAMPLE_TICKS = 40;
-	/** Veinminer breaks the mined block and one neighbour each way along the plane axis. */
-	private static final int VEINMINER_BLOCKS_PER_SWING = 3;
+	private static final int CLOUDSTEP_WARMUP_TICKS = 60;
+	/** The effect command counts seconds, not ticks. */
+	private static final int TICKS_PER_SECOND = 20;
+	private static final int CATALOGUE_SIZE = 71;
 
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
@@ -90,12 +86,12 @@ public class EffectEnchantGameTest {
 		"armor/ender_ward", "armor/ember_guard", "armor/rime_guard", "armor/venom_guard", "armor/dread_aura",
 		"armor/cloudstep", "armor/deflection",
 		"crossbow/railgun",
-		"tool/ore_mender", "tool/veinminer", "tool/enchanted_yield"
+		"tool/ore_mender", "tool/enchanted_yield"
 	);
 	private static final Set<String> CUT_PATHS = Set.of(
 		"weapon/cleave", "weapon/returning", "armor/featherfall", "armor/asbestos", "armor/warded", "bow/bodkin",
 		"tool/anglers_fortune", "crossbow/quickdraw", "armor/deepdiver", "weapon/arachnids_bane", "bow/rangers_mark",
-		"weapon/slam"
+		"weapon/slam", "tool/veinminer"
 	);
 
 	@GameTest
@@ -104,7 +100,7 @@ public class EffectEnchantGameTest {
 		List<String> catalogue = new ArrayList<>();
 		for (Holder.Reference<Enchantment> holder : registry.listElements().toList()) {
 			Identifier id = holder.key().identifier();
-			if (MOD_ID.equals(id.getNamespace()) && !"test_marker".equals(id.getPath())) {
+			if (MOD_ID.equals(id.getNamespace())) {
 				catalogue.add(id.getPath());
 			}
 		}
@@ -117,12 +113,12 @@ public class EffectEnchantGameTest {
 		}
 
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=catalogueCount RESULT catalogue={} cutPresent={} expected=72",
-			catalogue.size(), present.size()
+			"[BEHAVIOR] test=catalogueCount RESULT catalogue={} cutPresent={} expected={}",
+			catalogue.size(), present.size(), CATALOGUE_SIZE
 		);
 		helper.assertTrue(
-			catalogue.size() == 72,
-			"the catalogue holds " + catalogue.size() + " enchantments instead of 72"
+			catalogue.size() == CATALOGUE_SIZE,
+			"the catalogue holds " + catalogue.size() + " enchantments instead of " + CATALOGUE_SIZE
 		);
 		helper.assertTrue(present.isEmpty(), "a cut enchantment is still registered: " + present);
 		helper.succeed();
@@ -476,52 +472,76 @@ public class EffectEnchantGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void cloudstepRaisesTheJumpWhileSneakingAndNotWhileStanding(final GameTestHelper helper) {
-		ServerPlayer wearer = mockPlayerInLevel(helper);
-		wearer.setItemSlot(EquipmentSlot.FEET, enchanted(helper, Items.DIAMOND_BOOTS, "armor/cloudstep", 3));
-		BlockPos origin = helper.absolutePos(new BlockPos(1, 4, 1));
-		wearer.setPos(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5);
-		helper.runAfterDelay(FUNCTION_WAIT_TICKS, () -> {
-			boolean standingJump = wearer.hasEffect(MobEffects.JUMP_BOOST);
-			boolean standingGravity = wearer.hasEffect(MobEffects.SLOW_FALLING);
-			wearer.setShiftKeyDown(true);
-			wearer.setPose(Pose.CROUCHING);
-			helper.runAfterDelay(FUNCTION_WAIT_TICKS, () -> {
-				int hooked = score(helper, wearer, "ench_cd_cloud");
-				wearer.setShiftKeyDown(true);
-				wearer.setPose(Pose.CROUCHING);
-				rearmCooldown(helper, wearer, "ench_cd_cloud", CLOUDSTEP_GATE_TICKS);
-				EnchantmentHelper.tickEffects(helper.getLevel(), wearer);
-
-				boolean sneakingJump = wearer.hasEffect(MobEffects.JUMP_BOOST);
-				boolean sneakingGravity = wearer.hasEffect(MobEffects.SLOW_FALLING);
-				int jumpAmplifier = sneakingJump ? wearer.getEffect(MobEffects.JUMP_BOOST).getAmplifier() : -1;
-				int gravityDuration = sneakingGravity ? wearer.getEffect(MobEffects.SLOW_FALLING).getDuration() : 0;
-				StellaEquips.LOGGER.info(
-					"[BEHAVIOR] test=cloudstep RESULT jumpStanding={} gravityStanding={} jumpSneaking={} "
-						+ "gravitySneaking={} jumpAmplifier={} gravityDuration={} tickCount={} hookCooldown={} "
-						+ "sneaking={} inFunctionPredicate={} tickEntries={} mentionsLevitation={}",
-					standingJump, standingGravity, sneakingJump, sneakingGravity, jumpAmplifier, gravityDuration,
-					wearer.tickCount, hooked, wearer.isShiftKeyDown(),
-					scratchScore(helper, "#cloud_pred"),
-					enchantment(helper, "armor/cloudstep").getEffects(EnchantmentEffectComponents.TICK).size(),
-					resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction").contains("levitation")
-				);
-				helper.assertTrue(!standingJump, "the standing wearer carried the jump effect");
-				helper.assertTrue(!standingGravity, "the standing wearer carried the gravity effect");
-				helper.assertTrue(sneakingJump, "the sneaking wearer carried no jump effect");
-				helper.assertTrue(sneakingGravity, "the sneaking wearer carried no gravity effect");
-				helper.assertTrue(
-					jumpAmplifier == CLOUDSTEP_JUMP_AMPLIFIER,
-					"the jump effect was amplifier " + jumpAmplifier + " instead of " + CLOUDSTEP_JUMP_AMPLIFIER
-				);
-				helper.assertTrue(
-					!resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction").contains("levitation"),
-					"the cloudstep function still mentions levitation"
-				);
-				helper.succeed();
-			});
+	public void cloudstepKeepsJumpAndSlowFallingOnAStandingWearer(final GameTestHelper helper) {
+		Mob wearer = cloudstepWearer(helper);
+		int[] ticks = {0};
+		int[] shortest = {Integer.MAX_VALUE};
+		int[] amplifier = {-1};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (ticks[0] > CLOUDSTEP_WARMUP_TICKS / 2 && ticks[0] <= CLOUDSTEP_WARMUP_TICKS) {
+				int jump = wearer.hasEffect(MobEffects.JUMP_BOOST) ? wearer.getEffect(MobEffects.JUMP_BOOST).getDuration() : 0;
+				int fall = wearer.hasEffect(MobEffects.SLOW_FALLING) ? wearer.getEffect(MobEffects.SLOW_FALLING).getDuration() : 0;
+				shortest[0] = Math.min(shortest[0], Math.min(jump, fall));
+				amplifier[0] = wearer.hasEffect(MobEffects.JUMP_BOOST) ? wearer.getEffect(MobEffects.JUMP_BOOST).getAmplifier() : -1;
+			}
 		});
+		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS + 1, () -> {
+			int floor = CLOUDSTEP_EFFECT_TICKS - CLOUDSTEP_GATE_TICKS - 1;
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=cloudstepWorn RESULT shortestRemaining={} floor={} jumpAmplifier={} sneaking={}",
+				shortest[0], floor, amplifier[0], wearer.isShiftKeyDown()
+			);
+			wearer.discard();
+			helper.assertTrue(
+				shortest[0] >= floor && amplifier[0] == CLOUDSTEP_JUMP_AMPLIFIER,
+				"a standing wearer's shortest remaining effect was " + shortest[0] + " ticks (floor " + floor
+					+ ") at jump amplifier " + amplifier[0]
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void cloudstepEffectsFadeWithinFiveSecondsOfTheBootsComingOff(final GameTestHelper helper) {
+		Mob wearer = cloudstepWearer(helper);
+		int[] ticks = {0};
+		int[] removedAt = {-1};
+		int[] goneAt = {-1};
+		boolean[] heldAtRemoval = {false};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			boolean held = wearer.hasEffect(MobEffects.JUMP_BOOST) || wearer.hasEffect(MobEffects.SLOW_FALLING);
+			if (removedAt[0] >= 0 && goneAt[0] < 0 && !held) {
+				goneAt[0] = ticks[0];
+			}
+		});
+		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS, () -> {
+			heldAtRemoval[0] = wearer.hasEffect(MobEffects.JUMP_BOOST) && wearer.hasEffect(MobEffects.SLOW_FALLING);
+			removedAt[0] = ticks[0];
+			wearer.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
+		});
+		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS + CLOUDSTEP_EFFECT_TICKS + CLOUDSTEP_GATE_TICKS, () -> {
+			int fade = goneAt[0] < 0 ? -1 : goneAt[0] - removedAt[0];
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=cloudstepFade RESULT heldAtRemoval={} removedAt={} goneAt={} fadeTicks={} limit={}",
+				heldAtRemoval[0], removedAt[0], goneAt[0], fade, CLOUDSTEP_EFFECT_TICKS
+			);
+			wearer.discard();
+			helper.assertTrue(
+				heldAtRemoval[0] && fade >= 0 && fade <= CLOUDSTEP_EFFECT_TICKS,
+				"the effects were held at removal " + heldAtRemoval[0] + " and faded after " + fade + " ticks"
+			);
+			helper.succeed();
+		});
+	}
+
+	private static Mob cloudstepWearer(final GameTestHelper helper) {
+		Mob wearer = helper.spawn(EntityTypes.HUSK, new BlockPos(1, 3, 1));
+		wearer.setNoAi(true);
+		wearer.setPersistenceRequired();
+		wearer.setItemSlot(EquipmentSlot.FEET, enchanted(helper, Items.DIAMOND_BOOTS, "armor/cloudstep", 3));
+		return wearer;
 	}
 
 	/** The shipped function must name the two new effects and no longer grant levitation. */
@@ -538,7 +558,7 @@ public class EffectEnchantGameTest {
 		helper.assertTrue(text.contains("slow_falling"), "the function grants no slow falling");
 		helper.assertTrue(!text.contains("levitation"), "the function still grants levitation");
 		helper.assertTrue(
-			text.contains("effect give @s minecraft:jump_boost " + CLOUDSTEP_EFFECT_TICKS + " "
+			text.contains("effect give @s minecraft:jump_boost " + CLOUDSTEP_EFFECT_TICKS / TICKS_PER_SECOND + " "
 				+ CLOUDSTEP_JUMP_AMPLIFIER + " true"),
 			"the jump effect is not " + CLOUDSTEP_EFFECT_TICKS + " ticks at amplifier " + CLOUDSTEP_JUMP_AMPLIFIER
 		);
@@ -639,67 +659,6 @@ public class EffectEnchantGameTest {
 			helper.assertTrue(targetLost > 0.0F, "the railgun blast hurt nobody near the impact");
 			helper.succeed();
 		});
-	}
-
-	@GameTest(maxTicks = 200)
-	public void veinminerBreaksAThreeBlockPlaneAlongTheLookingDirection(final GameTestHelper helper) {
-		Map<String, String> planes = new LinkedHashMap<>();
-		planes.put("south yaw 0", planeOf(helper, 0.0F, 0.0F, "x"));
-		planes.put("west yaw 90", planeOf(helper, 90.0F, 0.0F, "z"));
-		planes.put("north yaw 180", planeOf(helper, 180.0F, 0.0F, "x"));
-		planes.put("east yaw 270 as -90", planeOf(helper, -90.0F, 0.0F, "z"));
-		planes.put("down pitch 90", planeOf(helper, 0.0F, 90.0F, "x"));
-		planes.put("up pitch -90", planeOf(helper, 0.0F, -90.0F, "x"));
-		Enchantment veinminer = enchantment(helper, "tool/veinminer");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=veinminerPlane RESULT blocksPerSwing={} broken={} planes={} maxLevel={} "
-				+ "anvilCost={} weight={}",
-			VEINMINER_BLOCKS_PER_SWING, planes.size(), planes, veinminer.getMaxLevel(),
-			veinminer.getAnvilCost(), veinminer.getWeight()
-		);
-		helper.assertTrue(
-			veinminer.getMaxLevel() == 1,
-			"veinminer reports " + veinminer.getMaxLevel() + " levels instead of one"
-		);
-
-		for (Map.Entry<String, String> plane : planes.entrySet()) {
-			helper.assertTrue(
-				plane.getValue().equals("x") || plane.getValue().equals("z"),
-				"looking " + plane.getKey() + " broke " + plane.getValue()
-			);
-		}
-
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void veinminerGuardsAgainstItsOwnSecondPulse(final GameTestHelper helper) {
-		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
-		BlockPos centre = helper.absolutePos(new BlockPos(3, (int) SPAWN_Y, 3));
-		List<BlockPos> field = oreField(helper, centre);
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/veinminer", 1));
-		miner.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
-		miner.setYRot(0.0F);
-		rearmCooldown(helper, miner, "ench_cd_vein", 20);
-		runCommand(helper, miner, "function mod-stella-equips-enchants:veinminer");
-		int afterFirst = brokenIn(helper, field).size();
-		int cooldownAfterFirst = score(helper, miner, "ench_cd_vein");
-		runCommand(helper, miner, "function mod-stella-equips-enchants:veinminer");
-		int afterSecond = brokenIn(helper, field).size();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=veinminerGuard RESULT afterFirstPulse={} afterSecondPulse={} "
-				+ "cooldownAfterFirst={} fieldSize={} expectedPerSwing={}",
-			afterFirst, afterSecond, cooldownAfterFirst, field.size(), VEINMINER_BLOCKS_PER_SWING
-		);
-		helper.assertTrue(
-			afterFirst == VEINMINER_BLOCKS_PER_SWING,
-			"one pulse broke " + afterFirst + " blocks instead of " + VEINMINER_BLOCKS_PER_SWING
-		);
-		helper.assertTrue(
-			afterSecond == VEINMINER_BLOCKS_PER_SWING,
-			"the second pulse broke more: " + afterSecond + " blocks, so the guard let it re-enter"
-		);
-		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 200)
@@ -1044,42 +1003,6 @@ public class EffectEnchantGameTest {
 		return before - wearer.getHealth();
 	}
 
-	/** The axis the three broken blocks spread on, or the count when it is not three. */
-	private static String planeOf(
-		final GameTestHelper helper, final float yaw, final float pitch, final String expected
-	) {
-		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
-		BlockPos centre = helper.absolutePos(new BlockPos(3, (int) SPAWN_Y, 3));
-		List<BlockPos> field = oreField(helper, centre);
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/veinminer", 1));
-		miner.setPos(centre.getX() + 0.5, centre.getY(), centre.getZ() + 0.5);
-		miner.setYRot(yaw);
-		miner.setXRot(pitch);
-		rearmCooldown(helper, miner, "ench_cd_vein", 20);
-		breakBlock(miner, centre, helper.getLevel());
-		List<BlockPos> broken = brokenIn(helper, field);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=veinminerSwing RESULT yaw={} pitch={} expectedAxis={} brokenCount={} broken={}",
-			yaw, pitch, expected, broken.size(), coordinates(centre, broken)
-		);
-
-		if (broken.size() != VEINMINER_BLOCKS_PER_SWING) {
-			return broken.size() + " blocks";
-		}
-
-		Set<String> axes = new LinkedHashSet<>();
-
-		for (BlockPos pos : broken) {
-			BlockPos offset = pos.subtract(centre);
-			axes.add(Math.abs(offset.getX()) + Math.abs(offset.getY()) + Math.abs(offset.getZ()) == 0
-				? "centre"
-				: offset.getX() != 0 ? "x" : offset.getZ() != 0 ? "z" : "y");
-		}
-
-		axes.remove("centre");
-		return axes.size() == 1 && axes.contains(expected) ? expected : axes.toString();
-	}
-
 	private static List<Block> oreBlocks(final ServerLevel level) {
 		Registry<Block> registry = level.registryAccess().lookupOrThrow(Registries.BLOCK);
 		TagKey<Block> ores = TagKey.create(
@@ -1091,45 +1014,8 @@ public class EffectEnchantGameTest {
 		return blocks;
 	}
 
-	private static List<BlockPos> oreField(final GameTestHelper helper, final BlockPos centre) {
-		List<BlockPos> field = new ArrayList<>();
 
-		for (int dx = -2; dx <= 2; dx++) {
-			for (int dy = -1; dy <= 1; dy++) {
-				for (int dz = -2; dz <= 2; dz++) {
-					BlockPos pos = centre.offset(dx, dy, dz);
-					helper.getLevel().setBlockAndUpdate(pos, Blocks.DIAMOND_ORE.defaultBlockState());
-					field.add(pos);
-				}
-			}
-		}
 
-		return field;
-	}
-
-	private static List<BlockPos> brokenIn(final GameTestHelper helper, final List<BlockPos> field) {
-		List<BlockPos> broken = new ArrayList<>();
-
-		for (BlockPos pos : field) {
-			if (!helper.getLevel().getBlockState(pos).is(Blocks.DIAMOND_ORE)) {
-				broken.add(pos);
-			}
-		}
-
-		return broken;
-	}
-
-	private static String coordinates(final BlockPos centre, final List<BlockPos> broken) {
-		List<String> offsets = new ArrayList<>();
-
-		for (BlockPos pos : broken) {
-			BlockPos offset = pos.subtract(centre);
-			offsets.add(offset.getX() + "," + offset.getY() + "," + offset.getZ());
-		}
-
-		java.util.Collections.sort(offsets);
-		return offsets.toString();
-	}
 
 	private static int experienceFromBreaks(final GameTestHelper helper, final int level) {
 		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
@@ -1153,34 +1039,6 @@ public class EffectEnchantGameTest {
 	) {
 		runCommand(helper, player, "scoreboard players operation @s " + objective + " = #clock ench_clock");
 		runCommand(helper, player, "scoreboard players remove @s " + objective + " " + ticks);
-	}
-
-	/** Which NBT path holds a held tool, so a function can read its level. */
-	private static void probeHeldItemPaths(final GameTestHelper helper, final ServerPlayer player) {
-		runCommand(helper, player,
-			"execute store result score #probe_slot ench_scratch run data get entity @s SelectedItemSlot");
-		runCommand(helper, player,
-			"execute store result score #probe_inv ench_scratch run data get entity @s Inventory[{Slot:0b}].count");
-		runCommand(helper, player,
-			"execute store result score #probe_equip ench_scratch run data get entity @s equipment.mainhand.count");
-		runCommand(helper, player,
-			"execute store result score #probe_sel ench_scratch run data get entity @s SelectedItem.count");
-		runCommand(helper, player,
-			"execute if data entity @s Inventory[{Slot:0b}].components "
-				+ "run scoreboard players set #probe_comp ench_scratch 1");
-		runCommand(helper, player,
-			"execute if data entity @s Inventory[{Slot:0b}].components.\"minecraft:enchantments\" "
-				+ "run scoreboard players set #probe_ench ench_scratch 1");
-		runCommand(helper, player,
-			"execute if data entity @s Inventory[{Slot:0b}].components.\"minecraft:enchantments\".levels "
-				+ "run scoreboard players set #probe_lvls ench_scratch 1");		runCommand(helper, player,
-			"execute if data entity @s Inventory[{Slot:0b}].components.\"minecraft:enchantments\"."
-				+ "\"mod-stella-equips-enchants:tool/veinminer\" "
-				+ "run scoreboard players set #probe_id ench_scratch 1");
-		runCommand(helper, player,
-			"execute store result score #probe_lvl ench_scratch run data get entity @s "
-				+ "Inventory[{Slot:0b}].components.\"minecraft:enchantments\"."
-				+ "\"mod-stella-equips-enchants:tool/veinminer\"");
 	}
 
 	private static int score(final GameTestHelper helper, final ServerPlayer player, final String objective) {

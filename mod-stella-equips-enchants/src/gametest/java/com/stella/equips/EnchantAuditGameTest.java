@@ -30,7 +30,6 @@ import net.minecraft.world.item.enchantment.effects.EnchantmentValueEffect;
  */
 public class EnchantAuditGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
-	private static final String FIXTURE_PATH = "test_marker";
 	private static final Set<String> COST_HOOKS = Set.of("minecraft:ammo_use", "minecraft:item_damage");
 	private static final int MAX_DEPTH = 8;
 	private static final int MAX_KEY = 400;
@@ -40,7 +39,6 @@ public class EnchantAuditGameTest {
 		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
 		List<Holder.Reference<Enchantment>> catalogue = registry.listElements()
 			.filter(holder -> MOD_ID.equals(holder.key().identifier().getNamespace()))
-			.filter(holder -> !FIXTURE_PATH.equals(holder.key().identifier().getPath()))
 			.toList();
 		List<Holder.Reference<Enchantment>> vanilla = registry.listElements()
 			.filter(holder -> "minecraft".equals(holder.key().identifier().getNamespace()))
