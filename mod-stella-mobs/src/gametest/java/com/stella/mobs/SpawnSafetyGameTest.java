@@ -43,7 +43,7 @@ public class SpawnSafetyGameTest {
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r - 0.1, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r + 0.1, 0.0, 0.0, 0.0, r),
-			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r * 0.6, r * 0.6, 0.0, 0.0, r),
+			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r * 0.75, r * 0.75, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, r + 5.0, 0.0, 10.0, 0.0, r),
 			SpawnSafety.suppresses(Level.NETHER, EntitySpawnReason.NATURAL, 0.0, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.END, EntitySpawnReason.NATURAL, 0.0, 0.0, 0.0, 0.0, r),
@@ -137,8 +137,12 @@ public class SpawnSafetyGameTest {
 
 		try {
 			GearConfigStore.set(GearConfigParser.parse(config));
-			Mob mob = helper.spawnMob(type, SPAWN_X, SPAWN_Y, SPAWN_Z).spawnReason(EntitySpawnReason.NATURAL).spawn();
+			// The helper's spawn reaches the load hook as STRUCTURE, so the mob is created and added the way a natural spawn is.
+			Mob mob = type.create(helper.getLevel(), EntitySpawnReason.NATURAL);
+			Vec3 at = helper.absoluteVec(new Vec3(SPAWN_X + 0.5, SPAWN_Y, SPAWN_Z + 0.5));
+			mob.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 			mob.setPersistenceRequired();
+			helper.getLevel().addFreshEntity(mob);
 			return mob;
 		} finally {
 			GearConfigStore.set(previous);
