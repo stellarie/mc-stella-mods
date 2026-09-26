@@ -65,6 +65,9 @@ public final class PatrolService {
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
 	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
+	/** W021: roles the roster no longer holds; a saved member of one leaves when its chunk loads. */
+	private static final Set<PatrolState.Role> RETIRED_ROLES = EnumSet.of(PatrolState.Role.EVOKER, PatrolState.Role.WITCH);
+	private static final Set<Mob> RETIREMENTS = ConcurrentHashMap.newKeySet();
 
 	private PatrolService() {
 	}
@@ -356,6 +359,12 @@ public final class PatrolService {
 			return;
 		}
 
+		if (RETIRED_ROLES.contains(state.role())) {
+			// Removing an entity inside its own load event is unsafe, so it leaves on the next level tick.
+			RETIREMENTS.add(mob);
+			return;
+		}
+
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		if (state.role() == PatrolState.Role.PILLAGER) {
@@ -441,6 +450,7 @@ public final class PatrolService {
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
 		restoreCrossbows(level);
+		retireStaleMembers(level);
 		VillageWorldData data = VillageWorldData.get(level);
 		for (VillageRecord village : data.villages()) {
 			if (!village.dimension().equals(level.dimension())) {
@@ -462,6 +472,26 @@ public final class PatrolService {
 			}
 
 			updateThreats(level, data, village);
+		}
+	}
+
+	/** W021: a saved Evoker or Witch member dismounts, loses its record, and leaves the level. */
+	private static void retireStaleMembers(final ServerLevel level) {
+		VillageWorldData data = VillageWorldData.get(level);
+		for (Mob mob : List.copyOf(RETIREMENTS)) {
+			if (mob.level() != level) {
+				continue;
+			}
+
+			RETIREMENTS.remove(mob);
+			mob.stopRiding();
+			mob.ejectPassengers();
+			boolean recordRemoved = data.removeMember(mob.getUUID());
+			mob.discard();
+			McStellaVillages.LOGGER.info(
+				"[BEHAVIOR] mod={} event=patrol_member_retired entity={} role={} record_removed={}",
+				McStellaVillages.MOD_ID, mob.getUUID(), PatrolState.role(mob), recordRemoved
+			);
 		}
 	}
 
