@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:feather", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:gale_step", "count": 1}
+}

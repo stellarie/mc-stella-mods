@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:turtle_scute", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:aegis_of_the_deep", "count": 1}
+}
