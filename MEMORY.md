@@ -26,6 +26,9 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 
 - Create work branches from the matching mod integration branch. [verified: 2026-09-24] [source: AGENTS.md]
 - Run each mod's Gradle gates from its directory. [verified: 2026-09-24] [source: AGENTS.md]
+- Test the intended behavior and its input sensitivity: the outcome must change when the input changes. Never assert that one string equals another, or anything self-evident. [verified: 2026-09-26] [source: oniichan]
+- Code comments are one line only. [verified: 2026-09-26] [source: oniichan]
+- Order work from the easiest slice to the most complex, merge to `main` when done, and keep `main` compiling. [verified: 2026-09-26] [source: oniichan]
 
 ## Known Pitfalls
 
