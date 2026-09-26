@@ -210,6 +210,7 @@ public final class BehaviorInstaller {
 		BossAbilities.install(mob);
 		installReinforcements(mob);
 		installSpiderBrood(mob);
+		installSpiderWebTrap(mob);
 		installBlazeVolley(mob);
 		// R24: the elite brute's permanent movement, which the shared elite mark alone does not add.
 		PiglinSmash.install(mob);
@@ -219,13 +220,20 @@ public final class BehaviorInstaller {
 		}
 	}
 
-	/**
-	 * O02 and O03: the guardian's blindness aura at the free rank 8, with the witch's rank 9 untouched,
-	 * and the elder's wider aura with Weakness beside the blindness. P6: the plain guardian's aura also
-	 * applies Slowness, which is the tether that keeps a runner where the 80 tick beam can land. The
-	 * beam cooldown and the movement bonus belong to the plain guardian: the elder's beam is already
-	 * faster than a guardian's, so "attacks slowly" is not its clause.
-	 */
+	/** Installs the no-flag Spider web goal. */
+	private static void installSpiderWebTrap(final Mob mob) {
+		if (!(mob instanceof Spider spider)) {
+			return;
+		}
+
+		if (mob.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof SpiderWebTrapGoal)) {
+			return;
+		}
+
+		mob.getGoalSelector().addGoal(SpiderWebTrapGoal.PRIORITY, new SpiderWebTrapGoal(spider));
+	}
+
 	private static void installGuardian(final Guardian guardian) {
 		boolean elder = guardian instanceof ElderGuardian;
 		guardian.getGoalSelector().addGoal(

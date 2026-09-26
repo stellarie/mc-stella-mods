@@ -3,6 +3,12 @@
 	"package": "com.stella.mobs.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"CreeperRadiusAccessor",
+		"CubeMoveControlInvoker",
+		"EnderDragonPhaseMixin",
+		"MobServerAiStepMixin",
+		"PhantomMoveTargetAccessor",
+		"ShulkerEscapeMixin",
 		"SnowGolemMeltMixin",
 		"SnowballHitMixin"
 	],
