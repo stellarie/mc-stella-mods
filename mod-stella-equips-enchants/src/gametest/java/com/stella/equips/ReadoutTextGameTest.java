@@ -79,45 +79,92 @@ public class ReadoutTextGameTest {
 	}
 
 	@GameTest
-	public void everyBandCarriesItsOwnColorOverTheWholeLine(final GameTestHelper helper) {
+	public void everyBandColorsThePrefixAndTheHealth(final GameTestHelper helper) {
 		Map<PowerCurve.Band, Integer> measured = new LinkedHashMap<>();
 		String broken = "none";
 
 		for (Map.Entry<PowerCurve.Band, ChatFormatting> entry : EXPECTED_COLORS.entrySet()) {
-			Component text = ReadoutText.build(THREAT, ReadoutRank.ELITE, Component.literal(MOB_NAME), entry.getKey());
+			Component text = ReadoutText.build(
+				THREAT, ReadoutRank.ELITE, Component.literal(MOB_NAME), entry.getKey(), 5.0F, 10.0F, false
+			);
 			int expected = TextColor.fromLegacyFormat(entry.getValue()).getValue();
-			int covered = 0;
-			int colored = 0;
-			List<Component> parts = text.toFlatList(Style.EMPTY);
-
-			for (Component part : parts) {
-				covered++;
-				if (part.getStyle().getColor() != null && part.getStyle().getColor().getValue() == expected) {
-					colored++;
-				}
-			}
-
+			List<Component> parts = coloredParts(text);
+			boolean prefix = colorOf(parts.get(0)) == expected;
+			boolean health = colorOf(parts.get(parts.size() - 1)) == expected;
 			measured.put(entry.getKey(), expected);
-			if (colored != covered || covered == 0) {
-				broken = entry.getKey() + " colored " + colored + " of " + covered + " parts";
+			if (!prefix || !health) {
+				broken = entry.getKey() + " prefix=" + prefix + " health=" + health;
 			}
 		}
 
-		helper.assertTrue("none".equals(broken), "a band did not color the whole line: " + broken);
-		helper.assertTrue(
-			measured.values().stream().distinct().count() == EXPECTED_COLORS.size(),
-			"the bands do not carry " + EXPECTED_COLORS.size() + " distinct colors: " + measured
-		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=readoutColors RESULT red={} yellow={} orange={} green={} white={} distinct={}",
+			"[BEHAVIOR] test=readoutColors RESULT red={} yellow={} orange={} green={} white={} broken={}",
 			hex(measured, PowerCurve.Band.RED),
 			hex(measured, PowerCurve.Band.YELLOW),
 			hex(measured, PowerCurve.Band.ORANGE),
 			hex(measured, PowerCurve.Band.GREEN),
 			hex(measured, PowerCurve.Band.WHITE),
-			measured.values().stream().distinct().count()
+			broken
+		);
+		helper.assertTrue("none".equals(broken), "a band did not color its prefix and health: " + broken);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void onlyTheNameFollowsHostility(final GameTestHelper helper) {
+		int band = TextColor.fromLegacyFormat(ChatFormatting.YELLOW).getValue();
+		int red = TextColor.fromLegacyFormat(ChatFormatting.RED).getValue();
+		int green = TextColor.fromLegacyFormat(ChatFormatting.GREEN).getValue();
+		List<Component> hostile = coloredParts(ReadoutText.build(
+			THREAT, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.YELLOW, 5.0F, 10.0F, true
+		));
+		List<Component> passive = coloredParts(ReadoutText.build(
+			THREAT, ReadoutRank.NORMAL, Component.literal(MOB_NAME), PowerCurve.Band.YELLOW, 5.0F, 10.0F, false
+		));
+		String hostileColors = colors(hostile);
+		String passiveColors = colors(passive);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=readoutNameHostility RESULT hostile={} passive={}", hostileColors, passiveColors
+		);
+		helper.assertTrue(
+			colorOf(hostile.get(1)) == red && colorOf(passive.get(1)) == green
+				&& colorOf(hostile.get(0)) == band && colorOf(passive.get(0)) == band
+				&& colorOf(hostile.get(2)) == band && colorOf(passive.get(2)) == band,
+			"hostile parts read " + hostileColors + " and passive parts read " + passiveColors
 		);
 		helper.succeed();
+	}
+
+	@GameTest
+	public void coloredCustomNameStillTakesHostilityColor(final GameTestHelper helper) {
+		Component blueName = Component.literal("Bessie").withStyle(ChatFormatting.BLUE);
+		List<Component> hostile = coloredParts(ReadoutText.build(
+			THREAT, ReadoutRank.NORMAL, blueName, PowerCurve.Band.GREEN, 5.0F, 10.0F, true
+		));
+		int red = TextColor.fromLegacyFormat(ChatFormatting.RED).getValue();
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=readoutCustomNameColor RESULT parts={}", colors(hostile));
+		helper.assertTrue(
+			hostile.size() == 3 && colorOf(hostile.get(1)) == red && "Bessie".equals(hostile.get(1).getString()),
+			"a blue custom name on a hostile mob read " + colors(hostile)
+		);
+		helper.succeed();
+	}
+
+	private static List<Component> coloredParts(final Component text) {
+		return text.toFlatList(Style.EMPTY).stream().filter(part -> !part.getString().isEmpty()).toList();
+	}
+
+	private static int colorOf(final Component part) {
+		return part.getStyle().getColor() == null ? -1 : part.getStyle().getColor().getValue();
+	}
+
+	private static String colors(final List<Component> parts) {
+		StringBuilder found = new StringBuilder();
+		for (Component part : parts) {
+			found.append('[').append(part.getString()).append('=').append(String.format("#%06X", colorOf(part) & 0xFFFFFF)).append(']');
+		}
+
+		return found.toString();
 	}
 
 	private static String hex(final Map<PowerCurve.Band, Integer> colors, final PowerCurve.Band band) {

@@ -72,6 +72,20 @@ public final class PowerRecorder {
 			}
 
 			@Override
+			public void readoutHostility(
+				final String player,
+				final String mob,
+				final int entityId,
+				final boolean from,
+				final boolean to
+			) {
+				add(
+					"[BEHAVIOR] readout hostility player=%s mob=%s entityId=%d from=%s to=%s",
+					player, mob, entityId, from, to
+				);
+			}
+
+			@Override
 			public void readoutRemove(
 				final String player,
 				final String mob,

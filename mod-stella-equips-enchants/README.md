@@ -116,16 +116,25 @@ above, orange at 6 above, green from 5 above to 5 below, and white at 6 or more
 below. `/stellaequips readout off` clears the readouts of one player and stops new
 ones; `on` restores them.
 
+The mob's name is colored by how it treats the viewer: red when the mob is an enemy
+by nature (every `Enemy`, including endermen, piglins, zombified piglins, and
+spiders, which are neutral in play), targets the viewer, or is angry at the viewer;
+green otherwise. Only the name takes this color; the threat, rank tag, and health
+keep the band color. It is worked out per viewer, so a golem one player hit turns
+red for that player only. A player's hit rechecks that mob within a few ticks, and
+any other change shows on the next scan. A colored custom name is shown in the
+hostility color too.
+
 A readout is a text display entity. It never joins the level, so the vanilla
 tracking broadcast cannot reach a second player. The mod sends the add packet and
 the data packet to the owner alone. The mob keeps its own name and name tag.
 
 A readout follows its mob on every tick, and its text is re-sent only when the
-band or the text changes. A readout exists only for a mob within 32 blocks of its
-owner, and one player holds at most 40 readouts, nearest first. A readout is
-removed when its mob dies, when it leaves the radius, when the cap drops it, when
-the owner disconnects, and when the owner opts out. The `readout` block of
-`power.json` holds `enabled_by_default`, `radius`, `max_per_player`,
+band, the text, or the name color changes. A readout exists only for a mob within
+32 blocks of its owner, and one player holds at most 40 readouts, nearest first. A
+readout is removed when its mob dies, when it leaves the radius, when the cap
+drops it, when the owner disconnects, and when the owner opts out. The `readout`
+block of `power.json` holds `enabled_by_default`, `radius`, `max_per_player`,
 `height_offset`, and `view_range`.
 
 ## Game tests
