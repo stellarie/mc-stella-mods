@@ -5,7 +5,9 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"MobPatrolMixin",
-		"RaidAccessor"
+		"RaidAccessor",
+		"RaidWaveMixin",
+		"RaidsInvoker"
 	],
 	"injectors": {
 		"defaultRequire": 1
