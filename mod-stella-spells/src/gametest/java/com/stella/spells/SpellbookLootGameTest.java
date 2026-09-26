@@ -18,14 +18,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class SpellbookLootGameTest {
 	private static final int ROLLS = 100_000;
 	private static final Identifier SPARK_SHOT = Identifier.parse("mod-stella-spells:spark_shot");
+	private static final Set<Identifier> SPELLBOOK_IDS = SpellbookCatalog.DEFINITIONS.stream()
+		.map(SpellDefinition::id)
+		.collect(Collectors.toUnmodifiableSet());
 	private static final Identifier DUNGEON_CHEST = Identifier.parse("minecraft:chests/simple_dungeon");
 
 	@GameTest
@@ -41,57 +47,77 @@ public class SpellbookLootGameTest {
 		int bookCount = 0;
 		for (long seed = 0; seed < 1_000 && bookCount == 0; seed++) {
 			bookCount = chest.getRandomItems(params, RandomSource.create(seed)).stream()
-				.filter(stack -> SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem())))
+				.filter(SpellbookLootGameTest::isSpellbook)
 				.mapToInt(ItemStack::getCount)
 				.sum();
 		}
-		helper.assertTrue(bookCount == 1, "vanilla chest generation did not add exactly one Spark Shot book");
+		helper.assertTrue(bookCount == 1, "vanilla chest generation did not add exactly one spellbook");
 		outcome.pass();
 		helper.succeed();
 	}
 
 	@GameTest
-	public void chestRollUsesProductionFivePercentAndReturnsOneSparkBook(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "chestRollUsesProductionFivePercentAndReturnsOneSparkBook");
+	public void chestRollUsesProductionFivePercentAndUniformlySelectsTwentyBooks(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "chestRollUsesProductionFivePercentAndUniformlySelectsTwentyBooks");
 		double chance = SpellbookTestAccess.chance("CHEST_DROP_CHANCE");
 		RandomSource random = RandomSource.create(582019L);
 		int drops = 0;
 		boolean invalidDrop = false;
+		Map<Identifier, Integer> bookCounts = emptyBookCounts();
 		for (int i = 0; i < ROLLS; i++) {
 			ItemStack stack = SpellbookTestAccess.rollChest(DUNGEON_CHEST, true, random);
 			if (!stack.isEmpty()) {
 				drops++;
-				invalidDrop |= stack.getCount() != 1 || !SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+				Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+				invalidDrop |= stack.getCount() != 1 || !SPELLBOOK_IDS.contains(id);
+				bookCounts.computeIfPresent(id, (ignored, count) -> count + 1);
 			}
 		}
 		helper.assertTrue(
 			withinThreeStandardDeviations(drops, chance),
 			"chest drops " + drops + " do not match production chance " + chance
 		);
-		helper.assertFalse(invalidDrop, "a chest roll returned more than one or a non-Spark spellbook");
+		helper.assertTrue(
+			uniformlyDistributed(bookCounts, chance),
+			"chest book counts are not uniform: " + bookCounts
+		);
+		helper.assertFalse(invalidDrop, "a chest roll returned more than one or a non-catalog spellbook");
+		Spellbooks.LOGGER.info(
+			"[SPELLTEST] loot source=chest rolls={} drop_chance={} catalog_counts={}", ROLLS, chance, bookCounts
+		);
 		outcome.pass();
 		helper.succeed();
 	}
 
 	@GameTest
-	public void witchRollUsesProductionFiftyPercentAndReturnsOneSparkBook(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "witchRollUsesProductionFiftyPercentAndReturnsOneSparkBook");
+	public void witchRollUsesProductionFiftyPercentAndUniformlySelectsTwentyBooks(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "witchRollUsesProductionFiftyPercentAndUniformlySelectsTwentyBooks");
 		double chance = SpellbookTestAccess.chance("WITCH_DROP_CHANCE");
 		RandomSource random = RandomSource.create(782131L);
 		int drops = 0;
 		boolean invalidDrop = false;
+		Map<Identifier, Integer> bookCounts = emptyBookCounts();
 		for (int i = 0; i < ROLLS; i++) {
 			ItemStack stack = SpellbookTestAccess.rollWitch(random);
 			if (!stack.isEmpty()) {
 				drops++;
-				invalidDrop |= stack.getCount() != 1 || !SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+				Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+				invalidDrop |= stack.getCount() != 1 || !SPELLBOOK_IDS.contains(id);
+				bookCounts.computeIfPresent(id, (ignored, count) -> count + 1);
 			}
 		}
 		helper.assertTrue(
 			withinThreeStandardDeviations(drops, chance),
 			"witch drops " + drops + " do not match production chance " + chance
 		);
-		helper.assertFalse(invalidDrop, "a witch roll returned more than one or a non-Spark spellbook");
+		helper.assertTrue(
+			uniformlyDistributed(bookCounts, chance),
+			"witch book counts are not uniform: " + bookCounts
+		);
+		helper.assertFalse(invalidDrop, "a witch roll returned more than one or a non-catalog spellbook");
+		Spellbooks.LOGGER.info(
+			"[SPELLTEST] loot source=witch rolls={} drop_chance={} catalog_counts={}", ROLLS, chance, bookCounts
+		);
 		outcome.pass();
 		helper.succeed();
 	}
@@ -134,11 +160,18 @@ public class SpellbookLootGameTest {
 				item -> !itemIdsBeforeDeath.contains(item.getUUID())
 			);
 			List<ItemEntity> newSpellbooks = newItems.stream()
-				.filter(item -> SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(item.getItem().getItem())))
+				.filter(item -> isSpellbook(item.getItem()))
 				.toList();
-			helper.assertTrue(newSpellbooks.size() <= 1, "one witch death added more than one Spark Shot item entity");
+			List<String> spellbookDetails = newSpellbooks.stream()
+				.map(item -> BuiltInRegistries.ITEM.getKey(item.getItem().getItem()) + ":" + item.getUUID()
+					+ ":" + item.getItem().getCount() + "@" + item.position())
+				.toList();
+			helper.assertTrue(
+				newSpellbooks.size() <= 1,
+				"witch=" + witch.getUUID() + " added multiple spellbook item entities: " + spellbookDetails
+			);
 			for (ItemEntity spellbook : newSpellbooks) {
-				helper.assertTrue(spellbook.getItem().getCount() == 1, "a witch death added a stacked Spark Shot entity");
+				helper.assertTrue(spellbook.getItem().getCount() == 1, "a witch death added a stacked spellbook entity");
 				spellbooks++;
 			}
 		}
@@ -186,7 +219,7 @@ public class SpellbookLootGameTest {
 		boolean generatedSpellbook = false;
 		for (long seed = 0; seed < 1_000 && !generatedSpellbook; seed++) {
 			generatedSpellbook = testChest.getRandomItems(params, RandomSource.create(seed)).stream()
-				.anyMatch(loot -> SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(loot.getItem())));
+				.anyMatch(SpellbookLootGameTest::isSpellbook);
 		}
 		helper.assertFalse(generatedSpellbook, "the test-mod chest loot path added a Spark Shot book");
 		outcome.pass();
@@ -202,6 +235,25 @@ public class SpellbookLootGameTest {
 		}
 		helper.assertTrue(false, "no seeded chest roll succeeded");
 		return 0L;
+	}
+
+	private static Map<Identifier, Integer> emptyBookCounts() {
+		Map<Identifier, Integer> counts = new HashMap<>();
+		for (Identifier id : SPELLBOOK_IDS) {
+			counts.put(id, 0);
+		}
+		return counts;
+	}
+
+	private static boolean uniformlyDistributed(final Map<Identifier, Integer> counts, final double chance) {
+		double perBookChance = chance / SpellbookCatalog.DEFINITIONS.size();
+		return SPELLBOOK_IDS.stream().allMatch(
+			id -> withinThreeStandardDeviations(counts.getOrDefault(id, 0), perBookChance)
+		);
+	}
+
+	private static boolean isSpellbook(final ItemStack stack) {
+		return !stack.isEmpty() && SPELLBOOK_IDS.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()));
 	}
 
 	private static boolean withinThreeStandardDeviations(final int actual, final double chance) {

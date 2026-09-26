@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:wither_rose", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:wither_seal", "count": 1}
+}

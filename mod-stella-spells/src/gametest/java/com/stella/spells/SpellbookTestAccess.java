@@ -31,6 +31,16 @@ final class SpellbookTestAccess {
 		}
 	}
 
+	static double targetRangeBlocks() {
+		try {
+			Field range = Class.forName("com.stella.spells.SpellCasting").getDeclaredField("RANGE");
+			range.setAccessible(true);
+			return range.getDouble(null);
+		} catch (ReflectiveOperationException error) {
+			throw new IllegalStateException("Cannot read SpellCasting.RANGE", error);
+		}
+	}
+
 	static ItemStack rollChest(final Identifier table, final boolean builtin, final RandomSource random) {
 		return (ItemStack) invoke(
 			"rollChest", new Class<?>[] {Identifier.class, boolean.class, RandomSource.class}, table, builtin, random

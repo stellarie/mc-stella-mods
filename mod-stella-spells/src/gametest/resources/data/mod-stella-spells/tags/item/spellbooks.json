@@ -1,5 +1,24 @@
 {
 	"values": [
-		"mod-stella-spells:spark_shot"
+		"mod-stella-spells:spark_shot",
+		"mod-stella-spells:frostbind",
+		"mod-stella-spells:gale_step",
+		"mod-stella-spells:mending_word",
+		"mod-stella-spells:stoneguard",
+		"mod-stella-spells:static_lash",
+		"mod-stella-spells:briar_snare",
+		"mod-stella-spells:tidal_push",
+		"mod-stella-spells:owls_gaze",
+		"mod-stella-spells:slimebound",
+		"mod-stella-spells:chainstorm",
+		"mod-stella-spells:riftwalk",
+		"mod-stella-spells:phoenix_mantle",
+		"mod-stella-spells:life_bloom",
+		"mod-stella-spells:void_well",
+		"mod-stella-spells:wardens_roar",
+		"mod-stella-spells:aegis_of_the_deep",
+		"mod-stella-spells:wither_seal",
+		"mod-stella-spells:time_lock",
+		"mod-stella-spells:dragonfall"
 	]
 }
