@@ -226,6 +226,7 @@ public final class PatrolService {
 		applyPatrolAttributes(mob);
 		PatrolState.attach(mob, village.id(), role);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
+		mob.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		if (role == PatrolState.Role.HEAD) {
 			applyHeadKit(mob);
 		} else if (role == PatrolState.Role.PILLAGER) {
