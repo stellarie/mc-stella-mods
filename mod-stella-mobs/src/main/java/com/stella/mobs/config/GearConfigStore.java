@@ -35,6 +35,7 @@ public final class GearConfigStore {
 				"elite_chance": 0.05,
 				"boss_chance": 0.01,
 				"war_call_brute_chance": 0.01,
+				"spawn_safety_radius": 1000.0,
 				"entities": {
 					"minecraft:witch": { "elite_chance": 0.10 },
 					"minecraft:snow_golem": { "elite_chance": 0.10 }
