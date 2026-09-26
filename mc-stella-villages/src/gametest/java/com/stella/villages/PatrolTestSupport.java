@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -40,6 +42,8 @@ final class PatrolTestSupport {
 	private static final String ACCESS = "com.stella.villages.patrol.MobPatrolAccess";
 	private static final Map<GameTestHelper, UUID> VILLAGE_IDS = new WeakHashMap<>();
 	private static final Map<GameTestHelper, BlockPos> VILLAGE_ANCHORS = new WeakHashMap<>();
+	// Distant anchors handed out this run, so two tests never build on one chunk.
+	private static final Set<String> CLAIMED_ANCHORS = ConcurrentHashMap.newKeySet();
 
 	private PatrolTestSupport() {
 	}
@@ -286,6 +290,10 @@ final class PatrolTestSupport {
 			BlockPos candidate = new BlockPos(
 				SectionPos.sectionToBlockCoord(chunkX) + 8, origin.getY(), SectionPos.sectionToBlockCoord(chunkZ) + 8
 			);
+			String claim = helper.getLevel().dimension().identifier() + "@" + chunkX + "," + chunkZ;
+			if (CLAIMED_ANCHORS.contains(claim)) {
+				continue;
+			}
 			helper.getLevel().setChunkForced(chunkX, chunkZ, true);
 			LevelChunk chunk = helper.getLevel().getChunkAt(candidate);
 			boolean hasVillagePoi = helper.getLevel().getPoiManager()
@@ -308,7 +316,7 @@ final class PatrolTestSupport {
 			}
 			UUID nearest = nearestVillageId(helper, test, candidate);
 			helper.getLevel().setChunkForced(chunkX, chunkZ, false);
-			if (!hasVillagePoi && !hasEntities && !hasBlocks && nearest == null) {
+			if (!hasVillagePoi && !hasEntities && !hasBlocks && nearest == null && CLAIMED_ANCHORS.add(claim)) {
 				detail(test, "distantAnchor=" + candidate + " sectionDistance=" + distance);
 				return candidate;
 			}
