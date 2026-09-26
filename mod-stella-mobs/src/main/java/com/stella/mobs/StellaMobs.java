@@ -19,6 +19,7 @@ import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.OceanBand;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.ReinforcementGoal;
+import com.stella.mobs.behavior.ZombieAfflictions;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
@@ -78,6 +79,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EvokerStorm::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(ZombieAfflictions::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(GolemElite::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PiglinSmash::afterDamage);
