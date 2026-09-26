@@ -5,6 +5,7 @@ import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -18,12 +19,13 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 
 /**
- * The escort squad: six ordinary mobs of the elite's own kind, one grade below its kit, queued at spawn
+ * The escort squad: at most two ordinary mobs of the elite's own kind, one grade below its kit, queued at spawn
  * and added on the level tick boundary. Every escort is flagged summoned before it enters the level, so
  * the load hook cannot roll it elite and the squad cannot recurse.
  */
 public final class EscortSquad {
-	public static final int ESCORT_COUNT = 6;
+	/** The entourage cap: a squad request only fills the places its living escorts leave free. */
+	public static final int ESCORT_COUNT = 2;
 	public static final float DROP_CHANCE = 0.02F;
 	private static final double SCATTER = 1.0;
 	private static final int FOLLOW_PRIORITY = 5;
@@ -33,6 +35,10 @@ public final class EscortSquad {
 	private static final AttachmentType<List<Pending>> QUEUE = AttachmentRegistry.createDefaulted(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "escort_queue"), ArrayList::new
 	);
+	// The identities this elite's squads added, so the cap counts what the ability produced.
+	private static final AttachmentType<List<UUID>> ESCORTS = AttachmentRegistry.createDefaulted(
+		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "escorts"), ArrayList::new
+	);
 
 	private EscortSquad() {
 	}
@@ -41,7 +47,7 @@ public final class EscortSquad {
 	}
 
 	public static void register() {
-		StellaMobs.LOGGER.debug("Registered the escort queue attachment {}", QUEUE.identifier());
+		StellaMobs.LOGGER.debug("Registered the escort attachments {} {}", QUEUE.identifier(), ESCORTS.identifier());
 	}
 
 	public static void queue(final Mob elite, final GearTier tier) {
@@ -72,16 +78,35 @@ public final class EscortSquad {
 	}
 
 	private static void spawnSquad(final ServerLevel level, final Mob elite, final GearTier eliteTier) {
-		// B05: a boss takes one companion and no six mob escort, so a boss never queues a squad here.
+		// B05: a boss takes one companion and no escort squad, so a boss never queues a squad here.
 		if (EliteState.isBoss(elite)) {
 			return;
 		}
 
 		GearTier tier = Elite.escortTier(eliteTier);
+		int alive = escortsOf(level, elite).size();
 
-		for (int i = 0; i < ESCORT_COUNT; i++) {
+		for (int i = alive; i < ESCORT_COUNT; i++) {
 			spawnOne(level, elite, tier);
 		}
+
+		StellaMobs.LOGGER.info(
+			"[BEHAVIOR] test=escortCap RESULT elite={} aliveBefore={} added={} cap={}",
+			elite.getUUID(), alive, Math.max(0, ESCORT_COUNT - alive), ESCORT_COUNT
+		);
+	}
+
+	/** The living escorts this elite's squads added, read from the record rather than a box. */
+	public static List<Mob> escortsOf(final ServerLevel level, final Mob elite) {
+		List<Mob> alive = new ArrayList<>();
+
+		for (UUID id : ((AttachmentTarget) elite).getAttachedOrCreate(ESCORTS)) {
+			if (level.getEntity(id) instanceof Mob escort && escort.isAlive() && !escort.isRemoved()) {
+				alive.add(escort);
+			}
+		}
+
+		return alive;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -114,6 +139,8 @@ public final class EscortSquad {
 		escort.getGoalSelector().addGoal(
 			FOLLOW_PRIORITY, new FollowAllyGoal(escort, elite, FOLLOW_SPEED, FOLLOW_STOP_DISTANCE, FOLLOW_AREA_SIZE)
 		);
-		level.addFreshEntity(escort);
+		if (level.addFreshEntity(escort)) {
+			((AttachmentTarget) elite).getAttachedOrCreate(ESCORTS).add(escort.getUUID());
+		}
 	}
 }

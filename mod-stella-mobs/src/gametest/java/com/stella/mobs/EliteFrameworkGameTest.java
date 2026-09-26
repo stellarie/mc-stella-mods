@@ -66,6 +66,8 @@ public class EliteFrameworkGameTest {
 	private static final float ZOMBIE_BASE_HEALTH = 20.0F;
 	private static final int RATE_ROLLS = 4000;
 	private static final long RATE_SEED = 20260923L;
+	private static final long REQUEUE_TICK = 20L;
+	private static final long SETTLE_TICKS = 20L;
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void eliteRollsWithMarkerAndDoubledHealth(final GameTestHelper helper) {
@@ -222,6 +224,45 @@ public class EliteFrameworkGameTest {
 			helper.assertTrue(allSummoned, "an escort is not flagged summoned");
 			helper.assertFalse(anyScaled, "an escort carries the elite scale");
 			helper.assertTrue(installed, "the escort never received the mod's goals");
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void requeuedSquadNeverGrowsPastTheCap(final GameTestHelper helper) {
+		Zombie elite = spawn(helper, ALWAYS_ELITE);
+		int[] first = { -1 };
+
+		// Two more requests for the same elite must not add a single escort.
+		helper.runAfterDelay(REQUEUE_TICK, () -> {
+			first[0] = escortsOf(helper, elite).size();
+			EscortSquad.queue(elite, Elite.kitTier(elite));
+			EscortSquad.queue(elite, Elite.kitTier(elite));
+		});
+		helper.runAfterDelay(REQUEUE_TICK + SETTLE_TICKS, () -> {
+			int after = escortsOf(helper, elite).size();
+			result("requeuedSquadNeverGrowsPastTheCap", "first=" + first[0] + " after=" + after + " cap=" + EscortSquad.ESCORT_COUNT);
+			helper.assertValueEqual(Integer.valueOf(after), Integer.valueOf(first[0]), "escorts after two more requests");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void requeueRefillsOnlyTheMissingEscorts(final GameTestHelper helper) {
+		Zombie elite = spawn(helper, ALWAYS_ELITE);
+		int[] first = { -1 };
+
+		// Remove one escort, ask again, and the squad must return to its size and not overshoot it.
+		helper.runAfterDelay(REQUEUE_TICK, () -> {
+			List<Zombie> escorts = escortsOf(helper, elite);
+			first[0] = escorts.size();
+			escorts.getFirst().discard();
+			EscortSquad.queue(elite, Elite.kitTier(elite));
+		});
+		helper.runAfterDelay(REQUEUE_TICK + SETTLE_TICKS, () -> {
+			int after = escortsOf(helper, elite).size();
+			result("requeueRefillsOnlyTheMissingEscorts", "first=" + first[0] + " after=" + after);
+			helper.assertValueEqual(Integer.valueOf(after), Integer.valueOf(first[0]), "escorts after one loss and one request");
+			helper.succeed();
 		});
 	}
 

@@ -1,5 +1,6 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.StellaMobs;
 import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -10,6 +11,7 @@ import net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal;
 import net.minecraft.world.entity.monster.CrossbowAttackMob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.RangedAttackMob;
+import net.minecraft.world.entity.monster.illager.Pillager;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +28,10 @@ public class CrossbowCadenceGoal extends Goal {
 	public static final int ATTACK_PRIORITY = 2;
 	/** The vanilla hold this goal drops, at attack speed 1.0. Kept so a test can state what was removed. */
 	public static final int REMOVED_HOLD_TICKS = 20;
+	/** M5: vanilla's Pillager crossbow radius; beyond it, or out of sight, a Pillager walks in. */
+	public static final double CHASE_RADIUS = 8.0;
+	public static final double CHASE_SPEED = 1.0;
+	private static final int REPATH_TICKS = 10;
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
 
 	private final Monster mob;
@@ -33,6 +39,8 @@ public class CrossbowCadenceGoal extends Goal {
 	private boolean charging;
 	private boolean charged;
 	private int holdTicks = -1;
+	private boolean chasing;
+	private int repathTicks;
 
 	public CrossbowCadenceGoal(final Monster mob) {
 		this.mob = mob;
@@ -101,6 +109,8 @@ public class CrossbowCadenceGoal extends Goal {
 		this.charging = false;
 		this.charged = false;
 		this.holdTicks = -1;
+		this.chasing = false;
+		this.mob.getNavigation().stop();
 
 		if (this.mob.isUsingItem()) {
 			this.mob.stopUsingItem();
@@ -120,7 +130,7 @@ public class CrossbowCadenceGoal extends Goal {
 		}
 
 		this.mob.getLookControl().setLookAt(target, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
-		this.mob.getNavigation().stop();
+		this.move(target);
 
 		if (!this.charging && !this.charged) {
 			startCharge();
@@ -142,6 +152,31 @@ public class CrossbowCadenceGoal extends Goal {
 
 		if (target.isAlive()) {
 			((RangedAttackMob) this.mob).performRangedAttack(target, 1.0F);
+		}
+	}
+
+	/** M5: a Pillager out of range or out of sight walks in; every other holder, and a Pillager that can shoot, stands. */
+	private void move(final LivingEntity target) {
+		boolean chase = this.mob instanceof Pillager
+			&& (this.mob.distanceToSqr(target) > CHASE_RADIUS * CHASE_RADIUS || !this.mob.getSensing().hasLineOfSight(target));
+
+		if (chase != this.chasing) {
+			this.chasing = chase;
+			this.repathTicks = 0;
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=pillagerChase MOVE tick={} chase={} distance={} sight={}",
+				this.mob.tickCount, chase, Math.sqrt(this.mob.distanceToSqr(target)), this.mob.getSensing().hasLineOfSight(target)
+			);
+		}
+
+		if (!chase) {
+			this.mob.getNavigation().stop();
+			return;
+		}
+
+		if (--this.repathTicks <= 0) {
+			this.repathTicks = REPATH_TICKS;
+			this.mob.getNavigation().moveTo(target, CHASE_SPEED);
 		}
 	}
 

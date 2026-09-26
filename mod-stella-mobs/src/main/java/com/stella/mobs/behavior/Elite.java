@@ -92,6 +92,11 @@ public final class Elite {
 		return true;
 	}
 
+	/** O03: a kind that is elite every time, which no roll gate may skip. */
+	public static boolean isForced(final Mob mob) {
+		return mob.getType() == EntityTypes.ELDER_GUARDIAN;
+	}
+
 	public static boolean isElite(final Mob mob) {
 		return EliteState.isElite(mob);
 	}
@@ -112,7 +117,7 @@ public final class Elite {
 	public static void rollAtSpawn(final Mob mob, final ServerLevel level, final double chance, final boolean applyKit) {
 		// O03: an elder guardian is elite every time, not by roll. The branch lives inside this one guard so
 		// no spawn path can miss it, and it still skips the escort squad at the tail.
-		boolean forced = mob.getType() == EntityTypes.ELDER_GUARDIAN;
+		boolean forced = isForced(mob);
 
 		if (EliteState.isSummoned(mob) || isElite(mob) || (!forced && !canBeElite(mob))
 			|| (!forced && !roll(mob.getRandom(), chance))) {
@@ -131,7 +136,7 @@ public final class Elite {
 			);
 		}
 
-		// O03: a forced path passes no escort count, because six guardians would change the fight.
+		// O03: a forced path passes no escort count, because an escort of guardians would change the fight.
 		if (!forced) {
 			EscortSquad.queue(mob, tier);
 		}
