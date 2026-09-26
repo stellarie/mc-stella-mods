@@ -21,21 +21,31 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import com.mojang.authlib.GameProfile;
+import io.netty.channel.embedded.EmbeddedChannel;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.GameType;
 
 public class ReadoutGameTest {
 	private static final int MAX_TICKS = 300;
@@ -82,6 +92,15 @@ public class ReadoutGameTest {
 	private static final float HEALTH_DAMAGE = 5.0F;
 	private static final double HEALTH_LINE_TEST_X = 29000.0;
 	private static final double RANK_TEST_X = 32000.0;
+	private static final double HOSTILITY_TEST_X = 35000.0;
+	private static final double GOLEM_HIT_TEST_X = 35400.0;
+	private static final double SECOND_VIEWER_TEST_X = 35800.0;
+	private static final double TARGET_CHANGE_TEST_X = 36200.0;
+	private static final double COLOR_PACKET_TEST_X = 36600.0;
+	private static final String RED = "red";
+	private static final String GREEN = "green";
+	private static final int RED_VALUE = TextColor.fromLegacyFormat(ChatFormatting.RED).getValue();
+	private static final int GREEN_VALUE = TextColor.fromLegacyFormat(ChatFormatting.GREEN).getValue();
 	private static final Predicate<Packet<?>> THE_HEALTH_LINE = packet ->
 		packet instanceof ClientboundSystemChatPacket line
 			&& line.overlay()
@@ -1175,6 +1194,171 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void enemyNameIsRedAndPassiveNameIsGreen(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = survivalOwnerAt(helper, HOSTILITY_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob husk = spawnKind(helper, EntityTypes.HUSK, owner.getX() + NEAR_DISTANCE, owner.getY(), owner.getZ(), true);
+			Mob cow = spawnStill(helper, owner.getX() - NEAR_DISTANCE, owner.getY(), owner.getZ());
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				String huskColor = nameColor(owner, husk);
+				String cowColor = nameColor(owner, cow);
+				StellaEquips.LOGGER.info(
+					"[BEHAVIOR] test=readoutEnemyColor RESULT husk={} cow={}", huskColor, cowColor
+				);
+				husk.discard();
+				cow.discard();
+				helper.assertTrue(
+					RED.equals(huskColor) && GREEN.equals(cowColor),
+					"the husk name read " + huskColor + " and the cow name read " + cowColor
+				);
+				helper.succeed();
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void attackedGolemTurnsRedBeforeTheNextScan(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = survivalOwnerAt(helper, GOLEM_HIT_TEST_X);
+		int interval = liveConfig().tracker().scanIntervalTicks();
+		Mob[] golem = {null};
+		int[] hitAt = {-1};
+		int[] redAt = {-1};
+
+		helper.onEachTick(() -> {
+			if (golem[0] == null) {
+				return;
+			}
+
+			int now = ReadoutService.serverTicks();
+			if (hitAt[0] < 0 && GREEN.equals(nameColor(owner, golem[0])) && now % interval == 1) {
+				hitAt[0] = now;
+				golem[0].hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(owner), 1.0F);
+			} else if (hitAt[0] >= 0 && redAt[0] < 0 && RED.equals(nameColor(owner, golem[0]))) {
+				redAt[0] = now;
+			}
+		});
+		whenAreaLoaded(helper, owner, () -> golem[0] = spawnKind(
+			helper, EntityTypes.IRON_GOLEM, owner.getX() + NEAR_DISTANCE, owner.getY(), owner.getZ(), false
+		));
+		helper.runAfterDelay(MAX_TICKS - 10, () -> {
+			int delay = redAt[0] < 0 ? -1 : redAt[0] - hitAt[0];
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=readoutGolemHit RESULT hitAt={} redAt={} delay={} interval={} line={}",
+				hitAt[0], redAt[0], delay, interval, lastFor("readout hostility", golem[0] == null ? new UUID(0, 0) : golem[0].getUUID())
+			);
+			if (golem[0] != null) {
+				golem[0].discard();
+			}
+			helper.assertTrue(
+				hitAt[0] >= 0 && delay >= 0 && delay < interval - 1,
+				"the golem hit at " + hitAt[0] + " turned red after " + delay + " ticks, not before the next scan"
+			);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void secondViewerStaysGreenUntilTargeted(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer attacker = survivalOwnerAt(helper, SECOND_VIEWER_TEST_X);
+		ServerPlayer bystander = survivalOwnerAt(helper, SECOND_VIEWER_TEST_X);
+
+		whenAreaLoaded(helper, attacker, () -> {
+			Mob golem = spawnKind(
+				helper, EntityTypes.IRON_GOLEM, attacker.getX() + NEAR_DISTANCE, attacker.getY(), attacker.getZ(), false
+			);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				golem.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(attacker), 1.0F);
+
+				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+					String attackerColor = nameColor(attacker, golem);
+					String bystanderColor = nameColor(bystander, golem);
+					StellaEquips.LOGGER.info(
+						"[BEHAVIOR] test=readoutSecondViewer RESULT attacker={} bystander={} golemTarget={}",
+						attackerColor, bystanderColor, golem.getTarget() == attacker ? "attacker" : String.valueOf(golem.getTarget())
+					);
+					golem.discard();
+					helper.assertTrue(
+						RED.equals(attackerColor) && GREEN.equals(bystanderColor),
+						"the attacker saw " + attackerColor + " and the bystander saw " + bystanderColor
+					);
+					helper.succeed();
+				});
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void targetChangeWithoutDamageTurnsRedOnScan(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = survivalOwnerAt(helper, TARGET_CHANGE_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob golem = spawnKind(helper, EntityTypes.IRON_GOLEM, owner.getX() + NEAR_DISTANCE, owner.getY(), owner.getZ(), true);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				String before = nameColor(owner, golem);
+				golem.setTarget(owner);
+
+				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+					String after = nameColor(owner, golem);
+					StellaEquips.LOGGER.info(
+						"[BEHAVIOR] test=readoutTargetChange RESULT before={} after={} golemTarget={} sameObject={} gameMode={} canAttack={} enemy={} invulnerable={} hostileNow={}",
+						before, after, golem.getTarget(), golem.getTarget() == owner, owner.gameMode(), golem.canAttack(owner),
+						owner.canBeSeenAsEnemy(), owner.isInvulnerable(), ReadoutService.hostile(golem, owner)
+					);
+					golem.discard();
+					helper.assertTrue(
+						GREEN.equals(before) && RED.equals(after),
+						"a golem that targeted its viewer read " + before + " then " + after
+					);
+					helper.succeed();
+				});
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void colorOnlyChangeSendsExactlyOnePacket(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = survivalOwnerAt(helper, COLOR_PACKET_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob golem = spawnKind(helper, EntityTypes.IRON_GOLEM, owner.getX() + NEAR_DISTANCE, owner.getY(), owner.getZ(), true);
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				ReadoutOwner.Readout first = ReadoutService.owner(owner).get(golem.getUUID());
+				helper.assertTrue(first != null, "the color packet test spawned no readout");
+				int dataBefore = PacketRecorder.of(owner).dataPackets(first.display().getId());
+				golem.setTarget(owner);
+
+				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+					int afterChange = PacketRecorder.of(owner).dataPackets(first.display().getId()) - dataBefore;
+
+					helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+						int afterRepeat = PacketRecorder.of(owner).dataPackets(first.display().getId()) - dataBefore;
+						StellaEquips.LOGGER.info(
+							"[BEHAVIOR] test=readoutColorPacket RESULT afterChange={} afterRepeat={} color={}",
+							afterChange, afterRepeat, nameColor(owner, golem)
+						);
+						golem.discard();
+						helper.assertTrue(
+							afterChange == 1 && afterRepeat == 1,
+							"a color-only change sent " + afterChange + " packets, then " + afterRepeat + " in total"
+						);
+						helper.succeed();
+					});
+				});
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void playerOverlayDisplaysItsLevelWithoutHP(final GameTestHelper helper) {
 		PowerConfig config = liveConfig();
 		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
@@ -1395,6 +1579,60 @@ public class ReadoutGameTest {
 	// The mob side of the band gap: raw threat mapped onto the player level scale.
 	private static int comparedThreat(final Mob mob, final PowerConfig config) {
 		return PowerCurve.normalizedThreat(PowerTracker.threat(mob, config), config);
+	}
+
+	// The in-level mock player is always creative, which no mob can target, so this one is survival.
+	private static ServerPlayer survivalOwnerAt(final GameTestHelper helper, final double offsetX) {
+		CommonListenerCookie cookie = CommonListenerCookie.createInitial(
+			new GameProfile(UUID.randomUUID(), "test-survival-player"), false
+		);
+		ServerPlayer player = new ServerPlayer(
+			helper.getLevel().getServer(), helper.getLevel(), cookie.gameProfile(), cookie.clientInformation()
+		);
+		Connection connection = new Connection(PacketFlow.SERVERBOUND);
+		new EmbeddedChannel(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+		player.setGameMode(GameType.SURVIVAL);
+		BlockPos spawn = helper.getLevel().getRespawnData().pos();
+		player.setPos(spawn.getX() + offsetX, spawn.getY() + 1.0, spawn.getZ());
+		player.experienceLevel = 0;
+		PacketRecorder.attach(player);
+		forceChunks(helper.getLevel(), player.getX(), player.getZ(), true);
+		return player;
+	}
+
+	private static Mob spawnKind(
+		final GameTestHelper helper,
+		final EntityType<? extends Mob> type,
+		final double x,
+		final double y,
+		final double z,
+		final boolean still
+	) {
+		Mob mob = type.create(helper.getLevel(), EntitySpawnReason.STRUCTURE);
+		mob.setPos(x, y, z);
+		mob.setNoAi(still);
+		mob.setPersistenceRequired();
+		helper.assertTrue(helper.getLevel().addFreshEntity(mob), "the level refused the " + type);
+		return mob;
+	}
+
+	// The color of the readout's name part for this viewer, or "none" without a readout.
+	private static String nameColor(final ServerPlayer viewer, final Mob mob) {
+		ReadoutOwner.Readout readout = ReadoutService.owner(viewer).get(mob.getUUID());
+		if (readout == null) {
+			return "none";
+		}
+
+		String name = mob.getDisplayName().getString();
+		for (Component part : readout.display().getText().toFlatList(Style.EMPTY)) {
+			if (part.getString().equals(name)) {
+				TextColor color = part.getStyle().getColor();
+				return color == null ? "plain" : color.getValue() == RED_VALUE ? RED : color.getValue() == GREEN_VALUE ? GREEN : "other";
+			}
+		}
+
+		return "missing";
 	}
 
 	private static ReadoutOwner.Readout firstReadout(final ReadoutOwner owner) {

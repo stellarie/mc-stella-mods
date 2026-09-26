@@ -17,7 +17,8 @@ public final class ReadoutOwner {
 		Display.TextDisplay display,
 		int threat,
 		PowerCurve.Band band,
-		String text
+		String text,
+		boolean hostile
 	) {
 	}
 

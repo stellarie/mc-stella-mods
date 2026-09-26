@@ -2,6 +2,7 @@ package com.stella.equips;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.stella.equips.enchant.UndertowPull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +49,7 @@ import net.minecraft.world.item.enchantment.ConditionalEffect;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.EnchantmentTarget;
 import net.minecraft.world.item.enchantment.Enchantable;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.enchantment.TargetedConditionalEffect;
@@ -61,7 +63,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantDataGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String FIXTURE_PATH = "test_marker";
-	private static final int CATALOGUE_SIZE = 71;
+	private static final int CATALOGUE_SIZE = 72;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
 	private static final int MAXED_TABLE_COST = 30;
@@ -102,6 +104,45 @@ public class EnchantDataGameTest {
 		"give", "loot", "clear", "item replace entity @a", "effect give @a",
 		"tp @a", "tp @s", "tp @e", "tp @p", "tp @r", "summon minecraft:item"
 	);
+
+	@GameTest
+	public void tempoDefinitionMatchesContract(final GameTestHelper helper) {
+		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		Enchantment tempo = registry.getValue(Identifier.fromNamespaceAndPath(MOD_ID, "weapon/tempo"));
+		String seen = tempo == null ? "missing" : "maxLevel=" + tempo.getMaxLevel() + " weight=" + tempo.getWeight()
+			+ " minCost=" + tempo.getMinCost(1) + " maxCost=" + tempo.getMaxCost(1) + " anvil=" + tempo.getAnvilCost()
+			+ " slots=" + tempo.definition().slots() + " postAttack=" + tempo.getEffects(EnchantmentEffectComponents.POST_ATTACK).size()
+			+ " sword=" + tempo.canEnchant(new ItemStack(Items.DIAMOND_SWORD)) + " trident=" + tempo.canEnchant(new ItemStack(Items.TRIDENT))
+			+ " bow=" + tempo.canEnchant(new ItemStack(Items.BOW));
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=tempoDefinition RESULT {}", seen);
+		helper.assertTrue(
+			tempo != null && tempo.getMaxLevel() == 1 && tempo.getWeight() == 5 && tempo.getMinCost(1) == 5
+				&& tempo.getMaxCost(1) == 30 && tempo.getAnvilCost() == 1
+				&& tempo.getEffects(EnchantmentEffectComponents.POST_ATTACK).size() == 2
+				&& tempo.canEnchant(new ItemStack(Items.DIAMOND_SWORD)) && tempo.canEnchant(new ItemStack(Items.TRIDENT))
+				&& !tempo.canEnchant(new ItemStack(Items.BOW)),
+			"tempo reads " + seen
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void undertowDefinitionMatchesContract(final GameTestHelper helper) {
+		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		Enchantment undertow = registry.getValue(Identifier.fromNamespaceAndPath(MOD_ID, "weapon/undertow"));
+		var postAttack = undertow == null ? List.<TargetedConditionalEffect<?>>of()
+			: undertow.getEffects(EnchantmentEffectComponents.POST_ATTACK);
+		boolean pullOnVictim = postAttack.stream().anyMatch(effect -> effect.affected() == EnchantmentTarget.VICTIM
+			&& effect.effect() instanceof UndertowPull);
+		String seen = undertow == null ? "missing" : "maxLevel=" + undertow.getMaxLevel() + " postAttack=" + postAttack.size()
+			+ " pullOnVictim=" + pullOnVictim + " trident=" + undertow.canEnchant(new ItemStack(Items.TRIDENT));
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=undertowDefinition RESULT {}", seen);
+		helper.assertTrue(
+			undertow != null && undertow.getMaxLevel() == 1 && pullOnVictim && undertow.canEnchant(new ItemStack(Items.TRIDENT)),
+			"undertow reads " + seen
+		);
+		helper.succeed();
+	}
 
 	@GameTest
 	public void theTestMarkerLivesOnlyInTheTestNamespaceWithADisplayName(final GameTestHelper helper) {

@@ -78,7 +78,7 @@ public class EffectEnchantGameTest {
 	private static final int CLOUDSTEP_WARMUP_TICKS = 60;
 	/** The effect command counts seconds, not ticks. */
 	private static final int TICKS_PER_SECOND = 20;
-	private static final int CATALOGUE_SIZE = 71;
+	private static final int CATALOGUE_SIZE = 72;
 
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
@@ -86,7 +86,7 @@ public class EffectEnchantGameTest {
 		"armor/ender_ward", "armor/ember_guard", "armor/rime_guard", "armor/venom_guard", "armor/dread_aura",
 		"armor/cloudstep", "armor/deflection",
 		"crossbow/railgun",
-		"tool/ore_mender", "tool/enchanted_yield"
+		"tool/ore_mender", "tool/enchanted_yield", "weapon/tempo"
 	);
 	private static final Set<String> CUT_PATHS = Set.of(
 		"weapon/cleave", "weapon/returning", "armor/featherfall", "armor/asbestos", "armor/warded", "bow/bodkin",
@@ -871,33 +871,6 @@ public class EffectEnchantGameTest {
 			helper.assertTrue(!target.isAlive(), "the falling smash did not take out the target beneath it");
 			helper.succeed();
 		});
-	}
-
-	@GameTest(maxTicks = 200)
-	public void undertowDragsTheThrowerTowardTheTarget(final GameTestHelper helper) {
-		ServerPlayer thrower = mockPlayer(helper, GameType.SURVIVAL);
-		BlockPos origin = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
-		thrower.setPos(origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5);
-		thrower.setYRot(0.0F);
-		Mob victim = helper.spawnMob(EntityTypes.ZOMBIE, 4.5F, SPAWN_Y, 4.0F).withNoFreeWill().spawn();
-		ItemStack trident = enchanted(helper, Items.TRIDENT, "weapon/undertow", 3);
-		thrower.setItemInHand(InteractionHand.MAIN_HAND, trident);
-		thrower.setDeltaMovement(0.0, 0.0, 0.0);
-		thrower.attack(victim);
-		double pullX = thrower.getDeltaMovement().x;
-		double pullY = thrower.getDeltaMovement().y;
-		double pullZ = thrower.getDeltaMovement().z;
-		double towardVictim = victim.getZ() - thrower.getZ();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=undertow RESULT pullX={} pullY={} pullZ={} towardVictim={}",
-			pullX, pullY, pullZ, towardVictim
-		);
-		helper.assertTrue(
-			Math.signum(pullZ) == Math.signum(towardVictim) && pullZ != 0.0,
-			"Undertow pushed the thrower " + pullZ + " on z while the target is at " + towardVictim
-		);
-		helper.assertTrue(pullY == 0.0, "the pull left the ground: y=" + pullY);
-		helper.succeed();
 	}
 
 	@GameTest

@@ -42,6 +42,15 @@ public final class PowerLog {
 		) {
 		}
 
+		default void readoutHostility(
+			final String player,
+			final String mob,
+			final int entityId,
+			final boolean from,
+			final boolean to
+		) {
+		}
+
 		default void readoutRemove(
 			final String player,
 			final String mob,
