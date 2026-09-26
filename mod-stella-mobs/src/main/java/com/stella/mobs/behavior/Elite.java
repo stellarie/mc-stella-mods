@@ -131,7 +131,7 @@ public final class Elite {
 			);
 		}
 
-		// O03: a forced path passes no escort count, because six guardians would change the fight.
+		// O03: a forced path passes no escort count, because an escort of guardians would change the fight.
 		if (!forced) {
 			EscortSquad.queue(mob, tier);
 		}
