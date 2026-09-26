@@ -33,6 +33,7 @@
 			"com.stella.mobs.RiderPearlGameTest",
 			"com.stella.mobs.RoleGameTest",
 			"com.stella.mobs.SpawnScalingGameTest",
+			"com.stella.mobs.SpawnSafetyGameTest",
 			"com.stella.mobs.SpiderEliteGameTest",
 			"com.stella.mobs.SpiderWebTrapGameTest",
 			"com.stella.mobs.SnowGolemGameTest",
