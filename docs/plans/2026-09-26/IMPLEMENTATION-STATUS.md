@@ -21,6 +21,12 @@ The gates ran here with `./gradlew`, not with `gradlew.bat` on Windows.
 | 10 | V3 daily one-wave raids | `feat/village-daily-raids` into `feat/mc-stella-villages` | 4 failed against the inert stub; the vanilla control kept 5 waves | clean build + 14 consecutive green runs at 49, and green with mobs loaded |
 | 11 | S2 spells README | `feat/spells-readme` into `feat/spellbooks-and-enchantments` | docs only | values read from the catalogue, casting, modifier and loot code |
 | 8 | V1b legacy roster migration | `feat/w021-migration`, fast-forwarded into `feat/mc-stella-villages` | 2 failed: a legacy sealed roster stayed sealed; the retired Evoker stayed | clean build + 5/5 at 44 |
+| 12 | E1 Stage 2: vanilla XP and catalogue cleanup | `feat/vanilla-xp-catalogue-cleanup` into `main-equip-ench` | 47 failed against old behaviour; both compatibility gates passed first (`E1-stage2-results.md`) | clean build + 5/5 at 186 |
+| 13 | E2 hostility name colors | `feat/hostility-readout-color` | 7 failed with hostility switched off | clean build + 5/5 at 193 |
+| 14 | E4 Tempo | `feat/tempo-enchant` | 10 failed before the data existed | clean build + 5/5 at 193 |
+| 15 | E3 Undertow midpoint | `feat/undertow-midpoint` | 6 failed with the pull switched off | clean build + 5/5 at 194 |
+| 16 | E2 + E3 + E4 together | merged into `main-equip-ench` | — | clean build + 5/5 at 208 |
+| 17 | Village suite timing | `fix/village-suite-timing`, fast-forwarded into `feat/mc-stella-villages` | vflake5: the roster reload and Nemesis reload tests failed on fixed tick bounds | 10 runs: 9 green; the 1 red was the watched patrol targeting test |
 
 Controls that pass on both commits, proving the changed input is the one that matters:
 `crossbowPillagerNeverClosesToMelee`, `crossbowPillagerInsideItsRangeHoldsItsGround`,
@@ -72,6 +78,16 @@ build may differ, so hash the jar you deploy.
 | `arcaneSightAddsTwoBlocksPerLevelOnlyInHeadSlot` | It fires up to about 24 blocks past its arena, through the arena walls at z 8, 16 and 24, so a neighbour's mob can take the hit. It failed once in 14 runs, in a run whose mutation could not affect it. | `padding = 32`. |
 | Neighbour interference | `r02HappyGhastBothAges` failed 2 of 17 runs with `SpawnSafetyGameTest` in the suite and 0 of 38 without it, including 8 runs of the untouched base. The spawn-gate subjects (an elite zombie with queued escorts, an elder guardian) and armed Pillagers stayed alive after their tests. | Both classes now discard their subjects. The merged tree then passed 10/10. |
 
+## Removal-red proofs for E1 to E4 (each change undone and verified by git)
+
+| Mutation | Tests that turned red |
+| --- | --- |
+| Stage 2: a death penalty, a position-dependent level, lost enchantments | 11 tests across `PowerTrackerGameTest` and `LegacySaveGameTest` |
+| E2: no pending recheck after a hit; no flattened name | `attackedGolemTurnsRedBeforeTheNextScan`; `coloredCustomNameStillTakesHostilityColor` |
+| E2: no hostility comparison; hostility not per viewer | `colorOnlyChangeSendsExactlyOnePacket`, `targetChangeWithoutDamageTurnsRedOnScan`, `secondViewerStaysGreenUntilTargeted` |
+| E4: no `is_direct`; no player term | `tempoThrownTridentDoesNotTrigger`; `tempoMobAttackerDoesNotReceiveSpeed` |
+| E3: no mount guard; no collision checks; first request wins | `undertowMountedPairsStayUntouched`; `undertowBlockedMovesAreAtomic`; `undertowLatestSameTickHitWins` |
+
 ## Deviations from the plans
 
 | Plan | Deviation | Reason |
@@ -85,6 +101,12 @@ build may differ, so hash the jar you deploy.
 | V3 | One roll per world per day (the existing `last_attempted_day`), not one per village. | The README promises one daily roll; the save already carried that field. |
 | V3 | The first day a world is seen only records the day. | A server start never raids, and a GameTest run, which never crosses a day, cannot start a raid in a neighbour's arena. |
 | V3 | D-V3-1 taken as recommended: a day with no attended village is skipped. | Easy to change in `VillageRaids.onLevelTick` if oniichan prefers queueing. |
+| E1 | Cloudstep grants `5` seconds, not `100`. | `effect give` counts seconds; the plan's "100-tick effects" is 5 seconds. |
+| E1 | The ore identity and cooldown checks retry up to 64 breaks. | At 25% one break per ore cannot prove identity. |
+| E2 | The recheck after a hit runs on each of the next 3 ticks, not exactly the next one. | A mob's target goals run every other tick, so the anger can land on either. |
+| E2 | Golem tests use a real survival player placed in the level. | `makeMockServerPlayerInLevel` is hard-coded to creative, which no mob can target. |
+| E4 | The player term is `minecraft:entity_type`. | 26.3 keys entity predicates by sub-predicate type; the plan's `type` key does not load. |
+| E3 | The same-tick test drives both hits through `hurtServer` and `doPostAttackEffects`. | A second `attack()` in the same tick is dropped by the attack cooldown, so it could not test the queue. |
 
 ## Still open
 
@@ -94,11 +116,12 @@ build may differ, so hash the jar you deploy.
   cannot reach your PC.
 - **Manual acceptance:** sword Pillagers and the chase feel, readable potion names in a vanilla
   client, and a patrol with 5 crossbow Pillagers in a real village.
-- **Watched test:** `patrolTargetsHostilesInsideDetectionRange` (W020) failed 4 times in about 70
-  village runs, once on code from before today. Each time the head was the test's own, awake, in
-  range and in sight, yet its target goal never started. Its failure line now also records the
-  head's ticks during the test and whether the head stands in an entity-ticking chunk, which should
-  name the cause the next time. The final V3 tree then passed 14 runs in a row.
+- **Watched test:** `patrolTargetsHostilesInsideDetectionRange` (W020) failed 5 times in about 95
+  village runs, once on code from before today. The last failure (vfix7) ruled out the tick
+  hypothesis: the head ticked 210 times in an entity-ticking chunk, awake, in range and in sight,
+  yet its nearest-target goal never ran. Its failure line now rebuilds the goal's own targeting
+  conditions and logs each check separately. That is the third attempt; if the next failure does not
+  name the cause, it gets tagged as a manual item per AGENTS.md.
 - **M1:** all 43 W002 test names appear in the `main` run with no required failure; deployment and
   the manual water-escape checks remain.
 - **V1b manual check:** load a backed-up pre-W021 world. The Evoker and Witch should leave as their
