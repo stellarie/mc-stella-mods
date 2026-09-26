@@ -55,6 +55,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StellaMobs implements ModInitializer {
+	/** V4: a mob carrying this entity tag takes none of the spawn-time rolls, so another mod can own its kit. */
+	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final String MOD_ID = "mod-stella-mobs";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -111,7 +113,8 @@ public class StellaMobs implements ModInitializer {
 
 		boolean loadedFromDisk = entity instanceof EntityLoadData loadData && loadData.isLoadedFromDisk();
 
-		if (!loadedFromDisk) {
+		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.
+		if (!loadedFromDisk && !mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {
 			Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
 			Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
 			ReactiveState state = ReactiveState.get(mob);
