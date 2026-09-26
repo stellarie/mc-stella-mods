@@ -39,6 +39,7 @@
 			"com.stella.mobs.SpiderWebTrapGameTest",
 			"com.stella.mobs.SnowGolemGameTest",
 			"com.stella.mobs.StormGameTest",
+			"com.stella.mobs.BloodMoonGameTest",
 			"com.stella.mobs.IllusionerGameTest",
 			"com.stella.mobs.SkeletonVolleyGameTest",
 			"com.stella.mobs.EvokerFireRainGameTest",
