@@ -264,6 +264,7 @@ public final class BehaviorInstaller {
 		witch.getGoalSelector().addGoal(WITCH_SELF_HEAL_PRIORITY, new WitchSelfHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_SUPPORT_PRIORITY, new WitchSupportHealGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));
+		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchBlinkGoal<>(witch));
 		witch.getGoalSelector().addGoal(
 			WITCH_AURA_PRIORITY, new EliteAuraGoal<>(witch, WitchElite.AURA_RADIUS, List.of(MobEffects.BLINDNESS))
 		);
