@@ -7,13 +7,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -24,8 +24,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -86,25 +84,13 @@ public class EffectEnchantGameTest {
 	/** Veinminer breaks the mined block and one neighbour each way along the plane axis. */
 	private static final int VEINMINER_BLOCKS_PER_SWING = 3;
 
-	/**
-	 * The spark life the datapack sets in `echolocation_tick.mcfunction`, mirrored here so
-	 * the test and the function move together. Changing one without the other fails this.
-	 */
-	private static final class SparkDurationTicks {
-		private static final int TOTAL = 40;
-		private static final int HALF = TOTAL / 2;
-		private static final int START_CLOCK = 1000;
-
-		private SparkDurationTicks() {
-		}
-	}
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
 		"weapon/void_brand", "weapon/meteor", "weapon/impale", "weapon/undertow",
 		"armor/ender_ward", "armor/ember_guard", "armor/rime_guard", "armor/venom_guard", "armor/dread_aura",
 		"armor/cloudstep", "armor/deflection",
 		"crossbow/railgun",
-		"tool/echolocation", "tool/veinminer", "tool/enchanted_yield"
+		"tool/ore_mender", "tool/veinminer", "tool/enchanted_yield"
 	);
 	private static final Set<String> CUT_PATHS = Set.of(
 		"weapon/cleave", "weapon/returning", "armor/featherfall", "armor/asbestos", "armor/warded", "bow/bodkin",
@@ -717,176 +703,125 @@ public class EffectEnchantGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void echolocationRunsItsPulseOnABlockBreak(final GameTestHelper helper) {
-		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
-		BlockPos ore = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
-		helper.getLevel().setBlockAndUpdate(ore, Blocks.DIAMOND_ORE.defaultBlockState());
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/echolocation", 1));
-		BlockPos wall = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
-		helper.getLevel().setBlockAndUpdate(wall, Blocks.STONE.defaultBlockState());
-		miner.setPos(wall.getX() + 0.5, wall.getY(), wall.getZ() + 0.5);
-		rearmCooldown(helper, miner, "ench_cd_echo", 40);
-		int before = score(helper, miner, "ench_cd_echo");
-		breakBlock(miner, wall, helper.getLevel());
-		int after = score(helper, miner, "ench_cd_echo");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=echolocation RESULT cooldownBefore={} cooldownAfter={} orePlaced={}",
-			before, after, helper.getLevel().getBlockState(ore).is(Blocks.DIAMOND_ORE)
-		);
-		helper.assertTrue(
-			after == before + 40,
-			"the Echolocation pulse never ran: the cooldown went " + before + " to " + after
-		);
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void echolocationMarksTheOreAroundTheBrokenBlock(final GameTestHelper helper) {
-		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+	public void oreMenderHealsHalfAHeartOnEveryOreBreak(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		BlockPos slab = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
-		level.setBlockAndUpdate(slab, Blocks.STONE.defaultBlockState());
-		BlockPos underfoot = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y - 1, 1));
-		level.setBlockAndUpdate(underfoot, Blocks.DIAMOND_ORE.defaultBlockState());
-		BlockPos beside = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 1));
-		level.setBlockAndUpdate(beside, Blocks.GOLD_ORE.defaultBlockState());
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/echolocation", 1));
-		miner.setPos(slab.getX() + 0.5, slab.getY(), slab.getZ() + 0.5);
-		rearmCooldown(helper, miner, "ench_cd_echo", 40);
-		int cooldownBefore = score(helper, miner, "ench_cd_echo");
-		breakBlock(miner, slab, level);
-		int cooldownAfter = score(helper, miner, "ench_cd_echo");
-		List<String> markers = sparkMarkers(level);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=echolocationMarks RESULT feet={} underfoot={} beside={} cooldownBefore={}"
-				+ " cooldownAfter={} sparkMarkers={}",
-			miner.position(), underfoot, beside, cooldownBefore, cooldownAfter, markers
-		);
-		helper.assertTrue(cooldownAfter == cooldownBefore + 40, "the pulse never ran");
-		List<String> allMarkers = new ArrayList<>();
-		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
-			for (String tag : candidate.entityTags()) {
-				allMarkers.add(tag + "@" + candidate.blockPosition());
-			}
-		}
-
-		StellaEquips.LOGGER.info("[BEHAVIOR] test=echolocationAllMarkers RESULT markers={}", allMarkers);
-		runCommand(
-			helper, miner, "summon minecraft:marker ~ ~ ~ {Tags:[\"echo_spark\"],data:{echo_life:40}}"
-		);
-		int plainEcho = sparkMarkers(level).size();
-		runCommand(
-			helper, miner,
-			"execute if block ~ ~-1 ~ #minecraft:ores run summon minecraft:marker ~ ~-1 ~ "
-				+ "{Tags:[\"echo_spark\"],data:{echo_life:40}}"
-		);
-		int conditionalEcho = sparkMarkers(level).size();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=echolocationSummonShape RESULT plainEcho={} conditionalEcho={}",
-			plainEcho, conditionalEcho
-		);
-
-		helper.assertTrue(
-			markers.equals(Stream.of(underfoot, beside).map(String::valueOf).sorted().toList()),
-			"the sparks sat at " + markers + " instead of the two ores " + underfoot + " and " + beside
-		);
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void echolocationKeepsTheSparkLitForTwoSeconds(final GameTestHelper helper) {
 		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
-		ServerLevel level = helper.getLevel();
-		BlockPos slab = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y, 1));
-		level.setBlockAndUpdate(slab, Blocks.STONE.defaultBlockState());
-		BlockPos underfoot = helper.absolutePos(new BlockPos(1, (int) SPAWN_Y - 1, 1));
-		level.setBlockAndUpdate(underfoot, Blocks.DIAMOND_ORE.defaultBlockState());
-		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/echolocation", 1));
-		miner.setPos(slab.getX() + 0.5, slab.getY(), slab.getZ() + 0.5);
-		// The datapack tick does not run in a game test, so the clock is driven by hand and
-		// the pulse and the decay are both called directly. That measures the rule itself.
-		runCommand(helper, miner, "scoreboard players set #clock ench_clock " + SparkDurationTicks.START_CLOCK);
-		rearmCooldown(helper, miner, "ench_cd_echo", SparkDurationTicks.TOTAL);
-		breakBlock(miner, slab, level);
-		List<String> samples = new ArrayList<>();
-		samples.add("0=" + sparkMarkers(level).size());
-		for (int advance = 1; advance <= SparkDurationTicks.TOTAL + 3; advance++) {
-			runCommand(helper, miner, "scoreboard players add #clock ench_clock 1");
-			runFunction(helper, miner, "mod-stella-equips-enchants:echolocation_tick");
-			if (advance <= 2 || advance == SparkDurationTicks.HALF || advance >= SparkDurationTicks.TOTAL - 1) {
-				int lit = sparkMarkers(level).size();
-				samples.add(advance + "=" + lit);
-				if (advance == SparkDurationTicks.TOTAL && lit != 1) {
-					throw new AssertionError("the spark died before its two seconds, at tick " + advance);
-				}
-
-				if (advance == SparkDurationTicks.TOTAL + 1 && lit != 0) {
-					throw new AssertionError("the spark outlived its two seconds, still lit at tick " + advance);
-				}
+		List<Block> ores = oreBlocks(level);
+		helper.assertTrue(!ores.isEmpty(), "minecraft:ores has no entries");
+		float maxHealth = miner.getMaxHealth();
+		int expectedBreaks = ores.size() + 1;
+		float startingHealth = maxHealth - expectedBreaks;
+		helper.assertTrue(startingHealth > 0.0F, "the player has no health headroom for all ore breaks");
+		miner.setHealth(startingHealth);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/ore_mender", 1));
+		BlockPos target = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
+		miner.setPos(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+		List<String> failures = new ArrayList<>();
+		int completed = 0;
+		float totalHealed = 0.0F;
+		for (Block ore : ores) {
+			level.setBlockAndUpdate(target, ore.defaultBlockState());
+			float before = miner.getHealth();
+			boolean broken = miner.gameMode.destroyBlock(target);
+			float after = miner.getHealth();
+			float healed = after - before;
+			totalHealed += healed;
+			if (broken) {
+				completed++;
 			}
+			if (!broken || !level.getBlockState(target).isAir() || Math.abs(healed - 1.0F) > 0.001F) {
+				failures.add(BuiltInRegistries.BLOCK.getKey(ore) + " broken=" + broken + " healed=" + healed);
+			}
+		}
+
+		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+		float beforeRepeat = miner.getHealth();
+		boolean repeatedBreak = miner.gameMode.destroyBlock(target);
+		float repeatHeal = miner.getHealth() - beforeRepeat;
+		completed += repeatedBreak ? 1 : 0;
+		totalHealed += repeatHeal;
+		if (!repeatedBreak || !level.getBlockState(target).isAir() || Math.abs(repeatHeal - 1.0F) > 0.001F) {
+			failures.add("immediate repeated diamond ore break healed=" + repeatHeal);
 		}
 
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=echolocationSparkLife RESULT sparkDurationTicks={} samples={}",
-			SparkDurationTicks.TOTAL, samples
+			"[BEHAVIOR] test=oreMenderHealsHalfAHeart RESULT oreTypes={} completed={} expectedBreaks={} "
+				+ "totalHealed={} healPerBreak=1.0 failures={}",
+				ores.size(), completed, expectedBreaks, totalHealed, failures
 		);
-		assertSparkLife(samples);
+		helper.assertTrue(failures.isEmpty(), "Ore Mender did not heal one point per ore break: " + failures);
+		helper.assertTrue(completed == expectedBreaks, "only " + completed + " of " + expectedBreaks + " breaks completed");
+		helper.assertTrue(
+			Math.abs(miner.getHealth() - maxHealth) < 0.001F,
+			"the player ended at " + miner.getHealth() + " instead of " + maxHealth
+		);
 		helper.succeed();
 	}
-	/** A spark must be lit at once, still lit at half its life, and gone by its full life. */
-	private static void assertSparkLife(final List<String> samples) {
-		int litAtHalf = -1;
-		int litAfter = -1;
-		for (String sample : samples) {
-			String[] parts = sample.split("=");
-			int tick = Integer.parseInt(parts[0]);
-			if (tick == SparkDurationTicks.HALF) {
-				litAtHalf = Integer.parseInt(parts[1]);
-			}
 
-			if (tick == SparkDurationTicks.TOTAL + 1) {
-				litAfter = Integer.parseInt(parts[1]);
-			}
-		}
+	@GameTest
+	public void oreMenderRejectsStoneAndUnenchantedOre(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+		float startingHealth = miner.getMaxHealth() / 2.0F;
+		miner.setHealth(startingHealth);
+		BlockPos target = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
+		miner.setPos(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/ore_mender", 1));
 
-		if (!samples.get(0).endsWith("=1")) {
-			throw new AssertionError("the pulse lit no spark: " + samples);
-		}
+		level.setBlockAndUpdate(target, Blocks.STONE.defaultBlockState());
+		boolean stoneDestroyed = miner.gameMode.destroyBlock(target);
+		float healthAfterStone = miner.getHealth();
+		boolean stoneAir = level.getBlockState(target).isAir();
 
-		if (litAtHalf != 1) {
-			throw new AssertionError("the spark went out before half its life: " + samples);
-		}
+		hold(miner, new ItemStack(Items.DIAMOND_PICKAXE));
+		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+		boolean unenchantedOreDestroyed = miner.gameMode.destroyBlock(target);
+		float healthAfterUnenchantedOre = miner.getHealth();
+		boolean oreAir = level.getBlockState(target).isAir();
 
-		if (litAfter != 0) {
-			throw new AssertionError("the spark outlived two seconds: " + samples);
-		}
-	}
-	/** The stored birth clock of the first spark, or -1 when nothing is lit. */
-	private static long sparkLifeScore(final GameTestHelper helper, final ServerLevel level) {
-		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
-			if (candidate.entityTags().contains("echo_spark")) {
-				var scores = helper.getLevel().getServer().getScoreboard();
-				var objective = scores.getObjective("echo_life");
-				return objective == null ? -2L
-					: scores.getOrCreatePlayerScore(ScoreHolder.forNameOnly(candidate.getStringUUID()), objective).get();
-			}
-		}
-
-		return -1L;
-	}
-
-	private static List<String> sparkMarkers(final ServerLevel level) {
-		List<String> markers = new ArrayList<>();
-		for (Entity candidate : level.getEntities(EntityTypeTest.forClass(Entity.class), e -> true)) {
-			if (candidate.entityTags().contains("echo_spark")) {
-				markers.add(String.valueOf(candidate.blockPosition()));
-			}
-		}
-
-		markers.sort(String::compareTo);
-		return markers;
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=oreMenderRejections RESULT stoneDestroyed={} stoneAir={} stoneHeal={} "
+				+ "unenchantedOreDestroyed={} oreAir={} unenchantedOreHeal={}",
+			stoneDestroyed, stoneAir, healthAfterStone - startingHealth,
+			unenchantedOreDestroyed, oreAir, healthAfterUnenchantedOre - healthAfterStone
+		);
+		helper.assertTrue(stoneDestroyed && stoneAir, "the plain stone control did not break");
+		helper.assertTrue(
+			healthAfterStone == startingHealth,
+			"stone healed the player by " + (healthAfterStone - startingHealth)
+		);
+		helper.assertTrue(unenchantedOreDestroyed && oreAir, "the unenchanted ore control did not break");
+		helper.assertTrue(
+			healthAfterUnenchantedOre == startingHealth,
+			"an unenchanted pickaxe healed the player by " + (healthAfterUnenchantedOre - startingHealth)
+		);
+		helper.succeed();
 	}
 
+	@GameTest
+	public void oreMenderDoesNotOverheal(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+		float maxHealth = miner.getMaxHealth();
+		float startingHealth = maxHealth - 0.5F;
+		miner.setHealth(startingHealth);
+		BlockPos target = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
+		miner.setPos(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/ore_mender", 1));
+		level.setBlockAndUpdate(target, Blocks.DIAMOND_ORE.defaultBlockState());
+		boolean destroyed = miner.gameMode.destroyBlock(target);
+		float healthAfter = miner.getHealth();
+		boolean oreAir = level.getBlockState(target).isAir();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=oreMenderNoOverheal RESULT destroyed={} oreAir={} before={} after={} max={}",
+			destroyed, oreAir, startingHealth, healthAfter, maxHealth
+		);
+		helper.assertTrue(destroyed && oreAir, "the diamond ore did not break");
+		helper.assertTrue(healthAfter >= startingHealth, "the ore break reduced health");
+		helper.assertTrue(healthAfter <= maxHealth, "Ore Mender raised health above its maximum");
+		helper.assertTrue(healthAfter - startingHealth <= 1.0F, "Ore Mender added more than one health point");
+		helper.succeed();
+	}
 	@GameTest(maxTicks = 200)
 	public void enchantedYieldPaysMoreExperienceAtAHigherLevel(final GameTestHelper helper) {
 		int atOne = experienceFromBreaks(helper, 1);
@@ -1145,6 +1080,17 @@ public class EffectEnchantGameTest {
 		return axes.size() == 1 && axes.contains(expected) ? expected : axes.toString();
 	}
 
+	private static List<Block> oreBlocks(final ServerLevel level) {
+		Registry<Block> registry = level.registryAccess().lookupOrThrow(Registries.BLOCK);
+		TagKey<Block> ores = TagKey.create(
+			Registries.BLOCK, Identifier.fromNamespaceAndPath("minecraft", "ores")
+		);
+		List<Block> blocks = new ArrayList<>();
+		registry.getTagOrEmpty(ores).forEach(holder -> blocks.add(holder.value()));
+		blocks.sort(Comparator.comparing(block -> BuiltInRegistries.BLOCK.getKey(block).toString()));
+		return blocks;
+	}
+
 	private static List<BlockPos> oreField(final GameTestHelper helper, final BlockPos centre) {
 		List<BlockPos> field = new ArrayList<>();
 
@@ -1256,10 +1202,6 @@ public class EffectEnchantGameTest {
 		}
 
 		return scoreboard.getOrCreatePlayerScore(ScoreHolder.forNameOnly(name), objective).get();
-	}
-
-	private static void runFunction(final GameTestHelper helper, final LivingEntity entity, final String function) {
-		runCommand(helper, entity, "function " + function);
 	}
 
 	private static void runCommand(final GameTestHelper helper, final LivingEntity entity, final String command) {
