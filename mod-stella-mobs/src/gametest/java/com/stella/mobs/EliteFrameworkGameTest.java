@@ -6,6 +6,7 @@ import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.FollowAllyGoal;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.behavior.WitchElite;
+import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.RollSpec;
@@ -29,6 +30,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The elite framework on a headless rig: the roll, the marker that cannot compound, the kit, the escort
@@ -40,6 +42,12 @@ public class EliteFrameworkGameTest {
 			"version": 1,
 			"entities": {},
 			"rolls": { "roll_chance": 0.0, "elite_chance": 1.0 }
+		}""";
+	private static final String ALWAYS_ROLL = """
+		{
+			"version": 1,
+			"entities": {},
+			"rolls": { "roll_chance": 1.0, "elite_chance": 1.0 }
 		}""";
 	private static final String NEVER_ELITE = """
 		{
@@ -264,6 +272,51 @@ public class EliteFrameworkGameTest {
 			helper.assertValueEqual(Integer.valueOf(after), Integer.valueOf(first[0]), "escorts after one loss and one request");
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void taggedSpawnSkipsEverySpawnRoll(final GameTestHelper helper) {
+		boolean[] rolled = rolledState(helper, true);
+		result("taggedSpawnSkipsEverySpawnRoll", describe(rolled));
+		helper.assertFalse(rolled[0] || rolled[1] || rolled[2], "a tagged natural zombie still took a spawn roll: " + describe(rolled));
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void untaggedSpawnStillRolls(final GameTestHelper helper) {
+		boolean[] rolled = rolledState(helper, false);
+		result("untaggedSpawnStillRolls", describe(rolled));
+		helper.assertTrue(rolled[0], "an untagged natural zombie skipped the elite roll at a chance of 1.0: " + describe(rolled));
+		helper.succeed();
+	}
+
+	/** One natural zombie under certain gear and elite rolls; only the tag differs between the two cases. */
+	private static boolean[] rolledState(final GameTestHelper helper, final boolean tagged) {
+		GearConfig previous = GearConfigStore.get();
+		helper.setTime(Arena.NIGHT_TIME);
+		Arena.buildFloor(helper);
+
+		try {
+			GearConfigStore.set(GearConfigParser.parse(ALWAYS_ROLL));
+			Zombie zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.NATURAL);
+			Vec3 at = helper.absoluteVec(new Vec3(SPAWN_X + 0.5, SPAWN_Y, SPAWN_Z + 0.5));
+			zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+			if (tagged) {
+				zombie.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+			}
+			helper.getLevel().addFreshEntity(zombie);
+			boolean elite = Elite.isElite(zombie);
+			boolean gear = !zombie.getItemBySlot(EquipmentSlot.HEAD).isEmpty() || !zombie.getMainHandItem().isEmpty();
+			boolean scaled = zombie.getAttribute(Attributes.MAX_HEALTH).getModifier(SpawnScaling.HEALTH_ID) != null;
+			zombie.discard();
+			return new boolean[] { elite, gear, scaled };
+		} finally {
+			GearConfigStore.set(previous);
+		}
+	}
+
+	private static String describe(final boolean[] rolled) {
+		return "elite=" + rolled[0] + " gear=" + rolled[1] + " scaled=" + rolled[2];
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
