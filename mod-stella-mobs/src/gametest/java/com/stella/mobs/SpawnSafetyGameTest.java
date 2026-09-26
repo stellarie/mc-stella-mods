@@ -73,8 +73,9 @@ public class SpawnSafetyGameTest {
 	public void naturalZombieInsideTheRadiusNeverRollsElite(final GameTestHelper helper) {
 		double distance = spawnDistance(helper);
 		Mob zombie = spawnWith(helper, EntityTypes.ZOMBIE, eliteConfig(distance + MARGIN));
-		result("naturalZombieInsideTheRadiusNeverRollsElite", "distance=" + fmt(distance) + " elite=" + Elite.isElite(zombie));
-		helper.assertFalse(Elite.isElite(zombie), "a natural zombie inside the radius rolled elite at a chance of 1.0");
+		boolean elite = removed(zombie, Elite.isElite(zombie));
+		result("naturalZombieInsideTheRadiusNeverRollsElite", "distance=" + fmt(distance) + " elite=" + elite);
+		helper.assertFalse(elite, "a natural zombie inside the radius rolled elite at a chance of 1.0");
 		helper.succeed();
 	}
 
@@ -83,8 +84,9 @@ public class SpawnSafetyGameTest {
 		double distance = spawnDistance(helper);
 		helper.assertTrue(distance > MARGIN, "the arena sits on the shared spawn, so no radius can leave it outside");
 		Mob zombie = spawnWith(helper, EntityTypes.ZOMBIE, eliteConfig(distance - MARGIN));
-		result("naturalZombieJustOutsideTheRadiusStillRollsElite", "distance=" + fmt(distance) + " elite=" + Elite.isElite(zombie));
-		helper.assertTrue(Elite.isElite(zombie), "a natural zombie outside the radius did not roll elite at a chance of 1.0");
+		boolean elite = removed(zombie, Elite.isElite(zombie));
+		result("naturalZombieJustOutsideTheRadiusStillRollsElite", "distance=" + fmt(distance) + " elite=" + elite);
+		helper.assertTrue(elite, "a natural zombie outside the radius did not roll elite at a chance of 1.0");
 		helper.succeed();
 	}
 
@@ -92,8 +94,9 @@ public class SpawnSafetyGameTest {
 	public void naturalSkeletonInsideTheRadiusNeverRollsBoss(final GameTestHelper helper) {
 		double distance = spawnDistance(helper);
 		Mob skeleton = spawnWith(helper, EntityTypes.SKELETON, bossConfig(distance + MARGIN));
-		result("naturalSkeletonInsideTheRadiusNeverRollsBoss", "distance=" + fmt(distance) + " boss=" + EliteState.isBoss(skeleton));
-		helper.assertFalse(EliteState.isBoss(skeleton), "a natural skeleton inside the radius rolled boss at a chance of 1.0");
+		boolean boss = removed(skeleton, EliteState.isBoss(skeleton));
+		result("naturalSkeletonInsideTheRadiusNeverRollsBoss", "distance=" + fmt(distance) + " boss=" + boss);
+		helper.assertFalse(boss, "a natural skeleton inside the radius rolled boss at a chance of 1.0");
 		helper.succeed();
 	}
 
@@ -101,8 +104,9 @@ public class SpawnSafetyGameTest {
 	public void forcedElderGuardianStaysEliteInsideTheRadius(final GameTestHelper helper) {
 		double distance = spawnDistance(helper);
 		Mob guardian = spawnWith(helper, EntityTypes.ELDER_GUARDIAN, rolls("\"elite_chance\": 0.0, \"boss_chance\": 0.0", distance + MARGIN));
-		result("forcedElderGuardianStaysEliteInsideTheRadius", "distance=" + fmt(distance) + " elite=" + Elite.isElite(guardian));
-		helper.assertTrue(Elite.isElite(guardian), "the gate took the forced elder guardian's elite mark");
+		boolean elite = removed(guardian, Elite.isElite(guardian));
+		result("forcedElderGuardianStaysEliteInsideTheRadius", "distance=" + fmt(distance) + " elite=" + elite);
+		helper.assertTrue(elite, "the gate took the forced elder guardian's elite mark");
 		helper.succeed();
 	}
 
@@ -147,6 +151,12 @@ public class SpawnSafetyGameTest {
 		} finally {
 			GearConfigStore.set(previous);
 		}
+	}
+
+	/** Removes the subject once it is read, so a live elite and its queued escorts never wander into a neighbouring arena. */
+	private static boolean removed(final Mob mob, final boolean observed) {
+		mob.discard();
+		return observed;
 	}
 
 	private static double spawnDistance(final GameTestHelper helper) {
