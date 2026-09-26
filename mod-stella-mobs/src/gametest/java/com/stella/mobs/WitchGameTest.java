@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.WitchBlinkGoal;
 import com.stella.mobs.behavior.WitchElite;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.behavior.WitchOffensiveThrowGoal;
@@ -53,7 +54,10 @@ public class WitchGameTest {
 	private static final long NIGHT_TIME = 18000L;
 	private static final int MAX_TICKS = 200;
 	private static final long THRESHOLD_TICKS = 60L;
-	private static final int BURST_WINDOW_TICKS = WitchOffensiveThrowGoal.BURST_SPACING_TICKS * WitchOffensiveThrowGoal.BURST_SIZE + 4;
+	// One full shuffle of the five harmful potions, with room for the opener.
+	private static final int BAG_CYCLE_TICKS = WitchOffensiveThrowGoal.OFFENSE_INTERVAL_TICKS * 7;
+	private static final int BLINK_PADDING = 24;
+	private static final int ALLY_PADDING = 24;
 	private static final float WITCH_BASE_HEALTH = 26.0F;
 	private static final double WATCH_RADIUS = 40.0;
 	private static final double EPSILON = 1.0e-6;
@@ -74,32 +78,33 @@ public class WitchGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
 	public void witchThrowsHarming(final GameTestHelper helper) {
 		assertOffensiveThrow(helper, WitchPotions.offensive().get(0), "witchThrowsHarming");
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
 	public void witchThrowsPoison(final GameTestHelper helper) {
 		assertOffensiveThrow(helper, WitchPotions.offensive().get(1), "witchThrowsPoison");
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
 	public void witchThrowsBlindness(final GameTestHelper helper) {
 		assertOffensiveThrow(helper, WitchPotions.offensive().get(3), "witchThrowsBlindness");
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
 	public void witchThrowsSlowness(final GameTestHelper helper) {
 		assertOffensiveThrow(helper, WitchPotions.offensive().get(2), "witchThrowsSlowness");
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
 	public void witchThrowsLevitation(final GameTestHelper helper) {
 		assertOffensiveThrow(helper, WitchPotions.offensive().get(4), "witchThrowsLevitation");
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	// Padded so a neighbour arena's mob is never inside the witch's ally radius.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
 	public void witchHealsAllyWithoutAggro(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie ally = enemy(helper, 7, 2);
@@ -120,7 +125,8 @@ public class WitchGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	// Padded so a neighbour arena's mob is never inside the witch's ally radius.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
 	public void witchSelfHealsBelowThirtyPercent(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		boostWitch(witch);
@@ -139,29 +145,8 @@ public class WitchGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
-	public void witchHealsAllyBelowTwentyPercent(final GameTestHelper helper) {
-		Witch witch = prepare(helper, 2, 2);
-		Zombie ally = enemy(helper, 7, 2);
-		boostWitch(witch);
-		PotionWatch watch = watch(helper, witch);
-		boolean[] allyHealed = healDetector(helper, ally);
-		Holder<MobEffect> healing = WitchPotions.healing().effect();
-		ally.setHealth(ally.getMaxHealth() * 0.21F);
-
-		helper.runAfterDelay(THRESHOLD_TICKS, () -> {
-			helper.assertFalse(allyHealed[0], "the ally was healed above the threshold: " + watch.summary());
-			allyHealed[0] = false;
-			ally.setHealth(ally.getMaxHealth() * 0.19F);
-			helper.runAfterDelay(THRESHOLD_TICKS, () -> {
-				helper.assertTrue(allyHealed[0], "the ally was never healed below the threshold: " + watch.summary());
-				result("witchHealsAllyBelowTwentyPercent", "threshold=" + WitchSupportHealGoal.ALLY_HEALTH_FRACTION + " " + watch.summary());
-				helper.succeed();
-			});
-		});
-	}
-
-	@GameTest(maxTicks = MAX_TICKS)
+	// Padded so a neighbour arena's mob is never inside the witch's ally radius.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
 	public void witchSelfHealWinsPriority(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
@@ -187,26 +172,108 @@ public class WitchGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
-	public void witchBurstThrowsThreePotions(final GameTestHelper helper) {
+	@GameTest(maxTicks = BAG_CYCLE_TICKS)
+	public void witchThrowsOneHarmfulPotionEveryThreeSeconds(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
 		helper.onEachTick(() -> witch.setTarget(enemy));
 		PotionWatch watch = watch(helper, witch);
 
 		helper.succeedWhen(() -> {
+			List<Long> ticks = watch.offensiveTicks();
+			helper.assertTrue(ticks.size() >= 3, "only " + ticks.size() + " harmful throws so far: " + watch.summary());
+			List<Long> gaps = new ArrayList<>();
+			for (int i = 1; i < ticks.size(); i++) {
+				gaps.add(ticks.get(i) - ticks.get(i - 1));
+			}
+			boolean steady = gaps.stream().allMatch(gap -> Math.abs(gap - WitchOffensiveThrowGoal.OFFENSE_INTERVAL_TICKS) <= 1);
+			helper.assertTrue(steady, "harmful throws came " + gaps + " ticks apart: " + watch.summary());
+			result("witchOffenseCadence", "gaps=" + gaps + " interval=" + WitchOffensiveThrowGoal.OFFENSE_INTERVAL_TICKS);
+		});
+	}
+
+	// Padded so a neighbour arena's mob is never inside the witch's ally radius.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
+	public void witchSupportsAnAllyEveryTwoSeconds(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		Zombie ally = enemy(helper, 6, 2);
+		// Far above the retired 20 percent gate, so only the cadence can explain a throw.
+		boolean startedFull = ally.getHealth() > ally.getMaxHealth() * 0.9F;
+		PotionWatch watch = watch(helper, witch);
+
+		helper.succeedWhen(() -> {
+			List<Long> ticks = watch.allTicks();
+			helper.assertTrue(ticks.size() >= 3, "only " + ticks.size() + " support throws at a full-health ally: " + watch.summary());
+			List<Long> gaps = new ArrayList<>();
+			for (int i = 1; i < ticks.size(); i++) {
+				gaps.add(ticks.get(i) - ticks.get(i - 1));
+			}
+			boolean steady = gaps.stream().allMatch(gap -> Math.abs(gap - WitchSupportHealGoal.SUPPORT_INTERVAL_TICKS) <= 1);
+			helper.assertTrue(steady && startedFull, "support throws came " + gaps + " ticks apart; full ally " + startedFull + ": " + watch.summary());
+			result("witchSupportCadence", "gaps=" + gaps + " interval=" + WitchSupportHealGoal.SUPPORT_INTERVAL_TICKS);
+		});
+	}
+
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = BLINK_PADDING)
+	public void witchBlinksAwayFromACloseThreat(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		blinkFloor(helper);
+		Zombie enemy = enemy(helper, 3, 2);
+		witch.setTarget(enemy);
+
+		helper.succeedWhen(() -> {
+			double distance = witch.distanceTo(enemy);
 			helper.assertTrue(
-				watch.offensiveCount() >= WitchOffensiveThrowGoal.BURST_SIZE,
-				"the burst never emitted " + WitchOffensiveThrowGoal.BURST_SIZE + " potions: " + watch.summary() + " goals: " + goals(witch)
+				distance >= WitchBlinkGoal.BLINK_MIN_DISTANCE && witch.getTarget() == enemy,
+				"the witch stands " + distance + " from the threat with target " + witch.getTarget()
 			);
-			helper.assertTrue(
-				watch.maxOffensiveInWindow(BURST_WINDOW_TICKS) >= WitchOffensiveThrowGoal.BURST_SIZE,
-				"no " + BURST_WINDOW_TICKS + " tick window held " + WitchOffensiveThrowGoal.BURST_SIZE + " offensive throws: " + watch.summary()
-			);
-			result(
-				"witchBurstThrowsThreePotions",
-				"maxInWindow=" + watch.maxOffensiveInWindow(BURST_WINDOW_TICKS) + " window=" + BURST_WINDOW_TICKS + " " + watch.summary()
-			);
+			result("witchBlink", "distance=" + distance + " min=" + WitchBlinkGoal.BLINK_MIN_DISTANCE + " keptTarget=true");
+		});
+	}
+
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = BLINK_PADDING)
+	public void witchKeepsThrowingAfterABlink(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		blinkFloor(helper);
+		Zombie enemy = enemy(helper, 3, 2);
+		witch.setTarget(enemy);
+		PotionWatch watch = watch(helper, witch);
+		long[] blinkedAt = {-1L};
+		helper.onEachTick(() -> {
+			if (blinkedAt[0] < 0 && witch.distanceTo(enemy) >= WitchBlinkGoal.BLINK_MIN_DISTANCE) {
+				blinkedAt[0] = helper.getTick();
+			}
+		});
+
+		helper.succeedWhen(() -> {
+			long after = watch.offensiveTicks().stream().filter(tick -> blinkedAt[0] >= 0 && tick > blinkedAt[0]).count();
+			helper.assertTrue(after > 0, "no harmful throw after the blink at " + blinkedAt[0] + ": " + watch.summary());
+			result("witchThrowsAfterBlink", "blinkedAt=" + blinkedAt[0] + " throwsAfter=" + after);
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void witchNeverBlinksIntoAWall(final GameTestHelper helper) {
+		Witch witch = prepare(helper, 2, 2);
+		// Every spot around the pair is solid, so a blink has nowhere safe to go.
+		for (int x = 0; x < 8; x++) {
+			for (int z = 0; z < 8; z++) {
+				if (x > 3 || z > 3) {
+					for (int y = 1; y <= 4; y++) {
+						helper.setBlock(x, y, z, Blocks.STONE);
+					}
+				}
+			}
+		}
+		Zombie enemy = enemy(helper, 3, 2);
+		witch.setTarget(enemy);
+
+		helper.runAfterDelay(120L, () -> {
+			boolean free = helper.getLevel().noCollision(witch);
+			boolean loaded = helper.getLevel().isLoaded(witch.blockPosition());
+			result("witchBlinkWall", "free=" + free + " loaded=" + loaded + " at=" + witch.blockPosition());
+			helper.assertTrue(free && loaded, "the witch ended inside a block or an unloaded chunk at " + witch.blockPosition());
+			helper.succeed();
 		});
 	}
 
@@ -293,7 +360,8 @@ public class WitchGameTest {
 	 * beside the ally measures the splash's falloff and is never asserted on, because the harness's
 	 * mock player is creative and can never be a witch's target.
 	 */
-	@GameTest(maxTicks = MAX_TICKS)
+	// Padded so a neighbour arena's mob is never inside the witch's ally radius.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
 	public void witchBuffsAnAllyWithSpeed(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
@@ -538,6 +606,15 @@ public class WitchGameTest {
 		return healed;
 	}
 
+	/** A floor wide enough that a blink up to sixteen blocks lands on stone. */
+	private static void blinkFloor(final GameTestHelper helper) {
+		for (int x = -BLINK_PADDING + 4; x < BLINK_PADDING; x++) {
+			for (int z = -BLINK_PADDING + 4; z < BLINK_PADDING; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
+	}
+
 	private static void buildFloor(final GameTestHelper helper) {
 		for (int x = 0; x < 8; x++) {
 			for (int z = 0; z < 8; z++) {
@@ -660,6 +737,20 @@ public class WitchGameTest {
 					break;
 				}
 			}
+		}
+
+		List<Long> offensiveTicks() {
+			List<Long> found = new ArrayList<>();
+			for (int i = 0; i < this.effects.size(); i++) {
+				if (isOffensive(this.effects.get(i))) {
+					found.add(this.ticks.get(i));
+				}
+			}
+			return found;
+		}
+
+		List<Long> allTicks() {
+			return List.copyOf(this.ticks);
 		}
 
 		boolean saw(final Holder<MobEffect> effect) {

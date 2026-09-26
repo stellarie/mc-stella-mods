@@ -6,25 +6,24 @@ import net.minecraft.world.entity.monster.Witch;
 import org.jspecify.annotations.Nullable;
 
 /**
- * W01, W02, W07, and W08: on aggro the witch splashes invisibility on itself, then throws the
- * offensive list at its target three at a time. W12: an elite witch leads its rotation with one
- * lingering poison cloud on its own 600 tick rearm. No flags, so it never contends for MOVE or LOOK.
+ * W01 and M11: on aggro the witch splashes invisibility on itself, then throws one random harmful potion
+ * at its target every three seconds. W12: an elite witch's throw is its lingering poison cloud whenever
+ * that cloud's own rearm allows. The cadence counts the goal's own ticks, so it holds wherever the game
+ * clock stands. No flags, so it never contends for MOVE or LOOK.
  */
 public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
-	public static final int BURST_SIZE = 3;
-	public static final int BURST_SPACING_TICKS = 4;
-	public static final int REARM_TICKS = 40;
+	public static final int OFFENSE_INTERVAL_TICKS = 60;
 	public static final double THROW_RANGE = 10.0;
 	private static final int ACTION_TICKS = 10;
 
-	/** W12: one cloud per nonce, because the cloud itself lives 600 ticks. */
+	/** W12: one cloud per rearm, because the cloud itself lives 600 ticks. */
 	public static final int LINGER_REARM_TICKS = 600;
 
 	private final T witch;
+	private final WitchBag<WitchPotions.Carried> bag = new WitchBag<>(WitchPotions.offensive());
 	private @Nullable LivingEntity target;
-	private int shotsLeft;
-	private long nextShotTick;
-	private long nextLingerTick;
+	private int ticksToThrow = OFFENSE_INTERVAL_TICKS;
+	private int ticksToLinger;
 
 	public WitchOffensiveThrowGoal(final T witch) {
 		this.witch = witch;
@@ -32,62 +31,47 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 
 	@Override
 	public boolean canUse() {
-		ReactiveState state = ReactiveState.get(this.witch);
-		if (!state.playerInRange(this.witch)) {
+		LivingEntity found = this.liveTarget();
+		if (found == null) {
 			return false;
-		}
-
-		long now = this.witch.level().getGameTime();
-		if (now < state.getWitchActionUntilTick()) {
-			return false;
-		}
-
-		LivingEntity found = this.witch.getTarget();
-		if (found == null || !found.isAlive()) {
-			return false;
-		}
-
-		if (this.witch.distanceToSqr(found) > THROW_RANGE * THROW_RANGE) {
-			return false;
-		}
-
-		if (!state.isWitchInvisibilityCast()) {
-			return true;
 		}
 
 		this.target = found;
-		return now >= state.getWitchNextOffensiveTick();
+		return true;
 	}
 
 	@Override
 	public boolean canContinueToUse() {
-		LivingEntity current = this.target;
-		return this.shotsLeft > 0 && current != null && current.isAlive();
+		return this.liveTarget() != null;
+	}
+
+	private @Nullable LivingEntity liveTarget() {
+		if (!ReactiveState.get(this.witch).playerInRange(this.witch)) {
+			return null;
+		}
+
+		LivingEntity found = this.witch.getTarget();
+		if (found == null || !found.isAlive() || this.witch.distanceToSqr(found) > THROW_RANGE * THROW_RANGE) {
+			return null;
+		}
+
+		return found;
 	}
 
 	@Override
 	public void start() {
 		ReactiveState state = ReactiveState.get(this.witch);
-		state.setWitchActionUntilTick(this.witch.level().getGameTime() + ACTION_TICKS);
-
 		if (!state.isWitchInvisibilityCast()) {
 			state.setWitchInvisibilityCast(true);
-			state.setWitchNextOffensiveTick(this.witch.level().getGameTime() + REARM_TICKS);
-			this.shotsLeft = 0;
+			state.setWitchActionUntilTick(this.witch.level().getGameTime() + ACTION_TICKS);
 			WitchThrow.atSelf(this.witch, WitchPotions.stack(WitchPotions.invisibility()));
-			return;
+			this.ticksToThrow = OFFENSE_INTERVAL_TICKS;
 		}
-
-		this.shotsLeft = BURST_SIZE;
-		this.nextShotTick = this.witch.level().getGameTime();
 	}
 
 	@Override
 	public void stop() {
 		this.target = null;
-		this.shotsLeft = 0;
-		ReactiveState state = ReactiveState.get(this.witch);
-		state.setWitchNextOffensiveTick(this.witch.level().getGameTime() + REARM_TICKS);
 	}
 
 	@Override
@@ -97,36 +81,21 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 
 	@Override
 	public void tick() {
+		this.ticksToLinger = Math.max(0, this.ticksToLinger - 1);
+		this.target = this.witch.getTarget();
 		LivingEntity current = this.target;
-		if (current == null) {
+		if (current == null || --this.ticksToThrow > 0) {
 			return;
 		}
 
-		long now = this.witch.level().getGameTime();
-		if (now < this.nextShotTick) {
+		this.ticksToThrow = OFFENSE_INTERVAL_TICKS;
+		ReactiveState.get(this.witch).setWitchActionUntilTick(this.witch.level().getGameTime() + ACTION_TICKS);
+		if (WitchElite.isElite(this.witch) && this.ticksToLinger == 0) {
+			this.ticksToLinger = LINGER_REARM_TICKS;
+			WitchThrow.lingerAtTarget(this.witch, WitchPotions.lingeringPoison(), current);
 			return;
 		}
 
-		ReactiveState state = ReactiveState.get(this.witch);
-		state.setWitchActionUntilTick(now + ACTION_TICKS);
-
-		// W12: the elite's lingering option is chosen before the splash rotation, on its own rearm.
-		if (WitchElite.isElite(this.witch) && now >= this.nextLingerTick) {
-			this.linger(now, current);
-		} else {
-			int index = state.getWitchThrowIndex() % WitchPotions.offensive().size();
-			WitchPotions.Carried carried = WitchPotions.offensive().get(index);
-			state.setWitchThrowIndex(state.getWitchThrowIndex() + 1);
-			WitchThrow.atTarget(this.witch, WitchPotions.stack(carried), current);
-		}
-
-		this.shotsLeft--;
-		this.nextShotTick = now + BURST_SPACING_TICKS;
-	}
-
-	/** W12: one lingering poison cloud, rearmed for the life of the cloud it leaves behind. */
-	private void linger(final long now, final LivingEntity current) {
-		this.nextLingerTick = now + LINGER_REARM_TICKS;
-		WitchThrow.lingerAtTarget(this.witch, WitchPotions.lingeringPoison(), current);
+		WitchThrow.atTarget(this.witch, WitchPotions.stack(this.bag.next(this.witch.getRandom())), current);
 	}
 }
