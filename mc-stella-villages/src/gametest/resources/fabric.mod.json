@@ -10,7 +10,8 @@
 			"com.stella.villages.VillagePersistenceGameTest",
 			"com.stella.villages.NemesisMissionGameTest",
 			"com.stella.villages.VillageRaidGameTest",
-			"com.stella.villages.PatrolVisualsGameTest"
+			"com.stella.villages.PatrolVisualsGameTest",
+			"com.stella.villages.BellRallyGameTest"
 		]
 	},
 	"mixins": [
