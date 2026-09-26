@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.WitchBlinkGoal;
 import com.stella.mobs.behavior.WitchElite;
 import com.stella.mobs.gear.GearTier;
@@ -15,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -26,6 +28,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownLingeringPotion;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -176,7 +179,13 @@ public class WitchGameTest {
 	public void witchThrowsOneHarmfulPotionEveryThreeSeconds(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
-		helper.onEachTick(() -> witch.setTarget(enemy));
+		// Pinned, so a levitation throw cannot float the target out of range and pause the cadence.
+		Vec3 pinned = enemy.position();
+		helper.onEachTick(() -> {
+			enemy.setPos(pinned.x, pinned.y, pinned.z);
+			enemy.setDeltaMovement(Vec3.ZERO);
+			witch.setTarget(enemy);
+		});
 		PotionWatch watch = watch(helper, witch);
 
 		helper.succeedWhen(() -> {
@@ -220,14 +229,20 @@ public class WitchGameTest {
 		blinkFloor(helper);
 		Zombie enemy = enemy(helper, 3, 2);
 		witch.setTarget(enemy);
+		double[] landed = {-1.0};
+		helper.onEachTick(() -> {
+			if (landed[0] < 0.0 && witch.distanceTo(enemy) >= WitchBlinkGoal.BLINK_MIN_DISTANCE) {
+				landed[0] = witch.distanceTo(enemy);
+			}
+		});
 
 		helper.succeedWhen(() -> {
-			double distance = witch.distanceTo(enemy);
+			helper.assertTrue(landed[0] >= 0.0 && witch.getTarget() == enemy, "no blink yet; target " + witch.getTarget());
 			helper.assertTrue(
-				distance >= WitchBlinkGoal.BLINK_MIN_DISTANCE && witch.getTarget() == enemy,
-				"the witch stands " + distance + " from the threat with target " + witch.getTarget()
+				landed[0] <= WitchBlinkGoal.BLINK_MAX_DISTANCE,
+				"the witch landed " + landed[0] + " from the threat, past " + WitchBlinkGoal.BLINK_MAX_DISTANCE
 			);
-			result("witchBlink", "distance=" + distance + " min=" + WitchBlinkGoal.BLINK_MIN_DISTANCE + " keptTarget=true");
+			result("witchBlink", "distance=" + landed[0] + " min=" + WitchBlinkGoal.BLINK_MIN_DISTANCE + " max=" + WitchBlinkGoal.BLINK_MAX_DISTANCE + " keptTarget=true");
 		});
 	}
 
@@ -247,7 +262,7 @@ public class WitchGameTest {
 
 		helper.succeedWhen(() -> {
 			long after = watch.offensiveTicks().stream().filter(tick -> blinkedAt[0] >= 0 && tick > blinkedAt[0]).count();
-			helper.assertTrue(after > 0, "no harmful throw after the blink at " + blinkedAt[0] + ": " + watch.summary());
+			helper.assertTrue(after > 0, "no harmful throw after the blink at " + blinkedAt[0] + ": " + stateOf(witch, enemy) + " " + watch.summary());
 			result("witchThrowsAfterBlink", "blinkedAt=" + blinkedAt[0] + " throwsAfter=" + after);
 		});
 	}
@@ -606,11 +621,23 @@ public class WitchGameTest {
 		return healed;
 	}
 
-	/** A floor wide enough that a blink up to sixteen blocks lands on stone. */
+	/**
+	 * A floor wide enough that any blink lands on stone, with its chunks forced so a witch that lands
+	 * outside the structure's own chunks keeps ticking. Without that, a landing froze the witch at tickCount 1.
+	 */
+	@SuppressWarnings("removal")
 	private static void blinkFloor(final GameTestHelper helper) {
 		for (int x = -BLINK_PADDING + 4; x < BLINK_PADDING; x++) {
 			for (int z = -BLINK_PADDING + 4; z < BLINK_PADDING; z++) {
 				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
+
+		BlockPos low = helper.absolutePos(new BlockPos(-BLINK_PADDING + 4, 0, -BLINK_PADDING + 4));
+		BlockPos high = helper.absolutePos(new BlockPos(BLINK_PADDING - 1, 0, BLINK_PADDING - 1));
+		for (int chunkX = Math.min(low.getX(), high.getX()) >> 4; chunkX <= Math.max(low.getX(), high.getX()) >> 4; chunkX++) {
+			for (int chunkZ = Math.min(low.getZ(), high.getZ()) >> 4; chunkZ <= Math.max(low.getZ(), high.getZ()) >> 4; chunkZ++) {
+				helper.getLevel().setChunkForced(chunkX, chunkZ, true);
 			}
 		}
 	}
@@ -639,6 +666,34 @@ public class WitchGameTest {
 	private static String effectName(final ItemStack stack) {
 		PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
 		return contents == null ? "none" : contents.customEffects().toString();
+	}
+
+	// Every condition the offensive goal reads, so a missing throw names its cause.
+	private static String stateOf(final Witch witch, final LivingEntity enemy) {
+		LivingEntity target = witch.getTarget();
+		String running = witch.getGoalSelector().getAvailableGoals().stream()
+			.filter(wrapped -> wrapped.isRunning())
+			.map(wrapped -> wrapped.getGoal().getClass().getSimpleName() + field(wrapped.getGoal(), "ticksToThrow") + field(wrapped.getGoal(), "cooldown"))
+			.toList()
+			.toString();
+		long offenseGoals = witch.getGoalSelector().getAvailableGoals().stream()
+			.filter(wrapped -> wrapped.getGoal() instanceof WitchOffensiveThrowGoal).count();
+		return "target=" + (target == null ? "none" : target.getType().toShortString() + (target == enemy ? "(enemy)" : "(other)"))
+			+ " targetDistance=" + (target == null ? -1.0 : witch.distanceTo(target))
+			+ " enemyDistance=" + witch.distanceTo(enemy)
+			+ " playerInRange=" + ReactiveState.get(witch).playerInRange(witch)
+			+ " running=" + running + " offenseGoals=" + offenseGoals + " tickCount=" + witch.tickCount
+			+ " witchAt=" + witch.position() + " enemyAt=" + enemy.position();
+	}
+
+	private static String field(final Object goal, final String name) {
+		try {
+			java.lang.reflect.Field field = goal.getClass().getDeclaredField(name);
+			field.setAccessible(true);
+			return "(" + name + "=" + field.get(goal) + ")";
+		} catch (ReflectiveOperationException missing) {
+			return "";
+		}
 	}
 
 	private static String goals(final Mob mob) {
