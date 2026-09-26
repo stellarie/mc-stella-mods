@@ -14,7 +14,8 @@
 			"com.stella.spells.SpellLogGameTest",
 			"com.stella.spells.TintManualAcceptanceGameTest",
 			"com.stella.spells.SpellDescriptionsGameTest",
-			"com.stella.spells.SpellVisualsGameTest"
+			"com.stella.spells.SpellVisualsGameTest",
+			"com.stella.spells.SpellCombosGameTest"
 		]
 	},
 	"depends": {
