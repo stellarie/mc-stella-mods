@@ -1,6 +1,5 @@
 package com.stella.equips;
 
-import com.stella.equips.power.HealthLine;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
@@ -427,7 +426,7 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
-	public void theReadoutCarriesTheLevelPrefixAndTheMobOwnDisplayName(final GameTestHelper helper) {
+	public void mobReadoutShowsItsLevelNameAndHealth(final GameTestHelper helper) {
 		PowerRecorder.install();
 		PowerConfig config = liveConfig();
 		ServerPlayer owner = ownerAt(helper, TEXT_TEST_X);
@@ -439,7 +438,8 @@ public class ReadoutGameTest {
 				ReadoutOwner.Readout readout = ReadoutService.owner(owner).get(mob.getUUID());
 				helper.assertTrue(readout != null, "the text test spawned no readout");
 				int mobLevel = PowerTracker.mobLevel(mob, config);
-				String expected = "[" + mobLevel + "] " + mob.getDisplayName().getString();
+				String health = ReadoutText.shown(mob.getHealth()) + "/" + ReadoutText.shown(mob.getMaxHealth());
+				String expected = "[" + mobLevel + "] " + mob.getDisplayName().getString() + " " + health;
 				helper.assertTrue(
 					expected.equals(readout.text()),
 					"the readout read '" + readout.text() + "' instead of '" + expected + "'"
@@ -459,7 +459,7 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
-	public void theMobUnderTheCrosshairShowsItsHealthAndTheOthersDoNot(final GameTestHelper helper) {
+	public void allMobReadoutsShowTheirHealth(final GameTestHelper helper) {
 		PowerRecorder.install();
 		PowerConfig config = liveConfig();
 		ServerPlayer owner = ownerAt(helper, HEALTH_TEST_X);
@@ -475,19 +475,23 @@ public class ReadoutGameTest {
 				ReadoutOwner.Readout asideReadout = ReadoutService.owner(owner).get(aside.getUUID());
 				helper.assertTrue(lookedReadout != null, "the mob under the crosshair holds no readout");
 				helper.assertTrue(asideReadout != null, "the mob beside the crosshair holds no readout");
-				String health = ReadoutText.shown(looked.getHealth()) + "/" + ReadoutText.shown(looked.getMaxHealth());
-				String plain = "[" + PowerTracker.mobLevel(aside, config) + "] " + aside.getDisplayName().getString();
+				String lookedHealth = ReadoutText.shown(looked.getHealth()) + "/" + ReadoutText.shown(looked.getMaxHealth());
+				String asideHealth = ReadoutText.shown(aside.getHealth()) + "/" + ReadoutText.shown(aside.getMaxHealth());
+				String expectedLooked = "[" + PowerTracker.mobLevel(looked, config) + "] "
+					+ looked.getDisplayName().getString() + " " + lookedHealth;
+				String expectedAside = "[" + PowerTracker.mobLevel(aside, config) + "] "
+					+ aside.getDisplayName().getString() + " " + asideHealth;
 				helper.assertTrue(
-					lookedReadout.text().endsWith(" " + health),
-					"the mob under the crosshair read '" + lookedReadout.text() + "' without its health " + health
+					expectedLooked.equals(lookedReadout.text()),
+					"the targeted mob read '" + lookedReadout.text() + "' instead of '" + expectedLooked + "'"
 				);
 				helper.assertTrue(
-					plain.equals(asideReadout.text()),
-					"the mob beside the crosshair read '" + asideReadout.text() + "' instead of '" + plain + "'"
+					expectedAside.equals(asideReadout.text()),
+					"the bystander mob read '" + asideReadout.text() + "' instead of '" + expectedAside + "'"
 				);
 				StellaEquips.LOGGER.info(
-					"[BEHAVIOR] test=readoutHealth RESULT lookedText={} health={} asideText={} distance={} reach={}",
-					lookedReadout.text(), health, asideReadout.text(), TARGET_DISTANCE,
+					"[BEHAVIOR] test=readoutHealth RESULT lookedText={} asideText={} distance={} reach={}",
+					lookedReadout.text(), asideReadout.text(), TARGET_DISTANCE,
 					owner.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ENTITY_INTERACTION_RANGE)
 				);
 				helper.succeed();
@@ -498,6 +502,7 @@ public class ReadoutGameTest {
 	@GameTest(maxTicks = MAX_TICKS)
 	public void aTargetedMobHealthChangeMovesTheReadoutText(final GameTestHelper helper) {
 		PowerRecorder.install();
+		PowerConfig config = liveConfig();
 		ServerLevel level = helper.getLevel();
 		ServerPlayer owner = ownerAt(helper, HEALTH_MOVE_TEST_X);
 
@@ -510,48 +515,73 @@ public class ReadoutGameTest {
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout before = ReadoutService.owner(owner).get(looked.getUUID());
 				ReadoutOwner.Readout asideBefore = ReadoutService.owner(owner).get(aside.getUUID());
-				helper.assertTrue(before != null, "the targeted mob held no readout before the hit");
-				helper.assertTrue(asideBefore != null, "the untargeted mob held no readout before the hit");
-				int packetsBefore = PacketRecorder.of(owner).dataPackets(before.display().getId());
-				float startHealth = looked.getHealth();
+				helper.assertTrue(before != null, "the targeted mob held no readout before damage");
+				helper.assertTrue(asideBefore != null, "the bystander held no readout before damage");
+				int lookedDisplay = before.display().getId();
+				int asideDisplay = asideBefore.display().getId();
+				int lookedPacketsBefore = PacketRecorder.of(owner).dataPackets(lookedDisplay);
+				int asidePacketsBefore = PacketRecorder.of(owner).dataPackets(asideDisplay);
+				float lookedHealthBefore = looked.getHealth();
+				float asideHealthBefore = aside.getHealth();
 				looked.hurtServer(level, level.damageSources().generic(), HEALTH_DAMAGE);
-				aside.hurtServer(level, level.damageSources().generic(), HEALTH_DAMAGE);
-				float afterHealth = looked.getHealth();
-				helper.assertTrue(
-					afterHealth < startHealth,
-					"the hit left " + afterHealth + " health of the " + startHealth + " the mob started with"
-				);
+				float lookedHealthAfter = looked.getHealth();
 
 				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
-					ReadoutOwner.Readout after = ReadoutService.owner(owner).get(looked.getUUID());
+					ReadoutOwner.Readout lookedAfter = ReadoutService.owner(owner).get(looked.getUUID());
 					ReadoutOwner.Readout asideAfter = ReadoutService.owner(owner).get(aside.getUUID());
-					helper.assertTrue(after != null, "the targeted mob lost its readout after the hit");
-					helper.assertTrue(asideAfter != null, "the untargeted mob lost its readout after the hit");
-					String moved = ReadoutText.shown(afterHealth) + "/" + ReadoutText.shown(looked.getMaxHealth());
-					helper.assertTrue(
-						!before.text().equals(after.text()),
-						"the targeted mob kept the text '" + after.text() + "' at " + afterHealth + " health"
-					);
-					helper.assertTrue(
-						after.text().endsWith(" " + moved),
-						"the targeted mob read '" + after.text() + "' instead of ending in " + moved
-					);
-					helper.assertTrue(
-						asideBefore.text().equals(asideAfter.text()),
-						"an untargeted mob moved its text from '" + asideBefore.text() + "' to '" + asideAfter.text() + "'"
-					);
-					int packetsAfter = PacketRecorder.of(owner).dataPackets(after.display().getId());
-					helper.assertTrue(
-						packetsAfter > packetsBefore,
-						"the health change sent " + (packetsAfter - packetsBefore) + " data packets to the owner"
-					);
-					StellaEquips.LOGGER.info(
-						"[BEHAVIOR] test=readoutHealthMove RESULT before='{}' after='{}' healthBefore={} "
-							+ "healthAfter={} asideText='{}' dataPackets={}",
-						before.text(), after.text(), startHealth, afterHealth, asideAfter.text(),
-						packetsAfter - packetsBefore
-					);
-					helper.succeed();
+					helper.assertTrue(lookedAfter != null, "the targeted mob lost its readout after damage");
+					helper.assertTrue(asideAfter != null, "the bystander lost its readout after target damage");
+					String lookedHealth = ReadoutText.shown(lookedHealthAfter) + "/"
+						+ ReadoutText.shown(looked.getMaxHealth());
+					String expectedLooked = "[" + PowerTracker.mobLevel(looked, config) + "] "
+						+ looked.getDisplayName().getString() + " " + lookedHealth;
+					int lookedPacketsAfter = PacketRecorder.of(owner).dataPackets(lookedDisplay);
+					int asidePacketsAfter = PacketRecorder.of(owner).dataPackets(asideDisplay);
+					int lookedPacketsFirst = lookedPacketsAfter - lookedPacketsBefore;
+					int asidePacketsFirst = asidePacketsAfter - asidePacketsBefore;
+					boolean targetPhase = lookedHealthAfter < lookedHealthBefore
+						&& aside.getHealth() == asideHealthBefore
+						&& expectedLooked.equals(lookedAfter.text())
+						&& asideBefore.text().equals(asideAfter.text())
+						&& lookedPacketsFirst == 1 && asidePacketsFirst == 0;
+
+					int lookedPacketsBeforeBystander = lookedPacketsAfter;
+					int asidePacketsBeforeBystander = asidePacketsAfter;
+					float lookedHealthBeforeBystander = looked.getHealth();
+					float asideHealthBeforeBystander = aside.getHealth();
+					aside.hurtServer(level, level.damageSources().generic(), HEALTH_DAMAGE);
+					float asideHealthAfter = aside.getHealth();
+
+					helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+						ReadoutOwner.Readout lookedFinal = ReadoutService.owner(owner).get(looked.getUUID());
+						ReadoutOwner.Readout asideFinal = ReadoutService.owner(owner).get(aside.getUUID());
+						helper.assertTrue(lookedFinal != null, "the targeted mob lost its readout after bystander damage");
+						helper.assertTrue(asideFinal != null, "the bystander lost its readout after its damage");
+						String expectedAsideAfter = "[" + PowerTracker.mobLevel(aside, config) + "] "
+							+ aside.getDisplayName().getString() + " " + ReadoutText.shown(asideHealthAfter) + "/"
+							+ ReadoutText.shown(aside.getMaxHealth());
+						int lookedPacketsSecond = PacketRecorder.of(owner).dataPackets(lookedDisplay)
+							- lookedPacketsBeforeBystander;
+						int asidePacketsSecond = PacketRecorder.of(owner).dataPackets(asideDisplay)
+							- asidePacketsBeforeBystander;
+						boolean bystanderPhase = asideHealthAfter < asideHealthBeforeBystander
+							&& looked.getHealth() == lookedHealthBeforeBystander
+							&& expectedLooked.equals(lookedFinal.text())
+							&& expectedAsideAfter.equals(asideFinal.text())
+							&& lookedPacketsSecond == 0 && asidePacketsSecond == 1;
+						StellaEquips.LOGGER.info(
+							"[BEHAVIOR] test=readoutHealthMove RESULT targetPhase={} bystanderPhase={} "
+								+ "targetUpdatesFirst={} bystanderUpdatesFirst={} targetUpdatesSecond={} "
+								+ "bystanderUpdatesSecond={} targetText={} bystanderText={}",
+							targetPhase, bystanderPhase, lookedPacketsFirst, asidePacketsFirst,
+							lookedPacketsSecond, asidePacketsSecond, lookedFinal.text(), asideFinal.text()
+						);
+						helper.assertTrue(
+							targetPhase && bystanderPhase,
+							"target-only phase passed=" + targetPhase + "; bystander-only phase passed=" + bystanderPhase
+						);
+						helper.succeed();
+					});
 				});
 			});
 		});
@@ -861,15 +891,16 @@ public class ReadoutGameTest {
 				helper.assertTrue(readout != null, "the name tag test spawned no readout");
 				String kept = mob.getCustomName() == null ? "none" : mob.getCustomName().getString();
 				int mobLevel = PowerTracker.mobLevel(mob, config);
+				String health = ReadoutText.shown(mob.getHealth()) + "/" + ReadoutText.shown(mob.getMaxHealth());
+				String expected = "[" + mobLevel + "] Bessie " + health;
 				helper.assertTrue(
 					"Bessie".equals(kept),
 					"the readout replaced the mob name tag with '" + kept + "'"
 				);
 				helper.assertTrue(mob.isCustomNameVisible(), "the readout hid the mob name tag");
 				helper.assertTrue(
-					readout.text().equals("[" + mobLevel + "] Bessie"),
-					"the readout read '" + readout.text() + "' instead of '["
-						+ mobLevel + "] Bessie'"
+					expected.equals(readout.text()),
+					"the readout read '" + readout.text() + "' instead of '" + expected + "'"
 				);
 				StellaEquips.LOGGER.info(
 					"[BEHAVIOR] test=readoutNameTag RESULT tag={} tagVisible={} mobLevel={} text={}",
@@ -1108,16 +1139,32 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
-	public void theHealthLineReadsLevelAndHealthAsNumbers(final GameTestHelper helper) {
-		String rendered = HealthLine.of(12, 155.5F, 172.0F).getString();
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=selfLineText RESULT text={} level=12 health=155.5 max=172", rendered
-		);
-		helper.assertTrue(
-			"Lv 12  156/172 HP".equals(rendered),
-			"the self line read '" + rendered + "' instead of 'Lv 12  156/172 HP'"
-		);
-		helper.succeed();
+	public void playerOverlayDisplaysItsLevelWithoutHP(final GameTestHelper helper) {
+		PowerConfig config = liveConfig();
+		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
+
+		whenAreaLoaded(helper, owner, () -> {
+			PowerTracker.scanPlayer(owner, config);
+			int before = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
+			PowerTracker.sendSelfLine(owner, config);
+			int after = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
+			int level = PowerTracker.playerLevel(owner, config);
+			String expected = "Lv " + level;
+			String rendered = lastHealthLine(owner);
+			StellaEquips.LOGGER.info(
+				"[BEHAVIOR] test=selfLineLevel RESULT text={} level={} packets={}", rendered, level, after - before
+			);
+			helper.assertTrue(after == before + 1, "the level line sent " + (after - before) + " packets");
+			helper.assertTrue(
+				expected.equals(rendered),
+				"the self line read '" + rendered + "' instead of '" + expected + "'"
+			);
+			helper.assertTrue(
+				!rendered.contains("/") && !rendered.contains("HP"),
+				"the self line still contains numeric HP: '" + rendered + "'"
+			);
+			helper.succeed();
+		});
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
@@ -1143,9 +1190,14 @@ public class ReadoutGameTest {
 				after > before,
 				"the tick path sent no health line to an opted out player (" + before + " to " + after + ")"
 			);
+			String expected = "Lv " + PowerTracker.playerLevel(owner, liveConfig());
 			helper.assertTrue(
-				last.startsWith("Lv " + PowerTracker.playerLevel(owner, liveConfig()) + "  "),
-				"the tick path line read '" + last + "' without the owner level"
+				expected.equals(last),
+				"the tick path line read '" + last + "' instead of '" + expected + "'"
+			);
+			helper.assertTrue(
+				!last.contains("/") && !last.contains("HP"),
+				"the tick path line still contains numeric HP: '" + last + "'"
 			);
 			helper.succeed();
 		});

@@ -37,7 +37,6 @@ public class EnchantmentLevelGameTest {
 		"armor/reactive_plating",
 		"armor/second_wind",
 		"curse/berserker",
-		"tool/echolocation",
 		"tool/enchanted_yield",
 		"tool/harvester",
 		"tool/lumberjack",
@@ -48,7 +47,7 @@ public class EnchantmentLevelGameTest {
 		"weapon/tidecaller",
 		"weapon/warden_wave"
 	);
-	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration");
+	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration", "tool/ore_mender");
 
 	/** The level 3 value of every scaling enchantment, recorded before any edit. */
 	private static final Map<String, String> LEVEL_THREE_BASELINE = new LinkedHashMap<>();
