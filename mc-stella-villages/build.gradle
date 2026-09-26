@@ -34,6 +34,15 @@ fabricApi {
 	}
 }
 
+// V4: -PwithStellaMobs=true loads the built mobs jar into the GameTest run as well, so the suite covers both mods together.
+afterEvaluate {
+	if (project.findProperty("withStellaMobs") == "true") {
+		project.dependencies.add(
+			"gametestRuntimeOnly", project.files("../mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar")
+		)
+	}
+}
+
 processResources {
 	def version = project.version
 	inputs.property "version", version
