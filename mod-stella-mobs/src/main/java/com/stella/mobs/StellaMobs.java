@@ -11,6 +11,7 @@ import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EscortSquad;
 import com.stella.mobs.behavior.EvokerStorm;
+import com.stella.mobs.behavior.IllusionerKit;
 import com.stella.mobs.behavior.GolemElite;
 import com.stella.mobs.behavior.Harpooner;
 import com.stella.mobs.behavior.OceanSpecials;
@@ -77,6 +78,8 @@ public class StellaMobs implements ModInitializer {
 		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(EvokerStorm::afterDamage);
+		ServerLivingEntityEvents.AFTER_DEATH.register(IllusionerKit::afterDeath);
+		ServerEntityEvents.ENTITY_LOAD.register(IllusionerKit::onLoad);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(ZombieAfflictions::afterDamage);
@@ -97,6 +100,7 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(BossCompanion::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(OceanBand::drain);
 		ServerTickEvents.END_LEVEL_TICK.register(EvokerStorm::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(IllusionerKit::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
