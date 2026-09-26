@@ -3,6 +3,7 @@ package com.stella.equips;
 import com.stella.equips.enchant.Deflection;
 import com.stella.equips.enchant.OreMender;
 import com.stella.equips.enchant.OreRegeneration;
+import com.stella.equips.enchant.UndertowPull;
 import com.stella.equips.loot.ChestLoot;
 import com.stella.equips.loot.HeadDrops;
 import com.stella.equips.loot.RandomEnchantmentsFunction;
@@ -24,6 +25,7 @@ public class StellaEquips implements ModInitializer {
 		Deflection.register();
 		OreRegeneration.register();
 		OreMender.register();
+		UndertowPull.register();
 		PowerTracker.register();
 		ReadoutService.register();
 		ReadoutCommand.register();
