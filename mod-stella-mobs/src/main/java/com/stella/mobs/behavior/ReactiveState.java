@@ -3,6 +3,7 @@ package com.stella.mobs.behavior;
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.RoleSpec;
+import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -10,6 +11,9 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class ReactiveState {
@@ -46,6 +50,19 @@ public final class ReactiveState {
 	private int retreatCooldownTicks;
 	private boolean companionSpawned;
 	private @Nullable UUID companionId;
+	private String r02Decision = "NO_THREAT";
+	private String r02SkipReason = "";
+	private int r02ThreatScanTick = Integer.MIN_VALUE;
+	private List<Creeper> r02Threats = List.of();
+	private @Nullable UUID r02RouteThreat;
+	private @Nullable Vec3 r02RouteTarget;
+	private @Nullable String r02RouteFailure;
+	private int r02RouteValidUntil;
+	private @Nullable String r02NativeCommandBefore;
+	private @Nullable String r02NativeCommandAfter;
+	private @Nullable BlockPos r02ShulkerTarget;
+	private @Nullable Vec3 r02DragonTarget;
+	private @Nullable UUID r02ThreatId;
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered the behavior state attachment {}", TYPE.identifier());
@@ -280,5 +297,103 @@ public final class ReactiveState {
 
 	public void setCompanionId(final UUID companionId) {
 		this.companionId = companionId;
+	}
+
+	public String getR02Decision() {
+		return this.r02Decision;
+	}
+
+	public String getR02SkipReason() {
+		return this.r02SkipReason;
+	}
+
+	public void setR02Result(final String decision, final String skipReason) {
+		this.r02Decision = decision;
+		this.r02SkipReason = skipReason;
+	}
+
+	public List<Creeper> cachedR02Threats(final int mobTick) {
+		return this.r02ThreatScanTick == mobTick ? this.r02Threats : null;
+	}
+
+	public void cacheR02Threats(final int mobTick, final List<Creeper> threats) {
+		this.r02ThreatScanTick = mobTick;
+		this.r02Threats = List.copyOf(threats);
+	}
+
+	public @Nullable Vec3 cachedR02Route(final UUID threatId, final int mobTick) {
+		return threatId.equals(this.r02RouteThreat) && mobTick < this.r02RouteValidUntil
+			? this.r02RouteTarget
+			: null;
+	}
+
+	public @Nullable String cachedR02RouteFailure(final UUID threatId, final int mobTick) {
+		return threatId.equals(this.r02RouteThreat) && mobTick < this.r02RouteValidUntil
+			? this.r02RouteFailure
+			: null;
+	}
+
+	public boolean hasCachedR02RouteFailure(final UUID threatId, final int mobTick) {
+		return threatId.equals(this.r02RouteThreat)
+			&& this.r02RouteFailure != null
+			&& mobTick < this.r02RouteValidUntil;
+	}
+
+	public void cacheR02Route(final UUID threatId, final Vec3 target, final int validUntil) {
+		this.r02RouteThreat = threatId;
+		this.r02RouteTarget = target;
+		this.r02RouteFailure = null;
+		this.r02RouteValidUntil = validUntil;
+	}
+
+	public void cacheR02RouteFailure(final UUID threatId, final String reason, final int validUntil) {
+		this.r02RouteThreat = threatId;
+		this.r02RouteTarget = null;
+		this.r02RouteFailure = reason;
+		this.r02RouteValidUntil = validUntil;
+	}
+
+	public void clearR02Route() {
+		this.r02RouteThreat = null;
+		this.r02RouteTarget = null;
+		this.r02RouteFailure = null;
+		this.r02RouteValidUntil = 0;
+	}
+
+	public String getR02NativeCommandBefore() {
+		return this.r02NativeCommandBefore;
+	}
+
+	public String getR02NativeCommandAfter() {
+		return this.r02NativeCommandAfter;
+	}
+
+	public void setR02NativeCommands(final @Nullable String before, final @Nullable String after) {
+		this.r02NativeCommandBefore = before;
+		this.r02NativeCommandAfter = after;
+	}
+
+	public @Nullable BlockPos getR02ShulkerTarget() {
+		return this.r02ShulkerTarget;
+	}
+
+	public void setR02ShulkerTarget(final @Nullable BlockPos target) {
+		this.r02ShulkerTarget = target;
+	}
+
+	public @Nullable Vec3 getR02DragonTarget() {
+		return this.r02DragonTarget;
+	}
+
+	public void setR02DragonTarget(final @Nullable Vec3 target) {
+		this.r02DragonTarget = target;
+	}
+
+	public @Nullable UUID getR02ThreatId() {
+		return this.r02ThreatId;
+	}
+
+	public void setR02ThreatId(final @Nullable UUID threatId) {
+		this.r02ThreatId = threatId;
 	}
 }

@@ -4,10 +4,15 @@ import com.stella.mobs.behavior.HoldStandoffGoal;
 import com.stella.mobs.behavior.KeepDistanceGoal;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.behavior.ShieldUseGoal;
+import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
@@ -95,15 +100,16 @@ final class Arena {
 		final boolean meleeChases,
 		final Threat threat
 	) {
+		GearConfig previousConfig = GearConfigStore.get();
 		GearConfigStore.set(GearConfigParser.parse(config));
+		helper.runBeforeTestEnd(() -> GearConfigStore.set(previousConfig));
 		helper.setTime(NIGHT_TIME);
 		buildFloor(helper);
-		ServerPlayer player = addPlayer(helper);
+		ServerPlayer player = threat == Threat.PLAYER ? addSurvivalPlayer(helper) : addPlayer(helper);
 
 		if (threat == Threat.PLAYER) {
 			// A peaceful level drops every player from canAttack, so the arena needs a fighting difficulty.
 			helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-			player.setGameMode(GameType.SURVIVAL);
 			player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(OPPONENT_HEALTH);
 			player.setHealth(OPPONENT_HEALTH);
 			Vec3 position = helper.absoluteVec(new Vec3(6.5, 1.0, 6.5));
@@ -137,13 +143,19 @@ final class Arena {
 	}
 
 	static void contain(final GameTestHelper helper, final Mob mob, final int x, final int z) {
+		contain(helper, mob, x, z, 1);
+	}
+
+	static void contain(final GameTestHelper helper, final Mob mob, final int x, final int z, final int wallHeight) {
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dz = -1; dz <= 1; dz++) {
 				if (dx == 0 && dz == 0) {
 					continue;
 				}
 
-				helper.setBlock(x + dx, 1, z + dz, Blocks.STONE);
+				for (int y = 1; y <= wallHeight; y++) {
+					helper.setBlock(x + dx, y, z + dz, Blocks.STONE);
+				}
 			}
 		}
 
@@ -217,6 +229,17 @@ final class Arena {
 	@SuppressWarnings("removal")
 	private static ServerPlayer addPlayer(final GameTestHelper helper) {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 position = helper.absoluteVec(new Vec3(0.5, 1.0, 7.5));
+		player.setPos(position.x, position.y, position.z);
+		return player;
+	}
+
+	static ServerPlayer addSurvivalPlayer(final GameTestHelper helper) {
+		ServerPlayer player = (ServerPlayer)helper.makeMockServerPlayer(GameType.SURVIVAL);
+		CommonListenerCookie cookie = CommonListenerCookie.createInitial(player.getGameProfile(), false);
+		Connection connection = new Connection(PacketFlow.SERVERBOUND);
+		new EmbeddedChannel(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
 		Vec3 position = helper.absoluteVec(new Vec3(0.5, 1.0, 7.5));
 		player.setPos(position.x, position.y, position.z);
 		return player;
