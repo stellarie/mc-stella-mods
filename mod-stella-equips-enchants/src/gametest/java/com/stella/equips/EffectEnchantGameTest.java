@@ -78,7 +78,7 @@ public class EffectEnchantGameTest {
 	private static final int CLOUDSTEP_WARMUP_TICKS = 60;
 	/** The effect command counts seconds, not ticks. */
 	private static final int TICKS_PER_SECOND = 20;
-	private static final int CATALOGUE_SIZE = 71;
+	private static final int CATALOGUE_SIZE = 72;
 
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
@@ -86,7 +86,7 @@ public class EffectEnchantGameTest {
 		"armor/ender_ward", "armor/ember_guard", "armor/rime_guard", "armor/venom_guard", "armor/dread_aura",
 		"armor/cloudstep", "armor/deflection",
 		"crossbow/railgun",
-		"tool/ore_mender", "tool/enchanted_yield"
+		"tool/ore_mender", "tool/enchanted_yield", "weapon/tempo"
 	);
 	private static final Set<String> CUT_PATHS = Set.of(
 		"weapon/cleave", "weapon/returning", "armor/featherfall", "armor/asbestos", "armor/warded", "bow/bodkin",
