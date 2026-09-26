@@ -25,11 +25,15 @@ import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";
+	private static final ResourceKey<Level> DEFAULT_MISSION_DIMENSION = ResourceKey.create(
+		Registries.DIMENSION, Identifier.parse("minecraft:overworld")
+	);
 	public static final Codec<VillageWorldData> CODEC = CompoundTag.CODEC.xmap(
 		VillageWorldData::loadState,
 		VillageWorldData::serializeState
@@ -152,6 +156,14 @@ public final class VillageWorldData extends SavedData {
 
 	public List<MissionRecord> missions() {
 		return List.copyOf(this.missionRecords.values());
+	}
+
+	public boolean removeMission(final UUID missionId) {
+		if (this.missionRecords.remove(missionId) != null) {
+			setDirty();
+			return true;
+		}
+		return false;
 	}
 
 	public void startThreat(final VillageRecord village, final UUID attackerId) {
@@ -322,7 +334,9 @@ public final class VillageWorldData extends SavedData {
 		tag.putString("target_type", mission.targetType().toString());
 		tag.put("target_position", BlockPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, mission.targetPosition()).getOrThrow());
 		mission.entityId().ifPresent(entityId -> tag.putString("entity_id", entityId.toString()));
+		mission.mapId().ifPresent(mapId -> tag.put("map_id", MapId.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, mapId).getOrThrow()));
 		tag.putString("status", mission.status().name());
+		tag.putString("dimension", mission.dimension().identifier().toString());
 		return tag;
 	}
 
@@ -331,13 +345,19 @@ public final class VillageWorldData extends SavedData {
 		Optional<UUID> optionalEntityId = entityId.isEmpty()
 			? Optional.empty()
 			: Optional.of(UUID.fromString(entityId));
+		Optional<MapId> optionalMapId = tag.read("map_id", MapId.CODEC);
+		ResourceKey<Level> missionDimension = ResourceKey.create(
+			Registries.DIMENSION, Identifier.parse(tag.getStringOr("dimension", "minecraft:overworld"))
+		);
 		return new MissionRecord(
 			UUID.fromString(tag.getStringOr("id", "")),
 			UUID.fromString(tag.getStringOr("owner", "")),
 			Identifier.parse(tag.getStringOr("target_type", "")),
 			tag.read("target_position", BlockPos.CODEC).orElseThrow(() -> new IllegalArgumentException("invalid mission target position")),
 			optionalEntityId,
-			MissionStatus.valueOf(tag.getStringOr("status", "TARGET_PENDING"))
+			MissionStatus.valueOf(tag.getStringOr("status", "TARGET_PENDING")),
+			optionalMapId,
+			missionDimension
 		);
 	}
 
@@ -399,10 +419,49 @@ public final class VillageWorldData extends SavedData {
 		Identifier targetType,
 		BlockPos targetPosition,
 		Optional<UUID> entityId,
-		MissionStatus status
+		MissionStatus status,
+		Optional<MapId> mapId,
+		ResourceKey<Level> dimension
 	) {
+		public MissionRecord(
+			final UUID id,
+			final UUID ownerId,
+			final Identifier targetType,
+			final BlockPos targetPosition,
+			final Optional<UUID> entityId,
+			final MissionStatus status
+		) {
+			this(id, ownerId, targetType, targetPosition, entityId, status, Optional.empty(), DEFAULT_MISSION_DIMENSION);
+		}
+
+		public MissionRecord(
+			final UUID id,
+			final UUID ownerId,
+			final Identifier targetType,
+			final BlockPos targetPosition,
+			final Optional<UUID> entityId,
+			final MissionStatus status,
+			final Optional<MapId> mapId
+		) {
+			this(id, ownerId, targetType, targetPosition, entityId, status, mapId, DEFAULT_MISSION_DIMENSION);
+		}
+
+		public MissionRecord(
+			final UUID id,
+			final UUID ownerId,
+			final Identifier targetType,
+			final BlockPos targetPosition,
+			final Optional<UUID> entityId,
+			final MissionStatus status,
+			final ResourceKey<Level> dimension
+		) {
+			this(id, ownerId, targetType, targetPosition, entityId, status, Optional.empty(), dimension);
+		}
+
 		public MissionRecord {
 			targetPosition = targetPosition.immutable();
+			mapId = mapId == null ? Optional.empty() : mapId;
+			dimension = dimension == null ? DEFAULT_MISSION_DIMENSION : dimension;
 		}
 	}
 

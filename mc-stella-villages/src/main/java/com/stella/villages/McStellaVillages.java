@@ -1,5 +1,7 @@
 package com.stella.villages;
 
+import com.stella.villages.mission.MissionService;
+import com.stella.villages.mission.NemesisState;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import net.fabricmc.api.ModInitializer;
@@ -13,7 +15,9 @@ public final class McStellaVillages implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		PatrolState.register();
+		NemesisState.register();
 		PatrolService.register();
+		MissionService.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 }

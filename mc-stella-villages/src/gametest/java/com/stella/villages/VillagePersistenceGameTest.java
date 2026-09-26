@@ -14,6 +14,14 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillagePersistenceGameTest {
 	@GameTest
@@ -333,6 +341,134 @@ public final class VillagePersistenceGameTest {
 		} catch (ReflectiveOperationException | LinkageError error) {
 			PatrolTestSupport.result(test, "ledger=MISSING detail=" + error);
 			helper.fail("missing_mission_ledger: " + error);
+		}
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	@SuppressWarnings("unchecked")
+	public void missionMapIdPersists(final GameTestHelper helper) {
+		String test = "missionMapIdPersists";
+		try {
+			Class<?> dataClass = Class.forName("com.stella.villages.data.VillageWorldData");
+			Codec<Object> codec = (Codec<Object>) dataClass.getField("CODEC").get(null);
+			Object original = dataClass.getMethod("empty").invoke(null);
+			Class<?> missionClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionRecord");
+			Class<?> statusClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionStatus");
+			java.lang.reflect.Constructor<?> constructor = missionClass.getConstructor(
+				UUID.class, UUID.class, Identifier.class, BlockPos.class, Optional.class, statusClass, Optional.class
+			);
+			UUID missionId = UUID.randomUUID();
+			MapId mapId = new MapId(6231);
+			Object mission = constructor.newInstance(
+				missionId, UUID.randomUUID(), Identifier.parse("minecraft:zombie"),
+				helper.absolutePos(new BlockPos(9, 1, 7)), Optional.empty(),
+				statusClass.getField("TARGET_PENDING").get(null), Optional.of(mapId)
+			);
+			dataClass.getMethod("addMission", missionClass).invoke(original, mission);
+
+			RegistryOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess());
+			Object decoded = codec.parse(ops, codec.encodeStart(ops, original).getOrThrow()).getOrThrow();
+			Optional<?> restored = (Optional<?>) dataClass.getMethod("mission", UUID.class).invoke(decoded, missionId);
+			Object restoredMission = restored.orElse(null);
+			Object restoredMapId = restoredMission == null ? null : missionClass.getMethod("mapId").invoke(restoredMission);
+			boolean stateMatches = Optional.of(mapId).equals(restoredMapId);
+
+			PatrolTestSupport.result(test, "mapId=" + mapId + " restoredMapId=" + restoredMapId
+				+ " stateMatches=" + stateMatches);
+			helper.assertTrue(stateMatches, "mission saved data did not preserve its map ID");
+			helper.succeed();
+		} catch (ReflectiveOperationException | LinkageError error) {
+			PatrolTestSupport.result(test, "mapId=MISSING detail=" + error);
+			helper.fail("missing_mission_map_id: " + error);
+		}
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	@SuppressWarnings("unchecked")
+	public void missionDimensionPersists(final GameTestHelper helper) {
+		String test = "missionDimensionPersists";
+		try {
+			Class<?> dataClass = Class.forName("com.stella.villages.data.VillageWorldData");
+			Codec<Object> codec = (Codec<Object>) dataClass.getField("CODEC").get(null);
+			Object original = dataClass.getMethod("empty").invoke(null);
+			Class<?> missionClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionRecord");
+			Class<?> statusClass = Class.forName("com.stella.villages.data.VillageWorldData$MissionStatus");
+			java.lang.reflect.Constructor<?> constructor = missionClass.getConstructor(
+				UUID.class, UUID.class, Identifier.class, BlockPos.class, Optional.class,
+				statusClass, Optional.class, ResourceKey.class
+			);
+			UUID missionId = UUID.randomUUID();
+			ResourceKey<Level> targetDimension = helper.getLevel().dimension();
+			Object mission = constructor.newInstance(
+				missionId, UUID.randomUUID(), Identifier.parse("minecraft:zombie"),
+				helper.absolutePos(new BlockPos(9, 1, 7)), Optional.empty(),
+				statusClass.getField("TARGET_PENDING").get(null), Optional.empty(), targetDimension
+			);
+			dataClass.getMethod("addMission", missionClass).invoke(original, mission);
+
+			RegistryOps<Tag> ops = RegistryOps.create(NbtOps.INSTANCE, helper.getLevel().registryAccess());
+			Object decoded = codec.parse(ops, codec.encodeStart(ops, original).getOrThrow()).getOrThrow();
+			Optional<?> restored = (Optional<?>) dataClass.getMethod("mission", UUID.class).invoke(decoded, missionId);
+			Object restoredMission = restored.orElse(null);
+			Object restoredDimension = restoredMission == null ? null
+				: missionClass.getMethod("dimension").invoke(restoredMission);
+			boolean stateMatches = targetDimension.equals(restoredDimension);
+
+			PatrolTestSupport.result(test, "targetDimension=" + targetDimension
+				+ " restoredDimension=" + restoredDimension + " stateMatches=" + stateMatches);
+			helper.assertTrue(stateMatches, "mission SavedData did not preserve its target dimension");
+			helper.succeed();
+		} catch (ReflectiveOperationException | LinkageError error) {
+			PatrolTestSupport.result(test, "dimension=MISSING detail=" + error);
+			helper.fail("missing_mission_target_dimension: " + error);
+		}
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void nemesisNbtPersists(final GameTestHelper helper) {
+		String test = "nemesisNbtPersists";
+		try {
+			Class<?> stateClass = Class.forName("com.stella.villages.mission.NemesisState");
+			Mob original = EntityTypes.VINDICATOR.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+			if (original == null) {
+				PatrolTestSupport.result(test, "nemesis=MISSING");
+				helper.fail("could not create a Nemesis NBT fixture");
+				return;
+			}
+			UUID missionId = UUID.randomUUID();
+			original.setPersistenceRequired();
+			stateClass.getMethod("attach", Mob.class, UUID.class).invoke(null, original, missionId);
+			stateClass.getMethod("markRewardPaid", Mob.class).invoke(null, original);
+			stateClass.getMethod("markEnraged", Mob.class).invoke(null, original);
+
+			TagValueOutput output = TagValueOutput.createWithContext(
+				ProblemReporter.DISCARDING, helper.getLevel().registryAccess()
+			);
+			original.saveWithoutId(output);
+			Mob restored = EntityTypes.VINDICATOR.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+			if (restored == null) {
+				PatrolTestSupport.result(test, "restoredNemesis=MISSING");
+				helper.fail("could not create a restored Nemesis NBT fixture");
+				return;
+			}
+			restored.load(TagValueInput.create(
+				ProblemReporter.DISCARDING, helper.getLevel().registryAccess(), output.buildResult()
+			));
+
+			Object state = stateClass.getMethod("get", Mob.class).invoke(null, restored);
+			UUID restoredMissionId = (UUID) stateClass.getMethod("missionId").invoke(state);
+			boolean rewardPaid = (Boolean) stateClass.getMethod("rewardPaid").invoke(state);
+			boolean enraged = (Boolean) stateClass.getMethod("enraged").invoke(state);
+			boolean persistenceRequired = restored.isPersistenceRequired();
+			boolean stateMatches = missionId.equals(restoredMissionId) && rewardPaid && enraged && persistenceRequired;
+
+			PatrolTestSupport.result(test, "missionId=" + restoredMissionId + " rewardPaid=" + rewardPaid
+				+ " enraged=" + enraged + " persistenceRequired=" + persistenceRequired + " stateMatches=" + stateMatches);
+			helper.assertTrue(stateMatches, "Nemesis NBT did not preserve mission state");
+			helper.succeed();
+		} catch (ReflectiveOperationException | LinkageError error) {
+			PatrolTestSupport.result(test, "nemesisState=MISSING detail=" + error);
+			helper.fail("missing_nemesis_state: " + error);
 		}
 	}
 }
