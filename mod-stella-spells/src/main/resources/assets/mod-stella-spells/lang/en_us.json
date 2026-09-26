@@ -48,5 +48,6 @@
 	"spellbook.mod-stella-spells.use.self": "Use: hold it and right-click",
 	"spellbook.mod-stella-spells.use.block": "Use: hold it and right-click while aiming at the ground",
 	"spellbook.mod-stella-spells.use.safe_teleport": "Use: hold it, face where you want to go, and right-click",
-	"spellbook.mod-stella-spells.cooldown": "Cooldown: %s seconds"
+	"spellbook.mod-stella-spells.cooldown": "Cooldown: %s seconds",
+	"spellbook.mod-stella-spells.combo": "Combo: %s, then %s, for %s"
 }

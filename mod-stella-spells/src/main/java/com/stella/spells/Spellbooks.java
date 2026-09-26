@@ -43,16 +43,24 @@ public final class Spellbooks implements ModInitializer {
 		);
 	}
 
-	// Four tooltip lines: what it targets, how to cast it, what it does, and its base cooldown.
+	// Four tooltip lines: what it targets, how to cast it, what it does, and its base cooldown; a combo book adds its combo.
 	static ItemLore description(final SpellDefinition definition) {
 		String mode = definition.targetMode().name().toLowerCase(Locale.ROOT);
 		String effectKey = "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect";
-		return new ItemLore(List.of(
+		List<Component> lines = new java.util.ArrayList<>(List.of(
 			line(Component.translatable("spellbook." + MOD_ID + ".target." + mode), ChatFormatting.GRAY),
 			line(Component.translatable("spellbook." + MOD_ID + ".use." + mode), ChatFormatting.GRAY),
 			line(Component.translatable(effectKey), ChatFormatting.AQUA),
 			line(Component.translatable("spellbook." + MOD_ID + ".cooldown", definition.baseCooldownTicks() / 20), ChatFormatting.DARK_GRAY)
 		));
+		SpellCombos.involving(definition.id()).ifPresent(combo -> lines.add(line(Component.translatable(
+			"spellbook." + MOD_ID + ".combo", bookName(combo.first()), bookName(combo.second()), combo.name()
+		), ChatFormatting.LIGHT_PURPLE)));
+		return new ItemLore(lines);
+	}
+
+	private static Component bookName(final Identifier id) {
+		return Component.translatable("item." + id.getNamespace() + "." + id.getPath());
 	}
 
 	private static Component line(final MutableComponent text, final ChatFormatting color) {
