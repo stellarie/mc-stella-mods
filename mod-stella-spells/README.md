@@ -40,6 +40,19 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 Area and chain spells affect only mobs that are hostile by nature (`Enemy`); they never hit players,
 pets, or villagers.
 
+Each book's tooltip lists its target, how to cast it, what it does, and its base cooldown.
+
+Every successful cast draws its own particles, sent from the server to players within 32 blocks:
+
+- **Hostile** spells draw a beam from the caster to the target and a burst on it. Static Lash and
+  Chainstorm also ring the target at their chain radius.
+- **Self** spells draw a rising spiral around the caster. Warden's Roar draws a ring of sonic booms
+  at its radius instead.
+- **Block** spells draw a ring at their area radius and a burst at the aimed point.
+- **Riftwalk** draws a portal spiral where the caster left and where they arrived.
+
+A failed cast draws nothing. The particles are listed in `SpellVisuals`.
+
 ## Getting spellbooks
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
