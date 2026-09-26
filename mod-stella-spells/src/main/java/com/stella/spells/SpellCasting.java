@@ -64,11 +64,13 @@ public final class SpellCasting {
 			return CastResult.NO_TARGET;
 		}
 
+		Vec3 departure = caster.position();
 		if (!definition.effect().apply(caster, target, point, modifiers)) {
 			log(caster, definition, CastResult.NO_TARGET, target, modifiers, stack);
 			return CastResult.NO_TARGET;
 		}
 
+		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
 		caster.getCooldowns().addCooldown(stack, modifiers.cooldownTicks());
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
 		return CastResult.CAST;

@@ -12,7 +12,9 @@
 			"com.stella.spells.SpellEffectsGameTest",
 			"com.stella.spells.SpellbookLootGameTest",
 			"com.stella.spells.SpellLogGameTest",
-			"com.stella.spells.TintManualAcceptanceGameTest"
+			"com.stella.spells.TintManualAcceptanceGameTest",
+			"com.stella.spells.SpellDescriptionsGameTest",
+			"com.stella.spells.SpellVisualsGameTest"
 		]
 	},
 	"depends": {
