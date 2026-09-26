@@ -87,7 +87,7 @@ public final class BehaviorInstaller {
 			.anyMatch(wrapped -> wrapped.getGoal() instanceof ShieldUseGoal);
 	}
 
-	/** R21: an elite zombie that is not a summon brings its own reinforcements. Idempotent. */
+	/** R21, retired by M7: elite zombies now afflict on hit instead. Kept for the saved record type. */
 	public static void installReinforcements(final Mob mob) {
 		if (!(mob instanceof Zombie zombie) || EliteState.isSummoned(mob) || !Elite.isElite(zombie)) {
 			return;
@@ -210,7 +210,6 @@ public final class BehaviorInstaller {
 		}
 
 		BossAbilities.install(mob);
-		installReinforcements(mob);
 		installSpiderBrood(mob);
 		installSpiderWebTrap(mob);
 		installBlazeVolley(mob);
