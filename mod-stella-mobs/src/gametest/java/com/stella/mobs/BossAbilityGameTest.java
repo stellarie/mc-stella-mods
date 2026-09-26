@@ -717,8 +717,8 @@ public class BossAbilityGameTest {
 	private static final int SAMPLE_INTERVAL = 200;
 
 	/**
-	 * The clause the cap got wrong: an elite zombie with its own six escorts must still reach the full
-	 * reinforcement cap, and the escort count must still read exactly six while the reinforcements arrive.
+	 * The clause the cap got wrong: an elite zombie with its own escort squad must still reach the full
+	 * reinforcement cap, and the escort count must still read exactly the cap while the reinforcements arrive.
 	 * An escort follows the elite through FollowAllyGoal and a reinforcement through the reinforcement
 	 * marker, so one cap counted one marker and one count counted the other. The reach is read from the
 	 * record the ability wrote and filtered alive, because the box count decays as followers drift, and
@@ -735,7 +735,7 @@ public class BossAbilityGameTest {
 		Zombie elite = ordinary(helper, EntityTypes.ZOMBIE, 3, 3, 3);
 		// The config store is global, so a concurrent test can leave an elite chance in front of this
 		// spawn; when the roll fires it marks the mob and queues one squad, and a second queue would make
-		// twelve escorts out of a fixture that means six.
+		// double the escorts out of a fixture that means one squad.
 		if (!Elite.isElite(elite)) {
 			Elite.mark(elite, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
 			EscortSquad.queue(elite, GearTier.DIAMOND);
