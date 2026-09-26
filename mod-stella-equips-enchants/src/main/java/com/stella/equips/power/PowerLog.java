@@ -6,28 +6,7 @@ package com.stella.equips.power;
  */
 public final class PowerLog {
 	public interface Recorder {
-		default void powerLevel(
-			final String player,
-			final int level,
-			final int from,
-			final double points
-		) {
-		}
-
-		default void powerKill(
-			final String mob,
-			final int mobLevel,
-			final int award,
-			final double points
-		) {
-		}
-
-		default void powerDeath(
-			final String player,
-			final double lost,
-			final double points,
-			final int level
-		) {
+		default void powerLevel(final String player, final int level, final int from) {
 		}
 
 		default void powerHeartbeat(final int tick, final int players) {
@@ -41,7 +20,7 @@ public final class PowerLog {
 			final String mob,
 			final String mobName,
 			final int entityId,
-			final int mobLevel,
+			final int threat,
 			final int playerLevel,
 			final int gap,
 			final String band,
@@ -57,7 +36,7 @@ public final class PowerLog {
 			final int gap,
 			final String bandFrom,
 			final String bandTo,
-			final int mobLevel,
+			final int threat,
 			final int playerLevel,
 			final String text
 		) {

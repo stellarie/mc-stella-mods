@@ -4,6 +4,10 @@ The mod writes `config/mod-stella-equips-enchants/power.json` on first launch an
 reads it on every launch. The bundled document is the schema. An older file is
 never upgraded, so a file from an earlier schema keeps winning with its own keys.
 
+The player level is the vanilla experience level, capped at `level_cap`. The mod
+never writes experience. A file from before Stage 2 holds `curve` and `award`; those
+keys are retired and reported as unknown.
+
 **If the numbers look wrong, delete the file.** The mod writes the current schema
 again on the next launch. A file written before slice 5 holds
 `distance.max_health_per_point` and `combat.attack_damage_max`; those keys are
@@ -35,8 +39,8 @@ The other four attributes stay on the level-fraction curve, from
 
 ## Health as a number
 
-The owner sees `Lv 12  156/172 HP` as one line, sent by the server on every power
-scan, in the same style as the mob readout's `[32] Cow 14/20`. The power scan runs
+The owner sees `Lv 12`, their capped vanilla level, as one line, sent by the server on every power
+scan, in the same style as the mob readout's `Threat 32 Cow 14/20`. The power scan runs
 every `tracker.scan_interval_ticks`, so the line arrives even when the owner turns
 the mob readout off. The line travels as an overlay system-chat packet, which the
 client draws in the action-bar overlay slot.

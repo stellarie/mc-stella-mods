@@ -163,19 +163,19 @@ public final class ReadoutService {
 		}
 
 		for (Mob mob : selected) {
-			int mobLevel = PowerTracker.mobLevel(mob, config);
-			int gap = mobLevel - playerLevel;
+			int threat = PowerTracker.threat(mob, config);
+			int gap = PowerCurve.normalizedThreat(threat, config) - playerLevel;
 			PowerCurve.Band band = PowerCurve.band(gap, config);
 			Component text = ReadoutText.build(
-				mobLevel, mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth()
+				threat, ReadoutRank.of(mob), mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth()
 			);
 			ReadoutOwner.Readout existing = owner.get(mob.getUUID());
 
 			if (existing == null) {
-				spawn(owner, player, mob, mobLevel, playerLevel, gap, band, text, config);
-			} else if (existing.band() != band || existing.mobLevel() != mobLevel
+				spawn(owner, player, mob, threat, playerLevel, gap, band, text, config);
+			} else if (existing.band() != band || existing.threat() != threat
 				|| !existing.text().equals(text.getString())) {
-				update(owner, player, existing, mob, mobLevel, playerLevel, gap, band, text);
+				update(owner, player, existing, mob, threat, playerLevel, gap, band, text);
 			}
 		}
 	}
@@ -232,7 +232,7 @@ public final class ReadoutService {
 		final ReadoutOwner owner,
 		final ServerPlayer player,
 		final Mob mob,
-		final int mobLevel,
+		final int threat,
 		final int playerLevel,
 		final int gap,
 		final PowerCurve.Band band,
@@ -253,10 +253,10 @@ public final class ReadoutService {
 		display.updateDataBeforeSync();
 		player.connection.send(addPacket(display));
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().getNonDefaultValues()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, mobLevel, band, text.getString()));
+		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString()));
 		PowerLog.recorder().readoutSpawn(
 			player.getScoreboardName(), mob.getUUID().toString(), mob.getDisplayName().getString(),
-			display.getId(), mobLevel, playerLevel, gap, band.name(), ReadoutText.colorName(band), text.getString()
+			display.getId(), threat, playerLevel, gap, band.name(), ReadoutText.colorName(band), text.getString()
 		);
 	}
 
@@ -265,7 +265,7 @@ public final class ReadoutService {
 		final ServerPlayer player,
 		final ReadoutOwner.Readout existing,
 		final Mob mob,
-		final int mobLevel,
+		final int threat,
 		final int playerLevel,
 		final int gap,
 		final PowerCurve.Band band,
@@ -274,10 +274,10 @@ public final class ReadoutService {
 		Display.TextDisplay display = existing.display();
 		display.setText(text);
 		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().packDirty()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, mobLevel, band, text.getString()));
+		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString()));
 		PowerLog.recorder().readoutBand(
 			player.getScoreboardName(), mob.getUUID().toString(), display.getId(), gap,
-			existing.band().name(), band.name(), mobLevel, playerLevel, text.getString()
+			existing.band().name(), band.name(), threat, playerLevel, text.getString()
 		);
 	}
 

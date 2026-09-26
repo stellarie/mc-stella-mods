@@ -3,29 +3,21 @@ package com.stella.equips;
 import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerCurve;
-import com.stella.equips.power.PowerState;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.level.storage.ValueInput;
 
 public class PowerApplyGameTest {
 	private static final int LEVEL_AT_CAP = 50;
 	private static final int LEVEL_HALFWAY = 25;
 	private static final double TOLERANCE = 1.0E-9;
-	private static final int SAVED_LEVEL = 30;
-	private static final double SAVED_COMBAT_POINTS = 123.5;
 	private static final Identifier MAX_HEALTH_MODIFIER = modifier("max_health");
 	private static final Identifier ARMOR_MODIFIER = modifier("armor");
 	private static final Identifier KNOCKBACK_MODIFIER = modifier("knockback_resistance");
@@ -172,72 +164,6 @@ public class PowerApplyGameTest {
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=removeRestores RESULT applied={} changed={} health={} maxHealth={} vanillaMaxHealth={}",
 			appliedCount, changed, player.getHealth(), player.getMaxHealth(), vanilla[0]
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void aPlayerLevelSurvivesSaveAndLoadOfTheAttachment(final GameTestHelper helper) {
-		ServerPlayer saved = mockPlayer(helper);
-		PowerState.set(saved, new PowerState(SAVED_COMBAT_POINTS, SAVED_LEVEL));
-		TagValueOutput output = TagValueOutput.createWithContext(
-			ProblemReporter.DISCARDING, helper.getLevel().registryAccess()
-		);
-		saved.saveWithoutId(output);
-		CompoundTag tag = output.buildResult();
-		ServerPlayer loaded = mockPlayer(helper);
-		ValueInput input = TagValueInput.create(
-			ProblemReporter.DISCARDING, helper.getLevel().registryAccess(), tag
-		);
-		loaded.load(input);
-		PowerState restored = PowerState.get(loaded);
-		helper.assertTrue(
-			restored.level() == SAVED_LEVEL,
-			"the saved level " + SAVED_LEVEL + " loaded as " + restored.level()
-		);
-		helper.assertTrue(
-			Math.abs(restored.combatPoints() - SAVED_COMBAT_POINTS) < TOLERANCE,
-			"the saved points " + SAVED_COMBAT_POINTS + " loaded as " + restored.combatPoints()
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=saveLoadLevel RESULT savedLevel={} loadedLevel={} savedPoints={} loadedPoints={} tagBytes={}",
-			SAVED_LEVEL, restored.level(), SAVED_COMBAT_POINTS, restored.combatPoints(), tag.size()
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theAttachmentIsPersistentAndCopiesOnDeath(final GameTestHelper helper) {
-		boolean persistent = PowerState.TYPE.isPersistent();
-		boolean copyOnDeath = PowerState.TYPE.copyOnDeath();
-		boolean hasCodec = PowerState.TYPE.persistenceCodec() != null;
-		helper.assertTrue(persistent, "the power state attachment is not persistent");
-		helper.assertTrue(copyOnDeath, "the power state attachment does not copy on death");
-		helper.assertTrue(hasCodec, "the power state attachment has no persistence codec");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=attachmentFlags RESULT id={} persistent={} copyOnDeath={} codec={}",
-			PowerState.TYPE.identifier(), persistent, copyOnDeath, hasCodec
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theRespawnCopyCarriesThePointsToTheNewPlayer(final GameTestHelper helper) {
-		ServerPlayer died = helper.makeMockServerPlayerInLevel();
-		PowerState.set(died, new PowerState(SAVED_COMBAT_POINTS, SAVED_LEVEL));
-		ServerPlayer reborn = helper.getLevel().getServer().getPlayerList().respawn(
-			died, false, net.minecraft.world.entity.Entity.RemovalReason.KILLED
-		);
-		PowerState carried = PowerState.get(reborn);
-		boolean replaced = reborn != died;
-		helper.assertTrue(replaced, "the respawn returned the same player object");
-		helper.assertTrue(
-			Math.abs(carried.combatPoints() - SAVED_COMBAT_POINTS) < TOLERANCE,
-			"the respawn copy carried " + carried.combatPoints() + " points instead of " + SAVED_COMBAT_POINTS
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=respawnCopy RESULT pointsBefore={} pointsAfter={} newPlayer={}",
-			SAVED_COMBAT_POINTS, carried.combatPoints(), replaced
 		);
 		helper.succeed();
 	}

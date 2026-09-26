@@ -15,7 +15,7 @@ public final class ReadoutOwner {
 		UUID mobId,
 		int mobEntityId,
 		Display.TextDisplay display,
-		int mobLevel,
+		int threat,
 		PowerCurve.Band band,
 		String text
 	) {

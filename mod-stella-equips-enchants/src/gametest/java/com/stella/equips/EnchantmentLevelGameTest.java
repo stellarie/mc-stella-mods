@@ -41,7 +41,6 @@ public class EnchantmentLevelGameTest {
 		"tool/harvester",
 		"tool/lumberjack",
 		"tool/prospector",
-		"tool/veinminer",
 		"weapon/momentum",
 		"weapon/stormcaller",
 		"weapon/tidecaller",
@@ -89,7 +88,7 @@ public class EnchantmentLevelGameTest {
 
 		for (Holder.Reference<Enchantment> holder : registry.listElements().toList()) {
 			Identifier id = holder.key().identifier();
-			if (!id.getNamespace().equals(StellaEquips.MOD_ID) || id.getPath().equals("test_marker")) {
+			if (!id.getNamespace().equals(StellaEquips.MOD_ID)) {
 				continue;
 			}
 
