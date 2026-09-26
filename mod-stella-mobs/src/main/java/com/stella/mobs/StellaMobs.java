@@ -55,6 +55,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class StellaMobs implements ModInitializer {
+	/** V4: a mob carrying this entity tag takes none of the spawn-time rolls, so another mod can own its kit. */
+	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final String MOD_ID = "mod-stella-mobs";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
