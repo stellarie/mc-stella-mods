@@ -232,6 +232,7 @@ public final class PatrolService {
 		} else if (role == PatrolState.Role.PILLAGER) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
 		}
+		PatrolVisuals.dress(mob, level, role);
 		installGoals(mob, village);
 		if (!level.addFreshEntity(mob)) {
 			McStellaVillages.LOGGER.info(
@@ -368,6 +369,8 @@ public final class PatrolService {
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
+		// V5: a member saved before the village banner existed is dressed when it loads.
+		PatrolVisuals.dress(mob, level, state.role());
 		if (state.role() == PatrolState.Role.PILLAGER) {
 			// Another mod's load listener may re-roll the hand after this one, so the crossbow is checked a tick later.
 			LOADOUT_CHECKS.add(mob);
@@ -451,6 +454,7 @@ public final class PatrolService {
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
 		restoreCrossbows(level);
+		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
 		VillageWorldData data = VillageWorldData.get(level);
 		for (VillageRecord village : data.villages()) {
