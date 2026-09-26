@@ -6,20 +6,12 @@ import net.minecraft.resources.Identifier;
 public record PowerConfig(
 	int version,
 	int levelCap,
-	Curve curve,
-	Award award,
 	MobLevel mobLevel,
 	Bands bands,
 	Tracker tracker,
 	Attributes attributes,
 	Readout readout
 ) {
-	public record Curve(double base, double growth) {
-	}
-
-	public record Award(double divisor, int minimum) {
-	}
-
 	public record MobLevel(
 		double blocksPerLevel,
 		int cap,

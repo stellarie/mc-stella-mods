@@ -21,7 +21,7 @@ import net.minecraft.world.level.GameType;
 /** Slice 6. Enchanting costs emeralds and spends no experience. */
 public class EmeraldCostGameTest {
 	private static final Identifier TEST_MARKER =
-		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "test_marker");
+		Identifier.fromNamespaceAndPath(PowerFixtures.TEST_MOD_ID, "test_marker");
 	private static final Identifier SHARPNESS = Identifier.withDefaultNamespace("sharpness");
 	private static final int EMERALDS = 16;
 	private static final int LEVELS = 10;

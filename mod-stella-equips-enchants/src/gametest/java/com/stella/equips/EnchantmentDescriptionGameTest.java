@@ -47,7 +47,6 @@ import net.minecraft.world.phys.Vec3;
 /** The book descriptions and the Bomb Arrows blast visual. */
 public class EnchantmentDescriptionGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
-	private static final String FIXTURE_PATH = "test_marker";
 	private static final String LANG_PATH = "/assets/" + MOD_ID + "/lang/en_us.json";
 	private static final int MAX_DESCRIPTION_LENGTH = 72;
 	private static final int GREY = 0xAAAAAA;
@@ -275,7 +274,6 @@ public class EnchantmentDescriptionGameTest {
 	private static List<Holder.Reference<Enchantment>> catalogue(final GameTestHelper helper) {
 		return enchantments(helper).listElements()
 			.filter(holder -> MOD_ID.equals(holder.key().identifier().getNamespace()))
-			.filter(holder -> !FIXTURE_PATH.equals(holder.key().identifier().getPath()))
 			.sorted(Comparator.comparing(holder -> holder.key().identifier().toString()))
 			.toList();
 	}

@@ -9,23 +9,31 @@ public final class ReadoutText {
 	private ReadoutText() {
 	}
 
-	public static Component build(final int mobLevel, final Component mobName, final PowerCurve.Band band) {
-		MutableComponent text = Component.literal("[" + mobLevel + "] ").append(mobName);
-		return text.withStyle(color(band));
+	/** The line reads `Threat 7 <Elite> Zombie`; an ordinary mob carries no tag. */
+	public static Component build(
+		final int threat, final ReadoutRank rank, final Component mobName, final PowerCurve.Band band
+	) {
+		return prefix(threat, rank).append(mobName).withStyle(color(band));
 	}
 
-	/** The mob under the crosshair also shows its health, so the line reads `[32] Cow 14/20`. */
+	/** Every readout also shows health, so the line reads `Threat 12 <Boss> Wither 200/200`. */
 	public static Component build(
-		final int mobLevel,
+		final int threat,
+		final ReadoutRank rank,
 		final Component mobName,
 		final PowerCurve.Band band,
 		final float health,
 		final float maxHealth
 	) {
-		MutableComponent text = Component.literal("[" + mobLevel + "] ")
+		return prefix(threat, rank)
 			.append(mobName)
-			.append(" " + shown(health) + "/" + shown(maxHealth));
-		return text.withStyle(color(band));
+			.append(" " + shown(health) + "/" + shown(maxHealth))
+			.withStyle(color(band));
+	}
+
+	private static MutableComponent prefix(final int threat, final ReadoutRank rank) {
+		String tag = rank.tag().isEmpty() ? "" : rank.tag() + " ";
+		return Component.literal("Threat " + threat + " " + tag);
 	}
 
 	/** A live mob never reads as zero, and a whole number never grows a decimal tail. */

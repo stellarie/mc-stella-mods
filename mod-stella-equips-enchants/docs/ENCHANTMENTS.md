@@ -1,14 +1,16 @@
 # The enchantment catalogue
 
-The catalogue holds 72 enchantments: 54 non-curses and 18 curses. Each
+The catalogue holds 71 enchantments: 53 non-curses and 18 curses. Each
 enchantment has one file under `src/main/resources/data/mod-stella-equips-enchants/enchantment/`.
 The folder under that directory becomes part of the id, so
 `enchantment/bow/marksman.json` is the id
 `mod-stella-equips-enchants:bow/marksman`.
 
-Every enchantment carries `anvil_cost` 1. The table tag holds 54 non-curses,
-and the loot tag holds all 72. Curses stay out of the table. No enchantment
-carries an `exclusive_set`, so no pair blocks another pair.
+Every enchantment carries `anvil_cost` 1. The table tag holds 53 non-curses,
+and the loot tag holds all 71. Curses stay out of the table. No enchantment
+carries an `exclusive_set`, so no pair blocks another pair. The catalogue holds 15
+`run_function` effect references. Veinminer was removed in Stage 2; a saved item
+that still names it loads as its base item and keeps its other enchantments.
 
 ## The redundancy cut
 
@@ -250,7 +252,7 @@ book and a shield combine at an anvil is not verified by a test in this slice.
 
 | Enchantment | Weight | Levels | Min | Max | Share | Effect | Trade-off |
 |---|---|---|---|---|---|---|---|
-| Ore Regeneration | 5 | 5 | 5 | 57 | pickaxe 0.25 | blocks in `#minecraft:ores` regrow at a 20% chance per level | one 20-tick cooldown covers all ores a player breaks |
+| Ore Regeneration | 5 | 5 | 5 | 57 | pickaxe 0.25 | blocks in `#minecraft:ores` regrow at a 5% chance per level | one 20-tick cooldown covers all ores a player breaks |
 | Prospector | 5 | 1 | 5 | 30 | pickaxe 0.25 | `hit_block` `run_function` that marks the broken block with 12 particles and a chime | a marker, not a reveal, and once per 40 ticks |
 | Blockfeast | 10 | 3 | 1 | 43 | pickaxe 0.5, axe 0.286 | `block_experience` add 1 per level | none |
 | Lumberjack | 2 | 3 | 10 | 50 | axe 0.057 | `hit_block` `run_function` that fells up to 8 logs above the broken block | one trunk per second, and the logs drop their own loot |
@@ -304,7 +306,7 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 
 | Test | Claim |
 |---|---|
-| `everyCatalogueEnchantmentLoads` | 72 catalogue enchantments load, and the namespace holds one more, the slice 1 fixture |
+| `everyCatalogueEnchantmentLoads` | 71 catalogue enchantments load; the `test_marker` fixture lives only in the game test mod namespace |
 | `everyCatalogueEnchantmentAssemblesForOneLevel` | every `anvil_cost` is 1 |
 | `everySupportedItemsTagResolvesToItems` | every `supported_items` tag resolves to at least one item |
 | `everyCatalogueEnchantmentIsInARollPool` | every enchantment appears in the pool `EnchantRoller.poolFor` builds for a real item |
@@ -325,4 +327,4 @@ table in the slice plan. The reason is a fact about 26.3, not a preference.
 | `bombArrowsBlastLeavesTheBlockIntactAndStillHurtsAMob` | a real Bomb Arrows arrow hits a wall, the wall stays intact, and a mob one block away takes the blast |
 | `cleaveBlastReachesANearbyMobAndSparesTheWielder` | the cleave blast hits a mob one block away and leaves a wielder three blocks away unharmed |
 | `rangersMarkPaysWhileTheTargetIsAboveHalfHealth` | a real arrow paid 4 more damage on a fresh target than on one below half health |
-| `oreRegenerationMeasuresRatesAfterCompletedBreaks` | measures regrowth after 250 completed breaks at levels 1 and 3; checks 20% chance per level, all tagged ore states, non-ore rejection, and the 20-tick cooldown |
+| `oreRegenerationMeasuresRatesAfterCompletedBreaks` | measures regrowth after 1,500 completed breaks at levels 1 and 5; checks the 5% chance per level, all tagged ore states, non-ore rejection, and the 20-tick cooldown |

@@ -5,17 +5,10 @@ import java.util.Map;
 import net.minecraft.resources.Identifier;
 
 public final class PowerFixtures {
+	public static final String TEST_MOD_ID = "mod-stella-equips-enchants-test-mod-stella-equips-enchants";
 	public static final Identifier OVERWORLD = Identifier.fromNamespaceAndPath("minecraft", "overworld");
 	public static final Identifier NETHER = Identifier.fromNamespaceAndPath("minecraft", "the_nether");
 	public static final Identifier END = Identifier.fromNamespaceAndPath("minecraft", "the_end");
-	public static final long LEVEL_50_POINTS = 6275L;
-	public static final long STEP_49_TO_50_POINTS = 819L;
-	public static final long LEVEL_49_POINTS = 5456L;
-	public static final double LEVEL_50_SHARE = 0.13;
-	public static final double GROWTH = 1.15;
-	public static final double BASE = 1.0;
-	public static final double AWARD_DIVISOR = 0.5;
-	public static final int AWARD_MINIMUM = 1;
 	public static final double HEALTH_BASE = 20.0;
 	public static final double HEALTH_PER_LEVEL = 4.0;
 	public static final double HEALTH_AT_CAP = 216.0;
@@ -34,8 +27,6 @@ public final class PowerFixtures {
 		return new PowerConfig(
 			1,
 			50,
-			new PowerConfig.Curve(BASE, GROWTH),
-			new PowerConfig.Award(AWARD_DIVISOR, AWARD_MINIMUM),
 			new PowerConfig.MobLevel(
 				300.0,
 				32,
@@ -57,6 +48,14 @@ public final class PowerFixtures {
 				ATTACK_SPEED_AT_CAP
 			),
 			new PowerConfig.Readout(true, 32.0, 40, 0.9, 0.5)
+		);
+	}
+
+	public static PowerConfig withMobLevel(final PowerConfig.MobLevel mobLevel) {
+		PowerConfig base = acceptanceConfig();
+		return new PowerConfig(
+			base.version(), base.levelCap(), mobLevel, base.bands(), base.tracker(),
+			base.attributes(), base.readout()
 		);
 	}
 }
