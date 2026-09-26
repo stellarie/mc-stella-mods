@@ -45,10 +45,10 @@ public class BoneFanGoal extends Goal {
 	 * Replaces the vanilla bow goal at its own rank, and adds the fan there instead. The removal runs
 	 * here and not from a goal callback: a goal that mutates the selector while the selector iterates it
 	 * corrupts that iteration. A weapon swap re-adds the vanilla goal at this rank, and the earlier
-	 * insertion wins the tie, so the fan keeps rank 4.
+	 * insertion wins the tie, so the fan keeps rank 4. A skeleton promoted to boss also loses its volley.
 	 */
 	public static void install(final Mob mob) {
-		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedBowAttackGoal);
+		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedBowAttackGoal || goal instanceof SkeletonVolleyGoal);
 		mob.getGoalSelector().addGoal(ATTACK_PRIORITY, new BoneFanGoal(mob));
 	}
 
