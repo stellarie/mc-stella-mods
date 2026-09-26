@@ -6,10 +6,18 @@ This folder turns every open task in `HANDOFFS-2026-09-26.md` into a design and 
 
 ## Where these files live, and why
 
-AGENTS.md puts each mod's work on its own integration branch. These plans cover four mods, and two of
-their integration branches do not exist yet (D-X-1). The plans are therefore committed together on
-the session branch `claude/practical-mayer-ewlb1h`, which branches from `main`. Once a plan's branch
-exists, copy that plan onto it, or merge this folder into `main`.
+AGENTS.md keeps each mod's work on its own branch, so each mod branch carries this index and
+**only its own plan folder**:
+
+| Branch | Plans it carries |
+|---|---|
+| `main-equip-ench` | `equips/` |
+| `main-mobs` | `mobs/` |
+| `feat/spellbooks-and-enchantments` | `spells/` (no `main-spells` exists yet, D-X-1) |
+| `feat/mc-stella-villages` | `villages/` (no `main-villages` exists yet, D-X-1) |
+
+On a mod branch, the links to other mods' folders below do not resolve. The complete set is on the
+session branch `claude/practical-mayer-ewlb1h`, which branches from `main`.
 
 The code on `main` is identical to each mod's branch tip for its own directory (checked with
 `git diff`): `main-mobs` for mobs, `main-equip-ench` for equips, `feat/spellbooks-and-enchantments`
