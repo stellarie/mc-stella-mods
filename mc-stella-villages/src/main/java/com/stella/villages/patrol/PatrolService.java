@@ -140,6 +140,11 @@ public final class PatrolService {
 			.orElse(null);
 	}
 
+	/** The level's own tick counter, which advances once per level tick wherever the game clock stands. */
+	static long levelTick(final ServerLevel level) {
+		return LEVEL_TICKS.getOrDefault(level, 0L);
+	}
+
 	static List<Mob> members(final Level level, final UUID villageId) {
 		List<Mob> result = new ArrayList<>();
 		for (Mob mob : ACTIVE_MEMBERS.values()) {
