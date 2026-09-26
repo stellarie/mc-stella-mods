@@ -1,5 +1,6 @@
 package com.stella.equips;
 
+import com.stella.equips.mastery.WeaponMastery;
 import com.stella.equips.enchant.Deflection;
 import com.stella.equips.enchant.OreMender;
 import com.stella.equips.enchant.OreRegeneration;
@@ -32,6 +33,7 @@ public class StellaEquips implements ModInitializer {
 		RandomEnchantmentsFunction.register();
 		ChestLoot.register();
 		HeadDrops.register();
+		WeaponMastery.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
