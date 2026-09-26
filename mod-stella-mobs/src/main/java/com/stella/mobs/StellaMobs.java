@@ -22,6 +22,7 @@ import com.stella.mobs.behavior.ReinforcementGoal;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
+import com.stella.mobs.behavior.SpawnSafety;
 import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
@@ -130,12 +131,21 @@ public class StellaMobs implements ModInitializer {
 				state.setGearApplied(true);
 			}
 
-			// B01 and B02: the boss roll runs before the elite roll, which returns at its own guard.
-			Bosses.rollAtSpawn(mob, level, GearConfigStore.get().rollFor(entityType).bossChance());
-
-			Elite.rollAtSpawn(
-				mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
+			// M3: a natural overworld spawn near the shared spawn takes no elite or boss roll.
+			boolean suppressed = SpawnSafety.suppresses(
+				mob, level, entity instanceof EntityLoadData spawnData ? spawnData.spawnReason() : null
 			);
+
+			// B01 and B02: the boss roll runs before the elite roll, which returns at its own guard.
+			if (!suppressed) {
+				Bosses.rollAtSpawn(mob, level, GearConfigStore.get().rollFor(entityType).bossChance());
+			}
+
+			if (!suppressed || Elite.isForced(mob)) {
+				Elite.rollAtSpawn(
+					mob, level, GearConfigStore.get().rollFor(entityType).eliteChance(), loadout == null
+				);
+			}
 
 			// P3 and P4: a glow squid and a pufferfish are not Enemies, so their roll lives here.
 			OceanSpecials.roll(mob, GearConfigStore.get().rollFor(entityType).eliteChance());
