@@ -26,6 +26,8 @@ public class CrossbowCadenceGoal extends Goal {
 	public static final int ATTACK_PRIORITY = 2;
 	/** The vanilla hold this goal drops, at attack speed 1.0. Kept so a test can state what was removed. */
 	public static final int REMOVED_HOLD_TICKS = 20;
+	/** M5: vanilla's Pillager crossbow radius; beyond it, or out of sight, a Pillager walks in. */
+	public static final double CHASE_RADIUS = 8.0;
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
 
 	private final Monster mob;
