@@ -222,6 +222,7 @@ public final class MissionService {
 		}
 		nemesis.snapTo(Vec3.atBottomCenterOf(mission.targetPosition()), 0.0F, 0.0F);
 		nemesis.setPersistenceRequired();
+		nemesis.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		NemesisState.attach(nemesis, mission.id());
 		applyNemesisProfile(nemesis);
 		String name = "<Nemesis> " + type.getDescription().getString();
