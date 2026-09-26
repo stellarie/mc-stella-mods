@@ -8,8 +8,8 @@ Minecraft mods for a private Fabric server.
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
 | `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
-| `mod-stella-spells/` | Spellbooks and spell-enhancing enchantments | `main-spells` |
-| `mc-stella-villages/` | Village patrols; missions and raids are in development | `main-villages` |
+| `mod-stella-spells/` | Spellbooks, spell visuals, combos and spell-enhancing enchantments | `feat/spellbooks-and-enchantments` (`main-spells` is not created yet) |
+| `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `feat/mc-stella-villages` (`main-villages` is not created yet) |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.
@@ -27,6 +27,21 @@ Start new mod work from the matching integration branch.
 A server-side Fabric mod. Mobs take configurable gear, block with a shield,
 retreat when hurt, defend each other, and fight at the distance their role
 wants.
+
+### Mob behaviour highlights
+
+- **Blood Moon.** Every seventh night, hostiles that spawn roll elite three times as often and carry
+  Strength until dawn. Every overworld player is told when it rises and when it sets.
+- **Skeletons.** A plain skeleton with a bow looses three arrows 6 degrees apart every 2 seconds.
+  Each arrow leaves a small cloud: a tipped arrow's own potion, or Slowness. About 79% of skeletons
+  carry a bow.
+- **Evokers.** An elite evoker opens every fight with its rain of fire: 48 by 48 blocks, a ball every
+  second, once per life.
+- **Illusioners.** They freeze, burn and blind nearby players in turn. They split into decoys, and
+  killing a decoy slows you. From wave three, a raid wave has a 25% chance to bring one.
+- **Witches.** They throw a random harmful potion every 3 seconds, support a nearby ally every
+  2 seconds, and blink away when cornered.
+- **Elite zombies.** Their hits bring Hunger, Wither and Poison.
 
 ### Opting a mob out of spawn rolls
 

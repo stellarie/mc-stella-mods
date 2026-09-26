@@ -36,6 +36,76 @@ and `namedWitchPotionsStillReadAsModThrows`.
 Measured rate: in 2000 seeded gear rolls, **85.2% of Pillagers** hold a melee weapon
 (`everyRolledPillagerHoldsAWeaponItCanUse`). Before M4, all of them stood idle.
 
+## Second round: the spells ticket, M2 to M11, V2, V5, and one surprise per mod
+
+Each slice was written test-first, then gated with a clean build plus 5 separate runs, and finally
+merged. A red run (behaviour absent) and a mutant run (behaviour removed after green) were recorded
+for every slice.
+
+| Slice | Branch | Red run | Mutant run | Gate |
+| --- | --- | --- | --- | --- |
+| Spellbook descriptions and spell visuals (priority ticket) | `feat/spell-descriptions-visuals` | 9 failed | 8 failed (no lore, no visual hook) | 83 x 6 |
+| M11 witch pattern | `feat/witch-pattern` | 5 new tests failed | blink landing past the maximum: red | 264, clean + 9 runs |
+| M7 zombie afflictions | `feat/zombie-afflictions` | recorded in the first round | - | 262 x 6; 265 x 6 merged with M11 |
+| M8 evoker fire rain | `feat/evoker-fire-rain` | 5 failed | the red run is the absent behaviour | 271 x 6 |
+| M2 skeleton volley | `feat/skeleton-volley` | 5 failed | 3 failed (boss keeps volley, no clouds) | 278 x 6 |
+| M9 Illusioner kit | `feat/illusioner-kit` | 5 failed | 2 failed (no killer slow, no caster cleanup) | 285 x 6 |
+| V5 patrol visuals, W020 fix | `feat/village-patrol-visuals` | 2 failed | 2 failed (no dressing, no sparkle) | 52, clean + 9 runs |
+| V2 mission board | `feat/village-mission-board` | 4 failed | 3 failed | 56 x 6 |
+| Surprise, mobs: Blood Moon | `feat/blood-moon` | 3 failed | 1 failed (5 of 20 elite) | 289 x 6 |
+| Surprise, equips: Weapon Mastery | `feat/weapon-mastery` | 3 failed | 2 failed | 213 x 6 |
+| Surprise, spells: spell combos | `feat/spell-combos` | 3 failed | 3 failed | 89 x 6 |
+| Surprise, villages: bell rally | `feat/bell-rally` | 2 failed | 1 failed (no cooldown) | 59 x 6 |
+
+Measured reach rates:
+
+- **Skeleton volley.** 79.4% of rolled skeletons hold a bow (10,000 seeded rolls). About 78.6% of
+  the skeletons a player meets volley, after the 1% boss share.
+- **Illusioners in raids.** A raid brings at least one Illusioner 25.2% of the time on Easy, 57.7%
+  on Normal and 76.4% on Hard (100,000 seeded raids each).
+- **Blood Moon.** Exactly 1 night in 7.
+
+### Causes found and fixed this round
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| W020: the patrol head never targeted the creeper (5 of about 95 runs) | Line of sight was clear at setup, then lost. The anchor is natural terrain, the sight column was one block wide, and the head wandered off it. | A 5 by 5 sight shaft and a held head; clean + 9 runs green. |
+| M11: no throw after a blink | The blink landed in the test's padding, on a chunk loaded but not entity-ticking, so the witch froze at tickCount 1. | The blink floor's chunks are forced, and a blink now lands between 6 and 8 blocks, inside throw range. |
+| M11: a 66-tick throw gap | The witch's levitation potion floated the target out of range. | The cadence test pins its target. |
+| M7: a plain zombie afflicted its victim (1 run in 20) | The test's config had a 5% elite chance. | The zombie spawns with the no-spawn-roll tag. |
+| Combos: a combo hit dealt 1 instead of 4 | In 26.3 the hurt cooldown is `LivingEntity.damageCooldownTime`; `setInvulnerableTime` does not touch it. | Combo hits clear `damageCooldownTime`. |
+| Bell rally: a stray bell rallied a neighbour's village | `findNearest` accepts vanilla's roughly 90-block village distance. | A bell must be within 48 blocks of its village's anchor. |
+| Illusioner aura: frost never showed | Vanilla's `igniteForTicks` calls `clearFreeze`. | The aura alternates frost pulses and fire pulses. |
+
+### Deviations this round
+
+| Plan | Deviation | Reason |
+| --- | --- | --- |
+| V2 | A server-side chest menu instead of payloads and a client Screen. | The server stays the only authority, no client code is needed, and a vanilla client can use the board. |
+| V5 | The village banner and a sparkle instead of client textures. | Vanilla assets need no art, no client jar and no redistribution question (D-V5-1). |
+| M9 | Frost and fire alternate. | Vanilla's ignite clears frost, so both at once cannot hold. |
+| M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
+| M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
+
+## Merged state after the second round
+
+`main` holds all four integration tips. Each mod's tree on `main` is byte-identical to its gated
+branch, and a clean build on `main` exits 0 for each:
+
+| Mod | Required on `main` | Jar size | GameTest entries | Jar SHA-256 (Linux build) |
+| --- | --- | --- | --- | --- |
+| Mobs | 289 | 264,728 | 0 | `8d511307af87212e3f18345b02bd9b862120ef78fd91f3ab6629f616a1c5556e` |
+| Equips | 213 | 167,256 | 0 | `058434deb7bacafc3f4b15a85b1670da0b0c079c72295c1b8e066f02e9fefd8b` |
+| Spells | 89 | 81,922 | 0 | `36bb93a59032cd0588aa2ae1504b7b6a76a8033ff0b5c3c6090994a8efc5d1db` |
+| Villages | 59 | 92,052 | 0 | `1878a0ead64f073cbedc9b44203ccda2055ccb5266336f6b7fc9276ff0350d67` |
+
+Manual acceptance items added this round, for the client:
+
+- **Spells:** the tooltips, and each spell's particles.
+- **Mobs:** the volley clouds, the fire rain's size, the Illusioner's decoys, and the Blood Moon title.
+- **Equips:** the Mastery tooltip line and the damage shown on the tooltip.
+- **Villages:** the mission board, the patrol banner and sparkle, and a bell rally.
+
 ## S1 mutation proofs (each change undone and verified clean by git)
 
 | Mutation | Test that turned red |
@@ -116,6 +186,7 @@ build may differ, so hash the jar you deploy.
   cannot reach your PC.
 - **Manual acceptance:** sword Pillagers and the chase feel, readable potion names in a vanilla
   client, and a patrol with 5 crossbow Pillagers in a real village.
+- **W020 resolved (second round):** see the causes table above. The history follows.
 - **Watched test:** `patrolTargetsHostilesInsideDetectionRange` (W020) failed 5 times in about 95
   village runs, once on code from before today. The last failure (vfix7) ruled out the tick
   hypothesis: the head ticked 210 times in an entity-ticking chunk, awake, in range and in sight,
@@ -126,8 +197,10 @@ build may differ, so hash the jar you deploy.
   the manual water-escape checks remain.
 - **V1b manual check:** load a backed-up pre-W021 world. The Evoker and Witch should leave as their
   chunks load, and two Pillagers should join each patrol.
-- M2, M7, M8, M9, and M11 wait on the decisions in `README.md`. E1–E4 need the Stage 2 world checks.
-  V2 needs the approved mission-screen spec from the blackboard, and V5 needs the texture art.
+- M2, M7, M8, M9, M11, V2 and V5 are done (second round), on the decisions recorded above.
+  E1–E4 need the Stage 2 world checks.
+- **Integration branches:** `main-villages` and `main-spells` do not exist yet (D-X-1). Their work
+  lives on `feat/mc-stella-villages` and `feat/spellbooks-and-enchantments`.
 - **V3 manual check:** a raid day in a real world (advance the day with a player in a village) should
   bring one wave and a victory.
 - S2's remaining steps: Sherry's review, the spells README, deployment, and the manual tint checks.
