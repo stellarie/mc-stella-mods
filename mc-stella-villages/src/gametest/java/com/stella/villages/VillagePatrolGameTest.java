@@ -694,7 +694,10 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "range=" + detectionRange + " initialDistance=" + initialDistance
 					+ " visible=" + visible[0] + " acquired=" + acquired[0]
 					+ " nearestGoalRunning=" + nearestGoalRunning[0]
-					+ " currentTarget=" + (head.getTarget() == null ? "none" : PatrolTestSupport.typeId(head.getTarget())));
+					+ " currentTarget=" + (head.getTarget() == null ? "none" : PatrolTestSupport.typeId(head.getTarget()))
+					+ " head=" + head.getUUID() + " headNoAi=" + head.isNoAi() + " headAlive=" + head.isAlive()
+					+ " headVillage=" + PatrolState.villageId(head) + " testVillage=" + PatrolTestSupport.villageId(helper)
+					+ " finalDistance=" + head.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive());
 				helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
 			}
 		});
