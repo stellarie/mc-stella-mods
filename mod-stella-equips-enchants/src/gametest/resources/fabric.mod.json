@@ -26,7 +26,8 @@
 			"com.stella.equips.OreRegenerationGameTest",
 			"com.stella.equips.ReadoutGameTest",
 			"com.stella.equips.ReadoutRankGameTest",
-			"com.stella.equips.ReadoutTextGameTest"
+			"com.stella.equips.ReadoutTextGameTest",
+			"com.stella.equips.TempoGameTest"
 		]
 	}
 }

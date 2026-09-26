@@ -1,13 +1,13 @@
 # The enchantment catalogue
 
-The catalogue holds 71 enchantments: 53 non-curses and 18 curses. Each
+The catalogue holds 72 enchantments: 54 non-curses and 18 curses. Each
 enchantment has one file under `src/main/resources/data/mod-stella-equips-enchants/enchantment/`.
 The folder under that directory becomes part of the id, so
 `enchantment/bow/marksman.json` is the id
 `mod-stella-equips-enchants:bow/marksman`.
 
-Every enchantment carries `anvil_cost` 1. The table tag holds 53 non-curses,
-and the loot tag holds all 71. Curses stay out of the table. No enchantment
+Every enchantment carries `anvil_cost` 1. The table tag holds 54 non-curses,
+and the loot tag holds all 72. Curses stay out of the table. No enchantment
 carries an `exclusive_set`, so no pair blocks another pair. The catalogue holds 15
 `run_function` effect references. Veinminer was removed in Stage 2; a saved item
 that still names it loads as its base item and keeps its other enchantments.
@@ -219,6 +219,7 @@ rate. The rate section below says why.
 | Reach | 5 | 3 | 5 | 41 | spear 0.227 | `attributes` `entity_interaction_range` add 0.5 per level | none |
 | Tidecaller | 2 | 1 | 15 | 45 | trident 0.105 | `post_attack` `run_function` that grants the thrower 20 seconds of dolphin's grace | once per 600 ticks |
 | Hooked | 5 | 2 | 5 | 33 | trident 0.263 | `post_attack` `apply_mob_effect` slowness II for 4 seconds on the target the trident hits | none |
+| Tempo | 5 | 1 | 5 | 30 | sword 0.085, axe 0.076, spear 0.093, trident 0.104, mace 0.104 at cost 30 | `post_attack` Slowness I for 2 seconds on the target, and Speed I for 2 seconds on a player attacker | direct hits only, so a thrown trident does nothing; a mob attacker gets no Speed |
 | Shockwave | 2 | 2 | 10 | 50 | mace 0.105 | `post_attack` `explode` radius 3 with no damage type, plus `damage_entity` 4 on the target | the ring throws entities instead of hurting them; only the struck target takes damage |
 
 ### Armor
