@@ -550,10 +550,12 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.detail(test, "mountedDuringMove=" + (evoker.getVehicle() == ravager)
 					+ " movementDistance=" + movementDistance[0] + " ravagerPosition=" + ravager.position());
 				helper.getLevel().setChunkForced(farChunkX, farChunkZ, true);
-				ravager.snapTo(Vec3.atBottomCenterOf(farPosition), ravager.getYRot(), ravager.getXRot());
+				Vec3 remotePosition = Vec3.atBottomCenterOf(farPosition);
+				ravager.teleportTo(remotePosition.x, remotePosition.y, remotePosition.z);
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
-				ravager.chunkPosition().equals(farChunk) && evoker.getVehicle() == ravager,
+				ravager.chunkPosition().equals(farChunk) && evoker.getVehicle() == ravager
+					&& evoker.chunkPosition().equals(farChunk),
 				"mounted pair did not enter the reload chunk"
 			))
 			.thenExecute(() -> {
@@ -561,7 +563,7 @@ public final class VillagePatrolGameTest {
 				boolean forced = helper.getLevel().setChunkForced(farChunkX, farChunkZ, false);
 				PatrolTestSupport.detail(test, "farChunkForcedBeforeUnload=" + forced
 					+ " chunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(farChunkX, farChunkZ)
-					+ " ravager=" + ravagerId + " evoker=" + evokerId);
+					+ " ravager=" + ravagerId + " evoker=" + evokerId + " evokerChunk=" + evoker.chunkPosition());
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
 				!helper.getLevel().getChunkSource().hasChunk(farChunkX, farChunkZ),
@@ -707,10 +709,11 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = TARGET_SELECTION_WINDOW + 20, padding = 64)
+	@GameTest(dimension = "minecraft:the_end", maxTicks = TARGET_SELECTION_WINDOW + 20, padding = 64)
 	public void patrolDoesNotTargetHostilesOutsideDetectionRange(final GameTestHelper helper) {
 		String test = "patrolDoesNotTargetHostilesOutsideDetectionRange";
-		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+		BlockPos isolatedAnchor = PatrolTestSupport.findDistantVillageAnchor(helper, test);
+		if (isolatedAnchor == null || !PatrolTestSupport.loadVillageAt(helper, test, isolatedAnchor)) {
 			return;
 		}
 
@@ -1058,7 +1061,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(dimension = "minecraft:the_end", padding = 64)
 	public void patrolRejectsUnsafeSpawnSupport(final GameTestHelper helper) {
 		String test = "patrolRejectsUnsafeSpawnSupport";
 		if (!PatrolTestSupport.prepareVillage(helper, test, false)) {
