@@ -678,7 +678,14 @@ public class BossAbilityGameTest {
 	@GameTest(maxTicks = 200)
 	public void plainZombieHitAppliesNoAffliction(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
-		Zombie plain = ordinary(helper, EntityTypes.ZOMBIE, 3, 3, 3);
+		// Tagged out of the spawn rolls, so a five percent elite roll cannot make the plain zombie elite.
+		Zombie plain = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.NATURAL);
+		Vec3 at = helper.absoluteVec(new Vec3(3.5, 3.0, 3.5));
+		plain.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		plain.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		plain.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(plain);
+		helper.assertFalse(Elite.isElite(plain), "the plain zombie rolled elite despite the opt-out tag");
 		Mob victim = ordinary(helper, EntityTypes.IRON_GOLEM, 4, 3, 3);
 		victim.setNoAi(true);
 		boolean landed = plain.doHurtTarget(helper.getLevel(), victim);
