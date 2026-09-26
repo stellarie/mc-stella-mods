@@ -29,7 +29,8 @@ public class SpellDescriptionsGameTest {
 		int described = 0;
 		for (SpellbookItem book : Spellbooks.CATALOG) {
 			List<Component> lines = lines(book);
-			helper.assertTrue(lines.size() == DESCRIPTION_LINES, book.definition().id() + " has " + lines.size() + " description lines");
+			int expected = DESCRIPTION_LINES + (SpellCombos.involving(book.definition().id()).isPresent() ? 1 : 0);
+			helper.assertTrue(lines.size() == expected, book.definition().id() + " has " + lines.size() + " description lines, not " + expected);
 			for (Component line : lines) {
 				helper.assertTrue(translated(line), book.definition().id() + " shows an untranslated line: " + line.getString());
 			}
@@ -85,6 +86,26 @@ public class SpellDescriptionsGameTest {
 		}
 		helper.assertTrue(new HashSet<>(textBySeconds.values()).size() == textBySeconds.size(), "two cooldowns render the same text");
 		LOG.info("[SPELLTEST] test=cooldownLineCarriesTheBaseCooldownInSeconds RESULT cooldowns={}", textBySeconds.size());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyComboBookNamesItsCombo(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "everyComboBookNamesItsCombo");
+		int named = 0;
+		for (SpellCombos.Combo combo : SpellCombos.combos()) {
+			for (SpellbookItem book : Spellbooks.CATALOG) {
+				if (!book.definition().id().equals(combo.first()) && !book.definition().id().equals(combo.second())) {
+					continue;
+				}
+				List<Component> lines = lines(book);
+				Component last = lines.getLast();
+				helper.assertTrue(translated(last) && last.getString().contains(combo.name()), book.definition().id() + " does not name " + combo.name() + ": " + last.getString());
+				named++;
+			}
+		}
+		helper.assertTrue(named == SpellCombos.combos().size() * 2, "only " + named + " books name their combo");
+		LOG.info("[SPELLTEST] test=everyComboBookNamesItsCombo RESULT books={}", named);
 		helper.succeed();
 	}
 

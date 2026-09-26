@@ -53,6 +53,20 @@ Every successful cast draws its own particles, sent from the server to players w
 
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
+## Spell combos
+
+Cast the right two spells in order, within 5 seconds, and they land a combo. Hostile combos need the same
+mob for both spells; Frozen Meteor needs the second spell within 3 blocks of the first. A landed combo
+spends the pair, so one opener never feeds two combos. Each combo book's tooltip names its combo.
+
+| First | Then | Combo | Bonus |
+| --- | --- | --- | --- |
+| Frostbind | Spark Shot | Thermal Shock | 4 more magic damage |
+| Briar Snare | Wither Seal | Blight Bloom | Poison II, 5 s |
+| Static Lash | Tidal Push | Riptide Current | 3 more damage and Slowness III, 3 s |
+| Stoneguard | Aegis of the Deep | Bastion | Absorption IV, 8 s |
+| Time Lock | Dragonfall | Frozen Meteor | 5 more damage to hostiles within 3 blocks |
+
 ## Getting spellbooks
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
