@@ -207,6 +207,8 @@ public final class BehaviorInstaller {
 		// R25: armed at install, and the goal's own guard reads the elite flag, which is already set
 		// for a mob that rolled elite before this install runs.
 		mob.getGoalSelector().addGoal(PEARL_PRIORITY, new PearlThrowGoal(mob));
+		// M2: a plain skeleton's volley replaces its vanilla bow shot.
+		SkeletonVolleyGoal.install(mob);
 
 		if (mob instanceof Witch witch) {
 			installWitch(witch);

@@ -55,6 +55,11 @@ public final class GearConfigStore {
 		config = value;
 	}
 
+	/** The config this mod ships, as a fresh install would read it. */
+	public static GearConfig defaults() {
+		return GearConfigParser.parse(DEFAULT_JSON);
+	}
+
 	public static Path path() {
 		return FabricLoader.getInstance().getConfigDir().resolve(StellaMobs.MOD_ID).resolve(FILE_NAME);
 	}
