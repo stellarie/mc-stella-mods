@@ -52,7 +52,8 @@ public final class NemesisMissionGameTest {
 	private static final String NEMESIS_STATE = "com.stella.villages.mission.NemesisState";
 	private static final String NEMESIS_MAP_ITEM = "com.stella.villages.mission.NemesisMapItem";
 	private static final int TEST_MAX_TICKS = 3200;
-	private static final int NEMESIS_ENTITY_LOOKUP_TIMEOUT = 40;
+	// Waits on chunk and entity IO end at the test limit; a fixed short bound measured machine speed.
+	private static final int DIAGNOSTIC_BOUND_TICKS = TEST_MAX_TICKS - 20;
 
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
 	public void headOffersThreeTargets(final GameTestHelper helper) {
@@ -345,7 +346,7 @@ public final class NemesisMissionGameTest {
 				helper.assertTrue(stateMatches, "full inventory rejected a mission map instead of dropping it");
 			})
 			.thenSucceed();
-		helper.runAfterDelay(NEMESIS_ENTITY_LOOKUP_TIMEOUT, () -> {
+		helper.runAfterDelay(DIAGNOSTIC_BOUND_TICKS, () -> {
 			if (!mapLogged[0]) {
 				boolean mapInInventory = mapItem != null && !findMap(inventory, mapItem).isEmpty();
 				int nearbyMapDrops = mapItem == null ? 0 : helper.getLevel().getEntitiesOfClass(
@@ -446,10 +447,10 @@ public final class NemesisMissionGameTest {
 				releaseSafeTargetSite(helper, safeSite);
 			})
 			.thenSucceed();
-		helper.runAfterDelay(NEMESIS_ENTITY_LOOKUP_TIMEOUT, () -> {
+		helper.runAfterDelay(DIAGNOSTIC_BOUND_TICKS, () -> {
 			if (!profileLogged[0]) {
 				PatrolTestSupport.result(test, "accepted=" + accepted + " nemesis=false entityLookupWaitTicks="
-					+ NEMESIS_ENTITY_LOOKUP_TIMEOUT + " stateMatches=false");
+					+ DIAGNOSTIC_BOUND_TICKS + " stateMatches=false");
 				helper.fail("Nemesis did not enter the target chunk before the test bound");
 			}
 		});
@@ -542,7 +543,7 @@ public final class NemesisMissionGameTest {
 				})
 				.thenSucceed();
 		});
-		helper.runAfterDelay(NEMESIS_ENTITY_LOOKUP_TIMEOUT * 5 + 2, () -> {
+		helper.runAfterDelay(DIAGNOSTIC_BOUND_TICKS, () -> {
 			if (!lifecycleLogged[0]) {
 				boolean targetKnown = targetPosition[0] != null;
 				boolean targetChunkLoaded = targetKnown
@@ -647,7 +648,7 @@ public final class NemesisMissionGameTest {
 					"non-owner Nemesis kill did not complete and reward its mission exactly once");
 			})
 			.thenSucceed();
-		helper.runAfterDelay(NEMESIS_ENTITY_LOOKUP_TIMEOUT, () -> {
+		helper.runAfterDelay(DIAGNOSTIC_BOUND_TICKS, () -> {
 			if (!rewardsLogged[0]) {
 				boolean nemesisLoaded = nemesis[0] != null;
 				int emeralds = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD) : 0;

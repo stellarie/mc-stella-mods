@@ -20,12 +20,15 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.targeting.TargetingConditions;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -267,16 +270,19 @@ public final class VillagePatrolGameTest {
 					&& !helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ),
 				"village and head chunks did not unload after ticket removal"
 			))
-			.thenExecute(() -> {
-				stage[0] = 2;
+			// Entities leave a few ticks after their chunk, so wait for them rather than read the same tick.
+			.thenWaitUntil(() -> {
 				List<Mob> active = PatrolTestSupport.activePatrols(helper, test);
 				activeDuringUnload[0] = active.size();
 				entitiesAbsent[0] = before.stream()
 					.allMatch(id -> helper.getLevel().getEntityInAnyDimension(id) == null);
-				BlockPos rememberedHeadPosition = PatrolTestSupport.memberLastPosition(helper, test, headId);
-				savedPosition[0] = headPosition.equals(rememberedHeadPosition);
 				helper.assertTrue(entitiesAbsent[0] && active.isEmpty(),
 					"unloaded patrol entities remained in the world or active index");
+			})
+			.thenExecute(() -> {
+				stage[0] = 2;
+				BlockPos rememberedHeadPosition = PatrolTestSupport.memberLastPosition(helper, test, headId);
+				savedPosition[0] = headPosition.equals(rememberedHeadPosition);
 				helper.assertTrue(savedPosition[0], "unloaded head position was not saved");
 
 				boolean threatStarted = PatrolTestSupport.startThreat(helper, test, attackerId);
@@ -701,7 +707,8 @@ public final class VillagePatrolGameTest {
 					+ " finalDistance=" + head.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive()
 					+ " headTicked=" + (head.tickCount - headTicksAtStart)
 					+ " headEntityTicking=" + helper.getLevel().isPositionEntityTicking(head.blockPosition())
-					+ " hostileEntityTicking=" + helper.getLevel().isPositionEntityTicking(hostile.blockPosition()));
+					+ " hostileEntityTicking=" + helper.getLevel().isPositionEntityTicking(hostile.blockPosition())
+					+ " " + targetingDiagnostics(helper, head, hostile));
 				helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
 			}
 		});
@@ -1278,6 +1285,32 @@ public final class VillagePatrolGameTest {
 			"[MANUAL] case=patrolRetaliatesAgainstSurvivalPlayerRequiresManualTest gap=gametest_mock_player_is_creative"
 		);
 		helper.fail("[MANUAL] use a survival player to attack a village villager or golem");
+	}
+
+	// Each check the nearest-target goal makes, rebuilt from its own inputs, so a miss names its cause.
+	private static String targetingDiagnostics(final GameTestHelper helper, final Mob head, final Mob hostile) {
+		double range = PatrolTestSupport.followRange(head);
+		TargetingConditions conditions = TargetingConditions.forCombat().range(range)
+			.selector((target, level) -> target instanceof Monster && !(target instanceof Mob mob && PatrolState.isMarked(mob)));
+		AABB area = head.getBoundingBox().inflate(range, range, range);
+		List<Monster> candidates = helper.getLevel().getEntitiesOfClass(Monster.class, area, entity -> true);
+		String running = ((MobPatrolAccess) head).patrolTargetSelector().getAvailableGoals().stream()
+			.map(wrapped -> wrapped.getGoal().getClass().getSimpleName() + "@" + wrapped.getPriority() + "@" + wrapped.isRunning()
+				+ "#" + System.identityHashCode(wrapped.getGoal()))
+			.toList()
+			.toString();
+		return "conditionsPass=" + conditions.test(helper.getLevel(), head, hostile)
+			+ " hostileMarked=" + PatrolState.isMarked(hostile)
+			+ " allied=" + head.isAlliedTo(hostile)
+			+ " canAttack=" + head.canAttack(hostile)
+			+ " sensingSees=" + head.getSensing().hasLineOfSight(hostile)
+			+ " rayClear=" + head.hasLineOfSight(hostile)
+			+ " visibility=" + hostile.getVisibilityPercent(helper.getLevel(), head)
+			+ " distanceSqr=" + head.distanceToSqr(hostile.getX(), hostile.getY(), hostile.getZ())
+			+ " candidateCount=" + candidates.size() + " hostileInArea=" + candidates.contains(hostile)
+			+ " passenger=" + head.isPassenger() + " vehicle=" + (head.getVehicle() == null ? "none" : PatrolTestSupport.typeId(head.getVehicle()))
+			+ " team=" + head.getTeam() + " hostileTeam=" + hostile.getTeam()
+			+ " targetGoalsNow=" + running;
 	}
 
 	private static @Nullable Mob spawnTestCreeper(
