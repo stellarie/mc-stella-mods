@@ -8,10 +8,7 @@ import com.stella.mobs.behavior.EvokerStorm;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.gear.GearTier;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -19,9 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.illager.Evoker;
-import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -29,8 +24,8 @@ import net.minecraft.world.level.block.state.BlockState;
  * spec's window, the absence of fire and block damage, and the two negative cases.
  *
  * Every number here comes from the board's spec, never from the implementation's own arithmetic: the
- * ball count is the literal 40 that 1200 ticks at one ball per 30 ticks gives, and the numbers are read
- * back from the world rather than recomputed.
+ * ball count is the literal 60 that 1200 ticks at one ball per 20 ticks gives (M8, D-M8-1), and the
+ * balls are counted from the storm's own record of what it spawned.
  */
 public class StormGameTest {
 	private static final String TEST = "evokerStorm";
@@ -40,11 +35,17 @@ public class StormGameTest {
 	private static final int SPAWN_Z = 3;
 	/** The board's window and cadence, restated here as literals so the test cannot inherit a typo. */
 	private static final int SPEC_WINDOW_TICKS = 1200;
-	private static final int SPEC_BALLS = 40;
+	private static final int SPEC_BALLS = 60;
 	private static final int WINDOW_SETTLE_TICKS = 60;
 	/** The area the storm covers, plus room above for the balls to fall in. */
-	private static final int AREA_RADIUS = 8;
+	private static final int AREA_RADIUS = (int) Math.ceil(EvokerStorm.AREA_RADIUS);
 	private static final int AREA_ABOVE = 12;
+	/** Wider than the storm, so a ball never lands in a neighbouring arena and no neighbour edits this census. */
+	private static final int STORM_PADDING = 28;
+	static {
+		StormRecord.install();
+	}
+
 	private static final String QUIET = """
 		{
 			"entities": {},
@@ -132,22 +133,15 @@ public class StormGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = SPEC_WINDOW_TICKS + WINDOW_SETTLE_TICKS + 60)
+	@GameTest(maxTicks = SPEC_WINDOW_TICKS + WINDOW_SETTLE_TICKS + 60, padding = STORM_PADDING)
 	public void stormSpendsTheSpecBallCountWithoutFireOrBlockDamage(final GameTestHelper helper) {
 		Evoker evoker = spawnEliteEvoker(helper);
 		ServerLevel level = helper.getLevel();
-		AABB area = stormArea(evoker);
-		Set<UUID> balls = new HashSet<>();
 		BlockPos corner = corner(evoker);
 		BlockState[] before = census(level, corner);
 		int fireBefore = countFire(level, corner);
 
 		startStorm(helper, evoker);
-		helper.onEachTick(() -> {
-			for (SmallFireball ball : level.getEntitiesOfClass(SmallFireball.class, area, b -> b.getOwner() == evoker)) {
-				balls.add(ball.getUUID());
-			}
-		});
 
 		helper.runAfterDelay(SPEC_WINDOW_TICKS + WINDOW_SETTLE_TICKS, () -> {
 			int fireAfter = countFire(level, corner);
@@ -156,13 +150,13 @@ public class StormGameTest {
 
 			result(
 				"stormWindow",
-				"window=" + SPEC_WINDOW_TICKS + " specBalls=" + SPEC_BALLS + " countedBalls=" + balls.size()
+				"window=" + SPEC_WINDOW_TICKS + " specBalls=" + SPEC_BALLS + " countedBalls=" + StormRecord.balls(evoker).size()
 					+ " fireBefore=" + fireBefore + " fireAfter=" + fireAfter + " changedBlocks=" + changed
 					+ " activeStorms=" + alive
 			);
 
 			helper.assertValueEqual(
-				Integer.valueOf(balls.size()), Integer.valueOf(SPEC_BALLS),
+				Integer.valueOf(StormRecord.balls(evoker).size()), Integer.valueOf(SPEC_BALLS),
 				"balls counted in the window, against the spec's " + SPEC_BALLS
 			);
 			helper.assertValueEqual(
@@ -173,29 +167,16 @@ public class StormGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 400, padding = STORM_PADDING)
 	public void stormStopsWhenTheEvokerDies(final GameTestHelper helper) {
 		Evoker evoker = spawnEliteEvoker(helper);
 		ServerLevel level = helper.getLevel();
-		AABB area = stormArea(evoker);
-		Set<UUID> afterDeath = new HashSet<>();
 		startStorm(helper, evoker);
 		boolean startedActive = EvokerStorm.isActive(evoker);
 		hurt(helper, evoker, 1000.0F);
 		boolean dead = !evoker.isAlive();
-		// Registered here, from the test body. Registering it from inside a delayed callback mutates the
-		// framework's run-at-tick map while that map is being iterated, which corrupts it and crashes the
-		// server. The collector idles for ten ticks first, so a ball already in flight can land.
-		long collectFrom = helper.getTick() + 10L;
-		helper.onEachTick(() -> {
-			if (helper.getTick() < collectFrom) {
-				return;
-			}
-
-			for (SmallFireball ball : level.getEntitiesOfClass(SmallFireball.class, area, b -> b.getOwner() == evoker)) {
-				afterDeath.add(ball.getUUID());
-			}
-		});
+		// Every ball the storm spawns is recorded, so any spawned after the death shows up in the record.
+		int ballsAtDeath = StormRecord.balls(evoker).size();
 
 		helper.runAfterDelay(210L, () -> {
 			boolean stillActive = EvokerStorm.isActive(evoker);
@@ -204,14 +185,14 @@ public class StormGameTest {
 			result(
 				"stormDeath",
 				"startedActive=" + startedActive + " dead=" + dead + " stillActive=" + stillActive
-					+ " ballsAfterDeath=" + afterDeath.size() + " stormsInLevel=" + active
+					+ " ballsAfterDeath=" + (StormRecord.balls(evoker).size() - ballsAtDeath) + " stormsInLevel=" + active
 			);
 
 			helper.assertTrue(dead, "the evoker survived a lethal hit, so the case proves nothing");
 			helper.assertTrue(startedActive, "the storm never started, so the case proves nothing");
 			// Caster-scoped, because the level is shared with the other storm tests running beside this one.
 			helper.assertFalse(stillActive, "the storm stayed active after its caster died");
-			helper.assertValueEqual(Integer.valueOf(afterDeath.size()), Integer.valueOf(0), "balls after death");
+			helper.assertValueEqual(Integer.valueOf(StormRecord.balls(evoker).size() - ballsAtDeath), Integer.valueOf(0), "balls after death");
 			helper.succeed();
 		});
 	}
@@ -257,7 +238,9 @@ public class StormGameTest {
 	}
 
 	private static Evoker spawnEvoker(final GameTestHelper helper) {
+		// No free will, so the opening storm cannot fire and only the damage trigger is under test.
 		Evoker evoker = helper.spawnMob(EntityTypes.EVOKER, SPAWN_X, SPAWN_Y, SPAWN_Z)
+			.withNoFreeWill()
 			.spawnReason(EntitySpawnReason.NATURAL)
 			.spawn();
 		evoker.setPersistenceRequired();
@@ -275,15 +258,6 @@ public class StormGameTest {
 		float half = evoker.getMaxHealth() / 2.0F;
 		evoker.setHealth(half + 1.0F);
 		hurt(helper, evoker, 2.0F);
-	}
-
-	private static AABB stormArea(final Evoker evoker) {
-		double x = evoker.getX();
-		double y = evoker.getY();
-		double z = evoker.getZ();
-		return new AABB(
-			x - AREA_RADIUS, y - AREA_RADIUS, z - AREA_RADIUS, x + AREA_RADIUS, y + AREA_ABOVE, z + AREA_RADIUS
-		);
 	}
 
 	private static BlockPos corner(final Evoker evoker) {
