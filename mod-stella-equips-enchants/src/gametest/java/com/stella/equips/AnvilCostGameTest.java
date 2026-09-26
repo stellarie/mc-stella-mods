@@ -21,7 +21,7 @@ import net.minecraft.world.level.GameType;
 /** Slice 6. The anvil price is emeralds per applied enchantment, never levels. */
 public class AnvilCostGameTest {
 	private static final Identifier TEST_MARKER =
-		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "test_marker");
+		Identifier.fromNamespaceAndPath(PowerFixtures.TEST_MOD_ID, "test_marker");
 	private static final int FIXTURE_ANVIL_COST = 10;
 	private static final int FIXTURE_MIN_COST = 1;
 	private static final int VANILLA_MERGE_COST = 2;

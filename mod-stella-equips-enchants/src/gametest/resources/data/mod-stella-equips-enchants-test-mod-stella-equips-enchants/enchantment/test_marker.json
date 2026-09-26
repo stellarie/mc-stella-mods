@@ -1,5 +1,5 @@
 {
-	"description": { "translate": "enchantment.mod-stella-equips-enchants.test_marker" },
+	"description": { "translate": "enchantment.mod-stella-equips-enchants-test-mod-stella-equips-enchants.test_marker" },
 	"supported_items": "#minecraft:enchantable/durability",
 	"weight": 10,
 	"max_level": 1,

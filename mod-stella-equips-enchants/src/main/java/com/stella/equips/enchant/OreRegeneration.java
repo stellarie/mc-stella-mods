@@ -26,7 +26,7 @@ import net.minecraft.world.scores.Scoreboard;
 public final class OreRegeneration {
 	private static final Identifier ID =
 		Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "tool/ore_regeneration");
-	private static final int CHANCE_PER_LEVEL_PERCENT = 20;
+	private static final int CHANCE_PER_LEVEL_PERCENT = 5;
 	private static final int COOLDOWN_TICKS = 20;
 	private static final int MAX_LEVEL = 5;
 	private static final String CLOCK_OBJECTIVE = "ench_clock";

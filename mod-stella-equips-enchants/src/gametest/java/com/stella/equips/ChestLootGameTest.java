@@ -264,7 +264,7 @@ public class ChestLootGameTest {
 						curseCount++;
 					}
 
-					if (name.equals(MOD + ":test_marker")) {
+					if (name.endsWith(":test_marker")) {
 						markerCount++;
 					}
 				}

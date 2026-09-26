@@ -19,9 +19,6 @@ public class PowerCurveGameTest {
 	private static final int MOB_LEVEL_CAP = 32;
 	private static final int MOB_LEVEL_AT_DEPTH_CAP = 36;
 	private static final double TOLERANCE = 1.0E-9;
-	private static final double STEP_TOLERANCE = 1.0;
-	private static final double RATIO_TOLERANCE = 0.2;
-	private static final long SMALLEST_STEP_FOR_THE_RATIO_CHECK = 8L;
 
 	@GameTest
 	public void theHealthCurveIsFlatPerLevelToTheEngineCeiling(final GameTestHelper helper) {
@@ -122,148 +119,48 @@ public class PowerCurveGameTest {
 	}
 
 	@GameTest
-	public void levelFiftyCostsSixThousandTwoHundredSeventyFive(final GameTestHelper helper) {
+	public void threatNormalizesOntoThePlayerLevelScale(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long total = PowerCurve.pointsForLevel(config.levelCap(), config);
-		helper.assertTrue(
-			total == PowerFixtures.LEVEL_50_POINTS,
-			"level 50 cost " + total + " points instead of " + PowerFixtures.LEVEL_50_POINTS
-		);
-		helper.assertTrue(PowerCurve.pointsForLevel(1, config) == 0L, "level 1 cost more than nothing");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=levelFiftyTotal RESULT pointsForLevel50={} pointsForLevel1={}",
-			total, PowerCurve.pointsForLevel(1, config)
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theLastStepCostsEightHundredNineteenAndIsThirteenPercent(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		long at49 = PowerCurve.pointsForLevel(49, config);
-		long at50 = PowerCurve.pointsForLevel(50, config);
-		long step = at50 - at49;
-		double share = (double) step / (double) at50;
-		helper.assertTrue(
-			step == PowerFixtures.STEP_49_TO_50_POINTS,
-			"the step from 49 to 50 cost " + step + " points instead of " + PowerFixtures.STEP_49_TO_50_POINTS
-		);
-		helper.assertTrue(
-			Math.abs(share - PowerFixtures.LEVEL_50_SHARE) < 0.01,
-			"the last step was " + share + " of the lifetime total instead of about 0.13"
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=lastStep RESULT at49={} at50={} step={} share={}",
-			at49, at50, step, share
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theCurveIsExponentialWithinRounding(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		double worstExactDeviation = 0.0;
-		double worstRatioDeviation = 0.0;
-		int levels = 0;
-		long previousStep = 0L;
-		for (int level = 2; level <= config.levelCap(); level++) {
-			long step = PowerCurve.pointsForLevel(level, config) - PowerCurve.pointsForLevel(level - 1, config);
-			double exact = config.curve().base() * Math.pow(config.curve().growth(), level - 2);
-			worstExactDeviation = Math.max(worstExactDeviation, Math.abs(step - exact));
-			if (previousStep >= SMALLEST_STEP_FOR_THE_RATIO_CHECK) {
-				double ratio = (double) step / (double) previousStep;
-				worstRatioDeviation = Math.max(
-					worstRatioDeviation, Math.abs(ratio - config.curve().growth()) / config.curve().growth()
-				);
-			}
-
-			previousStep = step;
-			levels++;
-		}
-
-		helper.assertTrue(
-			worstExactDeviation < STEP_TOLERANCE,
-			"a step was off the exact exponential value by " + worstExactDeviation
-		);
-		helper.assertTrue(
-			worstRatioDeviation < RATIO_TOLERANCE,
-			"a step ratio was off the growth of " + config.curve().growth() + " by " + worstRatioDeviation
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=curveExponential RESULT levels={} growth={} worstExactDeviation={} worstRatioDeviation={}",
-			levels, config.curve().growth(), worstExactDeviation, worstRatioDeviation
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theLevelRisesMonotonicallyAndReachesFiftyAtTheStatedTotal(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int previous = PowerCurve.levelFor(0L, config);
+		int threatCap = config.mobLevel().levelCap();
+		int levelCap = config.levelCap();
+		int atZero = PowerCurve.normalizedThreat(0, config);
+		int atHalf = PowerCurve.normalizedThreat(threatCap / 2, config);
+		int atCap = PowerCurve.normalizedThreat(threatCap, config);
+		int aboveCap = PowerCurve.normalizedThreat(threatCap * 2, config);
+		int belowZero = PowerCurve.normalizedThreat(-5, config);
 		int drops = 0;
-		for (long points = 1L; points <= PowerFixtures.LEVEL_50_POINTS; points++) {
-			int current = PowerCurve.levelFor(points, config);
-			if (current < previous) {
-				drops++;
-			}
-
-			previous = current;
+		for (int raw = 1; raw <= threatCap; raw++) {
+			drops += PowerCurve.normalizedThreat(raw, config) < PowerCurve.normalizedThreat(raw - 1, config) ? 1 : 0;
 		}
 
-		int atOneBelow = PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS - 1L, config);
-		int atTotal = PowerCurve.levelFor(PowerFixtures.LEVEL_50_POINTS, config);
-		helper.assertTrue(drops == 0, "the level function dropped " + drops + " times over the whole curve");
-		helper.assertTrue(
-			atOneBelow == 49,
-			"one point below the total read level " + atOneBelow + " instead of 49"
-		);
-		helper.assertTrue(
-			atTotal == config.levelCap(),
-			"the stated total read level " + atTotal + " instead of " + config.levelCap()
-		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=curveMonotonic RESULT samples={} drops={} levelAtTotalMinusOne={} levelAtTotal={}",
-			PowerFixtures.LEVEL_50_POINTS, drops, atOneBelow, atTotal
+			"[BEHAVIOR] test=threatNormalized RESULT at0={} atHalf={} atCap={} aboveCap={} belowZero={} drops={}",
+			atZero, atHalf, atCap, aboveCap, belowZero, drops
+		);
+		helper.assertTrue(
+			atZero == 0 && atHalf == Math.round(threatCap / 2 * (double) levelCap / threatCap) && atCap == levelCap
+				&& aboveCap == levelCap && belowZero == 0 && drops == 0,
+			"raw threat 0, half, cap, double and -5 normalized to " + atZero + ", " + atHalf + ", " + atCap + ", "
+				+ aboveCap + ", " + belowZero + " with " + drops + " drops"
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theAwardReadsTheMobLevel(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int atZero = PowerCurve.awardFor(0, config);
-		int atThirtyTwo = PowerCurve.awardFor(32, config);
-		int atFifty = PowerCurve.awardFor(50, config);
-		int atMobCap = PowerCurve.awardFor(MOB_OVERALL_CAP, config);
-		helper.assertTrue(atZero == 1, "a level 0 mob paid " + atZero + " instead of 1");
-		helper.assertTrue(atThirtyTwo == 16, "a level 32 mob paid " + atThirtyTwo + " instead of 16");
-		helper.assertTrue(atFifty == 25, "a level 50 mob paid " + atFifty + " instead of 25");
-		helper.assertTrue(atMobCap == 18, "a level 36 mob paid " + atMobCap + " instead of 18");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=awardFormula RESULT divisor={} minimum={} at0={} at32={} at36={} at50={}",
-			config.award().divisor(), config.award().minimum(), atZero, atThirtyTwo, atMobCap, atFifty
-		);
-		helper.succeed();
-	}
+	public void aZeroThreatCapNormalizesEveryThreatToZero(final GameTestHelper helper) {
+		PowerConfig base = PowerFixtures.acceptanceConfig();
+		PowerConfig.MobLevel mob = base.mobLevel();
+		PowerConfig config = PowerFixtures.withMobLevel(new PowerConfig.MobLevel(
+			mob.blocksPerLevel(), mob.cap(), mob.depthBonusCap(), mob.depthBonusBlocks(), mob.depthReferenceY(),
+			0, mob.otherDimensionScale(), mob.dimensionScale()
+		));
+		int nonZero = 0;
+		for (int raw = 0; raw <= MOB_OVERALL_CAP; raw++) {
+			nonZero += PowerCurve.normalizedThreat(raw, config) != 0 ? 1 : 0;
+		}
 
-	@GameTest
-	public void aDeepKillPaysMoreThanAShallowOne(final GameTestHelper helper) {
-		PowerConfig config = PowerFixtures.acceptanceConfig();
-		int shallow = PowerCurve.awardFor(PowerCurve.mobLevel(0, 63, config), config);
-		int deep = PowerCurve.awardFor(PowerCurve.mobLevel(DISTANCE_CAP_BLOCKS, -64, config), config);
-		helper.assertTrue(
-			deep > shallow,
-			"a deep mob paid " + deep + " and a shallow mob paid " + shallow
-		);
-		helper.assertTrue(
-			deep == 18 && shallow == 1,
-			"the deep award was " + deep + " and the shallow award was " + shallow
-		);
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=deepKillPays RESULT shallowMobLevel={} shallowAward={} deepMobLevel={} deepAward={}",
-			PowerCurve.mobLevel(0, 63, config), shallow,
-			PowerCurve.mobLevel(DISTANCE_CAP_BLOCKS, -64, config), deep
-		);
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=threatZeroCap RESULT nonZero={}", nonZero);
+		helper.assertTrue(nonZero == 0, nonZero + " raw threats normalized above zero with a threat cap of 0");
 		helper.succeed();
 	}
 
@@ -343,7 +240,7 @@ public class PowerCurveGameTest {
 		int samples = 0;
 		for (int distance = -600; distance <= 40000; distance += 100) {
 			for (int y = 320; y >= -128; y -= 8) {
-				int level = PowerCurve.mobLevel(distance, y, config);
+				int level = PowerCurve.threat(distance, y, config);
 				lowest = Math.min(lowest, level);
 				highest = Math.max(highest, level);
 				samples++;
@@ -406,6 +303,6 @@ public class PowerCurveGameTest {
 
 	private static int mobLevelAt(final int blocks, final int y, final Identifier dimension, final PowerConfig config) {
 		double scaled = PowerCurve.scaledDistance(blocks, 0.0, 0.0, 0.0, dimension, config);
-		return PowerCurve.mobLevel((int) Math.floor(scaled), y, config);
+		return PowerCurve.threat((int) Math.floor(scaled), y, config);
 	}
 }

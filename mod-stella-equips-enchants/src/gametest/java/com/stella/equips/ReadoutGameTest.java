@@ -3,9 +3,9 @@ package com.stella.equips;
 import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
-import com.stella.equips.power.PowerState;
 import com.stella.equips.power.PowerTracker;
 import com.stella.equips.readout.ReadoutOwner;
+import com.stella.equips.readout.ReadoutRank;
 import com.stella.equips.readout.ReadoutService;
 import com.stella.equips.readout.ReadoutText;
 import java.io.IOException;
@@ -15,10 +15,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -77,6 +81,7 @@ public class ReadoutGameTest {
 	private static final double TARGET_DISTANCE = 2.0;
 	private static final float HEALTH_DAMAGE = 5.0F;
 	private static final double HEALTH_LINE_TEST_X = 29000.0;
+	private static final double RANK_TEST_X = 32000.0;
 	private static final Predicate<Packet<?>> THE_HEALTH_LINE = packet ->
 		packet instanceof ClientboundSystemChatPacket line
 			&& line.overlay()
@@ -295,17 +300,12 @@ public class ReadoutGameTest {
 
 		whenAreaLoaded(helper, owner, () -> {
 			Mob mob = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ());
-			int arrangedMobLevel = PowerTracker.mobLevel(mob, config);
-			int arrangedOwnerLevel = arrangedMobLevel - BAND_TEST_START_GAP;
-			PowerState.set(
-				owner,
-				new PowerState(PowerCurve.pointsForLevel(arrangedOwnerLevel, config), arrangedOwnerLevel)
-			);
+			owner.experienceLevel = comparedThreat(mob, config) - BAND_TEST_START_GAP;
 
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout before = ReadoutService.owner(owner).get(mob.getUUID());
 				helper.assertTrue(before != null, "the band test spawned no readout, so no band could change");
-				int mobLevel = PowerTracker.mobLevel(mob, config);
+				int mobLevel = comparedThreat(mob, config);
 				int levelBefore = PowerTracker.playerLevel(owner, config);
 				int gapBefore = mobLevel - levelBefore;
 				PowerCurve.Band bandBefore = PowerCurve.band(gapBefore, config);
@@ -322,17 +322,14 @@ public class ReadoutGameTest {
 					before.band() == PowerCurve.Band.GREEN,
 					"the readout carried band " + before.band() + " at gap " + gapBefore
 				);
-				int delta = BAND_TEST_START_GAP - BAND_TEST_END_GAP;
-				double points = PowerCurve.pointsForLevel(levelBefore + delta, config)
-					- PowerCurve.pointsForLevel(levelBefore, config);
-				PowerState.set(owner, new PowerState(PowerState.get(owner).combatPoints() + points, levelBefore));
+				owner.experienceLevel = levelBefore + BAND_TEST_START_GAP - BAND_TEST_END_GAP;
 				int dataBefore = PacketRecorder.of(owner).dataPackets(before.display().getId());
 
 				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 					ReadoutOwner.Readout after = ReadoutService.owner(owner).get(mob.getUUID());
 					helper.assertTrue(after != null, "the readout vanished during the band change");
 					int levelAfter = PowerTracker.playerLevel(owner, config);
-					int gapAfter = PowerTracker.mobLevel(mob, config) - levelAfter;
+					int gapAfter = comparedThreat(mob, config) - levelAfter;
 					int dataSent = PacketRecorder.of(owner).dataPackets(after.display().getId()) - dataBefore;
 					int bandLines = linesFor(BAND_LINE, mob.getUUID());
 					helper.assertTrue(
@@ -372,20 +369,14 @@ public class ReadoutGameTest {
 
 		whenAreaLoaded(helper, owner, () -> {
 			Mob mob = spawnStill(helper, owner.getX(), owner.getY(), owner.getZ());
-			int arrangedMobLevel = PowerTracker.mobLevel(mob, config);
-			PowerState.set(
-				owner,
-				new PowerState(PowerCurve.pointsForLevel(arrangedMobLevel, config), arrangedMobLevel)
-			);
+			owner.experienceLevel = comparedThreat(mob, config);
 
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout first = ReadoutService.owner(owner).get(mob.getUUID());
 				helper.assertTrue(first != null, "the unchanged band test spawned no readout");
 				int levelBefore = PowerTracker.playerLevel(owner, config);
-				int gap = PowerTracker.mobLevel(mob, config) - levelBefore;
-				double oneLevel = PowerCurve.pointsForLevel(levelBefore + 1, config)
-					- PowerCurve.pointsForLevel(levelBefore, config);
-				PowerState.set(owner, new PowerState(PowerState.get(owner).combatPoints() + oneLevel, levelBefore));
+				int gap = comparedThreat(mob, config) - levelBefore;
+				owner.experienceLevel = levelBefore + 1;
 				int packetsBefore = PacketRecorder.of(owner).entityPackets(Set.of(first.display().getId()));
 				int bandLines = linesFor(BAND_LINE, mob.getUUID());
 
@@ -395,7 +386,7 @@ public class ReadoutGameTest {
 					int newBandLines = linesFor(BAND_LINE, mob.getUUID());
 					int levelAfter = PowerTracker.playerLevel(owner, config);
 					PowerCurve.Band bandAfter = PowerCurve.band(
-						PowerTracker.mobLevel(mob, config) - levelAfter, config
+						comparedThreat(mob, config) - levelAfter, config
 					);
 					helper.assertTrue(second != null, "the readout vanished on an unchanged band");
 					helper.assertTrue(
@@ -437,16 +428,16 @@ public class ReadoutGameTest {
 			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 				ReadoutOwner.Readout readout = ReadoutService.owner(owner).get(mob.getUUID());
 				helper.assertTrue(readout != null, "the text test spawned no readout");
-				int mobLevel = PowerTracker.mobLevel(mob, config);
+				int mobLevel = PowerTracker.threat(mob, config);
 				String health = ReadoutText.shown(mob.getHealth()) + "/" + ReadoutText.shown(mob.getMaxHealth());
-				String expected = "[" + mobLevel + "] " + mob.getDisplayName().getString() + " " + health;
+				String expected = "Threat " + mobLevel + " " + mob.getDisplayName().getString() + " " + health;
 				helper.assertTrue(
 					expected.equals(readout.text()),
 					"the readout read '" + readout.text() + "' instead of '" + expected + "'"
 				);
 				helper.assertTrue(
-					readout.mobLevel() == mobLevel,
-					"the readout named level " + readout.mobLevel() + " for a mob level of " + mobLevel
+					readout.threat() == mobLevel,
+					"the readout named threat " + readout.threat() + " for a raw threat of " + mobLevel
 				);
 				StellaEquips.LOGGER.info(
 					"[BEHAVIOR] test=readoutTextOnMob RESULT mob={} mobLevel={} displayName={} text={} band={} color={}",
@@ -477,9 +468,9 @@ public class ReadoutGameTest {
 				helper.assertTrue(asideReadout != null, "the mob beside the crosshair holds no readout");
 				String lookedHealth = ReadoutText.shown(looked.getHealth()) + "/" + ReadoutText.shown(looked.getMaxHealth());
 				String asideHealth = ReadoutText.shown(aside.getHealth()) + "/" + ReadoutText.shown(aside.getMaxHealth());
-				String expectedLooked = "[" + PowerTracker.mobLevel(looked, config) + "] "
+				String expectedLooked = "Threat " + PowerTracker.threat(looked, config) + " "
 					+ looked.getDisplayName().getString() + " " + lookedHealth;
-				String expectedAside = "[" + PowerTracker.mobLevel(aside, config) + "] "
+				String expectedAside = "Threat " + PowerTracker.threat(aside, config) + " "
 					+ aside.getDisplayName().getString() + " " + asideHealth;
 				helper.assertTrue(
 					expectedLooked.equals(lookedReadout.text()),
@@ -533,7 +524,7 @@ public class ReadoutGameTest {
 					helper.assertTrue(asideAfter != null, "the bystander lost its readout after target damage");
 					String lookedHealth = ReadoutText.shown(lookedHealthAfter) + "/"
 						+ ReadoutText.shown(looked.getMaxHealth());
-					String expectedLooked = "[" + PowerTracker.mobLevel(looked, config) + "] "
+					String expectedLooked = "Threat " + PowerTracker.threat(looked, config) + " "
 						+ looked.getDisplayName().getString() + " " + lookedHealth;
 					int lookedPacketsAfter = PacketRecorder.of(owner).dataPackets(lookedDisplay);
 					int asidePacketsAfter = PacketRecorder.of(owner).dataPackets(asideDisplay);
@@ -557,7 +548,7 @@ public class ReadoutGameTest {
 						ReadoutOwner.Readout asideFinal = ReadoutService.owner(owner).get(aside.getUUID());
 						helper.assertTrue(lookedFinal != null, "the targeted mob lost its readout after bystander damage");
 						helper.assertTrue(asideFinal != null, "the bystander lost its readout after its damage");
-						String expectedAsideAfter = "[" + PowerTracker.mobLevel(aside, config) + "] "
+						String expectedAsideAfter = "Threat " + PowerTracker.threat(aside, config) + " "
 							+ aside.getDisplayName().getString() + " " + ReadoutText.shown(asideHealthAfter) + "/"
 							+ ReadoutText.shown(aside.getMaxHealth());
 						int lookedPacketsSecond = PacketRecorder.of(owner).dataPackets(lookedDisplay)
@@ -890,9 +881,9 @@ public class ReadoutGameTest {
 				ReadoutOwner.Readout readout = ReadoutService.owner(owner).get(mob.getUUID());
 				helper.assertTrue(readout != null, "the name tag test spawned no readout");
 				String kept = mob.getCustomName() == null ? "none" : mob.getCustomName().getString();
-				int mobLevel = PowerTracker.mobLevel(mob, config);
+				int mobLevel = PowerTracker.threat(mob, config);
 				String health = ReadoutText.shown(mob.getHealth()) + "/" + ReadoutText.shown(mob.getMaxHealth());
-				String expected = "[" + mobLevel + "] Bessie " + health;
+				String expected = "Threat " + mobLevel + " Bessie " + health;
 				helper.assertTrue(
 					"Bessie".equals(kept),
 					"the readout replaced the mob name tag with '" + kept + "'"
@@ -1139,6 +1130,51 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void aRankChangeRebuildsTheLiveReadoutText(final GameTestHelper helper) {
+		PowerRecorder.install();
+		ServerPlayer owner = ownerAt(helper, RANK_TEST_X);
+		Map<UUID, String> ranks = new ConcurrentHashMap<>();
+		Function<Entity, String> provider = entity -> ranks.get(entity.getUUID());
+		Object previous = FabricLoader.getInstance().getObjectShare().put(ReadoutRank.OBJECT_SHARE_KEY, provider);
+		List<String> texts = new ArrayList<>();
+
+		whenAreaLoaded(helper, owner, () -> {
+			Mob mob = spawnStill(helper, owner.getX() + NEAR_DISTANCE, owner.getY(), owner.getZ());
+			ranks.put(mob.getUUID(), "normal");
+
+			helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+				texts.add(textOf(owner, mob));
+				ranks.put(mob.getUUID(), "elite");
+
+				helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+					texts.add(textOf(owner, mob));
+					ranks.put(mob.getUUID(), "boss");
+
+					helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
+						try {
+							texts.add(textOf(owner, mob));
+							boolean normalUntagged = !texts.get(0).contains("<");
+							boolean eliteTagged = texts.get(1).contains("<Elite>") && !texts.get(1).contains("<Boss>");
+							boolean bossTagged = texts.get(2).contains("<Boss>") && !texts.get(2).contains("<Elite>");
+							StellaEquips.LOGGER.info(
+								"[BEHAVIOR] test=readoutRankChange RESULT normal={} elite={} boss={} bandLines={}",
+								texts.get(0), texts.get(1), texts.get(2), linesFor(BAND_LINE, mob.getUUID())
+							);
+							helper.assertTrue(
+								normalUntagged && eliteTagged && bossTagged,
+								"the rank changes normal, elite, boss read " + texts
+							);
+							helper.succeed();
+						} finally {
+							restoreProvider(previous);
+						}
+					});
+				});
+			});
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void playerOverlayDisplaysItsLevelWithoutHP(final GameTestHelper helper) {
 		PowerConfig config = liveConfig();
 		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
@@ -1224,7 +1260,7 @@ public class ReadoutGameTest {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		BlockPos spawn = helper.getLevel().getRespawnData().pos();
 		player.setPos(spawn.getX() + offsetX, spawn.getY() + 1.0, spawn.getZ());
-		PowerState.set(player, new PowerState(0.0, PowerState.FIRST_LEVEL));
+		player.experienceLevel = 0;
 		PacketRecorder.attach(player);
 		forceChunks(helper.getLevel(), player.getX(), player.getZ(), true);
 		return player;
@@ -1341,6 +1377,24 @@ public class ReadoutGameTest {
 		}
 
 		return last;
+	}
+
+	private static String textOf(final ServerPlayer owner, final Mob mob) {
+		ReadoutOwner.Readout readout = ReadoutService.owner(owner).get(mob.getUUID());
+		return readout == null ? "none" : readout.text();
+	}
+
+	private static void restoreProvider(final Object previous) {
+		if (previous == null) {
+			FabricLoader.getInstance().getObjectShare().remove(ReadoutRank.OBJECT_SHARE_KEY);
+		} else {
+			FabricLoader.getInstance().getObjectShare().put(ReadoutRank.OBJECT_SHARE_KEY, previous);
+		}
+	}
+
+	// The mob side of the band gap: raw threat mapped onto the player level scale.
+	private static int comparedThreat(final Mob mob, final PowerConfig config) {
+		return PowerCurve.normalizedThreat(PowerTracker.threat(mob, config), config);
 	}
 
 	private static ReadoutOwner.Readout firstReadout(final ReadoutOwner owner) {

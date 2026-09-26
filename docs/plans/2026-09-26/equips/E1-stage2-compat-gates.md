@@ -4,7 +4,8 @@
 |---|---|
 | Mod | `mod-stella-equips-enchants` |
 | Integration branch | `main-equip-ench` (tip `a17b198`, code tree = `e5f420f`) |
-| Work branch | `feat/stage2-vanilla-xp-catalogue` (create only after both gates below pass) |
+| Work branch | `feat/vanilla-xp-catalogue-cleanup` (the name the Stage 2 plan uses) |
+| Status | Done 2026-09-26: both gates passed headlessly; see [E1-stage2-results.md](E1-stage2-results.md) |
 | Depends on | nothing |
 | Blocks | E2, E3, E4 |
 | Source | [Stage 2 blackboard plan](Stage2-blackboard-plan.md) and `HANDOFFS-2026-09-26.md` |

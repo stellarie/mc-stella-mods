@@ -61,7 +61,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantDataGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String FIXTURE_PATH = "test_marker";
-	private static final int CATALOGUE_SIZE = 72;
+	private static final int CATALOGUE_SIZE = 71;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
 	private static final int MAXED_TABLE_COST = 30;
@@ -102,6 +102,34 @@ public class EnchantDataGameTest {
 		"give", "loot", "clear", "item replace entity @a", "effect give @a",
 		"tp @a", "tp @s", "tp @e", "tp @p", "tp @r", "summon minecraft:item"
 	);
+
+	@GameTest
+	public void theTestMarkerLivesOnlyInTheTestNamespaceWithADisplayName(final GameTestHelper helper) {
+		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+		boolean inProduction = registry.containsKey(Identifier.fromNamespaceAndPath(MOD_ID, FIXTURE_PATH));
+		boolean inTestMod = registry.containsKey(Identifier.fromNamespaceAndPath(PowerFixtures.TEST_MOD_ID, FIXTURE_PATH));
+		String markerKey = "enchantment." + PowerFixtures.TEST_MOD_ID + "." + FIXTURE_PATH;
+		boolean testName = text("/assets/" + PowerFixtures.TEST_MOD_ID + "/lang/en_us.json").contains("\"" + markerKey + "\"");
+		boolean productionName = text("/assets/" + MOD_ID + "/lang/en_us.json").contains(FIXTURE_PATH);
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=testMarkerNamespace RESULT inProduction={} inTestMod={} testName={} productionName={}",
+			inProduction, inTestMod, testName, productionName
+		);
+		helper.assertTrue(
+			!inProduction && inTestMod && testName && !productionName,
+			"the marker is registered in production " + inProduction + ", in the test mod " + inTestMod
+				+ ", named by the test mod " + testName + ", named by production " + productionName
+		);
+		helper.succeed();
+	}
+
+	private static String text(final String path) {
+		try (InputStream stream = EnchantDataGameTest.class.getResourceAsStream(path)) {
+			return stream == null ? "" : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			return "";
+		}
+	}
 
 	@GameTest
 	public void everyCatalogueEnchantmentLoads(final GameTestHelper helper) {
@@ -792,7 +820,6 @@ public class EnchantDataGameTest {
 	private static List<Holder.Reference<Enchantment>> catalogue(final Registry<Enchantment> registry) {
 		return registry.listElements()
 			.filter(holder -> MOD_ID.equals(holder.key().identifier().getNamespace()))
-			.filter(holder -> !FIXTURE_PATH.equals(holder.key().identifier().getPath()))
 			.sorted(Comparator.comparing(holder -> holder.key().identifier().toString()))
 			.toList();
 	}

@@ -63,8 +63,6 @@ public final class PowerConfigParser {
 
 	private static final java.util.Set<String> KNOWN_KEYS = java.util.Set.of(
 		"_note", "version", "level_cap",
-		"curve.base", "curve.growth",
-		"award.divisor", "award.minimum",
 		"mob_level.blocks_per_level", "mob_level.cap", "mob_level.depth_bonus_cap",
 		"mob_level.depth_bonus_blocks", "mob_level.depth_reference_y", "mob_level.level_cap",
 		"mob_level.other_dimension_scale", "mob_level.dimension_scale",
@@ -147,20 +145,8 @@ public final class PowerConfigParser {
 		private PowerConfig build() {
 			JsonObject object = this.root;
 			reportUnknownKeys(object);
-		int version = intValue(object, "version", 0, PowerConfig::version);
+			int version = intValue(object, "version", 0, PowerConfig::version);
 			int levelCap = intValueAtLeast(object, "level_cap", 1, PowerConfig::levelCap);
-
-			JsonObject curve = enter("curve");
-			PowerConfig.Curve curveSpec = new PowerConfig.Curve(
-				doubleValueAbove(curve, "base", 0.0, config -> config.curve().base()),
-				doubleValueAbove(curve, "growth", 0.0, config -> config.curve().growth())
-			);
-
-			JsonObject award = enter("award");
-			PowerConfig.Award awardSpec = new PowerConfig.Award(
-				doubleValueAbove(award, "divisor", 0.0, config -> config.award().divisor()),
-				intValueAtLeast(award, "minimum", 0, config -> config.award().minimum())
-			);
 
 			JsonObject mob = enter("mob_level");
 			PowerConfig.MobLevel mobSpec = new PowerConfig.MobLevel(
@@ -223,8 +209,6 @@ public final class PowerConfigParser {
 			return new PowerConfig(
 				version,
 				levelCap,
-				curveSpec,
-				awardSpec,
 				mobSpec,
 				bandSpec,
 				trackerSpec,
