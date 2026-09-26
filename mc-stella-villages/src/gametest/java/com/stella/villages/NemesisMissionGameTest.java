@@ -1,5 +1,12 @@
 package com.stella.villages;
 
+import com.stella.villages.mission.MissionBoardMenu;
+import com.stella.villages.mission.MissionService;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.item.SpawnEggItem;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -48,6 +55,18 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class NemesisMissionGameTest {
+	/** Each board choice as "offer:outcome", keyed by the player, from the board's own record. */
+	private static final Map<UUID, List<String>> CHOICES = new ConcurrentHashMap<>();
+
+	static {
+		MissionBoardMenu.setRecorder(new MissionBoardMenu.Recorder() {
+			@Override
+			public void chose(final ServerPlayer player, final UUID offerId, final boolean accepted, final String reason) {
+				CHOICES.computeIfAbsent(player.getUUID(), key -> new CopyOnWriteArrayList<>()).add(offerId + ":" + reason);
+			}
+		});
+	}
+
 	private static final String MISSION_SERVICE = "com.stella.villages.mission.MissionService";
 	private static final String NEMESIS_STATE = "com.stella.villages.mission.NemesisState";
 	private static final String NEMESIS_MAP_ITEM = "com.stella.villages.mission.NemesisMapItem";
@@ -688,6 +707,106 @@ public final class NemesisMissionGameTest {
 		PatrolTestSupport.result(test, "owner=" + ownerId + " activeMissions=" + activeForOwner
 			+ " limit=none stateMatches=" + stateMatches);
 		helper.assertTrue(stateMatches, "mission ledger imposed a lifetime mission cap");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	public void rightClickOpensTheMissionBoardMenu(final GameTestHelper helper) {
+		String test = "rightClickOpensTheMissionBoardMenu";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+
+		UseEntityCallback.EVENT.invoker().interact(fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
+		helper.assertTrue(fixture.owner().containerMenu instanceof MissionBoardMenu, "right-clicking the head opened " + fixture.owner().containerMenu);
+		MissionBoardMenu menu = (MissionBoardMenu) fixture.owner().containerMenu;
+		List<MissionService.MissionOffer> offers = MissionService.offersFor(fixture.owner().getUUID());
+		helper.assertTrue(menu.offers().equals(offers) && menu.headId().equals(fixture.head().getUUID()), "the menu shows a different board than the server holds");
+		for (int slot = 0; slot < menu.getContainer().getContainerSize(); slot++) {
+			int index = MissionBoardMenu.offerIndex(slot);
+			ItemStack icon = menu.getContainer().getItem(slot);
+			if (index < 0) {
+				helper.assertTrue(icon.is(Items.STAINED_GLASS_PANE.gray()), "slot " + slot + " holds " + icon + " instead of glass");
+				continue;
+			}
+			EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(offers.get(index).targetType());
+			helper.assertTrue(SpawnEggItem.spawnsEntity(icon, type), "slot " + slot + " shows " + icon + " for a " + offers.get(index).targetType() + " offer");
+		}
+		PatrolTestSupport.result(test, "menu=open offers=" + offers.size());
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	public void choosingAnOfferOnTheBoardAcceptsItThroughTheServer(final GameTestHelper helper) {
+		String test = "choosingAnOfferOnTheBoardAcceptsItThroughTheServer";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		BlockPos safeSite = prepareSafeTargetSite(helper, test, fixture.head().blockPosition());
+		if (safeSite == null) {
+			return;
+		}
+
+		UseEntityCallback.EVENT.invoker().interact(fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
+		helper.assertTrue(fixture.owner().containerMenu instanceof MissionBoardMenu, "the board did not open");
+		MissionBoardMenu menu = (MissionBoardMenu) fixture.owner().containerMenu;
+		MissionService.MissionOffer chosen = menu.offers().get(0);
+		menu.clicked(MissionBoardMenu.OFFER_SLOTS[0], 0, ContainerInput.PICKUP, fixture.owner());
+		releaseSafeTargetSite(helper, safeSite);
+		var missions = missionsFor(helper.getLevel(), fixture.owner().getUUID());
+		boolean recorded = CHOICES.getOrDefault(fixture.owner().getUUID(), List.of()).contains(chosen.id() + ":accepted");
+		helper.assertTrue(recorded, "the board did not accept the chosen offer: " + CHOICES.get(fixture.owner().getUUID()));
+		helper.assertTrue(missions != null && missions.size() == 1 && missions.get(0).targetType().equals(chosen.targetType()), "the accepted mission does not match the chosen offer");
+		helper.assertTrue(fixture.owner().containerMenu == fixture.owner().inventoryMenu, "the board stayed open after the choice");
+		PatrolTestSupport.result(test, "accepted=" + chosen.targetType() + " closed=true");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	public void aChoiceFromTooFarAwayIsRefusedAndSaysWhy(final GameTestHelper helper) {
+		String test = "aChoiceFromTooFarAwayIsRefusedAndSaysWhy";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+
+		UseEntityCallback.EVENT.invoker().interact(fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
+		helper.assertTrue(fixture.owner().containerMenu instanceof MissionBoardMenu, "the board did not open");
+		MissionBoardMenu menu = (MissionBoardMenu) fixture.owner().containerMenu;
+		MissionService.MissionOffer chosen = menu.offers().get(1);
+		movePlayer(fixture.owner(), fixture.head().position().add(MissionService.MISSION_MENU_RANGE + 4.0, 0.0, 0.0));
+		menu.clicked(MissionBoardMenu.OFFER_SLOTS[1], 0, ContainerInput.PICKUP, fixture.owner());
+		var missions = missionsFor(helper.getLevel(), fixture.owner().getUUID());
+		List<String> choices = CHOICES.getOrDefault(fixture.owner().getUUID(), List.of());
+		helper.assertTrue(choices.contains(chosen.id() + ":head_missing_or_out_of_range"), "the refusal did not name the range: " + choices);
+		helper.assertTrue(missions == null || missions.isEmpty(), "a choice from too far away made a mission");
+		PatrolTestSupport.result(test, "refused=head_missing_or_out_of_range");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	public void theBoardNeverGivesUpAnItem(final GameTestHelper helper) {
+		String test = "theBoardNeverGivesUpAnItem";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+
+		UseEntityCallback.EVENT.invoker().interact(fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
+		helper.assertTrue(fixture.owner().containerMenu instanceof MissionBoardMenu, "the board did not open");
+		MissionBoardMenu menu = (MissionBoardMenu) fixture.owner().containerMenu;
+		ItemStack before = menu.getContainer().getItem(0).copy();
+		menu.clicked(0, 0, ContainerInput.PICKUP, fixture.owner());
+		menu.clicked(0, 0, ContainerInput.QUICK_MOVE, fixture.owner());
+		menu.clicked(MissionBoardMenu.OFFER_SLOTS[2], 1, ContainerInput.THROW, fixture.owner());
+		menu.clicked(MissionBoardMenu.OFFER_SLOTS[2], 0, ContainerInput.SWAP, fixture.owner());
+		boolean carried = !menu.getCarried().isEmpty();
+		boolean leaked = fixture.owner().getInventory().contains(stack -> stack.is(Items.STAINED_GLASS_PANE.gray()) || stack.getItem() instanceof SpawnEggItem);
+		helper.assertTrue(!carried && !leaked, "the board gave up an item: carried=" + carried + " inventory=" + leaked);
+		helper.assertTrue(ItemStack.matches(before, menu.getContainer().getItem(0)) && CHOICES.getOrDefault(fixture.owner().getUUID(), List.of()).isEmpty(), "a glass or throw click changed the board or chose an offer");
+		PatrolTestSupport.result(test, "carried=false leaked=false choices=0");
 		helper.succeed();
 	}
 

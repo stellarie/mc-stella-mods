@@ -2,6 +2,7 @@ package com.stella.villages;
 
 import com.stella.villages.mission.MissionService;
 import com.stella.villages.mission.NemesisState;
+import com.stella.villages.patrol.BellRally;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.villages.raid.VillageRaids;
@@ -21,6 +22,7 @@ public final class McStellaVillages implements ModInitializer {
 		NemesisState.register();
 		PatrolService.register();
 		MissionService.register();
+		BellRally.register();
 		VillageRaids.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
