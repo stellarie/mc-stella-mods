@@ -574,6 +574,30 @@ public class WitchGameTest {
 		return text.toString();
 	}
 
+	@GameTest
+	public void witchPotionNamesTellEveryEffectApart(final GameTestHelper helper) {
+		Set<String> names = new HashSet<>();
+
+		// A player must be able to tell each carried potion, and the lingering poison, apart by name alone.
+		for (WitchPotions.Carried carried : WitchPotions.CARRIED) {
+			names.add(WitchPotions.stack(carried).getHoverName().getString());
+		}
+
+		names.add(WitchPotions.lingeringPoison().getHoverName().getString());
+		int expected = WitchPotions.CARRIED.size() + 1;
+		result("witchPotionNamesTellEveryEffectApart", "distinct=" + names.size() + " expected=" + expected + " names=" + names);
+		helper.assertValueEqual(Integer.valueOf(names.size()), Integer.valueOf(expected), "distinct potion names");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void namedWitchPotionsStillReadAsModThrows(final GameTestHelper helper) {
+		long modThrows = WitchPotions.CARRIED.stream().map(WitchPotions::stack).filter(WitchPotions::isModThrow).count();
+		result("namedWitchPotionsStillReadAsModThrows", "modThrows=" + modThrows + " carried=" + WitchPotions.CARRIED.size());
+		helper.assertValueEqual(Long.valueOf(modThrows), Long.valueOf(WitchPotions.CARRIED.size()), "mod throws among the carried potions");
+		helper.succeed();
+	}
+
 	private static void result(final String test, final String detail) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", test, detail);
 	}
