@@ -72,6 +72,10 @@ On the first server start the mod writes
   always drops. Omit the key to keep the vanilla value.
 - `roles`: `melee`, `ranged`, or `magic`. The default is `melee`. A `ranged` or
   `magic` mob keeps its distance and shoots.
+- `rolls.spawn_safety_radius`: no natural Overworld spawn within this many
+  horizontal blocks of the shared spawn rolls elite or boss. The shipped file
+  sets `1000.0`, and an older file gains that value on load. `0` turns the
+  gate off. The forced elder guardian and the ocean specials are not gated.
 - A bad entry is logged and skipped. The server keeps running.
 - An unknown top level key is ignored.
 
