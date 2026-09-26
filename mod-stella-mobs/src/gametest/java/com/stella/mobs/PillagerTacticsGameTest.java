@@ -21,6 +21,8 @@ import net.minecraft.world.entity.monster.illager.Pillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /** M4 and M5: every Pillager can use what it holds, a sword closes to melee, and a crossbow closes to its range. */
 public class PillagerTacticsGameTest {
@@ -35,6 +37,11 @@ public class PillagerTacticsGameTest {
 	private static final float TARGET_HEALTH = 1000.0F;
 	private static final double MELEE_REACH = 2.5;
 	private static final long WATCH_TICKS = 120L;
+	private static final long SETTLE_TICK = 20L;
+	private static final double HOLD_DRIFT = 1.0;
+	private static final int WALL_X = 3;
+	private static final int WALL_END_Z = 5;
+	private static final int WALL_HEIGHT = 3;
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void swordPillagerClosesAndHitsItsTarget(final GameTestHelper helper) {
@@ -68,6 +75,60 @@ public class PillagerTacticsGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
+	public void crossbowPillagerClosesToItsFiringRange(final GameTestHelper helper) {
+		Pillager pillager = pillager(helper, new ItemStack(Items.CROSSBOW), 0, 0);
+		Cow target = target(helper, 7, 7);
+		helper.onEachTick(() -> pillager.setTarget(target));
+
+		helper.succeedWhen(() -> {
+			double distance = pillager.distanceTo(target);
+			helper.assertTrue(distance <= CrossbowCadenceGoal.CHASE_RADIUS, "the crossbow Pillager stayed " + distance + " away");
+			result("crossbowPillagerClosesToItsFiringRange", "distance=" + distance + " tick=" + helper.getTick());
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void crossbowPillagerInsideItsRangeHoldsItsGround(final GameTestHelper helper) {
+		Pillager pillager = pillager(helper, new ItemStack(Items.CROSSBOW), 1, 1);
+		Cow target = target(helper, 5, 1);
+		Vec3[] settled = { null };
+		double[] drift = { 0.0 };
+
+		// The same Pillager a few blocks closer, in sight: it must shoot from where it stands.
+		helper.onEachTick(() -> {
+			pillager.setTarget(target);
+			if (helper.getTick() == SETTLE_TICK) {
+				settled[0] = pillager.position();
+			} else if (settled[0] != null) {
+				drift[0] = Math.max(drift[0], Math.hypot(pillager.getX() - settled[0].x, pillager.getZ() - settled[0].z));
+			}
+		});
+		helper.runAfterDelay(WATCH_TICKS, () -> {
+			result("crossbowPillagerInsideItsRangeHoldsItsGround", "drift=" + drift[0] + " distance=" + pillager.distanceTo(target));
+			helper.assertTrue(drift[0] < HOLD_DRIFT, "a Pillager in range and in sight walked " + drift[0]);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
+	public void crossbowPillagerWalksAroundAWallToSeeItsTarget(final GameTestHelper helper) {
+		Pillager pillager = pillager(helper, new ItemStack(Items.CROSSBOW), 1, 1);
+		Cow target = target(helper, 6, 1);
+
+		for (int z = 0; z <= WALL_END_Z; z++) {
+			for (int y = 1; y <= WALL_HEIGHT; y++) {
+				helper.setBlock(WALL_X, y, z, Blocks.STONE);
+			}
+		}
+
+		helper.onEachTick(() -> pillager.setTarget(target));
+		helper.succeedWhen(() -> {
+			helper.assertTrue(pillager.getSensing().hasLineOfSight(target), "the Pillager never found a line of sight around the wall");
+			result("crossbowPillagerWalksAroundAWallToSeeItsTarget", "position=" + pillager.position() + " tick=" + helper.getTick());
+		});
+	}
+
+	@GameTest(maxTicks = MAX_TICKS)
 	public void everyRolledPillagerHoldsAWeaponItCanUse(final GameTestHelper helper) {
 		Registry<Enchantment> registry = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
 		RollSpec spec = new RollSpec(1.0, 1.0);
@@ -91,13 +152,17 @@ public class PillagerTacticsGameTest {
 	}
 
 	private static Pillager pillager(final GameTestHelper helper, final ItemStack weapon) {
+		return pillager(helper, weapon, 1, 1);
+	}
+
+	private static Pillager pillager(final GameTestHelper helper, final ItemStack weapon, final int x, final int z) {
 		GearConfig previous = GearConfigStore.get();
 		helper.setTime(Arena.NIGHT_TIME);
 		Arena.buildFloor(helper);
 
 		try {
 			GearConfigStore.set(GearConfigParser.parse(NO_ROLLS));
-			Pillager pillager = helper.spawnMob(EntityTypes.PILLAGER, 1, 3, 1).spawn();
+			Pillager pillager = helper.spawnMob(EntityTypes.PILLAGER, x, 3, z).spawn();
 			pillager.setPersistenceRequired();
 			pillager.setItemSlot(EquipmentSlot.MAINHAND, weapon);
 			return pillager;
@@ -107,7 +172,11 @@ public class PillagerTacticsGameTest {
 	}
 
 	private static Cow target(final GameTestHelper helper) {
-		Cow cow = helper.spawnMob(EntityTypes.COW, 6, 1, 6).withNoFreeWill().spawn();
+		return target(helper, 6, 6);
+	}
+
+	private static Cow target(final GameTestHelper helper, final int x, final int z) {
+		Cow cow = helper.spawnMob(EntityTypes.COW, x, 1, z).withNoFreeWill().spawn();
 		cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(TARGET_HEALTH);
 		cow.setHealth(TARGET_HEALTH);
 		cow.setPersistenceRequired();
