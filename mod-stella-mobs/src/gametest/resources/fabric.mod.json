@@ -29,6 +29,7 @@
 			"com.stella.mobs.PiglinBruteGameTest",
 			"com.stella.mobs.R02ControlGameTest",
 			"com.stella.mobs.R02StateGameTest",
+			"com.stella.mobs.ReadoutRankGameTest",
 			"com.stella.mobs.RiderPearlGameTest",
 			"com.stella.mobs.RoleGameTest",
 			"com.stella.mobs.SpawnScalingGameTest",
