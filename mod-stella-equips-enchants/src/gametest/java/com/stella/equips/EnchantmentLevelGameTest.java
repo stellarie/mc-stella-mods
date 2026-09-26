@@ -46,6 +46,8 @@ public class EnchantmentLevelGameTest {
 		"weapon/tidecaller",
 		"weapon/warden_wave"
 	);
+	/** Level one by contract: fixed values that never scale, so the level-3 and level-5 checks skip them. */
+	private static final Set<String> SINGLE_LEVEL = Set.of("weapon/tempo");
 	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration", "tool/ore_mender");
 
 	/** The level 3 value of every scaling enchantment, recorded before any edit. */
@@ -85,6 +87,8 @@ public class EnchantmentLevelGameTest {
 		List<String> reported = new ArrayList<>();
 		int capped = 0;
 		int eventTested = 0;
+		int singles = 0;
+		Map<String, String> singleButLeveled = new LinkedHashMap<>();
 
 		for (Holder.Reference<Enchantment> holder : registry.listElements().toList()) {
 			Identifier id = holder.key().identifier();
@@ -112,6 +116,15 @@ public class EnchantmentLevelGameTest {
 
 			if (isCapped) {
 				cappedButMeasurable.put(path, "capped but carries " + values.size() + " level value(s)");
+			}
+
+			if (SINGLE_LEVEL.contains(path)) {
+				singles++;
+				if (holder.value().getMaxLevel() != 1) {
+					singleButLeveled.put(path, "single level but offers " + holder.value().getMaxLevel() + " levels");
+				}
+				reported.add(path + " status=singleLevel values=" + values.size());
+				continue;
 			}
 
 			String signature = signatureAt(values, LEVEL_THREE);
@@ -151,6 +164,10 @@ public class EnchantmentLevelGameTest {
 			"function-tested IDs: " + eventTested + "/" + EVENT_TESTED.size()
 		);
 		helper.assertTrue(cappedButMeasurable.isEmpty(), "capped but measurable: " + cappedButMeasurable);
+		helper.assertTrue(
+			singles == SINGLE_LEVEL.size() && singleButLeveled.isEmpty(),
+			"single-level IDs seen " + singles + "/" + SINGLE_LEVEL.size() + ", wrong: " + singleButLeveled
+		);
 		helper.assertTrue(inert.isEmpty(), "level 5 does nothing: " + inert);
 		helper.assertTrue(baselineDrift.isEmpty(), "the offered levels moved: " + baselineDrift);
 		helper.assertTrue(
