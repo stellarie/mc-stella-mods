@@ -44,6 +44,7 @@ public class EnchantmentLevelGameTest {
 		"weapon/momentum",
 		"weapon/stormcaller",
 		"weapon/tidecaller",
+		"weapon/undertow",
 		"weapon/warden_wave"
 	);
 	/** Level one by contract: fixed values that never scale, so the level-3 and level-5 checks skip them. */
