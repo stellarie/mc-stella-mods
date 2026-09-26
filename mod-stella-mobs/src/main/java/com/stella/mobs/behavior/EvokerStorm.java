@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -22,16 +23,23 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The elite evoker's rain of fire: the first time an elite evoker falls to half health it calls a storm
- * on a 16 by 16 area centred where it stood, and forty balls fall over the next minute. Each ball is a
+ * The elite evoker's rain of fire. M8: it opens the fight the moment the evoker has a target, with no
+ * wind-up, on a 48 by 48 area centred where it stood, and sixty balls fall over the next minute. A fall to
+ * half health casts it instead if the evoker was hurt before it ever had a target. Each ball is a
  * {@link StellaSmallFireball}, so it explodes without breaking a block and never sets the ground alight.
  *
- * The cast is one-shot and the flag is durable, so a chunk reload cannot re-arm it.
+ * Either trigger spends the same durable flag, so the storm comes once per life and a chunk reload
+ * cannot re-arm it.
  */
 public final class EvokerStorm {
-	public static final int BALL_INTERVAL_TICKS = 30;
+	public static final int BALL_INTERVAL_TICKS = 20;
 	public static final int DURATION_TICKS = 1200;
-	public static final double AREA_RADIUS = 8.0;
+	public static final double BASE_RADIUS = 8.0;
+	// M8: "increase by 200%" read literally, so the radius is three times the old one.
+	public static final double RADIUS_INCREASE = 2.0;
+	public static final double AREA_RADIUS = BASE_RADIUS * (1.0 + RADIUS_INCREASE);
+	public static final String REASON_OPENING = "opening";
+	public static final String REASON_HALF_HEALTH = "half_health";
 	public static final double SPAWN_HEIGHT = 8.0;
 	public static final float BALL_POWER = 1.2F;
 	private static final float BALL_UNCERTAINTY = 0.0F;
@@ -39,7 +47,24 @@ public final class EvokerStorm {
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "evoker_storms"), ArrayList::new
 	);
 
+	/** Test seam: what each storm did, keyed by the caster that owns it. */
+	public interface Recorder {
+		default void begun(final Mob caster, final String reason, final Vec3 centre) {
+		}
+
+		default void ball(final Mob caster, final UUID ball, final Vec3 at, final int age) {
+		}
+	}
+
+	private static final Recorder SILENT = new Recorder() {
+	};
+	private static volatile Recorder recorder = SILENT;
+
 	private EvokerStorm() {
+	}
+
+	public static void setRecorder(final Recorder newRecorder) {
+		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
 	/**
@@ -86,18 +111,20 @@ public final class EvokerStorm {
 			return;
 		}
 
-		begin(evoker, level);
+		begin(evoker, level, REASON_HALF_HEALTH);
 	}
 
-	public static void begin(final Mob evoker, final ServerLevel level) {
+	public static void begin(final Mob evoker, final ServerLevel level, final String reason) {
 		long now = level.getGameTime();
 		EliteState.setStormCast(evoker, true);
 		((AttachmentTarget) level).getAttachedOrCreate(ACTIVE)
 			.add(new Active(evoker, evoker.getX(), evoker.getY(), evoker.getZ()));
 
+		recorder.begun(evoker, reason, evoker.position());
 		StellaMobs.LOGGER.info(
-			"[BEHAVIOR] test=evokerStorm t={} STORM BEGIN centre={},{},{} window={} interval={} radius={}",
+			"[BEHAVIOR] test=evokerStorm t={} STORM BEGIN reason={} centre={},{},{} window={} interval={} radius={}",
 			now,
+			reason,
 			String.format(Locale.ROOT, "%.2f", evoker.getX()),
 			String.format(Locale.ROOT, "%.2f", evoker.getY()),
 			String.format(Locale.ROOT, "%.2f", evoker.getZ()),
@@ -151,6 +178,7 @@ public final class EvokerStorm {
 			ball, level, new ItemStack(Items.FIRE_CHARGE), 0.0, -1.0, 0.0, BALL_POWER, BALL_UNCERTAINTY
 		);
 		storm.balls++;
+		recorder.ball(storm.caster, ball.getUUID(), new Vec3(x, y, z), storm.age);
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test=evokerStorm t={} BALL index={} at={},{},{}",

@@ -22,6 +22,7 @@ import net.minecraft.world.entity.monster.ElderGuardian;
 import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.entity.monster.Guardian;
 import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.monster.illager.Evoker;
 import net.minecraft.world.entity.monster.illager.SpellcasterIllager;
 import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -53,6 +54,8 @@ public final class BehaviorInstaller {
 	public static final int OCEAN_AURA_PRIORITY = WITCH_BLOCK_START + 3;
 	/** Vanilla's ghast holds its look goal and its shoot goal at rank 7; both are replaced together. */
 	public static final int GHAST_SHOOT_PRIORITY = 7;
+	/** M8: flagless, so the rank only orders it against the other flagless goals. */
+	public static final int EVOKER_OPENING_PRIORITY = WITCH_BLOCK_START;
 	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
 	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE);
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
@@ -207,6 +210,10 @@ public final class BehaviorInstaller {
 
 		if (mob instanceof Witch witch) {
 			installWitch(witch);
+		}
+
+		if (mob instanceof Evoker evoker) {
+			evoker.getGoalSelector().addGoal(EVOKER_OPENING_PRIORITY, new EvokerOpeningStormGoal(evoker));
 		}
 
 		BossAbilities.install(mob);
