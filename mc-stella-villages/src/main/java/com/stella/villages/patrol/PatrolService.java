@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,8 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
@@ -57,8 +60,11 @@ public final class PatrolService {
 	public static final double WITCH_HEAL_THRESHOLD = 0.75;
 	public static final int WITCH_MIN_THROW_INTERVAL = 20;
 	public static final int PATROL_MEMBER_COUNT = 10;
+	/** W021: five crossbow Pillagers take the places the Evoker and the Witch held. */
+	public static final int PILLAGER_COUNT = 5;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
+	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
 
 	private PatrolService() {
 	}
@@ -149,16 +155,8 @@ public final class PatrolService {
 		List<Mob> spawned = new ArrayList<>();
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, 3, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.EVOKER, PatrolState.Role.EVOKER, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.WITCH, 1, spawned);
-
-		Mob ravager = activeMember(level, village, PatrolState.Role.RAVAGER);
-		Mob evoker = activeMember(level, village, PatrolState.Role.EVOKER);
-		if (ravager != null && evoker != null && evoker.getVehicle() != ravager) {
-			evoker.startRiding(ravager);
-		}
 
 		if (hasCompleteRoster(village)) {
 			data.markRosterStarted(village);
@@ -191,28 +189,12 @@ public final class PatrolService {
 	private static boolean hasCompleteRoster(final VillageRecord village) {
 		return roleCount(village, PatrolState.Role.HEAD) >= 1
 			&& roleCount(village, PatrolState.Role.VINDICATOR) >= 3
-			&& roleCount(village, PatrolState.Role.PILLAGER) >= 3
-			&& roleCount(village, PatrolState.Role.RAVAGER) >= 1
-			&& roleCount(village, PatrolState.Role.EVOKER) >= 1
-			&& roleCount(village, PatrolState.Role.WITCH) >= 1;
+			&& roleCount(village, PatrolState.Role.PILLAGER) >= PILLAGER_COUNT
+			&& roleCount(village, PatrolState.Role.RAVAGER) >= 1;
 	}
 
 	private static long roleCount(final VillageRecord village, final PatrolState.Role role) {
 		return village.members().stream().filter(member -> member.role().equals(role.name())).count();
-	}
-
-	private static @Nullable Mob activeMember(
-		final ServerLevel level,
-		final VillageRecord village,
-		final PatrolState.Role role
-	) {
-		return village.members().stream()
-			.filter(member -> member.alive() && member.role().equals(role.name()))
-			.map(MemberRecord::id)
-			.map(ACTIVE_MEMBERS::get)
-			.filter(mob -> mob != null && mob.level() == level && mob.isAlive())
-			.findFirst()
-			.orElse(null);
 	}
 
 	private static Mob spawnMember(
@@ -243,6 +225,8 @@ public final class PatrolService {
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		if (role == PatrolState.Role.HEAD) {
 			applyHeadKit(mob);
+		} else if (role == PatrolState.Role.PILLAGER) {
+			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
 		}
 		installGoals(mob, village);
 		if (!level.addFreshEntity(mob)) {
@@ -374,6 +358,10 @@ public final class PatrolService {
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
+		if (state.role() == PatrolState.Role.PILLAGER) {
+			// Another mod's load listener may re-roll the hand after this one, so the crossbow is checked a tick later.
+			LOADOUT_CHECKS.add(mob);
+		}
 		VillageWorldData data = VillageWorldData.get(level);
 		data.village(state.villageId()).ifPresent(village -> {
 			data.updateMemberPosition(mob.getUUID(), mob.blockPosition());
@@ -452,6 +440,7 @@ public final class PatrolService {
 
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
+		restoreCrossbows(level);
 		VillageWorldData data = VillageWorldData.get(level);
 		for (VillageRecord village : data.villages()) {
 			if (!village.dimension().equals(level.dimension())) {
@@ -473,6 +462,24 @@ public final class PatrolService {
 			}
 
 			updateThreats(level, data, village);
+		}
+	}
+
+	/** W021: a patrol Pillager that entered this level without a crossbow in hand gets one back. */
+	private static void restoreCrossbows(final ServerLevel level) {
+		for (Mob mob : List.copyOf(LOADOUT_CHECKS)) {
+			if (mob.level() != level) {
+				continue;
+			}
+
+			LOADOUT_CHECKS.remove(mob);
+			if (mob.isAlive() && !mob.getMainHandItem().is(Items.CROSSBOW)) {
+				McStellaVillages.LOGGER.info(
+					"[BEHAVIOR] mod={} event=patrol_crossbow_restored entity={} replaced={}",
+					McStellaVillages.MOD_ID, mob.getUUID(), mob.getMainHandItem().getItem()
+				);
+				mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+			}
 		}
 	}
 
