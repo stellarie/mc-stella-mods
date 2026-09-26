@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "mc-stella-villages",
+	"version": "${version}",
+	"name": "Mc Stella Villages",
+	"description": "Village patrols, Nemesis missions, and small raids.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.villages.McStellaVillages"
+		],
+		"client": [
+			"com.stella.villages.client.VillageClient"
+		]
+	},
+	"mixins": [
+		"mc-stella-villages.mixins.json",
+		{
+			"config": "mc-stella-villages.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
