@@ -198,6 +198,8 @@ public final class BehaviorInstaller {
 
 		installShield(mob);
 		CrossbowCadenceGoal.install(mob);
+		// M4: a Pillager with a sword has no vanilla goal that swings it.
+		PillagerMeleeGoal.install(mob);
 
 		// R25: armed at install, and the goal's own guard reads the elite flag, which is already set
 		// for a mob that rolled elite before this install runs.
