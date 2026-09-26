@@ -33,6 +33,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class VillagePatrolGameTest {
+	/** How far around the guard's column the sight line is cleared. */
+	private static final int SIGHT_SHAFT_RADIUS = 2;
 	private static final int PATROL_COUNT = PatrolService.PATROL_MEMBER_COUNT;
 	private static final int TARGET_SELECTION_WINDOW = 200;
 	private static final int THREAT_TEST_LIMIT = PatrolService.PLAYER_THREAT_CLEAR_TICKS + 220;
@@ -637,6 +639,8 @@ public final class VillagePatrolGameTest {
 		}
 
 		int detectionRange = PatrolService.PATROL_DETECTION_RANGE;
+		// Held on its block, so a wander cannot carry it out of the cleared shaft while the goal searches.
+		head.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
 		Mob hostile = spawnTestCreeper(helper, test, head, detectionRange - 1.0);
 		if (hostile == null) {
 			return;
@@ -1331,12 +1335,18 @@ public final class VillagePatrolGameTest {
 		hostile.setPos(guard.getX(), guard.getY() + distance, guard.getZ());
 		BlockPos guardBlock = guard.blockPosition();
 		BlockPos hostileBlock = hostile.blockPosition();
+		// A shaft, not a one-block column: the anchor sits on natural terrain, and a guard that steps off a
+		// single column loses its sight line to an overhang (W020, rayClear=false after a clear start).
 		int clearedColumnBlocks = 0;
-		for (int y = guardBlock.getY() + 1; y <= hostileBlock.getY() + 2; y++) {
-			BlockPos columnBlock = new BlockPos(guardBlock.getX(), y, guardBlock.getZ());
-			if (!helper.getLevel().getBlockState(columnBlock).isAir()) {
-				helper.getLevel().setBlockAndUpdate(columnBlock, Blocks.AIR.defaultBlockState());
-				clearedColumnBlocks++;
+		for (int dx = -SIGHT_SHAFT_RADIUS; dx <= SIGHT_SHAFT_RADIUS; dx++) {
+			for (int dz = -SIGHT_SHAFT_RADIUS; dz <= SIGHT_SHAFT_RADIUS; dz++) {
+				for (int y = guardBlock.getY() + 2; y <= hostileBlock.getY() + 2; y++) {
+					BlockPos columnBlock = new BlockPos(guardBlock.getX() + dx, y, guardBlock.getZ() + dz);
+					if (!helper.getLevel().getBlockState(columnBlock).isAir()) {
+						helper.getLevel().setBlockAndUpdate(columnBlock, Blocks.AIR.defaultBlockState());
+						clearedColumnBlocks++;
+					}
+				}
 			}
 		}
 		boolean inserted = helper.getLevel().addFreshEntity(hostile);
