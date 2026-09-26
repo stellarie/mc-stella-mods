@@ -1,7 +1,7 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-26
+last_verified: 2026-09-27
 ---
 
 # Project Memory
@@ -34,6 +34,8 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
+- The village full suite has intermittent required failures in patrol targeting and safe-site setup. [status: active] [verified: 2026-09-27] [source: C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27/villages-build-console.log; villages-rerun-5-console.log]
+- Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
 
 ## Decisions
 
@@ -63,6 +65,15 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
+
+### 2026-09-27 - Prism mod deployment
+
+- Done: Built all four mods from `main` and installed their jars in the Fabulously Optimized Prism instance.
+- Pending: Diagnose the village suite's intermittent required failures and run its five consecutive full suites.
+- Next: Use the preserved deployment logs and inspect the patrol test setup before changing production behavior.
+- Verification: Mobs, equips, and spells passed clean builds and five full reruns.
+- Verification: Villages passed a retry build and combined mobs test. Two standalone runs failed required tests.
+- Verification: Installed hashes match built jars. Logs and prior jars are in `C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27`.
 
 ### 2026-09-26 - Publish current work snapshot
 
