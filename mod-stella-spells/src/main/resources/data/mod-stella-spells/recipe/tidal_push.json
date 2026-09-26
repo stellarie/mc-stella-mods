@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:prismarine_shard", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:tidal_push", "count": 1}
+}

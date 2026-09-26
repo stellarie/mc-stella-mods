@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -72,7 +73,7 @@ public final class SpellbookLoot {
 		drops.add(roll.stack());
 		Spellbooks.LOGGER.info(
 			"[SPELL] event=DROP source=chest table_id={} item_id={}",
-			table, Spellbooks.SPARK_SHOT_ID
+			table, BuiltInRegistries.ITEM.getKey(roll.stack().getItem())
 		);
 	}
 
@@ -93,7 +94,7 @@ public final class SpellbookLoot {
 		witch.spawnAtLocation(level, roll.stack());
 		Spellbooks.LOGGER.info(
 			"[SPELL] event=DROP source=witch source_entity={} item_id={}",
-			witch.getUUID(), Spellbooks.SPARK_SHOT_ID
+			witch.getUUID(), BuiltInRegistries.ITEM.getKey(roll.stack().getItem())
 		);
 	}
 
@@ -103,7 +104,9 @@ public final class SpellbookLoot {
 
 	private static Roll roll(final double chance, final RandomSource random) {
 		double value = random.nextDouble();
-		ItemStack stack = value < chance ? new ItemStack(Spellbooks.SPARK_SHOT) : ItemStack.EMPTY;
+		ItemStack stack = value < chance
+			? new ItemStack(Spellbooks.CATALOG.get(random.nextInt(Spellbooks.CATALOG.size())))
+			: ItemStack.EMPTY;
 		return new Roll(value, stack);
 	}
 

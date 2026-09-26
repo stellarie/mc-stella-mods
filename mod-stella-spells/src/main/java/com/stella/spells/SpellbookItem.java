@@ -9,9 +9,15 @@ import net.minecraft.world.level.Level;
 
 public final class SpellbookItem extends Item {
 	public static final int BASE_COOLDOWN_TICKS = 60;
+	private final SpellDefinition definition;
 
-	public SpellbookItem(final Properties properties) {
+	public SpellbookItem(final Properties properties, final SpellDefinition definition) {
 		super(properties);
+		this.definition = definition;
+	}
+
+	public SpellDefinition definition() {
+		return this.definition;
 	}
 
 	@Override

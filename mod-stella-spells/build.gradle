@@ -27,6 +27,14 @@ fabricApi {
 	}
 }
 
+afterEvaluate {
+	if (project.hasProperty("equipsEnchantJar")) {
+		project.dependencies.add(
+			"gametestRuntimeOnly", project.files(project.file(project.property("equipsEnchantJar")))
+		)
+	}
+}
+
 processResources {
 	def version = project.version
 	inputs.property "version", version

@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class SpellLogGameTest {
 	private static final Identifier SPARK_SHOT = Identifier.parse("mod-stella-spells:spark_shot");
+	private static final Identifier WITHER_SEAL = Identifier.parse("mod-stella-spells:wither_seal");
 	private static final Identifier CRAFT_LOG_CHEST = Identifier.parse("minecraft:chests/w005_craft_log");
 	private static final Identifier FAILED_LOG_CHEST = Identifier.parse("minecraft:chests/w005_failed_log");
 	private static final Identifier ANVIL_TEST_ENCHANTMENT = Identifier.parse("mod-stella-spells-test-mod-stella-spells:anvil_log_test");
@@ -44,21 +45,21 @@ public class SpellLogGameTest {
 	@GameTest
 	public void castLogHasSpellTargetCooldownAndEnchantFields(final GameTestHelper helper) {
 		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "castLogHasSpellTargetCooldownAndEnchantFields");
-		Item item = sparkShot(helper);
+		SpellbookItem book = spellbook(helper, WITHER_SEAL, "Wither Seal");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper, 2.5, 2.5);
 		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
-		ItemStack book = new ItemStack(item);
-		player.setItemInHand(InteractionHand.MAIN_HAND, book);
+		ItemStack stack = book.getDefaultInstance();
+		player.setItemInHand(InteractionHand.MAIN_HAND, stack);
 		try (SpellLogCapture capture = new SpellLogCapture()) {
-			item.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+			book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
 			helper.assertTrue(
 				capture.contains(
-					"INFO [SPELL]", "spell_id=mod-stella-spells:spark_shot", "result=CAST",
-					"target=" + target.getUUID(), "cooldown_ticks=60", "book_enchants=[]",
+					"INFO [SPELL]", "spell_id=" + WITHER_SEAL, "result=CAST",
+					"target=" + target.getUUID(), "cooldown_ticks=360", "book_enchants=[]",
 					"head_enchants=[]", "chest_enchants=[]"
 				),
-				"CAST log omitted a required field"
+				"CAST log omitted the actual spellbook ID or a required field"
 			);
 			capture.echoOne("result=CAST", "target=" + target.getUUID(), "caster=" + player.getUUID());
 		}
@@ -116,9 +117,12 @@ public class SpellLogGameTest {
 	}
 
 	@GameTest
-	public void successfulDropLogHasSourceAndItemFields(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "successfulDropLogHasSourceAndItemFields");
-		long seed = chestSeed(helper, true, CRAFT_LOG_CHEST);
+	public void successfulDropLogUsesActualSpellbookItemId(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "successfulDropLogUsesActualSpellbookItemId");
+		long seed = chestSeedForNonSpark(helper, CRAFT_LOG_CHEST);
+		Identifier itemId = BuiltInRegistries.ITEM.getKey(
+			SpellbookTestAccess.rollChest(CRAFT_LOG_CHEST, true, RandomSource.create(seed)).getItem()
+		);
 		ArrayList<ItemStack> drops = new ArrayList<>();
 		try (SpellLogCapture capture = new SpellLogCapture()) {
 			SpellbookTestAccess.modifyChestDrops(CRAFT_LOG_CHEST, true, RandomSource.create(seed), drops);
@@ -126,21 +130,24 @@ public class SpellLogGameTest {
 			helper.assertTrue(
 				capture.contains(
 					"INFO [SPELL]", "event=DROP", "source=chest", "table_id=" + CRAFT_LOG_CHEST,
-					"item_id=mod-stella-spells:spark_shot"
+					"item_id=" + itemId
 				),
-				"DROP log omitted source or item fields"
+				"DROP log did not use the actual spellbook item ID"
 			);
-			capture.echoOne("event=DROP", "table_id=" + CRAFT_LOG_CHEST);
+			capture.echoOne("event=DROP", "table_id=" + CRAFT_LOG_CHEST, "item_id=" + itemId);
 		}
 		outcome.pass();
 		helper.succeed();
 	}
 
 	@GameTest
-	public void successfulWitchDropLogHasSourceAndItemFields(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "successfulWitchDropLogHasSourceAndItemFields");
+	public void successfulWitchDropLogUsesActualSpellbookItemId(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "successfulWitchDropLogUsesActualSpellbookItemId");
 		Witch witch = helper.spawnMob(EntityTypes.WITCH, 2, 1, 2).withNoFreeWill().spawn();
-		long seed = witchSeed(helper);
+		long seed = witchSeedForNonSpark(helper);
+		Identifier itemId = BuiltInRegistries.ITEM.getKey(
+			SpellbookTestAccess.rollWitch(RandomSource.create(seed)).getItem()
+		);
 		try (SpellLogCapture capture = new SpellLogCapture()) {
 			SpellbookTestAccess.applyWitchDeath(
 				witch, helper.getLevel().damageSources().generic(), RandomSource.create(seed)
@@ -148,11 +155,11 @@ public class SpellLogGameTest {
 			helper.assertTrue(
 				capture.contains(
 					"INFO [SPELL]", "event=DROP", "source=witch", "source_entity=" + witch.getUUID(),
-					"item_id=mod-stella-spells:spark_shot"
+					"item_id=" + itemId
 				),
-				"witch DROP log omitted source or item fields"
+				"witch DROP log did not use the actual spellbook item ID"
 			);
-			capture.echoOne("event=DROP", "source=witch", "source_entity=" + witch.getUUID());
+			capture.echoOne("event=DROP", "source=witch", "source_entity=" + witch.getUUID(), "item_id=" + itemId);
 		}
 		outcome.pass();
 		helper.succeed();
@@ -346,6 +353,12 @@ public class SpellLogGameTest {
 		return !stack.isEmpty() && SPARK_SHOT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
 	}
 
+	private static SpellbookItem spellbook(final GameTestHelper helper, final Identifier id, final String name) {
+		Item item = BuiltInRegistries.ITEM.get(id).map(Holder.Reference::value).orElse(Items.AIR);
+		helper.assertTrue(item instanceof SpellbookItem, name + " item is not registered");
+		return (SpellbookItem) item;
+	}
+
 	private static Item sparkShot(final GameTestHelper helper) {
 		Item item = BuiltInRegistries.ITEM.get(SPARK_SHOT).map(Holder.Reference::value).orElse(Items.AIR);
 		helper.assertTrue(item != Items.AIR, "Spark Shot item is not registered");
@@ -360,6 +373,28 @@ public class SpellLogGameTest {
 		player.setYRot(0.0f);
 		player.setXRot(0.0f);
 		return player;
+	}
+
+	private static long witchSeedForNonSpark(final GameTestHelper helper) {
+		for (long seed = 0; seed < 100_000; seed++) {
+			ItemStack stack = SpellbookTestAccess.rollWitch(RandomSource.create(seed));
+			if (!stack.isEmpty() && !isSparkShot(stack)) {
+				return seed;
+			}
+		}
+		helper.assertTrue(false, "no deterministic witch seed produced a non-Spark spellbook");
+		return 0L;
+	}
+
+	private static long chestSeedForNonSpark(final GameTestHelper helper, final Identifier table) {
+		for (long seed = 0; seed < 100_000; seed++) {
+			ItemStack stack = SpellbookTestAccess.rollChest(table, true, RandomSource.create(seed));
+			if (!stack.isEmpty() && !isSparkShot(stack)) {
+				return seed;
+			}
+		}
+		helper.assertTrue(false, "no deterministic chest seed produced a non-Spark spellbook");
+		return 0L;
 	}
 
 	private static long witchSeed(final GameTestHelper helper) {

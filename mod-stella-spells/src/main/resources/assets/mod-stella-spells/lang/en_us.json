@@ -1,3 +1,22 @@
 {
-	"item.mod-stella-spells.spark_shot": "Spark Shot Spellbook"
+	"item.mod-stella-spells.spark_shot": "Spark Shot Spellbook",
+	"item.mod-stella-spells.frostbind": "Frostbind Spellbook",
+	"item.mod-stella-spells.gale_step": "Gale Step Spellbook",
+	"item.mod-stella-spells.mending_word": "Mending Word Spellbook",
+	"item.mod-stella-spells.stoneguard": "Stoneguard Spellbook",
+	"item.mod-stella-spells.static_lash": "Static Lash Spellbook",
+	"item.mod-stella-spells.briar_snare": "Briar Snare Spellbook",
+	"item.mod-stella-spells.tidal_push": "Tidal Push Spellbook",
+	"item.mod-stella-spells.owls_gaze": "Owl's Gaze Spellbook",
+	"item.mod-stella-spells.slimebound": "Slimebound Spellbook",
+	"item.mod-stella-spells.chainstorm": "Chainstorm Spellbook",
+	"item.mod-stella-spells.riftwalk": "Riftwalk Spellbook",
+	"item.mod-stella-spells.phoenix_mantle": "Phoenix Mantle Spellbook",
+	"item.mod-stella-spells.life_bloom": "Life Bloom Spellbook",
+	"item.mod-stella-spells.void_well": "Void Well Spellbook",
+	"item.mod-stella-spells.wardens_roar": "Warden's Roar Spellbook",
+	"item.mod-stella-spells.aegis_of_the_deep": "Aegis of the Deep Spellbook",
+	"item.mod-stella-spells.wither_seal": "Wither Seal Spellbook",
+	"item.mod-stella-spells.time_lock": "Time Lock Spellbook",
+	"item.mod-stella-spells.dragonfall": "Dragonfall Spellbook"
 }
