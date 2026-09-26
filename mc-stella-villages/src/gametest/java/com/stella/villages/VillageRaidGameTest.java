@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.raid.Raid;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.BlockPos;
 
 /** V3: the daily roll's rate and bookkeeping, the one-wave cap, and the attendance rule. */
 public final class VillageRaidGameTest {
@@ -79,31 +79,27 @@ public final class VillageRaidGameTest {
 	@GameTest(padding = 64)
 	public void vanillaRaidKeepsItsWaves(final GameTestHelper helper) {
 		// The same construction outside a mod raid must keep vanilla's count, so the cap cannot leak into omen raids.
-		Raid raid = new Raid(helper.absolutePos(new net.minecraft.core.BlockPos(3, 1, 3)), helper.getLevel().getDifficulty());
+		Raid raid = new Raid(helper.absolutePos(new BlockPos(3, 1, 3)), helper.getLevel().getDifficulty());
 		int waves = ((RaidAccessor) raid).mcStellaVillages$numGroups();
 		PatrolTestSupport.result("vanillaRaidKeepsItsWaves", "waves=" + waves + " vanilla=" + raid.getNumGroups(helper.getLevel().getDifficulty()));
 		helper.assertValueEqual(Integer.valueOf(waves), Integer.valueOf(raid.getNumGroups(helper.getLevel().getDifficulty())), "vanilla wave count");
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(padding = 64)
 	public void attendanceFollowsPlayerDistance(final GameTestHelper helper) {
 		String test = "attendanceFollowsPlayerDistance";
-		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
-			return;
-		}
-
-		VillageWorldData.VillageRecord village = village(helper);
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		Vec3 anchor = Vec3.atBottomCenterOf(village.anchor());
-		player.snapTo(anchor.x + 4.0, anchor.y, anchor.z, 0.0F, 0.0F);
-		boolean near = VillageRaids.attendant(helper.getLevel(), village) == player;
-		player.snapTo(anchor.x + VillageRaids.ATTENDANCE_RANGE + 8.0, anchor.y, anchor.z, 0.0F, 0.0F);
-		ServerPlayer far = VillageRaids.attendant(helper.getLevel(), village);
-		boolean farIsThisPlayer = far == player;
-		player.discard();
-		PatrolTestSupport.result(test, "near=" + near + " farIsThisPlayer=" + farIsThisPlayer);
-		helper.assertTrue(near && !farIsThisPlayer, "attendance did not follow the player's distance: near=" + near + " far=" + farIsThisPlayer);
+		BlockPos at = player.blockPosition();
+		// Two detached records, so only the anchor's distance to the one player differs and nothing is registered.
+		VillageWorldData.VillageRecord near = VillageWorldData.empty().findOrCreate(helper.getLevel().dimension(), at.offset(4, 0, 0));
+		VillageWorldData.VillageRecord far = VillageWorldData.empty().findOrCreate(
+			helper.getLevel().dimension(), at.offset((int) VillageRaids.ATTENDANCE_RANGE + 8, 0, 0)
+		);
+		boolean attendsNear = VillageRaids.attendant(helper.getLevel(), near) == player;
+		boolean attendsFar = VillageRaids.attendant(helper.getLevel(), far) == player;
+		PatrolTestSupport.result(test, "attendsNear=" + attendsNear + " attendsFar=" + attendsFar);
+		helper.assertTrue(attendsNear && !attendsFar, "attendance did not follow the player's distance: near=" + attendsNear + " far=" + attendsFar);
 		helper.succeed();
 	}
 
