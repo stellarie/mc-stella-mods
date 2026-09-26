@@ -1,8 +1,11 @@
 package com.stella.mobs.behavior;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -23,6 +26,8 @@ public final class WitchPotions {
 	/** W12: the vanilla strong poison value, which is what a lingering cloud carries. */
 	public static final int LINGER_POISON_TICKS = 432;
 	public static final int LINGER_POISON_LEVEL = 1;
+	// Vanilla names Speed potions after Swiftness, so its lang key uses that word.
+	private static final Map<String, String> VANILLA_WORD = Map.of("speed", "swiftness");
 
 	public static final List<Carried> CARRIED = List.of(
 		new Carried("invisibility", false, 0, MobEffects.INVISIBILITY, 400),
@@ -73,12 +78,23 @@ public final class WitchPotions {
 
 	/** A splash potion carrying one custom effect, at the level the entry names. */
 	public static ItemStack stack(final Carried carried) {
-		return potion(Items.SPLASH_POTION, carried.effect(), carried.level(), carried.durationTicks());
+		return named(potion(Items.SPLASH_POTION, carried.effect(), carried.level(), carried.durationTicks()), carried.name());
 	}
 
 	/** W12: a lingering potion with the elite's poison payload. Vanilla sets every cloud number on hit. */
 	public static ItemStack lingeringPoison() {
-		return potion(Items.LINGERING_POTION, MobEffects.POISON, LINGER_POISON_LEVEL, LINGER_POISON_TICKS);
+		return named(potion(Items.LINGERING_POTION, MobEffects.POISON, LINGER_POISON_LEVEL, LINGER_POISON_TICKS), "poison");
+	}
+
+	/** Names a mod potion after its effect; the English fallback covers effects vanilla has no potion for. */
+	private static ItemStack named(final ItemStack stack, final String name) {
+		String word = VANILLA_WORD.getOrDefault(name, name);
+		boolean lingering = stack.is(Items.LINGERING_POTION);
+		String key = "item.minecraft." + (lingering ? "lingering_potion" : "splash_potion") + ".effect." + word;
+		String fallback = (lingering ? "Lingering Potion of " : "Splash Potion of ")
+			+ word.substring(0, 1).toUpperCase(Locale.ROOT) + word.substring(1);
+		stack.set(DataComponents.CUSTOM_NAME, Component.translatableWithFallback(key, fallback).withStyle(style -> style.withItalic(false)));
+		return stack;
 	}
 
 	private static ItemStack potion(
