@@ -113,7 +113,8 @@ public class StellaMobs implements ModInitializer {
 
 		boolean loadedFromDisk = entity instanceof EntityLoadData loadData && loadData.isLoadedFromDisk();
 
-		if (!loadedFromDisk) {
+		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.
+		if (!loadedFromDisk && !mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {
 			Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
 			Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
 			ReactiveState state = ReactiveState.get(mob);

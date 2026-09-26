@@ -21,6 +21,14 @@ A server-side Fabric mod. Mobs take configurable gear, block with a shield,
 retreat when hurt, defend each other, and fight at the distance their role
 wants.
 
+### Opting a mob out of spawn rolls
+
+A mob that enters the level carrying the entity tag `mod-stella-mobs.no_spawn_roll` takes none of this
+mod's spawn-time changes: no gear roll, boss or elite roll, rider, spawn scaling, or location trait.
+It still receives the mod's combat goals. Another mod that owns a mob's kit, such as the village
+patrol, adds the tag before it spawns the mob. The tag is plain entity data, so neither mod depends
+on the other.
+
 ### Optional readout integration
 
 The mod publishes `mod-stella-mobs:readout-rank` through Fabric Loader ObjectShare. The value is a `Function<Entity, String>` that returns `normal`, `elite`, or `boss`. Boss takes precedence when both flags apply. A non-Mob entity returns `normal`.
