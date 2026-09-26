@@ -66,4 +66,4 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - Done: Archived nine handoff and plan records in `HANDOFFS-2026-09-26.md`.
 - Pending: Verify unfinished spells and villages work before gameplay acceptance.
 - Next: Follow the archived handoffs and rerun each mod's required gates.
-- Verification: Source snapshot and merge conflicts checked; feature gates remain unverified.
+- Verification: Fresh clean builds passed for mobs, equips, and spells. Villages failed two required W021 GameTests.
