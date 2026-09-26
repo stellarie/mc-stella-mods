@@ -42,23 +42,24 @@ public final class EvokerStorm {
 	private EvokerStorm() {
 	}
 
-	/** One storm: where it was called, when it ends, and when the next ball is due. */
+	/**
+	 * One storm: where it was called, its own age in ticks, and the age the next ball is due at. The age
+	 * advances once per level tick, so the cadence holds wherever the game clock stands.
+	 */
 	private static final class Active {
 		private final Mob caster;
 		private final double x;
 		private final double y;
 		private final double z;
-		private final long endTick;
-		private long nextBallTick;
+		private int age;
+		private int nextBallAge;
 		private int balls;
 
-		private Active(final Mob caster, final double x, final double y, final double z, final long endTick) {
+		private Active(final Mob caster, final double x, final double y, final double z) {
 			this.caster = caster;
 			this.x = x;
 			this.y = y;
 			this.z = z;
-			this.endTick = endTick;
-			this.nextBallTick = endTick - DURATION_TICKS;
 		}
 	}
 
@@ -92,7 +93,7 @@ public final class EvokerStorm {
 		long now = level.getGameTime();
 		EliteState.setStormCast(evoker, true);
 		((AttachmentTarget) level).getAttachedOrCreate(ACTIVE)
-			.add(new Active(evoker, evoker.getX(), evoker.getY(), evoker.getZ(), now + DURATION_TICKS));
+			.add(new Active(evoker, evoker.getX(), evoker.getY(), evoker.getZ()));
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test=evokerStorm t={} STORM BEGIN centre={},{},{} window={} interval={} radius={}",
@@ -118,9 +119,9 @@ public final class EvokerStorm {
 
 		while (storms.hasNext()) {
 			Active storm = storms.next();
-			// The window is half-open: the last ball is due at endTick minus one interval, so 1200 ticks
-			// at one ball per 30 is exactly 40 balls, not 41.
-			if (!storm.caster.isAlive() || storm.caster.isRemoved() || now >= storm.endTick) {
+			// The window is half-open: the last ball is due one interval before the window closes, so the
+			// count is the window over the interval, never one more.
+			if (!storm.caster.isAlive() || storm.caster.isRemoved() || storm.age >= DURATION_TICKS) {
 				storms.remove();
 				StellaMobs.LOGGER.info(
 					"[BEHAVIOR] test=evokerStorm t={} STORM END balls={} casterAlive={}",
@@ -131,10 +132,11 @@ public final class EvokerStorm {
 				continue;
 			}
 
-			if (now >= storm.nextBallTick) {
-				storm.nextBallTick += BALL_INTERVAL_TICKS;
+			if (storm.age >= storm.nextBallAge) {
+				storm.nextBallAge += BALL_INTERVAL_TICKS;
 				spawnBall(storm, level, now);
 			}
+			storm.age++;
 		}
 	}
 
