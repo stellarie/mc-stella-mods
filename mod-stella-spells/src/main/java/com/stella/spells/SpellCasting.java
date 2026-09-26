@@ -73,6 +73,7 @@ public final class SpellCasting {
 		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
 		caster.getCooldowns().addCooldown(stack, modifiers.cooldownTicks());
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
+		SpellCombos.afterCast(caster, definition, target, point, modifiers);
 		return CastResult.CAST;
 	}
 
