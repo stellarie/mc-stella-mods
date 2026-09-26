@@ -15,6 +15,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
+import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -49,7 +51,10 @@ final class BehaviorLog {
 	private boolean wasDrawing;
 	private boolean meleeWasSwinging;
 	private String lastState;
+	private String lastCustomState;
 	private long lastDetailTick = -1L;
+	private int r02SampleCount;
+	private long r02ResponseTick = -1L;
 
 	BehaviorLog(
 		final GameTestHelper helper,
@@ -117,6 +122,45 @@ final class BehaviorLog {
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} t={} GOALS {}", this.test, now, goals());
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} t={} GATES {}", this.test, now, gates());
 		}
+	}
+
+	void customState(final String event, final String details) {
+		long now = this.helper.getTick();
+		String state = event + " " + details;
+		if (!state.equals(this.lastCustomState) || now % HEARTBEAT_TICKS == 0L) {
+			this.lastCustomState = state;
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} t={} {}", this.test, now, state);
+		}
+	}
+
+	void customResult(final String behavior, final String outcome, final String details) {
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT behavior={} outcome={} {}", this.test, behavior, outcome, details);
+	}
+
+	void watchR02(final Creeper creeper, final Player player) {
+		customState("R02_WATCH", "creeperTarget=" + (creeper.getTarget() == player)
+			+ " survival=" + !player.isCreative() + " swelling=" + (creeper.getSwellDir() > 0));
+	}
+
+	void r02Sample(final Creeper creeper, final Player player) {
+		this.r02SampleCount++;
+		String decision = R02ControlGameTest.decision(this.subject);
+		String skipReason = R02ControlGameTest.skipReason(this.subject);
+		if (this.r02ResponseTick < 0L && "COMMAND_SET".equals(decision)) {
+			this.r02ResponseTick = this.helper.getTick();
+		}
+		customState("R02_SAMPLE", "decision=" + decision + " skipReason=" + skipReason
+			+ " creeperTarget=" + (creeper.getTarget() == player)
+			+ " swelling=" + (creeper.getSwellDir() > 0) + " distance=" + String.format(java.util.Locale.ROOT, "%.2f", this.subject.distanceTo(creeper)));
+	}
+
+	void r02Result(final String controller, final String outcome, final Creeper creeper, final Player player) {
+		customResult("R02", outcome, "controller=" + controller + " skipReason="
+			+ R02ControlGameTest.skipReason(this.subject) + " samples=" + this.r02SampleCount
+			+ " responseTick=" + (this.r02ResponseTick < 0L ? "none" : this.r02ResponseTick)
+			+ " creeperTarget=" + (creeper.getTarget() == player) + " survival=" + !player.isCreative()
+			+ " swelling=" + (creeper.getSwellDir() > 0)
+			+ " distance=" + String.format(java.util.Locale.ROOT, "%.2f", this.subject.distanceTo(creeper)));
 	}
 
 	void result() {
