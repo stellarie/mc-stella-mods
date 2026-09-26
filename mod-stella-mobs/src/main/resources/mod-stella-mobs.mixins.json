@@ -10,6 +10,7 @@
 		"EnderDragonPhaseMixin",
 		"MobServerAiStepMixin",
 		"PhantomMoveTargetAccessor",
+		"RaidIllusionerMixin",
 		"ShulkerEscapeMixin",
 		"SnowGolemMeltMixin",
 		"SnowballHitMixin"
