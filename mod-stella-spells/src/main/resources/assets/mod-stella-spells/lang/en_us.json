@@ -18,5 +18,6 @@
 	"item.mod-stella-spells.aegis_of_the_deep": "Aegis of the Deep Spellbook",
 	"item.mod-stella-spells.wither_seal": "Wither Seal Spellbook",
 	"item.mod-stella-spells.time_lock": "Time Lock Spellbook",
-	"item.mod-stella-spells.dragonfall": "Dragonfall Spellbook"
+	"item.mod-stella-spells.dragonfall": "Dragonfall Spellbook",
+	"tag.item.mod-stella-spells.spellbooks": "Spellbooks"
 }
