@@ -162,9 +162,13 @@ public class PillagerTacticsGameTest {
 
 		try {
 			GearConfigStore.set(GearConfigParser.parse(NO_ROLLS));
-			Pillager pillager = helper.spawnMob(EntityTypes.PILLAGER, x, 3, z).spawn();
-			pillager.setPersistenceRequired();
+			// The weapon is in hand before the load hook runs, as it is for a Pillager that spawns in play.
+			Pillager pillager = EntityTypes.PILLAGER.create(helper.getLevel(), EntitySpawnReason.NATURAL);
+			Vec3 at = helper.absoluteVec(new Vec3(x + 0.5, 3, z + 0.5));
+			pillager.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 			pillager.setItemSlot(EquipmentSlot.MAINHAND, weapon);
+			pillager.setPersistenceRequired();
+			helper.getLevel().addFreshEntity(pillager);
 			return pillager;
 		} finally {
 			GearConfigStore.set(previous);
