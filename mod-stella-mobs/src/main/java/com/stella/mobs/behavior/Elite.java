@@ -68,9 +68,6 @@ public final class Elite {
 		}
 
 		EliteState.markElite(mob, tier);
-		// R21: an elite zombie brings reinforcements, and the mark is the moment it becomes one.
-		BehaviorInstaller.installReinforcements(mob);
-
 		// R22 and R24: the elite's own kit goes on here, before the installer runs, so the off hand it
 		// writes is in place when the installer decides whether to add ShieldUseGoal. A summoned companion
 		// is kitted by its spawner, and a boss keeps the boss kit, so both are skipped.
