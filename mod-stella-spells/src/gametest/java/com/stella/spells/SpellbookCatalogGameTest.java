@@ -10,6 +10,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.locale.Language;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceKey;
@@ -24,6 +25,23 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 public class SpellbookCatalogGameTest {
+	@GameTest
+	public void everyShippedItemTagHasADisplayName(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "everyShippedItemTagHasADisplayName");
+		// A recipe viewer names a tag from its lang key, so every item tag this mod ships needs one.
+		List<String> keys = BuiltInRegistries.ITEM.getTags()
+			.map(named -> named.key().location())
+			.filter(id -> id.getNamespace().equals(Spellbooks.MOD_ID))
+			.map(id -> "tag.item." + id.getNamespace() + "." + id.getPath().replace('/', '.'))
+			.sorted()
+			.toList();
+		List<String> missing = keys.stream().filter(key -> !Language.getInstance().has(key)).toList();
+		Spellbooks.LOGGER.info("[BEHAVIOR] test=everyShippedItemTagHasADisplayName RESULT tags={} missing={}", keys, missing);
+		helper.assertTrue(!keys.isEmpty(), "the mod ships no item tag, so nothing was checked");
+		helper.assertTrue(missing.isEmpty(), "item tags without a display name: " + missing);
+		helper.succeed();
+	}
+
 	private static final Identifier TEST_ENCHANTMENT = Identifier.parse(
 		"mod-stella-spells-test-mod-stella-spells:anvil_log_test"
 	);

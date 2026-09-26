@@ -195,7 +195,8 @@ public class SpellEnchantmentsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200)
+	// The line of fire runs about 24 blocks past the arena, so the padding keeps neighbouring arenas off it.
+	@GameTest(maxTicks = 200, padding = 32)
 	public void arcaneSightAddsTwoBlocksPerLevelOnlyInHeadSlot(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "arcaneSightAddsTwoBlocksPerLevelOnlyInHeadSlot");
 		Holder.Reference<Enchantment> arcaneSight = enchantment(helper, ARCANE_SIGHT);
