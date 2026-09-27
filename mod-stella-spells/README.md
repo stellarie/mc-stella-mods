@@ -11,8 +11,9 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 - **Hostile** spells hit the first hostile mob the caster looks at within 16 blocks.
 - **Block** spells land on the block the caster looks at within 16 blocks.
 - **Self** spells act on the caster.
-- **Riftwalk** moves the caster up to 12 blocks along the look direction, to the first spot with
-  solid ground, room for the caster, and no fluid.
+- **Riftwalk** moves the caster onto the block they look at within 16 blocks. Aimed at a wall, it
+  lands in front of the wall, dropping up to 4 blocks to the ground. It refuses a spot with no room,
+  with fluid, or with a mob in it.
 
 | Book | Material | Cooldown | Target | Effect |
 | --- | --- | --- | --- | --- |
@@ -26,8 +27,8 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster |
 | Owl's Gaze | Amethyst Shard | 10 s | Self | Night Vision, 45 s |
 | Slimebound | Slime Ball | 5 s | Self | Jump Boost II and Slow Falling |
-| Chainstorm | Lightning Rod | 15 s | Hostile | 7 damage, then 4 damage chaining to 2 more hostiles within 4 blocks |
-| Riftwalk | Ender Pearl | 10 s | Safe spot | Teleports the caster up to 12 blocks ahead |
+| Chainstorm | Lightning Rod | 15 s | Block | Lightning from the sky onto up to 5 hostiles within 5 blocks of the point, nearest first, one strike every 6 ticks, 6 damage each |
+| Riftwalk | Ender Pearl | 10 s | Aimed spot | Teleports the caster onto the spot they look at, up to 16 blocks away |
 | Phoenix Mantle | Blaze Rod | 15 s | Self | Fire Resistance, 30 s, and heals 4 |
 | Life Bloom | Ghast Tear | 17 s | Self | Heals 8 and Regeneration I, 5 s |
 | Void Well | Obsidian | 17 s | Block | Pulls hostiles within 5 blocks toward the point; Slowness II, 3 s |
@@ -44,8 +45,8 @@ Each book's tooltip lists its target, how to cast it, what it does, and its base
 
 Every successful cast draws its own particles, sent from the server to players within 32 blocks:
 
-- **Hostile** spells draw a beam from the caster to the target and a burst on it. Static Lash and
-  Chainstorm also ring the target at their chain radius.
+- **Hostile** spells draw a beam from the caster to the target and a burst on it. Static Lash also
+  rings the target at its chain radius.
 - **Self** spells draw a rising spiral around the caster. Warden's Roar draws a ring of sonic booms
   at its radius instead.
 - **Block** spells draw a ring at their area radius and a burst at the aimed point.

@@ -32,6 +32,7 @@ public final class Spellbooks implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		SpellbookLoot.register();
+		SpellStorms.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
