@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:honeycomb"
+	],
+	"result": {
+		"id": "mod-stella-spells:sanctuary_scroll",
+		"count": 2
+	}
+}

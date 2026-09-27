@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/sapping_hex",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8007248
+			}
+		]
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:fermented_spider_eye"
+	],
+	"result": {
+		"id": "mod-stella-spells:sapping_hex_scroll",
+		"count": 2
+	}
+}

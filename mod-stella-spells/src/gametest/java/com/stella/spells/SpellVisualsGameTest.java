@@ -50,6 +50,9 @@ public class SpellVisualsGameTest {
 		ServerPlayer player = addPlayer(helper);
 		helper.setBlock(2, 2, 8, Blocks.AIR);
 		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
+		// Every hostile book lands on this one target, so it must outlast them all.
+		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		target.setHealth(1000.0F);
 		List<SpellbookItem> books = books(TargetMode.HOSTILE);
 		// Tidal Push knocks the target off the aim line, so it goes last.
 		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("tidal_push")));
@@ -68,10 +71,14 @@ public class SpellVisualsGameTest {
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
 		player.setHealth(4.0f);
+		// Purify casts only with something to clear.
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 600, 0));
 		List<SpellbookItem> books = books(TargetMode.SELF);
 		// Gale Step launches the caster, so it goes last.
 		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("gale_step")));
 		for (SpellbookItem book : books) {
+			// Each healing spell needs a wound to close.
+			player.setHealth(4.0f);
 			Vec3 center = player.position();
 			cast(helper, player, book);
 			assertPlayedNear(helper, player, book, center);

@@ -61,7 +61,27 @@ public class SpellEffectsGameTest {
 		new CooldownExpectation(AEGIS_OF_THE_DEEP, 400),
 		new CooldownExpectation(WITHER_SEAL, 360),
 		new CooldownExpectation(TIME_LOCK, 400),
-		new CooldownExpectation(DRAGONFALL, 500)
+		new CooldownExpectation(DRAGONFALL, 500),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:ice_lance"), 100),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:soul_siphon"), 180),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:venom_dart"), 100),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:sapping_hex"), 160),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:skyhook"), 160),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:blinding_flash"), 140),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:smite"), 200),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:ember_brand"), 120),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:quicksilver"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:tide_lungs"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:berserk"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:haste_rune"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:shadow_veil"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:sanctuary"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:purify"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:frost_nova"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:earthspike"), 240),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:plague_cloud"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:healing_spring"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:flame_ring"), 240)
 	);
 
 	@GameTest

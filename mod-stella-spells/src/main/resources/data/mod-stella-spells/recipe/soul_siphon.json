@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:soul_soil", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:soul_siphon", "count": 1}
+}
