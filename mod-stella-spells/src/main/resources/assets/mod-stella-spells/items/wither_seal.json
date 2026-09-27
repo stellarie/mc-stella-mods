@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/wither_seal"
+		"model": "mod-stella-spells:item/wither_seal",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 5125166
+			}
+		]
 	}
 }

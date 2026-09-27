@@ -17,6 +17,9 @@ import net.minecraft.world.item.ItemStack;
 public final class SpellbookLoot {
 	public static final double CHEST_DROP_CHANCE = 0.05;
 	public static final double WITCH_DROP_CHANCE = 0.50;
+	/** Scrolls are common: this share of vanilla chests holds one or two of a random spell. */
+	public static final double SCROLL_CHEST_CHANCE = 0.40;
+	public static final int SCROLL_MAX_COUNT = 2;
 	private static final Set<Identifier> VANILLA_CHEST_TABLES = ConcurrentHashMap.newKeySet();
 
 	private SpellbookLoot() {
@@ -59,6 +62,16 @@ public final class SpellbookLoot {
 	) {
 		if (!builtin || !isVanillaChest(table)) {
 			return;
+		}
+
+		// The scroll roll comes first and on its own draw, so the book roll keeps its own chance.
+		if (random.nextDouble() < SCROLL_CHEST_CHANCE) {
+			ItemStack scroll = new ItemStack(Spellbooks.SCROLLS.get(random.nextInt(Spellbooks.SCROLLS.size())), 1 + random.nextInt(SCROLL_MAX_COUNT));
+			drops.add(scroll);
+			Spellbooks.LOGGER.info(
+				"[SPELL] event=DROP source=chest table_id={} item_id={} count={}",
+				table, BuiltInRegistries.ITEM.getKey(scroll.getItem()), scroll.getCount()
+			);
 		}
 
 		Roll roll = roll(CHEST_DROP_CHANCE, random);

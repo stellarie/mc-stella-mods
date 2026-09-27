@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/aegis_of_the_deep_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8440772
+			}
+		]
+	}
+}

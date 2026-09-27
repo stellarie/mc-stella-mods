@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/riftwalk"
+		"model": "mod-stella-spells:item/riftwalk",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 6174129
+			}
+		]
 	}
 }

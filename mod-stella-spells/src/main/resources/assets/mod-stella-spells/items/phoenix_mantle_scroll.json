@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/phoenix_mantle_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16727296
+			}
+		]
+	}
+}

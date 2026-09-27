@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/chainstorm_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16739584
+			}
+		]
+	}
+}

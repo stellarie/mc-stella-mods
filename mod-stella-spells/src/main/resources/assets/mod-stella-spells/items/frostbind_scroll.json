@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/frostbind_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 11789820
+			}
+		]
+	}
+}
