@@ -37,7 +37,7 @@ This repository develops Fabric mods on separate integration branches.
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
-- Spark Shot's exact 16-block GameTest fails intermittently -> keep its optional manual gap visible. [status: active] [verified: 2026-09-28] [source: SpellEffectsGameTest.java and integration-clean-build-fail.log]
+- Spark Shot's exact 16-block GameTest needed entity-index readiness -> use `Findable.then` before casting. [status: resolved] [verified: 2026-09-28] [source: SpellEffectsGameTest.java and rebased46-gate-1.log through rebased46-gate-5.log]
 
 ## Decisions
 
