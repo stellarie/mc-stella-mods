@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/shadow_veil_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 2829114
+			}
+		]
+	}
+}

@@ -65,15 +65,35 @@ public class SpellbookCatalogGameTest {
 		new RecipeEntry("aegis_of_the_deep", Items.TURTLE_SCUTE),
 		new RecipeEntry("wither_seal", Items.WITHER_ROSE),
 		new RecipeEntry("time_lock", Items.CLOCK),
-		new RecipeEntry("dragonfall", Items.DRAGON_BREATH)
+		new RecipeEntry("dragonfall", Items.DRAGON_BREATH),
+		new RecipeEntry("ice_lance", Items.PACKED_ICE),
+		new RecipeEntry("soul_siphon", Items.SOUL_SOIL),
+		new RecipeEntry("venom_dart", Items.SPIDER_EYE),
+		new RecipeEntry("sapping_hex", Items.FERMENTED_SPIDER_EYE),
+		new RecipeEntry("skyhook", Items.PHANTOM_MEMBRANE),
+		new RecipeEntry("blinding_flash", Items.GLOW_INK_SAC),
+		new RecipeEntry("smite", Items.GLOWSTONE_DUST),
+		new RecipeEntry("ember_brand", Items.MAGMA_CREAM),
+		new RecipeEntry("quicksilver", Items.SUGAR),
+		new RecipeEntry("tide_lungs", Items.PUFFERFISH),
+		new RecipeEntry("berserk", Items.BLAZE_POWDER),
+		new RecipeEntry("haste_rune", Items.REDSTONE),
+		new RecipeEntry("shadow_veil", Items.TINTED_GLASS),
+		new RecipeEntry("sanctuary", Items.HONEYCOMB),
+		new RecipeEntry("purify", Items.QUARTZ),
+		new RecipeEntry("frost_nova", Items.ICE),
+		new RecipeEntry("earthspike", Items.POINTED_DRIPSTONE),
+		new RecipeEntry("plague_cloud", Items.POISONOUS_POTATO),
+		new RecipeEntry("healing_spring", Items.GLISTERING_MELON_SLICE),
+		new RecipeEntry("flame_ring", Items.FIRE_CHARGE)
 	);
 	private static final Set<Identifier> EXPECTED_IDS = EXPECTED_BOOKS.stream()
 		.map(RecipeEntry::id)
 		.collect(Collectors.toUnmodifiableSet());
 
 	@GameTest
-	public void catalogRegistersTwentyUniqueSingleStackBooksWithFixedIdentity(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "catalogRegistersTwentyUniqueSingleStackBooksWithFixedIdentity");
+	public void catalogRegistersEveryBookAsAUniqueSingleStackWithFixedIdentity(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "catalogRegistersEveryBookAsAUniqueSingleStackWithFixedIdentity");
 		Set<Identifier> actualIds = BuiltInRegistries.ITEM.stream()
 			.filter(item -> item instanceof SpellbookItem)
 			.map(BuiltInRegistries.ITEM::getKey)
@@ -101,8 +121,8 @@ public class SpellbookCatalogGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void anvilAppliesTestEnchantmentToAllTwentyBooksWithoutChangingIdentity(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "anvilAppliesTestEnchantmentToAllTwentyBooksWithoutChangingIdentity");
+	public void anvilAppliesTestEnchantmentToEveryBookWithoutChangingIdentity(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "anvilAppliesTestEnchantmentToEveryBookWithoutChangingIdentity");
 		ResourceKey<Enchantment> enchantmentKey = ResourceKey.create(Registries.ENCHANTMENT, TEST_ENCHANTMENT);
 		Holder.Reference<Enchantment> enchantment = helper.getLevel().registryAccess()
 			.lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(enchantmentKey);
@@ -143,8 +163,8 @@ public class SpellbookCatalogGameTest {
 	}
 
 	@GameTest
-	public void catalogHasTwentyMappedBookAndFourCornerXRecipes(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "catalogHasTwentyMappedBookAndFourCornerXRecipes");
+	public void catalogHasAMappedFourCornerXRecipeForEveryBook(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "catalogHasAMappedFourCornerXRecipeForEveryBook");
 		var manager = helper.getLevel().getServer().getRecipeManager();
 		Set<Identifier> actualRecipeIds = manager.getRecipes().stream()
 			.map(recipe -> recipe.id().identifier())

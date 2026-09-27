@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:poisonous_potato", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:plague_cloud", "count": 1}
+}

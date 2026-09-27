@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:blaze_powder"
+	],
+	"result": {
+		"id": "mod-stella-spells:berserk_scroll",
+		"count": 2
+	}
+}

@@ -177,6 +177,36 @@ public class SpellImbueGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 100)
+	public void everyNewSpellCastsFromAnImbuedHit(final GameTestHelper helper) {
+		List<String> missing = new ArrayList<>();
+		int newSpells = 0;
+		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
+			if (!isSecondCatalogue(definition)) {
+				continue;
+			}
+			newSpells++;
+			ServerPlayer player = wielder(helper, definition.id());
+			// Purify needs something to clear, and Sanctuary a wound to close.
+			player.addEffect(new MobEffectInstance(MobEffects.POISON, 200, 0));
+			player.setHealth(10.0F);
+			Mob zombie = zombie(helper, 2, 4);
+			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+			if (!CASTS.getOrDefault(player.getUUID(), List.of()).contains(definition.id())) {
+				missing.add(definition.id().getPath());
+			}
+			zombie.discard();
+		}
+		LOG.info("[SPELLTEST] test=everyNewSpellCastsFromAnImbuedHit RESULT spells={} missing={}", newSpells, missing);
+		helper.assertTrue(newSpells == 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
+		helper.assertTrue(missing.isEmpty(), "imbued hits that cast nothing: " + missing);
+		helper.succeed();
+	}
+
+	private static boolean isSecondCatalogue(final SpellDefinition definition) {
+		return SpellbookCatalog.DEFINITIONS.indexOf(definition) >= 20;
+	}
+
 	@GameTest
 	public void anArrowDoesNotCastTheSpellOfTheSwordInHand(final GameTestHelper helper) {
 		ServerPlayer player = wielder(helper, SPARK_SHOT);

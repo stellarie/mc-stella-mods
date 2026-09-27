@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/plague_cloud_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8364858
+			}
+		]
+	}
+}

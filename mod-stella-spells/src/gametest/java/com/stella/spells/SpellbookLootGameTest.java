@@ -57,8 +57,8 @@ public class SpellbookLootGameTest {
 	}
 
 	@GameTest
-	public void chestRollUsesProductionFivePercentAndUniformlySelectsTwentyBooks(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "chestRollUsesProductionFivePercentAndUniformlySelectsTwentyBooks");
+	public void chestRollUsesProductionFivePercentAndUniformlySelectsEveryBook(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "chestRollUsesProductionFivePercentAndUniformlySelectsEveryBook");
 		double chance = SpellbookTestAccess.chance("CHEST_DROP_CHANCE");
 		RandomSource random = RandomSource.create(582019L);
 		int drops = 0;
@@ -90,8 +90,8 @@ public class SpellbookLootGameTest {
 	}
 
 	@GameTest
-	public void witchRollUsesProductionFiftyPercentAndUniformlySelectsTwentyBooks(final GameTestHelper helper) {
-		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "witchRollUsesProductionFiftyPercentAndUniformlySelectsTwentyBooks");
+	public void witchRollUsesProductionFiftyPercentAndUniformlySelectsEveryBook(final GameTestHelper helper) {
+		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "witchRollUsesProductionFiftyPercentAndUniformlySelectsEveryBook");
 		double chance = SpellbookTestAccess.chance("WITCH_DROP_CHANCE");
 		RandomSource random = RandomSource.create(782131L);
 		int drops = 0;

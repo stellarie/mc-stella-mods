@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/venom_dart_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 6989903
+			}
+		]
+	}
+}
