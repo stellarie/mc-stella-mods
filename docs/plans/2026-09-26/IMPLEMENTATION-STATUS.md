@@ -96,6 +96,7 @@ Measured reach rates:
 | Casting witches, strays and illagers; Summon Skeleton; Doublecast; village witch mind; spell review fixes | `feat/round8-spells` into `main-spells` (1997ac6) | 22 in one run, all red | 195 x 6 |
 | Village witch with the spells mod; Nemesis pool and payout, bell lookup review fixes | `feat/round8-villages` into `main-villages` (4d563b1) | 8 in three runs, all red | 89 x 6 |
 | Depth mobs, ocean bands of 3 to 5, the no-behaviour tag | `feat/round8-mobs-2` into `main-mobs` (1565bd9) | 16 in two runs, all red | 364 x 6 |
+| Chestplate casts after damage; Spark Shot and Chainstorm tests wait for entity-visible mobs | `feat/round8-spells-2` into `main-spells` (46d37fc) | old allow-damage hook red | 196 x 6 |
 
 Measured: Depth rolls 1.034% of 200,000 seeded spawns (1% ships); ocean bands and leaders sit within 4
 sigma of 2% and 5% over 200,000 rolls; a 50% Doublecast roll landed 49.49% of 10,000.
@@ -113,7 +114,7 @@ Decisions this round:
 
 Review findings from the round 6/7 review, all nine addressed: Nemesis water mobs and payout, patrol
 raids, removed-item aliases, friendly fire across mods, bred elite wolves, early thorns and chestplate
-casts (thorns moved; chestplate casts still read before damage), neighbour-counting tests, the bell
+casts (thorns and chestplate casts both moved after damage), neighbour-counting tests, the bell
 cache, and the mob imbue cooldown map. The minor arrow-stack price is fixed; the client's "Too
 Expensive" label on a 125-level imbue remains.
 
