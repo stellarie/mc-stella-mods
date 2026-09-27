@@ -119,10 +119,11 @@ public class SpellLogGameTest {
 	@GameTest
 	public void successfulDropLogUsesActualSpellbookItemId(final GameTestHelper helper) {
 		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "successfulDropLogUsesActualSpellbookItemId");
-		long seed = chestSeedForNonSpark(helper, CRAFT_LOG_CHEST);
-		Identifier itemId = BuiltInRegistries.ITEM.getKey(
-			SpellbookTestAccess.rollChest(CRAFT_LOG_CHEST, true, RandomSource.create(seed)).getItem()
-		);
+		// The seed is found on the whole chest path, whose scroll and clue draws come before the book's.
+		long seed = chestDropSeedForOneNonSparkBook(helper, CRAFT_LOG_CHEST);
+		ArrayList<ItemStack> probe = new ArrayList<>();
+		SpellbookTestAccess.modifyChestDrops(CRAFT_LOG_CHEST, true, RandomSource.create(seed), probe);
+		Identifier itemId = BuiltInRegistries.ITEM.getKey(probe.get(0).getItem());
 		ArrayList<ItemStack> drops = new ArrayList<>();
 		try (SpellLogCapture capture = new SpellLogCapture()) {
 			SpellbookTestAccess.modifyChestDrops(CRAFT_LOG_CHEST, true, RandomSource.create(seed), drops);
@@ -394,6 +395,18 @@ public class SpellLogGameTest {
 			}
 		}
 		helper.assertTrue(false, "no deterministic chest seed produced a non-Spark spellbook");
+		return 0L;
+	}
+
+	private static long chestDropSeedForOneNonSparkBook(final GameTestHelper helper, final Identifier table) {
+		for (long seed = 0; seed < 100_000; seed++) {
+			ArrayList<ItemStack> drops = new ArrayList<>();
+			SpellbookTestAccess.modifyChestDrops(table, true, RandomSource.create(seed), drops);
+			if (drops.size() == 1 && drops.get(0).getItem() instanceof SpellbookItem && !isSparkShot(drops.get(0))) {
+				return seed;
+			}
+		}
+		helper.assertTrue(false, "no deterministic chest seed dropped one non-Spark spellbook");
 		return 0L;
 	}
 

@@ -23,6 +23,9 @@
 			"com.stella.spells.MobImbueGameTest",
 			"com.stella.spells.ScrollOfReturnGameTest",
 			"com.stella.spells.SupportSpellsGameTest",
+			"com.stella.spells.MobSpellsGameTest",
+			"com.stella.spells.SummonSkeletonGameTest",
+			"com.stella.spells.DoublecastGameTest",
 			"com.stella.spells.ClueBooksGameTest",
 			"com.stella.spells.ImbueExpansionGameTest"
 		]

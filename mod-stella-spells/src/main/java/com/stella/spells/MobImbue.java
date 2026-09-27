@@ -34,6 +34,15 @@ final class MobImbue {
 		READY_AT.clear();
 	}
 
+	static boolean tracks(final UUID mob) {
+		return READY_AT.containsKey(mob);
+	}
+
+	/** A mob's record leaves with the mob, so the map holds only the living. */
+	static void forget(final UUID mob) {
+		READY_AT.remove(mob);
+	}
+
 	static int readyEntries() {
 		return READY_AT.size();
 	}
@@ -54,60 +63,63 @@ final class MobImbue {
 		ready.put(definition.id(), now + definition.baseCooldownTicks());
 		CASTING.set(Boolean.TRUE);
 		try {
-			apply(level, wielder, definition.id().getPath(), victim);
+			apply(level, wielder, definition.id().getPath(), victim, SpellImbue.IMBUE_POWER, SpellImbue.IMBUE_DURATION);
 		} finally {
 			CASTING.remove();
 		}
 		return true;
 	}
 
-	private static void apply(final ServerLevel level, final Mob wielder, final String spell, final LivingEntity victim) {
+	/** One mob spell on one foe, at the given share of the spell's power and duration; false for a spell with no mob form. */
+	static boolean apply(final ServerLevel level, final Mob wielder, final String spell, final LivingEntity victim, final double power, final double duration) {
 		switch (spell) {
 			case "spark_shot" -> {
-				hurt(level, wielder, victim, SpellCasting.DAMAGE);
-				victim.igniteForTicks(ticks(SpellCasting.BURN_SECONDS * 20.0F));
+				hurt(level, wielder, victim, power, SpellCasting.DAMAGE);
+				victim.igniteForTicks(ticks(duration, SpellCasting.BURN_SECONDS * 20.0F));
 			}
-			case "frostbind" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(80), 1));
-			case "briar_snare" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(80), 3));
-			case "static_lash" -> hurt(level, wielder, victim, SpellCasting.DAMAGE);
+			case "frostbind" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 1));
+			case "briar_snare" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 3));
+			case "static_lash" -> hurt(level, wielder, victim, power, SpellCasting.DAMAGE);
 			case "tidal_push" -> {
 				Vec3 away = victim.position().subtract(wielder.position());
 				Vec3 horizontal = new Vec3(away.x, 0.0, away.z);
 				if (horizontal.lengthSqr() > 1.0e-6) {
 					horizontal = horizontal.normalize();
-					victim.push(horizontal.x * 1.2 * SpellImbue.IMBUE_POWER, 0.2, horizontal.z * 1.2 * SpellImbue.IMBUE_POWER);
+					victim.push(horizontal.x * 1.2 * power, 0.2, horizontal.z * 1.2 * power);
 					victim.needsSync = true;
 				}
 			}
-			case "wither_seal" -> effect(wielder, victim, new MobEffectInstance(MobEffects.WITHER, ticks(100), 1));
+			case "wither_seal" -> effect(wielder, victim, new MobEffectInstance(MobEffects.WITHER, ticks(duration, 100), 1));
 			case "ice_lance" -> {
-				hurt(level, wielder, victim, MoreSpells.ICE_LANCE_DAMAGE);
-				MoreSpells.freeze(victim, ticks(MoreSpells.ICE_LANCE_FREEZE_TICKS));
+				hurt(level, wielder, victim, power, MoreSpells.ICE_LANCE_DAMAGE);
+				MoreSpells.freeze(victim, ticks(duration, MoreSpells.ICE_LANCE_FREEZE_TICKS));
 			}
 			case "soul_siphon" -> {
 				float before = victim.getHealth();
-				hurt(level, wielder, victim, MoreSpells.SOUL_SIPHON_DAMAGE);
+				hurt(level, wielder, victim, power, MoreSpells.SOUL_SIPHON_DAMAGE);
 				wielder.heal(before - Math.max(0.0F, victim.getHealth()));
 			}
 			case "venom_dart" -> {
-				hurt(level, wielder, victim, MoreSpells.VENOM_DAMAGE);
-				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(MoreSpells.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
+				hurt(level, wielder, victim, power, MoreSpells.VENOM_DAMAGE);
+				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(duration, MoreSpells.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
 			}
 			case "blinding_flash" -> {
-				effect(wielder, victim, new MobEffectInstance(MobEffects.BLINDNESS, ticks(MoreSpells.FLASH_BLIND_TICKS), 0));
-				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(MoreSpells.FLASH_GLOW_TICKS), 0));
+				effect(wielder, victim, new MobEffectInstance(MobEffects.BLINDNESS, ticks(duration, MoreSpells.FLASH_BLIND_TICKS), 0));
+				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(duration, MoreSpells.FLASH_GLOW_TICKS), 0));
 			}
 			case "ember_brand" -> {
-				hurt(level, wielder, victim, MoreSpells.EMBER_DAMAGE);
-				victim.igniteForTicks(ticks(MoreSpells.EMBER_BURN_TICKS));
+				hurt(level, wielder, victim, power, MoreSpells.EMBER_DAMAGE);
+				victim.igniteForTicks(ticks(duration, MoreSpells.EMBER_BURN_TICKS));
 			}
 			default -> {
+				return false;
 			}
 		}
+		return true;
 	}
 
-	private static int ticks(final float baseTicks) {
-		return Math.max(1, Math.round(baseTicks * (float) SpellImbue.IMBUE_DURATION));
+	private static int ticks(final double duration, final float baseTicks) {
+		return Math.max(1, Math.round(baseTicks * (float) duration));
 	}
 
 	private static void effect(final Mob wielder, final LivingEntity victim, final MobEffectInstance effect) {
@@ -115,9 +127,9 @@ final class MobImbue {
 	}
 
 	// Magic from the wielder, so the victim knows who cast it; the melee hit's own cooldown is set aside for it.
-	private static void hurt(final ServerLevel level, final Mob wielder, final LivingEntity victim, final float amount) {
+	private static void hurt(final ServerLevel level, final Mob wielder, final LivingEntity victim, final double power, final float amount) {
 		DamageSource magic = level.damageSources().indirectMagic(wielder, wielder);
 		victim.damageCooldownTime = 0;
-		victim.hurtServer(level, magic, amount * (float) SpellImbue.IMBUE_POWER);
+		victim.hurtServer(level, magic, amount * (float) power);
 	}
 }

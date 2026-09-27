@@ -40,6 +40,7 @@
 		"mod-stella-spells:gravity",
 		"mod-stella-spells:bulwark_hymn",
 		"mod-stella-spells:tailwind",
-		"mod-stella-spells:battle_hymn"
+		"mod-stella-spells:battle_hymn",
+		"mod-stella-spells:summon_skeleton"
 	]
 }

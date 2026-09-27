@@ -50,10 +50,13 @@ public class SpellScrollsGameTest {
 
 	@GameTest
 	public void everySpellHasAScrollOfItsOwn(final GameTestHelper helper) {
-		helper.assertTrue(Spellbooks.SCROLLS.size() == SpellbookCatalog.DEFINITIONS.size(), Spellbooks.SCROLLS.size() + " scrolls for " + SpellbookCatalog.DEFINITIONS.size() + " spells");
+		// Every spell but a book-only one, in catalogue order.
+		List<SpellDefinition> scrolled = SpellbookCatalog.DEFINITIONS.stream().filter(definition -> !Spellbooks.BOOK_ONLY.contains(definition.id())).toList();
+		helper.assertTrue(Spellbooks.SCROLLS.size() == scrolled.size(), Spellbooks.SCROLLS.size() + " scrolls for " + scrolled.size() + " scrolled spells");
 		for (int i = 0; i < Spellbooks.SCROLLS.size(); i++) {
-			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == SpellbookCatalog.DEFINITIONS.get(i), "scroll " + i + " casts the wrong spell");
+			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == scrolled.get(i), "scroll " + i + " casts the wrong spell");
 		}
+		helper.assertTrue(Spellbooks.BOOK_ONLY.stream().noneMatch(id -> net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(Spellbooks.scrollId(id))), "a book-only spell has a scroll");
 		LOG.info("[SPELLTEST] test=everySpellHasAScrollOfItsOwn RESULT scrolls={}", Spellbooks.SCROLLS.size());
 		helper.succeed();
 	}
@@ -147,7 +150,8 @@ public class SpellScrollsGameTest {
 	public void everyBookAndScrollCarriesItsTintWhereTheClientReadsIt(final GameTestHelper helper) {
 		List<String> wrong = new ArrayList<>();
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
-			for (Identifier item : List.of(definition.id(), Spellbooks.scrollId(definition.id()))) {
+			List<Identifier> items = Spellbooks.BOOK_ONLY.contains(definition.id()) ? List.of(definition.id()) : List.of(definition.id(), Spellbooks.scrollId(definition.id()));
+			for (Identifier item : items) {
 				Integer tint = constantTint(item);
 				if (tint == null || tint != definition.tintRgb()) {
 					wrong.add(item + "=" + tint);

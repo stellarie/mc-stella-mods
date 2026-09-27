@@ -16,7 +16,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -37,7 +36,39 @@ public final class SpellCasting {
 	static final float DAMAGE = 3.0f;
 	static final float BURN_SECONDS = 2.0f;
 
+	/** Doublecast: the chance a cast with a Doublecast helmet lands twice. */
+	public static final float DOUBLECAST_CHANCE = 0.5F;
+	private static final ThreadLocal<Boolean> SKIP_COOLDOWN = new ThreadLocal<>();
+	/** How many doublecasts have landed since the server started; a test seam. */
+	static volatile int doublecasts;
+
+	/** Whether this cast lands twice; the test seam can force either side for one caster. */
+	public interface DoublecastRoll {
+		boolean twice(ServerPlayer caster);
+	}
+
+	private static final DoublecastRoll FAIR_DOUBLECAST = caster -> caster.getRandom().nextFloat() < DOUBLECAST_CHANCE;
+	private static volatile DoublecastRoll doublecastRoll = FAIR_DOUBLECAST;
+
 	private SpellCasting() {
+	}
+
+	public static void setDoublecastRoll(final DoublecastRoll roll) {
+		doublecastRoll = roll == null ? FAIR_DOUBLECAST : roll;
+	}
+
+	// The second landing: the target's hurt cooldown from the first is set aside, so both hits count.
+	private static boolean landAgain(final ServerPlayer caster, final SpellDefinition definition, final Mob target, final Vec3 point,
+		final SpellModifiers.CastModifiers modifiers) {
+		if (target != null) {
+			target.damageCooldownTime = 0;
+		}
+		return definition.effect().apply(caster, target, point, modifiers);
+	}
+
+	/** Called by a spell that did something lesser than its full cast, such as calling a summon back: no cooldown follows. */
+	static void skipCooldown() {
+		SKIP_COOLDOWN.set(Boolean.TRUE);
 	}
 
 	public static CastResult cast(final ServerPlayer caster, final SpellbookItem book, final InteractionHand hand) {
@@ -69,7 +100,9 @@ public final class SpellCasting {
 			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
 		}
 
-		if (caster.getCooldowns().isOnCooldown(stack)) {
+		// A summon's recall answers even while the book rests, since calling a servant back is not a new summon.
+		boolean recall = definition.id().equals(SummonSkeleton.ID) && SummonSkeleton.find(caster.level().getServer(), caster.getUUID()) != null;
+		if (caster.getCooldowns().isOnCooldown(stack) && !recall) {
 			log(caster, definition, CastResult.COOLDOWN, target, modifiers, stack);
 			return CastResult.COOLDOWN;
 		}
@@ -80,15 +113,30 @@ public final class SpellCasting {
 		}
 
 		Vec3 departure = caster.position();
+		SKIP_COOLDOWN.remove();
 		if (!definition.effect().apply(caster, target, point, modifiers)) {
+			SKIP_COOLDOWN.remove();
 			log(caster, definition, CastResult.NO_TARGET, target, modifiers, stack);
 			return CastResult.NO_TARGET;
 		}
 
+		boolean skip = SKIP_COOLDOWN.get() != null;
+		SKIP_COOLDOWN.remove();
 		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
-		caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : modifiers.cooldownTicks());
+		if (!skip) {
+			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : modifiers.cooldownTicks());
+		}
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
 		SpellCombos.afterCast(caster, definition, target, point, modifiers);
+		// Doublecast: the same spell, on the same target, once more, combos included; never a second summon.
+		if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD)) && !Spellbooks.BOOK_ONLY.contains(definition.id())
+			&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
+			&& landAgain(caster, definition, target, point, modifiers)) {
+			SpellVisuals.play(caster, definition, target, point, caster.position(), modifiers);
+			SpellCombos.afterCast(caster, definition, target, point, modifiers);
+			doublecasts++;
+			Spellbooks.LOGGER.info("[SPELL] spell_id={} result=DOUBLECAST caster={}", definition.id(), caster.getScoreboardName());
+		}
 		return CastResult.CAST;
 	}
 
@@ -193,7 +241,7 @@ public final class SpellCasting {
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			caster.getBoundingBox().inflate(radius),
-			candidate -> candidate.isAlive() && candidate instanceof Enemy
+			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(caster.position()) <= radius * radius
 		)) {
 			hostile.hurt(caster.level().damageSources().magic(), 6.0f * (float) modifiers.powerMultiplier());
@@ -220,7 +268,7 @@ public final class SpellCasting {
 			primary.getBoundingBox().inflate(radius),
 			candidate -> candidate != primary
 				&& candidate.isAlive()
-				&& candidate instanceof Enemy
+				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(primary.position()) <= radius * radius
 		));
 		candidates.sort(
@@ -252,7 +300,7 @@ public final class SpellCasting {
 			Mob.class,
 			new AABB(point, point).inflate(radius),
 			candidate -> candidate.isAlive()
-				&& candidate instanceof Enemy
+				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
 			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1), caster);
@@ -273,7 +321,7 @@ public final class SpellCasting {
 			Mob.class,
 			new AABB(point, point).inflate(radius),
 			candidate -> candidate.isAlive()
-				&& candidate instanceof Enemy
+				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
 			Vec3 toward = point.subtract(hostile.position());
@@ -325,7 +373,7 @@ public final class SpellCasting {
 			Mob.class,
 			new AABB(point, point).inflate(radius),
 			candidate -> candidate.isAlive()
-				&& candidate instanceof Enemy
+				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
 			hostile.hurt(caster.level().damageSources().magic(), 10.0f * (float) modifiers.powerMultiplier());
@@ -440,7 +488,7 @@ public final class SpellCasting {
 		for (Mob mob : level.getEntitiesOfClass(
 			Mob.class,
 			search,
-			candidate -> candidate.isAlive() && candidate instanceof Enemy
+			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 		)) {
 			Optional<Vec3> hit = mob.getBoundingBox().inflate(mob.getPickRadius()).clip(start, end);
 			if (hit.isEmpty()) {

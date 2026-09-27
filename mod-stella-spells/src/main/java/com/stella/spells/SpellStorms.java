@@ -14,7 +14,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -71,7 +70,7 @@ public final class SpellStorms {
 		List<Mob> targets = new ArrayList<>(level.getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),
-			candidate -> candidate.isAlive() && candidate instanceof Enemy
+			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		));
 		if (targets.isEmpty()) {

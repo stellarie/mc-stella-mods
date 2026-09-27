@@ -138,5 +138,7 @@
 	"item.mod-stella-spells.battle_hymn": "Battle Hymn Spellbook",
 	"item.mod-stella-spells.battle_hymn.effect": "Strength I for 20 seconds on you and every ally within 8 blocks.",
 	"item.mod-stella-spells.battle_hymn_scroll": "Battle Hymn Scroll",
-	"tag.item.mod-stella-spells.spell_focus": "Spell Focus"
+	"tag.item.mod-stella-spells.spell_focus": "Spell Focus",
+	"item.mod-stella-spells.summon_skeleton": "Summon Skeleton Spellbook",
+	"item.mod-stella-spells.summon_skeleton.effect": "Raises a skeleton that serves you. Cast again to call it to your side. Use it to open its gear."
 }
