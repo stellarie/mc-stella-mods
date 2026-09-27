@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/ice_lance",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 10544895
-			}
-		]
+		"model": "mod-stella-spells:item/ice_lance"
 	}
 }

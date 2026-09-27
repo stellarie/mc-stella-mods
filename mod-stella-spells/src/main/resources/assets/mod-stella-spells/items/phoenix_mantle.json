@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/phoenix_mantle",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 16727296
-			}
-		]
+		"model": "mod-stella-spells:item/phoenix_mantle"
 	}
 }

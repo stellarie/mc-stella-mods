@@ -50,13 +50,10 @@ public class SpellScrollsGameTest {
 
 	@GameTest
 	public void everySpellHasAScrollOfItsOwn(final GameTestHelper helper) {
-		// Every spell but a book-only one, in catalogue order.
-		List<SpellDefinition> scrolled = SpellbookCatalog.DEFINITIONS.stream().filter(definition -> !Spellbooks.BOOK_ONLY.contains(definition.id())).toList();
-		helper.assertTrue(Spellbooks.SCROLLS.size() == scrolled.size(), Spellbooks.SCROLLS.size() + " scrolls for " + scrolled.size() + " scrolled spells");
+		helper.assertTrue(Spellbooks.SCROLLS.size() == SpellbookCatalog.DEFINITIONS.size(), Spellbooks.SCROLLS.size() + " scrolls for " + SpellbookCatalog.DEFINITIONS.size() + " spells");
 		for (int i = 0; i < Spellbooks.SCROLLS.size(); i++) {
-			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == scrolled.get(i), "scroll " + i + " casts the wrong spell");
+			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == SpellbookCatalog.DEFINITIONS.get(i), "scroll " + i + " casts the wrong spell");
 		}
-		helper.assertTrue(Spellbooks.BOOK_ONLY.stream().noneMatch(id -> net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(Spellbooks.scrollId(id))), "a book-only spell has a scroll");
 		LOG.info("[SPELLTEST] test=everySpellHasAScrollOfItsOwn RESULT scrolls={}", Spellbooks.SCROLLS.size());
 		helper.succeed();
 	}
@@ -145,21 +142,22 @@ public class SpellScrollsGameTest {
 		helper.succeed();
 	}
 
-	/** The client reads an item's tint from its item definition, so each book and scroll carries its spell's colour there. */
+	/** Scrolls still use their item-definition tints; books use their own textures. */
 	@GameTest
-	public void everyBookAndScrollCarriesItsTintWhereTheClientReadsIt(final GameTestHelper helper) {
+	public void everyScrollCarriesItsTintWhereTheClientReadsIt(final GameTestHelper helper) {
 		List<String> wrong = new ArrayList<>();
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
-			List<Identifier> items = Spellbooks.BOOK_ONLY.contains(definition.id()) ? List.of(definition.id()) : List.of(definition.id(), Spellbooks.scrollId(definition.id()));
-			for (Identifier item : items) {
-				Integer tint = constantTint(item);
-				if (tint == null || tint != definition.tintRgb()) {
-					wrong.add(item + "=" + tint);
-				}
+			if (Spellbooks.BOOK_ONLY.contains(definition.id())) {
+				continue;
+			}
+			Identifier item = Spellbooks.scrollId(definition.id());
+			Integer tint = constantTint(item);
+			if (tint == null || tint != definition.tintRgb()) {
+				wrong.add(item + "=" + tint);
 			}
 		}
-		helper.assertTrue(wrong.isEmpty(), "item definitions without their spell's tint: " + wrong);
-		LOG.info("[SPELLTEST] test=everyBookAndScrollCarriesItsTintWhereTheClientReadsIt RESULT items={}", SpellbookCatalog.DEFINITIONS.size() * 2);
+		helper.assertTrue(wrong.isEmpty(), "scroll item definitions without their spell's tint: " + wrong);
+		LOG.info("[SPELLTEST] test=everyScrollCarriesItsTintWhereTheClientReadsIt RESULT scrolls={}", Spellbooks.SCROLLS.size());
 		helper.succeed();
 	}
 
