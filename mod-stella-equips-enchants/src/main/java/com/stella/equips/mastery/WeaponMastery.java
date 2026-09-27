@@ -101,10 +101,11 @@ public final class WeaponMastery {
 			);
 		}
 		stack.set(DataComponents.ATTRIBUTE_MODIFIERS, builder.build());
-		stack.set(DataComponents.LORE, withMasteryLine(stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY), kills, tier));
+		stack.set(DataComponents.LORE, withMasteryLine(stack, kills, tier));
 	}
 
-	private static ItemLore withMasteryLine(final ItemLore lore, final int kills, final int tier) {
+	private static ItemLore withMasteryLine(final ItemStack stack, final int kills, final int tier) {
+		ItemLore lore = stack.getOrDefault(DataComponents.LORE, ItemLore.EMPTY);
 		List<Component> lines = new ArrayList<>();
 		for (Component line : lore.lines()) {
 			if (!line.getString().startsWith(LORE_PREFIX)) {
@@ -113,6 +114,10 @@ public final class WeaponMastery {
 		}
 		String next = tier < THRESHOLDS.length ? ", " + THRESHOLDS[tier] + " for " + NUMERALS[tier + 1] : "";
 		String name = tier == 0 ? LORE_PREFIX + " -" : LORE_PREFIX + " " + NUMERALS[tier];
+		MasteryPerks.Perk perk = tier >= MasteryPerks.PERK_TIER ? MasteryPerks.perkFor(stack) : null;
+		if (perk != null) {
+			name += ": " + perk.title();
+		}
 		lines.add(Component.literal(name + " (" + kills + " kills" + next + ")")
 			.withStyle(style -> style.withColor(tier == 0 ? ChatFormatting.GRAY : ChatFormatting.GOLD).withItalic(false)));
 		return new ItemLore(lines);

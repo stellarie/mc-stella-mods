@@ -52,6 +52,7 @@
     "mod-stella-equips-enchants:weapon/venom",
     "mod-stella-equips-enchants:weapon/void_brand",
     "mod-stella-equips-enchants:weapon/weightless",
-    "mod-stella-equips-enchants:weapon/wounding"
+    "mod-stella-equips-enchants:weapon/wounding",
+    "mod-stella-equips-enchants:utility/soulbound"
   ]
 }

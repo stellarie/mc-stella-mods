@@ -61,11 +61,24 @@ the intended shape.
 - **Undertow** (trident, level 1). A hit pulls the wielder and the victim together, to their
   midpoint, one block apart. Both move or neither does: a pair that is mounted, already close, or
   blocked by a wall stays where it is.
+- **Soulbound** (any item with durability, level 1, rare). The item stays with you when you die and
+  is back in your inventory when you respawn, even if the server restarts in between. Ordinary items
+  still drop. It is offered at the table and in loot at the catalogue's lowest weight.
 - **Weapon Mastery.** A sword, axe, spear, trident or mace counts the hostiles its wielder kills with
   it in melee. At 10, 50, 150 and 400 kills it reaches Mastery I to IV, and each tier adds half a
   point of attack damage. The tooltip shows the tier, the count and the next threshold. The count and
   the bonus live on the item, so they survive trades, anvils and restarts. Peaceful kills and tools
   never count.
+- **Mastery IV perks.** At Mastery IV each weapon type unlocks a perk on every melee hit, named in
+  its tooltip:
+
+  | Weapon | Perk | Effect |
+  | --- | --- | --- |
+  | Sword | Lifesteal | heals you half a heart |
+  | Axe | Cleave | hostiles within 2.5 blocks of the target take half the hit |
+  | Spear | Momentum | Speed I for 3 seconds |
+  | Trident | Tidecaller | Conduit Power for 5 seconds |
+  | Mace | Aftershock | hostiles within 3 blocks of the target take 3 damage |
 
 ## Player power
 
