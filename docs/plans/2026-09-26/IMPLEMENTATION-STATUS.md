@@ -199,8 +199,10 @@ build may differ, so hash the jar you deploy.
   chunks load, and two Pillagers should join each patrol.
 - M2, M7, M8, M9, M11, V2 and V5 are done (second round), on the decisions recorded above.
   E1–E4 need the Stage 2 world checks.
-- **Integration branches:** `main-villages` and `main-spells` do not exist yet (D-X-1). Their work
-  lives on `feat/mc-stella-villages` and `feat/spellbooks-and-enchantments`.
+- **Integration branches (D-X-1, decided 2026-09-27):** `main-spells` was created at the tip of
+  `feat/spellbooks-and-enchantments`, and `main-villages` at the tip of `feat/mc-stella-villages` plus
+  one docs commit carrying the daily raid text from `main`. Both mod trees match `main` byte for byte.
+  New work branches from these.
 - **V3 manual check:** a raid day in a real world (advance the day with a player in a village) should
   bring one wave and a victory.
 - S2's remaining steps: Sherry's review, the spells README, deployment, and the manual tint checks.

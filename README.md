@@ -8,8 +8,8 @@ Minecraft mods for a private Fabric server.
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
 | `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
-| `mod-stella-spells/` | Spellbooks, spell visuals, combos and spell-enhancing enchantments | `feat/spellbooks-and-enchantments` (`main-spells` is not created yet) |
-| `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `feat/mc-stella-villages` (`main-villages` is not created yet) |
+| `mod-stella-spells/` | Spellbooks, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
+| `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.

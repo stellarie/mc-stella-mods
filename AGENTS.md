@@ -7,11 +7,13 @@ works on one. They are the standard, not a suggestion.
 
 - `main-mobs` is the integration branch for `mod-stella-mobs`.
 - `main-equip-ench` is the integration branch for `mod-stella-equips-enchants`.
+- `main-spells` is the integration branch for `mod-stella-spells`.
+- `main-villages` is the integration branch for `mc-stella-villages`.
 - Every agent creates a work branch from the current tip of the integration
   branch for the mod it changes.
 - Do not branch from `master` or another work branch unless oniichan explicitly
   requests stacked work.
-- Keep each mod's changes on its own integration branch. Do not merge the two
+- Keep each mod's changes on its own integration branch. Do not merge the
   integration branches into each other.
 
 ## Verification standard
