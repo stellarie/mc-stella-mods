@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/return_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8379391
+			}
+		]
+	}
+}

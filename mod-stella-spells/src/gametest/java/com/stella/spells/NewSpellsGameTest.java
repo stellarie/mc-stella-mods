@@ -53,6 +53,20 @@ public class NewSpellsGameTest {
 		helper.succeed();
 	}
 
+	// Outside powder snow a mob thaws two ticks for every tick, so the freeze must hold for its whole stated time.
+	@GameTest(maxTicks = 200)
+	public void iceLanceKeepsTheMobFrozenForItsWholeDuration(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob mob = zombie(helper, 2, 5);
+		cast(helper, caster, "ice_lance");
+		helper.runAfterDelay(MoreSpells.ICE_LANCE_FREEZE_TICKS - 2, () -> {
+			boolean frozen = mob.isFullyFrozen();
+			result("iceLanceKeepsTheMobFrozenForItsWholeDuration", "after=" + (MoreSpells.ICE_LANCE_FREEZE_TICKS - 2) + " frozen=" + frozen + " ticksFrozen=" + mob.getTicksFrozen());
+			helper.assertTrue(frozen, "the mob thawed before " + MoreSpells.ICE_LANCE_FREEZE_TICKS + " ticks: " + mob.getTicksFrozen() + " frozen ticks left");
+			helper.succeed();
+		});
+	}
+
 	@GameTest
 	public void soulSiphonHealsTheCasterByWhatItTakes(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);

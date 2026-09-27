@@ -61,6 +61,40 @@ public final class SpellImbue {
 		void cast(ServerPlayer player, Identifier spell, LivingEntity victim);
 	}
 
+	/** Test seam: each spell a mob's imbued weapon cast, keyed by the wielder. */
+	public interface MobRecorder {
+		void cast(Mob wielder, Identifier spell, LivingEntity victim);
+	}
+
+	/** The spells a mob's imbued weapon casts: every spell that strikes a single foe. */
+	public static final java.util.Set<Identifier> MOB_SPELLS = java.util.Set.of(
+		id("spark_shot"), id("frostbind"), id("briar_snare"), id("static_lash"), id("tidal_push"), id("wither_seal"),
+		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("sapping_hex"), id("skyhook"), id("blinding_flash"),
+		id("smite"), id("ember_brand")
+	);
+	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
+	};
+	private static volatile MobRecorder mobRecorder = SILENT_MOBS;
+
+	private static Identifier id(final String path) {
+		return Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path);
+	}
+
+	public static void setMobRecorder(final MobRecorder newRecorder) {
+		mobRecorder = newRecorder == null ? SILENT_MOBS : newRecorder;
+	}
+
+	/** A new server's tick counter starts again at zero, so no cooldown outlives the server it was set on. */
+	public static void onServerStopping(final net.minecraft.server.MinecraftServer server) {
+		READY_AT.clear();
+		MobImbue.clear();
+	}
+
+	/** Test seam: how many wielders hold a cooldown now. */
+	public static int readyEntries() {
+		return READY_AT.size() + MobImbue.readyEntries();
+	}
+
 	private static final Recorder SILENT = (player, spell, victim) -> {
 	};
 	private static volatile Recorder recorder = SILENT;
@@ -73,6 +107,7 @@ public final class SpellImbue {
 	public static void register() {
 		ItemComponentTooltipProviderRegistry.addAfter(DataComponents.LORE, IMBUED);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(SpellImbue::afterDamage);
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(SpellImbue::onServerStopping);
 	}
 
 	public static void setRecorder(final Recorder newRecorder) {
@@ -101,6 +136,10 @@ public final class SpellImbue {
 	private static void afterDamage(
 		final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked
 	) {
+		if (source.getEntity() instanceof Mob wielder && source.getDirectEntity() == wielder && !blocked && victim != wielder) {
+			mobCast(wielder, victim);
+			return;
+		}
 		if (!(source.getEntity() instanceof ServerPlayer player) || source.getDirectEntity() != player || blocked || victim == player) {
 			return;
 		}
@@ -133,9 +172,13 @@ public final class SpellImbue {
 		}
 
 		// The melee hit just started the victim's hurt cooldown, which would swallow the spell's own damage.
+		// It is set aside for the spell and put back after, so a spell that deals nothing leaves it as it was.
+		int hurtCooldown = victim.damageCooldownTime;
 		victim.damageCooldownTime = 0;
 		Vec3 departure = player.position();
-		if (!definition.effect().apply(player, target, point, modifiers)) {
+		boolean cast = definition.effect().apply(player, target, point, modifiers);
+		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
+		if (!cast) {
 			return;
 		}
 
@@ -146,6 +189,22 @@ public final class SpellImbue {
 			player.getUUID(), definition.id(), victim.getUUID(), IMBUE_POWER, definition.baseCooldownTicks()
 		);
 		recorder.cast(player, definition.id(), victim);
+	}
+
+	private static void mobCast(final Mob wielder, final LivingEntity victim) {
+		ImbuedSpell imbued = wielder.getMainHandItem().get(IMBUED);
+		SpellDefinition definition = imbued == null ? null : SpellbookCatalog.get(imbued.spell());
+		if (definition == null) {
+			return;
+		}
+
+		int hurtCooldown = victim.damageCooldownTime;
+		boolean cast = MobImbue.cast(wielder, definition, victim);
+		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
+		if (cast) {
+			Spellbooks.LOGGER.info("[SPELL] mob_imbued_cast wielder={} spell={} victim={}", wielder.getUUID(), definition.id(), victim.getUUID());
+			mobRecorder.cast(wielder, definition.id(), victim);
+		}
 	}
 
 	// The spot on the far side of the target, level with it, when the wielder fits there.

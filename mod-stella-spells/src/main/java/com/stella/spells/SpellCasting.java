@@ -34,8 +34,8 @@ public final class SpellCasting {
 	static final int RIFTWALK_MAX_DROP_BLOCKS = 4;
 	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
 	public static final int SCROLL_COOLDOWN_TICKS = 20;
-	private static final float DAMAGE = 3.0f;
-	private static final float BURN_SECONDS = 2.0f;
+	static final float DAMAGE = 3.0f;
+	static final float BURN_SECONDS = 2.0f;
 
 	private SpellCasting() {
 	}
