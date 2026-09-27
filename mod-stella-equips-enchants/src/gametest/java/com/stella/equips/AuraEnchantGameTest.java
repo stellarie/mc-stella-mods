@@ -38,6 +38,8 @@ public class AuraEnchantGameTest {
 	private static final int PULSE_WAIT = Auras.PULSE_TICKS * 2 + 5;
 	/** Room around each test wider than a wave, so no test's aura or wave reaches a neighbour's mobs. */
 	private static final int PADDING = 40;
+	/** The spells mod's summon tag, named here because this mod does not depend on that one. */
+	private static final String SUMMONED_TAG = "mod-stella-spells.summoned";
 	private static final Map<UUID, List<List<LivingEntity>>> WAVES = new ConcurrentHashMap<>();
 
 	static {
@@ -61,6 +63,28 @@ public class AuraEnchantGameTest {
 				lost, slow, near.getTicksFrozen(), spared, far.distanceTo(wearer));
 			helper.assertTrue(lost >= Auras.MIST_DAMAGE_PER_LEVEL * 3 && slow == 2, "the near foe lost " + lost + " at slowness " + slow);
 			helper.assertTrue(spared, "the mist reached past its radius or struck a pig");
+			helper.succeed();
+		});
+	}
+
+	/** A skeleton the spells mod summoned for a player is that player's servant, and the wearer's aura spares it. */
+	@GameTest(maxTicks = 100, padding = PADDING)
+	public void mistArmorSparesASummonedServant(final GameTestHelper helper) {
+		// Night, or the skeleton burns in daylight and its lost health reads as the mist's.
+		helper.setTime(18_000L);
+		wearer(helper, "armor/mist_armor", 3);
+		Mob servant = helper.spawnMob(EntityTypes.SKELETON, 3, 2, 3).withNoFreeWill().spawn();
+		servant.setPersistenceRequired();
+		servant.addTag(SUMMONED_TAG);
+		Mob foe = foe(helper, 3, 2, 4);
+		float foeBefore = foe.getHealth();
+		helper.runAfterDelay(PULSE_WAIT, () -> {
+			boolean spared = servant.getHealth() == servant.getMaxHealth() && !servant.hasEffect(MobEffects.SLOWNESS);
+			float foeLost = foeBefore - foe.getHealth();
+			LOG.info("[BEHAVIOR] test=mistArmorSparesASummonedServant RESULT spared={} servantHealth={} foeLost={}",
+				spared, servant.getHealth(), foeLost);
+			helper.assertTrue(foeLost > 0.0F, "the mist never pulsed, so the servant's health proves nothing");
+			helper.assertTrue(spared, "the mist struck the wearer's own summoned servant");
 			helper.succeed();
 		});
 	}
