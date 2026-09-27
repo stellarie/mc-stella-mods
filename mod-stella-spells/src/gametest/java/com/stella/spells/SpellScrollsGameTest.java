@@ -50,12 +50,14 @@ public class SpellScrollsGameTest {
 	private static final Identifier CHEST = Identifier.parse("minecraft:chests/simple_dungeon");
 
 	@GameTest
-	public void everySpellHasAScrollOfItsOwn(final GameTestHelper helper) {
-		helper.assertTrue(Spellbooks.SCROLLS.size() == SpellbookCatalog.DEFINITIONS.size(), Spellbooks.SCROLLS.size() + " scrolls for " + SpellbookCatalog.DEFINITIONS.size() + " spells");
+	public void everyScrollEligibleSpellHasAScrollOfItsOwn(final GameTestHelper helper) {
+		List<SpellDefinition> eligible = SpellbookCatalog.DEFINITIONS.stream()
+			.filter(definition -> !Spellbooks.BOOK_ONLY.contains(definition.id())).toList();
+		helper.assertTrue(Spellbooks.SCROLLS.size() == eligible.size(), Spellbooks.SCROLLS.size() + " scrolls for " + eligible.size() + " eligible spells");
 		for (int i = 0; i < Spellbooks.SCROLLS.size(); i++) {
-			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == SpellbookCatalog.DEFINITIONS.get(i), "scroll " + i + " casts the wrong spell");
+			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == eligible.get(i), "scroll " + i + " casts the wrong spell");
 		}
-		LOG.info("[SPELLTEST] test=everySpellHasAScrollOfItsOwn RESULT scrolls={}", Spellbooks.SCROLLS.size());
+		LOG.info("[SPELLTEST] test=everyScrollEligibleSpellHasAScrollOfItsOwn RESULT scrolls={} bookOnly={}", Spellbooks.SCROLLS.size(), Spellbooks.BOOK_ONLY.size());
 		helper.succeed();
 	}
 
