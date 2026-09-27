@@ -14,7 +14,9 @@
 			"com.stella.villages.BellRallyGameTest",
 			"com.stella.villages.PatrolFriendsGameTest",
 			"com.stella.villages.SmithHardeningGameTest",
-			"com.stella.villages.VillageCoverageGameTest"
+			"com.stella.villages.VillageCoverageGameTest",
+			"com.stella.villages.PatrolDutyGameTest",
+			"com.stella.villages.PatrolLifecycleGameTest"
 		]
 	},
 	"mixins": [

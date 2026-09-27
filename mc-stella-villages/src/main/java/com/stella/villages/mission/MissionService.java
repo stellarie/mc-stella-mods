@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
@@ -54,11 +55,12 @@ public final class MissionService {
 	public static final double NEMESIS_BONUS_HEALTH = 100.0;
 	public static final int NEMESIS_ENRAGE_DURATION = 200;
 
-	private static final List<Identifier> OFFER_TYPES = List.of(
-		Identifier.parse("minecraft:zombie"),
-		Identifier.parse("minecraft:skeleton"),
-		Identifier.parse("minecraft:spider")
-	);
+	/** How many contracts a head offers at once, each a different kind. */
+	public static final int OFFERS_PER_BOARD = 3;
+	/** A dragon out of its own End fight has no fight to fly, so it is the one kind never offered. */
+	public static final Set<Identifier> NEVER_OFFERED = Set.of(Identifier.parse("minecraft:ender_dragon"));
+	/** Test seam: the kinds a board draws from; null draws from every kind with a spawn egg. */
+	private static volatile @Nullable List<Identifier> offerPool;
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Mob> ACTIVE_NEMESES = new ConcurrentHashMap<>();
 	private static final Map<UUID, String> LAST_REJECTIONS = new ConcurrentHashMap<>();
@@ -394,9 +396,39 @@ public final class MissionService {
 				&& member.role().equals(PatrolState.Role.HEAD.name()) && member.alive());
 	}
 
+	/** The kinds a board draws from: the test seam's when one is set, and every spawn-egg kind otherwise. */
+	public static List<Identifier> offerPool() {
+		List<Identifier> pool = offerPool;
+		return pool != null ? pool : defaultOfferPool();
+	}
+
+	/** Every kind of mob with a spawn egg, the dragon aside: a Nemesis can be any of them. */
+	public static List<Identifier> defaultOfferPool() {
+		return BuiltInRegistries.ENTITY_TYPE.stream()
+			.filter(type -> net.minecraft.world.item.SpawnEggItem.byId(type).isPresent())
+			.map(BuiltInRegistries.ENTITY_TYPE::getKey)
+			.filter(id -> !NEVER_OFFERED.contains(id))
+			.sorted()
+			.toList();
+	}
+
+	public static void setOfferPool(final @Nullable List<Identifier> pool) {
+		offerPool = pool == null ? null : List.copyOf(pool);
+	}
+
+	/** Draws a board of different kinds from the pool. */
+	public static List<Identifier> rollOffers(final List<Identifier> pool, final net.minecraft.util.RandomSource random) {
+		List<Identifier> left = new ArrayList<>(pool);
+		List<Identifier> picked = new ArrayList<>(OFFERS_PER_BOARD);
+		while (picked.size() < OFFERS_PER_BOARD && !left.isEmpty()) {
+			picked.add(left.remove(random.nextInt(left.size())));
+		}
+		return List.copyOf(picked);
+	}
+
 	private static List<MissionOffer> createOffers() {
-		List<MissionOffer> result = new ArrayList<>(OFFER_TYPES.size());
-		for (Identifier type : OFFER_TYPES) {
+		List<MissionOffer> result = new ArrayList<>(OFFERS_PER_BOARD);
+		for (Identifier type : rollOffers(offerPool(), net.minecraft.util.RandomSource.create())) {
 			result.add(new MissionOffer(UUID.randomUUID(), type));
 		}
 		return List.copyOf(result);

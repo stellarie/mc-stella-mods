@@ -59,6 +59,10 @@ public final class NemesisMissionGameTest {
 	private static final Map<UUID, List<String>> CHOICES = new ConcurrentHashMap<>();
 
 	static {
+		// These fixtures were written against three known kinds; a board otherwise draws from every kind.
+		com.stella.villages.mission.MissionService.setOfferPool(List.of(
+			Identifier.parse("minecraft:zombie"), Identifier.parse("minecraft:skeleton"), Identifier.parse("minecraft:spider")
+		));
 		MissionBoardMenu.setRecorder(new MissionBoardMenu.Recorder() {
 			@Override
 			public void chose(final ServerPlayer player, final UUID offerId, final boolean accepted, final String reason) {

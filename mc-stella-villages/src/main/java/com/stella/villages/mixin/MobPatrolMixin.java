@@ -41,8 +41,19 @@ public abstract class MobPatrolMixin implements MobPatrolAccess {
 	// A patrol member belongs to its village: it never despawns.
 	@Inject(method = "checkDespawn", at = @At("HEAD"), cancellable = true)
 	private void mcStellaVillages$neverDespawn(final CallbackInfo callbackInfo) {
-		if (com.stella.villages.patrol.PatrolState.isMarked((Mob) (Object) this)) {
+		Mob self = (Mob) (Object) this;
+		// On Peaceful a member leaves as any illager does.
+		if (com.stella.villages.patrol.PatrolState.isMarked(self) && self.level().getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 			callbackInfo.cancel();
+		}
+	}
+
+	// A golem never takes a patrol member as its target.
+	@Inject(method = "canAttack", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$golemsSparePatrols(final net.minecraft.world.entity.LivingEntity target, final org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> callbackInfo) {
+		if ((Object) this instanceof net.minecraft.world.entity.animal.golem.AbstractGolem && target instanceof Mob member
+			&& com.stella.villages.patrol.PatrolState.isMarked(member)) {
+			callbackInfo.setReturnValue(false);
 		}
 	}
 

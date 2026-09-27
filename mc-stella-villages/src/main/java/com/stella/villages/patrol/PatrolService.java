@@ -54,7 +54,16 @@ public final class PatrolService {
 	public static final double PATROL_HEALTH_MULTIPLIER = 1.5;
 	public static final int PATROL_DETECTION_RANGE = 48;
 	public static final int PATROL_RADIUS = 64;
-	public static final int PATROL_FOLLOW_DISTANCE = 16;
+	/** The head keeps within this many blocks of its village's bell. */
+	public static final int HEAD_BELL_RADIUS = 8;
+	/** Every other member walks the whole village, within this many blocks of its centre. */
+	public static final int MEMBER_WANDER_RADIUS = 32;
+	/** How far from the village's centre a new member may be set down. */
+	public static final int MEMBER_SCATTER_RADIUS = 24;
+	/** How far from its anchor a village's bell is looked for. */
+	public static final int BELL_SEARCH_RADIUS = 48;
+	/** Every member carries this tag, so another mod can tell a village patrol without a link to this one. */
+	public static final String PATROL_TAG = "mc-stella-villages.patrol";
 	public static final int PLAYER_THREAT_CLEAR_TICKS = 200;
 	public static final int WITCH_SUPPORT_RANGE = 16;
 	public static final double WITCH_HEAL_THRESHOLD = 0.75;
@@ -68,6 +77,8 @@ public final class PatrolService {
 	/** W021: roles the roster no longer holds; a saved member of one leaves when its chunk loads. */
 	private static final Set<PatrolState.Role> RETIRED_ROLES = EnumSet.of(PatrolState.Role.EVOKER, PatrolState.Role.WITCH);
 	private static final Set<Mob> RETIREMENTS = ConcurrentHashMap.newKeySet();
+	/** Each village's bell, found once per server; the anchor stands in when no bell is found. */
+	private static final Map<UUID, BlockPos> BELLS = new ConcurrentHashMap<>();
 
 	private PatrolService() {
 	}
@@ -81,6 +92,21 @@ public final class PatrolService {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PatrolService::onAfterDamage);
 		ServerLivingEntityEvents.AFTER_DEATH.register(PatrolService::onAfterDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(PatrolService::onLevelTick);
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(PatrolService::onServerStopping);
+	}
+
+	/** A new server's level counters start again at zero, so nothing keyed on them outlives its server. */
+	public static void onServerStopping(final net.minecraft.server.MinecraftServer server) {
+		BELLS.clear();
+		VillageCoverage.clear();
+	}
+
+	/** The village's bell: its meeting point, where the head keeps its watch. */
+	public static BlockPos bellOf(final ServerLevel level, final VillageRecord village) {
+		return BELLS.computeIfAbsent(village.id(), id -> level.getPoiManager()
+			.findClosest(holder -> holder.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING), village.anchor(), BELL_SEARCH_RADIUS, PoiManager.Occupancy.ANY)
+			.map(BlockPos::immutable)
+			.orElse(village.anchor()));
 	}
 
 	public static List<UUID> onChunkLoad(final ServerLevel level, final LevelChunk chunk) {
@@ -98,7 +124,7 @@ public final class PatrolService {
 				villageIds.add(village.id());
 			}
 
-			if (!village.rosterStarted()) {
+			if (!village.rosterStarted() && level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 				spawnRoster(level, data, village);
 			}
 		}
@@ -158,8 +184,13 @@ public final class PatrolService {
 
 	/** A village whose head is gone: members that are gone too leave the roll, and every missing place is filled. */
 	static void refillRoster(final ServerLevel level, final VillageWorldData data, final VillageRecord village) {
+		if (level.getDifficulty() == net.minecraft.world.Difficulty.PEACEFUL) {
+			return;
+		}
+		// A member counts as gone only once its chunk's entities have finished loading and it is not among them.
 		for (MemberRecord member : List.copyOf(village.members())) {
-			if (member.alive() && !ACTIVE_MEMBERS.containsKey(member.id()) && level.isPositionEntityTicking(member.lastPosition())) {
+			if (member.alive() && !ACTIVE_MEMBERS.containsKey(member.id()) && level.isPositionEntityTicking(member.lastPosition())
+				&& level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.containing(member.lastPosition()).pack())) {
 				data.markMemberDead(member.id());
 			}
 		}
@@ -242,7 +273,14 @@ public final class PatrolService {
 			return null;
 		}
 
-		@Nullable BlockPos position = findSpawnPosition(level, village.anchor(), mob);
+		// The head is set down by the bell; every other member somewhere across the village.
+		BlockPos bell = bellOf(level, village);
+		@Nullable BlockPos position = role == PatrolState.Role.HEAD
+			? findSpawnPosition(level, bell, mob)
+			: findScatteredPosition(level, bell, mob);
+		if (position == null && role != PatrolState.Role.HEAD) {
+			position = findSpawnPosition(level, village.anchor(), mob);
+		}
 		if (position == null) {
 			McStellaVillages.LOGGER.info(
 				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} entity={} role={} reason=no_safe_loaded_position",
@@ -257,13 +295,14 @@ public final class PatrolService {
 		PatrolState.attach(mob, village.id(), role);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		mob.addTag(PATROL_TAG);
 		if (role == PatrolState.Role.HEAD) {
-			applyHeadKit(mob);
+			HeadKit.apply(mob);
 		} else if (role == PatrolState.Role.PILLAGER) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
 		}
 		PatrolVisuals.dress(mob, level, role);
-		installGoals(mob, village);
+		installGoals(level, mob, village);
 		if (!level.addFreshEntity(mob)) {
 			McStellaVillages.LOGGER.info(
 				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} entity={} role={} reason=entity_insertion",
@@ -276,6 +315,29 @@ public final class PatrolService {
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		logSpawn(village, mob, role);
 		return mob;
+	}
+
+	// A standable spot at the surface somewhere within the scatter radius of the village's centre, in a loaded chunk.
+	private static @Nullable BlockPos findScatteredPosition(final ServerLevel level, final BlockPos center, final Mob mob) {
+		for (int attempt = 0; attempt < 24; attempt++) {
+			int x = center.getX() + level.getRandom().nextInt(2 * MEMBER_SCATTER_RADIUS + 1) - MEMBER_SCATTER_RADIUS;
+			int z = center.getZ() + level.getRandom().nextInt(2 * MEMBER_SCATTER_RADIUS + 1) - MEMBER_SCATTER_RADIUS;
+			BlockPos column = new BlockPos(x, center.getY(), z);
+			if (!level.hasChunkAt(column) || !level.isPositionEntityTicking(column)) {
+				continue;
+			}
+			BlockPos candidate = new BlockPos(x, level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+			BlockPos support = candidate.below();
+			Vec3 destination = Vec3.atBottomCenterOf(candidate);
+			AABB spawnBox = mob.getBoundingBox().move(destination.subtract(mob.position()));
+			if (Math.abs(candidate.getY() - center.getY()) <= 8 && level.getBlockState(candidate).isAir()
+				&& level.getFluidState(support).isEmpty()
+				&& level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
+				&& level.noCollision(mob, spawnBox)) {
+				return candidate;
+			}
+		}
+		return null;
 	}
 
 	private static @Nullable BlockPos findSpawnPosition(final ServerLevel level, final BlockPos anchor, final Mob mob) {
@@ -322,45 +384,36 @@ public final class PatrolService {
 		}
 	}
 
-	private static void applyHeadKit(final Mob head) {
-		head.setItemSlot(EquipmentSlot.HEAD, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_HELMET));
-		head.setItemSlot(EquipmentSlot.CHEST, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_CHESTPLATE));
-		head.setItemSlot(EquipmentSlot.LEGS, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_LEGGINGS));
-		head.setItemSlot(EquipmentSlot.FEET, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_BOOTS));
-		head.setItemSlot(EquipmentSlot.MAINHAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_AXE));
-		for (EquipmentSlot slot : List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND)) {
-			head.setDropChance(slot, 1.0F);
-		}
-	}
-
-	private static void installGoals(final Mob mob, final VillageRecord village) {
+	private static void installGoals(final ServerLevel level, final Mob mob, final VillageRecord village) {
 		MobPatrolAccess access = (MobPatrolAccess) mob;
 		access.patrolTargetSelector().removeAllGoals(goal -> true);
 		access.patrolTargetSelector().addGoal(1, new PatrolThreatTargetGoal(mob, village.id()));
+		access.patrolTargetSelector().addGoal(2, new PatrolDefendTargetGoal(mob, village.id()));
 		access.patrolTargetSelector().addGoal(
-			2,
+			3,
 			new NearestAttackableTargetGoal<>(
 				mob,
 				Monster.class,
 				10,
 				true,
 				false,
-				(target, level) -> target instanceof Monster
+				(target, targetLevel) -> target instanceof Monster
 					&& (!(target instanceof Mob targetMob) || !PatrolState.isMarked(targetMob))
+					&& !target.entityTags().contains(PatrolDefendTargetGoal.FRIENDLY_PATROL_TAG)
 			)
 		);
 
-		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof PatrolFollowGoal
-			|| goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
+		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
 
+		BlockPos bell = bellOf(level, village);
 		if (PatrolState.role(mob) == PatrolState.Role.HEAD) {
-			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, village.anchor(), 1.0));
+			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, bell, HEAD_BELL_RADIUS, 1.0));
 		} else if (mob instanceof Witch witch) {
 			mob.removeAllGoals(goal -> goal instanceof RangedAttackGoal);
 			mob.getGoalSelector().addGoal(1, new PatrolWitchSupportGoal(witch, village.id()));
-			mob.getGoalSelector().addGoal(5, new PatrolFollowGoal(mob, village.id(), 1.1));
+			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		} else {
-			mob.getGoalSelector().addGoal(5, new PatrolFollowGoal(mob, village.id(), 1.1));
+			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		}
 	}
 
@@ -399,6 +452,11 @@ public final class PatrolService {
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
+		mob.addTag(PATROL_TAG);
+		// A head saved in its older diamond kit is re-armed in netherite when it loads.
+		if (state.role() == PatrolState.Role.HEAD && !HeadKit.wears(mob)) {
+			HeadKit.apply(mob);
+		}
 		// V5: a member saved before the village banner existed is dressed when it loads.
 		PatrolVisuals.dress(mob, level, state.role());
 		if (state.role() == PatrolState.Role.PILLAGER) {
@@ -408,7 +466,7 @@ public final class PatrolService {
 		VillageWorldData data = VillageWorldData.get(level);
 		data.village(state.villageId()).ifPresent(village -> {
 			data.updateMemberPosition(mob.getUUID(), mob.blockPosition());
-			installGoals(mob, village);
+			installGoals(level, mob, village);
 		});
 	}
 
