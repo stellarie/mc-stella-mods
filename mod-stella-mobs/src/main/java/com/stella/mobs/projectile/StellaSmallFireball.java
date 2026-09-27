@@ -13,14 +13,24 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A small fireball whose impact is a non-destructive explosion instead of an ignition. The class exists
  * for one reason: {@code SmallFireball.onHitBlock} writes fire to the ground, and this override never
- * reaches it. The elite blaze's field spread reuses this class as its hook.
+ * reaches it. Every blaze's attack fires one.
  */
 public class StellaSmallFireball extends SmallFireball {
 	public static final float DEFAULT_EXPLOSION_RADIUS = 1.5F;
+	/** A ball that has hit nothing by now burns out, so a miss never lands far away. */
+	public static final int MAX_LIFE_TICKS = 100;
 	private float explosionRadius = DEFAULT_EXPLOSION_RADIUS;
 
 	public StellaSmallFireball(final Level level, final double x, final double y, final double z, final Vec3 direction) {
 		super(level, x, y, z, direction);
+	}
+
+	@Override
+	public void tick() {
+		super.tick();
+		if (!this.level().isClientSide() && this.tickCount > MAX_LIFE_TICKS) {
+			this.discard();
+		}
 	}
 
 	public void setExplosionRadius(final float explosionRadius) {
