@@ -87,6 +87,52 @@ Measured reach rates:
 | M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
 | M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
 
+## Fifth round (2026-09-27): imbued weapons, patrol coverage, blazes and ghasts, damage numbers, twenty spells
+
+| Slice | Branch | Red run | Mutant runs | Gate |
+| --- | --- | --- | --- | --- |
+| Imbued weapons (anvil, half-strength cast on hit, cooldown) | `feat/spell-imbue` into `main-spells` | 8 failed | 9 failed | 112 x 6 (with the review fixes) |
+| Review fixes: Riftwalk floors, storm leak, bolts on copper | `feat/spell-imbue` into `main-spells` | 4 failed | 4 failed | 112 x 6 |
+| Pillager pairs keep vanilla's patrol rules | `fix/chunk-encounters-review` into `main-mobs` | 2 failed | 2 failed | 298 x 6 |
+| Patrols never despawn or fill the mob cap; every village keeps a patrol | `feat/patrol-persistence-coverage` into `main-villages` | 5 failed | 5 mutants, each red | 72 x 6 |
+| Blazes and ghasts | `feat/blaze-ghast` into `main-mobs` | 9 failed | 9 mutants in two runs, all red; lifetime 2 failed | 306 x 6 |
+| Floating damage and heal numbers | `feat/damage-numbers` into `main-equip-ench` | 3 failed | 5 mutants in two runs, all red | 228 x 6 |
+| Twenty more spellbooks | `feat/twenty-spells` into `main-spells` | 33 failed | 5 failed (radius, Sanctuary radius, Purify) | 134 x 6 |
+
+Measured: a boss blaze calls on 10.04% of 100,000 seeded rolls (10% ships). Beats: ordinary blaze
+[40, 40, 40], elite [30, 30, 30], ghast [4, 4, 4, 4, 4].
+
+Decisions this round:
+
+- An imbue costs 5 levels, or 5 emeralds under the equips mod's anvil; it uses up the book, keeps none
+  of its enchantments, and a new imbue replaces the old spell. Riftwalk imbued steps behind the target.
+- The elite blaze's volley and its ground fire spread are gone: every blaze now fires on a steady beat.
+  The elite ghast's burn, Slowness and Poison payload is gone: every ghast leaves Wither clouds.
+- A boss blaze keeps at most three called blazes alive at once, so a long fight cannot fill the sky.
+- A village head missing for a minute brings a new patrol, but only while a player is near.
+- Venom Dart also stings for 2 damage, because an undead mob shrugs off Poison.
+
+Test-harness causes found and fixed:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| A village test saw 9 members, or a bell rallied nobody | Test villages merged: batches reuse ground while village records persist, a distant village sat inside the grid, and thin rows of unpadded tests brought villages within six sections | Forget finished tests' records, put the distant village 128 sections out, pad every village test, and fail loudly on a merge |
+| A ghast never fired in its test | It drifted up until its eyes sat in the barrier ceiling | The test spawns it lower and removes its float goal |
+| A neighbour's mob took one extra damage | A stray shot flew on and left a Wither cloud far away | Shots burn out after 5 seconds; tests discard their shooters |
+| A resisted hit showed a damage number | Fabric's damage event reports damage before Resistance | Numbers show the health actually lost |
+
+Tagged this round: `r02HappyGhastBothAgesRequiresManualTest`. It failed in three separate gates; a baby
+happy ghast sometimes has not flown clear of the creeper in the window.
+
+Manual acceptance items added this round:
+
+- **Spells:** the imbued tooltip line and the imbue at a real anvil; the twenty new books' tints and
+  particles.
+- **Mobs:** blaze blasts in play, a boss blaze's called blazes, ghast Wither clouds; a baby happy ghast
+  flying clear of a lit creeper.
+- **Villages:** a village settled after load gets its patrol; patrols stay after a long absence.
+- **Equips:** the damage numbers rise and fade on screen.
+
 ## Fourth round (2026-09-27): bugs and enhancements
 
 | Slice | Branch | Red run | Mutant runs | Gate |
