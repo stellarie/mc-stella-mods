@@ -33,7 +33,8 @@
 			"com.stella.equips.SoulboundGameTest",
 			"com.stella.equips.MasteryPerksGameTest",
 			"com.stella.equips.DamageNumbersGameTest",
-			"com.stella.equips.RefiningGameTest"
+			"com.stella.equips.RefiningGameTest",
+			"com.stella.equips.AuraEnchantGameTest"
 		]
 	}
 }

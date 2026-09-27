@@ -331,6 +331,50 @@ public class RefiningGameTest {
 		helper.succeed();
 	}
 
+	@GameTest(maxTicks = 120)
+	public void twelveArmourPricksAPlayersAttackerOncePerLandedBlow(final GameTestHelper helper) {
+		ServerPlayer wearer = refiner(helper, ItemStack.EMPTY, 0);
+		wearer.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+		ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
+		Refine.setLevel(plate, Refine.RENDING_LEVEL);
+		wearer.setItemSlot(EquipmentSlot.CHEST, plate);
+		Mob attacker = helper.spawnMob(EntityTypes.PIG, 4, 2, 1).withNoFreeWill().spawn();
+		// A player who has just joined cannot be hurt for three seconds.
+		helper.runAfterDelay(80, () -> {
+			float before = attacker.getHealth();
+			wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 2.0F);
+			float afterLanded = attacker.getHealth();
+			// A second blow of the same weight inside the wearer's invulnerability does not land. The attacker's
+			// own invulnerability is cleared, so a second prick would show.
+			attacker.damageCooldownTime = 0;
+			wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 2.0F);
+			float afterIgnored = attacker.getHealth();
+			LOG.info("[BEHAVIOR] test=twelveArmourPricksAPlayersAttackerOncePerLandedBlow RESULT landed={} ignored={} wearerHealth={}",
+				before - afterLanded, afterLanded - afterIgnored, wearer.getHealth());
+			helper.assertTrue(before - afterLanded == RefineEffects.THORN_DAMAGE, "a landed blow pricked the attacker for " + (before - afterLanded));
+			helper.assertTrue(afterIgnored == afterLanded, "a blow that never landed still pricked the attacker");
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void theShockwaveSparesAVillagePatrol(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		Refine.setLevel(sword, Refine.ASCENDED_LEVEL);
+		ServerPlayer player = refiner(helper, sword, 0);
+		Mob struck = foe(helper, 4, 2, 4);
+		Mob patrol = helper.spawnMob(EntityTypes.PILLAGER, 6, 2, 4).withNoFreeWill().spawn();
+		patrol.addTag("mod-stella-mobs.friendly_patrol");
+		Mob enemy = foe(helper, 4, 2, 6);
+		float patrolBefore = patrol.getHealth();
+		float enemyBefore = enemy.getHealth();
+		struck.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 5.0F);
+		LOG.info("[BEHAVIOR] test=theShockwaveSparesAVillagePatrol RESULT patrolLost={} enemyLost={}", patrolBefore - patrol.getHealth(), enemyBefore - enemy.getHealth());
+		helper.assertTrue(enemy.getHealth() < enemyBefore, "the shockwave struck no enemy, so the case proves nothing");
+		helper.assertTrue(patrol.getHealth() == patrolBefore, "the shockwave struck a village patrol");
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 200)
 	public void fifteenArmourBlessesItsWearer(final GameTestHelper helper) {
 		ServerPlayer blessed = refiner(helper, ItemStack.EMPTY, 0);
