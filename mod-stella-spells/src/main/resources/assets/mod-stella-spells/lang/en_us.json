@@ -70,5 +70,6 @@
 	"item.mod-stella-spells.wither_seal_scroll": "Wither Seal Scroll",
 	"item.mod-stella-spells.time_lock_scroll": "Time Lock Scroll",
 	"item.mod-stella-spells.dragonfall_scroll": "Dragonfall Scroll",
-	"spellbook.mod-stella-spells.scroll": "Single use: the scroll crumbles when the spell lands"
+	"spellbook.mod-stella-spells.scroll": "Single use: the scroll crumbles when the spell lands",
+	"spellbook.mod-stella-spells.imbued": "Imbued: %s, cast on hit at half strength"
 }

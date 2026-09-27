@@ -360,13 +360,18 @@ public final class SpellCasting {
 		}
 
 		Vec3 candidate = Vec3.atBottomCenterOf(feet);
-		AABB moved = caster.getBoundingBox().move(candidate.subtract(caster.position()));
-		if (!level.noCollision(caster, moved)
-			|| !level.getEntities(caster, moved, EntitySelector.ENTITY_STILL_ALIVE).isEmpty()
-			|| containsFluid(level, moved)) {
-			return null;
-		}
-		return candidate;
+		return fits(caster, candidate) ? candidate : null;
+	}
+
+	/** True when the caster can stand at the spot: solid ground, no block, mob or fluid in the way. */
+	static boolean fits(final ServerPlayer caster, final Vec3 spot) {
+		ServerLevel level = caster.level();
+		BlockPos ground = BlockPos.containing(spot.x, spot.y - 0.01, spot.z);
+		AABB moved = caster.getBoundingBox().move(spot.subtract(caster.position()));
+		return isSturdyFloor(level, ground)
+			&& level.noCollision(caster, moved)
+			&& level.getEntities(caster, moved, EntitySelector.ENTITY_STILL_ALIVE).isEmpty()
+			&& !containsFluid(level, moved);
 	}
 
 	private static boolean isSturdyFloor(final ServerLevel level, final BlockPos pos) {
