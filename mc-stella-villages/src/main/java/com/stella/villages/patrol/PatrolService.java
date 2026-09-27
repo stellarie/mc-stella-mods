@@ -103,10 +103,16 @@ public final class PatrolService {
 
 	/** The village's bell: its meeting point, where the head keeps its watch. */
 	public static BlockPos bellOf(final ServerLevel level, final VillageRecord village) {
-		return BELLS.computeIfAbsent(village.id(), id -> level.getPoiManager()
+		BlockPos known = BELLS.get(village.id());
+		if (known != null) {
+			return known;
+		}
+		// Only a bell that was found is kept: a village whose bell has not loaded yet looks again next time.
+		java.util.Optional<BlockPos> bell = level.getPoiManager()
 			.findClosest(holder -> holder.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING), village.anchor(), BELL_SEARCH_RADIUS, PoiManager.Occupancy.ANY)
-			.map(BlockPos::immutable)
-			.orElse(village.anchor()));
+			.map(BlockPos::immutable);
+		bell.ifPresent(found -> BELLS.put(village.id(), found));
+		return bell.orElse(village.anchor());
 	}
 
 	public static List<UUID> onChunkLoad(final ServerLevel level, final LevelChunk chunk) {
@@ -126,6 +132,10 @@ public final class PatrolService {
 
 			if (!village.rosterStarted() && level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 				spawnRoster(level, data, village);
+			} else if (village.rosterStarted() && VillageWitchKit.enabled() && roleCount(village, PatrolState.Role.VILLAGE_WITCH) == 0
+				&& level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
+				// A village settled before the witch existed gets its witch the next time it loads.
+				spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, new ArrayList<>());
 			}
 		}
 
@@ -205,6 +215,7 @@ public final class PatrolService {
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, VillageWitchKit.enabled() ? 1 : 0, spawned);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
 			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
@@ -221,6 +232,7 @@ public final class PatrolService {
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, VillageWitchKit.enabled() ? 1 : 0, spawned);
 
 		if (hasCompleteRoster(village)) {
 			data.markRosterStarted(village);
@@ -275,7 +287,7 @@ public final class PatrolService {
 
 		// The head is set down by the bell; every other member somewhere across the village.
 		BlockPos bell = bellOf(level, village);
-		@Nullable BlockPos position = role == PatrolState.Role.HEAD
+		@Nullable BlockPos position = role == PatrolState.Role.HEAD || role == PatrolState.Role.VILLAGE_WITCH
 			? findSpawnPosition(level, bell, mob)
 			: findScatteredPosition(level, bell, mob);
 		if (position == null && role != PatrolState.Role.HEAD) {
@@ -298,6 +310,8 @@ public final class PatrolService {
 		mob.addTag(PATROL_TAG);
 		if (role == PatrolState.Role.HEAD) {
 			HeadKit.apply(mob);
+		} else if (role == PatrolState.Role.VILLAGE_WITCH) {
+			VillageWitchKit.apply(mob);
 		} else if (role == PatrolState.Role.PILLAGER) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
 		}
@@ -385,6 +399,12 @@ public final class PatrolService {
 	}
 
 	private static void installGoals(final ServerLevel level, final Mob mob, final VillageRecord village) {
+		// The village witch's mind is the spells mod's; this mod only keeps it by the bell.
+		if (PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
+			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal);
+			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), VillageWitchKit.BELL_RADIUS, 1.0));
+			return;
+		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
 		access.patrolTargetSelector().removeAllGoals(goal -> true);
 		access.patrolTargetSelector().addGoal(1, new PatrolThreatTargetGoal(mob, village.id()));

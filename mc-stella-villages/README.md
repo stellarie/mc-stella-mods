@@ -35,17 +35,26 @@ Install the jar on the server and on each client. Everything a player sees uses 
   wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
   pillager pairs.
 - Three contracts at each village head, each for a different kind of mob drawn from every kind with a
-  spawn egg: a Nemesis can be any mob, a cow or a warden alike. The ender dragon is the one kind never
-  offered, since outside its own End fight it has no fight to fly. Right-click the head within 8 blocks to
+  spawn egg: a Nemesis can be any mob, a cow or a warden alike. Never offered: the ender dragon, which
+  has no fight outside its own End, and the mobs that would die on the land a Nemesis stands on (every
+  water mob, the guardians and the tadpole) or melt there (the snow golem). Right-click the head within 8 blocks to
   open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
   board, or tells you why it refused. Each contract creates one persistent Nemesis target, with 100
-  health on top of its type's own, and the map looks like a vanilla filled map.
+  health on top of its type's own, and the map looks like a vanilla filled map. The reward drops only
+  when a player lands the kill; a Nemesis that falls to anything else ends its contract with nothing.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
 - Every patrol member wears a label over its head: "Village Head" on the head and "Village Patrol"
   on the rest. It is green while the village is calm and red while a player provokes the village.
+- With `mod-stella-spells` loaded, every village also has a witch by its bell, labelled "Village
+  Witch", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
+  Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
+  never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
+  a foe, and it keeps within 16 blocks of the bell. The spells mod gives it its mind: no potions, spells
+  at the village's foes, and heals and blessings for its friends. A village settled before the witch
+  existed gets one the next time it loads, and a fallen witch returns with the patrol.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding
