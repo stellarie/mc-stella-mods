@@ -1,6 +1,7 @@
 package com.stella.equips.refine;
 
 import com.stella.equips.StellaEquips;
+import com.stella.equips.enchant.Foes;
 import com.stella.equips.mixin.AbstractArrowAccessor;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -18,7 +19,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 
@@ -46,7 +46,6 @@ public final class RefineEffects {
 
 	public static void register() {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(RefineEffects::afterDamage);
-		ServerLivingEntityEvents.ALLOW_DAMAGE.register(RefineEffects::beforeDamage);
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof AbstractArrow arrow) {
 				strengthen(arrow);
@@ -70,6 +69,7 @@ public final class RefineEffects {
 	}
 
 	private static void afterDamage(final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked) {
+		thorns(victim, source, damage, blocked);
 		if (blocked || SHOCKING.get() != null || !(source.getEntity() instanceof LivingEntity attacker) || attacker == victim
 			|| source.is(DamageTypes.THORNS) || !(victim.level() instanceof ServerLevel level)) {
 			return;
@@ -94,7 +94,7 @@ public final class RefineEffects {
 		SHOCKING.set(Boolean.TRUE);
 		try {
 			List<Mob> around = level.getEntitiesOfClass(Mob.class, victim.getBoundingBox().inflate(SHOCKWAVE_RADIUS),
-				mob -> mob != victim && mob != attacker && mob.isAlive() && mob instanceof Enemy && mob.distanceToSqr(victim) <= SHOCKWAVE_RADIUS * SHOCKWAVE_RADIUS);
+				mob -> mob != victim && Foes.isFoe(attacker, mob) && mob.distanceToSqr(victim) <= SHOCKWAVE_RADIUS * SHOCKWAVE_RADIUS);
 			for (Mob mob : around) {
 				mob.damageCooldownTime = 0;
 				mob.hurtServer(level, level.damageSources().magic(), damage * (float) SHOCKWAVE_SHARE);
@@ -106,17 +106,17 @@ public final class RefineEffects {
 		}
 	}
 
-	// Thorned armour answers a melee blow as it lands; a player's own hurt never reaches the after-damage event.
-	private static boolean beforeDamage(final LivingEntity wearer, final DamageSource source, final float amount) {
-		if (amount <= 0.0F || source.is(DamageTypes.THORNS) || source.is(DamageTypeTags.IS_PROJECTILE)
+	// Thorned armour answers a melee blow that landed: not one a shield stopped, nor one inside the wearer's
+	// invulnerability after a hit, which never reaches this event.
+	private static void thorns(final LivingEntity wearer, final DamageSource source, final float damage, final boolean blocked) {
+		if (blocked || damage <= 0.0F || source.is(DamageTypes.THORNS) || source.is(DamageTypeTags.IS_PROJECTILE)
 			|| !(source.getDirectEntity() instanceof LivingEntity attacker) || attacker == wearer || !(wearer.level() instanceof ServerLevel level)) {
-			return true;
+			return;
 		}
 		int thorned = piecesAtLeast(wearer, Refine.RENDING_LEVEL);
 		if (thorned > 0) {
 			attacker.hurtServer(level, level.damageSources().thorns(wearer), THORN_DAMAGE * thorned);
 		}
-		return true;
 	}
 
 	private static void bless(final MinecraftServer server) {

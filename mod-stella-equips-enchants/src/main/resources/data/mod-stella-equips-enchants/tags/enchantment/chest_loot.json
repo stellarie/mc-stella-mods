@@ -1,8 +1,10 @@
 {
   "values": [
     "mod-stella-equips-enchants:armor/bulwark",
-    "mod-stella-equips-enchants:armor/cloudstep",
     "mod-stella-equips-enchants:armor/deflection",
+    "mod-stella-equips-enchants:armor/mist_armor",
+    "mod-stella-equips-enchants:armor/blaze_armor",
+    "mod-stella-equips-enchants:weapon/waveform",
     "mod-stella-equips-enchants:armor/dread_aura",
     "mod-stella-equips-enchants:armor/ember_guard",
     "mod-stella-equips-enchants:armor/ender_ward",
@@ -51,7 +53,6 @@
     "mod-stella-equips-enchants:weapon/undertow",
     "mod-stella-equips-enchants:weapon/venom",
     "mod-stella-equips-enchants:weapon/void_brand",
-    "mod-stella-equips-enchants:weapon/weightless",
     "mod-stella-equips-enchants:weapon/wounding",
     "mod-stella-equips-enchants:utility/soulbound"
   ]
