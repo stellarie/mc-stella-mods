@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -90,6 +91,8 @@ public class SpellVisualsGameTest {
 			eye, eye.add(player.getLookAngle().scale(SpellCasting.RANGE)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player
 		));
 		helper.assertTrue(hit.getType() == HitResult.Type.BLOCK, "the aimed block is not in the ray");
+		// Chainstorm casts only with a hostile around the spot.
+		helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 6).withNoFreeWill().spawn();
 		List<SpellbookItem> books = books(TargetMode.BLOCK);
 		for (SpellbookItem book : books) {
 			cast(helper, player, book);
@@ -104,13 +107,12 @@ public class SpellVisualsGameTest {
 		SpellTestLog.track(helper, "riftwalkPlaysItsVisualAtDepartureAndArrival");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
-		for (int z = 3; z <= 5; z++) {
+		for (int z = 3; z <= 8; z++) {
 			helper.setBlock(2, 0, z, Blocks.STONE);
 		}
-		helper.setBlock(2, 1, 3, Blocks.STONE);
-		helper.setBlock(2, 2, 3, Blocks.STONE);
 		List<SpellbookItem> books = books(TargetMode.SAFE_TELEPORT);
 		for (SpellbookItem book : books) {
+			player.lookAt(EntityAnchorArgument.Anchor.EYES, helper.absoluteVec(new Vec3(2.5, 1.0, 7.5)));
 			Vec3 departure = player.position();
 			cast(helper, player, book);
 			Vec3 arrival = player.position();
