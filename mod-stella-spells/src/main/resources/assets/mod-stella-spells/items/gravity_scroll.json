@@ -1,11 +1,11 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/smite_scroll",
+		"model": "mod-stella-spells:item/gravity_scroll",
 		"tints": [
 			{
 				"type": "minecraft:constant",
-				"value": 16769126
+				"value": 6180770
 			}
 		]
 	}

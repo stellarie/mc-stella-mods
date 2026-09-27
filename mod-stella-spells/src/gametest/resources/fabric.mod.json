@@ -19,7 +19,12 @@
 			"com.stella.spells.SpellScrollsGameTest",
 			"com.stella.spells.StormAndRiftGameTest",
 			"com.stella.spells.SpellImbueGameTest",
-			"com.stella.spells.NewSpellsGameTest"
+			"com.stella.spells.NewSpellsGameTest",
+			"com.stella.spells.MobImbueGameTest",
+			"com.stella.spells.ScrollOfReturnGameTest",
+			"com.stella.spells.SupportSpellsGameTest",
+			"com.stella.spells.ClueBooksGameTest",
+			"com.stella.spells.ImbueExpansionGameTest"
 		]
 	},
 	"depends": {

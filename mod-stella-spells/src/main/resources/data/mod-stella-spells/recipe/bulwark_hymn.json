@@ -2,5 +2,5 @@
 	"type": "minecraft:crafting_shaped",
 	"pattern": ["M M", " B ", "M M"],
 	"key": {"M": "minecraft:glistering_melon_slice", "B": "minecraft:book"},
-	"result": {"id": "mod-stella-spells:healing_spring", "count": 1}
+	"result": {"id": "mod-stella-spells:bulwark_hymn", "count": 1}
 }

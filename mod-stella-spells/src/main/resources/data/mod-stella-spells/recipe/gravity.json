@@ -2,5 +2,5 @@
 	"type": "minecraft:crafting_shaped",
 	"pattern": ["M M", " B ", "M M"],
 	"key": {"M": "minecraft:phantom_membrane", "B": "minecraft:book"},
-	"result": {"id": "mod-stella-spells:skyhook", "count": 1}
+	"result": {"id": "mod-stella-spells:gravity", "count": 1}
 }

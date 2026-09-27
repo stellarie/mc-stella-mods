@@ -1,6 +1,6 @@
 # mod-stella-spells
 
-Forty tinted spellbooks, each casting one fixed spell, and seven enchantments that change how
+Forty-one tinted spellbooks, each casting one fixed spell, and seven enchantments that change how
 spells behave. Install the mod on the server and on every client; the jar holds the item tints.
 
 ## Using a spellbook
@@ -38,26 +38,27 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Wither Seal | Wither Rose | 18 s | Hostile | Wither II, 5 s |
 | Time Lock | Clock | 20 s | Block | Slowness II, 5 s, on hostiles within 5 blocks of the point |
 | Dragonfall | Dragon's Breath | 25 s | Block | 10 damage to hostiles within 3 blocks of the point |
-| Ice Lance | Packed Ice | 5 s | Hostile | Pierces the mob for 5 damage and freezes it solid for 7 seconds |
+| Ice Lance | Packed Ice | 5 s | Hostile | Hurls a lance through the mob and 16 blocks on: every hostile on its line takes 5 damage and freezes solid for 7 seconds, and the lance leaves a trail of snow mist |
 | Soul Siphon | Soul Soil | 9 s | Hostile | Drains 4 health from the mob and gives it to you |
 | Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 5 seconds |
-| Sapping Hex | Fermented Spider Eye | 8 s | Hostile | Saps the mob with Weakness II for 8 seconds |
-| Skyhook | Phantom Membrane | 8 s | Hostile | Hooks the mob into the air with Levitation II for 2 seconds |
+| Sapping Hex | Fermented Spider Eye | 12 s | Self | Weakness II on every hostile within 6 blocks and Strength II on you, 3 seconds for each hostile hexed, up to 15 |
 | Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 5 seconds and makes it glow for 10 |
-| Smite | Glowstone Dust | 10 s | Hostile | Calls a bolt from the sky onto the mob for 8 damage |
 | Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage and sets it burning for 10 seconds |
 | Quicksilver | Sugar | 15 s | Self | Gives you Speed II for 20 seconds |
 | Tide Lungs | Pufferfish | 15 s | Self | Lets you breathe underwater for 60 seconds and swim fast for 20 |
 | Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 10 seconds |
 | Haste Rune | Redstone | 15 s | Self | Gives you Haste II for 60 seconds |
-| Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 seconds |
+| Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 seconds; your first blow breaks the veil, deals double damage and stops its victim dead for 2 seconds |
 | Sanctuary | Honeycomb | 20 s | Self | Heals you by 6, and every other player within 6 blocks by 4 |
-| Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you |
+| Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you and each player within 6 blocks |
 | Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 3 seconds |
 | Earthspike | Pointed Dripstone | 12 s | Block | Throws hostiles within 3 blocks of the spot into the air for 4 damage |
 | Plague Cloud | Poisonous Potato | 15 s | Block | Leaves a cloud of Poison at the spot for 5 seconds |
-| Healing Spring | Glistering Melon Slice | 20 s | Block | Leaves a cloud of Regeneration II at the spot for 6 seconds |
-| Flame Ring | Fire Charge | 12 s | Block | Sets hostiles within 4 blocks of the spot burning for 6 seconds, for 3 damage |
+| Flame Ring | Fire Charge | 20 s | Self | A burning aura for 10 seconds: each second, hostiles within 3 blocks take 3 damage and catch fire |
+| Gravity | Phantom Membrane | 12 s | Self | Hostiles within 6 blocks are slowed and jump only half as high for 8 seconds |
+| Bulwark Hymn | Glistering Melon Slice | 20 s | Self | Absorption II for 20 seconds on you and every ally within 8 blocks: players, villagers, golems and tamed pets |
+| Tailwind | Rabbit's Foot | 15 s | Self | Speed II for 30 seconds on you and every ally within 8 blocks |
+| Battle Hymn | Glowstone Dust | 20 s | Self | Strength I for 20 seconds on you and every ally within 8 blocks |
 
 Area and chain spells affect only mobs that are hostile by nature (`Enemy`); they never hit players,
 pets, or villagers.
@@ -75,17 +76,42 @@ Every successful cast draws its own particles, sent from the server to players w
 
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
-## Imbued weapons
+## Imbued weapons, arrows and chestplates
 
-Put a weapon on the left of an anvil and a spellbook on the right to imbue the weapon. A weapon is
-any item with its own attack damage: swords, axes, tridents, maces and the like. The imbue costs
-5 levels, or 5 emeralds when `mod-stella-equips-enchants` runs its emerald anvil. The book is used
-up, and its own enchantments do not carry over. Imbuing again replaces the spell.
+Put a weapon, a stack of arrows (any kind) or a chestplate on the left of an anvil and a spellbook on
+the right to imbue it. A weapon is any item with its own attack damage: swords, axes, tridents, maces
+and the like. The book is used up, and its own enchantments do not carry over. Tide Lungs cannot be
+imbued: it is a breath held underwater, not a blow.
 
-Each melee hit with the imbued weapon casts its spell at half power and half duration. The spell
-then waits out the book's base cooldown before the weapon casts it again. A hostile spell lands on
-the target, an area spell lands around it, and a self spell acts on the wielder. Riftwalk steps
-behind the target. Arrows never cast the spell. The weapon's tooltip names its spell.
+A piece can hold several spells. Each imbue adds one, at five times the price of the last: 5, then 25,
+then 125, and so on, in levels, or in emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
+
+- **Weapon:** each melee hit casts every imbued spell that is ready, at half power and half duration.
+  Right-click a hostile with the weapon to cast every ready spell at the book's full strength instead.
+  A sword, axe or mace shows the spell's cooldown in the hotbar.
+- **Arrows:** an imbued arrow casts its spells on whatever it strikes, at half power.
+- **Chestplate:** when something strikes the wearer, the chestplate casts its spells on the attacker, at
+  half power.
+
+A hostile spell lands on the target, an area spell around it, and a self spell on the wielder. Riftwalk
+steps behind the target. Each spell then waits out its own cooldown. Potency, Precision and Quickening
+can be put on a weapon at the anvil, and with the helmet and chestplate enchantments they shape the
+weapon's spells as they shape a book's. The tooltip names every imbued spell.
+
+A mob that wields an imbued weapon casts its spell too, when the spell strikes a single foe.
+
+## Scroll of Return
+
+One paper, one ender pearl and one feather make 2 Scrolls of Return. Read one and it carries you to
+your respawn point in the Overworld: your bed, or the world spawn if you have none, from any dimension.
+It never spends a respawn anchor's charge, crumbles when read, and rests 5 seconds before the next.
+
+## Clue books
+
+Three vanilla chests in ten hold a tattered clue book (measured: 29.96% of 100,000 seeded chests). Each
+is written by one of eight spellbinders, from Archmage Pip to the Cat (dictated), and teaches one
+spell's book and scroll recipes with the material by name, what the spell does, and a postscript. Now
+and then the note is about the Scroll of Return instead.
 
 ## Spell scrolls
 

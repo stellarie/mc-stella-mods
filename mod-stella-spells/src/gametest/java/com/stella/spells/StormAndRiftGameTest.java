@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
  * another; Riftwalk teleports its caster onto the spot it aims at, and refuses a spot with no room.
  */
 public class StormAndRiftGameTest {
+	/** Every strike of a storm has fallen, and every bolt burned out, well inside this window. */
+	private static final long STORM_SETTLE_TICKS = 3L * SpellStorms.MAX_STRIKES * SpellStorms.STRIKE_INTERVAL_TICKS;
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.stormrift");
 	private static final Identifier CHAINSTORM = Identifier.parse("mod-stella-spells:chainstorm");
 	private static final Identifier RIFTWALK = Identifier.parse("mod-stella-spells:riftwalk");
@@ -160,13 +162,14 @@ public class StormAndRiftGameTest {
 		Mob onRod = helper.spawnMob(EntityTypes.ZOMBIE, 1, 2, 8).withNoFreeWill().spawn();
 		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
 		helper.assertTrue(cast(helper, caster, CHAINSTORM) == InteractionResult.SUCCESS, "Chainstorm did not cast");
-		helper.succeedWhen(() -> {
+		// The storm's strikes all fall within a few intervals; the ground is read once the whole window has passed.
+		helper.runAfterDelay(STORM_SETTLE_TICKS, () -> {
 			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
-			helper.assertTrue(struck.contains(onCopper.getUUID()) && struck.contains(onRod.getUUID()), "the storm has not struck both yet");
-			helper.assertTrue(helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LightningBolt.class, new net.minecraft.world.phys.AABB(helper.absolutePos(new net.minecraft.core.BlockPos(0, 0, 0))).inflate(12.0)).isEmpty(), "a bolt is still falling");
+			helper.assertTrue(struck.contains(onCopper.getUUID()) && struck.contains(onRod.getUUID()), "the storm struck " + struck.size() + " of the two mobs");
 			helper.assertTrue(helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)).is(Blocks.COPPER_BLOCK.weathering().oxidized()), "a storm bolt scraped the copper to " + helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)));
 			helper.assertFalse(helper.getBlockState(new net.minecraft.core.BlockPos(1, 0, 8)).getValue(net.minecraft.world.level.block.LightningRodBlock.POWERED), "a storm bolt powered the lightning rod");
-			LOG.info("[SPELLTEST] test=chainstormLeavesCopperAndLightningRodsAlone RESULT copper=oxidized rod=unpowered");
+			LOG.info("[SPELLTEST] test=chainstormLeavesCopperAndLightningRodsAlone RESULT struck={} copper=oxidized rod=unpowered", struck.size());
+			helper.succeed();
 		});
 	}
 

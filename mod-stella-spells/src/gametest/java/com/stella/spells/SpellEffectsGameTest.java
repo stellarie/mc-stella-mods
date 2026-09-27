@@ -65,10 +65,8 @@ public class SpellEffectsGameTest {
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:ice_lance"), 100),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:soul_siphon"), 180),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:venom_dart"), 100),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:sapping_hex"), 160),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:skyhook"), 160),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:sapping_hex"), 240),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:blinding_flash"), 140),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:smite"), 200),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:ember_brand"), 120),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:quicksilver"), 300),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:tide_lungs"), 300),
@@ -80,8 +78,11 @@ public class SpellEffectsGameTest {
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:frost_nova"), 300),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:earthspike"), 240),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:plague_cloud"), 300),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:healing_spring"), 400),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:flame_ring"), 240)
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:flame_ring"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:gravity"), 240),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:bulwark_hymn"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:tailwind"), 300),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:battle_hymn"), 400)
 	);
 
 	@GameTest

@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/tailwind_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 12251895
+			}
+		]
+	}
+}
