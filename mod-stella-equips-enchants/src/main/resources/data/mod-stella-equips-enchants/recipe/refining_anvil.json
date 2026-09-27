@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["AAA", "AAA", "AAA"],
+	"key": {"A": "minecraft:anvil"},
+	"result": {"id": "mod-stella-equips-enchants:refining_anvil", "count": 1}
+}

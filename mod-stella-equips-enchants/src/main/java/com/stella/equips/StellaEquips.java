@@ -39,6 +39,9 @@ public class StellaEquips implements ModInitializer {
 		WeaponMastery.register();
 		MasteryPerks.register();
 		Soulbound.register();
+		com.stella.equips.refine.RefineBlocks.register();
+		com.stella.equips.refine.RefineStation.register();
+		com.stella.equips.refine.RefineEffects.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {

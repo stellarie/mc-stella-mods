@@ -3,6 +3,7 @@
 	"package": "com.stella.equips.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"AbstractArrowAccessor",
 		"AnvilMenuMixin",
 		"EnchantmentMenuMixin",
 		"ItemStackTooltipMixin",
