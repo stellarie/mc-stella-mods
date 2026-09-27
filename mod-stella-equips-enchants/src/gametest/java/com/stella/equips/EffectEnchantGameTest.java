@@ -69,29 +69,21 @@ public class EffectEnchantGameTest {
 	private static final int YIELD_BREAKS = 60;
 	private static final int FUNCTION_WAIT_TICKS = 60;
 	private static final int SHOT_WAIT_TICKS = 25;
-	/** Cloudstep grants Jump Boost 3, which is 0.3 of jump power, about two blocks. */
-	private static final int CLOUDSTEP_JUMP_AMPLIFIER = 2;
-	/** Both effects last five seconds, so they fade within 100 ticks of the boots coming off. */
-	private static final int CLOUDSTEP_EFFECT_TICKS = 100;
-	/** The function refreshes both effects every 20 ticks while the boots are worn. */
-	private static final int CLOUDSTEP_GATE_TICKS = 20;
-	private static final int CLOUDSTEP_WARMUP_TICKS = 60;
 	/** The effect command counts seconds, not ticks. */
-	private static final int TICKS_PER_SECOND = 20;
-	private static final int CATALOGUE_SIZE = 73;
+	private static final int CATALOGUE_SIZE = 74;
 
 	private static final List<String> NEW_PATHS = List.of(
-		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",
+		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall",
 		"weapon/void_brand", "weapon/meteor", "weapon/impale", "weapon/undertow",
 		"armor/ender_ward", "armor/ember_guard", "armor/rime_guard", "armor/venom_guard", "armor/dread_aura",
-		"armor/cloudstep", "armor/deflection",
+		"armor/deflection", "armor/mist_armor", "armor/blaze_armor", "weapon/waveform",
 		"crossbow/railgun",
 		"tool/ore_mender", "tool/enchanted_yield", "weapon/tempo"
 	);
 	private static final Set<String> CUT_PATHS = Set.of(
 		"weapon/cleave", "weapon/returning", "armor/featherfall", "armor/asbestos", "armor/warded", "bow/bodkin",
 		"tool/anglers_fortune", "crossbow/quickdraw", "armor/deepdiver", "weapon/arachnids_bane", "bow/rangers_mark",
-		"weapon/slam", "tool/veinminer"
+		"weapon/slam", "tool/veinminer", "weapon/weightless", "armor/cloudstep"
 	);
 
 	@GameTest
@@ -210,23 +202,6 @@ public class EffectEnchantGameTest {
 		helper.assertTrue(burning, "Ashfall left the victim unburnt");
 		helper.assertTrue(lost > 0.0F, "Ashfall landed no freeze damage on the same victim");
 		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void weightlessLiftsTheVictim(final GameTestHelper helper) {
-		Mob victim = victim(helper);
-		hit(helper, "weapon/weightless", 5, victim);
-		boolean levitating = victim.hasEffect(MobEffects.LEVITATION);
-		float startY = (float) victim.getY();
-		helper.runAfterDelay(20, () -> {
-			float lifted = (float) (victim.getY() - startY);
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=weightless RESULT levitating={} lifted={}", levitating, lifted
-			);
-			helper.assertTrue(levitating, "Weightless applied no levitation");
-			helper.assertTrue(lifted > 0.0F, "the victim did not rise: " + lifted);
-			helper.succeed();
-		});
 	}
 
 	@GameTest
@@ -469,100 +444,6 @@ public class EffectEnchantGameTest {
 			helper.assertTrue(!facingSlowed, "the enemy facing the wearer was slowed as well");
 			helper.succeed();
 		});
-	}
-
-	@GameTest(maxTicks = 200)
-	public void cloudstepKeepsJumpAndSlowFallingOnAStandingWearer(final GameTestHelper helper) {
-		Mob wearer = cloudstepWearer(helper);
-		int[] ticks = {0};
-		int[] shortest = {Integer.MAX_VALUE};
-		int[] amplifier = {-1};
-		helper.onEachTick(() -> {
-			ticks[0]++;
-			if (ticks[0] > CLOUDSTEP_WARMUP_TICKS / 2 && ticks[0] <= CLOUDSTEP_WARMUP_TICKS) {
-				int jump = wearer.hasEffect(MobEffects.JUMP_BOOST) ? wearer.getEffect(MobEffects.JUMP_BOOST).getDuration() : 0;
-				int fall = wearer.hasEffect(MobEffects.SLOW_FALLING) ? wearer.getEffect(MobEffects.SLOW_FALLING).getDuration() : 0;
-				shortest[0] = Math.min(shortest[0], Math.min(jump, fall));
-				amplifier[0] = wearer.hasEffect(MobEffects.JUMP_BOOST) ? wearer.getEffect(MobEffects.JUMP_BOOST).getAmplifier() : -1;
-			}
-		});
-		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS + 1, () -> {
-			int floor = CLOUDSTEP_EFFECT_TICKS - CLOUDSTEP_GATE_TICKS - 1;
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=cloudstepWorn RESULT shortestRemaining={} floor={} jumpAmplifier={} sneaking={}",
-				shortest[0], floor, amplifier[0], wearer.isShiftKeyDown()
-			);
-			wearer.discard();
-			helper.assertTrue(
-				shortest[0] >= floor && amplifier[0] == CLOUDSTEP_JUMP_AMPLIFIER,
-				"a standing wearer's shortest remaining effect was " + shortest[0] + " ticks (floor " + floor
-					+ ") at jump amplifier " + amplifier[0]
-			);
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = 200)
-	public void cloudstepEffectsFadeWithinFiveSecondsOfTheBootsComingOff(final GameTestHelper helper) {
-		Mob wearer = cloudstepWearer(helper);
-		int[] ticks = {0};
-		int[] removedAt = {-1};
-		int[] goneAt = {-1};
-		boolean[] heldAtRemoval = {false};
-		helper.onEachTick(() -> {
-			ticks[0]++;
-			boolean held = wearer.hasEffect(MobEffects.JUMP_BOOST) || wearer.hasEffect(MobEffects.SLOW_FALLING);
-			if (removedAt[0] >= 0 && goneAt[0] < 0 && !held) {
-				goneAt[0] = ticks[0];
-			}
-		});
-		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS, () -> {
-			heldAtRemoval[0] = wearer.hasEffect(MobEffects.JUMP_BOOST) && wearer.hasEffect(MobEffects.SLOW_FALLING);
-			removedAt[0] = ticks[0];
-			wearer.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
-		});
-		helper.runAfterDelay(CLOUDSTEP_WARMUP_TICKS + CLOUDSTEP_EFFECT_TICKS + CLOUDSTEP_GATE_TICKS, () -> {
-			int fade = goneAt[0] < 0 ? -1 : goneAt[0] - removedAt[0];
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=cloudstepFade RESULT heldAtRemoval={} removedAt={} goneAt={} fadeTicks={} limit={}",
-				heldAtRemoval[0], removedAt[0], goneAt[0], fade, CLOUDSTEP_EFFECT_TICKS
-			);
-			wearer.discard();
-			helper.assertTrue(
-				heldAtRemoval[0] && fade >= 0 && fade <= CLOUDSTEP_EFFECT_TICKS,
-				"the effects were held at removal " + heldAtRemoval[0] + " and faded after " + fade + " ticks"
-			);
-			helper.succeed();
-		});
-	}
-
-	private static Mob cloudstepWearer(final GameTestHelper helper) {
-		Mob wearer = helper.spawn(EntityTypes.HUSK, new BlockPos(1, 3, 1));
-		wearer.setNoAi(true);
-		wearer.setPersistenceRequired();
-		wearer.setItemSlot(EquipmentSlot.FEET, enchanted(helper, Items.DIAMOND_BOOTS, "armor/cloudstep", 3));
-		return wearer;
-	}
-
-	/** The shipped function must name the two new effects and no longer grant levitation. */
-	@GameTest
-	public void cloudstepFunctionGrantsJumpAndGravityWithoutLevitation(final GameTestHelper helper) {
-		String text = resource("data/mod-stella-equips-enchants/function/cloudstep.mcfunction");
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=cloudstepFunction RESULT hasJumpBoost={} hasSlowFalling={} hasLevitation={} "
-				+ "effectTicks={} amplifier={} bytes={}",
-			text.contains("jump_boost"), text.contains("slow_falling"), text.contains("levitation"),
-			CLOUDSTEP_EFFECT_TICKS, CLOUDSTEP_JUMP_AMPLIFIER, text.length()
-		);
-		helper.assertTrue(text.contains("jump_boost"), "the function grants no jump boost");
-		helper.assertTrue(text.contains("slow_falling"), "the function grants no slow falling");
-		helper.assertTrue(!text.contains("levitation"), "the function still grants levitation");
-		helper.assertTrue(
-			text.contains("effect give @s minecraft:jump_boost " + CLOUDSTEP_EFFECT_TICKS / TICKS_PER_SECOND + " "
-				+ CLOUDSTEP_JUMP_AMPLIFIER + " true"),
-			"the jump effect is not " + CLOUDSTEP_EFFECT_TICKS + " ticks at amplifier " + CLOUDSTEP_JUMP_AMPLIFIER
-		);
-		helper.succeed();
 	}
 
 	private static String resource(final String path) {

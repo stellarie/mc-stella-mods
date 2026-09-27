@@ -26,6 +26,8 @@ public class StellaEquips implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		Deflection.register();
+		com.stella.equips.enchant.Auras.register();
+		com.stella.equips.enchant.Waveform.register();
 		OreRegeneration.register();
 		OreMender.register();
 		UndertowPull.register();

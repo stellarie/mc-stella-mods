@@ -54,6 +54,17 @@ Emeralds are the enchanting currency, so a villager hall becomes the engine of
 enchanting and a player with no emerald supply cannot enchant at all. That is
 the intended shape.
 
+## Chestplate auras
+
+- **Mist Armor** (levels 1 to 3). Once a second, enemies within 4 blocks take 1 freeze damage per
+  level, get Slowness (level I to III) for 1.5 seconds, and frost over.
+- **Blaze Armor** (levels 1 to 3). Once a second, enemies within 3 blocks take a heart of fire
+  damage, with a 10% chance per level to catch fire for 3 seconds. The wearer has Fire Resistance.
+
+Both auras pulse for players only, and spare village patrols and the village witch.
+Weightless and Cloudstep are gone from the catalogue, so nothing this mod gives out levitates a
+target.
+
 ## Weapon enchantments and mastery
 
 - **Tempo** (any weapon, level 1). A direct hit slows the victim for 2 seconds and, when the attacker
@@ -61,6 +72,9 @@ the intended shape.
 - **Undertow** (trident, level 1). A hit pulls the wielder and the victim together, to their
   midpoint, one block apart. Both move or neither does: a pair that is mounted, already close, or
   blocked by a wall stays where it is.
+- **Waveform** (any weapon, levels 1 to 3). A melee hit sends a wave out from you: every enemy
+  within 12, 16 or 20 blocks gets Slowness II for 3 seconds and is thrown back. It then rests for 3
+  seconds. Village patrols and the village witch are never struck.
 - **Soulbound** (any item with durability, level 1, rare). The item stays with you when you die and
   is back in your inventory when you respawn, even if the server restarts in between. Ordinary items
   still drop. It is offered at the table and in loot at the catalogue's lowest weight.
@@ -196,8 +210,8 @@ a village weaponsmith, toolsmith or armorer with the material in your off hand.
 | Level | Weapon | Armour (each piece) |
 |---|---|---|
 | +10 | Searing: hits set the target alight for 3 s | Vigor: +2 max health |
-| +12 | Rending: hits also inflict Wither for 3 s | Thorned: melee attackers take 2 damage |
-| +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks | Blessed: a player heals 1 health every 5 s |
+| +12 | Rending: hits also inflict Wither for 3 s | Thorned: a melee blow that lands pricks the attacker for 2 damage |
+| +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks (never village patrols) | Blessed: a player heals 1 health every 5 s |
 
 Each effect keeps working at the higher levels, so a +15 weapon sears, rends and sends a shockwave.
 
@@ -209,7 +223,7 @@ Each effect keeps working at the higher levels, so a +15 weapon sears, rends and
 
 The game tests run a headless server. They check the test-only fixture enchantment
 `mod-stella-equips-enchants-test-mod-stella-equips-enchants:test_marker`, its cost
-fields, the clamped anvil cost, the 71 catalogue enchantments, threat scaling, the
+fields, the clamped anvil cost, the 74 catalogue enchantments, threat scaling, the
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
 saved before this change, and the readout: its text, rank tags, and colors, its
 radius, its cap, its band updates, its removal on death, on range, and on
