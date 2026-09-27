@@ -7,8 +7,8 @@ Minecraft mods for a private Fabric server.
 | Directory | Purpose | Integration branch |
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
-| `mod-stella-equips-enchants/` | Enchantments, player power, and mob readouts | `main-equip-ench` |
-| `mod-stella-spells/` | Spellbooks, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
+| `mod-stella-equips-enchants/` | Enchantments, player power, mob readouts and floating damage numbers | `main-equip-ench` |
+| `mod-stella-spells/` | Forty spellbooks, scrolls, imbued weapons, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
@@ -42,6 +42,11 @@ wants.
 - **Witches.** They throw a random harmful potion every 3 seconds, support a nearby ally every
   2 seconds, and blink away when cornered.
 - **Elite zombies.** Their hits bring Hunger, Wither and Poison.
+- **Blazes.** Every blaze fires one fireball every 2 seconds, an elite every 1.5, and each ball bursts in
+  an explosion that hurts bodies but never the ground. A boss blaze calls an ordinary blaze on one
+  attack in ten, with at most three alive at once.
+- **Ghasts.** A ghast fires five shots a second. A shot never explodes: it leaves a small cloud of
+  Wither where it lands, Wither II from an elite. Stray shots burn out after 5 seconds.
 - **Chunk encounters.** Each overworld chunk rolls once, when a player first comes 3 to 5 chunks from
   it. Inside the spawn safe zone, 1% of chunks hold one elite husk, creeper or witch, which stays.
   Outside it, 20% of chunks hold a pair of patrolling Pillagers with no banner captain, so killing
@@ -115,7 +120,7 @@ On the first server start the mod writes
 
 ## mod-stella-spells
 
-`mod-stella-spells` adds 20 tinted spellbooks. Each book casts one fixed spell when the holder uses it. The first release has two power tiers with ten books in each tier. Successful casts set a spell-specific cooldown and do not consume the book.
+`mod-stella-spells` adds 40 tinted spellbooks. Each book casts one fixed spell when the holder uses it. A weapon and a spellbook in an anvil make an imbued weapon, which casts the book's spell at half strength on each melee hit, then waits out the book's cooldown. Successful casts set a spell-specific cooldown and do not consume the book.
 
 Chainstorm is aimed at a spot: lightning falls on up to 5 hostiles within 5 blocks of it, one strike
 every 6 ticks. Riftwalk teleports you onto the block you look at, up to 16 blocks away, or in front
