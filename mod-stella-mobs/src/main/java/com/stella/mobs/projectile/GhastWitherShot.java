@@ -30,6 +30,12 @@ public class GhastWitherShot extends LargeFireball {
 		}
 	}
 
+	// A shot saved in flight would reload as a vanilla fireball that explodes, so none is saved.
+	@Override
+	public boolean shouldBeSaved() {
+		return false;
+	}
+
 	public GhastWitherShot(final Level level, final LivingEntity owner, final Vec3 direction, final int witherAmplifier) {
 		super(level, owner, direction, 0);
 		this.witherAmplifier = witherAmplifier;

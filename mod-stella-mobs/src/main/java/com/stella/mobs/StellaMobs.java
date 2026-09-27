@@ -77,6 +77,8 @@ public class StellaMobs implements ModInitializer {
 		EvokerStorm.register();
 		PiglinWarCall.register();
 		ChunkEncounters.register();
+		com.stella.mobs.behavior.FriendlyPatrol.register();
+		com.stella.mobs.behavior.BlazeAttackGoal.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);

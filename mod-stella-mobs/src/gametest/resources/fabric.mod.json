@@ -21,6 +21,7 @@
 			"com.stella.mobs.GearRateGameTest",
 			"com.stella.mobs.GearRollGameTest",
 			"com.stella.mobs.GhastEliteGameTest",
+			"com.stella.mobs.FriendlyPatrolGameTest",
 			"com.stella.mobs.GolemEliteGameTest",
 			"com.stella.mobs.GuardianEliteGameTest",
 			"com.stella.mobs.MobHarnessGameTest",
