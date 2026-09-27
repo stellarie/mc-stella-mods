@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:flint"
+	],
+	"result": {
+		"id": "mod-stella-spells:spark_shot_scroll",
+		"count": 2
+	}
+}

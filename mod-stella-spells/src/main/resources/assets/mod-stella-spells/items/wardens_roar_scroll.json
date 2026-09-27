@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/wardens_roar_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 35195
+			}
+		]
+	}
+}

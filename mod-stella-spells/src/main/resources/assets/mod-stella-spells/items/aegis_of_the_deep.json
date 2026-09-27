@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/aegis_of_the_deep"
+		"model": "mod-stella-spells:item/aegis_of_the_deep",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8440772
+			}
+		]
 	}
 }

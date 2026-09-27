@@ -33,6 +33,8 @@ public final class SpellCasting {
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
 	static final double RIFTWALK_RANGE_BLOCKS = 12.0;
 	static final double RIFTWALK_STEP_BLOCKS = 0.5;
+	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
+	public static final int SCROLL_COOLDOWN_TICKS = 20;
 	private static final float DAMAGE = 3.0f;
 	private static final float BURN_SECONDS = 2.0f;
 
@@ -40,8 +42,22 @@ public final class SpellCasting {
 	}
 
 	public static CastResult cast(final ServerPlayer caster, final SpellbookItem book, final InteractionHand hand) {
+		return cast(caster, book.definition(), caster.getItemInHand(hand), false);
+	}
+
+	/** A scroll casts through the same path, keeps its own short cooldown, and crumbles only when the spell lands. */
+	public static CastResult castScroll(final ServerPlayer caster, final SpellScrollItem scroll, final InteractionHand hand) {
 		ItemStack stack = caster.getItemInHand(hand);
-		SpellDefinition definition = book.definition();
+		CastResult result = cast(caster, scroll.definition(), stack, true);
+		if (result == CastResult.CAST) {
+			stack.consume(1, caster);
+		}
+		return result;
+	}
+
+	private static CastResult cast(
+		final ServerPlayer caster, final SpellDefinition definition, final ItemStack stack, final boolean scroll
+	) {
 		SpellModifiers.CastModifiers modifiers = SpellModifiers.resolve(
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
 		);
@@ -71,7 +87,7 @@ public final class SpellCasting {
 		}
 
 		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
-		caster.getCooldowns().addCooldown(stack, modifiers.cooldownTicks());
+		caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : modifiers.cooldownTicks());
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
 		SpellCombos.afterCast(caster, definition, target, point, modifiers);
 		return CastResult.CAST;
