@@ -171,7 +171,9 @@ public final class SnowGolemGameTest {
 			arriveHealth[0] = golem.getHealth();
 		});
 
-		helper.runAfterDelay(60L, () -> {
+		// A friendly-buffed golem carries more health, so the window grows with the buff that ships.
+		long window = Math.round(60L * (1.0 + com.stella.mobs.behavior.FriendlyBuffs.BUFFS.get(EntityTypes.SNOW_GOLEM).health()));
+		helper.runAfterDelay(window, () -> {
 			result(
 				"meltsWhereTheWorldSaysSo",
 				"hasSkyLight=" + hasSky[0] + " melts=" + melts[0] + " arrived=" + arriveHealth[0]
