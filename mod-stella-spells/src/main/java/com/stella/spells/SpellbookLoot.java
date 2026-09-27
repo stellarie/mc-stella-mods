@@ -74,6 +74,13 @@ public final class SpellbookLoot {
 			);
 		}
 
+		// The clue roll is its own draw too: a tattered note on how to bind one spell.
+		if (random.nextDouble() < ClueBooks.CLUE_CHEST_CHANCE) {
+			ItemStack clue = ClueBooks.roll(random);
+			drops.add(clue);
+			Spellbooks.LOGGER.info("[SPELL] event=DROP source=chest table_id={} clue={}", table, ClueBooks.teaches(clue));
+		}
+
 		Roll roll = roll(CHEST_DROP_CHANCE, random);
 		if (roll.stack().isEmpty()) {
 			Spellbooks.LOGGER.debug(

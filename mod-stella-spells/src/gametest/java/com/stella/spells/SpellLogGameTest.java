@@ -168,7 +168,7 @@ public class SpellLogGameTest {
 	@GameTest
 	public void failedLootRollLogHasSourceChanceRollAndResult(final GameTestHelper helper) {
 		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "failedLootRollLogHasSourceChanceRollAndResult");
-		long seed = chestSeed(helper, false, FAILED_LOG_CHEST);
+		long seed = emptyChestSeed(helper, FAILED_LOG_CHEST);
 		ArrayList<ItemStack> drops = new ArrayList<>();
 		try (SpellLogCapture capture = new SpellLogCapture()) {
 			SpellbookTestAccess.modifyChestDrops(FAILED_LOG_CHEST, true, RandomSource.create(seed), drops);
@@ -404,6 +404,19 @@ public class SpellLogGameTest {
 			}
 		}
 		helper.assertTrue(false, "no deterministic witch seed produced a spellbook");
+		return 0L;
+	}
+
+	// A seed on which every chest draw fails, the scroll and the clue draws included, so the book roll is the one logged.
+	private static long emptyChestSeed(final GameTestHelper helper, final Identifier table) {
+		for (long seed = 0; seed < 10_000; seed++) {
+			ArrayList<ItemStack> drops = new ArrayList<>();
+			SpellbookTestAccess.modifyChestDrops(table, true, RandomSource.create(seed), drops);
+			if (drops.isEmpty()) {
+				return seed;
+			}
+		}
+		helper.assertTrue(false, "no deterministic chest seed left the chest empty");
 		return 0L;
 	}
 
