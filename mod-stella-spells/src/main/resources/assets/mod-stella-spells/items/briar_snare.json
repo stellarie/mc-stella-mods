@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/briar_snare"
+		"model": "mod-stella-spells:item/briar_snare",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 6732650
+			}
+		]
 	}
 }

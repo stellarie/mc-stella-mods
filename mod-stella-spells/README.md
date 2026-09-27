@@ -53,6 +53,18 @@ Every successful cast draws its own particles, sent from the server to players w
 
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
+## Spell scrolls
+
+Every spell also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
+only when the spell lands, so a miss keeps it. It has its own 1-second cooldown, separate from the
+book's. Head and chest spell enchantments still apply.
+
+- **Craft:** one paper and the spell's material make 2 scrolls, shapeless (e.g. paper + flint = 2
+  Spark Shot Scrolls). Briar Snare takes two vines, because paper and one vine is vanilla's banner
+  pattern.
+- **Find:** 40% of vanilla chests hold 1 or 2 scrolls of a random spell (measured: 39.95% over
+  10,000 seeded chests), on top of the 5% spellbook chance.
+
 ## Spell combos
 
 Cast the right two spells in order, within 5 seconds, and they land a combo. Hostile combos need the same

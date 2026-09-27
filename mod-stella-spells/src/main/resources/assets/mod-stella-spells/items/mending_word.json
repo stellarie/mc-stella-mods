@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/mending_word"
+		"model": "mod-stella-spells:item/mending_word",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16766287
+			}
+		]
 	}
 }

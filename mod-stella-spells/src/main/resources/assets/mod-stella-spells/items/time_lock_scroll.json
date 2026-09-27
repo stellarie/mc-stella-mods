@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/time_lock_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16761095
+			}
+		]
+	}
+}

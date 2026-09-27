@@ -75,6 +75,7 @@ public class SpellbookCatalogGameTest {
 	public void catalogRegistersTwentyUniqueSingleStackBooksWithFixedIdentity(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "catalogRegistersTwentyUniqueSingleStackBooksWithFixedIdentity");
 		Set<Identifier> actualIds = BuiltInRegistries.ITEM.stream()
+			.filter(item -> item instanceof SpellbookItem)
 			.map(BuiltInRegistries.ITEM::getKey)
 			.filter(id -> Spellbooks.MOD_ID.equals(id.getNamespace()))
 			.collect(Collectors.toSet());
@@ -147,7 +148,7 @@ public class SpellbookCatalogGameTest {
 		var manager = helper.getLevel().getServer().getRecipeManager();
 		Set<Identifier> actualRecipeIds = manager.getRecipes().stream()
 			.map(recipe -> recipe.id().identifier())
-			.filter(id -> Spellbooks.MOD_ID.equals(id.getNamespace()))
+			.filter(id -> Spellbooks.MOD_ID.equals(id.getNamespace()) && !id.getPath().endsWith("_scroll"))
 			.collect(Collectors.toSet());
 		List<String> mismatches = new ArrayList<>();
 		if (!actualRecipeIds.equals(EXPECTED_IDS)) {

@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:vine",
+		"minecraft:vine"
+	],
+	"result": {
+		"id": "mod-stella-spells:briar_snare_scroll",
+		"count": 2
+	}
+}

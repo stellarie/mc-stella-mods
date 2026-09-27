@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/stoneguard_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 9268835
+			}
+		]
+	}
+}

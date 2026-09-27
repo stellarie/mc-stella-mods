@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/gale_step"
+		"model": "mod-stella-spells:item/gale_step",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 15527921
+			}
+		]
 	}
 }

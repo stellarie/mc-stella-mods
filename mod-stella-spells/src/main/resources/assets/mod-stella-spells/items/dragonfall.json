@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/dragonfall"
+		"model": "mod-stella-spells:item/dragonfall",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 9315498
+			}
+		]
 	}
 }

@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/chainstorm"
+		"model": "mod-stella-spells:item/chainstorm",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16739584
+			}
+		]
 	}
 }
