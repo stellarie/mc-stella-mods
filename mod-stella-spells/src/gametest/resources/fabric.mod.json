@@ -17,7 +17,8 @@
 			"com.stella.spells.SpellVisualsGameTest",
 			"com.stella.spells.SpellCombosGameTest",
 			"com.stella.spells.SpellScrollsGameTest",
-			"com.stella.spells.StormAndRiftGameTest"
+			"com.stella.spells.StormAndRiftGameTest",
+			"com.stella.spells.SpellImbueGameTest"
 		]
 	},
 	"depends": {

@@ -33,6 +33,7 @@ public final class Spellbooks implements ModInitializer {
 	public void onInitialize() {
 		SpellbookLoot.register();
 		SpellStorms.register();
+		SpellImbue.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
