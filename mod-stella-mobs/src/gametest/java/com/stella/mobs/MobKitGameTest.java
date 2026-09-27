@@ -236,6 +236,26 @@ public class MobKitGameTest {
 		});
 	}
 
+	@GameTest
+	public void aMobAnotherModDrivesKeepsItsOwnGoals(final GameTestHelper helper) {
+		Arena.buildFloor(helper);
+		net.minecraft.world.entity.monster.Witch driven = EntityTypes.WITCH.create(helper.getLevel(), EntitySpawnReason.EVENT);
+		driven.addTag(StellaMobs.NO_BEHAVIOR_TAG);
+		driven.snapTo(helper.absoluteVec(new Vec3(2.5, 1.0, 2.5)), 0.0F, 0.0F);
+		helper.getLevel().addFreshEntity(driven);
+		net.minecraft.world.entity.monster.Witch plain = EntityTypes.WITCH.create(helper.getLevel(), EntitySpawnReason.EVENT);
+		plain.snapTo(helper.absoluteVec(new Vec3(5.5, 1.0, 5.5)), 0.0F, 0.0F);
+		helper.getLevel().addFreshEntity(plain);
+		int drivenThrows = com.stella.mobs.behavior.BossAbilities.copiesOf(driven, com.stella.mobs.behavior.WitchOffensiveThrowGoal.class);
+		int plainThrows = com.stella.mobs.behavior.BossAbilities.copiesOf(plain, com.stella.mobs.behavior.WitchOffensiveThrowGoal.class);
+		result("noBehavior", "driven=" + drivenThrows + " plain=" + plainThrows);
+		driven.discard();
+		plain.discard();
+		helper.assertTrue(plainThrows == 1, "a plain witch has no throw goal, so the case proves nothing");
+		helper.assertTrue(drivenThrows == 0, "a mob another mod drives got this mod's goals");
+		helper.succeed();
+	}
+
 	private static Zombie zombie(final GameTestHelper helper, final int x, final int z) {
 		Zombie zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.EVENT);
 		zombie.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
