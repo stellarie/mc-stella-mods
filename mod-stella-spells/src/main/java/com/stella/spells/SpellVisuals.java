@@ -39,7 +39,7 @@ public final class SpellVisuals {
 		visual("tidal_push", ParticleTypes.SPLASH, ParticleTypes.BUBBLE_POP, 0.0),
 		visual("owls_gaze", ParticleTypes.ENCHANT, ParticleTypes.GLOW, 0.0),
 		visual("slimebound", ParticleTypes.ITEM_SLIME, ParticleTypes.ITEM_SLIME, 0.0),
-		visual("chainstorm", ParticleTypes.FIREWORK, ParticleTypes.ELECTRIC_SPARK, 4.0),
+		visual("chainstorm", ParticleTypes.FIREWORK, ParticleTypes.ELECTRIC_SPARK, SpellStorms.RADIUS),
 		visual("riftwalk", ParticleTypes.PORTAL, ParticleTypes.REVERSE_PORTAL, 0.0),
 		visual("phoenix_mantle", ParticleTypes.LAVA, ParticleTypes.SMALL_FLAME, 0.0),
 		visual("life_bloom", ParticleTypes.CHERRY_LEAVES, ParticleTypes.HEART, 0.0),

@@ -20,7 +20,7 @@ public final class SpellbookCatalog {
 		definition("tidal_push", Items.PRISMARINE_SHARD, 100, 2_541_274, TargetMode.HOSTILE, SpellCasting::applyTidalPush),
 		definition("owls_gaze", Items.AMETHYST_SHARD, 200, 8_280_002, TargetMode.SELF, SpellCasting::applyOwlsGaze),
 		definition("slimebound", Items.SLIME_BALL, 100, 10_275_941, TargetMode.SELF, SpellCasting::applySlimebound),
-		definition("chainstorm", Items.LIGHTNING_ROD.weathering().unaffected(), 300, 16_739_584, TargetMode.HOSTILE, SpellCasting::applyChainstorm),
+		definition("chainstorm", Items.LIGHTNING_ROD.weathering().unaffected(), 300, 16_739_584, TargetMode.BLOCK, SpellCasting::applyChainstorm),
 		definition("riftwalk", Items.ENDER_PEARL, 200, 6_174_129, TargetMode.SAFE_TELEPORT, SpellCasting::applyRiftwalk),
 		definition("phoenix_mantle", Items.BLAZE_ROD, 300, 16_727_296, TargetMode.SELF, SpellCasting::applyPhoenixMantle),
 		definition("life_bloom", Items.GHAST_TEAR, 340, 16_027_569, TargetMode.SELF, SpellCasting::applyLifeBloom),

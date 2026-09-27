@@ -2,10 +2,8 @@ package com.stella.spells;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
@@ -31,8 +29,8 @@ import net.minecraft.world.phys.Vec3;
 
 public final class SpellCasting {
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
-	static final double RIFTWALK_RANGE_BLOCKS = 12.0;
-	static final double RIFTWALK_STEP_BLOCKS = 0.5;
+	/** How far Riftwalk looks down a wall for ground to land on. */
+	static final int RIFTWALK_MAX_DROP_BLOCKS = 4;
 	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
 	public static final int SCROLL_COOLDOWN_TICKS = 20;
 	private static final float DAMAGE = 3.0f;
@@ -67,7 +65,7 @@ public final class SpellCasting {
 			case SELF -> point = caster.position();
 			case HOSTILE -> target = findTarget(caster, modifiers.targetRangeBlocks());
 			case BLOCK -> point = findBlockTarget(caster, modifiers.targetRangeBlocks());
-			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster);
+			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
 		}
 
 		if (caster.getCooldowns().isOnCooldown(stack)) {
@@ -235,42 +233,9 @@ public final class SpellCasting {
 	}
 
 	static boolean applyChainstorm(
-		final ServerPlayer caster, final Mob primary, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (primary == null) {
-			return false;
-		}
-
-		var damage = caster.level().damageSources().magic();
-		float power = (float) modifiers.powerMultiplier();
-		double radius = 4.0 * modifiers.radiusMultiplier();
-		primary.hurt(damage, 7.0f * power);
-		Set<Mob> hitTargets = new HashSet<>();
-		hitTargets.add(primary);
-		Mob previous = primary;
-		for (int i = 0; i < 2; i++) {
-			Mob chainOrigin = previous;
-			List<Mob> candidates = new ArrayList<>(caster.level().getEntitiesOfClass(
-				Mob.class,
-				chainOrigin.getBoundingBox().inflate(radius),
-				candidate -> candidate.isAlive()
-					&& candidate instanceof Enemy
-					&& !hitTargets.contains(candidate)
-					&& candidate.position().distanceToSqr(chainOrigin.position()) <= radius * radius
-			));
-			candidates.sort(
-				Comparator.comparingDouble((Mob candidate) -> candidate.position().distanceToSqr(chainOrigin.position()))
-					.thenComparingInt(Mob::getId)
-			);
-			if (candidates.isEmpty()) {
-				break;
-			}
-
-			previous = candidates.get(0);
-			hitTargets.add(previous);
-			previous.hurt(damage, 4.0f * power);
-		}
-		return true;
+		return point != null && SpellStorms.start(caster, point, modifiers);
 	}
 
 	static boolean applyTimeLock(
@@ -343,6 +308,7 @@ public final class SpellCasting {
 		}
 
 		caster.teleportTo(point.x, point.y, point.z);
+		caster.resetFallDistance();
 		return true;
 	}
 
@@ -374,27 +340,37 @@ public final class SpellCasting {
 		return modifiers.durationTicks(baseTicks, defensive);
 	}
 
-	private static Vec3 findRiftwalkDestination(final ServerPlayer caster) {
+	// The block face under the crosshair: standing on it when it is a floor, in front of it and down to its ground otherwise.
+	private static Vec3 findRiftwalkDestination(final ServerPlayer caster, final int rangeBlocks) {
 		ServerLevel level = caster.level();
-		Vec3 start = caster.position();
-		Vec3 look = caster.getLookAngle();
-		int sampleCount = (int) Math.ceil(RIFTWALK_RANGE_BLOCKS / RIFTWALK_STEP_BLOCKS);
-		for (int i = 1; i <= sampleCount; i++) {
-			Vec3 candidate = start.add(look.scale(i * RIFTWALK_STEP_BLOCKS));
-			BlockPos ground = BlockPos.containing(candidate.x, candidate.y - 0.01, candidate.z);
-			if (!level.getBlockState(ground).isFaceSturdy(level, ground, Direction.UP)) {
-				continue;
-			}
-
-			AABB moved = caster.getBoundingBox().move(candidate.subtract(start));
-			if (!level.noCollision(caster, moved)
-				|| !level.getEntities(caster, moved, EntitySelector.ENTITY_STILL_ALIVE).isEmpty()
-				|| containsFluid(level, moved)) {
-				continue;
-			}
-			return candidate;
+		Vec3 start = caster.getEyePosition();
+		BlockHitResult hit = level.clip(new ClipContext(
+			start, start.add(caster.getLookAngle().scale(rangeBlocks)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, caster
+		));
+		if (hit.getType() != HitResult.Type.BLOCK) {
+			return null;
 		}
-		return null;
+
+		BlockPos feet = hit.getBlockPos().relative(hit.getDirection());
+		for (int drop = 0; drop < RIFTWALK_MAX_DROP_BLOCKS && !isSturdyFloor(level, feet.below()); drop++) {
+			feet = feet.below();
+		}
+		if (!isSturdyFloor(level, feet.below())) {
+			return null;
+		}
+
+		Vec3 candidate = Vec3.atBottomCenterOf(feet);
+		AABB moved = caster.getBoundingBox().move(candidate.subtract(caster.position()));
+		if (!level.noCollision(caster, moved)
+			|| !level.getEntities(caster, moved, EntitySelector.ENTITY_STILL_ALIVE).isEmpty()
+			|| containsFluid(level, moved)) {
+			return null;
+		}
+		return candidate;
+	}
+
+	private static boolean isSturdyFloor(final ServerLevel level, final BlockPos pos) {
+		return level.getBlockState(pos).isFaceSturdy(level, pos, Direction.UP);
 	}
 
 	private static boolean containsFluid(final ServerLevel level, final AABB box) {
