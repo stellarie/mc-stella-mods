@@ -70,7 +70,8 @@ public record PatrolState(UUID villageId, Role role, BlockPos lastPosition, bool
 		PILLAGER,
 		EVOKER,
 		RAVAGER,
-		WITCH;
+		WITCH,
+		VILLAGE_WITCH;
 
 		public static final Codec<Role> CODEC = Codec.STRING.xmap(Role::decode, Role::name);
 
