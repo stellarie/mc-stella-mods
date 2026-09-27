@@ -163,6 +163,14 @@ drops it, when the owner disconnects, and when the owner opts out. The `readout`
 block of `power.json` holds `enabled_by_default`, `radius`, `max_per_player`,
 `height_offset`, and `view_range`.
 
+## Damage numbers
+
+Each hit an entity takes shows a small red number over it, and each heal a green one with a plus
+sign: the health it actually lost or gained, so a hit that Resistance soaks up shows nothing, and a
+hit on golden hearts still counts. The number drifts up by a block and fades over one second, then
+goes. It is sent to the players within 32 blocks as a display that never joins the world, so it is
+never saved. A player never sees the numbers over their own head.
+
 ## Game tests
 
 ```powershell

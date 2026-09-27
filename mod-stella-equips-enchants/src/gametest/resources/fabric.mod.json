@@ -31,7 +31,8 @@
 			"com.stella.equips.UndertowGameTest",
 			"com.stella.equips.WeaponMasteryGameTest",
 			"com.stella.equips.SoulboundGameTest",
-			"com.stella.equips.MasteryPerksGameTest"
+			"com.stella.equips.MasteryPerksGameTest",
+			"com.stella.equips.DamageNumbersGameTest"
 		]
 	}
 }
