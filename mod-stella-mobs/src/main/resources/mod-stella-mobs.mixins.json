@@ -13,7 +13,11 @@
 		"RaidIllusionerMixin",
 		"ShulkerEscapeMixin",
 		"SnowGolemMeltMixin",
-		"SnowballHitMixin"
+		"SnowballHitMixin",
+		"FriendlyPatrolHostilesMixin",
+		"FriendlyPatrolMixin",
+		"FriendlyPatrolRestMixin",
+		"MobTargetSelectorAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

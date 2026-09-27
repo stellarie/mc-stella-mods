@@ -17,6 +17,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public class GhastFireballGoal extends Goal {
 	public static final int INTERVAL_TICKS = 4;
+	/** Vanilla's own firing range: a ghast fires only at a target within 64 blocks. */
+	public static final double MAX_RANGE = 64.0;
 	public static final float CLOUD_RADIUS = 1.5F;
 	public static final int CLOUD_DURATION_TICKS = 60;
 	public static final int WITHER_TICKS = 100;
@@ -86,7 +88,7 @@ public class GhastFireballGoal extends Goal {
 		}
 
 		this.ghast.getLookControl().setLookAt(target, 10.0F, 10.0F);
-		if (--this.cooldown > 0 || !this.ghast.hasLineOfSight(target)) {
+		if (--this.cooldown > 0 || this.ghast.distanceToSqr(target) > MAX_RANGE * MAX_RANGE || !this.ghast.hasLineOfSight(target)) {
 			return;
 		}
 

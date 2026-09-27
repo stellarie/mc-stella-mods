@@ -130,6 +130,63 @@ public class GhastEliteGameTest {
 		});
 	}
 
+	@GameTest
+	public void aGhastShotIsNeverSaved(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		com.stella.mobs.projectile.GhastWitherShot shot = new com.stella.mobs.projectile.GhastWitherShot(helper.getLevel(), ghast, net.minecraft.world.phys.Vec3.ZERO, 0);
+		boolean saved = shot.shouldBeSaved();
+		ghast.discard();
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastShotIsNeverSaved saved={}", TEST, saved);
+		helper.assertFalse(saved, "a ghast shot would be saved with its chunk and reload as a vanilla fireball");
+		helper.succeed();
+	}
+
+	// Alone in its own batch, so no neighbouring test's barrier ceiling lies across the long sight line.
+	@GameTest(environment = "mod-stella-mobs-test:ghast_range", maxTicks = 200, padding = 96)
+	public void aGhastHoldsFireBeyondItsRange(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		// Low enough that its eyes sit below the test's barrier ceiling, so it sees out across the open floor.
+		ghast.snapTo(helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 1.0, 4.5)), 0.0F, 0.0F);
+		ghast.setNoGravity(true);
+		// A full-size ghast's eyes stand in the barrier ceiling, so this one is shrunk to see under it.
+		ghast.getAttribute(Attributes.SCALE).setBaseValue(0.25);
+		ghast.refreshDimensions();
+		net.minecraft.world.phys.Vec3 far = ghast.position().add(GhastFireballGoal.MAX_RANGE + 6.0, 0.0, 0.0);
+		int chunkX = net.minecraft.core.SectionPos.blockToSectionCoord(far.x);
+		int chunkZ = net.minecraft.core.SectionPos.blockToSectionCoord(far.z);
+		boolean forced = helper.getLevel().setChunkForced(chunkX, chunkZ, true);
+		Mob victim = net.minecraft.world.entity.EntityTypes.COW.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
+		victim.snapTo(far, 0.0F, 0.0F);
+		victim.setNoAi(true);
+		victim.setNoGravity(true);
+		victim.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(victim);
+		// The test area is walled with barrier; the few wall blocks on the sight line are opened so the ghast sees out.
+		for (int opened = 0; opened < 4; opened++) {
+			net.minecraft.world.phys.BlockHitResult wall = helper.getLevel().clip(new net.minecraft.world.level.ClipContext(ghast.getEyePosition(), victim.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, ghast));
+			if (wall.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK || !helper.getLevel().getBlockState(wall.getBlockPos()).is(Blocks.BARRIER)) {
+				break;
+			}
+			helper.getLevel().setBlockAndUpdate(wall.getBlockPos(), Blocks.AIR.defaultBlockState());
+		}
+		aim(helper, ghast, victim);
+		helper.runAfterDelay(60L, () -> {
+			int shots = FIRED.getOrDefault(ghast.getUUID(), List.of()).size();
+			boolean sees = ghast.hasLineOfSight(victim);
+			net.minecraft.world.phys.BlockHitResult clip = helper.getLevel().clip(new net.minecraft.world.level.ClipContext(ghast.getEyePosition(), victim.getEyePosition(), net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, ghast));
+			double distance = ghast.distanceTo(victim);
+			ghast.discard();
+			victim.discard();
+			if (forced) {
+				helper.getLevel().setChunkForced(chunkX, chunkZ, false);
+			}
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastHoldsFireBeyondItsRange shots={} distance={} sees={}", TEST, shots, distance, sees);
+			helper.assertTrue(sees, "the ghast cannot see the far target, so the case proves nothing: the sight line stops at " + clip.getBlockPos() + " " + helper.getLevel().getBlockState(clip.getBlockPos()) + " from eye " + ghast.getEyePosition() + " to " + victim.getEyePosition() + " in bounds " + helper.getBounds());
+			helper.assertTrue(shots == 0, "the ghast fired " + shots + " times at a target " + distance + " blocks away");
+			helper.succeed();
+		});
+	}
+
 	// A hurt victim carries immunity frames, and setTarget refuses an invulnerable target, so they are cleared first.
 	private static void aim(final GameTestHelper helper, final Ghast ghast, final Mob victim) {
 		helper.onEachTick(() -> {
@@ -176,8 +233,12 @@ public class GhastEliteGameTest {
 	private static Ghast spawnGhast(final GameTestHelper helper, final boolean elite) {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
-		Ghast ghast = helper.spawnMob(EntityTypes.GHAST, 4, 3, 0).spawn();
+		// The fixture takes none of the natural spawn rolls, so an ordinary ghast can never roll elite or boss.
+		Ghast ghast = EntityTypes.GHAST.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
+		ghast.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		ghast.snapTo(helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 3.0, 0.5)), 0.0F, 0.0F);
 		ghast.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(ghast);
 		// A ghast drifts upward until its eyes sit in the test's barrier ceiling and it sees nothing, so it stays put.
 		ghast.getGoalSelector().removeAllGoals(goal -> goal instanceof net.minecraft.world.entity.monster.Ghast.RandomFloatAroundGoal);
 
