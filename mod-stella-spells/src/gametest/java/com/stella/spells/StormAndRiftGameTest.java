@@ -45,9 +45,9 @@ public class StormAndRiftGameTest {
 		});
 	}
 
-	@GameTest(required = false, maxTicks = 100)
-	public void chainstormOutsideHealthAndSequenceNeedManualReview(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "chainstormOutsideHealthAndSequenceNeedManualReview");
+	@GameTest(maxTicks = 100)
+	public void chainstormHitsInsideInSequenceAndSpareOutside(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "chainstormHitsInsideInSequenceAndSpareOutside");
 		helper.setTime(18_000L);
 		ServerPlayer caster = caster(helper);
 		floor(helper);
@@ -81,8 +81,7 @@ public class StormAndRiftGameTest {
 				gaps.add(ticks.get(i)[0] - ticks.get(i - 1)[0]);
 			}
 			helper.assertTrue(gaps.stream().allMatch(gap -> gap == SpellStorms.STRIKE_INTERVAL_TICKS), "the strikes fell " + gaps + " ticks apart, not in sequence");
-			LOG.info("[SPELLTEST] test=chainstormOutsideHealthAndSequenceNeedManualReview RESULT strikes={} gaps={}", struck.size(), gaps);
-			helper.fail("Manual review required: isolate the outside zombie and verify Chainstorm does not damage it.");
+			LOG.info("[SPELLTEST] test=chainstormHitsInsideInSequenceAndSpareOutside RESULT strikes={} gaps={}", struck.size(), gaps);
 		});
 	}
 

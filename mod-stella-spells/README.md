@@ -222,9 +222,9 @@ cd mod-stella-spells
 
 The last command runs the suite with the equips mod loaded; its log must list
 `mod-stella-equips-enchants` among the loaded mods. Run the GameTest command five separate times
-for a release gate, and copy each log before the next run. Eight optional tests remain visible:
-the icon and circle review, held-hand rendering, all spell effects, the Spark Shot boundary check,
-the isolated Chainstorm outside-health check, the Ice Lance pierce check, the Earthspike lift check,
-and the client-log check.
+for a release gate, and copy each log before the next run. Six optional tests remain visible:
+the icon and circle review, held-hand rendering, all spell effects, the Ice Lance pierce check,
+the Earthspike lift check, and the client-log check. Spark Shot's boundary and Chainstorm's
+outside-area damage run as required tests.
 
 The jar is `build/libs/mod-stella-spells-0.1.0+26.3.jar`.
