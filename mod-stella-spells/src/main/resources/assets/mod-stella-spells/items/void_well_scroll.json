@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/void_well_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 3218322
+			}
+		]
+	}
+}

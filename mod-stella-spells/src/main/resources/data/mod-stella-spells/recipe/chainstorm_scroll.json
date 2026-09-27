@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:lightning_rod"
+	],
+	"result": {
+		"id": "mod-stella-spells:chainstorm_scroll",
+		"count": 2
+	}
+}

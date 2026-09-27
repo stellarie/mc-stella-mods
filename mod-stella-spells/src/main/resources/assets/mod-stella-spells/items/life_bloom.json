@@ -1,6 +1,12 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/life_bloom"
+		"model": "mod-stella-spells:item/life_bloom",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16027569
+			}
+		]
 	}
 }
