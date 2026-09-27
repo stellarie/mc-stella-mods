@@ -163,7 +163,9 @@ public class StormAndRiftGameTest {
 		helper.succeedWhen(() -> {
 			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
 			helper.assertTrue(struck.contains(onCopper.getUUID()) && struck.contains(onRod.getUUID()), "the storm has not struck both yet");
-			helper.assertTrue(helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LightningBolt.class, new net.minecraft.world.phys.AABB(helper.absolutePos(new net.minecraft.core.BlockPos(0, 0, 0))).inflate(12.0)).isEmpty(), "a bolt is still falling");
+			// Only this storm's bolts count: a neighbouring test's bolt a few blocks away is not this storm's.
+			helper.assertTrue(helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LightningBolt.class, onCopper.getBoundingBox().inflate(1.5)).isEmpty()
+				&& helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LightningBolt.class, onRod.getBoundingBox().inflate(1.5)).isEmpty(), "a bolt is still falling on a struck mob");
 			helper.assertTrue(helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)).is(Blocks.COPPER_BLOCK.weathering().oxidized()), "a storm bolt scraped the copper to " + helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)));
 			helper.assertFalse(helper.getBlockState(new net.minecraft.core.BlockPos(1, 0, 8)).getValue(net.minecraft.world.level.block.LightningRodBlock.POWERED), "a storm bolt powered the lightning rod");
 			LOG.info("[SPELLTEST] test=chainstormLeavesCopperAndLightningRodsAlone RESULT copper=oxidized rod=unpowered");

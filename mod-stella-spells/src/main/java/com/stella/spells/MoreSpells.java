@@ -85,7 +85,7 @@ public final class MoreSpells {
 			return false;
 		}
 		hurt(caster, target, ICE_LANCE_DAMAGE * power(modifiers));
-		target.setTicksFrozen(Math.max(target.getTicksFrozen(), target.getTicksRequiredToFreeze() + modifiers.durationTicks(ICE_LANCE_FREEZE_TICKS, false)));
+		freeze(target, modifiers.durationTicks(ICE_LANCE_FREEZE_TICKS, false));
 		return true;
 	}
 
@@ -237,6 +237,14 @@ public final class MoreSpells {
 		return true;
 	}
 
+	/**
+	 * Freezes a body solid for the given ticks. Outside powder snow a body thaws two frozen ticks for every
+	 * tick, so the freeze is set to twice the time above the point at which it counts as frozen solid.
+	 */
+	static void freeze(final net.minecraft.world.entity.LivingEntity body, final int ticks) {
+		body.setTicksFrozen(Math.max(body.getTicksFrozen(), body.getTicksRequiredToFreeze() + 2 * ticks));
+	}
+
 	private static float power(final SpellModifiers.CastModifiers modifiers) {
 		return (float) modifiers.powerMultiplier();
 	}
@@ -261,6 +269,8 @@ public final class MoreSpells {
 	private static boolean cloud(final ServerPlayer caster, final Vec3 at, final float radius, final int ticks, final MobEffectInstance effect) {
 		AreaEffectCloud cloud = new AreaEffectCloud(caster.level(), at.x, at.y, at.z);
 		cloud.setOwner(caster);
+		// A caster standing in their own cloud is never touched by it: a vanilla cloud touches its owner too.
+		((com.stella.spells.mixin.AreaEffectCloudAccessor) cloud).stellaSpells$victims().put(caster, Integer.MAX_VALUE);
 		cloud.setRadius(radius);
 		cloud.setDuration(ticks);
 		cloud.setWaitTime(0);

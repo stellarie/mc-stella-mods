@@ -24,6 +24,15 @@ public final class Spellbooks implements ModInitializer {
 	public static final List<SpellbookItem> CATALOG = registerCatalog();
 	public static final SpellbookItem SPARK_SHOT = CATALOG.get(0);
 	public static final List<SpellScrollItem> SCROLLS = registerScrolls();
+	public static final Identifier SCROLL_OF_RETURN_ID = Identifier.fromNamespaceAndPath(MOD_ID, "return_scroll");
+	public static final ReturnScrollItem SCROLL_OF_RETURN = Registry.register(
+		BuiltInRegistries.ITEM, SCROLL_OF_RETURN_ID, new ReturnScrollItem(new Item.Properties()
+			.setId(ResourceKey.create(Registries.ITEM, SCROLL_OF_RETURN_ID)).stacksTo(16)
+			.component(DataComponents.LORE, new ItemLore(List.of(
+				line(Component.translatable("item." + MOD_ID + ".return_scroll.effect"), ChatFormatting.AQUA),
+				line(Component.translatable("spellbook." + MOD_ID + ".scroll"), ChatFormatting.DARK_GRAY)
+			))))
+	);
 	/** Scrolls whose paper-and-material pair is already a vanilla recipe take one more of the material. */
 	public static final java.util.Set<Identifier> SCROLLS_WITH_DOUBLE_MATERIAL = java.util.Set.of(
 		Identifier.fromNamespaceAndPath(MOD_ID, "briar_snare")
