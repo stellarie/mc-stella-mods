@@ -139,6 +139,61 @@ public class StormAndRiftGameTest {
 	}
 
 	@GameTest
+	public void riftwalkLandsOnTopOfASlab(final GameTestHelper helper) {
+		assertLandsOnAPartialFloor(helper, "riftwalkLandsOnTopOfASlab", Blocks.SMOOTH_STONE_SLAB.defaultBlockState(), 0.5);
+	}
+
+	@GameTest
+	public void riftwalkLandsOnACarpet(final GameTestHelper helper) {
+		assertLandsOnAPartialFloor(helper, "riftwalkLandsOnACarpet", Blocks.CARPET.white().defaultBlockState(), 1.0 / 16.0);
+	}
+
+	@GameTest(maxTicks = 100)
+	public void chainstormLeavesCopperAndLightningRodsAlone(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		ServerPlayer caster = caster(helper);
+		floor(helper);
+		helper.setBlock(2, 1, 8, Blocks.STONE);
+		helper.setBlock(3, 0, 8, Blocks.COPPER_BLOCK.weathering().oxidized());
+		helper.setBlock(1, 0, 8, Blocks.LIGHTNING_ROD.weathering().unaffected());
+		Mob onCopper = zombie(helper, 3, 8);
+		Mob onRod = helper.spawnMob(EntityTypes.ZOMBIE, 1, 2, 8).withNoFreeWill().spawn();
+		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
+		helper.assertTrue(cast(helper, caster, CHAINSTORM) == InteractionResult.SUCCESS, "Chainstorm did not cast");
+		helper.succeedWhen(() -> {
+			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
+			helper.assertTrue(struck.contains(onCopper.getUUID()) && struck.contains(onRod.getUUID()), "the storm has not struck both yet");
+			helper.assertTrue(helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.LightningBolt.class, new net.minecraft.world.phys.AABB(helper.absolutePos(new net.minecraft.core.BlockPos(0, 0, 0))).inflate(12.0)).isEmpty(), "a bolt is still falling");
+			helper.assertTrue(helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)).is(Blocks.COPPER_BLOCK.weathering().oxidized()), "a storm bolt scraped the copper to " + helper.getBlockState(new net.minecraft.core.BlockPos(3, 0, 8)));
+			helper.assertFalse(helper.getBlockState(new net.minecraft.core.BlockPos(1, 0, 8)).getValue(net.minecraft.world.level.block.LightningRodBlock.POWERED), "a storm bolt powered the lightning rod");
+			LOG.info("[SPELLTEST] test=chainstormLeavesCopperAndLightningRodsAlone RESULT copper=oxidized rod=unpowered");
+		});
+	}
+
+	// Its own batch, because it drops every pending strike on the server.
+	@GameTest(environment = "mod-stella-spells:storm_alone", maxTicks = 100)
+	public void aStormDropsItsPendingStrikesWhenTheServerStops(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		floor(helper);
+		helper.setBlock(2, 1, 8, Blocks.STONE);
+		zombie(helper, 3, 8);
+		zombie(helper, 1, 8);
+		zombie(helper, 2, 10);
+		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
+		helper.assertTrue(cast(helper, caster, CHAINSTORM) == InteractionResult.SUCCESS, "Chainstorm did not cast");
+		int pendingBefore = SpellStorms.pendingCount();
+		SpellStorms.onServerStopping(helper.getLevel().getServer());
+		int pendingAfter = SpellStorms.pendingCount();
+		helper.runAfterDelay(3L * SpellStorms.STRIKE_INTERVAL_TICKS, () -> {
+			int strikes = STRUCK.getOrDefault(caster.getUUID(), List.of()).size();
+			LOG.info("[SPELLTEST] test=aStormDropsItsPendingStrikesWhenTheServerStops RESULT pendingBefore={} pendingAfter={} strikes={}", pendingBefore, pendingAfter, strikes);
+			helper.assertTrue(pendingBefore == 2, "the storm queued " + pendingBefore + " strikes, so the case proves nothing");
+			helper.assertTrue(pendingAfter == 0 && strikes == 1, "strikes outlived the server: pending=" + pendingAfter + " strikes=" + strikes);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
 	public void riftwalkRefusesASpotWithNoRoom(final GameTestHelper helper) {
 		helper.setTime(18_000L);
 		ServerPlayer caster = caster(helper);
@@ -196,6 +251,21 @@ public class StormAndRiftGameTest {
 		InteractionResult result = cast(helper, caster, RIFTWALK);
 		helper.assertTrue(result != InteractionResult.SUCCESS && caster.position().equals(start) && !caster.getCooldowns().isOnCooldown(caster.getMainHandItem()), "Riftwalk went somewhere from the sky: " + result);
 		LOG.info("[SPELLTEST] test=riftwalkAimedAtTheSkyGoesNowhere RESULT result={}", result);
+		helper.succeed();
+	}
+
+	private static void assertLandsOnAPartialFloor(final GameTestHelper helper, final String test, final net.minecraft.world.level.block.state.BlockState floor, final double top) {
+		helper.setTime(18_000L);
+		ServerPlayer caster = caster(helper);
+		floor(helper);
+		helper.setBlock(new net.minecraft.core.BlockPos(2, 1, 10), floor);
+		Vec3 spot = helper.absoluteVec(new Vec3(2.5, 1.0 + top, 10.5));
+		caster.lookAt(EntityAnchorArgument.Anchor.EYES, spot);
+		InteractionResult result = cast(helper, caster, RIFTWALK);
+		Vec3 local = helper.relativeVec(caster.position());
+		LOG.info("[SPELLTEST] test={} RESULT result={} landed={}", test, result, local);
+		helper.assertTrue(result == InteractionResult.SUCCESS, "Riftwalk refused the floor: " + result);
+		helper.assertTrue(Math.abs(local.y - (1.0 + top)) < 0.01 && caster.position().distanceTo(spot) <= LAND_TOLERANCE, "Riftwalk landed at " + local + ", not on the floor at " + (1.0 + top));
 		helper.succeed();
 	}
 

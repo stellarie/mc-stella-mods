@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -23,6 +24,8 @@ public final class SpellStorms {
 	public static final int MAX_STRIKES = 5;
 	public static final int STRIKE_INTERVAL_TICKS = 6;
 	public static final float STRIKE_DAMAGE = 6.0f;
+	/** Marks the storm's own bolts, which light the sky but leave copper and lightning rods alone. */
+	public static final String STORM_BOLT_TAG = "mod-stella-spells.storm_bolt";
 
 	public interface Recorder {
 		void struck(ServerPlayer caster, UUID target, int serverTick);
@@ -43,8 +46,22 @@ public final class SpellStorms {
 		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
+	public static int pendingCount() {
+		synchronized (PENDING) {
+			return PENDING.size();
+		}
+	}
+
+	/** Drops every pending strike, so none outlives the server that queued it. */
+	public static void onServerStopping(final MinecraftServer server) {
+		synchronized (PENDING) {
+			PENDING.clear();
+		}
+	}
+
 	static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(SpellStorms::tick);
+		ServerLifecycleEvents.SERVER_STOPPING.register(SpellStorms::onServerStopping);
 	}
 
 	/** Strikes the nearest hostiles around the point now and in sequence; false when there is nothing to strike. */
@@ -79,7 +96,10 @@ public final class SpellStorms {
 		synchronized (PENDING) {
 			for (Iterator<Strike> it = PENDING.iterator(); it.hasNext(); ) {
 				Strike next = it.next();
-				if (next.dueTick() <= now) {
+				// A strike queued by another server, such as a world left in singleplayer, is dropped.
+				if (next.level().getServer() != server) {
+					it.remove();
+				} else if (next.dueTick() <= now) {
 					due.add(next);
 					it.remove();
 				}
@@ -98,6 +118,7 @@ public final class SpellStorms {
 		LightningBolt bolt = EntityTypes.LIGHTNING_BOLT.create(strike.level(), EntitySpawnReason.TRIGGERED);
 		if (bolt != null) {
 			bolt.setVisualOnly(true);
+			bolt.addTag(STORM_BOLT_TAG);
 			bolt.snapTo(target.getX(), target.getY(), target.getZ());
 			strike.level().addFreshEntity(bolt);
 		}
