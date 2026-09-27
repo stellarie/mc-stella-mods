@@ -131,6 +131,27 @@ public class ImbueExpansionGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 100)
+	public void aBlowThatDoesNotLandCastsNothing(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer player = survivalPlayer(helper, new Vec3(2.5, 1.0, 2.5));
+		ItemStack chestplate = new ItemStack(Items.IRON_CHESTPLATE);
+		chestplate.set(SpellImbue.IMBUED, new SpellImbue.ImbuedSpell(FROSTBIND));
+		player.setItemSlot(EquipmentSlot.CHEST, chestplate);
+		Mob zombie = zombie(helper, 2, 4);
+		helper.runAfterDelay(65L, () -> {
+			// A heavier blow with no attacker first, so the zombie's lighter one falls inside the wearer's invulnerability.
+			boolean first = player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 4.0F);
+			boolean second = player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(zombie), 1.0F);
+			List<Identifier> casts = CASTS.getOrDefault(player.getUUID(), List.of());
+			helper.getLevel().getServer().getPlayerList().remove(player);
+			LOG.info("[SPELLTEST] test=aBlowThatDoesNotLandCastsNothing RESULT first={} second={} casts={}", first, second, casts);
+			helper.assertTrue(first && !second, "the blows landed first=" + first + " second=" + second + ", so the case proves nothing");
+			helper.assertTrue(casts.isEmpty(), "a blow that never landed cast " + casts);
+			helper.succeed();
+		});
+	}
+
 	@GameTest
 	public void rightClickingAHostileCastsTheSpellAtFullStrength(final GameTestHelper helper) {
 		ServerPlayer player = wielder(helper, SPARK_SHOT);
