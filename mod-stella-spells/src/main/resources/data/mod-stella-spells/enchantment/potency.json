@@ -1,6 +1,6 @@
 {
 	"description": { "text": "Potency" },
-	"supported_items": "#mod-stella-spells:spellbooks",
+	"supported_items": "#mod-stella-spells:spell_focus",
 	"primary_items": "#mod-stella-spells:spellbooks",
 	"slots": ["mainhand"],
 	"weight": 10,

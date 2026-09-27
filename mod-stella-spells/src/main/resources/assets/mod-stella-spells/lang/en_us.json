@@ -137,5 +137,6 @@
 	"item.mod-stella-spells.tailwind_scroll": "Tailwind Scroll",
 	"item.mod-stella-spells.battle_hymn": "Battle Hymn Spellbook",
 	"item.mod-stella-spells.battle_hymn.effect": "Strength I for 20 seconds on you and every ally within 8 blocks.",
-	"item.mod-stella-spells.battle_hymn_scroll": "Battle Hymn Scroll"
+	"item.mod-stella-spells.battle_hymn_scroll": "Battle Hymn Scroll",
+	"tag.item.mod-stella-spells.spell_focus": "Spell Focus"
 }

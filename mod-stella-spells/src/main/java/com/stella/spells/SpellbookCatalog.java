@@ -58,6 +58,11 @@ public final class SpellbookCatalog {
 	private SpellbookCatalog() {
 	}
 
+	/** The spell with this id, or null for one the catalogue no longer holds, as on a piece imbued before a removal. */
+	public static SpellDefinition find(final Identifier id) {
+		return DEFINITIONS_BY_ID.get(id);
+	}
+
 	public static SpellDefinition get(final Identifier id) {
 		SpellDefinition definition = DEFINITIONS_BY_ID.get(id);
 		if (definition == null) {
