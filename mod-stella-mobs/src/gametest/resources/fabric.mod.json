@@ -25,6 +25,7 @@
 			"com.stella.mobs.FriendlyMobsGameTest",
 			"com.stella.mobs.StrayKitGameTest",
 			"com.stella.mobs.MobKitGameTest",
+			"com.stella.mobs.DepthMobsGameTest",
 			"com.stella.mobs.EliteSizeGameTest",
 			"com.stella.mobs.GolemEliteGameTest",
 			"com.stella.mobs.GuardianEliteGameTest",

@@ -16,6 +16,7 @@
 		"SnowballHitMixin",
 		"FriendlyPatrolHostilesMixin",
 		"LevitationCapMixin",
+		"DepthCreeperMixin",
 		"FriendlyPatrolMixin",
 		"FriendlyPatrolRestMixin",
 		"MobTargetSelectorAccessor"

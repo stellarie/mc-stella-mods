@@ -169,6 +169,11 @@ public final class BehaviorInstaller {
 			return;
 		}
 
+		// Another mod drives this mob entirely: the village witch, a summoned skeleton.
+		if (mob.entityTags().contains(com.stella.mobs.StellaMobs.NO_BEHAVIOR_TAG)) {
+			return;
+		}
+
 		ReactiveState state = ReactiveState.get(mob);
 		if (state.isInstalled()) {
 			return;
@@ -229,6 +234,7 @@ public final class BehaviorInstaller {
 
 		BossAbilities.install(mob);
 		StrayKit.install(mob);
+		DepthMobs.install(mob);
 		if (mob instanceof net.minecraft.world.entity.monster.skeleton.WitherSkeleton witherSkeleton) {
 			WitherPulse.install(witherSkeleton);
 		}
