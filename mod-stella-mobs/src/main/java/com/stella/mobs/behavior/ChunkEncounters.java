@@ -1,0 +1,263 @@
+package com.stella.mobs.behavior;
+
+import com.mojang.serialization.Codec;
+import com.stella.mobs.StellaMobs;
+import com.stella.mobs.config.GearConfigStore;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.illager.Pillager;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+/** Each overworld chunk rolls once: a safe-zone chunk may hold one elite, a wild chunk a pair of patrolling Pillagers. */
+public final class ChunkEncounters {
+	public static final double SAFE_ELITE_CHANCE = 0.01;
+	public static final double PILLAGER_PAIR_CHANCE = 0.20;
+	public static final int PILLAGER_PAIR_SIZE = 2;
+	/** Mobs that do not burn in daylight, so a day-lit spawn still stands. */
+	public static final List<EntityType<? extends Mob>> SAFE_ELITE_TYPES = List.of(EntityTypes.HUSK, EntityTypes.CREEPER, EntityTypes.WITCH);
+	/** A chunk rolls when a player is this many chunks away: far enough not to pop in beside them, near enough to meet. */
+	public static final int MIN_RING = 3;
+	public static final int MAX_RING = 5;
+	public static final int SCAN_INTERVAL_TICKS = 20;
+	/** Tells the elite roll this mob is elite by the chunk's roll, without escorts. */
+	public static final String CHUNK_ELITE_TAG = "mod-stella-mobs.chunk_elite";
+	private static final int PLACEMENT_ATTEMPTS = 8;
+	private static final double MIN_PLAYER_DISTANCE = 24.0;
+	private static final AttachmentType<Boolean> ROLLED = AttachmentRegistry.createPersistent(
+		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "chunk_encounter_rolled"), Codec.BOOL
+	);
+
+	public enum Encounter { NONE, ELITE, PILLAGER_PAIR }
+
+	public interface Recorder {
+		void rolled(ServerLevel level, ChunkPos pos, Encounter encounter, List<Mob> spawned);
+	}
+
+	/** How the scan rolls a chunk it has just marked; the default decides and spawns. */
+	public interface Roller {
+		void roll(ServerLevel level, LevelChunk chunk, boolean safe);
+	}
+
+	private static final Recorder SILENT = (level, pos, encounter, spawned) -> {
+	};
+	private static final Roller DEFAULT_ROLLER = (level, chunk, safe) -> resolve(level, chunk, safe, chunkRandom(level.getSeed(), chunk.getPos()));
+	private static volatile Recorder recorder = SILENT;
+	private static volatile Predicate<ServerPlayer> scanFilter = player -> !player.isSpectator();
+	private static volatile Roller scanRoller = DEFAULT_ROLLER;
+
+	private ChunkEncounters() {
+	}
+
+	public static void register() {
+		StellaMobs.LOGGER.debug("Registered chunk encounter attachment {}", ROLLED.identifier());
+	}
+
+	public static void setRecorder(final Recorder newRecorder) {
+		recorder = newRecorder == null ? SILENT : newRecorder;
+	}
+
+	public static void setScanFilter(final Predicate<ServerPlayer> filter) {
+		scanFilter = filter;
+	}
+
+	public static void setScanRoller(final Roller roller) {
+		scanRoller = roller == null ? DEFAULT_ROLLER : roller;
+	}
+
+	public static Roller defaultRoller() {
+		return DEFAULT_ROLLER;
+	}
+
+	/** The chunk's own roll, fixed by the world seed and its position. */
+	public static RandomSource chunkRandom(final long seed, final ChunkPos pos) {
+		return RandomSource.create(seed ^ (pos.pack() * 0x9E3779B97F4A7C15L));
+	}
+
+	public static Encounter decide(final RandomSource random, final boolean safe) {
+		double roll = random.nextDouble();
+		if (safe) {
+			return roll < SAFE_ELITE_CHANCE ? Encounter.ELITE : Encounter.NONE;
+		}
+		return roll < PILLAGER_PAIR_CHANCE ? Encounter.PILLAGER_PAIR : Encounter.NONE;
+	}
+
+	/** True when the chunk's centre lies inside the spawn safe zone, which only the overworld has. */
+	public static boolean isSafe(final ResourceKey<Level> dimension, final ChunkPos pos, final double spawnX, final double spawnZ, final double radius) {
+		if (radius <= 0.0 || !Level.OVERWORLD.equals(dimension)) {
+			return false;
+		}
+
+		double dx = pos.getMiddleBlockX() - spawnX;
+		double dz = pos.getMiddleBlockZ() - spawnZ;
+		return dx * dx + dz * dz <= radius * radius;
+	}
+
+	public static boolean isRolled(final LevelChunk chunk) {
+		return Boolean.TRUE.equals(chunk.getAttached(ROLLED));
+	}
+
+	/** Rolls a chunk once and spawns what it rolled; empty when the chunk has rolled before. */
+	public static Optional<Encounter> roll(final ServerLevel level, final LevelChunk chunk, final boolean safe, final RandomSource random) {
+		if (!markRolled(chunk)) {
+			return Optional.empty();
+		}
+		return Optional.of(resolve(level, chunk, safe, random));
+	}
+
+	/** Every SCAN_INTERVAL_TICKS, the loaded overworld chunks in each player's ring roll, each once. */
+	public static void tick(final ServerLevel level) {
+		if (!Level.OVERWORLD.equals(level.dimension()) || level.getServer().getTickCount() % SCAN_INTERVAL_TICKS != 0) {
+			return;
+		}
+
+		BlockPos spawn = level.getRespawnData().pos();
+		double radius = GearConfigStore.get().spawnSafetyRadius();
+		for (ServerPlayer player : List.copyOf(level.players())) {
+			if (!scanFilter.test(player)) {
+				continue;
+			}
+
+			ChunkPos center = player.chunkPosition();
+			for (int dx = -MAX_RING; dx <= MAX_RING; dx++) {
+				for (int dz = -MAX_RING; dz <= MAX_RING; dz++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) < MIN_RING) {
+						continue;
+					}
+
+					LevelChunk chunk = level.getChunkSource().getChunkNow(center.x() + dx, center.z() + dz);
+					if (chunk != null && markRolled(chunk)) {
+						scanRoller.roll(level, chunk, isSafe(level.dimension(), chunk.getPos(), spawn.getX(), spawn.getZ(), radius));
+					}
+				}
+			}
+		}
+	}
+
+	public static List<Mob> spawn(final ServerLevel level, final LevelChunk chunk, final Encounter encounter, final RandomSource random) {
+		return switch (encounter) {
+			case NONE -> List.of();
+			case ELITE -> spawnElite(level, chunk, random);
+			case PILLAGER_PAIR -> spawnPillagerPair(level, chunk, random);
+		};
+	}
+
+	private static boolean markRolled(final LevelChunk chunk) {
+		if (isRolled(chunk)) {
+			return false;
+		}
+		chunk.setAttached(ROLLED, Boolean.TRUE);
+		return true;
+	}
+
+	private static Encounter resolve(final ServerLevel level, final LevelChunk chunk, final boolean safe, final RandomSource random) {
+		Encounter encounter = decide(random, safe);
+		List<Mob> spawned = spawn(level, chunk, encounter, random);
+		if (encounter != Encounter.NONE) {
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=chunkEncounters ROLL chunk={} safe={} encounter={} spawned={}",
+				chunk.getPos(), safe, encounter, spawned.size()
+			);
+		}
+		recorder.rolled(level, chunk.getPos(), encounter, spawned);
+		return encounter;
+	}
+
+	private static List<Mob> spawnElite(final ServerLevel level, final LevelChunk chunk, final RandomSource random) {
+		EntityType<? extends Mob> type = SAFE_ELITE_TYPES.get(random.nextInt(SAFE_ELITE_TYPES.size()));
+		Mob mob = type.create(level, EntitySpawnReason.EVENT);
+		if (mob == null) {
+			return List.of();
+		}
+
+		BlockPos at = findSpot(level, chunk, mob, random, null);
+		if (at == null) {
+			return List.of();
+		}
+
+		mob.snapTo(Vec3.atBottomCenterOf(at), random.nextFloat() * 360.0F, 0.0F);
+		mob.setPersistenceRequired();
+		mob.addTag(CHUNK_ELITE_TAG);
+		return level.addFreshEntity(mob) ? List.of(mob) : List.of();
+	}
+
+	// A leader without the ominous banner walks the patrol, so killing it gives no Bad Omen.
+	private static List<Mob> spawnPillagerPair(final ServerLevel level, final LevelChunk chunk, final RandomSource random) {
+		List<Mob> spawned = new ArrayList<>();
+		BlockPos near = null;
+		for (int i = 0; i < PILLAGER_PAIR_SIZE; i++) {
+			Pillager pillager = EntityTypes.PILLAGER.create(level, EntitySpawnReason.PATROL);
+			if (pillager == null) {
+				continue;
+			}
+
+			BlockPos at = findSpot(level, chunk, pillager, random, near);
+			if (at == null) {
+				continue;
+			}
+
+			near = at;
+			pillager.snapTo(Vec3.atBottomCenterOf(at), random.nextFloat() * 360.0F, 0.0F);
+			pillager.finalizeSpawn(level, level.getCurrentDifficultyAt(at), EntitySpawnReason.PATROL, null);
+			pillager.setPatrolLeader(spawned.isEmpty());
+			pillager.findPatrolTarget();
+			if (level.addFreshEntity(pillager)) {
+				spawned.add(pillager);
+			}
+		}
+		return List.copyOf(spawned);
+	}
+
+	// A dry, open spot on the chunk's surface, away from every player; next to the first spot when one is given.
+	private static @Nullable BlockPos findSpot(
+		final ServerLevel level, final LevelChunk chunk, final Mob mob, final RandomSource random, final @Nullable BlockPos near
+	) {
+		ChunkPos pos = chunk.getPos();
+		for (int attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
+			int x = near == null ? pos.getMinBlockX() + random.nextInt(16) : near.getX() + random.nextInt(5) - 2;
+			int z = near == null ? pos.getMinBlockZ() + random.nextInt(16) : near.getZ() + random.nextInt(5) - 2;
+			if (x < pos.getMinBlockX() || x > pos.getMaxBlockX() || z < pos.getMinBlockZ() || z > pos.getMaxBlockZ()) {
+				continue;
+			}
+
+			BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+			BlockPos below = at.below();
+			Vec3 feet = Vec3.atBottomCenterOf(at);
+			if (level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)
+				&& level.getFluidState(at).isEmpty() && level.getFluidState(below).isEmpty()
+				&& level.noCollision(mob, mob.getBoundingBox().move(feet.subtract(mob.position())))
+				&& farFromPlayers(level, feet)) {
+				return at;
+			}
+		}
+		return null;
+	}
+
+	private static boolean farFromPlayers(final ServerLevel level, final Vec3 at) {
+		for (ServerPlayer player : level.players()) {
+			if (scanFilter.test(player) && player.position().distanceToSqr(at) < MIN_PLAYER_DISTANCE * MIN_PLAYER_DISTANCE) {
+				return false;
+			}
+		}
+		return true;
+	}
+}

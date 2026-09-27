@@ -91,7 +91,7 @@ public final class Elite {
 
 	/** O03: a kind that is elite every time, which no roll gate may skip. */
 	public static boolean isForced(final Mob mob) {
-		return mob.getType() == EntityTypes.ELDER_GUARDIAN;
+		return mob.getType() == EntityTypes.ELDER_GUARDIAN || mob.entityTags().contains(ChunkEncounters.CHUNK_ELITE_TAG);
 	}
 
 	public static boolean isElite(final Mob mob) {

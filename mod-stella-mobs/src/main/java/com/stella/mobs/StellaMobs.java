@@ -26,6 +26,7 @@ import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
 import com.stella.mobs.behavior.SpawnSafety;
+import com.stella.mobs.behavior.ChunkEncounters;
 import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
@@ -75,6 +76,7 @@ public class StellaMobs implements ModInitializer {
 		ReinforcementGoal.register();
 		EvokerStorm.register();
 		PiglinWarCall.register();
+		ChunkEncounters.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
@@ -104,6 +106,7 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(IllusionerKit::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(BloodMoon::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
