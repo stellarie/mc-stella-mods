@@ -86,7 +86,7 @@ public class SpellEffectsGameTest {
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:summon_skeleton"), SummonSkeleton.COOLDOWN_TICKS)
 	);
 
-	@GameTest
+	@GameTest(maxTicks = 100)
 	public void sparkShotHitsTargetAtSixteenBlocks(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "sparkShotHitsTargetAtSixteenBlocks");
 		helper.setTime(18_000L);
@@ -101,30 +101,32 @@ public class SpellEffectsGameTest {
 		SpellbookItem book = spellbook(helper, SPARK_SHOT, "Spark Shot");
 		ItemStack stack = book.getDefaultInstance();
 		player.setItemInHand(InteractionHand.MAIN_HAND, stack);
-		var castResult = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
-		Vec3 rayStart = player.getEyePosition();
-		Vec3 rayEnd = rayStart.add(player.getLookAngle().scale(range));
-		var blockHit = helper.getLevel().clip(
-			new net.minecraft.world.level.ClipContext(
-				rayStart, rayEnd, net.minecraft.world.level.ClipContext.Block.COLLIDER,
-				net.minecraft.world.level.ClipContext.Fluid.NONE, player
-			)
-		);
-		var entityHit = target.getBoundingBox().inflate(target.getPickRadius()).clip(rayStart, rayEnd);
-		helper.assertTrue(
-			target.getHealth() == healthBefore - 3.0f && player.getCooldowns().isOnCooldown(stack),
-			"Spark Shot did not hit a hostile centered at the production 16-block boundary: cast=" + castResult
-				+ " player=" + player.position() + " eye=" + rayStart + " look=" + player.getLookAngle()
-				+ " target=" + target.position() + " targetBox=" + target.getBoundingBox()
-				+ " rayEnd=" + rayEnd + " entityHit=" + entityHit
-				+ " blockHit=" + blockHit.getType() + "/" + blockHit.getLocation()
-				+ " blockPos=" + blockHit.getBlockPos()
-				+ " blockState=" + helper.getLevel().getBlockState(blockHit.getBlockPos())
-		);
-		helper.succeed();
+		Findable.then(helper, List.of(target), () -> {
+			var castResult = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+			Vec3 rayStart = player.getEyePosition();
+			Vec3 rayEnd = rayStart.add(player.getLookAngle().scale(range));
+			var blockHit = helper.getLevel().clip(
+				new net.minecraft.world.level.ClipContext(
+					rayStart, rayEnd, net.minecraft.world.level.ClipContext.Block.COLLIDER,
+					net.minecraft.world.level.ClipContext.Fluid.NONE, player
+				)
+			);
+			var entityHit = target.getBoundingBox().inflate(target.getPickRadius()).clip(rayStart, rayEnd);
+			helper.assertTrue(
+				target.getHealth() == healthBefore - 3.0f && player.getCooldowns().isOnCooldown(stack),
+				"Spark Shot did not hit a hostile centered at the production 16-block boundary: cast=" + castResult
+					+ " player=" + player.position() + " eye=" + rayStart + " look=" + player.getLookAngle()
+					+ " target=" + target.position() + " targetBox=" + target.getBoundingBox()
+					+ " rayEnd=" + rayEnd + " entityHit=" + entityHit
+					+ " blockHit=" + blockHit.getType() + "/" + blockHit.getLocation()
+					+ " blockPos=" + blockHit.getBlockPos()
+					+ " blockState=" + helper.getLevel().getBlockState(blockHit.getBlockPos())
+			);
+			helper.succeed();
+		});
 	}
 
-	@GameTest
+	@GameTest(maxTicks = 100)
 	public void sparkShotBeyondSixteenBlocksHasNoEffectOrCooldown(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "sparkShotBeyondSixteenBlocksHasNoEffectOrCooldown");
 		helper.setTime(18_000L);
@@ -139,10 +141,12 @@ public class SpellEffectsGameTest {
 		SpellbookItem book = spellbook(helper, SPARK_SHOT, "Spark Shot");
 		ItemStack stack = book.getDefaultInstance();
 		player.setItemInHand(InteractionHand.MAIN_HAND, stack);
-		book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
-		helper.assertTrue(target.getHealth() == healthBefore, "Spark Shot hit a hostile beyond 16 blocks");
-		helper.assertFalse(player.getCooldowns().isOnCooldown(stack), "an out-of-range cast started a cooldown");
-		helper.succeed();
+		Findable.then(helper, List.of(target), () -> {
+			book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+			helper.assertTrue(target.getHealth() == healthBefore, "Spark Shot hit a hostile beyond 16 blocks");
+			helper.assertFalse(player.getCooldowns().isOnCooldown(stack), "an out-of-range cast started a cooldown");
+			helper.succeed();
+		});
 	}
 
 	@GameTest

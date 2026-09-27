@@ -56,10 +56,17 @@ public class StormAndRiftGameTest {
 		Cow cow = helper.spawnMob(EntityTypes.COW, 3, 1, 9).withNoFreeWill().spawn();
 		float cowBefore = cow.getHealth();
 		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
-		InteractionResult result = cast(helper, caster, CHAINSTORM);
-		helper.assertTrue(result == InteractionResult.SUCCESS, "Chainstorm did not cast at the spot: " + result);
+		final boolean[] cast = {false};
+		List<Mob> subjects = new ArrayList<>(inside);
+		subjects.add(outside);
+		Findable.then(helper, subjects, () -> {
+			InteractionResult result = cast(helper, caster, CHAINSTORM);
+			helper.assertTrue(result == InteractionResult.SUCCESS, "Chainstorm did not cast at the spot: " + result);
+			cast[0] = true;
+		});
 
 		helper.succeedWhen(() -> {
+			helper.assertTrue(cast[0], "Chainstorm has not been cast yet");
 			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
 			helper.assertTrue(struck.size() >= inside.size(), "only " + struck.size() + " strikes so far");
 			for (Mob mob : inside) {

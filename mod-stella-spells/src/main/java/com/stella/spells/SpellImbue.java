@@ -146,7 +146,6 @@ public final class SpellImbue {
 	public static void register() {
 		ItemComponentTooltipProviderRegistry.addAfter(DataComponents.LORE, IMBUED);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(SpellImbue::afterDamage);
-		ServerLivingEntityEvents.ALLOW_DAMAGE.register(SpellImbue::beforeDamage);
 		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(SpellImbue::onUseEntity);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(SpellImbue::onServerStopping);
 	}
@@ -223,6 +222,14 @@ public final class SpellImbue {
 		if (blocked || MobImbue.casting()) {
 			return;
 		}
+		// An imbued chestplate answers a blow that landed on its wearer: not one a shield stopped, nor one inside
+		// the wearer's invulnerability after a hit, which never reaches this event.
+		if (victim instanceof ServerPlayer wearer && source.getEntity() instanceof LivingEntity attacker && attacker != wearer && damage > 0.0F) {
+			ItemStack chest = wearer.getItemBySlot(EquipmentSlot.CHEST);
+			for (Identifier spell : spellsOf(chest)) {
+				cast(wearer, spell, attacker, chest, false);
+			}
+		}
 		if (source.getEntity() instanceof Mob wielder && source.getDirectEntity() == wielder && victim != wielder) {
 			mobCast(wielder, victim);
 			return;
@@ -245,19 +252,6 @@ public final class SpellImbue {
 		for (Identifier spell : spellsOf(focus)) {
 			cast(player, spell, victim, focus, false);
 		}
-	}
-
-	// A chestplate answers whoever strikes its wearer. A player's own hurt never reaches the after-damage event,
-	// so the chestplate listens as the blow is allowed, and only to a blow that can land.
-	private static boolean beforeDamage(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (victim instanceof ServerPlayer wearer && source.getEntity() instanceof LivingEntity attacker && attacker != wearer
-			&& amount > 0.0F && !MobImbue.casting() && !wearer.isInvulnerableTo(wearer.level(), source)) {
-			ItemStack chest = wearer.getItemBySlot(EquipmentSlot.CHEST);
-			for (Identifier spell : spellsOf(chest)) {
-				cast(wearer, spell, attacker, chest, false);
-			}
-		}
-		return true;
 	}
 
 	// A right-click on a hostile with an imbued weapon casts each ready spell at the book's full strength.
