@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:redstone"
+	],
+	"result": {
+		"id": "mod-stella-spells:haste_rune_scroll",
+		"count": 2
+	}
+}

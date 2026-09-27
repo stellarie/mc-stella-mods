@@ -1,6 +1,6 @@
 # mod-stella-spells
 
-Twenty tinted spellbooks, each casting one fixed spell, and seven enchantments that change how
+Forty tinted spellbooks, each casting one fixed spell, and seven enchantments that change how
 spells behave. Install the mod on the server and on every client; the jar holds the item tints.
 
 ## Using a spellbook
@@ -38,6 +38,26 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Wither Seal | Wither Rose | 18 s | Hostile | Wither II, 5 s |
 | Time Lock | Clock | 20 s | Block | Slowness II, 5 s, on hostiles within 5 blocks of the point |
 | Dragonfall | Dragon's Breath | 25 s | Block | 10 damage to hostiles within 3 blocks of the point |
+| Ice Lance | Packed Ice | 5 s | Hostile | Pierces the mob for 5 damage and freezes it solid for 7 seconds |
+| Soul Siphon | Soul Soil | 9 s | Hostile | Drains 4 health from the mob and gives it to you |
+| Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 5 seconds |
+| Sapping Hex | Fermented Spider Eye | 8 s | Hostile | Saps the mob with Weakness II for 8 seconds |
+| Skyhook | Phantom Membrane | 8 s | Hostile | Hooks the mob into the air with Levitation II for 2 seconds |
+| Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 5 seconds and makes it glow for 10 |
+| Smite | Glowstone Dust | 10 s | Hostile | Calls a bolt from the sky onto the mob for 8 damage |
+| Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage and sets it burning for 10 seconds |
+| Quicksilver | Sugar | 15 s | Self | Gives you Speed II for 20 seconds |
+| Tide Lungs | Pufferfish | 15 s | Self | Lets you breathe underwater for 60 seconds and swim fast for 20 |
+| Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 10 seconds |
+| Haste Rune | Redstone | 15 s | Self | Gives you Haste II for 60 seconds |
+| Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 seconds |
+| Sanctuary | Honeycomb | 20 s | Self | Heals you by 6, and every other player within 6 blocks by 4 |
+| Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you |
+| Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 3 seconds |
+| Earthspike | Pointed Dripstone | 12 s | Block | Throws hostiles within 3 blocks of the spot into the air for 4 damage |
+| Plague Cloud | Poisonous Potato | 15 s | Block | Leaves a cloud of Poison at the spot for 5 seconds |
+| Healing Spring | Glistering Melon Slice | 20 s | Block | Leaves a cloud of Regeneration II at the spot for 6 seconds |
+| Flame Ring | Fire Charge | 12 s | Block | Sets hostiles within 4 blocks of the spot burning for 6 seconds, for 3 damage |
 
 Area and chain spells affect only mobs that are hostile by nature (`Enemy`); they never hit players,
 pets, or villagers.

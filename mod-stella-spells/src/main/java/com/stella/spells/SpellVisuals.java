@@ -48,7 +48,27 @@ public final class SpellVisuals {
 		visual("aegis_of_the_deep", ParticleTypes.NAUTILUS, ParticleTypes.BUBBLE, 0.0),
 		visual("wither_seal", ParticleTypes.LARGE_SMOKE, ParticleTypes.SOUL, 0.0),
 		visual("time_lock", ParticleTypes.END_ROD, ParticleTypes.WAX_ON, 5.0),
-		visual("dragonfall", ParticleTypes.WITCH, ParticleTypes.EXPLOSION, 3.0)
+		visual("dragonfall", ParticleTypes.WITCH, ParticleTypes.EXPLOSION, 3.0),
+		visual("ice_lance", ParticleTypes.ITEM_SNOWBALL, ParticleTypes.SNOWFLAKE, 0.0),
+		visual("soul_siphon", ParticleTypes.SOUL_FIRE_FLAME, ParticleTypes.SOUL, 0.0),
+		visual("venom_dart", ParticleTypes.SNEEZE, ParticleTypes.ITEM_SLIME, 0.0),
+		visual("sapping_hex", ParticleTypes.SQUID_INK, ParticleTypes.LARGE_SMOKE, 0.0),
+		visual("skyhook", ParticleTypes.CLOUD, ParticleTypes.END_ROD, 0.0),
+		visual("blinding_flash", ParticleTypes.GLOW_SQUID_INK, ParticleTypes.GLOW, 0.0),
+		visual("smite", ParticleTypes.ENCHANTED_HIT, ParticleTypes.ELECTRIC_SPARK, 0.0),
+		visual("ember_brand", ParticleTypes.DRIPPING_LAVA, ParticleTypes.SMALL_FLAME, 0.0),
+		visual("quicksilver", ParticleTypes.POOF, ParticleTypes.CLOUD, 0.0),
+		visual("tide_lungs", ParticleTypes.DOLPHIN, ParticleTypes.BUBBLE, 0.0),
+		visual("berserk", ParticleTypes.ANGRY_VILLAGER, ParticleTypes.CRIT, 0.0),
+		visual("haste_rune", ParticleTypes.SCRAPE, ParticleTypes.WAX_OFF, 0.0),
+		visual("shadow_veil", ParticleTypes.WHITE_ASH, ParticleTypes.SMOKE, 0.0),
+		visual("sanctuary", ParticleTypes.TOTEM_OF_UNDYING, ParticleTypes.HAPPY_VILLAGER, 0.0),
+		visual("purify", ParticleTypes.DRIPPING_WATER, ParticleTypes.HAPPY_VILLAGER, 0.0),
+		visual("frost_nova", ParticleTypes.WHITE_SMOKE, ParticleTypes.SNOWFLAKE, MoreSpells.FROST_NOVA_RADIUS),
+		visual("earthspike", ParticleTypes.MYCELIUM, ParticleTypes.CRIT, MoreSpells.EARTHSPIKE_RADIUS),
+		visual("plague_cloud", ParticleTypes.WARPED_SPORE, ParticleTypes.ITEM_SLIME, MoreSpells.PLAGUE_RADIUS),
+		visual("healing_spring", ParticleTypes.FALLING_NECTAR, ParticleTypes.HEART, MoreSpells.SPRING_RADIUS),
+		visual("flame_ring", ParticleTypes.FALLING_LAVA, ParticleTypes.FLAME, MoreSpells.FLAME_RING_RADIUS)
 	);
 
 	private SpellVisuals() {

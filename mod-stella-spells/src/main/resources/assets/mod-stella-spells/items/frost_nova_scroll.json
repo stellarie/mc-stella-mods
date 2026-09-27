@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/frost_nova_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 10475248
+			}
+		]
+	}
+}

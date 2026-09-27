@@ -29,7 +29,27 @@ public final class SpellbookCatalog {
 		definition("aegis_of_the_deep", Items.TURTLE_SCUTE, 400, 8_440_772, TargetMode.SELF, SpellCasting::applyAegisOfTheDeep),
 		definition("wither_seal", Items.WITHER_ROSE, 360, 5_125_166, TargetMode.HOSTILE, SpellCasting::applyWitherSeal),
 		definition("time_lock", Items.CLOCK, 400, 16_761_095, TargetMode.BLOCK, SpellCasting::applyTimeLock),
-		definition("dragonfall", Items.DRAGON_BREATH, 500, 9_315_498, TargetMode.BLOCK, SpellCasting::applyDragonfall)
+		definition("dragonfall", Items.DRAGON_BREATH, 500, 9_315_498, TargetMode.BLOCK, SpellCasting::applyDragonfall),
+		definition("ice_lance", Items.PACKED_ICE, 100, 10_544_895, TargetMode.HOSTILE, MoreSpells::applyIceLance),
+		definition("soul_siphon", Items.SOUL_SOIL, 180, 5_913_994, TargetMode.HOSTILE, MoreSpells::applySoulSiphon),
+		definition("venom_dart", Items.SPIDER_EYE, 100, 6_989_903, TargetMode.HOSTILE, MoreSpells::applyVenomDart),
+		definition("sapping_hex", Items.FERMENTED_SPIDER_EYE, 160, 8_007_248, TargetMode.HOSTILE, MoreSpells::applySappingHex),
+		definition("skyhook", Items.PHANTOM_MEMBRANE, 160, 12_175_321, TargetMode.HOSTILE, MoreSpells::applySkyhook),
+		definition("blinding_flash", Items.GLOW_INK_SAC, 140, 4_186_320, TargetMode.HOSTILE, MoreSpells::applyBlindingFlash),
+		definition("smite", Items.GLOWSTONE_DUST, 200, 16_769_126, TargetMode.HOSTILE, MoreSpells::applySmite),
+		definition("ember_brand", Items.MAGMA_CREAM, 120, 14_706_218, TargetMode.HOSTILE, MoreSpells::applyEmberBrand),
+		definition("quicksilver", Items.SUGAR, 300, 14_541_800, TargetMode.SELF, MoreSpells::applyQuicksilver),
+		definition("tide_lungs", Items.PUFFERFISH, 300, 3_832_789, TargetMode.SELF, MoreSpells::applyTideLungs),
+		definition("berserk", Items.BLAZE_POWDER, 400, 11_674_146, TargetMode.SELF, MoreSpells::applyBerserk),
+		definition("haste_rune", Items.REDSTONE, 300, 15_158_332, TargetMode.SELF, MoreSpells::applyHasteRune),
+		definition("shadow_veil", Items.TINTED_GLASS, 400, 2_829_114, TargetMode.SELF, MoreSpells::applyShadowVeil),
+		definition("sanctuary", Items.HONEYCOMB, 400, 15_906_354, TargetMode.SELF, MoreSpells::applySanctuary),
+		definition("purify", Items.QUARTZ, 300, 16_052_456, TargetMode.SELF, MoreSpells::applyPurify),
+		definition("frost_nova", Items.ICE, 300, 10_475_248, TargetMode.SELF, MoreSpells::applyFrostNova),
+		definition("earthspike", Items.POINTED_DRIPSTONE, 240, 9_137_998, TargetMode.BLOCK, MoreSpells::applyEarthspike),
+		definition("plague_cloud", Items.POISONOUS_POTATO, 300, 8_364_858, TargetMode.BLOCK, MoreSpells::applyPlagueCloud),
+		definition("healing_spring", Items.GLISTERING_MELON_SLICE, 400, 16_740_241, TargetMode.BLOCK, MoreSpells::applyHealingSpring),
+		definition("flame_ring", Items.FIRE_CHARGE, 240, 16_747_546, TargetMode.BLOCK, MoreSpells::applyFlameRing)
 	);
 	private static final Map<Identifier, SpellDefinition> DEFINITIONS_BY_ID = DEFINITIONS.stream()
 		.collect(Collectors.toUnmodifiableMap(SpellDefinition::id, Function.identity()));
