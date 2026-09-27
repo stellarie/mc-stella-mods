@@ -169,7 +169,37 @@ Each hit an entity takes shows a small red number over it, and each heal a green
 sign: the health it actually lost or gained, so a hit that Resistance soaks up shows nothing, and a
 hit on golden hearts still counts. The number drifts up by a block and fades over one second, then
 goes. It is sent to the players within 32 blocks as a display that never joins the world, so it is
-never saved. A player never sees the numbers over their own head.
+never saved. A player never sees the numbers over their own head. An invisible entity shows no
+number, so a hit never gives its place away, and each entity shows at most one damage number and
+one heal number every 4 ticks, so a mob farm does not flood its viewers.
+
+## Refining
+
+Weapons and armour refine from +0 to +15, after Ragnarok Online Renewal. Refine at a **Refining
+Anvil** (a silver anvil crafted from nine anvils; it never wears, never falls and opens no menu) or at
+a village weaponsmith, toolsmith or armorer with the material in your off hand.
+
+- The first use quotes the next step: its chance, its price, and a red warning when a failure would
+  break the piece. Use again within five seconds, with the same piece, to pay and roll.
+- The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
+  for wood; iron for a bow). A step costs 1, plus 1 for every three levels the piece already has.
+- A failure keeps the level and chips 20% of the piece's whole durability. When the piece has no more
+  than that left, a failure breaks it, and the quote says so.
+- The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are
+  grade 1 (safe to +7); iron is grade 2 (safe to +6); diamond, the trident and the mace are grade 3
+  (safe to +5); netherite is grade 4 (safe to +4). Armour is safe to +4. The last step is 15%.
+- Each level adds +0.75 attack damage to a melee weapon, +0.75 base damage to a bow's or crossbow's
+  arrows, and +0.5 armour to a piece of armour.
+- The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.
+  It is not an enchantment, so it takes no enchantment's place and leaves the enchantments unchanged.
+
+| Level | Weapon | Armour (each piece) |
+|---|---|---|
+| +10 | Searing: hits set the target alight for 3 s | Vigor: +2 max health |
+| +12 | Rending: hits also inflict Wither for 3 s | Thorned: melee attackers take 2 damage |
+| +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks | Blessed: a player heals 1 health every 5 s |
+
+Each effect keeps working at the higher levels, so a +15 weapon sears, rends and sends a shockwave.
 
 ## Game tests
 
@@ -183,7 +213,9 @@ fields, the clamped anvil cost, the 71 catalogue enchantments, threat scaling, t
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
 saved before this change, and the readout: its text, rank tags, and colors, its
 radius, its cap, its band updates, its removal on death, on range, and on
-disconnect, its invisibility to a second player, and the opt-out command.
+disconnect, its invisibility to a second player, and the opt-out command. They also
+check refining: the odds tables, the quote and confirm, the price, the chip and the break,
+the cap, the smith, the bonuses, the tooltip, each special effect, and the recipe.
 
 ## Target platform
 

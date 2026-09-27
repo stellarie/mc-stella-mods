@@ -40,6 +40,8 @@ public final class DamageNumbers {
 	public static final byte END_OPACITY = 32;
 	private static final double HEIGHT_ABOVE = 0.4;
 	private static final double JITTER = 0.4;
+	/** One damage number and one heal number per entity in this many ticks, so a mob farm is not a packet flood. */
+	public static final int MIN_GAP_TICKS = 4;
 
 	public interface Recorder {
 		void shown(LivingEntity entity, Display.TextDisplay display, float amount, boolean heal);
@@ -54,6 +56,9 @@ public final class DamageNumbers {
 	private static final List<Shown> LIVE = new ArrayList<>();
 	/** Each entity's health and absorption as a hit began, until the hit resolves. */
 	private static final Map<LivingEntity, Float> BEFORE_HIT = new WeakHashMap<>();
+	/** The server tick each entity last showed a number, for damage and for heals apart. */
+	private static final Map<LivingEntity, Integer> LAST_HIT_NUMBER = new WeakHashMap<>();
+	private static final Map<LivingEntity, Integer> LAST_HEAL_NUMBER = new WeakHashMap<>();
 
 	private DamageNumbers() {
 	}
@@ -103,8 +108,18 @@ public final class DamageNumbers {
 	}
 
 	private static void show(final LivingEntity entity, final float amount, final boolean heal) {
-		if (!(entity.level() instanceof ServerLevel level) || entity instanceof ArmorStand) {
+		// An invisible entity shows no number, which would give its place away.
+		if (!(entity.level() instanceof ServerLevel level) || entity instanceof ArmorStand || entity.isInvisible()) {
 			return;
+		}
+		int now = level.getServer().getTickCount();
+		Map<LivingEntity, Integer> last = heal ? LAST_HEAL_NUMBER : LAST_HIT_NUMBER;
+		synchronized (last) {
+			Integer previous = last.get(entity);
+			if (previous != null && now - previous < MIN_GAP_TICKS && now >= previous) {
+				return;
+			}
+			last.put(entity, now);
 		}
 
 		Display.TextDisplay display = new Display.TextDisplay(EntityTypes.TEXT_DISPLAY, level);

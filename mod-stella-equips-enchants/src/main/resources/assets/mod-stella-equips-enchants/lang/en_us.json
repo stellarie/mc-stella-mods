@@ -147,5 +147,6 @@
 	"enchantment.mod-stella-equips-enchants.curse.deadeye.desc": "Heavier arrows that wear the bow out faster.",
 	"enchantment.mod-stella-equips-enchants.curse.quarry.desc": "Faster mining, and the pickaxe wears out faster.",
 	"enchantment.mod-stella-equips-enchants.curse.berserker": "Berserker",
-	"enchantment.mod-stella-equips-enchants.curse.berserker.desc": "More damage as your health falls. Hunger drains your food."
+	"enchantment.mod-stella-equips-enchants.curse.berserker.desc": "More damage as your health falls. Hunger drains your food.",
+	"block.mod-stella-equips-enchants.refining_anvil": "Refining Anvil"
 }
