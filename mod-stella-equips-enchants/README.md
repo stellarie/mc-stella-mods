@@ -61,6 +61,9 @@ the intended shape.
 - **Undertow** (trident, level 1). A hit pulls the wielder and the victim together, to their
   midpoint, one block apart. Both move or neither does: a pair that is mounted, already close, or
   blocked by a wall stays where it is.
+- **Soulbound** (any item with durability, level 1, rare). The item stays with you when you die and
+  is back in your inventory when you respawn, even if the server restarts in between. Ordinary items
+  still drop. It is offered at the table and in loot at the catalogue's lowest weight.
 - **Weapon Mastery.** A sword, axe, spear, trident or mace counts the hostiles its wielder kills with
   it in melee. At 10, 50, 150 and 400 kills it reaches Mastery I to IV, and each tier adds half a
   point of attack damage. The tooltip shows the tier, the count and the next threshold. The count and
