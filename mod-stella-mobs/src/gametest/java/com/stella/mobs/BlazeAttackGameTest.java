@@ -83,6 +83,7 @@ public class BlazeAttackGameTest {
 			int fire = count(helper, Blocks.FIRE);
 			helper.assertTrue(glass == glassBefore && fire == 0, "the blast broke the ground: glass " + glassBefore + " -> " + glass + ", fire " + fire);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT blasts={} glass={} fire={}", TEST, BLASTED.get(target.getUUID()).size(), glass, fire);
+			blaze.discard();
 		});
 	}
 
@@ -118,6 +119,7 @@ public class BlazeAttackGameTest {
 			}
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT attacks={} called={} mostAlive={} cap={}", TEST, attacks, called.size(), mostAlive[0], BlazeAttackGoal.BOSS_SUMMON_CAP);
 			called.forEach(Blaze::discard);
+			boss.discard();
 		});
 	}
 
@@ -133,6 +135,7 @@ public class BlazeAttackGameTest {
 			helper.assertTrue(distance <= 4.0F, "the first called blaze appeared " + distance + " blocks away");
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT firstCalledDistance={}", TEST, distance);
 			called.forEach(Blaze::discard);
+			boss.discard();
 		});
 	}
 
@@ -146,6 +149,21 @@ public class BlazeAttackGameTest {
 			helper.assertTrue(attacks >= 3, "the elite has attacked " + attacks + " times");
 			helper.assertTrue(CALLED.getOrDefault(elite.getUUID(), List.of()).isEmpty(), "an elite that is not a boss called a blaze");
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT eliteAttacks={} called=0", TEST, attacks);
+			elite.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aBlazeBallThatHitsNothingBurnsOut(final GameTestHelper helper) {
+		Arena.buildFloor(helper);
+		net.minecraft.world.phys.Vec3 at = helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 4.0, 4.5));
+		com.stella.mobs.projectile.StellaSmallFireball ball = new com.stella.mobs.projectile.StellaSmallFireball(helper.getLevel(), at.x, at.y, at.z, net.minecraft.world.phys.Vec3.ZERO);
+		ball.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+		helper.getLevel().addFreshEntity(ball);
+		helper.runAfterDelay(com.stella.mobs.projectile.StellaSmallFireball.MAX_LIFE_TICKS + 5L, () -> {
+			helper.assertTrue(ball.isRemoved(), "a ball that hit nothing is still flying after " + ball.tickCount + " ticks");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT burnedOut=true", TEST);
+			helper.succeed();
 		});
 	}
 
@@ -161,6 +179,7 @@ public class BlazeAttackGameTest {
 			}
 			helper.assertTrue(gaps.stream().allMatch(gap -> gap == interval), "the blaze fired " + gaps + " ticks apart, not every " + interval);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT elite={} gaps={}", test, elite, gaps);
+			blaze.discard();
 		});
 	}
 

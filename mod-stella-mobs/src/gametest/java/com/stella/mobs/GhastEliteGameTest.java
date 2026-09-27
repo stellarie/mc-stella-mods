@@ -77,6 +77,7 @@ public class GhastEliteGameTest {
 			}
 			helper.assertTrue(gaps.stream().allMatch(gap -> gap == GhastFireballGoal.INTERVAL_TICKS), "the ghast fired " + gaps + " ticks apart, not every " + GhastFireballGoal.INTERVAL_TICKS);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastFiresFiveTimesASecond gaps={}", TEST, gaps);
+			ghast.discard();
 		});
 	}
 
@@ -97,6 +98,7 @@ public class GhastEliteGameTest {
 			int blocksNow = solidBlocks(helper, helper.absolutePos(new BlockPos(4, 1, 7)));
 			helper.assertTrue(blocksNow == blocksBefore, "the shot changed the ground: " + blocksBefore + " -> " + blocksNow);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastShotLeavesAWitherCloudInsteadOfExploding clouds={} radius={} wither={} blasts=0", TEST, clouds.size(), radius, wither.getAmplifier());
+			ghast.discard();
 		});
 	}
 
@@ -109,6 +111,22 @@ public class GhastEliteGameTest {
 			helper.assertTrue(!clouds.isEmpty(), "the elite ghast has left no cloud yet");
 			helper.assertTrue(clouds.get(0).getAmplifier() == GhastFireballGoal.ELITE_WITHER_AMPLIFIER, "the elite cloud carries Wither " + (clouds.get(0).getAmplifier() + 1));
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=anEliteGhastsCloudWithersHarder wither={}", TEST, clouds.get(0).getAmplifier() + 1);
+			ghast.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aGhastShotThatHitsNothingBurnsOut(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		com.stella.mobs.projectile.GhastWitherShot shot = new com.stella.mobs.projectile.GhastWitherShot(helper.getLevel(), ghast, net.minecraft.world.phys.Vec3.ZERO, 0);
+		shot.setPos(helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 4.0, 4.5)));
+		shot.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+		helper.getLevel().addFreshEntity(shot);
+		ghast.discard();
+		helper.runAfterDelay(com.stella.mobs.projectile.StellaSmallFireball.MAX_LIFE_TICKS + 5L, () -> {
+			helper.assertTrue(shot.isRemoved(), "a shot that hit nothing is still flying after " + shot.tickCount + " ticks");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastShotThatHitsNothingBurnsOut removed=true", TEST);
+			helper.succeed();
 		});
 	}
 
