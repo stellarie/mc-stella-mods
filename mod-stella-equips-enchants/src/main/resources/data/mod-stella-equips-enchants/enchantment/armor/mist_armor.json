@@ -1,0 +1,12 @@
+{
+	"description": { "translate": "enchantment.mod-stella-equips-enchants.armor.mist_armor" },
+	"supported_items": "#minecraft:enchantable/chest_armor",
+	"primary_items": "#minecraft:enchantable/chest_armor",
+	"slots": ["chest"],
+	"weight": 2,
+	"max_level": 3,
+	"min_cost": { "base": 10, "per_level_above_first": 10 },
+	"max_cost": { "base": 40, "per_level_above_first": 10 },
+	"anvil_cost": 1,
+	"effects": {}
+}

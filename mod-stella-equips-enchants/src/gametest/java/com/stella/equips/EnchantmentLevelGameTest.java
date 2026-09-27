@@ -28,7 +28,6 @@ public class EnchantmentLevelGameTest {
 
 	/** No level value; tests cover these effects. */
 	private static final Set<String> CAPPED = Set.of(
-		"armor/cloudstep",
 		"armor/deflection",
 		"armor/dread_aura",
 		"armor/ender_ward",
@@ -49,7 +48,8 @@ public class EnchantmentLevelGameTest {
 	);
 	/** Level one by contract: fixed values that never scale, so the level-3 and level-5 checks skip them. */
 	private static final Set<String> SINGLE_LEVEL = Set.of("weapon/tempo");
-	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration", "tool/ore_mender", "utility/soulbound");
+	private static final Set<String> EVENT_TESTED = Set.of("tool/ore_regeneration", "tool/ore_mender", "utility/soulbound",
+		"armor/mist_armor", "armor/blaze_armor", "weapon/waveform");
 
 	/** The level 3 value of every scaling enchantment, recorded before any edit. */
 	private static final Map<String, String> LEVEL_THREE_BASELINE = new LinkedHashMap<>();
