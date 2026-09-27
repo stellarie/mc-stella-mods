@@ -77,9 +77,10 @@ public class SpellEnchantmentsGameTest {
 					spellbooks.stream().allMatch(value::isSupportedItem)
 						&& spellbooks.stream().allMatch(value::isPrimaryItem)
 						&& !value.isSupportedItem(helmet) && !value.isSupportedItem(chestplate)
-						&& !value.isSupportedItem(sword) && value.matchingSlot(EquipmentSlot.MAINHAND)
+						// A weapon takes the book enchantments too, at the anvil, so they shape its imbued spells.
+						&& value.isSupportedItem(sword) && !value.isPrimaryItem(sword) && value.matchingSlot(EquipmentSlot.MAINHAND)
 						&& !value.matchingSlot(EquipmentSlot.HEAD) && !value.matchingSlot(EquipmentSlot.CHEST),
-					SPELL_ENCHANTMENTS.get(index) + " must only support all spellbooks in hand"
+					SPELL_ENCHANTMENTS.get(index) + " must support every spellbook and weapon in hand, and be offered only on books"
 				);
 			} else if (index < 5) {
 				helper.assertTrue(
