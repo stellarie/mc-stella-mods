@@ -6,7 +6,8 @@
 		"AnvilMenuMixin",
 		"EnchantmentMenuMixin",
 		"ItemStackTooltipMixin",
-		"PlayerSoulboundMixin"
+		"PlayerSoulboundMixin",
+		"LivingEntityHealMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

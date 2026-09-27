@@ -31,6 +31,7 @@ public class StellaEquips implements ModInitializer {
 		UndertowPull.register();
 		PowerTracker.register();
 		ReadoutService.register();
+		com.stella.equips.numbers.DamageNumbers.register();
 		ReadoutCommand.register();
 		RandomEnchantmentsFunction.register();
 		ChestLoot.register();
