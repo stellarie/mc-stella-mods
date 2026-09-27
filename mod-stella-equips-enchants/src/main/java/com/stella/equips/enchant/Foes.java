@@ -8,9 +8,13 @@ import net.minecraft.world.entity.player.Player;
 
 /** Who an aura or a wave strikes: a hostile, or anything hunting the wearer, but never a friend of the village. */
 public final class Foes {
-	/** Tags the other mods give their friendly hostiles: village patrols, wild patrol pairs, the village witch. */
+	/**
+	 * Tags the other mods give their friendly hostiles: village patrols, wild patrol pairs, the village witch, and a
+	 * skeleton a player summoned.
+	 */
 	public static final Set<String> FRIENDLY_TAGS = Set.of(
-		"mod-stella-mobs.friendly_patrol", "mc-stella-villages.patrol", "mc-stella-villages.village_witch"
+		"mod-stella-mobs.friendly_patrol", "mc-stella-villages.patrol", "mc-stella-villages.village_witch",
+		"mod-stella-spells.summoned"
 	);
 
 	private Foes() {
