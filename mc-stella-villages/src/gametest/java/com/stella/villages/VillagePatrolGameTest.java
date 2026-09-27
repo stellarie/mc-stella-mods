@@ -39,7 +39,7 @@ public final class VillagePatrolGameTest {
 	private static final int TARGET_SELECTION_WINDOW = 200;
 	private static final int THREAT_TEST_LIMIT = PatrolService.PLAYER_THREAT_CLEAR_TICKS + 220;
 
-	@GameTest(maxTicks = 100, padding = 64)
+	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void vacantVillagePoiDoesNotRegister(final GameTestHelper helper) {
 		String test = "vacantVillagePoiDoesNotRegister";
 		BlockPos poi = helper.absolutePos(new BlockPos(2, 1, 2));
@@ -70,7 +70,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void diagonalAnchorsUseChebyshevSectionDistance(final GameTestHelper helper) {
 		if (!PatrolTestSupport.diagonalAnchorIndex(helper, "diagonalAnchorsUseChebyshevSectionDistance")) {
 			return;
@@ -79,7 +79,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void poiAnchorsRespectBoundsTiesAndDimensions(final GameTestHelper helper) {
 		if (!PatrolTestSupport.anchorIndex(helper, "poiAnchorsRespectBoundsTiesAndDimensions")) {
 			return;
@@ -94,7 +94,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void rosterHasRequiredMembers(final GameTestHelper helper) {
 		if (!PatrolTestSupport.loadVillage(helper, "rosterHasRequiredMembers", false)) {
 			return;
@@ -133,7 +133,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolHealthMatchesVanillaTypeBaselines(final GameTestHelper helper) {
 		String test = "patrolHealthMatchesVanillaTypeBaselines";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -166,7 +166,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 800, padding = 64)
+	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void rosterDoesNotDuplicateAfterChunkReload(final GameTestHelper helper) {
 		String test = "rosterDoesNotDuplicateAfterChunkReload";
 		BlockPos villageAnchor = PatrolTestSupport.findDistantVillageAnchor(helper, test);
@@ -361,7 +361,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolHeadReturnsWithinVillageRadius(final GameTestHelper helper) {
 		String test = "patrolHeadReturnsWithinVillageRadius";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -413,7 +413,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 240, padding = 64)
+	@GameTest(maxTicks = 240, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolFollowerReturnsWithinFollowDistance(final GameTestHelper helper) {
 		String test = "patrolFollowerReturnsWithinFollowDistance";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -496,7 +496,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 800, padding = 64)
+	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void ravagerStaysUnmountedThroughMovementAndReload(final GameTestHelper helper) {
 		String test = "ravagerStaysUnmountedThroughMovementAndReload";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -607,7 +607,7 @@ public final class VillagePatrolGameTest {
 		return entity.getVehicle() == null && entity.getPassengers().isEmpty();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void targetRangeHonorsPatrolDetection(final GameTestHelper helper) {
 		if (!PatrolTestSupport.loadVillage(helper, "targetRangeHonorsPatrolDetection", false)) {
 			return;
@@ -624,7 +624,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = TARGET_SELECTION_WINDOW + 20, padding = 64)
+	@GameTest(maxTicks = TARGET_SELECTION_WINDOW + 20, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolTargetsHostilesInsideDetectionRange(final GameTestHelper helper) {
 		String test = "patrolTargetsHostilesInsideDetectionRange";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -718,7 +718,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(dimension = "minecraft:the_end", maxTicks = TARGET_SELECTION_WINDOW + 20, padding = 64)
+	@GameTest(dimension = "minecraft:the_end", maxTicks = TARGET_SELECTION_WINDOW + 20, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolDoesNotTargetHostilesOutsideDetectionRange(final GameTestHelper helper) {
 		String test = "patrolDoesNotTargetHostilesOutsideDetectionRange";
 		BlockPos isolatedAnchor = PatrolTestSupport.findDistantVillageAnchor(helper, test);
@@ -763,7 +763,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = THREAT_TEST_LIMIT, padding = 64)
+	@GameTest(maxTicks = THREAT_TEST_LIMIT, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void playerThreatResetsAndClears(final GameTestHelper helper) {
 		if (!PatrolTestSupport.loadVillage(helper, "playerThreatResetsAndClears", false)) {
 			return;
@@ -827,7 +827,7 @@ public final class VillagePatrolGameTest {
 			.thenSucceed();
 	}
 
-	@GameTest(maxTicks = THREAT_TEST_LIMIT, padding = 64)
+	@GameTest(maxTicks = THREAT_TEST_LIMIT, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void playerThreatExpiresAfterDimensionTransfer(final GameTestHelper helper) {
 		String test = "playerThreatExpiresAfterDimensionTransfer";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -876,7 +876,7 @@ public final class VillagePatrolGameTest {
 			.thenSucceed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void cachedThreatTargetStopsAfterDimensionTransfer(final GameTestHelper helper) {
 		String test = "cachedThreatTargetStopsAfterDimensionTransfer";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -922,7 +922,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void retriesFailedPatrolInsertionWithoutRespawningDeadMembers(final GameTestHelper helper) {
 		String test = "retriesFailedPatrolInsertionWithoutRespawningDeadMembers";
 		if (!PatrolTestSupport.prepareVillage(helper, test, false)) {
@@ -981,7 +981,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolDoesNotSpawnWhenNoSafeLoadedPositionExists(final GameTestHelper helper) {
 		String test = "patrolDoesNotSpawnWhenNoSafeLoadedPositionExists";
 		if (!PatrolTestSupport.prepareVillage(helper, test, false)) {
@@ -1040,7 +1040,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolRejectsLowCeilingSpawnSites(final GameTestHelper helper) {
 		String test = "patrolRejectsLowCeilingSpawnSites";
 		if (!PatrolTestSupport.prepareVillage(helper, test, false)) {
@@ -1070,7 +1070,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_end", padding = 64)
+	@GameTest(dimension = "minecraft:the_end", padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolRejectsUnsafeSpawnSupport(final GameTestHelper helper) {
 		String test = "patrolRejectsUnsafeSpawnSupport";
 		if (!PatrolTestSupport.prepareVillage(helper, test, false)) {
@@ -1100,7 +1100,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void lastGuardDeathClearsWithoutRespawn(final GameTestHelper helper) {
 		if (!PatrolTestSupport.loadVillage(helper, "lastGuardDeathClearsWithoutRespawn", false)) {
 			return;
@@ -1129,7 +1129,7 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 800, padding = 64)
+	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void pillagerCrossbowsSurviveChunkReload(final GameTestHelper helper) {
 		String test = "pillagerCrossbowsSurviveChunkReload";
 		BlockPos anchor = PatrolTestSupport.findDistantVillageAnchor(helper, test);
@@ -1216,7 +1216,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void staleEvokerLeavesWhenItLoads(final GameTestHelper helper) {
 		String test = "staleEvokerLeavesWhenItLoads";
 		Mob member = loadLegacyMember(helper, test, EntityTypes.EVOKER, PatrolState.Role.EVOKER);
@@ -1233,7 +1233,7 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolPillagerStaysWhenItLoads(final GameTestHelper helper) {
 		String test = "patrolPillagerStaysWhenItLoads";
 		Mob member = loadLegacyMember(helper, test, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER);
@@ -1282,7 +1282,7 @@ public final class VillagePatrolGameTest {
 		return mob;
 	}
 
-	@GameTest(maxTicks = 5, required = false, padding = 64)
+	@GameTest(maxTicks = 5, required = false, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolRetaliatesAgainstSurvivalPlayerRequiresManualTest(final GameTestHelper helper) {
 		PatrolTestSupport.result("patrolRetaliatesAgainstSurvivalPlayerRequiresManualTest", "manual=survival_player_required");
 		McStellaVillages.LOGGER.info(

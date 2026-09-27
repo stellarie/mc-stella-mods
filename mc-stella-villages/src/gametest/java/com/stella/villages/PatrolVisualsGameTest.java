@@ -36,7 +36,7 @@ public class PatrolVisualsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolFootSoldiersWearTheVillageBanner(final GameTestHelper helper) {
 		String test = "patrolFootSoldiersWearTheVillageBanner";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -55,7 +55,7 @@ public class PatrolVisualsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void everyPatrolMemberGivesOffTheVillageSparkle(final GameTestHelper helper) {
 		String test = "everyPatrolMemberGivesOffTheVillageSparkle";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -78,7 +78,7 @@ public class PatrolVisualsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 100)
+	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void anOrdinaryIllagerKeepsItsVanillaLook(final GameTestHelper helper) {
 		Pillager pillager = helper.spawnMob(EntityTypes.PILLAGER, 2, 2, 2).spawn();
 		helper.runAfterDelay(PatrolVisuals.SPARKLE_INTERVAL_TICKS * 3L, () -> {

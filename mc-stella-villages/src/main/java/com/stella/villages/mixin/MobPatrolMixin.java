@@ -30,6 +30,30 @@ public abstract class MobPatrolMixin implements MobPatrolAccess {
 		builder.define(MC_STELLA_VILLAGES$PATROL_MARKER, false);
 	}
 
+	// A patrol member never takes a fellow member as its target.
+	@Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$ignoreFellows(final net.minecraft.world.entity.LivingEntity target, final CallbackInfo callbackInfo) {
+		if (com.stella.villages.patrol.PatrolService.areFellows((Mob) (Object) this, target)) {
+			callbackInfo.cancel();
+		}
+	}
+
+	// A patrol member belongs to its village: it never despawns.
+	@Inject(method = "checkDespawn", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$neverDespawn(final CallbackInfo callbackInfo) {
+		if (com.stella.villages.patrol.PatrolState.isMarked((Mob) (Object) this)) {
+			callbackInfo.cancel();
+		}
+	}
+
+	// The natural spawner skips a mob that needs custom persistence, so a member never fills the mob cap.
+	@Inject(method = "requiresCustomPersistence", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$outOfTheMobCap(final org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> callbackInfo) {
+		if (com.stella.villages.patrol.PatrolState.isMarked((Mob) (Object) this)) {
+			callbackInfo.setReturnValue(true);
+		}
+	}
+
 	@Override
 	public void setPatrolMarker(final boolean marked) {
 		((Mob) (Object) this).getEntityData().set(MC_STELLA_VILLAGES$PATROL_MARKER, marked);

@@ -50,7 +50,8 @@ public final class MissionService {
 	public static final int MISSION_MIN_DISTANCE = 256;
 	public static final int MISSION_MAX_DISTANCE = 512;
 	public static final int MISSION_TARGET_SEARCH_LIMIT = 64;
-	public static final double NEMESIS_HEALTH_MULTIPLIER = 2.0;
+	/** Health a Nemesis carries on top of its type's own. */
+	public static final double NEMESIS_BONUS_HEALTH = 100.0;
 	public static final int NEMESIS_ENRAGE_DURATION = 200;
 
 	private static final List<Identifier> OFFER_TYPES = List.of(
@@ -259,7 +260,7 @@ public final class MissionService {
 	private static void applyNemesisProfile(final Mob nemesis) {
 		AttributeInstance maxHealth = nemesis.getAttribute(Attributes.MAX_HEALTH);
 		if (maxHealth != null) {
-			maxHealth.setBaseValue(maxHealth.getBaseValue() * NEMESIS_HEALTH_MULTIPLIER);
+			maxHealth.setBaseValue(maxHealth.getBaseValue() + NEMESIS_BONUS_HEALTH);
 			nemesis.setHealth(nemesis.getMaxHealth());
 		}
 		setEquipment(nemesis, EquipmentSlot.HEAD, Items.DIAMOND_HELMET);
