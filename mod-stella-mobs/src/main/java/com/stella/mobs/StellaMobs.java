@@ -61,6 +61,8 @@ import org.slf4j.LoggerFactory;
 public class StellaMobs implements ModInitializer {
 	/** V4: a mob carrying this entity tag takes none of the spawn-time rolls, so another mod can own its kit. */
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
+	/** A mob another mod drives entirely, such as the village witch or a summoned skeleton: this mod leaves its goals alone. */
+	public static final String NO_BEHAVIOR_TAG = "mod-stella-mobs.no_behavior";
 	public static final String MOD_ID = "mod-stella-mobs";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -122,6 +124,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.behavior.TemporaryBlocks.register();
 		com.stella.mobs.behavior.StrayKit.register();
 		com.stella.mobs.behavior.WitherPulse.register();
+		com.stella.mobs.behavior.DepthMobs.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
@@ -194,17 +197,14 @@ public class StellaMobs implements ModInitializer {
 				}
 			}
 
+			// Round 8: a natural spawn in the deep may turn Depth, after its elite and boss rolls.
+			com.stella.mobs.behavior.DepthMobs.rollAtSpawn(mob, level, entity instanceof EntityLoadData depthData ? depthData.spawnReason() : null);
+
 			SpawnScaling.apply(mob);
 			BloodMoon.empower(mob, level);
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
 
-			// O01: a fresh natural dolphin over an ocean may start a skeleton band.
-			if (mob instanceof Dolphin
-				&& entity instanceof EntityLoadData loadData
-				&& loadData.spawnReason() == EntitySpawnReason.NATURAL) {
-				OceanBand.trySpawn(level, (Dolphin) mob);
-			}
 		}
 
 		// B1: a boss joins its level's bar watch list here, which covers both the roll above and a boss

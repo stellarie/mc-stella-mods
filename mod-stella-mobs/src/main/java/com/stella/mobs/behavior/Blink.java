@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 
 /** A mob's short teleport to a standing spot on a ring around an anchor, with a puff where it left and arrived. */
 public final class Blink {
-	private static final int ATTEMPTS = 16;
+	private static final int ATTEMPTS = 32;
 	private static final int SEARCH_UP = 3;
 	private static final int SEARCH_DOWN = 5;
 

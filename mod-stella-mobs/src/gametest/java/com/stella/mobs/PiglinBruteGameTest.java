@@ -54,8 +54,14 @@ public final class PiglinBruteGameTest {
 		victim.setPersistenceRequired();
 		brute.setPersistenceRequired();
 
-		// A few ticks first, so the victim has landed: the grounded pop rule cannot apply in mid air.
-		helper.runAfterDelay(5L, () -> {
+		// Wait for the victim to land, not a fixed tick: the grounded pop rule cannot apply in mid air, and an
+		// airborne victim keeps its fall and reads a 6.5 ratio. A fixed five ticks failed 2 of 6 gate runs.
+		final boolean[] measured = {false};
+		helper.onEachTick(() -> {
+			if (measured[0] || !victim.onGround()) {
+				return;
+			}
+			measured[0] = true;
 			// The vanilla baseline, measured on this same victim with vanilla's own call at vanilla's power.
 			Vec3 baseline = pushOf(helper, victim, PiglinSmash.VANILLA_PUSH, brute, false);
 			Elite.mark(brute, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
