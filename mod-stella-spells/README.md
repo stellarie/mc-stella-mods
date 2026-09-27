@@ -1,7 +1,7 @@
 # mod-stella-spells
 
-Forty-one tinted spellbooks, each casting one fixed spell, and seven enchantments that change how
-spells behave. Install the mod on the server and on every client; the jar holds the item tints.
+Forty-two tinted spellbooks, each casting one fixed spell, and eight enchantments that change how
+spells behave. Witches, strays and spellcasting illagers cast spells of their own. Install the mod on the server and on every client; the jar holds the item tints.
 
 ## Using a spellbook
 
@@ -81,10 +81,14 @@ A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 Put a weapon, a stack of arrows (any kind) or a chestplate on the left of an anvil and a spellbook on
 the right to imbue it. A weapon is any item with its own attack damage: swords, axes, tridents, maces
 and the like. The book is used up, and its own enchantments do not carry over. Tide Lungs cannot be
-imbued: it is a breath held underwater, not a blow.
+imbued: it is a breath held underwater, not a blow. Nor can Summon Skeleton.
 
 A piece can hold several spells. Each imbue adds one, at five times the price of the last: 5, then 25,
 then 125, and so on, in levels, or in emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
+A stack of arrows pays that price once for every 16 arrows it holds.
+
+The spellbooks a later update removed turn into their successors in a saved world: Smite becomes
+Battle Hymn, Skyhook becomes Gravity and Healing Spring becomes Bulwark Hymn, books and scrolls alike.
 
 - **Weapon:** each melee hit casts every imbued spell that is ready, at half power and half duration.
   Right-click a hostile with the weapon to cast every ready spell at the book's full strength instead.
@@ -115,7 +119,7 @@ and then the note is about the Scroll of Return instead.
 
 ## Spell scrolls
 
-Every spell also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
+Every spell but Summon Skeleton also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
 only when the spell lands, so a miss keeps it. It has its own 1-second cooldown, separate from the
 book's. Head and chest spell enchantments still apply.
 
@@ -139,6 +143,38 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 | Stoneguard | Aegis of the Deep | Bastion | Absorption IV, 8 s |
 | Time Lock | Dragonfall | Frozen Meteor | 5 more damage to hostiles within 3 blocks |
 
+## Summon Skeleton
+
+A book of its own: no scroll copies it and no weapon takes it. Crafted from a book and four bone blocks.
+
+- Casting raises one skeleton that serves you, with a bow and a leather cap. It never despawns, and
+  iron golems leave it alone.
+- It fights the hostiles within 8 blocks of you and follows you, catching up by teleport when you are
+  more than 24 blocks away.
+- It gathers the items it walks over into its own 18-slot pack. When it dies, its gear and pack drop.
+- Use it (not sneaking) to open its screen: the top row is its head, chest, legs, feet, main hand and
+  off hand, then two locked panes and a name slot. A named item left in the name slot renames it when
+  you close the screen, and comes back to you. The two rows below are its pack.
+- The book rests 300 seconds after a summon. Casting it again while your skeleton lives calls the
+  skeleton to your side, even while the book rests, and starts no new rest.
+
+## Mobs that cast
+
+- **Witches** each carry two spells, chosen when they spawn: one to strike with (Spark Shot,
+  Frostbind, Briar Snare, Static Lash, Tidal Push, Wither Seal, Ice Lance, Soul Siphon, Venom Dart,
+  Blinding Flash or Ember Brand) and one to aid their side (Sanctuary, Bulwark Hymn, Tailwind, Battle
+  Hymn, Mending Word or Stoneguard). The strike lands on their target; a heal waits for a hurt ally.
+- **Strays** cast Ice Lance. An elite or boss stray casts Frozen Meteor too, with no combo needed.
+- **Evokers and illusioners** cast Sanctuary over the illagers around them when one is hurt, at most
+  once every 20 seconds.
+- **The village witch** (with `mc-stella-villages`) throws no potions and joins no raid. It strikes
+  the hostiles near the village, first the ones hunting a player or a villager, with Ice Lance,
+  Frostbind and Venom Dart, heals and blesses players, villagers, golems and the patrol with
+  Sanctuary, Bulwark Hymn, Battle Hymn and Tailwind, and steps to a foe more than 12 blocks away.
+
+A mob's spell lands at full strength and keeps the spell's own cooldown. Spells never count a village
+patrol, the village witch or a summoned skeleton as a foe.
+
 ## Getting spellbooks
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
@@ -147,8 +183,8 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 
 ## Enchantments
 
-All seven go on books or armour at the enchanting table, have three levels, and cost no XP at the
-anvil. With `mod-stella-equips-enchants` installed, its anvil charges one emerald per new or raised
+All eight go on books or armour at the enchanting table and cost no XP at the anvil. Doublecast has
+one level; the others have three. With `mod-stella-equips-enchants` installed, its anvil charges one emerald per new or raised
 enchantment instead.
 
 | Enchantment | Slot | Per level |
@@ -160,6 +196,7 @@ enchantment instead.
 | Clear Mind | Helmet | Cooldown −5% |
 | Arcane Weave | Chestplate | Duration of effects on enemies +10% |
 | Spellguard | Chestplate | Duration of effects on the caster +10% |
+| Doublecast | Helmet | 50% chance a book or scroll cast lands twice, combos included |
 
 Quickening and Clear Mind stack, but a cooldown never drops below half its base or below 1 second.
 

@@ -8,7 +8,9 @@
 		"ResultSlotMixin",
 		"SpellImbueAnvilMixin",
 		"StormBoltMixin",
-		"AreaEffectCloudAccessor"
+		"AreaEffectCloudAccessor",
+		"MobGoalsAccessor",
+		"SummonGolemMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

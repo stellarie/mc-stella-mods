@@ -35,7 +35,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.component.UseCooldown;
@@ -106,7 +105,9 @@ public final class SpellImbue {
 		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("blinding_flash"), id("ember_brand")
 	);
 	/** Spells no weapon takes: Tide Lungs is a breath held underwater, not a blow. */
-	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"));
+	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"), id("summon_skeleton"));
+	/** Arrows imbued for one price. */
+	public static final int ARROWS_PER_PRICE = 16;
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
 	};
 	private static volatile MobRecorder mobRecorder = SILENT_MOBS;
@@ -181,6 +182,10 @@ public final class SpellImbue {
 		int cost = IMBUE_XP_COST;
 		for (int i = 0; i < spellsOf(piece).size(); i++) {
 			cost *= 5;
+		}
+		// A stack of arrows pays once for every sixteen it holds, so a full stack is not one arrow's price.
+		if (piece.is(ItemTags.ARROWS)) {
+			cost *= (piece.getCount() + ARROWS_PER_PRICE - 1) / ARROWS_PER_PRICE;
 		}
 		return cost;
 	}
@@ -260,7 +265,7 @@ public final class SpellImbue {
 		final Player player, final Level level, final InteractionHand hand, final Entity entity, final EntityHitResult hit
 	) {
 		if (level.isClientSide() || hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer caster)
-			|| !(entity instanceof Mob target) || !(target instanceof Enemy) || !target.isAlive()) {
+			|| !(entity instanceof Mob target) || !Friends.isFoe(target) || !target.isAlive()) {
 			return InteractionResult.PASS;
 		}
 		ItemStack weapon = caster.getMainHandItem();

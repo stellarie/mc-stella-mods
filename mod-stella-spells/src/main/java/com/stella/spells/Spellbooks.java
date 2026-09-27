@@ -21,6 +21,8 @@ public final class Spellbooks implements ModInitializer {
 	public static final String MOD_ID = "mod-stella-spells";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Identifier SPARK_SHOT_ID = Identifier.fromNamespaceAndPath(MOD_ID, "spark_shot");
+	/** Spells only a book casts: no scroll copies them. Declared before the scrolls register. */
+	public static final java.util.Set<Identifier> BOOK_ONLY = java.util.Set.of(Identifier.fromNamespaceAndPath(MOD_ID, "summon_skeleton"));
 	public static final List<SpellbookItem> CATALOG = registerCatalog();
 	public static final SpellbookItem SPARK_SHOT = CATALOG.get(0);
 	public static final List<SpellScrollItem> SCROLLS = registerScrolls();
@@ -38,8 +40,21 @@ public final class Spellbooks implements ModInitializer {
 		Identifier.fromNamespaceAndPath(MOD_ID, "briar_snare")
 	);
 
+	/** Spells a later round removed, each pointing at the book that took its place, so a stack in a saved world survives. */
+	public static final java.util.Map<String, String> RETIRED = java.util.Map.of(
+		"smite", "battle_hymn", "skyhook", "gravity", "healing_spring", "bulwark_hymn"
+	);
+
 	@Override
 	public void onInitialize() {
+		for (java.util.Map.Entry<String, String> retired : RETIRED.entrySet()) {
+			Identifier from = Identifier.fromNamespaceAndPath(MOD_ID, retired.getKey());
+			Identifier to = Identifier.fromNamespaceAndPath(MOD_ID, retired.getValue());
+			((net.fabricmc.fabric.api.event.registry.FabricRegistry) BuiltInRegistries.ITEM).addAlias(from, to);
+			((net.fabricmc.fabric.api.event.registry.FabricRegistry) BuiltInRegistries.ITEM).addAlias(scrollId(from), scrollId(to));
+		}
+		MobSpells.register();
+		SummonSkeleton.register();
 		SpellbookLoot.register();
 		SpellStorms.register();
 		SpellImbue.register();
@@ -52,7 +67,7 @@ public final class Spellbooks implements ModInitializer {
 	}
 
 	private static List<SpellScrollItem> registerScrolls() {
-		return SpellbookCatalog.DEFINITIONS.stream().map(Spellbooks::registerScroll).toList();
+		return SpellbookCatalog.DEFINITIONS.stream().filter(definition -> !BOOK_ONLY.contains(definition.id())).map(Spellbooks::registerScroll).toList();
 	}
 
 	public static Identifier scrollId(final Identifier spell) {
