@@ -24,9 +24,12 @@ import net.minecraft.world.entity.monster.Enemy;
  * that installer returns before anything that is not a Monster, and a ghast is not one.
  */
 public final class Elite {
-	public static final double SCALE_BONUS = 0.2;
+	public static final double SCALE_BONUS = 0.4;
+	/** A boss stands this much larger again, on top of the elite's own size. */
+	public static final double BOSS_SCALE_BONUS = 0.4;
 	public static final double HEALTH_MULTIPLIER = 2.0;
 	public static final Identifier SCALE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_scale");
+	public static final Identifier BOSS_SCALE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_scale");
 	/** The elite kit roll: diamond is four times as likely as netherite, per the tier weights. */
 	public static final List<GearTier> KIT_TIERS = List.of(GearTier.DIAMOND, GearTier.NETHERITE);
 	public static final float KIT_DROP_CHANCE = 0.10F;
@@ -60,14 +63,8 @@ public final class Elite {
 			return false;
 		}
 
-		AttributeInstance scale = mob.getAttribute(Attributes.SCALE);
-		if (scale != null && !scale.hasModifier(SCALE_ID)) {
-			scale.addPermanentModifier(
-				new AttributeModifier(SCALE_ID, SCALE_BONUS, AttributeModifier.Operation.ADD_VALUE)
-			);
-		}
-
 		EliteState.markElite(mob, tier);
+		refreshScale(mob);
 		// R22 and R24: the elite's own kit goes on here, before the installer runs, so the off hand it
 		// writes is in place when the installer decides whether to add ShieldUseGoal. A summoned companion
 		// is kitted by its spawner, and a boss keeps the boss kit, so both are skipped.
@@ -87,6 +84,30 @@ public final class Elite {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Brings an elite's size, and a boss's, to the sizes that ship. An elite saved at an older, smaller size
+	 * grows to the current one when it loads.
+	 */
+	public static void refreshScale(final Mob mob) {
+		AttributeInstance scale = mob.getAttribute(Attributes.SCALE);
+		if (scale == null || !EliteState.isElite(mob)) {
+			return;
+		}
+		setScale(scale, SCALE_ID, SCALE_BONUS);
+		if (EliteState.isBoss(mob)) {
+			setScale(scale, BOSS_SCALE_ID, BOSS_SCALE_BONUS);
+		}
+	}
+
+	private static void setScale(final AttributeInstance scale, final Identifier id, final double bonus) {
+		AttributeModifier current = scale.getModifier(id);
+		if (current != null && current.amount() == bonus) {
+			return;
+		}
+		scale.removeModifier(id);
+		scale.addPermanentModifier(new AttributeModifier(id, bonus, AttributeModifier.Operation.ADD_VALUE));
 	}
 
 	/** O03: a kind that is elite every time, which no roll gate may skip. */
