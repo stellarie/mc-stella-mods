@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:tinted_glass"
+	],
+	"result": {
+		"id": "mod-stella-spells:shadow_veil_scroll",
+		"count": 2
+	}
+}

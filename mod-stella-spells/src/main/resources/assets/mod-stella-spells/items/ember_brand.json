@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/ember_brand",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 14706218
+			}
+		]
+	}
+}

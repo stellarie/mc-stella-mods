@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:blaze_powder", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:berserk", "count": 1}
+}
