@@ -29,7 +29,9 @@
 			"com.stella.equips.ReadoutTextGameTest",
 			"com.stella.equips.TempoGameTest",
 			"com.stella.equips.UndertowGameTest",
-			"com.stella.equips.WeaponMasteryGameTest"
+			"com.stella.equips.WeaponMasteryGameTest",
+			"com.stella.equips.SoulboundGameTest",
+			"com.stella.equips.MasteryPerksGameTest"
 		]
 	}
 }

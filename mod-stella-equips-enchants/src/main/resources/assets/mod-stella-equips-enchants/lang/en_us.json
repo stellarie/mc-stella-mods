@@ -104,6 +104,8 @@
 	"enchantment.mod-stella-equips-enchants.weapon.pyre.desc": "Sets the target alight.",
 	"enchantment.mod-stella-equips-enchants.weapon.undertow": "Undertow",
 	"enchantment.mod-stella-equips-enchants.weapon.undertow.desc": "A hit draws you and your target together, one block apart.",
+	"enchantment.mod-stella-equips-enchants.utility.soulbound": "Soulbound",
+	"enchantment.mod-stella-equips-enchants.utility.soulbound.desc": "Stays with you when you die, and returns when you respawn.",
 	"enchantment.mod-stella-equips-enchants.weapon.venom": "Venom",
 	"enchantment.mod-stella-equips-enchants.weapon.venom.desc": "Poisons the target, and poisons it longer at a higher level.",
 	"enchantment.mod-stella-equips-enchants.weapon.void_brand": "Void Brand",
