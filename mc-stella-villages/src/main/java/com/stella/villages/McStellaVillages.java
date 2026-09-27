@@ -6,6 +6,7 @@ import com.stella.villages.patrol.BellRally;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.villages.raid.VillageRaids;
+import com.stella.villages.smith.SmithHardening;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,7 @@ public final class McStellaVillages implements ModInitializer {
 		MissionService.register();
 		BellRally.register();
 		VillageRaids.register();
+		SmithHardening.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 }

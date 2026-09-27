@@ -43,7 +43,7 @@ public class BellRallyGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void ringingTheVillageBellRalliesTheWholePatrol(final GameTestHelper helper) {
 		String test = "ringingTheVillageBellRalliesTheWholePatrol";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -65,7 +65,7 @@ public class BellRallyGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aSecondRingInsideTheCooldownRalliesNobody(final GameTestHelper helper) {
 		String test = "aSecondRingInsideTheCooldownRalliesNobody";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -82,7 +82,7 @@ public class BellRallyGameTest {
 	}
 
 	// Padded like the village tests, so a neighbour's village anchor is always past the rally range.
-	@GameTest(maxTicks = 60, padding = 64)
+	@GameTest(maxTicks = 60, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aBellWithNoVillageRalliesNobody(final GameTestHelper helper) {
 		helper.setBlock(2, 0, 2, Blocks.STONE);
 		helper.setBlock(2, 1, 2, Blocks.BELL);

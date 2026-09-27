@@ -77,6 +77,7 @@ public final class PatrolService {
 		ServerChunkEvents.CHUNK_UNLOAD.register(PatrolService::onChunkUnload);
 		ServerEntityEvents.ENTITY_LOAD.register(PatrolService::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(PatrolService::onEntityUnload);
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register(PatrolService::allowDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(PatrolService::onAfterDamage);
 		ServerLivingEntityEvents.AFTER_DEATH.register(PatrolService::onAfterDeath);
 		ServerTickEvents.END_LEVEL_TICK.register(PatrolService::onLevelTick);
@@ -153,6 +154,30 @@ public final class PatrolService {
 			}
 		}
 		return result;
+	}
+
+	/** A village whose head is gone: members that are gone too leave the roll, and every missing place is filled. */
+	static void refillRoster(final ServerLevel level, final VillageWorldData data, final VillageRecord village) {
+		for (MemberRecord member : List.copyOf(village.members())) {
+			if (member.alive() && !ACTIVE_MEMBERS.containsKey(member.id()) && level.isPositionEntityTicking(member.lastPosition())) {
+				data.markMemberDead(member.id());
+			}
+		}
+		for (MemberRecord member : List.copyOf(village.members())) {
+			if (!member.alive()) {
+				data.removeMember(member.id());
+			}
+		}
+
+		List<Mob> spawned = new ArrayList<>();
+		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
+		McStellaVillages.LOGGER.info(
+			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
+			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
+		);
 	}
 
 	private static void spawnRoster(
@@ -461,6 +486,7 @@ public final class PatrolService {
 		restoreCrossbows(level);
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
+		VillageCoverage.tick(level, tick);
 		VillageWorldData data = VillageWorldData.get(level);
 		for (VillageRecord village : data.villages()) {
 			if (!village.dimension().equals(level.dimension())) {
@@ -482,7 +508,32 @@ public final class PatrolService {
 			}
 
 			updateThreats(level, data, village);
+			boolean provoked = !village.threats().isEmpty();
+			for (MemberRecord member : village.members()) {
+				Mob mob = ACTIVE_MEMBERS.get(member.id());
+				if (mob != null && mob.level() == level && mob.isAlive()) {
+					PatrolLabels.apply(mob, provoked);
+				}
+			}
 		}
+	}
+
+	/** True when both are patrol members, of any village: they are one side. */
+	public static boolean areFellows(final @Nullable Entity first, final @Nullable Entity second) {
+		return first != second && first instanceof Mob a && second instanceof Mob b && PatrolState.isMarked(a) && PatrolState.isMarked(b);
+	}
+
+	// A stray bolt or swing between members does no harm.
+	private static boolean allowDamage(final LivingEntity victim, final DamageSource source, final float amount) {
+		if (!areFellows(victim, source.getEntity())) {
+			return true;
+		}
+
+		McStellaVillages.LOGGER.info(
+			"[BEHAVIOR] mod={} event=friendly_fire_blocked victim={} attacker={} amount={}",
+			McStellaVillages.MOD_ID, victim.getUUID(), source.getEntity().getUUID(), amount
+		);
+		return false;
 	}
 
 	/** W021: a saved Evoker or Witch member dismounts, loses its record, and leaves the level. */

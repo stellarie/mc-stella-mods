@@ -30,6 +30,12 @@ public final class NemesisMapItem extends MapItem {
 		super(properties);
 	}
 
+	// Literal, because the village mod ships no language file.
+	@Override
+	public net.minecraft.network.chat.Component getName(final ItemStack stack) {
+		return net.minecraft.network.chat.Component.literal("Nemesis Map");
+	}
+
 	public static void register() {
 		McStellaVillages.LOGGER.debug("Registered Nemesis map item {}", ID);
 	}
