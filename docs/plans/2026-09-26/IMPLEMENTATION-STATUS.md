@@ -87,6 +87,48 @@ Measured reach rates:
 | M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
 | M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
 
+## Eighth round (2026-09-27): archers, strays, Depth mobs, ocean bands, casting mobs, summons, auras
+
+| Slice | Branch | Mutant runs | Gate |
+| --- | --- | --- | --- |
+| Mist Armor, Blaze Armor, Waveform; Weightless and Cloudstep retired; shockwave and thorns review fixes | `feat/round8-equips` into `main-equip-ench` (a4588ad) | 5 in one run, all red; old thorns red once its test cleared the attacker's cooldown | 251 x 6 |
+| Skeleton volley and slow shot, strays, spider webs, wither pulses, ghast bursts, witches never blind, levitation cap, no safe-zone elites; wolf and raid review fixes | `feat/round8-mobs` into `main-mobs` (23578dd) | 25 in one run, then 3 tightened tests, all red | 349 x 6 |
+| Casting witches, strays and illagers; Summon Skeleton; Doublecast; village witch mind; spell review fixes | `feat/round8-spells` into `main-spells` (1997ac6) | 22 in one run, all red | 195 x 6 |
+| Village witch with the spells mod; Nemesis pool and payout, bell lookup review fixes | `feat/round8-villages` into `main-villages` (4d563b1) | 8 in three runs, all red | 89 x 6 |
+| Depth mobs, ocean bands of 3 to 5, the no-behaviour tag | `feat/round8-mobs-2` into `main-mobs` (1565bd9) | 16 in two runs, all red | 364 x 6 |
+
+Measured: Depth rolls 1.034% of 200,000 seeded spawns (1% ships); ocean bands and leaders sit within 4
+sigma of 2% and 5% over 200,000 rolls; a 50% Doublecast roll landed 49.49% of 10,000.
+
+Decisions this round:
+
+- "Exploding effects" on elite and boss volleys was read as the impact cloud every volley arrow already
+  leaves; a real blast per arrow would make eighteen arrows lethal.
+- The boss skeleton's bone fan is gone: bosses use the shared archer goal with eighteen arrows.
+- Temporary webs and powder snow clear after 10 seconds; a server stop leaves any still standing.
+- Summon Skeleton recalls even while its book rests, and a recall starts no new rest.
+- The village witch is a patrol member with its own role, so it is spared by golems, the patrol and the
+  villagers through the same marker, and it returns with the patrol.
+- Elite witches' aura is Weakness in place of Blindness.
+
+Review findings from the round 6/7 review, all nine addressed: Nemesis water mobs and payout, patrol
+raids, removed-item aliases, friendly fire across mods, bred elite wolves, early thorns and chestplate
+casts (thorns moved; chestplate casts still read before damage), neighbour-counting tests, the bell
+cache, and the mob imbue cooldown map. The minor arrow-stack price is fixed; the client's "Too
+Expensive" label on a 125-level imbue remains.
+
+Tagged this round: `anOceanAreaRaisesABandAtItsSurfaceRequiresManualTest`. The harness cannot make an
+ocean: `fillbiome` reports its cells filled, yet the chunk reads its generated biome.
+
+Manual acceptance items added this round:
+
+- **Mobs:** meet an ocean band; flaming volleys and the stray sniper's powder snow in play; a Depth
+  mob's name tag and drops.
+- **Spells:** the Summon Skeleton screen in a real client (three rows, panes, name slot), and a
+  Doublecast in play.
+- **Villages:** the village witch in a real village with the spells mod.
+- **Equips:** the aura particles and the Waveform sound.
+
 ## Sixth and seventh rounds (2026-09-27): refining, friendly patrols, village heads, wolves, spell reworks
 
 | Slice | Branch | Mutant runs | Gate |

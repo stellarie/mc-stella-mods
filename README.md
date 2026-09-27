@@ -7,8 +7,8 @@ Minecraft mods for a private Fabric server.
 | Directory | Purpose | Integration branch |
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
-| `mod-stella-equips-enchants/` | Enchantments, player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
-| `mod-stella-spells/` | Forty-one spellbooks, scrolls, the Scroll of Return, imbued gear, clue books, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
+| `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
+| `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
@@ -32,25 +32,45 @@ wants.
 
 - **Blood Moon.** Every seventh night, hostiles that spawn roll elite three times as often and carry
   Strength until dawn. Every overworld player is told when it rises and when it sets.
-- **Skeletons.** A plain skeleton with a bow looses three arrows 6 degrees apart every 2 seconds.
-  Each arrow leaves a small cloud: a tipped arrow's own potion, or Slowness. About 79% of skeletons
-  carry a bow.
+- **Skeletons.** An archer's single shot slows what it hits for 2 seconds (harder from an elite or a
+  boss). Every 6 seconds it looses a narrow volley of flaming arrows instead: 6 from a plain skeleton, 12
+  from an elite, 18 from a boss. Each volley arrow leaves a small cloud: a tipped arrow's own potion, or
+  Slowness. About 79% of skeletons carry a bow.
+- **Strays.** An ordinary archer's arrow leaves a block of powder snow. An elite or boss archer is a
+  solitary sniper: a fast, straight, heavy arrow every 10 seconds that leaves a 3x3 or 5x5 patch of
+  powder snow; it slips away when a player it hunts looks straight at it, and once every 2 minutes a blow
+  makes it blind its attacker for a second and escape. Melee strays are fast and freeze the players they
+  strike; elite ones blind a far target and appear beside it, once every 30 seconds. Powder snow clears
+  after 10 seconds.
+- **Spiders.** Elite and boss spiders cast three webs on their target, one over its feet; elite and boss
+  cave spiders also wither it. The webs clear after 10 seconds.
+- **Wither skeletons.** One that hunts a target with its back turned sends out a slowing pulse, 16 blocks
+  round, once every 10 seconds. An elite answers a blow with a weakness pulse, once every 15 seconds.
+- **Depth mobs.** Below y=0, one natural spawn in a hundred of a zombie, skeleton, creeper, spider, witch
+  or enderman turns Depth, never within four chunks of another. It has twice the health of its kind, can
+  still be elite or a boss, and drops echo shards and a keepsake. A Depth zombie gets up twice, a Depth
+  archer slips to a safer spot, a Depth creeper leaves fire, and a Depth spider's bite darkens and
+  poisons.
+- **Ocean bands.** Each 2x2 area of ocean chunks has a 2% chance of a band of 3 to 5 skeletons on
+  dolphins, in armour, each with a bow or an axe and a helmet. One band in twenty is led by an elite (or
+  now and then a boss) with an axe on a very fast dolphin.
+- **Levitation** lasts at most 2 seconds, unless a shulker sent it.
 - **Evokers.** An elite evoker opens every fight with its rain of fire: 48 by 48 blocks, a ball every
   second, once per life.
 - **Illusioners.** They freeze, burn and blind nearby players in turn. They split into decoys, and
   killing a decoy slows you. From wave three, a raid wave has a 25% chance to bring one.
 - **Witches.** They throw a random harmful potion every 3 seconds, support a nearby ally every
-  2 seconds, and blink away when cornered.
+  2 seconds, and blink away when cornered. Elite and boss witches never blind; their aura weakens.
 - **Elite zombies.** Their hits bring Hunger, Wither and Poison.
 - **Blazes.** Every blaze fires one fireball every 2 seconds, an elite every 1.5, and each ball bursts in
   an explosion that hurts bodies but never the ground. A boss blaze calls an ordinary blaze on one
   attack in ten, with at most three alive at once.
-- **Ghasts.** A ghast fires five shots a second. A shot never explodes: it leaves a small cloud of
-  Wither where it lands, Wither II from an elite. Stray shots burn out after 5 seconds.
+- **Ghasts.** A ghast fires a burst of two shots every 3 seconds. Each shot bursts in a blast that hurts
+  and throws bodies but breaks no block, and leaves a cloud of Wither (Wither II from an elite) and
+  Poison that lingers 2 seconds. Stray shots burn out after 5 seconds.
 - **Chunk encounters.** Each overworld chunk rolls once, when a player first comes 3 to 5 chunks from
-  it. Inside the spawn safe zone, 1% of chunks hold one elite husk, creeper or witch, which stays.
-  Outside it, 20% of chunks hold a pair of patrolling Pillagers with no banner captain, so killing
-  them brings no Bad Omen. Measured over 100,000 seeded chunks: 1.002% and 20.005%.
+  it. Outside the spawn safe zone, 20% of chunks hold a pair of friendly "Village Patrol" Pillagers. No
+  elite ever spawns inside the safe zone, from any of the world's own spawns.
 
 ### Opting a mob out of spawn rolls
 
@@ -59,6 +79,9 @@ mod's spawn-time changes: no gear roll, boss or elite roll, rider, spawn scaling
 It still receives the mod's combat goals. Another mod that owns a mob's kit, such as the village
 patrol, adds the tag before it spawns the mob. The tag is plain entity data, so neither mod depends
 on the other.
+
+A mob tagged `mod-stella-mobs.no_behavior` is driven by another mod entirely, such as the village witch
+or a summoned skeleton: this mod adds none of its combat goals to it.
 
 ### Optional readout integration
 
@@ -120,9 +143,14 @@ On the first server start the mod writes
 
 ## mod-stella-spells
 
-`mod-stella-spells` adds 41 tinted spellbooks. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
+`mod-stella-spells` adds 42 tinted spellbooks. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
 
 A spellbook in an anvil imbues a weapon, an arrow or a chestplate. An imbued weapon casts the spell at half strength on each melee hit, an arrow on the hit it lands, and a chestplate on whoever strikes its wearer; right-clicking a hostile with an imbued weapon casts it at full strength. An imbued sword, axe or mace shows the spell's cooldown in the hotbar. A piece takes several spells, for 5, 25, then 125 emeralds or levels. Tide Lungs cannot be imbued. Spell enchantments on the piece, the helmet and the chestplate shape its imbued spells. A mob that wields an imbued weapon, such as a village head, casts its spell at the targets it strikes.
+
+Summon Skeleton raises one servant that guards you, gathers loot into its own pack and opens its gear to
+you; a recast calls it back. The Doublecast helmet enchantment makes half of all casts land twice. With
+the spells mod, witches carry two spells of their own, strays cast Ice Lance (elite strays Frozen
+Meteor), evokers and illusioners heal their illagers, and every village has a spellcasting witch.
 
 The Scroll of Return (paper, an ender pearl and a feather make two) carries you to your bed, or to the world spawn, from any dimension. Chests hold a clue book 30% of the time: a tattered note with lore and one recipe.
 
