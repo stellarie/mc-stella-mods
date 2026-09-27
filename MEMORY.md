@@ -24,7 +24,7 @@ This repository develops Fabric mods on separate integration branches.
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
 - `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse main-spells:mod-stella-spells]
 - `mod-stella-spells` runs spell effects on the server and hand rendering in `src/client`. Install its jar on the server and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
-- `main` combines the verified deployed source trees for both mods. [status: active] [verified: 2026-09-24] [source: git log -1 main; git rev-parse main:mod-stella-mobs main:mod-stella-equips-enchants]
+- `main` contains four mod source trees, including unfinished work. [status: active] [verified: 2026-09-28] [source: git ls-tree -d --name-only origin/main]
 
 ## Conventions
 
