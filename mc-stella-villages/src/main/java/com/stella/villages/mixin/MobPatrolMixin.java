@@ -30,6 +30,14 @@ public abstract class MobPatrolMixin implements MobPatrolAccess {
 		builder.define(MC_STELLA_VILLAGES$PATROL_MARKER, false);
 	}
 
+	// A patrol member never takes a fellow member as its target.
+	@Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$ignoreFellows(final net.minecraft.world.entity.LivingEntity target, final CallbackInfo callbackInfo) {
+		if (com.stella.villages.patrol.PatrolService.areFellows((Mob) (Object) this, target)) {
+			callbackInfo.cancel();
+		}
+	}
+
 	@Override
 	public void setPatrolMarker(final boolean marked) {
 		((Mob) (Object) this).getEntityData().set(MC_STELLA_VILLAGES$PATROL_MARKER, marked);

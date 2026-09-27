@@ -420,15 +420,15 @@ public final class NemesisMissionGameTest {
 				boolean prefix = nemesis.getCustomName() != null
 					&& nemesis.getCustomName().getString().startsWith("<Nemesis>");
 				double baselineHealth = mission == null ? 0.0 : baseHealth(helper.getLevel(), mission.targetType());
-				double healthRatio = baselineHealth <= 0.0 ? 0.0 : nemesis.getMaxHealth() / baselineHealth;
+				double healthBonus = baselineHealth <= 0.0 ? 0.0 : nemesis.getMaxHealth() - baselineHealth;
 				boolean equipped = hasNemesisKit(nemesis);
 				boolean initiallyUnenraged = !isEnraged(nemesis);
-				boolean stateMatches = accepted && prefix && Math.abs(healthRatio - 2.0) < 0.001
+				boolean stateMatches = accepted && prefix && Math.abs(healthBonus - com.stella.villages.mission.MissionService.NEMESIS_BONUS_HEALTH) < 0.001
 					&& equipped && initiallyUnenraged;
 
 				profileLogged[0] = true;
 				PatrolTestSupport.detail(test, "accepted=" + accepted + " targetEntityTicking=" + targetEntityTicking[0]
-					+ " nemesis=true" + " namePrefix=" + prefix + " healthRatio=" + healthRatio + " equipped=" + equipped
+					+ " nemesis=true" + " namePrefix=" + prefix + " healthBonus=" + healthBonus + " equipped=" + equipped
 					+ " initiallyUnenraged=" + initiallyUnenraged + " stateMatches=" + stateMatches);
 				helper.assertTrue(stateMatches, "Nemesis did not use its profile before enrage");
 				nemesis.setHealth(nemesis.getMaxHealth() * 0.5F + 2.0F);
@@ -815,6 +815,24 @@ public final class NemesisMissionGameTest {
 		if (player.level() instanceof ServerLevel level) {
 			level.getChunkSource().move(player);
 		}
+	}
+
+	@GameTest
+	public void nemesisMapUsesTheFilledMapModel(final GameTestHelper helper) {
+		com.google.gson.JsonObject definition;
+		try (var in = MissionService.class.getResourceAsStream("/assets/mc-stella-villages/items/nemesis_map.json")) {
+			helper.assertTrue(in != null, "the Nemesis map ships no item model, so it renders as the missing texture");
+			definition = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+		} catch (java.io.IOException error) {
+			throw new IllegalStateException(error);
+		}
+		var model = definition.getAsJsonObject("model");
+		helper.assertTrue(model != null && "minecraft:model".equals(model.get("type").getAsString())
+			&& "minecraft:item/filled_map".equals(model.get("model").getAsString()), "the Nemesis map does not use the filled map model: " + definition);
+		String name = new ItemStack(nemesisMapItem()).getHoverName().getString();
+		helper.assertTrue(!name.startsWith("item."), "the Nemesis map shows a raw key for its name: " + name);
+		PatrolTestSupport.result("nemesisMapUsesTheFilledMapModel", "model=" + model.get("model").getAsString() + " name=" + name);
+		helper.succeed();
 	}
 
 	private static @Nullable MissionFixture fixture(final GameTestHelper helper, final String test) {
