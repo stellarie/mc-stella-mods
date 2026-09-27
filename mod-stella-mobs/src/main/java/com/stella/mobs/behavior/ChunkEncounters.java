@@ -23,6 +23,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.illager.Pillager;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -43,6 +44,8 @@ public final class ChunkEncounters {
 	public static final String CHUNK_ELITE_TAG = "mod-stella-mobs.chunk_elite";
 	private static final int PLACEMENT_ATTEMPTS = 8;
 	private static final double MIN_PLAYER_DISTANCE = 24.0;
+	/** How many sections from a village a pillager pair keeps, as vanilla patrols do. */
+	private static final int VILLAGE_SECTIONS = 2;
 	private static final AttachmentType<Boolean> ROLLED = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "chunk_encounter_rolled"), Codec.BOOL
 	);
@@ -114,6 +117,11 @@ public final class ChunkEncounters {
 
 	public static boolean isRolled(final LevelChunk chunk) {
 		return Boolean.TRUE.equals(chunk.getAttached(ROLLED));
+	}
+
+	/** Clears the chunk's roll, so it rolls again; for tests and operators. */
+	public static void forget(final LevelChunk chunk) {
+		chunk.removeAttached(ROLLED);
 	}
 
 	/** Rolls a chunk once and spawns what it rolled; empty when the chunk has rolled before. */
@@ -189,7 +197,7 @@ public final class ChunkEncounters {
 			return List.of();
 		}
 
-		BlockPos at = findSpot(level, chunk, mob, random, null);
+		BlockPos at = findSpot(level, chunk, mob, random, null, spot -> true);
 		if (at == null) {
 			return List.of();
 		}
@@ -210,7 +218,7 @@ public final class ChunkEncounters {
 				continue;
 			}
 
-			BlockPos at = findSpot(level, chunk, pillager, random, near);
+			BlockPos at = findSpot(level, chunk, pillager, random, near, spot -> mayPatrolAt(level, spot));
 			if (at == null) {
 				continue;
 			}
@@ -229,7 +237,8 @@ public final class ChunkEncounters {
 
 	// A dry, open spot on the chunk's surface, away from every player; next to the first spot when one is given.
 	private static @Nullable BlockPos findSpot(
-		final ServerLevel level, final LevelChunk chunk, final Mob mob, final RandomSource random, final @Nullable BlockPos near
+		final ServerLevel level, final LevelChunk chunk, final Mob mob, final RandomSource random, final @Nullable BlockPos near,
+		final Predicate<BlockPos> allowed
 	) {
 		ChunkPos pos = chunk.getPos();
 		for (int attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
@@ -245,11 +254,21 @@ public final class ChunkEncounters {
 			if (level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)
 				&& level.getFluidState(at).isEmpty() && level.getFluidState(below).isEmpty()
 				&& level.noCollision(mob, mob.getBoundingBox().move(feet.subtract(mob.position())))
-				&& farFromPlayers(level, feet)) {
+				&& farFromPlayers(level, feet)
+				&& allowed.test(at)) {
 				return at;
 			}
 		}
 		return null;
+	}
+
+	// Vanilla's own patrol rules: never in or beside a village, and only where the biome lets patrols spawn.
+	// The biome's own value is read, because the level's value also follows vanilla's day-only timeline.
+	private static boolean mayPatrolAt(final ServerLevel level, final BlockPos at) {
+		return !level.isCloseToVillage(at, VILLAGE_SECTIONS)
+			&& level.getBiome(at).value().getAttributes().applyModifier(
+				EnvironmentAttributes.CAN_PILLAGER_PATROL_SPAWN, EnvironmentAttributes.CAN_PILLAGER_PATROL_SPAWN.defaultValue()
+			);
 	}
 
 	private static boolean farFromPlayers(final ServerLevel level, final Vec3 at) {
