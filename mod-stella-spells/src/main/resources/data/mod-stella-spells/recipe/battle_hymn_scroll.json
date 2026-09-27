@@ -2,10 +2,10 @@
 	"type": "minecraft:crafting_shapeless",
 	"ingredients": [
 		"minecraft:paper",
-		"minecraft:glistering_melon_slice"
+		"minecraft:glowstone_dust"
 	],
 	"result": {
-		"id": "mod-stella-spells:healing_spring_scroll",
+		"id": "mod-stella-spells:battle_hymn_scroll",
 		"count": 2
 	}
 }

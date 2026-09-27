@@ -21,7 +21,8 @@
 			"com.stella.spells.SpellImbueGameTest",
 			"com.stella.spells.NewSpellsGameTest",
 			"com.stella.spells.MobImbueGameTest",
-			"com.stella.spells.ScrollOfReturnGameTest"
+			"com.stella.spells.ScrollOfReturnGameTest",
+			"com.stella.spells.SupportSpellsGameTest"
 		]
 	},
 	"depends": {

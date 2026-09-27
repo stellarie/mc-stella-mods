@@ -8,9 +8,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
@@ -96,21 +93,9 @@ final class MobImbue {
 				hurt(level, wielder, victim, MoreSpells.VENOM_DAMAGE);
 				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(MoreSpells.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
 			}
-			case "sapping_hex" -> effect(wielder, victim, new MobEffectInstance(MobEffects.WEAKNESS, ticks(MoreSpells.HEX_TICKS), MoreSpells.HEX_AMPLIFIER));
-			case "skyhook" -> effect(wielder, victim, new MobEffectInstance(MobEffects.LEVITATION, ticks(MoreSpells.SKYHOOK_TICKS), MoreSpells.SKYHOOK_AMPLIFIER));
 			case "blinding_flash" -> {
 				effect(wielder, victim, new MobEffectInstance(MobEffects.BLINDNESS, ticks(MoreSpells.FLASH_BLIND_TICKS), 0));
 				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(MoreSpells.FLASH_GLOW_TICKS), 0));
-			}
-			case "smite" -> {
-				LightningBolt bolt = EntityTypes.LIGHTNING_BOLT.create(level, EntitySpawnReason.TRIGGERED);
-				if (bolt != null) {
-					bolt.setVisualOnly(true);
-					bolt.addTag(SpellStorms.STORM_BOLT_TAG);
-					bolt.snapTo(victim.getX(), victim.getY(), victim.getZ());
-					level.addFreshEntity(bolt);
-				}
-				hurt(level, wielder, victim, MoreSpells.SMITE_DAMAGE);
 			}
 			case "ember_brand" -> {
 				hurt(level, wielder, victim, MoreSpells.EMBER_DAMAGE);

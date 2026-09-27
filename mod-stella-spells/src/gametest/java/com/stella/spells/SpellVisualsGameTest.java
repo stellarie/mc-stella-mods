@@ -71,8 +71,11 @@ public class SpellVisualsGameTest {
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
 		player.setHealth(4.0f);
-		// Purify casts only with something to clear.
+		// Purify casts only with something to clear, and Sapping Hex only with a hostile close by.
 		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 600, 0));
+		net.minecraft.world.entity.Mob hexed = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 4).withNoFreeWill().spawn();
+		hexed.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		hexed.setHealth(1000.0F);
 		List<SpellbookItem> books = books(TargetMode.SELF);
 		// Gale Step launches the caster, so it goes last.
 		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("gale_step")));

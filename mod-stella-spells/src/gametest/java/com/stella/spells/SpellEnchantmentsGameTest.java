@@ -68,7 +68,7 @@ public class SpellEnchantmentsGameTest {
 		ItemStack helmet = Items.DIAMOND_HELMET.getDefaultInstance();
 		ItemStack chestplate = Items.DIAMOND_CHESTPLATE.getDefaultInstance();
 		ItemStack sword = Items.DIAMOND_SWORD.getDefaultInstance();
-		helper.assertTrue(spellbooks.size() == 40, "the catalog must contain 40 spellbooks");
+		helper.assertTrue(spellbooks.size() == SpellbookCatalog.DEFINITIONS.size(), "the catalog must contain " + SpellbookCatalog.DEFINITIONS.size() + " spellbooks, not " + spellbooks.size());
 
 		for (int index = 0; index < enchantments.size(); index++) {
 			Enchantment value = enchantments.get(index).value();

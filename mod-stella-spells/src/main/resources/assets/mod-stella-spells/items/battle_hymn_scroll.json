@@ -1,11 +1,11 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/skyhook_scroll",
+		"model": "mod-stella-spells:item/battle_hymn_scroll",
 		"tints": [
 			{
 				"type": "minecraft:constant",
-				"value": 12175321
+				"value": 14423100
 			}
 		]
 	}

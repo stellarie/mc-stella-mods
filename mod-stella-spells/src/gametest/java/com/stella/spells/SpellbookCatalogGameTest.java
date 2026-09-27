@@ -70,9 +70,7 @@ public class SpellbookCatalogGameTest {
 		new RecipeEntry("soul_siphon", Items.SOUL_SOIL),
 		new RecipeEntry("venom_dart", Items.SPIDER_EYE),
 		new RecipeEntry("sapping_hex", Items.FERMENTED_SPIDER_EYE),
-		new RecipeEntry("skyhook", Items.PHANTOM_MEMBRANE),
 		new RecipeEntry("blinding_flash", Items.GLOW_INK_SAC),
-		new RecipeEntry("smite", Items.GLOWSTONE_DUST),
 		new RecipeEntry("ember_brand", Items.MAGMA_CREAM),
 		new RecipeEntry("quicksilver", Items.SUGAR),
 		new RecipeEntry("tide_lungs", Items.PUFFERFISH),
@@ -84,8 +82,11 @@ public class SpellbookCatalogGameTest {
 		new RecipeEntry("frost_nova", Items.ICE),
 		new RecipeEntry("earthspike", Items.POINTED_DRIPSTONE),
 		new RecipeEntry("plague_cloud", Items.POISONOUS_POTATO),
-		new RecipeEntry("healing_spring", Items.GLISTERING_MELON_SLICE),
-		new RecipeEntry("flame_ring", Items.FIRE_CHARGE)
+		new RecipeEntry("flame_ring", Items.FIRE_CHARGE),
+		new RecipeEntry("gravity", Items.PHANTOM_MEMBRANE),
+		new RecipeEntry("bulwark_hymn", Items.GLISTERING_MELON_SLICE),
+		new RecipeEntry("tailwind", Items.RABBIT_FOOT),
+		new RecipeEntry("battle_hymn", Items.GLOWSTONE_DUST)
 	);
 	private static final Set<Identifier> EXPECTED_IDS = EXPECTED_BOOKS.stream()
 		.map(RecipeEntry::id)
