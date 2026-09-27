@@ -7,8 +7,8 @@ Minecraft mods for a private Fabric server.
 | Directory | Purpose | Integration branch |
 |---|---|---|
 | `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
-| `mod-stella-equips-enchants/` | Enchantments, player power, mob readouts and floating damage numbers | `main-equip-ench` |
-| `mod-stella-spells/` | Forty spellbooks, scrolls, imbued weapons, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
+| `mod-stella-equips-enchants/` | Enchantments, player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
+| `mod-stella-spells/` | Forty-one spellbooks, scrolls, the Scroll of Return, imbued gear, clue books, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
 
 Each mod has its own integration branch. Create new work branches from the current
@@ -120,7 +120,11 @@ On the first server start the mod writes
 
 ## mod-stella-spells
 
-`mod-stella-spells` adds 40 tinted spellbooks. Each book casts one fixed spell when the holder uses it. A weapon and a spellbook in an anvil make an imbued weapon, which casts the book's spell at half strength on each melee hit, then waits out the book's cooldown. Successful casts set a spell-specific cooldown and do not consume the book.
+`mod-stella-spells` adds 41 tinted spellbooks. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
+
+A spellbook in an anvil imbues a weapon, an arrow or a chestplate. An imbued weapon casts the spell at half strength on each melee hit, an arrow on the hit it lands, and a chestplate on whoever strikes its wearer; right-clicking a hostile with an imbued weapon casts it at full strength. An imbued sword, axe or mace shows the spell's cooldown in the hotbar. A piece takes several spells, for 5, 25, then 125 emeralds or levels. Tide Lungs cannot be imbued. Spell enchantments on the piece, the helmet and the chestplate shape its imbued spells. A mob that wields an imbued weapon, such as a village head, casts its spell at the targets it strikes.
+
+The Scroll of Return (paper, an ender pearl and a feather make two) carries you to your bed, or to the world spawn, from any dimension. Chests hold a clue book 30% of the time: a tattered note with lore and one recipe.
 
 Chainstorm is aimed at a spot: lightning falls on up to 5 hostiles within 5 blocks of it, one strike
 every 6 ticks. Riftwalk teleports you onto the block you look at, up to 16 blocks away, or in front

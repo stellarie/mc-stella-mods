@@ -87,6 +87,56 @@ Measured reach rates:
 | M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
 | M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
 
+## Sixth and seventh rounds (2026-09-27): refining, friendly patrols, village heads, wolves, spell reworks
+
+| Slice | Branch | Mutant runs | Gate |
+| --- | --- | --- | --- |
+| Wild pillager pairs are friendly "Village Patrol"s; blaze and ghast review fixes | `feat/round6-mobs` into `main-mobs` (9715c37) | 9 mutants, each red | 329 x 6 (with the next row) |
+| Wolves and friendly mobs grow; tamable elite wolves with auras; larger elites and bosses | `feat/round6-mobs` into `main-mobs` (ac1f860) | included above | 329 x 6 |
+| Mobs cast imbued spells, Scroll of Return, review fixes | `feat/round6-spells` into `main-spells` (c45e9c1) | 12 mutants, each red | 171 x 6 (whole branch) |
+| Spell reworks, Gravity and three support spells | `feat/round6-spells` (9fe05e7) | 8 mutants, each red | 171 x 6 |
+| Clue books in 30% of chests | `feat/round6-spells` (cd0c551) | 1 mutant, red | 171 x 6 |
+| Imbued arrows and chestplates, stacked imbues, right-click casts, hotbar cooldown | `feat/round6-spells` (60e1c8f) | covered by the 8 above | 171 x 6 |
+| Heads by the bell in netherite, patrols spread, wander, defend, let villagers be and players sleep; any-mob Nemesis | `feat/round6-villages` into `main-villages` (55506bd) | 11 mutants, each red | 84 x 6, and 84 with the spells jar present |
+| Refining to +15, the Refining Anvil, smith refining; damage numbers hide on invisible entities and are throttled | `feat/round6-equips` into `main-equip-ench` (d8c66e4) | 18 mutants in one run, all 18 targeted tests red | 249 x 6 |
+
+Measured: an elite wolf on 9.98% of seeded wolf spawns (10% ships); a clue book in 29.96% of seeded
+chests (30% ships); the Nemesis offer pool holds 87 kinds of mob (every spawn egg but the Ender
+Dragon); a 40% refine step succeeded on 40.3% of 20,000 seeded rolls.
+
+Decisions this round:
+
+- **Refining** follows Renewal's tables. Weapons are graded by their repair material (wood, stone,
+  gold and copper 1; iron 2; diamond, trident and mace 3; netherite 4) and armour has its own table.
+  A step costs the piece's own repair item, 1 plus 1 for every three levels. The first use quotes and
+  the second use within five seconds pays, so the break warning is always seen before a roll. At a
+  smith the material goes in the off hand; sneaking there still hardens with emeralds (villages mod).
+- **Refine effects:** weapons +10 sear (fire 3 s), +12 rend (Wither 3 s), +15 shockwave (40% of the
+  hit to hostiles within 3 blocks). Armour +10 Vigor (+2 max health a piece), +12 Thorned (2 damage
+  a piece to a melee attacker), +15 Blessed (1 health a piece every 5 s). Bows add +0.75 a level to
+  their arrows. The level is a custom-data value with its own attribute modifiers and tooltip line,
+  not an enchantment.
+- The Refining Anvil cannot be pushed by pistons and needs a pickaxe; it has no menu.
+- Damage numbers skip an invisible entity, so a number never gives its place away, and show at most
+  one damage and one heal number an entity every 4 ticks.
+- Friendly pairs are spared by iron golems, never scare villagers, never stop a player sleeping, and
+  hunt hostiles except creepers.
+- A village head keeps within 8 blocks of its bell; members scatter up to 24 blocks and wander up
+  to 32. The head's axe carries one of 11 offensive spells when the spells mod is present.
+- Smite, Healing Spring and Skyhook are gone; Gravity, Bulwark Hymn, Tailwind and Battle Hymn are new.
+
+Tagged this round: `refillWaitsForMembersStillLoadingRequiresManualTest` (villages). The harness
+cannot hold a chunk half loaded, so the refill race it describes cannot be staged.
+
+Manual acceptance items added this round:
+
+- **Equips:** the Refining Anvil's silver look and its item icon; refining at a real smith and
+  anvil; the quote and warning text on the action bar.
+- **Spells:** the ice lance's snow trail, the flame aura's particles, the hotbar cooldown on an
+  imbued sword, and clue books in real chests.
+- **Mobs:** elite and boss size in play; an elite wolf's auras on a tamed pack.
+- **Villages:** a patrol retaliating in a real village; the refill after a chunk reload.
+
 ## Fifth round (2026-09-27): imbued weapons, patrol coverage, blazes and ghasts, damage numbers, twenty spells
 
 | Slice | Branch | Red run | Mutant runs | Gate |
