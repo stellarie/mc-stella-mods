@@ -5,13 +5,16 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -59,8 +62,18 @@ public final class SummonSkeleton {
 	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_pack"), ItemStack.OPTIONAL_CODEC.listOf()
 	);
+	/**
+	 * The one servant a master holds, saved with the master. A servant left in an unloaded chunk cannot be called
+	 * back, so a new cast raises another and moves the bond; the old one is retired when it loads again.
+	 */
+	public static final AttachmentType<UUID> BOND = AttachmentRegistry.create(
+		Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_bond"),
+		builder -> builder.persistent(UUIDUtil.CODEC).copyOnDeath()
+	);
 	/** Each master's skeleton, by the skeleton's id; the skeleton's own tag is the truth, this only finds it. */
 	private static final Map<UUID, UUID> SUMMONED = new ConcurrentHashMap<>();
+	/** Servants whose master bonded another, retired after the tick rather than inside a load or a goal. */
+	private static final Set<Skeleton> RETIRING = ConcurrentHashMap.newKeySet();
 
 	private SummonSkeleton() {
 	}
@@ -68,8 +81,20 @@ public final class SummonSkeleton {
 	public static void register() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG)) {
+				if (stale(skeleton)) {
+					RETIRING.add(skeleton);
+					return;
+				}
 				ownerOf(skeleton).ifPresent(owner -> SUMMONED.put(owner, skeleton.getUUID()));
 				install(skeleton);
+			}
+		});
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			if (!RETIRING.isEmpty()) {
+				for (Skeleton skeleton : List.copyOf(RETIRING)) {
+					RETIRING.remove(skeleton);
+					retire(skeleton);
+				}
 			}
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
@@ -117,7 +142,11 @@ public final class SummonSkeleton {
 		equip(skeleton, EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
 		Vec3 at = beside(caster);
 		skeleton.snapTo(at.x, at.y, at.z, caster.getYRot(), 0.0F);
+		// The bond moves first: the load event fires inside the add, and must see this servant as the one held.
+		UUID previous = caster.getAttached(BOND);
+		caster.setAttached(BOND, skeleton.getUUID());
 		if (!caster.level().addFreshEntity(skeleton)) {
+			caster.setAttached(BOND, previous);
 			return false;
 		}
 		SUMMONED.put(caster.getUUID(), skeleton.getUUID());
@@ -170,6 +199,44 @@ public final class SummonSkeleton {
 			}
 		}
 		return null;
+	}
+
+	/** A servant whose master, when online, is bonded to another; a master with no bond yet adopts this one. */
+	static boolean stale(final Skeleton skeleton) {
+		ServerPlayer master = owner(skeleton);
+		if (master == null) {
+			return false;
+		}
+		UUID bond = master.getAttached(BOND);
+		if (bond == null) {
+			master.setAttached(BOND, skeleton.getUUID());
+			return false;
+		}
+		return !bond.equals(skeleton.getUUID());
+	}
+
+	/** Sends a servant its master no longer holds away, leaving its pack and its gear where it stands. */
+	private static void retire(final Skeleton skeleton) {
+		if (skeleton.isRemoved() || !(skeleton.level() instanceof ServerLevel level)) {
+			return;
+		}
+		for (ItemStack stack : pack(skeleton)) {
+			if (!stack.isEmpty()) {
+				skeleton.spawnAtLocation(level, stack);
+			}
+		}
+		skeleton.setAttached(PACK, List.of());
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			ItemStack worn = skeleton.getItemBySlot(slot);
+			if (!worn.isEmpty()) {
+				skeleton.spawnAtLocation(level, worn);
+				skeleton.setItemSlot(slot, ItemStack.EMPTY);
+			}
+		}
+		ownerOf(skeleton).ifPresent(owner -> SUMMONED.remove(owner, skeleton.getUUID()));
+		level.sendParticles(ParticleTypes.SOUL, skeleton.getX(), skeleton.getY() + 1.0, skeleton.getZ(), 20, 0.4, 0.8, 0.4, 0.05);
+		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_RETIRED servant={} owner={}", skeleton.getUUID(), ownerOf(skeleton).map(UUID::toString).orElse("none"));
+		skeleton.discard();
 	}
 
 	public static Optional<UUID> ownerOf(final Mob mob) {
@@ -234,10 +301,25 @@ public final class SummonSkeleton {
 	private static void install(final Skeleton skeleton) {
 		var targets = ((com.stella.spells.mixin.MobGoalsAccessor) skeleton).stellaSpells$targetSelector();
 		targets.removeAllGoals(goal -> true);
-		targets.addGoal(1, new HurtByTargetGoal(skeleton));
+		targets.addGoal(1, new AnswerBlowGoal(skeleton));
 		targets.addGoal(2, new GuardGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(2, new FollowGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
+	}
+
+	/** Answers whoever strikes the servant, except its own master: a sweep or a stray spell is forgiven. */
+	static final class AnswerBlowGoal extends HurtByTargetGoal {
+		private final Skeleton skeleton;
+
+		AnswerBlowGoal(final Skeleton skeleton) {
+			super(skeleton);
+			this.skeleton = skeleton;
+		}
+
+		@Override
+		public boolean canUse() {
+			return !(this.skeleton.getLastHurtByMob() instanceof Player striker && isServant(this.skeleton, striker)) && super.canUse();
+		}
 	}
 
 	/** The nearest hostile within the guard radius of the master. */
@@ -288,6 +370,11 @@ public final class SummonSkeleton {
 
 		@Override
 		public boolean canUse() {
+			// A master who was away when this servant loaded may since have bonded another.
+			if (stale(this.skeleton)) {
+				RETIRING.add(this.skeleton);
+				return false;
+			}
 			ServerPlayer master = owner(this.skeleton);
 			return master != null && master.level() == this.skeleton.level() && this.skeleton.getTarget() == null
 				&& this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
