@@ -38,6 +38,22 @@ public abstract class MobPatrolMixin implements MobPatrolAccess {
 		}
 	}
 
+	// A patrol member belongs to its village: it never despawns.
+	@Inject(method = "checkDespawn", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$neverDespawn(final CallbackInfo callbackInfo) {
+		if (com.stella.villages.patrol.PatrolState.isMarked((Mob) (Object) this)) {
+			callbackInfo.cancel();
+		}
+	}
+
+	// The natural spawner skips a mob that needs custom persistence, so a member never fills the mob cap.
+	@Inject(method = "requiresCustomPersistence", at = @At("HEAD"), cancellable = true)
+	private void mcStellaVillages$outOfTheMobCap(final org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> callbackInfo) {
+		if (com.stella.villages.patrol.PatrolState.isMarked((Mob) (Object) this)) {
+			callbackInfo.setReturnValue(true);
+		}
+	}
+
 	@Override
 	public void setPatrolMarker(final boolean marked) {
 		((Mob) (Object) this).getEntityData().set(MC_STELLA_VILLAGES$PATROL_MARKER, marked);

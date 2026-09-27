@@ -74,7 +74,7 @@ public final class NemesisMissionGameTest {
 	// Waits on chunk and entity IO end at the test limit; a fixed short bound measured machine speed.
 	private static final int DIAGNOSTIC_BOUND_TICKS = TEST_MAX_TICKS - 20;
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void headOffersThreeTargets(final GameTestHelper helper) {
 		String test = "headOffersThreeTargets";
 		MissionFixture fixture = fixture(helper, test);
@@ -98,7 +98,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void serverRejectsStaleForeignAndOutOfRangeOffers(final GameTestHelper helper) {
 		String test = "serverRejectsStaleForeignAndOutOfRangeOffers";
 		MissionFixture fixture = fixture(helper, test);
@@ -139,7 +139,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void mapMatchesPersistentTarget(final GameTestHelper helper) {
 		String test = "mapMatchesPersistentTarget";
 		MissionFixture fixture = fixture(helper, test);
@@ -192,7 +192,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_end", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_end", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void targetSearchRejectsUnsafeLocationAndSpiderNarrowClearance(final GameTestHelper helper) {
 		String test = "targetSearchRejectsUnsafeLocationAndSpiderNarrowClearance";
 		MissionFixture fixture = fixture(helper, test);
@@ -279,7 +279,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void targetNotForcedLoaded(final GameTestHelper helper) {
 		String test = "targetNotForcedLoaded";
 		MissionFixture fixture = fixture(helper, test);
@@ -310,7 +310,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void fullInventoryDropsMap(final GameTestHelper helper) {
 		String test = "fullInventoryDropsMap";
 		MissionFixture fixture = fixture(helper, test);
@@ -381,7 +381,7 @@ public final class NemesisMissionGameTest {
 		});
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void nemesisUsesProfileAndEnragesOnce(final GameTestHelper helper) {
 		String test = "nemesisUsesProfileAndEnragesOnce";
 		MissionFixture fixture = fixture(helper, test);
@@ -475,7 +475,7 @@ public final class NemesisMissionGameTest {
 		});
 	}
 
-	@GameTest(dimension = "minecraft:the_end", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_end", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void nemesisPersistsAfterTargetChunkReload(final GameTestHelper helper) {
 		String test = "nemesisPersistsAfterTargetChunkReload";
 		MissionFixture fixture = fixture(helper, test);
@@ -583,7 +583,7 @@ public final class NemesisMissionGameTest {
 		});
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void nonOwnerKillPaysOnce(final GameTestHelper helper) {
 		String test = "nonOwnerKillPaysOnce";
 		MissionFixture fixture = fixture(helper, test);
@@ -688,7 +688,7 @@ public final class NemesisMissionGameTest {
 		});
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void unlimitedActiveMissions(final GameTestHelper helper) {
 		String test = "unlimitedActiveMissions";
 		UUID ownerId = UUID.randomUUID();
@@ -710,7 +710,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void rightClickOpensTheMissionBoardMenu(final GameTestHelper helper) {
 		String test = "rightClickOpensTheMissionBoardMenu";
 		MissionFixture fixture = fixture(helper, test);
@@ -737,7 +737,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void choosingAnOfferOnTheBoardAcceptsItThroughTheServer(final GameTestHelper helper) {
 		String test = "choosingAnOfferOnTheBoardAcceptsItThroughTheServer";
 		MissionFixture fixture = fixture(helper, test);
@@ -764,7 +764,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aChoiceFromTooFarAwayIsRefusedAndSaysWhy(final GameTestHelper helper) {
 		String test = "aChoiceFromTooFarAwayIsRefusedAndSaysWhy";
 		MissionFixture fixture = fixture(helper, test);
@@ -786,7 +786,7 @@ public final class NemesisMissionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = 64)
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void theBoardNeverGivesUpAnItem(final GameTestHelper helper) {
 		String test = "theBoardNeverGivesUpAnItem";
 		MissionFixture fixture = fixture(helper, test);
@@ -817,7 +817,7 @@ public final class NemesisMissionGameTest {
 		}
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void nemesisMapUsesTheFilledMapModel(final GameTestHelper helper) {
 		com.google.gson.JsonObject definition;
 		try (var in = MissionService.class.getResourceAsStream("/assets/mc-stella-villages/items/nemesis_map.json")) {

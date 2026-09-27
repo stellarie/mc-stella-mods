@@ -18,7 +18,7 @@ public final class VillageRaidGameTest {
 	// 3.29 standard deviations of a binomial rate at the trial count: a 99.9% band around the shipped chance.
 	private static final double BAND = 3.29 * Math.sqrt(VillageRaids.RAID_CHANCE * (1.0 - VillageRaids.RAID_CHANCE) / TRIALS);
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void raidRollRateOverOneHundredThousandSeededDays(final GameTestHelper helper) {
 		int[] raids = { 0, 0 };
 		int differing = 0;
@@ -39,7 +39,7 @@ public final class VillageRaidGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void dailyDecisionFollowsTheDayAndTheRoll(final GameTestHelper helper) {
 		VillageWorldData data = VillageWorldData.empty();
 		List<VillageRaids.Outcome> outcomes = new ArrayList<>();
@@ -58,7 +58,7 @@ public final class VillageRaidGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void modRaidHasExactlyOneWave(final GameTestHelper helper) {
 		String test = "modRaidHasExactlyOneWave";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -76,7 +76,7 @@ public final class VillageRaidGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void vanillaRaidKeepsItsWaves(final GameTestHelper helper) {
 		// The same construction outside a mod raid must keep vanilla's count, so the cap cannot leak into omen raids.
 		Raid raid = new Raid(helper.absolutePos(new BlockPos(3, 1, 3)), helper.getLevel().getDifficulty());
@@ -86,7 +86,7 @@ public final class VillageRaidGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = 64)
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void attendanceFollowsPlayerDistance(final GameTestHelper helper) {
 		String test = "attendanceFollowsPlayerDistance";
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();

@@ -20,7 +20,7 @@ import net.minecraft.world.phys.Vec3;
 public class PatrolFriendsGameTest {
 	private static final float HIT = 4.0F;
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolMembersTakeNoDamageFromEachOther(final GameTestHelper helper) {
 		String test = "patrolMembersTakeNoDamageFromEachOther";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -41,7 +41,7 @@ public class PatrolFriendsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolMembersNeverTargetEachOther(final GameTestHelper helper) {
 		String test = "patrolMembersNeverTargetEachOther";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -60,7 +60,7 @@ public class PatrolFriendsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200, padding = 64)
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void everyPatrolMemberWearsAGreenRoleLabel(final GameTestHelper helper) {
 		String test = "everyPatrolMemberWearsAGreenRoleLabel";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -78,7 +78,7 @@ public class PatrolFriendsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400, padding = 64)
+	@GameTest(maxTicks = 400, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aProvokedPatrolTurnsRedUntilTheThreatEnds(final GameTestHelper helper) {
 		String test = "aProvokedPatrolTurnsRedUntilTheThreatEnds";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
@@ -94,12 +94,14 @@ public class PatrolFriendsGameTest {
 
 		helper.startSequence()
 			.thenWaitUntil(() -> {
+				helper.assertTrue(!PatrolTestSupport.patrols(helper).isEmpty(), "the roster is empty, so the case proves nothing");
 				for (Mob member : PatrolTestSupport.patrols(helper)) {
 					helper.assertTrue(labelColor(member, PatrolLabels.PROVOKED), PatrolTestSupport.typeId(member) + " is not red while provoked: " + member.getCustomName());
 				}
 			})
 			.thenExecute(() -> attacker.setHealth(0.0F))
 			.thenWaitUntil(() -> {
+				helper.assertTrue(!PatrolTestSupport.patrols(helper).isEmpty(), "the roster is empty, so the case proves nothing");
 				for (Mob member : PatrolTestSupport.patrols(helper)) {
 					helper.assertTrue(labelColor(member, PatrolLabels.CALM), PatrolTestSupport.typeId(member) + " stayed red after the threat ended: " + member.getCustomName());
 				}
