@@ -1,6 +1,6 @@
 package com.stella.mobs;
 
-import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.SkeletonVolleyGoal;
 import com.stella.mobs.behavior.PiglinWarCall;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.Decay;
@@ -83,7 +83,8 @@ import net.minecraft.world.phys.Vec3;
 public class BossAbilityGameTest {
 	private static final String TEST = "bossAbility";
 	/** The spec's numbers, restated as literals so a test cannot inherit a typo from the code. */
-	private static final int SPEC_ARROWS = 5;
+	/** A boss skeleton's volley. */
+	private static final int SPEC_ARROWS = SkeletonVolleyGoal.BOSS_ARROWS_PER_VOLLEY;
 	/** The roll test's private chunk, far outside the grid of arenas. See the test's javadoc. */
 	private static final int FAR_SPOT = 400;
 	/** The arena's own floor level, so the far pad repeats the vertical arrangement that is proven. */
@@ -202,9 +203,9 @@ public class BossAbilityGameTest {
 	public void aBossCarriesOneCopyOfItsAbility(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
 		Skeleton boss = blessed(helper, EntityTypes.SKELETON, 3, 1, 3);
-		int first = BossAbilities.copiesOf(boss, BoneFanGoal.class);
+		int first = BossAbilities.copiesOf(boss, SkeletonVolleyGoal.class);
 		BossAbilities.install(boss);
-		int second = BossAbilities.copiesOf(boss, BoneFanGoal.class);
+		int second = BossAbilities.copiesOf(boss, SkeletonVolleyGoal.class);
 
 		helper.assertValueEqual(Integer.valueOf(first), Integer.valueOf(1), "fan goals after the first install");
 		helper.assertValueEqual(Integer.valueOf(second), Integer.valueOf(1), "fan goals after a second install");
@@ -270,7 +271,7 @@ public class BossAbilityGameTest {
 			result(
 				"boneFan",
 				"volley=" + SPEC_ARROWS + " ownerMatched=" + loosed.size() + " tipped=" + tippedLoosed.size()
-					+ " spreadDegrees=" + BoneFanGoal.SPREAD_DEGREES + " interval=" + BoneFanGoal.INTERVAL_TICKS
+					+ " coneDegrees=" + SkeletonVolleyGoal.CONE_DEGREES + " cooldown=" + SkeletonVolleyGoal.VOLLEY_COOLDOWN_TICKS
 			);
 		});
 	}
@@ -342,7 +343,7 @@ public class BossAbilityGameTest {
 			helper.assertTrue(boss != null, "the private chunk never came up, waited " + waited[0] + " ticks");
 			boolean bossFlag = Bosses.isBoss(boss);
 			boolean holdingBow = boss.isHolding(Items.BOW);
-			int fans = BossAbilities.copiesOf(boss, BoneFanGoal.class);
+			int fans = BossAbilities.copiesOf(boss, SkeletonVolleyGoal.class);
 			result(
 				"bossSkeletonFan",
 				"bossFlag=" + bossFlag + " elite=" + Elite.isElite(boss) + " mainHand=" + boss.getMainHandItem()

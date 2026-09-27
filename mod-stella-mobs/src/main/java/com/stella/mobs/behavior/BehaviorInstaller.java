@@ -228,6 +228,10 @@ public final class BehaviorInstaller {
 		}
 
 		BossAbilities.install(mob);
+		StrayKit.install(mob);
+		if (mob instanceof net.minecraft.world.entity.monster.skeleton.WitherSkeleton witherSkeleton) {
+			WitherPulse.install(witherSkeleton);
+		}
 		installSpiderBrood(mob);
 		installSpiderWebTrap(mob);
 		installBlazeAttack(mob);
@@ -251,6 +255,7 @@ public final class BehaviorInstaller {
 		}
 
 		mob.getGoalSelector().addGoal(SpiderWebTrapGoal.PRIORITY, new SpiderWebTrapGoal(spider));
+		mob.getGoalSelector().addGoal(SpiderWebTrapGoal.PRIORITY, new WebCastGoal(spider));
 	}
 
 	private static void installGuardian(final Guardian guardian) {
@@ -284,7 +289,7 @@ public final class BehaviorInstaller {
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchOffensiveThrowGoal<>(witch));
 		witch.getGoalSelector().addGoal(WITCH_OFFENSE_PRIORITY, new WitchBlinkGoal<>(witch));
 		witch.getGoalSelector().addGoal(
-			WITCH_AURA_PRIORITY, new EliteAuraGoal<>(witch, WitchElite.AURA_RADIUS, List.of(MobEffects.BLINDNESS))
+			WITCH_AURA_PRIORITY, new EliteAuraGoal<>(witch, WitchElite.AURA_RADIUS, List.of(WitchElite.AURA_EFFECT))
 		);
 	}
 

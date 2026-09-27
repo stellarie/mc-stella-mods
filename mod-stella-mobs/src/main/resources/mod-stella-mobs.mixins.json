@@ -15,6 +15,7 @@
 		"SnowGolemMeltMixin",
 		"SnowballHitMixin",
 		"FriendlyPatrolHostilesMixin",
+		"LevitationCapMixin",
 		"FriendlyPatrolMixin",
 		"FriendlyPatrolRestMixin",
 		"MobTargetSelectorAccessor"
