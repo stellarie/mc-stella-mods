@@ -1,0 +1,8 @@
+{
+	"parent": "minecraft:block/template_anvil",
+	"textures": {
+		"particle": "mod-stella-equips-enchants:block/refining_anvil",
+		"body": "mod-stella-equips-enchants:block/refining_anvil",
+		"top": "mod-stella-equips-enchants:block/refining_anvil_top"
+	}
+}

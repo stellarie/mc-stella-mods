@@ -32,7 +32,8 @@
 			"com.stella.equips.WeaponMasteryGameTest",
 			"com.stella.equips.SoulboundGameTest",
 			"com.stella.equips.MasteryPerksGameTest",
-			"com.stella.equips.DamageNumbersGameTest"
+			"com.stella.equips.DamageNumbersGameTest",
+			"com.stella.equips.RefiningGameTest"
 		]
 	}
 }

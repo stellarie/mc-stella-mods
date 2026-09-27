@@ -106,6 +106,39 @@ public class DamageNumbersGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void anInvisibleEntityShowsNoNumber(final GameTestHelper helper) {
+		viewer(helper);
+		Mob zombie = zombie(helper);
+		zombie.setInvisible(true);
+		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 4.0F);
+		int shown = SHOWN.getOrDefault(zombie.getUUID(), List.of()).size();
+		LOG.info("[BEHAVIOR] test=anInvisibleEntityShowsNoNumber RESULT shown={} health={}", shown, zombie.getHealth());
+		helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth(), "the hit did no harm, so the case proves nothing");
+		helper.assertTrue(shown == 0, "an invisible zombie showed " + shown + " numbers and gave its place away");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 40)
+	public void rapidHitsShowOneNumberPerGap(final GameTestHelper helper) {
+		viewer(helper);
+		Mob zombie = zombie(helper);
+		for (int hit = 0; hit < 3; hit++) {
+			zombie.damageCooldownTime = 0;
+			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
+		}
+		int burst = SHOWN.getOrDefault(zombie.getUUID(), List.of()).size();
+		helper.runAfterDelay(DamageNumbers.MIN_GAP_TICKS, () -> {
+			zombie.damageCooldownTime = 0;
+			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 2.0F);
+			int later = SHOWN.getOrDefault(zombie.getUUID(), List.of()).size();
+			LOG.info("[BEHAVIOR] test=rapidHitsShowOneNumberPerGap RESULT burst={} later={} health={}", burst, later, zombie.getHealth());
+			helper.assertTrue(zombie.getHealth() == zombie.getMaxHealth() - 8.0F, "not every hit landed, so the case proves nothing: " + zombie.getHealth());
+			helper.assertTrue(burst == 1 && later == 2, "three hits in a tick showed " + burst + " numbers and a hit after the gap made " + later);
+			helper.succeed();
+		});
+	}
+
 	private static ServerPlayer viewer(final GameTestHelper helper) {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		Vec3 at = helper.absoluteVec(new Vec3(1.5, 1.0, 1.5));
