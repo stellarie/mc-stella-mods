@@ -30,6 +30,21 @@ public final class VillageCoverage {
 	private VillageCoverage() {
 	}
 
+	/** A new server's level counters start again at zero, so no missing-since tick outlives its server. */
+	static void clear() {
+		HEAD_MISSING_SINCE.clear();
+	}
+
+	/** Test seam: how many villages have a head on the missing clock now. */
+	public static int missingHeadCount() {
+		return HEAD_MISSING_SINCE.size();
+	}
+
+	/** Test seam: starts a village's missing clock, as a scan that found no head would. */
+	public static void noteMissing(final UUID villageId, final long tick) {
+		HEAD_MISSING_SINCE.putIfAbsent(villageId, tick);
+	}
+
 	public static void setScanFilter(final Predicate<ServerPlayer> filter) {
 		scanFilter = filter;
 	}

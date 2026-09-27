@@ -22,6 +22,15 @@ dependencies {
 	if (project.findProperty("withStellaMobs") == "true") {
 		productionRuntimeMods files("../mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar")
 	}
+	if (project.findProperty("withStellaSpells") != null) {
+		productionRuntimeMods files(stellaSpellsJar())
+	}
+}
+
+// -PwithStellaSpells=true loads the spells jar built beside this mod; any other value is the jar's own path.
+def stellaSpellsJar() {
+	def value = project.findProperty("withStellaSpells")
+	return value == "true" ? "../mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar" : value
 }
 
 fabricApi {
@@ -36,6 +45,9 @@ fabricApi {
 
 // V4: -PwithStellaMobs=true loads the built mobs jar into the GameTest run as well, so the suite covers both mods together.
 afterEvaluate {
+	if (project.findProperty("withStellaSpells") != null) {
+		project.dependencies.add("gametestRuntimeOnly", project.files(stellaSpellsJar()))
+	}
 	if (project.findProperty("withStellaMobs") == "true") {
 		project.dependencies.add(
 			"gametestRuntimeOnly", project.files("../mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar")
