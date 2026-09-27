@@ -47,21 +47,20 @@ public class ChunkEncounterGameTest {
 
 	@GameTest
 	public void theRollRatesAreWhatShips(final GameTestHelper helper) {
-		int elites = 0;
+		int safeEncounters = 0;
 		int pairs = 0;
 		int wrongSide = 0;
 		for (int i = 0; i < SAMPLES; i++) {
 			ChunkPos pos = new ChunkPos(i % 317 - 158, i / 317 - 158);
 			Encounter safe = ChunkEncounters.decide(ChunkEncounters.chunkRandom(WORLD_SEED, pos), true);
 			Encounter wild = ChunkEncounters.decide(ChunkEncounters.chunkRandom(WORLD_SEED, pos), false);
-			elites += safe == Encounter.ELITE ? 1 : 0;
+			safeEncounters += safe == Encounter.NONE ? 0 : 1;
 			pairs += wild == Encounter.PILLAGER_PAIR ? 1 : 0;
-			wrongSide += (safe == Encounter.PILLAGER_PAIR ? 1 : 0) + (wild == Encounter.ELITE ? 1 : 0);
+			wrongSide += safe == Encounter.PILLAGER_PAIR ? 1 : 0;
 		}
-		double eliteRate = (double) elites / SAMPLES;
 		double pairRate = (double) pairs / SAMPLES;
-		LOG.info("[BEHAVIOR] test=theRollRatesAreWhatShips RESULT samples={} eliteRate={} pairRate={} wrongSide={}", SAMPLES, eliteRate, pairRate, wrongSide);
-		helper.assertTrue(Math.abs(eliteRate - ChunkEncounters.SAFE_ELITE_CHANCE) <= band(ChunkEncounters.SAFE_ELITE_CHANCE), "safe-zone elite rate " + eliteRate);
+		LOG.info("[BEHAVIOR] test=theRollRatesAreWhatShips RESULT samples={} safeEncounters={} pairRate={} wrongSide={}", SAMPLES, safeEncounters, pairRate, wrongSide);
+		helper.assertTrue(safeEncounters == 0, "the safe zone rolled " + safeEncounters + " encounters; it rolls none");
 		helper.assertTrue(Math.abs(pairRate - ChunkEncounters.PILLAGER_PAIR_CHANCE) <= band(ChunkEncounters.PILLAGER_PAIR_CHANCE), "pillager pair rate " + pairRate);
 		helper.assertTrue(wrongSide == 0, wrongSide + " rolls gave an encounter to the wrong side of the safe zone");
 		helper.succeed();
@@ -80,22 +79,6 @@ public class ChunkEncounterGameTest {
 		boolean[] expected = { true, true, false, false, false };
 		LOG.info("[BEHAVIOR] test=theSafeZoneIsTheSpawnSafetyRadius RESULT actual={}", java.util.Arrays.toString(actual));
 		helper.assertTrue(java.util.Arrays.equals(actual, expected), "safe zone answers " + java.util.Arrays.toString(actual));
-		helper.succeed();
-	}
-
-	@GameTest(padding = 32)
-	public void aSafeZoneEliteIsOneEliteThatDoesNotBurnAndStays(final GameTestHelper helper) {
-		helper.setTime(6_000L);
-		LevelChunk chunk = helper.getLevel().getChunkAt(helper.absolutePos(new BlockPos(1, 1, 1)));
-		List<Mob> spawned = ChunkEncounters.spawn(helper.getLevel(), chunk, Encounter.ELITE, RandomSource.create(7L));
-		helper.assertTrue(spawned.size() == 1, "a safe-zone elite roll spawned " + spawned.size() + " mobs");
-		Mob elite = spawned.get(0);
-		helper.assertTrue(Elite.isElite(elite), "the safe-zone mob is not elite");
-		helper.assertTrue(ChunkEncounters.SAFE_ELITE_TYPES.contains(elite.getType()), "the safe-zone elite is a " + elite.getType());
-		helper.assertTrue(elite.isPersistenceRequired(), "the safe-zone elite can despawn");
-		helper.assertTrue(elite.chunkPosition().equals(chunk.getPos()), "the elite spawned outside its chunk");
-		LOG.info("[BEHAVIOR] test=aSafeZoneEliteIsOneEliteThatDoesNotBurnAndStays RESULT type={} elite=true persistent=true", elite.getType());
-		spawned.forEach(Mob::discard);
 		helper.succeed();
 	}
 

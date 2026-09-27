@@ -18,10 +18,13 @@ public class ArrowVolleyHitMixin {
 	@Inject(method = "onHitEntity", at = @At("HEAD"))
 	private void stella$volleyCloudOnEntity(final EntityHitResult hitResult, final CallbackInfo info) {
 		SkeletonVolley.onHit((AbstractArrow) (Object) this, hitResult.getEntity().position());
+		SkeletonVolley.onEntityHit((AbstractArrow) (Object) this, hitResult.getEntity());
+		com.stella.mobs.behavior.StrayKit.onArrowHit((AbstractArrow) (Object) this, hitResult.getEntity().blockPosition());
 	}
 
 	@Inject(method = "onHitBlock", at = @At("HEAD"))
 	private void stella$volleyCloudOnBlock(final BlockHitResult hitResult, final CallbackInfo info) {
 		SkeletonVolley.onHit((AbstractArrow) (Object) this, hitResult.getLocation());
+		com.stella.mobs.behavior.StrayKit.onArrowHit((AbstractArrow) (Object) this, hitResult.getBlockPos().relative(hitResult.getDirection()));
 	}
 }

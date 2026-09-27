@@ -34,6 +34,12 @@ public final class WolfPack {
 	private WolfPack() {
 	}
 
+	/** The ways the world spawns a wolf by itself. */
+	public static final java.util.Set<net.minecraft.world.entity.EntitySpawnReason> WILD_REASONS = java.util.EnumSet.of(
+		net.minecraft.world.entity.EntitySpawnReason.NATURAL, net.minecraft.world.entity.EntitySpawnReason.CHUNK_GENERATION,
+		net.minecraft.world.entity.EntitySpawnReason.STRUCTURE, net.minecraft.world.entity.EntitySpawnReason.SPAWNER
+	);
+
 	public static void register() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (!(entity instanceof Wolf wolf)) {
@@ -41,7 +47,9 @@ public final class WolfPack {
 			}
 			WATCHED.add(wolf);
 			boolean loadedFromDisk = entity instanceof EntityLoadData data && data.isLoadedFromDisk();
-			if (!loadedFromDisk && !wolf.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) && !Elite.isElite(wolf) && rollsElite(wolf.getRandom())) {
+			// Only a wolf the world spawns rolls: a bred pup never does, so a pack cannot be bred for elites.
+			boolean wild = entity instanceof EntityLoadData spawn && WILD_REASONS.contains(spawn.spawnReason());
+			if (!loadedFromDisk && wild && !wolf.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) && !Elite.isElite(wolf) && rollsElite(wolf.getRandom())) {
 				makeElite(wolf);
 			} else if (Elite.isElite(wolf)) {
 				installAura(wolf);

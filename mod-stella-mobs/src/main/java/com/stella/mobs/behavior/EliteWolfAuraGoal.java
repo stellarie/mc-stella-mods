@@ -45,7 +45,7 @@ final class EliteWolfAuraGoal extends Goal {
 		int hostiles = 0;
 		int allies = 0;
 		for (LivingEntity other : around) {
-			if (other instanceof Enemy) {
+			if (other instanceof Enemy && !FriendlyPatrol.isVillageFriend(other)) {
 				other.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, WolfPack.AURA_TICKS, WolfPack.AURA_AMPLIFIER), this.wolf);
 				other.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, WolfPack.AURA_TICKS, WolfPack.AURA_AMPLIFIER), this.wolf);
 				hostiles++;

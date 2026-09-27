@@ -36,7 +36,7 @@ public final class WitchPotions {
 		new Carried("poison", true, 0, MobEffects.POISON, 900),
 		new Carried("slowness", true, 0, MobEffects.SLOWNESS, 1800),
 		new Carried("blindness", true, 0, MobEffects.BLINDNESS, 300),
-		new Carried("levitation", true, 0, MobEffects.LEVITATION, 300),
+		new Carried("levitation", true, 0, MobEffects.LEVITATION, Levitation.MAX_TICKS),
 		// W11: the two strong potions, at the vanilla strong-potion level and duration.
 		new Carried("speed", false, 1, MobEffects.SPEED, 1800),
 		new Carried("strength", false, 1, MobEffects.STRENGTH, 1800)
@@ -48,6 +48,11 @@ public final class WitchPotions {
 	/** The offensive view of the one list, in list order. */
 	public static List<Carried> offensive() {
 		return CARRIED.stream().filter(Carried::offensive).toList();
+	}
+
+	/** An elite or boss witch's throws: the offensive list without Blindness. */
+	public static List<Carried> eliteOffensive() {
+		return offensive().stream().filter(carried -> !carried.effect().equals(MobEffects.BLINDNESS)).toList();
 	}
 
 	/** W11: the three ally buffs, in the order the support goal cycles them. */
