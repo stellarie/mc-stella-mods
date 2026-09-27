@@ -69,7 +69,8 @@ public final class SpellVisuals {
 		visual("gravity", ParticleTypes.CURRENT_DOWN, ParticleTypes.REVERSE_PORTAL, MoreSpells.GRAVITY_RADIUS),
 		visual("bulwark_hymn", ParticleTypes.FALLING_HONEY, ParticleTypes.WAX_ON, MoreSpells.SUPPORT_RADIUS),
 		visual("tailwind", ParticleTypes.SMALL_GUST, ParticleTypes.CLOUD, MoreSpells.SUPPORT_RADIUS),
-		visual("battle_hymn", ParticleTypes.NOTE, ParticleTypes.CRIT, MoreSpells.SUPPORT_RADIUS)
+		visual("battle_hymn", ParticleTypes.NOTE, ParticleTypes.CRIT, MoreSpells.SUPPORT_RADIUS),
+		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0)
 	);
 
 	private SpellVisuals() {

@@ -17,7 +17,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -147,7 +146,7 @@ public final class SpellCombos {
 		if (combo == FROZEN_METEOR && point != null) {
 			for (Mob hostile : caster.level().getEntitiesOfClass(
 				Mob.class, new AABB(point, point).inflate(FROZEN_METEOR_RADIUS),
-				candidate -> candidate.isAlive() && candidate instanceof Enemy
+				candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 					&& candidate.position().distanceToSqr(point) <= FROZEN_METEOR_RADIUS * FROZEN_METEOR_RADIUS
 			)) {
 				hostile.damageCooldownTime = 0;
