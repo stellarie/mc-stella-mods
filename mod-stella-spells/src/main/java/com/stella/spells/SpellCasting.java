@@ -26,6 +26,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class SpellCasting {
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
@@ -351,24 +352,43 @@ public final class SpellCasting {
 			return null;
 		}
 
-		BlockPos feet = hit.getBlockPos().relative(hit.getDirection());
-		for (int drop = 0; drop < RIFTWALK_MAX_DROP_BLOCKS && !isSturdyFloor(level, feet.below()); drop++) {
-			feet = feet.below();
-		}
-		if (!isSturdyFloor(level, feet.below())) {
-			return null;
+		BlockPos feet = hit.getBlockPos();
+		double floor = hit.getLocation().y;
+		if (hit.getDirection() != Direction.UP) {
+			feet = feet.relative(hit.getDirection());
+			floor = floorTop(level, feet);
+			for (int drop = 0; drop < RIFTWALK_MAX_DROP_BLOCKS && Double.isNaN(floor); drop++) {
+				feet = feet.below();
+				floor = floorTop(level, feet);
+			}
+			if (Double.isNaN(floor)) {
+				return null;
+			}
 		}
 
-		Vec3 candidate = Vec3.atBottomCenterOf(feet);
+		Vec3 candidate = new Vec3(feet.getX() + 0.5, floor, feet.getZ() + 0.5);
 		return fits(caster, candidate) ? candidate : null;
+	}
+
+	// Where a caster in this cell would stand: on a low block inside it, such as a slab or a carpet, or on a full-height block under it.
+	private static double floorTop(final ServerLevel level, final BlockPos feet) {
+		VoxelShape here = level.getBlockState(feet).getCollisionShape(level, feet);
+		if (!here.isEmpty()) {
+			double top = here.max(Direction.Axis.Y);
+			return top < 1.0 ? feet.getY() + top : Double.NaN;
+		}
+
+		BlockPos below = feet.below();
+		VoxelShape under = level.getBlockState(below).getCollisionShape(level, below);
+		return !under.isEmpty() && under.max(Direction.Axis.Y) >= 1.0 ? feet.getY() : Double.NaN;
 	}
 
 	/** True when the caster can stand at the spot: solid ground, no block, mob or fluid in the way. */
 	static boolean fits(final ServerPlayer caster, final Vec3 spot) {
 		ServerLevel level = caster.level();
-		BlockPos ground = BlockPos.containing(spot.x, spot.y - 0.01, spot.z);
 		AABB moved = caster.getBoundingBox().move(spot.subtract(caster.position()));
-		return isSturdyFloor(level, ground)
+		AABB underFoot = new AABB(moved.minX, spot.y - 0.05, moved.minZ, moved.maxX, spot.y, moved.maxZ);
+		return !level.noBlockCollision(caster, underFoot)
 			&& level.noCollision(caster, moved)
 			&& level.getEntities(caster, moved, EntitySelector.ENTITY_STILL_ALIVE).isEmpty()
 			&& !containsFluid(level, moved);

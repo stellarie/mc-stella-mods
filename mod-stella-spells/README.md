@@ -11,8 +11,9 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 - **Hostile** spells hit the first hostile mob the caster looks at within 16 blocks.
 - **Block** spells land on the block the caster looks at within 16 blocks.
 - **Self** spells act on the caster.
-- **Riftwalk** moves the caster onto the block they look at within 16 blocks. Aimed at a wall, it
-  lands in front of the wall, dropping up to 4 blocks to the ground. It refuses a spot with no room,
+- **Riftwalk** moves the caster onto the block they look at within 16 blocks, including a slab,
+  carpet or path. Aimed at a wall, it lands in front of the wall, dropping up to 4 blocks to the
+  ground. It refuses a spot with no room,
   with fluid, or with a mob in it.
 
 | Book | Material | Cooldown | Target | Effect |
@@ -27,7 +28,7 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster |
 | Owl's Gaze | Amethyst Shard | 10 s | Self | Night Vision, 45 s |
 | Slimebound | Slime Ball | 5 s | Self | Jump Boost II and Slow Falling |
-| Chainstorm | Lightning Rod | 15 s | Block | Lightning from the sky onto up to 5 hostiles within 5 blocks of the point, nearest first, one strike every 6 ticks, 6 damage each |
+| Chainstorm | Lightning Rod | 15 s | Block | Lightning from the sky onto up to 5 hostiles within 5 blocks of the point, nearest first, one strike every 6 ticks, 6 damage each; the bolts start no fire, scrape no copper and power no rod |
 | Riftwalk | Ender Pearl | 10 s | Aimed spot | Teleports the caster onto the spot they look at, up to 16 blocks away |
 | Phoenix Mantle | Blaze Rod | 15 s | Self | Fire Resistance, 30 s, and heals 4 |
 | Life Bloom | Ghast Tear | 17 s | Self | Heals 8 and Regeneration I, 5 s |
@@ -53,6 +54,18 @@ Every successful cast draws its own particles, sent from the server to players w
 - **Riftwalk** draws a portal spiral where the caster left and where they arrived.
 
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
+
+## Imbued weapons
+
+Put a weapon on the left of an anvil and a spellbook on the right to imbue the weapon. A weapon is
+any item with its own attack damage: swords, axes, tridents, maces and the like. The imbue costs
+5 levels, or 5 emeralds when `mod-stella-equips-enchants` runs its emerald anvil. The book is used
+up, and its own enchantments do not carry over. Imbuing again replaces the spell.
+
+Each melee hit with the imbued weapon casts its spell at half power and half duration. The spell
+then waits out the book's base cooldown before the weapon casts it again. A hostile spell lands on
+the target, an area spell lands around it, and a self spell acts on the wielder. Riftwalk steps
+behind the target. Arrows never cast the spell. The weapon's tooltip names its spell.
 
 ## Spell scrolls
 
