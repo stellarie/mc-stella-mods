@@ -78,7 +78,7 @@ public class EffectEnchantGameTest {
 	private static final int CLOUDSTEP_WARMUP_TICKS = 60;
 	/** The effect command counts seconds, not ticks. */
 	private static final int TICKS_PER_SECOND = 20;
-	private static final int CATALOGUE_SIZE = 72;
+	private static final int CATALOGUE_SIZE = 73;
 
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall", "weapon/weightless",

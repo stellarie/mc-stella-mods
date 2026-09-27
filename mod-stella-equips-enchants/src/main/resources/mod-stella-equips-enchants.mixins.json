@@ -5,7 +5,8 @@
 	"mixins": [
 		"AnvilMenuMixin",
 		"EnchantmentMenuMixin",
-		"ItemStackTooltipMixin"
+		"ItemStackTooltipMixin",
+		"PlayerSoulboundMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
