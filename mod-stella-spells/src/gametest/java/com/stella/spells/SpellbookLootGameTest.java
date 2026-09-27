@@ -245,10 +245,12 @@ public class SpellbookLootGameTest {
 		return counts;
 	}
 
+	// Each book's count is its own comparison: across forty books a three-deviation band misses one fair seed
+	// in ten by chance alone, so each book gets four deviations, which a fair roll misses about once in 400.
 	private static boolean uniformlyDistributed(final Map<Identifier, Integer> counts, final double chance) {
 		double perBookChance = chance / SpellbookCatalog.DEFINITIONS.size();
 		return SPELLBOOK_IDS.stream().allMatch(
-			id -> withinThreeStandardDeviations(counts.getOrDefault(id, 0), perBookChance)
+			id -> withinStandardDeviations(counts.getOrDefault(id, 0), perBookChance, 4.0)
 		);
 	}
 
@@ -257,8 +259,12 @@ public class SpellbookLootGameTest {
 	}
 
 	private static boolean withinThreeStandardDeviations(final int actual, final double chance) {
+		return withinStandardDeviations(actual, chance, 3.0);
+	}
+
+	private static boolean withinStandardDeviations(final int actual, final double chance, final double deviations) {
 		double expected = ROLLS * chance;
 		double deviation = Math.sqrt(ROLLS * chance * (1.0 - chance));
-		return actual >= expected - 3.0 * deviation && actual <= expected + 3.0 * deviation;
+		return actual >= expected - deviations * deviation && actual <= expected + deviations * deviation;
 	}
 }

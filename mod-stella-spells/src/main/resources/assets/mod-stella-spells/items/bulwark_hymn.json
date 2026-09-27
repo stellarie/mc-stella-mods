@@ -1,11 +1,11 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/healing_spring",
+		"model": "mod-stella-spells:item/bulwark_hymn",
 		"tints": [
 			{
 				"type": "minecraft:constant",
-				"value": 16740241
+				"value": 16766720
 			}
 		]
 	}

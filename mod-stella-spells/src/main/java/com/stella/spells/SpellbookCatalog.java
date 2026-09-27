@@ -33,10 +33,8 @@ public final class SpellbookCatalog {
 		definition("ice_lance", Items.PACKED_ICE, 100, 10_544_895, TargetMode.HOSTILE, MoreSpells::applyIceLance),
 		definition("soul_siphon", Items.SOUL_SOIL, 180, 5_913_994, TargetMode.HOSTILE, MoreSpells::applySoulSiphon),
 		definition("venom_dart", Items.SPIDER_EYE, 100, 6_989_903, TargetMode.HOSTILE, MoreSpells::applyVenomDart),
-		definition("sapping_hex", Items.FERMENTED_SPIDER_EYE, 160, 8_007_248, TargetMode.HOSTILE, MoreSpells::applySappingHex),
-		definition("skyhook", Items.PHANTOM_MEMBRANE, 160, 12_175_321, TargetMode.HOSTILE, MoreSpells::applySkyhook),
+		definition("sapping_hex", Items.FERMENTED_SPIDER_EYE, 240, 8_007_248, TargetMode.SELF, MoreSpells::applySappingHex),
 		definition("blinding_flash", Items.GLOW_INK_SAC, 140, 4_186_320, TargetMode.HOSTILE, MoreSpells::applyBlindingFlash),
-		definition("smite", Items.GLOWSTONE_DUST, 200, 16_769_126, TargetMode.HOSTILE, MoreSpells::applySmite),
 		definition("ember_brand", Items.MAGMA_CREAM, 120, 14_706_218, TargetMode.HOSTILE, MoreSpells::applyEmberBrand),
 		definition("quicksilver", Items.SUGAR, 300, 14_541_800, TargetMode.SELF, MoreSpells::applyQuicksilver),
 		definition("tide_lungs", Items.PUFFERFISH, 300, 3_832_789, TargetMode.SELF, MoreSpells::applyTideLungs),
@@ -48,8 +46,11 @@ public final class SpellbookCatalog {
 		definition("frost_nova", Items.ICE, 300, 10_475_248, TargetMode.SELF, MoreSpells::applyFrostNova),
 		definition("earthspike", Items.POINTED_DRIPSTONE, 240, 9_137_998, TargetMode.BLOCK, MoreSpells::applyEarthspike),
 		definition("plague_cloud", Items.POISONOUS_POTATO, 300, 8_364_858, TargetMode.BLOCK, MoreSpells::applyPlagueCloud),
-		definition("healing_spring", Items.GLISTERING_MELON_SLICE, 400, 16_740_241, TargetMode.BLOCK, MoreSpells::applyHealingSpring),
-		definition("flame_ring", Items.FIRE_CHARGE, 240, 16_747_546, TargetMode.BLOCK, MoreSpells::applyFlameRing)
+		definition("flame_ring", Items.FIRE_CHARGE, 400, 16_747_546, TargetMode.SELF, MoreSpells::applyFlameRing),
+		definition("gravity", Items.PHANTOM_MEMBRANE, 240, 6_180_770, TargetMode.SELF, MoreSpells::applyGravity),
+		definition("bulwark_hymn", Items.GLISTERING_MELON_SLICE, 400, 16_766_720, TargetMode.SELF, MoreSpells::applyBulwarkHymn),
+		definition("tailwind", Items.RABBIT_FOOT, 300, 12_251_895, TargetMode.SELF, MoreSpells::applyTailwind),
+		definition("battle_hymn", Items.GLOWSTONE_DUST, 400, 14_423_100, TargetMode.SELF, MoreSpells::applyBattleHymn)
 	);
 	private static final Map<Identifier, SpellDefinition> DEFINITIONS_BY_ID = DEFINITIONS.stream()
 		.collect(Collectors.toUnmodifiableMap(SpellDefinition::id, Function.identity()));

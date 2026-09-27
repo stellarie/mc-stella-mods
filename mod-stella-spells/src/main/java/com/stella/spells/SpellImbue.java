@@ -69,9 +69,10 @@ public final class SpellImbue {
 	/** The spells a mob's imbued weapon casts: every spell that strikes a single foe. */
 	public static final java.util.Set<Identifier> MOB_SPELLS = java.util.Set.of(
 		id("spark_shot"), id("frostbind"), id("briar_snare"), id("static_lash"), id("tidal_push"), id("wither_seal"),
-		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("sapping_hex"), id("skyhook"), id("blinding_flash"),
-		id("smite"), id("ember_brand")
+		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("blinding_flash"), id("ember_brand")
 	);
+	/** Spells no weapon takes: Tide Lungs is a breath held underwater, not a blow. */
+	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"));
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
 	};
 	private static volatile MobRecorder mobRecorder = SILENT_MOBS;
@@ -123,7 +124,7 @@ public final class SpellImbue {
 	/** The weapon with the book's spell and nothing else of the book; empty when it already holds that spell. */
 	public static ItemStack imbue(final ItemStack weapon, final SpellDefinition spell) {
 		ImbuedSpell current = weapon.get(IMBUED);
-		if (current != null && current.spell().equals(spell.id())) {
+		if (NOT_IMBUABLE.contains(spell.id()) || current != null && current.spell().equals(spell.id())) {
 			return ItemStack.EMPTY;
 		}
 

@@ -198,7 +198,7 @@ public class SpellImbueGameTest {
 			zombie.discard();
 		}
 		LOG.info("[SPELLTEST] test=everyNewSpellCastsFromAnImbuedHit RESULT spells={} missing={}", newSpells, missing);
-		helper.assertTrue(newSpells == 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
+		helper.assertTrue(newSpells == SpellbookCatalog.DEFINITIONS.size() - 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
 		helper.assertTrue(missing.isEmpty(), "imbued hits that cast nothing: " + missing);
 		helper.succeed();
 	}
@@ -273,6 +273,16 @@ public class SpellImbueGameTest {
 		LOG.info("[SPELLTEST] test=stoppingTheServerForgetsImbueCooldowns RESULT before={} after={}", before, after);
 		helper.assertTrue(before > 0, "the hit set no cooldown, so the case proves nothing");
 		helper.assertTrue(after == 0, after + " imbue cooldowns outlived the server");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void tideLungsCannotBeImbued(final GameTestHelper helper) {
+		ServerPlayer player = player(helper);
+		AnvilMenu anvil = anvil(helper, player, new ItemStack(Items.IRON_SWORD), book(Identifier.parse("mod-stella-spells:tide_lungs")));
+		ItemStack result = anvil.getSlot(AnvilMenu.RESULT_SLOT).getItem();
+		LOG.info("[SPELLTEST] test=tideLungsCannotBeImbued RESULT result={}", result);
+		helper.assertTrue(result.isEmpty() || result.get(SpellImbue.IMBUED) == null, "Tide Lungs was imbued into " + result);
 		helper.succeed();
 	}
 
