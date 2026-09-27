@@ -87,6 +87,25 @@ Measured reach rates:
 | M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
 | M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
 
+## Third round (2026-09-27): scrolls, Soulbound, Mastery IV perks
+
+| Slice | Branch | Red run | Mutant run | Gate |
+| --- | --- | --- | --- | --- |
+| Spell scrolls and the book tint fix | `feat/spell-scrolls` into `main-spells` | 5 failed | 2 failed (no crumble, no chest scrolls) | 96 x 6 |
+| Soulbound | `feat/soulbound` into `main-equip-ench` | 3 failed | 3 failed (no hold-back); 1 failed (no stash move) | 216, clean + 10 runs |
+| Mastery IV perks | `feat/mastery-perks` into `main-equip-ench` | 6 failed | 6 failed | 224 x 6 |
+
+Measured: scrolls turn up in **39.95%** of vanilla chests (10,000 seeded chests, 1.5 scrolls on average).
+
+Causes found and fixed this round:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Spellbooks rendered as plain books (manual tint item still open) | The tints sat in `models/item/*.json`, which the client ignores; 26.3 reads `tints` from `items/*.json`. | Tints moved into the item definitions, and a test reads the shipped definitions. |
+| Briar Snare scroll never crafted | Paper and one vine is vanilla's bordure-indented banner pattern. | Briar Snare takes two vines (`Spellbooks.SCROLLS_WITH_DOUBLE_MATERIAL`). |
+| Soulbound items lost in 2 of 11 runs | Fabric's `copyOnDeath` left the stash behind: at the copy, the old player held both items and the new player none. | The stash moves in `COPY_FROM`; clean + 10 runs green. |
+| Test players took no damage | A placed player is protected until its client reports it has loaded. | The test player sends `ServerboundPlayerLoadedPacket`, as a real client does. |
+
 ## Merged state after the second round
 
 `main` holds all four integration tips. Each mod's tree on `main` is byte-identical to its gated
