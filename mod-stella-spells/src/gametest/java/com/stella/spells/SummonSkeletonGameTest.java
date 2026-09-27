@@ -12,6 +12,8 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -23,6 +25,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +93,67 @@ public class SummonSkeletonGameTest {
 			LOG.info("[SPELLTEST] test=theServantFightsAHostileNearItsMaster RESULT target=zombie");
 			servant.discard();
 			leave(helper, master);
+		});
+	}
+
+	/**
+	 * A servant left in an unloaded chunk cannot be called back, so a new cast raises another. When the old one loads
+	 * again it is retired, its pack and gear dropped where it stands, so a master never keeps two.
+	 */
+	@GameTest(maxTicks = 60)
+	public void aServantThatReturnsAfterANewSummonIsRetired(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		SpellbookItem book = book();
+		master.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(book));
+		SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
+		Skeleton first = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
+		helper.assertTrue(first != null, "no servant rose, so the case proves nothing");
+		SummonSkeleton.stow(first, new ItemStack(Items.DIAMOND, 3));
+		TagValueOutput saved = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
+		first.saveWithoutId(saved);
+		first.remove(Entity.RemovalReason.UNLOADED_TO_CHUNK);
+		master.getCooldowns().removeCooldown(master.getCooldowns().getCooldownGroup(master.getMainHandItem()));
+		SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
+		Skeleton second = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
+		helper.assertTrue(second != null && second != first, "the second cast raised no new servant");
+		Skeleton returned = EntityTypes.SKELETON.create(helper.getLevel(), EntitySpawnReason.LOAD);
+		returned.load(TagValueInput.create(ProblemReporter.DISCARDING, helper.getLevel().registryAccess(), saved.buildResult()));
+		helper.getLevel().addFreshEntity(returned);
+		helper.succeedWhen(() -> {
+			long diamonds = helper.getLevel().getEntitiesOfClass(ItemEntity.class, returned.getBoundingBox().inflate(3.0),
+				item -> item.getItem().is(Items.DIAMOND)).stream().mapToLong(item -> item.getItem().getCount()).sum();
+			helper.assertTrue(returned.isRemoved(), "the returned servant still serves beside the new one");
+			helper.assertTrue(second.isAlive(), "the new servant was retired in the old one's place: removed=" + second.getRemovalReason()
+				+ " health=" + second.getHealth() + " returned=" + returned.getRemovalReason() + " sameId=" + second.getUUID().equals(returned.getUUID()));
+			helper.assertTrue(diamonds == 3, "the retired servant's pack dropped " + diamonds + " of 3 diamonds");
+			LOG.info("[SPELLTEST] test=aServantThatReturnsAfterANewSummonIsRetired RESULT retired=true newAlive=true diamonds={}", diamonds);
+			second.discard();
+			leave(helper, master);
+		});
+	}
+
+	/** A servant struck by its own master, by a stray blow or a sweep, never turns on that master. */
+	@GameTest(maxTicks = 60)
+	public void theServantNeverTurnsOnItsMaster(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 4, 4);
+		final boolean[] turned = {false};
+		helper.onEachTick(() -> turned[0] |= servant.getTarget() == master);
+		// A few ticks in: vanilla's retaliation ignores a blow stamped on the servant's first tick.
+		helper.runAfterDelay(5L, () -> {
+			servant.hurtServer(helper.getLevel(), master.damageSources().playerAttack(master), 1.0F);
+			helper.assertTrue(servant.getLastHurtByMob() == master, "the master's blow did not register, so the case proves nothing");
+		});
+		helper.runAfterDelay(45L, () -> {
+			LOG.info("[SPELLTEST] test=theServantNeverTurnsOnItsMaster RESULT turned={} target={}", turned[0], servant.getTarget());
+			helper.assertFalse(turned[0], "the servant turned on its master");
+			servant.discard();
+			leave(helper, master);
+			helper.succeed();
 		});
 	}
 
