@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "com.stella.spells.mixin.client",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"FirstPersonHandsMixin",
+		"PlayerItemInHandLayerMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

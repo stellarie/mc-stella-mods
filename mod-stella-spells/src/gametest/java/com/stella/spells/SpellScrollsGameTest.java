@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -139,6 +140,50 @@ public class SpellScrollsGameTest {
 		}
 		helper.assertTrue(wrong.isEmpty(), "paper and the material did not craft the scroll: " + wrong);
 		LOG.info("[SPELLTEST] test=everyScrollCraftsFromPaperAndItsSpellsMaterial RESULT scrolls={}", Spellbooks.SCROLLS.size());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyBookHidesOnlyItsHandModel(final GameTestHelper helper) {
+		Set<String> hands = Set.of("firstperson_righthand", "firstperson_lefthand", "thirdperson_righthand", "thirdperson_lefthand");
+		List<String> wrong = new ArrayList<>();
+		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
+			String path = "/assets/" + definition.id().getNamespace() + "/items/" + definition.id().getPath() + ".json";
+			try (InputStream in = Spellbooks.class.getResourceAsStream(path)) {
+				if (in == null) {
+					wrong.add(definition.id() + " missing item definition");
+					continue;
+				}
+				JsonObject item = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject model = item.getAsJsonObject("model");
+				if (model == null || !"minecraft:select".equals(model.get("type").getAsString())
+					|| !"minecraft:display_context".equals(model.get("property").getAsString())) {
+					wrong.add(definition.id() + " has no display-context selection");
+					continue;
+				}
+				JsonArray cases = model.getAsJsonArray("cases");
+				if (cases == null || cases.size() != 1) {
+					wrong.add(definition.id() + " has unexpected hand cases");
+					continue;
+				}
+				JsonObject handCase = cases.get(0).getAsJsonObject();
+				Set<String> selected = new java.util.HashSet<>();
+				for (var context : handCase.getAsJsonArray("when")) {
+					selected.add(context.getAsString());
+				}
+				JsonObject hidden = handCase.getAsJsonObject("model");
+				JsonObject fallback = model.getAsJsonObject("fallback");
+				if (!selected.equals(hands) || hidden == null || !"minecraft:empty".equals(hidden.get("type").getAsString())
+					|| fallback == null || !"minecraft:model".equals(fallback.get("type").getAsString())
+					|| !("mod-stella-spells:item/" + definition.id().getPath()).equals(fallback.get("model").getAsString())) {
+					wrong.add(definition.id() + " hides the wrong view or loses its inventory model");
+				}
+			} catch (java.io.IOException | RuntimeException error) {
+				wrong.add(definition.id() + " item definition could not be read: " + error.getClass().getSimpleName());
+			}
+		}
+		helper.assertTrue(wrong.isEmpty(), "spellbook hand models are wrong: " + wrong);
+		LOG.info("[SPELLTEST] test=everyBookHidesOnlyItsHandModel RESULT books={} handContexts=4 inventoryVisible=true", SpellbookCatalog.DEFINITIONS.size());
 		helper.succeed();
 	}
 

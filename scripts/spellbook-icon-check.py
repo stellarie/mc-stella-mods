@@ -21,6 +21,12 @@ VISUAL_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellVis
 MODEL_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
 ITEM_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/items")
 TEXTURE_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/textures/item")
+HAND_CONTEXTS = (
+    "firstperson_righthand",
+    "firstperson_lefthand",
+    "thirdperson_righthand",
+    "thirdperson_lefthand",
+)
 
 
 @dataclass(frozen=True)
@@ -144,10 +150,14 @@ def write_items(root: Path) -> None:
     for book in BOOKS:
         path = item_root / f"{book.path}.json"
         definition = json.loads(path.read_text(encoding="utf-8"))
-        model = definition.get("model")
-        if not isinstance(model, dict):
+        if not isinstance(definition.get("model"), dict):
             raise ValueError(f"book item definition has no model: {path}")
-        model.pop("tints", None)
+        definition["model"] = {
+            "type": "minecraft:select",
+            "property": "minecraft:display_context",
+            "cases": [{"when": list(HAND_CONTEXTS), "model": {"type": "minecraft:empty"}}],
+            "fallback": {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}"},
+        }
         path.write_text(json.dumps(definition, indent="\t") + "\n", encoding="utf-8")
 
 
@@ -182,12 +192,17 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
 
     visual_source = (root / VISUAL_SOURCE).read_text(encoding="utf-8")
     area_colors = dict(re.findall(r'areaVisual\("([a-z0-9_]+)"[^\n]*,\s*(0x[0-9A-Fa-f]{6})\)', visual_source))
-    for path, color in area_colors.items():
+    held_colors = dict(re.findall(r'heldColor\("([a-z0-9_]+)",\s*(0x[0-9A-Fa-f]{6})\)', visual_source))
+    if set(area_colors) & set(held_colors):
+        errors.append(f"duplicate area and held color paths: {sorted(set(area_colors) & set(held_colors))}")
+    if set(area_colors) | set(held_colors) != set(expected):
+        errors.append("visual colors do not cover the spellbook catalog")
+    for path, color in (area_colors | held_colors).items():
         book = next((entry for entry in BOOKS if entry.path == path), None)
         if book is None:
-            errors.append(f"area visual has no book icon: {path}")
+            errors.append(f"visual color has no book icon: {path}")
         elif int(color, 16) != int(book.color[1:], 16):
-            errors.append(f"area circle color differs from book icon: {path} ({color} != {book.color})")
+            errors.append(f"circle color differs from book icon: {path} ({color} != {book.color})")
 
     hashes: dict[str, str] = {}
     for book in BOOKS:
@@ -220,7 +235,16 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
         else:
             item = json.loads(item_path.read_text(encoding="utf-8"))
             item_model = item.get("model", {})
-            if "tints" in item_model:
+            hand_cases = item_model.get("cases", [])
+            hand_case = hand_cases[0] if len(hand_cases) == 1 else {}
+            fallback = item_model.get("fallback", {})
+            if (item_model.get("type") != "minecraft:select"
+                    or item_model.get("property") != "minecraft:display_context"
+                    or set(hand_case.get("when", [])) != set(HAND_CONTEXTS)
+                    or hand_case.get("model") != {"type": "minecraft:empty"}
+                    or fallback != {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}"}):
+                errors.append(f"hand or inventory model mismatch: {item_path}")
+            if "tints" in item_model or "tints" in fallback:
                 message = f"obsolete item tint remains: {item_path}"
                 if strict_tints:
                     errors.append(message)
@@ -234,7 +258,7 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
             with zipfile.ZipFile(jar_path) as archive:
                 entries = set(archive.namelist())
                 for book in BOOKS:
-                    for kind in ("models/item", "textures/item"):
+                    for kind in ("items", "models/item", "textures/item"):
                         entry = expected_jar_entry(book, kind)
                         if entry not in entries:
                             errors.append(f"missing jar entry: {entry}")

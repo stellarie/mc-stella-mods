@@ -281,7 +281,10 @@ public final class SpellCasting {
 				.thenComparingInt(Mob::getId)
 		);
 		for (int i = 0; i < Math.min(2, candidates.size()); i++) {
-			candidates.get(i).hurt(damage, DAMAGE * power);
+			Mob chained = candidates.get(i);
+			chained.hurt(damage, DAMAGE * power);
+			SpellVisuals.linkAffected(caster, "static_lash",
+				primary.getBoundingBox().getCenter(), chained.getBoundingBox().getCenter());
 		}
 		return true;
 	}
