@@ -121,25 +121,25 @@ public final class BehaviorInstaller {
 		mob.getGoalSelector().addGoal(SpiderBroodGoal.PRIORITY, new SpiderBroodGoal(spider));
 	}
 
-	/** R24: the elite blaze's volley replaces the vanilla attack goal, which is a private nested class. */
-	public static void installBlazeVolley(final Mob mob) {
-		if (!(mob instanceof Blaze blaze) || !Elite.isElite(blaze)) {
+	/** Every blaze fires on the steady beat; the vanilla attack goal, a private nested class, leaves. */
+	public static void installBlazeAttack(final Mob mob) {
+		if (!(mob instanceof Blaze blaze)) {
 			return;
 		}
 
 		if (mob.getGoalSelector().getAvailableGoals().stream()
-			.anyMatch(wrapped -> wrapped.getGoal() instanceof BlazeVolleyGoal)) {
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof BlazeAttackGoal)) {
 			return;
 		}
 
 		mob.getGoalSelector().removeAllGoals(goal -> goal.getClass().getEnclosingClass() == Blaze.class);
-		mob.getGoalSelector().addGoal(MELEE_PRIORITY, new BlazeVolleyGoal(blaze, Elite.isElite(blaze)));
+		mob.getGoalSelector().addGoal(MELEE_PRIORITY, new BlazeAttackGoal(blaze));
 	}
 
 	/**
 	 * R24: the ghast's rank 7 shoot goal is a package private nested class, so the replacement goes
 	 * through the wrapped goals and re-adds the public look goal beside ours. This runs for every ghast,
-	 * elite or not, and the flag inside the goal chooses the power and the payload.
+	 * elite or not, and the goal reads the elite flag when it fires.
 	 */
 	public static void installGhastFireball(final Mob mob) {
 		if (!(mob instanceof Ghast ghast)) {
@@ -160,7 +160,7 @@ public final class BehaviorInstaller {
 
 		ghast.getGoalSelector().addGoal(GHAST_SHOOT_PRIORITY, new Ghast.GhastLookGoal(ghast));
 		ghast.getGoalSelector().addGoal(
-			GHAST_SHOOT_PRIORITY, new GhastFireballGoal(ghast, Elite.isElite(ghast))
+			GHAST_SHOOT_PRIORITY, new GhastFireballGoal(ghast)
 		);
 	}
 
@@ -230,7 +230,7 @@ public final class BehaviorInstaller {
 		BossAbilities.install(mob);
 		installSpiderBrood(mob);
 		installSpiderWebTrap(mob);
-		installBlazeVolley(mob);
+		installBlazeAttack(mob);
 		// R24: the elite brute's permanent movement, which the shared elite mark alone does not add.
 		PiglinSmash.install(mob);
 		// O02 and O03: the guardian auras, the elite guardian's slow beam, and its movement.
