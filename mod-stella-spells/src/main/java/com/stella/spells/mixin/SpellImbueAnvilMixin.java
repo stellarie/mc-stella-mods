@@ -31,7 +31,7 @@ public abstract class SpellImbueAnvilMixin {
 		ItemStack result = SpellImbue.imbue(weapon, book.definition());
 		menu.getSlot(AnvilMenu.RESULT_SLOT).set(result);
 		this.modStellaSpells$setRepairItemCountCost(0);
-		this.modStellaSpells$imbueCost().set(result.isEmpty() ? 0 : SpellImbue.IMBUE_XP_COST);
+		this.modStellaSpells$imbueCost().set(result.isEmpty() ? 0 : SpellImbue.imbueCost(weapon));
 		ci.cancel();
 	}
 }

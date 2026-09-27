@@ -1,11 +1,11 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/healing_spring_scroll",
+		"model": "mod-stella-spells:item/tailwind",
 		"tints": [
 			{
 				"type": "minecraft:constant",
-				"value": 16740241
+				"value": 12251895
 			}
 		]
 	}

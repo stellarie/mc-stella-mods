@@ -198,7 +198,7 @@ public class SpellImbueGameTest {
 			zombie.discard();
 		}
 		LOG.info("[SPELLTEST] test=everyNewSpellCastsFromAnImbuedHit RESULT spells={} missing={}", newSpells, missing);
-		helper.assertTrue(newSpells == 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
+		helper.assertTrue(newSpells == SpellbookCatalog.DEFINITIONS.size() - 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
 		helper.assertTrue(missing.isEmpty(), "imbued hits that cast nothing: " + missing);
 		helper.succeed();
 	}
@@ -216,6 +216,73 @@ public class SpellImbueGameTest {
 		int casts = CASTS.getOrDefault(player.getUUID(), List.of()).size();
 		LOG.info("[SPELLTEST] test=anArrowDoesNotCastTheSpellOfTheSwordInHand RESULT casts={}", casts);
 		helper.assertTrue(casts == 0 && !zombie.isOnFire(), "an arrow cast the sword's spell");
+		helper.succeed();
+	}
+
+	// The cloud lands on a victim within reach, so it must never poison the wielder who stands in it.
+	@GameTest(maxTicks = 100)
+	public void anImbuedPlagueCloudSparesItsWielder(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, Identifier.parse("mod-stella-spells:plague_cloud"));
+		Mob zombie = zombie(helper, 2, 4);
+		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		helper.runAfterDelay(30L, () -> {
+			boolean cast = CASTS.getOrDefault(player.getUUID(), List.of()).contains(Identifier.parse("mod-stella-spells:plague_cloud"));
+			boolean poisoned = player.hasEffect(MobEffects.POISON);
+			LOG.info("[SPELLTEST] test=anImbuedPlagueCloudSparesItsWielder RESULT cast={} wielderPoisoned={} distance={}", cast, poisoned, player.distanceTo(zombie));
+			helper.assertTrue(cast, "the imbued hit left no cloud, so the case proves nothing");
+			helper.assertFalse(poisoned, "the wielder's own imbued Plague Cloud poisoned them");
+			helper.succeed();
+		});
+	}
+
+	// A spell that finds nothing to do must leave the hit's own hurt cooldown on the victim.
+	@GameTest
+	public void aFailedImbuedSpellKeepsTheVictimsHurtCooldown(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, Identifier.parse("mod-stella-spells:purify"));
+		Mob zombie = zombie(helper, 2, 4);
+		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		int cooldown = zombie.damageCooldownTime;
+		LOG.info("[SPELLTEST] test=aFailedImbuedSpellKeepsTheVictimsHurtCooldown RESULT cooldown={} casts={}", cooldown, CASTS.getOrDefault(player.getUUID(), List.of()).size());
+		helper.assertTrue(cooldown > 0, "a Purify with nothing to clear wiped the victim's hurt cooldown");
+		helper.succeed();
+	}
+
+	// A spell that deals no damage must leave the hit's own hurt cooldown on the victim too.
+	@GameTest
+	public void aHarmlessImbuedSpellKeepsTheVictimsHurtCooldown(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, Identifier.parse("mod-stella-spells:sapping_hex"));
+		Mob zombie = zombie(helper, 2, 4);
+		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		int cooldown = zombie.damageCooldownTime;
+		boolean hexed = zombie.hasEffect(MobEffects.WEAKNESS);
+		LOG.info("[SPELLTEST] test=aHarmlessImbuedSpellKeepsTheVictimsHurtCooldown RESULT cooldown={} hexed={}", cooldown, hexed);
+		helper.assertTrue(hexed, "the imbued Sapping Hex did not land, so the case proves nothing");
+		helper.assertTrue(cooldown > 0, "an imbued Sapping Hex wiped the victim's hurt cooldown");
+		helper.succeed();
+	}
+
+	// Its own batch, because it clears every imbue cooldown on the server.
+	@GameTest(environment = "mod-stella-spells:storm_alone")
+	public void stoppingTheServerForgetsImbueCooldowns(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, SPARK_SHOT);
+		Mob zombie = zombie(helper, 2, 4);
+		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		int before = SpellImbue.readyEntries();
+		SpellImbue.onServerStopping(helper.getLevel().getServer());
+		int after = SpellImbue.readyEntries();
+		LOG.info("[SPELLTEST] test=stoppingTheServerForgetsImbueCooldowns RESULT before={} after={}", before, after);
+		helper.assertTrue(before > 0, "the hit set no cooldown, so the case proves nothing");
+		helper.assertTrue(after == 0, after + " imbue cooldowns outlived the server");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void tideLungsCannotBeImbued(final GameTestHelper helper) {
+		ServerPlayer player = player(helper);
+		AnvilMenu anvil = anvil(helper, player, new ItemStack(Items.IRON_SWORD), book(Identifier.parse("mod-stella-spells:tide_lungs")));
+		ItemStack result = anvil.getSlot(AnvilMenu.RESULT_SLOT).getItem();
+		LOG.info("[SPELLTEST] test=tideLungsCannotBeImbued RESULT result={}", result);
+		helper.assertTrue(result.isEmpty() || result.get(SpellImbue.IMBUED) == null, "Tide Lungs was imbued into " + result);
 		helper.succeed();
 	}
 

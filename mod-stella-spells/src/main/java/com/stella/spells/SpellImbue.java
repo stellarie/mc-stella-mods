@@ -1,6 +1,10 @@
 package com.stella.spells;
 
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import net.minecraft.network.codec.ByteBufCodecs;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +30,17 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.item.component.UseCooldown;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.EntityHitResult;
 
 /** A weapon imbued at an anvil with a spellbook casts that spell, weaker, when it lands a melee hit. */
 public final class SpellImbue {
@@ -36,15 +51,34 @@ public final class SpellImbue {
 	/** How far behind its target an imbued Riftwalk sets the wielder down. */
 	static final double RIFTWALK_STEP_BEHIND = 0.8;
 
-	public record ImbuedSpell(Identifier spell) implements TooltipProvider {
-		public static final Codec<ImbuedSpell> CODEC = Identifier.CODEC.xmap(ImbuedSpell::new, ImbuedSpell::spell);
+	/** The spells a piece holds, in the order they were imbued; an old single-spell save reads as a list of one. */
+	public record ImbuedSpell(List<Identifier> spells) implements TooltipProvider {
+		public static final Codec<ImbuedSpell> CODEC = Codec.either(Identifier.CODEC, Identifier.CODEC.listOf()).xmap(
+			either -> either.map(ImbuedSpell::new, list -> new ImbuedSpell(List.copyOf(list))),
+			imbued -> imbued.spells().size() == 1 ? Either.left(imbued.spell()) : Either.right(imbued.spells())
+		);
+
+		public ImbuedSpell {
+			spells = List.copyOf(spells);
+		}
+
+		public ImbuedSpell(final Identifier spell) {
+			this(List.of(spell));
+		}
+
+		/** The first spell imbued. */
+		public Identifier spell() {
+			return this.spells.get(0);
+		}
 
 		@Override
 		public void addToTooltip(final Item.TooltipContext context, final Consumer<Component> lines, final TooltipFlag flag, final DataComponentGetter components) {
-			lines.accept(Component.translatable(
-				"spellbook." + Spellbooks.MOD_ID + ".imbued",
-				Component.translatable("item." + this.spell.getNamespace() + "." + this.spell.getPath())
-			).withStyle(ChatFormatting.LIGHT_PURPLE));
+			for (Identifier spell : this.spells) {
+				lines.accept(Component.translatable(
+					"spellbook." + Spellbooks.MOD_ID + ".imbued",
+					Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
+				).withStyle(ChatFormatting.LIGHT_PURPLE));
+			}
 		}
 	}
 
@@ -53,7 +87,7 @@ public final class SpellImbue {
 		Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "imbued_spell"),
 		DataComponentType.<ImbuedSpell>builder()
 			.persistent(ImbuedSpell.CODEC)
-			.networkSynchronized(Identifier.STREAM_CODEC.map(ImbuedSpell::new, ImbuedSpell::spell))
+			.networkSynchronized(Identifier.STREAM_CODEC.apply(ByteBufCodecs.list()).map(ImbuedSpell::new, ImbuedSpell::spells))
 			.build()
 	);
 
@@ -61,9 +95,47 @@ public final class SpellImbue {
 		void cast(ServerPlayer player, Identifier spell, LivingEntity victim);
 	}
 
+	/** Test seam: each spell a mob's imbued weapon cast, keyed by the wielder. */
+	public interface MobRecorder {
+		void cast(Mob wielder, Identifier spell, LivingEntity victim);
+	}
+
+	/** The spells a mob's imbued weapon casts: every spell that strikes a single foe. */
+	public static final java.util.Set<Identifier> MOB_SPELLS = java.util.Set.of(
+		id("spark_shot"), id("frostbind"), id("briar_snare"), id("static_lash"), id("tidal_push"), id("wither_seal"),
+		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("blinding_flash"), id("ember_brand")
+	);
+	/** Spells no weapon takes: Tide Lungs is a breath held underwater, not a blow. */
+	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"));
+	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
+	};
+	private static volatile MobRecorder mobRecorder = SILENT_MOBS;
+
+	private static Identifier id(final String path) {
+		return Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path);
+	}
+
+	public static void setMobRecorder(final MobRecorder newRecorder) {
+		mobRecorder = newRecorder == null ? SILENT_MOBS : newRecorder;
+	}
+
+	/** A new server's tick counter starts again at zero, so no cooldown outlives the server it was set on. */
+	public static void onServerStopping(final net.minecraft.server.MinecraftServer server) {
+		READY_AT.clear();
+		MobImbue.clear();
+	}
+
+	/** Test seam: how many wielders hold a cooldown now. */
+	public static int readyEntries() {
+		return READY_AT.size() + MobImbue.readyEntries();
+	}
+
 	private static final Recorder SILENT = (player, spell, victim) -> {
 	};
 	private static volatile Recorder recorder = SILENT;
+	private static volatile Recorder secondRecorder = SILENT;
+	/** The cooldown component's own use time: one tick, since a sword's use is nothing to wait on. */
+	private static final float COOLDOWN_GROUP_SECONDS = 0.05F;
 	/** Server tick at which each player's imbued spell is ready again. */
 	private static final Map<UUID, Map<Identifier, Integer>> READY_AT = new ConcurrentHashMap<>();
 
@@ -73,52 +145,157 @@ public final class SpellImbue {
 	public static void register() {
 		ItemComponentTooltipProviderRegistry.addAfter(DataComponents.LORE, IMBUED);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(SpellImbue::afterDamage);
+		ServerLivingEntityEvents.ALLOW_DAMAGE.register(SpellImbue::beforeDamage);
+		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(SpellImbue::onUseEntity);
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(SpellImbue::onServerStopping);
 	}
 
 	public static void setRecorder(final Recorder newRecorder) {
 		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
-	// A weapon is anything whose own attack damage the game adds to the hand holding it.
+	/** Test seam: a second listener, so two test classes can watch imbued casts at once. */
+	public static void setSecondRecorder(final Recorder newRecorder) {
+		secondRecorder = newRecorder == null ? SILENT : newRecorder;
+	}
+
+	/** The spells a stack holds, in imbue order; empty for anything never imbued. */
+	public static List<Identifier> spellsOf(final ItemStack stack) {
+		ImbuedSpell imbued = stack.get(IMBUED);
+		return imbued == null ? List.of() : imbued.spells();
+	}
+
+	// A weapon is anything whose own attack damage the game adds to the hand holding it; arrows of every kind
+	// and chestplates take spells too.
 	public static boolean canImbue(final ItemStack stack) {
-		return !stack.isEmpty() && stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
+		return !stack.isEmpty() && (isWeapon(stack) || stack.is(ItemTags.ARROWS) || stack.is(ItemTags.CHEST_ARMOR));
+	}
+
+	static boolean isWeapon(final ItemStack stack) {
+		return stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
 			.anyMatch(entry -> entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.modifier().id().equals(Item.BASE_ATTACK_DAMAGE_ID));
 	}
 
-	/** The weapon with the book's spell and nothing else of the book; empty when it already holds that spell. */
+	/** The anvil's price: five for the first spell, and five times the last for each spell after. */
+	public static int imbueCost(final ItemStack piece) {
+		int cost = IMBUE_XP_COST;
+		for (int i = 0; i < spellsOf(piece).size(); i++) {
+			cost *= 5;
+		}
+		return cost;
+	}
+
+	/** The piece with the book's spell added and nothing else of the book; empty when it holds that spell already. */
 	public static ItemStack imbue(final ItemStack weapon, final SpellDefinition spell) {
-		ImbuedSpell current = weapon.get(IMBUED);
-		if (current != null && current.spell().equals(spell.id())) {
+		List<Identifier> current = spellsOf(weapon);
+		if (NOT_IMBUABLE.contains(spell.id()) || current.contains(spell.id())) {
 			return ItemStack.EMPTY;
 		}
 
 		ItemStack result = weapon.copy();
-		result.set(IMBUED, new ImbuedSpell(spell.id()));
+		List<Identifier> spells = new java.util.ArrayList<>(current);
+		spells.add(spell.id());
+		result.set(IMBUED, new ImbuedSpell(spells));
+		// A weapon in hand shows its spell's cooldown in the hotbar; its own group keeps other weapons clear of it.
+		if (showsCooldown(result)) {
+			result.set(DataComponents.USE_COOLDOWN, new UseCooldown(COOLDOWN_GROUP_SECONDS, java.util.Optional.of(cooldownGroup(spells.get(0)))));
+		}
 		return result;
 	}
 
-	// Only a melee hit from the wielder's own hand casts, so an arrow or a spell's own damage never does.
+	// Swords, axes and maces: a trident or a spear is thrown or charged with its use, which a cooldown would block.
+	private static boolean showsCooldown(final ItemStack stack) {
+		return stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES) || stack.is(net.minecraft.world.item.Items.MACE);
+	}
+
+	static Identifier cooldownGroup(final Identifier spell) {
+		return Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "imbued_" + spell.getPath());
+	}
+
 	private static void afterDamage(
 		final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked
 	) {
-		if (!(source.getEntity() instanceof ServerPlayer player) || source.getDirectEntity() != player || blocked || victim == player) {
+		if (blocked || MobImbue.casting()) {
 			return;
 		}
+		if (source.getEntity() instanceof Mob wielder && source.getDirectEntity() == wielder && victim != wielder) {
+			mobCast(wielder, victim);
+			return;
+		}
+		if (!(source.getEntity() instanceof ServerPlayer player) || victim == player) {
+			return;
+		}
+		// A melee hit casts the spells of the hand that struck; an arrow, the spells of the arrow itself.
+		ItemStack focus;
+		if (source.getDirectEntity() == player) {
+			focus = player.getMainHandItem();
+			if (!isWeapon(focus)) {
+				return;
+			}
+		} else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
+			focus = arrow.getPickupItemStackOrigin();
+		} else {
+			return;
+		}
+		for (Identifier spell : spellsOf(focus)) {
+			cast(player, spell, victim, focus, false);
+		}
+	}
 
-		ImbuedSpell imbued = player.getMainHandItem().get(IMBUED);
-		SpellDefinition definition = imbued == null ? null : SpellbookCatalog.get(imbued.spell());
+	// A chestplate answers whoever strikes its wearer. A player's own hurt never reaches the after-damage event,
+	// so the chestplate listens as the blow is allowed, and only to a blow that can land.
+	private static boolean beforeDamage(final LivingEntity victim, final DamageSource source, final float amount) {
+		if (victim instanceof ServerPlayer wearer && source.getEntity() instanceof LivingEntity attacker && attacker != wearer
+			&& amount > 0.0F && !MobImbue.casting() && !wearer.isInvulnerableTo(wearer.level(), source)) {
+			ItemStack chest = wearer.getItemBySlot(EquipmentSlot.CHEST);
+			for (Identifier spell : spellsOf(chest)) {
+				cast(wearer, spell, attacker, chest, false);
+			}
+		}
+		return true;
+	}
+
+	// A right-click on a hostile with an imbued weapon casts each ready spell at the book's full strength.
+	private static InteractionResult onUseEntity(
+		final Player player, final Level level, final InteractionHand hand, final Entity entity, final EntityHitResult hit
+	) {
+		if (level.isClientSide() || hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer caster)
+			|| !(entity instanceof Mob target) || !(target instanceof Enemy) || !target.isAlive()) {
+			return InteractionResult.PASS;
+		}
+		ItemStack weapon = caster.getMainHandItem();
+		if (!isWeapon(weapon) || spellsOf(weapon).isEmpty()) {
+			return InteractionResult.PASS;
+		}
+		boolean cast = false;
+		for (Identifier spell : spellsOf(weapon)) {
+			cast |= cast(caster, spell, target, weapon, true);
+		}
+		return cast ? InteractionResult.SUCCESS : InteractionResult.PASS;
+	}
+
+	/**
+	 * Casts one imbued spell when it is off cooldown; true when it cast. The spell enchantments on the piece
+	 * and on the caster's helmet and chestplate shape it, as they shape a book; an imbued hit then works at
+	 * the imbued strength, and a right-click at full strength.
+	 */
+	private static boolean cast(final ServerPlayer player, final Identifier spell, final LivingEntity victim, final ItemStack piece, final boolean full) {
+		SpellDefinition definition = SpellbookCatalog.find(spell);
 		if (definition == null) {
-			return;
+			return false;
 		}
-
 		int now = player.level().getServer().getTickCount();
 		Map<Identifier, Integer> ready = READY_AT.computeIfAbsent(player.getUUID(), key -> new ConcurrentHashMap<>());
 		if (now < ready.getOrDefault(definition.id(), Integer.MIN_VALUE)) {
-			return;
+			return false;
 		}
 
-		SpellModifiers.CastModifiers modifiers = new SpellModifiers.CastModifiers(
-			IMBUE_POWER, 1.0, IMBUE_DURATION, IMBUE_DURATION, SpellModifiers.BASE_TARGET_RANGE_BLOCKS, definition.baseCooldownTicks()
+		SpellModifiers.CastModifiers base = SpellModifiers.resolve(
+			piece, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), definition.baseCooldownTicks()
+		);
+		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
+			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
+			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks()
 		);
 		Mob target = null;
 		Vec3 point = null;
@@ -129,23 +306,53 @@ public final class SpellImbue {
 			case SAFE_TELEPORT -> point = behind(player, victim);
 		}
 		if ((definition.targetMode() == TargetMode.HOSTILE && target == null) || (definition.targetMode() != TargetMode.HOSTILE && point == null)) {
-			return;
+			return false;
 		}
 
-		// The melee hit just started the victim's hurt cooldown, which would swallow the spell's own damage.
+		// The hit just started the victim's hurt cooldown, which would swallow the spell's own damage. It is
+		// set aside for the spell and put back after, so a spell that deals nothing leaves it as it was.
+		int hurtCooldown = victim.damageCooldownTime;
 		victim.damageCooldownTime = 0;
 		Vec3 departure = player.position();
-		if (!definition.effect().apply(player, target, point, modifiers)) {
-			return;
+		boolean cast = definition.effect().apply(player, target, point, modifiers);
+		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
+		if (!cast) {
+			return false;
 		}
 
-		ready.put(definition.id(), now + definition.baseCooldownTicks());
+		ready.put(definition.id(), now + modifiers.cooldownTicks());
+		if (showsCooldown(piece)) {
+			// A piece imbued before the hotbar showed cooldowns gets its group on its first cast.
+			if (!piece.has(DataComponents.USE_COOLDOWN)) {
+				piece.set(DataComponents.USE_COOLDOWN, new UseCooldown(COOLDOWN_GROUP_SECONDS, java.util.Optional.of(cooldownGroup(definition.id()))));
+			}
+			player.getCooldowns().addCooldown(piece, modifiers.cooldownTicks());
+		}
 		SpellVisuals.play(player, definition, target, point, departure, modifiers);
 		Spellbooks.LOGGER.info(
-			"[SPELL] imbued_cast player={} spell={} victim={} power={} cooldown={}",
-			player.getUUID(), definition.id(), victim.getUUID(), IMBUE_POWER, definition.baseCooldownTicks()
+			"[SPELL] imbued_cast player={} spell={} victim={} piece={} full={} power={} cooldown={}",
+			player.getUUID(), definition.id(), victim.getUUID(), BuiltInRegistries.ITEM.getKey(piece.getItem()), full,
+			modifiers.powerMultiplier(), modifiers.cooldownTicks()
 		);
 		recorder.cast(player, definition.id(), victim);
+		secondRecorder.cast(player, definition.id(), victim);
+		return true;
+	}
+
+	private static void mobCast(final Mob wielder, final LivingEntity victim) {
+		for (Identifier spell : spellsOf(wielder.getMainHandItem())) {
+			SpellDefinition definition = SpellbookCatalog.find(spell);
+			if (definition == null) {
+				continue;
+			}
+			int hurtCooldown = victim.damageCooldownTime;
+			boolean cast = MobImbue.cast(wielder, definition, victim);
+			victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
+			if (cast) {
+				Spellbooks.LOGGER.info("[SPELL] mob_imbued_cast wielder={} spell={} victim={}", wielder.getUUID(), definition.id(), victim.getUUID());
+				mobRecorder.cast(wielder, definition.id(), victim);
+			}
+		}
 	}
 
 	// The spot on the far side of the target, level with it, when the wielder fits there.

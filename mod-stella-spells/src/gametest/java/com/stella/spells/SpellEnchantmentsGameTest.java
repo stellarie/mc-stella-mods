@@ -68,7 +68,7 @@ public class SpellEnchantmentsGameTest {
 		ItemStack helmet = Items.DIAMOND_HELMET.getDefaultInstance();
 		ItemStack chestplate = Items.DIAMOND_CHESTPLATE.getDefaultInstance();
 		ItemStack sword = Items.DIAMOND_SWORD.getDefaultInstance();
-		helper.assertTrue(spellbooks.size() == 40, "the catalog must contain 40 spellbooks");
+		helper.assertTrue(spellbooks.size() == SpellbookCatalog.DEFINITIONS.size(), "the catalog must contain " + SpellbookCatalog.DEFINITIONS.size() + " spellbooks, not " + spellbooks.size());
 
 		for (int index = 0; index < enchantments.size(); index++) {
 			Enchantment value = enchantments.get(index).value();
@@ -77,9 +77,10 @@ public class SpellEnchantmentsGameTest {
 					spellbooks.stream().allMatch(value::isSupportedItem)
 						&& spellbooks.stream().allMatch(value::isPrimaryItem)
 						&& !value.isSupportedItem(helmet) && !value.isSupportedItem(chestplate)
-						&& !value.isSupportedItem(sword) && value.matchingSlot(EquipmentSlot.MAINHAND)
+						// A weapon takes the book enchantments too, at the anvil, so they shape its imbued spells.
+						&& value.isSupportedItem(sword) && !value.isPrimaryItem(sword) && value.matchingSlot(EquipmentSlot.MAINHAND)
 						&& !value.matchingSlot(EquipmentSlot.HEAD) && !value.matchingSlot(EquipmentSlot.CHEST),
-					SPELL_ENCHANTMENTS.get(index) + " must only support all spellbooks in hand"
+					SPELL_ENCHANTMENTS.get(index) + " must support every spellbook and weapon in hand, and be offered only on books"
 				);
 			} else if (index < 5) {
 				helper.assertTrue(

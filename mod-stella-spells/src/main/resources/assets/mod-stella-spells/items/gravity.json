@@ -1,11 +1,11 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/skyhook",
+		"model": "mod-stella-spells:item/gravity",
 		"tints": [
 			{
 				"type": "minecraft:constant",
-				"value": 12175321
+				"value": 6180770
 			}
 		]
 	}

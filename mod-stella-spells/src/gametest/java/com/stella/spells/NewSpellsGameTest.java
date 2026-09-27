@@ -32,12 +32,14 @@ import org.slf4j.LoggerFactory;
 public class NewSpellsGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.newspells");
 	private static final Map<UUID, List<Cloud>> CLOUDS = new ConcurrentHashMap<>();
+	private static final Map<UUID, Integer> TRAILS = new ConcurrentHashMap<>();
 
 	private record Cloud(AreaEffectCloud cloud, MobEffectInstance effect) {
 	}
 
 	static {
 		MoreSpells.setRecorder((caster, cloud, effect) -> CLOUDS.computeIfAbsent(caster.getUUID(), key -> new CopyOnWriteArrayList<>()).add(new Cloud(cloud, effect)));
+		MoreSpells.setTrailRecorder((caster, puffs) -> TRAILS.merge(caster.getUUID(), puffs, Integer::sum));
 	}
 
 	// Hostile spells: the mob straight ahead of the caster.
@@ -51,6 +53,20 @@ public class NewSpellsGameTest {
 		helper.assertTrue(mob.getTicksFrozen() >= MoreSpells.ICE_LANCE_FREEZE_TICKS && mob.isFullyFrozen(), "the mob is not frozen: " + mob.getTicksFrozen());
 		result("iceLanceHurtsAndFreezes", "damage=" + taken(mob) + " frozen=" + mob.getTicksFrozen());
 		helper.succeed();
+	}
+
+	// Outside powder snow a mob thaws two ticks for every tick, so the freeze must hold for its whole stated time.
+	@GameTest(maxTicks = 200)
+	public void iceLanceKeepsTheMobFrozenForItsWholeDuration(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob mob = zombie(helper, 2, 5);
+		cast(helper, caster, "ice_lance");
+		helper.runAfterDelay(MoreSpells.ICE_LANCE_FREEZE_TICKS - 2, () -> {
+			boolean frozen = mob.isFullyFrozen();
+			result("iceLanceKeepsTheMobFrozenForItsWholeDuration", "after=" + (MoreSpells.ICE_LANCE_FREEZE_TICKS - 2) + " frozen=" + frozen + " ticksFrozen=" + mob.getTicksFrozen());
+			helper.assertTrue(frozen, "the mob thawed before " + MoreSpells.ICE_LANCE_FREEZE_TICKS + " ticks: " + mob.getTicksFrozen() + " frozen ticks left");
+			helper.succeed();
+		});
 	}
 
 	@GameTest
@@ -81,16 +97,6 @@ public class NewSpellsGameTest {
 	}
 
 	@GameTest
-	public void sappingHexWeakens(final GameTestHelper helper) {
-		assertMobEffect(helper, "sappingHexWeakens", "sapping_hex", MobEffects.WEAKNESS, MoreSpells.HEX_AMPLIFIER, MoreSpells.HEX_TICKS);
-	}
-
-	@GameTest
-	public void skyhookLifts(final GameTestHelper helper) {
-		assertMobEffect(helper, "skyhookLifts", "skyhook", MobEffects.LEVITATION, MoreSpells.SKYHOOK_AMPLIFIER, MoreSpells.SKYHOOK_TICKS);
-	}
-
-	@GameTest
 	public void blindingFlashBlindsAndMarks(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		Mob mob = zombie(helper, 2, 5);
@@ -102,13 +108,172 @@ public class NewSpellsGameTest {
 		helper.succeed();
 	}
 
+	// Ice Lance: the whole line from the caster through the mob, every hostile on it.
+
 	@GameTest
-	public void smiteStrikes(final GameTestHelper helper) {
+	public void iceLancePiercesEveryHostileOnItsLine(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
-		Mob mob = zombie(helper, 2, 5);
-		cast(helper, caster, "smite");
-		helper.assertTrue(taken(mob) == MoreSpells.SMITE_DAMAGE, "Smite dealt " + taken(mob));
-		result("smiteStrikes", "damage=" + taken(mob));
+		Mob first = zombie(helper, 2, 5);
+		Mob behind = zombie(helper, 2, 9);
+		Mob aside = zombie(helper, 5, 5);
+		cast(helper, caster, "ice_lance");
+		helper.assertTrue(taken(first) == MoreSpells.ICE_LANCE_DAMAGE && first.isFullyFrozen(), "the first mob took " + taken(first) + " frozen=" + first.isFullyFrozen());
+		helper.assertTrue(taken(behind) == MoreSpells.ICE_LANCE_DAMAGE && behind.isFullyFrozen(), "the mob behind took " + taken(behind) + " frozen=" + behind.isFullyFrozen());
+		helper.assertTrue(taken(aside) == 0.0F && !aside.isFullyFrozen(), "a mob off the line took " + taken(aside));
+		result("iceLancePiercesEveryHostileOnItsLine", "first=" + taken(first) + " behind=" + taken(behind) + " aside=" + taken(aside));
+		helper.succeed();
+	}
+
+	@GameTest
+	public void iceLanceLeavesASnowMistTrail(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		zombie(helper, 2, 5);
+		cast(helper, caster, "ice_lance");
+		int puffs = TRAILS.getOrDefault(caster.getUUID(), 0);
+		int expected = (int) Math.floor(MoreSpells.ICE_LANCE_RANGE / MoreSpells.ICE_LANCE_TRAIL_STEP);
+		result("iceLanceLeavesASnowMistTrail", "puffs=" + puffs + " expected=" + expected);
+		helper.assertTrue(puffs >= expected, "the lance left " + puffs + " puffs of mist, not " + expected);
+		helper.succeed();
+	}
+
+	// Sapping Hex: every hostile around the caster, and the caster's own strength for each.
+
+	@GameTest
+	public void sappingHexWeakensEveryHostileAroundAndStrengthensTheCaster(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob a = zombie(helper, 1, 3);
+		Mob b = zombie(helper, 4, 3);
+		Mob c = zombie(helper, 2, 5);
+		Mob far = zombie(helper, 2, 1 + (int) MoreSpells.HEX_RADIUS + 3);
+		cast(helper, caster, "sapping_hex");
+		int expected = Math.min(MoreSpells.HEX_MAX_TICKS, 3 * MoreSpells.HEX_TICKS_PER_FOE);
+		for (Mob mob : List.of(a, b, c)) {
+			MobEffectInstance weakness = mob.getEffect(MobEffects.WEAKNESS);
+			helper.assertTrue(weakness != null && weakness.getAmplifier() == MoreSpells.HEX_AMPLIFIER && weakness.getDuration() == expected, "a hexed mob has " + weakness);
+		}
+		MobEffectInstance strength = caster.getEffect(MobEffects.STRENGTH);
+		helper.assertTrue(strength != null && strength.getAmplifier() == MoreSpells.HEX_STRENGTH_AMPLIFIER && strength.getDuration() == expected, "the caster has " + strength);
+		helper.assertFalse(far.hasEffect(MobEffects.WEAKNESS), "the hex reached past its radius");
+		result("sappingHexWeakensEveryHostileAroundAndStrengthensTheCaster", "hexed=3 duration=" + expected + " strength=" + strength.getAmplifier());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void sappingHexWithNoHostileNearDoesNotCast(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		InteractionResult result = use(helper, caster, "sapping_hex");
+		result("sappingHexWithNoHostileNearDoesNotCast", "result=" + result);
+		helper.assertTrue(result != InteractionResult.SUCCESS && !caster.hasEffect(MobEffects.STRENGTH), "an empty hex cast: " + result);
+		helper.succeed();
+	}
+
+	// Gravity: every hostile around the caster, slowed and held to half its jump.
+
+	@GameTest
+	public void gravitySlowsAndGroundsHostilesAround(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob near = zombie(helper, 4, 3);
+		Mob far = zombie(helper, 2, 1 + (int) MoreSpells.GRAVITY_RADIUS + 3);
+		double base = near.getAttribute(Attributes.JUMP_STRENGTH).getValue();
+		cast(helper, caster, "gravity");
+		MobEffectInstance slow = near.getEffect(MobEffects.SLOWNESS);
+		double jump = near.getAttribute(Attributes.JUMP_STRENGTH).getValue();
+		helper.assertTrue(slow != null && slow.getAmplifier() == MoreSpells.GRAVITY_SLOW_AMPLIFIER && slow.getDuration() == MoreSpells.GRAVITY_TICKS, "the near mob has " + slow);
+		helper.assertTrue(Math.abs(jump - base * MoreSpells.GRAVITY_JUMP_FACTOR) < 1.0e-6, "the near mob jumps " + jump + " of " + base);
+		helper.assertTrue(!far.hasEffect(MobEffects.SLOWNESS) && far.getAttribute(Attributes.JUMP_STRENGTH).getValue() == base, "gravity reached past its radius");
+		result("gravitySlowsAndGroundsHostilesAround", "jump=" + jump + " base=" + base + " slow=" + slow.getAmplifier());
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 300)
+	public void gravityWearsOffAfterItsTime(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob near = zombie(helper, 4, 3);
+		double base = near.getAttribute(Attributes.JUMP_STRENGTH).getValue();
+		cast(helper, caster, "gravity");
+		helper.runAfterDelay(MoreSpells.GRAVITY_TICKS + 5L, () -> {
+			double jump = near.getAttribute(Attributes.JUMP_STRENGTH).getValue();
+			result("gravityWearsOffAfterItsTime", "jump=" + jump + " base=" + base);
+			helper.assertTrue(jump == base, "the mob still jumps " + jump + " of " + base + " after gravity wore off");
+			helper.succeed();
+		});
+	}
+
+	// Purify: every player around the caster.
+
+	@GameTest
+	public void purifyCleansesThePlayersAroundTheCaster(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		caster.addEffect(new MobEffectInstance(MobEffects.SPEED, 200, 0));
+		ServerPlayer near = player(helper, new Vec3(4.5, 1.0, 1.5));
+		near.addEffect(new MobEffectInstance(MobEffects.POISON, 200, 0));
+		ServerPlayer far = player(helper, new Vec3(2.5, 1.0, 1.5 + MoreSpells.PURIFY_RADIUS + 2.0));
+		far.addEffect(new MobEffectInstance(MobEffects.POISON, 200, 0));
+		cast(helper, caster, "purify");
+		helper.assertTrue(!near.hasEffect(MobEffects.POISON), "the near player kept " + near.getActiveEffects());
+		helper.assertTrue(far.hasEffect(MobEffects.POISON), "Purify reached past its radius");
+		helper.assertTrue(caster.hasEffect(MobEffects.SPEED), "Purify took a helpful effect");
+		result("purifyCleansesThePlayersAroundTheCaster", "near=clean far=poisoned casterSpeed=true");
+		helper.succeed();
+	}
+
+	// Flame Ring: a burning aura around the caster.
+
+	@GameTest(maxTicks = 100)
+	public void flameRingWreathesTheCasterInABurningAura(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob near = zombie(helper, 2, 3);
+		Mob far = zombie(helper, 2, 1 + (int) MoreSpells.FLAME_RING_RADIUS + 4);
+		cast(helper, caster, "flame_ring");
+		helper.succeedWhen(() -> {
+			helper.assertTrue(taken(near) >= MoreSpells.FLAME_RING_DAMAGE && near.isOnFire(), "the aura has not burned the near mob yet: " + taken(near));
+			helper.assertTrue(taken(far) == 0.0F && !far.isOnFire(), "the aura reached past its radius");
+			helper.assertFalse(caster.isOnFire(), "the aura set its own caster alight");
+			result("flameRingWreathesTheCasterInABurningAura", "near=" + taken(near) + " far=" + taken(far));
+		});
+	}
+
+	@GameTest(maxTicks = 300)
+	public void flameRingsAuraFadesAfterItsTime(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		cast(helper, caster, "flame_ring");
+		boolean during = SpellTimers.hasFlameAura(caster);
+		helper.runAfterDelay(MoreSpells.FLAME_AURA_TICKS + 5L, () -> {
+			boolean after = SpellTimers.hasFlameAura(caster);
+			result("flameRingsAuraFadesAfterItsTime", "during=" + during + " after=" + after);
+			helper.assertTrue(during && !after, "the aura was " + during + " at the cast and " + after + " after its time");
+			helper.succeed();
+		});
+	}
+
+	// Shadow Veil: the first blow from the veil strikes double and stops its victim.
+
+	@GameTest
+	public void breakingShadowVeilStrikesDoubleAndStopsTheVictim(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob mob = zombie(helper, 2, 3);
+		cast(helper, caster, "shadow_veil");
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(caster), 4.0F);
+		MobEffectInstance slow = mob.getEffect(MobEffects.SLOWNESS);
+		result("breakingShadowVeilStrikesDoubleAndStopsTheVictim", "taken=" + taken(mob) + " slow=" + slow + " invisible=" + caster.hasEffect(MobEffects.INVISIBILITY));
+		helper.assertTrue(taken(mob) == 4.0F * (float) MoreSpells.VEIL_BREAK_DAMAGE_MULTIPLIER, "the veiled blow dealt " + taken(mob));
+		helper.assertTrue(slow != null && slow.getAmplifier() == MoreSpells.VEIL_BREAK_SLOW_AMPLIFIER && slow.getDuration() == MoreSpells.VEIL_BREAK_SLOW_TICKS, "the victim has " + slow);
+		helper.assertFalse(caster.hasEffect(MobEffects.INVISIBILITY), "the veil did not break");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aBlowAfterTheVeilBreaksIsOrdinary(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		Mob mob = zombie(helper, 2, 3);
+		cast(helper, caster, "shadow_veil");
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(caster), 4.0F);
+		float afterFirst = taken(mob);
+		mob.damageCooldownTime = 0;
+		mob.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(caster), 4.0F);
+		float second = taken(mob) - afterFirst;
+		result("aBlowAfterTheVeilBreaksIsOrdinary", "first=" + afterFirst + " second=" + second);
+		helper.assertTrue(second == 4.0F, "the blow after the veil dealt " + second);
 		helper.succeed();
 	}
 
@@ -172,17 +337,6 @@ public class NewSpellsGameTest {
 	}
 
 	@GameTest
-	public void purifyClearsOnlyHarmfulEffects(final GameTestHelper helper) {
-		ServerPlayer caster = caster(helper);
-		caster.addEffect(new MobEffectInstance(MobEffects.POISON, 200, 0));
-		caster.addEffect(new MobEffectInstance(MobEffects.SPEED, 200, 0));
-		cast(helper, caster, "purify");
-		helper.assertTrue(!caster.hasEffect(MobEffects.POISON) && caster.hasEffect(MobEffects.SPEED), "Purify left " + caster.getActiveEffects());
-		result("purifyClearsOnlyHarmfulEffects", "poison=false speed=true");
-		helper.succeed();
-	}
-
-	@GameTest
 	public void purifyWithNothingToClearDoesNotCast(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		InteractionResult result = use(helper, caster, "purify");
@@ -221,23 +375,6 @@ public class NewSpellsGameTest {
 	@GameTest
 	public void plagueCloudLeavesPoisonAtTheSpot(final GameTestHelper helper) {
 		assertCloud(helper, "plagueCloudLeavesPoisonAtTheSpot", "plague_cloud", MobEffects.POISON, MoreSpells.PLAGUE_RADIUS, MoreSpells.PLAGUE_CLOUD_TICKS);
-	}
-
-	@GameTest
-	public void healingSpringLeavesRegenerationAtTheSpot(final GameTestHelper helper) {
-		assertCloud(helper, "healingSpringLeavesRegenerationAtTheSpot", "healing_spring", MobEffects.REGENERATION, MoreSpells.SPRING_RADIUS, MoreSpells.SPRING_CLOUD_TICKS);
-	}
-
-	@GameTest
-	public void flameRingSetsHostilesAlight(final GameTestHelper helper) {
-		ServerPlayer caster = aimedCaster(helper);
-		Mob near = zombie(helper, 3, 8);
-		Mob far = zombie(helper, 2, 8 + (int) MoreSpells.FLAME_RING_RADIUS + 3);
-		cast(helper, caster, "flame_ring");
-		helper.assertTrue(taken(near) == MoreSpells.FLAME_RING_DAMAGE && near.getRemainingFireTicks() >= MoreSpells.FLAME_RING_BURN_TICKS - 1, "the near mob took " + taken(near) + " and " + near.getRemainingFireTicks() + " fire ticks");
-		helper.assertTrue(taken(far) == 0.0F && far.getRemainingFireTicks() <= 0, "the ring reached past its radius");
-		result("flameRingSetsHostilesAlight", "near=" + taken(near) + " fire=" + near.getRemainingFireTicks());
-		helper.succeed();
 	}
 
 	private static void assertMobEffect(final GameTestHelper helper, final String test, final String spell, final Holder<MobEffect> effect, final int amplifier, final int ticks) {

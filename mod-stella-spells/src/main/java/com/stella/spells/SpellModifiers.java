@@ -22,6 +22,14 @@ public final class SpellModifiers {
 	}
 
 	public static CastModifiers resolve(final ItemStack book, final ItemStack head, final ItemStack chest) {
+		int baseCooldown = book.getItem() instanceof SpellbookItem spellbook
+			? spellbook.definition().baseCooldownTicks()
+			: 20;
+		return resolve(book, head, chest, baseCooldown);
+	}
+
+	/** The same reading for any focus, a weapon or an arrow included, with the spell's own base cooldown. */
+	public static CastModifiers resolve(final ItemStack book, final ItemStack head, final ItemStack chest, final int baseCooldown) {
 		int quickening = level(book, QUICKENING);
 		int potency = level(book, POTENCY);
 		int precision = level(book, PRECISION);
@@ -29,9 +37,6 @@ public final class SpellModifiers {
 		int clearMind = level(head, CLEAR_MIND);
 		int arcaneWeave = level(chest, ARCANE_WEAVE);
 		int spellguard = level(chest, SPELLGUARD);
-		int baseCooldown = book.getItem() instanceof SpellbookItem spellbook
-			? spellbook.definition().baseCooldownTicks()
-			: 20;
 
 		return new CastModifiers(
 			1.0 + 0.10 * potency,
