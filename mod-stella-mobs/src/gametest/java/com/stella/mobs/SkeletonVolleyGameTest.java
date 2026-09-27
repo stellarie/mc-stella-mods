@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
-import com.stella.mobs.behavior.BoneFanGoal;
+import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.SkeletonVolley;
@@ -37,8 +38,9 @@ import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * M2: a plain skeleton with a bow looses three arrows six degrees apart every forty ticks, and each arrow
- * leaves a cloud where it lands. The boss keeps its fan, and a sword skeleton never volleys.
+ * A skeleton archer's single shot slows what it hits for two seconds. Every six seconds it looses a volley
+ * instead: a narrow fan of flaming arrows, six from a plain skeleton, twelve from an elite and eighteen from
+ * a boss, each leaving a cloud where it lands. A sword skeleton never volleys.
  */
 public class SkeletonVolleyGameTest {
 	private static final double YAW_TOLERANCE_DEGREES = 0.5;
@@ -56,7 +58,7 @@ public class SkeletonVolleyGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void volleyLoosesThreeArrowsSixDegreesApart(final GameTestHelper helper) {
+	public void aVolleyLoosesSixFlamingArrowsInANarrowFan(final GameTestHelper helper) {
 		Skeleton skeleton = archer(helper, new ItemStack(Items.BOW));
 		skeleton.setTarget(target(helper));
 
@@ -64,18 +66,21 @@ public class SkeletonVolleyGameTest {
 			List<VolleyRecord.Volley> volleys = VolleyRecord.volleys(skeleton);
 			helper.assertTrue(!volleys.isEmpty(), "no volley yet");
 			VolleyRecord.Volley volley = volleys.get(0);
-			helper.assertTrue(volley.arrows().size() == SkeletonVolleyGoal.ARROWS_PER_VOLLEY, "the volley loosed " + volley.arrows().size() + " arrows");
+			int count = SkeletonVolleyGoal.ARROWS_PER_VOLLEY;
+			helper.assertTrue(volley.arrows().size() == count, "the volley loosed " + volley.arrows().size() + " arrows");
+			helper.assertTrue(volley.burning() == count, "only " + volley.burning() + " of the volley's arrows were alight");
 			List<Double> offsets = offsets(volley.velocities());
-			List<Double> expected = List.of(-SkeletonVolleyGoal.SPREAD_DEGREES, 0.0, SkeletonVolleyGoal.SPREAD_DEGREES);
-			for (int i = 0; i < expected.size(); i++) {
-				helper.assertTrue(Math.abs(offsets.get(i) - expected.get(i)) <= YAW_TOLERANCE_DEGREES, "arrow yaws sat " + offsets + " from the centre, not " + expected);
+			double spacing = SkeletonVolleyGoal.spacingDegrees(count);
+			for (int i = 0; i < count; i++) {
+				double expected = (i - count / 2) * spacing;
+				helper.assertTrue(Math.abs(offsets.get(i) - expected) <= YAW_TOLERANCE_DEGREES, "arrow yaws sat " + offsets + " from the middle arrow, " + spacing + " degrees apart expected");
 			}
-			result("volleySpread", "arrows=" + volley.arrows().size() + " offsets=" + offsets);
+			result("volleySpread", "arrows=" + volley.arrows().size() + " burning=" + volley.burning() + " offsets=" + offsets);
 		});
 	}
 
-	@GameTest(maxTicks = 200)
-	public void volleyCadenceIsFortyTicks(final GameTestHelper helper) {
+	@GameTest(maxTicks = 360)
+	public void volleysComeEverySixSeconds(final GameTestHelper helper) {
 		Skeleton skeleton = archer(helper, new ItemStack(Items.BOW));
 		skeleton.setTarget(target(helper));
 
@@ -86,9 +91,46 @@ public class SkeletonVolleyGameTest {
 			for (int i = 1; i < volleys.size(); i++) {
 				gaps.add(volleys.get(i).serverTick() - volleys.get(i - 1).serverTick());
 			}
-			boolean steady = gaps.stream().allMatch(gap -> Math.abs(gap - SkeletonVolleyGoal.INTERVAL_TICKS) <= 1);
-			helper.assertTrue(steady, "volleys came " + gaps + " ticks apart, not " + SkeletonVolleyGoal.INTERVAL_TICKS);
-			result("volleyCadence", "gaps=" + gaps + " interval=" + SkeletonVolleyGoal.INTERVAL_TICKS);
+			boolean steady = gaps.stream().allMatch(gap -> Math.abs(gap - SkeletonVolleyGoal.VOLLEY_COOLDOWN_TICKS) <= 1);
+			helper.assertTrue(steady, "volleys came " + gaps + " ticks apart, not " + SkeletonVolleyGoal.VOLLEY_COOLDOWN_TICKS);
+			helper.assertTrue(VolleyRecord.shots(skeleton) >= 2, "no single shots came between the volleys");
+			result("volleyCadence", "gaps=" + gaps + " cooldown=" + SkeletonVolleyGoal.VOLLEY_COOLDOWN_TICKS + " singles=" + VolleyRecord.shots(skeleton));
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aSingleShotSlowsForTwoSeconds(final GameTestHelper helper) {
+		Skeleton skeleton = archer(helper, new ItemStack(Items.BOW));
+		// Poison-tipped, so the volley's clouds carry poison and the only slowness the target can carry is the shot's.
+		ItemStack tipped = new ItemStack(Items.TIPPED_ARROW, 64);
+		tipped.set(net.minecraft.core.component.DataComponents.POTION_CONTENTS, new PotionContents(Potions.POISON));
+		skeleton.setItemSlot(EquipmentSlot.OFFHAND, tipped);
+		skeleton.setTarget(target(helper));
+
+		helper.succeedWhen(() -> {
+			List<MobEffectInstance> slows = VolleyRecord.slows(skeleton);
+			helper.assertTrue(!slows.isEmpty(), "no single shot has slowed anything yet");
+			MobEffectInstance slow = slows.get(0);
+			helper.assertTrue(slow.getDuration() == SkeletonVolley.SLOW_TICKS && slow.getAmplifier() == SkeletonVolley.SLOW_AMPLIFIER, "the shot slowed with " + slow);
+			result("singleShotSlow", "ticks=" + slow.getDuration() + " amplifier=" + slow.getAmplifier());
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void anEliteVolleysTwelveAndSlowsHarder(final GameTestHelper helper) {
+		Skeleton skeleton = archer(helper, new ItemStack(Items.BOW));
+		Elite.mark(skeleton, GearTier.IRON, 1.0);
+		skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		skeleton.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+		skeleton.setTarget(target(helper));
+
+		helper.succeedWhen(() -> {
+			List<VolleyRecord.Volley> volleys = VolleyRecord.volleys(skeleton);
+			helper.assertTrue(!volleys.isEmpty() && !VolleyRecord.slows(skeleton).isEmpty(), "no volley and single shot yet");
+			helper.assertTrue(volleys.get(0).arrows().size() == SkeletonVolleyGoal.ELITE_ARROWS_PER_VOLLEY, "the elite's volley held " + volleys.get(0).arrows().size());
+			int amplifier = VolleyRecord.slows(skeleton).get(0).getAmplifier();
+			helper.assertTrue(amplifier == SkeletonVolley.ELITE_SLOW_AMPLIFIER, "the elite's shot slowed at amplifier " + amplifier);
+			result("eliteVolley", "arrows=" + volleys.get(0).arrows().size() + " slowAmplifier=" + amplifier);
 		});
 	}
 
@@ -120,15 +162,15 @@ public class SkeletonVolleyGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void bossSkeletonKeepsTheBoneFan(final GameTestHelper helper) {
+	public void aBossSkeletonVolleysEighteen(final GameTestHelper helper) {
 		prepare(helper);
 		Skeleton boss = helper.spawnMob(EntityTypes.SKELETON, 3, 3, 3).spawnReason(EntitySpawnReason.NATURAL).spawn();
 		boss.setPersistenceRequired();
 		Bosses.blessAsBoss(boss, helper.getLevel(), 1.0);
-		int fans = BossAbilities.copiesOf(boss, BoneFanGoal.class);
 		int volleys = BossAbilities.copiesOf(boss, SkeletonVolleyGoal.class);
-		helper.assertTrue(fans == 1 && volleys == 0, "a boss skeleton carries " + fans + " fans and " + volleys + " volley goals");
-		result("volleyBossKeepsFan", "fans=" + fans + " volleys=" + volleys);
+		int arrows = SkeletonVolleyGoal.arrowsFor(boss);
+		helper.assertTrue(volleys == 1 && arrows == SkeletonVolleyGoal.BOSS_ARROWS_PER_VOLLEY, "a boss skeleton carries " + volleys + " volley goals of " + arrows + " arrows");
+		result("volleyBoss", "volleyGoals=" + volleys + " arrows=" + arrows);
 		helper.succeed();
 	}
 

@@ -25,6 +25,7 @@ public final class FriendlyPatrol {
 	/** The village mod's own patrol tag, so the two patrols never fight each other. */
 	public static final String VILLAGE_PATROL_TAG = "mc-stella-villages.patrol";
 	public static final String LABEL = "Village Patrol";
+	public static final String VILLAGE_WITCH_TAG = "mc-stella-villages.village_witch";
 	public static final ChatFormatting LABEL_COLOR = ChatFormatting.GREEN;
 	private static final int HUNT_INTERVAL = 10;
 
@@ -44,9 +45,17 @@ public final class FriendlyPatrol {
 		return entity != null && entity.entityTags().contains(TAG);
 	}
 
+	/** A friend of the village by any mod's tag: a wild patrol pair, a village patrol member, the village witch. */
+	public static boolean isVillageFriend(final Entity entity) {
+		return entity != null && (entity.entityTags().contains(TAG) || entity.entityTags().contains(VILLAGE_PATROL_TAG)
+			|| entity.entityTags().contains(VILLAGE_WITCH_TAG));
+	}
+
 	/** Marks a pillager before it joins the level; its goals follow on its load. */
 	public static void befriend(final Pillager pillager) {
 		pillager.addTag(TAG);
+		// A friend never joins a raid, where nothing but the player could end it.
+		pillager.setCanJoinRaid(false);
 		// A friendly patrol takes none of the spawn rolls, so no elite aura or kit ever turns it on a player.
 		pillager.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		pillager.setCustomName(Component.literal(LABEL).withStyle(LABEL_COLOR));

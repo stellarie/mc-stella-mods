@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.entity.projectile.hurtingprojectile.LargeFireball;
@@ -15,7 +16,10 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/** A ghast's shot that never explodes: where it lands it leaves a small lingering cloud of Wither. */
+/**
+ * A ghast's shot: it bursts in a blast that hurts and throws bodies but breaks no block and lights no fire,
+ * and leaves a small cloud of Wither and Poison that lingers two seconds.
+ */
 public class GhastWitherShot extends LargeFireball {
 	/** How far below a hit the cloud looks for ground. */
 	private static final double SETTLE_DEPTH = 4.0;
@@ -41,10 +45,13 @@ public class GhastWitherShot extends LargeFireball {
 		this.witherAmplifier = witherAmplifier;
 	}
 
-	// The whole hit, replaced: no blast, no direct damage, only the cloud.
+	// The whole hit, replaced: a blast that spares blocks, then the cloud.
 	@Override
 	protected void onHit(final HitResult hitResult) {
 		if (this.level() instanceof ServerLevel level) {
+			Vec3 blast = hitResult.getLocation();
+			Entity source = this.getOwner() != null ? this.getOwner() : this;
+			level.explode(source, null, StellaSmallFireball.BODIES_ONLY, blast.x, blast.y, blast.z, GhastFireballGoal.EXPLOSION_POWER, false, Level.ExplosionInteraction.NONE);
 			Vec3 at = settle(level, hitResult);
 			AreaEffectCloud cloud = new AreaEffectCloud(level, at.x, at.y, at.z);
 			MobEffectInstance wither = new MobEffectInstance(MobEffects.WITHER, GhastFireballGoal.WITHER_TICKS, this.witherAmplifier);
@@ -56,6 +63,7 @@ public class GhastWitherShot extends LargeFireball {
 			cloud.setWaitTime(0);
 			cloud.setRadiusPerTick(0.0F);
 			cloud.addEffect(wither);
+			cloud.addEffect(new MobEffectInstance(MobEffects.POISON, GhastFireballGoal.POISON_TICKS, GhastFireballGoal.POISON_AMPLIFIER));
 			level.addFreshEntity(cloud);
 			if (this.getOwner() instanceof Ghast ghast) {
 				GhastFireballGoal.cloudLanded(ghast, cloud, wither);

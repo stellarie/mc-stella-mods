@@ -29,18 +29,15 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/** Each overworld chunk rolls once: a safe-zone chunk may hold one elite, a wild chunk a pair of patrolling Pillagers. */
+/** Each overworld chunk rolls once: a wild chunk may hold a pair of patrolling Pillagers, and a safe-zone chunk holds nothing. */
 public final class ChunkEncounters {
-	public static final double SAFE_ELITE_CHANCE = 0.01;
 	public static final double PILLAGER_PAIR_CHANCE = 0.20;
 	public static final int PILLAGER_PAIR_SIZE = 2;
-	/** Mobs that do not burn in daylight, so a day-lit spawn still stands. */
-	public static final List<EntityType<? extends Mob>> SAFE_ELITE_TYPES = List.of(EntityTypes.HUSK, EntityTypes.CREEPER, EntityTypes.WITCH);
 	/** A chunk rolls when a player is this many chunks away: far enough not to pop in beside them, near enough to meet. */
 	public static final int MIN_RING = 3;
 	public static final int MAX_RING = 5;
 	public static final int SCAN_INTERVAL_TICKS = 20;
-	/** Tells the elite roll this mob is elite by the chunk's roll, without escorts. */
+	/** Marked the elites the safe zone once held; kept so one saved before the change still reads as forced. */
 	public static final String CHUNK_ELITE_TAG = "mod-stella-mobs.chunk_elite";
 	private static final int PLACEMENT_ATTEMPTS = 8;
 	private static final double MIN_PLAYER_DISTANCE = 24.0;
@@ -50,7 +47,7 @@ public final class ChunkEncounters {
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "chunk_encounter_rolled"), Codec.BOOL
 	);
 
-	public enum Encounter { NONE, ELITE, PILLAGER_PAIR }
+	public enum Encounter { NONE, PILLAGER_PAIR }
 
 	public interface Recorder {
 		void rolled(ServerLevel level, ChunkPos pos, Encounter encounter, List<Mob> spawned);
@@ -98,8 +95,9 @@ public final class ChunkEncounters {
 
 	public static Encounter decide(final RandomSource random, final boolean safe) {
 		double roll = random.nextDouble();
+		// No elite ever spawns in the safe zone.
 		if (safe) {
-			return roll < SAFE_ELITE_CHANCE ? Encounter.ELITE : Encounter.NONE;
+			return Encounter.NONE;
 		}
 		return roll < PILLAGER_PAIR_CHANCE ? Encounter.PILLAGER_PAIR : Encounter.NONE;
 	}
@@ -164,7 +162,6 @@ public final class ChunkEncounters {
 	public static List<Mob> spawn(final ServerLevel level, final LevelChunk chunk, final Encounter encounter, final RandomSource random) {
 		return switch (encounter) {
 			case NONE -> List.of();
-			case ELITE -> spawnElite(level, chunk, random);
 			case PILLAGER_PAIR -> spawnPillagerPair(level, chunk, random);
 		};
 	}
@@ -188,24 +185,6 @@ public final class ChunkEncounters {
 		}
 		recorder.rolled(level, chunk.getPos(), encounter, spawned);
 		return encounter;
-	}
-
-	private static List<Mob> spawnElite(final ServerLevel level, final LevelChunk chunk, final RandomSource random) {
-		EntityType<? extends Mob> type = SAFE_ELITE_TYPES.get(random.nextInt(SAFE_ELITE_TYPES.size()));
-		Mob mob = type.create(level, EntitySpawnReason.EVENT);
-		if (mob == null) {
-			return List.of();
-		}
-
-		BlockPos at = findSpot(level, chunk, mob, random, null, spot -> true);
-		if (at == null) {
-			return List.of();
-		}
-
-		mob.snapTo(Vec3.atBottomCenterOf(at), random.nextFloat() * 360.0F, 0.0F);
-		mob.setPersistenceRequired();
-		mob.addTag(CHUNK_ELITE_TAG);
-		return level.addFreshEntity(mob) ? List.of(mob) : List.of();
 	}
 
 	// A leader without the ominous banner walks the patrol, so killing it gives no Bad Omen. The pair is a

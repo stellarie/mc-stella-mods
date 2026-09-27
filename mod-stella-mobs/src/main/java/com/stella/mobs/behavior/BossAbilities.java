@@ -25,8 +25,9 @@ public final class BossAbilities {
 			return;
 		}
 
-		if (mob.getType() == EntityTypes.SKELETON && !alreadyInstalled(mob, BoneFanGoal.class)) {
-			BoneFanGoal.install(mob);
+		// A boss skeleton's bow is the shared archer goal, which reads the boss flag for its eighteen-arrow volley.
+		if (mob.getType() == EntityTypes.SKELETON && !alreadyInstalled(mob, SkeletonVolleyGoal.class)) {
+			SkeletonVolleyGoal.install(mob);
 		}
 
 		if (mob instanceof Spider spider && !alreadyInstalled(mob, WebFieldGoal.class)) {

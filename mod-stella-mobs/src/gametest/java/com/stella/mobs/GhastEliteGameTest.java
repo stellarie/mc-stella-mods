@@ -26,8 +26,9 @@ import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Every ghast fires five small shots a second. A shot never explodes: where it lands it leaves a small
- * lingering cloud of Wither, stronger from an elite. A ghast is not a Monster, so it never rolls gear,
+ * Every ghast fires a burst of two shots every three seconds. A shot bursts in a blast that hurts bodies but
+ * breaks no block, and leaves a small cloud of Wither and Poison that lingers two seconds, its Wither
+ * stronger from an elite. A ghast is not a Monster, so it never rolls gear,
  * and the kit drop is vacuous rather than broken.
  */
 public class GhastEliteGameTest {
@@ -65,39 +66,45 @@ public class GhastEliteGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void aGhastFiresFiveTimesASecond(final GameTestHelper helper) {
+	public void aGhastFiresABurstOfTwoEveryThreeSeconds(final GameTestHelper helper) {
 		Ghast ghast = spawnGhast(helper, false);
 		aim(helper, ghast, spawnSubject(helper, 4, 1, 7));
 		helper.succeedWhen(() -> {
 			List<Integer> ticks = FIRED.getOrDefault(ghast.getUUID(), List.of());
-			helper.assertTrue(ticks.size() >= 6, "the ghast has fired " + ticks.size() + " times");
+			helper.assertTrue(ticks.size() >= 2 * GhastFireballGoal.BURST_SHOTS, "the ghast has fired " + ticks.size() + " times");
 			List<Integer> gaps = new ArrayList<>();
 			for (int i = 1; i < ticks.size(); i++) {
 				gaps.add(ticks.get(i) - ticks.get(i - 1));
 			}
-			helper.assertTrue(gaps.stream().allMatch(gap -> gap == GhastFireballGoal.INTERVAL_TICKS), "the ghast fired " + gaps + " ticks apart, not every " + GhastFireballGoal.INTERVAL_TICKS);
-			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastFiresFiveTimesASecond gaps={}", TEST, gaps);
+			List<Integer> expected = new ArrayList<>();
+			for (int i = 1; i < ticks.size(); i++) {
+				expected.add(i % GhastFireballGoal.BURST_SHOTS == 0
+					? GhastFireballGoal.BURST_INTERVAL_TICKS - GhastFireballGoal.BURST_GAP_TICKS * (GhastFireballGoal.BURST_SHOTS - 1)
+					: GhastFireballGoal.BURST_GAP_TICKS);
+			}
+			helper.assertTrue(gaps.equals(expected), "the ghast fired " + gaps + " ticks apart, not " + expected);
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastFiresABurstOfTwoEveryThreeSeconds gaps={}", TEST, gaps);
 			ghast.discard();
 		});
 	}
 
 	@GameTest(maxTicks = 200)
-	public void aGhastShotLeavesAWitherCloudInsteadOfExploding(final GameTestHelper helper) {
+	public void aGhastShotBlastsWithoutBreakingBlocksAndLeavesWitherAndPoison(final GameTestHelper helper) {
 		Ghast ghast = spawnGhast(helper, false);
 		Mob victim = spawnSubject(helper, 4, 1, 7);
 		aim(helper, ghast, victim);
 		int blocksBefore = solidBlocks(helper, helper.absolutePos(new BlockPos(4, 1, 7)));
 		helper.succeedWhen(() -> {
 			List<MobEffectInstance> clouds = CLOUDS.getOrDefault(ghast.getUUID(), List.of());
-			helper.assertTrue(!clouds.isEmpty() && victim.hasEffect(MobEffects.WITHER), "no wither cloud has reached the victim yet: clouds at " + CLOUD_AT.getOrDefault(ghast.getUUID(), List.of()).stream().limit(4).map(helper::relativeVec).toList() + " victim at " + helper.relativeVec(victim.position()));
+			helper.assertTrue(!clouds.isEmpty() && victim.hasEffect(MobEffects.WITHER) && victim.hasEffect(MobEffects.POISON), "no wither and poison cloud has reached the victim yet: clouds at " + CLOUD_AT.getOrDefault(ghast.getUUID(), List.of()).stream().limit(4).map(helper::relativeVec).toList() + " victim at " + helper.relativeVec(victim.position()));
 			MobEffectInstance wither = clouds.get(0);
 			float radius = CLOUD_RADIUS.entrySet().stream().filter(entry -> ghast.getUUID().equals(CLOUD_OWNER.get(entry.getKey()))).map(Map.Entry::getValue).findFirst().orElse(-1.0F);
 			helper.assertTrue(wither.getEffect().equals(MobEffects.WITHER) && wither.getAmplifier() == GhastFireballGoal.ORDINARY_WITHER_AMPLIFIER, "the cloud carries " + wither);
 			helper.assertTrue(radius == GhastFireballGoal.CLOUD_RADIUS, "the cloud's radius is " + radius);
-			helper.assertFalse(BLASTED.contains(victim.getUUID()), "a ghast shot exploded on the victim");
+			helper.assertTrue(BLASTED.contains(victim.getUUID()), "no ghast shot's blast reached the victim");
 			int blocksNow = solidBlocks(helper, helper.absolutePos(new BlockPos(4, 1, 7)));
 			helper.assertTrue(blocksNow == blocksBefore, "the shot changed the ground: " + blocksBefore + " -> " + blocksNow);
-			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastShotLeavesAWitherCloudInsteadOfExploding clouds={} radius={} wither={} blasts=0", TEST, clouds.size(), radius, wither.getAmplifier());
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aGhastShotBlastsWithoutBreakingBlocksAndLeavesWitherAndPoison clouds={} radius={} wither={} poison=true blasted=true", TEST, clouds.size(), radius, wither.getAmplifier());
 			ghast.discard();
 		});
 	}

@@ -36,7 +36,7 @@ public class SpawnSafetyGameTest {
 		}""";
 
 	@GameTest
-	public void gateAnswersOnlyForNaturalOverworldSpawnsInsideTheRadius(final GameTestHelper helper) {
+	public void gateAnswersForEveryWorldSpawnInsideTheRadius(final GameTestHelper helper) {
 		double r = SpawnSafety.SHIPPED_RADIUS;
 		// Each case flips exactly one input away from a suppressed roll, so every input must be able to lift the gate.
 		boolean[] actual = {
@@ -51,9 +51,13 @@ public class SpawnSafetyGameTest {
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.STRUCTURE, 0.0, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.CHUNK_GENERATION, 0.0, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, null, 0.0, 0.0, 0.0, 0.0, r),
+			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.PATROL, 0.0, 0.0, 0.0, 0.0, r),
+			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.SPAWN_ITEM_USE, 0.0, 0.0, 0.0, 0.0, r),
+			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.COMMAND, 0.0, 0.0, 0.0, 0.0, r),
 			SpawnSafety.suppresses(Level.OVERWORLD, EntitySpawnReason.NATURAL, 0.0, 0.0, 0.0, 0.0, 0.0)
 		};
-		boolean[] expected = { true, true, false, false, true, false, false, false, false, false, false, false };
+		// The world's own spawns are all gated; an egg or a command, a player's own choice, is not.
+		boolean[] expected = { true, true, false, false, true, false, false, true, true, true, false, true, false, false, false };
 		int wrong = 0;
 		StringBuilder cases = new StringBuilder();
 
@@ -64,7 +68,7 @@ public class SpawnSafetyGameTest {
 			}
 		}
 
-		result("gateAnswersOnlyForNaturalOverworldSpawnsInsideTheRadius", "wrong=" + wrong + " " + cases);
+		result("gateAnswersForEveryWorldSpawnInsideTheRadius", "wrong=" + wrong + " " + cases);
 		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "gate answers that disagree with the rule");
 		helper.succeed();
 	}

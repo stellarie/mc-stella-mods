@@ -12,20 +12,27 @@ import net.minecraft.world.entity.monster.Ghast;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The ghast's rank 7 shoot goal, replaced: five shots a second while the target is in sight. A shot
- * never explodes; it leaves a small lingering cloud of Wither where it lands, stronger from an elite.
+ * The ghast's rank 7 shoot goal, replaced: a burst of two shots every three seconds while the target is in
+ * sight. A shot bursts in a blast that hurts and throws bodies but breaks no block, and leaves a small cloud
+ * of Wither and Poison that lingers two seconds, its Wither stronger from an elite.
  */
 public class GhastFireballGoal extends Goal {
-	public static final int INTERVAL_TICKS = 4;
+	public static final int BURST_SHOTS = 2;
+	/** The gap between the two shots of a burst. */
+	public static final int BURST_GAP_TICKS = 6;
+	/** From the first shot of one burst to the first shot of the next. */
+	public static final int BURST_INTERVAL_TICKS = 60;
+	/** Vanilla's own ghast fireball power. */
+	public static final float EXPLOSION_POWER = 1.0F;
 	/** Vanilla's own firing range: a ghast fires only at a target within 64 blocks. */
 	public static final double MAX_RANGE = 64.0;
 	public static final float CLOUD_RADIUS = 1.5F;
-	public static final int CLOUD_DURATION_TICKS = 60;
+	public static final int CLOUD_DURATION_TICKS = 40;
 	public static final int WITHER_TICKS = 100;
+	public static final int POISON_TICKS = 100;
+	public static final int POISON_AMPLIFIER = 0;
 	public static final int ORDINARY_WITHER_AMPLIFIER = 0;
 	public static final int ELITE_WITHER_AMPLIFIER = 1;
-	/** The shot sound plays on every fifth shot, once a second, so five a second is not a wall of noise. */
-	private static final int SOUND_EVERY_SHOTS = 5;
 	private static final double LEAD = 4.0;
 
 	public interface Recorder {
@@ -42,7 +49,7 @@ public class GhastFireballGoal extends Goal {
 
 	private final Ghast ghast;
 	private int cooldown;
-	private int shots;
+	private int shotInBurst;
 
 	public GhastFireballGoal(final Ghast ghast) {
 		this.ghast = ghast;
@@ -65,7 +72,8 @@ public class GhastFireballGoal extends Goal {
 
 	@Override
 	public void start() {
-		this.cooldown = INTERVAL_TICKS;
+		this.cooldown = BURST_GAP_TICKS;
+		this.shotInBurst = 0;
 		this.ghast.setCharging(true);
 		this.playSound(SoundEvents.GHAST_WARN);
 	}
@@ -92,8 +100,14 @@ public class GhastFireballGoal extends Goal {
 			return;
 		}
 
-		this.cooldown = INTERVAL_TICKS;
 		this.shoot(target);
+		this.shotInBurst++;
+		if (this.shotInBurst < BURST_SHOTS) {
+			this.cooldown = BURST_GAP_TICKS;
+		} else {
+			this.shotInBurst = 0;
+			this.cooldown = BURST_INTERVAL_TICKS - BURST_GAP_TICKS * (BURST_SHOTS - 1);
+		}
 	}
 
 	private void shoot(final LivingEntity target) {
@@ -109,7 +123,7 @@ public class GhastFireballGoal extends Goal {
 		shot.setPos(from);
 		level.addFreshEntity(shot);
 		recorder.fired(this.ghast, level.getServer().getTickCount());
-		if (this.shots++ % SOUND_EVERY_SHOTS == 0) {
+		if (this.shotInBurst == 0) {
 			this.playSound(SoundEvents.GHAST_SHOOT);
 		}
 	}

@@ -28,7 +28,8 @@ public final class SpiderWebTrapGoal extends Goal {
 
 	@Override
 	public boolean canUse() {
-		if (this.websPlaced >= WEB_CAP || this.spider.tickCount < this.nextWebTick) {
+		// An elite or boss spider casts its webs instead.
+		if (WebCastGoal.casts(this.spider) || this.websPlaced >= WEB_CAP || this.spider.tickCount < this.nextWebTick) {
 			return false;
 		}
 

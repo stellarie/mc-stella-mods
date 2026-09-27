@@ -155,7 +155,8 @@ public final class Elite {
 		}
 
 		// O03: a forced path passes no escort count, because an escort of guardians would change the fight.
-		if (!forced) {
+		// An elite stray archer is solitary and always alone.
+		if (!forced && !StrayKit.isSolitary(mob)) {
 			EscortSquad.queue(mob, tier);
 		}
 
