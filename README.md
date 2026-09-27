@@ -42,6 +42,10 @@ wants.
 - **Witches.** They throw a random harmful potion every 3 seconds, support a nearby ally every
   2 seconds, and blink away when cornered.
 - **Elite zombies.** Their hits bring Hunger, Wither and Poison.
+- **Chunk encounters.** Each overworld chunk rolls once, when a player first comes 3 to 5 chunks from
+  it. Inside the spawn safe zone, 1% of chunks hold one elite husk, creeper or witch, which stays.
+  Outside it, 20% of chunks hold a pair of patrolling Pillagers with no banner captain, so killing
+  them brings no Bad Omen. Measured over 100,000 seeded chunks: 1.002% and 20.005%.
 
 ### Opting a mob out of spawn rolls
 
@@ -112,6 +116,10 @@ On the first server start the mod writes
 ## mod-stella-spells
 
 `mod-stella-spells` adds 20 tinted spellbooks. Each book casts one fixed spell when the holder uses it. The first release has two power tiers with ten books in each tier. Successful casts set a spell-specific cooldown and do not consume the book.
+
+Chainstorm is aimed at a spot: lightning falls on up to 5 hostiles within 5 blocks of it, one strike
+every 6 ticks. Riftwalk teleports you onto the block you look at, up to 16 blocks away, or in front
+of the wall you look at. The mod README has the full spell table.
 
 Craft a spellbook with one book in the center and four matching materials in the corner X. Vanilla chest loot has a 5% chance per generated chest. Each witch death has a 50% chance to drop one random spellbook.
 

@@ -87,6 +87,44 @@ Measured reach rates:
 | M2 | Each volley follows a full 20-tick bow draw. | A shot without a draw looks wrong, and the behaviour rig reads firing from the draw. |
 | M8 | The half-health trigger stays as the fallback, and both triggers share the once-per-life flag. | An evoker hurt before it ever had a target still casts its one storm. |
 
+## Fourth round (2026-09-27): bugs and enhancements
+
+| Slice | Branch | Red run | Mutant runs | Gate |
+| --- | --- | --- | --- | --- |
+| Chainstorm as an area storm; Riftwalk to the aimed spot | `feat/chainstorm-riftwalk` into `main-spells` | 5 failed | 5 failed (all at once, no cap, top of the wall, no entity check); 1 (a sky miss lands); 2 (no room, no fluid check) | 98 x 6 |
+| Nemesis +100 HP and map model; patrol labels, no friendly fire; smith hardening | `feat/village-patrol-labels-hardening` into `main-villages` | 8 failed | 6 failed (friendly damage, fellow targeting, never provoked, no price, no sneak, no cap) | 68 x 6 |
+| Once-per-chunk encounters: safe-zone elite, pillager pair | `feat/chunk-encounters` into `main-mobs` | 6 failed | 6 failed (doubled chance, every dimension safe, no forced tag, two leaders, rolls twice); 2 (no persistence, no ring check) | 295 x 6 |
+
+Measured over 100,000 seeded chunks: a safe-zone chunk holds an elite **1.002%** of the time (1% ships), and a wild chunk
+holds a pillager pair **20.005%** of the time (20% ships).
+
+Decisions this round:
+
+- Hardening is capped at +5 per weapon. Any item with its own attack damage counts as a weapon, so
+  axes and other tools qualify.
+- Pillager pairs spawn outside the safe zone only, with one leader and no ominous banner, so they
+  cannot start a raid.
+- A chunk rolls when a player is 3 to 5 chunks away, not when it generates, so existing worlds get
+  the rolls. A generating chunk is usually more than 128 blocks from a player, where a new mob
+  would despawn at once.
+- The safe-zone elite is persistent; the pillagers patrol, which keeps them while a player is within
+  128 blocks, as vanilla patrols do.
+- Friendly fire is blocked between members of any village's patrol, not only the same patrol.
+
+Found and fixed by the tests this round:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| The sky test for Riftwalk passed for the wrong reason | The test's barrier ceiling sits 10 blocks up, so the look ray hit it. | The test opens the column above the caster and first asserts that the ray misses. |
+| The Nemesis map showed a raw name key | An `ITEM_NAME` set on the item's properties is replaced by the id-based name. | `NemesisMapItem` overrides `getName`. |
+
+Manual acceptance items added this round, for the client:
+
+- **Spells:** Chainstorm's bolts, and landing with Riftwalk on a ledge.
+- **Villages:** the Nemesis map icon in hand and in the inventory, the label colours over a patrol,
+  and the hardening line in a sword's tooltip.
+- **Mobs:** meeting a pillager pair on a walk away from spawn.
+
 ## Third round (2026-09-27): scrolls, Soulbound, Mastery IV perks
 
 | Slice | Branch | Red run | Mutant run | Gate |
