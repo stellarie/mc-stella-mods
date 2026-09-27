@@ -16,6 +16,7 @@ public final class SpellModifiers {
 	private static final Identifier CLEAR_MIND = enchantmentId("clear_mind");
 	private static final Identifier ARCANE_WEAVE = enchantmentId("arcane_weave");
 	private static final Identifier SPELLGUARD = enchantmentId("spellguard");
+	private static final Identifier DOUBLECAST = enchantmentId("doublecast");
 	static final int BASE_TARGET_RANGE_BLOCKS = 16;
 
 	private SpellModifiers() {
@@ -46,6 +47,11 @@ public final class SpellModifiers {
 			BASE_TARGET_RANGE_BLOCKS + 2 * arcaneSight,
 			cooldownTicks(baseCooldown, quickening, clearMind)
 		);
+	}
+
+	/** True when the helmet carries Doublecast. */
+	public static boolean doublecast(final ItemStack head) {
+		return level(head, DOUBLECAST) > 0;
 	}
 
 	static int cooldownTicks(final int baseTicks, final int quickeningLevel, final int clearMindLevel) {

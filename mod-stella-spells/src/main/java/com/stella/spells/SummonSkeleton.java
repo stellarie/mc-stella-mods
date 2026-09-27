@@ -1,0 +1,351 @@
+package com.stella.spells;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.TargetGoal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Summon Skeleton, a spellbook of its own that no scroll copies and no weapon takes. It raises one skeleton
+ * that serves the caster: it never despawns, fights the hostiles within eight blocks of its master, follows
+ * them, and gathers the loot it walks over into its own pack. The master's use on it opens its gear, its
+ * pack and a name slot. Casting again while it lives calls it to the caster's side, and costs no cooldown.
+ */
+public final class SummonSkeleton {
+	public static final Identifier ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_skeleton");
+	public static final String SUMMON_TAG = "mod-stella-spells.summoned";
+	public static final String OWNER_TAG_PREFIX = "mod-stella-spells.summon_owner.";
+	public static final int COOLDOWN_TICKS = 6000;
+	public static final double GUARD_RADIUS = 8.0;
+	public static final double FOLLOW_DISTANCE = 6.0;
+	public static final double TELEPORT_DISTANCE = 24.0;
+	public static final double LOOT_REACH = 1.5;
+	public static final int PACK_SIZE = 18;
+	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
+	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
+		Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_pack"), ItemStack.OPTIONAL_CODEC.listOf()
+	);
+	/** Each master's skeleton, by the skeleton's id; the skeleton's own tag is the truth, this only finds it. */
+	private static final Map<UUID, UUID> SUMMONED = new ConcurrentHashMap<>();
+
+	private SummonSkeleton() {
+	}
+
+	public static void register() {
+		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG)) {
+				ownerOf(skeleton).ifPresent(owner -> SUMMONED.put(owner, skeleton.getUUID()));
+				install(skeleton);
+			}
+		});
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG) && skeleton.level() instanceof ServerLevel level) {
+				for (ItemStack stack : pack(skeleton)) {
+					if (!stack.isEmpty()) {
+						skeleton.spawnAtLocation(level, stack);
+					}
+				}
+				skeleton.setAttached(PACK, List.of());
+				ownerOf(skeleton).ifPresent(owner -> SUMMONED.remove(owner, skeleton.getUUID()));
+			}
+		});
+		UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+			if (level.isClientSide() || !(player instanceof ServerPlayer master) || player.isShiftKeyDown()
+				|| !(entity instanceof Skeleton skeleton) || !isServant(skeleton, master)) {
+				return InteractionResult.PASS;
+			}
+			if (hand == net.minecraft.world.InteractionHand.MAIN_HAND) {
+				master.openMenu(new SimpleMenuProvider((id, inventory, opener) -> new SkeletonMenu(id, inventory, skeleton), skeleton.getDisplayName()));
+			}
+			return InteractionResult.SUCCESS;
+		});
+	}
+
+	/** The spell: a new servant, or the old one called to the caster's side. */
+	static boolean apply(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
+		Skeleton existing = find(caster.level().getServer(), caster.getUUID());
+		if (existing != null) {
+			SpellCasting.skipCooldown();
+			return recall(existing, caster);
+		}
+		Skeleton skeleton = EntityTypes.SKELETON.create(caster.level(), EntitySpawnReason.MOB_SUMMONED);
+		if (skeleton == null) {
+			return false;
+		}
+		skeleton.addTag(SUMMON_TAG);
+		skeleton.addTag(OWNER_TAG_PREFIX + caster.getUUID());
+		skeleton.addTag(MobSpells.NO_BEHAVIOR_TAG);
+		skeleton.addTag(NO_SPAWN_ROLL_TAG);
+		skeleton.setPersistenceRequired();
+		skeleton.setCanPickUpLoot(false);
+		skeleton.setCustomName(Component.literal(caster.getScoreboardName() + "'s Skeleton"));
+		equip(skeleton, EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		equip(skeleton, EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		Vec3 at = beside(caster);
+		skeleton.snapTo(at.x, at.y, at.z, caster.getYRot(), 0.0F);
+		if (!caster.level().addFreshEntity(skeleton)) {
+			return false;
+		}
+		SUMMONED.put(caster.getUUID(), skeleton.getUUID());
+		caster.level().sendParticles(ParticleTypes.SOUL, at.x, at.y + 1.0, at.z, 30, 0.4, 0.8, 0.4, 0.05);
+		caster.level().playSound(null, at.x, at.y, at.z, SoundEvents.EVOKER_PREPARE_SUMMON, caster.getSoundSource(), 0.8F, 0.8F);
+		return true;
+	}
+
+	/** Puts gear on the servant so it drops in full when the servant falls, as it is the master's own. */
+	public static void equip(final Skeleton skeleton, final EquipmentSlot slot, final ItemStack stack) {
+		skeleton.setItemSlot(slot, stack);
+		skeleton.setGuaranteedDrop(slot);
+	}
+
+	private static boolean recall(final Skeleton skeleton, final ServerPlayer caster) {
+		Vec3 at = beside(caster);
+		Entity moved = skeleton.level() == caster.level()
+			? skeleton
+			: skeleton.teleport(new TeleportTransition(caster.level(), at, Vec3.ZERO, caster.getYRot(), 0.0F, TeleportTransition.DO_NOTHING));
+		if (moved == null) {
+			return false;
+		}
+		moved.teleportTo(at.x, at.y, at.z);
+		if (moved instanceof Mob mob) {
+			mob.setTarget(null);
+			mob.getNavigation().stop();
+			SUMMONED.put(caster.getUUID(), mob.getUUID());
+		}
+		caster.level().sendParticles(ParticleTypes.SOUL, at.x, at.y + 1.0, at.z, 20, 0.4, 0.8, 0.4, 0.05);
+		return true;
+	}
+
+	private static Vec3 beside(final ServerPlayer caster) {
+		Vec3 look = caster.getLookAngle();
+		Vec3 flat = new Vec3(look.x, 0.0, look.z);
+		flat = flat.lengthSqr() < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : flat.normalize();
+		Vec3 at = caster.position().add(flat.scale(1.5));
+		return CastingSpots.standing(caster.level(), at) ? at : caster.position();
+	}
+
+	/** The living servant of this master, wherever it is loaded; null for none. */
+	public static @Nullable Skeleton find(final MinecraftServer server, final UUID owner) {
+		UUID id = SUMMONED.get(owner);
+		if (id == null) {
+			return null;
+		}
+		for (ServerLevel level : server.getAllLevels()) {
+			if (level.getEntity(id) instanceof Skeleton skeleton && skeleton.isAlive() && skeleton.entityTags().contains(SUMMON_TAG)) {
+				return skeleton;
+			}
+		}
+		return null;
+	}
+
+	public static Optional<UUID> ownerOf(final Mob mob) {
+		for (String tag : mob.entityTags()) {
+			if (tag.startsWith(OWNER_TAG_PREFIX)) {
+				try {
+					return Optional.of(UUID.fromString(tag.substring(OWNER_TAG_PREFIX.length())));
+				} catch (IllegalArgumentException malformed) {
+					return Optional.empty();
+				}
+			}
+		}
+		return Optional.empty();
+	}
+
+	public static boolean isServant(final Mob mob, final Player player) {
+		return mob.entityTags().contains(SUMMON_TAG) && ownerOf(mob).filter(player.getUUID()::equals).isPresent();
+	}
+
+	private static @Nullable ServerPlayer owner(final Mob mob) {
+		if (!(mob.level() instanceof ServerLevel level)) {
+			return null;
+		}
+		return ownerOf(mob).map(id -> level.getServer().getPlayerList().getPlayer(id)).orElse(null);
+	}
+
+	/** The servant's pack, always {@link #PACK_SIZE} slots. */
+	public static List<ItemStack> pack(final Mob skeleton) {
+		List<ItemStack> saved = skeleton.getAttached(PACK);
+		List<ItemStack> pack = new ArrayList<>(saved == null ? List.of() : saved);
+		while (pack.size() < PACK_SIZE) {
+			pack.add(ItemStack.EMPTY);
+		}
+		return pack.subList(0, PACK_SIZE);
+	}
+
+	public static void setPack(final Mob skeleton, final List<ItemStack> pack) {
+		skeleton.setAttached(PACK, List.copyOf(pack));
+	}
+
+	/** Adds as much of the stack to the pack as fits; the rest is left in the stack. */
+	public static void stow(final Mob skeleton, final ItemStack stack) {
+		List<ItemStack> pack = new ArrayList<>(pack(skeleton));
+		for (int i = 0; i < pack.size() && !stack.isEmpty(); i++) {
+			ItemStack slot = pack.get(i);
+			if (!slot.isEmpty() && ItemStack.isSameItemSameComponents(slot, stack) && slot.getCount() < slot.getMaxStackSize()) {
+				int moved = Math.min(stack.getCount(), slot.getMaxStackSize() - slot.getCount());
+				slot.grow(moved);
+				stack.shrink(moved);
+			}
+		}
+		for (int i = 0; i < pack.size() && !stack.isEmpty(); i++) {
+			if (pack.get(i).isEmpty()) {
+				pack.set(i, stack.copy());
+				stack.setCount(0);
+			}
+		}
+		setPack(skeleton, pack);
+	}
+
+	// The servant's mind: only its master's foes, its master's side, and the loot underfoot.
+	private static void install(final Skeleton skeleton) {
+		var targets = ((com.stella.spells.mixin.MobGoalsAccessor) skeleton).stellaSpells$targetSelector();
+		targets.removeAllGoals(goal -> true);
+		targets.addGoal(1, new HurtByTargetGoal(skeleton));
+		targets.addGoal(2, new GuardGoal(skeleton));
+		skeleton.getGoalSelector().addGoal(2, new FollowGoal(skeleton));
+		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
+	}
+
+	/** The nearest hostile within the guard radius of the master. */
+	static final class GuardGoal extends TargetGoal {
+		private final Skeleton skeleton;
+		private @Nullable LivingEntity found;
+
+		GuardGoal(final Skeleton skeleton) {
+			super(skeleton, false);
+			this.skeleton = skeleton;
+			this.setFlags(EnumSet.of(Goal.Flag.TARGET));
+		}
+
+		@Override
+		public boolean canUse() {
+			ServerPlayer master = owner(this.skeleton);
+			if (master == null || master.level() != this.skeleton.level()) {
+				return false;
+			}
+			this.found = null;
+			double best = Double.MAX_VALUE;
+			for (Mob mob : master.level().getEntitiesOfClass(Mob.class, master.getBoundingBox().inflate(GUARD_RADIUS),
+				other -> other.isAlive() && Friends.isFoe(other) && other.distanceToSqr(master) <= GUARD_RADIUS * GUARD_RADIUS)) {
+				double distance = mob.distanceToSqr(this.skeleton);
+				if (distance < best) {
+					best = distance;
+					this.found = mob;
+				}
+			}
+			return this.found != null;
+		}
+
+		@Override
+		public void start() {
+			this.skeleton.setTarget(this.found);
+			super.start();
+		}
+	}
+
+	/** Keeps near the master, and catches up by teleport when left far behind. */
+	static final class FollowGoal extends Goal {
+		private final Skeleton skeleton;
+
+		FollowGoal(final Skeleton skeleton) {
+			this.skeleton = skeleton;
+			this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+		}
+
+		@Override
+		public boolean canUse() {
+			ServerPlayer master = owner(this.skeleton);
+			return master != null && master.level() == this.skeleton.level() && this.skeleton.getTarget() == null
+				&& this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
+		}
+
+		@Override
+		public void tick() {
+			ServerPlayer master = owner(this.skeleton);
+			if (master == null) {
+				return;
+			}
+			if (this.skeleton.distanceToSqr(master) > TELEPORT_DISTANCE * TELEPORT_DISTANCE) {
+				Vec3 at = beside(master);
+				this.skeleton.teleportTo(at.x, at.y, at.z);
+				this.skeleton.getNavigation().stop();
+			} else if (this.skeleton.tickCount % 10 == 0) {
+				this.skeleton.getNavigation().moveTo(master, 1.1);
+			}
+		}
+	}
+
+	/** Gathers the items it stands over into its pack. Flagless. */
+	static final class LootGoal extends Goal {
+		private final Skeleton skeleton;
+
+		LootGoal(final Skeleton skeleton) {
+			this.skeleton = skeleton;
+		}
+
+		private int checks;
+
+		// Counted on its own: the selector does not ask on every tick, so a tick-count beat could never land.
+		@Override
+		public boolean canUse() {
+			return this.skeleton.isAlive() && ++this.checks % 5 == 0;
+		}
+
+		@Override
+		public boolean canContinueToUse() {
+			return false;
+		}
+
+		@Override
+		public void start() {
+			for (ItemEntity item : this.skeleton.level().getEntitiesOfClass(ItemEntity.class, this.skeleton.getBoundingBox().inflate(LOOT_REACH),
+				entity -> entity.isAlive() && !entity.hasPickUpDelay())) {
+				ItemStack stack = item.getItem().copy();
+				int before = stack.getCount();
+				stow(this.skeleton, stack);
+				if (stack.getCount() < before) {
+					this.skeleton.take(item, before - stack.getCount());
+					if (stack.isEmpty()) {
+						item.discard();
+					} else {
+						item.setItem(stack);
+					}
+				}
+			}
+		}
+	}
+}

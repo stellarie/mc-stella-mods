@@ -82,7 +82,8 @@ public class SpellEffectsGameTest {
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:gravity"), 240),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:bulwark_hymn"), 400),
 		new CooldownExpectation(Identifier.parse("mod-stella-spells:tailwind"), 300),
-		new CooldownExpectation(Identifier.parse("mod-stella-spells:battle_hymn"), 400)
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:battle_hymn"), 400),
+		new CooldownExpectation(Identifier.parse("mod-stella-spells:summon_skeleton"), SummonSkeleton.COOLDOWN_TICKS)
 	);
 
 	@GameTest

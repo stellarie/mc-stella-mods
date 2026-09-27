@@ -125,7 +125,7 @@ public final class MoreSpells {
 		}
 		Vec3 to = from.add(toward.normalize().scale(ICE_LANCE_RANGE * modifiers.radiusMultiplier()));
 		List<Mob> struck = new java.util.ArrayList<>(level.getEntitiesOfClass(Mob.class, new AABB(from, to).inflate(ICE_LANCE_WIDTH),
-			candidate -> candidate != target && candidate.isAlive() && candidate instanceof Enemy
+			candidate -> candidate != target && candidate.isAlive() && Friends.isFoe(candidate)
 				&& distanceToSegment(candidate.getBoundingBox().getCenter(), from, to) <= ICE_LANCE_WIDTH + candidate.getBbWidth() / 2.0));
 		struck.add(0, target);
 		for (Mob mob : struck) {
@@ -326,8 +326,8 @@ public final class MoreSpells {
 	}
 
 	static boolean isAlly(final net.minecraft.world.entity.LivingEntity entity) {
-		return entity.isAlive() && !(entity instanceof Enemy)
-			&& (entity instanceof net.minecraft.world.entity.player.Player
+		return entity.isAlive() && (!(entity instanceof Enemy) || Friends.isFriend(entity))
+			&& (Friends.isFriend(entity) || entity instanceof net.minecraft.world.entity.player.Player
 				|| entity instanceof net.minecraft.world.entity.npc.villager.AbstractVillager
 				|| entity instanceof net.minecraft.world.entity.animal.golem.AbstractGolem
 				|| entity instanceof net.minecraft.world.entity.OwnableEntity ownable && ownable.getOwnerReference() != null);
@@ -359,7 +359,7 @@ public final class MoreSpells {
 
 	static List<Mob> hostiles(final ServerLevel level, final Vec3 center, final double radius) {
 		return level.getEntitiesOfClass(Mob.class, new AABB(center, center).inflate(radius),
-			candidate -> candidate.isAlive() && candidate instanceof Enemy && candidate.position().distanceToSqr(center) <= radius * radius);
+			candidate -> candidate.isAlive() && Friends.isFoe(candidate) && candidate.position().distanceToSqr(center) <= radius * radius);
 	}
 
 	private static boolean cloud(final ServerPlayer caster, final Vec3 at, final float radius, final int ticks, final MobEffectInstance effect) {
