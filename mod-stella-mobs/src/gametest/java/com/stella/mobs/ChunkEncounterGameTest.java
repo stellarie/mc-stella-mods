@@ -34,10 +34,14 @@ public class ChunkEncounterGameTest {
 	/** What each chunk's roll spawned, keyed by the chunk, as the encounter recorded it. */
 	private static final Map<ChunkPos, List<Mob>> SPAWNED = new ConcurrentHashMap<>();
 	private static final Set<UUID> SCANNING = ConcurrentHashMap.newKeySet();
+	/** Each chunk the scan handed over, and whether it came only once. */
+	private static final Map<ChunkPos, Boolean> SCANNED = new ConcurrentHashMap<>();
+	private static final int PLACEMENT_SAMPLES = 40;
 
 	static {
-		// Only a test's own player drives the scan, so no other test gets a stray encounter.
+		// Only a test's own player drives the scan, and the scan only records, so no test gets a stray encounter.
 		ChunkEncounters.setScanFilter(player -> SCANNING.contains(player.getUUID()));
+		ChunkEncounters.setScanRoller((level, chunk, safe) -> SCANNED.merge(chunk.getPos(), Boolean.TRUE, (a, b) -> Boolean.FALSE));
 		ChunkEncounters.setRecorder((level, pos, encounter, spawned) -> SPAWNED.put(pos, List.copyOf(spawned)));
 	}
 
@@ -117,6 +121,8 @@ public class ChunkEncounterGameTest {
 	public void aChunkRollsOnlyOnceAndSpawnsWhatItRolled(final GameTestHelper helper) {
 		LevelChunk chunk = helper.getLevel().getChunkAt(helper.absolutePos(new BlockPos(1, 1, 1)));
 		long seed = seedFor(Encounter.PILLAGER_PAIR, false);
+		// A neighbouring test's scan may have reached this chunk, so it starts unrolled.
+		ChunkEncounters.forget(chunk);
 		Optional<Encounter> first = ChunkEncounters.roll(helper.getLevel(), chunk, false, RandomSource.create(seed));
 		List<Mob> spawned = SPAWNED.getOrDefault(chunk.getPos(), List.of());
 		Optional<Encounter> second = ChunkEncounters.roll(helper.getLevel(), chunk, false, RandomSource.create(seed));
@@ -134,24 +140,92 @@ public class ChunkEncounterGameTest {
 		Vec3 at = helper.absoluteVec(new Vec3(1.5, 2.0, 1.5));
 		player.setPos(at.x, at.y, at.z);
 		ChunkPos center = player.chunkPosition();
-		Map<ChunkPos, Boolean> rolled = new ConcurrentHashMap<>();
-		ChunkEncounters.setScanRoller((level, chunk, safe) -> {
-			if (level == helper.getLevel()) {
-				rolled.merge(chunk.getPos(), Boolean.TRUE, (a, b) -> Boolean.FALSE);
-			}
-		});
 		SCANNING.add(player.getUUID());
 		helper.succeedWhen(() -> {
-			helper.assertTrue(!rolled.isEmpty(), "no chunk near the player has rolled yet");
-			for (Map.Entry<ChunkPos, Boolean> entry : rolled.entrySet()) {
-				int ring = Math.max(Math.abs(entry.getKey().x() - center.x()), Math.abs(entry.getKey().z() - center.z()));
+			List<Map.Entry<ChunkPos, Boolean>> near = SCANNED.entrySet().stream()
+				.filter(entry -> ring(entry.getKey(), center) <= ChunkEncounters.MAX_RING + 1).toList();
+			helper.assertTrue(!near.isEmpty(), "no chunk near the player has rolled yet");
+			for (Map.Entry<ChunkPos, Boolean> entry : near) {
+				int ring = ring(entry.getKey(), center);
 				helper.assertTrue(ring >= ChunkEncounters.MIN_RING && ring <= ChunkEncounters.MAX_RING, "chunk " + entry.getKey() + " rolled at ring " + ring);
 				helper.assertTrue(entry.getValue(), "chunk " + entry.getKey() + " rolled twice");
 			}
 			SCANNING.remove(player.getUUID());
-			ChunkEncounters.setScanRoller(ChunkEncounters.defaultRoller());
-			LOG.info("[BEHAVIOR] test=theChunksAroundAPlayerRollAsTheyComeNear RESULT rolled={}", rolled.size());
+			LOG.info("[BEHAVIOR] test=theChunksAroundAPlayerRollAsTheyComeNear RESULT rolled={}", near.size());
 		});
+	}
+
+	@GameTest(padding = 64)
+	public void aPillagerPairStaysOutOfAVillage(final GameTestHelper helper) {
+		// A chunk inside this test's padding holds no structure, so its ground is one height, as a village's is.
+		BlockPos clear = helper.absolutePos(new BlockPos(1, 1, 1)).offset(32, 0, 0);
+		LevelChunk chunk = helper.getLevel().getChunkAt(clear);
+		BlockPos bell = helper.getLevel().getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, clear);
+		helper.getLevel().setBlockAndUpdate(bell, net.minecraft.world.level.block.Blocks.BELL.defaultBlockState());
+		// A village counts only claimed meeting points, so the bell is claimed as a villager would.
+		var poi = helper.getLevel().getPoiManager();
+		poi.take(type -> type.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING), (type, pos) -> pos.equals(bell), bell, 1);
+		boolean village = helper.getLevel().isCloseToVillage(bell, 2);
+		List<Mob> spawned = ChunkEncounters.spawn(helper.getLevel(), chunk, Encounter.PILLAGER_PAIR, RandomSource.create(11L));
+		poi.release(bell);
+		helper.getLevel().setBlockAndUpdate(bell, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+		spawned.forEach(Mob::discard);
+		LOG.info("[BEHAVIOR] test=aPillagerPairStaysOutOfAVillage RESULT village={} spawned={}", village, spawned.size());
+		helper.assertTrue(village, "the bell made no village, so the case proves nothing");
+		helper.assertTrue(spawned.isEmpty(), "a pillager pair spawned inside a village");
+		helper.succeed();
+	}
+
+	@GameTest(padding = 64)
+	public void aPillagerPairStaysOutOfMushroomFields(final GameTestHelper helper) {
+		LevelChunk chunk = helper.getLevel().getChunkAt(helper.absolutePos(new BlockPos(1, 1, 1)));
+		var biomes = helper.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+		var before = helper.getLevel().getBiome(helper.absolutePos(new BlockPos(1, 1, 1)));
+		fillBiome(helper, chunk, biomes.getOrThrow(net.minecraft.world.level.biome.Biomes.MUSHROOM_FIELDS));
+		boolean mushroom = helper.getLevel().getBiome(helper.absolutePos(new BlockPos(1, 1, 1))).is(net.minecraft.world.level.biome.Biomes.MUSHROOM_FIELDS);
+		List<Mob> spawned = ChunkEncounters.spawn(helper.getLevel(), chunk, Encounter.PILLAGER_PAIR, RandomSource.create(11L));
+		fillBiome(helper, chunk, before);
+		spawned.forEach(Mob::discard);
+		LOG.info("[BEHAVIOR] test=aPillagerPairStaysOutOfMushroomFields RESULT mushroom={} spawned={}", mushroom, spawned.size());
+		helper.assertTrue(mushroom, "the chunk did not turn to mushroom fields, so the case proves nothing");
+		helper.assertTrue(spawned.isEmpty(), "a pillager pair spawned in mushroom fields");
+		helper.succeed();
+	}
+
+	// The fill command caps its volume, so the full height is filled in bands. The biome lookup is fuzzy
+	// near a chunk's edge, so a margin around the chunk is filled too.
+	private static void fillBiome(final GameTestHelper helper, final LevelChunk chunk, final net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> biome) {
+		int band = 16;
+		int margin = 8;
+		for (int y = helper.getLevel().getMinY(); y <= helper.getLevel().getMaxY(); y += band) {
+			net.minecraft.server.commands.FillBiomeCommand.fill(
+				helper.getLevel(),
+				new BlockPos(chunk.getPos().getMinBlockX() - margin, y, chunk.getPos().getMinBlockZ() - margin),
+				new BlockPos(chunk.getPos().getMaxBlockX() + margin, Math.min(y + band - 1, helper.getLevel().getMaxY()), chunk.getPos().getMaxBlockZ() + margin),
+				biome
+			).ifRight(error -> {
+				throw new IllegalStateException("fillbiome refused: " + error.getMessage());
+			});
+		}
+	}
+
+	@GameTest(padding = 32)
+	public void aPillagerPairFindsRoomOnOpenGround(final GameTestHelper helper) {
+		LevelChunk chunk = helper.getLevel().getChunkAt(helper.absolutePos(new BlockPos(1, 1, 1)));
+		int placed = 0;
+		for (int seed = 0; seed < PLACEMENT_SAMPLES; seed++) {
+			List<Mob> spawned = ChunkEncounters.spawn(helper.getLevel(), chunk, Encounter.PILLAGER_PAIR, RandomSource.create(seed));
+			placed += spawned.size() == ChunkEncounters.PILLAGER_PAIR_SIZE ? 1 : 0;
+			spawned.forEach(Mob::discard);
+		}
+		double rate = (double) placed / PLACEMENT_SAMPLES;
+		LOG.info("[BEHAVIOR] test=aPillagerPairFindsRoomOnOpenGround RESULT samples={} placed={} rate={} biome={}", PLACEMENT_SAMPLES, placed, rate, helper.getLevel().getBiome(helper.absolutePos(new BlockPos(1, 1, 1))).getRegisteredName());
+		helper.assertTrue(placed == PLACEMENT_SAMPLES, "only " + placed + " of " + PLACEMENT_SAMPLES + " pairs found room on flat open ground");
+		helper.succeed();
+	}
+
+	private static int ring(final ChunkPos pos, final ChunkPos center) {
+		return Math.max(Math.abs(pos.x() - center.x()), Math.abs(pos.z() - center.z()));
 	}
 
 	// The first seed whose roll lands on the wanted encounter, so a roll can be driven without changing a chance.
