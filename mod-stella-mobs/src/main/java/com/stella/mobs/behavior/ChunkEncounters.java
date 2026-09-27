@@ -208,7 +208,8 @@ public final class ChunkEncounters {
 		return level.addFreshEntity(mob) ? List.of(mob) : List.of();
 	}
 
-	// A leader without the ominous banner walks the patrol, so killing it gives no Bad Omen.
+	// A leader without the ominous banner walks the patrol, so killing it gives no Bad Omen. The pair is a
+	// friendly village patrol on its rounds.
 	private static List<Mob> spawnPillagerPair(final ServerLevel level, final LevelChunk chunk, final RandomSource random) {
 		List<Mob> spawned = new ArrayList<>();
 		BlockPos near = null;
@@ -228,6 +229,7 @@ public final class ChunkEncounters {
 			pillager.finalizeSpawn(level, level.getCurrentDifficultyAt(at), EntitySpawnReason.PATROL, null);
 			pillager.setPatrolLeader(spawned.isEmpty());
 			pillager.findPatrolTarget();
+			FriendlyPatrol.befriend(pillager);
 			if (level.addFreshEntity(pillager)) {
 				spawned.add(pillager);
 			}

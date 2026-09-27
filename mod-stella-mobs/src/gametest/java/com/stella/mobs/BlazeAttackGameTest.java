@@ -167,6 +167,85 @@ public class BlazeAttackGameTest {
 		});
 	}
 
+	@GameTest
+	public void aBlazeBallIsNeverSaved(final GameTestHelper helper) {
+		Arena.buildFloor(helper);
+		net.minecraft.world.phys.Vec3 at = helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 4.0, 4.5));
+		com.stella.mobs.projectile.StellaSmallFireball ball = new com.stella.mobs.projectile.StellaSmallFireball(helper.getLevel(), at.x, at.y, at.z, net.minecraft.world.phys.Vec3.ZERO);
+		boolean saved = ball.shouldBeSaved();
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aBlazeBallIsNeverSaved saved={}", TEST, saved);
+		helper.assertFalse(saved, "a blaze ball would be saved with its chunk and reload as a vanilla fireball");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aBlazeBlastSparesDroppedItems(final GameTestHelper helper) {
+		Arena.buildFloor(helper);
+		net.minecraft.world.phys.Vec3 itemAt = helper.absoluteVec(new net.minecraft.world.phys.Vec3(4.5, 1.0, 4.5));
+		net.minecraft.world.entity.item.ItemEntity item = new net.minecraft.world.entity.item.ItemEntity(helper.getLevel(), itemAt.x, itemAt.y, itemAt.z, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BLAZE_ROD));
+		item.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+		item.setPickUpDelay(200);
+		helper.getLevel().addFreshEntity(item);
+		net.minecraft.world.phys.Vec3 from = helper.absoluteVec(new net.minecraft.world.phys.Vec3(5.0, 3.0, 4.5));
+		com.stella.mobs.projectile.StellaSmallFireball ball = new com.stella.mobs.projectile.StellaSmallFireball(helper.getLevel(), from.x, from.y, from.z, new net.minecraft.world.phys.Vec3(0.0, -1.0, 0.0));
+		helper.getLevel().addFreshEntity(ball);
+		helper.runAfterDelay(40L, () -> {
+			boolean landed = ball.isRemoved();
+			boolean kept = item.isAlive();
+			item.discard();
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aBlazeBlastSparesDroppedItems landed={} itemKept={}", TEST, landed, kept);
+			helper.assertTrue(landed, "the ball never landed, so the case proves nothing");
+			helper.assertTrue(kept, "the blast destroyed a dropped blaze rod beside it");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aDeadBossLeavesNoCalledRecord(final GameTestHelper helper) {
+		Blaze boss = blaze(helper, true, true);
+		target(helper, boss);
+		BlazeAttackGoal.forceSummonFor(boss.getUUID());
+		helper.onEachTick(() -> {
+			if (boss.isAlive() && !CALLED.getOrDefault(boss.getUUID(), List.of()).isEmpty()) {
+				boss.kill(helper.getLevel());
+			}
+		});
+		helper.succeedWhen(() -> {
+			helper.assertFalse(boss.isAlive(), "the boss has not called a blaze and died yet");
+			int left = BlazeAttackGoal.calledCount(boss.getUUID());
+			helper.assertTrue(left == 0, "the dead boss still holds " + left + " called blazes on its record");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aDeadBossLeavesNoCalledRecord left={}", TEST, left);
+			CALLED.getOrDefault(boss.getUUID(), List.of()).forEach(Blaze::discard);
+		});
+	}
+
+	@GameTest(maxTicks = 300)
+	public void aCalledBlazeInAnUnloadedChunkStillCounts(final GameTestHelper helper) {
+		Blaze boss = blaze(helper, true, true);
+		target(helper, boss);
+		BlazeAttackGoal.forceSummonFor(boss.getUUID());
+		boolean[] unloaded = {false};
+		// The record is read on the tick the second call lands, before a later call could fill the count again.
+		int[] heldAtSecondCall = {-1};
+		helper.onEachTick(() -> {
+			List<Blaze> called = CALLED.getOrDefault(boss.getUUID(), List.of());
+			if (!unloaded[0] && !called.isEmpty()) {
+				unloaded[0] = true;
+				called.get(0).setRemoved(net.minecraft.world.entity.Entity.RemovalReason.UNLOADED_TO_CHUNK);
+			}
+			if (heldAtSecondCall[0] < 0 && called.size() >= 2) {
+				heldAtSecondCall[0] = BlazeAttackGoal.calledCount(boss.getUUID());
+			}
+		});
+		helper.succeedWhen(() -> {
+			helper.assertTrue(heldAtSecondCall[0] >= 0, "the boss has not made its second call yet");
+			helper.assertTrue(heldAtSecondCall[0] == 2, "after an unload and a second call the boss holds " + heldAtSecondCall[0] + " called blazes, not 2");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aCalledBlazeInAnUnloadedChunkStillCounts held={}", TEST, heldAtSecondCall[0]);
+			CALLED.getOrDefault(boss.getUUID(), List.of()).forEach(Blaze::discard);
+			boss.discard();
+		});
+	}
+
 	private static void assertBeat(final GameTestHelper helper, final String test, final boolean elite, final int interval) {
 		Blaze blaze = blaze(helper, elite, false);
 		target(helper, blaze);
@@ -187,7 +266,12 @@ public class BlazeAttackGameTest {
 	private static Blaze blaze(final GameTestHelper helper, final boolean elite, final boolean boss) {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
-		Blaze blaze = helper.spawnMob(EntityTypes.BLAZE, 2, 3, 2).spawn();
+		// The fixture takes none of the natural spawn rolls, so an ordinary blaze can never roll elite or boss.
+		Blaze blaze = EntityTypes.BLAZE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
+		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		blaze.snapTo(helper.absoluteVec(new net.minecraft.world.phys.Vec3(2.5, 3.0, 2.5)), 0.0F, 0.0F);
+		blaze.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(blaze);
 		if (elite) {
 			Elite.mark(blaze, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
 		}

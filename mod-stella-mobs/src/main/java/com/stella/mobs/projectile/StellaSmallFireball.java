@@ -2,6 +2,10 @@ package com.stella.mobs.projectile;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.level.storage.ValueInput;
@@ -33,21 +37,45 @@ public class StellaSmallFireball extends SmallFireball {
 		}
 	}
 
+	// A ball saved in flight would reload as a vanilla fireball that lights the ground, so none is saved.
+	@Override
+	public boolean shouldBeSaved() {
+		return false;
+	}
+
 	public void setExplosionRadius(final float explosionRadius) {
 		this.explosionRadius = explosionRadius;
 	}
 
 	/**
-	 * The payload. {@code NONE} damages and knocks entities back with zero block damage, and the owner is
-	 * the source so vanilla leaves the caster out of its own blast.
+	 * The payload. {@code NONE} leaves every block alone, and {@link #BODIES_ONLY} leaves every entity that is
+	 * not a body alone, so dropped items, frames and armor stands survive. The owner is the source so vanilla
+	 * leaves the caster out of its own blast.
 	 */
 	protected void onImpact() {
 		if (this.level() instanceof ServerLevel serverLevel) {
 			Entity source = this.getOwner() != null ? this.getOwner() : this;
 			serverLevel.explode(
-				source, this.getX(), this.getY(), this.getZ(), this.explosionRadius, Level.ExplosionInteraction.NONE
+				source, null, BODIES_ONLY, this.getX(), this.getY(), this.getZ(), this.explosionRadius, false, Level.ExplosionInteraction.NONE
 			);
 		}
+	}
+
+	/** Hurts and pushes living bodies only, never an item, a hanging decoration or an armor stand. */
+	public static final ExplosionDamageCalculator BODIES_ONLY = new ExplosionDamageCalculator() {
+		@Override
+		public boolean shouldDamageEntity(final Explosion explosion, final Entity entity) {
+			return isBody(entity) && super.shouldDamageEntity(explosion, entity);
+		}
+
+		@Override
+		public float getKnockbackMultiplier(final Entity entity) {
+			return isBody(entity) ? super.getKnockbackMultiplier(entity) : 0.0F;
+		}
+	};
+
+	private static boolean isBody(final Entity entity) {
+		return entity instanceof LivingEntity && !(entity instanceof ArmorStand);
 	}
 
 	/** No five second ignition on the victim: the blast is the payload. */

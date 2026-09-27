@@ -77,6 +77,8 @@ public class StellaMobs implements ModInitializer {
 		EvokerStorm.register();
 		PiglinWarCall.register();
 		ChunkEncounters.register();
+		com.stella.mobs.behavior.FriendlyPatrol.register();
+		com.stella.mobs.behavior.BlazeAttackGoal.register();
 		ServerEntityEvents.ENTITY_LOAD.register(StellaMobs::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(StellaMobs::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DEATH.register(StellaMobs::onEntityDeath);
@@ -114,6 +116,9 @@ public class StellaMobs implements ModInitializer {
 				EnchantRoller.clearCache();
 			}
 		});
+		// Last among the load listeners, so a friendly mob's buff and full health come after every other change to it.
+		com.stella.mobs.behavior.FriendlyBuffs.register();
+		com.stella.mobs.behavior.WolfPack.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
@@ -123,6 +128,10 @@ public class StellaMobs implements ModInitializer {
 		}
 
 		boolean loadedFromDisk = entity instanceof EntityLoadData loadData && loadData.isLoadedFromDisk();
+		// An elite or boss saved at an older, smaller size grows to the size that ships.
+		if (loadedFromDisk) {
+			Elite.refreshScale(mob);
+		}
 
 		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.
 		if (!loadedFromDisk && !mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {

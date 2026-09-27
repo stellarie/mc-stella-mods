@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -56,6 +58,23 @@ public class BlazeAttackGoal extends Goal {
 		this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
 	}
 
+	/** A boss's record goes with it, and a called blaze leaves its boss's record only when it dies or is discarded. */
+	public static void register() {
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> forget(entity));
+		ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> {
+			if (entity.getRemovalReason() != null && entity.getRemovalReason().shouldDestroy()) {
+				forget(entity);
+			}
+		});
+	}
+
+	private static void forget(final Entity entity) {
+		if (entity instanceof Blaze) {
+			CALLED.remove(entity.getUUID());
+			CALLED.values().forEach(called -> called.remove(entity.getUUID()));
+		}
+	}
+
 	public static void setRecorder(final Recorder newRecorder) {
 		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
@@ -63,6 +82,12 @@ public class BlazeAttackGoal extends Goal {
 	/** Test seam: this blaze's summon roll always lands. */
 	public static void forceSummonFor(final UUID blaze) {
 		FORCED_SUMMONS.add(blaze);
+	}
+
+	/** Test seam: how many called blazes this boss holds on its record. */
+	public static int calledCount(final UUID boss) {
+		List<UUID> called = CALLED.get(boss);
+		return called == null ? 0 : called.size();
 	}
 
 	public static boolean summons(final RandomSource random) {
@@ -141,11 +166,8 @@ public class BlazeAttackGoal extends Goal {
 
 	// An ordinary blaze: it takes none of the spawn rolls, so it can never be elite or a boss itself.
 	private void call(final ServerLevel level, final LivingEntity target) {
+		// A called blaze in an unloaded chunk still counts: only its death or discard frees its place.
 		List<UUID> called = CALLED.computeIfAbsent(this.blaze.getUUID(), key -> new CopyOnWriteArrayList<>());
-		called.removeIf(id -> {
-			Entity entity = level.getEntity(id);
-			return entity == null || !entity.isAlive();
-		});
 		if (called.size() >= BOSS_SUMMON_CAP) {
 			return;
 		}
