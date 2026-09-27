@@ -7,7 +7,9 @@
 		"MobPatrolMixin",
 		"RaidAccessor",
 		"RaidWaveMixin",
-		"RaidsInvoker"
+		"RaidsInvoker",
+		"PatrolRestMixin",
+		"PatrolHostilesMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
