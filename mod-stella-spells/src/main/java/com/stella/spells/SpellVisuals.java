@@ -21,6 +21,16 @@ import net.minecraft.world.phys.Vec3;
 public final class SpellVisuals {
 	static final double BEAM_STEP_BLOCKS = 0.5;
 	static final double VIEW_RADIUS_BLOCKS = 32.0;
+	static final double HELD_CIRCLE_RADIUS = 0.9;
+	static final int HELD_CIRCLE_INTERVAL_TICKS = 10;
+	static final int HELD_OUTER_POINTS = 24;
+	static final int HELD_INNER_POINTS = 8;
+	static final int HELD_GLOW_POINTS = 4;
+	static final int MAX_HELD_PARTICLES_PER_PULSE = HELD_OUTER_POINTS + HELD_INNER_POINTS + HELD_GLOW_POINTS;
+	static final int ACCENT_POINTS = 12;
+	private static final double EFFECT_LINK_STEP_BLOCKS = 0.4;
+	static final int MAX_EFFECT_LINK_RECIPIENTS = 8;
+	static final int MAX_EFFECT_LINK_POINTS = 12;
 	static final int RING_POINTS = 24;
 	static final int BURST_PARTICLES = 24;
 	static final int SPIRAL_POINTS = 20;
@@ -40,10 +50,20 @@ public final class SpellVisuals {
 	}
 
 	/** The shape drawn around the landing spot; ringRadius 0 draws a spiral on the caster instead. */
-	public record Visual(ParticleOptions primary, ParticleOptions secondary, double ringRadius, Integer elementColor) {
+	enum Motif {
+		DART, CAGE, WIND, BLOOM, SHIELD, NOVA, WAVE, EYE, BOUNCE, FALLING,
+		PORTAL, WINGS, VORTEX, SEAL, SIGIL, SOUL_TETHER, CLOUD, SPIKE, NOTES, CURTAIN, BUBBLES, SUMMON
+	}
+
+	public record Visual(
+		ParticleOptions primary, ParticleOptions secondary, double ringRadius, Integer elementColor, Motif motif
+	) {
 		public Visual {
 			if ((ringRadius > 0.0) != (elementColor != null)) {
 				throw new IllegalArgumentException("Area visuals require an element color");
+			}
+			if (motif == null) {
+				throw new IllegalArgumentException("Spell visuals require an effect motif");
 			}
 		}
 	}
@@ -62,7 +82,7 @@ public final class SpellVisuals {
 		visual("briar_snare", ParticleTypes.COMPOSTER, ParticleTypes.SPORE_BLOSSOM_AIR, 0.0),
 		visual("tidal_push", ParticleTypes.SPLASH, ParticleTypes.BUBBLE_POP, 0.0),
 		visual("owls_gaze", ParticleTypes.ENCHANT, ParticleTypes.GLOW, 0.0),
-		visual("slimebound", ParticleTypes.ITEM_SLIME, ParticleTypes.ITEM_SLIME, 0.0),
+		visual("slimebound", ParticleTypes.ITEM_SLIME, ParticleTypes.CLOUD, 0.0),
 		areaVisual("chainstorm", ParticleTypes.FIREWORK, ParticleTypes.ELECTRIC_SPARK, SpellStorms.RADIUS, 0xF5DC65),
 		visual("riftwalk", ParticleTypes.PORTAL, ParticleTypes.REVERSE_PORTAL, 0.0),
 		visual("phoenix_mantle", ParticleTypes.LAVA, ParticleTypes.SMALL_FLAME, 0.0),
@@ -72,7 +92,7 @@ public final class SpellVisuals {
 		visual("aegis_of_the_deep", ParticleTypes.NAUTILUS, ParticleTypes.BUBBLE, 0.0),
 		visual("wither_seal", ParticleTypes.LARGE_SMOKE, ParticleTypes.SOUL, 0.0),
 		areaVisual("time_lock", ParticleTypes.END_ROD, ParticleTypes.WAX_ON, SpellCasting.TIME_LOCK_RADIUS, 0xD16DE6),
-		areaVisual("dragonfall", ParticleTypes.WITCH, ParticleTypes.EXPLOSION, SpellCasting.DRAGONFALL_RADIUS, 0xFF6A3D),
+		areaVisual("dragonfall", ParticleTypes.WITCH, ParticleTypes.FLAME, SpellCasting.DRAGONFALL_RADIUS, 0xFF6A3D),
 		visual("ice_lance", ParticleTypes.ITEM_SNOWBALL, ParticleTypes.SNOWFLAKE, 0.0),
 		visual("soul_siphon", ParticleTypes.SOUL_FIRE_FLAME, ParticleTypes.SOUL, 0.0),
 		visual("venom_dart", ParticleTypes.SNEEZE, ParticleTypes.ITEM_SLIME, 0.0),
@@ -96,8 +116,35 @@ public final class SpellVisuals {
 		areaVisual("battle_hymn", ParticleTypes.NOTE, ParticleTypes.CRIT, MoreSpells.SUPPORT_RADIUS, 0xF5DC65),
 		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0)
 	);
+	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
+		heldColor("spark_shot", 0xF5D35E),
+		heldColor("frostbind", 0x74D7FF),
+		heldColor("gale_step", 0xB8E8FF),
+		heldColor("mending_word", 0xFF9FD5),
+		heldColor("stoneguard", 0x9A704A),
+		heldColor("briar_snare", 0x62C96B),
+		heldColor("tidal_push", 0x4BACE2),
+		heldColor("owls_gaze", 0xB88CFF),
+		heldColor("slimebound", 0x88D64B),
+		heldColor("riftwalk", 0x7A4BA5),
+		heldColor("phoenix_mantle", 0xFF6A3D),
+		heldColor("life_bloom", 0xFF9FD5),
+		heldColor("aegis_of_the_deep", 0x6ABCCB),
+		heldColor("wither_seal", 0xA16B8F),
+		heldColor("ice_lance", 0x74D7FF),
+		heldColor("soul_siphon", 0x7B8CDB),
+		heldColor("venom_dart", 0xA0D84B),
+		heldColor("blinding_flash", 0xF2F2B2),
+		heldColor("ember_brand", 0xFF6A3D),
+		heldColor("quicksilver", 0xC2C9D8),
+		heldColor("tide_lungs", 0x4BACE2),
+		heldColor("berserk", 0xFF6A3D),
+		heldColor("haste_rune", 0xB88CFF),
+		heldColor("shadow_veil", 0x8062D6),
+		heldColor("summon_skeleton", 0xA9BED8)
+	);
 
-	static {
+	static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(SpellVisuals::tick);
 		ServerLifecycleEvents.SERVER_STOPPING.register(SpellVisuals::clearAnimations);
 	}
@@ -111,6 +158,19 @@ public final class SpellVisuals {
 
 	public static Visual visual(final Identifier spell) {
 		return VISUALS.get(spell);
+	}
+
+	static int heldIconColor(final Identifier spell) {
+		Visual visual = VISUALS.get(spell);
+		if (visual == null) {
+			throw new IllegalArgumentException("Unknown spell visual: " + spell);
+		}
+		Integer areaColor = visual.elementColor();
+		Integer color = areaColor != null ? areaColor : HELD_ICON_COLORS.get(spell);
+		if (color == null) {
+			throw new IllegalArgumentException("Missing held icon color: " + spell);
+		}
+		return color;
 	}
 
 	static java.util.Set<Identifier> areaSpells() {
@@ -174,7 +234,60 @@ public final class SpellVisuals {
 				burst(level, caster, spell, visual.secondary(), point.add(0.0, 1.0, 0.0), 0.6);
 			}
 		}
+		accent(level, caster, spell, visual, animationCenter, departure, 0);
 		scheduleAnimations(level, caster, spell, visual, circleColor, animationCenter, radius);
+	}
+
+	/** Twelve bounded points give each spell an effect-specific motion in three phases. */
+	private static void accent(
+		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final Visual visual,
+		final Vec3 center, final Vec3 departure, final int phase
+	) {
+		Vec3 look = caster.getLookAngle();
+		Vec3 side = new Vec3(-look.z, 0.0, look.x);
+		side = side.lengthSqr() < 1.0e-6 ? new Vec3(1.0, 0.0, 0.0) : side.normalize();
+		for (int i = 0; i < ACCENT_POINTS; i++) {
+			double u = (double) i / (ACCENT_POINTS - 1);
+			double angle = 2.0 * Math.PI * i / ACCENT_POINTS + phase * 0.45;
+			double x = Math.cos(angle);
+			double z = Math.sin(angle);
+			Vec3 at = switch (visual.motif()) {
+				case DART -> center.add(look.scale(-1.2 + u * 2.0)).add(side.scale(Math.sin(angle * 2.0) * 0.12));
+				case CAGE -> center.add(x * 0.7, 0.2 + u * 1.7, z * 0.7);
+				case WIND -> departure.add(look.scale(u * 2.0)).add(side.scale(Math.sin(angle) * 0.35)).add(0.0, 0.2 + u * 0.6, 0.0);
+				case BLOOM -> center.add(x * (0.25 + u * 0.7 + phase * 0.15), 0.4 + Math.sin(angle * 2.0) * 0.25,
+					z * (0.25 + u * 0.7 + phase * 0.15));
+				case SHIELD -> center.add(x * (0.9 + phase * 0.05), 0.3 + u * 1.4, z * (0.9 + phase * 0.05));
+				case NOVA -> center.add(x * (0.35 + u * 1.1 + phase * 0.25), 0.25 + u * 0.25,
+					z * (0.35 + u * 1.1 + phase * 0.25));
+				case WAVE -> center.add(x * (0.4 + phase * 0.25 + u * 0.5), 0.2 + Math.sin(angle) * 0.2,
+					z * (0.4 + phase * 0.25 + u * 0.5));
+				case EYE -> center.add(x * 0.55, 1.55 + Math.cos(angle) * 0.18, z * 0.35);
+				case BOUNCE -> center.add(x * 0.55, 0.15 + Math.abs(Math.sin(angle * 2.0)) * 1.2, z * 0.55);
+				case FALLING -> center.add(x * 0.65, 4.0 - phase * 0.7 - u * 3.2, z * 0.65);
+				case PORTAL -> center.add(x * (0.6 + phase * 0.12), 0.25 + u * 1.5, z * (0.6 + phase * 0.12));
+				case WINGS -> center.add(side.scale((i < ACCENT_POINTS / 2 ? -1.0 : 1.0) * (0.3 + (i % 6) * 0.22)))
+					.add(0.0, 1.0 + Math.sin(angle) * 0.7, 0.0);
+				case VORTEX -> center.add(x * (1.5 - u * 1.2 - phase * 0.1), 0.15 + u * 1.2,
+					z * (1.5 - u * 1.2 - phase * 0.1));
+				case SEAL -> center.add(x * (0.6 + (i % 3) * 0.1), 0.8 + u * 0.6, z * (0.6 + (i % 3) * 0.1));
+				case SIGIL -> center.add(x * (i % 2 == 0 ? 0.75 : 0.3), 1.0 + phase * 0.1,
+					z * (i % 2 == 0 ? 0.75 : 0.3));
+				case SOUL_TETHER -> center.add(caster.position().add(0.0, 1.0, 0.0).subtract(center).scale(u))
+					.add(side.scale(Math.sin(angle) * 0.15));
+				case CLOUD -> center.add(x * (0.4 + u * 0.9), 0.35 + Math.sin(angle * 3.0) * 0.25 + phase * 0.1,
+					z * (0.4 + u * 0.9));
+				case SPIKE -> center.add(x * (0.5 + u * 0.2), 0.1 + u * 2.2 + phase * 0.1, z * (0.5 + u * 0.2));
+				case NOTES -> center.add(x * (0.6 + u * 0.4), 0.4 + u * 1.5 + phase * 0.15,
+					z * (0.6 + u * 0.4));
+				case CURTAIN -> center.add(x * 0.65, 0.2 + u * 1.6, z * 0.65);
+				case BUBBLES -> center.add(x * (0.4 + u * 0.1), 0.15 + u * 1.7 + phase * 0.15,
+					z * (0.4 + u * 0.1));
+				case SUMMON -> center.add(x * (0.4 + u * 0.45), 0.1 + u * 1.8 + phase * 0.15,
+					z * (0.4 + u * 0.45));
+			};
+			emitRecorded(level, caster, spell, visual.secondary(), at);
+		}
 	}
 
 	private static void beam(
@@ -239,6 +352,17 @@ public final class SpellVisuals {
 		return emitted;
 	}
 
+	/** Draws one bounded link to a recipient that the gameplay effect actually changed. */
+	static void linkAffected(final ServerPlayer caster, final String spellPath, final Vec3 from, final Vec3 to) {
+		Identifier spell = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, spellPath);
+		Vec3 offset = to.subtract(from);
+		int points = Math.min(MAX_EFFECT_LINK_POINTS, Math.max(2, (int) Math.ceil(offset.length() / EFFECT_LINK_STEP_BLOCKS)));
+		DustParticleOptions dust = new DustParticleOptions(heldIconColor(spell), 1.0F);
+		for (int i = 1; i <= points; i++) {
+			emitRecorded(caster.level(), caster, spell, dust, from.add(offset.scale((double) i / points)));
+		}
+	}
+
 	private static void scheduleAnimations(
 		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final Visual visual,
 		final int elementColor, final Vec3 center, final double radius
@@ -259,6 +383,9 @@ public final class SpellVisuals {
 
 	private static void tick(final MinecraftServer server) {
 		int now = server.getTickCount();
+		if (now % HELD_CIRCLE_INTERVAL_TICKS == 0) {
+			drawHeldCircles(server);
+		}
 		List<Animation> due = new ArrayList<>();
 		synchronized (PENDING_ANIMATIONS) {
 			for (Iterator<Animation> iterator = PENDING_ANIMATIONS.iterator(); iterator.hasNext(); ) {
@@ -280,6 +407,45 @@ public final class SpellVisuals {
 		}
 	}
 
+	private static void drawHeldCircles(final MinecraftServer server) {
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			if (!player.isAlive() || player.isSpectator()) {
+				continue;
+			}
+			SpellbookItem book = heldBook(player);
+			if (book == null) {
+				continue;
+			}
+			ServerLevel level = player.level();
+			Identifier spell = book.definition().id();
+			DustParticleOptions dust = new DustParticleOptions(heldIconColor(spell), 1.25F);
+			Vec3 feet = player.position();
+			for (int i = 0; i < HELD_OUTER_POINTS; i++) {
+				double angle = 2.0 * Math.PI * i / HELD_OUTER_POINTS;
+				Vec3 at = feet.add(Math.cos(angle) * HELD_CIRCLE_RADIUS, 0.08, Math.sin(angle) * HELD_CIRCLE_RADIUS);
+				emitRecorded(level, player, spell, dust, at);
+			}
+			for (int i = 0; i < HELD_INNER_POINTS; i++) {
+				double angle = 2.0 * Math.PI * i / HELD_INNER_POINTS;
+				Vec3 at = feet.add(Math.cos(angle) * HELD_CIRCLE_RADIUS * 0.55, 0.10,
+					Math.sin(angle) * HELD_CIRCLE_RADIUS * 0.55);
+				emitRecorded(level, player, spell, dust, at);
+			}
+			for (int i = 0; i < HELD_GLOW_POINTS; i++) {
+				double angle = 2.0 * Math.PI * i / HELD_GLOW_POINTS;
+				Vec3 at = feet.add(Math.cos(angle) * HELD_CIRCLE_RADIUS, 0.12, Math.sin(angle) * HELD_CIRCLE_RADIUS);
+				emitRecorded(level, player, spell, ParticleTypes.GLOW, at);
+			}
+		}
+	}
+
+	private static SpellbookItem heldBook(final ServerPlayer player) {
+		if (player.getMainHandItem().getItem() instanceof SpellbookItem book) {
+			return book;
+		}
+		return player.getOffhandItem().getItem() instanceof SpellbookItem book ? book : null;
+	}
+
 	private static void clearAnimations(final MinecraftServer server) {
 		synchronized (PENDING_ANIMATIONS) {
 			PENDING_ANIMATIONS.removeIf(animation -> animation.level().getServer() == server);
@@ -289,16 +455,18 @@ public final class SpellVisuals {
 	private static void animate(final Animation animation) {
 		if (animation.radius() > 0.0) {
 			circlePulse(animation);
-			return;
-		}
-		String path = animation.spell().getPath();
-		if (path.equals("gale_step") || path.equals("riftwalk")) {
-			spiral(animation.level(), animation.caster(), animation.spell(), animation.visual().secondary(), animation.center());
 		} else {
-			burst(animation.level(), animation.caster(), animation.spell(), animation.visual().secondary(),
-				animation.center().add(0.0, 0.6 + animation.phase() * 0.15, 0.0),
-				0.35 + animation.phase() * 0.15);
+			String path = animation.spell().getPath();
+			if (path.equals("gale_step") || path.equals("riftwalk")) {
+				spiral(animation.level(), animation.caster(), animation.spell(), animation.visual().secondary(), animation.center());
+			} else {
+				burst(animation.level(), animation.caster(), animation.spell(), animation.visual().secondary(),
+					animation.center().add(0.0, 0.6 + animation.phase() * 0.15, 0.0),
+					0.35 + animation.phase() * 0.15);
+			}
 		}
+		accent(animation.level(), animation.caster(), animation.spell(), animation.visual(),
+			animation.center(), animation.caster().position(), animation.phase());
 	}
 
 	private static void circlePulse(final Animation animation) {
@@ -352,7 +520,8 @@ public final class SpellVisuals {
 	private static Map.Entry<Identifier, Visual> visual(
 		final String path, final ParticleOptions primary, final ParticleOptions secondary, final double ringRadius
 	) {
-		return Map.entry(Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path), new Visual(primary, secondary, ringRadius, null));
+		return Map.entry(Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path),
+			new Visual(primary, secondary, ringRadius, null, motifFor(path)));
 	}
 
 	private static Map.Entry<Identifier, Visual> areaVisual(
@@ -361,8 +530,40 @@ public final class SpellVisuals {
 	) {
 		return Map.entry(
 			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path),
-			new Visual(primary, secondary, radius, elementColor)
+			new Visual(primary, secondary, radius, elementColor, motifFor(path))
 		);
+	}
+
+	private static Motif motifFor(final String path) {
+		return switch (path) {
+			case "spark_shot", "ice_lance", "venom_dart" -> Motif.DART;
+			case "frostbind", "briar_snare" -> Motif.CAGE;
+			case "gale_step", "quicksilver", "tailwind" -> Motif.WIND;
+			case "mending_word", "life_bloom", "sanctuary", "purify" -> Motif.BLOOM;
+			case "stoneguard", "aegis_of_the_deep", "bulwark_hymn" -> Motif.SHIELD;
+			case "static_lash", "wardens_roar", "blinding_flash", "berserk", "frost_nova", "flame_ring" -> Motif.NOVA;
+			case "tidal_push" -> Motif.WAVE;
+			case "owls_gaze" -> Motif.EYE;
+			case "slimebound" -> Motif.BOUNCE;
+			case "chainstorm", "dragonfall" -> Motif.FALLING;
+			case "riftwalk" -> Motif.PORTAL;
+			case "phoenix_mantle" -> Motif.WINGS;
+			case "void_well", "gravity" -> Motif.VORTEX;
+			case "wither_seal", "ember_brand", "sapping_hex" -> Motif.SEAL;
+			case "time_lock", "haste_rune" -> Motif.SIGIL;
+			case "soul_siphon" -> Motif.SOUL_TETHER;
+			case "plague_cloud" -> Motif.CLOUD;
+			case "earthspike" -> Motif.SPIKE;
+			case "battle_hymn" -> Motif.NOTES;
+			case "shadow_veil" -> Motif.CURTAIN;
+			case "tide_lungs" -> Motif.BUBBLES;
+			case "summon_skeleton" -> Motif.SUMMON;
+			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
+		};
+	}
+
+	private static Map.Entry<Identifier, Integer> heldColor(final String path, final int color) {
+		return Map.entry(Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path), color);
 	}
 
 	private record Animation(

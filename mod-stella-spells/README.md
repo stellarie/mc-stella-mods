@@ -1,8 +1,8 @@
 # mod-stella-spells
 
 Forty-two spellbooks with distinct icons, each casting one fixed spell, and eight enchantments that change how
-spells behave. Witches, strays, and spellcasting illagers cast spells of their own. Install the mod on the server
-and every client; the jar holds the book textures.
+spells behave. Witches, strays, and spellcasting illagers cast spells of their own. Install the same jar on the
+server and every client. The server runs spell logic; clients render icons, empty hands, and visual effects.
 
 ## Using a spellbook
 
@@ -66,6 +66,11 @@ hit players, pets, or villagers. Support area spells affect the caster or nearby
 
 Each book's tooltip lists its target, how to cast it, what it does, and its base cooldown.
 
+## Client visuals
+
+While a spellbook is selected in either hand, a colored glowing circle follows the player's feet.
+The book model remains visible in the inventory and disappears in first-person and third-person hands.
+
 Every successful cast draws spell-specific particles, sent from the server to nearby players:
 
 - **Hostile** spells draw a beam from the caster to the target and a burst on it. Static Lash also
@@ -76,7 +81,11 @@ Every successful cast draws spell-specific particles, sent from the server to ne
 - **Riftwalk** draws a portal spiral where the caster left and where they arrived.
 
 Each magic circle has an outer ring, inner ring, spokes, and two delayed pulses. Other successful
-casts also add delayed particles. A failed cast draws nothing. The particles are listed in `SpellVisuals`.
+casts also add delayed particles. Each of the 42 spells adds a named motion suited to its effect.
+Frostbind closes an ice cage; Chainstorm falls in a column; Battle Hymn lifts golden notes.
+Static Lash connects selected chained victims. Sanctuary, Purify, and the hymns link affected allies.
+Visual links stop after eight recipients to bound particles; the gameplay effect still reaches every eligible ally.
+A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
 ## Imbued weapons, arrows and chestplates
 
@@ -213,8 +222,9 @@ cd mod-stella-spells
 
 The last command runs the suite with the equips mod loaded; its log must list
 `mod-stella-equips-enchants` among the loaded mods. Run the GameTest command five separate times
-for a release gate, and copy each log before the next run. Five optional tests remain visible:
-the icon and circle review, the Spark Shot boundary check, the isolated Chainstorm outside-health check,
-the Ice Lance pierce check, and the client-log check.
+for a release gate, and copy each log before the next run. Eight optional tests remain visible:
+the icon and circle review, held-hand rendering, all spell effects, the Spark Shot boundary check,
+the isolated Chainstorm outside-health check, the Ice Lance pierce check, the Earthspike lift check,
+and the client-log check.
 
 The jar is `build/libs/mod-stella-spells-0.1.0+26.3.jar`.

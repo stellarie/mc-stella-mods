@@ -15,6 +15,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ClipContext;
@@ -44,6 +45,8 @@ public class SpellVisualsGameTest {
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
 			SpellVisuals.Visual visual = SpellVisuals.visual(definition.id());
 			helper.assertTrue(visual != null, definition.id() + " has no visual");
+			helper.assertTrue(visual.motif() != null, definition.id() + " has no named effect motif");
+			helper.assertTrue(SpellVisuals.heldIconColor(definition.id()) >= 0, definition.id() + " has no held icon color");
 			helper.assertTrue(primaries.add(visual.primary().getType()), definition.id() + " shares its primary particle with another spell");
 		}
 		LOG.info("[SPELLTEST] test=everySpellHasItsOwnVisual RESULT distinct={}", primaries.size());
@@ -234,6 +237,150 @@ public class SpellVisualsGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 80)
+	public void heldSpellbookCircleFollowsFeetAndStopsAfterSwitch(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "heldSpellbookCircleFollowsFeetAndStopsAfterSwitch");
+		ServerPlayer player = addPlayer(helper);
+		SpellbookItem book = Spellbooks.SPARK_SHOT;
+		SpellbookItem offhandBook = Spellbooks.CATALOG.get(1);
+		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
+		Vec3 firstFeet = player.position();
+		ServerPlayer farViewer = addPlayer(helper);
+		farViewer.setPos(firstFeet.x + SpellVisuals.VIEW_RADIUS_BLOCKS + 32.0, firstFeet.y, firstFeet.z);
+		int[] seen = {0};
+		int[] totalAfterSwitch = {0};
+		helper.runAfterDelay(11L, () -> {
+			List<SpellVisualLog.Played> dust = heldDust(player, book);
+			helper.assertTrue(!dust.isEmpty(), "a held spellbook emitted no foot circle");
+			helper.assertTrue(dust.stream().anyMatch(entry -> atFootRing(entry.at(), firstFeet)
+				&& entry.casterSaw() && dustRgb((DustParticleOptions) entry.particle()) == 0xF5D35E),
+				"Spark Shot showed no visible lightning-colored circle at the holder's feet");
+			seen[0] = dust.size();
+			player.setItemInHand(InteractionHand.OFF_HAND, offhandBook.getDefaultInstance());
+			player.setPos(firstFeet.x + 3.0, firstFeet.y, firstFeet.z);
+		});
+		helper.runAfterDelay(22L, () -> {
+			List<SpellVisualLog.Played> dust = heldDust(player, book);
+			helper.assertTrue(dust.size() > seen[0], "the held circle stopped before the book was deselected");
+			helper.assertTrue(heldDust(player, offhandBook).isEmpty(), "the offhand color replaced a held main-hand book");
+			helper.assertTrue(dust.subList(seen[0], dust.size()).stream()
+				.anyMatch(entry -> atFootRing(entry.at(), player.position())), "the held circle did not follow the player");
+			seen[0] = dust.size();
+			player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		});
+		helper.runAfterDelay(33L, () -> {
+			List<SpellVisualLog.Played> offhandDust = heldDust(player, offhandBook);
+			helper.assertTrue(!offhandDust.isEmpty(), "an offhand spellbook emitted no circle");
+			helper.assertTrue(offhandDust.stream().anyMatch(entry -> atFootRing(entry.at(), player.position())
+				&& dustRgb((DustParticleOptions) entry.particle()) == 0x74D7FF),
+				"Frostbind showed no frost-colored offhand circle");
+			helper.assertTrue(heldDust(player, book).size() == seen[0], "the old main-hand color kept emitting");
+			int count = SpellVisualLog.played(player.getUUID()).size();
+			int maxPulses = 33 / SpellVisuals.HELD_CIRCLE_INTERVAL_TICKS + 2;
+			helper.assertTrue(count <= maxPulses * SpellVisuals.MAX_HELD_PARTICLES_PER_PULSE,
+				"the held circle exceeded its 33-tick dust and glow budget: " + count);
+			long glow = SpellVisualLog.played(player.getUUID()).stream()
+				.filter(entry -> entry.particle().getType() == net.minecraft.core.particles.ParticleTypes.GLOW).count();
+			helper.assertTrue(glow > 0 && glow <= maxPulses * SpellVisuals.HELD_GLOW_POINTS,
+				"the held circle has an invalid glow count: " + glow);
+			for (SpellVisualLog.Played entry : SpellVisualLog.played(player.getUUID())) {
+				long nearby = helper.getLevel().players().stream()
+					.filter(viewer -> viewer.position().distanceToSqr(entry.at()) <= SpellVisuals.VIEW_RADIUS_BLOCKS * SpellVisuals.VIEW_RADIUS_BLOCKS)
+					.count();
+				helper.assertTrue(entry.particles() <= nearby, "the held aura reached a distant viewer");
+			}
+			player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+			player.setItemInHand(InteractionHand.MAIN_HAND, Spellbooks.SCROLLS.get(0).getDefaultInstance());
+			totalAfterSwitch[0] = SpellVisualLog.played(player.getUUID()).size();
+		});
+		helper.runAfterDelay(44L, () -> {
+			helper.assertTrue(SpellVisualLog.played(player.getUUID()).size() == totalAfterSwitch[0],
+				"a held scroll emitted a spellbook circle");
+			LOG.info("[SPELLTEST] test=heldSpellbookCircleFollowsFeetAndStopsAfterSwitch RESULT mainHand=true offHand=true bothHandsMainPriority=true colorChanged=true moved=true scroll=false stopped=true particles={}",
+				totalAfterSwitch[0]);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void staticLashLinksOnlyItsActualChainVictim(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "staticLashLinksOnlyItsActualChainVictim");
+		helper.setTime(18_000L);
+		ServerPlayer caster = addPlayer(helper);
+		Mob primary = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
+		Mob secondary = helper.spawnMob(EntityTypes.ZOMBIE, 3, 1, 7).withNoFreeWill().spawn();
+		Mob outside = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 14).withNoFreeWill().spawn();
+		SpellbookItem book = Spellbooks.CATALOG.stream()
+			.filter(candidate -> candidate.definition().id().getPath().equals("static_lash"))
+			.findFirst().orElseThrow();
+		cast(helper, caster, book);
+		Vec3 midpoint = primary.getBoundingBox().getCenter().add(secondary.getBoundingBox().getCenter()).scale(0.5);
+		List<SpellVisualLog.Played> played = SpellVisualLog.played(caster.getUUID(), book.definition().id());
+		boolean linked = played.stream().anyMatch(entry -> entry.particle() instanceof DustParticleOptions
+			&& entry.at().distanceTo(midpoint) < 0.25 && entry.casterSaw());
+		boolean outsideLinked = played.stream().anyMatch(entry -> entry.particle() instanceof DustParticleOptions
+			&& entry.at().distanceTo(outside.getBoundingBox().getCenter()) < 0.5);
+		helper.assertTrue(linked && !outsideLinked, "Static Lash did not link only its selected chain victim");
+		LOG.info("[SPELLTEST] test=staticLashLinksOnlyItsActualChainVictim RESULT linked={} outsideLinked={}", linked, outsideLinked);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void bulwarkHymnLinksTheAllyItBlessed(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "bulwarkHymnLinksTheAllyItBlessed");
+		ServerPlayer caster = addPlayer(helper);
+		ServerPlayer ally = addPlayer(helper);
+		Vec3 allyFeet = caster.position().add(3.0, 0.0, 0.0);
+		ally.setPos(allyFeet.x, allyFeet.y, allyFeet.z);
+		SpellbookItem book = Spellbooks.CATALOG.stream()
+			.filter(candidate -> candidate.definition().id().getPath().equals("bulwark_hymn"))
+			.findFirst().orElseThrow();
+		cast(helper, caster, book);
+		Vec3 midpoint = caster.position().add(0.0, 1.0, 0.0).add(ally.position().add(0.0, 1.0, 0.0)).scale(0.5);
+		boolean linked = SpellVisualLog.played(caster.getUUID(), book.definition().id()).stream()
+			.anyMatch(entry -> entry.particle() instanceof DustParticleOptions && entry.at().distanceTo(midpoint) < 0.3 && entry.casterSaw());
+		helper.assertTrue(linked, "Bulwark Hymn blessed an ally without a visible link");
+		LOG.info("[SPELLTEST] test=bulwarkHymnLinksTheAllyItBlessed RESULT linked={}", linked);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void bulwarkHymnBlessesTwentyAlliesWithBoundedVisualLinks(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "bulwarkHymnBlessesTwentyAlliesWithBoundedVisualLinks");
+		ServerPlayer caster = addPlayer(helper);
+		List<Mob> allies = new ArrayList<>();
+		for (int z = 5; z <= 8; z++) {
+			for (int x = 0; x < 5; x++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+				allies.add(helper.spawnMob(EntityTypes.VILLAGER, x, 1, z).withNoFreeWill().spawn());
+			}
+		}
+		SpellbookItem book = Spellbooks.CATALOG.stream()
+			.filter(candidate -> candidate.definition().id().getPath().equals("bulwark_hymn"))
+			.findFirst().orElseThrow();
+		cast(helper, caster, book);
+		long blessed = allies.stream().filter(ally -> ally.hasEffect(net.minecraft.world.effect.MobEffects.ABSORPTION)).count();
+		helper.assertTrue(blessed == allies.size(), "Bulwark Hymn missed " + (allies.size() - blessed) + " allies");
+		long links = SpellVisualLog.played(caster.getUUID(), book.definition().id()).stream()
+			.filter(entry -> entry.particle() instanceof DustParticleOptions && entry.at().y > caster.position().y + 0.6)
+			.count();
+		helper.assertTrue(links > 0 && links <= SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS * SpellVisuals.MAX_EFFECT_LINK_POINTS,
+			"Bulwark Hymn emitted " + links + " link points for " + allies.size() + " allies");
+		LOG.info("[SPELLTEST] test=bulwarkHymnBlessesTwentyAlliesWithBoundedVisualLinks RESULT allies={} blessed={} linkPoints={}", allies.size(), blessed, links);
+		helper.succeed();
+	}
+
+	private static List<SpellVisualLog.Played> heldDust(final ServerPlayer player, final SpellbookItem book) {
+		return SpellVisualLog.played(player.getUUID(), book.definition().id()).stream()
+			.filter(entry -> entry.particle() instanceof DustParticleOptions)
+			.toList();
+	}
+
+	private static boolean atFootRing(final Vec3 at, final Vec3 feet) {
+		return Math.abs(horizontalDistance(at, feet) - SpellVisuals.HELD_CIRCLE_RADIUS) < 0.25
+			&& Math.abs(at.y - feet.y) < 0.35;
+	}
+
 	private static void cast(final GameTestHelper helper, final ServerPlayer player, final SpellbookItem book) {
 		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
 		InteractionResult result = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
@@ -247,7 +394,27 @@ public class SpellVisualsGameTest {
 		boolean near = played.stream().anyMatch(entry -> entry.particle().getType() == visual.primary().getType()
 			&& entry.casterSaw() && entry.particles() > 0 && entry.at().distanceTo(where) <= NEAR);
 		helper.assertTrue(near, book.definition().id() + " played no visible " + visual.primary().getType() + " near " + where + ": " + played);
-		LOG.info("[SPELLTEST] visual spell={} particle={} at={} shapes={}", book.definition().id(), BuiltInRegistries.PARTICLE_TYPE.getKey(visual.primary().getType()), where, played.size());
+		long accentPoints = played.stream()
+			.filter(entry -> entry.particle().getType() == visual.secondary().getType() && entry.casterSaw() && entry.particles() > 0)
+			.map(SpellVisualLog.Played::at).distinct().count();
+		helper.assertTrue(accentPoints >= SpellVisuals.ACCENT_POINTS,
+			book.definition().id() + " has only " + accentPoints + " effect-specific accent points");
+		String path = book.definition().id().getPath();
+		if (path.equals("frostbind") || path.equals("chainstorm") || path.equals("battle_hymn")) {
+			List<SpellVisualLog.Played> accents = played.stream()
+				.filter(entry -> entry.particle().getType() == visual.secondary().getType() && entry.casterSaw())
+				.toList();
+			double lowest = accents.stream().mapToDouble(entry -> entry.at().y).min().orElse(where.y);
+			double highest = accents.stream().mapToDouble(entry -> entry.at().y).max().orElse(where.y);
+			helper.assertTrue(highest - lowest > 1.0, path + " has no visible vertical " + visual.motif() + " motion");
+		}
+		if (path.equals("soul_siphon")) {
+			helper.assertTrue(played.stream().anyMatch(entry -> entry.particle().getType() == visual.secondary().getType()
+				&& entry.at().distanceTo(player.position().add(0.0, 1.0, 0.0)) <= NEAR),
+				"Soul Siphon has no soul tether reaching the caster");
+		}
+		LOG.info("[SPELLTEST] visual spell={} motif={} particle={} at={} shapes={} accentPoints={}", book.definition().id(),
+			visual.motif(), BuiltInRegistries.PARTICLE_TYPE.getKey(visual.primary().getType()), where, played.size(), accentPoints);
 	}
 
 	private static void assertMagicCircle(

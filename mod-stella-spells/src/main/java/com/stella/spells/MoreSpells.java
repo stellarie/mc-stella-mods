@@ -244,9 +244,15 @@ public final class MoreSpells {
 	// The caster and every other player close by; a cast that heals nobody does not count.
 	static boolean applySanctuary(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		boolean healed = heal(caster, SANCTUARY_SELF_HEAL * power(modifiers));
+		int linked = 0;
 		for (ServerPlayer ally : caster.level().players()) {
 			if (ally != caster && ally.isAlive() && ally.distanceToSqr(caster) <= SANCTUARY_RADIUS * SANCTUARY_RADIUS) {
-				healed |= heal(ally, SANCTUARY_ALLY_HEAL * power(modifiers));
+				boolean allyHealed = heal(ally, SANCTUARY_ALLY_HEAL * power(modifiers));
+				healed |= allyHealed;
+				if (allyHealed && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
+					SpellVisuals.linkAffected(caster, "sanctuary", caster.position().add(0.0, 1.0, 0.0), ally.position().add(0.0, 1.0, 0.0));
+					linked++;
+				}
 			}
 		}
 		return healed;
@@ -256,6 +262,7 @@ public final class MoreSpells {
 	static boolean applyPurify(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		double radius = PURIFY_RADIUS * modifiers.radiusMultiplier();
 		boolean cleared = false;
+		int linked = 0;
 		for (ServerPlayer player : caster.level().players()) {
 			if (player.isAlive() && (player == caster || player.distanceToSqr(caster) <= radius * radius)) {
 				List<Holder<MobEffect>> harmful = player.getActiveEffects().stream()
@@ -264,6 +271,10 @@ public final class MoreSpells {
 					.toList();
 				harmful.forEach(player::removeEffect);
 				cleared |= !harmful.isEmpty();
+				if (player != caster && !harmful.isEmpty() && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
+					SpellVisuals.linkAffected(caster, "purify", caster.position().add(0.0, 1.0, 0.0), player.position().add(0.0, 1.0, 0.0));
+					linked++;
+				}
 			}
 		}
 		return cleared;
@@ -303,23 +314,31 @@ public final class MoreSpells {
 	}
 
 	static boolean applyBulwarkHymn(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.ABSORPTION, modifiers.durationTicks(BULWARK_TICKS, true), BULWARK_AMPLIFIER));
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.ABSORPTION, modifiers.durationTicks(BULWARK_TICKS, true), BULWARK_AMPLIFIER), "bulwark_hymn");
 	}
 
 	static boolean applyTailwind(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.SPEED, modifiers.durationTicks(TAILWIND_TICKS, true), TAILWIND_AMPLIFIER));
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.SPEED, modifiers.durationTicks(TAILWIND_TICKS, true), TAILWIND_AMPLIFIER), "tailwind");
 	}
 
 	static boolean applyBattleHymn(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.STRENGTH, modifiers.durationTicks(BATTLE_HYMN_TICKS, true), BATTLE_HYMN_AMPLIFIER));
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.STRENGTH, modifiers.durationTicks(BATTLE_HYMN_TICKS, true), BATTLE_HYMN_AMPLIFIER), "battle_hymn");
 	}
 
 	// The caster and every ally around: players, villagers, golems and tamed pets, never a hostile.
-	private static boolean bless(final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers, final MobEffectInstance effect) {
+	private static boolean bless(
+		final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers, final MobEffectInstance effect,
+		final String spellPath
+	) {
 		double radius = SUPPORT_RADIUS * modifiers.radiusMultiplier();
+		int linked = 0;
 		for (net.minecraft.world.entity.LivingEntity ally : caster.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
 			caster.getBoundingBox().inflate(radius), candidate -> isAlly(candidate) && candidate.distanceToSqr(caster) <= radius * radius)) {
-			ally.addEffect(new MobEffectInstance(effect), caster);
+			if (ally.addEffect(new MobEffectInstance(effect), caster) && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
+				SpellVisuals.linkAffected(caster, spellPath,
+					caster.position().add(0.0, 1.0, 0.0), ally.position().add(0.0, 1.0, 0.0));
+				linked++;
+			}
 		}
 		caster.addEffect(new MobEffectInstance(effect), caster);
 		return true;
