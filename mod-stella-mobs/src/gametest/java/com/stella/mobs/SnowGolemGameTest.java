@@ -236,14 +236,19 @@ public final class SnowGolemGameTest {
 	public void anEliteBallDealsOneDamageAtTwoLevels(final GameTestHelper helper) {
 		prepare(helper, ALWAYS_ELITE);
 		pen(helper, 2, 2, 4, 8);
-		BlockPos farPad = helper.absolutePos(new BlockPos(FAR_SPOT, 0, FAR_SPOT));
+		// The far spot is picked where the area level differs from the near one: the grid can set this test
+		// anywhere, and past the distance cap every spot shares the top level.
+		int[] farSpot = farSpotAtAnotherLevel(helper);
+		final int FAR_X = farSpot[0];
+		final int FAR_Z = farSpot[1];
+		BlockPos farPad = helper.absolutePos(new BlockPos(FAR_X, 0, FAR_Z));
 		helper.getLevel().setChunkForced(farPad.getX() >> 4, farPad.getZ() >> 4, true);
-		pad(helper, FAR_SPOT - 1, FAR_SPOT - 1, FAR_SPOT + 1, FAR_SPOT + 5);
-		pen(helper, FAR_SPOT - 1, FAR_SPOT - 1, FAR_SPOT + 1, FAR_SPOT + 5);
+		pad(helper, FAR_X - 1, FAR_Z - 1, FAR_X + 1, FAR_Z + 5);
+		pen(helper, FAR_X - 1, FAR_Z - 1, FAR_X + 1, FAR_Z + 5);
 
 		// Cows wear nothing and roll no gear, so the victim's own armour cannot absorb part of the literal.
 		Cow nearTarget = helper.spawnMob(EntityTypes.COW, 3, 1, 6).withNoFreeWill().spawn();
-		Cow farTarget = helper.spawnMob(EntityTypes.COW, FAR_SPOT, 1, FAR_SPOT + 3)
+		Cow farTarget = helper.spawnMob(EntityTypes.COW, FAR_X, 1, FAR_Z + 3)
 			.withNoFreeWill()
 			.spawn();
 		nearTarget.setPersistenceRequired();
@@ -259,7 +264,7 @@ public final class SnowGolemGameTest {
 		// The clause is the ball's own literal, so the victims are cows: a mob that carries no armour can
 		// only ever read the amount the ball handed to the server.
 		SnowGolem[] near = shelteredSubject(helper, ALWAYS_ELITE, 3, 3, nearArrived);
-		SnowGolem[] far = shelteredSubject(helper, ALWAYS_ELITE, FAR_SPOT, FAR_SPOT, farArrived);
+		SnowGolem[] far = shelteredSubject(helper, ALWAYS_ELITE, FAR_X, FAR_Z, farArrived);
 
 		helper.onEachTick(() -> {
 			promote(near, nearArrived);
@@ -283,7 +288,7 @@ public final class SnowGolemGameTest {
 			helper.assertTrue(nearArrived[0], "the pinned chance did not make the first golem elite on arrival");
 			helper.assertTrue(nearElite[0], "the first golem threw its ball while not elite");
 			helper.assertTrue(farElite[0], "the second golem threw its ball while not elite");
-			helper.assertTrue(farLevel > nearLevel, "the two subjects share area level " + nearLevel);
+			helper.assertTrue(farLevel != nearLevel, "the two subjects share area level " + nearLevel);
 			helper.assertTrue(nearDrop[0] > 0.0F, "the near elite's ball never landed");
 			helper.assertValueEqual(
 				Float.valueOf(nearDrop[0]), Float.valueOf(SnowGolemCold.ELITE_BALL_DAMAGE),
@@ -364,6 +369,27 @@ public final class SnowGolemGameTest {
 		} catch (IOException e) {
 			helper.fail("config store file error: " + e);
 		}
+	}
+
+	// A spot FAR_SPOT blocks out, along whichever diagonal reaches another area level than the near subject's.
+	private static int[] farSpotAtAnotherLevel(final GameTestHelper helper) {
+		int nearLevel = probeLevel(helper, 3, 3);
+		int[][] candidates = {{FAR_SPOT, FAR_SPOT}, {-FAR_SPOT, -FAR_SPOT}, {FAR_SPOT, -FAR_SPOT}, {-FAR_SPOT, FAR_SPOT}};
+		for (int[] candidate : candidates) {
+			if (probeLevel(helper, candidate[0], candidate[1]) != nearLevel) {
+				return candidate;
+			}
+		}
+		return candidates[0];
+	}
+
+	private static int probeLevel(final GameTestHelper helper, final int x, final int z) {
+		SnowGolem probe = EntityTypes.SNOW_GOLEM.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
+		net.minecraft.world.phys.Vec3 at = helper.absoluteVec(new net.minecraft.world.phys.Vec3(x + 0.5, 1.0, z + 0.5));
+		probe.setPos(at.x, at.y, at.z);
+		int level = SpawnScaling.areaLevel(probe);
+		probe.discard();
+		return level;
 	}
 
 	private static void prepare(final GameTestHelper helper, final String config) {

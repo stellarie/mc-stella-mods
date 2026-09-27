@@ -4,7 +4,11 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.OceanBand;
 import com.stella.mobs.gear.GearTier;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -140,58 +144,137 @@ public class OceanBandGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void bandHasSevenRidersThreeBowsAndACaptain(final GameTestHelper helper) {
+	public void aBandHasThreeToFiveHelmedRidersWithBowsOrAxes(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		buildWater(helper);
-
-		// The spawn trigger is pinned off, so the band in this test comes from the queue alone. Without
-		// this, a naturally spawned dolphin in the same level adds a second band and the count doubles.
-		OceanBand.pinChance(0.0);
 		Dolphin first = helper.spawnMob(EntityTypes.DOLPHIN, 4, POOL_Y + 1, 4).spawn();
-		OceanBand.queueForTest(first);
+		OceanBand.queueForTest(first, 0, OceanBand.Leader.NONE);
 		OceanBand.drain(level);
-		int mounts = OceanBand.mountsOf(first);
-		int riders = 0;
-		int bows = 0;
-		int swords = 0;
-		int captains = 0;
-		int captainSwords = 0;
+		List<Skeleton> members = OceanBand.membersOf(first);
+		long armed = members.stream().filter(member -> member.getMainHandItem().is(Items.BOW) || member.getMainHandItem().is(Items.IRON_AXE)).count();
+		long helmed = members.stream().filter(member -> !member.getItemBySlot(EquipmentSlot.HEAD).isEmpty()).count();
+		long elites = members.stream().filter(Elite::isElite).count();
+		result("aBandHasThreeToFiveHelmedRidersWithBowsOrAxes", "riders=" + members.size() + " mounts=" + OceanBand.mountsOf(first)
+			+ " armed=" + armed + " helmed=" + helmed + " elites=" + elites + " detail=" + OceanBand.describeBand(first));
+		helper.assertTrue(members.size() >= OceanBand.MIN_RIDERS && members.size() <= OceanBand.MAX_RIDERS, "the band holds " + members.size() + " riders");
+		helper.assertTrue(armed == members.size() && helmed == members.size(), "a rider lacks a bow or axe or a helmet: " + OceanBand.describeBand(first));
+		helper.assertTrue(elites == 0, "a band with no leader has " + elites + " elites");
+		helper.succeed();
+	}
 
-		for (Skeleton skeleton : OceanBand.membersOf(first)) {
-			riders++;
-			boolean bow = skeleton.getMainHandItem().is(Items.BOW);
-			boolean sword = skeleton.getMainHandItem().is(Items.IRON_SWORD);
+	@GameTest(maxTicks = 200)
+	public void anEliteLeaderSwingsAnAxeOnAVeryFastDolphin(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		buildWater(helper);
+		Dolphin first = helper.spawnMob(EntityTypes.DOLPHIN, 4, POOL_Y + 1, 4).spawn();
+		OceanBand.queueForTest(first, 4, OceanBand.Leader.ELITE);
+		OceanBand.drain(level);
+		List<Skeleton> leaders = OceanBand.membersOf(first).stream().filter(Elite::isElite).toList();
+		Skeleton leader = leaders.isEmpty() ? null : leaders.get(0);
+		boolean fast = leader != null && leader.getVehicle() instanceof Dolphin mount
+			&& mount.getAttribute(Attributes.MOVEMENT_SPEED).getModifier(OceanBand.FAST_DOLPHIN_ID) != null;
+		result("anEliteLeaderSwingsAnAxeOnAVeryFastDolphin", "leaders=" + leaders.size() + " axe=" + (leader != null && leader.getMainHandItem().is(Items.IRON_AXE)) + " fast=" + fast);
+		helper.assertTrue(leaders.size() == 1 && leader.getMainHandItem().is(Items.IRON_AXE), "the band has " + leaders.size() + " leaders: " + OceanBand.describeBand(first));
+		helper.assertTrue(fast, "the leader's dolphin is not fast");
+		helper.succeed();
+	}
 
-			if (bow) {
-				bows++;
-			} else if (sword) {
-				swords++;
-			}
+	@GameTest(maxTicks = 200)
+	public void aBossLeaderIsABoss(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		buildWater(helper);
+		Dolphin first = helper.spawnMob(EntityTypes.DOLPHIN, 4, POOL_Y + 1, 4).spawn();
+		OceanBand.queueForTest(first, 3, OceanBand.Leader.BOSS);
+		OceanBand.drain(level);
+		long bosses = OceanBand.membersOf(first).stream().filter(com.stella.mobs.behavior.Bosses::isBoss).count();
+		result("aBossLeaderIsABoss", "bosses=" + bosses + " detail=" + OceanBand.describeBand(first));
+		helper.assertTrue(bosses == 1, "the band has " + bosses + " bosses");
+		helper.succeed();
+	}
 
-			if (Elite.isElite(skeleton)) {
-				captains++;
-
-				if (sword) {
-					captainSwords++;
-				}
-			}
+	@GameTest
+	public void bandAndLeaderRatesAreWhatShips(final GameTestHelper helper) {
+		RandomSource random = RandomSource.create(20_260_927L);
+		int samples = 200_000;
+		int bands = 0;
+		int leaders = 0;
+		int bosses = 0;
+		for (int i = 0; i < samples; i++) {
+			bands += OceanBand.rollsBand(random) ? 1 : 0;
+			OceanBand.Leader leader = OceanBand.rollLeader(random);
+			leaders += leader != OceanBand.Leader.NONE ? 1 : 0;
+			bosses += leader == OceanBand.Leader.BOSS ? 1 : 0;
 		}
+		double bandRate = bands / (double) samples;
+		double leaderRate = leaders / (double) samples;
+		double bossShare = leaders == 0 ? 0.0 : bosses / (double) leaders;
+		result("bandAndLeaderRatesAreWhatShips", "bandRate=" + bandRate + " leaderRate=" + leaderRate + " bossShare=" + bossShare);
+		helper.assertTrue(Math.abs(bandRate - OceanBand.REGION_CHANCE) <= 4 * Math.sqrt(OceanBand.REGION_CHANCE * (1 - OceanBand.REGION_CHANCE) / samples), "bands in " + bandRate);
+		helper.assertTrue(Math.abs(leaderRate - OceanBand.LEADER_CHANCE) <= 4 * Math.sqrt(OceanBand.LEADER_CHANCE * (1 - OceanBand.LEADER_CHANCE) / samples), "leaders in " + leaderRate);
+		helper.assertTrue(Math.abs(bossShare - OceanBand.BOSS_LEADER_SHARE) <= 4 * Math.sqrt(OceanBand.BOSS_LEADER_SHARE * (1 - OceanBand.BOSS_LEADER_SHARE) / leaders), "boss share " + bossShare);
+		helper.succeed();
+	}
 
-		result(
-			"bandHasSevenRidersThreeBowsAndACaptain",
-			"mounts=" + mounts + " riders=" + riders + " bows=" + bows + " swords=" + swords + " captains=" + captains
-				+ " captainSwords=" + captainSwords + " detail=" + OceanBand.describeBand(first)
-		);
+	// TAGGED: the harness cannot make an ocean. fillbiome reports its cells filled, yet the chunk still reads
+	// its generated biome, so the ocean branch never runs here. Manual item: sail an ocean and meet a band of
+	// three to five riders, about one 2x2 area of ocean chunks in fifty.
+	@GameTest(maxTicks = 100, padding = 48, required = false)
+	public void anOceanAreaRaisesABandAtItsSurfaceRequiresManualTest(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(0, 0, 0));
+		net.minecraft.world.level.ChunkPos lead = new net.minecraft.world.level.ChunkPos((origin.getX() >> 4) & ~1, (origin.getZ() >> 4) & ~1);
+		net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunk(lead.x(), lead.z());
+		int x = lead.getMiddleBlockX();
+		int z = lead.getMiddleBlockZ();
+		String[] biomeResult = {"none"};
+		String fill = "fillbiome " + lead.getMinBlockX() + " " + (origin.getY() - 8) + " " + lead.getMinBlockZ() + " " + lead.getMaxBlockX() + " " + (origin.getY() + 24) + " " + lead.getMaxBlockZ() + " minecraft:ocean";
+		try {
+			biomeResult[0] = "filled=" + level.getServer().getCommands().getDispatcher().execute(fill, level.getServer().createCommandSourceStack().withSuppressedOutput().withLevel(level));
+		} catch (com.mojang.brigadier.exceptions.CommandSyntaxException failure) {
+			biomeResult[0] = "failed=" + failure.getMessage();
+		}
+		int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z);
+		level.setBlockAndUpdate(new BlockPos(x, surface, z), net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+		Dolphin anchor;
+		try {
+			OceanBand.pinChance(1.0);
+			anchor = OceanBand.rollRegion(level, chunk);
+		} finally {
+			OceanBand.pinChance(OceanBand.REGION_CHANCE);
+		}
+		BlockPos water = new BlockPos(x, level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z) - 1, z);
+		helper.assertTrue(anchor != null, "the ocean area raised no band at " + water + " biome=" + level.getBiome(water).unwrapKey()
+			+ " fluid=" + level.getFluidState(water) + " lead=" + lead + " command=" + biomeResult[0]
+			+ " chunkNoise=" + chunk.getNoiseBiome(water.getX() >> 2, water.getY() >> 2, water.getZ() >> 2).unwrapKey()
+			+ " levelChunk=" + level.getChunkAt(water).getNoiseBiome(water.getX() >> 2, water.getY() >> 2, water.getZ() >> 2).unwrapKey()
+			+ " sameChunk=" + (level.getChunkAt(water) == chunk));
+		helper.runAfterDelay(3L, () -> {
+			int riders = OceanBand.membersOf(anchor).size();
+			result("anOceanAreaRaisesABandAtItsSurface", "riders=" + riders + " anchor=" + anchor.blockPosition());
+			helper.assertTrue(riders >= OceanBand.MIN_RIDERS, "the band gathered " + riders + " riders");
+			OceanBand.membersOf(anchor).forEach(member -> member.discard());
+			helper.succeed();
+		});
+	}
 
-		helper.assertValueEqual(Integer.valueOf(mounts), Integer.valueOf(OceanBand.BAND_SIZE), "mounts");
-		helper.assertValueEqual(Integer.valueOf(riders), Integer.valueOf(OceanBand.BAND_SIZE), "seated riders");
-		helper.assertValueEqual(Integer.valueOf(bows), Integer.valueOf(OceanBand.RANGED_MEMBERS), "bow members");
-		// The three melee members plus the captain, which is melee and takes a seat of its own.
-		helper.assertValueEqual(
-			Integer.valueOf(swords), Integer.valueOf(OceanBand.MEMBERS - OceanBand.RANGED_MEMBERS + 1), "sword bearers"
-		);
-		helper.assertValueEqual(Integer.valueOf(captains), Integer.valueOf(1), "elite captains");
-		helper.assertValueEqual(Integer.valueOf(captainSwords), Integer.valueOf(1), "the captain carries a sword");
+	@GameTest(padding = 48)
+	public void landRaisesNoBandEvenOnItsRoll(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(new BlockPos(0, 0, 0));
+		net.minecraft.world.level.ChunkPos lead = new net.minecraft.world.level.ChunkPos((origin.getX() >> 4) & ~1, (origin.getZ() >> 4) & ~1);
+		net.minecraft.world.level.ChunkPos odd = new net.minecraft.world.level.ChunkPos(lead.x() + 1, lead.z());
+		Dolphin onLand;
+		Dolphin offCorner;
+		try {
+			OceanBand.pinChance(1.0);
+			onLand = OceanBand.rollRegion(level, level.getChunk(lead.x(), lead.z()));
+			offCorner = OceanBand.rollRegion(level, level.getChunk(odd.x(), odd.z()));
+		} finally {
+			OceanBand.pinChance(OceanBand.REGION_CHANCE);
+		}
+		result("landRaisesNoBandEvenOnItsRoll", "onLand=" + (onLand != null) + " offCorner=" + (offCorner != null)
+			+ " biome=" + level.getBiome(new BlockPos(lead.getMiddleBlockX(), origin.getY(), lead.getMiddleBlockZ())).unwrapKey());
+		helper.assertTrue(onLand == null && offCorner == null, "a band rose on land or off its area's corner");
 		helper.succeed();
 	}
 
@@ -219,16 +302,15 @@ public class OceanBandGameTest {
 		ServerLevel level = helper.getLevel();
 		buildWater(helper);
 
-		OceanBand.pinChance(0.0);
 		Dolphin first = helper.spawnMob(EntityTypes.DOLPHIN, 4, POOL_Y + 1, 4).spawn();
-		OceanBand.queueForTest(first);
+		OceanBand.queueForTest(first, 0, OceanBand.Leader.NONE);
 		OceanBand.drain(level);
 
 		int withHelmet = 0;
 		int summoned = 0;
 
 		for (Skeleton skeleton : OceanBand.membersOf(first)) {
-			if (skeleton.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET)) {
+			if (!skeleton.getItemBySlot(EquipmentSlot.HEAD).isEmpty()) {
 				withHelmet++;
 			}
 
@@ -239,10 +321,12 @@ public class OceanBandGameTest {
 
 		result(
 			"bandMemberIsMarkedSummonedAndWearsAHelmet",
-			"helmeted=" + withHelmet + " summoned=" + summoned + " band=" + OceanBand.BAND_SIZE
+			"helmeted=" + withHelmet + " summoned=" + summoned + " band=" + OceanBand.membersOf(first).size()
 		);
-		helper.assertValueEqual(Integer.valueOf(withHelmet), Integer.valueOf(OceanBand.BAND_SIZE), "members with a forced helmet");
-		helper.assertValueEqual(Integer.valueOf(summoned), Integer.valueOf(OceanBand.BAND_SIZE), "members flagged summoned");
+		int band = OceanBand.membersOf(first).size();
+		helper.assertTrue(band >= OceanBand.MIN_RIDERS, "the band holds " + band + " riders, so the case proves nothing");
+		helper.assertValueEqual(Integer.valueOf(withHelmet), Integer.valueOf(band), "members with a forced helmet");
+		helper.assertValueEqual(Integer.valueOf(summoned), Integer.valueOf(band), "members flagged summoned");
 		helper.succeed();
 	}
 
