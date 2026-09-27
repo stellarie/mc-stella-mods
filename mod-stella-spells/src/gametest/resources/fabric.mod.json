@@ -22,7 +22,8 @@
 			"com.stella.spells.NewSpellsGameTest",
 			"com.stella.spells.MobImbueGameTest",
 			"com.stella.spells.ScrollOfReturnGameTest",
-			"com.stella.spells.SupportSpellsGameTest"
+			"com.stella.spells.SupportSpellsGameTest",
+			"com.stella.spells.ClueBooksGameTest"
 		]
 	},
 	"depends": {
