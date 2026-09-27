@@ -14,7 +14,7 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** The second catalogue: twenty more spells, from Ice Lance to Flame Ring. */
+/** The second catalogue includes combat, movement, and support spells. */
 public final class MoreSpells {
 	public static final float ICE_LANCE_DAMAGE = 5.0F;
 	public static final int ICE_LANCE_FREEZE_TICKS = 140;

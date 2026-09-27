@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/tailwind",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 12251895
-			}
-		]
+		"model": "mod-stella-spells:item/tailwind"
 	}
 }

@@ -5,9 +5,9 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public class TintManualAcceptanceGameTest {
 	@GameTest(required = false)
-	public void tintVisualRequiresManualClientReview(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "tintVisualRequiresManualClientReview");
-		helper.fail("Manual client review required: inspect the Spark Shot icon tint and right-click cast.");
+	public void customBookIconsAndCircleAnimationRequireManualReview(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "customBookIconsAndCircleAnimationRequireManualReview");
+		helper.fail("Manual client review required: inspect all 42 book icons, an area circle, its animation, and scroll tint.");
 	}
 
 	@GameTest(required = false)

@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/owls_gaze",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 8280002
-			}
-		]
+		"model": "mod-stella-spells:item/owls_gaze"
 	}
 }

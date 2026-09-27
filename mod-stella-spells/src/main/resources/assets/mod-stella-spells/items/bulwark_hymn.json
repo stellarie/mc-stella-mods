@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/bulwark_hymn",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 16766720
-			}
-		]
+		"model": "mod-stella-spells:item/bulwark_hymn"
 	}
 }

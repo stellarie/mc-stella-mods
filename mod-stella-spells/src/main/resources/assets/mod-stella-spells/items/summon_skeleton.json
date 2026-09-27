@@ -1,12 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/summon_skeleton",
-		"tints": [
-			{
-				"type": "minecraft:constant",
-				"value": 14540253
-			}
-		]
+		"model": "mod-stella-spells:item/summon_skeleton"
 	}
 }

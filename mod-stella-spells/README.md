@@ -1,7 +1,8 @@
 # mod-stella-spells
 
-Forty-two tinted spellbooks, each casting one fixed spell, and eight enchantments that change how
-spells behave. Witches, strays and spellcasting illagers cast spells of their own. Install the mod on the server and on every client; the jar holds the item tints.
+Forty-two spellbooks with distinct icons, each casting one fixed spell, and eight enchantments that change how
+spells behave. Witches, strays, and spellcasting illagers cast spells of their own. Install the mod on the server
+and every client; the jar holds the book textures.
 
 ## Using a spellbook
 
@@ -60,21 +61,22 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Tailwind | Rabbit's Foot | 15 s | Self | Speed II for 30 seconds on you and every ally within 8 blocks |
 | Battle Hymn | Glowstone Dust | 20 s | Self | Strength I for 20 seconds on you and every ally within 8 blocks |
 
-Area and chain spells affect only mobs that are hostile by nature (`Enemy`); they never hit players,
-pets, or villagers.
+Offensive area and chain spells affect only mobs that are hostile by nature (`Enemy`); they do not
+hit players, pets, or villagers. Support area spells affect the caster or nearby allies as described above.
 
 Each book's tooltip lists its target, how to cast it, what it does, and its base cooldown.
 
-Every successful cast draws its own particles, sent from the server to players within 32 blocks:
+Every successful cast draws spell-specific particles, sent from the server to nearby players:
 
 - **Hostile** spells draw a beam from the caster to the target and a burst on it. Static Lash also
-  rings the target at its chain radius.
-- **Self** spells draw a rising spiral around the caster. Warden's Roar draws a ring of sonic booms
-  at its radius instead.
-- **Block** spells draw a ring at their area radius and a burst at the aimed point.
+  marks its chain radius with a yellow magic circle.
+- **Self** spells draw a rising spiral around the caster. Area spells mark their effect radius with
+  an element-colored magic circle at the caster's feet.
+- **Block** spells draw an element-colored magic circle at the aimed point and a particle burst.
 - **Riftwalk** draws a portal spiral where the caster left and where they arrived.
 
-A failed cast draws nothing. The particles are listed in `SpellVisuals`.
+Each magic circle has an outer ring, inner ring, spokes, and two delayed pulses. Other successful
+casts also add delayed particles. A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
 ## Imbued weapons, arrows and chestplates
 
@@ -211,7 +213,8 @@ cd mod-stella-spells
 
 The last command runs the suite with the equips mod loaded; its log must list
 `mod-stella-equips-enchants` among the loaded mods. Run the GameTest command five separate times
-for a release gate, and copy each log before the next run. Two optional tests always fail: they are
-the manual tint and client-log checks.
+for a release gate, and copy each log before the next run. Five optional tests remain visible:
+the icon and circle review, the Spark Shot boundary check, the isolated Chainstorm outside-health check,
+the Ice Lance pierce check, and the client-log check.
 
 The jar is `build/libs/mod-stella-spells-0.1.0+26.3.jar`.
