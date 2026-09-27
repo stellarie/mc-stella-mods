@@ -19,12 +19,28 @@ Install the jar on the server and on each client. Everything a player sees uses 
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
   gets its patrol. When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
-- Patrol members never despawn, and they do not count toward the natural mob cap.
-- Three contracts at each elite vindicator head. Right-click the head within 8 blocks to open the
-  Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
+- The head keeps its watch within 8 blocks of the village's bell. The other members are set down across
+  the village, up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
+  included; a member that finds itself outside heads back in.
+- The head wears full netherite, every piece enchanted (Protection IV and Unbreaking III, Feather Falling IV
+  on the boots), and carries a netherite axe with Sharpness V. With `mod-stella-spells` loaded, the axe
+  also carries one offensive spell, chosen at random, which the head casts on what it strikes. The kit
+  never drops, so a head that falls and returns is no netherite farm; a head saved in the old diamond kit
+  is re-armed when it loads.
+- Patrol members never despawn, and they do not count toward the natural mob cap. On Peaceful they leave
+  as any illager does, and no new patrol is raised.
+- Villagers do not fear their patrol, iron and snow golems never take a member as their target, and a
+  player may sleep in a bed beside the patrol.
+- A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
+  wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
+  pillager pairs.
+- Three contracts at each village head, each for a different kind of mob drawn from every kind with a
+  spawn egg: a Nemesis can be any mob, a cow or a warden alike. The ender dragon is the one kind never
+  offered, since outside its own End fight it has no fight to fly. Right-click the head within 8 blocks to
+  open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
-  board, or tells you why it refused. Each contract creates one persistent Nemesis target, with
-  100 health on top of its type's own, and the map looks like a vanilla filled map.
+  board, or tells you why it refused. Each contract creates one persistent Nemesis target, with 100
+  health on top of its type's own, and the map looks like a vanilla filled map.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
@@ -54,6 +70,10 @@ Run commands from this directory.
 ```
 
 Run the GameTest command five separate times for final verification. Save each log before the next run.
+
+To run the suite with `mod-stella-spells` loaded, build that mod first, then run
+`.\gradlew.bat runGameTest --rerun -PwithStellaSpells=true` (or pass the jar's own path). The head's axe
+test then checks the spell on the axe.
 
 To run the same suite with `mod-stella-mobs` loaded, build that mod first, then run
 `.\gradlew.bat runGameTest --rerun -PwithStellaMobs=true`. The log must list `mod-stella-mobs` among the

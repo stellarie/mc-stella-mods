@@ -374,7 +374,7 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int radius = PatrolService.PATROL_RADIUS;
+		int radius = PatrolService.HEAD_BELL_RADIUS;
 		BlockPos anchorPosition = PatrolTestSupport.anchor(helper);
 		Vec3 anchor = Vec3.atCenterOf(anchorPosition);
 		prepareMovementLane(helper, anchorPosition, radius + 8);
@@ -413,86 +413,36 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 240, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void patrolFollowerReturnsWithinFollowDistance(final GameTestHelper helper) {
-		String test = "patrolFollowerReturnsWithinFollowDistance";
+	@GameTest(maxTicks = 400, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void patrolMemberWalksBackIntoItsVillage(final GameTestHelper helper) {
+		String test = "patrolMemberWalksBackIntoItsVillage";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}
 
-		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
-		Mob follower = PatrolTestSupport.role(helper, test, "PILLAGER");
-		if (head == null || follower == null) {
-			helper.fail("patrol head or follower is missing");
+		Mob member = PatrolTestSupport.role(helper, test, "PILLAGER");
+		if (member == null) {
+			helper.fail("patrol pillager is missing");
 			return;
 		}
 
-		int followDistance = PatrolService.PATROL_FOLLOW_DISTANCE;
-		BlockPos anchor = PatrolTestSupport.anchor(helper);
-		prepareMovementLane(helper, anchor, followDistance + 20);
-		BlockPos headPosition = anchor.offset(-2, 0, -2);
-		BlockPos nearbyFollower = headPosition.east();
-		for (Mob member : PatrolTestSupport.patrols(helper)) {
-			if (member != head && member != follower) {
-				member.setNoAi(true);
+		int radius = PatrolService.MEMBER_WANDER_RADIUS;
+		BlockPos anchorPosition = PatrolTestSupport.anchor(helper);
+		Vec3 anchor = Vec3.atCenterOf(anchorPosition);
+		prepareMovementLane(helper, anchorPosition, radius + 8);
+		for (Mob other : PatrolTestSupport.patrols(helper)) {
+			if (other != member) {
+				other.setNoAi(true);
 			}
 		}
-		head.snapTo(Vec3.atBottomCenterOf(headPosition), head.getYRot(), head.getXRot());
-		follower.snapTo(Vec3.atBottomCenterOf(nearbyFollower), follower.getYRot(), follower.getXRot());
-		follower.getNavigation().stop();
-		follower.getGoalSelector().removeAllGoals(
-			goal -> !goal.getClass().getSimpleName().equals("PatrolFollowGoal")
-		);
-		boolean[] resultLogged = {false};
-		int[] stage = {0};
-		final double[] startDistance = {-1.0};
-
-		PatrolTestSupport.detail(test, "initialHeadPosition=" + headPosition + " initialFollowerPosition=" + nearbyFollower
-			+ " headOnGround=" + head.onGround() + " followerOnGround=" + follower.onGround());
-		helper.startSequence()
-			.thenWaitUntil(() -> {
-				helper.assertTrue(head.onGround(), "patrol head did not settle on the runway");
-				helper.assertTrue(follower.onGround(), "patrol follower did not settle on the runway");
-			})
-			.thenExecute(() -> {
-				stage[0] = 1;
-				head.getGoalSelector().removeAllGoals(goal -> true);
-				head.getNavigation().stop();
-				head.setNoAi(true);
-				BlockPos followerStart = headPosition.offset(followDistance + 8, 0, 0);
-				follower.snapTo(Vec3.atBottomCenterOf(followerStart), follower.getYRot(), follower.getXRot());
-				follower.getNavigation().stop();
-				startDistance[0] = follower.distanceTo(head);
-				String goals = follower.getGoalSelector().getAvailableGoals().stream()
-					.map(goal -> goal.getGoal().getClass().getSimpleName() + "@" + goal.getPriority() + "@" + goal.isRunning())
-					.toList().toString();
-				PatrolTestSupport.detail(test, "headPosition=" + headPosition + " followerStart=" + followerStart
-					+ " startDistance=" + startDistance[0] + " followerGoals=" + goals
-					+ " followerOnGround=" + follower.onGround() + " followDistance=" + followDistance);
-				helper.assertTrue(startDistance[0] > followDistance,
-					"follower fixture is not outside its follow distance");
-			})
-			.thenWaitUntil(() -> helper.assertTrue(
-				follower.distanceTo(head) <= followDistance,
-				"patrol follower did not return within the follow distance"
-			))
-			.thenExecute(() -> {
-				resultLogged[0] = true;
-				PatrolTestSupport.result(test, "passed=true startDistance=" + startDistance[0]
-					+ " endDistance=" + follower.distanceTo(head) + " followDistance=" + followDistance);
-			})
-			.thenSucceed();
-		helper.runAfterDelay(239, () -> {
-			if (!resultLogged[0]) {
-				PatrolTestSupport.result(test, "passed=false stage=" + (stage[0] == 0 ? "grounding" : "follower_return")
-					+ " startDistance=" + startDistance[0] + " endDistance=" + follower.distanceTo(head)
-					+ " headOnGround=" + head.onGround() + " followerOnGround=" + follower.onGround()
-					+ " followerPosition=" + follower.position()
-					+ " followerNavigationDone=" + follower.getNavigation().isDone()
-					+ " followerGoals=" + follower.getGoalSelector().getAvailableGoals().stream()
-						.map(goal -> goal.getGoal().getClass().getSimpleName() + "@" + goal.getPriority() + "@" + goal.isRunning())
-						.toList());
-			}
+		member.getGoalSelector().removeAllGoals(goal -> !goal.getClass().getSimpleName().equals("VillageWanderGoal"));
+		member.snapTo(Vec3.atBottomCenterOf(anchorPosition.offset(radius + 4, 0, 0)), member.getYRot(), member.getXRot());
+		double startDistance = member.position().distanceTo(anchor);
+		helper.assertTrue(startDistance > radius, "movement fixture did not place the member outside the village");
+		helper.succeedWhen(() -> {
+			double distance = member.position().distanceTo(anchor);
+			helper.assertTrue(distance <= radius, "the member is still " + distance + " blocks out");
+			PatrolTestSupport.result(test, "passed=true startDistance=" + startDistance + " endDistance=" + distance + " radius=" + radius);
 		});
 	}
 
@@ -510,7 +460,8 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int followDistance = PatrolService.PATROL_FOLLOW_DISTANCE;
+		// Set down outside the village, so the Ravager walks back in on its own beat.
+		int followDistance = PatrolService.MEMBER_WANDER_RADIUS;
 		BlockPos anchor = PatrolTestSupport.anchor(helper);
 		prepareMovementLane(helper, anchor, followDistance + 20);
 		BlockPos headPosition = anchor.offset(-2, 0, -2);
@@ -555,7 +506,7 @@ public final class VillagePatrolGameTest {
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
 				ravager.position().distanceTo(ravagerStartPosition) > 1.0 && unmounted(ravager),
-				"the Ravager did not follow its head without a rider"
+				"the Ravager did not walk back into its village without a rider"
 			))
 			.thenExecute(() -> {
 				stage[0] = 2;
@@ -1012,7 +963,12 @@ public final class VillagePatrolGameTest {
 		if (!PatrolTestSupport.scanChunk(helper, test)) {
 			return;
 		}
-		int membersWithoutSafePosition = PatrolTestSupport.patrols(helper).size();
+		// Members now spread across the village and may stand on the filled layer's top, so the rule read here is
+		// that none was set down inside a block: each stands on sturdy ground with room for its body.
+		int membersWithoutSafePosition = (int) PatrolTestSupport.patrols(helper).stream()
+			.filter(member -> !helper.getLevel().noCollision(member, member.getBoundingBox())
+				|| !helper.getLevel().getBlockState(member.blockPosition().below()).isFaceSturdy(helper.getLevel(), member.blockPosition().below(), net.minecraft.core.Direction.UP))
+			.count();
 
 		for (int x = minX; x < minX + 16; x++) {
 			for (int z = minZ; z < minZ + 16; z++) {
@@ -1032,7 +988,7 @@ public final class VillagePatrolGameTest {
 			"membersWithoutSafePosition=" + membersWithoutSafePosition + " membersAfterSitesReturn=" + membersAfterSitesReturn
 		);
 		helper.assertValueEqual(
-			Integer.valueOf(membersWithoutSafePosition), Integer.valueOf(0), "patrols with no safe loaded spawn position"
+			Integer.valueOf(membersWithoutSafePosition), Integer.valueOf(0), "patrols set down without safe footing"
 		);
 		helper.assertValueEqual(
 			Integer.valueOf(membersAfterSitesReturn), Integer.valueOf(PATROL_COUNT), "patrols after safe sites return"
@@ -1064,7 +1020,9 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int membersAtLowCeiling = PatrolTestSupport.patrols(helper).size();
+		// Members now spread across the village, so the rule read here is that none stands at the unsafe spot.
+		int membersAtLowCeiling = (int) PatrolTestSupport.patrols(helper).stream()
+			.filter(member -> member.position().distanceTo(Vec3.atBottomCenterOf(candidate)) < 1.5).count();
 		PatrolTestSupport.result(test, "membersAtLowCeiling=" + membersAtLowCeiling + " candidate=" + candidate);
 		helper.assertValueEqual(Integer.valueOf(membersAtLowCeiling), Integer.valueOf(0), "patrols spawned below a low ceiling");
 		helper.succeed();
@@ -1094,7 +1052,9 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int membersAtUnsafeSupport = PatrolTestSupport.patrols(helper).size();
+		// Members now spread across the village, so the rule read here is that none stands at the unsafe spot.
+		int membersAtUnsafeSupport = (int) PatrolTestSupport.patrols(helper).stream()
+			.filter(member -> member.position().distanceTo(Vec3.atBottomCenterOf(candidate)) < 1.5).count();
 		PatrolTestSupport.result(test, "membersAtUnsafeSupport=" + membersAtUnsafeSupport + " candidate=" + candidate);
 		helper.assertValueEqual(Integer.valueOf(membersAtUnsafeSupport), Integer.valueOf(0), "patrols spawned on unsafe support");
 		helper.succeed();
