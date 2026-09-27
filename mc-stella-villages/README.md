@@ -26,7 +26,11 @@ Install the jar on the server and on each client. Everything a player sees uses 
 - Ring a village's bell, within 48 blocks of the village's first bell, and its patrol rallies: every
   member gets Speed II and Strength I for 30 seconds and runs to the bell. A village rallies once a
   minute.
-- One daily 10% roll for a single-wave village raid.
+- One daily 10% roll for a single-wave village raid. The roll is fixed by the world seed and the day,
+  so a restart cannot reroll a day. On a raid day, the first village with a player within 64 blocks
+  of its centre is raided with one wave and no bonus wave; if no village has a player nearby, the
+  day passes quietly. The first day a world is seen only starts the count. Raids from a player's
+  Raid Omen are unchanged. Measured rate: 10.1% over 100,000 seeded days.
 
 ## Build and test
 
