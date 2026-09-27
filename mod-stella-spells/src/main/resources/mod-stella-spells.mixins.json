@@ -5,7 +5,9 @@
 	"mixins": [
 		"AnvilMenuMixin",
 		"SpellAnvilCostMixin",
-		"ResultSlotMixin"
+		"ResultSlotMixin",
+		"SpellImbueAnvilMixin",
+		"StormBoltMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

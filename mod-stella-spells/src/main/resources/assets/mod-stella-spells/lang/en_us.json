@@ -20,9 +20,9 @@
 	"item.mod-stella-spells.slimebound": "Slimebound Spellbook",
 	"item.mod-stella-spells.slimebound.effect": "Grants Jump Boost II and Slow Falling for 8 seconds.",
 	"item.mod-stella-spells.chainstorm": "Chainstorm Spellbook",
-	"item.mod-stella-spells.chainstorm.effect": "Strikes the mob for 7 damage, then chains 4 damage through up to two more hostiles within 4 blocks of each other.",
+	"item.mod-stella-spells.chainstorm.effect": "Calls lightning onto up to 5 hostiles within 5 blocks of the spot you look at, one strike after another, 6 damage each.",
 	"item.mod-stella-spells.riftwalk": "Riftwalk Spellbook",
-	"item.mod-stella-spells.riftwalk.effect": "Teleports you to the first safe spot in front of you, never into walls, water or mobs.",
+	"item.mod-stella-spells.riftwalk.effect": "Teleports you onto the spot you look at, or in front of the wall you look at; never into walls, water or mobs.",
 	"item.mod-stella-spells.phoenix_mantle": "Phoenix Mantle Spellbook",
 	"item.mod-stella-spells.phoenix_mantle.effect": "Grants Fire Resistance for 30 seconds and heals you for 2 hearts.",
 	"item.mod-stella-spells.life_bloom": "Life Bloom Spellbook",
@@ -43,11 +43,11 @@
 	"spellbook.mod-stella-spells.target.hostile": "Target: the hostile mob you look at, up to 16 blocks away",
 	"spellbook.mod-stella-spells.target.self": "Target: yourself",
 	"spellbook.mod-stella-spells.target.block": "Target: the block you look at, up to 16 blocks away",
-	"spellbook.mod-stella-spells.target.safe_teleport": "Target: the first safe spot up to 12 blocks ahead",
+	"spellbook.mod-stella-spells.target.safe_teleport": "Target: the spot you look at, up to 16 blocks away",
 	"spellbook.mod-stella-spells.use.hostile": "Use: hold it and right-click while aiming at the mob",
 	"spellbook.mod-stella-spells.use.self": "Use: hold it and right-click",
 	"spellbook.mod-stella-spells.use.block": "Use: hold it and right-click while aiming at the ground",
-	"spellbook.mod-stella-spells.use.safe_teleport": "Use: hold it, face where you want to go, and right-click",
+	"spellbook.mod-stella-spells.use.safe_teleport": "Use: hold it, look at where you want to stand, and right-click",
 	"spellbook.mod-stella-spells.cooldown": "Cooldown: %s seconds",
 	"spellbook.mod-stella-spells.combo": "Combo: %s, then %s, for %s",
 	"item.mod-stella-spells.spark_shot_scroll": "Spark Shot Scroll",
@@ -70,5 +70,6 @@
 	"item.mod-stella-spells.wither_seal_scroll": "Wither Seal Scroll",
 	"item.mod-stella-spells.time_lock_scroll": "Time Lock Scroll",
 	"item.mod-stella-spells.dragonfall_scroll": "Dragonfall Scroll",
-	"spellbook.mod-stella-spells.scroll": "Single use: the scroll crumbles when the spell lands"
+	"spellbook.mod-stella-spells.scroll": "Single use: the scroll crumbles when the spell lands",
+	"spellbook.mod-stella-spells.imbued": "Imbued: %s, cast on hit at half strength"
 }
