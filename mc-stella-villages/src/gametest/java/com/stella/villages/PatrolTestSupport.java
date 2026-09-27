@@ -48,6 +48,13 @@ final class PatrolTestSupport {
 	private PatrolTestSupport() {
 	}
 
+	/**
+	 * Every test in this suite carries this padding. The test grid sizes each row by the tests in it, so a
+	 * row of unpadded tests would let two village tests sit inside vanilla's village distance of six
+	 * sections of each other, and their records would merge.
+	 */
+	static final int VILLAGE_PADDING = 64;
+
 	static boolean loadVillage(final GameTestHelper helper, final String test, final boolean addSecondBell) {
 		return prepareVillage(helper, test, addSecondBell) && scanChunk(helper, test);
 	}
@@ -55,6 +62,7 @@ final class PatrolTestSupport {
 	static boolean prepareVillage(final GameTestHelper helper, final String test, final boolean addSecondBell) {
 		BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
 		VILLAGE_ANCHORS.put(helper, anchor);
+		forgetEarlierBatchVillages(helper, test, anchor);
 		int chunkMinX = SectionPos.sectionToBlockCoord(SectionPos.blockToSectionCoord(anchor.getX()));
 		int chunkMinZ = SectionPos.sectionToBlockCoord(SectionPos.blockToSectionCoord(anchor.getZ()));
 		for (int x = 0; x < SectionPos.SECTION_SIZE; x++) {
@@ -84,6 +92,57 @@ final class PatrolTestSupport {
 			return false;
 		}
 		return true;
+	}
+
+	/** The test that registered each village, so a cleanup never touches a running test's village. */
+	private static final Map<UUID, GameTestHelper> OWNERS = new ConcurrentHashMap<>();
+
+	/**
+	 * Each test batch is laid out on the ground the batch before it used, but village records live in the
+	 * level's saved data and outlast the batch. A record within vanilla's village distance of this anchor
+	 * would take in this test's village, members and all. Such a record whose test has finished is left
+	 * over, so it and its patrol are removed. A running test's record, such as a neighbour's distant
+	 * village, stays.
+	 */
+	@SuppressWarnings("unchecked")
+	static void forgetEarlierBatchVillages(final GameTestHelper helper, final String test, final BlockPos anchor) {
+		try {
+			Class<?> dataClass = Class.forName("com.stella.villages.data.VillageWorldData");
+			Object data = dataClass.getMethod("get", ServerLevel.class).invoke(null, helper.getLevel());
+			Field field = dataClass.getDeclaredField("villages");
+			field.setAccessible(true);
+			Map<UUID, ?> villages = (Map<UUID, ?>) field.get(data);
+			Method distance = dataClass.getDeclaredMethod("sectionDistance", BlockPos.class, BlockPos.class);
+			distance.setAccessible(true);
+			Method stateVillageId = Class.forName(STATE).getMethod("villageId", Mob.class);
+			for (Object village : List.copyOf(villages.values())) {
+				UUID id = (UUID) village.getClass().getMethod("id").invoke(village);
+				BlockPos other = (BlockPos) village.getClass().getMethod("anchor").invoke(village);
+				GameTestHelper owner = OWNERS.get(id);
+				if ((long) distance.invoke(null, anchor, other) > PoiManager.MAX_VILLAGE_DISTANCE || (owner != null && !finished(owner))) {
+					continue;
+				}
+
+				villages.remove(id);
+				OWNERS.remove(id);
+				int discarded = 0;
+				for (Mob mob : mobs(helper, other)) {
+					if (id.equals(stateVillageId.invoke(null, mob))) {
+						mob.discard();
+						discarded++;
+					}
+				}
+				detail(test, "forgotEarlierBatchVillage=" + id + " discardedMembers=" + discarded);
+			}
+		} catch (ReflectiveOperationException | LinkageError error) {
+			throw new IllegalStateException("could not clear an earlier batch's village", error);
+		}
+	}
+
+	private static boolean finished(final GameTestHelper owner) throws ReflectiveOperationException {
+		Field info = GameTestHelper.class.getDeclaredField("testInfo");
+		info.setAccessible(true);
+		return ((net.minecraft.gametest.framework.GameTestInfo) info.get(owner)).isDone();
 	}
 
 	static boolean prepareOccupiedVillagePoi(
@@ -163,6 +222,7 @@ final class PatrolTestSupport {
 		final BlockPos anchor
 	) {
 		VILLAGE_ANCHORS.put(helper, anchor);
+		forgetEarlierBatchVillages(helper, test, anchor);
 		helper.getLevel().getChunkAt(anchor);
 		int chunkMinX = SectionPos.sectionToBlockCoord(SectionPos.blockToSectionCoord(anchor.getX()));
 		int chunkMinZ = SectionPos.sectionToBlockCoord(SectionPos.blockToSectionCoord(anchor.getZ()));
@@ -201,6 +261,14 @@ final class PatrolTestSupport {
 			Object village = option.get();
 			UUID villageId = (UUID) village.getClass().getMethod("id").invoke(village);
 			VILLAGE_IDS.put(helper, villageId);
+			GameTestHelper previousOwner = OWNERS.put(villageId, helper);
+			boolean shared = previousOwner != null && previousOwner != helper && !finished(previousOwner);
+			detail(test, "village=" + villageId + " anchor=" + village.getClass().getMethod("anchor").invoke(village) + " poi=" + poi
+				+ " sharedWithRunningTest=" + shared);
+			if (shared) {
+				helper.fail("the test village merged into a running test's village, so the test grid put them too close");
+				return false;
+			}
 			return true;
 		} catch (ReflectiveOperationException | LinkageError error) {
 			String detail = error instanceof InvocationTargetException invocation && invocation.getCause() != null
@@ -278,12 +346,19 @@ final class PatrolTestSupport {
 		}
 	}
 
+	/**
+	 * A distant village sits this many sections from its test: beyond the whole test grid, so no test
+	 * that starts later can put its own village within vanilla's village distance of it and merge.
+	 */
+	static final int DISTANT_VILLAGE_SECTIONS = 128;
+
 	static @Nullable BlockPos findDistantVillageAnchor(final GameTestHelper helper, final String test) {
 		BlockPos origin = helper.absolutePos(new BlockPos(2, 1, 2));
-		int distance = 2 * PoiManager.MAX_VILLAGE_DISTANCE + 12;
+		int distance = DISTANT_VILLAGE_SECTIONS;
 		int originSectionX = SectionPos.blockToSectionCoord(origin.getX());
 		int originSectionZ = SectionPos.blockToSectionCoord(origin.getZ());
-		int[][] directions = {{1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+		// The test grid grows toward +x and +z from its first corner, so the far side of -x and -z is clear of it.
+		int[][] directions = {{-1, -1}, {-1, 0}, {0, -1}, {-1, 1}, {1, -1}, {1, 1}, {1, 0}, {0, 1}};
 		for (int[] direction : directions) {
 			int chunkX = originSectionX + direction[0] * distance;
 			int chunkZ = originSectionZ + direction[1] * distance;

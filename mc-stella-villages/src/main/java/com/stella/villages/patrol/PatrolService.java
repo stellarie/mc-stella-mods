@@ -156,6 +156,30 @@ public final class PatrolService {
 		return result;
 	}
 
+	/** A village whose head is gone: members that are gone too leave the roll, and every missing place is filled. */
+	static void refillRoster(final ServerLevel level, final VillageWorldData data, final VillageRecord village) {
+		for (MemberRecord member : List.copyOf(village.members())) {
+			if (member.alive() && !ACTIVE_MEMBERS.containsKey(member.id()) && level.isPositionEntityTicking(member.lastPosition())) {
+				data.markMemberDead(member.id());
+			}
+		}
+		for (MemberRecord member : List.copyOf(village.members())) {
+			if (!member.alive()) {
+				data.removeMember(member.id());
+			}
+		}
+
+		List<Mob> spawned = new ArrayList<>();
+		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
+		McStellaVillages.LOGGER.info(
+			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
+			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
+		);
+	}
+
 	private static void spawnRoster(
 		final ServerLevel level,
 		final VillageWorldData data,
@@ -462,6 +486,7 @@ public final class PatrolService {
 		restoreCrossbows(level);
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
+		VillageCoverage.tick(level, tick);
 		VillageWorldData data = VillageWorldData.get(level);
 		for (VillageRecord village : data.villages()) {
 			if (!village.dimension().equals(level.dimension())) {

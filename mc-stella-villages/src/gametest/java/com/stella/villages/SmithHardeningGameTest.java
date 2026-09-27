@@ -25,7 +25,7 @@ public class SmithHardeningGameTest {
 		VillagerProfession.WEAPONSMITH, VillagerProfession.TOOLSMITH, VillagerProfession.ARMORER
 	);
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void everySmithHardensAWeaponForItsPrice(final GameTestHelper helper) {
 		for (ResourceKey<VillagerProfession> profession : SMITHS) {
 			Villager smith = smith(helper, profession);
@@ -40,7 +40,7 @@ public class SmithHardeningGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void hardeningWithTooFewEmeraldsChangesNothing(final GameTestHelper helper) {
 		Villager smith = smith(helper, VillagerProfession.WEAPONSMITH);
 		ServerPlayer player = customer(helper, new ItemStack(Items.IRON_SWORD), SmithHardening.COST_EMERALDS - 1, true);
@@ -51,7 +51,7 @@ public class SmithHardeningGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void hardeningStopsAtItsCap(final GameTestHelper helper) {
 		Villager smith = smith(helper, VillagerProfession.WEAPONSMITH);
 		ServerPlayer player = customer(helper, new ItemStack(Items.DIAMOND_AXE), SmithHardening.COST_EMERALDS * (SmithHardening.MAX_LEVEL + 1), true);
@@ -66,7 +66,7 @@ public class SmithHardeningGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void onlyASneakingPlayerAtASmithHardensAWeapon(final GameTestHelper helper) {
 		ServerPlayer standing = customer(helper, new ItemStack(Items.IRON_SWORD), SmithHardening.COST_EMERALDS, false);
 		use(helper, standing, smith(helper, VillagerProfession.WEAPONSMITH));
@@ -74,10 +74,17 @@ public class SmithHardeningGameTest {
 		use(helper, atFarmer, smith(helper, VillagerProfession.FARMER));
 		ServerPlayer withStick = customer(helper, new ItemStack(Items.STICK), SmithHardening.COST_EMERALDS, true);
 		use(helper, withStick, smith(helper, VillagerProfession.WEAPONSMITH));
-		for (ServerPlayer player : List.of(standing, atFarmer, withStick)) {
+		// The in-level mock player is always creative, so the spectator is a mock built as one.
+		ServerPlayer spectator = (ServerPlayer) helper.makeMockServerPlayer(net.minecraft.world.level.GameType.SPECTATOR);
+		spectator.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD));
+		spectator.getInventory().add(new ItemStack(Items.EMERALD, SmithHardening.COST_EMERALDS));
+		spectator.setShiftKeyDown(true);
+		helper.assertTrue(spectator.isSpectator(), "the spectator mock is not a spectator, so the case proves nothing");
+		use(helper, spectator, smith(helper, VillagerProfession.WEAPONSMITH));
+		for (ServerPlayer player : List.of(standing, atFarmer, withStick, spectator)) {
 			helper.assertTrue(SmithHardening.level(player.getMainHandItem()) == 0 && emeralds(player) == SmithHardening.COST_EMERALDS, "a hardening went through that should not have: " + player.getMainHandItem());
 		}
-		PatrolTestSupport.result("onlyASneakingPlayerAtASmithHardensAWeapon", "standing=0 farmer=0 stick=0");
+		PatrolTestSupport.result("onlyASneakingPlayerAtASmithHardensAWeapon", "standing=0 farmer=0 stick=0 spectator=0");
 		helper.succeed();
 	}
 

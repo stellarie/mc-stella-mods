@@ -60,7 +60,7 @@ public final class SmithHardening {
 		final Player player, final Level world, final InteractionHand hand, final Entity entity, final EntityHitResult hit
 	) {
 		if (!(player instanceof ServerPlayer customer) || !(world instanceof ServerLevel level) || hand != InteractionHand.MAIN_HAND
-			|| !player.isShiftKeyDown() || !(entity instanceof Villager smith) || smith.isBaby() || !isSmith(smith)) {
+			|| !player.isShiftKeyDown() || player.isSpectator() || !(entity instanceof Villager smith) || smith.isBaby() || !isSmith(smith)) {
 			return InteractionResult.PASS;
 		}
 

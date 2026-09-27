@@ -25,7 +25,7 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillagePersistenceGameTest {
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void legacyCompleteRosterReopensOnLoad(final GameTestHelper helper) {
 		// A pre-W021 save carries no roster version, so a sealed roster must reopen to gain its new Pillagers.
 		boolean started = sealedRosterAfterLoad(helper, true);
@@ -34,7 +34,7 @@ public final class VillagePersistenceGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void currentRosterStaysSealedOnLoad(final GameTestHelper helper) {
 		boolean started = sealedRosterAfterLoad(helper, false);
 		PatrolTestSupport.result("currentRosterStaysSealedOnLoad", "rosterStartedAfterLoad=" + started);
@@ -61,7 +61,7 @@ public final class VillagePersistenceGameTest {
 		return VillageWorldData.loadState(saved).village(village.id()).map(VillageWorldData.VillageRecord::rosterStarted).orElse(true);
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void villageStateRoundTrips(final GameTestHelper helper) {
 		try {
@@ -87,7 +87,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest
+	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void villageMembersAndThreatsRoundTrip(final GameTestHelper helper) {
 		String test = "villageMembersAndThreatsRoundTrip";
@@ -193,7 +193,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether")
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void missionLedgerRoundTrips(final GameTestHelper helper) {
 		String test = "missionLedgerRoundTrips";
@@ -271,7 +271,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether")
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void missionLedgerSkipsInvalidTargetPositions(final GameTestHelper helper) {
 		String test = "missionLedgerSkipsInvalidTargetPositions";
@@ -381,7 +381,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether")
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void missionMapIdPersists(final GameTestHelper helper) {
 		String test = "missionMapIdPersists";
@@ -420,7 +420,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether")
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
 	@SuppressWarnings("unchecked")
 	public void missionDimensionPersists(final GameTestHelper helper) {
 		String test = "missionDimensionPersists";
@@ -461,7 +461,7 @@ public final class VillagePersistenceGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether")
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void nemesisNbtPersists(final GameTestHelper helper) {
 		String test = "nemesisNbtPersists";
 		try {
