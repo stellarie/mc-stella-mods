@@ -58,7 +58,16 @@ public final class MissionService {
 	/** How many contracts a head offers at once, each a different kind. */
 	public static final int OFFERS_PER_BOARD = 3;
 	/** A dragon out of its own End fight has no fight to fly, so it is the one kind never offered. */
-	public static final Set<Identifier> NEVER_OFFERED = Set.of(Identifier.parse("minecraft:ender_dragon"));
+	/** The dragon, the water's own mobs that would dry out on the land a Nemesis stands on, and the golem that melts. */
+	public static final Set<Identifier> NEVER_OFFERED = Set.of(
+		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:guardian"), Identifier.parse("minecraft:elder_guardian"),
+		Identifier.parse("minecraft:snow_golem"), Identifier.parse("minecraft:tadpole")
+	);
+	/** Mobs of these kinds live in water and die on land. */
+	public static final Set<net.minecraft.world.entity.MobCategory> WATER_CATEGORIES = java.util.EnumSet.of(
+		net.minecraft.world.entity.MobCategory.WATER_CREATURE, net.minecraft.world.entity.MobCategory.WATER_AMBIENT,
+		net.minecraft.world.entity.MobCategory.UNDERGROUND_WATER_CREATURE, net.minecraft.world.entity.MobCategory.AXOLOTLS
+	);
 	/** Test seam: the kinds a board draws from; null draws from every kind with a spawn egg. */
 	private static volatile @Nullable List<Identifier> offerPool;
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
@@ -319,12 +328,20 @@ public final class MissionService {
 			return;
 		}
 		NemesisState state = NemesisState.get(nemesis);
-		if (state == null || !NemesisState.markRewardPaid(nemesis)) {
+		if (state == null) {
 			return;
 		}
 		VillageWorldData data = VillageWorldData.get(level);
 		MissionRecord mission = data.mission(state.missionId()).orElse(null);
 		if (mission == null) {
+			return;
+		}
+		// Only a player's kill pays: a Nemesis that falls to the sun, the water or a stray arrow pays nothing,
+		// and its mission is over.
+		if (!paysFor(nemesis) || !NemesisState.markRewardPaid(nemesis)) {
+			data.removeMission(mission.id());
+			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=nemesis_lost mission={} entity={} killer={}",
+				McStellaVillages.MOD_ID, mission.id(), nemesis.getUUID(), nemesis.getKillCredit() == null ? "none" : nemesis.getKillCredit().getType());
 			return;
 		}
 		McStellaVillages.LOGGER.info(
@@ -405,11 +422,16 @@ public final class MissionService {
 	/** Every kind of mob with a spawn egg, the dragon aside: a Nemesis can be any of them. */
 	public static List<Identifier> defaultOfferPool() {
 		return BuiltInRegistries.ENTITY_TYPE.stream()
-			.filter(type -> net.minecraft.world.item.SpawnEggItem.byId(type).isPresent())
+			.filter(type -> net.minecraft.world.item.SpawnEggItem.byId(type).isPresent() && !WATER_CATEGORIES.contains(type.getCategory()))
 			.map(BuiltInRegistries.ENTITY_TYPE::getKey)
 			.filter(id -> !NEVER_OFFERED.contains(id))
 			.sorted()
 			.toList();
+	}
+
+	/** Whether a fallen Nemesis pays its reward: only when a player has the kill. */
+	public static boolean paysFor(final LivingEntity nemesis) {
+		return nemesis.getKillCredit() instanceof net.minecraft.server.level.ServerPlayer;
 	}
 
 	public static void setOfferPool(final @Nullable List<Identifier> pool) {

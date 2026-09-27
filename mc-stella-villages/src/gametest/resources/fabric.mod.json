@@ -16,7 +16,8 @@
 			"com.stella.villages.SmithHardeningGameTest",
 			"com.stella.villages.VillageCoverageGameTest",
 			"com.stella.villages.PatrolDutyGameTest",
-			"com.stella.villages.PatrolLifecycleGameTest"
+			"com.stella.villages.PatrolLifecycleGameTest",
+			"com.stella.villages.VillageWitchGameTest"
 		]
 	},
 	"mixins": [

@@ -17,7 +17,8 @@ public final class PatrolLabels {
 	}
 
 	public static Component label(final PatrolState.Role role, final boolean provoked) {
-		return Component.literal(role == PatrolState.Role.HEAD ? HEAD_LABEL : MEMBER_LABEL).withStyle(provoked ? PROVOKED : CALM);
+		String text = role == PatrolState.Role.HEAD ? HEAD_LABEL : role == PatrolState.Role.VILLAGE_WITCH ? VillageWitchKit.LABEL : MEMBER_LABEL;
+		return Component.literal(text).withStyle(provoked ? PROVOKED : CALM);
 	}
 
 	/** Puts the label on a member, and logs only when it changes. */
