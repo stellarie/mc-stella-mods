@@ -1,6 +1,7 @@
 package com.stella.equips;
 
 import com.stella.equips.enchant.Soulbound;
+import com.stella.equips.mastery.MasteryPerks;
 import com.stella.equips.mastery.WeaponMastery;
 import com.stella.equips.enchant.Deflection;
 import com.stella.equips.enchant.OreMender;
@@ -35,6 +36,7 @@ public class StellaEquips implements ModInitializer {
 		ChestLoot.register();
 		HeadDrops.register();
 		WeaponMastery.register();
+		MasteryPerks.register();
 		Soulbound.register();
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> PowerConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
