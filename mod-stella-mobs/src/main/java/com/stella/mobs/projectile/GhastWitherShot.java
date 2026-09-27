@@ -21,6 +21,15 @@ public class GhastWitherShot extends LargeFireball {
 	private static final double SETTLE_DEPTH = 4.0;
 	private final int witherAmplifier;
 
+	@Override
+	public void tick() {
+		super.tick();
+		// A shot that has hit nothing by now burns out, so a miss never leaves its cloud far away.
+		if (!this.level().isClientSide() && this.tickCount > StellaSmallFireball.MAX_LIFE_TICKS) {
+			this.discard();
+		}
+	}
+
 	public GhastWitherShot(final Level level, final LivingEntity owner, final Vec3 direction, final int witherAmplifier) {
 		super(level, owner, direction, 0);
 		this.witherAmplifier = witherAmplifier;
