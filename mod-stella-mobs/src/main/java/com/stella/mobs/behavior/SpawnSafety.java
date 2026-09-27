@@ -10,10 +10,19 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
-/** The spawn-safety gate: no natural elite or boss roll inside the configured radius of the shared spawn. */
+/**
+ * The spawn-safety gate: no elite or boss roll inside the configured radius of the shared spawn, for any mob
+ * the world spawns on its own. A mob a player spawns on purpose, from an egg or a command, still rolls.
+ */
 public final class SpawnSafety {
 	/** The radius the shipped config file sets. */
 	public static final double SHIPPED_RADIUS = 1000.0;
+	/** Every way the world spawns a mob by itself. */
+	public static final java.util.Set<EntitySpawnReason> WORLD_REASONS = java.util.EnumSet.of(
+		EntitySpawnReason.NATURAL, EntitySpawnReason.CHUNK_GENERATION, EntitySpawnReason.SPAWNER, EntitySpawnReason.STRUCTURE,
+		EntitySpawnReason.PATROL, EntitySpawnReason.TRIAL_SPAWNER, EntitySpawnReason.REINFORCEMENT, EntitySpawnReason.JOCKEY,
+		EntitySpawnReason.EVENT
+	);
 
 	private SpawnSafety() {
 	}
@@ -28,7 +37,7 @@ public final class SpawnSafety {
 		final double spawnZ,
 		final double radius
 	) {
-		if (radius <= 0.0 || reason != EntitySpawnReason.NATURAL || !Level.OVERWORLD.equals(dimension)) {
+		if (radius <= 0.0 || reason == null || !WORLD_REASONS.contains(reason) || !Level.OVERWORLD.equals(dimension)) {
 			return false;
 		}
 

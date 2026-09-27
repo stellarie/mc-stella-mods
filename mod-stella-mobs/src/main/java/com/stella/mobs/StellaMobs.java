@@ -119,6 +119,9 @@ public class StellaMobs implements ModInitializer {
 		// Last among the load listeners, so a friendly mob's buff and full health come after every other change to it.
 		com.stella.mobs.behavior.FriendlyBuffs.register();
 		com.stella.mobs.behavior.WolfPack.register();
+		com.stella.mobs.behavior.TemporaryBlocks.register();
+		com.stella.mobs.behavior.StrayKit.register();
+		com.stella.mobs.behavior.WitherPulse.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 

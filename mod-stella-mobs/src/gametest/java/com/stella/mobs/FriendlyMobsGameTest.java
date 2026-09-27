@@ -130,8 +130,8 @@ public class FriendlyMobsGameTest {
 		boolean tamed = wolf.isTame();
 		helper.runAfterDelay(40L, () -> {
 			// An elite of this mod gets its escorts within a few ticks; an elite wolf must get none.
-			int others = helper.getLevel().getEntitiesOfClass(Mob.class, wolf.getBoundingBox().inflate(16.0),
-				mob -> mob != wolf && EliteState.isSummoned(mob)).size();
+			// The wolf's own escort record, never a box count that could admit a neighbour's escorts.
+			int others = com.stella.mobs.behavior.EscortSquad.escortsOf(helper.getLevel(), wolf).size();
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=anEliteWolfIsLargerStrongerAndAloneAndCanBeTamed elite={} tamed={} summoned={} scale={}",
 				TEST, Elite.isElite(wolf), tamed, others, wolf.getScale());
 			helper.assertTrue(Elite.isElite(wolf), "the wolf is not elite");
@@ -195,8 +195,12 @@ public class FriendlyMobsGameTest {
 
 	private static Wolf wolf(final GameTestHelper helper, final int x, final int z) {
 		Arena.buildFloor(helper);
-		Wolf wolf = helper.spawnMob(EntityTypes.WOLF, x, 2, z).spawn();
+		// Tagged out of the spawn rolls, so no test wolf is an elite unless the test makes it one.
+		Wolf wolf = EntityTypes.WOLF.create(helper.getLevel(), EntitySpawnReason.EVENT);
+		wolf.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		wolf.snapTo(helper.absoluteVec(new Vec3(x + 0.5, 2.0, z + 0.5)), 0.0F, 0.0F);
 		wolf.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(wolf);
 		return wolf;
 	}
 

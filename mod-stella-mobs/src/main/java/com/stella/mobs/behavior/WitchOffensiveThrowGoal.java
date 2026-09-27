@@ -21,6 +21,7 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 
 	private final T witch;
 	private final WitchBag<WitchPotions.Carried> bag = new WitchBag<>(WitchPotions.offensive());
+	private final WitchBag<WitchPotions.Carried> eliteBag = new WitchBag<>(WitchPotions.eliteOffensive());
 	private @Nullable LivingEntity target;
 	private int ticksToThrow = OFFENSE_INTERVAL_TICKS;
 	private int ticksToLinger;
@@ -96,6 +97,8 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 			return;
 		}
 
-		WitchThrow.atTarget(this.witch, WitchPotions.stack(this.bag.next(this.witch.getRandom())), current);
+		// An elite or boss witch never blinds.
+		boolean elite = WitchElite.isElite(this.witch) || Bosses.isBoss(this.witch);
+		WitchThrow.atTarget(this.witch, WitchPotions.stack((elite ? this.eliteBag : this.bag).next(this.witch.getRandom())), current);
 	}
 }

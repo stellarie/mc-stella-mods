@@ -295,6 +295,8 @@ public class WitchGameTest {
 	@GameTest(maxTicks = MAX_TICKS)
 	public void eliteWitchHasBoostedHealthAndAura(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
+		// The test's own player, beside the witch, is the one read: a box of players would admit a neighbour's.
+		ServerPlayer own = addPlayer(helper, 3.5, 3.5);
 		Zombie enemy = enemy(helper, 7, 7);
 		helper.onEachTick(() -> witch.setTarget(enemy));
 		WitchElite.mark(witch, GearTier.DIAMOND);
@@ -307,28 +309,15 @@ public class WitchGameTest {
 				"the elite witch has " + unscaled + " health before scaling, not " + expected
 					+ " (maximum " + witch.getMaxHealth() + ")"
 			);
-			helper.assertTrue(
-				!blindedPlayers(helper).equals("none"),
-				"the aura never blinded the player inside " + WitchElite.AURA_RADIUS + " blocks"
-			);
+			helper.assertTrue(own.hasEffect(WitchElite.AURA_EFFECT), "the aura never weakened the player inside " + WitchElite.AURA_RADIUS + " blocks");
+			helper.assertFalse(own.hasEffect(MobEffects.BLINDNESS), "an elite witch blinded the player");
 			result(
 				"eliteWitchHasBoostedHealthAndAura",
-				"maxHealth=" + witch.getMaxHealth() + " expected=" + expected + " auraRadius=" + WitchElite.AURA_RADIUS + " " + blindedPlayers(helper)
+				"maxHealth=" + witch.getMaxHealth() + " expected=" + expected + " auraRadius=" + WitchElite.AURA_RADIUS + " weakened=true blinded=false"
 			);
 		});
 	}
 
-	private static String blindedPlayers(final GameTestHelper helper) {
-		StringBuilder text = new StringBuilder();
-
-		for (ServerPlayer player : helper.getLevel().players()) {
-			if (player.hasEffect(MobEffects.BLINDNESS)) {
-				text.append(player.getScoreboardName()).append(' ');
-			}
-		}
-
-		return text.length() == 0 ? "none" : text.toString();
-	}
 
 	@GameTest(maxTicks = MAX_TICKS)
 	public void witchDropsEveryCarriedPotion(final GameTestHelper helper) {
