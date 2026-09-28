@@ -42,7 +42,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
   board, or tells you why it refused. Each contract creates a persistent elite Nemesis and a same-kind
-  elite companion. They share one permanent buff. The Nemesis has 100 health above its elite health,
+  elite companion. They share one permanent buff. A killed companion stays dead for that contract.
+  The Nemesis has 100 health above its elite health,
   diamond or netherite armor, and a matching weapon with three random enchantments per piece. It can
   teleport near its target player; ranged mobs choose a safe position farther away. The map looks like
   a vanilla filled map. A player kill drops 64 emeralds, 32 diamonds, one ancient debris, and the

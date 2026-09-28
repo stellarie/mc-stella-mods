@@ -217,8 +217,8 @@ public final class NemesisMissionGameTest {
 	}
 
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void fallenEliteCompanionIsReplaced(final GameTestHelper helper) {
-		String test = "fallenEliteCompanionIsReplaced";
+	public void missingEliteCompanionIsReplaced(final GameTestHelper helper) {
+		String test = "missingEliteCompanionIsReplaced";
 		MissionFixture fixture = fixture(helper, test);
 		if (fixture == null) {
 			return;
@@ -266,6 +266,54 @@ public final class NemesisMissionGameTest {
 				PatrolTestSupport.result(test, "accepted=" + accepted + " replacement="
 					+ NemesisState.get(nemesis[0]).companionId().orElseThrow() + " elite=true sharedBuff=true");
 				movePlayer(fixture.owner(), Vec3.atBottomCenterOf(fixture.head().blockPosition()));
+				releaseSafeTargetSite(helper, safeSite);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void killedEliteCompanionNeverRespawns(final GameTestHelper helper) {
+		String test = "killedEliteCompanionNeverRespawns";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		BlockPos safeSite = prepareSafeTargetSite(helper, test, fixture.head().blockPosition());
+		if (safeSite == null) {
+			return;
+		}
+		UseEntityCallback.EVENT.invoker().interact(
+			fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null
+		);
+		UUID offerId = firstOfferId(offersFor(fixture.owner().getUUID()));
+		helper.assertTrue(offerId != null && Boolean.TRUE.equals(acceptOffer(
+			fixture.owner(), fixture.head().getUUID(), offerId)), "the mission was not accepted");
+		movePlayer(fixture.owner(), Vec3.atBottomCenterOf(safeSite));
+		Mob[] nemesis = {null};
+		UUID[] companionId = {null};
+		helper.startSequence()
+			.thenWaitUntil(() -> {
+				var mission = missionsFor(helper.getLevel(), fixture.owner().getUUID()).stream().findFirst().orElse(null);
+				nemesis[0] = mission == null ? null
+					: loadNemesis(test, helper.getLevel(), mission.id(), mission.targetPosition());
+				NemesisState state = nemesis[0] == null ? null : NemesisState.get(nemesis[0]);
+				helper.assertTrue(state != null && state.companionId().isPresent(), "Nemesis and companion did not spawn");
+			})
+			.thenExecute(() -> {
+				companionId[0] = NemesisState.get(nemesis[0]).companionId().orElseThrow();
+				Entity companion = helper.getLevel().getEntity(companionId[0]);
+				helper.assertTrue(companion instanceof Mob, "the companion was not loaded");
+				companion.kill(helper.getLevel());
+				movePlayer(fixture.owner(), Vec3.atBottomCenterOf(fixture.head().blockPosition()));
+			})
+			.thenIdle(160)
+			.thenExecute(() -> {
+				NemesisState state = NemesisState.get(nemesis[0]);
+				UUID current = state == null ? null : state.companionId().orElse(null);
+				PatrolTestSupport.result(test, "original=" + companionId[0] + " current=" + current
+					+ " originalAlive=" + (helper.getLevel().getEntity(companionId[0]) != null));
+				helper.assertTrue(companionId[0].equals(current) && helper.getLevel().getEntity(current) == null,
+					"a killed elite companion respawned");
 				releaseSafeTargetSite(helper, safeSite);
 			})
 			.thenSucceed();

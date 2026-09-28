@@ -91,6 +91,7 @@ public final class MissionService {
 	}
 
 	public static void register() {
+		NemesisCompanionDeaths.register();
 		NemesisMapItem.register();
 		UseEntityCallback.EVENT.register(MissionService::onUseEntity);
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, alreadyLoaded) -> onChunkLoad(level, chunk));
@@ -303,6 +304,7 @@ public final class MissionService {
 		companion.snapTo(nemesis.getX() + 2.0, nemesis.getY(), nemesis.getZ() + 2.0, 0.0F, 0.0F);
 		companion.setPersistenceRequired();
 		companion.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		NemesisCompanionDeaths.attach(companion, NemesisState.get(nemesis).missionId());
 		ReactiveState.get(companion).setGearApplied(true);
 		EliteState.setSummoned(companion, true);
 		NemesisKit.applyElite(companion, tier, buffIndex);
@@ -326,7 +328,9 @@ public final class MissionService {
 			}
 			NemesisKit.ensureBuff(nemesis, state.buffIndex());
 			Entity companion = state.companionId().map(level::getEntity).orElse(null);
-			if (!(companion instanceof Mob guard) || !guard.isAlive()) {
+			if (NemesisCompanionDeaths.isDefeated(level, state.missionId())) {
+				MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+			} else if (!(companion instanceof Mob guard) || !guard.isAlive()) {
 				int missing = MISSING_COMPANION_TICKS.merge(nemesis.getUUID(), 20, Integer::sum);
 				if (missing >= 100) {
 					MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
@@ -334,6 +338,9 @@ public final class MissionService {
 				}
 			} else {
 				MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+				if (NemesisCompanionDeaths.missionOf(guard) == null) {
+					NemesisCompanionDeaths.attach(guard, state.missionId());
+				}
 				NemesisKit.ensureBuff(guard, state.buffIndex());
 				if (guard.distanceToSqr(nemesis) > 16.0 * 16.0) {
 					teleportCompanionNear(level, guard, nemesis);
@@ -430,6 +437,8 @@ public final class MissionService {
 			NemesisKit.ensureBuff(mob, state.buffIndex());
 			mob.setPersistenceRequired();
 			ACTIVE_NEMESES.put(mob.getUUID(), mob);
+			state.companionId().map(level::getEntity).filter(loaded -> loaded instanceof Mob)
+				.ifPresent(loaded -> NemesisCompanionDeaths.attach((Mob) loaded, state.missionId()));
 		}
 	}
 
@@ -467,12 +476,24 @@ public final class MissionService {
 		if (!(entity instanceof Mob nemesis) || !(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
+		UUID companionMission = NemesisCompanionDeaths.missionOf(nemesis);
+		if (companionMission == null && nemesis.getCustomName() != null
+			&& nemesis.getCustomName().getString().startsWith("<Elite Guard>")) {
+			companionMission = ACTIVE_NEMESES.values().stream()
+				.map(NemesisState::get)
+				.filter(state -> state != null && state.companionId().filter(nemesis.getUUID()::equals).isPresent())
+				.map(NemesisState::missionId).findFirst().orElse(null);
+		}
+		if (companionMission != null) {
+			NemesisCompanionDeaths.recordDeath(level, companionMission, nemesis.getUUID());
+		}
 		NemesisState state = NemesisState.get(nemesis);
 		if (state == null) {
 			return;
 		}
 		ACTIVE_NEMESES.remove(nemesis.getUUID(), nemesis);
 		MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+		NemesisCompanionDeaths.clear(level, state.missionId());
 		state.companionId().map(level::getEntity).ifPresent(Entity::discard);
 		VillageWorldData data = VillageWorldData.get(level);
 		MissionRecord mission = data.mission(state.missionId()).orElse(null);

@@ -26,6 +26,7 @@ This repository develops Fabric mods on separate integration branches and publis
 - Villages requires `mod-stella-mobs` for Nemesis elite state. Its Gradle build builds the neighboring mobs jar. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; fabric.mod.json; clean build]
 - The village head guards an eight-block bell radius; bell rings teleport loaded members and grant five-minute Speed II and Strength II. [status: active] [verified: 2026-09-28] [source: HeadBellGuardGoal.java; BellRally.java; five combined GameTest runs]
 - Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
+- Killed Nemesis companions stay dead by mission ID, saved on the Overworld; missing live companions can be replaced. [status: active] [verified: 2026-09-28] [source: NemesisCompanionDeaths.java; killedEliteCompanionNeverRespawns; missingEliteCompanionIsReplaced]
 - `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
