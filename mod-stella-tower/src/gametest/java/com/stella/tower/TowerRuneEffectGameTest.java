@@ -215,6 +215,29 @@ public class TowerRuneEffectGameTest {
 		helper.succeed();
 	}
 
+	/** Out of the tower, a Holy hit strikes the strongest boon a mob holds. */
+	@GameTest
+	public void holyStripsAWorldMobsBoon(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, TowerElement.HOLY, TOP);
+		ServerLevel level = helper.getLevel();
+		Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		zombie.snapTo(helper.absoluteVec(new Vec3(3.5, 2.0, 3.5)));
+		zombie.setNoAi(true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		zombie.setHealth(zombie.getMaxHealth());
+		level.addFreshEntity(zombie);
+		zombie.addEffect(new MobEffectInstance(MobEffects.SPEED, 200, 0));
+		zombie.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 200, 2));
+		strike(helper, player, zombie, 0.01F);
+		boolean strength = zombie.hasEffect(MobEffects.STRENGTH);
+		boolean speed = zombie.hasEffect(MobEffects.SPEED);
+		TowerTestSupport.result("holyRuneWorld", "strength=" + strength + " speed=" + speed);
+		zombie.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(!strength && speed, "a holy hit left strength=" + strength + " speed=" + speed);
+		helper.succeed();
+	}
+
 	@GameTest
 	public void lightningStoresChargesToItsCap(final GameTestHelper helper) {
 		ServerPlayer player = wielder(helper, TowerElement.LIGHTNING, TOP);
