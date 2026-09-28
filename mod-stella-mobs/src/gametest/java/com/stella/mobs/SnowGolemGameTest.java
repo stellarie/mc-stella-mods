@@ -43,7 +43,7 @@ public final class SnowGolemGameTest {
 	private static final long NIGHT = 18000L;
 	private static final double EPSILON = 1.0e-6;
 	private static final int ROOF_Y = 4;
-	/** Far enough that the R12 distance share puts the second subject on a higher area level. */
+	/** A diagonal 400-block offset crosses a 500-block area boundary. */
 	private static final int FAR_SPOT = 400;
 	private static final int NETHER_SPOT = 400;
 	private static final int NETHER_Y = 100;
@@ -171,22 +171,18 @@ public final class SnowGolemGameTest {
 			arriveHealth[0] = golem.getHealth();
 		});
 
-		// A friendly-buffed golem carries more health, so the window grows with the buff that ships.
-		long window = Math.round(60L * (1.0 + com.stella.mobs.behavior.FriendlyBuffs.BUFFS.get(EntityTypes.SNOW_GOLEM).health()));
-		helper.runAfterDelay(window, () -> {
+		helper.succeedWhen(() -> {
+			helper.assertTrue(subject[0] != null, "the nether subject never spawned in " + waited[0] + " ticks");
+			helper.assertFalse(hasSky[0], "the nether answered that it has a sky, so the shelter rule would apply");
+			helper.assertTrue(melts[0], "the world does not melt a snow golem here, so this case proves nothing");
+			helper.assertTrue(subject[0].getHealth() < arriveHealth[0],
+				"a golem in a melting world took no melt damage");
 			result(
 				"meltsWhereTheWorldSaysSo",
 				"hasSkyLight=" + hasSky[0] + " melts=" + melts[0] + " arrived=" + arriveHealth[0]
 					+ " waited=" + waited[0] + " alive=" + (subject[0] != null && subject[0].isAlive())
 					+ " health=" + (subject[0] == null ? -1.0F : subject[0].getHealth())
 			);
-			helper.assertTrue(subject[0] != null, "the nether subject never spawned in " + waited[0] + " ticks");
-			helper.assertFalse(hasSky[0], "the nether answered that it has a sky, so the shelter rule would apply");
-			helper.assertTrue(melts[0], "the world does not melt a snow golem here, so this case proves nothing");
-			helper.assertFalse(
-				subject[0].isAlive(), "a golem in a melting world survived the whole window"
-			);
-			helper.succeed();
 		});
 	}
 

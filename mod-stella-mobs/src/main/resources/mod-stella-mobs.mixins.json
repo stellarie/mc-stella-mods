@@ -19,7 +19,8 @@
 		"DepthCreeperMixin",
 		"FriendlyPatrolMixin",
 		"FriendlyPatrolRestMixin",
-		"MobTargetSelectorAccessor"
+		"MobTargetSelectorAccessor",
+		"ThreatExperienceMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
