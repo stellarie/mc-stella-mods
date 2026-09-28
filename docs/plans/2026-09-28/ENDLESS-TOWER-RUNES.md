@@ -290,8 +290,8 @@ from the biome, with no extra client code.
 - Every 10 seconds it gives the nearest player within 12 blocks Strength, Resistance, Regeneration or
   Speed for 10 seconds.
 - A player who kills a ghost is blinded for 30 seconds.
-- A ghost killed by a player has a 3% chance to drop a Ghost Rune; what the rune does is still to be
-  decided.
+- A ghost killed by a player has a 3% chance to drop a Ghost Rune. What it does is under "Built: ghost
+  runes" below.
 - A boss floor's buffs, thorns included, never go to a ghost.
 - Ghosts are named "Ghost <element> Wisp". The client draws them in a blaze's form, pale grey and see-through.
 - Assumed until told otherwise: "the void" means the whole tower, not only the void-themed floors 31-40.
@@ -387,3 +387,17 @@ work anywhere and against any mob, not only in the tower:
   pack or another mod tags the tower's blocks.
 - A bed in the tower does nothing: no sleep, no spawn point, and no blast. It used to explode, as in the
   Nether.
+
+## Built: ghost runes (2026-09-28)
+
+A ghost rune goes into a chestplate or a weapon at the anvil, one piece at a time, for 64 emeralds from the
+inventory and no levels, as an elemental rune does. It sits beside any elemental rune the piece carries.
+
+- **Chestplate:** the wearer phases through mobs: neither pushes the other. A hostile mob the wearer stands
+  within is slowed (Slowness II for 3 seconds, renewed while they overlap). The wearer evades 30% of blows
+  of any kind; only a blow nothing can turn, such as the void's or a command's, always lands. Measured: 609
+  of 2000 blows evaded.
+- **Weapon:** its blows meet half the target's armor and armor toughness, and pass a raised shield. A bow
+  or crossbow carries it to its arrows.
+- Gear with a ghost rune says so in its tooltip, and gear with an elemental rune now names its rune and floor.
+- Like the other runes, a ghost rune's effects work anywhere, not only in the tower.

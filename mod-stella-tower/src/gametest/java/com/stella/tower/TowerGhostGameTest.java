@@ -299,6 +299,9 @@ public class TowerGhostGameTest {
 	public void aFarMonsterDoesNotDrawAGhostAway(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		// The far zombie is the only foe: the floor's guardians rise as pigs, and its own mobs are held off.
+		TowerElites.pinGuardianKind(floor, EntityTypes.PIG);
+		TowerMobs.pinFloorCap(floor, 0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		player.setGameMode(GameType.CREATIVE);
@@ -316,6 +319,8 @@ public class TowerGhostGameTest {
 			double fromPlayer = ghost.distanceTo(player);
 			double zombieFrom = zombie.distanceTo(ghost);
 			TowerTestSupport.result("ghostFarMonster", "drawn=" + drawn + " fromPlayer=" + (int) fromPlayer + " zombieFrom=" + (int) zombieFrom);
+			TowerElites.pinGuardianKind(floor, null);
+			TowerMobs.pinFloorCap(floor, null);
 			zombie.discard();
 			ghost.discard();
 			TowerTestSupport.leave(helper, player);
