@@ -120,7 +120,8 @@ public final class TowerRunes {
 
 	/** The gear with the rune set into it, replacing any before; empty if the gear takes none. */
 	public static ItemStack apply(final ItemStack gear, final RuneData rune) {
-		if (slotOf(gear) == null) {
+		// One piece at a time: a rune set into a stack would rune every piece of it.
+		if (slotOf(gear) == null || gear.getCount() != 1) {
 			return ItemStack.EMPTY;
 		}
 		ItemStack runed = gear.copy();
@@ -137,7 +138,7 @@ public final class TowerRunes {
 	 * elemental, dealt half again to the rune's opposite and half to its own element.
 	 */
 	public static float weapon(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (!(source.getEntity() instanceof Player) || source.getWeaponItem() == null) {
+		if (!struckWith(source)) {
 			return amount;
 		}
 		ItemStack weapon = source.getWeaponItem();
@@ -153,6 +154,11 @@ public final class TowerRunes {
 			added *= SAME;
 		}
 		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
+	}
+
+	/** A blow a player struck with the weapon in hand, not one their thorns or their armor returned. */
+	public static boolean struckWith(final DamageSource source) {
+		return source.getEntity() instanceof Player && source.getWeaponItem() != null && !source.is(net.minecraft.world.damagesource.DamageTypes.THORNS);
 	}
 
 	/** A tower mob's blow, of its element, once the victim's armor runes have turned it. */
