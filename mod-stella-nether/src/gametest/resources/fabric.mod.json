@@ -7,7 +7,11 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"com.stella.nether.ModpackDependencyGameTest",
-			"com.stella.nether.RaidPortalGameTest"
+			"com.stella.nether.RaidPortalGameTest",
+			"com.stella.nether.RaidModeGameTest"
+		],
+		"main": [
+			"com.stella.nether.NetherGameTestInit"
 		]
 	},
 	"depends": {

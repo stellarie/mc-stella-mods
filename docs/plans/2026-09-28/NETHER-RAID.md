@@ -65,7 +65,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 ## Slices (easiest first)
 
 1. Mod scaffold, the `raid` dimension, and the portal choice (normal or raid) with a return path. **Done.**
-2. Host and mode, the per-player effect in Normal and Hard, the mob effects in Hard.
+2. Host and mode, the per-player effect in Normal and Hard, the mob effects in Hard. **Done.**
 3. Instance lifecycle: occupancy tracking, reset when empty, loss of dropped items.
 4. The 30 minute enrage.
 5. Guaranteed fortress and bastion within 256 blocks.
@@ -75,6 +75,13 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 9. Raid objectives.
 
 Each slice ships with headless game tests per `AGENTS.md`.
+
+## Deviations
+
+- The plan kept every number in the config. Slices 1 and 2 keep them as constants in `RaidTravel` and
+  `RaidInstance`. A config file comes in its own slice.
+- The mode is picked in the portal prompt, before crossing, instead of after arriving. The first
+  crossing into an empty raid needs no second step.
 
 ## Open questions for oniichan
 

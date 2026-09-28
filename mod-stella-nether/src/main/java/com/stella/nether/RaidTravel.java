@@ -42,17 +42,15 @@ public final class RaidTravel {
 	/** How far out of the portal the entrance is remembered, so the way back never lands in it. */
 	public static final double ENTRY_STEP = 1.5;
 	public static final String COMMAND = "stellanether";
-	/** The raid's arrival hall: an obsidian floor with room above and a lit portal out at its north end. */
-	public static final BlockPos ARRIVAL = new BlockPos(0, 64, 1);
+	/** The arrival hall around a run's origin: an obsidian floor with room above and a lit portal out at its north end. */
 	private static final int HALL_HALF_WIDTH = 3;
 	private static final int HALL_NORTH = -5;
 	private static final int HALL_SOUTH = 3;
 	private static final int HALL_HEIGHT = 5;
-	private static final int PORTAL_Z = -4;
 
 	public enum Choice { NORMAL, RAID }
 
-	private record Pending(Choice choice, int until) {
+	private record Pending(Choice choice, RaidMode mode, int until) {
 	}
 
 	/** A portal's verdict: undecided leaves the crossing to vanilla; decided replaces it, a null transition holding the entity. */
@@ -84,22 +82,38 @@ public final class RaidTravel {
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, selection) -> dispatcher.register(
 			Commands.literal(COMMAND).then(Commands.literal("portal")
 				.then(Commands.literal("normal").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.NORMAL)))
-				.then(Commands.literal("raid").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.RAID))))
+				.then(Commands.literal("raid").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.RAID, RaidMode.NORMAL))
+					.then(Commands.literal("normal").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.RAID, RaidMode.NORMAL)))
+					.then(Commands.literal("hard").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.RAID, RaidMode.HARD)))))
 		));
 	}
 
 	private static int chooseByCommand(final ServerPlayer player, final Choice choice) {
-		choose(player, choice);
+		return chooseByCommand(player, choice, RaidMode.NORMAL);
+	}
+
+	private static int chooseByCommand(final ServerPlayer player, final Choice choice, final RaidMode mode) {
+		choose(player, choice, mode);
 		player.sendSystemMessage(Component.translatable("message.mod-stella-nether.chosen." + key(choice)));
 		return 1;
 	}
 
+	/** A raid choice carries the mode the player would host with; joining a running raid ignores it. */
+	public static void choose(final ServerPlayer player, final Choice choice, final RaidMode mode) {
+		CHOICES.put(player.getUUID(), new Pending(choice, mode, player.level().getServer().getTickCount() + CHOICE_TICKS));
+		StellaNether.LOGGER.debug("[NETHER] player={} CHOSE {} mode={}", player.getScoreboardName(), choice, mode);
+	}
+
 	public static void choose(final ServerPlayer player, final Choice choice) {
-		CHOICES.put(player.getUUID(), new Pending(choice, player.level().getServer().getTickCount() + CHOICE_TICKS));
-		StellaNether.LOGGER.debug("[NETHER] player={} CHOSE {}", player.getScoreboardName(), choice);
+		choose(player, choice, RaidMode.NORMAL);
 	}
 
 	public static @Nullable Choice pendingChoice(final ServerPlayer player) {
+		Pending pending = pending(player);
+		return pending == null ? null : pending.choice();
+	}
+
+	private static @Nullable Pending pending(final ServerPlayer player) {
 		Pending pending = CHOICES.get(player.getUUID());
 		if (pending == null) {
 			return null;
@@ -108,16 +122,11 @@ public final class RaidTravel {
 			CHOICES.remove(player.getUUID(), pending);
 			return null;
 		}
-		return pending.choice();
+		return pending;
 	}
 
 	public static boolean wasAsked(final ServerPlayer player) {
 		return ASKED.containsKey(player.getUUID());
-	}
-
-	/** The bottom block of the raid hall's portal out. */
-	public static BlockPos exitPortal() {
-		return new BlockPos(0, ARRIVAL.getY() + 1, PORTAL_Z);
 	}
 
 	public static Route route(final ServerLevel from, final Entity entity, final BlockPos portal) {
@@ -128,13 +137,13 @@ public final class RaidTravel {
 		if (player == null || !from.dimension().equals(Level.OVERWORLD)) {
 			return Route.VANILLA;
 		}
-		Choice choice = pendingChoice(player);
-		if (choice == null) {
+		Pending pending = pending(player);
+		if (pending == null) {
 			ask(player);
 			return Route.HOLD;
 		}
 		CHOICES.remove(player.getUUID());
-		if (choice == Choice.NORMAL) {
+		if (pending.choice() == Choice.NORMAL) {
 			return Route.VANILLA;
 		}
 		ServerLevel raid = from.getServer().getLevel(RAID);
@@ -148,10 +157,11 @@ public final class RaidTravel {
 				other.setAttached(ENTRY, beside);
 			}
 		});
+		RaidInstance.enter(player, pending.mode());
 		buildHall(raid);
 		StellaNether.LOGGER.debug("[NETHER] player={} ENTERS raid from={}", player.getScoreboardName(), beside.position());
 		return new Route(true, new TeleportTransition(
-			raid, Vec3.atBottomCenterOf(ARRIVAL), Vec3.ZERO, 180.0F, 0.0F,
+			raid, Vec3.atBottomCenterOf(RaidInstance.arrival(from.getServer())), Vec3.ZERO, 180.0F, 0.0F,
 			TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET)
 		));
 	}
@@ -172,18 +182,24 @@ public final class RaidTravel {
 			return;
 		}
 		ASKED.put(player.getUUID(), now);
-		player.sendSystemMessage(Component.translatable("message.mod-stella-nether.ask")
-			.append(option(Choice.NORMAL, ChatFormatting.RED))
-			.append(" ")
-			.append(option(Choice.RAID, ChatFormatting.GOLD)));
+		RaidState state = RaidInstance.state(player.level().getServer());
+		net.minecraft.network.chat.MutableComponent prompt = Component.translatable("message.mod-stella-nether.ask")
+			.append(option("normal", "normal", ChatFormatting.RED)).append(" ");
+		if (state.active()) {
+			prompt.append(option("raid", "join." + state.mode().name().toLowerCase(java.util.Locale.ROOT), ChatFormatting.GOLD));
+		} else {
+			prompt.append(option("raid normal", "host.normal", ChatFormatting.GOLD)).append(" ")
+				.append(option("raid hard", "host.hard", ChatFormatting.DARK_RED));
+		}
+		player.sendSystemMessage(prompt);
 		StellaNether.LOGGER.debug("[NETHER] player={} ASKED", player.getScoreboardName());
 	}
 
-	private static Component option(final Choice choice, final ChatFormatting colour) {
-		return Component.translatable("message.mod-stella-nether." + key(choice)).withStyle(style -> style
+	private static Component option(final String command, final String label, final ChatFormatting colour) {
+		return Component.translatable("message.mod-stella-nether." + label).withStyle(style -> style
 			.withColor(colour)
-			.withClickEvent(new ClickEvent.RunCommand("/" + COMMAND + " portal " + key(choice)))
-			.withHoverEvent(new HoverEvent.ShowText(Component.translatable("message.mod-stella-nether." + key(choice) + ".hover"))));
+			.withClickEvent(new ClickEvent.RunCommand("/" + COMMAND + " portal " + command))
+			.withHoverEvent(new HoverEvent.ShowText(Component.translatable("message.mod-stella-nether." + label + ".hover"))));
 	}
 
 	private static String key(final Choice choice) {
@@ -217,15 +233,17 @@ public final class RaidTravel {
 
 	/** Carves the arrival hall once: floor, air, a lit portal out, and any lava around it turned to blackstone. */
 	static void buildHall(final ServerLevel raid) {
-		if (raid.getBlockState(exitPortal()).is(Blocks.NETHER_PORTAL)) {
+		BlockPos arrival = RaidInstance.arrival(raid.getServer());
+		BlockPos exit = RaidInstance.exitPortal(raid.getServer());
+		if (raid.getBlockState(exit).is(Blocks.NETHER_PORTAL)) {
 			return;
 		}
-		int floorY = ARRIVAL.getY() - 1;
+		int floorY = arrival.getY() - 1;
 		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
 		for (int x = -HALL_HALF_WIDTH - 1; x <= HALL_HALF_WIDTH + 1; x++) {
 			for (int z = HALL_NORTH - 1; z <= HALL_SOUTH + 1; z++) {
 				for (int y = floorY; y <= floorY + HALL_HEIGHT + 1; y++) {
-					at.set(ARRIVAL.getX() + x, y, z);
+					at.set(arrival.getX() + x, y, arrival.getZ() - 1 + z);
 					boolean shell = Math.abs(x) > HALL_HALF_WIDTH || z < HALL_NORTH || z > HALL_SOUTH || y == floorY + HALL_HEIGHT + 1;
 					if (shell) {
 						if (!raid.getFluidState(at).isEmpty()) {
@@ -244,12 +262,12 @@ public final class RaidTravel {
 				for (int y = 0; y <= 4; y++) {
 					boolean edge = x == -1 || x == 2 || y == 0 || y == 4;
 					if (edge != inside) {
-						at.set(ARRIVAL.getX() + x, ARRIVAL.getY() + y, PORTAL_Z);
+						at.set(exit.getX() + x, exit.getY() - 1 + y, exit.getZ());
 						raid.setBlock(at, edge ? Blocks.OBSIDIAN.defaultBlockState() : portalBlock, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
 					}
 				}
 			}
 		}
-		StellaNether.LOGGER.debug("[NETHER] raid hall built at={}", ARRIVAL);
+		StellaNether.LOGGER.debug("[NETHER] raid hall built at={}", arrival);
 	}
 }
