@@ -201,3 +201,20 @@ Reaching ascension 1000 takes 10,000 kills. Weapon Mastery stays as it is.
 Every boss floor (each tenth floor) has the snowy biomes' mist. Each floor sits in its own area of the
 tower dimension, so boss floors use a tower biome that copies the snowy biomes' fog; the client draws it
 from the biome, with no extra client code.
+
+## Queued (2026-09-28)
+
+### Tower mobs escape into the world
+
+- Once the tower is unlocked, mobs from its highest unlocked floor sometimes appear in the overworld, the
+  nether and the end.
+- Each 4x4-chunk area rolls once, when first seen: 1% to raise one such mob.
+- They are tower mobs of that floor in every way: health, damage, armor, speed, element, and drops.
+- Assumed until told otherwise: the tower is unlocked for the whole world once any player enters it, and
+  the highest unlocked floor is the highest floor any player has reached.
+
+### Clues in chests
+
+- Books left in chests hint at how to open the tower: a frame of crying obsidian, lit by fire.
+- Ruined portals, which carry crying obsidian, are the natural home for them; dungeons, strongholds
+  and bastions carry them too. The rate is to be set with the chest tables and measured.
