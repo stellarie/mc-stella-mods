@@ -1,0 +1,13 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"mod-stella-tower:ghost_rune",
+		"minecraft:echo_shard",
+		"minecraft:echo_shard",
+		"minecraft:glowstone_dust"
+	],
+	"result": {
+		"id": "mod-stella-tower:wisp",
+		"count": 1
+	}
+}
