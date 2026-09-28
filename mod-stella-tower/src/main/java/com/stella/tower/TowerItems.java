@@ -38,9 +38,14 @@ public final class TowerItems {
 	public static final DataComponentType<RuneData> RUNE_DATA = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("rune"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
 	/** The rune set into a weapon or armor piece. */
+	/** A wisp's uses left: its own count, not wear, so nothing mends it back. */
+	public static final DataComponentType<Integer> WISP_USES = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("wisp_uses"),
+		DataComponentType.<Integer>builder().persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT).build());
+
 	public static final Identifier WISP_ID = StellaTower.id("wisp");
 	public static final WispItem WISP = Registry.register(BuiltInRegistries.ITEM, WISP_ID, new WispItem(
-		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, WISP_ID)).rarity(Rarity.RARE).durability(TowerWisps.USES)
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, WISP_ID)).rarity(Rarity.RARE).stacksTo(1)
+			.component(WISP_USES, TowerWisps.USES)
 			.component(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.desc").withStyle(net.minecraft.ChatFormatting.GRAY),
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.rage").withStyle(net.minecraft.ChatFormatting.RED))))

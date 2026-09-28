@@ -106,7 +106,8 @@ public class TowerSafeZoneGameTest {
 		for (TowerMaze.Zone zone : TowerMaze.safeZones(floor)) {
 			for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 				for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
-					tower.setBlock(o.offset(x, -1, z), Blocks.STONE_BRICKS.defaultBlockState(), 3);
+					// The floor's own stone, as an older floor was laid.
+					tower.setBlock(o.offset(x, -1, z), TowerFloors.palette(floor)[0], 3);
 					BlockState column = x % TowerMaze.PITCH == 0 ? TowerBlocks.TOWER_MAZE_WALL.defaultBlockState() : Blocks.AIR.defaultBlockState();
 					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
 						tower.setBlock(o.offset(x, y, z), column, 3);
@@ -117,17 +118,24 @@ public class TowerSafeZoneGameTest {
 		TowerFloors.workstations(floor).keySet().forEach(pos -> tower.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
 		BlockPos built = o.offset(TowerMaze.ENTRANCE_X + 1, 0, TowerMaze.SAFE_Z + 1);
 		tower.setBlock(built, Blocks.COBBLESTONE.defaultBlockState(), 3);
+		// A player's chest where a station would stand, and a block of their own in the zone's floor.
+		BlockPos chestAt = TowerFloors.workstations(floor).keySet().iterator().next();
+		tower.setBlock(chestAt, Blocks.CHEST.defaultBlockState(), 3);
+		BlockPos goldAt = o.offset(TowerMaze.ENTRANCE_X + 2, -1, TowerMaze.SAFE_Z + 2);
+		tower.setBlock(goldAt, Blocks.GOLD_BLOCK.defaultBlockState(), 3);
 		TowerFloors.ensure(tower, floor);
 		int[] entrance = zoneFaults(tower, floor, TowerMaze.safeZones(floor).get(0));
 		int[] room = zoneFaults(tower, floor, TowerMaze.safeZones(floor).get(1));
 		long stations = TowerFloors.workstations(floor).entrySet().stream()
-			.filter(entry -> tower.getBlockState(entry.getKey()).is(entry.getValue())).count();
-		boolean kept = tower.getBlockState(built).is(Blocks.COBBLESTONE);
+			.filter(entry -> tower.getBlockState(entry.getKey()).equals(entry.getValue())).count();
+		boolean kept = tower.getBlockState(built).is(Blocks.COBBLESTONE) && tower.getBlockState(chestAt).is(Blocks.CHEST)
+			&& tower.getBlockState(goldAt).is(Blocks.GOLD_BLOCK);
 		TowerTestSupport.result("olderFloorSettled", "entranceShut=" + entrance[0] + " entranceUnmarked=" + entrance[1] + " roomShut=" + room[0]
 			+ " roomUnmarked=" + room[1] + " stations=" + stations + " kept=" + kept);
-		// The cobblestone is the one walled spot the entrance keeps.
+		// The cobblestone is the one walled spot the entrance keeps, and the gold its one unmarked floor block;
+		// the chest stands where a station would have.
 		helper.assertTrue(entrance[0] == 1 && room[0] == 0, "the older floor kept " + entrance[0] + " and " + room[0] + " walled spots in its zones");
-		helper.assertTrue(entrance[1] == 0 && room[1] == 0 && stations == 3, "the older floor's zones: unmarked " + entrance[1] + "/" + room[1] + ", stations " + stations);
+		helper.assertTrue(entrance[1] == 1 && room[1] == 0 && stations == 2, "the older floor's zones: unmarked " + entrance[1] + "/" + room[1] + ", stations " + stations);
 		helper.assertTrue(kept, "the settling cleared a block a player built");
 		helper.succeed();
 	}
@@ -142,7 +150,7 @@ public class TowerSafeZoneGameTest {
 		TowerMaze.Zone room = TowerMaze.safeZones(floor).get(1);
 		int[] faults = zoneFaults(tower, floor, room);
 		long stations = TowerFloors.workstations(floor).entrySet().stream()
-			.filter(entry -> tower.getBlockState(entry.getKey()).is(entry.getValue())).count();
+			.filter(entry -> tower.getBlockState(entry.getKey()).equals(entry.getValue())).count();
 		BlockPos o = TowerLayout.origin(floor);
 		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(o);
 		BlockPos portal = TowerLayout.portalFrame(floor).get(0).subtract(o).east();
@@ -159,6 +167,55 @@ public class TowerSafeZoneGameTest {
 		helper.assertTrue(faults[0] == 0 && faults[1] == 0, "the safe room has " + faults[0] + " walled and " + faults[1] + " unmarked spots");
 		helper.assertTrue(stations == 3 && TowerFloors.workstations(floor).size() == 3, "the safe room holds " + stations + " of its 3 workstations");
 		helper.assertTrue(way > 0 && around < 0, "the way to the boss is " + way + " steps, and " + around + " around the safe room");
+		helper.succeed();
+	}
+
+	/** On a boss floor every open spot of the maze is still reached from the arrival, though the hall is walled off. */
+	@GameTest
+	public void aBossFloorsMazeLeavesNoSpotCutOff(final GameTestHelper helper) {
+		long seed = helper.getLevel().getSeed();
+		int cut = 0;
+		int floors = 0;
+		for (int floor = TowerElites.BOSS_EVERY; floor <= 200 * TowerElites.BOSS_EVERY; floor += TowerElites.BOSS_EVERY) {
+			boolean[][] walls = TowerMaze.walls(seed, floor);
+			boolean[][] seen = new boolean[S][S];
+			Deque<int[]> queue = new ArrayDeque<>();
+			queue.add(new int[] {TowerLayout.ARRIVAL_X, TowerLayout.MIDDLE_Z});
+			seen[TowerLayout.ARRIVAL_X][TowerLayout.MIDDLE_Z] = true;
+			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			while (!queue.isEmpty()) {
+				int[] at = queue.poll();
+				for (int[] way : ways) {
+					int x = at[0] + way[0];
+					int z = at[1] + way[1];
+					if (x >= 0 && z >= 0 && x < S && z < S && !walls[x][z] && !seen[x][z]) {
+						seen[x][z] = true;
+						queue.add(new int[] {x, z});
+					}
+				}
+			}
+			for (int x = 0; x < S; x++) {
+				for (int z = 0; z < S; z++) {
+					cut += !walls[x][z] && !seen[x][z] ? 1 : 0;
+				}
+			}
+			floors++;
+		}
+		TowerTestSupport.result("bossMazeWhole", "floors=" + floors + " cut=" + cut);
+		helper.assertTrue(cut == 0, cut + " open spots across " + floors + " boss floors lie cut off from the arrival");
+		helper.succeed();
+	}
+
+	/** A boss floor's furnace and anvil face into the room, not the wall behind them. */
+	@GameTest
+	public void theSafeRoomsStationsFaceTheRoom(final GameTestHelper helper) {
+		int floor = TowerElites.BOSS_EVERY;
+		long facingWall = TowerFloors.workstations(floor).values().stream()
+			.filter(state -> state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)
+				&& state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING) != net.minecraft.core.Direction.SOUTH)
+			.count();
+		TowerTestSupport.result("stationFacing", "facingWall=" + facingWall);
+		helper.assertTrue(facingWall == 0, facingWall + " stations face the wall");
 		helper.succeed();
 	}
 

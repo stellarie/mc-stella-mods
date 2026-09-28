@@ -46,6 +46,10 @@ public final class TowerRunes {
 	}
 
 	public static void register() {
+		// Runed gear names its rune.
+		net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry.addLast(TowerItems.RUNED, rune -> (context, lines, flag, components) ->
+			lines.accept(Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
+				.withStyle(ChatFormatting.BLUE)));
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
 			// A ghost leaves its own rune, not one of the eight.
