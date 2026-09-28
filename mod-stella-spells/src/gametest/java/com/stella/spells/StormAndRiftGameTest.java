@@ -50,13 +50,18 @@ public class StormAndRiftGameTest {
 		SpellTestLog.track(helper, "chainstormHitsInsideInSequenceAndSpareOutside");
 		helper.setTime(18_000L);
 		ServerPlayer caster = caster(helper);
-		floor(helper);
-		helper.setBlock(2, 1, 8, Blocks.STONE);
-		List<Mob> inside = List.of(zombie(helper, 3, 8), zombie(helper, 1, 8), zombie(helper, 2, 10));
-		Mob outside = zombie(helper, 2, 8 + (int) SpellStorms.RADIUS + 3);
-		Cow cow = helper.spawnMob(EntityTypes.COW, 3, 1, 9).withNoFreeWill().spawn();
+		Vec3 highCaster = helper.absoluteVec(new Vec3(2.5, 24.0, 1.5));
+		caster.setPos(highCaster.x, highCaster.y, highCaster.z);
+		caster.setNoGravity(true);
+		helper.setBlock(2, 24, 8, Blocks.STONE);
+		List<Mob> inside = List.of(zombie(helper, 3, 24, 8), zombie(helper, 1, 24, 8), zombie(helper, 2, 24, 10));
+		Mob outside = zombie(helper, 2, 24, 8 + (int) SpellStorms.RADIUS + 1);
+		Cow cow = helper.spawnMob(EntityTypes.COW, 3, 24, 9).withNoFreeWill().spawn();
+		inside.forEach(mob -> mob.setNoGravity(true));
+		outside.setNoGravity(true);
+		cow.setNoGravity(true);
 		float cowBefore = cow.getHealth();
-		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
+		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 24, 8))));
 		final boolean[] cast = {false};
 		List<Mob> subjects = new ArrayList<>(inside);
 		subjects.add(outside);
@@ -66,14 +71,15 @@ public class StormAndRiftGameTest {
 			cast[0] = true;
 		});
 
-		helper.succeedWhen(() -> {
+		helper.runAfterDelay(STORM_SETTLE_TICKS, () -> {
 			helper.assertTrue(cast[0], "Chainstorm has not been cast yet");
 			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
 			helper.assertTrue(struck.size() >= inside.size(), "only " + struck.size() + " strikes so far");
 			for (Mob mob : inside) {
 				helper.assertTrue(struck.contains(mob.getUUID()) && mob.getHealth() == mob.getMaxHealth() - SpellStorms.STRIKE_DAMAGE, "a hostile in the area took " + (mob.getMaxHealth() - mob.getHealth()));
 			}
-			helper.assertTrue(!struck.contains(outside.getUUID()) && outside.getHealth() == outside.getMaxHealth(), "the storm struck outside its radius");
+			helper.assertTrue(!struck.contains(outside.getUUID()) && outside.getHealth() == outside.getMaxHealth(),
+				"the outside hostile was struck=" + struck.contains(outside.getUUID()) + " health=" + outside.getHealth());
 			helper.assertTrue(cow.getHealth() == cowBefore && !struck.contains(cow.getUUID()), "the storm struck a cow");
 			List<int[]> ticks = STRIKES.get(caster.getUUID());
 			List<Integer> gaps = new ArrayList<>();
@@ -82,6 +88,7 @@ public class StormAndRiftGameTest {
 			}
 			helper.assertTrue(gaps.stream().allMatch(gap -> gap == SpellStorms.STRIKE_INTERVAL_TICKS), "the strikes fell " + gaps + " ticks apart, not in sequence");
 			LOG.info("[SPELLTEST] test=chainstormHitsInsideInSequenceAndSpareOutside RESULT strikes={} gaps={}", struck.size(), gaps);
+			helper.succeed();
 		});
 	}
 
@@ -325,7 +332,11 @@ public class StormAndRiftGameTest {
 
 	// A durable zombie with no armour, so a strike reads as exactly its damage.
 	private static Mob zombie(final GameTestHelper helper, final int x, final int z) {
-		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, x, 1, z).withNoFreeWill().spawn();
+		return zombie(helper, x, 1, z);
+	}
+
+	private static Mob zombie(final GameTestHelper helper, final int x, final int y, final int z) {
+		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, x, y, z).withNoFreeWill().spawn();
 		mob.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100.0);
 		mob.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
 		mob.setHealth(100.0F);

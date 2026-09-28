@@ -40,6 +40,7 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - Spark Shot's boundary test needed entity-index readiness -> use `Findable.then` before casting. [status: resolved] [verified: 2026-09-28] [source: SpellEffectsGameTest.java and summonbond-final-gate-1.log through summonbond-final-gate-5.log]
+- Chainstorm's delayed test passed before a fourth strike -> wait through `STORM_SETTLE_TICKS` in an isolated arena. [status: resolved] [verified: 2026-09-28] [source: StormAndRiftGameTest.java and chainstorm-settle-radius-mutant-game.log]
 - The village full suite has intermittent required failures in patrol targeting and safe-site setup. [status: active] [verified: 2026-09-27] [source: C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27/villages-build-console.log; villages-rerun-5-console.log]
 - Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
 
@@ -71,6 +72,16 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
+
+### 2026-09-28 - Build and deploy current main
+
+- Done: Built all four mods from `main` and installed their jars in Fabulously Optimized.
+- Done: Merged PR #4 to stabilize the Chainstorm GameTest. Final `main` commit: `f00420a`.
+- Pending: Four mobs, six spells, and two villages optional checks remain visible. Client acceptance remains manual.
+- Next: Run the instance for gameplay feel. Revisit the documented village suite instability before claiming a stable five-run gate.
+- Verification: Clean builds passed 369 mobs, 252 equips, 208 spells, and 89 villages required tests.
+- Verification: The repaired spell suite passed five consecutive runs. Its widened-radius mutation failed the repaired test.
+- Verification: Source and installed jar hashes match. Logs and backups are in `C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-28`.
 
 ### 2026-09-27 - Prism mod deployment
 
