@@ -97,6 +97,21 @@ public final class TowerElites {
 		}
 	}
 
+	/**
+	 * Where a floor's guardians stand guard, as the floor was actually built: a floor built before the halls
+	 * keeps its portal across the room, and its guardians keep to that.
+	 */
+	public static BlockPos post(final ServerLevel tower, final int floor) {
+		int moved = TowerLayout.PORTAL_X - TowerLayout.portalX(floor);
+		if (moved != 0) {
+			BlockPos hallFrame = TowerLayout.portalFrame(floor).get(0);
+			if (!tower.getBlockState(hallFrame).is(TowerBlocks.TOWER_FRAME) && tower.getBlockState(hallFrame.offset(moved, 0, 0)).is(TowerBlocks.TOWER_FRAME)) {
+				return post(floor).offset(moved, 0, 0);
+			}
+		}
+		return post(floor);
+	}
+
 	/** Where a floor's guardians stand guard: a few steps in front of its portal. */
 	public static BlockPos post(final int floor) {
 		return TowerLayout.portalInside(floor).get(0).offset(-GUARD_DISTANCE, 0, 0);
@@ -233,12 +248,13 @@ public final class TowerElites {
 		if (quarry != null && quarry.isAlive()) {
 			return;
 		}
-		Vec3 post = Vec3.atBottomCenterOf(post(floor));
+		BlockPos home = post((ServerLevel) guardian.level(), floor);
+		Vec3 post = Vec3.atBottomCenterOf(home);
 		if (guardian.position().distanceTo(post) <= GUARD_RADIUS || !guardian.getNavigation().isDone()) {
 			return;
 		}
 		// The maze may be too long a way for its sense of the room: then it is simply back at its post.
-		net.minecraft.world.level.pathfinder.Path way = guardian.getNavigation().createPath(post(floor), 1);
+		net.minecraft.world.level.pathfinder.Path way = guardian.getNavigation().createPath(home, 1);
 		if (way != null && way.canReach()) {
 			guardian.getNavigation().moveTo(way, 1.0);
 		} else {
@@ -256,7 +272,7 @@ public final class TowerElites {
 		if (mob == null) {
 			return null;
 		}
-		BlockPos front = post(floor);
+		BlockPos front = post(tower, floor);
 		mob.snapTo(Vec3.atBottomCenterOf(front));
 		mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(front), EntitySpawnReason.EVENT, null);
 		TowerMobs.settle(mob);
