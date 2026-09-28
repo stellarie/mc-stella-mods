@@ -35,8 +35,9 @@ public class TowerGhostGameTest {
 		return ghost;
 	}
 
+	/** A floor with no boss-floor buff, so a player's effects are the ghost's alone. */
 	private static int floor(final ServerLevel tower) {
-		int floor = TowerTestSupport.freshFloor();
+		int floor = TowerTestSupport.freshFloorWhere(f -> !TowerBuffs.isBossFloor(f));
 		TowerFloors.ensure(tower, floor);
 		return floor;
 	}
@@ -132,7 +133,9 @@ public class TowerGhostGameTest {
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
-			List<String> held = TowerGhosts.BUFFS.stream().filter(player::hasEffect).map(effect -> effect.getRegisteredName()).toList();
+			// The ghost's own gift, not a floor buff: a floor buff is ambient.
+			List<String> held = TowerGhosts.BUFFS.stream().filter(effect -> player.hasEffect(effect) && !player.getEffect(effect).isAmbient())
+				.map(effect -> effect.getRegisteredName()).toList();
 			helper.assertTrue(!held.isEmpty(), "the ghost never strengthened the player");
 			if (!done[0]) {
 				done[0] = true;
@@ -233,6 +236,88 @@ public class TowerGhostGameTest {
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(buffs.isEmpty(), "a ghost on a boss floor carries " + buffs);
 		helper.succeed();
+	}
+
+	/** A shot fired past a ghost does not hit it, and one that kills it anyway lays no curse: only a blow struck in hand does. */
+	@GameTest
+	public void onlyAHandStruckKillCursesTheKiller(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = floor(tower);
+		ServerPlayer player = climber(helper, tower, floor);
+		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
+		boolean shootable = ghost.canBeHitByProjectile();
+		net.minecraft.world.entity.projectile.arrow.Arrow arrow = EntityTypes.ARROW.create(tower, EntitySpawnReason.COMMAND);
+		arrow.setOwner(player);
+		arrow.snapTo(player.position());
+		ghost.hurtServer(tower, tower.damageSources().arrow(arrow, player), 1.0E30F);
+		boolean blind = player.hasEffect(MobEffects.BLINDNESS);
+		TowerTestSupport.result("ghostArrow", "shootable=" + shootable + " dead=" + !ghost.isAlive() + " blind=" + blind);
+		arrow.discard();
+		ghost.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(!ghost.isAlive(), "the arrow did not kill the ghost, so the case proves nothing");
+		helper.assertFalse(shootable || blind, "a ghost can be shot=" + shootable + ", and a shot kill blinded the player=" + blind);
+		helper.succeed();
+	}
+
+	/** A ghost's kill is the players': the nearest player is credited, so the floor's pay is not lost. */
+	@GameTest(maxTicks = 200)
+	public void aGhostsBoltCreditsTheNearestPlayer(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = floor(tower);
+		ServerPlayer player = climber(helper, tower, floor);
+		player.setGameMode(GameType.CREATIVE);
+		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
+		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+		TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
+		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		tower.addFreshEntity(zombie);
+		boolean[] done = {false};
+		helper.succeedWhen(() -> {
+			helper.assertTrue(zombie.getLastHurtByMob() == ghost, "the ghost never cast at the zombie, so the case proves nothing");
+			helper.assertTrue(zombie.getLastHurtByPlayer() == player, "the ghost's bolt credited " + zombie.getLastHurtByPlayer() + ", not the nearest player");
+			if (!done[0]) {
+				done[0] = true;
+				TowerTestSupport.result("ghostCredit", "tick=" + helper.getTick());
+				zombie.discard();
+				ghost.discard();
+				TowerTestSupport.leave(helper, player);
+			}
+		});
+	}
+
+	/**
+	 * A monster beyond its bolt's reach does not draw a ghost away from the players it keeps. In a boss
+	 * floor's hall, where the ghost sees it plainly.
+	 */
+	@GameTest(maxTicks = 220)
+	public void aFarMonsterDoesNotDrawAGhostAway(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		TowerFloors.ensure(tower, floor);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		player.setGameMode(GameType.CREATIVE);
+		Vec3 middle = Vec3.atBottomCenterOf(TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2 - 3, 0, TowerLayout.SIZE / 2 + 3));
+		player.teleportTo(tower, middle.x, middle.y, middle.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		TowerGhost ghost = TowerGhosts.summon(tower, LOW, middle.add(0.0, 2.5, 0.0));
+		helper.assertTrue(ghost != null, "no ghost could be raised");
+		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+		zombie.setNoAi(true);
+		// Within the hall and the ghost's sense of the room, and beyond its bolt.
+		zombie.snapTo(middle.add(13.0, 0.0, -13.0));
+		tower.addFreshEntity(zombie);
+		helper.runAfterDelay(200L, () -> {
+			boolean drawn = ghost.getTarget() == zombie;
+			double fromPlayer = ghost.distanceTo(player);
+			double zombieFrom = zombie.distanceTo(ghost);
+			TowerTestSupport.result("ghostFarMonster", "drawn=" + drawn + " fromPlayer=" + (int) fromPlayer + " zombieFrom=" + (int) zombieFrom);
+			zombie.discard();
+			ghost.discard();
+			TowerTestSupport.leave(helper, player);
+			helper.assertFalse(drawn, "the ghost took a monster " + (int) zombieFrom + " blocks off, beyond its bolt, for its quarry");
+			helper.assertTrue(fromPlayer <= TowerGhosts.TEND_RANGE, "the ghost drifted " + (int) fromPlayer + " blocks from the player");
+			helper.succeed();
+		});
 	}
 
 	/** How a ghost looks is the client's to draw: a blaze's form, grey and see-through. */
