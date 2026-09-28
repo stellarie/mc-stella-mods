@@ -163,7 +163,9 @@ public class NewSpellsGameTest {
 
 	@GameTest
 	public void sappingHexWithNoHostileNearDoesNotCast(final GameTestHelper helper) {
-		ServerPlayer caster = caster(helper);
+		ServerPlayer caster = player(helper, new Vec3(2.5, 24.0, 1.5));
+		helper.assertTrue(MoreSpells.hostiles(helper.getLevel(), caster.position(), MoreSpells.HEX_RADIUS).isEmpty(),
+			"the empty hex arena contains a hostile");
 		InteractionResult result = use(helper, caster, "sapping_hex");
 		result("sappingHexWithNoHostileNearDoesNotCast", "result=" + result);
 		helper.assertTrue(result != InteractionResult.SUCCESS && !caster.hasEffect(MobEffects.STRENGTH), "an empty hex cast: " + result);
