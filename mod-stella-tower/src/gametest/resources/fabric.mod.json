@@ -9,7 +9,9 @@
 			"com.stella.tower.TowerPortalGameTest",
 			"com.stella.tower.TowerFloorGameTest",
 			"com.stella.tower.VoidKeyGameTest",
-			"com.stella.tower.TowerEscapeGameTest"
+			"com.stella.tower.TowerEscapeGameTest",
+			"com.stella.tower.TowerThreatGameTest",
+			"com.stella.tower.TowerSpawnerGameTest"
 		]
 	},
 	"mixins": [
