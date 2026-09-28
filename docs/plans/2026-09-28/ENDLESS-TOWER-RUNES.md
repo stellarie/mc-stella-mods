@@ -268,3 +268,10 @@ from the biome, with no extra client code.
 - Frost bites for its own floor-grown damage, and the bog's poison grows a level per buff level, up to V.
 - The void never lands a player on the portal or on another trap.
 - On an elite or boss floor built before the halls, the guardians keep to the portal across the room.
+
+## Change: deeper floors pay more (2026-09-28)
+
+- A tower mob's drops grow by 0.1% per floor: its loot is multiplied by `1 + 0.001 * floor`, and a fraction
+  of an item drops whole by its chance. Floor 1000 drops twice as much, floor 10000 eleven times.
+- A tower mob's experience grows by 1% per floor: `1 + 0.01 * floor`. Floor 100 pays twice as much.
+- This counts wherever a tower mob dies, so wanderers in the world pay by their floor too.
