@@ -21,7 +21,9 @@ jobs:
         run: python3 scripts/test-build-release.py
       - id: mods
         name: Detect Gradle mods
-        run: echo "mods=$(python3 scripts/build-release.py --list)" >> "$GITHUB_OUTPUT"
+        run: |
+          mods=$(python3 scripts/build-release.py --list)
+          echo "mods=$mods" >> "$GITHUB_OUTPUT"
 
   build-mod:
     needs: discover

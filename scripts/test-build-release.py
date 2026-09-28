@@ -111,6 +111,16 @@ class BundleTests(unittest.TestCase):
             release.bundle(jars, ["mod-one", "mod-two"], self.root / "output")
         self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
 
+    def test_nether_serializes_its_included_builds(self):
+        mod = self.root / "mod-stella-nether"
+        mod.mkdir()
+        for file in ("build.gradle", "settings.gradle", "gradlew", "gradlew.bat"):
+            (mod / file).touch()
+        with patch.object(release.subprocess, "run", side_effect=self.fake_run) as run:
+            release.build_one(self.root, self.root / "output", mod.name)
+        self.assertEqual(run.call_count, 6)
+        self.assertTrue(all("--max-workers=1" in call.args[0] for call in run.call_args_list))
+
 
 if __name__ == "__main__":
     unittest.main()
