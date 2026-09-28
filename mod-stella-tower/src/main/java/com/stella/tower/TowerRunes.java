@@ -37,7 +37,7 @@ public final class TowerRunes {
 	public static final double ELITE_CHANCE = 0.01;
 	public static final double BOSS_CHANCE = 0.05;
 
-	private static final EquipmentSlot[] ARMOR_SLOTS = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+	static final EquipmentSlot[] ARMOR_SLOTS ={EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
 	/** What an item takes a rune as. */
 	public enum Slot { WEAPON, ARMOR }
