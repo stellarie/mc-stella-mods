@@ -8,7 +8,7 @@ last_verified: 2026-09-28
 
 ## Purpose
 
-This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includes unfinished work.
+This repository develops five Fabric mods. The `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -16,6 +16,7 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - `cd mod-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `.\gradlew.bat runGameTest --rerun` - Rerun a mod's headless game tests. [verified: 2026-09-24] [source: AGENTS.md]
 - `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
+- `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
 
 ## Architecture
 
@@ -72,6 +73,13 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
+
+### 2026-09-28 - CI jar bundle
+
+- Done: Added a draft CI workflow and runner on `feat/ci-jar-bundle`.
+- Pending: A required mobs GameTest failure blocks the five-run gate and release ZIP.
+- Next: Resolve `an_elite_wolf_slows_and_weakens_the_hostiles_around_it`, then run the full gate.
+- Verification: Four focused Python tests passed. The full runner stopped during the mobs `clean build`.
 
 ### 2026-09-28 - Build and deploy current main
 
