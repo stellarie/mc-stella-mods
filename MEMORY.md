@@ -27,7 +27,7 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - The food mod applies food effects through `Consumable` and covers cake through `CakeBlock.eat`. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin]
 - The cooking station uses held items, inventory ingredients, and crouch interaction. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
-- `main-food` tracks `origin/main` and includes the Endless Tower. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food; git ls-tree main-food mod-stella-tower]
+- `main-food` was created from `origin/main` and tracks `origin/main-food`. [status: active] [verified: 2026-09-28] [source: git branch -vv main-food; git ls-remote --heads origin main-food]
 
 ## Conventions
 
@@ -85,6 +85,15 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
+
+### 2026-09-28 - New food mod
+
+- Done: Added ordinary buffs, six dishes, potion infusion, a cooking station, and sprites on `main-food`.
+- Done: Installed `mod-stella-food-0.1.0+26.3.jar` in the Fabulously Optimized Prism instance.
+- Pending: Manual client checks for sprite rendering, station placement, recipe book, controls, and cooked-food glint.
+- Next: Run the Prism instance and record those client checks before closing the task.
+- Verification: Clean build and five consecutive eighteen-test suites passed. Source and installed jar SHA-256 match at `45A891C311986C88148644C885068BBAA182140071D4E412ABE33673B1333A06`.
+- Evidence: `C:/Users/Stella/notes/blackboard/mc-stella-mods-food.work/verification` and the task blackboard.
 
 ### 2026-09-28 - Build and deploy current main
 
