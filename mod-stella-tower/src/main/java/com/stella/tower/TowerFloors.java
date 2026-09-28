@@ -30,6 +30,8 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public final class TowerFloors {
 	public static final int LAMP_SPACING = 6;
+	/** A safe zone's floor, so it is plain to see where the mobs are not raised. */
+	public static final Block SAFE_FLOOR = Blocks.SMOOTH_QUARTZ;
 	private static final long FLOOR_SALT = 0x5DEECE66DL;
 	/** Background building's share of each server tick. */
 	public static final long TICK_BUDGET_NANOS = 3_000_000L;
@@ -91,6 +93,22 @@ public final class TowerFloors {
 		}
 	}
 
+	/**
+	 * A boss floor's safe room holds a crafting table, a furnace and an anvil along its far wall, clear of
+	 * its doors. Empty on any other floor.
+	 */
+	public static Map<BlockPos, Block> workstations(final int floor) {
+		if (TowerMaze.hall(floor) != TowerMaze.BOSS_HALL) {
+			return Map.of();
+		}
+		BlockPos corner = TowerLayout.origin(floor).offset(TowerMaze.BOSS_ROOM_X, 0, TowerMaze.SAFE_Z);
+		Map<BlockPos, Block> stations = new LinkedHashMap<>();
+		stations.put(corner.offset(2, 0, 0), Blocks.CRAFTING_TABLE);
+		stations.put(corner.offset(4, 0, 0), Blocks.FURNACE);
+		stations.put(corner.offset(6, 0, 0), Blocks.ANVIL);
+		return stations;
+	}
+
 	/** The block that proves a floor was built. */
 	public static BlockPos marker(final int floor) {
 		return TowerLayout.origin(floor).offset(-1, -1, -1);
@@ -102,7 +120,11 @@ public final class TowerFloors {
 
 	/** Builds the floor unless it already stands; true when it was built now. */
 	public static boolean ensure(final ServerLevel tower, final int floor) {
-		if (floor < 1 || isBuilt(tower, floor)) {
+		if (floor < 1) {
+			return false;
+		}
+		if (isBuilt(tower, floor)) {
+			settle(tower, floor);
 			return false;
 		}
 		Build job;
@@ -209,7 +231,8 @@ public final class TowerFloors {
 						}
 					}
 				} else {
-					set(tower, x, base - 1, z, palette[random.nextInt(palette.length)]);
+					BlockState ground = palette[random.nextInt(palette.length)];
+					set(tower, x, base - 1, z, TowerMaze.inSafeZone(floor, x - x0, z - z0) ? SAFE_FLOOR.defaultBlockState() : ground);
 					// Over a maze cell, never over a wall line, so the light falls on the paths.
 					boolean lit = (x - x0) % LAMP_SPACING == 1 && (z - z0) % LAMP_SPACING == 1;
 					set(tower, x, top, z, lit ? lamp : wall);
@@ -236,7 +259,46 @@ public final class TowerFloors {
 		if (TowerBuffs.isBossFloor(floor)) {
 			TowerBuffs.mist(tower, floor);
 		}
+		stations(tower, floor);
+		tower.setBlock(settledMarker(floor), wall, Block.UPDATE_CLIENTS);
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
+	}
+
+	/** The block that proves a floor has its safe zones. */
+	public static BlockPos settledMarker(final int floor) {
+		return TowerLayout.origin(floor).offset(-1, -2, -1);
+	}
+
+	/**
+	 * Lays the safe zones into a floor built before them, the first time anyone arrives: the maze walls in
+	 * them are cleared, their floor laid, and a boss floor's workstations set. Only the maze's own blocks
+	 * are cleared, so whatever a player built there stays.
+	 */
+	public static void settle(final ServerLevel tower, final int floor) {
+		if (tower.getBlockState(settledMarker(floor)).is(TowerBlocks.TOWER_WALL)) {
+			return;
+		}
+		BlockPos origin = TowerLayout.origin(floor);
+		for (TowerMaze.Zone zone : TowerMaze.safeZones(floor)) {
+			for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
+				for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
+					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
+						BlockPos at = origin.offset(x, y, z);
+						if (tower.getBlockState(at).is(TowerBlocks.TOWER_MAZE_WALL)) {
+							tower.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+						}
+					}
+					tower.setBlock(origin.offset(x, -1, z), SAFE_FLOOR.defaultBlockState(), Block.UPDATE_ALL);
+				}
+			}
+		}
+		stations(tower, floor);
+		tower.setBlock(settledMarker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), Block.UPDATE_CLIENTS);
+		StellaTower.LOGGER.debug("[TOWER] floor={} SETTLED safe zones into an older floor", floor);
+	}
+
+	private static void stations(final ServerLevel tower, final int floor) {
+		workstations(floor).forEach((pos, block) -> tower.setBlock(pos, block.defaultBlockState(), Block.UPDATE_CLIENTS));
 	}
 
 	/** A fresh floor has no neighbours to tell and no shapes to fit, so only the clients hear of each block. */

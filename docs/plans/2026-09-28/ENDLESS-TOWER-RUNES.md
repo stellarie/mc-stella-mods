@@ -354,3 +354,23 @@ work anywhere and against any mob, not only in the tower:
 - Deviation from the plan: Holy weapon, Lightning, Void and Dark armor were written for the tower's
   guardians and boss-floor buffs. Oniichan asked on 2026-09-28 that the effects not be tower-specific, so
   they now use the general forms above.
+
+## Change: safe zones, chorus fruit and beds (2026-09-28)
+
+- Every floor opens an 8 by 8 safe zone at its entrance, round the arrival. Its floor is smooth quartz.
+- A boss floor also has an 8 by 8 safe room just past its great hall, on the far side from the arrival.
+  The hall is walled off from the maze, so the only way in is through the safe room: a door from the maze
+  into the room, and one from the room into the hall. The room holds a crafting table, a furnace and an
+  anvil along its north wall.
+- No mob is raised in a safe zone, and no trap is laid there. Mobs that chase a player may still walk in.
+- A floor built before this change gets its safe zones the first time a player arrives by portal: the maze
+  walls in them are cleared, the floor is laid, and a boss floor's workstations are set. On such a boss
+  floor the hall stays open to the maze on every side.
+- Chorus fruit lands only inside the room it is eaten in, never on the roof, even when eaten mid-jump from
+  a pillar. Spamming chorus fruit through the maze is allowed. Two things hold this: the tower's own
+  teleport guard, and vanilla's rule that a random teleport lands only on blocks tagged
+  `entities_can_teleport_to`, which the tower's ceiling and walls are not. A test with the guard removed
+  and the ceiling tagged as landable put 46 of 128 fruits on the roof, so the guard alone holds if a data
+  pack or another mod tags the tower's blocks.
+- A bed in the tower does nothing: no sleep, no spawn point, and no blast. It used to explode, as in the
+  Nether.
