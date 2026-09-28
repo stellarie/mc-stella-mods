@@ -25,6 +25,12 @@ public final class TowerItems {
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, FLOOR_KEY_ID)).stacksTo(1).rarity(Rarity.EPIC)
 	));
 
+	/** Left, now and then, by a slain ghost. What it does is still to be decided. */
+	public static final Identifier GHOST_RUNE_ID = StellaTower.id("ghost_rune");
+	public static final Item GHOST_RUNE = Registry.register(BuiltInRegistries.ITEM, GHOST_RUNE_ID, new Item(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, GHOST_RUNE_ID)).rarity(Rarity.RARE)
+	));
+
 	private TowerItems() {
 	}
 
