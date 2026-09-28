@@ -60,9 +60,21 @@ final class TowerTestSupport {
 		return new BlockPos(2, 2, z);
 	}
 
-	/** Floors no earlier run has built: the test world keeps its floors, so a reused number proves nothing. */
+	/**
+	 * Floors no earlier run has built: the test world keeps its floors, so a reused number proves nothing.
+	 * Runs start a minute and more apart, and a run takes some two thousand floors, so the start moves on
+	 * forty floors a second; forty million floors still lie well inside the world border.
+	 */
 	private static final java.util.concurrent.atomic.AtomicInteger NEXT_FLOOR =
-		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 16);
+		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 40);
+	/** Overworld areas no earlier run has rolled, counted apart from the floors. */
+	private static final java.util.concurrent.atomic.AtomicInteger NEXT_AREA =
+		new java.util.concurrent.atomic.AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 8);
+
+	/** An area number unique to this run. */
+	static int freshArea() {
+		return NEXT_AREA.getAndIncrement();
+	}
 
 	/** A floor number unique to this run, with the floor above it free as well. */
 	static int freshFloor() {
