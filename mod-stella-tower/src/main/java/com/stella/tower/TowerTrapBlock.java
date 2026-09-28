@@ -21,11 +21,24 @@ public class TowerTrapBlock extends Block {
 		return this.theme;
 	}
 
-	/** A player who walks onto it, in survival or adventure, springs it; mobs pass over. */
+	/** A player who walks onto it, or rides onto it, in survival or adventure, springs it; mobs pass over. */
 	@Override
 	public void stepOn(final Level level, final BlockPos pos, final BlockState state, final Entity entity) {
 		super.stepOn(level, pos, state, entity);
-		if (level instanceof ServerLevel tower && entity instanceof ServerPlayer player && !player.isSpectator() && !player.isCreative()) {
+		if (!(level instanceof ServerLevel tower)) {
+			return;
+		}
+		ServerPlayer player = entity instanceof ServerPlayer walker ? walker : null;
+		if (player == null) {
+			// A mount's step is its rider's.
+			for (Entity rider : entity.getIndirectPassengers()) {
+				if (rider instanceof ServerPlayer riding) {
+					player = riding;
+					break;
+				}
+			}
+		}
+		if (player != null && !player.isSpectator() && !player.isCreative()) {
 			TowerTraps.spring(tower, pos, player, this.theme, Math.max(1, TowerLayout.floorAt(pos)));
 		}
 	}

@@ -356,7 +356,10 @@ public class TowerEliteGameTest {
 		});
 	}
 
-	/** A guardian with no quarry walks back to its post, so a chase never leaves it camping the arrival. */
+	/**
+	 * A guardian with no quarry walks back to its post: from a spot a short way into the maze, it walks, and
+	 * is not snapped back. The spot is found by a walk over open ground from the post.
+	 */
 	@GameTest(maxTicks = 300)
 	public void aGuardianWalksBackToItsPost(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
@@ -367,25 +370,78 @@ public class TowerEliteGameTest {
 		// No mob hunts a creative player, so the elite has no quarry.
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		Vec3 post = Vec3.atBottomCenterOf(TowerElites.post(floor));
+		BlockPos away = nearbyOpen(tower, TowerElites.post(floor), TowerElites.GUARD_RADIUS + 3, 20);
 		int[] movedAt = {-1};
+		double[] biggestStep = {0.0};
+		Vec3[] last = {null};
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
 			helper.assertTrue(elite != null, "no elite rose, so the case proves nothing");
+			helper.assertTrue(away != null, "no open spot a short walk from the post, so the case proves nothing");
 			if (movedAt[0] < 0) {
 				movedAt[0] = (int) helper.getTick();
-				Vec3 far = post.add(-(TowerElites.GUARD_RADIUS * 3.0), 0.0, 0.0);
-				elite.snapTo(far.x, far.y, far.z, 0.0F, 0.0F);
+				elite.snapTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5, 0.0F, 0.0F);
+				last[0] = elite.position();
 			}
+			biggestStep[0] = Math.max(biggestStep[0], elite.position().distanceTo(last[0]));
+			last[0] = elite.position();
 			double from = elite.position().distanceTo(post);
 			helper.assertTrue(from <= TowerElites.GUARD_RADIUS, "the elite stands " + (int) from + " blocks from its post with nothing to hunt");
+			helper.assertTrue(biggestStep[0] < 2.0, "the elite was snapped back, not walked: a step of " + biggestStep[0]);
 			if (!done[0]) {
 				done[0] = true;
 				TowerElites.pinGuardianKind(floor, null);
-				TowerTestSupport.result("guardianReturns", "movedAt=" + movedAt[0] + " backAt=" + helper.getTick());
+				TowerTestSupport.result("guardianReturns", "from=" + away + " movedAt=" + movedAt[0] + " backAt=" + helper.getTick() + " biggestStep=" + biggestStep[0]);
 				TowerTestSupport.leave(helper, player);
 			}
 		});
+	}
+
+	/** An open spot at least this far from a place and at most so many steps from it over open ground. */
+	private static BlockPos nearbyOpen(final ServerLevel tower, final BlockPos from, final int atLeast, final int steps) {
+		java.util.Map<BlockPos, Integer> seen = new java.util.HashMap<>();
+		java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+		seen.put(from, 0);
+		queue.add(from);
+		while (!queue.isEmpty()) {
+			BlockPos at = queue.poll();
+			int walked = seen.get(at);
+			if (Math.sqrt(at.distSqr(from)) >= atLeast) {
+				return at;
+			}
+			if (walked >= steps) {
+				continue;
+			}
+			for (net.minecraft.core.Direction way : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+				BlockPos next = at.relative(way);
+				boolean open = tower.getBlockState(next).getCollisionShape(tower, next).isEmpty()
+					&& tower.getBlockState(next.above()).getCollisionShape(tower, next.above()).isEmpty();
+				if (open && TowerLayout.floorAt(next) == TowerLayout.floorAt(from) && !seen.containsKey(next)) {
+					seen.put(next, walked + 1);
+					queue.add(next);
+				}
+			}
+		}
+		return null;
+	}
+
+	/** A floor built before the halls keeps its portal across the room, and its guardians keep to that portal. */
+	@GameTest
+	public void anOldElitefloorKeepsItsGuardsByItsOwnPortal(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
+		TowerFloors.ensure(tower, floor);
+		BlockPos o = TowerLayout.origin(floor);
+		// As an older build left it: the frame across the room, none in the middle.
+		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
+			tower.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+			tower.setBlockAndUpdate(pos.offset(TowerLayout.PORTAL_X - TowerLayout.portalX(floor), 0, 0), TowerBlocks.TOWER_FRAME.defaultBlockState());
+		}
+		BlockPos post = TowerElites.post(tower, floor).subtract(o);
+		TowerTestSupport.result("oldPost", "post=" + post);
+		helper.assertTrue(post.getX() == TowerLayout.PORTAL_X - TowerElites.GUARD_DISTANCE, "an old floor's guardians keep to " + post + ", not its portal across the room");
+		helper.succeed();
 	}
 
 	/**

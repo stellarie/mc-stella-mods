@@ -48,6 +48,9 @@ public final class TowerTraps {
 	public static final int FREEZE_TICKS = 140;
 	public static final int VOID_MIN_DISTANCE = 16;
 	public static final int AMBUSH = 2;
+	public static final float FROST_BASE = 2.0F;
+	/** A bog's poison grows a level with the floor's buff level, up to this. */
+	public static final int BOG_MAX_AMPLIFIER = 4;
 	private static final double ARROW_SPEED = 1.5;
 	private static final int PLACE_TRIES = 64;
 	private static final long SALT = 0x54524150L;
@@ -135,12 +138,13 @@ public final class TowerTraps {
 			}
 			case VOID -> throwAway(tower, pos, player);
 			case FROST -> {
+				player.hurtServer(tower, tower.damageSources().freeze(), dealt(FROST_BASE, floor));
 				player.setTicksFrozen(player.getTicksRequiredToFreeze() + FREEZE_TICKS);
 				player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 3));
 				burst(tower, player, ParticleTypes.SNOWFLAKE, SoundEvents.POWDER_SNOW_STEP);
 			}
 			case BOG -> {
-				player.addEffect(new MobEffectInstance(MobEffects.POISON, 100, 1));
+				player.addEffect(new MobEffectInstance(MobEffects.POISON, 100, Math.min(BOG_MAX_AMPLIFIER, TowerBuffs.level(floor))));
 				player.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 100, 0));
 				burst(tower, player, ParticleTypes.ITEM_SLIME, SoundEvents.SLIME_SQUISH);
 			}
@@ -158,7 +162,8 @@ public final class TowerTraps {
 			}
 			case SHADOW -> shadow(tower, pos, player, floor, spawned);
 			case SPIKES -> {
-				player.hurtServer(tower, tower.damageSources().stalagmite(), dealt(SPIKE_BASE, floor));
+				// A cactus's kind of wound, which armor turns, as it turns a tower mob's blow.
+				player.hurtServer(tower, tower.damageSources().cactus(), dealt(SPIKE_BASE, floor));
 				burst(tower, player, ParticleTypes.CRIT, SoundEvents.POINTED_DRIPSTONE_LAND);
 			}
 			default -> {
@@ -190,12 +195,17 @@ public final class TowerTraps {
 			}
 			arrow.setPos(player.getX() + (random.nextDouble() - 0.5) * 0.6, ceiling, player.getZ() + (random.nextDouble() - 0.5) * 0.6);
 			arrow.setDeltaMovement(0.0, -ARROW_SPEED, 0.0);
-			arrow.setBaseDamage(dealt(ARROW_BASE, floor) / ARROW_SPEED);
+			// The volley's wound is dealt at once below: arrows landing together would meet the grace a hurt
+			// player has after the first, and two of the three would count for nothing.
+			arrow.setBaseDamage(0.0);
 			arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
 			if (tower.addFreshEntity(arrow)) {
 				spawned.add(arrow);
 			}
 		}
+		net.minecraft.world.damagesource.DamageSource source = spawned.isEmpty() || !(spawned.get(0) instanceof AbstractArrow first)
+			? tower.damageSources().cactus() : tower.damageSources().arrow(first, null);
+		player.hurtServer(tower, source, dealt(ARROW_BASE * DESERT_ARROWS, floor));
 		burst(tower, player, ParticleTypes.CLOUD, SoundEvents.ARROW_SHOOT);
 	}
 
@@ -210,7 +220,7 @@ public final class TowerTraps {
 		for (int attempt = 0; attempt < PLACE_TRIES; attempt++) {
 			BlockPos feet = origin.offset(random.nextInt(TowerLayout.SIZE), 0, random.nextInt(TowerLayout.SIZE));
 			Vec3 to = Vec3.atBottomCenterOf(feet);
-			if (open(tower, feet) && to.distanceTo(player.position()) >= VOID_MIN_DISTANCE) {
+			if (landsSafely(tower, feet) && to.distanceTo(player.position()) >= VOID_MIN_DISTANCE) {
 				burst(tower, player, ParticleTypes.PORTAL, SoundEvents.ENDERMAN_TELEPORT);
 				player.teleportTo(tower, to.x, to.y, to.z, Set.of(), player.getYRot(), player.getXRot(), true);
 				burst(tower, player, ParticleTypes.PORTAL, SoundEvents.ENDERMAN_TELEPORT);
@@ -227,7 +237,7 @@ public final class TowerTraps {
 		int room = TowerLayout.floorAt(pos);
 		RandomSource random = tower.getRandom();
 		List<EntityType<? extends Mob>> pool = TowerMobs.pool(floor);
-		// A kind too broad for a two-block path, a spider, cannot stand there; another is called instead.
+		// A kind that finds no room is let go, and another called in its place.
 		for (int called = 0; called < AMBUSH * 4 && spawned.size() < AMBUSH; called++) {
 			if (room > 0 && TowerMobs.count(tower, room) >= TowerMobs.FLOOR_CAP) {
 				return;
@@ -242,8 +252,9 @@ public final class TowerTraps {
 			boolean placed = false;
 			for (int attempt = 0; attempt < PLACE_TRIES && !placed; attempt++) {
 				BlockPos feet = player.blockPosition().offset(random.nextInt(13) - 6, 0, random.nextInt(13) - 6);
-				double away = Vec3.atBottomCenterOf(feet).distanceTo(player.position());
-				mob.snapTo(Vec3.atBottomCenterOf(feet));
+				Vec3 spot = TowerMobs.spotFor(mob, feet);
+				double away = spot.distanceTo(player.position());
+				mob.snapTo(spot);
 				placed = away >= 3.0 && TowerLayout.floorAt(feet) == room && TowerMobs.standsFree(tower, mob, feet);
 			}
 			if (!placed) {
@@ -255,6 +266,12 @@ public final class TowerTraps {
 				spawned.add(mob);
 			}
 		}
+	}
+
+	/** Whether a thrown player may land with their feet here: in open air, not in the portal, and not on a trap. */
+	public static boolean landsSafely(final ServerLevel tower, final BlockPos feet) {
+		return tower.getBlockState(feet).isAir() && tower.getBlockState(feet.above()).isAir()
+			&& !(tower.getBlockState(feet.below()).getBlock() instanceof TowerTrapBlock) && open(tower, feet);
 	}
 
 	private static boolean open(final ServerLevel tower, final BlockPos feet) {
