@@ -71,9 +71,8 @@ public class TowerFloorGameTest {
 			wrong += TowerLayout.floorAt(o) == floor && TowerLayout.floorAt(o.offset(TowerLayout.SIZE - 1, 0, TowerLayout.SIZE - 1)) == floor ? 0 : 1;
 		}
 		long seed = 12345L;
-		List<TowerFloors.Piece> five = TowerFloors.layout(seed, 5);
-		boolean same = five.equals(TowerFloors.layout(seed, 5));
-		boolean differs = !five.equals(TowerFloors.layout(seed, 6));
+		boolean same = java.util.Arrays.deepEquals(TowerMaze.walls(seed, 5), TowerMaze.walls(seed, 5));
+		boolean differs = !java.util.Arrays.deepEquals(TowerMaze.walls(seed, 5), TowerMaze.walls(seed, 6));
 		TowerTestSupport.result("floorPlaces", "distinct=" + origins.size() + " wrong=" + wrong + " same=" + same + " differs=" + differs);
 		helper.assertTrue(origins.size() == 600 && wrong == 0, "floors share places or are not found: distinct=" + origins.size() + " wrong=" + wrong);
 		helper.assertTrue(same && differs, "a floor's layout is not its own: same=" + same + " differs=" + differs);

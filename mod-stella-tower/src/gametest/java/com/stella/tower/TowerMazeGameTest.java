@@ -1,0 +1,185 @@
+package com.stella.tower;
+
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+
+/** Each floor is a maze of two-block paths, with a hall in the middle of an elite or boss floor. */
+public class TowerMazeGameTest {
+	private static final int S = TowerLayout.SIZE;
+
+	/** Open at a spot of the room: the feet and head blocks both let a body through. */
+	private static boolean[][] open(final ServerLevel tower, final int floor) {
+		BlockPos o = TowerLayout.origin(floor);
+		boolean[][] open = new boolean[S][S];
+		for (int x = 0; x < S; x++) {
+			for (int z = 0; z < S; z++) {
+				BlockPos feet = o.offset(x, 0, z);
+				open[x][z] = tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
+					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty();
+			}
+		}
+		return open;
+	}
+
+	/** Steps from one spot to another over open ground, or -1 when there is no way. */
+	private static int steps(final boolean[][] open, final int fromX, final int fromZ, final int toX, final int toZ) {
+		int[][] seen = new int[S][S];
+		for (int[] row : seen) {
+			Arrays.fill(row, -1);
+		}
+		Deque<int[]> queue = new ArrayDeque<>();
+		seen[fromX][fromZ] = 0;
+		queue.add(new int[] {fromX, fromZ});
+		int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+		while (!queue.isEmpty()) {
+			int[] at = queue.poll();
+			for (int[] way : ways) {
+				int x = at[0] + way[0];
+				int z = at[1] + way[1];
+				if (x >= 0 && z >= 0 && x < S && z < S && open[x][z] && seen[x][z] < 0) {
+					seen[x][z] = seen[at[0]][at[1]] + 1;
+					queue.add(new int[] {x, z});
+				}
+			}
+		}
+		return seen[toX][toZ];
+	}
+
+	private static int ordinaryFloor(final ServerLevel tower) {
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
+		TowerFloors.ensure(tower, floor);
+		return floor;
+	}
+
+	/** At least the walls a perfect maze of the floor's cells leaves standing, less what its clearings take. */
+	@GameTest
+	public void aFloorIsAMaze(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		boolean[][] open = open(tower, floor);
+		int walls = 0;
+		for (boolean[] row : open) {
+			for (boolean spot : row) {
+				walls += spot ? 0 : 1;
+			}
+		}
+		int cells = TowerMaze.CELLS * TowerMaze.CELLS;
+		int perfect = S * S - cells * TowerMaze.PATH * TowerMaze.PATH - (cells - 1) * TowerMaze.PATH * TowerMaze.WALL;
+		// The portal's nook: two cells by three, with the walls among them.
+		int nook = (2 * TowerMaze.PITCH) * (3 * TowerMaze.PITCH);
+		TowerTestSupport.result("floorMaze", "walls=" + walls + " perfect=" + perfect + " nook=" + nook);
+		helper.assertTrue(walls >= perfect - nook, "floor " + floor + " stands " + walls + " wall blocks, fewer than a maze's " + (perfect - nook));
+		helper.succeed();
+	}
+
+	/** Every open spot lies in some open two by two: no path narrower than two blocks. */
+	@GameTest
+	public void everyPathIsTwoBlocksWide(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		boolean[][] open = open(tower, floor);
+		int narrow = 0;
+		int spots = 0;
+		BlockPos first = null;
+		for (int x = 0; x < S; x++) {
+			for (int z = 0; z < S; z++) {
+				if (!open[x][z]) {
+					continue;
+				}
+				spots++;
+				boolean wide = false;
+				for (int dx = -1; dx <= 0 && !wide; dx++) {
+					for (int dz = -1; dz <= 0 && !wide; dz++) {
+						int ax = x + dx;
+						int az = z + dz;
+						wide = ax >= 0 && az >= 0 && ax + 1 < S && az + 1 < S
+							&& open[ax][az] && open[ax + 1][az] && open[ax][az + 1] && open[ax + 1][az + 1];
+					}
+				}
+				if (!wide) {
+					narrow++;
+					first = first == null ? new BlockPos(x, 0, z) : first;
+				}
+			}
+		}
+		TowerTestSupport.result("twoWide", "spots=" + spots + " narrow=" + narrow + " first=" + first);
+		helper.assertTrue(spots < S * S, "the floor has no walls, so the case proves nothing");
+		helper.assertTrue(narrow == 0, narrow + " spots of floor " + floor + " lie on a path narrower than two, first at " + first);
+		helper.succeed();
+	}
+
+	/** The arrival finds the portal, by a way that winds: a maze, not a straight walk. */
+	@GameTest
+	public void theArrivalFindsThePortalByAWindingWay(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		BlockPos o = TowerLayout.origin(floor);
+		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(o);
+		BlockPos portal = TowerLayout.portalInside(floor).get(0).subtract(o);
+		int steps = steps(open(tower, floor), arrival.getX(), arrival.getZ(), portal.getX(), portal.getZ());
+		int straight = Math.abs(portal.getX() - arrival.getX()) + Math.abs(portal.getZ() - arrival.getZ());
+		TowerTestSupport.result("mazeWay", "steps=" + steps + " straight=" + straight);
+		helper.assertTrue(steps > 0, "no way leads from the arrival to the portal of floor " + floor);
+		helper.assertTrue(steps > straight, "the way to the portal is straight: " + steps + " steps");
+		helper.succeed();
+	}
+
+	private static void hallAndPortal(final GameTestHelper helper, final int floor, final int side, final String name) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		TowerFloors.ensure(tower, floor);
+		boolean[][] open = open(tower, floor);
+		BlockPos o = TowerLayout.origin(floor);
+		int low = S / 2 - side / 2;
+		int shut = 0;
+		for (int x = low; x < low + side; x++) {
+			for (int z = low; z < low + side; z++) {
+				BlockPos at = o.offset(x, -1, z);
+				boolean frame = TowerLayout.portalFrame(floor).stream().anyMatch(pos -> pos.getX() == at.getX() && pos.getZ() == at.getZ());
+				shut += open[x][z] || frame ? 0 : 1;
+			}
+		}
+		BlockPos portal = TowerLayout.portalInside(floor).get(0).subtract(o);
+		boolean middle = portal.getX() >= low && portal.getX() < low + side && portal.getZ() >= low && portal.getZ() < low + side
+			&& Math.abs(portal.getX() - S / 2) <= 1 && Math.abs(portal.getZ() - S / 2) <= 1;
+		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(o);
+		int steps = steps(open, arrival.getX(), arrival.getZ(), low, low + side / 2);
+		BlockPos post = TowerElites.post(floor).subtract(o);
+		boolean postInHall = post.getX() >= low && post.getX() < low + side && post.getZ() >= low && post.getZ() < low + side;
+		TowerTestSupport.result(name, "floor=" + floor + " side=" + side + " shut=" + shut + " portal=" + portal + " middle=" + middle
+			+ " steps=" + steps + " postInHall=" + postInHall);
+		helper.assertTrue(shut == 0, "the " + side + " block hall of floor " + floor + " has " + shut + " walled spots");
+		helper.assertTrue(middle, "the portal of floor " + floor + " stands at " + portal + ", not in the hall's middle");
+		helper.assertTrue(steps > 0, "no way leads from the arrival into the hall");
+		helper.assertTrue(postInHall, "the guardians' post " + post + " is outside the hall");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anEliteFloorHasAHallWithThePortalInItsMiddle(final GameTestHelper helper) {
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
+		helper.assertTrue(TowerMaze.hall(floor) == TowerMaze.ELITE_HALL, "an elite floor's hall is " + TowerMaze.hall(floor));
+		hallAndPortal(helper, floor, TowerMaze.ELITE_HALL, "eliteHall");
+	}
+
+	@GameTest
+	public void aBossFloorHasAGreatHallWithThePortalInItsMiddle(final GameTestHelper helper) {
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
+		helper.assertTrue(TowerMaze.hall(floor) == TowerMaze.BOSS_HALL, "a boss floor's hall is " + TowerMaze.hall(floor));
+		hallAndPortal(helper, floor, TowerMaze.BOSS_HALL, "bossHall");
+	}
+
+	@GameTest
+	public void aFloorsMazeIsItsOwnAndTheSameEachTime(final GameTestHelper helper) {
+		long seed = 12345L;
+		boolean same = Arrays.deepEquals(TowerMaze.walls(seed, 7), TowerMaze.walls(seed, 7));
+		boolean differs = !Arrays.deepEquals(TowerMaze.walls(seed, 7), TowerMaze.walls(seed, 8));
+		TowerTestSupport.result("mazeOwn", "same=" + same + " differs=" + differs);
+		helper.assertTrue(same && differs, "a floor's maze is not its own: same=" + same + " differs=" + differs);
+		helper.succeed();
+	}
+}
