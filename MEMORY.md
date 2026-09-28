@@ -50,6 +50,8 @@ This repository develops separate Fabric mods on their own integration branches:
 
 ## Known Pitfalls
 
+- Nether's included builds can write the mobs jar concurrently -> run its Gradle gates with `--max-workers=1`. [status: active] [verified: 2026-09-29] [source: hosted run 36493064255; local nether clean build]
+
 - A GameTest patrol pair may not tick in its remote chunk -> force its chunk during the hunt test. [status: active] [verified: 2026-09-28] [source: FriendlyPatrolGameTest.aPairHuntsAZombie]
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]

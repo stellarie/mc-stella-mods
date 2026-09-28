@@ -62,8 +62,10 @@ def build_one(root: Path, output: Path, name: str) -> None:
     stage.mkdir(parents=True, exist_ok=True)
     for old_jar in stage.glob("*.jar"):
         old_jar.unlink()
+    # Nether's included builds otherwise write the mobs jar concurrently.
+    gradle_limits = ("--max-workers=1",) if name == "mod-stella-nether" else ()
     try:
-        run(mod, "clean", "build")
+        run(mod, "clean", "build", *gradle_limits)
     finally:
         copy_log(mod, 0, output)
     jars = release_jars(mod)
@@ -73,7 +75,7 @@ def build_one(root: Path, output: Path, name: str) -> None:
         log = mod / "build" / "run" / "gameTest" / "logs" / "latest.log"
         log.unlink(missing_ok=True)
         try:
-            run(mod, "runGameTest", "--rerun")
+            run(mod, "runGameTest", "--rerun", *gradle_limits)
         finally:
             copy_log(mod, number, output)
     for jar in jars:
