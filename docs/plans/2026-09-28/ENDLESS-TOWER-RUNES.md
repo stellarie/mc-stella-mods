@@ -167,3 +167,31 @@ The players' boss-floor buff uses the same level and ceilings.
 | Party of 4 with strategy | about floor 80 | about floor 120 to 150 |
 
 The tower cannot be brute forced: past these floors runes, void gear and strategy carry the climb.
+
+## Enchantments and spells grow (hybrid)
+
+Flat numbers in enchantments and spells (aura damage, reflected damage, wave damage, spell damage and
+healing) would be outscaled by tower health. Chance and percentage effects, and damage enchantments that
+the weapon rune already multiplies, are left alone. Flat numbers grow two ways, which multiply:
+
+- **Rune part.** An item's rune multiplies the flat numbers of every enchantment on that item by
+  `(1 + 99 * S(r))^0.7`. Spellbooks take runes at the anvil too, so a spell grows with its book's rune.
+- **Ascension part.** Gear and spellbooks count tower kills. Every 10 kills raise the item's ascension
+  `a` by one, but never past the floor the kill happened on. Flat numbers multiply by
+  `(1 + 99 * S(a))^0.3`.
+
+The two exponents add up to 1.0, so a fully ascended item with a floor-1000 rune keeps pace with the
+tower's 100x health. Ascension alone tops out at about x4; the rune part is the larger share, so runes
+stay the thing to chase.
+
+| Floor | Rune part | Ascension part | Both |
+| --- | --- | --- | --- |
+| 100 | x2.8 | x1.5 | x4.2 |
+| 500 | x15.6 | x3.2 | x50 |
+| 1000 | x25.1 | x4.0 | x100 |
+
+Reaching ascension 1000 takes 10,000 kills. Weapon Mastery stays as it is.
+
+## Mob armor
+
+`+1` armor per 5 floors, up to 30, as above.
