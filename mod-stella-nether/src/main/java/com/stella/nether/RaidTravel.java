@@ -206,7 +206,7 @@ public final class RaidTravel {
 		return choice == Choice.RAID ? "raid" : "normal";
 	}
 
-	private static TeleportTransition wayBack(final ServerLevel raid, final ServerPlayer player) {
+	static TeleportTransition wayBack(final ServerLevel raid, final ServerPlayer player) {
 		Entry entry = player.getAttached(ENTRY);
 		ServerLevel home = entry == null ? null : raid.getServer().getLevel(entry.dimension());
 		if (entry == null || home == null) {

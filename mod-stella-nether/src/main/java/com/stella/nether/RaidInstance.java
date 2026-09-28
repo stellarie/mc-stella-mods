@@ -10,6 +10,8 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,7 +22,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
 
 /**
@@ -45,6 +49,8 @@ public final class RaidInstance {
 	private static final int RUNS_PER_ROW = 1000;
 	/** The arrival hall's floor height at a run's origin. */
 	public static final int ARRIVAL_Y = 64;
+	/** How long the raid must stand empty before it resets. */
+	public static final int EMPTY_TICKS = 100;
 
 	public static final AttachmentType<RaidState> STATE = AttachmentRegistry.createPersistent(StellaNether.id("raid_state"), RaidState.CODEC);
 
@@ -60,6 +66,9 @@ public final class RaidInstance {
 	/** The run whose mode a mob was last boosted for, so a reloaded mob is not boosted twice. */
 	public static final AttachmentType<Integer> MOB_BOOSTED = AttachmentRegistry.createPersistent(StellaNether.id("raid_boosted"), Codec.INT);
 
+	/** Ticks the open raid has stood empty; kept in memory, so a restart with nobody inside resets it soon after. */
+	private static int emptyTicks;
+
 	private RaidInstance() {
 	}
 
@@ -73,6 +82,8 @@ public final class RaidInstance {
 				takeBoons(player);
 			}
 		});
+		ServerTickEvents.END_SERVER_TICK.register(RaidInstance::tick);
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.player));
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
@@ -87,6 +98,50 @@ public final class RaidInstance {
 
 	static void set(final MinecraftServer server, final RaidState state) {
 		((AttachmentTarget) server.overworld()).setAttached(STATE, state);
+	}
+
+	/** A player who logs in inside a run that has since closed is sent back the way they came. */
+	public static void onJoin(final ServerPlayer player) {
+		if (!player.level().dimension().equals(RaidTravel.RAID)) {
+			return;
+		}
+		RaidState state = state(player.level().getServer());
+		Boons held = player.getAttached(PLAYER_BOONS_HELD);
+		if (state.active() && held != null && held.run() == state.run()) {
+			return;
+		}
+		StellaNether.LOGGER.info("[NETHER] player={} returned to closed run={} now={}; sent out", player.getScoreboardName(),
+			held == null ? null : held.run(), state.run());
+		player.teleport(RaidTravel.wayBack((ServerLevel) player.level(), player));
+	}
+
+	/** Counts the open raid's time, and resets it once it has stood empty for {@link #EMPTY_TICKS}. */
+	static void tick(final MinecraftServer server) {
+		RaidState state = state(server);
+		if (!state.active()) {
+			emptyTicks = 0;
+			return;
+		}
+		set(server, new RaidState(state.run(), true, state.host(), state.mode(), state.elapsed() + 1));
+		ServerLevel raid = server.getLevel(RaidTravel.RAID);
+		if (raid != null && !raid.players().isEmpty()) {
+			emptyTicks = 0;
+			return;
+		}
+		if (++emptyTicks < EMPTY_TICKS) {
+			return;
+		}
+		emptyTicks = 0;
+		int lost = 0;
+		if (raid != null) {
+			for (Entity entity : raid.getAllEntities()) {
+				if (entity instanceof ItemEntity item) {
+					item.discard();
+					lost++;
+				}
+			}
+		}
+		reset(server, "empty lost_items=" + lost);
 	}
 
 	/** Closes the running raid and moves the next run to fresh land. */
