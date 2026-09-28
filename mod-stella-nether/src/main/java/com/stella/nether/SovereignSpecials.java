@@ -104,6 +104,8 @@ public final class SovereignSpecials {
 		private int firesPlaced;
 		private int meteors;
 		private boolean done;
+		/** Per step, how many a wave's query saw; kept for a failing test to report. */
+		private final List<String> seen = new ArrayList<>();
 
 		Cast(final Special special, final Blaze blaze, final LivingEntity target) {
 			this.special = special;
@@ -147,6 +149,14 @@ public final class SovereignSpecials {
 
 		public int lastActionAge() {
 			return this.lastActionAge;
+		}
+
+		public Vec3 home() {
+			return this.home;
+		}
+
+		public List<String> seen() {
+			return this.seen;
 		}
 	}
 
@@ -386,7 +396,9 @@ public final class SovereignSpecials {
 		Blaze blaze = cast.blaze;
 		Vec3 from = cast.home;
 		AABB reach = new AABB(from, from).inflate(radius + 1.0, WAVE_HEIGHT, radius + 1.0);
-		for (LivingEntity victim : raid.getEntitiesOfClass(LivingEntity.class, reach, entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze))) {
+		List<LivingEntity> near = raid.getEntitiesOfClass(LivingEntity.class, reach, entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze));
+		cast.seen.add((int) radius + ":" + near.size());
+		for (LivingEntity victim : near) {
 			double distance = horizontal(victim.position(), from);
 			if (distance > radius || cast.hits.contains(victim.getUUID())) {
 				continue;
