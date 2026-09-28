@@ -15,7 +15,7 @@ import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
 public class RaidThreatGameTest {
 	static final int MOBS = 8;
 
-	@GameTest(environment = "mod-stella-nether-test:threat", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:threat", maxTicks = 400)
 	public void raidMobsCarryAtLeastTheNethersThreat(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);

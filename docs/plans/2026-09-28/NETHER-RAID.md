@@ -68,7 +68,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 3. Instance lifecycle: occupancy tracking, reset when empty, loss of dropped items. **Done.**
 4. The 30 minute enrage. **Done.**
 5. Guaranteed fortress and bastion within 256 blocks. **Done.**
-6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn.
+6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn. **Done, except the blue tint.**
 7. The five specials, one per sub-slice.
 8. Blaze Core and Flame Mantle; the End unlock.
 9. Raid objectives.

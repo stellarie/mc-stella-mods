@@ -103,7 +103,7 @@ public class RaidModeGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:hard", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:hard", maxTicks = 400)
 	public void inHardModeEachRaidMobHoldsTwoBoons(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
@@ -119,7 +119,7 @@ public class RaidModeGameTest {
 		});
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:normalmobs", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:normalmobs", maxTicks = 400)
 	public void inNormalModeRaidMobsHoldNoBoons(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);

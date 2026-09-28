@@ -12,7 +12,8 @@
 			"com.stella.nether.RaidLifecycleGameTest",
 			"com.stella.nether.RaidEnrageGameTest",
 			"com.stella.nether.RaidSiteGameTest",
-			"com.stella.nether.RaidThreatGameTest"
+			"com.stella.nether.RaidThreatGameTest",
+			"com.stella.nether.BlazeSovereignGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
