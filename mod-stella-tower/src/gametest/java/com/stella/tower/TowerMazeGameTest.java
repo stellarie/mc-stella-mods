@@ -182,4 +182,61 @@ public class TowerMazeGameTest {
 		helper.assertTrue(same && differs, "a floor's maze is not its own: same=" + same + " differs=" + differs);
 		helper.succeed();
 	}
+
+	/** A spot of the floor's maze where a wall stands, not in a clearing. */
+	private static BlockPos mazeWall(final ServerLevel tower, final int floor) {
+		boolean[][] walls = TowerMaze.walls(tower.getSeed(), floor);
+		for (int x = 1; x < S - 1; x++) {
+			for (int z = 1; z < S - 1; z++) {
+				if (walls[x][z]) {
+					return TowerLayout.origin(floor).offset(x, 2, z);
+				}
+			}
+		}
+		throw new IllegalStateException("floor " + floor + " has no maze wall");
+	}
+
+	/** The maze's walls can be broken, but only at four times obsidian's hardness, and they yield nothing to carry out. */
+	@GameTest
+	public void mazeWallsBreakAtFourTimesObsidiansHardness(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		BlockPos at = mazeWall(tower, floor);
+		net.minecraft.world.level.block.state.BlockState state = tower.getBlockState(at);
+		float hardness = state.getDestroySpeed(tower, at);
+		float obsidian = net.minecraft.world.level.block.Blocks.OBSIDIAN.defaultBlockState().getDestroySpeed(tower, at);
+		net.minecraft.server.level.ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		net.minecraft.world.phys.Vec3 arrival = TowerLayout.arrival(floor);
+		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		boolean handTool = player.hasCorrectToolForDrops(state);
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.NETHERITE_PICKAXE));
+		boolean pickTool = player.hasCorrectToolForDrops(state);
+		float progress = state.getDestroyProgress(player, tower, at);
+		boolean broke = player.gameMode.destroyBlock(at);
+		long drops = tower.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new net.minecraft.world.phys.AABB(at).inflate(2.0)).size();
+		TowerTestSupport.result("mazeWallHardness", "block=" + state.getBlock() + " hardness=" + hardness + " obsidian=" + obsidian
+			+ " hand=" + handTool + " pick=" + pickTool + " ticksWithNetherite=" + (progress > 0 ? Math.round(1.0F / progress) : -1)
+			+ " broke=" + broke + " drops=" + drops);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(state.is(TowerBlocks.TOWER_MAZE_WALL), "the maze is built of " + state.getBlock());
+		helper.assertTrue(hardness == obsidian * TowerBlocks.MAZE_HARDNESS_OVER_OBSIDIAN,
+			"a maze wall's hardness is " + hardness + ", not " + TowerBlocks.MAZE_HARDNESS_OVER_OBSIDIAN + " times obsidian's " + obsidian);
+		helper.assertTrue(pickTool && !handTool, "the right tool for a maze wall: pickaxe=" + pickTool + " hand=" + handTool);
+		helper.assertTrue(broke && drops == 0, "a maze wall broke=" + broke + " and dropped " + drops);
+		helper.succeed();
+	}
+
+	/** Blasts, withers and the dragon leave the maze standing; only a player's pickaxe opens it. */
+	@GameTest
+	public void mazeWallsStandUpToBlastsAndWithers(final GameTestHelper helper) {
+		net.minecraft.world.level.block.state.BlockState wall = TowerBlocks.TOWER_MAZE_WALL.defaultBlockState();
+		float resistance = TowerBlocks.TOWER_MAZE_WALL.getExplosionResistance();
+		float obsidian = net.minecraft.world.level.block.Blocks.OBSIDIAN.getExplosionResistance();
+		boolean wither = net.minecraft.world.entity.boss.wither.WitherBoss.canDestroy(wall);
+		boolean dragon = !wall.is(net.minecraft.tags.BlockTags.DRAGON_IMMUNE);
+		TowerTestSupport.result("mazeWallProof", "resistance=" + resistance + " obsidian=" + obsidian + " wither=" + wither + " dragon=" + dragon);
+		helper.assertTrue(resistance >= obsidian, "a maze wall resists blasts at " + resistance + ", less than obsidian's " + obsidian);
+		helper.assertFalse(wither || dragon, "a maze wall can be broken by wither=" + wither + " dragon=" + dragon);
+		helper.succeed();
+	}
 }

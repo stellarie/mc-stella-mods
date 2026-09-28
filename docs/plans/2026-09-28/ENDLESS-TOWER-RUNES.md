@@ -221,8 +221,11 @@ from the biome, with no extra client code.
 
 ## Change: floors are mazes (2026-09-28)
 
-- Each floor is a maze with paths two blocks wide and unbreakable walls one block thick. The walls stand on
-  a 21 by 21 grid of cells, three blocks apart.
+- Each floor is a maze with paths two blocks wide and walls one block thick. The walls stand on a 21 by 21
+  grid of cells, three blocks apart.
+- A maze wall can be broken with a diamond or netherite pickaxe, at four times obsidian's hardness: about
+  33 seconds with a plain netherite pickaxe and about 9 with Efficiency V. It resists blasts as obsidian
+  does, withers and the dragon cannot break it, and it drops nothing.
 - An elite floor opens a 16 by 16 hall in its middle, and a boss floor opens a 32 by 32 hall. The portal
   stands in the middle of the hall, and the guardians stand guard there.
 - An ordinary floor keeps its portal across from the arrival, in a small cleared nook.
