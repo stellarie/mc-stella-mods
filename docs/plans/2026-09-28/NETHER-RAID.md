@@ -6,10 +6,10 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 ## The modpack is a dependency
 
 - `mod-stella-nether` requires every other Stella mod: `mod-stella-mobs`, `mod-stella-equips-enchants`,
-  `mod-stella-spells`, `mc-stella-villages` and `mod-stella-tower`, in `fabric.mod.json` `depends`.
+  `mod-stella-spells`, `mc-stella-villages`, `mod-stella-tower` and `mod-stella-food`, in `fabric.mod.json` `depends`.
 - Gradle builds them from source as included builds (`settings.gradle`), so the nether mod compiles
   against their classes and its game tests run with all of them loaded.
-- `mod-stella-food` lives only on `main-food` and is not yet on this branch, so it is not yet a dependency.
+- `mod-stella-food` is a dependency too; `main-food` is merged into this branch for it.
 
 ## The instance
 
@@ -79,9 +79,6 @@ Each slice ships with headless game tests per `AGENTS.md`.
 ## Open questions for oniichan
 
 - Integration branch: create `main-nether` for `mod-stella-nether`?
-- Threat level lives on `feat/mobs-threat-level-scaling`, which is not merged into `main-mobs` or
-  `main`. Merge it before the boss slice?
-- Bring `mod-stella-food` in: merge `main-food` into `main` so it can join the dependencies?
 - Which objective first: blaze rods, a nether-only item set, or the village head's slayer contract?
 - The End unlock: what are the "other requirements", and does it block the End portal until met?
 - Blaze Core enchanting and crafting: which effects and which new equipment?

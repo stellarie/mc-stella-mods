@@ -19,6 +19,7 @@
 		"mod-stella-equips-enchants": "*",
 		"mod-stella-spells": "*",
 		"mc-stella-villages": "*",
-		"mod-stella-tower": "*"
+		"mod-stella-tower": "*",
+		"mod-stella-food": "*"
 	}
 }
