@@ -1,26 +1,30 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-24
+last_verified: 2026-09-28
 ---
 
 # Project Memory
 
 ## Purpose
 
-This repository develops two Fabric mods on separate integration branches.
+This repository develops Fabric mods on separate integration branches and publishes verified snapshots on `main`.
 
 ## Commands
 
 - `cd mod-stella-mobs; .\gradlew.bat clean build` - Build and run mobs checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `cd mod-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `.\gradlew.bat runGameTest --rerun` - Rerun a mod's headless game tests. [verified: 2026-09-24] [source: AGENTS.md]
+- `cd mc-stella-villages; .\gradlew.bat clean build` - Build villages and its required mobs jar. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; clean build]
+- `cd mc-stella-villages; .\gradlew.bat runGameTest --rerun` - Run villages GameTests with the mobs mod loaded. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; runGameTest --rerun]
 
 ## Architecture
 
 - `main-mobs` integrates `mod-stella-mobs` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-mobs]
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
-- `main` combines the verified deployed source trees for both mods. [status: active] [verified: 2026-09-24] [source: git log -1 main; git rev-parse main:mod-stella-mobs main:mod-stella-equips-enchants]
+- `main-villages` integrates `mc-stella-villages` work. [status: active] [verified: 2026-09-28] [source: git branch --list main-villages]
+- Villages requires `mod-stella-mobs` for Nemesis elite state. Its Gradle build builds the neighboring mobs jar. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; fabric.mod.json; clean build]
+- `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
 
@@ -31,8 +35,17 @@ This repository develops two Fabric mods on separate integration branches.
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
+- `EntityType.getBaseClass()` does not identify hostile subclasses for village offer filtering -> instantiate candidate mobs in the server level. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; GameTest red and green runs]
+- Vanilla `randomTeleport` rejects safe stone floors through its extra block tag -> validate collision, then call `teleportTo`. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; teleport GameTests]
 
 ## Decisions
+
+### 2026-09-28 - Require mobs mod for Nemesis elite behavior
+
+- Decision: Villages requires the mobs mod and gives each Nemesis a durable elite companion.
+- Why: The elite characteristic is owned by the mobs mod and must persist across saves.
+- Alternatives: Keep the mobs mod optional and imitate its elite flag in villages.
+- Evidence: Oniichan's choice; `mc-stella-villages/src/main/resources/fabric.mod.json`; Nemesis GameTests.
 
 ### 2026-09-24 - Separate mod integration branches
 

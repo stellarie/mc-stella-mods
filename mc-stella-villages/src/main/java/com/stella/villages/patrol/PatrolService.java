@@ -1,6 +1,9 @@
 package com.stella.villages.patrol;
 
 import com.stella.villages.McStellaVillages;
+import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.MemberRecord;
 import com.stella.villages.data.VillageWorldData.ThreatRecord;
@@ -308,6 +311,8 @@ public final class PatrolService {
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		mob.addTag(PATROL_TAG);
+		ReactiveState.get(mob).setGearApplied(true);
+		EliteState.setSummoned(mob, true);
 		if (role == PatrolState.Role.HEAD) {
 			HeadKit.apply(mob);
 		} else if (role == PatrolState.Role.VILLAGE_WITCH) {
@@ -327,8 +332,21 @@ public final class PatrolService {
 
 		data.addMember(village, mob.getUUID(), role.name(), position);
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
+		stripMobsScaling(mob);
 		logSpawn(village, mob, role);
 		return mob;
+	}
+
+	private static void stripMobsScaling(final Mob mob) {
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		if (health != null && health.hasModifier(SpawnScaling.HEALTH_ID)) {
+			health.removeModifier(SpawnScaling.HEALTH_ID);
+			mob.setHealth(mob.getMaxHealth());
+		}
+		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+		if (damage != null && damage.hasModifier(SpawnScaling.DAMAGE_ID)) {
+			damage.removeModifier(SpawnScaling.DAMAGE_ID);
+		}
 	}
 
 	// A standable spot at the surface somewhere within the scatter radius of the village's centre, in a loaded chunk.
@@ -471,11 +489,16 @@ public final class PatrolService {
 		}
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
+		stripMobsScaling(mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(PATROL_TAG);
 		// A head saved in its older diamond kit is re-armed in netherite when it loads.
 		if (state.role() == PatrolState.Role.HEAD && !HeadKit.wears(mob)) {
 			HeadKit.apply(mob);
+		}
+		if (state.role() == PatrolState.Role.VILLAGE_WITCH
+			&& !mob.getItemBySlot(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE)) {
+			VillageWitchKit.apply(mob);
 		}
 		// V5: a member saved before the village banner existed is dressed when it loads.
 		PatrolVisuals.dress(mob, level, state.role());

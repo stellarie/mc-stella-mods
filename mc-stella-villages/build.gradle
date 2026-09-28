@@ -2,6 +2,13 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+def mobsJar = file("../mod-stella-mobs/build/libs/mod-stella-mobs-${project.version}.jar")
+
+tasks.register('buildStellaMobsJar', GradleBuild) {
+	dir = file('../mod-stella-mobs')
+	tasks = ['jar']
+}
+
 loom {
 	splitEnvironmentSourceSets()
 
@@ -17,11 +24,10 @@ dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation files(mobsJar)
 
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	if (project.findProperty("withStellaMobs") == "true") {
-		productionRuntimeMods files("../mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar")
-	}
+	productionRuntimeMods files(mobsJar)
 	if (project.findProperty("withStellaSpells") != null) {
 		productionRuntimeMods files(stellaSpellsJar())
 	}
@@ -43,15 +49,10 @@ fabricApi {
 	}
 }
 
-// V4: -PwithStellaMobs=true loads the built mobs jar into the GameTest run as well, so the suite covers both mods together.
 afterEvaluate {
+	project.dependencies.add("gametestRuntimeOnly", project.files(mobsJar))
 	if (project.findProperty("withStellaSpells") != null) {
 		project.dependencies.add("gametestRuntimeOnly", project.files(stellaSpellsJar()))
-	}
-	if (project.findProperty("withStellaMobs") == "true") {
-		project.dependencies.add(
-			"gametestRuntimeOnly", project.files("../mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar")
-		)
 	}
 }
 
@@ -71,4 +72,15 @@ tasks.withType(JavaCompile).configureEach {
 java {
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.named('runGameTest') {
+	dependsOn 'buildStellaMobsJar'
+	if (project.hasProperty('gameTestFilter')) {
+		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
+}
+
+tasks.named('compileJava') {
+	dependsOn 'buildStellaMobsJar'
 }

@@ -10,8 +10,9 @@ Mc Stella Villages adds patrol guards, Nemesis missions, and small raids to vani
 | Fabric Loader | 0.19.5 |
 | Fabric API | 0.161.0+26.3 |
 | Java | 25 |
+| Mod Stella Mobs | Matching 0.1.0+26.3 build |
 
-Install the jar on the server and on each client. Everything a player sees uses vanilla assets and a vanilla chest menu, so a client without the mod can still read the board and see the patrols. The mod-stella-mobs mod is optional.
+Install the jar and Mod Stella Mobs on the server and each client. The mission board uses vanilla assets and a vanilla chest menu.
 
 ## Features
 
@@ -34,15 +35,20 @@ Install the jar on the server and on each client. Everything a player sees uses 
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
   wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
   pillager pairs.
-- Three contracts at each village head, each for a different kind of mob drawn from every kind with a
-  spawn egg: a Nemesis can be any mob, a cow or a warden alike. Never offered: the ender dragon, which
-  has no fight outside its own End, and the mobs that would die on the land a Nemesis stands on (every
-  water mob, the guardians and the tadpole) or melt there (the snow golem). Right-click the head within 8 blocks to
+- Three contracts at each village head, each for a different hostile mob or an iron golem with a
+  spawn egg. Neutral mobs, including traders and creakings, never appear. Water mobs and the ender
+  dragon are also excluded. An iron golem Nemesis pursues its mission player. Right-click the head within 8 blocks to
   open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
-  board, or tells you why it refused. Each contract creates one persistent Nemesis target, with 100
-  health on top of its type's own, and the map looks like a vanilla filled map. The reward drops only
-  when a player lands the kill; a Nemesis that falls to anything else ends its contract with nothing.
+  board, or tells you why it refused. Each contract creates a persistent elite Nemesis and a same-kind
+  elite companion. They share one permanent buff. The Nemesis has 100 health above its elite health,
+  diamond or netherite armor, and a matching weapon with three random enchantments per piece. It can
+  teleport near its target player; ranged mobs choose a safe position farther away. The map looks like
+  a vanilla filled map. A player kill drops 64 emeralds, 32 diamonds, one ancient debris, and the
+  mob's vanilla head when one exists. Other mobs drop a named collectible head marked with their type.
+  The kill also has a 10% chance to drop exactly one equipped piece.
+  A Nemesis that dies another way ends its contract without these rewards. Hold the marked head and
+  right-click any village head to trade it for three random enchanted books. Vanilla mob heads also trade.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
@@ -84,9 +90,7 @@ To run the suite with `mod-stella-spells` loaded, build that mod first, then run
 `.\gradlew.bat runGameTest --rerun -PwithStellaSpells=true` (or pass the jar's own path). The head's axe
 test then checks the spell on the axe.
 
-To run the same suite with `mod-stella-mobs` loaded, build that mod first, then run
-`.\gradlew.bat runGameTest --rerun -PwithStellaMobs=true`. The log must list `mod-stella-mobs` among the
-loaded mods. Patrol members and Nemesis targets carry the `mod-stella-mobs.no_spawn_roll` tag, so the
-mobs mod adds its combat goals but leaves their kit, health and rank alone.
+The Gradle build includes the neighboring `mod-stella-mobs` project. The GameTest suite loads both
+mods. The villages mod guards patrol equipment and health against mobs mod spawn rolls.
 
 The jar is `build/libs/mc-stella-villages-0.1.0+26.3.jar`. Copy it to the `mods` folder on the server and the client.
