@@ -25,7 +25,7 @@ public final class TowerItems {
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, FLOOR_KEY_ID)).stacksTo(1).rarity(Rarity.EPIC)
 	));
 
-	/** Left, now and then, by a slain ghost. What it does is still to be decided. */
+	/** Left, now and then, by a slain ghost; set into a chestplate or a weapon, or made into a wisp. */
 	public static final Identifier GHOST_RUNE_ID = StellaTower.id("ghost_rune");
 	public static final Item GHOST_RUNE = Registry.register(BuiltInRegistries.ITEM, GHOST_RUNE_ID, new Item(
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, GHOST_RUNE_ID)).rarity(Rarity.RARE)
@@ -38,6 +38,14 @@ public final class TowerItems {
 	public static final DataComponentType<RuneData> RUNE_DATA = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("rune"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
 	/** The rune set into a weapon or armor piece. */
+	public static final Identifier WISP_ID = StellaTower.id("wisp");
+	public static final WispItem WISP = Registry.register(BuiltInRegistries.ITEM, WISP_ID, new WispItem(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, WISP_ID)).rarity(Rarity.RARE).durability(TowerWisps.USES)
+			.component(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.desc").withStyle(net.minecraft.ChatFormatting.GRAY),
+				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.rage").withStyle(net.minecraft.ChatFormatting.RED))))
+	));
+
 	/** A ghost rune set into a chestplate or a weapon. */
 	public static final DataComponentType<net.minecraft.util.Unit> GHOSTED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ghosted"),
 		DataComponentType.<net.minecraft.util.Unit>builder().persistent(net.minecraft.util.Unit.CODEC)
