@@ -256,6 +256,21 @@ public class StrayKitGameTest {
 		return new Arrow(helper.getLevel(), owner, new ItemStack(Items.ARROW), new ItemStack(Items.BOW));
 	}
 
+	/** A sniper arrow that comes back from an unloaded chunk still expires, rather than hanging in the air for good. */
+	@GameTest(maxTicks = StrayKit.SNIPER_ARROW_LIFE_TICKS + 60)
+	public void aSniperArrowLoadedAgainStillExpires(final GameTestHelper helper) {
+		Arrow arrow = EntityTypes.ARROW.create(helper.getLevel(), EntitySpawnReason.LOAD);
+		Vec3 at = helper.absoluteVec(new Vec3(2.5, 4.0, 2.5));
+		arrow.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		arrow.setNoGravity(true);
+		arrow.addTag(StrayKit.SNIPER_TAG);
+		helper.getLevel().addFreshEntity(arrow);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(arrow.isRemoved(), "the reloaded sniper arrow still hangs at tick " + arrow.tickCount);
+			result("sniperArrowReload", "expiredAt=" + helper.getTick() + " life=" + StrayKit.SNIPER_ARROW_LIFE_TICKS);
+		});
+	}
+
 	private static void result(final String test, final String outcome) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test={} {}", TEST, test, outcome);
 	}

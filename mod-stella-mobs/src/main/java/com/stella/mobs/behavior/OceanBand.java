@@ -102,11 +102,16 @@ public final class OceanBand {
 		return random.nextDouble() < BOSS_LEADER_SHARE ? Leader.BOSS : Leader.ELITE;
 	}
 
+	/** Who leads a band in an area, from the area's own random; no elite or boss leads one in the safe zone. */
+	public static Leader leaderFor(final boolean safe, final RandomSource random) {
+		return safe ? Leader.NONE : rollLeader(random);
+	}
+
 	/**
 	 * Called once for each chunk the encounter scan marks. The chunk at the even corner of each 2x2 area speaks
 	 * for its area: over ocean, and on its roll, a dolphin rises at the surface and the band gathers round it.
 	 */
-	public static @Nullable Dolphin rollRegion(final ServerLevel level, final LevelChunk chunk) {
+	public static @Nullable Dolphin rollRegion(final ServerLevel level, final LevelChunk chunk, final boolean safe) {
 		ChunkPos pos = chunk.getPos();
 		if ((pos.x() & 1) != 0 || (pos.z() & 1) != 0) {
 			return null;
@@ -129,7 +134,7 @@ public final class OceanBand {
 		dolphin.snapTo(x + 0.5, water.getY(), z + 0.5, random.nextFloat() * 360.0F, 0.0F);
 		dolphin.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		if (level.addFreshEntity(dolphin)) {
-			queue(level, dolphin, 0, null);
+			queue(level, dolphin, 0, leaderFor(safe, random));
 			StellaMobs.LOGGER.info("[BEHAVIOR] test=oceanBand REGION chunk={} at={}", pos, water);
 			return dolphin;
 		}
@@ -291,7 +296,9 @@ public final class OceanBand {
 			level, level.getCurrentDifficultyAt(dolphin.blockPosition()), EntitySpawnReason.EVENT, null
 		);
 		EliteState.setSummoned(dolphin, true);
-		level.addFreshEntity(dolphin);
+		if (!level.addFreshEntity(dolphin)) {
+			return null;
+		}
 		return dolphin;
 	}
 
@@ -356,7 +363,8 @@ public final class OceanBand {
 
 		@Override
 		public boolean canContinueToUse() {
-			return this.member.isPassenger();
+			// One dose per start, so the next check tops it up rather than the goal holding on a single dose.
+			return false;
 		}
 
 		@Override

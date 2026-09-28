@@ -54,18 +54,19 @@ public final class PiglinBruteGameTest {
 		victim.setPersistenceRequired();
 		brute.setPersistenceRequired();
 
-		// Wait for the victim to land, not a fixed tick: the grounded pop rule cannot apply in mid air, and an
-		// airborne victim keeps its fall and reads a 6.5 ratio. A fixed five ticks failed 2 of 6 gate runs.
-		final boolean[] measured = {false};
-		helper.onEachTick(() -> {
-			if (measured[0] || !victim.onGround()) {
-				return;
-			}
-			measured[0] = true;
+		// Night, so the zombie never burns: a burn tick just before the hit left the victim inside its hurt window,
+		// where a blow carries no vanilla shove, and the ratio flipped between 6.0 and 6.5 across gate runs.
+		helper.setTime(18_000L);
+		// The clause is the grounded hit, so the victim is set on the ground rather than left to land.
+		helper.runAfterDelay(1L, () -> {
+			victim.clearFire();
+			victim.damageCooldownTime = 0;
 			// The vanilla baseline, measured on this same victim with vanilla's own call at vanilla's power.
+			victim.setOnGround(true);
 			Vec3 baseline = pushOf(helper, victim, PiglinSmash.VANILLA_PUSH, brute, false);
 			Elite.mark(brute, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
 			PiglinSmash.install(brute);
+			victim.setOnGround(true);
 			Vec3 smashed = pushOf(helper, victim, PiglinSmash.SMASH_POWER, brute, true);
 			double baselineFlat = flat(baseline);
 			double smashedFlat = flat(smashed);
@@ -73,18 +74,20 @@ public final class PiglinBruteGameTest {
 			// already moving, so the clause is read as the whole push against the vanilla push.
 			double added = smashedFlat - baselineFlat;
 			double ratio = baselineFlat == 0.0 ? 0.0 : smashedFlat / baselineFlat;
+			// Vanilla's shove lands first, the smash halves it and adds its own: the multiplier plus half of one.
+			double expected = (PiglinSmash.VANILLA_PUSH / 2.0 + PiglinSmash.SMASH_POWER) / PiglinSmash.VANILLA_PUSH;
 
 			result(
 				"smashRatio",
 				"vanillaFlat=" + baselineFlat + " smashedFlat=" + smashedFlat + " added=" + added
 					+ " totalRatio=" + ratio
 					+ " multiplier=" + PiglinSmash.SMASH_MULTIPLIER + " pop=" + smashed.y
-					+ " ceiling=" + PiglinSmash.POP_CEILING + " grounded=" + victim.onGround()
+					+ " ceiling=" + PiglinSmash.POP_CEILING + " grounded=" + victim.onGround() + " expected=" + expected
 			);
 			helper.assertTrue(baselineFlat > 0.0, "the vanilla baseline shove measured zero");
 			helper.assertTrue(
-				Math.abs(ratio - PiglinSmash.SMASH_MULTIPLIER) < PiglinSmash.SMASH_MULTIPLIER * RATIO_TOLERANCE,
-				"the smash pushed " + ratio + " times the vanilla shove, not " + PiglinSmash.SMASH_MULTIPLIER
+				Math.abs(ratio - expected) < expected * RATIO_TOLERANCE,
+				"the smash pushed " + ratio + " times the vanilla shove, not " + expected
 			);
 			helper.assertTrue(
 				smashed.y <= PiglinSmash.POP_CEILING + EPSILON,

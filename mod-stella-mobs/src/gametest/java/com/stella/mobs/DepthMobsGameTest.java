@@ -26,6 +26,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class DepthMobsGameTest {
 	private static final String TEST = "depthMobs";
+	private static final double FAR_FROM_TESTS = 10_000.0;
 
 	@GameTest
 	public void theDepthChanceIsWhatShips(final GameTestHelper helper) {
@@ -44,10 +45,12 @@ public class DepthMobsGameTest {
 
 	@GameTest
 	public void onlyANaturalSpawnBelowZeroTurnsDepth(final GameTestHelper helper) {
-		Vec3 at = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
+		// Far from every test area: a Depth mob is solitary, so a neighbouring test's Depth mob within the
+		// solitary radius would refuse the roll and read as a height rule failing (once in six gate runs).
+		Vec3 at = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5)).add(FAR_FROM_TESTS, 0.0, FAR_FROM_TESTS);
 		Zombie deep = unspawned(helper, EntityTypes.ZOMBIE, at.x, -20.0, at.z);
-		Zombie high = unspawned(helper, EntityTypes.ZOMBIE, at.x, 20.0, at.z);
-		Zombie spawner = unspawned(helper, EntityTypes.ZOMBIE, at.x + 200.0, -20.0, at.z);
+		Zombie high = unspawned(helper, EntityTypes.ZOMBIE, at.x + DepthMobs.SOLITARY_RADIUS * 3, 20.0, at.z);
+		Zombie spawner = unspawned(helper, EntityTypes.ZOMBIE, at.x + DepthMobs.SOLITARY_RADIUS * 6, -20.0, at.z);
 		boolean deepTurned;
 		boolean highTurned;
 		boolean spawnerTurned;
@@ -102,11 +105,25 @@ public class DepthMobsGameTest {
 		int[] alive = new int[3];
 		for (int i = 0; i < 3; i++) {
 			zombie.damageCooldownTime = 0;
-			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().genericKill(), 10_000.0F);
+			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 10_000.0F);
 			alive[i] = zombie.isAlive() ? 1 : 0;
 		}
 		result("aDepthZombieGetsUpTwice", "alive=" + java.util.Arrays.toString(alive));
 		helper.assertTrue(alive[0] == 1 && alive[1] == 1 && alive[2] == 0, "the Depth zombie lived through " + java.util.Arrays.toString(alive));
+		helper.succeed();
+	}
+
+	/** A /kill or the void is not a blow to rise from: the Depth zombie's revives answer only a fight. */
+	@GameTest
+	public void aKillCommandEndsADepthZombieAtOnce(final GameTestHelper helper) {
+		floor(helper, 8);
+		Mob zombie = spawn(helper, EntityTypes.ZOMBIE, 2, 2);
+		DepthMobs.makeDepth(zombie);
+		int revives = DepthMobs.revivesLeft(zombie);
+		zombie.kill(helper.getLevel());
+		result("aKillCommandEndsADepthZombieAtOnce", "revivesBefore=" + revives + " alive=" + zombie.isAlive());
+		helper.assertTrue(revives > 0, "the zombie had no revives, so the case proves nothing");
+		helper.assertFalse(zombie.isAlive(), "the Depth zombie rose from a /kill");
 		helper.succeed();
 	}
 

@@ -152,9 +152,10 @@ public final class ChunkEncounters {
 
 					LevelChunk chunk = level.getChunkSource().getChunkNow(center.x() + dx, center.z() + dz);
 					if (chunk != null && markRolled(chunk)) {
-						scanRoller.roll(level, chunk, isSafe(level.dimension(), chunk.getPos(), spawn.getX(), spawn.getZ(), radius));
+						boolean safe = isSafe(level.dimension(), chunk.getPos(), spawn.getX(), spawn.getZ(), radius);
+						scanRoller.roll(level, chunk, safe);
 						// Round 8: the same first sight of a chunk rolls the ocean's skeleton bands, by 2x2 area.
-						OceanBand.rollRegion(level, chunk);
+						OceanBand.rollRegion(level, chunk, safe);
 					}
 				}
 			}
