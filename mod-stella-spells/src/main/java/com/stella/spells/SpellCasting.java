@@ -29,6 +29,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class SpellCasting {
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
+	static final double STATIC_LASH_RADIUS = 4.0;
+	static final double WARDENS_ROAR_RADIUS = 5.0;
+	static final double TIME_LOCK_RADIUS = 5.0;
+	static final double VOID_WELL_RADIUS = 5.0;
+	static final double DRAGONFALL_RADIUS = 3.0;
 	/** How far Riftwalk looks down a wall for ground to land on. */
 	static final int RIFTWALK_MAX_DROP_BLOCKS = 4;
 	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
@@ -237,7 +242,7 @@ public final class SpellCasting {
 	static boolean applyWardensRoar(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		double radius = 5.0 * modifiers.radiusMultiplier();
+		double radius = WARDENS_ROAR_RADIUS * modifiers.radiusMultiplier();
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			caster.getBoundingBox().inflate(radius),
@@ -261,7 +266,7 @@ public final class SpellCasting {
 
 		var damage = caster.level().damageSources().magic();
 		float power = (float) modifiers.powerMultiplier();
-		double radius = 4.0 * modifiers.radiusMultiplier();
+		double radius = STATIC_LASH_RADIUS * modifiers.radiusMultiplier();
 		primary.hurt(damage, DAMAGE * power);
 		List<Mob> candidates = new ArrayList<>(caster.level().getEntitiesOfClass(
 			Mob.class,
@@ -276,7 +281,10 @@ public final class SpellCasting {
 				.thenComparingInt(Mob::getId)
 		);
 		for (int i = 0; i < Math.min(2, candidates.size()); i++) {
-			candidates.get(i).hurt(damage, DAMAGE * power);
+			Mob chained = candidates.get(i);
+			chained.hurt(damage, DAMAGE * power);
+			SpellVisuals.linkAffected(caster, "static_lash",
+				primary.getBoundingBox().getCenter(), chained.getBoundingBox().getCenter());
 		}
 		return true;
 	}
@@ -294,7 +302,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = 5.0 * modifiers.radiusMultiplier();
+		double radius = TIME_LOCK_RADIUS * modifiers.radiusMultiplier();
 		int duration = effectDurationTicks(modifiers, 100, false);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
@@ -315,7 +323,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = 5.0 * modifiers.radiusMultiplier();
+		double radius = VOID_WELL_RADIUS * modifiers.radiusMultiplier();
 		int duration = effectDurationTicks(modifiers, 60, false);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
@@ -368,7 +376,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = 3.0 * modifiers.radiusMultiplier();
+		double radius = DRAGONFALL_RADIUS * modifiers.radiusMultiplier();
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),

@@ -57,6 +57,7 @@ public final class Spellbooks implements ModInitializer {
 		SummonSkeleton.register();
 		SpellbookLoot.register();
 		SpellStorms.register();
+		SpellVisuals.register();
 		SpellImbue.register();
 		SpellTimers.register();
 		LOGGER.info("{} initialized", MOD_ID);

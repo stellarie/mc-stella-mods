@@ -1,12 +1,23 @@
 {
 	"model": {
-		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/plague_cloud",
-		"tints": [
+		"type": "minecraft:select",
+		"property": "minecraft:display_context",
+		"cases": [
 			{
-				"type": "minecraft:constant",
-				"value": 8364858
+				"when": [
+					"firstperson_righthand",
+					"firstperson_lefthand",
+					"thirdperson_righthand",
+					"thirdperson_lefthand"
+				],
+				"model": {
+					"type": "minecraft:empty"
+				}
 			}
-		]
+		],
+		"fallback": {
+			"type": "minecraft:model",
+			"model": "mod-stella-spells:item/plague_cloud"
+		}
 	}
 }
