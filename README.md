@@ -26,8 +26,6 @@ The ZIP and individual GameTest logs appear under `release-output/`.
 | `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
 | `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
-| `mod-stella-food/` | Food buffs and cooking stations | `main-food` |
-| `mod-stella-tower/` | Endless tower encounters and runes | `main-tower` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.
@@ -35,7 +33,8 @@ tip of the branch for that mod. Do not merge integration branches into each othe
 Use a worktree from the matching branch before editing a mod. Other mod
 directories may be absent or older in that checkout.
 
-`main` publishes the current mod sources. Use each mod's integration branch for new work.
+`main` contains the 2026-09-26 source snapshot, including unfinished spellbook
+and village work. See `HANDOFFS-2026-09-26.md` before resuming either mod.
 Start new mod work from the matching integration branch.
 `master` is the original repository baseline, not a development target.
 
@@ -85,8 +84,8 @@ wants.
 - **Ghasts.** A ghast fires a burst of two shots every 3 seconds. Each shot bursts in a blast that hurts
   and throws bodies but breaks no block, and leaves a cloud of Wither (Wither II from an elite) and
   Poison that lingers 2 seconds. Stray shots burn out after 5 seconds.
-- **Chunk encounters.** Each 8x8 overworld chunk grid rolls once, when a player first comes 3 to 5 chunks from
-  a chunk in it. Outside the spawn safe zone, 1% of grids hold one pair of friendly "Village Patrol" Pillagers. No
+- **Chunk encounters.** Each overworld chunk rolls once, when a player first comes 3 to 5 chunks from
+  it. Outside the spawn safe zone, 20% of chunks hold a pair of friendly "Village Patrol" Pillagers. No
   elite ever spawns inside the safe zone, from any of the world's own spawns.
 
 ### Opting a mob out of spawn rolls

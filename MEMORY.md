@@ -1,14 +1,14 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-29
+last_verified: 2026-09-28
 ---
 
 # Project Memory
 
 ## Purpose
 
-This repository develops six Fabric mods on separate integration branches.
+This repository develops five Fabric mods. The `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -24,7 +24,7 @@ This repository develops six Fabric mods on separate integration branches.
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
 - `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
-- `main` contains mobs, equips, spells, villages, food, and tower sources. [status: active] [verified: 2026-09-29] [source: git ls-tree --name-only main; source tree import]
+- `main` contains mobs, equips, spells, and villages source, including unfinished spells and villages changes. [status: active] [verified: 2026-09-26] [source: git ls-tree --name-only main]
 
 ## Conventions
 
@@ -43,7 +43,6 @@ This repository develops six Fabric mods on separate integration branches.
 - Spark Shot's boundary test needed entity-index readiness -> use `Findable.then` before casting. [status: resolved] [verified: 2026-09-28] [source: SpellEffectsGameTest.java and summonbond-final-gate-1.log through summonbond-final-gate-5.log]
 - Chainstorm's delayed test passed before a fourth strike -> wait through `STORM_SETTLE_TICKS` in an isolated arena. [status: resolved] [verified: 2026-09-28] [source: StormAndRiftGameTest.java and chainstorm-settle-radius-mutant-game.log]
 - The village full suite has intermittent required failures in patrol targeting and safe-site setup. [status: active] [verified: 2026-09-27] [source: C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27/villages-build-console.log; villages-rerun-5-console.log]
-- The older village GameTests still assert the retired roster. Update them before resuming the suite. [status: active] [verified: 2026-09-29] [source: mc-stella-villages/src/gametest/java/com/stella/villages/VillagePatrolGameTest.java]
 - Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
 
 ## Decisions
