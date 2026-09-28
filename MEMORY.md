@@ -8,7 +8,7 @@ last_verified: 2026-09-28
 
 ## Purpose
 
-This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includes unfinished work.
+This repository develops separate Fabric mods for mobs, equips, spells, villages, the Endless Tower, and food.
 
 ## Commands
 
@@ -16,14 +16,18 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - `cd mod-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `.\gradlew.bat runGameTest --rerun` - Rerun a mod's headless game tests. [verified: 2026-09-24] [source: AGENTS.md]
 - `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
+- `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
 
 ## Architecture
 
 - `main-mobs` integrates `mod-stella-mobs` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-mobs]
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
 - `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
+- `main-food` integrates `mod-stella-food` work. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food]
+- The food mod applies food effects through `Consumable` and covers cake through `CakeBlock.eat`. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin]
+- The cooking station uses held items, inventory ingredients, and crouch interaction. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
-- `main` contains mobs, equips, spells, and villages source, including unfinished spells and villages changes. [status: active] [verified: 2026-09-26] [source: git ls-tree --name-only main]
+- `main-food` starts from `origin/main` at `4395db2`, which includes the Endless Tower. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food; git ls-tree main-food mod-stella-tower]
 
 ## Conventions
 
@@ -43,8 +47,17 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - Chainstorm's delayed test passed before a fourth strike -> wait through `STORM_SETTLE_TICKS` in an isolated arena. [status: resolved] [verified: 2026-09-28] [source: StormAndRiftGameTest.java and chainstorm-settle-radius-mutant-game.log]
 - The village full suite has intermittent required failures in patrol targeting and safe-site setup. [status: active] [verified: 2026-09-27] [source: C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27/villages-build-console.log; villages-rerun-5-console.log]
 - Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
+- Minecraft 26.3 rejects `category: food` in crafting recipes -> use `misc`. [status: active] [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/repair-candidate-1-console.log]
+- Cake bypasses `Consumable` -> cover `CakeBlock.eat` when changing all-food rules. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin/CakeBlockMixin.java]
 
 ## Decisions
+
+### 2026-09-28 - Separate food mod and station controls
+
+- Decision: Build food on `main-food` with normal station use for cooking and crouch use for combination.
+- Why: Separate controls prevent an incomplete dish attempt from cooking an ingredient.
+- Alternatives: Automatic operation selection was rejected after an acceptance review found ambiguous behavior.
+- Evidence: `mod-stella-food/src/main/java/com/stella/food/CookingStation.java` and `FoodGameTest.java`.
 
 ### 2026-09-24 - Separate mod integration branches
 
