@@ -10,6 +10,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -87,7 +89,7 @@ public final class RuneEffects {
 				target.clearFire();
 				level.sendParticles(ParticleTypes.SPLASH, target.getX(), target.getY() + 1.0, target.getZ(), 12, 0.3, 0.5, 0.3, 0.1);
 			}
-			case LIGHTNING -> player.setAttached(CHARGES, Math.min(MAX_CHARGES, player.getAttachedOrElse(CHARGES, 0) + 1));
+			case LIGHTNING -> addCharge(player);
 			case VOID -> {
 				int stacks = target.getAttachedOrElse(SHRINK, 0) + 1;
 				target.setAttached(SHRINK, stacks);
@@ -115,15 +117,23 @@ public final class RuneEffects {
 					return;
 				}
 				List<TowerBuffs.MobBuff> buffs = TowerBuffs.mobBuffsOf(target);
-				if (buffs.isEmpty()) {
-					return;
-				}
-				TowerBuffs.MobBuff struck = buffs.get(0);
-				List<TowerBuffs.MobBuff> stripped = new ArrayList<>(strippedFrom(target));
-				stripped.add(struck);
-				target.setAttached(STRIPPED, List.copyOf(stripped));
-				if (struck.effect() != null) {
-					target.removeEffect(struck.effect());
+				if (!buffs.isEmpty()) {
+					TowerBuffs.MobBuff struck = buffs.get(0);
+					List<TowerBuffs.MobBuff> stripped = new ArrayList<>(strippedFrom(target));
+					stripped.add(struck);
+					target.setAttached(STRIPPED, List.copyOf(stripped));
+					if (struck.effect() != null) {
+						target.removeEffect(struck.effect());
+					}
+				} else {
+					// Anywhere else, the strongest boon the target holds.
+					MobEffectInstance boon = target.getActiveEffects().stream()
+						.filter(effect -> effect.getEffect().value().getCategory() == MobEffectCategory.BENEFICIAL)
+						.max(java.util.Comparator.comparingInt(MobEffectInstance::getAmplifier)).orElse(null);
+					if (boon == null) {
+						return;
+					}
+					target.removeEffect(boon.getEffect());
 				}
 				player.setAttached(HOLY_READY, now + HOLY_REST_TICKS);
 				level.sendParticles(ParticleTypes.END_ROD, target.getX(), target.getY() + 1.0, target.getZ(), 16, 0.3, 0.6, 0.3, 0.05);
@@ -180,6 +190,11 @@ public final class RuneEffects {
 
 	public static int chargesOf(final Player player) {
 		return player.getAttachedOrElse(CHARGES, 0);
+	}
+
+	/** Stores one more Lightning charge, up to the most a player holds. */
+	public static void addCharge(final Player player) {
+		player.setAttached(CHARGES, Math.min(MAX_CHARGES, chargesOf(player) + 1));
 	}
 
 	/** Takes up to all of a player's stored Lightning charges, for a spell to spend. */

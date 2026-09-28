@@ -290,7 +290,7 @@ public final class TowerMobs {
 	/** A hit's damage once the tower has had its say: a tower mob hits harder, and a big one takes less. */
 	public static float scaleDamage(final LivingEntity victim, final DamageSource source, final float amount) {
 		// A weapon rune multiplies the blow as it is struck; armor runes turn a tower mob's blow as it lands.
-		float scaled = RuneEffects.soaked(victim, source, TowerRunes.weapon(victim, source, amount));
+		float scaled = RuneEffects.soaked(victim, source, TowerRunes.weapon(victim, source, RuneGuards.kindle(victim, source, amount)));
 		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim && !TowerBuffs.reflecting()) {
 			State from = stateOf(attacker);
 			if (from != null) {
@@ -305,6 +305,6 @@ public final class TowerMobs {
 		if (to != null) {
 			scaled = (float) (scaled / TowerBuffs.healthFactor(victim));
 		}
-		return scaled;
+		return RuneGuards.guard(victim, source, scaled);
 	}
 }
