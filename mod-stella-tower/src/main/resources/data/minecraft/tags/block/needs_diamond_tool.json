@@ -1,6 +1,14 @@
 {
   "replace": false,
   "values": [
-    "mod-stella-tower:tower_maze_wall"
+    "mod-stella-tower:tower_maze_wall",
+    "mod-stella-tower:tower_trap_desert",
+    "mod-stella-tower:tower_trap_inferno",
+    "mod-stella-tower:tower_trap_void",
+    "mod-stella-tower:tower_trap_frost",
+    "mod-stella-tower:tower_trap_bog",
+    "mod-stella-tower:tower_trap_storm",
+    "mod-stella-tower:tower_trap_shadow",
+    "mod-stella-tower:tower_trap_spikes"
   ]
 }

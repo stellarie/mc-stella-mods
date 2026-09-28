@@ -44,9 +44,9 @@ public final class TowerMobs {
 	public static final String TAG = "mod-stella-tower.mob";
 	/** Mobs from the mobs mod roll no elites of their own in the tower; the tower decides that. */
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
-	public static final int FLOOR_CAP = 36;
+	public static final int FLOOR_CAP = 72;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
-	public static final int SPAWN_BATCH = 4;
+	public static final int SPAWN_BATCH = 8;
 	public static final int SPAWN_TRIES = 24;
 	public static final double MIN_PLAYER_DISTANCE = 12.0;
 	public static final int OVERWORLD_ONLY_UNTIL = 20;

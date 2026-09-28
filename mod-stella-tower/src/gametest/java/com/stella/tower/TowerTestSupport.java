@@ -36,6 +36,17 @@ final class TowerTestSupport {
 		return player;
 	}
 
+	/**
+	 * Lets a test player be hurt. A player with no client is still counted as changing dimension and as not
+	 * yet loaded, and either makes them invulnerable; a real client clears both within moments.
+	 */
+	static void vulnerable(final ServerPlayer player) {
+		player.hasChangedDimension();
+		for (int i = 0; i < 200 && !player.connection.hasClientLoaded(); i++) {
+			player.connection.tickClientLoadTimeout();
+		}
+	}
+
 	static void leave(final GameTestHelper helper, final ServerPlayer player) {
 		helper.getLevel().getServer().getPlayerList().remove(player);
 	}
@@ -83,14 +94,22 @@ final class TowerTestSupport {
 
 	/** A fresh floor number that passes the test, such as an elite or a boss floor. */
 	static int freshFloorWhere(final java.util.function.IntPredicate wanted) {
-		// A block of forty floors is taken whole, so any residue is found, with the two floors above it free too.
-		int start = NEXT_FLOOR.getAndAdd(40);
-		for (int floor = start; floor < start + 37; floor++) {
+		return freshFloorWhere(wanted, 40);
+	}
+
+	/**
+	 * A fresh floor number that passes the test, from a block of floors taken whole, so any residue of the
+	 * block's size is found, with the two floors above it free too. A trap theme needs a block of a hundred
+	 * and more.
+	 */
+	static int freshFloorWhere(final java.util.function.IntPredicate wanted, final int block) {
+		int start = NEXT_FLOOR.getAndAdd(block);
+		for (int floor = start; floor < start + block - 3; floor++) {
 			if (wanted.test(floor)) {
 				return floor;
 			}
 		}
-		throw new IllegalStateException("no floor in " + start + ".." + (start + 36) + " fits");
+		throw new IllegalStateException("no floor in " + start + ".." + (start + block - 4) + " fits");
 	}
 
 	/** Puts a joined player on a floor's arrival spot. */
