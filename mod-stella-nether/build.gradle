@@ -25,6 +25,7 @@ dependencies {
 	implementation "com.stella.spells:mod-stella-spells:${project.version}"
 	implementation "com.stella.villages:mc-stella-villages:${project.version}"
 	implementation "com.stella.tower:mod-stella-tower:${project.version}"
+	implementation "com.stella.food:mod-stella-food:${project.version}"
 }
 
 fabricApi {

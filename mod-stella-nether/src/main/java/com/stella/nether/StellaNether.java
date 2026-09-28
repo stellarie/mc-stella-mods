@@ -11,7 +11,8 @@ public final class StellaNether implements ModInitializer {
 	public static final String MOD_ID = "mod-stella-nether";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final List<String> MODPACK = List.of(
-		"mod-stella-mobs", "mod-stella-equips-enchants", "mod-stella-spells", "mc-stella-villages", "mod-stella-tower"
+		"mod-stella-mobs", "mod-stella-equips-enchants", "mod-stella-spells", "mc-stella-villages", "mod-stella-tower",
+		"mod-stella-food"
 	);
 
 	@Override
