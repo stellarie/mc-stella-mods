@@ -225,6 +225,9 @@ public final class TowerFloors {
 	private static void finish(final ServerLevel tower, final int floor) {
 		BlockPos origin = TowerLayout.origin(floor);
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor)) {
+			tower.setBlock(origin.offset(trap.x(), -1, trap.z()), TowerBlocks.TRAPS.get(trap.theme()).defaultBlockState(), Block.UPDATE_CLIENTS);
+		}
 		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
 		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
