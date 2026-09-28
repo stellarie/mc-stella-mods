@@ -11,7 +11,8 @@
 		"TowerExperienceMixin",
 		"TowerRuneAnvilMixin",
 		"RuneGuardEffectMixin",
-		"RuneGuardFrostMixin"
+		"RuneGuardFrostMixin",
+		"LivingEntityAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

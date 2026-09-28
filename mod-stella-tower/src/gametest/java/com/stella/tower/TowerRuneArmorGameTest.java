@@ -48,22 +48,62 @@ public class TowerRuneArmorGameTest {
 		return zombie;
 	}
 
-	/** Fire armor stores the fire it takes, and the wearer's next blow carries it. */
+	/** Fire armor stores the fire it takes; the next blow that lands carries it, unmultiplied by the weapon's rune. */
 	@GameTest
 	public void fireArmorStoresHeatForTheNextBlow(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = wearer(helper, TowerElement.FIRE);
 		player.hurtServer(level, level.damageSources().inFire(), 4.0F);
 		float stored = RuneGuards.storedHeat(player);
-		Zombie zombie = zombie(helper, LOW, TowerRank.MOB);
-		double divisor = TowerMobs.stateOf(zombie).healthDivisor() * TowerBuffs.healthFactor(zombie);
-		double blow = TowerMobs.scaleDamage(zombie, player.damageSources().playerAttack(player), 1.0F) * divisor;
+		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, TowerRunes.apply(new ItemStack(Items.DIAMOND_SWORD), new RuneData(TowerElement.ICE, TOP)));
+		net.minecraft.world.entity.animal.pig.Pig pig = EntityTypes.PIG.create(level, EntitySpawnReason.COMMAND);
+		pig.snapTo(helper.absoluteVec(new Vec3(4.5, 2.0, 4.5)));
+		pig.setNoAi(true);
+		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400.0);
+		pig.setHealth(pig.getMaxHealth());
+		level.addFreshEntity(pig);
+		// A blow turned aside spends nothing.
+		// Within the cooldown of a greater blow, a lesser one is turned aside whole.
+		pig.damageCooldownTime = 20;
+		((com.stella.tower.mixin.LivingEntityAccessor) pig).stellaTower$setLastHurt(1.0E6F);
+		pig.hurtServer(level, player.damageSources().playerAttack(player), 1.0F);
+		float kept = RuneGuards.storedHeat(player);
+		pig.damageCooldownTime = 0;
+		float before = pig.getHealth();
+		pig.hurtServer(level, player.damageSources().playerAttack(player), 1.0F);
+		double blow = before - pig.getHealth();
+		double want = TowerRunes.weaponMultiplier(TOP) + stored;
 		float after = RuneGuards.storedHeat(player);
-		TowerTestSupport.result("fireArmor", "stored=" + stored + " blow=" + blow + " after=" + after);
-		zombie.discard();
+		TowerTestSupport.result("fireArmor", "stored=" + stored + " kept=" + kept + " blow=" + blow + " want=" + want + " after=" + after);
+		pig.discard();
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(stored > 0.0F, "fire armor stored no heat from a burn");
-		helper.assertTrue(Math.abs(blow - (1.0 + stored)) < 1.0E-3 && after == 0.0F, "the next blow was " + blow + ", not " + (1.0 + stored) + "; heat after " + after);
+		helper.assertTrue(kept == stored, "a blow turned aside spent the heat: " + kept + " of " + stored + " left");
+		helper.assertTrue(Math.abs(blow - want) < want * 1.0E-4 && after == 0.0F, "the next blow was " + blow + ", not " + want + "; heat after " + after);
+		helper.succeed();
+	}
+
+	/** A mob wearing runed armor gains none of its signatures: a zombie in Lightning armor still takes a bolt. */
+	@GameTest
+	public void onlyAPlayerCarriesArmorSignatures(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		Zombie zombie = plain(helper, 4.5);
+		zombie.setItemSlot(EquipmentSlot.CHEST, TowerRunes.apply(new ItemStack(Items.IRON_CHESTPLATE), new RuneData(TowerElement.LIGHTNING, TOP)));
+		float before = zombie.getHealth();
+		zombie.hurtServer(level, level.damageSources().lightningBolt(), 5.0F);
+		float lost = before - zombie.getHealth();
+		TowerTestSupport.result("mobWearer", "lost=" + lost);
+		zombie.discard();
+		helper.assertTrue(lost > 0.0F, "a zombie in lightning armor shrugged off a bolt");
+		helper.succeed();
+	}
+
+	/** A spread blow is saved with the player, so logging out does not shed it. */
+	@GameTest
+	public void aPendingWoundIsSavedWithThePlayer(final GameTestHelper helper) {
+		boolean saved = RuneGuards.WOUND.isPersistent();
+		TowerTestSupport.result("woundSaved", "persistent=" + saved);
+		helper.assertTrue(saved, "a pending wound is not saved with the player");
 		helper.succeed();
 	}
 
@@ -99,6 +139,29 @@ public class TowerRuneArmorGameTest {
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(Math.abs(now - landed * RuneGuards.BIG_HIT_NOW) < 0.01, "the big blow struck " + now + " at once, not a quarter of " + landed);
 			helper.assertTrue(Math.abs(total - landed) < 0.05 && RuneGuards.pendingWound(player) == 0.0F, "the spread blow came to " + total + ", not " + landed);
+			helper.succeed();
+		});
+	}
+
+	/** The spread part of a blow meets the wearer's resistance as the first part did, not in full. */
+	@GameTest(maxTicks = 120)
+	public void waterArmorsSpreadBlowMeetsResistance(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = wearer(helper, TowerElement.WATER);
+		player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 2000, 1));
+		Zombie zombie = zombie(helper, LOW, TowerRank.MOB);
+		float before = player.getHealth();
+		float blow = 12.0F;
+		double landed = TowerCurve.damage(blow, LOW) / TowerRunes.armorDivisor(TOP);
+		// Resistance II turns 40% of every blow.
+		double want = landed * (1.0 - 0.4);
+		player.hurtServer(level, zombie.damageSources().mobAttack(zombie), blow);
+		helper.runAfterDelay((long) RuneGuards.SPREAD_PARTS * RuneGuards.SPREAD_TICKS + 20L, () -> {
+			float total = before - player.getHealth();
+			TowerTestSupport.result("waterResisted", "total=" + total + " want=" + want + " landed=" + landed);
+			zombie.discard();
+			TowerTestSupport.leave(helper, player);
+			helper.assertTrue(Math.abs(total - want) < 0.05, "a resisted spread blow came to " + total + ", not " + want);
 			helper.succeed();
 		});
 	}
@@ -156,6 +219,13 @@ public class TowerRuneArmorGameTest {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = wearer(helper, TowerElement.DARK);
 		int slain = 7;
+		// Chickens are no foes: they do not count.
+		for (int i = 0; i < 3; i++) {
+			net.minecraft.world.entity.animal.chicken.Chicken chicken = EntityTypes.CHICKEN.create(level, EntitySpawnReason.COMMAND);
+			chicken.snapTo(helper.absoluteVec(new Vec3(4.5, 2.0, 6.5)));
+			level.addFreshEntity(chicken);
+			chicken.hurtServer(level, player.damageSources().playerAttack(player), 1.0E30F);
+		}
 		for (int i = 0; i < slain; i++) {
 			Zombie victim = plain(helper, 4.5);
 			victim.hurtServer(level, player.damageSources().playerAttack(player), 1.0E30F);
@@ -202,8 +272,12 @@ public class TowerRuneArmorGameTest {
 		tower.addFreshEntity(zombie);
 		TowerBuffs.pinMobBuffs(own, List.of(TowerBuffs.MobBuff.STRENGTH, TowerBuffs.MobBuff.SPEED));
 		helper.runAfterDelay(TowerBuffs.REFRESH_TICKS * 2L, () -> {
-			TowerBuffs.pinMobBuffs(own, null);
-			MobEffectInstance strength = zombie.getEffect(MobEffects.STRENGTH);
+			MobEffectInstance strength;
+			try {
+				strength = zombie.getEffect(MobEffects.STRENGTH);
+			} finally {
+				TowerBuffs.pinMobBuffs(own, null);
+			}
 			int full = TowerBuffs.MobBuff.STRENGTH.amplifier(own);
 			TowerTestSupport.result("voidArmor", "strength=" + strength + " full=" + full);
 			zombie.discard();
