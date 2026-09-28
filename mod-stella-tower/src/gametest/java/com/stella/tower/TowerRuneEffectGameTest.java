@@ -75,6 +75,49 @@ public class TowerRuneEffectGameTest {
 		helper.succeed();
 	}
 
+	/** The burst is not fire: a blaze, born of fire, bursts all the same. */
+	@GameTest
+	public void fireBurstsTheFireBorn(final GameTestHelper helper) {
+		int floor = 1;
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = wielder(helper, TowerElement.FIRE, floor);
+		net.minecraft.world.entity.monster.Blaze blaze = EntityTypes.BLAZE.create(level, EntitySpawnReason.COMMAND);
+		blaze.snapTo(helper.absoluteVec(new Vec3(3.5, 2.0, 3.5)));
+		blaze.setNoAi(true);
+		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400.0);
+		blaze.setHealth(blaze.getMaxHealth());
+		level.addFreshEntity(blaze);
+		float[] losses = new float[RuneEffects.HEAT_STACKS];
+		for (int i = 0; i < RuneEffects.HEAT_STACKS; i++) {
+			float before = blaze.getHealth();
+			blaze.damageCooldownTime = 0;
+			blaze.hurtServer(level, player.damageSources().playerAttack(player), 1.0F);
+			losses[i] = before - blaze.getHealth();
+		}
+		double burst = losses[RuneEffects.HEAT_STACKS - 1] - losses[0];
+		double want = RuneEffects.combustShare(TowerRunes.power(floor)) * blaze.getMaxHealth();
+		TowerTestSupport.result("fireBornBurst", "burst=" + burst + " want=" + want);
+		blaze.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(Math.abs(burst - want) < want * 0.02, "a blaze's burst was " + burst + ", not " + want);
+		helper.succeed();
+	}
+
+	/** Thorns a runed player returns are not struck with the weapon: the rune leaves them be. */
+	@GameTest
+	public void aRuneLeavesThornsAlone(final GameTestHelper helper) {
+		ServerPlayer player = wielder(helper, TowerElement.ICE, TOP);
+		Zombie zombie = zombie(helper, 3.5);
+		float thorns = TowerMobs.scaleDamage(zombie, player.damageSources().thorns(player), 10.0F);
+		double divisor = TowerMobs.stateOf(zombie).healthDivisor() * TowerBuffs.healthFactor(zombie);
+		double seen = thorns * divisor;
+		TowerTestSupport.result("runeThorns", "seen=" + seen);
+		zombie.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(Math.abs(seen - 10.0) < 1.0E-3, "thorns from a runed player came to " + seen + ", not 10");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void iceStrikesHarderAtTheSlowed(final GameTestHelper helper) {
 		ServerPlayer player = wielder(helper, TowerElement.ICE, TOP);
