@@ -153,6 +153,109 @@ public class TowerWanderersGameTest {
 		});
 	}
 
+	/** An area with a player already in it waits: a wanderer never rises at someone's feet. */
+	@GameTest(maxTicks = 200)
+	public void anAreaWithAPlayerInItWaits(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ChunkPos pos = freshAnchor();
+		LevelChunk chunk = level.getChunk(pos.x(), pos.z());
+		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		BlockPos stand = pos.getMiddleBlockPosition(level.getSeaLevel() + 40);
+		player.teleportTo(level, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, true);
+		player.setNoGravity(true);
+		whenLoaded(helper, level, pos, () -> {
+			Mob mob = TowerWanderers.rollRegion(level, chunk, OPEN_FLOOR, 1.0);
+			TowerTestSupport.result("playerInArea", "mob=" + (mob != null) + " rolled=" + TowerWanderers.isRolled(chunk));
+			TowerTestSupport.leave(helper, player);
+			if (mob != null) {
+				mob.discard();
+				return "a wanderer rose " + (int) mob.distanceTo(player) + " blocks from a player in its area";
+			}
+			return TowerWanderers.isRolled(chunk) ? "the area spent its roll with a player in it" : null;
+		});
+	}
+
+	/** Peaceful raises no monster, and an area rolled then would lose its one roll to a mob that vanishes at once. */
+	@GameTest
+	public void peacefulRaisesNoWanderer(final GameTestHelper helper) {
+		boolean peaceful = TowerWanderers.raisesIn(net.minecraft.world.Difficulty.PEACEFUL);
+		boolean easy = TowerWanderers.raisesIn(net.minecraft.world.Difficulty.EASY);
+		TowerTestSupport.result("peaceful", "peaceful=" + peaceful + " easy=" + easy);
+		helper.assertTrue(easy && !peaceful, "wanderers rise on peaceful=" + peaceful + " easy=" + easy);
+		helper.succeed();
+	}
+
+	/** Difficulty is the whole server's, so a test cannot turn it to peaceful without clearing every other test's mobs. */
+	@GameTest(required = false)
+	public void aPeacefulWorldKeepsItsAreasUnrolledRequiresManualTest(final GameTestHelper helper) {
+		helper.fail("difficulty is server-wide: set peaceful by hand, walk into new land, set easy, and wanderers must still come");
+	}
+
+	/**
+	 * By day an undead wanderer would burn under the open sky, its drops going to no one; its area waits for the
+	 * night instead of spending its roll. Twenty areas of an early floor, where a third of the kinds burn.
+	 */
+	@GameTest(maxTicks = 300)
+	public void noUndeadWandererRisesByDay(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		List<ChunkPos> areas = new ArrayList<>();
+		for (int i = 0; i < 20; i++) {
+			ChunkPos pos = freshAnchor();
+			areas.add(pos);
+			level.getChunk(pos.x(), pos.z());
+			level.getChunkSource().addTicketWithRadius(TicketType.PORTAL, pos, 1);
+		}
+		boolean[] ran = {false};
+		String[] verdict = {null};
+		helper.succeedWhen(() -> {
+			if (!ran[0]) {
+				for (ChunkPos pos : areas) {
+					helper.assertTrue(level.areEntitiesLoaded(pos.pack()), "the area at " + pos + " never loaded");
+				}
+				ran[0] = true;
+				int burners = 0;
+				int waited = 0;
+				int risen = 0;
+				for (ChunkPos pos : areas) {
+					LevelChunk chunk = level.getChunk(pos.x(), pos.z());
+					Mob mob = TowerWanderers.rollRegion(level, chunk, EARLY_FLOOR, 1.0, true);
+					if (mob != null) {
+						risen++;
+						burners += mob.is(net.minecraft.tags.EntityTypeTags.BURN_IN_DAYLIGHT) ? 1 : 0;
+						mob.discard();
+					} else if (!TowerWanderers.isRolled(chunk)) {
+						waited++;
+					}
+				}
+				TowerTestSupport.result("undeadByDay", "risen=" + risen + " burners=" + burners + " waited=" + waited);
+				verdict[0] = burners > 0 ? burners + " undead wanderers rose under the day's sun"
+					: waited == 0 ? "no area waited for the night, so the case proves nothing" : null;
+			}
+			helper.assertTrue(verdict[0] == null, String.valueOf(verdict[0]));
+		});
+	}
+
+	/** Only a player who fought their way up raises the world's highest floor: not a creative flyer, nor an unbuilt floor. */
+	@GameTest(maxTicks = 100)
+	public void onlyAClimberRaisesTheWorldsHighest(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.ensure(tower, floor);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		boolean climber = TowerProgress.counts(player, tower);
+		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+		boolean creative = TowerProgress.counts(player, tower);
+		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+		net.minecraft.world.phys.Vec3 unbuilt = TowerLayout.arrival(TowerTestSupport.freshFloor());
+		player.teleportTo(tower, unbuilt.x, unbuilt.y, unbuilt.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		boolean onNothing = TowerProgress.counts(player, tower);
+		TowerTestSupport.result("climbersOnly", "climber=" + climber + " creative=" + creative + " unbuilt=" + onNothing);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(climber, "a survival player on a built floor does not count, so the case proves nothing");
+		helper.assertFalse(creative || onNothing, "the world's highest rises for creative=" + creative + " unbuilt=" + onNothing);
+		helper.succeed();
+	}
+
 	/** The first twenty floors hold overworld mobs alone, and so do the wanderers they send; later floors send the rest. */
 	@GameTest
 	public void anEarlyTowerSendsOnlyOverworldKinds(final GameTestHelper helper) {

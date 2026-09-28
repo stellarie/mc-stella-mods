@@ -38,13 +38,15 @@ public final class TowerElites {
 	public static final int ELITE_EVERY = 5;
 	public static final int BOSS_EVERY = 10;
 	public static final int RESPAWN_TICKS = 6000;
-	/** Where they stand: this far in front of the portal, and how far they may stray from it. */
+	/** Where they stand: this far in front of the portal, and how far they stray from it before walking back. */
 	public static final int GUARD_DISTANCE = 5;
 	public static final int GUARD_RADIUS = 8;
 	public static final int CHECK_TICKS = 20;
 	public static final int PLACE_TRIES = 40;
 	/** The test seam: a shorter rest, pinned by floor so a pin left behind touches no other test's floor. */
 	private static final Map<Integer, Integer> PINNED_REST = new java.util.concurrent.ConcurrentHashMap<>();
+	/** The test seam: the kind a floor's guardians rise as, pinned by floor. */
+	private static final Map<Integer, EntityType<? extends Mob>> PINNED_KIND = new java.util.concurrent.ConcurrentHashMap<>();
 	private static final Map<UUID, ServerBossEvent> BARS = new HashMap<>();
 
 	private TowerElites() {
@@ -85,6 +87,14 @@ public final class TowerElites {
 
 	public static int respawnTicks(final int floor) {
 		return PINNED_REST.getOrDefault(floor, RESPAWN_TICKS);
+	}
+
+	public static void pinGuardianKind(final int floor, final @Nullable EntityType<? extends Mob> kind) {
+		if (kind == null) {
+			PINNED_KIND.remove(floor);
+		} else {
+			PINNED_KIND.put(floor, kind);
+		}
 	}
 
 	/** Where a floor's guardians stand guard: a few steps in front of its portal. */
@@ -211,17 +221,21 @@ public final class TowerElites {
 	}
 
 	/**
-	 * A guardian with a quarry may follow it anywhere in the room; one without is kept near its post. Kept
-	 * to its post while hunting, it would drop a chase past the post's edge and stand to be shot from there.
+	 * A guardian with nothing to hunt walks back to its post. It is never held to the post by a home, since a
+	 * mob with a home will not take on a player beyond it, and would stand to be shot from there.
 	 */
 	static void tether(final Mob guardian, final int floor) {
+		if (guardian.hasHome()) {
+			// Raised before the change, with a home saved on it.
+			guardian.clearHome();
+		}
 		net.minecraft.world.entity.LivingEntity quarry = guardian.getTarget();
 		if (quarry != null && quarry.isAlive()) {
-			if (guardian.hasHome()) {
-				guardian.clearHome();
-			}
-		} else if (!guardian.hasHome()) {
-			guardian.setHomeTo(post(floor), GUARD_RADIUS);
+			return;
+		}
+		Vec3 post = Vec3.atBottomCenterOf(post(floor));
+		if (guardian.position().distanceTo(post) > GUARD_RADIUS && guardian.getNavigation().isDone()) {
+			guardian.getNavigation().moveTo(post.x, post.y, post.z, 1.0);
 		}
 	}
 
@@ -229,7 +243,8 @@ public final class TowerElites {
 	public static @Nullable Mob rise(final ServerLevel tower, final int floor, final TowerRank rank) {
 		RandomSource random = tower.getRandom();
 		List<EntityType<? extends Mob>> pool = guardianPool(floor);
-		Mob mob = pool.get(random.nextInt(pool.size())).create(tower, EntitySpawnReason.EVENT);
+		EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
+		Mob mob = kind.create(tower, EntitySpawnReason.EVENT);
 		if (mob == null) {
 			return null;
 		}
@@ -244,7 +259,6 @@ public final class TowerElites {
 				continue;
 			}
 			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)], rank);
-			mob.setHomeTo(front, GUARD_RADIUS);
 			if (!tower.addFreshEntity(mob)) {
 				return null;
 			}

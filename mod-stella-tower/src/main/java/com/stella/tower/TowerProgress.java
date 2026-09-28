@@ -67,6 +67,13 @@ public final class TowerProgress extends SavedData {
 		}
 	}
 
+	/** Whether this player, where they stand, raises the world's highest floor. */
+	public static boolean counts(final ServerPlayer player, final ServerLevel tower) {
+		int floor = TowerLayout.floorAt(player.blockPosition());
+		// A creative flyer, or a teleport onto a floor never built, has climbed nothing.
+		return floor > 0 && !player.isSpectator() && !player.isCreative() && TowerFloors.isBuilt(tower, floor);
+	}
+
 	/** A player standing on a floor has reached it; the whole world's tower opens that far. */
 	private static void tick(final MinecraftServer server) {
 		if (server.getTickCount() % CHECK_TICKS != 0) {
@@ -78,9 +85,8 @@ public final class TowerProgress extends SavedData {
 		}
 		TowerProgress progress = get(server);
 		for (ServerPlayer player : tower.players()) {
-			int floor = TowerLayout.floorAt(player.blockPosition());
-			if (floor > 0 && !player.isSpectator()) {
-				progress.reach(floor);
+			if (counts(player, tower)) {
+				progress.reach(TowerLayout.floorAt(player.blockPosition()));
 			}
 		}
 	}
