@@ -30,16 +30,20 @@ public class TowerEliteGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		// No mob hunts a creative player, so the elite has no quarry and keeps to its post.
+		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		helper.runAfterDelay(80L, () -> {
 			int elites = TowerElites.alive(tower, floor, TowerRank.ELITE);
 			int bosses = TowerElites.alive(tower, floor, TowerRank.BOSS);
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
 			// Its post, not where its chase has taken it: an elite is kept near the portal, not frozen there.
-			double fromPortal = elite == null || !elite.hasHome() ? -1.0 : Vec3.atBottomCenterOf(elite.getHomePosition()).distanceTo(portalFront(floor));
-			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " fromPortal=" + fromPortal);
+			BlockPos home = elite == null || !elite.hasHome() ? null : elite.getHomePosition();
+			int radius = elite == null ? -1 : elite.getHomeRadius();
+			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " home=" + home + " post=" + TowerElites.post(floor) + " radius=" + radius);
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(elites == 1 && bosses == 0, "floor " + floor + " holds " + elites + " elites and " + bosses + " bosses");
-			helper.assertTrue(fromPortal >= 0.0 && fromPortal <= TowerElites.GUARD_DISTANCE + 4.0, "the elite stands " + fromPortal + " from the portal");
+			helper.assertTrue(TowerElites.post(floor).equals(home) && radius == TowerElites.GUARD_RADIUS,
+				"the elite is kept to " + home + " within " + radius + ", not its post " + TowerElites.post(floor) + " within " + TowerElites.GUARD_RADIUS);
 			helper.succeed();
 		});
 	}
@@ -125,8 +129,7 @@ public class TowerEliteGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		int rest = 40;
-		int before = TowerElites.respawnTicks();
-		TowerElites.pinRespawnTicks(rest);
+		TowerElites.pinRespawnTicks(floor, rest);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		int[] slainAt = {-1};
 		int[] backAt = {-1};
@@ -148,7 +151,7 @@ public class TowerEliteGameTest {
 			try {
 				TowerTestSupport.leave(helper, player);
 			} finally {
-				TowerElites.pinRespawnTicks(before);
+				TowerElites.pinRespawnTicks(floor, null);
 			}
 			int gap = backAt[0] - slainAt[0];
 			TowerTestSupport.result("eliteReturns", "slainAt=" + slainAt[0] + " backAt=" + backAt[0] + " gap=" + gap + " rest=" + rest);
@@ -321,6 +324,29 @@ public class TowerEliteGameTest {
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(arrived == high, "a rider holding a key to " + high + " arrived on floor " + arrived);
 		helper.succeed();
+	}
+
+	/** A guardian with a quarry follows it past its post; kept to its post, it would give up a chase and stand to be shot. */
+	@GameTest(maxTicks = 120)
+	public void aGuardianGivesChaseBeyondItsPost(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
+		TowerFloors.ensure(tower, floor);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		boolean[] done = {false};
+		helper.succeedWhen(() -> {
+			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
+			helper.assertTrue(elite != null, "no elite rose, so the case proves nothing");
+			if (elite.getTarget() != player) {
+				elite.setTarget(player);
+			}
+			helper.assertFalse(elite.hasHome(), "an elite hunting a player " + (int) elite.distanceTo(player) + " blocks off is still kept to its post");
+			if (!done[0]) {
+				done[0] = true;
+				TowerTestSupport.result("guardianChase", "tick=" + helper.getTick() + " distance=" + (int) elite.distanceTo(player));
+				TowerTestSupport.leave(helper, player);
+			}
+		});
 	}
 
 	/**
