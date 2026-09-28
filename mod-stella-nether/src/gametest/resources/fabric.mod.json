@@ -18,7 +18,8 @@
 			"com.stella.nether.SpoilsGameTest",
 			"com.stella.nether.RaidLootGameTest",
 			"com.stella.nether.EndChestGameTest",
-			"com.stella.nether.BlazeEnchantmentGameTest"
+			"com.stella.nether.BlazeEnchantmentGameTest",
+			"com.stella.nether.SovereignBlueGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
