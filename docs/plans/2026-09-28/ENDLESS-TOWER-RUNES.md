@@ -4,57 +4,73 @@ Runes are the tower's own gear layer. They do not repeat what an enchantment or 
 they add an element system, one signature effect each, and resonance with the existing kits.
 Every number below is a starting value, kept in the config so play can tune it.
 
-## Tower threat (no cap)
+## The growth curve
 
-For floor `f`, every tower mob, elite and boss scales by:
+Both the tower and the runes grow along one S-curve that is flat early, steepest at floor 500, and done
+at floor 1000:
 
-- health growth `H(f) = (1 + 0.05f) * 1.01^f`
-- damage growth `D(f) = (1 + 0.03f) * 1.005^f`
-- extra health per floor: `+1` base health per floor, before the growth, so health is `(base + f) * H(f)`
+```
+sigma(x) = 1 / (1 + e^-x)
+S(f) = (sigma((f - 500) / 150) - sigma(-500 / 150)) / (sigma(500 / 150) - sigma(-500 / 150)),  capped at 1
+```
+
+`S(1) = 0`, `S(100) = 0.033`, `S(500) = 0.5`, `S(1000) = 1`.
+
+## Tower threat
+
+For floor `f`:
+
+- health: `base * (1 + 99 * S(f)) + 2f`, so up to 100x, plus 2 health per floor that never stops
+- damage: `base * (1 + 19 * S(f))`, so up to 20x
 - armor `+f/5` (the game's cap of 30 holds), speed `+0.2%` per floor up to `+50%`
 - elites: `x3` health and `x1.5` damage on top; bosses: `x10` health and `x2` damage on top
 
-The total health growth against a vanilla mob is `G(f) = H(f) * (base + f) / base`.
-
-Vanilla caps max health at 1024 and attack damage at 2048, and floor 100 already passes the first. So
-tower scaling is not an attribute: the mob keeps a capped attribute, and the mod divides the damage it
-takes and multiplies the damage it deals by whatever the cap cut off.
+The 2 health per floor is the only part without an end, so floors past 1000 still grow, slowly.
+Vanilla caps max health at 1024 and attack damage at 2048; past those the mod divides the damage a
+tower mob takes and multiplies what it deals, instead of raising the attribute.
 
 A zombie (20 health, 3 damage on normal):
 
 | Floor | Health | Elite | Boss | Hit |
 | --- | --- | --- | --- | --- |
-| 1 | 22 | 67 | 223 | 3.1 |
-| 10 | 50 | 149 | 497 | 4.1 |
-| 50 | 403 | 1,209 | 4,029 | 9.6 |
-| 100 | 1,947 | 5,842 | 19,475 | 19.8 |
-| 200 | 17,705 | 53,114 | 177,048 | 56.9 |
-| 500 | 1.96 million | 5.9 million | 19.6 million | 581 |
-| 1000 | 1.09 billion | 3.3 billion | 10.9 billion | 13,632 |
+| 1 | 22 | 67 | 225 | 3.0 |
+| 10 | 45 | 135 | 449 | 3.1 |
+| 50 | 148 | 443 | 1,476 | 3.8 |
+| 100 | 285 | 855 | 2,849 | 4.9 |
+| 200 | 600 | 1,801 | 6,002 | 8.2 |
+| 500 | 2,010 | 6,030 | 20,100 | 31.5 |
+| 1000 | 4,000 | 12,000 | 40,000 | 60.0 |
+| 2000 | 6,000 | 18,000 | 60,000 | 60.0 |
+| 5000 | 12,000 | 36,000 | 120,000 | 60.0 |
 
-## Rune scaling (keeps up forever)
+## Rune scaling
 
 A rune remembers the floor it dropped on, `r`. It carries two numbers:
 
-- **Tier multiplier** for its main stat, which follows the tower's own growth: weapons `G(r)^0.8`,
-  armor `D(r)^0.8` over all four pieces. The exponent 0.8 means a player with runes from the floor they
-  stand on stays within reach forever, while the tower still gains slowly: it is the climb.
-- **Power** `P` for the signature effects and resonance, which are percentages and must not run away:
-  `P = r` up to floor 100, then `P = 100 + 10 * sqrt(r - 100)`.
+- **Tier multiplier** for its main stat, on the same curve: weapons `(1 + 99 * S(r))^0.9`, armor
+  `(1 + 19 * S(r))^0.9` over all four pieces. It stops growing at floor 1000, as the tower does.
+- **Power** `P` for the signature effects and resonance, which are percentages: `P = r` up to floor 100,
+  then `P = 100 + 10 * sqrt(r - 100)`, and no further past floor 1000 (`P` tops out at 400).
+
+Runes and void equipment work at full strength in the overworld as well.
 
 With same-floor runes on a weapon and all four armor pieces:
 
 | Floor | Weapon rune | Armor runes | Time to kill vs floor 1 | A zombie's hit after armor runes |
 | --- | --- | --- | --- | --- |
-| 1 | x1.1 | /1.0 | x1.0 | 3.0 |
-| 10 | x2.1 | /1.3 | x1.2 | 3.2 |
-| 50 | x11 | /2.5 | x1.8 | 3.8 |
-| 100 | x39 | /4.5 | x2.5 | 4.4 |
-| 200 | x228 | /10.5 | x3.9 | 5.4 |
-| 500 | x9,829 | /68 | x10 | 8.6 |
-| 1000 | x1.5 million | /843 | x35 | 16.2 |
+| 1 | x1.0 | /1.0 | x1.1 | 3.0 |
+| 10 | x1.2 | /1.0 | x1.8 | 3.0 |
+| 50 | x2.2 | /1.2 | x3.4 | 3.1 |
+| 100 | x3.7 | /1.5 | x3.9 | 3.1 |
+| 200 | x8.0 | /2.5 | x3.8 | 3.3 |
+| 500 | x34 | /8.3 | x3.0 | 3.8 |
+| 1000 | x63 | /14.8 | x3.2 | 4.0 |
+| 2000 | x63 | /14.8 | x4.8 | 4.0 |
+| 5000 | x63 | /14.8 | x9.5 | 4.0 |
 
-An exponent of 1.0 would cancel the tower's growth exactly and remove the climb; it stays in the config.
+Same-floor runes hold a fight at about three to four times floor 1 all the way to floor 1000; past it,
+only the 2 health per floor keeps climbing. The curve's width (150), the midpoint (500), the maxima
+(100x, 20x) and the exponent (0.9) are all in the config.
 
 ## Drops
 
@@ -63,7 +79,7 @@ An exponent of 1.0 would cancel the tower's growth exactly and remove the climb;
 | Tower mob | 0.2% |
 | Elite | 1% |
 | Boss | 5% |
-| Void shaman (spells mod) | yes, rate to be decided |
+| Void shaman (spells mod) | 2% |
 
 The element is random among the eight.
 
@@ -87,8 +103,7 @@ Every tower mob carries one element, shown in its name. Four opposed pairs:
 - An armor rune divides all tower mob damage by its piece's share of the tier multiplier
   (`D(r)^0.2` per piece), and takes a further `5% + P/10 %` per piece off hits from its own element's
   mobs, adding up across pieces to at most 80%.
-- Outside the tower, runes use their power only (signatures and resonance); the tier multiplier is a
-  tower stat, so the overworld is not trivialised.
+- Outside the tower the tier multiplier still applies: runes work at full strength everywhere.
 
 ## Signature effects
 
@@ -119,9 +134,11 @@ healing, whichever the effect has). Spells count only when the spells mod is ins
 | Holy | Second Wind, Guarding Ward | Sanctuary, Mending Word, Life Bloom, Purify, Bulwark Hymn, Battle Hymn |
 | Dark | Venom, Dread Aura, Wounding | Wither Seal, Plague Cloud, Sapping Hex, Soul Siphon, Shadow Veil |
 
+## Decided since
+
+- Void shamans: each floor has a 2% chance to hold one. Their rune chance is 2%.
+- Void key: granted on entering the tower; it returns the player to the portal they entered by.
+
 ## Still open
 
-1. Void shamans: a 2% chance per floor for one shaman, or 2% of each spawn?
-2. Void key: returns the player to the portal they entered by?
-3. Boss-floor mob buffs: do they also scale without a cap?
-4. Void shaman rune chance.
+1. Do the boss-floor mob buffs grow with the floor, or stay fixed?
