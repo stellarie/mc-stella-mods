@@ -5,6 +5,9 @@
 	"name": "Mc Stella Villages GameTests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.villages.VillageTestInit"
+		],
 		"fabric-gametest": [
 			"com.stella.villages.VillagePatrolGameTest",
 			"com.stella.villages.VillagePersistenceGameTest",

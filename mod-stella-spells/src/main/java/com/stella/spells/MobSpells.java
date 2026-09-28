@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.core.BlockPos;
@@ -12,8 +13,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -32,7 +35,9 @@ import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ClipContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -47,8 +52,16 @@ public final class MobSpells {
 		"soul_siphon", "venom_dart", "blinding_flash", "ember_brand"
 	);
 	public static final List<String> SUPPORT = List.of("sanctuary", "bulwark_hymn", "tailwind", "battle_hymn", "mending_word", "stoneguard");
-	public static final List<String> VILLAGE_WITCH_OFFENSIVE = List.of("ice_lance", "frostbind", "venom_dart");
-	public static final List<String> VILLAGE_WITCH_SUPPORT = List.of("sanctuary", "bulwark_hymn", "battle_hymn", "tailwind");
+	public static final List<String> PACK_SUPPORT = List.of("sanctuary", "bulwark_hymn", "tailwind", "battle_hymn",
+		"mending_word", "stoneguard", "phoenix_mantle", "life_bloom", "aegis_of_the_deep", "berserk",
+		"shadow_veil", "purify", "quicksilver");
+	public static final List<String> PACK_AREA_OFFENSIVE = List.of("void_well", "dragonfall", "wardens_roar",
+		"sapping_hex", "frost_nova", "earthspike", "plague_cloud", "flame_ring", "gravity");
+	public static final List<String> VILLAGE_WITCH_OFFENSIVE = List.of("wardens_roar", "spark_shot");
+	public static final List<String> VILLAGE_WITCH_SUPPORT = List.of("life_bloom");
+	public static final int VILLAGE_WITCH_ROAR_COOLDOWN_TICKS = 100;
+	public static final int VILLAGE_WITCH_SPARK_COOLDOWN_TICKS = 4;
+	public static final int VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS = 100;
 	public static final String FROZEN_METEOR = "frozen_meteor";
 	public static final int FROZEN_METEOR_COOLDOWN_TICKS = 500;
 	public static final String CAST_TAG_PREFIX = "mod-stella-spells.cast.";
@@ -61,9 +74,12 @@ public final class MobSpells {
 	public static final float HURT_SHARE = 0.7F;
 	public static final float SANCTUARY_RADIUS = 6.0F;
 	public static final int ILLAGER_SANCTUARY_COOLDOWN_TICKS = 400;
-	public static final double VILLAGE_WITCH_RANGE = 16.0;
-	public static final double VILLAGE_WITCH_BLINK_DISTANCE = 12.0;
-	public static final int VILLAGE_WITCH_BLINK_COOLDOWN_TICKS = 100;
+	public static final double VILLAGE_WITCH_RANGE = 48.0;
+	public static final int VILLAGE_WITCH_BLINK_COOLDOWN_TICKS = 40;
+	public static final double VILLAGE_WITCH_RETREAT_DISTANCE = 6.0;
+	public static final double VILLAGE_WITCH_SAFE_MIN_DISTANCE = 8.0;
+	public static final double VILLAGE_WITCH_SAFE_MAX_DISTANCE = 12.0;
+	public static final double VILLAGE_WITCH_CHASE_DISTANCE = 14.0;
 	private static final Identifier ELITE_SCALE = Identifier.fromNamespaceAndPath("mod-stella-mobs", "elite_scale");
 	private static final Identifier BOSS_SCALE = Identifier.fromNamespaceAndPath("mod-stella-mobs", "boss_scale");
 
@@ -174,6 +190,20 @@ public final class MobSpells {
 		List<LivingEntity> reached;
 		if (FROZEN_METEOR.equals(spell)) {
 			reached = frozenMeteor(level, caster, target.position());
+		} else if ("chainstorm".equals(spell) && SpellStorms.startForMob(caster, target.position())) {
+			reached = List.of(target);
+		} else if ("time_lock".equals(spell)) {
+			reached = level.getEntitiesOfClass(LivingEntity.class, new AABB(target.position(), target.position())
+				.inflate(SpellCasting.TIME_LOCK_RADIUS), other -> other.isAlive() && isFoeOf(caster, other)
+					&& other.distanceToSqr(target) <= SpellCasting.TIME_LOCK_RADIUS * SpellCasting.TIME_LOCK_RADIUS);
+			for (LivingEntity other : reached) {
+				other.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 100, 1), caster);
+			}
+		} else if (PACK_AREA_OFFENSIVE.contains(spell)) {
+			reached = castArea(caster, spell, target);
+			if (reached.isEmpty()) {
+				return false;
+			}
 		} else if (MobImbue.apply(level, caster, spell, target, 1.0, 1.0)) {
 			reached = List.of(target);
 		} else {
@@ -183,6 +213,87 @@ public final class MobSpells {
 		level.playSound(null, caster.getX(), caster.getY(), caster.getZ(), SoundEvents.EVOKER_CAST_SPELL, caster.getSoundSource(), 0.7F, 1.2F);
 		recorder.cast(caster, spell, reached);
 		return true;
+	}
+
+	private static List<LivingEntity> castArea(final Mob caster, final String spell, final LivingEntity target) {
+		if (!(caster.level() instanceof ServerLevel level)) {
+			return List.of();
+		}
+		Vec3 point = switch (spell) {
+			case "wardens_roar", "sapping_hex", "frost_nova", "flame_ring", "gravity" -> caster.position();
+			default -> target.position();
+		};
+		double radius = switch (spell) {
+			case "void_well" -> SpellCasting.VOID_WELL_RADIUS;
+			case "dragonfall" -> SpellCasting.DRAGONFALL_RADIUS;
+			case "wardens_roar" -> SpellCasting.WARDENS_ROAR_RADIUS;
+			case "sapping_hex" -> MoreSpells.HEX_RADIUS;
+			case "frost_nova" -> MoreSpells.FROST_NOVA_RADIUS;
+			case "earthspike" -> MoreSpells.EARTHSPIKE_RADIUS;
+			case "plague_cloud" -> MoreSpells.PLAGUE_RADIUS;
+			case "flame_ring" -> MoreSpells.FLAME_RING_RADIUS;
+			case "gravity" -> MoreSpells.GRAVITY_RADIUS;
+			default -> 0.0;
+		};
+		List<LivingEntity> foes = level.getEntitiesOfClass(LivingEntity.class, new AABB(point, point).inflate(radius),
+			other -> other != caster && other.isAlive() && isFoeOf(caster, other)
+				&& other.distanceToSqr(point) <= radius * radius);
+		for (LivingEntity foe : foes) {
+			switch (spell) {
+				case "void_well" -> {
+					Vec3 toward = point.subtract(foe.position());
+					Vec3 flat = new Vec3(toward.x, 0.0, toward.z);
+					if (flat.lengthSqr() > 1.0e-6) {
+						flat = flat.normalize();
+						foe.setDeltaMovement(flat.x * 0.8, 0.1, flat.z * 0.8);
+					}
+					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 1), caster);
+				}
+				case "dragonfall" -> hurt(level, caster, foe, 10.0F);
+				case "wardens_roar" -> {
+					hurt(level, caster, foe, 6.0F);
+					Vec3 away = foe.position().subtract(caster.position()).normalize();
+					foe.push(away.x, 0.2, away.z);
+				}
+				case "sapping_hex" -> foe.addEffect(new MobEffectInstance(MobEffects.WEAKNESS,
+					Math.min(MoreSpells.HEX_MAX_TICKS, MoreSpells.HEX_TICKS_PER_FOE * foes.size()), MoreSpells.HEX_AMPLIFIER), caster);
+				case "frost_nova" -> {
+					hurt(level, caster, foe, MoreSpells.FROST_NOVA_DAMAGE);
+					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
+						MoreSpells.FROST_NOVA_SLOW_TICKS, MoreSpells.FROST_NOVA_SLOW_AMPLIFIER), caster);
+				}
+				case "earthspike" -> {
+					hurt(level, caster, foe, MoreSpells.EARTHSPIKE_DAMAGE);
+					Vec3 motion = foe.getDeltaMovement();
+					foe.setDeltaMovement(motion.x, MoreSpells.EARTHSPIKE_LIFT, motion.z);
+				}
+				case "plague_cloud" -> foe.addEffect(new MobEffectInstance(MobEffects.POISON,
+					MoreSpells.PLAGUE_POISON_TICKS, 0), caster);
+				case "flame_ring" -> {
+					hurt(level, caster, foe, MoreSpells.FLAME_RING_DAMAGE);
+					foe.igniteForTicks(MoreSpells.FLAME_RING_BURN_TICKS);
+				}
+				case "gravity" -> {
+					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
+						MoreSpells.GRAVITY_TICKS, MoreSpells.GRAVITY_SLOW_AMPLIFIER), caster);
+					if (foe instanceof Mob mob) {
+						SpellTimers.ground(mob, MoreSpells.GRAVITY_TICKS);
+					}
+				}
+				default -> { }
+			}
+		}
+		if ("sapping_hex".equals(spell) && !foes.isEmpty()) {
+			caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH,
+				Math.min(MoreSpells.HEX_MAX_TICKS, MoreSpells.HEX_TICKS_PER_FOE * foes.size()),
+				MoreSpells.HEX_STRENGTH_AMPLIFIER), caster);
+		}
+		return foes;
+	}
+
+	private static void hurt(final ServerLevel level, final Mob caster, final LivingEntity foe, final float damage) {
+		foe.damageCooldownTime = 0;
+		foe.hurtServer(level, level.damageSources().indirectMagic(caster, caster), damage);
 	}
 
 	/** Frozen Meteor from a mob: a crash of ice that hurts and freezes the caster's foes around the point. */
@@ -205,6 +316,11 @@ public final class MobSpells {
 		if (caster.entityTags().contains(VILLAGE_WITCH_TAG)) {
 			return Friends.isFoe(other) || other == caster.getTarget();
 		}
+		if (caster.entityTags().contains(SummonSkeleton.SUMMON_TAG)) {
+			UUID owner = SummonSkeleton.ownerOf(caster).orElse(null);
+			return !(other instanceof Player player && owner != null && owner.equals(player.getUUID()))
+				&& (other == caster.getTarget() || Friends.isFoe(other));
+		}
 		return other == caster.getTarget() || other instanceof Player player && !player.isCreative() && !player.isSpectator();
 	}
 
@@ -215,6 +331,11 @@ public final class MobSpells {
 		}
 		if (caster.entityTags().contains(VILLAGE_WITCH_TAG)) {
 			return MoreSpells.isAlly(other);
+		}
+		if (caster.entityTags().contains(SummonSkeleton.SUMMON_TAG)) {
+			UUID owner = SummonSkeleton.ownerOf(caster).orElse(null);
+			return other == caster || owner != null && other instanceof ServerPlayer player
+				&& owner.equals(player.getUUID());
 		}
 		return other == caster || Friends.isFoe(other);
 	}
@@ -237,6 +358,23 @@ public final class MobSpells {
 				case "tailwind" -> friend.addEffect(new MobEffectInstance(MobEffects.SPEED, MoreSpells.TAILWIND_TICKS, MoreSpells.TAILWIND_AMPLIFIER), caster);
 				case "battle_hymn" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MoreSpells.BATTLE_HYMN_TICKS, MoreSpells.BATTLE_HYMN_AMPLIFIER), caster);
 				case "stoneguard" -> self && friend.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 160, 0), caster);
+				case "phoenix_mantle" -> friend.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 600, 0), caster)
+					| heal(friend, 4.0F);
+				case "life_bloom" -> heal(friend, 8.0F)
+					| friend.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0), caster);
+				case "aegis_of_the_deep" -> friend.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 80, 1), caster)
+					| friend.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 80, 0), caster);
+				case "berserk" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MoreSpells.BERSERK_TICKS,
+					MoreSpells.BERSERK_AMPLIFIER), caster);
+				case "shadow_veil" -> friend.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, MoreSpells.VEIL_TICKS, 0), caster);
+				case "quicksilver" -> friend.addEffect(new MobEffectInstance(MobEffects.SPEED,
+					MoreSpells.QUICKSILVER_TICKS, MoreSpells.QUICKSILVER_AMPLIFIER), caster);
+				case "purify" -> {
+					var harmful = friend.getActiveEffects().stream().map(MobEffectInstance::getEffect)
+						.filter(effect -> effect.value().getCategory() == MobEffectCategory.HARMFUL).toList();
+					harmful.forEach(friend::removeEffect);
+					yield !harmful.isEmpty();
+				}
 				default -> false;
 			};
 			if (done) {
@@ -266,11 +404,12 @@ public final class MobSpells {
 				&& other.getHealth() < other.getMaxHealth() * HURT_SHARE).isEmpty();
 	}
 
-	/** The village witch: no potions, its own sense of friend and foe, and a blink to reach a far foe. */
+	/** The village witch keeps its own target and spells; the villages mod handles its splash potions. */
 	private static void installVillageWitch(final Witch witch) {
 		witch.addTag(NO_BEHAVIOR_TAG);
 		witch.setCanJoinRaid(false);
 		witch.setPersistenceRequired();
+		witch.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(VILLAGE_WITCH_RANGE);
 		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedAttackGoal);
 		var targets = ((com.stella.spells.mixin.MobGoalsAccessor) witch).stellaSpells$targetSelector();
 		targets.removeAllGoals(goal -> true);
@@ -311,7 +450,12 @@ public final class MobSpells {
 
 		@Override
 		public void tick() {
-			if (++this.ticks % THINK_INTERVAL_TICKS != 0) {
+			this.ticks++;
+			if (this.village) {
+				this.tickVillageWitch();
+				return;
+			}
+			if (this.ticks % THINK_INTERVAL_TICKS != 0) {
 				return;
 			}
 			LivingEntity target = this.mob.getTarget();
@@ -331,6 +475,31 @@ public final class MobSpells {
 					this.readyAt.put(spell, this.ticks + cooldownOf(spell));
 					break;
 				}
+			}
+		}
+
+		private void tickVillageWitch() {
+			if (this.ticks % VILLAGE_WITCH_SPARK_COOLDOWN_TICKS != 0) {
+				return;
+			}
+			if (this.mob.getHealth() <= this.mob.getMaxHealth() * 0.5F && this.ready("life_bloom")
+				&& support(this.mob, "life_bloom")) {
+				this.readyAt.put("life_bloom", this.ticks + VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS);
+				return;
+			}
+			LivingEntity target = this.mob.getTarget();
+			if (target == null || !target.isAlive() || !isFoeOf(this.mob, target)
+				|| this.mob.distanceToSqr(target) > CAST_RANGE * CAST_RANGE
+				|| !this.mob.getSensing().hasLineOfSight(target)) {
+				return;
+			}
+			if (this.mob.distanceToSqr(target) <= SpellCasting.WARDENS_ROAR_RADIUS * SpellCasting.WARDENS_ROAR_RADIUS
+				&& this.ready("wardens_roar") && castAt(this.mob, "wardens_roar", target)) {
+				this.readyAt.put("wardens_roar", this.ticks + VILLAGE_WITCH_ROAR_COOLDOWN_TICKS);
+				return;
+			}
+			if (this.ready("spark_shot") && castAt(this.mob, "spark_shot", target)) {
+				this.readyAt.put("spark_shot", this.ticks + VILLAGE_WITCH_SPARK_COOLDOWN_TICKS);
 			}
 		}
 
@@ -383,7 +552,7 @@ public final class MobSpells {
 		}
 	}
 
-	/** The village witch steps to a far foe's side, at most once every five seconds. */
+	/** The village witch blinks into casting range or out of melee reach. */
 	public static final class Blink extends Goal {
 		private final Mob mob;
 		private int cooldown;
@@ -400,8 +569,13 @@ public final class MobSpells {
 				return false;
 			}
 			LivingEntity target = this.mob.getTarget();
-			return target != null && target.isAlive() && this.mob.distanceToSqr(target) > VILLAGE_WITCH_BLINK_DISTANCE * VILLAGE_WITCH_BLINK_DISTANCE
-				&& this.mob.distanceToSqr(target) <= VILLAGE_WITCH_RANGE * VILLAGE_WITCH_RANGE * 4;
+			if (target == null || !target.isAlive() || !isFoeOf(this.mob, target)) {
+				return false;
+			}
+			double distance = this.mob.distanceToSqr(target);
+			return distance < VILLAGE_WITCH_RETREAT_DISTANCE * VILLAGE_WITCH_RETREAT_DISTANCE
+				|| distance > VILLAGE_WITCH_CHASE_DISTANCE * VILLAGE_WITCH_CHASE_DISTANCE
+					&& distance <= VILLAGE_WITCH_RANGE * VILLAGE_WITCH_RANGE;
 		}
 
 		@Override
@@ -413,7 +587,8 @@ public final class MobSpells {
 		public void start() {
 			this.cooldown = VILLAGE_WITCH_BLINK_COOLDOWN_TICKS;
 			LivingEntity target = this.mob.getTarget();
-			if (target != null && blinkNear(this.mob, target, 4.0, 7.0)) {
+			if (target != null && blinkNear(this.mob, target,
+				VILLAGE_WITCH_SAFE_MIN_DISTANCE, VILLAGE_WITCH_SAFE_MAX_DISTANCE)) {
 				recorder.cast(this.mob, "blink", List.of(target));
 			}
 		}
@@ -424,11 +599,11 @@ public final class MobSpells {
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return false;
 		}
-		for (int attempt = 0; attempt < 16; attempt++) {
+		for (int attempt = 0; attempt < 32; attempt++) {
 			double angle = mob.getRandom().nextDouble() * Math.PI * 2.0;
 			double distance = min + mob.getRandom().nextDouble() * (max - min);
 			@Nullable Vec3 spot = standing(level, mob, anchor.getX() + Math.cos(angle) * distance, anchor.getBlockY(), anchor.getZ() + Math.sin(angle) * distance);
-			if (spot != null) {
+			if (spot != null && clearSight(level, mob, anchor, spot)) {
 				level.sendParticles(ParticleTypes.WITCH, mob.getX(), mob.getY(0.5), mob.getZ(), 20, 0.3, 0.6, 0.3, 0.05);
 				mob.teleportTo(spot.x, spot.y, spot.z);
 				mob.getNavigation().stop();
@@ -438,6 +613,12 @@ public final class MobSpells {
 			}
 		}
 		return false;
+	}
+
+	private static boolean clearSight(final ServerLevel level, final Mob mob, final Entity target, final Vec3 feet) {
+		Vec3 eye = feet.add(0.0, mob.getEyeY() - mob.getY(), 0.0);
+		return level.clip(new ClipContext(eye, target.getEyePosition(),
+			ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mob)).getType() == HitResult.Type.MISS;
 	}
 
 	private static @Nullable Vec3 standing(final ServerLevel level, final Mob mob, final double x, final int y, final double z) {

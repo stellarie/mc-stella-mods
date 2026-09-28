@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:cooked_porkchop",
+		"minecraft:warped_fungus",
+		"minecraft:blaze_powder"
+	],
+	"result": {
+		"id": "mod-stella-food:nether_skewer"
+	}
+}

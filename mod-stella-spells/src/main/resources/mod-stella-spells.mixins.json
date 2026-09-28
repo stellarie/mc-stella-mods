@@ -10,7 +10,8 @@
 		"StormBoltMixin",
 		"AreaEffectCloudAccessor",
 		"MobGoalsAccessor",
-		"SummonGolemMixin"
+		"SummonGolemMixin",
+		"SummonPortalMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

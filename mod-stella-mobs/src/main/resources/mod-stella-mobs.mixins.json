@@ -18,8 +18,10 @@
 		"LevitationCapMixin",
 		"DepthCreeperMixin",
 		"FriendlyPatrolMixin",
+		"FriendlyPatrolMobCapMixin",
 		"FriendlyPatrolRestMixin",
-		"MobTargetSelectorAccessor"
+		"MobTargetSelectorAccessor",
+		"ThreatExperienceMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

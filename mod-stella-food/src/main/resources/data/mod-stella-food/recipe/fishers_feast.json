@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"#mod-stella-food:cooked_fish",
+		"minecraft:dried_kelp",
+		"minecraft:potato"
+	],
+	"result": {
+		"id": "mod-stella-food:fishers_feast"
+	}
+}
