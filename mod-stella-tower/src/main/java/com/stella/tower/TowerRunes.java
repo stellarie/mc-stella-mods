@@ -152,7 +152,7 @@ public final class TowerRunes {
 		} else if (state != null && state.element() == rune.element()) {
 			added *= SAME;
 		}
-		return (float) (amount + added);
+		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
 	}
 
 	/** A tower mob's blow, of its element, once the victim's armor runes have turned it. */

@@ -235,7 +235,10 @@ public final class TowerBuffs {
 			return List.of();
 		}
 		List<MobBuff> pin = PINNED.get(state.floor());
-		return pin != null ? pin : mobBuffs(level.getSeed(), state.floor());
+		List<MobBuff> buffs = pin != null ? pin : mobBuffs(level.getSeed(), state.floor());
+		// What a Holy rune has struck off stays off.
+		List<MobBuff> stripped = RuneEffects.strippedFrom(mob);
+		return stripped.isEmpty() ? buffs : buffs.stream().filter(buff -> !stripped.contains(buff)).toList();
 	}
 
 	/** How much a buffed mob's extra health divides each hit it takes. */
