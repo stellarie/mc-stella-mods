@@ -202,12 +202,31 @@ public final class TowerMobs {
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y, z);
 			Vec3 spot = spotFor(mob, feet);
-			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)) {
+			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)
+				|| inSafeZone(floor, mob, spot)) {
 				continue;
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
 			if (standsFree(tower, mob, feet)) {
 				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Whether any part of a mob standing here would be inside one of the floor's safe zones. */
+	static boolean inSafeZone(final int floor, final Mob mob, final Vec3 spot) {
+		BlockPos origin = TowerLayout.origin(floor);
+		double half = mob.getBbWidth() / 2.0;
+		int lowX = (int) Math.floor(spot.x - half) - origin.getX();
+		int highX = (int) Math.floor(spot.x + half) - origin.getX();
+		int lowZ = (int) Math.floor(spot.z - half) - origin.getZ();
+		int highZ = (int) Math.floor(spot.z + half) - origin.getZ();
+		for (int x = lowX; x <= highX; x++) {
+			for (int z = lowZ; z <= highZ; z++) {
+				if (TowerMaze.inSafeZone(floor, x, z)) {
+					return true;
+				}
 			}
 		}
 		return false;

@@ -92,7 +92,8 @@ public final class TowerTraps {
 				boolean inHall = hall > 0 && x + TowerMaze.PATH > hallLow && x < hallLow + hall && z + TowerMaze.PATH > hallLow && z < hallLow + hall;
 				boolean inNook = hall == 0 && x + TowerMaze.PATH > TowerMaze.NOOK_LOW_X && z + TowerMaze.PATH > TowerMaze.NOOK_LOW_Z
 					&& z <= TowerMaze.NOOK_HIGH_Z;
-				if (!byArrival && !inHall && !inNook) {
+				boolean safe = TowerMaze.inSafeZone(floor, x, z) || TowerMaze.inSafeZone(floor, x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
+				if (!byArrival && !inHall && !inNook && !safe) {
 					cells.add(new int[] {cx, cz});
 				}
 			}

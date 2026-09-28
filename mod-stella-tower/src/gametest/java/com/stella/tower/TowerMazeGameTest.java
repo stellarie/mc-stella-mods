@@ -72,8 +72,10 @@ public class TowerMazeGameTest {
 		int perfect = S * S - cells * TowerMaze.PATH * TowerMaze.PATH - (cells - 1) * TowerMaze.PATH * TowerMaze.WALL;
 		// The portal's nook, as the maze opens it.
 		int nook = (TowerMaze.NOOK_HIGH_X - TowerMaze.NOOK_LOW_X) * (TowerMaze.NOOK_HIGH_Z - TowerMaze.NOOK_LOW_Z + 1);
-		TowerTestSupport.result("floorMaze", "walls=" + walls + " perfect=" + perfect + " nook=" + nook);
-		helper.assertTrue(walls >= perfect - nook, "floor " + floor + " stands " + walls + " wall blocks, fewer than a maze's " + (perfect - nook));
+		// And the entrance's safe zone.
+		int safe = TowerMaze.SAFE * TowerMaze.SAFE;
+		TowerTestSupport.result("floorMaze", "walls=" + walls + " perfect=" + perfect + " nook=" + nook + " safe=" + safe);
+		helper.assertTrue(walls >= perfect - nook - safe, "floor " + floor + " stands " + walls + " wall blocks, fewer than a maze's " + (perfect - nook - safe));
 		helper.succeed();
 	}
 
