@@ -27,12 +27,14 @@ import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import org.jspecify.annotations.Nullable;
 
-/** Each overworld chunk rolls once: a wild chunk may hold a pair of patrolling Pillagers, and a safe-zone chunk holds nothing. */
+/** Each 8x8 overworld chunk grid rolls once for one wild Pillager pair. */
 public final class ChunkEncounters {
-	public static final double PILLAGER_PAIR_CHANCE = 0.20;
+	public static final double PILLAGER_PAIR_CHANCE = 0.01;
 	public static final int PILLAGER_PAIR_SIZE = 2;
+	public static final int PAIR_GRID_SIZE = 8;
 	/** A chunk rolls when a player is this many chunks away: far enough not to pop in beside them, near enough to meet. */
 	public static final int MIN_RING = 3;
 	public static final int MAX_RING = 5;
@@ -45,6 +47,9 @@ public final class ChunkEncounters {
 	private static final int VILLAGE_SECTIONS = 2;
 	private static final AttachmentType<Boolean> ROLLED = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "chunk_encounter_rolled"), Codec.BOOL
+	);
+	private static final AttachmentType<List<Long>> ROLLED_GRIDS = AttachmentRegistry.createPersistent(
+		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "patrol_pair_grids"), Codec.LONG.listOf()
 	);
 
 	public enum Encounter { NONE, PILLAGER_PAIR }
@@ -70,6 +75,7 @@ public final class ChunkEncounters {
 
 	public static void register() {
 		StellaMobs.LOGGER.debug("Registered chunk encounter attachment {}", ROLLED.identifier());
+		StellaMobs.LOGGER.debug("Registered patrol grid attachment {}", ROLLED_GRIDS.identifier());
 	}
 
 	public static void setRecorder(final Recorder newRecorder) {
@@ -90,7 +96,11 @@ public final class ChunkEncounters {
 
 	/** The chunk's own roll, fixed by the world seed and its position. */
 	public static RandomSource chunkRandom(final long seed, final ChunkPos pos) {
-		return RandomSource.create(seed ^ (pos.pack() * 0x9E3779B97F4A7C15L));
+		return RandomSource.create(seed ^ (gridKey(pos) * 0x9E3779B97F4A7C15L));
+	}
+
+	public static long gridKey(final ChunkPos pos) {
+		return new ChunkPos(Math.floorDiv(pos.x(), PAIR_GRID_SIZE), Math.floorDiv(pos.z(), PAIR_GRID_SIZE)).pack();
 	}
 
 	public static Encounter decide(final RandomSource random, final boolean safe) {
@@ -120,11 +130,16 @@ public final class ChunkEncounters {
 	/** Clears the chunk's roll, so it rolls again; for tests and operators. */
 	public static void forget(final LevelChunk chunk) {
 		chunk.removeAttached(ROLLED);
+		ServerLevel level = (ServerLevel) chunk.getLevel();
+		List<Long> current = ((AttachmentTarget) level).getAttached(ROLLED_GRIDS);
+		List<Long> remaining = new ArrayList<>(current == null ? List.of() : current);
+		remaining.remove(gridKey(chunk.getPos()));
+		((AttachmentTarget) level).setAttached(ROLLED_GRIDS, List.copyOf(remaining));
 	}
 
 	/** Rolls a chunk once and spawns what it rolled; empty when the chunk has rolled before. */
 	public static Optional<Encounter> roll(final ServerLevel level, final LevelChunk chunk, final boolean safe, final RandomSource random) {
-		if (!markRolled(chunk)) {
+		if (!markRolled(chunk) || !markGridRolled(level, chunk.getPos())) {
 			return Optional.empty();
 		}
 		return Optional.of(resolve(level, chunk, safe, random));
@@ -153,7 +168,9 @@ public final class ChunkEncounters {
 					LevelChunk chunk = level.getChunkSource().getChunkNow(center.x() + dx, center.z() + dz);
 					if (chunk != null && markRolled(chunk)) {
 						boolean safe = isSafe(level.dimension(), chunk.getPos(), spawn.getX(), spawn.getZ(), radius);
-						scanRoller.roll(level, chunk, safe);
+						if (markGridRolled(level, chunk.getPos())) {
+							scanRoller.roll(level, chunk, safe);
+						}
 						// Round 8: the same first sight of a chunk rolls the ocean's skeleton bands, by 2x2 area.
 						OceanBand.rollRegion(level, chunk, safe);
 					}
@@ -174,6 +191,19 @@ public final class ChunkEncounters {
 			return false;
 		}
 		chunk.setAttached(ROLLED, Boolean.TRUE);
+		return true;
+	}
+
+	private static boolean markGridRolled(final ServerLevel level, final ChunkPos pos) {
+		long key = gridKey(pos);
+		List<Long> stored = ((AttachmentTarget) level).getAttached(ROLLED_GRIDS);
+		List<Long> rolled = stored == null ? List.of() : stored;
+		if (rolled.contains(key)) {
+			return false;
+		}
+		List<Long> updated = new ArrayList<>(rolled);
+		updated.add(key);
+		((AttachmentTarget) level).setAttached(ROLLED_GRIDS, List.copyOf(updated));
 		return true;
 	}
 
@@ -212,6 +242,7 @@ public final class ChunkEncounters {
 			pillager.setPatrolLeader(spawned.isEmpty());
 			pillager.findPatrolTarget();
 			FriendlyPatrol.befriend(pillager);
+			pillager.setPersistenceRequired();
 			if (level.addFreshEntity(pillager)) {
 				spawned.add(pillager);
 			}
