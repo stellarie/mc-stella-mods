@@ -22,7 +22,8 @@ public class TowerSpawnerGameTest {
 	@GameTest(maxTicks = 400)
 	public void anOccupiedFloorFillsToItsCapAndNoFurther(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = TowerTestSupport.freshFloor();
+		// An ordinary floor: an elite or a boss stands outside the cap.
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		Vec3 arrival = TowerLayout.arrival(floor);
@@ -31,7 +32,8 @@ public class TowerSpawnerGameTest {
 		int[] most = {0};
 		helper.onEachTick(() -> {
 			// Counted by tag, not by the spawner's own count, so a mob the cap misses is still seen here.
-			int now = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.isAlive() && mob.entityTags().contains(TowerMobs.TAG)).size();
+			int now = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.isAlive() && mob.entityTags().contains(TowerMobs.TAG)
+				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).rank() == TowerRank.MOB).size();
 			most[0] = Math.max(most[0], now);
 			if (filledAt[0] < 0 && now >= TowerMobs.FLOOR_CAP) {
 				filledAt[0] = (int) helper.getTick();

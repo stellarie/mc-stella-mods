@@ -69,6 +69,26 @@ final class TowerTestSupport {
 		return NEXT_FLOOR.getAndAdd(4);
 	}
 
+	/** A fresh floor number that passes the test, such as an elite or a boss floor. */
+	static int freshFloorWhere(final java.util.function.IntPredicate wanted) {
+		// A block of forty floors is taken whole, so any residue is found, with the two floors above it free too.
+		int start = NEXT_FLOOR.getAndAdd(40);
+		for (int floor = start; floor < start + 37; floor++) {
+			if (wanted.test(floor)) {
+				return floor;
+			}
+		}
+		throw new IllegalStateException("no floor in " + start + ".." + (start + 36) + " fits");
+	}
+
+	/** Puts a joined player on a floor's arrival spot. */
+	static ServerPlayer onFloor(final GameTestHelper helper, final ServerLevel tower, final int floor) {
+		ServerPlayer player = join(helper, 1.5, 1.5);
+		Vec3 arrival = TowerLayout.arrival(floor);
+		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		return player;
+	}
+
 	static void result(final String test, final String outcome) {
 		LOG.info("[BEHAVIOR] test={} RESULT {}", test, outcome);
 	}
