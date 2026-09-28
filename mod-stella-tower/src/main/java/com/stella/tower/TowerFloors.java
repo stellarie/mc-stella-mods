@@ -210,7 +210,8 @@ public final class TowerFloors {
 					}
 				} else {
 					set(tower, x, base - 1, z, palette[random.nextInt(palette.length)]);
-					boolean lit = (x - x0) % LAMP_SPACING == LAMP_SPACING / 2 && (z - z0) % LAMP_SPACING == LAMP_SPACING / 2;
+					// Over a maze cell, never over a wall line, so the light falls on the paths.
+					boolean lit = (x - x0) % LAMP_SPACING == 1 && (z - z0) % LAMP_SPACING == 1;
 					set(tower, x, top, z, lit ? lamp : wall);
 					if (maze[x - x0][z - z0]) {
 						for (int y = base; y < top; y++) {

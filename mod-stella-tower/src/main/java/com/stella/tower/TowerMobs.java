@@ -179,33 +179,46 @@ public final class TowerMobs {
 			return null;
 		}
 		BlockPos origin = TowerLayout.origin(floor);
-		List<ServerPlayer> players = playersOn(tower, floor);
-		Vec3 arrival = TowerLayout.arrival(floor);
 		// Finalized first: a magma cube's size, and so the room it needs, is only drawn here.
 		BlockPos middle = origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
 		mob.snapTo(Vec3.atBottomCenterOf(middle));
 		mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(middle), EntitySpawnReason.EVENT, null);
 		settle(mob);
+		if (!placeInRoom(tower, floor, mob, random)) {
+			mob.discard();
+			return null;
+		}
+		makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)]);
+		return tower.addFreshEntity(mob) ? mob : null;
+	}
+
+	/** Finds the mob a spot on the floor, clear and away from every player; false if none fit in the tries. */
+	public static boolean placeInRoom(final ServerLevel tower, final int floor, final Mob mob, final RandomSource random) {
+		BlockPos origin = TowerLayout.origin(floor);
+		List<ServerPlayer> players = playersOn(tower, floor);
+		Vec3 arrival = TowerLayout.arrival(floor);
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y, z);
-			Vec3 spot = Vec3.atBottomCenterOf(feet);
+			Vec3 spot = spotFor(mob, feet);
 			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)) {
 				continue;
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
-			if (!standsFree(tower, mob, feet)) {
-				continue;
+			if (standsFree(tower, mob, feet)) {
+				return true;
 			}
-			makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)]);
-			if (tower.addFreshEntity(mob)) {
-				return mob;
-			}
-			return null;
 		}
-		mob.discard();
-		return null;
+		return false;
+	}
+
+	/**
+	 * Where on a block a mob stands: its middle, or for a mob broader than a block its corner, which is the
+	 * middle of a two by two path; at a block's middle such a mob would need three blocks clear.
+	 */
+	public static Vec3 spotFor(final Mob mob, final BlockPos feet) {
+		return mob.getBbWidth() > 1.0F ? new Vec3(feet.getX(), feet.getY(), feet.getZ()) : Vec3.atBottomCenterOf(feet);
 	}
 
 	/** On solid ground, with the mob's whole body clear of every block. */
