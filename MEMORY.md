@@ -1,7 +1,7 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-28
+last_verified: 2026-09-29
 ---
 
 # Project Memory
@@ -28,6 +28,7 @@ This repository develops Fabric mods on separate integration branches and publis
 - Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
 - Killed Nemesis companions stay dead by mission ID, saved on the Overworld; missing live companions can be replaced. [status: active] [verified: 2026-09-28] [source: NemesisCompanionDeaths.java; killedEliteCompanionNeverRespawns; missingEliteCompanionIsReplaced]
 - Village witches use independent 40-tick support and hostile splash timers. Harmful splash effects apply only to hostile mobs. [status: active] [verified: 2026-09-28] [source: PatrolWitchPotionGoal.java; VillageWitchSplash.java; villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers]
+- Version 3 village rosters request one head, one witch, and two melee Pillagers. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: PatrolService.java; VillageWorldData.java; build -x test -x runGameTest]
 - `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
@@ -39,7 +40,7 @@ This repository develops Fabric mods on separate integration branches and publis
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
-- With spells loaded, a village gains an eleventh witch -> keep legacy ten-member GameTests in a test-only witch-disabled environment. [status: active] [verified: 2026-09-28] [source: VillageTestInit.java; ringingTheBellRalliesTheVillageWitch]
+- Older GameTests assert the retired ten-member roster -> update them before resuming the suite. [status: active] [verified: 2026-09-29] [source: VillagePatrolGameTest.java; PatrolVisualsGameTest.java]
 - Mock players created at the shared origin can steal a nearby attendance test -> place each player at its own test structure. [status: active] [verified: 2026-09-28] [source: VillageRaidGameTest.attendanceFollowsPlayerDistance]
 - Vanilla Harming heals undead mobs -> village-witch hostile Harming splash applies magic damage to them. [status: active] [verified: 2026-09-28] [source: VillageWitchSplash.java; harmingSplashDamagesUndeadHostiles]
 - `EntityType.getBaseClass()` does not identify hostile subclasses for village offer filtering -> instantiate candidate mobs in the server level. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; GameTest red and green runs]

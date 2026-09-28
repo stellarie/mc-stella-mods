@@ -17,7 +17,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 
 /**
- * The village witch, who comes only with the spells mod: a full set of diamond armour, every piece
+ * The village witch wears a full set of diamond armour, every piece
  * enchanted, the helmet and the chestplate also with that mod's spell-enhancing enchantments. The kit never
  * drops. Its casting is the spells mod's, keyed on the tag this mod gives it.
  */
@@ -45,7 +45,7 @@ public final class VillageWitchKit {
 	private VillageWitchKit() {
 	}
 
-	/** Whether villages get a witch at all: only with the spells mod, which gives it its spells. */
+	/** Whether the spells mod gives the village witch its spell loadout. */
 	public static boolean enabled() {
 		Boolean pinned = forced;
 		return pinned != null ? pinned : FabricLoader.getInstance().isModLoaded("mod-stella-spells");
