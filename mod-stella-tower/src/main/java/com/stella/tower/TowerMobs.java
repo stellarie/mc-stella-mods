@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -15,6 +16,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -56,10 +60,13 @@ public final class TowerMobs {
 		EntityTypes.ZOMBIE, EntityTypes.SKELETON, EntityTypes.SPIDER, EntityTypes.CREEPER,
 		EntityTypes.HUSK, EntityTypes.STRAY, EntityTypes.CAVE_SPIDER, EntityTypes.PILLAGER, EntityTypes.VINDICATOR
 	);
-	/** Joins from the twenty-first floor. Ghasts are too big for an eight-block room. */
+	/**
+	 * Joins from the twenty-first floor. Ghasts are too big for an eight-block room, and shulkers teleport
+	 * by a road no room can close.
+	 */
 	public static final List<EntityType<? extends Mob>> LATER = List.of(
 		EntityTypes.WITCH, EntityTypes.BLAZE, EntityTypes.WITHER_SKELETON, EntityTypes.PIGLIN_BRUTE,
-		EntityTypes.MAGMA_CUBE, EntityTypes.HOGLIN, EntityTypes.ENDERMAN, EntityTypes.ENDERMITE, EntityTypes.SHULKER
+		EntityTypes.MAGMA_CUBE, EntityTypes.HOGLIN, EntityTypes.ENDERMAN, EntityTypes.ENDERMITE
 	);
 
 	/** What a tower mob carries: its floor, its element, and the health its attribute could not hold. */
@@ -72,7 +79,7 @@ public final class TowerMobs {
 	}
 
 	public static final AttachmentType<State> STATE = AttachmentRegistry.create(
-		StellaTower.id("tower_mob"), builder -> builder.persistent(State.CODEC)
+		StellaTower.id("tower_mob"), builder -> builder.persistent(State.CODEC).copyOnDeath()
 	);
 
 	private TowerMobs() {
@@ -80,6 +87,13 @@ public final class TowerMobs {
 
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(TowerMobs::tick);
+		// A tower mob that becomes another, a split magma cube or a converted mob, stays a tower mob of its floor.
+		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, params) -> {
+			State state = stateOf(previous);
+			if (state != null) {
+				makeTowerMob(converted, state.floor(), state.element());
+			}
+		});
 	}
 
 	public static @Nullable State stateOf(final LivingEntity entity) {
@@ -101,7 +115,10 @@ public final class TowerMobs {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		double want = TowerCurve.health(health.getBaseValue(), floor);
 		double held = Math.min(want, MAX_HEALTH_ATTRIBUTE);
-		health.removeModifier(HEALTH_ID);
+		// The floor alone sets a tower mob's health: a zombie leader's bonus or any other is set aside.
+		for (AttributeModifier other : List.copyOf(health.getModifiers())) {
+			health.removeModifier(other.id());
+		}
 		health.addPermanentModifier(new AttributeModifier(HEALTH_ID, held - health.getBaseValue(), AttributeModifier.Operation.ADD_VALUE));
 		AttributeInstance armor = mob.getAttribute(Attributes.ARMOR);
 		if (armor != null) {
@@ -115,11 +132,24 @@ public final class TowerMobs {
 			speed.addPermanentModifier(new AttributeModifier(SPEED_ID, TowerCurve.speedBonus(floor), AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
 		}
 		mob.setHealth(mob.getMaxHealth());
-		mob.setAttached(STATE, new State(floor, element, want / held));
+		mob.setAttached(STATE, new State(floor, element, want / mob.getMaxHealth()));
 		mob.addTag(TAG);
 		mob.addTag(NO_SPAWN_ROLL_TAG);
 		mob.setPersistenceRequired();
 		mob.setCustomName(Component.literal(element.label() + " ").withStyle(element.color()).append(mob.getType().getDescription()));
+	}
+
+	/** Sends away anything riding the mob or carrying it, so a jockey never enters the tower half made. */
+	public static void settle(final Mob mob) {
+		for (Entity rider : List.copyOf(mob.getPassengers())) {
+			rider.stopRiding();
+			rider.discard();
+		}
+		Entity vehicle = mob.getVehicle();
+		if (vehicle != null) {
+			mob.stopRiding();
+			vehicle.discard();
+		}
 	}
 
 	/** Raises one tower mob on the floor, somewhere clear and away from every player; null if none fit. */
@@ -134,17 +164,23 @@ public final class TowerMobs {
 		BlockPos origin = TowerLayout.origin(floor);
 		List<ServerPlayer> players = playersOn(tower, floor);
 		Vec3 arrival = TowerLayout.arrival(floor);
-		int tall = (int) Math.ceil(mob.getBbHeight());
+		// Finalized first: a magma cube's size, and so the room it needs, is only drawn here.
+		BlockPos middle = origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
+		mob.snapTo(Vec3.atBottomCenterOf(middle));
+		mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(middle), EntitySpawnReason.EVENT, null);
+		settle(mob);
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y, z);
 			Vec3 spot = Vec3.atBottomCenterOf(feet);
-			if (!clear(tower, feet, tall) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)) {
+			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)) {
 				continue;
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
-			mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(feet), EntitySpawnReason.EVENT, null);
+			if (!standsFree(tower, mob, feet)) {
+				continue;
+			}
 			makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)]);
 			if (tower.addFreshEntity(mob)) {
 				return mob;
@@ -155,16 +191,10 @@ public final class TowerMobs {
 		return null;
 	}
 
-	private static boolean clear(final ServerLevel tower, final BlockPos feet, final int tall) {
-		if (!tower.getBlockState(feet.below()).isFaceSturdy(tower, feet.below(), net.minecraft.core.Direction.UP)) {
-			return false;
-		}
-		for (int y = 0; y < tall; y++) {
-			if (!tower.getBlockState(feet.above(y)).getCollisionShape(tower, feet.above(y)).isEmpty()) {
-				return false;
-			}
-		}
-		return true;
+	/** On solid ground, with the mob's whole body clear of every block. */
+	private static boolean standsFree(final ServerLevel tower, final Mob mob, final BlockPos feet) {
+		return tower.getBlockState(feet.below()).isFaceSturdy(tower, feet.below(), net.minecraft.core.Direction.UP)
+			&& tower.noCollision(mob, mob.getBoundingBox());
 	}
 
 	private static boolean tooClose(final List<ServerPlayer> players, final Vec3 spot) {
@@ -215,6 +245,9 @@ public final class TowerMobs {
 			}
 		}
 		for (int floor : occupied.keySet()) {
+			// The whole room is held loaded while it is occupied, so no mob in it goes uncounted.
+			BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
+			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
 			int room = FLOOR_CAP - count(tower, floor);
 			for (int i = 0; i < Math.min(room, SPAWN_BATCH); i++) {
 				spawnOne(tower, floor);
