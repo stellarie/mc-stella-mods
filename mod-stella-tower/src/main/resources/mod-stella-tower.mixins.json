@@ -12,7 +12,9 @@
 		"TowerRuneAnvilMixin",
 		"RuneGuardEffectMixin",
 		"RuneGuardFrostMixin",
-		"LivingEntityAccessor"
+		"LivingEntityAccessor",
+		"GhostPhaseMixin",
+		"GhostBlowMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
