@@ -48,7 +48,8 @@ public class TowerEscapeGameTest {
 		boolean roof = pig.randomTeleport(arrival.x + 2.0, TowerLayout.BASE_Y + TowerLayout.HEIGHT + 1.0, arrival.z, false,
 			BlockTags.CONSUMABLE_DOES_NOT_TELEPORT_TO);
 		double yAfterRoof = pig.getY();
-		boolean inside = pig.randomTeleport(arrival.x + 2.0, TowerLayout.BASE_Y + 3.0, arrival.z, false, BlockTags.CONSUMABLE_DOES_NOT_TELEPORT_TO);
+		// Within the arrival's own maze cell.
+		boolean inside = pig.randomTeleport(arrival.x + 1.0, TowerLayout.BASE_Y + 3.0, arrival.z, false, BlockTags.CONSUMABLE_DOES_NOT_TELEPORT_TO);
 		boolean stillInRoom = pig.getY() < TowerLayout.BASE_Y + TowerLayout.HEIGHT && TowerLayout.floorAt(pig.blockPosition()) == floor;
 		TowerTestSupport.result("chorusRoof", "roof=" + roof + " yAfterRoof=" + yAfterRoof + " inside=" + inside + " stillInRoom=" + stillInRoom);
 		pig.discard();

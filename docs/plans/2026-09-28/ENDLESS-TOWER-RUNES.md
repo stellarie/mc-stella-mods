@@ -218,3 +218,13 @@ from the biome, with no extra client code.
 - Books left in chests hint at how to open the tower: a frame of crying obsidian, lit by fire.
 - Ruined portals, which carry crying obsidian, are the natural home for them; dungeons, strongholds
   and bastions carry them too. The rate is to be set with the chest tables and measured.
+
+## Change: floors are mazes (2026-09-28)
+
+- Each floor is a maze with paths two blocks wide and unbreakable walls one block thick. The walls stand on
+  a 21 by 21 grid of cells, three blocks apart.
+- An elite floor opens a 16 by 16 hall in its middle, and a boss floor opens a 32 by 32 hall. The portal
+  stands in the middle of the hall, and the guardians stand guard there.
+- An ordinary floor keeps its portal across from the arrival, in a small cleared nook.
+- Floors built before this change keep the open room they were built with.
+- A guardian that cannot find its way back to its post through the maze is returned to the post.
