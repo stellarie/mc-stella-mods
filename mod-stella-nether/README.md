@@ -86,6 +86,22 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   and once crashed the server tick (`ArrayIndexOutOfBoundsException` in `RaidInstance.tick`). Both
   loops over the raid's entities now walk a snapshot.
 
+## Slice 6b: the Blaze Sovereign's body
+
+- Once per run, the first time a player comes within 96 blocks of the run's fortress while its start
+  chunk is loaded, the Blaze Sovereign rises there. It stands on the nearest open floor within 32 blocks
+  of the fortress start (solid below, seven blocks of air above, no lava). It never rises again in that
+  run, slain or not; a new run raises a new one.
+- Health: 1000 plus 50 per threat level, where its threat is the raid roll lifted to the nether's floor
+  plus the mobs mod's boss bonus of 10, so 2,500 to 3,000 in practice. The health attribute holds at most
+  1,024; the rest is a divisor on every hit it takes, so a 100-point hit costs 100 of its whole health.
+  It opts out of the mobs mod's spawn rolls, so its kit and scaling are its own.
+- It stands three times a blaze's size (5.4 blocks) and keeps within two blocks of the ground below it,
+  drawn down half a block a tick if higher.
+- Every hit it lands, by fireball or touch, sets its target alight for 5 seconds.
+- A blue, notched boss bar shows to every raid player within 96 blocks.
+- Not yet: the blue tint and blue flames need client code, and come with the specials.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -94,6 +110,7 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
+- Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
 - From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

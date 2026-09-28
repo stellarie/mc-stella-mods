@@ -21,10 +21,10 @@ public class RaidEnrageGameTest {
 
 	static void setElapsed(final MinecraftServer server, final long elapsed) {
 		RaidState state = RaidInstance.state(server);
-		RaidInstance.set(server, new RaidState(state.run(), state.active(), state.host(), state.mode(), elapsed));
+		RaidInstance.set(server, state.withElapsed(elapsed));
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:enrage", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:enrage", maxTicks = 400)
 	public void atThirtyMinutesRaidMobsTurnFastAndStrong(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
@@ -39,25 +39,28 @@ public class RaidEnrageGameTest {
 		});
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:calm", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:calm", maxTicks = 400)
 	public void beforeThirtyMinutesRaidMobsStayCalm(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(3.0, 0.0, 0.0));
 		setElapsed(server, RaidInstance.ENRAGE_TICKS - 1000);
-		helper.runAfterDelay(100, () -> {
-			boolean loaded = NetherGameTestInit.LOADED_IN_RAID.contains(mob.getUUID());
-			boolean enraged = enraged(mob);
-			NetherTestSupport.result("calmBefore", "loaded=" + loaded + " enraged=" + enraged + " elapsed=" + RaidInstance.state(server).elapsed());
-			mob.discard();
-			NetherTestSupport.leave(helper, player);
-			helper.assertTrue(loaded && !enraged, "before thirty minutes the mob loaded=" + loaded + " enraged=" + enraged);
-			helper.succeed();
-		});
+		// Once loaded, the mob is watched through several enrage checks before its calm is read.
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(NetherGameTestInit.LOADED_IN_RAID.contains(mob.getUUID()), "the mob has not loaded yet"))
+			.thenIdle(3 * RaidInstance.CHASE_EVERY_TICKS)
+			.thenExecute(() -> {
+				boolean enraged = enraged(mob);
+				NetherTestSupport.result("calmBefore", "loaded=true enraged=" + enraged + " elapsed=" + RaidInstance.state(server).elapsed());
+				mob.discard();
+				NetherTestSupport.leave(helper, player);
+				helper.assertTrue(!enraged, "before thirty minutes the mob is enraged");
+			})
+			.thenSucceed();
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:lateload", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:lateload", maxTicks = 400)
 	public void aMobThatLoadsAfterTheEnrageIsEnraged(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
@@ -73,7 +76,7 @@ public class RaidEnrageGameTest {
 		});
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:hunt", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:hunt", maxTicks = 400)
 	public void anEnragedZombifiedPiglinHuntsThePlayer(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);

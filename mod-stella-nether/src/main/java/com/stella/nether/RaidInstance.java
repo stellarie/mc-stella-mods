@@ -96,7 +96,7 @@ public final class RaidInstance {
 	public static final AttachmentType<Integer> MOB_BOOSTED = AttachmentRegistry.createPersistent(StellaNether.id("raid_boosted"), Codec.INT);
 
 	/** Each run's site, by world seed and run; the search is deterministic, so a restart finds the same one. */
-	private static final Map<String, BlockPos> SITES = new ConcurrentHashMap<>();
+	private static final Map<String, RaidSites.Site> SITES = new ConcurrentHashMap<>();
 	/** Ticks the open raid has stood empty; kept in memory, so a restart with nobody inside resets it soon after. */
 	private static int emptyTicks;
 
@@ -161,7 +161,9 @@ public final class RaidInstance {
 			return;
 		}
 		long elapsed = state.elapsed() + 1;
-		set(server, new RaidState(state.run(), true, state.host(), state.mode(), elapsed));
+		state = state.withElapsed(elapsed);
+		set(server, state);
+		BlazeSovereign.tick(server, state);
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid != null && elapsed >= ENRAGE_TICKS) {
 			if (elapsed == ENRAGE_TICKS) {
@@ -202,7 +204,9 @@ public final class RaidInstance {
 	/** Closes the running raid and moves the next run to fresh land. */
 	public static void reset(final MinecraftServer server, final String reason) {
 		RaidState old = state(server);
-		set(server, new RaidState(old.run() + 1, false, Optional.empty(), RaidMode.NORMAL, 0L));
+		set(server, new RaidState(old.run() + 1, false, Optional.empty(), RaidMode.NORMAL, 0L, false));
+		BlazeSovereign.closeBar(server);
+		BlazeSovereign.forget();
 		StellaNether.LOGGER.info("[NETHER] raid reset run={} next={} reason={}", old.run(), old.run() + 1, reason);
 	}
 
@@ -211,7 +215,7 @@ public final class RaidInstance {
 		MinecraftServer server = player.level().getServer();
 		RaidState state = state(server);
 		if (!state.active()) {
-			state = new RaidState(state.run(), true, Optional.of(player.getUUID()), requested, 0L);
+			state = new RaidState(state.run(), true, Optional.of(player.getUUID()), requested, 0L, false);
 			set(server, state);
 			StellaNether.LOGGER.info("[NETHER] raid opened run={} host={} mode={}", state.run(), player.getScoreboardName(), requested);
 		}
@@ -226,8 +230,18 @@ public final class RaidInstance {
 	public static BlockPos arrival(final MinecraftServer server) {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		int run = state(server).run();
-		BlockPos site = raid == null ? origin(run) : SITES.computeIfAbsent(raid.getSeed() + ":" + run, key -> RaidSites.site(raid, origin(run)));
+		BlockPos site = site(server).arrival();
 		return new BlockPos(site.getX(), ARRIVAL_Y, site.getZ() + 1);
+	}
+
+	/** The current run's site: its arrival, and the fortress its Sovereign rises from. */
+	public static RaidSites.Site site(final MinecraftServer server) {
+		ServerLevel raid = server.getLevel(RaidTravel.RAID);
+		int run = state(server).run();
+		if (raid == null) {
+			return new RaidSites.Site(origin(run), origin(run));
+		}
+		return SITES.computeIfAbsent(raid.getSeed() + ":" + run, key -> RaidSites.site(raid, origin(run)));
 	}
 
 	/** The bottom block of the current run's portal out. */

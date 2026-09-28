@@ -37,10 +37,14 @@ public final class RaidSites {
 	private record Found(boolean fortress, BlockPos at) {
 	}
 
+	/** Where a run opens, and the fortress start its Sovereign rises from. */
+	public record Site(BlockPos arrival, BlockPos fortress) {
+	}
+
 	private RaidSites() {
 	}
 
-	static BlockPos site(final ServerLevel raid, final BlockPos origin) {
+	static Site site(final ServerLevel raid, final BlockPos origin) {
 		long began = System.nanoTime();
 		Holder<Structure> fortress = structure(raid, BuiltinStructures.FORTRESS);
 		Holder<Structure> bastion = structure(raid, BuiltinStructures.BASTION_REMNANT);
@@ -53,7 +57,7 @@ public final class RaidSites {
 		}
 		if (placement == null) {
 			StellaNether.LOGGER.warn("[NETHER] the raid nether places no fortress; the run opens at its origin {}", origin);
-			return origin;
+			return new Site(origin, origin);
 		}
 		int spacing = placement.spacing();
 		int cellX = Math.floorDiv(origin.getX() >> 4, spacing);
@@ -71,7 +75,7 @@ public final class RaidSites {
 				}
 			}
 		}
-		BlockPos best = null;
+		Site best = null;
 		double bestDistance = Double.MAX_VALUE;
 		for (Found f : found) {
 			for (Found b : found) {
@@ -82,15 +86,15 @@ public final class RaidSites {
 				double distance = gap(mid, origin);
 				if (distance < bestDistance) {
 					bestDistance = distance;
-					best = mid;
+					best = new Site(mid, f.at());
 				}
 			}
 		}
 		if (best == null) {
 			StellaNether.LOGGER.warn("[NETHER] no fortress and bastion pair near {}; the run opens at its origin", origin);
-			return origin;
+			return new Site(origin, origin);
 		}
-		StellaNether.LOGGER.info("[NETHER] raid site={} from origin={} structures={} ms={}", best, origin, found.size(), (System.nanoTime() - began) / 1_000_000L);
+		StellaNether.LOGGER.info("[NETHER] raid site={} from origin={} structures={} ms={}", best.arrival(), origin, found.size(), (System.nanoTime() - began) / 1_000_000L);
 		return best;
 	}
 
