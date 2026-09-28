@@ -5,6 +5,9 @@
 	"name": "Stella Endless Tower game tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.tower.TowerGameTestInit"
+		],
 		"fabric-gametest": [
 			"com.stella.tower.TowerPortalGameTest",
 			"com.stella.tower.TowerFloorGameTest",
@@ -14,7 +17,8 @@
 			"com.stella.tower.TowerSpawnerGameTest",
 			"com.stella.tower.TowerMobRulesGameTest",
 			"com.stella.tower.TowerEliteGameTest",
-			"com.stella.tower.TowerBuffGameTest"
+			"com.stella.tower.TowerBuffGameTest",
+			"com.stella.tower.TowerWanderersGameTest"
 		]
 	},
 	"mixins": [
