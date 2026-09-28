@@ -238,7 +238,7 @@ public class OceanBandGameTest {
 		Dolphin anchor;
 		try {
 			OceanBand.pinChance(1.0);
-			anchor = OceanBand.rollRegion(level, chunk);
+			anchor = OceanBand.rollRegion(level, chunk, false);
 		} finally {
 			OceanBand.pinChance(OceanBand.REGION_CHANCE);
 		}
@@ -267,8 +267,8 @@ public class OceanBandGameTest {
 		Dolphin offCorner;
 		try {
 			OceanBand.pinChance(1.0);
-			onLand = OceanBand.rollRegion(level, level.getChunk(lead.x(), lead.z()));
-			offCorner = OceanBand.rollRegion(level, level.getChunk(odd.x(), odd.z()));
+			onLand = OceanBand.rollRegion(level, level.getChunk(lead.x(), lead.z()), false);
+			offCorner = OceanBand.rollRegion(level, level.getChunk(odd.x(), odd.z()), false);
 		} finally {
 			OceanBand.pinChance(OceanBand.REGION_CHANCE);
 		}
@@ -338,6 +338,39 @@ public class OceanBandGameTest {
 				}
 			}
 		}
+	}
+
+	/** The rider's water breathing is topped up while it rides, not a single dose that lapses. */
+	@GameTest(maxTicks = OceanBand.BREATHING_TICKS + OceanBand.BREATHING_CHECK_TICKS * 2 + 40)
+	public void aRiderKeepsItsWaterBreathingPastTheFirstDose(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		Dolphin dolphin = helper.spawnMob(EntityTypes.DOLPHIN, 2, 2, 2).withNoFreeWill().spawn();
+		Skeleton rider = helper.spawnMob(EntityTypes.SKELETON, 2, 2, 2).spawn();
+		rider.getGoalSelector().addGoal(OceanBand.BREATHING_PRIORITY, OceanBand.breathingGoal(rider));
+		helper.assertTrue(rider.startRiding(dolphin, true, false), "the skeleton could not be seated");
+		int check = OceanBand.BREATHING_TICKS + OceanBand.BREATHING_CHECK_TICKS + 20;
+		helper.succeedWhen(() -> {
+			helper.assertTrue(helper.getTick() >= check, "the first dose has not run out yet");
+			helper.assertTrue(rider.isPassenger(), "the rider left its dolphin, so the case proves nothing");
+			helper.assertTrue(rider.hasEffect(net.minecraft.world.effect.MobEffects.WATER_BREATHING),
+				"the rider's water breathing lapsed after the first dose");
+			result("breathingRefresh", "tick=" + helper.getTick() + " breathing=true");
+		});
+	}
+
+	/** An ocean band in the spawn's safe zone never carries an elite or boss leader. */
+	@GameTest
+	public void aBandInTheSafeZoneHasNoLeader(final GameTestHelper helper) {
+		int safeLeaders = 0;
+		int wildLeaders = 0;
+		for (int i = 0; i < 10_000; i++) {
+			safeLeaders += OceanBand.leaderFor(true, RandomSource.create(i)) != OceanBand.Leader.NONE ? 1 : 0;
+			wildLeaders += OceanBand.leaderFor(false, RandomSource.create(i)) != OceanBand.Leader.NONE ? 1 : 0;
+		}
+		result("safeZoneLeader", "safeLeaders=" + safeLeaders + " wildLeaders=" + wildLeaders);
+		helper.assertTrue(wildLeaders > 0, "no wild band had a leader, so the case proves nothing");
+		helper.assertTrue(safeLeaders == 0, safeLeaders + " safe-zone bands had an elite or boss leader");
+		helper.succeed();
 	}
 
 	private static void result(final String test, final String detail) {

@@ -12,6 +12,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -149,7 +150,9 @@ public final class DepthMobs {
 	}
 
 	private static boolean allowDeath(final LivingEntity entity, final DamageSource source, final float amount) {
-		if (!(entity instanceof Zombie zombie) || !isDepth(zombie) || revivesLeft(zombie) == 0 || !(zombie.level() instanceof ServerLevel level)) {
+		// A /kill or the void is no blow to rise from: only a fight spends a revive.
+		if (!(entity instanceof Zombie zombie) || !isDepth(zombie) || revivesLeft(zombie) == 0 || !(zombie.level() instanceof ServerLevel level)
+			|| source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
 			return true;
 		}
 		zombie.removeTag(zombie.entityTags().contains(REVIVE_SECOND_TAG) ? REVIVE_SECOND_TAG : REVIVE_TAG);

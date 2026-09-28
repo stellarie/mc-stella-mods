@@ -4,6 +4,7 @@ import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.FriendlyPatrol;
 import com.stella.mobs.behavior.Levitation;
+import com.stella.mobs.behavior.TemporaryBlocks;
 import com.stella.mobs.behavior.WebCastGoal;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.behavior.WitherPulse;
@@ -289,6 +290,34 @@ public class MobKitGameTest {
 		skeleton.setPersistenceRequired();
 		helper.getLevel().addFreshEntity(skeleton);
 		return skeleton;
+	}
+
+	/**
+	 * A web whose time runs out while its chunk is away is cleared when the chunk is back, not forgotten: a
+	 * player who outruns a spider must not leave its webs standing for good.
+	 */
+	@GameTest(maxTicks = 60)
+	public void aTemporaryBlockDueWhileUnloadedClearsOnceLoaded(final GameTestHelper helper) {
+		BlockPos spot = helper.absolutePos(new BlockPos(1, 2, 1));
+		helper.setBlock(1, 2, 1, Blocks.AIR);
+		TemporaryBlocks.pinUnloaded(spot, true);
+		boolean placed = TemporaryBlocks.place(helper.getLevel(), spot, Blocks.COBWEB.defaultBlockState(), 2);
+		boolean[] keptWhileAway = {false};
+		boolean[] back = {false};
+		helper.onEachTick(() -> {
+			if (!back[0] && helper.getTick() >= 10) {
+				keptWhileAway[0] = helper.getLevel().getBlockState(spot).is(Blocks.COBWEB);
+				TemporaryBlocks.pinUnloaded(spot, false);
+				back[0] = true;
+			}
+		});
+		helper.succeedWhen(() -> {
+			helper.assertTrue(placed, "no web was placed, so the case proves nothing");
+			helper.assertTrue(back[0], "the chunk is not back yet");
+			helper.assertTrue(keptWhileAway[0], "the web cleared while its chunk was away");
+			helper.assertTrue(helper.getLevel().getBlockState(spot).isAir(), "the web stayed after its chunk came back");
+			result("temporaryBlockUnloaded", "placed=" + placed + " keptWhileAway=" + keptWhileAway[0] + " clearedOnReturn=true");
+		});
 	}
 
 	private static void result(final String test, final String outcome) {
