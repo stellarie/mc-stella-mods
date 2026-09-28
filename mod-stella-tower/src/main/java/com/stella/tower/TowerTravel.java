@@ -89,9 +89,15 @@ public final class TowerTravel {
 		}
 	}
 
-	/** The floor a portal outside the tower leads to. Floor keys will raise it. */
+	/** The floor a portal outside the tower leads to: the highest floor key a player holds, else the first. */
 	public static int startFloor(final Entity entity) {
-		return 1;
+		int floor = 1;
+		if (entity instanceof ServerPlayer player) {
+			for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+				floor = Math.max(floor, FloorKeyItem.floorOf(player.getInventory().getItem(i)));
+			}
+		}
+		return floor;
 	}
 
 	public static @Nullable TeleportTransition destination(final ServerLevel from, final Entity entity, final BlockPos portal) {

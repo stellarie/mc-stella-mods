@@ -49,3 +49,11 @@ An endless tower of floors behind a crying obsidian portal. The design is in
   health and 22 armor.
 - Health past the attribute's cap of 1024 is kept as a divisor on every hit the mob takes; a tower mob's
   damage, by swing, arrow, blast or potion, grows with its floor as the hit lands.
+
+## Slice 3a: elites, bosses and floor keys
+
+- Every fifth floor keeps one elite in front of its portal, and every tenth floor a boss beside it,
+  while a player is on the floor. Each returns five minutes after it falls; neither counts toward the cap.
+- Elites have 3x their floor's health and 1.5x its damage; bosses 10x and 2x. Their names carry the rank.
+- A boss shows a health bar to the players on its floor, and drops a Floor Key naming its floor.
+- Entering the tower from outside takes a player to the highest floor key they carry; keys are never spent.

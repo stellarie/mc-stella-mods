@@ -70,11 +70,12 @@ public final class TowerMobs {
 	);
 
 	/** What a tower mob carries: its floor, its element, and the health its attribute could not hold. */
-	public record State(int floor, TowerElement element, double healthDivisor) {
+	public record State(int floor, TowerElement element, double healthDivisor, TowerRank rank) {
 		public static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			Codec.INT.fieldOf("floor").forGetter(State::floor),
 			TowerElement.CODEC.fieldOf("element").forGetter(State::element),
-			Codec.DOUBLE.fieldOf("health_divisor").forGetter(State::healthDivisor)
+			Codec.DOUBLE.fieldOf("health_divisor").forGetter(State::healthDivisor),
+			TowerRank.CODEC.optionalFieldOf("rank", TowerRank.MOB).forGetter(State::rank)
 		).apply(instance, State::new));
 	}
 
@@ -91,7 +92,7 @@ public final class TowerMobs {
 		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, params) -> {
 			State state = stateOf(previous);
 			if (state != null) {
-				makeTowerMob(converted, state.floor(), state.element());
+				makeTowerMob(converted, state.floor(), state.element(), state.rank());
 			}
 		});
 	}
@@ -112,8 +113,13 @@ public final class TowerMobs {
 
 	/** Makes a mob a tower mob of this floor, in this element, at full health. */
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element) {
+		makeTowerMob(mob, floor, element, TowerRank.MOB);
+	}
+
+	/** Makes a mob a tower mob of this floor and rank, in this element, at full health. */
+	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-		double want = TowerCurve.health(health.getBaseValue(), floor);
+		double want = TowerCurve.health(health.getBaseValue(), floor) * rank.healthFactor();
 		double held = Math.min(want, MAX_HEALTH_ATTRIBUTE);
 		// The floor alone sets a tower mob's health: a zombie leader's bonus or any other is set aside.
 		for (AttributeModifier other : List.copyOf(health.getModifiers())) {
@@ -132,11 +138,16 @@ public final class TowerMobs {
 			speed.addPermanentModifier(new AttributeModifier(SPEED_ID, TowerCurve.speedBonus(floor), AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
 		}
 		mob.setHealth(mob.getMaxHealth());
-		mob.setAttached(STATE, new State(floor, element, want / mob.getMaxHealth()));
+		mob.setAttached(STATE, new State(floor, element, want / mob.getMaxHealth(), rank));
 		mob.addTag(TAG);
 		mob.addTag(NO_SPAWN_ROLL_TAG);
 		mob.setPersistenceRequired();
-		mob.setCustomName(Component.literal(element.label() + " ").withStyle(element.color()).append(mob.getType().getDescription()));
+		net.minecraft.network.chat.MutableComponent name = Component.empty();
+		if (rank != TowerRank.MOB) {
+			name.append(Component.literal(rank.label() + " ").withStyle(rank.color()));
+		}
+		name.append(Component.literal(element.label() + " ").withStyle(element.color())).append(mob.getType().getDescription());
+		mob.setCustomName(name);
 	}
 
 	/** Sends away anything riding the mob or carrying it, so a jockey never enters the tower half made. */
@@ -192,7 +203,7 @@ public final class TowerMobs {
 	}
 
 	/** On solid ground, with the mob's whole body clear of every block. */
-	private static boolean standsFree(final ServerLevel tower, final Mob mob, final BlockPos feet) {
+	static boolean standsFree(final ServerLevel tower, final Mob mob, final BlockPos feet) {
 		return tower.getBlockState(feet.below()).isFaceSturdy(tower, feet.below(), net.minecraft.core.Direction.UP)
 			&& tower.noCollision(mob, mob.getBoundingBox());
 	}
@@ -206,7 +217,7 @@ public final class TowerMobs {
 		return false;
 	}
 
-	private static List<ServerPlayer> playersOn(final ServerLevel tower, final int floor) {
+	static List<ServerPlayer> playersOn(final ServerLevel tower, final int floor) {
 		List<ServerPlayer> on = new ArrayList<>();
 		for (ServerPlayer player : tower.players()) {
 			if (!player.isSpectator() && TowerLayout.floorAt(player.blockPosition()) == floor) {
@@ -216,7 +227,7 @@ public final class TowerMobs {
 		return on;
 	}
 
-	private static AABB room(final int floor) {
+	static AABB room(final int floor) {
 		BlockPos o = TowerLayout.origin(floor);
 		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.HEIGHT, o.getZ() + TowerLayout.SIZE);
 	}
@@ -225,7 +236,7 @@ public final class TowerMobs {
 	public static int count(final ServerLevel tower, final int floor) {
 		return tower.getEntitiesOfClass(Mob.class, room(floor), mob -> {
 			State state = stateOf(mob);
-			return mob.isAlive() && state != null && state.floor() == floor;
+			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB;
 		}).size();
 	}
 
@@ -261,7 +272,7 @@ public final class TowerMobs {
 		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim) {
 			State from = stateOf(attacker);
 			if (from != null) {
-				scaled = (float) TowerCurve.damage(scaled, from.floor());
+				scaled = (float) (TowerCurve.damage(scaled, from.floor()) * from.rank().damageFactor());
 			}
 		}
 		State to = stateOf(victim);
