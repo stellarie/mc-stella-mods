@@ -143,7 +143,9 @@ On the first server start the mod writes
 
 ## mod-stella-spells
 
-`mod-stella-spells` adds 42 tinted spellbooks. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
+`mod-stella-spells` adds 42 spellbooks with distinct icons. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
+
+The server runs spell logic and sends spell visuals. Install the same jar on the server and every client. A held spellbook stays hidden in the player's hands while a colored magic circle follows their feet. Area spells mark their landing with an element-colored circle, and every spell has a named visual effect.
 
 A spellbook in an anvil imbues a weapon, an arrow or a chestplate. An imbued weapon casts the spell at half strength on each melee hit, an arrow on the hit it lands, and a chestplate on whoever strikes its wearer; right-clicking a hostile with an imbued weapon casts it at full strength. An imbued sword, axe or mace shows the spell's cooldown in the hotbar. A piece takes several spells, for 5, 25, then 125 emeralds or levels. Tide Lungs cannot be imbued. Spell enchantments on the piece, the helmet and the chestplate shape its imbued spells. A mob that wields an imbued weapon, such as a village head, casts its spell at the targets it strikes.
 
@@ -170,9 +172,9 @@ cd mod-stella-spells
 .\gradlew.bat runGameTest --rerun
 ```
 
-Run the game-test command five separate times. Save each run log outside `build/` before the next run or a clean build. Install the mod on the server and every client. The mod jar contains the item tint assets.
+Run the game-test command five separate times. Save each run log outside `build/` before the next run or a clean build. The mod jar contains 42 book textures and the scroll tint definitions.
 
-The jar is `mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Verify all 20 icon tints in a client.
+The jar is `mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Inspect the icons, hand display, foot circle, and spell effects in a client.
 
 ## Target platform
 

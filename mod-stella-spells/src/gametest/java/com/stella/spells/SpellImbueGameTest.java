@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -77,15 +78,27 @@ public class SpellImbueGameTest {
 	public void takingTheImbuedWeaponUsesUpTheBookAndItsPrice(final GameTestHelper helper) {
 		ServerPlayer player = player(helper);
 		player.setExperienceLevels(SpellImbue.IMBUE_XP_COST + 3);
+		boolean emeraldAnvil = FabricLoader.getInstance().isModLoaded("mod-stella-equips-enchants");
+		if (emeraldAnvil) {
+			player.getInventory().add(new ItemStack(Items.EMERALD, 64));
+		}
 		AnvilMenu anvil = anvil(helper, player, new ItemStack(Items.IRON_AXE), book(STONEGUARD));
 		var resultSlot = anvil.getSlot(AnvilMenu.RESULT_SLOT);
-		helper.assertTrue(resultSlot.mayPickup(player), "the imbued axe cannot be taken");
+		helper.assertTrue(resultSlot.mayPickup(player), "the imbued axe cannot be taken: result=" + resultSlot.getItem() + " cost=" + anvil.getCost());
+		int price = anvil.getCost();
+		int emeraldsBefore = emeralds(player);
 		ItemStack taken = resultSlot.getItem().copy();
 		resultSlot.onTake(player, taken);
-		LOG.info("[SPELLTEST] test=takingTheImbuedWeaponUsesUpTheBookAndItsPrice RESULT book={} levels={}", anvil.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem(), player.experienceLevel);
+		LOG.info("[SPELLTEST] test=takingTheImbuedWeaponUsesUpTheBookAndItsPrice RESULT book={} levels={} emeraldsSpent={} price={}",
+			anvil.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem(), player.experienceLevel, emeraldsBefore - emeralds(player), price);
 		helper.assertTrue(taken.get(SpellImbue.IMBUED) != null, "the taken axe is not imbued");
 		helper.assertTrue(anvil.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem().isEmpty(), "the spellbook was not used up");
-		helper.assertTrue(player.experienceLevel == 3, "the imbue took " + (SpellImbue.IMBUE_XP_COST + 3 - player.experienceLevel) + " levels");
+		helper.assertTrue(player.experienceLevel == (emeraldAnvil ? SpellImbue.IMBUE_XP_COST + 3 : 3),
+			"the imbue left the player at " + player.experienceLevel + " levels");
+		if (emeraldAnvil) {
+			helper.assertTrue(emeraldsBefore - emeralds(player) == price,
+				"the imbue took " + (emeraldsBefore - emeralds(player)) + " emeralds, not " + price);
+		}
 		helper.succeed();
 	}
 
@@ -311,6 +324,17 @@ public class SpellImbueGameTest {
 
 	private static Holder<Enchantment> enchantment(final GameTestHelper helper, final ResourceKey<Enchantment> key) {
 		return helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key);
+	}
+
+	private static int emeralds(final ServerPlayer player) {
+		int count = 0;
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			ItemStack stack = player.getInventory().getItem(slot);
+			if (stack.is(Items.EMERALD)) {
+				count += stack.getCount();
+			}
+		}
+		return count;
 	}
 
 	private static ServerPlayer player(final GameTestHelper helper) {
