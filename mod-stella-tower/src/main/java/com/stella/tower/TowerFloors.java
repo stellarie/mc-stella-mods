@@ -97,15 +97,16 @@ public final class TowerFloors {
 	 * A boss floor's safe room holds a crafting table, a furnace and an anvil along its far wall, clear of
 	 * its doors. Empty on any other floor.
 	 */
-	public static Map<BlockPos, Block> workstations(final int floor) {
+	public static Map<BlockPos, BlockState> workstations(final int floor) {
 		if (TowerMaze.hall(floor) != TowerMaze.BOSS_HALL) {
 			return Map.of();
 		}
 		BlockPos corner = TowerLayout.origin(floor).offset(TowerMaze.BOSS_ROOM_X, 0, TowerMaze.SAFE_Z);
-		Map<BlockPos, Block> stations = new LinkedHashMap<>();
-		stations.put(corner.offset(2, 0, 0), Blocks.CRAFTING_TABLE);
-		stations.put(corner.offset(4, 0, 0), Blocks.FURNACE);
-		stations.put(corner.offset(6, 0, 0), Blocks.ANVIL);
+		Map<BlockPos, BlockState> stations = new LinkedHashMap<>();
+		stations.put(corner.offset(2, 0, 0), Blocks.CRAFTING_TABLE.defaultBlockState());
+		// Facing into the room, away from the wall behind them.
+		stations.put(corner.offset(4, 0, 0), Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.FurnaceBlock.FACING, net.minecraft.core.Direction.SOUTH));
+		stations.put(corner.offset(6, 0, 0), Blocks.ANVIL.defaultBlockState().setValue(net.minecraft.world.level.block.AnvilBlock.FACING, net.minecraft.core.Direction.SOUTH));
 		return stations;
 	}
 
@@ -272,7 +273,8 @@ public final class TowerFloors {
 	/**
 	 * Lays the safe zones into a floor built before them, the first time anyone arrives: the maze walls in
 	 * them are cleared, their floor laid, and a boss floor's workstations set. Only the maze's own blocks
-	 * are cleared, so whatever a player built there stays.
+	 * are cleared, only the floor's own stone and traps relaid, and stations set only onto open floor, so
+	 * whatever a player built there stays.
 	 */
 	public static void settle(final ServerLevel tower, final int floor) {
 		if (tower.getBlockState(settledMarker(floor)).is(TowerBlocks.TOWER_WALL)) {
@@ -288,7 +290,12 @@ public final class TowerFloors {
 							tower.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 						}
 					}
-					tower.setBlock(origin.offset(x, -1, z), SAFE_FLOOR.defaultBlockState(), Block.UPDATE_ALL);
+					// Only the floor's own stone and traps: a block a player set into the floor stays.
+					BlockPos ground = origin.offset(x, -1, z);
+					BlockState was = tower.getBlockState(ground);
+					if (was.getBlock() instanceof TowerTrapBlock || java.util.Arrays.stream(palette(floor)).anyMatch(stone -> stone.is(was.getBlock()))) {
+						tower.setBlock(ground, SAFE_FLOOR.defaultBlockState(), Block.UPDATE_ALL);
+					}
 				}
 			}
 		}
@@ -298,7 +305,12 @@ public final class TowerFloors {
 	}
 
 	private static void stations(final ServerLevel tower, final int floor) {
-		workstations(floor).forEach((pos, block) -> tower.setBlock(pos, block.defaultBlockState(), Block.UPDATE_CLIENTS));
+		// Only onto open floor, so nothing a player set there is lost.
+		workstations(floor).forEach((pos, state) -> {
+			if (tower.getBlockState(pos).isAir()) {
+				tower.setBlock(pos, state, Block.UPDATE_CLIENTS);
+			}
+		});
 	}
 
 	/** A fresh floor has no neighbours to tell and no shapes to fit, so only the clients hear of each block. */

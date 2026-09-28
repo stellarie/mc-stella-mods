@@ -73,6 +73,18 @@ public class TowerRuneGameTest {
 		helper.succeed();
 	}
 
+	/** A rune goes into one piece: a stack of headgear takes none, so one rune never runes a whole stack. */
+	@GameTest
+	public void aRuneGoesIntoOnePieceNotAStack(final GameTestHelper helper) {
+		RuneData rune = new RuneData(TowerElement.FIRE, DROP_FLOOR);
+		ItemStack one = TowerRunes.apply(new ItemStack(Items.CARVED_PUMPKIN), rune);
+		ItemStack stack = TowerRunes.apply(new ItemStack(Items.CARVED_PUMPKIN, 16), rune);
+		TowerTestSupport.result("runeStack", "one=" + one.getCount() + " stack=" + stack.getCount());
+		helper.assertTrue(one.getCount() == 1, "a single pumpkin took no rune, so the case proves nothing");
+		helper.assertTrue(stack.isEmpty(), "a stack of " + stack.getCount() + " pumpkins took one rune");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void theRuneChanceGrowsWithRank(final GameTestHelper helper) {
 		double mob = TowerRunes.dropChance(TowerRank.MOB);

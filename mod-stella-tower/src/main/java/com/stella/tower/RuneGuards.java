@@ -1,12 +1,12 @@
 package com.stella.tower;
 
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.Map;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.ArrayList;
+import java.util.List;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -48,25 +48,28 @@ public final class RuneGuards {
 	private static final AttachmentType<Kills> KILLS = AttachmentRegistry.create(StellaTower.id("rune_floor_kills"));
 	/** The part of the blow now landing that Water armor holds back, until the blow is known to have landed. */
 	private static final AttachmentType<Held> HELD = AttachmentRegistry.create(StellaTower.id("rune_held_wound"));
-	private static final Map<LivingEntity, Wound> WOUNDS = new IdentityHashMap<>();
+	/** Set while a blow carries stored heat, so the heat is spent only once the blow has landed. */
+	private static final AttachmentType<Boolean> KINDLING = AttachmentRegistry.create(StellaTower.id("rune_kindling"));
 
 	private record Kills(int lastAt, int count) {
 	}
 
-	private record Held(float now, float rest) {
+	private record Held(float rest) {
 	}
 
-	private static final class Wound {
-		private float rest;
-		private int parts;
-		private int nextAt;
-
-		private Wound(final float rest, final int nextAt) {
-			this.rest = rest;
-			this.parts = SPREAD_PARTS;
-			this.nextAt = nextAt;
-		}
+	/** What is left of a spread blow: its rest, the parts it still comes in, and the ticks to the next. */
+	public record Wound(float rest, int parts, int delay) {
+		public static final Codec<Wound> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+			Codec.FLOAT.fieldOf("rest").forGetter(Wound::rest),
+			Codec.INT.fieldOf("parts").forGetter(Wound::parts),
+			Codec.INT.fieldOf("delay").forGetter(Wound::delay)
+		).apply(instance, Wound::new));
 	}
+
+	/** Saved with the player, so a spread blow still lands after they log out and back in. */
+	public static final AttachmentType<Wound> WOUND = AttachmentRegistry.create(
+		StellaTower.id("rune_wound"), builder -> builder.persistent(Wound.CODEC)
+	);
 
 	private RuneGuards() {
 	}
@@ -80,26 +83,34 @@ public final class RuneGuards {
 			if (blocked || taken <= 0.0F || !(entity instanceof ServerPlayer player) || !(player.level() instanceof ServerLevel level)) {
 				return;
 			}
-			if (held != null && held.now() > 0.0F) {
-				// What armor and resistance took from the part now, they take from the rest too.
-				wound(level, player, held.rest() * Math.min(1.0F, taken / held.now()));
+			if (held != null) {
+				// The rest is dealt later as blows of its own, which armor and resistance meet as they come.
+				wound(player, held.rest());
 			}
 			if (source.is(DamageTypeTags.IS_FIRE) && worn(player, TowerElement.FIRE) != null) {
 				player.setAttached(HEAT, Math.min(HEAT_STORE_CAP, storedHeat(player) + taken));
 			}
-			if (source.getEntity() instanceof LivingEntity attacker && attacker != player && worn(player, TowerElement.LIGHTNING) != null) {
+			if (source.getEntity() instanceof Enemy && worn(player, TowerElement.LIGHTNING) != null) {
 				RuneEffects.addCharge(player);
 			}
 		});
+		// Stored heat is spent by the blow that carried it, once that blow has landed.
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
+			if (source.getEntity() instanceof Player player && player != entity && player.hasAttached(KINDLING)) {
+				player.removeAttached(KINDLING);
+				if (!blocked && taken > 0.0F) {
+					player.removeAttached(HEAT);
+				}
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-			if (!(entity instanceof Mob) || entity instanceof TowerGhost || !(source.getEntity() instanceof ServerPlayer player)) {
+			if (!(entity instanceof Enemy) || entity instanceof TowerGhost || !(source.getEntity() instanceof ServerPlayer player)) {
 				return;
 			}
 			int now = now(player);
 			player.setAttached(KILLS, new Kills(now, recentKills(player) + 1));
 		});
 		ServerTickEvents.END_SERVER_TICK.register(RuneGuards::spread);
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> WOUNDS.clear());
 	}
 
 	public static double windCut(final double power) {
@@ -112,6 +123,10 @@ public final class RuneGuards {
 
 	/** The power of the strongest worn armor rune of this element, or null if none is worn. */
 	public static @Nullable Double worn(final LivingEntity wearer, final TowerElement element) {
+		// A mob that picks up runed armor wears it, but only a player carries its signatures.
+		if (!(wearer instanceof Player)) {
+			return null;
+		}
 		Double best = null;
 		for (EquipmentSlot slot : TowerRunes.ARMOR_SLOTS) {
 			ItemStack piece = wearer.getItemBySlot(slot);
@@ -129,8 +144,8 @@ public final class RuneGuards {
 	}
 
 	public static float pendingWound(final Player player) {
-		Wound wound = WOUNDS.get(player);
-		return wound == null ? 0.0F : wound.rest;
+		Wound wound = player.getAttached(WOUND);
+		return wound == null ? 0.0F : wound.rest();
 	}
 
 	/** The mobs a player has slain, each within a minute of the last. */
@@ -166,13 +181,16 @@ public final class RuneGuards {
 		}
 		if (worn(victim, TowerElement.WATER) != null && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && guarded > BIG_HIT_SHARE * victim.getMaxHealth()) {
 			float now = (float) (guarded * BIG_HIT_NOW);
-			victim.setAttached(HELD, new Held(now, guarded - now));
+			victim.setAttached(HELD, new Held(guarded - now));
 			guarded = now;
 		}
 		return guarded;
 	}
 
-	/** A blow a Fire-armored player strikes, with the heat they have taken added. */
+	/**
+	 * A blow a Fire-armored player strikes, with the heat they have taken added after the weapon's tier, so a
+	 * rune does not multiply it. The heat is spent once the blow lands.
+	 */
 	public static float kindle(final LivingEntity victim, final DamageSource source, final float amount) {
 		if (!(source.getEntity() instanceof Player player) || player == victim) {
 			return amount;
@@ -181,7 +199,7 @@ public final class RuneGuards {
 		if (heat <= 0.0F) {
 			return amount;
 		}
-		player.removeAttached(HEAT);
+		player.setAttached(KINDLING, true);
 		return amount + heat;
 	}
 
@@ -221,52 +239,44 @@ public final class RuneGuards {
 		return current + gain / 2 + (gain % 2 != 0 && wearer.tickCount % 2 == 0 ? 1 : 0);
 	}
 
-	private static void wound(final ServerLevel level, final LivingEntity victim, final float rest) {
+	private static void wound(final Player victim, final float rest) {
 		if (rest <= 0.0F) {
 			return;
 		}
-		int now = now(victim);
-		Wound wound = WOUNDS.get(victim);
-		if (wound == null) {
-			WOUNDS.put(victim, new Wound(rest, now + SPREAD_TICKS));
-		} else {
-			wound.rest += rest;
-			wound.parts = SPREAD_PARTS;
-		}
+		Wound wound = victim.getAttached(WOUND);
+		victim.setAttached(WOUND, wound == null ? new Wound(rest, SPREAD_PARTS, SPREAD_TICKS) : new Wound(wound.rest() + rest, SPREAD_PARTS, wound.delay()));
 	}
 
 	private static void spread(final MinecraftServer server) {
-		if (WOUNDS.isEmpty()) {
-			return;
-		}
-		int now = server.getTickCount();
-		Map<LivingEntity, Float> due = new IdentityHashMap<>();
-		for (Iterator<Map.Entry<LivingEntity, Wound>> it = WOUNDS.entrySet().iterator(); it.hasNext();) {
-			Map.Entry<LivingEntity, Wound> entry = it.next();
-			LivingEntity victim = entry.getKey();
-			Wound wound = entry.getValue();
-			if (victim.isRemoved() || !victim.isAlive()) {
-				it.remove();
+		List<ServerPlayer> hurt = new ArrayList<>();
+		List<Float> parts = new ArrayList<>();
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			Wound wound = player.getAttached(WOUND);
+			if (wound == null) {
 				continue;
 			}
-			if (now < wound.nextAt) {
+			if (!player.isAlive()) {
+				player.removeAttached(WOUND);
 				continue;
 			}
-			float part = wound.parts <= 1 ? wound.rest : wound.rest / wound.parts;
-			wound.rest -= part;
-			wound.parts--;
-			wound.nextAt = now + SPREAD_TICKS;
-			if (wound.parts <= 0) {
-				it.remove();
+			if (wound.delay() > 1) {
+				player.setAttached(WOUND, new Wound(wound.rest(), wound.parts(), wound.delay() - 1));
+				continue;
 			}
-			due.put(victim, part);
+			float part = wound.parts() <= 1 ? wound.rest() : wound.rest() / wound.parts();
+			if (wound.parts() <= 1) {
+				player.removeAttached(WOUND);
+			} else {
+				player.setAttached(WOUND, new Wound(wound.rest() - part, wound.parts() - 1, SPREAD_TICKS));
+			}
+			hurt.add(player);
+			parts.add(part);
 		}
 		// Dealt outside the sweep, so a wound that kills cannot disturb it.
-		due.forEach((victim, part) -> {
-			if (victim.level() instanceof ServerLevel level) {
-				DamageSource source = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DELAYED_WOUND));
-				victim.hurtServer(level, source, part);
-			}
-		});
+		for (int k = 0; k < hurt.size(); k++) {
+			ServerPlayer player = hurt.get(k);
+			ServerLevel level = player.level();
+			player.hurtServer(level, new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DELAYED_WOUND)), parts.get(k));
+		}
 	}
 }

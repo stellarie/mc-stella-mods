@@ -8,7 +8,7 @@ last_verified: 2026-09-28
 
 ## Purpose
 
-This repository develops separate Fabric mods on their own integration branches: mobs, equips, spells, villages, the Endless Tower, food, and the nether raid. The 2026-09-26 `main` snapshot includes unfinished work.
+This repository develops separate Fabric mods on their own integration branches: mobs, equips, spells, villages, the Endless Tower, food, and the nether raid. The `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -18,6 +18,7 @@ This repository develops separate Fabric mods on their own integration branches:
 - `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
 - `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
 - `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
+- `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
 
 ## Architecture
 
@@ -131,6 +132,12 @@ This repository develops separate Fabric mods on their own integration branches:
 - Next: Run the Prism instance and record those client checks before closing the task.
 - Verification: Clean build and five consecutive eighteen-test suites passed. Source and installed jar SHA-256 match at `45A891C311986C88148644C885068BBAA182140071D4E412ABE33673B1333A06`.
 - Evidence: `C:/Users/Stella/notes/blackboard/mc-stella-mods-food.work/verification` and the task blackboard.
+### 2026-09-28 - CI jar bundle
+
+- Done: Added a draft CI workflow and runner on `feat/ci-jar-bundle`.
+- Pending: A required mobs GameTest failure blocks the five-run gate and release ZIP.
+- Next: Resolve `an_elite_wolf_slows_and_weakens_the_hostiles_around_it`, then run the full gate.
+- Verification: Four focused Python tests passed. The full runner stopped during the mobs `clean build`.
 
 ### 2026-09-28 - Build and deploy current main
 

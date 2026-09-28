@@ -290,8 +290,8 @@ from the biome, with no extra client code.
 - Every 10 seconds it gives the nearest player within 12 blocks Strength, Resistance, Regeneration or
   Speed for 10 seconds.
 - A player who kills a ghost is blinded for 30 seconds.
-- A ghost killed by a player has a 3% chance to drop a Ghost Rune; what the rune does is still to be
-  decided.
+- A ghost killed by a player has a 3% chance to drop a Ghost Rune. What it does is under "Built: ghost
+  runes" below.
 - A boss floor's buffs, thorns included, never go to a ghost.
 - Ghosts are named "Ghost <element> Wisp". The client draws them in a blaze's form, pale grey and see-through.
 - Assumed until told otherwise: "the void" means the whole tower, not only the void-themed floors 31-40.
@@ -338,22 +338,35 @@ What an armor rune does for its wearer beyond turning blows. A signature works w
 the element, at the strongest such piece's power, and only for players. Like the weapon signatures, they
 work anywhere and against any mob, not only in the tower:
 
-- **Fire:** fire damage taken is stored as heat, up to 20. The wearer's next blow on anything adds all of
-  it, and the heat resets.
+- **Fire:** fire damage taken is stored as heat, up to 20. The wearer's next blow that lands adds all of
+  it, after the weapon rune's tier, so the rune does not multiply it; then the heat resets. A blow turned
+  aside spends none.
 - **Ice:** slowness lasts half as long, and frost gathers half as fast.
 - **Water:** a blow larger than a quarter of the wearer's max health lands a quarter now. The rest comes
-  as a delayed wound in three parts, one a second. Armor and resistance reduce the delayed part as they
-  reduced the first, and not a second time.
-- **Lightning:** lightning deals nothing. Each blow a mob lands stores a Lightning charge, up to 5.
+  as a delayed wound in three parts, one a second. Each part is a blow of its own, so armor, resistance
+  and Protection meet it as they meet any blow. A wound still to come is saved with the player, so
+  logging out does not shed it.
+- **Lightning:** lightning deals nothing. Each blow a hostile mob lands stores a Lightning charge, up to 5.
 - **Wind:** projectiles deal `15% + P/20 %` less.
 - **Void:** a beneficial effect given to a hostile mob within 8 blocks has its amplifier halved, rounded
-  down: Strength V becomes Strength III. A boss floor's buffs are halved the same way.
+  down: Strength V becomes Strength III. A boss floor's effect buffs are halved the same way; its extra
+  health, thorns and extra lives are not effects and stay whole.
 - **Holy:** harmful effects last `20% + P/10 %` shorter.
-- **Dark:** a mob's blow is 1% weaker for each mob the wearer has slain, up to 30%. Kills count while each
+- **Dark:** a mob's blow is 1% weaker for each hostile mob the wearer has slain, up to 30%. Kills count while each
   comes within a minute of the last; a minute without one starts the count over.
 - Deviation from the plan: Holy weapon, Lightning, Void and Dark armor were written for the tower's
   guardians and boss-floor buffs. Oniichan asked on 2026-09-28 that the effects not be tower-specific, so
   they now use the general forms above.
+
+### Review fixes (2026-09-28)
+
+- Armor signatures belong to players only; a mob that picks up runed armor gains none of them.
+- Fire's burst is a blow of its own, not fire, so the fire-born (blazes, magma cubes, wither skeletons,
+  the Wither) burst too, and armor, resistance and enchantments do not blunt it. It leaves the target's
+  hit cooldown as it found it.
+- Thorns a runed player returns are not struck with the weapon, so the weapon rune leaves them be.
+- A rune goes into one piece of gear at a time; a stack takes none.
+- The Water, Fire, Lightning and Dark changes above.
 
 ## Change: safe zones, chorus fruit and beds (2026-09-28)
 
@@ -374,3 +387,44 @@ work anywhere and against any mob, not only in the tower:
   pack or another mod tags the tower's blocks.
 - A bed in the tower does nothing: no sleep, no spawn point, and no blast. It used to explode, as in the
   Nether.
+
+## Built: ghost runes (2026-09-28)
+
+A ghost rune goes into a chestplate or a weapon at the anvil, one piece at a time, for 64 emeralds from the
+inventory and no levels, as an elemental rune does. It sits beside any elemental rune the piece carries.
+
+- **Chestplate:** the wearer phases through mobs: neither pushes the other. A hostile mob the wearer stands
+  within is slowed (Slowness II for 3 seconds, renewed while they overlap). The wearer evades 30% of blows
+  of any kind; only a blow nothing can turn, such as the void's or a command's, always lands. Measured: 609
+  of 2000 blows evaded.
+- **Weapon:** its blows meet half the target's armor and armor toughness, and pass a raised shield. A bow
+  or crossbow carries it to its arrows.
+- Gear with a ghost rune says so in its tooltip, and gear with an elemental rune now names its rune and floor.
+- Like the other runes, a ghost rune's effects work anywhere, not only in the tower.
+
+## Built: the wisp (2026-09-28)
+
+- **Recipe:** a Ghost Rune, two Echo Shards and a Glowstone Dust, anywhere in a crafting grid, make one
+  Wisp. Its rarity is the ghost rune's: a ghost a player slays leaves one 3% of the time, plus an ancient
+  city's echo shards.
+- **Use:** used on a floor of the tower, a wisp lights the shortest walk from where the player stands to
+  the floor's portal, for 20 minutes. The way is drawn as a trail of lights every half second, seen by
+  everyone on the floor. Each use spends one of its 24 uses. Out of the tower, or where no way leads to a
+  portal, it does nothing and spends nothing.
+- **The price:** every hostile mob standing within 2 blocks of a lit way is enraged, with Speed II and
+  Strength II, renewed each second while it stays there and lasting 3 seconds after.
+- A lit way lives in memory: a server restart puts it out.
+
+### Review fixes: safe zones, ghost runes and the wisp (2026-09-28)
+
+- A wisp's 24 uses are its own count, shown as a bar, not wear: no crafting grid, grindstone or anvil mends
+  them back. It rests a second after each use, so a double click spends one use. A player keeps one lit
+  way; using a wisp again puts out their old one. A way on a floor nobody stands on keeps its time but is
+  neither drawn nor felt. Mobs within 2 blocks of a lit step are enraged, measured by block.
+- A piece that already carries a ghost rune takes no second one.
+- Settling an older floor sets a station only onto open floor and relays only the floor's own stone and
+  traps, so a player's chest or a block they set into the floor stays.
+- The safe room's furnace and anvil face into the room.
+- A ghost chestplate renews a passed-through mob's slowness once a second, not every tick.
+- Left as is: floor mobs are still raised inside a boss floor's walled hall. The hall is the boss's room,
+  and mobs from it that chase a player pass through the safe room, which the safe zones allow.
