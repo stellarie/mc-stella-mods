@@ -29,6 +29,7 @@ public final class StellaTower implements ModInitializer {
 		TowerProgress.register();
 		TowerWanderers.register();
 		TowerTraps.register();
+		TowerRewards.register();
 		LOGGER.info("Endless Tower ready: floors of {} by {} blocks, {} high", TowerLayout.SIZE, TowerLayout.SIZE, TowerLayout.HEIGHT);
 	}
 }

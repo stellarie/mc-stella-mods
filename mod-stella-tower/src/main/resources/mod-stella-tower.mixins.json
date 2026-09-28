@@ -7,7 +7,8 @@
 		"TowerEntryMixin",
 		"TowerRandomTeleportMixin",
 		"TowerDamageMixin",
-		"MobEffectInstanceAccessor"
+		"MobEffectInstanceAccessor",
+		"TowerExperienceMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
