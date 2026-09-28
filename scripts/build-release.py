@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Build every Gradle mod, run five GameTest suites, and bundle release jars."""
+"""Build Gradle mods, run five GameTest suites each, and bundle release jars."""
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -52,52 +53,104 @@ def copy_log(mod: Path, number: int, output: Path) -> None:
         shutil.copy2(log, target)
 
 
-def build(root: Path, output: Path) -> Path:
-    mods = discover(root)
-    print("Detected mods: " + ", ".join(mod.name for mod in mods), flush=True)
-    bundle = output / "mc-stella-mods.zip"
-    bundle.unlink(missing_ok=True)
-    jars: list[tuple[Path, Path]] = []
-    for mod in mods:
+def build_one(root: Path, output: Path, name: str) -> None:
+    mods = {mod.name: mod for mod in discover(root)}
+    if name not in mods:
+        raise RuntimeError(f"Unknown Gradle mod: {name}")
+    mod = mods[name]
+    stage = output / "jars" / name
+    stage.mkdir(parents=True, exist_ok=True)
+    for old_jar in stage.glob("*.jar"):
+        old_jar.unlink()
+    try:
+        run(mod, "clean", "build")
+    finally:
+        copy_log(mod, 0, output)
+    jars = release_jars(mod)
+    if not jars:
+        raise RuntimeError(f"No release jars found for {name}")
+    for number in range(1, 6):
+        log = mod / "build" / "run" / "gameTest" / "logs" / "latest.log"
+        log.unlink(missing_ok=True)
         try:
-            run(mod, "clean", "build")
+            run(mod, "runGameTest", "--rerun")
         finally:
-            copy_log(mod, 0, output)
-        found = release_jars(mod)
+            copy_log(mod, number, output)
+    for jar in jars:
+        shutil.copy2(jar, stage / jar.name)
+    print(f"Staged {len(jars)} release jars for {name}", flush=True)
+
+
+def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
+    target = output / "mc-stella-mods.zip"
+    target.unlink(missing_ok=True)
+    if not expected_mods or len(set(expected_mods)) != len(expected_mods):
+        raise RuntimeError("Expected mod list is empty or contains duplicates")
+    if not jars_dir.is_dir():
+        raise RuntimeError(f"Jar directory missing: {jars_dir}")
+    actual_mods = {path.name for path in jars_dir.iterdir() if path.is_dir()}
+    if actual_mods != set(expected_mods):
+        raise RuntimeError(f"Jar artifact mismatch: expected {expected_mods}, found {sorted(actual_mods)}")
+    jars = []
+    for name in expected_mods:
+        found = sorted((jars_dir / name).glob("*.jar"))
         if not found:
-            raise RuntimeError(f"No release jars found for {mod.name}")
-        jars.extend((mod, jar) for jar in found)
-
-    for mod in mods:
-        for number in range(1, 6):
-            log = mod / "build" / "run" / "gameTest" / "logs" / "latest.log"
-            log.unlink(missing_ok=True)
-            try:
-                run(mod, "runGameTest", "--rerun")
-            finally:
-                copy_log(mod, number, output)
-
-    output.mkdir(parents=True, exist_ok=True)
+            raise RuntimeError(f"No release jars staged for {name}")
+        jars.extend(found)
     names: set[str] = set()
-    for _, jar in jars:
+    for jar in jars:
         if jar.name in names:
             raise RuntimeError(f"Duplicate jar name: {jar.name}")
         names.add(jar.name)
-    with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for _, jar in jars:
-            archive.write(jar, jar.name)
-    print(f"Release bundle: {bundle} ({len(jars)} jars)", flush=True)
-    return bundle
+    output.mkdir(parents=True, exist_ok=True)
+    temporary = output / "mc-stella-mods.zip.tmp"
+    temporary.unlink(missing_ok=True)
+    try:
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for jar in jars:
+                archive.write(jar, jar.name)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
+    print(f"Release bundle: {target} ({len(jars)} jars)", flush=True)
+    return target
+
+
+def build(root: Path, output: Path) -> Path:
+    mods = discover(root)
+    print("Detected mods: " + ", ".join(mod.name for mod in mods), flush=True)
+    (output / "mc-stella-mods.zip").unlink(missing_ok=True)
+    for mod in mods:
+        build_one(root, output, mod.name)
+    return bundle(output / "jars", [mod.name for mod in mods], output)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--output", type=Path, default=ROOT / "release-output")
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--list", action="store_true")
+    parser.add_argument("--mod")
+    parser.add_argument("--bundle", action="store_true")
+    parser.add_argument("--mods-json")
     args = parser.parse_args()
     try:
-        build(args.root.resolve(), args.output.resolve())
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        if args.list:
+            print(json.dumps([mod.name for mod in discover(args.root.resolve())]))
+        elif args.mod:
+            build_one(args.root.resolve(), args.output.resolve(), args.mod)
+        elif args.bundle:
+            if not args.mods_json:
+                raise RuntimeError("--bundle requires --mods-json")
+            names = json.loads(args.mods_json)
+            if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+                raise RuntimeError("--mods-json must be a JSON list of mod names")
+            jars_dir = args.input or args.output / "jars"
+            bundle(jars_dir.resolve(), names, args.output.resolve())
+        else:
+            build(args.root.resolve(), args.output.resolve())
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
         print(f"Release failed: {error}", file=sys.stderr)
         return 1
     return 0
