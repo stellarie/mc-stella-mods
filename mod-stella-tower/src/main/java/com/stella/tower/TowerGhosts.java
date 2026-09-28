@@ -67,8 +67,9 @@ public final class TowerGhosts {
 	public static void register() {
 		FabricDefaultAttributeRegistry.register(GHOST, TowerGhost.createAttributes());
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			// Only a blow struck in hand: a shot, a blast or a spell that kills a ghost lays no curse.
 			if (!(entity instanceof TowerGhost ghost) || !(entity.level() instanceof ServerLevel level)
-				|| !(source.getEntity() instanceof ServerPlayer killer)) {
+				|| !(source.getEntity() instanceof ServerPlayer killer) || source.getDirectEntity() != killer) {
 				return;
 			}
 			// The price of a ghost's death is its killer's sight.
@@ -126,7 +127,8 @@ public final class TowerGhosts {
 	/** Keeps an occupied floor's ghosts: a spawning round may raise one while it has fewer than its share. */
 	public static void haunt(final ServerLevel tower, final int floor) {
 		double chance = PINNED_RISE.getOrDefault(floor, RISE_CHANCE);
-		if (on(tower, floor).size() >= GHOSTS_PER_FLOOR || tower.getRandom().nextDouble() >= chance) {
+		// Ghosts are kept with the floor: until its own have loaded, it cannot be told how many it holds.
+		if (!TowerElites.roomLoaded(tower, floor) || on(tower, floor).size() >= GHOSTS_PER_FLOOR || tower.getRandom().nextDouble() >= chance) {
 			return;
 		}
 		TowerGhost ghost = make(tower, floor);
@@ -149,6 +151,11 @@ public final class TowerGhosts {
 	static void tend(final ServerLevel level, final TowerGhost ghost) {
 		int age = ghost.tickCount;
 		LivingEntity quarry = ghost.getTarget();
+		if (quarry != null && ghost.distanceTo(quarry) > CAST_RANGE) {
+			// Out of its bolt's reach: let it go, and keep with the players.
+			ghost.setTarget(null);
+			quarry = null;
+		}
 		if (age >= ghost.nextCast && quarry != null && quarry.isAlive() && ghost.distanceTo(quarry) <= CAST_RANGE && ghost.hasLineOfSight(quarry)) {
 			ghost.nextCast = age + CAST_TICKS;
 			cast(level, ghost, quarry);
@@ -181,6 +188,11 @@ public final class TowerGhosts {
 			level.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
 		}
 		level.playSound(null, ghost.blockPosition(), SoundEvents.EVOKER_CAST_SPELL, SoundSource.NEUTRAL, 0.8F, 1.4F);
+		// The kill is the players': the nearest is credited, so the floor's experience and loot still fall.
+		ServerPlayer credited = nearestPlayer(level, ghost, player -> true);
+		if (credited != null) {
+			quarry.setLastHurtByPlayer(credited, 100);
+		}
 		quarry.hurtServer(level, level.damageSources().indirectMagic(ghost, ghost), SPELL_BASE);
 	}
 
@@ -207,15 +219,16 @@ public final class TowerGhosts {
 			this.setFlags(EnumSet.of(Goal.Flag.MOVE));
 		}
 
+		/** It keeps with the players even while casting: its bolt reaches from beside them. */
 		@Override
 		public boolean canUse() {
 			net.minecraft.world.entity.player.Player player = this.ghost.level().getNearestPlayer(this.ghost, FOLLOW_RANGE);
-			return player != null && !player.isSpectator() && this.ghost.distanceTo(player) > KEEP_NEAR && this.ghost.getTarget() == null;
+			return player != null && !player.isSpectator() && this.ghost.distanceTo(player) > KEEP_NEAR;
 		}
 
 		@Override
 		public boolean canContinueToUse() {
-			return !this.ghost.getNavigation().isDone() && this.ghost.getTarget() == null;
+			return !this.ghost.getNavigation().isDone();
 		}
 
 		@Override
