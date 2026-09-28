@@ -10,6 +10,7 @@ works on one. They are the standard, not a suggestion.
 - `main-spells` is the integration branch for `mod-stella-spells`.
 - `main-villages` is the integration branch for `mc-stella-villages`.
 - `main-tower` is the integration branch for `mod-stella-tower`, the Endless Tower.
+- `main-food` is the integration branch for `mod-stella-food`.
 - Every agent creates a work branch from the current tip of the integration
   branch for the mod it changes.
 - Do not branch from `master` or another work branch unless oniichan explicitly

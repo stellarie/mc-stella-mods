@@ -48,3 +48,9 @@ java {
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
 }
+
+tasks.named('runGameTest') {
+	if (project.hasProperty('gameTestFilter')) {
+		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
+}

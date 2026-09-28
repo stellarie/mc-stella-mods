@@ -1,0 +1,17 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:coal",
+		"minecraft:coal",
+		"minecraft:coal",
+		"minecraft:coal",
+		"minecraft:coal",
+		"minecraft:flint_and_steel",
+		"minecraft:crafting_table"
+	],
+	"result": {
+		"id": "mod-stella-food:cooking_station",
+		"count": 1
+	}
+}

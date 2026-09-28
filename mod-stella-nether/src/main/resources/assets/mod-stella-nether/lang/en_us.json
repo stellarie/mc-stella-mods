@@ -1,0 +1,21 @@
+{
+  "message.mod-stella-nether.ask": "Which nether? ",
+  "message.mod-stella-nether.normal": "[Normal nether]",
+  "message.mod-stella-nether.normal.hover": "The world's own nether",
+  "message.mod-stella-nether.chosen.normal": "Stay in the portal to enter the normal nether.",
+  "message.mod-stella-nether.chosen.raid": "Stay in the portal to enter the raid nether.",
+  "message.mod-stella-nether.host.normal": "[Host raid: normal]",
+  "message.mod-stella-nether.host.normal.hover": "Open the raid nether. Everyone inside holds one random boon.",
+  "message.mod-stella-nether.host.hard": "[Host raid: hard]",
+  "message.mod-stella-nether.host.hard.hover": "Open the raid nether. Everyone inside holds one boon; every raid mob holds two.",
+  "message.mod-stella-nether.join.normal": "[Join the raid (normal)]",
+  "message.mod-stella-nether.join.normal.hover": "Join the running raid nether.",
+  "message.mod-stella-nether.join.hard": "[Join the raid (hard)]",
+  "message.mod-stella-nether.join.hard.hover": "Join the running raid nether. Its mobs hold two boons each.",
+  "message.mod-stella-nether.enraged": "Thirty minutes have passed. The nether turns on you: run for the portal!",
+  "entity.mod-stella-nether.blaze_sovereign": "Blaze Sovereign",
+  "item.mod-stella-nether.blaze_core": "Blaze Core",
+  "item.mod-stella-nether.flame_mantle": "Flame Mantle",
+  "message.mod-stella-nether.end_sealed": "The End is sealed. Bring %s Blaze Cores to open it.",
+  "message.mod-stella-nether.end_opened": "%s has opened the End with three Blaze Cores. It stays open for everyone."
+}

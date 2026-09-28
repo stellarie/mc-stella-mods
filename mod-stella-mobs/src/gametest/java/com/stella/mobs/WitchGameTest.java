@@ -175,7 +175,8 @@ public class WitchGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = BAG_CYCLE_TICKS)
+	// An adjacent undead ally can receive a support Harming potion and corrupt the offense cadence.
+	@GameTest(maxTicks = BAG_CYCLE_TICKS, padding = ALLY_PADDING)
 	public void witchThrowsOneHarmfulPotionEveryThreeSeconds(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);

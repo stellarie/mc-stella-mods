@@ -1,0 +1,57 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"mod-stella-nether" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The rest of the modpack; each is substituted by its included build in settings.gradle.
+	implementation "com.stella.mobs:mod-stella-mobs:${project.version}"
+	implementation "com.stella.equips:mod-stella-equips-enchants:${project.version}"
+	implementation "com.stella.spells:mod-stella-spells:${project.version}"
+	implementation "com.stella.villages:mc-stella-villages:${project.version}"
+	implementation "com.stella.tower:mod-stella-tower:${project.version}"
+	implementation "com.stella.food:mod-stella-food:${project.version}"
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "mod-stella-nether-test-mod-stella-nether"
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = true
+	}
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

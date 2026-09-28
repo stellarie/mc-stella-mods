@@ -1,0 +1,5 @@
+{
+	"variants": {
+		"": { "model": "mod-stella-food:block/cooking_station" }
+	}
+}

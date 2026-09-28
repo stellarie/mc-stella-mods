@@ -81,27 +81,28 @@ public class BossGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void theLevelStepMatchesR12sOwnDistanceWeight(final GameTestHelper helper) {
+	public void tenThreatLevelsRaiseHealthAndDamage(final GameTestHelper helper) {
 		Arena.buildFloor(helper);
 		helper.setTime(Arena.NIGHT_TIME);
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 2).spawn();
 
-		double tenLevels = SpawnScaling.LEVEL_HEALTH_BONUS * SpawnScaling.LEVEL_DISTANCE_POINTS;
+		double tenLevelHealth = SpawnScaling.LEVEL_HEALTH_BONUS * 10;
+		double tenLevelDamage = SpawnScaling.LEVEL_DAMAGE_BONUS * 10;
 		int level = SpawnScaling.areaLevel(mob);
+		var spawn = helper.getLevel().getRespawnData().pos();
+		int expectedArea = (int) Math.floor(Math.hypot(mob.getX() - spawn.getX(), mob.getZ() - spawn.getZ())
+			/ SpawnScaling.BLOCKS_PER_LEVEL);
 
 		StellaMobs.LOGGER.info(
-			"[BEHAVIOR] test={} RESULT tenLevelsOfHealth={} r12HealthWeight={} areaLevel={} depthPoints={}",
-			TEST, tenLevels, SpawnScaling.HEALTH_DISTANCE_WEIGHT, level, SpawnScaling.LEVEL_DEPTH_POINTS
+			"[BEHAVIOR] test={} RESULT tenLevelHealth={} tenLevelDamage={} areaLevel={} expectedArea={}",
+			TEST, tenLevelHealth, tenLevelDamage, level, expectedArea
 		);
 
 		helper.assertTrue(
-			Math.abs(tenLevels - SpawnScaling.HEALTH_DISTANCE_WEIGHT) < EPSILON,
-			"ten levels are not R12's distance weight: " + tenLevels
+			Math.abs(tenLevelHealth - 0.5) < EPSILON && Math.abs(tenLevelDamage - 0.25) < EPSILON,
+			"ten threat levels did not raise health and damage by the expected amounts"
 		);
-		helper.assertTrue(
-			level >= 0 && level <= SpawnScaling.LEVEL_DISTANCE_POINTS + SpawnScaling.LEVEL_DEPTH_POINTS,
-			"the area level left its range: " + level
-		);
+		helper.assertValueEqual(Integer.valueOf(level), Integer.valueOf(expectedArea), "distance area level");
 		helper.succeed();
 	}
 }
