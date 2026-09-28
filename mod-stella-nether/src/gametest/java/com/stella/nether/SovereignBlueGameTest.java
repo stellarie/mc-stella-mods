@@ -33,6 +33,7 @@ public class SovereignBlueGameTest {
 		raid.addFreshEntity(loose);
 		helper.succeedWhen(() -> {
 			helper.assertTrue(!cast.spawned().isEmpty(), "the spiral has fired nothing yet");
+			helper.assertTrue(raid.getEntity(loose.getUUID()) == loose, "the loose fireball has not loaded yet");
 			long plain = cast.spawned().stream().filter(entity -> entity instanceof SmallFireball ball && !ball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)).count();
 			boolean looseBlue = loose.getItem().is(NetherItems.SOUL_FIRE_CHARGE);
 			NetherTestSupport.result("sovereignFireBlue", "spiral=" + cast.spawned().size() + " plain=" + plain + " looseBlue=" + looseBlue);
