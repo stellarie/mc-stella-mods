@@ -1,83 +1,88 @@
 package com.stella.mobs.scaling;
 
 import com.stella.mobs.StellaMobs;
-import java.util.Set;
+import com.stella.mobs.behavior.Bosses;
+import com.stella.mobs.behavior.Traits;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.Level;
 
-/**
- * R12: a mob grows tougher with its distance from the world spawn and, more slowly, with its depth.
- * Two permanent modifiers carry it, so the numbers survive a save and load, and a raised maximum is
- * always paired with a heal because a raised maximum does not heal on its own.
- */
+/** One durable threat roll sets health and damage. Depth keeps its prior contribution. */
 public final class SpawnScaling {
-	public static final double DISTANCE_CAP = 1024.0;
+	public static final int BLOCKS_PER_LEVEL = 500;
 	public static final double DEPTH_CAP = 256.0;
-	public static final double HEALTH_DISTANCE_WEIGHT = 0.5;
 	public static final double HEALTH_DEPTH_WEIGHT = 0.25;
-	public static final double DAMAGE_DISTANCE_WEIGHT = 0.25;
 	public static final double DAMAGE_DEPTH_WEIGHT = 0.125;
+	public static final double LEVEL_HEALTH_BONUS = 0.05;
+	public static final double LEVEL_DAMAGE_BONUS = 0.025;
 	public static final Identifier HEALTH_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "spawn_scale_health");
 	public static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "spawn_scale_damage");
-	public static final int LEVEL_DISTANCE_POINTS = 10;
-	public static final int LEVEL_DEPTH_POINTS = 5;
-	/** R12's own distance weight divided by its own level count, so ten levels are exactly that weight. */
-	public static final double LEVEL_HEALTH_BONUS = HEALTH_DISTANCE_WEIGHT / LEVEL_DISTANCE_POINTS;
-	public static final double LEVEL_DAMAGE_BONUS = DAMAGE_DISTANCE_WEIGHT / LEVEL_DISTANCE_POINTS;
-	// A scaled boss breaks an encounter budget, so the four mobs with a scripted fight stay vanilla.
-	private static final Set<EntityType<?>> EXEMPT = Set.of(
-		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.ENDER_DRAGON
-	);
 
 	private SpawnScaling() {
 	}
 
-	public static double healthMultiplier(final double distance, final double depth) {
-		return 1.0 + share(distance, DISTANCE_CAP) * HEALTH_DISTANCE_WEIGHT
-			+ share(depth, DEPTH_CAP) * HEALTH_DEPTH_WEIGHT;
-	}
-
-	public static double damageMultiplier(final double distance, final double depth) {
-		return 1.0 + share(distance, DISTANCE_CAP) * DAMAGE_DISTANCE_WEIGHT
-			+ share(depth, DEPTH_CAP) * DAMAGE_DEPTH_WEIGHT;
-	}
-
-	/**
-	 * The area level a boss is measured against, 0 to 15, derived from the same shares R12 scales by so
-	 * the two systems cannot disagree about how far out a mob is.
-	 */
 	public static int areaLevel(final Mob mob) {
-		double distance = distanceFromSpawn(mob);
-		double depth = Math.max(0.0, mob.level().getSeaLevel() - mob.getY());
-		return (int) Math.floor(
-			share(distance, DISTANCE_CAP) * LEVEL_DISTANCE_POINTS + share(depth, DEPTH_CAP) * LEVEL_DEPTH_POINTS
-		);
+		return (int) Math.floor(distanceFromSpawn(mob) / BLOCKS_PER_LEVEL);
 	}
 
-	/** Applies both multipliers once. A second call replaces rather than stacks, so a reload is safe. */
+	public static double healthMultiplier(final int threatLevel, final double depth) {
+		return 1.0 + Math.max(0, threatLevel) * LEVEL_HEALTH_BONUS
+			+ depthShare(depth) * HEALTH_DEPTH_WEIGHT;
+	}
+
+	public static double damageMultiplier(final int threatLevel, final double depth) {
+		return 1.0 + Math.max(0, threatLevel) * LEVEL_DAMAGE_BONUS
+			+ depthShare(depth) * DAMAGE_DEPTH_WEIGHT;
+	}
+
+	/** Fresh spawns and deliberate rank promotions heal to their scaled maximum. */
 	public static void apply(final Mob mob) {
-		if (EXEMPT.contains(mob.getType())) {
+		apply(mob, false);
+	}
+
+	/** Saved mobs keep their health percentage while old modifiers migrate. */
+	public static void reconcileLoaded(final Mob mob) {
+		apply(mob, true);
+	}
+
+	private static void apply(final Mob mob, final boolean preserveHealth) {
+		if (mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
 			return;
 		}
-
-		double distance = distanceFromSpawn(mob);
+		int threatLevel = ThreatState.level(mob);
 		double depth = Math.max(0.0, mob.level().getSeaLevel() - mob.getY());
-
-		if (!applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthMultiplier(distance, depth) - 1.0)) {
-			return;
+		float oldHealth = mob.getHealth();
+		float oldMaximum = mob.getMaxHealth();
+		boolean removedOldHealth = removeModifier(mob, Attributes.MAX_HEALTH, Bosses.LEVEL_HEALTH_ID);
+		removeModifier(mob, Attributes.ATTACK_DAMAGE, Bosses.LEVEL_DAMAGE_ID);
+		boolean changedHealth = applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID,
+			healthMultiplier(threatLevel, depth) - 1.0);
+		applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID,
+			damageMultiplier(threatLevel, depth) - 1.0);
+		boolean changedTrait = Traits.refreshScaling(mob);
+		if (!preserveHealth) {
+			mob.setHealth(mob.getMaxHealth());
+		} else if (removedOldHealth || changedHealth || changedTrait) {
+			float fraction = oldMaximum <= 0.0F ? 1.0F : oldHealth / oldMaximum;
+			mob.setHealth(Math.max(1.0F, Math.min(mob.getMaxHealth(), fraction * mob.getMaxHealth())));
 		}
+	}
 
-		applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, damageMultiplier(distance, depth) - 1.0);
-		// A raised maximum does not heal, and the mob was built at its old maximum.
-		mob.setHealth(mob.getMaxHealth());
+	private static boolean removeModifier(
+		final LivingEntity mob, final Holder<Attribute> attribute, final Identifier id
+	) {
+		AttributeInstance instance = mob.getAttribute(attribute);
+		if (instance == null || !instance.hasModifier(id)) {
+			return false;
+		}
+		instance.removeModifier(id);
+		return true;
 	}
 
 	private static boolean applyModifier(
@@ -87,41 +92,49 @@ public final class SpawnScaling {
 		if (instance == null) {
 			return false;
 		}
-
-		AttributeModifier modifier = instance.getModifier(id);
-		if (modifier != null) {
-			if (modifier.amount() == amount) {
-				return true;
+		AttributeModifier existing = instance.getModifier(id);
+		if (existing != null) {
+			if (existing.amount() == amount) {
+				return false;
 			}
-
 			instance.removeModifier(id);
 		}
-
 		instance.addPermanentModifier(new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
 		return true;
 	}
 
-	/** The health multiplier this mob already carries, or 1.0 when the spawn path never scaled it. */
 	public static double healthMultiplierOf(final LivingEntity mob) {
 		AttributeInstance instance = mob.getAttribute(Attributes.MAX_HEALTH);
 		if (instance == null) {
 			return 1.0;
 		}
-
 		AttributeModifier modifier = instance.getModifier(HEALTH_ID);
 		return modifier == null ? 1.0 : 1.0 + modifier.amount();
 	}
 
-	private static double distanceFromSpawn(final Mob mob) {		if (!mob.level().dimension().equals(mob.level().getRespawnData().dimension())) {
+	private static double distanceFromSpawn(final Mob mob) {
+		var dimension = mob.level().dimension();
+		var respawn = mob.level().getRespawnData();
+		double originX;
+		double originZ;
+		if (dimension.equals(respawn.dimension())) {
+			originX = respawn.pos().getX();
+			originZ = respawn.pos().getZ();
+		} else if (dimension.equals(Level.NETHER)) {
+			originX = respawn.pos().getX() / 8.0;
+			originZ = respawn.pos().getZ() / 8.0;
+		} else if (dimension.equals(Level.END)) {
+			originX = 0.0;
+			originZ = 0.0;
+		} else {
 			return 0.0;
 		}
-
-		double dx = mob.getX() - mob.level().getRespawnData().pos().getX();
-		double dz = mob.getZ() - mob.level().getRespawnData().pos().getZ();
+		double dx = mob.getX() - originX;
+		double dz = mob.getZ() - originZ;
 		return Math.sqrt(dx * dx + dz * dz);
 	}
 
-	private static double share(final double value, final double cap) {
-		return Math.min(1.0, Math.max(0.0, value) / cap);
+	private static double depthShare(final double depth) {
+		return Math.min(1.0, Math.max(0.0, depth) / DEPTH_CAP);
 	}
 }

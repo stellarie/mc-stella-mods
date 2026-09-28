@@ -167,7 +167,7 @@ public final class Traits {
 
 		if (health != null) {
 			// The multiplier is read off what the mob already carries, so it stacks with the elite double
-			// and with R12 rather than replacing either. That arithmetic has been wrong twice already.
+			// and with threat scaling rather than replacing either.
 			double current = SpawnScaling.healthMultiplierOf(mob);
 			applyModifier(
 				mob, Attributes.MAX_HEALTH, HARDENED_HEALTH_ID, HARDENED_HEALTH_MULTIPLIER * current - current
@@ -175,6 +175,25 @@ public final class Traits {
 		}
 
 		FasterMeleeGoal.install(mob, HARDENED_ATTACK_FACTOR);
+	}
+
+	/** Recomputes a saved hardened modifier after threat scaling or rank changes. */
+	public static boolean refreshScaling(final Mob mob) {
+		if (!has(mob, "hardened")) {
+			return false;
+		}
+		double scaled = SpawnScaling.healthMultiplierOf(mob);
+		double amount = HARDENED_HEALTH_MULTIPLIER * scaled - scaled;
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		if (health == null) {
+			return false;
+		}
+		AttributeModifier current = health.getModifier(HARDENED_HEALTH_ID);
+		if (current != null && current.amount() == amount) {
+			return false;
+		}
+		applyModifier(mob, Attributes.MAX_HEALTH, HARDENED_HEALTH_ID, amount);
+		return true;
 	}
 
 	private static void applyModifier(

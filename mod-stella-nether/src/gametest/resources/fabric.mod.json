@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-nether-test-mod-stella-nether",
+	"version": "1.0.0",
+	"name": "Stella Nether Raid game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.nether.ModpackDependencyGameTest",
+			"com.stella.nether.RaidPortalGameTest",
+			"com.stella.nether.RaidModeGameTest",
+			"com.stella.nether.RaidLifecycleGameTest",
+			"com.stella.nether.RaidEnrageGameTest",
+			"com.stella.nether.RaidSiteGameTest",
+			"com.stella.nether.RaidThreatGameTest",
+			"com.stella.nether.BlazeSovereignGameTest",
+			"com.stella.nether.SovereignSpecialsGameTest",
+			"com.stella.nether.SpoilsGameTest"
+		],
+		"main": [
+			"com.stella.nether.NetherGameTestInit"
+		]
+	},
+	"depends": {
+		"mod-stella-nether": "*"
+	},
+	"mixins": [
+		"mod-stella-nether-test.mixins.json"
+	]
+}

@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:golden_carrot",
+		"#mod-stella-food:cooked_meat",
+		"minecraft:honey_bottle"
+	],
+	"result": {
+		"id": "mod-stella-food:golden_supper"
+	}
+}

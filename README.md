@@ -26,6 +26,7 @@ The ZIP and individual GameTest logs appear under `release-output/`.
 | `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
 | `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
+| `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station | `main-food` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.
@@ -88,6 +89,28 @@ wants.
   it. Outside the spawn safe zone, 20% of chunks hold a pair of friendly "Village Patrol" Pillagers. No
   elite ever spawns inside the safe zone, from any of the world's own spawns.
 
+### Threat levels
+
+An Overworld mob gains one area level per 500 horizontal blocks from the shared spawn.
+The Nether uses the shared spawn divided by eight as its origin and starts at level 20.
+The End uses (0, 0) as its origin and starts at level 50. Distance levels have no cap.
+
+Each mob rolls one persistent, centered normal variation. Its standard deviation is five levels.
+The roll is rounded and limited to minus ten through plus ten. Dimension minima apply after the roll.
+An elite adds five levels; a boss adds ten instead. The `boss_level_bonus` config value multiplies
+the boss's ten-level bonus, with a default of 1.0.
+
+Each threat level adds 5% maximum health and 2.5% attack damage. Depth still adds up to 25% health
+and 12.5% damage by 256 blocks below sea level. Minecraft's health attribute can cap effective HP
+at 1,024 even though the threat level keeps rising.
+
+The highest mob threat ever observed is saved on the Overworld for the whole server. Summoned skeletons
+can read that peak across dimensions and restarts to scale their health.
+
+Player kills scale the vanilla, enchantment-adjusted XP reward by the difference between mob threat
+and the player's XP level. Equal levels keep vanilla XP. Each ten-level gap changes the multiplier by
+one, between one-quarter and four times the vanilla reward. A nonzero reward never falls below one XP.
+
 ### Opting a mob out of spawn rolls
 
 A mob that enters the level carrying the entity tag `mod-stella-mobs.no_spawn_roll` takes none of this
@@ -115,6 +138,7 @@ cd mod-stella-mobs
 
 Run the game test command five separate times and save each run log before the
 next run. Use the same gate from the equips mod directory on `main-equip-ench`.
+Pass `-PgameTestFilter=<full-test-id>` to run one server-side GameTest during diagnosis.
 
 The built jar is `mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar`.
 Copy it into a Fabric client instance's `mods` folder, or a server's `mods`

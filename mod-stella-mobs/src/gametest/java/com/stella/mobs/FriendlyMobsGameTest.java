@@ -142,14 +142,27 @@ public class FriendlyMobsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 200, padding = 24)
 	public void anEliteWolfSlowsAndWeakensTheHostilesAroundIt(final GameTestHelper helper) {
 		helper.setTime(Arena.NIGHT_TIME);
 		Wolf wolf = wolf(helper, 2, 2);
 		WolfPack.makeElite(wolf);
+		Vec3 anchored = wolf.position();
+		helper.onEachTick(() -> {
+			wolf.setPos(anchored.x, anchored.y, anchored.z);
+			wolf.setDeltaMovement(Vec3.ZERO);
+		});
 		Zombie near = zombie(helper, 4, 4);
 		Zombie far = zombie(helper, 2, 2 + (int) WolfPack.AURA_RADIUS + 4);
+		helper.runAfterDelay(190, () -> {
+			if (!near.hasEffect(MobEffects.SLOWNESS) || !near.hasEffect(MobEffects.WEAKNESS)) {
+				StellaMobs.LOGGER.info("[BEHAVIOR] test={} state=wolfAuraPending wolf={} wolfTicks={} nearAlive={} nearRemoved={} nearTicks={} distance={}",
+					TEST, wolf.getUUID(), wolf.tickCount, near.isAlive(), near.isRemoved(), near.tickCount,
+					Math.sqrt(wolf.distanceToSqr(near)));
+			}
+		});
 		helper.succeedWhen(() -> {
+			helper.assertTrue(near.isAlive() && !near.isRemoved(), "the near zombie left before the aura could reach it");
 			helper.assertTrue(near.hasEffect(MobEffects.SLOWNESS) && near.hasEffect(MobEffects.WEAKNESS), "the near zombie is not slowed and weakened yet");
 			helper.assertFalse(far.hasEffect(MobEffects.SLOWNESS), "the aura reached past its radius");
 			helper.assertFalse(wolf.hasEffect(MobEffects.WEAKNESS), "the aura weakened the wolf itself");
@@ -209,6 +222,7 @@ public class FriendlyMobsGameTest {
 		zombie.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		zombie.snapTo(helper.absoluteVec(new Vec3(x + 0.5, 1.0, z + 0.5)), 0.0F, 0.0F);
 		zombie.setNoAi(true);
+		zombie.setPersistenceRequired();
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		zombie.setHealth(1000.0F);
 		helper.getLevel().addFreshEntity(zombie);
