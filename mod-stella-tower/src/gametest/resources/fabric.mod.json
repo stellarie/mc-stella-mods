@@ -13,7 +13,8 @@
 			"com.stella.tower.TowerThreatGameTest",
 			"com.stella.tower.TowerSpawnerGameTest",
 			"com.stella.tower.TowerMobRulesGameTest",
-			"com.stella.tower.TowerEliteGameTest"
+			"com.stella.tower.TowerEliteGameTest",
+			"com.stella.tower.TowerBuffGameTest"
 		]
 	},
 	"mixins": [

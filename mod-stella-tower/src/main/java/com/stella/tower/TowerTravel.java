@@ -1,6 +1,7 @@
 package com.stella.tower;
 
 import com.mojang.serialization.Codec;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -92,9 +93,15 @@ public final class TowerTravel {
 	/** The floor a portal outside the tower leads to: the highest floor key a player holds, else the first. */
 	public static int startFloor(final Entity entity) {
 		int floor = 1;
-		if (entity instanceof ServerPlayer player) {
-			for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-				floor = Math.max(floor, FloorKeyItem.floorOf(player.getInventory().getItem(i)));
+		List<Entity> travellers = new java.util.ArrayList<>();
+		travellers.add(entity);
+		entity.getIndirectPassengers().forEach(travellers::add);
+		// A rider's keys count as much as a walker's.
+		for (Entity traveller : travellers) {
+			if (traveller instanceof ServerPlayer player) {
+				for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+					floor = Math.max(floor, FloorKeyItem.floorOf(player.getInventory().getItem(i)));
+				}
 			}
 		}
 		return floor;
