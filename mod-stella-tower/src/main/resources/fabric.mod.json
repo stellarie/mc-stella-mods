@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-tower",
+	"version": "${version}",
+	"name": "Stella Endless Tower",
+	"description": "An endless tower of floors behind a crying obsidian portal.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.tower.StellaTower"
+		]
+	},
+	"mixins": [
+		"mod-stella-tower.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
