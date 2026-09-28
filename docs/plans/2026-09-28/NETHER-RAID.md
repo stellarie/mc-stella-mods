@@ -3,6 +3,14 @@
 A new mod, `mod-stella-nether`, beside the tower. The nether a player picks at the portal is either the
 normal nether or a shared, resettable raid instance. Every number is a starting value kept in the config.
 
+## The modpack is a dependency
+
+- `mod-stella-nether` requires every other Stella mod: `mod-stella-mobs`, `mod-stella-equips-enchants`,
+  `mod-stella-spells`, `mc-stella-villages` and `mod-stella-tower`, in `fabric.mod.json` `depends`.
+- Gradle builds them from source as included builds (`settings.gradle`), so the nether mod compiles
+  against their classes and its game tests run with all of them loaded.
+- `mod-stella-food` lives only on `main-food` and is not yet on this branch, so it is not yet a dependency.
+
 ## The instance
 
 - One instance exists at a time, in the dimension `mod-stella-nether:raid`, generated with the nether's
@@ -36,7 +44,10 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 
 - Spawns once per instance in the fortress; never respawns. A new instance brings a new one.
 - Blue-tinted blaze at 3x scale, stays near the ground.
-- Health `1000 + 50 * threat` (threat: see open questions).
+- Health `1000 + 50 * threat`, where threat is `mod-stella-mobs`' `ThreatState.level(mob)` for the boss.
+  The raid dimension must count as the nether there (minimum 20), and the boss's elite/boss bonus of
+  +10 applies. At threat 30 that is 2,500 health: past vanilla's 1,024 cap, so the excess is kept as a
+  damage divisor, as the tower does.
 - Normal attack: blue fireballs that set the target on fire.
 - Specials, on a rotation:
   1. **Flame Spiral**: 360 degree fireball spray for 5 seconds.
@@ -68,7 +79,9 @@ Each slice ships with headless game tests per `AGENTS.md`.
 ## Open questions for oniichan
 
 - Integration branch: create `main-nether` for `mod-stella-nether`?
-- What is "threat level"? Nothing in the repository defines it yet (tower floors have a curve).
+- Threat level lives on `feat/mobs-threat-level-scaling`, which is not merged into `main-mobs` or
+  `main`. Merge it before the boss slice?
+- Bring `mod-stella-food` in: merge `main-food` into `main` so it can join the dependencies?
 - Which objective first: blaze rods, a nether-only item set, or the village head's slayer contract?
 - The End unlock: what are the "other requirements", and does it block the End portal until met?
 - Blaze Core enchanting and crafting: which effects and which new equipment?

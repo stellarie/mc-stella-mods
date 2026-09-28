@@ -1,0 +1,24 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-nether",
+	"version": "${version}",
+	"name": "Stella Nether Raid",
+	"description": "An instanced nether raid with a host, a mode, a timer and the Blaze Sovereign.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.nether.StellaNether"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*",
+		"mod-stella-mobs": "*",
+		"mod-stella-equips-enchants": "*",
+		"mod-stella-spells": "*",
+		"mc-stella-villages": "*",
+		"mod-stella-tower": "*"
+	}
+}
