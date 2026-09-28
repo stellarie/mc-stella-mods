@@ -70,8 +70,8 @@ public class TowerMazeGameTest {
 		}
 		int cells = TowerMaze.CELLS * TowerMaze.CELLS;
 		int perfect = S * S - cells * TowerMaze.PATH * TowerMaze.PATH - (cells - 1) * TowerMaze.PATH * TowerMaze.WALL;
-		// The portal's nook: two cells by three, with the walls among them.
-		int nook = (2 * TowerMaze.PITCH) * (3 * TowerMaze.PITCH);
+		// The portal's nook, as the maze opens it.
+		int nook = (TowerMaze.NOOK_HIGH_X - TowerMaze.NOOK_LOW_X) * (TowerMaze.NOOK_HIGH_Z - TowerMaze.NOOK_LOW_Z + 1);
 		TowerTestSupport.result("floorMaze", "walls=" + walls + " perfect=" + perfect + " nook=" + nook);
 		helper.assertTrue(walls >= perfect - nook, "floor " + floor + " stands " + walls + " wall blocks, fewer than a maze's " + (perfect - nook));
 		helper.succeed();
@@ -180,6 +180,46 @@ public class TowerMazeGameTest {
 		boolean differs = !Arrays.deepEquals(TowerMaze.walls(seed, 7), TowerMaze.walls(seed, 8));
 		TowerTestSupport.result("mazeOwn", "same=" + same + " differs=" + differs);
 		helper.assertTrue(same && differs, "a floor's maze is not its own: same=" + same + " differs=" + differs);
+		helper.succeed();
+	}
+
+	/** Every ceiling lamp hangs over a path, where its light reaches the maze, not over a wall. */
+	@GameTest
+	public void everyLampLightsAPath(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		BlockPos o = TowerLayout.origin(floor);
+		int lamps = 0;
+		int overWalls = 0;
+		for (int x = 0; x < S; x++) {
+			for (int z = 0; z < S; z++) {
+				if (tower.getBlockState(o.offset(x, TowerLayout.HEIGHT, z)).is(TowerBlocks.TOWER_LAMP)) {
+					lamps++;
+					overWalls += tower.getBlockState(o.offset(x, TowerLayout.HEIGHT - 1, z)).isAir() ? 0 : 1;
+				}
+			}
+		}
+		TowerTestSupport.result("mazeLamps", "lamps=" + lamps + " overWalls=" + overWalls);
+		helper.assertTrue(lamps > 0, "the floor has no lamps, so the case proves nothing");
+		helper.assertTrue(overWalls == 0, overWalls + " of " + lamps + " lamps hang over a wall, their light shut in");
+		helper.succeed();
+	}
+
+	/** A mob broader than a block, a spider, still finds room in the maze's two-block paths. */
+	@GameTest
+	public void aBroadMobFindsRoomInTheMaze(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		net.minecraft.util.RandomSource random = net.minecraft.util.RandomSource.create(11L);
+		int placed = 0;
+		int tries = 20;
+		for (int i = 0; i < tries; i++) {
+			net.minecraft.world.entity.monster.spider.Spider spider = net.minecraft.world.entity.EntityTypes.SPIDER.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+			placed += TowerMobs.placeInRoom(tower, floor, spider, random) ? 1 : 0;
+			spider.discard();
+		}
+		TowerTestSupport.result("broadMob", "placed=" + placed + "/" + tries);
+		helper.assertTrue(placed * 2 >= tries, "a spider found room in the maze " + placed + " times of " + tries);
 		helper.succeed();
 	}
 

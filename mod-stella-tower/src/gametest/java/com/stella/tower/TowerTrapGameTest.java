@@ -22,6 +22,8 @@ import net.minecraft.world.phys.Vec3;
 public class TowerTrapGameTest {
 	/** A low floor for what a trap deals, so the numbers stay small and exact. */
 	private static final int LOW = 5;
+	/** A deeper floor, where a trap's growth with the floor shows. */
+	private static final int DEEP = 250;
 
 	private static int floorOf(final TrapTheme theme, final boolean hall) {
 		return TowerTestSupport.freshFloorWhere(f -> TrapTheme.of(f) == theme && (TowerMaze.hall(f) > 0) == hall, 110);
@@ -179,13 +181,18 @@ public class TowerTrapGameTest {
 	public void aDesertTrapSinksThePlayerAndDropsArrows(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		ServerPlayer player = standing(helper, tower, plainFloor(tower));
+		float before = player.getHealth();
 		TowerTraps.Sprung sprung = spring(helper, tower, player, TrapTheme.DESERT);
 		long arrows = sprung.spawned().stream().filter(entity -> entity instanceof AbstractArrow arrow && arrow.pickup == AbstractArrow.Pickup.DISALLOWED).count();
 		boolean slow = player.hasEffect(MobEffects.SLOWNESS);
-		TowerTestSupport.result("desertTrap", "slow=" + slow + " arrows=" + arrows + "/" + TowerTraps.DESERT_ARROWS);
+		float lost = before - player.getHealth();
+		// The whole volley counts: three arrows at once would meet a hurt player's grace after the first.
+		double want = TowerCurve.damage(TowerTraps.ARROW_BASE * TowerTraps.DESERT_ARROWS, LOW);
+		TowerTestSupport.result("desertTrap", "slow=" + slow + " arrows=" + arrows + "/" + TowerTraps.DESERT_ARROWS + " lost=" + lost + " want=" + want);
 		sprung.spawned().forEach(Entity::discard);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(slow && arrows == TowerTraps.DESERT_ARROWS, "the desert trap: slow=" + slow + " arrows=" + arrows);
+		helper.assertTrue(Math.abs(lost - want) < 0.01, "the desert volley dealt " + lost + ", not the floor's " + want);
 		helper.succeed();
 	}
 
@@ -226,12 +233,16 @@ public class TowerTrapGameTest {
 	public void aFrostTrapFreezesThePlayer(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		ServerPlayer player = standing(helper, tower, plainFloor(tower));
+		float before = player.getHealth();
 		spring(helper, tower, player, TrapTheme.FROST);
 		boolean frozen = player.isFullyFrozen();
 		boolean slow = player.hasEffect(MobEffects.SLOWNESS);
-		TowerTestSupport.result("frostTrap", "frozen=" + frozen + " slow=" + slow + " ticksFrozen=" + player.getTicksFrozen());
+		float lost = before - player.getHealth();
+		double want = TowerCurve.damage(TowerTraps.FROST_BASE, LOW);
+		TowerTestSupport.result("frostTrap", "frozen=" + frozen + " slow=" + slow + " ticksFrozen=" + player.getTicksFrozen() + " lost=" + lost + " want=" + want);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(frozen && slow, "the frost trap: frozen=" + frozen + " slow=" + slow);
+		helper.assertTrue(Math.abs(lost - want) < 0.01, "the frost trap bit for " + lost + ", not the floor's " + want);
 		helper.succeed();
 	}
 
@@ -239,11 +250,12 @@ public class TowerTrapGameTest {
 	public void aBogTrapPoisonsThePlayer(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		ServerPlayer player = standing(helper, tower, plainFloor(tower));
-		spring(helper, tower, player, TrapTheme.BOG);
-		boolean poisoned = player.hasEffect(MobEffects.POISON);
-		TowerTestSupport.result("bogTrap", "poisoned=" + poisoned);
+		TowerTraps.spring(tower, under(player), player, TrapTheme.BOG, DEEP);
+		net.minecraft.world.effect.MobEffectInstance poison = player.getEffect(MobEffects.POISON);
+		int want = Math.min(TowerTraps.BOG_MAX_AMPLIFIER, TowerBuffs.level(DEEP));
+		TowerTestSupport.result("bogTrap", "poison=" + poison + " want=" + want);
 		TowerTestSupport.leave(helper, player);
-		helper.assertTrue(poisoned, "the bog trap did not poison the player");
+		helper.assertTrue(poison != null && poison.getAmplifier() == want, "the bog trap of floor " + DEEP + " poisoned at " + poison + ", not level " + want);
 		helper.succeed();
 	}
 
@@ -293,6 +305,92 @@ public class TowerTrapGameTest {
 		helper.succeed();
 	}
 
+	/** Armor turns spikes as it turns a mob's blow: no trap wound goes past it. */
+	@GameTest
+	public void armorTurnsSpikes(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ServerPlayer player = standing(helper, tower, plainFloor(tower));
+		// A netherite chestplate's armor; gear reaches the attribute only on a tick a test player never runs.
+		player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR).setBaseValue(8.0);
+		float before = player.getHealth();
+		spring(helper, tower, player, TrapTheme.SPIKES);
+		float lost = before - player.getHealth();
+		double bare = TowerCurve.damage(TowerTraps.SPIKE_BASE, LOW);
+		TowerTestSupport.result("spikeArmor", "lost=" + lost + " bare=" + bare + " armor=" + player.getArmorValue());
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(player.getArmorValue() > 0, "the chestplate gave no armor, so the case proves nothing");
+		helper.assertTrue(lost > 0.0F && lost < bare - 0.01, "an armored player lost " + lost + " to spikes, as much as bare " + bare);
+		helper.succeed();
+	}
+
+	/** The void never throws a player onto the portal, which would carry them up, or onto another trap. */
+	@GameTest
+	public void theVoidLandsAPlayerOnNeitherPortalNorTrap(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = plainFloor(tower);
+		BlockPos o = TowerLayout.origin(floor);
+		BlockPos plain = BlockPos.containing(TowerLayout.arrival(floor));
+		BlockPos onTrap = plain.offset(1, 0, 0);
+		tower.setBlockAndUpdate(onTrap.below(), TowerBlocks.TRAPS.get(TrapTheme.BOG).defaultBlockState());
+		BlockPos inPortal = TowerLayout.portalInside(floor).get(0);
+		tower.setBlockAndUpdate(inPortal, TowerBlocks.TOWER_PORTAL.defaultBlockState());
+		boolean plainSafe = TowerTraps.landsSafely(tower, plain);
+		boolean trapSafe = TowerTraps.landsSafely(tower, onTrap);
+		boolean portalSafe = TowerTraps.landsSafely(tower, inPortal);
+		TowerTestSupport.result("voidLanding", "plain=" + plainSafe + " trap=" + trapSafe + " portal=" + portalSafe);
+		helper.assertTrue(plainSafe, "the void refuses plain ground, so the case proves nothing");
+		helper.assertFalse(trapSafe || portalSafe, "the void may land a player on a trap=" + trapSafe + " or the portal=" + portalSafe);
+		helper.succeed();
+	}
+
+	/** A player riding a mount springs a trap the mount steps on. */
+	@GameTest
+	public void aRiderSpringsATrapUnderTheirMount(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ServerPlayer player = standing(helper, tower, plainFloor(tower));
+		BlockPos ground = under(player);
+		tower.setBlockAndUpdate(ground, TowerBlocks.TRAPS.get(TrapTheme.BOG).defaultBlockState());
+		net.minecraft.world.entity.animal.pig.Pig pig = net.minecraft.world.entity.EntityTypes.PIG.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		pig.snapTo(player.position());
+		tower.addFreshEntity(pig);
+		boolean riding = player.startRiding(pig, true, true);
+		Vec3 from = pig.position();
+		pig.move(MoverType.SELF, new Vec3(0.05, -0.1, 0.0));
+		pig.applyEffectsFromBlocks(from, pig.position());
+		boolean poisoned = player.hasEffect(MobEffects.POISON);
+		TowerTestSupport.result("trapRider", "riding=" + riding + " pigOnGround=" + pig.onGround() + " poisoned=" + poisoned);
+		player.stopRiding();
+		pig.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(riding && pig.onGround(), "the player never rode the pig onto the ground, so the case proves nothing");
+		helper.assertTrue(poisoned, "a rider's mount stepped on a bog trap and nothing sprang");
+		helper.succeed();
+	}
+
+	/** A mob on a trap springs nothing, and leaves it armed for the next player. */
+	@GameTest
+	public void aMobWalksOverATrapUntouched(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ServerPlayer player = standing(helper, tower, plainFloor(tower));
+		BlockPos ground = under(player);
+		tower.setBlockAndUpdate(ground, TowerBlocks.TRAPS.get(TrapTheme.BOG).defaultBlockState());
+		net.minecraft.world.entity.monster.zombie.Zombie zombie = net.minecraft.world.entity.EntityTypes.ZOMBIE.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		zombie.snapTo(player.position());
+		tower.addFreshEntity(zombie);
+		Vec3 from = zombie.position();
+		zombie.move(MoverType.SELF, new Vec3(0.05, -0.1, 0.0));
+		zombie.applyEffectsFromBlocks(from, zombie.position());
+		boolean zombieOnGround = zombie.onGround();
+		boolean zombiePoisoned = zombie.hasEffect(MobEffects.POISON);
+		boolean stillArmed = TowerTraps.spring(tower, ground, player, TrapTheme.BOG, LOW) != null;
+		TowerTestSupport.result("trapMob", "onGround=" + zombieOnGround + " zombiePoisoned=" + zombiePoisoned + " stillArmed=" + stillArmed);
+		zombie.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(zombieOnGround, "the zombie never stepped on the trap, so the case proves nothing");
+		helper.assertTrue(!zombiePoisoned && stillArmed, "a mob sprang the trap: poisoned=" + zombiePoisoned + " armed after=" + stillArmed);
+		helper.succeed();
+	}
+
 	/** A sprung trap rests before it springs again, so standing on one is not a death sentence. */
 	@GameTest(maxTicks = 200)
 	public void aSprungTrapRestsBeforeSpringingAgain(final GameTestHelper helper) {
@@ -339,8 +437,10 @@ public class TowerTrapGameTest {
 		player.move(MoverType.SELF, new Vec3(0.05, -0.1, 0.0));
 		player.applyEffectsFromBlocks(from, player.position());
 		boolean poisoned = player.hasEffect(MobEffects.POISON);
-		TowerTestSupport.result("trapCreative", "onGround=" + player.onGround() + " poisoned=" + poisoned);
+		boolean onGround = player.onGround();
+		TowerTestSupport.result("trapCreative", "onGround=" + onGround + " poisoned=" + poisoned);
 		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(onGround, "the player never stepped on the trap, so the case proves nothing");
 		helper.assertFalse(poisoned, "a trap sprang under a creative player");
 		helper.succeed();
 	}

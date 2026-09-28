@@ -256,3 +256,15 @@ from the biome, with no extra client code.
 - A player in survival or adventure springs a trap by stepping on it; mobs and creative players do not.
 - A sprung trap rests 100 ticks. What a trap deals grows with the floor as a tower mob's blows do. A trap
   tile breaks like a maze wall, and drops nothing.
+
+### Review fixes (2026-09-28)
+
+- The ceiling lamps hang over maze cells, not over wall crossings, so their light reaches the paths.
+- A mob broader than a block, such as a spider, a hoglin or a big magma cube, stands at the corner of a
+  block, in the middle of a two by two path, so it can spawn in the maze.
+- A player riding a mount springs the traps the mount steps on.
+- Spikes wound as a cactus does, so armor turns them.
+- The desert volley deals its whole wound at once, three arrows' worth.
+- Frost bites for its own floor-grown damage, and the bog's poison grows a level per buff level, up to V.
+- The void never lands a player on the portal or on another trap.
+- On an elite or boss floor built before the halls, the guardians keep to the portal across the room.
