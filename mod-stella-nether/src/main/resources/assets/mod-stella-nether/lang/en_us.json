@@ -16,6 +16,6 @@
   "entity.mod-stella-nether.blaze_sovereign": "Blaze Sovereign",
   "item.mod-stella-nether.blaze_core": "Blaze Core",
   "item.mod-stella-nether.flame_mantle": "Flame Mantle",
-  "message.mod-stella-nether.end_sealed": "The End is sealed. Bring %s Blaze Cores to open it.",
-  "message.mod-stella-nether.end_opened": "%s has opened the End with three Blaze Cores. It stays open for everyone."
+  "message.mod-stella-nether.portal_sealed": "The portal stays shut. The sealed chest in this room wants a Blaze Core.",
+  "block.mod-stella-nether.sealed_chest": "Sealed Chest"
 }
