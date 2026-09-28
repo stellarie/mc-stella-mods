@@ -152,3 +152,18 @@ healing, whichever the effect has). Spells count only when the spells mod is ins
 | Extra life | one more revive per 500 floors | none |
 
 The players' boss-floor buff uses the same level and ceilings.
+
+## Floor mix
+
+- Floors 1 to 20: overworld mobs only, and no witches, so players learn the tower first.
+- Floor 21 on: any overworld, nether or end mob, witches included.
+
+## Expected walls (estimate, all mods, no runes)
+
+| Who | Comfortable until | Walled at |
+| --- | --- | --- |
+| Solo, no strategy | about floor 25 | about floor 40 to 60 |
+| Party of 4, no strategy | about floor 40 | about floor 70 to 90 |
+| Party of 4 with strategy | about floor 80 | about floor 120 to 150 |
+
+The tower cannot be brute forced: past these floors runes, void gear and strategy carry the climb.
