@@ -230,6 +230,9 @@ public final class TowerFloors {
 		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
 		}
+		if (TowerBuffs.isBossFloor(floor)) {
+			TowerBuffs.mist(tower, floor);
+		}
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
 	}
 
