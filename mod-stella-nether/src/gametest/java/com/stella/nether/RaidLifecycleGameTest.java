@@ -82,7 +82,9 @@ public class RaidLifecycleGameTest {
 			helper.assertTrue(RaidInstance.state(server).run() == run + 1, "the raid has not reset yet");
 			double moved = Vec3.atBottomCenterOf(RaidInstance.arrival(server)).distanceTo(oldArrival);
 			NetherTestSupport.result("itemsLost", "removed=" + item.isRemoved() + " arrivalMoved=" + moved);
-			helper.assertTrue(item.isRemoved() && moved >= RaidInstance.RUN_STRIDE, "the diamond removed=" + item.isRemoved() + " arrival moved " + moved);
+			double apart = RaidInstance.RUN_STRIDE - 2.0 * RaidSites.MAX_SHIFT;
+			helper.assertTrue(item.isRemoved() && moved >= apart && apart > 2 * RaidInstance.STRUCTURE_REACH,
+				"the diamond removed=" + item.isRemoved() + " arrival moved " + moved + " of at least " + apart);
 			NetherTestSupport.leave(helper, player);
 		});
 	}

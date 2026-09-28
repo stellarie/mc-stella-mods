@@ -4,7 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -53,13 +55,19 @@ public final class RaidInstance {
 		MobEffects.ABSORPTION, MobEffects.HEALTH_BOOST, MobEffects.FIRE_RESISTANCE
 	);
 	public static final int MOB_BOONS_EACH = 2;
-	/** Blocks between one run's origin and the next; far past any view distance. */
-	public static final int RUN_STRIDE = 2048;
-	private static final int RUNS_PER_ROW = 1000;
+	/**
+	 * Blocks between one run's origin and the next. A site may shift up to {@link RaidSites#MAX_SHIFT} from its
+	 * origin, so two runs' sites always lie at least this less twice that apart, far past any view distance.
+	 */
+	public static final int RUN_STRIDE = 8192;
+	/** Rows of runs, kept inside the nether's world border of 3.75 million blocks. */
+	private static final int RUNS_PER_ROW = 800;
 	/** The arrival hall's floor height at a run's origin. */
 	public static final int ARRIVAL_Y = 64;
 	/** How long the raid must stand empty before it resets. */
 	public static final int EMPTY_TICKS = 100;
+	/** Every run's arrival lies within this many blocks of a fortress and of a bastion. */
+	public static final int STRUCTURE_REACH = 256;
 	/** Thirty minutes: then every raid mob turns on the players. */
 	public static final int ENRAGE_TICKS = 30 * 60 * 20;
 	/** Speed II and Strength II. */
@@ -85,6 +93,8 @@ public final class RaidInstance {
 	/** The run whose mode a mob was last boosted for, so a reloaded mob is not boosted twice. */
 	public static final AttachmentType<Integer> MOB_BOOSTED = AttachmentRegistry.createPersistent(StellaNether.id("raid_boosted"), Codec.INT);
 
+	/** Each run's site, by world seed and run; the search is deterministic, so a restart finds the same one. */
+	private static final Map<String, BlockPos> SITES = new ConcurrentHashMap<>();
 	/** Ticks the open raid has stood empty; kept in memory, so a restart with nobody inside resets it soon after. */
 	private static int emptyTicks;
 
@@ -208,12 +218,15 @@ public final class RaidInstance {
 
 	/** Where a player lands in the current run: on the hall's floor, facing its portal out. */
 	public static BlockPos arrival(final MinecraftServer server) {
-		return origin(state(server).run()).offset(0, ARRIVAL_Y, 1);
+		ServerLevel raid = server.getLevel(RaidTravel.RAID);
+		int run = state(server).run();
+		BlockPos site = raid == null ? origin(run) : SITES.computeIfAbsent(raid.getSeed() + ":" + run, key -> RaidSites.site(raid, origin(run)));
+		return new BlockPos(site.getX(), ARRIVAL_Y, site.getZ() + 1);
 	}
 
 	/** The bottom block of the current run's portal out. */
 	public static BlockPos exitPortal(final MinecraftServer server) {
-		return origin(state(server).run()).offset(0, ARRIVAL_Y + 1, -4);
+		return arrival(server).offset(0, 1, -5);
 	}
 
 	/** Distinct effects drawn at random from a pool. */

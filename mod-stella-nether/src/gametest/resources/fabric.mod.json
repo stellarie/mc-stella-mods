@@ -10,7 +10,8 @@
 			"com.stella.nether.RaidPortalGameTest",
 			"com.stella.nether.RaidModeGameTest",
 			"com.stella.nether.RaidLifecycleGameTest",
-			"com.stella.nether.RaidEnrageGameTest"
+			"com.stella.nether.RaidEnrageGameTest",
+			"com.stella.nether.RaidSiteGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

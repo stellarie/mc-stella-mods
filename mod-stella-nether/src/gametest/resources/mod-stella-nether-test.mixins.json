@@ -3,7 +3,8 @@
 	"package": "com.stella.nether.test.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"GameTestDimensionsMixin"
+		"GameTestDimensionsMixin",
+		"GameTestStructuresMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
