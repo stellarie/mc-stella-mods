@@ -130,11 +130,26 @@ also burns, as before.
   Blaze Cores, and takes armor enchantments. Worn, it heals its wearer 1 extra health every 2 seconds,
   sets whoever strikes its wearer alight for 4 seconds, and takes 80% of fire damage away. It uses
   netherite's look and a vanilla icon until it has art of its own.
-- **The End is sealed.** An End portal leads nowhere, and tells the player so, until a player steps into
-  one carrying 3 Blaze Cores. The cores are spent and the End stays open for everyone from then on.
-  Vanilla's eyes of ender are still needed to light the portal.
+- The End seal of this slice (three cores in an End portal) is replaced by slice 10's sealed chest.
 - Not yet: enchanting weapons and armor with a Blaze Core, and crafting new equipment from it, wait on
   what those should be.
+
+## Slice 9: more from the raid's loot
+
+- Every loot table rolled in the open raid nether, from mobs, blocks and chests alike, gives x1.15 in
+  normal and x1.5 in hard; the fraction past a whole count is rolled. Measured on nether quartz ore over
+  2,000 breaks: 1.135 in normal, 1.5015 in hard, 1.0 outside the raid.
+- The raid never ends while a player is inside, so a party can farm it or go for the Sovereign.
+
+## Slice 10: the sealed chest
+
+- Every stronghold's portal room holds one **Sealed Chest**: black, unbreakable, immune to blasts,
+  withers and the dragon, and with no item. Measured: a placed stronghold holds exactly one, standing on
+  solid floor with all 12 frames within 16 blocks.
+- The eyes go in first, as in vanilla, but the last eye leaves the portal shut while no chest within 16
+  blocks holds a Blaze Core. Setting **one** Blaze Core in the chest (use it on the chest) opens the
+  portal at once. The core is spent, the chest glows and takes no more, and the portal stays open.
+- A stronghold generated before this mod has no chest; completing its frame raises one on the frame.
 
 ## Manual acceptance
 
@@ -153,8 +168,9 @@ also burns, as before.
   client (the headless test sees only the velocity it is given).
 - Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
   it burn back.
-- Step into a lit End portal without cores (turned away with a message), then with three (the End opens
-  for everyone, and a message says so).
+- In a new world's stronghold: the black chest stands in the portal room. Fill the eyes (the portal stays
+  shut, with a message), then use a Blaze Core on the chest: the portal opens. The chest's look is built
+  from blackstone textures until it has art of its own.
 - From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

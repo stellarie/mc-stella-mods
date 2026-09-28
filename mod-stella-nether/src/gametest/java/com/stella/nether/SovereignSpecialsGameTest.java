@@ -74,8 +74,20 @@ public class SovereignSpecialsGameTest {
 	private static boolean visible(final Scene scene, final Entity entity) {
 		// Generation runs off the tick and the test clock can outrun it, so the chunks are loaded here, at once.
 		BlazeSovereignGameTest.hold(scene.raid(), entity.blockPosition());
-		return scene.raid().getEntity(entity.getUUID()) == entity;
+		boolean seen = scene.raid().getEntity(entity.getUUID()) == entity;
+		if (!seen) {
+			// A server catching up runs its ticks back to back, faster than chunk work finishes on other
+			// threads; waiting a moment of real time per tick lets that work land before the budget runs out.
+			try {
+				Thread.sleep(WAIT_MILLIS_PER_TICK);
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+			}
+		}
+		return seen;
 	}
+
+	static final long WAIT_MILLIS_PER_TICK = 20L;
 
 	static boolean stunned(final LivingEntity entity) {
 		MobEffectInstance slow = entity.getEffect(MobEffects.SLOWNESS);
