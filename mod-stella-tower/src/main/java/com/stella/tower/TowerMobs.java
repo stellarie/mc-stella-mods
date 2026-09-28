@@ -89,10 +89,16 @@ public final class TowerMobs {
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(TowerMobs::tick);
 		// A tower mob that becomes another, a split magma cube or a converted mob, stays a tower mob of its floor.
-		ServerLivingEntityEvents.MOB_CONVERSION.register((previous, converted, params) -> {
+		// Fabric's own listener copies the old mob's attachments across in the default phase; this one runs after it,
+		// so the rank set here is the one that stays.
+		net.minecraft.resources.Identifier late = StellaTower.id("after_attachment_copy");
+		ServerLivingEntityEvents.MOB_CONVERSION.addPhaseOrdering(net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE, late);
+		ServerLivingEntityEvents.MOB_CONVERSION.register(late, (previous, converted, params) -> {
 			State state = stateOf(previous);
 			if (state != null) {
-				makeTowerMob(converted, state.floor(), state.element(), state.rank());
+				// A split guardian's pieces are ordinary mobs: one boss is one boss, and one key.
+				TowerRank rank = params.type() == net.minecraft.world.entity.ConversionType.SPLIT_ON_DEATH ? TowerRank.MOB : state.rank();
+				makeTowerMob(converted, state.floor(), state.element(), rank);
 			}
 		});
 	}
@@ -269,7 +275,7 @@ public final class TowerMobs {
 	/** A hit's damage once the tower has had its say: a tower mob hits harder, and a big one takes less. */
 	public static float scaleDamage(final LivingEntity victim, final DamageSource source, final float amount) {
 		float scaled = amount;
-		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim) {
+		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim && !TowerBuffs.reflecting()) {
 			State from = stateOf(attacker);
 			if (from != null) {
 				scaled = (float) (TowerCurve.damage(scaled, from.floor()) * from.rank().damageFactor());
@@ -278,6 +284,9 @@ public final class TowerMobs {
 		State to = stateOf(victim);
 		if (to != null && to.healthDivisor() > 1.0) {
 			scaled = (float) (scaled / to.healthDivisor());
+		}
+		if (to != null) {
+			scaled = (float) (scaled / TowerBuffs.healthFactor(victim));
 		}
 		return scaled;
 	}

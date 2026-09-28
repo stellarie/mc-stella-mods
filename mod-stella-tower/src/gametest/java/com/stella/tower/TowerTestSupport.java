@@ -89,6 +89,16 @@ final class TowerTestSupport {
 		return player;
 	}
 
+	/** Holds the chunks around a spot loaded, so what spawns there is seen. A portal ticket lapses after 300 ticks. */
+	static void holdRoom(final ServerLevel tower, final Vec3 at) {
+		tower.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL,
+			net.minecraft.world.level.ChunkPos.containing(BlockPos.containing(at)), 2);
+	}
+
+	static boolean roomLoaded(final ServerLevel tower, final Vec3 at) {
+		return tower.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.pack(BlockPos.containing(at)));
+	}
+
 	static void result(final String test, final String outcome) {
 		LOG.info("[BEHAVIOR] test={} RESULT {}", test, outcome);
 	}
