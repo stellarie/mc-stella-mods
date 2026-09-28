@@ -34,7 +34,8 @@ public class TowerEliteGameTest {
 			int elites = TowerElites.alive(tower, floor, TowerRank.ELITE);
 			int bosses = TowerElites.alive(tower, floor, TowerRank.BOSS);
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
-			double fromPortal = elite == null ? -1.0 : elite.position().distanceTo(portalFront(floor));
+			// Its post, not where its chase has taken it: an elite is kept near the portal, not frozen there.
+			double fromPortal = elite == null || !elite.hasHome() ? -1.0 : Vec3.atBottomCenterOf(elite.getHomePosition()).distanceTo(portalFront(floor));
 			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " fromPortal=" + fromPortal);
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(elites == 1 && bosses == 0, "floor " + floor + " holds " + elites + " elites and " + bosses + " bosses");
@@ -129,9 +130,14 @@ public class TowerEliteGameTest {
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		int[] slainAt = {-1};
 		int[] backAt = {-1};
+		int[] seenAt = {-1};
 		helper.onEachTick(() -> {
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
-			if (slainAt[0] < 0 && elite != null) {
+			if (seenAt[0] < 0 && elite != null) {
+				seenAt[0] = (int) helper.getTick();
+			}
+			// Slain some ticks after it rose, off the check's beat, so a rest timed from the check shows.
+			if (slainAt[0] < 0 && elite != null && helper.getTick() >= seenAt[0] + 7) {
 				elite.kill(tower);
 				slainAt[0] = (int) helper.getTick();
 			} else if (slainAt[0] >= 0 && backAt[0] < 0 && elite != null) {
@@ -139,8 +145,11 @@ public class TowerEliteGameTest {
 			}
 		});
 		helper.runAfterDelay(95L, () -> {
-			TowerElites.pinRespawnTicks(before);
-			TowerTestSupport.leave(helper, player);
+			try {
+				TowerTestSupport.leave(helper, player);
+			} finally {
+				TowerElites.pinRespawnTicks(before);
+			}
 			int gap = backAt[0] - slainAt[0];
 			TowerTestSupport.result("eliteReturns", "slainAt=" + slainAt[0] + " backAt=" + backAt[0] + " gap=" + gap + " rest=" + rest);
 			helper.assertTrue(slainAt[0] >= 0 && backAt[0] > 0, "the elite never came back: slain=" + slainAt[0] + " back=" + backAt[0]);
@@ -159,7 +168,14 @@ public class TowerEliteGameTest {
 		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
 		boss.snapTo(at);
 		tower.addFreshEntity(boss);
-		boss.kill(tower);
+		ServerPlayer slayer = TowerTestSupport.onFloor(helper, tower, floor);
+		TowerBuffs.pinMobBuffs(floor, List.of(TowerBuffs.MobBuff.SPEED, TowerBuffs.MobBuff.STRENGTH));
+		try {
+			boss.hurtServer(tower, slayer.damageSources().playerAttack(slayer), 1.0E30F);
+		} finally {
+			TowerBuffs.pinMobBuffs(floor, null);
+		}
+		TowerTestSupport.leave(helper, slayer);
 		List<ItemEntity> keys = tower.getEntitiesOfClass(ItemEntity.class, new AABB(at, at).inflate(4.0),
 			item -> FloorKeyItem.floorOf(item.getItem()) == floor);
 		TowerTestSupport.result("bossKey", "keys=" + keys.size() + " floor=" + floor);
@@ -190,6 +206,131 @@ public class TowerEliteGameTest {
 		helper.assertTrue(arrived == high, "a player holding keys to " + low + " and " + high + " arrived on floor " + arrived);
 		helper.assertTrue(keys == 2, "entering spent keys: " + keys + " of 2 left");
 		helper.succeed();
+	}
+
+	/** A boss slain by no player drops no key. The room is held loaded first, or the drop would vanish unseen. */
+	@GameTest(maxTicks = 200)
+	public void aBossNotSlainByAPlayerDropsNoKey(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
+		TowerFloors.ensure(tower, floor);
+		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
+		TowerTestSupport.holdRoom(tower, at);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(TowerTestSupport.roomLoaded(tower, at), "the boss's room never loaded");
+			Zombie boss = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+			TowerMobs.makeTowerMob(boss, floor, TowerElement.DARK, TowerRank.BOSS);
+			boss.snapTo(at);
+			tower.addFreshEntity(boss);
+			TowerBuffs.pinMobBuffs(floor, List.of(TowerBuffs.MobBuff.SPEED, TowerBuffs.MobBuff.STRENGTH));
+			try {
+				boss.hurtServer(tower, tower.damageSources().generic(), 1.0E30F);
+			} finally {
+				TowerBuffs.pinMobBuffs(floor, null);
+			}
+			List<ItemEntity> drops = tower.getEntitiesOfClass(ItemEntity.class, new AABB(at, at).inflate(4.0), item -> true);
+			long keys = drops.stream().filter(item -> FloorKeyItem.floorOf(item.getItem()) == floor).count();
+			TowerTestSupport.result("noPlayerNoKey", "dead=" + !boss.isAlive() + " drops=" + drops.size() + " keys=" + keys);
+			drops.forEach(ItemEntity::discard);
+			boss.discard();
+			helper.assertTrue(!boss.isAlive(), "the boss did not die, so the case proves nothing");
+			helper.assertTrue(keys == 0, "a boss no player slew dropped " + keys + " keys");
+		});
+	}
+
+	/** A split boss's pieces are ordinary mobs: one boss, one key. A slime splits when its dead body is removed. */
+	@GameTest(maxTicks = 200)
+	public void aSplitBossLeavesOrdinaryPieces(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
+		TowerFloors.ensure(tower, floor);
+		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
+		TowerTestSupport.holdRoom(tower, at);
+		java.util.Set<Mob> pieces = new java.util.HashSet<>();
+		helper.succeedWhen(() -> {
+			helper.assertTrue(TowerTestSupport.roomLoaded(tower, at), "the boss's room never loaded");
+			net.minecraft.world.entity.monster.cubemob.MagmaCube cube = EntityTypes.MAGMA_CUBE.create(tower, EntitySpawnReason.COMMAND);
+			cube.setSize(2, true);
+			TowerMobs.makeTowerMob(cube, floor, TowerElement.FIRE, TowerRank.BOSS);
+			cube.snapTo(at);
+			tower.addFreshEntity(cube);
+			TowerBuffs.pinMobBuffs(floor, List.of(TowerBuffs.MobBuff.SPEED, TowerBuffs.MobBuff.STRENGTH));
+			try {
+				cube.hurtServer(tower, tower.damageSources().generic(), 1.0E30F);
+			} finally {
+				TowerBuffs.pinMobBuffs(floor, null);
+			}
+			// The death animation ends in this removal, which is where a cube splits.
+			cube.remove(net.minecraft.world.entity.Entity.RemovalReason.KILLED);
+			pieces.addAll(tower.getEntitiesOfClass(Mob.class, new AABB(at, at).inflate(4.0), mob -> mob != cube
+				&& mob.getType() == EntityTypes.MAGMA_CUBE && TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).floor() == floor));
+			long bosses = pieces.stream().filter(mob -> TowerMobs.stateOf(mob).rank() == TowerRank.BOSS).count();
+			TowerTestSupport.result("splitBoss", "pieces=" + pieces.size() + " bosses=" + bosses);
+			pieces.forEach(Mob::discard);
+			helper.assertTrue(!pieces.isEmpty(), "the boss did not split, so the case proves nothing");
+			helper.assertTrue(bosses == 0, bosses + " of the split boss's " + pieces.size() + " pieces are bosses too");
+		});
+	}
+
+	@GameTest
+	public void noCreeperHoldsAPost(final GameTestHelper helper) {
+		boolean creeper = TowerElites.guardianPool(10).contains(EntityTypes.CREEPER) || TowerElites.guardianPool(30).contains(EntityTypes.CREEPER);
+		TowerTestSupport.result("noCreeperGuard", "creeper=" + creeper);
+		helper.assertFalse(creeper, "a creeper, whose blast ends it without a death, may hold a post");
+		helper.succeed();
+	}
+
+	/** A boss whose bar was dropped, as by its chunk unloading, has it back at the next check. */
+	@GameTest(maxTicks = 120)
+	public void aBossGetsItsBarBack(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
+		TowerFloors.ensure(tower, floor);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		Mob[] boss = {null};
+		helper.runAfterDelay(50L, () -> {
+			boss[0] = TowerElites.guardian(tower, floor, TowerRank.BOSS);
+			if (boss[0] != null) {
+				TowerElites.forgetBar(boss[0]);
+			}
+		});
+		helper.runAfterDelay(100L, () -> {
+			boolean back = boss[0] != null && TowerElites.barOf(boss[0]) != null && TowerElites.barOf(boss[0]).getPlayers().contains(player);
+			TowerTestSupport.result("barBack", "boss=" + (boss[0] != null) + " back=" + back);
+			TowerTestSupport.leave(helper, player);
+			helper.assertTrue(boss[0] != null, "no boss rose, so the case proves nothing");
+			helper.assertTrue(back, "the boss's dropped bar never came back");
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aRidersKeyCountsAsMuchAsAWalkers(final GameTestHelper helper) {
+		BlockPos inside = TowerTestSupport.frame(helper, 2, Blocks.CRYING_OBSIDIAN);
+		helper.setBlock(inside, Blocks.FIRE);
+		ServerPlayer player = TowerTestSupport.join(helper, 2.5, 5.5);
+		int high = 40;
+		player.getInventory().add(FloorKeyItem.forFloor(high));
+		net.minecraft.world.entity.animal.pig.Pig pig = helper.spawnMob(EntityTypes.PIG, new Vec3(2.5, 2.0, 5.5)).spawn();
+		player.startRiding(pig, true, false);
+		TeleportTransition way = TowerBlocks.TOWER_PORTAL.getPortalDestination(helper.getLevel(), pig, helper.absolutePos(inside));
+		int arrived = way == null ? 0 : TowerLayout.floorAt(BlockPos.containing(way.position()));
+		TowerTestSupport.result("riderKey", "arrived=" + arrived);
+		player.stopRiding();
+		pig.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(arrived == high, "a rider holding a key to " + high + " arrived on floor " + arrived);
+		helper.succeed();
+	}
+
+	/**
+	 * Not required: the harness cannot restart the server or load a floor's entities late. Manual item: on a
+	 * boss floor, save and quit, return, and see one boss and one elite; slay the boss, restart, and see it
+	 * stay away for its rest.
+	 */
+	@GameTest(required = false)
+	public void aSavedPostHoldsAcrossARestartRequiresManualTest(final GameTestHelper helper) {
+		helper.fail("a server restart cannot be run inside the game test harness");
 	}
 
 	@GameTest(maxTicks = 100)

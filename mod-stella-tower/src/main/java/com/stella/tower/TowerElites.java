@@ -1,8 +1,10 @@
 package com.stella.tower;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -16,26 +18,32 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Every fifth floor keeps an elite by its portal, and every tenth a boss beside it. Each returns five
- * minutes after it falls, one of each at a time, and neither counts toward the floor's cap. A boss drops
- * its floor's key, and carries a bar for the players on its floor.
+ * minutes after it falls, one of each at a time, and neither counts toward the floor's cap. A boss slain
+ * by a player drops its floor's key, and carries a bar for the players on its floor.
+ * <p>
+ * Each post is saved in {@link GuardianData}: a guardian recorded there is held to be alive until its
+ * death is seen or its room, fully loaded, no longer holds it, so a floor that loads slowly never raises
+ * a second one, and a guardian's rest outlives a restart.
  */
 public final class TowerElites {
 	public static final int ELITE_EVERY = 5;
 	public static final int BOSS_EVERY = 10;
 	public static final int RESPAWN_TICKS = 6000;
-	/** Where they stand: this far in front of the portal. */
+	/** Where they stand: this far in front of the portal, and how far they may stray from it. */
 	public static final int GUARD_DISTANCE = 5;
+	public static final int GUARD_RADIUS = 8;
 	public static final int CHECK_TICKS = 20;
 	public static final int PLACE_TRIES = 40;
 	private static int respawnTicks = RESPAWN_TICKS;
-	/** When each floor's elite or boss may next rise, by floor and rank. */
-	private static final Map<Long, Integer> NEXT_RISE = new HashMap<>();
 	private static final Map<UUID, ServerBossEvent> BARS = new HashMap<>();
 
 	private TowerElites() {
@@ -45,14 +53,23 @@ public final class TowerElites {
 		ServerTickEvents.END_SERVER_TICK.register(TowerElites::tick);
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
-			if (state != null && state.rank() == TowerRank.BOSS && entity.level() instanceof ServerLevel level) {
+			if (state == null || state.rank() == TowerRank.MOB || !(entity.level() instanceof ServerLevel level)
+				|| !level.dimension().equals(TowerTravel.TOWER)) {
+				return;
+			}
+			GuardianData data = GuardianData.get(level);
+			GuardianData.Post post = data.post(state.floor(), state.rank());
+			if (post != null && post.guardian().filter(entity.getUUID()::equals).isPresent()) {
+				// The rest runs from the death itself.
+				data.set(state.floor(), state.rank(), new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks));
+			}
+			if (state.rank() == TowerRank.BOSS && entity.getLastHurtByPlayer() != null && level.getGameRules().get(GameRules.MOB_DROPS)) {
 				entity.spawnAtLocation(level, FloorKeyItem.forFloor(state.floor()));
 			}
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			BARS.values().forEach(ServerBossEvent::removeAllPlayers);
 			BARS.clear();
-			NEXT_RISE.clear();
 		});
 	}
 
@@ -71,6 +88,13 @@ public final class TowerElites {
 
 	public static boolean keepsBoss(final int floor) {
 		return floor % BOSS_EVERY == 0;
+	}
+
+	/** The kinds that may hold a post: the floor's own, but no creeper, whose blast ends it without a death. */
+	public static List<EntityType<? extends Mob>> guardianPool(final int floor) {
+		List<EntityType<? extends Mob>> pool = new ArrayList<>(TowerMobs.pool(floor));
+		pool.remove(EntityTypes.CREEPER);
+		return pool;
 	}
 
 	private static List<Mob> of(final ServerLevel tower, final int floor, final TowerRank rank) {
@@ -94,8 +118,25 @@ public final class TowerElites {
 		return BARS.get(boss.getUUID());
 	}
 
-	private static long key(final int floor, final TowerRank rank) {
-		return ((long) floor << 2) | rank.ordinal();
+	/** The test seam: drops a boss's bar, as an unload does, so its rebuilding can be seen. */
+	public static void forgetBar(final Mob boss) {
+		ServerBossEvent bar = BARS.remove(boss.getUUID());
+		if (bar != null) {
+			bar.removeAllPlayers();
+		}
+	}
+
+	/** Whether every chunk of the room has its entities loaded. */
+	public static boolean roomLoaded(final ServerLevel tower, final int floor) {
+		BlockPos origin = TowerLayout.origin(floor);
+		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
+			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+				if (!tower.areEntitiesLoaded(ChunkPos.pack(cx, cz))) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	private static void tick(final MinecraftServer server) {
@@ -103,6 +144,8 @@ public final class TowerElites {
 		if (tower == null) {
 			return;
 		}
+		GuardianData data = GuardianData.get(tower);
+		data.tick();
 		if (server.getTickCount() % CHECK_TICKS == 0) {
 			Map<Integer, Boolean> occupied = new HashMap<>();
 			for (ServerPlayer player : tower.players()) {
@@ -111,39 +154,55 @@ public final class TowerElites {
 					occupied.put(floor, true);
 				}
 			}
-			int now = server.getTickCount();
 			for (int floor : occupied.keySet()) {
+				if (!roomLoaded(tower, floor)) {
+					continue;
+				}
 				if (keepsElite(floor)) {
-					keep(tower, floor, TowerRank.ELITE, now);
+					keep(tower, data, floor, TowerRank.ELITE);
 				}
 				if (keepsBoss(floor)) {
-					keep(tower, floor, TowerRank.BOSS, now);
+					keep(tower, data, floor, TowerRank.BOSS);
+					Mob boss = guardian(tower, floor, TowerRank.BOSS);
+					if (boss != null && !BARS.containsKey(boss.getUUID())) {
+						BARS.put(boss.getUUID(), newBar(boss));
+					}
 				}
 			}
 		}
 		updateBars(tower);
 	}
 
-	/** One of the rank on the floor: while it lives its time is pushed on, and once gone it rises when due. */
-	private static void keep(final ServerLevel tower, final int floor, final TowerRank rank, final int now) {
-		long key = key(floor, rank);
+	/** Holds a post: a recorded guardian stands until seen gone; an empty post rises again once rested. */
+	private static void keep(final ServerLevel tower, final GuardianData data, final int floor, final TowerRank rank) {
+		GuardianData.Post post = data.post(floor, rank);
+		if (post != null && post.guardian().isPresent()) {
+			boolean present = of(tower, floor, rank).stream().anyMatch(mob -> mob.getUUID().equals(post.guardian().get()));
+			if (present) {
+				return;
+			}
+			// Gone from a fully loaded room without a death seen: a blast or a discard. Its rest starts now.
+			data.set(floor, rank, new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks));
+			return;
+		}
+		if (post != null && data.ticks() < post.nextRise()) {
+			return;
+		}
 		if (alive(tower, floor, rank) > 0) {
-			NEXT_RISE.put(key, now + respawnTicks);
+			// One already stands, from before the record was kept: it holds the post.
+			data.set(floor, rank, new GuardianData.Post(Optional.of(guardian(tower, floor, rank).getUUID()), 0L));
 			return;
 		}
-		Integer due = NEXT_RISE.get(key);
-		if (due != null && now < due) {
-			return;
-		}
-		if (rise(tower, floor, rank) != null) {
-			NEXT_RISE.put(key, now + respawnTicks);
+		Mob risen = rise(tower, floor, rank);
+		if (risen != null) {
+			data.set(floor, rank, new GuardianData.Post(Optional.of(risen.getUUID()), 0L));
 		}
 	}
 
-	/** Raises the floor's elite or boss in front of its portal. */
+	/** Raises the floor's elite or boss in front of its portal, kept near it. */
 	public static @Nullable Mob rise(final ServerLevel tower, final int floor, final TowerRank rank) {
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = TowerMobs.pool(floor);
+		List<EntityType<? extends Mob>> pool = guardianPool(floor);
 		Mob mob = pool.get(random.nextInt(pool.size())).create(tower, EntitySpawnReason.EVENT);
 		if (mob == null) {
 			return null;
@@ -159,18 +218,22 @@ public final class TowerElites {
 				continue;
 			}
 			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)], rank);
+			mob.setHomeTo(front, GUARD_RADIUS);
 			if (!tower.addFreshEntity(mob)) {
 				return null;
 			}
 			if (rank == TowerRank.BOSS) {
-				ServerBossEvent bar = new ServerBossEvent(mob.getUUID(), mob.getDisplayName(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
-				BARS.put(mob.getUUID(), bar);
+				BARS.put(mob.getUUID(), newBar(mob));
 			}
 			StellaTower.LOGGER.debug("[TOWER] floor={} {} RISES as {}", floor, rank, mob.getType());
 			return mob;
 		}
 		mob.discard();
 		return null;
+	}
+
+	private static ServerBossEvent newBar(final Mob boss) {
+		return new ServerBossEvent(boss.getUUID(), boss.getDisplayName(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
 	}
 
 	/** Each boss's bar: its health, shown to the players on its floor and to nobody else. */
