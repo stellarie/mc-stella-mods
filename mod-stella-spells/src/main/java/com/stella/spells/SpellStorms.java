@@ -14,6 +14,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -27,10 +28,10 @@ public final class SpellStorms {
 	public static final String STORM_BOLT_TAG = "mod-stella-spells.storm_bolt";
 
 	public interface Recorder {
-		void struck(ServerPlayer caster, UUID target, int serverTick);
+		void struck(LivingEntity caster, UUID target, int serverTick);
 	}
 
-	private record Strike(ServerPlayer caster, ServerLevel level, Mob target, float damage, int dueTick) {
+	private record Strike(LivingEntity caster, ServerLevel level, LivingEntity target, float damage, int dueTick) {
 	}
 
 	private static final Recorder SILENT = (caster, target, serverTick) -> {
@@ -67,7 +68,7 @@ public final class SpellStorms {
 	static boolean start(final ServerPlayer caster, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		ServerLevel level = caster.level();
 		double radius = RADIUS * modifiers.radiusMultiplier();
-		List<Mob> targets = new ArrayList<>(level.getEntitiesOfClass(
+		List<LivingEntity> targets = new ArrayList<>(level.getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),
 			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
@@ -77,8 +78,26 @@ public final class SpellStorms {
 			return false;
 		}
 
-		targets.sort(Comparator.comparingDouble((Mob mob) -> mob.position().distanceToSqr(point)).thenComparingInt(Mob::getId));
-		float damage = STRIKE_DAMAGE * (float) modifiers.powerMultiplier();
+		return queue(caster, level, point, targets, STRIKE_DAMAGE * (float) modifiers.powerMultiplier());
+	}
+
+	static boolean startForMob(final Mob caster, final Vec3 point) {
+		if (!(caster.level() instanceof ServerLevel level)) {
+			return false;
+		}
+		List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class,
+			new AABB(point, point).inflate(RADIUS), candidate -> candidate != caster && candidate.isAlive()
+				&& candidate.position().distanceToSqr(point) <= RADIUS * RADIUS && MobSpells.isFoeOf(caster, candidate));
+		return queue(caster, level, point, targets, STRIKE_DAMAGE);
+	}
+
+	private static boolean queue(final LivingEntity caster, final ServerLevel level, final Vec3 point,
+		final List<LivingEntity> targets, final float damage) {
+		if (targets.isEmpty()) {
+			return false;
+		}
+		targets.sort(Comparator.comparingDouble((LivingEntity mob) -> mob.position().distanceToSqr(point))
+			.thenComparingInt(LivingEntity::getId));
 		int now = level.getServer().getTickCount();
 		strike(new Strike(caster, level, targets.get(0), damage, now), now);
 		synchronized (PENDING) {
@@ -109,7 +128,7 @@ public final class SpellStorms {
 
 	// A visual-only bolt so the sky lights up without fire, then the storm's own damage on its target.
 	private static void strike(final Strike strike, final int now) {
-		Mob target = strike.target();
+		LivingEntity target = strike.target();
 		if (!target.isAlive() || target.level() != strike.level()) {
 			return;
 		}

@@ -158,11 +158,15 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 
 A book of its own: no scroll copies it and no weapon takes it. Crafted from a book and four bone blocks.
 
-- Casting raises one skeleton that serves you, with a bow and a leather cap. It never despawns, and
-  iron golems leave it alone.
+- Casting raises one skeleton with a bow, a leather cap, and 30 base health. With Stella Mobs installed,
+  its health also follows the highest threat level ever reached on the server, across dimensions and restarts.
+  It never despawns, and iron golems leave it alone.
 - It fights the hostiles within 8 blocks of you and follows you, catching up by teleport when you are
   more than 24 blocks away.
-- It gathers the items it walks over into its own 18-slot pack. When it dies, its gear and pack drop.
+- It gathers nearby items into its 18-slot pack. Its gear, pack, and name stay saved for resummoning after
+  death, and it follows you between worlds with them. It cannot enter portals on its own.
+- Combat and support spellbooks in its pack let it cast their mob forms without consuming the books.
+  Travel, movement, vision, breathing, mining, and Summon Skeleton books stay in its pack without casting.
 - Use it (not sneaking) to open its screen: the top row is its head, chest, legs, feet, main hand and
   off hand, then two locked panes and a name slot. A named item left in the name slot renames it when
   you close the screen, and comes back to you. The two rows below are its pack.
@@ -178,10 +182,12 @@ A book of its own: no scroll copies it and no weapon takes it. Crafted from a bo
 - **Strays** cast Ice Lance. An elite or boss stray casts Frozen Meteor too, with no combo needed.
 - **Evokers and illusioners** cast Sanctuary over the illagers around them when one is hurt, at most
   once every 20 seconds.
-- **The village witch** (with `mc-stella-villages`) throws no potions and joins no raid. It strikes
-  the hostiles near the village, first the ones hunting a player or a villager, with Ice Lance,
-  Frostbind and Venom Dart, heals and blesses players, villagers, golems and the patrol with
-  Sanctuary, Bulwark Hymn, Battle Hymn and Tailwind, and steps to a foe more than 12 blocks away.
+- **The village witch** (with `mc-stella-villages`) joins the village patrol but no vanilla raid.
+  It detects foes within 48 blocks, blinks toward distant foes, and retreats from melee range.
+  Warden's Roar has a five-second cooldown and spares friendlies. Spark Shot has a 0.2-second
+  cooldown. At half health, it casts Life Bloom at most once every five seconds.
+  The villages mod adds splash healing and buffs for nearby allies and players, plus harmful
+  splash potions for hostile mobs. Support and hostile throws each have a two-second interval.
 
 A mob's spell lands at full strength and keeps the spell's own cooldown. Spells never count a village
 patrol, the village witch or a summoned skeleton as a foe.

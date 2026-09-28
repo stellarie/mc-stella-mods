@@ -9,6 +9,7 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.core.BlockPos;
 
@@ -86,21 +87,27 @@ public final class VillageRaidGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
+	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void attendanceFollowsPlayerDistance(final GameTestHelper helper) {
 		String test = "attendanceFollowsPlayerDistance";
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		BlockPos at = player.blockPosition();
-		// Two detached records, so only the anchor's distance to the one player differs and nothing is registered.
-		VillageWorldData.VillageRecord near = VillageWorldData.empty().findOrCreate(helper.getLevel().dimension(), at.offset(4, 0, 0));
-		VillageWorldData.VillageRecord far = VillageWorldData.empty().findOrCreate(
-			helper.getLevel().dimension(), at.offset((int) VillageRaids.ATTENDANCE_RANGE + 8, 0, 0)
-		);
-		boolean attendsNear = VillageRaids.attendant(helper.getLevel(), near) == player;
-		boolean attendsFar = VillageRaids.attendant(helper.getLevel(), far) == player;
-		PatrolTestSupport.result(test, "attendsNear=" + attendsNear + " attendsFar=" + attendsFar);
-		helper.assertTrue(attendsNear && !attendsFar, "attendance did not follow the player's distance: near=" + attendsNear + " far=" + attendsFar);
-		helper.succeed();
+		Vec3 privatePosition = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
+		player.setPos(privatePosition.x, privatePosition.y, privatePosition.z);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(helper.getLevel().players().contains(player), "the test player has not joined the level");
+			BlockPos at = player.blockPosition();
+			// Two detached records differ only by their distance to the joined player.
+			VillageWorldData.VillageRecord near = VillageWorldData.empty().findOrCreate(helper.getLevel().dimension(), at.offset(4, 0, 0));
+			VillageWorldData.VillageRecord far = VillageWorldData.empty().findOrCreate(
+				helper.getLevel().dimension(), at.offset((int) VillageRaids.ATTENDANCE_RANGE + 8, 0, 0)
+			);
+			boolean attendsNear = VillageRaids.attendant(helper.getLevel(), near) == player;
+			boolean attendsFar = VillageRaids.attendant(helper.getLevel(), far) == player;
+			PatrolTestSupport.result(test, "attendsNear=" + attendsNear + " attendsFar=" + attendsFar);
+			helper.assertTrue(attendsNear && !attendsFar,
+				"attendance did not follow the player's distance: near=" + attendsNear + " far=" + attendsFar);
+			helper.getLevel().getServer().getPlayerList().remove(player);
+		});
 	}
 
 	private static VillageWorldData.VillageRecord village(final GameTestHelper helper) {

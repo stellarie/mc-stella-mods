@@ -2,6 +2,7 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+
 loom {
 	splitEnvironmentSourceSets()
 
@@ -18,6 +19,9 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	if (project.hasProperty("withStellaMobsJar")) {
+		productionRuntimeMods files(project.property("withStellaMobsJar"))
+	}
 }
 
 fabricApi {
@@ -31,12 +35,16 @@ fabricApi {
 }
 
 afterEvaluate {
+	if (project.hasProperty("withStellaMobsJar")) {
+		project.dependencies.add("gametestRuntimeOnly", project.files(project.property("withStellaMobsJar")))
+	}
 	if (project.hasProperty("equipsEnchantJar")) {
 		project.dependencies.add(
 			"gametestRuntimeOnly", project.files(project.file(project.property("equipsEnchantJar")))
 		)
 	}
 }
+
 
 processResources {
 	def version = project.version
@@ -49,6 +57,12 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
+}
+
+tasks.named('runGameTest') {
+	if (project.hasProperty('gameTestFilter')) {
+		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
 }
 
 java {

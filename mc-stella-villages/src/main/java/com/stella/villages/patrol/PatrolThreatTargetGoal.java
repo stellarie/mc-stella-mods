@@ -23,7 +23,8 @@ final class PatrolThreatTargetGoal extends TargetGoal {
 	@Override
 	public boolean canUse() {
 		this.targetMob = PatrolService.threatenedPlayer(this.guard, this.villageId);
-		return this.targetMob != null;
+		return this.targetMob != null && PatrolService.withinHeadBell(this.guard,
+			PatrolService.bellFor(this.guard, this.villageId), this.targetMob.position());
 	}
 
 	@Override

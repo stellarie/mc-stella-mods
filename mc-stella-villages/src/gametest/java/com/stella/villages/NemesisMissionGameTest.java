@@ -2,6 +2,10 @@ package com.stella.villages;
 
 import com.stella.villages.mission.MissionBoardMenu;
 import com.stella.villages.mission.MissionService;
+import com.stella.villages.mission.NemesisHead;
+import com.stella.villages.mission.NemesisState;
+import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.gear.GearTier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -55,11 +59,351 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class NemesisMissionGameTest {
+	@GameTest(dimension = "minecraft:the_nether")
+	public void offersOnlyHostileMobsAndIronGolems(final GameTestHelper helper) {
+		List<Identifier> pool = MissionService.defaultOfferPool();
+		boolean valid = pool.contains(Identifier.parse("minecraft:zombie"))
+			&& pool.contains(Identifier.parse("minecraft:iron_golem"))
+			&& !pool.contains(Identifier.parse("minecraft:wandering_trader"))
+			&& !pool.contains(Identifier.parse("minecraft:creaking"))
+			&& !pool.contains(Identifier.parse("minecraft:cow"));
+		PatrolTestSupport.result("offersOnlyHostileMobsAndIronGolems", "valid=" + valid);
+		helper.assertTrue(valid, "Nemesis offers include a neutral mob or exclude the iron golem");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageHeadTradesVanillaAndNamedMobHeads(final GameTestHelper helper) {
+		String test = "villageHeadTradesVanillaAndNamedMobHeads";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		boolean mapping = NemesisHead.itemFor(Identifier.parse("minecraft:zombie")) == Items.ZOMBIE_HEAD
+			&& NemesisHead.itemFor(Identifier.parse("minecraft:skeleton")) == Items.SKELETON_SKULL
+			&& NemesisHead.itemFor(Identifier.parse("minecraft:spider")) == Items.PLAYER_HEAD;
+		fixture.owner().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.ZOMBIE_HEAD));
+		UseEntityCallback.EVENT.invoker().interact(
+			fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null
+		);
+		int vanillaBooks = enchantedBookCount(fixture.owner().getInventory());
+		boolean vanillaConsumed = !fixture.owner().getItemInHand(InteractionHand.MAIN_HAND).is(Items.ZOMBIE_HEAD);
+		fixture.owner().setItemInHand(InteractionHand.OFF_HAND,
+			NemesisHead.create(Identifier.parse("minecraft:spider")));
+		UseEntityCallback.EVENT.invoker().interact(
+			fixture.owner(), helper.getLevel(), InteractionHand.OFF_HAND, fixture.head(), null
+		);
+		int totalBooks = enchantedBookCount(fixture.owner().getInventory());
+		boolean namedConsumed = fixture.owner().getItemInHand(InteractionHand.OFF_HAND).isEmpty();
+		boolean valid = mapping && vanillaConsumed && namedConsumed && vanillaBooks == 3 && totalBooks == 6;
+		PatrolTestSupport.result(test, "mapping=" + mapping + " vanillaBooks=" + vanillaBooks
+			+ " totalBooks=" + totalBooks + " valid=" + valid);
+		helper.assertTrue(valid, "village head did not trade both vanilla and named mob heads");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200)
+	public void ironGolemNemesisTargetsItsMissionPlayer(final GameTestHelper helper) {
+		String test = "ironGolemNemesisTargetsItsMissionPlayer";
+		ServerLevel level = helper.getLevel();
+		ServerPlayer owner = survivalPlayer(helper);
+		BlockPos position = helper.absolutePos(new BlockPos(2, 2, 2));
+		movePlayer(owner, Vec3.atBottomCenterOf(position.offset(8, 0, 0)));
+		Mob golem = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);
+		if (golem == null) {
+			helper.fail("could not create iron golem Nemesis");
+			return;
+		}
+		UUID missionId = UUID.randomUUID();
+		com.stella.villages.data.VillageWorldData.get(level).addMission(
+			new com.stella.villages.data.VillageWorldData.MissionRecord(
+				missionId, owner.getUUID(), Identifier.parse("minecraft:iron_golem"), position,
+				Optional.of(golem.getUUID()), com.stella.villages.data.VillageWorldData.MissionStatus.ACTIVE,
+				Optional.empty(), level.dimension()
+			)
+		);
+		NemesisState.attach(golem, missionId);
+		golem.snapTo(Vec3.atBottomCenterOf(position), 0.0F, 0.0F);
+		level.addFreshEntity(golem);
+		helper.runAfterDelay(40, () -> {
+			boolean targeted = golem.getTarget() == owner;
+			PatrolTestSupport.result(test, "elite=" + Elite.isElite(golem) + " targeted=" + targeted
+				+ " golemTicks=" + golem.tickCount + " ownerDistance=" + Math.sqrt(golem.distanceToSqr(owner))
+				+ " missionPresent=" + com.stella.villages.data.VillageWorldData.get(level).mission(missionId).isPresent()
+				+ " ownerCreative=" + owner.isCreative() + " ownerSpectator=" + owner.isSpectator()
+				+ " currentTarget=" + golem.getTarget());
+			golem.discard();
+			com.stella.villages.data.VillageWorldData.get(level).removeMission(missionId);
+			helper.assertTrue(targeted, "iron golem Nemesis ignored its mission player");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void equipmentRewardRollsAtTenPercentAndReturnsOnePiece(final GameTestHelper helper) {
+		Mob subject = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		if (subject == null) {
+			helper.fail("could not create equipment reward subject");
+			return;
+		}
+		subject.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+		subject.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
+		int rewards = 0;
+		boolean singlePiece = true;
+		var random = net.minecraft.util.RandomSource.create(20_260_928L);
+		for (int roll = 0; roll < 10_000; roll++) {
+			ItemStack item = MissionService.rollEquipmentReward(subject, random);
+			if (!item.isEmpty()) {
+				rewards++;
+				singlePiece &= item.getCount() == 1 && (item.is(Items.DIAMOND_HELMET)
+					|| item.is(Items.DIAMOND_SWORD));
+			}
+		}
+		boolean valid = singlePiece && rewards >= 950 && rewards <= 1_050;
+		PatrolTestSupport.result("equipmentRewardRollsAtTenPercentAndReturnsOnePiece",
+			"rolls=10000 rewards=" + rewards + " singlePiece=" + singlePiece + " valid=" + valid);
+		helper.assertTrue(valid, "equipment reward rate or single-piece rule changed");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void savedPlainNemesisBecomesEliteOnLoad(final GameTestHelper helper) {
+		Mob saved = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		if (saved == null) {
+			helper.fail("could not create saved Nemesis fixture");
+			return;
+		}
+		double baseline = saved.getMaxHealth();
+		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseline + MissionService.NEMESIS_BONUS_HEALTH);
+		saved.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_AXE));
+		NemesisState.attach(saved, UUID.randomUUID());
+		saved.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		saved.snapTo(Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))), 0.0F, 0.0F);
+		helper.getLevel().addFreshEntity(saved);
+		boolean upgraded = Elite.isElite(saved) && hasNemesisKit(saved)
+			&& Math.abs(saved.getMaxHealth() - (baseline * Elite.HEALTH_MULTIPLIER
+				+ MissionService.NEMESIS_BONUS_HEALTH)) < 0.001
+			&& saved.getActiveEffects().stream().anyMatch(effect -> effect.getDuration() == -1);
+		PatrolTestSupport.result("savedPlainNemesisBecomesEliteOnLoad", "elite=" + Elite.isElite(saved)
+			+ " health=" + saved.getMaxHealth() + " upgraded=" + upgraded);
+		saved.discard();
+		helper.assertTrue(upgraded, "an existing plain Nemesis did not receive the elite profile");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void savedEliteNemesisGetsThreeEnchantmentsOnLoad(final GameTestHelper helper) {
+		Mob saved = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		if (saved == null) {
+			helper.fail("could not create saved elite fixture");
+			return;
+		}
+		double baseline = saved.getMaxHealth();
+		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseline + MissionService.NEMESIS_BONUS_HEALTH);
+		saved.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		Elite.mark(saved, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+		saved.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_AXE));
+		NemesisState.attach(saved, UUID.randomUUID());
+		saved.snapTo(Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))), 0.0F, 0.0F);
+		helper.getLevel().addFreshEntity(saved);
+		boolean upgraded = Elite.isElite(saved) && hasNemesisKit(saved)
+			&& Math.abs(saved.getMaxHealth() - (baseline * Elite.HEALTH_MULTIPLIER
+				+ MissionService.NEMESIS_BONUS_HEALTH)) < 0.001;
+		PatrolTestSupport.result("savedEliteNemesisGetsThreeEnchantmentsOnLoad",
+			"health=" + saved.getMaxHealth() + " upgraded=" + upgraded);
+		saved.discard();
+		helper.assertTrue(upgraded, "saved elite Nemesis kept old equipment or duplicate bonus health");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void missingEliteCompanionIsReplaced(final GameTestHelper helper) {
+		String test = "missingEliteCompanionIsReplaced";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		BlockPos safeSite = prepareSafeTargetSite(helper, test, fixture.head().blockPosition());
+		if (safeSite == null) {
+			return;
+		}
+		UseEntityCallback.EVENT.invoker().interact(
+			fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null
+		);
+		UUID offerId = firstOfferId(offersFor(fixture.owner().getUUID()));
+		boolean accepted = offerId != null && Boolean.TRUE.equals(acceptOffer(
+			fixture.owner(), fixture.head().getUUID(), offerId
+		));
+		movePlayer(fixture.owner(), Vec3.atBottomCenterOf(safeSite));
+		Mob[] nemesis = {null};
+		UUID[] originalCompanionId = {null};
+		helper.startSequence()
+			.thenWaitUntil(() -> {
+				var mission = missionsFor(helper.getLevel(), fixture.owner().getUUID()).stream().findFirst().orElse(null);
+				nemesis[0] = mission == null ? null
+					: loadNemesis(test, helper.getLevel(), mission.id(), mission.targetPosition());
+				NemesisState state = nemesis[0] == null ? null : NemesisState.get(nemesis[0]);
+				helper.assertTrue(state != null && state.companionId().isPresent(),
+					"Nemesis and original companion did not spawn");
+			})
+			.thenExecute(() -> {
+				originalCompanionId[0] = NemesisState.get(nemesis[0]).companionId().orElseThrow();
+				Entity companion = helper.getLevel().getEntity(originalCompanionId[0]);
+				helper.assertTrue(companion instanceof Mob, "original companion was not loaded");
+				companion.discard();
+			})
+			.thenWaitUntil(() -> {
+				NemesisState state = NemesisState.get(nemesis[0]);
+				UUID replacementId = state == null ? null : state.companionId().orElse(null);
+				Entity replacement = replacementId == null ? null : helper.getLevel().getEntity(replacementId);
+				helper.assertTrue(replacement instanceof Mob guard
+					&& !replacementId.equals(originalCompanionId[0])
+					&& guard.getType() == nemesis[0].getType() && Elite.isElite(guard)
+					&& nemesis[0].getActiveEffects().stream().anyMatch(effect -> effect.getDuration() == -1
+						&& guard.hasEffect(effect.getEffect())), "elite companion was not replaced with the same buff");
+			})
+			.thenExecute(() -> {
+				PatrolTestSupport.result(test, "accepted=" + accepted + " replacement="
+					+ NemesisState.get(nemesis[0]).companionId().orElseThrow() + " elite=true sharedBuff=true");
+				movePlayer(fixture.owner(), Vec3.atBottomCenterOf(fixture.head().blockPosition()));
+				releaseSafeTargetSite(helper, safeSite);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_MAX_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void killedEliteCompanionNeverRespawns(final GameTestHelper helper) {
+		String test = "killedEliteCompanionNeverRespawns";
+		MissionFixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		BlockPos safeSite = prepareSafeTargetSite(helper, test, fixture.head().blockPosition());
+		if (safeSite == null) {
+			return;
+		}
+		UseEntityCallback.EVENT.invoker().interact(
+			fixture.owner(), helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null
+		);
+		UUID offerId = firstOfferId(offersFor(fixture.owner().getUUID()));
+		helper.assertTrue(offerId != null && Boolean.TRUE.equals(acceptOffer(
+			fixture.owner(), fixture.head().getUUID(), offerId)), "the mission was not accepted");
+		movePlayer(fixture.owner(), Vec3.atBottomCenterOf(safeSite));
+		Mob[] nemesis = {null};
+		UUID[] companionId = {null};
+		helper.startSequence()
+			.thenWaitUntil(() -> {
+				var mission = missionsFor(helper.getLevel(), fixture.owner().getUUID()).stream().findFirst().orElse(null);
+				nemesis[0] = mission == null ? null
+					: loadNemesis(test, helper.getLevel(), mission.id(), mission.targetPosition());
+				NemesisState state = nemesis[0] == null ? null : NemesisState.get(nemesis[0]);
+				helper.assertTrue(state != null && state.companionId().isPresent(), "Nemesis and companion did not spawn");
+			})
+			.thenExecute(() -> {
+				companionId[0] = NemesisState.get(nemesis[0]).companionId().orElseThrow();
+				Entity companion = helper.getLevel().getEntity(companionId[0]);
+				helper.assertTrue(companion instanceof Mob, "the companion was not loaded");
+				companion.kill(helper.getLevel());
+				movePlayer(fixture.owner(), Vec3.atBottomCenterOf(fixture.head().blockPosition()));
+			})
+			.thenIdle(160)
+			.thenExecute(() -> {
+				NemesisState state = NemesisState.get(nemesis[0]);
+				UUID current = state == null ? null : state.companionId().orElse(null);
+				PatrolTestSupport.result(test, "original=" + companionId[0] + " current=" + current
+					+ " originalAlive=" + (helper.getLevel().getEntity(companionId[0]) != null));
+				helper.assertTrue(companionId[0].equals(current) && helper.getLevel().getEntity(current) == null,
+					"a killed elite companion respawned");
+				releaseSafeTargetSite(helper, safeSite);
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void everyNemesisKitPieceHasThreeEnchantments(final GameTestHelper helper) {
+		int checked = 0;
+		try {
+			var method = Class.forName("com.stella.villages.mission.NemesisKit")
+				.getDeclaredMethod("armNemesis", Mob.class, GearTier.class);
+			method.setAccessible(true);
+			for (int index = 0; index < 100; index++) {
+				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+				GearTier tier = index % 2 == 0 ? GearTier.DIAMOND : GearTier.NETHERITE;
+				method.invoke(null, mob, tier);
+				if (!hasNemesisKit(mob)) {
+					PatrolTestSupport.result("everyNemesisKitPieceHasThreeEnchantments", "checked=" + checked
+						+ " failedTier=" + tier);
+					helper.fail("a Nemesis kit piece has fewer than three enchantments");
+					return;
+				}
+				checked++;
+			}
+		} catch (ReflectiveOperationException error) {
+			helper.fail("could not arm Nemesis kit: " + error);
+			return;
+		}
+		PatrolTestSupport.result("everyNemesisKitPieceHasThreeEnchantments", "checked=" + checked + " valid=true");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void meleeNemesisTeleportsNearPlayer(final GameTestHelper helper) {
+		testTeleport(helper, "meleeNemesisTeleportsNearPlayer", EntityTypes.ZOMBIE, Items.DIAMOND_SWORD, 5.0);
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void rangedNemesisTeleportsToSafeDistance(final GameTestHelper helper) {
+		testTeleport(helper, "rangedNemesisTeleportsToSafeDistance", EntityTypes.SKELETON, Items.BOW, 12.0);
+	}
+
+	private static void testTeleport(
+		final GameTestHelper helper, final String name, final EntityType<? extends Mob> type,
+		final Item weapon, final double maximumDistance
+	) {
+		BlockPos center = helper.absolutePos(new BlockPos(2, 2, 2));
+		ServerLevel level = helper.getLevel();
+		for (int dx = -13; dx <= 13; dx++) {
+			for (int dz = -13; dz <= 13; dz++) {
+				BlockPos floor = center.offset(dx, -1, dz);
+				level.setBlockAndUpdate(floor, Blocks.STONE.defaultBlockState());
+				for (int dy = 1; dy <= 3; dy++) {
+					level.setBlockAndUpdate(floor.above(dy), Blocks.AIR.defaultBlockState());
+				}
+			}
+		}
+		level.setBlockAndUpdate(center.offset(20, -1, 0), Blocks.STONE.defaultBlockState());
+		for (int dy = 0; dy < 3; dy++) {
+			level.setBlockAndUpdate(center.offset(20, dy, 0), Blocks.AIR.defaultBlockState());
+		}
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		movePlayer(player, Vec3.atBottomCenterOf(center));
+		Mob nemesis = type.create(level, EntitySpawnReason.COMMAND);
+		if (nemesis == null) {
+			helper.fail("could not create teleport subject");
+			return;
+		}
+		nemesis.snapTo(Vec3.atBottomCenterOf(center.offset(20, 0, 0)), 0.0F, 0.0F);
+		nemesis.setNoAi(true);
+		nemesis.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapon));
+		level.addFreshEntity(nemesis);
+		helper.runAfterDelay(10, () -> {
+			boolean teleported = MissionService.tryTeleportTowards(level, nemesis, player);
+			double distance = Math.sqrt(nemesis.distanceToSqr(player));
+			boolean safe = level.getBlockState(nemesis.blockPosition().below()).is(Blocks.STONE);
+			boolean valid = teleported && safe && distance >= 2.0 && distance <= maximumDistance;
+			PatrolTestSupport.result(name, "teleported=" + teleported + " safe=" + safe
+				+ " distance=" + distance + " valid=" + valid);
+			nemesis.discard();
+			helper.assertTrue(valid, "Nemesis did not teleport to the correct safe position");
+			helper.succeed();
+		});
+	}
+
 	/** Each board choice as "offer:outcome", keyed by the player, from the board's own record. */
 	private static final Map<UUID, List<String>> CHOICES = new ConcurrentHashMap<>();
 
 	static {
-		// These fixtures were written against three known kinds; a board otherwise draws from every kind.
+		// These fixtures use three hostile kinds; a board otherwise draws from every eligible kind.
 		com.stella.villages.mission.MissionService.setOfferPool(List.of(
 			Identifier.parse("minecraft:zombie"), Identifier.parse("minecraft:skeleton"), Identifier.parse("minecraft:spider")
 		));
@@ -424,15 +768,25 @@ public final class NemesisMissionGameTest {
 				boolean prefix = nemesis.getCustomName() != null
 					&& nemesis.getCustomName().getString().startsWith("<Nemesis>");
 				double baselineHealth = mission == null ? 0.0 : baseHealth(helper.getLevel(), mission.targetType());
-				double healthBonus = baselineHealth <= 0.0 ? 0.0 : nemesis.getMaxHealth() - baselineHealth;
+				double expectedHealth = baselineHealth * Elite.HEALTH_MULTIPLIER
+					+ MissionService.NEMESIS_BONUS_HEALTH;
 				boolean equipped = hasNemesisKit(nemesis);
+				NemesisState state = NemesisState.get(nemesis);
+				Mob companion = state == null ? null : state.companionId()
+					.map(id -> helper.getLevel().getEntity(id)).filter(entity -> entity instanceof Mob)
+					.map(entity -> (Mob) entity).orElse(null);
+				boolean sharedBuff = companion != null && nemesis.getActiveEffects().stream()
+					.anyMatch(effect -> effect.getDuration() == -1 && companion.hasEffect(effect.getEffect()));
+				boolean elitePair = Elite.isElite(nemesis) && companion != null
+					&& Elite.isElite(companion) && companion.getType() == nemesis.getType() && sharedBuff;
 				boolean initiallyUnenraged = !isEnraged(nemesis);
-				boolean stateMatches = accepted && prefix && Math.abs(healthBonus - com.stella.villages.mission.MissionService.NEMESIS_BONUS_HEALTH) < 0.001
-					&& equipped && initiallyUnenraged;
+				boolean stateMatches = accepted && prefix && Math.abs(nemesis.getMaxHealth() - expectedHealth) < 0.001
+					&& equipped && elitePair && initiallyUnenraged;
 
 				profileLogged[0] = true;
 				PatrolTestSupport.detail(test, "accepted=" + accepted + " targetEntityTicking=" + targetEntityTicking[0]
-					+ " nemesis=true" + " namePrefix=" + prefix + " healthBonus=" + healthBonus + " equipped=" + equipped
+					+ " nemesis=true" + " namePrefix=" + prefix + " health=" + nemesis.getMaxHealth()
+					+ " equipped=" + equipped + " elitePair=" + elitePair
 					+ " initiallyUnenraged=" + initiallyUnenraged + " stateMatches=" + stateMatches);
 				helper.assertTrue(stateMatches, "Nemesis did not use its profile before enrage");
 				nemesis.setHealth(nemesis.getMaxHealth() * 0.5F + 2.0F);
@@ -615,6 +969,7 @@ public final class NemesisMissionGameTest {
 		}
 		UUID missionId = mission.id();
 		BlockPos targetPosition = mission.targetPosition();
+		Item expectedHead = NemesisHead.itemFor(mission.targetType());
 		ServerPlayer killer = helper.makeMockServerPlayerInLevel();
 		movePlayer(killer, Vec3.atBottomCenterOf(targetPosition));
 		boolean nonOwner = !killer.getUUID().equals(fixture.owner().getUUID());
@@ -641,31 +996,43 @@ public final class NemesisMissionGameTest {
 				int emeralds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD);
 				int diamonds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND);
 				int debris = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS);
-				boolean gearDropped = allAssignedGearDropped(
-					helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]
-				);
-				boolean complete = emeralds == 128 && emeralds >= emeraldBefore[0]
-					&& diamonds == 4 && debris == 1 && gearDropped && missionRemoved(helper.getLevel(), missionId);
+				int heads = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead);
+				boolean complete = emeralds == 64 && emeralds >= emeraldBefore[0]
+					&& diamonds == 32 && debris == 1 && heads == 1 && missionRemoved(helper.getLevel(), missionId);
 				helper.assertTrue(complete, "non-owner Nemesis reward drops are not ready");
 			})
 			.thenExecute(() -> {
 				int emeralds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD);
 				int diamonds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND);
 				int debris = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS);
-				boolean gearDropped = allAssignedGearDropped(
-					helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]
-				);
-				ItemStack offhand = assignedGear[0].length > 5 ? assignedGear[0][5] : ItemStack.EMPTY;
-				boolean offhandDropped = !offhand.isEmpty()
-					&& droppedCount(helper.getLevel(), nemesis[0].blockPosition(), offhand.getItem()) >= offhand.getCount();
+				int heads = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead);
+				int gearDrops = assignedGearDropCount(helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]);
 				boolean missionRemoved = missionRemoved(helper.getLevel(), missionId);
-				boolean stateMatches = accepted && nonOwner && missionRemoved && emeralds == 128
-					&& emeralds >= emeraldBefore[0] && diamonds == 4 && debris == 1 && gearDropped && offhandDropped;
+				ItemEntity headDrop = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
+					AABB.ofSize(Vec3.atCenterOf(nemesis[0].blockPosition()), 16.0, 16.0, 16.0),
+					entity -> entity.getItem().is(expectedHead)).stream().findFirst().orElse(null);
+				var headData = headDrop == null ? null : headDrop.getItem().get(DataComponents.CUSTOM_DATA);
+				boolean matchingHead = headDrop != null && headData != null
+					&& headDrop.getItem().getHoverName().getString()
+						.contains(nemesis[0].getType().getDescription().getString())
+					&& headData.copyTag().getString("mc_stella_villages_nemesis_type")
+						.map(mission.targetType().toString()::equals).orElse(false);
+				if (headDrop != null) {
+					killer.setItemInHand(InteractionHand.MAIN_HAND, headDrop.getItem().copy());
+					headDrop.discard();
+				}
+				UseEntityCallback.EVENT.invoker().interact(killer, helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
+				int books = enchantedBookCount(killer.getInventory());
+				boolean traded = matchingHead && !killer.getItemInHand(InteractionHand.MAIN_HAND).is(expectedHead)
+					&& books == 3;
+				boolean stateMatches = accepted && nonOwner && missionRemoved && emeralds == 64
+					&& emeralds >= emeraldBefore[0] && diamonds == 32 && debris == 1 && heads == 1
+					&& gearDrops <= 1 && traded;
 				rewardsLogged[0] = true;
 				releaseSafeTargetSite(helper, safeSite);
 				PatrolTestSupport.result(test, "accepted=" + accepted + " nonOwner=" + nonOwner
 					+ " emeralds=" + emeralds + " diamonds=" + diamonds + " debris=" + debris
-					+ " gearDropped=" + gearDropped + " offhandDropped=" + offhandDropped
+					+ " heads=" + heads + " gearDrops=" + gearDrops + " books=" + books + " traded=" + traded
 					+ " missionRemoved=" + missionRemoved + " stateMatches=" + stateMatches);
 				helper.assertTrue(stateMatches,
 					"non-owner Nemesis kill did not complete and reward its mission exactly once");
@@ -677,17 +1044,14 @@ public final class NemesisMissionGameTest {
 				int emeralds = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD) : 0;
 				int diamonds = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND) : 0;
 				int debris = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS) : 0;
-				boolean gearDropped = nemesisLoaded && assignedGear[0] != null
-					&& allAssignedGearDropped(helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]);
-				ItemStack offhand = assignedGear[0] != null && assignedGear[0].length > 5
-					? assignedGear[0][5] : ItemStack.EMPTY;
-				boolean offhandDropped = nemesisLoaded && !offhand.isEmpty()
-					&& droppedCount(helper.getLevel(), nemesis[0].blockPosition(), offhand.getItem()) >= offhand.getCount();
+				int heads = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead) : 0;
+				int gearDrops = nemesisLoaded && assignedGear[0] != null
+					? assignedGearDropCount(helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]) : 0;
 				PatrolTestSupport.result(test, "accepted=" + accepted + " nonOwner=" + nonOwner
 					+ " nemesisLoaded=" + nemesisLoaded + " emeralds=" + emeralds + " diamonds=" + diamonds
-					+ " debris=" + debris + " gearDropped=" + gearDropped + " offhandDropped=" + offhandDropped
+					+ " debris=" + debris + " heads=" + heads + " gearDrops=" + gearDrops
 					+ " rewardsReady=false stateMatches=false");
-				helper.fail("non-owner Nemesis rewards were incomplete; offhandDropped=" + offhandDropped);
+				helper.fail("non-owner Nemesis rewards were incomplete");
 			}
 		});
 	}
@@ -1254,6 +1618,15 @@ public final class NemesisMissionGameTest {
 		return null;
 	}
 
+	private static ServerPlayer survivalPlayer(final GameTestHelper helper) {
+		ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+		var connection = new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND);
+		new io.netty.channel.embedded.EmbeddedChannel(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player,
+			net.minecraft.server.network.CommonListenerCookie.createInitial(player.getGameProfile(), false));
+		return player;
+	}
+
 	private static double baseHealth(final ServerLevel level, final Identifier typeId) {
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(typeId).map(holder -> holder.value()).orElse(null);
 		Entity entity = type.create(level, EntitySpawnReason.COMMAND);
@@ -1263,12 +1636,14 @@ public final class NemesisMissionGameTest {
 	}
 
 	private static boolean hasNemesisKit(final Mob nemesis) {
-		return !nemesis.getItemBySlot(EquipmentSlot.HEAD).isEmpty()
-			&& !nemesis.getItemBySlot(EquipmentSlot.CHEST).isEmpty()
-			&& !nemesis.getItemBySlot(EquipmentSlot.LEGS).isEmpty()
-			&& !nemesis.getItemBySlot(EquipmentSlot.FEET).isEmpty()
-			&& !nemesis.getItemBySlot(EquipmentSlot.MAINHAND).isEmpty()
-			&& nemesis.getItemBySlot(EquipmentSlot.OFFHAND).is(Items.SHIELD);
+		return java.util.Arrays.stream(new EquipmentSlot[] {
+			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+			EquipmentSlot.FEET, EquipmentSlot.MAINHAND
+		}).allMatch(slot -> {
+			ItemStack stack = nemesis.getItemBySlot(slot);
+			var enchantments = stack.get(DataComponents.ENCHANTMENTS);
+			return !stack.isEmpty() && enchantments != null && enchantments.size() == 3;
+		});
 	}
 
 	private static boolean isEnraged(final Mob nemesis) {
@@ -1300,18 +1675,31 @@ public final class NemesisMissionGameTest {
 		};
 	}
 
+	private static int enchantedBookCount(final Inventory inventory) {
+		int books = 0;
+		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+			ItemStack stack = inventory.getItem(slot);
+			if (stack.is(Items.ENCHANTED_BOOK) && stack.get(DataComponents.STORED_ENCHANTMENTS) != null
+				&& !stack.get(DataComponents.STORED_ENCHANTMENTS).isEmpty()) {
+				books += stack.getCount();
+			}
+		}
+		return books;
+	}
+
 	private static int droppedCount(final ServerLevel level, final BlockPos position, final Item item) {
 		AABB bounds = AABB.ofSize(Vec3.atCenterOf(position), 16.0, 16.0, 16.0);
 		return level.getEntitiesOfClass(ItemEntity.class, bounds, entity -> entity.getItem().is(item))
 			.stream().mapToInt(entity -> entity.getItem().getCount()).sum();
 	}
 
-	private static boolean allAssignedGearDropped(
+	private static int assignedGearDropCount(
 		final ServerLevel level,
 		final BlockPos position,
 		final ItemStack[] gear
 	) {
-		return java.util.Arrays.stream(gear).allMatch(stack -> stack.isEmpty() || droppedCount(level, position, stack.getItem()) >= stack.getCount());
+		return java.util.Arrays.stream(gear).filter(stack -> !stack.isEmpty())
+			.mapToInt(stack -> droppedCount(level, position, stack.getItem())).sum();
 	}
 
 	private static boolean missionRemoved(final ServerLevel level, final UUID missionId) {

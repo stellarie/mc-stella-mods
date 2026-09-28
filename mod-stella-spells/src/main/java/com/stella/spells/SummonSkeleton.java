@@ -1,5 +1,6 @@
 package com.stella.spells;
 
+import net.fabricmc.loader.api.FabricLoader;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -13,6 +14,7 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
@@ -30,6 +32,9 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
@@ -58,6 +63,8 @@ public final class SummonSkeleton {
 	public static final double TELEPORT_DISTANCE = 24.0;
 	public static final double LOOT_REACH = 1.5;
 	public static final int PACK_SIZE = 18;
+	public static final double BASE_HEALTH = 30.0;
+	public static final Identifier THREAT_HEALTH_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_threat_health");
 	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_pack"), ItemStack.OPTIONAL_CODEC.listOf()
@@ -79,6 +86,10 @@ public final class SummonSkeleton {
 	}
 
 	public static void register() {
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			SUMMONED.clear();
+			RETIRING.clear();
+		});
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG)) {
 				if (stale(skeleton)) {
@@ -86,10 +97,31 @@ public final class SummonSkeleton {
 					return;
 				}
 				ownerOf(skeleton).ifPresent(owner -> SUMMONED.put(owner, skeleton.getUUID()));
+				if (!SummonInventoryStore.restore(skeleton)) {
+					SummonInventoryStore.save(skeleton);
+				}
+				for (EquipmentSlot slot : SkeletonMenu.GEAR) {
+					skeleton.setDropChance(slot, 0.0F);
+				}
+				refreshHealth(skeleton, false);
 				install(skeleton);
 			}
 		});
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			if (server.getTickCount() % 20 == 0) {
+				for (UUID ownerId : List.copyOf(SUMMONED.keySet())) {
+					Skeleton skeleton = find(server, ownerId);
+					ServerPlayer master = server.getPlayerList().getPlayer(ownerId);
+					if (skeleton == null || master == null) {
+						continue;
+					}
+					if (skeleton.level() != master.level()) {
+						recall(skeleton, master);
+					} else {
+						refreshHealth(skeleton, false);
+					}
+				}
+			}
 			if (!RETIRING.isEmpty()) {
 				for (Skeleton skeleton : List.copyOf(RETIRING)) {
 					RETIRING.remove(skeleton);
@@ -99,13 +131,14 @@ public final class SummonSkeleton {
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG) && skeleton.level() instanceof ServerLevel level) {
-				for (ItemStack stack : pack(skeleton)) {
-					if (!stack.isEmpty()) {
-						skeleton.spawnAtLocation(level, stack);
-					}
-				}
+				SummonInventoryStore.save(skeleton);
 				skeleton.setAttached(PACK, List.of());
 				ownerOf(skeleton).ifPresent(owner -> SUMMONED.remove(owner, skeleton.getUUID()));
+			}
+		});
+		ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> {
+			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG) && !stale(skeleton)) {
+				SummonInventoryStore.save(skeleton);
 			}
 		});
 		UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
@@ -138,8 +171,12 @@ public final class SummonSkeleton {
 		skeleton.setPersistenceRequired();
 		skeleton.setCanPickUpLoot(false);
 		skeleton.setCustomName(Component.literal(caster.getScoreboardName() + "'s Skeleton"));
-		equip(skeleton, EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
-		equip(skeleton, EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		skeleton.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		for (EquipmentSlot slot : SkeletonMenu.GEAR) {
+			skeleton.setDropChance(slot, 0.0F);
+		}
+		refreshHealth(skeleton, true);
 		Vec3 at = beside(caster);
 		skeleton.snapTo(at.x, at.y, at.z, caster.getYRot(), 0.0F);
 		// The bond moves first: the load event fires inside the add, and must see this servant as the one held.
@@ -155,13 +192,46 @@ public final class SummonSkeleton {
 		return true;
 	}
 
-	/** Puts gear on the servant so it drops in full when the servant falls, as it is the master's own. */
+	/** Saves the servant's equipped gear for its next life. */
 	public static void equip(final Skeleton skeleton, final EquipmentSlot slot, final ItemStack stack) {
 		skeleton.setItemSlot(slot, stack);
-		skeleton.setGuaranteedDrop(slot);
+		skeleton.setDropChance(slot, 0.0F);
+		SummonInventoryStore.save(skeleton);
+	}
+
+	private static void refreshHealth(final Skeleton skeleton, final boolean full) {
+		if (!(skeleton.level() instanceof ServerLevel level)) {
+			return;
+		}
+		AttributeInstance health = skeleton.getAttribute(Attributes.MAX_HEALTH);
+		if (health == null) {
+			return;
+		}
+		int peak = FabricLoader.getInstance().isModLoaded("mod-stella-mobs")
+			? SummonThreatBridge.peak(level.getServer()) : 0;
+		double bonus = FabricLoader.getInstance().isModLoaded("mod-stella-mobs")
+			? SummonThreatBridge.healthBonus(peak) : 0.0;
+		AttributeModifier previous = health.getModifier(THREAT_HEALTH_ID);
+		if (!full && health.getBaseValue() == BASE_HEALTH && previous != null && previous.amount() == bonus) {
+			return;
+		}
+		float oldMaximum = skeleton.getMaxHealth();
+		float oldHealth = skeleton.getHealth();
+		health.setBaseValue(BASE_HEALTH);
+		if (previous != null) {
+			health.removeModifier(THREAT_HEALTH_ID);
+		}
+		health.addPermanentModifier(new AttributeModifier(THREAT_HEALTH_ID, bonus,
+			AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+		float fraction = oldMaximum <= 0.0F ? 1.0F : oldHealth / oldMaximum;
+		skeleton.setHealth(full ? skeleton.getMaxHealth()
+			: Math.max(1.0F, Math.min(skeleton.getMaxHealth(), fraction * skeleton.getMaxHealth())));
+		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_HEALTH servant={} peak={} max={}",
+			skeleton.getUUID(), peak, skeleton.getMaxHealth());
 	}
 
 	private static boolean recall(final Skeleton skeleton, final ServerPlayer caster) {
+		SummonInventoryStore.save(skeleton);
 		Vec3 at = beside(caster);
 		Entity moved = skeleton.level() == caster.level()
 			? skeleton
@@ -174,6 +244,11 @@ public final class SummonSkeleton {
 			mob.setTarget(null);
 			mob.getNavigation().stop();
 			SUMMONED.put(caster.getUUID(), mob.getUUID());
+			caster.setAttached(BOND, mob.getUUID());
+			if (mob instanceof Skeleton servant) {
+				SummonInventoryStore.restore(servant);
+				refreshHealth(servant, false);
+			}
 		}
 		caster.level().sendParticles(ParticleTypes.SOUL, at.x, at.y + 1.0, at.z, 20, 0.4, 0.8, 0.4, 0.05);
 		return true;
@@ -215,23 +290,14 @@ public final class SummonSkeleton {
 		return !bond.equals(skeleton.getUUID());
 	}
 
-	/** Sends a servant its master no longer holds away, leaving its pack and its gear where it stands. */
+	/** Retires an older servant without duplicating the owner's saved inventory. */
 	private static void retire(final Skeleton skeleton) {
 		if (skeleton.isRemoved() || !(skeleton.level() instanceof ServerLevel level)) {
 			return;
 		}
-		for (ItemStack stack : pack(skeleton)) {
-			if (!stack.isEmpty()) {
-				skeleton.spawnAtLocation(level, stack);
-			}
-		}
 		skeleton.setAttached(PACK, List.of());
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
-			ItemStack worn = skeleton.getItemBySlot(slot);
-			if (!worn.isEmpty()) {
-				skeleton.spawnAtLocation(level, worn);
-				skeleton.setItemSlot(slot, ItemStack.EMPTY);
-			}
+			skeleton.setItemSlot(slot, ItemStack.EMPTY);
 		}
 		ownerOf(skeleton).ifPresent(owner -> SUMMONED.remove(owner, skeleton.getUUID()));
 		level.sendParticles(ParticleTypes.SOUL, skeleton.getX(), skeleton.getY() + 1.0, skeleton.getZ(), 20, 0.4, 0.8, 0.4, 0.05);
@@ -275,6 +341,9 @@ public final class SummonSkeleton {
 
 	public static void setPack(final Mob skeleton, final List<ItemStack> pack) {
 		skeleton.setAttached(PACK, List.copyOf(pack));
+		if (skeleton instanceof Skeleton servant) {
+			SummonInventoryStore.save(servant);
+		}
 	}
 
 	/** Adds as much of the stack to the pack as fits; the rest is left in the stack. */
@@ -305,6 +374,60 @@ public final class SummonSkeleton {
 		targets.addGoal(2, new GuardGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(2, new FollowGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
+		skeleton.getGoalSelector().addGoal(1, new PackCasterGoal(skeleton));
+	}
+
+	/** Casts combat and support books from the servant's pack without consuming them. */
+	static final class PackCasterGoal extends Goal {
+		private final Skeleton skeleton;
+		private final Map<String, Integer> readyAt = new java.util.HashMap<>();
+		private int ticks;
+
+		PackCasterGoal(final Skeleton skeleton) {
+			this.skeleton = skeleton;
+		}
+
+		@Override
+		public boolean canUse() {
+			return this.skeleton.isAlive();
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			if (++this.ticks % MobSpells.THINK_INTERVAL_TICKS != 0) {
+				return;
+			}
+			LivingEntity target = this.skeleton.getTarget();
+			for (ItemStack stack : pack(this.skeleton)) {
+				if (!(stack.getItem() instanceof SpellbookItem book)) {
+					continue;
+				}
+				String spell = book.definition().id().getPath();
+				if (this.ticks < this.readyAt.getOrDefault(spell, 0)) {
+					continue;
+				}
+				boolean cast = target != null && target.isAlive()
+					&& this.skeleton.distanceToSqr(target) <= MobSpells.CAST_RANGE * MobSpells.CAST_RANGE
+					&& this.skeleton.getSensing().hasLineOfSight(target)
+					&& MobSpells.castAt(this.skeleton, spell, target);
+				if (!cast && MobSpells.PACK_SUPPORT.contains(spell)
+					&& (target != null || MobSpells.sideIsHurt(this.skeleton, MoreSpells.SUPPORT_RADIUS)
+						|| "purify".equals(spell))) {
+					cast = MobSpells.support(this.skeleton, spell);
+				}
+				if (cast) {
+					this.readyAt.put(spell, this.ticks + MobSpells.cooldownOf(spell));
+					Spellbooks.LOGGER.info("[SPELL] event=SUMMON_CAST servant={} spell={} target={}",
+						this.skeleton.getUUID(), spell, target == null ? "support" : target.getUUID());
+					break;
+				}
+			}
+		}
 	}
 
 	/** Answers whoever strikes the servant, except its own master: a sweep or a stray spell is forgiven. */

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
@@ -33,11 +34,15 @@ public class MobSpellsGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.mobspells");
 	private static final Map<UUID, List<String>> CASTS = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<List<LivingEntity>>> REACHED = new ConcurrentHashMap<>();
+	private record CastEvent(String spell, int tick) { }
+	private static final Map<UUID, List<CastEvent>> CAST_EVENTS = new ConcurrentHashMap<>();
 
 	static {
 		MobSpells.setRecorder((caster, spell, reached) -> {
 			CASTS.computeIfAbsent(caster.getUUID(), key -> new CopyOnWriteArrayList<>()).add(spell);
 			REACHED.computeIfAbsent(caster.getUUID(), key -> new CopyOnWriteArrayList<>()).add(List.copyOf(reached));
+			CAST_EVENTS.computeIfAbsent(caster.getUUID(), key -> new CopyOnWriteArrayList<>())
+				.add(new CastEvent(spell, caster.level().getServer().getTickCount()));
 		});
 	}
 
@@ -149,9 +154,13 @@ public class MobSpellsGameTest {
 		helper.setTime(18_000L);
 		floor(helper);
 		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof MobSpells.Blink);
 		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 5, 5, List.of());
 		zombie.setNoAi(true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		zombie.setHealth(200.0F);
 		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		helper.onEachTick(() -> witch.setTarget(zombie));
 		helper.succeedWhen(() -> {
 			List<String> casts = CASTS.getOrDefault(witch.getUUID(), List.of());
 			helper.assertTrue(witch.getTarget() == zombie, "the village witch targets " + witch.getTarget());
@@ -160,17 +169,175 @@ public class MobSpellsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 100)
-	public void theVillageWitchHealsAHurtVillager(final GameTestHelper helper) {
+	@GameTest(maxTicks = 150)
+	public void theVillageWitchUsesItsRequestedSpells(final GameTestHelper helper) {
+		helper.setTime(18_000L);
 		floor(helper);
 		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
-		Mob villager = mob(helper, EntityTypes.VILLAGER, 3, 1, List.of());
+		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof MobSpells.Blink);
+		witch.setHealth(witch.getMaxHealth() * 0.4F);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 3, 1, List.of());
+		zombie.setNoAi(true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100.0);
+		zombie.setHealth(100.0F);
+		Mob villager = mob(helper, EntityTypes.VILLAGER, 2, 3, List.of());
 		villager.setNoAi(true);
-		villager.setHealth(villager.getMaxHealth() * 0.3F);
-		float before = villager.getHealth();
+		villager.setHealth(5.0F);
 		helper.succeedWhen(() -> {
-			helper.assertTrue(villager.getHealth() > before, "the villager is not healed yet");
-			LOG.info("[SPELLTEST] test=theVillageWitchHealsAHurtVillager RESULT before={} after={} casts={}", before, villager.getHealth(), CASTS.getOrDefault(witch.getUUID(), List.of()));
+			List<String> casts = CASTS.getOrDefault(witch.getUUID(), List.of());
+			helper.assertTrue(casts.containsAll(List.of("wardens_roar", "spark_shot", "life_bloom")),
+				"the village witch cast " + casts);
+			helper.assertTrue(zombie.getHealth() < 100.0F && villager.getHealth() >= 5.0F,
+				"the spells missed their enemy or harmed the villager");
+			LOG.info("[SPELLTEST] test=theVillageWitchUsesItsRequestedSpells RESULT casts={} zombie={} villager={}",
+				casts, zombie.getHealth(), villager.getHealth());
+		});
+	}
+
+	@GameTest(maxTicks = 260)
+	public void villageWitchSpellCooldownsAndHalfHealthTrigger(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof MobSpells.Blink);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 4, 1, List.of());
+		zombie.setNoAi(true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		zombie.setHealth(1000.0F);
+		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		witch.setHealth(witch.getMaxHealth() * 0.4F);
+		Vec3 pinned = zombie.position();
+		Vec3 witchPinned = witch.position();
+		helper.onEachTick(() -> {
+			zombie.setPos(pinned.x, pinned.y, pinned.z);
+			zombie.setDeltaMovement(Vec3.ZERO);
+			witch.setPos(witchPinned.x, witchPinned.y, witchPinned.z);
+			witch.setDeltaMovement(Vec3.ZERO);
+			if (helper.getTick() >= 120 && CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
+				.filter(event -> event.spell().equals("life_bloom")).count() < 2) {
+				witch.setHealth(Math.min(witch.getHealth(), witch.getMaxHealth() * 0.4F));
+			}
+		});
+		helper.runAfterDelay(230, () -> {
+			List<CastEvent> events = CAST_EVENTS.getOrDefault(witch.getUUID(), List.of());
+			List<Integer> roars = events.stream().filter(event -> event.spell().equals("wardens_roar"))
+				.map(CastEvent::tick).toList();
+			List<Integer> sparks = events.stream().filter(event -> event.spell().equals("spark_shot"))
+				.map(CastEvent::tick).toList();
+			List<Integer> blooms = events.stream().filter(event -> event.spell().equals("life_bloom"))
+				.map(CastEvent::tick).toList();
+			boolean rates = roars.size() >= 2 && blooms.size() >= 2 && sparks.size() >= 3
+				&& roars.get(1) - roars.get(0) >= 100 && blooms.get(1) - blooms.get(0) >= 100
+				&& java.util.stream.IntStream.range(1, sparks.size()).allMatch(i -> sparks.get(i) - sparks.get(i - 1) >= 4)
+				&& java.util.stream.IntStream.range(1, sparks.size()).anyMatch(i -> sparks.get(i) - sparks.get(i - 1) == 4);
+			LOG.info("[SPELLTEST] test=villageWitchSpellCooldownsAndHalfHealthTrigger RESULT roars={} sparks={} blooms={} rates={}",
+				roars, sparks, blooms, rates);
+			helper.assertTrue(rates, "the witch did not honor the 5s, 0.2s, and half-health spell rules");
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void theVillageWitchRoarSparesFriendlies(final GameTestHelper helper) {
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 2, 2, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 4, 2, List.of());
+		Mob patrol = mob(helper, EntityTypes.PILLAGER, 3, 3, List.of(), "mc-stella-villages.patrol");
+		Mob villager = mob(helper, EntityTypes.VILLAGER, 2, 4, List.of());
+		float patrolBefore = patrol.getHealth();
+		float villagerBefore = villager.getHealth();
+		float zombieBefore = zombie.getHealth();
+		witch.setTarget(zombie);
+		boolean cast = MobSpells.castAt(witch, "wardens_roar", zombie);
+		LOG.info("[SPELLTEST] test=theVillageWitchRoarSparesFriendlies RESULT cast={} foeLost={} patrolLost={} villagerLost={}",
+			cast, zombieBefore - zombie.getHealth(), patrolBefore - patrol.getHealth(), villagerBefore - villager.getHealth());
+		helper.assertTrue(cast && zombie.getHealth() < zombieBefore && patrol.getHealth() == patrolBefore
+			&& villager.getHealth() == villagerBefore, "the roar missed its foe or hurt a friend");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 120, padding = 40)
+	public void theVillageWitchRetreatsFromAMeleeEnemy(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		for (int x = 0; x <= 30; x++) {
+			for (int z = 0; z <= 30; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+				for (int y = 1; y <= 3; y++) {
+					helper.setBlock(x, y, z, Blocks.AIR);
+				}
+			}
+		}
+		Witch witch = mob(helper, EntityTypes.WITCH, 15, 15, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 17, 15, List.of());
+		var witchChunk = witch.chunkPosition();
+		var zombieChunk = zombie.chunkPosition();
+		helper.getLevel().setChunkForced(witchChunk.x(), witchChunk.z(), true);
+		helper.getLevel().setChunkForced(zombieChunk.x(), zombieChunk.z(), true);
+		zombie.setNoAi(true);
+		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		helper.succeedWhen(() -> {
+			double distance = witch.distanceTo(zombie);
+			helper.assertTrue(CASTS.getOrDefault(witch.getUUID(), List.of()).contains("blink")
+				&& distance >= MobSpells.VILLAGE_WITCH_SAFE_MIN_DISTANCE - 1.0
+				&& distance <= MobSpells.VILLAGE_WITCH_SAFE_MAX_DISTANCE + 1.0
+				&& witch.hasLineOfSight(zombie),
+				"the witch remained in melee reach or blinked too far: " + distance
+					+ " target=" + witch.getTarget() + " witchTicks=" + witch.tickCount
+					+ " witchTicking=" + helper.getLevel().isPositionEntityTicking(witch.blockPosition()));
+			LOG.info("[SPELLTEST] test=theVillageWitchRetreatsFromAMeleeEnemy RESULT distance={}", distance);
+			helper.getLevel().setChunkForced(witchChunk.x(), witchChunk.z(), false);
+			helper.getLevel().setChunkForced(zombieChunk.x(), zombieChunk.z(), false);
+		});
+	}
+
+	@GameTest(maxTicks = 150, padding = 60)
+	public void theVillageWitchBlinksToAnEnemyInsideFortyEightBlocks(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		for (int x = 0; x <= 44; x++) {
+			for (int z = 0; z <= 8; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+				for (int y = 1; y <= 3; y++) {
+					helper.setBlock(x, y, z, Blocks.AIR);
+				}
+			}
+		}
+		BlockPos far = helper.absolutePos(new BlockPos(36, 1, 1));
+		helper.getLevel().setChunkForced(far.getX() >> 4, far.getZ() >> 4, true);
+		helper.getLevel().getChunkAt(far);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 36, 1, List.of());
+		zombie.setNoAi(true);
+		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		double firstDistance = witch.distanceTo(zombie);
+		helper.assertTrue(firstDistance > MobSpells.CAST_RANGE * 2.0,
+			"the enemy did not start in the new aggro band: " + firstDistance);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(witch.getTarget() == zombie
+				&& witch.distanceTo(zombie) >= MobSpells.VILLAGE_WITCH_SAFE_MIN_DISTANCE - 1.0
+				&& witch.distanceTo(zombie) <= MobSpells.VILLAGE_WITCH_SAFE_MAX_DISTANCE + 1.0
+				&& witch.hasLineOfSight(zombie)
+				&& CASTS.getOrDefault(witch.getUUID(), List.of()).contains("blink"),
+				"the witch has not blinked to its distant enemy: target=" + witch.getTarget()
+					+ " distance=" + witch.distanceTo(zombie) + " follow=" + witch.getAttributeValue(Attributes.FOLLOW_RANGE)
+					+ " sight=" + witch.hasLineOfSight(zombie) + " ticking="
+					+ helper.getLevel().isPositionEntityTicking(zombie.blockPosition()));
+			LOG.info("[SPELLTEST] test=theVillageWitchBlinksToAnEnemyInsideFortyEightBlocks RESULT first={} final={}",
+				firstDistance, witch.distanceTo(zombie));
+			helper.getLevel().setChunkForced(far.getX() >> 4, far.getZ() >> 4, false);
+		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void theVillageWitchHealsItselfAtHalfHealth(final GameTestHelper helper) {
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		witch.setHealth(witch.getMaxHealth() * 0.4F);
+		float before = witch.getHealth();
+		helper.succeedWhen(() -> {
+			helper.assertTrue(CASTS.getOrDefault(witch.getUUID(), List.of()).contains("life_bloom")
+				&& witch.getHealth() > before, "the witch did not cast Life Bloom below half health");
+			LOG.info("[SPELLTEST] test=theVillageWitchHealsItselfAtHalfHealth RESULT before={} after={}",
+				before, witch.getHealth());
 		});
 	}
 

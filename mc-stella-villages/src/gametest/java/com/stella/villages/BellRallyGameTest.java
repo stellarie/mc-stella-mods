@@ -52,6 +52,8 @@ public class BellRallyGameTest {
 
 		BlockPos bell = PatrolTestSupport.anchor(helper);
 		List<Mob> patrol = PatrolTestSupport.patrols(helper);
+		double farthestBefore = patrol.stream().mapToDouble(mob -> mob.distanceToSqr(Vec3.atCenterOf(bell))).max().orElse(0.0);
+		helper.assertTrue(farthestBefore > 64.0, "no patrol member started beyond the bell guard radius");
 		ring(helper, bell);
 		List<List<UUID>> rallies = RALLIES.getOrDefault(bell, List.of());
 		helper.assertTrue(rallies.size() == 1, "the bell made " + rallies.size() + " rallies");
@@ -59,15 +61,19 @@ public class BellRallyGameTest {
 		helper.assertTrue(!patrol.isEmpty() && patrol.stream().allMatch(mob -> rallied.contains(mob.getUUID())), "the rally left out patrol members: " + patrol.size() + " vs " + rallied.size());
 		for (Mob member : patrol) {
 			MobEffectInstance speed = member.getEffect(MobEffects.SPEED);
-			helper.assertTrue(speed != null && speed.getAmplifier() == BellRally.SPEED_AMPLIFIER && member.hasEffect(MobEffects.STRENGTH), PatrolTestSupport.typeId(member) + " was not rallied: " + speed);
+			MobEffectInstance strength = member.getEffect(MobEffects.STRENGTH);
+			helper.assertTrue(speed != null && strength != null && speed.getAmplifier() == 1 && strength.getAmplifier() == 1
+				&& speed.getDuration() >= 6000 && strength.getDuration() >= 6000
+				&& member.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
+				PatrolTestSupport.typeId(member) + " was not teleported and strengthened: " + speed + " " + strength);
 		}
 		PatrolTestSupport.result(test, "rallied=" + rallied.size() + " patrol=" + patrol.size());
 		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void aSecondRingInsideTheCooldownRalliesNobody(final GameTestHelper helper) {
-		String test = "aSecondRingInsideTheCooldownRalliesNobody";
+	public void aSecondRingRefreshesThePatrol(final GameTestHelper helper) {
+		String test = "aSecondRingRefreshesThePatrol";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}
@@ -75,9 +81,9 @@ public class BellRallyGameTest {
 		BlockPos bell = PatrolTestSupport.anchor(helper);
 		ring(helper, bell);
 		ring(helper, bell);
-		helper.assertTrue(RALLIES.getOrDefault(bell, List.of()).size() == 1, "two rings made " + RALLIES.getOrDefault(bell, List.of()).size() + " rallies");
-		helper.assertTrue(REFUSALS.getOrDefault(bell, List.of()).contains("cooldown"), "the second ring was not refused for the cooldown: " + REFUSALS.get(bell));
-		PatrolTestSupport.result(test, "rallies=1 refusals=" + REFUSALS.get(bell));
+		helper.assertTrue(RALLIES.getOrDefault(bell, List.of()).size() == 2,
+			"two rings made " + RALLIES.getOrDefault(bell, List.of()).size() + " rallies");
+		PatrolTestSupport.result(test, "rallies=2 refusals=" + REFUSALS.get(bell));
 		helper.succeed();
 	}
 

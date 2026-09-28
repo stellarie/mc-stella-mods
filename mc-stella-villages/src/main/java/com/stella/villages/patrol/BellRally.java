@@ -3,12 +3,12 @@ package com.stella.villages.patrol;
 import com.stella.villages.McStellaVillages;
 import com.stella.villages.data.VillageWorldData;
 import java.util.List;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -21,22 +21,20 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Surprise, villages: ring a village's bell and its patrol rallies to it. Every living member gets Speed
- * II and Strength I for thirty seconds and runs to the bell. A village rallies once a minute on the
- * level's own tick counter, and the bell still rings as vanilla's does.
+ * Ring a village's bell to bring its loaded patrol beside it. Each member gains Speed II and Strength II
+ * for five minutes. The bell still rings as vanilla's does.
  */
 public final class BellRally {
-	public static final int RALLY_TICKS = 600;
-	public static final int RALLY_COOLDOWN_TICKS = 1200;
+	public static final int RALLY_TICKS = 6000;
 	public static final int SPEED_AMPLIFIER = 1;
-	public static final int STRENGTH_AMPLIFIER = 0;
+	public static final int STRENGTH_AMPLIFIER = 1;
 	/** How far from its village's anchor a bell still belongs to that village. */
 	public static final double RALLY_RANGE = 48.0;
-	private static final double RUN_SPEED = 1.2;
 
 	/** Test seam: each rally and each refusal, keyed by the bell that was rung. */
 	public interface Recorder {
@@ -50,7 +48,6 @@ public final class BellRally {
 	private static final Recorder SILENT = new Recorder() {
 	};
 	private static volatile Recorder recorder = SILENT;
-	private static final Map<UUID, Long> READY_AT = new ConcurrentHashMap<>();
 
 	private BellRally() {
 	}
@@ -82,35 +79,59 @@ public final class BellRally {
 	}
 
 	static void rally(final ServerLevel level, final BlockPos bell, final UUID villageId, final Player ringer) {
-		long now = PatrolService.levelTick(level);
-		long readyAt = READY_AT.getOrDefault(villageId, Long.MIN_VALUE);
-		if (now < readyAt) {
-			recorder.refused(bell, villageId, "cooldown");
-			tell(ringer, Component.literal("The patrol is still catching its breath").withStyle(ChatFormatting.GRAY));
-			return;
-		}
-
 		List<Mob> members = PatrolService.members(level, villageId);
 		if (members.isEmpty()) {
 			recorder.refused(bell, villageId, "no_patrol");
 			return;
 		}
 
-		READY_AT.put(villageId, now + RALLY_COOLDOWN_TICKS);
-		Vec3 target = Vec3.atBottomCenterOf(bell.above());
+		List<UUID> moved = new ArrayList<>();
 		for (Mob member : members) {
+			BlockPos destination = safeSpot(level, bell, member);
+			if (destination == null) {
+				continue;
+			}
+			Vec3 target = Vec3.atBottomCenterOf(destination);
+			member.teleportTo(target.x, target.y, target.z);
+			member.getNavigation().stop();
 			member.addEffect(new MobEffectInstance(MobEffects.SPEED, RALLY_TICKS, SPEED_AMPLIFIER));
 			member.addEffect(new MobEffectInstance(MobEffects.STRENGTH, RALLY_TICKS, STRENGTH_AMPLIFIER));
-			member.getNavigation().moveTo(target.x, target.y, target.z, RUN_SPEED);
 			level.sendParticles(ParticleTypes.NOTE, member.getX(), member.getY() + member.getBbHeight() + 0.5, member.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
+			moved.add(member.getUUID());
 		}
 
-		recorder.rallied(bell, villageId, members.stream().map(Mob::getUUID).toList());
+		recorder.rallied(bell, villageId, moved);
 		tell(ringer, Component.literal("The patrol rallies to the bell").withStyle(ChatFormatting.GOLD));
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=bell_rally village={} bell={} members={}",
-			McStellaVillages.MOD_ID, villageId, bell, members.size()
+			McStellaVillages.MOD_ID, villageId, bell, moved.size()
 		);
+	}
+
+	static BlockPos safeSpot(final ServerLevel level, final BlockPos bell, final Mob member) {
+		for (int radius = 1; radius <= 7; radius++) {
+			for (int dx = -radius; dx <= radius; dx++) {
+				for (int dz = -radius; dz <= radius; dz++) {
+					if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
+						continue;
+					}
+					for (int dy = 2; dy >= -2; dy--) {
+						BlockPos feet = bell.offset(dx, dy, dz);
+						if (Vec3.atCenterOf(feet).distanceToSqr(Vec3.atCenterOf(bell)) > 64.0) {
+							continue;
+						}
+						if (!level.hasChunkAt(feet) || !level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
+							continue;
+						}
+						AABB box = member.getDimensions(member.getPose()).makeBoundingBox(Vec3.atBottomCenterOf(feet));
+						if (level.noCollision(member, box) && !level.containsAnyLiquid(box)) {
+							return feet;
+						}
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	// On the action bar, so the ringer reads it without opening chat.

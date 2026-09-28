@@ -183,19 +183,19 @@ public final class VillagePatrolGameTest {
 		}
 
 		List<Mob> patrols = PatrolTestSupport.activePatrols(helper, test);
-		Mob head = PatrolTestSupport.activeRole(helper, test, "HEAD");
+		Mob scout = PatrolTestSupport.activeRole(helper, test, "PILLAGER");
 		Mob ravager = PatrolTestSupport.activeRole(helper, test, "RAVAGER");
 		UUID villageId = PatrolTestSupport.villageId(helper);
 		PatrolTestSupport.detail(test, "village=" + villageId + " patrolCount=" + patrols.size()
 			+ " activePositions=" + patrols.stream().map(Mob::blockPosition).toList()
-			+ " headFound=" + (head != null) + " ravagerFound=" + (ravager != null)
+			+ " scoutFound=" + (scout != null) + " ravagerFound=" + (ravager != null)
 			+ " ravagerPassengers=" + (ravager == null ? -1 : ravager.getPassengers().size()));
-		if (patrols.size() != PATROL_COUNT || head == null || ravager == null) {
+		if (patrols.size() != PATROL_COUNT || scout == null || ravager == null) {
 			helper.fail("complete patrol roster or its Ravager is missing");
 			return;
 		}
 
-		UUID headId = head.getUUID();
+		UUID scoutId = scout.getUUID();
 		UUID ravagerId = ravager.getUUID();
 		List<UUID> before = patrols.stream()
 			.map(Mob::getUUID).sorted(Comparator.comparing(UUID::toString)).toList();
@@ -204,22 +204,22 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int headChunkX = villageChunkX + SectionPos.blockToSectionCoord(PatrolService.PATROL_DETECTION_RANGE) + 1;
-		int headChunkZ = villageChunkZ;
-		BlockPos headPosition = new BlockPos(
-			SectionPos.sectionToBlockCoord(headChunkX) + 2,
+		int scoutChunkX = villageChunkX + SectionPos.blockToSectionCoord(PatrolService.PATROL_DETECTION_RANGE) + 1;
+		int scoutChunkZ = villageChunkZ;
+		BlockPos scoutPosition = new BlockPos(
+			SectionPos.sectionToBlockCoord(scoutChunkX) + 2,
 			villageAnchor.getY(),
-			SectionPos.sectionToBlockCoord(headChunkZ) + 8
+			SectionPos.sectionToBlockCoord(scoutChunkZ) + 8
 		);
-		prepareForcedChunkSite(helper, headPosition, headChunkX, headChunkZ);
+		prepareForcedChunkSite(helper, scoutPosition, scoutChunkX, scoutChunkZ);
 		for (Mob member : patrols) {
-			if (member != head) {
+			if (member != scout) {
 				member.setNoAi(true);
 			}
 			member.getNavigation().stop();
 		}
-		head.getNavigation().stop();
-		head.snapTo(Vec3.atBottomCenterOf(headPosition.above(2)), head.getYRot(), head.getXRot());
+		scout.getNavigation().stop();
+		scout.snapTo(Vec3.atBottomCenterOf(scoutPosition.above(2)), scout.getYRot(), scout.getXRot());
 		double[] nearestOtherDistance = {-1.0};
 
 		ServerPlayer attacker = helper.makeMockServerPlayerInLevel();
@@ -238,39 +238,39 @@ public final class VillagePatrolGameTest {
 		boolean[] rosterStartedAfterReload = {false};
 
 		PatrolTestSupport.detail(test, "village=" + villageId + " villageAnchor=" + villageAnchor
-			+ " headId=" + headId + " headPosition=" + headPosition + " nearestOtherDistance=" + nearestOtherDistance[0]
+			+ " scoutId=" + scoutId + " scoutPosition=" + scoutPosition + " nearestOtherDistance=" + nearestOtherDistance[0]
 			+ " rosterIds=" + before);
 		helper.startSequence()
 			.thenWaitUntil(() -> {
-				helper.assertTrue(head.chunkPosition().equals(new ChunkPos(headChunkX, headChunkZ)),
-					"head did not enter the isolated unload chunk");
-				helper.assertTrue(head.onGround(), "head did not settle in the unload chunk");
+				helper.assertTrue(scout.chunkPosition().equals(new ChunkPos(scoutChunkX, scoutChunkZ)),
+					"scout did not enter the isolated unload chunk");
+				helper.assertTrue(scout.onGround(), "scout did not settle in the unload chunk");
 				helper.assertTrue(unmounted(ravager), "the patrol Ravager carried a rider before unload");
 			})
 			.thenExecute(() -> {
-				head.setNoAi(true);
-				head.getNavigation().stop();
+				scout.setNoAi(true);
+				scout.getNavigation().stop();
 				nearestOtherDistance[0] = patrols.stream()
-					.filter(member -> member != head)
-					.mapToDouble(head::distanceTo)
+					.filter(member -> member != scout)
+					.mapToDouble(scout::distanceTo)
 					.min()
 					.orElse(Double.MAX_VALUE);
-				helper.assertTrue(head.blockPosition().equals(headPosition), "head did not land on its saved-position block");
+				helper.assertTrue(scout.blockPosition().equals(scoutPosition), "scout did not land on its saved-position block");
 				helper.assertTrue(nearestOtherDistance[0] > PatrolService.PATROL_DETECTION_RANGE
 					&& nearestOtherDistance[0] <= PatrolService.PATROL_RADIUS,
-					"unloaded head is not isolated within its patrol radius");
+					"unloaded scout is not isolated within its patrol radius");
 				stage[0] = 1;
 				boolean villageWasForced = helper.getLevel().setChunkForced(villageChunkX, villageChunkZ, false);
-				boolean headWasForced = helper.getLevel().setChunkForced(headChunkX, headChunkZ, false);
+				boolean scoutWasForced = helper.getLevel().setChunkForced(scoutChunkX, scoutChunkZ, false);
 				PatrolTestSupport.detail(test, "villageForcedBeforeUnload=" + villageWasForced
-					+ " headForcedBeforeUnload=" + headWasForced);
-				helper.assertTrue(villageWasForced && headWasForced,
-					"village or head chunk was not forced before unload");
+					+ " scoutForcedBeforeUnload=" + scoutWasForced);
+				helper.assertTrue(villageWasForced && scoutWasForced,
+					"village or scout chunk was not forced before unload");
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
 				!helper.getLevel().getChunkSource().hasChunk(villageChunkX, villageChunkZ)
-					&& !helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ),
-				"village and head chunks did not unload after ticket removal"
+					&& !helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ),
+				"village and scout chunks did not unload after ticket removal"
 			))
 			// Entities leave a few ticks after their chunk, so wait for them rather than read the same tick.
 			.thenWaitUntil(() -> {
@@ -283,29 +283,29 @@ public final class VillagePatrolGameTest {
 			})
 			.thenExecute(() -> {
 				stage[0] = 2;
-				BlockPos rememberedHeadPosition = PatrolTestSupport.memberLastPosition(helper, test, headId);
-				savedPosition[0] = headPosition.equals(rememberedHeadPosition);
-				helper.assertTrue(savedPosition[0], "unloaded head position was not saved");
+				BlockPos rememberedScoutPosition = PatrolTestSupport.memberLastPosition(helper, test, scoutId);
+				savedPosition[0] = scoutPosition.equals(rememberedScoutPosition);
+				helper.assertTrue(savedPosition[0], "unloaded scout position was not saved");
 
 				boolean threatStarted = PatrolTestSupport.startThreat(helper, test, attackerId);
-				attacker.setPos(Vec3.atCenterOf(headPosition));
+				attacker.setPos(Vec3.atCenterOf(scoutPosition));
 				PatrolTestSupport.updateThreats(helper, test);
 				Integer ticks = PatrolTestSupport.threatOutsideTicks(helper, test, attackerId);
 				outsideTicks[0] = ticks == null ? -1 : ticks;
 				threatRangeRetained[0] = threatStarted && outsideTicks[0] == 0
-					&& !helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ);
+					&& !helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ);
 				PatrolTestSupport.detail(test, "entitiesAbsent=" + entitiesAbsent[0]
-					+ " activeDuringUnload=" + activeDuringUnload[0] + " savedHeadPosition=" + rememberedHeadPosition
-					+ " expectedHeadPosition=" + headPosition + " attackerInSavedRange=" + threatRangeRetained[0]
+					+ " activeDuringUnload=" + activeDuringUnload[0] + " savedScoutPosition=" + rememberedScoutPosition
+					+ " expectedScoutPosition=" + scoutPosition + " attackerInSavedRange=" + threatRangeRetained[0]
 					+ " outsideTicks=" + outsideTicks[0]);
 				helper.assertTrue(threatRangeRetained[0],
-					"threat check did not retain the unloaded head's saved position");
+					"threat check did not retain the unloaded scout's saved position");
 
 				attacker.setPos(Vec3.atBottomCenterOf(playerHome));
 				helper.getLevel().setChunkForced(villageChunkX, villageChunkZ, true);
 				helper.getLevel().getChunkAt(villageAnchor);
-				helper.getLevel().setChunkForced(headChunkX, headChunkZ, true);
-				helper.getLevel().getChunkAt(headPosition);
+				helper.getLevel().setChunkForced(scoutChunkX, scoutChunkZ, true);
+				helper.getLevel().getChunkAt(scoutPosition);
 				stage[0] = 3;
 			})
 			.thenWaitUntil(() -> {
@@ -353,7 +353,7 @@ public final class VillagePatrolGameTest {
 			if (!resultLogged[0]) {
 				PatrolTestSupport.result(test, "passed=false stage=" + stage[0]
 					+ " villageChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(villageChunkX, villageChunkZ)
-					+ " headChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ)
+					+ " scoutChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ)
 					+ " activeDuringUnload=" + activeDuringUnload[0] + " entitiesAbsent=" + entitiesAbsent[0]
 					+ " savedPosition=" + savedPosition[0] + " threatRangeRetained=" + threatRangeRetained[0]
 					+ " outsideTicks=" + outsideTicks[0] + " sameIds=" + sameIdsAfterReload[0]);
@@ -410,6 +410,34 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "passed=false headDistance=" + head.position().distanceTo(anchor)
 					+ " headPosition=" + head.position() + " radius=" + radius);
 			}
+		});
+	}
+
+	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void patrolHeadDoesNotChaseBeyondTheBell(final GameTestHelper helper) {
+		String test = "patrolHeadDoesNotChaseBeyondTheBell";
+		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+			return;
+		}
+		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
+		helper.assertTrue(head != null, "the village has no head");
+		BlockPos bell = PatrolTestSupport.anchor(helper);
+		prepareMovementLane(helper, bell, PatrolService.HEAD_BELL_RADIUS + 12);
+		Mob hostile = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(hostile != null, "the hostile could not be created");
+		hostile.setNoAi(true);
+		hostile.setPersistenceRequired();
+		BlockPos far = bell.offset(PatrolService.HEAD_BELL_RADIUS + 10, 0, 0);
+		hostile.snapTo(Vec3.atBottomCenterOf(far));
+		helper.assertTrue(helper.getLevel().addFreshEntity(hostile), "the hostile could not be inserted");
+		head.setTarget(hostile);
+		helper.runAfterDelay(60, () -> {
+			double distance = head.position().distanceTo(Vec3.atCenterOf(bell));
+			PatrolTestSupport.result(test, "distance=" + distance + " target=" + head.getTarget());
+			helper.assertTrue(distance <= PatrolService.HEAD_BELL_RADIUS && head.getTarget() != hostile,
+				"the head chased a threat outside the bell radius: " + distance);
+			hostile.discard();
+			helper.succeed();
 		});
 	}
 
@@ -583,66 +611,66 @@ public final class VillagePatrolGameTest {
 		}
 
 		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
-		if (head == null) {
-			helper.fail("patrol head is missing for inside-range target test");
+		Mob guard = PatrolTestSupport.role(helper, test, "PILLAGER");
+		if (guard == null) {
+			helper.fail("patrol guard is missing for inside-range target test");
 			return;
 		}
 
 		int detectionRange = PatrolService.PATROL_DETECTION_RANGE;
 		// Held on its block, so a wander cannot carry it out of the cleared shaft while the goal searches.
-		head.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
-		Mob hostile = spawnTestCreeper(helper, test, head, detectionRange - 1.0);
+		guard.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
+		Mob hostile = spawnTestCreeper(helper, test, guard, detectionRange - 1.0);
 		if (hostile == null) {
 			return;
 		}
-		double initialDistance = head.distanceTo(hostile);
-		int headTicksAtStart = head.tickCount;
-		BlockPos headBlock = head.blockPosition();
+		double initialDistance = guard.distanceTo(hostile);
+		int guardTicksAtStart = guard.tickCount;
+		BlockPos guardBlock = guard.blockPosition();
 		BlockPos hostileBlock = hostile.blockPosition();
 		List<Integer> blockedColumn = new ArrayList<>();
-		for (int y = headBlock.getY() + 1; y < hostileBlock.getY(); y++) {
-			if (!helper.getLevel().getBlockState(new BlockPos(headBlock.getX(), y, headBlock.getZ())).isAir()) {
+		for (int y = guardBlock.getY() + 1; y < hostileBlock.getY(); y++) {
+			if (!helper.getLevel().getBlockState(new BlockPos(guardBlock.getX(), y, guardBlock.getZ())).isAir()) {
 				blockedColumn.add(y);
 			}
 		}
 		PatrolTestSupport.detail(
-			test, "headBlock=" + headBlock + " hostileBlock=" + hostileBlock + " blockedColumnY=" + blockedColumn
+			test, "guardBlock=" + guardBlock + " hostileBlock=" + hostileBlock + " blockedColumnY=" + blockedColumn
 		);
-		String targetGoals = ((MobPatrolAccess) head).patrolTargetSelector().getAvailableGoals().stream()
+		String targetGoals = ((MobPatrolAccess) guard).patrolTargetSelector().getAvailableGoals().stream()
 			.map(wrapped -> wrapped.getGoal().getClass().getSimpleName() + "@" + wrapped.getPriority() + "@" + wrapped.isRunning())
 			.toList()
 			.toString();
 		PatrolTestSupport.detail(
 			test,
 			"targetGoals=" + targetGoals + " hostileType=" + PatrolTestSupport.typeId(hostile)
-				+ " hostileVisible=" + hostile.canBeSeenAsEnemy() + " canAttack=" + head.canAttack(hostile)
-				+ " lineOfSight=" + head.hasLineOfSight(hostile)
-				+ " inRangeBox=" + head.getBoundingBox().inflate(detectionRange).contains(hostile.position())
+				+ " hostileVisible=" + hostile.canBeSeenAsEnemy() + " canAttack=" + guard.canAttack(hostile)
+				+ " lineOfSight=" + guard.hasLineOfSight(hostile)
+				+ " inRangeBox=" + guard.getBoundingBox().inflate(detectionRange).contains(hostile.position())
 				+ " nearby=" + PatrolTestSupport.mobs(helper).contains(hostile)
-				+ " followRange=" + PatrolTestSupport.followRange(head) + " difficulty=" + helper.getLevel().getDifficulty()
+				+ " followRange=" + PatrolTestSupport.followRange(guard) + " difficulty=" + helper.getLevel().getDifficulty()
 		);
 		boolean[] acquired = {false};
 		boolean[] visible = {false};
 		boolean[] nearestGoalRunning = {false};
 		boolean[] resultLogged = {false};
 		helper.onEachTick(() -> {
-			head.getNavigation().stop();
-			if (head.hasLineOfSight(hostile)) {
+			guard.getNavigation().stop();
+			if (guard.hasLineOfSight(hostile)) {
 				visible[0] = true;
 			}
-			for (var wrapped : ((MobPatrolAccess) head).patrolTargetSelector().getAvailableGoals()) {
+			for (var wrapped : ((MobPatrolAccess) guard).patrolTargetSelector().getAvailableGoals()) {
 				if (wrapped.getGoal().getClass().getSimpleName().equals("NearestAttackableTargetGoal") && wrapped.isRunning()) {
 					nearestGoalRunning[0] = true;
 				}
 			}
-			if (head.getTarget() == hostile) {
+			if (guard.getTarget() == hostile) {
 				acquired[0] = true;
 			}
 		});
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(
-				acquired[0], "patrol head did not target a hostile inside detection range"
+				acquired[0], "patrol guard did not target a hostile inside detection range"
 			))
 			.thenExecute(() -> {
 				resultLogged[0] = true;
@@ -656,15 +684,15 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "range=" + detectionRange + " initialDistance=" + initialDistance
 					+ " visible=" + visible[0] + " acquired=" + acquired[0]
 					+ " nearestGoalRunning=" + nearestGoalRunning[0]
-					+ " currentTarget=" + (head.getTarget() == null ? "none" : PatrolTestSupport.typeId(head.getTarget()))
-					+ " head=" + head.getUUID() + " headNoAi=" + head.isNoAi() + " headAlive=" + head.isAlive()
-					+ " headVillage=" + PatrolState.villageId(head) + " testVillage=" + PatrolTestSupport.villageId(helper)
-					+ " finalDistance=" + head.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive()
-					+ " headTicked=" + (head.tickCount - headTicksAtStart)
-					+ " headEntityTicking=" + helper.getLevel().isPositionEntityTicking(head.blockPosition())
+					+ " currentTarget=" + (guard.getTarget() == null ? "none" : PatrolTestSupport.typeId(guard.getTarget()))
+					+ " guard=" + guard.getUUID() + " guardNoAi=" + guard.isNoAi() + " guardAlive=" + guard.isAlive()
+					+ " guardVillage=" + PatrolState.villageId(guard) + " testVillage=" + PatrolTestSupport.villageId(helper)
+					+ " finalDistance=" + guard.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive()
+					+ " guardTicked=" + (guard.tickCount - guardTicksAtStart)
+					+ " guardEntityTicking=" + helper.getLevel().isPositionEntityTicking(guard.blockPosition())
 					+ " hostileEntityTicking=" + helper.getLevel().isPositionEntityTicking(hostile.blockPosition())
-					+ " " + targetingDiagnostics(helper, head, hostile));
-				helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
+					+ " " + targetingDiagnostics(helper, guard, hostile));
+				helper.assertTrue(acquired[0], "patrol guard did not target a hostile inside detection range");
 			}
 		});
 	}

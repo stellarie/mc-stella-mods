@@ -9,7 +9,8 @@
 		"RaidWaveMixin",
 		"RaidsInvoker",
 		"PatrolRestMixin",
-		"PatrolHostilesMixin"
+		"PatrolHostilesMixin",
+		"VillageWitchSplashMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
