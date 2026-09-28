@@ -3,6 +3,8 @@ package com.stella.mobs.behavior;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -22,6 +24,8 @@ public final class TemporaryBlocks {
 	}
 
 	private static final List<Placed> PLACED = new ArrayList<>();
+	/** The test seam: spots a test declares unloaded, so a chunk's absence can be shown without unloading one. */
+	private static final Set<BlockPos> UNLOADED_FOR_TEST = ConcurrentHashMap.newKeySet();
 
 	private TemporaryBlocks() {
 	}
@@ -47,17 +51,31 @@ public final class TemporaryBlocks {
 		return true;
 	}
 
+	private static boolean loaded(final Placed placed) {
+		return !UNLOADED_FOR_TEST.contains(placed.pos()) && placed.level().isLoaded(placed.pos());
+	}
+
+	/** The test seam: treats a spot as unloaded, or as loaded again when {@code unloaded} is false. */
+	public static void pinUnloaded(final BlockPos pos, final boolean unloaded) {
+		if (unloaded) {
+			UNLOADED_FOR_TEST.add(pos.immutable());
+		} else {
+			UNLOADED_FOR_TEST.remove(pos);
+		}
+	}
+
 	private static void tick(final MinecraftServer server) {
 		int now = server.getTickCount();
 		synchronized (PLACED) {
 			Iterator<Placed> it = PLACED.iterator();
 			while (it.hasNext()) {
 				Placed placed = it.next();
-				if (now < placed.until()) {
+				// A block whose chunk is away waits for the chunk to come back, so it is never left standing.
+				if (now < placed.until() || !loaded(placed)) {
 					continue;
 				}
 				it.remove();
-				if (placed.level().isLoaded(placed.pos()) && placed.level().getBlockState(placed.pos()).is(placed.block())) {
+				if (placed.level().getBlockState(placed.pos()).is(placed.block())) {
 					placed.level().setBlockAndUpdate(placed.pos(), Blocks.AIR.defaultBlockState());
 				}
 			}

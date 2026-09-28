@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -111,6 +112,20 @@ public final class StrayKit {
 	public static void register() {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(StrayKit::afterDamage);
 		ServerTickEvents.END_SERVER_TICK.register(StrayKit::expireArrows);
+		// A sniper arrow that comes back with its chunk is tracked again, so it still expires.
+		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof AbstractArrow arrow && arrow.entityTags().contains(SNIPER_TAG)) {
+				track(arrow);
+			}
+		});
+	}
+
+	private static void track(final AbstractArrow arrow) {
+		synchronized (STRAIGHT) {
+			if (!STRAIGHT.contains(arrow)) {
+				STRAIGHT.add(arrow);
+			}
+		}
 	}
 
 	public static boolean isArcher(final Mob mob) {
@@ -320,9 +335,7 @@ public final class StrayKit {
 			}
 			Vec3 aim = target.getEyePosition().subtract(0.0, 0.3, 0.0).subtract(arrow.position());
 			Projectile.spawnProjectileUsingShoot(arrow, level, one, aim.x, aim.y, aim.z, SNIPER_POWER, 0.0F);
-			synchronized (STRAIGHT) {
-				STRAIGHT.add(arrow);
-			}
+			track(arrow);
 			this.stray.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 0.6F);
 			recorder.sniped(this.stray, arrow);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test=straySniper SHOT stray={} boss={} distance={}", this.stray.getUUID(), boss, this.stray.distanceTo(target));
