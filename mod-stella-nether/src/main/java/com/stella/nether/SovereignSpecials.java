@@ -265,6 +265,7 @@ public final class SovereignSpecials {
 			double angle = 2.0 * Math.PI * i / SPIRAL_PER_VOLLEY + volley * SPIRAL_TURN;
 			Vec3 heading = new Vec3(Math.cos(angle), 0.0, Math.sin(angle));
 			SmallFireball fireball = new SmallFireball(raid, blaze, heading);
+			fireball.setItem(new net.minecraft.world.item.ItemStack(NetherItems.SOUL_FIRE_CHARGE));
 			fireball.setPos(blaze.getX() + heading.x * (blaze.getBbWidth() + 0.5), y, blaze.getZ() + heading.z * (blaze.getBbWidth() + 0.5));
 			if (raid.addFreshEntity(fireball)) {
 				cast.spawned.add(fireball);

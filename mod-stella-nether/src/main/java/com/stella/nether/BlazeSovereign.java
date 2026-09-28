@@ -69,7 +69,8 @@ public final class BlazeSovereign {
 	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public static void register() {
-		// Whatever fire the Sovereign looses flies as soul fire.
+		// Whatever fire the Sovereign looses flies as soul fire: its own casts set it as they fire; this
+		// catches the rest, a vanilla attack's fireballs, as they load.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.Fireball fireball && isSovereign(fireball.getOwner())
 				&& !fireball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)) {
