@@ -35,13 +35,19 @@ public final class TowerWisps {
 	/** How often the lit way is drawn and its mobs enraged. */
 	public static final int SHOW_TICKS = 10;
 	public static final int RAGE_EVERY = 20;
+	/** A wisp rests this long after it is used, so a double click spends one use. */
+	public static final int COOLDOWN_TICKS = 20;
 
-	/** A lit way on a floor: its steps from the player to the portal, and the server tick it fades at. */
-	public record Trail(int floor, List<BlockPos> path, int until) {
+	/**
+	 * A lit way on a floor: whose it is, its steps from the player to the portal, the server tick it fades
+	 * at, and the spots of the room within its reach, [x][z] from the room's inner corner.
+	 */
+	public record Trail(java.util.UUID owner, int floor, List<BlockPos> path, int until, boolean[][] reach) {
 	}
 
 	private static final Map<Integer, Integer> PINNED_LIGHT = new java.util.concurrent.ConcurrentHashMap<>();
-	private static final List<Trail> TRAILS = Collections.synchronizedList(new ArrayList<>());
+	/** Every lit way; only ever touched on the server thread. */
+	private static final List<Trail> TRAILS = new ArrayList<>();
 
 	private TowerWisps() {
 	}
@@ -61,9 +67,15 @@ public final class TowerWisps {
 	}
 
 	public static List<Trail> trailsOn(final int floor) {
-		synchronized (TRAILS) {
-			return TRAILS.stream().filter(trail -> trail.floor() == floor).toList();
-		}
+		return TRAILS.stream().filter(trail -> trail.floor() == floor).toList();
+	}
+
+	public static int usesOf(final net.minecraft.world.item.ItemStack wisp) {
+		return wisp.getOrDefault(TowerItems.WISP_USES, 0);
+	}
+
+	public static void setUses(final net.minecraft.world.item.ItemStack wisp, final int uses) {
+		wisp.set(TowerItems.WISP_USES, uses);
 	}
 
 	/** Lights the way from the player to their floor's portal; null if there is none to light. */
@@ -79,7 +91,10 @@ public final class TowerWisps {
 		if (path.isEmpty()) {
 			return null;
 		}
-		Trail trail = new Trail(floor, List.copyOf(path), tower.getServer().getTickCount() + PINNED_LIGHT.getOrDefault(floor, LIGHT_TICKS));
+		Trail trail = new Trail(player.getUUID(), floor, List.copyOf(path),
+			tower.getServer().getTickCount() + PINNED_LIGHT.getOrDefault(floor, LIGHT_TICKS), reach(floor, path));
+		// A player keeps one lit way: a new one puts out the old.
+		TRAILS.removeIf(old -> old.owner().equals(player.getUUID()));
 		TRAILS.add(trail);
 		StellaTower.LOGGER.debug("[TOWER] floor={} WISP lit {} steps to the portal", floor, path.size() - 1);
 		return trail;
@@ -139,6 +154,26 @@ public final class TowerWisps {
 		return List.of();
 	}
 
+	/** The spots of the room within reach of a way's steps. */
+	private static boolean[][] reach(final int floor, final List<BlockPos> path) {
+		BlockPos origin = TowerLayout.origin(floor);
+		int size = TowerLayout.SIZE;
+		int span = (int) Math.ceil(RAGE_REACH);
+		boolean[][] near = new boolean[size][size];
+		for (BlockPos step : path) {
+			int sx = step.getX() - origin.getX();
+			int sz = step.getZ() - origin.getZ();
+			for (int x = Math.max(0, sx - span); x <= Math.min(size - 1, sx + span); x++) {
+				for (int z = Math.max(0, sz - span); z <= Math.min(size - 1, sz + span); z++) {
+					if ((x - sx) * (x - sx) + (z - sz) * (z - sz) <= RAGE_REACH * RAGE_REACH) {
+						near[x][z] = true;
+					}
+				}
+			}
+		}
+		return near;
+	}
+
 	private static void tick(final MinecraftServer server) {
 		if (TRAILS.isEmpty()) {
 			return;
@@ -149,11 +184,11 @@ public final class TowerWisps {
 		if (tower == null) {
 			return;
 		}
-		List<Trail> trails;
-		synchronized (TRAILS) {
-			trails = List.copyOf(TRAILS);
-		}
-		for (Trail trail : trails) {
+		for (Trail trail : List.copyOf(TRAILS)) {
+			// A way on a floor no one stands on keeps its time but is neither drawn nor felt.
+			if (TowerMobs.playersOn(tower, trail.floor()).isEmpty()) {
+				continue;
+			}
 			if (now % SHOW_TICKS == 0) {
 				for (int i = 0; i < trail.path().size(); i += 2) {
 					BlockPos step = trail.path().get(i);
@@ -171,18 +206,10 @@ public final class TowerWisps {
 		BlockPos origin = TowerLayout.origin(trail.floor());
 		AABB room = new AABB(origin.getX(), TowerLayout.BASE_Y, origin.getZ(),
 			origin.getX() + TowerLayout.SIZE, TowerLayout.BASE_Y + TowerLayout.HEIGHT, origin.getZ() + TowerLayout.SIZE);
-		double reach = RAGE_REACH * RAGE_REACH;
 		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> mob instanceof Enemy && !(mob instanceof TowerGhost) && mob.isAlive())) {
-			boolean onWay = false;
-			for (BlockPos step : trail.path()) {
-				double dx = mob.getX() - (step.getX() + 0.5);
-				double dz = mob.getZ() - (step.getZ() + 0.5);
-				if (dx * dx + dz * dz <= reach) {
-					onWay = true;
-					break;
-				}
-			}
-			if (onWay) {
+			int x = mob.getBlockX() - origin.getX();
+			int z = mob.getBlockZ() - origin.getZ();
+			if (x >= 0 && z >= 0 && x < TowerLayout.SIZE && z < TowerLayout.SIZE && trail.reach()[x][z]) {
 				mob.addEffect(new MobEffectInstance(MobEffects.SPEED, RAGE_TICKS, RAGE_SPEED));
 				mob.addEffect(new MobEffectInstance(MobEffects.STRENGTH, RAGE_TICKS, RAGE_STRENGTH));
 				tower.sendParticles(ParticleTypes.ANGRY_VILLAGER, mob.getX(), mob.getY() + mob.getBbHeight() + 0.3, mob.getZ(), 1, 0.2, 0.1, 0.2, 0.0);

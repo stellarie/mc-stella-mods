@@ -414,3 +414,17 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
 - **The price:** every hostile mob standing within 2 blocks of a lit way is enraged, with Speed II and
   Strength II, renewed each second while it stays there and lasting 3 seconds after.
 - A lit way lives in memory: a server restart puts it out.
+
+### Review fixes: safe zones, ghost runes and the wisp (2026-09-28)
+
+- A wisp's 24 uses are its own count, shown as a bar, not wear: no crafting grid, grindstone or anvil mends
+  them back. It rests a second after each use, so a double click spends one use. A player keeps one lit
+  way; using a wisp again puts out their old one. A way on a floor nobody stands on keeps its time but is
+  neither drawn nor felt. Mobs within 2 blocks of a lit step are enraged, measured by block.
+- A piece that already carries a ghost rune takes no second one.
+- Settling an older floor sets a station only onto open floor and relays only the floor's own stone and
+  traps, so a player's chest or a block they set into the floor stays.
+- The safe room's furnace and anvil face into the room.
+- A ghost chestplate renews a passed-through mob's slowness once a second, not every tick.
+- Left as is: floor mobs are still raised inside a boss floor's walled hall. The hall is the boss's room,
+  and mobs from it that chase a player pass through the safe room, which the safe zones allow.

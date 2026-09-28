@@ -68,6 +68,39 @@ public class TowerGhostRuneGameTest {
 		helper.succeed();
 	}
 
+	/** A piece that carries a ghost rune takes no second: the anvil would charge a rune and emeralds for nothing. */
+	@GameTest
+	public void aGhostedPieceTakesNoSecondGhostRune(final GameTestHelper helper) {
+		ServerPlayer player = player(helper, 1.5, 1.5);
+		ItemStack again = anvil(player, GhostRunes.apply(new ItemStack(Items.IRON_CHESTPLATE)));
+		TowerTestSupport.result("ghostTwice", "again=" + again);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(again.isEmpty(), "a ghosted chestplate took a second ghost rune: " + again);
+		helper.succeed();
+	}
+
+	/** The anvil charges 64 emeralds for a ghost rune, and uses the rune up. */
+	@GameTest
+	public void theAnvilChargesForAGhostRune(final GameTestHelper helper) {
+		ServerPlayer player = player(helper, 1.5, 1.5);
+		AnvilMenu menu = new AnvilMenu(1, player.getInventory(), ContainerLevelAccess.NULL);
+		menu.getSlot(AnvilMenu.INPUT_SLOT).set(new ItemStack(Items.DIAMOND_SWORD));
+		menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).set(new ItemStack(TowerItems.GHOST_RUNE));
+		menu.createResult();
+		ItemStack result = menu.getSlot(AnvilMenu.RESULT_SLOT).getItem();
+		boolean poor = menu.getSlot(AnvilMenu.RESULT_SLOT).mayPickup(player);
+		player.getInventory().add(new ItemStack(Items.EMERALD, TowerRunes.EMERALDS));
+		boolean paid = menu.getSlot(AnvilMenu.RESULT_SLOT).mayPickup(player);
+		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, result.copy());
+		int emeralds = player.getInventory().countItem(Items.EMERALD);
+		boolean runeUsed = menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem().isEmpty();
+		TowerTestSupport.result("ghostAnvilPaid", "ghosted=" + GhostRunes.isGhosted(result) + " poor=" + poor + " paid=" + paid + " emeraldsLeft=" + emeralds + " runeUsed=" + runeUsed);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(GhostRunes.isGhosted(result) && !poor && paid, "ghosted=" + GhostRunes.isGhosted(result) + " poor=" + poor + " paid=" + paid);
+		helper.assertTrue(emeralds == 0 && runeUsed, "the anvil left " + emeralds + " emeralds and the rune used=" + runeUsed);
+		helper.succeed();
+	}
+
 	/** A phased wearer evades about three blows in ten, of any kind, measured over many. */
 	@GameTest
 	public void aGhostChestplateEvadesAboutAThirdOfBlows(final GameTestHelper helper) {
@@ -148,6 +181,9 @@ public class TowerGhostRuneGameTest {
 		Zombie ghostTarget = zombie(helper, 5.5, 3.5);
 		plainTarget.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
 		ghostTarget.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
+		// Toughness too, so its half is measured as well as the armor's.
+		plainTarget.getAttribute(Attributes.ARMOR_TOUGHNESS).setBaseValue(8.0);
+		ghostTarget.getAttribute(Attributes.ARMOR_TOUGHNESS).setBaseValue(8.0);
 		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_SWORD));
 		DamageSource plainBlow = player.damageSources().playerAttack(player);
 		float before = plainTarget.getHealth();

@@ -83,9 +83,9 @@ public class TowerWispGameTest {
 		));
 		boolean shortMakes = level.getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, short1, level)
 			.map(recipe -> recipe.value().assemble(short1).is(TowerItems.WISP)).orElse(false);
-		TowerTestSupport.result("wispRecipe", "made=" + made + " uses=" + made.getMaxDamage() + " shortMakes=" + shortMakes);
+		TowerTestSupport.result("wispRecipe", "made=" + made + " uses=" + TowerWisps.usesOf(made) + " shortMakes=" + shortMakes);
 		helper.assertTrue(made.is(TowerItems.WISP) && made.getCount() == 1, "the recipe made " + made);
-		helper.assertTrue(made.getMaxDamage() == TowerWisps.USES, "a wisp has " + made.getMaxDamage() + " uses, not " + TowerWisps.USES);
+		helper.assertTrue(TowerWisps.usesOf(made) == TowerWisps.USES, "a wisp has " + TowerWisps.usesOf(made) + " uses, not " + TowerWisps.USES);
 		helper.assertFalse(shortMakes, "one echo shard short still made a wisp");
 		helper.succeed();
 	}
@@ -110,7 +110,7 @@ public class TowerWispGameTest {
 				broken += trail.path().get(i).distManhattan(trail.path().get(i - 1)) == 1 ? 0 : 1;
 			}
 		}
-		int damage = player.getMainHandItem().getDamageValue();
+		int damage = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
 		TowerTestSupport.result("wispTrail", "trails=" + trails.size() + " length=" + (trail == null ? -1 : trail.path().size() - 1)
 			+ " shortest=" + shortest + " broken=" + broken + " lasts=" + (trail == null ? -1 : trail.until() - now) + " damage=" + damage);
 		TowerTestSupport.leave(helper, player);
@@ -160,7 +160,9 @@ public class TowerWispGameTest {
 			for (int z = 1; z < S - 1 && away == null; z += 3) {
 				BlockPos spot = o.offset(x, 0, z);
 				boolean open = tower.getBlockState(spot).isAir() && tower.getBlockState(spot.above()).isAir();
-				boolean far = trail.path().stream().allMatch(step -> step.distSqr(spot) > 64.0);
+				// Twice the reach from every step, so no rounding of a mob's place brings it within.
+				double clear = 2.0 * TowerWisps.RAGE_REACH + 1.0;
+				boolean far = trail.path().stream().allMatch(step -> step.distSqr(spot) > clear * clear);
 				if (open && far) {
 					away = spot;
 				}
@@ -193,13 +195,51 @@ public class TowerWispGameTest {
 		return zombie;
 	}
 
+	/** A wisp's uses are its own count, not wear: no crafting grid, grindstone or anvil mends them back. */
+	@GameTest
+	public void aWispsUsesCannotBeMended(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ItemStack a = new ItemStack(TowerItems.WISP);
+		ItemStack b = new ItemStack(TowerItems.WISP);
+		TowerWisps.setUses(a, 1);
+		TowerWisps.setUses(b, 1);
+		CraftingInput input = CraftingInput.of(2, 1, List.of(a, b));
+		var match = level.getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level);
+		ItemStack mended = match.map(recipe -> recipe.value().assemble(input)).orElse(ItemStack.EMPTY);
+		boolean wears = a.isDamageableItem();
+		TowerTestSupport.result("wispMend", "fresh=" + TowerWisps.usesOf(new ItemStack(TowerItems.WISP)) + " mended=" + mended + " wears=" + wears);
+		helper.assertTrue(TowerWisps.usesOf(new ItemStack(TowerItems.WISP)) == TowerWisps.USES, "a fresh wisp has " + TowerWisps.usesOf(new ItemStack(TowerItems.WISP)) + " uses");
+		helper.assertTrue(mended.isEmpty() && !wears, "two spent wisps mended into " + mended + "; a wisp wears=" + wears);
+		helper.succeed();
+	}
+
+	/** A player keeps one lit way: a second use replaces the first, and a use within the wisp's rest spends nothing. */
+	@GameTest
+	public void aSecondUseReplacesTheWayAndRestsFirst(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = ordinaryFloor(tower);
+		ServerPlayer player = holder(helper, tower, floor);
+		player.getMainHandItem().use(tower, player, InteractionHand.MAIN_HAND);
+		player.getMainHandItem().use(tower, player, InteractionHand.MAIN_HAND);
+		int restingSpent = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
+		player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(player.getMainHandItem()));
+		player.getMainHandItem().use(tower, player, InteractionHand.MAIN_HAND);
+		int spent = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
+		int trails = TowerWisps.trailsOn(floor).size();
+		TowerTestSupport.result("wispReuse", "restingSpent=" + restingSpent + " spent=" + spent + " trails=" + trails);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(restingSpent == 1, "a use within the rest spent " + restingSpent + " in all");
+		helper.assertTrue(spent == 2 && trails == 1, "two uses spent " + spent + " and left " + trails + " ways lit");
+		helper.succeed();
+	}
+
 	/** Out of the tower a wisp has no portal to find, and spends nothing. */
 	@GameTest
 	public void aWispOutOfTheTowerSpendsNothing(final GameTestHelper helper) {
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(TowerItems.WISP));
 		player.getMainHandItem().use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
-		int damage = player.getMainHandItem().getDamageValue();
+		int damage = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
 		TowerTestSupport.result("wispOutside", "damage=" + damage);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(damage == 0, "a wisp used out of the tower spent " + damage);
