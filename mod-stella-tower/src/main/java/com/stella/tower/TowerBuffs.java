@@ -38,6 +38,8 @@ public final class TowerBuffs {
 	/** Buffs are topped up this often and last a little longer, so leaving the floor lets them lapse. */
 	public static final int REFRESH_TICKS = 20;
 	public static final int DURATION_TICKS = 60;
+	/** A boss floor's shield lasts this long at most, so one carried out under a stronger dose still ends. */
+	public static final int SHIELD_TICKS = 6000;
 	public static final double EXTRA_HEALTH_PER_LEVEL = 0.10;
 	public static final double THORNS_PER_LEVEL = 0.05;
 	public static final double THORNS_CAP = 0.50;
@@ -117,6 +119,10 @@ public final class TowerBuffs {
 	 */
 	public static final AttachmentType<Integer> CARRYING = AttachmentRegistry.create(
 		StellaTower.id("carrying"), builder -> builder.persistent(Codec.INT)
+	);
+	/** The boss floor whose shield a player has had this stay, so a spent or drunk-away shield is not given again. */
+	public static final AttachmentType<Integer> SHIELDED = AttachmentRegistry.create(
+		StellaTower.id("shielded"), builder -> builder.persistent(Codec.INT)
 	);
 	/** How many extra lives a mob has spent. */
 	public static final AttachmentType<Integer> REVIVES = AttachmentRegistry.create(
@@ -219,10 +225,12 @@ public final class TowerBuffs {
 		}
 	}
 
-	/** A tower mob's buffs: those of its own floor when that floor is a boss floor, else none. */
+	/** A tower mob's buffs: those of its own floor when that floor is a boss floor and it is in the tower, else none. */
 	public static List<MobBuff> mobBuffsOf(final LivingEntity mob) {
 		TowerMobs.State state = TowerMobs.stateOf(mob);
-		if (state == null || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)) {
+		// The buffs hold while in the tower; a mob of the floor loose in the world carries none.
+		if (state == null || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)
+			|| !level.dimension().equals(TowerTravel.TOWER)) {
 			return List.of();
 		}
 		List<MobBuff> pin = PINNED.get(state.floor());
@@ -291,9 +299,11 @@ public final class TowerBuffs {
 	private static void give(final ServerPlayer player, final PlayerBuff buff, final int floor) {
 		int amplifier = buff.amplifier(floor);
 		if (buff == PlayerBuff.ABSORPTION) {
-			MobEffectInstance held = player.getEffect(buff.effect());
-			if (held == null || held.getAmplifier() < amplifier) {
-				player.addEffect(new MobEffectInstance(buff.effect(), MobEffectInstance.INFINITE_DURATION, amplifier, true, true));
+			// Once a stay: a spent shield's effect ends itself, and milk ends it too, but neither buys another.
+			Integer shielded = player.getAttached(SHIELDED);
+			if (shielded == null || shielded != floor) {
+				player.addEffect(new MobEffectInstance(buff.effect(), SHIELD_TICKS, amplifier, true, true));
+				player.setAttached(SHIELDED, floor);
 			}
 			return;
 		}
@@ -307,9 +317,10 @@ public final class TowerBuffs {
 			return;
 		}
 		player.removeAttached(CARRYING);
+		player.removeAttached(SHIELDED);
 		PlayerBuff old = playerBuffOn(seed, carried);
 		MobEffectInstance held = player.getEffect(old.effect());
-		if (held == null || !held.isAmbient() || !(held.isInfiniteDuration() || held.getDuration() <= DURATION_TICKS)) {
+		if (held == null || !held.isAmbient() || held.getDuration() > Math.max(DURATION_TICKS, SHIELD_TICKS)) {
 			return;
 		}
 		MobEffectInstance under = ((com.stella.tower.mixin.MobEffectInstanceAccessor) held).stellaTower$hidden();

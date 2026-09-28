@@ -36,14 +36,11 @@ public class TowerEliteGameTest {
 			int elites = TowerElites.alive(tower, floor, TowerRank.ELITE);
 			int bosses = TowerElites.alive(tower, floor, TowerRank.BOSS);
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
-			// Its post, not where its chase has taken it: an elite is kept near the portal, not frozen there.
-			BlockPos home = elite == null || !elite.hasHome() ? null : elite.getHomePosition();
-			int radius = elite == null ? -1 : elite.getHomeRadius();
-			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " home=" + home + " post=" + TowerElites.post(floor) + " radius=" + radius);
+			// Where it rose: at its post. Whether it keeps there is aGuardianWalksBackToItsPost's case.
+			double fromPost = elite == null ? -1.0 : elite.position().distanceTo(Vec3.atBottomCenterOf(TowerElites.post(floor)));
+			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " fromPost=" + fromPost);
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(elites == 1 && bosses == 0, "floor " + floor + " holds " + elites + " elites and " + bosses + " bosses");
-			helper.assertTrue(TowerElites.post(floor).equals(home) && radius == TowerElites.GUARD_RADIUS,
-				"the elite is kept to " + home + " within " + radius + ", not its post " + TowerElites.post(floor) + " within " + TowerElites.GUARD_RADIUS);
 			helper.succeed();
 		});
 	}
@@ -326,24 +323,66 @@ public class TowerEliteGameTest {
 		helper.succeed();
 	}
 
-	/** A guardian with a quarry follows it past its post; kept to its post, it would give up a chase and stand to be shot. */
-	@GameTest(maxTicks = 120)
-	public void aGuardianGivesChaseBeyondItsPost(final GameTestHelper helper) {
+	/**
+	 * A player past a guardian's post can still be fought: kept to its post, a guardian could not even take
+	 * up a player who shot it from beyond, and would stand to be shot. A zombie, so its targeting is known.
+	 */
+	@GameTest(maxTicks = 200)
+	public void aGuardianTakesOnAPlayerBeyondItsPost(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
+		TowerElites.pinGuardianKind(floor, EntityTypes.ZOMBIE);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		// Beyond the post's reach, well inside a zombie's following range.
+		Vec3 stand = Vec3.atBottomCenterOf(TowerElites.post(floor)).add(-(TowerElites.GUARD_RADIUS + 8.0), 0.0, 0.0);
+		player.teleportTo(tower, stand.x, stand.y, stand.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		boolean[] shot = {false};
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
 			helper.assertTrue(elite != null, "no elite rose, so the case proves nothing");
-			if (elite.getTarget() != player) {
-				elite.setTarget(player);
+			if (!shot[0]) {
+				shot[0] = true;
+				elite.hurtServer(tower, player.damageSources().playerAttack(player), 1.0F);
 			}
-			helper.assertFalse(elite.hasHome(), "an elite hunting a player " + (int) elite.distanceTo(player) + " blocks off is still kept to its post");
+			helper.assertTrue(elite.getTarget() == player, "an elite shot from " + (int) elite.distanceTo(player) + " blocks never took the player on");
 			if (!done[0]) {
 				done[0] = true;
-				TowerTestSupport.result("guardianChase", "tick=" + helper.getTick() + " distance=" + (int) elite.distanceTo(player));
+				TowerElites.pinGuardianKind(floor, null);
+				TowerTestSupport.result("guardianAnswers", "tick=" + helper.getTick() + " distance=" + (int) elite.distanceTo(player));
+				TowerTestSupport.leave(helper, player);
+			}
+		});
+	}
+
+	/** A guardian with no quarry walks back to its post, so a chase never leaves it camping the arrival. */
+	@GameTest(maxTicks = 300)
+	public void aGuardianWalksBackToItsPost(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
+		TowerFloors.ensure(tower, floor);
+		TowerElites.pinGuardianKind(floor, EntityTypes.ZOMBIE);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		// No mob hunts a creative player, so the elite has no quarry.
+		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+		Vec3 post = Vec3.atBottomCenterOf(TowerElites.post(floor));
+		int[] movedAt = {-1};
+		boolean[] done = {false};
+		helper.succeedWhen(() -> {
+			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
+			helper.assertTrue(elite != null, "no elite rose, so the case proves nothing");
+			if (movedAt[0] < 0) {
+				movedAt[0] = (int) helper.getTick();
+				Vec3 far = post.add(-(TowerElites.GUARD_RADIUS * 3.0), 0.0, 0.0);
+				elite.snapTo(far.x, far.y, far.z, 0.0F, 0.0F);
+			}
+			double from = elite.position().distanceTo(post);
+			helper.assertTrue(from <= TowerElites.GUARD_RADIUS, "the elite stands " + (int) from + " blocks from its post with nothing to hunt");
+			if (!done[0]) {
+				done[0] = true;
+				TowerElites.pinGuardianKind(floor, null);
+				TowerTestSupport.result("guardianReturns", "movedAt=" + movedAt[0] + " backAt=" + helper.getTick());
 				TowerTestSupport.leave(helper, player);
 			}
 		});
