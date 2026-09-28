@@ -3,9 +3,12 @@ plugins {
 }
 
 loom {
+	splitEnvironmentSourceSets()
+
 	mods {
 		"mod-stella-spells" {
 			sourceSet sourceSets.main
+			sourceSet sourceSets.client
 		}
 	}
 }

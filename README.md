@@ -76,7 +76,9 @@ On the first server start the mod writes
 
 ## mod-stella-spells
 
-`mod-stella-spells` adds 20 tinted spellbooks. Each book casts one fixed spell when the holder uses it. The first release has two power tiers with ten books in each tier. Successful casts set a spell-specific cooldown and do not consume the book.
+`mod-stella-spells` adds 42 spellbooks with distinct icons. Each book casts one fixed spell when the holder uses it. Successful casts set a spell-specific cooldown and do not consume the book.
+
+The mod runs spell logic on the server and renders spell visuals on clients. Install the same jar on the server and every client. A selected spellbook leaves the player's hand visually empty and draws a colored circle at the player's feet.
 
 Craft a spellbook with one book in the center and four matching materials in the corner X. Vanilla chest loot has a 5% chance per generated chest. Each witch death has a 50% chance to drop one random spellbook.
 
@@ -90,9 +92,9 @@ cd mod-stella-spells
 .\gradlew.bat runGameTest --rerun
 ```
 
-Run the game-test command five separate times. Save each run log outside `build/` before the next run or a clean build. Install the mod on the server and every client. The mod jar contains the item tint assets.
+Run the game-test command five separate times. Save each run log outside `build/` before the next run or a clean build. The mod jar contains all 42 book textures and scroll tint definitions.
 
-The jar is `mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Verify all 20 icon tints in a client.
+The jar is `mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Inspect the hand display, foot circle, and spell effects in a client.
 
 ## Target platform
 
