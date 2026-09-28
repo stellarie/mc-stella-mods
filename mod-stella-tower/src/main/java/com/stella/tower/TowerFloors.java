@@ -19,8 +19,9 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Builds a floor the first time anyone reaches it, and never again: a floor's corner wall block is its own
- * record that it exists, so a floor keeps every change made to it for good. The layout is drawn from the
- * world seed and the floor number, so each floor is its own and the same every time it is drawn.
+ * record that it exists, so a floor keeps every change made to it for good. Its maze is drawn from the
+ * world seed and the floor number, so each floor is its own and the same every time it is drawn. A floor
+ * built before the mazes came keeps the open room it was built with.
  * <p>
  * Building a floor at once takes long enough to stall the server, so floors are built ahead of the
  * climb, a column at a time within a small budget each tick: a player's arrival on a floor starts the one
@@ -28,12 +29,6 @@ import net.minecraft.world.level.block.state.BlockState;
  * they are all loaded. A floor someone needs before it is done is finished on the spot.
  */
 public final class TowerFloors {
-	/** Blocks that shape the rooms: pillars and low walls, all mineable. */
-	public record Piece(BlockPos offset, BlockState state) {
-	}
-
-	/** Around the arrival spot and in front of the portal, nothing is built. */
-	public static final int CLEAR_RADIUS = 6;
 	public static final int LAMP_SPACING = 6;
 	private static final long FLOOR_SALT = 0x5DEECE66DL;
 	/** Background building's share of each server tick. */
@@ -139,6 +134,7 @@ public final class TowerFloors {
 		private final int floor;
 		private final Random random;
 		private final ChunkPos middle;
+		private final boolean[][] maze;
 		private int askedAt = -1;
 		private int column;
 
@@ -146,6 +142,7 @@ public final class TowerFloors {
 			this.tower = tower;
 			this.floor = floor;
 			this.random = new Random(tower.getSeed() ^ FLOOR_SALT ^ (floor * 0x9E3779B97F4A7C15L));
+			this.maze = TowerMaze.walls(tower.getSeed(), floor);
 			BlockPos origin = TowerLayout.origin(floor);
 			this.middle = ChunkPos.containing(origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2));
 		}
@@ -162,7 +159,7 @@ public final class TowerFloors {
 				}
 			}
 			if (this.column <= TowerLayout.SIZE + 1) {
-				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random);
+				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random, this.maze);
 				this.column++;
 				return Step.PROGRESS;
 			}
@@ -188,7 +185,7 @@ public final class TowerFloors {
 		}
 	}
 
-	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random) {
+	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random, final boolean[][] maze) {
 		BlockPos origin = TowerLayout.origin(floor);
 		int x0 = origin.getX();
 		int z0 = origin.getZ();
@@ -214,6 +211,11 @@ public final class TowerFloors {
 					set(tower, x, base - 1, z, palette[random.nextInt(palette.length)]);
 					boolean lit = (x - x0) % LAMP_SPACING == LAMP_SPACING / 2 && (z - z0) % LAMP_SPACING == LAMP_SPACING / 2;
 					set(tower, x, top, z, lit ? lamp : wall);
+					if (maze[x - x0][z - z0]) {
+						for (int y = base; y < top; y++) {
+							set(tower, x, y, z, wall);
+						}
+					}
 				}
 			}
 		}
@@ -222,10 +224,6 @@ public final class TowerFloors {
 	private static void finish(final ServerLevel tower, final int floor) {
 		BlockPos origin = TowerLayout.origin(floor);
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
-		for (Piece piece : layout(tower.getSeed(), floor)) {
-			BlockPos at = origin.offset(piece.offset());
-			tower.setBlock(at, piece.state(), Block.UPDATE_CLIENTS);
-		}
 		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
 		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
@@ -236,62 +234,11 @@ public final class TowerFloors {
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
 	}
 
+	/** A fresh floor has no neighbours to tell and no shapes to fit, so only the clients hear of each block. */
+	private static final int BUILD_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
 	private static void set(final ServerLevel tower, final int x, final int y, final int z, final BlockState state) {
-		tower.setBlock(new BlockPos(x, y, z), state, Block.UPDATE_CLIENTS);
-	}
-
-	/**
-	 * The floor's pillars and low walls, as offsets from its inner corner. A pure function of the seed and
-	 * the floor, so a floor drawn twice is drawn the same.
-	 */
-	public static List<Piece> layout(final long seed, final int floor) {
-		Random random = new Random(seed ^ (floor * 0x2545F4914F6CDD1DL));
-		BlockState[] palette = palette(floor);
-		List<Piece> pieces = new ArrayList<>();
-		int pillars = 6 + random.nextInt(7);
-		for (int i = 0; i < pillars; i++) {
-			int x = 2 + random.nextInt(TowerLayout.SIZE - 5);
-			int z = 2 + random.nextInt(TowerLayout.SIZE - 5);
-			BlockState state = palette[random.nextInt(palette.length)];
-			if (clear(x, z) || clear(x + 1, z + 1)) {
-				continue;
-			}
-			for (int dx = 0; dx < 2; dx++) {
-				for (int dz = 0; dz < 2; dz++) {
-					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
-						pieces.add(new Piece(new BlockPos(x + dx, y, z + dz), state));
-					}
-				}
-			}
-		}
-		int walls = 4 + random.nextInt(5);
-		for (int i = 0; i < walls; i++) {
-			int length = 3 + random.nextInt(5);
-			int height = 1 + random.nextInt(3);
-			boolean alongX = random.nextBoolean();
-			int x = 1 + random.nextInt(TowerLayout.SIZE - 2 - (alongX ? length : 0));
-			int z = 1 + random.nextInt(TowerLayout.SIZE - 2 - (alongX ? 0 : length));
-			BlockState state = palette[random.nextInt(palette.length)];
-			for (int step = 0; step < length; step++) {
-				int px = alongX ? x + step : x;
-				int pz = alongX ? z : z + step;
-				if (clear(px, pz)) {
-					continue;
-				}
-				for (int y = 0; y < height; y++) {
-					pieces.add(new Piece(new BlockPos(px, y, pz), state));
-				}
-			}
-		}
-		return pieces;
-	}
-
-	/** Whether an inner spot must stay open: around the arrival spot, and in front of the portal. */
-	public static boolean clear(final int x, final int z) {
-		int dzMiddle = Math.abs(z - TowerLayout.MIDDLE_Z);
-		boolean nearArrival = Math.abs(x - TowerLayout.ARRIVAL_X) <= CLEAR_RADIUS && dzMiddle <= CLEAR_RADIUS;
-		boolean nearPortal = x >= TowerLayout.PORTAL_X - CLEAR_RADIUS && dzMiddle <= CLEAR_RADIUS;
-		return nearArrival || nearPortal;
+		tower.setBlock(new BlockPos(x, y, z), state, BUILD_FLAGS);
 	}
 
 	/**
