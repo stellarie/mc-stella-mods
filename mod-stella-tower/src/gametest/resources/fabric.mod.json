@@ -20,7 +20,8 @@
 			"com.stella.tower.TowerBuffGameTest",
 			"com.stella.tower.TowerWanderersGameTest",
 			"com.stella.tower.TowerMazeGameTest",
-			"com.stella.tower.TowerTrapGameTest"
+			"com.stella.tower.TowerTrapGameTest",
+			"com.stella.tower.TowerRewardGameTest"
 		]
 	},
 	"mixins": [
