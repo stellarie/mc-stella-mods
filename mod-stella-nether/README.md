@@ -145,6 +145,9 @@ also burns, as before.
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
+- Stand inside a Meteor Storm: meteors strike you for damage, and now and then stun you. The headless
+  check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
+  its wait for the bystander to load starved in one gate run of five after four fixes.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).
