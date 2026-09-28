@@ -105,19 +105,17 @@ public class TowerFloorGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		BlockPos inside = TowerLayout.portalInside(floor).get(0);
-		net.minecraft.world.entity.animal.pig.Pig pig = net.minecraft.world.entity.EntityTypes.PIG.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		pig.snapTo(Vec3.atBottomCenterOf(inside));
-		tower.addFreshEntity(pig);
-		var moved = pig.teleport(TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, pig, inside));
+		// Only players climb, so a player takes the portal.
+		ServerPlayer climber = TowerTestSupport.join(helper, 1.5, 1.5);
+		climber.teleportTo(tower, inside.getX() + 0.5, inside.getY(), inside.getZ() + 0.5, Set.of(), 0.0F, 0.0F, true);
+		climber.teleport(TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, climber, inside));
+		TowerTestSupport.leave(helper, climber);
 		int twoUp = floor + 2;
 		boolean started = TowerFloors.isQueued(twoUp) || TowerFloors.isBuilt(tower, twoUp);
 		helper.succeedWhen(() -> {
 			helper.assertTrue(started, "arriving on floor " + (floor + 1) + " did not start floor " + twoUp);
 			helper.assertTrue(TowerFloors.isBuilt(tower, twoUp), "floor " + twoUp + " is not built yet");
 			TowerTestSupport.result("buildAhead", "started=" + started + " tick=" + helper.getTick());
-			if (moved != null) {
-				moved.discard();
-			}
 		});
 	}
 

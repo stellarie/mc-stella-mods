@@ -102,7 +102,10 @@ public final class TowerTravel {
 		int floor;
 		if (from.dimension().equals(TOWER)) {
 			int here = TowerLayout.floorAt(portal);
-			if (here < 1) {
+			// Only players climb: a mob that follows one in stays on its own floor.
+			boolean carriesPlayer = entity instanceof ServerPlayer
+				|| entity.hasPassenger(rider -> rider instanceof ServerPlayer);
+			if (here < 1 || !carriesPlayer) {
 				return null;
 			}
 			floor = here + 1;

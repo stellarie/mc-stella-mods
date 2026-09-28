@@ -35,7 +35,14 @@ An endless tower of floors behind a crying obsidian portal. The design is in
 - Mobs start at least 12 blocks from every player and from the arrival spot.
 - Floors 1 to 20 hold overworld hostiles only, no witches: zombie, skeleton, spider, creeper, husk,
   stray, cave spider, pillager, vindicator. From floor 21 witches, blazes, wither skeletons, piglin brutes,
-  magma cubes, hoglins, endermen, endermites and shulkers join. Ghasts do not fit an eight-block room.
+  magma cubes, hoglins, endermen and endermites join. Ghasts do not fit an eight-block room, and shulkers
+  teleport by a road no room can close.
+- Tower mobs never take a floor's portal; only players, and what they ride, climb.
+- Piglins and hoglins never zombify in the tower. A tower mob that becomes another (a split magma cube)
+  stays a tower mob of its floor, at its floor's strength.
+- Jockey riders are sent away at spawn; every mob starts on solid ground with its whole body clear.
+- A tower mob's health is its floor's alone: other health bonuses (a zombie leader's) are set aside.
+- An occupied floor's whole room is held loaded, so no mob in it goes uncounted.
 - Each tower mob carries one of eight elements, shown in its name in the element's colour.
 - Threat follows `TowerCurve`: health `base * (1 + 99 S(f)) + 2f`, damage `base * (1 + 19 S(f)) + 0.02f`,
   `+1` armor per 5 floors up to 30, `+0.2%` speed per floor up to `+50%`. A floor-100 zombie has 285
