@@ -1,12 +1,23 @@
 {
 	"model": {
-		"type": "minecraft:model",
-		"model": "mod-stella-spells:item/frost_nova",
-		"tints": [
+		"type": "minecraft:select",
+		"property": "minecraft:display_context",
+		"cases": [
 			{
-				"type": "minecraft:constant",
-				"value": 10475248
+				"when": [
+					"firstperson_righthand",
+					"firstperson_lefthand",
+					"thirdperson_righthand",
+					"thirdperson_lefthand"
+				],
+				"model": {
+					"type": "minecraft:empty"
+				}
 			}
-		]
+		],
+		"fallback": {
+			"type": "minecraft:model",
+			"model": "mod-stella-spells:item/frost_nova"
+		}
 	}
 }

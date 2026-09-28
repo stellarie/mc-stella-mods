@@ -46,7 +46,8 @@ public class StormAndRiftGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void chainstormStrikesEveryHostileAroundTheSpotInSequence(final GameTestHelper helper) {
+	public void chainstormHitsInsideInSequenceAndSpareOutside(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "chainstormHitsInsideInSequenceAndSpareOutside");
 		helper.setTime(18_000L);
 		ServerPlayer caster = caster(helper);
 		floor(helper);
@@ -80,7 +81,33 @@ public class StormAndRiftGameTest {
 				gaps.add(ticks.get(i)[0] - ticks.get(i - 1)[0]);
 			}
 			helper.assertTrue(gaps.stream().allMatch(gap -> gap == SpellStorms.STRIKE_INTERVAL_TICKS), "the strikes fell " + gaps + " ticks apart, not in sequence");
-			LOG.info("[SPELLTEST] test=chainstormStrikesEveryHostileAroundTheSpotInSequence RESULT strikes={} gaps={}", struck.size(), gaps);
+			LOG.info("[SPELLTEST] test=chainstormHitsInsideInSequenceAndSpareOutside RESULT strikes={} gaps={}", struck.size(), gaps);
+		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void chainstormRecordsOnlyHostilesInsideRadius(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "chainstormRecordsOnlyHostilesInsideRadius");
+		helper.setTime(18_000L);
+		ServerPlayer caster = caster(helper);
+		floor(helper);
+		helper.setBlock(2, 1, 8, Blocks.STONE);
+		List<Mob> inside = List.of(zombie(helper, 3, 8), zombie(helper, 1, 8), zombie(helper, 2, 10));
+		Mob outside = zombie(helper, 2, 8 + (int) SpellStorms.RADIUS);
+		Cow cow = helper.spawnMob(EntityTypes.COW, 3, 1, 9).withNoFreeWill().spawn();
+		caster.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(helper.absolutePos(new net.minecraft.core.BlockPos(2, 1, 8))));
+		helper.assertTrue(cast(helper, caster, CHAINSTORM) == InteractionResult.SUCCESS, "Chainstorm did not cast");
+
+		helper.runAfterDelay((SpellStorms.MAX_STRIKES + 1L) * SpellStorms.STRIKE_INTERVAL_TICKS, () -> {
+			List<UUID> struck = STRUCK.getOrDefault(caster.getUUID(), List.of());
+			helper.assertTrue(struck.size() >= inside.size(), "only " + struck.size() + " strikes so far");
+			for (Mob mob : inside) {
+				helper.assertTrue(struck.contains(mob.getUUID()), "Chainstorm missed an inside hostile");
+			}
+			helper.assertTrue(!struck.contains(outside.getUUID()) && !struck.contains(cow.getUUID()),
+				"Chainstorm recorded a target outside its hostile radius");
+			LOG.info("[SPELLTEST] test=chainstormRecordsOnlyHostilesInsideRadius RESULT inside={} outside=false cow=false", inside.size());
+			helper.succeed();
 		});
 	}
 

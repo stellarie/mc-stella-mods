@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -49,15 +50,14 @@ public class SpellScrollsGameTest {
 	private static final Identifier CHEST = Identifier.parse("minecraft:chests/simple_dungeon");
 
 	@GameTest
-	public void everySpellHasAScrollOfItsOwn(final GameTestHelper helper) {
-		// Every spell but a book-only one, in catalogue order.
-		List<SpellDefinition> scrolled = SpellbookCatalog.DEFINITIONS.stream().filter(definition -> !Spellbooks.BOOK_ONLY.contains(definition.id())).toList();
-		helper.assertTrue(Spellbooks.SCROLLS.size() == scrolled.size(), Spellbooks.SCROLLS.size() + " scrolls for " + scrolled.size() + " scrolled spells");
+	public void everyScrollEligibleSpellHasAScrollOfItsOwn(final GameTestHelper helper) {
+		List<SpellDefinition> eligible = SpellbookCatalog.DEFINITIONS.stream()
+			.filter(definition -> !Spellbooks.BOOK_ONLY.contains(definition.id())).toList();
+		helper.assertTrue(Spellbooks.SCROLLS.size() == eligible.size(), Spellbooks.SCROLLS.size() + " scrolls for " + eligible.size() + " eligible spells");
 		for (int i = 0; i < Spellbooks.SCROLLS.size(); i++) {
-			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == scrolled.get(i), "scroll " + i + " casts the wrong spell");
+			helper.assertTrue(Spellbooks.SCROLLS.get(i).definition() == eligible.get(i), "scroll " + i + " casts the wrong spell");
 		}
-		helper.assertTrue(Spellbooks.BOOK_ONLY.stream().noneMatch(id -> net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(Spellbooks.scrollId(id))), "a book-only spell has a scroll");
-		LOG.info("[SPELLTEST] test=everySpellHasAScrollOfItsOwn RESULT scrolls={}", Spellbooks.SCROLLS.size());
+		LOG.info("[SPELLTEST] test=everyScrollEligibleSpellHasAScrollOfItsOwn RESULT scrolls={} bookOnly={}", Spellbooks.SCROLLS.size(), Spellbooks.BOOK_ONLY.size());
 		helper.succeed();
 	}
 
@@ -145,21 +145,66 @@ public class SpellScrollsGameTest {
 		helper.succeed();
 	}
 
-	/** The client reads an item's tint from its item definition, so each book and scroll carries its spell's colour there. */
 	@GameTest
-	public void everyBookAndScrollCarriesItsTintWhereTheClientReadsIt(final GameTestHelper helper) {
+	public void everyBookHidesOnlyItsHandModel(final GameTestHelper helper) {
+		Set<String> hands = Set.of("firstperson_righthand", "firstperson_lefthand", "thirdperson_righthand", "thirdperson_lefthand");
 		List<String> wrong = new ArrayList<>();
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
-			List<Identifier> items = Spellbooks.BOOK_ONLY.contains(definition.id()) ? List.of(definition.id()) : List.of(definition.id(), Spellbooks.scrollId(definition.id()));
-			for (Identifier item : items) {
-				Integer tint = constantTint(item);
-				if (tint == null || tint != definition.tintRgb()) {
-					wrong.add(item + "=" + tint);
+			String path = "/assets/" + definition.id().getNamespace() + "/items/" + definition.id().getPath() + ".json";
+			try (InputStream in = Spellbooks.class.getResourceAsStream(path)) {
+				if (in == null) {
+					wrong.add(definition.id() + " missing item definition");
+					continue;
 				}
+				JsonObject item = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+				JsonObject model = item.getAsJsonObject("model");
+				if (model == null || !"minecraft:select".equals(model.get("type").getAsString())
+					|| !"minecraft:display_context".equals(model.get("property").getAsString())) {
+					wrong.add(definition.id() + " has no display-context selection");
+					continue;
+				}
+				JsonArray cases = model.getAsJsonArray("cases");
+				if (cases == null || cases.size() != 1) {
+					wrong.add(definition.id() + " has unexpected hand cases");
+					continue;
+				}
+				JsonObject handCase = cases.get(0).getAsJsonObject();
+				Set<String> selected = new java.util.HashSet<>();
+				for (var context : handCase.getAsJsonArray("when")) {
+					selected.add(context.getAsString());
+				}
+				JsonObject hidden = handCase.getAsJsonObject("model");
+				JsonObject fallback = model.getAsJsonObject("fallback");
+				if (!selected.equals(hands) || hidden == null || !"minecraft:empty".equals(hidden.get("type").getAsString())
+					|| fallback == null || !"minecraft:model".equals(fallback.get("type").getAsString())
+					|| !("mod-stella-spells:item/" + definition.id().getPath()).equals(fallback.get("model").getAsString())) {
+					wrong.add(definition.id() + " hides the wrong view or loses its inventory model");
+				}
+			} catch (java.io.IOException | RuntimeException error) {
+				wrong.add(definition.id() + " item definition could not be read: " + error.getClass().getSimpleName());
 			}
 		}
-		helper.assertTrue(wrong.isEmpty(), "item definitions without their spell's tint: " + wrong);
-		LOG.info("[SPELLTEST] test=everyBookAndScrollCarriesItsTintWhereTheClientReadsIt RESULT items={}", SpellbookCatalog.DEFINITIONS.size() * 2);
+		helper.assertTrue(wrong.isEmpty(), "spellbook hand models are wrong: " + wrong);
+		LOG.info("[SPELLTEST] test=everyBookHidesOnlyItsHandModel RESULT books={} handContexts=4 inventoryVisible=true", SpellbookCatalog.DEFINITIONS.size());
+		helper.succeed();
+	}
+
+	/** Scrolls still use their item-definition tints; books use their own textures. */
+	@GameTest
+	public void everyScrollCarriesItsTintWhereTheClientReadsIt(final GameTestHelper helper) {
+		List<String> wrong = new ArrayList<>();
+		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
+			if (Spellbooks.BOOK_ONLY.contains(definition.id())) {
+				continue;
+			}
+			Identifier item = Spellbooks.scrollId(definition.id());
+			Integer tint = constantTint(item);
+			if (tint == null || tint != definition.tintRgb()) {
+				wrong.add(item + "=" + tint);
+			}
+		}
+		helper.assertTrue(wrong.isEmpty(), "scroll item definitions without their spell's tint: " + wrong);
+		LOG.info("[SPELLTEST] test=everyScrollCarriesItsTintWhereTheClientReadsIt RESULT scrolls={}", Spellbooks.SCROLLS.size());
 		helper.succeed();
 	}
 
