@@ -23,7 +23,7 @@ public class RaidLifecycleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:reset", maxTicks = RaidInstance.EMPTY_TICKS + 100)
 	public void theRaidResetsOnceEveryoneHasLeft(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		int run = RaidInstance.state(server).run();
 		leaveRaid(helper, player);
@@ -38,7 +38,7 @@ public class RaidLifecycleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:stays", maxTicks = RaidInstance.EMPTY_TICKS + 100)
 	public void theRaidStaysOpenWhileAPlayerIsInside(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		int run = RaidInstance.state(server).run();
 		helper.runAfterDelay(RaidInstance.EMPTY_TICKS + 40, () -> {
@@ -54,7 +54,7 @@ public class RaidLifecycleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:elapsed", maxTicks = 100)
 	public void theRaidCountsTheTicksItHasBeenOpen(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		long wait = 40L;
 		helper.runAfterDelay(wait, () -> {
@@ -69,7 +69,7 @@ public class RaidLifecycleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:items", maxTicks = RaidInstance.EMPTY_TICKS + 100)
 	public void anItemLeftInTheRaidIsLostOnReset(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		ServerLevel raid = (ServerLevel) player.level();
 		Vec3 at = player.position().add(1.0, 0.5, 0.0);
@@ -90,25 +90,27 @@ public class RaidLifecycleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:stale", maxTicks = 100)
 	public void aPlayerReturningToAClosedRunIsSentOut(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		RaidInstance.reset(server, "test");
 		RaidInstance.onJoin(player);
-		NetherTestSupport.result("staleSentOut", "at=" + player.level().dimension().identifier());
+		var at = player.level().dimension();
+		NetherTestSupport.result("staleSentOut", "at=" + at.identifier());
 		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(player.level().dimension().equals(Level.OVERWORLD), "a stale raider was left in " + player.level().dimension());
+		helper.assertTrue(at.equals(Level.OVERWORLD), "a stale raider was left in " + at);
 		helper.succeed();
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:live", maxTicks = 100)
 	public void aPlayerReturningToTheLiveRunStays(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidInstance.reset(server, "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		RaidInstance.onJoin(player);
-		NetherTestSupport.result("liveStays", "at=" + player.level().dimension().identifier());
+		var at = player.level().dimension();
+		NetherTestSupport.result("liveStays", "at=" + at.identifier());
 		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(player.level().dimension().equals(RaidTravel.RAID), "a live raider was moved to " + player.level().dimension());
+		helper.assertTrue(at.equals(RaidTravel.RAID), "a live raider was moved to " + at);
 		helper.succeed();
 	}
 }

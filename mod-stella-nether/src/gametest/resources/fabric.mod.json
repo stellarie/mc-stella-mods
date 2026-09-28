@@ -9,7 +9,8 @@
 			"com.stella.nether.ModpackDependencyGameTest",
 			"com.stella.nether.RaidPortalGameTest",
 			"com.stella.nether.RaidModeGameTest",
-			"com.stella.nether.RaidLifecycleGameTest"
+			"com.stella.nether.RaidLifecycleGameTest",
+			"com.stella.nether.RaidEnrageGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

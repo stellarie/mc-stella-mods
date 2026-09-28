@@ -22,7 +22,16 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityReference;
+import net.minecraft.world.entity.EntitySelector;
+import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Enemy;
@@ -51,6 +60,16 @@ public final class RaidInstance {
 	public static final int ARRIVAL_Y = 64;
 	/** How long the raid must stand empty before it resets. */
 	public static final int EMPTY_TICKS = 100;
+	/** Thirty minutes: then every raid mob turns on the players. */
+	public static final int ENRAGE_TICKS = 30 * 60 * 20;
+	/** Speed II and Strength II. */
+	public static final int ENRAGE_AMPLIFIER = 1;
+	/** How far an enraged mob looks for a player to hunt, and how often it looks. */
+	public static final double CHASE_RANGE = 64.0;
+	public static final int CHASE_EVERY_TICKS = 20;
+	private static final net.minecraft.resources.Identifier CHASE_RANGE_MODIFIER = StellaNether.id("enraged_follow_range");
+	/** The run a mob was enraged for. */
+	public static final AttachmentType<Integer> MOB_ENRAGED = AttachmentRegistry.createPersistent(StellaNether.id("raid_enraged"), Codec.INT);
 
 	public static final AttachmentType<RaidState> STATE = AttachmentRegistry.createPersistent(StellaNether.id("raid_state"), RaidState.CODEC);
 
@@ -87,6 +106,10 @@ public final class RaidInstance {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
+				RaidState state = state(level.getServer());
+				if (state.active() && state.elapsed() >= ENRAGE_TICKS) {
+					enrage(state.run(), mob);
+				}
 			}
 		});
 	}
@@ -122,8 +145,24 @@ public final class RaidInstance {
 			emptyTicks = 0;
 			return;
 		}
-		set(server, new RaidState(state.run(), true, state.host(), state.mode(), state.elapsed() + 1));
+		long elapsed = state.elapsed() + 1;
+		set(server, new RaidState(state.run(), true, state.host(), state.mode(), elapsed));
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
+		if (raid != null && elapsed >= ENRAGE_TICKS) {
+			if (elapsed == ENRAGE_TICKS) {
+				StellaNether.LOGGER.info("[NETHER] raid enraged run={}", state.run());
+				raid.players().forEach(player -> player.sendSystemMessage(
+					Component.translatable("message.mod-stella-nether.enraged").withStyle(ChatFormatting.DARK_RED)));
+			}
+			if (elapsed == ENRAGE_TICKS || elapsed % CHASE_EVERY_TICKS == 0) {
+				for (Entity entity : raid.getAllEntities()) {
+					if (entity instanceof Mob mob && mob instanceof Enemy && mob.isAlive()) {
+						enrage(state.run(), mob);
+						chase(raid, mob);
+					}
+				}
+			}
+		}
 		if (raid != null && !raid.players().isEmpty()) {
 			emptyTicks = 0;
 			return;
@@ -211,6 +250,37 @@ public final class RaidInstance {
 			if (active != null && active.isInfiniteDuration()) {
 				player.removeEffect(effect);
 			}
+		}
+	}
+
+	/** Endless Speed and Strength, and a long reach for the hunt; once per run. */
+	static void enrage(final int run, final Mob mob) {
+		Integer enraged = mob.getAttached(MOB_ENRAGED);
+		if (enraged != null && enraged == run) {
+			return;
+		}
+		mob.setAttached(MOB_ENRAGED, run);
+		mob.addEffect(new MobEffectInstance(MobEffects.SPEED, MobEffectInstance.INFINITE_DURATION, ENRAGE_AMPLIFIER, false, true));
+		mob.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MobEffectInstance.INFINITE_DURATION, ENRAGE_AMPLIFIER, false, true));
+		AttributeInstance range = mob.getAttribute(Attributes.FOLLOW_RANGE);
+		if (range != null && !range.hasModifier(CHASE_RANGE_MODIFIER)) {
+			range.addPermanentModifier(new AttributeModifier(CHASE_RANGE_MODIFIER, CHASE_RANGE, AttributeModifier.Operation.ADD_VALUE));
+		}
+	}
+
+	/** An enraged mob with no player to hunt takes the nearest one in reach; a neutral one stays angry at them. */
+	static void chase(final ServerLevel raid, final Mob mob) {
+		if (mob.getTarget() instanceof Player current && current.isAlive() && !current.isSpectator() && !current.isCreative()) {
+			return;
+		}
+		Player nearest = raid.getNearestPlayer(mob.getX(), mob.getY(), mob.getZ(), CHASE_RANGE, EntitySelector.NO_CREATIVE_OR_SPECTATOR);
+		if (nearest == null) {
+			return;
+		}
+		mob.setTarget(nearest);
+		if (mob instanceof NeutralMob neutral) {
+			neutral.setPersistentAngerTarget(EntityReference.of(nearest));
+			neutral.startPersistentAngerTimer();
 		}
 	}
 
