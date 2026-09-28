@@ -73,7 +73,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 8. Blaze Core and Flame Mantle; the End unlock. **Done, except Blaze Core enchanting and crafting.**
 9. Raid objectives: more of every drop, x1.15 normal, x1.5 hard. **Done.**
 10. The sealed chest: one Blaze Core in the portal room opens the End portal. **Done.**
-11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor).
+11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor). **Done.**
 12. The Sovereign's blue tint (client).
 
 Each slice ships with headless game tests per `AGENTS.md`.

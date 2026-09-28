@@ -131,8 +131,6 @@ also burns, as before.
   sets whoever strikes its wearer alight for 4 seconds, and takes 80% of fire damage away. It uses
   netherite's look and a vanilla icon until it has art of its own.
 - The End seal of this slice (three cores in an End portal) is replaced by slice 10's sealed chest.
-- Not yet: enchanting weapons and armor with a Blaze Core, and crafting new equipment from it, wait on
-  what those should be.
 
 ## Slice 9: more from the raid's loot
 
@@ -151,6 +149,19 @@ also burns, as before.
   portal at once. The core is spent, the chest glows and takes no more, and the portal stays open.
 - A stronghold generated before this mod has no chest; completing its frame raises one on the frame.
 
+## Slice 11: the Blaze Core's enchantments
+
+A weapon or armor piece on the left of an anvil and a Blaze Core on the right sets one of these, for the
+core and 10 levels. Neither comes from the enchanting table or from loot.
+
+- **Overclock** (weapons): each hit on the same enemy strikes 10% harder than the first, per earlier hit
+  in the row, up to +100% at the eleventh. A hit on any other enemy starts over. Its buff shows the row.
+  Measured: 2.0, 2.2, 2.4, 2.6 on one enemy, then 2.0 on another.
+- **Magma Armor** (armor, any piece): every hit taken, from any source, is lessened by what the armor has
+  built, and then builds 1% more, up to 30%, separate from armor points. Five seconds untouched, it cools
+  2% a second. Its buff shows the percent. Measured: 10% after ten hits, 30% at the cap, and 10% cooling
+  to 6.1% over two seconds past the delay.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -168,6 +179,8 @@ also burns, as before.
   client (the headless test sees only the velocity it is given).
 - Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
   it burn back.
+- Combine a sword and a Blaze Core at an anvil (Overclock), then a chestplate and a core (Magma Armor);
+  the buffs show their icons and levels while fighting.
 - In a new world's stronghold: the black chest stands in the portal room. Fill the eyes (the portal stays
   shut, with a message), then use a Blaze Core on the chest: the portal opens. The chest's look is built
   from blackstone textures until it has art of its own.

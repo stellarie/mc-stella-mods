@@ -17,5 +17,9 @@
   "item.mod-stella-nether.blaze_core": "Blaze Core",
   "item.mod-stella-nether.flame_mantle": "Flame Mantle",
   "message.mod-stella-nether.portal_sealed": "The portal stays shut. The sealed chest in this room wants a Blaze Core.",
-  "block.mod-stella-nether.sealed_chest": "Sealed Chest"
+  "block.mod-stella-nether.sealed_chest": "Sealed Chest",
+  "enchantment.mod-stella-nether.overclock": "Overclock",
+  "enchantment.mod-stella-nether.magma_armor": "Magma Armor",
+  "effect.mod-stella-nether.overclock": "Overclock",
+  "effect.mod-stella-nether.magma_armor": "Magma Armor"
 }
