@@ -12,6 +12,7 @@ import com.stella.mobs.config.RollSpec;
 import com.stella.mobs.gear.EnchantRoller;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatState;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
@@ -25,7 +26,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -233,21 +233,13 @@ public class BossBehaviourGameTest {
 		Mob boss = blessedBoss(helper);
 		float bossHealth = boss.getMaxHealth();
 		double bossBase = boss.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
-		double areaScale = SpawnScaling.healthMultiplierOf(boss);
-		// The boss step, not R12's own scaling: these are the two different modifiers by id. The
-		// attribute is passed explicitly, because selecting it from the id read R12's health modifier
-		// for the health case and reported 0.0 while the dump showed 0.5.
-		double levelHealth = bossLevelBonus(boss, Attributes.MAX_HEALTH, Bosses.LEVEL_HEALTH_ID);
-		double levelDamage = bossLevelBonus(boss, Attributes.ATTACK_DAMAGE, Bosses.LEVEL_DAMAGE_ID);
+		double bossScale = SpawnScaling.healthMultiplierOf(boss);
 		int areaLevel = SpawnScaling.areaLevel(boss);
-		double levelBonus = GearConfigStore.get().rollFor(Identifier.parse("minecraft:skeleton")).bossLevelBonus();
+		int bossLevel = ThreatState.level(boss);
+		ThreatState bossRoll = ThreatState.get(boss);
 		int healthModifiers = boss.getAttribute(Attributes.MAX_HEALTH).getModifiers().size();
 		boolean hasScaleModifier = boss.getAttribute(Attributes.MAX_HEALTH).getModifier(SpawnScaling.HEALTH_ID) != null;
-		boolean hasLevelModifier = boss.getAttribute(Attributes.MAX_HEALTH).getModifier(Bosses.LEVEL_HEALTH_ID) != null;
-		// The step is ten levels of R12's own slope, so it is a constant: the area level is already
-		// paid for by spawn_scale_health, which both mobs carry exactly once.
-		double expectedLevelHealth = Bosses.LEVEL_HEALTH_STEP * levelBonus;
-		double expectedLevelDamage = Bosses.LEVEL_DAMAGE_STEP * levelBonus;
+		boolean hasLegacyModifier = boss.getAttribute(Attributes.MAX_HEALTH).getModifier(Bosses.LEVEL_HEALTH_ID) != null;
 		boolean bossElite = Elite.isElite(boss);
 		double x = boss.getX();
 		double y = boss.getY();
@@ -259,11 +251,12 @@ public class BossBehaviourGameTest {
 		Mob elite = spawnEliteBeside(helper, x, y, z);
 		float eliteHealth = elite.getMaxHealth();
 		double eliteBase = elite.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
-		double areaRatio = SpawnScaling.healthMultiplierOf(elite) <= 0.0
-			? 0.0
-			: SpawnScaling.healthMultiplierOf(boss) / SpawnScaling.healthMultiplierOf(elite);
+		int eliteLevel = ThreatState.level(elite);
+		ThreatState eliteRoll = ThreatState.get(elite);
 		double ratio = eliteBase <= 0.0 ? 0.0 : bossBase / eliteBase;
-		double expectedMax = 2.0 * eliteHealth * (1.0 + expectedLevelHealth);
+		double depth = Math.max(0.0, helper.getLevel().getSeaLevel() - y);
+		double expectedMax = bossBase * SpawnScaling.healthMultiplier(bossLevel, depth);
+		double expectedEliteMax = eliteBase * SpawnScaling.healthMultiplier(eliteLevel, depth);
 		double maxRatio = eliteHealth <= 0.0F ? 0.0 : bossHealth / eliteHealth;
 
 		result(
@@ -271,50 +264,32 @@ public class BossBehaviourGameTest {
 			"bossElite=" + bossElite + " bossMax=" + bossHealth + " bossBase=" + bossBase
 				+ " eliteMax=" + eliteHealth + " eliteBase=" + eliteBase + " baseRatio=" + ratio
 				+ " maxRatio=" + maxRatio + " expectedMax=" + expectedMax
-				+ " areaRatio=" + areaRatio + " areaLevel=" + areaLevel
-				+ " levelHealthStep=" + levelHealth + " expectedLevelHealthStep=" + expectedLevelHealth
-				+ " levelDamageStep=" + levelDamage + " expectedLevelDamageStep=" + expectedLevelDamage
+				+ " areaLevel=" + areaLevel + " bossLevel=" + bossLevel + " eliteLevel=" + eliteLevel
+				+ " bossScale=" + bossScale
 				+ " healthModifiers=" + healthModifiers + " scaleModifier=" + hasScaleModifier
-				+ " levelModifier=" + hasLevelModifier
+				+ " legacyModifier=" + hasLegacyModifier
 		);
 		result("bossMarkModifiers", describeHealth(boss) + " || " + describeHealth(elite));
 
 		helper.assertTrue(bossElite, "a boss is not elite");
-		// The step is a constant at every position. The shipped config gives 0.5 and 0.25 everywhere,
-		// including area level 0, where a step multiplied by the area level reads 0.0.
-		helper.assertTrue(
-			Math.abs(levelHealth - expectedLevelHealth) < 1.0e-9,
-			"the boss health step is " + levelHealth + ", not the constant " + expectedLevelHealth
-				+ " at area level " + areaLevel
-		);
-		helper.assertTrue(
-			Math.abs(levelDamage - expectedLevelDamage) < 1.0e-9,
-			"the boss damage step is " + levelDamage + ", not the constant " + expectedLevelDamage
-				+ " at area level " + areaLevel
-		);
-		// The spec is twice an elite's health. Compare the bases, because the boss's level step also
-		// raises its maximum and that is its own clause below.
+		helper.assertTrue(bossRoll != null && eliteRoll != null, "the threat rolls were not saved");
+		helper.assertValueEqual(Integer.valueOf(bossLevel),
+			Integer.valueOf(Math.max(0, bossRoll.areaLevel() + bossRoll.variation()) + ThreatState.BOSS_BONUS),
+			"boss threat level");
+		helper.assertValueEqual(Integer.valueOf(eliteLevel),
+			Integer.valueOf(Math.max(0, eliteRoll.areaLevel() + eliteRoll.variation()) + ThreatState.ELITE_BONUS),
+			"elite threat level");
 		helper.assertTrue(
 			Math.abs(ratio - 2.0) < 0.01,
 			"the boss base is " + bossBase + " against an elite's " + eliteBase + ", a ratio of " + ratio
 		);
-		// Twice the elite's maximum, times one plus the ten level step.
 		helper.assertTrue(
-			Math.abs(bossHealth - expectedMax) < 0.01,
-			"the boss maximum is " + bossHealth + ", not twice the elite's " + eliteHealth
-				+ " times one plus the step, which is " + expectedMax
+			Math.abs(bossHealth - expectedMax) < 0.01 && Math.abs(eliteHealth - expectedEliteMax) < 0.01,
+			"boss or elite health did not follow its own threat level"
 		);
-		// The area multiplier must land on both mobs exactly once. A boss carrying it twice shows up
-		// here as a ratio near 1.04 or 1.75 rather than 1.0.
-		helper.assertTrue(
-			Math.abs(areaRatio - 1.0) < 0.01,
-			"the boss carries a different area scale from the elite beside it: " + areaRatio
-		);
-		// Exactly two health modifiers: R12's spawn scaling and the boss level step. A third means a
-		// second scaling path ran, which is the defect this slice shipped.
-		helper.assertValueEqual(Integer.valueOf(healthModifiers), Integer.valueOf(2), "MAX_HEALTH modifier count");
+		helper.assertValueEqual(Integer.valueOf(healthModifiers), Integer.valueOf(1), "MAX_HEALTH modifier count");
 		helper.assertTrue(hasScaleModifier, "the spawn scale modifier is missing");
-		helper.assertTrue(hasLevelModifier, "the boss level modifier is missing");
+		helper.assertFalse(hasLegacyModifier, "the legacy boss level modifier remained");
 		helper.succeed();
 	}
 
@@ -696,16 +671,6 @@ public class BossBehaviourGameTest {
 		);
 		helper.getLevel().addFreshEntity(mob);
 		return mob;
-	}
-
-	private static double bossLevelBonus(final Mob mob, final Holder<Attribute> attribute, final Identifier id) {
-		var target = mob.getAttribute(attribute);
-		if (target == null) {
-			return 0.0;
-		}
-
-		var modifier = target.getModifier(id);
-		return modifier == null ? 0.0 : modifier.amount();
 	}
 
 	private static boolean hasNoExclusivePair(final ItemStack stack) {

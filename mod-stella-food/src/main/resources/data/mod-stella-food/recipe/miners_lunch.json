@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:baked_potato",
+		"#mod-stella-food:cooked_meat",
+		"minecraft:beetroot"
+	],
+	"result": {
+		"id": "mod-stella-food:miners_lunch"
+	}
+}

@@ -54,6 +54,7 @@ public final class Spellbooks implements ModInitializer {
 			((net.fabricmc.fabric.api.event.registry.FabricRegistry) BuiltInRegistries.ITEM).addAlias(scrollId(from), scrollId(to));
 		}
 		MobSpells.register();
+		SummonInventoryStore.register();
 		SummonSkeleton.register();
 		SpellbookLoot.register();
 		SpellStorms.register();

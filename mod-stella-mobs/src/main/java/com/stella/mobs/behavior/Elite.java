@@ -4,6 +4,7 @@ import com.stella.mobs.StellaMobs;
 import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.gear.TierRoller;
+import com.stella.mobs.scaling.SpawnScaling;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.core.registries.Registries;
@@ -76,11 +77,14 @@ public final class Elite {
 
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		if (health != null) {
-			// The bare base times the multiplier. R12's area scaling rides its own modifier, so it is
+			// The bare base times the multiplier. Threat scaling rides its own modifier, so it is
 			// deliberately not folded in here: an elite's doubled health is the documented number.
 			double boosted = health.getBaseValue() * healthMultiplier;
 			health.setBaseValue(boosted);
 			mob.setHealth((float) boosted);
+		}
+		if (!mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
+			SpawnScaling.apply(mob);
 		}
 
 		return true;

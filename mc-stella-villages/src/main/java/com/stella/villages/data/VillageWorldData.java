@@ -29,8 +29,8 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
-	/** W021: roster version 2 is the head, three Vindicators, five Pillagers and a Ravager; a missing key is version 1. */
-	public static final int ROSTER_VERSION = 2;
+	/** Version 3 is a head, a witch and two melee Pillagers. */
+	public static final int ROSTER_VERSION = 3;
 	private static final int LEGACY_ROSTER_VERSION = 1;
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";

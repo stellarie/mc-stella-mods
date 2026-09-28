@@ -36,6 +36,7 @@ import com.stella.mobs.gear.EnchantRoller;
 import com.stella.mobs.gear.GearApplier;
 import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatState;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.EntityLoadData;
@@ -70,6 +71,8 @@ public class StellaMobs implements ModInitializer {
 	public void onInitialize() {
 		ReactiveState.register();
 		EliteState.register();
+		ThreatState.register();
+		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
 		EscortSquad.register();
 		RiderSquad.register();
@@ -137,6 +140,9 @@ public class StellaMobs implements ModInitializer {
 		// An elite or boss saved at an older, smaller size grows to the size that ships.
 		if (loadedFromDisk) {
 			Elite.refreshScale(mob);
+			if (!mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {
+				SpawnScaling.reconcileLoaded(mob);
+			}
 		}
 
 		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.

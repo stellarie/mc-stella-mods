@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-food-test-mod-stella-food",
+	"version": "1.0.0",
+	"name": "Stella Food game tests",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.food.FoodTestMod"
+		],
+		"fabric-gametest": [
+			"com.stella.food.CookingStationMenuGameTest",
+			"com.stella.food.FoodGameTest",
+			"com.stella.food.FoodTooltipGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-food": "*"
+	}
+}
