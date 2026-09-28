@@ -1,6 +1,9 @@
 package com.stella.tower.mixin;
 
+import com.stella.tower.TowerFloors;
 import com.stella.tower.TowerPortalShape;
+import com.stella.tower.TowerTravel;
+import net.minecraft.server.level.ServerLevel;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -28,6 +31,13 @@ public abstract class TowerPortalIgniteMixin {
 		if (shape.isPresent()) {
 			shape.get().createPortal(level);
 			ci.cancel();
+			// A new way in: the first floor starts building before anyone steps through.
+			if (!level.dimension().equals(TowerTravel.TOWER) && level.getServer() != null) {
+				ServerLevel tower = level.getServer().getLevel(TowerTravel.TOWER);
+				if (tower != null) {
+					TowerFloors.prepare(tower, 1);
+				}
+			}
 		}
 	}
 }

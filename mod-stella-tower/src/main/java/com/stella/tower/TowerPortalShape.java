@@ -94,7 +94,7 @@ public record TowerPortalShape(Direction.Axis axis, BlockPos bottomLeft, int wid
 	}
 
 	public static boolean isFrame(final BlockState state) {
-		return state.is(Blocks.CRYING_OBSIDIAN);
+		return state.is(Blocks.CRYING_OBSIDIAN) || state.is(TowerBlocks.TOWER_FRAME);
 	}
 
 	private static boolean isEmpty(final BlockState state) {
