@@ -1,0 +1,9 @@
+{
+  "message.mod-stella-nether.ask": "Which nether? ",
+  "message.mod-stella-nether.normal": "[Normal nether]",
+  "message.mod-stella-nether.raid": "[Raid nether]",
+  "message.mod-stella-nether.normal.hover": "The world's own nether",
+  "message.mod-stella-nether.raid.hover": "The shared raid instance",
+  "message.mod-stella-nether.chosen.normal": "Stay in the portal to enter the normal nether.",
+  "message.mod-stella-nether.chosen.raid": "Stay in the portal to enter the raid nether."
+}

@@ -21,5 +21,8 @@
 		"mc-stella-villages": "*",
 		"mod-stella-tower": "*",
 		"mod-stella-food": "*"
-	}
+	},
+	"mixins": [
+		"mod-stella-nether.mixins.json"
+	]
 }

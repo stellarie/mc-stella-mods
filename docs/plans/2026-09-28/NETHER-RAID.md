@@ -64,7 +64,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 
 ## Slices (easiest first)
 
-1. Mod scaffold, the `raid` dimension, and the portal choice (normal or raid) with a return path.
+1. Mod scaffold, the `raid` dimension, and the portal choice (normal or raid) with a return path. **Done.**
 2. Host and mode, the per-player effect in Normal and Hard, the mob effects in Hard.
 3. Instance lifecycle: occupancy tracking, reset when empty, loss of dropped items.
 4. The 30 minute enrage.
