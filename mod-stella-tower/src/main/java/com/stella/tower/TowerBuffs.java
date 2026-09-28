@@ -229,7 +229,8 @@ public final class TowerBuffs {
 	public static List<MobBuff> mobBuffsOf(final LivingEntity mob) {
 		TowerMobs.State state = TowerMobs.stateOf(mob);
 		// The buffs hold while in the tower; a mob of the floor loose in the world carries none.
-		if (state == null || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)
+		// A ghost is on the players' side: a boss floor's buffs, thorns among them, are for its foes.
+		if (state == null || mob instanceof TowerGhost || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)
 			|| !level.dimension().equals(TowerTravel.TOWER)) {
 			return List.of();
 		}

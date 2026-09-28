@@ -275,3 +275,23 @@ from the biome, with no extra client code.
   of an item drops whole by its chance. Floor 1000 drops twice as much, floor 10000 eleven times.
 - A tower mob's experience grows by 1% per floor: `1 + 0.01 * floor`. Floor 100 pays twice as much.
 - This counts wherever a tower mob dies, so wanderers in the world pay by their floor too.
+
+## Change: ghosts (2026-09-28)
+
+- Ghosts haunt the tower's floors. They are on the players' side: they never target a player or another
+  ghost, even when struck.
+- Each occupied floor keeps up to two ghosts, outside the 72-mob cap. Each spawning round (once a second)
+  has a 5% chance to raise one. A ghost is a tower mob of its floor: its health and its spells grow with
+  the floor.
+- A ghost drifts toward the nearest player within 32 blocks, stopping 6 blocks away.
+- It targets nearby monsters and casts a soul-fire bolt at them every 2 seconds, within 16 blocks and in
+  sight. The bolt is magic with a base of 4 damage, grown with the floor.
+- Every 5 seconds it heals the nearest hurt player within 12 blocks by 4 health.
+- Every 10 seconds it gives the nearest player within 12 blocks Strength, Resistance, Regeneration or
+  Speed for 10 seconds.
+- A player who kills a ghost is blinded for 30 seconds.
+- A ghost killed by a player has a 3% chance to drop a Ghost Rune; what the rune does is still to be
+  decided.
+- A boss floor's buffs, thorns included, never go to a ghost.
+- Ghosts are named "Ghost <element> Wisp". The client draws them in a blaze's form, pale grey and see-through.
+- Assumed until told otherwise: "the void" means the whole tower, not only the void-themed floors 31-40.
