@@ -1,0 +1,13 @@
+{
+  "type": "mod-stella-tower:tower",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "mod-stella-tower:tower_floor",
+      "features": false,
+      "lakes": false,
+      "layers": [],
+      "structure_overrides": []
+    }
+  }
+}

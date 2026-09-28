@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-tower-test-mod-stella-tower",
+	"version": "1.0.0",
+	"name": "Stella Endless Tower game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.tower.TowerPortalGameTest",
+			"com.stella.tower.TowerFloorGameTest",
+			"com.stella.tower.VoidKeyGameTest"
+		]
+	},
+	"mixins": [
+		"mod-stella-tower-test.mixins.json"
+	],
+	"depends": {
+		"mod-stella-tower": "*"
+	}
+}

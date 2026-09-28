@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.stella.tower.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"TowerPortalIgniteMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
