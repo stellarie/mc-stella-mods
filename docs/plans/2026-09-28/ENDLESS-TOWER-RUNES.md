@@ -310,3 +310,23 @@ from the biome, with no extra client code.
   divide by the tier. A piece of the attacker's own element takes a further `5% + P/10 %` off, adding up to
   at most 80%.
 - Still to come: the sixteen signature effects, resonance, and ascension.
+
+## Built: runes, part two: weapon signatures (2026-09-28)
+
+What a weapon rune's hit does beyond its tier, by element. Each effect applies on any target, in or out of
+the tower, and only for a hit that lands:
+
+- **Fire:** each hit adds a heat stack. The fifth bursts for `5% + P/20 %` of the target's whole health,
+  its tower size included. Armor does not reduce the burst. The heat then resets, and a target bursts at
+  most once every 3 seconds.
+- **Ice:** `+20% + P/10 %` against a target that is slowed or freezing.
+- **Wind:** `+20% + P/10 %` against a target in the air.
+- **Water:** the target is wet for 5 seconds and its fire goes out. A wet target takes `+25%` from
+  lightning.
+- **Lightning:** each hit stores a charge on the player, up to 5. Spells will spend the charges once the
+  spells mod is wired in.
+- **Void:** each hit shrinks the target's max health by `0.5% + P/200 %`, stacking to at most half.
+- **Holy:** strikes one boss-floor buff from the target. It then rests 10 seconds for that player.
+- **Dark:** each hit shreds `1 + P/50` armor, stacking 10 times.
+
+Still to come: the armor signatures, the spell side of Lightning charges, resonance, and ascension.
