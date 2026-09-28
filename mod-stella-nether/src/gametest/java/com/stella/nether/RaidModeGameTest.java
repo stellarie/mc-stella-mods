@@ -38,7 +38,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:host", maxTicks = 100)
 	public void theFirstPlayerInIsTheHostAndSetsTheMode(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
 		RaidState state = RaidInstance.state(helper.getLevel().getServer());
 		NetherTestSupport.result("hostSetsMode", "host=" + host.getUUID().equals(state.host().orElse(null)) + " mode=" + state.mode() + " active=" + state.active());
@@ -50,7 +50,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:join", maxTicks = 100)
 	public void aLaterPlayerJoinsWithoutChangingHostOrMode(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		ServerPlayer guest = enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
 		RaidState state = RaidInstance.state(helper.getLevel().getServer());
@@ -65,7 +65,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:boon", maxTicks = 100)
 	public void aPlayerInsideHoldsExactlyOneBoon(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		List<Holder<MobEffect>> boons = infinite(player);
 		NetherTestSupport.result("oneBoon", "boons=" + boons);
@@ -77,7 +77,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:leave", maxTicks = 100)
 	public void leavingTheRaidTakesTheBoonAway(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer player = enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		int inside = infinite(player).size();
 		TeleportTransition back = NetherTestSupport.portal((ServerLevel) player.level(), player, RaidInstance.exitPortal(helper.getLevel().getServer()));
@@ -105,7 +105,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:hard", maxTicks = 200)
 	public void inHardModeEachRaidMobHoldsTwoBoons(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
 		ZombifiedPiglin mob = spawnInRaid((ServerLevel) host.level(), host.position().add(3.0, 0.0, 0.0));
 		helper.succeedWhen(() -> {
@@ -121,7 +121,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:normalmobs", maxTicks = 200)
 	public void inNormalModeRaidMobsHoldNoBoons(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
 		ZombifiedPiglin mob = spawnInRaid((ServerLevel) host.level(), host.position().add(3.0, 0.0, 0.0));
 		helper.succeedWhen(() -> {
@@ -136,7 +136,7 @@ public class RaidModeGameTest {
 
 	@GameTest(environment = "mod-stella-nether-test:undead", maxTicks = 100)
 	public void anUndeadRaidMobIsNeverDrawnABoonItRefuses(final GameTestHelper helper) {
-		RaidInstance.reset(helper.getLevel().getServer(), "test");
+		NetherTestSupport.fresh(helper);
 		ServerPlayer host = enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
 		ServerLevel raid = (ServerLevel) host.level();
 		int short_ = 0;

@@ -36,6 +36,31 @@ final class NetherTestSupport {
 		return player;
 	}
 
+	/**
+	 * Lets a test player be hurt and hunted. A player with no client is still counted as changing dimension
+	 * and as not yet loaded, and either makes them invulnerable; a real client clears both within moments.
+	 */
+	static void vulnerable(final ServerPlayer player) {
+		player.hasChangedDimension();
+		for (int i = 0; i < 200 && !player.connection.hasClientLoaded(); i++) {
+			player.connection.tickClientLoadTimeout();
+		}
+	}
+
+	/**
+	 * Starts a raid test from nothing: any player an earlier failing test left inside is removed, then the raid
+	 * resets. The raid is one shared instance, so a leftover raider would keep it open for every later test.
+	 */
+	static void fresh(final GameTestHelper helper) {
+		ServerLevel raid = helper.getLevel().getServer().getLevel(RaidTravel.RAID);
+		if (raid != null) {
+			for (ServerPlayer leftover : java.util.List.copyOf(raid.players())) {
+				helper.getLevel().getServer().getPlayerList().remove(leftover);
+			}
+		}
+		RaidInstance.reset(helper.getLevel().getServer(), "test");
+	}
+
 	static void leave(final GameTestHelper helper, final ServerPlayer player) {
 		helper.getLevel().getServer().getPlayerList().remove(player);
 	}

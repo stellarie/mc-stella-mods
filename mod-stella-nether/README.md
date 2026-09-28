@@ -51,6 +51,15 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - The old runs' land stays on disk. The raid dimension's region files grow by one explored area per run,
   and pruning them is a follow-up.
 
+## Slice 4: the enrage
+
+- At 30 minutes (36,000 ticks) of open raid, everyone inside is warned, and every hostile mob in the raid
+  gains endless Speed II and Strength II and 64 more blocks of follow range. Zombified piglins count.
+  A mob that loads later in the same run is enraged as it loads.
+- Once a second, an enraged mob with no player to hunt takes the nearest survival or adventure player
+  within 64 blocks. A neutral mob stays angry at them.
+- The enrage lasts until the raid resets.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -59,3 +68,5 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
+- After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
+  The test proves the targeting, not the pathing through nether terrain.

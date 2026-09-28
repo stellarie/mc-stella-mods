@@ -11,5 +11,6 @@
   "message.mod-stella-nether.join.normal": "[Join the raid (normal)]",
   "message.mod-stella-nether.join.normal.hover": "Join the running raid nether.",
   "message.mod-stella-nether.join.hard": "[Join the raid (hard)]",
-  "message.mod-stella-nether.join.hard.hover": "Join the running raid nether. Its mobs hold two boons each."
+  "message.mod-stella-nether.join.hard.hover": "Join the running raid nether. Its mobs hold two boons each.",
+  "message.mod-stella-nether.enraged": "Thirty minutes have passed. The nether turns on you: run for the portal!"
 }

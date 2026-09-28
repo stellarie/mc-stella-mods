@@ -67,7 +67,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 1. Mod scaffold, the `raid` dimension, and the portal choice (normal or raid) with a return path. **Done.**
 2. Host and mode, the per-player effect in Normal and Hard, the mob effects in Hard. **Done.**
 3. Instance lifecycle: occupancy tracking, reset when empty, loss of dropped items. **Done.**
-4. The 30 minute enrage.
+4. The 30 minute enrage. **Done.**
 5. Guaranteed fortress and bastion within 256 blocks.
 6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn.
 7. The five specials, one per sub-slice.
