@@ -17,6 +17,22 @@ public class WispItem extends Item {
 		super(properties);
 	}
 
+	// Its uses show as a bar, as wear would, though they are its own count and nothing mends them.
+	@Override
+	public boolean isBarVisible(final net.minecraft.world.item.ItemStack stack) {
+		return TowerWisps.usesOf(stack) < TowerWisps.USES;
+	}
+
+	@Override
+	public int getBarWidth(final net.minecraft.world.item.ItemStack stack) {
+		return Math.round(13.0F * TowerWisps.usesOf(stack) / TowerWisps.USES);
+	}
+
+	@Override
+	public int getBarColor(final net.minecraft.world.item.ItemStack stack) {
+		return 0x7FE5FF;
+	}
+
 	@Override
 	public InteractionResult use(final Level level, final Player player, final InteractionHand hand) {
 		if (level.isClientSide()) {
@@ -25,12 +41,24 @@ public class WispItem extends Item {
 		if (!(player instanceof ServerPlayer holder)) {
 			return InteractionResult.PASS;
 		}
+		net.minecraft.world.item.ItemStack wisp = holder.getItemInHand(hand);
+		if (holder.getCooldowns().isOnCooldown(wisp) || TowerWisps.usesOf(wisp) <= 0) {
+			return InteractionResult.FAIL;
+		}
 		TowerWisps.Trail trail = TowerWisps.light(holder);
 		if (trail == null) {
 			holder.sendOverlayMessage(Component.translatable("message.mod-stella-tower.wisp.nowhere").withStyle(ChatFormatting.GRAY));
 			return InteractionResult.FAIL;
 		}
-		holder.getItemInHand(hand).hurtAndBreak(1, holder, hand);
+		holder.getCooldowns().addCooldown(wisp, TowerWisps.COOLDOWN_TICKS);
+		if (!holder.hasInfiniteMaterials()) {
+			int left = TowerWisps.usesOf(wisp) - 1;
+			if (left <= 0) {
+				wisp.shrink(1);
+			} else {
+				TowerWisps.setUses(wisp, left);
+			}
+		}
 		level.playSound(null, holder.blockPosition(), SoundEvents.ALLAY_ITEM_TAKEN, SoundSource.PLAYERS, 1.0F, 1.2F);
 		holder.sendOverlayMessage(Component.translatable("message.mod-stella-tower.wisp.lit", trail.path().size() - 1).withStyle(ChatFormatting.AQUA));
 		return InteractionResult.SUCCESS;

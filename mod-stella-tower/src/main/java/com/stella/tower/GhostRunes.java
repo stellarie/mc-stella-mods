@@ -34,6 +34,7 @@ public final class GhostRunes {
 	public static final double ARMOR_PIERCE = 0.50;
 	public static final int SLOW_TICKS = 60;
 	public static final int SLOW_AMPLIFIER = 1;
+	public static final int SLOW_RENEW_TICKS = 20;
 
 	private GhostRunes() {
 	}
@@ -46,14 +47,12 @@ public final class GhostRunes {
 			boolean chest = equippable != null && equippable.slot() == EquipmentSlot.CHEST;
 			lines.accept(Component.translatable(chest ? "item.mod-stella-tower.ghosted.chest" : "item.mod-stella-tower.ghosted.weapon").withStyle(ChatFormatting.DARK_AQUA));
 		});
-		ItemComponentTooltipProviderRegistry.addLast(TowerItems.RUNED, rune -> (context, lines, flag, components) ->
-			lines.accept(Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
-				.withStyle(ChatFormatting.BLUE)));
 	}
 
 	/** Whether the gear takes a ghost rune: a chestplate or a weapon, one piece at a time. */
 	public static boolean takes(final ItemStack gear) {
-		if (gear.getCount() != 1) {
+		// One piece at a time, and a piece that carries one already takes no second.
+		if (gear.getCount() != 1 || isGhosted(gear)) {
 			return false;
 		}
 		Equippable equippable = gear.get(DataComponents.EQUIPPABLE);
@@ -112,7 +111,11 @@ public final class GhostRunes {
 				continue;
 			}
 			for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox(), mob -> mob instanceof Enemy && mob.isAlive())) {
-				mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOW_TICKS, SLOW_AMPLIFIER), player);
+				// Renewed once a second, not every tick, so a mob is not sent a fresh effect each tick.
+				MobEffectInstance held = mob.getEffect(MobEffects.SLOWNESS);
+				if (held == null || held.getDuration() <= SLOW_TICKS - SLOW_RENEW_TICKS) {
+					mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOW_TICKS, SLOW_AMPLIFIER), player);
+				}
 			}
 		}
 	}
