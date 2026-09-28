@@ -28,5 +28,6 @@
   "item.mod-stella-tower.rune.weapon": "Weapon: hits x%s, more against %s",
   "item.mod-stella-tower.rune.armor": "Armor: tower blows /%s a piece, %s%% less from its own element",
   "item.mod-stella-tower.rune.how": "Set at an anvil for %s emeralds",
-  "item.mod-stella-tower.runed": "%s Rune (floor %s)"
+  "item.mod-stella-tower.runed": "%s Rune (floor %s)",
+  "death.attack.stella_delayed_wound": "%1$s succumbed to a blow they had spread too thin"
 }

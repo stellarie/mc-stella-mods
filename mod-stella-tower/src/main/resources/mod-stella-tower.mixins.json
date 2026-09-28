@@ -9,7 +9,9 @@
 		"TowerDamageMixin",
 		"MobEffectInstanceAccessor",
 		"TowerExperienceMixin",
-		"TowerRuneAnvilMixin"
+		"TowerRuneAnvilMixin",
+		"RuneGuardEffectMixin",
+		"RuneGuardFrostMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

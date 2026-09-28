@@ -326,7 +326,31 @@ the tower, and only for a hit that lands:
 - **Lightning:** each hit stores a charge on the player, up to 5. Spells will spend the charges once the
   spells mod is wired in.
 - **Void:** each hit shrinks the target's max health by `0.5% + P/200 %`, stacking to at most half.
-- **Holy:** strikes one boss-floor buff from the target. It then rests 10 seconds for that player.
+- **Holy:** strikes one boss-floor buff from the target; a target with none loses its strongest beneficial
+  effect instead. It then rests 10 seconds for that player.
 - **Dark:** each hit shreds `1 + P/50` armor, stacking 10 times.
 
 Still to come: the armor signatures, the spell side of Lightning charges, resonance, and ascension.
+
+## Built: runes, part two: armor signatures (2026-09-28)
+
+What an armor rune does for its wearer beyond turning blows. A signature works while any worn piece carries
+the element, at the strongest such piece's power, and only for players. Like the weapon signatures, they
+work anywhere and against any mob, not only in the tower:
+
+- **Fire:** fire damage taken is stored as heat, up to 20. The wearer's next blow on anything adds all of
+  it, and the heat resets.
+- **Ice:** slowness lasts half as long, and frost gathers half as fast.
+- **Water:** a blow larger than a quarter of the wearer's max health lands a quarter now. The rest comes
+  as a delayed wound in three parts, one a second. Armor and resistance reduce the delayed part as they
+  reduced the first, and not a second time.
+- **Lightning:** lightning deals nothing. Each blow a mob lands stores a Lightning charge, up to 5.
+- **Wind:** projectiles deal `15% + P/20 %` less.
+- **Void:** a beneficial effect given to a hostile mob within 8 blocks has its amplifier halved, rounded
+  down: Strength V becomes Strength III. A boss floor's buffs are halved the same way.
+- **Holy:** harmful effects last `20% + P/10 %` shorter.
+- **Dark:** a mob's blow is 1% weaker for each mob the wearer has slain, up to 30%. Kills count while each
+  comes within a minute of the last; a minute without one starts the count over.
+- Deviation from the plan: Holy weapon, Lightning, Void and Dark armor were written for the tower's
+  guardians and boss-floor buffs. Oniichan asked on 2026-09-28 that the effects not be tower-specific, so
+  they now use the general forms above.
