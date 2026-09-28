@@ -4,14 +4,57 @@ Runes are the tower's own gear layer. They do not repeat what an enchantment or 
 they add an element system, one signature effect each, and resonance with the existing kits.
 Every number below is a starting value, kept in the config so play can tune it.
 
-## Power from the floor
+## Tower threat (no cap)
 
-A rune remembers the floor it dropped on. Its power `P`:
+For floor `f`, every tower mob, elite and boss scales by:
 
-- floor 1 to 100: `P = floor`
-- above 100: `P = 100 + 10 * sqrt(floor - 100)` (floor 500 is about 3x floor 100, not 5x)
+- health growth `H(f) = (1 + 0.05f) * 1.01^f`
+- damage growth `D(f) = (1 + 0.03f) * 1.005^f`
+- extra health per floor: `+1` base health per floor, before the growth, so health is `(base + f) * H(f)`
+- armor `+f/5` (the game's cap of 30 holds), speed `+0.2%` per floor up to `+50%`
+- elites: `x3` health and `x1.5` damage on top; bosses: `x10` health and `x2` damage on top
 
-Mob threat has no cap; only rune power slows.
+The total health growth against a vanilla mob is `G(f) = H(f) * (base + f) / base`.
+
+Vanilla caps max health at 1024 and attack damage at 2048, and floor 100 already passes the first. So
+tower scaling is not an attribute: the mob keeps a capped attribute, and the mod divides the damage it
+takes and multiplies the damage it deals by whatever the cap cut off.
+
+A zombie (20 health, 3 damage on normal):
+
+| Floor | Health | Elite | Boss | Hit |
+| --- | --- | --- | --- | --- |
+| 1 | 22 | 67 | 223 | 3.1 |
+| 10 | 50 | 149 | 497 | 4.1 |
+| 50 | 403 | 1,209 | 4,029 | 9.6 |
+| 100 | 1,947 | 5,842 | 19,475 | 19.8 |
+| 200 | 17,705 | 53,114 | 177,048 | 56.9 |
+| 500 | 1.96 million | 5.9 million | 19.6 million | 581 |
+| 1000 | 1.09 billion | 3.3 billion | 10.9 billion | 13,632 |
+
+## Rune scaling (keeps up forever)
+
+A rune remembers the floor it dropped on, `r`. It carries two numbers:
+
+- **Tier multiplier** for its main stat, which follows the tower's own growth: weapons `G(r)^0.8`,
+  armor `D(r)^0.8` over all four pieces. The exponent 0.8 means a player with runes from the floor they
+  stand on stays within reach forever, while the tower still gains slowly: it is the climb.
+- **Power** `P` for the signature effects and resonance, which are percentages and must not run away:
+  `P = r` up to floor 100, then `P = 100 + 10 * sqrt(r - 100)`.
+
+With same-floor runes on a weapon and all four armor pieces:
+
+| Floor | Weapon rune | Armor runes | Time to kill vs floor 1 | A zombie's hit after armor runes |
+| --- | --- | --- | --- | --- |
+| 1 | x1.1 | /1.0 | x1.0 | 3.0 |
+| 10 | x2.1 | /1.3 | x1.2 | 3.2 |
+| 50 | x11 | /2.5 | x1.8 | 3.8 |
+| 100 | x39 | /4.5 | x2.5 | 4.4 |
+| 200 | x228 | /10.5 | x3.9 | 5.4 |
+| 500 | x9,829 | /68 | x10 | 8.6 |
+| 1000 | x1.5 million | /843 | x35 | 16.2 |
+
+An exponent of 1.0 would cancel the tower's growth exactly and remove the climb; it stays in the config.
 
 ## Drops
 
@@ -38,10 +81,14 @@ Every tower mob carries one element, shown in its name. Four opposed pairs:
 - Wind and Void
 - Holy and Dark
 
-- A weapon rune adds elemental damage `1 + P/25` (5 at floor 100). It deals 1.5x against the opposed
-  element and 0.5x against the same element.
-- An armor rune resists that element's mobs by `5% + P/10 %` per piece (15% at floor 100). The same
-  rune on several pieces adds up, capped at 80%.
+- A weapon rune turns the rest of a hit into elemental damage: the hit is multiplied by the tier
+  multiplier, and the added part is elemental. That part deals 1.5x against the opposed element and 0.5x
+  against the same element.
+- An armor rune divides all tower mob damage by its piece's share of the tier multiplier
+  (`D(r)^0.2` per piece), and takes a further `5% + P/10 %` per piece off hits from its own element's
+  mobs, adding up across pieces to at most 80%.
+- Outside the tower, runes use their power only (signatures and resonance); the tier multiplier is a
+  tower stat, so the overworld is not trivialised.
 
 ## Signature effects
 
