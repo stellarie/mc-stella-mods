@@ -27,7 +27,7 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - The food mod applies food effects through `Consumable` and covers cake through `CakeBlock.eat`. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin]
 - The cooking station uses held items, inventory ingredients, and crouch interaction. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
-- `main-food` starts from `origin/main` at `4395db2`, which includes the Endless Tower. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food; git ls-tree main-food mod-stella-tower]
+- `main-food` tracks `origin/main` and includes the Endless Tower. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food; git ls-tree main-food mod-stella-tower]
 
 ## Conventions
 
