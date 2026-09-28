@@ -21,7 +21,10 @@ public final class TowerLayout {
 	public static final int COLUMNS = 256;
 	/** The y of the lowest air block in every room. */
 	public static final int BASE_Y = 64;
-	/** The arrival spot and the next floor's portal sit across the room from each other, on its middle line. */
+	/**
+	 * The arrival spot and the next floor's portal sit across the room from each other, on its middle line;
+	 * an elite or boss floor has its portal in the middle of its hall.
+	 */
 	public static final int ARRIVAL_X = 4;
 	public static final int PORTAL_X = 60;
 	public static final int MIDDLE_Z = 32;
@@ -67,13 +70,18 @@ public final class TowerLayout {
 		return -90.0F;
 	}
 
+	/** The portal's line across the room: at the far side, or in the middle of a hall. */
+	public static int portalX(final int floor) {
+		return TowerMaze.hall(floor) > 0 ? SIZE / 2 : PORTAL_X;
+	}
+
 	/** The portal frame's inside: the blocks the portal fills once the frame is lit. */
 	public static List<BlockPos> portalInside(final int floor) {
 		BlockPos origin = origin(floor);
 		List<BlockPos> inside = new ArrayList<>();
 		for (int dz = 0; dz < PORTAL_INNER_WIDTH; dz++) {
 			for (int dy = 0; dy < PORTAL_INNER_HEIGHT; dy++) {
-				inside.add(new BlockPos(origin.getX() + PORTAL_X, BASE_Y + dy, origin.getZ() + MIDDLE_Z - 1 + dz));
+				inside.add(new BlockPos(origin.getX() + portalX(floor), BASE_Y + dy, origin.getZ() + MIDDLE_Z - 1 + dz));
 			}
 		}
 		return inside;
@@ -82,7 +90,7 @@ public final class TowerLayout {
 	/** The frame around {@link #portalInside(int)}, corners included. */
 	public static List<BlockPos> portalFrame(final int floor) {
 		BlockPos origin = origin(floor);
-		int x = origin.getX() + PORTAL_X;
+		int x = origin.getX() + portalX(floor);
 		int zLow = origin.getZ() + MIDDLE_Z - 2;
 		int zHigh = origin.getZ() + MIDDLE_Z + PORTAL_INNER_WIDTH - 1;
 		int yLow = BASE_Y - 1;

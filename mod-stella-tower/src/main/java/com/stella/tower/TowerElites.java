@@ -234,8 +234,16 @@ public final class TowerElites {
 			return;
 		}
 		Vec3 post = Vec3.atBottomCenterOf(post(floor));
-		if (guardian.position().distanceTo(post) > GUARD_RADIUS && guardian.getNavigation().isDone()) {
-			guardian.getNavigation().moveTo(post.x, post.y, post.z, 1.0);
+		if (guardian.position().distanceTo(post) <= GUARD_RADIUS || !guardian.getNavigation().isDone()) {
+			return;
+		}
+		// The maze may be too long a way for its sense of the room: then it is simply back at its post.
+		net.minecraft.world.level.pathfinder.Path way = guardian.getNavigation().createPath(post(floor), 1);
+		if (way != null && way.canReach()) {
+			guardian.getNavigation().moveTo(way, 1.0);
+		} else {
+			guardian.snapTo(post.x, post.y, post.z, guardian.getYRot(), guardian.getXRot());
+			guardian.getNavigation().stop();
 		}
 	}
 

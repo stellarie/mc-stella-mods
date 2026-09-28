@@ -201,3 +201,13 @@ Reaching ascension 1000 takes 10,000 kills. Weapon Mastery stays as it is.
 Every boss floor (each tenth floor) has the snowy biomes' mist. Each floor sits in its own area of the
 tower dimension, so boss floors use a tower biome that copies the snowy biomes' fog; the client draws it
 from the biome, with no extra client code.
+
+## Change: floors are mazes (2026-09-28)
+
+- Each floor is a maze with paths two blocks wide and unbreakable walls one block thick. The walls stand on
+  a 21 by 21 grid of cells, three blocks apart.
+- An elite floor opens a 16 by 16 hall in its middle, and a boss floor opens a 32 by 32 hall. The portal
+  stands in the middle of the hall, and the guardians stand guard there.
+- An ordinary floor keeps its portal across from the arrival, in a small cleared nook.
+- Floors built before this change keep the open room they were built with.
+- A guardian that cannot find its way back to its post through the maze is returned to the post.
