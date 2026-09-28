@@ -31,6 +31,8 @@ public class SovereignSpecialsGameTest {
 		Vec3 floor = BlazeSovereignGameTest.arena(raid, server, arenaHeight);
 		Blaze sovereign = BlazeSovereign.rise(raid, floor);
 		SovereignSpecials.pause(sovereign);
+		// Its own hunting would carry it off while a test waits; the specials run from the server tick, not its AI.
+		sovereign.setNoAi(true);
 		return new Scene(player, raid, sovereign, floor);
 	}
 
@@ -41,7 +43,13 @@ public class SovereignSpecialsGameTest {
 	 * A zombie added where it stands is indexed where it stands; it opts out of the mobs mod's spawn rolls.
 	 */
 	static Zombie standIn(final GameTestHelper helper, final Scene scene, final Vec3 at) {
-		BlazeSovereignGameTest.hold(scene.raid(), net.minecraft.core.BlockPos.containing(at));
+		net.minecraft.core.BlockPos spot = net.minecraft.core.BlockPos.containing(at);
+		BlazeSovereignGameTest.hold(scene.raid(), spot);
+		// A spot outside the arena is dug out, or the zombie stands in rock and suffocates.
+		scene.raid().setBlock(spot.below(), net.minecraft.world.level.block.Blocks.OBSIDIAN.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+		for (int up = 0; up < 3; up++) {
+			scene.raid().setBlock(spot.above(up), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+		}
 		Zombie zombie = EntityTypes.ZOMBIE.create(scene.raid(), EntitySpawnReason.MOB_SUMMONED);
 		zombie.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
 		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
