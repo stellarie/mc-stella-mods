@@ -26,7 +26,9 @@
 			"com.stella.tower.TowerRuneGameTest",
 			"com.stella.tower.TowerRuneEffectGameTest",
 			"com.stella.tower.TowerRuneArmorGameTest",
-			"com.stella.tower.TowerSafeZoneGameTest"
+			"com.stella.tower.TowerSafeZoneGameTest",
+			"com.stella.tower.TowerGhostRuneGameTest",
+			"com.stella.tower.TowerWispGameTest"
 		]
 	},
 	"mixins": [

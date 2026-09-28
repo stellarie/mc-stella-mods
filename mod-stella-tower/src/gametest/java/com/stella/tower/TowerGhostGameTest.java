@@ -35,9 +35,14 @@ public class TowerGhostGameTest {
 		return ghost;
 	}
 
-	/** A floor with no boss-floor buff, so a player's effects are the ghost's alone. */
+	/**
+	 * An ordinary floor: no boss-floor buff, so a player's effects are the ghost's alone, and no guardians.
+	 * Its own mobs are held off too: at the test floors' height one blow kills a ghost, and a ghost slain
+	 * mid-case mends and strengthens no one. The pin is on this run's own floor, which no other case uses.
+	 */
 	private static int floor(final ServerLevel tower) {
-		int floor = TowerTestSupport.freshFloorWhere(f -> !TowerBuffs.isBossFloor(f));
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
+		TowerMobs.pinFloorCap(floor, 0);
 		TowerFloors.ensure(tower, floor);
 		return floor;
 	}
@@ -294,6 +299,10 @@ public class TowerGhostGameTest {
 	public void aFarMonsterDoesNotDrawAGhostAway(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		// The far zombie is the only foe: the floor's guardians rise as pigs, and its own mobs are held off.
+		TowerElites.pinGuardianKind(floor, EntityTypes.PIG);
+		TowerMobs.pinFloorCap(floor, 0);
+		TowerGhosts.pinRiseChance(floor, 0.0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		player.setGameMode(GameType.CREATIVE);
@@ -303,14 +312,19 @@ public class TowerGhostGameTest {
 		helper.assertTrue(ghost != null, "no ghost could be raised");
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		zombie.setNoAi(true);
-		// Within the hall and the ghost's sense of the room, and beyond its bolt.
-		zombie.snapTo(middle.add(13.0, 0.0, -13.0));
+		// Within the hall and the ghost's sense of the room, and beyond its bolt wherever near the player it
+		// drifts: halfway between its bolt's reach and its sense, less and more its drift.
+		double apart = (TowerGhosts.CAST_RANGE + TowerGhosts.FOLLOW_RANGE) / 2.0 / Math.sqrt(2.0);
+		zombie.snapTo(middle.add(apart, 0.0, -apart));
 		tower.addFreshEntity(zombie);
 		helper.runAfterDelay(200L, () -> {
 			boolean drawn = ghost.getTarget() == zombie;
 			double fromPlayer = ghost.distanceTo(player);
 			double zombieFrom = zombie.distanceTo(ghost);
 			TowerTestSupport.result("ghostFarMonster", "drawn=" + drawn + " fromPlayer=" + (int) fromPlayer + " zombieFrom=" + (int) zombieFrom);
+			TowerElites.pinGuardianKind(floor, null);
+			TowerMobs.pinFloorCap(floor, null);
+			TowerGhosts.pinRiseChance(floor, null);
 			zombie.discard();
 			ghost.discard();
 			TowerTestSupport.leave(helper, player);
