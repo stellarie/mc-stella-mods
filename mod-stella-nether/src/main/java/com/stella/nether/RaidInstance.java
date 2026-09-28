@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatState;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -114,6 +116,9 @@ public final class RaidInstance {
 		ServerTickEvents.END_SERVER_TICK.register(RaidInstance::tick);
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.player));
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof Mob mob && level.dimension().equals(RaidTravel.RAID)) {
+				raiseThreat(mob);
+			}
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
 				RaidState state = state(level.getServer());
@@ -165,7 +170,7 @@ public final class RaidInstance {
 					Component.translatable("message.mod-stella-nether.enraged").withStyle(ChatFormatting.DARK_RED)));
 			}
 			if (elapsed == ENRAGE_TICKS || elapsed % CHASE_EVERY_TICKS == 0) {
-				for (Entity entity : raid.getAllEntities()) {
+				for (Entity entity : snapshot(raid)) {
 					if (entity instanceof Mob mob && mob instanceof Enemy && mob.isAlive()) {
 						enrage(state.run(), mob);
 						chase(raid, mob);
@@ -183,7 +188,8 @@ public final class RaidInstance {
 		emptyTicks = 0;
 		int lost = 0;
 		if (raid != null) {
-			for (Entity entity : raid.getAllEntities()) {
+			// A snapshot: discarding while walking the level's entity map skips entries, or crashes the tick.
+			for (Entity entity : snapshot(raid)) {
 				if (entity instanceof ItemEntity item) {
 					item.discard();
 					lost++;
@@ -264,6 +270,29 @@ public final class RaidInstance {
 				player.removeEffect(effect);
 			}
 		}
+	}
+
+	private static List<Entity> snapshot(final ServerLevel level) {
+		List<Entity> entities = new ArrayList<>();
+		level.getAllEntities().forEach(entities::add);
+		return entities;
+	}
+
+	/**
+	 * The mobs mod reads the raid nether as a dimension with no threat floor, so a raid mob's roll is lifted to
+	 * start from the nether's; its own variation is kept, and it is scaled again to match.
+	 */
+	static void raiseThreat(final Mob mob) {
+		if (mob.entityTags().contains(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG)) {
+			return;
+		}
+		ThreatState state = ThreatState.getOrRoll(mob);
+		int floor = ThreatState.NETHER_MINIMUM - Math.min(0, state.variation());
+		if (state.areaLevel() >= floor) {
+			return;
+		}
+		mob.setAttached(ThreatState.TYPE, new ThreatState(floor, state.variation()));
+		SpawnScaling.reconcileLoaded(mob);
 	}
 
 	/** Endless Speed and Strength, and a long reach for the hunt; once per run. */

@@ -75,6 +75,17 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - A server with structures switched off has no fortress or bastion to find; the run then opens at its
   origin and logs a warning.
 
+## Slice 6a: the raid's threat level
+
+- The mobs mod gives a dimension it does not know no threat floor, so raid mobs rolled threat 0 to 4,
+  weaker than the normal nether's 20. Every mob that loads in the raid now has its threat lifted to start
+  from the nether's floor (`ThreatState.NETHER_MINIMUM`), keeping its own roll above that, and is scaled
+  again by the mobs mod's `SpawnScaling`. Measured: eight raid zombified piglins at levels 20 to 28,
+  40 to 48 health.
+- Fixed: the reset discarded items while walking the level's entity map, which skipped 23 of 64 items
+  and once crashed the server tick (`ArrayIndexOutOfBoundsException` in `RaidInstance.tick`). Both
+  loops over the raid's entities now walk a snapshot.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
