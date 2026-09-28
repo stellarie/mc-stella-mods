@@ -25,7 +25,9 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
 - `main-food` integrates `mod-stella-food` work. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food]
 - The food mod applies food effects through `Consumable` and covers cake through `CakeBlock.eat`. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin]
-- The cooking station uses held items, inventory ingredients, and crouch interaction. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
+- The cooking station used held items and crouch interaction before its screen replaced those controls. [status: superseded] [verified: 2026-09-28] [source: 46a89fe:mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
+- The cooking station now uses a server menu and client screen for combination, cooking, and infusion. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStationMenu.java; src/client/java/com/stella/food/client/CookingStationScreen.java]
+- Food tooltips describe ordinary, dish, and infused effects through a common ItemStack hook. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/FoodTooltips.java; FoodTooltipGameTest.java]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
 - `main-food` was created from `origin/main` and tracks `origin/main-food`. [status: active] [verified: 2026-09-28] [source: git branch -vv main-food; git ls-remote --heads origin main-food]
 
@@ -49,6 +51,7 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
 - Minecraft 26.3 rejects `category: food` in crafting recipes -> use `misc`. [status: active] [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/repair-candidate-1-console.log]
 - Cake bypasses `Consumable` -> cover `CakeBlock.eat` when changing all-food rules. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin/CakeBlockMixin.java]
+- Fish buckets expose `FOOD` without `CONSUMABLE` -> require both before adding edible-food tooltips or generic cooking. [status: active] [verified: 2026-09-28] [source: FoodTooltipGameTest.java; FoodGameTest.java]
 
 ## Decisions
 
@@ -58,6 +61,13 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - Why: Separate controls prevent an incomplete dish attempt from cooking an ingredient.
 - Alternatives: Automatic operation selection was rejected after an acceptance review found ambiguous behavior.
 - Evidence: `mod-stella-food/src/main/java/com/stella/food/CookingStation.java` and `FoodGameTest.java`.
+
+### 2026-09-28 - Put cooking operations in a station screen
+
+- Decision: Use nine grid inputs, one output, and a left recipe list for six dishes, cooking, and infusion.
+- Why: The user requested every cooking operation in the crafting UI.
+- Alternatives: Direct right-click controls were superseded by the requested screen.
+- Evidence: `CookingStationMenu.java`, `CookingStationScreen.java`, and twenty-nine headless GameTests.
 
 ### 2026-09-24 - Separate mod integration branches
 
@@ -85,6 +95,16 @@ This repository develops separate Fabric mods for mobs, equips, spells, villages
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
 
 ## Session Handoffs
+
+### 2026-09-28 - Food tooltips and station screen
+
+- Done: Added buff descriptions and a station screen with a left recipe list.
+- Done: Installed the updated food jar in the Fabulously Optimized Prism instance.
+- Pending: Client checks for text wrapping, screen layout at 320 pixels, recipe clicks, and item rendering.
+- Next: Run the Prism instance and record those client checks.
+- Verification: Clean build and five consecutive twenty-nine-test suites passed after two successful mutation probes.
+- Verification: Source and installed jar SHA-256 match at `554463708F301BE8AF663A78CFA667D44AE41061A817314F83CDD293A9C6F971`.
+- Evidence: `C:/Users/Stella/notes/blackboard/mc-stella-mods-food-tooltips.work/verification`.
 
 ### 2026-09-28 - New food mod
 
