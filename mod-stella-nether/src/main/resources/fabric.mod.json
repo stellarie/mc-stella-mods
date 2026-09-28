@@ -8,6 +8,9 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.nether.StellaNether"
+		],
+		"client": [
+			"com.stella.nether.client.NetherClient"
 		]
 	},
 	"depends": {
@@ -23,6 +26,10 @@
 		"mod-stella-food": "*"
 	},
 	"mixins": [
-		"mod-stella-nether.mixins.json"
+		"mod-stella-nether.mixins.json",
+		{
+			"config": "mod-stella-nether.client.mixins.json",
+			"environment": "client"
+		}
 	]
 }

@@ -162,6 +162,17 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   2% a second. Its buff shows the percent. Measured: 10% after ten hits, 30% at the cap, and 10% cooling
   to 6.1% over two seconds past the delay.
 
+## Slice 12a: the Sovereign burns blue
+
+- The mod now has a client side (`src/client`), so it goes on clients as well as the server.
+- The Sovereign's mark syncs to every client, and the client draws its model in soul-fire blue.
+- Every fireball the Sovereign looses, from its own attack or a special, flies as a blue **Soul Fire
+  Charge** instead of a fire charge. Measured: 160 of 160 spiral fireballs and a loose one.
+- The tint is the client's work and cannot be seen by a server test: its test
+  (`theSovereignIsDrawnBlueRequiresManualTest`) is not required and fails every run until checked by hand.
+  A client could not be started here (no OpenGL), so the client mixins are checked only against the
+  client jar's method signatures.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -170,6 +181,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
+- Start the client with the mod: it reaches the title screen (the client mixins apply), and the
+  Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
 - Stand inside a Meteor Storm: meteors strike you for damage, and now and then stun you. The headless
   check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:

@@ -75,7 +75,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 10. The sealed chest: one Blaze Core in the portal room opens the End portal. **Done.**
 11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor). **Done.**
 12. Requested 2026-09-28 evening, easiest first:
-    - a. The Sovereign drawn in soul-fire blue, and its fire (fireballs, specials) blue too.
+    - a. The Sovereign drawn in soul-fire blue, and its fire (fireballs, specials) blue too. **Done.**
     - b. Its Brood holds no elite or boss blaze.
     - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two.
     - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard.

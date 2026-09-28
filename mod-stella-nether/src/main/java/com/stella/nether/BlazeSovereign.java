@@ -52,7 +52,8 @@ public final class BlazeSovereign {
 	static final int HEADROOM = 7;
 
 	/** The run a blaze is Sovereign of. */
-	public static final AttachmentType<Integer> SOVEREIGN = AttachmentRegistry.createPersistent(StellaNether.id("sovereign"), Codec.INT);
+	public static final AttachmentType<Integer> SOVEREIGN = AttachmentRegistry.create(StellaNether.id("sovereign"), builder -> builder
+		.persistent(Codec.INT).syncWith(net.minecraft.network.codec.ByteBufCodecs.VAR_INT, net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate.all()));
 	/** The share of the Sovereign's health beyond the attribute's ceiling, as a divisor on hits taken. */
 	public static final AttachmentType<Double> DIVISOR = AttachmentRegistry.createPersistent(StellaNether.id("sovereign_divisor"), Codec.DOUBLE);
 
@@ -68,6 +69,13 @@ public final class BlazeSovereign {
 	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public static void register() {
+		// Whatever fire the Sovereign looses flies as soul fire.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.Fireball fireball && isSovereign(fireball.getOwner())
+				&& !fireball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)) {
+				fireball.setItem(new net.minecraft.world.item.ItemStack(NetherItems.SOUL_FIRE_CHARGE));
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Blaze blaze && isSovereign(blaze) && blaze.level() instanceof ServerLevel level) {
 				dropSpoils(level, blaze);
