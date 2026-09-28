@@ -22,6 +22,7 @@ public class TowerBuffGameTest {
 	private static final int GUARDS_FLOOR = 260;
 	private static final int LIFE_FLOOR = 270;
 	private static final int DEEP_LIFE_FLOOR = 1070;
+	private static final int OUTSIDE_FLOOR = 280;
 
 	private static Zombie mobOn(final ServerLevel tower, final int room, final double dx, final int own) {
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
@@ -139,8 +140,10 @@ public class TowerBuffGameTest {
 		float[] given = {-1.0F};
 		helper.runAfterDelay(TowerBuffs.REFRESH_TICKS + 10L, () -> {
 			given[0] = player.getAbsorptionAmount();
-			// Spent in a fight.
+			// Spent in a fight. A spent shield's effect then ends on the player's own tick, which a test player
+			// never runs, so the test ends it as the game does (AbsorptionMobEffect.applyEffectTick).
 			player.setAbsorptionAmount(0.0F);
+			player.removeEffect(TowerBuffs.PlayerBuff.ABSORPTION.effect());
 		});
 		helper.runAfterDelay(TowerBuffs.REFRESH_TICKS * 3L + 11L, () -> {
 			float after = player.getAbsorptionAmount();
@@ -151,6 +154,54 @@ public class TowerBuffGameTest {
 			helper.assertTrue(after == 0.0F, "the spent shield came back to " + after);
 			helper.succeed();
 		});
+	}
+
+	/** Milk ends the shield too; drinking it on the floor must not buy a fresh one. */
+	@GameTest(maxTicks = 120)
+	public void milkBuysNoFreshShield(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		TowerFloors.ensure(tower, floor);
+		TowerBuffs.pinPlayerBuff(floor, TowerBuffs.PlayerBuff.ABSORPTION);
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		float[] given = {-1.0F};
+		helper.runAfterDelay(TowerBuffs.REFRESH_TICKS + 10L, () -> {
+			given[0] = player.getAbsorptionAmount();
+			player.setAbsorptionAmount(given[0] / 2.0F);
+			player.removeAllEffects();
+		});
+		helper.runAfterDelay(TowerBuffs.REFRESH_TICKS * 3L + 11L, () -> {
+			float after = player.getAbsorptionAmount();
+			TowerBuffs.pinPlayerBuff(floor, null);
+			TowerTestSupport.result("milkShield", "given=" + given[0] + " after=" + after);
+			TowerTestSupport.leave(helper, player);
+			helper.assertTrue(given[0] > 0.0F, "the floor gave no shield, so the case proves nothing");
+			helper.assertTrue(after < given[0], "milk bought a fresh shield of " + after);
+			helper.succeed();
+		});
+	}
+
+	/** A boss floor's buffs belong to the floor: a mob of that floor loose in the world carries none of them. */
+	@GameTest
+	public void aBossFloorsMobOutsideTheTowerCarriesNoBuff(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		TowerMobs.makeTowerMob(zombie, OUTSIDE_FLOOR, TowerElement.WIND);
+		zombie.snapTo(helper.absoluteVec(new Vec3(2.5, 2.0, 2.5)));
+		level.addFreshEntity(zombie);
+		double factor;
+		List<TowerBuffs.MobBuff> buffs;
+		try {
+			TowerBuffs.pinMobBuffs(OUTSIDE_FLOOR, List.of(TowerBuffs.MobBuff.EXTRA_HEALTH, TowerBuffs.MobBuff.THORNS));
+			buffs = TowerBuffs.mobBuffsOf(zombie);
+			factor = TowerBuffs.healthFactor(zombie);
+		} finally {
+			TowerBuffs.pinMobBuffs(OUTSIDE_FLOOR, null);
+			zombie.discard();
+		}
+		TowerTestSupport.result("buffOutside", "buffs=" + buffs + " factor=" + factor);
+		helper.assertTrue(buffs.isEmpty() && factor == 1.0, "a floor " + OUTSIDE_FLOOR + " mob outside the tower carries " + buffs);
+		helper.succeed();
 	}
 
 	/** A player's own potion, held under the floor's stronger buff, is still theirs after the floor. */

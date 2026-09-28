@@ -111,23 +111,43 @@ public final class TowerWanderers {
 
 	/** Rolls the area whose low corner is this chunk, once; the mob it raised, or null. */
 	public static @Nullable Mob rollRegion(final ServerLevel level, final LevelChunk chunk) {
-		return rollRegion(level, chunk, TowerProgress.highest(level.getServer()), chance());
+		return rollRegion(level, chunk, TowerProgress.highest(level.getServer()), chance(),
+			level.dimensionType().hasSkyLight() && level.isBrightOutside());
 	}
 
 	/** Rolls the area with a given highest floor and chance; nought means the tower is locked. */
 	public static @Nullable Mob rollRegion(final ServerLevel level, final LevelChunk chunk, final int highest, final double chance) {
+		return rollRegion(level, chunk, highest, chance, false);
+	}
+
+	/** Whether wanderers rise at this difficulty at all. */
+	public static boolean raisesIn(final net.minecraft.world.Difficulty difficulty) {
+		return difficulty != net.minecraft.world.Difficulty.PEACEFUL;
+	}
+
+	/** Rolls the area as in daylight or not, which a test cannot set for the whole level. */
+	public static @Nullable Mob rollRegion(final ServerLevel level, final LevelChunk chunk, final int highest, final double chance, final boolean daylight) {
 		ChunkPos pos = chunk.getPos();
 		// A locked tower leaves the area unrolled, so it may still roll once the tower opens; and an area
 		// whose entities are not loaded yet would lose what it raised.
-		if (highest <= 0 || !level.areEntitiesLoaded(pos.pack()) || isRolled(chunk)) {
+		// Peaceful raises nothing, and a player already in the area would see it appear; either way the area
+		// keeps its roll for later.
+		if (highest <= 0 || !level.areEntitiesLoaded(pos.pack()) || isRolled(chunk) || !raisesIn(level.getDifficulty())
+			|| playerWithin(level, pos, MIN_RING)) {
+			return null;
+		}
+		RandomSource random = regionRandom(level, pos);
+		if (!rolls(random, chance)) {
+			chunk.setAttached(ROLLED, Boolean.TRUE);
+			return null;
+		}
+		EntityType<? extends Mob> kind = pick(random, highest);
+		if (daylight && kind.builtInRegistryHolder().is(net.minecraft.tags.EntityTypeTags.BURN_IN_DAYLIGHT)) {
+			// It would burn under the open sky, its drops going to no one: the area waits for the night.
 			return null;
 		}
 		chunk.setAttached(ROLLED, Boolean.TRUE);
-		RandomSource random = regionRandom(level, pos);
-		if (!rolls(random, chance)) {
-			return null;
-		}
-		Mob mob = pick(random, highest).create(level, EntitySpawnReason.EVENT);
+		Mob mob = kind.create(level, EntitySpawnReason.EVENT);
 		if (mob == null) {
 			return null;
 		}
@@ -146,6 +166,17 @@ public final class TowerWanderers {
 		}
 		StellaTower.LOGGER.debug("A floor {} {} wanders {} at {}", highest, mob.getType().getDescriptionId(), level.dimension().identifier(), mob.blockPosition());
 		return mob;
+	}
+
+	/** Whether any player stands within this many chunks of the area's anchor. */
+	private static boolean playerWithin(final ServerLevel level, final ChunkPos pos, final int chunks) {
+		for (ServerPlayer player : level.players()) {
+			ChunkPos at = player.chunkPosition();
+			if (!player.isSpectator() && Math.max(Math.abs(at.x() - pos.x()), Math.abs(at.z() - pos.z())) < chunks) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Finds the mob footing in the chunk: open ground under the sky, or a cave floor under a roof. */
