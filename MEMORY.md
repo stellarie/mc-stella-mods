@@ -19,6 +19,7 @@ This repository develops separate Fabric mods on their own integration branches:
 - `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
 - `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
 - `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
+- `python scripts/build-release.py --list` - Print the current Gradle mod list as JSON. [verified: 2026-09-29] [source: command output]
 
 ## Architecture
 
@@ -113,6 +114,13 @@ This repository develops separate Fabric mods on their own integration branches:
 - [ ] Confirm the Gaussian standard deviation, XP curve, and Nether/End distance origins. Next check: oniichan's pending design reply. [added: 2026-09-28]
 
 ## Session Handoffs
+
+### 2026-09-29 - Parallel CI jar bundle
+
+- Done: Created `feat/parallel-mod-ci` from current `origin/main` and split CI into detected mod jobs.
+- Pending: Hosted matrix execution and aggregate ZIP verification.
+- Next: Review the workflow, then run hosted CI on a pull request.
+- Verification: Seven focused Python tests passed; discovery listed seven Gradle mods.
 
 ### 2026-09-28 - Food tooltips and station screen
 
