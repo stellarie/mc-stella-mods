@@ -231,3 +231,28 @@ from the biome, with no extra client code.
 - An ordinary floor keeps its portal across from the arrival, in a small cleared nook.
 - Floors built before this change keep the open room they were built with.
 - A guardian that cannot find its way back to its post through the maze is returned to the post.
+
+## Change: 72 mobs a floor, and themed traps (2026-09-28)
+
+- A floor now holds up to 72 mobs, twice the old cap, and refills 8 at a time, so it still fills in about
+  ten seconds. Elites and bosses stay outside the cap.
+- Traps come by the tens of a floor's number and start over every hundred floors:
+
+  | Floors | Theme | A trap does |
+  |---|---|---|
+  | 1-10 | none | - |
+  | 11-20 | desert | slows the player; three arrows fall from the ceiling |
+  | 21-30 | inferno | sets the player alight and burns them |
+  | 31-40 | void | throws the player at least 16 blocks away, to another spot in the maze |
+  | 41-50 | frost | freezes and slows the player |
+  | 51-60 | bog | poison and nausea |
+  | 61-70 | storm | a lightning strike |
+  | 71-80 | shadow | darkness, blindness, and an ambush of two of the floor's mobs |
+  | 81-90 | spikes | a wound |
+  | 91-100 | chaos | a mix of every kind |
+
+- Each floor with a theme lays 20 trap tiles in its maze paths, never within two cells of the arrival, in a
+  hall, or in the portal's nook. Each theme has its own look.
+- A player in survival or adventure springs a trap by stepping on it; mobs and creative players do not.
+- A sprung trap rests 100 ticks. What a trap deals grows with the floor as a tower mob's blows do. A trap
+  tile breaks like a maze wall, and drops nothing.

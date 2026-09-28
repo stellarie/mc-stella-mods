@@ -64,7 +64,27 @@ public final class TowerBlocks {
 		.noLootTable()
 		.pushReaction(PushReaction.IMMOVEABLE));
 
+	/** The traps, one block for each theme that is laid. */
+	public static final java.util.Map<TrapTheme, TowerTrapBlock> TRAPS = registerTraps();
+
 	private TowerBlocks() {
+	}
+
+	private static java.util.Map<TrapTheme, TowerTrapBlock> registerTraps() {
+		java.util.Map<TrapTheme, TowerTrapBlock> traps = new java.util.EnumMap<>(TrapTheme.class);
+		for (TrapTheme theme : TrapTheme.values()) {
+			if (theme.laid()) {
+				traps.put(theme, register("tower_trap_" + theme.name().toLowerCase(java.util.Locale.ROOT),
+					properties -> new TowerTrapBlock(theme, properties), BlockBehaviour.Properties.of()
+						.mapColor(MapColor.COLOR_BLACK)
+						.strength(Blocks.OBSIDIAN.defaultDestroyTime() * MAZE_HARDNESS_OVER_OBSIDIAN, Blocks.OBSIDIAN.getExplosionResistance())
+						.requiresCorrectToolForDrops()
+						.noLootTable()
+						.sound(SoundType.STONE)
+						.pushReaction(PushReaction.IMMOVEABLE)));
+			}
+		}
+		return java.util.Collections.unmodifiableMap(traps);
 	}
 
 	private static <B extends Block> B register(
