@@ -177,6 +177,7 @@ public final class NemesisMissionGameTest {
 		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseline + MissionService.NEMESIS_BONUS_HEALTH);
 		saved.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_AXE));
 		NemesisState.attach(saved, UUID.randomUUID());
+		saved.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		saved.snapTo(Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))), 0.0F, 0.0F);
 		helper.getLevel().addFreshEntity(saved);
 		boolean upgraded = Elite.isElite(saved) && hasNemesisKit(saved)
@@ -199,6 +200,7 @@ public final class NemesisMissionGameTest {
 		}
 		double baseline = saved.getMaxHealth();
 		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseline + MissionService.NEMESIS_BONUS_HEALTH);
+		saved.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		Elite.mark(saved, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
 		saved.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_AXE));
 		NemesisState.attach(saved, UUID.randomUUID());
