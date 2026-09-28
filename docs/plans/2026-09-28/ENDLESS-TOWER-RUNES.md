@@ -401,3 +401,16 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
   or crossbow carries it to its arrows.
 - Gear with a ghost rune says so in its tooltip, and gear with an elemental rune now names its rune and floor.
 - Like the other runes, a ghost rune's effects work anywhere, not only in the tower.
+
+## Built: the wisp (2026-09-28)
+
+- **Recipe:** a Ghost Rune, two Echo Shards and a Glowstone Dust, anywhere in a crafting grid, make one
+  Wisp. Its rarity is the ghost rune's: a ghost a player slays leaves one 3% of the time, plus an ancient
+  city's echo shards.
+- **Use:** used on a floor of the tower, a wisp lights the shortest walk from where the player stands to
+  the floor's portal, for 20 minutes. The way is drawn as a trail of lights every half second, seen by
+  everyone on the floor. Each use spends one of its 24 uses. Out of the tower, or where no way leads to a
+  portal, it does nothing and spends nothing.
+- **The price:** every hostile mob standing within 2 blocks of a lit way is enraged, with Speed II and
+  Strength II, renewed each second while it stays there and lasting 3 seconds after.
+- A lit way lives in memory: a server restart puts it out.
