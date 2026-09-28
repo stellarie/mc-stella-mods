@@ -21,27 +21,28 @@ S(f) = (sigma((f - 500) / 150) - sigma(-500 / 150)) / (sigma(500 / 150) - sigma(
 For floor `f`:
 
 - health: `base * (1 + 99 * S(f)) + 2f`, so up to 100x, plus 2 health per floor that never stops
-- damage: `base * (1 + 19 * S(f))`, so up to 20x
+- damage: `base * (1 + 19 * S(f)) + 0.02f`, so up to 20x, plus one heart per 100 floors that never stops
 - armor `+f/5` (the game's cap of 30 holds), speed `+0.2%` per floor up to `+50%`
 - elites: `x3` health and `x1.5` damage on top; bosses: `x10` health and `x2` damage on top
 
-The 2 health per floor is the only part without an end, so floors past 1000 still grow, slowly.
+The 2 health and 0.02 damage per floor are the only parts without an end, so floors past 1000 still
+grow, slowly.
 Vanilla caps max health at 1024 and attack damage at 2048; past those the mod divides the damage a
 tower mob takes and multiplies what it deals, instead of raising the attribute.
 
 A zombie (20 health, 3 damage on normal):
 
-| Floor | Health | Elite | Boss | Hit |
-| --- | --- | --- | --- | --- |
-| 1 | 22 | 67 | 225 | 3.0 |
-| 10 | 45 | 135 | 449 | 3.1 |
-| 50 | 148 | 443 | 1,476 | 3.8 |
-| 100 | 285 | 855 | 2,849 | 4.9 |
-| 200 | 600 | 1,801 | 6,002 | 8.2 |
-| 500 | 2,010 | 6,030 | 20,100 | 31.5 |
-| 1000 | 4,000 | 12,000 | 40,000 | 60.0 |
-| 2000 | 6,000 | 18,000 | 60,000 | 60.0 |
-| 5000 | 12,000 | 36,000 | 120,000 | 60.0 |
+| Floor | Health | Elite | Boss | Hit | Elite hit | Boss hit |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 22 | 67 | 225 | 3.0 | 4.6 | 6.1 |
+| 10 | 45 | 135 | 449 | 3.3 | 5.0 | 6.7 |
+| 50 | 148 | 443 | 1,476 | 4.8 | 7.2 | 9.6 |
+| 100 | 285 | 855 | 2,849 | 6.9 | 10.3 | 13.7 |
+| 200 | 600 | 1,801 | 6,002 | 12.2 | 18.3 | 24.4 |
+| 500 | 2,010 | 6,030 | 20,100 | 41.5 | 62.2 | 83.0 |
+| 1000 | 4,000 | 12,000 | 40,000 | 80.0 | 120.0 | 160.0 |
+| 2000 | 6,000 | 18,000 | 60,000 | 100.0 | 150.0 | 200.0 |
+| 5000 | 12,000 | 36,000 | 120,000 | 160.0 | 240.0 | 320.0 |
 
 ## Rune scaling
 
@@ -59,17 +60,17 @@ With same-floor runes on a weapon and all four armor pieces:
 | Floor | Weapon rune | Armor runes | Time to kill vs floor 1 | A zombie's hit after armor runes |
 | --- | --- | --- | --- | --- |
 | 1 | x1.0 | /1.0 | x1.1 | 3.0 |
-| 10 | x1.2 | /1.0 | x1.8 | 3.0 |
-| 50 | x2.2 | /1.2 | x3.4 | 3.1 |
-| 100 | x3.7 | /1.5 | x3.9 | 3.1 |
-| 200 | x8.0 | /2.5 | x3.8 | 3.3 |
-| 500 | x34 | /8.3 | x3.0 | 3.8 |
-| 1000 | x63 | /14.8 | x3.2 | 4.0 |
-| 2000 | x63 | /14.8 | x4.8 | 4.0 |
-| 5000 | x63 | /14.8 | x9.5 | 4.0 |
+| 10 | x1.2 | /1.0 | x1.8 | 3.2 |
+| 50 | x2.2 | /1.2 | x3.4 | 3.9 |
+| 100 | x3.7 | /1.5 | x3.9 | 4.4 |
+| 200 | x8.0 | /2.5 | x3.8 | 4.9 |
+| 500 | x34 | /8.3 | x3.0 | 5.0 |
+| 1000 | x63 | /14.8 | x3.2 | 5.4 |
+| 2000 | x63 | /14.8 | x4.8 | 6.7 |
+| 5000 | x63 | /14.8 | x9.5 | 10.8 |
 
 Same-floor runes hold a fight at about three to four times floor 1 all the way to floor 1000; past it,
-only the 2 health per floor keeps climbing. The curve's width (150), the midpoint (500), the maxima
+only the 2 health and 0.02 damage per floor keep climbing. The curve's width (150), the midpoint (500), the maxima
 (100x, 20x) and the exponent (0.9) are all in the config.
 
 ## Drops
@@ -138,7 +139,16 @@ healing, whichever the effect has). Spells count only when the spells mod is ins
 
 - Void shamans: each floor has a 2% chance to hold one. Their rune chance is 2%.
 - Void key: granted on entering the tower; it returns the player to the portal they entered by.
+- Boss-floor buffs grow with the floor. A buff's level is `1 + floor(f / 100)`:
 
-## Still open
+| Mob buff | Per level | Ceiling |
+| --- | --- | --- |
+| Speed | Speed amplifier +1 | Speed V |
+| Strength | Strength amplifier +1 | none |
+| Resistance | Resistance amplifier +1 | Resistance III (60%), since V is immunity |
+| Regeneration | Regeneration amplifier +1 | Regeneration V |
+| Extra health | +10% max health | none |
+| Thorns aura | reflects 5% of damage taken | 50% |
+| Extra life | one more revive per 500 floors | none |
 
-1. Do the boss-floor mob buffs grow with the floor, or stay fixed?
+The players' boss-floor buff uses the same level and ceilings.
