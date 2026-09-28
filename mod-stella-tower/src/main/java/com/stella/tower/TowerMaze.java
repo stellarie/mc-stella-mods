@@ -23,6 +23,36 @@ public final class TowerMaze {
 	public static final int NOOK_LOW_Z = 1 + (TowerLayout.MIDDLE_Z / PITCH - 1) * PITCH;
 	public static final int NOOK_HIGH_Z = (TowerLayout.MIDDLE_Z / PITCH + 2) * PITCH - 1;
 	private static final long SALT = 0x4D415A45L;
+	/** A safe zone's side: no mob is raised in it. */
+	public static final int SAFE = 8;
+	/** The safe zones' line across the room: round the middle, so the arrival and the doors fall in them. */
+	public static final int SAFE_Z = TowerLayout.MIDDLE_Z - SAFE / 2;
+	/** The entrance zone's first column: the room's first cell column, which holds the arrival. */
+	public static final int ENTRANCE_X = 1;
+	/** A boss floor's safe room sits just past its hall, three cells of the maze on a side. */
+	public static final int BOSS_ROOM_X = 1 + (TowerLayout.SIZE / 2 + BOSS_HALL / 2) / PITCH * PITCH;
+
+	/** A safe zone, by the offset of its low corner from the room's inner corner. */
+	public record Zone(int x, int z) {
+		public boolean contains(final int atX, final int atZ) {
+			return atX >= this.x && atX < this.x + SAFE && atZ >= this.z && atZ < this.z + SAFE;
+		}
+	}
+
+	/** The floor's safe zones: its entrance, and on a boss floor the room before the hall. */
+	public static java.util.List<Zone> safeZones(final int floor) {
+		Zone entrance = new Zone(ENTRANCE_X, SAFE_Z);
+		return hall(floor) == BOSS_HALL ? java.util.List.of(entrance, new Zone(BOSS_ROOM_X, SAFE_Z)) : java.util.List.of(entrance);
+	}
+
+	public static boolean inSafeZone(final int floor, final int x, final int z) {
+		for (Zone zone : safeZones(floor)) {
+			if (zone.contains(x, z)) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	/** The side of the floor's hall, or nought for an ordinary floor. */
 	public static int hall(final int floor) {
@@ -55,6 +85,13 @@ public final class TowerMaze {
 		}
 		java.util.Random random = new java.util.Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L));
 		boolean[][] seen = new boolean[CELLS][CELLS];
+		int hall = hall(floor);
+		int hallLow = size / 2 - hall / 2;
+		if (hall == BOSS_HALL) {
+			// The great hall and its safe room stand apart from the maze, so the room is the only way in.
+			shut(seen, hallLow, hallLow, hall, hall);
+			shut(seen, BOSS_ROOM_X, SAFE_Z, SAFE, SAFE);
+		}
 		java.util.ArrayDeque<int[]> trail = new java.util.ArrayDeque<>();
 		int startX = (TowerLayout.ARRIVAL_X - 1) / PITCH;
 		int startZ = (TowerLayout.MIDDLE_Z - 1) / PITCH;
@@ -83,13 +120,30 @@ public final class TowerMaze {
 			seen[to[0]][to[1]] = true;
 			trail.push(to);
 		}
-		int hall = hall(floor);
 		if (hall > 0) {
-			open(wall, size / 2 - hall / 2, size / 2 - hall / 2, hall, hall);
+			open(wall, hallLow, hallLow, hall, hall);
 		} else {
 			open(wall, NOOK_LOW_X, NOOK_LOW_Z, NOOK_HIGH_X - NOOK_LOW_X, NOOK_HIGH_Z - NOOK_LOW_Z + 1);
 		}
+		for (Zone zone : safeZones(floor)) {
+			open(wall, zone.x(), zone.z(), SAFE, SAFE);
+		}
+		if (hall == BOSS_HALL) {
+			// A door from the hall into the safe room, and one from the room out to the maze beyond it.
+			int door = 1 + (TowerLayout.MIDDLE_Z - 1) / PITCH * PITCH;
+			open(wall, BOSS_ROOM_X - WALL, door, WALL, PATH);
+			open(wall, BOSS_ROOM_X + SAFE, door, WALL, PATH);
+		}
 		return wall;
+	}
+
+	/** Marks every cell within a stretch of the room as taken, so the maze carves no way into it. */
+	private static void shut(final boolean[][] seen, final int x, final int z, final int width, final int length) {
+		for (int cx = (x - 1) / PITCH; cx <= (x + width - 2) / PITCH; cx++) {
+			for (int cz = (z - 1) / PITCH; cz <= (z + length - 2) / PITCH; cz++) {
+				seen[cx][cz] = true;
+			}
+		}
 	}
 
 	private static void open(final boolean[][] wall, final int x, final int z, final int width, final int length) {
