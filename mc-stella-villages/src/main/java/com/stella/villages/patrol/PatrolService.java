@@ -419,8 +419,9 @@ public final class PatrolService {
 	private static void installGoals(final ServerLevel level, final Mob mob, final VillageRecord village) {
 		// The village witch's mind is the spells mod's; this mod only keeps it by the bell.
 		if (PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
-			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal);
-			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), VillageWitchKit.BELL_RADIUS, 1.0));
+			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
+			mob.getGoalSelector().addGoal(1, new PatrolWitchSupportGoal((Witch) mob, village.id()));
+			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), MEMBER_WANDER_RADIUS, 1.0));
 			return;
 		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
@@ -438,13 +439,16 @@ public final class PatrolService {
 				(target, targetLevel) -> target instanceof Monster
 					&& (!(target instanceof Mob targetMob) || !PatrolState.isMarked(targetMob))
 					&& !target.entityTags().contains(PatrolDefendTargetGoal.FRIENDLY_PATROL_TAG)
+					&& withinHeadBell(mob, bellOf(level, village), target.position())
 			)
 		);
 
-		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
+		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal
+			|| goal instanceof PatrolWitchSupportGoal || goal instanceof HeadBellGuardGoal);
 
 		BlockPos bell = bellOf(level, village);
 		if (PatrolState.role(mob) == PatrolState.Role.HEAD) {
+			mob.getGoalSelector().addGoal(0, new HeadBellGuardGoal(mob, bell));
 			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, bell, HEAD_BELL_RADIUS, 1.0));
 		} else if (mob instanceof Witch witch) {
 			mob.removeAllGoals(goal -> goal instanceof RangedAttackGoal);
@@ -453,6 +457,19 @@ public final class PatrolService {
 		} else {
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		}
+	}
+
+	static boolean withinHeadBell(final Mob guard, final BlockPos bell, final Vec3 target) {
+		return PatrolState.role(guard) != PatrolState.Role.HEAD
+			|| target.distanceToSqr(Vec3.atCenterOf(bell)) <= HEAD_BELL_RADIUS * HEAD_BELL_RADIUS;
+	}
+
+	static BlockPos bellFor(final Mob guard, final UUID villageId) {
+		if (!(guard.level() instanceof ServerLevel level)) {
+			return guard.blockPosition();
+		}
+		return VillageWorldData.get(level).village(villageId)
+			.map(village -> bellOf(level, village)).orElse(guard.blockPosition());
 	}
 
 	private static void logSpawn(final VillageRecord village, final Mob mob, final PatrolState.Role role) {

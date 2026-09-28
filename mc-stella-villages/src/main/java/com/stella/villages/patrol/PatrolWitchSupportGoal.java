@@ -3,6 +3,7 @@ package com.stella.villages.patrol;
 import com.stella.villages.McStellaVillages;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.component.DataComponents;
@@ -11,8 +12,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion;
 import net.minecraft.world.item.ItemStack;
@@ -24,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
 final class PatrolWitchSupportGoal extends Goal {
 	private final Witch witch;
 	private final UUID villageId;
-	private Mob ally;
+	private LivingEntity ally;
 	private ItemStack potion = ItemStack.EMPTY;
 	private int nextThrowTick;
 
@@ -40,21 +44,30 @@ final class PatrolWitchSupportGoal extends Goal {
 			return false;
 		}
 
-		List<Mob> allies = PatrolService.members(this.witch.level(), this.villageId).stream()
+		List<Mob> patrol = PatrolService.members(this.witch.level(), this.villageId).stream()
 			.filter(mob -> mob != this.witch && mob.isAlive())
 			.filter(mob -> mob.distanceToSqr(this.witch) <= PatrolService.WITCH_SUPPORT_RANGE * PatrolService.WITCH_SUPPORT_RANGE)
 			.sorted(Comparator.comparingDouble(mob -> mob.distanceToSqr(this.witch)))
 			.toList();
+		List<LivingEntity> allies = new ArrayList<>(patrol);
+		allies.addAll(this.witch.level().getEntitiesOfClass(LivingEntity.class,
+			this.witch.getBoundingBox().inflate(PatrolService.WITCH_SUPPORT_RANGE),
+			entity -> entity.isAlive() && entity.distanceToSqr(this.witch)
+					<= PatrolService.WITCH_SUPPORT_RANGE * PatrolService.WITCH_SUPPORT_RANGE
+				&& (entity instanceof AbstractVillager || entity instanceof ServerPlayer player && !player.isSpectator()
+					&& this.witch.level() instanceof ServerLevel level
+					&& !PatrolService.hasThreat(level, this.villageId, player.getUUID()))));
+		allies.sort(Comparator.comparingDouble(entity -> entity.distanceToSqr(this.witch)));
 
-		for (Mob candidate : allies) {
-			if (candidate.getHealth() <= candidate.getMaxHealth() * PatrolService.WITCH_HEAL_THRESHOLD) {
+		for (LivingEntity candidate : allies) {
+			if (candidate.getHealth() < candidate.getMaxHealth()) {
 				this.ally = candidate;
 				this.potion = potion(Potions.HEALING);
 				return true;
 			}
 		}
 
-		for (Mob candidate : allies) {
+		for (Mob candidate : patrol) {
 			if (!candidate.hasEffect(MobEffects.REGENERATION)) {
 				this.ally = candidate;
 				this.potion = potion(Potions.REGENERATION);
@@ -78,7 +91,7 @@ final class PatrolWitchSupportGoal extends Goal {
 
 	@Override
 	public void start() {
-		Mob target = this.ally;
+		LivingEntity target = this.ally;
 		ItemStack stack = this.potion;
 		this.ally = null;
 		this.potion = ItemStack.EMPTY;
@@ -86,7 +99,6 @@ final class PatrolWitchSupportGoal extends Goal {
 			return;
 		}
 
-		this.witch.setTarget(target);
 		this.witch.getLookControl().setLookAt(target);
 		this.nextThrowTick = this.witch.tickCount + PatrolService.WITCH_MIN_THROW_INTERVAL;
 		Vec3 movement = target.getDeltaMovement();

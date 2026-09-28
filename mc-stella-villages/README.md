@@ -20,7 +20,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
   gets its patrol. When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
-- The head keeps its watch within 8 blocks of the village's bell. The other members are set down across
+- The head guards within 8 blocks of the village's bell and never chases a threat beyond that radius.
+  The other members are set down across
   the village, up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
   included; a member that finds itself outside heads back in.
 - The head wears full netherite, every piece enchanted (Protection IV and Unbreaking III, Feather Falling IV
@@ -58,17 +59,18 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   Witch", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
   Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
   never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
-  a foe, and it keeps within 16 blocks of the bell. The spells mod gives it its mind: no potions, spells
-  at the village's foes, and heals and blessings for its friends. A village settled before the witch
+  a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It throws healing
+  potions at damaged players, villagers, and patrol members. The spells mod gives it Chainstorm,
+  Time Lock, Ice Lance, Sanctuary, and Bulwark Hymn. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding
   anything with its own attack damage: 12 emeralds buy +1 attack damage, up to +5 per weapon. The
   bonus shows in the item's tooltip. Spectators cannot harden.
-- Ring a village's bell, within 48 blocks of the village's first bell, and its patrol rallies: every
-  member gets Speed II and Strength I for 30 seconds and runs to the bell. A village rallies once a
-  minute.
+- Ring a village's bell, within 48 blocks of the village's first bell, and the loaded patrol teleports
+  to safe spots within 8 blocks of it. Each member gets Speed II and Strength II for five minutes.
+  Every ring refreshes the rally.
 - One daily 10% roll for a single-wave village raid. The roll is fixed by the world seed and the day,
   so a restart cannot reroll a day. On a raid day, the first village with a player within 64 blocks
   of its centre is raided with one wave and no bonus wave; if no village has a player nearby, the

@@ -26,7 +26,7 @@ public final class VillageWitchKit {
 	/** Tells the mobs mod to leave the witch's goals alone, so it throws no potions. */
 	public static final String NO_BEHAVIOR_TAG = "mod-stella-mobs.no_behavior";
 	public static final String LABEL = "Village Witch";
-	/** How far from the bell the witch keeps. */
+	/** How far from the bell the witch first appears. */
 	public static final int BELL_RADIUS = 16;
 	private static final Map<EquipmentSlot, Item> PIECES = Map.of(
 		EquipmentSlot.HEAD, Items.DIAMOND_HELMET,

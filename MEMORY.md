@@ -24,6 +24,8 @@ This repository develops Fabric mods on separate integration branches and publis
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
 - `main-villages` integrates `mc-stella-villages` work. [status: active] [verified: 2026-09-28] [source: git branch --list main-villages]
 - Villages requires `mod-stella-mobs` for Nemesis elite state. Its Gradle build builds the neighboring mobs jar. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; fabric.mod.json; clean build]
+- The village head guards an eight-block bell radius; bell rings teleport loaded members and grant five-minute Speed II and Strength II. [status: active] [verified: 2026-09-28] [source: HeadBellGuardGoal.java; BellRally.java; five combined GameTest runs]
+- Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
 - `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
@@ -35,6 +37,8 @@ This repository develops Fabric mods on separate integration branches and publis
 
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
+- With spells loaded, a village gains an eleventh witch -> keep legacy ten-member GameTests in a test-only witch-disabled environment. [status: active] [verified: 2026-09-28] [source: VillageTestInit.java; ringingTheBellRalliesTheVillageWitch]
+- Mock players created at the shared origin can steal a nearby attendance test -> place each player at its own test structure. [status: active] [verified: 2026-09-28] [source: VillageRaidGameTest.attendanceFollowsPlayerDistance]
 - `EntityType.getBaseClass()` does not identify hostile subclasses for village offer filtering -> instantiate candidate mobs in the server level. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; GameTest red and green runs]
 - Vanilla `randomTeleport` rejects safe stone floors through its extra block tag -> validate collision, then call `teleportTo`. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; teleport GameTests]
 

@@ -2,11 +2,13 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-def mobsJar = file("../mod-stella-mobs/build/libs/mod-stella-mobs-${project.version}.jar")
+def externalMobsJar = project.findProperty("stellaMobsJar")
+def mobsJar = file(externalMobsJar ?: "../mod-stella-mobs/build/libs/mod-stella-mobs-${project.version}.jar")
 
 tasks.register('buildStellaMobsJar', GradleBuild) {
 	dir = file('../mod-stella-mobs')
 	tasks = ['jar']
+	onlyIf { externalMobsJar == null }
 }
 
 loom {
@@ -67,6 +69,12 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
+}
+
+tasks.named('runGameTest') {
+	if (project.hasProperty('gameTestFilter')) {
+		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
 }
 
 java {

@@ -16,7 +16,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -36,7 +38,7 @@ public class VillageWitchGameTest {
 			VillageWitchKit.force(true);
 			loaded = PatrolTestSupport.loadVillage(helper, test, false);
 		} finally {
-			VillageWitchKit.force(null);
+			VillageWitchKit.force(false);
 		}
 		if (!loaded) {
 			return;
@@ -62,6 +64,114 @@ public class VillageWitchGameTest {
 		helper.succeed();
 	}
 
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void ringingTheBellRalliesTheVillageWitch(final GameTestHelper helper) {
+		String test = "ringingTheBellRalliesTheVillageWitch";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		BlockPos bell = PatrolTestSupport.anchor(helper);
+		ServerPlayer ringer = helper.makeMockServerPlayerInLevel();
+		net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.invoker().interact(
+			ringer, helper.getLevel(), net.minecraft.world.InteractionHand.MAIN_HAND,
+			new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(bell), net.minecraft.core.Direction.NORTH, bell, false)
+		);
+		var speed = witch.getEffect(net.minecraft.world.effect.MobEffects.SPEED);
+		var strength = witch.getEffect(net.minecraft.world.effect.MobEffects.STRENGTH);
+		int members = PatrolTestSupport.patrols(helper).size();
+		PatrolTestSupport.result(test, "members=" + members + " witchNear="
+			+ (witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0) + " speed=" + speed + " strength=" + strength);
+		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT + 1 && speed != null && strength != null
+			&& speed.getDuration() >= 6000 && strength.getDuration() >= 6000
+			&& witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
+			"the village witch did not join the eleven-member bell rally");
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchHealsThePlayer(final GameTestHelper helper) {
+		String test = "villageWitchHealsThePlayer";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 at = witch.position().add(3.0, 0.0, 0.0);
+		player.setPos(at.x, at.y, at.z);
+		player.setHealth(5.0F);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(player.getHealth() > 5.0F, "the village witch did not heal the player");
+			PatrolTestSupport.result(test, "health=" + player.getHealth());
+		});
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchHealsADamagedVillager(final GameTestHelper helper) {
+		String test = "villageWitchHealsADamagedVillager";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		Villager villager = helper.spawnMob(EntityTypes.VILLAGER, 5, 2, 5).withNoFreeWill().spawn();
+		Vec3 at = witch.position().add(3.0, 0.0, 0.0);
+		villager.setPos(at.x, at.y, at.z);
+		villager.setHealth(5.0F);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(villager.getHealth() > 5.0F, "the village witch did not heal the villager");
+			PatrolTestSupport.result(test, "health=" + villager.getHealth());
+		});
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchHealsADamagedPatrolMember(final GameTestHelper helper) {
+		String test = "villageWitchHealsADamagedPatrolMember";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		Mob ally = PatrolTestSupport.role(helper, test, "PILLAGER");
+		helper.assertTrue(witch != null && ally != null, "the witch or patrol member is missing");
+		Vec3 at = witch.position().add(3.0, 0.0, 0.0);
+		ally.setPos(at.x, at.y, at.z);
+		ally.setHealth(5.0F);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(ally.getHealth() > 5.0F, "the village witch did not heal the patrol member");
+			PatrolTestSupport.result(test, "health=" + ally.getHealth());
+		});
+	}
+
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void noWitchComesWithoutSpells(final GameTestHelper helper) {
 		String test = "noWitchComesWithoutSpells";
@@ -70,7 +180,7 @@ public class VillageWitchGameTest {
 			VillageWitchKit.force(false);
 			loaded = PatrolTestSupport.loadVillage(helper, test, false);
 		} finally {
-			VillageWitchKit.force(null);
+			VillageWitchKit.force(false);
 		}
 		if (!loaded) {
 			return;

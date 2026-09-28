@@ -39,6 +39,8 @@ final class PatrolDefendTargetGoal extends TargetGoal {
 		AABB box = this.guard.getBoundingBox().inflate(range);
 		this.targetMob = this.guard.level().getEntitiesOfClass(Mob.class, box, PatrolDefendTargetGoal::isThreat).stream()
 			.filter(threat -> threat.distanceToSqr(this.guard) <= range * range)
+			.filter(threat -> PatrolService.withinHeadBell(this.guard,
+				PatrolService.bellFor(this.guard, this.villageId), threat.position()))
 			.min(Comparator.comparingDouble(threat -> threat.distanceToSqr(this.guard)))
 			.orElse(null);
 		return this.targetMob != null;
