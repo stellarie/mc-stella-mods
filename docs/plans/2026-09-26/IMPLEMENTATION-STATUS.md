@@ -97,6 +97,9 @@ Measured reach rates:
 | Village witch with the spells mod; Nemesis pool and payout, bell lookup review fixes | `feat/round8-villages` into `main-villages` (4d563b1) | 8 in three runs, all red | 89 x 6 |
 | Depth mobs, ocean bands of 3 to 5, the no-behaviour tag | `feat/round8-mobs-2` into `main-mobs` (1565bd9) | 16 in two runs, all red | 364 x 6 |
 | Chestplate casts after damage; Spark Shot and Chainstorm tests wait for entity-visible mobs | `feat/round8-spells-2` into `main-spells` (46d37fc) | old allow-damage hook red | 196 x 6 |
+| Review: auras and waves spare a summoned skeleton | `main-equip-ench` (b297f80) | new test red on the old tag set | 252 x 6 |
+| Review: one bonded servant per master, and it forgives its master's blows | `main-spells` (6d882f6) | 2 new tests red | 198 x 6 |
+| Review: no safe-zone band leaders, webs wait for their chunk, reloaded sniper arrows expire, breathing refreshes, /kill ends a Depth zombie; Depth and brute tests made deterministic | `main-mobs` (00a0496) | 5 new tests red | 369 x 6 |
 
 Measured: Depth rolls 1.034% of 200,000 seeded spawns (1% ships); ocean bands and leaders sit within 4
 sigma of 2% and 5% over 200,000 rolls; a 50% Doublecast roll landed 49.49% of 10,000.
@@ -402,3 +405,9 @@ build may differ, so hash the jar you deploy.
 - **V3 manual check:** a raid day in a real world (advance the day with a player in a village) should
   bring one wave and a victory.
 - S2's remaining steps: Sherry's review, the spells README, deployment, and the manual tint checks.
+
+Round 8 review (independent reviewer, read-only): nine findings, all nine addressed. Two were blocking,
+Mist Armor, Blaze Armor and Waveform striking a player's own summoned skeleton, and a second servant
+summoned while the first sat in an unloaded chunk. The brute smash ratio test was reading 6.0 or 6.5
+depending on whether a daylight burn had just left the victim in its hurt window; the real in-play value
+at night is 6.5 (vanilla's shove halved plus the smash).
