@@ -4,6 +4,7 @@
     "mod-stella-tower:tower_wall",
     "mod-stella-tower:tower_lamp",
     "mod-stella-tower:tower_frame",
-    "mod-stella-tower:tower_portal"
+    "mod-stella-tower:tower_portal",
+    "mod-stella-tower:tower_maze_wall"
   ]
 }

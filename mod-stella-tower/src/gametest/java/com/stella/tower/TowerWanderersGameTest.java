@@ -25,10 +25,10 @@ public class TowerWanderersGameTest {
 	private static final int OPEN_FLOOR = 40;
 	private static final int EARLY_FLOOR = 10;
 
-	/** An area no earlier run has rolled: the test world keeps its chunks, so a reused one proves nothing. */
+	/** An area no earlier run has rolled: the test world keeps its chunks, so a reused one proves nothing. Rows from 3000 on, clear of the areas earlier runs took. */
 	private static ChunkPos freshAnchor() {
-		int n = TowerTestSupport.freshFloor() / 4;
-		return new ChunkPos(TowerWanderers.REGION_CHUNKS * (n % 400_000), TowerWanderers.REGION_CHUNKS * (2_000 + (n / 400_000) % 1_000));
+		int n = TowerTestSupport.freshArea();
+		return new ChunkPos(TowerWanderers.REGION_CHUNKS * (n % 400_000), TowerWanderers.REGION_CHUNKS * (3_000 + (n / 400_000) % 1_000));
 	}
 
 	/**
