@@ -29,12 +29,20 @@ public final class TowerItems {
 	public static final Identifier GHOST_RUNE_ID = StellaTower.id("ghost_rune");
 	public static final Item GHOST_RUNE = Registry.register(BuiltInRegistries.ITEM, GHOST_RUNE_ID, new Item(
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, GHOST_RUNE_ID)).rarity(Rarity.RARE)
+			.component(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.ghost_rune.desc", TowerRunes.EMERALDS)
+					.withStyle(net.minecraft.ChatFormatting.GRAY))))
 	));
 
 	/** A rune's element and floor, on the rune itself. */
 	public static final DataComponentType<RuneData> RUNE_DATA = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("rune"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
 	/** The rune set into a weapon or armor piece. */
+	/** A ghost rune set into a chestplate or a weapon. */
+	public static final DataComponentType<net.minecraft.util.Unit> GHOSTED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ghosted"),
+		DataComponentType.<net.minecraft.util.Unit>builder().persistent(net.minecraft.util.Unit.CODEC)
+			.networkSynchronized(net.minecraft.network.codec.StreamCodec.unit(net.minecraft.util.Unit.INSTANCE)).build());
+
 	public static final DataComponentType<RuneData> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
 	public static final Identifier RUNE_ID = StellaTower.id("rune");
