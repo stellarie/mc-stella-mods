@@ -19,5 +19,7 @@
   "item.mod-stella-tower.void_key.desc": "Returns you to where you entered the tower.",
   "message.mod-stella-tower.void_key.outside": "The Void Key only works inside the tower.",
   "message.mod-stella-tower.void_key.no_entry": "The Void Key does not remember where you came from.",
-  "message.mod-stella-tower.floor": "Endless Tower - Floor %s"
+  "message.mod-stella-tower.floor": "Endless Tower - Floor %s",
+  "entity.mod-stella-tower.tower_ghost": "Wisp",
+  "item.mod-stella-tower.ghost_rune": "Ghost Rune"
 }

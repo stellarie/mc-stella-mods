@@ -255,7 +255,8 @@ public final class TowerMobs {
 	public static int count(final ServerLevel tower, final int floor) {
 		return tower.getEntitiesOfClass(Mob.class, room(floor), mob -> {
 			State state = stateOf(mob);
-			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB;
+			// A ghost stands on the players' side, outside the floor's cap.
+			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB && !(mob instanceof TowerGhost);
 		}).size();
 	}
 
@@ -278,6 +279,7 @@ public final class TowerMobs {
 			// The whole room is held loaded while it is occupied, so no mob in it goes uncounted.
 			BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
 			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
+			TowerGhosts.haunt(tower, floor);
 			int room = FLOOR_CAP - count(tower, floor);
 			for (int i = 0; i < Math.min(room, SPAWN_BATCH); i++) {
 				spawnOne(tower, floor);
