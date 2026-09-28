@@ -24,9 +24,27 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - Inside the raid nether, every nether portal leads back beside the portal the player came in by. With no
   recorded entrance, it leads to their respawn point. Scrolls of Return work unchanged.
 
+## Slice 2: host and mode
+
+- The raid nether is one shared instance. Its state (run, open, host, mode, time run) is saved on the
+  Overworld.
+- While no raid is open, the portal prompt offers **[Host raid: normal]** and **[Host raid: hard]**; the
+  first player through opens the raid, hosts it, and sets its mode. While a raid is open, it offers
+  **[Join the raid (mode)]** instead, and a later player joins without changing host or mode.
+- Every player inside holds one boon, drawn at random from speed, haste, strength, jump boost,
+  regeneration, resistance, fire resistance, night vision, absorption, health boost, slow falling and
+  luck. It lasts while they stay inside, and leaving takes it away. A potion of the same kind that is
+  not endless is left alone.
+- In hard mode, every hostile mob that loads in the raid holds two different boons, drawn from speed,
+  strength, resistance, regeneration, absorption, health boost and fire resistance. Only effects the mob
+  can hold are drawn, so undead are never handed regeneration. A mob is boosted once per run.
+- Each run lies 2048 blocks from the last. The arrival hall is built at the current run's origin.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
   takes you to the hall. The headless test player is never ticked, so the tests call the portal's
   destination directly and cannot walk through it.
-- The two prompt options are coloured, and hovering shows what each one means.
+- The prompt options are coloured, and hovering shows what each one means. The options change once a
+  raid is open.
+- A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.

@@ -100,7 +100,7 @@ public class RaidPortalGameTest {
 		BlockPos entrance = helper.absolutePos(new BlockPos(1, 1, 1));
 		NetherTestSupport.portal(helper.getLevel(), player, entrance);
 		ServerLevel raid = NetherTestSupport.raid(helper);
-		TeleportTransition back = NetherTestSupport.portal(raid, player, RaidTravel.exitPortal());
+		TeleportTransition back = NetherTestSupport.portal(raid, player, RaidInstance.exitPortal(helper.getLevel().getServer()));
 		double distance = back == null ? Double.NaN : back.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(entrance));
 		NetherTestSupport.result("wayBack", "to=" + (back == null ? null : back.newLevel().dimension().identifier()) + " distance=" + distance);
 		NetherTestSupport.leave(helper, player);
@@ -133,7 +133,7 @@ public class RaidPortalGameTest {
 		TeleportTransition transition = NetherTestSupport.portal(helper.getLevel(), player, helper.absolutePos(new BlockPos(1, 1, 1)));
 		NetherTestSupport.leave(helper, player);
 		helper.assertTrue(transition != null, "the raid choice led nowhere");
-		BlockState exit = transition.newLevel().getBlockState(RaidTravel.exitPortal());
+		BlockState exit = transition.newLevel().getBlockState(RaidInstance.exitPortal(helper.getLevel().getServer()));
 		NetherTestSupport.result("portalOut", "block=" + exit.getBlock());
 		helper.assertTrue(exit.is(Blocks.NETHER_PORTAL), "the way out is " + exit);
 		helper.succeed();
