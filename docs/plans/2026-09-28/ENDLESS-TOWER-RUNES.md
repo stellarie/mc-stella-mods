@@ -295,3 +295,18 @@ from the biome, with no extra client code.
 - A boss floor's buffs, thorns included, never go to a ghost.
 - Ghosts are named "Ghost <element> Wisp". The client draws them in a blaze's form, pale grey and see-through.
 - Assumed until told otherwise: "the void" means the whole tower, not only the void-themed floors 31-40.
+
+## Built: runes, part one (2026-09-28)
+
+- A rune carries its element and the floor it dropped on. It stacks up to 16 with its own kind.
+- **Drops:** a tower mob a player slays leaves a rune of a random element and its own floor: 0.2% for a
+  mob, 1% for an elite, 5% for a boss. Ghosts leave only their own rune.
+- **Applying:** a weapon (anything with the weapon component, or a bow or crossbow) or an armor piece on
+  the left of an anvil and a rune on the right set the rune, replacing any before. It costs 64 emeralds
+  from the inventory and no levels; one rune is used.
+- **Weapon rune:** multiplies a hit by `(1 + 99 * S(r))^0.9`. The added part is elemental: 1.5x against
+  the opposite element, 0.5x against its own.
+- **Armor runes:** each piece divides a tower mob's blow by `(1 + 19 * S(r))^(0.9 / 4)`, so four pieces
+  divide by the tier. A piece of the attacker's own element takes a further `5% + P/10 %` off, adding up to
+  at most 80%.
+- Still to come: the sixteen signature effects, resonance, and ascension.
