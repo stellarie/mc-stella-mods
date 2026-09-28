@@ -120,9 +120,12 @@ This repository develops separate Fabric mods on their own integration branches:
 ### 2026-09-29 - Parallel CI jar bundle
 
 - Done: Created `feat/parallel-mod-ci` from current `origin/main` and split CI into detected mod jobs.
-- Pending: Hosted matrix execution and aggregate ZIP verification.
-- Next: Review the workflow, then run hosted CI on a pull request.
-- Verification: Seven focused Python tests passed; discovery listed seven Gradle mods.
+- Done: Hosted run `36493791721` started seven independent mod jobs. Failed jobs blocked the ZIP job.
+- Pending: Mobs, villages, tower, and Nether required GameTests failed on the hosted run.
+- Next: Resolve those mod failures on their integration branches, then rerun the matrix.
+- Verification: Eight focused Python tests passed; discovery listed seven Gradle mods.
+- Verification: Food and Nether each passed a local clean build and five GameTest reruns.
+- Verification: A downloaded hosted food jar kept its mod directory and bundled into a valid ZIP.
 
 ### 2026-09-28 - Food tooltips and station screen
 
