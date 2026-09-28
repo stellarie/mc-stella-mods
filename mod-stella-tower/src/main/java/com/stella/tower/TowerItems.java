@@ -31,6 +31,17 @@ public final class TowerItems {
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, GHOST_RUNE_ID)).rarity(Rarity.RARE)
 	));
 
+	/** A rune's element and floor, on the rune itself. */
+	public static final DataComponentType<RuneData> RUNE_DATA = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("rune"),
+		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
+	/** The rune set into a weapon or armor piece. */
+	public static final DataComponentType<RuneData> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
+		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
+	public static final Identifier RUNE_ID = StellaTower.id("rune");
+	public static final RuneItem RUNE = Registry.register(BuiltInRegistries.ITEM, RUNE_ID, new RuneItem(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, RUNE_ID)).stacksTo(16).rarity(Rarity.EPIC)
+	));
+
 	private TowerItems() {
 	}
 
