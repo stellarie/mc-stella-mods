@@ -1,0 +1,50 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+	mods {
+		"mod-stella-food" {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+dependencies {
+	// See gradle.properties for the pinned versions.
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The game test runs a production server, so it needs Fabric API too.
+	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+// The gametest source set holds the test mod that runs the game tests.
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "mod-stella-food-test-mod-stella-food"
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = true
+	}
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

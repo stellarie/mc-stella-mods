@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-food",
+	"version": "${version}",
+	"name": "Stella Food",
+	"description": "Server-side food buffs, dishes, infusion, and cooking.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.food.StellaFood"
+		]
+	},
+	"mixins": [
+		"mod-stella-food.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
