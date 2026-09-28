@@ -10,6 +10,7 @@ Minecraft mods for a private Fabric server.
 | `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
 | `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
+| `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station | `main-food` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.

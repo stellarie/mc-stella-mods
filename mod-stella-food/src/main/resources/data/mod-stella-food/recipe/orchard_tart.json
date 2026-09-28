@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:apple",
+		"minecraft:wheat",
+		"minecraft:honey_bottle"
+	],
+	"result": {
+		"id": "mod-stella-food:orchard_tart"
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"parent": "minecraft:block/cube_top",
+	"textures": {
+		"particle": "mod-stella-food:block/cooking_station_side",
+		"top": "mod-stella-food:block/cooking_station_top",
+		"side": "mod-stella-food:block/cooking_station_side",
+		"bottom": "mod-stella-food:block/cooking_station_bottom"
+	}
+}
