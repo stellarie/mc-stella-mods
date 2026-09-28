@@ -60,6 +60,15 @@ final class TowerTestSupport {
 		return new BlockPos(2, 2, z);
 	}
 
+	/** Floors no earlier run has built: the test world keeps its floors, so a reused number proves nothing. */
+	private static final java.util.concurrent.atomic.AtomicInteger NEXT_FLOOR =
+		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 16);
+
+	/** A floor number unique to this run, with the floor above it free as well. */
+	static int freshFloor() {
+		return NEXT_FLOOR.getAndAdd(4);
+	}
+
 	static void result(final String test, final String outcome) {
 		LOG.info("[BEHAVIOR] test={} RESULT {}", test, outcome);
 	}
