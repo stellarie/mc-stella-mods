@@ -9,7 +9,9 @@
 			"com.stella.food.FoodTestMod"
 		],
 		"fabric-gametest": [
-			"com.stella.food.FoodGameTest"
+			"com.stella.food.CookingStationMenuGameTest",
+			"com.stella.food.FoodGameTest",
+			"com.stella.food.FoodTooltipGameTest"
 		]
 	},
 	"depends": {

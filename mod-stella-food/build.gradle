@@ -3,9 +3,12 @@ plugins {
 }
 
 loom {
+	splitEnvironmentSourceSets()
+
 	mods {
 		"mod-stella-food" {
 			sourceSet sourceSets.main
+			sourceSet sourceSets.client
 		}
 	}
 }

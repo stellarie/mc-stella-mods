@@ -5,6 +5,7 @@
 	"mixins": [
 		"CakeBlockMixin",
 		"ConsumableMixin",
+		"ItemStackTooltipMixin",
 		"LivingEntityMixin",
 		"PlayerMixin"
 	],
