@@ -40,6 +40,17 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   can hold are drawn, so undead are never handed regeneration. A mob is boosted once per run.
 - Each run lies 2048 blocks from the last. The arrival hall is built at the current run's origin.
 
+## Slice 3: the instance lifecycle
+
+- The open raid counts its ticks, saved with its state.
+- Once no player has stood in the raid for 100 ticks (5 seconds), it resets. Dying, a Scroll of Return, a
+  portal and logging out all count as leaving. Loaded dropped items in the raid are discarded, and the
+  next run opens 2048 blocks away, so everything left on the old run's land is lost for good.
+- A player who logs back in inside a run that has since closed is sent back the way they came. A player
+  who logs back in inside the live run stays.
+- The old runs' land stays on disk. The raid dimension's region files grow by one explored area per run,
+  and pruning them is a follow-up.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**

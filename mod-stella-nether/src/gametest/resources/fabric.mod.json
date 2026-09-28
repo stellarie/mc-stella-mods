@@ -8,7 +8,8 @@
 		"fabric-gametest": [
 			"com.stella.nether.ModpackDependencyGameTest",
 			"com.stella.nether.RaidPortalGameTest",
-			"com.stella.nether.RaidModeGameTest"
+			"com.stella.nether.RaidModeGameTest",
+			"com.stella.nether.RaidLifecycleGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
