@@ -1,13 +1,17 @@
 package com.stella.food;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -17,7 +21,6 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class CookingStationBlock extends Block {
@@ -67,7 +70,14 @@ public final class CookingStationBlock extends Block {
 			return InteractionResult.PASS;
 		}
 		if (player instanceof ServerPlayer serverPlayer) {
-			return CookingStation.use(serverPlayer);
+			serverPlayer.openMenu(new SimpleMenuProvider(
+				(id, inventory, opener) -> new CookingStationMenu(
+					id,
+					inventory,
+					ContainerLevelAccess.create(level, pos)
+				),
+				Component.translatable("block.mod-stella-food.cooking_station")
+			));
 		}
 		return InteractionResult.SUCCESS;
 	}

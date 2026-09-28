@@ -3,11 +3,14 @@
 	"id": "mod-stella-food",
 	"version": "${version}",
 	"name": "Stella Food",
-	"description": "Server-side food buffs, dishes, infusion, and cooking.",
+	"description": "Food buffs, dishes, infusion, cooking, and a cooking station screen.",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
 			"com.stella.food.StellaFood"
+		],
+		"client": [
+			"com.stella.food.client.StellaFoodClient"
 		]
 	},
 	"mixins": [

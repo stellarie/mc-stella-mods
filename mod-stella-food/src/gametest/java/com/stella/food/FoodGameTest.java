@@ -12,6 +12,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -269,13 +271,14 @@ public final class FoodGameTest {
 		);
 		for (RecipeExpectation recipe : recipes) {
 			ServerPlayer player = player(helper);
-			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(recipe.ingredients().getFirst()));
-			for (Item ingredient : recipe.ingredients().subList(1, recipe.ingredients().size())) {
-				player.getInventory().add(new ItemStack(ingredient));
-			}
-			useStation(helper, player, true);
+			AbstractContainerMenu menu = openStationMenu(helper, player,
+				recipe.ingredients().stream().map(ItemStack::new).toArray(ItemStack[]::new));
+			ItemStack result = takeStationResult(helper, player, menu);
 			helper.assertTrue(
-				player.getInventory().countItem(item(recipe.output())) == 1,
+				result.is(item(recipe.output()))
+					&& menu.getSlot(1).getItem().isEmpty()
+					&& menu.getSlot(2).getItem().isEmpty()
+					&& menu.getSlot(3).getItem().isEmpty(),
 				"station did not create " + recipe.output()
 			);
 			player.discard();
@@ -287,9 +290,10 @@ public final class FoodGameTest {
 	public void stationUsesVanillaCookedOutput(final GameTestHelper helper) {
 		FoodTestLog.track(helper, "stationUsesVanillaCookedOutput");
 		ServerPlayer player = player(helper);
-		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BEEF));
-		useStation(helper, player, false);
-		helper.assertTrue(player.getMainHandItem().is(Items.COOKED_BEEF), "station did not cook beef");
+		AbstractContainerMenu menu = openStationMenu(helper, player, new ItemStack(Items.BEEF));
+		ItemStack result = takeStationResult(helper, player, menu);
+		helper.assertTrue(result.is(Items.COOKED_BEEF) && menu.getSlot(1).getItem().isEmpty(),
+			"station did not cook beef from its grid");
 		helper.succeed();
 	}
 
@@ -300,9 +304,8 @@ public final class FoodGameTest {
 		ItemStack apple = new ItemStack(Items.APPLE);
 		apple.set(DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Keepsake"));
 		FoodProperties before = apple.get(DataComponents.FOOD);
-		player.setItemInHand(InteractionHand.MAIN_HAND, apple);
-		useStation(helper, player, false);
-		ItemStack cooked = player.getMainHandItem();
+		AbstractContainerMenu menu = openStationMenu(helper, player, apple);
+		ItemStack cooked = takeStationResult(helper, player, menu).copy();
 		FoodProperties after = cooked.get(DataComponents.FOOD);
 		helper.assertTrue(cooked.is(Items.APPLE), "generic cooking changed the source item identity");
 		helper.assertTrue(
@@ -316,9 +319,12 @@ public final class FoodGameTest {
 			"generic cooked food has no visible cooked indicator"
 		);
 		int firstNutrition = after.nutrition();
-		useStation(helper, player, false);
+		menu.setCarried(ItemStack.EMPTY);
+		menu.getSlot(1).set(cooked.copy());
+		menu.slotsChanged(menu.getSlot(1).container);
 		helper.assertTrue(
-			player.getMainHandItem().get(DataComponents.FOOD).nutrition() == firstNutrition,
+			menu.getSlot(0).getItem().isEmpty()
+				&& menu.getSlot(1).getItem().get(DataComponents.FOOD).nutrition() == firstNutrition,
 			"station improved the same generic cooked variant twice"
 		);
 		helper.succeed();
@@ -357,46 +363,22 @@ public final class FoodGameTest {
 	}
 
 	@GameTest
-	public void stationModesKeepCookingAndCombinationSeparate(final GameTestHelper helper) {
-		FoodTestLog.track(helper, "stationModesKeepCookingAndCombinationSeparate");
-		ServerPlayer cook = player(helper);
-		cook.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.APPLE));
-		cook.getInventory().add(new ItemStack(Items.WHEAT));
-		cook.getInventory().add(new ItemStack(Items.HONEY_BOTTLE));
-		useStation(helper, cook, false);
-		helper.assertTrue(
-			cook.getMainHandItem().is(Items.APPLE)
-				&& cook.getMainHandItem().getOrDefault(StellaFood.COOKED_VARIANT, false),
-			"normal station use did not cook the held food"
-		);
-		helper.assertTrue(
-			cook.getInventory().countItem(Items.WHEAT) == 1
-				&& cook.getInventory().countItem(Items.HONEY_BOTTLE) == 1,
-			"normal station use consumed dish ingredients"
-		);
-
-		ServerPlayer combine = player(helper);
-		combine.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.APPLE));
-		combine.getInventory().add(new ItemStack(Items.WHEAT));
-		combine.getInventory().add(new ItemStack(Items.HONEY_BOTTLE));
-		useStation(helper, combine, true);
-		helper.assertTrue(
-			combine.getInventory().countItem(item("orchard_tart")) == 1,
-			"crouch station use did not combine a dish"
-		);
-
+	public void stationGridRejectsIncompleteDishAndNonFood(final GameTestHelper helper) {
+		FoodTestLog.track(helper, "stationGridRejectsIncompleteDishAndNonFood");
 		ServerPlayer incomplete = player(helper);
-		ItemStack partialApple = new ItemStack(Items.APPLE);
-		incomplete.setItemInHand(InteractionHand.MAIN_HAND, partialApple);
-		incomplete.getInventory().add(new ItemStack(Items.WHEAT));
-		InteractionResult failed = useStation(helper, incomplete, true);
-		helper.assertTrue(failed == InteractionResult.FAIL, "failed combination did not report failure");
-		helper.assertTrue(
-			incomplete.getMainHandItem().is(Items.APPLE)
-				&& !incomplete.getMainHandItem().has(StellaFood.COOKED_VARIANT)
-				&& incomplete.getInventory().countItem(Items.WHEAT) == 1,
-			"failed combination cooked or consumed an ingredient"
-		);
+		AbstractContainerMenu partial = openStationMenu(helper, incomplete,
+			new ItemStack(Items.APPLE), new ItemStack(Items.WHEAT));
+		helper.assertTrue(partial.getSlot(0).getItem().isEmpty()
+			&& partial.getSlot(1).getItem().is(Items.APPLE)
+			&& partial.getSlot(2).getItem().is(Items.WHEAT),
+			"incomplete dish produced output or consumed ingredients");
+		ServerPlayer nonFood = player(helper);
+		AbstractContainerMenu invalid = openStationMenu(helper, nonFood, new ItemStack(Items.STICK));
+		helper.assertTrue(invalid.getSlot(0).getItem().isEmpty(), "non-food input produced station output");
+		ServerPlayer fishBucket = player(helper);
+		AbstractContainerMenu bucketMenu = openStationMenu(helper, fishBucket, new ItemStack(Items.COD_BUCKET));
+		helper.assertTrue(bucketMenu.getSlot(0).getItem().isEmpty(),
+			"non-consumable fish bucket produced cooked food");
 		helper.succeed();
 	}
 
@@ -404,12 +386,11 @@ public final class FoodGameTest {
 	public void infusedDishKeepsDishBuffAndAppliesHarmfulPotion(final GameTestHelper helper) {
 		FoodTestLog.track(helper, "infusedDishKeepsDishBuffAndAppliesHarmfulPotion");
 		ServerPlayer player = player(helper);
-		player.setItemInHand(InteractionHand.MAIN_HAND, item("hunter_stew").getDefaultInstance());
-		player.setItemInHand(InteractionHand.OFF_HAND, PotionContents.createItemStack(Items.POTION, Potions.POISON));
-		useStation(helper, player, false);
-		ItemStack infused = player.getMainHandItem();
+		AbstractContainerMenu menu = openStationMenu(helper, player,
+			item("hunter_stew").getDefaultInstance(), PotionContents.createItemStack(Items.POTION, Potions.POISON));
+		ItemStack infused = takeStationResult(helper, player, menu);
 		helper.assertTrue(infused.has(DataComponents.POTION_CONTENTS), "station did not infuse the dish");
-		helper.assertTrue(player.getOffhandItem().is(Items.GLASS_BOTTLE), "station did not return the bottle");
+		helper.assertTrue(bottleCount(player, menu) == 1, "station did not return the bottle");
 		consume(helper, player, infused);
 		MobEffectInstance dish = player.getEffect(effect("surefooted"));
 		MobEffectInstance poison = player.getEffect(MobEffects.POISON);
@@ -426,15 +407,18 @@ public final class FoodGameTest {
 		FoodTestLog.track(helper, "infusedInstantPotionAppliesImmediatelyAndOnlyOnce");
 		ServerPlayer player = player(helper);
 		player.setHealth(10.0F);
-		player.setItemInHand(InteractionHand.MAIN_HAND, item("orchard_tart").getDefaultInstance());
-		player.setItemInHand(InteractionHand.OFF_HAND, PotionContents.createItemStack(Items.POTION, Potions.HEALING));
-		useStation(helper, player, false);
-		ItemStack infused = player.getMainHandItem();
+		AbstractContainerMenu menu = openStationMenu(helper, player,
+			item("orchard_tart").getDefaultInstance(), PotionContents.createItemStack(Items.POTION, Potions.HEALING));
+		ItemStack infused = takeStationResult(helper, player, menu).copy();
 		PotionContents first = infused.get(DataComponents.POTION_CONTENTS);
-		player.setItemInHand(InteractionHand.OFF_HAND, PotionContents.createItemStack(Items.POTION, Potions.POISON));
-		useStation(helper, player, false);
-		helper.assertTrue(first.equals(infused.get(DataComponents.POTION_CONTENTS)), "station replaced an existing infusion");
-		helper.assertTrue(player.getOffhandItem().is(Items.POTION), "station consumed a second potion");
+		menu.setCarried(ItemStack.EMPTY);
+		menu.getSlot(1).set(infused.copy());
+		menu.getSlot(2).set(PotionContents.createItemStack(Items.POTION, Potions.POISON));
+		menu.slotsChanged(menu.getSlot(1).container);
+		helper.assertTrue(menu.getSlot(0).getItem().isEmpty(), "station allowed a second infusion");
+		helper.assertTrue(first.equals(menu.getSlot(1).getItem().get(DataComponents.POTION_CONTENTS)),
+			"station replaced an existing infusion");
+		helper.assertTrue(menu.getSlot(2).getItem().is(Items.POTION), "station consumed a second potion");
 		consume(helper, player, infused);
 		helper.assertTrue(player.getHealth() > 10.0F, "instant healing did not apply immediately");
 		helper.assertTrue(player.getEffect(MobEffects.INSTANT_HEALTH) == null, "instant healing became a timed effect");
@@ -446,16 +430,16 @@ public final class FoodGameTest {
 		FoodTestLog.track(helper, "regularSplashAndLingeringPotionsInfuse");
 		for (Item potionItem : List.of(Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION)) {
 			ServerPlayer player = player(helper);
-			player.setItemInHand(InteractionHand.MAIN_HAND, item("hunter_stew").getDefaultInstance());
 			ItemStack potion = PotionContents.createItemStack(potionItem, Potions.POISON);
 			PotionContents expected = potion.get(DataComponents.POTION_CONTENTS);
-			player.setItemInHand(InteractionHand.OFF_HAND, potion);
-			useStation(helper, player, false);
+			AbstractContainerMenu menu = openStationMenu(helper, player,
+				item("hunter_stew").getDefaultInstance(), potion);
+			ItemStack infused = takeStationResult(helper, player, menu);
 			helper.assertTrue(
-				expected.equals(player.getMainHandItem().get(DataComponents.POTION_CONTENTS)),
+				expected.equals(infused.get(DataComponents.POTION_CONTENTS)),
 				potionItem + " did not infuse the dish"
 			);
-			helper.assertTrue(player.getOffhandItem().is(Items.GLASS_BOTTLE), potionItem + " did not return a bottle");
+			helper.assertTrue(bottleCount(player, menu) == 1, potionItem + " did not return a bottle");
 			player.discard();
 		}
 		helper.succeed();
@@ -476,22 +460,44 @@ public final class FoodGameTest {
 		consumable.onConsume(helper.getLevel(), player, stack);
 	}
 
-	private static InteractionResult useStation(
+	private static AbstractContainerMenu openStationMenu(
 		final GameTestHelper helper,
 		final ServerPlayer player,
-		final boolean crouching
+		final ItemStack... inputs
 	) {
 		Block station = block("cooking_station");
 		BlockPos relative = new BlockPos(2, 1, 2);
 		helper.setBlock(relative, station);
 		BlockPos absolute = helper.absolutePos(relative);
-		BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(absolute), Direction.UP, absolute, false);
-		player.setShiftKeyDown(crouching);
-		InteractionResult result = helper.getLevel().getBlockState(absolute).useItemOn(
-			player.getMainHandItem(), helper.getLevel(), player, InteractionHand.MAIN_HAND, hit
-		);
-		player.setShiftKeyDown(false);
-		return result;
+		player.setPos(absolute.getX() + 0.5, absolute.getY() + 1, absolute.getZ() + 0.5);
+		helper.useBlock(relative, player);
+		helper.assertTrue(player.containerMenu != player.inventoryMenu, "station menu did not open");
+		AbstractContainerMenu menu = player.containerMenu;
+		for (int index = 0; index < inputs.length; index++) {
+			menu.getSlot(index + 1).set(inputs[index]);
+		}
+		menu.slotsChanged(menu.getSlot(1).container);
+		return menu;
+	}
+
+	private static ItemStack takeStationResult(
+		final GameTestHelper helper,
+		final ServerPlayer player,
+		final AbstractContainerMenu menu
+	) {
+		helper.assertTrue(!menu.getSlot(0).getItem().isEmpty(), "station grid has no result");
+		menu.clicked(0, 0, ContainerInput.PICKUP, player);
+		return menu.getCarried();
+	}
+
+	private static int bottleCount(final ServerPlayer player, final AbstractContainerMenu menu) {
+		int bottles = player.getInventory().countItem(Items.GLASS_BOTTLE);
+		for (int input = 1; input <= 9; input++) {
+			if (menu.getSlot(input).getItem().is(Items.GLASS_BOTTLE)) {
+				bottles++;
+			}
+		}
+		return bottles;
 	}
 
 	private static InteractionResult useWithoutItem(
