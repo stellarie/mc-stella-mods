@@ -195,3 +195,9 @@ Reaching ascension 1000 takes 10,000 kills. Weapon Mastery stays as it is.
 ## Mob armor
 
 `+1` armor per 5 floors, up to 30, as above.
+
+## Boss floors look different
+
+Every boss floor (each tenth floor) has the snowy biomes' mist. Each floor sits in its own area of the
+tower dimension, so boss floors use a tower biome that copies the snowy biomes' fog; the client draws it
+from the biome, with no extra client code.
