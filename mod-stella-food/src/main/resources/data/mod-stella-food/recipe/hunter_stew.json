@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"#mod-stella-food:cooked_meat",
+		"#mod-stella-food:mushrooms",
+		"minecraft:carrot"
+	],
+	"result": {
+		"id": "mod-stella-food:hunter_stew"
+	}
+}
