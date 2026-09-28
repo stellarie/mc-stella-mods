@@ -69,6 +69,10 @@ public final class TowerBuffs {
 		public int amplifier(final int floor) {
 			return Math.min(this.maxAmplifier, level(floor) - 1);
 		}
+
+		public int maxAmplifier() {
+			return this.maxAmplifier;
+		}
 	}
 
 	public enum MobBuff {
@@ -95,14 +99,25 @@ public final class TowerBuffs {
 		public int amplifier(final int floor) {
 			return Math.min(this.maxAmplifier, level(floor) - 1);
 		}
+
+		public int maxAmplifier() {
+			return this.maxAmplifier;
+		}
 	}
 
 	private static final long PLAYER_SALT = 0x6A09E667F3BCC909L;
 	private static final long MOB_SALT = 0xBB67AE8584CAA73BL;
 	/** The test seam: pinned mob buffs, by the mob's own floor. */
 	private static final Map<Integer, List<MobBuff>> PINNED = new java.util.concurrent.ConcurrentHashMap<>();
-	/** Which boss floor's buff each player carries, so it is taken away when they leave that floor. */
-	private static final Map<java.util.UUID, Integer> CARRYING = new HashMap<>();
+	/** The test seam: a pinned player buff, by boss floor. */
+	private static final Map<Integer, PlayerBuff> PINNED_PLAYER = new java.util.concurrent.ConcurrentHashMap<>();
+	/**
+	 * Which boss floor's buff a player carries, so it is taken away when they leave that floor. Kept on the
+	 * player and saved with them, so a restart or a log out does not strand a buff.
+	 */
+	public static final AttachmentType<Integer> CARRYING = AttachmentRegistry.create(
+		StellaTower.id("carrying"), builder -> builder.persistent(Codec.INT)
+	);
 	/** How many extra lives a mob has spent. */
 	public static final AttachmentType<Integer> REVIVES = AttachmentRegistry.create(
 		StellaTower.id("revives"), builder -> builder.persistent(Codec.INT).copyOnDeath()
@@ -115,6 +130,12 @@ public final class TowerBuffs {
 
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(TowerBuffs::tick);
+		// Out of the tower by portal, key, scroll or command: the floor's buff stays behind at once.
+		net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
+			if (origin.dimension().equals(TowerTravel.TOWER)) {
+				dropCarried(player, origin.getSeed());
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			if (blocked || taken <= 0.0F || REFLECTING.get() || !(entity.level() instanceof ServerLevel level)) {
 				return;
@@ -176,6 +197,20 @@ public final class TowerBuffs {
 	}
 
 	/** The test seam: a boss floor's mob buffs, pinned for mobs of that floor; null restores the drawn ones. */
+	public static void pinPlayerBuff(final int floor, final @Nullable PlayerBuff buff) {
+		if (buff == null) {
+			PINNED_PLAYER.remove(floor);
+		} else {
+			PINNED_PLAYER.put(floor, buff);
+		}
+	}
+
+	/** The buff a boss floor grants its players: its own draw, unless a test has pinned one. */
+	public static PlayerBuff playerBuffOn(final long seed, final int floor) {
+		PlayerBuff pin = PINNED_PLAYER.get(floor);
+		return pin != null ? pin : playerBuff(seed, floor);
+	}
+
 	public static void pinMobBuffs(final int floor, final @Nullable List<MobBuff> buffs) {
 		if (buffs == null) {
 			PINNED.remove(floor);
@@ -218,23 +253,23 @@ public final class TowerBuffs {
 				continue;
 			}
 			// A player who left the boss floor loses its buff now, not when the last dose runs out.
-			Integer carried = CARRYING.get(player.getUUID());
+			Integer carried = player.getAttached(CARRYING);
 			if (carried != null && carried != floor) {
-				PlayerBuff old = playerBuff(tower.getSeed(), carried);
-				MobEffectInstance held = player.getEffect(old.effect());
-				if (held != null && held.isAmbient() && held.getDuration() <= DURATION_TICKS) {
-					player.removeEffect(old.effect());
-				}
-				CARRYING.remove(player.getUUID());
+				dropCarried(player, tower.getSeed());
 			}
 			if (floor < 1) {
 				continue;
 			}
 			occupied.put(floor, true);
 			if (isBossFloor(floor)) {
-				PlayerBuff buff = playerBuff(tower.getSeed(), floor);
-				player.addEffect(new MobEffectInstance(buff.effect(), DURATION_TICKS, buff.amplifier(floor), true, true));
-				CARRYING.put(player.getUUID(), floor);
+				give(player, playerBuffOn(tower.getSeed(), floor), floor);
+				player.setAttached(CARRYING, floor);
+			}
+		}
+		for (int floor : occupied.keySet()) {
+			// A boss floor built before the mist came gets it the first time a player stands there.
+			if (isBossFloor(floor) && !tower.getBiome(TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 2, TowerLayout.SIZE / 2)).is(BOSS_BIOME)) {
+				mist(tower, floor);
 			}
 		}
 		for (int floor : occupied.keySet()) {
@@ -246,6 +281,41 @@ public final class TowerBuffs {
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Tops up a floor's buff. Absorption is the exception: a shield given once for the stay, since each
+	 * fresh dose would fill it again, and a shield that refills is a wall that heals.
+	 */
+	private static void give(final ServerPlayer player, final PlayerBuff buff, final int floor) {
+		int amplifier = buff.amplifier(floor);
+		if (buff == PlayerBuff.ABSORPTION) {
+			MobEffectInstance held = player.getEffect(buff.effect());
+			if (held == null || held.getAmplifier() < amplifier) {
+				player.addEffect(new MobEffectInstance(buff.effect(), MobEffectInstance.INFINITE_DURATION, amplifier, true, true));
+			}
+			return;
+		}
+		player.addEffect(new MobEffectInstance(buff.effect(), DURATION_TICKS, amplifier, true, true));
+	}
+
+	/** Takes back the buff a player carries, and gives back any weaker dose of their own it covered. */
+	static void dropCarried(final ServerPlayer player, final long seed) {
+		Integer carried = player.getAttached(CARRYING);
+		if (carried == null) {
+			return;
+		}
+		player.removeAttached(CARRYING);
+		PlayerBuff old = playerBuffOn(seed, carried);
+		MobEffectInstance held = player.getEffect(old.effect());
+		if (held == null || !held.isAmbient() || !(held.isInfiniteDuration() || held.getDuration() <= DURATION_TICKS)) {
+			return;
+		}
+		MobEffectInstance under = ((com.stella.tower.mixin.MobEffectInstanceAccessor) held).stellaTower$hidden();
+		player.removeEffect(old.effect());
+		if (under != null) {
+			player.addEffect(new MobEffectInstance(under));
 		}
 	}
 
