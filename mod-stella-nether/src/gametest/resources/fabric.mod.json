@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-nether-test-mod-stella-nether",
+	"version": "1.0.0",
+	"name": "Stella Nether Raid game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.nether.ModpackDependencyGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-nether": "*"
+	}
+}
