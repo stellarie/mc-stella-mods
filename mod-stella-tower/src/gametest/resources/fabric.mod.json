@@ -11,7 +11,8 @@
 			"com.stella.tower.VoidKeyGameTest",
 			"com.stella.tower.TowerEscapeGameTest",
 			"com.stella.tower.TowerThreatGameTest",
-			"com.stella.tower.TowerSpawnerGameTest"
+			"com.stella.tower.TowerSpawnerGameTest",
+			"com.stella.tower.TowerMobRulesGameTest"
 		]
 	},
 	"mixins": [
