@@ -13,6 +13,7 @@
     },
     "minecraft:gameplay/respawn_anchor_works": false,
     "minecraft:gameplay/can_start_raid": false,
+    "minecraft:gameplay/piglins_zombify": false,
     "minecraft:gameplay/sky_light_level": 0.0,
     "minecraft:visual/ambient_light_color": "#1e2440",
     "minecraft:visual/fog_color": "#0b1030",

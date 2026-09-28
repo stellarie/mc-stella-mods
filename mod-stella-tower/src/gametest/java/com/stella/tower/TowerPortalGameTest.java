@@ -122,9 +122,11 @@ public class TowerPortalGameTest {
 		for (BlockPos pos : TowerLayout.portalInside(floor)) {
 			lit += tower.getBlockState(pos).is(TowerBlocks.TOWER_PORTAL) ? 1 : 0;
 		}
-		Pig pig = EntityTypes.PIG.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		pig.snapTo(Vec3.atBottomCenterOf(inside));
-		TeleportTransition next = TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, pig, inside);
+		// Only players climb, so a player stands in the portal.
+		var climber = TowerTestSupport.join(helper, 1.5, 1.5);
+		climber.teleportTo(tower, inside.getX() + 0.5, inside.getY(), inside.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, true);
+		TeleportTransition next = TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, climber, inside);
+		TowerTestSupport.leave(helper, climber);
 		double off = next == null ? -1.0 : next.position().distanceTo(TowerLayout.arrival(floor + 1));
 		TowerTestSupport.result("floorPortalLeadsUp", "lit=" + lit + " off=" + off + " builtAbove=" + TowerFloors.isBuilt(tower, floor + 1));
 		helper.assertTrue(lit == TowerLayout.portalInside(floor).size(), "floor " + floor + "'s frame lit " + lit + " portal blocks");

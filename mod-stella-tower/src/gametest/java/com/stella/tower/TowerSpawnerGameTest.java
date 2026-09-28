@@ -30,7 +30,8 @@ public class TowerSpawnerGameTest {
 		int[] filledAt = {-1};
 		int[] most = {0};
 		helper.onEachTick(() -> {
-			int now = TowerMobs.count(tower, floor);
+			// Counted by tag, not by the spawner's own count, so a mob the cap misses is still seen here.
+			int now = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.isAlive() && mob.entityTags().contains(TowerMobs.TAG)).size();
 			most[0] = Math.max(most[0], now);
 			if (filledAt[0] < 0 && now >= TowerMobs.FLOOR_CAP) {
 				filledAt[0] = (int) helper.getTick();
@@ -107,6 +108,25 @@ public class TowerSpawnerGameTest {
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(stocked > 0, "the occupied floor raised nothing, so the case proves nothing");
 			helper.assertTrue(count == 0, "a floor with nobody on it raised " + count + " mobs");
+			helper.succeed();
+		});
+	}
+
+	/** While a floor is occupied the spawner holds its whole room loaded, so no mob in it goes uncounted. */
+	@GameTest(maxTicks = 200)
+	public void anOccupiedRoomIsHeldLoadedCornerToCorner(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.ensure(tower, floor);
+		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		Vec3 arrival = TowerLayout.arrival(floor);
+		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
+		BlockPos far = TowerLayout.origin(floor).offset(TowerLayout.SIZE - 1, 0, TowerLayout.SIZE - 1);
+		helper.runAfterDelay(40L, () -> TowerTestSupport.leave(helper, player));
+		helper.runAfterDelay(140L, () -> {
+			boolean held = tower.isPositionEntityTicking(far);
+			TowerTestSupport.result("roomHeld", "farCornerTicking=" + held);
+			helper.assertTrue(held, "the far corner of a room just left was let go at once");
 			helper.succeed();
 		});
 	}
