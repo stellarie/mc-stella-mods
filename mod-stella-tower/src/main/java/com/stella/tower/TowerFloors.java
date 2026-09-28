@@ -194,6 +194,7 @@ public final class TowerFloors {
 		int top = base + TowerLayout.HEIGHT;
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
 		BlockState lamp = TowerBlocks.TOWER_LAMP.defaultBlockState();
+		BlockState mazeWall = TowerBlocks.TOWER_MAZE_WALL.defaultBlockState();
 		BlockState bedrock = Blocks.BEDROCK.defaultBlockState();
 		BlockState[] palette = palette(floor);
 		{
@@ -213,7 +214,7 @@ public final class TowerFloors {
 					set(tower, x, top, z, lit ? lamp : wall);
 					if (maze[x - x0][z - z0]) {
 						for (int y = base; y < top; y++) {
-							set(tower, x, y, z, wall);
+							set(tower, x, y, z, mazeWall);
 						}
 					}
 				}
