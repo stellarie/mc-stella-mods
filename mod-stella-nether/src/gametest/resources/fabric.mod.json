@@ -14,7 +14,8 @@
 			"com.stella.nether.RaidSiteGameTest",
 			"com.stella.nether.RaidThreatGameTest",
 			"com.stella.nether.BlazeSovereignGameTest",
-			"com.stella.nether.SovereignSpecialsGameTest"
+			"com.stella.nether.SovereignSpecialsGameTest",
+			"com.stella.nether.SpoilsGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

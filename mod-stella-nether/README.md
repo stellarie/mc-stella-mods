@@ -122,6 +122,20 @@ facing one, then another 8 seconds after each ends, in this turn:
 A stun is 3 seconds of Slowness VII, Mining Fatigue III and Weakness II. Every hit the Sovereign lands
 also burns, as before.
 
+## Slice 8: the spoils and the End
+
+- A slain Sovereign always leaves a **Blaze Core**, and with 5% chance a **Flame Mantle** as well.
+  Measured: 4.91% over 40,000 seeded rolls.
+- The **Flame Mantle** is a chestplate with netherite's protection (8 armor, 3 toughness), repaired with
+  Blaze Cores, and takes armor enchantments. Worn, it heals its wearer 1 extra health every 2 seconds,
+  sets whoever strikes its wearer alight for 4 seconds, and takes 80% of fire damage away. It uses
+  netherite's look and a vanilla icon until it has art of its own.
+- **The End is sealed.** An End portal leads nowhere, and tells the player so, until a player steps into
+  one carrying 3 Blaze Cores. The cores are spent and the End stays open for everyone from then on.
+  Vanilla's eyes of ender are still needed to light the portal.
+- Not yet: enchanting weapons and armor with a Blaze Core, and crafting new equipment from it, wait on
+  what those should be.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -134,6 +148,10 @@ also burns, as before.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).
+- Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
+  it burn back.
+- Step into a lit End portal without cores (turned away with a message), then with three (the End opens
+  for everyone, and a message says so).
 - From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

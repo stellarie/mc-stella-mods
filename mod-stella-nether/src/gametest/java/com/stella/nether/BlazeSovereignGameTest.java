@@ -44,6 +44,10 @@ public class BlazeSovereignGameTest {
 			}
 		}
 		raid.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, chunk, 2);
+		// A server catching up after a stall runs ticks back to back and skips its queued chunk work, which is
+		// what makes loaded entities visible; the queue is drained here so a wait never starves on it.
+		for (int i = 0; i < 1000 && raid.getChunkSource().pollTask(); i++) {
+		}
 	}
 
 	/** Moves a test player within the raid; a real player's tick moves its chunk tickets, a test player's does not. */

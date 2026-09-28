@@ -44,6 +44,8 @@ public final class BlazeSovereign {
 	public static final double WAKE_RANGE = 96.0;
 	public static final double BAR_RANGE = 96.0;
 	public static final int BURN_SECONDS = 5;
+	/** The Flame Mantle's chance to fall with a Blaze Core. */
+	public static final double MANTLE_CHANCE = 0.05;
 	/** Open ground is searched this far around the fortress start. */
 	static final int GROUND_SEARCH = 32;
 	/** Air a spot needs above its floor to hold a Sovereign. */
@@ -62,7 +64,15 @@ public final class BlazeSovereign {
 	private BlazeSovereign() {
 	}
 
+	/** What each fallen Sovereign left, by its identity, for as long as the server runs. */
+	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
+
 	public static void register() {
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			if (entity instanceof Blaze blaze && isSovereign(blaze) && blaze.level() instanceof ServerLevel level) {
+				dropSpoils(level, blaze);
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, baseDamage, damageTaken, blocked) -> {
 			if (damageTaken > 0.0F && isSovereign(source.getEntity())) {
 				entity.igniteForSeconds(BURN_SECONDS);
@@ -257,6 +267,32 @@ public final class BlazeSovereign {
 			}
 		}
 		return true;
+	}
+
+	/** A Blaze Core always, and now and then a Flame Mantle. */
+	static void dropSpoils(final ServerLevel level, final Blaze blaze) {
+		List<net.minecraft.world.entity.item.ItemEntity> dropped = new java.util.ArrayList<>();
+		net.minecraft.world.entity.item.ItemEntity core = blaze.spawnAtLocation(level, new net.minecraft.world.item.ItemStack(NetherItems.BLAZE_CORE));
+		if (core != null) {
+			dropped.add(core);
+		}
+		if (mantleDrops(blaze.getRandom())) {
+			net.minecraft.world.entity.item.ItemEntity mantle = blaze.spawnAtLocation(level, new net.minecraft.world.item.ItemStack(NetherItems.FLAME_MANTLE));
+			if (mantle != null) {
+				dropped.add(mantle);
+			}
+		}
+		SPOILS.put(blaze.getUUID(), dropped);
+		StellaNether.LOGGER.info("[NETHER] sovereign slain spoils={}", dropped.stream().map(item -> item.getItem().toString()).toList());
+	}
+
+	public static boolean mantleDrops(final net.minecraft.util.RandomSource random) {
+		return random.nextDouble() < MANTLE_CHANCE;
+	}
+
+	/** What a fallen blaze left as Sovereign; nothing for any other. */
+	public static List<net.minecraft.world.entity.item.ItemEntity> spoilsOf(final Entity entity) {
+		return SPOILS.getOrDefault(entity.getUUID(), List.of());
 	}
 
 	/** Forgets the risen Sovereign; the next run's rises afresh. Test hook and reset. */

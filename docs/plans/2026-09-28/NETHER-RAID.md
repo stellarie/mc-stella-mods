@@ -70,7 +70,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 5. Guaranteed fortress and bastion within 256 blocks. **Done.**
 6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn. **Done, except the blue tint.**
 7. The five specials, one per sub-slice. **Done.**
-8. Blaze Core and Flame Mantle; the End unlock.
+8. Blaze Core and Flame Mantle; the End unlock. **Done, except Blaze Core enchanting and crafting.**
 9. Raid objectives.
 
 Each slice ships with headless game tests per `AGENTS.md`.
@@ -91,6 +91,7 @@ Each slice ships with headless game tests per `AGENTS.md`.
 
 - Integration branch: create `main-nether` for `mod-stella-nether`?
 - Which objective first: blaze rods, a nether-only item set, or the village head's slayer contract?
-- The End unlock: what are the "other requirements", and does it block the End portal until met?
+- The End unlock: taken as vanilla's eyes plus three cores, spent once to open the End for good. Are
+  there other requirements?
 - Blaze Core enchanting and crafting: which effects and which new equipment?
 - Portal choice UI: a server-side chat prompt is enough, or a client screen in `src/client`?

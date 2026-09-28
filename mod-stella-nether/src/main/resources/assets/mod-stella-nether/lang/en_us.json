@@ -13,5 +13,9 @@
   "message.mod-stella-nether.join.hard": "[Join the raid (hard)]",
   "message.mod-stella-nether.join.hard.hover": "Join the running raid nether. Its mobs hold two boons each.",
   "message.mod-stella-nether.enraged": "Thirty minutes have passed. The nether turns on you: run for the portal!",
-  "entity.mod-stella-nether.blaze_sovereign": "Blaze Sovereign"
+  "entity.mod-stella-nether.blaze_sovereign": "Blaze Sovereign",
+  "item.mod-stella-nether.blaze_core": "Blaze Core",
+  "item.mod-stella-nether.flame_mantle": "Flame Mantle",
+  "message.mod-stella-nether.end_sealed": "The End is sealed. Bring %s Blaze Cores to open it.",
+  "message.mod-stella-nether.end_opened": "%s has opened the End with three Blaze Cores. It stays open for everyone."
 }
