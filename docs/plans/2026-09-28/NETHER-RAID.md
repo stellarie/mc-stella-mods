@@ -74,7 +74,21 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 9. Raid objectives: more of every drop, x1.15 normal, x1.5 hard. **Done.**
 10. The sealed chest: one Blaze Core in the portal room opens the End portal. **Done.**
 11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor). **Done.**
-12. The Sovereign's blue tint (client).
+12. Requested 2026-09-28 evening, easiest first:
+    - a. The Sovereign drawn in soul-fire blue, and its fire (fireballs, specials) blue too.
+    - b. Its Brood holds no elite or boss blaze.
+    - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two.
+    - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard.
+    - e. Its normal attack: a burst of five every 5 seconds.
+    - f. A sixth special: slow blue flames in every direction that burst after 5 seconds, throwing back
+      what they reach and setting soul fire on nearby blocks, breaking none.
+    - g. Blazes rise from lava in either mode; in hard, wither skeletons spawn anywhere with room.
+    - h. The opening charge, once per Sovereign, when a player first comes within 32 blocks or draws its
+      aggro: it rushes at 12 blocks a second, breaking blocks in its way, until it sees the player; charges
+      for 3 seconds (shown); then opens with 15 scattered strikes around the player over 5 seconds.
+    - i. The portal choice as a window of three stacked options; a click sends the player at once, and
+      closing it does nothing.
+    - j. With the spells mod, some raid mobs cast fire spells and time lock, and buff themselves.
 
 Each slice ships with headless game tests per `AGENTS.md`.
 
