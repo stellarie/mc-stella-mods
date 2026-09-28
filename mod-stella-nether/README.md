@@ -100,7 +100,27 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   drawn down half a block a tick if higher.
 - Every hit it lands, by fireball or touch, sets its target alight for 5 seconds.
 - A blue, notched boss bar shows to every raid player within 96 blocks.
-- Not yet: the blue tint and blue flames need client code, and come with the specials.
+- Not yet: the blue tint needs client code. Its specials show blue soul-fire particles, which need none.
+
+## Slice 7: the Sovereign's specials
+
+While the Sovereign has a living target within 32 blocks, it casts a special 3 seconds after first
+facing one, then another 8 seconds after each ends, in this turn:
+
+1. **Flame Spiral**: for 5 seconds, a ring of eight fireballs every quarter second, turning as it goes:
+   160 fireballs covering every direction.
+2. **Brood**: five ordinary blazes rise in a ring around it and take its target.
+3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood.
+   Everything alive in the 12 by 12 area takes 20 damage and burns for 8 seconds, and about a third of
+   the ground in the area catches fire. Blazes are spared.
+4. **Meteor Storm**: 20 meteors over 3 seconds fall inside a 12 by 12 area around its target; every
+   third falls on someone standing there. Each strikes within 1.5 blocks for 5 damage, with a 30% chance
+   to stun.
+5. **Charged Wave**: a ring spreads from it at a block a tick out to 16 blocks, striking each creature it
+   passes once: 4 damage, a push of 2.5 away, and a stun.
+
+A stun is 3 seconds of Slowness VII, Mining Fatigue III and Weakness II. Every hit the Sovereign lands
+also burns, as before.
 
 ## Manual acceptance
 
@@ -111,6 +131,9 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
+- Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
+  dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
+  client (the headless test sees only the velocity it is given).
 - From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

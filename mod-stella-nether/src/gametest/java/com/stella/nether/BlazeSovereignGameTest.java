@@ -19,6 +19,7 @@ public class BlazeSovereignGameTest {
 	/** A cleared room beside the arrival hall, floored in obsidian, for a Sovereign to stand in. */
 	static Vec3 arena(final ServerLevel raid, final MinecraftServer server, final int height) {
 		BlockPos centre = RaidInstance.arrival(server).offset(16, 0, 0);
+		hold(raid, centre);
 		for (int x = -7; x <= 7; x++) {
 			for (int z = -7; z <= 7; z++) {
 				raid.setBlock(centre.offset(x, -1, z), Blocks.OBSIDIAN.defaultBlockState(), Block.UPDATE_CLIENTS);
@@ -28,6 +29,21 @@ public class BlazeSovereignGameTest {
 			}
 		}
 		return Vec3.atBottomCenterOf(centre);
+	}
+
+	/**
+	 * Loads the chunks around a spot at once and holds them with a portal ticket (300 ticks). A test player
+	 * holds no chunks of its own, and a chunk that unloads under a test saves its entities and loads them
+	 * again as new objects, leaving the test holding a stale one.
+	 */
+	static void hold(final ServerLevel raid, final BlockPos at) {
+		net.minecraft.world.level.ChunkPos chunk = net.minecraft.world.level.ChunkPos.containing(at);
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				raid.getChunk(chunk.x() + dx, chunk.z() + dz);
+			}
+		}
+		raid.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, chunk, 2);
 	}
 
 	/** Moves a test player within the raid; a real player's tick moves its chunk tickets, a test player's does not. */

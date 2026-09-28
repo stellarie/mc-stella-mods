@@ -131,7 +131,10 @@ public final class BlazeSovereign {
 			}
 			return;
 		}
-		keepNearGround(raid, blaze);
+		SovereignSpecials.tick(raid, blaze);
+		if (!SovereignSpecials.airborne(blaze)) {
+			keepNearGround(raid, blaze);
+		}
 		if (bar != null && server.getTickCount() % 10 == 0) {
 			bar.setProgress((float) (blaze.getHealth() / blaze.getMaxHealth()));
 			for (ServerPlayer player : List.copyOf(bar.getPlayers())) {
@@ -260,6 +263,7 @@ public final class BlazeSovereign {
 	static void forget() {
 		current = null;
 		held = null;
+		SovereignSpecials.forget();
 	}
 
 	static boolean burns(final DamageSource source) {

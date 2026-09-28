@@ -13,7 +13,8 @@
 			"com.stella.nether.RaidEnrageGameTest",
 			"com.stella.nether.RaidSiteGameTest",
 			"com.stella.nether.RaidThreatGameTest",
-			"com.stella.nether.BlazeSovereignGameTest"
+			"com.stella.nether.BlazeSovereignGameTest",
+			"com.stella.nether.SovereignSpecialsGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
