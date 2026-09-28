@@ -17,9 +17,11 @@ public final class StellaNether implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		NetherItems.register();
 		RaidTravel.register();
 		RaidInstance.register();
 		BlazeSovereign.register();
+		FlameMantle.register();
 		LOGGER.info("[NETHER] initialized");
 	}
 
