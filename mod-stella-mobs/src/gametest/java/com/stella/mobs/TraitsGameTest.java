@@ -91,7 +91,7 @@ public class TraitsGameTest {
 		double plainBase = plain.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
 		double plainModifier = multiplierOf(plain, Attributes.MAX_HEALTH, Traits.HARDENED_HEALTH_ID);
 		double plainSpeed = multiplierOf(plain, Attributes.MOVEMENT_SPEED, Traits.HARDENED_SPEED_ID);
-		// The elite is marked after the spawn scaling, so the base before the double is read here.
+		// The elite is marked after spawn scaling, then its level modifier updates for the elite bonus.
 		Mob elite = spawn(helper, DEEP_Y);
 		double scaledBase = elite.getAttribute(Attributes.MAX_HEALTH).getBaseValue();
 		double elitePlainModifier = multiplierOf(elite, Attributes.MAX_HEALTH, Traits.HARDENED_HEALTH_ID);
@@ -118,12 +118,14 @@ public class TraitsGameTest {
 		double plainHealth = plain.getAttribute(Attributes.MAX_HEALTH).getValue();
 		double expectedPlainHealth = plainBase * scaledMultiplier * SPEC_MULTIPLIER;
 		double eliteHealth = elite.getAttribute(Attributes.MAX_HEALTH).getValue();
-		double expectedEliteHealth = scaledBase * Elite.HEALTH_MULTIPLIER * scaledMultiplier * SPEC_MULTIPLIER;
+		double eliteScaledMultiplier = SpawnScaling.healthMultiplierOf(elite);
+		double expectedEliteHealth = scaledBase * Elite.HEALTH_MULTIPLIER * eliteScaledMultiplier * SPEC_MULTIPLIER;
 
 		result(
 			"hardenedRatio",
 			"base=" + plainBase + " spawnMultiplier=" + scaledMultiplier + " specMultiplier=" + SPEC_MULTIPLIER
 				+ " expectedPlainHealth=" + expectedPlainHealth + " plainHealth=" + plainHealth
+				+ " eliteSpawnMultiplier=" + eliteScaledMultiplier
 				+ " expectedEliteHealth=" + expectedEliteHealth + " eliteHealth=" + eliteHealth
 				+ " eliteDoubledBase=" + doubledBase + " eliteBaseBeforeDouble=" + scaledBase
 		);

@@ -4,6 +4,8 @@ import com.stella.mobs.behavior.ChunkEncounters;
 import com.stella.mobs.behavior.ChunkEncounters.Encounter;
 import com.stella.mobs.behavior.FriendlyPatrol;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -24,6 +26,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -70,17 +73,44 @@ public class FriendlyPatrolGameTest {
 	@GameTest(maxTicks = 200, padding = 32)
 	public void aPairHuntsAZombie(final GameTestHelper helper) {
 		helper.setTime(Arena.NIGHT_TIME);
+		Arena.buildFloor(helper);
 		List<Mob> pair = pair(helper);
+		List<Vec3> positions = new java.util.ArrayList<>();
+		for (int index = 0; index < pair.size(); index++) {
+			Vec3 position = helper.absoluteVec(new Vec3(1.5 + index, 1.0, 2.5));
+			positions.add(position);
+			pair.get(index).snapTo(position, 0.0F, 0.0F);
+		}
 		Zombie zombie = besides(helper, pair.get(0), EntityTypes.ZOMBIE, 5.0);
 		zombie.setNoAi(true);
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		zombie.setHealth(1000.0F);
+		Set<ChunkPos> held = new HashSet<>();
+		pair.forEach(member -> held.add(member.chunkPosition()));
+		held.add(zombie.chunkPosition());
+		held.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true));
+		helper.onEachTick(() -> {
+			for (int index = 0; index < pair.size(); index++) {
+				Mob member = pair.get(index);
+				Vec3 position = positions.get(index);
+				member.setPos(position.x, position.y, position.z);
+				member.setDeltaMovement(Vec3.ZERO);
+			}
+		});
+		helper.runAfterDelay(190, () -> {
+			if (pair.stream().noneMatch(mob -> mob.getTarget() == zombie)) {
+				StellaMobs.LOGGER.info("[BEHAVIOR] test={} state=pairHuntPending zombieAlive={} zombiePos={} members={}",
+					TEST, zombie.isAlive(), zombie.position(), pair.stream().map(mob ->
+						mob.getUUID() + "@" + mob.position() + " ticks=" + mob.tickCount + " target=" + mob.getTarget()).toList());
+			}
+		});
 		helper.succeedWhen(() -> {
 			long hunters = pair.stream().filter(mob -> mob.getTarget() == zombie).count();
 			helper.assertTrue(hunters > 0, "no pair member has taken the zombie as its target");
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aPairHuntsAZombie hunters={}", TEST, hunters);
 			pair.forEach(Mob::discard);
 			zombie.discard();
+			held.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false));
 		});
 	}
 

@@ -8,7 +8,7 @@ last_verified: 2026-09-28
 
 ## Purpose
 
-This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includes unfinished work.
+This repository develops Fabric mods on separate integration branches. The 2026-09-26 `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -16,6 +16,7 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - `cd mod-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `.\gradlew.bat runGameTest --rerun` - Rerun a mod's headless game tests. [verified: 2026-09-24] [source: AGENTS.md]
 - `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
+- `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
 
 ## Architecture
 
@@ -24,6 +25,9 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 - `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
 - `mod-stella-spells` runs gameplay on the server and hand rendering in `src/client`. Install its jar on servers and clients. [status: active] [verified: 2026-09-28] [source: mod-stella-spells/build.gradle and fabric.mod.json]
 - `main` contains mobs, equips, spells, and villages source, including unfinished spells and villages changes. [status: active] [verified: 2026-09-26] [source: git ls-tree --name-only main]
+- Mob threat rolls persist their area level and variation through a Fabric attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/ThreatState.java; threatRollSurvivesEntitySave]
+- The server-wide lifetime threat maximum persists on the Overworld attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/WorldThreatPeak.java; highestThreatPersistsAcrossDimensionsAndNeverFalls]
+- One spawn modifier per attribute combines threat level and the retained depth contribution. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
 
 ## Conventions
 
@@ -37,14 +41,25 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 
 ## Known Pitfalls
 
+- A GameTest patrol pair may not tick in its remote chunk -> force its chunk during the hunt test. [status: active] [verified: 2026-09-28] [source: FriendlyPatrolGameTest.aPairHuntsAZombie]
+
 - An unregistered game test class does not run -> list it in the game test `fabric.mod.json`. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - Spark Shot's boundary test needed entity-index readiness -> use `Findable.then` before casting. [status: resolved] [verified: 2026-09-28] [source: SpellEffectsGameTest.java and summonbond-final-gate-1.log through summonbond-final-gate-5.log]
 - Chainstorm's delayed test passed before a fourth strike -> wait through `STORM_SETTLE_TICKS` in an isolated arena. [status: resolved] [verified: 2026-09-28] [source: StormAndRiftGameTest.java and chainstorm-settle-radius-mutant-game.log]
 - The village full suite has intermittent required failures in patrol targeting and safe-site setup. [status: active] [verified: 2026-09-27] [source: C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27/villages-build-console.log; villages-rerun-5-console.log]
 - Preserve each failed village log. Do not call the suite stable after a passing rerun. [status: active] [verified: 2026-09-27] [source: AGENTS.md; C:/Users/Stella/notes/blackboard/mc-stella-mods-deploy-2026-09-27]
+- The GameTest world may place Nether and End mobs far from their dimension origins -> combat tests should control threat level or assert the effect, not a fixed death time. [status: active] [verified: 2026-09-28] [source: SnowGolemGameTest; preliminary-full3 GameTest log]
+- Minecraft caps effective maximum health at 1,024 while threat levels remain uncapped. [status: active] [verified: 2026-09-28] [source: preliminary-full3 GameTest log; snowGolem.meltsWhereTheWorldSaysSo]
 
 ## Decisions
+
+### 2026-09-28 - Uncapped distance threat with retained depth scaling
+
+- Decision: Add one threat area level per 500 blocks, without a level cap. Keep the old depth stat contribution.
+- Why: Oniichan specified both rules and separate Nether and End minimum levels.
+- Alternatives: Cap distance levels at 100 or replace depth scaling with threat levels.
+- Evidence: Oniichan's decisions; distance and depth GameTests.
 
 ### 2026-09-24 - Separate mod integration branches
 
@@ -70,6 +85,7 @@ This repository develops four Fabric mods. The 2026-09-26 `main` snapshot includ
 ## Open Questions
 
 - [ ] Should a future repository-wide change be copied to both branches? Next check: ask before the next shared edit. [added: 2026-09-24]
+- [ ] Confirm the Gaussian standard deviation, XP curve, and Nether/End distance origins. Next check: oniichan's pending design reply. [added: 2026-09-28]
 
 ## Session Handoffs
 
