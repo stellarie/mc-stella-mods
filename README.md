@@ -36,6 +36,9 @@ Each threat level adds 5% maximum health and 2.5% attack damage. Depth still add
 and 12.5% damage by 256 blocks below sea level. Minecraft's health attribute can cap effective HP
 at 1,024 even though the threat level keeps rising.
 
+The highest mob threat ever observed is saved on the Overworld for the whole server. Summoned skeletons
+can read that peak across dimensions and restarts to scale their health.
+
 Player kills scale the vanilla, enchantment-adjusted XP reward by the difference between mob threat
 and the player's XP level. Equal levels keep vanilla XP. Each ten-level gap changes the multiplier by
 one, between one-quarter and four times the vanilla reward. A nonzero reward never falls below one XP.

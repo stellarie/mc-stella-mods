@@ -4,6 +4,8 @@ import com.stella.mobs.behavior.ChunkEncounters;
 import com.stella.mobs.behavior.ChunkEncounters.Encounter;
 import com.stella.mobs.behavior.FriendlyPatrol;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -24,6 +26,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -82,6 +85,10 @@ public class FriendlyPatrolGameTest {
 		zombie.setNoAi(true);
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		zombie.setHealth(1000.0F);
+		Set<ChunkPos> held = new HashSet<>();
+		pair.forEach(member -> held.add(member.chunkPosition()));
+		held.add(zombie.chunkPosition());
+		held.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true));
 		helper.onEachTick(() -> {
 			for (int index = 0; index < pair.size(); index++) {
 				Mob member = pair.get(index);
@@ -103,6 +110,7 @@ public class FriendlyPatrolGameTest {
 			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aPairHuntsAZombie hunters={}", TEST, hunters);
 			pair.forEach(Mob::discard);
 			zombie.discard();
+			held.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false));
 		});
 	}
 

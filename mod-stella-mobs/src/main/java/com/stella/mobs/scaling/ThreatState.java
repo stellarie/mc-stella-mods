@@ -67,12 +67,19 @@ public record ThreatState(int areaLevel, int variation) {
 			: dimension.equals(Level.END) ? END_MINIMUM : 0;
 		int areaBase = Math.max(dimensionMinimum, state.areaLevel());
 		int ordinary = Math.max(dimensionMinimum, areaBase + state.variation());
+		int level;
 		if (EliteState.isBoss(mob)) {
 			double configured = GearConfigStore.get().rollFor(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()))
 				.bossLevelBonus();
 			long bonus = Math.max(0L, Math.round(BOSS_BONUS * configured));
-			return bonus >= Integer.MAX_VALUE - ordinary ? Integer.MAX_VALUE : ordinary + (int) bonus;
+			level = bonus >= Integer.MAX_VALUE - ordinary ? Integer.MAX_VALUE : ordinary + (int) bonus;
+		} else {
+			level = ordinary + (EliteState.isElite(mob) ? ELITE_BONUS : 0);
 		}
-		return ordinary + (EliteState.isElite(mob) ? ELITE_BONUS : 0);
+		if (mob.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+			&& !mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
+			WorldThreatPeak.observe(serverLevel, level);
+		}
+		return level;
 	}
 }
