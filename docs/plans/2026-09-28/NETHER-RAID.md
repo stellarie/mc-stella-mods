@@ -75,6 +75,19 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 
 Each slice ships with headless game tests per `AGENTS.md`.
 
+## Status (2026-09-28, end of night)
+
+- Slices 1 to 8 are done on `claude/instanced-nether-raid-7hlzbe`. The last gate was a clean build and
+  five `runGameTest --rerun` runs, 57 of 57 required tests each, run on Linux with `./gradlew`, not the
+  Windows `gradlew.bat`.
+- Not done: slice 9 (raid objectives); the Sovereign's blue tint (client code); Blaze Core enchanting
+  and crafting; pruning old runs' region files; a config file for the constants.
+- Not delivered: the jar is not deployed to the Prism instance (this machine has none), and no one other
+  than its author has reviewed the phase yet.
+- Manual acceptance items are listed in `mod-stella-nether/README.md`.
+- `feat/mobs-threat-level-scaling` and `main-food` are merged into this branch only. `main-mobs`,
+  `main-food` and `main` are untouched, and no `main-nether` integration branch exists yet.
+
 ## Deviations
 
 - The plan kept every number in the config. Slices 1 and 2 keep them as constants in `RaidTravel` and
