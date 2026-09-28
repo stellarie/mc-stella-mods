@@ -11,6 +11,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
@@ -31,14 +34,21 @@ public class SovereignSpecialsGameTest {
 		return new Scene(player, raid, sovereign, floor);
 	}
 
-	/** A second player standing in the arena, able to be hurt. */
-	static ServerPlayer standIn(final GameTestHelper helper, final Scene scene, final Vec3 at) {
-		ServerPlayer player = NetherTestSupport.join(helper, 2.5, 2.5);
+	/**
+	 * A creature standing still in the arena, able to be hurt. A test player moved into another dimension is
+	 * never ticked, and the level's position index can keep it in the wrong section, so an area query misses it
+	 * (seen once in ten runs: a wave's query found no one at radius 8 with the player alive and visible at 8).
+	 * A zombie added where it stands is indexed where it stands; it opts out of the mobs mod's spawn rolls.
+	 */
+	static Zombie standIn(final GameTestHelper helper, final Scene scene, final Vec3 at) {
 		BlazeSovereignGameTest.hold(scene.raid(), net.minecraft.core.BlockPos.containing(at));
-		player.teleportTo(scene.raid(), at.x, at.y, at.z, java.util.Set.of(), 0.0F, 0.0F, true);
-		scene.raid().getChunkSource().move(player);
-		NetherTestSupport.vulnerable(player);
-		return player;
+		Zombie zombie = EntityTypes.ZOMBIE.create(scene.raid(), EntitySpawnReason.MOB_SUMMONED);
+		zombie.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
+		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		zombie.setNoAi(true);
+		zombie.setPersistenceRequired();
+		scene.raid().addFreshEntity(zombie);
+		return zombie;
 	}
 
 	/**
@@ -64,10 +74,10 @@ public class SovereignSpecialsGameTest {
 		return slow != null && slow.getAmplifier() >= SovereignSpecials.STUN_SLOWNESS;
 	}
 
-	static void end(final GameTestHelper helper, final Scene scene, final ServerPlayer... others) {
+	static void end(final GameTestHelper helper, final Scene scene, final Entity... others) {
 		scene.sovereign().discard();
-		for (ServerPlayer other : others) {
-			NetherTestSupport.leave(helper, other);
+		for (Entity other : others) {
+			other.discard();
 		}
 		NetherTestSupport.leave(helper, scene.player());
 	}
@@ -99,8 +109,8 @@ public class SovereignSpecialsGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sp_dive", maxTicks = 1200)
 	public void theDiveBurnsAndBlastsWhatStandsInTheAreaAndSparesWhatDoesNot(final GameTestHelper helper) {
 		Scene scene = scene(helper, 16);
-		ServerPlayer struck = standIn(helper, scene, scene.floor().add(4.0, 0.0, 0.0));
-		ServerPlayer spared = standIn(helper, scene, scene.floor().add(4.0 + SovereignSpecials.DIVE_HALF_WIDTH + 3.0, 0.0, 0.0));
+		Zombie struck = standIn(helper, scene, scene.floor().add(4.0, 0.0, 0.0));
+		Zombie spared = standIn(helper, scene, scene.floor().add(4.0 + SovereignSpecials.DIVE_HALF_WIDTH + 3.0, 0.0, 0.0));
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
 		float[] before = new float[1];
 		helper.startSequence()
@@ -141,7 +151,7 @@ public class SovereignSpecialsGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sp_meteor", maxTicks = 1200)
 	public void theMeteorStormFallsInsideItsAreaAndStrikesThoseStandingThere(final GameTestHelper helper) {
 		Scene scene = scene(helper, 12);
-		ServerPlayer target = standIn(helper, scene, scene.floor().add(3.0, 0.0, 0.0));
+		Zombie target = standIn(helper, scene, scene.floor().add(3.0, 0.0, 0.0));
 		SovereignSpecials.Cast[] casts = new SovereignSpecials.Cast[1];
 		float[] before = new float[1];
 		helper.startSequence()
@@ -185,8 +195,8 @@ public class SovereignSpecialsGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sp_wave", maxTicks = 1200)
 	public void theChargedWaveThrowsBackAndStunsEveryoneItReaches(final GameTestHelper helper) {
 		Scene scene = scene(helper, 10);
-		ServerPlayer caught = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS / 2.0, 0.0, 0.0));
-		ServerPlayer beyond = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS + 4.0, 0.0, 0.0));
+		Zombie caught = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS / 2.0, 0.0, 0.0));
+		Zombie beyond = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS + 4.0, 0.0, 0.0));
 		SovereignSpecials.Cast[] casts = new SovereignSpecials.Cast[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(ready(scene, caught, beyond), "the arena's entities are not loaded"))
@@ -200,8 +210,7 @@ public class SovereignSpecialsGameTest {
 			double push = caught.getDeltaMovement().multiply(1.0, 0.0, 1.0).dot(away);
 			boolean stun = stunned(caught);
 			NetherTestSupport.result("chargedWave", "hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun
-				+ " home=" + cast.home() + " caughtAt=" + caught.position() + " caughtLevel=" + caught.level().dimension().identifier()
-				+ " visible=" + (scene.raid().getEntity(caught.getUUID()) == caught) + " alive=" + caught.isAlive() + " seen=" + cast.seen());
+				+ " home=" + cast.home() + " caughtAt=" + caught.position() + " seen=" + cast.seen());
 			helper.assertTrue(hit && missed && push > 0.5 && stun, "wave hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun);
 			end(helper, scene, caught, beyond);
 			})
@@ -211,7 +220,7 @@ public class SovereignSpecialsGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sp_rotation", maxTicks = 600)
 	public void withAPlayerToFightTheSovereignCastsItsSpecialsInTurn(final GameTestHelper helper) {
 		Scene scene = scene(helper, 12);
-		ServerPlayer target = standIn(helper, scene, scene.floor().add(6.0, 0.0, 0.0));
+		Zombie target = standIn(helper, scene, scene.floor().add(6.0, 0.0, 0.0));
 		// The specials themselves would kill the target, and with no target none follow; Resistance V takes every hit.
 		target.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, -1, 4));
 		target.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, -1, 0));
