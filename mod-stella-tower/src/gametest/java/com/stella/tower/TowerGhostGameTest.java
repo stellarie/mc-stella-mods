@@ -35,9 +35,14 @@ public class TowerGhostGameTest {
 		return ghost;
 	}
 
-	/** A floor with no boss-floor buff, so a player's effects are the ghost's alone. */
+	/**
+	 * An ordinary floor: no boss-floor buff, so a player's effects are the ghost's alone, and no guardians.
+	 * Its own mobs are held off too: at the test floors' height one blow kills a ghost, and a ghost slain
+	 * mid-case mends and strengthens no one. The pin is on this run's own floor, which no other case uses.
+	 */
 	private static int floor(final ServerLevel tower) {
-		int floor = TowerTestSupport.freshFloorWhere(f -> !TowerBuffs.isBossFloor(f));
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
+		TowerMobs.pinFloorCap(floor, 0);
 		TowerFloors.ensure(tower, floor);
 		return floor;
 	}

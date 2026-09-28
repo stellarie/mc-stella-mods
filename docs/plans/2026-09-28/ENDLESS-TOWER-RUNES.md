@@ -338,22 +338,35 @@ What an armor rune does for its wearer beyond turning blows. A signature works w
 the element, at the strongest such piece's power, and only for players. Like the weapon signatures, they
 work anywhere and against any mob, not only in the tower:
 
-- **Fire:** fire damage taken is stored as heat, up to 20. The wearer's next blow on anything adds all of
-  it, and the heat resets.
+- **Fire:** fire damage taken is stored as heat, up to 20. The wearer's next blow that lands adds all of
+  it, after the weapon rune's tier, so the rune does not multiply it; then the heat resets. A blow turned
+  aside spends none.
 - **Ice:** slowness lasts half as long, and frost gathers half as fast.
 - **Water:** a blow larger than a quarter of the wearer's max health lands a quarter now. The rest comes
-  as a delayed wound in three parts, one a second. Armor and resistance reduce the delayed part as they
-  reduced the first, and not a second time.
-- **Lightning:** lightning deals nothing. Each blow a mob lands stores a Lightning charge, up to 5.
+  as a delayed wound in three parts, one a second. Each part is a blow of its own, so armor, resistance
+  and Protection meet it as they meet any blow. A wound still to come is saved with the player, so
+  logging out does not shed it.
+- **Lightning:** lightning deals nothing. Each blow a hostile mob lands stores a Lightning charge, up to 5.
 - **Wind:** projectiles deal `15% + P/20 %` less.
 - **Void:** a beneficial effect given to a hostile mob within 8 blocks has its amplifier halved, rounded
-  down: Strength V becomes Strength III. A boss floor's buffs are halved the same way.
+  down: Strength V becomes Strength III. A boss floor's effect buffs are halved the same way; its extra
+  health, thorns and extra lives are not effects and stay whole.
 - **Holy:** harmful effects last `20% + P/10 %` shorter.
-- **Dark:** a mob's blow is 1% weaker for each mob the wearer has slain, up to 30%. Kills count while each
+- **Dark:** a mob's blow is 1% weaker for each hostile mob the wearer has slain, up to 30%. Kills count while each
   comes within a minute of the last; a minute without one starts the count over.
 - Deviation from the plan: Holy weapon, Lightning, Void and Dark armor were written for the tower's
   guardians and boss-floor buffs. Oniichan asked on 2026-09-28 that the effects not be tower-specific, so
   they now use the general forms above.
+
+### Review fixes (2026-09-28)
+
+- Armor signatures belong to players only; a mob that picks up runed armor gains none of them.
+- Fire's burst is a blow of its own, not fire, so the fire-born (blazes, magma cubes, wither skeletons,
+  the Wither) burst too, and armor, resistance and enchantments do not blunt it. It leaves the target's
+  hit cooldown as it found it.
+- Thorns a runed player returns are not struck with the weapon, so the weapon rune leaves them be.
+- A rune goes into one piece of gear at a time; a stack takes none.
+- The Water, Fire, Lightning and Dark changes above.
 
 ## Change: safe zones, chorus fruit and beds (2026-09-28)
 

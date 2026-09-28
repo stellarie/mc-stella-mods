@@ -279,6 +279,17 @@ public final class TowerMobs {
 		}).size();
 	}
 
+	/** The test seam: a floor's pinned mob cap; null restores the shipped one. */
+	private static final Map<Integer, Integer> PINNED_CAP = new java.util.concurrent.ConcurrentHashMap<>();
+
+	public static void pinFloorCap(final int floor, final @Nullable Integer cap) {
+		if (cap == null) {
+			PINNED_CAP.remove(floor);
+		} else {
+			PINNED_CAP.put(floor, cap);
+		}
+	}
+
 	private static void tick(final MinecraftServer server) {
 		if (server.getTickCount() % SPAWN_INTERVAL_TICKS != 0) {
 			return;
@@ -299,7 +310,7 @@ public final class TowerMobs {
 			BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
 			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
 			TowerGhosts.haunt(tower, floor);
-			int room = FLOOR_CAP - count(tower, floor);
+			int room = PINNED_CAP.getOrDefault(floor, FLOOR_CAP) - count(tower, floor);
 			for (int i = 0; i < Math.min(room, SPAWN_BATCH); i++) {
 				spawnOne(tower, floor);
 			}
@@ -309,7 +320,8 @@ public final class TowerMobs {
 	/** A hit's damage once the tower has had its say: a tower mob hits harder, and a big one takes less. */
 	public static float scaleDamage(final LivingEntity victim, final DamageSource source, final float amount) {
 		// A weapon rune multiplies the blow as it is struck; armor runes turn a tower mob's blow as it lands.
-		float scaled = RuneEffects.soaked(victim, source, TowerRunes.weapon(victim, source, RuneGuards.kindle(victim, source, amount)));
+		// Stored heat is added after the tier, so a weapon rune does not multiply it.
+		float scaled = RuneEffects.soaked(victim, source, RuneGuards.kindle(victim, source, TowerRunes.weapon(victim, source, amount)));
 		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim && !TowerBuffs.reflecting()) {
 			State from = stateOf(attacker);
 			if (from != null) {
