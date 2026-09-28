@@ -6,10 +6,14 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"com.stella.nether.ModpackDependencyGameTest"
+			"com.stella.nether.ModpackDependencyGameTest",
+			"com.stella.nether.RaidPortalGameTest"
 		]
 	},
 	"depends": {
 		"mod-stella-nether": "*"
-	}
+	},
+	"mixins": [
+		"mod-stella-nether-test.mixins.json"
+	]
 }
