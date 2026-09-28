@@ -89,6 +89,31 @@ public class RaidLifecycleGameTest {
 		});
 	}
 
+	@GameTest(environment = "mod-stella-nether-test:manyitems", maxTicks = RaidInstance.EMPTY_TICKS + 100)
+	public void aResetDiscardsEveryItemLeftBehind(final GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		NetherTestSupport.fresh(helper);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerLevel raid = (ServerLevel) player.level();
+		java.util.List<ItemEntity> items = new java.util.ArrayList<>();
+		for (int i = 0; i < 64; i++) {
+			Vec3 at = player.position().add(i % 8 - 3.5, 0.5, i / 8 - 3.5);
+			ItemEntity item = new ItemEntity(raid, at.x, at.y, at.z, new ItemStack(Items.NETHERRACK));
+			if (raid.addFreshEntity(item)) {
+				items.add(item);
+			}
+		}
+		int run = RaidInstance.state(server).run();
+		leaveRaid(helper, player);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(RaidInstance.state(server).run() == run + 1, "the raid has not reset yet");
+			long left = items.stream().filter(item -> !item.isRemoved()).count();
+			NetherTestSupport.result("everyItemLost", "items=" + items.size() + " left=" + left);
+			helper.assertTrue(left == 0, left + " of " + items.size() + " items survived the reset");
+			NetherTestSupport.leave(helper, player);
+		});
+	}
+
 	@GameTest(environment = "mod-stella-nether-test:stale", maxTicks = 100)
 	public void aPlayerReturningToAClosedRunIsSentOut(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
