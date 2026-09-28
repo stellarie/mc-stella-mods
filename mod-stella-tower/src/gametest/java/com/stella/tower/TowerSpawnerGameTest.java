@@ -32,15 +32,16 @@ public class TowerSpawnerGameTest {
 		int[] most = {0};
 		helper.onEachTick(() -> {
 			// Counted by tag, not by the spawner's own count, so a mob the cap misses is still seen here.
+			// A ghost is not one of the floor's mobs: it stands on the players' side, outside the cap.
 			int now = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.isAlive() && mob.entityTags().contains(TowerMobs.TAG)
-				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).rank() == TowerRank.MOB).size();
+				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).rank() == TowerRank.MOB && !(mob instanceof TowerGhost)).size();
 			most[0] = Math.max(most[0], now);
 			if (filledAt[0] < 0 && now >= TowerMobs.FLOOR_CAP) {
 				filledAt[0] = (int) helper.getTick();
 			}
 		});
 		helper.runAfterDelay(380L, () -> {
-			List<Mob> mobs = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.entityTags().contains(TowerMobs.TAG));
+			List<Mob> mobs = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.entityTags().contains(TowerMobs.TAG) && !(mob instanceof TowerGhost));
 			double nearest = Double.MAX_VALUE;
 			int stamped = 0;
 			for (Mob mob : mobs) {

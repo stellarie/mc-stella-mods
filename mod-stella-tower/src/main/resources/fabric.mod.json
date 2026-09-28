@@ -8,6 +8,9 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.tower.StellaTower"
+		],
+		"client": [
+			"com.stella.tower.client.TowerClient"
 		]
 	},
 	"mixins": [
