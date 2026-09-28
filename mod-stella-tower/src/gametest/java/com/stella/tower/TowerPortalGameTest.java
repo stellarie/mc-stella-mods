@@ -50,6 +50,7 @@ public class TowerPortalGameTest {
 		helper.setBlock(4, 3, 2, Blocks.AIR);
 		helper.setBlock(inside, Blocks.FIRE);
 		BlockState state = helper.getBlockState(inside);
+		TowerTestSupport.result("gapLightsNothing", "block=" + state.getBlock());
 		helper.assertFalse(state.is(TowerBlocks.TOWER_PORTAL), "a frame with a gap lit a portal");
 		helper.succeed();
 	}
@@ -66,6 +67,7 @@ public class TowerPortalGameTest {
 				left += helper.getBlockState(new BlockPos(x, y, 2)).is(TowerBlocks.TOWER_PORTAL) ? 1 : 0;
 			}
 		}
+		TowerTestSupport.result("brokenFrameCloses", "left=" + left);
 		helper.assertTrue(left == 0, left + " portal blocks outlived their broken frame");
 		helper.succeed();
 	}
@@ -76,6 +78,8 @@ public class TowerPortalGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		BlockPos inside = TowerTestSupport.frame(helper, 2, Blocks.CRYING_OBSIDIAN);
 		helper.setBlock(inside, Blocks.FIRE);
+		// Floor 1 outlives a run, so its record is cleared: the pig's trip must build it again.
+		tower.setBlock(TowerFloors.marker(1), Blocks.AIR.defaultBlockState(), 2);
 		Pig pig = helper.spawnMob(EntityTypes.PIG, new Vec3(2.5, 2.0, 2.5)).spawn();
 		// A traveller is re-created on the far side; its tags travel with it, so the tag finds this pig and no other.
 		String tag = "stella_tower_test_" + UUID.randomUUID();
@@ -110,12 +114,8 @@ public class TowerPortalGameTest {
 	@GameTest
 	public void aFloorsPortalLeadsToTheFloorAbove(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = 7;
+		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		// The test world keeps its floors between runs, so a portal lit by an earlier run is put out first.
-		for (BlockPos pos : TowerLayout.portalInside(floor)) {
-			tower.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-		}
 		BlockPos inside = TowerLayout.portalInside(floor).get(0);
 		tower.setBlock(inside, Blocks.FIRE.defaultBlockState(), 3);
 		int lit = 0;
@@ -145,9 +145,11 @@ public class TowerPortalGameTest {
 		var player = TowerTestSupport.join(helper, 2.5, 2.5);
 		Vec3 at = helper.absoluteVec(new Vec3(2.5, 2.0, 2.5));
 		player.teleportTo(helper.getLevel(), at.x, at.y, at.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		// The case fails every run, so the player leaves before the time runs out rather than on success.
+		helper.runAfterDelay(199L, () -> TowerTestSupport.leave(helper, player));
 		helper.succeedWhen(() -> {
 			helper.assertTrue(player.level() == tower, "the player is still outside the tower");
-			TowerTestSupport.leave(helper, player);
+			TowerTestSupport.result("playerWalksIn", "arrived=true");
 		});
 	}
 }

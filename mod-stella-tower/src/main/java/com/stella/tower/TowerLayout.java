@@ -79,7 +79,7 @@ public final class TowerLayout {
 		return inside;
 	}
 
-	/** The crying obsidian frame around {@link #portalInside(int)}, corners included. */
+	/** The frame around {@link #portalInside(int)}, corners included. */
 	public static List<BlockPos> portalFrame(final int floor) {
 		BlockPos origin = origin(floor);
 		int x = origin.getX() + PORTAL_X;
@@ -96,10 +96,5 @@ public final class TowerLayout {
 			}
 		}
 		return frame;
-	}
-
-	public static boolean isPortalFrame(final BlockPos pos) {
-		int floor = floorAt(pos);
-		return floor > 0 && portalFrame(floor).contains(pos);
 	}
 }

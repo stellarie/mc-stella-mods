@@ -12,8 +12,8 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
 /**
- * The tower's own blocks. The wall and the lamp cannot be mined or blown up, and neither has an item, so
- * no player can carry an unbreakable block out of the tower.
+ * The tower's own blocks. The wall, the lamp and the frame cannot be mined, blown up, or broken by a wither
+ * or the dragon (their tags say so), and none has an item, so no player can carry one out of the tower.
  */
 public final class TowerBlocks {
 	/** The walls, the ceiling and the ring under each floor's edge. */
@@ -22,6 +22,14 @@ public final class TowerBlocks {
 		.strength(-1.0F, 3_600_000.0F)
 		.noLootTable()
 		.sound(SoundType.POLISHED_DEEPSLATE)
+		.pushReaction(PushReaction.IMMOVEABLE));
+	/** Each floor's way up: crying obsidian to look at, but it cannot be mined, blown up, or broken by a wither. */
+	public static final Block TOWER_FRAME = register("tower_frame", Block::new, BlockBehaviour.Properties.of()
+		.mapColor(MapColor.COLOR_BLACK)
+		.strength(-1.0F, 3_600_000.0F)
+		.noLootTable()
+		.lightLevel(state -> 10)
+		.sound(SoundType.STONE)
 		.pushReaction(PushReaction.IMMOVEABLE));
 	/** The light set into each floor's ceiling. */
 	public static final Block TOWER_LAMP = register("tower_lamp", Block::new, BlockBehaviour.Properties.of()

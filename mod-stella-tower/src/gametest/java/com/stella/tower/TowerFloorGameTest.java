@@ -16,8 +16,10 @@ public class TowerFloorGameTest {
 	@GameTest
 	public void aFloorHasABedrockBaseUnbreakableWallsAndEightBlocksOfRoom(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = 3;
+		int floor = TowerTestSupport.freshFloor();
+		long started = System.nanoTime();
 		TowerFloors.ensure(tower, floor);
+		long buildMillis = (System.nanoTime() - started) / 1_000_000L;
 		BlockPos o = TowerLayout.origin(floor);
 		int s = TowerLayout.SIZE;
 		int base = TowerLayout.BASE_Y;
@@ -36,7 +38,7 @@ public class TowerFloorGameTest {
 		}
 		float wallHardness = TowerBlocks.TOWER_WALL.defaultBlockState().getDestroySpeed(tower, o.offset(-1, 3, 20));
 		TowerTestSupport.result("floorShape", "bedrock=" + bedrock + " walls=" + walls + " ceiling=" + ceiling + " room=" + room
-			+ " wallHardness=" + wallHardness + " floorY=" + base);
+			+ " wallHardness=" + wallHardness + " floorY=" + base + " buildMillis=" + buildMillis);
 		helper.assertTrue(bedrock, "the floor has no bedrock under it");
 		helper.assertTrue(walls && ceiling, "the floor is not closed by tower walls");
 		helper.assertTrue(room == TowerLayout.HEIGHT, "the room is " + room + " blocks high at the arrival spot");
@@ -47,7 +49,7 @@ public class TowerFloorGameTest {
 	@GameTest
 	public void aFloorIsBuiltOnceAndKeepsItsChanges(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = 4;
+		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		BlockPos dug = TowerLayout.origin(floor).offset(30, -1, 10);
 		tower.setBlock(dug, Blocks.AIR.defaultBlockState(), 3);
@@ -78,22 +80,63 @@ public class TowerFloorGameTest {
 		helper.succeed();
 	}
 
+	/** A queued floor is built a little each tick, not at once, and stands complete once done. */
+	@GameTest(maxTicks = 200)
+	public void aQueuedFloorIsBuiltInTheBackground(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.prepare(tower, floor);
+		boolean builtAtOnce = TowerFloors.isBuilt(tower, floor);
+		boolean queued = TowerFloors.isQueued(floor);
+		helper.succeedWhen(() -> {
+			helper.assertFalse(builtAtOnce, "prepare built the whole floor at once");
+			helper.assertTrue(queued, "the floor was never queued");
+			helper.assertTrue(TowerFloors.isBuilt(tower, floor), "the queued floor is not built yet");
+			boolean frame = tower.getBlockState(TowerLayout.portalFrame(floor).get(0)).is(TowerBlocks.TOWER_FRAME);
+			helper.assertTrue(frame, "the background floor has no frame");
+			TowerTestSupport.result("backgroundBuild", "tick=" + helper.getTick() + " longestStepMillis=" + TowerFloors.longestStepMillis());
+		});
+	}
+
+	/** Arriving on a floor starts building the one above, so the climb waits on nothing. */
+	@GameTest(maxTicks = 200)
+	public void arrivingOnAFloorStartsTheOneAbove(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.ensure(tower, floor);
+		BlockPos inside = TowerLayout.portalInside(floor).get(0);
+		net.minecraft.world.entity.animal.pig.Pig pig = net.minecraft.world.entity.EntityTypes.PIG.create(tower, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		pig.snapTo(Vec3.atBottomCenterOf(inside));
+		tower.addFreshEntity(pig);
+		var moved = pig.teleport(TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, pig, inside));
+		int twoUp = floor + 2;
+		boolean started = TowerFloors.isQueued(twoUp) || TowerFloors.isBuilt(tower, twoUp);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(started, "arriving on floor " + (floor + 1) + " did not start floor " + twoUp);
+			helper.assertTrue(TowerFloors.isBuilt(tower, twoUp), "floor " + twoUp + " is not built yet");
+			TowerTestSupport.result("buildAhead", "started=" + started + " tick=" + helper.getTick());
+			if (moved != null) {
+				moved.discard();
+			}
+		});
+	}
+
 	/** The room may be dug, but not the frame that leads up. */
 	@GameTest
 	public void theWayUpCannotBeMinedButTheRoomCan(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = 5;
+		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		Vec3 arrival = TowerLayout.arrival(floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
 		BlockPos frame = TowerLayout.portalFrame(floor).get(0);
 		BlockPos ground = TowerLayout.origin(floor).offset(30, -1, 12);
-		boolean frameBroke = player.gameMode.destroyBlock(frame);
+		float frameHardness = tower.getBlockState(frame).getDestroySpeed(tower, frame);
 		boolean groundBroke = player.gameMode.destroyBlock(ground);
-		TowerTestSupport.result("frameProtected", "frameBroke=" + frameBroke + " groundBroke=" + groundBroke);
+		TowerTestSupport.result("frameProtected", "frameHardness=" + frameHardness + " groundBroke=" + groundBroke);
 		TowerTestSupport.leave(helper, player);
-		helper.assertFalse(frameBroke, "the portal frame was mined");
+		helper.assertTrue(frameHardness < 0.0F, "the portal frame can be mined: hardness " + frameHardness);
 		helper.assertTrue(groundBroke, "the room's floor could not be dug, so the guard stops too much");
 		helper.succeed();
 	}
