@@ -202,7 +202,10 @@ public class BlazeSovereignGameTest {
 		BlockPos fortress = RaidInstance.site(server).fortress();
 		moveTo(player, fortress.getX() + 0.5, 80.0, fortress.getZ() + 0.5);
 		helper.runAfterDelay(300, () -> {
-			long risen = raid.getEntities(EntityTypes.BLAZE, blaze -> BlazeSovereign.isSovereign(blaze) && blaze.isAlive()).size();
+			// This run's Sovereigns only: an earlier failing test can leave its own standing elsewhere in the level.
+			int run = RaidInstance.state(server).run();
+			long risen = raid.getEntities(EntityTypes.BLAZE, blaze -> BlazeSovereign.isSovereign(blaze) && blaze.isAlive()
+				&& Integer.valueOf(run).equals(blaze.getAttached(BlazeSovereign.SOVEREIGN))).size();
 			boolean loaded = raid.isLoaded(fortress);
 			NetherTestSupport.result("sovereignOnce", "alive=" + risen + " fortressLoaded=" + loaded + " risen=" + RaidInstance.state(server).sovereignRisen());
 			NetherTestSupport.leave(helper, player);
