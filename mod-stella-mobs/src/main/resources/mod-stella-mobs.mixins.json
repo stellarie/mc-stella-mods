@@ -18,6 +18,7 @@
 		"LevitationCapMixin",
 		"DepthCreeperMixin",
 		"FriendlyPatrolMixin",
+		"FriendlyPatrolMobCapMixin",
 		"FriendlyPatrolRestMixin",
 		"MobTargetSelectorAccessor",
 		"ThreatExperienceMixin"

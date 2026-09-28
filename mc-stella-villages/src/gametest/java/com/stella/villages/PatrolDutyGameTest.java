@@ -43,7 +43,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A village's patrol on duty: the head keeps by the bell in enchanted netherite, the rest spread across the
  * village, villagers do not fear them, a player may sleep beside them, golems leave them alone, and they
- * take on any mob that has a player or a villager in its sights. A Nemesis can be any kind of mob.
+ * take on any mob that has a player or a villager in its sights. A Nemesis is hostile or an iron golem.
  */
 public class PatrolDutyGameTest {
 	private static final long WATCH_TICKS = 100L;
@@ -220,7 +220,7 @@ public class PatrolDutyGameTest {
 	}
 
 	@GameTest
-	public void aNemesisCanBeAnyKindOfMob(final GameTestHelper helper) {
+	public void aNemesisCanBeHostileOrAnIronGolem(final GameTestHelper helper) {
 		List<Identifier> pool = MissionService.defaultOfferPool();
 		List<String> notMobs = new ArrayList<>();
 		for (Identifier id : pool) {
@@ -240,10 +240,13 @@ public class PatrolDutyGameTest {
 			distinct &= offers.size() == MissionService.OFFERS_PER_BOARD && new HashSet<>(offers).size() == offers.size();
 			offered.addAll(offers);
 		}
-		PatrolTestSupport.result("aNemesisCanBeAnyKindOfMob", "pool=" + pool.size() + " offered=" + offered.size() + " notMobs=" + notMobs);
-		helper.assertTrue(pool.contains(Identifier.parse("minecraft:cow")) && pool.contains(Identifier.parse("minecraft:blaze"))
+		PatrolTestSupport.result("aNemesisCanBeHostileOrAnIronGolem", "pool=" + pool.size() + " offered=" + offered.size() + " notMobs=" + notMobs);
+		helper.assertTrue(pool.contains(Identifier.parse("minecraft:iron_golem")) && pool.contains(Identifier.parse("minecraft:blaze"))
 			&& pool.contains(Identifier.parse("minecraft:warden")) && pool.contains(Identifier.parse("minecraft:zombie")), "the pool misses a common kind: " + pool);
-		helper.assertFalse(pool.contains(Identifier.parse("minecraft:ender_dragon")), "the dragon is offered");
+		helper.assertFalse(pool.contains(Identifier.parse("minecraft:ender_dragon"))
+			|| pool.contains(Identifier.parse("minecraft:cow"))
+			|| pool.contains(Identifier.parse("minecraft:wandering_trader"))
+			|| pool.contains(Identifier.parse("minecraft:creaking")), "a forbidden mob is offered");
 		helper.assertTrue(notMobs.isEmpty(), "these offers are not mobs: " + notMobs);
 		helper.assertTrue(distinct && offered.size() == pool.size(), "boards offered " + offered.size() + " of " + pool.size() + " kinds, distinct=" + distinct);
 		helper.succeed();

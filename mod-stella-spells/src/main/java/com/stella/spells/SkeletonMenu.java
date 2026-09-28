@@ -94,6 +94,7 @@ public class SkeletonMenu extends AbstractContainerMenu {
 			}
 			this.container.name = ItemStack.EMPTY;
 		}
+		SummonInventoryStore.save(this.skeleton);
 	}
 
 	private static final class ServantSlot extends Slot {

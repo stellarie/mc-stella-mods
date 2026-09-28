@@ -45,9 +45,10 @@ public final class PatrolVisuals {
 		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
-	/** Dresses a Pillager or Vindicator member in the village banner, unless its head is already taken. */
+	/** Dresses a Pillager or Vindicator member in the village banner, replacing a rolled helmet. */
 	public static void dress(final Mob mob, final ServerLevel level, final PatrolState.Role role) {
-		if ((role != PatrolState.Role.PILLAGER && role != PatrolState.Role.VINDICATOR) || !mob.getItemBySlot(EquipmentSlot.HEAD).isEmpty()) {
+		if ((role != PatrolState.Role.PILLAGER && role != PatrolState.Role.VINDICATOR)
+			|| isVillageBanner(mob.getItemBySlot(EquipmentSlot.HEAD))) {
 			return;
 		}
 

@@ -1,5 +1,6 @@
 package com.stella.spells;
 
+import net.fabricmc.loader.api.FabricLoader;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.UUID;
@@ -9,7 +10,9 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.util.ProblemReporter;
@@ -24,6 +27,7 @@ import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -37,6 +41,237 @@ import org.slf4j.LoggerFactory;
  */
 public class SummonSkeletonGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.summon");
+
+	@GameTest(maxTicks = 5, required = false)
+	public void inventorySurvivesServerRestartRequiresManualTest(final GameTestHelper helper) {
+		helper.fail("[MANUAL] equip and pack a summon, restart the server, then confirm both remain after recall and resummon");
+	}
+
+	@GameTest
+	public void aSummonHasThirtyBaseHealthScaledByTheWorldPeak(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		int peak = FabricLoader.getInstance().isModLoaded("mod-stella-mobs")
+			? SummonThreatBridge.peak(helper.getLevel().getServer()) : 0;
+		double expected = Math.min(1024.0, 30.0 * (1.0 + (FabricLoader.getInstance().isModLoaded("mod-stella-mobs")
+			? SummonThreatBridge.healthBonus(peak) : 0.0)));
+		double base = servant.getAttributeBaseValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+		LOG.info("[SPELLTEST] test=aSummonHasThirtyBaseHealthScaledByTheWorldPeak RESULT peak={} base={} max={} expected={}",
+			peak, base, servant.getMaxHealth(), expected);
+		helper.assertTrue(base == 30.0 && Math.abs(servant.getMaxHealth() - expected) < 0.01,
+			"the summoned skeleton has base=" + base + " max=" + servant.getMaxHealth() + " at peak=" + peak);
+		servant.discard();
+		leave(helper, master);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aSummonTracksTheWorldThreatPeakWhenMobsAreLoaded(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		var health = servant.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+		double before = health.getModifier(SummonSkeleton.THREAT_HEALTH_ID).amount();
+		boolean withMobs = FabricLoader.getInstance().isModLoaded("mod-stella-mobs");
+		if (withMobs) {
+			try {
+				Class<?> peak = Class.forName("com.stella.mobs.scaling.WorldThreatPeak");
+				int higher = SummonThreatBridge.peak(helper.getLevel().getServer()) + 20;
+				peak.getMethod("observe", ServerLevel.class, int.class).invoke(null, helper.getLevel(), higher);
+			} catch (ReflectiveOperationException failure) {
+				helper.fail("the mobs mod could not raise the world threat peak: " + failure);
+				return;
+			}
+		}
+		helper.runAfterDelay(45, () -> {
+			double after = health.getModifier(SummonSkeleton.THREAT_HEALTH_ID).amount();
+			LOG.info("[SPELLTEST] test=aSummonTracksTheWorldThreatPeakWhenMobsAreLoaded RESULT loaded={} before={} after={}",
+				withMobs, before, after);
+			helper.assertTrue(withMobs ? after > before : after == 0.0,
+				"the servant did not follow the changed threat peak");
+			servant.discard();
+			leave(helper, master);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aServantKeepsItsInventoryAfterDeathAndResummon(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton first = servant(helper, master, 3, 3);
+		SummonSkeleton.equip(first, EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
+		first.setCustomName(Component.literal("Bones"));
+		SummonSkeleton.stow(first, new ItemStack(Items.DIAMOND, 3));
+		first.kill(helper.getLevel());
+		long dropped = helper.getLevel().getEntitiesOfClass(ItemEntity.class, first.getBoundingBox().inflate(4.0),
+			item -> item.getItem().is(Items.DIAMOND) || item.getItem().is(Items.DIAMOND_SWORD)).size();
+		master.getCooldowns().removeCooldown(master.getCooldowns().getCooldownGroup(master.getMainHandItem()));
+		SpellCasting.cast(master, book(), InteractionHand.MAIN_HAND);
+		Skeleton second = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
+		int stored = second == null ? 0 : SummonSkeleton.pack(second).stream()
+			.filter(stack -> stack.is(Items.DIAMOND)).mapToInt(ItemStack::getCount).sum();
+		LOG.info("[SPELLTEST] test=aServantKeepsItsInventoryAfterDeathAndResummon RESULT new={} sword={} diamonds={} dropped={}",
+			second != first, second == null ? "none" : second.getMainHandItem(), stored, dropped);
+		helper.assertTrue(second != null && second != first && second.getMainHandItem().is(Items.DIAMOND_SWORD)
+			&& second.getCustomName() != null && second.getCustomName().getString().equals("Bones")
+			&& stored == 3 && dropped == 0, "the servant lost or duplicated its inventory on death");
+		second.discard();
+		leave(helper, master);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aServantFollowsWorldChangesWithItsInventory(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton first = servant(helper, master, 3, 3);
+		SummonSkeleton.equip(first, EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
+		SummonSkeleton.stow(first, new ItemStack(Items.EMERALD, 4));
+		ServerLevel nether = helper.getLevel().getServer().getLevel(Level.NETHER);
+		helper.assertTrue(nether != null, "the Nether is unavailable");
+		nether.setChunkForced(0, 0, true);
+		for (int x = 0; x < 8; x++) {
+			for (int z = 0; z < 8; z++) {
+				nether.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, 63, z), Blocks.STONE.defaultBlockState());
+				nether.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, 64, z), Blocks.AIR.defaultBlockState());
+				nether.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, 65, z), Blocks.AIR.defaultBlockState());
+			}
+		}
+		master.teleportTo(nether, 2.5, 64.0, 2.5, java.util.Set.of(), 0.0F, 0.0F, true);
+		helper.succeedWhen(() -> {
+			Skeleton current = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
+			int emeralds = current == null ? 0 : SummonSkeleton.pack(current).stream()
+				.filter(stack -> stack.is(Items.EMERALD)).mapToInt(ItemStack::getCount).sum();
+			helper.assertTrue(current != null && current.level() == nether && current.getMainHandItem().is(Items.DIAMOND_SWORD)
+				&& emeralds == 4, "the servant or its inventory did not follow the master to the Nether");
+			LOG.info("[SPELLTEST] test=aServantFollowsWorldChangesWithItsInventory RESULT nether=true emeralds={}", emeralds);
+			current.discard();
+			nether.setChunkForced(0, 0, false);
+			leave(helper, master);
+		});
+	}
+
+	@GameTest
+	public void aServantCannotUsePortals(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		Skeleton wild = EntityTypes.SKELETON.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		boolean servantCan = servant.canUsePortal(false);
+		boolean wildCan = wild.canUsePortal(false);
+		LOG.info("[SPELLTEST] test=aServantCannotUsePortals RESULT servant={} wild={}", servantCan, wildCan);
+		helper.assertTrue(wildCan && !servantCan, "the summon still enters portals or the control cannot");
+		servant.discard();
+		leave(helper, master);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void combatAndSupportBooksHaveServantCastForms(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, 5).withNoFreeWill().spawn();
+		target.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		target.setHealth(1000.0F);
+		servant.setTarget(target);
+		java.util.List<String> offensive = new java.util.ArrayList<>(SpellImbue.MOB_SPELLS.stream()
+			.map(Identifier::getPath).toList());
+		offensive.add("chainstorm");
+		offensive.add("time_lock");
+		offensive.addAll(MobSpells.PACK_AREA_OFFENSIVE);
+		java.util.List<String> missed = new java.util.ArrayList<>();
+		for (String spell : offensive) {
+			if (!MobSpells.castAt(servant, spell, target)) {
+				missed.add(spell);
+			}
+		}
+		for (String spell : MobSpells.PACK_SUPPORT) {
+			master.removeAllEffects();
+			servant.removeAllEffects();
+			master.setHealth(5.0F);
+			master.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+				net.minecraft.world.effect.MobEffects.POISON, 100, 0));
+			if (!MobSpells.support(servant, spell)) {
+				missed.add(spell);
+			}
+		}
+		LOG.info("[SPELLTEST] test=combatAndSupportBooksHaveServantCastForms RESULT offensive={} support={} missed={}",
+			offensive.size(), MobSpells.PACK_SUPPORT.size(), missed);
+		helper.assertTrue(missed.isEmpty(), "the servant cannot cast these combat or support books: " + missed);
+		target.discard();
+		servant.discard();
+		leave(helper, master);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 120)
+	public void aServantCastsAnAreaBookWithoutHarmingItsMaster(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		ItemStack dragonfall = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "dragonfall")));
+		SummonSkeleton.stow(servant, dragonfall);
+		Mob first = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, 5).withNoFreeWill().spawn();
+		Mob second = helper.spawnMob(EntityTypes.ZOMBIE, 6, 1, 5).withNoFreeWill().spawn();
+		for (Mob zombie : java.util.List.of(first, second)) {
+			zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		}
+		float ownerHealth = master.getHealth();
+		helper.succeedWhen(() -> {
+			helper.assertTrue(first.getHealth() < first.getMaxHealth() && second.getHealth() < second.getMaxHealth(),
+				"the area spell did not reach both enemies");
+			helper.assertTrue(master.getHealth() == ownerHealth, "the area spell hurt its owner");
+			LOG.info("[SPELLTEST] test=aServantCastsAnAreaBookWithoutHarmingItsMaster RESULT first={} second={} owner={}",
+				first.getHealth(), second.getHealth(), master.getHealth());
+			servant.discard();
+			leave(helper, master);
+		});
+	}
+
+	@GameTest(maxTicks = 120)
+	public void aServantUsesASupportBookOnItsHurtOwner(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		ItemStack bloom = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "life_bloom")));
+		SummonSkeleton.stow(servant, bloom);
+		master.setHealth(5.0F);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(master.getHealth() > 5.0F && master.hasEffect(net.minecraft.world.effect.MobEffects.REGENERATION),
+				"the support book did not heal and protect the owner");
+			LOG.info("[SPELLTEST] test=aServantUsesASupportBookOnItsHurtOwner RESULT health={} regen=true", master.getHealth());
+			servant.discard();
+			leave(helper, master);
+		});
+	}
+
+	@GameTest(maxTicks = 120)
+	public void aServantCastsTheSpellbookInItsPack(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		ItemStack iceLance = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "ice_lance")));
+		SummonSkeleton.stow(servant, iceLance);
+		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, 5).withNoFreeWill().spawn();
+		zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		helper.succeedWhen(() -> {
+			helper.assertTrue(zombie.isFullyFrozen(), "the servant has not cast Ice Lance from its pack");
+			helper.assertTrue(SummonSkeleton.pack(servant).stream().anyMatch(stack -> stack.is(iceLance.getItem())),
+				"casting consumed the spellbook");
+			LOG.info("[SPELLTEST] test=aServantCastsTheSpellbookInItsPack RESULT frozen={} packKept=true", zombie.getTicksFrozen());
+			servant.discard();
+			leave(helper, master);
+		});
+	}
 
 	@GameTest(maxTicks = 40)
 	public void aSummonRaisesOneLastingServantAndRestsFiveMinutes(final GameTestHelper helper) {
@@ -98,7 +333,7 @@ public class SummonSkeletonGameTest {
 
 	/**
 	 * A servant left in an unloaded chunk cannot be called back, so a new cast raises another. When the old one loads
-	 * again it is retired, its pack and gear dropped where it stands, so a master never keeps two.
+	 * again it is retired without dropping a second copy of its saved inventory.
 	 */
 	@GameTest(maxTicks = 60)
 	public void aServantThatReturnsAfterANewSummonIsRetired(final GameTestHelper helper) {
@@ -127,8 +362,11 @@ public class SummonSkeletonGameTest {
 			helper.assertTrue(returned.isRemoved(), "the returned servant still serves beside the new one");
 			helper.assertTrue(second.isAlive(), "the new servant was retired in the old one's place: removed=" + second.getRemovalReason()
 				+ " health=" + second.getHealth() + " returned=" + returned.getRemovalReason() + " sameId=" + second.getUUID().equals(returned.getUUID()));
-			helper.assertTrue(diamonds == 3, "the retired servant's pack dropped " + diamonds + " of 3 diamonds");
-			LOG.info("[SPELLTEST] test=aServantThatReturnsAfterANewSummonIsRetired RESULT retired=true newAlive=true diamonds={}", diamonds);
+			int kept = SummonSkeleton.pack(second).stream().filter(stack -> stack.is(Items.DIAMOND))
+				.mapToInt(ItemStack::getCount).sum();
+			helper.assertTrue(diamonds == 0 && kept == 3,
+				"the retired servant dropped " + diamonds + " diamonds and the new servant kept " + kept);
+			LOG.info("[SPELLTEST] test=aServantThatReturnsAfterANewSummonIsRetired RESULT retired=true newAlive=true dropped={} kept={}", diamonds, kept);
 			second.discard();
 			leave(helper, master);
 		});
