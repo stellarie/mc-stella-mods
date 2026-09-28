@@ -60,9 +60,12 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   Witch", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
   Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
   never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
-  a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It throws healing
-  potions at damaged players, villagers, and patrol members. The spells mod gives it Chainstorm,
-  Time Lock, Ice Lance, Sanctuary, and Bulwark Hymn. A village settled before the witch
+  a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It can throw
+  splash healing or buffs at nearby players, villagers, and patrol members every two seconds.
+  A separate two-second timer controls random splash Harming, Poison, or Wither against hostile mobs.
+  Harmful splash effects spare friendlies,
+  and Harming still damages undead enemies.
+  The spells mod gives it Warden's Roar, Spark Shot, Life Bloom, and safe-distance blinks. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.

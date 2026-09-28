@@ -23,7 +23,7 @@ import net.minecraft.world.item.enchantment.Enchantments;
  */
 public final class VillageWitchKit {
 	public static final String TAG = "mc-stella-villages.village_witch";
-	/** Tells the mobs mod to leave the witch's goals alone, so it throws no potions. */
+	/** Tells the mobs mod to leave the witch's goals alone so villages can control its potions. */
 	public static final String NO_BEHAVIOR_TAG = "mod-stella-mobs.no_behavior";
 	public static final String LABEL = "Village Witch";
 	/** How far from the bell the witch first appears. */

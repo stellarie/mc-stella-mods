@@ -69,8 +69,8 @@ public final class PatrolService {
 	public static final String PATROL_TAG = "mc-stella-villages.patrol";
 	public static final int PLAYER_THREAT_CLEAR_TICKS = 200;
 	public static final int WITCH_SUPPORT_RANGE = 16;
-	public static final double WITCH_HEAL_THRESHOLD = 0.75;
-	public static final int WITCH_MIN_THROW_INTERVAL = 20;
+	public static final int WITCH_POTION_INTERVAL_TICKS = 40;
+	public static final int WITCH_POTION_RANGE = 16;
 	public static final int PATROL_MEMBER_COUNT = 10;
 	/** W021: five crossbow Pillagers take the places the Evoker and the Witch held. */
 	public static final int PILLAGER_COUNT = 5;
@@ -419,8 +419,8 @@ public final class PatrolService {
 	private static void installGoals(final ServerLevel level, final Mob mob, final VillageRecord village) {
 		// The village witch's mind is the spells mod's; this mod only keeps it by the bell.
 		if (PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
-			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
-			mob.getGoalSelector().addGoal(1, new PatrolWitchSupportGoal((Witch) mob, village.id()));
+			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchPotionGoal);
+			mob.getGoalSelector().addGoal(1, new PatrolWitchPotionGoal((Witch) mob, village.id()));
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), MEMBER_WANDER_RADIUS, 1.0));
 			return;
 		}
@@ -444,7 +444,7 @@ public final class PatrolService {
 		);
 
 		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal
-			|| goal instanceof PatrolWitchSupportGoal || goal instanceof HeadBellGuardGoal);
+			|| goal instanceof PatrolWitchPotionGoal || goal instanceof HeadBellGuardGoal);
 
 		BlockPos bell = bellOf(level, village);
 		if (PatrolState.role(mob) == PatrolState.Role.HEAD) {
@@ -452,7 +452,7 @@ public final class PatrolService {
 			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, bell, HEAD_BELL_RADIUS, 1.0));
 		} else if (mob instanceof Witch witch) {
 			mob.removeAllGoals(goal -> goal instanceof RangedAttackGoal);
-			mob.getGoalSelector().addGoal(1, new PatrolWitchSupportGoal(witch, village.id()));
+			mob.getGoalSelector().addGoal(1, new PatrolWitchPotionGoal(witch, village.id()));
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		} else {
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));

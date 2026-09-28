@@ -6,7 +6,13 @@ import com.stella.villages.patrol.PatrolLabels;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.villages.patrol.VillageWitchKit;
+import com.stella.villages.patrol.VillageWitchSplash;
+import com.stella.villages.patrol.PatrolWitchPotionGoal;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -20,6 +26,15 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
@@ -30,6 +45,17 @@ import net.minecraft.world.level.block.Blocks;
  * test runs in a batch of its own, because the switch is shared by the whole server.
  */
 public class VillageWitchGameTest {
+	private record PotionLaunch(boolean hostile, int tick, UUID target, String kind) { }
+	private static final Map<UUID, List<List<UUID>>> HOSTILE_SPLASHES = new ConcurrentHashMap<>();
+	private static final Map<UUID, List<PotionLaunch>> POTION_LAUNCHES = new ConcurrentHashMap<>();
+
+	static {
+		VillageWitchSplash.setRecorder((witch, victims) -> HOSTILE_SPLASHES
+			.computeIfAbsent(witch, ignored -> new CopyOnWriteArrayList<>()).add(victims));
+		PatrolWitchPotionGoal.setRecorder((witch, target, kind, hostile, tick) -> POTION_LAUNCHES
+			.computeIfAbsent(witch.getUUID(), ignored -> new CopyOnWriteArrayList<>())
+			.add(new PotionLaunch(hostile, tick, target, kind)));
+	}
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aVillageGetsAWitchByItsBellWhenSpellsAreThere(final GameTestHelper helper) {
 		String test = "aVillageGetsAWitchByItsBellWhenSpellsAreThere";
@@ -95,6 +121,232 @@ public class VillageWitchGameTest {
 			&& witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
 			"the village witch did not join the eleven-member bell rally");
 		helper.succeed();
+	}
+
+	@GameTest
+	public void harmingSplashDamagesUndeadHostiles(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		helper.setBlock(2, 0, 2, Blocks.STONE);
+		helper.setBlock(4, 0, 2, Blocks.STONE);
+		Mob witch = helper.spawnMob(EntityTypes.WITCH, 2, 1, 2).withNoFreeWill().spawn();
+		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 4, 1, 2).withNoFreeWill().spawn();
+		zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		float before = zombie.getHealth();
+		ItemStack harming = PotionContents.createItemStack(Items.SPLASH_POTION, Potions.HARMING);
+		ThrownSplashPotion splash = new ThrownSplashPotion(helper.getLevel(), witch, harming);
+		splash.addTag(VillageWitchSplash.OFFENSIVE_TAG);
+		splash.setPos(zombie.getX(), zombie.getY() + 0.5, zombie.getZ());
+		splash.onHitAsPotion(helper.getLevel(), harming,
+			new BlockHitResult(splash.position(), Direction.UP, splash.blockPosition(), false));
+		PatrolTestSupport.result("harmingSplashDamagesUndeadHostiles",
+			"before=" + before + " after=" + zombie.getHealth());
+		helper.assertTrue(zombie.getHealth() < before, "Harming splash healed or spared the undead hostile");
+		witch.discard();
+		zombie.discard();
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void hostileWitchSplashNeverTouchesFriendlies(final GameTestHelper helper) {
+		String test = "hostileWitchSplashNeverTouchesFriendlies";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		Mob ally = PatrolTestSupport.role(helper, test, "PILLAGER");
+		helper.assertTrue(witch != null && ally != null, "the witch or ally is missing");
+		Mob foe = helper.spawnMob(EntityTypes.PILLAGER, 5, 2, 5).withNoFreeWill().spawn();
+		Villager villager = helper.spawnMob(EntityTypes.VILLAGER, 6, 2, 5).withNoFreeWill().spawn();
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 center = witch.position();
+		foe.setPos(center.x + 1.0, center.y, center.z);
+		ally.setPos(center.x + 1.5, center.y, center.z + 0.5);
+		villager.setPos(center.x + 1.0, center.y, center.z + 1.0);
+		player.setPos(center.x + 1.5, center.y, center.z + 1.0);
+		ItemStack wither = new ItemStack(Items.SPLASH_POTION);
+		wither.set(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+			PotionContents.EMPTY.withEffectAdded(new MobEffectInstance(MobEffects.WITHER, 100, 0)));
+		List<ItemStack> harmful = List.of(PotionContents.createItemStack(Items.SPLASH_POTION, Potions.HARMING),
+			PotionContents.createItemStack(Items.SPLASH_POTION, Potions.POISON), wither);
+		boolean safe = true;
+		int hits = 0;
+		for (ItemStack stack : harmful) {
+			for (Mob mob : List.of(foe, ally, villager)) {
+				mob.setHealth(mob.getMaxHealth());
+				mob.removeAllEffects();
+			}
+			player.setHealth(player.getMaxHealth());
+			player.removeAllEffects();
+			ThrownSplashPotion splash = new ThrownSplashPotion(helper.getLevel(), witch, stack);
+			splash.addTag(VillageWitchSplash.OFFENSIVE_TAG);
+			splash.setPos(center.x + 1.0, center.y + 0.5, center.z + 0.5);
+			splash.onHitAsPotion(helper.getLevel(), stack,
+				new BlockHitResult(splash.position(), Direction.UP, splash.blockPosition(), false));
+			boolean affected = foe.getHealth() < foe.getMaxHealth() || foe.hasEffect(MobEffects.POISON)
+				|| foe.hasEffect(MobEffects.WITHER);
+			hits += affected ? 1 : 0;
+			safe &= ally.getHealth() == ally.getMaxHealth() && villager.getHealth() == villager.getMaxHealth()
+				&& player.getHealth() == player.getMaxHealth()
+				&& !ally.hasEffect(MobEffects.POISON) && !ally.hasEffect(MobEffects.WITHER)
+				&& !villager.hasEffect(MobEffects.POISON) && !villager.hasEffect(MobEffects.WITHER)
+				&& !player.hasEffect(MobEffects.POISON) && !player.hasEffect(MobEffects.WITHER);
+		}
+		PatrolTestSupport.result(test, "harmfulTypes=" + harmful.size() + " foeHits=" + hits + " friendsSafe=" + safe);
+		helper.assertTrue(hits == harmful.size() && safe, "a hostile splash missed its foe or hit a friend");
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 220, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers(final GameTestHelper helper) {
+		String test = "villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		for (Mob member : PatrolTestSupport.patrols(helper)) {
+			if (member != witch) {
+				member.setNoAi(true);
+				Vec3 far = witch.position().add(30.0, 0.0, 0.0);
+				member.setPos(far.x, far.y, far.z);
+			}
+		}
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 friendly = witch.position().add(3.0, 0.0, 0.0);
+		player.setPos(friendly.x, friendly.y, friendly.z);
+		Mob hostile = helper.spawnMob(EntityTypes.PILLAGER, 5, 2, 5).withNoFreeWill().spawn();
+		hostile.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(500.0);
+		hostile.setHealth(500.0F);
+		Vec3 enemy = witch.position().add(4.0, 0.0, 0.0);
+		hostile.setPos(enemy.x, enemy.y, enemy.z);
+		var chunk = hostile.chunkPosition();
+		helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true);
+		helper.runAfterDelay(160, () -> {
+			List<PotionLaunch> launches = POTION_LAUNCHES.getOrDefault(witch.getUUID(), List.of());
+			List<Integer> support = launches.stream().filter(launch -> !launch.hostile()).map(PotionLaunch::tick).toList();
+			List<Integer> offense = launches.stream().filter(PotionLaunch::hostile).map(PotionLaunch::tick).toList();
+			boolean separate = support.size() >= 2 && offense.size() >= 2
+				&& support.get(1) - support.get(0) >= PatrolService.WITCH_POTION_INTERVAL_TICKS
+				&& support.get(1) - support.get(0) <= PatrolService.WITCH_POTION_INTERVAL_TICKS + 10
+				&& offense.get(1) - offense.get(0) >= PatrolService.WITCH_POTION_INTERVAL_TICKS
+				&& offense.get(1) - offense.get(0) <= PatrolService.WITCH_POTION_INTERVAL_TICKS + 10
+				&& Math.abs(support.get(0) - offense.get(0)) <= 10;
+			PatrolTestSupport.result(test, "support=" + support + " offense=" + offense + " separate=" + separate);
+			helper.assertTrue(separate, "support and hostile potions share one timer");
+			helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 240, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchThrowsHarmfulSplashAtHostiles(final GameTestHelper helper) {
+		String test = "villageWitchThrowsHarmfulSplashAtHostiles";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		for (Mob member : PatrolTestSupport.patrols(helper)) {
+			if (member != witch) {
+				member.setNoAi(true);
+				Vec3 far = witch.position().add(30.0, 0.0, 0.0);
+				member.setPos(far.x, far.y, far.z);
+			}
+		}
+		Mob hostile = helper.spawnMob(EntityTypes.PILLAGER, 5, 2, 5).withNoFreeWill().spawn();
+		hostile.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(100.0);
+		hostile.setHealth(100.0F);
+		Vec3 at = witch.position().add(4.0, 0.0, 0.0);
+		hostile.setPos(at.x, at.y, at.z);
+		var chunk = hostile.chunkPosition();
+		helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true);
+		PatrolTestSupport.detail(test, "hostileEligible=" + VillageWitchSplash.hostile(hostile)
+			+ " sight=" + witch.hasLineOfSight(hostile) + " ticking="
+			+ helper.getLevel().isPositionEntityTicking(hostile.blockPosition()));
+		helper.succeedWhen(() -> {
+			boolean harmed = hostile.getHealth() < 100.0F || hostile.hasEffect(MobEffects.POISON)
+				|| hostile.hasEffect(MobEffects.WITHER);
+			boolean splashed = HOSTILE_SPLASHES.getOrDefault(witch.getUUID(), List.of()).stream()
+				.anyMatch(victims -> victims.contains(hostile.getUUID()));
+			helper.assertTrue(harmed && splashed, "the witch has not landed a harmful splash on the hostile: alive="
+				+ hostile.isAlive() + " distance=" + witch.distanceTo(hostile) + " sight="
+				+ witch.hasLineOfSight(hostile) + " witchTarget=" + witch.getTarget()
+				+ " hostileTicking=" + helper.getLevel().isPositionEntityTicking(hostile.blockPosition()));
+			PatrolTestSupport.result(test, "health=" + hostile.getHealth() + " poison="
+				+ hostile.hasEffect(MobEffects.POISON) + " wither=" + hostile.hasEffect(MobEffects.WITHER)
+				+ " splashes=" + HOSTILE_SPLASHES.getOrDefault(witch.getUUID(), List.of()).size());
+			helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false);
+		});
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 240, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchBuffsPlayersEveryTwoSeconds(final GameTestHelper helper) {
+		String test = "villageWitchBuffsPlayersEveryTwoSeconds";
+		boolean loaded;
+		try {
+			VillageWitchKit.force(true);
+			loaded = PatrolTestSupport.loadVillage(helper, test, false);
+		} finally {
+			VillageWitchKit.force(false);
+		}
+		if (!loaded) {
+			return;
+		}
+		Mob witch = witchOf(helper);
+		helper.assertTrue(witch != null, "the village has no witch");
+		for (Mob member : PatrolTestSupport.patrols(helper)) {
+			if (member != witch) {
+				member.setNoAi(true);
+				Vec3 far = witch.position().add(30.0, 0.0, 0.0);
+				member.setPos(far.x, far.y, far.z);
+			}
+		}
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Vec3 near = witch.position().add(3.0, 0.0, 0.0);
+		player.setPos(near.x, near.y, near.z);
+		long[] regen = {-1};
+		long[] speed = {-1};
+		long[] strength = {-1};
+		helper.onEachTick(() -> {
+			if (regen[0] < 0 && player.hasEffect(MobEffects.REGENERATION)) {
+				regen[0] = helper.getTick();
+			}
+			if (speed[0] < 0 && player.hasEffect(MobEffects.SPEED)) {
+				speed[0] = helper.getTick();
+			}
+			if (strength[0] < 0 && player.hasEffect(MobEffects.STRENGTH)) {
+				strength[0] = helper.getTick();
+			}
+		});
+		helper.runAfterDelay(200, () -> {
+			boolean spaced = regen[0] >= 0 && speed[0] >= regen[0] + 35
+				&& strength[0] >= speed[0] + 35;
+			PatrolTestSupport.result(test, "regenAt=" + regen[0] + " speedAt=" + speed[0]
+				+ " strengthAt=" + strength[0] + " spaced=" + spaced);
+			helper.assertTrue(spaced, "the witch did not buff the player every two seconds");
+			helper.succeed();
+		});
 	}
 
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
@@ -170,6 +422,31 @@ public class VillageWitchGameTest {
 			helper.assertTrue(ally.getHealth() > 5.0F, "the village witch did not heal the patrol member");
 			PatrolTestSupport.result(test, "health=" + ally.getHealth());
 		});
+	}
+
+	@GameTest
+	public void harmfulWitchPotionsAreRandomSplashItems(final GameTestHelper helper) {
+		RandomSource random = RandomSource.create(20_260_928L);
+		int[] counts = new int[3];
+		int samples = 9_000;
+		boolean allSplash = true;
+		for (int index = 0; index < samples; index++) {
+			ItemStack potion = PatrolWitchPotionGoal.randomOffensivePotion(random);
+			allSplash &= potion.is(Items.SPLASH_POTION);
+			switch (PatrolWitchPotionGoal.offensiveKind(potion)) {
+				case "harming" -> counts[0]++;
+				case "poison" -> counts[1]++;
+				case "wither" -> counts[2]++;
+				default -> allSplash = false;
+			}
+		}
+		int expected = samples / counts.length;
+		boolean balanced = java.util.Arrays.stream(counts)
+			.allMatch(count -> Math.abs(count - expected) <= samples * 0.03);
+		PatrolTestSupport.result("harmfulWitchPotionsAreRandomSplashItems", "harming=" + counts[0]
+			+ " poison=" + counts[1] + " wither=" + counts[2] + " allSplash=" + allSplash);
+		helper.assertTrue(allSplash && balanced, "the harmful splash potion roll lost a type or its balance");
+		helper.succeed();
 	}
 
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)

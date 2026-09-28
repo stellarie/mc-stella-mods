@@ -27,6 +27,7 @@ This repository develops Fabric mods on separate integration branches and publis
 - The village head guards an eight-block bell radius; bell rings teleport loaded members and grant five-minute Speed II and Strength II. [status: active] [verified: 2026-09-28] [source: HeadBellGuardGoal.java; BellRally.java; five combined GameTest runs]
 - Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
 - Killed Nemesis companions stay dead by mission ID, saved on the Overworld; missing live companions can be replaced. [status: active] [verified: 2026-09-28] [source: NemesisCompanionDeaths.java; killedEliteCompanionNeverRespawns; missingEliteCompanionIsReplaced]
+- Village witches use independent 40-tick support and hostile splash timers. Harmful splash effects apply only to hostile mobs. [status: active] [verified: 2026-09-28] [source: PatrolWitchPotionGoal.java; VillageWitchSplash.java; villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers]
 - `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
@@ -40,6 +41,7 @@ This repository develops Fabric mods on separate integration branches and publis
 - A test run overwrites its prior log -> copy the log after every run. [status: active] [verified: 2026-09-24] [source: AGENTS.md]
 - With spells loaded, a village gains an eleventh witch -> keep legacy ten-member GameTests in a test-only witch-disabled environment. [status: active] [verified: 2026-09-28] [source: VillageTestInit.java; ringingTheBellRalliesTheVillageWitch]
 - Mock players created at the shared origin can steal a nearby attendance test -> place each player at its own test structure. [status: active] [verified: 2026-09-28] [source: VillageRaidGameTest.attendanceFollowsPlayerDistance]
+- Vanilla Harming heals undead mobs -> village-witch hostile Harming splash applies magic damage to them. [status: active] [verified: 2026-09-28] [source: VillageWitchSplash.java; harmingSplashDamagesUndeadHostiles]
 - `EntityType.getBaseClass()` does not identify hostile subclasses for village offer filtering -> instantiate candidate mobs in the server level. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; GameTest red and green runs]
 - Vanilla `randomTeleport` rejects safe stone floors through its extra block tag -> validate collision, then call `teleportTo`. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; teleport GameTests]
 
