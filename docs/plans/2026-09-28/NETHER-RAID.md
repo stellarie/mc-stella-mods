@@ -37,8 +37,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 
 ## Guaranteed structures
 
-- Every instance holds a nether fortress and a bastion within 256 blocks of the arrival point, placed
-  at instance creation rather than left to the structure grid.
+- Every instance holds a nether fortress and a bastion within 256 blocks of the arrival point.
 
 ## The Blaze Sovereign (boss)
 
@@ -68,7 +67,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 2. Host and mode, the per-player effect in Normal and Hard, the mob effects in Hard. **Done.**
 3. Instance lifecycle: occupancy tracking, reset when empty, loss of dropped items. **Done.**
 4. The 30 minute enrage. **Done.**
-5. Guaranteed fortress and bastion within 256 blocks.
+5. Guaranteed fortress and bastion within 256 blocks. **Done.**
 6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn.
 7. The five specials, one per sub-slice.
 8. Blaze Core and Flame Mantle; the End unlock.
@@ -84,6 +83,9 @@ Each slice ships with headless game tests per `AGENTS.md`.
   unaffected, but the raid dimension's disk use grows per run.
 - The mode is picked in the portal prompt, before crossing, instead of after arriving. The first
   crossing into an empty raid needs no second step.
+
+- Deviation (slice 5): the structures are not placed at instance creation. The run instead opens between
+  a naturally generated fortress and bastion, which keeps them whole and costs no forced generation.
 
 ## Open questions for oniichan
 

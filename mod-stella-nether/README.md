@@ -38,7 +38,7 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - In hard mode, every hostile mob that loads in the raid holds two different boons, drawn from speed,
   strength, resistance, regeneration, absorption, health boost and fire resistance. Only effects the mob
   can hold are drawn, so undead are never handed regeneration. A mob is boosted once per run.
-- Each run lies 2048 blocks from the last. The arrival hall is built at the current run's origin.
+- Each run has its own site; see slice 5.
 
 ## Slice 3: the instance lifecycle
 
@@ -60,6 +60,21 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   within 64 blocks. A neutral mob stays angry at them.
 - The enrage lasts until the raid resets.
 
+## Slice 5: a fortress and a bastion in reach
+
+- Each run's origin lies 8,192 blocks from the last (800 runs per row, inside the nether's world border).
+- The run opens midway between a fortress and a bastion of the raid nether's own generation that lie no
+  more than 480 blocks apart, so both structure starts are within 256 blocks of the arrival. Nothing is
+  forced into the land. The search reads the actual structure start in each placement cell within three
+  cells of the origin (vanilla's locate is not used: it answers with the first ring holding a match, not
+  the nearest), and takes the pair nearest the origin.
+- Measured: 60 of 60 runs over five suite runs had both in reach (by a scan of every chunk within 256
+  blocks), with no fallback. The same check at the bare origin, before this slice, gave 2 of 6.
+- The search runs on the server thread the first time a run is needed, costing up to about 2 seconds
+  (worst measured 2,044 ms) once per run.
+- A server with structures switched off has no fortress or bastion to find; the run then opens at its
+  origin and logs a warning.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -68,5 +83,6 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
+- From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.
