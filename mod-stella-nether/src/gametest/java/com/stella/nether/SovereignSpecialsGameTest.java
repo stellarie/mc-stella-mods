@@ -199,7 +199,9 @@ public class SovereignSpecialsGameTest {
 			Vec3 away = caught.position().subtract(scene.sovereign().position()).multiply(1.0, 0.0, 1.0).normalize();
 			double push = caught.getDeltaMovement().multiply(1.0, 0.0, 1.0).dot(away);
 			boolean stun = stunned(caught);
-			NetherTestSupport.result("chargedWave", "hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun);
+			NetherTestSupport.result("chargedWave", "hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun
+				+ " home=" + cast.home() + " caughtAt=" + caught.position() + " caughtLevel=" + caught.level().dimension().identifier()
+				+ " visible=" + (scene.raid().getEntity(caught.getUUID()) == caught) + " alive=" + caught.isAlive() + " seen=" + cast.seen());
 			helper.assertTrue(hit && missed && push > 0.5 && stun, "wave hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun);
 			end(helper, scene, caught, beyond);
 			})
