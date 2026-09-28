@@ -7,7 +7,9 @@
 		"SovereignDamageMixin",
 		"EnderEyeSealMixin",
 		"StrongholdChestMixin",
-		"StructurePieceInvoker"
+		"StructurePieceInvoker",
+		"BlazeCoreAnvilMixin",
+		"ItemCombinerMenuAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
