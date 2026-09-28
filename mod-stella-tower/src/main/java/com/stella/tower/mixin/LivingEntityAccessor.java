@@ -12,4 +12,7 @@ public interface LivingEntityAccessor {
 
 	@Accessor("lastHurt")
 	void stellaTower$setLastHurt(float lastHurt);
+
+	@Accessor("useItemRemaining")
+	void stellaTower$setUseItemRemaining(int ticks);
 }
