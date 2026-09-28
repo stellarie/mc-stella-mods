@@ -43,7 +43,8 @@ public final class TowerElites {
 	public static final int GUARD_RADIUS = 8;
 	public static final int CHECK_TICKS = 20;
 	public static final int PLACE_TRIES = 40;
-	private static int respawnTicks = RESPAWN_TICKS;
+	/** The test seam: a shorter rest, pinned by floor so a pin left behind touches no other test's floor. */
+	private static final Map<Integer, Integer> PINNED_REST = new java.util.concurrent.ConcurrentHashMap<>();
 	private static final Map<UUID, ServerBossEvent> BARS = new HashMap<>();
 
 	private TowerElites() {
@@ -61,7 +62,7 @@ public final class TowerElites {
 			GuardianData.Post post = data.post(state.floor(), state.rank());
 			if (post != null && post.guardian().filter(entity.getUUID()::equals).isPresent()) {
 				// The rest runs from the death itself.
-				data.set(state.floor(), state.rank(), new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks));
+				data.set(state.floor(), state.rank(), new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks(state.floor())));
 			}
 			if (state.rank() == TowerRank.BOSS && entity.getLastHurtByPlayer() != null && level.getGameRules().get(GameRules.MOB_DROPS)) {
 				entity.spawnAtLocation(level, FloorKeyItem.forFloor(state.floor()));
@@ -74,12 +75,21 @@ public final class TowerElites {
 	}
 
 	/** The test seam: how long a slain elite or boss stays away. */
-	public static void pinRespawnTicks(final int ticks) {
-		respawnTicks = ticks;
+	public static void pinRespawnTicks(final int floor, final @Nullable Integer ticks) {
+		if (ticks == null) {
+			PINNED_REST.remove(floor);
+		} else {
+			PINNED_REST.put(floor, ticks);
+		}
 	}
 
-	public static int respawnTicks() {
-		return respawnTicks;
+	public static int respawnTicks(final int floor) {
+		return PINNED_REST.getOrDefault(floor, RESPAWN_TICKS);
+	}
+
+	/** Where a floor's guardians stand guard: a few steps in front of its portal. */
+	public static BlockPos post(final int floor) {
+		return TowerLayout.portalInside(floor).get(0).offset(-GUARD_DISTANCE, 0, 0);
 	}
 
 	public static boolean keepsElite(final int floor) {
@@ -177,12 +187,13 @@ public final class TowerElites {
 	private static void keep(final ServerLevel tower, final GuardianData data, final int floor, final TowerRank rank) {
 		GuardianData.Post post = data.post(floor, rank);
 		if (post != null && post.guardian().isPresent()) {
-			boolean present = of(tower, floor, rank).stream().anyMatch(mob -> mob.getUUID().equals(post.guardian().get()));
-			if (present) {
+			Mob held = of(tower, floor, rank).stream().filter(mob -> mob.getUUID().equals(post.guardian().get())).findFirst().orElse(null);
+			if (held != null) {
+				tether(held, floor);
 				return;
 			}
 			// Gone from a fully loaded room without a death seen: a blast or a discard. Its rest starts now.
-			data.set(floor, rank, new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks));
+			data.set(floor, rank, new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks(floor)));
 			return;
 		}
 		if (post != null && data.ticks() < post.nextRise()) {
@@ -199,6 +210,21 @@ public final class TowerElites {
 		}
 	}
 
+	/**
+	 * A guardian with a quarry may follow it anywhere in the room; one without is kept near its post. Kept
+	 * to its post while hunting, it would drop a chase past the post's edge and stand to be shot from there.
+	 */
+	static void tether(final Mob guardian, final int floor) {
+		net.minecraft.world.entity.LivingEntity quarry = guardian.getTarget();
+		if (quarry != null && quarry.isAlive()) {
+			if (guardian.hasHome()) {
+				guardian.clearHome();
+			}
+		} else if (!guardian.hasHome()) {
+			guardian.setHomeTo(post(floor), GUARD_RADIUS);
+		}
+	}
+
 	/** Raises the floor's elite or boss in front of its portal, kept near it. */
 	public static @Nullable Mob rise(final ServerLevel tower, final int floor, final TowerRank rank) {
 		RandomSource random = tower.getRandom();
@@ -207,7 +233,7 @@ public final class TowerElites {
 		if (mob == null) {
 			return null;
 		}
-		BlockPos front = TowerLayout.portalInside(floor).get(0).offset(-GUARD_DISTANCE, 0, 0);
+		BlockPos front = post(floor);
 		mob.snapTo(Vec3.atBottomCenterOf(front));
 		mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(front), EntitySpawnReason.EVENT, null);
 		TowerMobs.settle(mob);
