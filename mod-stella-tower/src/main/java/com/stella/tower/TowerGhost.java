@@ -56,8 +56,9 @@ public class TowerGhost extends PathfinderMob {
 		this.goalSelector.addGoal(0, new FloatGoal(this));
 		this.goalSelector.addGoal(4, new TowerGhosts.StayNearPlayerGoal(this));
 		this.goalSelector.addGoal(5, new WaterAvoidingRandomFlyingGoal(this, 1.0));
+		// Only what its bolt can reach: a quarry further off would draw it away from the players it keeps.
 		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Mob.class, 5, true, false,
-			(target, level) -> target instanceof Enemy && !(target instanceof TowerGhost)));
+			(target, level) -> target instanceof Enemy && !(target instanceof TowerGhost) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
 	}
 
 	/** A ghost never takes a player, or another ghost, for its quarry. */
@@ -78,6 +79,12 @@ public class TowerGhost extends PathfinderMob {
 	@Override
 	public void travel(final Vec3 input) {
 		this.travelFlying(input, this.getSpeed());
+	}
+
+	/** Shots pass through a ghost: a volley loosed at a monster never strikes the players' ghost. */
+	@Override
+	public boolean canBeHitByProjectile() {
+		return false;
 	}
 
 	@Override

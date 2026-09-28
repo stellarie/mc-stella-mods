@@ -79,4 +79,24 @@ public class TowerRewardGameTest {
 		helper.assertTrue(factor > 1.0 && Math.abs(mean - factor) < 0.05, "one bone grew to " + mean + " on average, not " + factor);
 		helper.succeed();
 	}
+
+	/** Only a tower mob's own death loot grows: blocks its blast breaks drop as they always do. */
+	@GameTest
+	public void aTowerMobsBlastBreaksBlocksAsAnyBlastDoes(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		net.minecraft.world.entity.monster.Creeper creeper = EntityTypes.CREEPER.create(level, EntitySpawnReason.COMMAND);
+		TowerMobs.makeTowerMob(creeper, DROP_FLOOR, TowerElement.FIRE);
+		net.minecraft.core.BlockPos at = helper.absolutePos(new net.minecraft.core.BlockPos(2, 2, 2));
+		net.minecraft.world.level.block.state.BlockState diamond = net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK.defaultBlockState();
+		// The loot a blast asks for: the block, the spot, no tool, and the mob that blew.
+		net.minecraft.world.level.storage.loot.LootParams.Builder params = new net.minecraft.world.level.storage.loot.LootParams.Builder(level)
+			.withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN, Vec3.atCenterOf(at))
+			.withParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.TOOL, net.minecraft.world.item.ItemStack.EMPTY)
+			.withOptionalParameter(net.minecraft.world.level.storage.loot.parameters.LootContextParams.THIS_ENTITY, creeper);
+		int dropped = diamond.getDrops(params).stream().mapToInt(net.minecraft.world.item.ItemStack::getCount).sum();
+		TowerTestSupport.result("blastDrops", "dropped=" + dropped + " factor=" + TowerRewards.dropFactor(DROP_FLOOR));
+		creeper.discard();
+		helper.assertTrue(dropped == 1, "a floor " + DROP_FLOOR + " creeper's blast turned one diamond block into " + dropped);
+		helper.succeed();
+	}
 }

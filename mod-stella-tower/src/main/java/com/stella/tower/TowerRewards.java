@@ -20,9 +20,10 @@ public final class TowerRewards {
 	}
 
 	public static void register() {
-		// Only a tower mob's own loot grows: the loot a killed mob drops names that mob as its entity.
+		// Only a tower mob's own death loot grows. A block its blast breaks, or the block an enderman
+		// carries, also names the mob, but only a death names the blow that killed it.
 		LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> {
-			if (context.getOptional(LootContextParams.THIS_ENTITY) instanceof LivingEntity mob) {
+			if (context.hasParameter(LootContextParams.DAMAGE_SOURCE) && context.getOptional(LootContextParams.THIS_ENTITY) instanceof LivingEntity mob) {
 				TowerMobs.State state = TowerMobs.stateOf(mob);
 				if (state != null) {
 					scale(drops, dropFactor(state.floor()), context.getRandom());
