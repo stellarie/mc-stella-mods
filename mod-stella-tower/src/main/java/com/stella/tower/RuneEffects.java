@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -55,7 +58,7 @@ public final class RuneEffects {
 		// What a hit leaves behind waits until it has landed, so a blow turned aside builds nothing.
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			if (blocked || taken <= 0.0F || !(entity.level() instanceof ServerLevel level) || !(source.getEntity() instanceof ServerPlayer player)
-				|| source.getWeaponItem() == null || TowerRunes.slotOf(source.getWeaponItem()) != TowerRunes.Slot.WEAPON) {
+				|| !TowerRunes.struckWith(source) || TowerRunes.slotOf(source.getWeaponItem()) != TowerRunes.Slot.WEAPON) {
 				return;
 			}
 			RuneData rune = TowerRunes.runeOf(source.getWeaponItem());
@@ -143,13 +146,22 @@ public final class RuneEffects {
 		}
 	}
 
-	/** Fire's burst: a share of the target's whole health, the tower's size included, as a fresh blow. */
+	/** Fire's burst: its own blow, a share of the target's whole health, the tower's size included. */
+	public static final ResourceKey<DamageType> BURST = ResourceKey.create(Registries.DAMAGE_TYPE, StellaTower.id("rune_burst"));
+
+	/**
+	 * Fire's burst: a share of the target's whole health, the tower's size included, as a blow of its own.
+	 * It is not fire, so the fire-born burn too, and armor, resistance and enchantments do not blunt it. The
+	 * blow that set it off keeps its hold on the target, so the next hits land as they would have.
+	 */
 	private static void burst(final ServerLevel level, final LivingEntity target, final double share) {
 		TowerMobs.State state = TowerMobs.stateOf(target);
 		double whole = target.getMaxHealth() * (state == null ? 1.0 : state.healthDivisor() * TowerBuffs.healthFactor(target));
-		target.damageCooldownTime = 0;
-		// Of its whole health, so armor does not blunt it.
-		target.hurtServer(level, level.damageSources().onFire(), (float) (share * whole));
+		int cooldown = target.damageCooldownTime;
+		float lastHurt = ((com.stella.tower.mixin.LivingEntityAccessor) target).stellaTower$lastHurt();
+		target.hurtServer(level, new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(BURST)), (float) (share * whole));
+		target.damageCooldownTime = cooldown;
+		((com.stella.tower.mixin.LivingEntityAccessor) target).stellaTower$setLastHurt(lastHurt);
 		level.sendParticles(ParticleTypes.FLAME, target.getX(), target.getY() + 1.0, target.getZ(), 30, 0.4, 0.6, 0.4, 0.05);
 		level.playSound(null, target.blockPosition(), SoundEvents.FIRECHARGE_USE, SoundSource.PLAYERS, 1.0F, 0.8F);
 	}
