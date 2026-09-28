@@ -72,6 +72,7 @@ public class StellaMobs implements ModInitializer {
 		ReactiveState.register();
 		EliteState.register();
 		ThreatState.register();
+		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
 		EscortSquad.register();
 		RiderSquad.register();

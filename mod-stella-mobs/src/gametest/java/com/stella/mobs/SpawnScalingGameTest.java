@@ -4,6 +4,7 @@ import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.mobs.scaling.ThreatState;
+import com.stella.mobs.scaling.WorldThreatPeak;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.gear.GearTier;
@@ -21,6 +22,26 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
  * A mob's health and damage use one threat level plus the retained depth modifier.
  */
 public class SpawnScalingGameTest {
+	@GameTest
+	public void highestThreatPersistsAcrossDimensionsAndNeverFalls(final GameTestHelper helper) {
+		var server = helper.getLevel().getServer();
+		int before = WorldThreatPeak.highest(server);
+		var nether = server.getLevel(net.minecraft.world.level.Level.NETHER);
+		Mob stronger = EntityTypes.ZOMBIE.create(nether, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		((AttachmentTarget) stronger).setAttached(ThreatState.TYPE, new ThreatState(before + 20, 0));
+		int observed = ThreatState.level(stronger);
+		int fromOverworld = WorldThreatPeak.highest(server);
+		Mob weaker = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		((AttachmentTarget) weaker).setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+		ThreatState.level(weaker);
+		int afterWeaker = WorldThreatPeak.highest(server);
+		result("highestThreatPersistsAcrossDimensionsAndNeverFalls", "before=" + before + " observed=" + observed
+			+ " overworld=" + fromOverworld + " afterWeaker=" + afterWeaker);
+		helper.assertTrue(observed >= before + 20 && fromOverworld == observed && afterWeaker == observed,
+			"the world threat peak did not rise across dimensions or fell again");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void threatVariationIsBoundedAndCentered(final GameTestHelper helper) {
 		var random = net.minecraft.util.RandomSource.create(20_260_928L);
