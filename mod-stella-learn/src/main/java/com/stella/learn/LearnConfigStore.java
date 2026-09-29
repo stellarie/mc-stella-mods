@@ -28,7 +28,9 @@ public final class LearnConfigStore {
 			"choke_threshold": %s,
 			"choke_group": %d,
 			"choke_patience_ticks": %d,
-			"choke_rest_ticks": %d
+			"choke_rest_ticks": %d,
+			"behavior_log": %s,
+			"log_summary_ticks": %d
 		}
 		""".formatted(
 		LearnConfig.DEFAULT_CALLOUT_RADIUS, LearnConfig.DEFAULT_MAX_RESPONDERS,
@@ -37,7 +39,8 @@ public final class LearnConfigStore {
 		LearnConfig.DEFAULT_SHIELD_THRESHOLD, LearnConfig.DEFAULT_SHIELD_PATIENCE_TICKS, LearnConfig.DEFAULT_SHIELD_REST_TICKS,
 		LearnConfig.DEFAULT_RANGED_SATURATION, LearnConfig.DEFAULT_COVER_THRESHOLD, LearnConfig.DEFAULT_COVER_REST_TICKS,
 		LearnConfig.DEFAULT_RETREAT_SATURATION, LearnConfig.DEFAULT_CHOKE_THRESHOLD, LearnConfig.DEFAULT_CHOKE_GROUP,
-		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS
+		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS,
+		LearnConfig.DEFAULT_BEHAVIOR_LOG, LearnConfig.DEFAULT_LOG_SUMMARY_TICKS
 	);
 	private static volatile LearnConfig config = LearnConfig.defaults();
 
