@@ -8,7 +8,7 @@ server and every client. The server runs spell logic; clients render icons, empt
 
 Four extra hotbar cells sit to the right of the hotbar. Each holds any item and has its own key, unbound until you
 set it under Controls, "Stella Quick Slots". Pressing a key uses that slot's item at once, without selecting it, and
-the item you hold stays where it is. Place items in the four slots beside the inventory screen.
+the item you hold stays where it is. Place items in the four slots in a row under the inventory screen.
 
 - A spellbook or scroll casts, and a scroll is spent by one cast. Thrown items throw.
 - Food and drink finish at once.

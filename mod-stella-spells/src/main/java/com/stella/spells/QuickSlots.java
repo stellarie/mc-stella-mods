@@ -28,9 +28,9 @@ public final class QuickSlots {
 	public static final int COUNT = 4;
 	/** The first quick slot's index in the inventory menu: the four sit after the offhand, so no vanilla index moves. */
 	public static final int MENU_FIRST_SLOT = InventoryMenu.SHIELD_SLOT + 1;
-	/** Where the slots sit on the inventory screen: just right of its 176 pixel panel, one below another. */
-	public static final int MENU_X = 184;
-	public static final int MENU_Y = 8;
+	/** Where the slots sit on the inventory screen: one row under its 166 pixel panel, lined up with the hotbar. */
+	public static final int MENU_X = 8;
+	public static final int MENU_Y = 172;
 	public static final int MENU_STEP = 18;
 
 	public static final Codec<QuickSlots> CODEC = ItemStack.OPTIONAL_CODEC.listOf().xmap(QuickSlots::fromList, QuickSlots::toList);
