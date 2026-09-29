@@ -79,6 +79,13 @@ public final class RaidTravel {
 	}
 
 	public static void register() {
+		net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> forgetWindow(handler.player));
+		net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> forgetWindow(player));
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+			if (entity instanceof ServerPlayer player) {
+				forgetWindow(player);
+			}
+		});
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, selection) -> dispatcher.register(
 			Commands.literal(COMMAND).then(Commands.literal("portal")
 				.then(Commands.literal("normal").executes(context -> chooseByCommand(context.getSource().getPlayerOrException(), Choice.NORMAL)))
@@ -139,7 +146,7 @@ public final class RaidTravel {
 		}
 		Pending pending = pending(player);
 		if (pending == null) {
-			ask(player);
+			ask(player, portal);
 			return Route.HOLD;
 		}
 		CHOICES.remove(player.getUUID());
@@ -175,20 +182,65 @@ public final class RaidTravel {
 		return null;
 	}
 
-	private static void ask(final ServerPlayer player) {
+	/** How far from the portal's plane a cancelled window sets the player down. */
+	public static final double CANCEL_KNOCKBACK = 2.0;
+	/** The players whose window is open, and the portal it was opened for; it is sent once, not again while open. */
+	private static final Map<UUID, BlockPos> WINDOW_OPEN = new ConcurrentHashMap<>();
+	private static java.util.function.Predicate<ServerPlayer> windowCapable =
+		player -> net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, PortalWindow.Open.TYPE);
+	private static java.util.function.BiConsumer<ServerPlayer, PortalWindow.Open> windowSender =
+		net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking::send;
+
+	/** Test seam: who can show the window, and how it is sent. Returns the pair it replaced. */
+	static Object[] setWindowSeams(final java.util.function.Predicate<ServerPlayer> capable, final java.util.function.BiConsumer<ServerPlayer, PortalWindow.Open> sender) {
+		Object[] previous = {windowCapable, windowSender};
+		windowCapable = capable;
+		windowSender = sender;
+		return previous;
+	}
+
+	@SuppressWarnings("unchecked")
+	static void restoreWindowSeams(final Object[] previous) {
+		windowCapable = (java.util.function.Predicate<ServerPlayer>) previous[0];
+		windowSender = (java.util.function.BiConsumer<ServerPlayer, PortalWindow.Open>) previous[1];
+	}
+
+	public static boolean windowOpen(final ServerPlayer player) {
+		return WINDOW_OPEN.containsKey(player.getUUID());
+	}
+
+	static void forgetWindow(final ServerPlayer player) {
+		WINDOW_OPEN.remove(player.getUUID());
+	}
+
+	/**
+	 * A player stepping into an overworld nether portal is asked at once, not after the portal's wait. One just
+	 * arrived through it, or who has chosen already, is left alone.
+	 */
+	public static void stepIn(final ServerLevel level, final Entity entity, final BlockPos portal) {
+		if (entity instanceof ServerPlayer player && level.dimension().equals(Level.OVERWORLD) && !player.isSpectator()
+			&& !player.isPassenger() && !player.isOnPortalCooldown() && pending(player) == null) {
+			ask(player, portal);
+		}
+	}
+
+	private static void ask(final ServerPlayer player, final BlockPos portal) {
+		RaidState state = RaidInstance.state(player.level().getServer());
+		// A client with the mod gets the window, once, and it stays until a click or a cancel; any other, the chat prompt.
+		if (windowCapable.test(player)) {
+			if (WINDOW_OPEN.putIfAbsent(player.getUUID(), portal.immutable()) == null) {
+				ASKED.put(player.getUUID(), player.level().getServer().getTickCount());
+				windowSender.accept(player, PortalWindow.openFor(state));
+				StellaNether.LOGGER.debug("[NETHER] player={} ASKED by window", player.getScoreboardName());
+			}
+			return;
+		}
 		int now = player.level().getServer().getTickCount();
 		Integer last = ASKED.get(player.getUUID());
 		if (last != null && now - last < ASK_TICKS) {
 			return;
 		}
 		ASKED.put(player.getUUID(), now);
-		RaidState state = RaidInstance.state(player.level().getServer());
-		// A client with the mod gets the window; any other, the chat prompt.
-		if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, PortalWindow.Open.TYPE)) {
-			net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, PortalWindow.openFor(state));
-			StellaNether.LOGGER.debug("[NETHER] player={} ASKED by window", player.getScoreboardName());
-			return;
-		}
 		net.minecraft.network.chat.MutableComponent prompt = Component.translatable("message.mod-stella-nether.ask")
 			.append(option("normal", "normal", ChatFormatting.RED)).append(" ");
 		if (state.active()) {
@@ -207,6 +259,7 @@ public final class RaidTravel {
 	 * player was sent.
 	 */
 	public static boolean chooseFromWindow(final ServerPlayer player, final PortalWindow.Option option) {
+		WINDOW_OPEN.remove(player.getUUID());
 		RaidState state = RaidInstance.state(player.level().getServer());
 		if (!option.open(state.active() ? state.mode() : null)) {
 			return false;
@@ -225,6 +278,45 @@ public final class RaidTravel {
 		player.setPortalCooldown();
 		StellaNether.LOGGER.debug("[NETHER] player={} SENT by window option={}", player.getScoreboardName(), option);
 		return true;
+	}
+
+	/**
+	 * The window cancelled: the player is set down {@link #CANCEL_KNOCKBACK} blocks from the portal's plane, on
+	 * the side they stand, or the other if that side is blocked, and thrown a little further. Returns whether
+	 * they were moved.
+	 */
+	public static boolean cancelWindow(final ServerPlayer player) {
+		BlockPos opened = WINDOW_OPEN.remove(player.getUUID());
+		BlockPos portal = opened != null ? opened : portalAt(player);
+		if (portal == null || !(player.level() instanceof ServerLevel level)) {
+			return false;
+		}
+		BlockState state = level.getBlockState(portal);
+		net.minecraft.core.Direction.Axis axis = state.getOptionalValue(net.minecraft.world.level.block.NetherPortalBlock.AXIS)
+			.orElse(net.minecraft.core.Direction.Axis.X);
+		// The portal spans its axis, so it is left across the other one.
+		boolean alongZ = axis == net.minecraft.core.Direction.Axis.X;
+		double plane = alongZ ? portal.getZ() + 0.5 : portal.getX() + 0.5;
+		double offset = (alongZ ? player.getZ() : player.getX()) - plane;
+		double side = Math.abs(offset) > 1.0E-3 ? Math.signum(offset) : -Math.signum(alongZ ? player.getLookAngle().z : player.getLookAngle().x);
+		if (side == 0.0) {
+			side = 1.0;
+		}
+		for (double tried : new double[] {side, -side}) {
+			double x = alongZ ? player.getX() : plane + tried * CANCEL_KNOCKBACK;
+			double z = alongZ ? plane + tried * CANCEL_KNOCKBACK : player.getZ();
+			Vec3 to = new Vec3(x, player.getY(), z);
+			if (level.noCollision(player, player.getBoundingBox().move(to.subtract(player.position())))) {
+				player.teleportTo(level, to.x, to.y, to.z, java.util.Set.of(), player.getYRot(), player.getXRot(), false);
+				player.setDeltaMovement(alongZ ? 0.0 : tried * 0.3, 0.25, alongZ ? tried * 0.3 : 0.0);
+				player.needsSync = true;
+				level.playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_KNOCKBACK,
+					net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 0.8F);
+				StellaNether.LOGGER.debug("[NETHER] player={} CANCELLED the window, set down at {}", player.getScoreboardName(), to);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** The nether portal block an entity stands in, if any. */
