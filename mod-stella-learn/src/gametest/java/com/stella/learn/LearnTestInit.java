@@ -14,6 +14,11 @@ public final class LearnTestInit implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		// One line per answer, so a run log names who accepted a callout and who declined it and why.
+		CalloutBoard.observe(event -> StellaLearn.LOGGER.info(
+			"[BEHAVIOR] event=callout_answer caller={} receiver={} accepted={} reason={}",
+			event.caller(), event.answer().receiver(), event.answer().accepted(), event.answer().reason()
+		));
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof AbstractArrow arrow && arrow.getOwner() != null) {
 				LOOSED.computeIfAbsent(arrow.getOwner().getUUID(), id -> new AtomicInteger()).incrementAndGet();
