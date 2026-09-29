@@ -10,7 +10,7 @@ public record LearnConfig(
 	double shieldSaturation, double shieldThreshold, int shieldPatienceTicks, int shieldRestTicks,
 	double rangedSaturation, double coverThreshold, int coverRestTicks,
 	double retreatSaturation, double chokeThreshold, int chokeGroup, int chokePatienceTicks, int chokeRestTicks,
-	boolean behaviorLog, int logSummaryTicks
+	boolean behaviorLog, int logSummaryTicks, boolean calloutFx
 ) {
 	public static final double DEFAULT_CALLOUT_RADIUS = 24.0;
 	public static final int DEFAULT_MAX_RESPONDERS = 4;
@@ -47,6 +47,8 @@ public record LearnConfig(
 	public static final boolean DEFAULT_BEHAVIOR_LOG = true;
 	/** Ticks between two profile summary lines per player; 0 switches the summary off. */
 	public static final int DEFAULT_LOG_SUMMARY_TICKS = 600;
+	/** Whether a callout plays its particles and sound, so a player can see a call go out. */
+	public static final boolean DEFAULT_CALLOUT_FX = true;
 	static final String CALLOUT_RADIUS = "callout_radius";
 	static final String MAX_RESPONDERS = "max_responders";
 	static final String CALLOUT_COOLDOWN_TICKS = "callout_cooldown_ticks";
@@ -67,13 +69,14 @@ public record LearnConfig(
 	static final String CHOKE_REST_TICKS = "choke_rest_ticks";
 	static final String BEHAVIOR_LOG = "behavior_log";
 	static final String LOG_SUMMARY_TICKS = "log_summary_ticks";
+	static final String CALLOUT_FX = "callout_fx";
 
 	public LearnConfig withCalloutRadius(final double value) {
 		return new LearnConfig(value, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks);
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx);
 	}
 
 	public LearnConfig withMaxResponders(final int value) {
@@ -81,7 +84,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks);
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx);
 	}
 
 	public LearnConfig withCalloutCooldownTicks(final int value) {
@@ -89,7 +92,7 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			this.behaviorLog, this.logSummaryTicks);
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx);
 	}
 
 	public LearnConfig withBehaviorLog(final boolean value) {
@@ -97,7 +100,15 @@ public record LearnConfig(
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
-			value, this.logSummaryTicks);
+			value, this.logSummaryTicks, this.calloutFx);
+	}
+
+	public LearnConfig withCalloutFx(final boolean value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks, value);
 	}
 
 	public static LearnConfig defaults() {
@@ -106,7 +117,8 @@ public record LearnConfig(
 			DEFAULT_RUSH_BAND_GAIN, DEFAULT_RUSH_SATURATION, DEFAULT_SHIELD_SATURATION, DEFAULT_SHIELD_THRESHOLD,
 			DEFAULT_SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_REST_TICKS, DEFAULT_RANGED_SATURATION, DEFAULT_COVER_THRESHOLD,
 			DEFAULT_COVER_REST_TICKS, DEFAULT_RETREAT_SATURATION, DEFAULT_CHOKE_THRESHOLD, DEFAULT_CHOKE_GROUP,
-			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS, DEFAULT_BEHAVIOR_LOG, DEFAULT_LOG_SUMMARY_TICKS
+			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS, DEFAULT_BEHAVIOR_LOG, DEFAULT_LOG_SUMMARY_TICKS,
+			DEFAULT_CALLOUT_FX
 		);
 	}
 
@@ -145,7 +157,8 @@ public record LearnConfig(
 			(int) number(root, CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_PATIENCE_TICKS),
 			(int) number(root, CHOKE_REST_TICKS, DEFAULT_CHOKE_REST_TICKS),
 			flag(root, BEHAVIOR_LOG, DEFAULT_BEHAVIOR_LOG),
-			(int) count(root, LOG_SUMMARY_TICKS, DEFAULT_LOG_SUMMARY_TICKS)
+			(int) count(root, LOG_SUMMARY_TICKS, DEFAULT_LOG_SUMMARY_TICKS),
+			flag(root, CALLOUT_FX, DEFAULT_CALLOUT_FX)
 		);
 	}
 
