@@ -240,6 +240,11 @@ public final class SovereignSpecials {
 		}
 	}
 
+	/** Test hook: runs the active special one tick, as the server tick would. */
+	static void tickOnce(final ServerLevel raid, final Blaze blaze) {
+		tick(raid, blaze);
+	}
+
 	private static void step(final ServerLevel raid, final Cast cast) {
 		switch (cast.special) {
 			case FLAME_SPIRAL -> spiral(raid, cast);
@@ -284,6 +289,8 @@ public final class SovereignSpecials {
 			if (child == null) {
 				continue;
 			}
+			// A brood is ordinary blazes: the tag keeps the mobs mod's elite and boss rolls off them.
+			child.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
 			child.snapTo(blaze.getX() + Math.cos(angle) * BROOD_RING, blaze.getY() + 0.5, blaze.getZ() + Math.sin(angle) * BROOD_RING, 0.0F, 0.0F);
 			child.setTarget(cast.target);
 			if (raid.addFreshEntity(child)) {
