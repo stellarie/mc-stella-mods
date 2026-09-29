@@ -1,0 +1,110 @@
+# Learning Mobs: mobs that learn a player's habits (draft 2026-09-29, not locked)
+
+A new mod, working name `mod-stella-learn`, beside the mobs mod. Mobs learn how each player fights, counter
+those habits, and coordinate through callouts. Every number is a starting value kept in the config. The mod
+name and its integration branch are open (see Open decisions).
+
+## The modpack is a dependency
+
+- `mod-stella-mobs` is a hard dependency: the mod adds goals to mobs the mobs mod already installs, and reads
+  `ReactiveState`, `EliteState` and `CombatRole`.
+- `mod-stella-spells` is optional. Spell abilities register only when it is loaded, and the mod loads and
+  passes its own tests without it.
+- Gradle builds the dependencies from source as included builds, as `mod-stella-nether` does in
+  `settings.gradle`, so the game tests run with them loaded.
+- Gameplay stays server side. Optional client code goes in `src/client`.
+
+## The profile
+
+- Each player carries one profile, saved as a Fabric attachment on the player. All mobs read the profile of
+  the player they target, so mobs learn collectively, and one player's habits never shape another's fights.
+- The profile holds counters, each decayed with a half life measured in server ticks the mod counts itself:
+  shield blocks, retreats, ranged attacks, melee attacks, healing, kiting, and mob-kill speed.
+- Decay makes mobs forget old habits, so a player who changes style forces mobs to relearn.
+- Counters are the "training". There is no ML model in phase 1 (see Phase 2).
+
+## Tactics
+
+- A mob turns the profile into weights over its tactics: shield, back off, reposition, cast a spell, use an
+  item, or press the attack.
+- The tactic goals are added at the mobs mod's priority ranks (`BehaviorInstaller`). A tie never preempts,
+  and the mod never removes a goal from inside `GoalSelector.tick`.
+- Survival goals (retreat) outrank every learned tactic.
+- Sketch for a player who shields and rushes:
+
+| Mob | Learned change |
+|---|---|
+| Zombie | Stops charging blind, waits for the shield to drop, flanks with friends |
+| Skeleton archer | Holds its shooting band against a rusher and fires more while the shield is down |
+| Blaze | Takes cover from a blocker and switches to close bursts |
+| Evoker | Summons fangs and vexes earlier and stays behind other mobs against a rusher |
+
+## Callouts
+
+- Any mob in combat with a player may send a callout. Every mob within the player's range receives it,
+  whether idle or already fighting. Nothing outside the player's range runs.
+- A callout is a typed request: position, buff, debuff, heal, distract, focus fire, back off. Each type is a
+  small handler, and the config can turn each one off.
+- Each receiver decides for itself whether to accept. It reads its own state and role, a request priority,
+  and an expiry, so mobs do not flip-flop. Retreat and other survival goals outrank a request.
+- Only mobs that can perform a request answer it. Spell requests need the spells mod. A buff or debuff the
+  vanilla mob cannot cast is a new ability this mod adds.
+- Caps and cooldowns bound every type: a maximum number of responders per callout and a cooldown per caller,
+  so one skeleton cannot pull a whole cave or hand a mob army every buff at once.
+- The caller records the identities it called and the receivers record their answers. Tests assert against
+  that record, not a box query.
+- Every accept and decline logs its reason.
+
+## Pathing
+
+- Extra goals choose target positions from the learned profile: the shield side to flank, cover against an
+  archer, a doorway when the player retreats into a chokepoint.
+- Vanilla navigation walks to the chosen position. The mod does not replace pathfinding.
+- The mobs mod already steers mobs in `CreeperEscapeController` and `MobServerAiStepMixin`, so the plan reads
+  those first.
+
+## Verification
+
+- Every behaviour change gets a headless server-side game test, written first, with the failing run recorded.
+- Tests build an arena with a subject mob and invulnerable opponents. A profile is set to fixed numbers, and
+  the test checks what the mob does. The same test changes the numbers and checks that the outcome changes.
+- Logging follows AGENTS.md: INFO lines in the gametest source set only, one line per state change plus a
+  five tick heartbeat, and one `[BEHAVIOR] test=... RESULT ...` summary line per test.
+- The game test clock barely advances, so decay and cooldowns advance the mod's own tick counter, which the
+  test can step.
+- Each new game test class is listed in `src/gametest/resources/fabric.mod.json`, and its name must appear in
+  the run log.
+- The gate is `gradlew.bat clean build` and `gradlew.bat runGameTest --rerun`, both exit 0, five full runs in a
+  row, with the log copied after each run.
+- Measure how often each learned behaviour appears in play. A behaviour the player cannot reach does not
+  work.
+
+## Slices, easiest first
+
+1. Scaffold: the mod, its dependencies, config loading, and an empty profile attachment.
+2. Profile: the counters, the decay, and persistence across save and reload.
+3. First tactic: the skeleton archer's band shifts by the rush counter.
+4. Shield tactics for the zombie and the skeleton.
+5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities.
+6. Callout types: position first, then focus fire, back off, heal, buff, debuff.
+7. Pathing goals: flank, cover, chokepoint.
+8. Spells integration through the ability registry.
+
+Each slice is gated and independently reviewed before the next one starts.
+
+## Phase 2
+
+- Add a small ML model that reads the phase 1 counters as features.
+- Advantages: it may find patterns nobody counted, such as timing habits and combos, and mobs would feel less
+  scripted.
+- Costs: outputs are not fixed, so a headless test cannot assert them. It is hard to edit by hand in the
+  config, it needs a runtime library, it costs server tick time, and a wrong decision cannot be explained.
+- Phase 2 needs a plan for testing with a frozen model and a fallback to the counters.
+
+## Open decisions
+
+- The mod name and the integration branch name (for example `main-learn`). AGENTS.md lists no branch for this
+  mod, and this checkout holds only `main`.
+- The half lives, the callout radius, and the responder caps, all to be tuned by measurement.
+- Whether any callout type reaches mobs that other mods drive, such as the village witch, which the mobs mod
+  skips through `NO_BEHAVIOR_TAG`.
