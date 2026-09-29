@@ -41,7 +41,7 @@ import net.minecraft.world.level.block.Blocks;
 
 /**
  * With the spells mod, every village gets a witch by its bell: labelled, in enchanted diamond, one of the
- * village's own, so no golem, patrol or villager takes it for a foe. Without that mod, no witch comes. Each
+ * village's own, so no golem, patrol or villager takes it for a foe. Without that mod the witch still comes, but casts no spells. Each
  * test runs in a batch of its own, because the switch is shared by the whole server.
  */
 public class VillageWitchGameTest {
@@ -116,10 +116,10 @@ public class VillageWitchGameTest {
 		int members = PatrolTestSupport.patrols(helper).size();
 		PatrolTestSupport.result(test, "members=" + members + " witchNear="
 			+ (witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0) + " speed=" + speed + " strength=" + strength);
-		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT + 1 && speed != null && strength != null
+		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT && speed != null && strength != null
 			&& speed.getDuration() >= 6000 && strength.getDuration() >= 6000
 			&& witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
-			"the village witch did not join the eleven-member bell rally");
+			"the village witch did not join the four-member bell rally");
 		helper.succeed();
 	}
 
@@ -461,8 +461,8 @@ public class VillageWitchGameTest {
 	}
 
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void noWitchComesWithoutSpells(final GameTestHelper helper) {
-		String test = "noWitchComesWithoutSpells";
+	public void theVillageWitchComesEvenWithoutSpells(final GameTestHelper helper) {
+		String test = "theVillageWitchComesEvenWithoutSpells";
 		boolean loaded;
 		try {
 			VillageWitchKit.force(false);
@@ -477,7 +477,9 @@ public class VillageWitchGameTest {
 		int members = VillageWorldData.get(helper.getLevel()).village(PatrolTestSupport.villageId(helper)).map(village -> village.members().size()).orElse(0);
 		PatrolTestSupport.result(test, "witch=" + (witch != null) + " members=" + members);
 		helper.assertTrue(members > 0, "the village has no patrol, so the case proves nothing");
-		helper.assertTrue(witch == null, "a witch came without the spells mod");
+		helper.assertTrue(witch != null && VillageWitchKit.isVillageWitch(witch) && PatrolState.isMarked(witch),
+			"the village has no marked village witch when the spells mod is absent");
+		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT, "the roster holds " + members + " members");
 		helper.succeed();
 	}
 

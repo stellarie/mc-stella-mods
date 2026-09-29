@@ -69,7 +69,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   and Harming still damages undead enemies.
   The spells mod gives it Warden's Roar, Spark Shot, Life Bloom, and safe-distance blinks. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
-- With `mod-stella-spells` loaded, right-click the village witch within 8 blocks to open the Village Witch
+- Right-click the village witch within 8 blocks to open the Village Witch
   Shop, a one-row chest menu. It sells five enchanted books of different enchantments, each at a level
   the enchantment allows and each priced from 320 to 960 emeralds. Click a book to buy it: the price
   comes out of your whole inventory, the book stays on the shelf, and a short purse changes nothing. The
