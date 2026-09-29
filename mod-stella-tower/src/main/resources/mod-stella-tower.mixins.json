@@ -12,6 +12,7 @@
 		"TowerRuneAnvilMixin",
 		"RuneGuardEffectMixin",
 		"RuneGuardFrostMixin",
+		"EndermanTakeMixin",
 		"LivingEntityAccessor",
 		"GhostPhaseMixin",
 		"GhostBlowMixin"

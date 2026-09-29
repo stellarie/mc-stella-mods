@@ -428,3 +428,20 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
 - A ghost chestplate renews a passed-through mob's slowness once a second, not every tick.
 - Left as is: floor mobs are still raised inside a boss floor's walled hall. The hall is the boss's room,
   and mobs from it that chase a player pass through the safe room, which the safe zones allow.
+
+## Change: a wider maze, and no pickpocket endermen (2026-09-29)
+
+- A floor's paths are six blocks wide between walls one block thick, on a nine by nine grid of cells seven
+  blocks apart. The room fits nine cells exactly, so every path is six wide. Where a hall or a safe zone
+  cuts across the grid a path beside it may come out narrower, but never under three.
+- Elite halls (16) and boss halls (32) and both safe zones keep their sizes and places.
+- A boss floor's hall is now cut from the grid exactly: the ring of blocks round it is solid but for the
+  six wide door into the safe room, and the safe room opens onto the maze on its far side by itself.
+- On an ordinary floor the portal's nook is one cell column wide, and solid wall stands behind the portal,
+  so the way to it is three wide in front and there is no two wide pocket behind.
+- Ceiling lamps hang over the middle of each cell.
+- Floors already built keep their two wide mazes.
+- No enderman in the tower ever sets out to take a block, so no wall or floor can be lifted, whatever a
+  data pack tags holdable. None of the tower's own blocks is tagged holdable in the game itself.
+- Traps are still 20 tiles a floor. In a six wide path a single tile is easy to step round; if that plays
+  too soft, the count or the tile's size can grow.
