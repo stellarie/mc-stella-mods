@@ -220,12 +220,20 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - A client with the mod gets the portal's choice as a window of three stacked options: Normal nether, Host
   raid: normal, Host raid: hard. While a raid runs, the one matching its mode reads Join the raid, and the
   other is greyed out. A client without the mod keeps the chat prompt.
-- A click sends the player through the portal they stand in at once. Closing the window chooses nothing;
-  the portal asks again after 5 seconds if they still stand in it.
+- The window opens the moment a player steps into an overworld nether portal, not after the portal's wait.
+  It is sent once and stays up while they stand in the portal, until they click an option or cancel.
+- A click sends the player through the portal at once. Cancelling (Escape) sets the player down 2 blocks
+  from the portal's plane on the side they came from (the other side if that is blocked), with a small
+  shove and a knock sound. Stepping back in opens the window again.
+- Bug fixed: the window used to flash and vanish. The client closes any screen that does not allow itself
+  in a portal, and the window now does.
+- Measured: the first step into the portal opened the window, and five more steps plus the portal's own
+  wait sent no second one. A cancel set the player 2.000 blocks from the plane and closed the window.
 - Measured: the hard option sent a player into a new hard raid on the same tick. A normal option during a
   hard raid sent no one and left no choice behind. Both messages survive the wire.
-- The window itself is the client's: its test (`thePortalWindowOpensAndClicksRequiresManualTest`) is not
-  required and fails every run until checked by hand.
+- The window itself is the client's: its tests (`thePortalWindowOpensAndClicksRequiresManualTest` and
+  `theWindowStaysOpenWhileStandingInThePortalRequiresManualTest`) are not required and fail every run
+  until checked by hand.
 
 ## Slice 12g: the raid's own spawns
 
@@ -254,7 +262,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival with the mod on the client. The window opens with three
-  options stacked; clicking one sends you at once; Esc closes it and nothing happens. Without the mod on
+  options stacked, as soon as you step in, and it stays up. Clicking one sends you at once; Esc steps
+  you 2 blocks back out of the portal. Without the mod on
   the client, the chat prompt appears instead, and clicking **[Raid nether]** takes you to the hall. The headless test player is never ticked, so the tests call the portal's
   destination directly and cannot walk through it.
 - The prompt options are coloured, and hovering shows what each one means. The options change once a

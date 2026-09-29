@@ -76,12 +76,25 @@ public final class PortalWindow {
 		}
 	}
 
+	/** Client to server: the window was closed without a choice. */
+	public record Cancelled() implements CustomPacketPayload {
+		public static final Type<Cancelled> TYPE = new Type<>(StellaNether.id("portal_cancelled"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, Cancelled> CODEC = StreamCodec.unit(new Cancelled());
+
+		@Override
+		public Type<Cancelled> type() {
+			return TYPE;
+		}
+	}
+
 	private PortalWindow() {
 	}
 
 	public static void register() {
 		PayloadTypeRegistry.clientboundPlay().register(Open.TYPE, Open.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(Chosen.TYPE, Chosen.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(Cancelled.TYPE, Cancelled.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(Cancelled.TYPE, (payload, context) -> RaidTravel.cancelWindow(context.player()));
 		ServerPlayNetworking.registerGlobalReceiver(Chosen.TYPE, (payload, context) -> {
 			Option option = Option.of(payload.option());
 			if (option != null) {
