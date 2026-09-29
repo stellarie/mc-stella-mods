@@ -73,6 +73,8 @@ public final class PatrolService {
 	public static final int WITCH_SUPPORT_RANGE = 16;
 	public static final int WITCH_POTION_INTERVAL_TICKS = 100;
 	public static final int WITCH_POTION_RANGE = 16;
+	private static final long WITCH_GOAL_SWEEP_TICKS = 5L;
+	private static final String MOBS_WITCH_GOAL_PREFIX = "com.stella.mobs.behavior.Witch";
 	public static final int PATROL_MEMBER_COUNT = 4;
 	public static final int PILLAGER_COUNT = 2;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
@@ -624,6 +626,9 @@ public final class PatrolService {
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
 		restoreSwords(level);
+		if (tick % WITCH_GOAL_SWEEP_TICKS == 0L) {
+			clearForeignWitchGoals(level);
+		}
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
 		VillageCoverage.tick(level, tick);
@@ -693,6 +698,18 @@ public final class PatrolService {
 				"[BEHAVIOR] mod={} event=patrol_member_retired entity={} role={} record_removed={}",
 				McStellaVillages.MOD_ID, mob.getUUID(), PatrolState.role(mob), recordRemoved
 			);
+		}
+	}
+
+	/**
+	 * The mobs mod gives every witch its own healing and throwing goals, which buff a player every second. The
+	 * village witch throws only through {@link PatrolWitchPotionGoal}, so those goals leave.
+	 */
+	private static void clearForeignWitchGoals(final ServerLevel level) {
+		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
+			if (mob.level() == level && PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
+				mob.removeAllGoals(goal -> goal.getClass().getName().startsWith(MOBS_WITCH_GOAL_PREFIX));
+			}
 		}
 	}
 
