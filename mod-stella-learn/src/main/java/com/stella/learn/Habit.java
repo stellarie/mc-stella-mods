@@ -4,5 +4,6 @@ package com.stella.learn;
 public enum Habit {
 	BLOCK,
 	MELEE,
-	RANGED
+	RANGED,
+	RETREAT
 }
