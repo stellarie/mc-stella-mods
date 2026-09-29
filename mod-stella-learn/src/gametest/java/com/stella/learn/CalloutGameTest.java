@@ -21,12 +21,12 @@ public class CalloutGameTest {
 	static {
 		CalloutTypes.register(TEST_TYPE, new CalloutHandler() {
 			@Override
-			public boolean canPerform(final Mob mob, final Callout callout) {
+			public boolean canPerform(final Mob mob, final ServerPlayer player, final Callout callout) {
 				return true;
 			}
 
 			@Override
-			public void perform(final Mob mob, final Callout callout) {
+			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				PERFORMED.add(mob.getUUID());
 			}
 		});
