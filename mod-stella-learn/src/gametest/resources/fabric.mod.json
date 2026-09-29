@@ -19,7 +19,8 @@
 			"com.stella.learn.TakeCoverGameTest",
 			"com.stella.learn.SpellsBridgeGameTest",
 			"com.stella.learn.RetreatRecorderGameTest",
-			"com.stella.learn.ChokepointGameTest"
+			"com.stella.learn.ChokepointGameTest",
+			"com.stella.learn.LearnLogGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
