@@ -140,7 +140,7 @@ public final class SovereignCharge {
 		state.current = charge;
 		state.made++;
 		blaze.setTarget(target);
-		StellaNether.LOGGER.info("[NETHER] sovereign charge target={} distance={} made={}", target.getScoreboardName(), (int) blaze.distanceTo(target), state.made);
+		BehaviorLog.info("[NETHER] sovereign charge target={} distance={} made={}", target.getScoreboardName(), (int) blaze.distanceTo(target), state.made);
 		return charge;
 	}
 
@@ -231,7 +231,7 @@ public final class SovereignCharge {
 		}
 		if (into + 1 >= VOLLEY_TICKS) {
 			end(state, charge);
-			StellaNether.LOGGER.info("[NETHER] sovereign charge done ticks={} broken={} shots={}", charge.chargeTicks, charge.broken.size(), charge.shotAges.size());
+			BehaviorLog.info("[NETHER] sovereign charge done ticks={} broken={} shots={}", charge.chargeTicks, charge.broken.size(), charge.shotAges.size());
 		}
 	}
 

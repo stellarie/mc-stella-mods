@@ -213,7 +213,7 @@ public final class BlazeSovereign {
 		RaidInstance.set(server, state.withSovereignRisen());
 		closeBar(server);
 		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		StellaNether.LOGGER.info("[NETHER] sovereign risen run={} at={} health={}", state.run(), blaze.blockPosition(), total);
+		BehaviorLog.info("[NETHER] sovereign risen run={} at={} health={}", state.run(), blaze.blockPosition(), total);
 		return blaze;
 	}
 
@@ -309,7 +309,7 @@ public final class BlazeSovereign {
 			dropped.add(scrolls);
 		}
 		SPOILS.put(blaze.getUUID(), dropped);
-		StellaNether.LOGGER.info("[NETHER] sovereign slain spoils={}", dropped.stream().map(item -> item.getItem().toString()).toList());
+		BehaviorLog.info("[NETHER] sovereign slain spoils={}", dropped.stream().map(item -> item.getItem().toString()).toList());
 	}
 
 	public static boolean mantleDrops(final net.minecraft.util.RandomSource random) {

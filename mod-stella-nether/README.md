@@ -314,6 +314,15 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   came up short once in five runs, after five fixes. The blaze is shoved about by the blasts of its own
   fireballs at a target that close.
 
+## Logging
+
+- The mod's behaviour lines (a Sovereign rising, a special cast, a raid reset, a portal choice) go through
+  `BehaviorLog`, which is silent in the shipped jar: a real server prints none of them. The game tests switch
+  them on at INFO (`NetherGameTestInit`). Warnings a server's keeper needs, such as a run that opens with no
+  fortress near, still go to the log.
+- Measured: the jar starts with the silent sink, and a Sovereign's rise sends its line through it (1 line),
+  not straight to the logger. With the old direct logging put back, the test failed (0 lines routed).
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival with the mod on the client. The window opens with three

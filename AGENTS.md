@@ -12,6 +12,7 @@ works on one. They are the standard, not a suggestion.
 - `main-tower` is the integration branch for `mod-stella-tower`, the Endless Tower.
 - `main-food` is the integration branch for `mod-stella-food`.
 - `main-learn` is the integration branch for `mod-stella-learn`, the learning mobs.
+- `main-nether` is the integration branch for `mod-stella-nether`, the raid nether.
 - Every agent creates a work branch from the current tip of the integration
   branch for the mod it changes.
 - Do not branch from `master` or another work branch unless oniichan explicitly
