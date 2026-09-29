@@ -69,6 +69,11 @@ public final class BlazeSovereign {
 	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public static void register() {
+		// A debug command: a Sovereign where it is run, in the raid nether, for game masters.
+		net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, access, selection) -> dispatcher.register(
+			net.minecraft.commands.Commands.literal(RaidTravel.COMMAND).then(net.minecraft.commands.Commands.literal("sovereign")
+				.requires(net.minecraft.commands.Commands.hasPermission(net.minecraft.commands.Commands.LEVEL_GAMEMASTERS))
+				.then(net.minecraft.commands.Commands.literal("summon").executes(context -> summonByCommand(context.getSource()))))));
 		// Whatever fire the Sovereign looses flies as soul fire: its own casts set it as they fire; this
 		// catches the rest, a vanilla attack's fireballs, as they load.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
@@ -172,6 +177,18 @@ public final class BlazeSovereign {
 				}
 			}
 		}
+	}
+
+	/** The summon command: in the raid nether, a Sovereign where the command is run; anywhere else, nothing. */
+	static int summonByCommand(final net.minecraft.commands.CommandSourceStack source) {
+		ServerLevel level = source.getLevel();
+		if (!level.dimension().equals(RaidTravel.RAID)) {
+			source.sendFailure(Component.translatable("message.mod-stella-nether.summon.raid_only"));
+			return 0;
+		}
+		Blaze blaze = rise(level, source.getPosition());
+		source.sendSuccess(() -> Component.translatable("message.mod-stella-nether.summon.done", blaze.blockPosition().toShortString()), true);
+		return 1;
 	}
 
 	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
