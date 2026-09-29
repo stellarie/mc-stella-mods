@@ -30,10 +30,11 @@ public abstract class MobPatrolMixin implements MobPatrolAccess {
 		builder.define(MC_STELLA_VILLAGES$PATROL_MARKER, false);
 	}
 
-	// A patrol member never takes a fellow member as its target.
+	// A member never targets a fellow, nor anyone while it listens.
 	@Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)
 	private void mcStellaVillages$ignoreFellows(final net.minecraft.world.entity.LivingEntity target, final CallbackInfo callbackInfo) {
-		if (com.stella.villages.patrol.PatrolService.areFellows((Mob) (Object) this, target)) {
+		if (com.stella.villages.patrol.PatrolService.areFellows((Mob) (Object) this, target)
+			|| target != null && com.stella.villages.patrol.Conversation.held((Mob) (Object) this)) {
 			callbackInfo.cancel();
 		}
 	}

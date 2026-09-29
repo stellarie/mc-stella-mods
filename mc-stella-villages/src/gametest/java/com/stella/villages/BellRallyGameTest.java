@@ -46,6 +46,8 @@ public class BellRallyGameTest {
 	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void ringingTheVillageBellRalliesTheWholePatrol(final GameTestHelper helper) {
 		String test = "ringingTheVillageBellRalliesTheWholePatrol";
+		PatrolDutyGameTest.spreadGround(helper);
+		PatrolDutyGameTest.forceScatterChunks(helper);
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}

@@ -1,6 +1,7 @@
 package com.stella.villages.mission;
 
 import com.stella.villages.McStellaVillages;
+import com.stella.villages.patrol.Conversation;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.component.DataComponents;
@@ -54,9 +55,19 @@ public final class MissionBoardMenu extends ChestMenu {
 	}
 
 	static void open(final ServerPlayer player, final Mob head, final List<MissionService.MissionOffer> offers) {
-		player.openMenu(new SimpleMenuProvider(
+		if (player.openMenu(new SimpleMenuProvider(
 			(id, inventory, opener) -> new MissionBoardMenu(id, inventory, head, offers), Component.literal(TITLE)
-		));
+		)).isPresent()) {
+			Conversation.begin(head, player);
+		}
+	}
+
+	@Override
+	public void removed(final Player player) {
+		super.removed(player);
+		if (player instanceof ServerPlayer serverPlayer) {
+			Conversation.linger(this.head, serverPlayer);
+		}
 	}
 
 	public UUID headId() {

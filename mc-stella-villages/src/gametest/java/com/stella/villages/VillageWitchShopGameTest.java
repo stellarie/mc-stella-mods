@@ -3,6 +3,7 @@ package com.stella.villages;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.ShopOffer;
 import com.stella.villages.data.VillageWorldData.VillageRecord;
+import com.stella.villages.patrol.Conversation;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.villages.patrol.VillageWitchKit;
 import com.stella.villages.patrol.WitchShop;
@@ -44,7 +45,17 @@ public final class VillageWitchShopGameTest {
 	private static final long NIGHT_MARGIN_TICKS = 1_000L;
 	private static final List<String> REROLLS = new CopyOnWriteArrayList<>();
 
+	/** Each foe's attackers, by the entity the damage source credits. */
+	private static final java.util.Map<UUID, List<UUID>> FOE_ATTACKERS = new java.util.concurrent.ConcurrentHashMap<>();
+
 	static {
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
+			List<UUID> attackers = FOE_ATTACKERS.get(entity.getUUID());
+			if (attackers != null && source.getEntity() != null) {
+				attackers.add(source.getEntity().getUUID());
+			}
+			return true;
+		});
 		WitchShop.setRecorder(new WitchShop.Recorder() {
 			@Override
 			public void rerolled(final UUID village, final String cause) {
@@ -336,6 +347,130 @@ public final class VillageWitchShopGameTest {
 			"a save without shop data did not load empty");
 		PatrolTestSupport.result(test, "offers=" + offers.size());
 		helper.succeed();
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 40 + Conversation.LINGER_TICKS + 60, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void theWitchStandsStillAndFacesTheShopperUntilFiveSecondsAfterClosing(final GameTestHelper helper) {
+		String test = "theWitchStandsStillAndFacesTheShopperUntilFiveSecondsAfterClosing";
+		Fixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		open(helper, fixture);
+		helper.assertTrue(fixture.player().containerMenu instanceof WitchShopMenu, "the shop did not open");
+		holdsUntilLinger(helper, test, fixture.player(), fixture.witch());
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 40 + Conversation.LINGER_TICKS + 60, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void theHeadStandsStillAndFacesThePlayerUntilFiveSecondsAfterClosing(final GameTestHelper helper) {
+		String test = "theHeadStandsStillAndFacesThePlayerUntilFiveSecondsAfterClosing";
+		Fixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		Mob head = null;
+		for (var member : fixture.village().members()) {
+			if (member.role().equals(PatrolState.Role.HEAD.name())
+				&& helper.getLevel().getEntity(member.id()) instanceof Mob mob) {
+				head = mob;
+			}
+		}
+		helper.assertTrue(head != null, "the village has no head");
+		Vec3 near = head.position().add(2.0, 0.0, 0.0);
+		fixture.player().setPos(near.x, near.y, near.z);
+		UseEntityCallback.EVENT.invoker().interact(fixture.player(), helper.getLevel(), InteractionHand.MAIN_HAND, head, null);
+		helper.assertTrue(fixture.player().containerMenu instanceof com.stella.villages.mission.MissionBoardMenu,
+			"the mission board did not open: " + fixture.player().containerMenu);
+		holdsUntilLinger(helper, test, fixture.player(), head);
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 20 + 2 * Conversation.LINGER_TICKS + 60, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void theWitchKeepsListeningWhileAnotherShopperStaysInTheShop(final GameTestHelper helper) {
+		String test = "theWitchKeepsListeningWhileAnotherShopperStaysInTheShop";
+		Fixture fixture = fixture(helper, test);
+		if (fixture == null) {
+			return;
+		}
+		ServerPlayer second = survivalPlayer(helper);
+		Vec3 near = fixture.witch().position().add(-2.0, 0.0, 0.0);
+		second.setPos(near.x, near.y, near.z);
+		open(helper, fixture);
+		UseEntityCallback.EVENT.invoker().interact(second, helper.getLevel(), InteractionHand.MAIN_HAND, fixture.witch(), null);
+		helper.assertTrue(second.containerMenu instanceof WitchShopMenu, "the second shopper saw no shop");
+		int secondLeaves = 20;
+		int firstLeaves = secondLeaves + Conversation.LINGER_TICKS + 10;
+		helper.runAfterDelay(secondLeaves, second::closeContainer);
+		helper.runAfterDelay(firstLeaves, () -> {
+			boolean heldWhileFirstShops = Conversation.held(fixture.witch());
+			fixture.player().closeContainer();
+			helper.assertTrue(heldWhileFirstShops, "the witch walked off while a shopper was still in the shop");
+		});
+		helper.runAfterDelay(firstLeaves + Conversation.LINGER_TICKS + 20, () -> {
+			PatrolTestSupport.result(test, "heldAfter=" + Conversation.held(fixture.witch()));
+			helper.assertFalse(Conversation.held(fixture.witch()), "the witch never went back to work");
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * The mob is sent walking away, so only the hold keeps it in place. The menu closes at tick 40; the hold
+	 * must last exactly {@link Conversation#LINGER_TICKS} more.
+	 */
+	private static void holdsUntilLinger(final GameTestHelper helper, final String test, final ServerPlayer player, final Mob mob) {
+		int closeTick = 40;
+		Vec3 anchor = mob.position();
+		Vec3 away = anchor.add(12.0, 0.0, 0.0);
+		double[] drift = {0.0};
+		double[] worstFacing = {1.0};
+		int[] closedAt = {-1};
+		Mob foe = listeningFoe(helper, mob.position().add(1.5, 0.0, 0.0));
+		List<UUID> attackers = new CopyOnWriteArrayList<>();
+		FOE_ATTACKERS.put(foe.getUUID(), attackers);
+		int[] hitsAtRelease = {-1};
+		helper.onEachTick(() -> {
+			int tick = (int) helper.getTick();
+			if (closedAt[0] < 0) {
+				mob.getNavigation().moveTo(away.x, away.y, away.z, 1.0);
+			}
+			if (tick >= 2 && (closedAt[0] < 0 || tick < closedAt[0] + Conversation.LINGER_TICKS)) {
+				drift[0] = Math.max(drift[0], mob.position().distanceTo(anchor));
+				Vec3 look = Vec3.directionFromRotation(0.0F, mob.getYHeadRot());
+				Vec3 toPlayer = new Vec3(player.getX() - mob.getX(), 0.0, player.getZ() - mob.getZ()).normalize();
+				worstFacing[0] = Math.min(worstFacing[0], look.dot(toPlayer));
+			}
+			if (tick == closeTick) {
+				player.closeContainer();
+				closedAt[0] = tick;
+			}
+		});
+		helper.runAfterDelay(closeTick + Conversation.LINGER_TICKS - 2, () -> {
+			hitsAtRelease[0] = (int) attackers.stream().filter(mob.getUUID()::equals).count();
+			helper.assertTrue(Conversation.held(mob), "the hold ended before " + Conversation.LINGER_TICKS + " ticks passed");
+		});
+		helper.runAfterDelay(closeTick + Conversation.LINGER_TICKS + 40, () -> {
+			PatrolTestSupport.result(test, "drift=" + drift[0] + " facing=" + worstFacing[0] + " hitsWhileListening=" + hitsAtRelease[0] + " allHits=" + attackers.size()
+				+ " heldAfter=" + Conversation.held(mob) + " walkedAfter=" + mob.position().distanceTo(anchor));
+			helper.assertTrue(drift[0] < 0.05, "the mob moved " + drift[0] + " blocks while it listened");
+			helper.assertTrue(worstFacing[0] > 0.9, "the mob looked away from the player: " + worstFacing[0]);
+			FOE_ATTACKERS.remove(foe.getUUID());
+			foe.discard();
+			helper.assertTrue(hitsAtRelease[0] == 0, "the mob hit a foe " + hitsAtRelease[0] + " times while it listened");
+			helper.assertFalse(Conversation.held(mob), "the mob was still held after the linger");
+			helper.succeed();
+		});
+	}
+
+	/** A zombie beside the listener that cannot move, so any damage it takes is the listener's attack. */
+	private static Mob listeningFoe(final GameTestHelper helper, final Vec3 at) {
+		Mob foe = net.minecraft.world.entity.EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		foe.setNoAi(true);
+		foe.setPersistenceRequired();
+		foe.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		foe.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		foe.setHealth(1000.0F);
+		foe.setPos(at.x, at.y, at.z);
+		helper.getLevel().addFreshEntity(foe);
+		return foe;
 	}
 
 	private static Fixture fixture(final GameTestHelper helper, final String test) {
