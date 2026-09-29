@@ -3,6 +3,7 @@
 	"package": "com.stella.mobs.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"AbstractSkeletonArrowInvoker",
 		"ArrowPotionInvoker",
 		"ArrowVolleyHitMixin",
 		"CreeperRadiusAccessor",
