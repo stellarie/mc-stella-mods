@@ -201,6 +201,20 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Measured: 18 flames over 8 directions, a burst at tick 100 after drifting 15.00 blocks, a stand-in
   pushed (1.5, 0.4, 0) and hurt, and 49 to 53 soul flames set with no floor block broken.
 
+## Slice 12h: the opening
+
+- Once in its life, when a player first comes within 32 blocks, or draws its aggro, the Sovereign opens.
+- It rushes at them at 12 blocks a second, breaking whatever blocks stand in its way (dropping nothing;
+  only unbreakable blocks stop it), until it sees them. It gives up after 10 seconds.
+- It charges for 3 seconds, drawn as a ring of blue flame pulling in around it, with a rising sound.
+- Then it strikes 15 times around them over 5 seconds, within 6 blocks. Each strike burns and hurts (5)
+  what stands within 2 blocks.
+- Its burst and specials wait while the opening runs. A mark on the Sovereign keeps it from opening twice,
+  even after a reload.
+- Measured: a rush of 0.600 blocks a tick that broke 18 wall blocks and ended in sight; a charge of 60
+  ticks; 15 strikes from tick 60 to 153, all within 6 blocks, hitting the target; a player within range
+  starts it, and a second start is refused.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -216,6 +230,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
   its wait for the bystander to load starved in one gate run of five after four fixes.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
+- Walk up to a new Sovereign: it bursts through the fortress toward you, visibly charges, then the
+  strikes fall around you.
 - The soul nova's flames read as slow blue orbs, and their soul flames draw as soul fire (a cut-out
   texture, not a black square) and go out after 10 seconds.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the

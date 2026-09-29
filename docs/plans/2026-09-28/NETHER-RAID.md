@@ -85,7 +85,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
     - g. Blazes rise from lava in either mode; in hard, wither skeletons spawn anywhere with room.
     - h. The opening charge, once per Sovereign, when a player first comes within 32 blocks or draws its
       aggro: it rushes at 12 blocks a second, breaking blocks in its way, until it sees the player; charges
-      for 3 seconds (shown); then opens with 15 scattered strikes around the player over 5 seconds.
+      for 3 seconds (shown); then opens with 15 scattered strikes around the player over 5 seconds. **Done.**
     - i. The portal choice as a window of three stacked options; a click sends the player at once, and
       closing it does nothing.
     - j. With the spells mod, some raid mobs cast fire spells and time lock, and buff themselves.
@@ -120,6 +120,10 @@ Each slice ships with headless game tests per `AGENTS.md`.
 - Deviation (12f): vanilla soul fire goes out on anything but soul sand or soul soil, so the nova sets a
   soul flame of the mod's own, drawn with vanilla's soul-fire models. It holds on any solid floor and burns
   out after 10 seconds, so a long fight does not leave the fortress carpeted.
+
+- Deviation (12h): the rush aims the Sovereign's feet at the player's feet, not its middle at their eyes, so
+  it keeps its height over the ground instead of boring into the floor. Tests that measure something else
+  hold the opening, as they hold the specials.
 
 ## Open questions for oniichan
 
