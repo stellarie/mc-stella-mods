@@ -502,3 +502,25 @@ Assumptions where the spec left room are marked (assumed). Every number is a con
 - The real spells mod is not loaded in the tower's test harness, so the shaman's casting is tested against a
   stand-in and the real thing is a manual item: with both mods, find a floor that holds a shaman and watch
   it strike and aid itself with real spells.
+
+## Growth, resonance and Lightning charges (built)
+
+The tower side of "Enchantments and spells grow" and "Resonance" is `TowerGrowth`. Its public methods are the
+contract the spells and equips mods call by name, so neither depends on the tower to build.
+
+- `flat(stack)` is the rune part times the ascension part, `(1 + 99 S(r))^0.7 * (1 + 99 S(a))^0.3`. Measured:
+  the rune part is x2.75, x15.57 and x25.12 at floors 100, 500 and 1000; ascension 1000 is x3.98; a floor
+  1000 rune on a fully ascended item is x100, the tower's health.
+- `resonance(stack, id)` is `1 + 10% + P/10 %` when the stack's rune is of an element that lists the enchantment
+  or spell `id` in the table above, and 1 otherwise. Ashfall is listed under both Fire and Ice. Void gear's
+  power counts half as much again here too.
+- **Ascension:** each tower mob slain by a player counts one kill on what that player holds in either hand and
+  wears, as a stack of one. Every 10 kills raise the item's ascension by one, never past the floor of the kill.
+  It is kept on the item (`mod-stella-tower:ascended`) and shown in its tooltip.
+- **Spellbooks take runes at the anvil**, as their own kind of slot, for the same 64 emeralds. A book's rune
+  has no weapon or armor effect. The books are the spells mod's `mod-stella-spells:spellbooks` tag.
+- **Lightning charges** cut a spell's cooldown by 4% each, five at most, and are all spent by that cast:
+  `cooldown(player, ticks)`.
+- Still to wire in the other mods (their own branches): the spells mod calls all three when a spell resolves
+  and when its cooldown starts; the equips mod calls `flat` for the numbers written in Java (Mist Armor and
+  Blaze Armor damage, Waveform). Enchantments that are data driven are not scaled: they keep their level.

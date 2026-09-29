@@ -36,7 +36,7 @@
   "item.mod-stella-tower.ghost_rune.desc": "Set into a chestplate or a weapon at the anvil, for %s emeralds",
   "item.mod-stella-tower.ghosted.chest": "Ghost Rune: phase through mobs, slowing foes you pass; evade 30%% of blows",
   "item.mod-stella-tower.ghosted.weapon": "Ghost Rune: blows pierce half of armor and pass shields",
-  "item.mod-stella-tower.runed": "%s Rune, floor %s",
+  "item.mod-stella-tower.ascended": "Ascended %s (%s tower kills)",
   "item.mod-stella-tower.rune": "Rune",
   "item.mod-stella-tower.rune.of": "%s Rune",
   "item.mod-stella-tower.rune.floor": "From floor %s",
