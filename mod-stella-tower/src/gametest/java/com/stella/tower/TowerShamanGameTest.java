@@ -150,6 +150,8 @@ public class TowerShamanGameTest {
 		Vec3 start = shaman.position();
 		shaman.hurtServer(tower, player.damageSources().playerAttack(player), 1.0F);
 		Vec3 first = shaman.position();
+		// It may land in a chunk that only a neighbour's ticket keeps: holding its own, so it is not unloaded from under the case.
+		TowerTestSupport.holdRoom(tower, first);
 		shaman.damageCooldownTime = 0;
 		shaman.hurtServer(tower, player.damageSources().playerAttack(player), 1.0F);
 		Vec3 second = shaman.position();
@@ -160,6 +162,7 @@ public class TowerShamanGameTest {
 			// A blink needs the floor's chunks loaded, which a ticket keeps for 300 ticks: asked again, as a
 			// lagging server may have let the first lapse.
 			TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+			TowerTestSupport.holdRoom(tower, shaman.position());
 			// A blink that finds no safe spot leaves the shaman able to try again, so the rested shaman is
 			// struck until one is found: a lagging server may have left few of the floor's chunks loaded.
 			double later = 0.0;
@@ -174,7 +177,7 @@ public class TowerShamanGameTest {
 			release(floor);
 			helper.assertTrue(blinked > 0.0 && fromPlayer >= TowerMobs.MIN_PLAYER_DISTANCE, "a struck shaman moved " + blinked + " and stands " + fromPlayer + " from the player");
 			helper.assertTrue(second.distanceTo(first) == 0.0, "a shaman blinked again within its rest");
-			helper.assertTrue(later > 0.0, "a shaman did not blink again after its rest");
+			helper.assertTrue(later > 0.0, "a shaman did not blink again after its rest (removed=" + shaman.isRemoved() + ")");
 			helper.succeed();
 		});
 	}

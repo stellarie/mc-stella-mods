@@ -528,3 +528,12 @@ contract the spells and equips mods call by name, so neither depends on the towe
 - Wired in the other mods (their own branches): the spells mod calls all three when a spell resolves
   and when its cooldown starts; the equips mod calls `flat` for the numbers written in Java (Mist Armor and
   Blaze Armor damage, Waveform). Enchantments that are data driven are not scaled: they keep their level.
+
+## Scroll of Return in the tower
+
+The spells mod's Scroll of Return carries its reader to their respawn point in the Overworld from any dimension,
+the tower included, through the game's own level change. The tower's leave hook (which drops a boss floor's buff
+at once) listens to that change for every way out: portal, key, scroll or command, and its test
+(`leavingTheTowerTakesTheBuffAtOnce`) moves the player out the same way. The tower harness has no spells mod, so
+the scroll's own path is a manual item: read a Scroll of Return on a boss floor and check the floor's buff is
+gone and you stand at your bed or the world spawn.
