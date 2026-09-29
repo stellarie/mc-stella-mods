@@ -77,11 +77,18 @@ public final class HoldAtChokeGoal extends Goal {
 		this.untilRepath = 0;
 		this.untilRescan = RESCAN_TICKS;
 		this.gathered = false;
+		if (this.mouth != null && this.mob.getTarget() instanceof ServerPlayer player) {
+			LearnLog.info("learnChoke", "HOLD", LearnLog.who(this.mob) + " " + LearnLog.who(player) + " retreater=" + LearnLog.num(Choke.retreatPressure(player))
+				+ " gap=" + this.mouth.gap().toShortString() + " gathered=" + this.gatheredAt(this.mouth, player)
+				+ " group=" + LearnConfigStore.get().chokeGroup() + " patience=" + LearnConfigStore.get().chokePatienceTicks());
+		}
 	}
 
 	@Override
 	public void stop() {
 		this.mob.getNavigation().stop();
+		boolean patient = this.held >= LearnConfigStore.get().chokePatienceTicks();
+		LearnLog.info("learnChoke", "GO", LearnLog.who(this.mob) + " reason=" + (this.gathered ? "group" : patient ? "patience" : "other") + " held=" + this.held);
 		// A mob let go by its group or by its patience has decided to go in, and is left to get through.
 		boolean decidedToGo = this.gathered || this.held >= LearnConfigStore.get().chokePatienceTicks();
 		this.restUntilTick = this.mob.tickCount + (decidedToGo ? GO_TICKS : LearnConfigStore.get().chokeRestTicks());
