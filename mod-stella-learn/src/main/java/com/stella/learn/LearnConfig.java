@@ -9,7 +9,8 @@ public record LearnConfig(
 	double calloutRadius, int maxResponders, int calloutCooldownTicks, long profileHalfLifeTicks, double rushBandGain, double rushSaturation,
 	double shieldSaturation, double shieldThreshold, int shieldPatienceTicks, int shieldRestTicks,
 	double rangedSaturation, double coverThreshold, int coverRestTicks,
-	double retreatSaturation, double chokeThreshold, int chokeGroup, int chokePatienceTicks, int chokeRestTicks
+	double retreatSaturation, double chokeThreshold, int chokeGroup, int chokePatienceTicks, int chokeRestTicks,
+	boolean behaviorLog, int logSummaryTicks
 ) {
 	public static final double DEFAULT_CALLOUT_RADIUS = 24.0;
 	public static final int DEFAULT_MAX_RESPONDERS = 4;
@@ -42,6 +43,10 @@ public record LearnConfig(
 	/** Ticks a mob waits outside a chokepoint for its group before it goes in anyway. */
 	public static final int DEFAULT_CHOKE_PATIENCE_TICKS = 200;
 	public static final int DEFAULT_CHOKE_REST_TICKS = 40;
+	/** Whether the mod writes its `[BEHAVIOR]` lines to the server log. */
+	public static final boolean DEFAULT_BEHAVIOR_LOG = true;
+	/** Ticks between two profile summary lines per player; 0 switches the summary off. */
+	public static final int DEFAULT_LOG_SUMMARY_TICKS = 600;
 	static final String CALLOUT_RADIUS = "callout_radius";
 	static final String MAX_RESPONDERS = "max_responders";
 	static final String CALLOUT_COOLDOWN_TICKS = "callout_cooldown_ticks";
@@ -60,26 +65,39 @@ public record LearnConfig(
 	static final String CHOKE_GROUP = "choke_group";
 	static final String CHOKE_PATIENCE_TICKS = "choke_patience_ticks";
 	static final String CHOKE_REST_TICKS = "choke_rest_ticks";
+	static final String BEHAVIOR_LOG = "behavior_log";
+	static final String LOG_SUMMARY_TICKS = "log_summary_ticks";
 
 	public LearnConfig withCalloutRadius(final double value) {
 		return new LearnConfig(value, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
-			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks);
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks);
 	}
 
 	public LearnConfig withMaxResponders(final int value) {
 		return new LearnConfig(this.calloutRadius, value, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
-			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks);
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks);
 	}
 
 	public LearnConfig withCalloutCooldownTicks(final int value) {
 		return new LearnConfig(this.calloutRadius, this.maxResponders, value, this.profileHalfLifeTicks, this.rushBandGain,
 			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
 			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
-			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks);
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks);
+	}
+
+	public LearnConfig withBehaviorLog(final boolean value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			value, this.logSummaryTicks);
 	}
 
 	public static LearnConfig defaults() {
@@ -88,7 +106,7 @@ public record LearnConfig(
 			DEFAULT_RUSH_BAND_GAIN, DEFAULT_RUSH_SATURATION, DEFAULT_SHIELD_SATURATION, DEFAULT_SHIELD_THRESHOLD,
 			DEFAULT_SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_REST_TICKS, DEFAULT_RANGED_SATURATION, DEFAULT_COVER_THRESHOLD,
 			DEFAULT_COVER_REST_TICKS, DEFAULT_RETREAT_SATURATION, DEFAULT_CHOKE_THRESHOLD, DEFAULT_CHOKE_GROUP,
-			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS
+			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS, DEFAULT_BEHAVIOR_LOG, DEFAULT_LOG_SUMMARY_TICKS
 		);
 	}
 
@@ -125,8 +143,39 @@ public record LearnConfig(
 			number(root, CHOKE_THRESHOLD, DEFAULT_CHOKE_THRESHOLD),
 			(int) number(root, CHOKE_GROUP, DEFAULT_CHOKE_GROUP),
 			(int) number(root, CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_PATIENCE_TICKS),
-			(int) number(root, CHOKE_REST_TICKS, DEFAULT_CHOKE_REST_TICKS)
+			(int) number(root, CHOKE_REST_TICKS, DEFAULT_CHOKE_REST_TICKS),
+			flag(root, BEHAVIOR_LOG, DEFAULT_BEHAVIOR_LOG),
+			(int) count(root, LOG_SUMMARY_TICKS, DEFAULT_LOG_SUMMARY_TICKS)
 		);
+	}
+
+	private static boolean flag(final JsonObject root, final String key, final boolean fallback) {
+		JsonElement element = root.get(key);
+		if (element == null) {
+			return fallback;
+		}
+
+		if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isBoolean()) {
+			StellaLearn.LOGGER.warn("Learning config entry {} must be true or false; keeping {}", key, fallback);
+			return fallback;
+		}
+
+		return element.getAsBoolean();
+	}
+
+	/** Like `number`, but zero is a real value: it switches the thing off. */
+	private static double count(final JsonObject root, final String key, final double fallback) {
+		JsonElement element = root.get(key);
+		if (element == null) {
+			return fallback;
+		}
+
+		if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber() || element.getAsDouble() < 0.0) {
+			StellaLearn.LOGGER.warn("Learning config entry {} must be zero or a positive number; keeping {}", key, fallback);
+			return fallback;
+		}
+
+		return element.getAsDouble();
 	}
 
 	private static double number(final JsonObject root, final String key, final double fallback) {
