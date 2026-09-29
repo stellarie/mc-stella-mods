@@ -19,6 +19,7 @@ This repository develops separate Fabric mods on their own integration branches:
 - `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
 - `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
 - `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
+- `python scripts/build-release.py --list` - Print the current Gradle mod list as JSON. [verified: 2026-09-29] [source: command output]
 
 ## Architecture
 
@@ -48,6 +49,8 @@ This repository develops separate Fabric mods on their own integration branches:
 - Spellbook item models hide hand contexts while keeping GUI icons. [verified: 2026-09-28] [source: SpellScrollsGameTest.everyBookHidesOnlyItsHandModel]
 
 ## Known Pitfalls
+
+- Nether's included builds can write the mobs jar concurrently -> run its Gradle gates with `--max-workers=1`. [status: active] [verified: 2026-09-29] [source: hosted run 36493064255; local nether clean build]
 
 - A GameTest patrol pair may not tick in its remote chunk -> force its chunk during the hunt test. [status: active] [verified: 2026-09-28] [source: FriendlyPatrolGameTest.aPairHuntsAZombie]
 
@@ -113,6 +116,16 @@ This repository develops separate Fabric mods on their own integration branches:
 - [ ] Confirm the Gaussian standard deviation, XP curve, and Nether/End distance origins. Next check: oniichan's pending design reply. [added: 2026-09-28]
 
 ## Session Handoffs
+
+### 2026-09-29 - Parallel CI jar bundle
+
+- Done: Created `feat/parallel-mod-ci` from current `origin/main` and split CI into detected mod jobs.
+- Done: Hosted run `36493791721` started seven independent mod jobs. Failed jobs blocked the ZIP job.
+- Pending: Mobs, villages, tower, and Nether required GameTests failed on the hosted run.
+- Next: Resolve those mod failures on their integration branches, then rerun the matrix.
+- Verification: Eight focused Python tests passed; discovery listed seven Gradle mods.
+- Verification: Food and Nether each passed a local clean build and five GameTest reruns.
+- Verification: A downloaded hosted food jar kept its mod directory and bundled into a valid ZIP.
 
 ### 2026-09-28 - Food tooltips and station screen
 
