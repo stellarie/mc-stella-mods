@@ -23,7 +23,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 - The head guards within 8 blocks of the village's bell and never chases a threat beyond that radius.
   Inside that radius it fights any hostile mob it sees, a slime as much as a zombie.
   The other members are set down across
-  the village, up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
+  the village, outside the head's 8-block circle and up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
   included; a member that finds itself outside heads back in.
 - The head wears full netherite, every piece enchanted (Protection IV and Unbreaking III, Feather Falling IV
   on the boots), and carries a netherite axe with Sharpness V. With `mod-stella-spells` loaded, the axe
