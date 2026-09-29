@@ -15,7 +15,8 @@
 			"com.stella.learn.CalloutGameTest",
 			"com.stella.learn.RallyGameTest",
 			"com.stella.learn.CalloutKitsGameTest",
-			"com.stella.learn.CalloutSenderGameTest"
+			"com.stella.learn.CalloutSenderGameTest",
+			"com.stella.learn.TakeCoverGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

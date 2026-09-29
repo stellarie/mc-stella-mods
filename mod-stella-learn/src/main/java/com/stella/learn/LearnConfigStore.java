@@ -20,13 +20,17 @@ public final class LearnConfigStore {
 			"shield_saturation": %s,
 			"shield_threshold": %s,
 			"shield_patience_ticks": %d,
-			"shield_rest_ticks": %d
+			"shield_rest_ticks": %d,
+			"ranged_saturation": %s,
+			"cover_threshold": %s,
+			"cover_rest_ticks": %d
 		}
 		""".formatted(
 		LearnConfig.DEFAULT_CALLOUT_RADIUS, LearnConfig.DEFAULT_MAX_RESPONDERS,
 		LearnConfig.DEFAULT_CALLOUT_COOLDOWN_TICKS, LearnConfig.DEFAULT_PROFILE_HALF_LIFE_TICKS,
 		LearnConfig.DEFAULT_RUSH_BAND_GAIN, LearnConfig.DEFAULT_RUSH_SATURATION, LearnConfig.DEFAULT_SHIELD_SATURATION,
-		LearnConfig.DEFAULT_SHIELD_THRESHOLD, LearnConfig.DEFAULT_SHIELD_PATIENCE_TICKS, LearnConfig.DEFAULT_SHIELD_REST_TICKS
+		LearnConfig.DEFAULT_SHIELD_THRESHOLD, LearnConfig.DEFAULT_SHIELD_PATIENCE_TICKS, LearnConfig.DEFAULT_SHIELD_REST_TICKS,
+		LearnConfig.DEFAULT_RANGED_SATURATION, LearnConfig.DEFAULT_COVER_THRESHOLD, LearnConfig.DEFAULT_COVER_REST_TICKS
 	);
 	private static volatile LearnConfig config = LearnConfig.defaults();
 

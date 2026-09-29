@@ -7,7 +7,8 @@ import com.google.gson.JsonParser;
 /** The tunable numbers, each a starting value. A bad entry logs and keeps its default. */
 public record LearnConfig(
 	double calloutRadius, int maxResponders, int calloutCooldownTicks, long profileHalfLifeTicks, double rushBandGain, double rushSaturation,
-	double shieldSaturation, double shieldThreshold, int shieldPatienceTicks, int shieldRestTicks
+	double shieldSaturation, double shieldThreshold, int shieldPatienceTicks, int shieldRestTicks,
+	double rangedSaturation, double coverThreshold, int coverRestTicks
 ) {
 	public static final double DEFAULT_CALLOUT_RADIUS = 24.0;
 	public static final int DEFAULT_MAX_RESPONDERS = 4;
@@ -25,6 +26,12 @@ public record LearnConfig(
 	public static final int DEFAULT_SHIELD_PATIENCE_TICKS = 100;
 	/** Ticks a mob that ran out of patience rests before it waits again. */
 	public static final int DEFAULT_SHIELD_REST_TICKS = 40;
+	/** Ranged hits, decayed, at which a player counts as a full shooter. */
+	public static final double DEFAULT_RANGED_SATURATION = 6.0;
+	/** The share of a full shooter at which melee mobs start advancing from cover to cover. */
+	public static final double DEFAULT_COVER_THRESHOLD = 0.5;
+	/** Ticks a melee mob rests between two hops from cover to cover. */
+	public static final int DEFAULT_COVER_REST_TICKS = 30;
 	static final String CALLOUT_RADIUS = "callout_radius";
 	static final String MAX_RESPONDERS = "max_responders";
 	static final String CALLOUT_COOLDOWN_TICKS = "callout_cooldown_ticks";
@@ -35,27 +42,34 @@ public record LearnConfig(
 	static final String SHIELD_THRESHOLD = "shield_threshold";
 	static final String SHIELD_PATIENCE_TICKS = "shield_patience_ticks";
 	static final String SHIELD_REST_TICKS = "shield_rest_ticks";
+	static final String RANGED_SATURATION = "ranged_saturation";
+	static final String COVER_THRESHOLD = "cover_threshold";
+	static final String COVER_REST_TICKS = "cover_rest_ticks";
 
 	public LearnConfig withCalloutRadius(final double value) {
 		return new LearnConfig(value, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
-			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks);
 	}
 
 	public LearnConfig withMaxResponders(final int value) {
 		return new LearnConfig(this.calloutRadius, value, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
-			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks);
 	}
 
 	public LearnConfig withCalloutCooldownTicks(final int value) {
 		return new LearnConfig(this.calloutRadius, this.maxResponders, value, this.profileHalfLifeTicks, this.rushBandGain,
-			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks);
 	}
 
 	public static LearnConfig defaults() {
 		return new LearnConfig(
 			DEFAULT_CALLOUT_RADIUS, DEFAULT_MAX_RESPONDERS, DEFAULT_CALLOUT_COOLDOWN_TICKS, DEFAULT_PROFILE_HALF_LIFE_TICKS,
 			DEFAULT_RUSH_BAND_GAIN, DEFAULT_RUSH_SATURATION, DEFAULT_SHIELD_SATURATION, DEFAULT_SHIELD_THRESHOLD,
-			DEFAULT_SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_REST_TICKS
+			DEFAULT_SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_REST_TICKS, DEFAULT_RANGED_SATURATION, DEFAULT_COVER_THRESHOLD,
+			DEFAULT_COVER_REST_TICKS
 		);
 	}
 
@@ -84,7 +98,10 @@ public record LearnConfig(
 			number(root, SHIELD_SATURATION, DEFAULT_SHIELD_SATURATION),
 			number(root, SHIELD_THRESHOLD, DEFAULT_SHIELD_THRESHOLD),
 			(int) number(root, SHIELD_PATIENCE_TICKS, DEFAULT_SHIELD_PATIENCE_TICKS),
-			(int) number(root, SHIELD_REST_TICKS, DEFAULT_SHIELD_REST_TICKS)
+			(int) number(root, SHIELD_REST_TICKS, DEFAULT_SHIELD_REST_TICKS),
+			number(root, RANGED_SATURATION, DEFAULT_RANGED_SATURATION),
+			number(root, COVER_THRESHOLD, DEFAULT_COVER_THRESHOLD),
+			(int) number(root, COVER_REST_TICKS, DEFAULT_COVER_REST_TICKS)
 		);
 	}
 
