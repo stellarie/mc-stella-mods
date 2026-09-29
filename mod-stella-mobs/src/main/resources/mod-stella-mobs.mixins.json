@@ -21,6 +21,7 @@
 		"FriendlyPatrolMobCapMixin",
 		"FriendlyPatrolRestMixin",
 		"MobTargetSelectorAccessor",
+		"NaturalSpawnerQuietMixin",
 		"ThreatExperienceMixin"
 	],
 	"injectors": {

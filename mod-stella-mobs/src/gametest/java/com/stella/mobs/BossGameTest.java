@@ -89,9 +89,10 @@ public class BossGameTest {
 		double tenLevelHealth = SpawnScaling.LEVEL_HEALTH_BONUS * 10;
 		double tenLevelDamage = SpawnScaling.LEVEL_DAMAGE_BONUS * 10;
 		int level = SpawnScaling.areaLevel(mob);
+		// The rig measures distance from the level's spawn, and a biome adds its flat levels on top, never below zero.
 		var spawn = helper.getLevel().getRespawnData().pos();
-		int expectedArea = (int) Math.floor(Math.hypot(mob.getX() - spawn.getX(), mob.getZ() - spawn.getZ())
-			/ SpawnScaling.BLOCKS_PER_LEVEL);
+		int expectedArea = Math.max(0, (int) Math.floor(Math.hypot(mob.getX() - spawn.getX(), mob.getZ() - spawn.getZ())
+			/ SpawnScaling.BLOCKS_PER_LEVEL) + SpawnScaling.biomeOffset(mob));
 
 		StellaMobs.LOGGER.info(
 			"[BEHAVIOR] test={} RESULT tenLevelHealth={} tenLevelDamage={} areaLevel={} expectedArea={}",
@@ -99,7 +100,7 @@ public class BossGameTest {
 		);
 
 		helper.assertTrue(
-			Math.abs(tenLevelHealth - 0.5) < EPSILON && Math.abs(tenLevelDamage - 0.25) < EPSILON,
+			Math.abs(tenLevelHealth - 0.5) < EPSILON && Math.abs(tenLevelDamage - 0.4) < EPSILON,
 			"ten threat levels did not raise health and damage by the expected amounts"
 		);
 		helper.assertValueEqual(Integer.valueOf(level), Integer.valueOf(expectedArea), "distance area level");

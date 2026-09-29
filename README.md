@@ -23,18 +23,27 @@ wants.
 
 ### Threat levels
 
-An Overworld mob gains one area level per 500 horizontal blocks from the shared spawn.
-The Nether uses the shared spawn divided by eight as its origin and starts at level 20.
-The End uses (0, 0) as its origin and starts at level 50. Distance levels have no cap.
+Distance is measured from (0, 0) in every dimension; the world spawn plays no part. An Overworld mob gains one
+area level per 100 horizontal blocks. The Nether starts at level 50 and the End at level 80, and both gain
+eight levels per 100 blocks. Distance levels have no cap. A biome adds a flat number of levels from the
+`rolls.biome_levels` table (never below level zero); a biome the file does not list adds none.
 
-Each mob rolls one persistent, centered normal variation. Its standard deviation is five levels.
-The roll is rounded and limited to minus ten through plus ten. Dimension minima apply after the roll.
-An elite adds five levels; a boss adds ten instead. The `boss_level_bonus` config value multiplies
-the boss's ten-level bonus, with a default of 1.0.
+Each mob rolls one persistent, centered normal variation. It is centred on +5 levels with a standard
+deviation of ten, rounded and limited to 25 either side of the centre, so minus 20 through plus 30.
+Dimension minima apply after the roll. An elite adds five levels; a boss adds ten instead. The
+`boss_level_bonus` config value multiplies the boss's ten-level bonus, with a default of 1.0.
 
-Each threat level adds 5% maximum health and 2.5% attack damage. Depth still adds up to 25% health
-and 12.5% damage by 256 blocks below sea level. Minecraft's health attribute can cap effective HP
-at 1,024 even though the threat level keeps rising.
+Each threat level adds 5% maximum health and 4% attack damage. On top of that an Overworld mob takes an
+altitude multiplier that is nothing at y=0: below it, up to 50% health and 40% damage at the world floor
+(64 blocks down); above it, up to 20% health and 16% damage at 320 blocks. Depth counts far more per block
+than height. The Nether and End take no altitude multiplier. Minecraft's health attribute can cap effective
+HP at 1,024 even though the threat level keeps rising.
+
+Elites and bosses are held back by distance from (0, 0), for what the world spawns by itself in the
+Overworld. Elites can first appear 500 blocks out, bosses 2,000. The elite chance grows by 0.05 percentage
+points per 100 blocks, capped at 20 points, and a mob kind whose elite chance is zero stays at zero. Within
+16 blocks of an elite, or 32 of a boss, natural hostile spawns are halved; overlapping elites and bosses
+halve once.
 
 The highest mob threat ever observed is saved on the Overworld for the whole server. Summoned skeletons
 can read that peak across dimensions and restarts to scale their health.
@@ -104,9 +113,17 @@ On the first server start the mod writes
 - `roles`: `melee`, `ranged`, or `magic`. The default is `melee`. A `ranged` or
   `magic` mob keeps its distance and shoots.
 - `rolls.spawn_safety_radius`: no natural Overworld spawn within this many
-  horizontal blocks of the shared spawn rolls elite or boss. The shipped file
-  sets `1000.0`, and an older file gains that value on load. `0` turns the
-  gate off. The forced elder guardian and the ocean specials are not gated.
+  horizontal blocks of (0, 0) rolls elite or boss. The shipped file sets `240.0`. An older file that lacks
+  the key gains it on load, but a file that already sets it keeps its value, so edit it by hand to change
+  it. `0` turns the gate off. The forced elder guardian and the ocean specials are not gated.
+- `rolls.elite_min_distance` (`500.0`) and `rolls.boss_min_distance` (`2000.0`): the blocks from (0, 0)
+  where a natural Overworld spawn may first roll elite or boss. `0` turns the gate off.
+- `rolls.elite_bonus_per_100` (`0.0005`) and `rolls.elite_bonus_cap` (`0.20`): the elite chance gained per
+  100 blocks from (0, 0), and its cap.
+- `rolls.elite_quiet_radius` (`16.0`), `rolls.boss_quiet_radius` (`32.0`) and `rolls.quiet_factor`
+  (`0.5`): the share of natural hostile spawn attempts that go ahead near an elite or a boss.
+- `rolls.biome_levels`: flat threat levels per exact biome id, for example `"minecraft:swamp": 6`. An exact
+  entry is the only kind there is; a bad entry is logged and skipped.
 - A bad entry is logged and skipped. The server keeps running.
 - An unknown top level key is ignored.
 

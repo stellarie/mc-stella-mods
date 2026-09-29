@@ -2,7 +2,6 @@ package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.config.GearConfigStore;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -11,12 +10,15 @@ import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The spawn-safety gate: no elite or boss roll inside the configured radius of the shared spawn, for any mob
- * the world spawns on its own. A mob a player spawns on purpose, from an egg or a command, still rolls.
+ * The spawn-safety gate: no elite or boss roll inside the configured radius of 0,0, for any mob the world spawns on
+ * its own. A mob a player spawns on purpose, from an egg or a command, still rolls.
  */
 public final class SpawnSafety {
 	/** The radius the shipped config file sets. */
-	public static final double SHIPPED_RADIUS = 1000.0;
+	public static final double SHIPPED_RADIUS = 240.0;
+	/** The centre of every distance rule. */
+	public static final double ORIGIN_X = 0.0;
+	public static final double ORIGIN_Z = 0.0;
 	/** Every way the world spawns a mob by itself. */
 	public static final java.util.Set<EntitySpawnReason> WORLD_REASONS = java.util.EnumSet.of(
 		EntitySpawnReason.NATURAL, EntitySpawnReason.CHUNK_GENERATION, EntitySpawnReason.SPAWNER, EntitySpawnReason.STRUCTURE,
@@ -46,17 +48,16 @@ public final class SpawnSafety {
 		return dx * dx + dz * dz <= radius * radius;
 	}
 
-	/** The gate for a mob entering this level, read against the level's shared spawn and the live config. */
+	/** The gate for a mob entering this level, read against 0,0 and the live config. The world spawn plays no part. */
 	public static boolean suppresses(final Mob mob, final ServerLevel level, final @Nullable EntitySpawnReason reason) {
-		BlockPos spawn = level.getRespawnData().pos();
 		boolean suppressed = suppresses(
-			level.dimension(), reason, mob.getX(), mob.getZ(), spawn.getX(), spawn.getZ(), GearConfigStore.get().spawnSafetyRadius()
+			level.dimension(), reason, mob.getX(), mob.getZ(), ORIGIN_X, ORIGIN_Z, GearConfigStore.get().spawnSafetyRadius()
 		);
 
 		if (suppressed) {
 			StellaMobs.LOGGER.info(
 				"[BEHAVIOR] test=spawnSafety SUPPRESS type={} distance={} radius={}",
-				mob.getType(), Math.hypot(mob.getX() - spawn.getX(), mob.getZ() - spawn.getZ()), GearConfigStore.get().spawnSafetyRadius()
+				mob.getType(), Math.hypot(mob.getX() - ORIGIN_X, mob.getZ() - ORIGIN_Z), GearConfigStore.get().spawnSafetyRadius()
 			);
 		}
 

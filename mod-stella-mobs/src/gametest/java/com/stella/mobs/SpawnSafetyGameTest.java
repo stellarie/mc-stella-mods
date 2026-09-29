@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
-import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -86,7 +85,7 @@ public class SpawnSafetyGameTest {
 	@GameTest
 	public void naturalZombieJustOutsideTheRadiusStillRollsElite(final GameTestHelper helper) {
 		double distance = spawnDistance(helper);
-		helper.assertTrue(distance > MARGIN, "the arena sits on the shared spawn, so no radius can leave it outside");
+		helper.assertTrue(distance > MARGIN, "the arena sits on 0,0, so no radius can leave it outside");
 		Mob zombie = spawnWith(helper, EntityTypes.ZOMBIE, eliteConfig(distance - MARGIN));
 		boolean elite = removed(zombie, Elite.isElite(zombie));
 		result("naturalZombieJustOutsideTheRadiusStillRollsElite", "distance=" + fmt(distance) + " elite=" + elite);
@@ -165,8 +164,7 @@ public class SpawnSafetyGameTest {
 
 	private static double spawnDistance(final GameTestHelper helper) {
 		Vec3 at = helper.absoluteVec(new Vec3(SPAWN_X + 0.5, SPAWN_Y, SPAWN_Z + 0.5));
-		BlockPos spawn = helper.getLevel().getRespawnData().pos();
-		return Math.hypot(at.x - spawn.getX(), at.z - spawn.getZ());
+		return Math.hypot(at.x - SpawnSafety.ORIGIN_X, at.z - SpawnSafety.ORIGIN_Z);
 	}
 
 	private static String eliteConfig(final double radius) {

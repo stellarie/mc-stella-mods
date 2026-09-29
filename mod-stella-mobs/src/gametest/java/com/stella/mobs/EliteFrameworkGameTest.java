@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -239,17 +240,24 @@ public class EliteFrameworkGameTest {
 	public void requeuedSquadNeverGrowsPastTheCap(final GameTestHelper helper) {
 		Zombie elite = spawn(helper, ALWAYS_ELITE);
 		int[] first = { -1 };
+		List<Mob> seen = new ArrayList<>();
+		trackSquad(helper, elite, seen);
 
-		// Two more requests for the same elite must not add a single escort.
+		// Two more requests for the same elite must not take the squad past the cap. A squad found full stays as it
+		// is; one that had lost an escort before the test read it may only be refilled, never overfilled.
 		helper.runAfterDelay(REQUEUE_TICK, () -> {
 			first[0] = escortsOf(helper, elite).size();
+			reportLostEscorts("requeuedSquadNeverGrowsPastTheCap", seen, helper.getTick());
 			EscortSquad.queue(elite, Elite.kitTier(elite));
 			EscortSquad.queue(elite, Elite.kitTier(elite));
 		});
 		helper.runAfterDelay(REQUEUE_TICK + SETTLE_TICKS, () -> {
 			int after = escortsOf(helper, elite).size();
 			result("requeuedSquadNeverGrowsPastTheCap", "first=" + first[0] + " after=" + after + " cap=" + EscortSquad.ESCORT_COUNT);
-			helper.assertValueEqual(Integer.valueOf(after), Integer.valueOf(first[0]), "escorts after two more requests");
+			helper.assertTrue(
+				after <= EscortSquad.ESCORT_COUNT && after >= first[0],
+				"escorts after two more requests was " + after + " from " + first[0] + " with a cap of " + EscortSquad.ESCORT_COUNT
+			);
 			helper.succeed();
 		});
 	}
@@ -258,18 +266,27 @@ public class EliteFrameworkGameTest {
 	public void requeueRefillsOnlyTheMissingEscorts(final GameTestHelper helper) {
 		Zombie elite = spawn(helper, ALWAYS_ELITE);
 		int[] first = { -1 };
+		List<Mob> seen = new ArrayList<>();
+		trackSquad(helper, elite, seen);
 
-		// Remove one escort, ask again, and the squad must return to its size and not overshoot it.
+		// Remove one escort, ask again, and the squad must be back at the shipped cap and not past it. The cap is
+		// the claim, not the count read at REQUEUE_TICK: one run in twelve found only one escort there, an escort
+		// lost before the test touched anything, and the refill still did its job.
 		helper.runAfterDelay(REQUEUE_TICK, () -> {
 			List<Zombie> escorts = escortsOf(helper, elite);
 			first[0] = escorts.size();
-			escorts.getFirst().discard();
+			reportLostEscorts("requeueRefillsOnlyTheMissingEscorts", seen, helper.getTick());
+			if (!escorts.isEmpty()) {
+				escorts.getFirst().discard();
+			}
 			EscortSquad.queue(elite, Elite.kitTier(elite));
 		});
 		helper.runAfterDelay(REQUEUE_TICK + SETTLE_TICKS, () -> {
 			int after = escortsOf(helper, elite).size();
-			result("requeueRefillsOnlyTheMissingEscorts", "first=" + first[0] + " after=" + after);
-			helper.assertValueEqual(Integer.valueOf(after), Integer.valueOf(first[0]), "escorts after one loss and one request");
+			result("requeueRefillsOnlyTheMissingEscorts", "first=" + first[0] + " after=" + after + " cap=" + EscortSquad.ESCORT_COUNT);
+			helper.assertValueEqual(
+				Integer.valueOf(after), Integer.valueOf(EscortSquad.ESCORT_COUNT), "escorts after one loss and one request"
+			);
 			helper.succeed();
 		});
 	}
@@ -598,4 +615,29 @@ public class EliteFrameworkGameTest {
 	private static void result(final String test, final String detail) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", test, detail);
 	}
+
+	/** Remembers every escort the squad has had, from the test body, so a member that is gone can be named. */
+	private static void trackSquad(final GameTestHelper helper, final Zombie elite, final List<Mob> seen) {
+		helper.onEachTick(() -> {
+			for (Mob escort : EscortSquad.escortsOf(helper.getLevel(), elite)) {
+				if (!seen.contains(escort)) {
+					seen.add(escort);
+				}
+			}
+		});
+	}
+
+	/** One line per escort that was seen and is gone: how it went, and what last hurt it. Silent when the squad is whole. */
+	private static void reportLostEscorts(final String test, final List<Mob> seen, final long tick) {
+		for (Mob escort : seen) {
+			if (escort.isRemoved() || !escort.isAlive()) {
+				StellaMobs.LOGGER.info(
+					"[BEHAVIOR] test=escortLost RESULT test={} uuid={} removal={} health={} lastDamage={} tick={}",
+					test, escort.getUUID(), escort.getRemovalReason(), escort.getHealth(),
+					escort.getLastDamageSource() == null ? "none" : escort.getLastDamageSource().getMsgId(), tick
+				);
+			}
+		}
+	}
+
 }

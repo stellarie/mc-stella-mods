@@ -78,6 +78,7 @@ public final class GearConfigParser {
 		RollSpec rollDefaults = RollSpec.DEFAULT;
 		Map<Identifier, RollSpec> rolls = new HashMap<>();
 		double spawnSafetyRadius = GearConfig.DEFAULT_SPAWN_SAFETY_RADIUS;
+		WorldRules world = WorldRules.OFF;
 		JsonElement rollsElement = root.get("rolls");
 
 		if (rollsElement != null && rollsElement.isJsonObject()) {
@@ -86,6 +87,7 @@ public final class GearConfigParser {
 			if (radius != null) {
 				spawnSafetyRadius = radius;
 			}
+			world = parseWorld(rollsObject);
 			rollDefaults = rollDefaults.overriddenBy(
 				readChance(rollsObject.get("roll_chance")),
 				readMultiplier(rollsObject.get("drop_chance_multiplier")),
@@ -130,7 +132,56 @@ public final class GearConfigParser {
 		Map<Identifier, RiderSpec> riders = new HashMap<>();
 		RiderSpec riderDefaults = parseRiders(root, riders);
 
-		return new GearConfig(entities, roles, rollDefaults, rolls, riderDefaults, riders, spawnSafetyRadius);
+		return new GearConfig(entities, roles, rollDefaults, rolls, riderDefaults, riders, spawnSafetyRadius, world);
+	}
+
+	/**
+	 * The world rules ride in the rolls object. A missing or bad scalar keeps the code default, which is off, and a
+	 * bad biome entry logs and skips, so a hand edit can never stop the server. An exact entry is the only kind there is.
+	 */
+	private static WorldRules parseWorld(final JsonObject rollsObject) {
+		WorldRules off = WorldRules.OFF;
+		Double eliteMin = readMultiplier(rollsObject.get("elite_min_distance"));
+		Double bossMin = readMultiplier(rollsObject.get("boss_min_distance"));
+		Double bonusPer100 = readChance(rollsObject.get("elite_bonus_per_100"));
+		Double bonusCap = readChance(rollsObject.get("elite_bonus_cap"));
+		Double eliteQuiet = readMultiplier(rollsObject.get("elite_quiet_radius"));
+		Double bossQuiet = readMultiplier(rollsObject.get("boss_quiet_radius"));
+		Double quietFactor = readChance(rollsObject.get("quiet_factor"));
+		Map<Identifier, Integer> biomes = new HashMap<>();
+		JsonElement biomeElement = rollsObject.get("biome_levels");
+
+		if (biomeElement != null && biomeElement.isJsonObject()) {
+			for (Map.Entry<String, JsonElement> entry : biomeElement.getAsJsonObject().entrySet()) {
+				Identifier biome = Identifier.tryParse(entry.getKey());
+				if (biome == null) {
+					warn("skipping biome level for '" + entry.getKey() + "': the key is not a valid identifier");
+					continue;
+				}
+
+				JsonElement value = entry.getValue();
+				if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
+					|| value.getAsDouble() != Math.rint(value.getAsDouble())) {
+					warn("skipping biome level for '" + entry.getKey() + "': the value is not a whole number");
+					continue;
+				}
+
+				biomes.put(biome, value.getAsInt());
+			}
+		} else if (biomeElement != null) {
+			warn("ignoring biome_levels: it is not an object");
+		}
+
+		return new WorldRules(
+			eliteMin != null ? eliteMin : off.eliteMinDistance(),
+			bossMin != null ? bossMin : off.bossMinDistance(),
+			bonusPer100 != null ? bonusPer100 : off.eliteBonusPer100(),
+			bonusCap != null ? bonusCap : off.eliteBonusCap(),
+			eliteQuiet != null ? eliteQuiet : off.eliteQuietRadius(),
+			bossQuiet != null ? bossQuiet : off.bossQuietRadius(),
+			quietFactor != null ? quietFactor : off.quietFactor(),
+			biomes
+		);
 	}
 
 	private static RiderSpec parseRiders(final JsonObject root, final Map<Identifier, RiderSpec> riders) {

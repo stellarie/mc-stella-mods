@@ -49,6 +49,7 @@ public class GuardianEliteGameTest {
 			"entities": {},
 			"rolls": { "roll_chance": 0.0, "elite_chance": 1.0, "boss_chance": 0.0 }
 		}""";
+	private static final double FLOAT_EPSILON = 1.0E-3;
 	private static final double EPSILON = 1.0e-6;
 	private static final float TARGET_HEALTH = 10000.0F;
 	private static final int POOL_TOP = 5;
@@ -263,7 +264,8 @@ public class GuardianEliteGameTest {
 						+ " times " + Elite.HEALTH_MULTIPLIER
 				);
 				helper.assertTrue(
-					Math.abs(elder.getMaxHealth() - expectedBase * SpawnScaling.healthMultiplierOf(elder)) < EPSILON,
+					// getMaxHealth is a float, so a multiplier that is not a round number is only good to float precision.
+					Math.abs(elder.getMaxHealth() - expectedBase * SpawnScaling.healthMultiplierOf(elder)) < FLOAT_EPSILON,
 					"the elder's maximum is " + elder.getMaxHealth() + ", not the base times the level scaling"
 				);
 				helper.assertValueEqual(

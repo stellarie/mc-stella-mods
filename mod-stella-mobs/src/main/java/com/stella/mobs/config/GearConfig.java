@@ -10,7 +10,8 @@ public record GearConfig(
 	Map<Identifier, RollSpec> rolls,
 	RiderSpec riderDefaults,
 	Map<Identifier, RiderSpec> riders,
-	double spawnSafetyRadius
+	double spawnSafetyRadius,
+	WorldRules world
 ) {
 	/** The code default leaves the spawn gate off, so a rig that parses its own config is never gated. */
 	public static final double DEFAULT_SPAWN_SAFETY_RADIUS = 0.0;
@@ -27,6 +28,18 @@ public record GearConfig(
 		final Map<Identifier, RiderSpec> riders
 	) {
 		this(entities, roles, rollDefaults, rolls, riderDefaults, riders, DEFAULT_SPAWN_SAFETY_RADIUS);
+	}
+
+	public GearConfig(
+		final Map<Identifier, Loadout> entities,
+		final Map<Identifier, RoleSpec> roles,
+		final RollSpec rollDefaults,
+		final Map<Identifier, RollSpec> rolls,
+		final RiderSpec riderDefaults,
+		final Map<Identifier, RiderSpec> riders,
+		final double spawnSafetyRadius
+	) {
+		this(entities, roles, rollDefaults, rolls, riderDefaults, riders, spawnSafetyRadius, WorldRules.OFF);
 	}
 
 	public GearConfig {

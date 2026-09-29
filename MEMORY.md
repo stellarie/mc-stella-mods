@@ -23,7 +23,7 @@ This repository develops Fabric mods on separate integration branches.
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
 - Mob threat rolls persist their area level and variation through a Fabric attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/ThreatState.java; threatRollSurvivesEntitySave]
 - The server-wide lifetime threat maximum persists on the Overworld attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/WorldThreatPeak.java; highestThreatPersistsAcrossDimensionsAndNeverFalls]
-- One spawn modifier per attribute combines threat level and the retained depth contribution. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
+- One spawn modifier per attribute combines threat level and the altitude contribution, which is nothing in the Nether and End. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
 - Wild patrol pair rolls now use persisted 8x8 grid keys on the Overworld. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: mod-stella-mobs/src/main/java/com/stella/mobs/behavior/ChunkEncounters.java; build -x test -x runGameTest]
 
 ## Conventions
@@ -41,6 +41,15 @@ This repository develops Fabric mods on separate integration branches.
 - Minecraft caps effective maximum health at 1,024 while threat levels remain uncapped. [status: active] [verified: 2026-09-28] [source: preliminary-full3 GameTest log; snowGolem.meltsWhereTheWorldSaysSo]
 
 ## Decisions
+
+### 2026-09-29 - Biome, altitude and distance scaling from 0,0
+
+- Decision: Distance is measured from (0, 0) in every dimension at one Overworld level per 100 blocks and eight per 100 in the Nether and End, with bases 50 and 80. The roll is centred on +5 and reaches 25 either side. Damage is +4% per level. Biomes add flat levels from `rolls.biome_levels`. Altitude adds a health and damage multiplier from y=0, depth heavier than height, and never in the Nether or End. Elites start 500 blocks out, bosses 2,000, the elite chance gains 0.05 points per 100 blocks (cap 20), the spawn safety radius is 240 blocks around (0, 0), and natural hostile spawns are halved within 16 blocks of an elite and 32 of a boss.
+- Why: Oniichan's decisions of 2026-09-29, to keep the middle game from going trivial alongside other mods.
+- Alternatives: A ramp that phases the biome offset in with distance, and a distance cap, were offered and declined.
+- Evidence: `SpawnScalingGameTest`, `DistanceGatesGameTest` and `SpawnPressureGameTest`.
+- Deviation: The game test arenas sit about ten million blocks from (0, 0), so `runGameTest` sets `stella.mobs.scalingOrigin=worldSpawn` and the rig measures scaling distance from the level spawn. Play never sets it, and the scaling tests switch it off to prove the 0,0 origin.
+- Deviation: `spawn_safety_radius` in an existing `loadouts.json` is never rewritten, so a file that already says `1000.0` keeps it until edited by hand.
 
 ### 2026-09-28 - Uncapped distance threat with retained depth scaling
 

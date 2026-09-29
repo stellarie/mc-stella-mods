@@ -80,6 +80,7 @@ public record EliteState(
 
 	public static void markElite(final Mob mob, final GearTier tier) {
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).asElite(tier));
+		SpawnPressure.watch(mob);
 	}
 
 	/** B01 to B05: the boss flag is durable, so a reloaded boss is still a boss. */
@@ -98,6 +99,9 @@ public record EliteState(
 
 	public static void setBoss(final Mob mob, final boolean boss) {
 		((AttachmentTarget) mob).setAttached(TYPE, get(mob).withBoss(boss));
+		if (boss) {
+			SpawnPressure.watch(mob);
+		}
 	}
 
 	/** R25: the pearl budget's reader and writer. The budget is durable, so a reload cannot refill it. */
