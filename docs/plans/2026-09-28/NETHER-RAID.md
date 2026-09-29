@@ -43,10 +43,8 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 
 - Spawns once per instance in the fortress; never respawns. A new instance brings a new one.
 - Blue-tinted blaze at 3x scale, stays near the ground.
-- Health `1000 + 50 * threat`, where threat is `mod-stella-mobs`' `ThreatState.level(mob)` for the boss.
-  The raid dimension must count as the nether there (minimum 20), and the boss's elite/boss bonus of
-  +10 applies. At threat 30 that is 2,500 health: past vanilla's 1,024 cap, so the excess is kept as a
-  damage divisor, as the tower does.
+- Health 1,248, the raid's own (2026-09-29: no threat level reaches the raid; it was `1000 + 50 * threat`).
+  Past vanilla's 1,024 cap, so the excess is kept as a damage divisor, as the tower does.
 - Normal attack: blue fireballs that set the target on fire.
 - Specials, on a rotation:
   1. **Flame Spiral**: 360 degree fireball spray for 5 seconds.
@@ -101,6 +99,8 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
       5 seconds. **Done.**
     - A debug command to summon a Sovereign. **Done.**
 15. Every other blaze never flies up, closes in beyond 10 blocks, and backs off inside 5. **Done.**
+16. Requested 2026-09-29: the raid scales its own mobs, untouched by threat levels: 64 base health for every
+    enemy (with the mode's strength on top), and 1,248 for the Sovereign. **Done.**
 
 Each slice ships with headless game tests per `AGENTS.md`.
 

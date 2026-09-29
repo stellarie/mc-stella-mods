@@ -75,13 +75,15 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - A server with structures switched off has no fortress or bastion to find; the run then opens at its
   origin and logs a warning.
 
-## Slice 6a: the raid's threat level
+## Slice 6a: the raid's own scaling (was: its threat level)
 
-- The mobs mod gives a dimension it does not know no threat floor, so raid mobs rolled threat 0 to 4,
-  weaker than the normal nether's 20. Every mob that loads in the raid now has its threat lifted to start
-  from the nether's floor (`ThreatState.NETHER_MINIMUM`), keeping its own roll above that, and is scaled
-  again by the mobs mod's `SpawnScaling`. Measured: eight raid zombified piglins at levels 20 to 28,
-  40 to 48 health.
+- No threat level reaches the raid nether (changed 2026-09-29; it used to lift raid mobs to the nether's
+  threat floor). Every mob that loads there has its threat set to none, and the mobs mod's threat health
+  and damage modifiers are taken off, on every load.
+- Every raid enemy stands on the raid's own base health of 64, and its mode's strength sits on top: 80 in
+  normal, 112 in hard. An elite or boss rank still adds its own.
+- Measured: eight raid zombified piglins in a normal raid, each at threat 0, base 64, 80 health, with no
+  threat modifier. Before the change they were at threat 20 to 30, with 50 to 62.5 health.
 - Fixed: the reset discarded items while walking the level's entity map, which skipped 23 of 64 items
   and once crashed the server tick (`ArrayIndexOutOfBoundsException` in `RaidInstance.tick`). Both
   loops over the raid's entities now walk a snapshot.
@@ -92,9 +94,9 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   chunk is loaded, the Blaze Sovereign rises there. It stands on the nearest open floor within 32 blocks
   of the fortress start (solid below, seven blocks of air above, no lava). It never rises again in that
   run, slain or not; a new run raises a new one.
-- Health: 1000 plus 50 per threat level, where its threat is the raid roll lifted to the nether's floor
-  plus the mobs mod's boss bonus of 10, so 2,500 to 3,000 in practice. The health attribute holds at most
-  1,024; the rest is a divisor on every hit it takes, so a 100-point hit costs 100 of its whole health.
+- Health: the raid's own 1,248, whatever the threat (changed 2026-09-29; it was 1000 plus 50 per threat
+  level, 2,500 to 3,000 in practice). The health attribute holds at most 1,024; the rest is a divisor on
+  every hit it takes, so a 100-point hit costs 100 of its whole health.
   It opts out of the mobs mod's spawn rolls, so its kit and scaling are its own.
 - It stands three times a blaze's size (5.4 blocks) and keeps within two blocks of the ground below it,
   drawn down half a block a tick if higher.

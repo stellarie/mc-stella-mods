@@ -29,12 +29,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Blaze Sovereign: one per run, risen on open ground at the run's fortress the first time a player comes
  * near, and never again in that run. It stands three times a blaze's size and keeps near the ground; its
- * health is {@link #BASE_HEALTH} plus {@link #HEALTH_PER_THREAT} per threat level, and every hit it lands
+ * health is the raid's own {@link #HEALTH}, which no threat level touches, and every hit it lands
  * sets its target alight.
  */
 public final class BlazeSovereign {
-	public static final double BASE_HEALTH = 1000.0;
-	public static final double HEALTH_PER_THREAT = 50.0;
+	/** The Sovereign's whole health, the raid's own; no threat level touches it. */
+	public static final double HEALTH = 1248.0;
 	public static final double SCALE = 3.0;
 	/** Vanilla's ceiling on the health attribute; what lies past it is kept as a divisor on every hit taken. */
 	public static final double MAX_HEALTH_ATTRIBUTE = 1024.0;
@@ -124,10 +124,6 @@ public final class BlazeSovereign {
 		return blaze.getHealth() * (divisor == null ? 1.0 : divisor);
 	}
 
-	public static double totalHealth(final int threat) {
-		return BASE_HEALTH + HEALTH_PER_THREAT * threat;
-	}
-
 	static void tick(final MinecraftServer server, final RaidState state) {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid == null) {
@@ -199,10 +195,9 @@ public final class BlazeSovereign {
 		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		blaze.setAttached(SOVEREIGN, state.run());
-		ThreatState roll = ThreatState.getOrRoll(blaze);
-		blaze.setAttached(ThreatState.TYPE, new ThreatState(ThreatState.NETHER_MINIMUM - Math.min(0, roll.variation()), roll.variation()));
-		int threat = threat(blaze);
-		double total = totalHealth(threat);
+		// The raid's own health; its threat is none, like every raid mob's.
+		blaze.setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+		double total = HEALTH;
 		double attribute = Math.min(total, MAX_HEALTH_ATTRIBUTE);
 		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(attribute);
 		blaze.setAttached(DIVISOR, total / attribute);
@@ -218,13 +213,8 @@ public final class BlazeSovereign {
 		RaidInstance.set(server, state.withSovereignRisen());
 		closeBar(server);
 		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		StellaNether.LOGGER.info("[NETHER] sovereign risen run={} at={} threat={} health={}", state.run(), blaze.blockPosition(), threat, total);
+		StellaNether.LOGGER.info("[NETHER] sovereign risen run={} at={} health={}", state.run(), blaze.blockPosition(), total);
 		return blaze;
-	}
-
-	/** The Sovereign's threat: the raid's roll for it, plus the mobs mod's boss bonus. */
-	public static int threat(final Blaze blaze) {
-		return ThreatState.level(blaze) + ThreatState.BOSS_BONUS;
 	}
 
 	public static @Nullable ServerBossEvent bar() {
