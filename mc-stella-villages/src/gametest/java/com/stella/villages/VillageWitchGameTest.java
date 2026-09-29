@@ -333,6 +333,13 @@ public class VillageWitchGameTest {
 				member.setPos(far.x, far.y, far.z);
 			}
 		}
+		// A villager beside the witch would take some of the buffs, so the player is the only friend in range.
+		for (Villager villager : helper.getLevel().getEntitiesOfClass(Villager.class,
+			witch.getBoundingBox().inflate(PatrolService.WITCH_SUPPORT_RANGE))) {
+			Vec3 far = witch.position().add(30.0, 0.0, 0.0);
+			villager.setNoAi(true);
+			villager.setPos(far.x, far.y, far.z);
+		}
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		Vec3 near = witch.position().add(3.0, 0.0, 0.0);
 		player.setPos(near.x, near.y, near.z);

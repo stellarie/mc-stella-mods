@@ -96,6 +96,7 @@ public class PatrolDutyGameTest {
 	public void theHeadStartsByTheBellAndTheRestSpreadOut(final GameTestHelper helper) {
 		String test = "theHeadStartsByTheBellAndTheRestSpreadOut";
 		spreadGround(helper);
+		forceScatterChunks(helper);
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}
@@ -250,6 +251,17 @@ public class PatrolDutyGameTest {
 		helper.assertTrue(notMobs.isEmpty(), "these offers are not mobs: " + notMobs);
 		helper.assertTrue(distinct && offered.size() == pool.size(), "boards offered " + offered.size() + " of " + pool.size() + " kinds, distinct=" + distinct);
 		helper.succeed();
+	}
+
+	// Members are set down only in entity-ticking chunks, so the chunks of the scatter square are forced first.
+	private static void forceScatterChunks(final GameTestHelper helper) {
+		BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
+		int radius = PatrolService.MEMBER_SCATTER_RADIUS;
+		for (int x = anchor.getX() - radius; x <= anchor.getX() + radius; x += 16) {
+			for (int z = anchor.getZ() - radius; z <= anchor.getZ() + radius; z += 16) {
+				helper.getLevel().setChunkForced(x >> 4, z >> 4, true);
+			}
+		}
 	}
 
 	// Stone around the village's own chunk, so members have somewhere to spread to.
