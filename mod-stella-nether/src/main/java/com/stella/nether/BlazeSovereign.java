@@ -29,12 +29,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Blaze Sovereign: one per run, risen on open ground at the run's fortress the first time a player comes
  * near, and never again in that run. It stands three times a blaze's size and keeps near the ground; its
- * health is {@link #BASE_HEALTH} plus {@link #HEALTH_PER_THREAT} per threat level, and every hit it lands
+ * health is the raid's own {@link #HEALTH}, which no threat level touches, and every hit it lands
  * sets its target alight.
  */
 public final class BlazeSovereign {
-	public static final double BASE_HEALTH = 1000.0;
-	public static final double HEALTH_PER_THREAT = 50.0;
+	/** The Sovereign's whole health, the raid's own; no threat level touches it. */
+	public static final double HEALTH = 1248.0;
 	public static final double SCALE = 3.0;
 	/** Vanilla's ceiling on the health attribute; what lies past it is kept as a divisor on every hit taken. */
 	public static final double MAX_HEALTH_ATTRIBUTE = 1024.0;
@@ -69,6 +69,11 @@ public final class BlazeSovereign {
 	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public static void register() {
+		// A debug command: a Sovereign where it is run, in the raid nether, for game masters.
+		net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, access, selection) -> dispatcher.register(
+			net.minecraft.commands.Commands.literal(RaidTravel.COMMAND).then(net.minecraft.commands.Commands.literal("sovereign")
+				.requires(net.minecraft.commands.Commands.hasPermission(net.minecraft.commands.Commands.LEVEL_GAMEMASTERS))
+				.then(net.minecraft.commands.Commands.literal("summon").executes(context -> summonByCommand(context.getSource()))))));
 		// Whatever fire the Sovereign looses flies as soul fire: its own casts set it as they fire; this
 		// catches the rest, a vanilla attack's fireballs, as they load.
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
@@ -119,10 +124,6 @@ public final class BlazeSovereign {
 		return blaze.getHealth() * (divisor == null ? 1.0 : divisor);
 	}
 
-	public static double totalHealth(final int threat) {
-		return BASE_HEALTH + HEALTH_PER_THREAT * threat;
-	}
-
 	static void tick(final MinecraftServer server, final RaidState state) {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid == null) {
@@ -152,11 +153,11 @@ public final class BlazeSovereign {
 		}
 		// Again each tick: a Sovereign loaded from disk, or given the mobs mod's attack on load, gets its burst back.
 		SovereignBurst.install(blaze);
-		// Its opening, once, holds everything else while it runs.
-		if (!SovereignOpening.tick(raid, blaze)) {
+		// A charge at a player keeping away holds everything else while it runs; so does its shield.
+		if (!SovereignCharge.tick(raid, blaze)) {
 			SovereignSpecials.tick(raid, blaze);
 		}
-		if (!SovereignSpecials.airborne(blaze) && !SovereignOpening.rushing(blaze)) {
+		if (!SovereignSpecials.airborne(blaze) && !SovereignCharge.charging(blaze) && !SovereignSpecials.shielded(blaze)) {
 			keepNearGround(raid, blaze);
 		}
 		if (bar != null && server.getTickCount() % 10 == 0) {
@@ -174,6 +175,18 @@ public final class BlazeSovereign {
 		}
 	}
 
+	/** The summon command: in the raid nether, a Sovereign where the command is run; anywhere else, nothing. */
+	static int summonByCommand(final net.minecraft.commands.CommandSourceStack source) {
+		ServerLevel level = source.getLevel();
+		if (!level.dimension().equals(RaidTravel.RAID)) {
+			source.sendFailure(Component.translatable("message.mod-stella-nether.summon.raid_only"));
+			return 0;
+		}
+		Blaze blaze = rise(level, source.getPosition());
+		source.sendSuccess(() -> Component.translatable("message.mod-stella-nether.summon.done", blaze.blockPosition().toShortString()), true);
+		return 1;
+	}
+
 	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
 	public static Blaze rise(final ServerLevel raid, final Vec3 at) {
 		MinecraftServer server = raid.getServer();
@@ -182,10 +195,9 @@ public final class BlazeSovereign {
 		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		blaze.setAttached(SOVEREIGN, state.run());
-		ThreatState roll = ThreatState.getOrRoll(blaze);
-		blaze.setAttached(ThreatState.TYPE, new ThreatState(ThreatState.NETHER_MINIMUM - Math.min(0, roll.variation()), roll.variation()));
-		int threat = threat(blaze);
-		double total = totalHealth(threat);
+		// The raid's own health; its threat is none, like every raid mob's.
+		blaze.setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+		double total = HEALTH;
 		double attribute = Math.min(total, MAX_HEALTH_ATTRIBUTE);
 		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(attribute);
 		blaze.setAttached(DIVISOR, total / attribute);
@@ -201,13 +213,8 @@ public final class BlazeSovereign {
 		RaidInstance.set(server, state.withSovereignRisen());
 		closeBar(server);
 		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		StellaNether.LOGGER.info("[NETHER] sovereign risen run={} at={} threat={} health={}", state.run(), blaze.blockPosition(), threat, total);
+		StellaNether.LOGGER.info("[NETHER] sovereign risen run={} at={} health={}", state.run(), blaze.blockPosition(), total);
 		return blaze;
-	}
-
-	/** The Sovereign's threat: the raid's roll for it, plus the mobs mod's boss bonus. */
-	public static int threat(final Blaze blaze) {
-		return ThreatState.level(blaze) + ThreatState.BOSS_BONUS;
 	}
 
 	public static @Nullable ServerBossEvent bar() {
@@ -319,7 +326,7 @@ public final class BlazeSovereign {
 		current = null;
 		held = null;
 		SovereignSpecials.forget();
-		SovereignOpening.forget();
+		SovereignCharge.forget();
 	}
 
 	static boolean burns(final DamageSource source) {

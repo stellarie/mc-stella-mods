@@ -81,8 +81,10 @@ public class RaidCastersGameTest {
 		target.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, -1, 4));
 		RaidCasters.Kit kit = RaidCasters.KITS.get(type);
 		List<String> casts = new CopyOnWriteArrayList<>();
-		RaidCasters.Recorder previous = RaidCasters.setRecorder((mob, spell) -> {
-			if (mob == caster) {
+		// Only the strikes at the stand-in and the buffs on the caster count: its own targeting can turn it on another
+		// for a moment (seen once in five runs: an Ember Brand recorded while the stand-in never burned).
+		RaidCasters.Recorder previous = RaidCasters.setRecorder((mob, spell, at) -> {
+			if (mob == caster && (at == target || at == caster)) {
 				casts.add(spell);
 			}
 		});

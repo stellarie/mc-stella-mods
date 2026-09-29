@@ -5,6 +5,7 @@
 	"mixins": [
 		"RaidPortalMixin",
 		"PortalStepMixin",
+		"BlazeSkirmishMixin",
 		"SovereignDamageMixin",
 		"EnderEyeSealMixin",
 		"StrongholdChestMixin",
