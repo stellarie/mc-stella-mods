@@ -310,6 +310,7 @@ public final class TowerMobs {
 			BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
 			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
 			TowerGhosts.haunt(tower, floor);
+			TowerShamans.haunt(tower, floor);
 			int room = PINNED_CAP.getOrDefault(floor, FLOOR_CAP) - count(tower, floor);
 			for (int i = 0; i < Math.min(room, SPAWN_BATCH); i++) {
 				spawnOne(tower, floor);
