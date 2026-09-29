@@ -184,6 +184,12 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - **Strength by mode**: every raid enemy but the Sovereign has x1.25 health and damage in normal and
   x1.75 in hard, and starts at full health. The Sovereign keeps its own formula.
 
+## Slice 12e: the Sovereign's burst
+
+- The Sovereign's normal attack is a burst of five blue fireballs, 4 ticks apart, starting every 5 seconds.
+  It replaces vanilla's blaze attack and the mobs mod's steady beat, and holds while a special runs.
+  Measured: shots at ticks 20, 24, 28, 32, 36, then 120 to 136, in each of five runs.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -198,6 +204,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Stand inside a Meteor Storm: meteors strike you for damage, and now and then stun you. The headless
   check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
   its wait for the bystander to load starved in one gate run of five after four fixes.
+- The Sovereign's burst reads as five quick blue shots, then a pause.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).

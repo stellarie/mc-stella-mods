@@ -150,6 +150,8 @@ public final class BlazeSovereign {
 			}
 			return;
 		}
+		// Again each tick: a Sovereign loaded from disk, or given the mobs mod's attack on load, gets its burst back.
+		SovereignBurst.install(blaze);
 		SovereignSpecials.tick(raid, blaze);
 		if (!SovereignSpecials.airborne(blaze)) {
 			keepNearGround(raid, blaze);
@@ -190,6 +192,7 @@ public final class BlazeSovereign {
 		blaze.setPersistenceRequired();
 		blaze.setCustomName(Component.translatable("entity.mod-stella-nether.blaze_sovereign").withStyle(ChatFormatting.AQUA));
 		raid.addFreshEntity(blaze);
+		SovereignBurst.install(blaze);
 		current = blaze.getUUID();
 		held = blaze;
 		RaidInstance.set(server, state.withSovereignRisen());
