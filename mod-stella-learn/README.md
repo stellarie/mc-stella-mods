@@ -125,6 +125,18 @@ The last line runs the suite with the spells mod off the runtime classpath, as a
 this directory with the siblings `mod-stella-mobs` and `mod-stella-spells` checked out beside it. The jar is
 `build/libs/mod-stella-learn-0.1.0+26.3.jar`. Install it on the server; it needs no client jar.
 
+The game tests and the gym servers also load the rest of the modpack. The first `runGameTest` builds equips-enchants,
+food, villages, tower, and nether from `origin/main` into `training/runs/modpack/jars` (about two minutes, cached by
+commit), so run `git fetch origin` first. Under `-PwithoutSpells` the nether mod stays out, since it requires spells.
+
+## Training gym
+
+`src/gym/` holds a training server: arenas, a server-side player bot with real player physics, and a TCP bridge to the
+Python trainer in `training/`. It is a separate source set and never enters the shipped jar. The bot exists because the
+harness mock player never runs its own tick, so it can neither raise a blocking shield nor walk. The bot runs the
+player tick itself every server tick. `training/README.md` has the setup, the speed run
+(`python -m stella_train.bench`), and the wire protocol.
+
 ## Manual acceptance items
 
 - **A real shield block is counted.** The harness's mock player cannot raise a shield that blocks, so

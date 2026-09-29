@@ -25,7 +25,10 @@
 			"com.stella.learn.MovementRecorderGameTest",
 			"com.stella.learn.MovementTacticsGameTest",
 			"com.stella.learn.BanditGameTest",
-			"com.stella.learn.TacticGoalGameTest"
+			"com.stella.learn.TacticGoalGameTest",
+			"com.stella.learn.GymBotGameTest",
+			"com.stella.learn.GymArenaGameTest",
+			"com.stella.learn.GymWireGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
