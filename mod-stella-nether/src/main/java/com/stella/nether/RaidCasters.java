@@ -31,10 +31,10 @@ public final class RaidCasters {
 
 	/** Test seam: each cast a raid caster makes. */
 	public interface Recorder {
-		void cast(Mob caster, String spell);
+		void cast(Mob caster, String spell, LivingEntity at);
 	}
 
-	private static volatile Recorder recorder = (caster, spell) -> {
+	private static volatile Recorder recorder = (caster, spell, at) -> {
 	};
 
 	private RaidCasters() {
@@ -50,7 +50,7 @@ public final class RaidCasters {
 
 	static Recorder setRecorder(final @Nullable Recorder next) {
 		Recorder previous = recorder;
-		recorder = next == null ? (caster, spell) -> {
+		recorder = next == null ? (caster, spell, at) -> {
 		} : next;
 		return previous;
 	}
@@ -107,11 +107,11 @@ public final class RaidCasters {
 			}
 			if (this.age >= this.strikeReady && this.mob.hasLineOfSight(target) && MobSpells.castAt(this.mob, this.kit.strike(), target)) {
 				this.strikeReady = this.age + MobSpells.cooldownOf(this.kit.strike());
-				recorder.cast(this.mob, this.kit.strike());
+				recorder.cast(this.mob, this.kit.strike(), target);
 			}
 			if (this.age >= this.aidReady && MobSpells.support(this.mob, this.kit.aid())) {
 				this.aidReady = this.age + MobSpells.cooldownOf(this.kit.aid());
-				recorder.cast(this.mob, this.kit.aid());
+				recorder.cast(this.mob, this.kit.aid(), this.mob);
 			}
 		}
 	}

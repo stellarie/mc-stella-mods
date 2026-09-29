@@ -38,5 +38,7 @@
   "screen.mod-stella-nether.closed.normal": "A hard raid is running",
   "screen.mod-stella-nether.closed.normal.hover": "The running raid is hard; join it as it is.",
   "screen.mod-stella-nether.closed.hard": "A normal raid is running",
-  "screen.mod-stella-nether.closed.hard.hover": "The running raid is normal; join it as it is."
+  "screen.mod-stella-nether.closed.hard.hover": "The running raid is normal; join it as it is.",
+  "message.mod-stella-nether.summon.raid_only": "A Blaze Sovereign can only be summoned in the raid nether.",
+  "message.mod-stella-nether.summon.done": "Summoned a Blaze Sovereign at %s."
 }

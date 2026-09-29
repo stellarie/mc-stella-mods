@@ -139,7 +139,7 @@ public class BlazeSovereignGameTest {
 		Vec3 floor = arena(raid, server, 20);
 		double start = 10.0;
 		Blaze blaze = BlazeSovereign.rise(raid, floor.add(0.0, start, 0.0));
-		// Held from its opening: the test player waits walled in the hall, and a rush at them skips the pull to
+		// Held from its charges: the test player waits walled in the hall, and a charge at them skips the pull to
 		// the ground while it lasts (seen once in four gate runs, hanging 7.2 blocks up).
 		SovereignSpecials.pause(blaze);
 		// A blaze's own slow fall would take some 88 ticks to come down ten blocks; the Sovereign is back within the window.
@@ -190,7 +190,7 @@ public class BlazeSovereignGameTest {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
 		Blaze blaze = BlazeSovereign.rise(raid, arena(raid, server, 8));
-		// Held from its opening, whose rush and strikes would fall on the player the bar is shown to.
+		// Held from its charges, whose rush and volley would fall on the player the bar is shown to.
 		SovereignSpecials.pause(blaze);
 		helper.succeedWhen(() -> {
 			boolean shown = BlazeSovereign.bar() != null && BlazeSovereign.bar().getPlayers().contains(player);

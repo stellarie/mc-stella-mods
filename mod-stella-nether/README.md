@@ -105,17 +105,16 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 ## Slice 7: the Sovereign's specials
 
 While the Sovereign has a living target within 32 blocks, it casts a special 3 seconds after first
-facing one, then another 8 seconds after each ends, in this turn:
+facing one, then another 8 seconds after each ends, in this turn (slices 12f and 14 changed some; see below):
 
 1. **Flame Spiral**: for 5 seconds, a ring of eight fireballs every quarter second, turning as it goes:
-   160 fireballs covering every direction.
+   160 fireballs covering every direction, each flying 32 blocks at most.
 2. **Brood**: five ordinary blazes rise in a ring around it and take its target.
-3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood.
+3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood,
+   breaking every block it moves into.
    Everything alive in the 12 by 12 area takes 20 damage and burns for 8 seconds, and about a third of
    the ground in the area catches fire. Blazes are spared.
-4. **Meteor Storm**: 20 meteors over 3 seconds fall inside a 12 by 12 area around its target; every
-   third falls on someone standing there. Each strikes within 1.5 blocks for 5 damage, with a 30% chance
-   to stun.
+4. **Vortex** (replaced the Meteor Storm in slice 14; see there).
 5. **Charged Wave**: a ring spreads from it at a block a tick out to 16 blocks, striking each creature it
    passes once: 4 damage, a push of 2.5 away, and a stun.
 
@@ -193,27 +192,19 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 ## Slice 12f: the soul nova
 
 - A sixth special, last in the rotation. Eighteen slow blue flames (a ring of twelve, and six angled
-  upward) drift out at 3 blocks a second. A flame that meets a block waits against it.
-- After 5 seconds each one bursts where it is. It hurts (6) and throws back whatever stands within 3
-  blocks, and sets three soul flames on the floor around it. It breaks no block.
+  upward) drift out at 3 blocks a second.
+- Each one bursts on its own, at whichever comes first: a wall, 16 blocks out, or 6 seconds. It hurts (6)
+  and throws back whatever stands within 3 blocks, and sets three soul flames on the floor around it. It
+  breaks no block.
 - The soul flame is the mod's own block, drawn with vanilla's soul-fire models. It holds on any solid
   floor, burns like soul fire, and goes out after 10 seconds.
-- Measured: 18 flames over 8 directions, a burst at tick 100 after drifting 15.00 blocks, a stand-in
-  pushed (1.5, 0.4, 0) and hurt, and 49 to 53 soul flames set with no floor block broken.
+- Measured: 18 flames over 8 directions; in open air a burst at tick 106 after drifting 16.05 blocks; a
+  flame meeting a wall 6 blocks out burst at tick 36, 5.40 blocks out; a stand-in pushed (1.5, 0.4, 0)
+  and hurt; 46 to 53 soul flames set, and no floor block broken.
 
-## Slice 12h: the opening
+## Slice 12h: the opening (replaced)
 
-- Once in its life, when a player first comes within 32 blocks, or draws its aggro, the Sovereign opens.
-- It rushes at them at 12 blocks a second, breaking whatever blocks stand in its way (dropping nothing;
-  only unbreakable blocks stop it), until it sees them. It gives up after 10 seconds.
-- It charges for 3 seconds, drawn as a ring of blue flame pulling in around it, with a rising sound.
-- Then it strikes 15 times around them over 5 seconds, within 6 blocks. Each strike burns and hurts (5)
-  what stands within 2 blocks.
-- Its burst and specials wait while the opening runs. A mark on the Sovereign keeps it from opening twice,
-  even after a reload.
-- Measured: a rush of 0.600 blocks a tick that broke 18 wall blocks and ended in sight; a charge of 60
-  ticks; 15 strikes from tick 60 to 153, all within 6 blocks, hitting the target; a player within range
-  starts it, and a second start is refused.
+- The once-only opening charge was replaced in slice 14 by the charge at a player keeping away.
 
 ## Slice 12i: the portal window
 
@@ -259,6 +250,55 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Measured: each caster cast both of its spells at a stand-in. The wither skeleton's and the brute's
   targets burned, the ghast's was slowed, and the buffs showed on the casters (Strength, Resistance).
 
+## Slice 14: the Sovereign reworked
+
+- **No clipping.** Whatever the Sovereign moves itself into, in a dive or a charge, it breaks as it goes,
+  dropping nothing; only unbreakable blocks stand. Shut in and suffocating, it bursts out: an explosion
+  (power 4) that breaks the blocks around it, and whatever that leaves around its body is broken too.
+- **The charge** replaces the opening. Any player within 96 blocks but farther than 20 is charged at 8
+  blocks a second, through walls, until the Sovereign is within 10 blocks and sees them. Then comes a
+  volley of nine blue fireballs over 3 seconds. It charges again 10 seconds after each volley, as often as
+  a player keeps away. Its attack and specials wait while a charge runs.
+- **Reaches.** Spiral fireballs are spent at 32 blocks. Soul nova flames burst at a wall, 16 blocks or
+  6 seconds (slice 12f above).
+- **The vortex** replaces the Meteor Storm:
+  - For 12 seconds, players inside a 32 by 32 square are pulled slowly toward the Sovereign. A mix of
+    blue and yellow flames flies in from the square's edge, faster than the pull.
+  - A flame ends only when it hits a player or reaches the centre. Blue flames burst like the soul nova;
+    yellow ones burn (4 damage, 4 seconds alight).
+  - Then the Sovereign takes a shield worth 200 of its whole health, as absorption. While it holds, the
+    Sovereign can neither move nor attack, and 2 to 4 plain blazes appear in the square every 5 seconds,
+    12 alive at most. Breaking the shield ends it.
+- **A debug command**, for game masters: `/stellanether sovereign summon` raises a Blaze Sovereign where it
+  is run, in the raid nether only.
+- Measured:
+  - Charge: 0.400 blocks a tick through a wall (18 blocks broken), ending 10.00 away and in sight. The
+    volley was nine shots over ticks 1 to 54, all blue. A player who moved away again was charged again.
+  - Dive: it broke the 9 ceiling blocks it rose into. Shut in stone, it burst out once, its body clear.
+  - Spiral: fireballs down three tunnels were spent at 33.22 blocks (the tick they passed 32).
+  - Vortex: 180 flames, all from the edge, a mix of blue and yellow, each ending at the centre or on a
+    player. The pull pointed at the centre. A blue flame burst on the player it hit. The shield held 200.0,
+    the Sovereign moved 0.000 and fired nothing, and waves of 2 to 4 came until a blow broke the shield.
+
+## Slice 15: blazes keep their distance
+
+- Every blaze but the Sovereign now keeps low and keeps its distance: it never flies up toward a target,
+  it closes in when its target is farther than 10 blocks, and backs away when the target comes within 5.
+  Its attack is unchanged.
+- This is the mobs mod's creature, but the change lives in this mod (a mixin on the blaze) because this
+  work is confined to its branch; it applies wherever this mod is installed.
+- A blaze in the air (lifted by a blast, or settling slowly as blazes do) moves under its own power, at
+  0.12 blocks a tick, along the way it means to go.
+- Measured:
+  - Set down 2 blocks from its target, a blaze backed out to 5.14 to 6.34 blocks in each of two rounds.
+  - From 20 blocks, it closed to 10.41 to 10.50.
+  - With a target 6 blocks above it, it rose 0.000 over 200 ticks; without the change, a blaze climbed
+    7.8 to 10.1.
+- The four-round version of the back-off test
+  (`aBlazeBacksAwayEveryTimeOverFourRoundsRequiresManualTest`) is tagged, not required. Its fourth round
+  came up short once in five runs, after five fixes. The blaze is shoved about by the blasts of its own
+  fireballs at a target that close.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival with the mod on the client. The window opens with three
@@ -272,19 +312,21 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Start the client with the mod: it reaches the title screen (the client mixins apply), and the
   Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
-- Stand inside a Meteor Storm: meteors strike you for damage, and now and then stun you. The headless
-  check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
-  its wait for the bystander to load starved in one gate run of five after four fixes.
+- Stand inside the vortex: you feel the pull on your own client (the headless test sees only the pull it
+  is given), the blue and yellow flames read clearly, and the shield's standstill and its blazes are plain.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
-- Walk up to a new Sovereign: it bursts through the fortress toward you, visibly charges, then the
-  strikes fall around you.
+- Keep your distance from a Sovereign: it breaks through the fortress toward you, then fires its volley
+  of nine. Back away again and it comes again.
+- Watch ordinary blazes: they stay low, hang back at 5 to 10 blocks, and back off when you close in. Close
+  in on one again and again: it backs off every time (the tagged four-round test).
+- Summon a Sovereign with `/stellanether sovereign summon` in the raid nether: it rises where you stand.
 - Stand near a lava lake in the raid: blazes rise out of it. In a hard raid, wither skeletons turn up in
   open caves away from the fortress.
 - Fight a brute and a wither skeleton in the raid: the spells' particles and sounds read clearly.
 - The soul nova's flames read as slow blue orbs, and their soul flames draw as soul fire (a cut-out
   texture, not a black square) and go out after 10 seconds.
-- Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
-  dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
+- Fight the Sovereign through all six specials. Each reads clearly: the spiral's rings, the brood, the
+  dive's rise and crash, the vortex, the wave's ring, and the nova. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).
 - Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
   it burn back.
