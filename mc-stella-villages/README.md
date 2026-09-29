@@ -75,6 +75,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   comes out of your whole inventory, the book stays on the shelf, and a short purse changes nothing. The
   clock in slot 7 rerolls all five books for 32 emeralds. The shop also rerolls once at every midnight (day
   time 18000). Each village keeps its own offers in its saved data.
+- While a player has the head's mission board or the witch's shop open, that mob stands still, faces the
+  player, and does not fight. It returns to its work 5 seconds after the last player closes the menu.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding
