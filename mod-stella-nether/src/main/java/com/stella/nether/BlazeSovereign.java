@@ -156,7 +156,7 @@ public final class BlazeSovereign {
 		if (!SovereignCharge.tick(raid, blaze)) {
 			SovereignSpecials.tick(raid, blaze);
 		}
-		if (!SovereignSpecials.airborne(blaze) && !SovereignCharge.charging(blaze)) {
+		if (!SovereignSpecials.airborne(blaze) && !SovereignCharge.charging(blaze) && !SovereignSpecials.shielded(blaze)) {
 			keepNearGround(raid, blaze);
 		}
 		if (bar != null && server.getTickCount() % 10 == 0) {

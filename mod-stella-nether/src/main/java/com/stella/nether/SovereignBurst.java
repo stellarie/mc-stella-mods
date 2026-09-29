@@ -91,6 +91,11 @@ public final class SovereignBurst extends Goal {
 		if (target == null || !target.isAlive()) {
 			return;
 		}
+		// Behind the vortex's shield it neither moves nor fires.
+		if (SovereignSpecials.shielded(this.blaze)) {
+			this.blaze.getNavigation().stop();
+			return;
+		}
 		this.blaze.getLookControl().setLookAt(target, 10.0F, 10.0F);
 		boolean sees = this.blaze.getSensing().hasLineOfSight(target);
 		double range = this.blaze.getAttributeValue(Attributes.FOLLOW_RANGE);
