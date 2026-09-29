@@ -73,19 +73,53 @@ public class SoulNovaGameTest {
 					octants.add((int) Math.floor((Math.atan2(heading.z, heading.x) + Math.PI) / (Math.PI / 4)) % 8);
 				}
 				double drift = nova.orbs().get(0).distanceTo(nova.home().add(0.0, scene.sovereign().getBbHeight() * 0.5, 0.0));
+				int burstAge = nova.burstAt().getOrDefault(0, -1);
+				int expectedAge = (int) Math.ceil(SovereignSpecials.NOVA_REACH / SovereignSpecials.NOVA_SPEED) - 1;
 				Vec3 push = nova.pushes().get(struck.getUUID());
 				boolean hurt = struck.getHealth() < before[0];
-				NetherTestSupport.result("soulNova", "flames=" + nova.orbs().size() + " octants=" + octants.size() + " burstAt=" + nova.lastActionAge()
+				NetherTestSupport.result("soulNova", "flames=" + nova.orbs().size() + " octants=" + octants.size() + " burstAt=" + burstAge + " expectedAt=" + expectedAge
 					+ " drift=" + String.format("%.2f", drift) + " push=" + push + " hurt=" + hurt + " bursts=" + nova.impacts().size());
 				SovereignSpecialsGameTest.end(helper, scene, struck);
 				helper.assertTrue(nova.orbs().size() == SovereignSpecials.NOVA_RING + SovereignSpecials.NOVA_UPPER && octants.size() == 8
-						&& nova.lastActionAge() == SovereignSpecials.NOVA_FUSE_TICKS && Math.abs(drift - SovereignSpecials.NOVA_REACH) < 0.5
+						&& burstAge == expectedAge && burstAge < SovereignSpecials.NOVA_LIFE_TICKS
+						&& drift >= SovereignSpecials.NOVA_REACH && drift < SovereignSpecials.NOVA_REACH + SovereignSpecials.NOVA_SPEED + 1.0E-6
 						&& push != null && push.x > 0.0 && hurt,
-					"the nova: " + nova.orbs().size() + " flames over " + octants.size() + " octants, burst at " + nova.lastActionAge() + " after drifting "
+					"the nova: " + nova.orbs().size() + " flames over " + octants.size() + " octants, the first burst at " + burstAge + " of " + expectedAge + " after drifting "
 						+ drift + "; the one standing there pushed " + push + " hurt " + hurt);
 			})
 			.thenSucceed();
 	}
+
+	@GameTest(environment = "mod-stella-nether-test:sp_nova_wall", maxTicks = 1200)
+	public void aSoulNovaFlameBurstsAtTheWallItMeets(final GameTestHelper helper) {
+		SovereignSpecialsGameTest.Scene scene = wideScene(helper);
+		// A wall across the east, WALL blocks out, where the first flame heads.
+		BlockPos wallAt = BlockPos.containing(scene.floor()).offset(WALL, 0, 0);
+		for (int z = -HALF; z <= HALF; z++) {
+			for (int y = 0; y < HEIGHT; y++) {
+				scene.raid().setBlock(wallAt.offset(0, y, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+			}
+		}
+		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene), "the Sovereign is not loaded"))
+			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.SOUL_NOVA, scene.player()))
+			.thenWaitUntil(() -> helper.assertTrue(cast[0].done(), "the nova has not burst yet"))
+			.thenExecute(() -> {
+				SovereignSpecials.Cast nova = cast[0];
+				int burstAge = nova.burstAt().getOrDefault(0, -1);
+				double reached = nova.orbs().get(0).x - scene.sovereign().getX();
+				int reachAge = (int) Math.ceil(SovereignSpecials.NOVA_REACH / SovereignSpecials.NOVA_SPEED) - 1;
+				NetherTestSupport.result("soulNovaWall", "burstAt=" + burstAge + " reachAge=" + reachAge + " reachedEast=" + String.format("%.2f", reached) + " wall=" + WALL);
+				nova.flames().forEach(at -> scene.raid().removeBlock(at, false));
+				SovereignSpecialsGameTest.end(helper, scene);
+				helper.assertTrue(burstAge >= 0 && burstAge < reachAge && reached < WALL && reached > WALL - 1.0 - SovereignSpecials.NOVA_SPEED,
+					"the east flame burst at " + burstAge + " (its reach at " + reachAge + ") " + reached + " east, the wall at " + WALL);
+			})
+			.thenSucceed();
+	}
+
+	static final int WALL = 6;
 
 	@GameTest(environment = "mod-stella-nether-test:sp_nova_blocks", maxTicks = 1200)
 	public void theSoulNovaSetsSoulFlamesAndBreaksNoBlock(final GameTestHelper helper) {

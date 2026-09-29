@@ -91,6 +91,11 @@ public final class SovereignBurst extends Goal {
 		if (target == null || !target.isAlive()) {
 			return;
 		}
+		// Behind the vortex's shield it neither moves nor fires.
+		if (SovereignSpecials.shielded(this.blaze)) {
+			this.blaze.getNavigation().stop();
+			return;
+		}
 		this.blaze.getLookControl().setLookAt(target, 10.0F, 10.0F);
 		boolean sees = this.blaze.getSensing().hasLineOfSight(target);
 		double range = this.blaze.getAttributeValue(Attributes.FOLLOW_RANGE);
@@ -103,7 +108,7 @@ public final class SovereignBurst extends Goal {
 		if (this.cooldown > 0) {
 			this.cooldown--;
 		}
-		if (this.left > 0 && !SovereignOpening.running(this.blaze)) {
+		if (this.left > 0 && !SovereignCharge.running(this.blaze) && !SovereignSpecials.shielded(this.blaze)) {
 			if (--this.gap <= 0) {
 				this.fire(target);
 				this.left--;
@@ -112,7 +117,7 @@ public final class SovereignBurst extends Goal {
 			return;
 		}
 		// A special holds the Sovereign's fire; the beat resumes when it ends.
-		if (SovereignSpecials.casting(this.blaze) || SovereignOpening.running(this.blaze) || this.cooldown > 0 || !sees) {
+		if (SovereignSpecials.casting(this.blaze) || SovereignCharge.running(this.blaze) || SovereignSpecials.shielded(this.blaze) || this.cooldown > 0 || !sees) {
 			return;
 		}
 		this.cooldown = BURST_EVERY_TICKS;
