@@ -81,19 +81,18 @@ public class BlazeSovereignGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:sov_health", maxTicks = 100)
-	public void theSovereignsHealthIsAThousandAndFiftyPerThreat(final GameTestHelper helper) {
+	public void theSovereignsHealthIsTheRaidsOwnAndNoThreats(final GameTestHelper helper) {
 		ServerPlayer player = enter(helper);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
 		Blaze blaze = BlazeSovereign.rise(raid, arena(raid, server, 8));
-		int threat = BlazeSovereign.threat(blaze);
-		double expected = BlazeSovereign.BASE_HEALTH + BlazeSovereign.HEALTH_PER_THREAT * threat;
 		double effective = BlazeSovereign.effectiveHealth(blaze);
-		NetherTestSupport.result("sovereignHealth", "threat=" + threat + " effective=" + effective + " expected=" + expected + " attribute=" + blaze.getMaxHealth());
+		int threat = ThreatState.level(blaze);
+		NetherTestSupport.result("sovereignHealth", "effective=" + effective + " expected=" + BlazeSovereign.HEALTH + " threat=" + threat + " attribute=" + blaze.getMaxHealth());
 		blaze.discard();
 		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(Math.abs(effective - expected) < 1.0 && threat >= ThreatState.NETHER_MINIMUM + ThreatState.BOSS_BONUS,
-			"the Sovereign holds " + effective + " of " + expected + " at threat " + threat);
+		helper.assertTrue(Math.abs(effective - BlazeSovereign.HEALTH) < 1.0 && threat == 0,
+			"the Sovereign holds " + effective + " of " + BlazeSovereign.HEALTH + " at threat " + threat);
 		helper.succeed();
 	}
 
