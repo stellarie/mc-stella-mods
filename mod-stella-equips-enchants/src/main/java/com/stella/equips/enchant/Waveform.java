@@ -81,8 +81,9 @@ public final class Waveform {
 		double radius = radius(rank);
 		List<LivingEntity> reached = level.getEntitiesOfClass(LivingEntity.class, wielder.getBoundingBox().inflate(radius),
 			other -> Foes.isFoe(wielder, other) && other.distanceToSqr(wielder) <= radius * radius);
+		int slow = TowerBridge.stretch(SLOW_TICKS, wielder.getMainHandItem(), "waveform");
 		for (LivingEntity foe : reached) {
-			foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOW_TICKS, SLOW_AMPLIFIER), wielder);
+			foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, slow, SLOW_AMPLIFIER), wielder);
 			Vec3 away = foe.position().subtract(wielder.position());
 			if (away.horizontalDistanceSqr() > 1.0E-4) {
 				Vec3 push = new Vec3(away.x, 0.0, away.z).normalize().scale(KNOCKBACK);
