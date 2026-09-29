@@ -65,43 +65,55 @@ public final class CalloutKits {
 		CalloutTypes.register(HEAL, new CalloutHandler() {
 			@Override
 			public boolean canPerform(final Mob mob, final ServerPlayer player, final Callout callout) {
-				return mob instanceof Witch && callerOf(mob, callout) != null;
+				LivingEntity caller = callerOf(mob, callout);
+				return caller != null && (mob instanceof Witch || SpellsBridge.canSupport(mob, caller));
 			}
 
 			@Override
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				LivingEntity caller = callerOf(mob, callout);
-				if (caller != null) {
+				if (caller == null) {
+					return;
+				}
+
+				if (mob instanceof Witch) {
 					caller.heal(HEAL_AMOUNT);
+				} else {
+					SpellsBridge.support(mob);
 				}
 			}
 		});
 		CalloutTypes.register(BUFF, new CalloutHandler() {
 			@Override
 			public boolean canPerform(final Mob mob, final ServerPlayer player, final Callout callout) {
-				return isCaster(mob) && effectOf(callout) != null && callerOf(mob, callout) != null;
+				LivingEntity caller = callerOf(mob, callout);
+				return caller != null && (isCaster(mob) && effectOf(callout) != null || SpellsBridge.canSupport(mob, caller));
 			}
 
 			@Override
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				LivingEntity caller = callerOf(mob, callout);
 				Holder<MobEffect> effect = effectOf(callout);
-				if (caller != null && effect != null) {
+				if (caller != null && effect != null && isCaster(mob)) {
 					caller.addEffect(new MobEffectInstance(effect, BUFF_TICKS, 0));
+				} else if (caller != null) {
+					SpellsBridge.support(mob);
 				}
 			}
 		});
 		CalloutTypes.register(DEBUFF, new CalloutHandler() {
 			@Override
 			public boolean canPerform(final Mob mob, final ServerPlayer player, final Callout callout) {
-				return isCaster(mob) && effectOf(callout) != null && mob.distanceTo(player) <= DEBUFF_REACH;
+				return isCaster(mob) && effectOf(callout) != null && mob.distanceTo(player) <= DEBUFF_REACH || SpellsBridge.canStrike(mob, player);
 			}
 
 			@Override
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				Holder<MobEffect> effect = effectOf(callout);
-				if (effect != null) {
+				if (effect != null && isCaster(mob)) {
 					player.addEffect(new MobEffectInstance(effect, DEBUFF_TICKS, 0));
+				} else {
+					SpellsBridge.strike(mob, player);
 				}
 			}
 		});
