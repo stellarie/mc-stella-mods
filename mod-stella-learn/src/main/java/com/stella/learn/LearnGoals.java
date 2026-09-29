@@ -34,6 +34,8 @@ public final class LearnGoals {
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new AnswerRallyGoal(mob, true));
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new TakeCoverGoal(mob));
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new HoldAtChokeGoal(mob));
+		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new InterceptGoal(mob));
+		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new DodgeCritGoal(mob));
 		mob.getGoalSelector().addGoal(RANGED_WAIT_PRIORITY, new AnswerRallyGoal(mob, false));
 	}
 }

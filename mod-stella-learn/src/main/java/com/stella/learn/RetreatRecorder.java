@@ -65,6 +65,10 @@ public final class RetreatRecorder {
 		}
 
 		Profiles.record(player, Habit.RETREAT);
+		if (Kite.recentShot(player)) {
+			Profiles.record(player, Habit.KITE);
+		}
+
 		return true;
 	}
 }
