@@ -13,6 +13,8 @@ public final class StellaLearn implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LearnConfigStore.load();
+		Profiles.register();
+		HabitRecorder.register();
 	}
 
 	public static Identifier id(final String path) {

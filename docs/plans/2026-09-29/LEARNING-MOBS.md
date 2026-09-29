@@ -107,3 +107,10 @@ Each slice is gated and independently reviewed before the next one starts.
 - The half lives, the callout radius, and the responder caps, all to be tuned by measurement.
 - Whether any callout type reaches mobs that other mods drive, such as the village witch, which the mobs mod
   skips through `NO_BEHAVIOR_TAG`.
+
+## Manual acceptance items
+
+- **Real shield block is counted (slice 2).** The harness's mock player cannot raise a shield that blocks, so
+  `HabitRecorderGameTest.manualGapRealShieldBlockNeedsARealPlayer` is tagged not required and fails visibly in
+  every run. Oniichan raises a shield in play, lets a zombie hit it, and checks the block count rises. The
+  handler is proven by a direct call in `aBlockedBlowCountsAsBlocking`.
