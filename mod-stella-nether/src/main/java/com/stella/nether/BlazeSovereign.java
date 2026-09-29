@@ -291,6 +291,10 @@ public final class BlazeSovereign {
 				dropped.add(mantle);
 			}
 		}
+		net.minecraft.world.entity.item.ItemEntity scrolls = RaidDrops.sovereignScrolls(level, blaze);
+		if (scrolls != null) {
+			dropped.add(scrolls);
+		}
 		SPOILS.put(blaze.getUUID(), dropped);
 		StellaNether.LOGGER.info("[NETHER] sovereign slain spoils={}", dropped.stream().map(item -> item.getItem().toString()).toList());
 	}

@@ -19,30 +19,37 @@ public class SovereignBlueGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mod-stella-nether-test:blue_fire", maxTicks = 200)
+	@GameTest(environment = "mod-stella-nether-test:blue_fire", maxTicks = 600)
 	public void theSovereignsFireballsFlyAsSoulFire(final GameTestHelper helper) {
-		ServerPlayer player = BlazeSovereignGameTest.enter(helper);
-		ServerLevel raid = (ServerLevel) player.level();
-		Vec3 floor = BlazeSovereignGameTest.arena(raid, helper.getLevel().getServer(), 10);
-		Blaze sovereign = BlazeSovereign.rise(raid, floor);
-		SovereignSpecials.pause(sovereign);
+		// The pinned scene the specials use: its own hunting would carry an AI-driven Sovereign out of held chunks.
+		SovereignSpecialsGameTest.Scene scene = SovereignSpecialsGameTest.scene(helper, 10);
+		ServerPlayer player = scene.player();
+		ServerLevel raid = scene.raid();
+		Blaze sovereign = scene.sovereign();
 		SovereignSpecials.Cast cast = SovereignSpecials.cast(sovereign, SovereignSpecials.Special.FLAME_SPIRAL, player);
-		// A fireball the Sovereign looses any other way, as its own attack does.
-		SmallFireball loose = new SmallFireball(raid, sovereign, new Vec3(1.0, 0.0, 0.0));
-		loose.setPos(floor.add(0.0, 3.0, 2.0));
-		raid.addFreshEntity(loose);
-		helper.succeedWhen(() -> {
-			helper.assertTrue(!cast.spawned().isEmpty(), "the spiral has fired nothing yet");
-			helper.assertTrue(raid.getEntity(loose.getUUID()) == loose, "the loose fireball has not loaded yet");
-			long plain = cast.spawned().stream().filter(entity -> entity instanceof SmallFireball ball && !ball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)).count();
-			boolean looseBlue = loose.getItem().is(NetherItems.SOUL_FIRE_CHARGE);
-			NetherTestSupport.result("sovereignFireBlue", "spiral=" + cast.spawned().size() + " plain=" + plain + " looseBlue=" + looseBlue);
-			helper.assertTrue(plain == 0 && looseBlue, plain + " spiral fireballs flew plain; the loose one blue=" + looseBlue);
-			cast.spawned().forEach(Entity::discard);
-			loose.discard();
-			sovereign.discard();
-			NetherTestSupport.leave(helper, player);
-		});
+		SmallFireball[] loose = new SmallFireball[1];
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene), "the Sovereign is not visible yet"))
+			.thenExecute(() -> {
+				// A fireball the Sovereign looses any other way, as its own attack does, added where the level sees it.
+				loose[0] = new SmallFireball(raid, sovereign, new Vec3(1.0, 0.0, 0.0));
+				loose[0].setPos(sovereign.position().add(0.0, 3.0, 0.0));
+				loose[0].accelerationPower = 0.0;
+				loose[0].setDeltaMovement(Vec3.ZERO);
+				raid.addFreshEntity(loose[0]);
+			})
+			.thenWaitUntil(() -> helper.assertTrue(cast.done(), "the spiral is still firing"))
+			.thenExecute(() -> {
+				long plain = cast.spawned().stream().filter(entity -> entity instanceof SmallFireball ball && !ball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)).count();
+				boolean looseBlue = loose[0].getItem().is(NetherItems.SOUL_FIRE_CHARGE);
+				NetherTestSupport.result("sovereignFireBlue", "spiral=" + cast.spawned().size() + " plain=" + plain + " looseBlue=" + looseBlue);
+				cast.spawned().forEach(Entity::discard);
+				loose[0].discard();
+				sovereign.discard();
+				NetherTestSupport.leave(helper, player);
+				helper.assertTrue(!cast.spawned().isEmpty() && plain == 0 && looseBlue, plain + " spiral fireballs flew plain; the loose one blue=" + looseBlue);
+			})
+			.thenSucceed();
 	}
 
 	/**

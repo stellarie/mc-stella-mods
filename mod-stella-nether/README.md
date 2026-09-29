@@ -173,6 +173,17 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   A client could not be started here (no OpenGL), so the client mixins are checked only against the
   client jar's method signatures.
 
+## Slices 12b to 12d: the raid's mobs
+
+- **A plain brood**: the Sovereign's Brood are ordinary blazes. They take none of the mobs mod's spawn
+  rolls, so none is elite or boss. Measured: 0 of 50 ranked even with every blaze's elite and boss chance
+  pinned to 1.0 (50 of 50 without the change).
+- **Scrolls home**: any mob slain in the raid leaves the spells mod's Scroll of Return 1% of the time.
+  Measured: 0.01002 over 100,000 rolls. The Sovereign leaves one per player in the raid, plus two:
+  4 with two players.
+- **Strength by mode**: every raid enemy but the Sovereign has x1.25 health and damage in normal and
+  x1.75 in hard, and starts at full health. The Sovereign keeps its own formula.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**

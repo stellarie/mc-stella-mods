@@ -76,9 +76,9 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor). **Done.**
 12. Requested 2026-09-28 evening, easiest first:
     - a. The Sovereign drawn in soul-fire blue, and its fire (fireballs, specials) blue too. **Done.**
-    - b. Its Brood holds no elite or boss blaze.
-    - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two.
-    - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard.
+    - b. Its Brood holds no elite or boss blaze. **Done.**
+    - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two. **Done.**
+    - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard (the Sovereign keeps its own health). **Done.**
     - e. Its normal attack: a burst of five every 5 seconds.
     - f. A sixth special: slow blue flames in every direction that burst after 5 seconds, throwing back
       what they reach and setting soul fire on nearby blocks, breaking none.
