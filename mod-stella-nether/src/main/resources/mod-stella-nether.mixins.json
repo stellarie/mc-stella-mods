@@ -5,7 +5,11 @@
 	"mixins": [
 		"RaidPortalMixin",
 		"SovereignDamageMixin",
-		"EndSealMixin"
+		"EnderEyeSealMixin",
+		"StrongholdChestMixin",
+		"StructurePieceInvoker",
+		"BlazeCoreAnvilMixin",
+		"ItemCombinerMenuAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
