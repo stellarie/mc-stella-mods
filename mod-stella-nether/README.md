@@ -263,14 +263,17 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   a player keeps away. Its attack and specials wait while a charge runs.
 - **Reaches.** Spiral fireballs are spent at 32 blocks. Soul nova flames burst at a wall, 16 blocks or
   6 seconds (slice 12f above).
-- **The vortex** replaces the Meteor Storm:
-  - For 12 seconds, players inside a 32 by 32 square are pulled slowly toward the Sovereign. A mix of
-    blue and yellow flames flies in from the square's edge, faster than the pull.
-  - A flame ends only when it hits a player or reaches the centre. Blue flames burst like the soul nova;
-    yellow ones burn (4 damage, 4 seconds alight).
-  - Then the Sovereign takes a shield worth 200 of its whole health, as absorption. While it holds, the
-    Sovereign can neither move nor attack, and 2 to 4 plain blazes appear in the square every 5 seconds,
-    12 alive at most. Breaking the shield ends it.
+- **The vortex** replaces the Meteor Storm (reworked 2026-09-29):
+  - For 15 seconds the Sovereign channels: it stands still behind a shield worth 100 of its whole health,
+    drawn as a shell of blue motes around it that thins and shrinks as the shield wears down.
+  - Every player within 16 blocks has Slowness III while it channels.
+  - A mix of blue and yellow flames flies in to it from a 16-block sphere all around: above, below and on
+    every side. A flame ends when it hits a player or reaches the centre. Blue flames burst like the soul
+    nova; yellow ones burn (4 damage, 4 seconds alight).
+  - Break the shield before the channel ends, and the Sovereign is staggered for 8 seconds: it can neither
+    move nor attack.
+  - Leave it whole for the full 15 seconds, and it bursts: every breakable block within 16 blocks is
+    broken (liquids stay), and everyone within 16 takes 30 damage and is thrown back hard.
 - **A debug command**, for game masters: `/stellanether sovereign summon` raises a Blaze Sovereign where it
   is run, in the raid nether only.
 - Measured:
@@ -278,9 +281,16 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
     volley was nine shots over ticks 1 to 54, all blue. A player who moved away again was charged again.
   - Dive: it broke the 9 ceiling blocks it rose into. Shut in stone, it burst out once, its body clear.
   - Spiral: fireballs down three tunnels were spent at 33.22 blocks (the tick they passed 32).
-  - Vortex: 180 flames, all from the edge, a mix of blue and yellow, each ending at the centre or on a
-    player. The pull pointed at the centre. A blue flame burst on the player it hit. The shield held 200.0,
-    the Sovereign moved 0.000 and fired nothing, and waves of 2 to 4 came until a blow broke the shield.
+  - Vortex: see the reworked measurements below.
+
+- Vortex, reworked, measured:
+  - The shield held 100.0 of whole health. A player 10 blocks off had Slowness III, and the Sovereign moved
+    0.000 while it channelled.
+  - Half way through there were 114 flames, all from the sphere, 20 to 31 from above and 29 to 33 from
+    below. A blue flame burst on the player it hit.
+  - Broken at tick 20, the Sovereign reeled for exactly 160 ticks, moved 0.000 and fired nothing.
+  - Left whole, it burst at tick 300: 780 to 7,486 blocks broken (the sphere's contents vary by site). A
+    stone inside was gone, one 18 blocks out stood, and a stand-in 8 out was hit and pushed (3.0, 0.8, 0).
 
 ## Slice 15: blazes keep their distance
 
@@ -314,8 +324,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Start the client with the mod: it reaches the title screen (the client mixins apply), and the
   Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
-- Stand inside the vortex: you feel the pull on your own client (the headless test sees only the pull it
-  is given), the blue and yellow flames read clearly, and the shield's standstill and its blazes are plain.
+- Stand inside the vortex: the flames come from every side, above and below; the shield's shell is plain
+  and thins as you break it; a broken shield leaves the Sovereign visibly reeling; an unbroken one bursts.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
 - Keep your distance from a Sovereign: it breaks through the fortress toward you, then fires its volley
   of nine. Back away again and it comes again.
