@@ -17,6 +17,24 @@ integration branch is `main-learn`.
 - **Mobs gather outside a chokepoint.** Against a player who falls back (4 recent retreats), a melee mob whose way in
   runs through a one-block gap walks to a staging point 5 nodes before it and waits there until 3 monsters after the
   same player have gathered, or 200 ticks have passed, and then goes in. It is then left alone for 120 ticks.
+- **Mobs read how a player moves.** Every 5 ticks the mod samples the player against the nearest monster after them.
+  A player who circles one way gets flankers on that side, so the strafe runs into them. A player who charges meets a
+  tighter ring (slots shrink by up to 40 percent). A player who kites (backs off after an arrow hit) is met at
+  `position + velocity * 12 ticks` instead of tailed. A player who jumps then swings (a crit-jumper) makes a melee mob
+  step back while the player is in the air.
+- **Mobs learn what to do, per player.** Where a mob has more than one sensible answer it picks one from what has
+  worked against this player, and the outcome teaches it. It is an epsilon-greedy bandit: an untried tactic is tried
+  first, then the best known one, with a chance of exploring that shrinks as the mob gains experience (0.3 down to a
+  floor of 0.05). The reward is the hit points the mob dealt to the player minus the hit points it took over the next
+  30 ticks, minus 10 if it died. Each value moves a quarter of the way to a new reward, so a player who changes is
+  followed. The choices are:
+
+| Situation | Tactics | What each does |
+|---|---|---|
+| The player swings within 4.5 blocks | `SHIELD`, `BACK_OFF`, `TRADE` | Raise a shield for 20 ticks (needs one in the off hand), walk out to 6 blocks, or carry on |
+| The player's arrow is flying at the mob | `EVADE`, `SHIELD`, `TANK` | Step 2.5 blocks off the arrow's line, raise the shield, or carry on |
+| A ranged mob has just shot | `HIDE`, `HOLD` | Walk to the nearest spot out of the player's sight (only offered when there is one), or stay put |
+
 - **Callouts.** A monster hurt by a player calls. Every monster within 24 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:
@@ -54,6 +72,9 @@ The mod writes `[BEHAVIOR]` lines to the server log in the format the other mods
 | `learnCallout CHOOSE` | A hurt monster picks what to ask for, with `why=hurt`, `turtle`, `rusher` or `default` and the numbers behind it |
 | `learnCallout FX` | The animation of a call was drawn, with the number of beams and particles |
 | `learnCallout SEND` / `ANSWER` / `EFFECT` | A call goes out, each receiver's answer and its reason, and what an accepting mob did |
+| `learnPolicy CHOOSE` | A mob picks a tactic, with `why=untried`, `explore` or `greedy` and every tactic's value and tries |
+| `learnPolicy MOVE` | A tactic sends the mob walking, and whether the navigation found a way |
+| `learnPolicy REWARD` | An episode ends: what was dealt and taken, the reward, and the value before and after |
 | `learnRally SLOT` / `WALK` / `ARRIVE` / `EXPIRE` | A mob is given a flank slot, walks to it, and arrives or runs out of time |
 | `learnSpells SUPPORT` / `STRIKE` | A mob answers a callout with a spell |
 
@@ -85,6 +106,10 @@ skipped, and a broken file gives every default.
 | `behavior_log` / `log_summary_ticks` | true / 600 | Whether the `[BEHAVIOR]` lines are written, and the ticks between two summary lines per player |
 | `cover_rest_ticks` | 30 | Rest between two hops from cover to cover |
 | `retreat_saturation` / `choke_threshold` | 4.0 / 0.5 | Retreats that count as a full retreater, and the share at which mobs stop entering a gap alone |
+| `move_saturation` / `move_threshold` | 6.0 / 0.5 | Samples that count as a full strafer, charger or kiter, and the share at which mobs adapt |
+| `intercept_lead_ticks` / `charge_tighten` | 12 / 0.4 | Ticks ahead a mob aims at a kiter, and how much a full charger shrinks the flank ring |
+| `crit_saturation` | 4.0 | Crit jumps that count as a full crit-jumper |
+| `rl_alpha` / `rl_epsilon` / `rl_window_ticks` | 0.25 / 0.05 / 30 | Share a value moves to a new reward, the exploration floor, and ticks an episode lasts |
 | `choke_group` / `choke_patience_ticks` / `choke_rest_ticks` | 3 / 200 / 40 | Mobs that must gather, how long one waits for them, and its rest after any other stop |
 
 ## Build and test
@@ -105,6 +130,9 @@ this directory with the siblings `mod-stella-mobs` and `mod-stella-spells` check
 - **A real shield block is counted.** The harness's mock player cannot raise a shield that blocks, so
   `HabitRecorderGameTest.manualGapRealShieldBlockNeedsARealPlayer` is tagged not required and fails visibly in every
   run. In play, raise a shield, let a zombie hit it, and check the counter rises.
+- **Learning reads right in play.** Fight a zombie for a few minutes and run `/stellalearn profile`: the tactic
+  section should rank what worked against you. The tests prove the loop with scripted rewards; whether real fights
+  give it enough signal to settle is for a player to judge.
 - **Feel in play.** The tests prove each behaviour in an arena. Whether a fight feels smarter, and whether the
   numbers above are right, is for a player to judge.
 

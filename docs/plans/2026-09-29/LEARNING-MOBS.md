@@ -124,7 +124,7 @@ Each slice is gated and independently reviewed before the next one starts.
   layers below its floor, and a back-off test waits for a working spot instead of sampling one tick.
 - A goal's `canUse` is not asked every tick, so a `tickCount % n` gate can miss the mob's window entirely.
 
-## Movement learning (proposed 2026-09-29, not started)
+## Movement learning (built 2026-09-29 on `feat/learn-movement`)
 
 Mobs learn how a player moves, not only what they hit with, and change where they stand and how they approach.
 
@@ -141,7 +141,7 @@ does this player circle left or right.
 | Sprints at mobs | Melee mobs hold a tighter group so the charge meets several at once |
 | Kites (moves away while shooting) | Melee mobs aim at where the player will be, `position + velocity * lead`, and cut corners instead of tailing |
 | Stands still | Melee mobs advance through cover (already built) and archers keep their band |
-| Jumps a lot | Nothing yet: it needs a way to punish a jump that a server-side goal can express |
+| Jumps then swings (crit-jumper) | Built: a melee mob steps back while the player is airborne and falling |
 
 **Slices, easiest first.** M1 the sampler and its counters, tested with scripted positions. M2 the predicted
 intercept point and a melee goal that paths to it once the player's speed passes a threshold. M3 the flank side chosen
@@ -149,3 +149,23 @@ from the strafe direction. M4 the log lines, the summary and `/stellalearn profi
 
 **Open decisions.** Which of the five habits matter most to start with; how far ahead to lead (2 to 10 ticks is
 plausible); whether archers should lead their shots, which needs a hook into the mobs mod's bow goal.
+
+## Reinforcement learning (built 2026-09-29 on `feat/learn-movement`)
+
+A contextual bandit, not a model. The key is `mobKind|SITUATION|TACTIC`, stored per player. Untried tactics go first;
+after that a mob explores with probability `floor + (0.3 - floor) / (1 + tries / 20)` and otherwise takes the best
+value. A value moves `alpha` (0.25) of the way to each reward. The reward is the hit points the mob dealt to that
+player minus the hit points it took over a 30 tick window, minus 10 if it died. Situations and tactics are in the
+README table. The kinds of decision are the three the user named: swing (shield or back off), incoming arrow (evade or
+shield) and after a shot (hide or hold).
+
+Notes from building it:
+
+- The mobs mod's `HoldStandoffGoal` is flagless and clears the path every tick a ranged mob holds its band, so a
+  walking tactic also pushes through the move control when the path is gone. Without that an archer chose `HIDE` and
+  never moved.
+- `TacticGoal` sits at rank 0. The selector asks the replace test before `canUse`, so a goal that ties with a running
+  one is never asked and never opens an episode it cannot act on.
+- A fresh mob is still falling for a few ticks. An evade test waits for it to land, or the destination is in the air.
+- Per-instance `setExploring(false)` makes the integration tests deterministic.
+- A mock player's `hurtServer` is a no-op, so tests hand `Episodes.afterDamage` the hit as the event would.

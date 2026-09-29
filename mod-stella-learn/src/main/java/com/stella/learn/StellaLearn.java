@@ -14,6 +14,7 @@ public final class StellaLearn implements ModInitializer {
 	public void onInitialize() {
 		LearnConfigStore.load();
 		Profiles.register();
+		Policies.register();
 		HabitRecorder.register();
 		RetreatRecorder.register();
 		MovementRecorder.register();
@@ -21,6 +22,8 @@ public final class StellaLearn implements ModInitializer {
 		LearnGoals.register();
 		Rally.register();
 		LearnSummary.register();
+		Shots.register();
+		Episodes.register();
 		LearnCommand.register();
 		CalloutKits.register();
 		CalloutSender.register();
