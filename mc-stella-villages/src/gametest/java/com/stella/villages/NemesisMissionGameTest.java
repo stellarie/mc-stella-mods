@@ -60,6 +60,142 @@ import org.jspecify.annotations.Nullable;
 
 public final class NemesisMissionGameTest {
 	@GameTest(dimension = "minecraft:the_nether")
+	public void excludedKindsNeverBecomeNemeses(final GameTestHelper helper) {
+		List<String> excluded = List.of("creeper", "ender_dragon", "wither", "endermite", "silverfish", "blaze", "phantom", "ghast");
+		List<Identifier> pool = MissionService.defaultOfferPool();
+		List<String> problems = new ArrayList<>();
+		for (String name : excluded) {
+			Identifier id = Identifier.parse("minecraft:" + name);
+			Entity entity = BuiltInRegistries.ENTITY_TYPE.getValue(id).create(helper.getLevel(), EntitySpawnReason.COMMAND);
+			boolean allowed = entity instanceof Mob mob && MissionService.canBeNemesis(mob);
+			if (pool.contains(id) || allowed || !MissionService.NEVER_OFFERED.contains(id)) {
+				problems.add(name + " pool=" + pool.contains(id) + " canBeNemesis=" + allowed);
+			}
+			if (entity != null) {
+				entity.discard();
+			}
+		}
+		PatrolTestSupport.result("excludedKindsNeverBecomeNemeses", "problems=" + problems);
+		helper.assertTrue(problems.isEmpty(), "an excluded kind can still be a Nemesis: " + problems);
+		helper.assertTrue(pool.contains(Identifier.parse("minecraft:zombie")) && pool.contains(Identifier.parse("minecraft:spider")),
+			"the pool lost an ordinary hostile");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void rewardPaysOneBookTwoEmeraldStacksAndTwoPotions(final GameTestHelper helper) {
+		Mob subject = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(subject != null, "could not create the reward subject");
+		var random = net.minecraft.util.RandomSource.create(20_260_929L);
+		MissionService.setSpellBookPool(List.of());
+		try {
+			for (int roll = 0; roll < 300; roll++) {
+				List<ItemStack> reward = MissionService.rollReward(helper.getLevel(), subject, random);
+				List<ItemStack> emeralds = reward.stream().filter(stack -> stack.is(Items.EMERALD)).toList();
+				List<ItemStack> potions = reward.stream().filter(stack -> stack.is(Items.POTION)).toList();
+				helper.assertTrue(reward.stream().filter(stack -> stack.is(Items.ENCHANTED_BOOK)).count() == 1,
+					"the reward holds no single enchanted book: " + reward);
+				helper.assertTrue(emeralds.size() == MissionService.REWARD_EMERALD_STACKS
+					&& emeralds.stream().allMatch(stack -> stack.getCount() == Items.EMERALD.getDefaultMaxStackSize()),
+					"the reward emeralds are not two full stacks: " + reward);
+				helper.assertTrue(potions.size() == MissionService.REWARD_POTIONS && potions.stream().allMatch(stack -> stack
+					.getOrDefault(DataComponents.POTION_CONTENTS, net.minecraft.world.item.alchemy.PotionContents.EMPTY)
+					.getAllEffects().iterator().hasNext()), "a reward potion has no effect: " + reward);
+				helper.assertTrue(reward.stream().noneMatch(stack -> stack.is(Items.PLAYER_HEAD) || stack.is(Items.ZOMBIE_HEAD)
+					|| stack.is(Items.WITHER_SKELETON_SKULL) || stack.is(Items.CREEPER_HEAD)), "the reward holds a head");
+			}
+		} finally {
+			MissionService.setSpellBookPool(null);
+		}
+		PatrolTestSupport.result("rewardPaysOneBookTwoEmeraldStacksAndTwoPotions", "rolls=300");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void rewardBookIsASpellBookWhenTheTagHasItemsAndFallsBackOtherwise(final GameTestHelper helper) {
+		var random = net.minecraft.util.RandomSource.create(20_260_930L);
+		List<Item> books = List.of(Items.PAPER, Items.STICK);
+		int spell = 0;
+		MissionService.setSpellBookPool(books);
+		try {
+			for (int roll = 0; roll < 2_000; roll++) {
+				ItemStack book = MissionService.rewardBook(helper.getLevel(), random, true);
+				helper.assertTrue(books.contains(book.getItem()), "a spell book roll gave " + book);
+				ItemStack plain = MissionService.rewardBook(helper.getLevel(), random, false);
+				helper.assertTrue(plain.is(Items.ENCHANTED_BOOK), "an enchanted book roll gave " + plain);
+			}
+			Mob subject = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+			for (int roll = 0; roll < 2_000; roll++) {
+				ItemStack book = MissionService.rollReward(helper.getLevel(), subject, random).get(0);
+				spell += books.contains(book.getItem()) ? 1 : 0;
+				helper.assertTrue(books.contains(book.getItem()) || book.is(Items.ENCHANTED_BOOK),
+					"the reward book is neither kind: " + book);
+			}
+			MissionService.setSpellBookPool(List.of());
+			ItemStack fallback = MissionService.rewardBook(helper.getLevel(), random, true);
+			helper.assertTrue(fallback.is(Items.ENCHANTED_BOOK), "an empty tag gave " + fallback);
+		} finally {
+			MissionService.setSpellBookPool(null);
+		}
+		var tag = helper.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ITEM)
+			.get(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, MissionService.SPELL_BOOK_TAG));
+		boolean tagHasItems = tag.isPresent() && tag.get().size() > 0;
+		ItemStack real = MissionService.rewardBook(helper.getLevel(), random, true);
+		helper.assertTrue(tagHasItems ? !real.is(Items.ENCHANTED_BOOK) : real.is(Items.ENCHANTED_BOOK),
+			"the real tag (items=" + tagHasItems + ") gave " + real);
+		helper.assertTrue(withinFiveSigma(spell, 2_000, 0.5), "the spell book share is " + spell + " of 2000");
+		PatrolTestSupport.result("rewardBookIsASpellBookWhenTheTagHasItemsAndFallsBackOtherwise",
+			"spell=" + spell + " realTagItems=" + tagHasItems);
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void rareRewardRollsAreIndependentAndAFailedRollPaysNothing(final GameTestHelper helper) {
+		Mob subject = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(subject != null, "could not create the reward subject");
+		subject.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.DIAMOND_HELMET));
+		subject.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
+		var random = net.minecraft.util.RandomSource.create(20_260_931L);
+		int rolls = 200_000;
+		int diamonds = 0;
+		int debris = 0;
+		int gear = 0;
+		int empty = 0;
+		int diamondsAndGear = 0;
+		int debrisWithOther = 0;
+		boolean shapes = true;
+		for (int roll = 0; roll < rolls; roll++) {
+			List<ItemStack> rare = MissionService.rollRareRewards(subject, random);
+			boolean hasDiamonds = rare.stream().anyMatch(stack -> stack.is(Items.DIAMOND));
+			boolean hasDebris = rare.stream().anyMatch(stack -> stack.is(Items.ANCIENT_DEBRIS));
+			boolean hasGear = rare.stream().anyMatch(stack -> stack.is(Items.DIAMOND_HELMET) || stack.is(Items.DIAMOND_SWORD));
+			diamonds += hasDiamonds ? 1 : 0;
+			debris += hasDebris ? 1 : 0;
+			gear += hasGear ? 1 : 0;
+			empty += rare.isEmpty() ? 1 : 0;
+			diamondsAndGear += hasDiamonds && hasGear ? 1 : 0;
+			debrisWithOther += hasDebris && rare.size() > 1 ? 1 : 0;
+			shapes &= rare.stream().allMatch(stack -> stack.is(Items.DIAMOND) ? stack.getCount() == 32 : stack.getCount() == 1)
+				&& rare.stream().noneMatch(stack -> stack.is(Items.PLAYER_HEAD) || stack.is(Items.ZOMBIE_HEAD));
+		}
+		PatrolTestSupport.result("rareRewardRollsAreIndependentAndAFailedRollPaysNothing", "rolls=" + rolls
+			+ " diamonds=" + diamonds + " debris=" + debris + " gear=" + gear + " empty=" + empty
+			+ " diamondsAndGear=" + diamondsAndGear + " debrisWithOther=" + debrisWithOther);
+		helper.assertTrue(shapes, "a rare reward has the wrong stack shape");
+		double bonus = MissionService.REWARD_BONUS_CHANCE;
+		double rareDebris = MissionService.REWARD_DEBRIS_CHANCE;
+		helper.assertTrue(withinFiveSigma(diamonds, rolls, bonus), "diamonds paid " + diamonds + " of " + rolls);
+		helper.assertTrue(withinFiveSigma(gear, rolls, bonus), "gear paid " + gear + " of " + rolls);
+		helper.assertTrue(withinFiveSigma(debris, rolls, rareDebris), "ancient debris paid " + debris + " of " + rolls);
+		helper.assertTrue(withinFiveSigma(diamondsAndGear, rolls, bonus * bonus),
+			"diamonds and gear paid together " + diamondsAndGear + " times, so the rolls are not independent");
+		helper.assertTrue(debrisWithOther > 0, "the debris roll never paid beside another roll");
+		helper.assertTrue(withinFiveSigma(empty, rolls, (1 - bonus) * (1 - bonus) * (1 - rareDebris)),
+			"failed rolls paid something: empty=" + empty);
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
 	public void offersOnlyHostileMobsAndIronGolems(final GameTestHelper helper) {
 		List<Identifier> pool = MissionService.defaultOfferPool();
 		boolean valid = pool.contains(Identifier.parse("minecraft:zombie"))
@@ -140,7 +276,7 @@ public final class NemesisMissionGameTest {
 	}
 
 	@GameTest(dimension = "minecraft:the_nether")
-	public void equipmentRewardRollsAtTenPercentAndReturnsOnePiece(final GameTestHelper helper) {
+	public void equipmentRewardRollsAtFivePercentAndReturnsOnePiece(final GameTestHelper helper) {
 		Mob subject = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
 		if (subject == null) {
 			helper.fail("could not create equipment reward subject");
@@ -159,8 +295,8 @@ public final class NemesisMissionGameTest {
 					|| item.is(Items.DIAMOND_SWORD));
 			}
 		}
-		boolean valid = singlePiece && rewards >= 950 && rewards <= 1_050;
-		PatrolTestSupport.result("equipmentRewardRollsAtTenPercentAndReturnsOnePiece",
+		boolean valid = singlePiece && withinFiveSigma(rewards, 10_000, MissionService.REWARD_BONUS_CHANCE);
+		PatrolTestSupport.result("equipmentRewardRollsAtFivePercentAndReturnsOnePiece",
 			"rolls=10000 rewards=" + rewards + " singlePiece=" + singlePiece + " valid=" + valid);
 		helper.assertTrue(valid, "equipment reward rate or single-piece rule changed");
 		helper.succeed();
@@ -976,6 +1112,7 @@ public final class NemesisMissionGameTest {
 		Mob[] nemesis = {null};
 		ItemStack[][] assignedGear = {null};
 		int[] emeraldBefore = {0};
+		int paidEmeralds = MissionService.REWARD_EMERALD_STACKS * Items.EMERALD.getDefaultMaxStackSize();
 		boolean[] rewardsLogged = {false};
 		helper.startSequence()
 			.thenWaitUntil(() -> {
@@ -994,11 +1131,7 @@ public final class NemesisMissionGameTest {
 			})
 			.thenWaitUntil(() -> {
 				int emeralds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD);
-				int diamonds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND);
-				int debris = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS);
-				int heads = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead);
-				boolean complete = emeralds == 64 && emeralds >= emeraldBefore[0]
-					&& diamonds == 32 && debris == 1 && heads == 1 && missionRemoved(helper.getLevel(), missionId);
+				boolean complete = emeralds == paidEmeralds && emeralds >= emeraldBefore[0] && missionRemoved(helper.getLevel(), missionId);
 				helper.assertTrue(complete, "non-owner Nemesis reward drops are not ready");
 			})
 			.thenExecute(() -> {
@@ -1006,33 +1139,18 @@ public final class NemesisMissionGameTest {
 				int diamonds = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND);
 				int debris = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS);
 				int heads = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead);
+				int potions = droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.POTION);
+				int books = droppedBookCount(helper.getLevel(), nemesis[0].blockPosition());
 				int gearDrops = assignedGearDropCount(helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]);
 				boolean missionRemoved = missionRemoved(helper.getLevel(), missionId);
-				ItemEntity headDrop = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
-					AABB.ofSize(Vec3.atCenterOf(nemesis[0].blockPosition()), 16.0, 16.0, 16.0),
-					entity -> entity.getItem().is(expectedHead)).stream().findFirst().orElse(null);
-				var headData = headDrop == null ? null : headDrop.getItem().get(DataComponents.CUSTOM_DATA);
-				boolean matchingHead = headDrop != null && headData != null
-					&& headDrop.getItem().getHoverName().getString()
-						.contains(nemesis[0].getType().getDescription().getString())
-					&& headData.copyTag().getString("mc_stella_villages_nemesis_type")
-						.map(mission.targetType().toString()::equals).orElse(false);
-				if (headDrop != null) {
-					killer.setItemInHand(InteractionHand.MAIN_HAND, headDrop.getItem().copy());
-					headDrop.discard();
-				}
-				UseEntityCallback.EVENT.invoker().interact(killer, helper.getLevel(), InteractionHand.MAIN_HAND, fixture.head(), null);
-				int books = enchantedBookCount(killer.getInventory());
-				boolean traded = matchingHead && !killer.getItemInHand(InteractionHand.MAIN_HAND).is(expectedHead)
-					&& books == 3;
-				boolean stateMatches = accepted && nonOwner && missionRemoved && emeralds == 64
-					&& emeralds >= emeraldBefore[0] && diamonds == 32 && debris == 1 && heads == 1
-					&& gearDrops <= 1 && traded;
+				boolean stateMatches = accepted && nonOwner && missionRemoved && emeralds == paidEmeralds
+					&& emeralds >= emeraldBefore[0] && potions == MissionService.REWARD_POTIONS && books == 1 && heads == 0
+					&& (diamonds == 0 || diamonds == MissionService.REWARD_BONUS_DIAMONDS) && debris <= 1 && gearDrops <= 1;
 				rewardsLogged[0] = true;
 				releaseSafeTargetSite(helper, safeSite);
 				PatrolTestSupport.result(test, "accepted=" + accepted + " nonOwner=" + nonOwner
-					+ " emeralds=" + emeralds + " diamonds=" + diamonds + " debris=" + debris
-					+ " heads=" + heads + " gearDrops=" + gearDrops + " books=" + books + " traded=" + traded
+					+ " emeralds=" + emeralds + " potions=" + potions + " books=" + books + " heads=" + heads
+					+ " diamonds=" + diamonds + " debris=" + debris + " gearDrops=" + gearDrops
 					+ " missionRemoved=" + missionRemoved + " stateMatches=" + stateMatches);
 				helper.assertTrue(stateMatches,
 					"non-owner Nemesis kill did not complete and reward its mission exactly once");
@@ -1042,14 +1160,13 @@ public final class NemesisMissionGameTest {
 			if (!rewardsLogged[0]) {
 				boolean nemesisLoaded = nemesis[0] != null;
 				int emeralds = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.EMERALD) : 0;
-				int diamonds = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.DIAMOND) : 0;
-				int debris = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.ANCIENT_DEBRIS) : 0;
+				int potions = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), Items.POTION) : 0;
 				int heads = nemesisLoaded ? droppedCount(helper.getLevel(), nemesis[0].blockPosition(), expectedHead) : 0;
 				int gearDrops = nemesisLoaded && assignedGear[0] != null
 					? assignedGearDropCount(helper.getLevel(), nemesis[0].blockPosition(), assignedGear[0]) : 0;
 				PatrolTestSupport.result(test, "accepted=" + accepted + " nonOwner=" + nonOwner
-					+ " nemesisLoaded=" + nemesisLoaded + " emeralds=" + emeralds + " diamonds=" + diamonds
-					+ " debris=" + debris + " heads=" + heads + " gearDrops=" + gearDrops
+					+ " nemesisLoaded=" + nemesisLoaded + " emeralds=" + emeralds + " potions=" + potions
+					+ " heads=" + heads + " gearDrops=" + gearDrops
 					+ " rewardsReady=false stateMatches=false");
 				helper.fail("non-owner Nemesis rewards were incomplete");
 			}
@@ -1690,6 +1807,20 @@ public final class NemesisMissionGameTest {
 	private static int droppedCount(final ServerLevel level, final BlockPos position, final Item item) {
 		AABB bounds = AABB.ofSize(Vec3.atCenterOf(position), 16.0, 16.0, 16.0);
 		return level.getEntitiesOfClass(ItemEntity.class, bounds, entity -> entity.getItem().is(item))
+			.stream().mapToInt(entity -> entity.getItem().getCount()).sum();
+	}
+
+	/** Whether a count sits within five standard deviations of a binomial mean, so a fixed seed never flakes. */
+	private static boolean withinFiveSigma(final int count, final int trials, final double chance) {
+		double mean = trials * chance;
+		return Math.abs(count - mean) <= 5.0 * Math.sqrt(trials * chance * (1.0 - chance)) + 1.0;
+	}
+
+	/** Enchanted books, and spell books when the spells mod is loaded: the one book a Nemesis pays. */
+	private static int droppedBookCount(final ServerLevel level, final BlockPos position) {
+		AABB bounds = AABB.ofSize(Vec3.atCenterOf(position), 16.0, 16.0, 16.0);
+		return level.getEntitiesOfClass(ItemEntity.class, bounds, entity -> entity.getItem().is(Items.ENCHANTED_BOOK)
+			|| BuiltInRegistries.ITEM.getKey(entity.getItem().getItem()).getNamespace().equals("mod-stella-spells"))
 			.stream().mapToInt(entity -> entity.getItem().getCount()).sum();
 	}
 
