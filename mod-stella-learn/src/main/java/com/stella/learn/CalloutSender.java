@@ -45,19 +45,29 @@ public final class CalloutSender {
 	}
 
 	public static Callout choose(final Monster caller, final ServerPlayer player) {
-		if (caller.getHealth() < caller.getMaxHealth() * HURT_SHARE) {
-			return call(CalloutKits.HEAL, caller, player, HEAL_PRIORITY, null);
+		double health = caller.getHealth() / caller.getMaxHealth();
+		double turtle = WaitOutShieldGoal.shieldPressure(player);
+		double rush = LearnedBand.rushPressure(player);
+		String why;
+		Callout callout;
+		if (health < HURT_SHARE) {
+			why = "hurt";
+			callout = call(CalloutKits.HEAL, caller, player, HEAL_PRIORITY, null);
+		} else if (turtle >= LearnConfigStore.get().shieldThreshold()) {
+			why = "turtle";
+			callout = call(CalloutKits.DEBUFF, caller, player, EFFECT_PRIORITY, SLOWNESS);
+		} else if (rush >= RUSH_SHARE) {
+			why = "rusher";
+			callout = call(CalloutKits.BUFF, caller, player, EFFECT_PRIORITY, STRENGTH);
+		} else {
+			why = "default";
+			callout = call(Rally.TYPE, caller, player, RALLY_PRIORITY, null);
 		}
 
-		if (WaitOutShieldGoal.shieldPressure(player) >= LearnConfigStore.get().shieldThreshold()) {
-			return call(CalloutKits.DEBUFF, caller, player, EFFECT_PRIORITY, SLOWNESS);
-		}
-
-		if (LearnedBand.rushPressure(player) >= RUSH_SHARE) {
-			return call(CalloutKits.BUFF, caller, player, EFFECT_PRIORITY, STRENGTH);
-		}
-
-		return call(Rally.TYPE, caller, player, RALLY_PRIORITY, null);
+		LearnLog.info("learnCallout", "CHOOSE", LearnLog.who(caller) + " " + LearnLog.who(player) + " why=" + why + " type=" + callout.type()
+			+ " priority=" + callout.priority() + (callout.detail() == null ? "" : " detail=" + callout.detail())
+			+ " health=" + LearnLog.num(health) + " turtle=" + LearnLog.num(turtle) + " rush=" + LearnLog.num(rush));
+		return callout;
 	}
 
 	private static Callout call(final Identifier type, final Monster caller, final ServerPlayer player, final int priority, final Identifier detail) {

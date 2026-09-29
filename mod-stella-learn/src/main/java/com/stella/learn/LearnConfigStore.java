@@ -28,7 +28,10 @@ public final class LearnConfigStore {
 			"choke_threshold": %s,
 			"choke_group": %d,
 			"choke_patience_ticks": %d,
-			"choke_rest_ticks": %d
+			"choke_rest_ticks": %d,
+			"behavior_log": %s,
+			"log_summary_ticks": %d,
+			"callout_fx": %s
 		}
 		""".formatted(
 		LearnConfig.DEFAULT_CALLOUT_RADIUS, LearnConfig.DEFAULT_MAX_RESPONDERS,
@@ -37,7 +40,9 @@ public final class LearnConfigStore {
 		LearnConfig.DEFAULT_SHIELD_THRESHOLD, LearnConfig.DEFAULT_SHIELD_PATIENCE_TICKS, LearnConfig.DEFAULT_SHIELD_REST_TICKS,
 		LearnConfig.DEFAULT_RANGED_SATURATION, LearnConfig.DEFAULT_COVER_THRESHOLD, LearnConfig.DEFAULT_COVER_REST_TICKS,
 		LearnConfig.DEFAULT_RETREAT_SATURATION, LearnConfig.DEFAULT_CHOKE_THRESHOLD, LearnConfig.DEFAULT_CHOKE_GROUP,
-		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS
+		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS,
+		LearnConfig.DEFAULT_BEHAVIOR_LOG, LearnConfig.DEFAULT_LOG_SUMMARY_TICKS,
+		LearnConfig.DEFAULT_CALLOUT_FX
 	);
 	private static volatile LearnConfig config = LearnConfig.defaults();
 
@@ -65,9 +70,25 @@ public final class LearnConfigStore {
 			}
 
 			config = LearnConfig.parse(Files.readString(path, StandardCharsets.UTF_8));
+			logLoaded(path);
 		} catch (IOException exception) {
 			StellaLearn.LOGGER.warn("Could not read {}; using the defaults: {}", path, exception.getMessage());
 			config = LearnConfig.defaults();
 		}
+	}
+
+	/** One line naming every value in force, so a log shows what a server is running on. */
+	private static void logLoaded(final Path path) {
+		LearnConfig c = config;
+		LearnLog.info(c, "learnConfig", "LOAD", "path=" + path
+			+ " callout_radius=" + LearnLog.num(c.calloutRadius()) + " max_responders=" + c.maxResponders()
+			+ " callout_cooldown_ticks=" + c.calloutCooldownTicks() + " profile_half_life_ticks=" + c.profileHalfLifeTicks()
+			+ " rush_band_gain=" + LearnLog.num(c.rushBandGain()) + " rush_saturation=" + LearnLog.num(c.rushSaturation())
+			+ " shield_saturation=" + LearnLog.num(c.shieldSaturation()) + " shield_threshold=" + LearnLog.num(c.shieldThreshold())
+			+ " shield_patience_ticks=" + c.shieldPatienceTicks() + " ranged_saturation=" + LearnLog.num(c.rangedSaturation())
+			+ " cover_threshold=" + LearnLog.num(c.coverThreshold()) + " retreat_saturation=" + LearnLog.num(c.retreatSaturation())
+			+ " choke_threshold=" + LearnLog.num(c.chokeThreshold()) + " choke_group=" + c.chokeGroup()
+			+ " choke_patience_ticks=" + c.chokePatienceTicks() + " behavior_log=" + c.behaviorLog()
+			+ " log_summary_ticks=" + c.logSummaryTicks() + " callout_fx=" + c.calloutFx());
 	}
 }

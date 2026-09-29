@@ -32,8 +32,10 @@ public final class Profiles {
 	}
 
 	public static void record(final ServerPlayer player, final Habit habit) {
-		((AttachmentTarget) player).setAttached(
-			TYPE, get(player).record(habit, 1.0, LearnClock.now(), LearnConfigStore.get().profileHalfLifeTicks())
-		);
+		long now = LearnClock.now();
+		long halfLife = LearnConfigStore.get().profileHalfLifeTicks();
+		PlayerProfile next = get(player).record(habit, 1.0, now, halfLife);
+		((AttachmentTarget) player).setAttached(TYPE, next);
+		LearnLog.info("learnHabit", "RECORD", LearnLog.who(player) + " habit=" + habit + " value=" + LearnLog.num(next.value(habit, now, halfLife)) + " half_life=" + halfLife);
 	}
 }
