@@ -36,6 +36,21 @@ public record LearnConfig(
 	static final String SHIELD_PATIENCE_TICKS = "shield_patience_ticks";
 	static final String SHIELD_REST_TICKS = "shield_rest_ticks";
 
+	public LearnConfig withCalloutRadius(final double value) {
+		return new LearnConfig(value, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+	}
+
+	public LearnConfig withMaxResponders(final int value) {
+		return new LearnConfig(this.calloutRadius, value, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+	}
+
+	public LearnConfig withCalloutCooldownTicks(final int value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, value, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks);
+	}
+
 	public static LearnConfig defaults() {
 		return new LearnConfig(
 			DEFAULT_CALLOUT_RADIUS, DEFAULT_MAX_RESPONDERS, DEFAULT_CALLOUT_COOLDOWN_TICKS, DEFAULT_PROFILE_HALF_LIFE_TICKS,
