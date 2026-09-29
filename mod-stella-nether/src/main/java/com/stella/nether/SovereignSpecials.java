@@ -218,6 +218,12 @@ public final class SovereignSpecials {
 	}
 
 	/** Stops the Sovereign starting specials on its own; a test casts them by hand. */
+	/** Whether a test has held this Sovereign's specials; its opening waits on the same hold. */
+	public static boolean paused(final Blaze blaze) {
+		Control control = CONTROLS.get(blaze.getUUID());
+		return control != null && control.paused;
+	}
+
 	public static void pause(final Blaze blaze) {
 		control(blaze).paused = true;
 	}

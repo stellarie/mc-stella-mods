@@ -22,7 +22,8 @@
 			"com.stella.nether.SovereignBlueGameTest",
 			"com.stella.nether.RaidMobRulesGameTest",
 			"com.stella.nether.SovereignBurstGameTest",
-			"com.stella.nether.SoulNovaGameTest"
+			"com.stella.nether.SoulNovaGameTest",
+			"com.stella.nether.SovereignOpeningGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
