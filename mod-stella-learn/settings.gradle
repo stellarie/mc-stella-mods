@@ -1,0 +1,17 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+rootProject.name = 'mod-stella-learn'
+
+// The mobs mod builds from source beside this mod and substitutes for its coordinates.
+includeBuild '../mod-stella-mobs'
+// The spells mod is optional at run time; it builds from source so the bridge compiles and its game tests run.
+includeBuild '../mod-stella-spells'

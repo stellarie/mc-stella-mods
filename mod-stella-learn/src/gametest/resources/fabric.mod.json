@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-learn-test-mod-stella-learn",
+	"version": "1.0.0",
+	"name": "Stella Learning Mobs game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.learn.ModpackDependencyGameTest",
+			"com.stella.learn.LearnConfigGameTest",
+			"com.stella.learn.ProfileGameTest",
+			"com.stella.learn.HabitRecorderGameTest",
+			"com.stella.learn.LearnedBandGameTest",
+			"com.stella.learn.WaitOutShieldGameTest",
+			"com.stella.learn.CalloutGameTest",
+			"com.stella.learn.RallyGameTest",
+			"com.stella.learn.CalloutKitsGameTest",
+			"com.stella.learn.CalloutSenderGameTest",
+			"com.stella.learn.TakeCoverGameTest",
+			"com.stella.learn.SpellsBridgeGameTest"
+		],
+		"main": [
+			"com.stella.learn.LearnTestInit"
+		]
+	},
+	"depends": {
+		"mod-stella-learn": "*"
+	}
+}
