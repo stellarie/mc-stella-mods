@@ -10,6 +10,8 @@ import net.minecraft.world.entity.monster.Monster;
 public final class LearnGoals {
 	/** Flagless goals only ask to run, so any rank works; the mobs mod's own ranks are 0 to 8. */
 	static final int PRIORITY = 9;
+	/** Rank 0: a chosen tactic outranks the mobs mod's shield goal at rank 1, and yields to its retreat, which ties and so is never preempted. */
+	static final int TACTIC_PRIORITY = 0;
 	/** Above the vanilla melee goals at rank 2, and level with the mob's own shield, which a tie never preempts. */
 	static final int MELEE_WAIT_PRIORITY = 1;
 	/** Below the mobs mod's distance goal at rank 2, so a retreat still wins, and above the bow goal at rank 4. */
@@ -29,6 +31,7 @@ public final class LearnGoals {
 
 		Mob mob = monster;
 		mob.getGoalSelector().addGoal(PRIORITY, new LearnedBandGoal(mob));
+		mob.getGoalSelector().addGoal(TACTIC_PRIORITY, new TacticGoal(mob));
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new WaitOutShieldGoal(mob, true));
 		mob.getGoalSelector().addGoal(RANGED_WAIT_PRIORITY, new WaitOutShieldGoal(mob, false));
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new AnswerRallyGoal(mob, true));

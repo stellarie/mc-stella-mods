@@ -28,6 +28,8 @@ public final class ProfileReport {
 			.append(" strafer=").append(LearnLog.num(Movement.strafePressure(player)))
 			.append(" strafe_bias=").append(LearnLog.num(Movement.strafeBias(player)))
 			.append(" crit_jumper=").append(LearnLog.num(Movement.critPressure(player)))
+			.append(" policy_entries=").append(Policies.get(player).entries().size())
+			.append(" policy_tries=").append(Policies.get(player).entries().values().stream().mapToInt(Policy.Entry::tries).sum())
 			.toString();
 	}
 
@@ -45,6 +47,29 @@ public final class ProfileReport {
 		lines.add(entry(player, Habit.STRAFE_LEFT, Movement.strafePressure(player), "strafer", config.moveSaturation(), "left of " + LearnLog.num(Profiles.value(player, Habit.STRAFE_LEFT) + Profiles.value(player, Habit.STRAFE_RIGHT))));
 		lines.add(entry(player, Habit.STRAFE_RIGHT, Movement.strafePressure(player), "strafer", config.moveSaturation(), "bias " + LearnLog.num(Movement.strafeBias(player)) + ", the first flanker takes that side"));
 		lines.add(entry(player, Habit.CRIT, Movement.critPressure(player), "crit_jumper", config.critSaturation(), "mobs step back when you jump"));
+		lines.addAll(policy(player));
+		return lines;
+	}
+
+	/** What the mobs have learned to do in each situation: every tactic tried, its average outcome, and the best marked. */
+	static List<String> policy(final ServerPlayer player) {
+		Policy policy = Policies.get(player);
+		List<String> lines = new ArrayList<>();
+		java.util.Set<String> groups = new java.util.TreeSet<>();
+		policy.entries().keySet().forEach(key -> groups.add(key.substring(0, key.lastIndexOf('|'))));
+		if (groups.isEmpty()) {
+			return lines;
+		}
+
+		lines.add("What mobs have learned to do (average hit points won per try, best first):");
+		for (String group : groups) {
+			List<java.util.Map.Entry<String, Policy.Entry>> tried = policy.entries().entrySet().stream()
+				.filter(entry -> entry.getKey().startsWith(group + "|")).sorted((a, b) -> Double.compare(b.getValue().value(), a.getValue().value())).toList();
+			String tactics = tried.stream().map(entry -> entry.getKey().substring(group.length() + 1) + " " + LearnLog.num(entry.getValue().value()) + " (" + entry.getValue().tries() + ")")
+				.collect(java.util.stream.Collectors.joining(", "));
+			lines.add(group.replace('|', ' ') + ": " + tactics);
+		}
+
 		return lines;
 	}
 

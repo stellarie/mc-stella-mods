@@ -36,7 +36,10 @@ public final class LearnConfigStore {
 			"move_threshold": %s,
 			"intercept_lead_ticks": %d,
 			"crit_saturation": %s,
-			"charge_tighten": %s
+			"charge_tighten": %s,
+			"rl_alpha": %s,
+			"rl_epsilon": %s,
+			"rl_window_ticks": %d
 		}
 		""".formatted(
 		LearnConfig.DEFAULT_CALLOUT_RADIUS, LearnConfig.DEFAULT_MAX_RESPONDERS,
@@ -48,7 +51,8 @@ public final class LearnConfigStore {
 		LearnConfig.DEFAULT_CHOKE_PATIENCE_TICKS, LearnConfig.DEFAULT_CHOKE_REST_TICKS,
 		LearnConfig.DEFAULT_BEHAVIOR_LOG, LearnConfig.DEFAULT_LOG_SUMMARY_TICKS,
 		LearnConfig.DEFAULT_CALLOUT_FX, LearnConfig.DEFAULT_MOVE_SATURATION, LearnConfig.DEFAULT_MOVE_THRESHOLD,
-		LearnConfig.DEFAULT_INTERCEPT_LEAD_TICKS, LearnConfig.DEFAULT_CRIT_SATURATION, LearnConfig.DEFAULT_CHARGE_TIGHTEN
+		LearnConfig.DEFAULT_INTERCEPT_LEAD_TICKS, LearnConfig.DEFAULT_CRIT_SATURATION, LearnConfig.DEFAULT_CHARGE_TIGHTEN,
+		LearnConfig.DEFAULT_RL_ALPHA, LearnConfig.DEFAULT_RL_EPSILON, LearnConfig.DEFAULT_RL_WINDOW_TICKS
 	);
 	private static volatile LearnConfig config = LearnConfig.defaults();
 
@@ -97,6 +101,7 @@ public final class LearnConfigStore {
 			+ " choke_patience_ticks=" + c.chokePatienceTicks() + " behavior_log=" + c.behaviorLog()
 			+ " log_summary_ticks=" + c.logSummaryTicks() + " callout_fx=" + c.calloutFx() + " move_saturation=" + LearnLog.num(c.moveSaturation())
 			+ " move_threshold=" + LearnLog.num(c.moveThreshold()) + " intercept_lead_ticks=" + c.interceptLeadTicks()
-			+ " crit_saturation=" + LearnLog.num(c.critSaturation()) + " charge_tighten=" + LearnLog.num(c.chargeTighten()));
+			+ " crit_saturation=" + LearnLog.num(c.critSaturation()) + " charge_tighten=" + LearnLog.num(c.chargeTighten()) + " rl_alpha=" + LearnLog.num(c.rlAlpha())
+			+ " rl_epsilon=" + LearnLog.num(c.rlEpsilon()) + " rl_window_ticks=" + c.rlWindowTicks());
 	}
 }
