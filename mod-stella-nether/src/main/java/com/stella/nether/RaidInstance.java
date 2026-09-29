@@ -149,18 +149,19 @@ public final class RaidInstance {
 		((AttachmentTarget) server.overworld()).setAttached(STATE, state);
 	}
 
-	/** A player who logs in inside a run that has since closed is sent back the way they came. */
+	/**
+	 * A player who logs in inside the raid nether is sent back to the portal they came in by, whether their run
+	 * still lives or has closed. While it lives, they may walk back in through that portal and join it again.
+	 */
 	public static void onJoin(final ServerPlayer player) {
 		if (!player.level().dimension().equals(RaidTravel.RAID)) {
 			return;
 		}
 		RaidState state = state(player.level().getServer());
 		Boons held = player.getAttached(PLAYER_BOONS_HELD);
-		if (state.active() && held != null && held.run() == state.run()) {
-			return;
-		}
-		StellaNether.LOGGER.info("[NETHER] player={} returned to closed run={} now={}; sent out", player.getScoreboardName(),
-			held == null ? null : held.run(), state.run());
+		boolean live = state.active() && held != null && held.run() == state.run();
+		StellaNether.LOGGER.info("[NETHER] player={} reconnected in run={} now={} live={}; sent to their portal", player.getScoreboardName(),
+			held == null ? null : held.run(), state.run(), live);
 		player.teleport(RaidTravel.wayBack((ServerLevel) player.level(), player));
 	}
 

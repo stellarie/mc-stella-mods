@@ -45,9 +45,12 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - The open raid counts its ticks, saved with its state.
 - Once no player has stood in the raid for 100 ticks (5 seconds), it resets. Dying, a Scroll of Return, a
   portal and logging out all count as leaving. Loaded dropped items in the raid are discarded, and the
-  next run opens 2048 blocks away, so everything left on the old run's land is lost for good.
-- A player who logs back in inside a run that has since closed is sent back the way they came. A player
-  who logs back in inside the live run stays.
+  next run opens 8192 blocks away, so everything left on the old run's land is lost for good.
+- A player who logs back in inside the raid nether is sent back to the overworld portal they came in by,
+  whether the run still lives or has closed (changed 2026-09-29; a player used to stay in a live run). The
+  boon comes off on the way out. While the run lives, they may walk back in through that portal and join
+  it, with a fresh boon. Measured: a reconnecting raider stood 0.00 blocks from their entry spot in the
+  overworld, and the portal took them back into the same run.
 - The old runs' land stays on disk. The raid dimension's region files grow by one explored area per run,
   and pruning them is a follow-up.
 
