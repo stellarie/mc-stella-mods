@@ -71,22 +71,37 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 6. The Blaze Sovereign's body, health, and normal attack; the boss bar; no respawn. **Done, except the blue tint.**
 7. The five specials, one per sub-slice. **Done.**
 8. Blaze Core and Flame Mantle; the End unlock. **Done, except Blaze Core enchanting and crafting.**
-9. Raid objectives.
+9. Raid objectives: more of every drop, x1.15 normal, x1.5 hard. **Done.**
+10. The sealed chest: one Blaze Core in the portal room opens the End portal. **Done.**
+11. Blaze Core enchantments: Overclock (weapons) and Magma Armor (armor). **Done.**
+12. Requested 2026-09-28 evening, easiest first:
+    - a. The Sovereign drawn in soul-fire blue, and its fire (fireballs, specials) blue too. **Done.**
+    - b. Its Brood holds no elite or boss blaze. **Done.**
+    - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two. **Done.**
+    - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard (the Sovereign keeps its own health). **Done.**
+    - e. Its normal attack: a burst of five every 5 seconds. **Done.**
+    - f. A sixth special: slow blue flames in every direction that burst after 5 seconds, throwing back
+      what they reach and setting soul fire on nearby blocks, breaking none. **Done.**
+    - g. Blazes rise from lava in either mode; in hard, wither skeletons spawn anywhere with room. **Done.**
+    - h. The opening charge, once per Sovereign, when a player first comes within 32 blocks or draws its
+      aggro: it rushes at 12 blocks a second, breaking blocks in its way, until it sees the player; charges
+      for 3 seconds (shown); then opens with 15 scattered strikes around the player over 5 seconds. **Done.**
+    - i. The portal choice as a window of three stacked options; a click sends the player at once, and
+      closing it does nothing. **Done.**
+    - j. With the spells mod, some raid mobs cast fire spells and time lock, and buff themselves. **Done.**
 
 Each slice ships with headless game tests per `AGENTS.md`.
 
-## Status (2026-09-28, end of night)
+## Status (2026-09-29)
 
-- Slices 1 to 8 are done on `claude/instanced-nether-raid-7hlzbe`. The last gate was a clean build and
-  five `runGameTest --rerun` runs, 57 of 57 required tests each, run on Linux with `./gradlew`, not the
-  Windows `gradlew.bat`.
-- Not done: slice 9 (raid objectives); the Sovereign's blue tint (client code); Blaze Core enchanting
-  and crafting; pruning old runs' region files; a config file for the constants.
+- Slices 1 to 12 are done on `claude/instanced-nether-raid-7hlzbe`. The last gate was a clean build and
+  five `runGameTest --rerun` runs, 101 of 101 required tests each, run on Linux with `./gradlew`, not the
+  Windows `gradlew.bat`. Two tests are tagged, not required, and fail every run by design: the Sovereign's
+  blue tint and the portal window, both drawn by the client.
+- Not done: pruning old runs' region files; a config file for the constants.
 - Not delivered: the jar is not deployed to the Prism instance (this machine has none), and no one other
   than its author has reviewed the phase yet.
 - Manual acceptance items are listed in `mod-stella-nether/README.md`.
-- `feat/mobs-threat-level-scaling` and `main-food` are merged into this branch only. `main-mobs`,
-  `main-food` and `main` are untouched, and no `main-nether` integration branch exists yet.
 
 ## Deviations
 
@@ -99,6 +114,18 @@ Each slice ships with headless game tests per `AGENTS.md`.
 
 - Deviation (slice 5): the structures are not placed at instance creation. The run instead opens between
   a naturally generated fortress and bastion, which keeps them whole and costs no forced generation.
+
+- Deviation (12f): vanilla soul fire goes out on anything but soul sand or soul soil, so the nova sets a
+  soul flame of the mod's own, drawn with vanilla's soul-fire models. It holds on any solid floor and burns
+  out after 10 seconds, so a long fight does not leave the fortress carpeted.
+
+- Deviation (12h): the rush aims the Sovereign's feet at the player's feet, not its middle at their eyes, so
+  it keeps its height over the ground instead of boring into the floor. Tests that measure something else
+  hold the opening, as they hold the specials.
+
+- Deviation (12i): while a raid runs, the window still shows three options, and the one for the mode not
+  running is greyed out and named for the raid that is running. A client without the mod keeps the chat
+  prompt.
 
 ## Open questions for oniichan
 

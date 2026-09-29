@@ -32,6 +32,11 @@ public final class NetherItems {
 			.humanoidArmor(FLAME_MANTLE_MATERIAL, ArmorType.CHESTPLATE).rarity(Rarity.EPIC).fireResistant()
 	));
 
+	public static final Identifier SOUL_FIRE_CHARGE_ID = StellaNether.id("soul_fire_charge");
+	public static final Item SOUL_FIRE_CHARGE = Registry.register(BuiltInRegistries.ITEM, SOUL_FIRE_CHARGE_ID, new Item(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, SOUL_FIRE_CHARGE_ID))
+	));
+
 	private NetherItems() {
 	}
 

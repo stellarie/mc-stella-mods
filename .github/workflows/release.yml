@@ -11,26 +11,68 @@ permissions:
   contents: read
 
 jobs:
-  bundle:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      mods: ${{ steps.mods.outputs.mods }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check release runner
+        run: python3 scripts/test-build-release.py
+      - id: mods
+        name: Detect Gradle mods
+        run: |
+          mods=$(python3 scripts/build-release.py --list)
+          echo "mods=$mods" >> "$GITHUB_OUTPUT"
+
+  build-mod:
+    needs: discover
+    strategy:
+      fail-fast: false
+      matrix:
+        mod: ${{ fromJson(needs.discover.outputs.mods) }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-      - name: Build and test every detected mod
-        run: python3 scripts/build-release.py
+      - name: Build and test ${{ matrix.mod }}
+        env:
+          MOD_NAME: ${{ matrix.mod }}
+        run: python3 scripts/build-release.py --mod "$MOD_NAME"
       - name: Upload GameTest logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gametest-logs
+          name: gametest-logs-${{ matrix.mod }}
           path: release-output/test-logs/
           if-no-files-found: ignore
+      - name: Upload production jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars-${{ matrix.mod }}
+          path: release-output/jars/
+          if-no-files-found: error
+
+  bundle:
+    needs: [discover, build-mod]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jars-*
+          path: release-output/jars/
+          merge-multiple: true
+      - name: Bundle production jars
+        env:
+          DETECTED_MODS: ${{ needs.discover.outputs.mods }}
+        run: python3 scripts/build-release.py --bundle --mods-json "$DETECTED_MODS"
       - name: Upload release ZIP
         uses: actions/upload-artifact@v4
         with:

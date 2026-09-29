@@ -78,6 +78,10 @@ public final class RaidInstance {
 	public static final double CHASE_RANGE = 64.0;
 	public static final int CHASE_EVERY_TICKS = 20;
 	private static final net.minecraft.resources.Identifier CHASE_RANGE_MODIFIER = StellaNether.id("enraged_follow_range");
+	/** Every raid mob's health and damage, times this in normal and in hard. The Sovereign keeps its own. */
+	public static final double NORMAL_STRENGTH = 1.25;
+	public static final double HARD_STRENGTH = 1.75;
+	public static final net.minecraft.resources.Identifier MODE_STRENGTH_ID = StellaNether.id("mode_strength");
 	/** The run a mob was enraged for. */
 	public static final AttachmentType<Integer> MOB_ENRAGED = AttachmentRegistry.createPersistent(StellaNether.id("raid_enraged"), Codec.INT);
 
@@ -121,6 +125,7 @@ public final class RaidInstance {
 			}
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
+				strengthen(level, mob);
 				RaidState state = state(level.getServer());
 				if (state.active() && state.elapsed() >= ENRAGE_TICKS) {
 					enrage(state.run(), mob);
@@ -337,6 +342,28 @@ public final class RaidInstance {
 		if (mob instanceof NeutralMob neutral) {
 			neutral.setPersistentAngerTarget(EntityReference.of(nearest));
 			neutral.startPersistentAngerTimer();
+		}
+	}
+
+	/** Multiplies a raid mob's health and damage by its run's mode; a mob new to the modifier starts whole. */
+	static void strengthen(final ServerLevel level, final Mob mob) {
+		RaidState state = state(level.getServer());
+		if (!state.active() || BlazeSovereign.isSovereign(mob)) {
+			return;
+		}
+		double bonus = (state.mode() == RaidMode.HARD ? HARD_STRENGTH : NORMAL_STRENGTH) - 1.0;
+		AttributeModifier modifier = new AttributeModifier(MODE_STRENGTH_ID, bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		boolean fresh = health != null && health.getModifier(MODE_STRENGTH_ID) == null;
+		if (health != null) {
+			health.addOrReplacePermanentModifier(modifier);
+		}
+		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+		if (damage != null) {
+			damage.addOrReplacePermanentModifier(modifier);
+		}
+		if (fresh) {
+			mob.setHealth(mob.getMaxHealth());
 		}
 	}
 

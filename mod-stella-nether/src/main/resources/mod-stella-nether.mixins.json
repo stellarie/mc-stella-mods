@@ -4,8 +4,13 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"RaidPortalMixin",
+		"PortalStepMixin",
 		"SovereignDamageMixin",
-		"EndSealMixin"
+		"EnderEyeSealMixin",
+		"StrongholdChestMixin",
+		"StructurePieceInvoker",
+		"BlazeCoreAnvilMixin",
+		"ItemCombinerMenuAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

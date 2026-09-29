@@ -1,5 +1,6 @@
 package com.stella.nether.mixin;
 
+import com.stella.nether.BlazeEnchantments;
 import com.stella.nether.BlazeSovereign;
 import com.stella.nether.FlameMantle;
 import net.minecraft.server.level.ServerLevel;
@@ -15,6 +16,6 @@ public abstract class SovereignDamageMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaNether$divide(final float amount, final ServerLevel level, final DamageSource source) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		return FlameMantle.scaleDamageTaken(self, source, BlazeSovereign.scaleDamageTaken(self, amount));
+		return BlazeEnchantments.scale(self, source, FlameMantle.scaleDamageTaken(self, source, BlazeSovereign.scaleDamageTaken(self, amount)));
 	}
 }
