@@ -1,22 +1,16 @@
 package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
-import net.minecraft.world.entity.projectile.arrow.Arrow;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
@@ -144,63 +138,26 @@ public class SkeletonVolleyGoal extends Goal {
 			this.attackTime = SHOT_INTERVAL_TICKS;
 			if (this.sinceVolley >= VOLLEY_COOLDOWN_TICKS) {
 				this.sinceVolley = 0;
-				this.loose(target, arrowsFor(this.mob), true);
+				this.loose(target, true);
 			} else {
-				this.loose(target, 1, false);
+				this.loose(target, false);
 			}
 		}
 	}
 
 	/** One release: a single slowing arrow, or a volley's fan of flaming ones. One ammo item per arrow. */
-	private void loose(final LivingEntity target, final int count, final boolean volley) {
-		if (!(this.mob.level() instanceof ServerLevel level)) {
-			return;
-		}
-
-		ItemStack bow = this.mob.getItemInHand(ProjectileUtil.getWeaponHoldingHand(this.mob, Items.BOW));
-		// Monster.getProjectile reads the off hand first, so a tipped stack tips every arrow.
-		ItemStack ammo = this.mob.getProjectile(bow);
-		double xd = target.getX() - this.mob.getX();
-		double zd = target.getZ() - this.mob.getZ();
-		double lift = Math.sqrt(xd * xd + zd * zd) * BALLISTIC_LIFT;
-		double turn = Math.toRadians(spacingDegrees(count));
-		List<UUID> arrows = new ArrayList<>();
-		List<Vec3> velocities = new ArrayList<>();
-
-		for (int i = 0; i < count; i++) {
-			double angle = (i - (count - 1) / 2.0) * turn;
-			double cos = Math.cos(angle);
-			double sin = Math.sin(angle);
-			ItemStack one = ammo.copyWithCount(1);
-			Arrow arrow = new Arrow(level, this.mob, one, bow);
-			if (volley) {
-				arrow.addTag(SkeletonVolley.VOLLEY_TAG);
-				arrow.igniteForTicks(FLAME_TICKS);
-			} else {
-				arrow.addTag(SkeletonVolley.SLOW_TAG);
-			}
-			double yd = target.getY(TARGET_AIM_HEIGHT) - arrow.getY();
-			Projectile.spawnProjectileUsingShoot(
-				arrow, level, one, xd * cos - zd * sin, yd + lift, xd * sin + zd * cos, POWER, UNCERTAINTY
-			);
-			if (level.getEntity(arrow.getUUID()) == arrow) {
-				arrows.add(arrow.getUUID());
-				velocities.add(arrow.getDeltaMovement());
-			}
-		}
-
-		ammo.shrink(count);
-		this.mob.playSound(
-			SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F / (this.mob.getRandom().nextFloat() * 0.4F + 0.8F)
-		);
+	private void loose(final LivingEntity target, final boolean volley) {
+		List<UUID> arrows = ArcherKit.release(this.mob, arrow -> {
+			double xd = target.getX() - this.mob.getX();
+			double zd = target.getZ() - this.mob.getZ();
+			double lift = Math.sqrt(xd * xd + zd * zd) * BALLISTIC_LIFT;
+			return new Vec3(xd, target.getY(TARGET_AIM_HEIGHT) - arrow.getY() + lift, zd);
+		}, POWER, UNCERTAINTY, volley);
 		if (volley) {
-			SkeletonVolley.recorder().volley(this.mob, arrows, velocities);
 			StellaMobs.LOGGER.info(
 				"[BEHAVIOR] test=skeletonVolley VOLLEY tick={} arrows={} target={}",
 				this.mob.tickCount, arrows.size(), String.format(Locale.ROOT, "%.1f", Math.sqrt(this.mob.distanceToSqr(target)))
 			);
-		} else {
-			SkeletonVolley.recorder().shot(this.mob, arrows);
 		}
 	}
 }
