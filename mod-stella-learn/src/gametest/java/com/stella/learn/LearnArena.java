@@ -8,8 +8,11 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -20,6 +23,8 @@ final class LearnArena {
 	static final int SPAWN_Y = 3;
 	static final float PLAYER_HEALTH = 10000.0F;
 	private static final int SIZE = 48;
+	/** Space between tests: a floor this wide overlaps its neighbours otherwise, and a mob targets the wrong test's player. */
+	static final int PADDING = 64;
 
 	private LearnArena() {
 	}
@@ -61,6 +66,16 @@ final class LearnArena {
 		Vec3 at = helper.absoluteVec(new Vec3(x, 1.0, z));
 		player.setPos(at.x, at.y, at.z);
 		return player;
+	}
+
+	/** Raises a shield in the player's off hand and keeps it raised, since the mock player never ticks its own item use. */
+	static void raiseShield(final ServerPlayer player) {
+		player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.SHIELD));
+		player.startUsingItem(InteractionHand.OFF_HAND);
+	}
+
+	static void lowerShield(final ServerPlayer player) {
+		player.stopUsingItem();
 	}
 
 	/** Sets the mob's target every tick, as a fight would, and lifts the player's damage immunity. */

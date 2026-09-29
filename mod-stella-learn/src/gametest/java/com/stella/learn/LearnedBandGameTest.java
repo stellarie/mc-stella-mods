@@ -44,7 +44,7 @@ public class LearnedBandGameTest {
 		}
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void aFullRusherPushesTheNearBandOutByTheGain(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -61,7 +61,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void theBandKeepsItsWidthWhenItMoves(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -76,7 +76,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void halfARusherPushesHalfAsFar(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -91,7 +91,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void aPlayerWhoNeverRushesLeavesTheBandAlone(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -105,7 +105,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void aForgottenRushReturnsTheBand(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -128,7 +128,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	@GameTest(maxTicks = MAX_TICKS, padding = LearnArena.PADDING)
 	public void aMeleeMobIsNotGivenABand(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 12.5, 12.5);
@@ -144,7 +144,7 @@ public class LearnedBandGameTest {
 	}
 
 	/** The mobs mod picks each flee spot at random and rests 40 ticks between tries, so the test waits for one that works. */
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 400, padding = LearnArena.PADDING)
 	public void anArcherBacksOffFromARusher(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		// Eight blocks: inside the widened near band of 11, outside the plain one of 5, with room to back off.
@@ -161,7 +161,7 @@ public class LearnedBandGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 400, padding = LearnArena.PADDING)
 	public void anArcherStaysPutForAPlayerWhoNeverRushes(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer shooter = LearnArena.player(helper, 32.5, 24.5);
