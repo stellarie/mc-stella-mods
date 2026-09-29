@@ -320,4 +320,17 @@ public class LearnLogGameTest {
 		helper.assertTrue(!lines.isEmpty(), "loading the config logged nothing");
 		helper.succeed();
 	}
+
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void theProfileCommandIsRegisteredAndReportsToAPlayer(final GameTestHelper helper) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+		ServerPlayer player = LearnArena.player(helper, 24.5, 24.5);
+		record(player, Habit.MELEE, 2);
+		com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
+		boolean registered = dispatcher.getRoot().getChild("stellalearn") != null;
+		int result = registered ? dispatcher.execute("stellalearn profile", player.createCommandSourceStack()) : -1;
+		StellaLearn.LOGGER.info("[BEHAVIOR] test=theProfileCommandIsRegisteredAndReportsToAPlayer RESULT registered={} result={}", registered, result);
+		helper.assertTrue(registered, "the stellalearn command is not registered");
+		helper.assertTrue(result == ProfileReport.describe(player).size(), "the command reported " + result + " lines");
+		helper.succeed();
+	}
 }

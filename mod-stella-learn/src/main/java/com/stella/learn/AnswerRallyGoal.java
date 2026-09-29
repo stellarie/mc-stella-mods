@@ -36,11 +36,23 @@ public final class AnswerRallyGoal extends Goal {
 	@Override
 	public void start() {
 		this.untilRepath = 0;
+		Vec3 slot = Rally.slotOf(this.mob);
+		CalloutBoard.Active held = CalloutBoard.active(this.mob);
+		if (slot != null && held != null) {
+			LearnLog.info("learnRally", "WALK", LearnLog.who(this.mob) + " type=" + held.callout().type() + " slot=" + Rally.text(slot)
+				+ " distance=" + LearnLog.num(this.mob.position().distanceTo(slot)));
+		}
 	}
 
 	@Override
 	public void stop() {
 		this.mob.getNavigation().stop();
+		Vec3 slot = Rally.slotOf(this.mob);
+		if (slot != null) {
+			boolean arrived = this.mob.position().distanceTo(slot) <= ARRIVED;
+			LearnLog.info("learnRally", arrived ? "ARRIVE" : "EXPIRE", LearnLog.who(this.mob) + " slot=" + Rally.text(slot)
+				+ " distance=" + LearnLog.num(this.mob.position().distanceTo(slot)));
+		}
 	}
 
 	@Override

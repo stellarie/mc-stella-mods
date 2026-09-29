@@ -47,6 +47,7 @@ public final class CalloutKits {
 			@Override
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				mob.setTarget(player);
+				effect("focus", mob, callout, "target=player");
 			}
 		});
 		CalloutTypes.register(BACK_OFF, new CalloutHandler() {
@@ -59,7 +60,9 @@ public final class CalloutKits {
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				Vec3 away = new Vec3(mob.getX() - player.getX(), 0.0, mob.getZ() - player.getZ());
 				away = away.lengthSqr() < 1.0E-6 ? new Vec3(1.0, 0.0, 0.0) : away.normalize();
-				((AttachmentTarget) mob).setAttached(Rally.SLOT, player.position().add(away.scale(BACK_OFF_DISTANCE)));
+				Vec3 slot = player.position().add(away.scale(BACK_OFF_DISTANCE));
+				((AttachmentTarget) mob).setAttached(Rally.SLOT, slot);
+				effect("back_off", mob, callout, "slot=" + Rally.text(slot) + " from=" + LearnLog.num(mob.distanceTo(player)));
 			}
 		});
 		CalloutTypes.register(HEAL, new CalloutHandler() {
@@ -78,8 +81,10 @@ public final class CalloutKits {
 
 				if (mob instanceof Witch) {
 					caller.heal(HEAL_AMOUNT);
+					effect("heal", mob, callout, "amount=" + LearnLog.num(HEAL_AMOUNT) + " via=witch");
 				} else {
 					SpellsBridge.support(mob);
+					effect("heal", mob, callout, "via=spell");
 				}
 			}
 		});
@@ -96,8 +101,10 @@ public final class CalloutKits {
 				Holder<MobEffect> effect = effectOf(callout);
 				if (caller != null && effect != null && isCaster(mob)) {
 					caller.addEffect(new MobEffectInstance(effect, BUFF_TICKS, 0));
+					effect("buff", mob, callout, "effect=" + callout.detail() + " ticks=" + BUFF_TICKS + " via=caster");
 				} else if (caller != null) {
 					SpellsBridge.support(mob);
+					effect("buff", mob, callout, "via=spell");
 				}
 			}
 		});
@@ -112,11 +119,18 @@ public final class CalloutKits {
 				Holder<MobEffect> effect = effectOf(callout);
 				if (effect != null && isCaster(mob)) {
 					player.addEffect(new MobEffectInstance(effect, DEBUFF_TICKS, 0));
+					effect("debuff", mob, callout, "effect=" + callout.detail() + " ticks=" + DEBUFF_TICKS + " via=caster " + LearnLog.who(player));
 				} else {
 					SpellsBridge.strike(mob, player);
+					effect("debuff", mob, callout, "via=spell " + LearnLog.who(player));
 				}
 			}
 		});
+	}
+
+	/** One line for what a receiver did once it accepted, so a log shows the effect and not only the answer. */
+	private static void effect(final String type, final Mob receiver, final Callout callout, final String detail) {
+		LearnLog.info("learnCallout", "EFFECT", "type=" + type + " " + LearnLog.who(receiver) + " caller=" + callout.caller() + " " + detail);
 	}
 
 	private static boolean isCaster(final Mob mob) {

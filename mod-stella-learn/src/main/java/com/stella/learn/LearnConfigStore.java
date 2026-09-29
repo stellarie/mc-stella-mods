@@ -68,9 +68,25 @@ public final class LearnConfigStore {
 			}
 
 			config = LearnConfig.parse(Files.readString(path, StandardCharsets.UTF_8));
+			logLoaded(path);
 		} catch (IOException exception) {
 			StellaLearn.LOGGER.warn("Could not read {}; using the defaults: {}", path, exception.getMessage());
 			config = LearnConfig.defaults();
 		}
+	}
+
+	/** One line naming every value in force, so a log shows what a server is running on. */
+	private static void logLoaded(final Path path) {
+		LearnConfig c = config;
+		LearnLog.info(c, "learnConfig", "LOAD", "path=" + path
+			+ " callout_radius=" + LearnLog.num(c.calloutRadius()) + " max_responders=" + c.maxResponders()
+			+ " callout_cooldown_ticks=" + c.calloutCooldownTicks() + " profile_half_life_ticks=" + c.profileHalfLifeTicks()
+			+ " rush_band_gain=" + LearnLog.num(c.rushBandGain()) + " rush_saturation=" + LearnLog.num(c.rushSaturation())
+			+ " shield_saturation=" + LearnLog.num(c.shieldSaturation()) + " shield_threshold=" + LearnLog.num(c.shieldThreshold())
+			+ " shield_patience_ticks=" + c.shieldPatienceTicks() + " ranged_saturation=" + LearnLog.num(c.rangedSaturation())
+			+ " cover_threshold=" + LearnLog.num(c.coverThreshold()) + " retreat_saturation=" + LearnLog.num(c.retreatSaturation())
+			+ " choke_threshold=" + LearnLog.num(c.chokeThreshold()) + " choke_group=" + c.chokeGroup()
+			+ " choke_patience_ticks=" + c.chokePatienceTicks() + " behavior_log=" + c.behaviorLog()
+			+ " log_summary_ticks=" + c.logSummaryTicks());
 	}
 }

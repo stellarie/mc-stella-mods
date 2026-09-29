@@ -52,9 +52,12 @@ public final class SpellsBridge {
 		static void support(final Mob mob) {
 			for (String spell : MobSpells.supportOf(mob)) {
 				if (MobSpells.support(mob, spell)) {
+					LearnLog.info("learnSpells", "SUPPORT", LearnLog.who(mob) + " spell=" + spell);
 					return;
 				}
 			}
+
+			LearnLog.info("learnSpells", "SUPPORT_NONE", LearnLog.who(mob) + " spells=" + MobSpells.supportOf(mob));
 		}
 
 		static boolean canStrike(final Mob mob, final ServerPlayer player) {
@@ -62,7 +65,9 @@ public final class SpellsBridge {
 		}
 
 		static void strike(final Mob mob, final ServerPlayer player) {
-			MobSpells.castAt(mob, MobSpells.offensiveOf(mob).get(0), player);
+			String spell = MobSpells.offensiveOf(mob).get(0);
+			boolean cast = MobSpells.castAt(mob, spell, player);
+			LearnLog.info("learnSpells", "STRIKE", LearnLog.who(mob) + " " + LearnLog.who(player) + " spell=" + spell + " cast=" + cast);
 		}
 	}
 }
