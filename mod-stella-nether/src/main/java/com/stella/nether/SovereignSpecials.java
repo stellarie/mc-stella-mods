@@ -72,13 +72,17 @@ public final class SovereignSpecials {
 	public static final int DIVE_BURN_SECONDS = 8;
 	public static final double DIVE_FIRE_CHANCE = 0.35;
 
-	/** The vortex: twelve seconds pulling players in over a 32 by 32 square, while flames fly in from its edge. */
-	public static final int VORTEX_TICKS = 12 * 20;
-	public static final double VORTEX_HALF = 16.0;
-	/** The pull added toward the centre each tick, and the most it builds to. */
-	public static final double VORTEX_PULL = 0.04;
-	public static final double VORTEX_PULL_MAX = 0.3;
-	/** Flames fly inward faster than anyone is pulled. */
+	/**
+	 * The vortex: for fifteen seconds the Sovereign channels behind a shield, slowing every player near it, while
+	 * flames fly in to it from a sphere all around. Broken in time, the shield leaves it staggered; held to the end,
+	 * it bursts in a sphere that breaks the ground and throws everyone back.
+	 */
+	public static final int VORTEX_TICKS = 15 * 20;
+	/** The sphere the flames set out from, the reach of its slowing, and the reach of its burst. */
+	public static final double VORTEX_RADIUS = 16.0;
+	/** Slowness III, on every player within the sphere while it channels. */
+	public static final int VORTEX_SLOW_AMPLIFIER = 2;
+	private static final int VORTEX_SLOW_TICKS = 40;
 	public static final double VORTEX_BULLET_SPEED = 0.35;
 	public static final int VORTEX_BULLETS_EVERY = 4;
 	public static final int VORTEX_BULLETS_EACH = 3;
@@ -86,14 +90,14 @@ public final class SovereignSpecials {
 	public static final double VORTEX_HIT_REACH = 0.3;
 	public static final float VORTEX_BULLET_DAMAGE = 4.0F;
 	public static final int VORTEX_BULLET_BURN_SECONDS = 4;
-	/** After the pull, a shield of this much health, in the Sovereign's whole health. */
-	public static final double VORTEX_SHIELD = 200.0;
-	public static final int VORTEX_SUMMON_EVERY = 5 * 20;
-	public static final int VORTEX_SUMMON_MIN = 2;
-	public static final int VORTEX_SUMMON_MAX = 4;
-	/** Living shield summons at most, so a shield nobody breaks cannot fill the fortress. */
-	public static final int VORTEX_SUMMON_CAP = 12;
+	/** The shield it channels behind, in its whole health. */
+	public static final double VORTEX_SHIELD = 100.0;
+	/** How long a Sovereign whose shield is broken stands staggered, neither moving nor attacking. */
+	public static final int VORTEX_STAGGER_TICKS = 8 * 20;
+	public static final float VORTEX_BLAST_DAMAGE = 30.0F;
+	public static final float VORTEX_BLAST_KNOCKBACK = 3.0F;
 	public static final net.minecraft.resources.Identifier VORTEX_SHIELD_ID = StellaNether.id("vortex_shield");
+	private static final int SHIELD_COLOUR = 0x5AA0FF;
 
 	public static final double WAVE_RADIUS = 16.0;
 	public static final double WAVE_SPEED = 1.0;
@@ -145,12 +149,15 @@ public final class SovereignSpecials {
 		private final List<BlockPos> flames = new ArrayList<>();
 		/** Where a nova's flames set out from. */
 		private Vec3 novaFrom = Vec3.ZERO;
-		/** The vortex's shield is up, where it stands, when it rose, and each wave it has called. */
+		/** The vortex: its shield, where it holds the Sovereign, its centre, when it staggered, and its burst. */
 		private boolean shield;
 		private Vec3 shieldAt = Vec3.ZERO;
-		private int shieldAge = -1;
-		private final List<List<Blaze>> waves = new ArrayList<>();
-		private final List<Vec3> summonedAt = new ArrayList<>();
+		private Vec3 vortexCentre = Vec3.ZERO;
+		private int staggeredAt = -1;
+		private boolean blasted;
+		private int blastBroken;
+		/** Every player the vortex slowed. */
+		private final Set<UUID> slowed = new HashSet<>();
 		/** Every flame the vortex has sent in. */
 		private final List<Bullet> bullets = new ArrayList<>();
 		private int age;
@@ -216,16 +223,28 @@ public final class SovereignSpecials {
 			return this.shield;
 		}
 
-		public int shieldAge() {
-			return this.shieldAge;
+		public Vec3 shieldAt() {
+			return this.shieldAt;
 		}
 
-		public List<List<Blaze>> waves() {
-			return this.waves;
+		public Vec3 vortexCentre() {
+			return this.vortexCentre;
 		}
 
-		public List<Vec3> summonedAt() {
-			return this.summonedAt;
+		public int staggeredAt() {
+			return this.staggeredAt;
+		}
+
+		public boolean blasted() {
+			return this.blasted;
+		}
+
+		public int blastBroken() {
+			return this.blastBroken;
+		}
+
+		public Set<UUID> slowed() {
+			return this.slowed;
 		}
 
 		public List<Bullet> bullets() {
@@ -275,12 +294,15 @@ public final class SovereignSpecials {
 	/** How a vortex flame ended: it reached the centre, or it hit a player. */
 	public enum BulletEnd {
 		CENTRE,
-		HIT
+		HIT,
+		/** The channel ended with it still in flight. */
+		FADED
 	}
 
 	/** One flame the vortex sends in from its edge: blue bursts where it hits, yellow burns. */
 	public static final class Bullet {
 		private Vec3 position;
+		private final Vec3 from;
 		private final boolean blue;
 		private final double spawnRadius;
 		private @Nullable BulletEnd end;
@@ -288,12 +310,17 @@ public final class SovereignSpecials {
 
 		Bullet(final Vec3 position, final boolean blue, final double spawnRadius) {
 			this.position = position;
+			this.from = position;
 			this.blue = blue;
 			this.spawnRadius = spawnRadius;
 		}
 
 		public Vec3 position() {
 			return this.position;
+		}
+
+		public Vec3 from() {
+			return this.from;
 		}
 
 		public boolean blue() {
@@ -379,10 +406,14 @@ public final class SovereignSpecials {
 		return control != null && control.active != null && !control.active.done;
 	}
 
-	/** Whether the Sovereign stands behind the vortex's shield: it can neither move nor attack meanwhile. */
+	/**
+	 * Whether the vortex holds the Sovereign: channelling behind its shield, or staggered once it broke. It can
+	 * neither move nor attack meanwhile.
+	 */
 	public static boolean shielded(final Blaze blaze) {
 		Control control = CONTROLS.get(blaze.getUUID());
-		return control != null && control.active != null && control.active.shield && !control.active.done;
+		Cast active = control == null ? null : control.active;
+		return active != null && active.special == Special.VORTEX && !active.done && (active.shield || active.staggeredAt >= 0);
 	}
 
 	public static boolean airborne(final Blaze blaze) {
@@ -542,71 +573,89 @@ public final class SovereignSpecials {
 
 	private static void vortex(final ServerLevel raid, final Cast cast) {
 		Blaze blaze = cast.blaze;
-		Vec3 centre = cast.home;
-		if (cast.age < VORTEX_TICKS) {
-			for (ServerPlayer player : raid.players()) {
-				if (!player.isAlive() || player.isSpectator() || player.isCreative() || !inSquare(player.position(), centre)) {
-					continue;
-				}
-				Vec3 in = new Vec3(centre.x - player.getX(), 0.0, centre.z - player.getZ());
-				if (in.lengthSqr() < 1.0E-4) {
-					continue;
-				}
-				Vec3 motion = player.getDeltaMovement().add(in.normalize().scale(VORTEX_PULL));
-				Vec3 flat = new Vec3(motion.x, 0.0, motion.z);
-				if (flat.length() > VORTEX_PULL_MAX) {
-					flat = flat.normalize().scale(VORTEX_PULL_MAX);
-				}
-				player.setDeltaMovement(flat.x, motion.y, flat.z);
-				// A player's own client moves it, so the pull is sent to it.
-				player.needsSync = true;
-				cast.pushes.put(player.getUUID(), in.normalize().scale(VORTEX_PULL));
-			}
-			if (cast.age % VORTEX_BULLETS_EVERY == 0) {
-				RandomSource random = blaze.getRandom();
-				for (int i = 0; i < VORTEX_BULLETS_EACH; i++) {
-					vortexBullet(cast, random.nextDouble() * 2.0 * Math.PI, random.nextBoolean());
-				}
-			}
-			for (int i = 0; i < 16; i++) {
-				double angle = 2.0 * Math.PI * i / 16 + cast.age * 0.05;
-				raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, centre.x + Math.cos(angle) * VORTEX_HALF, centre.y + 1.0, centre.z + Math.sin(angle) * VORTEX_HALF,
-					1, 0.0, 0.2, 0.0, 0.0);
-			}
-		} else if (!cast.shield) {
+		if (cast.age == 0) {
+			cast.vortexCentre = new Vec3(blaze.getX(), blaze.getY() + blaze.getBbHeight() * 0.5, blaze.getZ());
 			raiseShield(raid, cast);
 		}
-		moveBullets(raid, cast);
-		if (cast.shield) {
-			holdShield(raid, cast);
+		holdStill(cast);
+		if (cast.staggeredAt >= 0) {
+			raid.sendParticles(ParticleTypes.CRIT, blaze.getX(), blaze.getY() + blaze.getBbHeight() + 0.3, blaze.getZ(), 3, 0.6, 0.1, 0.6, 0.0);
+			if (cast.age - cast.staggeredAt >= VORTEX_STAGGER_TICKS) {
+				cast.lastActionAge = cast.age;
+				cast.done = true;
+				StellaNether.LOGGER.info("[NETHER] sovereign stagger over after={}", cast.age - cast.staggeredAt);
+			}
+			return;
 		}
+		if (blaze.getAbsorptionAmount() <= 0.0F) {
+			// Broken while it channelled: the vortex fails and the Sovereign reels.
+			dropShield(blaze);
+			cast.shield = false;
+			cast.staggeredAt = cast.age;
+			fadeBullets(cast);
+			raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_DEACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
+			raid.sendParticles(ParticleTypes.ELECTRIC_SPARK, blaze.getX(), blaze.getY() + blaze.getBbHeight() * 0.5, blaze.getZ(), 60, 1.0, 1.5, 1.0, 0.2);
+			StellaNether.LOGGER.info("[NETHER] sovereign shield broken at={} staggered", cast.age);
+			return;
+		}
+		if (cast.age >= VORTEX_TICKS) {
+			// Held to the end: it bursts.
+			dropShield(blaze);
+			cast.shield = false;
+			fadeBullets(cast);
+			vortexBlast(raid, cast);
+			cast.lastActionAge = cast.age;
+			cast.done = true;
+			return;
+		}
+		showShield(raid, cast);
+		if (cast.age % 10 == 0) {
+			for (ServerPlayer player : raid.players()) {
+				if (player.isAlive() && !player.isSpectator() && !player.isCreative() && player.position().distanceTo(cast.vortexCentre) <= VORTEX_RADIUS) {
+					player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, VORTEX_SLOW_TICKS, VORTEX_SLOW_AMPLIFIER), blaze);
+					cast.slowed.add(player.getUUID());
+				}
+			}
+		}
+		if (cast.age % VORTEX_BULLETS_EVERY == 0) {
+			RandomSource random = blaze.getRandom();
+			for (int i = 0; i < VORTEX_BULLETS_EACH; i++) {
+				// A direction evenly over the whole sphere: above, below and all around.
+				Vec3 direction = new Vec3(random.nextGaussian(), random.nextGaussian(), random.nextGaussian());
+				vortexBullet(cast, direction.lengthSqr() < 1.0E-6 ? new Vec3(0.0, 1.0, 0.0) : direction, random.nextBoolean());
+			}
+		}
+		moveBullets(raid, cast);
 	}
 
-	static boolean inSquare(final Vec3 at, final Vec3 centre) {
-		return Math.abs(at.x - centre.x) <= VORTEX_HALF && Math.abs(at.z - centre.z) <= VORTEX_HALF && Math.abs(at.y - centre.y) <= VORTEX_HALF;
-	}
-
-	/** Sends one flame in from the vortex's edge at an angle. Test hook, and the vortex's own. */
-	static Bullet vortexBullet(final Cast cast, final double angle, final boolean blue) {
-		Vec3 centre = cast.home;
-		Vec3 at = new Vec3(centre.x + Math.cos(angle) * VORTEX_HALF, centre.y + 1.0, centre.z + Math.sin(angle) * VORTEX_HALF);
-		Bullet bullet = new Bullet(at, blue, horizontal(at, centre));
+	/** Sends one flame in to the vortex's centre from its sphere, along a direction. Test hook, and the vortex's own. */
+	static Bullet vortexBullet(final Cast cast, final Vec3 direction, final boolean blue) {
+		Vec3 at = cast.vortexCentre.add(direction.normalize().scale(VORTEX_RADIUS));
+		Bullet bullet = new Bullet(at, blue, at.distanceTo(cast.vortexCentre));
 		cast.bullets.add(bullet);
 		return bullet;
 	}
 
+	private static void fadeBullets(final Cast cast) {
+		for (Bullet bullet : cast.bullets) {
+			if (bullet.end == null) {
+				bullet.end = BulletEnd.FADED;
+			}
+		}
+	}
+
 	private static void moveBullets(final ServerLevel raid, final Cast cast) {
-		Vec3 centre = cast.home;
+		Vec3 centre = cast.vortexCentre;
 		for (Bullet bullet : cast.bullets) {
 			if (bullet.end != null) {
 				continue;
 			}
-			Vec3 in = new Vec3(centre.x - bullet.position.x, 0.0, centre.z - bullet.position.z);
+			Vec3 in = centre.subtract(bullet.position);
 			double left = in.length();
 			if (left <= VORTEX_BULLET_SPEED) {
-				bullet.position = new Vec3(centre.x, bullet.position.y, centre.z);
+				bullet.position = centre;
 				bullet.end = BulletEnd.CENTRE;
-				raid.sendParticles(bullet.blue ? ParticleTypes.SOUL_FIRE_FLAME : ParticleTypes.FLAME, centre.x, bullet.position.y, centre.z, 4, 0.2, 0.2, 0.2, 0.02);
+				raid.sendParticles(bullet.blue ? ParticleTypes.SOUL_FIRE_FLAME : ParticleTypes.FLAME, centre.x, centre.y, centre.z, 4, 0.2, 0.2, 0.2, 0.02);
 				continue;
 			}
 			bullet.position = bullet.position.add(in.scale(VORTEX_BULLET_SPEED / left));
@@ -633,11 +682,10 @@ public final class SovereignSpecials {
 		}
 	}
 
-	/** The pull ends: the Sovereign takes a shield of {@link #VORTEX_SHIELD}, in its whole health, and stands still behind it. */
+	/** The channel begins: a shield of {@link #VORTEX_SHIELD}, in its whole health, as absorption. */
 	private static void raiseShield(final ServerLevel raid, final Cast cast) {
 		Blaze blaze = cast.blaze;
-		Double divisor = blaze.getAttached(BlazeSovereign.DIVISOR);
-		double points = VORTEX_SHIELD / (divisor == null || divisor < 1.0 ? 1.0 : divisor);
+		double points = shieldPoints(blaze);
 		net.minecraft.world.entity.ai.attributes.AttributeInstance max = blaze.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION);
 		if (max != null) {
 			max.addOrReplacePermanentModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(VORTEX_SHIELD_ID, points,
@@ -646,79 +694,99 @@ public final class SovereignSpecials {
 		blaze.setAbsorptionAmount((float) points);
 		cast.shield = true;
 		cast.shieldAt = blaze.position();
-		cast.shieldAge = cast.age;
 		raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
-		StellaNether.LOGGER.info("[NETHER] sovereign shield up points={} whole={}", points, VORTEX_SHIELD);
+		StellaNether.LOGGER.info("[NETHER] sovereign vortex shield up points={} whole={}", points, VORTEX_SHIELD);
 	}
 
-	private static void holdShield(final ServerLevel raid, final Cast cast) {
-		Blaze blaze = cast.blaze;
-		if (blaze.getAbsorptionAmount() <= 0.0F) {
-			net.minecraft.world.entity.ai.attributes.AttributeInstance max = blaze.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION);
-			if (max != null) {
-				max.removeModifier(VORTEX_SHIELD_ID);
-			}
-			cast.shield = false;
-			cast.lastActionAge = cast.age;
-			cast.done = true;
-			raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_DEACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
-			StellaNether.LOGGER.info("[NETHER] sovereign shield broken waves={}", cast.waves.size());
-			return;
+	/** The shield in absorption points: its whole-health size through the Sovereign's divisor. */
+	private static double shieldPoints(final Blaze blaze) {
+		Double divisor = blaze.getAttached(BlazeSovereign.DIVISOR);
+		return VORTEX_SHIELD / (divisor == null || divisor < 1.0 ? 1.0 : divisor);
+	}
+
+	private static void dropShield(final Blaze blaze) {
+		net.minecraft.world.entity.ai.attributes.AttributeInstance max = blaze.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION);
+		if (max != null) {
+			max.removeModifier(VORTEX_SHIELD_ID);
 		}
-		// It cannot move while the shield holds.
+		blaze.setAbsorptionAmount(0.0F);
+	}
+
+	/** It cannot move while it channels or reels. */
+	private static void holdStill(final Cast cast) {
+		Blaze blaze = cast.blaze;
 		blaze.setDeltaMovement(Vec3.ZERO);
 		blaze.getNavigation().stop();
 		blaze.setPos(cast.shieldAt.x, cast.shieldAt.y, cast.shieldAt.z);
-		double y = blaze.getY() + blaze.getBbHeight() * 0.5;
-		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, blaze.getX(), y, blaze.getZ(), 4, blaze.getBbWidth(), blaze.getBbHeight() * 0.5, blaze.getBbWidth(), 0.0);
-		if ((cast.age - cast.shieldAge) % VORTEX_SUMMON_EVERY == 0) {
-			summonWave(raid, cast);
-		}
 	}
 
-	private static void summonWave(final ServerLevel raid, final Cast cast) {
+	/** The shield drawn as a shell of blue motes around it, fewer and smaller as it wears down. */
+	private static void showShield(final ServerLevel raid, final Cast cast) {
+		if (cast.age % 2 != 0) {
+			return;
+		}
 		Blaze blaze = cast.blaze;
-		long alive = cast.waves.stream().flatMap(List::stream).filter(Blaze::isAlive).count();
+		double left = Math.max(0.0, Math.min(1.0, blaze.getAbsorptionAmount() / shieldPoints(blaze)));
+		int motes = 2 + (int) Math.round(28 * left);
+		net.minecraft.core.particles.DustParticleOptions dust = new net.minecraft.core.particles.DustParticleOptions(SHIELD_COLOUR, (float) (0.6 + 1.4 * left));
+		double radius = blaze.getBbHeight() * 0.6;
 		RandomSource random = blaze.getRandom();
-		int count = VORTEX_SUMMON_MIN + random.nextInt(VORTEX_SUMMON_MAX - VORTEX_SUMMON_MIN + 1);
-		List<Blaze> wave = new ArrayList<>();
-		for (int i = 0; i < count && alive + wave.size() < VORTEX_SUMMON_CAP; i++) {
-			BlockPos spot = groundIn(raid, cast.home, random);
-			if (spot == null) {
+		for (int i = 0; i < motes; i++) {
+			Vec3 on = new Vec3(random.nextGaussian(), random.nextGaussian(), random.nextGaussian());
+			if (on.lengthSqr() < 1.0E-6) {
 				continue;
 			}
-			Blaze child = EntityTypes.BLAZE.create(raid, EntitySpawnReason.MOB_SUMMONED);
-			if (child == null) {
-				continue;
-			}
-			// Ordinary blazes: the tag keeps the mobs mod's elite and boss rolls off them.
-			child.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
-			child.snapTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5, random.nextFloat() * 360.0F, 0.0F);
-			child.setTarget(cast.target);
-			if (raid.addFreshEntity(child)) {
-				wave.add(child);
-				cast.summonedAt.add(child.position());
-				raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, child.getX(), child.getY() + 1.0, child.getZ(), 20, 0.4, 0.8, 0.4, 0.02);
-			}
+			Vec3 at = cast.vortexCentre.add(on.normalize().scale(radius));
+			raid.sendParticles(dust, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
 		}
-		cast.waves.add(wave);
-		StellaNether.LOGGER.info("[NETHER] sovereign shield wave={} called={}", cast.waves.size(), wave.size());
 	}
 
-	/** A spot in the vortex's square with a floor and room for a blaze, if one is found in a few tries. */
-	private static @Nullable BlockPos groundIn(final ServerLevel raid, final Vec3 centre, final RandomSource random) {
-		for (int tries = 0; tries < 16; tries++) {
-			BlockPos column = BlockPos.containing(centre.x + (random.nextDouble() * 2.0 - 1.0) * VORTEX_HALF, centre.y, centre.z + (random.nextDouble() * 2.0 - 1.0) * VORTEX_HALF);
-			for (int dy = 4; dy >= -8; dy--) {
-				BlockPos feet = column.above(dy);
-				BlockPos floor = feet.below();
-				if (raid.getBlockState(floor).isFaceSturdy(raid, floor, Direction.UP) && raid.getBlockState(feet).getCollisionShape(raid, feet).isEmpty()
-					&& raid.getBlockState(feet.above()).getCollisionShape(raid, feet.above()).isEmpty() && raid.getFluidState(feet).isEmpty()) {
-					return feet;
+	/** Held to the end: a sphere of {@link #VORTEX_RADIUS} breaks every breakable block and throws everyone back, hard. */
+	private static void vortexBlast(final ServerLevel raid, final Cast cast) {
+		Blaze blaze = cast.blaze;
+		Vec3 centre = cast.vortexCentre;
+		int reach = (int) Math.ceil(VORTEX_RADIUS);
+		BlockPos base = BlockPos.containing(centre);
+		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+		for (int dx = -reach; dx <= reach; dx++) {
+			for (int dy = -reach; dy <= reach; dy++) {
+				for (int dz = -reach; dz <= reach; dz++) {
+					at.set(base.getX() + dx, base.getY() + dy, base.getZ() + dz);
+					if (Vec3.atCenterOf(at).distanceToSqr(centre) > VORTEX_RADIUS * VORTEX_RADIUS) {
+						continue;
+					}
+					net.minecraft.world.level.block.state.BlockState state = raid.getBlockState(at);
+					// Liquids are left, and so is anything that cannot be broken.
+					if (state.isAir() || !state.getFluidState().isEmpty() || state.getDestroySpeed(raid, at) < 0.0F) {
+						continue;
+					}
+					raid.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+					cast.blastBroken++;
 				}
 			}
 		}
-		return null;
+		for (LivingEntity victim : raid.getEntitiesOfClass(LivingEntity.class, new AABB(centre, centre).inflate(VORTEX_RADIUS),
+			entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze))) {
+			Vec3 middle = victim.getBoundingBox().getCenter();
+			if (middle.distanceTo(centre) > VORTEX_RADIUS) {
+				continue;
+			}
+			Vec3 away = new Vec3(middle.x - centre.x, 0.0, middle.z - centre.z);
+			away = away.lengthSqr() < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : away.normalize();
+			double resist = 1.0 - victim.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE);
+			Vec3 push = new Vec3(away.x * VORTEX_BLAST_KNOCKBACK * resist, 0.8 * resist, away.z * VORTEX_BLAST_KNOCKBACK * resist);
+			cast.hits.add(victim.getUUID());
+			cast.pushes.put(victim.getUUID(), push);
+			victim.damageCooldownTime = 0;
+			victim.hurtServer(raid, raid.damageSources().mobAttack(blaze), VORTEX_BLAST_DAMAGE);
+			victim.setDeltaMovement(push);
+			victim.needsSync = true;
+		}
+		cast.blasted = true;
+		raid.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centre.x, centre.y, centre.z, 6, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, 0.0);
+		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, centre.x, centre.y, centre.z, 400, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, 0.3);
+		raid.playSound(null, BlockPos.containing(centre), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 10.0F, 0.5F);
+		StellaNether.LOGGER.info("[NETHER] sovereign vortex burst broken={} hit={}", cast.blastBroken, cast.hits.size());
 	}
 
 	private static void nova(final ServerLevel raid, final Cast cast) {

@@ -101,6 +101,9 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
 15. Every other blaze never flies up, closes in beyond 10 blocks, and backs off inside 5. **Done.**
 16. Requested 2026-09-29: the raid scales its own mobs, untouched by threat levels: 64 base health for every
     enemy (with the mode's strength on top), and 1,248 for the Sovereign. **Done.**
+17. Requested 2026-09-29, the vortex reworked: Slowness III on players near instead of the pull, flames from a
+    whole sphere, a 100 shield while it channels (drawn, fading as it wears), an 8 second stagger if broken in
+    time, and a 16 block sphere burst if not. **Done.**
 
 Each slice ships with headless game tests per `AGENTS.md`.
 
@@ -145,6 +148,10 @@ Each slice ships with headless game tests per `AGENTS.md`.
   the fortress. The vortex flames and pull act on players only.
 - Deviation (15): the blaze behaviour is the mobs mod's creature, but it is written in this mod as a mixin on
   the blaze, because this work is confined to its branch. It applies wherever this mod is installed.
+
+- Deviation (17): the request named 20 seconds to break the shield and 15 seconds to the burst. The channel
+  lasts 15 seconds, and breaking the shield at any point in it staggers the Sovereign; there is no window
+  after the burst. The shield's summoned blazes and the pull are gone.
 
 ## Open questions for oniichan
 
