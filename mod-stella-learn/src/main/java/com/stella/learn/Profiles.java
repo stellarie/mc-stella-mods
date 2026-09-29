@@ -23,6 +23,10 @@ public final class Profiles {
 		return profile == null ? PlayerProfile.EMPTY : profile;
 	}
 
+	public static void set(final ServerPlayer player, final PlayerProfile profile) {
+		((AttachmentTarget) player).setAttached(TYPE, profile);
+	}
+
 	public static double value(final ServerPlayer player, final Habit habit) {
 		return get(player).value(habit, LearnClock.now(), LearnConfigStore.get().profileHalfLifeTicks());
 	}

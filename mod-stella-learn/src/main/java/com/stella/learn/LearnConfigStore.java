@@ -14,11 +14,14 @@ public final class LearnConfigStore {
 			"callout_radius": %s,
 			"max_responders": %d,
 			"callout_cooldown_ticks": %d,
-			"profile_half_life_ticks": %d
+			"profile_half_life_ticks": %d,
+			"rush_band_gain": %s,
+			"rush_saturation": %s
 		}
 		""".formatted(
 		LearnConfig.DEFAULT_CALLOUT_RADIUS, LearnConfig.DEFAULT_MAX_RESPONDERS,
-		LearnConfig.DEFAULT_CALLOUT_COOLDOWN_TICKS, LearnConfig.DEFAULT_PROFILE_HALF_LIFE_TICKS
+		LearnConfig.DEFAULT_CALLOUT_COOLDOWN_TICKS, LearnConfig.DEFAULT_PROFILE_HALF_LIFE_TICKS,
+		LearnConfig.DEFAULT_RUSH_BAND_GAIN, LearnConfig.DEFAULT_RUSH_SATURATION
 	);
 	private static volatile LearnConfig config = LearnConfig.defaults();
 

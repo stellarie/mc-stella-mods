@@ -15,6 +15,8 @@ public final class StellaLearn implements ModInitializer {
 		LearnConfigStore.load();
 		Profiles.register();
 		HabitRecorder.register();
+		LearnedBand.register();
+		LearnGoals.register();
 	}
 
 	public static Identifier id(final String path) {

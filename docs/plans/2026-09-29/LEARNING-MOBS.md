@@ -83,7 +83,7 @@ name and its integration branch are open (see Open decisions).
 
 1. Scaffold: the mod, its dependency on mobs, and config loading. **Done 2026-09-29.** The empty profile attachment moved into slice 2, because an attachment with no fields has nothing to test.
 2. Profile: the attachment, the counters, the decay, and persistence across save and reload.
-3. First tactic: the skeleton archer's band shifts by the rush counter.
+3. First tactic: the skeleton archer's band shifts by the rush counter. **Done 2026-09-29** (ranged and magic mobs; a rusher pushes the near band out by up to 6 blocks).
 4. Shield tactics for the zombie and the skeleton.
 5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities.
 6. Callout types: position first, then focus fire, back off, heal, buff, debuff.
