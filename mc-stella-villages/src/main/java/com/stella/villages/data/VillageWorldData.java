@@ -32,6 +32,8 @@ public final class VillageWorldData extends SavedData {
 	/** Version 3 is a head, a witch and two melee Pillagers. */
 	public static final int ROSTER_VERSION = 3;
 	private static final int LEGACY_ROSTER_VERSION = 1;
+	/** Marks a village whose shop has seen no midnight yet. */
+	public static final long NO_MIDNIGHT = Long.MIN_VALUE;
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";
 	private static final ResourceKey<Level> DEFAULT_MISSION_DIMENSION = ResourceKey.create(
@@ -100,6 +102,20 @@ public final class VillageWorldData extends SavedData {
 
 	public Optional<VillageRecord> village(final UUID id) {
 		return Optional.ofNullable(this.villages.get(id));
+	}
+
+	/** Replaces a village's witch-shop offers. */
+	public void setShopOffers(final VillageRecord village, final List<ShopOffer> offers) {
+		village.shopOffers = List.copyOf(offers);
+		setDirty();
+	}
+
+	/** Records the midnight a village's shop last saw, so a reload or a clock jump rerolls it once at most. */
+	public void setShopMidnight(final VillageRecord village, final long midnight) {
+		if (village.shopMidnight != midnight) {
+			village.shopMidnight = midnight;
+			setDirty();
+		}
 	}
 
 	public void markRosterStarted(final VillageRecord village) {
@@ -285,6 +301,12 @@ public final class VillageWorldData extends SavedData {
 			.map(VillageWorldData::encodeThreat)
 			.forEach(threats::add);
 		tag.put("threats", threats);
+		ListTag shop = new ListTag();
+		village.shopOffers.stream().map(VillageWorldData::encodeShopOffer).forEach(shop::add);
+		tag.put("shop_offers", shop);
+		if (village.shopMidnight != NO_MIDNIGHT) {
+			tag.putLong("shop_midnight", village.shopMidnight);
+		}
 		return tag;
 	}
 
@@ -321,7 +343,30 @@ public final class VillageWorldData extends SavedData {
 			}
 		}
 
+		List<ShopOffer> offers = new ArrayList<>();
+		for (Tag offerTag : tag.getListOrEmpty("shop_offers")) {
+			if (offerTag instanceof CompoundTag offer) {
+				decodeShopOffer(offer).ifPresent(offers::add);
+			}
+		}
+		village.shopOffers = List.copyOf(offers);
+		village.shopMidnight = tag.getLongOr("shop_midnight", NO_MIDNIGHT);
 		return village;
+	}
+
+	private static CompoundTag encodeShopOffer(final ShopOffer offer) {
+		CompoundTag tag = new CompoundTag();
+		tag.putString("enchantment", offer.enchantment().toString());
+		tag.putInt("level", offer.level());
+		tag.putInt("price", offer.price());
+		return tag;
+	}
+
+	private static Optional<ShopOffer> decodeShopOffer(final CompoundTag tag) {
+		Identifier enchantment = Identifier.tryParse(tag.getStringOr("enchantment", ""));
+		int level = tag.getIntOr("level", 0);
+		int price = tag.getIntOr("price", 0);
+		return enchantment == null || level < 1 || price < 1 ? Optional.empty() : Optional.of(new ShopOffer(enchantment, level, price));
 	}
 
 	private static CompoundTag encodeMember(final MemberRecord member) {
@@ -395,6 +440,8 @@ public final class VillageWorldData extends SavedData {
 		private final Map<UUID, ThreatRecord> threats = new LinkedHashMap<>();
 		private boolean rosterStarted;
 		private int rosterVersion = ROSTER_VERSION;
+		private List<ShopOffer> shopOffers = List.of();
+		private long shopMidnight = NO_MIDNIGHT;
 
 		private VillageRecord(final UUID id, final ResourceKey<Level> dimension, final BlockPos anchor) {
 			this.id = id;
@@ -422,6 +469,16 @@ public final class VillageWorldData extends SavedData {
 			return this.rosterVersion;
 		}
 
+		/** The enchanted books the village witch sells; empty until a player first opens the shop. */
+		public List<ShopOffer> shopOffers() {
+			return this.shopOffers;
+		}
+
+		/** The last midnight this village's shop saw, or {@link #NO_MIDNIGHT} when it has seen none. */
+		public long shopMidnight() {
+			return this.shopMidnight;
+		}
+
 		public List<MemberRecord> members() {
 			return List.copyOf(this.members.values());
 		}
@@ -439,6 +496,10 @@ public final class VillageWorldData extends SavedData {
 		public MemberRecord withAlive(final boolean value) {
 			return new MemberRecord(this.id, this.role, this.lastPosition, value);
 		}
+	}
+
+	/** One enchanted book for sale: the enchantment's id, its level, and the price in emeralds. */
+	public record ShopOffer(Identifier enchantment, int level, int price) {
 	}
 
 	public record ThreatRecord(UUID attackerId, int outsideTicks) {

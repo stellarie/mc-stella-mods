@@ -41,7 +41,7 @@ import net.minecraft.world.level.block.Blocks;
 
 /**
  * With the spells mod, every village gets a witch by its bell: labelled, in enchanted diamond, one of the
- * village's own, so no golem, patrol or villager takes it for a foe. Without that mod, no witch comes. Each
+ * village's own, so no golem, patrol or villager takes it for a foe. Without that mod the witch still comes, but casts no spells. Each
  * test runs in a batch of its own, because the switch is shared by the whole server.
  */
 public class VillageWitchGameTest {
@@ -116,10 +116,10 @@ public class VillageWitchGameTest {
 		int members = PatrolTestSupport.patrols(helper).size();
 		PatrolTestSupport.result(test, "members=" + members + " witchNear="
 			+ (witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0) + " speed=" + speed + " strength=" + strength);
-		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT + 1 && speed != null && strength != null
+		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT && speed != null && strength != null
 			&& speed.getDuration() >= 6000 && strength.getDuration() >= 6000
 			&& witch.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
-			"the village witch did not join the eleven-member bell rally");
+			"the village witch did not join the four-member bell rally");
 		helper.succeed();
 	}
 
@@ -203,9 +203,18 @@ public class VillageWitchGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 220, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers(final GameTestHelper helper) {
-		String test = "villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers";
+	@GameTest
+	public void witchPotionTimersWaitOneHundredTicksBetweenThrows(final GameTestHelper helper) {
+		PatrolTestSupport.result("witchPotionTimersWaitOneHundredTicksBetweenThrows",
+			"interval=" + PatrolService.WITCH_POTION_INTERVAL_TICKS);
+		helper.assertTrue(PatrolService.WITCH_POTION_INTERVAL_TICKS == 100,
+			"the witch potion timers wait " + PatrolService.WITCH_POTION_INTERVAL_TICKS + " ticks, not 100");
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 260, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchSupportAndOffenseHaveSeparateFiveSecondTimers(final GameTestHelper helper) {
+		String test = "villageWitchSupportAndOffenseHaveSeparateFiveSecondTimers";
 		boolean loaded;
 		try {
 			VillageWitchKit.force(true);
@@ -228,6 +237,8 @@ public class VillageWitchGameTest {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		Vec3 friendly = witch.position().add(3.0, 0.0, 0.0);
 		player.setPos(friendly.x, friendly.y, friendly.z);
+		// A hurt player keeps needing a healing splash, so every support throw waits on the timer alone.
+		helper.onEachTick(() -> player.setHealth(1.0F));
 		Mob hostile = helper.spawnMob(EntityTypes.PILLAGER, 5, 2, 5).withNoFreeWill().spawn();
 		hostile.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(500.0);
 		hostile.setHealth(500.0F);
@@ -235,7 +246,7 @@ public class VillageWitchGameTest {
 		hostile.setPos(enemy.x, enemy.y, enemy.z);
 		var chunk = hostile.chunkPosition();
 		helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true);
-		helper.runAfterDelay(160, () -> {
+		helper.runAfterDelay(200, () -> {
 			List<PotionLaunch> launches = POTION_LAUNCHES.getOrDefault(witch.getUUID(), List.of());
 			List<Integer> support = launches.stream().filter(launch -> !launch.hostile()).map(PotionLaunch::tick).toList();
 			List<Integer> offense = launches.stream().filter(PotionLaunch::hostile).map(PotionLaunch::tick).toList();
@@ -300,9 +311,9 @@ public class VillageWitchGameTest {
 		});
 	}
 
-	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 240, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void villageWitchBuffsPlayersEveryTwoSeconds(final GameTestHelper helper) {
-		String test = "villageWitchBuffsPlayersEveryTwoSeconds";
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 340, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchBuffsPlayersEveryFiveSeconds(final GameTestHelper helper) {
+		String test = "villageWitchBuffsPlayersEveryFiveSeconds";
 		boolean loaded;
 		try {
 			VillageWitchKit.force(true);
@@ -339,12 +350,12 @@ public class VillageWitchGameTest {
 				strength[0] = helper.getTick();
 			}
 		});
-		helper.runAfterDelay(200, () -> {
-			boolean spaced = regen[0] >= 0 && speed[0] >= regen[0] + 35
-				&& strength[0] >= speed[0] + 35;
+		helper.runAfterDelay(300, () -> {
+			boolean spaced = regen[0] >= 0 && speed[0] >= regen[0] + PatrolService.WITCH_POTION_INTERVAL_TICKS - 5
+				&& strength[0] >= speed[0] + PatrolService.WITCH_POTION_INTERVAL_TICKS - 5;
 			PatrolTestSupport.result(test, "regenAt=" + regen[0] + " speedAt=" + speed[0]
 				+ " strengthAt=" + strength[0] + " spaced=" + spaced);
-			helper.assertTrue(spaced, "the witch did not buff the player every two seconds");
+			helper.assertTrue(spaced, "the witch did not buff the player every five seconds");
 			helper.succeed();
 		});
 	}
@@ -450,8 +461,8 @@ public class VillageWitchGameTest {
 	}
 
 	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void noWitchComesWithoutSpells(final GameTestHelper helper) {
-		String test = "noWitchComesWithoutSpells";
+	public void theVillageWitchComesEvenWithoutSpells(final GameTestHelper helper) {
+		String test = "theVillageWitchComesEvenWithoutSpells";
 		boolean loaded;
 		try {
 			VillageWitchKit.force(false);
@@ -466,7 +477,9 @@ public class VillageWitchGameTest {
 		int members = VillageWorldData.get(helper.getLevel()).village(PatrolTestSupport.villageId(helper)).map(village -> village.members().size()).orElse(0);
 		PatrolTestSupport.result(test, "witch=" + (witch != null) + " members=" + members);
 		helper.assertTrue(members > 0, "the village has no patrol, so the case proves nothing");
-		helper.assertTrue(witch == null, "a witch came without the spells mod");
+		helper.assertTrue(witch != null && VillageWitchKit.isVillageWitch(witch) && PatrolState.isMarked(witch),
+			"the village has no marked village witch when the spells mod is absent");
+		helper.assertTrue(members == PatrolService.PATROL_MEMBER_COUNT, "the roster holds " + members + " members");
 		helper.succeed();
 	}
 

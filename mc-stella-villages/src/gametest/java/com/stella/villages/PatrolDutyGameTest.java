@@ -241,7 +241,7 @@ public class PatrolDutyGameTest {
 			offered.addAll(offers);
 		}
 		PatrolTestSupport.result("aNemesisCanBeHostileOrAnIronGolem", "pool=" + pool.size() + " offered=" + offered.size() + " notMobs=" + notMobs);
-		helper.assertTrue(pool.contains(Identifier.parse("minecraft:iron_golem")) && pool.contains(Identifier.parse("minecraft:blaze"))
+		helper.assertTrue(pool.contains(Identifier.parse("minecraft:iron_golem")) && pool.contains(Identifier.parse("minecraft:husk"))
 			&& pool.contains(Identifier.parse("minecraft:warden")) && pool.contains(Identifier.parse("minecraft:zombie")), "the pool misses a common kind: " + pool);
 		helper.assertFalse(pool.contains(Identifier.parse("minecraft:ender_dragon"))
 			|| pool.contains(Identifier.parse("minecraft:cow"))

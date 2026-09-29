@@ -27,7 +27,7 @@ import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.phys.Vec3;
 
-/** Gives support and hostile splash potions separate two-second throw timers. */
+/** Gives support and hostile splash potions separate five-second throw timers. */
 public final class PatrolWitchPotionGoal extends Goal {
 	private record Choice(LivingEntity target, ItemStack potion, boolean hostile) { }
 	public interface Recorder {
