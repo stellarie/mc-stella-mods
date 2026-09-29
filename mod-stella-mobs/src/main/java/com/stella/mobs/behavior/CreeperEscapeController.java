@@ -144,6 +144,10 @@ public final class CreeperEscapeController {
 			return "noAI";
 		}
 
+		if (mob.entityTags().contains(com.stella.mobs.StellaMobs.MODEL_DRIVEN_TAG)) {
+			return "modelDriven";
+		}
+
 		if (mob.isPassenger()) {
 			return "passenger";
 		}
