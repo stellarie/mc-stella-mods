@@ -96,6 +96,7 @@ public final class SpellCasting {
 		SpellModifiers.CastModifiers modifiers = SpellModifiers.resolve(
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
 		);
+		modifiers = TowerBridge.grow(stack, definition.id().getPath(), modifiers);
 		Mob target = null;
 		Vec3 point = null;
 		switch (definition.targetMode()) {
@@ -129,7 +130,7 @@ public final class SpellCasting {
 		SKIP_COOLDOWN.remove();
 		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
 		if (!skip) {
-			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : modifiers.cooldownTicks());
+			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
 		}
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
 		SpellCombos.afterCast(caster, definition, target, point, modifiers);
