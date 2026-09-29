@@ -63,7 +63,7 @@ public final class RuneEffects {
 			}
 			RuneData rune = TowerRunes.runeOf(source.getWeaponItem());
 			if (rune != null) {
-				afterHit(level, entity, player, rune);
+				afterHit(level, entity, player, rune, source.getWeaponItem());
 			}
 		});
 	}
@@ -72,8 +72,8 @@ public final class RuneEffects {
 		return entity.level().getServer() == null ? entity.tickCount : entity.level().getServer().getTickCount();
 	}
 
-	private static void afterHit(final ServerLevel level, final LivingEntity target, final ServerPlayer player, final RuneData rune) {
-		double power = TowerRunes.power(rune.floor());
+	private static void afterHit(final ServerLevel level, final LivingEntity target, final ServerPlayer player, final RuneData rune, final net.minecraft.world.item.ItemStack weapon) {
+		double power = TowerRunes.power(weapon, rune);
 		int now = now(target);
 		switch (rune.element()) {
 			case FIRE -> {
@@ -217,8 +217,7 @@ public final class RuneEffects {
 	}
 
 	/** A hit's damage once the weapon rune's signature has had its say: Ice at the slowed, Wind at the airborne. */
-	public static float modify(final LivingEntity victim, final DamageSource source, final float amount, final RuneData rune) {
-		double power = TowerRunes.power(rune.floor());
+	public static float modify(final LivingEntity victim, final DamageSource source, final float amount, final RuneData rune, final double power) {
 		return switch (rune.element()) {
 			case ICE -> victim.hasEffect(MobEffects.SLOWNESS) || victim.getTicksFrozen() > 0 ? (float) (amount * (1.0 + iceBonus(power))) : amount;
 			case WIND -> !victim.onGround() ? (float) (amount * (1.0 + windBonus(power))) : amount;

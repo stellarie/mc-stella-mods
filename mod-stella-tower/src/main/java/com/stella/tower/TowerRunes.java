@@ -57,7 +57,7 @@ public final class TowerRunes {
 				|| entity.getLastHurtByPlayer() == null || !level.getGameRules().get(GameRules.MOB_DROPS)) {
 				return;
 			}
-			double chance = PINNED_DROP.getOrDefault(state.floor(), dropChance(state.rank()));
+			double chance = PINNED_DROP.getOrDefault(state.floor(), dropChanceOf(entity));
 			if (entity.getRandom().nextDouble() < chance) {
 				TowerElement element = TowerElement.values()[entity.getRandom().nextInt(TowerElement.values().length)];
 				entity.spawnAtLocation(level, rune(element, state.floor()));
@@ -77,6 +77,15 @@ public final class TowerRunes {
 		}
 	}
 
+	/** The chance this tower mob, when slain, leaves a rune: a shaman's own, else its rank's. */
+	public static double dropChanceOf(final LivingEntity mob) {
+		TowerMobs.State state = TowerMobs.stateOf(mob);
+		if (TowerShamans.isShaman(mob)) {
+			return TowerShamans.RUNE_CHANCE;
+		}
+		return state == null ? 0.0 : dropChance(state.rank());
+	}
+
 	/** The chance a slain tower mob of this rank leaves a rune. */
 	public static double dropChance(final TowerRank rank) {
 		return switch (rank) {
@@ -90,6 +99,11 @@ public final class TowerRunes {
 	public static double power(final int floor) {
 		int r = Math.max(0, Math.min(floor, (int) TowerCurve.END));
 		return r <= 100 ? r : 100.0 + 10.0 * Math.sqrt(r - 100.0);
+	}
+
+	/** A rune's power as the piece of gear it is set into carries it: half as much again on void gear. */
+	public static double power(final ItemStack gear, final RuneData rune) {
+		return VoidGear.power(gear, power(rune.floor()));
 	}
 
 	public static double weaponMultiplier(final int floor) {
@@ -154,10 +168,11 @@ public final class TowerRunes {
 		TowerMobs.State state = TowerMobs.stateOf(victim);
 		if (state != null && state.element() == rune.element().opposite()) {
 			added *= OPPOSED;
-		} else if (state != null && state.element() == rune.element()) {
+		} else if (state != null && state.element() == rune.element() && !VoidGear.isVoid(weapon)) {
+			// Void weapons strike their own element in full.
 			added *= SAME;
 		}
-		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
+		return RuneEffects.modify(victim, source, (float) (amount + added), rune, power(weapon, rune));
 	}
 
 	/** A blow a player struck with the weapon in hand, not one their thorns or their armor returned. */
@@ -175,7 +190,7 @@ public final class TowerRunes {
 			if (rune != null) {
 				divisor *= armorDivisor(rune.floor());
 				if (rune.element() == element) {
-					own += OWN_ELEMENT_BASE + power(rune.floor()) / 1000.0;
+					own += (OWN_ELEMENT_BASE + power(piece, rune) / 1000.0) * (VoidGear.isVoid(piece) ? VoidGear.OWN_ELEMENT_FACTOR : 1.0);
 				}
 			}
 		}
