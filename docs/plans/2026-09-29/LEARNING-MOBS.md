@@ -87,7 +87,7 @@ name and its integration branch are open (see Open decisions).
 4. Shield tactics for the zombie and the skeleton. **Done 2026-09-29**: against a player seen blocking, a melee mob holds its swing and a ranged mob holds its fire while the shield is up, for up to 100 ticks. The archer's "fires more while the shield is down" is dropped: holding fire while it is up gives the same effect without touching the mobs mod's bow cadence.
 5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities. **Done 2026-09-29.**
 6. Callout types: position first, then focus fire, back off, heal, buff, debuff. **Done 2026-09-29.** The sender: a monster hurt by a player calls; it asks for a heal below half health, a slowness debuff against a turtle, a strength buff against a rusher, and a rally otherwise. Measured: a steady fight of one hit every 10 ticks draws one call per 100 tick cooldown, 3 calls in 300 ticks.
-7. Pathing goals: flank, cover, chokepoint. **Flank and cover done 2026-09-29**: flank slots come from the rally callout, and a melee mob with a known shooter for a target advances from cover to cover. **Chokepoint is not done**: it needs a retreat habit the recorder does not yet count.
+7. Pathing goals: flank, cover, chokepoint. **Flank and cover done 2026-09-29**: flank slots come from the rally callout, and a melee mob with a known shooter for a target advances from cover to cover. **Chokepoint done on 2026-09-29** on `feat/learn-chokepoint`: the recorder now counts retreats, and mobs after a retreater gather outside a one-block gap and go in together.
 8. Spells integration through the ability registry.
 
 Each slice is gated and independently reviewed before the next one starts.

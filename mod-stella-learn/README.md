@@ -6,14 +6,17 @@ integration branch is `main-learn`.
 
 ## What it does
 
-- **A profile per player.** Each fight adds to counters saved on the player: blocked blows, sword hits and arrow
-  hits. Each counter halves every 6000 ticks (five minutes), so mobs forget old habits.
+- **A profile per player.** Each fight adds to counters saved on the player: blocked blows, sword hits, arrow hits
+  and retreats (a step of a block or more straight away from a monster that is after them, sampled every 10 ticks). Each counter halves every 6000 ticks (five minutes), so mobs forget old habits.
 - **Archers keep their distance from a rusher.** A skeleton, or another ranged or magic mob, pushes its near band
   out by up to 6 blocks against a player with 8 recent sword hits, and keeps its band's width.
 - **Mobs wait out a turtle's shield.** Against a player with 5 recent blocks, a melee mob holds its swing and a ranged
   mob holds its fire while the shield is up, for up to 100 ticks, then rests 40.
 - **Melee mobs take cover from a shooter.** Against a player with 6 recent arrow hits, a melee mob that stands in the
   shooter's sight, more than 6 blocks off, walks to the nearest spot out of sight that is nearer the player.
+- **Mobs gather outside a chokepoint.** Against a player who falls back (4 recent retreats), a melee mob whose way in
+  runs through a one-block gap walks to a staging point 5 nodes before it and waits there until 3 monsters after the
+  same player have gathered, or 200 ticks have passed, and then goes in. It is then left alone for 120 ticks.
 - **Callouts.** A monster hurt by a player calls. Every monster within 24 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:
@@ -44,6 +47,8 @@ skipped, and a broken file gives every default.
 | `shield_patience_ticks` / `shield_rest_ticks` | 100 / 40 | How long a mob waits out one shield, and how long it rests |
 | `ranged_saturation` / `cover_threshold` | 6.0 / 0.5 | Arrow hits that count as a full shooter, and the share at which mobs take cover |
 | `cover_rest_ticks` | 30 | Rest between two hops from cover to cover |
+| `retreat_saturation` / `choke_threshold` | 4.0 / 0.5 | Retreats that count as a full retreater, and the share at which mobs stop entering a gap alone |
+| `choke_group` / `choke_patience_ticks` / `choke_rest_ticks` | 3 / 200 / 40 | Mobs that must gather, how long one waits for them, and its rest after any other stop |
 
 ## Build and test
 
@@ -68,5 +73,6 @@ this directory with the siblings `mod-stella-mobs` and `mod-stella-spells` check
 
 ## Not built
 
-- Chokepoint pathing, and the retreat, kite and heal counters it needs.
+- The kite and heal counters.
+- Chokepoints wider than one block, and a gap the mob's path does not run through.
 - The ML phase.
