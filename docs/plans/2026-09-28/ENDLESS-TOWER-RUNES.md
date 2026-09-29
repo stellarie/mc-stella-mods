@@ -428,3 +428,112 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
 - A ghost chestplate renews a passed-through mob's slowness once a second, not every tick.
 - Left as is: floor mobs are still raised inside a boss floor's walled hall. The hall is the boss's room,
   and mobs from it that chase a player pass through the safe room, which the safe zones allow.
+
+## Change: a wider maze, and no pickpocket endermen (2026-09-29)
+
+- A floor's paths are six blocks wide between walls one block thick, on a nine by nine grid of cells seven
+  blocks apart. The room fits nine cells exactly, so every path is six wide. Where a hall or a safe zone
+  cuts across the grid a path beside it may come out narrower, but never under three.
+- Elite halls (16) and boss halls (32) and both safe zones keep their sizes and places.
+- A boss floor's hall is now cut from the grid exactly: the ring of blocks round it is solid but for the
+  six wide door into the safe room, and the safe room opens onto the maze on its far side by itself.
+- On an ordinary floor the portal's nook is one cell column wide, and solid wall stands behind the portal,
+  so the way to it is three wide in front and there is no two wide pocket behind.
+- Ceiling lamps hang over the middle of each cell.
+- Floors already built keep their two wide mazes.
+- No enderman in the tower ever sets out to take a block, so no wall or floor can be lifted, whatever a
+  data pack tags holdable. None of the tower's own blocks is tagged holdable in the game itself.
+- Traps are still 20 tiles a floor. In a six wide path a single tile is easy to step round; if that plays
+  too soft, the count or the tile's size can grow.
+
+## Built: clue books in chests (2026-09-29)
+
+- A tattered book, one of four (The Way Up, On Floors and Guardians, Keys and the Way Home, Runes of the
+  Tower), turns up in vanilla chests. All four tell how to open the way in: a frame of crying obsidian, at
+  least two blocks wide inside and three high, up to twenty-one square, lit with fire. Each adds a page on
+  its own subject. They cannot be copied.
+- Each chest of these tables holds a clue with this chance, measured over 20,000 draws each, and once
+  through the game's own loot rolls for the ruined portal:
+
+  | Chest | Chance |
+  | --- | --- |
+  | Ruined portal | 40% |
+  | Stronghold library, bastion treasure | 30% |
+  | Simple dungeon, stronghold corridor and crossing, other bastion chests | 10% |
+
+- A data pack's own version of a listed table holds none, and neither does any other chest.
+
+## Built: void shamans, void ingots and void gear (2026-09-29)
+
+Assumptions where the spec left room are marked (assumed). Every number is a constant in the code.
+
+- **Void shamans** appear only when the spells mod is installed. A fixed 2% of floors, drawn from the world
+  seed, hold one. A skeleton with two spells drawn from the spells mod's own list of mob spells, one to
+  strike with and one to aid itself with. It is a tower mob of its floor, never an elite or a boss, named
+  "<Element> Void Shaman". The spells come from the spells mod's own casting, so what they do grows as a
+  tower mob's blows do.
+- A shaman thinks every half second: it strikes a player it can see within 24 blocks, and aids itself, each
+  spell on its own cooldown from the spells mod. Struck, it blinks to a safe spot of its floor, away from the
+  players, and cannot again for 10 seconds.
+- A floor that holds a shaman keeps one; after one is slain, the floor rests 10 minutes (assumed) before it
+  raises another. That rest is kept in memory, so a server restart ends it.
+- **Drops:** a shaman leaves a rune 2% of the time, as the plan says, and a void ingot with a chance of
+  `0.5% + 0.01% per floor`, capped at 1: floor 1 is 0.51%, floor 100 is 1.5%, floor 500 is 5.5%, and floor
+  1000 is 10.5%. Only a shaman leaves one.
+- How rare that makes them: a floor holds a shaman one time in fifty, so climbing alone finds one ingot in
+  about 9,800 floors at the start, 3,300 at floor 100, 900 at floor 500 and 480 at floor 1000. Camping a
+  floor that holds a shaman is far quicker: it raises another every 10 minutes, and at floor 1000 that is an
+  ingot about every hour and a half.
+- **Void gear** (assumed): a Void Sword, Helmet, Chestplate, Leggings and Boots, each made by crafting a
+  netherite piece with void ingots, and keeping whatever it carries, a rune included:
+
+  | Piece | Ingots | Stats (netherite in brackets) |
+  | --- | --- | --- |
+  | Sword | 2 | 8 damage (7), 3000 durability (2031) |
+  | Helmet, chestplate, leggings, boots | 3, 5, 4, 2 | 24 armor points in all (20), toughness 4 (3) |
+
+  Void gear is repaired with void ingots, resists fire and looks like netherite for now.
+- **A rune in void gear does more** (assumed), on top of what a rune does anywhere:
+  - on a weapon, its power counts half as much again, and its element is struck in full even against the
+    same element, where any other weapon's is halved;
+  - on armor, its power counts half as much again, and the piece's cut against its own element doubles,
+    still within the 80% cap.
+- Like every rune effect, these work anywhere, in or out of the tower.
+- The real spells mod is not loaded in the tower's test harness, so the shaman's casting is tested against a
+  stand-in and the real thing is a manual item: with both mods, find a floor that holds a shaman and watch
+  it strike and aid itself with real spells.
+
+## Growth, resonance and Lightning charges (built)
+
+The tower side of "Enchantments and spells grow" and "Resonance" is `TowerGrowth`. Its public methods are the
+contract the spells and equips mods call by name, so neither depends on the tower to build.
+
+- `flat(stack)` is the rune part times the ascension part, `(1 + 99 S(r))^0.7 * (1 + 99 S(a))^0.3`. Measured:
+  the rune part is x2.75, x15.57 and x25.12 at floors 100, 500 and 1000; ascension 1000 is x3.98; a floor
+  1000 rune on a fully ascended item is x100, the tower's health.
+- `resonance(stack, id)` is `1 + 10% + P/10 %` when the stack's rune is of an element that lists the enchantment
+  or spell `id` in the table above, and 1 otherwise. Ashfall is listed under both Fire and Ice. Void gear's
+  power counts half as much again here too.
+- **Ascension:** each tower mob slain by a player counts one kill on the gear and spellbooks that player holds
+  in either hand or wears, one piece to a stack (a torch or a stack of arrows counts nothing). Every 10 kills
+  earn one level, but a level rises no higher than the floor of the kill. Kills bank: 300 kills on floor 1 leave
+  level 1, and the next kill on floor 50 lifts it to 30. Kept on the item (`mod-stella-tower:ascended`) and
+  shown in its tooltip. (Assumed reading of the plan: "10,000 kills reach 1000" holds only if kills bank.)
+- **Spellbooks take runes at the anvil**, as their own kind of slot, for the same 64 emeralds. A book's rune
+  has no weapon or armor effect. The books are the spells mod's `mod-stella-spells:spellbooks` tag.
+- **Lightning charges** cut a spell's cooldown by 4% each, five at most, and are all spent by that cast:
+  `cooldown(player, ticks)`.
+- **Scrolls** of the spells mod are not books, take no runes, and their cast neither grows nor spends charges;
+  a spell cast from a book or an imbued piece does.
+- Wired in the other mods (their own branches): the spells mod calls all three when a spell resolves
+  and when its cooldown starts; the equips mod calls `flat` for the numbers written in Java (Mist Armor and
+  Blaze Armor damage, Waveform). Enchantments that are data driven are not scaled: they keep their level.
+
+## Scroll of Return in the tower
+
+The spells mod's Scroll of Return carries its reader to their respawn point in the Overworld from any dimension,
+the tower included, through the game's own level change. The tower's leave hook (which drops a boss floor's buff
+at once) listens to that change for every way out: portal, key, scroll or command, and its test
+(`leavingTheTowerTakesTheBuffAtOnce`) moves the player out the same way. The tower harness has no spells mod, so
+the scroll's own path is a manual item: read a Scroll of Return on a boss floor and check the floor's buff is
+gone and you stand at your bed or the world spawn.

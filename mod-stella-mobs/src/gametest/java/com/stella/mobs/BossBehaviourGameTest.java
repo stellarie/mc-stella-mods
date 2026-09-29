@@ -254,9 +254,9 @@ public class BossBehaviourGameTest {
 		int eliteLevel = ThreatState.level(elite);
 		ThreatState eliteRoll = ThreatState.get(elite);
 		double ratio = eliteBase <= 0.0 ? 0.0 : bossBase / eliteBase;
-		double depth = Math.max(0.0, helper.getLevel().getSeaLevel() - y);
-		double expectedMax = bossBase * SpawnScaling.healthMultiplier(bossLevel, depth);
-		double expectedEliteMax = eliteBase * SpawnScaling.healthMultiplier(eliteLevel, depth);
+		double altitude = SpawnScaling.usesAltitude(helper.getLevel().dimension()) ? y : 0.0;
+		double expectedMax = bossBase * SpawnScaling.healthMultiplier(bossLevel, altitude);
+		double expectedEliteMax = eliteBase * SpawnScaling.healthMultiplier(eliteLevel, altitude);
 		double maxRatio = eliteHealth <= 0.0F ? 0.0 : bossHealth / eliteHealth;
 
 		result(

@@ -13,6 +13,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -64,17 +65,22 @@ public final class NemesisHead {
 
 	static void trade(final ServerLevel level, final ServerPlayer player, final ItemStack held) {
 		held.shrink(1);
-		List<Holder<Enchantment>> pool = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
-			.listElements().map(holder -> (Holder<Enchantment>) holder).toList();
 		for (int index = 0; index < 3; index++) {
-			Holder<Enchantment> enchantment = pool.get(level.getRandom().nextInt(pool.size()));
-			int rank = Mth.nextInt(level.getRandom(), enchantment.value().getMinLevel(), enchantment.value().getMaxLevel());
-			ItemStack book = EnchantmentHelper.createBook(new EnchantmentInstance(enchantment, rank));
+			ItemStack book = randomEnchantedBook(level, level.getRandom());
 			if (!player.getInventory().add(book)) {
 				level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
 					level, player.getX(), player.getY(), player.getZ(), book
 				));
 			}
 		}
+	}
+
+	/** One registry enchantment at a random level between its own minimum and maximum. */
+	public static ItemStack randomEnchantedBook(final ServerLevel level, final RandomSource random) {
+		List<Holder<Enchantment>> pool = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+			.listElements().map(holder -> (Holder<Enchantment>) holder).toList();
+		Holder<Enchantment> enchantment = pool.get(random.nextInt(pool.size()));
+		int rank = Mth.nextInt(random, enchantment.value().getMinLevel(), enchantment.value().getMaxLevel());
+		return EnchantmentHelper.createBook(new EnchantmentInstance(enchantment, rank));
 	}
 }

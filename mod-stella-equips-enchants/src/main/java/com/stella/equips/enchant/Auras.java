@@ -79,10 +79,11 @@ public final class Auras {
 
 	private static void mist(final ServerLevel level, final LivingEntity wearer, final int rank) {
 		DamageSource frost = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypes.FREEZE), null, wearer);
+		float damage = TowerBridge.grow(MIST_DAMAGE_PER_LEVEL * rank, wearer.getItemBySlot(EquipmentSlot.CHEST), "mist_armor");
 		for (LivingEntity foe : foes(level, wearer, MIST_RADIUS)) {
 			foe.setTicksFrozen(Math.max(foe.getTicksFrozen(), foe.getTicksRequiredToFreeze()) + MIST_FROST_TICKS);
 			foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, MIST_SLOW_TICKS, rank - 1), wearer);
-			foe.hurtServer(level, frost, MIST_DAMAGE_PER_LEVEL * rank);
+			foe.hurtServer(level, frost, damage);
 		}
 		level.sendParticles(ParticleTypes.SNOWFLAKE, wearer.getX(), wearer.getY(0.5), wearer.getZ(), 24, MIST_RADIUS * 0.5, 0.6, MIST_RADIUS * 0.5, 0.01);
 	}
@@ -90,8 +91,9 @@ public final class Auras {
 	private static void blaze(final ServerLevel level, final LivingEntity wearer, final int rank) {
 		wearer.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, BLAZE_FIRE_RESISTANCE_TICKS, 0, true, false, true));
 		DamageSource heat = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypes.IN_FIRE), null, wearer);
+		float damage = TowerBridge.grow(BLAZE_DAMAGE, wearer.getItemBySlot(EquipmentSlot.CHEST), "blaze_armor");
 		for (LivingEntity foe : foes(level, wearer, BLAZE_RADIUS)) {
-			foe.hurtServer(level, heat, BLAZE_DAMAGE);
+			foe.hurtServer(level, heat, damage);
 			if (wearer.getRandom().nextFloat() < BLAZE_IGNITE_CHANCE_PER_LEVEL * rank) {
 				foe.igniteForTicks(BLAZE_IGNITE_TICKS);
 			}

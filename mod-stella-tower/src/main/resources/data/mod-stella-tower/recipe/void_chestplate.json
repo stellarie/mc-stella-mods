@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_transmute",
+  "category": "equipment",
+  "input": "minecraft:netherite_chestplate",
+  "material": "mod-stella-tower:void_ingot",
+  "material_count": {
+    "min": 5,
+    "max": 5
+  },
+  "result": {
+    "id": "mod-stella-tower:void_chestplate"
+  }
+}

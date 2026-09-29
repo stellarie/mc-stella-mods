@@ -1,8 +1,11 @@
 package com.stella.mobs;
 
+import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.behavior.SpawnSafety;
 import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatExperience;
 import com.stella.mobs.scaling.ThreatState;
 import com.stella.mobs.scaling.WorldThreatPeak;
 import com.stella.mobs.behavior.EliteState;
@@ -10,6 +13,11 @@ import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.gear.GearTier;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelData;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
@@ -44,10 +52,10 @@ public class SpawnScalingGameTest {
 
 	@GameTest
 	public void threatVariationIsBoundedAndCentered(final GameTestHelper helper) {
-		var random = net.minecraft.util.RandomSource.create(20_260_928L);
+		var random = net.minecraft.util.RandomSource.create(20_260_929L);
 		int minimum = Integer.MAX_VALUE;
 		int maximum = Integer.MIN_VALUE;
-		int zero = 0;
+		int nearMean = 0;
 		int edges = 0;
 		long sum = 0L;
 		long squares = 0L;
@@ -55,27 +63,30 @@ public class SpawnScalingGameTest {
 			int variation = ThreatState.rollVariation(random);
 			minimum = Math.min(minimum, variation);
 			maximum = Math.max(maximum, variation);
-			zero += variation == 0 ? 1 : 0;
-			edges += Math.abs(variation) == ThreatState.MAX_VARIATION ? 1 : 0;
+			nearMean += variation == ThreatState.VARIATION_MEAN ? 1 : 0;
+			edges += variation == ThreatState.MIN_VARIATION || variation == ThreatState.MAX_VARIATION ? 1 : 0;
 			sum += variation;
 			squares += (long) variation * variation;
 		}
 		double mean = sum / 100_000.0;
 		double deviation = Math.sqrt(squares / 100_000.0 - mean * mean);
-		boolean valid = minimum >= -ThreatState.MAX_VARIATION && maximum <= ThreatState.MAX_VARIATION
-			&& Math.abs(mean) < 0.1 && deviation > 4.0 && deviation < ThreatState.VARIATION_STDDEV
-			&& zero > edges;
+		// The clamp is reached on both sides and never passed, the centre is the shipped mean, and the spread
+		// is the shipped one, a little shaved by the clamped tails.
+		boolean valid = minimum == ThreatState.MIN_VARIATION && maximum == ThreatState.MAX_VARIATION
+			&& Math.abs(mean - ThreatState.VARIATION_MEAN) < 0.2
+			&& deviation > ThreatState.VARIATION_STDDEV * 0.95 && deviation < ThreatState.VARIATION_STDDEV * 1.02
+			&& nearMean > edges;
 		result("threatVariationIsBoundedAndCentered", "min=" + minimum + " max=" + maximum
-			+ " mean=" + mean + " deviation=" + deviation + " zero=" + zero + " edges=" + edges
+			+ " mean=" + mean + " deviation=" + deviation + " nearMean=" + nearMean + " edges=" + edges
 			+ " valid=" + valid);
-		helper.assertTrue(valid, "threat variation lost its bounded normal distribution");
+		helper.assertTrue(valid, "threat variation lost its bounded, re-centred normal distribution");
 		helper.succeed();
 	}
 
 	@GameTest(dimension = "minecraft:the_nether")
 	public void eliteAndBossBonusesFollowDimensionMinimum(final GameTestHelper helper) {
 		Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, -ThreatState.MAX_VARIATION));
+		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, ThreatState.MIN_VARIATION));
 		int ordinary = ThreatState.level(mob);
 		EliteState.markElite(mob, GearTier.DIAMOND);
 		int elite = ThreatState.level(mob);
@@ -89,12 +100,11 @@ public class SpawnScalingGameTest {
 		boolean valid = ordinary == ThreatState.NETHER_MINIMUM
 			&& elite - ordinary == 5
 			&& boss - ordinary == 10
-			&& positive == ThreatState.NETHER_MINIMUM + 10
-			&& Math.abs(healthAmount(mob) - (SpawnScaling.healthMultiplier(boss,
-				Math.max(0.0, helper.getLevel().getSeaLevel() - mob.getY())) - 1.0)) < EPSILON;
+			&& positive == ThreatState.NETHER_MINIMUM + ThreatState.MAX_VARIATION
+			&& Math.abs(healthAmount(mob) - (SpawnScaling.healthMultiplier(boss, 0.0) - 1.0)) < EPSILON;
 		result("eliteAndBossBonusesFollowDimensionMinimum", "ordinary=" + ordinary
 			+ " elite=" + elite + " boss=" + boss + " positive=" + positive + " valid=" + valid);
-		helper.assertTrue(valid, "rank bonus stacked or fell below the Nether minimum");
+		helper.assertTrue(valid, "rank bonus stacked or fell below the Nether base");
 		helper.succeed();
 	}
 
@@ -151,78 +161,107 @@ public class SpawnScalingGameTest {
 		helper.succeed();
 	}
 	@GameTest
-	public void distanceAddsOneLevelEvery500Blocks(final GameTestHelper helper) {
-		int[] distances = {0, 499, 500, 999, 1000, 5500, 1_000_000};
-		int[] expected = {0, 0, 1, 1, 2, 11, 2000};
-		var spawn = helper.getLevel().getRespawnData().pos();
+	public void distanceAddsOneLevelEvery100BlocksFromTheOrigin(final GameTestHelper helper) {
+		int[] distances = {0, 99, 100, 199, 1000, 5500, 1_000_000};
+		int[] expected = {0, 0, 1, 1, 10, 55, 10_000};
+		boolean[] levels = new boolean[distances.length];
+		boolean valid = true;
+		StringBuilder measured = new StringBuilder();
+		// The respawn point is moved far off: distance is measured from 0,0, whatever the world spawn is.
+		withProductionOrigin(() -> withConfig(PLAIN_CONFIG, () -> withRespawn(helper, new BlockPos(7_000, 64, -9_000), () -> {
+			for (int index = 0; index < distances.length; index++) {
+				Zombie east = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				east.snapTo(distances[index], helper.getLevel().getSeaLevel() + 1, 0.0, 0.0F, 0.0F);
+				Zombie north = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				north.snapTo(0.0, helper.getLevel().getSeaLevel() + 1, -distances[index], 0.0F, 0.0F);
+				int eastLevel = SpawnScaling.areaLevel(east);
+				int northLevel = SpawnScaling.areaLevel(north);
+				measured.append(eastLevel).append('/').append(northLevel).append(',');
+				levels[index] = eastLevel == expected[index] && northLevel == expected[index];
+			}
+		})));
+		for (boolean ok : levels) {
+			valid &= ok;
+		}
+		result("distanceAddsOneLevelEvery100BlocksFromTheOrigin", "measured=" + measured + " valid=" + valid);
+		helper.assertTrue(valid, "threat area did not advance at each 100-block boundary from 0,0");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void netherMobHasAtLeastTheNetherBaseLevel(final GameTestHelper helper) {
+		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
+		double health = healthAmount(mob);
+		double damage = damageAmount(mob);
+		boolean valid = health >= ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS
+			&& damage >= ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_DAMAGE_BONUS;
+		result("netherMobHasAtLeastTheNetherBaseLevel",
+			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
+		helper.assertTrue(valid, "Nether mob scaled below the Nether base level");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_end")
+	public void endMobHasAtLeastTheEndBaseLevel(final GameTestHelper helper) {
+		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
+		double health = healthAmount(mob);
+		double damage = damageAmount(mob);
+		boolean valid = health >= ThreatState.END_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS
+			&& damage >= ThreatState.END_MINIMUM * SpawnScaling.LEVEL_DAMAGE_BONUS;
+		result("endMobHasAtLeastTheEndBaseLevel",
+			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
+		helper.assertTrue(valid, "End mob scaled below the End base level");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void netherLevelClimbsEightPerHundredBlocksFromTheOrigin(final GameTestHelper helper) {
+		int[] distances = {0, 99, 100, 1000};
+		int[] expected = {50, 50, 58, 130};
+		boolean valid = true;
+		StringBuilder measured = new StringBuilder();
+		// The respawn point is moved off too: the Nether has no divide-by-eight origin any more.
+		for (int index = 0; index < distances.length; index++) {
+			int[] area = new int[1];
+			int[] threat = new int[1];
+			int at = distances[index];
+			withProductionOrigin(() -> withConfig(PLAIN_CONFIG, () -> withRespawn(helper, new BlockPos(7_000, 64, -9_000), () -> {
+				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				mob.snapTo(at, helper.getLevel().getSeaLevel() + 1, 0.0, 0.0F, 0.0F);
+				((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(SpawnScaling.areaLevel(mob), 0));
+				area[0] = SpawnScaling.areaLevel(mob);
+				threat[0] = ThreatState.level(mob);
+			})));
+			measured.append(area[0]).append('/').append(threat[0]).append(',');
+			valid &= area[0] == expected[index] && threat[0] == expected[index];
+		}
+		result("netherLevelClimbsEightPerHundredBlocksFromTheOrigin", "measured=" + measured + " valid=" + valid);
+		helper.assertTrue(valid, "Nether level did not climb 8 per 100 blocks from a base of 50");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_end")
+	public void endLevelClimbsEightPerHundredBlocksFromTheOrigin(final GameTestHelper helper) {
+		int[] distances = {0, 99, 100, 1000};
+		int[] expected = {80, 80, 88, 160};
 		boolean valid = true;
 		StringBuilder measured = new StringBuilder();
 		for (int index = 0; index < distances.length; index++) {
-			Zombie zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-			zombie.snapTo(spawn.getX() + distances[index], helper.getLevel().getSeaLevel() + 1,
-				spawn.getZ(), 0.0F, 0.0F);
-			int level = SpawnScaling.areaLevel(zombie);
-			measured.append(level).append(',');
-			valid &= level == expected[index];
+			int[] area = new int[1];
+			int[] threat = new int[1];
+			int at = distances[index];
+			withProductionOrigin(() -> withConfig(PLAIN_CONFIG, () -> {
+				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				mob.snapTo(at, helper.getLevel().getSeaLevel() + 1, 0.0, 0.0F, 0.0F);
+				((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(SpawnScaling.areaLevel(mob), 0));
+				area[0] = SpawnScaling.areaLevel(mob);
+				threat[0] = ThreatState.level(mob);
+			}));
+			measured.append(area[0]).append('/').append(threat[0]).append(',');
+			valid &= area[0] == expected[index] && threat[0] == expected[index];
 		}
-		result("distanceAddsOneLevelEvery500Blocks", "measured=" + measured + " valid=" + valid);
-		helper.assertTrue(valid, "threat area did not advance at each 500-block boundary");
-		helper.succeed();
-	}
-
-	@GameTest(dimension = "minecraft:the_nether")
-	public void netherMobHasAtLeastTwentyThreatLevels(final GameTestHelper helper) {
-		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
-		double health = healthAmount(mob);
-		double damage = damageAmount(mob);
-		boolean valid = health >= 20 * SpawnScaling.LEVEL_HEALTH_BONUS
-			&& damage >= 20 * SpawnScaling.LEVEL_DAMAGE_BONUS;
-		result("netherMobHasAtLeastTwentyThreatLevels",
-			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
-		helper.assertTrue(valid, "Nether mob scaled below threat level 20");
-		helper.succeed();
-	}
-
-	@GameTest(dimension = "minecraft:the_end")
-	public void endMobHasAtLeastFiftyThreatLevels(final GameTestHelper helper) {
-		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
-		double health = healthAmount(mob);
-		double damage = damageAmount(mob);
-		boolean valid = health >= 50 * SpawnScaling.LEVEL_HEALTH_BONUS
-			&& damage >= 50 * SpawnScaling.LEVEL_DAMAGE_BONUS;
-		result("endMobHasAtLeastFiftyThreatLevels",
-			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
-		helper.assertTrue(valid, "End mob scaled below threat level 50");
-		helper.succeed();
-	}
-
-	@GameTest(dimension = "minecraft:the_nether")
-	public void netherTravelRaisesThreatBeyondItsMinimum(final GameTestHelper helper) {
-		Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		var spawn = helper.getLevel().getRespawnData().pos();
-		mob.snapTo(spawn.getX() / 8.0 + 20_000.0, helper.getLevel().getSeaLevel() + 1,
-			spawn.getZ() / 8.0, 0.0F, 0.0F);
-		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(SpawnScaling.areaLevel(mob), 0));
-		int area = SpawnScaling.areaLevel(mob);
-		int threat = ThreatState.level(mob);
-		boolean valid = area == 40 && threat == 40;
-		result("netherTravelRaisesThreatBeyondItsMinimum",
-			"area=" + area + " threat=" + threat + " valid=" + valid);
-		helper.assertTrue(valid, "Nether travel did not raise threat beyond level 20");
-		helper.succeed();
-	}
-
-	@GameTest(dimension = "minecraft:the_end")
-	public void endTravelRaisesThreatBeyondItsMinimum(final GameTestHelper helper) {
-		Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		mob.snapTo(30_000.0, helper.getLevel().getSeaLevel() + 1, 0.0, 0.0F, 0.0F);
-		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(SpawnScaling.areaLevel(mob), 0));
-		int area = SpawnScaling.areaLevel(mob);
-		int threat = ThreatState.level(mob);
-		boolean valid = area == 60 && threat == 60;
-		result("endTravelRaisesThreatBeyondItsMinimum",
-			"area=" + area + " threat=" + threat + " valid=" + valid);
-		helper.assertTrue(valid, "End travel did not raise threat beyond level 50");
+		result("endLevelClimbsEightPerHundredBlocksFromTheOrigin", "measured=" + measured + " valid=" + valid);
+		helper.assertTrue(valid, "End level did not climb 8 per 100 blocks from a base of 80");
 		helper.succeed();
 	}
 
@@ -254,7 +293,7 @@ public class SpawnScalingGameTest {
 	public void playerKillDropsThreatAdjustedExperienceOrbs(final GameTestHelper helper) {
 		var level = helper.getLevel();
 		Zombie mob = EntityTypes.ZOMBIE.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, -ThreatState.MAX_VARIATION));
+		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, ThreatState.MIN_VARIATION));
 		EliteState.setSummoned(mob, true);
 		com.stella.mobs.behavior.ReactiveState.get(mob).setGearApplied(true);
 		var position = helper.absolutePos(new net.minecraft.core.BlockPos(2, 3, 2));
@@ -270,15 +309,261 @@ public class SpawnScalingGameTest {
 			var nearby = net.minecraft.world.phys.AABB.ofSize(mob.position(), 8.0, 8.0, 8.0);
 			int orbs = level.getEntitiesOfClass(net.minecraft.world.entity.ExperienceOrb.class, nearby)
 				.stream().mapToInt(net.minecraft.world.entity.ExperienceOrb::getValue).sum();
+			int expected = ThreatExperience.reward(5, ThreatState.level(mob), player.experienceLevel);
 			boolean valid = !mob.isAlive() && ThreatState.level(mob) == ThreatState.NETHER_MINIMUM
-				&& orbs == 10;
+				&& orbs == expected;
 			result("playerKillDropsThreatAdjustedExperienceOrbs",
 				"mobLevel=" + ThreatState.level(mob) + " playerLevel=" + player.experienceLevel
-					+ " orbExperience=" + orbs + " valid=" + valid);
+					+ " orbExperience=" + orbs + " expected=" + expected + " valid=" + valid);
 			helper.assertTrue(valid, "player kill did not drop threat-adjusted XP orbs");
 			helper.succeed();
 		});
 	}
+
+	@GameTest
+	public void scalingConstantsMatchTheSpec(final GameTestHelper helper) {
+		double[] actual = {
+			SpawnScaling.BLOCKS_PER_LEVEL, SpawnScaling.DIMENSION_LEVELS_PER_STEP,
+			SpawnScaling.LEVEL_HEALTH_BONUS, SpawnScaling.LEVEL_DAMAGE_BONUS,
+			ThreatState.NETHER_MINIMUM, ThreatState.END_MINIMUM,
+			ThreatState.VARIATION_MEAN, ThreatState.MIN_VARIATION, ThreatState.MAX_VARIATION,
+			ThreatState.ELITE_BONUS, ThreatState.BOSS_BONUS,
+			SpawnScaling.HEALTH_DEPTH_WEIGHT > SpawnScaling.HEALTH_HEIGHT_WEIGHT ? 1 : 0,
+			SpawnScaling.DAMAGE_DEPTH_WEIGHT > SpawnScaling.DAMAGE_HEIGHT_WEIGHT ? 1 : 0
+		};
+		// One level per 100 blocks, eight per 100 in the Nether and End, +5% health and +4% damage per level,
+		// base levels 50 and 80, a roll centred on +5 that reaches 25 either side, and depth heavier than height.
+		double[] expected = {100, 8, 0.05, 0.04, 50, 80, 5, -20, 30, 5, 10, 1, 1};
+		int wrong = 0;
+		StringBuilder cases = new StringBuilder();
+		for (int index = 0; index < expected.length; index++) {
+			cases.append(index).append('=').append(actual[index]).append(' ');
+			wrong += Math.abs(actual[index] - expected[index]) < EPSILON ? 0 : 1;
+		}
+		result("scalingConstantsMatchTheSpec", "wrong=" + wrong + " " + cases);
+		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "shipped constants that differ from the spec");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void distanceLevelsFollowTheDimensionSlope(final GameTestHelper helper) {
+		int[] actual = {
+			SpawnScaling.distanceLevels(Level.OVERWORLD, 0.0),
+			SpawnScaling.distanceLevels(Level.OVERWORLD, 99.9),
+			SpawnScaling.distanceLevels(Level.OVERWORLD, 100.0),
+			SpawnScaling.distanceLevels(Level.OVERWORLD, 5500.0),
+			SpawnScaling.distanceLevels(Level.NETHER, 99.9),
+			SpawnScaling.distanceLevels(Level.NETHER, 100.0),
+			SpawnScaling.distanceLevels(Level.NETHER, 1000.0),
+			SpawnScaling.distanceLevels(Level.END, 100.0),
+			SpawnScaling.distanceLevels(Level.END, 1000.0)
+		};
+		int[] expected = {0, 0, 1, 55, 0, 8, 80, 8, 80};
+		int wrong = 0;
+		StringBuilder cases = new StringBuilder();
+		for (int index = 0; index < expected.length; index++) {
+			cases.append(index).append('=').append(actual[index]).append(' ');
+			wrong += actual[index] == expected[index] ? 0 : 1;
+		}
+		result("distanceLevelsFollowTheDimensionSlope", "wrong=" + wrong + " " + cases);
+		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "distance levels that disagree with the slope");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void altitudeStartsAtYZeroAndDepthOutweighsHeight(final GameTestHelper helper) {
+		double atZero = SpawnScaling.altitudeHealth(0.0);
+		double belowOne = SpawnScaling.altitudeHealth(-1.0);
+		double aboveOne = SpawnScaling.altitudeHealth(1.0);
+		double perBlockDeep = SpawnScaling.altitudeHealth(-32.0) / 32.0;
+		double perBlockHigh = SpawnScaling.altitudeHealth(32.0) / 32.0;
+		double damageDeep = SpawnScaling.altitudeDamage(-32.0) / 32.0;
+		double damageHigh = SpawnScaling.altitudeDamage(32.0) / 32.0;
+		boolean valid = atZero == 0.0 && belowOne > 0.0 && aboveOne > 0.0
+			&& perBlockDeep > perBlockHigh && damageDeep > damageHigh
+			&& Math.abs(SpawnScaling.altitudeHealth(-SpawnScaling.DEPTH_CAP) - SpawnScaling.HEALTH_DEPTH_WEIGHT) < EPSILON
+			&& Math.abs(SpawnScaling.altitudeHealth(SpawnScaling.HEIGHT_CAP) - SpawnScaling.HEALTH_HEIGHT_WEIGHT) < EPSILON;
+		result("altitudeStartsAtYZeroAndDepthOutweighsHeight", "atZero=" + atZero + " belowOne=" + belowOne
+			+ " aboveOne=" + aboveOne + " perBlockDeep=" + perBlockDeep + " perBlockHigh=" + perBlockHigh
+			+ " damageDeep=" + damageDeep + " damageHigh=" + damageHigh + " valid=" + valid);
+		helper.assertTrue(valid, "the altitude multiplier does not start at y=0 or depth does not outweigh height");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void netherAndEndIgnoreAltitude(final GameTestHelper helper) {
+		boolean valid = SpawnScaling.usesAltitude(Level.OVERWORLD)
+			&& !SpawnScaling.usesAltitude(Level.NETHER) && !SpawnScaling.usesAltitude(Level.END);
+		result("netherAndEndIgnoreAltitude", "overworld=" + SpawnScaling.usesAltitude(Level.OVERWORLD)
+			+ " nether=" + SpawnScaling.usesAltitude(Level.NETHER) + " end=" + SpawnScaling.usesAltitude(Level.END));
+		helper.assertTrue(valid, "the altitude multiplier applies outside the Overworld");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether")
+	public void netherMobTakesNoAltitudeMultiplier(final GameTestHelper helper) {
+		double[] amounts = new double[2];
+		double[] ys = {-30.0, 200.0};
+		withConfig(PLAIN_CONFIG, () -> {
+			for (int index = 0; index < ys.length; index++) {
+				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				mob.snapTo(1.0, ys[index], 1.0, 0.0F, 0.0F);
+				((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(ThreatState.NETHER_MINIMUM, 0));
+				SpawnScaling.apply(mob);
+				amounts[index] = healthAmount(mob);
+			}
+		});
+		double expected = ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS;
+		boolean valid = Math.abs(amounts[0] - expected) < EPSILON && Math.abs(amounts[1] - expected) < EPSILON;
+		result("netherMobTakesNoAltitudeMultiplier", "deep=" + amounts[0] + " high=" + amounts[1]
+			+ " expected=" + expected + " valid=" + valid);
+		helper.assertTrue(valid, "a Nether mob took a depth or height multiplier");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void overworldMobTakesTheAltitudeMultiplier(final GameTestHelper helper) {
+		double[] amounts = new double[2];
+		double[] ys = {-40.0, 250.0};
+		withConfig(PLAIN_CONFIG, () -> {
+			for (int index = 0; index < ys.length; index++) {
+				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+				mob.snapTo(1.0, ys[index], 1.0, 0.0F, 0.0F);
+				((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+				SpawnScaling.apply(mob);
+				amounts[index] = healthAmount(mob);
+			}
+		});
+		boolean valid = Math.abs(amounts[0] - SpawnScaling.altitudeHealth(-40.0)) < EPSILON
+			&& Math.abs(amounts[1] - SpawnScaling.altitudeHealth(250.0)) < EPSILON
+			&& amounts[0] > 0.0 && amounts[1] > 0.0;
+		result("overworldMobTakesTheAltitudeMultiplier", "deep=" + amounts[0] + " high=" + amounts[1] + " valid=" + valid);
+		helper.assertTrue(valid, "an Overworld mob did not take the depth and height multiplier");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void biomeAddsItsFlatLevelsFromTheConfig(final GameTestHelper helper) {
+		Vec3 at = helper.absoluteVec(new Vec3(1.5, 3.0, 1.5));
+		Zombie zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		Identifier biome = helper.getLevel().getBiome(zombie.blockPosition()).unwrapKey().orElseThrow().identifier();
+		int[] offsets = new int[3];
+		int[] areas = new int[3];
+		String[] configs = {
+			biomeConfig("\"" + biome + "\": 9"),
+			biomeConfig("\"minecraft:the_void\": 9"),
+			biomeConfig("\"" + biome + "\": -1000000")
+		};
+		for (int index = 0; index < configs.length; index++) {
+			int at2 = index;
+			String config = configs[index];
+			withProductionOrigin(() -> withConfig(config, () -> {
+				offsets[at2] = SpawnScaling.biomeOffset(zombie);
+				areas[at2] = SpawnScaling.areaLevel(zombie);
+			}));
+		}
+		int distanceLevels = SpawnScaling.distanceLevels(Level.OVERWORLD, Math.hypot(zombie.getX(), zombie.getZ()));
+		boolean valid = offsets[0] == 9 && areas[0] == distanceLevels + 9
+			&& offsets[1] == 0 && areas[1] == distanceLevels
+			&& offsets[2] == -1_000_000 && areas[2] == 0;
+		result("biomeAddsItsFlatLevelsFromTheConfig", "biome=" + biome + " distanceLevels=" + distanceLevels
+			+ " offsets=" + offsets[0] + "/" + offsets[1] + "/" + offsets[2]
+			+ " areas=" + areas[0] + "/" + areas[1] + "/" + areas[2] + " valid=" + valid);
+		helper.assertTrue(valid, "the biome's flat levels were not added, or a negative offset went below level zero");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void badBiomeEntriesLogAndSkip(final GameTestHelper helper) {
+		GearConfig parsed = GearConfigParser.parse(biomeConfig(
+			"\"minecraft:plains\": 3, \"Not A Biome!\": 4, \"minecraft:swamp\": 2.5, \"minecraft:jungle\": \"six\", "
+				+ "\"minecraft:desert\": -4"
+		));
+		var levels = parsed.world().biomeLevels();
+		boolean valid = levels.size() == 2
+			&& parsed.world().biomeLevel(Identifier.parse("minecraft:plains")) == 3
+			&& parsed.world().biomeLevel(Identifier.parse("minecraft:desert")) == -4;
+		result("badBiomeEntriesLogAndSkip", "kept=" + levels + " valid=" + valid);
+		helper.assertTrue(valid, "a bad biome entry was kept, or a good one lost");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void shippedConfigCarriesEveryWorldRule(final GameTestHelper helper) {
+		GearConfig shipped = GearConfigStore.defaults();
+		var world = shipped.world();
+		double[] actual = {
+			world.eliteMinDistance(), world.bossMinDistance(), world.eliteBonusPer100(), world.eliteBonusCap(),
+			world.eliteQuietRadius(), world.bossQuietRadius(), world.quietFactor(),
+			shipped.spawnSafetyRadius(), SpawnSafety.SHIPPED_RADIUS,
+			world.biomeLevels().isEmpty() ? 0 : 1
+		};
+		double[] expected = {500.0, 2000.0, 0.0005, 0.20, 16.0, 32.0, 0.5, 240.0, 240.0, 1};
+		int wrong = 0;
+		StringBuilder cases = new StringBuilder();
+		for (int index = 0; index < expected.length; index++) {
+			cases.append(index).append('=').append(actual[index]).append(' ');
+			wrong += Math.abs(actual[index] - expected[index]) < EPSILON ? 0 : 1;
+		}
+		result("shippedConfigCarriesEveryWorldRule", "wrong=" + wrong + " biomes=" + world.biomeLevels().size() + " " + cases);
+		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "shipped world rules that differ from the spec");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anOlderConfigGainsTheWorldRules(final GameTestHelper helper) {
+		GearConfig previous = GearConfigStore.get();
+		try {
+			java.nio.file.Path older = helper.getLevel().getServer().getServerDirectory()
+				.resolve("config-migration").resolve("world-rules.json");
+			java.nio.file.Files.createDirectories(older.getParent());
+			java.nio.file.Files.writeString(older, "{ \"version\": 1, \"entities\": {}, \"rolls\": { \"roll_chance\": 0.3 } }",
+				java.nio.charset.StandardCharsets.UTF_8);
+			var before = GearConfigParser.parse("{ \"rolls\": { \"roll_chance\": 0.3 } }").world();
+			var migrated = GearConfigStore.loadFrom(older).world();
+			var shipped = GearConfigStore.defaults().world();
+			boolean valid = before.equals(com.stella.mobs.config.WorldRules.OFF) && migrated.equals(shipped)
+				&& !migrated.biomeLevels().isEmpty();
+			result("anOlderConfigGainsTheWorldRules", "before=" + before.eliteMinDistance()
+				+ " migrated=" + migrated.eliteMinDistance() + "/" + migrated.bossMinDistance()
+				+ " biomes=" + migrated.biomeLevels().size() + " valid=" + valid);
+			helper.assertTrue(valid, "an older file did not gain the shipped world rules, or gained them wrongly");
+		} catch (java.io.IOException e) {
+			helper.fail("could not write the older config: " + e.getMessage());
+		} finally {
+			GearConfigStore.set(previous);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theRigMeasuresFromTheWorldSpawnAndPlayFrom00(final GameTestHelper helper) {
+		Zombie zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+		BlockPos spawn = new BlockPos(4_000, 64, -3_000);
+		double[] measured = new double[2];
+		withRespawn(helper, spawn, () -> {
+			zombie.snapTo(4_300.0, 64.0, -3_000.0, 0.0F, 0.0F);
+			measured[0] = SpawnScaling.distanceFromOrigin(zombie);
+			withProductionOrigin(() -> measured[1] = SpawnScaling.distanceFromOrigin(zombie));
+		});
+		boolean valid = Math.abs(measured[0] - 300.0) < EPSILON
+			&& Math.abs(measured[1] - Math.hypot(4_300.0, 3_000.0)) < EPSILON;
+		result("theRigMeasuresFromTheWorldSpawnAndPlayFrom00", "rig=" + measured[0] + " play=" + measured[1] + " valid=" + valid);
+		helper.assertTrue(valid, "the origin switch does not pick the world spawn for the rig and 0,0 for play");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void damageScalesFourPercentPerLevel(final GameTestHelper helper) {
+		double tenLevels = SpawnScaling.damageMultiplier(10, 0.0);
+		double fiftyFive = SpawnScaling.damageMultiplier(55, 0.0);
+		boolean valid = Math.abs(tenLevels - 1.4) < EPSILON && Math.abs(fiftyFive - 3.2) < EPSILON;
+		result("damageScalesFourPercentPerLevel", "ten=" + tenLevels + " fiftyFive=" + fiftyFive + " valid=" + valid);
+		helper.assertTrue(valid, "damage does not grow 4% per level");
+		helper.succeed();
+	}
+
 	private static final double EPSILON = 1.0E-6;
 	// No gear and no elite, so this test measures the scaling path alone.
 	private static final String PLAIN_CONFIG = """
@@ -288,78 +573,88 @@ public class SpawnScalingGameTest {
 		}""";
 
 	@GameTest
-	public void threatAndDepthScalingCombine(final GameTestHelper helper) {
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.healthMultiplier(0, 0.0)), Double.valueOf(1.0), "health multiplier at level zero"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.healthMultiplier(1, 0.0)), Double.valueOf(1.05), "health multiplier at level one"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.healthMultiplier(0, 256.0)), Double.valueOf(1.25), "health multiplier at 256 blocks deep"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.healthMultiplier(10, 4096.0)), Double.valueOf(1.75), "health multiplier with ten levels and depth cap"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.damageMultiplier(1, 0.0)), Double.valueOf(1.025), "damage multiplier at level one"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.damageMultiplier(0, 256.0)), Double.valueOf(1.125), "damage multiplier at 256 blocks deep"
-		);
-		helper.assertValueEqual(
-			Double.valueOf(SpawnScaling.damageMultiplier(10, 4096.0)), Double.valueOf(1.375), "damage multiplier with ten levels and depth cap"
-		);
-		result(
-			"threatAndDepthScalingCombine",
-			"healthAtZero=" + SpawnScaling.healthMultiplier(0, 0.0)
-				+ " healthAtOne=" + SpawnScaling.healthMultiplier(1, 0.0)
-				+ " healthAtDepthCap=" + SpawnScaling.healthMultiplier(0, 256.0)
-				+ " healthAtTenAndDepth=" + SpawnScaling.healthMultiplier(10, 4096.0)
-				+ " damageAtTenAndDepth=" + SpawnScaling.damageMultiplier(10, 4096.0)
-		);
+	public void threatAndAltitudeScalingCombine(final GameTestHelper helper) {
+		double h = SpawnScaling.LEVEL_HEALTH_BONUS;
+		double d = SpawnScaling.LEVEL_DAMAGE_BONUS;
+		double[] actual = {
+			SpawnScaling.healthMultiplier(0, 0.0),
+			SpawnScaling.healthMultiplier(1, 0.0),
+			SpawnScaling.healthMultiplier(10, 0.0),
+			SpawnScaling.healthMultiplier(0, -SpawnScaling.DEPTH_CAP),
+			SpawnScaling.healthMultiplier(0, -4096.0),
+			SpawnScaling.healthMultiplier(0, SpawnScaling.HEIGHT_CAP),
+			SpawnScaling.healthMultiplier(0, 4096.0),
+			SpawnScaling.healthMultiplier(10, -SpawnScaling.DEPTH_CAP),
+			SpawnScaling.damageMultiplier(1, 0.0),
+			SpawnScaling.damageMultiplier(0, -SpawnScaling.DEPTH_CAP),
+			SpawnScaling.damageMultiplier(0, SpawnScaling.HEIGHT_CAP),
+			SpawnScaling.damageMultiplier(10, -4096.0)
+		};
+		double[] expected = {
+			1.0,
+			1.0 + h,
+			1.0 + 10 * h,
+			1.0 + SpawnScaling.HEALTH_DEPTH_WEIGHT,
+			1.0 + SpawnScaling.HEALTH_DEPTH_WEIGHT,
+			1.0 + SpawnScaling.HEALTH_HEIGHT_WEIGHT,
+			1.0 + SpawnScaling.HEALTH_HEIGHT_WEIGHT,
+			1.0 + 10 * h + SpawnScaling.HEALTH_DEPTH_WEIGHT,
+			1.0 + d,
+			1.0 + SpawnScaling.DAMAGE_DEPTH_WEIGHT,
+			1.0 + SpawnScaling.DAMAGE_HEIGHT_WEIGHT,
+			1.0 + 10 * d + SpawnScaling.DAMAGE_DEPTH_WEIGHT
+		};
+		int wrong = 0;
+		StringBuilder cases = new StringBuilder();
+		for (int index = 0; index < expected.length; index++) {
+			cases.append(index).append('=').append(actual[index]).append(' ');
+			wrong += Math.abs(actual[index] - expected[index]) < EPSILON ? 0 : 1;
+		}
+		result("threatAndAltitudeScalingCombine", "wrong=" + wrong + " " + cases);
+		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "multipliers that disagree with the formula");
 		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 200)
 	public void farMobSpawnsScaled(final GameTestHelper helper) {
-		GearConfigStore.set(GearConfigParser.parse(PLAIN_CONFIG));
+		withConfig(PLAIN_CONFIG, () -> {
+			Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
+			double x = zombie.getX();
+			double y = zombie.getY();
+			double z = zombie.getZ();
+			double distance = Math.hypot(x, z);
+			int threatLevel = ThreatState.level(zombie);
+			double expected = SpawnScaling.healthMultiplier(threatLevel, y);
 
-		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
-		double x = zombie.getX();
-		double y = zombie.getY();
-		double z = zombie.getZ();
-		double distance = Math.hypot(x - helper.getLevel().getRespawnData().pos().getX(), z - helper.getLevel().getRespawnData().pos().getZ());
-		double depth = Math.max(0.0, helper.getLevel().getSeaLevel() - y);
-		int threatLevel = ThreatState.level(zombie);
-		double expected = SpawnScaling.healthMultiplier(threatLevel, depth);
-
-		AttributeInstance health = zombie.getAttribute(Attributes.MAX_HEALTH);
-		helper.assertTrue(health != null, "the zombie has no MAX_HEALTH attribute");
-		AttributeModifier modifier = health.getModifier(SpawnScaling.HEALTH_ID);
-		helper.assertTrue(modifier != null, "no spawn scaling modifier was applied");
-		helper.assertTrue(
-			Math.abs(modifier.amount() - (expected - 1.0)) < EPSILON,
-			"the scaling amount " + modifier.amount() + " is not the expected " + (expected - 1.0)
-				+ " at distance " + distance + " and depth " + depth
-		);
-		helper.assertValueEqual(
-			Float.valueOf(zombie.getHealth()), Float.valueOf(zombie.getMaxHealth()), "the scaled mob healed to its new maximum"
-		);
-		result(
-			"farMobSpawnsScaled",
-			"dist=" + distance + " depth=" + depth + " threatLevel=" + threatLevel
-				+ " healthMul=" + expected + " amount=" + modifier.amount()
-				+ " hp=" + zombie.getHealth() + "/" + zombie.getMaxHealth()
-		);
+			AttributeInstance health = zombie.getAttribute(Attributes.MAX_HEALTH);
+			helper.assertTrue(health != null, "the zombie has no MAX_HEALTH attribute");
+			AttributeModifier modifier = health.getModifier(SpawnScaling.HEALTH_ID);
+			helper.assertTrue(modifier != null, "no spawn scaling modifier was applied");
+			helper.assertTrue(
+				Math.abs(modifier.amount() - (expected - 1.0)) < EPSILON,
+				"the scaling amount " + modifier.amount() + " is not the expected " + (expected - 1.0)
+					+ " at distance " + distance + " and height " + y
+			);
+			helper.assertValueEqual(
+				Float.valueOf(zombie.getHealth()), Float.valueOf(zombie.getMaxHealth()), "the scaled mob healed to its new maximum"
+			);
+			result(
+				"farMobSpawnsScaled",
+				"dist=" + distance + " y=" + y + " threatLevel=" + threatLevel
+					+ " healthMul=" + expected + " amount=" + modifier.amount()
+					+ " hp=" + zombie.getHealth() + "/" + zombie.getMaxHealth()
+			);
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void diskLoadDoesNotScaleTwice(final GameTestHelper helper) {
+		GearConfig previous = GearConfigStore.get();
 		GearConfigStore.set(GearConfigParser.parse(PLAIN_CONFIG));
 
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
+		GearConfigStore.set(previous);
 		// The spawn path scaled the mob already, so the claim is idempotence, not an empty start.
 		int atSpawn = countScalingModifiers(mob);
 		double healthAtSpawn = healthAmount(mob);
@@ -418,4 +713,46 @@ public class SpawnScalingGameTest {
 
 		return count;
 	}
+
+	/** Runs the body as play runs: distance from 0,0. The rig's own origin setting is put back afterwards. */
+	private static void withProductionOrigin(final Runnable body) {
+		String previous = System.getProperty(SpawnScaling.ORIGIN_PROPERTY);
+		try {
+			System.clearProperty(SpawnScaling.ORIGIN_PROPERTY);
+			body.run();
+		} finally {
+			if (previous != null) {
+				System.setProperty(SpawnScaling.ORIGIN_PROPERTY, previous);
+			}
+		}
+	}
+
+	/** Parses the config, runs the body, and puts the previous config back even when the body throws. */
+	private static void withConfig(final String json, final Runnable body) {
+		GearConfig previous = GearConfigStore.get();
+		try {
+			GearConfigStore.set(GearConfigParser.parse(json));
+			body.run();
+		} finally {
+			GearConfigStore.set(previous);
+		}
+	}
+
+	/** Moves the level's respawn point for the body, and restores it afterwards. */
+	private static void withRespawn(final GameTestHelper helper, final BlockPos spawn, final Runnable body) {
+		var level = helper.getLevel();
+		LevelData.RespawnData previous = level.getRespawnData();
+		try {
+			level.setRespawnData(LevelData.RespawnData.of(level.dimension(), spawn, 0.0F, 0.0F));
+			body.run();
+		} finally {
+			level.setRespawnData(previous);
+		}
+	}
+
+	private static String biomeConfig(final String entries) {
+		return "{ \"entities\": {}, \"rolls\": { \"roll_chance\": 0.0, \"elite_chance\": 0.0, \"biome_levels\": { "
+			+ entries + " } } }";
+	}
+
 }

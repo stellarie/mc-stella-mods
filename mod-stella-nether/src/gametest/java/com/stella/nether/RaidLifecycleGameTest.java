@@ -129,15 +129,26 @@ public class RaidLifecycleGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:live", maxTicks = 100)
-	public void aPlayerReturningToTheLiveRunStays(final GameTestHelper helper) {
+	public void aPlayerReconnectingToALiveRunIsSentToTheirPortalAndMayWalkBackIn(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
 		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		RaidTravel.Entry entry = player.getAttached(RaidTravel.ENTRY);
+		int run = RaidInstance.state(server).run();
 		RaidInstance.onJoin(player);
-		var at = player.level().dimension();
-		NetherTestSupport.result("liveStays", "at=" + at.identifier());
+		var sentTo = player.level().dimension();
+		double fromEntry = entry == null ? -1.0 : player.position().distanceTo(entry.position());
+		// Back through the portal they came by: the run still lives, so they join it again.
+		RaidTravel.choose(player, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		TeleportTransition back = NetherTestSupport.portal(helper.getLevel(), player, helper.absolutePos(new net.minecraft.core.BlockPos(1, 1, 1)));
+		if (back != null) {
+			player.teleport(back);
+		}
+		boolean rejoined = player.level().dimension().equals(RaidTravel.RAID) && RaidInstance.state(server).active() && RaidInstance.state(server).run() == run;
+		NetherTestSupport.result("reconnectSentOut", "sentTo=" + sentTo.identifier() + " fromEntry=" + String.format("%.2f", fromEntry) + " rejoined=" + rejoined);
 		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(at.equals(RaidTravel.RAID), "a live raider was moved to " + at);
+		helper.assertTrue(sentTo.equals(Level.OVERWORLD) && fromEntry >= 0.0 && fromEntry < 0.01 && rejoined,
+			"a reconnecting raider was sent to " + sentTo.identifier() + ", " + fromEntry + " from their entry, and rejoined=" + rejoined);
 		helper.succeed();
 	}
 }

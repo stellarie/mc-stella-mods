@@ -36,6 +36,62 @@ public class TowerEscapeGameTest {
 		helper.succeed();
 	}
 
+	/** No block the tower is built of is one an enderman may hold. */
+	@GameTest
+	public void noTowerBlockIsOneAnEndermanMayHold(final GameTestHelper helper) {
+		java.util.List<BlockState> built = new java.util.ArrayList<>(List.of(
+			TowerBlocks.TOWER_WALL.defaultBlockState(), TowerBlocks.TOWER_LAMP.defaultBlockState(), TowerBlocks.TOWER_MAZE_WALL.defaultBlockState(),
+			TowerBlocks.TOWER_FRAME.defaultBlockState(), TowerFloors.SAFE_FLOOR.defaultBlockState(), Blocks.BEDROCK.defaultBlockState()));
+		TowerBlocks.TRAPS.values().forEach(trap -> built.add(trap.defaultBlockState()));
+		for (int floor : new int[] {1, 21, 31, 41}) {
+			built.addAll(java.util.Arrays.asList(TowerFloors.palette(floor)));
+		}
+		List<String> holdable = built.stream().filter(state -> state.is(BlockTags.ENDERMAN_HOLDABLE)).map(state -> state.getBlock().toString()).toList();
+		TowerTestSupport.result("endermanHoldable", "checked=" + built.size() + " holdable=" + holdable);
+		helper.assertTrue(holdable.isEmpty(), "endermen may hold " + holdable);
+		helper.succeed();
+	}
+
+	/**
+	 * In the tower an enderman never sets out to take a block, so no wall or floor can be lifted even if a
+	 * data pack tags one holdable. Out of it the same enderman does.
+	 */
+	@GameTest
+	public void anEndermanTakesNothingInTheTower(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ServerLevel world = helper.getLevel();
+		int inTower = takingTries(tower, TowerLayout.arrival(TowerTestSupport.freshFloor()));
+		int outside = takingTries(world, helper.absoluteVec(new Vec3(2.5, 2.0, 2.5)));
+		TowerTestSupport.result("endermanTakes", "inTower=" + inTower + " outside=" + outside);
+		helper.assertTrue(outside > 0, "an enderman outside the tower never sets out to take a block, so the case proves nothing");
+		helper.assertTrue(inTower == 0, "an enderman in the tower set out to take a block " + inTower + " times");
+		helper.succeed();
+	}
+
+	/** How often an enderman standing here sets out to take a block, over many tries. */
+	private static int takingTries(final ServerLevel level, final Vec3 at) {
+		net.minecraft.world.entity.monster.Enderman enderman = EntityTypes.ENDERMAN.create(level, EntitySpawnReason.COMMAND);
+		enderman.snapTo(at);
+		level.addFreshEntity(enderman);
+		net.minecraft.world.entity.ai.goal.GoalSelector selector;
+		try {
+			java.lang.reflect.Field field = net.minecraft.world.entity.Mob.class.getDeclaredField("goalSelector");
+			field.setAccessible(true);
+			selector = (net.minecraft.world.entity.ai.goal.GoalSelector) field.get(enderman);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException(e);
+		}
+		net.minecraft.world.entity.ai.goal.Goal take = selector.getAvailableGoals().stream()
+			.map(net.minecraft.world.entity.ai.goal.WrappedGoal::getGoal)
+			.filter(goal -> goal.getClass().getName().endsWith("EndermanTakeBlockGoal")).findFirst().orElseThrow();
+		int tries = 0;
+		for (int i = 0; i < 4000; i++) {
+			tries += take.canUse() ? 1 : 0;
+		}
+		enderman.discard();
+		return tries;
+	}
+
 	@GameTest
 	public void chorusFruitCannotLandOnTheRoof(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_transmute",
+  "category": "equipment",
+  "input": "minecraft:netherite_helmet",
+  "material": "mod-stella-tower:void_ingot",
+  "material_count": {
+    "min": 3,
+    "max": 3
+  },
+  "result": {
+    "id": "mod-stella-tower:void_helmet"
+  }
+}

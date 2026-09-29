@@ -108,7 +108,7 @@ public final class RaidTravel {
 	/** A raid choice carries the mode the player would host with; joining a running raid ignores it. */
 	public static void choose(final ServerPlayer player, final Choice choice, final RaidMode mode) {
 		CHOICES.put(player.getUUID(), new Pending(choice, mode, player.level().getServer().getTickCount() + CHOICE_TICKS));
-		StellaNether.LOGGER.debug("[NETHER] player={} CHOSE {} mode={}", player.getScoreboardName(), choice, mode);
+		BehaviorLog.info("[NETHER] player={} CHOSE {} mode={}", player.getScoreboardName(), choice, mode);
 	}
 
 	public static void choose(final ServerPlayer player, final Choice choice) {
@@ -166,7 +166,7 @@ public final class RaidTravel {
 		});
 		RaidInstance.enter(player, pending.mode());
 		buildHall(raid);
-		StellaNether.LOGGER.debug("[NETHER] player={} ENTERS raid from={}", player.getScoreboardName(), beside.position());
+		BehaviorLog.info("[NETHER] player={} ENTERS raid from={}", player.getScoreboardName(), beside.position());
 		return new Route(true, new TeleportTransition(
 			raid, Vec3.atBottomCenterOf(RaidInstance.arrival(from.getServer())), Vec3.ZERO, 180.0F, 0.0F,
 			TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET)
@@ -231,7 +231,7 @@ public final class RaidTravel {
 			if (WINDOW_OPEN.putIfAbsent(player.getUUID(), portal.immutable()) == null) {
 				ASKED.put(player.getUUID(), player.level().getServer().getTickCount());
 				windowSender.accept(player, PortalWindow.openFor(state));
-				StellaNether.LOGGER.debug("[NETHER] player={} ASKED by window", player.getScoreboardName());
+				BehaviorLog.info("[NETHER] player={} ASKED by window", player.getScoreboardName());
 			}
 			return;
 		}
@@ -250,7 +250,7 @@ public final class RaidTravel {
 				.append(option("raid hard", "host.hard", ChatFormatting.DARK_RED));
 		}
 		player.sendSystemMessage(prompt);
-		StellaNether.LOGGER.debug("[NETHER] player={} ASKED", player.getScoreboardName());
+		BehaviorLog.info("[NETHER] player={} ASKED", player.getScoreboardName());
 	}
 
 	/**
@@ -276,7 +276,7 @@ public final class RaidTravel {
 		}
 		player.teleport(transition);
 		player.setPortalCooldown();
-		StellaNether.LOGGER.debug("[NETHER] player={} SENT by window option={}", player.getScoreboardName(), option);
+		BehaviorLog.info("[NETHER] player={} SENT by window option={}", player.getScoreboardName(), option);
 		return true;
 	}
 
@@ -312,7 +312,7 @@ public final class RaidTravel {
 				player.needsSync = true;
 				level.playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.PLAYER_ATTACK_KNOCKBACK,
 					net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 0.8F);
-				StellaNether.LOGGER.debug("[NETHER] player={} CANCELLED the window, set down at {}", player.getScoreboardName(), to);
+				BehaviorLog.info("[NETHER] player={} CANCELLED the window, set down at {}", player.getScoreboardName(), to);
 				return true;
 			}
 		}
@@ -399,6 +399,6 @@ public final class RaidTravel {
 				}
 			}
 		}
-		StellaNether.LOGGER.debug("[NETHER] raid hall built at={}", arrival);
+		BehaviorLog.info("[NETHER] raid hall built at={}", arrival);
 	}
 }

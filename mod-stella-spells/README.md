@@ -4,6 +4,18 @@ Forty-two spellbooks with distinct icons, each casting one fixed spell, and eigh
 spells behave. Witches, strays, and spellcasting illagers cast spells of their own. Install the same jar on the
 server and every client. The server runs spell logic; clients render icons, empty hands, and visual effects.
 
+## Quick slots
+
+Four extra hotbar cells sit to the right of the hotbar. Each holds any item and has its own key, unbound until you
+set it under Controls, "Stella Quick Slots". Pressing a key uses that slot's item at once, without selecting it, and
+the item you hold stays where it is. Place items in the four slots in a row under the inventory screen.
+
+- A spellbook or scroll casts, and a scroll is spent by one cast. Thrown items throw.
+- Food and drink finish at once.
+- An item that has to be held to work, such as a bow, is let go, not left half drawn.
+- The key does nothing while you are already using an item, or while a screen is open.
+- The slots keep their items across logins and dimension changes, and drop on death unless keepInventory is on.
+
 ## Using a spellbook
 
 Hold a spellbook and use it. A cast that finds no valid target does nothing and starts no

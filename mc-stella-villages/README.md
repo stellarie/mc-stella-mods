@@ -21,8 +21,9 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   gets its patrol. When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
 - The head guards within 8 blocks of the village's bell and never chases a threat beyond that radius.
+  Inside that radius it fights any hostile mob it sees, a slime as much as a zombie.
   The other members are set down across
-  the village, up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
+  the village, outside the head's 8-block circle and up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
   included; a member that finds itself outside heads back in.
 - The head wears full netherite, every piece enchanted (Protection IV and Unbreaking III, Feather Falling IV
   on the boots), and carries a netherite axe with Sharpness V. With `mod-stella-spells` loaded, the axe
@@ -37,8 +38,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
   pillager pairs.
 - Three contracts at each village head, each for a different hostile mob or an iron golem with a
-  spawn egg. Neutral mobs, including traders and creakings, never appear. Water mobs and the ender
-  dragon are also excluded. An iron golem Nemesis pursues its mission player. Right-click the head within 8 blocks to
+  spawn egg. Neutral mobs, including traders and creakings, never appear. Water mobs, bosses, creepers,
+  endermites, silverfish, blazes, phantoms and ghasts are also excluded. An iron golem Nemesis pursues its mission player. Right-click the head within 8 blocks to
   open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
   board, or tells you why it refused. Each contract creates a persistent elite Nemesis and a same-kind
@@ -46,11 +47,12 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   The Nemesis has 100 health above its elite health,
   diamond or netherite armor, and a matching weapon with three random enchantments per piece. It can
   teleport near its target player; ranged mobs choose a safe position farther away. The map looks like
-  a vanilla filled map. A player kill drops 64 emeralds, 32 diamonds, one ancient debris, and the
-  mob's vanilla head when one exists. Other mobs drop a named collectible head marked with their type.
-  The kill also has a 10% chance to drop exactly one equipped piece.
-  A Nemesis that dies another way ends its contract without these rewards. Hold the marked head and
-  right-click any village head to trade it for three random enchanted books. Vanilla mob heads also trade.
+  a vanilla filled map. A player kill drops one book, two stacks of 64 emeralds and two random
+  potions. The book is an enchanted book or, when `mod-stella-spells` is loaded, a spell book, with even
+  odds. Three separate rolls add more: 5% for 32 diamonds, 5% for exactly one equipped piece, and 0.1%
+  for one ancient debris. A Nemesis no longer drops a head.
+  A Nemesis that dies another way ends its contract without these rewards. Hold a mob head you already
+  own and right-click any village head to trade it for three random enchanted books.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
@@ -61,12 +63,18 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
   never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
   a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It can throw
-  splash healing or buffs at nearby players, villagers, and patrol members every two seconds.
-  A separate two-second timer controls random splash Harming, Poison, or Wither against hostile mobs.
+  splash healing or buffs at nearby players, villagers, and patrol members every five seconds.
+  A separate five-second timer controls random splash Harming, Poison, or Wither against hostile mobs.
   Harmful splash effects spare friendlies,
   and Harming still damages undead enemies.
   The spells mod gives it Warden's Roar, Spark Shot, Life Bloom, and safe-distance blinks. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
+- Right-click the village witch within 8 blocks to open the Village Witch
+  Shop, a one-row chest menu. It sells five enchanted books of different enchantments, each at a level
+  the enchantment allows and each priced from 320 to 960 emeralds. Click a book to buy it: the price
+  comes out of your whole inventory, the book stays on the shelf, and a short purse changes nothing. The
+  clock in slot 7 rerolls all five books for 32 emeralds. The shop also rerolls once at every midnight (day
+  time 18000). Each village keeps its own offers in its saved data.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding

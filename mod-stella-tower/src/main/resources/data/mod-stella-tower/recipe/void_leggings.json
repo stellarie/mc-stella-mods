@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_transmute",
+  "category": "equipment",
+  "input": "minecraft:netherite_leggings",
+  "material": "mod-stella-tower:void_ingot",
+  "material_count": {
+    "min": 4,
+    "max": 4
+  },
+  "result": {
+    "id": "mod-stella-tower:void_leggings"
+  }
+}
