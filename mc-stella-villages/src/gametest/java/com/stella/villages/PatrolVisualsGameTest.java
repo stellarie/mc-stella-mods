@@ -1,5 +1,6 @@
 package com.stella.villages;
 
+import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.villages.patrol.PatrolVisuals;
 import java.util.List;
@@ -18,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * V5: a patrol member is told apart from a hostile illager with vanilla assets only, so a client needs
- * nothing extra. Pillagers and Vindicators wear the village banner; every member, the Ravager included,
+ * nothing extra. Pillagers and Vindicators wear the village banner; every member,
  * gives off the village sparkle. An ordinary illager keeps its vanilla look.
  */
 public class PatrolVisualsGameTest {
@@ -67,7 +68,7 @@ public class PatrolVisualsGameTest {
 		watcher.setPos(at.x, at.y, at.z);
 		helper.succeedWhen(() -> {
 			List<Mob> members = PatrolTestSupport.patrols(helper);
-			helper.assertTrue(members.stream().anyMatch(mob -> mob.getType() == EntityTypes.RAVAGER), "the roster has no Ravager, so the case proves nothing");
+			helper.assertTrue(members.size() == PatrolService.PATROL_MEMBER_COUNT, "the roster is incomplete, so the case proves nothing");
 			for (Mob member : members) {
 				AtomicInteger sparkles = SPARKLES.get(member.getUUID());
 				helper.assertTrue(sparkles != null && sparkles.get() > 0, PatrolTestSupport.typeId(member) + " gave off no sparkle yet");

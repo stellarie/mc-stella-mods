@@ -6,6 +6,10 @@ import com.stella.villages.data.VillageWorldData.MissionRecord;
 import com.stella.villages.data.VillageWorldData.MissionStatus;
 import com.stella.villages.data.VillageWorldData.VillageRecord;
 import com.stella.villages.patrol.PatrolState;
+import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.gear.GearTier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,28 +21,38 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -54,30 +68,50 @@ public final class MissionService {
 	/** Health a Nemesis carries on top of its type's own. */
 	public static final double NEMESIS_BONUS_HEALTH = 100.0;
 	public static final int NEMESIS_ENRAGE_DURATION = 200;
+	/** A Nemesis pays this many stacks of emeralds, and this many random potions. */
+	public static final int REWARD_EMERALD_STACKS = 2;
+	public static final int REWARD_POTIONS = 2;
+	public static final int REWARD_BONUS_DIAMONDS = 32;
+	/** Chance of the bonus diamonds, and separately of one piece of the Nemesis's gear. */
+	public static final float REWARD_BONUS_CHANCE = 0.05F;
+	/** Chance of one ancient debris, rolled apart from the diamonds and the gear. */
+	public static final float REWARD_DEBRIS_CHANCE = 0.001F;
+	/** The item tag of the spells mod's books; resolved by id so this mod has no link to it. */
+	public static final Identifier SPELL_BOOK_TAG = Identifier.parse("mod-stella-spells:spellbooks");
 
 	/** How many contracts a head offers at once, each a different kind. */
 	public static final int OFFERS_PER_BOARD = 3;
-	/** A dragon out of its own End fight has no fight to fly, so it is the one kind never offered. */
-	/** The dragon, the water's own mobs that would dry out on the land a Nemesis stands on, and the golem that melts. */
+	/** Types unsuitable for a land-based hostile contract, including neutral monsters and bosses. */
 	public static final Set<Identifier> NEVER_OFFERED = Set.of(
-		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:guardian"), Identifier.parse("minecraft:elder_guardian"),
-		Identifier.parse("minecraft:snow_golem"), Identifier.parse("minecraft:tadpole")
+		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:wither"),
+		Identifier.parse("minecraft:creeper"), Identifier.parse("minecraft:endermite"), Identifier.parse("minecraft:silverfish"),
+		Identifier.parse("minecraft:blaze"), Identifier.parse("minecraft:phantom"), Identifier.parse("minecraft:ghast"),
+		Identifier.parse("minecraft:guardian"), Identifier.parse("minecraft:elder_guardian"),
+		Identifier.parse("minecraft:snow_golem"), Identifier.parse("minecraft:tadpole"),
+		Identifier.parse("minecraft:creaking"), Identifier.parse("minecraft:enderman"),
+		Identifier.parse("minecraft:piglin"), Identifier.parse("minecraft:zombified_piglin"),
+		Identifier.parse("minecraft:zombie_horse"), Identifier.parse("minecraft:zombie_nautilus"),
+		Identifier.parse("minecraft:camel_husk")
 	);
 	/** Mobs of these kinds live in water and die on land. */
 	public static final Set<net.minecraft.world.entity.MobCategory> WATER_CATEGORIES = java.util.EnumSet.of(
 		net.minecraft.world.entity.MobCategory.WATER_CREATURE, net.minecraft.world.entity.MobCategory.WATER_AMBIENT,
 		net.minecraft.world.entity.MobCategory.UNDERGROUND_WATER_CREATURE, net.minecraft.world.entity.MobCategory.AXOLOTLS
 	);
-	/** Test seam: the kinds a board draws from; null draws from every kind with a spawn egg. */
+	/** Test seam: the kinds a board draws from; null draws from eligible spawn-egg kinds. */
 	private static volatile @Nullable List<Identifier> offerPool;
+	/** Test seam: the spell books a reward draws from; null reads the spells mod's item tag. */
+	private static volatile @Nullable List<Item> spellBookPool;
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Mob> ACTIVE_NEMESES = new ConcurrentHashMap<>();
 	private static final Map<UUID, String> LAST_REJECTIONS = new ConcurrentHashMap<>();
+	private static final Map<UUID, Integer> MISSING_COMPANION_TICKS = new ConcurrentHashMap<>();
 
 	private MissionService() {
 	}
 
 	public static void register() {
+		NemesisCompanionDeaths.register();
 		NemesisMapItem.register();
 		UseEntityCallback.EVENT.register(MissionService::onUseEntity);
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, alreadyLoaded) -> onChunkLoad(level, chunk));
@@ -85,6 +119,7 @@ public final class MissionService {
 		ServerEntityEvents.ENTITY_UNLOAD.register(MissionService::onEntityUnload);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(MissionService::onAfterDamage);
 		ServerLivingEntityEvents.AFTER_DEATH.register(MissionService::onAfterDeath);
+		ServerTickEvents.END_SERVER_TICK.register(server -> server.getAllLevels().forEach(MissionService::tick));
 	}
 
 	public static List<MissionOffer> offersFor(final UUID playerId) {
@@ -141,7 +176,7 @@ public final class MissionService {
 		);
 		data.addMission(mission);
 		deliverMap(level, player, map, mapId);
-		BOARDS.put(player.getUUID(), new MissionBoard(headId, head, createOffers()));
+		BOARDS.put(player.getUUID(), new MissionBoard(headId, head, createOffers(level)));
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=mission_accepted mission={} owner={} head={} offer={} target_type={} target_position={} map_id={}",
 			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), headId, offerId,
@@ -165,7 +200,7 @@ public final class MissionService {
 	) {
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(targetType).map(holder -> holder.value()).orElse(null);
 		Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
-		if (!(entity instanceof Mob probe)) {
+		if (!(entity instanceof Mob probe) || !canBeNemesis(probe)) {
 			return Optional.empty();
 		}
 		for (int attempt = 0; attempt < MISSION_TARGET_SEARCH_LIMIT; attempt++) {
@@ -205,7 +240,14 @@ public final class MissionService {
 		if (serverPlayer.distanceToSqr(head) > (double) MISSION_MENU_RANGE * MISSION_MENU_RANGE) {
 			return InteractionResult.PASS;
 		}
-		List<MissionOffer> offers = createOffers();
+		ItemStack held = serverPlayer.getItemInHand(hand);
+		if (NemesisHead.isTradeableHead(held)) {
+			NemesisHead.trade(level, serverPlayer, held);
+			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=nemesis_head_traded player={} books=3",
+				McStellaVillages.MOD_ID, serverPlayer.getUUID());
+			return InteractionResult.SUCCESS;
+		}
+		List<MissionOffer> offers = createOffers(level);
 		BOARDS.put(serverPlayer.getUUID(), new MissionBoard(head.getUUID(), head, offers));
 		// V2: the board is a chest menu, so a player without the mod reads and accepts offers too.
 		MissionBoardMenu.open(serverPlayer, head, offers);
@@ -237,14 +279,19 @@ public final class MissionService {
 			return;
 		}
 		Entity created = type.create(level, EntitySpawnReason.EVENT);
-		if (!(created instanceof Mob nemesis)) {
+		if (!(created instanceof Mob nemesis) || !canBeNemesis(nemesis)) {
 			return;
 		}
 		nemesis.snapTo(Vec3.atBottomCenterOf(mission.targetPosition()), 0.0F, 0.0F);
 		nemesis.setPersistenceRequired();
 		nemesis.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
-		NemesisState.attach(nemesis, mission.id());
-		applyNemesisProfile(nemesis);
+		ReactiveState.get(nemesis).setGearApplied(true);
+		EliteState.setSummoned(nemesis, true);
+		int buffIndex = NemesisKit.randomBuff(nemesis);
+		GearTier tier = nemesis.getRandom().nextBoolean() ? GearTier.DIAMOND : GearTier.NETHERITE;
+		NemesisState.attach(nemesis, mission.id(), buffIndex);
+		NemesisKit.applyElite(nemesis, tier, buffIndex);
+		NemesisKit.armNemesis(nemesis, tier);
 		String name = "<Nemesis> " + type.getDescription().getString();
 		nemesis.setCustomName(net.minecraft.network.chat.Component.literal(name));
 		nemesis.setCustomNameVisible(true);
@@ -261,6 +308,7 @@ public final class MissionService {
 			Optional.of(nemesis.getUUID()), MissionStatus.ACTIVE, mission.mapId(), mission.dimension()
 		));
 		ACTIVE_NEMESES.put(nemesis.getUUID(), nemesis);
+		spawnCompanion(level, nemesis, buffIndex, tier);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=nemesis_spawned mission={} entity={} owner={} target_position={} health={} type={}",
 			McStellaVillages.MOD_ID, mission.id(), nemesis.getUUID(), mission.ownerId(), mission.targetPosition(),
@@ -268,35 +316,156 @@ public final class MissionService {
 		);
 	}
 
-	private static void applyNemesisProfile(final Mob nemesis) {
-		AttributeInstance maxHealth = nemesis.getAttribute(Attributes.MAX_HEALTH);
-		if (maxHealth != null) {
-			maxHealth.setBaseValue(maxHealth.getBaseValue() + NEMESIS_BONUS_HEALTH);
-			nemesis.setHealth(nemesis.getMaxHealth());
+	private static void spawnCompanion(final ServerLevel level, final Mob nemesis, final int buffIndex, final GearTier tier) {
+		Entity created = nemesis.getType().create(level, EntitySpawnReason.EVENT);
+		if (!(created instanceof Mob companion)) {
+			return;
 		}
-		setEquipment(nemesis, EquipmentSlot.HEAD, Items.DIAMOND_HELMET);
-		setEquipment(nemesis, EquipmentSlot.CHEST, Items.DIAMOND_CHESTPLATE);
-		setEquipment(nemesis, EquipmentSlot.LEGS, Items.DIAMOND_LEGGINGS);
-		setEquipment(nemesis, EquipmentSlot.FEET, Items.DIAMOND_BOOTS);
-		setEquipment(nemesis, EquipmentSlot.MAINHAND, Items.DIAMOND_AXE);
-		setEquipment(nemesis, EquipmentSlot.OFFHAND, Items.SHIELD);
+		companion.snapTo(nemesis.getX() + 2.0, nemesis.getY(), nemesis.getZ() + 2.0, 0.0F, 0.0F);
+		companion.setPersistenceRequired();
+		companion.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		NemesisCompanionDeaths.attach(companion, NemesisState.get(nemesis).missionId());
+		ReactiveState.get(companion).setGearApplied(true);
+		EliteState.setSummoned(companion, true);
+		NemesisKit.applyElite(companion, tier, buffIndex);
+		companion.setCustomName(net.minecraft.network.chat.Component.literal("<Elite Guard> "
+			+ nemesis.getType().getDescription().getString()));
+		if (level.addFreshEntity(companion)) {
+			NemesisState.setCompanion(nemesis, companion.getUUID());
+			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=nemesis_companion_spawned nemesis={} companion={} buff={}",
+				McStellaVillages.MOD_ID, nemesis.getUUID(), companion.getUUID(), buffIndex);
+		}
 	}
 
-	private static void setEquipment(final Mob mob, final EquipmentSlot slot, final net.minecraft.world.item.Item item) {
-		mob.setItemSlot(slot, new ItemStack(item));
-		mob.setDropChance(slot, 1.0F);
+	private static void tick(final ServerLevel level) {
+		for (Mob nemesis : List.copyOf(ACTIVE_NEMESES.values())) {
+			if (nemesis.level() != level || !nemesis.isAlive() || nemesis.tickCount % 20 != 0) {
+				continue;
+			}
+			NemesisState state = NemesisState.get(nemesis);
+			if (state == null) {
+				continue;
+			}
+			NemesisKit.ensureBuff(nemesis, state.buffIndex());
+			Entity companion = state.companionId().map(level::getEntity).orElse(null);
+			if (NemesisCompanionDeaths.isDefeated(level, state.missionId())) {
+				MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+			} else if (!(companion instanceof Mob guard) || !guard.isAlive()) {
+				int missing = MISSING_COMPANION_TICKS.merge(nemesis.getUUID(), 20, Integer::sum);
+				if (missing >= 100) {
+					MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+					spawnCompanion(level, nemesis, state.buffIndex(), Elite.kitTier(nemesis));
+				}
+			} else {
+				MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+				if (NemesisCompanionDeaths.missionOf(guard) == null) {
+					NemesisCompanionDeaths.attach(guard, state.missionId());
+				}
+				NemesisKit.ensureBuff(guard, state.buffIndex());
+				if (guard.distanceToSqr(nemesis) > 16.0 * 16.0) {
+					teleportCompanionNear(level, guard, nemesis);
+				} else if (guard.distanceToSqr(nemesis) > 4.0 * 4.0) {
+					guard.getNavigation().moveTo(nemesis, 1.2);
+				}
+			}
+			ServerPlayer owner = VillageWorldData.get(level).mission(state.missionId())
+				.map(mission -> level.getServer().getPlayerList().getPlayer(mission.ownerId())).orElse(null);
+			if (owner != null && owner.level() == level && owner.isAlive()) {
+				if (nemesis.getType() == EntityTypes.IRON_GOLEM && nemesis.distanceToSqr(owner) <= 48.0 * 48.0) {
+					nemesis.setTarget(owner);
+				}
+				if (nemesis.tickCount % 100 == 0) {
+					tryTeleportTowards(level, nemesis, owner);
+				}
+			}
+		}
+	}
+
+	private static void teleportCompanionNear(final ServerLevel level, final Mob guard, final Mob nemesis) {
+		for (int attempt = 0; attempt < 12; attempt++) {
+			double angle = guard.getRandom().nextDouble() * Math.PI * 2.0;
+			BlockPos spot = BlockPos.containing(nemesis.getX() + Math.cos(angle) * 3.0,
+				nemesis.getY(), nemesis.getZ() + Math.sin(angle) * 3.0);
+			if (isSafeTeleportSpot(level, guard, spot)) {
+				guard.teleportTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5);
+				return;
+			}
+		}
+		guard.getNavigation().moveTo(nemesis, 1.2);
+	}
+
+	public static boolean tryTeleportTowards(final ServerLevel level, final Mob nemesis, final ServerPlayer player) {
+		if (player.level() != level || nemesis.distanceToSqr(player) < 12.0 * 12.0
+			|| nemesis.distanceToSqr(player) > 48.0 * 48.0) {
+			return false;
+		}
+		boolean ranged = nemesis.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.BOW)
+			|| nemesis.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.CROSSBOW);
+		double radius = ranged ? 10.0 : 3.0;
+		for (int attempt = 0; attempt < 12; attempt++) {
+			double angle = nemesis.getRandom().nextDouble() * Math.PI * 2.0;
+			BlockPos destination = BlockPos.containing(
+				player.getX() + Math.cos(angle) * radius, player.getY(), player.getZ() + Math.sin(angle) * radius
+			);
+			for (int deltaY = -2; deltaY <= 2; deltaY++) {
+				BlockPos spot = destination.offset(0, deltaY, 0);
+				if (isSafeTeleportSpot(level, nemesis, spot)) {
+					nemesis.teleportTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5);
+					McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=nemesis_teleported entity={} ranged={} destination={}",
+						McStellaVillages.MOD_ID, nemesis.getUUID(), ranged, spot);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private static boolean isSafeTeleportSpot(final ServerLevel level, final Mob mob, final BlockPos spot) {
+		return level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)
+			&& level.getBlockState(spot).getCollisionShape(level, spot).isEmpty()
+			&& level.getBlockState(spot.above()).getCollisionShape(level, spot.above()).isEmpty()
+			&& level.noCollision(mob, mob.getBoundingBox().move(
+				spot.getX() + 0.5 - mob.getX(), spot.getY() - mob.getY(), spot.getZ() + 0.5 - mob.getZ()
+			));
 	}
 
 	private static void onEntityLoad(final Entity entity, final ServerLevel level) {
 		if (entity instanceof Mob mob && NemesisState.get(mob) != null) {
+			NemesisState state = NemesisState.get(mob);
+			boolean alreadyElite = Elite.isElite(mob);
+			boolean oldKit = NemesisKit.needsEquipmentUpgrade(mob);
+			if (!alreadyElite || oldKit) {
+				AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+				if (health != null) {
+					health.setBaseValue(Math.max(1.0, health.getBaseValue() - NEMESIS_BONUS_HEALTH));
+				}
+				ReactiveState.get(mob).setGearApplied(true);
+				EliteState.setSummoned(mob, true);
+				GearTier tier = alreadyElite ? Elite.kitTier(mob)
+					: mob.getRandom().nextBoolean() ? GearTier.DIAMOND : GearTier.NETHERITE;
+				if (tier != GearTier.DIAMOND && tier != GearTier.NETHERITE) {
+					tier = GearTier.DIAMOND;
+				}
+				if (!alreadyElite) {
+					NemesisKit.applyElite(mob, tier, state.buffIndex());
+					NemesisKit.armNemesis(mob, tier);
+				} else {
+					NemesisKit.equipNemesis(mob, tier);
+					mob.setHealth(mob.getMaxHealth());
+				}
+			}
+			NemesisKit.ensureBuff(mob, state.buffIndex());
 			mob.setPersistenceRequired();
 			ACTIVE_NEMESES.put(mob.getUUID(), mob);
+			state.companionId().map(level::getEntity).filter(loaded -> loaded instanceof Mob)
+				.ifPresent(loaded -> NemesisCompanionDeaths.attach((Mob) loaded, state.missionId()));
 		}
 	}
 
 	private static void onEntityUnload(final Entity entity, final ServerLevel level) {
 		if (entity instanceof Mob mob && NemesisState.get(mob) != null) {
 			ACTIVE_NEMESES.remove(mob.getUUID(), mob);
+			MISSING_COMPANION_TICKS.remove(mob.getUUID());
 		}
 	}
 
@@ -327,10 +496,25 @@ public final class MissionService {
 		if (!(entity instanceof Mob nemesis) || !(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
+		UUID companionMission = NemesisCompanionDeaths.missionOf(nemesis);
+		if (companionMission == null && nemesis.getCustomName() != null
+			&& nemesis.getCustomName().getString().startsWith("<Elite Guard>")) {
+			companionMission = ACTIVE_NEMESES.values().stream()
+				.map(NemesisState::get)
+				.filter(state -> state != null && state.companionId().filter(nemesis.getUUID()::equals).isPresent())
+				.map(NemesisState::missionId).findFirst().orElse(null);
+		}
+		if (companionMission != null) {
+			NemesisCompanionDeaths.recordDeath(level, companionMission, nemesis.getUUID());
+		}
 		NemesisState state = NemesisState.get(nemesis);
 		if (state == null) {
 			return;
 		}
+		ACTIVE_NEMESES.remove(nemesis.getUUID(), nemesis);
+		MISSING_COMPANION_TICKS.remove(nemesis.getUUID());
+		NemesisCompanionDeaths.clear(level, state.missionId());
+		state.companionId().map(level::getEntity).ifPresent(Entity::discard);
 		VillageWorldData data = VillageWorldData.get(level);
 		MissionRecord mission = data.mission(state.missionId()).orElse(null);
 		if (mission == null) {
@@ -348,15 +532,97 @@ public final class MissionService {
 			"[BEHAVIOR] mod={} event=nemesis_killed mission={} entity={} killer={}",
 			McStellaVillages.MOD_ID, mission.id(), nemesis.getUUID(), source.getEntity() == null ? "unknown" : source.getEntity().getUUID()
 		);
-		drop(level, nemesis, new ItemStack(Items.EMERALD, 64));
-		drop(level, nemesis, new ItemStack(Items.EMERALD, 64));
-		drop(level, nemesis, new ItemStack(Items.DIAMOND, 4));
-		drop(level, nemesis, new ItemStack(Items.ANCIENT_DEBRIS, 1));
+		List<ItemStack> reward = rollReward(level, nemesis, nemesis.getRandom());
+		reward.forEach(stack -> drop(level, nemesis, stack));
 		data.removeMission(mission.id());
 		McStellaVillages.LOGGER.info(
-			"[BEHAVIOR] mod={} event=mission_reward mission={} owner={} emeralds=128 diamonds=4 ancient_debris=1",
-			McStellaVillages.MOD_ID, mission.id(), mission.ownerId()
+			"[BEHAVIOR] mod={} event=mission_reward mission={} owner={} emerald_stacks={} potions={} book={} diamonds={} ancient_debris={} items={}",
+			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), REWARD_EMERALD_STACKS, REWARD_POTIONS,
+			reward.get(0).getItem(), rewardCount(reward, Items.DIAMOND),
+			rewardCount(reward, Items.ANCIENT_DEBRIS), reward.size()
 		);
+	}
+
+	private static int rewardCount(final List<ItemStack> reward, final Item item) {
+		return reward.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+	}
+
+	/**
+	 * What a Nemesis pays: one book first, then the emeralds and potions, then the rare rolls. Each rare
+	 * roll is independent, so a Nemesis can pay any of them or none.
+	 */
+	public static List<ItemStack> rollReward(final ServerLevel level, final Mob nemesis, final RandomSource random) {
+		List<ItemStack> reward = new ArrayList<>();
+		reward.add(rewardBook(level, random, random.nextBoolean()));
+		for (int stack = 0; stack < REWARD_EMERALD_STACKS; stack++) {
+			reward.add(new ItemStack(Items.EMERALD, Items.EMERALD.getDefaultMaxStackSize()));
+		}
+		for (int potion = 0; potion < REWARD_POTIONS; potion++) {
+			reward.add(rewardPotion(random));
+		}
+		reward.addAll(rollRareRewards(nemesis, random));
+		return reward;
+	}
+
+	/** The three independent rare rolls: diamonds, one ancient debris, and one piece of the Nemesis's gear. */
+	public static List<ItemStack> rollRareRewards(final Mob nemesis, final RandomSource random) {
+		List<ItemStack> rare = new ArrayList<>();
+		if (random.nextFloat() < REWARD_BONUS_CHANCE) {
+			rare.add(new ItemStack(Items.DIAMOND, REWARD_BONUS_DIAMONDS));
+		}
+		if (random.nextFloat() < REWARD_DEBRIS_CHANCE) {
+			rare.add(new ItemStack(Items.ANCIENT_DEBRIS));
+		}
+		ItemStack equipment = rollEquipmentReward(nemesis, random);
+		if (!equipment.isEmpty()) {
+			rare.add(equipment);
+		}
+		return rare;
+	}
+
+	/** A spell book when asked for one and the spells mod has any; an enchanted book otherwise. */
+	public static ItemStack rewardBook(final ServerLevel level, final RandomSource random, final boolean spellBook) {
+		if (spellBook) {
+			List<Item> books = spellBooks(level);
+			if (!books.isEmpty()) {
+				return new ItemStack(books.get(random.nextInt(books.size())));
+			}
+		}
+		return NemesisHead.randomEnchantedBook(level, random);
+	}
+
+	private static List<Item> spellBooks(final ServerLevel level) {
+		List<Item> pool = spellBookPool;
+		if (pool != null) {
+			return pool;
+		}
+		return level.registryAccess().lookupOrThrow(Registries.ITEM).get(TagKey.create(Registries.ITEM, SPELL_BOOK_TAG))
+			.map(tag -> tag.stream().map(holder -> holder.value()).toList()).orElse(List.of());
+	}
+
+	/** A drinkable potion that does something: water, awkward, mundane and thick are left out. */
+	public static ItemStack rewardPotion(final RandomSource random) {
+		List<Holder.Reference<Potion>> potions = BuiltInRegistries.POTION.listElements()
+			.filter(holder -> !holder.value().getEffects().isEmpty()).toList();
+		return PotionContents.createItemStack(Items.POTION, potions.get(random.nextInt(potions.size())));
+	}
+
+	public static void setSpellBookPool(final @Nullable List<Item> pool) {
+		spellBookPool = pool == null ? null : List.copyOf(pool);
+	}
+
+	public static ItemStack rollEquipmentReward(final Mob nemesis, final RandomSource random) {
+		if (random.nextFloat() >= REWARD_BONUS_CHANCE) {
+			return ItemStack.EMPTY;
+		}
+		List<ItemStack> pieces = new ArrayList<>();
+		for (EquipmentSlot slot : NemesisKit.REWARD_SLOTS) {
+			ItemStack stack = nemesis.getItemBySlot(slot);
+			if (!stack.isEmpty()) {
+				pieces.add(stack);
+			}
+		}
+		return pieces.isEmpty() ? ItemStack.EMPTY : pieces.get(random.nextInt(pieces.size())).copyWithCount(1);
 	}
 
 	private static void deliverMap(
@@ -419,12 +685,22 @@ public final class MissionService {
 		return pool != null ? pool : defaultOfferPool();
 	}
 
-	/** Every kind of mob with a spawn egg, the dragon aside: a Nemesis can be any of them. */
+	/** A hostile mob can be a Nemesis. The iron golem is the sole non-hostile exception. */
+	public static boolean canBeNemesis(final Mob mob) {
+		Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
+		return !NEVER_OFFERED.contains(id)
+			&& (mob instanceof Enemy || id.equals(Identifier.parse("minecraft:iron_golem")));
+	}
+
+	/** Every eligible land mob with a spawn egg can appear on a board. */
 	public static List<Identifier> defaultOfferPool() {
 		return BuiltInRegistries.ENTITY_TYPE.stream()
 			.filter(type -> net.minecraft.world.item.SpawnEggItem.byId(type).isPresent() && !WATER_CATEGORIES.contains(type.getCategory()))
 			.map(BuiltInRegistries.ENTITY_TYPE::getKey)
 			.filter(id -> !NEVER_OFFERED.contains(id))
+			.filter(id -> BuiltInRegistries.ENTITY_TYPE.getValue(id).getCategory()
+				== net.minecraft.world.entity.MobCategory.MONSTER
+				|| id.equals(Identifier.parse("minecraft:iron_golem")))
 			.sorted()
 			.toList();
 	}
@@ -448,9 +724,14 @@ public final class MissionService {
 		return List.copyOf(picked);
 	}
 
-	private static List<MissionOffer> createOffers() {
+	private static List<MissionOffer> createOffers(final ServerLevel level) {
 		List<MissionOffer> result = new ArrayList<>(OFFERS_PER_BOARD);
-		for (Identifier type : rollOffers(offerPool(), net.minecraft.util.RandomSource.create())) {
+		List<Identifier> eligible = offerPool().stream().filter(id -> {
+			EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(id);
+			Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
+			return entity instanceof Mob mob && canBeNemesis(mob);
+		}).toList();
+		for (Identifier type : rollOffers(eligible, net.minecraft.util.RandomSource.create())) {
 			result.add(new MissionOffer(UUID.randomUUID(), type));
 		}
 		return List.copyOf(result);

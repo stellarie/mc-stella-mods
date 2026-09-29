@@ -1,6 +1,9 @@
 package com.stella.villages.patrol;
 
 import com.stella.villages.McStellaVillages;
+import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.MemberRecord;
 import com.stella.villages.data.VillageWorldData.ThreatRecord;
@@ -34,12 +37,14 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.item.ItemStack;
@@ -66,16 +71,18 @@ public final class PatrolService {
 	public static final String PATROL_TAG = "mc-stella-villages.patrol";
 	public static final int PLAYER_THREAT_CLEAR_TICKS = 200;
 	public static final int WITCH_SUPPORT_RANGE = 16;
-	public static final double WITCH_HEAL_THRESHOLD = 0.75;
-	public static final int WITCH_MIN_THROW_INTERVAL = 20;
-	public static final int PATROL_MEMBER_COUNT = 10;
-	/** W021: five crossbow Pillagers take the places the Evoker and the Witch held. */
-	public static final int PILLAGER_COUNT = 5;
+	public static final int WITCH_POTION_INTERVAL_TICKS = 100;
+	public static final int WITCH_POTION_RANGE = 16;
+	private static final long WITCH_GOAL_SWEEP_TICKS = 5L;
+	private static final String MOBS_WITCH_GOAL_PREFIX = "com.stella.mobs.behavior.Witch";
+	public static final int PATROL_MEMBER_COUNT = 4;
+	public static final int PILLAGER_COUNT = 2;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
 	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
-	/** W021: roles the roster no longer holds; a saved member of one leaves when its chunk loads. */
-	private static final Set<PatrolState.Role> RETIRED_ROLES = EnumSet.of(PatrolState.Role.EVOKER, PatrolState.Role.WITCH);
+	private static final Set<PatrolState.Role> RETIRED_ROLES = EnumSet.of(
+		PatrolState.Role.EVOKER, PatrolState.Role.WITCH, PatrolState.Role.VINDICATOR, PatrolState.Role.RAVAGER
+	);
 	private static final Set<Mob> RETIREMENTS = ConcurrentHashMap.newKeySet();
 	/** Each village's bell, found once per server; the anchor stands in when no bell is found. */
 	private static final Map<UUID, BlockPos> BELLS = new ConcurrentHashMap<>();
@@ -126,13 +133,14 @@ public final class PatrolService {
 
 		for (BlockPos position : positions) {
 			VillageRecord village = data.findOrCreate(level.dimension(), position);
+			reconcileRoster(data, village);
 			if (!villageIds.contains(village.id())) {
 				villageIds.add(village.id());
 			}
 
 			if (!village.rosterStarted() && level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 				spawnRoster(level, data, village);
-			} else if (village.rosterStarted() && VillageWitchKit.enabled() && roleCount(village, PatrolState.Role.VILLAGE_WITCH) == 0
+			} else if (village.rosterStarted() && roleCount(village, PatrolState.Role.VILLAGE_WITCH) == 0
 				&& level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 				// A village settled before the witch existed gets its witch the next time it loads.
 				spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, new ArrayList<>());
@@ -140,6 +148,22 @@ public final class PatrolService {
 		}
 
 		return List.copyOf(villageIds);
+	}
+
+	private static void reconcileRoster(final VillageWorldData data, final VillageRecord village) {
+		int pillagers = 0;
+		for (MemberRecord member : List.copyOf(village.members())) {
+			boolean pillager = member.role().equals(PatrolState.Role.PILLAGER.name());
+			boolean excess = pillager && ++pillagers > PILLAGER_COUNT;
+			boolean retired = RETIRED_ROLES.stream().anyMatch(role -> role.name().equals(member.role()));
+			if (retired || excess) {
+				data.removeMember(member.id());
+				Mob loaded = ACTIVE_MEMBERS.remove(member.id());
+				if (loaded != null) {
+					RETIREMENTS.add(loaded);
+				}
+			}
+		}
 	}
 
 	public static boolean hasThreat(final ServerLevel level, final UUID villageId, final UUID attackerId) {
@@ -212,10 +236,8 @@ public final class PatrolService {
 
 		List<Mob> spawned = new ArrayList<>();
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, VillageWitchKit.enabled() ? 1 : 0, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
 			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
@@ -229,10 +251,8 @@ public final class PatrolService {
 	) {
 		List<Mob> spawned = new ArrayList<>();
 		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.VINDICATOR, 3, spawned);
 		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.RAVAGER, PatrolState.Role.RAVAGER, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, VillageWitchKit.enabled() ? 1 : 0, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
 
 		if (hasCompleteRoster(village)) {
 			data.markRosterStarted(village);
@@ -264,9 +284,8 @@ public final class PatrolService {
 
 	private static boolean hasCompleteRoster(final VillageRecord village) {
 		return roleCount(village, PatrolState.Role.HEAD) >= 1
-			&& roleCount(village, PatrolState.Role.VINDICATOR) >= 3
 			&& roleCount(village, PatrolState.Role.PILLAGER) >= PILLAGER_COUNT
-			&& roleCount(village, PatrolState.Role.RAVAGER) >= 1;
+			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1;
 	}
 
 	private static long roleCount(final VillageRecord village, final PatrolState.Role role) {
@@ -308,16 +327,20 @@ public final class PatrolService {
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
 		mob.addTag(PATROL_TAG);
+		ReactiveState.get(mob).setGearApplied(true);
+		EliteState.setSummoned(mob, true);
 		if (role == PatrolState.Role.HEAD) {
 			HeadKit.apply(mob);
 		} else if (role == PatrolState.Role.VILLAGE_WITCH) {
 			VillageWitchKit.apply(mob);
 		} else if (role == PatrolState.Role.PILLAGER) {
-			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
 		}
 		PatrolVisuals.dress(mob, level, role);
 		installGoals(level, mob, village);
+		data.addMember(village, mob.getUUID(), role.name(), position);
 		if (!level.addFreshEntity(mob)) {
+			data.removeMember(mob.getUUID());
 			McStellaVillages.LOGGER.info(
 				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} entity={} role={} reason=entity_insertion",
 				McStellaVillages.MOD_ID, village.id(), mob.getUUID(), role
@@ -325,10 +348,22 @@ public final class PatrolService {
 			return null;
 		}
 
-		data.addMember(village, mob.getUUID(), role.name(), position);
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
+		stripMobsScaling(mob);
 		logSpawn(village, mob, role);
 		return mob;
+	}
+
+	private static void stripMobsScaling(final Mob mob) {
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		if (health != null && health.hasModifier(SpawnScaling.HEALTH_ID)) {
+			health.removeModifier(SpawnScaling.HEALTH_ID);
+			mob.setHealth(mob.getMaxHealth());
+		}
+		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+		if (damage != null && damage.hasModifier(SpawnScaling.DAMAGE_ID)) {
+			damage.removeModifier(SpawnScaling.DAMAGE_ID);
+		}
 	}
 
 	// A standable spot at the surface somewhere within the scatter radius of the village's centre, in a loaded chunk.
@@ -401,8 +436,9 @@ public final class PatrolService {
 	private static void installGoals(final ServerLevel level, final Mob mob, final VillageRecord village) {
 		// The village witch's mind is the spells mod's; this mod only keeps it by the bell.
 		if (PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
-			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal);
-			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), VillageWitchKit.BELL_RADIUS, 1.0));
+			mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchPotionGoal);
+			mob.getGoalSelector().addGoal(1, new PatrolWitchPotionGoal((Witch) mob, village.id()));
+			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bellOf(level, village), MEMBER_WANDER_RADIUS, 1.0));
 			return;
 		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
@@ -413,28 +449,50 @@ public final class PatrolService {
 			3,
 			new NearestAttackableTargetGoal<>(
 				mob,
-				Monster.class,
+				Mob.class,
 				10,
 				true,
 				false,
-				(target, targetLevel) -> target instanceof Monster
+				(target, targetLevel) -> target instanceof Enemy
 					&& (!(target instanceof Mob targetMob) || !PatrolState.isMarked(targetMob))
 					&& !target.entityTags().contains(PatrolDefendTargetGoal.FRIENDLY_PATROL_TAG)
+					&& withinHeadBell(mob, bellOf(level, village), target.position())
 			)
 		);
 
-		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal || goal instanceof PatrolWitchSupportGoal);
+		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof VillageWanderGoal
+			|| goal instanceof PatrolWitchPotionGoal || goal instanceof HeadBellGuardGoal
+			|| goal instanceof MeleeAttackGoal);
+		if (PatrolState.role(mob) == PatrolState.Role.PILLAGER) {
+			mob.removeAllGoals(goal -> goal instanceof net.minecraft.world.entity.ai.goal.RangedCrossbowAttackGoal);
+			mob.getGoalSelector().addGoal(2, new MeleeAttackGoal((net.minecraft.world.entity.monster.illager.Pillager) mob, 1.1, true));
+		}
 
 		BlockPos bell = bellOf(level, village);
 		if (PatrolState.role(mob) == PatrolState.Role.HEAD) {
+			mob.getGoalSelector().addGoal(0, new HeadBellGuardGoal(mob, bell));
+			mob.getGoalSelector().addGoal(2, new MeleeAttackGoal((PathfinderMob) mob, 1.1, true));
 			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, bell, HEAD_BELL_RADIUS, 1.0));
 		} else if (mob instanceof Witch witch) {
 			mob.removeAllGoals(goal -> goal instanceof RangedAttackGoal);
-			mob.getGoalSelector().addGoal(1, new PatrolWitchSupportGoal(witch, village.id()));
+			mob.getGoalSelector().addGoal(1, new PatrolWitchPotionGoal(witch, village.id()));
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		} else {
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		}
+	}
+
+	static boolean withinHeadBell(final Mob guard, final BlockPos bell, final Vec3 target) {
+		return PatrolState.role(guard) != PatrolState.Role.HEAD
+			|| target.distanceToSqr(Vec3.atCenterOf(bell)) <= HEAD_BELL_RADIUS * HEAD_BELL_RADIUS;
+	}
+
+	static BlockPos bellFor(final Mob guard, final UUID villageId) {
+		if (!(guard.level() instanceof ServerLevel level)) {
+			return guard.blockPosition();
+		}
+		return VillageWorldData.get(level).village(villageId)
+			.map(village -> bellOf(level, village)).orElse(guard.blockPosition());
 	}
 
 	private static void logSpawn(final VillageRecord village, final Mob mob, final PatrolState.Role role) {
@@ -464,23 +522,29 @@ public final class PatrolService {
 			return;
 		}
 
-		if (RETIRED_ROLES.contains(state.role())) {
+		if (RETIRED_ROLES.contains(state.role())
+			|| VillageWorldData.get(level).villageForMember(mob.getUUID()).isEmpty()) {
 			// Removing an entity inside its own load event is unsafe, so it leaves on the next level tick.
 			RETIREMENTS.add(mob);
 			return;
 		}
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
+		stripMobsScaling(mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(PATROL_TAG);
 		// A head saved in its older diamond kit is re-armed in netherite when it loads.
 		if (state.role() == PatrolState.Role.HEAD && !HeadKit.wears(mob)) {
 			HeadKit.apply(mob);
 		}
+		if (state.role() == PatrolState.Role.VILLAGE_WITCH
+			&& !mob.getItemBySlot(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE)) {
+			VillageWitchKit.apply(mob);
+		}
 		// V5: a member saved before the village banner existed is dressed when it loads.
 		PatrolVisuals.dress(mob, level, state.role());
 		if (state.role() == PatrolState.Role.PILLAGER) {
-			// Another mod's load listener may re-roll the hand after this one, so the crossbow is checked a tick later.
+			// Another mod's load listener may re-roll the hand after this one.
 			LOADOUT_CHECKS.add(mob);
 		}
 		VillageWorldData data = VillageWorldData.get(level);
@@ -561,7 +625,10 @@ public final class PatrolService {
 
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
-		restoreCrossbows(level);
+		restoreSwords(level);
+		if (tick % WITCH_GOAL_SWEEP_TICKS == 0L) {
+			clearForeignWitchGoals(level);
+		}
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
 		VillageCoverage.tick(level, tick);
@@ -614,7 +681,7 @@ public final class PatrolService {
 		return false;
 	}
 
-	/** W021: a saved Evoker or Witch member dismounts, loses its record, and leaves the level. */
+	/** A member from a retired roster dismounts and leaves the level. */
 	private static void retireStaleMembers(final ServerLevel level) {
 		VillageWorldData data = VillageWorldData.get(level);
 		for (Mob mob : List.copyOf(RETIREMENTS)) {
@@ -634,20 +701,32 @@ public final class PatrolService {
 		}
 	}
 
-	/** W021: a patrol Pillager that entered this level without a crossbow in hand gets one back. */
-	private static void restoreCrossbows(final ServerLevel level) {
+	/**
+	 * The mobs mod gives every witch its own healing and throwing goals, which buff a player every second. The
+	 * village witch throws only through {@link PatrolWitchPotionGoal}, so those goals leave.
+	 */
+	private static void clearForeignWitchGoals(final ServerLevel level) {
+		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
+			if (mob.level() == level && PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
+				mob.removeAllGoals(goal -> goal.getClass().getName().startsWith(MOBS_WITCH_GOAL_PREFIX));
+			}
+		}
+	}
+
+	/** A saved patrol Pillager trades its old crossbow for a melee weapon. */
+	private static void restoreSwords(final ServerLevel level) {
 		for (Mob mob : List.copyOf(LOADOUT_CHECKS)) {
 			if (mob.level() != level) {
 				continue;
 			}
 
 			LOADOUT_CHECKS.remove(mob);
-			if (mob.isAlive() && !mob.getMainHandItem().is(Items.CROSSBOW)) {
+			if (mob.isAlive() && !mob.getMainHandItem().is(Items.IRON_SWORD)) {
 				McStellaVillages.LOGGER.info(
-					"[BEHAVIOR] mod={} event=patrol_crossbow_restored entity={} replaced={}",
+					"[BEHAVIOR] mod={} event=patrol_sword_restored entity={} replaced={}",
 					McStellaVillages.MOD_ID, mob.getUUID(), mob.getMainHandItem().getItem()
 				);
-				mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+				mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
 			}
 		}
 	}

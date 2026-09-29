@@ -10,8 +10,9 @@ Mc Stella Villages adds patrol guards, Nemesis missions, and small raids to vani
 | Fabric Loader | 0.19.5 |
 | Fabric API | 0.161.0+26.3 |
 | Java | 25 |
+| Mod Stella Mobs | Matching 0.1.0+26.3 build |
 
-Install the jar on the server and on each client. Everything a player sees uses vanilla assets and a vanilla chest menu, so a client without the mod can still read the board and see the patrols. The mod-stella-mobs mod is optional.
+Install the jar and Mod Stella Mobs on the server and each client. The mission board uses vanilla assets and a vanilla chest menu.
 
 ## Features
 
@@ -19,7 +20,9 @@ Install the jar on the server and on each client. Everything a player sees uses 
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
   gets its patrol. When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
-- The head keeps its watch within 8 blocks of the village's bell. The other members are set down across
+- The head guards within 8 blocks of the village's bell and never chases a threat beyond that radius.
+  Inside that radius it fights any hostile mob it sees, a slime as much as a zombie.
+  The other members are set down across
   the village, up to 24 blocks from the bell, and walk their own beats within 32 blocks of it, the Ravager
   included; a member that finds itself outside heads back in.
 - The head wears full netherite, every piece enchanted (Protection IV and Unbreaking III, Feather Falling IV
@@ -34,15 +37,22 @@ Install the jar on the server and on each client. Everything a player sees uses 
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
   wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
   pillager pairs.
-- Three contracts at each village head, each for a different kind of mob drawn from every kind with a
-  spawn egg: a Nemesis can be any mob, a cow or a warden alike. Never offered: the ender dragon, which
-  has no fight outside its own End, and the mobs that would die on the land a Nemesis stands on (every
-  water mob, the guardians and the tadpole) or melt there (the snow golem). Right-click the head within 8 blocks to
+- Three contracts at each village head, each for a different hostile mob or an iron golem with a
+  spawn egg. Neutral mobs, including traders and creakings, never appear. Water mobs, bosses, creepers,
+  endermites, silverfish, blazes, phantoms and ghasts are also excluded. An iron golem Nemesis pursues its mission player. Right-click the head within 8 blocks to
   open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
   Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
-  board, or tells you why it refused. Each contract creates one persistent Nemesis target, with 100
-  health on top of its type's own, and the map looks like a vanilla filled map. The reward drops only
-  when a player lands the kill; a Nemesis that falls to anything else ends its contract with nothing.
+  board, or tells you why it refused. Each contract creates a persistent elite Nemesis and a same-kind
+  elite companion. They share one permanent buff. A killed companion stays dead for that contract.
+  The Nemesis has 100 health above its elite health,
+  diamond or netherite armor, and a matching weapon with three random enchantments per piece. It can
+  teleport near its target player; ranged mobs choose a safe position farther away. The map looks like
+  a vanilla filled map. A player kill drops one book, two stacks of 64 emeralds and two random
+  potions. The book is an enchanted book or, when `mod-stella-spells` is loaded, a spell book, with even
+  odds. Three separate rolls add more: 5% for 32 diamonds, 5% for exactly one equipped piece, and 0.1%
+  for one ancient debris. A Nemesis no longer drops a head.
+  A Nemesis that dies another way ends its contract without these rewards. Hold a mob head you already
+  own and right-click any village head to trade it for three random enchanted books.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
@@ -52,17 +62,27 @@ Install the jar on the server and on each client. Everything a player sees uses 
   Witch", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
   Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
   never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
-  a foe, and it keeps within 16 blocks of the bell. The spells mod gives it its mind: no potions, spells
-  at the village's foes, and heals and blessings for its friends. A village settled before the witch
+  a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It can throw
+  splash healing or buffs at nearby players, villagers, and patrol members every five seconds.
+  A separate five-second timer controls random splash Harming, Poison, or Wither against hostile mobs.
+  Harmful splash effects spare friendlies,
+  and Harming still damages undead enemies.
+  The spells mod gives it Warden's Roar, Spark Shot, Life Bloom, and safe-distance blinks. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
+- Right-click the village witch within 8 blocks to open the Village Witch
+  Shop, a one-row chest menu. It sells five enchanted books of different enchantments, each at a level
+  the enchantment allows and each priced from 320 to 960 emeralds. Click a book to buy it: the price
+  comes out of your whole inventory, the book stays on the shelf, and a short purse changes nothing. The
+  clock in slot 7 rerolls all five books for 32 emeralds. The shop also rerolls once at every midnight (day
+  time 18000). Each village keeps its own offers in its saved data.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding
   anything with its own attack damage: 12 emeralds buy +1 attack damage, up to +5 per weapon. The
   bonus shows in the item's tooltip. Spectators cannot harden.
-- Ring a village's bell, within 48 blocks of the village's first bell, and its patrol rallies: every
-  member gets Speed II and Strength I for 30 seconds and runs to the bell. A village rallies once a
-  minute.
+- Ring a village's bell, within 48 blocks of the village's first bell, and the loaded patrol teleports
+  to safe spots within 8 blocks of it. Each member gets Speed II and Strength II for five minutes.
+  Every ring refreshes the rally.
 - One daily 10% roll for a single-wave village raid. The roll is fixed by the world seed and the day,
   so a restart cannot reroll a day. On a raid day, the first village with a player within 64 blocks
   of its centre is raided with one wave and no bonus wave; if no village has a player nearby, the
@@ -84,9 +104,7 @@ To run the suite with `mod-stella-spells` loaded, build that mod first, then run
 `.\gradlew.bat runGameTest --rerun -PwithStellaSpells=true` (or pass the jar's own path). The head's axe
 test then checks the spell on the axe.
 
-To run the same suite with `mod-stella-mobs` loaded, build that mod first, then run
-`.\gradlew.bat runGameTest --rerun -PwithStellaMobs=true`. The log must list `mod-stella-mobs` among the
-loaded mods. Patrol members and Nemesis targets carry the `mod-stella-mobs.no_spawn_roll` tag, so the
-mobs mod adds its combat goals but leaves their kit, health and rank alone.
+The Gradle build includes the neighboring `mod-stella-mobs` project. The GameTest suite loads both
+mods. The villages mod guards patrol equipment and health against mobs mod spawn rolls.
 
 The jar is `build/libs/mc-stella-villages-0.1.0+26.3.jar`. Copy it to the `mods` folder on the server and the client.

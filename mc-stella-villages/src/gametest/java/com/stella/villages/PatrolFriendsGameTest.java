@@ -28,7 +28,7 @@ public class PatrolFriendsGameTest {
 		}
 
 		Mob shooter = member(helper, PatrolState.Role.PILLAGER);
-		Mob victim = member(helper, PatrolState.Role.VINDICATOR);
+		Mob victim = member(helper, PatrolState.Role.HEAD);
 		float before = victim.getHealth();
 		victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(shooter), HIT);
 		float afterFriend = victim.getHealth();
@@ -48,7 +48,7 @@ public class PatrolFriendsGameTest {
 			return;
 		}
 
-		Mob guard = member(helper, PatrolState.Role.VINDICATOR);
+		Mob guard = member(helper, PatrolState.Role.HEAD);
 		Mob fellow = member(helper, PatrolState.Role.PILLAGER);
 		guard.setTarget(fellow);
 		net.minecraft.world.entity.LivingEntity afterFellow = guard.getTarget();
@@ -71,7 +71,7 @@ public class PatrolFriendsGameTest {
 			List<Mob> members = PatrolTestSupport.patrols(helper);
 			helper.assertTrue(members.stream().anyMatch(mob -> PatrolState.role(mob) == PatrolState.Role.HEAD), "the roster has no head, so the case proves nothing");
 			for (Mob member : members) {
-				String wanted = PatrolState.role(member) == PatrolState.Role.HEAD ? PatrolLabels.HEAD_LABEL : PatrolLabels.MEMBER_LABEL;
+				String wanted = PatrolLabels.label(PatrolState.role(member), false).getString();
 				helper.assertTrue(labelled(member, wanted, PatrolLabels.CALM), PatrolTestSupport.typeId(member) + " wears " + member.getCustomName() + ", not a green " + wanted);
 			}
 			PatrolTestSupport.result(test, "members=" + members.size() + " labelled=" + members.size());

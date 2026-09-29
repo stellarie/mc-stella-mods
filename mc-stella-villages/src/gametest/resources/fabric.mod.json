@@ -5,6 +5,9 @@
 	"name": "Mc Stella Villages GameTests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.villages.VillageTestInit"
+		],
 		"fabric-gametest": [
 			"com.stella.villages.VillagePatrolGameTest",
 			"com.stella.villages.VillagePersistenceGameTest",
@@ -17,7 +20,9 @@
 			"com.stella.villages.VillageCoverageGameTest",
 			"com.stella.villages.PatrolDutyGameTest",
 			"com.stella.villages.PatrolLifecycleGameTest",
-			"com.stella.villages.VillageWitchGameTest"
+			"com.stella.villages.VillageWitchGameTest",
+			"com.stella.villages.VillageHeadFightGameTest",
+			"com.stella.villages.VillageWitchShopGameTest"
 		]
 	},
 	"mixins": [

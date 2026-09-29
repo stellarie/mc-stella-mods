@@ -106,10 +106,10 @@ public final class VillagePatrolGameTest {
 		long evokers = patrols.stream().filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:evoker")).count();
 		long ravagers = patrols.stream().filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:ravager")).count();
 		long witches = patrols.stream().filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:witch")).count();
-		long crossbowPillagers = patrols.stream()
+		long swordPillagers = patrols.stream()
 			.filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:pillager"))
 			.filter(mob -> mob.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
-				.is(net.minecraft.world.item.Items.CROSSBOW))
+				.is(net.minecraft.world.item.Items.IRON_SWORD))
 			.count();
 		Mob ravager = patrols.stream().filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:ravager"))
 			.findFirst().orElse(null);
@@ -118,17 +118,17 @@ public final class VillagePatrolGameTest {
 		PatrolTestSupport.result(
 			"rosterHasRequiredMembers",
 			"count=" + patrols.size() + " vindicators=" + vindicators + " pillagers=" + pillagers
-				+ " crossbowPillagers=" + crossbowPillagers + " evokers=" + evokers + " ravagers=" + ravagers
+				+ " swordPillagers=" + swordPillagers + " evokers=" + evokers + " ravagers=" + ravagers
 				+ " witches=" + witches + " ravagerUnmounted=" + ravagerUnmounted + " markers=" + markers
 		);
 		helper.assertValueEqual(Integer.valueOf(patrols.size()), Integer.valueOf(PATROL_COUNT), "patrol roster size");
-		helper.assertValueEqual(Long.valueOf(vindicators), Long.valueOf(4), "vindicator count");
-		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(5), "pillager count");
+		helper.assertValueEqual(Long.valueOf(vindicators), Long.valueOf(1), "vindicator count");
+		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(PatrolService.PILLAGER_COUNT), "pillager count");
 		helper.assertValueEqual(Long.valueOf(evokers), Long.valueOf(0), "evoker count");
-		helper.assertValueEqual(Long.valueOf(ravagers), Long.valueOf(1), "ravager count");
-		helper.assertValueEqual(Long.valueOf(witches), Long.valueOf(0), "witch count");
-		helper.assertValueEqual(Long.valueOf(crossbowPillagers), Long.valueOf(5), "crossbow Pillager count");
-		helper.assertTrue(ravagerUnmounted, "patrol Ravager was mounted");
+		helper.assertValueEqual(Long.valueOf(ravagers), Long.valueOf(0), "ravager count");
+		helper.assertValueEqual(Long.valueOf(witches), Long.valueOf(1), "witch count");
+		helper.assertValueEqual(Long.valueOf(swordPillagers), Long.valueOf(PatrolService.PILLAGER_COUNT), "iron sword Pillager count");
+		helper.assertTrue(patrols.stream().allMatch(mob -> mob.getVehicle() == null && mob.getPassengers().isEmpty()), "a patrol member was mounted");
 		helper.assertTrue(markers, "a patrol marker was not set before entity insertion");
 		helper.succeed();
 	}
@@ -183,20 +183,20 @@ public final class VillagePatrolGameTest {
 		}
 
 		List<Mob> patrols = PatrolTestSupport.activePatrols(helper, test);
+		Mob scout = PatrolTestSupport.activeRole(helper, test, "PILLAGER");
 		Mob head = PatrolTestSupport.activeRole(helper, test, "HEAD");
-		Mob ravager = PatrolTestSupport.activeRole(helper, test, "RAVAGER");
 		UUID villageId = PatrolTestSupport.villageId(helper);
 		PatrolTestSupport.detail(test, "village=" + villageId + " patrolCount=" + patrols.size()
 			+ " activePositions=" + patrols.stream().map(Mob::blockPosition).toList()
-			+ " headFound=" + (head != null) + " ravagerFound=" + (ravager != null)
-			+ " ravagerPassengers=" + (ravager == null ? -1 : ravager.getPassengers().size()));
-		if (patrols.size() != PATROL_COUNT || head == null || ravager == null) {
-			helper.fail("complete patrol roster or its Ravager is missing");
+			+ " scoutFound=" + (scout != null) + " headFound=" + (head != null)
+			+ " headPassengers=" + (head == null ? -1 : head.getPassengers().size()));
+		if (patrols.size() != PATROL_COUNT || scout == null || head == null) {
+			helper.fail("complete patrol roster or its head is missing");
 			return;
 		}
 
+		UUID scoutId = scout.getUUID();
 		UUID headId = head.getUUID();
-		UUID ravagerId = ravager.getUUID();
 		List<UUID> before = patrols.stream()
 			.map(Mob::getUUID).sorted(Comparator.comparing(UUID::toString)).toList();
 		if (before.size() != PATROL_COUNT) {
@@ -204,22 +204,22 @@ public final class VillagePatrolGameTest {
 			return;
 		}
 
-		int headChunkX = villageChunkX + SectionPos.blockToSectionCoord(PatrolService.PATROL_DETECTION_RANGE) + 1;
-		int headChunkZ = villageChunkZ;
-		BlockPos headPosition = new BlockPos(
-			SectionPos.sectionToBlockCoord(headChunkX) + 2,
+		int scoutChunkX = villageChunkX + SectionPos.blockToSectionCoord(PatrolService.PATROL_DETECTION_RANGE) + 1;
+		int scoutChunkZ = villageChunkZ;
+		BlockPos scoutPosition = new BlockPos(
+			SectionPos.sectionToBlockCoord(scoutChunkX) + 2,
 			villageAnchor.getY(),
-			SectionPos.sectionToBlockCoord(headChunkZ) + 8
+			SectionPos.sectionToBlockCoord(scoutChunkZ) + 8
 		);
-		prepareForcedChunkSite(helper, headPosition, headChunkX, headChunkZ);
+		prepareForcedChunkSite(helper, scoutPosition, scoutChunkX, scoutChunkZ);
 		for (Mob member : patrols) {
-			if (member != head) {
+			if (member != scout) {
 				member.setNoAi(true);
 			}
 			member.getNavigation().stop();
 		}
-		head.getNavigation().stop();
-		head.snapTo(Vec3.atBottomCenterOf(headPosition.above(2)), head.getYRot(), head.getXRot());
+		scout.getNavigation().stop();
+		scout.snapTo(Vec3.atBottomCenterOf(scoutPosition.above(2)), scout.getYRot(), scout.getXRot());
 		double[] nearestOtherDistance = {-1.0};
 
 		ServerPlayer attacker = helper.makeMockServerPlayerInLevel();
@@ -234,43 +234,43 @@ public final class VillagePatrolGameTest {
 		boolean[] savedPosition = {false};
 		boolean[] threatRangeRetained = {false};
 		boolean[] sameIdsAfterReload = {false};
-		boolean[] ravagerUnmountedAfterReload = {false};
+		boolean[] headUnmountedAfterReload = {false};
 		boolean[] rosterStartedAfterReload = {false};
 
 		PatrolTestSupport.detail(test, "village=" + villageId + " villageAnchor=" + villageAnchor
-			+ " headId=" + headId + " headPosition=" + headPosition + " nearestOtherDistance=" + nearestOtherDistance[0]
+			+ " scoutId=" + scoutId + " scoutPosition=" + scoutPosition + " nearestOtherDistance=" + nearestOtherDistance[0]
 			+ " rosterIds=" + before);
 		helper.startSequence()
 			.thenWaitUntil(() -> {
-				helper.assertTrue(head.chunkPosition().equals(new ChunkPos(headChunkX, headChunkZ)),
-					"head did not enter the isolated unload chunk");
-				helper.assertTrue(head.onGround(), "head did not settle in the unload chunk");
-				helper.assertTrue(unmounted(ravager), "the patrol Ravager carried a rider before unload");
+				helper.assertTrue(scout.chunkPosition().equals(new ChunkPos(scoutChunkX, scoutChunkZ)),
+					"scout did not enter the isolated unload chunk");
+				helper.assertTrue(scout.onGround(), "scout did not settle in the unload chunk");
+				helper.assertTrue(unmounted(head), "the patrol head carried a rider before unload");
 			})
 			.thenExecute(() -> {
-				head.setNoAi(true);
-				head.getNavigation().stop();
+				scout.setNoAi(true);
+				scout.getNavigation().stop();
 				nearestOtherDistance[0] = patrols.stream()
-					.filter(member -> member != head)
-					.mapToDouble(head::distanceTo)
+					.filter(member -> member != scout)
+					.mapToDouble(scout::distanceTo)
 					.min()
 					.orElse(Double.MAX_VALUE);
-				helper.assertTrue(head.blockPosition().equals(headPosition), "head did not land on its saved-position block");
+				helper.assertTrue(scout.blockPosition().equals(scoutPosition), "scout did not land on its saved-position block");
 				helper.assertTrue(nearestOtherDistance[0] > PatrolService.PATROL_DETECTION_RANGE
 					&& nearestOtherDistance[0] <= PatrolService.PATROL_RADIUS,
-					"unloaded head is not isolated within its patrol radius");
+					"unloaded scout is not isolated within its patrol radius");
 				stage[0] = 1;
 				boolean villageWasForced = helper.getLevel().setChunkForced(villageChunkX, villageChunkZ, false);
-				boolean headWasForced = helper.getLevel().setChunkForced(headChunkX, headChunkZ, false);
+				boolean scoutWasForced = helper.getLevel().setChunkForced(scoutChunkX, scoutChunkZ, false);
 				PatrolTestSupport.detail(test, "villageForcedBeforeUnload=" + villageWasForced
-					+ " headForcedBeforeUnload=" + headWasForced);
-				helper.assertTrue(villageWasForced && headWasForced,
-					"village or head chunk was not forced before unload");
+					+ " scoutForcedBeforeUnload=" + scoutWasForced);
+				helper.assertTrue(villageWasForced && scoutWasForced,
+					"village or scout chunk was not forced before unload");
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
 				!helper.getLevel().getChunkSource().hasChunk(villageChunkX, villageChunkZ)
-					&& !helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ),
-				"village and head chunks did not unload after ticket removal"
+					&& !helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ),
+				"village and scout chunks did not unload after ticket removal"
 			))
 			// Entities leave a few ticks after their chunk, so wait for them rather than read the same tick.
 			.thenWaitUntil(() -> {
@@ -283,29 +283,29 @@ public final class VillagePatrolGameTest {
 			})
 			.thenExecute(() -> {
 				stage[0] = 2;
-				BlockPos rememberedHeadPosition = PatrolTestSupport.memberLastPosition(helper, test, headId);
-				savedPosition[0] = headPosition.equals(rememberedHeadPosition);
-				helper.assertTrue(savedPosition[0], "unloaded head position was not saved");
+				BlockPos rememberedScoutPosition = PatrolTestSupport.memberLastPosition(helper, test, scoutId);
+				savedPosition[0] = scoutPosition.equals(rememberedScoutPosition);
+				helper.assertTrue(savedPosition[0], "unloaded scout position was not saved");
 
 				boolean threatStarted = PatrolTestSupport.startThreat(helper, test, attackerId);
-				attacker.setPos(Vec3.atCenterOf(headPosition));
+				attacker.setPos(Vec3.atCenterOf(scoutPosition));
 				PatrolTestSupport.updateThreats(helper, test);
 				Integer ticks = PatrolTestSupport.threatOutsideTicks(helper, test, attackerId);
 				outsideTicks[0] = ticks == null ? -1 : ticks;
 				threatRangeRetained[0] = threatStarted && outsideTicks[0] == 0
-					&& !helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ);
+					&& !helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ);
 				PatrolTestSupport.detail(test, "entitiesAbsent=" + entitiesAbsent[0]
-					+ " activeDuringUnload=" + activeDuringUnload[0] + " savedHeadPosition=" + rememberedHeadPosition
-					+ " expectedHeadPosition=" + headPosition + " attackerInSavedRange=" + threatRangeRetained[0]
+					+ " activeDuringUnload=" + activeDuringUnload[0] + " savedScoutPosition=" + rememberedScoutPosition
+					+ " expectedScoutPosition=" + scoutPosition + " attackerInSavedRange=" + threatRangeRetained[0]
 					+ " outsideTicks=" + outsideTicks[0]);
 				helper.assertTrue(threatRangeRetained[0],
-					"threat check did not retain the unloaded head's saved position");
+					"threat check did not retain the unloaded scout's saved position");
 
 				attacker.setPos(Vec3.atBottomCenterOf(playerHome));
 				helper.getLevel().setChunkForced(villageChunkX, villageChunkZ, true);
 				helper.getLevel().getChunkAt(villageAnchor);
-				helper.getLevel().setChunkForced(headChunkX, headChunkZ, true);
-				helper.getLevel().getChunkAt(headPosition);
+				helper.getLevel().setChunkForced(scoutChunkX, scoutChunkZ, true);
+				helper.getLevel().getChunkAt(scoutPosition);
 				stage[0] = 3;
 			})
 			.thenWaitUntil(() -> {
@@ -313,10 +313,10 @@ public final class VillagePatrolGameTest {
 				List<UUID> after = active.stream().map(Mob::getUUID)
 					.sorted(Comparator.comparing(UUID::toString)).toList();
 				sameIdsAfterReload[0] = before.equals(after) && active.size() == PATROL_COUNT;
-				var loadedRavager = helper.getLevel().getEntityInAnyDimension(ravagerId);
-				ravagerUnmountedAfterReload[0] = loadedRavager != null && unmounted(loadedRavager);
+				var loadedHead = helper.getLevel().getEntityInAnyDimension(headId);
+				headUnmountedAfterReload[0] = loadedHead != null && unmounted(loadedHead);
 				helper.assertTrue(sameIdsAfterReload[0], "patrol UUID set changed after village chunk reload");
-				helper.assertTrue(ravagerUnmountedAfterReload[0], "the patrol Ravager reloaded with a rider");
+				helper.assertTrue(headUnmountedAfterReload[0], "the patrol head reloaded with a rider");
 			})
 			.thenExecute(() -> {
 				stage[0] = 4;
@@ -339,12 +339,12 @@ public final class VillagePatrolGameTest {
 			.thenExecute(() -> {
 				boolean passed = before.size() == PATROL_COUNT && activeDuringUnload[0] == 0
 					&& entitiesAbsent[0] && savedPosition[0] && threatRangeRetained[0]
-					&& sameIdsAfterReload[0] && ravagerUnmountedAfterReload[0] && rosterStartedAfterReload[0];
+					&& sameIdsAfterReload[0] && headUnmountedAfterReload[0] && rosterStartedAfterReload[0];
 				resultLogged[0] = true;
 				PatrolTestSupport.result(test, "passed=" + passed + " count=" + before.size()
 					+ " activeDuringUnload=" + activeDuringUnload[0] + " entitiesAbsent=" + entitiesAbsent[0]
 					+ " savedPosition=" + savedPosition[0] + " outsideTicks=" + outsideTicks[0]
-					+ " sameIds=" + sameIdsAfterReload[0] + " ravagerUnmounted=" + ravagerUnmountedAfterReload[0]
+					+ " sameIds=" + sameIdsAfterReload[0] + " headUnmounted=" + headUnmountedAfterReload[0]
 					+ " rosterStarted=" + rosterStartedAfterReload[0]);
 				helper.assertTrue(passed, "patrol roster or threat persistence failed after chunk reload");
 			})
@@ -353,7 +353,7 @@ public final class VillagePatrolGameTest {
 			if (!resultLogged[0]) {
 				PatrolTestSupport.result(test, "passed=false stage=" + stage[0]
 					+ " villageChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(villageChunkX, villageChunkZ)
-					+ " headChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(headChunkX, headChunkZ)
+					+ " scoutChunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(scoutChunkX, scoutChunkZ)
 					+ " activeDuringUnload=" + activeDuringUnload[0] + " entitiesAbsent=" + entitiesAbsent[0]
 					+ " savedPosition=" + savedPosition[0] + " threatRangeRetained=" + threatRangeRetained[0]
 					+ " outsideTicks=" + outsideTicks[0] + " sameIds=" + sameIdsAfterReload[0]);
@@ -413,6 +413,34 @@ public final class VillagePatrolGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void patrolHeadDoesNotChaseBeyondTheBell(final GameTestHelper helper) {
+		String test = "patrolHeadDoesNotChaseBeyondTheBell";
+		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+			return;
+		}
+		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
+		helper.assertTrue(head != null, "the village has no head");
+		BlockPos bell = PatrolTestSupport.anchor(helper);
+		prepareMovementLane(helper, bell, PatrolService.HEAD_BELL_RADIUS + 12);
+		Mob hostile = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		helper.assertTrue(hostile != null, "the hostile could not be created");
+		hostile.setNoAi(true);
+		hostile.setPersistenceRequired();
+		BlockPos far = bell.offset(PatrolService.HEAD_BELL_RADIUS + 10, 0, 0);
+		hostile.snapTo(Vec3.atBottomCenterOf(far));
+		helper.assertTrue(helper.getLevel().addFreshEntity(hostile), "the hostile could not be inserted");
+		head.setTarget(hostile);
+		helper.runAfterDelay(60, () -> {
+			double distance = head.position().distanceTo(Vec3.atCenterOf(bell));
+			PatrolTestSupport.result(test, "distance=" + distance + " target=" + head.getTarget());
+			helper.assertTrue(distance <= PatrolService.HEAD_BELL_RADIUS && head.getTarget() != hostile,
+				"the head chased a threat outside the bell radius: " + distance);
+			hostile.discard();
+			helper.succeed();
+		});
+	}
+
 	@GameTest(maxTicks = 400, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void patrolMemberWalksBackIntoItsVillage(final GameTestHelper helper) {
 		String test = "patrolMemberWalksBackIntoItsVillage";
@@ -447,26 +475,26 @@ public final class VillagePatrolGameTest {
 	}
 
 	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void ravagerStaysUnmountedThroughMovementAndReload(final GameTestHelper helper) {
-		String test = "ravagerStaysUnmountedThroughMovementAndReload";
+	public void pillagerStaysUnmountedThroughMovementAndReload(final GameTestHelper helper) {
+		String test = "pillagerStaysUnmountedThroughMovementAndReload";
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}
 
 		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
-		Mob ravager = PatrolTestSupport.role(helper, test, "RAVAGER");
-		if (head == null || ravager == null) {
-			helper.fail("patrol head or Ravager is missing");
+		Mob pillager = PatrolTestSupport.role(helper, test, "PILLAGER");
+		if (head == null || pillager == null) {
+			helper.fail("patrol head or Pillager is missing");
 			return;
 		}
 
-		// Set down outside the village, so the Ravager walks back in on its own beat.
+		// Set down outside the village, so the Pillager walks back in on its own beat.
 		int followDistance = PatrolService.MEMBER_WANDER_RADIUS;
 		BlockPos anchor = PatrolTestSupport.anchor(helper);
 		prepareMovementLane(helper, anchor, followDistance + 20);
 		BlockPos headPosition = anchor.offset(-2, 0, -2);
-		BlockPos ravagerStart = headPosition.offset(followDistance + 8, 0, 0);
-		Vec3 ravagerStartPosition = Vec3.atBottomCenterOf(ravagerStart);
+		BlockPos pillagerStart = headPosition.offset(followDistance + 8, 0, 0);
+		Vec3 pillagerStartPosition = Vec3.atBottomCenterOf(pillagerStart);
 		int farChunkX = SectionPos.blockToSectionCoord(anchor.getX()) + 64;
 		int farChunkZ = SectionPos.blockToSectionCoord(anchor.getZ()) + 64;
 		BlockPos farPosition = new BlockPos(
@@ -477,69 +505,69 @@ public final class VillagePatrolGameTest {
 		ChunkPos farChunk = new ChunkPos(farChunkX, farChunkZ);
 		prepareForcedChunkSite(helper, farPosition, farChunkX, farChunkZ);
 		for (Mob member : PatrolTestSupport.patrols(helper)) {
-			if (member != head && member != ravager) {
+			if (member != head && member != pillager) {
 				member.setNoAi(true);
 			}
 		}
 
-		UUID ravagerId = ravager.getUUID();
+		UUID pillagerId = pillager.getUUID();
 		boolean[] resultLogged = {false};
 		int[] stage = {0};
 		final double[] movementDistance = {-1.0};
 		final boolean[] absentOnUnload = {false};
 
-		PatrolTestSupport.detail(test, "anchor=" + anchor + " ravagerStart=" + ravagerStart
+		PatrolTestSupport.detail(test, "anchor=" + anchor + " pillagerStart=" + pillagerStart
 			+ " farChunk=" + farChunk + " farPosition=" + farPosition);
 		helper.startSequence()
 			.thenWaitUntil(() -> {
-				helper.assertTrue(head.onGround() && ravager.onGround(), "head or Ravager did not settle before movement");
-				helper.assertTrue(unmounted(ravager), "the patrol Ravager carried a rider before movement");
+				helper.assertTrue(head.onGround() && pillager.onGround(), "head or Pillager did not settle before movement");
+				helper.assertTrue(unmounted(pillager), "the patrol Pillager carried a rider before movement");
 			})
 			.thenExecute(() -> {
 				stage[0] = 1;
 				head.snapTo(Vec3.atBottomCenterOf(headPosition), head.getYRot(), head.getXRot());
 				head.getNavigation().stop();
 				head.setNoAi(true);
-				ravager.snapTo(ravagerStartPosition, ravager.getYRot(), ravager.getXRot());
-				ravager.getNavigation().stop();
-				PatrolTestSupport.detail(test, "startDistance=" + ravager.distanceTo(head) + " ravagerOnGround=" + ravager.onGround());
+				pillager.snapTo(pillagerStartPosition, pillager.getYRot(), pillager.getXRot());
+				pillager.getNavigation().stop();
+				PatrolTestSupport.detail(test, "startDistance=" + pillager.distanceTo(head) + " pillagerOnGround=" + pillager.onGround());
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
-				ravager.position().distanceTo(ravagerStartPosition) > 1.0 && unmounted(ravager),
-				"the Ravager did not walk back into its village without a rider"
+				pillager.position().distanceTo(pillagerStartPosition) > 1.0 && unmounted(pillager),
+				"the Pillager did not walk back into its village without a rider"
 			))
 			.thenExecute(() -> {
 				stage[0] = 2;
-				movementDistance[0] = ravager.position().distanceTo(ravagerStartPosition);
+				movementDistance[0] = pillager.position().distanceTo(pillagerStartPosition);
 				helper.getLevel().setChunkForced(farChunkX, farChunkZ, true);
 				Vec3 remotePosition = Vec3.atBottomCenterOf(farPosition);
-				ravager.teleportTo(remotePosition.x, remotePosition.y, remotePosition.z);
+				pillager.teleportTo(remotePosition.x, remotePosition.y, remotePosition.z);
 			})
-			.thenWaitUntil(() -> helper.assertTrue(ravager.chunkPosition().equals(farChunk), "the Ravager did not enter the reload chunk"))
+			.thenWaitUntil(() -> helper.assertTrue(pillager.chunkPosition().equals(farChunk), "the Pillager did not enter the reload chunk"))
 			.thenExecute(() -> {
 				stage[0] = 3;
 				boolean forced = helper.getLevel().setChunkForced(farChunkX, farChunkZ, false);
-				PatrolTestSupport.detail(test, "farChunkForcedBeforeUnload=" + forced + " ravager=" + ravagerId);
+				PatrolTestSupport.detail(test, "farChunkForcedBeforeUnload=" + forced + " pillager=" + pillagerId);
 			})
 			.thenWaitUntil(() -> helper.assertTrue(
 				!helper.getLevel().getChunkSource().hasChunk(farChunkX, farChunkZ),
 				"reload chunk did not unload after ticket removal"
 			))
 			.thenExecute(() -> {
-				absentOnUnload[0] = helper.getLevel().getEntityInAnyDimension(ravagerId) == null;
-				helper.assertTrue(absentOnUnload[0], "the Ravager stayed active after chunk unload");
+				absentOnUnload[0] = helper.getLevel().getEntityInAnyDimension(pillagerId) == null;
+				helper.assertTrue(absentOnUnload[0], "the Pillager stayed active after chunk unload");
 				stage[0] = 4;
 				helper.getLevel().setChunkForced(farChunkX, farChunkZ, true);
 				helper.getLevel().getChunkAt(farPosition);
 			})
 			.thenWaitUntil(() -> {
-				var loaded = helper.getLevel().getEntityInAnyDimension(ravagerId);
-				helper.assertTrue(loaded instanceof Mob && unmounted(loaded), "the Ravager did not reload unmounted");
+				var loaded = helper.getLevel().getEntityInAnyDimension(pillagerId);
+				helper.assertTrue(loaded instanceof Mob && unmounted(loaded), "the Pillager did not reload unmounted");
 			})
 			.thenExecute(() -> {
 				resultLogged[0] = true;
 				PatrolTestSupport.result(test, "passed=true movementDistance=" + movementDistance[0]
-					+ " chunkUnloaded=" + absentOnUnload[0] + " ravagerId=" + ravagerId);
+					+ " chunkUnloaded=" + absentOnUnload[0] + " pillagerId=" + pillagerId);
 			})
 			.thenSucceed();
 		helper.runAfterDelay(799, () -> {
@@ -547,8 +575,8 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "passed=false stage=" + stage[0]
 					+ " movementDistance=" + movementDistance[0]
 					+ " chunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(farChunkX, farChunkZ)
-					+ " ravagerPresent=" + (helper.getLevel().getEntityInAnyDimension(ravagerId) != null)
-					+ " ravagerPassengers=" + ravager.getPassengers().size());
+					+ " pillagerPresent=" + (helper.getLevel().getEntityInAnyDimension(pillagerId) != null)
+					+ " pillagerPassengers=" + pillager.getPassengers().size());
 			}
 		});
 	}
@@ -583,66 +611,66 @@ public final class VillagePatrolGameTest {
 		}
 
 		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
-		if (head == null) {
-			helper.fail("patrol head is missing for inside-range target test");
+		Mob guard = PatrolTestSupport.role(helper, test, "PILLAGER");
+		if (guard == null) {
+			helper.fail("patrol guard is missing for inside-range target test");
 			return;
 		}
 
 		int detectionRange = PatrolService.PATROL_DETECTION_RANGE;
 		// Held on its block, so a wander cannot carry it out of the cleared shaft while the goal searches.
-		head.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
-		Mob hostile = spawnTestCreeper(helper, test, head, detectionRange - 1.0);
+		guard.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
+		Mob hostile = spawnTestCreeper(helper, test, guard, detectionRange - 1.0);
 		if (hostile == null) {
 			return;
 		}
-		double initialDistance = head.distanceTo(hostile);
-		int headTicksAtStart = head.tickCount;
-		BlockPos headBlock = head.blockPosition();
+		double initialDistance = guard.distanceTo(hostile);
+		int guardTicksAtStart = guard.tickCount;
+		BlockPos guardBlock = guard.blockPosition();
 		BlockPos hostileBlock = hostile.blockPosition();
 		List<Integer> blockedColumn = new ArrayList<>();
-		for (int y = headBlock.getY() + 1; y < hostileBlock.getY(); y++) {
-			if (!helper.getLevel().getBlockState(new BlockPos(headBlock.getX(), y, headBlock.getZ())).isAir()) {
+		for (int y = guardBlock.getY() + 1; y < hostileBlock.getY(); y++) {
+			if (!helper.getLevel().getBlockState(new BlockPos(guardBlock.getX(), y, guardBlock.getZ())).isAir()) {
 				blockedColumn.add(y);
 			}
 		}
 		PatrolTestSupport.detail(
-			test, "headBlock=" + headBlock + " hostileBlock=" + hostileBlock + " blockedColumnY=" + blockedColumn
+			test, "guardBlock=" + guardBlock + " hostileBlock=" + hostileBlock + " blockedColumnY=" + blockedColumn
 		);
-		String targetGoals = ((MobPatrolAccess) head).patrolTargetSelector().getAvailableGoals().stream()
+		String targetGoals = ((MobPatrolAccess) guard).patrolTargetSelector().getAvailableGoals().stream()
 			.map(wrapped -> wrapped.getGoal().getClass().getSimpleName() + "@" + wrapped.getPriority() + "@" + wrapped.isRunning())
 			.toList()
 			.toString();
 		PatrolTestSupport.detail(
 			test,
 			"targetGoals=" + targetGoals + " hostileType=" + PatrolTestSupport.typeId(hostile)
-				+ " hostileVisible=" + hostile.canBeSeenAsEnemy() + " canAttack=" + head.canAttack(hostile)
-				+ " lineOfSight=" + head.hasLineOfSight(hostile)
-				+ " inRangeBox=" + head.getBoundingBox().inflate(detectionRange).contains(hostile.position())
+				+ " hostileVisible=" + hostile.canBeSeenAsEnemy() + " canAttack=" + guard.canAttack(hostile)
+				+ " lineOfSight=" + guard.hasLineOfSight(hostile)
+				+ " inRangeBox=" + guard.getBoundingBox().inflate(detectionRange).contains(hostile.position())
 				+ " nearby=" + PatrolTestSupport.mobs(helper).contains(hostile)
-				+ " followRange=" + PatrolTestSupport.followRange(head) + " difficulty=" + helper.getLevel().getDifficulty()
+				+ " followRange=" + PatrolTestSupport.followRange(guard) + " difficulty=" + helper.getLevel().getDifficulty()
 		);
 		boolean[] acquired = {false};
 		boolean[] visible = {false};
 		boolean[] nearestGoalRunning = {false};
 		boolean[] resultLogged = {false};
 		helper.onEachTick(() -> {
-			head.getNavigation().stop();
-			if (head.hasLineOfSight(hostile)) {
+			guard.getNavigation().stop();
+			if (guard.hasLineOfSight(hostile)) {
 				visible[0] = true;
 			}
-			for (var wrapped : ((MobPatrolAccess) head).patrolTargetSelector().getAvailableGoals()) {
+			for (var wrapped : ((MobPatrolAccess) guard).patrolTargetSelector().getAvailableGoals()) {
 				if (wrapped.getGoal().getClass().getSimpleName().equals("NearestAttackableTargetGoal") && wrapped.isRunning()) {
 					nearestGoalRunning[0] = true;
 				}
 			}
-			if (head.getTarget() == hostile) {
+			if (guard.getTarget() == hostile) {
 				acquired[0] = true;
 			}
 		});
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(
-				acquired[0], "patrol head did not target a hostile inside detection range"
+				acquired[0], "patrol guard did not target a hostile inside detection range"
 			))
 			.thenExecute(() -> {
 				resultLogged[0] = true;
@@ -656,15 +684,15 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "range=" + detectionRange + " initialDistance=" + initialDistance
 					+ " visible=" + visible[0] + " acquired=" + acquired[0]
 					+ " nearestGoalRunning=" + nearestGoalRunning[0]
-					+ " currentTarget=" + (head.getTarget() == null ? "none" : PatrolTestSupport.typeId(head.getTarget()))
-					+ " head=" + head.getUUID() + " headNoAi=" + head.isNoAi() + " headAlive=" + head.isAlive()
-					+ " headVillage=" + PatrolState.villageId(head) + " testVillage=" + PatrolTestSupport.villageId(helper)
-					+ " finalDistance=" + head.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive()
-					+ " headTicked=" + (head.tickCount - headTicksAtStart)
-					+ " headEntityTicking=" + helper.getLevel().isPositionEntityTicking(head.blockPosition())
+					+ " currentTarget=" + (guard.getTarget() == null ? "none" : PatrolTestSupport.typeId(guard.getTarget()))
+					+ " guard=" + guard.getUUID() + " guardNoAi=" + guard.isNoAi() + " guardAlive=" + guard.isAlive()
+					+ " guardVillage=" + PatrolState.villageId(guard) + " testVillage=" + PatrolTestSupport.villageId(helper)
+					+ " finalDistance=" + guard.distanceTo(hostile) + " hostileAlive=" + hostile.isAlive()
+					+ " guardTicked=" + (guard.tickCount - guardTicksAtStart)
+					+ " guardEntityTicking=" + helper.getLevel().isPositionEntityTicking(guard.blockPosition())
 					+ " hostileEntityTicking=" + helper.getLevel().isPositionEntityTicking(hostile.blockPosition())
-					+ " " + targetingDiagnostics(helper, head, hostile));
-				helper.assertTrue(acquired[0], "patrol head did not target a hostile inside detection range");
+					+ " " + targetingDiagnostics(helper, guard, hostile));
+				helper.assertTrue(acquired[0], "patrol guard did not target a hostile inside detection range");
 			}
 		});
 	}
@@ -1090,8 +1118,8 @@ public final class VillagePatrolGameTest {
 	}
 
 	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void pillagerCrossbowsSurviveChunkReload(final GameTestHelper helper) {
-		String test = "pillagerCrossbowsSurviveChunkReload";
+	public void pillagerSwordsSurviveChunkReload(final GameTestHelper helper) {
+		String test = "pillagerSwordsSurviveChunkReload";
 		BlockPos anchor = PatrolTestSupport.findDistantVillageAnchor(helper, test);
 		if (anchor == null) {
 			return;
@@ -1111,24 +1139,24 @@ public final class VillagePatrolGameTest {
 			.toList();
 		List<UUID> beforeIds = beforePillagers.stream().map(Mob::getUUID)
 			.sorted(Comparator.comparing(UUID::toString)).toList();
-		boolean crossbowsBefore = beforePillagers.size() == 5 && beforePillagers.stream()
+		boolean swordsBefore = beforePillagers.size() == PatrolService.PILLAGER_COUNT && beforePillagers.stream()
 			.allMatch(mob -> mob.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
-				.is(net.minecraft.world.item.Items.CROSSBOW));
+				.is(net.minecraft.world.item.Items.IRON_SWORD));
 		for (Mob member : beforeMembers) {
 			member.setNoAi(true);
 			member.getNavigation().stop();
 		}
 		PatrolTestSupport.detail(test, "membersBefore=" + beforeMembers.size()
-			+ " pillagersBefore=" + beforePillagers.size() + " crossbowsBefore=" + crossbowsBefore);
+			+ " pillagersBefore=" + beforePillagers.size() + " swordsBefore=" + swordsBefore);
 		helper.assertValueEqual(Integer.valueOf(beforeMembers.size()), Integer.valueOf(PATROL_COUNT), "initial patrol size");
-		helper.assertTrue(crossbowsBefore, "not all five Pillagers held crossbows before chunk unload");
+		helper.assertTrue(swordsBefore, "not every Pillager held an iron sword before chunk unload");
 
 		UUID villageId = PatrolTestSupport.villageId(helper);
 		boolean[] resultLogged = {false};
 		int[] stage = {0};
 		boolean[] entitiesAbsent = {false};
 		boolean[] idsMatch = {false};
-		boolean[] crossbowsAfter = {false};
+		boolean[] swordsAfter = {false};
 		boolean forced = helper.getLevel().setChunkForced(chunkX, chunkZ, false);
 		PatrolTestSupport.detail(test, "village=" + villageId + " chunk=" + chunkX + "," + chunkZ
 			+ " forcedBeforeUnload=" + forced + " pillagerIds=" + beforeIds);
@@ -1154,15 +1182,15 @@ public final class VillagePatrolGameTest {
 					.toList();
 				List<UUID> afterIds = afterPillagers.stream().map(Mob::getUUID)
 					.sorted(Comparator.comparing(UUID::toString)).toList();
-				idsMatch[0] = beforeIds.equals(afterIds) && afterPillagers.size() == 5;
-				crossbowsAfter[0] = afterPillagers.stream()
+				idsMatch[0] = beforeIds.equals(afterIds) && afterPillagers.size() == PatrolService.PILLAGER_COUNT;
+				swordsAfter[0] = afterPillagers.stream()
 					.allMatch(mob -> mob.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
-						.is(net.minecraft.world.item.Items.CROSSBOW));
+						.is(net.minecraft.world.item.Items.IRON_SWORD));
 				helper.assertTrue(idsMatch[0], "Pillager UUIDs changed after chunk reload");
-				helper.assertTrue(crossbowsAfter[0], "Pillager crossbows changed after chunk reload");
+				helper.assertTrue(swordsAfter[0], "Pillager swords changed after chunk reload");
 				PatrolTestSupport.result(test, "passed=true pillagerCount=" + afterPillagers.size()
-					+ " sameIds=" + idsMatch[0] + " crossbowsBefore=" + crossbowsBefore
-					+ " crossbowsAfter=" + crossbowsAfter[0] + " entitiesAbsent=" + entitiesAbsent[0]);
+					+ " sameIds=" + idsMatch[0] + " swordsBefore=" + swordsBefore
+					+ " swordsAfter=" + swordsAfter[0] + " entitiesAbsent=" + entitiesAbsent[0]);
 				resultLogged[0] = true;
 			})
 			.thenSucceed();
@@ -1171,7 +1199,7 @@ public final class VillagePatrolGameTest {
 				PatrolTestSupport.result(test, "passed=false stage=" + stage[0]
 					+ " chunkLoaded=" + helper.getLevel().getChunkSource().hasChunk(chunkX, chunkZ)
 					+ " entitiesAbsent=" + entitiesAbsent[0] + " idsMatch=" + idsMatch[0]
-					+ " crossbowsBefore=" + crossbowsBefore + " crossbowsAfter=" + crossbowsAfter[0]);
+					+ " swordsBefore=" + swordsBefore + " swordsAfter=" + swordsAfter[0]);
 			}
 		});
 	}
@@ -1322,7 +1350,7 @@ public final class VillagePatrolGameTest {
 		return hostile;
 	}
 
-	private static void prepareMovementLane(
+	static void prepareMovementLane(
 		final GameTestHelper helper,
 		final BlockPos anchor,
 		final int maxOffset
