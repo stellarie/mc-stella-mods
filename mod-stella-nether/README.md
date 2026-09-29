@@ -227,6 +227,30 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - The window itself is the client's: its test (`thePortalWindowOpensAndClicksRequiresManualTest`) is not
   required and fails every run until checked by hand.
 
+## Slice 12g: the raid's own spawns
+
+- Every 2 seconds, each player in the raid is tried for a spawn 16 to 40 blocks away:
+  - In either mode, a blaze rises from the nearest lava surface with open air above it.
+  - In hard mode, a wither skeleton appears on any solid, dry floor with three blocks of room, not only in
+    a fortress.
+- Each kind stops at 8 within 64 blocks of the player. They are ordinary spawns, so the mobs mod's rolls
+  apply to them.
+- Measured on each run's own terrain around the arrival, 50 attempts each, over five gate runs:
+  - Normal: 50 blazes and 0 wither skeletons every time.
+  - Hard: 29 to 50 blazes and 26 to 50 wither skeletons; the terrain decides.
+  - In play, an attempt comes every 2 seconds per player, so near lava a new blaze appears about every 2
+    seconds until 8 stand near.
+
+## Slice 12j: raid casters
+
+- In either mode, three raid mobs cast through the spells mod, on its own cooldowns:
+  - A wither skeleton strikes with Ember Brand (burns) and sings Battle Hymn (Strength) on itself.
+  - A piglin brute rings itself in Flame Ring (burns what stands near) and turns to Stoneguard (Resistance).
+  - A ghast casts Time Lock (Slowness) at its target and Mending Word (heals) on itself when hurt.
+- The casting runs beside each mob's own attack, not in place of it.
+- Measured: each caster cast both of its spells at a stand-in. The wither skeleton's and the brute's
+  targets burned, the ghast's was slowed, and the buffs showed on the casters (Strength, Resistance).
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival with the mod on the client. The window opens with three
@@ -245,6 +269,9 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
 - Walk up to a new Sovereign: it bursts through the fortress toward you, visibly charges, then the
   strikes fall around you.
+- Stand near a lava lake in the raid: blazes rise out of it. In a hard raid, wither skeletons turn up in
+  open caves away from the fortress.
+- Fight a brute and a wither skeleton in the raid: the spells' particles and sounds read clearly.
 - The soul nova's flames read as slow blue orbs, and their soul flames draw as soul fire (a cut-out
   texture, not a black square) and go out after 10 seconds.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
