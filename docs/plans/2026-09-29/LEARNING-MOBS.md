@@ -84,7 +84,7 @@ name and its integration branch are open (see Open decisions).
 1. Scaffold: the mod, its dependency on mobs, and config loading. **Done 2026-09-29.** The empty profile attachment moved into slice 2, because an attachment with no fields has nothing to test.
 2. Profile: the attachment, the counters, the decay, and persistence across save and reload.
 3. First tactic: the skeleton archer's band shifts by the rush counter. **Done 2026-09-29** (ranged and magic mobs; a rusher pushes the near band out by up to 6 blocks).
-4. Shield tactics for the zombie and the skeleton.
+4. Shield tactics for the zombie and the skeleton. **Done 2026-09-29**: against a player seen blocking, a melee mob holds its swing and a ranged mob holds its fire while the shield is up, for up to 100 ticks. The archer's "fires more while the shield is down" is dropped: holding fire while it is up gives the same effect without touching the mobs mod's bow cadence.
 5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities.
 6. Callout types: position first, then focus fire, back off, heal, buff, debuff.
 7. Pathing goals: flank, cover, chokepoint.
@@ -114,3 +114,12 @@ Each slice is gated and independently reviewed before the next one starts.
   `HabitRecorderGameTest.manualGapRealShieldBlockNeedsARealPlayer` is tagged not required and fails visibly in
   every run. Oniichan raises a shield in play, lets a zombie hit it, and checks the block count rises. The
   handler is proven by a direct call in `aBlockedBlowCountsAsBlocking`.
+
+## Test notes learned building this mod
+
+- Game tests run in parallel, and a floor wider than the test spacing overlaps its neighbours, so a mob targets
+  another test's player. Every arena test sets `padding = LearnArena.PADDING`. This cost a night of odd failures.
+- Never move a global clock offset in a test. Age a profile's stamps instead.
+- The mobs mod's flee spot is random and can land in the air pocket under a test floor, so the arena fills two
+  layers below its floor, and a back-off test waits for a working spot instead of sampling one tick.
+- A goal's `canUse` is not asked every tick, so a `tickCount % n` gate can miss the mob's window entirely.
