@@ -16,5 +16,8 @@
 		"java": ">=25",
 		"fabric-api": "*",
 		"mod-stella-mobs": "*"
+	},
+	"suggests": {
+		"mod-stella-spells": "*"
 	}
 }

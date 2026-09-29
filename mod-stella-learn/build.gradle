@@ -18,6 +18,13 @@ dependencies {
 
 	// The mobs mod is a hard dependency; settings.gradle substitutes its included build.
 	implementation "com.stella.mobs:mod-stella-mobs:${project.version}"
+	// Optional: fabric.mod.json only suggests it, and SpellsBridge touches its classes only when it is loaded.
+	// -PwithoutSpells keeps it on the compile classpath alone, so the game tests run as a pack without it would.
+	if (project.hasProperty('withoutSpells')) {
+		compileOnly "com.stella.spells:mod-stella-spells:${project.version}"
+	} else {
+		implementation "com.stella.spells:mod-stella-spells:${project.version}"
+	}
 }
 
 // The gametest source set holds the test mod that runs the game tests.
