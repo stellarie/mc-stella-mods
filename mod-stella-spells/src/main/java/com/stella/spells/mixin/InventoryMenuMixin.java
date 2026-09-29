@@ -23,7 +23,7 @@ public abstract class InventoryMenuMixin extends AbstractContainerMenu {
 	private void stellaSpellsAddQuickSlots(final Inventory inventory, final boolean active, final Player owner, final CallbackInfo info) {
 		Container view = QuickSlots.view(owner);
 		for (int i = 0; i < QuickSlots.COUNT; i++) {
-			this.addSlot(new Slot(view, i, QuickSlots.MENU_X, QuickSlots.MENU_Y + i * QuickSlots.MENU_STEP));
+			this.addSlot(new Slot(view, i, QuickSlots.MENU_X + i * QuickSlots.MENU_STEP, QuickSlots.MENU_Y));
 		}
 	}
 }

@@ -83,16 +83,16 @@ public final class QuickSlotsClient implements ClientModInitializer {
 		}
 	}
 
-	// The panel and frames behind the four menu slots, which stand just outside the inventory screen's own background.
+	// The panel and frames behind the four menu slots, which stand just below the inventory screen's own background.
 	private static void drawFrames(final GuiGraphicsExtractor graphics, final AbstractContainerScreenAccessor screen) {
 		int left = screen.stellaSpellsLeftPos() + QuickSlots.MENU_X - 5;
 		int top = screen.stellaSpellsTopPos() + QuickSlots.MENU_Y - 5;
-		int width = 18 + 8;
-		int height = QuickSlots.COUNT * QuickSlots.MENU_STEP + 8;
+		int width = QuickSlots.COUNT * QuickSlots.MENU_STEP + 8;
+		int height = 18 + 8;
 		graphics.fill(left, top, left + width, top + height, 0xFFC6C6C6);
 		graphics.outline(left, top, width, height, 0xFF373737);
 		for (int i = 0; i < QuickSlots.COUNT; i++) {
-			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT_SPRITE, left + 4, top + 4 + i * QuickSlots.MENU_STEP, 18, 18);
+			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT_SPRITE, left + 4 + i * QuickSlots.MENU_STEP, top + 4, 18, 18);
 		}
 	}
 }
