@@ -198,6 +198,12 @@ public final class SovereignSpecials {
 	}
 
 	/** The dive lifts the Sovereign off the ground, so its footing rule waits until the dive is down. */
+	/** Whether a special is running for this blaze; its normal attack holds meanwhile. */
+	public static boolean casting(final Blaze blaze) {
+		Control control = CONTROLS.get(blaze.getUUID());
+		return control != null && control.active != null && !control.active.done;
+	}
+
 	public static boolean airborne(final Blaze blaze) {
 		Control control = CONTROLS.get(blaze.getUUID());
 		return control != null && control.active != null && control.active.special == Special.DIVE && !control.active.done;

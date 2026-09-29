@@ -79,7 +79,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
     - b. Its Brood holds no elite or boss blaze. **Done.**
     - c. Raid mobs drop a Scroll of Return 1% of the time; the Sovereign drops one per player inside, plus two. **Done.**
     - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard (the Sovereign keeps its own health). **Done.**
-    - e. Its normal attack: a burst of five every 5 seconds.
+    - e. Its normal attack: a burst of five every 5 seconds. **Done.**
     - f. A sixth special: slow blue flames in every direction that burst after 5 seconds, throwing back
       what they reach and setting soul fire on nearby blocks, breaking none.
     - g. Blazes rise from lava in either mode; in hard, wither skeletons spawn anywhere with room.

@@ -20,7 +20,8 @@
 			"com.stella.nether.EndChestGameTest",
 			"com.stella.nether.BlazeEnchantmentGameTest",
 			"com.stella.nether.SovereignBlueGameTest",
-			"com.stella.nether.RaidMobRulesGameTest"
+			"com.stella.nether.RaidMobRulesGameTest",
+			"com.stella.nether.SovereignBurstGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
