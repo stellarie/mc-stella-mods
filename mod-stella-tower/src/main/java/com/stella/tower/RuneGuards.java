@@ -132,7 +132,7 @@ public final class RuneGuards {
 			ItemStack piece = wearer.getItemBySlot(slot);
 			RuneData rune = TowerRunes.slotOf(piece) == TowerRunes.Slot.ARMOR ? TowerRunes.runeOf(piece) : null;
 			if (rune != null && rune.element() == element) {
-				double power = TowerRunes.power(rune.floor());
+				double power = TowerRunes.power(piece, rune);
 				best = best == null ? power : Math.max(best, power);
 			}
 		}

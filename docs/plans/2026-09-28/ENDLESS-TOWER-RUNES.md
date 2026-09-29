@@ -462,3 +462,43 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
   | Simple dungeon, stronghold corridor and crossing, other bastion chests | 10% |
 
 - A data pack's own version of a listed table holds none, and neither does any other chest.
+
+## Built: void shamans, void ingots and void gear (2026-09-29)
+
+Assumptions where the spec left room are marked (assumed). Every number is a constant in the code.
+
+- **Void shamans** appear only when the spells mod is installed. A fixed 2% of floors, drawn from the world
+  seed, hold one. A skeleton with two spells drawn from the spells mod's own list of mob spells, one to
+  strike with and one to aid itself with. It is a tower mob of its floor, never an elite or a boss, named
+  "<Element> Void Shaman". The spells come from the spells mod's own casting, so what they do grows as a
+  tower mob's blows do.
+- A shaman thinks every half second: it strikes a player it can see within 24 blocks, and aids itself, each
+  spell on its own cooldown from the spells mod. Struck, it blinks to a safe spot of its floor, away from the
+  players, and cannot again for 10 seconds.
+- A floor that holds a shaman keeps one; after one is slain, the floor rests 10 minutes (assumed) before it
+  raises another. That rest is kept in memory, so a server restart ends it.
+- **Drops:** a shaman leaves a rune 2% of the time, as the plan says, and a void ingot with a chance of
+  `0.5% + 0.01% per floor`, capped at 1: floor 1 is 0.51%, floor 100 is 1.5%, floor 500 is 5.5%, and floor
+  1000 is 10.5%. Only a shaman leaves one.
+- How rare that makes them: a floor holds a shaman one time in fifty, so climbing alone finds one ingot in
+  about 9,800 floors at the start, 3,300 at floor 100, 900 at floor 500 and 480 at floor 1000. Camping a
+  floor that holds a shaman is far quicker: it raises another every 10 minutes, and at floor 1000 that is an
+  ingot about every hour and a half.
+- **Void gear** (assumed): a Void Sword, Helmet, Chestplate, Leggings and Boots, each made by crafting a
+  netherite piece with void ingots, and keeping whatever it carries, a rune included:
+
+  | Piece | Ingots | Stats (netherite in brackets) |
+  | --- | --- | --- |
+  | Sword | 2 | 8 damage (7), 3000 durability (2031) |
+  | Helmet, chestplate, leggings, boots | 3, 5, 4, 2 | 24 armor points in all (20), toughness 4 (3) |
+
+  Void gear is repaired with void ingots, resists fire and looks like netherite for now.
+- **A rune in void gear does more** (assumed), on top of what a rune does anywhere:
+  - on a weapon, its power counts half as much again, and its element is struck in full even against the
+    same element, where any other weapon's is halved;
+  - on armor, its power counts half as much again, and the piece's cut against its own element doubles,
+    still within the 80% cap.
+- Like every rune effect, these work anywhere, in or out of the tower.
+- The real spells mod is not loaded in the tower's test harness, so the shaman's casting is tested against a
+  stand-in and the real thing is a manual item: with both mods, find a floor that holds a shaman and watch
+  it strike and aid itself with real spells.
