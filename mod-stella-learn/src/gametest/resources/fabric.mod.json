@@ -9,7 +9,8 @@
 			"com.stella.learn.ModpackDependencyGameTest",
 			"com.stella.learn.LearnConfigGameTest",
 			"com.stella.learn.ProfileGameTest",
-			"com.stella.learn.HabitRecorderGameTest"
+			"com.stella.learn.HabitRecorderGameTest",
+			"com.stella.learn.LearnedBandGameTest"
 		]
 	},
 	"depends": {

@@ -4,12 +4,11 @@ import net.minecraft.server.MinecraftServer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The tick the profile decays against: the Overworld's game time, which the world saves, plus an offset a test
- * moves. The game test level's own clock barely advances, so a test steps the offset instead.
+ * The tick the profile decays against: the Overworld's game time, which the world saves. Game tests run in
+ * parallel on one server, so a test that needs elapsed time ages a profile's stamps instead of moving this clock.
  */
 public final class LearnClock {
 	private static volatile @Nullable MinecraftServer server;
-	private static volatile long offset;
 
 	private LearnClock() {
 	}
@@ -20,14 +19,6 @@ public final class LearnClock {
 
 	public static long now() {
 		MinecraftServer bound = server;
-		return (bound == null ? 0L : bound.overworld().getGameTime()) + offset;
-	}
-
-	public static void advance(final long ticks) {
-		offset += ticks;
-	}
-
-	public static void reset() {
-		offset = 0L;
+		return bound == null ? 0L : bound.overworld().getGameTime();
 	}
 }
