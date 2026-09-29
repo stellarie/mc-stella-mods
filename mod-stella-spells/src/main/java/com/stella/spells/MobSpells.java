@@ -555,7 +555,7 @@ public final class MobSpells {
 	/** The village witch blinks into casting range or out of melee reach. */
 	public static final class Blink extends Goal {
 		private final Mob mob;
-		private long readyAt;
+		private int readyAt;
 
 		public Blink(final Mob mob) {
 			this.mob = mob;
@@ -564,7 +564,7 @@ public final class MobSpells {
 
 		@Override
 		public boolean canUse() {
-			if (this.mob.level().getGameTime() < this.readyAt) {
+			if (this.mob.tickCount < this.readyAt) {
 				return false;
 			}
 			LivingEntity target = this.mob.getTarget();
@@ -584,7 +584,7 @@ public final class MobSpells {
 
 		@Override
 		public void start() {
-			this.readyAt = this.mob.level().getGameTime() + VILLAGE_WITCH_BLINK_COOLDOWN_TICKS;
+			this.readyAt = this.mob.tickCount + VILLAGE_WITCH_BLINK_COOLDOWN_TICKS;
 			LivingEntity target = this.mob.getTarget();
 			if (target != null && blinkNear(this.mob, target,
 				VILLAGE_WITCH_SAFE_MIN_DISTANCE, VILLAGE_WITCH_SAFE_MAX_DISTANCE)) {
