@@ -7,9 +7,9 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.phys.Vec3;
 
-/** Walks a mob that accepted a rally to its slot, and lets go of it on arrival or when the request expires. */
+/** Walks a mob that accepted a rally or a back-off to its slot, and lets go of it on arrival or when the request expires. */
 public final class AnswerRallyGoal extends Goal {
-	private static final double ARRIVED = 2.0;
+	static final double ARRIVED = 2.0;
 	private static final int REPATH_TICKS = 10;
 	private static final double SPEED = 1.0;
 
@@ -60,7 +60,7 @@ public final class AnswerRallyGoal extends Goal {
 	private boolean walking() {
 		CalloutBoard.Active held = CalloutBoard.active(this.mob);
 		Vec3 slot = Rally.slotOf(this.mob);
-		return held != null && held.callout().type().equals(Rally.TYPE) && slot != null && this.mob.position().distanceTo(slot) > ARRIVED;
+		return held != null && (held.callout().type().equals(Rally.TYPE) || held.callout().type().equals(CalloutKits.BACK_OFF)) && slot != null && this.mob.position().distanceTo(slot) > ARRIVED;
 	}
 
 	private boolean playsThisRole() {

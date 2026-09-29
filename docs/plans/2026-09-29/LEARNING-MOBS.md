@@ -85,8 +85,8 @@ name and its integration branch are open (see Open decisions).
 2. Profile: the attachment, the counters, the decay, and persistence across save and reload.
 3. First tactic: the skeleton archer's band shifts by the rush counter. **Done 2026-09-29** (ranged and magic mobs; a rusher pushes the near band out by up to 6 blocks).
 4. Shield tactics for the zombie and the skeleton. **Done 2026-09-29**: against a player seen blocking, a melee mob holds its swing and a ranged mob holds its fire while the shield is up, for up to 100 ticks. The archer's "fires more while the shield is down" is dropped: holding fire while it is up gives the same effect without touching the mobs mod's bow cadence.
-5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities.
-6. Callout types: position first, then focus fire, back off, heal, buff, debuff.
+5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities. **Done 2026-09-29.**
+6. Callout types: position first, then focus fire, back off, heal, buff, debuff. **Done 2026-09-29.** The sender: a monster hurt by a player calls; it asks for a heal below half health, a slowness debuff against a turtle, a strength buff against a rusher, and a rally otherwise. Measured: a steady fight of one hit every 10 ticks draws one call per 100 tick cooldown, 3 calls in 300 ticks.
 7. Pathing goals: flank, cover, chokepoint.
 8. Spells integration through the ability registry.
 
