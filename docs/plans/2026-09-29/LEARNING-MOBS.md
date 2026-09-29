@@ -123,3 +123,29 @@ Each slice is gated and independently reviewed before the next one starts.
 - The mobs mod's flee spot is random and can land in the air pocket under a test floor, so the arena fills two
   layers below its floor, and a back-off test waits for a working spot instead of sampling one tick.
 - A goal's `canUse` is not asked every tick, so a `tickCount % n` gate can miss the mob's window entirely.
+
+## Movement learning (proposed 2026-09-29, not started)
+
+Mobs learn how a player moves, not only what they hit with, and change where they stand and how they approach.
+
+**What is sampled.** Every 5 ticks per player, from position and velocity, against the nearest monster that targets
+them: strafing (sideways velocity, and which way), closing in (speed toward the monster), falling back (already
+counted as `RETREAT`), standing still, and jumping. Each gets a decaying counter like the others, and a direction bias:
+does this player circle left or right.
+
+**What mobs do with it.**
+
+| Habit seen | Adaptation |
+|---|---|
+| Circle-strafes one way | Flankers take the slot on the side the player is moving toward, so the strafe runs into them |
+| Sprints at mobs | Melee mobs hold a tighter group so the charge meets several at once |
+| Kites (moves away while shooting) | Melee mobs aim at where the player will be, `position + velocity * lead`, and cut corners instead of tailing |
+| Stands still | Melee mobs advance through cover (already built) and archers keep their band |
+| Jumps a lot | Nothing yet: it needs a way to punish a jump that a server-side goal can express |
+
+**Slices, easiest first.** M1 the sampler and its counters, tested with scripted positions. M2 the predicted
+intercept point and a melee goal that paths to it once the player's speed passes a threshold. M3 the flank side chosen
+from the strafe direction. M4 the log lines, the summary and `/stellalearn profile` entries.
+
+**Open decisions.** Which of the five habits matter most to start with; how far ahead to lead (2 to 10 ticks is
+plausible); whether archers should lead their shots, which needs a hook into the mobs mod's bow goal.
