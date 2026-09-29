@@ -445,3 +445,20 @@ inventory and no levels, as an elemental rune does. It sits beside any elemental
   data pack tags holdable. None of the tower's own blocks is tagged holdable in the game itself.
 - Traps are still 20 tiles a floor. In a six wide path a single tile is easy to step round; if that plays
   too soft, the count or the tile's size can grow.
+
+## Built: clue books in chests (2026-09-29)
+
+- A tattered book, one of four (The Way Up, On Floors and Guardians, Keys and the Way Home, Runes of the
+  Tower), turns up in vanilla chests. All four tell how to open the way in: a frame of crying obsidian, at
+  least two blocks wide inside and three high, up to twenty-one square, lit with fire. Each adds a page on
+  its own subject. They cannot be copied.
+- Each chest of these tables holds a clue with this chance, measured over 20,000 draws each, and once
+  through the game's own loot rolls for the ruined portal:
+
+  | Chest | Chance |
+  | --- | --- |
+  | Ruined portal | 40% |
+  | Stronghold library, bastion treasure | 30% |
+  | Simple dungeon, stronghold corridor and crossing, other bastion chests | 10% |
+
+- A data pack's own version of a listed table holds none, and neither does any other chest.
