@@ -58,11 +58,22 @@ public final class TakeCoverGoal extends Goal {
 	public void start() {
 		this.walked = 0;
 		this.walkToSpot();
+		if (this.spot != null && this.mob.getTarget() instanceof ServerPlayer player) {
+			LearnLog.info("learnCover", "WALK", LearnLog.who(this.mob) + " " + LearnLog.who(player) + " shooter=" + LearnLog.num(Cover.shooterPressure(player))
+				+ " spot=" + LearnLog.num(this.spot.x) + "," + LearnLog.num(this.spot.y) + "," + LearnLog.num(this.spot.z)
+				+ " distance_to_spot=" + LearnLog.num(this.mob.position().distanceTo(this.spot)) + " distance_to_player=" + LearnLog.num(this.mob.distanceTo(player)));
+		}
 	}
 
 	@Override
 	public void stop() {
 		this.mob.getNavigation().stop();
+		if (this.spot != null) {
+			boolean arrived = this.mob.position().distanceTo(this.spot) <= ARRIVED;
+			LearnLog.info("learnCover", arrived ? "ARRIVE" : "GIVE_UP", LearnLog.who(this.mob) + " walked=" + this.walked
+				+ (arrived ? "" : " reason=" + (this.walked >= MAX_WALK_TICKS ? "timeout" : "abandoned")));
+		}
+
 		this.spot = null;
 		this.restUntilTick = this.mob.tickCount + LearnConfigStore.get().coverRestTicks();
 	}

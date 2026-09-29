@@ -33,12 +33,20 @@ public final class Rally {
 
 			@Override
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
-				((AttachmentTarget) mob).setAttached(SLOT, slotFor(mob, player, index));
+				Vec3 slot = slotFor(mob, player, index);
+				((AttachmentTarget) mob).setAttached(SLOT, slot);
+				LearnLog.info("learnRally", "SLOT", LearnLog.who(mob) + " " + LearnLog.who(player) + " index=" + index + " side=" + (index % 2 == 0 ? "left" : "right")
+					+ " slot=" + text(slot) + " distance=" + LearnLog.num(slot.distanceTo(player.position())) + " target=" + (mob.getTarget() == null ? "none" : "player"));
 				if (mob.getTarget() == null) {
 					mob.setTarget(player);
 				}
 			}
 		});
+	}
+
+	/** A point as `x,y,z` to two places, for a log line. */
+	static String text(final Vec3 point) {
+		return LearnLog.num(point.x) + "," + LearnLog.num(point.y) + "," + LearnLog.num(point.z);
 	}
 
 	public static @Nullable Vec3 slotOf(final Mob mob) {

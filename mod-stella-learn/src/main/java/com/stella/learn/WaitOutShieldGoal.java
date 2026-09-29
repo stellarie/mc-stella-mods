@@ -55,10 +55,15 @@ public final class WaitOutShieldGoal extends Goal {
 	public void start() {
 		this.held = 0;
 		this.mob.getNavigation().stop();
+		if (this.mob.getTarget() instanceof ServerPlayer player) {
+			LearnLog.info("learnShield", "WAIT", LearnLog.who(this.mob) + " " + LearnLog.who(player) + " role=" + (this.melee ? "melee" : "ranged")
+				+ " turtle=" + LearnLog.num(shieldPressure(player)) + " patience=" + LearnConfigStore.get().shieldPatienceTicks());
+		}
 	}
 
 	@Override
 	public void stop() {
+		this.logRelease();
 		this.restUntilTick = this.mob.tickCount + LearnConfigStore.get().shieldRestTicks();
 	}
 
@@ -84,6 +89,14 @@ public final class WaitOutShieldGoal extends Goal {
 	/** How much of a full turtle this player is, from 0 to 1. */
 	static double shieldPressure(final ServerPlayer player) {
 		return Mth.clamp(Profiles.value(player, Habit.BLOCK) / LearnConfigStore.get().shieldSaturation(), 0.0, 1.0);
+	}
+
+	private void logRelease() {
+		ServerPlayer player = this.mob.getTarget() instanceof ServerPlayer target ? target : null;
+		String reason = this.held >= LearnConfigStore.get().shieldPatienceTicks() ? "patience"
+			: player == null || !player.isAlive() ? "gone"
+			: !shieldRaised(player) ? "dropped" : "other";
+		LearnLog.info("learnShield", "RELEASE", LearnLog.who(this.mob) + (player == null ? "" : " " + LearnLog.who(player)) + " reason=" + reason + " held=" + this.held);
 	}
 
 	private boolean playsThisRole() {

@@ -52,6 +52,7 @@ public final class CalloutBoard {
 	public static List<Answer> send(final Mob caller, final ServerPlayer player, final Callout callout, final LearnConfig config) {
 		Integer resting = ((AttachmentTarget) caller).getAttached(NEXT_CALL);
 		if (resting != null && caller.tickCount < resting) {
+			LearnLog.debug("learnCallout", "REST", LearnLog.who(caller) + " ticks_left=" + (resting - caller.tickCount));
 			return List.of();
 		}
 
@@ -74,11 +75,25 @@ public final class CalloutBoard {
 			}
 
 			answers.add(answer);
+			LearnLog.info("learnCallout", "ANSWER", LearnLog.who(caller) + " receiver=" + receiver.getUUID() + " accepted=" + answer.accepted() + " reason=" + answer.reason());
 			OBSERVERS.forEach(observer -> observer.accept(new AnswerEvent(caller.getUUID(), answer)));
 		}
 
 		((AttachmentTarget) caller).setAttached(ANSWERS, List.copyOf(answers));
+		logSend(caller, player, callout, config, answers, accepted);
 		return answers;
+	}
+
+	private static void logSend(
+		final Mob caller, final ServerPlayer player, final Callout callout, final LearnConfig config, final List<Answer> answers, final int accepted
+	) {
+		java.util.Map<String, Integer> declined = new java.util.TreeMap<>();
+		answers.stream().filter(answer -> !answer.accepted()).forEach(answer -> declined.merge(answer.reason(), 1, Integer::sum));
+		String reasons = declined.isEmpty() ? "none" : declined.entrySet().stream().map(entry -> entry.getKey() + ":" + entry.getValue()).collect(java.util.stream.Collectors.joining(","));
+		LearnLog.info(config, "learnCallout", "SEND", LearnLog.who(caller) + " " + LearnLog.who(player) + " type=" + callout.type() + " priority=" + callout.priority()
+			+ (callout.detail() == null ? "" : " detail=" + callout.detail()) + " duration=" + callout.durationTicks()
+			+ " asked=" + answers.size() + " accepted=" + accepted + " declined=" + reasons
+			+ " radius=" + LearnLog.num(config.calloutRadius()) + " max_responders=" + config.maxResponders() + " cooldown=" + config.calloutCooldownTicks());
 	}
 
 	private static Answer decide(final Mob receiver, final ServerPlayer player, final Callout callout, final int index) {

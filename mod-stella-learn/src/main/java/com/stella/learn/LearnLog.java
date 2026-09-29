@@ -32,6 +32,10 @@ public final class LearnLog {
 	}
 
 	public static void info(final LearnConfig config, final String test, final String verb, final String detail) {
+		if (!config.behaviorLog()) {
+			return;
+		}
+
 		String line = line(test, verb, detail);
 		StellaLearn.LOGGER.info(line);
 		tap.accept(line);

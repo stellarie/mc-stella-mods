@@ -26,6 +26,9 @@ public final class LearnedBand {
 		).apply(instance, Base::new));
 	}
 
+	/** Blocks the band must move from the last logged value before a new line is written. */
+	static final double LOG_STEP = 0.5;
+	private static final AttachmentType<Double> LOGGED_SHIFT = AttachmentRegistry.create(StellaLearn.id("band_logged_shift"));
 	public static final AttachmentType<Base> BASE = AttachmentRegistry.createPersistent(StellaLearn.id("band_base"), Base.CODEC);
 
 	private LearnedBand() {
@@ -47,15 +50,39 @@ public final class LearnedBand {
 		}
 
 		Base base = baseOf(mob, state);
-		double shift = LearnConfigStore.get().rushBandGain() * rushPressure(player);
+		double pressure = rushPressure(player);
+		double shift = LearnConfigStore.get().rushBandGain() * pressure;
 		set(state, base.near() + shift, base.far() + shift);
+		logShift(mob, player, base, state, pressure, shift);
+	}
+
+	/** A band that has moved by half a block since the last line written is a change worth a line; a creep is not. */
+	private static void logShift(final Mob mob, final ServerPlayer player, final Base base, final ReactiveState state, final double pressure, final double shift) {
+		Double last = ((AttachmentTarget) mob).getAttached(LOGGED_SHIFT);
+		double before = last == null ? 0.0 : last;
+		if (Math.abs(shift - before) < LOG_STEP) {
+			return;
+		}
+
+		((AttachmentTarget) mob).setAttached(LOGGED_SHIFT, shift);
+		LearnLog.info("learnBand", "SHIFT", LearnLog.who(mob) + " " + LearnLog.who(player) + " rush=" + LearnLog.num(pressure)
+			+ " near=" + LearnLog.num(base.near() + before) + "->" + LearnLog.num(state.getNearDistance())
+			+ " far=" + LearnLog.num(base.far() + before) + "->" + LearnLog.num(state.getFarDistance()));
 	}
 
 	/** Puts the mob's own band back, for a mob whose target is not a player. */
 	public static void restore(final Mob mob) {
 		Base base = ((AttachmentTarget) mob).getAttached(BASE);
 		if (base != null) {
-			set(ReactiveState.get(mob), base.near(), base.far());
+			ReactiveState state = ReactiveState.get(mob);
+			set(state, base.near(), base.far());
+			Double last = ((AttachmentTarget) mob).getAttached(LOGGED_SHIFT);
+			if (last != null && Math.abs(last) >= LOG_STEP) {
+				LearnLog.info("learnBand", "RESTORE", LearnLog.who(mob) + " near=" + LearnLog.num(base.near() + last) + "->" + LearnLog.num(base.near())
+					+ " far=" + LearnLog.num(base.far() + last) + "->" + LearnLog.num(base.far()));
+			}
+
+			((AttachmentTarget) mob).setAttached(LOGGED_SHIFT, 0.0);
 		}
 	}
 
