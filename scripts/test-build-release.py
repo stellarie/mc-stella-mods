@@ -84,6 +84,43 @@ class BundleTests(unittest.TestCase):
                 release.run(mod, "clean", "build")
         self.assertEqual(run.call_args.args[0][:2], ["sh", str(mod / "gradlew")])
 
+    def test_single_mod_stages_jar_after_five_runs(self):
+        output = self.root / "output"
+        with patch.object(release.subprocess, "run", side_effect=self.fake_run) as run:
+            release.build_one(self.root, output, "mod-one")
+        self.assertEqual(run.call_count, 6)
+        self.assertEqual(
+            (output / "jars" / "mod-one" / "mod-one.jar").read_bytes(), b"mod-one"
+        )
+        self.assertFalse((output / "mc-stella-mods.zip").exists())
+
+    def test_bundle_rejects_missing_mod_artifact(self):
+        jars = self.root / "jars"
+        (jars / "mod-one").mkdir(parents=True)
+        (jars / "mod-one" / "mod-one.jar").write_bytes(b"one")
+        with self.assertRaises(RuntimeError):
+            release.bundle(jars, ["mod-one", "mod-two"], self.root / "output")
+        self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
+
+    def test_bundle_rejects_duplicate_jar_names(self):
+        jars = self.root / "jars"
+        for mod in ("mod-one", "mod-two"):
+            (jars / mod).mkdir(parents=True)
+            (jars / mod / "same.jar").write_bytes(mod.encode())
+        with self.assertRaises(RuntimeError):
+            release.bundle(jars, ["mod-one", "mod-two"], self.root / "output")
+        self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
+
+    def test_nether_serializes_its_included_builds(self):
+        mod = self.root / "mod-stella-nether"
+        mod.mkdir()
+        for file in ("build.gradle", "settings.gradle", "gradlew", "gradlew.bat"):
+            (mod / file).touch()
+        with patch.object(release.subprocess, "run", side_effect=self.fake_run) as run:
+            release.build_one(self.root, self.root / "output", mod.name)
+        self.assertEqual(run.call_count, 6)
+        self.assertTrue(all("--max-workers=1" in call.args[0] for call in run.call_args_list))
+
 
 if __name__ == "__main__":
     unittest.main()
