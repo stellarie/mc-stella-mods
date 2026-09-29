@@ -18,6 +18,11 @@ public final class HabitRecorder {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(HabitRecorder::afterDamage);
 	}
 
+	/** Vanilla's rule for a critical hit: falling, off the ground, and not sprinting, climbing or swimming. */
+	static boolean isCrit(final ServerPlayer attacker) {
+		return !attacker.onGround() && attacker.fallDistance > 0.0F && !attacker.isSprinting() && !attacker.onClimbable() && !attacker.isInWater();
+	}
+
 	static void afterDamage(
 		final LivingEntity entity, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked
 	) {
@@ -35,8 +40,12 @@ public final class HabitRecorder {
 
 		if (source.getDirectEntity() instanceof Projectile) {
 			Profiles.record(attacker, Habit.RANGED);
+			Kite.markShot(attacker);
 		} else if (source.getDirectEntity() == attacker) {
 			Profiles.record(attacker, Habit.MELEE);
+			if (isCrit(attacker)) {
+				Profiles.record(attacker, Habit.CRIT);
+			}
 		}
 	}
 }
