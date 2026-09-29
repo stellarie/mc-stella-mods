@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 /** Four quick slots beside the hotbar: any item, used by its key without being selected. */
 public class QuickSlotsGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.quickslots");
+	/** The vanilla inventory screen's background height, which is not ours to move. */
+	private static final int VANILLA_PANEL_HEIGHT = 166;
 
 	@GameTest
 	public void theInventoryMenuGainsTheQuickSlots(final GameTestHelper helper) {
@@ -49,6 +51,26 @@ public class QuickSlotsGameTest {
 			LOG.info("[SPELLTEST] test=theInventoryMenuGainsTheQuickSlots RESULT menuSlots={} firstQuick={} backed={}", size, QuickSlots.MENU_FIRST_SLOT, backed);
 			helper.assertTrue(size == QuickSlots.MENU_FIRST_SLOT + QuickSlots.COUNT, "the inventory menu has " + size + " slots");
 			helper.assertTrue(backed, "a menu slot did not write through to the quick slots");
+		} finally {
+			drop(helper, player);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theQuickSlotsSitInARowBelowThePanel(final GameTestHelper helper) {
+		ServerPlayer player = player(helper);
+		try {
+			boolean row = true;
+			int lowest = Integer.MAX_VALUE;
+			for (int i = 0; i < QuickSlots.COUNT; i++) {
+				Slot slot = player.inventoryMenu.slots.get(QuickSlots.MENU_FIRST_SLOT + i);
+				row &= slot.x == QuickSlots.MENU_X + i * QuickSlots.MENU_STEP && slot.y == QuickSlots.MENU_Y;
+				lowest = Math.min(lowest, slot.y);
+			}
+			LOG.info("[SPELLTEST] test=theQuickSlotsSitInARowBelowThePanel RESULT row={} lowestY={} panelHeight={}", row, lowest, VANILLA_PANEL_HEIGHT);
+			helper.assertTrue(row, "the quick slots are not one row at the shipped spot");
+			helper.assertTrue(lowest >= VANILLA_PANEL_HEIGHT, "a quick slot sits inside the 166 pixel inventory panel");
 		} finally {
 			drop(helper, player);
 		}
