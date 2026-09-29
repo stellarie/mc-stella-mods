@@ -10,6 +10,6 @@ public final class NetherClient implements ClientModInitializer {
 		// The portal's choice opens as a window; the server sends it only to a client with the mod.
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(com.stella.nether.PortalWindow.Open.TYPE,
 			(payload, context) -> context.client().setScreenAndShow(new PortalChoiceScreen(payload)));
-		StellaNether.LOGGER.debug("[NETHER] client ready");
+		com.stella.nether.BehaviorLog.info("[NETHER] client ready");
 	}
 }

@@ -160,7 +160,7 @@ public final class RaidInstance {
 		RaidState state = state(player.level().getServer());
 		Boons held = player.getAttached(PLAYER_BOONS_HELD);
 		boolean live = state.active() && held != null && held.run() == state.run();
-		StellaNether.LOGGER.info("[NETHER] player={} reconnected in run={} now={} live={}; sent to their portal", player.getScoreboardName(),
+		BehaviorLog.info("[NETHER] player={} reconnected in run={} now={} live={}; sent to their portal", player.getScoreboardName(),
 			held == null ? null : held.run(), state.run(), live);
 		player.teleport(RaidTravel.wayBack((ServerLevel) player.level(), player));
 	}
@@ -179,7 +179,7 @@ public final class RaidInstance {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid != null && elapsed >= ENRAGE_TICKS) {
 			if (elapsed == ENRAGE_TICKS) {
-				StellaNether.LOGGER.info("[NETHER] raid enraged run={}", state.run());
+				BehaviorLog.info("[NETHER] raid enraged run={}", state.run());
 				raid.players().forEach(player -> player.sendSystemMessage(
 					Component.translatable("message.mod-stella-nether.enraged").withStyle(ChatFormatting.DARK_RED)));
 			}
@@ -219,7 +219,7 @@ public final class RaidInstance {
 		set(server, new RaidState(old.run() + 1, false, Optional.empty(), RaidMode.NORMAL, 0L, false));
 		BlazeSovereign.closeBar(server);
 		BlazeSovereign.forget();
-		StellaNether.LOGGER.info("[NETHER] raid reset run={} next={} reason={}", old.run(), old.run() + 1, reason);
+		BehaviorLog.info("[NETHER] raid reset run={} next={} reason={}", old.run(), old.run() + 1, reason);
 	}
 
 	/** A player crossing in: into an empty raid they become its host with their mode; otherwise they join. */
@@ -229,7 +229,7 @@ public final class RaidInstance {
 		if (!state.active()) {
 			state = new RaidState(state.run(), true, Optional.of(player.getUUID()), requested, 0L, false);
 			set(server, state);
-			StellaNether.LOGGER.info("[NETHER] raid opened run={} host={} mode={}", state.run(), player.getScoreboardName(), requested);
+			BehaviorLog.info("[NETHER] raid opened run={} host={} mode={}", state.run(), player.getScoreboardName(), requested);
 		}
 		return state;
 	}
@@ -281,7 +281,7 @@ public final class RaidInstance {
 		List<Holder<MobEffect>> boons = draw(PLAYER_BOONS, PLAYER_BOONS_EACH, player.getRandom());
 		boons.forEach(effect -> player.addEffect(lasting(effect)));
 		player.setAttached(PLAYER_BOONS_HELD, new Boons(state.run(), boons));
-		StellaNether.LOGGER.debug("[NETHER] player={} boons={}", player.getScoreboardName(), boons);
+		BehaviorLog.info("[NETHER] player={} boons={}", player.getScoreboardName(), boons);
 	}
 
 	/** Takes back only a lasting effect, so a potion of the same kind drunk outside is left alone. */

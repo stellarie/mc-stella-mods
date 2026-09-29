@@ -432,7 +432,7 @@ public final class SovereignSpecials {
 		control.active = cast;
 		control.last = cast;
 		control.history.add(special);
-		StellaNether.LOGGER.info("[NETHER] sovereign special={} target={}", special, target.getScoreboardName());
+		BehaviorLog.info("[NETHER] sovereign special={} target={}", special, target.getScoreboardName());
 		return cast;
 	}
 
@@ -583,7 +583,7 @@ public final class SovereignSpecials {
 			if (cast.age - cast.staggeredAt >= VORTEX_STAGGER_TICKS) {
 				cast.lastActionAge = cast.age;
 				cast.done = true;
-				StellaNether.LOGGER.info("[NETHER] sovereign stagger over after={}", cast.age - cast.staggeredAt);
+				BehaviorLog.info("[NETHER] sovereign stagger over after={}", cast.age - cast.staggeredAt);
 			}
 			return;
 		}
@@ -595,7 +595,7 @@ public final class SovereignSpecials {
 			fadeBullets(cast);
 			raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_DEACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
 			raid.sendParticles(ParticleTypes.ELECTRIC_SPARK, blaze.getX(), blaze.getY() + blaze.getBbHeight() * 0.5, blaze.getZ(), 60, 1.0, 1.5, 1.0, 0.2);
-			StellaNether.LOGGER.info("[NETHER] sovereign shield broken at={} staggered", cast.age);
+			BehaviorLog.info("[NETHER] sovereign shield broken at={} staggered", cast.age);
 			return;
 		}
 		if (cast.age >= VORTEX_TICKS) {
@@ -695,7 +695,7 @@ public final class SovereignSpecials {
 		cast.shield = true;
 		cast.shieldAt = blaze.position();
 		raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
-		StellaNether.LOGGER.info("[NETHER] sovereign vortex shield up points={} whole={}", points, VORTEX_SHIELD);
+		BehaviorLog.info("[NETHER] sovereign vortex shield up points={} whole={}", points, VORTEX_SHIELD);
 	}
 
 	/** The shield in absorption points: its whole-health size through the Sovereign's divisor. */
@@ -786,7 +786,7 @@ public final class SovereignSpecials {
 		raid.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centre.x, centre.y, centre.z, 6, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, 0.0);
 		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, centre.x, centre.y, centre.z, 400, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, 0.3);
 		raid.playSound(null, BlockPos.containing(centre), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 10.0F, 0.5F);
-		StellaNether.LOGGER.info("[NETHER] sovereign vortex burst broken={} hit={}", cast.blastBroken, cast.hits.size());
+		BehaviorLog.info("[NETHER] sovereign vortex burst broken={} hit={}", cast.blastBroken, cast.hits.size());
 	}
 
 	private static void nova(final ServerLevel raid, final Cast cast) {

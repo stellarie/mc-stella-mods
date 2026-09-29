@@ -31,7 +31,7 @@ public final class StellaNether implements ModInitializer {
 		SovereignSpecials.register();
 		FlameMantle.register();
 		BlazeEnchantments.register();
-		LOGGER.info("[NETHER] initialized");
+		BehaviorLog.info("[NETHER] initialized");
 	}
 
 	public static Identifier id(final String path) {

@@ -35,6 +35,6 @@ public final class NetherBlocks {
 	}
 
 	public static void register() {
-		StellaNether.LOGGER.debug("Registered {}", SEALED_CHEST_ID);
+		BehaviorLog.info("Registered {}", SEALED_CHEST_ID);
 	}
 }
