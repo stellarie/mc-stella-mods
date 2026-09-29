@@ -71,7 +71,7 @@ public final class TowerShamans {
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(TowerShamans::tick);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
-			if (!blocked && taken > 0.0F && isShaman(entity) && entity.level() instanceof ServerLevel level) {
+			if (!blocked && taken > 0.0F && entity.isAlive() && isShaman(entity) && entity.level() instanceof ServerLevel level) {
 				blink(level, (Skeleton) entity);
 			}
 		});
@@ -84,7 +84,6 @@ public final class TowerShamans {
 			if (entity.getLastHurtByPlayer() != null && level.getGameRules().get(GameRules.MOB_DROPS)
 				&& entity.getRandom().nextDouble() < PINNED_INGOT.getOrDefault(state.floor(), ingotChance(state.floor()))) {
 				entity.spawnAtLocation(level, new ItemStack(TowerItems.VOID_INGOT));
-				StellaTower.LOGGER.debug("[TOWER] a shaman of floor {} left a void ingot", state.floor());
 			}
 		});
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> RESTED_UNTIL.clear());
@@ -155,7 +154,6 @@ public final class TowerShamans {
 			shaman.discard();
 			return;
 		}
-		StellaTower.LOGGER.debug("[TOWER] floor={} a void shaman rises at {} with {}", floor, shaman.blockPosition(), shaman.getAttached(KIT));
 	}
 
 	/** Raises a shaman of the floor at a spot; null if it could not be added. */

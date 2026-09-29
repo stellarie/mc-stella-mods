@@ -178,7 +178,12 @@ public class TowerVoidGearGameTest {
 	public void aRuneOnVoidArmorCutsItsOwnElementTwiceOver(final GameTestHelper helper) {
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		TowerTestSupport.vulnerable(player);
-		RuneData rune = new RuneData(TowerElement.WIND, TOP);
+		// The highest floor whose void cut stays clear of the cap, so the test sees the power factor as well as the doubling.
+		int floor = TOP;
+		while (floor > 1 && (TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(floor) * VoidGear.POWER_FACTOR / 1000.0) * VoidGear.OWN_ELEMENT_FACTOR > TowerRunes.OWN_ELEMENT_CAP - 0.05) {
+			floor--;
+		}
+		RuneData rune = new RuneData(TowerElement.WIND, floor);
 		double[] cut = new double[2];
 		int i = 0;
 		for (net.minecraft.world.item.Item chest : new net.minecraft.world.item.Item[] {Items.NETHERITE_CHESTPLATE, TowerItems.VOID_CHESTPLATE}) {
@@ -187,10 +192,11 @@ public class TowerVoidGearGameTest {
 			float otherBlow = TowerRunes.armor(player, TowerElement.FIRE, 100.0F);
 			cut[i++] = 1.0 - ownBlow / otherBlow;
 		}
-		double base = TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(TOP) / 1000.0;
-		double wantPlain = base;
-		double wantVoid = Math.min(TowerRunes.OWN_ELEMENT_CAP, (TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(TOP) * VoidGear.POWER_FACTOR / 1000.0) * VoidGear.OWN_ELEMENT_FACTOR);
-		TowerTestSupport.result("voidArmorCut", "netherite=" + cut[0] + "/" + wantPlain + " void=" + cut[1] + "/" + wantVoid);
+		double wantPlain = TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(floor) / 1000.0;
+		double wantVoid = Math.min(TowerRunes.OWN_ELEMENT_CAP, (TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(floor) * VoidGear.POWER_FACTOR / 1000.0) * VoidGear.OWN_ELEMENT_FACTOR);
+		double withoutFactor = (TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(floor) / 1000.0) * VoidGear.OWN_ELEMENT_FACTOR;
+		helper.assertTrue(wantVoid < TowerRunes.OWN_ELEMENT_CAP && wantVoid - withoutFactor > 0.01, "floor " + floor + " leaves no room to see the power factor: " + wantVoid + " vs " + withoutFactor);
+		TowerTestSupport.result("voidArmorCut", "floor=" + floor + " netherite=" + cut[0] + "/" + wantPlain + " void=" + cut[1] + "/" + wantVoid);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(Math.abs(cut[0] - wantPlain) < 1.0E-3, "netherite armor cut its own element by " + cut[0] + ", not " + wantPlain);
 		helper.assertTrue(Math.abs(cut[1] - wantVoid) < 1.0E-3, "void armor cut its own element by " + cut[1] + ", not " + wantVoid);

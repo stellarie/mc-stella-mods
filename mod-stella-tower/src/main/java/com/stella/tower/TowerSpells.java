@@ -129,7 +129,7 @@ public final class TowerSpells {
 					try {
 						return (boolean) cast.invokeExact(caster, spell, target);
 					} catch (Throwable e) {
-						StellaTower.LOGGER.warn("[TOWER] the spells mod would not cast {}", spell, e);
+						warnOnce(spell, e);
 						return false;
 					}
 				}
@@ -139,13 +139,22 @@ public final class TowerSpells {
 					try {
 						return (boolean) aid.invokeExact(caster, spell);
 					} catch (Throwable e) {
-						StellaTower.LOGGER.warn("[TOWER] the spells mod would not cast {}", spell, e);
+						warnOnce(spell, e);
 						return false;
 					}
 				}
 			};
-		} catch (ReflectiveOperationException | LinkageError e) {
+		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
 			return ABSENT;
+		}
+	}
+
+	private static final java.util.concurrent.atomic.AtomicBoolean WARNED = new java.util.concurrent.atomic.AtomicBoolean();
+
+	/** A spells mod that will not cast is reported once, not on every think of every shaman. */
+	private static void warnOnce(final String spell, final Throwable e) {
+		if (WARNED.compareAndSet(false, true)) {
+			StellaTower.LOGGER.warn("[TOWER] the spells mod would not cast {}; shamans will stand idle", spell, e);
 		}
 	}
 
