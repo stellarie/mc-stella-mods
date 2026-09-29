@@ -66,7 +66,7 @@ public final class SovereignBody {
 		level.explode(blaze, blaze.getX(), y, blaze.getZ(), SUFFOCATION_BLAST, Level.ExplosionInteraction.BLOCK);
 		carve(level, blaze, blaze.getBoundingBox().inflate(SUFFOCATION_CLEAR));
 		int count = BURSTS.merge(blaze.getUUID(), 1, Integer::sum);
-		StellaNether.LOGGER.info("[NETHER] sovereign suffocating, burst out at={} bursts={}", blaze.blockPosition(), count);
+		BehaviorLog.info("[NETHER] sovereign suffocating, burst out at={} bursts={}", blaze.blockPosition(), count);
 	}
 
 	public static int burstsOf(final Blaze blaze) {

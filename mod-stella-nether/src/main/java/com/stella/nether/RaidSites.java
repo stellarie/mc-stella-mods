@@ -94,7 +94,7 @@ public final class RaidSites {
 			StellaNether.LOGGER.warn("[NETHER] no fortress and bastion pair near {}; the run opens at its origin", origin);
 			return new Site(origin, origin);
 		}
-		StellaNether.LOGGER.info("[NETHER] raid site={} from origin={} structures={} ms={}", best.arrival(), origin, found.size(), (System.nanoTime() - began) / 1_000_000L);
+		BehaviorLog.info("[NETHER] raid site={} from origin={} structures={} ms={}", best.arrival(), origin, found.size(), (System.nanoTime() - began) / 1_000_000L);
 		return best;
 	}
 

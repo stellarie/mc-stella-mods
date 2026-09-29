@@ -27,6 +27,7 @@
 			"com.stella.nether.SovereignBodyGameTest",
 			"com.stella.nether.BlazeSkirmishGameTest",
 			"com.stella.nether.SovereignCommandGameTest",
+			"com.stella.nether.BehaviorLogGameTest",
 			"com.stella.nether.SovereignVortexGameTest",
 			"com.stella.nether.PortalWindowGameTest",
 			"com.stella.nether.RaidSpawnsGameTest",
