@@ -59,9 +59,9 @@ public final class MobSpells {
 		"sapping_hex", "frost_nova", "earthspike", "plague_cloud", "flame_ring", "gravity");
 	public static final List<String> VILLAGE_WITCH_OFFENSIVE = List.of("wardens_roar", "spark_shot");
 	public static final List<String> VILLAGE_WITCH_SUPPORT = List.of("life_bloom");
-	public static final int VILLAGE_WITCH_ROAR_COOLDOWN_TICKS = 100;
-	public static final int VILLAGE_WITCH_SPARK_COOLDOWN_TICKS = 4;
-	public static final int VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS = 100;
+	public static final int VILLAGE_WITCH_ROAR_COOLDOWN_TICKS = 300;
+	public static final int VILLAGE_WITCH_SPARK_COOLDOWN_TICKS = 40;
+	public static final int VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS = 200;
 	public static final String FROZEN_METEOR = "frozen_meteor";
 	public static final int FROZEN_METEOR_COOLDOWN_TICKS = 500;
 	public static final String CAST_TAG_PREFIX = "mod-stella-spells.cast.";
@@ -75,7 +75,7 @@ public final class MobSpells {
 	public static final float SANCTUARY_RADIUS = 6.0F;
 	public static final int ILLAGER_SANCTUARY_COOLDOWN_TICKS = 400;
 	public static final double VILLAGE_WITCH_RANGE = 48.0;
-	public static final int VILLAGE_WITCH_BLINK_COOLDOWN_TICKS = 40;
+	public static final int VILLAGE_WITCH_BLINK_COOLDOWN_TICKS = 100;
 	public static final double VILLAGE_WITCH_RETREAT_DISTANCE = 6.0;
 	public static final double VILLAGE_WITCH_SAFE_MIN_DISTANCE = 8.0;
 	public static final double VILLAGE_WITCH_SAFE_MAX_DISTANCE = 12.0;
@@ -479,7 +479,7 @@ public final class MobSpells {
 		}
 
 		private void tickVillageWitch() {
-			if (this.ticks % VILLAGE_WITCH_SPARK_COOLDOWN_TICKS != 0) {
+			if (this.ticks % THINK_INTERVAL_TICKS != 0) {
 				return;
 			}
 			if (this.mob.getHealth() <= this.mob.getMaxHealth() * 0.5F && this.ready("life_bloom")
@@ -555,7 +555,7 @@ public final class MobSpells {
 	/** The village witch blinks into casting range or out of melee reach. */
 	public static final class Blink extends Goal {
 		private final Mob mob;
-		private int cooldown;
+		private long readyAt;
 
 		public Blink(final Mob mob) {
 			this.mob = mob;
@@ -564,8 +564,7 @@ public final class MobSpells {
 
 		@Override
 		public boolean canUse() {
-			if (this.cooldown > 0) {
-				this.cooldown--;
+			if (this.mob.level().getGameTime() < this.readyAt) {
 				return false;
 			}
 			LivingEntity target = this.mob.getTarget();
@@ -585,7 +584,7 @@ public final class MobSpells {
 
 		@Override
 		public void start() {
-			this.cooldown = VILLAGE_WITCH_BLINK_COOLDOWN_TICKS;
+			this.readyAt = this.mob.level().getGameTime() + VILLAGE_WITCH_BLINK_COOLDOWN_TICKS;
 			LivingEntity target = this.mob.getTarget();
 			if (target != null && blinkNear(this.mob, target,
 				VILLAGE_WITCH_SAFE_MIN_DISTANCE, VILLAGE_WITCH_SAFE_MAX_DISTANCE)) {

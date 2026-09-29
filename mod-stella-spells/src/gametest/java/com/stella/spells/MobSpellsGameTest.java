@@ -194,7 +194,7 @@ public class MobSpellsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 260)
+	@GameTest(maxTicks = 700)
 	public void villageWitchSpellCooldownsAndHalfHealthTrigger(final GameTestHelper helper) {
 		helper.setTime(18_000L);
 		floor(helper);
@@ -213,12 +213,12 @@ public class MobSpellsGameTest {
 			zombie.setDeltaMovement(Vec3.ZERO);
 			witch.setPos(witchPinned.x, witchPinned.y, witchPinned.z);
 			witch.setDeltaMovement(Vec3.ZERO);
-			if (helper.getTick() >= 120 && CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
+			if (helper.getTick() >= 250 && CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
 				.filter(event -> event.spell().equals("life_bloom")).count() < 2) {
 				witch.setHealth(Math.min(witch.getHealth(), witch.getMaxHealth() * 0.4F));
 			}
 		});
-		helper.runAfterDelay(230, () -> {
+		helper.runAfterDelay(650, () -> {
 			List<CastEvent> events = CAST_EVENTS.getOrDefault(witch.getUUID(), List.of());
 			List<Integer> roars = events.stream().filter(event -> event.spell().equals("wardens_roar"))
 				.map(CastEvent::tick).toList();
@@ -227,12 +227,78 @@ public class MobSpellsGameTest {
 			List<Integer> blooms = events.stream().filter(event -> event.spell().equals("life_bloom"))
 				.map(CastEvent::tick).toList();
 			boolean rates = roars.size() >= 2 && blooms.size() >= 2 && sparks.size() >= 3
-				&& roars.get(1) - roars.get(0) >= 100 && blooms.get(1) - blooms.get(0) >= 100
-				&& java.util.stream.IntStream.range(1, sparks.size()).allMatch(i -> sparks.get(i) - sparks.get(i - 1) >= 4)
-				&& java.util.stream.IntStream.range(1, sparks.size()).anyMatch(i -> sparks.get(i) - sparks.get(i - 1) == 4);
+				&& roars.get(1) - roars.get(0) >= 300
+				&& blooms.get(1) - blooms.get(0) >= 200
+				&& java.util.stream.IntStream.range(1, sparks.size()).allMatch(i -> sparks.get(i) - sparks.get(i - 1) >= 40);
 			LOG.info("[SPELLTEST] test=villageWitchSpellCooldownsAndHalfHealthTrigger RESULT roars={} sparks={} blooms={} rates={}",
 				roars, sparks, blooms, rates);
-			helper.assertTrue(rates, "the witch did not honor the 5s, 0.2s, and half-health spell rules");
+			helper.assertTrue(rates, "the witch did not honor the 15s, 2s, 10s, and half-health spell rules");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 400)
+	public void theVillageWitchSparksOncePerTwoSeconds(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof MobSpells.Blink);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 6, 6, List.of());
+		zombie.setNoAi(true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		zombie.setHealth(1000.0F);
+		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		helper.onEachTick(() -> witch.setTarget(zombie));
+		helper.runAfterDelay(350, () -> {
+			List<Integer> sparks = CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
+				.filter(event -> event.spell().equals("spark_shot")).map(CastEvent::tick).toList();
+			List<Integer> gaps = java.util.stream.IntStream.range(1, sparks.size()).mapToObj(i -> sparks.get(i) - sparks.get(i - 1)).toList();
+			LOG.info("[SPELLTEST] test=theVillageWitchSparksOncePerTwoSeconds RESULT sparks={} gaps={}", sparks, gaps);
+			helper.assertTrue(sparks.size() >= 5 && gaps.stream().allMatch(gap -> gap >= 40)
+				&& gaps.stream().allMatch(gap -> gap <= 50),
+				"the spark gaps were " + gaps + " over " + sparks);
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 700, padding = 40)
+	public void theVillageWitchBlinksOncePerFiveSeconds(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		for (int x = 0; x <= 30; x++) {
+			for (int z = 0; z <= 30; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+				for (int y = 1; y <= 3; y++) {
+					helper.setBlock(x, y, z, Blocks.AIR);
+				}
+			}
+		}
+		Witch witch = mob(helper, EntityTypes.WITCH, 15, 15, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 17, 15, List.of());
+		var witchChunk = witch.chunkPosition();
+		var zombieChunk = zombie.chunkPosition();
+		helper.getLevel().setChunkForced(witchChunk.x(), witchChunk.z(), true);
+		helper.getLevel().setChunkForced(zombieChunk.x(), zombieChunk.z(), true);
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		zombie.setHealth(1000.0F);
+		zombie.setNoAi(true);
+		zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		Vec3 pinned = zombie.position();
+		helper.onEachTick(() -> {
+			zombie.setPos(pinned.x, pinned.y, pinned.z);
+			zombie.setDeltaMovement(Vec3.ZERO);
+			if (witch.distanceTo(zombie) > MobSpells.VILLAGE_WITCH_RETREAT_DISTANCE - 2.0) {
+				witch.setPos(pinned.x - 2.0, pinned.y, pinned.z);
+			}
+		});
+		helper.runAfterDelay(650, () -> {
+			List<Integer> blinks = CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
+				.filter(event -> event.spell().equals("blink")).map(CastEvent::tick).toList();
+			List<Integer> gaps = java.util.stream.IntStream.range(1, blinks.size()).mapToObj(i -> blinks.get(i) - blinks.get(i - 1)).toList();
+			LOG.info("[SPELLTEST] test=theVillageWitchBlinksOncePerFiveSeconds RESULT blinks={} gaps={}", blinks, gaps);
+			helper.getLevel().setChunkForced(witchChunk.x(), witchChunk.z(), false);
+			helper.getLevel().setChunkForced(zombieChunk.x(), zombieChunk.z(), false);
+			helper.assertTrue(blinks.size() >= 3 && gaps.stream().allMatch(gap -> gap >= 100 && gap <= 110),
+				"the blink gaps were " + gaps + " over " + blinks);
 			helper.succeed();
 		});
 	}
