@@ -64,6 +64,7 @@ public final class CalloutBoard {
 		);
 		receivers.sort(Comparator.comparingDouble(caller::distanceToSqr));
 		List<Answer> answers = new ArrayList<>();
+		List<Mob> acceptedMobs = new ArrayList<>();
 		int accepted = 0;
 
 		for (Monster receiver : receivers) {
@@ -72,6 +73,7 @@ public final class CalloutBoard {
 				: decide(receiver, player, callout, accepted);
 			if (answer.accepted()) {
 				accepted++;
+				acceptedMobs.add(receiver);
 			}
 
 			answers.add(answer);
@@ -81,6 +83,7 @@ public final class CalloutBoard {
 
 		((AttachmentTarget) caller).setAttached(ANSWERS, List.copyOf(answers));
 		logSend(caller, player, callout, config, answers, accepted);
+		CalloutFx.play(caller, callout, config, acceptedMobs);
 		return answers;
 	}
 

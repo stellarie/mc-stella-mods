@@ -20,7 +20,8 @@
 			"com.stella.learn.SpellsBridgeGameTest",
 			"com.stella.learn.RetreatRecorderGameTest",
 			"com.stella.learn.ChokepointGameTest",
-			"com.stella.learn.LearnLogGameTest"
+			"com.stella.learn.LearnLogGameTest",
+			"com.stella.learn.CalloutFxGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
