@@ -25,6 +25,7 @@
 			"com.stella.nether.SoulNovaGameTest",
 			"com.stella.nether.SovereignChargeGameTest",
 			"com.stella.nether.SovereignBodyGameTest",
+			"com.stella.nether.SovereignVortexGameTest",
 			"com.stella.nether.PortalWindowGameTest",
 			"com.stella.nether.RaidSpawnsGameTest",
 			"com.stella.nether.RaidCastersGameTest"
