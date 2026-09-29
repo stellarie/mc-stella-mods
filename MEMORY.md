@@ -1,7 +1,7 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-28
+last_verified: 2026-09-29
 ---
 
 # Project Memory
@@ -37,6 +37,7 @@ This repository develops separate Fabric mods on their own integration branches:
 - The server-wide lifetime threat maximum persists on the Overworld attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/WorldThreatPeak.java; highestThreatPersistsAcrossDimensionsAndNeverFalls]
 - One spawn modifier per attribute combines threat level and the retained depth contribution. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
 - `main-food` was created from `origin/main` and tracks `origin/main-food`. [status: active] [verified: 2026-09-28] [source: git branch -vv main-food; git ls-remote --heads origin main-food]
+- Wild patrol pair rolls now use persisted 8x8 grid keys on the Overworld. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: mod-stella-mobs/src/main/java/com/stella/mobs/behavior/ChunkEncounters.java; build -x test -x runGameTest]
 
 ## Conventions
 
