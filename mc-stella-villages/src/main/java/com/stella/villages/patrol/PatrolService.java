@@ -37,13 +37,14 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.item.ItemStack;
@@ -70,7 +71,7 @@ public final class PatrolService {
 	public static final String PATROL_TAG = "mc-stella-villages.patrol";
 	public static final int PLAYER_THREAT_CLEAR_TICKS = 200;
 	public static final int WITCH_SUPPORT_RANGE = 16;
-	public static final int WITCH_POTION_INTERVAL_TICKS = 40;
+	public static final int WITCH_POTION_INTERVAL_TICKS = 100;
 	public static final int WITCH_POTION_RANGE = 16;
 	public static final int PATROL_MEMBER_COUNT = 4;
 	public static final int PILLAGER_COUNT = 2;
@@ -446,11 +447,11 @@ public final class PatrolService {
 			3,
 			new NearestAttackableTargetGoal<>(
 				mob,
-				Monster.class,
+				Mob.class,
 				10,
 				true,
 				false,
-				(target, targetLevel) -> target instanceof Monster
+				(target, targetLevel) -> target instanceof Enemy
 					&& (!(target instanceof Mob targetMob) || !PatrolState.isMarked(targetMob))
 					&& !target.entityTags().contains(PatrolDefendTargetGoal.FRIENDLY_PATROL_TAG)
 					&& withinHeadBell(mob, bellOf(level, village), target.position())
@@ -468,6 +469,7 @@ public final class PatrolService {
 		BlockPos bell = bellOf(level, village);
 		if (PatrolState.role(mob) == PatrolState.Role.HEAD) {
 			mob.getGoalSelector().addGoal(0, new HeadBellGuardGoal(mob, bell));
+			mob.getGoalSelector().addGoal(2, new MeleeAttackGoal((PathfinderMob) mob, 1.1, true));
 			mob.getGoalSelector().addGoal(6, new VillageWanderGoal(mob, bell, HEAD_BELL_RADIUS, 1.0));
 		} else if (mob instanceof Witch witch) {
 			mob.removeAllGoals(goal -> goal instanceof RangedAttackGoal);

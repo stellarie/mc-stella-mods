@@ -1350,7 +1350,7 @@ public final class VillagePatrolGameTest {
 		return hostile;
 	}
 
-	private static void prepareMovementLane(
+	static void prepareMovementLane(
 		final GameTestHelper helper,
 		final BlockPos anchor,
 		final int maxOffset
