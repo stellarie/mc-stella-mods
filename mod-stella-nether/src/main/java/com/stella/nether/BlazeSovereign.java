@@ -52,7 +52,8 @@ public final class BlazeSovereign {
 	static final int HEADROOM = 7;
 
 	/** The run a blaze is Sovereign of. */
-	public static final AttachmentType<Integer> SOVEREIGN = AttachmentRegistry.createPersistent(StellaNether.id("sovereign"), Codec.INT);
+	public static final AttachmentType<Integer> SOVEREIGN = AttachmentRegistry.create(StellaNether.id("sovereign"), builder -> builder
+		.persistent(Codec.INT).syncWith(net.minecraft.network.codec.ByteBufCodecs.VAR_INT, net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate.all()));
 	/** The share of the Sovereign's health beyond the attribute's ceiling, as a divisor on hits taken. */
 	public static final AttachmentType<Double> DIVISOR = AttachmentRegistry.createPersistent(StellaNether.id("sovereign_divisor"), Codec.DOUBLE);
 
@@ -68,6 +69,14 @@ public final class BlazeSovereign {
 	private static final java.util.Map<UUID, List<net.minecraft.world.entity.item.ItemEntity>> SPOILS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public static void register() {
+		// Whatever fire the Sovereign looses flies as soul fire: its own casts set it as they fire; this
+		// catches the rest, a vanilla attack's fireballs, as they load.
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+			if (entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.Fireball fireball && isSovereign(fireball.getOwner())
+				&& !fireball.getItem().is(NetherItems.SOUL_FIRE_CHARGE)) {
+				fireball.setItem(new net.minecraft.world.item.ItemStack(NetherItems.SOUL_FIRE_CHARGE));
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Blaze blaze && isSovereign(blaze) && blaze.level() instanceof ServerLevel level) {
 				dropSpoils(level, blaze);
@@ -141,8 +150,13 @@ public final class BlazeSovereign {
 			}
 			return;
 		}
-		SovereignSpecials.tick(raid, blaze);
-		if (!SovereignSpecials.airborne(blaze)) {
+		// Again each tick: a Sovereign loaded from disk, or given the mobs mod's attack on load, gets its burst back.
+		SovereignBurst.install(blaze);
+		// Its opening, once, holds everything else while it runs.
+		if (!SovereignOpening.tick(raid, blaze)) {
+			SovereignSpecials.tick(raid, blaze);
+		}
+		if (!SovereignSpecials.airborne(blaze) && !SovereignOpening.rushing(blaze)) {
 			keepNearGround(raid, blaze);
 		}
 		if (bar != null && server.getTickCount() % 10 == 0) {
@@ -181,6 +195,7 @@ public final class BlazeSovereign {
 		blaze.setPersistenceRequired();
 		blaze.setCustomName(Component.translatable("entity.mod-stella-nether.blaze_sovereign").withStyle(ChatFormatting.AQUA));
 		raid.addFreshEntity(blaze);
+		SovereignBurst.install(blaze);
 		current = blaze.getUUID();
 		held = blaze;
 		RaidInstance.set(server, state.withSovereignRisen());
@@ -282,6 +297,10 @@ public final class BlazeSovereign {
 				dropped.add(mantle);
 			}
 		}
+		net.minecraft.world.entity.item.ItemEntity scrolls = RaidDrops.sovereignScrolls(level, blaze);
+		if (scrolls != null) {
+			dropped.add(scrolls);
+		}
 		SPOILS.put(blaze.getUUID(), dropped);
 		StellaNether.LOGGER.info("[NETHER] sovereign slain spoils={}", dropped.stream().map(item -> item.getItem().toString()).toList());
 	}
@@ -300,6 +319,7 @@ public final class BlazeSovereign {
 		current = null;
 		held = null;
 		SovereignSpecials.forget();
+		SovereignOpening.forget();
 	}
 
 	static boolean burns(final DamageSource source) {

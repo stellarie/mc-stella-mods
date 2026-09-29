@@ -183,6 +183,12 @@ public final class RaidTravel {
 		}
 		ASKED.put(player.getUUID(), now);
 		RaidState state = RaidInstance.state(player.level().getServer());
+		// A client with the mod gets the window; any other, the chat prompt.
+		if (net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.canSend(player, PortalWindow.Open.TYPE)) {
+			net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, PortalWindow.openFor(state));
+			StellaNether.LOGGER.debug("[NETHER] player={} ASKED by window", player.getScoreboardName());
+			return;
+		}
 		net.minecraft.network.chat.MutableComponent prompt = Component.translatable("message.mod-stella-nether.ask")
 			.append(option("normal", "normal", ChatFormatting.RED)).append(" ");
 		if (state.active()) {
@@ -193,6 +199,39 @@ public final class RaidTravel {
 		}
 		player.sendSystemMessage(prompt);
 		StellaNether.LOGGER.debug("[NETHER] player={} ASKED", player.getScoreboardName());
+	}
+
+	/**
+	 * An option clicked in the window: the choice is made, and a player still standing in a nether portal is
+	 * sent through it at once. An option closed by the running raid's mode is refused. Returns whether the
+	 * player was sent.
+	 */
+	public static boolean chooseFromWindow(final ServerPlayer player, final PortalWindow.Option option) {
+		RaidState state = RaidInstance.state(player.level().getServer());
+		if (!option.open(state.active() ? state.mode() : null)) {
+			return false;
+		}
+		choose(player, option.choice(), option.mode());
+		BlockPos portal = portalAt(player);
+		if (portal == null || !(player.level() instanceof ServerLevel level)) {
+			return false;
+		}
+		TeleportTransition transition = ((net.minecraft.world.level.block.Portal) net.minecraft.world.level.block.Blocks.NETHER_PORTAL)
+			.getPortalDestination(level, player, portal);
+		if (transition == null) {
+			return false;
+		}
+		player.teleport(transition);
+		player.setPortalCooldown();
+		StellaNether.LOGGER.debug("[NETHER] player={} SENT by window option={}", player.getScoreboardName(), option);
+		return true;
+	}
+
+	/** The nether portal block an entity stands in, if any. */
+	static @Nullable BlockPos portalAt(final Entity entity) {
+		return BlockPos.betweenClosedStream(entity.getBoundingBox().inflate(0.5))
+			.filter(at -> entity.level().getBlockState(at).is(net.minecraft.world.level.block.Blocks.NETHER_PORTAL))
+			.findFirst().map(BlockPos::immutable).orElse(null);
 	}
 
 	private static Component option(final String command, final String label, final ChatFormatting colour) {
