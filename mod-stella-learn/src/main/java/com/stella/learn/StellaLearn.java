@@ -18,6 +18,8 @@ public final class StellaLearn implements ModInitializer {
 		LearnedBand.register();
 		LearnGoals.register();
 		Rally.register();
+		CalloutKits.register();
+		CalloutSender.register();
 	}
 
 	public static Identifier id(final String path) {

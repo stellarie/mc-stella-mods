@@ -13,7 +13,9 @@
 			"com.stella.learn.LearnedBandGameTest",
 			"com.stella.learn.WaitOutShieldGameTest",
 			"com.stella.learn.CalloutGameTest",
-			"com.stella.learn.RallyGameTest"
+			"com.stella.learn.RallyGameTest",
+			"com.stella.learn.CalloutKitsGameTest",
+			"com.stella.learn.CalloutSenderGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
