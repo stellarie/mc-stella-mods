@@ -19,6 +19,8 @@ public final class Rally {
 	public static final Identifier TYPE = StellaLearn.id("rally");
 	/** Blocks from the player to a melee mob's flank slot. */
 	public static final double MELEE_SLOT_DISTANCE = 6.0;
+	/** How one-sided a strafe must be for the first flanker to follow it. */
+	static final double STRAFE_BIAS_MINIMUM = 0.5;
 	public static final AttachmentType<Vec3> SLOT = AttachmentRegistry.create(StellaLearn.id("rally_slot"));
 
 	private Rally() {
@@ -35,7 +37,8 @@ public final class Rally {
 			public void perform(final Mob mob, final ServerPlayer player, final Callout callout, final int index) {
 				Vec3 slot = slotFor(mob, player, index);
 				((AttachmentTarget) mob).setAttached(SLOT, slot);
-				LearnLog.info("learnRally", "SLOT", LearnLog.who(mob) + " " + LearnLog.who(player) + " index=" + index + " side=" + (index % 2 == 0 ? "left" : "right")
+				LearnLog.info("learnRally", "SLOT", LearnLog.who(mob) + " " + LearnLog.who(player) + " index=" + index + " side=" + (sideSign(player, index) > 0.0 ? "right" : "left")
+					+ " strafe_bias=" + LearnLog.num(Movement.strafeBias(player)) + " charger=" + LearnLog.num(Movement.chargePressure(player))
 					+ " slot=" + text(slot) + " distance=" + LearnLog.num(slot.distanceTo(player.position())) + " target=" + (mob.getTarget() == null ? "none" : "player"));
 				if (mob.getTarget() == null) {
 					mob.setTarget(player);
@@ -58,12 +61,27 @@ public final class Rally {
 		Vec3 look = player.getLookAngle();
 		Vec3 facing = new Vec3(look.x, 0.0, look.z);
 		facing = facing.lengthSqr() < 1.0E-6 ? new Vec3(0.0, 0.0, 1.0) : facing.normalize();
-		Vec3 side = new Vec3(-facing.z, 0.0, facing.x).scale(index % 2 == 0 ? 1.0 : -1.0);
-		return player.position().add(side.scale(distanceFor(mob)));
+		Vec3 side = new Vec3(-facing.z, 0.0, facing.x).scale(sideSign(player, index));
+		return player.position().add(side.scale(distanceFor(mob, player)));
 	}
 
-	private static double distanceFor(final Mob mob) {
+	/**
+	 * +1 is the player's right hand and -1 their left. The first flanker takes the side a strafer moves toward, so the
+	 * strafe runs into it, and the sides alternate from there; with no clear strafing it is the right hand.
+	 */
+	static double sideSign(final ServerPlayer player, final int index) {
+		boolean clear = Movement.strafePressure(player) >= LearnConfigStore.get().moveThreshold() && Math.abs(Movement.strafeBias(player)) >= STRAFE_BIAS_MINIMUM;
+		double first = clear && Movement.strafeBias(player) < 0.0 ? -1.0 : 1.0;
+		return index % 2 == 0 ? first : -first;
+	}
+
+	/** A melee slot closes in on a charger, whose rush is met by several mobs at once; a ranged one keeps to mid-band. */
+	private static double distanceFor(final Mob mob, final ServerPlayer player) {
 		ReactiveState state = ReactiveState.get(mob);
-		return state.getRole() == CombatRole.MELEE ? MELEE_SLOT_DISTANCE : (state.getNearDistance() + state.getFarDistance()) / 2.0;
+		if (state.getRole() != CombatRole.MELEE) {
+			return (state.getNearDistance() + state.getFarDistance()) / 2.0;
+		}
+
+		return MELEE_SLOT_DISTANCE * (1.0 - LearnConfigStore.get().chargeTighten() * Movement.chargePressure(player));
 	}
 }

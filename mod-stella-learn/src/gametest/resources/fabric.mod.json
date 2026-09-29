@@ -21,7 +21,11 @@
 			"com.stella.learn.RetreatRecorderGameTest",
 			"com.stella.learn.ChokepointGameTest",
 			"com.stella.learn.LearnLogGameTest",
-			"com.stella.learn.CalloutFxGameTest"
+			"com.stella.learn.CalloutFxGameTest",
+			"com.stella.learn.MovementRecorderGameTest",
+			"com.stella.learn.MovementTacticsGameTest",
+			"com.stella.learn.BanditGameTest",
+			"com.stella.learn.TacticGoalGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
