@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-learn",
+	"version": "${version}",
+	"name": "Stella Learning Mobs",
+	"description": "Mobs learn each player's fighting habits, counter them, and coordinate through callouts.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.learn.StellaLearn"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*",
+		"mod-stella-mobs": "*"
+	}
+}

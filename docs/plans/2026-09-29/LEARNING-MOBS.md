@@ -81,8 +81,8 @@ name and its integration branch are open (see Open decisions).
 
 ## Slices, easiest first
 
-1. Scaffold: the mod, its dependencies, config loading, and an empty profile attachment.
-2. Profile: the counters, the decay, and persistence across save and reload.
+1. Scaffold: the mod, its dependency on mobs, and config loading. **Done 2026-09-29.** The empty profile attachment moved into slice 2, because an attachment with no fields has nothing to test.
+2. Profile: the attachment, the counters, the decay, and persistence across save and reload.
 3. First tactic: the skeleton archer's band shifts by the rush counter.
 4. Shield tactics for the zombie and the skeleton.
 5. Callout core: the request type, the receiver decision, caps, cooldowns, and the recorded identities.
@@ -103,8 +103,7 @@ Each slice is gated and independently reviewed before the next one starts.
 
 ## Open decisions
 
-- The mod name and the integration branch name (for example `main-learn`). AGENTS.md lists no branch for this
-  mod, and this checkout holds only `main`.
+- Settled 2026-09-29: the mod is `mod-stella-learn` and its integration branch is `main-learn`.
 - The half lives, the callout radius, and the responder caps, all to be tuned by measurement.
 - Whether any callout type reaches mobs that other mods drive, such as the village witch, which the mobs mod
   skips through `NO_BEHAVIOR_TAG`.
