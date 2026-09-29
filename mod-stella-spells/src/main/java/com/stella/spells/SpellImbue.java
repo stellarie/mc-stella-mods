@@ -292,6 +292,7 @@ public final class SpellImbue {
 		SpellModifiers.CastModifiers base = SpellModifiers.resolve(
 			piece, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), definition.baseCooldownTicks()
 		);
+		base = TowerBridge.grow(piece, definition.id().getPath(), base);
 		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
 			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks()
@@ -319,19 +320,20 @@ public final class SpellImbue {
 			return false;
 		}
 
-		ready.put(definition.id(), now + modifiers.cooldownTicks());
+		int cooldown = TowerBridge.cooldown(player, modifiers.cooldownTicks());
+		ready.put(definition.id(), now + cooldown);
 		if (showsCooldown(piece)) {
 			// A piece imbued before the hotbar showed cooldowns gets its group on its first cast.
 			if (!piece.has(DataComponents.USE_COOLDOWN)) {
 				piece.set(DataComponents.USE_COOLDOWN, new UseCooldown(COOLDOWN_GROUP_SECONDS, java.util.Optional.of(cooldownGroup(definition.id()))));
 			}
-			player.getCooldowns().addCooldown(piece, modifiers.cooldownTicks());
+			player.getCooldowns().addCooldown(piece, cooldown);
 		}
 		SpellVisuals.play(player, definition, target, point, departure, modifiers);
 		Spellbooks.LOGGER.info(
 			"[SPELL] imbued_cast player={} spell={} victim={} piece={} full={} power={} cooldown={}",
 			player.getUUID(), definition.id(), victim.getUUID(), BuiltInRegistries.ITEM.getKey(piece.getItem()), full,
-			modifiers.powerMultiplier(), modifiers.cooldownTicks()
+			modifiers.powerMultiplier(), cooldown
 		);
 		recorder.cast(player, definition.id(), victim);
 		secondRecorder.cast(player, definition.id(), victim);
