@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-learn-test-mod-stella-learn",
+	"version": "1.0.0",
+	"name": "Stella Learning Mobs game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.learn.ModpackDependencyGameTest",
+			"com.stella.learn.LearnConfigGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-learn": "*"
+	}
+}

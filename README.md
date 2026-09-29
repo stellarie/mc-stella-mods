@@ -27,6 +27,7 @@ The ZIP and individual GameTest logs appear under `release-output/`.
 | `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
 | `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station | `main-food` |
+| `mod-stella-learn/` | Mobs learn each player's fighting habits, counter them, and coordinate through callouts (plan: `docs/plans/2026-09-29/LEARNING-MOBS.md`) | `main-learn` |
 
 Each mod has its own integration branch. Create new work branches from the current
 tip of the branch for that mod. Do not merge integration branches into each other.
