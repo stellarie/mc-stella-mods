@@ -190,6 +190,17 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   It replaces vanilla's blaze attack and the mobs mod's steady beat, and holds while a special runs.
   Measured: shots at ticks 20, 24, 28, 32, 36, then 120 to 136, in each of five runs.
 
+## Slice 12f: the soul nova
+
+- A sixth special, last in the rotation. Eighteen slow blue flames (a ring of twelve, and six angled
+  upward) drift out at 3 blocks a second. A flame that meets a block waits against it.
+- After 5 seconds each one bursts where it is. It hurts (6) and throws back whatever stands within 3
+  blocks, and sets three soul flames on the floor around it. It breaks no block.
+- The soul flame is the mod's own block, drawn with vanilla's soul-fire models. It holds on any solid
+  floor, burns like soul fire, and goes out after 10 seconds.
+- Measured: 18 flames over 8 directions, a burst at tick 100 after drifting 15.00 blocks, a stand-in
+  pushed (1.5, 0.4, 0) and hurt, and 49 to 53 soul flames set with no floor block broken.
+
 ## Manual acceptance
 
 - Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
@@ -205,6 +216,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
   its wait for the bystander to load starved in one gate run of five after four fixes.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
+- The soul nova's flames read as slow blue orbs, and their soul flames draw as soul fire (a cut-out
+  texture, not a black square) and go out after 10 seconds.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).

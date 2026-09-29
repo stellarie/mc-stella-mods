@@ -24,6 +24,13 @@ public final class NetherBlocks {
 			.pushReaction(PushReaction.IMMOVEABLE)
 	));
 
+	public static final Identifier SOUL_FLAME_ID = StellaNether.id("soul_flame");
+	public static final SoulFlameBlock SOUL_FLAME = Registry.register(BuiltInRegistries.BLOCK, SOUL_FLAME_ID, new SoulFlameBlock(
+		BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.SOUL_FIRE)
+			.setId(ResourceKey.create(Registries.BLOCK, SOUL_FLAME_ID))
+			.noLootTable()
+	));
+
 	private NetherBlocks() {
 	}
 
