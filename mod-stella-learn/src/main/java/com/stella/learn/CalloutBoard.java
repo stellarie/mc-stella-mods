@@ -68,7 +68,7 @@ public final class CalloutBoard {
 		for (Monster receiver : receivers) {
 			Answer answer = accepted >= config.maxResponders()
 				? new Answer(receiver.getUUID(), false, "cap")
-				: decide(receiver, callout);
+				: decide(receiver, player, callout, accepted);
 			if (answer.accepted()) {
 				accepted++;
 			}
@@ -81,7 +81,7 @@ public final class CalloutBoard {
 		return answers;
 	}
 
-	private static Answer decide(final Mob receiver, final Callout callout) {
+	private static Answer decide(final Mob receiver, final ServerPlayer player, final Callout callout, final int index) {
 		CalloutHandler handler = CalloutTypes.get(callout.type());
 		if (handler == null) {
 			return new Answer(receiver.getUUID(), false, "unknown_type");
@@ -91,7 +91,7 @@ public final class CalloutBoard {
 			return new Answer(receiver.getUUID(), false, "survival");
 		}
 
-		if (!handler.canPerform(receiver, callout)) {
+		if (!handler.canPerform(receiver, player, callout)) {
 			return new Answer(receiver.getUUID(), false, "cannot");
 		}
 
@@ -101,7 +101,7 @@ public final class CalloutBoard {
 		}
 
 		((AttachmentTarget) receiver).setAttached(ACTIVE, new Active(callout, receiver.tickCount + callout.durationTicks()));
-		handler.perform(receiver, callout);
+		handler.perform(receiver, player, callout, index);
 		return new Answer(receiver.getUUID(), true, ACCEPTED);
 	}
 

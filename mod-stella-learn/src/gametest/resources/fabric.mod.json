@@ -12,7 +12,8 @@
 			"com.stella.learn.HabitRecorderGameTest",
 			"com.stella.learn.LearnedBandGameTest",
 			"com.stella.learn.WaitOutShieldGameTest",
-			"com.stella.learn.CalloutGameTest"
+			"com.stella.learn.CalloutGameTest",
+			"com.stella.learn.RallyGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

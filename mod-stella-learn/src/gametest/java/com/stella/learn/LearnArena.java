@@ -25,6 +25,8 @@ final class LearnArena {
 	private static final int SIZE = 48;
 	/** Space between tests: a floor this wide overlaps its neighbours otherwise, and a mob targets the wrong test's player. */
 	static final int PADDING = 64;
+	/** Ticks a test waits for its chunks before it runs anyway and fails loudly. */
+	static final int READY_TICKS = 300;
 
 	private LearnArena() {
 	}
@@ -66,6 +68,40 @@ final class LearnArena {
 		Vec3 at = helper.absoluteVec(new Vec3(x, 1.0, z));
 		player.setPos(at.x, at.y, at.z);
 		return player;
+	}
+
+	/**
+	 * Runs `then` once each watched entity stands in an entity-ticking chunk. A chunk forced this tick joins some ticks
+	 * later, longer while a whole batch of tests forces its own, and a query for entities in it finds none until then, so
+	 * a callout sent at tick 0 can reach nobody.
+	 */
+	static void whenReady(final GameTestHelper helper, final java.util.List<? extends net.minecraft.world.entity.Entity> watched, final Runnable then) {
+		poll(helper, watched, then, READY_TICKS);
+	}
+
+	private static void poll(
+		final GameTestHelper helper, final java.util.List<? extends net.minecraft.world.entity.Entity> watched, final Runnable then, final int attemptsLeft
+	) {
+		if (attemptsLeft <= 0 || watched.stream().allMatch(entity -> entity.isAlive() && helper.getLevel().isPositionEntityTicking(entity.blockPosition()))) {
+			then.run();
+			return;
+		}
+
+		helper.runAfterDelay(1L, () -> poll(helper, watched, then, attemptsLeft - 1));
+	}
+
+	/** Checks `condition` each tick until it holds, then runs `onSuccess`; past `maxTicks` it fails with `message`. */
+	static void pollUntil(
+		final GameTestHelper helper, final java.util.function.BooleanSupplier condition, final int maxTicks,
+		final Runnable onSuccess, final java.util.function.Supplier<String> message
+	) {
+		if (condition.getAsBoolean()) {
+			onSuccess.run();
+		} else if (maxTicks <= 0) {
+			helper.fail(message.get());
+		} else {
+			helper.runAfterDelay(1L, () -> pollUntil(helper, condition, maxTicks - 1, onSuccess, message));
+		}
 	}
 
 	/** Raises a shield in the player's off hand and keeps it raised, since the mock player never ticks its own item use. */
