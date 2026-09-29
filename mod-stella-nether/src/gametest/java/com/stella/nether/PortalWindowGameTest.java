@@ -14,8 +14,15 @@ import net.minecraft.world.level.block.Blocks;
 public class PortalWindowGameTest {
 	/** A portal block where the player stands, placed with no neighbour update so it stands without a frame. */
 	static ServerPlayer inPortal(final GameTestHelper helper, final double x, final double z) {
+		return inPortal(helper, x, z, Blocks.NETHER_PORTAL.defaultBlockState(), Blocks.OBSIDIAN.defaultBlockState());
+	}
+
+	/** A portal block of a kind where the player stands, on a frame block of a kind, both placed with no updates. */
+	static ServerPlayer inPortal(final GameTestHelper helper, final double x, final double z,
+		final net.minecraft.world.level.block.state.BlockState portal, final net.minecraft.world.level.block.state.BlockState frame) {
 		ServerPlayer player = NetherTestSupport.join(helper, x, z);
-		helper.getLevel().setBlock(player.blockPosition(), Blocks.NETHER_PORTAL.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+		helper.getLevel().setBlock(player.blockPosition().below(), frame, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+		helper.getLevel().setBlock(player.blockPosition(), portal, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
 		return player;
 	}
 
@@ -104,6 +111,37 @@ public class PortalWindowGameTest {
 		helper.getLevel().setBlock(portal, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
 		NetherTestSupport.leave(helper, player);
 		helper.assertTrue(open[0] && sent[0] == 1, "the window opened on the first step=" + open[0] + ", sent " + sent[0] + " times");
+		helper.succeed();
+	}
+
+	@GameTest(environment = "mod-stella-nether-test:window_frames", maxTicks = 100)
+	public void onlyANetherPortalInObsidianOpensTheWindow(final GameTestHelper helper) {
+		NetherTestSupport.fresh(helper);
+		ServerPlayer nether = inPortal(helper, 1.5, 1.5);
+		ServerPlayer crying = inPortal(helper, 3.5, 1.5, Blocks.NETHER_PORTAL.defaultBlockState(), Blocks.CRYING_OBSIDIAN.defaultBlockState());
+		ServerPlayer tower = inPortal(helper, 5.5, 1.5, com.stella.tower.TowerBlocks.TOWER_PORTAL.defaultBlockState(), Blocks.CRYING_OBSIDIAN.defaultBlockState());
+		java.util.Map<ServerPlayer, Integer> sent = new java.util.HashMap<>();
+		Object[] previous = RaidTravel.setWindowSeams(candidate -> true, (candidate, open) -> sent.merge(candidate, 1, Integer::sum));
+		try {
+			for (ServerPlayer player : new ServerPlayer[] {nether, crying, tower}) {
+				step(helper, player);
+			}
+		} finally {
+			RaidTravel.restoreWindowSeams(previous);
+			for (ServerPlayer player : new ServerPlayer[] {nether, crying, tower}) {
+				RaidTravel.forgetWindow(player);
+			}
+		}
+		int toNether = sent.getOrDefault(nether, 0);
+		int toCrying = sent.getOrDefault(crying, 0);
+		int toTower = sent.getOrDefault(tower, 0);
+		NetherTestSupport.result("windowFrames", "obsidianNether=" + toNether + " cryingNether=" + toCrying + " tower=" + toTower);
+		for (ServerPlayer player : new ServerPlayer[] {nether, crying, tower}) {
+			helper.getLevel().setBlock(player.blockPosition(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+			NetherTestSupport.leave(helper, player);
+		}
+		helper.assertTrue(toNether == 1 && toCrying == 0 && toTower == 0,
+			"windows sent: nether portal in obsidian " + toNether + ", in crying obsidian " + toCrying + ", the tower's " + toTower);
 		helper.succeed();
 	}
 

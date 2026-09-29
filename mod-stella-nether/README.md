@@ -230,6 +230,10 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - The window itself is the client's: its tests (`thePortalWindowOpensAndClicksRequiresManualTest` and
   `theWindowStaysOpenWhileStandingInThePortalRequiresManualTest`) are not required and fail every run
   until checked by hand.
+- Only a nether portal standing on obsidian opens the window. The tower's portal, in crying obsidian,
+  never does. Measured (`onlyANetherPortalInObsidianOpensTheWindow`): a step sent 1 window on obsidian,
+  0 on crying obsidian and 0 in the tower portal:
+  `test=windowFrames RESULT obsidianNether=1 cryingNether=0 tower=0`. Before the check it was 1, 1, 1.
 
 ## Slice 12g: the raid's own spawns
 
