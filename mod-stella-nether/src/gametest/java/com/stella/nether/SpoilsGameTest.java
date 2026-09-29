@@ -18,12 +18,8 @@ import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.EndPortalBlock;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.portal.TeleportTransition;
 
-/** The Sovereign's spoils: the Blaze Core, the Flame Mantle and what it does worn, and the End the cores open. */
+/** The Sovereign's spoils: the Blaze Core, and the Flame Mantle and what it does worn. */
 public class SpoilsGameTest {
 	@GameTest(environment = "mod-stella-nether-test:spoil_core", maxTicks = 200)
 	public void aSlainSovereignLeavesABlazeCoreAndAPlainBlazeDoesNot(final GameTestHelper helper) {
@@ -137,51 +133,6 @@ public class SpoilsGameTest {
 		boolean takesThorns = thorns.value().canEnchant(mantle);
 		NetherTestSupport.result("mantleEnchantable", "enchantable=" + enchantable + " protection=" + takesProtection + " thorns=" + takesThorns);
 		helper.assertTrue(enchantable && takesProtection && takesThorns, "the Mantle enchantable=" + enchantable + " protection=" + takesProtection + " thorns=" + takesThorns);
-		helper.succeed();
-	}
-
-	static TeleportTransition endPortal(final GameTestHelper helper, final ServerPlayer player) {
-		return ((EndPortalBlock) Blocks.END_PORTAL).getPortalDestination(helper.getLevel(), player, player.blockPosition());
-	}
-
-	static ServerPlayer carrying(final GameTestHelper helper, final int cores) {
-		ServerPlayer player = NetherTestSupport.join(helper, 1.5, 1.5);
-		if (cores > 0) {
-			player.getInventory().add(new ItemStack(NetherItems.BLAZE_CORE, cores));
-		}
-		return player;
-	}
-
-	@GameTest(environment = "mod-stella-nether-test:end_sealed", maxTicks = 20)
-	public void aSealedEndTurnsAwayAPlayerShortOfCores(final GameTestHelper helper) {
-		EndSeal.seal(helper.getLevel().getServer());
-		ServerPlayer player = carrying(helper, EndSeal.CORES_TO_OPEN - 1);
-		TeleportTransition transition = endPortal(helper, player);
-		int kept = EndSeal.count(player);
-		NetherTestSupport.result("endSealed", "sent=" + (transition != null) + " kept=" + kept + " open=" + EndSeal.open(helper.getLevel().getServer()));
-		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(transition == null && kept == EndSeal.CORES_TO_OPEN - 1 && !EndSeal.open(helper.getLevel().getServer()),
-			"a player with " + (EndSeal.CORES_TO_OPEN - 1) + " cores was sent to " + transition + " keeping " + kept);
-		helper.succeed();
-	}
-
-	@GameTest(environment = "mod-stella-nether-test:end_open", maxTicks = 20)
-	public void threeCoresOpenTheEndForEveryone(final GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		EndSeal.seal(server);
-		ServerPlayer opener = carrying(helper, EndSeal.CORES_TO_OPEN);
-		TeleportTransition first = endPortal(helper, opener);
-		int left = EndSeal.count(opener);
-		ServerPlayer later = carrying(helper, 0);
-		TeleportTransition second = endPortal(helper, later);
-		boolean open = EndSeal.open(server);
-		NetherTestSupport.result("endOpens", "opener=" + (first == null ? null : first.newLevel().dimension().identifier()) + " left=" + left
-			+ " later=" + (second == null ? null : second.newLevel().dimension().identifier()) + " open=" + open);
-		NetherTestSupport.leave(helper, opener);
-		NetherTestSupport.leave(helper, later);
-		EndSeal.seal(server);
-		helper.assertTrue(first != null && first.newLevel().dimension().equals(Level.END) && left == 0 && open
-			&& second != null && second.newLevel().dimension().equals(Level.END), "the End after three cores: first=" + first + " left=" + left + " second=" + second);
 		helper.succeed();
 	}
 }

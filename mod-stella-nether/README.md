@@ -130,28 +130,169 @@ also burns, as before.
   Blaze Cores, and takes armor enchantments. Worn, it heals its wearer 1 extra health every 2 seconds,
   sets whoever strikes its wearer alight for 4 seconds, and takes 80% of fire damage away. It uses
   netherite's look and a vanilla icon until it has art of its own.
-- **The End is sealed.** An End portal leads nowhere, and tells the player so, until a player steps into
-  one carrying 3 Blaze Cores. The cores are spent and the End stays open for everyone from then on.
-  Vanilla's eyes of ender are still needed to light the portal.
-- Not yet: enchanting weapons and armor with a Blaze Core, and crafting new equipment from it, wait on
-  what those should be.
+- The End seal of this slice (three cores in an End portal) is replaced by slice 10's sealed chest.
+
+## Slice 9: more from the raid's loot
+
+- Every loot table rolled in the open raid nether, from mobs, blocks and chests alike, gives x1.15 in
+  normal and x1.5 in hard; the fraction past a whole count is rolled. Measured on nether quartz ore over
+  2,000 breaks: 1.135 in normal, 1.5015 in hard, 1.0 outside the raid.
+- The raid never ends while a player is inside, so a party can farm it or go for the Sovereign.
+
+## Slice 10: the sealed chest
+
+- Every stronghold's portal room holds one **Sealed Chest**: black, unbreakable, immune to blasts,
+  withers and the dragon, and with no item. Measured: a placed stronghold holds exactly one, standing on
+  solid floor with all 12 frames within 16 blocks.
+- The eyes go in first, as in vanilla, but the last eye leaves the portal shut while no chest within 16
+  blocks holds a Blaze Core. Setting **one** Blaze Core in the chest (use it on the chest) opens the
+  portal at once. The core is spent, the chest glows and takes no more, and the portal stays open.
+- A stronghold generated before this mod has no chest; completing its frame raises one on the frame.
+
+## Slice 11: the Blaze Core's enchantments
+
+A weapon or armor piece on the left of an anvil and a Blaze Core on the right sets one of these, for the
+core and 10 levels. Neither comes from the enchanting table or from loot.
+
+- **Overclock** (weapons): each hit on the same enemy strikes 10% harder than the first, per earlier hit
+  in the row, up to +100% at the eleventh. A hit on any other enemy starts over. Its buff shows the row.
+  Measured: 2.0, 2.2, 2.4, 2.6 on one enemy, then 2.0 on another.
+- **Magma Armor** (armor, any piece): every hit taken, from any source, is lessened by what the armor has
+  built, and then builds 1% more, up to 30%, separate from armor points. Five seconds untouched, it cools
+  2% a second. Its buff shows the percent. Measured: 10% after ten hits, 30% at the cap, and 10% cooling
+  to 6.1% over two seconds past the delay.
+
+## Slice 12a: the Sovereign burns blue
+
+- The mod now has a client side (`src/client`), so it goes on clients as well as the server.
+- The Sovereign's mark syncs to every client, and the client draws its model in soul-fire blue.
+- Every fireball the Sovereign looses, from its own attack or a special, flies as a blue **Soul Fire
+  Charge** instead of a fire charge. Measured: 160 of 160 spiral fireballs and a loose one.
+- The tint is the client's work and cannot be seen by a server test: its test
+  (`theSovereignIsDrawnBlueRequiresManualTest`) is not required and fails every run until checked by hand.
+  A client could not be started here (no OpenGL), so the client mixins are checked only against the
+  client jar's method signatures.
+
+## Slices 12b to 12d: the raid's mobs
+
+- **A plain brood**: the Sovereign's Brood are ordinary blazes. They take none of the mobs mod's spawn
+  rolls, so none is elite or boss. Measured: 0 of 50 ranked even with every blaze's elite and boss chance
+  pinned to 1.0 (50 of 50 without the change).
+- **Scrolls home**: any mob slain in the raid leaves the spells mod's Scroll of Return 1% of the time.
+  Measured: 0.01002 over 100,000 rolls. The Sovereign leaves one per player in the raid, plus two:
+  4 with two players.
+- **Strength by mode**: every raid enemy but the Sovereign has x1.25 health and damage in normal and
+  x1.75 in hard, and starts at full health. The Sovereign keeps its own formula.
+
+## Slice 12e: the Sovereign's burst
+
+- The Sovereign's normal attack is a burst of five blue fireballs, 4 ticks apart, starting every 5 seconds.
+  It replaces vanilla's blaze attack and the mobs mod's steady beat, and holds while a special runs.
+  Measured: shots at ticks 20, 24, 28, 32, 36, then 120 to 136, in each of five runs.
+
+## Slice 12f: the soul nova
+
+- A sixth special, last in the rotation. Eighteen slow blue flames (a ring of twelve, and six angled
+  upward) drift out at 3 blocks a second. A flame that meets a block waits against it.
+- After 5 seconds each one bursts where it is. It hurts (6) and throws back whatever stands within 3
+  blocks, and sets three soul flames on the floor around it. It breaks no block.
+- The soul flame is the mod's own block, drawn with vanilla's soul-fire models. It holds on any solid
+  floor, burns like soul fire, and goes out after 10 seconds.
+- Measured: 18 flames over 8 directions, a burst at tick 100 after drifting 15.00 blocks, a stand-in
+  pushed (1.5, 0.4, 0) and hurt, and 49 to 53 soul flames set with no floor block broken.
+
+## Slice 12h: the opening
+
+- Once in its life, when a player first comes within 32 blocks, or draws its aggro, the Sovereign opens.
+- It rushes at them at 12 blocks a second, breaking whatever blocks stand in its way (dropping nothing;
+  only unbreakable blocks stop it), until it sees them. It gives up after 10 seconds.
+- It charges for 3 seconds, drawn as a ring of blue flame pulling in around it, with a rising sound.
+- Then it strikes 15 times around them over 5 seconds, within 6 blocks. Each strike burns and hurts (5)
+  what stands within 2 blocks.
+- Its burst and specials wait while the opening runs. A mark on the Sovereign keeps it from opening twice,
+  even after a reload.
+- Measured: a rush of 0.600 blocks a tick that broke 18 wall blocks and ended in sight; a charge of 60
+  ticks; 15 strikes from tick 60 to 153, all within 6 blocks, hitting the target; a player within range
+  starts it, and a second start is refused.
+
+## Slice 12i: the portal window
+
+- A client with the mod gets the portal's choice as a window of three stacked options: Normal nether, Host
+  raid: normal, Host raid: hard. While a raid runs, the one matching its mode reads Join the raid, and the
+  other is greyed out. A client without the mod keeps the chat prompt.
+- The window opens the moment a player steps into an overworld nether portal, not after the portal's wait.
+  It is sent once and stays up while they stand in the portal, until they click an option or cancel.
+- A click sends the player through the portal at once. Cancelling (Escape) sets the player down 2 blocks
+  from the portal's plane on the side they came from (the other side if that is blocked), with a small
+  shove and a knock sound. Stepping back in opens the window again.
+- Bug fixed: the window used to flash and vanish. The client closes any screen that does not allow itself
+  in a portal, and the window now does.
+- Measured: the first step into the portal opened the window, and five more steps plus the portal's own
+  wait sent no second one. A cancel set the player 2.000 blocks from the plane and closed the window.
+- Measured: the hard option sent a player into a new hard raid on the same tick. A normal option during a
+  hard raid sent no one and left no choice behind. Both messages survive the wire.
+- The window itself is the client's: its tests (`thePortalWindowOpensAndClicksRequiresManualTest` and
+  `theWindowStaysOpenWhileStandingInThePortalRequiresManualTest`) are not required and fail every run
+  until checked by hand.
+
+## Slice 12g: the raid's own spawns
+
+- Every 2 seconds, each player in the raid is tried for a spawn 16 to 40 blocks away:
+  - In either mode, a blaze rises from the nearest lava surface with open air above it.
+  - In hard mode, a wither skeleton appears on any solid, dry floor with three blocks of room, not only in
+    a fortress.
+- Each kind stops at 8 within 64 blocks of the player. They are ordinary spawns, so the mobs mod's rolls
+  apply to them.
+- Measured on each run's own terrain around the arrival, 50 attempts each, over five gate runs:
+  - Normal: 50 blazes and 0 wither skeletons every time.
+  - Hard: 29 to 50 blazes and 26 to 50 wither skeletons; the terrain decides.
+  - In play, an attempt comes every 2 seconds per player, so near lava a new blaze appears about every 2
+    seconds until 8 stand near.
+
+## Slice 12j: raid casters
+
+- In either mode, three raid mobs cast through the spells mod, on its own cooldowns:
+  - A wither skeleton strikes with Ember Brand (burns) and sings Battle Hymn (Strength) on itself.
+  - A piglin brute rings itself in Flame Ring (burns what stands near) and turns to Stoneguard (Resistance).
+  - A ghast casts Time Lock (Slowness) at its target and Mending Word (heals) on itself when hurt.
+- The casting runs beside each mob's own attack, not in place of it.
+- Measured: each caster cast both of its spells at a stand-in. The wither skeleton's and the brute's
+  targets burned, the ghast's was slowed, and the buffs showed on the casters (Strength, Resistance).
 
 ## Manual acceptance
 
-- Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
-  takes you to the hall. The headless test player is never ticked, so the tests call the portal's
+- Walk into an overworld nether portal in survival with the mod on the client. The window opens with three
+  options stacked, as soon as you step in, and it stays up. Clicking one sends you at once; Esc steps
+  you 2 blocks back out of the portal. Without the mod on
+  the client, the chat prompt appears instead, and clicking **[Raid nether]** takes you to the hall. The headless test player is never ticked, so the tests call the portal's
   destination directly and cannot walk through it.
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.
 - A boon shows in the inventory's effect list as endless while inside, and is gone after leaving.
+- Start the client with the mod: it reaches the title screen (the client mixins apply), and the
+  Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
+- Stand inside a Meteor Storm: meteors strike you for damage, and now and then stun you. The headless
+  check for this (`theMeteorStormStrikesThoseStandingThereRequiresManualTest`) is tagged, not required:
+  its wait for the bystander to load starved in one gate run of five after four fixes.
+- The Sovereign's burst reads as five quick blue shots, then a pause.
+- Walk up to a new Sovereign: it bursts through the fortress toward you, visibly charges, then the
+  strikes fall around you.
+- Stand near a lava lake in the raid: blazes rise out of it. In a hard raid, wither skeletons turn up in
+  open caves away from the fortress.
+- Fight a brute and a wither skeleton in the raid: the spells' particles and sounds read clearly.
+- The soul nova's flames read as slow blue orbs, and their soul flames draw as soul fire (a cut-out
+  texture, not a black square) and go out after 10 seconds.
 - Fight the Sovereign through all five specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the meteors' fall, and the wave's ring. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).
 - Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
   it burn back.
-- Step into a lit End portal without cores (turned away with a message), then with three (the End opens
-  for everyone, and a message says so).
+- Combine a sword and a Blaze Core at an anvil (Overclock), then a chestplate and a core (Magma Armor);
+  the buffs show their icons and levels while fighting.
+- In a new world's stronghold: the black chest stands in the portal room. Fill the eyes (the portal stays
+  shut, with a message), then use a Blaze Core on the chest: the portal opens. The chest's look is built
+  from blackstone textures until it has art of its own.
 - From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

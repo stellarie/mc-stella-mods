@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "filled=false": {
+      "model": "mod-stella-nether:block/sealed_chest"
+    },
+    "filled=true": {
+      "model": "mod-stella-nether:block/sealed_chest_filled"
+    }
+  }
+}

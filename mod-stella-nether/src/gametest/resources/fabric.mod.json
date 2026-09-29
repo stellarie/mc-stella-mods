@@ -15,7 +15,18 @@
 			"com.stella.nether.RaidThreatGameTest",
 			"com.stella.nether.BlazeSovereignGameTest",
 			"com.stella.nether.SovereignSpecialsGameTest",
-			"com.stella.nether.SpoilsGameTest"
+			"com.stella.nether.SpoilsGameTest",
+			"com.stella.nether.RaidLootGameTest",
+			"com.stella.nether.EndChestGameTest",
+			"com.stella.nether.BlazeEnchantmentGameTest",
+			"com.stella.nether.SovereignBlueGameTest",
+			"com.stella.nether.RaidMobRulesGameTest",
+			"com.stella.nether.SovereignBurstGameTest",
+			"com.stella.nether.SoulNovaGameTest",
+			"com.stella.nether.SovereignOpeningGameTest",
+			"com.stella.nether.PortalWindowGameTest",
+			"com.stella.nether.RaidSpawnsGameTest",
+			"com.stella.nether.RaidCastersGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"
