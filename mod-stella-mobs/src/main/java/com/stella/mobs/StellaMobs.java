@@ -67,6 +67,8 @@ public class StellaMobs implements ModInitializer {
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	/** A mob another mod drives entirely, such as the village witch or a summoned skeleton: this mod leaves its goals alone. */
 	public static final String NO_BEHAVIOR_TAG = "mod-stella-mobs.no_behavior";
+	/** Another mod drives this mob's movement and looking, so this mod must not move it. */
+	public static final String MODEL_DRIVEN_TAG = "mod-stella-mobs.model_driven";
 	public static final String MOD_ID = "mod-stella-mobs";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
