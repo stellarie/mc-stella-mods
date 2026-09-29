@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-learn-gym",
+	"version": "0.1.0",
+	"name": "Stella Learning Mobs gym",
+	"description": "Training server for the learned mobs: arenas, scripted bots, and a TCP bridge. Not shipped.",
+	"environment": "server",
+	"entrypoints": {
+		"main": [
+			"com.stella.learn.gym.StellaGym"
+		]
+	},
+	"depends": {
+		"mod-stella-learn": "*"
+	}
+}

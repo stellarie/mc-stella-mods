@@ -2,10 +2,34 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+// The gym holds the training server and the bot. It compiles against main and never enters the shipped jar.
+sourceSets {
+	gym {
+		compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+		runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+	}
+}
+
+configurations {
+	gymImplementation.extendsFrom implementation
+	gymRuntimeOnly.extendsFrom runtimeOnly
+}
+
 loom {
 	mods {
 		"mod-stella-learn" {
 			sourceSet sourceSets.main
+		}
+		"mod-stella-learn-gym" {
+			sourceSet sourceSets.gym
+		}
+	}
+	runs {
+		gym {
+			server()
+			name = "Stella Gym Server"
+			source sourceSets.gym
+			runDir "run-gym"
 		}
 	}
 }
@@ -38,6 +62,11 @@ fabricApi {
 	}
 }
 
+dependencies {
+	// GameTests drive the bot and the arenas directly.
+	gametestImplementation sourceSets.gym.output
+}
+
 processResources {
 	def version = project.version
 	inputs.property "version", version
@@ -59,5 +88,106 @@ java {
 tasks.named('runGameTest') {
 	if (project.hasProperty('gameTestFilter')) {
 		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
+}
+
+// The gym servers and the GameTests run with the whole modpack loaded, so the sibling mods are built from origin/main.
+// The mobs and spells mods already reach this mod through included builds, so they are not repeated here.
+def modpackMods = ['mod-stella-equips-enchants', 'mod-stella-food', 'mc-stella-villages', 'mod-stella-tower', 'mod-stella-nether']
+def modpackDir = layout.projectDirectory.dir('training/runs/modpack')
+def modpackJars = fileTree(modpackDir.dir('jars')) {
+	include '*.jar'
+	// The nether mod requires the spells mod, which -PwithoutSpells keeps off the run time class path.
+	if (project.hasProperty('withoutSpells')) {
+		exclude 'mod-stella-nether-*'
+	}
+}
+
+dependencies {
+	gymRuntimeOnly modpackJars
+	gametestRuntimeOnly modpackJars
+}
+
+tasks.register('prepareModpack') {
+	group = 'gym'
+	description = 'Builds the sibling mods from origin/main into training/runs/modpack/jars.'
+	outputs.upToDateWhen { false }
+	doLast {
+		def run = { List<String> command, File dir, File log ->
+			def process = new ProcessBuilder(command).directory(dir).redirectErrorStream(true)
+				.redirectOutput(ProcessBuilder.Redirect.appendTo(log)).start()
+			if (process.waitFor() != 0) {
+				throw new GradleException("${command.join(' ')} failed in ${dir}; see ${log}")
+			}
+		}
+		File root = modpackDir.asFile
+		File jars = new File(root, 'jars')
+		File marker = new File(root, 'origin-main.sha')
+		File repo = projectDir.parentFile
+		def probe = new ProcessBuilder('git', '-C', repo.path, 'rev-parse', 'origin/main').redirectErrorStream(true).start()
+		String sha = probe.inputStream.text.trim()
+		probe.waitFor()
+		if (marker.exists() && marker.text.trim() == sha && jars.list()?.length == modpackMods.size()) {
+			logger.lifecycle("modpack: ${modpackMods.size()} jars at origin/main ${sha.take(7)}")
+			return
+		}
+
+		root.mkdirs()
+		File log = new File(root, 'prepare.log')
+		log.text = ''
+		File src = new File(root, 'src')
+		File zip = new File(root, 'origin-main.zip')
+		delete(src, jars, zip)
+		jars.mkdirs()
+		run(['git', '-C', repo.path, 'archive', '--format=zip', '-o', zip.path, 'origin/main'], repo, log)
+		copy {
+			from zipTree(zip)
+			into src
+		}
+		boolean windows = org.gradle.internal.os.OperatingSystem.current().windows
+		modpackMods.each { name ->
+			File dir = new File(src, name)
+			run([windows ? new File(dir, 'gradlew.bat').path : 'sh', *(windows ? [] : [new File(dir, 'gradlew').path]), 'jar', '--console=plain'], dir, log)
+			def built = new File(dir, 'build/libs').listFiles().findAll { it.name.endsWith('.jar') && !it.name.endsWith('-sources.jar') && !it.name.endsWith('-dev.jar') }
+			if (built.isEmpty()) {
+				throw new GradleException("no jar built for ${name}; see ${log}")
+			}
+			built.each { file -> java.nio.file.Files.copy(file.toPath(), new File(jars, file.name).toPath()) }
+		}
+
+		marker.text = sha
+		logger.lifecycle("modpack: built ${modpackMods.size()} mods from origin/main ${sha.take(7)}")
+	}
+}
+
+tasks.named('runGameTest') {
+	dependsOn 'prepareModpack'
+}
+
+tasks.named('runGym') {
+	dependsOn 'prepareModpack'
+}
+
+// Writes what a launcher needs to start the gym server without Gradle, so several servers can run side by side.
+tasks.register('gymLaunchSpec') {
+	group = 'gym'
+	description = 'Writes build/gym-launch.json: java, class path, JVM arguments, and main class of the gym server.'
+	def spec = layout.buildDirectory.file('gym-launch.json')
+	dependsOn {
+		def run = tasks.named('runGym').get()
+		run.taskDependencies.getDependencies(run)
+	}
+	outputs.file spec
+	doLast {
+		def run = tasks.named('runGym').get()
+		def java = run.javaLauncher.isPresent() ? run.javaLauncher.get().executablePath.asFile.absolutePath : System.getProperty('java.home') + '/bin/java'
+		def json = groovy.json.JsonOutput.toJson([
+			java     : java,
+			mainClass: run.mainClass.get(),
+			classpath: run.classpath.files.collect { it.absolutePath },
+			jvmArgs  : run.allJvmArgs,
+			args     : run.args
+		])
+		spec.get().asFile.text = groovy.json.JsonOutput.prettyPrint(json)
 	}
 }

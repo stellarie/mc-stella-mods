@@ -2,3 +2,9 @@
 build/
 test-logs/
 run/
+run-gym*/
+training/runs/
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
