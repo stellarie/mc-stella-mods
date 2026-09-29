@@ -87,7 +87,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
       aggro: it rushes at 12 blocks a second, breaking blocks in its way, until it sees the player; charges
       for 3 seconds (shown); then opens with 15 scattered strikes around the player over 5 seconds. **Done.**
     - i. The portal choice as a window of three stacked options; a click sends the player at once, and
-      closing it does nothing.
+      closing it does nothing. **Done.**
     - j. With the spells mod, some raid mobs cast fire spells and time lock, and buff themselves.
 
 Each slice ships with headless game tests per `AGENTS.md`.
@@ -124,6 +124,10 @@ Each slice ships with headless game tests per `AGENTS.md`.
 - Deviation (12h): the rush aims the Sovereign's feet at the player's feet, not its middle at their eyes, so
   it keeps its height over the ground instead of boring into the floor. Tests that measure something else
   hold the opening, as they hold the specials.
+
+- Deviation (12i): while a raid runs, the window still shows three options, and the one for the mode not
+  running is greyed out and named for the raid that is running. A client without the mod keeps the chat
+  prompt.
 
 ## Open questions for oniichan
 

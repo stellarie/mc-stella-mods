@@ -215,10 +215,23 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   ticks; 15 strikes from tick 60 to 153, all within 6 blocks, hitting the target; a player within range
   starts it, and a second start is refused.
 
+## Slice 12i: the portal window
+
+- A client with the mod gets the portal's choice as a window of three stacked options: Normal nether, Host
+  raid: normal, Host raid: hard. While a raid runs, the one matching its mode reads Join the raid, and the
+  other is greyed out. A client without the mod keeps the chat prompt.
+- A click sends the player through the portal they stand in at once. Closing the window chooses nothing;
+  the portal asks again after 5 seconds if they still stand in it.
+- Measured: the hard option sent a player into a new hard raid on the same tick. A normal option during a
+  hard raid sent no one and left no choice behind. Both messages survive the wire.
+- The window itself is the client's: its test (`thePortalWindowOpensAndClicksRequiresManualTest`) is not
+  required and fails every run until checked by hand.
+
 ## Manual acceptance
 
-- Walk into an overworld nether portal in survival. The prompt appears, and clicking **[Raid nether]**
-  takes you to the hall. The headless test player is never ticked, so the tests call the portal's
+- Walk into an overworld nether portal in survival with the mod on the client. The window opens with three
+  options stacked; clicking one sends you at once; Esc closes it and nothing happens. Without the mod on
+  the client, the chat prompt appears instead, and clicking **[Raid nether]** takes you to the hall. The headless test player is never ticked, so the tests call the portal's
   destination directly and cannot walk through it.
 - The prompt options are coloured, and hovering shows what each one means. The options change once a
   raid is open.

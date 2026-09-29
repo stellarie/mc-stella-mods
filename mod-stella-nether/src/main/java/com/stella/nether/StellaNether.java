@@ -20,6 +20,7 @@ public final class StellaNether implements ModInitializer {
 		NetherBlocks.register();
 		NetherItems.register();
 		RaidTravel.register();
+		PortalWindow.register();
 		RaidInstance.register();
 		RaidLoot.register();
 		RaidDrops.register();
