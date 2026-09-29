@@ -29,7 +29,9 @@ import net.minecraft.world.level.block.state.BlockState;
  * they are all loaded. A floor someone needs before it is done is finished on the spot.
  */
 public final class TowerFloors {
-	public static final int LAMP_SPACING = 6;
+	/** One lamp to a maze cell, over its middle. */
+	public static final int LAMP_SPACING = TowerMaze.PITCH;
+	public static final int LAMP_AT = TowerMaze.PATH / 2 - 1;
 	/** A safe zone's floor, so it is plain to see where the mobs are not raised. */
 	public static final Block SAFE_FLOOR = Blocks.SMOOTH_QUARTZ;
 	private static final long FLOOR_SALT = 0x5DEECE66DL;
@@ -235,7 +237,7 @@ public final class TowerFloors {
 					BlockState ground = palette[random.nextInt(palette.length)];
 					set(tower, x, base - 1, z, TowerMaze.inSafeZone(floor, x - x0, z - z0) ? SAFE_FLOOR.defaultBlockState() : ground);
 					// Over a maze cell, never over a wall line, so the light falls on the paths.
-					boolean lit = (x - x0) % LAMP_SPACING == 1 && (z - z0) % LAMP_SPACING == 1;
+					boolean lit = (x - x0 - 1) % LAMP_SPACING == LAMP_AT && (z - z0 - 1) % LAMP_SPACING == LAMP_AT;
 					set(tower, x, top, z, lit ? lamp : wall);
 					if (maze[x - x0][z - z0]) {
 						for (int y = base; y < top; y++) {

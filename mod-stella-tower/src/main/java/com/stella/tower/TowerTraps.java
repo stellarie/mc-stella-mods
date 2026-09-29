@@ -84,6 +84,7 @@ public final class TowerTraps {
 		int startZ = (TowerLayout.MIDDLE_Z - 1) / TowerMaze.PITCH;
 		int hall = TowerMaze.hall(floor);
 		int hallLow = TowerLayout.SIZE / 2 - hall / 2;
+		boolean[][] walls = TowerMaze.walls(seed, floor);
 		for (int cx = 0; cx < TowerMaze.CELLS; cx++) {
 			for (int cz = 0; cz < TowerMaze.CELLS; cz++) {
 				int x = 1 + cx * TowerMaze.PITCH;
@@ -93,7 +94,9 @@ public final class TowerTraps {
 				boolean inNook = hall == 0 && x + TowerMaze.PATH > TowerMaze.NOOK_LOW_X && z + TowerMaze.PATH > TowerMaze.NOOK_LOW_Z
 					&& z <= TowerMaze.NOOK_HIGH_Z;
 				boolean safe = TowerMaze.inSafeZone(floor, x, z) || TowerMaze.inSafeZone(floor, x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
-				if (!byArrival && !inHall && !inNook && !safe) {
+				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap.
+				boolean solid = walls[x][z];
+				if (!byArrival && !inHall && !inNook && !safe && !solid) {
 					cells.add(new int[] {cx, cz});
 				}
 			}
