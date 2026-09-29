@@ -82,11 +82,15 @@ public class TowerGrowthGameTest {
 			TowerGrowth.credit(player, 1);
 		}
 		TowerGrowth.Ascension shallow = TowerGrowth.ascension(player.getMainHandItem());
-		TowerTestSupport.result("ascension", "nine=" + nine + " ten=" + ten + " shallow=" + shallow);
+		// One kill on a deep floor collects the levels the shallow kills banked.
+		TowerGrowth.credit(player, 50);
+		TowerGrowth.Ascension deep = TowerGrowth.ascension(player.getMainHandItem());
+		TowerTestSupport.result("ascension", "nine=" + nine + " ten=" + ten + " shallow=" + shallow + " deep=" + deep);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(nine.level() == 0 && nine.kills() == TowerGrowth.KILLS_PER_LEVEL - 1, "nine kills gave " + nine);
 		helper.assertTrue(ten.level() == 1 && ten.kills() == TowerGrowth.KILLS_PER_LEVEL, "ten kills gave " + ten);
 		helper.assertTrue(shallow.level() == 1 && shallow.kills() == 3 * TowerGrowth.KILLS_PER_LEVEL, "kills on floor 1 gave " + shallow + ", not level 1 after 30 kills");
+		helper.assertTrue(deep.level() == 3 && deep.kills() == 3 * TowerGrowth.KILLS_PER_LEVEL + 1, "a kill on floor 50 after 31 kills gave " + deep + ", not level 3");
 		helper.succeed();
 	}
 
@@ -199,6 +203,32 @@ public class TowerGrowthGameTest {
 		helper.assertTrue(!book.isEmpty() && TowerRunes.runeOf(book) != null, "a spellbook took no rune");
 		helper.assertTrue(TowerRunes.slotOf(book) == TowerRunes.Slot.BOOK, "a spellbook's slot was " + TowerRunes.slotOf(book));
 		helper.assertTrue(stick.isEmpty(), "a stick took a rune");
+		helper.succeed();
+	}
+
+	/** A stack of plain items in a hand or on the body carries no count. */
+	@GameTest
+	public void aPlainItemInHandCountsNothing(final GameTestHelper helper) {
+		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TORCH));
+		player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.COBBLESTONE));
+		TowerGrowth.credit(player, 50);
+		boolean torch = player.getMainHandItem().has(TowerItems.ASCENDED);
+		boolean stone = player.getOffhandItem().has(TowerItems.ASCENDED);
+		TowerTestSupport.result("plainItems", "torch=" + torch + " stone=" + stone);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(!torch && !stone, "a torch or a cobblestone was given a kill count");
+		helper.succeed();
+	}
+
+	/** The spells and equips mods look the growth up by name and signature: the lookups they make must find it. */
+	@GameTest
+	public void theOtherModsFindTheGrowthContractByName(final GameTestHelper helper) throws ReflectiveOperationException {
+		java.lang.invoke.MethodHandles.Lookup lookup = java.lang.invoke.MethodHandles.publicLookup();
+		Class<?> growth = Class.forName("com.stella.tower.TowerGrowth");
+		lookup.findStatic(growth, "flat", java.lang.invoke.MethodType.methodType(double.class, ItemStack.class));
+		lookup.findStatic(growth, "resonance", java.lang.invoke.MethodType.methodType(double.class, ItemStack.class, String.class));
+		lookup.findStatic(growth, "cooldown", java.lang.invoke.MethodType.methodType(int.class, net.minecraft.world.entity.player.Player.class, int.class));
 		helper.succeed();
 	}
 }

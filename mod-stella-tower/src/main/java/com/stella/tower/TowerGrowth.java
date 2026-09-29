@@ -80,21 +80,21 @@ public final class TowerGrowth {
 	}
 
 	/**
-	 * Counts one kill on the floor on what the player holds and wears. Every {@link #KILLS_PER_LEVEL} kills raise
-	 * an item's ascension by one, never past the floor the kill happened on.
+	 * Counts one kill on the floor on what the player holds and wears. Every {@link #KILLS_PER_LEVEL} kills earn
+	 * an item one level of ascension, which rises no higher than the floor the kill happened on.
 	 */
 	public static void credit(final ServerPlayer player, final int floor) {
 		for (EquipmentSlot slot : COUNTING) {
 			ItemStack stack = player.getItemBySlot(slot);
-			if (stack.isEmpty() || stack.getCount() != 1) {
+			// Gear and spellbooks only: a torch or a stack of arrows does not carry a count.
+			if (stack.isEmpty() || stack.getCount() != 1 || TowerRunes.slotOf(stack) == null) {
 				continue;
 			}
 			Ascension now = ascension(stack);
 			int kills = now.kills() + 1;
-			int level = now.level();
-			if (kills % KILLS_PER_LEVEL == 0) {
-				level = Math.max(level, Math.min(level + 1, floor));
-			}
+			// Kills bank: a level is 10 kills, but only as deep as this kill's floor lets it rise, and a deeper
+			// kill later collects what the shallow ones earned.
+			int level = Math.max(now.level(), Math.min(kills / KILLS_PER_LEVEL, floor));
 			stack.set(TowerItems.ASCENDED, new Ascension(kills, level));
 		}
 	}
