@@ -71,6 +71,10 @@ public final class TowerItems {
 		DataComponentType.<net.minecraft.util.Unit>builder().persistent(net.minecraft.util.Unit.CODEC)
 			.networkSynchronized(net.minecraft.network.codec.StreamCodec.unit(net.minecraft.util.Unit.INSTANCE)).build());
 
+	/** What a piece of gear or a spellbook has counted in the tower: its kills and the ascension they earned. */
+	public static final DataComponentType<TowerGrowth.Ascension> ASCENDED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ascended"),
+		DataComponentType.<TowerGrowth.Ascension>builder().persistent(TowerGrowth.Ascension.CODEC).networkSynchronized(TowerGrowth.Ascension.STREAM_CODEC).build());
+
 	public static final DataComponentType<RuneData> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
 	public static final Identifier RUNE_ID = StellaTower.id("rune");

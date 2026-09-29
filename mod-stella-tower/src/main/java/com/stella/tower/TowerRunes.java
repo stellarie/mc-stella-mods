@@ -39,8 +39,11 @@ public final class TowerRunes {
 
 	static final EquipmentSlot[] ARMOR_SLOTS ={EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
+	/** The spells mod's books, which take runes too; empty when that mod is absent. */
+	static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> SPELLBOOKS = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.Identifier.parse("mod-stella-spells:spellbooks"));
+
 	/** What an item takes a rune as. */
-	public enum Slot { WEAPON, ARMOR }
+	public enum Slot { WEAPON, ARMOR, BOOK }
 
 	private TowerRunes() {
 	}
@@ -129,6 +132,9 @@ public final class TowerRunes {
 		Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
 		if (equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR && !stack.is(Items.ELYTRA)) {
 			return Slot.ARMOR;
+		}
+		if (stack.is(SPELLBOOKS)) {
+			return Slot.BOOK;
 		}
 		if (stack.has(DataComponents.WEAPON) || stack.getItem() instanceof ProjectileWeaponItem) {
 			return Slot.WEAPON;
