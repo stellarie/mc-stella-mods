@@ -81,7 +81,7 @@ normal nether or a shared, resettable raid instance. Every number is a starting 
     - d. Raid mobs: x1.25 health and damage in normal, x1.75 in hard (the Sovereign keeps its own health). **Done.**
     - e. Its normal attack: a burst of five every 5 seconds. **Done.**
     - f. A sixth special: slow blue flames in every direction that burst after 5 seconds, throwing back
-      what they reach and setting soul fire on nearby blocks, breaking none.
+      what they reach and setting soul fire on nearby blocks, breaking none. **Done.**
     - g. Blazes rise from lava in either mode; in hard, wither skeletons spawn anywhere with room.
     - h. The opening charge, once per Sovereign, when a player first comes within 32 blocks or draws its
       aggro: it rushes at 12 blocks a second, breaking blocks in its way, until it sees the player; charges
@@ -116,6 +116,10 @@ Each slice ships with headless game tests per `AGENTS.md`.
 
 - Deviation (slice 5): the structures are not placed at instance creation. The run instead opens between
   a naturally generated fortress and bastion, which keeps them whole and costs no forced generation.
+
+- Deviation (12f): vanilla soul fire goes out on anything but soul sand or soul soil, so the nova sets a
+  soul flame of the mod's own, drawn with vanilla's soul-fire models. It holds on any solid floor and burns
+  out after 10 seconds, so a long fight does not leave the fortress carpeted.
 
 ## Open questions for oniichan
 

@@ -39,10 +39,11 @@ public final class SovereignSpecials {
 		BROOD,
 		DIVE,
 		METEOR_STORM,
-		CHARGED_WAVE
+		CHARGED_WAVE,
+		SOUL_NOVA
 	}
 
-	public static final List<Special> ROTATION = List.of(Special.FLAME_SPIRAL, Special.BROOD, Special.DIVE, Special.METEOR_STORM, Special.CHARGED_WAVE);
+	public static final List<Special> ROTATION = List.of(Special.FLAME_SPIRAL, Special.BROOD, Special.DIVE, Special.METEOR_STORM, Special.CHARGED_WAVE, Special.SOUL_NOVA);
 	/** Ticks from first facing a player to the first special, and the rest after each special ends. */
 	public static final int FIRST_SPECIAL_TICKS = 60;
 	public static final int SPECIAL_EVERY_TICKS = 160;
@@ -84,6 +85,21 @@ public final class SovereignSpecials {
 	public static final float WAVE_DAMAGE = 4.0F;
 	public static final float WAVE_KNOCKBACK = 2.5F;
 
+	/** The soul nova: slow blue flames in every direction, which burst where they are after five seconds. */
+	public static final int NOVA_RING = 12;
+	public static final int NOVA_UPPER = 6;
+	public static final double NOVA_UPPER_PITCH_DEGREES = 25.0;
+	public static final double NOVA_SPEED = 0.15;
+	public static final int NOVA_FUSE_TICKS = 5 * 20;
+	/** How far a flame drifts in open air before it bursts. */
+	public static final double NOVA_REACH = NOVA_SPEED * NOVA_FUSE_TICKS;
+	public static final double NOVA_BURST_RADIUS = 3.0;
+	public static final float NOVA_DAMAGE = 6.0F;
+	public static final float NOVA_KNOCKBACK = 1.5F;
+	/** Soul flames each burst sets on the blocks around it. */
+	public static final int NOVA_FLAMES_EACH = 3;
+	private static final int NOVA_FLAME_SPREAD = 2;
+
 	public static final int STUN_TICKS = 60;
 	/** A stun is Slowness this strong, which all but roots a player, with fatigue and weakness. */
 	public static final int STUN_SLOWNESS = 6;
@@ -99,6 +115,13 @@ public final class SovereignSpecials {
 		private final List<Vec3> headings = new ArrayList<>();
 		private final Set<UUID> hits = new HashSet<>();
 		private final List<Vec3> impacts = new ArrayList<>();
+		/** A nova's flames: where each is, and which have stopped against a block. */
+		private final List<Vec3> orbs = new ArrayList<>();
+		private final Set<Integer> stuck = new HashSet<>();
+		/** Who a burst threw back, and the push it gave. */
+		private final java.util.Map<UUID, Vec3> pushes = new java.util.HashMap<>();
+		/** The soul flames a nova set. */
+		private final List<BlockPos> flames = new ArrayList<>();
 		private int age;
 		private int lastActionAge = -1;
 		private int firesPlaced;
@@ -157,6 +180,22 @@ public final class SovereignSpecials {
 
 		public List<String> seen() {
 			return this.seen;
+		}
+
+		public List<Vec3> orbs() {
+			return this.orbs;
+		}
+
+		public java.util.Map<UUID, Vec3> pushes() {
+			return this.pushes;
+		}
+
+		public List<BlockPos> flames() {
+			return this.flames;
+		}
+
+		public int age() {
+			return this.age;
 		}
 	}
 
@@ -258,6 +297,7 @@ public final class SovereignSpecials {
 			case DIVE -> dive(raid, cast);
 			case METEOR_STORM -> meteors(raid, cast);
 			case CHARGED_WAVE -> wave(raid, cast);
+			case SOUL_NOVA -> nova(raid, cast);
 		}
 	}
 
@@ -403,6 +443,89 @@ public final class SovereignSpecials {
 
 	public static boolean meteorStuns(final RandomSource random) {
 		return random.nextDouble() < METEOR_STUN_CHANCE;
+	}
+
+	private static void nova(final ServerLevel raid, final Cast cast) {
+		Blaze blaze = cast.blaze;
+		if (cast.age == 0) {
+			Vec3 from = new Vec3(blaze.getX(), blaze.getY() + blaze.getBbHeight() * 0.5, blaze.getZ());
+			double pitch = Math.toRadians(NOVA_UPPER_PITCH_DEGREES);
+			for (int i = 0; i < NOVA_RING; i++) {
+				double angle = 2.0 * Math.PI * i / NOVA_RING;
+				cast.headings.add(new Vec3(Math.cos(angle), 0.0, Math.sin(angle)));
+				cast.orbs.add(from);
+			}
+			for (int i = 0; i < NOVA_UPPER; i++) {
+				double angle = 2.0 * Math.PI * (i + 0.5) / NOVA_UPPER;
+				cast.headings.add(new Vec3(Math.cos(angle) * Math.cos(pitch), Math.sin(pitch), Math.sin(angle) * Math.cos(pitch)));
+				cast.orbs.add(from);
+			}
+			raid.playSound(null, blaze.blockPosition(), SoundEvents.SOUL_ESCAPE.value(), SoundSource.HOSTILE, 3.0F, 0.6F);
+			cast.lastActionAge = cast.age;
+		}
+		if (cast.age < NOVA_FUSE_TICKS) {
+			for (int i = 0; i < cast.orbs.size(); i++) {
+				Vec3 orb = cast.orbs.get(i);
+				if (!cast.stuck.contains(i)) {
+					Vec3 next = orb.add(cast.headings.get(i).scale(NOVA_SPEED));
+					BlockPos into = BlockPos.containing(next);
+					// A flame that meets a block waits against it; it passes through none.
+					if (raid.getBlockState(into).getCollisionShape(raid, into).isEmpty()) {
+						cast.orbs.set(i, next);
+						orb = next;
+					} else {
+						cast.stuck.add(i);
+					}
+				}
+				raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, orb.x, orb.y, orb.z, 3, 0.15, 0.15, 0.15, 0.01);
+			}
+			return;
+		}
+		for (Vec3 orb : cast.orbs) {
+			novaBurst(raid, cast, orb);
+		}
+		cast.lastActionAge = cast.age;
+		cast.done = true;
+	}
+
+	/** One flame bursts: it hurts and throws back what stands near, and sets soul flames about, breaking nothing. */
+	private static void novaBurst(final ServerLevel raid, final Cast cast, final Vec3 at) {
+		Blaze blaze = cast.blaze;
+		cast.impacts.add(at);
+		raid.sendParticles(ParticleTypes.EXPLOSION, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
+		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, at.x, at.y, at.z, 30, 0.8, 0.8, 0.8, 0.08);
+		raid.playSound(null, BlockPos.containing(at), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 1.0F, 1.3F);
+		AABB reach = new AABB(at, at).inflate(NOVA_BURST_RADIUS);
+		List<LivingEntity> near = raid.getEntitiesOfClass(LivingEntity.class, reach, entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze));
+		for (LivingEntity victim : near) {
+			Vec3 middle = victim.getBoundingBox().getCenter();
+			if (middle.distanceTo(at) > NOVA_BURST_RADIUS) {
+				continue;
+			}
+			if (cast.hits.add(victim.getUUID())) {
+				victim.hurtServer(raid, raid.damageSources().mobAttack(blaze), NOVA_DAMAGE);
+			}
+			Vec3 away = new Vec3(middle.x - at.x, 0.0, middle.z - at.z);
+			away = away.lengthSqr() < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : away.normalize();
+			double resist = 1.0 - victim.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE);
+			Vec3 push = new Vec3(away.x * NOVA_KNOCKBACK * resist, 0.4 * resist, away.z * NOVA_KNOCKBACK * resist);
+			victim.setDeltaMovement(push);
+			victim.needsSync = true;
+			cast.pushes.put(victim.getUUID(), push);
+		}
+		RandomSource random = blaze.getRandom();
+		for (int i = 0; i < NOVA_FLAMES_EACH; i++) {
+			BlockPos column = BlockPos.containing(at).offset(random.nextInt(2 * NOVA_FLAME_SPREAD + 1) - NOVA_FLAME_SPREAD, 0,
+				random.nextInt(2 * NOVA_FLAME_SPREAD + 1) - NOVA_FLAME_SPREAD);
+			for (int dy = 2; dy >= -12; dy--) {
+				BlockPos spot = column.above(dy);
+				if (raid.getBlockState(spot).isAir() && NetherBlocks.SOUL_FLAME.defaultBlockState().canSurvive(raid, spot)) {
+					raid.setBlock(spot, NetherBlocks.SOUL_FLAME.defaultBlockState(), Block.UPDATE_ALL);
+					cast.flames.add(spot);
+					break;
+				}
+			}
+		}
 	}
 
 	private static void wave(final ServerLevel raid, final Cast cast) {

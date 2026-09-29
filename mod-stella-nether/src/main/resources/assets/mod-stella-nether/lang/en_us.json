@@ -22,5 +22,6 @@
   "enchantment.mod-stella-nether.magma_armor": "Magma Armor",
   "effect.mod-stella-nether.overclock": "Overclock",
   "effect.mod-stella-nether.magma_armor": "Magma Armor",
-  "item.mod-stella-nether.soul_fire_charge": "Soul Fire Charge"
+  "item.mod-stella-nether.soul_fire_charge": "Soul Fire Charge",
+  "block.mod-stella-nether.soul_flame": "Soul Flame"
 }
