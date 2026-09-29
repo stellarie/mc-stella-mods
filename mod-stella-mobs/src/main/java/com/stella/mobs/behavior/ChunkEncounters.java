@@ -151,7 +151,6 @@ public final class ChunkEncounters {
 			return;
 		}
 
-		BlockPos spawn = level.getRespawnData().pos();
 		double radius = GearConfigStore.get().spawnSafetyRadius();
 		for (ServerPlayer player : List.copyOf(level.players())) {
 			if (!scanFilter.test(player)) {
@@ -167,7 +166,7 @@ public final class ChunkEncounters {
 
 					LevelChunk chunk = level.getChunkSource().getChunkNow(center.x() + dx, center.z() + dz);
 					if (chunk != null && markRolled(chunk)) {
-						boolean safe = isSafe(level.dimension(), chunk.getPos(), spawn.getX(), spawn.getZ(), radius);
+						boolean safe = isSafe(level.dimension(), chunk.getPos(), SpawnSafety.ORIGIN_X, SpawnSafety.ORIGIN_Z, radius);
 						if (markGridRolled(level, chunk.getPos())) {
 							scanRoller.roll(level, chunk, safe);
 						}

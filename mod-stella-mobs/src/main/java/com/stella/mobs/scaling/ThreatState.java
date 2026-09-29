@@ -18,10 +18,16 @@ import org.jspecify.annotations.Nullable;
 
 /** A spawn area's level and one durable Gaussian roll. Rank changes never reroll the mob. */
 public record ThreatState(int areaLevel, int variation) {
-	public static final int MAX_VARIATION = 10;
-	public static final double VARIATION_STDDEV = 5.0;
-	public static final int NETHER_MINIMUM = 20;
-	public static final int END_MINIMUM = 50;
+	/** The roll is centred on +5 levels and reaches 25 either side of that centre. */
+	public static final int VARIATION_MEAN = 5;
+	public static final int VARIATION_RANGE = 25;
+	public static final int MIN_VARIATION = VARIATION_MEAN - VARIATION_RANGE;
+	public static final int MAX_VARIATION = VARIATION_MEAN + VARIATION_RANGE;
+	public static final double VARIATION_STDDEV = 10.0;
+	/** The Nether's base level, its floor as well: no Nether mob is weaker. */
+	public static final int NETHER_MINIMUM = 50;
+	/** The End's base level, its floor as well. */
+	public static final int END_MINIMUM = 80;
 	public static final int ELITE_BONUS = 5;
 	public static final int BOSS_BONUS = 10;
 	public static final Codec<ThreatState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -34,7 +40,7 @@ public record ThreatState(int areaLevel, int variation) {
 
 	public ThreatState {
 		areaLevel = Math.max(0, areaLevel);
-		variation = Mth.clamp(variation, -MAX_VARIATION, MAX_VARIATION);
+		variation = Mth.clamp(variation, MIN_VARIATION, MAX_VARIATION);
 	}
 
 	public static void register() {
@@ -56,8 +62,8 @@ public record ThreatState(int areaLevel, int variation) {
 	}
 
 	public static int rollVariation(final RandomSource random) {
-		return Mth.clamp((int) Math.round(random.nextGaussian() * VARIATION_STDDEV),
-			-MAX_VARIATION, MAX_VARIATION);
+		return Mth.clamp((int) Math.round(VARIATION_MEAN + random.nextGaussian() * VARIATION_STDDEV),
+			MIN_VARIATION, MAX_VARIATION);
 	}
 
 	public static int level(final Mob mob) {

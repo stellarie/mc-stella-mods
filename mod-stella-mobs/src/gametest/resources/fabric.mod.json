@@ -13,6 +13,8 @@
 			"com.stella.mobs.BossBehaviourGameTest",
 			"com.stella.mobs.BossGameTest",
 			"com.stella.mobs.ConfigMigrationGameTest",
+			"com.stella.mobs.DistanceGatesGameTest",
+			"com.stella.mobs.SpawnPressureGameTest",
 			"com.stella.mobs.CrossbowCadenceGameTest",
 			"com.stella.mobs.EliteGameTest",
 			"com.stella.mobs.EliteFrameworkGameTest",
