@@ -152,11 +152,11 @@ public final class BlazeSovereign {
 		}
 		// Again each tick: a Sovereign loaded from disk, or given the mobs mod's attack on load, gets its burst back.
 		SovereignBurst.install(blaze);
-		// Its opening, once, holds everything else while it runs.
-		if (!SovereignOpening.tick(raid, blaze)) {
+		// A charge at a player keeping away holds everything else while it runs; so does its shield.
+		if (!SovereignCharge.tick(raid, blaze)) {
 			SovereignSpecials.tick(raid, blaze);
 		}
-		if (!SovereignSpecials.airborne(blaze) && !SovereignOpening.rushing(blaze)) {
+		if (!SovereignSpecials.airborne(blaze) && !SovereignCharge.charging(blaze)) {
 			keepNearGround(raid, blaze);
 		}
 		if (bar != null && server.getTickCount() % 10 == 0) {
@@ -319,7 +319,7 @@ public final class BlazeSovereign {
 		current = null;
 		held = null;
 		SovereignSpecials.forget();
-		SovereignOpening.forget();
+		SovereignCharge.forget();
 	}
 
 	static boolean burns(final DamageSource source) {

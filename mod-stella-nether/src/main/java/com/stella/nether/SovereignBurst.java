@@ -103,7 +103,7 @@ public final class SovereignBurst extends Goal {
 		if (this.cooldown > 0) {
 			this.cooldown--;
 		}
-		if (this.left > 0 && !SovereignOpening.running(this.blaze)) {
+		if (this.left > 0 && !SovereignCharge.running(this.blaze) && !SovereignSpecials.shielded(this.blaze)) {
 			if (--this.gap <= 0) {
 				this.fire(target);
 				this.left--;
@@ -112,7 +112,7 @@ public final class SovereignBurst extends Goal {
 			return;
 		}
 		// A special holds the Sovereign's fire; the beat resumes when it ends.
-		if (SovereignSpecials.casting(this.blaze) || SovereignOpening.running(this.blaze) || this.cooldown > 0 || !sees) {
+		if (SovereignSpecials.casting(this.blaze) || SovereignCharge.running(this.blaze) || SovereignSpecials.shielded(this.blaze) || this.cooldown > 0 || !sees) {
 			return;
 		}
 		this.cooldown = BURST_EVERY_TICKS;

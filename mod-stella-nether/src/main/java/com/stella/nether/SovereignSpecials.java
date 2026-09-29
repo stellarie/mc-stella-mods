@@ -54,6 +54,8 @@ public final class SovereignSpecials {
 	public static final int SPIRAL_EVERY = 5;
 	public static final int SPIRAL_PER_VOLLEY = 8;
 	private static final double SPIRAL_TURN = Math.PI / 16.0;
+	/** How far a spiral fireball flies before it is spent. */
+	public static final double SPIRAL_REACH = 32.0;
 
 	public static final int BROOD_SIZE = 5;
 	private static final double BROOD_RING = 3.0;
@@ -90,9 +92,9 @@ public final class SovereignSpecials {
 	public static final int NOVA_UPPER = 6;
 	public static final double NOVA_UPPER_PITCH_DEGREES = 25.0;
 	public static final double NOVA_SPEED = 0.15;
-	public static final int NOVA_FUSE_TICKS = 5 * 20;
-	/** How far a flame drifts in open air before it bursts. */
-	public static final double NOVA_REACH = NOVA_SPEED * NOVA_FUSE_TICKS;
+	/** A flame bursts at whichever comes first: a wall, this far from where it set out, or this long in flight. */
+	public static final double NOVA_REACH = 16.0;
+	public static final int NOVA_LIFE_TICKS = 6 * 20;
 	public static final double NOVA_BURST_RADIUS = 3.0;
 	public static final float NOVA_DAMAGE = 6.0F;
 	public static final float NOVA_KNOCKBACK = 1.5F;
@@ -117,11 +119,20 @@ public final class SovereignSpecials {
 		private final List<Vec3> impacts = new ArrayList<>();
 		/** A nova's flames: where each is, and which have stopped against a block. */
 		private final List<Vec3> orbs = new ArrayList<>();
-		private final Set<Integer> stuck = new HashSet<>();
+		/** The age each of a nova's flames burst at, by its place; a flame not yet burst is absent. */
+		private final Map<Integer, Integer> burstAt = new java.util.HashMap<>();
+		/** How far each ranged fireball had flown when it was spent at its reach, by its identity. */
+		private final Map<UUID, Double> spent = new ConcurrentHashMap<>();
 		/** Who a burst threw back, and the push it gave. */
 		private final java.util.Map<UUID, Vec3> pushes = new java.util.HashMap<>();
+		/** The blocks it broke moving itself through them. */
+		private final List<BlockPos> broken = new ArrayList<>();
 		/** The soul flames a nova set. */
 		private final List<BlockPos> flames = new ArrayList<>();
+		/** Where a nova's flames set out from. */
+		private Vec3 novaFrom = Vec3.ZERO;
+		/** The vortex's shield is up. */
+		private boolean shield;
 		private int age;
 		private int lastActionAge = -1;
 		private int firesPlaced;
@@ -182,12 +193,24 @@ public final class SovereignSpecials {
 			return this.seen;
 		}
 
+		public Map<Integer, Integer> burstAt() {
+			return this.burstAt;
+		}
+
+		public Map<UUID, Double> spent() {
+			return this.spent;
+		}
+
 		public List<Vec3> orbs() {
 			return this.orbs;
 		}
 
 		public java.util.Map<UUID, Vec3> pushes() {
 			return this.pushes;
+		}
+
+		public List<BlockPos> broken() {
+			return this.broken;
 		}
 
 		public List<BlockPos> flames() {
@@ -210,6 +233,33 @@ public final class SovereignSpecials {
 
 	private static final Map<UUID, Control> CONTROLS = new ConcurrentHashMap<>();
 
+	/** A fireball that is spent once it has flown its reach from where it set out. */
+	private record Ranged(Entity fireball, Vec3 origin, double reach, Cast cast) {
+	}
+
+	private static final Map<UUID, Ranged> RANGED = new ConcurrentHashMap<>();
+
+	public static void register() {
+		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> spendRanged());
+	}
+
+	/** Spends every ranged fireball past its reach; one gone on its own, by a hit, is only forgotten. */
+	static void spendRanged() {
+		for (Ranged ranged : List.copyOf(RANGED.values())) {
+			Entity fireball = ranged.fireball();
+			if (fireball.isRemoved()) {
+				RANGED.remove(fireball.getUUID());
+				continue;
+			}
+			double flown = fireball.position().distanceTo(ranged.origin());
+			if (flown >= ranged.reach()) {
+				ranged.cast().spent.put(fireball.getUUID(), flown);
+				fireball.discard();
+				RANGED.remove(fireball.getUUID());
+			}
+		}
+	}
+
 	private SovereignSpecials() {
 	}
 
@@ -218,7 +268,7 @@ public final class SovereignSpecials {
 	}
 
 	/** Stops the Sovereign starting specials on its own; a test casts them by hand. */
-	/** Whether a test has held this Sovereign's specials; its opening waits on the same hold. */
+	/** Whether a test has held this Sovereign's specials; its charges wait on the same hold. */
 	public static boolean paused(final Blaze blaze) {
 		Control control = CONTROLS.get(blaze.getUUID());
 		return control != null && control.paused;
@@ -247,6 +297,12 @@ public final class SovereignSpecials {
 	public static boolean casting(final Blaze blaze) {
 		Control control = CONTROLS.get(blaze.getUUID());
 		return control != null && control.active != null && !control.active.done;
+	}
+
+	/** Whether the Sovereign stands behind the vortex's shield: it can neither move nor attack meanwhile. */
+	public static boolean shielded(final Blaze blaze) {
+		Control control = CONTROLS.get(blaze.getUUID());
+		return control != null && control.active != null && control.active.shield && !control.active.done;
 	}
 
 	public static boolean airborne(final Blaze blaze) {
@@ -327,6 +383,7 @@ public final class SovereignSpecials {
 			if (raid.addFreshEntity(fireball)) {
 				cast.spawned.add(fireball);
 				cast.headings.add(heading);
+				RANGED.put(fireball.getUUID(), new Ranged(fireball, fireball.position(), SPIRAL_REACH, cast));
 			}
 		}
 		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, blaze.getX(), y, blaze.getZ(), 24, 1.0, 1.0, 1.0, 0.1);
@@ -358,7 +415,7 @@ public final class SovereignSpecials {
 		Blaze blaze = cast.blaze;
 		blaze.setDeltaMovement(Vec3.ZERO);
 		if (cast.age < DIVE_RISE_TICKS) {
-			blaze.setPos(blaze.getX(), cast.home.y + DIVE_RISE * (cast.age + 1) / DIVE_RISE_TICKS, blaze.getZ());
+			cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, blaze.getX(), cast.home.y + DIVE_RISE * (cast.age + 1) / DIVE_RISE_TICKS, blaze.getZ()));
 			return;
 		}
 		if (cast.age < DIVE_RISE_TICKS + DIVE_HOVER_TICKS) {
@@ -368,10 +425,10 @@ public final class SovereignSpecials {
 		Vec3 to = cast.centre.subtract(blaze.position());
 		if (to.length() > DIVE_SPEED && cast.age < DIVE_MAX_TICKS) {
 			Vec3 step = to.normalize().scale(DIVE_SPEED);
-			blaze.setPos(blaze.getX() + step.x, blaze.getY() + step.y, blaze.getZ() + step.z);
+			cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, blaze.getX() + step.x, blaze.getY() + step.y, blaze.getZ() + step.z));
 			return;
 		}
-		blaze.setPos(cast.centre.x, cast.centre.y, cast.centre.z);
+		cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, cast.centre.x, cast.centre.y, cast.centre.z));
 		AABB area = new AABB(cast.centre.x - DIVE_HALF_WIDTH, cast.centre.y - 4.0, cast.centre.z - DIVE_HALF_WIDTH,
 			cast.centre.x + DIVE_HALF_WIDTH, cast.centre.y + 4.0, cast.centre.z + DIVE_HALF_WIDTH);
 		for (LivingEntity victim : raid.getEntitiesOfClass(LivingEntity.class, area, entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze))) {
@@ -455,6 +512,7 @@ public final class SovereignSpecials {
 		Blaze blaze = cast.blaze;
 		if (cast.age == 0) {
 			Vec3 from = new Vec3(blaze.getX(), blaze.getY() + blaze.getBbHeight() * 0.5, blaze.getZ());
+			cast.novaFrom = from;
 			double pitch = Math.toRadians(NOVA_UPPER_PITCH_DEGREES);
 			for (int i = 0; i < NOVA_RING; i++) {
 				double angle = 2.0 * Math.PI * i / NOVA_RING;
@@ -469,29 +527,30 @@ public final class SovereignSpecials {
 			raid.playSound(null, blaze.blockPosition(), SoundEvents.SOUL_ESCAPE.value(), SoundSource.HOSTILE, 3.0F, 0.6F);
 			cast.lastActionAge = cast.age;
 		}
-		if (cast.age < NOVA_FUSE_TICKS) {
-			for (int i = 0; i < cast.orbs.size(); i++) {
-				Vec3 orb = cast.orbs.get(i);
-				if (!cast.stuck.contains(i)) {
-					Vec3 next = orb.add(cast.headings.get(i).scale(NOVA_SPEED));
-					BlockPos into = BlockPos.containing(next);
-					// A flame that meets a block waits against it; it passes through none.
-					if (raid.getBlockState(into).getCollisionShape(raid, into).isEmpty()) {
-						cast.orbs.set(i, next);
-						orb = next;
-					} else {
-						cast.stuck.add(i);
-					}
-				}
+		for (int i = 0; i < cast.orbs.size(); i++) {
+			if (cast.burstAt.containsKey(i)) {
+				continue;
+			}
+			Vec3 orb = cast.orbs.get(i);
+			Vec3 next = orb.add(cast.headings.get(i).scale(NOVA_SPEED));
+			BlockPos into = BlockPos.containing(next);
+			boolean wall = !raid.getBlockState(into).getCollisionShape(raid, into).isEmpty();
+			if (!wall) {
+				cast.orbs.set(i, next);
+				orb = next;
+			}
+			// A flame bursts at a wall, at its reach, or at the end of its life, whichever comes first.
+			if (wall || orb.distanceTo(cast.novaFrom) >= NOVA_REACH || cast.age + 1 >= NOVA_LIFE_TICKS) {
+				cast.burstAt.put(i, cast.age);
+				novaBurst(raid, cast, orb);
+				cast.lastActionAge = cast.age;
+			} else {
 				raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, orb.x, orb.y, orb.z, 3, 0.15, 0.15, 0.15, 0.01);
 			}
-			return;
 		}
-		for (Vec3 orb : cast.orbs) {
-			novaBurst(raid, cast, orb);
+		if (cast.burstAt.size() == cast.orbs.size()) {
+			cast.done = true;
 		}
-		cast.lastActionAge = cast.age;
-		cast.done = true;
 	}
 
 	/** One flame bursts: it hurts and throws back what stands near, and sets soul flames about, breaking nothing. */
