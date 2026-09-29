@@ -23,6 +23,11 @@ public final class ProfileReport {
 			.append(" turtle=").append(LearnLog.num(WaitOutShieldGoal.shieldPressure(player)))
 			.append(" shooter=").append(LearnLog.num(Cover.shooterPressure(player)))
 			.append(" retreater=").append(LearnLog.num(Choke.retreatPressure(player)))
+			.append(" charger=").append(LearnLog.num(Movement.chargePressure(player)))
+			.append(" kiter=").append(LearnLog.num(Movement.kitePressure(player)))
+			.append(" strafer=").append(LearnLog.num(Movement.strafePressure(player)))
+			.append(" strafe_bias=").append(LearnLog.num(Movement.strafeBias(player)))
+			.append(" crit_jumper=").append(LearnLog.num(Movement.critPressure(player)))
 			.toString();
 	}
 
@@ -35,6 +40,11 @@ public final class ProfileReport {
 		lines.add(entry(player, Habit.BLOCK, WaitOutShieldGoal.shieldPressure(player), "turtle", config.shieldSaturation(), "mobs wait out a raised shield from " + LearnLog.num(config.shieldThreshold())));
 		lines.add(entry(player, Habit.RANGED, Cover.shooterPressure(player), "shooter", config.rangedSaturation(), "melee mobs advance through cover from " + LearnLog.num(config.coverThreshold())));
 		lines.add(entry(player, Habit.RETREAT, Choke.retreatPressure(player), "retreater", config.retreatSaturation(), "mobs gather outside a gap from " + LearnLog.num(config.chokeThreshold())));
+		lines.add(entry(player, Habit.CHARGE, Movement.chargePressure(player), "charger", config.moveSaturation(), "flank slots tighten by up to " + LearnLog.num(config.chargeTighten() * 100.0) + " percent"));
+		lines.add(entry(player, Habit.KITE, Movement.kitePressure(player), "kiter", config.moveSaturation(), "melee mobs aim " + config.interceptLeadTicks() + " ticks ahead of you"));
+		lines.add(entry(player, Habit.STRAFE_LEFT, Movement.strafePressure(player), "strafer", config.moveSaturation(), "left of " + LearnLog.num(Profiles.value(player, Habit.STRAFE_LEFT) + Profiles.value(player, Habit.STRAFE_RIGHT))));
+		lines.add(entry(player, Habit.STRAFE_RIGHT, Movement.strafePressure(player), "strafer", config.moveSaturation(), "bias " + LearnLog.num(Movement.strafeBias(player)) + ", the first flanker takes that side"));
+		lines.add(entry(player, Habit.CRIT, Movement.critPressure(player), "crit_jumper", config.critSaturation(), "mobs step back when you jump"));
 		return lines;
 	}
 
