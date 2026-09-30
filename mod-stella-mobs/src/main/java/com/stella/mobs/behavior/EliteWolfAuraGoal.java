@@ -1,5 +1,6 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.entity.BlueSlime;
 import com.stella.mobs.StellaMobs;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
@@ -45,7 +46,7 @@ final class EliteWolfAuraGoal extends Goal {
 		int hostiles = 0;
 		int allies = 0;
 		for (LivingEntity other : around) {
-			if (other instanceof Enemy && !FriendlyPatrol.isVillageFriend(other)) {
+			if (other instanceof Enemy && !FriendlyPatrol.isVillageFriend(other) && !BlueSlime.isHarmless(other)) {
 				other.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, WolfPack.AURA_TICKS, WolfPack.AURA_AMPLIFIER), this.wolf);
 				other.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, WolfPack.AURA_TICKS, WolfPack.AURA_AMPLIFIER), this.wolf);
 				hostiles++;

@@ -160,6 +160,7 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 			}
 			slime.snapTo(x + 0.5, y, z + 0.5, random.nextFloat() * 360.0F, 0.0F);
 			slime.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), EntitySpawnReason.EVENT, null);
+			slime.addTag(BlueSlime.HARMLESS_TAG);
 			if (level.addFreshEntity(slime)) {
 				return true;
 			}

@@ -3,6 +3,7 @@ package com.stella.mobs.entity;
 import com.stella.mobs.behavior.EliteState;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.cubemob.Slime;
@@ -22,6 +23,13 @@ public final class BlueSlime extends StellaSlime {
 	}
 
 	/** True for a slime a white slime summoned. Read without creating a state, so a natural slime saves none. */
+	/** Marks a natural blue slime. Golems and hostile auras skip it. */
+	public static final String HARMLESS_TAG = "mod-stella-mobs.harmless";
+
+	public static boolean isHarmless(final Entity entity) {
+		return entity != null && entity.entityTags().contains(HARMLESS_TAG);
+	}
+
 	public boolean isEscort() {
 		EliteState state = ((AttachmentTarget) this).getAttached(EliteState.TYPE);
 		return state != null && state.summoned();

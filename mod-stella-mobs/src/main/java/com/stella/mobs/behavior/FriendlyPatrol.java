@@ -1,5 +1,6 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.entity.BlueSlime;
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.mixin.MobTargetSelectorAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
@@ -73,6 +74,6 @@ public final class FriendlyPatrol {
 	// A monster, but never a creeper that would blow up beside it, another friendly patrol, or a village's own patrol.
 	private static boolean isQuarry(final net.minecraft.world.entity.LivingEntity target, final ServerLevel level) {
 		return target instanceof Enemy && !(target instanceof Creeper) && !isFriendly(target)
-			&& !target.entityTags().contains(VILLAGE_PATROL_TAG);
+			&& !target.entityTags().contains(VILLAGE_PATROL_TAG) && !BlueSlime.isHarmless(target);
 	}
 }
