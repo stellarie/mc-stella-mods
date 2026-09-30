@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-rpg",
+	"version": "${version}",
+	"name": "Stella RPG",
+	"description": "Six player stats, point allocation, and level retention on death.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.rpg.StellaRpg"
+		]
+	},
+	"mixins": [
+		"mod-stella-rpg.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
