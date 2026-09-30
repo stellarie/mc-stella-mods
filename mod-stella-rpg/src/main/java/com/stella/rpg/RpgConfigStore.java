@@ -79,7 +79,8 @@ public final class RpgConfigStore {
 				onError.accept("stats.json key '" + removed + "' was removed; dice replace it, so it is ignored");
 			}
 		}
-		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError));
+		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
+			mobWeights(root, onError));
 	}
 
 	private static RpgConfig.DiceRules dice(final JsonObject root, final Consumer<String> onError) {
@@ -99,6 +100,49 @@ public final class RpgConfigStore {
 			positive(object, "count_step", fallback.countStep(), onError),
 			positive(object, "sides_step", fallback.sidesStep(), onError)
 		);
+	}
+
+	private static Map<String, Map<Stat, Double>> mobWeights(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.MOB_WEIGHTS_KEY);
+		Map<String, Map<Stat, Double>> defaults = RpgConfig.DEFAULT_MOB_WEIGHTS;
+		if (element == null) {
+			return defaults;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'mob_weights' must be an object; using the defaults");
+			return defaults;
+		}
+		JsonObject object = element.getAsJsonObject();
+		Map<String, Map<Stat, Double>> table = new LinkedHashMap<>();
+		for (Map.Entry<String, Map<Stat, Double>> role : defaults.entrySet()) {
+			JsonElement row = object.get(role.getKey());
+			if (row != null && !row.isJsonObject()) {
+				onError.accept("stats.json key 'mob_weights." + role.getKey() + "' must be an object; using the defaults");
+			}
+			JsonObject rowObject = row != null && row.isJsonObject() ? row.getAsJsonObject() : new JsonObject();
+			Map<Stat, Double> weights = new EnumMap<>(Stat.class);
+			for (Stat stat : Stat.values()) {
+				weights.put(stat, weight(rowObject, role.getKey(), stat, role.getValue().get(stat), onError));
+			}
+			table.put(role.getKey(), Map.copyOf(weights));
+		}
+		return Map.copyOf(table);
+	}
+
+	private static double weight(
+		final JsonObject row, final String role, final Stat stat, final double fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get(stat.key());
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < 0.0 || value > RpgConfig.MAX_MOB_WEIGHT) {
+			onError.accept("stats.json key 'mob_weights." + role + "." + stat.key()
+				+ "' must be a number from 0 to " + RpgConfig.MAX_MOB_WEIGHT + "; using the default");
+			return fallback;
+		}
+		return value;
 	}
 
 	private static int positive(
@@ -172,6 +216,15 @@ public final class RpgConfigStore {
 		dice.put("count_step", rules.countStep());
 		dice.put("sides_step", rules.sidesStep());
 		out.put(RpgConfig.DICE_KEY, dice);
+		Map<String, Map<String, Double>> weights = new LinkedHashMap<>();
+		for (Map.Entry<String, Map<Stat, Double>> role : RpgConfig.DEFAULT_MOB_WEIGHTS.entrySet()) {
+			Map<String, Double> row = new LinkedHashMap<>();
+			for (Stat stat : Stat.values()) {
+				row.put(stat.key(), role.getValue().get(stat));
+			}
+			weights.put(role.getKey(), row);
+		}
+		out.put(RpgConfig.MOB_WEIGHTS_KEY, weights);
 		try {
 			Files.createDirectories(path.getParent());
 			Files.writeString(path, GSON.toJson(out) + System.lineSeparator(), StandardCharsets.UTF_8);

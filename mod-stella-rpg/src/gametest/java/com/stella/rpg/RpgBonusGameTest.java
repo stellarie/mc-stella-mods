@@ -28,8 +28,8 @@ public final class RpgBonusGameTest {
 			victim.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
 			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
 			float loss = victim.getMaxHealth() - victim.getHealth();
-			float expected = HIT + RpgDice.of(100).max();
-			float atBase = HIT + RpgDice.of(95).max();
+			float expected = RpgTestSupport.mobGuard(HIT + RpgDice.of(100).max());
+			float atBase = RpgTestSupport.mobGuard(HIT + RpgDice.of(95).max());
 			RpgTestSupport.result("bonusAddsToEffective", "line=" + line + " loss=" + loss + " expected=" + expected);
 			helper.assertTrue(Math.abs(loss - expected) < 0.0001F, "loss=" + loss + " expected " + expected);
 			helper.assertTrue(Math.abs(loss - atBase) > 0.0001F, "damage ignored the bonus");

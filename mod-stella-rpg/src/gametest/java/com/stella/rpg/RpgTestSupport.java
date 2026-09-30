@@ -52,6 +52,10 @@ final class RpgTestSupport {
 		StatPoints.setSheet(player, StatPoints.sheet(player).with(stat, value));
 	}
 
+	static float mobGuard(final float damage) {
+		return (float) (damage * RpgCurve.damageTakenMultiplier(MobStats.MINIMUM));
+	}
+
 	static void result(final String test, final String detail) {
 		LOGGER.info("[BEHAVIOR] test={} RESULT {}", test, detail);
 	}
