@@ -15,49 +15,20 @@ public final class PowerLog {
 		default void configProblem(final String message) {
 		}
 
-		default void readoutSpawn(
+		default void readoutTarget(
 			final String player,
 			final String mob,
-			final String mobName,
 			final int entityId,
 			final int threat,
-			final int playerLevel,
-			final int gap,
 			final String band,
-			final String color,
-			final String text
+			final boolean hostile,
+			final float health,
+			final float absorption,
+			final boolean newTarget
 		) {
 		}
 
-		default void readoutBand(
-			final String player,
-			final String mob,
-			final int entityId,
-			final int gap,
-			final String bandFrom,
-			final String bandTo,
-			final int threat,
-			final int playerLevel,
-			final String text
-		) {
-		}
-
-		default void readoutHostility(
-			final String player,
-			final String mob,
-			final int entityId,
-			final boolean from,
-			final boolean to
-		) {
-		}
-
-		default void readoutRemove(
-			final String player,
-			final String mob,
-			final int entityId,
-			final String reason,
-			final int remaining
-		) {
+		default void readoutClear(final String player, final int entityId, final String reason) {
 		}
 	}
 

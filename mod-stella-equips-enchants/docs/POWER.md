@@ -40,7 +40,7 @@ The other four attributes stay on the level-fraction curve, from
 ## Health as a number
 
 The owner sees `Lv 12`, their capped vanilla level, as one line, sent by the server on every power
-scan, in the same style as the mob readout's `Threat 32 Cow 14/20`. The power scan runs
+scan, in the same style as the mob readout. The power scan runs
 every `tracker.scan_interval_ticks`, so the line arrives even when the owner turns
 the mob readout off. The line travels as an overlay system-chat packet, which the
 client draws in the action-bar overlay slot.

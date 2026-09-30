@@ -5,8 +5,6 @@ import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
 import com.stella.equips.power.PowerLog;
 import com.stella.equips.power.PowerTracker;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,47 +12,38 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
-import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.NeutralMob;
-import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 /**
- * Keeps one ghost text display per mob per player. The display never joins the level, so the
- * vanilla tracking broadcast cannot reach a second player.
+ * Sends each player one payload for the mob they look at. The client draws the plate, so the
+ * server holds no per-mob entity and a second player never sees the first player's target.
  */
 public final class ReadoutService {
+	/** The look test runs this often; a target change shows within this many ticks. */
+	public static final int LOOK_INTERVAL_TICKS = 2;
 	private static final Map<UUID, ReadoutOwner> OWNERS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Boolean> OPT_OUT = new ConcurrentHashMap<>();
-	// Attacker and mob pairs to recheck, with the last server tick to recheck them on.
-	private static final Map<PendingPair, Integer> PENDING = new ConcurrentHashMap<>();
-	private static final int PENDING_TICKS = 3;
+	// Attackers to rescan, with the last server tick to rescan them on.
+	private static final Map<UUID, Integer> PENDING = new ConcurrentHashMap<>();
+	/** After a player's hit, the attacker is rescanned every tick for this many ticks. */
+	public static final int PENDING_TICKS = 3;
 	private static int serverTicks;
 	private static boolean registered;
 
 	private ReadoutService() {
 	}
 
-	private record PendingPair(UUID player, UUID mob) {
-	}
-
 	public static void register() {
+		PayloadTypeRegistry.clientboundPlay().register(ReadoutPayload.TYPE, ReadoutPayload.CODEC);
 		ServerTickEvents.END_SERVER_TICK.register(ReadoutService::onServerTick);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(ReadoutService::afterDamage);
 		ServerPlayConnectionEvents.DISCONNECT.register(
@@ -76,11 +65,7 @@ public final class ReadoutService {
 		PowerConfig config = PowerConfigStore.get();
 		refreshPending(server, config);
 
-		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			syncPositions(player, config);
-		}
-
-		if (serverTicks % config.tracker().scanIntervalTicks() != 0) {
+		if (serverTicks % LOOK_INTERVAL_TICKS != 0) {
 			return;
 		}
 
@@ -98,43 +83,7 @@ public final class ReadoutService {
 		}
 	}
 
-	/**
-	 * Moves every existing readout onto its mob. Only the owner's own readouts cost work, and a
-	 * mob outside the radius holds no readout, so the scan stays bounded by the cap.
-	 */
-	private static void syncPositions(final ServerPlayer player, final PowerConfig config) {
-		ReadoutOwner owner = OWNERS.get(player.getUUID());
-
-		if (owner == null || !owner.enabled() || owner.readouts().isEmpty()) {
-			return;
-		}
-
-		ServerLevel level = player.level();
-		double heightOffset = config.readout().heightOffset();
-
-		for (ReadoutOwner.Readout readout : owner.readouts().values()) {
-			Entity entity = level.getEntity(readout.mobEntityId());
-
-			if (!(entity instanceof Mob mob) || !mob.getUUID().equals(readout.mobId())) {
-				continue;
-			}
-
-			Display.TextDisplay display = readout.display();
-			double y = mob.getY() + mob.getBbHeight() + heightOffset;
-
-			if (display.getX() == mob.getX() && display.getY() == y && display.getZ() == mob.getZ()) {
-				continue;
-			}
-
-			display.setPos(mob.getX(), y, mob.getZ());
-			player.connection.send(
-				ClientboundTeleportEntityPacket.teleport(
-					display.getId(), PositionMoveRotation.of(display), Set.of(), display.onGround()
-				)
-			);
-		}
-	}
-
+	/** Finds the looked-at mob and sends a payload only when it differs from the last one sent. */
 	public static void scanPlayer(final ServerPlayer player, final PowerConfig config) {
 		ReadoutOwner owner = owner(player, config);
 
@@ -143,51 +92,34 @@ public final class ReadoutService {
 			return;
 		}
 
-		double radius = config.readout().radius();
-		int cap = config.readout().maxPerPlayer();
-		int playerLevel = PowerTracker.playerLevel(player, config);
-		ServerLevel level = player.level();
-		AABB bounds = player.getBoundingBox().inflate(radius);
-		List<Mob> inRange = new ArrayList<>();
-		Set<UUID> reachable = ConcurrentHashMap.newKeySet();
+		Mob mob = ReadoutLook.find(player, config.readout().radius());
 
-		for (Mob mob : level.getEntitiesOfClass(Mob.class, bounds, ReadoutService::isThreat)) {
-			if (horizontalDistance(player, mob) <= radius) {
-				inRange.add(mob);
-				reachable.add(mob.getUUID());
-			}
+		if (mob == null) {
+			clear(owner, player, "none");
+			return;
 		}
 
-		inRange.sort(
-			Comparator.comparingDouble((Mob mob) -> horizontalDistance(player, mob))
-				.thenComparing(mob -> mob.getUUID().toString())
+		ReadoutPayload next = payloadFor(mob, player, config);
+
+		if (!next.equals(owner.current())) {
+			ReadoutPayload previous = owner.current();
+			owner.set(next, mob.getUUID());
+			send(player, next);
+			PowerLog.recorder().readoutTarget(
+				player.getScoreboardName(), mob.getUUID().toString(), next.entityId(), next.threat(),
+				next.bandValue().name(), next.hostile(), next.health(), next.absorption(),
+				previous == null || previous.entityId() != next.entityId()
+			);
+		}
+	}
+
+	private static ReadoutPayload payloadFor(final Mob mob, final ServerPlayer player, final PowerConfig config) {
+		int threat = PowerTracker.threat(mob, config);
+		int gap = PowerCurve.normalizedThreat(threat, config) - PowerTracker.playerLevel(player, config);
+		return ReadoutPayload.of(
+			mob.getId(), threat, PowerCurve.band(gap, config), ReadoutRank.of(mob), hostile(mob, player),
+			mob.getHealth(), mob.getMaxHealth(), mob.getAbsorptionAmount(), mob.getDisplayName().getString()
 		);
-		List<Mob> selected = inRange.size() > cap ? List.copyOf(inRange.subList(0, cap)) : inRange;
-		Set<UUID> keep = ConcurrentHashMap.newKeySet();
-
-		for (Mob mob : selected) {
-			keep.add(mob.getUUID());
-		}
-
-		for (ReadoutOwner.Readout readout : List.copyOf(owner.readouts().values())) {
-			if (!keep.contains(readout.mobId())) {
-				remove(owner, player, readout, reasonFor(readout, level, reachable));
-			}
-		}
-
-		for (Mob mob : selected) {
-			int threat = PowerTracker.threat(mob, config);
-			int gap = PowerCurve.normalizedThreat(threat, config) - playerLevel;
-			PowerCurve.Band band = PowerCurve.band(gap, config);
-			ReadoutOwner.Readout existing = owner.get(mob.getUUID());
-
-			if (existing == null) {
-				boolean hostile = hostile(mob, player);
-				spawn(owner, player, mob, threat, playerLevel, gap, band, textFor(mob, threat, band, hostile), hostile, config);
-			} else {
-				refresh(owner, player, existing, mob, threat, playerLevel, gap, band);
-			}
-		}
 	}
 
 	/** Red when the mob is an enemy by nature, targets this viewer, or is angry at this viewer. */
@@ -197,38 +129,14 @@ public final class ReadoutService {
 			|| mob instanceof NeutralMob neutral && neutral.isAngryAt(viewer, viewer.level());
 	}
 
-	private static Component textFor(final Mob mob, final int threat, final PowerCurve.Band band, final boolean hostile) {
-		return ReadoutText.build(
-			threat, ReadoutRank.of(mob), mob.getDisplayName(), band, mob.getHealth(), mob.getMaxHealth(), hostile
-		);
-	}
-
-	private static void refresh(
-		final ReadoutOwner owner,
-		final ServerPlayer player,
-		final ReadoutOwner.Readout existing,
-		final Mob mob,
-		final int threat,
-		final int playerLevel,
-		final int gap,
-		final PowerCurve.Band band
-	) {
-		boolean hostile = hostile(mob, player);
-		Component text = textFor(mob, threat, band, hostile);
-		if (existing.band() != band || existing.threat() != threat || existing.hostile() != hostile
-			|| !existing.text().equals(text.getString())) {
-			update(owner, player, existing, mob, threat, playerLevel, gap, band, text, hostile);
-		}
-	}
-
-	/** A player's hit makes a neutral mob angry on its next goal tick, so the pair is rechecked for a few ticks. */
+	/** A player's hit makes a neutral mob angry on its next goal tick, so the attacker is rescanned for a few ticks. */
 	private static void afterDamage(
 		final LivingEntity entity, final DamageSource source, final float base, final float taken, final boolean blocked
 	) {
 		if (entity instanceof Mob mob && source.getEntity() instanceof ServerPlayer attacker) {
 			ReadoutOwner owner = OWNERS.get(attacker.getUUID());
-			if (owner != null && owner.get(mob.getUUID()) != null) {
-				PENDING.put(new PendingPair(attacker.getUUID(), mob.getUUID()), serverTicks + PENDING_TICKS);
+			if (owner != null && mob.getUUID().equals(owner.currentMobId())) {
+				PENDING.put(attacker.getUUID(), serverTicks + PENDING_TICKS);
 			}
 		}
 	}
@@ -238,22 +146,18 @@ public final class ReadoutService {
 			return;
 		}
 
-		for (Map.Entry<PendingPair, Integer> entry : List.copyOf(PENDING.entrySet())) {
-			PendingPair pair = entry.getKey();
-			ServerPlayer player = server.getPlayerList().getPlayer(pair.player());
-			ReadoutOwner owner = player == null ? null : OWNERS.get(pair.player());
-			ReadoutOwner.Readout existing = owner == null ? null : owner.get(pair.mob());
-			Entity entity = existing == null ? null : player.level().getEntity(existing.mobEntityId());
+		for (Map.Entry<UUID, Integer> entry : List.copyOf(PENDING.entrySet())) {
+			ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
 
-			if (entity instanceof Mob mob && mob.getUUID().equals(pair.mob()) && owner.enabled()) {
-				int playerLevel = PowerTracker.playerLevel(player, config);
-				int threat = PowerTracker.threat(mob, config);
-				int gap = PowerCurve.normalizedThreat(threat, config) - playerLevel;
-				refresh(owner, player, existing, mob, threat, playerLevel, gap, PowerCurve.band(gap, config));
+			if (player == null) {
+				PENDING.remove(entry.getKey());
+				continue;
 			}
 
-			if (entity == null || serverTicks >= entry.getValue()) {
-				PENDING.remove(pair);
+			scanPlayer(player, config);
+
+			if (serverTicks >= entry.getValue()) {
+				PENDING.remove(entry.getKey());
 			}
 		}
 	}
@@ -290,133 +194,24 @@ public final class ReadoutService {
 	}
 
 	public static void forget(final UUID playerId) {
-		ReadoutOwner owner = OWNERS.remove(playerId);
+		OWNERS.remove(playerId);
 		OPT_OUT.remove(playerId);
-
-		if (owner != null) {
-			owner.clear();
-		}
+		PENDING.remove(playerId);
 	}
 
-	private static boolean isThreat(final Mob mob) {
-		return mob.isAlive() && !mob.isRemoved() && !mob.isDeadOrDying();
-	}
-
-	private static double horizontalDistance(final ServerPlayer player, final Mob mob) {
-		return Math.hypot(mob.getX() - player.getX(), mob.getZ() - player.getZ());
-	}
-
-	private static void spawn(
-		final ReadoutOwner owner,
-		final ServerPlayer player,
-		final Mob mob,
-		final int threat,
-		final int playerLevel,
-		final int gap,
-		final PowerCurve.Band band,
-		final Component text,
-		final boolean hostile,
-		final PowerConfig config
-	) {
-		ServerLevel level = player.level();
-		Display.TextDisplay display = new Display.TextDisplay(EntityTypes.TEXT_DISPLAY, level);
-		display.setId(level.getNextEntityId());
-		display.setPos(
-			mob.getX(),
-			mob.getY() + mob.getBbHeight() + config.readout().heightOffset(),
-			mob.getZ()
-		);
-		display.setViewRange((float) config.readout().viewRange());
-		display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
-		display.setText(text);
-		display.updateDataBeforeSync();
-		player.connection.send(addPacket(display));
-		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().getNonDefaultValues()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString(), hostile));
-		PowerLog.recorder().readoutSpawn(
-			player.getScoreboardName(), mob.getUUID().toString(), mob.getDisplayName().getString(),
-			display.getId(), threat, playerLevel, gap, band.name(), ReadoutText.colorName(band), text.getString()
-		);
-	}
-
-	private static void update(
-		final ReadoutOwner owner,
-		final ServerPlayer player,
-		final ReadoutOwner.Readout existing,
-		final Mob mob,
-		final int threat,
-		final int playerLevel,
-		final int gap,
-		final PowerCurve.Band band,
-		final Component text,
-		final boolean hostile
-	) {
-		Display.TextDisplay display = existing.display();
-		display.setText(text);
-		player.connection.send(new ClientboundSetEntityDataPacket(display.getId(), display.getEntityData().packDirty()));
-		owner.put(new ReadoutOwner.Readout(mob.getUUID(), mob.getId(), display, threat, band, text.getString(), hostile));
-		if (existing.hostile() != hostile) {
-			PowerLog.recorder().readoutHostility(
-				player.getScoreboardName(), mob.getUUID().toString(), display.getId(), existing.hostile(), hostile
-			);
-		}
-		PowerLog.recorder().readoutBand(
-			player.getScoreboardName(), mob.getUUID().toString(), display.getId(), gap,
-			existing.band().name(), band.name(), threat, playerLevel, text.getString()
-		);
-	}
-
-	private static void remove(
-		final ReadoutOwner owner,
-		final ServerPlayer player,
-		final ReadoutOwner.Readout readout,
-		final String reason
-	) {
-		owner.remove(readout.mobId());
-		player.connection.send(new ClientboundRemoveEntitiesPacket(readout.display().getId()));
-		PowerLog.recorder().readoutRemove(
-			player.getScoreboardName(), readout.mobId().toString(), readout.display().getId(), reason,
-			owner.size()
-		);
-	}
-
+	/** Sends one clear payload when a readout was up, and nothing otherwise. */
 	private static void clear(final ReadoutOwner owner, final ServerPlayer player, final String reason) {
-		for (ReadoutOwner.Readout readout : List.copyOf(owner.readouts().values())) {
-			remove(owner, player, readout, reason);
+		if (owner.current() == null) {
+			return;
 		}
+
+		int entityId = owner.current().entityId();
+		owner.clear();
+		send(player, ReadoutPayload.clear());
+		PowerLog.recorder().readoutClear(player.getScoreboardName(), entityId, reason);
 	}
 
-	private static String reasonFor(
-		final ReadoutOwner.Readout readout,
-		final ServerLevel level,
-		final Set<UUID> reachable
-	) {
-		if (reachable.contains(readout.mobId())) {
-			return "cap";
-		}
-
-		Entity entity = level.getEntity(readout.mobEntityId());
-
-		if (entity instanceof Mob mob && mob.getUUID().equals(readout.mobId()) && isThreat(mob)) {
-			return "range";
-		}
-
-		return "dead";
-	}
-
-	private static ClientboundAddEntityPacket addPacket(final Display.TextDisplay display) {
-		return new ClientboundAddEntityPacket(
-			display.getId(),
-			display.getUUID(),
-			display.getX(),
-			display.getY(),
-			display.getZ(),
-			display.getXRot(),
-			display.getYRot(),
-			EntityTypes.TEXT_DISPLAY,
-			0,
-			Vec3.ZERO,
-			display.getYHeadRot()
-		);
+	private static void send(final ServerPlayer player, final ReadoutPayload payload) {
+		player.connection.send(ServerPlayNetworking.createClientboundPacket(payload));
 	}
 }
