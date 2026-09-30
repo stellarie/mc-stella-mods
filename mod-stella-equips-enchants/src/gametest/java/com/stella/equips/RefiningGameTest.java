@@ -38,6 +38,9 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -46,10 +49,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Refining, after Ragnarok Online Renewal: a quote on the first use at a Refining Anvil or a village smith, a
- * paid roll on the second, +0.75 damage a level for weapons and armour for armour, a fifth of the durability
- * chipped on a failure or the piece broken when a failure would take its last, and special effects at +10,
- * +12 and +15. The level is shown like an enchantment and never takes one's place.
+ * Refining, after Ragnarok Online Renewal, in the Refine tab of an anvil: a paid roll on the piece in the first
+ * slot, +0.75 damage a level for weapons and armour for armour, a failure that lowers the level by one and never
+ * costs durability, and special effects at +10, +12 and +15. The level is shown like an enchantment.
  */
 public class RefiningGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-equips-test.refine");
@@ -64,13 +66,8 @@ public class RefiningGameTest {
 		});
 		RefineStation.setRecorder(new RefineStation.Recorder() {
 			@Override
-			public void quoted(final ServerPlayer player, final int nextLevel, final int chance, final int cost, final boolean warning) {
-				events(player).add("quoted next=" + nextLevel + " chance=" + chance + " cost=" + cost + " warning=" + warning);
-			}
-
-			@Override
-			public void attempted(final ServerPlayer player, final int nextLevel, final boolean success, final boolean broke) {
-				events(player).add("attempted next=" + nextLevel + " success=" + success + " broke=" + broke);
+			public void attempted(final ServerPlayer player, final int nextLevel, final boolean success) {
+				events(player).add("attempted next=" + nextLevel + " success=" + success);
 			}
 
 			@Override
@@ -120,123 +117,145 @@ public class RefiningGameTest {
 	}
 
 	@GameTest
-	public void theFirstUseAtTheAnvilOnlyQuotes(final GameTestHelper helper) {
-		ServerPlayer player = refiner(helper, new ItemStack(Items.IRON_SWORD), 5);
-		BlockPos anvil = anvil(helper);
-		useAnvil(helper, player, anvil);
-		List<String> events = events(player);
-		LOG.info("[BEHAVIOR] test=theFirstUseAtTheAnvilOnlyQuotes RESULT events={} level={} ingots={}", events, Refine.level(player.getMainHandItem()), ingots(player));
-		helper.assertTrue(events.equals(List.of("quoted next=1 chance=100 cost=1 warning=false")), "the first use did " + events);
-		helper.assertTrue(Refine.level(player.getMainHandItem()) == 0 && ingots(player) == 5, "the quote took material or refined");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void aSecondUseRefinesAndTheAnvilNeverWears(final GameTestHelper helper) {
-		ServerPlayer player = refiner(helper, new ItemStack(Items.IRON_SWORD), 15);
+	public void successRaisesLevel(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		Refine.setLevel(sword, 3);
+		ServerPlayer player = refiner(helper, sword, 15);
 		FORCED.put(player.getUUID(), true);
-		BlockPos anvil = anvil(helper);
-		double before = damage(player.getMainHandItem());
-		for (int step = 0; step < 6; step++) {
-			useAnvil(helper, player, anvil);
-			useAnvil(helper, player, anvil);
-		}
-		ItemStack sword = player.getMainHandItem();
-		int spent = 15 - ingots(player);
-		int expectedSpent = 0;
-		for (int level = 0; level < 6; level++) {
-			expectedSpent += Refine.cost(level);
-		}
-		boolean anvilStands = helper.getLevel().getBlockState(anvil).is(RefineBlocks.REFINING_ANVIL);
-		LOG.info("[BEHAVIOR] test=aSecondUseRefinesAndTheAnvilNeverWears RESULT level={} spent={} damageGain={} anvilStands={}", Refine.level(sword), spent, damage(sword) - before, anvilStands);
-		helper.assertTrue(Refine.level(sword) == 6, "six paid steps left the sword at +" + Refine.level(sword));
-		helper.assertTrue(spent == expectedSpent, "six steps took " + spent + " ingots, not " + expectedSpent);
-		helper.assertTrue(Math.abs(damage(sword) - before - 6 * Refine.DAMAGE_PER_LEVEL) < 1e-6, "+6 added " + (damage(sword) - before) + " damage");
-		helper.assertTrue(anvilStands, "the Refining Anvil wore away");
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
+		ItemStack refined = menu.getSlot(0).getItem();
+		LOG.info("[BEHAVIOR] test=successRaisesLevel RESULT result={} level={} ingots={}", result, Refine.level(refined), ingots(player));
+		helper.assertTrue(result == RefineStation.Result.SUCCESS && Refine.level(refined) == 4, "a success left " + result + " +" + Refine.level(refined));
+		helper.assertTrue(ingots(player) == 15 - Refine.cost(3), "the step took " + (15 - ingots(player)) + " ingots");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aFailedRefineChipsAFifthOfTheDurability(final GameTestHelper helper) {
-		ServerPlayer player = refiner(helper, new ItemStack(Items.DIAMOND_SWORD), 5);
+	public void failureDropsLevel(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+		Refine.setLevel(sword, 8);
+		sword.setDamageValue(100);
+		ServerPlayer player = refiner(helper, sword, 10);
 		FORCED.put(player.getUUID(), false);
-		BlockPos anvil = anvil(helper);
-		useAnvil(helper, player, anvil);
-		useAnvil(helper, player, anvil);
-		ItemStack sword = player.getMainHandItem();
-		int expected = (int) Math.ceil(sword.getMaxDamage() * Refine.FAILURE_CHIP);
-		LOG.info("[BEHAVIOR] test=aFailedRefineChipsAFifthOfTheDurability RESULT damage={} expected={} level={} events={}", sword.getDamageValue(), expected, Refine.level(sword), events(player));
-		helper.assertTrue(sword.is(Items.DIAMOND_SWORD) && sword.getDamageValue() == expected && Refine.level(sword) == 0, "a failure left " + sword + " at damage " + sword.getDamageValue());
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
+		ItemStack after = menu.getSlot(0).getItem();
+		LOG.info("[BEHAVIOR] test=failureDropsLevel RESULT result={} level={} damage={} count={}", result, Refine.level(after), after.getDamageValue(), after.getCount());
+		helper.assertTrue(result == RefineStation.Result.FAILURE && Refine.level(after) == 7, "a failure left +" + Refine.level(after));
+		helper.assertTrue(after.is(Items.DIAMOND_SWORD) && after.getDamageValue() == 100 && after.getCount() == 1, "a failure cost durability or the piece");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aWornPieceIsWarnedAndBreaksOnFailure(final GameTestHelper helper) {
-		ItemStack worn = new ItemStack(Items.IRON_SWORD);
-		worn.setDamageValue(worn.getMaxDamage() - Refine.chip(worn));
-		ServerPlayer player = refiner(helper, worn, 5);
+	public void levelNeverNegative(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		ServerPlayer player = refiner(helper, sword, 5);
 		FORCED.put(player.getUUID(), false);
-		BlockPos anvil = anvil(helper);
-		useAnvil(helper, player, anvil);
-		useAnvil(helper, player, anvil);
-		List<String> events = events(player);
-		LOG.info("[BEHAVIOR] test=aWornPieceIsWarnedAndBreaksOnFailure RESULT events={} held={}", events, player.getMainHandItem());
-		helper.assertTrue(events.equals(List.of("quoted next=1 chance=100 cost=1 warning=true", "attempted next=1 success=false broke=true")), "a worn piece went " + events);
-		helper.assertTrue(player.getMainHandItem().isEmpty(), "the failed piece survived as " + player.getMainHandItem());
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.refine(player, menu.containerId);
+		int level = Refine.level(menu.getSlot(0).getItem());
+		LOG.info("[BEHAVIOR] test=levelNeverNegative RESULT level={}", level);
+		helper.assertTrue(level == 0, "a failure at +0 left " + level);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aRefineWithoutMaterialIsRefused(final GameTestHelper helper) {
-		ServerPlayer player = refiner(helper, new ItemStack(Items.IRON_SWORD), 0);
+	public void costTaken(final GameTestHelper helper) {
+		ItemStack plate = new ItemStack(Items.DIAMOND_CHESTPLATE);
+		Refine.setLevel(plate, 6);
+		ServerPlayer player = refiner(helper, plate, 10);
 		FORCED.put(player.getUUID(), true);
-		BlockPos anvil = anvil(helper);
-		useAnvil(helper, player, anvil);
-		useAnvil(helper, player, anvil);
-		List<String> events = events(player);
-		LOG.info("[BEHAVIOR] test=aRefineWithoutMaterialIsRefused RESULT events={}", events);
-		helper.assertTrue(events.equals(List.of("quoted next=1 chance=100 cost=1 warning=false", "refused short_of_material")) && Refine.level(player.getMainHandItem()) == 0, "with no ingots the refine went " + events);
+		AnvilMenu menu = openAnvil(helper, player, plate);
+		RefineStation.refine(player, menu.containerId);
+		int left = player.getInventory().countItem(Items.DIAMOND);
+		LOG.info("[BEHAVIOR] test=costTaken RESULT left={} cost={}", left, Refine.cost(6));
+		helper.assertTrue(left == 10 - Refine.cost(6) && Refine.cost(6) == 3, "a +6 step took " + (10 - left) + " diamonds");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void nothingRefinesPastFifteen(final GameTestHelper helper) {
+	public void shortOfMaterial(final GameTestHelper helper) {
+		ItemStack plate = new ItemStack(Items.DIAMOND_CHESTPLATE);
+		Refine.setLevel(plate, 6);
+		ServerPlayer player = refiner(helper, plate, 1);
+		FORCED.put(player.getUUID(), true);
+		AnvilMenu menu = openAnvil(helper, player, plate);
+		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
+		LOG.info("[BEHAVIOR] test=shortOfMaterial RESULT result={}", result);
+		helper.assertTrue(result == RefineStation.Result.SHORT_OF_MATERIAL && Refine.level(menu.getSlot(0).getItem()) == 6
+			&& player.getInventory().countItem(Items.DIAMOND) == 1, "a short refine went " + result);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void wrongMenuIgnored(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		ServerPlayer player = refiner(helper, sword, 5);
+		FORCED.put(player.getUUID(), true);
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.Result wrongId = RefineStation.refine(player, menu.containerId + 1);
+		player.containerMenu = player.inventoryMenu;
+		RefineStation.Result wrongMenu = RefineStation.refine(player, player.inventoryMenu.containerId);
+		LOG.info("[BEHAVIOR] test=wrongMenuIgnored RESULT wrongId={} wrongMenu={}", wrongId, wrongMenu);
+		helper.assertTrue(wrongId == RefineStation.Result.WRONG_MENU && wrongMenu == RefineStation.Result.WRONG_MENU
+			&& Refine.level(sword) == 0 && ingots(player) == 5, "a forged request refined: " + wrongId + ", " + wrongMenu);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anvilNeverDamaged(final GameTestHelper helper) {
+		BlockPos pos = helper.absolutePos(new BlockPos(2, 1, 2));
+		helper.getLevel().setBlockAndUpdate(pos, Blocks.ANVIL.defaultBlockState());
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		ServerPlayer player = refiner(helper, sword, 64 * 4);
+		AnvilMenu menu = new AnvilMenu(1, player.getInventory(), ContainerLevelAccess.create(helper.getLevel(), pos));
+		player.containerMenu = menu;
+		menu.getSlot(0).set(sword);
+		for (int step = 0; step < 50; step++) {
+			FORCED.put(player.getUUID(), step % 3 != 2);
+			RefineStation.refine(player, menu.containerId);
+		}
+		BlockState state = helper.getLevel().getBlockState(pos);
+		LOG.info("[BEHAVIOR] test=anvilNeverDamaged RESULT state={} level={}", state, Refine.level(menu.getSlot(0).getItem()));
+		helper.assertTrue(state.equals(Blocks.ANVIL.defaultBlockState()), "50 refines changed the anvil to " + state);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void cappedRefused(final GameTestHelper helper) {
 		ItemStack capped = new ItemStack(Items.IRON_SWORD);
 		Refine.setLevel(capped, Refine.MAX_LEVEL);
 		ServerPlayer player = refiner(helper, capped, 20);
 		FORCED.put(player.getUUID(), true);
-		BlockPos anvil = anvil(helper);
-		useAnvil(helper, player, anvil);
-		useAnvil(helper, player, anvil);
-		List<String> events = events(player);
-		LOG.info("[BEHAVIOR] test=nothingRefinesPastFifteen RESULT events={} level={}", events, Refine.level(player.getMainHandItem()));
-		helper.assertTrue(events.equals(List.of("refused capped", "refused capped")) && Refine.level(player.getMainHandItem()) == Refine.MAX_LEVEL, "a +15 piece went " + events);
+		AnvilMenu menu = openAnvil(helper, player, capped);
+		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
+		LOG.info("[BEHAVIOR] test=cappedRefused RESULT result={}", result);
+		helper.assertTrue(result == RefineStation.Result.CAPPED && Refine.level(capped) == Refine.MAX_LEVEL && ingots(player) == 20,
+			"a +15 piece went " + result);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void aVillageSmithRefinesWithTheIngotInTheOffHand(final GameTestHelper helper) {
+	public void refiningAnvilOpensMenu(final GameTestHelper helper) {
+		ServerPlayer player = refiner(helper, new ItemStack(Items.IRON_SWORD), 5);
+		BlockPos anvil = anvil(helper);
+		useAnvil(helper, player, anvil);
+		LOG.info("[BEHAVIOR] test=refiningAnvilOpensMenu RESULT menu={}", player.containerMenu);
+		helper.assertTrue(player.containerMenu instanceof AnvilMenu, "the Refining Anvil opened " + player.containerMenu);
+		helper.assertTrue(helper.getLevel().getBlockState(anvil).is(RefineBlocks.REFINING_ANVIL), "the Refining Anvil wore away");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void smithRouteRemoved(final GameTestHelper helper) {
 		ServerPlayer player = refiner(helper, new ItemStack(Items.IRON_SWORD), 0);
 		player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.IRON_INGOT, 3));
 		FORCED.put(player.getUUID(), true);
-		Villager smith = smith(helper, VillagerProfession.WEAPONSMITH);
-		InteractionResult quote = useSmith(helper, player, smith);
-		InteractionResult refine = useSmith(helper, player, smith);
-		LOG.info("[BEHAVIOR] test=aVillageSmithRefinesWithTheIngotInTheOffHand RESULT quote={} refine={} level={} offhand={}", quote, refine, Refine.level(player.getMainHandItem()), player.getOffhandItem().getCount());
-		helper.assertTrue(quote.consumesAction() && refine.consumesAction(), "the smith did not take the refine: " + quote + ", " + refine);
-		helper.assertTrue(Refine.level(player.getMainHandItem()) == 1 && player.getOffhandItem().getCount() == 2, "the smith left the sword at +" + Refine.level(player.getMainHandItem()));
-		helper.succeed();
-	}
-
-	@GameTest
-	public void aSmithWithoutMaterialOrAFarmerOpensNoRefine(final GameTestHelper helper) {
-		ServerPlayer bare = refiner(helper, new ItemStack(Items.IRON_SWORD), 5);
-		ServerPlayer atFarmer = refiner(helper, new ItemStack(Items.IRON_SWORD), 0);
-		atFarmer.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.IRON_INGOT, 3));
-		InteractionResult noMaterial = useSmith(helper, bare, smith(helper, VillagerProfession.WEAPONSMITH));
-		InteractionResult farmer = useSmith(helper, atFarmer, smith(helper, VillagerProfession.FARMER));
-		LOG.info("[BEHAVIOR] test=aSmithWithoutMaterialOrAFarmerOpensNoRefine RESULT noMaterial={} farmer={}", noMaterial, farmer);
-		helper.assertTrue(noMaterial == InteractionResult.PASS && farmer == InteractionResult.PASS && events(bare).isEmpty() && events(atFarmer).isEmpty(), "a refine opened where trades belong: " + noMaterial + ", " + farmer);
+		InteractionResult result = useSmith(helper, player, smith(helper, VillagerProfession.WEAPONSMITH));
+		LOG.info("[BEHAVIOR] test=smithRouteRemoved RESULT result={} level={}", result, Refine.level(player.getMainHandItem()));
+		helper.assertTrue(result == InteractionResult.PASS && Refine.level(player.getMainHandItem()) == 0
+			&& player.getOffhandItem().getCount() == 3, "a smith still refined: " + result);
 		helper.succeed();
 	}
 
@@ -448,6 +467,14 @@ public class RefiningGameTest {
 		BlockPos pos = helper.absolutePos(new BlockPos(2, 1, 2));
 		helper.getLevel().setBlockAndUpdate(pos, RefineBlocks.REFINING_ANVIL.defaultBlockState());
 		return pos;
+	}
+
+	private static AnvilMenu openAnvil(final GameTestHelper helper, final ServerPlayer player, final ItemStack piece) {
+		AnvilMenu menu = new AnvilMenu(1, player.getInventory(), ContainerLevelAccess.NULL);
+		player.containerMenu = menu;
+		player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		menu.getSlot(0).set(piece);
+		return menu;
 	}
 
 	private static void useAnvil(final GameTestHelper helper, final ServerPlayer player, final BlockPos pos) {

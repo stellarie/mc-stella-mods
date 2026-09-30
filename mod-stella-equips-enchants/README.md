@@ -188,16 +188,18 @@ one heal number every 4 ticks, so a mob farm does not flood its viewers.
 
 ## Refining
 
-Weapons and armour refine from +0 to +15, after Ragnarok Online Renewal. Refine at a **Refining
-Anvil** (a silver anvil crafted from nine anvils; it never wears, never falls and opens no menu) or at
-a village weaponsmith, toolsmith or armorer with the material in your off hand.
+Weapons and armour refine from +0 to +15, after Ragnarok Online Renewal. Refine in the **Refine tab** of any
+anvil. Two tabs sit above the anvil window: Repair (the vanilla anvil) and Refine. A **Refining Anvil** (a
+silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 
-- The first use quotes the next step: its chance, its price, and a red warning when a failure would
-  break the piece. Use again within five seconds, with the same piece, to pay and roll.
+- Put the piece in the first slot. The tab shows its level, the next level, the chance, and the cost with the
+  material you carry. Press Refine to pay and roll.
 - The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
   for wood; iron for a bow). A step costs 1, plus 1 for every three levels the piece already has.
-- A failure keeps the level and chips 20% of the piece's whole durability. When the piece has no more
-  than that left, a failure breaks it, and the quote says so.
+- A success raises the level by one. A failure lowers it by one. A failure never costs durability and never
+  breaks the piece.
+- Refining never wears an anvil. The Refining Anvil never wears, even when it repairs.
+- Village smiths no longer refine.
 - The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are
   grade 1 (safe to +7); iron is grade 2 (safe to +6); diamond, the trident and the mace are grade 3
   (safe to +5); netherite is grade 4 (safe to +4). Armour is safe to +4. The last step is 15%.

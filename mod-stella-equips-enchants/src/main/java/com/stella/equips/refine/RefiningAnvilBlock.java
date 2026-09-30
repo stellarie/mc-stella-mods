@@ -1,5 +1,10 @@
 package com.stella.equips.refine;
 
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,8 +26,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The Refining Anvil: an anvil in silver that never wears. It does not fall and opens no menu; use it while
- * holding a weapon or a piece of armour to have the next refine quoted, and use it again to refine.
+ * The Refining Anvil: an anvil in silver that never wears and never falls. Using it opens the anvil menu on its
+ * Refine tab. The menu has no block access, so neither a repair nor a refine can damage the block.
  */
 public class RefiningAnvilBlock extends Block {
 	public static final EnumProperty<Direction> FACING = AnvilBlock.FACING;
@@ -51,19 +56,21 @@ public class RefiningAnvilBlock extends Block {
 	@Override
 	protected InteractionResult useItemOn(final ItemStack stack, final BlockState state, final Level level, final BlockPos pos,
 		final Player player, final InteractionHand hand, final BlockHitResult hit) {
-		if (hand != InteractionHand.MAIN_HAND) {
-			return InteractionResult.PASS;
-		}
-		if (player instanceof ServerPlayer refiner) {
-			RefineStation.use(refiner, "anvil@" + level.dimension().identifier() + "@" + pos.asLong());
-		}
-		return InteractionResult.SUCCESS;
+		return hand == InteractionHand.MAIN_HAND ? this.open(player) : InteractionResult.PASS;
 	}
 
 	@Override
 	protected InteractionResult useWithoutItem(final BlockState state, final Level level, final BlockPos pos, final Player player, final BlockHitResult hit) {
+		return this.open(player);
+	}
+
+	private InteractionResult open(final Player player) {
 		if (player instanceof ServerPlayer refiner) {
-			RefineStation.use(refiner, "anvil@" + level.dimension().identifier() + "@" + pos.asLong());
+			refiner.openMenu(new SimpleMenuProvider(
+				(id, inventory, owner) -> new AnvilMenu(id, inventory, ContainerLevelAccess.NULL),
+				Component.translatable("container.repair")
+			));
+			ServerPlayNetworking.send(refiner, OpenRefineTabPayload.INSTANCE);
 		}
 		return InteractionResult.SUCCESS;
 	}

@@ -4,7 +4,9 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"EntityRendererNameTagMixin",
-		"HudMixin"
+		"HudMixin",
+		"AnvilScreenAccessor",
+		"EquipsContainerScreenAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1
