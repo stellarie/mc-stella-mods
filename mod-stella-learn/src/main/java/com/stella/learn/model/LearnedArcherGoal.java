@@ -60,6 +60,11 @@ public final class LearnedArcherGoal extends Goal {
 			return false;
 		}
 
+		if (this.mob.isPassenger()) {
+			ModelDriver.fallBack(this.mob, "passenger");
+			return false;
+		}
+
 		LivingEntity target = this.mob.getTarget();
 		if (target == null || !target.isAlive()) {
 			return false;

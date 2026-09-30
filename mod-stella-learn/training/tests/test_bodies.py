@@ -11,6 +11,19 @@ def test_bodies_match_the_java_vectors():
         assert (body.max_health, body.armor, body.toughness, body.protection) == (health, armor, toughness, protection)
 
 
+SPEEDS = [(1, 1.0185, 0.8284), (42, 1.2405, 0.8719), (1000000, 0.665, 1.2828), (777, 0.867, 1.1519)]
+
+
+def test_speeds_match_the_java_vectors_and_stay_in_range():
+    from stella_train.bodies import BodyRange
+
+    wide = BodyRange(speed_min_permille=600, speed_max_permille=1400)
+    for seed, archer, bot in SPEEDS:
+        body = body_for_seed(seed, wide)
+        assert (round(body.archer_speed, 4), round(body.bot_speed, 4)) == (archer, bot)
+    assert body_for_seed(5).archer_speed == 1.0 and body_for_seed(5).bot_speed == 1.0
+
+
 def test_ranges_and_special_share():
     specials = 0
     for seed in range(2000):

@@ -10,10 +10,10 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 /** The Java frame codec against the fixed bytes that `training/tests/test_wire.py` checks on the Python side. */
 public class GymWireGameTest {
-	static final String HELLO = "2b0000000103007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+	static final String HELLO = "2b0000000104007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 	static final String STEP = "8300000002070000000200000000000000010000003f0000803e000000000000000000000000000000000000000000000000000000000000000000000000000000000000803f00000040050000000e000080bf000000be0000164400009643000020420000404100005e420000003f0000803e0000003e0000184100006040000040c00000803e";
 	static final String ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040";
-	static final String RESET = "2d00000004ffffffff2a000000060000000200000058020000140000001a00000004000000000000000000000000000000";
+	static final String RESET = "3500000004ffffffff2a000000060000000200000058020000140000001a000000040000000000000000000000000000005802000078050000";
 	static final String BYE = "0100000005";
 
 	private static String hex(final byte[] bytes) {
@@ -58,7 +58,7 @@ public class GymWireGameTest {
 
 	@GameTest
 	public void resetAndByeMatchTheFixedBytes(final GameTestHelper helper) {
-		String reset = hex(Bridge.resetFrame(Bridge.ALL_ARENAS, 42, 6, 2, 600, new Body.Range(20, 26, 4, 0, 0, 0)));
+		String reset = hex(Bridge.resetFrame(Bridge.ALL_ARENAS, 42, 6, 2, 600, new Body.Range(20, 26, 4, 0, 0, 0, 600, 1400)));
 		helper.assertTrue(reset.equals(RESET), "reset encodes to " + reset);
 		String bye = hex(Bridge.byeFrame());
 		helper.assertTrue(bye.equals(BYE), "bye encodes to " + bye);

@@ -81,3 +81,5 @@ armor_max = 20
 toughness_max = 12
 protection_max = 4
 special_permille = 100
+speed_min_permille = 600     # archer and bot walking speed, each drawn per episode, in thousandths of base
+speed_max_permille = 1400

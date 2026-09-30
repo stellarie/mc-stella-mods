@@ -282,6 +282,7 @@ public final class GymEpisode {
 		body = Body.draw(newSeed, bodyRange);
 		BotLoadout.equip(bot, skill.gear(), body.protection());
 		body.apply(bot.player());
+		Body.setSpeed(mob, body.archerSpeed());
 		if (!bot.hittable()) {
 			GymLog.info(GymLog.HEALTH, "FAIL", "arena=" + arena.index() + " seed=" + newSeed + " reason=notHittable " + bot.who());
 		}

@@ -1,8 +1,11 @@
 package com.stella.learn.gym;
 
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 /**
@@ -10,21 +13,27 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
  * to IV on its armor, and in one episode of ten Resistance or absorption. The numbers come from the seed alone, through
  * SplitMix64, so `training/stella_train/bodies.py` computes the same ones and the eval reports can group by toughness.
  */
-public record Body(int maxHealth, int armor, int toughness, int protection, Special special) {
+public record Body(int maxHealth, int armor, int toughness, int protection, Special special, double archerSpeed, double botSpeed) {
 	public enum Special {
 		NONE,
 		RESISTANCE,
 		ABSORPTION
 	}
 
+	private static final Identifier SPEED_ID = Identifier.fromNamespaceAndPath("mod-stella-learn", "gym_speed");
 	private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
 	private static final int EFFECT_TICKS = 1_000_000;
 	private static final int RESISTANCE_LEVEL = 1;
 	private static final int ABSORPTION_LEVEL = 1;
 
 	/** The bounds one stage draws from. `specialPermille` is the share of episodes with Resistance or absorption, in thousandths. */
-	public record Range(int healthMin, int healthMax, int armorMax, int toughnessMax, int protectionMax, int specialPermille) {
+	public record Range(int healthMin, int healthMax, int armorMax, int toughnessMax, int protectionMax, int specialPermille, int speedMinPermille, int speedMaxPermille) {
 		public static final Range FULL = new Range(20, 60, 20, 12, 4, 100);
+
+		/** No speed bounds: both movers keep their base speed. */
+		public Range(final int healthMin, final int healthMax, final int armorMax, final int toughnessMax, final int protectionMax, final int specialPermille) {
+			this(healthMin, healthMax, armorMax, toughnessMax, protectionMax, specialPermille, 1000, 1000);
+		}
 
 		/** An all-zero range on the wire means the trainer named none, and the full range applies. */
 		public static Range orFull(final Range asked) {
@@ -45,7 +54,14 @@ public record Body(int maxHealth, int armor, int toughness, int protection, Spec
 		double roll = next(state);
 		double which = next(state);
 		Special special = roll < range.specialPermille() / 1000.0 ? (which < 0.5 ? Special.RESISTANCE : Special.ABSORPTION) : Special.NONE;
-		return new Body(maxHealth, armor, toughness, protection, special);
+		// Two draws always, so the ones above do not depend on the speed bounds.
+		double archerRoll = next(state);
+		double botRoll = next(state);
+		int low = range.speedMinPermille() > 0 ? range.speedMinPermille() : 1000;
+		int high = range.speedMaxPermille() >= low ? range.speedMaxPermille() : low;
+		double archerSpeed = (low + archerRoll * (high - low)) / 1000.0;
+		double botSpeed = (low + botRoll * (high - low)) / 1000.0;
+		return new Body(maxHealth, armor, toughness, protection, special, archerSpeed, botSpeed);
 	}
 
 	private static double next(final long[] state) {
@@ -64,6 +80,7 @@ public record Body(int maxHealth, int armor, int toughness, int protection, Spec
 		player.setHealth(maxHealth);
 		var armorAttribute = player.getAttribute(Attributes.ARMOR);
 		var toughnessAttribute = player.getAttribute(Attributes.ARMOR_TOUGHNESS);
+		setSpeed(player, botSpeed);
 		armorAttribute.setBaseValue(0.0);
 		toughnessAttribute.setBaseValue(0.0);
 		armorAttribute.setBaseValue(Math.max(0.0, armor - player.getAttributeValue(Attributes.ARMOR)));
@@ -76,7 +93,16 @@ public record Body(int maxHealth, int armor, int toughness, int protection, Spec
 		}
 	}
 
+	/** Scales a mover's walking speed for this episode, and drops the last episode's scale first. */
+	public static void setSpeed(final LivingEntity mover, final double factor) {
+		var attribute = mover.getAttribute(Attributes.MOVEMENT_SPEED);
+		attribute.removeModifier(SPEED_ID);
+		if (factor != 1.0) {
+			attribute.addTransientModifier(new AttributeModifier(SPEED_ID, factor - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+		}
+	}
+
 	public String detail() {
-		return "maxHealth=" + maxHealth + " armor=" + armor + " toughness=" + toughness + " protection=" + protection + " special=" + special;
+		return "maxHealth=" + maxHealth + " armor=" + armor + " toughness=" + toughness + " protection=" + protection + " special=" + special + " archerSpeed=" + String.format(java.util.Locale.ROOT, "%.3f", archerSpeed) + " botSpeed=" + String.format(java.util.Locale.ROOT, "%.3f", botSpeed);
 	}
 }

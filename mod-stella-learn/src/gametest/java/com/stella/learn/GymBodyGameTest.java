@@ -9,6 +9,9 @@ public class GymBodyGameTest {
 	/** seed, max health, armor, toughness, protection; the same rows sit in `training/tests/test_bodies.py`. */
 	private static final long[][] VECTORS = {{1, 50, 20, 5, 2}, {42, 26, 5, 4, 0}, {1_000_000, 53, 13, 7, 4}, {4_294_967_295L, 35, 19, 0, 3}, {777, 46, 6, 6, 0}};
 
+	/** seed, archer speed and bot speed in ten-thousandths, for the range 600 to 1400 thousandths; the same rows sit in `test_bodies.py`. */
+	private static final long[][] SPEEDS = {{1L, 10185, 8284}, {42L, 12405, 8719}, {1000000L, 6650, 12828}, {777L, 8670, 11519}};
+
 	@GameTest
 	public void bodiesMatchThePythonVectors(final GameTestHelper helper) {
 		for (long[] row : VECTORS) {
@@ -17,6 +20,13 @@ public class GymBodyGameTest {
 				"seed " + row[0] + " gives " + body.detail());
 		}
 
+		Body.Range wide = new Body.Range(20, 60, 20, 12, 4, 100, 600, 1400);
+		for (long[] row : SPEEDS) {
+			Body body = Body.draw(row[0], wide);
+			helper.assertTrue(Math.round(body.archerSpeed() * 10000) == row[1] && Math.round(body.botSpeed() * 10000) == row[2], "seed " + row[0] + " gives " + body.detail());
+		}
+
+		helper.assertTrue(Body.draw(5).archerSpeed() == 1.0 && Body.draw(5).botSpeed() == 1.0, "a range without speed bounds changes the speed");
 		Body.Range frail = new Body.Range(20, 26, 4, 0, 0, 0);
 		for (long seed = 0; seed < 500; seed++) {
 			Body body = Body.draw(seed, frail);

@@ -32,7 +32,7 @@ class Task:
     seed: int
     stage: int
     ticks: int = 0
-    body: tuple = (0, 0, 0, 0, 0, 0)
+    body: tuple = (0, 0, 0, 0, 0, 0, 1000, 1000)
 
 
 @dataclass

@@ -50,9 +50,14 @@ public final class ModelLog {
 		LearnLog.sampled(TEST, "CANCEL", LearnLog.who(mob) + " tick=" + mob.tickCount + " draw_ticks=" + drawTicks + " reason=idle");
 	}
 
-	/** Debug level: an archer type that was not made model driven, and why. */
+	/** Debug level: an archer type that was not made model driven, and why. A seated archer is rare and worth an info line. */
 	static void skip(final Mob mob, final String reason) {
-		LearnLog.debug(TEST, "SKIP", LearnLog.who(mob) + " tick=" + mob.tickCount + " reason=" + reason);
+		String detail = LearnLog.who(mob) + " tick=" + mob.tickCount + " reason=" + reason;
+		if ("passenger".equals(reason)) {
+			LearnLog.info(TEST, "SKIP", detail);
+		} else {
+			LearnLog.debug(TEST, "SKIP", detail);
+		}
 	}
 
 	static void perf(final int archers, final int ticks, final double meanMs, final double p95Ms, final double maxMs, final double[] phaseMeanMs) {

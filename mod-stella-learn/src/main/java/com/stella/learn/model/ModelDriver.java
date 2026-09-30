@@ -122,6 +122,11 @@ public final class ModelDriver {
 			return "switch";
 		}
 
+		// A seated archer cannot walk or turn as the model asks, so its own goals stay.
+		if (mob.isPassenger()) {
+			return "passenger";
+		}
+
 		if (FELL_BACK.contains(mob.getUUID())) {
 			return "fellBack";
 		}

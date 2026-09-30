@@ -66,6 +66,8 @@ class Trainer:
         self.machine = {"cpu_model": cpu_model(), "logical_cores": os.cpu_count(), "ram_gb": ram_gb(), "os": platform.platform(),
                         "python": platform.python_version(), "torch": torch.__version__}
         self.servers = int(self.run["servers"])
+        self.pause_after_stage_a = False
+        self.pausing = False
         self.arenas = int(self.run["arenas"])
 
     # -- checkpoints ------------------------------------------------------------------------------------------------
@@ -202,6 +204,11 @@ class Trainer:
             if (self.run_dir / "STOP").exists():
                 self.log.info("train STOP reason=stopFile decisions=%d", self.decisions)
                 break
+            if self.pausing:
+                self.save_checkpoint("ckpt-stageA-final.pt")
+                self.log.info("trainStage PAUSE reason=oniichan decisions=%d", self.decisions)
+                self.log.event("trainStage PAUSE", reason="oniichan", decisions=self.decisions)
+                break
             if guard is not None:
                 guard.check(self.decisions)
             self.step(fleet, rollout)
@@ -270,6 +277,22 @@ class Trainer:
             bow_action_share=bow, jump_share=jump, movement=move, win_rate_by_style=by_style,
             outcomes={roster.brain_name(b) if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
 
+    @staticmethod
+    def speed_rows(results) -> dict:
+        """Win rate and engaged share per archer-speed and bot-speed bucket, as name -> {n, win_rate, engaged_share}."""
+        from . import bodies
+
+        rows: dict = {}
+        for result in results:
+            key = bodies.speed_key(bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)))
+            row = rows.setdefault(key, {"n": 0, "win": 0, "ticks": 0.0, "engaged": 0.0})
+            row["n"] += 1
+            row["win"] += result.outcome == "win"
+            row["ticks"] += result.ticks
+            row["engaged"] += result.engaged
+        return {name: {"n": row["n"], "win_rate": row["win"] / row["n"], "engaged_share": row["engaged"] / row["ticks"] if row["ticks"] else 0.0}
+                for name, row in sorted(rows.items())}
+
     def evaluate(self, fleet: Fleet) -> None:
         began = time.monotonic()
         tasks = self.curriculum.eval_tasks()
@@ -298,14 +321,17 @@ class Trainer:
         shots_ep = sum(r.shots for r in stats.results) / max(len(stats.results), 1)
         chase_ep = sum(r.chase for r in stats.results) / max(len(stats.results), 1)
         move = movement.summarize([r.move for r in stats.results if r.move])
+        speed = self.speed_rows(stats.results)
+        by_speed = " ".join(f"{name}:{row['win_rate']:.2f}/{row['engaged_share']:.2f}/{row['n']}" for name, row in speed.items())
         by_toughness = " ".join(f"{name}:{row['win'] / row['n']:.2f}/{row['n']}" for name, row in toughness.items() if row["n"])
         stage = roster.STAGE_NAMES[self.curriculum.stage]
         styles = " ".join(f"{name}:{row['win'] / row['n']:.2f}" for name, row in rows.items())
-        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f hp_band=%s styles=[%s] toughness=[%s] engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f %s", self.decisions, stage,
-                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, self.curriculum.band_text(), styles, by_toughness, engaged_share, shots_ep, chase_ep, movement.text(move))
+        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f hp_band=%s styles=[%s] toughness=[%s] speeds=[%s] engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f %s", self.decisions, stage,
+                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, self.curriculum.band_text(), styles, by_toughness, by_speed, engaged_share, shots_ep, chase_ep, movement.text(move))
         self.log.event("trainEval RESULT", decisions=self.decisions, stage=stage, suite_stage=roster.STAGE_NAMES[self.curriculum.eval_stage()],
-                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, hp_band=self.curriculum.band_text(), per_toughness=toughness, engaged_share=engaged_share, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep, movement=move, per_style=rows, seconds=time.monotonic() - began)
-        self.curriculum.after_eval(self.decisions, rate)
+                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, hp_band=self.curriculum.band_text(), per_toughness=toughness, per_speed=speed, engaged_share=engaged_share, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep, movement=move, per_style=rows, seconds=time.monotonic() - began)
+        if self.curriculum.after_eval(self.decisions, rate) and self.pause_after_stage_a and self.curriculum.stage == roster.STAGE_B:
+            self.pausing = True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -318,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--note", default=None, help="a line for the log at the start, written as trainStage NOTE")
     parser.add_argument("--eval-reset", action="store_true", help="after --resume: start a new eval series and band clock at band 0")
     parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
+    parser.add_argument("--pause-after-stage-a", action="store_true", help="stop cleanly when Stage A promotes, before any Stage B episode")
     parser.add_argument("--max-seconds", type=float, default=None, help="stop after this much wall time, for a smoke run")
     parser.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE", help="override one config value")
     args = parser.parse_args(argv)
@@ -346,6 +373,7 @@ def main(argv: list[str] | None = None) -> int:
             trainer.curriculum.reset_evals(trainer.decisions, 0)
         if args.restart_stage_a:
             trainer.restart_stage_a()
+    trainer.pause_after_stage_a = args.pause_after_stage_a
     spec = prepare_spec(log)
     run = config["run"]
     code = 0

@@ -5,10 +5,10 @@ import pytest
 
 from stella_train import wire
 
-HELLO = "2b0000000103007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+HELLO = "2b0000000104007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 STEP = "8300000002070000000200000000000000010000003f0000803e000000000000000000000000000000000000000000000000000000000000000000000000000000000000803f00000040050000000e000080bf000000be0000164400009643000020420000404100005e420000003f0000803e0000003e0000184100006040000040c00000803e"
 ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040"
-RESET = "2d00000004ffffffff2a000000060000000200000058020000140000001a00000004000000000000000000000000000000"
+RESET = "3500000004ffffffff2a000000060000000200000058020000140000001a000000040000000000000000000000000000005802000078050000"
 BYE = "0100000005"
 
 
@@ -18,7 +18,7 @@ def test_hello_encodes_to_the_fixed_bytes():
 
 def test_hello_decodes_from_the_fixed_bytes():
     hello = wire.decode_hello(bytes.fromhex(HELLO)[5:])
-    assert (hello.version, hello.obs_size, hello.act_size, hello.arenas) == (3, 116, 6, 32)
+    assert (hello.version, hello.obs_size, hello.act_size, hello.arenas) == (4, 116, 6, 32)
     assert hello.contract_hash == bytes(range(32))
 
 
@@ -51,8 +51,8 @@ def test_act_decodes_from_the_fixed_bytes():
 
 
 def test_reset_and_bye_match_the_fixed_bytes():
-    assert wire.encode_reset(wire.ALL_ARENAS, 42, 6, 2, 600, (20, 26, 4, 0, 0, 0)).hex() == RESET
-    assert wire.decode_reset(bytes.fromhex(RESET)[5:]) == (wire.ALL_ARENAS, 42, 6, 2, 600, 20, 26, 4, 0, 0, 0)
+    assert wire.encode_reset(wire.ALL_ARENAS, 42, 6, 2, 600, (20, 26, 4, 0, 0, 0, 600, 1400)).hex() == RESET
+    assert wire.decode_reset(bytes.fromhex(RESET)[5:]) == (wire.ALL_ARENAS, 42, 6, 2, 600, 20, 26, 4, 0, 0, 0, 600, 1400)
     assert wire.encode_bye().hex() == BYE
 
 

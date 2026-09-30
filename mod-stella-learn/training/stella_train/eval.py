@@ -69,11 +69,14 @@ def summarize(results, tasks_total: int) -> dict:
     per_brain: dict[str, Counter] = {name: Counter() for name in roster.BRAINS}
     per_terrain: dict[str, Counter] = {name: Counter() for name in TERRAIN_CLASSES}
     per_toughness: dict[str, Counter] = {name: Counter() for name in bodies.TOUGHNESS_BUCKETS}
+    per_speed: dict[str, Counter] = {}
     overall = Counter()
     for result in results:
         name = roster.brain_name(result.brain)
         bucket = bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)).toughness_bucket]
-        for counter in (per_brain.setdefault(name, Counter()), overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
+        speed = bodies.speed_key(bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)))
+        for counter in (per_brain.setdefault(name, Counter()), overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket],
+                        per_speed.setdefault(speed, Counter())):
             counter[result.outcome] += 1
             counter["n"] += 1
             counter["ticks"] += result.ticks
@@ -87,6 +90,7 @@ def summarize(results, tasks_total: int) -> dict:
         "per_brain": {name: _row(counter) for name, counter in per_brain.items() if counter["n"]},
         "per_terrain": {name: _row(counter) for name, counter in per_terrain.items() if counter["n"]},
         "per_toughness": {name: _row(counter) for name, counter in per_toughness.items() if counter["n"]},
+        "per_speed": {name: _row(counter) for name, counter in sorted(per_speed.items()) if counter["n"]},
     }
 
 
@@ -164,6 +168,15 @@ def compare(model: dict, baseline: dict) -> dict:
     }
 
 
+def render_speeds(model: dict) -> list[str]:
+    rows = model.get("per_speed", {})
+    if len(rows) < 2:
+        return []
+    lines = ["", f"{'speed (archer/bot)':<28}{'n':>6}{'win%':>8}{'eng%':>7}"]
+    lines += [f"{name:<28}{row['n']:>6}{row['win_rate'] * 100:>7.1f}%{row['engaged_share'] * 100:>6.0f}%" for name, row in rows.items()]
+    return lines
+
+
 def render(report: dict) -> str:
     model = report["model"]
     baseline = report.get("baseline")
@@ -197,6 +210,7 @@ def render(report: dict) -> str:
     lines.append("toughness rows:      " + "   ".join(
         f"{name} {row['win_rate'] * 100:.0f}% (n {row['n']})" + (f" (base {baseline['per_toughness'][name]['win_rate'] * 100:.0f}%)" if baseline and name in baseline.get("per_toughness", {}) else "")
         for name, row in model["per_toughness"].items()))
+    lines += render_speeds(model)
     if report["suite"] == "stage-a":
         lines.append(f"stage A bar: {STAGE_A_BAR * 100:.0f}% wins -> {'PASS' if report['stage_a_passes'] else 'FAIL'}")
     if baseline:

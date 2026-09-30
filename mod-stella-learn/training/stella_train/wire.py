@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 HELLO = 1
 STEP = 2
 ACT = 3
@@ -95,9 +95,9 @@ def encode_act(step_id: int, agents, actions) -> bytes:
     return _frame(ACT, struct.pack("<II", step_id, len(agents)) + rows.tobytes())
 
 
-def encode_reset(arena: int, seed: int, brain: int = -1, stage: int = -1, ticks: int = 0, body: tuple = (0, 0, 0, 0, 0, 0)) -> bytes:
+def encode_reset(arena: int, seed: int, brain: int = -1, stage: int = -1, ticks: int = 0, body: tuple = (0,) * 8) -> bytes:
     """Starts a new episode in `arena`. A negative brain or stage leaves the choice to the server."""
-    return _frame(RESET, struct.pack("<IIiii6i", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF, brain, stage, ticks, *body))
+    return _frame(RESET, struct.pack("<IIiii8i", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF, brain, stage, ticks, *body))
 
 
 def encode_bye() -> bytes:
@@ -135,9 +135,9 @@ def decode_act(body: bytes, act_size: int) -> tuple[int, np.ndarray, np.ndarray]
 
 
 def decode_reset(body: bytes) -> tuple:
-    if len(body) != 44:
-        raise WireError(f"reset body holds {len(body)} bytes, expected 44")
-    return struct.unpack("<IIiii6i", body)
+    if len(body) != 52:
+        raise WireError(f"reset body holds {len(body)} bytes, expected 52")
+    return struct.unpack("<IIiii8i", body)
 
 
 def recv_exact(sock: socket.socket, count: int) -> bytes:

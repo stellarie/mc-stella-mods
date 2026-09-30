@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * whose first byte is the frame type. `training/stella_train/wire.py` mirrors the codec below.
  */
 public final class Bridge implements AutoCloseable {
-	public static final int PROTOCOL_VERSION = 3;
+	public static final int PROTOCOL_VERSION = 4;
 	public static final int HELLO = 1;
 	public static final int STEP = 2;
 	public static final int ACT = 3;
@@ -203,7 +203,7 @@ public final class Bridge implements AutoCloseable {
 	}
 
 	public static byte[] resetFrame(final int arena, final int seed, final int brain, final int stage, final int ticks, final Body.Range body) {
-		ByteBuffer buffer = frame(RESET, 44);
+		ByteBuffer buffer = frame(RESET, 52);
 		buffer.putInt(arena);
 		buffer.putInt(seed);
 		buffer.putInt(brain);
@@ -215,6 +215,8 @@ public final class Bridge implements AutoCloseable {
 		buffer.putInt(body.toughnessMax());
 		buffer.putInt(body.protectionMax());
 		buffer.putInt(body.specialPermille());
+		buffer.putInt(body.speedMinPermille());
+		buffer.putInt(body.speedMaxPermille());
 		return buffer.array();
 	}
 
@@ -242,11 +244,11 @@ public final class Bridge implements AutoCloseable {
 	}
 
 	public static Reset decodeReset(final ByteBuffer body) {
-		if (body.remaining() != 44) {
+		if (body.remaining() != 52) {
 			throw new IllegalArgumentException("reset frame holds " + body.remaining() + " bytes");
 		}
 
 		return new Reset(body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt(),
-			new Body.Range(body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt()));
+			new Body.Range(body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt()));
 	}
 }

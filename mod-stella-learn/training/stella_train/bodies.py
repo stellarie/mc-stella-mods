@@ -18,9 +18,12 @@ class BodyRange:
     toughness_max: int = 12
     protection_max: int = 4
     special_permille: int = 100
+    speed_min_permille: int = 1000
+    speed_max_permille: int = 1000
 
     def wire(self) -> tuple:
-        return (self.hp_min, self.hp_max, self.armor_max, self.toughness_max, self.protection_max, self.special_permille)
+        return (self.hp_min, self.hp_max, self.armor_max, self.toughness_max, self.protection_max, self.special_permille,
+                self.speed_min_permille, self.speed_max_permille)
 
 
 FULL = BodyRange()
@@ -74,6 +77,8 @@ class Body:
     toughness: int
     protection: int
     special: str
+    archer_speed: float = 1.0
+    bot_speed: float = 1.0
 
     @property
     def toughness_bucket(self) -> int:
@@ -101,4 +106,20 @@ def body_for_seed(seed: int, ranges: BodyRange = FULL) -> Body:
     roll = next(draw)
     which = next(draw)
     special = ("resistance" if which < 0.5 else "absorption") if roll < ranges.special_permille / 1000.0 else "none"
-    return Body(max_health, armor, toughness, protection, special)
+    archer_roll = next(draw)
+    bot_roll = next(draw)
+    low = ranges.speed_min_permille if ranges.speed_min_permille > 0 else 1000
+    high = ranges.speed_max_permille if ranges.speed_max_permille >= low else low
+    return Body(max_health, armor, toughness, protection, special, (low + archer_roll * (high - low)) / 1000.0, (low + bot_roll * (high - low)) / 1000.0)
+
+
+SPEED_NAMES = ("slow", "normal", "fast")
+
+
+def speed_bucket(factor: float) -> int:
+    """Thirds of the 0.6 to 1.4 range: slow below 0.867, fast from 1.133."""
+    return 0 if factor < 0.8667 else 2 if factor >= 1.1333 else 1
+
+
+def speed_key(body: Body) -> str:
+    return f"archer-{SPEED_NAMES[speed_bucket(body.archer_speed)]}/bot-{SPEED_NAMES[speed_bucket(body.bot_speed)]}"

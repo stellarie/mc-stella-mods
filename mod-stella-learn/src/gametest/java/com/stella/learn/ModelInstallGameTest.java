@@ -98,6 +98,34 @@ public class ModelInstallGameTest {
 		}));
 	}
 
+	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	public void ridingArcherKeepsItsGoals(final GameTestHelper helper) {
+		ModelTests.acquire(helper);
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 34.5);
+		Mob control = ModelTests.archer(helper, 8.5, 24.5);
+		Mob mountA = ModelTests.skeleton(helper, EntityTypes.PIG, 16.5, 24.5, false);
+		Mob mountB = ModelTests.skeleton(helper, EntityTypes.PIG, 32.5, 24.5, false);
+		// Seated in the tick it loads, so the driver sees a passenger when it decides.
+		Mob early = ModelTests.archer(helper, 16.5, 24.5);
+		helper.assertTrue(early.startRiding(mountA, true, false), "the first archer did not mount");
+		Mob later = ModelTests.archer(helper, 32.5, 20.5);
+		LearnArena.keepTargeting(helper, later, player);
+		LearnArena.whenReady(helper, List.of(player, control, mountA, mountB, early, later), () -> LearnArena.pollUntil(helper, () -> ModelTests.running(later), 80, () -> {
+			helper.assertTrue(ModelTests.tagged(control), "the control archer was not made model driven, so the test proves nothing: " + ModelTests.goalNames(control));
+			LearnArena.pollUntil(helper, () -> !ModelTests.lines(early, "SKIP", "reason=passenger").isEmpty(), 40, () -> {
+				helper.assertTrue(keepsEverything(early, RetreatGoal.class, SkeletonVolleyGoal.class), "the archer seated at load lost its goals: " + ModelTests.goalNames(early));
+				// The second archer was driven; now it mounts and must get its goals back.
+				helper.assertTrue(later.startRiding(mountB, true, false), "the second archer did not mount");
+				LearnArena.pollUntil(helper, () -> !ModelTests.lines(later, "FALLBACK", "reason=passenger").isEmpty(), 40, () -> {
+					helper.assertTrue(keepsEverything(later, RetreatGoal.class, SkeletonVolleyGoal.class), "the archer that mounted later did not get its goals back: " + ModelTests.goalNames(later));
+					StellaLearn.LOGGER.info("[BEHAVIOR] test=ridingArcherKeepsItsGoals RESULT early={} later={}", ModelTests.goalNames(early), ModelTests.goalNames(later));
+					ModelTests.pass(helper);
+				}, () -> "the archer that mounted later never fell back: " + ModelTests.goalNames(later));
+			}, () -> "no SKIP reason=passenger line for the archer seated at load");
+		}, () -> "the second archer never started its model goal"));
+	}
+
 	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV_SWITCH)
 	public void switchOffKeepsCurrentGoals(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
