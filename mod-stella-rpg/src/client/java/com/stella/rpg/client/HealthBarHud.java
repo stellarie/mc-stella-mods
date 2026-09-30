@@ -29,6 +29,11 @@ public final class HealthBarHud {
 		// One fixed row keeps the armor strip above the bar at any max health.
 		HudStatusBarHeightRegistry.addLeft(VanillaHudElements.HEALTH_BAR, player -> ROW_HEIGHT);
 		HudElementRegistry.replaceElement(VanillaHudElements.HEALTH_BAR, vanilla -> (graphics, tracker) -> draw(graphics));
+		// Armor moves into the Def line and breath is the blue bar, so neither vanilla row draws or takes height.
+		HudElementRegistry.replaceElement(VanillaHudElements.ARMOR_BAR, vanilla -> (graphics, tracker) -> { });
+		HudElementRegistry.replaceElement(VanillaHudElements.AIR_BAR, vanilla -> (graphics, tracker) -> { });
+		HudStatusBarHeightRegistry.addLeft(VanillaHudElements.ARMOR_BAR, player -> 0);
+		HudStatusBarHeightRegistry.addRight(VanillaHudElements.AIR_BAR, player -> 0);
 	}
 
 	private static void draw(final GuiGraphicsExtractor graphics) {
@@ -50,8 +55,22 @@ public final class HealthBarHud {
 			graphics.fill(x, y, x + absorption, y + HudLayout.ABSORPTION_HEIGHT, ABSORPTION);
 		}
 
+		drawAir(graphics, player, x, y);
+
 		Font font = minecraft.font;
 		String text = HudLayout.healthText(health, max);
 		graphics.text(font, text, x + (HudLayout.BAR_WIDTH - font.width(text)) / 2, y + 1, TEXT, true);
+	}
+
+	private static void drawAir(final GuiGraphicsExtractor graphics, final Player player, final int x, final int healthTop) {
+		int air = player.getAirSupply();
+		int maxAir = player.getMaxAirSupply();
+		if (!HudLayout.airVisible(air, maxAir)) {
+			return;
+		}
+		int top = HudLayout.airBarTop(healthTop);
+		graphics.fill(x, top, x + HudLayout.BAR_WIDTH, top + HudLayout.AIR_BAR_HEIGHT, BACKGROUND);
+		graphics.fill(x, top, x + HudLayout.airFillWidth(air, maxAir, HudLayout.BAR_WIDTH), top + HudLayout.AIR_BAR_HEIGHT, HudLayout.FILL_AIR);
+		graphics.outline(x, top, HudLayout.BAR_WIDTH, HudLayout.AIR_BAR_HEIGHT, BORDER);
 	}
 }

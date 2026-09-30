@@ -52,6 +52,24 @@ public final class HudLayoutGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void airBar(final GameTestHelper helper) {
+		int healthTop = 200 - 39;
+		int top = HudLayout.airBarTop(healthTop);
+		helper.assertTrue(top == healthTop + HudLayout.BAR_HEIGHT + HudLayout.AIR_GAP, "air bar top " + top);
+		helper.assertTrue(top >= healthTop + HudLayout.BAR_HEIGHT, "the air bar overlaps the health bar");
+		helper.assertTrue(top + HudLayout.AIR_BAR_HEIGHT <= 200 - HudLayout.HOTBAR_HEIGHT, "the air bar reaches the hotbar");
+		helper.assertTrue(!HudLayout.airVisible(300, 300) && !HudLayout.airVisible(310, 300), "a full air bar is visible");
+		helper.assertTrue(HudLayout.airVisible(299, 300) && HudLayout.airVisible(0, 300) && HudLayout.airVisible(-20, 300), "a used air bar is hidden");
+		expect(helper, "airFill(150,300)", HudLayout.airFillWidth(150, 300, WIDTH), 40);
+		expect(helper, "airFill(0,300)", HudLayout.airFillWidth(0, 300, WIDTH), 0);
+		expect(helper, "airFill(-20,300)", HudLayout.airFillWidth(-20, 300, WIDTH), 0);
+		expect(helper, "airFill(299,300)", HudLayout.airFillWidth(299, 300, WIDTH), 80);
+		helper.assertTrue(HudLayout.FILL_AIR == 0xFF3A7BD5, "air color " + Integer.toHexString(HudLayout.FILL_AIR));
+		RpgTestSupport.result("airBar", "top=" + top + " height=" + HudLayout.AIR_BAR_HEIGHT);
+		helper.succeed();
+	}
+
 	private static void expect(final GameTestHelper helper, final String name, final int actual, final int expected) {
 		helper.assertTrue(actual == expected, name + "=" + actual + " expected " + expected);
 	}
