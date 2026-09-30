@@ -13,7 +13,19 @@
 		"RpgPlayerExperienceMixin",
 		"RpgSleepHealMixin",
 		"RpgDebuffResistanceMixin",
-		"RpgPoisonTypeMixin"
+		"RpgPoisonTypeMixin",
+		"RpgAttributeCapMixin",
+		"RpgScaleDamageMixin",
+		"RpgScalePlayerDamageMixin",
+		"RpgScaleHealMixin",
+		"RpgEnvironmentDamageMixin",
+		"RpgArmorStandDamageMixin",
+		"RpgPoisonAmountMixin",
+		"RpgWitherAmountMixin",
+		"RpgRegenerationAmountMixin",
+		"RpgInstantEffectMixin",
+		"RpgAbsorptionMixin",
+		"RpgAbsorptionGrantMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

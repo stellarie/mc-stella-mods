@@ -1,5 +1,7 @@
 package com.stella.rpg;
 
+import com.stella.rpg.api.HealthScaleShare;
+import com.stella.rpg.api.OutgoingDamageShare;
 import com.stella.rpg.net.RpgNet;
 import com.stella.rpg.roll.WeaponRolls;
 import com.stella.rpg.tomb.TombstoneBlock;
@@ -26,11 +28,17 @@ public final class StellaRpg implements ModInitializer {
 		RpgNet.register();
 		ArmorSets.register();
 		WeaponRolls.register();
-		com.stella.rpg.api.OutgoingDamageShare.register();
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> RpgConfigStore.reload(RpgConfigStore.defaultPath()));
-		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
-			(server, resources, success) -> RpgConfigStore.reload(RpgConfigStore.defaultPath()));
+		RpgScale.register();
+		OutgoingDamageShare.register();
+		HealthScaleShare.publish();
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> reloadConfig());
+		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> reloadConfig());
 		LOGGER.info("{} initialized", MOD_ID);
+	}
+
+	private static void reloadConfig() {
+		RpgConfigStore.reload(RpgConfigStore.defaultPath());
+		HealthScaleShare.publish();
 	}
 
 	public static Identifier id(final String path) {

@@ -9,10 +9,12 @@ import net.minecraft.resources.Identifier;
 
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
-	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls
+	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
+	public static final double DEFAULT_HEALTH_SCALE = 15.0;
+	public static final String HEALTH_SCALE_KEY = "health_scale";
 	public static final String DICE_KEY = "dice";
 	public static final String MOB_STATS_KEY = "mob_stats";
 	public static final String MOB_AMPLIFIER_KEY = "mob_amplifier";
@@ -76,7 +78,7 @@ public record RpgConfig(
 			curves.put(effect, effect.defaultCurve());
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
-			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS);
+			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */

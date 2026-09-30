@@ -296,7 +296,7 @@ public final class RpgMobStatsGameTest {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
 		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
-		player.setHealth(200.0F);
+		player.setHealth(player.getMaxHealth());
 		return player;
 	}
 
@@ -326,8 +326,10 @@ public final class RpgMobStatsGameTest {
 		helper.getLevel().getServer().setDifficulty(difficulty, true);
 	}
 
+	/** The expected value is in vanilla units. The loss is in health units, so it is K times larger. */
 	private static void assertLoss(final GameTestHelper helper, final String name, final float loss, final float expected) {
-		RpgTestSupport.result(name, "loss=" + loss + " expected=" + expected);
-		helper.assertTrue(Math.abs(loss - expected) < TOLERANCE, name + " loss=" + loss + " expected " + expected);
+		float scaled = expected * RpgScale.kf();
+		RpgTestSupport.result(name, "loss=" + loss + " expected=" + scaled);
+		helper.assertTrue(Math.abs(loss - scaled) < TOLERANCE * RpgScale.kf(), name + " loss=" + loss + " expected " + scaled);
 	}
 }

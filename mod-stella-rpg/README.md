@@ -5,6 +5,55 @@ Every player and every mob has six stats.
 Point allocation and level retention apply to players only.
 Dice damage and stat effects apply to players and mobs.
 
+## Health scale
+
+Every damage formula and every constant in this mod stays in vanilla units.
+The health scale K (default 15) multiplies health once, at the end.
+
+- `max_health`, `attack_damage`, and `max_absorption` accept values up to 1,000,000 on the server and the client.
+  The cap is the constant `RpgScale.ATTRIBUTE_CAP`. It is not a config key, because it must match on both sides.
+- Every living entity gets the permanent `ADD_MULTIPLIED_TOTAL` modifier `mod-stella-rpg:health_scale` of `K - 1`
+  on `MAX_HEALTH` and `MAX_ABSORPTION`. A player has 300 max health at level 1. A zombie has 300 at threat 0.
+  The modifier applies after every other modifier.
+- `RpgScale.apply` adds the modifier when an entity loads, joins, or respawns. A new modifier keeps the health and
+  absorption fraction, so an old world does not leave entities at 1/15 health. A second apply changes nothing.
+- The damage that reaches health is multiplied by K after armor, Protection, and the RPG defense.
+  `LivingEntity#actuallyHurt`, `Player#actuallyHurt`, and `ArmorStand#causeDamage` carry the hook.
+- `LivingEntity#heal` multiplies its argument by K. Natural regeneration, Regeneration, and Instant Health use it.
+- The config key `health_scale` sets K. It is a number from 1 to 1000. K applies to an entity when it loads,
+  so a reload changes new entities only.
+
+### Percent effects
+
+These effects use a share of the target's max health. `M` is the max health divided by K, so the rules read in vanilla units.
+
+| Effect | Vanilla | Rule, before K |
+|---|---|---|
+| Poison, per tick | 1 | `max(1, 0.03 * M)`. It never takes health below 1. |
+| Wither, per tick | 1 | `max(1, 0.03 * M)`. It can kill. |
+| Regeneration, per tick | 1 | `max(1, 0.03 * M)` |
+| Instant Health | `4 << amp` | `max(4, 0.15 * M) * 2^amp` |
+| Instant Damage | `6 << amp` | `max(6, 0.20 * M) * 2^amp` |
+| Absorption | `4 * (1 + amp)` | `max(4, 0.10 * M) * (1 + amp)` |
+
+- A mob that `mod-stella-mobs` marks elite or boss takes one quarter of the percent part. The flat floor stays.
+  `MobsBridge.eliteOrBoss` reads `EliteState#hasEliteFlag` and `#hasBossFlag` by reflection. Without the mod it is false.
+- `LivingEntity#getMaxAbsorption` returns at least the Absorption grant while the effect is active.
+  Without it the max would clamp the percent grant.
+- Instant Damage keeps the magic damage source. It still passes through VIT and flat defense before K.
+
+### Environmental damage
+
+The tag `mod-stella-rpg:environmental` lists fall, fire, lava, magma, drowning, suffocation, starving, freezing, cactus,
+sweet berry, and void damage. A player who takes one of them multiplies the amount by `max(1, (maxHealth / K) / 20)`.
+A fall of 10 blocks at 2,137 max health removes 35% of it. Mobs are not scaled.
+
+### Display
+
+The client shows attack damage and max health item tooltip lines multiplied by K. Item data stays in vanilla units.
+The tooltip reads the default K, so a dedicated server with another `health_scale` shows a wrong tooltip.
+The HP bar text shows `ceil(health) / max`. `38650 / 38650` fits the 81 pixel bar.
+
 ## Stats
 
 The stats are STR, AGI, VIT, DEX, INT, and LUK.
@@ -68,7 +117,8 @@ Outgoing damage from a player or a mob follows these rules:
 4. Any other source is unchanged, including player spells and Thorns.
 5. LUK rolls the crit for rules 1 and 2. A crit multiplies the total (base plus roll) by `crit_multiplier`.
 
-Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) - flat)`.
+Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) - flat)`, in vanilla units.
+The health scale then multiplies the result. The dice, the crit, and the flat defense stay in vanilla units.
 `flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. `ArmorSets` registers one.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
@@ -140,6 +190,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   Each must be an integer from 1 to 1000. A bad value uses its default.
 - The keys `melee_damage` and `ranged_damage` no longer exist. A file that holds them loads and logs them as ignored.
 - `crit_multiplier` is a number of at least 1. The default is 1.5.
+- `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
 - `mob_amplifier` is a number of at least 0. The default is 0.10.
@@ -194,7 +245,7 @@ shortened. VIT 30 and STR 30 shorten poison by 23%. The reduction approaches 75%
 
 ## Damage over time
 
-The poison tick deals the damage type `mod-stella-rpg:poison` instead of `minecraft:magic`. It carries every vanilla
+The poison tick deals the damage type `mod-stella-rpg:poison` instead of `minecraft:magic`. The amount follows the percent effects rules. It carries every vanilla
 tag that `minecraft:magic` carries, so witches, armor, and knockback treat it as before.
 
 The tag `mod-stella-rpg:no_hurt_shake` lists the damage-over-time types: fire, lava, magma, powder snow, wither,
@@ -205,7 +256,10 @@ does not tilt.
 
 `com.stella.rpg.api.OutgoingDamageShare` puts a `Function<Object[], Float>` in the Fabric object share under
 `mod-stella-rpg:outgoing-damage`. It takes `{LivingEntity victim, DamageSource source, Float amount}` and returns
-`RpgCombat.scaleOutgoing`. The village training dummy reads it.
+`RpgCombat.scaleOutgoing` times K, so the result is in health units. The village training dummy reads it.
+
+`com.stella.rpg.api.HealthScaleShare` puts the `Double` K in the object share `mod-stella-rpg:health-scale`.
+It republishes the value after each config reload.
 
 ## Armor sets
 
@@ -339,6 +393,19 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7) |
 | `RpgDebuffResistanceMixin` | `LivingEntity#addEffect` and `#forceAddEffect`, argument `effect`, at `HEAD` |
 | `RpgPoisonTypeMixin` | `PoisonMobEffect#applyEffectTick`, redirects `DamageSources#magic` |
+| `RpgAttributeCapMixin` | `RangedAttribute` constructor, at `RETURN`. Both sides |
+| `RpgScaleDamageMixin` | `LivingEntity#actuallyHurt`, `dmg` after `getDamageAfterMagicAbsorb` |
+| `RpgScalePlayerDamageMixin` | `Player#actuallyHurt`, `dmg` after `getDamageAfterMagicAbsorb` |
+| `RpgArmorStandDamageMixin` | `ArmorStand#causeDamage`, argument `dmg`, at `HEAD` |
+| `RpgScaleHealMixin` | `LivingEntity#heal`, argument `heal`, at `HEAD` |
+| `RpgEnvironmentDamageMixin` | `LivingEntity#hurtServer`, argument `amount`, at `HEAD` |
+| `RpgPoisonAmountMixin` | `PoisonMobEffect#applyEffectTick`, redirects `hurtServer` |
+| `RpgWitherAmountMixin` | `WitherMobEffect#applyEffectTick`, redirects `hurtServer` |
+| `RpgRegenerationAmountMixin` | `RegenerationMobEffect#applyEffectTick`, redirects `heal` |
+| `RpgInstantEffectMixin` | `HealOrHarmMobEffect#applyEffectTick` and `#applyInstantaneousEffect`, at `HEAD` |
+| `RpgAbsorptionGrantMixin` | `AbsorptionMobEffect#onEffectStarted`, redirects `setAbsorptionAmount` |
+| `RpgAbsorptionMixin` | `LivingEntity#getMaxAbsorption`, at `RETURN` |
 | `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |
+| `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |
 | `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |
 | `NoDotShakeLocalPlayerMixin` | Client only. `LocalPlayer#hurtTo`, at `TAIL` |
