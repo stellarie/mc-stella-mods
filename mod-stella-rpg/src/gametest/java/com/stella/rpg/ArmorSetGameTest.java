@@ -213,6 +213,8 @@ public final class ArmorSetGameTest {
 	private static float netheriteHitLoss(final GameTestHelper helper, final float damage) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		wear(player, SETS[5]);
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		player.setHealth(player.getMaxHealth());
 		Zombie attacker = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 2).withNoFreeWill().spawn();
 		RpgTestSupport.bare(attacker);
 		attacker.getAttribute(Attributes.ARMOR).setBaseValue(0.0);

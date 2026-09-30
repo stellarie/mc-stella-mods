@@ -63,6 +63,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void rollShape(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> rollShapeBody(helper));
+	}
+
+	private static void rollShapeBody(final GameTestHelper helper) {
 		RandomSource random = RandomSource.create(20260930L);
 		int[] counts = new int[4];
 		Set<Stat> seen = EnumSet.noneOf(Stat.class);
@@ -90,6 +94,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void tierRanges(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> tierRangesBody(helper));
+	}
+
+	private static void tierRangesBody(final GameTestHelper helper) {
 		RandomSource random = RandomSource.create(7L);
 		for (int tier = 0; tier < WEAPONS.length; tier++) {
 			for (Item item : WEAPONS[tier]) {
@@ -113,6 +121,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void craftRolls(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> craftRollsBody(helper));
+	}
+
+	private static void craftRollsBody(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		CraftingMenu menu = menu(helper, player);
 		fill(menu, swordGrid(Items.DIAMOND, 1));
@@ -143,6 +155,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void lootRolls(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> lootRollsBody(helper));
+	}
+
+	private static void lootRollsBody(final GameTestHelper helper) {
 		LootTable table = LootTable.lootTable()
 			.withPool(LootPool.lootPool()
 				.add(LootItem.lootTableItem(Items.IRON_SWORD))
@@ -168,6 +184,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void mobDropRolls(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> mobDropRollsBody(helper));
+	}
+
+	private static void mobDropRollsBody(final GameTestHelper helper) {
 		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 2).withNoFreeWill().spawn();
 		RpgTestSupport.bare(zombie);
 		zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
@@ -205,6 +225,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void neverReroll(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> neverRerollBody(helper));
+	}
+
+	private static void neverRerollBody(final GameTestHelper helper) {
 		// Values above every tier range: a reroll cannot reproduce them.
 		Map<String, Integer> preset = Map.of("str", 9, "vit", 9, "luk", 9);
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
@@ -307,6 +331,10 @@ public final class WeaponRollGameTest {
 
 	@GameTest
 	public void armorRollsOne(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> armorRollsOneBody(helper));
+	}
+
+	private static void armorRollsOneBody(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		CraftingMenu menu = menu(helper, player);
 		ItemStack last = ItemStack.EMPTY;
@@ -370,7 +398,7 @@ public final class WeaponRollGameTest {
 	public void configOverride(final GameTestHelper helper) {
 		try {
 			RpgConfigStore.set(RpgConfigStore.parse(
-				"{\"weapon_rolls\":{\"count_weights\":[0,0,1],\"iron\":{\"min\":8,\"max\":8,\"items\":[\"minecraft:iron_sword\"]}}}",
+				"{\"weapon_rolls\":{\"affix_chance\":0,\"count_weights\":[0,0,1],\"iron\":{\"min\":8,\"max\":8,\"items\":[\"minecraft:iron_sword\"]}}}",
 				message -> { }));
 			RandomSource random = RandomSource.create(3L);
 			for (int i = 0; i < 50; i++) {

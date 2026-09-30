@@ -16,7 +16,7 @@ public final class RpgSpellsGameTest {
 		RpgTestSupport.result("multipliers", "int0=" + zeroPower + "/" + zeroCooldown + " int100=" + power + "/" + cooldown);
 		helper.assertTrue(near(zeroPower, 1.0), "power at INT 0 = " + zeroPower);
 		helper.assertTrue(near(zeroCooldown, 1.0), "cooldown at INT 0 = " + zeroCooldown);
-		helper.assertTrue(near(power, 1.5), "power at INT 100 = " + power);
+		helper.assertTrue(near(power, 1.0), "the retired power curve still applies at INT 100 = " + power);
 		helper.assertTrue(near(cooldown, 0.9), "cooldown at INT 100 = " + cooldown);
 		helper.succeed();
 	}

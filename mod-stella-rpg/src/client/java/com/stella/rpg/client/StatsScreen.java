@@ -5,6 +5,7 @@ import com.stella.rpg.AttackPreview;
 import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.RpgDice;
+import com.stella.rpg.RpgSpells;
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatBonuses;
 import com.stella.rpg.StatPoints;
@@ -12,6 +13,8 @@ import com.stella.rpg.StatSheet;
 import com.stella.rpg.net.AllocateBatchPayload;
 import com.stella.rpg.net.RespecPayload;
 import com.stella.rpg.net.StatsSyncPayload;
+import com.stella.rpg.roll.Affix;
+import com.stella.rpg.roll.Affixes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -295,7 +298,8 @@ public final class StatsScreen extends Screen {
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",
-				percent(RpgCurve.spellPowerMultiplier(this.effective(data, Stat.INT)) - 1.0)
+				AttackPreview.number(this.matk(this.effective(data, Stat.INT), RpgSpells.MIN_DIVISOR)),
+				AttackPreview.number(this.matk(this.effective(data, Stat.INT), RpgSpells.MAX_DIVISOR))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.def",
@@ -311,6 +315,11 @@ public final class StatsScreen extends Screen {
 		for (int line = 0; line < lines.size(); line++) {
 			graphics.text(this.font, lines.get(line), this.leftPos + RIGHT_X, this.topPos + RIGHT_Y + line * RIGHT_STEP, TEXT, false);
 		}
+	}
+
+	private double matk(final int intel, final int divisor) {
+		return RpgSpells.matk(intel, divisor, Affixes.matkFlat(this.minecraft.player),
+			Affixes.total(this.minecraft.player, Affix.MATK_PCT));
 	}
 
 	private double previewSpeed(final StatsSyncPayload data) {
@@ -348,7 +357,8 @@ public final class StatsScreen extends Screen {
 			case DEX -> lines.add(Component.translatable("screen.mod-stella-rpg.tip.ranged_dice", RpgDice.of(value).toString()));
 			case INT -> {
 				lines.add(Component.translatable(
-					"screen.mod-stella-rpg.tip.spell_power", percent(RpgCurve.spellPowerMultiplier(value) - 1.0)));
+					"screen.mod-stella-rpg.tip.matk", AttackPreview.number(this.matk(value, RpgSpells.MIN_DIVISOR)),
+					AttackPreview.number(this.matk(value, RpgSpells.MAX_DIVISOR))));
 				lines.add(Component.translatable(
 					"screen.mod-stella-rpg.tip.cooldown", percent(1.0 - RpgCurve.cooldownMultiplier(value))));
 			}

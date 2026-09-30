@@ -39,10 +39,6 @@ public final class RpgCurve {
 		return RpgConfigStore.current().critMultiplier();
 	}
 
-	public static double spellPowerMultiplier(final int intel) {
-		return 1.0 + value(Effect.SPELL_POWER, intel);
-	}
-
 	public static double cooldownMultiplier(final int intel) {
 		return 1.0 - value(Effect.COOLDOWN_REDUCTION, intel);
 	}

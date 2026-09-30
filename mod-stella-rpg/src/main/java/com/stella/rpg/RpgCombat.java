@@ -1,10 +1,16 @@
 package com.stella.rpg;
 
+import com.stella.rpg.roll.Affix;
+import com.stella.rpg.roll.Affixes;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -22,6 +28,10 @@ public final class RpgCombat {
 		int roll(LivingEntity attacker, RandomSource random, RpgDice.Dice dice);
 	}
 
+	private static final int STATUS_STEP = 10;
+	private static final double EFFECT_PERCENT = 0.10;
+	private static final double MOB_SPELL_PERCENT = 100.0;
+	private static final double MOB_SPELL_BASE = 3.0;
 	private static final DiceRoller FAIR_DICE = (attacker, random, dice) -> dice.roll(random);
 	private static volatile DiceRoller diceRoller = FAIR_DICE;
 	private static Player swinger;
@@ -66,20 +76,40 @@ public final class RpgCombat {
 		Entity direct = source.getDirectEntity();
 		if (isMelee(source)) {
 			double charge = attacker instanceof Player player && swinger == player ? chargeFactor(swingStrength) : 1.0;
-			scaled += roll(attacker, Stat.STR) * charge;
+			scaled += roll(attacker, Stat.STR) * charge + statusAtk(StatBonuses.effective(attacker, Stat.STR));
 		} else if (source.is(DamageTypeTags.IS_PROJECTILE) && direct instanceof Projectile projectile
 			&& projectile.getOwner() == attacker) {
-			scaled += roll(attacker, Stat.DEX);
+			scaled += roll(attacker, Stat.DEX) + statusAtk(StatBonuses.effective(attacker, Stat.DEX));
 		} else if (attacker instanceof Mob && source.is(DamageTypes.INDIRECT_MAGIC)) {
-			return (float) (scaled * RpgCurve.spellPowerMultiplier(StatBonuses.effective(attacker, Stat.INT)));
+			return (float) RpgSpells.spellDamage(attacker, MOB_SPELL_PERCENT * amount / MOB_SPELL_BASE);
 		} else {
 			return amount;
 		}
+		scaled += Affixes.total(attacker, Affix.DAMAGE_FLAT) / RpgScale.k();
+		scaled *= damageFactor(attacker);
 		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK));
 		if (roller.roll(attacker, attacker.getRandom(), chance)) {
 			scaled *= RpgCurve.critMultiplier();
 		}
 		return (float) scaled;
+	}
+
+	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
+	public static double statusAtk(final int stat) {
+		int step = stat / STATUS_STEP;
+		return (stat + step * step) / RpgScale.k();
+	}
+
+	/** Damage affixes and Strength add. Weakness subtracts. The result is never below 0. */
+	static double damageFactor(final LivingEntity attacker) {
+		double percent = Affixes.total(attacker, Affix.DAMAGE_PCT) + EFFECT_PERCENT * (level(attacker, MobEffects.STRENGTH)
+			- level(attacker, MobEffects.WEAKNESS));
+		return Math.max(0.0, 1.0 + percent);
+	}
+
+	private static int level(final LivingEntity entity, final Holder<MobEffect> effect) {
+		MobEffectInstance instance = entity.getEffect(effect);
+		return instance == null ? 0 : instance.getAmplifier() + 1;
 	}
 
 	private static boolean isMelee(final DamageSource source) {
@@ -98,6 +128,8 @@ public final class RpgCombat {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));
-		return (float) Math.max(0.0, reduced - DefenseBonuses.flat(entity));
+		reduced *= 1.0 - Math.min(1.0, Affixes.total(entity, Affix.REDUCTION_PCT));
+		double flat = DefenseBonuses.flat(entity) + Affixes.total(entity, Affix.REDUCTION_FLAT) / RpgScale.k();
+		return (float) Math.max(0.0, reduced - flat);
 	}
 }

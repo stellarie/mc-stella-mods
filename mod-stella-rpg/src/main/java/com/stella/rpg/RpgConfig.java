@@ -1,5 +1,6 @@
 package com.stella.rpg;
 
+import com.stella.rpg.roll.Affix;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -24,7 +25,16 @@ public record RpgConfig(
 	public static final String ARMOR_SETS_KEY = "armor_sets";
 	public static final String WEAPON_ROLLS_KEY = "weapon_rolls";
 	public static final String COUNT_WEIGHTS_KEY = "count_weights";
+	public static final String AFFIX_CHANCE_KEY = "affix_chance";
+	public static final String AFFIXES_KEY = "affixes";
+	public static final double DEFAULT_AFFIX_CHANCE = 0.30;
 	public static final double MAX_MOB_BASE = StatSheet.CEILING;
+	private static final Map<Affix, AffixRange> AFFIXES_WOOD = affixes(3, 8, 2, 4, 15, 30, 1, 2, 1, 3, 0.5, 1);
+	private static final Map<Affix, AffixRange> AFFIXES_STONE = affixes(5, 12, 3, 5, 25, 50, 2, 3, 2, 4, 1, 1.5);
+	private static final Map<Affix, AffixRange> AFFIXES_GOLD = affixes(6, 14, 3, 6, 30, 60, 2, 4, 2, 5, 1, 2);
+	private static final Map<Affix, AffixRange> AFFIXES_IRON = affixes(8, 18, 4, 7, 40, 80, 2, 4, 3, 6, 1, 2);
+	private static final Map<Affix, AffixRange> AFFIXES_DIAMOND = affixes(12, 27, 5, 9, 60, 120, 3, 6, 4, 8, 1.5, 2.5);
+	private static final Map<Affix, AffixRange> AFFIXES_NETHERITE = affixes(18, 40, 6, 12, 90, 180, 4, 8, 6, 12, 2, 3);
 	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_STATS = defaultMobStats();
 	public static final Map<String, ArmorSet> DEFAULT_ARMOR_SETS = defaultArmorSets();
 	public static final WeaponRolls DEFAULT_WEAPON_ROLLS = defaultWeaponRolls();
@@ -36,10 +46,16 @@ public record RpgConfig(
 	public record ArmorSet(List<Identifier> items, Map<Stat, Integer> perPiece, double flatPerPiece, Map<Stat, Integer> setBonus) {
 	}
 
-	public record RollTier(List<Identifier> items, List<Identifier> armorItems, int min, int max) {
+	/** An affix range in K units for a flat affix, or in percent for a percent affix. */
+	public record AffixRange(double min, double max) {
 	}
 
-	public record WeaponRolls(List<Integer> countWeights, Map<String, RollTier> tiers) {
+	public record RollTier(
+		List<Identifier> items, List<Identifier> armorItems, int min, int max, Map<Affix, AffixRange> affixes
+	) {
+	}
+
+	public record WeaponRolls(List<Integer> countWeights, Map<String, RollTier> tiers, double affixChance) {
 	}
 
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
@@ -50,7 +66,6 @@ public record RpgConfig(
 		ATTACK_SPEED("attack_speed", 1.00, 250),
 		BOW_DRAW("bow_draw", 0.50, 250),
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
-		SPELL_POWER("spell_power", 1.50, 200),
 		COOLDOWN_REDUCTION("cooldown_reduction", 0.40, 300),
 		CRIT_CHANCE("crit_chance", 0.50, 300),
 		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);
@@ -104,17 +119,36 @@ public record RpgConfig(
 
 	private static WeaponRolls defaultWeaponRolls() {
 		Map<String, RollTier> tiers = new LinkedHashMap<>();
-		tiers.put("wood", tier(1, 2, List.of("wooden_sword", "wooden_axe"), armorPieces("leather")));
-		tiers.put("stone", tier(1, 3, List.of("stone_sword", "stone_axe"), withTurtle(armorPieces("chainmail"))));
-		tiers.put("copper", tier(1, 3, List.of("copper_sword", "copper_axe"), List.of()));
-		tiers.put("gold", tier(2, 4, List.of("golden_sword", "golden_axe"), armorPieces("golden")));
-		tiers.put("iron", tier(2, 5, List.of("iron_sword", "iron_axe"), armorPieces("iron")));
-		tiers.put("diamond", tier(3, 7, List.of("diamond_sword", "diamond_axe"), armorPieces("diamond")));
-		tiers.put("netherite", tier(4, 10, List.of("netherite_sword", "netherite_axe"), armorPieces("netherite")));
-		tiers.put("ranged", tier(2, 5, List.of("bow", "crossbow"), List.of()));
-		tiers.put("heavy", tier(3, 7, List.of("trident", "mace"), List.of()));
-		return new WeaponRolls(List.of(50, 35, 15), Map.copyOf(tiers));
+		tiers.put("wood", tier(1, 2, List.of("wooden_sword", "wooden_axe"), armorPieces("leather"), AFFIXES_WOOD));
+		tiers.put("stone", tier(1, 3, List.of("stone_sword", "stone_axe"), withTurtle(armorPieces("chainmail")), AFFIXES_STONE));
+		tiers.put("copper", tier(1, 3, List.of("copper_sword", "copper_axe"), List.of(), AFFIXES_STONE));
+		tiers.put("gold", tier(2, 4, List.of("golden_sword", "golden_axe"), armorPieces("golden"), AFFIXES_GOLD));
+		tiers.put("iron", tier(2, 5, List.of("iron_sword", "iron_axe"), armorPieces("iron"), AFFIXES_IRON));
+		tiers.put("diamond", tier(3, 7, List.of("diamond_sword", "diamond_axe"), armorPieces("diamond"), AFFIXES_DIAMOND));
+		tiers.put("netherite", tier(4, 10, List.of("netherite_sword", "netherite_axe"), armorPieces("netherite"), AFFIXES_NETHERITE));
+		tiers.put("ranged", tier(2, 5, List.of("bow", "crossbow"), List.of(), AFFIXES_IRON));
+		tiers.put("heavy", tier(3, 7, List.of("trident", "mace"), List.of(), AFFIXES_DIAMOND));
+		return new WeaponRolls(List.of(50, 35, 15), Map.copyOf(tiers), DEFAULT_AFFIX_CHANCE);
 	}
+
+	/** Ranges in the order of {@link Affix}: damage, MATK, HP, reduction, each flat then percent. K units. */
+	private static Map<Affix, AffixRange> affixes(
+		final double damageFlatMin, final double damageFlatMax, final double damagePctMin, final double damagePctMax,
+		final double hpFlatMin, final double hpFlatMax, final double hpPctMin, final double hpPctMax,
+		final double reductionFlatMin, final double reductionFlatMax, final double reductionPctMin, final double reductionPctMax
+	) {
+		Map<Affix, AffixRange> ranges = new EnumMap<>(Affix.class);
+		ranges.put(Affix.DAMAGE_FLAT, new AffixRange(damageFlatMin, damageFlatMax));
+		ranges.put(Affix.DAMAGE_PCT, new AffixRange(damagePctMin, damagePctMax));
+		ranges.put(Affix.MATK_FLAT, new AffixRange(damageFlatMin, damageFlatMax));
+		ranges.put(Affix.MATK_PCT, new AffixRange(damagePctMin, damagePctMax));
+		ranges.put(Affix.HP_FLAT, new AffixRange(hpFlatMin, hpFlatMax));
+		ranges.put(Affix.HP_PCT, new AffixRange(hpPctMin, hpPctMax));
+		ranges.put(Affix.REDUCTION_FLAT, new AffixRange(reductionFlatMin, reductionFlatMax));
+		ranges.put(Affix.REDUCTION_PCT, new AffixRange(reductionPctMin, reductionPctMax));
+		return Map.copyOf(ranges);
+	}
+
 
 	private static List<String> armorPieces(final String prefix) {
 		return List.of(prefix + "_helmet", prefix + "_chestplate", prefix + "_leggings", prefix + "_boots");
@@ -126,8 +160,10 @@ public record RpgConfig(
 		return all;
 	}
 
-	private static RollTier tier(final int min, final int max, final List<String> items, final List<String> armor) {
-		return new RollTier(vanilla(items), vanilla(armor), min, max);
+	private static RollTier tier(
+		final int min, final int max, final List<String> items, final List<String> armor, final Map<Affix, AffixRange> affixes
+	) {
+		return new RollTier(vanilla(items), vanilla(armor), min, max, affixes);
 	}
 
 	private static List<Identifier> vanilla(final List<String> paths) {

@@ -2,6 +2,8 @@ package com.stella.rpg;
 
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.embedded.EmbeddedChannel;
+import com.stella.rpg.roll.WeaponRolls;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
@@ -11,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
@@ -56,6 +59,24 @@ final class RpgTestSupport {
 		// A threat-0 melee mob has its role's base VIT.
 		int vit = MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.VIT, 0);
 		return (float) (damage * RpgCurve.damageTakenMultiplier(vit));
+	}
+
+	/** A stack that holds only the given affixes, as a finished roll. */
+	static ItemStack withAffixes(final Item item, final Map<String, Integer> affixes) {
+		ItemStack stack = new ItemStack(item);
+		stack.set(WeaponRolls.STAT_ROLLS, Map.of());
+		stack.set(WeaponRolls.AFFIX_ROLLS, Map.copyOf(affixes));
+		return stack;
+	}
+
+	/** Runs the action with the given share of roll slots landing on an affix. */
+	static void withAffixChance(final double chance, final Runnable action) {
+		try {
+			RpgConfigStore.set(RpgConfigStore.parse("{\"weapon_rolls\":{\"affix_chance\":" + chance + "}}", message -> { }));
+			action.run();
+		} finally {
+			RpgConfigStore.set(null);
+		}
 	}
 
 	static void result(final String test, final String detail) {
