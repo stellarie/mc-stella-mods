@@ -107,7 +107,7 @@ The tabs appear only after the server sent the first stat sync.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
 - `Reset Stats (320em)` needs two clicks within 5 seconds. It removes allocated points. `-` never does.
-- `E` and `Esc` close the screen.
+- `E` returns to the inventory. `Esc` closes the screen.
 
 The client computes the percentages from the `RpgCurve` values it holds.
 A dedicated server with a custom `stats.json` shows the default curves on the client.

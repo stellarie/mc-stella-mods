@@ -179,7 +179,7 @@ public final class StatsScreen extends Screen {
 	@Override
 	public boolean keyPressed(final KeyEvent event) {
 		if (this.minecraft.options.keyInventory.matches(event)) {
-			this.onClose();
+			StatsTabs.openInventory(this.minecraft);
 			return true;
 		}
 		return super.keyPressed(event);
