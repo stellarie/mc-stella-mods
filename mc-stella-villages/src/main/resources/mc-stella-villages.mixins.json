@@ -10,7 +10,8 @@
 		"RaidsInvoker",
 		"PatrolRestMixin",
 		"PatrolHostilesMixin",
-		"VillageWitchSplashMixin"
+		"VillageWitchSplashMixin",
+		"TrainingDummyHurtMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

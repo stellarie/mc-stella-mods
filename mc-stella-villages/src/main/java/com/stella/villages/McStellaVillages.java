@@ -30,6 +30,7 @@ public final class McStellaVillages implements ModInitializer {
 		WitchShop.register();
 		VillageRaids.register();
 		SmithHardening.register();
+		com.stella.villages.dummy.DummyService.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 }

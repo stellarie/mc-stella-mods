@@ -15,6 +15,7 @@
 			"com.stella.villages.VillageRaidGameTest",
 			"com.stella.villages.PatrolVisualsGameTest",
 			"com.stella.villages.BellRallyGameTest",
+			"com.stella.villages.TrainingDummyGameTest",
 			"com.stella.villages.PatrolFriendsGameTest",
 			"com.stella.villages.SmithHardeningGameTest",
 			"com.stella.villages.VillageCoverageGameTest",
