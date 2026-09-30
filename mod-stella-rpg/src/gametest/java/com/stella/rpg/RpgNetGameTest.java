@@ -1,10 +1,12 @@
 package com.stella.rpg;
 
+import com.stella.rpg.net.AllocateBatchPayload;
 import com.stella.rpg.net.AllocatePayload;
 import com.stella.rpg.net.RespecPayload;
 import com.stella.rpg.net.RpgNet;
 import com.stella.rpg.net.StatsSyncPayload;
 import io.netty.buffer.Unpooled;
+import java.util.Arrays;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -50,6 +52,70 @@ public final class RpgNetGameTest {
 		helper.assertTrue(huge.resultCode() == StatPoints.Result.NOT_ENOUGH_POINTS, "huge result=" + huge.resultCode());
 		helper.assertTrue(StatPoints.sheet(player).equals(before), "sheet changed: " + StatPoints.sheet(player));
 		RpgTestSupport.result("badPayloadRefused", "stat9=" + badStat.resultCode() + " amount0=" + zero.resultCode());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void batchAllocate(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		player.experienceLevel = 10;
+		StatPoints.setSheet(player, new StatSheet(0, 12, 0, 0, 0, 0));
+		helper.assertTrue(StatPoints.unspent(10, StatPoints.sheet(player)) == 10, "start unspent");
+		StatsSyncPayload reply = RpgNet.allocateBatch(player, new AllocateBatchPayload(new int[] {3, 0, 2, 0, 0, 1}));
+		helper.assertTrue(reply.resultCode() == StatPoints.Result.OK, "result=" + reply.resultCode());
+		StatSheet sheet = StatPoints.sheet(player);
+		helper.assertTrue(sheet.equals(new StatSheet(3, 12, 2, 0, 0, 1)), "sheet=" + sheet);
+		helper.assertTrue(reply.unspent() == 4, "reply unspent=" + reply.unspent());
+		RpgTestSupport.result("batchAllocate", "reply=" + reply);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void batchIsAtomic(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		player.experienceLevel = 2000;
+		StatSheet before = StatPoints.sheet(player);
+		StatsSyncPayload over = RpgNet.allocateBatch(player, new AllocateBatchPayload(new int[] {1, 1, 1, 1, 1, 5000}));
+		helper.assertTrue(over.resultCode() == StatPoints.Result.NOT_ENOUGH_POINTS, "over result=" + over.resultCode());
+		helper.assertTrue(StatPoints.sheet(player).equals(before), "sheet after overspend=" + StatPoints.sheet(player));
+		StatsSyncPayload ceiling = RpgNet.allocateBatch(player, new AllocateBatchPayload(new int[] {2, 0, 0, 0, 0, 1025}));
+		helper.assertTrue(ceiling.resultCode() == StatPoints.Result.ABOVE_CEILING, "ceiling result=" + ceiling.resultCode());
+		helper.assertTrue(StatPoints.sheet(player).equals(before), "sheet after ceiling=" + StatPoints.sheet(player));
+		helper.assertTrue(ceiling.unspent() == StatPoints.total(2000), "unspent=" + ceiling.unspent());
+		RpgTestSupport.result("batchIsAtomic", "over=" + over.resultCode() + " ceiling=" + ceiling.resultCode());
+		helper.succeed();
+	}
+
+	@GameTest
+	public void batchRejectsBadInput(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		player.experienceLevel = 10;
+		StatSheet before = StatPoints.sheet(player);
+		int[][] bad = {
+			{1, 1, -1, 0, 0, 0},
+			{5, 5, -5, 0, 0, 5},
+			{1, 1, 1, 1, 1},
+			{1, 1, 1, 1, 1, 1, 1},
+			{},
+			{0, 0, 0, 0, 0, 0}
+		};
+		for (int[] amounts : bad) {
+			StatsSyncPayload reply = RpgNet.allocateBatch(player, new AllocateBatchPayload(amounts));
+			helper.assertTrue(reply.resultCode() == StatPoints.Result.INVALID_AMOUNT, "result=" + reply.resultCode() + " len=" + amounts.length);
+			helper.assertTrue(StatPoints.sheet(player).equals(before), "sheet changed: " + StatPoints.sheet(player));
+		}
+		RpgTestSupport.result("batchRejectsBadInput", "cases=" + bad.length);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void batchCodecRoundTrip(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());
+		AllocateBatchPayload.CODEC.encode(buf, new AllocateBatchPayload(new int[] {3, 0, 2, 0, 0, 1}));
+		AllocateBatchPayload decoded = AllocateBatchPayload.CODEC.decode(buf);
+		helper.assertTrue(Arrays.equals(decoded.amounts(), new int[] {3, 0, 2, 0, 0, 1}), "decoded mismatch");
+		helper.assertTrue(buf.readableBytes() == 0, "unread bytes=" + buf.readableBytes());
 		helper.succeed();
 	}
 

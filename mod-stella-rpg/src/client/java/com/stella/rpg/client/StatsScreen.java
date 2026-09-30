@@ -1,13 +1,15 @@
 package com.stella.rpg.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.stella.rpg.AttackPreview;
+import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.RpgDice;
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatBonuses;
 import com.stella.rpg.StatPoints;
 import com.stella.rpg.StatSheet;
-import com.stella.rpg.net.AllocatePayload;
+import com.stella.rpg.net.AllocateBatchPayload;
 import com.stella.rpg.net.RespecPayload;
 import com.stella.rpg.net.StatsSyncPayload;
 import java.util.ArrayList;
@@ -26,57 +28,78 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Util;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 
 @Environment(EnvType.CLIENT)
 public final class StatsScreen extends Screen {
-	private static final int PANEL_WIDTH = 176;
-	private static final int PANEL_HEIGHT = 166;
-	private static final int ROWS_Y = 22;
-	private static final int ROW_STEP = 16;
-	private static final int LEFT_X = 8;
-	private static final int ROW_WIDTH = 64;
-	private static final int PLUS_X = 74;
-	private static final int PLUS_WIDTH = 14;
-	private static final int RIGHT_X = 96;
-	private static final int POINTS_Y = 112;
-	private static final int MESSAGE_Y = 126;
-	private static final int RESPEC_Y = 140;
+	private static final int PANEL_WIDTH = 256;
+	private static final int PANEL_HEIGHT = 200;
+	private static final int MARGIN = 8;
+	private static final int ROWS_Y = 24;
+	private static final int ROW_STEP = 22;
+	private static final int ROW_TEXT_WIDTH = 100;
+	private static final int STEP_BUTTON = 14;
+	private static final int MINUS_X = 112;
+	private static final int PLUS_X = 128;
+	private static final int RIGHT_X = 152;
+	private static final int RIGHT_Y = 27;
+	private static final int RIGHT_STEP = 14;
+	private static final int POINTS_GAP = 12;
+	private static final int MESSAGE_Y = 154;
+	private static final int MESSAGE_WIDTH = 124;
+	private static final int ACTION_WIDTH = 110;
+	private static final int ACTION_HEIGHT = 20;
+	private static final int ADD_Y = 152;
+	private static final int RESET_Y = 174;
 	private static final long CONFIRM_MILLIS = 5000L;
 	private static final int SHIFT_AMOUNT = 10;
 	private static final int TEXT = 0xFF404040;
 	private static final int ERROR = 0xFFAA0000;
 
+	private final Button[] minus = new Button[Stat.values().length];
 	private final Button[] plus = new Button[Stat.values().length];
-	private Button respec;
+	private final PendingStats pending = new PendingStats();
+	private Button add;
+	private Button reset;
 	private int leftPos;
 	private int topPos;
-	private boolean placed;
 	private long confirmUntil;
+	private StatsSyncPayload seen;
+	private boolean sent;
 
-	public StatsScreen(final int leftPos, final int topPos) {
+	public StatsScreen() {
 		super(Component.translatable("screen.mod-stella-rpg.stats"));
-		this.leftPos = leftPos;
-		this.topPos = topPos;
 	}
 
 	@Override
 	protected void init() {
-		if (this.placed) {
-			this.leftPos = (this.width - PANEL_WIDTH) / 2;
-			this.topPos = (this.height - PANEL_HEIGHT) / 2;
-		}
-		this.placed = true;
+		this.leftPos = (this.width - PANEL_WIDTH) / 2;
+		this.topPos = (this.height - PANEL_HEIGHT) / 2;
 		for (Stat stat : Stat.values()) {
-			int row = stat.ordinal();
-			this.plus[row] = this.addRenderableWidget(Button.builder(Component.literal("+"), button -> this.spend(stat))
-				.bounds(this.leftPos + PLUS_X, this.topPos + ROWS_Y + row * ROW_STEP - 2, PLUS_WIDTH, 12)
+			int y = this.topPos + ROWS_Y + stat.ordinal() * ROW_STEP;
+			this.minus[stat.ordinal()] = this.addRenderableWidget(Button.builder(Component.literal("-"), button -> this.remove(stat))
+				.bounds(this.leftPos + MINUS_X, y, STEP_BUTTON, STEP_BUTTON)
+				.tooltip(Tooltip.create(Component.translatable("screen.mod-stella-rpg.minus_help", SHIFT_AMOUNT)))
+				.build());
+			this.plus[stat.ordinal()] = this.addRenderableWidget(Button.builder(Component.literal("+"), button -> this.spend(stat))
+				.bounds(this.leftPos + PLUS_X, y, STEP_BUTTON, STEP_BUTTON)
 				.tooltip(Tooltip.create(Component.translatable("screen.mod-stella-rpg.plus_help", SHIFT_AMOUNT)))
 				.build());
 		}
-		this.respec = this.addRenderableWidget(Button.builder(this.respecLabel(), button -> this.respecClicked())
-			.bounds(this.leftPos + LEFT_X, this.topPos + RESPEC_Y, PANEL_WIDTH - 2 * LEFT_X, 20)
+		int actionX = this.leftPos + PANEL_WIDTH - MARGIN - ACTION_WIDTH;
+		this.add = this.addRenderableWidget(Button.builder(Component.translatable("screen.mod-stella-rpg.add"), button -> this.addClicked())
+			.bounds(actionX, this.topPos + ADD_Y, ACTION_WIDTH, ACTION_HEIGHT)
 			.build());
+		this.reset = this.addRenderableWidget(Button.builder(this.resetLabel(), button -> this.resetClicked())
+			.bounds(actionX, this.topPos + RESET_Y, ACTION_WIDTH, ACTION_HEIGHT)
+			.build());
+	}
+
+	@Override
+	public void removed() {
+		this.pending.clear();
+		super.removed();
 	}
 
 	@Override
@@ -109,29 +132,30 @@ public final class StatsScreen extends Screen {
 			this.onClose();
 			return;
 		}
+		this.syncPending(data);
 		this.updateWidgets(data);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 		StatsTabs.draw(graphics, this.font, this.leftPos, this.topPos, StatsTabs.STATS, mouseX, mouseY);
-		graphics.text(this.font, this.title, this.leftPos + LEFT_X, this.topPos + 8, TEXT, false);
+		graphics.text(this.font, this.title, this.leftPos + MARGIN, this.topPos + 8, TEXT, false);
 		this.drawRows(graphics, data);
 		this.drawDerived(graphics, data);
 		graphics.text(
 			this.font,
-			Component.translatable("screen.mod-stella-rpg.points", data.unspent()),
-			this.leftPos + LEFT_X,
-			this.topPos + POINTS_Y,
+			Component.translatable("screen.mod-stella-rpg.points", data.unspent() - this.pending.total()),
+			this.leftPos + RIGHT_X,
+			this.topPos + RIGHT_Y + 5 * RIGHT_STEP + POINTS_GAP,
 			TEXT,
 			false
 		);
 		StatPoints.Result failure = ClientStats.failure();
 		if (failure != StatPoints.Result.OK) {
-			graphics.text(
+			graphics.textWithWordWrap(
 				this.font,
 				Component.translatable("screen.mod-stella-rpg.result." + failure.name().toLowerCase(Locale.ROOT)),
-				this.leftPos + LEFT_X,
+				this.leftPos + MARGIN,
 				this.topPos + MESSAGE_Y,
-				ERROR,
-				false
+				MESSAGE_WIDTH,
+				ERROR
 			);
 		}
 		this.drawStatTooltip(graphics, data, mouseX, mouseY);
@@ -166,33 +190,50 @@ public final class StatsScreen extends Screen {
 		return false;
 	}
 
-	private void updateWidgets(final StatsSyncPayload data) {
-		for (Stat stat : Stat.values()) {
-			this.plus[stat.ordinal()].active = this.amountFor(data, stat, 1) > 0;
+	private void syncPending(final StatsSyncPayload data) {
+		if (data != this.seen) {
+			this.seen = data;
+			this.sent = false;
+			if (data.resultCode() == StatPoints.Result.OK) {
+				this.pending.clear();
+			}
 		}
+		this.pending.clamp(data.unspent(), data.base());
+	}
+
+	private void updateWidgets(final StatsSyncPayload data) {
+		int free = data.unspent() - this.pending.total();
+		for (Stat stat : Stat.values()) {
+			int row = stat.ordinal();
+			this.plus[row].active = free > 0 && data.base()[row] + this.pending.get(stat) < StatSheet.CEILING;
+			this.minus[row].active = this.pending.get(stat) > 0;
+		}
+		this.add.active = this.pending.total() > 0 && !this.sent;
 		if (this.confirmUntil != 0L && Util.getMillis() >= this.confirmUntil) {
 			this.confirmUntil = 0L;
 		}
-		this.respec.setMessage(this.respecLabel());
-	}
-
-	private int amountFor(final StatsSyncPayload data, final Stat stat, final int wanted) {
-		int room = StatSheet.CEILING - data.base()[stat.ordinal()];
-		return Math.max(0, Math.min(wanted, Math.min(data.unspent(), room)));
+		this.reset.setMessage(this.resetLabel());
 	}
 
 	private void spend(final Stat stat) {
 		StatsSyncPayload data = ClientStats.get();
-		if (data == null) {
-			return;
-		}
-		int amount = this.amountFor(data, stat, shiftHeld() ? SHIFT_AMOUNT : 1);
-		if (amount > 0) {
-			ClientPlayNetworking.send(new AllocatePayload(stat.ordinal(), amount));
+		if (data != null) {
+			this.pending.plus(stat, step(), data.unspent(), data.base()[stat.ordinal()]);
 		}
 	}
 
-	private void respecClicked() {
+	private void remove(final Stat stat) {
+		this.pending.minus(stat, step());
+	}
+
+	private void addClicked() {
+		if (this.pending.total() > 0 && !this.sent) {
+			this.sent = true;
+			ClientPlayNetworking.send(new AllocateBatchPayload(this.pending.toArray()));
+		}
+	}
+
+	private void resetClicked() {
 		if (this.confirmUntil != 0L && Util.getMillis() < this.confirmUntil) {
 			this.confirmUntil = 0L;
 			ClientPlayNetworking.send(new RespecPayload());
@@ -201,19 +242,22 @@ public final class StatsScreen extends Screen {
 		}
 	}
 
+	private static int step() {
+		return shiftHeld() ? SHIFT_AMOUNT : 1;
+	}
+
 	private static boolean shiftHeld() {
 		return InputConstants.isKeyDown(InputConstants.KEY_LSHIFT) || InputConstants.isKeyDown(InputConstants.KEY_RSHIFT);
 	}
 
-	private Component respecLabel() {
+	private Component resetLabel() {
 		return this.confirmUntil != 0L
-			? Component.translatable("screen.mod-stella-rpg.respec_confirm")
-			: Component.translatable("screen.mod-stella-rpg.respec", StatPoints.RESPEC_EMERALDS);
+			? Component.translatable("screen.mod-stella-rpg.reset_confirm")
+			: Component.translatable("screen.mod-stella-rpg.reset", StatPoints.RESPEC_EMERALDS);
 	}
 
-	private static int effective(final StatsSyncPayload data, final Stat stat) {
-		int total = data.base()[stat.ordinal()] + data.bonus()[stat.ordinal()];
-		return Math.max(0, Math.min(StatBonuses.EFFECTIVE_CEILING, total));
+	private int effective(final StatsSyncPayload data, final Stat stat) {
+		return this.pending.effective(stat, data.base()[stat.ordinal()], data.bonus()[stat.ordinal()]);
 	}
 
 	private void drawRows(final GuiGraphicsExtractor graphics, final StatsSyncPayload data) {
@@ -223,56 +267,74 @@ public final class StatsScreen extends Screen {
 			if (bonus > 0) {
 				bonusText.withStyle(ChatFormatting.DARK_GREEN);
 			}
+			int staged = this.pending.get(stat);
+			Component stagedText = staged > 0
+				? Component.translatable("screen.mod-stella-rpg.pending", staged).withStyle(ChatFormatting.DARK_BLUE)
+				: Component.empty();
 			Component row = Component.translatable(
 				"screen.mod-stella-rpg.row",
 				Component.translatable("screen.mod-stella-rpg.stat." + stat.key()),
 				data.base()[stat.ordinal()],
+				stagedText,
 				bonusText
 			);
-			graphics.text(this.font, row, this.leftPos + LEFT_X, this.topPos + ROWS_Y + stat.ordinal() * ROW_STEP, TEXT, false);
+			int y = this.topPos + ROWS_Y + stat.ordinal() * ROW_STEP + 3;
+			graphics.text(this.font, row, this.leftPos + MARGIN, y, TEXT, false);
 		}
 	}
 
 	private void drawDerived(final GuiGraphicsExtractor graphics, final StatsSyncPayload data) {
-		double attack = this.minecraft.player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-		double speed = this.minecraft.player.getAttributeValue(Attributes.ATTACK_SPEED);
+		double attack = AttackPreview.withEnchantments(
+			this.minecraft.player.getMainHandItem(),
+			this.minecraft.player.getAttributeValue(Attributes.ATTACK_DAMAGE)
+		);
 		List<Component> lines = List.of(
 			Component.translatable(
 				"screen.mod-stella-rpg.atk",
-				number(attack),
-				RpgDice.of(effective(data, Stat.STR)).toString()
+				AttackPreview.format(attack, RpgDice.of(this.effective(data, Stat.STR)).toString())
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",
-				percent(RpgCurve.spellPowerMultiplier(effective(data, Stat.INT)) - 1.0)
+				percent(RpgCurve.spellPowerMultiplier(this.effective(data, Stat.INT)) - 1.0)
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.def",
-				percent(1.0 - RpgCurve.damageTakenMultiplier(effective(data, Stat.VIT))),
+				percent(1.0 - RpgCurve.damageTakenMultiplier(this.effective(data, Stat.VIT))),
 				data.flatDefense()
 			),
-			Component.translatable("screen.mod-stella-rpg.crit", percent(RpgCurve.critChance(effective(data, Stat.LUK)))),
-			Component.translatable("screen.mod-stella-rpg.aspd", String.format(Locale.ROOT, "%.2f", speed))
+			Component.translatable(
+				"screen.mod-stella-rpg.crit",
+				percent(RpgCurve.critChance(this.effective(data, Stat.LUK)))
+			),
+			Component.translatable("screen.mod-stella-rpg.aspd", String.format(Locale.ROOT, "%.2f", this.previewSpeed(data)))
 		);
 		for (int line = 0; line < lines.size(); line++) {
-			graphics.text(this.font, lines.get(line), this.leftPos + RIGHT_X, this.topPos + ROWS_Y + line * ROW_STEP, TEXT, false);
+			graphics.text(this.font, lines.get(line), this.leftPos + RIGHT_X, this.topPos + RIGHT_Y + line * RIGHT_STEP, TEXT, false);
 		}
+	}
+
+	private double previewSpeed(final StatsSyncPayload data) {
+		AttributeInstance instance = this.minecraft.player.getAttribute(Attributes.ATTACK_SPEED);
+		int agi = Stat.AGI.ordinal();
+		int current = Math.max(0, Math.min(StatBonuses.EFFECTIVE_CEILING, data.base()[agi] + data.bonus()[agi]));
+		double delta = RpgCurve.attackSpeedBonus(this.effective(data, Stat.AGI)) - RpgCurve.attackSpeedBonus(current);
+		return instance.getValue() + instance.getBaseValue() * delta;
 	}
 
 	private void drawStatTooltip(final GuiGraphicsExtractor graphics, final StatsSyncPayload data, final int mouseX, final int mouseY) {
 		for (Stat stat : Stat.values()) {
-			int top = this.topPos + ROWS_Y + stat.ordinal() * ROW_STEP - 3;
-			boolean over = mouseX >= this.leftPos + LEFT_X && mouseX < this.leftPos + LEFT_X + ROW_WIDTH
-				&& mouseY >= top && mouseY < top + ROW_STEP;
+			int top = this.topPos + ROWS_Y + stat.ordinal() * ROW_STEP;
+			boolean over = mouseX >= this.leftPos + MARGIN && mouseX < this.leftPos + MARGIN + ROW_TEXT_WIDTH
+				&& mouseY >= top && mouseY < top + STEP_BUTTON;
 			if (over) {
-				graphics.setComponentTooltipForNextFrame(this.font, effectLines(data, stat), mouseX, mouseY);
+				graphics.setComponentTooltipForNextFrame(this.font, this.effectLines(data, stat), mouseX, mouseY);
 				return;
 			}
 		}
 	}
 
-	private static List<Component> effectLines(final StatsSyncPayload data, final Stat stat) {
-		int value = effective(data, stat);
+	private List<Component> effectLines(final StatsSyncPayload data, final Stat stat) {
+		int value = this.effective(data, stat);
 		List<Component> lines = new ArrayList<>();
 		lines.add(Component.translatable("screen.mod-stella-rpg.name." + stat.key()).withStyle(ChatFormatting.GOLD));
 		switch (stat) {
@@ -292,22 +354,13 @@ public final class StatsScreen extends Screen {
 			}
 			case LUK -> {
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.crit_chance", percent(RpgCurve.critChance(value))));
-				lines.add(Component.translatable("screen.mod-stella-rpg.tip.crit_damage", number(RpgCurve.critMultiplier())));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.crit_damage", AttackPreview.number(RpgCurve.critMultiplier())));
 			}
 		}
 		return lines;
 	}
 
 	private static String percent(final double fraction) {
-		return trim(Math.round(fraction * 1000.0) / 10.0);
-	}
-
-	private static String number(final double value) {
-		return trim(Math.round(value * 10.0) / 10.0);
-	}
-
-	private static String trim(final double value) {
-		String text = String.format(Locale.ROOT, "%.1f", value);
-		return text.endsWith(".0") ? text.substring(0, text.length() - 2) : text;
+		return AttackPreview.number(fraction * 100.0);
 	}
 }

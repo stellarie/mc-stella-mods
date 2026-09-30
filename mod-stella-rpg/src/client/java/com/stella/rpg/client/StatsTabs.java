@@ -46,7 +46,7 @@ public final class StatsTabs {
 				}
 				int tab = hit(position.stellaRpgLeftPos(), position.stellaRpgTopPos(), event.x(), event.y());
 				if (tab == STATS) {
-					openStats(client, position.stellaRpgLeftPos(), position.stellaRpgTopPos());
+					openStats(client);
 				}
 				return tab < 0;
 			});
@@ -98,10 +98,10 @@ public final class StatsTabs {
 		client.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 	}
 
-	public static void openStats(final Minecraft client, final int left, final int top) {
+	public static void openStats(final Minecraft client) {
 		click(client);
 		client.player.closeContainer();
-		client.gui.setScreen(new StatsScreen(left, top));
+		client.gui.setScreen(new StatsScreen());
 	}
 
 	public static void openInventory(final Minecraft client) {

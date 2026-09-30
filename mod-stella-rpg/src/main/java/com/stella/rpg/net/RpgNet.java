@@ -20,9 +20,12 @@ public final class RpgNet {
 	public static void register() {
 		PayloadTypeRegistry.clientboundPlay().register(StatsSyncPayload.TYPE, StatsSyncPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(AllocatePayload.TYPE, AllocatePayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(AllocateBatchPayload.TYPE, AllocateBatchPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(RespecPayload.TYPE, RespecPayload.CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(
 			AllocatePayload.TYPE, (payload, context) -> allocate(context.player(), payload));
+		ServerPlayNetworking.registerGlobalReceiver(
+			AllocateBatchPayload.TYPE, (payload, context) -> allocateBatch(context.player(), payload));
 		ServerPlayNetworking.registerGlobalReceiver(
 			RespecPayload.TYPE, (payload, context) -> respec(context.player()));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sync(handler.getPlayer()));
@@ -39,6 +42,10 @@ public final class RpgNet {
 			result = StatPoints.allocate(player, Stat.values()[payload.stat()], payload.amount());
 		}
 		return reply(player, result);
+	}
+
+	public static StatsSyncPayload allocateBatch(final ServerPlayer player, final AllocateBatchPayload payload) {
+		return reply(player, StatPoints.allocateAll(player, payload.amounts()));
 	}
 
 	public static StatsSyncPayload respec(final ServerPlayer player) {

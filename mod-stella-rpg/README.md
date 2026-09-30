@@ -94,15 +94,19 @@ The server applies the faster bow draw. The client draw animation keeps the vani
 
 A client with the mod shows two tabs above the inventory panel: Inventory and Stats.
 The tabs sit at `topPos - 28` and follow the panel when the recipe book opens.
-The Stats tab opens a screen at the same panel position.
+The Stats tab opens a 256 by 200 pixel screen centered on the window.
+The stats screen draws both tabs at `top - 28`. The Inventory tab returns to the inventory.
 The tabs appear only after the server sent the first stat sync.
 
-- The left column shows `Str 25 + 5` for each stat, base then bonus. A `+` button adds 1 point.
-  Shift adds 10, or all unspent points when fewer remain.
-- The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd`. `Atk` and `Aspd` read the local attributes each frame.
-- `Status Point` shows the unspent points.
+- The left column shows `Str 25 (+3) + 5` for each stat: base, pending points in blue, then bonus.
+  Rows are 22 pixels apart. `-` removes pending points only. `+` adds pending points. Shift changes by 10.
+- Pending points stay on the client. `Add Stats` sends them to the server in one request. It is inactive with no pending points.
+- The screen discards pending points when it closes and on each sync with result `OK`.
+- The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd` with the pending points applied.
+  `Atk` is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts), then the STR dice.
+- `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
-- `Respec (320 emeralds)` needs two clicks within 5 seconds.
+- `Reset Stats (320em)` needs two clicks within 5 seconds. It removes allocated points. `-` never does.
 - `E` and `Esc` close the screen.
 
 The client computes the percentages from the `RpgCurve` values it holds.
@@ -114,9 +118,11 @@ A dedicated server with a custom `stats.json` shows the default curves on the cl
 |---|---|---|
 | `mod-stella-rpg:stats_sync` | server to client | `int[6] base`, `int[6] bonus`, `unspent`, `level`, `flatDefense`, `byte result` |
 | `mod-stella-rpg:allocate` | client to server | `stat` (ordinal of `Stat`), `amount` |
+| `mod-stella-rpg:allocate_batch` | client to server | `int[] amounts` (length 6, order of `Stat.values()`) |
 | `mod-stella-rpg:respec` | client to server | none |
 
 - The server validates every request. A bad stat ordinal returns `INVALID_STAT`. Other limits come from `StatPoints`.
+- A batch is checked in full, then written once. A wrong length, a negative entry, or a zero sum returns `INVALID_AMOUNT`. A refusal changes nothing.
 - Every request gets a `stats_sync` reply. Its `result` byte is the ordinal of `StatPoints.Result`.
 - The server also syncs on join, on respawn, after `/rpgstats allocate` and `/rpgstats respec`, and when the level or a bonus changes.
   The change check runs every 20 ticks.
