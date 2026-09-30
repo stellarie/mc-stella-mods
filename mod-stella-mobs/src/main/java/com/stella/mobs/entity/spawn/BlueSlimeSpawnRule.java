@@ -10,26 +10,27 @@ import java.util.Map;
 import java.util.Set;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.phys.AABB;
 
 /**
- * The blue slime rule: a chunk with light level 15 holds at most {@link #MAX_PER_CHUNK} blue slimes,
- * and a chunk waits {@link #REFILL_TICKS} ticks after one dies before it fills again. The slimes are
+ * The blue slime rule: a biome holds at most {@link #MAX_PER_BIOME} natural blue slimes, placed at
+ * light level 15, and a chunk waits {@link #REFILL_TICKS} ticks after one dies before it fills again.
+ * The count covers loaded slimes only, and a white slime's escorts are not counted. The slimes are
  * category MISC, so they never count against the mob cap, and their spawn reason is EVENT.
  */
 public final class BlueSlimeSpawnRule implements SpawnRule {
 	public static final BlueSlimeSpawnRule INSTANCE = new BlueSlimeSpawnRule();
-	public static final int MAX_PER_CHUNK = 3;
+	public static final int MAX_PER_BIOME = 3;
 	public static final int LIGHT_LEVEL = 15;
 	/** Ten seconds. */
 	public static final int REFILL_TICKS = 200;
@@ -102,7 +103,7 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 		}
 
 		int spawned = 0;
-		for (int slot = countIn(level, chunk); slot < MAX_PER_CHUNK; slot++) {
+		for (int slot = 0; slot < MAX_PER_BIOME; slot++) {
 			if (!trySpawn(level, chunk)) {
 				break;
 			}
@@ -117,13 +118,12 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 		return spawned;
 	}
 
-	/** How many live blue slimes stand in the chunk. */
-	public static int countIn(final ServerLevel level, final ChunkPos chunk) {
-		AABB box = new AABB(
-			chunk.getMinBlockX(), level.getMinY(), chunk.getMinBlockZ(),
-			chunk.getMaxBlockX() + 1.0, level.getMaxY() + 1.0, chunk.getMaxBlockZ() + 1.0
-		);
-		return level.getEntitiesOfClass(BlueSlime.class, box, Entity::isAlive).size();
+	/** How many loaded natural blue slimes stand in the biome. */
+	public static int countInBiome(final ServerLevel level, final Holder<Biome> biome) {
+		return level.getEntities(
+			StellaEntities.BLUE_SLIME,
+			slime -> slime.isAlive() && !slime.isEscort() && level.getBiome(slime.blockPosition()).is(biome)
+		).size();
 	}
 
 	/** The clock value at which the chunk may fill again. */
@@ -149,6 +149,9 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 				|| !SpawnPlacements.isSpawnPositionOk(StellaEntities.BLUE_SLIME, level, pos)
 				|| !level.noCollision(StellaEntities.BLUE_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))) {
 				continue;
+			}
+			if (countInBiome(level, level.getBiome(pos)) >= MAX_PER_BIOME) {
+				return false;
 			}
 
 			BlueSlime slime = StellaEntities.BLUE_SLIME.create(level, EntitySpawnReason.EVENT);
