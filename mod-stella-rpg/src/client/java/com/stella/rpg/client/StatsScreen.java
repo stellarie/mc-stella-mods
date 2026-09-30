@@ -2,6 +2,7 @@ package com.stella.rpg.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.stella.rpg.AttackPreview;
+import com.stella.rpg.DefPreview;
 import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.RpgDice;
@@ -300,7 +301,10 @@ public final class StatsScreen extends Screen {
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.def",
-				percent(1.0 - RpgCurve.damageTakenMultiplier(this.effective(data, Stat.VIT))),
+				percent(DefPreview.combined(
+					this.minecraft.player.getAttributeValue(Attributes.ARMOR),
+					1.0 - RpgCurve.damageTakenMultiplier(this.effective(data, Stat.VIT))
+				)),
 				data.flatDefense()
 			),
 			Component.translatable(

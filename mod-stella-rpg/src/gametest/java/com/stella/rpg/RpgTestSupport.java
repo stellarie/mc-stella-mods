@@ -32,17 +32,25 @@ final class RpgTestSupport {
 		return player;
 	}
 
+	/** A joined player and the channel that collects every packet the server sends to it. */
+	record Recorded(ServerPlayer player, EmbeddedChannel channel) {
+	}
+
 	static ServerPlayer realPlayer(final GameTestHelper helper) {
+		return recordedPlayer(helper).player();
+	}
+
+	static Recorded recordedPlayer(final GameTestHelper helper) {
 		CommonListenerCookie cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "rpg-player"), false);
 		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(), cookie.gameProfile(), cookie.clientInformation());
 		Connection connection = new Connection(PacketFlow.SERVERBOUND);
-		new EmbeddedChannel(connection);
+		EmbeddedChannel channel = new EmbeddedChannel(connection);
 		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
 		player.setGameMode(GameType.SURVIVAL);
 		player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
 		Vec3 at = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
 		player.teleportTo(at.x, at.y, at.z);
-		return player;
+		return new Recorded(player, channel);
 	}
 
 	static void bare(final LivingEntity entity) {

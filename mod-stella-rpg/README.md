@@ -163,6 +163,8 @@ The tabs appear only after the server sent the first stat sync.
   `Atk` is a damage range, such as `Atk 10-13`. The base is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts). The range adds the STR dice minimum and maximum to that base. A critical hit is outside the range.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
+- `Def` is `1 - (1 - armorShare) * (1 - vitShare)`, then `+ flat`. `armorShare` is `min(20, armor) / 25`, the share of a small hit that vanilla armor removes.
+  `DefPreview.combined` holds the math. The screen reads the synced `ARMOR` attribute of the local player.
 - `Reset Stats (320em)` needs two clicks within 5 seconds. It removes allocated points. `-` never does.
 - `E` returns to the inventory. `Esc` closes the screen.
 
@@ -407,7 +409,10 @@ The client part replaces the vanilla hearts with one bar. Creative and spectator
 - Absorption draws a 2-pixel yellow strip on the top edge, clamped to the bar width.
 - Status effect icons are 9 pixels, in rows of 9, directly above the bar. An icon blinks in its last 10 seconds.
   The top-right vanilla icons do not draw. The inventory screen still lists effect details.
-- The armor strip moves up by the icon rows. The mod registers height providers with `HudStatusBarHeightRegistry`.
+- The vanilla armor row does not draw and takes no height. Armor shows in the `Def` line of the stats screen.
+- Breath shows as a blue bar (`0xFF3A7BD5`) directly under the health bar, 81 by 5 pixels, in the gap above the hotbar.
+  It fills with `air / max air` and hides while the air is full. The vanilla air bubbles do not draw.
+- The mod registers height providers with `HudStatusBarHeightRegistry`.
 - `HudLayout` holds the layout math in the main source set. `HudLayoutGameTest` covers it.
 
 The hunger row is also one bar, mirrored on the right of the hotbar.
@@ -416,6 +421,20 @@ The hunger row is also one bar, mirrored on the right of the hotbar.
 - Saturation draws a 2-pixel yellow strip on the top edge.
 
 The equips mod `HudMixin` caps the vanilla heart rows. It has no visible effect while this bar replaces them.
+
+## Beginner sword
+
+A world without the bonus chest gives each new player one `Beginner Sword` on the first join.
+`generateBonusChest` on gives none. The persistent attachment `mod-stella-rpg:starter_given` marks the gift and survives death, so a later join gives nothing.
+The sword goes into the inventory, or drops at the player when the inventory is full.
+
+- It is an `iron_sword` stack with attack damage 5 in total (wood is 4, iron is 6), the iron sword attack speed, and 400 durability.
+- It carries no enchantment. It repairs with iron ingots and refines as an iron sword, because it is one.
+
+## Damage indicator hearts
+
+`RpgNoDamageHeartsMixin` redirects the `damage_indicator` particle call in `Player#damageStatsAndHearts` and sends nothing.
+The hurt flash and the hurt sound are separate events and stay. Damage is in K units, so vanilla would send hundreds of hearts per hit.
 
 ## Sleep
 
@@ -458,6 +477,7 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgInstantEffectMixin` | `HealOrHarmMobEffect#applyEffectTick` and `#applyInstantaneousEffect`, at `HEAD` |
 | `RpgAbsorptionGrantMixin` | `AbsorptionMobEffect#onEffectStarted`, redirects `setAbsorptionAmount` |
 | `RpgAbsorptionMixin` | `LivingEntity#getMaxAbsorption`, at `RETURN` |
+| `RpgNoDamageHeartsMixin` | `Player#damageStatsAndHearts`, redirects `ServerLevel#sendParticles` |
 | `RpgEffectPercentMixin` | `MobEffect#addAttributeModifier`, at `HEAD`. Skips the Strength and Weakness attack modifiers |
 | `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |
 | `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |

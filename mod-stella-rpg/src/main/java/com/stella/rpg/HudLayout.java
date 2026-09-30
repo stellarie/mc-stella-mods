@@ -15,6 +15,11 @@ public final class HudLayout {
 	public static final int FILL_FOOD = 0xFFC8782A;
 	public static final int FILL_HUNGER = 0xFF6B7A2E;
 	public static final int MAX_FOOD = 20;
+	public static final int FILL_AIR = 0xFF3A7BD5;
+	public static final int AIR_BAR_HEIGHT = 5;
+	public static final int AIR_GAP = 1;
+	/** The vanilla hotbar is 22 pixels tall. The air bar must end above it. */
+	public static final int HOTBAR_HEIGHT = 22;
 
 	private HudLayout() {
 	}
@@ -25,6 +30,19 @@ public final class HudLayout {
 
 	public static int absorptionWidth(final float absorption, final float max, final int width) {
 		return scaled(absorption, max, width);
+	}
+
+	/** The air bar sits directly under the health bar, in the gap above the hotbar. */
+	public static int airBarTop(final int healthTop) {
+		return healthTop + BAR_HEIGHT + AIR_GAP;
+	}
+
+	public static boolean airVisible(final int air, final int maxAir) {
+		return maxAir > 0 && air < maxAir;
+	}
+
+	public static int airFillWidth(final int air, final int maxAir, final int width) {
+		return scaled(air, maxAir, width);
 	}
 
 	public static String healthText(final float health, final float max) {

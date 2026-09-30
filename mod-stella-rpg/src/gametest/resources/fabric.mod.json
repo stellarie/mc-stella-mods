@@ -36,7 +36,10 @@
 			"com.stella.rpg.AffixCombatGameTest",
 			"com.stella.rpg.StatusAtkGameTest",
 			"com.stella.rpg.MatkGameTest",
-			"com.stella.rpg.StrengthPercentGameTest"
+			"com.stella.rpg.StrengthPercentGameTest",
+			"com.stella.rpg.StarterSwordGameTest",
+			"com.stella.rpg.NoHeartsGameTest",
+			"com.stella.rpg.DefPreviewGameTest"
 		]
 	},
 	"depends": {
