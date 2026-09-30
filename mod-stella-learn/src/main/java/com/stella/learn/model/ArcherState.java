@@ -14,6 +14,8 @@ public final class ArcherState {
 	/** Ticks since the target was seen stop counting here, and stand for "never seen". */
 	public static final int SIGHT_CAP_TICKS = 200;
 	static final int PREVIOUS_SIZE = 6;
+	/** How many of the archer's own arrow hits the mean covers. */
+	public static final int HIT_WINDOW = 5;
 
 	/** Ticks this goal has run. */
 	int goalTicks;
@@ -38,6 +40,10 @@ public final class ArcherState {
 	final float[] profile = new float[Habit.values().length];
 	boolean profileValid;
 	int profileTick;
+	final float[] hitFractions = new float[HIT_WINDOW];
+	int hitCount;
+	float lastHit;
+	int lastHitTick;
 	int nextActLog;
 	int releases;
 	int volleys;
@@ -45,6 +51,15 @@ public final class ArcherState {
 	List<WrappedGoal> removed = List.of();
 	LearnedArcherGoal goal;
 	private float[] observation = new float[0];
+
+	/** Notes an arrow of this archer that hurt its target: the damage as a fraction of the target's maximum health. */
+	public void recordHit(final float damage, final float targetMaxHealth) {
+		float fraction = damage / Math.max(targetMaxHealth, 1.0F);
+		this.hitFractions[this.hitCount % HIT_WINDOW] = fraction;
+		this.hitCount++;
+		this.lastHit = fraction;
+		this.lastHitTick = this.goalTicks;
+	}
 
 	public int drawTicks() {
 		return this.drawTicks;

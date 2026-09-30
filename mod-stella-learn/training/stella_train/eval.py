@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import roster, stats
+from . import bodies, roster, stats
 from .contract import load as load_contract
 from .gym_launch import GymCluster, prepare_spec
 from .model import ActorCritic, FileSampler, Normalizer, Sampler
@@ -67,10 +67,12 @@ def summarize(results, tasks_total: int) -> dict:
     """Counts outcomes per brain, overall, and per terrain class."""
     per_brain: dict[str, Counter] = {name: Counter() for name in roster.BRAINS}
     per_terrain: dict[str, Counter] = {name: Counter() for name in TERRAIN_CLASSES}
+    per_toughness: dict[str, Counter] = {name: Counter() for name in bodies.TOUGHNESS_BUCKETS}
     overall = Counter()
     for result in results:
         name = roster.BRAINS[result.brain]
-        for counter in (per_brain[name], overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]]):
+        bucket = bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed).toughness_bucket]
+        for counter in (per_brain[name], overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
             counter[result.outcome] += 1
             counter["n"] += 1
     return {
@@ -79,6 +81,7 @@ def summarize(results, tasks_total: int) -> dict:
         "overall": _row(overall),
         "per_brain": {name: _row(counter) for name, counter in per_brain.items() if counter["n"]},
         "per_terrain": {name: _row(counter) for name, counter in per_terrain.items() if counter["n"]},
+        "per_toughness": {name: _row(counter) for name, counter in per_toughness.items() if counter["n"]},
     }
 
 
@@ -181,6 +184,9 @@ def render(report: dict) -> str:
     lines.append("terrain class rows:  " + "   ".join(
         f"{name} {row['win_rate'] * 100:.0f}%" + (f" (base {baseline['per_terrain'][name]['win_rate'] * 100:.0f}%)" if baseline and name in baseline["per_terrain"] else "")
         for name, row in model["per_terrain"].items()))
+    lines.append("toughness rows:      " + "   ".join(
+        f"{name} {row['win_rate'] * 100:.0f}% (n {row['n']})" + (f" (base {baseline['per_toughness'][name]['win_rate'] * 100:.0f}%)" if baseline and name in baseline.get("per_toughness", {}) else "")
+        for name, row in model["per_toughness"].items()))
     if report["suite"] == "stage-a":
         lines.append(f"stage A bar: {STAGE_A_BAR * 100:.0f}% wins -> {'PASS' if report['stage_a_passes'] else 'FAIL'}")
     if baseline:

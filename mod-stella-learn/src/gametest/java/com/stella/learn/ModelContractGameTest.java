@@ -49,7 +49,7 @@ public class ModelContractGameTest {
 			helper.assertTrue(mismatch == null, "the builder and the contract disagree: " + mismatch);
 			float[] observation = ArcherObservation.build(archer, player, new ArcherState());
 			helper.assertTrue(observation.length == contract.observationSize(), "the observation holds " + observation.length + " values");
-			helper.assertTrue(observation.length == 116, "the contract holds " + observation.length + " values, not 116");
+			helper.assertTrue(observation.length == 121, "the contract holds " + observation.length + " values, not 121");
 			for (int i = 0; i < observation.length; i++) {
 				helper.assertTrue(Float.isFinite(observation[i]) && Math.abs(observation[i]) <= Contract.CLAMP, contract.name(i) + " is " + observation[i]);
 			}

@@ -14,7 +14,7 @@ from stella_train import wire
 class FakeGym(threading.Thread):
     """Every episode lasts `length` decisions. Arenas with an even index win, odd ones lose, unless `timeout` is set."""
 
-    def __init__(self, arenas: int, length: int, obs_size: int = 116, act_size: int = 6, contract_hash: bytes = bytes(32), timeout: bool = False):
+    def __init__(self, arenas: int, length: int, obs_size: int = 121, act_size: int = 6, contract_hash: bytes = bytes(32), timeout: bool = False):
         super().__init__(daemon=True)
         self.arenas = arenas
         self.length = length

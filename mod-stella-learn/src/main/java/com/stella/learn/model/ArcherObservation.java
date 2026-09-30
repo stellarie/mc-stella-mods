@@ -38,6 +38,8 @@ public final class ArcherObservation {
 		"armor", "blocking", "drawing_bow", "airborne", "held_sword", "held_axe", "held_bow", "held_crossbow", "held_shield",
 		"held_other", "ticks_since_seen"
 	};
+	/** The archer's memory of its own hits on the target; all zero before the first one. */
+	private static final String[] HITS = {"last_hit", "mean_hit", "hits_needed", "ticks_since_hit", "has_hit"};
 	private static final String[] ARROW = {"present", "rel_x", "rel_y", "rel_z", "vel_x", "vel_y", "vel_z"};
 	private static final String[] ALLY = {"present", "rel_x", "rel_y", "rel_z", "vel_x", "vel_y", "vel_z", "health_fraction", "drawing_bow"};
 	private static final String[] PREVIOUS = {"forward", "strafe", "yaw", "pitch", "jump", "bow"};
@@ -58,6 +60,10 @@ public final class ArcherObservation {
 		}
 
 		for (String field : TARGET) {
+			names.add("target." + field);
+		}
+
+		for (String field : HITS) {
 			names.add("target." + field);
 		}
 
@@ -132,6 +138,7 @@ public final class ArcherObservation {
 		double rightZ = -Math.sin(yaw);
 		int at = self(mob, state, out, 0, forwardX, forwardZ, rightX, rightZ);
 		at = target(mob, target, state, out, at, forwardX, forwardZ, rightX, rightZ);
+		at = hits(target, state, out, at);
 		at = rays(mob, state, out, at);
 		at = PlayerArrows.fill(mob, out, at, forwardX, forwardZ, rightX, rightZ);
 		at = profile(target, state, config, out, at);
@@ -234,6 +241,32 @@ public final class ArcherObservation {
 
 		i = start + TARGET.length - 1;
 		out[i++] = state.seen ? Math.min(ArcherState.SIGHT_CAP_TICKS, state.goalTicks - state.seenTick) : ArcherState.SIGHT_CAP_TICKS;
+		return i;
+	}
+
+	private static int hits(final @Nullable LivingEntity target, final ArcherState state, final float[] out, final int start) {
+		int i = start;
+		if (state.hitCount == 0) {
+			for (int k = 0; k < HITS.length; k++) {
+				out[i++] = 0.0F;
+			}
+
+			return i;
+		}
+
+		int counted = Math.min(state.hitCount, ArcherState.HIT_WINDOW);
+		float sum = 0.0F;
+		for (int k = 0; k < counted; k++) {
+			sum += state.hitFractions[k];
+		}
+
+		float mean = sum / counted;
+		out[i++] = state.lastHit;
+		out[i++] = mean;
+		// Health left over the mean hit, in whole hits: the target's current fraction of its health over the mean fraction.
+		out[i++] = target == null || mean <= 0.0F ? 0.0F : target.getHealth() / Math.max(target.getMaxHealth(), 1.0F) / mean;
+		out[i++] = Math.max(0, state.goalTicks - state.lastHitTick);
+		out[i++] = 1.0F;
 		return i;
 	}
 

@@ -25,15 +25,19 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -71,6 +75,7 @@ public final class ModelDriver {
 	public static void register() {
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> loaded(entity));
 		ServerEntityEvents.ENTITY_UNLOAD.register((entity, level) -> unloaded(entity));
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> hurt(entity, source, taken));
 		ServerTickEvents.END_SERVER_TICK.register(server -> endTick());
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
 			if (!pinned) {
@@ -204,6 +209,18 @@ public final class ModelDriver {
 		defaultSource = null;
 		status = reason;
 		ModelLog.load(reason, contractHash(), size, detail);
+	}
+
+	/** An arrow of a driven archer that hurt something counts as one of the archer's own hits. */
+	private static void hurt(final LivingEntity entity, final DamageSource source, final float taken) {
+		if (taken <= 0.0F || !(source.getDirectEntity() instanceof AbstractArrow arrow) || !(arrow.getOwner() instanceof Mob owner)) {
+			return;
+		}
+
+		ArcherState state = DRIVEN.get(owner.getUUID());
+		if (state != null) {
+			state.recordHit(taken, entity.getMaxHealth());
+		}
 	}
 
 	private static void loaded(final Entity entity) {

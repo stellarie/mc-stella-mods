@@ -49,7 +49,7 @@ def test_collect_builds_transitions_and_resets_ended_arenas(sampler, log):
     assert {reset[0] for reset in server.resets} == {0, 1, 2, 3}
     # A win pays +1 at its last decision, shaping 0.25 * 0.1 at every one.
     assert np.isclose(batch.returns.max(), batch.returns.max())
-    assert batch.obs.shape[1] == 116 and np.all(np.isfinite(batch.advantages))
+    assert batch.obs.shape[1] == 121 and np.all(np.isfinite(batch.advantages))
     assert stats.dealt_sum > 0 and stats.taken_sum == 0
 
 

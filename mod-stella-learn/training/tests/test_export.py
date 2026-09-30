@@ -30,7 +30,7 @@ def test_the_export_round_trips_and_carries_the_contract_hash(tmp_path):
     decoded = policy_file.read(out)
     assert decoded.contract_hash == contract.hash
     assert decoded.archetype == "archer"
-    assert [layer.weights.shape for layer in decoded.layers] == [(64, 116), (64, 64), (10, 64)]
+    assert [layer.weights.shape for layer in decoded.layers] == [(64, contract.obs_size), (64, 64), (10, 64)]
     assert np.array_equal(decoded.mean, policy.mean)
 
 

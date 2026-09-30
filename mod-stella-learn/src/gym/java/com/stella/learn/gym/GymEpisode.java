@@ -87,6 +87,7 @@ public final class GymEpisode {
 	private BotBrain brain;
 	private BotView view;
 	private Skill skill;
+	private Body body;
 	private long seed;
 	private int brainIndex;
 	private int stage;
@@ -154,6 +155,10 @@ public final class GymEpisode {
 
 	public BotBrain brain() {
 		return brain;
+	}
+
+	public Body body() {
+		return body;
 	}
 
 	public Skill skill() {
@@ -233,7 +238,9 @@ public final class GymEpisode {
 
 		SHOOTERS.put(mob.getUUID(), this);
 		bot.reset(botSpot, Bot.yawTo(botSpot, mobSpot));
-		BotLoadout.equip(bot, skill.gear());
+		body = Body.draw(newSeed);
+		BotLoadout.equip(bot, skill.gear(), body.protection());
+		body.apply(bot.player());
 		ProfileNoise.apply(bot.player(), random, stage == Terrain.C, arena.index(), newSeed);
 		if (stage == Terrain.C && random.nextDouble() < CREEPER_SHARE) {
 			spawnCreeper(terrain, random);
@@ -246,7 +253,7 @@ public final class GymEpisode {
 		state = State.STARTING;
 		startFlag = true;
 		GymLog.info(GymLog.BOT, "BRAIN", "arena=" + arena.index() + " seed=" + newSeed + " episode=" + episodes + " brain=" + Brains.name(index)
-			+ " index=" + index + " stage=" + GymConfig.stageName(stage) + " " + skill.detail() + " " + LearnLog.who(mob) + " " + bot.who());
+			+ " index=" + index + " stage=" + GymConfig.stageName(stage) + " " + skill.detail() + " " + body.detail() + " " + LearnLog.who(mob) + " " + bot.who());
 		GymLog.info(GymLog.EPISODE, "START", "arena=" + arena.index() + " seed=" + newSeed + " episode=" + episodes + " brain=" + Brains.name(index)
 			+ " stage=" + GymConfig.stageName(stage) + " " + LearnLog.who(mob) + " " + bot.who() + " mobAt=" + Bot.fmt(mobSpot) + " botAt=" + Bot.fmt(botSpot)
 			+ " features=" + terrain.features() + " baseline=" + config.baseline());

@@ -102,16 +102,53 @@ class Trainer:
         self.log.info("train RESUME path=%s decisions=%d updates=%d stage=%s", path, self.decisions, self.updates,
                       roster.STAGE_NAMES[self.curriculum.stage])
 
-    def restart_stage_a(self) -> None:
+    def widen_from_checkpoint(self, path: Path) -> None:
+        """Takes the actor of an older, narrower contract: new input columns start at zero weight, the critic starts fresh."""
+        state = torch.load(path, map_location="cpu", weights_only=False)
+        new_names = list(self.contract.names)
+        added = {"target.last_hit", "target.mean_hit", "target.hits_needed", "target.ticks_since_hit", "target.has_hit"}
+        old_names = [name for name in new_names if name not in added]
+        old_weight = state["model"]["actor.0.weight"]
+        if old_weight.shape[1] != len(old_names):
+            raise ValueError(f"the checkpoint has {old_weight.shape[1]} inputs, the older layout has {len(old_names)}")
+        actor = {key[len("actor."):]: value for key, value in state["model"].items() if key.startswith("actor.")}
+        wide = torch.zeros(old_weight.shape[0], len(new_names))
+        for column, name in enumerate(old_names):
+            wide[:, new_names.index(name)] = old_weight[:, column]
+        actor["0.weight"] = wide
+        self.model.actor.load_state_dict(actor)
+        self.model.log_std.data.copy_(state["model"]["log_std"])
+        old_stats = state["normalizer"]
+        mean = np.zeros(len(new_names))
+        var = np.ones(len(new_names))
+        for column, name in enumerate(old_names):
+            mean[new_names.index(name)] = old_stats["mean"][column]
+            var[new_names.index(name)] = old_stats["var"][column]
+        self.normalizer.load({"mean": mean, "var": var, "count": old_stats["count"]})
+        self.decisions = state["decisions"]
+        self.updates = state["updates"]
+        self.curriculum.load(state["curriculum"])
+        self.wall_before = state.get("wall_seconds", 0.0)
+        self.model.set_normalizer(self.normalizer)
+        self.restart_stage_a(keep_stage=True)
+        every = int(self.run["eval_every_decisions"])
+        self.next_eval = (self.decisions // every + 1) * every
+        every = int(self.run["checkpoint_every_decisions"])
+        self.next_checkpoint = (self.decisions // every + 1) * every
+        self.log.info("train WIDEN path=%s from=%d to=%d decisions=%d", path, len(old_names), len(new_names), self.decisions)
+        self.log.event("train WIDEN", path=str(path), old_inputs=len(old_names), new_inputs=len(new_names), decisions=self.decisions)
+
+    def restart_stage_a(self, keep_stage: bool = False) -> None:
         """Keeps the actor, gives the critic fresh weights, and starts Stage A again at the current decision count."""
         from .model import _init, _mlp
         self.model.critic = _mlp(self.contract.obs_size, self.contract.hidden, 1)
         _init(self.model.critic, 1.0)
         self.ppo = Ppo(self.model, self.ppo_config)
-        self.curriculum.stage = roster.STAGE_A
-        self.curriculum.stage_start = self.decisions
-        self.curriculum.best = -1.0
-        self.curriculum.stale = 0
+        if not keep_stage:
+            self.curriculum.stage = roster.STAGE_A
+            self.curriculum.stage_start = self.decisions
+            self.curriculum.best = -1.0
+            self.curriculum.stale = 0
         self.model.set_normalizer(self.normalizer)
         self.sampler = Sampler(self.model, self.normalizer)
         self.log.info("train RESTART stage=A decisions=%d critic=reinitialized actor=kept", self.decisions)
@@ -224,12 +261,19 @@ class Trainer:
             overall["n"] += 1
             overall["win"] += result.outcome == "win"
         rate = overall["win"] / overall["n"] if overall["n"] else 0.0
+        from . import bodies
+        toughness = {name: {"n": 0, "win": 0} for name in bodies.TOUGHNESS_BUCKETS}
+        for result in stats.results:
+            bucket = toughness[bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed).toughness_bucket]]
+            bucket["n"] += 1
+            bucket["win"] += result.outcome == "win"
+        by_toughness = " ".join(f"{name}:{row['win'] / row['n']:.2f}/{row['n']}" for name, row in toughness.items() if row["n"])
         stage = roster.STAGE_NAMES[self.curriculum.stage]
         styles = " ".join(f"{name}:{row['win'] / row['n']:.2f}" for name, row in rows.items())
-        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f styles=[%s]", self.decisions, stage,
-                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, styles)
+        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f styles=[%s] toughness=[%s]", self.decisions, stage,
+                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, styles, by_toughness)
         self.log.event("trainEval RESULT", decisions=self.decisions, stage=stage, suite_stage=roster.STAGE_NAMES[self.curriculum.eval_stage()],
-                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, per_style=rows, seconds=time.monotonic() - began)
+                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, per_toughness=toughness, per_style=rows, seconds=time.monotonic() - began)
         self.curriculum.after_eval(self.decisions, rate)
 
 
@@ -238,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, default=Path("configs/archer.toml"))
     parser.add_argument("--run-dir", type=Path, default=None, help="continue in an existing run directory")
     parser.add_argument("--resume", type=Path, default=None, help="a checkpoint to continue from")
+    parser.add_argument("--widen-from", type=Path, default=None, help="start from the actor of a checkpoint made for a narrower contract")
     parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
     parser.add_argument("--max-seconds", type=float, default=None, help="stop after this much wall time, for a smoke run")
     parser.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE", help="override one config value")
@@ -254,7 +299,9 @@ def main(argv: list[str] | None = None) -> int:
     (run_dir / "config.toml").write_text(args.config.read_text(encoding="utf-8"), encoding="utf-8")
     (run_dir / "config.effective.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     trainer = Trainer(config, log, run_dir)
-    if args.resume:
+    if args.widen_from:
+        trainer.widen_from_checkpoint(args.widen_from)
+    elif args.resume:
         trainer.resume(args.resume)
         if args.restart_stage_a:
             trainer.restart_stage_a()

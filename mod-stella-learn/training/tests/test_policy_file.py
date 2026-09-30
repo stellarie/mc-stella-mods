@@ -17,11 +17,11 @@ def contract():
 
 
 def test_contract_matches_the_plan_layout(contract):
-    assert contract.version == 1 and contract.archetype == "archer" and contract.decision_ticks == 2
-    assert contract.obs_size == 116
+    assert contract.version == 2 and contract.archetype == "archer" and contract.decision_ticks == 2
+    assert contract.obs_size == 121
     assert contract.out_size == 10
     assert contract.hidden == (64, 64)
-    assert len(set(contract.names)) == 116
+    assert len(set(contract.names)) == 121
 
 
 def test_contract_hash_is_sha256_of_the_file_bytes(contract):

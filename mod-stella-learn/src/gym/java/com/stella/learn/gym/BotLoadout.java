@@ -24,6 +24,11 @@ public final class BotLoadout {
 
 	/** Clears the bot and fits it out for `gear`. */
 	public static void equip(final Bot bot, final Gear gear) {
+		equip(bot, gear, gear == Gear.DIAMOND ? PROTECTION_LEVEL : 0);
+	}
+
+	/** Like {@link #equip(Bot, Gear)}, with a Protection level on the armor; leather stands in when the tier has none. */
+	public static void equip(final Bot bot, final Gear gear, final int protection) {
 		ServerPlayer player = bot.player();
 		player.getInventory().clearContent();
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -32,7 +37,7 @@ public final class BotLoadout {
 			}
 		}
 
-		wearArmor(bot, gear);
+		wearArmor(bot, gear, protection);
 
 		bot.give(Hotbar.MELEE, new ItemStack(melee(gear)));
 		bot.give(Hotbar.BOW, new ItemStack(Items.BOW));
@@ -52,6 +57,10 @@ public final class BotLoadout {
 
 	/** Puts on a full set of armor for `armor`; diamond carries Protection III. NONE takes the set off. */
 	public static void wearArmor(final Bot bot, final Gear armor) {
+		wearArmor(bot, armor, armor == Gear.DIAMOND ? PROTECTION_LEVEL : 0);
+	}
+
+	public static void wearArmor(final Bot bot, final Gear armor, final int protection) {
 		ServerPlayer player = bot.player();
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			if (slot.isArmor()) {
@@ -59,17 +68,19 @@ public final class BotLoadout {
 			}
 		}
 
-		if (armor == Gear.NONE) {
+		if (armor == Gear.NONE && protection == 0) {
 			return;
 		}
 
 		Registry<Enchantment> registry = player.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-		Holder<Enchantment> protection = registry.getOrThrow(Enchantments.PROTECTION);
+		Holder<Enchantment> enchantment = registry.getOrThrow(Enchantments.PROTECTION);
 		boolean diamond = armor == Gear.DIAMOND;
-		player.setItemSlot(EquipmentSlot.HEAD, piece(diamond ? Items.DIAMOND_HELMET : Items.IRON_HELMET, diamond, protection));
-		player.setItemSlot(EquipmentSlot.CHEST, piece(diamond ? Items.DIAMOND_CHESTPLATE : Items.IRON_CHESTPLATE, diamond, protection));
-		player.setItemSlot(EquipmentSlot.LEGS, piece(diamond ? Items.DIAMOND_LEGGINGS : Items.IRON_LEGGINGS, diamond, protection));
-		player.setItemSlot(EquipmentSlot.FEET, piece(diamond ? Items.DIAMOND_BOOTS : Items.IRON_BOOTS, diamond, protection));
+		boolean leather = armor == Gear.NONE;
+		int level = protection;
+		player.setItemSlot(EquipmentSlot.HEAD, piece(leather ? Items.LEATHER_HELMET : diamond ? Items.DIAMOND_HELMET : Items.IRON_HELMET, level, enchantment));
+		player.setItemSlot(EquipmentSlot.CHEST, piece(leather ? Items.LEATHER_CHESTPLATE : diamond ? Items.DIAMOND_CHESTPLATE : Items.IRON_CHESTPLATE, level, enchantment));
+		player.setItemSlot(EquipmentSlot.LEGS, piece(leather ? Items.LEATHER_LEGGINGS : diamond ? Items.DIAMOND_LEGGINGS : Items.IRON_LEGGINGS, level, enchantment));
+		player.setItemSlot(EquipmentSlot.FEET, piece(leather ? Items.LEATHER_BOOTS : diamond ? Items.DIAMOND_BOOTS : Items.IRON_BOOTS, level, enchantment));
 	}
 
 	public static void giveShield(final Bot bot) {
@@ -84,10 +95,10 @@ public final class BotLoadout {
 		};
 	}
 
-	private static ItemStack piece(final Item item, final boolean protect, final Holder<Enchantment> protection) {
+	private static ItemStack piece(final Item item, final int level, final Holder<Enchantment> protection) {
 		ItemStack stack = new ItemStack(item);
-		if (protect) {
-			stack.enchant(protection, PROTECTION_LEVEL);
+		if (level > 0) {
+			stack.enchant(protection, level);
 		}
 
 		return stack;
