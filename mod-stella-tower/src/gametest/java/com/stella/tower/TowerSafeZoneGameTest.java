@@ -64,18 +64,20 @@ public class TowerSafeZoneGameTest {
 		return seen[toX][toZ];
 	}
 
-	/** Walled spots of a zone, and its floor blocks not laid as a safe zone's. */
+	/** Walled spots of a zone, its ring apart, and its floor blocks not laid as a safe zone's. */
 	private static int[] zoneFaults(final ServerLevel tower, final int floor, final TowerMaze.Zone zone) {
 		boolean[][] open = open(tower, floor);
 		BlockPos o = TowerLayout.origin(floor);
-		java.util.Map<BlockPos, BlockState> stations = TowerFloors.workstations(TowerPlan.at(tower, floor));
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		java.util.Map<BlockPos, BlockState> stations = TowerFloors.workstations(plan);
 		int shut = 0;
 		int unmarked = 0;
 		for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 			for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
 				BlockPos at = o.offset(x, 0, z);
 				boolean station = stations.containsKey(at);
-				shut += open[x][z] || station ? 0 : 1;
+				// The boss room's ring is meant to be solid: it is checked apart, in the safe room's own tests.
+				shut += open[x][z] || station || plan.isRing(x, z) ? 0 : 1;
 				unmarked += tower.getBlockState(at.below()).is(TowerFloors.SAFE_FLOOR) ? 0 : 1;
 			}
 		}
@@ -214,7 +216,7 @@ public class TowerSafeZoneGameTest {
 
 	/**
 	 * A boss floor's furnace and anvil face into the room, not the wall behind them, at every turn of the plan:
-	 * the block in front of each is in the safe room, the block behind it is not.
+	 * the block in front of each is open room, the block behind it is the ring.
 	 */
 	@GameTest
 	public void theSafeRoomsStationsFaceTheRoom(final GameTestHelper helper) {
@@ -231,9 +233,10 @@ public class TowerSafeZoneGameTest {
 					continue;
 				}
 				stations++;
-				boolean inFront = room.contains(station.x() + station.facing().getStepX(), station.z() + station.facing().getStepZ());
-				boolean behind = room.contains(station.x() - station.facing().getStepX(), station.z() - station.facing().getStepZ());
-				facingWall += inFront && !behind ? 0 : 1;
+				boolean inFront = room.contains(station.x() + station.facing().getStepX(), station.z() + station.facing().getStepZ())
+					&& !plan.wall(station.x() + station.facing().getStepX(), station.z() + station.facing().getStepZ());
+				boolean behind = plan.wall(station.x() - station.facing().getStepX(), station.z() - station.facing().getStepZ());
+				facingWall += inFront && behind && !plan.wall(station.x(), station.z()) ? 0 : 1;
 			}
 		}
 		TowerTestSupport.result("stationFacing", "stations=" + stations + " turns=" + turns + " facingWall=" + facingWall);

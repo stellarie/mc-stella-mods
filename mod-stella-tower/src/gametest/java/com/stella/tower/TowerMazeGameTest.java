@@ -200,7 +200,7 @@ public class TowerMazeGameTest {
 
 	/**
 	 * A boss floor's hall is walled exactly at its edge: the ring of blocks just outside it is solid but for
-	 * the one door into the safe room, so no sliver of the grid's cells is left standing beside it.
+	 * the one door into the safe room, two wide, so no sliver of the grid's cells is left standing beside it.
 	 */
 	@GameTest
 	public void aBossHallIsWalledExactlyAtItsEdge(final GameTestHelper helper) {
@@ -214,8 +214,14 @@ public class TowerMazeGameTest {
 		for (int t = low; t < high; t++) {
 			ring += (open[low - 1][t] ? 1 : 0) + (open[high][t] ? 1 : 0) + (open[t][low - 1] ? 1 : 0) + (open[t][high] ? 1 : 0);
 		}
-		TowerTestSupport.result("bossHallRing", "floor=" + floor + " ringOpen=" + ring + " door=" + TowerMaze.PATH);
-		helper.assertTrue(ring == TowerMaze.PATH, ring + " blocks of the ring round boss floor " + floor + "'s hall stand open, not just its " + TowerMaze.PATH + " wide door");
+		// The door is the exit's cells in the hall's own wall, not those in the safe room's ring beyond it.
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		TowerMaze.Zone room = plan.safeZones().get(1);
+		long door = plan.gates().stream().filter(TowerPlan.Gate::exit).flatMap(gate -> gate.cells().stream())
+			.filter(cell -> !room.contains(cell.x(), cell.z())).count();
+		TowerTestSupport.result("bossHallRing", "floor=" + floor + " ringOpen=" + ring + " door=" + door);
+		helper.assertTrue(door == 2, "the hall's door is " + door + " wide, not 2");
+		helper.assertTrue(ring == door, ring + " blocks of the ring round boss floor " + floor + "'s hall stand open, not just its " + door + " wide door");
 		helper.succeed();
 	}
 

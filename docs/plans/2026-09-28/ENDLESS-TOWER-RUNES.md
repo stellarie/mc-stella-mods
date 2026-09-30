@@ -375,7 +375,8 @@ work anywhere and against any mob, not only in the tower:
   The hall is walled off from the maze, so the only way in is through the safe room: a door from the maze
   into the room, and one from the room into the hall. The room holds a crafting table, a furnace and an
   anvil along its north wall.
-- No mob is raised in a safe zone, and no trap is laid there. Mobs that chase a player may still walk in.
+- No mob is raised in a safe zone, and no trap is laid there. (Reversed by F3: no tower mob stays in a zone, and a
+  player in one draws no aggro; see "Built: walled safe room" below.)
 - A floor built before this change gets its safe zones the first time a player arrives by portal: the maze
   walls in them are cleared, the floor is laid, and a boss floor's workstations are set. On such a boss
   floor the hall stays open to the maze on every side.
@@ -599,4 +600,41 @@ gone and you stand at your bed or the world spawn.
   from). It now checks the hall's own geometry: every hall spot open in the walls, the frame's footprint inside
   the hall, the portal within a block of the hall's middle. Mutation: the portal moved 6 blocks, 480 hall floors
   reported.
+
+## Built: walled safe room, mobs kept out, no aggro inside (2026-09-30, slice F3)
+
+- A planned boss floor's safe room is a ring of TOWER_WALL on the zone's outermost blocks (floor to ceiling), with
+  a 2 wide by 2 high exit into the hall (through the ring and the hall's wall) and a 2 by 2 entrance on the far
+  side onto the maze's cell; TOWER_LAMP on the jambs (three high) and lintels. The path-wide door is gone. The
+  workstations moved one row in (`SAFE_Z + 1`). Legacy (version 0) floors keep the wide door and the open room.
+  `TowerPlan.ring()`, `isRing`, `gates()`; `TowerMaze.classicWalls(random, floor, ring)`.
+- The hall was already enclosed but for its door (its cells are shut to the maze carve), so it now has exactly
+  one way out, through the room. `aBossCannotReachTheMazeExceptThroughTheRoom` proves it over 6000 plans, and that
+  the portal is unreachable with either opening shut.
+- `TowerSafety`: a sweep every 5 ticks (`SWEEP_TICKS`) over the floors with a player on them ejects any tower mob
+  whose body touches a zone, to the nearest free spot outside all zones, and clears targets, brain attack-target
+  and anger memories held on players in a zone. Two mixins keep it from starting again between sweeps.
+- Deviations from DECISIONS.md, with reasons:
+  - The targeting mixin is on `Mob.asValidTarget`, not `Mob.setTarget`. `setTarget` and `getTarget` both pass
+    through it, so it covers `setTarget` and also makes a target already held read as none at once; the sweep
+    reads the raw field (`getTargetUnchecked`). A second mixin on `Sensor.isEntityAttackable` covers the brain
+    mobs, whose attack target is a brain memory and never passes through `Mob.setTarget`.
+  - Ghosts are not ejected from zones: they are on the players' side and never hunt one.
+  - Pathfinding help (malus) was not added; the sweep is the guarantee, and a mob that walks in is out within a
+    sweep (measured 3 to 4 ticks of at most 5).
+  - No plan version bump: the ring is part of version 1, as F2's note allows while nothing is released. A
+    version 1 floor built by an earlier commit of this batch has the old door; nothing was deployed.
+- Reversed: the "Mobs that chase a player may still walk in" line above. No test asserted it.
+- Tests changed for the ring: the hall-edge test (door is 2 wide), the plan-built test (ring and lamps are not
+  maze wall), the safe-room zone test (ring blocks are solid on purpose), and the stations-face-the-room test (the
+  block behind a station is now the ring).
+- The sweep is per floor with a player on it only, so a mob in a zone on an empty floor stays until someone
+  arrives (then it is out within five ticks); nothing sees it meanwhile.
+- The keep-out is a bound, not a wall: a mob that keeps pushing at a zone (a boss at the door with a quarry
+  beyond the room) is sent back at each sweep and walks in again within a tick, so it is in the zone between
+  sweeps but gets no further than one sweep's walk. `bossAtDoor` measures the depth (max 1.3 blocks of 7) and
+  that it never reaches the maze. An earlier version of the test asserted "never in the zone longer than a
+  sweep", which measures the wrong thing and failed one run in about six.
+- One older test placed a mob inside the arrival zone (`mobsOnALitWayAreEnraged`); the sweep sent it off the
+  lit way, so it now stands on the first step of the way outside the zones.
 

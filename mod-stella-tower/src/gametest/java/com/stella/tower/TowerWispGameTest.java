@@ -157,10 +157,25 @@ public class TowerWispGameTest {
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		player.getMainHandItem().use(tower, player, InteractionHand.MAIN_HAND);
 		TowerWisps.Trail trail = TowerWisps.trailsOn(floor).get(0);
-		// A few steps along, by the player, where the room is surely loaded.
-		BlockPos onWay = trail.path().get(Math.min(6, trail.path().size() - 1));
-		// An open spot far from every step of the way.
+		// A few steps along, by the player, where the room is surely loaded, but beyond the arrival's safe zone:
+		// a tower mob put inside a zone is sent out of it within a sweep, and would leave the way.
 		BlockPos o = TowerLayout.origin(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		BlockPos onWay = trail.path().get(trail.path().size() - 1);
+		for (BlockPos step : trail.path()) {
+			boolean clearOfZones = true;
+			for (TowerMaze.Zone zone : plan.safeZones()) {
+				int dx = Math.max(Math.max(zone.x() - (step.getX() - o.getX()), 0), (step.getX() - o.getX()) - (zone.x() + TowerMaze.SAFE - 1));
+				int dz = Math.max(Math.max(zone.z() - (step.getZ() - o.getZ()), 0), (step.getZ() - o.getZ()) - (zone.z() + TowerMaze.SAFE - 1));
+				clearOfZones &= Math.max(dx, dz) >= 2;
+			}
+			if (clearOfZones) {
+				onWay = step;
+				break;
+			}
+		}
+		final BlockPos wayStep = onWay;
+		// An open spot far from every step of the way.
 		BlockPos away = null;
 		for (int x = 1; x < S - 1 && away == null; x += 3) {
 			for (int z = 1; z < S - 1 && away == null; z += 3) {
@@ -176,7 +191,7 @@ public class TowerWispGameTest {
 		}
 		helper.assertTrue(away != null, "no spot lies away from the way");
 		TowerTestSupport.holdRoom(tower, Vec3.atCenterOf(away));
-		Zombie on = zombieAt(tower, floor, onWay);
+		Zombie on = zombieAt(tower, floor, wayStep);
 		Zombie off = zombieAt(tower, floor, away);
 		helper.runAfterDelay(30L, () -> {
 			helper.assertTrue(tower.getEntity(on.getUUID()) == on && tower.getEntity(off.getUUID()) == off,

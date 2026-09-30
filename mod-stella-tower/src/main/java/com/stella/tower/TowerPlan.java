@@ -57,6 +57,8 @@ public record TowerPlan(
 ) {
 	/** The plan a floor is built to now. */
 	public static final int VERSION = 1;
+	/** The first plan version whose boss floors wall their safe room in a ring; a legacy floor keeps its wide door. */
+	public static final int RING_VERSION = 1;
 	/** How many times a plan is drawn before the floor falls back to the classic maze. */
 	public static final int ATTEMPTS = 8;
 	/** {@link #attempt()} of a plan that fell back. */
@@ -176,20 +178,21 @@ public record TowerPlan(
 	/**
 	 * One draw of a version's generator. A generator, once a mod release has built floors with it, is never
 	 * changed: a change to how a floor is drawn adds a new version, with its own case here, and bumps
-	 * {@link #VERSION}. Version 1 is the only one so far.
+	 * {@link #VERSION}. Version 1 is the only one so far; its boss floors wall the safe room in a ring, where version 0's joined it to the hall by a path-wide door.
 	 */
 	private static TowerPlan draw(final long seed, final int floor, final int version, final int attempt, final Random random) {
 		return switch (version) {
-			case 1 -> drawOne(seed, floor, attempt, random);
+			case 1 -> drawFrom(seed, floor, version, attempt, random);
 			default -> throw new IllegalArgumentException("no generator for plan version " + version);
 		};
 	}
 
-	private static TowerPlan drawOne(final long seed, final int floor, final int attempt, final Random random) {
+	/** One draw of a version's generator: the ends and the maze, and a boss floor's safe room walled in a ring from {@link #RING_VERSION}. */
+	private static TowerPlan drawFrom(final long seed, final int floor, final int version, final int attempt, final Random random) {
 		int hall = TowerMaze.hall(floor);
 		if (hall > 0) {
 			int turns = random.nextInt(4);
-			boolean[][] walls = TowerMaze.classicWalls(random, floor);
+			boolean[][] walls = TowerMaze.classicWalls(random, floor, version >= RING_VERSION);
 			for (int i = 0; i < turns; i++) {
 				walls = turn(walls);
 			}
@@ -205,7 +208,7 @@ public record TowerPlan(
 			for (int i = 0; i < turns; i++) {
 				at = turn(at[0], at[1]);
 			}
-			return new TowerPlan(seed, floor, VERSION, Variation.MAZE, turns, attempt, at[0], at[1], -90.0F + 90.0F * turns,
+			return new TowerPlan(seed, floor, version, Variation.MAZE, turns, attempt, at[0], at[1], -90.0F + 90.0F * turns,
 				TowerLayout.SIZE / 2, CLASSIC_MIDDLE_Z - 1, -1, walls, List.copyOf(zones), hall, List.of());
 		}
 		// The arrival takes a cell in one half of the room along one axis, the portal a cell in the other.
@@ -230,7 +233,7 @@ public record TowerPlan(
 		TowerMaze.Zone zone = new TowerMaze.Zone(Math.max(1, Math.min(zoneMax, arrivalX - 3)), Math.max(1, Math.min(zoneMax, arrivalZ - 4)));
 		boolean[][] walls = TowerMaze.scatteredWalls(random, arrivalCx, arrivalCz, portalCx, portalCz, facing, zone);
 		float yaw = (float) Math.toDegrees(Math.atan2(-(portalX - arrivalX), portalZ - arrivalZ));
-		return new TowerPlan(seed, floor, VERSION, Variation.MAZE, 0, attempt, arrivalX, arrivalZ, yaw,
+		return new TowerPlan(seed, floor, version, Variation.MAZE, 0, attempt, arrivalX, arrivalZ, yaw,
 			portalX, portalZ, facing, walls, List.of(zone), 0, List.of());
 	}
 
@@ -238,7 +241,7 @@ public record TowerPlan(
 	private static TowerPlan classic(final long seed, final int floor, final int version, final int attempt) {
 		int hall = TowerMaze.hall(floor);
 		boolean[][] walls = version == 0 ? TowerMaze.legacyWalls(seed, floor)
-			: TowerMaze.classicWalls(new Random(seed ^ FALLBACK_SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor);
+			: TowerMaze.classicWalls(new Random(seed ^ FALLBACK_SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor, version >= RING_VERSION);
 		return new TowerPlan(seed, floor, version, Variation.MAZE, 0, attempt, CLASSIC_ARRIVAL_X, CLASSIC_MIDDLE_Z, -90.0F,
 			hall > 0 ? TowerLayout.SIZE / 2 : CLASSIC_PORTAL_X, CLASSIC_MIDDLE_Z - 1, -1, walls,
 			TowerMaze.classicZones(floor), hall, List.of());
@@ -413,7 +416,7 @@ public record TowerPlan(
 
 	/**
 	 * A boss floor's crafting table, furnace and anvil, by room offset and the way each faces, along the safe
-	 * room's far wall: the classic row turned as the plan was. Empty on any other floor.
+	 * room's north wall, inside the ring where there is one: the classic row turned as the plan was. Empty on any other floor.
 	 */
 	public List<Station> stations() {
 		if (this.hall != TowerMaze.BOSS_HALL) {
@@ -423,7 +426,7 @@ public record TowerPlan(
 		int[] offsets = {2, 4, 6};
 		net.minecraft.core.Direction[] faces = {null, net.minecraft.core.Direction.SOUTH, net.minecraft.core.Direction.SOUTH};
 		for (int i = 0; i < offsets.length; i++) {
-			int[] at = {TowerMaze.BOSS_ROOM_X + offsets[i], TowerMaze.SAFE_Z};
+			int[] at = {TowerMaze.BOSS_ROOM_X + offsets[i], TowerMaze.SAFE_Z + (ring() ? 1 : 0)};
 			net.minecraft.core.Direction face = faces[i];
 			for (int turns = 0; turns < this.rotation; turns++) {
 				at = turn(at[0], at[1]);
@@ -432,6 +435,60 @@ public record TowerPlan(
 			stations.add(new Station(at[0], at[1], face, i));
 		}
 		return stations;
+	}
+
+	/** Whether the boss floor's safe room is walled in a ring: a boss floor of {@link #RING_VERSION} or later. */
+	public boolean ring() {
+		return this.hall == TowerMaze.BOSS_HALL && this.version >= RING_VERSION;
+	}
+
+	/** Whether the spot is a block of the room's ring: the outermost blocks of the safe room, its openings included. */
+	public boolean isRing(final int x, final int z) {
+		if (!ring()) {
+			return false;
+		}
+		TowerMaze.Zone room = this.safeZones.get(1);
+		return room.contains(x, z) && (x == room.x() || x == room.x() + TowerMaze.SAFE - 1 || z == room.z() || z == room.z() + TowerMaze.SAFE - 1);
+	}
+
+	/**
+	 * The room's two openings, as room offsets, the canonical layout's turned as the plan was: the exit into the
+	 * hall, two wide and two thick (the ring and the hall's wall), and the entrance from the maze, two wide.
+	 * Each opening is two high; its {@code jambs} are the wall blocks at its sides. Empty without a ring.
+	 */
+	public List<Gate> gates() {
+		if (!ring()) {
+			return List.of();
+		}
+		int first = TowerMaze.GATE_Z;
+		int last = TowerMaze.GATE_Z + 1;
+		List<Spot> exit = new ArrayList<>();
+		List<Spot> exitJambs = new ArrayList<>();
+		List<Spot> entrance = new ArrayList<>();
+		List<Spot> entranceJambs = new ArrayList<>();
+		for (int x = TowerMaze.BOSS_ROOM_X - TowerMaze.WALL; x <= TowerMaze.BOSS_ROOM_X; x++) {
+			exit.add(turned(x, first));
+			exit.add(turned(x, last));
+			exitJambs.add(turned(x, first - 1));
+			exitJambs.add(turned(x, last + 1));
+		}
+		entrance.add(turned(TowerMaze.ROOM_ENTRANCE_X, first));
+		entrance.add(turned(TowerMaze.ROOM_ENTRANCE_X, last));
+		entranceJambs.add(turned(TowerMaze.ROOM_ENTRANCE_X, first - 1));
+		entranceJambs.add(turned(TowerMaze.ROOM_ENTRANCE_X, last + 1));
+		return List.of(new Gate(true, List.copyOf(exit), List.copyOf(exitJambs)), new Gate(false, List.copyOf(entrance), List.copyOf(entranceJambs)));
+	}
+
+	private Spot turned(final int x, final int z) {
+		int[] at = {x, z};
+		for (int i = 0; i < this.rotation; i++) {
+			at = turn(at[0], at[1]);
+		}
+		return new Spot(at[0], at[1]);
+	}
+
+	/** One opening of the safe room's ring: the blocks it leaves open, and the wall blocks at its sides. */
+	public record Gate(boolean exit, List<Spot> cells, List<Spot> jambs) {
 	}
 
 	/** One workstation: its room offset, the way it faces (null for none), and which it is: table, furnace, anvil. */

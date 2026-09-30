@@ -114,7 +114,10 @@ public class TowerPlanGameTest {
 		int unzoned = 0;
 		int hallOff = 0;
 		int winding = 0;
+		int bossFloors = 0;
+		int roomFaults = 0;
 		String first = "";
+		String roomFirst = "";
 		for (int i = 0; i < SEEDS; i++) {
 			long seed = seedAt(i);
 			for (int floor = 1; floor <= FLOORS; floor++) {
@@ -131,6 +134,13 @@ public class TowerPlanGameTest {
 				unzoned += plan.inSafeZone(plan.arrivalX(), plan.arrivalZ()) ? 0 : 1;
 				arrivals.add(plan.arrivalX() + "," + plan.arrivalZ());
 				portals.add(plan.portalX() + "," + plan.portalZ());
+				if (plan.hall() == TowerMaze.BOSS_HALL) {
+					// The walk runs arrival, room, hall, portal: the room's openings, and no way round it.
+					bossFloors++;
+					java.util.List<String> faults = TowerSafeRoomGameTest.roomWalkFaults(plan);
+					roomFaults += faults.isEmpty() ? 0 : 1;
+					roomFirst = roomFirst.isEmpty() && !faults.isEmpty() ? seed + "/" + floor + ": " + faults : roomFirst;
+				}
 				if (plan.hall() == 0) {
 					ordinary++;
 					boolean acrossX = plan.arrivalX() < S / 2 != plan.portalX() < S / 2;
@@ -158,8 +168,9 @@ public class TowerPlanGameTest {
 		TowerTestSupport.result("planProperty", "pairs=" + pairs + " noWalk=" + noWalk + " endsInWalls=" + walled + " fallbacks=" + fallbacks
 			+ " reseeded=" + reseeded + " ordinary=" + ordinary + " oppositeHalves=" + opposite + " hallPortalsOff=" + hallOff
 			+ " arrivalsOutsideZone=" + unzoned + " distinctArrivals=" + arrivals.size() + " distinctPortals=" + portals.size()
-			+ " windingShare=" + (winding / (double) ordinary));
+			+ " windingShare=" + (winding / (double) ordinary) + " bossFloors=" + bossFloors + " roomWalkFaults=" + roomFaults);
 		helper.assertTrue(pairs >= 2000, "only " + pairs + " plans were drawn");
+		helper.assertTrue(bossFloors > 0 && roomFaults == 0, roomFaults + " of " + bossFloors + " boss plans fail the walk through the safe room, first " + roomFirst);
 		helper.assertTrue(noWalk == 0, noWalk + " plans have no walk from arrival to portal, first " + first);
 		helper.assertTrue(walled == 0, walled + " plans put an end inside a wall");
 		helper.assertTrue(fallbacks == 0, fallbacks + " plans fell back to the plain maze");
@@ -222,6 +233,11 @@ public class TowerPlanGameTest {
 			posts.add(new BlockPos(pos.getX(), TowerLayout.BASE_Y, pos.getZ()));
 		}
 		java.util.Set<BlockPos> stations = TowerFloors.workstations(plan).keySet();
+		// The safe room's ring is tower wall and its jambs tower lamp: solid, like the maze's own.
+		java.util.Set<BlockPos> lamps = new HashSet<>();
+		for (TowerPlan.Gate gate : plan.gates()) {
+			gate.jambs().forEach(jamb -> lamps.add(o.offset(jamb.x(), 0, jamb.z())));
+		}
 		int wrong = 0;
 		for (int x = 0; x < S; x++) {
 			for (int z = 0; z < S; z++) {
@@ -229,7 +245,9 @@ public class TowerPlanGameTest {
 				if (posts.contains(at) || stations.contains(at)) {
 					continue;
 				}
-				boolean standing = tower.getBlockState(at).is(TowerBlocks.TOWER_MAZE_WALL);
+				BlockState state = tower.getBlockState(at);
+				boolean standing = state.is(TowerBlocks.TOWER_MAZE_WALL) || plan.isRing(x, z) && state.is(TowerBlocks.TOWER_WALL)
+					|| lamps.contains(at) && state.is(TowerBlocks.TOWER_LAMP);
 				wrong += standing == plan.walls()[x][z] ? 0 : 1;
 			}
 		}

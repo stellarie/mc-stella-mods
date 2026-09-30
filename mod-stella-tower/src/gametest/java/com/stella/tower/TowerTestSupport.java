@@ -92,6 +92,11 @@ final class TowerTestSupport {
 		return NEXT_FLOOR.getAndAdd(4);
 	}
 
+	/** The first of a run of floors no earlier run has built, taken whole: size floors from the number returned. */
+	static int freshBlock(final int size) {
+		return NEXT_FLOOR.getAndAdd(size);
+	}
+
 	/** A fresh floor number that passes the test, such as an elite or a boss floor. */
 	static int freshFloorWhere(final java.util.function.IntPredicate wanted) {
 		return freshFloorWhere(wanted, 40);

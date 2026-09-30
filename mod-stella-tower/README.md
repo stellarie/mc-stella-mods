@@ -135,3 +135,60 @@ the hall.)
 [BEHAVIOR] test=trapEntryCell RESULT floors=800 laid=14400 inEntryCell=0
 ```
 
+## Walled safe room, mobs kept out, no aggro inside (F3)
+
+On a planned boss floor the pre-hall safe room (`plan.safeZones().get(1)`, turned with the plan) is a walled room
+now. The ring is the zone's own outermost blocks, TOWER_WALL from floor to ceiling, leaving a 6 by 6 inside. It has
+two openings, each 2 wide and 2 high, on opposite sides: the exit into the boss hall (through the ring and the
+hall's wall, so two blocks deep), and the entrance from the maze's cell on the far side. Their jambs (three high)
+and lintels are TOWER_LAMP, so both are easy to see. The old path-wide door is gone; the workstations moved one
+block in, to the row inside the north wall. `TowerPlan.ring()`, `isRing(x, z)` and `gates()` name all of it; the
+builder lays the gaps' lintels and lamps in `TowerFloors.gates`. Legacy floors keep the wide door and no ring.
+Every boss floor has it: 6000 boss plans (`bossRoomWalk`) all have the ring, both openings, and a walk from the
+arrival to the room's entrance, through it, out of its exit, into the hall and to the portal.
+
+The hall is enclosed but for the room: the maze carve is shut out of the hall's cells and the room's, so from
+inside the hall nothing outside it is reached except through the room's exit, and the portal is reached from the
+arrival only through both openings (`hallEnclosed`, 6000 plans, 0 leaks; with the exit shut, 6000 of 6000 halls
+reach nothing beyond themselves). With bosses untethered (F2) that enclosure and the sweep below bound them.
+
+Every safe zone (each floor's entrance zone, and the boss room) now keeps mobs out and lets a player be:
+
+- Nothing is raised in one. `TowerMobs.placeInRoom` already refused every spot whose body touches a zone, and
+  every spawn path uses it; measured over 900 spawns (`zoneSpawns`): 0 in a zone.
+- `TowerSafety` sweeps every `SWEEP_TICKS` (5) ticks, over the floors with a player on them only (the pattern of
+  the buffs' occupied floors, plan read from `TowerPlan.at`). A tower mob whose body touches a zone is moved to
+  the nearest spot of the room outside every zone where its whole body is clear (on the ground if it stood on it).
+  Ghosts are on the players' side and are not sent out. A mob put in a zone was out at tick 3, window 6.
+- A player inside a zone draws no aggro from any mob, bosses and elites included. `TowerTargetMixin` (on
+  `Mob.asValidTarget`, which `setTarget` and `getTarget` both go through) refuses a player in a zone as a target,
+  so a target already held reads as none the moment the player steps in, and `TowerSensorMixin` (on
+  `Sensor.isEntityAttackable`) keeps brain mobs, a piglin brute and a hoglin, from sensing one. The sweep also
+  lets go of what a mob still holds on such a player: target, last attacker, the brain's attack target, anger,
+  hurt-by and nearest-attackable memories, and a neutral mob's anger. A player who steps out is taken up again.
+
+```
+[BEHAVIOR] test=bossRoomRing RESULT turns=4 openColumns=16 gates=8 solidFaults=0 lampFaults=0 lamps=96 wrongGroups=0
+[BEHAVIOR] test=bossRoomWalk RESULT plans=6000 faulty=0 turns=[0, 1, 2, 3] first=
+[BEHAVIOR] test=hallEnclosed RESULT plans=6000 leaks=0 reachArrivalThroughRoom=6000 sealedByExit=6000 first=
+[BEHAVIOR] test=zoneSpawns RESULT floors=6 tries=900 spawned=900 distinct=900 inZone=0
+[BEHAVIOR] test=sweepEjects RESULT startedInside=true outAt=3 window=6 alive=true clear=true moved=4.0 sweepTicks=5
+[BEHAVIOR] test=zombieNoAggro RESULT acquiredOutsideAt=1 letGoAfter=1 window=6 reaggroInside=0 reacquiredAfter=3
+[BEHAVIOR] test=skeletonNoAggro RESULT acquiredOutsideAt=14 letGoAfter=2 window=6 reaggroInside=0 reacquiredAfter=6
+[BEHAVIOR] test=bruteNoAggro RESULT acquiredOutsideAt=14 letGoAfter=3 window=6 reaggroInside=0 reacquiredAfter=14
+[BEHAVIOR] test=bossNoAggro RESULT acquiredOutsideAt=24 letGoAfter=2 window=6 reaggroInside=0 reacquiredAfter=16
+[BEHAVIOR] test=bossAtDoor RESULT entries=15 longestInRoom=4 deepest=1.2339045785865892 reach=5.7750001562759286 roomLength=7.0 leaks=0 alive=true
+[BEHAVIOR] test=legacyDoor RESULT floor=29861720 servedVersion=0 servedRing=false gates=0 door=6 towerWallAtFloor=0
+[BEHAVIOR] test=bossWalksHall RESULT noAi=false startDistance=13.892443989449804 nearest=7.042832621350407 farthestFromStart=6.92241730674571
+```
+
+`bossAtDoor` sets a free boss (AI on) at the hall's door with its quarry beyond the room: it tried the room 15
+to 22 times, got at most 1.3 blocks into a room 7 long (the bound is one sweep's walk, and under half the room),
+and never reached the maze. It is sent back at each sweep and walks in again at once, so it is inside the zone
+between sweeps: the keep-out bounds how far a mob gets, it is not a wall. With the sweep removed it walked the
+whole room (7.7 blocks) and out, 224 ticks in the maze. `bossWalksHall` is the old
+"bosses roam" case with the AI on (the old test held the boss with no AI).
+
+Manual item: none for this slice; how it feels to walk a lit two-wide doorway, and to stand in a zone with a
+mob at its edge, is worth a look in play.
+

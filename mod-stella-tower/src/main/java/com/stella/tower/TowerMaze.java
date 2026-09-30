@@ -40,6 +40,14 @@ public final class TowerMaze {
 	/** The classic boss floor's safe room sits just past its hall, a wall's thickness beyond it. */
 	public static final int BOSS_ROOM_X = TowerLayout.SIZE / 2 + BOSS_HALL / 2 + WALL;
 
+	/**
+	 * The safe room's openings, canonical layout: two blocks wide, at this z (and the next), the exit through the
+	 * hall's wall and the ring's west side, the entrance through the ring's east side.
+	 */
+	public static final int GATE_Z = SAFE_Z + SAFE / 2 - 1;
+	/** The room's ring stands on the zone's outermost blocks. The east side of the ring, the entrance's. */
+	public static final int ROOM_ENTRANCE_X = BOSS_ROOM_X + SAFE - 1;
+
 	/** A safe zone, by the offset of its low corner from the room's inner corner. */
 	public record Zone(int x, int z) {
 		public boolean contains(final int atX, final int atZ) {
@@ -71,7 +79,7 @@ public final class TowerMaze {
 
 	/** The walls of a floor built before the plans: the classic layout, drawn from the seed and the floor. */
 	static boolean[][] legacyWalls(final long seed, final int floor) {
-		return classicWalls(new java.util.Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor);
+		return classicWalls(new java.util.Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor, false);
 	}
 
 	/**
@@ -79,6 +87,14 @@ public final class TowerMaze {
 	 * exactly one way to every other; then the hall or the portal's nook at the east is opened.
 	 */
 	static boolean[][] classicWalls(final java.util.Random random, final int floor) {
+		return classicWalls(random, floor, false);
+	}
+
+	/**
+	 * The classic layout, with the boss floor's safe room walled as a ring (plan version 2 on) or joined to the hall
+	 * by a path-wide door (before).
+	 */
+	static boolean[][] classicWalls(final java.util.Random random, final int floor, final boolean ring) {
 		int size = TowerLayout.SIZE;
 		boolean[][] wall = new boolean[size][size];
 		for (boolean[] row : wall) {
@@ -125,7 +141,19 @@ public final class TowerMaze {
 		for (Zone zone : classicZones(floor)) {
 			open(wall, zone.x(), zone.z(), SAFE, SAFE);
 		}
-		if (hall == BOSS_HALL) {
+		if (hall == BOSS_HALL && ring) {
+			// The room's ring is the zone's own outermost blocks, solid but for two openings two wide: the exit
+			// through the hall's wall beside it, and, across the room, the entrance onto the maze's cell.
+			for (int x = BOSS_ROOM_X; x < BOSS_ROOM_X + SAFE; x++) {
+				for (int z = SAFE_Z; z < SAFE_Z + SAFE; z++) {
+					if (x == BOSS_ROOM_X || x == ROOM_ENTRANCE_X || z == SAFE_Z || z == SAFE_Z + SAFE - 1) {
+						wall[x][z] = true;
+					}
+				}
+			}
+			open(wall, BOSS_ROOM_X - WALL, GATE_Z, WALL + 1, 2);
+			open(wall, ROOM_ENTRANCE_X, GATE_Z, 1, 2);
+		} else if (hall == BOSS_HALL) {
 			// A door from the hall into the safe room, as wide as a path. The room's far side opens onto the
 			// maze by itself, its wall being cleared with the room.
 			int door = 1 + (TowerPlan.CLASSIC_MIDDLE_Z - 1) / PITCH * PITCH;

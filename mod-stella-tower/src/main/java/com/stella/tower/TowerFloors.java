@@ -318,8 +318,10 @@ public final class TowerFloors {
 					boolean lit = (x - x0 - 1) % LAMP_SPACING == LAMP_AT && (z - z0 - 1) % LAMP_SPACING == LAMP_AT;
 					set(tower, x, top, z, lit ? lamp : wall);
 					if (plan.walls()[x - x0][z - z0]) {
+						// The safe room's ring is tower wall, which nothing breaks; the maze's own is maze wall.
+						BlockState solid = plan.isRing(x - x0, z - z0) ? wall : mazeWall;
 						for (int y = base; y < top; y++) {
-							set(tower, x, y, z, mazeWall);
+							set(tower, x, y, z, solid);
 						}
 					}
 				}
@@ -337,6 +339,7 @@ public final class TowerFloors {
 		for (BlockPos pos : plan.plinth()) {
 			tower.setBlock(pos, wall, Block.UPDATE_CLIENTS);
 		}
+		gates(tower, plan);
 		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
 		for (BlockPos pos : plan.portalFrame()) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
@@ -355,6 +358,31 @@ public final class TowerFloors {
 			BUILT_VERSIONS.put(new Built(tower.getSeed(), floor), plan.version());
 		}
 	}
+
+	/**
+	 * Finishes the safe room's openings, which the columns left as full-height gaps: two high, the wall closed
+	 * over them, and the tower lamp on the lintel and on the jambs, so they are plain to see from across the hall.
+	 */
+	private static void gates(final ServerLevel tower, final TowerPlan plan) {
+		BlockPos origin = plan.origin();
+		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState lamp = TowerBlocks.TOWER_LAMP.defaultBlockState();
+		for (TowerPlan.Gate gate : plan.gates()) {
+			for (TowerPlan.Spot cell : gate.cells()) {
+				for (int y = GATE_HEIGHT; y < TowerLayout.HEIGHT; y++) {
+					tower.setBlock(origin.offset(cell.x(), y, cell.z()), y == GATE_HEIGHT ? lamp : wall, Block.UPDATE_CLIENTS);
+				}
+			}
+			for (TowerPlan.Spot jamb : gate.jambs()) {
+				for (int y = 0; y <= GATE_HEIGHT; y++) {
+					tower.setBlock(origin.offset(jamb.x(), y, jamb.z()), lamp, Block.UPDATE_CLIENTS);
+				}
+			}
+		}
+	}
+
+	/** How high the safe room's openings are: two blocks, and the lintel's lamp above them. */
+	public static final int GATE_HEIGHT = 2;
 
 	/** The block that proves a floor has its safe zones. */
 	public static BlockPos settledMarker(final int floor) {
