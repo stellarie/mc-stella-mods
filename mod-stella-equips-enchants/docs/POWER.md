@@ -22,15 +22,15 @@ Maximum health is a flat gain per level, from `attributes.health_base` and
 | Key | Bundled | Meaning |
 |---|---|---|
 | `attributes.health_base` | 20.0 | max health at level 1 |
-| `attributes.health_per_level` | 4.0 | added per level above the first |
+| `attributes.health_per_level` | 2.5 | added per level above the first |
 
-`health = 20 + 4 * (level - 1)`, so level 2 is 24, level 10 is 56, level 50 is
-216, and level 100 is 416. The shipped level cap is 50.
+`health = 20 + 2.5 * (level - 1)`, so level 2 is 22.5, level 10 is 42.5, level 50 is
+142.5, and level 100 is 267.5. The shipped level cap is 1024.
 
 **The engine ceiling is 1024.** `Attributes.MAX_HEALTH` is a `RangedAttribute`
 with the bounds 1.0 and 1024.0, so the value is clamped there and no server mod
-can lift it. At 4 per level the ceiling is level 251, which the level cap of 50
-puts far out of reach. Health is uncapped in this mod's own data and
+can lift it. At 2.5 per level the ceiling is reached near level 403, below the
+level cap of 1024. Past that level, health stops growing. Health is uncapped in this mod's own data and
 engine-bounded at 1024.
 
 Power grants health only. The `mod-stella-rpg` mod owns damage, attack speed,

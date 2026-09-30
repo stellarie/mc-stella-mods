@@ -17,20 +17,11 @@ public final class PowerFixtures {
 	private PowerFixtures() {
 	}
 
+	/** A fixed test config: level cap 50 and 4 health per level. The bundled document differs. */
 	public static PowerConfig acceptanceConfig() {
 		return new PowerConfig(
 			1,
 			50,
-			new PowerConfig.MobLevel(
-				300.0,
-				32,
-				4,
-				16.0,
-				0.0,
-				36,
-				1.0,
-				Map.of(NETHER, 8.0, OVERWORLD, 1.0, END, 1.0)
-			),
 			new PowerConfig.Bands(20, 10, 6, 5),
 			new PowerConfig.Tracker(40, 5),
 			new PowerConfig.Attributes(
@@ -41,11 +32,4 @@ public final class PowerFixtures {
 		);
 	}
 
-	public static PowerConfig withMobLevel(final PowerConfig.MobLevel mobLevel) {
-		PowerConfig base = acceptanceConfig();
-		return new PowerConfig(
-			base.version(), base.levelCap(), mobLevel, base.bands(), base.tracker(),
-			base.attributes(), base.readout()
-		);
-	}
 }

@@ -63,9 +63,6 @@ public final class PowerConfigParser {
 
 	private static final java.util.Set<String> KNOWN_KEYS = java.util.Set.of(
 		"_note", "version", "level_cap",
-		"mob_level.blocks_per_level", "mob_level.cap", "mob_level.depth_bonus_cap",
-		"mob_level.depth_bonus_blocks", "mob_level.depth_reference_y", "mob_level.level_cap",
-		"mob_level.other_dimension_scale", "mob_level.dimension_scale",
 		"bands.red_above", "bands.yellow_above", "bands.orange_above", "bands.green_within",
 		"tracker.scan_interval_ticks", "tracker.heartbeat_ticks",
 		"attributes.health_base", "attributes.health_per_level",
@@ -109,7 +106,7 @@ public final class PowerConfigParser {
 
 	/** A dimension scale holds one entry per dimension id, so its children are known by prefix. */
 	private static boolean known(final String path) {
-		if (KNOWN_KEYS.contains(path) || path.startsWith("mob_level.dimension_scale.")) {
+		if (KNOWN_KEYS.contains(path)) {
 			return true;
 		}
 
@@ -145,18 +142,6 @@ public final class PowerConfigParser {
 			reportUnknownKeys(object);
 			int version = intValue(object, "version", 0, PowerConfig::version);
 			int levelCap = intValueAtLeast(object, "level_cap", 1, PowerConfig::levelCap);
-
-			JsonObject mob = enter("mob_level");
-			PowerConfig.MobLevel mobSpec = new PowerConfig.MobLevel(
-				doubleValueAbove(mob, "blocks_per_level", 0.0, config -> config.mobLevel().blocksPerLevel()),
-				intValueAtLeast(mob, "cap", 0, config -> config.mobLevel().cap()),
-				intValueAtLeast(mob, "depth_bonus_cap", 0, config -> config.mobLevel().depthBonusCap()),
-				doubleValueAbove(mob, "depth_bonus_blocks", 0.0, config -> config.mobLevel().depthBonusBlocks()),
-				doubleValue(mob, "depth_reference_y", 0.0, config -> config.mobLevel().depthReferenceY()),
-				intValueAtLeast(mob, "level_cap", 0, config -> config.mobLevel().levelCap()),
-				doubleValueAbove(mob, "other_dimension_scale", 0.0, config -> config.mobLevel().otherDimensionScale()),
-				scaleMap(mob, "dimension_scale", config -> config.mobLevel().dimensionScale())
-			);
 
 			JsonObject bands = enter("bands");
 			PowerConfig.Bands bandSpec = new PowerConfig.Bands(
@@ -194,7 +179,6 @@ public final class PowerConfigParser {
 			return new PowerConfig(
 				version,
 				levelCap,
-				mobSpec,
 				bandSpec,
 				trackerSpec,
 				attributeSpec,

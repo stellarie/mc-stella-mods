@@ -4,9 +4,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.LivingEntity;
 
 public final class PowerTracker {
 	// The last level each live player object was scanned at, only so a change logs once.
@@ -66,21 +64,5 @@ public final class PowerTracker {
 	/** The vanilla experience level, capped, is the only input to player scaling. */
 	public static int playerLevel(final ServerPlayer player, final PowerConfig config) {
 		return Math.max(0, Math.min(config.levelCap(), player.experienceLevel));
-	}
-
-	public static int threat(final LivingEntity entity, final PowerConfig config) {
-		if (!(entity.level() instanceof ServerLevel level)) {
-			return 0;
-		}
-
-		double scaled = PowerCurve.scaledDistance(
-			entity.getX(),
-			entity.getZ(),
-			level.getRespawnData().pos().getX(),
-			level.getRespawnData().pos().getZ(),
-			level.dimension().identifier(),
-			config
-		);
-		return PowerCurve.threat((int) Math.floor(scaled), entity.getBlockY(), config);
 	}
 }

@@ -30,16 +30,15 @@ public class PowerConfigGameTest {
 		PowerConfig expected = PowerFixtures.acceptanceConfig();
 		PowerConfig actual = PowerConfigStore.bundled();
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} threatCap={} bands={} tracker={} healthPerLevel={} readout={}",
-			actual.levelCap(), actual.mobLevel().levelCap(), actual.bands(), actual.tracker(),
+			"[BEHAVIOR] test=bundledNumbers RESULT levelCap={} bands={} tracker={} healthPerLevel={} readout={}",
+			actual.levelCap(), actual.bands(), actual.tracker(),
 			actual.attributes().healthPerLevel(), actual.readout()
 		);
 		helper.assertTrue(
-			actual.levelCap() == expected.levelCap()
-				&& actual.mobLevel().equals(expected.mobLevel())
+			actual.levelCap() == 1024
 				&& actual.bands().equals(expected.bands())
 				&& actual.tracker().equals(expected.tracker())
-				&& actual.attributes().equals(expected.attributes())
+				&& actual.attributes().equals(new PowerConfig.Attributes(expected.attributes().healthBase(), 2.5))
 				&& actual.readout().equals(expected.readout()),
 			"the bundled document parsed to " + actual + " but the acceptance numbers are " + expected
 		);
@@ -64,7 +63,7 @@ public class PowerConfigGameTest {
 	public void anOlderFileKeepsItsValuesAndReportsTheRetiredCurveAndAwardKeys(final GameTestHelper helper) {
 		PowerConfig fallback = PowerFixtures.acceptanceConfig();
 		String older = PowerConfigStore.DEFAULT_JSON
-			.replace("\"level_cap\": 50", "\"level_cap\": " + EDITED_LEVEL_CAP
+			.replace("\"level_cap\": 1024", "\"level_cap\": " + EDITED_LEVEL_CAP
 				+ ",\n\t\"curve\": { \"base\": 3.0, \"growth\": 1.5 },\n\t\"award\": { \"divisor\": 2.0, \"minimum\": 4 }");
 		PowerConfig parsed = PowerConfigParser.parse(older, fallback);
 		java.util.List<String> ignored = PowerConfigParser.ignoredKeys();
@@ -100,16 +99,11 @@ public class PowerConfigGameTest {
 			"the invalid heartbeat of 0 became " + edited.tracker().heartbeatTicks() + " instead of the fallback "
 				+ fallback.tracker().heartbeatTicks()
 		);
-		helper.assertTrue(
-			edited.mobLevel().equals(fallback.mobLevel()),
-			"an untouched section changed: " + edited.mobLevel() + " instead of " + fallback.mobLevel()
-		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=parserPerField RESULT editedLevelCap={} editedScanInterval={} heartbeat={} untouchedMobCap={}",
+			"[BEHAVIOR] test=parserPerField RESULT editedLevelCap={} editedScanInterval={} heartbeat={}",
 			edited.levelCap(),
 			edited.tracker().scanIntervalTicks(),
-			edited.tracker().heartbeatTicks(),
-			edited.mobLevel().cap()
+			edited.tracker().heartbeatTicks()
 		);
 		helper.succeed();
 	}
@@ -171,7 +165,7 @@ public class PowerConfigGameTest {
 			"the written document parsed to " + loaded + " instead of the bundled config"
 		);
 		helper.assertTrue(
-			text.contains("\"level_cap\": 50"),
+			text.contains("\"level_cap\": 1024"),
 			"the written file does not carry the level cap of 50: " + text
 		);
 		StellaEquips.LOGGER.info(
@@ -184,7 +178,7 @@ public class PowerConfigGameTest {
 	@GameTest
 	public void storeReadsAHandEditedFile(final GameTestHelper helper) throws IOException {
 		Path file = Files.createTempDirectory("power-config-edited").resolve(PowerConfigStore.FILE_NAME);
-		String edited = PowerConfigStore.DEFAULT_JSON.replace("\"level_cap\": 50", "\"level_cap\": " + EDITED_LEVEL_CAP);
+		String edited = PowerConfigStore.DEFAULT_JSON.replace("\"level_cap\": 1024", "\"level_cap\": " + EDITED_LEVEL_CAP);
 		Files.writeString(file, edited, StandardCharsets.UTF_8);
 		PowerConfig loaded = PowerConfigStore.loadFrom(file);
 		PowerConfigStore.load();
@@ -192,13 +186,9 @@ public class PowerConfigGameTest {
 			loaded.levelCap() == EDITED_LEVEL_CAP,
 			"a hand edited level cap of " + EDITED_LEVEL_CAP + " loaded as " + loaded.levelCap()
 		);
-		helper.assertTrue(
-			loaded.mobLevel().levelCap() == PowerConfigStore.bundled().mobLevel().levelCap(),
-			"the edit changed the mob level cap too: " + loaded.mobLevel().levelCap()
-		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=storeReadsEdited RESULT levelCap={} mobLevelCap={} liveLevelCap={}",
-			loaded.levelCap(), loaded.mobLevel().levelCap(), PowerConfigStore.get().levelCap()
+			"[BEHAVIOR] test=storeReadsEdited RESULT levelCap={} liveLevelCap={}",
+			loaded.levelCap(), PowerConfigStore.get().levelCap()
 		);
 		helper.succeed();
 	}
@@ -208,7 +198,7 @@ public class PowerConfigGameTest {
 		Path file = Files.createTempDirectory("power-config-broken").resolve(PowerConfigStore.FILE_NAME);
 		Files.writeString(
 			file,
-			PowerConfigStore.DEFAULT_JSON.replace("\"level_cap\": 50", "\"level_cap\": " + EDITED_LEVEL_CAP),
+			PowerConfigStore.DEFAULT_JSON.replace("\"level_cap\": 1024", "\"level_cap\": " + EDITED_LEVEL_CAP),
 			StandardCharsets.UTF_8
 		);
 		PowerConfig good = PowerConfigStore.loadFrom(file);
@@ -224,8 +214,8 @@ public class PowerConfigGameTest {
 			"the last good level cap of " + EDITED_LEVEL_CAP + " was lost: " + afterBreak.levelCap()
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=storeBrokenFile RESULT keptLevelCap={} keptMobCap={} liveLevelCap={}",
-			afterBreak.levelCap(), afterBreak.mobLevel().cap(), PowerConfigStore.get().levelCap()
+			"[BEHAVIOR] test=storeBrokenFile RESULT keptLevelCap={} liveLevelCap={}",
+			afterBreak.levelCap(), PowerConfigStore.get().levelCap()
 		);
 		helper.succeed();
 	}

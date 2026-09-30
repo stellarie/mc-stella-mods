@@ -285,7 +285,7 @@ public class PowerTrackerGameTest {
 			Path file = Files.createTempDirectory("power-reload-config").resolve(PowerConfigStore.FILE_NAME);
 			Files.writeString(
 				file,
-				PowerConfigStore.DEFAULT_JSON.replace("\"health_per_level\": 4.0", "\"health_per_level\": 8.0"),
+				PowerConfigStore.DEFAULT_JSON.replace("\"health_per_level\": 2.5", "\"health_per_level\": 8.0"),
 				StandardCharsets.UTF_8
 			);
 			after = PowerConfigStore.loadFrom(file);
@@ -313,8 +313,8 @@ public class PowerTrackerGameTest {
 	@GameTest
 	public void aRetiredAttributeKeyLoadsAndIsReported(final GameTestHelper helper) {
 		String legacy = PowerConfigStore.DEFAULT_JSON.replace(
-			"\"health_per_level\": 4.0",
-			"\"health_per_level\": 4.0, \"armor_at_cap\": 11.76"
+			"\"health_per_level\": 2.5",
+			"\"health_per_level\": 2.5, \"armor_at_cap\": 11.76"
 		);
 		PowerConfig parsed;
 		try {
@@ -332,7 +332,7 @@ public class PowerTrackerGameTest {
 			ignored.contains("attributes.armor_at_cap"), "the retired armor key was not reported: " + ignored
 		);
 		helper.assertTrue(
-			Math.abs(parsed.attributes().healthPerLevel() - 4.0) < TOLERANCE,
+			Math.abs(parsed.attributes().healthPerLevel() - 2.5) < TOLERANCE,
 			"the retired key changed the health per level to " + parsed.attributes().healthPerLevel()
 		);
 		helper.succeed();
@@ -379,7 +379,8 @@ public class PowerTrackerGameTest {
 	private static double[] expectedModifiers(final int level, final PowerConfig config) {
 		PowerConfig.Attributes attributes = config.attributes();
 		return new double[] {
-			attributes.healthPerLevel() * Math.max(0, level - 1) + attributes.healthBase() - 20.0,
+			// The engine caps max health at 1024, so the gain stops at 1004.
+			Math.min(1004.0, attributes.healthPerLevel() * Math.max(0, level - 1) + attributes.healthBase() - 20.0),
 			0.0,
 			0.0,
 			0.0,

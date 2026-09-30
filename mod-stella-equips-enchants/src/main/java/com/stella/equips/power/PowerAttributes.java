@@ -24,10 +24,15 @@ public final class PowerAttributes {
 
 	public static void apply(final ServerPlayer player, final int level, final PowerConfig config) {
 		PowerConfig.Attributes attributes = config.attributes();
-		double health = attributes.healthBase() + attributes.healthPerLevel() * Math.max(0, level - 1);
-		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, health - VANILLA_MAX_HEALTH);
+		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, healthFor(level, config) - VANILLA_MAX_HEALTH);
 		removeRetired(player);
 		clampHealth(player);
+	}
+
+	/** Max health for a level, before the engine ceiling. */
+	public static double healthFor(final int level, final PowerConfig config) {
+		PowerConfig.Attributes attributes = config.attributes();
+		return attributes.healthBase() + attributes.healthPerLevel() * Math.max(0, level - 1);
 	}
 
 	public static void remove(final ServerPlayer player) {
