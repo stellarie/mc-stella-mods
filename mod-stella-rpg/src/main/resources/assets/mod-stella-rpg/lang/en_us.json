@@ -43,5 +43,12 @@
 	"screen.mod-stella-rpg.result.not_enough_emeralds": "A reset needs 320 emeralds.",
 	"screen.mod-stella-rpg.result.nothing_to_reset": "No points are allocated.",
 	"screen.mod-stella-rpg.result.invalid_amount": "The amount is not valid.",
+	"tooltip.mod-stella-rpg.roll": "+%s %s",
+	"tooltip.mod-stella-rpg.stat.str": "STR",
+	"tooltip.mod-stella-rpg.stat.agi": "AGI",
+	"tooltip.mod-stella-rpg.stat.vit": "VIT",
+	"tooltip.mod-stella-rpg.stat.dex": "DEX",
+	"tooltip.mod-stella-rpg.stat.int": "INT",
+	"tooltip.mod-stella-rpg.stat.luk": "LUK",
 	"screen.mod-stella-rpg.result.invalid_stat": "Unknown stat."
 }

@@ -5,8 +5,10 @@
 	"mixins": [
 		"RpgAttackChargeMixin",
 		"RpgBowDrawMixin",
+		"RpgCraftRollMixin",
 		"RpgInventoryDropMixin",
 		"RpgIncomingDamageMixin",
+		"RpgMobDropRollMixin",
 		"RpgOutgoingDamageMixin",
 		"RpgPlayerExperienceMixin"
 	],

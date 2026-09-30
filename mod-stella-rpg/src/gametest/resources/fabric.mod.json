@@ -26,6 +26,7 @@
 			"com.stella.rpg.RpgRespecGameTest",
 			"com.stella.rpg.PendingStatsGameTest",
 			"com.stella.rpg.RpgSpellsGameTest",
+			"com.stella.rpg.WeaponRollGameTest",
 			"com.stella.rpg.TombstoneGameTest"
 		]
 	},
