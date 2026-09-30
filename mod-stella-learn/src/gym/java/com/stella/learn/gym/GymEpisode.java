@@ -43,8 +43,6 @@ public final class GymEpisode {
 	/** Shaping per decision: damage dealt to the bot, and a small pay for a decision in which the archer was not hit. */
 	private static final double DAMAGE_REWARD_PER_HP = 0.005;
 	private static final double UNHIT_REWARD = 0.0002;
-	/** Stage A is slower by design: the bots do not heal, and the fight lasts twice as long. */
-	private static final int STAGE_A_TIME_FACTOR = 2;
 	private static final int START_RETRIES = 3;
 	/** Ticks between two sweeps of the archer's arrows that lie still. */
 	private static final int SWEEP_TICKS = 20;
@@ -95,6 +93,7 @@ public final class GymEpisode {
 	private int startWait;
 	private int startAttempts;
 	private int arrows;
+	private int tickLimit;
 	private int sweepClock;
 	private double shaping;
 	private double dealt;
@@ -175,7 +174,13 @@ public final class GymEpisode {
 
 	/** Resets the arena to the layout of `newSeed` and puts a fresh archer and a revived bot in it. */
 	public void start(final long newSeed, final int brainChoice, final int stageChoice) {
+		start(newSeed, brainChoice, stageChoice, 0);
+	}
+
+	/** `limit` is the episode length in ticks; 0 keeps the server's own. */
+	public void start(final long newSeed, final int brainChoice, final int stageChoice, final int limit) {
 		startAttempts = 0;
+		tickLimit = limit > 0 ? limit : config.episodeTicks();
 		launch(newSeed, brainChoice, stageChoice);
 	}
 
@@ -459,7 +464,7 @@ public final class GymEpisode {
 	}
 
 	private int episodeLimit() {
-		return stage == Terrain.A ? config.episodeTicks() * STAGE_A_TIME_FACTOR : config.episodeTicks();
+		return tickLimit;
 	}
 
 	private Frame frame(final int flags, final float reward, final float shapingStep) {
@@ -482,7 +487,7 @@ public final class GymEpisode {
 
 	private void logEnd(final float reward, final float mobHealth, final float botHealth) {
 		GymLog.info(GymLog.EPISODE, "END", "arena=" + arena.index() + " seed=" + seed + " episode=" + episodes + " brain=" + (brain == null ? "none" : Brains.name(brainIndex))
-			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
+			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " limit=" + tickLimit + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
 			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken)
 			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " unhitReward=" + LearnLog.num(unhit) + " mobHealth=" + LearnLog.num(mobHealth)
 			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());

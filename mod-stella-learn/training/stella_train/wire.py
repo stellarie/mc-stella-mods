@@ -90,9 +90,9 @@ def encode_act(step_id: int, agents, actions) -> bytes:
     return _frame(ACT, struct.pack("<II", step_id, len(agents)) + rows.tobytes())
 
 
-def encode_reset(arena: int, seed: int, brain: int = -1, stage: int = -1) -> bytes:
+def encode_reset(arena: int, seed: int, brain: int = -1, stage: int = -1, ticks: int = 0) -> bytes:
     """Starts a new episode in `arena`. A negative brain or stage leaves the choice to the server."""
-    return _frame(RESET, struct.pack("<IIii", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF, brain, stage))
+    return _frame(RESET, struct.pack("<IIiii", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF, brain, stage, ticks))
 
 
 def encode_bye() -> bytes:
@@ -129,10 +129,10 @@ def decode_act(body: bytes, act_size: int) -> tuple[int, np.ndarray, np.ndarray]
     return step_id, rows["id"], rows["act"]
 
 
-def decode_reset(body: bytes) -> tuple[int, int, int, int]:
-    if len(body) != 16:
-        raise WireError(f"reset body holds {len(body)} bytes, expected 16")
-    return struct.unpack("<IIii", body)
+def decode_reset(body: bytes) -> tuple[int, int, int, int, int]:
+    if len(body) != 20:
+        raise WireError(f"reset body holds {len(body)} bytes, expected 20")
+    return struct.unpack("<IIiii", body)
 
 
 def recv_exact(sock: socket.socket, count: int) -> bytes:

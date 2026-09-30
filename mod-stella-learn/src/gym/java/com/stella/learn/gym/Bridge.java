@@ -131,8 +131,8 @@ public final class Bridge implements AutoCloseable {
 	public record Frame(int type, ByteBuffer body) {
 	}
 
-	/** `brain` and `stage` are negative when the trainer leaves the choice to the server. */
-	public record Reset(int arena, int seed, int brain, int stage) {
+	/** `brain` and `stage` are negative when the trainer leaves the choice to the server; `ticks` 0 means the server's episode length. */
+	public record Reset(int arena, int seed, int brain, int stage, int ticks) {
 	}
 
 	public record Act(int stepId, int[] agents, float[][] actions) {
@@ -194,12 +194,13 @@ public final class Bridge implements AutoCloseable {
 		return buffer.array();
 	}
 
-	public static byte[] resetFrame(final int arena, final int seed, final int brain, final int stage) {
-		ByteBuffer buffer = frame(RESET, 16);
+	public static byte[] resetFrame(final int arena, final int seed, final int brain, final int stage, final int ticks) {
+		ByteBuffer buffer = frame(RESET, 20);
 		buffer.putInt(arena);
 		buffer.putInt(seed);
 		buffer.putInt(brain);
 		buffer.putInt(stage);
+		buffer.putInt(ticks);
 		return buffer.array();
 	}
 
@@ -227,10 +228,10 @@ public final class Bridge implements AutoCloseable {
 	}
 
 	public static Reset decodeReset(final ByteBuffer body) {
-		if (body.remaining() != 16) {
+		if (body.remaining() != 20) {
 			throw new IllegalArgumentException("reset frame holds " + body.remaining() + " bytes");
 		}
 
-		return new Reset(body.getInt(), body.getInt(), body.getInt(), body.getInt());
+		return new Reset(body.getInt(), body.getInt(), body.getInt(), body.getInt(), body.getInt());
 	}
 }

@@ -8,7 +8,7 @@ from stella_train import wire
 HELLO = "2b0000000102007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 STEP = "3300000002070000000200000000000000010000003f0000803e0000803f00000040050000000e000080bf000000be000040c00000803e"
 ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040"
-RESET = "1100000004ffffffff2a0000000600000002000000"
+RESET = "1500000004ffffffff2a000000060000000200000058020000"
 BYE = "0100000005"
 
 
@@ -50,8 +50,8 @@ def test_act_decodes_from_the_fixed_bytes():
 
 
 def test_reset_and_bye_match_the_fixed_bytes():
-    assert wire.encode_reset(wire.ALL_ARENAS, 42, 6, 2).hex() == RESET
-    assert wire.decode_reset(bytes.fromhex(RESET)[5:]) == (wire.ALL_ARENAS, 42, 6, 2)
+    assert wire.encode_reset(wire.ALL_ARENAS, 42, 6, 2, 600).hex() == RESET
+    assert wire.decode_reset(bytes.fromhex(RESET)[5:]) == (wire.ALL_ARENAS, 42, 6, 2, 600)
     assert wire.encode_bye().hex() == BYE
 
 

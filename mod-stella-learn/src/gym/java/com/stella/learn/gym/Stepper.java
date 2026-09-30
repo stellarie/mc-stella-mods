@@ -158,10 +158,10 @@ public final class Stepper {
 	private void reset(final Bridge.Reset reset) {
 		long seed = Integer.toUnsignedLong(reset.seed());
 		GymLog.debug(GymLog.BRIDGE, "RESET", "arena=" + (reset.arena() == Bridge.ALL_ARENAS ? "all" : String.valueOf(reset.arena()))
-			+ " seed=" + seed + " brain=" + reset.brain() + " stage=" + reset.stage());
+			+ " seed=" + seed + " brain=" + reset.brain() + " stage=" + reset.stage() + " ticks=" + reset.ticks());
 		for (GymEpisode episode : episodes) {
 			if (reset.arena() == Bridge.ALL_ARENAS || reset.arena() == episode.arena().index()) {
-				episode.start(seed, reset.brain(), reset.stage());
+				episode.start(seed, reset.brain(), reset.stage(), reset.ticks());
 			}
 		}
 	}

@@ -38,13 +38,13 @@ STAGE_A_BAR = 0.80
 TERRAIN_CLASSES = ("flat", "pillars", "wall", "pits", "ledges", "water", "corridors")
 
 
-def build_tasks(suite: str, episodes: int | None = None) -> list[Task]:
+def build_tasks(suite: str, episodes: int | None = None, ticks: int = 400) -> list[Task]:
     spec = SUITES[suite]
     count = episodes or spec["episodes"]
     tasks = []
     for j in range(count):
         for name in spec["brains"]:
-            tasks.append(Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, spec["stage"]))
+            tasks.append(Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, spec["stage"], ticks))
     return tasks
 
 

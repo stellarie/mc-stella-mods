@@ -34,6 +34,12 @@ jump_bias_init = [0.5, -0.5]
 scale = 1.0                      # the gym prices the terms: +0.005 a hit point dealt, +0.0002 an unhit decision; no decay
 
 [curriculum]
+# Episode length in ticks. Stage A starts at 600 and drops to 400 once its deterministic win rate passes 40 percent.
+stage_a_ticks = 600
+stage_a_short_at = 0.40
+short_ticks = 400
+stage_b_ticks = 600
+stage_c_ticks = 400
 # Stage A promotes at this win rate on the `stage-a` suite.
 stage_a_win_rate = 0.80
 stage_a_min_decisions = 5_000_000
