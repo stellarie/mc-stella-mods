@@ -63,7 +63,7 @@ public class AimDiagnosticGameTest {
 			double pitchWanted = Bot.pitchTo(eye, aim);
 			boolean drawn = observation[DRAW_INDEX] * SCALE_DRAW >= FULL_DRAW;
 			return new ArcherAction(0.0F, 0.0F, Mth.clamp(yaw / 30.0F, -1.0F, 1.0F), (float) Mth.clamp((pitchWanted - pitchNow) / 30.0, -1.0, 1.0), false,
-				drawn ? ArcherAction.Bow.RELEASE : ArcherAction.Bow.DRAW);
+				ArcherAction.Bow.FIRE);
 		};
 	}
 }

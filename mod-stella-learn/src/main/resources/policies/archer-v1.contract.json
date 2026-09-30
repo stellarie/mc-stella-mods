@@ -10,7 +10,7 @@
 		"Hit memory (target.last_hit .. target.has_hit): only the archer own arrow hits count. last_hit and mean_hit are damage over the target max health, the mean over the last 5 hits; hits_needed is the target health fraction over the mean hit; ticks_since_hit counts goal ticks. All 0 before the first hit; they stay set while the target is hidden.",
 		"Ally slots are 0 until a group fight fills them.",
 		"Action: forward and strafe in [-1, 1] (strafe > 0 is to the right); yaw and pitch are turn rates in [-1, 1] scaled by 30 degrees per tick (yaw > 0 turns right, pitch > 0 looks down).",
-		"Network output: 4 continuous values (tanh at run time), then 2 jump logits, then 4 bow logits (idle, draw, release, volley); the discrete heads take the arg max."
+		"Network output: 4 continuous values (tanh at run time), then 2 jump logits, then 4 bow logits (idle, draw, fire, fire_volley); the discrete heads take the arg max. Bow: idle cancels a draw; draw holds one; fire and fire_volley start a draw when none runs, keep drawing, and loose at 20 draw ticks (full power 1.6); fire_volley is a volley only when the 120 tick cooldown is ready, otherwise a normal full shot. The model steers yaw and pitch every tick of the draw."
 	],
 	"observation": [
 		{"name": "self.health_fraction", "scale": 1.0},

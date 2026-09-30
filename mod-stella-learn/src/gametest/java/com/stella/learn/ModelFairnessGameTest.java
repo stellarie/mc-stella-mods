@@ -148,9 +148,9 @@ public class ModelFairnessGameTest {
 		}, archer);
 	}
 
-	/** Draws for `DRAW_DECISIONS` decisions, then asks for a volley, over and over. */
+	/** Asks for a volley at every decision; one leaves only when the cooldown is ready. */
 	private static ActionSource drawThenVolley() {
-		return ModelTests.script(decision -> ModelTests.bow(decision % (DRAW_DECISIONS + 1) == DRAW_DECISIONS ? ArcherAction.Bow.VOLLEY : ArcherAction.Bow.DRAW));
+		return ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE_VOLLEY));
 	}
 
 	private static int volleysBy(final Mob mob, final int untilTick) {
@@ -181,11 +181,6 @@ public class ModelFairnessGameTest {
 		}, () -> "the archer never started its model goal"));
 	}
 
-	/** Draws for `draws` decisions, releases once, then rests. */
-	private static ActionSource drawThenRelease(final int draws) {
-		return ModelTests.script(decision -> ModelTests.bow(decision < draws ? ArcherAction.Bow.DRAW : decision == draws ? ArcherAction.Bow.RELEASE : ArcherAction.Bow.IDLE));
-	}
-
 	private static void firstSpeed(final GameTestHelper helper, final Mob archer, final List<AbstractArrow> seen, final double[] speed) {
 		ModelTests.collectArrows(helper, archer, seen);
 		if (speed[0] == 0.0 && !seen.isEmpty()) {
@@ -193,35 +188,31 @@ public class ModelFairnessGameTest {
 		}
 	}
 
+	/** Asks to fire at every decision, and a second archer asks for five decisions and then goes idle mid-draw. */
 	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
-	public void earlyReleaseIsWeak(final GameTestHelper helper) {
+	public void fireWaitsForFullDraw(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 24.5, 40.5);
-		Mob quick = ModelTests.archer(helper, 12.5, 24.5);
-		Mob full = ModelTests.archer(helper, 36.5, 24.5);
-		ModelDriver.setActionSource(quick, drawThenRelease(3));
-		ModelDriver.setActionSource(full, drawThenRelease(DRAW_DECISIONS));
-		List<AbstractArrow> quickArrows = new ArrayList<>();
-		List<AbstractArrow> fullArrows = new ArrayList<>();
-		double[] quickSpeed = {0.0};
-		double[] fullSpeed = {0.0};
-		ModelTests.everyTick(helper, player, () -> {
-			firstSpeed(helper, quick, quickArrows, quickSpeed);
-			firstSpeed(helper, full, fullArrows, fullSpeed);
-		}, quick, full);
-		LearnArena.whenReady(helper, List.of(player, quick, full), () -> LearnArena.pollUntil(helper, () -> quickSpeed[0] > 0.0 && fullSpeed[0] > 0.0, 200, () -> {
-			String early = ModelTests.lines(quick, "RELEASE").get(0);
-			String late = ModelTests.lines(full, "RELEASE").get(0);
-			int earlyDraw = Integer.parseInt(ModelTests.field(early, "draw_ticks"));
-			int lateDraw = Integer.parseInt(ModelTests.field(late, "draw_ticks"));
-			StellaLearn.LOGGER.info(
-				"[BEHAVIOR] test=earlyReleaseIsWeak RESULT early_draw={} early_speed={} late_draw={} late_speed={}", earlyDraw, quickSpeed[0], lateDraw, fullSpeed[0]
-			);
-			helper.assertTrue(earlyDraw >= LearnedArcherGoal.MIN_DRAW_TICKS && earlyDraw < lateDraw, "the draws were " + earlyDraw + " and " + lateDraw);
-			helper.assertTrue(quickSpeed[0] < fullSpeed[0], "the early arrow flew at " + quickSpeed[0] + ", the late one at " + fullSpeed[0]);
-			ModelTests.pass(helper);
-		}, () -> "an archer never loosed: quick=" + quickSpeed[0] + " full=" + fullSpeed[0]));
+		Mob firing = ModelTests.archer(helper, 12.5, 24.5);
+		Mob quitter = ModelTests.archer(helper, 36.5, 24.5);
+		ModelDriver.setActionSource(firing, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)));
+		ModelDriver.setActionSource(quitter, ModelTests.script(decision -> ModelTests.bow(decision < 5 ? ArcherAction.Bow.FIRE : ArcherAction.Bow.IDLE)));
+		List<AbstractArrow> arrows = new ArrayList<>();
+		double[] speed = {0.0};
+		ModelTests.everyTick(helper, player, () -> firstSpeed(helper, firing, arrows, speed), firing, quitter);
+		LearnArena.whenReady(helper, List.of(player, firing, quitter), () -> LearnArena.pollUntil(helper, () -> speed[0] > 0.0, 200, () -> {
+			String line = ModelTests.lines(firing, "RELEASE").get(0);
+			int draw = Integer.parseInt(ModelTests.field(line, "draw_ticks"));
+			LearnArena.pollUntil(helper, () -> firing.tickCount > 100, 200, () -> {
+				long quitterShots = ModelTests.lines(quitter, "RELEASE").size();
+				StellaLearn.LOGGER.info("[BEHAVIOR] test=fireWaitsForFullDraw RESULT draw_ticks={} speed={} quitter_shots={}", draw, speed[0], quitterShots);
+				helper.assertTrue(draw >= LearnedArcherGoal.FULL_DRAW_TICKS, "the first arrow left after " + draw + " draw ticks");
+				helper.assertTrue(speed[0] >= LearnedArcherGoal.POWER * 0.95, "the first arrow flew at " + speed[0] + ", not at full speed");
+				helper.assertTrue(quitterShots == 0, "an archer that went idle mid-draw still loosed " + quitterShots + " arrows");
+				ModelTests.pass(helper);
+			}, () -> "the clock never passed 100 ticks");
+		}, () -> "the firing archer never loosed"));
 	}
 
 	/** Looks straight at the target's eyes and draws, then releases once; it reads its own pitch from the observation. */
@@ -240,7 +231,7 @@ public class ModelFairnessGameTest {
 				float yaw = Mth.clamp(Mth.wrapDegrees(wantYaw - mob.getYRot()) / (TURN_LIMIT * DECISION_TICKS), -1.0F, 1.0F);
 				float down = Mth.clamp((wantPitch - pitch) / (TURN_LIMIT * DECISION_TICKS), -1.0F, 1.0F);
 				int decision = this.decisions++;
-				ArcherAction.Bow bow = decision < draws ? ArcherAction.Bow.DRAW : decision == draws ? ArcherAction.Bow.RELEASE : ArcherAction.Bow.IDLE;
+				ArcherAction.Bow bow = ArcherAction.Bow.FIRE;
 				return new ArcherAction(0.0F, 0.0F, yaw, down, false, bow);
 			}
 		};

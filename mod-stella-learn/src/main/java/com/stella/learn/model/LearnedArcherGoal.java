@@ -21,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Drives a bow archer from an action source. It decides every `decision_ticks` ticks and applies the latest action every
  * tick, under limits no model can pass: a turn of 30 degrees a tick, a move speed of 1.2 times the mob's own, a release
- * only after a 3 tick draw, and a volley only after its 120 tick cooldown. It holds MOVE, LOOK and JUMP at priority 0.
+ * only at a full 20 tick draw, and a volley only after its 120 tick cooldown. It holds MOVE, LOOK and JUMP at priority 0.
  */
 public final class LearnedArcherGoal extends Goal {
 	public static final int PRIORITY = 0;
@@ -29,7 +29,8 @@ public final class LearnedArcherGoal extends Goal {
 	public static final double SPEED_MODIFIER = 1.2;
 	/** Below this length a move input counts as standing still. */
 	private static final double MIN_INPUT = 1.0E-3;
-	public static final int MIN_DRAW_TICKS = 3;
+	/** A shot leaves at this draw, where the bow gives full power. */
+	public static final int FULL_DRAW_TICKS = 20;
 	/** Vanilla's skeleton shot power; a full draw looses at this. */
 	public static final float POWER = 1.6F;
 	/** Vanilla's Hard difficulty skeleton inaccuracy. */
@@ -244,13 +245,20 @@ public final class LearnedArcherGoal extends Goal {
 					this.state.drawTicks = 0;
 				}
 			}
-			case RELEASE -> this.release(false, drawing);
-			case VOLLEY -> this.release(true, drawing);
+			case FIRE -> this.fire(false, drawing);
+			case FIRE_VOLLEY -> this.fire(true, drawing);
 		}
 	}
 
-	private void release(final boolean volleyAsked, final boolean drawing) {
-		if (!drawing || this.state.drawTicks < MIN_DRAW_TICKS) {
+	/** Starts a draw when none runs, keeps drawing, and looses at a full draw. IDLE in between cancels it. */
+	private void fire(final boolean volleyAsked, final boolean drawing) {
+		if (!drawing) {
+			this.mob.startUsingItem(ProjectileUtil.getWeaponHoldingHand(this.mob, Items.BOW));
+			this.state.drawTicks = 0;
+			return;
+		}
+
+		if (this.state.drawTicks < FULL_DRAW_TICKS) {
 			return;
 		}
 

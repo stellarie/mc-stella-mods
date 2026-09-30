@@ -8,8 +8,8 @@ public record ArcherAction(float forward, float strafe, float yaw, float pitch, 
 	public enum Bow {
 		IDLE,
 		DRAW,
-		RELEASE,
-		VOLLEY
+		FIRE,
+		FIRE_VOLLEY
 	}
 
 	public static final ArcherAction STILL = new ArcherAction(0.0F, 0.0F, 0.0F, 0.0F, false, Bow.IDLE);

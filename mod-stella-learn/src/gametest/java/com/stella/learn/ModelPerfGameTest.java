@@ -39,7 +39,7 @@ public class ModelPerfGameTest {
 		return (mob, observation) -> {
 			network.decide(mob, observation);
 			int step = decisions[0]++ % CYCLE_DECISIONS;
-			ArcherAction.Bow bow = step < DRAW_DECISIONS ? ArcherAction.Bow.DRAW : step == DRAW_DECISIONS ? ArcherAction.Bow.RELEASE : ArcherAction.Bow.IDLE;
+			ArcherAction.Bow bow = step < DRAW_DECISIONS ? ArcherAction.Bow.DRAW : step == DRAW_DECISIONS ? ArcherAction.Bow.FIRE : ArcherAction.Bow.IDLE;
 			return new ArcherAction(1.0F, 0.3F, 0.1F, 0.0F, step == 3, bow);
 		};
 	}
