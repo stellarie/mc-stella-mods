@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import roster
+from . import bodies, roster
 from .rollout import Task
 from .runlog import RunLog
 
@@ -33,7 +33,16 @@ class Curriculum:
 
     def train_task(self) -> Task:
         brains = roster.stage_brains(self.stage)
-        return Task(int(brains[self.rng.integers(len(brains))]), int(self.rng.integers(0, roster.TRAIN_SEED_LIMIT)), self.stage, self.ticks)
+        return Task(int(brains[self.rng.integers(len(brains))]), int(self.rng.integers(0, roster.TRAIN_SEED_LIMIT)), self.stage, self.ticks, self.body().wire())
+
+    def body(self) -> bodies.BodyRange:
+        return bodies.range_for_stage(self.stage)
+
+    def log_body(self, decisions: int) -> None:
+        ranges = self.body()
+        self.log.info("trainStage BODY stage=%s decisions=%d hp=%d-%d armor=0-%d toughness=0-%d protection=0-%d special=%.2f", roster.STAGE_NAMES[self.stage], decisions,
+                      ranges.hp_min, ranges.hp_max, ranges.armor_max, ranges.toughness_max, ranges.protection_max, ranges.special_permille / 1000.0)
+        self.log.event("trainStage BODY", stage=roster.STAGE_NAMES[self.stage], decisions=decisions, **ranges.__dict__)
 
     def eval_stage(self) -> int:
         """Stage A tests stage A. Stage B tests itself. Stage C tests the release mix, which has no extras."""
@@ -43,7 +52,7 @@ class Curriculum:
         stage = self.eval_stage()
         names = roster.STAGE_A_BRAINS if stage == roster.STAGE_A else roster.BRAINS
         count = 50 if stage == roster.STAGE_A else int(self.config["eval_episodes_per_brain"])
-        return [Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, stage, self.ticks) for j in range(count) for name in names]
+        return [Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(count) for name in names]
 
     # -- promotion --------------------------------------------------------------------------------------------------
 
@@ -81,6 +90,7 @@ class Curriculum:
         self.best = -1.0
         self.stale = 0
         new = roster.STAGE_NAMES[self.stage]
+        self.log_body(decisions)
         wanted = int(self.config.get("stage_b_ticks", 600)) if self.stage == roster.STAGE_B else int(self.config.get("stage_c_ticks", 400))
         if wanted != self.ticks:
             self._set_ticks(decisions, wanted, f"stage {old} to {new}")

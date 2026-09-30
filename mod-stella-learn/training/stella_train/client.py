@@ -70,8 +70,8 @@ class GymClient:
     def send_act(self, step_id: int, agents, actions) -> None:
         self.sock.sendall(wire.encode_act(step_id, agents, actions))
 
-    def send_reset(self, arena: int, seed: int, brain: int = -1, stage: int = -1, ticks: int = 0) -> None:
-        self.sock.sendall(wire.encode_reset(arena, seed, brain, stage, ticks))
+    def send_reset(self, arena: int, seed: int, brain: int = -1, stage: int = -1, ticks: int = 0, body: tuple = (0, 0, 0, 0, 0, 0)) -> None:
+        self.sock.sendall(wire.encode_reset(arena, seed, brain, stage, ticks, body))
 
     def close(self) -> None:
         if self.sock is None:

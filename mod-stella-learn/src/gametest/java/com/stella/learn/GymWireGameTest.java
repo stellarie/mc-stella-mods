@@ -1,5 +1,6 @@
 package com.stella.learn;
 
+import com.stella.learn.gym.Body;
 import com.stella.learn.gym.Bridge;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -12,7 +13,7 @@ public class GymWireGameTest {
 	static final String HELLO = "2b0000000102007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 	static final String STEP = "3300000002070000000200000000000000010000003f0000803e0000803f00000040050000000e000080bf000000be000040c00000803e";
 	static final String ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040";
-	static final String RESET = "1500000004ffffffff2a000000060000000200000058020000";
+	static final String RESET = "2d00000004ffffffff2a000000060000000200000058020000140000001a00000004000000000000000000000000000000";
 	static final String BYE = "0100000005";
 
 	private static String hex(final byte[] bytes) {
@@ -57,14 +58,14 @@ public class GymWireGameTest {
 
 	@GameTest
 	public void resetAndByeMatchTheFixedBytes(final GameTestHelper helper) {
-		String reset = hex(Bridge.resetFrame(Bridge.ALL_ARENAS, 42, 6, 2, 600));
+		String reset = hex(Bridge.resetFrame(Bridge.ALL_ARENAS, 42, 6, 2, 600, new Body.Range(20, 26, 4, 0, 0, 0)));
 		helper.assertTrue(reset.equals(RESET), "reset encodes to " + reset);
 		String bye = hex(Bridge.byeFrame());
 		helper.assertTrue(bye.equals(BYE), "bye encodes to " + bye);
 		ByteBuffer body = ByteBuffer.wrap(HexFormat.of().parseHex(RESET)).order(ByteOrder.LITTLE_ENDIAN);
 		body.position(5);
 		Bridge.Reset decoded = Bridge.decodeReset(body);
-		helper.assertTrue(decoded.arena() == Bridge.ALL_ARENAS && decoded.seed() == 42 && decoded.brain() == 6 && decoded.stage() == 2 && decoded.ticks() == 600, "the reset decodes to " + decoded);
+		helper.assertTrue(decoded.arena() == Bridge.ALL_ARENAS && decoded.seed() == 42 && decoded.brain() == 6 && decoded.stage() == 2 && decoded.ticks() == 600 && decoded.body().healthMax() == 26 && decoded.body().armorMax() == 4, "the reset decodes to " + decoded);
 		helper.succeed();
 	}
 }

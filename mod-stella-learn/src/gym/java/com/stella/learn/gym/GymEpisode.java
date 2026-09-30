@@ -88,6 +88,7 @@ public final class GymEpisode {
 	private BotView view;
 	private Skill skill;
 	private Body body;
+	private Body.Range bodyRange = Body.Range.FULL;
 	private long seed;
 	private int brainIndex;
 	private int stage;
@@ -187,6 +188,11 @@ public final class GymEpisode {
 
 	/** `limit` is the episode length in ticks; 0 keeps the server's own. */
 	public void start(final long newSeed, final int brainChoice, final int stageChoice, final int limit) {
+		start(newSeed, brainChoice, stageChoice, limit, Body.Range.FULL);
+	}
+
+	public void start(final long newSeed, final int brainChoice, final int stageChoice, final int limit, final Body.Range range) {
+		bodyRange = range;
 		startAttempts = 0;
 		tickLimit = limit > 0 ? limit : config.episodeTicks();
 		launch(newSeed, brainChoice, stageChoice);
@@ -238,7 +244,7 @@ public final class GymEpisode {
 
 		SHOOTERS.put(mob.getUUID(), this);
 		bot.reset(botSpot, Bot.yawTo(botSpot, mobSpot));
-		body = Body.draw(newSeed);
+		body = Body.draw(newSeed, bodyRange);
 		BotLoadout.equip(bot, skill.gear(), body.protection());
 		body.apply(bot.player());
 		ProfileNoise.apply(bot.player(), random, stage == Terrain.C, arena.index(), newSeed);

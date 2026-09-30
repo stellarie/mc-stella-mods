@@ -17,6 +17,13 @@ public class GymBodyGameTest {
 				"seed " + row[0] + " gives " + body.detail());
 		}
 
+		Body.Range frail = new Body.Range(20, 26, 4, 0, 0, 0);
+		for (long seed = 0; seed < 500; seed++) {
+			Body body = Body.draw(seed, frail);
+			helper.assertTrue(body.maxHealth() >= 20 && body.maxHealth() <= 26 && body.armor() <= 4 && body.toughness() == 0 && body.protection() == 0
+				&& body.special() == Body.Special.NONE, "frail range broken: " + body.detail());
+		}
+
 		int specials = 0;
 		for (long seed = 0; seed < 2000; seed++) {
 			Body body = Body.draw(seed);

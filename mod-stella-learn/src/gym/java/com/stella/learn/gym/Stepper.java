@@ -161,7 +161,7 @@ public final class Stepper {
 			+ " seed=" + seed + " brain=" + reset.brain() + " stage=" + reset.stage() + " ticks=" + reset.ticks());
 		for (GymEpisode episode : episodes) {
 			if (reset.arena() == Bridge.ALL_ARENAS || reset.arena() == episode.arena().index()) {
-				episode.start(seed, reset.brain(), reset.stage(), reset.ticks());
+				episode.start(seed, reset.brain(), reset.stage(), reset.ticks(), Body.Range.orFull(reset.body()));
 			}
 		}
 	}

@@ -41,6 +41,8 @@ class Trainer:
         self.run_dir = run_dir
         self.run = config["run"]
         self.contract = load_contract()
+        from . import bodies
+        bodies.configure(config["body"])
         self.ppo_config = PpoConfig.from_dict(config["ppo"])
         torch.manual_seed(self.run["seed"])
         self.model = ActorCritic(self.contract, self.ppo_config.log_std_init, self.ppo_config.bow_bias_init, self.ppo_config.jump_bias_init)
@@ -176,6 +178,7 @@ class Trainer:
         self.log.info("train START budget=%d agents=%d rollout=%d servers=%d arenas=%d", self.budget, fleet.agent_count, rollout,
                       self.servers, self.arenas)
         self.log.event("train START", budget=self.budget, agents=fleet.agent_count, rollout=rollout, config=self.config)
+        self.curriculum.log_body(self.decisions)
         while self.decisions < self.budget:
             if max_seconds is not None and time.monotonic() - self.started >= max_seconds:
                 self.log.info("train STOP reason=maxSeconds seconds=%.0f", max_seconds)
@@ -264,7 +267,7 @@ class Trainer:
         from . import bodies
         toughness = {name: {"n": 0, "win": 0} for name in bodies.TOUGHNESS_BUCKETS}
         for result in stats.results:
-            bucket = toughness[bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed).toughness_bucket]]
+            bucket = toughness[bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)).toughness_bucket]]
             bucket["n"] += 1
             bucket["win"] += result.outcome == "win"
         by_toughness = " ".join(f"{name}:{row['win'] / row['n']:.2f}/{row['n']}" for name, row in toughness.items() if row["n"])

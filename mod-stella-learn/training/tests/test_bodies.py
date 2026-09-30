@@ -19,3 +19,17 @@ def test_ranges_and_special_share():
         assert 0 <= body.toughness_bucket < len(TOUGHNESS_BUCKETS)
         specials += body.special != "none"
     assert 140 < specials < 260
+
+
+def test_stage_ranges_bound_the_draw_and_leave_the_full_vectors_alone():
+    from stella_train import roster
+    from stella_train.bodies import range_for_stage
+
+    frail = range_for_stage(roster.STAGE_A)
+    middle = range_for_stage(roster.STAGE_B)
+    for seed in range(1000):
+        a = body_for_seed(seed, frail)
+        assert 20 <= a.max_health <= 26 and a.armor <= 4 and a.toughness == 0 and a.protection == 0 and a.special == "none"
+        b = body_for_seed(seed, middle)
+        assert 20 <= b.max_health <= 40 and b.armor <= 12 and b.toughness == 0 and b.protection <= 2 and b.special == "none"
+    assert range_for_stage(roster.STAGE_RELEASE) == range_for_stage(roster.STAGE_C)

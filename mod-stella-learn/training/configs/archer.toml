@@ -48,3 +48,28 @@ stage_b_patience_evals = 10
 stage_b_budget_share = 0.45
 stage_b_min_decisions = 20_000_000
 eval_episodes_per_brain = 20
+
+# Bot bodies by stage. Stage A bots are frail; Stage C draws the full range. Sent in every Reset, so a change applies at the next episode.
+[body.A]
+hp_min = 20
+hp_max = 26
+armor_max = 4
+toughness_max = 0
+protection_max = 0
+special_permille = 0
+
+[body.B]
+hp_min = 20
+hp_max = 40
+armor_max = 12
+toughness_max = 0
+protection_max = 2
+special_permille = 0
+
+[body.C]
+hp_min = 20
+hp_max = 60
+armor_max = 20
+toughness_max = 12
+protection_max = 4
+special_permille = 100

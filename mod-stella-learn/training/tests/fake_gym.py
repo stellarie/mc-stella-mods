@@ -78,7 +78,7 @@ class FakeGym(threading.Thread):
                 while True:
                     frame_type, body = wire.read_frame(conn)
                     if frame_type == wire.RESET:
-                        arena, seed, brain, stage, ticks = wire.decode_reset(body)
+                        arena, seed, brain, stage, ticks, *ranges = wire.decode_reset(body)
                         self.resets.append((arena, seed, brain, stage, ticks))
                         self.starting[arena] = True
                     elif frame_type == wire.ACT:

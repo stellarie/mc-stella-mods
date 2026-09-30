@@ -18,20 +18,33 @@ public record Body(int maxHealth, int armor, int toughness, int protection, Spec
 	}
 
 	private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
-	private static final double SPECIAL_SHARE = 0.10;
 	private static final int EFFECT_TICKS = 1_000_000;
 	private static final int RESISTANCE_LEVEL = 1;
 	private static final int ABSORPTION_LEVEL = 1;
 
+	/** The bounds one stage draws from. `specialPermille` is the share of episodes with Resistance or absorption, in thousandths. */
+	public record Range(int healthMin, int healthMax, int armorMax, int toughnessMax, int protectionMax, int specialPermille) {
+		public static final Range FULL = new Range(20, 60, 20, 12, 4, 100);
+
+		/** An all-zero range on the wire means the trainer named none, and the full range applies. */
+		public static Range orFull(final Range asked) {
+			return asked.healthMax() <= 0 ? FULL : asked;
+		}
+	}
+
 	public static Body draw(final long seed) {
+		return draw(seed, Range.FULL);
+	}
+
+	public static Body draw(final long seed, final Range range) {
 		long[] state = {seed + GOLDEN_GAMMA};
-		int maxHealth = 20 + (int) (next(state) * 41);
-		int armor = (int) (next(state) * 21);
-		int toughness = (int) (next(state) * 13);
-		int protection = (int) (next(state) * 5);
+		int maxHealth = range.healthMin() + (int) (next(state) * (range.healthMax() - range.healthMin() + 1));
+		int armor = (int) (next(state) * (range.armorMax() + 1));
+		int toughness = (int) (next(state) * (range.toughnessMax() + 1));
+		int protection = (int) (next(state) * (range.protectionMax() + 1));
 		double roll = next(state);
 		double which = next(state);
-		Special special = roll < SPECIAL_SHARE ? (which < 0.5 ? Special.RESISTANCE : Special.ABSORPTION) : Special.NONE;
+		Special special = roll < range.specialPermille() / 1000.0 ? (which < 0.5 ? Special.RESISTANCE : Special.ABSORPTION) : Special.NONE;
 		return new Body(maxHealth, armor, toughness, protection, special);
 	}
 

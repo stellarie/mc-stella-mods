@@ -32,6 +32,7 @@ class Task:
     seed: int
     stage: int
     ticks: int = 0
+    body: tuple = (0, 0, 0, 0, 0, 0)
 
 
 @dataclass
@@ -256,7 +257,7 @@ class Worker(threading.Thread):
             self.task_of_request[arena] = task
             resets.append((arena, task))
         for arena, task in resets:
-            self.client.send_reset(arena, task.seed, task.brain, task.stage, task.ticks)
+            self.client.send_reset(arena, task.seed, task.brain, task.stage, task.ticks, task.body)
         if count:
             if acting and phase.mode == "train":
                 self.stats.bow_counts += np.bincount(sample.bow[acting], minlength=4)

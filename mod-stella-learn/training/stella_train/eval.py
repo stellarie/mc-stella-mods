@@ -44,7 +44,7 @@ def build_tasks(suite: str, episodes: int | None = None, ticks: int = 400) -> li
     tasks = []
     for j in range(count):
         for name in spec["brains"]:
-            tasks.append(Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, spec["stage"], ticks))
+            tasks.append(Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, spec["stage"], ticks, bodies.range_for_stage(spec["stage"]).wire()))
     return tasks
 
 
@@ -71,7 +71,7 @@ def summarize(results, tasks_total: int) -> dict:
     overall = Counter()
     for result in results:
         name = roster.BRAINS[result.brain]
-        bucket = bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed).toughness_bucket]
+        bucket = bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)).toughness_bucket]
         for counter in (per_brain[name], overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
             counter[result.outcome] += 1
             counter["n"] += 1
