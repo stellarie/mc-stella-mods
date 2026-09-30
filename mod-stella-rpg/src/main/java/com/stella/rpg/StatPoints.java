@@ -36,6 +36,31 @@ public final class StatPoints {
 		return Result.OK;
 	}
 
+	public static Result checkAll(final int experienceLevel, final StatSheet sheet, final int[] amounts) {
+		if (amounts == null || amounts.length != Stat.values().length) {
+			return Result.INVALID_AMOUNT;
+		}
+		long sum = 0;
+		for (int amount : amounts) {
+			if (amount < 0) {
+				return Result.INVALID_AMOUNT;
+			}
+			sum += amount;
+		}
+		if (sum < 1) {
+			return Result.INVALID_AMOUNT;
+		}
+		if (sum > unspent(experienceLevel, sheet)) {
+			return Result.NOT_ENOUGH_POINTS;
+		}
+		for (Stat stat : Stat.values()) {
+			if ((long) sheet.get(stat) + amounts[stat.ordinal()] > StatSheet.CEILING) {
+				return Result.ABOVE_CEILING;
+			}
+		}
+		return Result.OK;
+	}
+
 	public static StatSheet sheet(final ServerPlayer player) {
 		return player.getAttachedOrElse(StatSheet.ATTACHMENT, StatSheet.EMPTY);
 	}
@@ -50,6 +75,19 @@ public final class StatPoints {
 		Result result = check(player.experienceLevel, sheet, stat, amount);
 		if (result == Result.OK) {
 			setSheet(player, sheet.with(stat, sheet.get(stat) + amount));
+		}
+		return result;
+	}
+
+	public static Result allocateAll(final ServerPlayer player, final int[] amounts) {
+		StatSheet sheet = sheet(player);
+		Result result = checkAll(player.experienceLevel, sheet, amounts);
+		if (result == Result.OK) {
+			StatSheet updated = sheet;
+			for (Stat stat : Stat.values()) {
+				updated = updated.with(stat, updated.get(stat) + amounts[stat.ordinal()]);
+			}
+			setSheet(player, updated);
 		}
 		return result;
 	}
