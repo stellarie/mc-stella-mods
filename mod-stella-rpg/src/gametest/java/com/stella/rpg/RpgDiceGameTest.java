@@ -8,10 +8,10 @@ public final class RpgDiceGameTest {
 	@GameTest
 	public void diceTable(final GameTestHelper helper) {
 		int[] stats = {0, 12, 49, 50, 100, 250, 1024};
-		String[] dice = {"1d4", "1d4", "1d4", "2d4", "3d5", "6d6", "21d14"};
-		int[] mins = {1, 1, 1, 2, 3, 6, 21};
-		int[] maxes = {4, 4, 4, 8, 15, 36, 294};
-		double[] means = {2.5, 2.5, 2.5, 5.0, 9.0, 21.0, 157.5};
+		String[] dice = {"1d4", "1d4", "2d4", "3d4", "5d5", "11d6", "41d14"};
+		int[] mins = {1, 1, 2, 3, 5, 11, 41};
+		int[] maxes = {4, 4, 8, 12, 25, 66, 574};
+		double[] means = {2.5, 2.5, 5.0, 7.5, 15.0, 38.5, 307.5};
 		for (int i = 0; i < stats.length; i++) {
 			RpgDice.Dice actual = RpgDice.of(stats[i]);
 			String detail = "stat " + stats[i] + " gave " + actual;
@@ -32,12 +32,12 @@ public final class RpgDiceGameTest {
 		long sum = 0;
 		for (int i = 0; i < rolls; i++) {
 			int value = dice.roll(random);
-			helper.assertTrue(value >= 3 && value <= 15, "roll " + value + " is outside [3, 15]");
+			helper.assertTrue(value >= 5 && value <= 25, "roll " + value + " is outside [5, 25]");
 			sum += value;
 		}
 		double mean = (double) sum / rolls;
 		RpgTestSupport.result("rollBounds", "dice=" + dice + " mean=" + mean);
-		helper.assertTrue(Math.abs(mean - 9.0) < 0.1, "mean=" + mean);
+		helper.assertTrue(Math.abs(mean - 15.0) < 0.1, "mean=" + mean);
 		helper.succeed();
 	}
 }

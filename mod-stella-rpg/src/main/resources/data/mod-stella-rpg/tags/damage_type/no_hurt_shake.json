@@ -1,0 +1,14 @@
+{
+  "values": [
+    "minecraft:on_fire",
+    "minecraft:in_fire",
+    "minecraft:campfire",
+    "minecraft:lava",
+    "minecraft:hot_floor",
+    "minecraft:freeze",
+    "minecraft:wither",
+    "minecraft:drown",
+    "minecraft:starve",
+    "mod-stella-rpg:poison"
+  ]
+}

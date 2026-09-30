@@ -33,7 +33,7 @@ public final class RpgCommandGameTest {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.STR, 100);
 		List<String> lines = RpgCommand.diceLines(player);
-		helper.assertTrue(lines.equals(List.of("Atk dice 3d5", "Ranged dice 1d4")), "lines=" + lines);
+		helper.assertTrue(lines.equals(List.of("Atk dice 5d5", "Ranged dice 1d4")), "lines=" + lines);
 		helper.succeed();
 	}
 

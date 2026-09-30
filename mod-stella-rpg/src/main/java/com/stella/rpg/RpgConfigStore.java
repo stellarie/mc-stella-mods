@@ -84,8 +84,11 @@ public final class RpgConfigStore {
 				onError.accept("stats.json key '" + removed + "' was removed; dice replace it, so it is ignored");
 			}
 		}
+		if (root.has(RpgConfig.RETIRED_MOB_WEIGHTS_KEY)) {
+			onError.accept("stats.json key 'mob_weights' was retired; mob_stats replaces it, so it is ignored");
+		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
-			mobWeights(root, onError), armorSets(root, onError), weaponRolls(root, onError));
+			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -295,14 +298,27 @@ public final class RpgConfigStore {
 		);
 	}
 
-	private static Map<String, Map<Stat, Double>> mobWeights(final JsonObject root, final Consumer<String> onError) {
-		JsonElement element = root.get(RpgConfig.MOB_WEIGHTS_KEY);
-		Map<String, Map<Stat, Double>> defaults = RpgConfig.DEFAULT_MOB_WEIGHTS;
+	private static double mobAmplifier(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.MOB_AMPLIFIER_KEY);
+		if (element == null) {
+			return RpgConfig.DEFAULT_MOB_AMPLIFIER;
+		}
+		Double value = number(element);
+		if (value == null || value < 0.0) {
+			onError.accept("stats.json key 'mob_amplifier' must be a number of at least 0; using the default");
+			return RpgConfig.DEFAULT_MOB_AMPLIFIER;
+		}
+		return value;
+	}
+
+	private static Map<String, Map<Stat, Double>> mobStats(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.MOB_STATS_KEY);
+		Map<String, Map<Stat, Double>> defaults = RpgConfig.DEFAULT_MOB_STATS;
 		if (element == null) {
 			return defaults;
 		}
 		if (!element.isJsonObject()) {
-			onError.accept("stats.json key 'mob_weights' must be an object; using the defaults");
+			onError.accept("stats.json key 'mob_stats' must be an object; using the defaults");
 			return defaults;
 		}
 		JsonObject object = element.getAsJsonObject();
@@ -310,7 +326,7 @@ public final class RpgConfigStore {
 		for (Map.Entry<String, Map<Stat, Double>> role : defaults.entrySet()) {
 			JsonElement row = object.get(role.getKey());
 			if (row != null && !row.isJsonObject()) {
-				onError.accept("stats.json key 'mob_weights." + role.getKey() + "' must be an object; using the defaults");
+				onError.accept("stats.json key 'mob_stats." + role.getKey() + "' must be an object; using the defaults");
 			}
 			JsonObject rowObject = row != null && row.isJsonObject() ? row.getAsJsonObject() : new JsonObject();
 			Map<Stat, Double> weights = new EnumMap<>(Stat.class);
@@ -330,9 +346,9 @@ public final class RpgConfigStore {
 			return fallback;
 		}
 		Double value = number(element);
-		if (value == null || value < 0.0 || value > RpgConfig.MAX_MOB_WEIGHT) {
-			onError.accept("stats.json key 'mob_weights." + role + "." + stat.key()
-				+ "' must be a number from 0 to " + RpgConfig.MAX_MOB_WEIGHT + "; using the default");
+		if (value == null || value < 0.0 || value > RpgConfig.MAX_MOB_BASE) {
+			onError.accept("stats.json key 'mob_stats." + role + "." + stat.key()
+				+ "' must be a number from 0 to " + RpgConfig.MAX_MOB_BASE + "; using the default");
 			return fallback;
 		}
 		return value;
@@ -434,14 +450,15 @@ public final class RpgConfigStore {
 		dice.put("sides_step", rules.sidesStep());
 		out.put(RpgConfig.DICE_KEY, dice);
 		Map<String, Map<String, Double>> weights = new LinkedHashMap<>();
-		for (Map.Entry<String, Map<Stat, Double>> role : RpgConfig.DEFAULT_MOB_WEIGHTS.entrySet()) {
+		for (Map.Entry<String, Map<Stat, Double>> role : RpgConfig.DEFAULT_MOB_STATS.entrySet()) {
 			Map<String, Double> row = new LinkedHashMap<>();
 			for (Stat stat : Stat.values()) {
 				row.put(stat.key(), role.getValue().get(stat));
 			}
 			weights.put(role.getKey(), row);
 		}
-		out.put(RpgConfig.MOB_WEIGHTS_KEY, weights);
+		out.put(RpgConfig.MOB_STATS_KEY, weights);
+		out.put(RpgConfig.MOB_AMPLIFIER_KEY, RpgConfig.DEFAULT_MOB_AMPLIFIER);
 		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
 		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {
 			RpgConfig.ArmorSet set = material.getValue();

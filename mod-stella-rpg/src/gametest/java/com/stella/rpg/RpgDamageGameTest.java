@@ -14,6 +14,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 public final class RpgDamageGameTest {
+	/** The largest roll of the STR or DEX 100 dice. */
+	private static final float MAX_DICE_100 = RpgDice.of(100).max();
 	private static final float HIT = 4.0F;
 	private static final float TOLERANCE = 0.001F;
 
@@ -26,7 +28,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "meleeAddsDice", loss, guarded(HIT + 15.0F));
+		assertLoss(helper, "meleeAddsDice", loss, guarded(HIT + MAX_DICE_100));
 		helper.succeed();
 	}
 
@@ -49,9 +51,9 @@ public final class RpgDamageGameTest {
 			resetRollers();
 		}
 		float factor = (float) (0.2 + 0.5 * 0.5 * 0.8);
-		assertLoss(helper, "chargeScalesDice spam", spam, guarded(HIT + 0.2F * 15.0F));
-		assertLoss(helper, "chargeScalesDice half", half, guarded(HIT + factor * 15.0F));
-		assertLoss(helper, "chargeScalesDice after", next, guarded(HIT + 15.0F));
+		assertLoss(helper, "chargeScalesDice spam", spam, guarded(HIT + 0.2F * MAX_DICE_100));
+		assertLoss(helper, "chargeScalesDice half", half, guarded(HIT + factor * MAX_DICE_100));
+		assertLoss(helper, "chargeScalesDice after", next, guarded(HIT + MAX_DICE_100));
 		helper.succeed();
 	}
 
@@ -64,7 +66,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "arrowAddsDexDice", loss, guarded(HIT + 15.0F));
+		assertLoss(helper, "arrowAddsDexDice", loss, guarded(HIT + MAX_DICE_100));
 		helper.succeed();
 	}
 
@@ -210,6 +212,9 @@ public final class RpgDamageGameTest {
 		Zombie zombie = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 2).withNoFreeWill().spawn();
 		RpgTestSupport.bare(zombie);
 		zombie.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
+		// Room for the larger dice, so no hit is capped by death.
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		zombie.setHealth(zombie.getMaxHealth());
 		return zombie;
 	}
 

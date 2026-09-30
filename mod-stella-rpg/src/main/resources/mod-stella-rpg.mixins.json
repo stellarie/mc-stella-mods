@@ -11,7 +11,9 @@
 		"RpgMobDropRollMixin",
 		"RpgOutgoingDamageMixin",
 		"RpgPlayerExperienceMixin",
-		"RpgSleepHealMixin"
+		"RpgSleepHealMixin",
+		"RpgDebuffResistanceMixin",
+		"RpgPoisonTypeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

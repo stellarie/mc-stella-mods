@@ -47,16 +47,17 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 
 STR sets the melee dice. DEX sets the projectile dice. The dice use the effective stat `s`.
 
-- Count `N = 1 + floor(s / 50)`. Sides `M = 4 + floor(s / 100)`.
+- Count `N = 1 + floor(s / 25)`. Sides `M = 4 + floor(s / 100)`.
 - The roll is the sum of `N` rolls of `1..M`.
 
 | Stat | Dice | Minimum | Maximum | Mean |
 |---|---|---|---|---|
-| 0 to 49 | 1d4 | 1 | 4 | 2.5 |
-| 50 | 2d4 | 2 | 8 | 5.0 |
-| 100 | 3d5 | 3 | 15 | 9.0 |
-| 250 | 6d6 | 6 | 36 | 21.0 |
-| 1024 | 21d14 | 21 | 294 | 157.5 |
+| 0 to 24 | 1d4 | 1 | 4 | 2.5 |
+| 25 | 2d4 | 2 | 8 | 5.0 |
+| 50 | 3d4 | 3 | 12 | 7.5 |
+| 100 | 5d5 | 5 | 25 | 15.0 |
+| 250 | 11d6 | 11 | 66 | 38.5 |
+| 1024 | 41d14 | 41 | 574 | 307.5 |
 
 Outgoing damage from a player or a mob follows these rules:
 
@@ -135,12 +136,15 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 
 - Each curve key holds `{ "max": number, "half": number }`.
 - `max` must be from 0 to 10. `half` must be above 0.
-- `dice` holds `base_count` (1), `base_sides` (4), `count_step` (50), and `sides_step` (100).
+- `dice` holds `base_count` (1), `base_sides` (4), `count_step` (25), and `sides_step` (100).
   Each must be an integer from 1 to 1000. A bad value uses its default.
 - The keys `melee_damage` and `ranged_damage` no longer exist. A file that holds them loads and logs them as ignored.
 - `crit_multiplier` is a number of at least 1. The default is 1.5.
-- `mob_weights.{role}.{stat}` holds the mob weights. The roles are `melee`, `ranged`, and `magic`.
-  Each weight is a number from 0 to 100. A bad weight uses its default.
+- `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
+  Each base is a number from 0 to 1024. A bad base uses its default.
+- `mob_amplifier` is a number of at least 0. The default is 0.10.
+- The key `mob_weights` is retired. A file that holds it loads and logs it as ignored.
+- `debuff_resistance` is a curve key like the others. The default is `max` 0.75 and `half` 100.
 - `armor_sets.{material}` holds the armor set rules. The materials are `leather`, `chainmail`, `iron`, `gold`,
   `diamond`, and `netherite`. Each holds these keys:
   - `items`: a list of item ids. The default is the vanilla helmet, chestplate, leggings, and boots.
@@ -158,22 +162,50 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 
 ## Mob stats
 
-A mob stat is `max(5, round(threat * weight))`, at most 1024. A negative threat counts as 0.
-The threat is the mob's `ThreatState` level. The weight depends on the mob role.
+A mob stat is `round(base * (1 + mob_amplifier * threat))`, from 1 to 1024. A negative threat counts as 0.
+The threat is the mob's `ThreatState` level. The base depends on the mob role. The default amplifier is 0.10.
 Mob stats add to the `SpawnScaling` health and damage modifiers. They do not replace them.
 
 | Role | STR | AGI | VIT | DEX | INT | LUK |
 |---|---|---|---|---|---|---|
-| `melee` | 1.00 | 0.50 | 1.00 | 0.25 | 0.25 | 0.50 |
-| `ranged` | 0.25 | 1.00 | 0.50 | 1.00 | 0.25 | 0.50 |
-| `magic` | 0.25 | 0.50 | 0.50 | 0.25 | 1.00 | 0.50 |
+| `melee` | 12 | 6 | 12 | 3 | 1 | 3 |
+| `ranged` | 4 | 10 | 5 | 12 | 2 | 10 |
+| `magic` | 2 | 4 | 6 | 6 | 14 | 4 |
+
+At threat 10 the stats double. At threat 50 they are six times the base.
 
 - `StatBonuses.effective` returns the mob stat plus the registered bonus for a `Mob`.
 - Mob AGI has no effect. Mobs keep their goal cooldowns.
 - `MobsBridge` reads `com.stella.mobs.RpgFacts` by reflection. Without `mod-stella-mobs`,
-  or after a failed call, the threat is 0 and the role is `melee`, so every mob stat is 5.
+  or after a failed call, the threat is 0 and the role is `melee`, so every mob has the melee base.
 - An unknown role counts as `melee`.
-- Every mob has at least VIT 5, so a hit on any mob loses about 1 percent to the percent rule.
+
+## Debuff resistance
+
+A harmful effect with a finite duration is shortened when it lands on a player or a mob:
+
+```
+E = VIT + 0.5 x STR
+duration x (1 - 0.75 x E / (E + 100))
+```
+
+Beneficial, neutral, instant, and infinite effects keep their duration. The omens are neutral, so they are never
+shortened. VIT 30 and STR 30 shorten poison by 23%. The reduction approaches 75% and never reaches it.
+
+## Damage over time
+
+The poison tick deals the damage type `mod-stella-rpg:poison` instead of `minecraft:magic`. It carries every vanilla
+tag that `minecraft:magic` carries, so witches, armor, and knockback treat it as before.
+
+The tag `mod-stella-rpg:no_hurt_shake` lists the damage-over-time types: fire, lava, magma, powder snow, wither,
+drowning, starving, and poison. When one of them hurts the local player, the hurt sound plays and the camera
+does not tilt.
+
+## Outgoing damage share
+
+`com.stella.rpg.api.OutgoingDamageShare` puts a `Function<Object[], Float>` in the Fabric object share under
+`mod-stella-rpg:outgoing-damage`. It takes `{LivingEntity victim, DamageSource source, Float amount}` and returns
+`RpgCombat.scaleOutgoing`. The village training dummy reads it.
 
 ## Armor sets
 
@@ -305,4 +337,8 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgPlayerExperienceMixin` | `Player#getBaseExperienceReward`, at `HEAD` |
 | `RpgInventoryDropMixin` | `Inventory#dropAll`, at `HEAD`, cancellable |
 | `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7) |
+| `RpgDebuffResistanceMixin` | `LivingEntity#addEffect` and `#forceAddEffect`, argument `effect`, at `HEAD` |
+| `RpgPoisonTypeMixin` | `PoisonMobEffect#applyEffectTick`, redirects `DamageSources#magic` |
 | `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |
+| `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |
+| `NoDotShakeLocalPlayerMixin` | Client only. `LocalPlayer#hurtTo`, at `TAIL` |

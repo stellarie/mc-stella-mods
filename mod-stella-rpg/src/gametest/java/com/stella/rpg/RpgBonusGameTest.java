@@ -26,6 +26,8 @@ public final class RpgBonusGameTest {
 			Zombie victim = helper.spawnMob(EntityTypes.ZOMBIE, 1, 1, 2).withNoFreeWill().spawn();
 			RpgTestSupport.bare(victim);
 			victim.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
+			victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+			victim.setHealth(victim.getMaxHealth());
 			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
 			float loss = victim.getMaxHealth() - victim.getHealth();
 			float expected = RpgTestSupport.mobGuard(HIT + RpgDice.of(100).max());
