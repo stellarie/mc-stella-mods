@@ -120,6 +120,36 @@ public class TowerTrapGameTest {
 		helper.succeed();
 	}
 
+	/** No trap lies in the cell the portal is entered from, as none lies in the portal's own: the way to the portal stays clear. */
+	@GameTest
+	public void noTrapLiesInTheCellThePortalIsEnteredFrom(final GameTestHelper helper) {
+		long seed = 4242L;
+		int laid = 0;
+		int checked = 0;
+		int inEntry = 0;
+		String first = "";
+		for (int floor = 1; floor <= 1_000; floor++) {
+			TowerPlan plan = TowerPlan.of(seed, floor);
+			if (plan.hall() > 0) {
+				continue;
+			}
+			int[] portalCell = plan.portalCell();
+			int entryX = portalCell[0] + plan.portalFacing();
+			checked++;
+			for (TowerTraps.Trap trap : TowerTraps.layout(seed, floor)) {
+				laid++;
+				if ((trap.x() - 1) / TowerMaze.PITCH == entryX && (trap.z() - 1) / TowerMaze.PITCH == portalCell[1]) {
+					inEntry++;
+					first = first.isEmpty() ? floor + ":" + trap : first;
+				}
+			}
+		}
+		TowerTestSupport.result("trapEntryCell", "floors=" + checked + " laid=" + laid + " inEntryCell=" + inEntry + (first.isEmpty() ? "" : " first=" + first));
+		helper.assertTrue(laid > 0, "no floor laid a trap, so the case proves nothing");
+		helper.assertTrue(inEntry == 0, inEntry + " traps lie in the cell the portal is entered from, first " + first);
+		helper.succeed();
+	}
+
 	@GameTest
 	public void aHallIsKeptClearOfTraps(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);

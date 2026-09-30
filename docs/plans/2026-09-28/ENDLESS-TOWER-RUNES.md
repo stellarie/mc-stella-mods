@@ -576,3 +576,27 @@ gone and you stand at your bed or the world spawn.
   so version 1 stays; a released layout change must bump `VERSION` (F1 review follow-up).
 - Deviations from DECISIONS.md: none beyond the reading above.
 
+## Change: plan versions and F1 review fixes (2026-09-30, slice F2)
+
+- Plan versioning mechanism (F1 review 1): the plan marker is now a stack of TOWER_WALL blocks, one per plan
+  version, from `planMarker(floor)` downward (`TowerFloors.planVersion`); none means version 0. `TowerPlan.at`
+  returns the plan of the recorded version, from a per-version generator (`TowerPlan.draw` dispatches on the
+  version). Rule for every later change: once a release has built floors with a generator, that generator is
+  frozen. A change to how floors are drawn adds a new version (a new `draw` case) and bumps `VERSION`; the old
+  case stays. Within this unreleased batch F2 to F5 may keep changing version 1, as nothing is deployed.
+  A floor going up is never taken for an old one: `isBuilt` is the build's last marker, and an unbuilt floor is
+  served the current plan and not remembered.
+- Cache (item 4): a built floor's version is cached by (seed, floor), 4096 floors, so `at` reads no blocks after
+  the first time. `TowerFloors.forget(floor)` is the test seam; `anOldElitefloorKeepsItsGuardsByItsOwnPortal`
+  uses it, as it turns a built floor into an old one by hand.
+- Tests through the real builder (item 2): `aFloorFromTheNormalBuilderReadsBackAsPlannedAtItsVersion` queues a
+  floor, samples it every tick while it goes up (20 samples, none legacy), then checks planned, version and
+  marker count; `aFloorKeepsThePlanOfTheVersionItCarries` and `theDecisionForABuiltFloorIsKept` cover the
+  markers and the cache.
+- Traps (item 3): `TowerTraps.layout` keeps traps out of the cell the portal is entered from as well
+  (`noTrapLiesInTheCellThePortalIsEnteredFrom`).
+- Item 5: the property test's hall check could not fail (it compared the plan with the constants it is drawn
+  from). It now checks the hall's own geometry: every hall spot open in the walls, the frame's footprint inside
+  the hall, the portal within a block of the hall's middle. Mutation: the portal moved 6 blocks, 480 hall floors
+  reported.
+

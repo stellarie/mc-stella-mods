@@ -116,3 +116,22 @@ portal. `TowerPlan.plinth()` is the tower wall it stands on.
 Manual item: none for this slice. (Feel, worth a look in play: the walk up the pyramid, and a boss chasing across
 the hall.)
 
+### Plan versions and the F1 review follow-ups (F2)
+
+- A floor records the plan version it was built to as a stack of TOWER_WALL blocks under the plan marker, one
+  per version, so a floor built before the plans carries none (version 0, the legacy plan). `TowerPlan.at` serves
+  the plan of the recorded version (`TowerPlan.of(seed, floor, version)`); a marker from a later mod than this
+  one is served the newest version known. Whether a floor stands old or planned is read from its blocks once,
+  when it stands, and kept (`TowerFloors.builtVersion`); a floor still going up is never remembered.
+- Rule: any change to how a floor is drawn, made after a release has built floors with it, bumps
+  `TowerPlan.VERSION` and keeps the old generator frozen as its own case in `TowerPlan.draw`. Until the first
+  release of this batch, F2 to F5 may keep changing version 1.
+- Traps also stay out of the cell a portal is entered from (`trapEntryCell`, 800 floors, 14400 traps, 0 in it).
+
+```
+[BEHAVIOR] test=builderVersion RESULT floor=29507041 planned=true version=1 planVersion=1 markers=1 unbuiltReads=20 legacyWhileBuilding=0
+[BEHAVIOR] test=markerVersion RESULT floor=29507081 read=3 served=1 current=1 restored=1 sameAsCurrent=true zeroIsLegacy=true
+[BEHAVIOR] test=decisionKept RESULT floor=29507241 first=0 second=0
+[BEHAVIOR] test=trapEntryCell RESULT floors=800 laid=14400 inEntryCell=0
+```
+

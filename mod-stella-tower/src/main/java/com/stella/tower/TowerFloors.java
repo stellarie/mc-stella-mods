@@ -123,8 +123,63 @@ public final class TowerFloors {
 		return TowerLayout.origin(floor).offset(-1, -3, -1);
 	}
 
+	/** The most version markers a floor can carry. */
+	public static final int MAX_VERSIONS = 32;
+	private static final int VERSION_CACHE = 4096;
+	private record Built(long seed, int floor) {
+	}
+
+	private static final Map<Built, Integer> BUILT_VERSIONS = new LinkedHashMap<>(64, 0.75F, true) {
+		@Override
+		protected boolean removeEldestEntry(final Map.Entry<Built, Integer> eldest) {
+			return this.size() > VERSION_CACHE;
+		}
+	};
+
+	/**
+	 * The version of the plan a built floor was built to: the count of tower wall blocks stacked downward from
+	 * {@link #planMarker(int)}, so 0 for a floor built before the plans, which carries none.
+	 */
+	public static int planVersion(final ServerLevel tower, final int floor) {
+		int version = 0;
+		while (version < MAX_VERSIONS && tower.getBlockState(planMarker(floor).below(version)).is(TowerBlocks.TOWER_WALL)) {
+			version++;
+		}
+		return version;
+	}
+
+	/**
+	 * The plan version of a floor that stands, or -1 for one that does not yet. A standing floor's version is
+	 * read from its blocks once and kept, so a sweep that asks for the plan of every mob's floor reads none.
+	 * A floor not yet standing is never remembered, so one going up is never taken for an old one.
+	 */
+	static int builtVersion(final ServerLevel tower, final int floor) {
+		Built key = new Built(tower.getSeed(), floor);
+		synchronized (BUILT_VERSIONS) {
+			Integer known = BUILT_VERSIONS.get(key);
+			if (known != null) {
+				return known;
+			}
+		}
+		if (!isBuilt(tower, floor)) {
+			return -1;
+		}
+		int version = planVersion(tower, floor);
+		synchronized (BUILT_VERSIONS) {
+			BUILT_VERSIONS.put(key, version);
+		}
+		return version;
+	}
+
+	/** Test seam: forgets what is known of a floor's built version, so its blocks are read again. */
+	static void forget(final int floor) {
+		synchronized (BUILT_VERSIONS) {
+			BUILT_VERSIONS.keySet().removeIf(key -> key.floor() == floor);
+		}
+	}
+
 	public static boolean isPlanned(final ServerLevel tower, final int floor) {
-		return tower.getBlockState(planMarker(floor)).is(TowerBlocks.TOWER_WALL);
+		return planVersion(tower, floor) > 0;
 	}
 
 	/** The block that proves a floor was built. */
@@ -290,11 +345,15 @@ public final class TowerFloors {
 			TowerBuffs.mist(tower, floor);
 		}
 		stations(tower, plan);
-		if (plan.version() > 0) {
-			tower.setBlock(planMarker(floor), wall, Block.UPDATE_CLIENTS);
+		// One marker block a version, stacked downward, so the floor records the plan it was built to.
+		for (int i = 0; i < plan.version(); i++) {
+			tower.setBlock(planMarker(floor).below(i), wall, Block.UPDATE_CLIENTS);
 		}
 		tower.setBlock(settledMarker(floor), wall, Block.UPDATE_CLIENTS);
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
+		synchronized (BUILT_VERSIONS) {
+			BUILT_VERSIONS.put(new Built(tower.getSeed(), floor), plan.version());
+		}
 	}
 
 	/** The block that proves a floor has its safe zones. */

@@ -430,6 +430,8 @@ public class TowerEliteGameTest {
 		BlockPos o = TowerLayout.origin(floor);
 		// As an older build left it: no plan marker, the frame across the room, none in the middle.
 		tower.setBlockAndUpdate(TowerFloors.planMarker(floor), net.minecraft.world.level.block.Blocks.BEDROCK.defaultBlockState());
+		// A floor's old-or-planned decision is kept once made; this floor is being turned into an old one by hand.
+		TowerFloors.forget(floor);
 		for (BlockPos pos : TowerLayout.portalFrame(tower, floor)) {
 			tower.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
 			tower.setBlockAndUpdate(pos.offset(TowerPlan.CLASSIC_PORTAL_X - TowerLayout.portalX(tower, floor), 0, 0), TowerBlocks.TOWER_FRAME.defaultBlockState());

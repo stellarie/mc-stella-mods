@@ -77,7 +77,10 @@ public final class TowerTraps {
 		return layout(seed, floor, TowerPlan.of(seed, floor));
 	}
 
-	/** The floor's traps on a given plan: clear of the arrival's cells, the hall, the portal's cell and the safe zones. */
+	/**
+	 * The floor's traps on a given plan: clear of the arrival's cells, the hall, the portal's cell and the cell it is
+	 * entered from, and the safe zones.
+	 */
 	public static List<Trap> layout(final long seed, final int floor, final TowerPlan plan) {
 		TrapTheme theme = TrapTheme.of(floor);
 		if (theme == TrapTheme.NONE) {
@@ -97,8 +100,9 @@ public final class TowerTraps {
 				int z = 1 + cz * TowerMaze.PITCH;
 				boolean byArrival = Math.max(Math.abs(cx - startX), Math.abs(cz - startZ)) <= ARRIVAL_CLEAR_CELLS;
 				boolean inHall = hall > 0 && x + TowerMaze.PATH > hallLow && x < hallLow + hall && z + TowerMaze.PATH > hallLow && z < hallLow + hall;
-				// The portal's cell and the cell either side of it along the frame.
-				boolean inNook = hall == 0 && cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1;
+				// The portal's cell, the cell either side of it along the frame, and the cell it is entered from.
+				boolean inNook = hall == 0 && (cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1
+					|| cx == portalCell[0] + plan.portalFacing() && cz == portalCell[1]);
 				boolean safe = plan.inSafeZone(x, z) || plan.inSafeZone(x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
 				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap.
 				boolean solid = walls[x][z];

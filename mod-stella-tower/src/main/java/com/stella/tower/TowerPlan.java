@@ -95,29 +95,37 @@ public record TowerPlan(
 	public record Spot(int x, int z) {
 	}
 
-	private record Key(long seed, int floor, boolean legacy) {
+	private record Key(long seed, int floor, int version) {
 	}
 
 	/** The plan a floor is built to now, for this seed. Pure and cached. */
 	public static TowerPlan of(final long seed, final int floor) {
-		return cached(new Key(seed, floor, false));
+		return cached(new Key(seed, floor, VERSION));
+	}
+
+	/**
+	 * The plan of a floor as the generator of a given version drew it. Every version ever released keeps its
+	 * generator, frozen, in {@link #draw}, so a floor built to it is served the plan it was built to. Version 0
+	 * is the layout of the floors built before there were plans; a version this mod does not know, from a later
+	 * one, is met with the newest it does.
+	 */
+	public static TowerPlan of(final long seed, final int floor, final int version) {
+		return cached(new Key(seed, floor, Math.min(Math.max(version, 0), VERSION)));
 	}
 
 	/** The plan of a floor built before there were plans: the classic layout. Pure and cached. */
 	public static TowerPlan legacy(final long seed, final int floor) {
-		return cached(new Key(seed, floor, true));
+		return cached(new Key(seed, floor, 0));
 	}
 
 	/**
-	 * The plan the floor really has in this tower: the current plan for a floor not yet built or built to
-	 * one, the legacy plan for a floor built without a plan marker.
+	 * The plan the floor really has in this tower: the current plan for a floor not yet built, and for one
+	 * built, the plan of the version its markers record, with none meaning the legacy plan. Whether a floor
+	 * is old or planned is read from its blocks once, when it stands, and kept.
 	 */
 	public static TowerPlan at(final ServerLevel tower, final int floor) {
-		long seed = tower.getSeed();
-		if (!TowerFloors.isBuilt(tower, floor) || TowerFloors.isPlanned(tower, floor)) {
-			return of(seed, floor);
-		}
-		return legacy(seed, floor);
+		int built = TowerFloors.builtVersion(tower, floor);
+		return built < 0 ? of(tower.getSeed(), floor) : of(tower.getSeed(), floor, built);
 	}
 
 	private static TowerPlan cached(final Key key) {
@@ -127,8 +135,8 @@ public record TowerPlan(
 				return plan;
 			}
 		}
-		TowerPlan plan = key.legacy() ? classic(key.seed(), key.floor(), 0, 0)
-			: generate(key.seed(), key.floor(), drawn -> false);
+		TowerPlan plan = key.version() == 0 ? classic(key.seed(), key.floor(), 0, 0)
+			: generate(key.seed(), key.floor(), key.version(), drawn -> false);
 		synchronized (CACHE_MAP) {
 			CACHE_MAP.put(key, plan);
 		}
@@ -140,14 +148,18 @@ public record TowerPlan(
 	 * the test seam that makes the reseeding and the fallback visible.
 	 */
 	static TowerPlan generate(final long seed, final int floor, final Predicate<TowerPlan> veto) {
+		return generate(seed, floor, VERSION, veto);
+	}
+
+	static TowerPlan generate(final long seed, final int floor, final int version, final Predicate<TowerPlan> veto) {
 		for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
 			Random random = new Random(mix(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L) ^ (attempt * 0xC2B2AE3D27D4EB4FL)));
-			TowerPlan drawn = draw(seed, floor, attempt, random);
+			TowerPlan drawn = draw(seed, floor, version, attempt, random);
 			if (reaches(drawn) && !veto.test(drawn)) {
 				return drawn;
 			}
 		}
-		return classic(seed, floor, VERSION, FALLBACK);
+		return classic(seed, floor, version, FALLBACK);
 	}
 
 	/**
@@ -161,7 +173,19 @@ public record TowerPlan(
 		return z ^ (z >>> 31);
 	}
 
-	private static TowerPlan draw(final long seed, final int floor, final int attempt, final Random random) {
+	/**
+	 * One draw of a version's generator. A generator, once a mod release has built floors with it, is never
+	 * changed: a change to how a floor is drawn adds a new version, with its own case here, and bumps
+	 * {@link #VERSION}. Version 1 is the only one so far.
+	 */
+	private static TowerPlan draw(final long seed, final int floor, final int version, final int attempt, final Random random) {
+		return switch (version) {
+			case 1 -> drawOne(seed, floor, attempt, random);
+			default -> throw new IllegalArgumentException("no generator for plan version " + version);
+		};
+	}
+
+	private static TowerPlan drawOne(final long seed, final int floor, final int attempt, final Random random) {
 		int hall = TowerMaze.hall(floor);
 		if (hall > 0) {
 			int turns = random.nextInt(4);

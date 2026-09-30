@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -138,8 +139,19 @@ public class TowerPlanGameTest {
 					int straight = Math.abs(plan.portalX() - plan.arrivalX()) + Math.abs(plan.portalZ() - plan.arrivalZ());
 					winding += steps > straight ? 1 : 0;
 				} else {
-					hallOff += plan.portalX() == S / 2 && plan.portalZ() == TowerPlan.CLASSIC_MIDDLE_Z - 1
-						&& plan.portalX() >= plan.hallLow() && plan.portalX() < plan.hallLow() + plan.hall() ? 0 : 1;
+					// The hall's own geometry, not the constants the plan was drawn from: every spot of the hall
+					// open, the frame's footprint inside it, and the portal within a block of its middle.
+					boolean open = true;
+					for (int x = plan.hallLow(); x < plan.hallLow() + plan.hall(); x++) {
+						for (int z = plan.hallLow(); z < plan.hallLow() + plan.hall(); z++) {
+							open &= !plan.walls()[x][z];
+						}
+					}
+					int middle = plan.hallLow() + plan.hall() / 2;
+					boolean footprint = plan.portalX() >= plan.hallLow() && plan.portalX() < plan.hallLow() + plan.hall()
+						&& plan.portalZ() - 1 >= plan.hallLow() && plan.portalZ() + TowerLayout.PORTAL_INNER_WIDTH < plan.hallLow() + plan.hall();
+					boolean central = Math.abs(plan.portalX() - middle) <= 1 && Math.abs(plan.portalZ() + 1 - middle) <= 1;
+					hallOff += open && footprint && central ? 0 : 1;
 				}
 			}
 		}
@@ -299,6 +311,90 @@ public class TowerPlanGameTest {
 		TowerTestSupport.result("hallTurns", "checked=" + checked + " turns=" + turns + " wrong=" + wrong);
 		helper.assertTrue(turns.size() == 4, "the hall floors used only the turns " + turns);
 		helper.assertTrue(wrong == 0, wrong + " of " + checked + " hall plans are not the canonical layout turned");
+		helper.succeed();
+	}
+
+	/**
+	 * A floor built by the normal builder, queued and stepped a little each tick, is planned at the plan's
+	 * version once it stands, and while it is still going up it is never read as an old floor.
+	 */
+	@GameTest(maxTicks = 200)
+	public void aFloorFromTheNormalBuilderReadsBackAsPlannedAtItsVersion(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
+		TowerFloors.prepare(tower, floor);
+		int[] unbuiltReads = {0};
+		int[] legacyWhileBuilding = {0};
+		Runnable sample = () -> {
+			if (!TowerFloors.isBuilt(tower, floor)) {
+				unbuiltReads[0]++;
+				legacyWhileBuilding[0] += TowerPlan.at(tower, floor).version() == TowerPlan.VERSION ? 0 : 1;
+			}
+		};
+		sample.run();
+		helper.onEachTick(sample);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(TowerFloors.isBuilt(tower, floor), "the queued floor is not built yet");
+			int stacked = 0;
+			while (tower.getBlockState(TowerFloors.planMarker(floor).below(stacked)).is(TowerBlocks.TOWER_WALL)) {
+				stacked++;
+			}
+			TowerPlan plan = TowerPlan.at(tower, floor);
+			TowerTestSupport.result("builderVersion", "floor=" + floor + " planned=" + TowerFloors.isPlanned(tower, floor) + " version=" + TowerFloors.planVersion(tower, floor)
+				+ " planVersion=" + plan.version() + " markers=" + stacked + " unbuiltReads=" + unbuiltReads[0] + " legacyWhileBuilding=" + legacyWhileBuilding[0]);
+			helper.assertTrue(unbuiltReads[0] > 0, "the floor was never seen going up, so the case proves nothing");
+			helper.assertTrue(legacyWhileBuilding[0] == 0, "a floor going up was read as an old one " + legacyWhileBuilding[0] + " times");
+			helper.assertTrue(TowerFloors.isPlanned(tower, floor) && TowerFloors.planVersion(tower, floor) == TowerPlan.VERSION, "the built floor does not read as planned at version " + TowerPlan.VERSION);
+			helper.assertTrue(stacked == TowerPlan.VERSION, "the floor carries " + stacked + " version markers, not " + TowerPlan.VERSION);
+			helper.assertTrue(plan.version() == TowerPlan.VERSION && plan.portalX() == TowerPlan.of(tower.getSeed(), floor).portalX(), "the plan read back is not the current plan");
+		});
+	}
+
+	/** The version a floor carries is read from its markers, and a marker from a later generator is met with the newest one known. */
+	@GameTest
+	public void aFloorKeepsThePlanOfTheVersionItCarries(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
+		TowerFloors.ensure(tower, floor);
+		int extra = 2;
+		for (int i = 1; i <= extra; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(TowerPlan.VERSION - 1 + i), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
+		}
+		TowerFloors.forget(floor);
+		int later = TowerFloors.planVersion(tower, floor);
+		int served = TowerPlan.at(tower, floor).version();
+		boolean sameAsBefore = TowerPlan.of(tower.getSeed(), floor, TowerPlan.VERSION).equals(TowerPlan.of(tower.getSeed(), floor));
+		boolean legacyOfZero = TowerPlan.of(tower.getSeed(), floor, 0).equals(TowerPlan.legacy(tower.getSeed(), floor));
+		for (int i = 1; i <= extra; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(TowerPlan.VERSION - 1 + i), Blocks.AIR.defaultBlockState(), 2);
+		}
+		TowerFloors.forget(floor);
+		int restored = TowerFloors.planVersion(tower, floor);
+		TowerTestSupport.result("markerVersion", "floor=" + floor + " read=" + later + " served=" + served + " current=" + TowerPlan.VERSION + " restored=" + restored
+			+ " sameAsCurrent=" + sameAsBefore + " zeroIsLegacy=" + legacyOfZero);
+		helper.assertTrue(later == TowerPlan.VERSION + extra, "the stacked markers read as version " + later + ", not " + (TowerPlan.VERSION + extra));
+		helper.assertTrue(served == TowerPlan.VERSION, "a marker from a later generator was served the version " + served + " plan");
+		helper.assertTrue(restored == TowerPlan.VERSION, "the markers were not put back");
+		helper.assertTrue(sameAsBefore && legacyOfZero, "the plan of a named version is not the plan of that generator");
+		helper.succeed();
+	}
+
+	/**
+	 * Whether a floor is old or planned is decided once it stands, and kept: the per-mob sweeps ask for the
+	 * plan often and must not read blocks each time. The floor's markers are cleared to show the decision is kept.
+	 */
+	@GameTest
+	public void theDecisionForABuiltFloorIsKept(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
+		TowerFloors.ensure(tower, floor, TowerPlan.legacy(tower.getSeed(), floor));
+		int first = TowerPlan.at(tower, floor).version();
+		tower.setBlock(TowerFloors.marker(floor), Blocks.AIR.defaultBlockState(), 2);
+		int second = TowerPlan.at(tower, floor).version();
+		tower.setBlock(TowerFloors.marker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
+		TowerTestSupport.result("decisionKept", "floor=" + floor + " first=" + first + " second=" + second);
+		helper.assertTrue(first == 0, "a floor built the old way was read as version " + first);
+		helper.assertTrue(second == 0, "the decision was made again from the blocks: version " + second);
 		helper.succeed();
 	}
 
