@@ -313,7 +313,8 @@ public final class HealthScaleGameTest {
 	public void shareFollowsConfig(final GameTestHelper helper) {
 		RpgConfig before = RpgConfigStore.current();
 		RpgConfig doubled = new RpgConfig(before.curves(), before.critMultiplier(), before.dice(), before.mobStats(),
-			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables());
+			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables(),
+			before.xpCurve());
 		Object published;
 		try {
 			RpgConfigStore.set(doubled);

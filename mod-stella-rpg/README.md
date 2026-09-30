@@ -73,6 +73,19 @@ The stats are STR, AGI, VIT, DEX, INT, and LUK.
 
 A death keeps the experience level and the progress bar. The player drops no experience orbs.
 
+## XP curve
+
+The XP needed for the next level is `round(10 + 2.5 x L^1.5)`, where `L` is the current level. It replaces the vanilla curve on the server and the client.
+
+| Level | XP to next |
+|---|---|
+| 1 | 13 |
+| 10 | 89 |
+| 100 | 2,510 |
+| 1000 | 79,067 |
+
+The `xp_curve` key in `stats.json` holds `base`, `factor`, and `exponent`. A missing value uses the default. A client with a different config shows a different XP bar.
+
 ## Level-up refresh
 
 Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.

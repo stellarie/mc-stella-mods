@@ -91,7 +91,8 @@ public final class RpgConfigStore {
 		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
-			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError));
+			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError),
+			xpCurve(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -359,6 +360,37 @@ public final class RpgConfigStore {
 		);
 	}
 
+	private static XpCurve xpCurve(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(XpCurve.KEY);
+		if (element == null) {
+			return XpCurve.DEFAULT;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'xp_curve' must be an object; using the defaults");
+			return XpCurve.DEFAULT;
+		}
+		JsonObject curve = element.getAsJsonObject();
+		double base = curvePart(curve, "base", XpCurve.DEFAULT.base(), 0.0, onError);
+		double factor = curvePart(curve, "factor", XpCurve.DEFAULT.factor(), 0.0, onError);
+		double exponent = curvePart(curve, "exponent", XpCurve.DEFAULT.exponent(), 0.0, onError);
+		return new XpCurve(base, factor, exponent);
+	}
+
+	private static double curvePart(
+		final JsonObject curve, final String key, final double fallback, final double min, final Consumer<String> onError
+	) {
+		JsonElement element = curve.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || !Double.isFinite(value) || value < min) {
+			onError.accept("stats.json key 'xp_curve." + key + "' must be a number of at least " + min + "; using the default");
+			return fallback;
+		}
+		return value;
+	}
+
 	private static double mobDiceShare(final JsonObject root, final Consumer<String> onError) {
 		JsonElement element = root.get(RpgConfig.MOB_DICE_SHARE_KEY);
 		if (element == null) {
@@ -556,6 +588,7 @@ public final class RpgConfigStore {
 		out.put(RpgConfig.MOB_STATS_KEY, weights);
 		out.put(RpgConfig.MOB_AMPLIFIER_KEY, RpgConfig.DEFAULT_MOB_AMPLIFIER);
 		out.put(RpgConfig.MOB_DICE_SHARE_KEY, RpgConfig.DEFAULT_MOB_DICE_SHARE);
+		out.put(XpCurve.KEY, XpCurve.DEFAULT.toJson());
 		StatTables.write(out);
 		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
 		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {
