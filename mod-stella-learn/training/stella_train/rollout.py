@@ -42,6 +42,10 @@ class Result:
     stage: int
     outcome: str        # win, loss, timeout, error
     steps: int
+    ticks: float = 0.0
+    engaged: float = 0.0
+    chase: float = 0.0
+    shots: float = 0.0
 
 
 @dataclass
@@ -73,6 +77,7 @@ class Stats:
     episode_return_sum: float = 0.0
     episode_steps_sum: int = 0
     dealt_sum: float = 0.0
+    engagement: np.ndarray = field(default_factory=lambda: np.zeros(4))
     taken_sum: float = 0.0
     bow_counts: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.int64))
     jump_count: int = 0
@@ -88,6 +93,7 @@ class Stats:
         self.episode_return_sum += other.episode_return_sum
         self.episode_steps_sum += other.episode_steps_sum
         self.dealt_sum += other.dealt_sum
+        self.engagement += other.engagement
         self.taken_sum += other.taken_sum
         self.bow_counts += other.bow_counts
         self.jump_count += other.jump_count
@@ -233,7 +239,7 @@ class Worker(threading.Thread):
             self.ep_steps[arena] = self.ep_steps.get(arena, 0) + 1
             self.ep_return[arena] = self.ep_return.get(arena, 0.0) + reward + phase.shaping_scale * shaping
             if terminal:
-                self._finish_episode(arena, flags, reward, phase)
+                self._finish_episode(arena, flags, reward, phase, step.metrics[i])
             else:
                 self.pending[arena] = (step.obs[i].copy(), sample.u[i], int(sample.jump[i]), int(sample.bow[i]),
                                        float(sample.logp[i]), float(sample.value[i]))
@@ -269,7 +275,7 @@ class Worker(threading.Thread):
         self.client.stats.steps += 1
         self.client.stats.decisions += count
 
-    def _finish_episode(self, arena: int, flags: int, reward: float, phase: Phase) -> None:
+    def _finish_episode(self, arena: int, flags: int, reward: float, phase: Phase, metrics) -> None:
         task = self.ep_task.pop(arena, None)
         self.live.discard(arena)
         steps = self.ep_steps.pop(arena, 0)
@@ -287,9 +293,10 @@ class Worker(threading.Thread):
         self.stats.episode_return_sum += episode_return
         self.stats.episode_steps_sum += steps
         self.stats.outcomes[brain][outcome] += 1
+        self.stats.engagement += metrics
         if phase.mode == "eval":
             if task is not None:
-                self.stats.results.append(Result(task.brain, task.seed, task.stage, outcome, steps))
+                self.stats.results.append(Result(task.brain, task.seed, task.stage, outcome, steps, float(metrics[0]), float(metrics[1]), float(metrics[2]), float(metrics[3])))
 
     # -- batch ---------------------------------------------------------------------------------------------------
 

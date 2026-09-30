@@ -6,7 +6,7 @@ import pytest
 from stella_train import wire
 
 HELLO = "2b0000000102007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-STEP = "3300000002070000000200000000000000010000003f0000803e0000803f00000040050000000e000080bf000000be000040c00000803e"
+STEP = "5300000002070000000200000000000000010000003f0000803e000000000000000000000000000000000000803f00000040050000000e000080bf000000be00001644000096430000204200004041000040c00000803e"
 ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040"
 RESET = "2d00000004ffffffff2a000000060000000200000058020000140000001a00000004000000000000000000000000000000"
 BYE = "0100000005"
@@ -23,7 +23,7 @@ def test_hello_decodes_from_the_fixed_bytes():
 
 
 def test_step_encodes_to_the_fixed_bytes():
-    frame = wire.encode_step(7, [0, 5], [1, 14], [0.5, -1.0], [0.25, -0.125], [[1.0, 2.0], [-3.0, 0.25]])
+    frame = wire.encode_step(7, [0, 5], [1, 14], [0.5, -1.0], [0.25, -0.125], [[1.0, 2.0], [-3.0, 0.25]], [[0, 0, 0, 0], [600, 300, 40, 12]])
     assert frame.hex() == STEP
 
 
@@ -34,6 +34,7 @@ def test_step_decodes_from_the_fixed_bytes():
     assert step.flags.tolist() == [wire.FLAG_START, wire.FLAG_TERMINAL | wire.FLAG_TRUNCATED | wire.FLAG_WIN]
     assert step.rewards.tolist() == [0.5, -1.0]
     assert step.shaping.tolist() == [0.25, -0.125]
+    assert step.metrics.tolist() == [[0, 0, 0, 0], [600, 300, 40, 12]]
     assert step.obs.tolist() == [[1.0, 2.0], [-3.0, 0.25]]
 
 

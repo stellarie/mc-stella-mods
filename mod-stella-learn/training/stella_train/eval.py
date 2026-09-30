@@ -33,6 +33,7 @@ SUITES = {
     "release": {"stage": roster.STAGE_RELEASE, "brains": roster.BRAINS, "episodes": 300},
 }
 WIN_MARGIN = 0.15
+ENGAGED_BAR = 0.60
 STYLE_TOLERANCE = 0.05
 STAGE_A_BAR = 0.80
 TERRAIN_CLASSES = ("flat", "pillars", "wall", "pits", "ledges", "water", "corridors")
@@ -75,6 +76,10 @@ def summarize(results, tasks_total: int) -> dict:
         for counter in (per_brain[name], overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
             counter[result.outcome] += 1
             counter["n"] += 1
+            counter["ticks"] += result.ticks
+            counter["engaged"] += result.engaged
+            counter["chase"] += result.chase
+            counter["shots"] += result.shots
     return {
         "episodes_expected": tasks_total,
         "episodes_finished": len(results),
@@ -90,7 +95,9 @@ def _row(counter: Counter) -> dict:
     wins = counter["win"]
     low, high = stats.wilson(wins, n)
     return {"n": n, "wins": wins, "losses": counter["loss"], "timeouts": counter["timeout"], "errors": counter["error"],
-            "win_rate": wins / n if n else 0.0, "ci_low": low, "ci_high": high}
+            "win_rate": wins / n if n else 0.0, "ci_low": low, "ci_high": high,
+            "engaged_share": counter["engaged"] / counter["ticks"] if counter["ticks"] else 0.0,
+            "shots_per_episode": counter["shots"] / n if n else 0.0, "chase_ticks_per_episode": counter["chase"] / n if n else 0.0}
 
 
 def run_columns(policy_path: Path | None, suite: str, baseline: bool, episodes: int | None, servers: int, arenas: int,
@@ -149,9 +156,11 @@ def compare(model: dict, baseline: dict) -> dict:
         "overall_difference": overall_diff,
         "overall_lower_bound": overall_lower,
         "overall_passes": overall_diff >= WIN_MARGIN,
+        "engaged_share": m["engaged_share"],
+        "engaged_passes": m["engaged_share"] >= ENGAGED_BAR,
         "styles": styles,
         "failing_styles": failing,
-        "passes": overall_diff >= WIN_MARGIN and not failing,
+        "passes": overall_diff >= WIN_MARGIN and not failing and m["engaged_share"] >= ENGAGED_BAR,
     }
 
 
@@ -159,7 +168,7 @@ def render(report: dict) -> str:
     model = report["model"]
     baseline = report.get("baseline")
     lines = [f"suite {report['suite']}   policy {report['policy']}   {report['timestamp']}", ""]
-    header = f"{'brain':<19}{'n':>5}{'win':>6}{'loss':>6}{'time':>6}{'err':>5}{'win%':>8}{'95% CI':>16}"
+    header = f"{'brain':<19}{'n':>5}{'win':>6}{'loss':>6}{'time':>6}{'err':>5}{'win%':>8}{'95% CI':>16}{'eng%':>7}{'shots':>7}{'chase':>7}"
     if baseline:
         header += f"{'base win%':>11}{'diff':>8}  verdict"
     lines.append(header)
@@ -169,7 +178,8 @@ def render(report: dict) -> str:
         if row is None:
             continue
         text = (f"{name + ('*' if name in diggers else ''):<19}{row['n']:>5}{row['wins']:>6}{row['losses']:>6}{row['timeouts']:>6}"
-                f"{row['errors']:>5}{row['win_rate'] * 100:>7.1f}%  [{row['ci_low'] * 100:4.1f},{row['ci_high'] * 100:5.1f}]")
+                f"{row['errors']:>5}{row['win_rate'] * 100:>7.1f}%  [{row['ci_low'] * 100:4.1f},{row['ci_high'] * 100:5.1f}]"
+                f"{row['engaged_share'] * 100:>6.0f}%{row['shots_per_episode']:>7.1f}{row['chase_ticks_per_episode']:>7.0f}")
         if baseline and name in baseline["per_brain"]:
             base = baseline["per_brain"][name]
             style = report["comparison"]["styles"][name]
@@ -177,7 +187,7 @@ def render(report: dict) -> str:
         lines.append(text)
     o = model["overall"]
     total = (f"{'ALL':<19}{o['n']:>5}{o['wins']:>6}{o['losses']:>6}{o['timeouts']:>6}{o['errors']:>5}{o['win_rate'] * 100:>7.1f}%  "
-             f"[{o['ci_low'] * 100:4.1f},{o['ci_high'] * 100:5.1f}]")
+             f"[{o['ci_low'] * 100:4.1f},{o['ci_high'] * 100:5.1f}]{o['engaged_share'] * 100:>6.0f}%{o['shots_per_episode']:>7.1f}{o['chase_ticks_per_episode']:>7.0f}")
     if baseline:
         total += f"{baseline['overall']['win_rate'] * 100:>10.1f}%{report['comparison']['overall_difference'] * 100:>+7.1f}"
     lines += ["-" * len(header), total, "", "* digger styles", ""]
@@ -192,7 +202,7 @@ def render(report: dict) -> str:
     if baseline:
         c = report["comparison"]
         lines.append(f"release bar: overall {c['overall_difference'] * 100:+.1f} points (need +15.0, lower bound {c['overall_lower_bound'] * 100:+.1f}); "
-                     f"failing styles {c['failing_styles'] or 'none'} -> {'PASS' if c['passes'] else 'FAIL'}")
+                     f"failing styles {c['failing_styles'] or 'none'}; engaged share {c['engaged_share'] * 100:.0f}% (need 60%) -> {'PASS' if c['passes'] else 'FAIL'}")
     return "\n".join(lines)
 
 

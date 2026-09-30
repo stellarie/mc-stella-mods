@@ -40,9 +40,12 @@ public final class GymEpisode {
 	/** Terminal rewards: a kill of the bot pays most, a loss costs less, and running out of time pays nothing. */
 	private static final float WIN_REWARD = 5.0F;
 	private static final float LOSS_REWARD = -2.0F;
-	/** Shaping per decision: damage dealt to the bot, and a small pay for a decision in which the archer was not hit. */
+	/** Shaping per decision: damage dealt to the bot. */
 	private static final double DAMAGE_REWARD_PER_HP = 0.005;
-	private static final double UNHIT_REWARD = 0.0002;
+	private static final float TIMEOUT_REWARD = -1.0F;
+	/** The bot counts as engaged within this many blocks of the archer when the archer can see it. */
+	private static final double ENGAGE_BLOCKS = 16.0;
+	private static final double CHASE_STEP = 0.05;
 	private static final int START_RETRIES = 3;
 	/** Ticks between two sweeps of the archer's arrows that lie still. */
 	private static final int SWEEP_TICKS = 20;
@@ -56,7 +59,7 @@ public final class GymEpisode {
 	}
 
 	/** What one step reports about the episode. */
-	public record Frame(int arena, int flags, float reward, float shaping, float[] observation) {
+	public record Frame(int arena, int flags, float reward, float shaping, float[] metrics, float[] observation) {
 	}
 
 	/** Archers of running episodes by id, so an arrow in the world counts for its shooter's episode. */
@@ -68,6 +71,10 @@ public final class GymEpisode {
 				GymEpisode episode = SHOOTERS.get(arrow.getOwner().getUUID());
 				if (episode != null) {
 					episode.arrows++;
+					if (arrow.getOwner().tickCount != episode.lastShotTick) {
+						episode.lastShotTick = arrow.getOwner().tickCount;
+						episode.shots++;
+					}
 					double power = arrow.getDeltaMovement().length() / 1.6;
 					episode.powerBuckets[power < 0.25 ? 0 : power < 0.5 ? 1 : power < 0.75 ? 2 : 3]++;
 				}
@@ -102,7 +109,11 @@ public final class GymEpisode {
 	private int sweepClock;
 	private double shaping;
 	private double dealt;
-	private double unhit;
+	private int engagedTicks;
+	private int chaseTicks;
+	private int shots;
+	private int lastShotTick = -1;
+	private double lastDistance = -1.0;
 	private float noRegenHealth = Float.MAX_VALUE;
 	private double taken;
 	private float lastMobHealth;
@@ -208,7 +219,11 @@ public final class GymEpisode {
 		shaping = 0.0;
 		dealt = 0.0;
 		taken = 0.0;
-		unhit = 0.0;
+		engagedTicks = 0;
+		chaseTicks = 0;
+		shots = 0;
+		lastShotTick = -1;
+		lastDistance = -1.0;
 		noRegenHealth = Float.MAX_VALUE;
 		arrows = 0;
 		java.util.Arrays.fill(powerBuckets, 0);
@@ -443,10 +458,8 @@ public final class GymEpisode {
 		double takenNow = Math.max(0.0, lastMobHealth - mobHealth);
 		dealt += dealtNow;
 		taken += takenNow;
-		// A decision without a hit on the archer pays a little; the damage the archer takes has no term of its own.
-		double bonus = takenNow == 0.0 ? UNHIT_REWARD : 0.0;
-		unhit += bonus;
-		double step = dealtNow * DAMAGE_REWARD_PER_HP + bonus;
+		double step = dealtNow * DAMAGE_REWARD_PER_HP;
+		measureEngagement(decisionTicks);
 		lastMobHealth = mobHealth;
 		lastBotHealth = botHealth;
 		int flags = 0;
@@ -467,6 +480,7 @@ public final class GymEpisode {
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED | Bridge.FLAG_ERROR;
 		} else if (ticks >= episodeLimit()) {
 			endReason = TIMEOUT;
+			reward = TIMEOUT_REWARD;
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED;
 		}
 
@@ -480,6 +494,32 @@ public final class GymEpisode {
 		return frame;
 	}
 
+	/** Counts the ticks the bot is near and seen, and the ticks it runs at an archer that pulls away. */
+	private void measureEngagement(final int decisionTicks) {
+		if (!bot.player().isAlive() || !mob.isAlive()) {
+			return;
+		}
+
+		double distance = mob.distanceTo(bot.player());
+		if (distance <= ENGAGE_BLOCKS && mob.hasLineOfSight(bot.player())) {
+			engagedTicks += decisionTicks;
+		}
+
+		if (lastDistance >= 0.0 && distance > lastDistance + CHASE_STEP) {
+			Vec3 toward = mob.position().subtract(bot.player().position());
+			Vec3 velocity = bot.player().getDeltaMovement();
+			if (toward.x * velocity.x + toward.z * velocity.z > 0.0) {
+				chaseTicks += decisionTicks;
+			}
+		}
+
+		lastDistance = distance;
+	}
+
+	private float[] metrics() {
+		return new float[] {ticks, engagedTicks, chaseTicks, shots};
+	}
+
 	private int episodeLimit() {
 		return tickLimit;
 	}
@@ -490,12 +530,12 @@ public final class GymEpisode {
 			System.arraycopy(source.observation(), 0, observation, 0, observationSize);
 		}
 
-		return new Frame(arena.index(), flags, reward, shapingStep, observation);
+		return new Frame(arena.index(), flags, reward, shapingStep, (flags & Bridge.FLAG_TERMINAL) != 0 ? metrics() : new float[Bridge.METRICS], observation);
 	}
 
 	private Frame errorFrame(final String reason, final int extra) {
 		endReason = reason;
-		Frame frame = new Frame(arena.index(), extra | Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED | Bridge.FLAG_ERROR, 0.0F, 0.0F, new float[observationSize]);
+		Frame frame = new Frame(arena.index(), extra | Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED | Bridge.FLAG_ERROR, 0.0F, 0.0F, new float[Bridge.METRICS], new float[observationSize]);
 		logEnd(0.0F, lastMobHealth, lastBotHealth);
 		EvalMode.result(config, this);
 		finish();
@@ -506,7 +546,7 @@ public final class GymEpisode {
 		GymLog.info(GymLog.EPISODE, "END", "arena=" + arena.index() + " seed=" + seed + " episode=" + episodes + " brain=" + (brain == null ? "none" : Brains.name(brainIndex))
 			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " limit=" + tickLimit + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
 			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken)
-			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " unhitReward=" + LearnLog.num(unhit) + " mobHealth=" + LearnLog.num(mobHealth)
+			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " engagedTicks=" + engagedTicks + " chaseTicks=" + chaseTicks + " shots=" + shots + " mobHealth=" + LearnLog.num(mobHealth)
 			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " arrowPower=" + java.util.Arrays.toString(powerBuckets) + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());
 	}
 

@@ -26,19 +26,19 @@ def test_a_clear_gap_has_a_lower_bound_above_zero():
     assert stats.difference_lower_bound(160, 300, 150, 300) < 0.0
 
 
-def results(win_by_brain, n=300, timeouts=0):
+def results(win_by_brain, n=300, timeouts=0, engaged=420.0):
     out = []
     for brain, wins in win_by_brain.items():
         for i in range(n):
             outcome = "win" if i < wins else ("timeout" if i < wins + timeouts else "loss")
-            out.append(Result(roster.brain_index(brain), roster.EVAL_SEED_BASE + i, roster.STAGE_RELEASE, outcome, 10))
+            out.append(Result(roster.brain_index(brain), roster.EVAL_SEED_BASE + i, roster.STAGE_RELEASE, outcome, 10, 600.0, engaged, 30.0, 5.0))
     return out
 
 
-def column(rate, styles=None):
+def column(rate, styles=None, engaged=420.0):
     base = {name: int(rate * 300) for name in roster.BRAINS}
     base.update(styles or {})
-    return evaluation.summarize(results(base), 300 * len(roster.BRAINS))
+    return evaluation.summarize(results(base, engaged=engaged), 300 * len(roster.BRAINS))
 
 
 def test_release_bar_needs_fifteen_points_and_no_bad_style():
@@ -87,3 +87,10 @@ def test_stage_a_promotes_at_the_bar_and_stage_b_after_stale_evals(tmp_path):
     assert curriculum.after_eval(800, 0.3) and curriculum.stage == roster.STAGE_C
     assert len(curriculum.eval_tasks()) == 19 * 2
     log.close()
+
+
+def test_release_bar_also_needs_sixty_percent_engaged():
+    baseline = column(0.40)
+    assert evaluation.compare(column(0.60, engaged=420.0), baseline)["passes"]          # 70 percent of the ticks
+    low = evaluation.compare(column(0.60, engaged=300.0), baseline)                      # 50 percent
+    assert not low["engaged_passes"] and not low["passes"] and low["overall_passes"]

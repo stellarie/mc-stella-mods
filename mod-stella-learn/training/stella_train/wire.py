@@ -50,6 +50,7 @@ class Step:
     flags: np.ndarray
     rewards: np.ndarray
     shaping: np.ndarray
+    metrics: np.ndarray
     obs: np.ndarray
 
 
@@ -64,7 +65,10 @@ def encode_hello(obs_size: int, act_size: int, arenas: int, contract_hash: bytes
     return _frame(HELLO, struct.pack("<HHHI", PROTOCOL_VERSION, obs_size, act_size, arenas) + contract_hash)
 
 
-def encode_step(step_id: int, agents, flags, rewards, shaping, obs) -> bytes:
+METRICS = 4  # ticks, engaged ticks, chase ticks, shots; set in an episode's last step
+
+
+def encode_step(step_id: int, agents, flags, rewards, shaping, obs, metrics=None) -> bytes:
     agents = np.asarray(agents, dtype="<u4")
     if len(agents) == 0:
         return _frame(STEP, struct.pack("<II", step_id, 0))
@@ -75,6 +79,7 @@ def encode_step(step_id: int, agents, flags, rewards, shaping, obs) -> bytes:
     rows["flags"] = np.asarray(flags, dtype="u1")
     rows["reward"] = np.asarray(rewards, dtype="<f4")
     rows["shaping"] = np.asarray(shaping, dtype="<f4")
+    rows["metrics"] = np.zeros((len(agents), METRICS), dtype="<f4") if metrics is None else np.asarray(metrics, dtype="<f4").reshape(len(agents), METRICS)
     rows["obs"] = obs
     return _frame(STEP, struct.pack("<II", step_id, len(agents)) + rows.tobytes())
 
@@ -100,7 +105,7 @@ def encode_bye() -> bytes:
 
 
 def _step_dtype(obs_size: int) -> np.dtype:
-    return np.dtype([("id", "<u4"), ("flags", "u1"), ("reward", "<f4"), ("shaping", "<f4"), ("obs", "<f4", (obs_size,))])
+    return np.dtype([("id", "<u4"), ("flags", "u1"), ("reward", "<f4"), ("shaping", "<f4"), ("metrics", "<f4", (METRICS,)), ("obs", "<f4", (obs_size,))])
 
 
 def decode_hello(body: bytes) -> Hello:
@@ -117,7 +122,7 @@ def decode_step(body: bytes, obs_size: int) -> Step:
     if len(body) != 8 + count * dtype.itemsize:
         raise WireError(f"step body holds {len(body)} bytes for {count} agents of {obs_size} numbers")
     rows = np.frombuffer(body, dtype=dtype, count=count, offset=8)
-    return Step(step_id, rows["id"], rows["flags"], rows["reward"], rows["shaping"], rows["obs"])
+    return Step(step_id, rows["id"], rows["flags"], rows["reward"], rows["shaping"], rows["metrics"], rows["obs"])
 
 
 def decode_act(body: bytes, act_size: int) -> tuple[int, np.ndarray, np.ndarray]:

@@ -159,11 +159,15 @@ public final class Bridge implements AutoCloseable {
 		return buffer.array();
 	}
 
+	/** Per agent: ticks, engaged ticks, chase ticks, shots. Filled in an episode's last step; zero before. */
+	public static final int METRICS = 4;
+
 	public static byte[] stepFrame(
-		final int stepId, final int[] agents, final int[] flags, final float[] rewards, final float[] shaping, final float[][] observations
+		final int stepId, final int[] agents, final int[] flags, final float[] rewards, final float[] shaping, final float[][] metrics,
+		final float[][] observations
 	) {
 		int observationSize = agents.length == 0 ? 0 : observations[0].length;
-		ByteBuffer buffer = frame(STEP, 4 + 4 + agents.length * (4 + 1 + 4 + 4 + 4 * observationSize));
+		ByteBuffer buffer = frame(STEP, 4 + 4 + agents.length * (4 + 1 + 4 + 4 + 4 * METRICS + 4 * observationSize));
 		buffer.putInt(stepId);
 		buffer.putInt(agents.length);
 		for (int i = 0; i < agents.length; i++) {
@@ -171,6 +175,10 @@ public final class Bridge implements AutoCloseable {
 			buffer.put((byte) flags[i]);
 			buffer.putFloat(rewards[i]);
 			buffer.putFloat(shaping[i]);
+			for (float value : metrics[i]) {
+				buffer.putFloat(value);
+			}
+
 			for (float value : observations[i]) {
 				buffer.putFloat(value);
 			}

@@ -106,6 +106,7 @@ public final class Stepper {
 		int[] flags = new int[count];
 		float[] rewards = new float[count];
 		float[] shaping = new float[count];
+		float[][] metrics = new float[count][];
 		float[][] observations = new float[count][];
 		for (int i = 0; i < count; i++) {
 			GymEpisode.Frame frame = frames.get(i);
@@ -113,11 +114,12 @@ public final class Stepper {
 			flags[i] = frame.flags();
 			rewards[i] = frame.reward();
 			shaping[i] = frame.shaping();
+			metrics[i] = frame.metrics();
 			observations[i] = frame.observation();
 		}
 
 		stepId++;
-		session.send(Bridge.stepFrame(stepId, agents, flags, rewards, shaping, observations));
+		session.send(Bridge.stepFrame(stepId, agents, flags, rewards, shaping, metrics, observations));
 		awaitAct(stepId);
 		countStep(count);
 	}

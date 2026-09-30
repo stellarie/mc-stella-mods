@@ -228,22 +228,26 @@ class Trainer:
         bow = [float(x) / acted for x in stats.bow_counts]
         jump = stats.jump_count / acted
         shaping = stats.shaping_sum / max(episodes, 1)
+        ticks_sum, engaged_sum, chase_sum, shots_sum = (float(x) for x in stats.engagement)
+        engaged = engaged_sum / ticks_sum if ticks_sum else 0.0
+        shots_ep = shots_sum / max(episodes, 1)
+        chase_ep = chase_sum / max(episodes, 1)
         wins_n = wins
         losses_n = sum(c["loss"] for c in stats.outcomes.values())
         self.log.info(
             "train UPDATE update=%d decisions=%d stage=%s dps=%.0f episodes=%d win_rate=%.3f mean_reward=%.3f terminal_per_decision=%.5f policy_loss=%.4f "
             "value_loss=%.4f entropy=%.3f kl=%.4f clip_fraction=%.3f explained_variance=%.3f lr=%.2e entropy_coef=%.4f shaping_scale=%.4f log_std=%.3f "
-            "timeouts=%d wins=%d losses=%d shaping_per_episode=%.3f terminal_reward_per_episode=%.3f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s]",
+            "timeouts=%d wins=%d losses=%d shaping_per_episode=%.3f terminal_reward_per_episode=%.3f engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s]",
             self.updates, self.decisions, roster.STAGE_NAMES[self.curriculum.stage], dps, episodes, finished, mean_return, per_decision,
             metrics["policy_loss"], metrics["value_loss"], metrics["entropy"], metrics["kl"], metrics["clip_fraction"], metrics["explained_variance"],
-            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), wins_n, losses_n, shaping, stats.reward_sum / max(episodes, 1), *bow, jump, styles)
+            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), wins_n, losses_n, shaping, stats.reward_sum / max(episodes, 1), engaged, shots_ep, chase_ep, *bow, jump, styles)
         self.log.event(
             "train UPDATE", update=self.updates, decisions=self.decisions, stage=roster.STAGE_NAMES[self.curriculum.stage], dps=dps,
             wall_seconds=self.wall_seconds(), episodes=episodes, win_rate=finished, mean_reward=mean_return, terminal_per_decision=per_decision,
             policy_loss=metrics["policy_loss"], value_loss=metrics["value_loss"], entropy=metrics["entropy"], kl=metrics["kl"],
             clip_fraction=metrics["clip_fraction"], explained_variance=metrics["explained_variance"], lr=metrics["lr"],
             entropy_coef=metrics["entropy_coef"], shaping_scale=scale, log_std=metrics["log_std"], epochs_run=metrics["epochs_run"],
-            update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, shaping_per_episode=shaping, wins=wins_n, losses=losses_n,
+            update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, shaping_per_episode=shaping, wins=wins_n, losses=losses_n, engaged_share=engaged, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep,
             bow_action_share=bow, jump_share=jump, win_rate_by_style=by_style,
             outcomes={roster.BRAINS[b] if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
 
@@ -270,13 +274,17 @@ class Trainer:
             bucket = toughness[bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)).toughness_bucket]]
             bucket["n"] += 1
             bucket["win"] += result.outcome == "win"
+        eng_ticks = sum(r.ticks for r in stats.results)
+        engaged_share = sum(r.engaged for r in stats.results) / eng_ticks if eng_ticks else 0.0
+        shots_ep = sum(r.shots for r in stats.results) / max(len(stats.results), 1)
+        chase_ep = sum(r.chase for r in stats.results) / max(len(stats.results), 1)
         by_toughness = " ".join(f"{name}:{row['win'] / row['n']:.2f}/{row['n']}" for name, row in toughness.items() if row["n"])
         stage = roster.STAGE_NAMES[self.curriculum.stage]
         styles = " ".join(f"{name}:{row['win'] / row['n']:.2f}" for name, row in rows.items())
-        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f styles=[%s] toughness=[%s]", self.decisions, stage,
-                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, styles, by_toughness)
+        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f styles=[%s] toughness=[%s] engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f", self.decisions, stage,
+                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, styles, by_toughness, engaged_share, shots_ep, chase_ep)
         self.log.event("trainEval RESULT", decisions=self.decisions, stage=stage, suite_stage=roster.STAGE_NAMES[self.curriculum.eval_stage()],
-                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, per_toughness=toughness, per_style=rows, seconds=time.monotonic() - began)
+                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, per_toughness=toughness, engaged_share=engaged_share, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep, per_style=rows, seconds=time.monotonic() - began)
         self.curriculum.after_eval(self.decisions, rate)
 
 
