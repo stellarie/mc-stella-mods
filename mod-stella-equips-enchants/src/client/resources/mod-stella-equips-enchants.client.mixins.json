@@ -3,6 +3,7 @@
 	"package": "com.stella.equips.mixin.client",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"EntityRendererNameTagMixin",
 		"HudMixin"
 	],
 	"injectors": {

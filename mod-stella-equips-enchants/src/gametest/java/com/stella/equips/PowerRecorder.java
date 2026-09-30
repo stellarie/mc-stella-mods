@@ -35,68 +35,26 @@ public final class PowerRecorder {
 			}
 
 			@Override
-			public void readoutSpawn(
+			public void readoutTarget(
 				final String player,
 				final String mob,
-				final String mobName,
 				final int entityId,
 				final int threat,
-				final int playerLevel,
-				final int gap,
 				final String band,
-				final String color,
-				final String text
+				final boolean hostile,
+				final float health,
+				final float absorption,
+				final boolean newTarget
 			) {
 				add(
-					"[BEHAVIOR] readout spawn player=%s mob=%s name=%s entityId=%d threat=%d playerLevel=%d gap=%d band=%s color=%s text=%s",
-					player, mob, mobName, entityId, threat, playerLevel, gap, band, color, text
+					"[BEHAVIOR] readout target player=%s mob=%s entityId=%d threat=%d band=%s hostile=%s health=%s absorption=%s newTarget=%s",
+					player, mob, entityId, threat, band, hostile, health, absorption, newTarget
 				);
 			}
 
 			@Override
-			public void readoutBand(
-				final String player,
-				final String mob,
-				final int entityId,
-				final int gap,
-				final String bandFrom,
-				final String bandTo,
-				final int threat,
-				final int playerLevel,
-				final String text
-			) {
-				add(
-					"[BEHAVIOR] readout band player=%s mob=%s entityId=%d gap=%d bandFrom=%s bandTo=%s threat=%d playerLevel=%d text=%s",
-					player, mob, entityId, gap, bandFrom, bandTo, threat, playerLevel, text
-				);
-			}
-
-			@Override
-			public void readoutHostility(
-				final String player,
-				final String mob,
-				final int entityId,
-				final boolean from,
-				final boolean to
-			) {
-				add(
-					"[BEHAVIOR] readout hostility player=%s mob=%s entityId=%d from=%s to=%s",
-					player, mob, entityId, from, to
-				);
-			}
-
-			@Override
-			public void readoutRemove(
-				final String player,
-				final String mob,
-				final int entityId,
-				final String reason,
-				final int remaining
-			) {
-				add(
-					"[BEHAVIOR] readout remove player=%s mob=%s entityId=%d reason=%s remaining=%d",
-					player, mob, entityId, reason, remaining
-				);
+			public void readoutClear(final String player, final int entityId, final String reason) {
+				add("[BEHAVIOR] readout clear player=%s entityId=%d reason=%s", player, entityId, reason);
 			}
 		});
 	}

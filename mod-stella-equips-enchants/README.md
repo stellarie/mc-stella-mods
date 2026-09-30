@@ -1,8 +1,8 @@
 # mod-stella-equips-enchants
 
-A Fabric mod with server-side gameplay and an optional client heart layout cap.
+A Fabric mod with server-side gameplay and a client layer for the heart layout cap and the mob plate.
 Enchanting costs emeralds and never experience. The mod also holds the
-enchantment catalogue, player power, and a per-player mob threat readout.
+enchantment catalogue, player power, and a mob threat plate over the mob a player looks at.
 
 Build and test:
 
@@ -132,46 +132,54 @@ files still apply.
 
 ## Mob threat readout
 
-Each player sees the threat of nearby mobs, colored by how that threat compares
-with their own level. The color is relative, so one mob can read green for one
-player and red for another. A readout reads `Threat 7 Zombie 40/40`: the raw
-threat, the mob's own name, and its current and maximum health.
+A player sees a plate over the one mob they look at, and over no other mob. The
+mob must sit on the view ray within 32 blocks, with no solid block between. When
+two mobs stand on the ray, the nearer one wins. Looking away, a wall, distance,
+or the mob's death removes the plate.
 
-With `mod-stella-mobs` installed, elite and boss mobs also carry a rank tag, as in
-`Threat 7 <Elite> Zombie 40/40` or `Threat 12 <Boss> Wither 200/200`; boss wins when
-both apply. The rank comes from the optional `mod-stella-mobs:readout-rank`
-provider, so this mod has no dependency on the mobs mod. Without it, or with an
-unknown value, no tag is shown. A rank or health change updates the text on the
-next scan.
+The plate is a badge with the name beside it, on a padded, semi-transparent gray
+background. The level number sits in the center of a circle. The outline of that
+circle is the health: a red arc covers `health / max health` of the circumference,
+clockwise from the top. Absorption is a yellow ring just outside the red one. It
+covers `absorption / max health`, capped at a full circle, and it is absent at zero
+absorption. The name, `<Rank> Name`, sits to the right of the badge, centered on it.
+There are no bars.
+
+The level number takes the band color, so one mob can read green for one player and
+red for another. With `mod-stella-mobs` installed, elite and boss mobs also carry a
+rank tag, as in `<Elite> Zombie` or `<Boss> Wither`; boss wins when both apply.
+The rank comes from the optional `mod-stella-mobs:readout-rank` provider, so this
+mod has no dependency on the mobs mod. Without it, or with an unknown value, no
+tag is shown.
+
+The client hides the vanilla floating name tag of every mob, including named pets,
+because the plate carries the name. Players keep their name tags.
 
 For the color, raw threat is scaled onto the player level range:
 `round(threat * level_cap / mob_level.level_cap)`, so threat 0, 18, and 36 compare as
 0, 25, and 50. The gap is that scaled threat minus the owner's capped level. The
 bands come from the `bands` block of `power.json`: red at 20 above, yellow at 10
 above, orange at 6 above, green from 5 above to 5 below, and white at 6 or more
-below. `/stellaequips readout off` clears the readouts of one player and stops new
+below. `/stellaequips readout off` clears the plate of one player and stops new
 ones; `on` restores them.
 
 The mob's name is colored by how it treats the viewer: red when the mob is an enemy
 by nature (every `Enemy`, including endermen, piglins, zombified piglins, and
 spiders, which are neutral in play), targets the viewer, or is angry at the viewer;
-green otherwise. Only the name takes this color; the threat, rank tag, and health
-keep the band color. It is worked out per viewer, so a golem one player hit turns
-red for that player only. A player's hit rechecks that mob within a few ticks, and
-any other change shows on the next scan. A colored custom name is shown in the
-hostility color too.
+green otherwise. Only the name takes this color. It is worked out per viewer, so a
+golem one player hit turns red for that player only. A player's hit rescans that
+player for a few ticks, and any other change shows on the next look test. A colored
+custom name is shown in the hostility color too.
 
-A readout is a text display entity. It never joins the level, so the vanilla
-tracking broadcast cannot reach a second player. The mod sends the add packet and
-the data packet to the owner alone. The mob keeps its own name and name tag.
+The server runs the look test every 2 ticks and sends one `readout` payload to the
+looking player when the target, its health, absorption, rank, threat, band, or
+hostility changes. It sends one clear payload when the target goes away. The client
+draws the plate in world space above the mob, turned toward the camera. This needs
+the mod on the client: a vanilla client discards the payload and shows no plate.
 
-A readout follows its mob on every tick, and its text is re-sent only when the
-band, the text, or the name color changes. A readout exists only for a mob within
-32 blocks of its owner, and one player holds at most 40 readouts, nearest first. A
-readout is removed when its mob dies, when it leaves the radius, when the cap
-drops it, when the owner disconnects, and when the owner opts out. The `readout`
-block of `power.json` holds `enabled_by_default`, `radius`, `max_per_player`,
-`height_offset`, and `view_range`.
+The `readout` block of `power.json` holds `enabled_by_default` and `radius`, the
+look range in blocks. The keys `max_per_player`, `height_offset`, and `view_range`
+still load, so old files stay valid, but the plate no longer reads them.
 
 ## Damage numbers
 
@@ -221,9 +229,10 @@ The game tests run a headless server. They check the test-only fixture enchantme
 `mod-stella-equips-enchants-test-mod-stella-equips-enchants:test_marker`, its cost
 fields, the clamped anvil cost, the 74 catalogue enchantments, threat scaling, the
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
-saved before this change, and the readout: its text, rank tags, and colors, its
-radius, its cap, its band updates, its removal on death, on range, and on
-disconnect, its invisibility to a second player, and the opt-out command. They also
+saved before this change, and the readout: its look test, range, and line of sight, its payload, its rank
+tags and colors, the plate geometry, its removal on death and on disconnect, its
+invisibility to a second player, and the opt-out command. The pixels of the plate
+need a client, so a not-required test marks them for a manual check. They also
 check refining: the odds tables, the quote and confirm, the price, the chip and the break,
 the cap, the smith, the bonuses, the tooltip, each special effect, and the recipe.
 

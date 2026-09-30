@@ -8,6 +8,9 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.equips.StellaEquips"
+		],
+		"client": [
+			"com.stella.equips.client.ReadoutClient"
 		]
 	},
 	"mixins": [
