@@ -27,6 +27,11 @@ class Curriculum:
         self.stale = 0
         self.history: list[dict] = []
         self.ticks = int(config.get("stage_a_ticks", 600))
+        self.bands = [tuple(b) for b in config.get("stage_a_bands", [[22, 26]])]
+        self.band = 0
+        self.band_start = -1
+        self.blocked = False
+        bodies.set_stage_a_hp(*self.bands[0])
         self.rng = np.random.default_rng(seed)
 
     # -- what to play -----------------------------------------------------------------------------------------------
@@ -38,7 +43,13 @@ class Curriculum:
     def body(self) -> bodies.BodyRange:
         return bodies.range_for_stage(self.stage)
 
+    def band_text(self) -> str:
+        low, high = self.bands[self.band]
+        return f"{low}-{high}"
+
     def log_body(self, decisions: int) -> None:
+        if self.band_start < 0:
+            self.band_start = decisions
         ranges = self.body()
         self.log.info("trainStage BODY stage=%s decisions=%d hp=%d-%d armor=0-%d toughness=0-%d protection=0-%d special=%.2f", roster.STAGE_NAMES[self.stage], decisions,
                       ranges.hp_min, ranges.hp_max, ranges.armor_max, ranges.toughness_max, ranges.protection_max, ranges.special_permille / 1000.0)
@@ -60,6 +71,15 @@ class Curriculum:
         """Records one eval and returns True when the stage just changed."""
         self.history.append({"decisions": decisions, "stage": self.stage, "win_rate": win_rate})
         stage_decisions = decisions - self.stage_start
+        last_band = self.band == len(self.bands) - 1
+        if self.stage == roster.STAGE_A and not last_band:
+            if win_rate >= self.config.get("band_promote_at", 0.40):
+                self._next_band(decisions, win_rate)
+            elif decisions - self.band_start > int(self.config.get("band_blocked_decisions", 20_000_000)):
+                self.blocked = True
+                self.log.info("trainStage BLOCKED band=%s decisions=%d in_band=%d win_rate=%.3f", self.band_text(), decisions, decisions - self.band_start, win_rate)
+                self.log.event("trainStage BLOCKED", band=self.band_text(), decisions=decisions, win_rate=win_rate)
+            return False
         if self.stage == roster.STAGE_A and win_rate > self.config.get("stage_a_short_at", 0.40) and self.ticks > int(self.config.get("short_ticks", 400)):
             self._set_ticks(decisions, int(self.config.get("short_ticks", 400)), f"stage A win_rate={win_rate:.3f} passed {self.config.get('stage_a_short_at', 0.40)}")
         if self.stage == roster.STAGE_A:
@@ -76,6 +96,14 @@ class Curriculum:
             if patience or share_end:
                 return self._promote(decisions, f"win_rate={win_rate:.3f} best={self.best:.3f} stale_evals={self.stale} budget_share_ended={share_end}")
         return False
+
+    def _next_band(self, decisions: int, win_rate: float) -> None:
+        old = self.band_text()
+        self.band += 1
+        self.band_start = decisions
+        bodies.set_stage_a_hp(*self.bands[self.band])
+        self.log.info("trainStage HP_BAND old=%s new=%s win_rate=%.3f decisions=%d", old, self.band_text(), win_rate, decisions)
+        self.log.event("trainStage HP_BAND", old=old, new=self.band_text(), win_rate=win_rate, decisions=decisions)
 
     def _set_ticks(self, decisions: int, new: int, reason: str) -> None:
         old = self.ticks
@@ -99,7 +127,7 @@ class Curriculum:
         return True
 
     def state(self) -> dict:
-        return {"stage": self.stage, "stage_start": self.stage_start, "best": self.best, "stale": self.stale, "history": self.history, "ticks": self.ticks}
+        return {"stage": self.stage, "stage_start": self.stage_start, "best": self.best, "stale": self.stale, "history": self.history, "ticks": self.ticks, "band": self.band, "band_start": self.band_start}
 
     def load(self, state: dict) -> None:
         self.stage = state["stage"]
@@ -108,3 +136,6 @@ class Curriculum:
         self.stale = state["stale"]
         self.history = state["history"]
         self.ticks = state.get("ticks", self.ticks)
+        self.band = min(state.get("band", 0), len(self.bands) - 1)
+        self.band_start = state.get("band_start", -1)
+        bodies.set_stage_a_hp(*self.bands[self.band])

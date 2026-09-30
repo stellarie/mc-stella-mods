@@ -37,14 +37,33 @@ def configure(config: dict) -> None:
     _ranges[roster.STAGE_RELEASE] = _ranges[roster.STAGE_C]
 
 
+_stage_a_hp: tuple | None = None
+
+
+def set_stage_a_hp(low: int, high: int) -> None:
+    """The HP band of the Stage A ladder that is in force; it overrides the health bounds of `[body.A]`."""
+    global _stage_a_hp
+    _stage_a_hp = (low, high)
+
+
 def range_for_stage(stage: int) -> BodyRange:
+    from dataclasses import replace
+    from . import roster
+
+    ranges = _range_table()
+    if stage == roster.STAGE_A and _stage_a_hp is not None:
+        return replace(ranges[stage], hp_min=_stage_a_hp[0], hp_max=_stage_a_hp[1])
+    return ranges[stage]
+
+
+def _range_table() -> dict:
     if not _ranges:
         import tomllib
         from pathlib import Path
 
         default = Path(__file__).resolve().parents[1] / "configs" / "archer.toml"
         configure(tomllib.loads(default.read_text(encoding="utf-8"))["body"])
-    return _ranges[stage]
+    return _ranges
 
 
 @dataclass(frozen=True)

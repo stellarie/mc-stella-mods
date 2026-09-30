@@ -94,3 +94,28 @@ def test_release_bar_also_needs_sixty_percent_engaged():
     assert evaluation.compare(column(0.60, engaged=420.0), baseline)["passes"]          # 70 percent of the ticks
     low = evaluation.compare(column(0.60, engaged=300.0), baseline)                      # 50 percent
     assert not low["engaged_passes"] and not low["passes"] and low["overall_passes"]
+
+
+def test_the_hp_ladder_climbs_on_forty_percent_and_the_bar_applies_on_the_last_band(tmp_path):
+    from stella_train import bodies
+
+    config = {"stage_a_win_rate": 0.8, "stage_a_min_decisions": 0, "stage_a_short_at": 0.4, "short_ticks": 400, "stage_a_ticks": 600,
+              "stage_a_bands": [[10, 14], [14, 18], [18, 22], [22, 26]], "band_promote_at": 0.4, "band_blocked_decisions": 1000,
+              "stage_b_patience_evals": 3, "stage_b_budget_share": 0.9, "stage_b_min_decisions": 0, "eval_episodes_per_brain": 2}
+    log = RunLog("ladder", base=tmp_path)
+    curriculum = Curriculum(config, budget=10**9, log=log)
+    curriculum.log_body(0)
+    assert bodies.range_for_stage(roster.STAGE_A).hp_min == 10 and curriculum.train_task().body[:2] == (10, 14)
+    assert not curriculum.after_eval(100, 0.9) and curriculum.band_text() == "14-18" and curriculum.ticks == 600
+    assert curriculum.train_task().body[:2] == (14, 18)
+    curriculum.after_eval(200, 0.4)
+    curriculum.after_eval(300, 0.45)
+    assert curriculum.band_text() == "22-26" and curriculum.ticks == 600 and curriculum.stage == roster.STAGE_A
+    assert not curriculum.after_eval(400, 0.5) and curriculum.ticks == 400          # last band: the timeout drops, no promotion below 80 percent
+    assert curriculum.after_eval(500, 0.85) and curriculum.stage == roster.STAGE_B
+    stalled = Curriculum(config, budget=10**9, log=log)
+    stalled.log_body(0)
+    stalled.after_eval(2000, 0.1)
+    assert stalled.blocked
+    bodies.set_stage_a_hp(22, 26)
+    log.close()

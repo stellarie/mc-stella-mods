@@ -34,6 +34,10 @@ jump_bias_init = [0.5, -0.5]
 scale = 1.0                      # the gym prices the terms: +0.005 a hit point dealt, +0.0002 an unhit decision; no decay
 
 [curriculum]
+# Stage A ladder: bot max HP bands. A band promotes on this deterministic eval win rate; the 80 percent bar and the 600 to 400 tick drop apply on the last band only.
+stage_a_bands = [[10, 14], [14, 18], [18, 22], [22, 26]]
+band_promote_at = 0.40
+band_blocked_decisions = 20_000_000
 # Episode length in ticks. Stage A starts at 600 and drops to 400 once its deterministic win rate passes 40 percent.
 stage_a_ticks = 600
 stage_a_short_at = 0.40
@@ -51,7 +55,8 @@ eval_episodes_per_brain = 20
 
 # Bot bodies by stage. Stage A bots are frail; Stage C draws the full range. Sent in every Reset, so a change applies at the next episode.
 [body.A]
-hp_min = 20
+# The health bounds here are the last band of the Stage A ladder (curriculum.stage_a_bands); the ladder overrides them while it climbs.
+hp_min = 22
 hp_max = 26
 armor_max = 4
 toughness_max = 0
