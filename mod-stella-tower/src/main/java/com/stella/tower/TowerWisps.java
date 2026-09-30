@@ -16,7 +16,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
@@ -228,7 +227,7 @@ public final class TowerWisps {
 		BlockPos origin = TowerLayout.origin(trail.floor());
 		AABB room = new AABB(origin.getX(), TowerLayout.BASE_Y, origin.getZ(),
 			origin.getX() + TowerLayout.SIZE, TowerLayout.BASE_Y + TowerLayout.HEIGHT, origin.getZ() + TowerLayout.SIZE);
-		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> mob instanceof Enemy && !(mob instanceof TowerGhost) && mob.isAlive())) {
+		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> Hostiles.isHostile(mob) && !(mob instanceof TowerGhost) && mob.isAlive())) {
 			int x = mob.getBlockX() - origin.getX();
 			int z = mob.getBlockZ() - origin.getZ();
 			if (x >= 0 && z >= 0 && x < TowerLayout.SIZE && z < TowerLayout.SIZE && trail.reach()[x][z]) {

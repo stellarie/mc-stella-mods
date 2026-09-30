@@ -22,7 +22,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
@@ -90,7 +89,7 @@ public final class RuneGuards {
 			if (source.is(DamageTypeTags.IS_FIRE) && worn(player, TowerElement.FIRE) != null) {
 				player.setAttached(HEAT, Math.min(HEAT_STORE_CAP, storedHeat(player) + taken));
 			}
-			if (source.getEntity() instanceof Enemy && worn(player, TowerElement.LIGHTNING) != null) {
+			if (Hostiles.isHostile(source.getEntity()) && worn(player, TowerElement.LIGHTNING) != null) {
 				RuneEffects.addCharge(player);
 			}
 		});
@@ -104,7 +103,7 @@ public final class RuneGuards {
 			}
 		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-			if (!(entity instanceof Enemy) || entity instanceof TowerGhost || !(source.getEntity() instanceof ServerPlayer player)) {
+			if (!Hostiles.isHostile(entity) || entity instanceof TowerGhost || !(source.getEntity() instanceof ServerPlayer player)) {
 				return;
 			}
 			int now = now(player);
@@ -160,7 +159,7 @@ public final class RuneGuards {
 
 	/** Whether a Void-armored player stands near enough this hostile mob to halve what strengthens it. */
 	public static boolean dampened(final LivingEntity mob) {
-		return mob instanceof Enemy && !(mob instanceof TowerGhost) && mob.level() instanceof ServerLevel level
+		return Hostiles.isHostile(mob) && !(mob instanceof TowerGhost) && mob.level() instanceof ServerLevel level
 			&& level.getNearestPlayer(mob.getX(), mob.getY(), mob.getZ(), VOID_RANGE,
 				player -> !player.isSpectator() && worn((LivingEntity) player, TowerElement.VOID) != null) != null;
 	}

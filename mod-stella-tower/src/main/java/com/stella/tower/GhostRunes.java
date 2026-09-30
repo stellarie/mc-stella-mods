@@ -18,7 +18,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -110,7 +109,7 @@ public final class GhostRunes {
 			if (player.isSpectator() || !phased(player)) {
 				continue;
 			}
-			for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox(), mob -> mob instanceof Enemy && mob.isAlive())) {
+			for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox(), mob -> Hostiles.isHostile(mob) && mob.isAlive())) {
 				// Renewed once a second, not every tick, so a mob is not sent a fresh effect each tick.
 				MobEffectInstance held = mob.getEffect(MobEffects.SLOWNESS);
 				if (held == null || held.getDuration() <= SLOW_TICKS - SLOW_RENEW_TICKS) {
