@@ -217,3 +217,21 @@ through the far door (+8, the maze). Measured with that rule put back: the case 
   the elite one both fail ("0 of the frame's 4 bottom blocks stand on tower wall"), since the plinth is tower wall
   where the floor is the palette's stone.
 
+
+## F3 review fixes (F4 worker)
+
+- A void shaman never takes a sheltered player as its quarry: `TowerShamans.think` picks the nearest player who is not
+  a spectator, not in creative and not `TowerSafety.sheltered`, and drops a held target that is sheltered. The other
+  direct player picks (ghost healing and following, elite bars, wisps, traps, growth) do not attack a player through a
+  mob and were left alone.
+- `TowerSafety.sheltered` never loads a chunk: it asks `TowerPlan.atQuiet`, which with the markers' chunk not loaded
+  serves the remembered built version (or the current plan). Its answer is kept per player, per server tick and per
+  block, so a busy floor's repeated `getTarget` calls cost one lookup (`TowerSafety.lookups()` counts them).
+- A mob sent back to where it was last seen outside is only put there if it was standing on the ground there and a
+  sturdy block is still under the spot (the sighting records `grounded`); otherwise the nearest supported spot is used.
+- Projectiles already in flight when a player steps into a zone still land: nothing in the keep-out recalls an arrow.
+  Wardens are not tower mobs, so the zones do not cover them.
+- `TowerTestSupport.spotsBesideZone(plan, zoneIndex)` also targets the boss room (zone 1).
+- Not test-proven beyond the first red run: by the owner's instruction (2026-09-30) no gate was run for this commit,
+  only `build compileGametestJava -x runGameTest`. `TowerSafetyReviewGameTest` was red on three of its cases before
+  the fixes (evidence f4-r1-red) and has not been run green.

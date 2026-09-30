@@ -217,7 +217,15 @@ final class TowerTestSupport {
 	 * sweep, so a test that needs a mob to stay stands it here.
 	 */
 	static ZoneSpots spotsBesideZone(final TowerPlan plan) {
-		TowerMaze.Zone zone = plan.safeZones().get(0);
+		return spotsBesideZone(plan, 0);
+	}
+
+	/**
+	 * The same for any of the plan's zones: 0 is the entrance zone, 1 the boss floor's walled room. Beside the room
+	 * means outside its ring, in sight of the inside through an opening.
+	 */
+	static ZoneSpots spotsBesideZone(final TowerPlan plan, final int zoneIndex) {
+		TowerMaze.Zone zone = plan.safeZones().get(zoneIndex);
 		BlockPos o = plan.origin();
 		for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
 			for (int z = 2; z < TowerLayout.SIZE - 2; z++) {

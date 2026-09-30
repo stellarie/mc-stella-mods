@@ -156,6 +156,15 @@ public record TowerPlan(
 		return built < 0 ? of(tower.getSeed(), floor) : of(tower.getSeed(), floor, built);
 	}
 
+	/**
+	 * {@link #at} for a caller that must never load a chunk (the targeting mixins): a floor whose markers lie in a chunk
+	 * that is not loaded is served from the remembered version, or the current plan if none is remembered.
+	 */
+	static TowerPlan atQuiet(final ServerLevel tower, final int floor) {
+		int built = TowerFloors.builtVersionQuiet(tower, floor);
+		return built < 0 ? of(tower.getSeed(), floor) : of(tower.getSeed(), floor, built);
+	}
+
 	private static TowerPlan cached(final Key key) {
 		synchronized (CACHE_MAP) {
 			TowerPlan plan = CACHE_MAP.get(key);

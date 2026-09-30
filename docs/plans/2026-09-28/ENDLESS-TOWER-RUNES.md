@@ -651,3 +651,11 @@ gone and you stand at your bed or the world spawn.
 - `theDecisionForABuiltFloorIsKept` now clears the plan markers and keeps the built marker (the built marker is the
   first thing asked now); `aRememberedDecisionIsNotServedForAFloorThatDoesNotStand` covers the old case.
 
+
+## Change: F3 review fixes (2026-09-30, slice F4 worker)
+
+- Shaman quarry filtered through `TowerSafety.sheltered`; the sweep's last-sighting restore checks ground support
+  (`Sighting.grounded`); `sheltered` uses the non-loading `TowerPlan.atQuiet` and a per-player, per-tick cache.
+- In-flight projectiles still land, and wardens are not tower mobs: neither is covered by the zones (accepted).
+- Deviation: the owner asked for no test runs from here on, so the new cases (`TowerSafetyReviewGameTest`) are not
+  proven green and there is no mutation evidence.

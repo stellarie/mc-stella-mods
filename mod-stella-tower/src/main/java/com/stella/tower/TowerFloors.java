@@ -185,6 +185,20 @@ public final class TowerFloors {
 		return version;
 	}
 
+	/**
+	 * {@link #builtVersion} that never loads a chunk: with the markers' chunk not loaded it answers with the
+	 * remembered version, or -1 (the current plan) when none is remembered.
+	 */
+	static int builtVersionQuiet(final ServerLevel tower, final int floor) {
+		if (!tower.hasChunkAt(marker(floor))) {
+			synchronized (BUILT_VERSIONS) {
+				Integer known = BUILT_VERSIONS.get(new Built(tower.getSeed(), floor));
+				return known == null ? -1 : known;
+			}
+		}
+		return builtVersion(tower, floor);
+	}
+
 	/** Test seam: forgets what is known of a floor's built version, so its blocks are read again. */
 	static void forget(final int floor) {
 		synchronized (BUILT_VERSIONS) {

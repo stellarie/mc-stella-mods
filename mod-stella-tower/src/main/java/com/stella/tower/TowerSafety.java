@@ -40,7 +40,7 @@ public final class TowerSafety {
 	public static final int SEARCH = TowerMaze.SAFE;
 
 	/** Where a tower mob near a zone was last seen outside every zone, and when: the server thread's alone. */
-	private record Sighting(Vec3 at, int tick) {
+	private record Sighting(Vec3 at, int tick, boolean grounded) {
 	}
 
 	private static final Map<UUID, Sighting> OUTSIDE = new HashMap<>();
@@ -64,8 +64,30 @@ public final class TowerSafety {
 		if (floor <= 0) {
 			return false;
 		}
+		int tick = tower.getServer().getTickCount();
+		Shelter known = SHELTER.get(player.getUUID());
+		if (known != null && known.tick() == tick && known.at().equals(at)) {
+			return known.answer();
+		}
 		BlockPos origin = TowerLayout.origin(floor);
-		return TowerPlan.at(tower, floor).inSafeZone(at.getX() - origin.getX(), at.getZ() - origin.getZ());
+		LOOKUPS++;
+		// Answered from the plan without loading a chunk: the plan's markers may lie in a chunk that is not loaded.
+		boolean answer = TowerPlan.atQuiet(tower, floor).inSafeZone(at.getX() - origin.getX(), at.getZ() - origin.getZ());
+		SHELTER.put(player.getUUID(), new Shelter(tick, at.immutable(), answer));
+		return answer;
+	}
+
+	/** One player's answer in one server tick at one block: the targeting mixins ask many times a tick. */
+	private record Shelter(int tick, BlockPos at, boolean answer) {
+	}
+
+	private static final Map<UUID, Shelter> SHELTER = new HashMap<>();
+
+	/** How many plan lookups {@link #sheltered} has made, for a test of what it costs. */
+	private static int LOOKUPS;
+
+	static int lookups() {
+		return LOOKUPS;
 	}
 
 	private static void tick(final MinecraftServer server) {
@@ -85,6 +107,7 @@ public final class TowerSafety {
 		}
 		int now = server.getTickCount();
 		OUTSIDE.values().removeIf(seen -> now - seen.tick() > 2 * TRUST_SWEEPS * SWEEP_TICKS);
+		SHELTER.values().removeIf(answer -> answer.tick() < now);
 		for (int floor : occupied) {
 			sweep(tower, floor);
 		}
@@ -103,7 +126,7 @@ public final class TowerSafety {
 				if (touchesZone(plan, mob.getBoundingBox())) {
 					eject(tower, plan, mob, OUTSIDE.get(mob.getUUID()), now);
 				} else {
-					OUTSIDE.put(mob.getUUID(), new Sighting(mob.position(), now));
+					OUTSIDE.put(mob.getUUID(), new Sighting(mob.position(), now, mob.onGround()));
 				}
 			}
 		}
@@ -151,8 +174,9 @@ public final class TowerSafety {
 		AABB body = mob.getBoundingBox();
 		if (seen != null && now - seen.tick() <= TRUST_SWEEPS * SWEEP_TICKS) {
 			AABB back = body.move(seen.at().x - from.x, seen.at().y - from.y, seen.at().z - from.z);
-			if (!touchesZone(plan, back) && tower.noCollision(mob, back)) {
-				moveTo(mob, seen.at(), now);
+			// The spot must still be a place to stand: a mob that was on the ground there needs a sturdy block under it.
+			if (!touchesZone(plan, back) && tower.noCollision(mob, back) && (!seen.grounded() || supported(tower, seen.at(), back))) {
+				moveTo(mob, seen.at(), now, seen.grounded());
 				return;
 			}
 		}
@@ -176,8 +200,7 @@ public final class TowerSafety {
 				if (touchesZone(plan, there) || !tower.noCollision(mob, there)) {
 					continue;
 				}
-				BlockPos below = BlockPos.containing(spot.x, there.minY - 0.5, spot.z);
-				if (grounded && !tower.getBlockState(below).isFaceSturdy(tower, below, net.minecraft.core.Direction.UP)) {
+				if (grounded && !supported(tower, spot, there)) {
 					continue;
 				}
 				best = new Vec3(spot.x, from.y, spot.z);
@@ -185,15 +208,21 @@ public final class TowerSafety {
 			}
 		}
 		if (best != null) {
-			moveTo(mob, best, now);
+			moveTo(mob, best, now, grounded);
 		}
 	}
 
-	private static void moveTo(final Mob mob, final Vec3 spot, final int now) {
+	/** Whether a sturdy block lies under a body standing at this spot, without loading a chunk to find out. */
+	private static boolean supported(final ServerLevel tower, final Vec3 spot, final AABB body) {
+		BlockPos below = BlockPos.containing(spot.x, body.minY - 0.5, spot.z);
+		return tower.hasChunkAt(below) && tower.getBlockState(below).isFaceSturdy(tower, below, net.minecraft.core.Direction.UP);
+	}
+
+	private static void moveTo(final Mob mob, final Vec3 spot, final int now, final boolean grounded) {
 		mob.snapTo(spot.x, spot.y, spot.z, mob.getYRot(), mob.getXRot());
 		mob.getNavigation().stop();
 		mob.setDeltaMovement(Vec3.ZERO);
-		OUTSIDE.put(mob.getUUID(), new Sighting(spot, now));
+		OUTSIDE.put(mob.getUUID(), new Sighting(spot, now, grounded));
 	}
 
 	private static boolean holds(final @Nullable LivingEntity target, final Set<UUID> shelter) {

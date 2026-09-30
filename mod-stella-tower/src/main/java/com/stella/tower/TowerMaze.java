@@ -91,7 +91,7 @@ public final class TowerMaze {
 	}
 
 	/**
-	 * The classic layout, with the boss floor's safe room walled as a ring (plan version 2 on) or joined to the hall
+	 * The classic layout, with the boss floor's safe room walled as a ring (from {@link TowerPlan#RING_VERSION}) or joined to the hall
 	 * by a path-wide door (before).
 	 */
 	static boolean[][] classicWalls(final java.util.Random random, final int floor, final boolean ring) {
