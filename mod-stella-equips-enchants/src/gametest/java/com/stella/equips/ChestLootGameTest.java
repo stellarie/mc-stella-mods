@@ -132,6 +132,29 @@ public class ChestLootGameTest {
 		helper.succeed();
 	}
 
+	/** Regression guard: a block, a mob, or fishing never rolls chest gear, in any namespace. */
+	@GameTest
+	public void blockEntityAndGameplayTablesAreNeverTargeted(final GameTestHelper helper) {
+		Set<String> wrong = new LinkedHashSet<>();
+		for (ResourceKey<LootTable> key : lootTableKeys(helper)) {
+			String path = key.identifier().getPath();
+			boolean folder = path.startsWith("blocks/") || path.startsWith("entities/") || path.startsWith("gameplay/");
+			if (folder && ChestLoot.targetsChest(key)) {
+				wrong.add(key.identifier().toString());
+			}
+		}
+		boolean modBlock = ChestLoot.targetsChest(key(Identifier.fromNamespaceAndPath("somemod", "blocks/oak_crate")));
+		boolean barrel = ChestLoot.targetsChest(chestKey("barrels/abandoned_camp_barrel"));
+		boolean pot = ChestLoot.targetsChest(chestKey("pots/trial_chambers/corridor"));
+		boolean modChest = ChestLoot.targetsChest(key(Identifier.fromNamespaceAndPath("somemod", "desert_temple_crypt_chest")));
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=blockTablesNotTargeted RESULT wrong={} modBlock={} barrel={} pot={} modChest={}",
+			wrong.size(), modBlock, barrel, pot, modChest);
+		helper.assertTrue(wrong.isEmpty(), "block, entity, or gameplay tables roll chest gear: " + wrong);
+		helper.assertTrue(!modBlock, "a modded block table rolls chest gear");
+		helper.assertTrue(barrel && pot && modChest, "a real container lost its chest gear");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void theOrdinaryGearRollLandsNearThirtyPercent(final GameTestHelper helper) {
 		HolderSet<Enchantment> loot = lootTag(helper);

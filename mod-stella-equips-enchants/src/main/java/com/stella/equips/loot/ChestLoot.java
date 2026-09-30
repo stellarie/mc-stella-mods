@@ -40,8 +40,12 @@ public final class ChestLoot {
 	private static final List<String> CONTAINER_WORDS = List.of(
 		"chest", "barrel", "crate", "shulker", "cache", "stash", "supply", "treasure", "reward", "pot"
 	);
-	/** An arrow trap is not a container a player searches, and a trial spawner is not one either. */
-	private static final Set<String> EXCLUDED_FOLDERS = Set.of("dispensers", "spawners");
+	/**
+	 * An arrow trap is not a container a player searches, and a trial spawner is not one either. A block's,
+	 * a mob's, or a fishing table's own drops are no container either, though names like `blocks/chest` or
+	 * `blocks/potatoes` contain a container word.
+	 */
+	private static final Set<String> EXCLUDED_FOLDERS = Set.of("dispensers", "spawners", "blocks", "entities", "gameplay");
 	/** Two vanilla tables sit in the chest folder but are not containers worth filling. */
 	private static final Set<String> EXCLUDED_TABLES = Set.of(
 		"chests/jungle_temple_dispenser", "chests/trial_chambers/intersection_barrel"
