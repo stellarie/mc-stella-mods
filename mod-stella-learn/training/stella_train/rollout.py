@@ -384,6 +384,44 @@ class Fleet:
             worker.drop_progress()
         return stats
 
+    def probe(self, sampler: Sampler, task: Task, timeout: float = 300.0) -> list[bool]:
+        """Plays one episode on each server alone; True where the episode ended in a win."""
+        phases = []
+        for worker in self.workers:
+            queue = collections.deque([task])
+            worker.drop_progress()
+            phase = Phase(sampler, "eval", lambda q=queue: q.popleft() if q else None, remaining=lambda q=queue: len(q))
+            phases.append(phase)
+            worker.start_phase(phase)
+        deadline = time.monotonic() + timeout
+        verdicts = []
+        for worker in self.workers:
+            while not worker.wait_parked(1.0):
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"worker {worker.index} did not finish its probe within {timeout:.0f} s")
+                if not worker.is_alive():
+                    break
+            if worker.error is not None:
+                raise RuntimeError(f"worker {worker.index} failed: {worker.error!r}") from worker.error
+            verdicts.append(any(result.outcome == "win" for result in worker.stats.results))
+            worker.drop_progress()
+        return verdicts
+
+    def reconnect(self, index: int, port: int | None = None) -> None:
+        """Replaces the connection and worker of one server, after that server restarted."""
+        old = self.workers[index]
+        old.stop()
+        try:
+            self.clients[index].close()
+        except OSError:
+            pass
+        client = GymClient(port if port is not None else self.clients[index].port, self.log, f"server{index}")
+        client.connect()
+        worker = Worker(index, client, self.log, old.rng.integers(1 << 30).item())
+        worker.start()
+        self.clients[index] = client
+        self.workers[index] = worker
+
     def close(self) -> None:
         for worker in self.workers:
             worker.stop()

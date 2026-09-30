@@ -25,6 +25,7 @@ from . import roster
 from .bench import cpu_model, git, java_version, ram_gb
 from .contract import load as load_contract
 from .curriculum import Curriculum
+from .health import Guard, ZeroOffsetArcher, probe_task
 from .gym_launch import GymCluster, prepare_spec
 from .model import ActorCritic, Normalizer, Sampler
 from .ppo import Ppo, PpoConfig
@@ -184,7 +185,7 @@ class Trainer:
         # The Java side prices the shaping (0.005 a hit point, 0.0002 an unhit decision); the scale stays fixed.
         return float(self.config["shaping"]["scale"])
 
-    def train(self, fleet: Fleet, max_seconds: float | None) -> None:
+    def train(self, fleet: Fleet, max_seconds: float | None, guard=None) -> None:
         rollout = int(self.ppo_config.rollout_per_agent) * fleet.agent_count
         self.log.info("train START budget=%d agents=%d rollout=%d servers=%d arenas=%d", self.budget, fleet.agent_count, rollout,
                       self.servers, self.arenas)
@@ -200,6 +201,8 @@ class Trainer:
             if (self.run_dir / "STOP").exists():
                 self.log.info("train STOP reason=stopFile decisions=%d", self.decisions)
                 break
+            if guard is not None:
+                guard.check(self.decisions)
             self.step(fleet, rollout)
             if self.decisions >= self.next_checkpoint:
                 self.next_checkpoint += int(self.run["checkpoint_every_decisions"])
@@ -348,8 +351,20 @@ def main(argv: list[str] | None = None) -> int:
                         episode_ticks=int(run["episode_ticks"]), heap=run["heap"],
                         extra_props={"stella.gym.stage": "A"}) as cluster:
             fleet = Fleet([server.port for server in cluster.servers], log, seed=int(run["seed"]))
+            def probe():
+                return fleet.probe(ZeroOffsetArcher(), probe_task())
+
+            def restart(indices):
+                for index in indices:
+                    server = cluster.servers[index]
+                    server.stop()
+                    server.start()
+                    server.wait_ready()
+                    fleet.reconnect(index)
+
+            guard = Guard(log, cluster.servers, int(run.get("probe_every_decisions", 5_000_000)), probe, restart)
             try:
-                trainer.train(fleet, args.max_seconds)
+                trainer.train(fleet, args.max_seconds, guard)
             except KeyboardInterrupt:
                 log.warning("train INTERRUPTED decisions=%d", trainer.decisions)
                 code = 130

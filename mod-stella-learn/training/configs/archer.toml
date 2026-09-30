@@ -4,6 +4,7 @@
 name = "archer"
 seed = 1
 budget_decisions = 200_000_000   # Stages A to C together
+probe_every_decisions = 5000000
 servers = 3                       # oniichan: at most 3 gym servers at once on this PC
 arenas = 64
 decision_ticks = 2
