@@ -1,5 +1,6 @@
 package com.stella.rpg;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8,22 +9,31 @@ import net.minecraft.resources.Identifier;
 
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobWeights,
-	Map<String, ArmorSet> armorSets
+	Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
 	public static final String DICE_KEY = "dice";
 	public static final String MOB_WEIGHTS_KEY = "mob_weights";
 	public static final String ARMOR_SETS_KEY = "armor_sets";
+	public static final String WEAPON_ROLLS_KEY = "weapon_rolls";
+	public static final String COUNT_WEIGHTS_KEY = "count_weights";
 	public static final double MAX_MOB_WEIGHT = 100.0;
 	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_WEIGHTS = defaultMobWeights();
 	public static final Map<String, ArmorSet> DEFAULT_ARMOR_SETS = defaultArmorSets();
+	public static final WeaponRolls DEFAULT_WEAPON_ROLLS = defaultWeaponRolls();
 	public static final List<String> REMOVED_KEYS = List.of("melee_damage", "ranged_damage");
 
 	public record Curve(double max, double half) {
 	}
 
 	public record ArmorSet(List<Identifier> items, Map<Stat, Integer> perPiece, double flatPerPiece, Map<Stat, Integer> setBonus) {
+	}
+
+	public record RollTier(List<Identifier> items, List<Identifier> armorItems, int min, int max) {
+	}
+
+	public record WeaponRolls(List<Integer> countWeights, Map<String, RollTier> tiers) {
 	}
 
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
@@ -61,7 +71,7 @@ public record RpgConfig(
 			curves.put(effect, effect.defaultCurve());
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_WEIGHTS,
-			DEFAULT_ARMOR_SETS);
+			DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS);
 	}
 
 	private static Map<String, Map<Stat, Double>> defaultMobWeights() {
@@ -82,6 +92,38 @@ public record RpgConfig(
 		table.put("netherite", armorSet("netherite", 0.50, bonus(Stat.STR, 2, Stat.VIT, 2),
 			bonus(Stat.STR, 6, Stat.VIT, 6, Stat.LUK, 2)));
 		return Map.copyOf(table);
+	}
+
+	private static WeaponRolls defaultWeaponRolls() {
+		Map<String, RollTier> tiers = new LinkedHashMap<>();
+		tiers.put("wood", tier(1, 2, List.of("wooden_sword", "wooden_axe"), armorPieces("leather")));
+		tiers.put("stone", tier(1, 3, List.of("stone_sword", "stone_axe"), withTurtle(armorPieces("chainmail"))));
+		tiers.put("copper", tier(1, 3, List.of("copper_sword", "copper_axe"), List.of()));
+		tiers.put("gold", tier(2, 4, List.of("golden_sword", "golden_axe"), armorPieces("golden")));
+		tiers.put("iron", tier(2, 5, List.of("iron_sword", "iron_axe"), armorPieces("iron")));
+		tiers.put("diamond", tier(3, 7, List.of("diamond_sword", "diamond_axe"), armorPieces("diamond")));
+		tiers.put("netherite", tier(4, 10, List.of("netherite_sword", "netherite_axe"), armorPieces("netherite")));
+		tiers.put("ranged", tier(2, 5, List.of("bow", "crossbow"), List.of()));
+		tiers.put("heavy", tier(3, 7, List.of("trident", "mace"), List.of()));
+		return new WeaponRolls(List.of(50, 35, 15), Map.copyOf(tiers));
+	}
+
+	private static List<String> armorPieces(final String prefix) {
+		return List.of(prefix + "_helmet", prefix + "_chestplate", prefix + "_leggings", prefix + "_boots");
+	}
+
+	private static List<String> withTurtle(final List<String> pieces) {
+		List<String> all = new ArrayList<>(pieces);
+		all.add("turtle_helmet");
+		return all;
+	}
+
+	private static RollTier tier(final int min, final int max, final List<String> items, final List<String> armor) {
+		return new RollTier(vanilla(items), vanilla(armor), min, max);
+	}
+
+	private static List<Identifier> vanilla(final List<String> paths) {
+		return paths.stream().map(path -> Identifier.fromNamespaceAndPath("minecraft", path)).toList();
 	}
 
 	private static ArmorSet armorSet(

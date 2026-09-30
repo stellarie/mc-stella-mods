@@ -10,7 +10,7 @@ Dice damage and stat effects apply to players and mobs.
 The stats are STR, AGI, VIT, DEX, INT, and LUK.
 
 - The base value comes only from point allocation.
-- The bonus value comes from registered `StatBonuses.Provider` callbacks. `ArmorSets` registers one.
+- The bonus value comes from registered `StatBonuses.Provider` callbacks. `ArmorSets` and `WeaponRolls` register one each.
 - The effective value is base plus bonus, from 0 to 2048.
 
 ## Points
@@ -148,6 +148,11 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   - `per_piece`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
   - `flat_per_piece`: a number of at least 0.
   - `set_bonus`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
+- `weapon_rolls` holds the roll rules. The key `count_weights` lists 3 integers from 0 to 1000, for 1, 2, and 3 stats.
+  The sum must be above 0. Each tier key holds these keys:
+  - `items`: weapon item ids. `armor_items`: armor item ids. An unknown id logs one error and the parser skips it.
+  - `min` and `max`: integers from 1 to 1024, with `min` at most `max`. A bad pair uses the default range.
+  - The tier keys are `wood`, `stone`, `copper`, `gold`, `iron`, `diamond`, `netherite`, `ranged`, and `heavy`.
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
 
@@ -189,6 +194,38 @@ It reads the four armor slots of any living entity with stats, so a mob that wea
 | Gold | LUK +1 | 0.10 | LUK +3, INT +2 | LUK 7, INT 2, flat 0.40 |
 | Diamond | VIT +2 | 0.40 | VIT +4, STR +4 | VIT 12, STR 4, flat 1.60 |
 | Netherite | STR +2, VIT +2 | 0.50 | STR +6, VIT +6, LUK +2 | STR 14, VIT 14, LUK 2, flat 2.00 |
+
+## Stat rolls
+
+`WeaponRolls` gives a weapon or an armor piece random stat bonuses. It registers a `StatBonuses.Provider`.
+The bonuses live in the data component `mod-stella-rpg:stat_rolls`, a map of stat key to integer.
+The component is saved and synced to the client.
+
+- A weapon gets 1, 2, or 3 different stats, with weights 50, 35, and 15.
+  Each stat gets a uniform integer from the tier range.
+- An armor piece gets exactly 1 stat. It uses the range of the matching tier.
+- A stack that already has the component never rolls again.
+- A stack rolls when a player takes it from a crafting result slot, including shift-click.
+  It also rolls when a loot table drops it and when a mob drops its equipment on death.
+  Trades, the creative menu, and items that exist before this feature do not roll.
+- The mixin `RpgCraftRollMixin` hooks `Item#onCraftedBy`, because shift-click empties the stack before `ResultSlot#onTake`.
+- The bonus applies to the main hand for a weapon and to worn armor slots.
+  A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
+  A mob that holds or wears a rolled item gets the bonus too.
+- The client shows one green line per stat, such as `+3 STR`, in the item tooltip.
+- There are no weapon damage dice. The STR dice stay the only dice.
+
+| Tier | Weapons | Armor | Range |
+|---|---|---|---|
+| `wood` | Wooden sword and axe | Leather | 1 to 2 |
+| `stone` | Stone sword and axe | Chainmail, turtle helmet | 1 to 3 |
+| `copper` | Copper sword and axe | none | 1 to 3 |
+| `gold` | Golden sword and axe | Golden | 2 to 4 |
+| `iron` | Iron sword and axe | Iron | 2 to 5 |
+| `diamond` | Diamond sword and axe | Diamond | 3 to 7 |
+| `netherite` | Netherite sword and axe | Netherite | 4 to 10 |
+| `ranged` | Bow, crossbow | none | 2 to 5 |
+| `heavy` | Trident, mace | none | 3 to 7 |
 
 ## Spells API
 

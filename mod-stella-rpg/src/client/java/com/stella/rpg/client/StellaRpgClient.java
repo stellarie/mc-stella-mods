@@ -16,5 +16,6 @@ public final class StellaRpgClient implements ClientModInitializer {
 		StatsTabs.register();
 		HealthBarHud.register();
 		EffectIconsHud.register();
+		WeaponRollTooltip.register();
 	}
 }
