@@ -110,3 +110,16 @@ The Gradle build includes the neighboring `mod-stella-mobs` project. The GameTes
 mods. The villages mod guards patrol equipment and health against mobs mod spawn rolls.
 
 The jar is `build/libs/mc-stella-villages-0.1.0+26.3.jar`. Copy it to the `mods` folder on the server and the client.
+
+## Training dummy
+
+Each recorded village gets one training dummy by its bell: a large armor stand (scale 1.5) with arms, 3 to 5
+blocks from the bell, on a sturdy floor with 3 blocks of room.
+
+- Every hit on the dummy is recorded and cancelled, so nothing breaks it, not even `/kill`.
+- Its name reads `Avg 18.6 · Last 21 · 12 hits`: the average of the last 20 hits, the last hit, and the count.
+  The window resets after 10 seconds without a hit.
+- With `mod-stella-rpg`, the recorded damage passes through the object share `mod-stella-rpg:outgoing-damage`,
+  so it includes the STR dice, crits, and the attack charge. Without it, the dummy records the raw hit.
+- Every 10 seconds, a village whose bell is loaded gets its dummy back if it was removed.
+- The dummy carries the entity tags `mc-stella-villages.training_dummy` and `mc-stella-villages.dummy_of.<village id>`.
