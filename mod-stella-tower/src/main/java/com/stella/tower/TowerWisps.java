@@ -106,7 +106,7 @@ public final class TowerWisps {
 		int size = TowerLayout.SIZE;
 		int startX = from.getX() - origin.getX();
 		int startZ = from.getZ() - origin.getZ();
-		List<BlockPos> portal = TowerLayout.portalInside(floor);
+		List<BlockPos> portal = TowerPlan.at(tower, floor).portalInside();
 		if (startX < 0 || startZ < 0 || startX >= size || startZ >= size) {
 			return List.of();
 		}

@@ -16,6 +16,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builds a floor the first time anyone reaches it, and never again: a floor's corner wall block is its own
@@ -58,7 +59,7 @@ public final class TowerFloors {
 			return;
 		}
 		synchronized (QUEUE) {
-			QUEUE.computeIfAbsent(floor, key -> new Build(tower, floor));
+			QUEUE.computeIfAbsent(floor, key -> new Build(tower, floor, TowerPlan.of(tower.getSeed(), floor)));
 		}
 	}
 
@@ -99,17 +100,31 @@ public final class TowerFloors {
 	 * A boss floor's safe room holds a crafting table, a furnace and an anvil along its far wall, clear of
 	 * its doors. Empty on any other floor.
 	 */
-	public static Map<BlockPos, BlockState> workstations(final int floor) {
-		if (TowerMaze.hall(floor) != TowerMaze.BOSS_HALL) {
-			return Map.of();
-		}
-		BlockPos corner = TowerLayout.origin(floor).offset(TowerMaze.BOSS_ROOM_X, 0, TowerMaze.SAFE_Z);
+	public static Map<BlockPos, BlockState> workstations(final TowerPlan plan) {
+		BlockPos origin = plan.origin();
 		Map<BlockPos, BlockState> stations = new LinkedHashMap<>();
-		stations.put(corner.offset(2, 0, 0), Blocks.CRAFTING_TABLE.defaultBlockState());
-		// Facing into the room, away from the wall behind them.
-		stations.put(corner.offset(4, 0, 0), Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.FurnaceBlock.FACING, net.minecraft.core.Direction.SOUTH));
-		stations.put(corner.offset(6, 0, 0), Blocks.ANVIL.defaultBlockState().setValue(net.minecraft.world.level.block.AnvilBlock.FACING, net.minecraft.core.Direction.SOUTH));
+		for (TowerPlan.Station station : plan.stations()) {
+			BlockPos at = origin.offset(station.x(), 0, station.z());
+			// Facing into the room, away from the wall behind them.
+			stations.put(at, switch (station.kind()) {
+				case 0 -> Blocks.CRAFTING_TABLE.defaultBlockState();
+				case 1 -> Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.FurnaceBlock.FACING, station.facing());
+				default -> Blocks.ANVIL.defaultBlockState().setValue(net.minecraft.world.level.block.AnvilBlock.FACING, station.facing());
+			});
+		}
 		return stations;
+	}
+
+	/**
+	 * The block that proves a floor was built to a plan, laid just under the settle marker. A built floor
+	 * without it was built before the plans and has the legacy plan.
+	 */
+	public static BlockPos planMarker(final int floor) {
+		return TowerLayout.origin(floor).offset(-1, -3, -1);
+	}
+
+	public static boolean isPlanned(final ServerLevel tower, final int floor) {
+		return tower.getBlockState(planMarker(floor)).is(TowerBlocks.TOWER_WALL);
 	}
 
 	/** The block that proves a floor was built. */
@@ -123,6 +138,14 @@ public final class TowerFloors {
 
 	/** Builds the floor unless it already stands; true when it was built now. */
 	public static boolean ensure(final ServerLevel tower, final int floor) {
+		return ensure(tower, floor, null);
+	}
+
+	/**
+	 * Builds the floor to a given plan unless it stands: the test seam that builds a floor as it was built
+	 * before the plans, from {@link TowerPlan#legacy(long, int)}, which carries no plan marker.
+	 */
+	static boolean ensure(final ServerLevel tower, final int floor, final @Nullable TowerPlan plan) {
 		if (floor < 1) {
 			return false;
 		}
@@ -135,7 +158,7 @@ public final class TowerFloors {
 			job = QUEUE.remove(floor);
 		}
 		if (job == null) {
-			job = new Build(tower, floor);
+			job = new Build(tower, floor, plan == null ? TowerPlan.of(tower.getSeed(), floor) : plan);
 		}
 		while (job.step(false) != Step.DONE) {
 			// Finishes whatever the background left undone, loading chunks as it goes.
@@ -159,15 +182,15 @@ public final class TowerFloors {
 		private final int floor;
 		private final Random random;
 		private final ChunkPos middle;
-		private final boolean[][] maze;
+		private final TowerPlan plan;
 		private int askedAt = -1;
 		private int column;
 
-		private Build(final ServerLevel tower, final int floor) {
+		private Build(final ServerLevel tower, final int floor, final TowerPlan plan) {
 			this.tower = tower;
 			this.floor = floor;
 			this.random = new Random(tower.getSeed() ^ FLOOR_SALT ^ (floor * 0x9E3779B97F4A7C15L));
-			this.maze = TowerMaze.walls(tower.getSeed(), floor);
+			this.plan = plan;
 			BlockPos origin = TowerLayout.origin(floor);
 			this.middle = ChunkPos.containing(origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2));
 		}
@@ -184,11 +207,11 @@ public final class TowerFloors {
 				}
 			}
 			if (this.column <= TowerLayout.SIZE + 1) {
-				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random, this.maze);
+				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random, this.plan);
 				this.column++;
 				return Step.PROGRESS;
 			}
-			finish(this.tower, this.floor);
+			finish(this.tower, this.floor, this.plan);
 			StellaTower.LOGGER.debug("[TOWER] floor={} BUILT origin={}", this.floor, TowerLayout.origin(this.floor));
 			return Step.DONE;
 		}
@@ -210,7 +233,7 @@ public final class TowerFloors {
 		}
 	}
 
-	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random, final boolean[][] maze) {
+	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random, final TowerPlan plan) {
 		BlockPos origin = TowerLayout.origin(floor);
 		int x0 = origin.getX();
 		int z0 = origin.getZ();
@@ -235,11 +258,11 @@ public final class TowerFloors {
 					}
 				} else {
 					BlockState ground = palette[random.nextInt(palette.length)];
-					set(tower, x, base - 1, z, TowerMaze.inSafeZone(floor, x - x0, z - z0) ? SAFE_FLOOR.defaultBlockState() : ground);
+					set(tower, x, base - 1, z, plan.inSafeZone(x - x0, z - z0) ? SAFE_FLOOR.defaultBlockState() : ground);
 					// Over a maze cell, never over a wall line, so the light falls on the paths.
 					boolean lit = (x - x0 - 1) % LAMP_SPACING == LAMP_AT && (z - z0 - 1) % LAMP_SPACING == LAMP_AT;
 					set(tower, x, top, z, lit ? lamp : wall);
-					if (maze[x - x0][z - z0]) {
+					if (plan.walls()[x - x0][z - z0]) {
 						for (int y = base; y < top; y++) {
 							set(tower, x, y, z, mazeWall);
 						}
@@ -249,20 +272,23 @@ public final class TowerFloors {
 		}
 	}
 
-	private static void finish(final ServerLevel tower, final int floor) {
+	private static void finish(final ServerLevel tower, final int floor, final TowerPlan plan) {
 		BlockPos origin = TowerLayout.origin(floor);
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
-		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor)) {
+		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor, plan)) {
 			tower.setBlock(origin.offset(trap.x(), -1, trap.z()), TowerBlocks.TRAPS.get(trap.theme()).defaultBlockState(), Block.UPDATE_CLIENTS);
 		}
 		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
-		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
+		for (BlockPos pos : plan.portalFrame()) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
 		}
 		if (TowerBuffs.isBossFloor(floor)) {
 			TowerBuffs.mist(tower, floor);
 		}
-		stations(tower, floor);
+		stations(tower, plan);
+		if (plan.version() > 0) {
+			tower.setBlock(planMarker(floor), wall, Block.UPDATE_CLIENTS);
+		}
 		tower.setBlock(settledMarker(floor), wall, Block.UPDATE_CLIENTS);
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
 	}
@@ -283,7 +309,8 @@ public final class TowerFloors {
 			return;
 		}
 		BlockPos origin = TowerLayout.origin(floor);
-		for (TowerMaze.Zone zone : TowerMaze.safeZones(floor)) {
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		for (TowerMaze.Zone zone : plan.safeZones()) {
 			for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 				for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
 					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
@@ -301,14 +328,14 @@ public final class TowerFloors {
 				}
 			}
 		}
-		stations(tower, floor);
+		stations(tower, plan);
 		tower.setBlock(settledMarker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), Block.UPDATE_CLIENTS);
 		StellaTower.LOGGER.debug("[TOWER] floor={} SETTLED safe zones into an older floor", floor);
 	}
 
-	private static void stations(final ServerLevel tower, final int floor) {
+	private static void stations(final ServerLevel tower, final TowerPlan plan) {
 		// Only onto open floor, so nothing a player set there is lost.
-		workstations(floor).forEach((pos, state) -> {
+		workstations(plan).forEach((pos, state) -> {
 			if (tower.getBlockState(pos).isAir()) {
 				tower.setBlock(pos, state, Block.UPDATE_CLIENTS);
 			}

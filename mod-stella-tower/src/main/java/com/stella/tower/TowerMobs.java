@@ -196,14 +196,15 @@ public final class TowerMobs {
 	public static boolean placeInRoom(final ServerLevel tower, final int floor, final Mob mob, final RandomSource random) {
 		BlockPos origin = TowerLayout.origin(floor);
 		List<ServerPlayer> players = playersOn(tower, floor);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		Vec3 arrival = plan.arrivalPos();
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y, z);
 			Vec3 spot = spotFor(mob, feet);
 			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)
-				|| inSafeZone(floor, mob, spot)) {
+				|| inSafeZone(plan, mob, spot)) {
 				continue;
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
@@ -215,8 +216,8 @@ public final class TowerMobs {
 	}
 
 	/** Whether any part of a mob standing here would be inside one of the floor's safe zones. */
-	static boolean inSafeZone(final int floor, final Mob mob, final Vec3 spot) {
-		BlockPos origin = TowerLayout.origin(floor);
+	static boolean inSafeZone(final TowerPlan plan, final Mob mob, final Vec3 spot) {
+		BlockPos origin = plan.origin();
 		double half = mob.getBbWidth() / 2.0;
 		int lowX = (int) Math.floor(spot.x - half) - origin.getX();
 		int highX = (int) Math.floor(spot.x + half) - origin.getX();
@@ -224,7 +225,7 @@ public final class TowerMobs {
 		int highZ = (int) Math.floor(spot.z + half) - origin.getZ();
 		for (int x = lowX; x <= highX; x++) {
 			for (int z = lowZ; z <= highZ; z++) {
-				if (TowerMaze.inSafeZone(floor, x, z)) {
+				if (plan.inSafeZone(x, z)) {
 					return true;
 				}
 			}

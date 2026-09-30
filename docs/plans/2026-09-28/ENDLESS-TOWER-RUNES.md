@@ -537,3 +537,22 @@ at once) listens to that change for every way out: portal, key, scroll or comman
 (`leavingTheTowerTakesTheBuffAtOnce`) moves the player out the same way. The tower harness has no spells mod, so
 the scroll's own path is a manual item: read a Scroll of Return on a boss floor and check the floor's buff is
 gone and you stand at your bed or the world spawn.
+
+## Built: floor plans, random ends (2026-09-29, slice F1)
+
+- `TowerPlan` (variation, rotation, attempt, arrival and yaw, portal and facing, walls, safe zones, hall, chest
+  spots, version) replaces the fixed `ARRIVAL_X`/`PORTAL_X`/`MIDDLE_Z` and nook constants. `TowerLayout.arrival`,
+  `arrivalYaw`, `portalX`, `portalInside`, `portalFrame` now take the tower level. `TowerMaze.safeZones`,
+  `inSafeZone` and `TowerFloors.workstations(floor)` became plan methods; the nook constants survive only for
+  the classic layout.
+- A floor built to a plan carries `TowerFloors.planMarker` (TOWER_WALL one block under the settle marker). One
+  built without it has the version 0 plan, the old layout, verified against fingerprints taken from the code
+  before the change. Old elite floors that predate the halls still keep the frame check in `TowerElites.post`.
+- The old settled-floor line "mobs may walk in" is unchanged here; F3 reverses it.
+- Deviations from DECISIONS.md: none in behaviour. Additions: ends lie in the outer 3 cells of each half (so
+  they are always far apart); the two blocks beside the portal's frame posts are solid (no pocket, keeps the
+  3-wide path rule); the guardians' post stands on the side the portal is entered from; seeds are mixed with
+  splitmix before `java.util.Random` (nearby seeds otherwise drew alike). The trap rule keeps traps out of the
+  portal's cell and the cell either side of it along the frame.
+- Tests moved off fixed offsets: `TowerTestSupport.awayFromArrival` replaces `arrival + 20 blocks`; the
+  "way winds" assertion became a statistic in `planProperty`, since a maze can run straight between two near ends.

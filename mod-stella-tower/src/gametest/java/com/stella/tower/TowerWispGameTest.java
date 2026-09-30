@@ -102,7 +102,7 @@ public class TowerWispGameTest {
 		TowerWisps.Trail trail = trails.isEmpty() ? null : trails.get(0);
 		BlockPos feet = player.blockPosition();
 		// The portal is two blocks wide: the way ends at whichever is nearer.
-		int shortest = TowerLayout.portalInside(floor).stream().filter(pos -> pos.getY() == TowerLayout.BASE_Y)
+		int shortest = TowerLayout.portalInside(tower, floor).stream().filter(pos -> pos.getY() == TowerLayout.BASE_Y)
 			.mapToInt(pos -> steps(tower, floor, feet, pos)).filter(n -> n >= 0).min().orElse(-1);
 		int broken = 0;
 		if (trail != null) {
@@ -115,7 +115,7 @@ public class TowerWispGameTest {
 			+ " shortest=" + shortest + " broken=" + broken + " lasts=" + (trail == null ? -1 : trail.until() - now) + " damage=" + damage);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(trail != null, "the wisp lit no way");
-		helper.assertTrue(trail.path().get(0).equals(feet) && TowerLayout.portalInside(floor).contains(trail.path().get(trail.path().size() - 1)),
+		helper.assertTrue(trail.path().get(0).equals(feet) && TowerLayout.portalInside(tower, floor).contains(trail.path().get(trail.path().size() - 1)),
 			"the way runs from " + trail.path().get(0) + " to " + trail.path().get(trail.path().size() - 1) + ", not from the player to the portal");
 		helper.assertTrue(broken == 0 && trail.path().size() - 1 == shortest, "the way is " + (trail.path().size() - 1) + " steps with " + broken + " gaps; the shortest is " + shortest);
 		helper.assertTrue(trail.until() - now == TowerWisps.LIGHT_TICKS, "the way lasts " + (trail.until() - now) + " ticks");

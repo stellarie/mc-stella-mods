@@ -102,19 +102,20 @@ public final class TowerElites {
 	 * keeps its portal across the room, and its guardians keep to that.
 	 */
 	public static BlockPos post(final ServerLevel tower, final int floor) {
-		int moved = TowerLayout.PORTAL_X - TowerLayout.portalX(floor);
-		if (moved != 0) {
-			BlockPos hallFrame = TowerLayout.portalFrame(floor).get(0);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		int moved = TowerPlan.CLASSIC_PORTAL_X - plan.portalX();
+		if (plan.version() == 0 && moved != 0) {
+			BlockPos hallFrame = plan.portalFrame().get(0);
 			if (!tower.getBlockState(hallFrame).is(TowerBlocks.TOWER_FRAME) && tower.getBlockState(hallFrame.offset(moved, 0, 0)).is(TowerBlocks.TOWER_FRAME)) {
-				return post(floor).offset(moved, 0, 0);
+				return post(plan).offset(moved, 0, 0);
 			}
 		}
-		return post(floor);
+		return post(plan);
 	}
 
-	/** Where a floor's guardians stand guard: a few steps in front of its portal. */
-	public static BlockPos post(final int floor) {
-		return TowerLayout.portalInside(floor).get(0).offset(-GUARD_DISTANCE, 0, 0);
+	/** Where a floor's guardians stand guard: a few steps in front of its portal, on the side it is entered by. */
+	public static BlockPos post(final TowerPlan plan) {
+		return plan.portalInside().get(0).offset(plan.portalFacing() * GUARD_DISTANCE, 0, 0);
 	}
 
 	public static boolean keepsElite(final int floor) {

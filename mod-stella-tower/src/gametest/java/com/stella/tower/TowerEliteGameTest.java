@@ -19,11 +19,6 @@ import net.minecraft.world.phys.Vec3;
 
 /** Elites by the portal every fifth floor, a boss beside them every tenth, and the keys the bosses drop. */
 public class TowerEliteGameTest {
-	private static Vec3 portalFront(final int floor) {
-		BlockPos inside = TowerLayout.portalInside(floor).get(0);
-		return Vec3.atBottomCenterOf(inside);
-	}
-
 	@GameTest(maxTicks = 100)
 	public void anEliteFloorKeepsOneEliteByItsPortal(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
@@ -37,7 +32,7 @@ public class TowerEliteGameTest {
 			int bosses = TowerElites.alive(tower, floor, TowerRank.BOSS);
 			Mob elite = TowerElites.guardian(tower, floor, TowerRank.ELITE);
 			// Where it rose: at its post. Whether it keeps there is aGuardianWalksBackToItsPost's case.
-			double fromPost = elite == null ? -1.0 : elite.position().distanceTo(Vec3.atBottomCenterOf(TowerElites.post(floor)));
+			double fromPost = elite == null ? -1.0 : elite.position().distanceTo(Vec3.atBottomCenterOf(TowerElites.post(tower, floor)));
 			TowerTestSupport.result("eliteFloor", "elites=" + elites + " bosses=" + bosses + " fromPost=" + fromPost);
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(elites == 1 && bosses == 0, "floor " + floor + " holds " + elites + " elites and " + bosses + " bosses");
@@ -165,7 +160,7 @@ public class TowerEliteGameTest {
 		TowerFloors.ensure(tower, floor);
 		Zombie boss = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(boss, floor, TowerElement.DARK, TowerRank.BOSS);
-		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
+		Vec3 at = TowerTestSupport.awayFromArrival(tower, floor, 20.0);
 		boss.snapTo(at);
 		tower.addFreshEntity(boss);
 		ServerPlayer slayer = TowerTestSupport.onFloor(helper, tower, floor);
@@ -214,7 +209,7 @@ public class TowerEliteGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
 		TowerFloors.ensure(tower, floor);
-		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
+		Vec3 at = TowerTestSupport.awayFromArrival(tower, floor, 20.0);
 		TowerTestSupport.holdRoom(tower, at);
 		helper.succeedWhen(() -> {
 			helper.assertTrue(TowerTestSupport.roomLoaded(tower, at), "the boss's room never loaded");
@@ -244,7 +239,7 @@ public class TowerEliteGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
 		TowerFloors.ensure(tower, floor);
-		Vec3 at = TowerLayout.arrival(floor).add(20.0, 0.0, 0.0);
+		Vec3 at = TowerTestSupport.awayFromArrival(tower, floor, 20.0);
 		TowerTestSupport.holdRoom(tower, at);
 		java.util.Set<Mob> pieces = new java.util.HashSet<>();
 		helper.succeedWhen(() -> {
@@ -335,7 +330,7 @@ public class TowerEliteGameTest {
 		TowerElites.pinGuardianKind(floor, EntityTypes.ZOMBIE);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		// Beyond the post's reach, well inside a zombie's following range.
-		Vec3 stand = Vec3.atBottomCenterOf(TowerElites.post(floor)).add(-(TowerElites.GUARD_RADIUS + 8.0), 0.0, 0.0);
+		Vec3 stand = Vec3.atBottomCenterOf(TowerElites.post(tower, floor)).add(-(TowerElites.GUARD_RADIUS + 8.0), 0.0, 0.0);
 		player.teleportTo(tower, stand.x, stand.y, stand.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		boolean[] shot = {false};
 		boolean[] done = {false};
@@ -369,8 +364,8 @@ public class TowerEliteGameTest {
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		// No mob hunts a creative player, so the elite has no quarry.
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
-		Vec3 post = Vec3.atBottomCenterOf(TowerElites.post(floor));
-		BlockPos away = nearbyOpen(tower, TowerElites.post(floor), TowerElites.GUARD_RADIUS + 3, 20);
+		Vec3 post = Vec3.atBottomCenterOf(TowerElites.post(tower, floor));
+		BlockPos away = nearbyOpen(tower, TowerElites.post(tower, floor), TowerElites.GUARD_RADIUS + 3, 20);
 		int[] movedAt = {-1};
 		double[] biggestStep = {0.0};
 		Vec3[] last = {null};
@@ -433,14 +428,15 @@ public class TowerEliteGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		BlockPos o = TowerLayout.origin(floor);
-		// As an older build left it: the frame across the room, none in the middle.
-		for (BlockPos pos : TowerLayout.portalFrame(floor)) {
+		// As an older build left it: no plan marker, the frame across the room, none in the middle.
+		tower.setBlockAndUpdate(TowerFloors.planMarker(floor), net.minecraft.world.level.block.Blocks.BEDROCK.defaultBlockState());
+		for (BlockPos pos : TowerLayout.portalFrame(tower, floor)) {
 			tower.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
-			tower.setBlockAndUpdate(pos.offset(TowerLayout.PORTAL_X - TowerLayout.portalX(floor), 0, 0), TowerBlocks.TOWER_FRAME.defaultBlockState());
+			tower.setBlockAndUpdate(pos.offset(TowerPlan.CLASSIC_PORTAL_X - TowerLayout.portalX(tower, floor), 0, 0), TowerBlocks.TOWER_FRAME.defaultBlockState());
 		}
 		BlockPos post = TowerElites.post(tower, floor).subtract(o);
 		TowerTestSupport.result("oldPost", "post=" + post);
-		helper.assertTrue(post.getX() == TowerLayout.PORTAL_X - TowerElites.GUARD_DISTANCE, "an old floor's guardians keep to " + post + ", not its portal across the room");
+		helper.assertTrue(post.getX() == TowerPlan.CLASSIC_PORTAL_X - TowerElites.GUARD_DISTANCE, "an old floor's guardians keep to " + post + ", not its portal across the room");
 		helper.succeed();
 	}
 

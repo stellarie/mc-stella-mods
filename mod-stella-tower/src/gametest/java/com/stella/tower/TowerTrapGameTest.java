@@ -68,15 +68,16 @@ public class TowerTrapGameTest {
 		TowerFloors.ensure(tower, floor);
 		Map<BlockPos, TrapTheme> traps = traps(tower, floor);
 		long strangers = traps.values().stream().filter(theme -> theme != TrapTheme.DESERT).count();
-		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(TowerLayout.origin(floor));
-		// Counted in maze cells, as the rule is: the arrival may sit on either edge of its own cell.
-		int arrivalCellX = (arrival.getX() - 1) / TowerMaze.PITCH;
-		int arrivalCellZ = (arrival.getZ() - 1) / TowerMaze.PITCH;
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		// Counted in maze cells, as the rule is.
+		int arrivalCellX = plan.arrivalCell()[0];
+		int arrivalCellZ = plan.arrivalCell()[1];
 		long nearArrival = traps.keySet().stream().filter(pos -> Math.max(Math.abs((pos.getX() - 1) / TowerMaze.PITCH - arrivalCellX),
 			Math.abs((pos.getZ() - 1) / TowerMaze.PITCH - arrivalCellZ)) <= TowerTraps.ARRIVAL_CLEAR_CELLS).count();
-		long inNook = traps.keySet().stream().filter(pos -> pos.getX() >= TowerMaze.NOOK_LOW_X && pos.getZ() >= TowerMaze.NOOK_LOW_Z
-			&& pos.getZ() <= TowerMaze.NOOK_HIGH_Z).count();
-		boolean[][] walls = TowerMaze.walls(tower.getSeed(), floor);
+		int[] portalCell = plan.portalCell();
+		long inNook = traps.keySet().stream().filter(pos -> (pos.getX() - 1) / TowerMaze.PITCH == portalCell[0]
+			&& Math.abs((pos.getZ() - 1) / TowerMaze.PITCH - portalCell[1]) <= 1).count();
+		boolean[][] walls = plan.walls();
 		long underWalls = traps.keySet().stream().filter(pos -> walls[pos.getX()][pos.getZ()]).count();
 		TowerTestSupport.result("trapsLaid", "traps=" + traps.size() + " strangers=" + strangers + " nearArrival=" + nearArrival
 			+ " inNook=" + inNook + " underWalls=" + underWalls);
@@ -91,12 +92,14 @@ public class TowerTrapGameTest {
 	@GameTest
 	public void noFloorLaysATrapWhereItMustNot(final GameTestHelper helper) {
 		long seed = 4242L;
-		int arrivalCellX = (TowerLayout.ARRIVAL_X - 1) / TowerMaze.PITCH;
-		int arrivalCellZ = (TowerLayout.MIDDLE_Z - 1) / TowerMaze.PITCH;
 		int laid = 0;
 		List<String> wrong = new java.util.ArrayList<>();
 		for (int floor = 1; floor <= 1_000; floor++) {
-			boolean[][] walls = TowerMaze.walls(seed, floor);
+			TowerPlan plan = TowerPlan.of(seed, floor);
+			boolean[][] walls = plan.walls();
+			int arrivalCellX = plan.arrivalCell()[0];
+			int arrivalCellZ = plan.arrivalCell()[1];
+			int[] portalCell = plan.portalCell();
 			int side = TowerMaze.hall(floor);
 			int low = TowerLayout.SIZE / 2 - side / 2;
 			for (TowerTraps.Trap trap : TowerTraps.layout(seed, floor)) {
@@ -105,7 +108,7 @@ public class TowerTrapGameTest {
 				int cz = (trap.z() - 1) / TowerMaze.PITCH;
 				boolean byArrival = Math.max(Math.abs(cx - arrivalCellX), Math.abs(cz - arrivalCellZ)) <= TowerTraps.ARRIVAL_CLEAR_CELLS;
 				boolean inHall = side > 0 && trap.x() >= low && trap.x() < low + side && trap.z() >= low && trap.z() < low + side;
-				boolean inNook = side == 0 && trap.x() >= TowerMaze.NOOK_LOW_X && trap.z() >= TowerMaze.NOOK_LOW_Z && trap.z() <= TowerMaze.NOOK_HIGH_Z;
+				boolean inNook = side == 0 && cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1;
 				if (byArrival || inHall || inNook || walls[trap.x()][trap.z()]) {
 					wrong.add(floor + ":" + trap);
 				}
@@ -329,10 +332,10 @@ public class TowerTrapGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = plainFloor(tower);
 		BlockPos o = TowerLayout.origin(floor);
-		BlockPos plain = BlockPos.containing(TowerLayout.arrival(floor));
+		BlockPos plain = BlockPos.containing(TowerLayout.arrival(tower, floor));
 		BlockPos onTrap = plain.offset(1, 0, 0);
 		tower.setBlockAndUpdate(onTrap.below(), TowerBlocks.TRAPS.get(TrapTheme.BOG).defaultBlockState());
-		BlockPos inPortal = TowerLayout.portalInside(floor).get(0);
+		BlockPos inPortal = TowerLayout.portalInside(tower, floor).get(0);
 		tower.setBlockAndUpdate(inPortal, TowerBlocks.TOWER_PORTAL.defaultBlockState());
 		boolean plainSafe = TowerTraps.landsSafely(tower, plain);
 		boolean trapSafe = TowerTraps.landsSafely(tower, onTrap);

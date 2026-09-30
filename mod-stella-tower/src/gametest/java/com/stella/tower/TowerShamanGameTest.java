@@ -112,7 +112,7 @@ public class TowerShamanGameTest {
 		Fake fake = new Fake(40);
 		TowerSpells.install(floor, fake);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		Skeleton shaman = TowerShamans.summon(tower, floor, player.position().add(3.0, 0.0, 0.0));
+		Skeleton shaman = TowerShamans.summon(tower, floor, player.position().add(2.0, 0.0, 0.0));
 		helper.assertTrue(shaman != null, "no shaman could be raised");
 		shaman.setNoAi(true);
 		TowerShamans.Kit kit = shaman.getAttached(TowerShamans.KIT);
@@ -141,7 +141,7 @@ public class TowerShamanGameTest {
 		TowerSpells.install(floor, new Fake(1000));
 		TowerShamans.pinBlinkTicks(floor, 60);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, floor));
 		Skeleton shaman = TowerShamans.summon(tower, floor, player.position().add(2.0, 0.0, 0.0));
 		helper.assertTrue(shaman != null, "no shaman could be raised");
 		shaman.setNoAi(true);
@@ -157,11 +157,11 @@ public class TowerShamanGameTest {
 		Vec3 second = shaman.position();
 		double blinked = first.distanceTo(start);
 		double fromPlayer = first.distanceTo(player.position());
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, floor));
 		helper.runAfterDelay(80L, () -> {
 			// A blink needs the floor's chunks loaded, which a ticket keeps for 300 ticks: asked again, as a
 			// lagging server may have let the first lapse.
-			TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+			TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, floor));
 			TowerTestSupport.holdRoom(tower, shaman.position());
 			// A blink that finds no safe spot leaves the shaman able to try again, so the rested shaman is
 			// struck until one is found: a lagging server may have left few of the floor's chunks loaded.
@@ -214,8 +214,8 @@ public class TowerShamanGameTest {
 		TowerSpells.install(without, TowerSpells.ABSENT);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, withSpells);
 		ServerPlayer other = TowerTestSupport.onFloor(helper, tower, without);
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(withSpells));
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(without));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, withSpells));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, without));
 		helper.runAfterDelay(100L, () -> {
 			int kept = TowerShamans.on(tower, withSpells).size();
 			int missing = TowerShamans.on(tower, without).size();
@@ -239,7 +239,7 @@ public class TowerShamanGameTest {
 		TowerShamans.pinHolds(floor, true);
 		TowerSpells.install(floor, TowerSpells.ABSENT);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, floor));
 		helper.runAfterDelay(80L, () -> {
 			int shamans = TowerShamans.on(tower, floor).size();
 			TowerTestSupport.result("shamanAbsent", "shamans=" + shamans);
@@ -300,7 +300,7 @@ public class TowerShamanGameTest {
 		TowerShamans.pinRestTicks(floor, 80);
 		TowerSpells.install(floor, new Fake(40));
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(floor));
+		TowerTestSupport.holdRoom(tower, TowerLayout.arrival(tower, floor));
 		Skeleton first = TowerShamans.summon(tower, floor, player.position().add(2.0, 0.0, 0.0));
 		helper.assertTrue(first != null, "no shaman could be raised");
 		first.hurtServer(tower, player.damageSources().playerAttack(player), 1.0E30F);

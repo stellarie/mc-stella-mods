@@ -67,12 +67,13 @@ public class TowerSafeZoneGameTest {
 	private static int[] zoneFaults(final ServerLevel tower, final int floor, final TowerMaze.Zone zone) {
 		boolean[][] open = open(tower, floor);
 		BlockPos o = TowerLayout.origin(floor);
+		java.util.Map<BlockPos, BlockState> stations = TowerFloors.workstations(TowerPlan.at(tower, floor));
 		int shut = 0;
 		int unmarked = 0;
 		for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 			for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
 				BlockPos at = o.offset(x, 0, z);
-				boolean station = TowerFloors.workstations(floor).containsKey(at);
+				boolean station = stations.containsKey(at);
 				shut += open[x][z] || station ? 0 : 1;
 				unmarked += tower.getBlockState(at.below()).is(TowerFloors.SAFE_FLOOR) ? 0 : 1;
 			}
@@ -85,8 +86,8 @@ public class TowerSafeZoneGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
-		TowerMaze.Zone zone = TowerMaze.safeZones(floor).get(0);
-		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(TowerLayout.origin(floor));
+		TowerMaze.Zone zone = TowerPlan.at(tower, floor).safeZones().get(0);
+		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(tower, floor)).subtract(TowerLayout.origin(floor));
 		int[] faults = zoneFaults(tower, floor, zone);
 		TowerTestSupport.result("entranceSafe", "zone=" + zone + " arrival=" + arrival + " shut=" + faults[0] + " unmarked=" + faults[1]);
 		helper.assertTrue(zone.contains(arrival.getX(), arrival.getZ()), "the entrance zone " + zone + " does not hold the arrival " + arrival);
@@ -101,9 +102,10 @@ public class TowerSafeZoneGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);
 		BlockPos o = TowerLayout.origin(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
 		// Made old: no safe-zone mark, maze walls standing in both zones, plain floor, no workstations.
 		tower.setBlock(TowerFloors.settledMarker(floor), Blocks.BEDROCK.defaultBlockState(), 3);
-		for (TowerMaze.Zone zone : TowerMaze.safeZones(floor)) {
+		for (TowerMaze.Zone zone : plan.safeZones()) {
 			for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 				for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
 					// The floor's own stone, as an older floor was laid.
@@ -115,18 +117,19 @@ public class TowerSafeZoneGameTest {
 				}
 			}
 		}
-		TowerFloors.workstations(floor).keySet().forEach(pos -> tower.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
-		BlockPos built = o.offset(TowerMaze.ENTRANCE_X + 1, 0, TowerMaze.SAFE_Z + 1);
+		TowerFloors.workstations(plan).keySet().forEach(pos -> tower.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
+		TowerMaze.Zone entranceZone = plan.safeZones().get(0);
+		BlockPos built = o.offset(entranceZone.x() + 1, 0, entranceZone.z() + 1);
 		tower.setBlock(built, Blocks.COBBLESTONE.defaultBlockState(), 3);
 		// A player's chest where a station would stand, and a block of their own in the zone's floor.
-		BlockPos chestAt = TowerFloors.workstations(floor).keySet().iterator().next();
+		BlockPos chestAt = TowerFloors.workstations(plan).keySet().iterator().next();
 		tower.setBlock(chestAt, Blocks.CHEST.defaultBlockState(), 3);
-		BlockPos goldAt = o.offset(TowerMaze.ENTRANCE_X + 2, -1, TowerMaze.SAFE_Z + 2);
+		BlockPos goldAt = o.offset(entranceZone.x() + 2, -1, entranceZone.z() + 2);
 		tower.setBlock(goldAt, Blocks.GOLD_BLOCK.defaultBlockState(), 3);
 		TowerFloors.ensure(tower, floor);
-		int[] entrance = zoneFaults(tower, floor, TowerMaze.safeZones(floor).get(0));
-		int[] room = zoneFaults(tower, floor, TowerMaze.safeZones(floor).get(1));
-		long stations = TowerFloors.workstations(floor).entrySet().stream()
+		int[] entrance = zoneFaults(tower, floor, plan.safeZones().get(0));
+		int[] room = zoneFaults(tower, floor, plan.safeZones().get(1));
+		long stations = TowerFloors.workstations(plan).entrySet().stream()
 			.filter(entry -> tower.getBlockState(entry.getKey()).equals(entry.getValue())).count();
 		boolean kept = tower.getBlockState(built).is(Blocks.COBBLESTONE) && tower.getBlockState(chestAt).is(Blocks.CHEST)
 			&& tower.getBlockState(goldAt).is(Blocks.GOLD_BLOCK);
@@ -146,14 +149,15 @@ public class TowerSafeZoneGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);
-		helper.assertTrue(TowerMaze.safeZones(floor).size() == 2, "a boss floor has " + TowerMaze.safeZones(floor).size() + " safe zones, not 2");
-		TowerMaze.Zone room = TowerMaze.safeZones(floor).get(1);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		helper.assertTrue(plan.safeZones().size() == 2, "a boss floor has " + plan.safeZones().size() + " safe zones, not 2");
+		TowerMaze.Zone room = plan.safeZones().get(1);
 		int[] faults = zoneFaults(tower, floor, room);
-		long stations = TowerFloors.workstations(floor).entrySet().stream()
+		long stations = TowerFloors.workstations(plan).entrySet().stream()
 			.filter(entry -> tower.getBlockState(entry.getKey()).equals(entry.getValue())).count();
 		BlockPos o = TowerLayout.origin(floor);
-		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor)).subtract(o);
-		BlockPos portal = TowerLayout.portalFrame(floor).get(0).subtract(o).east();
+		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(tower, floor)).subtract(o);
+		BlockPos portal = plan.portalInside().get(0).subtract(o);
 		boolean[][] open = open(tower, floor);
 		int way = steps(open, arrival.getX(), arrival.getZ(), portal.getX(), portal.getZ());
 		for (int x = room.x(); x < room.x() + TowerMaze.SAFE; x++) {
@@ -165,7 +169,7 @@ public class TowerSafeZoneGameTest {
 		TowerTestSupport.result("bossSafeRoom", "room=" + room + " shut=" + faults[0] + " unmarked=" + faults[1] + " stations=" + stations
 			+ " way=" + way + " around=" + around);
 		helper.assertTrue(faults[0] == 0 && faults[1] == 0, "the safe room has " + faults[0] + " walled and " + faults[1] + " unmarked spots");
-		helper.assertTrue(stations == 3 && TowerFloors.workstations(floor).size() == 3, "the safe room holds " + stations + " of its 3 workstations");
+		helper.assertTrue(stations == 3 && TowerFloors.workstations(plan).size() == 3, "the safe room holds " + stations + " of its 3 workstations");
 		helper.assertTrue(way > 0 && around < 0, "the way to the boss is " + way + " steps, and " + around + " around the safe room");
 		helper.succeed();
 	}
@@ -180,8 +184,9 @@ public class TowerSafeZoneGameTest {
 			boolean[][] walls = TowerMaze.walls(seed, floor);
 			boolean[][] seen = new boolean[S][S];
 			Deque<int[]> queue = new ArrayDeque<>();
-			queue.add(new int[] {TowerLayout.ARRIVAL_X, TowerLayout.MIDDLE_Z});
-			seen[TowerLayout.ARRIVAL_X][TowerLayout.MIDDLE_Z] = true;
+			TowerPlan plan = TowerPlan.of(seed, floor);
+			queue.add(new int[] {plan.arrivalX(), plan.arrivalZ()});
+			seen[plan.arrivalX()][plan.arrivalZ()] = true;
 			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 			while (!queue.isEmpty()) {
 				int[] at = queue.poll();
@@ -206,15 +211,32 @@ public class TowerSafeZoneGameTest {
 		helper.succeed();
 	}
 
-	/** A boss floor's furnace and anvil face into the room, not the wall behind them. */
+	/**
+	 * A boss floor's furnace and anvil face into the room, not the wall behind them, at every turn of the plan:
+	 * the block in front of each is in the safe room, the block behind it is not.
+	 */
 	@GameTest
 	public void theSafeRoomsStationsFaceTheRoom(final GameTestHelper helper) {
-		int floor = TowerElites.BOSS_EVERY;
-		long facingWall = TowerFloors.workstations(floor).values().stream()
-			.filter(state -> state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)
-				&& state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING) != net.minecraft.core.Direction.SOUTH)
-			.count();
-		TowerTestSupport.result("stationFacing", "facingWall=" + facingWall);
+		long seed = helper.getLevel().getSeed();
+		int facingWall = 0;
+		int stations = 0;
+		java.util.Set<Integer> turns = new java.util.TreeSet<>();
+		for (int floor = TowerElites.BOSS_EVERY; floor <= 60 * TowerElites.BOSS_EVERY; floor += TowerElites.BOSS_EVERY) {
+			TowerPlan plan = TowerPlan.of(seed, floor);
+			turns.add(plan.rotation());
+			TowerMaze.Zone room = plan.safeZones().get(1);
+			for (TowerPlan.Station station : plan.stations()) {
+				if (station.facing() == null) {
+					continue;
+				}
+				stations++;
+				boolean inFront = room.contains(station.x() + station.facing().getStepX(), station.z() + station.facing().getStepZ());
+				boolean behind = room.contains(station.x() - station.facing().getStepX(), station.z() - station.facing().getStepZ());
+				facingWall += inFront && !behind ? 0 : 1;
+			}
+		}
+		TowerTestSupport.result("stationFacing", "stations=" + stations + " turns=" + turns + " facingWall=" + facingWall);
+		helper.assertTrue(stations > 0 && turns.size() == 4, "the case proves nothing: " + stations + " stations over turns " + turns);
 		helper.assertTrue(facingWall == 0, facingWall + " stations face the wall");
 		helper.succeed();
 	}
@@ -234,7 +256,7 @@ public class TowerSafeZoneGameTest {
 			if (TowerMobs.placeInRoom(tower, floor, zombie, random)) {
 				placed++;
 				BlockPos at = zombie.blockPosition().subtract(o);
-				inZone += TowerMaze.inSafeZone(floor, at.getX(), at.getZ()) ? 1 : 0;
+				inZone += TowerPlan.at(tower, floor).inSafeZone(at.getX(), at.getZ()) ? 1 : 0;
 			}
 			zombie.discard();
 		}
@@ -254,7 +276,7 @@ public class TowerSafeZoneGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		int moved = 0;
 		int roof = 0;
 		int astray = 0;
@@ -285,7 +307,7 @@ public class TowerSafeZoneGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		BlockPos foot = BlockPos.containing(TowerLayout.arrival(floor)).east();
+		BlockPos foot = BlockPos.containing(TowerLayout.arrival(tower, floor)).east();
 		BlockPos head = foot.north();
 		BlockState bed = Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING, Direction.NORTH);
 		tower.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT), 3);

@@ -74,26 +74,32 @@ public final class TowerTraps {
 
 	/** The floor's traps. A pure function of the seed and the floor, so a floor drawn twice is drawn the same. */
 	public static List<Trap> layout(final long seed, final int floor) {
+		return layout(seed, floor, TowerPlan.of(seed, floor));
+	}
+
+	/** The floor's traps on a given plan: clear of the arrival's cells, the hall, the portal's cell and the safe zones. */
+	public static List<Trap> layout(final long seed, final int floor, final TowerPlan plan) {
 		TrapTheme theme = TrapTheme.of(floor);
 		if (theme == TrapTheme.NONE) {
 			return List.of();
 		}
 		Random random = new Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L));
 		List<int[]> cells = new ArrayList<>();
-		int startX = (TowerLayout.ARRIVAL_X - 1) / TowerMaze.PITCH;
-		int startZ = (TowerLayout.MIDDLE_Z - 1) / TowerMaze.PITCH;
-		int hall = TowerMaze.hall(floor);
-		int hallLow = TowerLayout.SIZE / 2 - hall / 2;
-		boolean[][] walls = TowerMaze.walls(seed, floor);
+		int startX = plan.arrivalCell()[0];
+		int startZ = plan.arrivalCell()[1];
+		int[] portalCell = plan.portalCell();
+		int hall = plan.hall();
+		int hallLow = plan.hallLow();
+		boolean[][] walls = plan.walls();
 		for (int cx = 0; cx < TowerMaze.CELLS; cx++) {
 			for (int cz = 0; cz < TowerMaze.CELLS; cz++) {
 				int x = 1 + cx * TowerMaze.PITCH;
 				int z = 1 + cz * TowerMaze.PITCH;
 				boolean byArrival = Math.max(Math.abs(cx - startX), Math.abs(cz - startZ)) <= ARRIVAL_CLEAR_CELLS;
 				boolean inHall = hall > 0 && x + TowerMaze.PATH > hallLow && x < hallLow + hall && z + TowerMaze.PATH > hallLow && z < hallLow + hall;
-				boolean inNook = hall == 0 && x + TowerMaze.PATH > TowerMaze.NOOK_LOW_X && z + TowerMaze.PATH > TowerMaze.NOOK_LOW_Z
-					&& z <= TowerMaze.NOOK_HIGH_Z;
-				boolean safe = TowerMaze.inSafeZone(floor, x, z) || TowerMaze.inSafeZone(floor, x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
+				// The portal's cell and the cell either side of it along the frame.
+				boolean inNook = hall == 0 && cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1;
+				boolean safe = plan.inSafeZone(x, z) || plan.inSafeZone(x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
 				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap.
 				boolean solid = walls[x][z];
 				if (!byArrival && !inHall && !inNook && !safe && !solid) {

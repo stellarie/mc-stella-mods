@@ -12,8 +12,8 @@ An endless tower of floors behind a crying obsidian portal. The design is in
   number, and kept for good.
 - Walls, ceiling, lamps and each floor's frame cannot be mined, blown up, or broken by a wither or the
   dragon; the floor stands on bedrock; the room inside can be dug.
-- Each floor has a frame across from the arrival spot that looks like crying obsidian. Lit, it leads to
-  the floor above.
+- Each floor has a frame, on the other half of the room from the arrival spot, that looks like crying
+  obsidian. Lit, it leads to the floor above. Where the two stand is the floor's plan (see "Floor plans").
 - Floors are built ahead of the climb in the background, a little each tick, after their chunks load:
   lighting a portal outside starts floor 1, and arriving on a floor starts the one above. A floor needed
   before it is done is finished on the spot.
@@ -57,3 +57,31 @@ An endless tower of floors behind a crying obsidian portal. The design is in
 - Elites have 3x their floor's health and 1.5x its damage; bosses 10x and 2x. Their names carry the rank.
 - A boss shows a health bar to the players on its floor, and drops a Floor Key naming its floor.
 - Entering the tower from outside takes a player to the highest floor key they carry; keys are never spent.
+
+## Floor plans: random ends with a guaranteed path (F1)
+
+`TowerPlan.of(seed, floor)` is a pure, cached record of everything that decides where things stand on a
+floor. The seed is the tower level's seed. Every reader of the arrival, portal, nook or safe zones asks the
+plan; nothing reads a fixed constant any more.
+
+- Ordinary floors: an axis and a side are drawn; the arrival takes a cell in the outer `END_CELLS` (3) cells of
+  one half, the portal a cell in the outer cells of the other. The portal's cell is a dead end entered from one
+  side along x (its `portalFacing`), solid behind it. The arrival's 8 by 8 safe zone follows the arrival.
+- Elite and boss floors keep the central hall with the portal in it. The canonical layout (arrival at the west,
+  on a boss floor the safe room at the east, with its workstations) is turned by a random quarter turn count.
+- Every plan is walked from arrival to portal; a plan with no walk is redrawn up to `ATTEMPTS` (8) times, then
+  the floor falls back to the plain classic maze (`attempt == FALLBACK`).
+- Floors built before the plans carry no plan marker (`TowerFloors.planMarker`, one block under the settle
+  marker) and get the version 0 plan: the exact old layout, the old maze to the last block.
+
+Measured (`planProperty`, 2400 (seed, floor) pairs): `noWalk=0 fallbacks=0 reseeded=0`, all 1920 ordinary
+plans have their ends on opposite halves, 75 distinct arrival spots (every one the rule allows) and 127 distinct
+portal spots, 97% of ways wind (longer than a straight walk). Hall floors used all four turns.
+
+```
+[BEHAVIOR] test=planProperty RESULT pairs=2400 noWalk=0 endsInWalls=0 fallbacks=0 reseeded=0 ordinary=1920 oppositeHalves=1920 hallPortalsOff=0 arrivalsOutsideZone=0 distinctArrivals=75 distinctPortals=127 windingShare=0.9692708333333333
+[BEHAVIOR] test=builtOrdinary RESULT floor=29217081 arrival=11,60 portal=45,59 turns=0 arrivalAt=true ... wallsDisagree=0 planned=true
+[BEHAVIOR] test=legacyOrdinary RESULT floor=29217201 planMarker=false version=0 oldArrival=true oldPortal=true frame=14/14 wallsDisagree=0 legacyWalls=true newPlanWouldDiffer=true
+```
+
+Manual item: none for this slice.

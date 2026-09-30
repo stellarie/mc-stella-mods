@@ -115,9 +115,46 @@ final class TowerTestSupport {
 	/** Puts a joined player on a floor's arrival spot. */
 	static ServerPlayer onFloor(final GameTestHelper helper, final ServerLevel tower, final int floor) {
 		ServerPlayer player = join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		return player;
+	}
+
+	/**
+	 * The nearest open spot of a floor's room at least this far from its arrival, for a test that stands
+	 * something away from the player. The arrival moves from floor to floor, so no fixed offset from it is
+	 * safe: one can land in a wall or outside the room.
+	 */
+	static Vec3 awayFromArrival(final ServerLevel tower, final int floor, final double distance) {
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		net.minecraft.core.BlockPos origin = plan.origin();
+		double best = Double.MAX_VALUE;
+		Vec3 spot = null;
+		for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
+			for (int z = 2; z < TowerLayout.SIZE - 2; z++) {
+				double away = Math.hypot(x - plan.arrivalX(), z - plan.arrivalZ());
+				if (roomAround(plan, x, z, 2) && !plan.inSafeZone(x, z) && away >= distance && away < best) {
+					best = away;
+					spot = new Vec3(origin.getX() + x + 0.5, TowerLayout.BASE_Y, origin.getZ() + z + 0.5);
+				}
+			}
+		}
+		if (spot == null) {
+			throw new IllegalStateException("floor " + floor + " has no open spot " + distance + " from its arrival");
+		}
+		return spot;
+	}
+
+	/** Whether every spot within this many blocks of (x, z) is open in the plan, so a neighbour can stand beside it. */
+	private static boolean roomAround(final TowerPlan plan, final int x, final int z, final int reach) {
+		for (int dx = -reach; dx <= reach; dx++) {
+			for (int dz = -reach; dz <= reach; dz++) {
+				if (plan.wall(x + dx, z + dz)) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	/** Holds the chunks around a spot loaded, so what spawns there is seen. A portal ticket lapses after 300 ticks. */

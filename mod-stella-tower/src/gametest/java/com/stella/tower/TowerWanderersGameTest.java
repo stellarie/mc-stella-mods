@@ -246,7 +246,7 @@ public class TowerWanderersGameTest {
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		boolean creative = TowerProgress.counts(player, tower);
 		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
-		net.minecraft.world.phys.Vec3 unbuilt = TowerLayout.arrival(TowerTestSupport.freshFloor());
+		net.minecraft.world.phys.Vec3 unbuilt = TowerLayout.arrival(tower, TowerTestSupport.freshFloor());
 		player.teleportTo(tower, unbuilt.x, unbuilt.y, unbuilt.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		boolean onNothing = TowerProgress.counts(player, tower);
 		TowerTestSupport.result("climbersOnly", "climber=" + climber + " creative=" + creative + " unbuilt=" + onNothing);
