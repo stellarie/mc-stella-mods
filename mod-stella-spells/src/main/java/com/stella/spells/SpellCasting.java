@@ -152,7 +152,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		target.hurt(caster.level().damageSources().magic(), DAMAGE * (float) modifiers.powerMultiplier());
+		target.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, DAMAGE, modifiers.powerMultiplier()));
 		target.igniteForSeconds(effectDurationTicks(modifiers, (int) (BURN_SECONDS * 20.0f), false) / 20.0f);
 		return true;
 	}
@@ -181,7 +181,7 @@ public final class SpellCasting {
 
 	static boolean applyMendingWord(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		float healthBefore = caster.getHealth();
-		caster.heal(4.0f * (float) modifiers.powerMultiplier());
+		caster.heal(RpgBridge.heal(caster, 4.0f, modifiers.powerMultiplier()));
 		return caster.getHealth() > healthBefore;
 	}
 
@@ -220,12 +220,12 @@ public final class SpellCasting {
 		caster.addEffect(
 			new MobEffectInstance(MobEffects.FIRE_RESISTANCE, effectDurationTicks(modifiers, 600, true), 0), caster
 		);
-		caster.heal(4.0f * (float) modifiers.powerMultiplier());
+		caster.heal(RpgBridge.heal(caster, 4.0f, modifiers.powerMultiplier()));
 		return true;
 	}
 
 	static boolean applyLifeBloom(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		caster.heal(8.0f * (float) modifiers.powerMultiplier());
+		caster.heal(RpgBridge.heal(caster, 8.0f, modifiers.powerMultiplier()));
 		caster.addEffect(
 			new MobEffectInstance(MobEffects.REGENERATION, effectDurationTicks(modifiers, 100, true), 0), caster
 		);
@@ -251,7 +251,7 @@ public final class SpellCasting {
 			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(caster.position()) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), 6.0f * (float) modifiers.powerMultiplier());
+			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, 6.0f, modifiers.powerMultiplier()));
 			Vec3 away = hostile.position().subtract(caster.position());
 			Vec3 horizontal = new Vec3(away.x, 0.0, away.z).normalize();
 			hostile.setDeltaMovement(horizontal.x, 0.4, horizontal.z);
@@ -267,9 +267,9 @@ public final class SpellCasting {
 		}
 
 		var damage = caster.level().damageSources().magic();
-		float power = (float) modifiers.powerMultiplier();
+		double power = modifiers.powerMultiplier();
 		double radius = STATIC_LASH_RADIUS * modifiers.radiusMultiplier();
-		primary.hurt(damage, DAMAGE * power);
+		primary.hurt(damage, RpgBridge.damage(caster, DAMAGE, power));
 		List<Mob> candidates = new ArrayList<>(caster.level().getEntitiesOfClass(
 			Mob.class,
 			primary.getBoundingBox().inflate(radius),
@@ -284,7 +284,7 @@ public final class SpellCasting {
 		);
 		for (int i = 0; i < Math.min(2, candidates.size()); i++) {
 			Mob chained = candidates.get(i);
-			chained.hurt(damage, DAMAGE * power);
+			chained.hurt(damage, RpgBridge.damage(caster, DAMAGE, power));
 			SpellVisuals.linkAffected(caster, "static_lash",
 				primary.getBoundingBox().getCenter(), chained.getBoundingBox().getCenter());
 		}
@@ -386,7 +386,7 @@ public final class SpellCasting {
 				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), 10.0f * (float) modifiers.powerMultiplier());
+			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, 10.0f, modifiers.powerMultiplier()));
 		}
 		return true;
 	}

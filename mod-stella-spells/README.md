@@ -170,7 +170,7 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 
 A book of its own: no scroll copies it and no weapon takes it. Crafted from a book and four bone blocks.
 
-- Casting raises one skeleton with a bow, a leather cap, and 30 base health. With Stella Mobs installed,
+- Casting raises one skeleton with a bow, a leather cap, and 30 base health (more with `mod-stella-rpg`; see below). With Stella Mobs installed,
   its health also follows the highest threat level ever reached on the server, across dimensions and restarts.
   It never despawns, and iron golems leave it alone.
 - It fights the hostiles within 8 blocks of you and follows you, catching up by teleport when you are
@@ -229,11 +229,31 @@ enchantment instead.
 
 Quickening and Clear Mind stack, but a cooldown never drops below half its base or below 1 second.
 
-## Intelligence from mod-stella-rpg
+## Intelligence and MATK from mod-stella-rpg
 
-When `mod-stella-rpg` is installed, the caster's INT scales player spells. It raises spell power and shortens
-the cooldown of a spellbook cast and of an imbued weapon, arrow or chestplate cast. A cooldown never drops below
-1 second. Without `mod-stella-rpg` every cast is unchanged. Mob spells do not scale.
+When `mod-stella-rpg` is installed, the caster's INT shortens the cooldown of a spellbook cast and of an
+imbued weapon, arrow or chestplate cast. A cooldown never drops below 1 second. The INT spell power curve is
+retired: the caster's MATK sets what a damage spell or a heal is worth.
+
+- **Damage.** A damage spell deals `RpgSpells.spellDamage(caster, percent)`. The percent is the spell's
+  vanilla damage times 50, so Spark Shot (3) is 150% and Dragonfall (10) is 500%. A combo bonus is its
+  vanilla damage times 50 as well: Thermal Shock 200%, Riptide Current 150%, Frozen Meteor 250%.
+- **Heals.** A heal calls `RpgSpells.spellHeal(caster, coefficient)`. The coefficient is the vanilla heal
+  divided by 2, so Mending Word (4) is 2 and Life Bloom (8) is 4. Sanctuary uses the caster's numbers for its allies.
+- **Growth.** Runes and ascension from the tower multiply the result once, as they multiply any spell.
+  Imbued casts keep their reduced strength. Each hit rolls its own MATK, except Chainstorm and Flame Ring,
+  which roll once per cast.
+- **Effects.** Poison, Wither, burning and every other effect keep their numbers. The RPG mod's percent
+  tick rules scale them.
+- **Summon Skeleton.** The servant has 30 base health plus 10% of its master's maximum health, divided by the
+  RPG mod's health scale (`mod-stella-rpg:health-scale`, 1 when absent). Its arrows and blows deal
+  `spellDamage(master, 100)`.
+- **Spellbook tag.** `data/mod-stella-rpg/tags/item/spellbooks.json` lists every spellbook, so the RPG mod
+  rolls MATK affixes on them and refines their MATK. Scrolls and the Scroll of Return stay out.
+
+The bridge finds `com.stella.rpg.RpgSpells` by name. Without `mod-stella-rpg`, or with a version that lacks
+`spellDamage` or `spellHeal`, every spell keeps its flat numbers from the table above and the servant keeps
+30 health and its own arrows. Mob spells do not scale here.
 
 ## Build and test
 

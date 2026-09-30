@@ -25,6 +25,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -64,6 +67,11 @@ public final class SummonSkeleton {
 	public static final double LOOT_REACH = 1.5;
 	public static final int PACK_SIZE = 18;
 	public static final double BASE_HEALTH = 30.0;
+	/** The share of its master's maximum health a servant adds to its own, when the RPG mod scales spells. */
+	public static final double MASTER_HEALTH_SHARE = 0.1;
+	/** A servant's hit is this percent of its master's MATK. */
+	public static final double HIT_SKILL_PERCENT = 100.0;
+	public static final String HEALTH_SCALE_SHARE = "mod-stella-rpg:health-scale";
 	public static final Identifier THREAT_HEALTH_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_threat_health");
 	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
@@ -211,13 +219,14 @@ public final class SummonSkeleton {
 			? SummonThreatBridge.peak(level.getServer()) : 0;
 		double bonus = FabricLoader.getInstance().isModLoaded("mod-stella-mobs")
 			? SummonThreatBridge.healthBonus(peak) : 0.0;
+		double base = baseHealth(skeleton, health, full);
 		AttributeModifier previous = health.getModifier(THREAT_HEALTH_ID);
-		if (!full && health.getBaseValue() == BASE_HEALTH && previous != null && previous.amount() == bonus) {
+		if (!full && health.getBaseValue() == base && previous != null && previous.amount() == bonus) {
 			return;
 		}
 		float oldMaximum = skeleton.getMaxHealth();
 		float oldHealth = skeleton.getHealth();
-		health.setBaseValue(BASE_HEALTH);
+		health.setBaseValue(base);
 		if (previous != null) {
 			health.removeModifier(THREAT_HEALTH_ID);
 		}
@@ -228,6 +237,37 @@ public final class SummonSkeleton {
 			: Math.max(1.0F, Math.min(skeleton.getMaxHealth(), fraction * skeleton.getMaxHealth())));
 		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_HEALTH servant={} peak={} max={}",
 			skeleton.getUUID(), peak, skeleton.getMaxHealth());
+	}
+
+	// 30 plus 10% of the master's health.
+	// The RPG mod multiplies health by K, so divide.
+	private static double baseHealth(final Skeleton skeleton, final AttributeInstance health, final boolean full) {
+		if (!RpgBridge.present()) {
+			return BASE_HEALTH;
+		}
+		ServerPlayer master = owner(skeleton);
+		if (master == null) {
+			return full ? BASE_HEALTH : Math.max(BASE_HEALTH, health.getBaseValue());
+		}
+		return BASE_HEALTH + MASTER_HEALTH_SHARE * master.getMaxHealth() / healthScale();
+	}
+
+	static double healthScale() {
+		Object scale = FabricLoader.getInstance().getObjectShare().get(HEALTH_SCALE_SHARE);
+		return scale instanceof Double value && value > 0.0 ? value : 1.0;
+	}
+
+	/** What a blow from this servant is worth: its master's MATK at {@link #HIT_SKILL_PERCENT}; NaN when it is not a servant's blow. */
+	public static double hit(final DamageSource source) {
+		if (!(source.getEntity() instanceof Skeleton skeleton) || !skeleton.entityTags().contains(SUMMON_TAG)) {
+			return Double.NaN;
+		}
+		boolean arrow = source.getDirectEntity() instanceof AbstractArrow;
+		if (!arrow && !source.is(DamageTypes.MOB_ATTACK)) {
+			return Double.NaN;
+		}
+		ServerPlayer master = owner(skeleton);
+		return master == null ? Double.NaN : RpgBridge.spellDamage(master, HIT_SKILL_PERCENT);
 	}
 
 	private static boolean recall(final Skeleton skeleton, final ServerPlayer caster) {
