@@ -13,7 +13,6 @@ import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -58,7 +57,7 @@ public class TowerGhost extends PathfinderMob {
 		this.goalSelector.addGoal(5, new WaterAvoidingRandomFlyingGoal(this, 1.0));
 		// Only what its bolt can reach: a quarry further off would draw it away from the players it keeps.
 		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Mob.class, 5, true, false,
-			(target, level) -> target instanceof Enemy && !(target instanceof TowerGhost) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
+			(target, level) -> Hostiles.isHostile(target) && !(target instanceof TowerGhost) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
 	}
 
 	/** A ghost never takes a player, or another ghost, for its quarry. */
