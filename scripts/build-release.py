@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Build Gradle mods, run five GameTest suites each, and bundle release jars."""
+"""Build Gradle mods, run five GameTest suites each, and pack them into one jar."""
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -12,6 +13,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_SUFFIXES = ("-sources.jar", "-dev.jar", "-javadoc.jar", "-gametest.jar")
+PACK_NAME = "mc-stella-mods.jar"
+PACK_ID = "mc-stella-mods"
+NESTED_DIR = "META-INF/jars/"
 
 
 def discover(root: Path) -> list[Path]:
@@ -83,8 +87,30 @@ def build_one(root: Path, output: Path, name: str) -> None:
     print(f"Staged {len(jars)} release jars for {name}", flush=True)
 
 
+def pack_version(jars: list[Path]) -> str:
+    versions = {
+        match.group(1)
+        for jar in jars
+        if (match := re.search(r"-(\d+\.\d+\.\d+[^-]*)$", jar.stem))
+    }
+    return versions.pop() if len(versions) == 1 else "0.0.0"
+
+
+def pack_metadata(jars: list[Path]) -> dict:
+    return {
+        "schemaVersion": 1,
+        "id": PACK_ID,
+        "version": pack_version(jars),
+        "name": "Stella Mods",
+        "description": "Every Stella mod in one jar. Fabric Loader loads each nested mod on its own.",
+        "environment": "*",
+        "depends": {"fabricloader": ">=0.19.5", "minecraft": "~26.3", "java": ">=25"},
+        "jars": [{"file": NESTED_DIR + jar.name} for jar in jars],
+    }
+
+
 def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
-    target = output / "mc-stella-mods.zip"
+    target = output / PACK_NAME
     target.unlink(missing_ok=True)
     if not expected_mods or len(set(expected_mods)) != len(expected_mods):
         raise RuntimeError("Expected mod list is empty or contains duplicates")
@@ -105,23 +131,24 @@ def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
             raise RuntimeError(f"Duplicate jar name: {jar.name}")
         names.add(jar.name)
     output.mkdir(parents=True, exist_ok=True)
-    temporary = output / "mc-stella-mods.zip.tmp"
+    temporary = output / (PACK_NAME + ".tmp")
     temporary.unlink(missing_ok=True)
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("fabric.mod.json", json.dumps(pack_metadata(jars), indent=2) + "\n")
             for jar in jars:
-                archive.write(jar, jar.name)
+                archive.write(jar, NESTED_DIR + jar.name, compress_type=zipfile.ZIP_STORED)
         temporary.replace(target)
     finally:
         temporary.unlink(missing_ok=True)
-    print(f"Release bundle: {target} ({len(jars)} jars)", flush=True)
+    print(f"Release jar: {target} ({len(jars)} nested mods)", flush=True)
     return target
 
 
 def build(root: Path, output: Path) -> Path:
     mods = discover(root)
     print("Detected mods: " + ", ".join(mod.name for mod in mods), flush=True)
-    (output / "mc-stella-mods.zip").unlink(missing_ok=True)
+    (output / PACK_NAME).unlink(missing_ok=True)
     for mod in mods:
         build_one(root, output, mod.name)
     return bundle(output / "jars", [mod.name for mod in mods], output)

@@ -68,18 +68,18 @@ jobs:
           pattern: jars-*
           path: release-output/jars/
           merge-multiple: true
-      - name: Bundle production jars
+      - name: Pack production jars into one jar
         env:
           DETECTED_MODS: ${{ needs.discover.outputs.mods }}
         run: python3 scripts/build-release.py --bundle --mods-json "$DETECTED_MODS"
-      - name: Upload release ZIP
+      - name: Upload release jar
         uses: actions/upload-artifact@v4
         with:
           name: mc-stella-mods
-          path: release-output/mc-stella-mods.zip
+          path: release-output/mc-stella-mods.jar
           if-no-files-found: error
       - name: Publish tagged release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" release-output/mc-stella-mods.zip --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" release-output/mc-stella-mods.jar --generate-notes

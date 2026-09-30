@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 import zipfile
@@ -41,13 +42,23 @@ class BundleTests(unittest.TestCase):
             bundle = release.build(self.root, self.root / "output")
         self.assertEqual(run.call_count, 12)
         with zipfile.ZipFile(bundle) as archive:
-            self.assertEqual(archive.namelist(), ["mod-one.jar", "mod-two.jar"])
+            self.assertEqual(
+                archive.namelist(),
+                ["fabric.mod.json", "META-INF/jars/mod-one.jar", "META-INF/jars/mod-two.jar"],
+            )
+            self.assertEqual(archive.read("META-INF/jars/mod-two.jar"), b"mod-two")
+            metadata = json.loads(archive.read("fabric.mod.json"))
+        self.assertEqual(metadata["id"], "mc-stella-mods")
+        self.assertEqual(
+            metadata["jars"],
+            [{"file": "META-INF/jars/mod-one.jar"}, {"file": "META-INF/jars/mod-two.jar"}],
+        )
         self.assertEqual(len(list((self.root / "output" / "test-logs").rglob("*.log"))), 10)
 
     def test_failed_game_test_keeps_log_and_blocks_bundle(self):
         output = self.root / "output"
         output.mkdir()
-        (output / "mc-stella-mods.zip").write_bytes(b"old bundle")
+        (output / "mc-stella-mods.jar").write_bytes(b"old bundle")
 
         def fail_first_test(command, cwd, check):
             self.fake_run(command, cwd, check)
@@ -58,7 +69,7 @@ class BundleTests(unittest.TestCase):
             with self.assertRaises(release.subprocess.CalledProcessError):
                 release.build(self.root, output)
         self.assertTrue((self.root / "output" / "test-logs" / "mod-one" / "run-1.log").is_file())
-        self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
+        self.assertFalse((self.root / "output" / "mc-stella-mods.jar").exists())
 
     def test_failed_build_keeps_its_game_test_log(self):
         def fail_build(command, cwd, check):
@@ -92,7 +103,7 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(
             (output / "jars" / "mod-one" / "mod-one.jar").read_bytes(), b"mod-one"
         )
-        self.assertFalse((output / "mc-stella-mods.zip").exists())
+        self.assertFalse((output / "mc-stella-mods.jar").exists())
 
     def test_bundle_rejects_missing_mod_artifact(self):
         jars = self.root / "jars"
@@ -100,7 +111,7 @@ class BundleTests(unittest.TestCase):
         (jars / "mod-one" / "mod-one.jar").write_bytes(b"one")
         with self.assertRaises(RuntimeError):
             release.bundle(jars, ["mod-one", "mod-two"], self.root / "output")
-        self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
+        self.assertFalse((self.root / "output" / "mc-stella-mods.jar").exists())
 
     def test_bundle_rejects_duplicate_jar_names(self):
         jars = self.root / "jars"
@@ -109,7 +120,19 @@ class BundleTests(unittest.TestCase):
             (jars / mod / "same.jar").write_bytes(mod.encode())
         with self.assertRaises(RuntimeError):
             release.bundle(jars, ["mod-one", "mod-two"], self.root / "output")
-        self.assertFalse((self.root / "output" / "mc-stella-mods.zip").exists())
+        self.assertFalse((self.root / "output" / "mc-stella-mods.jar").exists())
+
+    def test_pack_version_is_the_shared_version_of_the_mod_jars(self):
+        jars = [Path("mod-one-0.1.0+26.3.jar"), Path("mod-two-0.1.0+26.3.jar")]
+        self.assertEqual(release.pack_version(jars), "0.1.0+26.3")
+
+    def test_pack_version_falls_back_when_versions_differ(self):
+        jars = [Path("mod-one-0.1.0.jar"), Path("mod-two-0.2.0.jar")]
+        self.assertEqual(release.pack_version(jars), "0.0.0")
+
+    def test_pack_metadata_requires_the_game_and_loader_of_the_mods(self):
+        depends = release.pack_metadata([Path("mod-one-0.1.0.jar")])["depends"]
+        self.assertEqual(sorted(depends), ["fabricloader", "java", "minecraft"])
 
     def test_nether_serializes_its_included_builds(self):
         mod = self.root / "mod-stella-nether"
