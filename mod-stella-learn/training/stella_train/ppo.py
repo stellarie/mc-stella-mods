@@ -29,6 +29,8 @@ class PpoConfig:
     log_std_init: float = -0.5
     bow_bias_init: tuple = (-1.0, 1.0, -0.5, -1.0)
     jump_bias_init: tuple = (0.5, -0.5)
+    # Upper bound per continuous output (forward, strafe, yaw, pitch) on the log standard deviation; aim needs small noise.
+    log_std_max: tuple = (0.5, 0.5, 0.5, 0.5)
 
     @classmethod
     def from_dict(cls, table: dict) -> "PpoConfig":
@@ -37,7 +39,7 @@ class PpoConfig:
         if unknown:
             raise ValueError(f"unknown ppo settings: {sorted(unknown)}")
         table = dict(table)
-        for key in ("bow_bias_init", "jump_bias_init"):
+        for key in ("bow_bias_init", "jump_bias_init", "log_std_max"):
             if key in table:
                 table[key] = tuple(table[key])
         return cls(**table)
@@ -128,6 +130,8 @@ class Ppo:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), c.max_grad_norm)
                 self.optimizer.step()
+                with torch.no_grad():
+                    self.model.log_std.clamp_(max=torch.as_tensor(c.log_std_max, dtype=torch.float32))
                 with torch.no_grad():
                     kl = ((ratio - 1.0) - log_ratio).mean().item()
                     clip_fraction = ((ratio - 1.0).abs() > c.clip).float().mean().item()

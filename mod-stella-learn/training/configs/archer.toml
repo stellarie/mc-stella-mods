@@ -29,6 +29,7 @@ target_kl = 0.03
 log_std_init = -1.2                # 0.5 left too much aim noise for a first arrow to land
 bow_bias_init = [-1.0, 1.0, -0.5, -1.0]   # idle, draw, release, volley
 jump_bias_init = [0.5, -0.5]
+log_std_max = [0.5, 0.5, -1.5, -1.5]    # forward, strafe, yaw, pitch: aim noise above about 0.22 x 30 degrees cannot hit
 
 [shaping]
 scale = 1.0                      # the gym prices the terms: +0.005 a hit point dealt, +0.0002 an unhit decision; no decay
