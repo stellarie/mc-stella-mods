@@ -3,3 +3,6 @@
 .scratch-src/
 release-output/
 __pycache__/
+
+# Local scratch
+.scratch-*/
