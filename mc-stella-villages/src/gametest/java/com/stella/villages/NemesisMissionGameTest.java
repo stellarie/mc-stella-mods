@@ -571,8 +571,10 @@ public final class NemesisMissionGameTest {
 		);
 		List<?> offers = offersFor(fixture.owner().getUUID());
 		List<Identifier> types = targetTypes(offers);
-		boolean threeDistinct = types.size() == 3 && new HashSet<>(types).size() == 3;
-		boolean nonBossHostiles = types.size() == 3 && types.stream().allMatch(this::isNonBossHostile);
+		// The board holds nine offers: the first three are the Nemesis contracts this case was written for.
+		List<Identifier> nemesisTypes = types.size() == 9 ? types.subList(0, 3) : List.of();
+		boolean threeDistinct = nemesisTypes.size() == 3 && new HashSet<>(nemesisTypes).size() == 3;
+		boolean nonBossHostiles = types.size() == 9 && types.stream().allMatch(this::isNonBossHostile);
 		boolean boardOpened = interaction.consumesAction() && offers != null;
 
 		PatrolTestSupport.result(test, "boardOpened=" + boardOpened + " offerCount=" + (offers == null ? -1 : offers.size())
@@ -902,7 +904,7 @@ public final class NemesisMissionGameTest {
 				var mission = missionsFor(helper.getLevel(), fixture.owner().getUUID()).stream().findFirst().orElse(null);
 				Mob nemesis = target[0];
 				boolean prefix = nemesis.getCustomName() != null
-					&& nemesis.getCustomName().getString().startsWith("<Nemesis>");
+					&& nemesis.getCustomName().getString().startsWith("[Quest] <Nemesis>");
 				double baselineHealth = mission == null ? 0.0 : baseHealth(helper.getLevel(), mission.targetType());
 				double expectedHealth = baselineHealth * Elite.HEALTH_MULTIPLIER
 					+ MissionService.NEMESIS_BONUS_HEALTH;
@@ -1338,6 +1340,8 @@ public final class NemesisMissionGameTest {
 		head.snapTo(Vec3.atBottomCenterOf(headPosition), 0.0F, 0.0F);
 		var data = com.stella.villages.data.VillageWorldData.get(level);
 		var village = data.findOrCreate(level.dimension(), anchor);
+		// The search is random now. These cases build their ground for the old fixed order, so it is steered to it.
+		MissionService.setTargetCandidateSource(village.anchor(), (bell, attempt, random) -> ringCandidate(bell, attempt));
 		com.stella.villages.patrol.PatrolState.attach(
 			head, village.id(), com.stella.villages.patrol.PatrolState.Role.HEAD
 		);
@@ -1609,18 +1613,27 @@ public final class NemesisMissionGameTest {
 
 	private static @Nullable List<BlockPos> targetCandidates(final BlockPos origin) {
 		try {
-			Class<?> service = Class.forName(MISSION_SERVICE);
-			Method targetCandidate = service.getDeclaredMethod("targetCandidate", BlockPos.class, int.class);
-			targetCandidate.setAccessible(true);
-			int limit = service.getField("MISSION_TARGET_SEARCH_LIMIT").getInt(null);
+			int limit = Class.forName(MISSION_SERVICE).getField("MISSION_TARGET_SEARCH_LIMIT").getInt(null);
 			List<BlockPos> candidates = new ArrayList<>(limit);
 			for (int attempt = 0; attempt < limit; attempt++) {
-				candidates.add((BlockPos) targetCandidate.invoke(null, origin, attempt));
+				candidates.add(ringCandidate(origin, attempt));
 			}
 			return List.copyOf(candidates);
 		} catch (ReflectiveOperationException | LinkageError | ClassCastException error) {
 			return null;
 		}
+	}
+
+	/** The fixed search order the target search had before it went random: eight bearings on eight rings. */
+	private static BlockPos ringCandidate(final BlockPos origin, final int attempt) {
+		int direction = attempt % 8;
+		int ring = attempt / 8;
+		int distance = missionMinDistance() + ring * (missionMaxDistance() - missionMinDistance()) / 7;
+		int[] dx = {1, 1, 0, -1, -1, -1, 0, 1};
+		int[] dz = {0, 1, 1, 1, 0, -1, -1, -1};
+		double normalizer = direction % 2 == 0 ? 1.0 : Math.sqrt(2.0);
+		return new BlockPos(origin.getX() + net.minecraft.util.Mth.floor(dx[direction] * distance / normalizer), origin.getY(),
+			origin.getZ() + net.minecraft.util.Mth.floor(dz[direction] * distance / normalizer));
 	}
 
 	private static boolean prepareUnsafeTargetSites(
