@@ -7,7 +7,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.ChatFormatting;
+import com.stella.equips.readout.ReadoutNames;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityTypes;
 
 public class ReadoutTextGameTest {
 	private static final Map<PowerCurve.Band, ChatFormatting> EXPECTED_COLORS = new LinkedHashMap<>();
@@ -61,6 +63,30 @@ public class ReadoutTextGameTest {
 		helper.assertTrue(
 			ReadoutText.nameColor(true) == ChatFormatting.RED && ReadoutText.nameColor(false) == ChatFormatting.GREEN,
 			"the name colors read " + ReadoutText.nameColor(true) + " and " + ReadoutText.nameColor(false)
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyMobLosesItsVanillaNameTagButAPlayerKeepsIt(final GameTestHelper helper) {
+		var cow = helper.spawn(EntityTypes.COW, new net.minecraft.core.BlockPos(1, 2, 1));
+		var husk = helper.spawn(EntityTypes.HUSK, new net.minecraft.core.BlockPos(2, 2, 1));
+		var stand = helper.spawn(EntityTypes.ARMOR_STAND, new net.minecraft.core.BlockPos(3, 2, 1));
+		@SuppressWarnings("removal")
+		var player = helper.makeMockServerPlayerInLevel();
+		cow.setCustomName(net.minecraft.network.chat.Component.literal("Bessie"));
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=readoutHidesMobTag RESULT cow={} husk={} stand={} player={}",
+			ReadoutNames.hidesVanillaTag(cow), ReadoutNames.hidesVanillaTag(husk),
+			ReadoutNames.hidesVanillaTag(stand), ReadoutNames.hidesVanillaTag(player)
+		);
+		helper.assertTrue(
+			ReadoutNames.hidesVanillaTag(cow) && ReadoutNames.hidesVanillaTag(husk),
+			"a mob keeps its vanilla name tag"
+		);
+		helper.assertTrue(
+			!ReadoutNames.hidesVanillaTag(player) && !ReadoutNames.hidesVanillaTag(stand),
+			"a player or a non-mob lost its name tag"
 		);
 		helper.succeed();
 	}

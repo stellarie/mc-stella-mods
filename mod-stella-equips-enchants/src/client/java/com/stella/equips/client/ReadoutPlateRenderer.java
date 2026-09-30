@@ -24,7 +24,6 @@ final class ReadoutPlateRenderer {
 	private static final double FULL_SIZE_RANGE = 10.0;
 	private static final double HEIGHT_OFFSET = 0.3;
 	private static final int OPAQUE = 0xFF000000;
-	private static final int NUMBER_COLOR = 0xFFFFFFFF;
 	private static final int HALF_LINE = 4;
 	private static final Font.DisplayMode MODE = Font.DisplayMode.POLYGON_OFFSET;
 
@@ -69,9 +68,9 @@ final class ReadoutPlateRenderer {
 		String label = ReadoutText.label(payload.rankValue(), payload.name());
 		String number = Integer.toString(payload.threat());
 		ReadoutPlateLayout.Plan plan = ReadoutPlateLayout.plan(
-			OPAQUE | ReadoutText.rgb(ReadoutText.color(payload.bandValue())),
 			payload.health(), payload.maxHealth(), payload.absorption(), font.width(label)
 		);
+		ReadoutPlateLayout.Rect bounds = plan.bounds();
 
 		poseStack.pushPose();
 		poseStack.translate(relative.x, relative.y, relative.z);
@@ -79,7 +78,7 @@ final class ReadoutPlateRenderer {
 		Matrix4f pose = poseStack.last().pose();
 		pose.rotate((float) Math.PI, 0.0F, 1.0F, 0.0F);
 		pose.scale(-scale, -scale, -scale);
-		pose.translate(-plan.width() / 2.0F, -plan.height(), 0.0F);
+		pose.translate(-(bounds.x0() + bounds.x1()) / 2.0F, -bounds.y1(), 0.0F);
 
 		for (ReadoutPlateLayout.Rect rect : plan.all()) {
 			collector.submitTextBackground(
@@ -89,7 +88,8 @@ final class ReadoutPlateRenderer {
 
 		collector.submitText(
 			poseStack, plan.numberCenterX() - font.width(number) / 2.0F, plan.numberCenterY() - HALF_LINE,
-			Component.literal(number).getVisualOrderText(), false, MODE, LightCoordsUtil.FULL_BRIGHT, NUMBER_COLOR, 0, 0
+			Component.literal(number).getVisualOrderText(), false, MODE, LightCoordsUtil.FULL_BRIGHT,
+			OPAQUE | ReadoutText.rgb(ReadoutText.color(payload.bandValue())), 0, 0
 		);
 		collector.submitText(
 			poseStack, plan.nameX(), plan.nameY(), Component.literal(label).getVisualOrderText(), false, MODE,

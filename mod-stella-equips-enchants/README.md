@@ -141,17 +141,23 @@ mob must sit on the view ray within 32 blocks, with no solid block between. When
 two mobs stand on the ray, the nearer one wins. Looking away, a wall, distance,
 or the mob's death removes the plate.
 
-The plate reads, left to right: the raw threat number inside a ring, then
-`<Rank> Name`. Under the name sits a small green health bar. A smaller yellow
-absorption bar sits between the name and the health bar, and only while the mob
-holds absorption above zero.
+The plate is a badge with the name beside it, on a padded, semi-transparent gray
+background. The level number sits in the center of a circle. The outline of that
+circle is the health: a red arc covers `health / max health` of the circumference,
+clockwise from the top. Absorption is a yellow ring just outside the red one. It
+covers `absorption / max health`, capped at a full circle, and it is absent at zero
+absorption. The name, `<Rank> Name`, sits to the right of the badge, centered on it.
+There are no bars.
 
-The ring takes the band color, so one mob can read green for one player and red
-for another. With `mod-stella-mobs` installed, elite and boss mobs also carry a
+The level number takes the band color, so one mob can read green for one player and
+red for another. With `mod-stella-mobs` installed, elite and boss mobs also carry a
 rank tag, as in `<Elite> Zombie` or `<Boss> Wither`; boss wins when both apply.
 The rank comes from the optional `mod-stella-mobs:readout-rank` provider, so this
 mod has no dependency on the mobs mod. Without it, or with an unknown value, no
 tag is shown.
+
+The client hides the vanilla floating name tag of every mob, including named pets,
+because the plate carries the name. Players keep their name tags.
 
 For the color, raw threat is scaled onto the player level range:
 `round(threat * level_cap / mob_level.level_cap)`, so threat 0, 18, and 36 compare as
@@ -228,7 +234,7 @@ The game tests run a headless server. They check the test-only fixture enchantme
 fields, the clamped anvil cost, the 74 catalogue enchantments, threat scaling, the
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
 saved before this change, and the readout: its look test, range, and line of sight, its payload, its rank
-tags and colors, the plate layout, its removal on death and on disconnect, its
+tags and colors, the plate geometry, its removal on death and on disconnect, its
 invisibility to a second player, and the opt-out command. The pixels of the plate
 need a client, so a not-required test marks them for a manual check. They also
 check refining: the odds tables, the quote and confirm, the price, the chip and the break,
