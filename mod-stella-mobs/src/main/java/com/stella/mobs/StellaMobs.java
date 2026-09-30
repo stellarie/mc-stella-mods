@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.api.ReadoutRankProvider;
+import com.stella.mobs.api.ThreatLevelProvider;
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.BossCompanion;
 import com.stella.mobs.behavior.Bosses;
@@ -33,6 +34,7 @@ import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.config.ScalingConfigStore;
 import com.stella.mobs.config.WorldRules;
 import com.stella.mobs.config.Loadout;
 import com.stella.mobs.gear.EnchantRoller;
@@ -81,6 +83,7 @@ public class StellaMobs implements ModInitializer {
 		ThreatState.register();
 		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
+		ThreatLevelProvider.register();
 		EscortSquad.register();
 		RiderSquad.register();
 		BossCompanion.register();
@@ -121,10 +124,13 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(BloodMoon::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
+		// Before the spawn chunks load, so loaded mobs rescale with the file's numbers.
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> ScalingConfigStore.load());
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
 				GearConfigStore.load();
+				ScalingConfigStore.load();
 				EnchantRoller.clearCache();
 			}
 		});

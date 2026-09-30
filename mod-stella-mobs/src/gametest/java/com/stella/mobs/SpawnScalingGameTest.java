@@ -101,7 +101,7 @@ public class SpawnScalingGameTest {
 			&& elite - ordinary == 5
 			&& boss - ordinary == 10
 			&& positive == ThreatState.NETHER_MINIMUM + ThreatState.MAX_VARIATION
-			&& Math.abs(healthAmount(mob) - (SpawnScaling.healthMultiplier(boss, 0.0) - 1.0)) < EPSILON;
+			&& Math.abs(healthAmount(mob) - (SpawnScaling.healthMultiplier(boss) - 1.0)) < EPSILON;
 		result("eliteAndBossBonusesFollowDimensionMinimum", "ordinary=" + ordinary
 			+ " elite=" + elite + " boss=" + boss + " positive=" + positive + " valid=" + valid);
 		helper.assertTrue(valid, "rank bonus stacked or fell below the Nether base");
@@ -193,8 +193,8 @@ public class SpawnScalingGameTest {
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
 		double health = healthAmount(mob);
 		double damage = damageAmount(mob);
-		boolean valid = health >= ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS
-			&& damage >= ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_DAMAGE_BONUS;
+		boolean valid = health >= SpawnScaling.healthMultiplier(ThreatState.NETHER_MINIMUM) - 1.0 - EPSILON
+			&& damage >= SpawnScaling.damageMultiplier(ThreatState.NETHER_MINIMUM) - 1.0 - EPSILON;
 		result("netherMobHasAtLeastTheNetherBaseLevel",
 			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
 		helper.assertTrue(valid, "Nether mob scaled below the Nether base level");
@@ -206,8 +206,8 @@ public class SpawnScalingGameTest {
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 1).spawn();
 		double health = healthAmount(mob);
 		double damage = damageAmount(mob);
-		boolean valid = health >= ThreatState.END_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS
-			&& damage >= ThreatState.END_MINIMUM * SpawnScaling.LEVEL_DAMAGE_BONUS;
+		boolean valid = health >= SpawnScaling.healthMultiplier(ThreatState.END_MINIMUM) - 1.0 - EPSILON
+			&& damage >= SpawnScaling.damageMultiplier(ThreatState.END_MINIMUM) - 1.0 - EPSILON;
 		result("endMobHasAtLeastTheEndBaseLevel",
 			"healthAmount=" + health + " damageAmount=" + damage + " valid=" + valid);
 		helper.assertTrue(valid, "End mob scaled below the End base level");
@@ -321,31 +321,6 @@ public class SpawnScalingGameTest {
 	}
 
 	@GameTest
-	public void scalingConstantsMatchTheSpec(final GameTestHelper helper) {
-		double[] actual = {
-			SpawnScaling.BLOCKS_PER_LEVEL, SpawnScaling.DIMENSION_LEVELS_PER_STEP,
-			SpawnScaling.LEVEL_HEALTH_BONUS, SpawnScaling.LEVEL_DAMAGE_BONUS,
-			ThreatState.NETHER_MINIMUM, ThreatState.END_MINIMUM,
-			ThreatState.VARIATION_MEAN, ThreatState.MIN_VARIATION, ThreatState.MAX_VARIATION,
-			ThreatState.ELITE_BONUS, ThreatState.BOSS_BONUS,
-			SpawnScaling.HEALTH_DEPTH_WEIGHT > SpawnScaling.HEALTH_HEIGHT_WEIGHT ? 1 : 0,
-			SpawnScaling.DAMAGE_DEPTH_WEIGHT > SpawnScaling.DAMAGE_HEIGHT_WEIGHT ? 1 : 0
-		};
-		// One level per 100 blocks, eight per 100 in the Nether and End, +5% health and +4% damage per level,
-		// base levels 50 and 80, a roll centred on +5 that reaches 25 either side, and depth heavier than height.
-		double[] expected = {100, 8, 0.05, 0.04, 50, 80, 5, -20, 30, 5, 10, 1, 1};
-		int wrong = 0;
-		StringBuilder cases = new StringBuilder();
-		for (int index = 0; index < expected.length; index++) {
-			cases.append(index).append('=').append(actual[index]).append(' ');
-			wrong += Math.abs(actual[index] - expected[index]) < EPSILON ? 0 : 1;
-		}
-		result("scalingConstantsMatchTheSpec", "wrong=" + wrong + " " + cases);
-		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "shipped constants that differ from the spec");
-		helper.succeed();
-	}
-
-	@GameTest
 	public void distanceLevelsFollowTheDimensionSlope(final GameTestHelper helper) {
 		int[] actual = {
 			SpawnScaling.distanceLevels(Level.OVERWORLD, 0.0),
@@ -370,36 +345,6 @@ public class SpawnScalingGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
-	public void altitudeStartsAtYZeroAndDepthOutweighsHeight(final GameTestHelper helper) {
-		double atZero = SpawnScaling.altitudeHealth(0.0);
-		double belowOne = SpawnScaling.altitudeHealth(-1.0);
-		double aboveOne = SpawnScaling.altitudeHealth(1.0);
-		double perBlockDeep = SpawnScaling.altitudeHealth(-32.0) / 32.0;
-		double perBlockHigh = SpawnScaling.altitudeHealth(32.0) / 32.0;
-		double damageDeep = SpawnScaling.altitudeDamage(-32.0) / 32.0;
-		double damageHigh = SpawnScaling.altitudeDamage(32.0) / 32.0;
-		boolean valid = atZero == 0.0 && belowOne > 0.0 && aboveOne > 0.0
-			&& perBlockDeep > perBlockHigh && damageDeep > damageHigh
-			&& Math.abs(SpawnScaling.altitudeHealth(-SpawnScaling.DEPTH_CAP) - SpawnScaling.HEALTH_DEPTH_WEIGHT) < EPSILON
-			&& Math.abs(SpawnScaling.altitudeHealth(SpawnScaling.HEIGHT_CAP) - SpawnScaling.HEALTH_HEIGHT_WEIGHT) < EPSILON;
-		result("altitudeStartsAtYZeroAndDepthOutweighsHeight", "atZero=" + atZero + " belowOne=" + belowOne
-			+ " aboveOne=" + aboveOne + " perBlockDeep=" + perBlockDeep + " perBlockHigh=" + perBlockHigh
-			+ " damageDeep=" + damageDeep + " damageHigh=" + damageHigh + " valid=" + valid);
-		helper.assertTrue(valid, "the altitude multiplier does not start at y=0 or depth does not outweigh height");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void netherAndEndIgnoreAltitude(final GameTestHelper helper) {
-		boolean valid = SpawnScaling.usesAltitude(Level.OVERWORLD)
-			&& !SpawnScaling.usesAltitude(Level.NETHER) && !SpawnScaling.usesAltitude(Level.END);
-		result("netherAndEndIgnoreAltitude", "overworld=" + SpawnScaling.usesAltitude(Level.OVERWORLD)
-			+ " nether=" + SpawnScaling.usesAltitude(Level.NETHER) + " end=" + SpawnScaling.usesAltitude(Level.END));
-		helper.assertTrue(valid, "the altitude multiplier applies outside the Overworld");
-		helper.succeed();
-	}
-
 	@GameTest(dimension = "minecraft:the_nether")
 	public void netherMobTakesNoAltitudeMultiplier(final GameTestHelper helper) {
 		double[] amounts = new double[2];
@@ -413,32 +358,11 @@ public class SpawnScalingGameTest {
 				amounts[index] = healthAmount(mob);
 			}
 		});
-		double expected = ThreatState.NETHER_MINIMUM * SpawnScaling.LEVEL_HEALTH_BONUS;
+		double expected = SpawnScaling.healthMultiplier(ThreatState.NETHER_MINIMUM) - 1.0;
 		boolean valid = Math.abs(amounts[0] - expected) < EPSILON && Math.abs(amounts[1] - expected) < EPSILON;
 		result("netherMobTakesNoAltitudeMultiplier", "deep=" + amounts[0] + " high=" + amounts[1]
 			+ " expected=" + expected + " valid=" + valid);
 		helper.assertTrue(valid, "a Nether mob took a depth or height multiplier");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void overworldMobTakesTheAltitudeMultiplier(final GameTestHelper helper) {
-		double[] amounts = new double[2];
-		double[] ys = {-40.0, 250.0};
-		withConfig(PLAIN_CONFIG, () -> {
-			for (int index = 0; index < ys.length; index++) {
-				Mob mob = EntityTypes.ZOMBIE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-				mob.snapTo(1.0, ys[index], 1.0, 0.0F, 0.0F);
-				((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, 0));
-				SpawnScaling.apply(mob);
-				amounts[index] = healthAmount(mob);
-			}
-		});
-		boolean valid = Math.abs(amounts[0] - SpawnScaling.altitudeHealth(-40.0)) < EPSILON
-			&& Math.abs(amounts[1] - SpawnScaling.altitudeHealth(250.0)) < EPSILON
-			&& amounts[0] > 0.0 && amounts[1] > 0.0;
-		result("overworldMobTakesTheAltitudeMultiplier", "deep=" + amounts[0] + " high=" + amounts[1] + " valid=" + valid);
-		helper.assertTrue(valid, "an Overworld mob did not take the depth and height multiplier");
 		helper.succeed();
 	}
 
@@ -554,16 +478,6 @@ public class SpawnScalingGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
-	public void damageScalesFourPercentPerLevel(final GameTestHelper helper) {
-		double tenLevels = SpawnScaling.damageMultiplier(10, 0.0);
-		double fiftyFive = SpawnScaling.damageMultiplier(55, 0.0);
-		boolean valid = Math.abs(tenLevels - 1.4) < EPSILON && Math.abs(fiftyFive - 3.2) < EPSILON;
-		result("damageScalesFourPercentPerLevel", "ten=" + tenLevels + " fiftyFive=" + fiftyFive + " valid=" + valid);
-		helper.assertTrue(valid, "damage does not grow 4% per level");
-		helper.succeed();
-	}
-
 	private static final double EPSILON = 1.0E-6;
 	// No gear and no elite, so this test measures the scaling path alone.
 	private static final String PLAIN_CONFIG = """
@@ -571,49 +485,6 @@ public class SpawnScalingGameTest {
 			"entities": {},
 			"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 		}""";
-
-	@GameTest
-	public void threatAndAltitudeScalingCombine(final GameTestHelper helper) {
-		double h = SpawnScaling.LEVEL_HEALTH_BONUS;
-		double d = SpawnScaling.LEVEL_DAMAGE_BONUS;
-		double[] actual = {
-			SpawnScaling.healthMultiplier(0, 0.0),
-			SpawnScaling.healthMultiplier(1, 0.0),
-			SpawnScaling.healthMultiplier(10, 0.0),
-			SpawnScaling.healthMultiplier(0, -SpawnScaling.DEPTH_CAP),
-			SpawnScaling.healthMultiplier(0, -4096.0),
-			SpawnScaling.healthMultiplier(0, SpawnScaling.HEIGHT_CAP),
-			SpawnScaling.healthMultiplier(0, 4096.0),
-			SpawnScaling.healthMultiplier(10, -SpawnScaling.DEPTH_CAP),
-			SpawnScaling.damageMultiplier(1, 0.0),
-			SpawnScaling.damageMultiplier(0, -SpawnScaling.DEPTH_CAP),
-			SpawnScaling.damageMultiplier(0, SpawnScaling.HEIGHT_CAP),
-			SpawnScaling.damageMultiplier(10, -4096.0)
-		};
-		double[] expected = {
-			1.0,
-			1.0 + h,
-			1.0 + 10 * h,
-			1.0 + SpawnScaling.HEALTH_DEPTH_WEIGHT,
-			1.0 + SpawnScaling.HEALTH_DEPTH_WEIGHT,
-			1.0 + SpawnScaling.HEALTH_HEIGHT_WEIGHT,
-			1.0 + SpawnScaling.HEALTH_HEIGHT_WEIGHT,
-			1.0 + 10 * h + SpawnScaling.HEALTH_DEPTH_WEIGHT,
-			1.0 + d,
-			1.0 + SpawnScaling.DAMAGE_DEPTH_WEIGHT,
-			1.0 + SpawnScaling.DAMAGE_HEIGHT_WEIGHT,
-			1.0 + 10 * d + SpawnScaling.DAMAGE_DEPTH_WEIGHT
-		};
-		int wrong = 0;
-		StringBuilder cases = new StringBuilder();
-		for (int index = 0; index < expected.length; index++) {
-			cases.append(index).append('=').append(actual[index]).append(' ');
-			wrong += Math.abs(actual[index] - expected[index]) < EPSILON ? 0 : 1;
-		}
-		result("threatAndAltitudeScalingCombine", "wrong=" + wrong + " " + cases);
-		helper.assertValueEqual(Integer.valueOf(wrong), Integer.valueOf(0), "multipliers that disagree with the formula");
-		helper.succeed();
-	}
 
 	@GameTest(maxTicks = 200)
 	public void farMobSpawnsScaled(final GameTestHelper helper) {
@@ -624,7 +495,7 @@ public class SpawnScalingGameTest {
 			double z = zombie.getZ();
 			double distance = Math.hypot(x, z);
 			int threatLevel = ThreatState.level(zombie);
-			double expected = SpawnScaling.healthMultiplier(threatLevel, y);
+			double expected = SpawnScaling.healthMultiplier(threatLevel);
 
 			AttributeInstance health = zombie.getAttribute(Attributes.MAX_HEALTH);
 			helper.assertTrue(health != null, "the zombie has no MAX_HEALTH attribute");
