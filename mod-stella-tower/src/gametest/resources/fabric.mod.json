@@ -10,6 +10,7 @@
 		],
 		"fabric-gametest": [
 			"com.stella.tower.TowerPortalGameTest",
+			"com.stella.tower.TowerHealthCapGameTest",
 			"com.stella.tower.TowerFloorGameTest",
 			"com.stella.tower.VoidKeyGameTest",
 			"com.stella.tower.TowerEscapeGameTest",
