@@ -8,7 +8,7 @@ last_verified: 2026-09-29
 
 ## Purpose
 
-This repository develops separate Fabric mods on their own integration branches: mobs, equips, spells, villages, the Endless Tower, food, and the nether raid. The `main` snapshot includes unfinished work.
+This repository develops separate Fabric mods on one trunk, `main`: mobs, equips, spells, villages, the Endless Tower, food, learn, RPG, and the nether raid. Work branches merge into `main` through pull requests. The `main` snapshot includes unfinished work.
 
 ## Commands
 
@@ -25,10 +25,10 @@ This repository develops separate Fabric mods on their own integration branches:
 
 ## Architecture
 
-- `main-mobs` integrates `mod-stella-mobs` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-mobs]
-- `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: active] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
-- `main-spells` integrates `mod-stella-spells` work. [status: active] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
-- `main-food` integrates `mod-stella-food` work. [status: active] [verified: 2026-09-28] [source: git rev-parse main-food]
+- `main-mobs` integrates `mod-stella-mobs` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-24] [source: git branch --list main-mobs]
+- `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
+- `main-spells` integrates `mod-stella-spells` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-28] [source: git rev-parse origin/main-spells:mod-stella-spells]
+- `main-food` integrates `mod-stella-food` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-28] [source: git rev-parse main-food]
 - The food mod applies food effects through `Consumable` and covers cake through `CakeBlock.eat`. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin]
 - The cooking station used held items and crouch interaction before its screen replaced those controls. [status: superseded] [verified: 2026-09-28] [source: 46a89fe:mod-stella-food/src/main/java/com/stella/food/CookingStation.java]
 - The cooking station now uses a server menu and client screen for combination, cooking, and infusion. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/CookingStationMenu.java; src/client/java/com/stella/food/client/CookingStationScreen.java]
@@ -40,7 +40,7 @@ This repository develops separate Fabric mods on their own integration branches:
 - One spawn modifier per attribute combines threat level and the altitude contribution, which is nothing in the Nether and End. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
 - `main-food` was created from `origin/main` and tracks `origin/main-food`. [status: active] [verified: 2026-09-28] [source: git branch -vv main-food; git ls-remote --heads origin main-food]
 - Wild patrol pair rolls now use persisted 8x8 grid keys on the Overworld. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: mod-stella-mobs/src/main/java/com/stella/mobs/behavior/ChunkEncounters.java; build -x test -x runGameTest]
-- `main-villages` integrates `mc-stella-villages` work. [status: active] [verified: 2026-09-28] [source: git branch --list main-villages]
+- `main-villages` integrates `mc-stella-villages` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-28] [source: git branch --list main-villages]
 - Villages requires `mod-stella-mobs` for Nemesis elite state. Its Gradle build builds the neighboring mobs jar. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; fabric.mod.json; clean build]
 - The village head guards an eight-block bell radius; bell rings teleport loaded members and grant five-minute Speed II and Strength II. [status: active] [verified: 2026-09-28] [source: HeadBellGuardGoal.java; BellRally.java; five combined GameTest runs]
 - Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
@@ -125,6 +125,13 @@ This repository develops separate Fabric mods on their own integration branches:
 - Why: The two mods have independent source trees and development streams.
 - Alternatives: One shared development branch was superseded by oniichan's direction.
 - Evidence: `git branch --list main-mobs main-equip-ench` and `AGENTS.md`.
+
+### 2026-09-30 - One trunk
+
+- Decision: `main` is the only trunk. Work branches merge into it with merge commits.
+- Why: Eight parallel trunks were too many for one maintainer to keep in sync.
+- Alternatives: Separate repositories per mod were rejected. The mods share tooling and ship as one pack.
+- Evidence: `AGENTS.md` section Branching. Supersedes the 2026-09-24 decision above.
 
 ### 2026-09-24 - Private publication branch
 

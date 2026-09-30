@@ -3,22 +3,42 @@
 These rules apply to every mod in this repository, and to every session that
 works on one. They are the standard, not a suggestion.
 
-## Integration branches
+## Branching
 
-- `main-mobs` is the integration branch for `mod-stella-mobs`.
-- `main-equip-ench` is the integration branch for `mod-stella-equips-enchants`.
-- `main-spells` is the integration branch for `mod-stella-spells`.
-- `main-villages` is the integration branch for `mc-stella-villages`.
-- `main-tower` is the integration branch for `mod-stella-tower`, the Endless Tower.
-- `main-food` is the integration branch for `mod-stella-food`.
-- `main-learn` is the integration branch for `mod-stella-learn`, the learning mobs.
-- `main-nether` is the integration branch for `mod-stella-nether`, the raid nether.
-- Every agent creates a work branch from the current tip of the integration
-  branch for the mod it changes.
-- Do not branch from `master` or another work branch unless oniichan explicitly
-  requests stacked work.
-- Keep each mod's changes on its own integration branch. Do not merge the
-  integration branches into each other.
+- `main` is the only trunk. Do not create or use another long-lived branch.
+- Branch every change from the current tip of `origin/main`.
+- Name a work branch `<type>/<mod>-<topic>` in kebab case.
+  Types: `feat` for a feature, `bug` for a defect fix, `hotfix` for an urgent
+  production fix. Example: `feat/rpg-armor-sets`.
+- One branch changes one mod directory. A change that spans mods is split.
+  Land the shared contract on `main` first. Then branch each mod from it.
+- Stack a branch on another work branch only when the task file lists
+  `depends_on`. Retarget the child branch to `main` after its parent merges.
+- Open a pull request into `main` and merge it with a merge commit. Do not
+  squash. Do not rebase-merge.
+- Bring a branch up to date by merging `origin/main` into it. Do not rebase a
+  pushed branch.
+- Delete the branch and its worktree after the merge.
+- `master` is the original repository baseline, not a development target.
+
+## Mod interoperability
+
+- Every mod in the pack must load and work with every other mod present.
+- Every mod must also load and work when any other mod is absent.
+- A mod does not require a sibling mod in `fabric.mod.json` `depends`. It reaches
+  a sibling through an optional bridge and does nothing when the sibling is
+  missing.
+- Each cross-mod bridge has a game test with the sibling present and a test with
+  the sibling absent.
+- A mod does not change another mod's balance numbers. It calls the other mod's
+  public API.
+
+## Shared files
+
+- A work branch does not edit the root `README.md`, `AGENTS.md`, or `MEMORY.md`.
+- Put mod notes in that mod's own directory.
+- Update a root file in a separate commit at merge time. This keeps parallel
+  branches from conflicting.
 
 ## Verification standard
 
