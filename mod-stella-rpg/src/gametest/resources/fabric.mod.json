@@ -30,6 +30,7 @@
 			"com.stella.rpg.WeaponRollGameTest",
 			"com.stella.rpg.TombstoneGameTest",
 			"com.stella.rpg.DamageLogGameTest",
+			"com.stella.rpg.XpCurveGameTest",
 			"com.stella.rpg.AttackPreviewGameTest",
 			"com.stella.rpg.RpgScalingCoreGameTest",
 			"com.stella.rpg.HealthScaleGameTest",
