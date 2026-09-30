@@ -8,10 +8,17 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.rpg.StellaRpg"
+		],
+		"client": [
+			"com.stella.rpg.client.StellaRpgClient"
 		]
 	},
 	"mixins": [
-		"mod-stella-rpg.mixins.json"
+		"mod-stella-rpg.mixins.json",
+		{
+			"config": "mod-stella-rpg.client.mixins.json",
+			"environment": "client"
+		}
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",

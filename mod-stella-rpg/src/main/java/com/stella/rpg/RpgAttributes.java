@@ -1,5 +1,6 @@
 package com.stella.rpg;
 
+import com.stella.rpg.net.RpgNet;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
@@ -20,6 +21,7 @@ public final class RpgAttributes {
 			server.getPlayerList().getPlayers().forEach(RpgLevelUp::check);
 			if (server.getTickCount() % SCAN_INTERVAL == 0) {
 				server.getPlayerList().getPlayers().forEach(RpgAttributes::refresh);
+				server.getPlayerList().getPlayers().forEach(RpgNet::syncIfChanged);
 			}
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> refresh(newPlayer));

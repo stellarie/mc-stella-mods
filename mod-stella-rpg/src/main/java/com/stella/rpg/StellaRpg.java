@@ -1,5 +1,6 @@
 package com.stella.rpg;
 
+import com.stella.rpg.net.RpgNet;
 import com.stella.rpg.tomb.TombstoneBlock;
 import com.stella.rpg.tomb.TombstoneBlockEntity;
 import net.fabricmc.api.ModInitializer;
@@ -21,6 +22,7 @@ public final class StellaRpg implements ModInitializer {
 		RpgDeath.register();
 		RpgAttributes.register();
 		RpgCommand.register();
+		RpgNet.register();
 		ArmorSets.register();
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> RpgConfigStore.reload(RpgConfigStore.defaultPath()));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
