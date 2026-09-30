@@ -20,6 +20,7 @@
 			"com.stella.rpg.RpgDiceGameTest",
 			"com.stella.rpg.RpgLevelUpGameTest",
 			"com.stella.rpg.RpgMobStatsGameTest",
+			"com.stella.rpg.RpgNetGameTest",
 			"com.stella.rpg.RpgPointsGameTest",
 			"com.stella.rpg.RpgRespecGameTest",
 			"com.stella.rpg.RpgSpellsGameTest",

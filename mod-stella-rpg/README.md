@@ -1,6 +1,7 @@
 # mod-stella-rpg
 
-A server-side Fabric mod for Minecraft 26.3. Every player and every mob has six stats.
+A Fabric mod for Minecraft 26.3. The server holds all rules. The optional client part adds a stats screen.
+Every player and every mob has six stats.
 Point allocation and level retention apply to players only.
 Dice damage and stat effects apply to players and mobs.
 
@@ -88,6 +89,38 @@ The server applies the faster bow draw. The client draw animation keeps the vani
 - `/rpgstats` prints one line per stat, then `Unspent: N`, `Atk dice`, and `Ranged dice`. A line reads `STR 25 + 5` with a bonus and `STR 25` without.
 - `/rpgstats allocate <stat> <amount>` spends unspent points. Stat keys are `str`, `agi`, `vit`, `dex`, `int`, `luk`.
 - `/rpgstats respec` resets every base value for 320 emeralds.
+
+## Stats tab
+
+A client with the mod shows two tabs above the inventory panel: Inventory and Stats.
+The tabs sit at `topPos - 28` and follow the panel when the recipe book opens.
+The Stats tab opens a screen at the same panel position.
+The tabs appear only after the server sent the first stat sync.
+
+- The left column shows `Str 25 + 5` for each stat, base then bonus. A `+` button adds 1 point.
+  Shift adds 10, or all unspent points when fewer remain.
+- The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd`. `Atk` and `Aspd` read the local attributes each frame.
+- `Status Point` shows the unspent points.
+- Hover a stat row to see its effect.
+- `Respec (320 emeralds)` needs two clicks within 5 seconds.
+- `E` and `Esc` close the screen.
+
+The client computes the percentages from the `RpgCurve` values it holds.
+A dedicated server with a custom `stats.json` shows the default curves on the client.
+
+### Payloads
+
+| Payload | Direction | Fields |
+|---|---|---|
+| `mod-stella-rpg:stats_sync` | server to client | `int[6] base`, `int[6] bonus`, `unspent`, `level`, `flatDefense`, `byte result` |
+| `mod-stella-rpg:allocate` | client to server | `stat` (ordinal of `Stat`), `amount` |
+| `mod-stella-rpg:respec` | client to server | none |
+
+- The server validates every request. A bad stat ordinal returns `INVALID_STAT`. Other limits come from `StatPoints`.
+- Every request gets a `stats_sync` reply. Its `result` byte is the ordinal of `StatPoints.Result`.
+- The server also syncs on join, on respawn, after `/rpgstats allocate` and `/rpgstats respec`, and when the level or a bonus changes.
+  The change check runs every 20 ticks.
+- The server sends a payload only when `ServerPlayNetworking.canSend` is true. A vanilla client gets nothing.
 
 ## Config
 
@@ -192,6 +225,7 @@ Run these from `mod-stella-rpg/` with Java 25:
 .\gradlew.bat runGameTest --rerun
 ```
 
+The `client` source set holds the screen. The main source set never references it.
 Game tests run headless on a server. A new test class must be listed in
 `src/gametest/resources/fabric.mod.json`.
 
@@ -205,3 +239,4 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgPlayerExperienceMixin` | `Player#getBaseExperienceReward`, at `HEAD` |
 | `RpgInventoryDropMixin` | `Inventory#dropAll`, at `HEAD`, cancellable |
 | `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7) |
+| `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |

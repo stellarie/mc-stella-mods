@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.stella.rpg.net.RpgNet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,6 +66,7 @@ public final class RpgCommand {
 			case NOT_ENOUGH_EMERALDS -> "A respec needs " + StatPoints.RESPEC_EMERALDS + " emeralds.";
 			case NOTHING_TO_RESET -> "No points are allocated.";
 			case INVALID_AMOUNT -> "The amount must be at least 1.";
+			case INVALID_STAT -> "Unknown stat.";
 		};
 	}
 
@@ -98,6 +100,7 @@ public final class RpgCommand {
 			command.getSource().sendFailure(Component.literal(message(result)));
 			return 0;
 		}
+		RpgNet.sync(player);
 		command.getSource().sendSuccess(() -> Component.literal(statusLine(player, stat)), false);
 		return 1;
 	}
@@ -112,6 +115,7 @@ public final class RpgCommand {
 			command.getSource().sendFailure(Component.literal(message(result)));
 			return 0;
 		}
+		RpgNet.sync(player);
 		command.getSource().sendSuccess(
 			() -> Component.literal("Respec done. Cost: " + StatPoints.RESPEC_EMERALDS + " emeralds."), false);
 		return 1;
