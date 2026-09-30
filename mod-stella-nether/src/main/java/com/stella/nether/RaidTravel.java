@@ -219,9 +219,25 @@ public final class RaidTravel {
 	 */
 	public static void stepIn(final ServerLevel level, final Entity entity, final BlockPos portal) {
 		if (entity instanceof ServerPlayer player && level.dimension().equals(Level.OVERWORLD) && !player.isSpectator()
-			&& !player.isPassenger() && !player.isOnPortalCooldown() && pending(player) == null) {
+			&& !player.isPassenger() && !player.isOnPortalCooldown() && pending(player) == null
+			&& netherPortalInObsidian(level, portal)) {
 			ask(player, portal);
 		}
+	}
+
+	/**
+	 * Whether a portal block is a nether portal standing on obsidian. Other portals built from the nether
+	 * portal, such as the tower's in crying obsidian, never open the window.
+	 */
+	public static boolean netherPortalInObsidian(final ServerLevel level, final BlockPos portal) {
+		if (!level.getBlockState(portal).is(Blocks.NETHER_PORTAL)) {
+			return false;
+		}
+		BlockPos.MutableBlockPos below = portal.mutable();
+		do {
+			below.move(Direction.DOWN);
+		} while (level.getBlockState(below).is(Blocks.NETHER_PORTAL) && below.getY() > level.getMinY());
+		return level.getBlockState(below).is(Blocks.OBSIDIAN);
 	}
 
 	private static void ask(final ServerPlayer player, final BlockPos portal) {
