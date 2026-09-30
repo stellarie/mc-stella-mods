@@ -32,7 +32,7 @@ public class TowerFloorGameTest {
 		boolean ceiling = tower.getBlockState(o.offset(20, TowerLayout.HEIGHT, 21)).is(TowerBlocks.TOWER_WALL)
 			|| tower.getBlockState(o.offset(20, TowerLayout.HEIGHT, 21)).is(TowerBlocks.TOWER_LAMP);
 		int room = 0;
-		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(floor));
+		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(tower, floor));
 		for (int y = 0; y < TowerLayout.HEIGHT; y++) {
 			room += tower.getBlockState(arrival.above(y)).isAir() ? 1 : 0;
 		}
@@ -91,7 +91,7 @@ public class TowerFloorGameTest {
 			helper.assertFalse(builtAtOnce, "prepare built the whole floor at once");
 			helper.assertTrue(queued, "the floor was never queued");
 			helper.assertTrue(TowerFloors.isBuilt(tower, floor), "the queued floor is not built yet");
-			boolean frame = tower.getBlockState(TowerLayout.portalFrame(floor).get(0)).is(TowerBlocks.TOWER_FRAME);
+			boolean frame = tower.getBlockState(TowerLayout.portalFrame(tower, floor).get(0)).is(TowerBlocks.TOWER_FRAME);
 			helper.assertTrue(frame, "the background floor has no frame");
 			TowerTestSupport.result("backgroundBuild", "tick=" + helper.getTick() + " longestStepMillis=" + TowerFloors.longestStepMillis());
 		});
@@ -103,7 +103,7 @@ public class TowerFloorGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		BlockPos inside = TowerLayout.portalInside(floor).get(0);
+		BlockPos inside = TowerLayout.portalInside(tower, floor).get(0);
 		// Only players climb, so a player takes the portal.
 		ServerPlayer climber = TowerTestSupport.join(helper, 1.5, 1.5);
 		climber.teleportTo(tower, inside.getX() + 0.5, inside.getY(), inside.getZ() + 0.5, Set.of(), 0.0F, 0.0F, true);
@@ -125,9 +125,9 @@ public class TowerFloorGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
-		BlockPos frame = TowerLayout.portalFrame(floor).get(0);
+		BlockPos frame = TowerLayout.portalFrame(tower, floor).get(0);
 		BlockPos ground = TowerLayout.origin(floor).offset(30, -1, 12);
 		float frameHardness = tower.getBlockState(frame).getDestroySpeed(tower, frame);
 		boolean groundBroke = player.gameMode.destroyBlock(ground);

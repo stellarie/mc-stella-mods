@@ -26,7 +26,7 @@ public class TowerSpawnerGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
 		int[] filledAt = {-1};
 		int[] most = {0};
@@ -68,7 +68,7 @@ public class TowerSpawnerGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
 		double nearest = Double.MAX_VALUE;
 		int spawned = 0;
@@ -99,7 +99,7 @@ public class TowerSpawnerGameTest {
 		BlockPos middle = TowerLayout.origin(empty).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
 		tower.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, net.minecraft.world.level.ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
 		helper.runAfterDelay(60L, () -> {
 			int stocked = TowerMobs.count(tower, floor);
@@ -122,7 +122,7 @@ public class TowerSpawnerGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, Set.of(), 0.0F, 0.0F, true);
 		BlockPos far = TowerLayout.origin(floor).offset(TowerLayout.SIZE - 1, 0, TowerLayout.SIZE - 1);
 		helper.runAfterDelay(40L, () -> TowerTestSupport.leave(helper, player));

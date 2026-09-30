@@ -102,19 +102,22 @@ public final class TowerElites {
 	 * keeps its portal across the room, and its guardians keep to that.
 	 */
 	public static BlockPos post(final ServerLevel tower, final int floor) {
-		int moved = TowerLayout.PORTAL_X - TowerLayout.portalX(floor);
-		if (moved != 0) {
-			BlockPos hallFrame = TowerLayout.portalFrame(floor).get(0);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		int moved = TowerPlan.CLASSIC_PORTAL_X - plan.portalX();
+		if (plan.version() == 0 && moved != 0) {
+			BlockPos hallFrame = plan.portalFrame().get(0);
 			if (!tower.getBlockState(hallFrame).is(TowerBlocks.TOWER_FRAME) && tower.getBlockState(hallFrame.offset(moved, 0, 0)).is(TowerBlocks.TOWER_FRAME)) {
-				return post(floor).offset(moved, 0, 0);
+				return post(plan).offset(moved, 0, 0);
 			}
 		}
-		return post(floor);
+		return post(plan);
 	}
 
-	/** Where a floor's guardians stand guard: a few steps in front of its portal. */
-	public static BlockPos post(final int floor) {
-		return TowerLayout.portalInside(floor).get(0).offset(-GUARD_DISTANCE, 0, 0);
+	/** Where a floor's guardians stand guard: a few steps in front of its portal, on the side it is entered by. */
+	public static BlockPos post(final TowerPlan plan) {
+		// On the floor of the hall, however high the portal stands.
+		BlockPos inside = plan.portalInside().get(0);
+		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y - inside.getY(), 0);
 	}
 
 	public static boolean keepsElite(final int floor) {
@@ -236,13 +239,18 @@ public final class TowerElites {
 	}
 
 	/**
-	 * A guardian with nothing to hunt walks back to its post. It is never held to the post by a home, since a
+	 * An elite with nothing to hunt walks back to its post; a boss is not tethered at all, and roams its hall.
+	 * It is never held to the post by a home, since a
 	 * mob with a home will not take on a player beyond it, and would stand to be shot from there.
 	 */
 	static void tether(final Mob guardian, final int floor) {
 		if (guardian.hasHome()) {
 			// Raised before the change, with a home saved on it.
 			guardian.clearHome();
+		}
+		TowerMobs.State state = TowerMobs.stateOf(guardian);
+		if (state != null && state.rank() == TowerRank.BOSS) {
+			return;
 		}
 		net.minecraft.world.entity.LivingEntity quarry = guardian.getTarget();
 		if (quarry != null && quarry.isAlive()) {

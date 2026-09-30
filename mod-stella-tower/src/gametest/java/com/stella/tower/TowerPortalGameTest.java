@@ -84,13 +84,13 @@ public class TowerPortalGameTest {
 		// A traveller is re-created on the far side; its tags travel with it, so the tag finds this pig and no other.
 		String tag = "stella_tower_test_" + UUID.randomUUID();
 		pig.addTag(tag);
-		Vec3 spot = TowerLayout.arrival(1);
+		Vec3 spot = TowerLayout.arrival(tower, 1);
 		helper.succeedWhen(() -> {
 			var found = tower.getEntitiesOfClass(Pig.class, new net.minecraft.world.phys.AABB(spot, spot).inflate(4.0), candidate -> candidate.entityTags().contains(tag));
 			var arrived = found.isEmpty() ? null : found.get(0);
 			helper.assertTrue(arrived != null, "the pig has not reached the tower: removed=" + pig.getRemovalReason() + " ticks=" + pig.tickCount
 				+ " at=" + pig.position() + " block=" + pig.level().getBlockState(pig.blockPosition()).getBlock() + " cooldown=" + pig.getPortalCooldown() + " anywhere=" + where(helper, tag));
-			double off = arrived.position().distanceTo(TowerLayout.arrival(1));
+			double off = arrived.position().distanceTo(TowerLayout.arrival(tower, 1));
 			helper.assertTrue(off < 2.0, "the pig arrived " + off + " from floor 1's arrival spot");
 			helper.assertTrue(TowerFloors.isBuilt(tower, 1), "floor 1 was never built");
 			TowerTestSupport.result("pigEntersTower", "floor=" + TowerLayout.floorAt(arrived.blockPosition()) + " off=" + off);
@@ -116,10 +116,10 @@ public class TowerPortalGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		BlockPos inside = TowerLayout.portalInside(floor).get(0);
+		BlockPos inside = TowerLayout.portalInside(tower, floor).get(0);
 		tower.setBlock(inside, Blocks.FIRE.defaultBlockState(), 3);
 		int lit = 0;
-		for (BlockPos pos : TowerLayout.portalInside(floor)) {
+		for (BlockPos pos : TowerLayout.portalInside(tower, floor)) {
 			lit += tower.getBlockState(pos).is(TowerBlocks.TOWER_PORTAL) ? 1 : 0;
 		}
 		// Only players climb, so a player stands in the portal.
@@ -127,9 +127,9 @@ public class TowerPortalGameTest {
 		climber.teleportTo(tower, inside.getX() + 0.5, inside.getY(), inside.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, true);
 		TeleportTransition next = TowerBlocks.TOWER_PORTAL.getPortalDestination(tower, climber, inside);
 		TowerTestSupport.leave(helper, climber);
-		double off = next == null ? -1.0 : next.position().distanceTo(TowerLayout.arrival(floor + 1));
+		double off = next == null ? -1.0 : next.position().distanceTo(TowerLayout.arrival(tower, floor + 1));
 		TowerTestSupport.result("floorPortalLeadsUp", "lit=" + lit + " off=" + off + " builtAbove=" + TowerFloors.isBuilt(tower, floor + 1));
-		helper.assertTrue(lit == TowerLayout.portalInside(floor).size(), "floor " + floor + "'s frame lit " + lit + " portal blocks");
+		helper.assertTrue(lit == TowerLayout.portalInside(tower, floor).size(), "floor " + floor + "'s frame lit " + lit + " portal blocks");
 		helper.assertTrue(next != null && off < 0.01 && next.newLevel() == tower, "floor " + floor + "'s portal leads " + off + " from floor " + (floor + 1));
 		helper.assertTrue(TowerFloors.isBuilt(tower, floor + 1), "the floor above was never built");
 		helper.succeed();

@@ -25,7 +25,7 @@ public class TowerEscapeGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		BlockState frame = tower.getBlockState(TowerLayout.portalFrame(floor).get(0));
+		BlockState frame = tower.getBlockState(TowerLayout.portalFrame(tower, floor).get(0));
 		List<BlockState> states = List.of(
 			TowerBlocks.TOWER_WALL.defaultBlockState(), TowerBlocks.TOWER_LAMP.defaultBlockState(),
 			TowerBlocks.TOWER_PORTAL.defaultBlockState(), frame
@@ -60,7 +60,7 @@ public class TowerEscapeGameTest {
 	public void anEndermanTakesNothingInTheTower(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		ServerLevel world = helper.getLevel();
-		int inTower = takingTries(tower, TowerLayout.arrival(TowerTestSupport.freshFloor()));
+		int inTower = takingTries(tower, TowerLayout.arrival(tower, TowerTestSupport.freshFloor()));
 		int outside = takingTries(world, helper.absoluteVec(new Vec3(2.5, 2.0, 2.5)));
 		TowerTestSupport.result("endermanTakes", "inTower=" + inTower + " outside=" + outside);
 		helper.assertTrue(outside > 0, "an enderman outside the tower never sets out to take a block, so the case proves nothing");
@@ -97,7 +97,7 @@ public class TowerEscapeGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		Vec3 arrival = TowerLayout.arrival(floor);
+		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		Pig pig = EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND);
 		pig.snapTo(arrival);
 		tower.addFreshEntity(pig);
@@ -123,7 +123,7 @@ public class TowerEscapeGameTest {
 		Vec3 thrownFrom = player.position();
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		player.teleport(new TeleportTransition(tower, TowerLayout.arrival(floor), Vec3.ZERO, 0.0F, 0.0F, TeleportTransition.DO_NOTHING));
+		player.teleport(new TeleportTransition(tower, TowerLayout.arrival(tower, floor), Vec3.ZERO, 0.0F, 0.0F, TeleportTransition.DO_NOTHING));
 		TowerTravel.Entry entry = player.getAttached(TowerTravel.ENTRY);
 		boolean key = player.getInventory().contains(stack -> stack.is(TowerItems.VOID_KEY));
 		double off = entry == null ? -1.0 : entry.position().distanceTo(thrownFrom);
@@ -168,7 +168,7 @@ public class TowerEscapeGameTest {
 		player.getEnderChestInventory().addItem(new ItemStack(TowerItems.VOID_KEY));
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		player.teleport(new TeleportTransition(tower, TowerLayout.arrival(floor), Vec3.ZERO, 0.0F, 0.0F, TeleportTransition.DO_NOTHING));
+		player.teleport(new TeleportTransition(tower, TowerLayout.arrival(tower, floor), Vec3.ZERO, 0.0F, 0.0F, TeleportTransition.DO_NOTHING));
 		boolean given = player.getInventory().contains(stack -> stack.is(TowerItems.VOID_KEY));
 		TowerTestSupport.result("enderChestKey", "given=" + given);
 		TowerTestSupport.leave(helper, player);

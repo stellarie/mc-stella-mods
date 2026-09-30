@@ -229,10 +229,13 @@ public class TowerRuneEffectGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		// The mob beside the arrival zone, not in it: a tower mob inside a zone is swept out within five ticks.
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
+		player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
 		player.setItemInHand(InteractionHand.MAIN_HAND, TowerRunes.apply(new ItemStack(Items.DIAMOND_SWORD), new RuneData(TowerElement.HOLY, TOP)));
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.WIND);
-		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		zombie.snapTo(spots.mob());
 		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);
 		int before;

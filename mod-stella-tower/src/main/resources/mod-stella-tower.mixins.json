@@ -15,7 +15,9 @@
 		"EndermanTakeMixin",
 		"LivingEntityAccessor",
 		"GhostPhaseMixin",
-		"GhostBlowMixin"
+		"GhostBlowMixin",
+		"TowerTargetMixin",
+		"TowerSensorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

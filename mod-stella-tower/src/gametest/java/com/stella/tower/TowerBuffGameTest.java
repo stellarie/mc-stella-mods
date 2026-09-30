@@ -27,7 +27,7 @@ public class TowerBuffGameTest {
 	private static Zombie mobOn(final ServerLevel tower, final int room, final double dx, final int own) {
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, own, TowerElement.WIND);
-		zombie.snapTo(TowerLayout.arrival(room).add(dx, 0.0, 0.0));
+		zombie.snapTo(TowerTestSupport.awayFromArrival(tower, room, dx));
 		tower.addFreshEntity(zombie);
 		return zombie;
 	}
@@ -81,7 +81,7 @@ public class TowerBuffGameTest {
 			MobEffectInstance effect = player.getEffect(buff.effect());
 			had[0] = effect != null;
 			amplifier[0] = effect == null ? -1 : effect.getAmplifier();
-			Vec3 elsewhere = TowerLayout.arrival(away);
+			Vec3 elsewhere = TowerLayout.arrival(tower, away);
 			player.teleportTo(tower, elsewhere.x, elsewhere.y, elsewhere.z, Set.of(), 0.0F, 0.0F, true);
 		});
 		// The buff is taken at the next refresh after leaving. The last dose, given no earlier than a refresh before
@@ -220,7 +220,7 @@ public class TowerBuffGameTest {
 		helper.runAfterDelay(40L, () -> {
 			MobEffectInstance held = player.getEffect(TowerBuffs.PlayerBuff.STRENGTH.effect());
 			floorAmplifier[0] = held == null ? -1 : held.getAmplifier();
-			Vec3 elsewhere = TowerLayout.arrival(away);
+			Vec3 elsewhere = TowerLayout.arrival(tower, away);
 			player.teleportTo(tower, elsewhere.x, elsewhere.y, elsewhere.z, Set.of(), 0.0F, 0.0F, true);
 		});
 		helper.runAfterDelay(40L + TowerBuffs.REFRESH_TICKS + 1L, () -> {

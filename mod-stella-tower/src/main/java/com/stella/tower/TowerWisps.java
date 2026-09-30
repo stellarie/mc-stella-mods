@@ -106,7 +106,15 @@ public final class TowerWisps {
 		int size = TowerLayout.SIZE;
 		int startX = from.getX() - origin.getX();
 		int startZ = from.getZ() - origin.getZ();
-		List<BlockPos> portal = TowerLayout.portalInside(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		List<BlockPos> portal = plan.portalInside();
+		// The raised portal's way: the pyramid's steps are walked over, and each step is drawn at its height.
+		int[][] rise = new int[size][size];
+		for (BlockPos wall : plan.plinth()) {
+			if (wall.getY() >= TowerLayout.BASE_Y) {
+				rise[wall.getX() - origin.getX()][wall.getZ() - origin.getZ()] = wall.getY() - TowerLayout.BASE_Y + 1;
+			}
+		}
 		if (startX < 0 || startZ < 0 || startX >= size || startZ >= size) {
 			return List.of();
 		}
@@ -121,12 +129,13 @@ public final class TowerWisps {
 		while (!queue.isEmpty()) {
 			int[] at = queue.poll();
 			BlockPos here = origin.offset(at[0], 0, at[1]);
-			if (portal.contains(here)) {
+			BlockPos goal = portalAt(portal, here);
+			if (goal != null) {
 				List<BlockPos> steps = new ArrayList<>();
 				int x = at[0];
 				int z = at[1];
 				while (true) {
-					steps.add(origin.offset(x, 0, z));
+					steps.add(origin.offset(x, x == at[0] && z == at[1] ? goal.getY() - origin.getY() : rise[x][z], z));
 					int back = came[x][z];
 					if (back == x * size + z) {
 						break;
@@ -144,7 +153,9 @@ public final class TowerWisps {
 					continue;
 				}
 				BlockPos feet = origin.offset(x, 0, z);
-				if (tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
+				boolean stepped = rise[x][z] > 0 && !plan.isFramePost(x, z) && portalAt(portal, feet) == null;
+				boolean reaches = portalAt(portal, feet) != null;
+				if (stepped || reaches || tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
 					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty()) {
 					came[x][z] = at[0] * size + at[1];
 					queue.add(new int[] {x, z});
@@ -152,6 +163,17 @@ public final class TowerWisps {
 			}
 		}
 		return List.of();
+	}
+
+	/** The portal's lowest inside spot in the column of this one, or null when the column is not the portal's. */
+	private static @Nullable BlockPos portalAt(final List<BlockPos> portal, final BlockPos column) {
+		BlockPos lowest = null;
+		for (BlockPos inside : portal) {
+			if (inside.getX() == column.getX() && inside.getZ() == column.getZ() && (lowest == null || inside.getY() < lowest.getY())) {
+				lowest = inside;
+			}
+		}
+		return lowest;
 	}
 
 	/** The spots of the room within reach of a way's steps. */

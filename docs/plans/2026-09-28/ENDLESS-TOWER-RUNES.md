@@ -375,7 +375,8 @@ work anywhere and against any mob, not only in the tower:
   The hall is walled off from the maze, so the only way in is through the safe room: a door from the maze
   into the room, and one from the room into the hall. The room holds a crafting table, a furnace and an
   anvil along its north wall.
-- No mob is raised in a safe zone, and no trap is laid there. Mobs that chase a player may still walk in.
+- No mob is raised in a safe zone, and no trap is laid there. (Reversed by F3: no tower mob stays in a zone, and a
+  player in one draws no aggro; see "Built: walled safe room" below.)
 - A floor built before this change gets its safe zones the first time a player arrives by portal: the maze
   walls in them are cleared, the floor is laid, and a boss floor's workstations are set. On such a boss
   floor the hall stays open to the maze on every side.
@@ -537,3 +538,216 @@ at once) listens to that change for every way out: portal, key, scroll or comman
 (`leavingTheTowerTakesTheBuffAtOnce`) moves the player out the same way. The tower harness has no spells mod, so
 the scroll's own path is a manual item: read a Scroll of Return on a boss floor and check the floor's buff is
 gone and you stand at your bed or the world spawn.
+
+## Built: floor plans, random ends (2026-09-29, slice F1)
+
+- `TowerPlan` (variation, rotation, attempt, arrival and yaw, portal and facing, walls, safe zones, hall, chest
+  spots, version) replaces the fixed `ARRIVAL_X`/`PORTAL_X`/`MIDDLE_Z` and nook constants. `TowerLayout.arrival`,
+  `arrivalYaw`, `portalX`, `portalInside`, `portalFrame` now take the tower level. `TowerMaze.safeZones`,
+  `inSafeZone` and `TowerFloors.workstations(floor)` became plan methods; the nook constants survive only for
+  the classic layout.
+- A floor built to a plan carries `TowerFloors.planMarker` (TOWER_WALL one block under the settle marker). One
+  built without it has the version 0 plan, the old layout, verified against fingerprints taken from the code
+  before the change. Old elite floors that predate the halls still keep the frame check in `TowerElites.post`.
+- The old settled-floor line "mobs may walk in" is unchanged here; F3 reverses it.
+- Deviations from DECISIONS.md: none in behaviour. Additions: ends lie in the outer 3 cells of each half (so
+  they are always far apart); the two blocks beside the portal's frame posts are solid (no pocket, keeps the
+  3-wide path rule); the guardians' post stands on the side the portal is entered from; seeds are mixed with
+  splitmix before `java.util.Random` (nearby seeds otherwise drew alike). The trap rule keeps traps out of the
+  portal's cell and the cell either side of it along the frame.
+- Tests moved off fixed offsets: `TowerTestSupport.awayFromArrival` replaces `arrival + 20 blocks`; the
+  "way winds" assertion became a statistic in `planProperty`, since a maze can run straight between two near ends.
+
+## Built: raised portals, boss pyramid, free bosses (2026-09-30, slice F2)
+
+- `TowerPlan.lift()` and `plinth()`; constants `LIFT` 1, `PYRAMID_LAYERS` 3, `BOSS_LIFT` 4. The frame and inside
+  rise with the lift; `TowerFloors.finish` lays the plinth before the frame. Legacy (version 0) plans give lift 0
+  and no plinth, so an old floor's portal stays flat.
+- Reading of DECISIONS.md: "lift 1 on a TOWER_WALL plinth" is taken as the frame's bottom row at BASE_Y (one up
+  from the old BASE_Y-1) with TOWER_WALL under it. On a boss floor "frame on top of a 3-high pyramid" is three
+  layers at BASE_Y to BASE_Y+2 and the frame's bottom row at BASE_Y+3, so the inside is at BASE_Y+4 and the
+  frame top at BASE_Y+7, under the ceiling block at BASE_Y+8. Every step, hall floor to frame, is one block.
+- `TowerElites.post` now sits at y BASE_Y whatever the portal's height. `tether` returns for a boss: bosses
+  roam on legacy boss floors too, as the tether is shared code and the rule is about the rank.
+- The wisp's search walks over the pyramid's columns and ends in the portal's column, at its lowest inside
+  spot; the wisp test's "shortest" is to the spot before the portal plus one, and gaps are judged on the level.
+- Test support: `TowerTestSupport.openTheRaisedWay` marks the pyramid and portal columns open in the maze
+  tests' ground maps; the plan property walk takes only the frame's two posts as obstacles.
+- A floor built at F1's version 1 before this slice has no plinth but reports a lift. Nothing was deployed at F1,
+  so version 1 stays; a released layout change must bump `VERSION` (F1 review follow-up).
+- Deviations from DECISIONS.md: none beyond the reading above.
+
+## Change: plan versions and F1 review fixes (2026-09-30, slice F2)
+
+- Plan versioning mechanism (F1 review 1): the plan marker is now a stack of TOWER_WALL blocks, one per plan
+  version, from `planMarker(floor)` downward (`TowerFloors.planVersion`); none means version 0. `TowerPlan.at`
+  returns the plan of the recorded version, from a per-version generator (`TowerPlan.draw` dispatches on the
+  version). Rule for every later change: once a release has built floors with a generator, that generator is
+  frozen. A change to how floors are drawn adds a new version (a new `draw` case) and bumps `VERSION`; the old
+  case stays. Within this unreleased batch F2 to F5 may keep changing version 1, as nothing is deployed.
+  A floor going up is never taken for an old one: `isBuilt` is the build's last marker, and an unbuilt floor is
+  served the current plan and not remembered.
+- Cache (item 4): a built floor's version is cached by (seed, floor), 4096 floors, so `at` reads no blocks after
+  the first time. `TowerFloors.forget(floor)` is the test seam; `anOldElitefloorKeepsItsGuardsByItsOwnPortal`
+  uses it, as it turns a built floor into an old one by hand.
+- Tests through the real builder (item 2): `aFloorFromTheNormalBuilderReadsBackAsPlannedAtItsVersion` queues a
+  floor, samples it every tick while it goes up (20 samples, none legacy), then checks planned, version and
+  marker count; `aFloorKeepsThePlanOfTheVersionItCarries` and `theDecisionForABuiltFloorIsKept` cover the
+  markers and the cache.
+- Traps (item 3): `TowerTraps.layout` keeps traps out of the cell the portal is entered from as well
+  (`noTrapLiesInTheCellThePortalIsEnteredFrom`).
+- Item 5: the property test's hall check could not fail (it compared the plan with the constants it is drawn
+  from). It now checks the hall's own geometry: every hall spot open in the walls, the frame's footprint inside
+  the hall, the portal within a block of the hall's middle. Mutation: the portal moved 6 blocks, 480 hall floors
+  reported.
+
+## Built: walled safe room, mobs kept out, no aggro inside (2026-09-30, slice F3)
+
+- A planned boss floor's safe room is a ring of TOWER_WALL on the zone's outermost blocks (floor to ceiling), with
+  a 2 wide by 2 high exit into the hall (through the ring and the hall's wall) and a 2 by 2 entrance on the far
+  side onto the maze's cell; TOWER_LAMP on the jambs (three high) and lintels. The path-wide door is gone. The
+  workstations moved one row in (`SAFE_Z + 1`). Legacy (version 0) floors keep the wide door and the open room.
+  `TowerPlan.ring()`, `isRing`, `gates()`; `TowerMaze.classicWalls(random, floor, ring)`.
+- The hall was already enclosed but for its door (its cells are shut to the maze carve), so it now has exactly
+  one way out, through the room. `aBossCannotReachTheMazeExceptThroughTheRoom` proves it over 6000 plans, and that
+  the portal is unreachable with either opening shut.
+- `TowerSafety`: a sweep every 5 ticks (`SWEEP_TICKS`) over the floors with a player on them ejects any tower mob
+  whose body touches a zone, to the nearest free spot outside all zones, and clears targets, brain attack-target
+  and anger memories held on players in a zone. Two mixins keep it from starting again between sweeps.
+- Deviations from DECISIONS.md, with reasons:
+  - The targeting mixin is on `Mob.asValidTarget`, not `Mob.setTarget`. `setTarget` and `getTarget` both pass
+    through it, so it covers `setTarget` and also makes a target already held read as none at once; the sweep
+    reads the raw field (`getTargetUnchecked`). A second mixin on `Sensor.isEntityAttackable` covers the brain
+    mobs, whose attack target is a brain memory and never passes through `Mob.setTarget`.
+  - Ghosts are not ejected from zones: they are on the players' side and never hunt one.
+  - Pathfinding help (malus) was not added; the sweep is the guarantee, and a mob that walks in is out within a
+    sweep (measured 3 to 4 ticks of at most 5).
+  - No plan version bump: the ring is part of version 1, as F2's note allows while nothing is released. A
+    version 1 floor built by an earlier commit of this batch has the old door; nothing was deployed.
+- Reversed: the "Mobs that chase a player may still walk in" line above. No test asserted it.
+- Tests changed for the ring: the hall-edge test (door is 2 wide), the plan-built test (ring and lamps are not
+  maze wall), the safe-room zone test (ring blocks are solid on purpose), and the stations-face-the-room test (the
+  block behind a station is now the ring).
+- The sweep is per floor with a player on it only, so a mob in a zone on an empty floor stays until someone
+  arrives (then it is out within five ticks); nothing sees it meanwhile.
+- The keep-out is a bound, not a wall: a mob that keeps pushing at a zone (a boss at the door with a quarry
+  beyond the room) is sent back at each sweep and walks in again within a tick, so it is in the zone between
+  sweeps but gets no further than one sweep's walk. `bossAtDoor` measures the depth (max 1.3 blocks of 7) and
+  that it never reaches the maze. An earlier version of the test asserted "never in the zone longer than a
+  sweep", which measures the wrong thing and failed one run in about six.
+- One older test placed a mob inside the arrival zone (`mobsOnALitWayAreEnraged`); the sweep sent it off the
+  lit way, so it now stands on the first step of the way outside the zones.
+- A second review finding (fast bosses): a boss that drives four blocks into the room between two sweeps was sent to
+  the nearest spot outside, which is the far door. The sweep now sends a mob back to where it was last seen outside a
+  zone (a sighting kept for two sweeps), and only without one to the nearest spot (`sentBack`, `bossAtDoor`).
+
+## Change: F2 review follow-ups (2026-09-30, with slice F3)
+
+- Version cache: `builtVersion` checks `isBuilt` before serving a remembered decision; `TowerFloors.clearCaches` (plans,
+  decisions, unknown-version warnings) runs on `SERVER_STOPPED`. Its registration is a manual item
+  (`theCachesAreClearedWhenTheServerStopsRequiresManualTest`); the clearing itself is tested.
+- An unknown newer plan version is served the newest known plan and warned of once per version.
+- Walk tests over hundreds of plans and over built floors (see the README); plinth mutation proven.
+- `theDecisionForABuiltFloorIsKept` now clears the plan markers and keeps the built marker (the built marker is the
+  first thing asked now); `aRememberedDecisionIsNotServedForAFloorThatDoesNotStand` covers the old case.
+
+
+## Change: F3 review fixes (2026-09-30, slice F4 worker)
+
+- Shaman quarry filtered through `TowerSafety.sheltered`; the sweep's last-sighting restore checks ground support
+  (`Sighting.grounded`); `sheltered` uses the non-loading `TowerPlan.atQuiet` and a per-player, per-tick cache.
+- In-flight projectiles still land, and wardens are not tower mobs: neither is covered by the zones (accepted).
+- Tests: `TowerSafetyReviewGameTest`, red on three cases before the fixes, green after (see the README).
+
+## Built: floor variations and chest spots (2026-09-30, slice F4)
+
+Five variations in `TowerPlan.Variation` (MAZE, WIDE_ROOMS, STAGGERED, TALL_WALLS, SPIRAL) with weights 35/20/15/15/15,
+chosen by `TowerVariations` from (seed, floor). Plan `VERSION` stays 1; legacy floors unchanged. See the README section
+"Floor variations (slice F4)" for shapes and measured numbers.
+
+Decisions and deviations from DECISIONS.md (with reasons):
+
+- Choosing: "never repeat the last floor's variation" must be computed without walking from floor 1, and the naive draw
+  ("weights minus the last variation") drags the shares toward an even split. The chooser uses a second weight set
+  (`lambda`) for a floor after another, the roots of l(a)(S - l(a)) = w(a), which makes the chain reversible with the
+  weights as its stationary shares, and cuts the chain into 64-floor blocks (block-first floors draw by the weights;
+  the last floor of a block also avoids the next block's first). Floors of elite and boss rank bar variations, so their
+  ranks' measured shares are compared to a kernel-walked expectation, not to the raw weights.
+- Spiral ends: the arrival and the portal sit at the spiral's two ends (the end cell is the safe zone exactly), which
+  overrides "opposite halves"; the plan test exempts SPIRAL from that one rule. Either end may be the arrival.
+- The spiral is 7 x 7 cells of 8 (not the maze's 9 x 9 of 6), so a safe zone fits one cell and does not cut a shortcut
+  through the walls between turns; 49 cells, about 430 blocks from end to end.
+- Wide rooms use 21 x 21 cells of 2 (paths two wide), so the portal's dead end has a front two wide, not three; rooms
+  are recorded in the plan (`rooms()`, rotated with a hall floor's turn) so the test and later slices can see them.
+- Staggered: the portal pocket sits at the end of an even row (east with the odd rows offset 4, west offset 5 so the
+  doors beside the pocket fit), its two behind blocks solid; the two blocks of the portal column beside the posts are
+  left open (the maze's closes them), so the door to the odd row's end room stays two wide.
+- Tall walls: `plan.wallHeightAt` and the builder; the ring and a hall floor's hall enclosure stay full height.
+- Hall floors on the new variations: the variation's walls over the whole room, then the hall (and on a boss floor the
+  solid enclosure 14..49, the room, its ring and gates via `TowerMaze.bossRoom`, and the cell the room's entrance
+  opens on) stamped over them, the canonical layout turned as before. MAZE and TALL_WALLS hall floors are the old
+  carve, byte for byte.
+- Fallback: a floor that falls back is the plain maze while `variationOf` still says the drawn one (the chain does not
+  depend on fallbacks). Fallback rate measured 0 over 3000 floors.
+- Traps (`TowerTraps.layout`): positions redrawn onto open ground, a mostly solid cell holds none, and off the maze
+  none within 6 blocks of the portal. `arrivalCell()` and `portalCell()` are still the maze's 7-block grid and only
+  mean that on MAZE and TALL_WALLS floors; they are used only to keep traps off the ends.
+- Chest spots in the plan (`TowerChests`, `TowerPlan.ChestSpot`): the API and the rules are in the README. Chests are
+  not placed here.
+- Existing tests touched: `spotsBesideZone` takes a zone index and falls back to narrower room for floors of two-wide
+  paths; the shaman cooldown case stands the player outside the zone (a sheltered player is no quarry); the
+  plan property test exempts SPIRAL from opposite halves; `TowerRaisedPortalGameTest.modelOf` honours wall height.
+- Tests: `TowerVariationGameTest` (11 cases). Written after the implementation, so no red run; the owner waived the
+  mutation runs and the five-run gate.
+
+## Element auras (slice E, 2026-09-29)
+
+`TowerAuras` implements the "Elements" section of the batch decisions: ice slows the players' side within 4
+blocks, dark hardens per hit (cap 10, hold 100 ticks, decay 1 per 20), holy mends kin, and fire, water, wind,
+void and lightning mark hits or speed. See the tower README for numbers and quoted `[BEHAVIOR]` lines.
+
+- Deviation, none from the decisions. Choices where they were silent: ghosts count as the players' side for ice;
+  dark armor is a transient modifier that decays only while a player is on the floor (the pulse is occupied
+  floors only); on-hit marks need a living attacker that is a tower mob, and thorns returns do not trigger them.
+- Test seam: `TowerAuras.pulse(level, floor, now)` takes the tick, and `TowerAuras.particleSink` records
+  particles. Neither logs in the shipped jar.
+- Manual item: particles are not observable headlessly (`elementParticlesAreVisibleInPlayRequiresManualTest`).
+- Holy's 2% every 40 ticks is a guess awaiting the owner's confirmation.
+- Rune interaction, left as is: Ice-rune wearers are still slowed by the aura, because it refreshes faster than the
+  rune halves it. The owner decides later.
+- Review follow-up: on-hit effects now apply whenever a hit lands and no shield blocked it. In this build Fabric's
+  `AFTER_DAMAGE` already reports the damage before absorption, so the absorbed-hit case
+  (`fireHitStillIgnitesATargetThatAbsorbsItWhole`) passed before the change as well (evidence `e-f-red2`); it stays as a
+  guard, and the redundant `taken <= 0` early return was dropped for on-hit effects (Dark still needs damage taken).
+
+## Tower chests and loot (slice C, 2026-09-30)
+
+`TowerChestBlock`, `TowerChests` and `TowerChestGameTest` implement the "Chests" decision: the block and the
+loot only. Placing chests in floors, and the >=5 per floor and guaranteed-chest rules, belong to the floors
+slices, which call `TowerChests.placeDouble` and `TowerChests.fill`. See the tower README for the API and
+measured numbers.
+
+- Deviation: loot is rolled in Java rather than a vanilla JSON table, because the weights, the optional spells
+  items and the enchanting need code. The decision said "vanilla JSON table + optional spells items".
+- Choices where the decisions were silent: (revised after review) a roll whose category has no item (spells mod
+  absent) is rerolled, up to 32 times; the stated rates hold when the spells mod is present, and the rate test
+  installs a stand-in for it; the weights sum to 9005, and the
+  remaining 995 of 10000 is a roll that finds nothing. Books and gear are enchanted at table power
+  5 on floor 1 rising evenly to 30 at floor 50, capped (revised after review from min(39, 20 + floor/5)). Scrolls and spellbooks come from the tag `mod-stella-spells:spellbooks` (the test
+  resource stands in with `minecraft:book`), each book's scroll being `<id>_scroll`.
+- The chest has no item, so it cannot be picked up or pick-blocked. Mining (start and stop of a
+  break with a netherite pickaxe), a power 6 blast, and the wither, dragon and piston rules are tested. The server
+  internal `ServerPlayerGameMode.destroyBlock` is not: it is not a path a client can drive, and it was not probed.
+- The netherite share measured 10 of 50000 draws against 25 expected, inside the 4 sigma band (5 to 45) but on
+  its low side. The seed is fixed, so the run is deterministic.
+- Review follow-ups: `fill` empties the chest and places the guaranteed items first; emerald stacks are capped at the
+  item's stack size; `placeDouble` returns null and places nothing unless both spots are air; the client render
+  is a manual item (`towerChestRendersOnTheClientRequiresManualTest`). Each new test failed before the change
+  (evidence `c2-red`: 5 required tests red) and passed after (`c2-green1`).
+
+## F5: chests placed on built floors
+
+- `TowerFloors.finish` places a `TowerChestBlock` double chest at every `plan.chestSpots()` spot after the walls (spot cleared to air first), facing the spot, stocked by `TowerChests.fill` from a random of seed, floor and spot. Once, at build time; a built floor is never restocked. Legacy plans have no spots, so no chests.
+- The merge renamed the floors-side planner to `TowerChestSpots`; `TowerChests` is the loot and placement class. `TowerAuras` uses `TowerSafety.sheltered` for the safe-zone check (the old `TowerMaze.inSafeZone` is gone).
+- Two older tests treat a tower chest as open ground in their `open()` model (chests are furniture against walls).
+- Tests: `TowerFloorChestGameTest` (5). Suite 328 required.

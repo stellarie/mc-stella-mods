@@ -262,12 +262,15 @@ public class TowerRuneArmorGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		// The mob beside the arrival zone, not in it: a tower mob inside a zone is swept out within five ticks.
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
+		player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		player.setItemSlot(EquipmentSlot.CHEST, TowerRunes.apply(new ItemStack(Items.IRON_CHESTPLATE), new RuneData(TowerElement.VOID, TOP)));
 		int own = 450;
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, own, TowerElement.WIND);
-		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		zombie.snapTo(spots.mob());
 		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);
 		TowerBuffs.pinMobBuffs(own, List.of(TowerBuffs.MobBuff.STRENGTH, TowerBuffs.MobBuff.SPEED));

@@ -36,7 +36,7 @@ public class TowerMobRulesGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
-		BlockPos inside = TowerLayout.portalInside(floor).get(0);
+		BlockPos inside = TowerLayout.portalInside(tower, floor).get(0);
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.WIND);
 		zombie.snapTo(Vec3.atBottomCenterOf(inside));
@@ -68,7 +68,7 @@ public class TowerMobRulesGameTest {
 		holdLoaded(tower, floor);
 		Hoglin hoglin = EntityTypes.HOGLIN.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(hoglin, 30, TowerElement.FIRE);
-		hoglin.snapTo(TowerLayout.arrival(floor).add(20.0, 0.0, 0.0));
+		hoglin.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 20.0));
 		tower.addFreshEntity(hoglin);
 		UUID id = hoglin.getUUID();
 		String[] fate = {"alive"};
@@ -101,7 +101,7 @@ public class TowerMobRulesGameTest {
 		int of = 300;
 		Hoglin hoglin = EntityTypes.HOGLIN.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(hoglin, of, TowerElement.HOLY);
-		hoglin.snapTo(TowerLayout.arrival(floor).add(20.0, 0.0, 0.0));
+		hoglin.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 20.0));
 		tower.addFreshEntity(hoglin);
 		Mob zoglin = hoglin.convertTo(EntityTypes.ZOGLIN, ConversionParams.single(hoglin, true, false), converted -> { });
 		TowerMobs.State state = zoglin == null ? null : TowerMobs.stateOf(zoglin);

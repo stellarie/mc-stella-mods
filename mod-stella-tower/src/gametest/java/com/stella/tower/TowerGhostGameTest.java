@@ -92,11 +92,14 @@ public class TowerGhostGameTest {
 		int floor = floor(tower);
 		ServerPlayer player = climber(helper, tower, floor);
 		player.setGameMode(GameType.CREATIVE);
+		// The player in the arrival's safe zone, the zombie just outside it in plain sight (a mob put inside a zone
+		// is sent out of it within a sweep, to wherever is nearest).
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
+		player.teleportTo(tower, spots.inside().x, spots.inside().y, spots.inside().z, java.util.Set.of(), 0.0F, 0.0F, true);
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
-		// Within the arrival's own maze cell, in the ghost's sight.
-		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		zombie.snapTo(spots.mob());
 		tower.addFreshEntity(zombie);
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
@@ -272,10 +275,13 @@ public class TowerGhostGameTest {
 		int floor = floor(tower);
 		ServerPlayer player = climber(helper, tower, floor);
 		player.setGameMode(GameType.CREATIVE);
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
+		player.teleportTo(tower, spots.inside().x, spots.inside().y, spots.inside().z, java.util.Set.of(), 0.0F, 0.0F, true);
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
-		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		// Just outside the arrival's safe zone, not in it: a tower mob put in a zone is sent out of it within a sweep.
+		zombie.snapTo(spots.mob());
 		// Still, and the ghost's quarry held on it: what is tested is whose kill the bolt's is, not who finds whom.
 		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);

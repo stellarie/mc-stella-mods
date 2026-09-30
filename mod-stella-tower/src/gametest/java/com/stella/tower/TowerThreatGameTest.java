@@ -83,7 +83,7 @@ public class TowerThreatGameTest {
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		double want = TowerCurve.health(zombie.getAttributeBaseValue(Attributes.MAX_HEALTH), floor);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.ICE);
-		Vec3 at = TowerLayout.arrival(TowerTestSupport.freshFloor());
+		Vec3 at = TowerLayout.arrival(tower, TowerTestSupport.freshFloor());
 		TowerFloors.ensure(tower, TowerLayout.floorAt(net.minecraft.core.BlockPos.containing(at)));
 		zombie.snapTo(at);
 		tower.addFreshEntity(zombie);
@@ -105,7 +105,7 @@ public class TowerThreatGameTest {
 		int floor = 500;
 		int home = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, home);
-		Vec3 at = TowerLayout.arrival(home);
+		Vec3 at = TowerLayout.arrival(tower, home);
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.DARK);
 		zombie.snapTo(at);

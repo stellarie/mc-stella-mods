@@ -1,8 +1,8 @@
 package com.stella.tower;
 
-import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -21,13 +21,6 @@ public final class TowerLayout {
 	public static final int COLUMNS = 256;
 	/** The y of the lowest air block in every room. */
 	public static final int BASE_Y = 64;
-	/**
-	 * The arrival spot and the next floor's portal sit across the room from each other, on its middle line;
-	 * an elite or boss floor has its portal in the middle of its hall.
-	 */
-	public static final int ARRIVAL_X = 4;
-	public static final int PORTAL_X = 60;
-	public static final int MIDDLE_Z = 32;
 	/** The portal frame: two blocks wide and three high inside, standing on the floor layer. */
 	public static final int PORTAL_INNER_WIDTH = 2;
 	public static final int PORTAL_INNER_HEIGHT = 3;
@@ -59,50 +52,31 @@ public final class TowerLayout {
 		return inside ? floor : 0;
 	}
 
-	/** Where a player lands on a floor, facing the portal across the room. */
-	public static Vec3 arrival(final int floor) {
-		BlockPos origin = origin(floor);
-		return new Vec3(origin.getX() + ARRIVAL_X + 0.5, BASE_Y, origin.getZ() + MIDDLE_Z + 0.5);
+	/**
+	 * Where a player lands on a floor, as the floor was built: its {@link TowerPlan}'s arrival. The spot
+	 * moves from floor to floor, so every reader asks the plan, and the plan needs the tower's seed.
+	 */
+	public static Vec3 arrival(final ServerLevel tower, final int floor) {
+		return TowerPlan.at(tower, floor).arrivalPos();
 	}
 
 	/** The yaw that faces the next floor's portal from the arrival spot. */
-	public static float arrivalYaw() {
-		return -90.0F;
+	public static float arrivalYaw(final ServerLevel tower, final int floor) {
+		return TowerPlan.at(tower, floor).arrivalYaw();
 	}
 
-	/** The portal's line across the room: at the far side, or in the middle of a hall. */
-	public static int portalX(final int floor) {
-		return TowerMaze.hall(floor) > 0 ? SIZE / 2 : PORTAL_X;
+	/** The portal's line across the room: the column its frame stands in. */
+	public static int portalX(final ServerLevel tower, final int floor) {
+		return TowerPlan.at(tower, floor).portalX();
 	}
 
 	/** The portal frame's inside: the blocks the portal fills once the frame is lit. */
-	public static List<BlockPos> portalInside(final int floor) {
-		BlockPos origin = origin(floor);
-		List<BlockPos> inside = new ArrayList<>();
-		for (int dz = 0; dz < PORTAL_INNER_WIDTH; dz++) {
-			for (int dy = 0; dy < PORTAL_INNER_HEIGHT; dy++) {
-				inside.add(new BlockPos(origin.getX() + portalX(floor), BASE_Y + dy, origin.getZ() + MIDDLE_Z - 1 + dz));
-			}
-		}
-		return inside;
+	public static List<BlockPos> portalInside(final ServerLevel tower, final int floor) {
+		return TowerPlan.at(tower, floor).portalInside();
 	}
 
-	/** The frame around {@link #portalInside(int)}, corners included. */
-	public static List<BlockPos> portalFrame(final int floor) {
-		BlockPos origin = origin(floor);
-		int x = origin.getX() + portalX(floor);
-		int zLow = origin.getZ() + MIDDLE_Z - 2;
-		int zHigh = origin.getZ() + MIDDLE_Z + PORTAL_INNER_WIDTH - 1;
-		int yLow = BASE_Y - 1;
-		int yHigh = BASE_Y + PORTAL_INNER_HEIGHT;
-		List<BlockPos> frame = new ArrayList<>();
-		for (int z = zLow; z <= zHigh; z++) {
-			for (int y = yLow; y <= yHigh; y++) {
-				if (z == zLow || z == zHigh || y == yLow || y == yHigh) {
-					frame.add(new BlockPos(x, y, z));
-				}
-			}
-		}
-		return frame;
+	/** The frame around {@link #portalInside(ServerLevel, int)}, corners included. */
+	public static List<BlockPos> portalFrame(final ServerLevel tower, final int floor) {
+		return TowerPlan.at(tower, floor).portalFrame();
 	}
 }

@@ -12,6 +12,7 @@
   "block.mod-stella-tower.tower_lamp": "Tower Lamp",
   "block.mod-stella-tower.tower_frame": "Tower Frame",
   "block.mod-stella-tower.tower_portal": "Tower Portal",
+  "block.mod-stella-tower.tower_chest": "Tower Chest",
   "item.mod-stella-tower.void_key": "Void Key",
   "item.mod-stella-tower.floor_key": "Floor Key",
   "item.mod-stella-tower.floor_key.floor": "Floor Key: %s",
