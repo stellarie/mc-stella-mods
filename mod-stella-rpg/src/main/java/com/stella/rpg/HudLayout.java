@@ -12,6 +12,9 @@ public final class HudLayout {
 	public static final int FILL_POISON = 0xFF5E9A2E;
 	public static final int FILL_WITHER = 0xFF555555;
 	public static final int FILL_FROZEN = 0xFF9BD6F2;
+	public static final int FILL_FOOD = 0xFFC8782A;
+	public static final int FILL_HUNGER = 0xFF6B7A2E;
+	public static final int MAX_FOOD = 20;
 
 	private HudLayout() {
 	}
@@ -26,6 +29,10 @@ public final class HudLayout {
 
 	public static String healthText(final float health, final float max) {
 		return (int) Math.ceil(health) + " / " + (int) Math.ceil(max);
+	}
+
+	public static String foodText(final int food) {
+		return Math.max(0, food) + " / " + MAX_FOOD;
 	}
 
 	public static int iconRows(final int effects, final int perRow) {

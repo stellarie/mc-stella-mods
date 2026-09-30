@@ -10,7 +10,8 @@
 		"RpgIncomingDamageMixin",
 		"RpgMobDropRollMixin",
 		"RpgOutgoingDamageMixin",
-		"RpgPlayerExperienceMixin"
+		"RpgPlayerExperienceMixin",
+		"RpgSleepHealMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
