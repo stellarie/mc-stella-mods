@@ -33,9 +33,12 @@ can lift it. At 4 per level the ceiling is level 251, which the level cap of 50
 puts far out of reach. Health is uncapped in this mod's own data and
 engine-bounded at 1024.
 
-The other four attributes stay on the level-fraction curve, from
-`attributes.armor_at_cap`, `attributes.knockback_resistance_at_cap`,
-`attributes.attack_damage_at_cap`, and `attributes.attack_speed_at_cap`.
+Power grants health only. The `mod-stella-rpg` mod owns damage, attack speed,
+and damage reduction. The keys `attributes.armor_at_cap`,
+`attributes.knockback_resistance_at_cap`, `attributes.attack_damage_at_cap`, and
+`attributes.attack_speed_at_cap` are retired. A file that still sets them loads,
+and the parser reports them as unknown keys. Each power scan removes the four
+matching `power_*` modifiers from a player who still carries them.
 
 ## Health as a number
 

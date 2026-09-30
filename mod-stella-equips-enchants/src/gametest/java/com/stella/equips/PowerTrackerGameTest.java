@@ -1,12 +1,14 @@
 package com.stella.equips;
 
 import com.stella.equips.power.PowerConfig;
+import com.stella.equips.power.PowerConfigParser;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerTracker;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -70,14 +72,14 @@ public class PowerTrackerGameTest {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		player.experienceLevel = config.levelCap();
 		helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
-			double damage = modifierAmount(player, ATTACK_DAMAGE_MODIFIER);
+			double health = modifierAmount(player, MAX_HEALTH_MODIFIER);
 			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=tickAppliesVanillaLevel RESULT level={} damage={} line={}",
-				player.experienceLevel, damage, PowerRecorder.last(LEVEL_LINE)
+				"[BEHAVIOR] test=tickAppliesVanillaLevel RESULT level={} health={} line={}",
+				player.experienceLevel, health, PowerRecorder.last(LEVEL_LINE)
 			);
 			helper.assertTrue(
-				Math.abs(damage - config.attributes().attackDamageAtCap()) < TOLERANCE,
-				"the tick scan left the attack damage at " + damage + " for vanilla level " + player.experienceLevel
+				Math.abs(health - expectedModifiers(config.levelCap(), config)[0]) < TOLERANCE,
+				"the tick scan left the health gain at " + health + " for vanilla level " + player.experienceLevel
 			);
 			helper.succeed();
 		});
@@ -235,16 +237,13 @@ public class PowerTrackerGameTest {
 		);
 		helper.runAfterDelay(SCAN_WINDOW_TICKS, () -> {
 			double health = modifierAmount(reborn, MAX_HEALTH_MODIFIER);
-			double damage = modifierAmount(reborn, ATTACK_DAMAGE_MODIFIER);
 			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=respawnReentry RESULT level={} maxHealth={} damage={}",
-				reborn.experienceLevel, health, damage
+				"[BEHAVIOR] test=respawnReentry RESULT level={} maxHealth={}", reborn.experienceLevel, health
 			);
 			helper.assertTrue(
 				reborn.experienceLevel == config.levelCap()
-					&& Math.abs(damage - config.attributes().attackDamageAtCap()) < TOLERANCE
 					&& Math.abs(health - expectedModifiers(config.levelCap(), config)[0]) < TOLERANCE,
-				"the respawned player at level " + reborn.experienceLevel + " read damage " + damage + " and health " + health
+				"the respawned player at level " + reborn.experienceLevel + " read health " + health
 			);
 			helper.succeed();
 		});
@@ -280,13 +279,13 @@ public class PowerTrackerGameTest {
 		ServerPlayer player = mockPlayer(helper);
 		player.experienceLevel = before.levelCap();
 		PowerTracker.scanPlayer(player, before);
-		double beforeReload = modifierAmount(player, ARMOR_MODIFIER);
+		double beforeReload = modifierAmount(player, MAX_HEALTH_MODIFIER);
 		PowerConfig after;
 		try {
 			Path file = Files.createTempDirectory("power-reload-config").resolve(PowerConfigStore.FILE_NAME);
 			Files.writeString(
 				file,
-				PowerConfigStore.DEFAULT_JSON.replace("\"armor_at_cap\": 11.76", "\"armor_at_cap\": 23.52"),
+				PowerConfigStore.DEFAULT_JSON.replace("\"health_per_level\": 4.0", "\"health_per_level\": 8.0"),
 				StandardCharsets.UTF_8
 			);
 			after = PowerConfigStore.loadFrom(file);
@@ -297,16 +296,44 @@ public class PowerTrackerGameTest {
 
 		player.experienceLevel = after.levelCap();
 		PowerTracker.scanPlayer(player, after);
-		double afterReload = modifierAmount(player, ARMOR_MODIFIER);
+		double afterReload = modifierAmount(player, MAX_HEALTH_MODIFIER);
 		PowerConfigStore.load();
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=reloadReentry RESULT armorAtCapBefore={} armorAtCapAfter={} modifierBefore={} modifierAfter={}",
-			before.attributes().armorAtCap(), after.attributes().armorAtCap(), beforeReload, afterReload
+			"[BEHAVIOR] test=reloadReentry RESULT perLevelBefore={} perLevelAfter={} modifierBefore={} modifierAfter={}",
+			before.attributes().healthPerLevel(), after.attributes().healthPerLevel(), beforeReload, afterReload
 		);
 		helper.assertTrue(
-			Math.abs(beforeReload - before.attributes().armorAtCap()) < TOLERANCE
-				&& Math.abs(afterReload - after.attributes().armorAtCap()) < TOLERANCE,
-			"the armor modifier read " + beforeReload + " then " + afterReload + " across the reload"
+			Math.abs(beforeReload - expectedModifiers(before.levelCap(), before)[0]) < TOLERANCE
+				&& Math.abs(afterReload - expectedModifiers(after.levelCap(), after)[0]) < TOLERANCE,
+			"the health modifier read " + beforeReload + " then " + afterReload + " across the reload"
+		);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aRetiredAttributeKeyLoadsAndIsReported(final GameTestHelper helper) {
+		String legacy = PowerConfigStore.DEFAULT_JSON.replace(
+			"\"health_per_level\": 4.0",
+			"\"health_per_level\": 4.0, \"armor_at_cap\": 11.76"
+		);
+		PowerConfig parsed;
+		try {
+			parsed = PowerConfigParser.parse(legacy, PowerFixtures.acceptanceConfig());
+		} catch (RuntimeException e) {
+			helper.assertTrue(false, "a config with a retired key failed to load: " + e);
+			return;
+		}
+
+		List<String> ignored = PowerConfigParser.ignoredKeys();
+		StellaEquips.LOGGER.info(
+			"[BEHAVIOR] test=retiredKey RESULT ignored={} healthPerLevel={}", ignored, parsed.attributes().healthPerLevel()
+		);
+		helper.assertTrue(
+			ignored.contains("attributes.armor_at_cap"), "the retired armor key was not reported: " + ignored
+		);
+		helper.assertTrue(
+			Math.abs(parsed.attributes().healthPerLevel() - 4.0) < TOLERANCE,
+			"the retired key changed the health per level to " + parsed.attributes().healthPerLevel()
 		);
 		helper.succeed();
 	}
@@ -316,7 +343,7 @@ public class PowerTrackerGameTest {
 		PowerConfig config = bundledConfig(helper);
 		ServerPlayer original = playerAtLevel(helper, CONTROL_LEVEL);
 		PowerTracker.scanPlayer(original, config);
-		double originalDamage = modifierAmount(original, ATTACK_DAMAGE_MODIFIER);
+		double originalHealth = modifierAmount(original, MAX_HEALTH_MODIFIER);
 		TagValueOutput output = TagValueOutput.createWithContext(
 			ProblemReporter.DISCARDING, helper.getLevel().registryAccess()
 		);
@@ -324,17 +351,17 @@ public class PowerTrackerGameTest {
 		CompoundTag tag = output.buildResult();
 		ServerPlayer rejoined = mockPlayer(helper);
 		rejoined.load(TagValueInput.create(ProblemReporter.DISCARDING, helper.getLevel().registryAccess(), tag));
-		double afterLoad = modifierAmount(rejoined, ATTACK_DAMAGE_MODIFIER);
+		double afterLoad = modifierAmount(rejoined, MAX_HEALTH_MODIFIER);
 		PowerTracker.scanPlayer(rejoined, config);
-		double afterScan = modifierAmount(rejoined, ATTACK_DAMAGE_MODIFIER);
+		double afterScan = modifierAmount(rejoined, MAX_HEALTH_MODIFIER);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=reloginReentry RESULT level={} damageAfterLoad={} damageAfterScan={} originalDamage={}",
-			rejoined.experienceLevel, afterLoad, afterScan, originalDamage
+			"[BEHAVIOR] test=reloginReentry RESULT level={} healthAfterLoad={} healthAfterScan={} originalHealth={}",
+			rejoined.experienceLevel, afterLoad, afterScan, originalHealth
 		);
 		helper.assertTrue(
-			originalDamage > 0.0 && afterLoad == originalDamage && afterScan == originalDamage
+			originalHealth > 0.0 && afterLoad == originalHealth && afterScan == originalHealth
 				&& rejoined.experienceLevel == CONTROL_LEVEL,
-			"the re-login carried damage " + originalDamage + " -> " + afterLoad + " -> " + afterScan
+			"the re-login carried health " + originalHealth + " -> " + afterLoad + " -> " + afterScan
 				+ " at level " + rejoined.experienceLevel
 		);
 		helper.succeed();
@@ -348,16 +375,15 @@ public class PowerTrackerGameTest {
 		return player;
 	}
 
-	// The five modifier values the configured formula names for a capped level.
+	// Health from the formula, then the four retired modifiers at zero.
 	private static double[] expectedModifiers(final int level, final PowerConfig config) {
 		PowerConfig.Attributes attributes = config.attributes();
-		double fraction = Math.max(0, level - 1) / (double) (config.levelCap() - 1);
 		return new double[] {
 			attributes.healthPerLevel() * Math.max(0, level - 1) + attributes.healthBase() - 20.0,
-			attributes.armorAtCap() * fraction,
-			attributes.knockbackResistanceAtCap() * fraction,
-			attributes.attackDamageAtCap() * fraction,
-			attributes.attackSpeedAtCap() * fraction
+			0.0,
+			0.0,
+			0.0,
+			0.0
 		};
 	}
 

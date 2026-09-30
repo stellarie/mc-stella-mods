@@ -68,9 +68,7 @@ public final class PowerConfigParser {
 		"mob_level.other_dimension_scale", "mob_level.dimension_scale",
 		"bands.red_above", "bands.yellow_above", "bands.orange_above", "bands.green_within",
 		"tracker.scan_interval_ticks", "tracker.heartbeat_ticks",
-		"attributes.health_base", "attributes.health_per_level", "attributes.armor_at_cap",
-		"attributes.knockback_resistance_at_cap", "attributes.attack_damage_at_cap",
-		"attributes.attack_speed_at_cap",
+		"attributes.health_base", "attributes.health_per_level",
 		"readout.enabled_by_default", "readout.radius", "readout.max_per_player",
 		"readout.height_offset", "readout.view_range"
 	);
@@ -181,19 +179,6 @@ public final class PowerConfigParser {
 				),
 				doubleValueAtLeast(
 					attributes, "health_per_level", 0.0, config -> config.attributes().healthPerLevel()
-				),
-				doubleValueAtLeast(
-					attributes, "armor_at_cap", 0.0, config -> config.attributes().armorAtCap()
-				),
-				doubleValueAtLeast(
-					attributes, "knockback_resistance_at_cap", 0.0,
-					config -> config.attributes().knockbackResistanceAtCap()
-				),
-				doubleValueAtLeast(
-					attributes, "attack_damage_at_cap", 0.0, config -> config.attributes().attackDamageAtCap()
-				),
-				doubleValueAtLeast(
-					attributes, "attack_speed_at_cap", 0.0, config -> config.attributes().attackSpeedAtCap()
 				)
 			);
 

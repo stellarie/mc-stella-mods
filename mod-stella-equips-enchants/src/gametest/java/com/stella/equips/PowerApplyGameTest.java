@@ -2,7 +2,7 @@ package com.stella.equips;
 
 import com.stella.equips.power.PowerAttributes;
 import com.stella.equips.power.PowerConfig;
-import com.stella.equips.power.PowerCurve;
+import com.stella.equips.refine.Refine;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -18,6 +18,7 @@ public class PowerApplyGameTest {
 	private static final int LEVEL_AT_CAP = 50;
 	private static final int LEVEL_HALFWAY = 25;
 	private static final double TOLERANCE = 1.0E-9;
+	private static final double HEALTH_GAIN_HALFWAY = 96.0;
 	private static final Identifier MAX_HEALTH_MODIFIER = modifier("max_health");
 	private static final Identifier ARMOR_MODIFIER = modifier("armor");
 	private static final Identifier KNOCKBACK_MODIFIER = modifier("knockback_resistance");
@@ -25,92 +26,78 @@ public class PowerApplyGameTest {
 	private static final Identifier ATTACK_SPEED_MODIFIER = modifier("attack_speed");
 
 	@GameTest
-	public void everyAttributeReachesItsStatedValueAtTheCap(final GameTestHelper helper) {
+	public void onlyHealthIsGainedAtTheCap(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
 		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
 		double health = modifierAmount(player, MAX_HEALTH_MODIFIER);
-		double armor = modifierAmount(player, ARMOR_MODIFIER);
-		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
-		double damage = modifierAmount(player, ATTACK_DAMAGE_MODIFIER);
-		double speed = modifierAmount(player, ATTACK_SPEED_MODIFIER);
 		helper.assertTrue(
 			Math.abs(health - PowerFixtures.HEALTH_GAIN_AT_CAP) < TOLERANCE,
 			"the maximum health gain at the cap was " + health + " instead of " + PowerFixtures.HEALTH_GAIN_AT_CAP
 		);
-		helper.assertTrue(
-			Math.abs(armor - PowerFixtures.ARMOR_AT_CAP) < TOLERANCE,
-			"the armor at the cap was " + armor + " instead of " + PowerFixtures.ARMOR_AT_CAP
-		);
-		helper.assertTrue(
-			Math.abs(knockback - PowerFixtures.KNOCKBACK_RESISTANCE_AT_CAP) < TOLERANCE,
-			"the knockback resistance at the cap was " + knockback
-		);
-		helper.assertTrue(
-			Math.abs(damage - PowerFixtures.ATTACK_DAMAGE_AT_CAP) < TOLERANCE,
-			"the attack damage at the cap was " + damage + " instead of " + PowerFixtures.ATTACK_DAMAGE_AT_CAP
-		);
-		helper.assertTrue(
-			Math.abs(speed - PowerFixtures.ATTACK_SPEED_AT_CAP) < TOLERANCE,
-			"the attack speed at the cap was " + speed + " instead of " + PowerFixtures.ATTACK_SPEED_AT_CAP
-		);
+		helper.assertTrue(retiredModifiers(player) == 0, "a capped player carried a retired Power modifier");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=attributeCap RESULT level={} health={} armor={} knockback={} damage={} speed={}",
-			LEVEL_AT_CAP, health, armor, knockback, damage, speed
+			"[BEHAVIOR] test=attributeCap RESULT level={} health={} retired={}",
+			LEVEL_AT_CAP, health, retiredModifiers(player)
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void everyAttributeIsZeroAtLevelOneAndHalfwayAtTheMiddle(final GameTestHelper helper) {
+	public void healthGainKeepsItsValueAtLevelOneHalfwayAndTheCap(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer atOne = mockPlayer(helper);
 		ServerPlayer halfway = mockPlayer(helper);
+		ServerPlayer atCap = mockPlayer(helper);
 		PowerAttributes.apply(atOne, 1, config);
 		PowerAttributes.apply(halfway, LEVEL_HALFWAY, config);
-		double fraction = PowerCurve.levelFraction(LEVEL_HALFWAY, config);
-		double damageAtOne = modifierAmount(atOne, ATTACK_DAMAGE_MODIFIER);
-		double armorAtOne = modifierAmount(atOne, ARMOR_MODIFIER);
-		double damageHalfway = modifierAmount(halfway, ATTACK_DAMAGE_MODIFIER);
-		double armorHalfway = modifierAmount(halfway, ARMOR_MODIFIER);
+		PowerAttributes.apply(atCap, LEVEL_AT_CAP, config);
+		double gainAtOne = modifierAmount(atOne, MAX_HEALTH_MODIFIER);
+		double gainHalfway = modifierAmount(halfway, MAX_HEALTH_MODIFIER);
+		double gainAtCap = modifierAmount(atCap, MAX_HEALTH_MODIFIER);
+		helper.assertTrue(gainAtOne == 0.0, "a level 1 player carried a health gain of " + gainAtOne);
 		helper.assertTrue(
-			damageAtOne == 0.0 && armorAtOne == 0.0,
-			"a level 1 player carried damage " + damageAtOne + " and armor " + armorAtOne
+			Math.abs(gainHalfway - HEALTH_GAIN_HALFWAY) < TOLERANCE,
+			"the health gain at level " + LEVEL_HALFWAY + " was " + gainHalfway + " instead of " + HEALTH_GAIN_HALFWAY
 		);
 		helper.assertTrue(
-			Math.abs(damageHalfway - PowerFixtures.ATTACK_DAMAGE_AT_CAP * fraction) < TOLERANCE,
-			"the damage at level " + LEVEL_HALFWAY + " was " + damageHalfway
-		);
-		helper.assertTrue(
-			Math.abs(armorHalfway - PowerFixtures.ARMOR_AT_CAP * fraction) < TOLERANCE,
-			"the armor at level " + LEVEL_HALFWAY + " was " + armorHalfway
+			Math.abs(gainAtCap - PowerFixtures.HEALTH_GAIN_AT_CAP) < TOLERANCE,
+			"the health gain at the cap was " + gainAtCap
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=attributeRamp RESULT fraction={} damageAtLevel1={} armorAtLevel1={} damageHalfway={} armorHalfway={}",
-			fraction, damageAtOne, armorAtOne, damageHalfway, armorHalfway
+			"[BEHAVIOR] test=healthCurve RESULT atLevel1={} halfway={} atCap={}", gainAtOne, gainHalfway, gainAtCap
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theArmorAndKnockbackTermsLeaveRoomForTheEnchantments(final GameTestHelper helper) {
+	public void staleModifiersRemoved(final GameTestHelper helper) {
 		PowerConfig config = PowerFixtures.acceptanceConfig();
 		ServerPlayer player = mockPlayer(helper);
+		addStale(player, Attributes.ARMOR, ARMOR_MODIFIER, 11.76);
+		addStale(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_MODIFIER, 0.294);
+		addStale(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_MODIFIER, 20.0);
+		addStale(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_MODIFIER, 1.0);
+		AttributeModifier refineArmor = new AttributeModifier(
+			Refine.ARMOR_ID, 3.0, AttributeModifier.Operation.ADD_VALUE
+		);
+		player.getAttribute(Attributes.ARMOR).addPermanentModifier(refineArmor);
+		int before = retiredModifiers(player);
 		PowerAttributes.apply(player, LEVEL_AT_CAP, config);
-		double armor = modifierAmount(player, ARMOR_MODIFIER);
-		double knockback = modifierAmount(player, KNOCKBACK_MODIFIER);
+		int after = retiredModifiers(player);
+		double health = modifierAmount(player, MAX_HEALTH_MODIFIER);
+		helper.assertTrue(before == 4, "the fixture started with " + before + " of the 4 stale modifiers");
+		helper.assertTrue(after == 0, "one apply left " + after + " stale modifiers");
 		helper.assertTrue(
-			armor < PowerFixtures.ARMOR_CEILING,
-			"the armor modifier " + armor + " fills the vanilla ceiling of " + PowerFixtures.ARMOR_CEILING
+			Math.abs(health - PowerFixtures.HEALTH_GAIN_AT_CAP) < TOLERANCE,
+			"the health gain after the apply was " + health
 		);
 		helper.assertTrue(
-			knockback < PowerFixtures.KNOCKBACK_CEILING,
-			"the knockback modifier " + knockback + " fills the vanilla ceiling of " + PowerFixtures.KNOCKBACK_CEILING
+			player.getAttribute(Attributes.ARMOR).getModifier(Refine.ARMOR_ID) != null,
+			"the apply removed the refine armor modifier"
 		);
-		helper.assertTrue(armor > 0.0 && knockback > 0.0, "a capped player carried no armor or knockback resistance");
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=enchantmentHeadroom RESULT armor={} armorHeadroom={} knockback={} knockbackHeadroom={}",
-			armor, PowerFixtures.ARMOR_CEILING - armor, knockback, PowerFixtures.KNOCKBACK_CEILING - knockback
+			"[BEHAVIOR] test=staleModifiersRemoved RESULT before={} after={} health={}", before, after, health
 		);
 		helper.succeed();
 	}
@@ -127,16 +114,16 @@ public class PowerApplyGameTest {
 		int applied = differences(vanilla, once);
 		int changed = differences(once, twice);
 		helper.assertTrue(
-			applied == 5,
-			"the first application moved " + applied + " of the 5 attributes: " + describe(once)
+			applied == 1,
+			"the first application moved " + applied + " attributes instead of only health: " + describe(once)
 		);
 		helper.assertTrue(
 			changed == 0,
 			"a second application moved " + changed + " attributes: once=" + describe(once) + " twice=" + describe(twice)
 		);
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=applyIdempotent RESULT applied={} changed={} health={} armor={} knockback={} damage={} speed={}",
-			applied, changed, twice[0], twice[1], twice[2], twice[3], twice[4]
+			"[BEHAVIOR] test=applyIdempotent RESULT applied={} changed={} health={}",
+			applied, changed, twice[0]
 		);
 		helper.succeed();
 	}
@@ -154,7 +141,7 @@ public class PowerApplyGameTest {
 		int appliedCount = differences(vanilla, applied);
 		int changed = differences(vanilla, after);
 		int basesChanged = differences(baseValues, baseValues(player));
-		helper.assertTrue(appliedCount == 5, "the application moved only " + appliedCount + " attributes");
+		helper.assertTrue(appliedCount == 1, "the application moved " + appliedCount + " attributes instead of only health");
 		helper.assertTrue(changed == 0, "removal left " + changed + " attributes moved: " + describe(after));
 		helper.assertTrue(basesChanged == 0, "removal changed " + basesChanged + " base values");
 		helper.assertTrue(
@@ -166,6 +153,23 @@ public class PowerApplyGameTest {
 			appliedCount, changed, player.getHealth(), player.getMaxHealth(), vanilla[0]
 		);
 		helper.succeed();
+	}
+
+	private static void addStale(
+		final ServerPlayer player, final Holder<Attribute> attribute, final Identifier id, final double amount
+	) {
+		player.getAttribute(attribute).addPermanentModifier(
+			new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_VALUE)
+		);
+	}
+
+	private static int retiredModifiers(final ServerPlayer player) {
+		int count = 0;
+		count += modifierAmount(player, ARMOR_MODIFIER) != 0.0 ? 1 : 0;
+		count += modifierAmount(player, KNOCKBACK_MODIFIER) != 0.0 ? 1 : 0;
+		count += modifierAmount(player, ATTACK_DAMAGE_MODIFIER) != 0.0 ? 1 : 0;
+		count += modifierAmount(player, ATTACK_SPEED_MODIFIER) != 0.0 ? 1 : 0;
+		return count;
 	}
 
 	private static Identifier modifier(final String name) {

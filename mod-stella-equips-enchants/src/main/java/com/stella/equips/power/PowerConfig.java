@@ -39,11 +39,7 @@ public record PowerConfig(
 
 	public record Attributes(
 		double healthBase,
-		double healthPerLevel,
-		double armorAtCap,
-		double knockbackResistanceAtCap,
-		double attackDamageAtCap,
-		double attackSpeedAtCap
+		double healthPerLevel
 	) {
 	}
 

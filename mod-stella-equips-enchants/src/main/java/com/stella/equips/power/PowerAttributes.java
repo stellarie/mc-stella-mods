@@ -24,28 +24,23 @@ public final class PowerAttributes {
 
 	public static void apply(final ServerPlayer player, final int level, final PowerConfig config) {
 		PowerConfig.Attributes attributes = config.attributes();
-		double fraction = PowerCurve.levelFraction(level, config);
 		double health = attributes.healthBase() + attributes.healthPerLevel() * Math.max(0, level - 1);
 		replace(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID, health - VANILLA_MAX_HEALTH);
-		replace(player, Attributes.ARMOR, ARMOR_ID, attributes.armorAtCap() * fraction);
-		replace(
-			player,
-			Attributes.KNOCKBACK_RESISTANCE,
-			KNOCKBACK_RESISTANCE_ID,
-			attributes.knockbackResistanceAtCap() * fraction
-		);
-		replace(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID, attributes.attackDamageAtCap() * fraction);
-		replace(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID, attributes.attackSpeedAtCap() * fraction);
+		removeRetired(player);
 		clampHealth(player);
 	}
 
 	public static void remove(final ServerPlayer player) {
 		remove(player, Attributes.MAX_HEALTH, MAX_HEALTH_ID);
+		removeRetired(player);
+		clampHealth(player);
+	}
+
+	private static void removeRetired(final ServerPlayer player) {
 		remove(player, Attributes.ARMOR, ARMOR_ID);
 		remove(player, Attributes.KNOCKBACK_RESISTANCE, KNOCKBACK_RESISTANCE_ID);
 		remove(player, Attributes.ATTACK_DAMAGE, ATTACK_DAMAGE_ID);
 		remove(player, Attributes.ATTACK_SPEED, ATTACK_SPEED_ID);
-		clampHealth(player);
 	}
 
 	private static void clampHealth(final ServerPlayer player) {
