@@ -68,7 +68,9 @@ public class TowerMobRulesGameTest {
 		holdLoaded(tower, floor);
 		Hoglin hoglin = EntityTypes.HOGLIN.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(hoglin, 30, TowerElement.FIRE);
-		hoglin.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 20.0));
+		// A player elsewhere in the tower, on another test's floor, would otherwise despawn it as far away.
+		hoglin.setPersistenceRequired();
+		hoglin.snapTo(TowerTestSupport.awayFromArrivalUpTo(tower, floor, 20.0));
 		tower.addFreshEntity(hoglin);
 		UUID id = hoglin.getUUID();
 		String[] fate = {"alive"};
@@ -101,7 +103,7 @@ public class TowerMobRulesGameTest {
 		int of = 300;
 		Hoglin hoglin = EntityTypes.HOGLIN.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(hoglin, of, TowerElement.HOLY);
-		hoglin.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 20.0));
+		hoglin.snapTo(TowerTestSupport.awayFromArrivalUpTo(tower, floor, 20.0));
 		tower.addFreshEntity(hoglin);
 		Mob zoglin = hoglin.convertTo(EntityTypes.ZOGLIN, ConversionParams.single(hoglin, true, false), converted -> { });
 		TowerMobs.State state = zoglin == null ? null : TowerMobs.stateOf(zoglin);

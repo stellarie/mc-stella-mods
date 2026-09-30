@@ -73,11 +73,13 @@ final class TowerTestSupport {
 
 	/**
 	 * Floors no earlier run has built: the test world keeps its floors, so a reused number proves nothing.
-	 * Runs start a minute and more apart, and a run takes some two thousand floors, so the start moves on
-	 * forty floors a second; forty million floors still lie well inside the world border.
+	 * A run takes about nine thousand floors and lasts about three minutes, so the start must move on faster
+	 * than fifty floors a second, or a run started right after another begins inside the floors it built.
+	 * It moves on eighty a second. The clock wraps every 300 thousand seconds, which keeps every floor inside
+	 * the world border.
 	 */
 	private static final java.util.concurrent.atomic.AtomicInteger NEXT_FLOOR =
-		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 40);
+		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 300_000L) * 80);
 	/** Overworld areas no earlier run has rolled, counted apart from the floors. */
 	private static final java.util.concurrent.atomic.AtomicInteger NEXT_AREA =
 		new java.util.concurrent.atomic.AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 8);
@@ -131,6 +133,28 @@ final class TowerTestSupport {
 	 * safe: one can land in a wall or outside the room.
 	 */
 	static Vec3 awayFromArrival(final ServerLevel tower, final int floor, final double distance) {
+		Vec3 spot = openSpotAway(tower, floor, distance);
+		if (spot == null) {
+			throw new IllegalStateException("floor " + floor + " has no open spot " + distance + " from its arrival");
+		}
+		return spot;
+	}
+
+	/**
+	 * The open spot farthest from the arrival, up to this far, for a test that needs distance but not an exact
+	 * one. A maze floor can have no open spot at the full distance, so the search steps in until one fits.
+	 */
+	static Vec3 awayFromArrivalUpTo(final ServerLevel tower, final int floor, final double distance) {
+		for (double reach = distance; reach >= 2.0; reach -= 2.0) {
+			Vec3 spot = openSpotAway(tower, floor, reach);
+			if (spot != null) {
+				return spot;
+			}
+		}
+		throw new IllegalStateException("floor " + floor + " has no open spot away from its arrival");
+	}
+
+	private static Vec3 openSpotAway(final ServerLevel tower, final int floor, final double distance) {
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		net.minecraft.core.BlockPos origin = plan.origin();
 		double best = Double.MAX_VALUE;
@@ -143,9 +167,6 @@ final class TowerTestSupport {
 					spot = new Vec3(origin.getX() + x + 0.5, TowerLayout.BASE_Y, origin.getZ() + z + 0.5);
 				}
 			}
-		}
-		if (spot == null) {
-			throw new IllegalStateException("floor " + floor + " has no open spot " + distance + " from its arrival");
 		}
 		return spot;
 	}

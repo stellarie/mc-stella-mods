@@ -534,6 +534,10 @@ public class TowerSafeRoomGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(boss ? TowerBuffs::isBossFloor : f -> f % TowerElites.ELITE_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
+		// The floor's own spawns, a ghost or a shaman among them, would give the mob a second quarry.
+		TowerMobs.pinFloorCap(floor, 0);
+		TowerGhosts.pinRiseChance(floor, 0.0);
+		TowerShamans.pinHolds(floor, false);
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(plan);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
@@ -621,6 +625,9 @@ public class TowerSafeRoomGameTest {
 				if (boss) {
 					TowerElites.pinGuardianKind(floor, null);
 				}
+				TowerMobs.pinFloorCap(floor, null);
+				TowerGhosts.pinRiseChance(floor, null);
+				TowerShamans.pinHolds(floor, null);
 			}
 		});
 	}

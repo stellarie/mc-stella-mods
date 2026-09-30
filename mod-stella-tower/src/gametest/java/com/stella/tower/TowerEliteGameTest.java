@@ -115,12 +115,14 @@ public class TowerEliteGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100)
+	@GameTest(maxTicks = 200)
 	public void aSlainEliteReturnsAfterItsRest(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		int rest = 40;
+		// It rises on a check beat, dies 7 ticks later, and returns on a beat at least the rest after that.
+		int window = 6 * TowerElites.CHECK_TICKS + 7 + rest;
 		TowerElites.pinRespawnTicks(floor, rest);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		int[] slainAt = {-1};
@@ -139,7 +141,7 @@ public class TowerEliteGameTest {
 				backAt[0] = (int) helper.getTick();
 			}
 		});
-		helper.runAfterDelay(95L, () -> {
+		helper.runAfterDelay(window, () -> {
 			try {
 				TowerTestSupport.leave(helper, player);
 			} finally {
@@ -281,6 +283,10 @@ public class TowerEliteGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
 		TowerFloors.ensure(tower, floor);
+		// The floor's own spawns would add mobs that can reach the player before the bar is read.
+		TowerMobs.pinFloorCap(floor, 0);
+		TowerGhosts.pinRiseChance(floor, 0.0);
+		TowerShamans.pinHolds(floor, false);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		Mob[] boss = {null};
 		helper.runAfterDelay(50L, () -> {
@@ -291,10 +297,16 @@ public class TowerEliteGameTest {
 		});
 		helper.runAfterDelay(100L, () -> {
 			boolean back = boss[0] != null && TowerElites.barOf(boss[0]) != null && TowerElites.barOf(boss[0]).getPlayers().contains(player);
-			TowerTestSupport.result("barBack", "boss=" + (boss[0] != null) + " back=" + back);
+			String state = boss[0] == null ? "none" : "alive=" + boss[0].isAlive() + " removed=" + boss[0].getRemovalReason()
+				+ " bar=" + (TowerElites.barOf(boss[0]) != null) + " playerAlive=" + player.isAlive()
+				+ " playerFloor=" + TowerLayout.floorAt(player.blockPosition()) + " bossFloor=" + TowerLayout.floorAt(boss[0].blockPosition()) + " floor=" + floor;
+			TowerTestSupport.result("barBack", "boss=" + (boss[0] != null) + " back=" + back + " " + state);
+			TowerMobs.pinFloorCap(floor, null);
+			TowerGhosts.pinRiseChance(floor, null);
+			TowerShamans.pinHolds(floor, null);
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(boss[0] != null, "no boss rose, so the case proves nothing");
-			helper.assertTrue(back, "the boss's dropped bar never came back");
+			helper.assertTrue(back, "the boss's dropped bar never came back: " + state);
 			helper.succeed();
 		});
 	}
