@@ -91,7 +91,7 @@ public final class RpgConfigStore {
 		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
-			healthScale(root, onError), mobDiceShare(root, onError));
+			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -556,6 +556,7 @@ public final class RpgConfigStore {
 		out.put(RpgConfig.MOB_STATS_KEY, weights);
 		out.put(RpgConfig.MOB_AMPLIFIER_KEY, RpgConfig.DEFAULT_MOB_AMPLIFIER);
 		out.put(RpgConfig.MOB_DICE_SHARE_KEY, RpgConfig.DEFAULT_MOB_DICE_SHARE);
+		StatTables.write(out);
 		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
 		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {
 			RpgConfig.ArmorSet set = material.getValue();

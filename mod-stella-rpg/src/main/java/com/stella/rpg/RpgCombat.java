@@ -16,6 +16,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
 
 public final class RpgCombat {
 	@FunctionalInterface
@@ -32,7 +33,9 @@ public final class RpgCombat {
 	private static final double EFFECT_PERCENT = 0.10;
 	private static final double MOB_SPELL_PERCENT = 100.0;
 	private static final double MOB_SPELL_BASE = 3.0;
-	private static final DiceRoller FAIR_DICE = (attacker, random, dice) -> dice.roll(random);
+	private static final DiceRoller FAIR_DICE = RpgCombat::fairRoll;
+	/** The victim of a critical hit while its hurt call runs, so scaleIncoming can apply LUK. */
+	private static final ThreadLocal<LivingEntity> CRIT_VICTIM = new ThreadLocal<>();
 	private static volatile DiceRoller diceRoller = FAIR_DICE;
 	private static Player swinger;
 	private static float swingStrength = 1.0F;
@@ -41,6 +44,11 @@ public final class RpgCombat {
 	private static volatile Roller roller = FAIR;
 
 	private RpgCombat() {
+	}
+
+	/** A fair roll where each die is a maximum with the chance DEX gives. */
+	static int fairRoll(final LivingEntity attacker, final RandomSource random, final RpgDice.Dice dice) {
+		return dice.roll(random, RpgCurve.dexMaxRollChance(StatBonuses.effective(attacker, Stat.DEX)));
 	}
 
 	public static void setRoller(final Roller newRoller) {
@@ -72,14 +80,19 @@ public final class RpgCombat {
 			|| !(attacker instanceof ServerPlayer || attacker instanceof Mob)) {
 			return amount;
 		}
+		if (CRIT_VICTIM.get() == victim) {
+			CRIT_VICTIM.remove();
+		}
 		double scaled = amount;
 		Entity direct = source.getDirectEntity();
 		if (isMelee(source)) {
 			double charge = attacker instanceof Player player && swinger == player ? chargeFactor(swingStrength) : 1.0;
-			scaled += roll(attacker, Stat.STR) * charge + statusAtk(StatBonuses.effective(attacker, Stat.STR));
+			scaled += dice(attacker, attacker.getMainHandItem(), Stat.STR, false) * charge
+				+ statusAtk(StatBonuses.effective(attacker, Stat.STR));
 		} else if (source.is(DamageTypeTags.IS_PROJECTILE) && direct instanceof Projectile projectile
 			&& projectile.getOwner() == attacker) {
-			scaled += roll(attacker, Stat.DEX) + statusAtk(StatBonuses.effective(attacker, Stat.DEX));
+			ItemStack weapon = source.getWeaponItem() != null ? source.getWeaponItem() : attacker.getMainHandItem();
+			scaled += dice(attacker, weapon, Stat.DEX, true) + statusAtk(StatBonuses.effective(attacker, Stat.DEX));
 		} else if (attacker instanceof Mob && source.is(DamageTypes.INDIRECT_MAGIC)) {
 			return (float) RpgSpells.spellDamage(attacker, MOB_SPELL_PERCENT * amount / MOB_SPELL_BASE);
 		} else {
@@ -90,8 +103,20 @@ public final class RpgCombat {
 		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK));
 		if (roller.roll(attacker, attacker.getRandom(), chance)) {
 			scaled *= RpgCurve.critMultiplier();
+			CRIT_VICTIM.set(victim);
 		}
 		return (float) scaled;
+	}
+
+	/** Ends the critical hit of a victim. The hurt call of that victim runs this when it returns. */
+	public static void endHurt(final LivingEntity victim) {
+		if (CRIT_VICTIM.get() == victim) {
+			CRIT_VICTIM.remove();
+		}
+	}
+
+	static boolean critPending(final LivingEntity victim) {
+		return CRIT_VICTIM.get() == victim;
 	}
 
 	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
@@ -112,15 +137,28 @@ public final class RpgCombat {
 		return instance == null ? 0 : instance.getAmplifier() + 1;
 	}
 
+	/** Magic, indirect magic, and the magic tag. The poison tick has its own type and is not in them. */
+	static boolean isMagic(final DamageSource source) {
+		return source.is(DamageTypes.MAGIC) || source.is(DamageTypes.INDIRECT_MAGIC) || source.is(RpgDamageTypes.MAGIC);
+	}
+
 	private static boolean isMelee(final DamageSource source) {
 		return source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.MOB_ATTACK)
 			|| source.is(DamageTypes.MOB_ATTACK_NO_AGGRO);
 	}
 
-	private static double roll(final LivingEntity attacker, final Stat stat) {
-		RpgDice.Dice dice = RpgDice.of(StatBonuses.effective(attacker, stat));
-		int rolled = diceRoller.roll(attacker, attacker.getRandom(), dice);
-		return attacker instanceof Mob ? rolled * RpgConfigStore.current().mobDiceShare() : rolled;
+	/**
+	 * The STR or DEX dice plus the weapon dice, times the dice multiplier. Mobs keep a share of the result.
+	 * The weapon is the main hand for a melee hit and the projectile's weapon for a shot.
+	 */
+	private static double dice(final LivingEntity attacker, final ItemStack weapon, final Stat stat, final boolean ranged) {
+		int rolled = diceRoller.roll(attacker, attacker.getRandom(), RpgDice.of(StatBonuses.effective(attacker, stat)));
+		RpgDice.Dice weaponDice = PhysicalDice.weaponDice(weapon, ranged);
+		if (weaponDice != null) {
+			rolled += diceRoller.roll(attacker, attacker.getRandom(), weaponDice);
+		}
+		double total = rolled * PhysicalDice.multiplier(attacker, weapon);
+		return attacker instanceof Mob ? total * RpgConfigStore.current().mobDiceShare() : total;
 	}
 
 	public static float scaleIncoming(final LivingEntity entity, final DamageSource source, final float damage) {
@@ -129,6 +167,12 @@ public final class RpgCombat {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));
+		if (isMagic(source)) {
+			reduced *= RpgCurve.magicDamageTakenMultiplier(StatBonuses.effective(entity, Stat.INT));
+		}
+		if (critPending(entity)) {
+			reduced *= RpgCurve.critDamageTakenMultiplier(StatBonuses.effective(entity, Stat.LUK));
+		}
 		reduced *= 1.0 - Math.min(1.0, Affixes.total(entity, Affix.REDUCTION_PCT));
 		double flat = DefenseBonuses.flat(entity) + Affixes.total(entity, Affix.REDUCTION_FLAT) / RpgScale.k();
 		return (float) Math.max(0.0, reduced - flat);

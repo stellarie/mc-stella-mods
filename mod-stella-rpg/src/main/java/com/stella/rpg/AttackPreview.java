@@ -40,17 +40,24 @@ public final class AttackPreview {
 		return value;
 	}
 
-	/** The melee hit range in K units: base and weapon, enchantments, dice, status ATK, flat affix, then damage %. */
+	/**
+	 * The melee hit range in K units: base and weapon, enchantments, then the STR and weapon dice times the dice
+	 * multiplier, status ATK, flat affix, and damage %.
+	 */
 	public static double[] range(final LivingEntity player, final int str) {
 		ItemStack held = player.getMainHandItem();
 		double base = player.getAttributeBaseValue(Attributes.ATTACK_DAMAGE);
 		double attack = withEnchantments(held, held.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY)
 			.compute(Attributes.ATTACK_DAMAGE, base, EquipmentSlot.MAINHAND));
 		RpgDice.Dice dice = RpgDice.of(str);
+		RpgDice.Dice weapon = PhysicalDice.weaponDice(held, false);
+		int low = dice.min() + (weapon == null ? 0 : weapon.min());
+		int high = dice.max() + (weapon == null ? 0 : weapon.max());
+		double multiplier = PhysicalDice.multiplier(player, held);
 		double k = RpgScale.k();
 		double extra = RpgCombat.statusAtk(str) + Affixes.total(player, Affix.DAMAGE_FLAT) / k;
 		double factor = RpgCombat.damageFactor(player) * k;
-		return new double[] {(attack + dice.min() + extra) * factor, (attack + dice.max() + extra) * factor};
+		return new double[] {(attack + low * multiplier + extra) * factor, (attack + high * multiplier + extra) * factor};
 	}
 
 	public static String format(final double[] range) {

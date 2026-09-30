@@ -242,7 +242,7 @@ public final class HealthScaleGameTest {
 				float quarterTick = (float) (0.03 * 0.25 * max / k);
 				helper.assertTrue(near(regen, quarterTick * k), "regeneration on a " + target.entityTags() + " healed " + regen);
 				helper.assertTrue(near(heal, (float) (0.15 * 0.25 * max)), "Instant Health healed " + heal);
-				helper.assertTrue(near(harm, RpgTestSupport.mobGuard((float) (0.20 * 0.25 * max / k)) * k), "Instant Damage dealt " + harm);
+				helper.assertTrue(near(harm, RpgTestSupport.mobMagicGuard((float) (0.20 * 0.25 * max / k)) * k), "Instant Damage dealt " + harm);
 				helper.assertTrue(near(poison, RpgTestSupport.mobGuard(quarterTick) * k), "poison removed " + poison);
 				helper.assertTrue(near(wither, RpgTestSupport.mobGuard(quarterTick) * k), "wither removed " + wither);
 				helper.assertTrue(near(absorption, (float) (0.10 * 0.25 * max)), "Absorption granted " + absorption);
@@ -313,7 +313,7 @@ public final class HealthScaleGameTest {
 	public void shareFollowsConfig(final GameTestHelper helper) {
 		RpgConfig before = RpgConfigStore.current();
 		RpgConfig doubled = new RpgConfig(before.curves(), before.critMultiplier(), before.dice(), before.mobStats(),
-			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare());
+			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables());
 		Object published;
 		try {
 			RpgConfigStore.set(doubled);

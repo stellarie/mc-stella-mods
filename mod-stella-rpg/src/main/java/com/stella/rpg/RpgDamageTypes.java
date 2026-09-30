@@ -12,6 +12,8 @@ public final class RpgDamageTypes {
 	public static final ResourceKey<DamageType> POISON = ResourceKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("poison"));
 	public static final TagKey<DamageType> NO_HURT_SHAKE = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("no_hurt_shake"));
 
+	/** Damage types that INT defends against, besides magic and indirect magic. Empty by default. */
+	public static final TagKey<DamageType> MAGIC = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("magic"));
 	public static final TagKey<DamageType> ENVIRONMENTAL = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("environmental"));
 
 	private RpgDamageTypes() {

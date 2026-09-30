@@ -2,6 +2,7 @@ package com.stella.rpg;
 
 import com.stella.rpg.net.RpgNet;
 import com.stella.rpg.roll.Affixes;
+import com.stella.rpg.roll.WeaponRolls;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
@@ -21,6 +22,7 @@ public final class RpgAttributes {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			server.getPlayerList().getPlayers().forEach(RpgLevelUp::check);
 			if (server.getTickCount() % SCAN_INTERVAL == 0) {
+				server.getPlayerList().getPlayers().forEach(WeaponRolls::rollPossessed);
 				server.getPlayerList().getPlayers().forEach(RpgAttributes::refresh);
 				server.getPlayerList().getPlayers().forEach(RpgNet::syncIfChanged);
 			}

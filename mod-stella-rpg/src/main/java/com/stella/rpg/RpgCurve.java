@@ -39,6 +39,26 @@ public final class RpgCurve {
 		return RpgConfigStore.current().critMultiplier();
 	}
 
+	/** The chance that one physical die rolls its maximum. */
+	public static double dexMaxRollChance(final int dex) {
+		return value(Effect.DEX_MAX_ROLL, dex);
+	}
+
+	/** The chance that a MATK roll is the maximum. */
+	public static double intMaxRollChance(final int intel) {
+		return value(Effect.INT_MAX_ROLL, intel);
+	}
+
+	/** The multiplier on magic damage taken. */
+	public static double magicDamageTakenMultiplier(final int intel) {
+		return 1.0 - value(Effect.MAGIC_DEFENSE, intel);
+	}
+
+	/** The multiplier on a critical hit taken. */
+	public static double critDamageTakenMultiplier(final int luk) {
+		return 1.0 - value(Effect.CRIT_REDUCTION, luk);
+	}
+
 	public static double cooldownMultiplier(final int intel) {
 		return 1.0 - value(Effect.COOLDOWN_REDUCTION, intel);
 	}

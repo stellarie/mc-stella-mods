@@ -40,7 +40,13 @@
 			"com.stella.rpg.StrengthPercentGameTest",
 			"com.stella.rpg.StarterSwordGameTest",
 			"com.stella.rpg.NoHeartsGameTest",
-			"com.stella.rpg.DefPreviewGameTest"
+			"com.stella.rpg.DefPreviewGameTest",
+			"com.stella.rpg.RollCoverageGameTest",
+			"com.stella.rpg.WeaponDiceGameTest",
+			"com.stella.rpg.DiceMultiplierGameTest",
+			"com.stella.rpg.StatEffectsGameTest",
+			"com.stella.rpg.EnchantStatsGameTest",
+			"com.stella.rpg.EffectStatsGameTest"
 		]
 	},
 	"depends": {

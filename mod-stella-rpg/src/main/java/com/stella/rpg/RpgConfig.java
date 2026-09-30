@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
 	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
-	double mobDiceShare
+	double mobDiceShare, StatTables tables
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -39,6 +39,8 @@ public record RpgConfig(
 	private static final Map<Affix, AffixRange> AFFIXES_IRON = affixes(8, 18, 4, 7, 40, 80, 2, 4, 3, 6, 1, 2);
 	private static final Map<Affix, AffixRange> AFFIXES_DIAMOND = affixes(12, 27, 5, 9, 60, 120, 3, 6, 4, 8, 1.5, 2.5);
 	private static final Map<Affix, AffixRange> AFFIXES_NETHERITE = affixes(18, 40, 6, 12, 90, 180, 4, 8, 6, 12, 2, 3);
+	/** Netherite ranges times 1.5, for the tower's void gear. */
+	private static final Map<Affix, AffixRange> AFFIXES_VOID = affixes(27, 60, 9, 18, 135, 270, 6, 12, 9, 18, 3, 4.5);
 	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_STATS = defaultMobStats();
 	public static final Map<String, ArmorSet> DEFAULT_ARMOR_SETS = defaultArmorSets();
 	public static final WeaponRolls DEFAULT_WEAPON_ROLLS = defaultWeaponRolls();
@@ -72,6 +74,10 @@ public record RpgConfig(
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
 		COOLDOWN_REDUCTION("cooldown_reduction", 0.40, 300),
 		CRIT_CHANCE("crit_chance", 0.50, 300),
+		DEX_MAX_ROLL("dex_max_roll", 0.50, 200),
+		INT_MAX_ROLL("int_max_roll", 0.50, 200),
+		MAGIC_DEFENSE("magic_defense", 0.40, 300),
+		CRIT_REDUCTION("crit_reduction", 0.50, 300),
 		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);
 
 		private final String key;
@@ -97,7 +103,8 @@ public record RpgConfig(
 			curves.put(effect, effect.defaultCurve());
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
-			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE);
+			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE,
+			StatTables.DEFAULT);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */
@@ -132,6 +139,7 @@ public record RpgConfig(
 		tiers.put("netherite", tier(4, 10, List.of("netherite_sword", "netherite_axe"), armorPieces("netherite"), AFFIXES_NETHERITE));
 		tiers.put("ranged", tier(2, 5, List.of("bow", "crossbow"), List.of(), AFFIXES_IRON));
 		tiers.put("heavy", tier(3, 7, List.of("trident", "mace"), List.of(), AFFIXES_DIAMOND));
+		tiers.put("void", tier(6, 12, List.of(), List.of(), AFFIXES_VOID));
 		return new WeaponRolls(List.of(50, 35, 15), Map.copyOf(tiers), DEFAULT_AFFIX_CHANCE);
 	}
 
