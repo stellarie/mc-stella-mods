@@ -90,6 +90,22 @@ public class GymBotGameTest {
 		LearnArena.pollUntil(helper, () -> bot.ticks() - from >= ticks, ticks + 20, then, () -> "the bot did not tick " + ticks + " times");
 	}
 
+	/** A bot that died and was taken out of the world comes back at the next reset, and a mob can target it again. */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void revivesABotThatWasRemoved(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		Bot bot = spawn(helper, 24.5, 24.5, SOUTH);
+		LearnArena.whenReady(helper, List.of(bot.player()), () -> {
+			bot.player().kill(helper.getLevel());
+			bot.player().discard();
+			helper.assertTrue(bot.player().isRemoved() && !bot.player().isAlive(), "the bot was not removed");
+			bot.reset(helper.absoluteVec(new Vec3(24.5, 1.0, 24.5)), SOUTH);
+			helper.assertTrue(!bot.player().isRemoved() && bot.player().isAlive() && bot.player().getHealth() > 0.0F, "the bot did not come back");
+			helper.assertTrue(LearnTestInit.linesWith("gymBot READD", bot.player().getUUID().toString()).size() == 1, "no READD line");
+			helper.succeed();
+		});
+	}
+
 	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
 	public void walksAtPlayerSpeed(final GameTestHelper helper) {
 		LearnArena.floor(helper);

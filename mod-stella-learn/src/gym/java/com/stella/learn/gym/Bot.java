@@ -68,6 +68,11 @@ public final class Bot {
 			return false;
 		}
 
+		/** Lifts the removal mark, which the base class keeps to itself. */
+		void putBack() {
+			unsetRemoved();
+		}
+
 		void revive() {
 			dead = false;
 			deathTime = 0;
@@ -192,6 +197,13 @@ public final class Bot {
 
 	/** Puts a dead or displaced bot back on its feet at `at` with full health. */
 	public void reset(final Vec3 at, final float yaw) {
+		// A bot that died and lay dead past the death animation is taken out of the world, and a mob will not target it.
+		if (player.isRemoved()) {
+			player.putBack();
+			((ServerLevel) player.level()).addNewPlayer(player);
+			GymLog.info(GymLog.BOT, "READD", who() + " tick=" + ticks + " reason=removedAfterDeath");
+		}
+
 		player.revive();
 		player.snapTo(at.x, at.y, at.z, yaw, 0.0F);
 		player.setDeltaMovement(Vec3.ZERO);
