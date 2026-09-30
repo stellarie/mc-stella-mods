@@ -190,6 +190,60 @@ final class TowerTestSupport {
 		return tower.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.pack(BlockPos.containing(at)));
 	}
 
+	static int cheb(final TowerMaze.Zone zone, final int x, final int z) {
+		int dx = Math.max(Math.max(zone.x() - x, 0), x - (zone.x() + TowerMaze.SAFE - 1));
+		int dz = Math.max(Math.max(zone.z() - z, 0), z - (zone.z() + TowerMaze.SAFE - 1));
+		return Math.max(dx, dz);
+	}
+
+	private static boolean clear(final TowerPlan plan, final double ax, final double az, final double bx, final double bz) {
+		int steps = (int) Math.ceil(Math.hypot(bx - ax, bz - az) * 4.0);
+		for (int i = 0; i <= steps; i++) {
+			double t = steps == 0 ? 0.0 : i / (double) steps;
+			if (plan.wall((int) Math.floor(ax + (bx - ax) * t), (int) Math.floor(az + (bz - az) * t))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Where a mob stands just beside the entrance zone, where a player stands inside it, and where outside near the mob. */
+	record ZoneSpots(Vec3 mob, Vec3 inside, Vec3 outside) {
+	}
+
+	/**
+	 * Spots for a mob just outside the plan's entrance zone (one open cell between them, in plain sight of the zone), a
+	 * player inside it, and a player outside it near the mob. A tower mob put inside a zone is sent out of it within a
+	 * sweep, so a test that needs a mob to stay stands it here.
+	 */
+	static ZoneSpots spotsBesideZone(final TowerPlan plan) {
+		TowerMaze.Zone zone = plan.safeZones().get(0);
+		BlockPos o = plan.origin();
+		for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
+			for (int z = 2; z < TowerLayout.SIZE - 2; z++) {
+				if (cheb(zone, x, z) != 2 || !roomAround(plan, x, z, 1)) {
+					continue;
+				}
+				int ix = Math.max(zone.x() + 1, Math.min(zone.x() + TowerMaze.SAFE - 2, x));
+				int iz = Math.max(zone.z() + 1, Math.min(zone.z() + TowerMaze.SAFE - 2, z));
+				if (!clear(plan, x + 0.5, z + 0.5, ix + 0.5, iz + 0.5)) {
+					continue;
+				}
+				for (int ox = 2; ox < TowerLayout.SIZE - 2; ox++) {
+					for (int oz = 2; oz < TowerLayout.SIZE - 2; oz++) {
+						int apart = Math.max(Math.abs(ox - x), Math.abs(oz - z));
+						if (apart >= 3 && apart <= 5 && cheb(zone, ox, oz) >= 2 && roomAround(plan, ox, oz, 1) && clear(plan, x + 0.5, z + 0.5, ox + 0.5, oz + 0.5)) {
+							return new ZoneSpots(new Vec3(o.getX() + x + 0.5, TowerLayout.BASE_Y, o.getZ() + z + 0.5),
+								new Vec3(o.getX() + ix + 0.5, TowerLayout.BASE_Y, o.getZ() + iz + 0.5),
+								new Vec3(o.getX() + ox + 0.5, TowerLayout.BASE_Y, o.getZ() + oz + 0.5));
+						}
+					}
+				}
+			}
+		}
+		throw new IllegalStateException("no spot beside the zone of floor " + plan.floor());
+	}
+
 	static void result(final String test, final String outcome) {
 		LOG.info("[BEHAVIOR] test={} RESULT {}", test, outcome);
 	}

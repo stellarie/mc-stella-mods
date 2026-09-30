@@ -1,7 +1,9 @@
 package com.stella.tower;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -26,14 +28,24 @@ import org.jspecify.annotations.Nullable;
  * Three parts. {@link #sheltered} is the one test, and the targeting mixins ask it: a mob is never given a
  * sheltered player as a target, so it never takes one up, whatever its goals or its brain. The sweep, every
  * {@link #SWEEP_TICKS} ticks over the floors with a player on them, sends out any tower mob whose body touches a
- * zone, to the nearest free spot outside, and lets go of any target a mob held on a player now in a zone: its
- * target, its brain's attack target and anger, its neutral anger.
+ * zone, back to where it was last seen outside (or, with no recent sighting, the nearest free spot outside), and
+ * lets go of any target a mob held on a player now in a zone: its target, its brain's attack target and anger, its
+ * neutral anger. Sending a mob back the way it came is what keeps a fast mob that drives into a room, and is
+ * deeper in it than the far side is near when the sweep comes, from being sent out through the far door.
  */
 public final class TowerSafety {
 	/** How often the floors with a player on them are swept. */
 	public static final int SWEEP_TICKS = 5;
 	/** How far round a mob an ejection looks for a free spot outside the zones, in blocks. */
 	public static final int SEARCH = TowerMaze.SAFE;
+
+	/** Where a tower mob near a zone was last seen outside every zone, and when: the server thread's alone. */
+	private record Sighting(Vec3 at, int tick) {
+	}
+
+	private static final Map<UUID, Sighting> OUTSIDE = new HashMap<>();
+	/** A sighting older than this many sweeps is not trusted: the mob may have gone a long way since. */
+	private static final int TRUST_SWEEPS = 2;
 
 	private TowerSafety() {
 	}
@@ -71,6 +83,8 @@ public final class TowerSafety {
 				occupied.add(floor);
 			}
 		}
+		int now = server.getTickCount();
+		OUTSIDE.values().removeIf(seen -> now - seen.tick() > 2 * TRUST_SWEEPS * SWEEP_TICKS);
 		for (int floor : occupied) {
 			sweep(tower, floor);
 		}
@@ -81,9 +95,15 @@ public final class TowerSafety {
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		for (TowerMaze.Zone zone : plan.safeZones()) {
 			AABB box = zoneBox(plan, zone);
+			int now = tower.getServer().getTickCount();
 			for (Mob mob : tower.getEntitiesOfClass(Mob.class, box.inflate(SEARCH), TowerSafety::keptOut)) {
-				if (mob.isAlive() && touchesZone(plan, mob.getBoundingBox())) {
-					eject(tower, plan, mob);
+				if (!mob.isAlive()) {
+					continue;
+				}
+				if (touchesZone(plan, mob.getBoundingBox())) {
+					eject(tower, plan, mob, OUTSIDE.get(mob.getUUID()), now);
+				} else {
+					OUTSIDE.put(mob.getUUID(), new Sighting(mob.position(), now));
 				}
 			}
 		}
@@ -122,12 +142,20 @@ public final class TowerSafety {
 	}
 
 	/**
-	 * Moves a mob to the nearest spot of the room where its whole body stands clear of every zone and of every block,
+	 * Sends a mob out: back to where it was last seen outside, if that was within the last few sweeps and is still
+	 * clear; else to the nearest spot of the room where its whole body stands clear of every zone and of every block,
 	 * on the ground if it was on it. A mob with no such spot in reach is left where it is.
 	 */
-	private static void eject(final ServerLevel tower, final TowerPlan plan, final Mob mob) {
+	private static void eject(final ServerLevel tower, final TowerPlan plan, final Mob mob, final @Nullable Sighting seen, final int now) {
 		Vec3 from = mob.position();
 		AABB body = mob.getBoundingBox();
+		if (seen != null && now - seen.tick() <= TRUST_SWEEPS * SWEEP_TICKS) {
+			AABB back = body.move(seen.at().x - from.x, seen.at().y - from.y, seen.at().z - from.z);
+			if (!touchesZone(plan, back) && tower.noCollision(mob, back)) {
+				moveTo(mob, seen.at(), now);
+				return;
+			}
+		}
 		BlockPos origin = plan.origin();
 		boolean grounded = mob.onGround();
 		int y = (int) Math.floor(from.y);
@@ -157,10 +185,15 @@ public final class TowerSafety {
 			}
 		}
 		if (best != null) {
-			mob.snapTo(best.x, best.y, best.z, mob.getYRot(), mob.getXRot());
-			mob.getNavigation().stop();
-			mob.setDeltaMovement(Vec3.ZERO);
+			moveTo(mob, best, now);
 		}
+	}
+
+	private static void moveTo(final Mob mob, final Vec3 spot, final int now) {
+		mob.snapTo(spot.x, spot.y, spot.z, mob.getYRot(), mob.getXRot());
+		mob.getNavigation().stop();
+		mob.setDeltaMovement(Vec3.ZERO);
+		OUTSIDE.put(mob.getUUID(), new Sighting(spot, now));
 	}
 
 	private static boolean holds(final @Nullable LivingEntity target, final Set<UUID> shelter) {

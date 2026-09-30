@@ -511,66 +511,6 @@ public class TowerSafeRoomGameTest {
 
 	// ---------------------------------------------------------------- no aggro inside a zone
 
-	private static int cheb(final TowerMaze.Zone zone, final int x, final int z) {
-		int dx = Math.max(Math.max(zone.x() - x, 0), x - (zone.x() + TowerMaze.SAFE - 1));
-		int dz = Math.max(Math.max(zone.z() - z, 0), z - (zone.z() + TowerMaze.SAFE - 1));
-		return Math.max(dx, dz);
-	}
-
-	private static boolean roomAround(final TowerPlan plan, final int x, final int z, final int reach) {
-		for (int dx = -reach; dx <= reach; dx++) {
-			for (int dz = -reach; dz <= reach; dz++) {
-				if (plan.wall(x + dx, z + dz)) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
-	private static boolean clear(final TowerPlan plan, final double ax, final double az, final double bx, final double bz) {
-		int steps = (int) Math.ceil(Math.hypot(bx - ax, bz - az) * 4.0);
-		for (int i = 0; i <= steps; i++) {
-			double t = steps == 0 ? 0.0 : i / (double) steps;
-			if (plan.wall((int) Math.floor(ax + (bx - ax) * t), (int) Math.floor(az + (bz - az) * t))) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/** Where a mob stands just beside the zone, where the player stands inside it, and where outside near the mob. */
-	private record Spots(Vec3 mob, Vec3 inside, Vec3 outside) {
-	}
-
-	private static Spots spotsBeside(final TowerPlan plan) {
-		TowerMaze.Zone zone = plan.safeZones().get(0);
-		BlockPos o = plan.origin();
-		for (int x = 2; x < S - 2; x++) {
-			for (int z = 2; z < S - 2; z++) {
-				if (cheb(zone, x, z) != 2 || !roomAround(plan, x, z, 1)) {
-					continue;
-				}
-				int ix = Math.max(zone.x() + 1, Math.min(zone.x() + TowerMaze.SAFE - 2, x));
-				int iz = Math.max(zone.z() + 1, Math.min(zone.z() + TowerMaze.SAFE - 2, z));
-				if (!clear(plan, x + 0.5, z + 0.5, ix + 0.5, iz + 0.5)) {
-					continue;
-				}
-				for (int ox = 2; ox < S - 2; ox++) {
-					for (int oz = 2; oz < S - 2; oz++) {
-						int apart = Math.max(Math.abs(ox - x), Math.abs(oz - z));
-						if (apart >= 3 && apart <= 5 && cheb(zone, ox, oz) >= 2 && roomAround(plan, ox, oz, 1) && clear(plan, x + 0.5, z + 0.5, ox + 0.5, oz + 0.5)) {
-							return new Spots(new Vec3(o.getX() + x + 0.5, TowerLayout.BASE_Y, o.getZ() + z + 0.5),
-								new Vec3(o.getX() + ix + 0.5, TowerLayout.BASE_Y, o.getZ() + iz + 0.5),
-								new Vec3(o.getX() + ox + 0.5, TowerLayout.BASE_Y, o.getZ() + oz + 0.5));
-						}
-					}
-				}
-			}
-		}
-		throw new IllegalStateException("no spot beside the zone of floor " + plan.floor());
-	}
-
 	private static boolean aggro(final Mob mob, final ServerPlayer player) {
 		if (mob.getTarget() == player || mob.getTargetUnchecked() == player) {
 			return true;
@@ -595,7 +535,7 @@ public class TowerSafeRoomGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(boss ? TowerBuffs::isBossFloor : f -> f % TowerElites.ELITE_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
-		Spots spots = spotsBeside(plan);
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(plan);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
 		TowerTestSupport.holdRoom(tower, spots.mob());
@@ -730,8 +670,12 @@ public class TowerSafeRoomGameTest {
 		player.teleportTo(tower, bait.x, bait.y, bait.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		TowerTestSupport.holdRoom(tower, bait);
 		TowerElites.pinGuardianKind(floor, EntityTypes.ZOMBIE);
+		// The fastest boss a floor can make: speed five on top of the tower's own speed, and below a baby zombie's extra.
+		TowerBuffs.pinMobBuffs(floor, List.of(TowerBuffs.MobBuff.SPEED, TowerBuffs.MobBuff.RESISTANCE));
 		Mob boss = TowerElites.rise(tower, floor, TowerRank.BOSS);
 		helper.assertTrue(boss != null, "the boss could not rise, so the case proves nothing");
+		// A baby zombie is half as fast again: some boss floors raise one, and it is the one a sweep is hardest put to.
+		((Zombie) boss).setBaby(true);
 		boss.snapTo(o.getX() + door.x() + 0.5, TowerLayout.BASE_Y, o.getZ() + door.z() + 0.5, 0.0F, 0.0F);
 		UUID id = boss.getUUID();
 		Set<Long> gates = new HashSet<>();
@@ -790,7 +734,7 @@ public class TowerSafeRoomGameTest {
 				Mob now = tower.getEntity(id) instanceof Mob m ? m : null;
 				// A boss that keeps pushing is sent back at each sweep and walks in again at once, so it is in the room
 				// between sweeps; what a sweep bounds is how far it gets: what it walks in one sweep, with half as much
-				// again for a jump or a shove, and its own width.
+				// again for a jump or a shove, and its own width; and it never crosses the room.
 				double speed = now == null ? 0.0 : now.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
 				double reach = TowerSafety.SWEEP_TICKS * speed * 1.5 + (now == null ? 0.0 : now.getBbWidth());
 				TowerTestSupport.result("bossAtDoor", "entries=" + entries[0] + " longestInRoom=" + longest[0] + " deepest=" + depth[0] + " reach=" + reach
@@ -800,12 +744,88 @@ public class TowerSafeRoomGameTest {
 				}
 				TowerTestSupport.leave(helper, player);
 				helper.assertTrue(entries[0] >= 1, "the boss never tried the room, so the case proves nothing");
-				helper.assertTrue(depth[0] <= reach && depth[0] < roomLength / 2.0, "the boss got " + depth[0] + " blocks into a room " + roomLength + " long, more than the " + reach + " one sweep allows");
+				helper.assertTrue(depth[0] <= reach && depth[0] < roomLength, "the boss got " + depth[0] + " blocks into a room " + roomLength + " long, more than the " + reach + " one sweep allows");
 				helper.assertTrue(leaks[0] == 0, "the boss was out in the maze for " + leaks[0] + " ticks");
 				helper.succeed();
 			} finally {
 				TowerElites.pinGuardianKind(floor, null);
+				TowerBuffs.pinMobBuffs(floor, null);
 			}
+		});
+	}
+
+	/**
+	 * A fast mob that drives into the room is deeper in it than the far side is near by the time a sweep comes: sent to
+	 * the nearest spot outside it would go out through the far door, into the maze. It is sent back the way it came, to
+	 * where it was last seen outside. A tower zombie is seen at the hall's door, then set five blocks into the room,
+	 * nearer the entrance than the exit, as a mob that outran a sweep would be.
+	 */
+	@GameTest(maxTicks = 60)
+	public void aMobDrivenDeepIntoTheRoomIsSentBackTheWayItCame(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		TowerFloors.ensure(tower, floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		TowerMaze.Zone room = plan.safeZones().get(1);
+		BlockPos o = plan.origin();
+		TowerPlan.Gate exit = plan.gates().stream().filter(TowerPlan.Gate::exit).findFirst().orElseThrow();
+		TowerPlan.Gate entrance = plan.gates().stream().filter(gate -> !gate.exit()).findFirst().orElseThrow();
+		TowerPlan.Spot door = exit.cells().stream().filter(cell -> !room.contains(cell.x(), cell.z())).findFirst().orElseThrow();
+		double sumX = 0.0;
+		double sumZ = 0.0;
+		int faceCells = 0;
+		for (TowerPlan.Spot cell : exit.cells()) {
+			if (room.contains(cell.x(), cell.z())) {
+				sumX += cell.x() + 0.5;
+				sumZ += cell.z() + 0.5;
+				faceCells++;
+			}
+		}
+		final double faceX = sumX / faceCells;
+		final double faceZ = sumZ / faceCells;
+		double toX = 0.0;
+		double toZ = 0.0;
+		for (TowerPlan.Spot cell : entrance.cells()) {
+			toX += cell.x() + 0.5;
+			toZ += cell.z() + 0.5;
+		}
+		final double length = Math.hypot(toX / entrance.cells().size() - faceX, toZ / entrance.cells().size() - faceZ);
+		final double alongX = (toX / entrance.cells().size() - faceX) / length;
+		final double alongZ = (toZ / entrance.cells().size() - faceZ) / length;
+		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		Vec3 hall = new Vec3(o.getX() + plan.hallLow() + 3.5, TowerLayout.BASE_Y, o.getZ() + plan.hallLow() + 3.5);
+		player.teleportTo(tower, hall.x, hall.y, hall.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		TowerTestSupport.holdRoom(tower, hall);
+		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+		TowerMobs.makeTowerMob(zombie, floor, TowerElement.DARK);
+		zombie.setNoAi(true);
+		zombie.snapTo(o.getX() + door.x() + 0.5, TowerLayout.BASE_Y, o.getZ() + door.z() + 0.5, 0.0F, 0.0F);
+		tower.addFreshEntity(zombie);
+		UUID id = zombie.getUUID();
+		double deep = length - 2.0;
+		long driveAt = 2L * TowerSafety.SWEEP_TICKS;
+		helper.runAfterDelay(driveAt, () -> {
+			Mob now = tower.getEntity(id) instanceof Mob m ? m : null;
+			helper.assertTrue(now != null, "the zombie is gone, so the case proves nothing");
+			now.snapTo(o.getX() + faceX + alongX * deep, TowerLayout.BASE_Y, o.getZ() + faceZ + alongZ * deep, 0.0F, 0.0F);
+			helper.assertTrue(now.getBoundingBox().intersects(zoneBox(plan, room)), "the zombie is not inside the room, so the case proves nothing");
+		});
+		helper.runAfterDelay(driveAt + TowerSafety.SWEEP_TICKS + 1L, () -> {
+			Mob now = tower.getEntity(id) instanceof Mob m ? m : null;
+			double along = now == null ? Double.NaN : (now.getX() - o.getX() - faceX) * alongX + (now.getZ() - o.getZ() - faceZ) * alongZ;
+			Set<Long> doorway = gateCells(exit);
+			// Back on the hall's side: in the hall, or in the door through its wall.
+			boolean inHall = now != null && (inHall(plan, now.getBlockX() - o.getX(), now.getBlockZ() - o.getZ())
+				|| doorway.contains(key(now.getBlockX() - o.getX(), now.getBlockZ() - o.getZ())));
+			boolean inside = now != null && now.getBoundingBox().intersects(zoneBox(plan, room));
+			TowerTestSupport.result("sentBack", "deep=" + deep + " roomLength=" + length + " alongAfter=" + along + " inHall=" + inHall + " inside=" + inside);
+			if (now != null) {
+				now.discard();
+			}
+			TowerTestSupport.leave(helper, player);
+			helper.assertTrue(now != null && !inside, "the zombie was not sent out of the room");
+			helper.assertTrue(along < 0.0 && inHall, "the zombie was sent " + along + " along the room (the hall is behind the exit, at less than 0), not back into the hall");
+			helper.succeed();
 		});
 	}
 
