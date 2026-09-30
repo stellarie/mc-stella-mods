@@ -23,24 +23,19 @@ Use `python scripts/build-release.py --list` to inspect the detected mods.
 
 ## Mods
 
-| Directory | Purpose | Integration branch |
-|---|---|---|
-| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior | `main-mobs` |
-| `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 | `main-equip-ench` |
-| `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments | `main-spells` |
-| `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally | `main-villages` |
-| `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station | `main-food` |
-| `mod-stella-learn/` | Mobs learn each player's fighting habits, counter them, and coordinate through callouts (plan: `docs/plans/2026-09-29/LEARNING-MOBS.md`) | `main-learn` |
+| Directory | Purpose |
+|---|---|
+| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior |
+| `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 |
+| `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments |
+| `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally |
+| `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station |
+| `mod-stella-learn/` | Mobs learn each player's fighting habits, counter them, and coordinate through callouts (plan: `docs/plans/2026-09-29/LEARNING-MOBS.md`) |
 
-Each mod has its own integration branch. Create new work branches from the current
-tip of the branch for that mod. Do not merge integration branches into each other.
+`main` is the only trunk. See `AGENTS.md` for branch naming, merge rules and mod
+interoperability. Work in a worktree branched from `origin/main`.
 
-Use a worktree from the matching branch before editing a mod. Other mod
-directories may be absent or older in that checkout.
-
-`main` contains the 2026-09-26 source snapshot, including unfinished spellbook
-and village work. See `HANDOFFS-2026-09-26.md` before resuming either mod.
-Start new mod work from the matching integration branch.
+See `HANDOFFS-2026-09-26.md` before resuming the spellbook or village work.
 `master` is the original repository baseline, not a development target.
 
 ## mod-stella-mobs
