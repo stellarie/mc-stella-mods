@@ -244,11 +244,10 @@ public final class TowerShamans {
 		}
 		int now = now(shaman);
 		LivingEntity quarry = shaman.getTarget();
-		if (quarry == null || !quarry.isAlive() || shaman.distanceTo(quarry) > CAST_RANGE) {
-			quarry = tower.getNearestPlayer(shaman, CAST_RANGE);
-			if (quarry != null && (quarry.isSpectator() || ((ServerPlayer) quarry).isCreative())) {
-				quarry = null;
-			}
+		if (quarry == null || !quarry.isAlive() || shaman.distanceTo(quarry) > CAST_RANGE || TowerSafety.sheltered(quarry)) {
+			// A player in a safe zone is never the quarry: the nearest one who is not is picked instead.
+			quarry = tower.getNearestPlayer(shaman.getX(), shaman.getY(), shaman.getZ(), CAST_RANGE,
+				player -> !player.isSpectator() && !((ServerPlayer) player).isCreative() && !TowerSafety.sheltered((LivingEntity) player));
 		}
 		boolean inFight = quarry != null && shaman.hasLineOfSight(quarry);
 		if (inFight && now >= shaman.getAttachedOrElse(STRIKE_AT, Integer.MIN_VALUE) && spells.castAt(shaman, kit.offensive(), quarry)) {

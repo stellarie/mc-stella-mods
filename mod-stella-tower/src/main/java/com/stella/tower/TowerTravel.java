@@ -136,8 +136,9 @@ public final class TowerTravel {
 		}
 		TowerFloors.ensure(tower, floor);
 		int arrived = floor;
+		TowerPlan plan = TowerPlan.at(tower, floor);
 		return new TeleportTransition(
-			tower, TowerLayout.arrival(floor), Vec3.ZERO, TowerLayout.arrivalYaw(), 0.0F,
+			tower, plan.arrivalPos(), Vec3.ZERO, plan.arrivalYaw(), 0.0F,
 			TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET).then(moved -> arrive(moved, arrived))
 		);
 	}

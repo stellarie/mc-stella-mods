@@ -102,12 +102,18 @@ public class TowerWispGameTest {
 		TowerWisps.Trail trail = trails.isEmpty() ? null : trails.get(0);
 		BlockPos feet = player.blockPosition();
 		// The portal is two blocks wide: the way ends at whichever is nearer.
-		int shortest = TowerLayout.portalInside(floor).stream().filter(pos -> pos.getY() == TowerLayout.BASE_Y)
-			.mapToInt(pos -> steps(tower, floor, feet, pos)).filter(n -> n >= 0).min().orElse(-1);
+		// The portal stands raised, so its own spot is not open ground: the walk is to the spot before it, and one more.
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		int shortest = plan.portalInside().stream().filter(pos -> pos.getY() == plan.portalInside().get(0).getY())
+			.mapToInt(pos -> steps(tower, floor, feet, new BlockPos(pos.getX() + plan.portalFacing(), TowerLayout.BASE_Y, pos.getZ())) + 1)
+			.filter(n -> n >= 1).min().orElse(-1);
 		int broken = 0;
 		if (trail != null) {
 			for (int i = 1; i < trail.path().size(); i++) {
-				broken += trail.path().get(i).distManhattan(trail.path().get(i - 1)) == 1 ? 0 : 1;
+				// Level steps, but for the last, up onto the portal's frame.
+				BlockPos step = trail.path().get(i);
+				BlockPos before = trail.path().get(i - 1);
+				broken += Math.abs(step.getX() - before.getX()) + Math.abs(step.getZ() - before.getZ()) == 1 ? 0 : 1;
 			}
 		}
 		int damage = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
@@ -115,7 +121,7 @@ public class TowerWispGameTest {
 			+ " shortest=" + shortest + " broken=" + broken + " lasts=" + (trail == null ? -1 : trail.until() - now) + " damage=" + damage);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(trail != null, "the wisp lit no way");
-		helper.assertTrue(trail.path().get(0).equals(feet) && TowerLayout.portalInside(floor).contains(trail.path().get(trail.path().size() - 1)),
+		helper.assertTrue(trail.path().get(0).equals(feet) && TowerLayout.portalInside(tower, floor).contains(trail.path().get(trail.path().size() - 1)),
 			"the way runs from " + trail.path().get(0) + " to " + trail.path().get(trail.path().size() - 1) + ", not from the player to the portal");
 		helper.assertTrue(broken == 0 && trail.path().size() - 1 == shortest, "the way is " + (trail.path().size() - 1) + " steps with " + broken + " gaps; the shortest is " + shortest);
 		helper.assertTrue(trail.until() - now == TowerWisps.LIGHT_TICKS, "the way lasts " + (trail.until() - now) + " ticks");
@@ -151,10 +157,25 @@ public class TowerWispGameTest {
 		player.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
 		player.getMainHandItem().use(tower, player, InteractionHand.MAIN_HAND);
 		TowerWisps.Trail trail = TowerWisps.trailsOn(floor).get(0);
-		// A few steps along, by the player, where the room is surely loaded.
-		BlockPos onWay = trail.path().get(Math.min(6, trail.path().size() - 1));
-		// An open spot far from every step of the way.
+		// A few steps along, by the player, where the room is surely loaded, but beyond the arrival's safe zone:
+		// a tower mob put inside a zone is sent out of it within a sweep, and would leave the way.
 		BlockPos o = TowerLayout.origin(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		BlockPos onWay = trail.path().get(trail.path().size() - 1);
+		for (BlockPos step : trail.path()) {
+			boolean clearOfZones = true;
+			for (TowerMaze.Zone zone : plan.safeZones()) {
+				int dx = Math.max(Math.max(zone.x() - (step.getX() - o.getX()), 0), (step.getX() - o.getX()) - (zone.x() + TowerMaze.SAFE - 1));
+				int dz = Math.max(Math.max(zone.z() - (step.getZ() - o.getZ()), 0), (step.getZ() - o.getZ()) - (zone.z() + TowerMaze.SAFE - 1));
+				clearOfZones &= Math.max(dx, dz) >= 2;
+			}
+			if (clearOfZones) {
+				onWay = step;
+				break;
+			}
+		}
+		final BlockPos wayStep = onWay;
+		// An open spot far from every step of the way.
 		BlockPos away = null;
 		for (int x = 1; x < S - 1 && away == null; x += 3) {
 			for (int z = 1; z < S - 1 && away == null; z += 3) {
@@ -170,7 +191,7 @@ public class TowerWispGameTest {
 		}
 		helper.assertTrue(away != null, "no spot lies away from the way");
 		TowerTestSupport.holdRoom(tower, Vec3.atCenterOf(away));
-		Zombie on = zombieAt(tower, floor, onWay);
+		Zombie on = zombieAt(tower, floor, wayStep);
 		Zombie off = zombieAt(tower, floor, away);
 		helper.runAfterDelay(30L, () -> {
 			helper.assertTrue(tower.getEntity(on.getUUID()) == on && tower.getEntity(off.getUUID()) == off,

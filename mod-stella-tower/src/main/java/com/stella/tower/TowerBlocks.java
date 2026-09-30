@@ -64,6 +64,17 @@ public final class TowerBlocks {
 		.noLootTable()
 		.pushReaction(PushReaction.IMMOVEABLE));
 
+	/**
+	 * A chest that stays: it cannot be mined, blown up, pushed, or broken by a wither or the dragon. It has no
+	 * item, so no player carries one out; the tower places it (see {@link TowerChests}).
+	 */
+	public static final TowerChestBlock TOWER_CHEST = register("tower_chest", TowerChestBlock::new, BlockBehaviour.Properties.of()
+		.mapColor(MapColor.COLOR_BLACK)
+		.strength(-1.0F, 3_600_000.0F)
+		.noLootTable()
+		.sound(SoundType.WOOD)
+		.pushReaction(PushReaction.IMMOVEABLE));
+
 	/** The traps, one block for each theme that is laid. */
 	public static final java.util.Map<TrapTheme, TowerTrapBlock> TRAPS = registerTraps();
 
@@ -95,6 +106,9 @@ public final class TowerBlocks {
 	}
 
 	public static void register() {
+		// Vanilla's chest block entity and its renderer serve the tower's chest too.
+		((net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityType) net.minecraft.world.level.block.entity.BlockEntityTypes.CHEST)
+			.addValidBlock(TOWER_CHEST);
 		StellaTower.LOGGER.debug("Registered the tower blocks");
 	}
 }

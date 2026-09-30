@@ -32,7 +32,15 @@
 			"com.stella.tower.TowerClueGameTest",
 			"com.stella.tower.TowerVoidGearGameTest",
 			"com.stella.tower.TowerShamanGameTest",
-			"com.stella.tower.TowerGrowthGameTest"
+			"com.stella.tower.TowerGrowthGameTest",
+			"com.stella.tower.TowerPlanGameTest",
+			"com.stella.tower.TowerRaisedPortalGameTest",
+			"com.stella.tower.TowerSafeRoomGameTest",
+			"com.stella.tower.TowerSafetyReviewGameTest",
+			"com.stella.tower.TowerVariationGameTest",
+			"com.stella.tower.TowerAuraGameTest",
+			"com.stella.tower.TowerChestGameTest",
+			"com.stella.tower.TowerFloorChestGameTest"
 		]
 	},
 	"mixins": [
