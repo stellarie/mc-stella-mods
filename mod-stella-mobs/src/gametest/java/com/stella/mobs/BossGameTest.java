@@ -100,7 +100,7 @@ public class BossGameTest {
 		);
 
 		helper.assertTrue(
-			Math.abs(tenLevelHealth - 1.5) < EPSILON && Math.abs(tenLevelDamage - (Math.pow(1.06, 10) - 1.0)) < EPSILON,
+			Math.abs(tenLevelHealth - 2.0) < EPSILON && Math.abs(tenLevelDamage - (Math.pow(1.06, 10) - 1.0)) < EPSILON,
 			"ten threat levels did not raise health and damage by the expected amounts"
 		);
 		helper.assertValueEqual(Integer.valueOf(level), Integer.valueOf(expectedArea), "distance area level");

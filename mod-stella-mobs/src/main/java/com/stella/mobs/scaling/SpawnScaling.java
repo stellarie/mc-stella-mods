@@ -33,7 +33,7 @@ public final class SpawnScaling {
 	 * The default health gained per level. {@code mod-stella-spells} reads this field by name, so keep it public.
 	 * The live rate comes from {@code scaling.json}.
 	 */
-	public static final double LEVEL_HEALTH_BONUS = 0.15;
+	public static final double LEVEL_HEALTH_BONUS = 0.20;
 	/**
 	 * A test rig sets this system property to {@code worldSpawn} so distance is measured from the level's spawn: the game
 	 * test arenas sit about ten million blocks from 0,0, which would make every test mob a level-100,000 mob. Nothing in

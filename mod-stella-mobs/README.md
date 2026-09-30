@@ -33,7 +33,7 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
 
 ## Health, damage, piercing, and experience
 
-- **Health:** x(1 + 0.15 x level).
+- **Health:** x(1 + 0.20 x level).
 - **Damage:** x1.06^level up to level 80. Melee reads it through the attack attribute. A hostile mob's other hits
   (arrows, fireballs, explosions, spells, fangs) take the same multiplier at the hurt call. Friendly golems keep
   their fixed special hits.

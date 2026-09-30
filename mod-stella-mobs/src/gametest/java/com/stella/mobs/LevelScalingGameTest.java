@@ -124,7 +124,7 @@ public class LevelScalingGameTest {
 	public void curveTable(final GameTestHelper helper) {
 		double base80 = Math.pow(1.06, 80);
 		boolean valid = close(SpawnScaling.healthMultiplier(0), 1.0)
-			&& close(SpawnScaling.healthMultiplier(10), 2.5)
+			&& close(SpawnScaling.healthMultiplier(10), 3.0)
 			&& close(SpawnScaling.damageMultiplier(0), 1.0)
 			&& close(SpawnScaling.damageMultiplier(10), Math.pow(1.06, 10))
 			&& close(SpawnScaling.damageMultiplier(80), base80)
