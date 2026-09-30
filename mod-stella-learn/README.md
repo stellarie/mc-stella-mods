@@ -128,7 +128,7 @@ be driven by a trained network instead of its own goals. No model ships yet: the
   SHA-256 of the contract bytes. `training/stella_train/contract.py` is the Python reader.
 - **Every two ticks** the goal builds the observation, asks the network and keeps the answer. Every tick it applies it
   under limits no model can pass: a turn of at most 30 degrees a tick, a walk at 1.2 times the mob's own speed, a bow
-  loosed only at a full 20 tick draw (power 1.6), and a volley only 120 ticks after the last one. The bow head has four options: idle, draw (hold), fire and fire-volley; both fire options start a draw, keep drawing and loose at a full draw, and idle in between cancels it.
+  loosed only at a full 20 tick draw (power 1.6), and a volley only 120 ticks after the last one. The bow head has four options: idle, draw (hold), fire and fire-volley; one fire decision commits a shot that draws to 20 ticks and looses whatever the bow head says meanwhile; two idle decisions in a row cancel it, one does not.
 - **Fall back.** A missing file (`status=missing`), a file made for another contract (`contract`) or a broken one
   (`format`) disables the model for the session and every archer keeps its goals. A mob that gets a non-finite output
   (`nan`), an error thrown by the observation or the network (`error`, logged with its stack), a switch turned off

@@ -297,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", type=Path, default=None, help="continue in an existing run directory")
     parser.add_argument("--resume", type=Path, default=None, help="a checkpoint to continue from")
     parser.add_argument("--widen-from", type=Path, default=None, help="start from the actor of a checkpoint made for a narrower contract")
+    parser.add_argument("--note", default=None, help="a line for the log at the start, written as trainStage NOTE")
     parser.add_argument("--eval-reset", action="store_true", help="after --resume: start a new eval series and band clock at band 0")
     parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
     parser.add_argument("--max-seconds", type=float, default=None, help="stop after this much wall time, for a smoke run")
@@ -318,6 +319,9 @@ def main(argv: list[str] | None = None) -> int:
         trainer.widen_from_checkpoint(args.widen_from)
     elif args.resume:
         trainer.resume(args.resume)
+        if args.note:
+            log.info("trainStage NOTE decisions=%d %s", trainer.decisions, args.note)
+            log.event("trainStage NOTE", decisions=trainer.decisions, note=args.note)
         if args.eval_reset:
             trainer.curriculum.reset_evals(trainer.decisions, 0)
         if args.restart_stage_a:

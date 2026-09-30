@@ -20,6 +20,10 @@ public final class ArcherState {
 	/** Ticks this goal has run. */
 	int goalTicks;
 	int drawTicks;
+	/** A fire decision commits the shot; it leaves at a full draw whatever the bow head says meanwhile. */
+	boolean committed;
+	boolean volleyWanted;
+	int idleStreak;
 	int sinceVolley = VOLLEY_COOLDOWN_TICKS;
 	ArcherAction action = ArcherAction.STILL;
 	final float[] previous = new float[PREVIOUS_SIZE];

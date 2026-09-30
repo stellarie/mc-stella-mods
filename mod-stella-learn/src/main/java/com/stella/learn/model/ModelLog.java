@@ -42,6 +42,14 @@ public final class ModelLog {
 			+ " power=" + LearnLog.num(power) + " volley_asked=" + volleyAsked + " volley=" + volley + " arrows=" + arrows);
 	}
 
+	static void latch(final Mob mob, final boolean volley, final int drawTicks) {
+		LearnLog.sampled(TEST, "FIRE_LATCH", LearnLog.who(mob) + " tick=" + mob.tickCount + " volley=" + volley + " draw_ticks=" + drawTicks);
+	}
+
+	static void cancel(final Mob mob, final int drawTicks) {
+		LearnLog.sampled(TEST, "CANCEL", LearnLog.who(mob) + " tick=" + mob.tickCount + " draw_ticks=" + drawTicks + " reason=idle");
+	}
+
 	/** Debug level: an archer type that was not made model driven, and why. */
 	static void skip(final Mob mob, final String reason) {
 		LearnLog.debug(TEST, "SKIP", LearnLog.who(mob) + " tick=" + mob.tickCount + " reason=" + reason);

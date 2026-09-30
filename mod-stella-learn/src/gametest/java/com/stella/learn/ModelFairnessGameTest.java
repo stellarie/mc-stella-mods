@@ -188,31 +188,59 @@ public class ModelFairnessGameTest {
 		}
 	}
 
-	/** Asks to fire at every decision, and a second archer asks for five decisions and then goes idle mid-draw. */
+	private static Mob firstShot(final GameTestHelper helper, final ServerPlayer player, final ActionSource source, final List<AbstractArrow> arrows, final double[] speed, final double x) {
+		Mob archer = ModelTests.archer(helper, x, 24.5);
+		ModelDriver.setActionSource(archer, source);
+		ModelTests.everyTick(helper, player, () -> firstSpeed(helper, archer, arrows, speed), archer);
+		return archer;
+	}
+
+	/** Asks to fire at every decision: the first arrow leaves at a full draw and at full speed. */
 	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
 	public void fireWaitsForFullDraw(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 24.5, 40.5);
-		Mob firing = ModelTests.archer(helper, 12.5, 24.5);
-		Mob quitter = ModelTests.archer(helper, 36.5, 24.5);
-		ModelDriver.setActionSource(firing, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)));
-		ModelDriver.setActionSource(quitter, ModelTests.script(decision -> ModelTests.bow(decision < 5 ? ArcherAction.Bow.FIRE : ArcherAction.Bow.IDLE)));
-		List<AbstractArrow> arrows = new ArrayList<>();
 		double[] speed = {0.0};
-		ModelTests.everyTick(helper, player, () -> firstSpeed(helper, firing, arrows, speed), firing, quitter);
-		LearnArena.whenReady(helper, List.of(player, firing, quitter), () -> LearnArena.pollUntil(helper, () -> speed[0] > 0.0, 200, () -> {
-			String line = ModelTests.lines(firing, "RELEASE").get(0);
-			int draw = Integer.parseInt(ModelTests.field(line, "draw_ticks"));
-			LearnArena.pollUntil(helper, () -> firing.tickCount > 100, 200, () -> {
-				long quitterShots = ModelTests.lines(quitter, "RELEASE").size();
-				StellaLearn.LOGGER.info("[BEHAVIOR] test=fireWaitsForFullDraw RESULT draw_ticks={} speed={} quitter_shots={}", draw, speed[0], quitterShots);
-				helper.assertTrue(draw >= LearnedArcherGoal.FULL_DRAW_TICKS, "the first arrow left after " + draw + " draw ticks");
-				helper.assertTrue(speed[0] >= LearnedArcherGoal.POWER * 0.95, "the first arrow flew at " + speed[0] + ", not at full speed");
-				helper.assertTrue(quitterShots == 0, "an archer that went idle mid-draw still loosed " + quitterShots + " arrows");
-				ModelTests.pass(helper);
-			}, () -> "the clock never passed 100 ticks");
+		Mob firing = firstShot(helper, player, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)), new ArrayList<>(), speed, 24.5);
+		LearnArena.whenReady(helper, List.of(player, firing), () -> LearnArena.pollUntil(helper, () -> speed[0] > 0.0, 200, () -> {
+			int draw = Integer.parseInt(ModelTests.field(ModelTests.lines(firing, "RELEASE").get(0), "draw_ticks"));
+			StellaLearn.LOGGER.info("[BEHAVIOR] test=fireWaitsForFullDraw RESULT draw_ticks={} speed={}", draw, speed[0]);
+			helper.assertTrue(draw >= LearnedArcherGoal.FULL_DRAW_TICKS, "the first arrow left after " + draw + " draw ticks");
+			helper.assertTrue(speed[0] >= LearnedArcherGoal.POWER * 0.95, "the first arrow flew at " + speed[0] + ", not at full speed");
+			ModelTests.pass(helper);
 		}, () -> "the firing archer never loosed"));
+	}
+
+	/** One fire decision, then idle and fire in turn: no two idles in a row, so the shot still leaves at a full draw. */
+	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	public void fireLatchesThroughIdle(final GameTestHelper helper) {
+		ModelTests.acquire(helper);
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 40.5);
+		double[] speed = {0.0};
+		Mob archer = firstShot(helper, player, ModelTests.script(decision -> ModelTests.bow(decision % 2 == 0 ? ArcherAction.Bow.FIRE : ArcherAction.Bow.IDLE)), new ArrayList<>(), speed, 24.5);
+		LearnArena.whenReady(helper, List.of(player, archer), () -> LearnArena.pollUntil(helper, () -> speed[0] > 0.0, 200, () -> {
+			int draw = Integer.parseInt(ModelTests.field(ModelTests.lines(archer, "RELEASE").get(0), "draw_ticks"));
+			helper.assertTrue(draw >= LearnedArcherGoal.FULL_DRAW_TICKS && speed[0] >= LearnedArcherGoal.POWER * 0.95, "draw " + draw + " speed " + speed[0]);
+			helper.assertTrue(!ModelTests.lines(archer, "FIRE_LATCH").isEmpty() && ModelTests.lines(archer, "CANCEL").isEmpty(), "no latch line, or a cancel line");
+			ModelTests.pass(helper);
+		}, () -> "the archer never loosed through its idle decisions"));
+	}
+
+	/** A fire decision, then idle decisions from then on: two in a row cancel the committed draw and nothing leaves. */
+	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	public void doubleIdleCancels(final GameTestHelper helper) {
+		ModelTests.acquire(helper);
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 40.5);
+		double[] speed = {0.0};
+		Mob archer = firstShot(helper, player, ModelTests.script(decision -> ModelTests.bow(decision == 0 ? ArcherAction.Bow.FIRE : ArcherAction.Bow.IDLE)), new ArrayList<>(), speed, 24.5);
+		LearnArena.whenReady(helper, List.of(player, archer), () -> LearnArena.pollUntil(helper, () -> !ModelTests.lines(archer, "CANCEL").isEmpty(), 100, () -> LearnArena.pollUntil(helper, () -> archer.tickCount > 90, 200, () -> {
+			helper.assertTrue(speed[0] == 0.0 && ModelTests.lines(archer, "RELEASE").isEmpty(), "a cancelled draw still loosed an arrow");
+			helper.assertTrue(!ModelTests.lines(archer, "FIRE_LATCH").isEmpty(), "the fire decision never latched");
+			ModelTests.pass(helper);
+		}, () -> "the clock never passed 90 ticks"), () -> "no CANCEL line after two idle decisions"));
 	}
 
 	/** Looks straight at the target's eyes and draws, then releases once; it reads its own pitch from the observation. */

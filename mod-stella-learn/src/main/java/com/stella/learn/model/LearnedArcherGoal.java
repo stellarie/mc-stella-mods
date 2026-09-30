@@ -31,6 +31,8 @@ public final class LearnedArcherGoal extends Goal {
 	private static final double MIN_INPUT = 1.0E-3;
 	/** A shot leaves at this draw, where the bow gives full power. */
 	public static final int FULL_DRAW_TICKS = 20;
+	/** This many idle decisions in a row cancel a committed shot. */
+	public static final int CANCEL_IDLE_DECISIONS = 2;
 	/** Vanilla's skeleton shot power; a full draw looses at this. */
 	public static final float POWER = 1.6F;
 	/** Vanilla's Hard difficulty skeleton inaccuracy. */
@@ -91,6 +93,7 @@ public final class LearnedArcherGoal extends Goal {
 
 	@Override
 	public void stop() {
+		this.state.committed = false;
 		this.mob.setAggressive(false);
 		this.mob.stopUsingItem();
 		this.mob.setSpeed(0.0F);
@@ -186,6 +189,10 @@ public final class LearnedArcherGoal extends Goal {
 		previous[3] = action.pitch();
 		previous[4] = action.jumpIndex();
 		previous[5] = action.bow().ordinal();
+		this.state.idleStreak = action.bow() == ArcherAction.Bow.IDLE ? this.state.idleStreak + 1 : 0;
+		if (action.bow() == ArcherAction.Bow.FIRE_VOLLEY) {
+			this.state.volleyWanted = true;
+		}
 		int every = config.modelActLogTicks();
 		if (every > 0 && this.state.goalTicks >= this.state.nextActLog) {
 			ModelLog.act(this.mob, target, action, this.state.goalTicks);
@@ -231,7 +238,31 @@ public final class LearnedArcherGoal extends Goal {
 			this.state.drawTicks++;
 		}
 
-		switch (this.state.action.bow()) {
+		ArcherAction.Bow bow = this.state.action.bow();
+		if (!this.state.committed && (bow == ArcherAction.Bow.FIRE || bow == ArcherAction.Bow.FIRE_VOLLEY)) {
+			this.state.committed = true;
+			this.state.volleyWanted = bow == ArcherAction.Bow.FIRE_VOLLEY;
+			ModelLog.latch(this.mob, this.state.volleyWanted, this.state.drawTicks);
+		}
+
+		if (this.state.committed) {
+			// One idle decision does not undo a shot; two in a row do.
+			if (this.state.idleStreak >= CANCEL_IDLE_DECISIONS) {
+				ModelLog.cancel(this.mob, this.state.drawTicks);
+				this.state.committed = false;
+				this.mob.stopUsingItem();
+				this.state.drawTicks = 0;
+				return;
+			}
+
+			if (this.fire(this.state.volleyWanted, drawing)) {
+				this.state.committed = false;
+			}
+
+			return;
+		}
+
+		switch (bow) {
 			case IDLE -> {
 				if (drawing) {
 					this.mob.stopUsingItem();
@@ -245,21 +276,21 @@ public final class LearnedArcherGoal extends Goal {
 					this.state.drawTicks = 0;
 				}
 			}
-			case FIRE -> this.fire(false, drawing);
-			case FIRE_VOLLEY -> this.fire(true, drawing);
+			default -> {
+			}
 		}
 	}
 
-	/** Starts a draw when none runs, keeps drawing, and looses at a full draw. IDLE in between cancels it. */
-	private void fire(final boolean volleyAsked, final boolean drawing) {
+	/** Starts a draw when none runs, keeps drawing, and looses at a full draw. Returns true when the shot left. */
+	private boolean fire(final boolean volleyAsked, final boolean drawing) {
 		if (!drawing) {
 			this.mob.startUsingItem(ProjectileUtil.getWeaponHoldingHand(this.mob, Items.BOW));
 			this.state.drawTicks = 0;
-			return;
+			return false;
 		}
 
 		if (this.state.drawTicks < FULL_DRAW_TICKS) {
-			return;
+			return false;
 		}
 
 		int drawTicks = this.state.drawTicks;
@@ -283,6 +314,7 @@ public final class LearnedArcherGoal extends Goal {
 		this.state.drawTicks = 0;
 		this.state.releases++;
 		ModelLog.release(this.mob, drawTicks, power, volleyAsked, volley, arrows.size());
+		return true;
 	}
 
 	private static float unit(final float value) {
