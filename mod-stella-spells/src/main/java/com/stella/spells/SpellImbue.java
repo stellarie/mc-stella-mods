@@ -293,6 +293,7 @@ public final class SpellImbue {
 			piece, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), definition.baseCooldownTicks()
 		);
 		base = TowerBridge.grow(piece, definition.id().getPath(), base);
+		base = RpgBridge.grow(player, base);
 		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
 			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks()

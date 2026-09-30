@@ -67,6 +67,16 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
 
+## Spells API
+
+`RpgSpells` gives other mods the INT multipliers for player spells. `mod-stella-spells` reads them by name.
+
+- `RpgSpells.power(player)` returns the spell power multiplier for the player's effective INT.
+- `RpgSpells.cooldown(player)` returns the spell cooldown multiplier for the player's effective INT.
+- Both return 1.0 for a player that is not a `ServerPlayer`.
+- At INT 100 the multipliers are 1.5000 and 0.9000. At INT 0 both are 1.0000.
+- Spells that use `magic()` damage have no attacker, so STR and DEX do not scale them.
+
 ## Build and test
 
 Run these from `mod-stella-rpg/` with Java 25:

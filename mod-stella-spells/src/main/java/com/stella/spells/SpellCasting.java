@@ -97,6 +97,7 @@ public final class SpellCasting {
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
 		);
 		modifiers = TowerBridge.grow(stack, definition.id().getPath(), modifiers);
+		modifiers = RpgBridge.grow(caster, modifiers);
 		Mob target = null;
 		Vec3 point = null;
 		switch (definition.targetMode()) {

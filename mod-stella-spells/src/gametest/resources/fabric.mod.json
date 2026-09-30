@@ -29,7 +29,8 @@
 			"com.stella.spells.TowerBridgeGameTest",
 			"com.stella.spells.ClueBooksGameTest",
 			"com.stella.spells.ImbueExpansionGameTest",
-			"com.stella.spells.QuickSlotsGameTest"
+			"com.stella.spells.QuickSlotsGameTest",
+			"com.stella.spells.RpgBridgeGameTest"
 		]
 	},
 	"depends": {
