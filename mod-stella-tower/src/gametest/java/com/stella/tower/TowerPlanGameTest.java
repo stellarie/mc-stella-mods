@@ -59,7 +59,8 @@ public class TowerPlanGameTest {
 		BlockPos o = plan.origin();
 		Set<Long> posts = new HashSet<>();
 		for (BlockPos pos : plan.portalFrame()) {
-			if (pos.getY() == TowerLayout.BASE_Y) {
+			// The two posts either side of the portal, on the floor of the maze: not the frame's bottom row under it.
+			if (plan.isFramePost(pos.getX() - o.getX(), pos.getZ() - o.getZ())) {
 				posts.add(((long) (pos.getX() - o.getX()) << 32) | (pos.getZ() - o.getZ()));
 			}
 		}
@@ -243,7 +244,7 @@ public class TowerPlanGameTest {
 			inside += state.getCollisionShape(tower, pos).isEmpty() ? 1 : 0;
 		}
 		boolean portalAt = TowerLayout.portalInside(tower, floor).equals(plan.portalInside())
-			&& TowerLayout.portalX(tower, floor) == plan.portalX() && plan.portalInside().get(0).equals(o.offset(plan.portalX(), 0, plan.portalZ()));
+			&& TowerLayout.portalX(tower, floor) == plan.portalX() && plan.portalInside().get(0).equals(o.offset(plan.portalX(), plan.lift(), plan.portalZ()));
 		int wrong = blocksThatDisagree(tower, floor, plan);
 		boolean planned = TowerFloors.isPlanned(tower, floor) && TowerPlan.at(tower, floor).version() == TowerPlan.VERSION;
 		TowerTestSupport.result(name, "floor=" + floor + " arrival=" + plan.arrivalX() + "," + plan.arrivalZ() + " portal=" + plan.portalX() + "," + plan.portalZ()

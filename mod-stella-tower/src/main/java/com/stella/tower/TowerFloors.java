@@ -278,6 +278,10 @@ public final class TowerFloors {
 		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor, plan)) {
 			tower.setBlock(origin.offset(trap.x(), -1, trap.z()), TowerBlocks.TRAPS.get(trap.theme()).defaultBlockState(), Block.UPDATE_CLIENTS);
 		}
+		// A planned floor's portal stands on wall: a block under its frame, or a boss floor's pyramid.
+		for (BlockPos pos : plan.plinth()) {
+			tower.setBlock(pos, wall, Block.UPDATE_CLIENTS);
+		}
 		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
 		for (BlockPos pos : plan.portalFrame()) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);

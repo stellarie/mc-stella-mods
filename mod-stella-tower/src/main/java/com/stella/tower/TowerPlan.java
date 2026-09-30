@@ -70,6 +70,12 @@ public record TowerPlan(
 	public static final int CLASSIC_ARRIVAL_X = 4;
 	public static final int CLASSIC_PORTAL_X = 60;
 	public static final int CLASSIC_MIDDLE_Z = 32;
+	/** How far a planned ordinary or elite floor's portal stands above the old one: its frame rests on a wall block. */
+	public static final int LIFT = 1;
+	/** The layers of the stepped pyramid a boss floor's portal stands on. */
+	public static final int PYRAMID_LAYERS = 3;
+	/** A boss floor's portal lift: the pyramid's layers, then the frame's bottom row above them. */
+	public static final int BOSS_LIFT = PYRAMID_LAYERS + 1;
 	private static final long SALT = 0x504C414EL;
 	private static final long FALLBACK_SALT = 0x46414C4CL;
 	private static final int CACHE = 512;
@@ -306,13 +312,57 @@ public record TowerPlan(
 		return new int[] {(this.arrivalX - 1) / TowerMaze.PITCH, (this.arrivalZ - 1) / TowerMaze.PITCH};
 	}
 
+	/**
+	 * How far the portal's inside stands above {@link TowerLayout#BASE_Y}: {@link #LIFT} on an ordinary or elite
+	 * floor, {@link #BOSS_LIFT} on a boss floor, and none on a legacy floor, whose portal stays flat.
+	 */
+	public int lift() {
+		if (this.version == 0) {
+			return 0;
+		}
+		return this.hall == TowerMaze.BOSS_HALL ? BOSS_LIFT : LIFT;
+	}
+
+	/**
+	 * The tower wall the raised portal stands on, as absolute spots: on an ordinary or elite floor the blocks
+	 * under the frame's bottom row, on a boss floor the pyramid, its layers from the floor up, each layer one
+	 * step narrower than the one below. Empty on a legacy floor.
+	 */
+	public List<BlockPos> plinth() {
+		List<BlockPos> wall = new ArrayList<>();
+		if (this.version == 0) {
+			return wall;
+		}
+		BlockPos origin = origin();
+		int x = origin.getX() + this.portalX;
+		int zLow = origin.getZ() + this.portalZ - 1;
+		int zHigh = origin.getZ() + this.portalZ + TowerLayout.PORTAL_INNER_WIDTH;
+		if (this.hall != TowerMaze.BOSS_HALL) {
+			for (int z = zLow; z <= zHigh; z++) {
+				wall.add(new BlockPos(x, TowerLayout.BASE_Y + this.lift() - 1 - 1, z));
+			}
+			return wall;
+		}
+		// Layer k, counted from the floor, is PYRAMID_LAYERS + 1 - k blocks wider than the frame on every side
+		// but the frame's own column: so the top layer is one step, and the first is PYRAMID_LAYERS.
+		for (int layer = 0; layer < PYRAMID_LAYERS; layer++) {
+			int reach = PYRAMID_LAYERS - layer;
+			for (int dx = -reach; dx <= reach; dx++) {
+				for (int z = zLow - reach; z <= zHigh + reach; z++) {
+					wall.add(new BlockPos(x + dx, TowerLayout.BASE_Y + layer, z));
+				}
+			}
+		}
+		return wall;
+	}
+
 	/** The portal frame's inside: the blocks the portal fills once the frame is lit. */
 	public List<BlockPos> portalInside() {
 		BlockPos origin = origin();
 		List<BlockPos> inside = new ArrayList<>();
 		for (int dz = 0; dz < TowerLayout.PORTAL_INNER_WIDTH; dz++) {
 			for (int dy = 0; dy < TowerLayout.PORTAL_INNER_HEIGHT; dy++) {
-				inside.add(new BlockPos(origin.getX() + this.portalX, TowerLayout.BASE_Y + dy, origin.getZ() + this.portalZ + dz));
+				inside.add(new BlockPos(origin.getX() + this.portalX, TowerLayout.BASE_Y + lift() + dy, origin.getZ() + this.portalZ + dz));
 			}
 		}
 		return inside;
@@ -324,8 +374,8 @@ public record TowerPlan(
 		int x = origin.getX() + this.portalX;
 		int zLow = origin.getZ() + this.portalZ - 1;
 		int zHigh = origin.getZ() + this.portalZ + TowerLayout.PORTAL_INNER_WIDTH;
-		int yLow = TowerLayout.BASE_Y - 1;
-		int yHigh = TowerLayout.BASE_Y + TowerLayout.PORTAL_INNER_HEIGHT;
+		int yLow = TowerLayout.BASE_Y + lift() - 1;
+		int yHigh = TowerLayout.BASE_Y + lift() + TowerLayout.PORTAL_INNER_HEIGHT;
 		List<BlockPos> frame = new ArrayList<>();
 		for (int z = zLow; z <= zHigh; z++) {
 			for (int y = yLow; y <= yHigh; y++) {

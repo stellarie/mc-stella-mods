@@ -24,6 +24,7 @@ public class TowerMazeGameTest {
 					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty();
 			}
 		}
+		TowerTestSupport.openTheRaisedWay(TowerPlan.at(tower, floor), open);
 		return open;
 	}
 

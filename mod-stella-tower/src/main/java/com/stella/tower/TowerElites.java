@@ -115,7 +115,9 @@ public final class TowerElites {
 
 	/** Where a floor's guardians stand guard: a few steps in front of its portal, on the side it is entered by. */
 	public static BlockPos post(final TowerPlan plan) {
-		return plan.portalInside().get(0).offset(plan.portalFacing() * GUARD_DISTANCE, 0, 0);
+		// On the floor of the hall, however high the portal stands.
+		BlockPos inside = plan.portalInside().get(0);
+		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y - inside.getY(), 0);
 	}
 
 	public static boolean keepsElite(final int floor) {
@@ -237,13 +239,18 @@ public final class TowerElites {
 	}
 
 	/**
-	 * A guardian with nothing to hunt walks back to its post. It is never held to the post by a home, since a
+	 * An elite with nothing to hunt walks back to its post; a boss is not tethered at all, and roams its hall.
+	 * It is never held to the post by a home, since a
 	 * mob with a home will not take on a player beyond it, and would stand to be shot from there.
 	 */
 	static void tether(final Mob guardian, final int floor) {
 		if (guardian.hasHome()) {
 			// Raised before the change, with a home saved on it.
 			guardian.clearHome();
+		}
+		TowerMobs.State state = TowerMobs.stateOf(guardian);
+		if (state != null && state.rank() == TowerRank.BOSS) {
+			return;
 		}
 		net.minecraft.world.entity.LivingEntity quarry = guardian.getTarget();
 		if (quarry != null && quarry.isAlive()) {

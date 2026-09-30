@@ -157,6 +157,24 @@ final class TowerTestSupport {
 		return true;
 	}
 
+	/**
+	 * Marks the raised portal's way open in a room's open-ground map: a boss floor's pyramid, whose steps are walked,
+	 * and the portal's own columns, the goal of a walk, which stand on wall.
+	 */
+	static void openTheRaisedWay(final TowerPlan plan, final boolean[][] open) {
+		BlockPos o = plan.origin();
+		for (BlockPos wall : plan.plinth()) {
+			int x = wall.getX() - o.getX();
+			int z = wall.getZ() - o.getZ();
+			if (wall.getY() >= TowerLayout.BASE_Y && !plan.isFramePost(x, z)) {
+				open[x][z] = true;
+			}
+		}
+		for (BlockPos inside : plan.portalInside()) {
+			open[inside.getX() - o.getX()][inside.getZ() - o.getZ()] = true;
+		}
+	}
+
 	/** Holds the chunks around a spot loaded, so what spawns there is seen. A portal ticket lapses after 300 ticks. */
 	static void holdRoom(final ServerLevel tower, final Vec3 at) {
 		tower.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL,

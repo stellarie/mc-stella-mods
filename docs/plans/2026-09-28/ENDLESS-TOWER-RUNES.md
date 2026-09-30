@@ -556,3 +556,23 @@ gone and you stand at your bed or the world spawn.
   portal's cell and the cell either side of it along the frame.
 - Tests moved off fixed offsets: `TowerTestSupport.awayFromArrival` replaces `arrival + 20 blocks`; the
   "way winds" assertion became a statistic in `planProperty`, since a maze can run straight between two near ends.
+
+## Built: raised portals, boss pyramid, free bosses (2026-09-30, slice F2)
+
+- `TowerPlan.lift()` and `plinth()`; constants `LIFT` 1, `PYRAMID_LAYERS` 3, `BOSS_LIFT` 4. The frame and inside
+  rise with the lift; `TowerFloors.finish` lays the plinth before the frame. Legacy (version 0) plans give lift 0
+  and no plinth, so an old floor's portal stays flat.
+- Reading of DECISIONS.md: "lift 1 on a TOWER_WALL plinth" is taken as the frame's bottom row at BASE_Y (one up
+  from the old BASE_Y-1) with TOWER_WALL under it. On a boss floor "frame on top of a 3-high pyramid" is three
+  layers at BASE_Y to BASE_Y+2 and the frame's bottom row at BASE_Y+3, so the inside is at BASE_Y+4 and the
+  frame top at BASE_Y+7, under the ceiling block at BASE_Y+8. Every step, hall floor to frame, is one block.
+- `TowerElites.post` now sits at y BASE_Y whatever the portal's height. `tether` returns for a boss: bosses
+  roam on legacy boss floors too, as the tether is shared code and the rule is about the rank.
+- The wisp's search walks over the pyramid's columns and ends in the portal's column, at its lowest inside
+  spot; the wisp test's "shortest" is to the spot before the portal plus one, and gaps are judged on the level.
+- Test support: `TowerTestSupport.openTheRaisedWay` marks the pyramid and portal columns open in the maze
+  tests' ground maps; the plan property walk takes only the frame's two posts as obstacles.
+- A floor built at F1's version 1 before this slice has no plinth but reports a lift. Nothing was deployed at F1,
+  so version 1 stays; a released layout change must bump `VERSION` (F1 review follow-up).
+- Deviations from DECISIONS.md: none beyond the reading above.
+

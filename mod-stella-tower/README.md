@@ -85,3 +85,34 @@ portal spots, 97% of ways wind (longer than a straight walk). Hall floors used a
 ```
 
 Manual item: none for this slice.
+
+## Raised portals, the boss pyramid, free-roaming bosses (F2)
+
+On a planned floor the next-floor portal is raised. `TowerPlan.lift()` is the portal's rise over the old flat one:
+`LIFT` (1) on ordinary and elite floors, `BOSS_LIFT` (4) on boss floors, 0 on a legacy floor, which keeps its flat
+portal. `TowerPlan.plinth()` is the tower wall it stands on.
+
+- Ordinary and elite floors: the frame's bottom row sits at BASE_Y on a TOWER_WALL block under each of its four
+  blocks; the inside is at BASE_Y+1, so a player steps up one block from the side the portal is entered from.
+- Boss floors: a stepped pyramid of `PYRAMID_LAYERS` (3) TOWER_WALL layers, 70, 40 and 18 blocks, one block per
+  step up from the hall floor, on every side. The frame's bottom row sits on the top layer (y 67), the inside is
+  at y 68 to 70, and the frame's top is y 71, under the ceiling block at y 72 (room HEIGHT 8).
+- `TowerPortalShape` still finds and lights the raised frame; the portal leads up as before.
+- Bosses are no longer tethered: `TowerElites.tether` returns at once for `TowerRank.BOSS`, and a boss roams its
+  hall. Elites keep the tether (5 blocks from the portal, `GUARD_RADIUS` 8, walk back). The guardians' post stays
+  at y BASE_Y, five blocks out from the portal, clear of the pyramid (which reaches 3).
+- The wisp's way ends at the raised portal: it climbs the pyramid's steps and each step is drawn at its height.
+
+```
+[BEHAVIOR] test=raisedOrdinary RESULT floor=29354401 insideY=65 expected=65 frameOnWall=4/4 insideOpen=6/6
+[BEHAVIOR] test=raisedBoss RESULT floor=29354480 insideY=68 expected=68 frameOnWall=4/4 insideOpen=6/6
+[BEHAVIOR] test=bossPyramid RESULT floor=29354520 layers={64=70, 65=40, 66=18} built=128/128 frameLow=67 frameTop=71 ceiling=72
+[BEHAVIOR] test=pyramidWalk RESULT floor=29354560 steps=5 withoutMiddleLayer=-1 restored=5 layers=3
+[BEHAVIOR] test=litBoss RESULT floor=29354720 insideY=68 shapeFound=true lit=6/6
+[BEHAVIOR] test=bossRoams RESULT floor=29354840 window=60 fromPost=14.0 drift=0.0 navigationIdle=true
+[BEHAVIOR] test=legacyFlatBoss RESULT floor=29354920 version=0 lift=0 insideY=64 plinth=0 wallBlocksAround=0 frameFlush=true postY=64
+```
+
+Manual item: none for this slice. (Feel, worth a look in play: the walk up the pyramid, and a boss chasing across
+the hall.)
+

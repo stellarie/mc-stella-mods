@@ -102,12 +102,18 @@ public class TowerWispGameTest {
 		TowerWisps.Trail trail = trails.isEmpty() ? null : trails.get(0);
 		BlockPos feet = player.blockPosition();
 		// The portal is two blocks wide: the way ends at whichever is nearer.
-		int shortest = TowerLayout.portalInside(tower, floor).stream().filter(pos -> pos.getY() == TowerLayout.BASE_Y)
-			.mapToInt(pos -> steps(tower, floor, feet, pos)).filter(n -> n >= 0).min().orElse(-1);
+		// The portal stands raised, so its own spot is not open ground: the walk is to the spot before it, and one more.
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		int shortest = plan.portalInside().stream().filter(pos -> pos.getY() == plan.portalInside().get(0).getY())
+			.mapToInt(pos -> steps(tower, floor, feet, new BlockPos(pos.getX() + plan.portalFacing(), TowerLayout.BASE_Y, pos.getZ())) + 1)
+			.filter(n -> n >= 1).min().orElse(-1);
 		int broken = 0;
 		if (trail != null) {
 			for (int i = 1; i < trail.path().size(); i++) {
-				broken += trail.path().get(i).distManhattan(trail.path().get(i - 1)) == 1 ? 0 : 1;
+				// Level steps, but for the last, up onto the portal's frame.
+				BlockPos step = trail.path().get(i);
+				BlockPos before = trail.path().get(i - 1);
+				broken += Math.abs(step.getX() - before.getX()) + Math.abs(step.getZ() - before.getZ()) == 1 ? 0 : 1;
 			}
 		}
 		int damage = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());
