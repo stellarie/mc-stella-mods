@@ -25,12 +25,12 @@ import org.jspecify.annotations.Nullable;
 public record ThreatState(int areaLevel, int variation, int altitude, int floor) {
 	/** Marks a save from before altitude levels; the level fills it from the mob's y. */
 	public static final int ALTITUDE_UNSET = Integer.MIN_VALUE;
-	/** The roll is centred on +5 levels and reaches 25 either side of that centre. */
-	public static final int VARIATION_MEAN = 5;
-	public static final int VARIATION_RANGE = 25;
+	/** The roll is centred on the area level and reaches 18 either side of it. */
+	public static final int VARIATION_MEAN = 0;
+	public static final int VARIATION_RANGE = 18;
 	public static final int MIN_VARIATION = VARIATION_MEAN - VARIATION_RANGE;
 	public static final int MAX_VARIATION = VARIATION_MEAN + VARIATION_RANGE;
-	public static final double VARIATION_STDDEV = 10.0;
+	public static final double VARIATION_STDDEV = 6.0;
 	/** The Nether's base level, its floor as well: no Nether mob is weaker. */
 	public static final int NETHER_MINIMUM = 50;
 	/** The End's base level, its floor as well. */
