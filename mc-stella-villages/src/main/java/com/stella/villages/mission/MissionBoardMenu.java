@@ -23,14 +23,17 @@ import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.item.component.ItemLore;
 
 /**
- * V2: the village mission board, a one-row chest menu that any client can show without a mod. The offers
- * sit in slots 2, 4 and 6 as the target's spawn egg; the rest is glass. Clicking an offer asks
+ * V2: the village mission board, a two-row chest menu that any client can show without a mod. Each offer is
+ * the target's spawn egg. The top row holds the three Nemesis contracts, the bottom row the three elite
+ * contracts on its left and the three kill contracts on its right; the rest is glass. Clicking an offer asks
  * {@link MissionService#acceptOffer}, which stays the only authority, and no item ever leaves the menu.
  */
 public final class MissionBoardMenu extends ChestMenu {
-	public static final int[] OFFER_SLOTS = {2, 4, 6};
+	/** The slot of each offer, in board order: Nemesis, then elite, then kill. */
+	public static final int[] OFFER_SLOTS = {2, 4, 6, 10, 11, 12, 14, 15, 16};
 	public static final String TITLE = "Village Missions";
-	private static final int ROW = 9;
+	private static final int ROWS = 2;
+	private static final int SIZE = ROWS * 9;
 
 	/** Test seam: each offer a player chose from the board, and what the server answered. */
 	public interface Recorder {
@@ -45,7 +48,7 @@ public final class MissionBoardMenu extends ChestMenu {
 	private final List<MissionService.MissionOffer> offers;
 
 	private MissionBoardMenu(final int id, final Inventory inventory, final Mob head, final List<MissionService.MissionOffer> offers) {
-		super(MenuType.GENERIC_9x1, id, inventory, board(offers), 1);
+		super(MenuType.GENERIC_9x2, id, inventory, board(offers), ROWS);
 		this.head = head;
 		this.offers = List.copyOf(offers);
 	}
@@ -91,20 +94,49 @@ public final class MissionBoardMenu extends ChestMenu {
 	public static ItemStack icon(final MissionService.MissionOffer offer) {
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(offer.targetType());
 		ItemStack icon = SpawnEggItem.byId(type).map(holder -> new ItemStack(holder)).orElseGet(() -> new ItemStack(Items.PAPER));
-		icon.set(DataComponents.ITEM_NAME, Component.literal("Hunt the Nemesis ").append(type.getDescription()));
-		icon.set(DataComponents.LORE, new ItemLore(List.of(
-			Component.literal("Somewhere " + MissionService.MISSION_MIN_DISTANCE + " to " + MissionService.MISSION_MAX_DISTANCE + " blocks from the village"),
-			Component.literal("Accepting gives you a map to it"),
-			Component.literal("Click to accept")
-		)));
+		Component name = type.getDescription();
+		String distance = "Somewhere " + MissionService.MISSION_MIN_DISTANCE + " to " + MissionService.MISSION_MAX_DISTANCE + " blocks from the village";
+		switch (offer.kind()) {
+			case ELITE -> {
+				icon.set(DataComponents.ITEM_NAME, Component.literal("Slay the Elite ").append(name));
+				icon.set(DataComponents.LORE, new ItemLore(List.of(
+					Component.literal("Elite contract: one elite and two " + plural(name) + " guard it"),
+					Component.literal(distance),
+					Component.literal("Reward: 64 emeralds, 64 iron ingots, 2 potions"),
+					Component.literal("Click to accept")
+				)));
+			}
+			case KILL -> {
+				icon.set(DataComponents.ITEM_NAME, Component.literal("Kill " + offer.count() + " ").append(name));
+				icon.set(DataComponents.LORE, new ItemLore(List.of(
+					Component.literal("Kill contract: " + offer.count() + " of them"),
+					Component.literal(distance),
+					Component.literal("Reward at the last kill: 64 iron ingots, 2 potions"),
+					Component.literal("Click to accept")
+				)));
+			}
+			default -> {
+				icon.set(DataComponents.ITEM_NAME, Component.literal("Hunt the Nemesis ").append(name));
+				icon.set(DataComponents.LORE, new ItemLore(List.of(
+					Component.literal("Nemesis contract"),
+					Component.literal(distance),
+					Component.literal("Accepting gives you a map to it"),
+					Component.literal("Click to accept")
+				)));
+			}
+		}
 		return icon;
 	}
 
+	private static String plural(final Component name) {
+		return name.getString() + "s";
+	}
+
 	private static SimpleContainer board(final List<MissionService.MissionOffer> offers) {
-		SimpleContainer board = new SimpleContainer(ROW);
+		SimpleContainer board = new SimpleContainer(SIZE);
 		ItemStack glass = new ItemStack(Items.STAINED_GLASS_PANE.gray());
 		glass.set(DataComponents.ITEM_NAME, Component.literal(" "));
-		for (int slot = 0; slot < ROW; slot++) {
+		for (int slot = 0; slot < SIZE; slot++) {
 			int index = offerIndex(slot);
 			board.setItem(slot, index >= 0 && index < offers.size() ? icon(offers.get(index)) : glass.copy());
 		}
@@ -135,13 +167,13 @@ public final class MissionBoardMenu extends ChestMenu {
 		);
 		player.closeContainer();
 		player.sendSystemMessage(Component.literal(accepted
-			? "Mission accepted. Your map marks the Nemesis."
+			? "Mission accepted. Your map marks the target."
 			: "The village cannot give you that mission: " + reasonText(reason)));
 	}
 
 	static String reasonText(final String reason) {
 		return switch (reason) {
-			case "no_safe_target" -> "no safe place to find that Nemesis right now";
+			case "no_safe_target" -> "no safe place to find that target right now";
 			case "head_missing_or_out_of_range" -> "you walked too far from the patrol head";
 			case "stale_offer", "stale_or_foreign_head" -> "the board changed, so open it again";
 			default -> "something went wrong (" + reason + ")";

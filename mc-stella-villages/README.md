@@ -37,12 +37,17 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
   wolf as much as a zombie. It still hunts every monster in range, and never the mobs mod's friendly
   pillager pairs.
-- Three contracts at each village head, each for a different hostile mob or an iron golem with a
+- Nine contracts at each village head: three Nemesis, three elite and three kill contracts, each of a
+  different hostile mob type within its kind. A Nemesis may be an iron golem with a
   spawn egg. Neutral mobs, including traders and creakings, never appear. Water mobs, bosses, creepers,
   endermites, silverfish, blazes, phantoms and ghasts are also excluded. An iron golem Nemesis pursues its mission player. Right-click the head within 8 blocks to
-  open the Village Missions board, a one-row chest menu with each offer shown as its target's spawn egg.
-  Click an offer to accept it; the server checks it, gives you a map to the Nemesis, and closes the
-  board, or tells you why it refused. Each contract creates a persistent elite Nemesis and a same-kind
+  open the Village Missions board, a two-row chest menu with each offer shown as its target's spawn egg.
+  The top row holds the Nemesis contracts, the bottom row the elite contracts on the left and the kill
+  contracts on the right. Each icon names the kind, the count and the reward.
+  Click an offer to accept it; the server checks it, gives you a map to the target, and closes the
+  board, or tells you why it refused. Every accepted contract sends you to a random spot 256 to 384
+  blocks, measured sideways, from the village bell. The spot is new for each contract, and it is always safe ground.
+  Each Nemesis contract creates a persistent elite Nemesis and a same-kind
   elite companion. They share one permanent buff. A killed companion stays dead for that contract.
   The Nemesis has 100 health above its elite health,
   diamond or netherite armor, and a matching weapon with three random enchantments per piece. It can
@@ -51,7 +56,19 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   potions. The book is an enchanted book or, when `mod-stella-spells` is loaded, a spell book, with even
   odds. Three separate rolls add more: 5% for 32 diamonds, 5% for exactly one equipped piece, and 0.1%
   for one ancient debris. A Nemesis no longer drops a head.
-  A Nemesis that dies another way ends its contract without these rewards. Hold a mob head you already
+  A Nemesis that dies another way ends its contract without these rewards.
+- An **elite contract** spawns one elite and two ordinary mobs of its type at the target. The elite pays
+  64 emeralds, 64 iron ingots and two random potions when a player kills it, dropped where it fell. The two
+  ordinary mobs pay nothing and leave with the elite. An elite that dies another way ends the contract
+  without a reward.
+- A **kill contract** spawns 5 to 10 ordinary mobs of one type within 6 blocks of the target. The action
+  bar shows `[Quest] Kill Zombie 3/7` after each kill. Any death of one of the pack counts, whoever or
+  whatever causes it. The last death pays its owner 64 iron ingots and two random potions into the
+  inventory, or at the owner's feet when the inventory is full. When the owner is offline at the last
+  death, the reward is stored and paid at the owner's next login.
+- Every mob a contract spawns, the Nemesis and its companion included, never despawns and carries a
+  `[Quest] ` name prefix. A quest mob that loads after its contract has ended is removed. A saved contract
+  keeps its kind and the count that remains, and a save from before the quest kinds loads as a Nemesis contract. Hold a mob head you already
   own and right-click any village head to trade it for three random enchanted books.
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.

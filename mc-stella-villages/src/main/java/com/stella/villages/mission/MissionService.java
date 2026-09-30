@@ -2,9 +2,11 @@ package com.stella.villages.mission;
 
 import com.stella.villages.McStellaVillages;
 import com.stella.villages.data.VillageWorldData;
+import com.stella.villages.data.VillageWorldData.MissionKind;
 import com.stella.villages.data.VillageWorldData.MissionRecord;
 import com.stella.villages.data.VillageWorldData.MissionStatus;
 import com.stella.villages.data.VillageWorldData.VillageRecord;
+import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
@@ -18,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
@@ -32,7 +35,6 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -63,7 +65,7 @@ import org.jspecify.annotations.Nullable;
 public final class MissionService {
 	public static final int MISSION_MENU_RANGE = 8;
 	public static final int MISSION_MIN_DISTANCE = 256;
-	public static final int MISSION_MAX_DISTANCE = 512;
+	public static final int MISSION_MAX_DISTANCE = 384;
 	public static final int MISSION_TARGET_SEARCH_LIMIT = 64;
 	/** Health a Nemesis carries on top of its type's own. */
 	public static final double NEMESIS_BONUS_HEALTH = 100.0;
@@ -79,8 +81,10 @@ public final class MissionService {
 	/** The item tag of the spells mod's books; resolved by id so this mod has no link to it. */
 	public static final Identifier SPELL_BOOK_TAG = Identifier.parse("mod-stella-spells:spellbooks");
 
-	/** How many contracts a head offers at once, each a different kind. */
+	/** How many contracts of each kind a head offers at once, each of a different mob type. */
 	public static final int OFFERS_PER_BOARD = 3;
+	/** The whole board: this many contracts of every kind, Nemesis first, then elite, then kill. */
+	public static final int BOARD_SIZE = OFFERS_PER_BOARD * MissionKind.values().length;
 	/** Types unsuitable for a land-based hostile contract, including neutral monsters and bosses. */
 	public static final Set<Identifier> NEVER_OFFERED = Set.of(
 		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:wither"),
@@ -102,6 +106,8 @@ public final class MissionService {
 	private static volatile @Nullable List<Identifier> offerPool;
 	/** Test seam: the spell books a reward draws from; null reads the spells mod's item tag. */
 	private static volatile @Nullable List<Item> spellBookPool;
+	/** Test seam: where a bell's target search looks, instead of a random spot; null searches at random. */
+	private static final Map<BlockPos, TargetCandidateSource> CANDIDATE_SOURCES = new ConcurrentHashMap<>();
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Mob> ACTIVE_NEMESES = new ConcurrentHashMap<>();
 	private static final Map<UUID, String> LAST_REJECTIONS = new ConcurrentHashMap<>();
@@ -113,6 +119,8 @@ public final class MissionService {
 	public static void register() {
 		NemesisCompanionDeaths.register();
 		NemesisMapItem.register();
+		QuestMobState.register();
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> QuestMissions.payPending(handler.getPlayer()));
 		UseEntityCallback.EVENT.register(MissionService::onUseEntity);
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, alreadyLoaded) -> onChunkLoad(level, chunk));
 		ServerEntityEvents.ENTITY_LOAD.register(MissionService::onEntityLoad);
@@ -120,6 +128,7 @@ public final class MissionService {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(MissionService::onAfterDamage);
 		ServerLivingEntityEvents.AFTER_DEATH.register(MissionService::onAfterDeath);
 		ServerTickEvents.END_SERVER_TICK.register(server -> server.getAllLevels().forEach(MissionService::tick));
+		ServerTickEvents.END_SERVER_TICK.register(server -> QuestMissions.clearStragglers());
 	}
 
 	public static List<MissionOffer> offersFor(final UUID playerId) {
@@ -155,7 +164,7 @@ public final class MissionService {
 		if (village == null || !village.dimension().equals(level.dimension())) {
 			return reject(player, headId, offerId, "head_not_registered");
 		}
-		Optional<BlockPos> targetPosition = findSafeTarget(level, village.anchor(), offer.targetType());
+		Optional<BlockPos> targetPosition = findSafeTarget(level, PatrolService.bellOf(level, village), offer.targetType());
 		if (targetPosition.isEmpty()) {
 			return reject(player, headId, offerId, "no_safe_target");
 		}
@@ -172,15 +181,16 @@ public final class MissionService {
 		}
 		MissionRecord mission = new MissionRecord(
 			UUID.randomUUID(), player.getUUID(), offer.targetType(), targetPosition.get(),
-			Optional.empty(), MissionStatus.TARGET_PENDING, Optional.of(mapId), level.dimension()
+			Optional.empty(), MissionStatus.TARGET_PENDING, Optional.of(mapId), level.dimension(),
+			offer.kind(), offer.kind() == MissionKind.KILL ? offer.count() : 0, List.of()
 		);
 		data.addMission(mission);
 		deliverMap(level, player, map, mapId);
 		BOARDS.put(player.getUUID(), new MissionBoard(headId, head, createOffers(level)));
 		McStellaVillages.LOGGER.info(
-			"[BEHAVIOR] mod={} event=mission_accepted mission={} owner={} head={} offer={} target_type={} target_position={} map_id={}",
+			"[BEHAVIOR] mod={} event=mission_accepted mission={} owner={} head={} offer={} kind={} target_type={} target_position={} map_id={}",
 			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), headId, offerId,
-			mission.targetType(), mission.targetPosition(), mapId
+			mission.kind(), mission.targetType(), mission.targetPosition(), mapId
 		);
 
 		LevelChunk loadedTarget = level.getChunkSource().getChunkNow(
@@ -198,13 +208,14 @@ public final class MissionService {
 		final BlockPos origin,
 		final Identifier targetType
 	) {
+		TargetCandidateSource source = CANDIDATE_SOURCES.get(origin);
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(targetType).map(holder -> holder.value()).orElse(null);
 		Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
 		if (!(entity instanceof Mob probe) || !canBeNemesis(probe)) {
 			return Optional.empty();
 		}
 		for (int attempt = 0; attempt < MISSION_TARGET_SEARCH_LIMIT; attempt++) {
-			BlockPos candidate = targetCandidate(origin, attempt);
+			BlockPos candidate = source != null ? source.candidate(origin, attempt, level.getRandom()) : targetCandidate(origin, level.getRandom());
 			int sectionX = SectionPos.blockToSectionCoord(candidate.getX());
 			int sectionZ = SectionPos.blockToSectionCoord(candidate.getZ());
 			LevelChunk chunk = level.getChunk(sectionX, sectionZ);
@@ -267,7 +278,11 @@ public final class MissionService {
 			if (mission.dimension().equals(level.dimension()) && mission.status() == MissionStatus.TARGET_PENDING
 				&& (mission.targetPosition().getX() >> 4) == chunk.getPos().x()
 				&& (mission.targetPosition().getZ() >> 4) == chunk.getPos().z()) {
-				spawnNemesis(level, mission);
+				if (mission.kind() == MissionKind.NEMESIS) {
+					spawnNemesis(level, mission);
+				} else {
+					QuestMissions.spawn(level, mission);
+				}
 			}
 		}
 	}
@@ -294,6 +309,7 @@ public final class MissionService {
 		NemesisKit.armNemesis(nemesis, tier);
 		String name = "<Nemesis> " + type.getDescription().getString();
 		nemesis.setCustomName(net.minecraft.network.chat.Component.literal(name));
+		QuestMissions.questName(nemesis);
 		nemesis.setCustomNameVisible(true);
 		if (!level.addFreshEntity(nemesis)) {
 			McStellaVillages.LOGGER.warn(
@@ -330,6 +346,7 @@ public final class MissionService {
 		NemesisKit.applyElite(companion, tier, buffIndex);
 		companion.setCustomName(net.minecraft.network.chat.Component.literal("<Elite Guard> "
 			+ nemesis.getType().getDescription().getString()));
+		QuestMissions.questName(companion);
 		if (level.addFreshEntity(companion)) {
 			NemesisState.setCompanion(nemesis, companion.getUUID());
 			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=nemesis_companion_spawned nemesis={} companion={} buff={}",
@@ -430,6 +447,9 @@ public final class MissionService {
 	}
 
 	private static void onEntityLoad(final Entity entity, final ServerLevel level) {
+		if (entity instanceof Mob quest) {
+			QuestMissions.onLoad(quest, level);
+		}
 		if (entity instanceof Mob mob && NemesisState.get(mob) != null) {
 			NemesisState state = NemesisState.get(mob);
 			boolean alreadyElite = Elite.isElite(mob);
@@ -496,9 +516,10 @@ public final class MissionService {
 		if (!(entity instanceof Mob nemesis) || !(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
+		QuestMissions.onDeath(level, nemesis);
 		UUID companionMission = NemesisCompanionDeaths.missionOf(nemesis);
 		if (companionMission == null && nemesis.getCustomName() != null
-			&& nemesis.getCustomName().getString().startsWith("<Elite Guard>")) {
+			&& nemesis.getCustomName().getString().contains("<Elite Guard>")) {
 			companionMission = ACTIVE_NEMESES.values().stream()
 				.map(NemesisState::get)
 				.filter(state -> state != null && state.companionId().filter(nemesis.getUUID()::equals).isPresent())
@@ -725,29 +746,58 @@ public final class MissionService {
 	}
 
 	private static List<MissionOffer> createOffers(final ServerLevel level) {
-		List<MissionOffer> result = new ArrayList<>(OFFERS_PER_BOARD);
-		List<Identifier> eligible = offerPool().stream().filter(id -> {
+		List<MissionOffer> result = new ArrayList<>(BOARD_SIZE);
+		List<Identifier> nemeses = new ArrayList<>();
+		List<Identifier> elites = new ArrayList<>();
+		List<Identifier> packs = new ArrayList<>();
+		for (Identifier id : offerPool()) {
 			EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(id);
 			Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
-			return entity instanceof Mob mob && canBeNemesis(mob);
-		}).toList();
-		for (Identifier type : rollOffers(eligible, net.minecraft.util.RandomSource.create())) {
-			result.add(new MissionOffer(UUID.randomUUID(), type));
+			if (entity instanceof Mob mob && canBeNemesis(mob)) {
+				nemeses.add(id);
+				if (Elite.canBeElite(mob)) {
+					elites.add(id);
+				}
+				if (mob instanceof Enemy) {
+					packs.add(id);
+				}
+			}
+		}
+		RandomSource random = RandomSource.create();
+		for (Identifier type : rollOffers(nemeses, random)) {
+			result.add(new MissionOffer(UUID.randomUUID(), type, MissionKind.NEMESIS, 0));
+		}
+		for (Identifier type : rollOffers(elites, random)) {
+			result.add(new MissionOffer(UUID.randomUUID(), type, MissionKind.ELITE, 0));
+		}
+		for (Identifier type : rollOffers(packs, random)) {
+			int count = QuestMissions.KILL_MIN_COUNT + random.nextInt(QuestMissions.KILL_MAX_COUNT - QuestMissions.KILL_MIN_COUNT + 1);
+			result.add(new MissionOffer(UUID.randomUUID(), type, MissionKind.KILL, count));
 		}
 		return List.copyOf(result);
 	}
 
-	private static BlockPos targetCandidate(final BlockPos origin, final int attempt) {
-		int direction = attempt % 8;
-		int ring = attempt / 8;
-		int distance = MISSION_MIN_DISTANCE
-			+ ring * (MISSION_MAX_DISTANCE - MISSION_MIN_DISTANCE) / 7;
-		int[] dx = {1, 1, 0, -1, -1, -1, 0, 1};
-		int[] dz = {0, 1, 1, 1, 0, -1, -1, -1};
-		double normalizer = direction % 2 == 0 ? 1.0 : Math.sqrt(2.0);
-		int x = origin.getX() + Mth.floor(dx[direction] * distance / normalizer);
-		int z = origin.getZ() + Mth.floor(dz[direction] * distance / normalizer);
-		return new BlockPos(x, origin.getY(), z);
+	/** A random spot 256 to 384 blocks from the bell: a uniform bearing and a uniform distance. */
+	public static BlockPos targetCandidate(final BlockPos bell, final RandomSource random) {
+		double bearing = random.nextDouble() * Math.PI * 2.0;
+		double distance = MISSION_MIN_DISTANCE + random.nextDouble() * (MISSION_MAX_DISTANCE - MISSION_MIN_DISTANCE);
+		return new BlockPos(
+			bell.getX() + (int) Math.round(Math.cos(bearing) * distance), bell.getY(),
+			bell.getZ() + (int) Math.round(Math.sin(bearing) * distance)
+		);
+	}
+
+	/** Where a bell's target search tries next; a test sets one to steer or to watch the search. */
+	public interface TargetCandidateSource {
+		BlockPos candidate(BlockPos bell, int attempt, RandomSource random);
+	}
+
+	public static void setTargetCandidateSource(final BlockPos bell, final @Nullable TargetCandidateSource source) {
+		if (source == null) {
+			CANDIDATE_SOURCES.remove(bell.immutable());
+		} else {
+			CANDIDATE_SOURCES.put(bell.immutable(), source);
+		}
 	}
 
 	private static double horizontalDistanceSquared(final BlockPos first, final BlockPos second) {
@@ -768,7 +818,11 @@ public final class MissionService {
 		return level.noCollision(probe, probe.getBoundingBox());
 	}
 
-	public record MissionOffer(UUID id, Identifier targetType) {
+	/** One contract on the board. A KILL contract carries how many mobs it asks for; the others carry 0. */
+	public record MissionOffer(UUID id, Identifier targetType, MissionKind kind, int count) {
+		public MissionOffer(final UUID id, final Identifier targetType) {
+			this(id, targetType, MissionKind.NEMESIS, 0);
+		}
 	}
 
 	private record MissionBoard(UUID headId, Mob head, List<MissionOffer> offers) {

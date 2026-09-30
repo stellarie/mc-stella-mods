@@ -36,6 +36,7 @@ public final class VillageWorldData extends SavedData {
 	public static final long NO_MIDNIGHT = Long.MIN_VALUE;
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";
+	private static final String PENDING_KILL_REWARDS_TAG = "pending_kill_rewards";
 	private static final ResourceKey<Level> DEFAULT_MISSION_DIMENSION = ResourceKey.create(
 		Registries.DIMENSION, Identifier.parse("minecraft:overworld")
 	);
@@ -52,6 +53,7 @@ public final class VillageWorldData extends SavedData {
 
 	private final Map<UUID, VillageRecord> villages = new LinkedHashMap<>();
 	private final Map<UUID, MissionRecord> missionRecords = new LinkedHashMap<>();
+	private final Map<UUID, Integer> pendingKillRewards = new LinkedHashMap<>();
 	private long lastAttemptedDay = -1L;
 
 	public VillageWorldData() {
@@ -190,6 +192,37 @@ public final class VillageWorldData extends SavedData {
 		return List.copyOf(this.missionRecords.values());
 	}
 
+	/** The ELITE or KILL mission that spawned a mob, by the mob's id, or empty for any other mob. */
+	public Optional<MissionRecord> questMissionOf(final UUID mobId) {
+		if (this.missionRecords.isEmpty()) {
+			return Optional.empty();
+		}
+		return this.missionRecords.values().stream()
+			.filter(mission -> mission.kind() != MissionKind.NEMESIS
+				&& (mission.entityId().filter(mobId::equals).isPresent() || mission.mobIds().contains(mobId)))
+			.findFirst();
+	}
+
+	/** A kill-quest reward the owner was not online to receive; paid at their next login. */
+	public void addPendingKillReward(final UUID ownerId) {
+		this.pendingKillRewards.merge(ownerId, 1, Integer::sum);
+		setDirty();
+	}
+
+	/** Takes every kill-quest reward waiting for the owner, and returns how many there were. */
+	public int takePendingKillRewards(final UUID ownerId) {
+		Integer count = this.pendingKillRewards.remove(ownerId);
+		if (count == null) {
+			return 0;
+		}
+		setDirty();
+		return count;
+	}
+
+	public int pendingKillRewards(final UUID ownerId) {
+		return this.pendingKillRewards.getOrDefault(ownerId, 0);
+	}
+
 	public boolean removeMission(final UUID missionId) {
 		if (this.missionRecords.remove(missionId) != null) {
 			setDirty();
@@ -243,6 +276,14 @@ public final class VillageWorldData extends SavedData {
 			.map(VillageWorldData::encodeMission)
 			.forEach(missionTags::add);
 		root.put(MISSIONS_TAG, missionTags);
+		ListTag pending = new ListTag();
+		this.pendingKillRewards.forEach((owner, count) -> {
+			CompoundTag entry = new CompoundTag();
+			entry.putString("owner", owner.toString());
+			entry.putInt("count", count);
+			pending.add(entry);
+		});
+		root.put(PENDING_KILL_REWARDS_TAG, pending);
 		return root;
 	}
 
@@ -266,6 +307,18 @@ public final class VillageWorldData extends SavedData {
 					data.missionRecords.put(mission.id(), mission);
 				} catch (IllegalArgumentException error) {
 					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_mission_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
+				}
+			}
+		}
+		for (Tag value : root.getListOrEmpty(PENDING_KILL_REWARDS_TAG)) {
+			if (value instanceof CompoundTag entry) {
+				try {
+					int count = entry.getIntOr("count", 0);
+					if (count > 0) {
+						data.pendingKillRewards.put(UUID.fromString(entry.getStringOr("owner", "")), count);
+					}
+				} catch (IllegalArgumentException error) {
+					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_reward_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
 				}
 			}
 		}
@@ -408,6 +461,11 @@ public final class VillageWorldData extends SavedData {
 		mission.mapId().ifPresent(mapId -> tag.put("map_id", MapId.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, mapId).getOrThrow()));
 		tag.putString("status", mission.status().name());
 		tag.putString("dimension", mission.dimension().identifier().toString());
+		tag.putString("kind", mission.kind().name());
+		tag.putInt("remaining", mission.remaining());
+		ListTag mobIds = new ListTag();
+		mission.mobIds().forEach(mobId -> mobIds.add(net.minecraft.nbt.StringTag.valueOf(mobId.toString())));
+		tag.put("mob_ids", mobIds);
 		return tag;
 	}
 
@@ -428,8 +486,28 @@ public final class VillageWorldData extends SavedData {
 			optionalEntityId,
 			MissionStatus.valueOf(tag.getStringOr("status", "TARGET_PENDING")),
 			optionalMapId,
-			missionDimension
+			missionDimension,
+			decodeKind(tag.getStringOr("kind", "")),
+			Math.max(0, tag.getIntOr("remaining", 0)),
+			decodeMobIds(tag)
 		);
+	}
+
+	// A record saved before quest kinds existed has none of these fields, and it is a Nemesis.
+	private static MissionKind decodeKind(final String name) {
+		try {
+			return MissionKind.valueOf(name);
+		} catch (IllegalArgumentException error) {
+			return MissionKind.NEMESIS;
+		}
+	}
+
+	private static List<UUID> decodeMobIds(final CompoundTag tag) {
+		List<UUID> ids = new ArrayList<>();
+		for (Tag value : tag.getListOrEmpty("mob_ids")) {
+			value.asString().ifPresent(text -> ids.add(UUID.fromString(text)));
+		}
+		return List.copyOf(ids);
 	}
 
 	public static final class VillageRecord {
@@ -513,8 +591,24 @@ public final class VillageWorldData extends SavedData {
 		Optional<UUID> entityId,
 		MissionStatus status,
 		Optional<MapId> mapId,
-		ResourceKey<Level> dimension
+		ResourceKey<Level> dimension,
+		MissionKind kind,
+		int remaining,
+		List<UUID> mobIds
 	) {
+		public MissionRecord(
+			final UUID id,
+			final UUID ownerId,
+			final Identifier targetType,
+			final BlockPos targetPosition,
+			final Optional<UUID> entityId,
+			final MissionStatus status,
+			final Optional<MapId> mapId,
+			final ResourceKey<Level> dimension
+		) {
+			this(id, ownerId, targetType, targetPosition, entityId, status, mapId, dimension, MissionKind.NEMESIS, 0, List.of());
+		}
+
 		public MissionRecord(
 			final UUID id,
 			final UUID ownerId,
@@ -554,7 +648,27 @@ public final class VillageWorldData extends SavedData {
 			targetPosition = targetPosition.immutable();
 			mapId = mapId == null ? Optional.empty() : mapId;
 			dimension = dimension == null ? DEFAULT_MISSION_DIMENSION : dimension;
+			kind = kind == null ? MissionKind.NEMESIS : kind;
+			mobIds = mobIds == null ? List.of() : List.copyOf(mobIds);
 		}
+
+		/** The same record with a different status, entity and spawned mobs. */
+		public MissionRecord spawned(final Optional<UUID> newEntityId, final int newRemaining, final List<UUID> newMobIds) {
+			return new MissionRecord(this.id, this.ownerId, this.targetType, this.targetPosition, newEntityId, MissionStatus.ACTIVE,
+				this.mapId, this.dimension, this.kind, newRemaining, newMobIds);
+		}
+
+		public MissionRecord withRemaining(final int newRemaining) {
+			return new MissionRecord(this.id, this.ownerId, this.targetType, this.targetPosition, this.entityId, this.status,
+				this.mapId, this.dimension, this.kind, newRemaining, this.mobIds);
+		}
+	}
+
+	/** What a contract asks: hunt a Nemesis, slay an elite with two escorts, or kill a pack of ordinary mobs. */
+	public enum MissionKind {
+		NEMESIS,
+		ELITE,
+		KILL
 	}
 
 	public enum MissionStatus {
