@@ -30,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
  * the trainer's deterministic actions, which the Java network must reproduce.
  */
 public class PolicyCheckGameTest {
-	private static final int TICKS = 500;
+	private static final int TICKS = Integer.parseInt(System.getenv().getOrDefault("STELLA_CHECK_TICKS", "500"));
 	private static final int YAW = 2;
 	private static final int PITCH = 3;
 
@@ -46,9 +46,9 @@ public class PolicyCheckGameTest {
 		return new double[] {Mth.wrapDegrees(shotYaw - lineYaw), shotPitch - linePitch};
 	}
 
-	private static final double[] RANGES = {12.0, 24.0};
+	private static final double[] RANGES = java.util.Arrays.stream(System.getenv().getOrDefault("STELLA_CHECK_RANGES", "12,24").split(",")).mapToDouble(Double::parseDouble).toArray();
 
-	@GameTest(maxTicks = 900, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	@GameTest(maxTicks = 1500, padding = LearnArena.PADDING, environment = ModelTests.ENV)
 	public void perShotAim(final GameTestHelper helper) {
 		String path = System.getenv("STELLA_CHECK_POLICY");
 		if (path == null) {

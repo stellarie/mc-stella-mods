@@ -254,33 +254,61 @@ public class ModelFairnessGameTest {
 		}, () -> "the clock never passed 90 ticks"), () -> "no CANCEL line after two idle decisions"));
 	}
 
-	/** Zero offsets and fire at every decision: a still target ten blocks away is hit by at least 40 percent of the arrows. */
-	@GameTest(maxTicks = 700, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	/** Zero offsets and fire at every decision: a still target at 10, 16 and 20 blocks is hit by at least 40 percent of the arrows. */
+	@GameTest(maxTicks = 900, padding = LearnArena.PADDING, environment = ModelTests.ENV)
 	public void zeroOffsetHitsAStillTarget(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
-		ServerPlayer player = LearnArena.player(helper, 24.5, 34.5);
-		Mob archer = ModelTests.archer(helper, 24.5, 24.5);
-		archer.setYRot(140.0F);
-		archer.setYHeadRot(140.0F);
-		archer.setYBodyRot(140.0F);
-		ModelDriver.setActionSource(archer, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)));
-		List<AbstractArrow> seen = new ArrayList<>();
-		float[] health = {player.getHealth()};
-		int[] hits = {0};
+		double[] ranges = {10.0, 16.0, 20.0};
+		ServerPlayer player = LearnArena.player(helper, 24.5, 44.5);
+		List<Mob> archers = new ArrayList<>();
+		List<List<AbstractArrow>> seen = new ArrayList<>();
+		for (double range : ranges) {
+			Mob archer = ModelTests.archer(helper, 24.5 + (archers.size() - 1) * 3.0, 44.5 - range);
+			archer.setYRot(140.0F);
+			archer.setYHeadRot(140.0F);
+			archer.setYBodyRot(140.0F);
+			ModelDriver.setActionSource(archer, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)));
+			archers.add(archer);
+			seen.add(new ArrayList<>());
+		}
+
+		int[] hits = new int[ranges.length];
+		List<Object[]> flying = new ArrayList<>();
 		ModelTests.everyTick(helper, player, () -> {
-			ModelTests.collectArrows(helper, archer, seen);
-			if (player.getHealth() < health[0]) {
-				hits[0]++;
+			for (int i = 0; i < archers.size(); i++) {
+				int before = seen.get(i).size();
+				ModelTests.collectArrows(helper, archers.get(i), seen.get(i));
+				for (int k = before; k < seen.get(i).size(); k++) {
+					flying.add(new Object[] {i, seen.get(i).get(k), new double[] {Double.MAX_VALUE}});
+				}
 			}
 
-			health[0] = player.getHealth();
-		}, archer);
-		LearnArena.whenReady(helper, List.of(player, archer), () -> helper.runAfterDelay(500L, () -> {
-			int shots = seen.size();
-			StellaLearn.LOGGER.info("[BEHAVIOR] test=zeroOffsetHitsAStillTarget RESULT shots={} hits={}", shots, hits[0]);
-			helper.assertTrue(shots >= 5, "the archer loosed only " + shots + " arrows");
-			helper.assertTrue(hits[0] * 100 >= shots * 40, "only " + hits[0] + " of " + shots + " arrows hit a still target with zero offsets");
+			for (Object[] one : new ArrayList<>(flying)) {
+				AbstractArrow arrow = (AbstractArrow) one[1];
+				double[] closest = (double[]) one[2];
+				closest[0] = Math.min(closest[0], Math.sqrt(player.getBoundingBox().distanceToSqr(arrow.position())));
+				if (arrow.isRemoved() || arrow.getDeltaMovement().lengthSqr() < 1.0E-4) {
+					flying.remove(one);
+					if (closest[0] < 0.3) {
+						hits[(int) one[0]]++;
+					}
+				}
+			}
+		}, archers.toArray(new Mob[0]));
+		List<net.minecraft.world.entity.Entity> watched = new ArrayList<>(archers);
+		watched.add(player);
+		LearnArena.whenReady(helper, watched, () -> helper.runAfterDelay(600L, () -> {
+			List<String> problems = new ArrayList<>();
+			for (int i = 0; i < ranges.length; i++) {
+				int shots = seen.get(i).size();
+				StellaLearn.LOGGER.info("[BEHAVIOR] test=zeroOffsetHitsAStillTarget RESULT range={} shots={} hits={}", ranges[i], shots, hits[i]);
+				if (shots < 5 || hits[i] * 100 < shots * 40) {
+					problems.add("range " + ranges[i] + ": " + hits[i] + " of " + shots);
+				}
+			}
+
+			helper.assertTrue(problems.isEmpty(), "too few hits with zero offsets: " + problems);
 			ModelTests.pass(helper);
 		}));
 	}

@@ -38,6 +38,23 @@ final class Rays {
 	private static final double DIAGONAL_HEIGHT = Math.sqrt(0.5);
 	/** Moves a restarted walk clear of the chunk edge it stopped on, so its first block is in the next chunk. */
 	private static final double EDGE_NUDGE = 1.0E-7;
+	/** A walk of 16 blocks takes under 100 steps; a walk that takes more has lost its way, and counts as open. */
+	private static final int MAX_STEPS = 1024;
+	private static final java.util.concurrent.atomic.AtomicLong OVERRUNS = new java.util.concurrent.atomic.AtomicLong();
+
+	/** How many walks were cut short by the step bound since the server started. */
+	public static long overruns() {
+		return OVERRUNS.get();
+	}
+
+	private static double overrun(final double limit, final String why) {
+		long count = OVERRUNS.incrementAndGet();
+		if (count == 1 || count % 10_000 == 0) {
+			com.stella.learn.LearnLog.info("learnModel", "RAY_OVERRUN", "count=" + count + " reason=" + why);
+		}
+
+		return limit;
+	}
 	/** An 8 by 8 window of chunks, each with its own slot, so the nine around an archer never share one. */
 	private static final int SLOTS = 64;
 	private static final int COLUMNS = 256;
@@ -200,8 +217,16 @@ final class Rays {
 		double deltaZ = dz == 0.0 ? Double.POSITIVE_INFINITY : 1.0 / Math.abs(dz);
 		boolean rising = dy >= 0.0;
 		double travelled = 0.0;
+		if (!Double.isFinite(startX + startY + startZ + dx + dy + dz)) {
+			return overrun(limit, "notFinite");
+		}
 
+		int steps = 0;
 		while (true) {
+			if (++steps > MAX_STEPS) {
+				return overrun(limit, "steps");
+			}
+
 			double px = startX + dx * travelled;
 			double py = startY + dy * travelled;
 			double pz = startZ + dz * travelled;
@@ -220,7 +245,7 @@ final class Rays {
 					return limit;
 				}
 
-				travelled = Math.max(edge, travelled) + EDGE_NUDGE;
+				travelled = Math.max(edge, travelled) + Math.max(EDGE_NUDGE, 8.0 * Math.ulp(Math.max(Math.abs(startX), Math.abs(startZ))) / Math.max(Math.abs(dx), Math.max(Math.abs(dz), 1.0E-9)));
 				continue;
 			}
 
@@ -234,6 +259,10 @@ final class Rays {
 			boolean entered = false;
 
 			while (!entered) {
+				if (++steps > MAX_STEPS) {
+					return overrun(limit, "steps");
+				}
+
 				double t;
 				if (nextX <= nextY && nextX <= nextZ) {
 					t = nextX;

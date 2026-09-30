@@ -34,6 +34,9 @@ public final class LearnedArcherGoal extends Goal {
 	public static final int FULL_DRAW_TICKS = 20;
 	/** This many idle decisions in a row cancel a committed shot. */
 	public static final int CANCEL_IDLE_DECISIONS = 2;
+	/** Where a vanilla skeleton aims on its target: a third of the way up, and raised in proportion to the range. */
+	public static final double AIM_HEIGHT = 0.3333;
+	public static final double BALLISTIC_LIFT = 0.2;
 	/** Vanilla's skeleton shot power; a full draw looses at this. */
 	public static final float POWER = 1.6F;
 	/** Vanilla's Hard difficulty skeleton inaccuracy. */
@@ -204,8 +207,8 @@ public final class LearnedArcherGoal extends Goal {
 	}
 
 	/**
-	 * Yaw and pitch are offsets from the direction to the target's eyes, 30 degrees at full scale, so an output of 0 looks
-	 * straight at the target. With the target out of sight the reference is where its eyes were last seen; with none ever
+	 * Yaw and pitch are offsets from the aim of a vanilla skeleton, 30 degrees at full scale: the target a third of the
+	 * way up, raised by 0.2 of the horizontal range to make up for the arrow's drop. An output of 0 looks there. With the target out of sight the reference is where its eyes were last seen; with none ever
 	 * seen the mob keeps its facing. Each tick the mob turns toward the wanted look by at most the turn limit.
 	 */
 	private void turn() {
@@ -214,8 +217,8 @@ public final class LearnedArcherGoal extends Goal {
 		if (reference != null) {
 			Vec3 eye = this.mob.getEyePosition();
 			double dx = reference.x - eye.x;
-			double dy = reference.y - eye.y;
 			double dz = reference.z - eye.z;
+			double dy = reference.y - eye.y + Math.hypot(dx, dz) * BALLISTIC_LIFT;
 			float wantYaw = (float) (Mth.atan2(-dx, dz) * 180.0 / Math.PI) + unit(action.yaw()) * MAX_TURN_DEGREES;
 			float wantPitch = Mth.clamp((float) (-Mth.atan2(dy, Math.hypot(dx, dz)) * 180.0 / Math.PI) + unit(action.pitch()) * MAX_TURN_DEGREES, -90.0F, 90.0F);
 			float yaw = this.mob.getYRot() + Mth.clamp(Mth.wrapDegrees(wantYaw - this.mob.getYRot()), -MAX_TURN_DEGREES, MAX_TURN_DEGREES);
@@ -228,13 +231,18 @@ public final class LearnedArcherGoal extends Goal {
 		this.mob.setXRot(this.state.pitch);
 	}
 
+	/** The point offset 0 looks at, before the ballistic lift. */
+	public static Vec3 aimPoint(final LivingEntity target) {
+		return new Vec3(target.getX(), target.getY(AIM_HEIGHT), target.getZ());
+	}
+
 	private @Nullable Vec3 aimReference() {
 		LivingEntity target = this.mob.getTarget();
 		if (this.state.visible && target != null) {
-			return target.getEyePosition();
+			return aimPoint(target);
 		}
 
-		return this.state.seen ? new Vec3(this.state.eyeX, this.state.eyeY, this.state.eyeZ) : null;
+		return this.state.seen ? new Vec3(this.state.aimX, this.state.aimY, this.state.aimZ) : null;
 	}
 
 	private void move() {

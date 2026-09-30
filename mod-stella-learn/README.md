@@ -127,7 +127,7 @@ be driven by a trained network instead of its own goals. No model ships yet: the
   fields, the action heads and the network shape. Java and Python both read it, and a weights file carries the
   SHA-256 of the contract bytes. `training/stella_train/contract.py` is the Python reader.
 - **Every two ticks** the goal builds the observation, asks the network and keeps the answer. Every tick it applies it
-  under limits no model can pass: yaw and pitch are offsets (30 degrees at full scale) from the direction to the target's eyes, and the mob turns toward that look by at most 30 degrees a tick, a walk at 1.2 times the mob's own speed, a bow
+  under limits no model can pass: yaw and pitch are offsets (30 degrees at full scale) from the aim of a vanilla skeleton (a third of the way up the target, lifted by 0.2 of the range), and the mob turns toward that look by at most 30 degrees a tick, a walk at 1.2 times the mob's own speed, a bow
   loosed only at a full 20 tick draw (power 1.6), and a volley only 120 ticks after the last one. The bow head has four options: idle, draw (hold), fire and fire-volley; one fire decision commits a shot that draws to 20 ticks and looses whatever the bow head says meanwhile; two idle decisions in a row cancel it, one does not.
 - **Fall back.** A missing file (`status=missing`), a file made for another contract (`contract`) or a broken one
   (`format`) disables the model for the session and every archer keeps its goals. A mob that gets a non-finite output

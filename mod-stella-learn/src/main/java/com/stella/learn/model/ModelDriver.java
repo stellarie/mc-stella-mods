@@ -89,6 +89,11 @@ public final class ModelDriver {
 		return status;
 	}
 
+	/** How many observation ray walks the step bound has cut short since the server started. */
+	public static long rayOverruns() {
+		return Rays.overruns();
+	}
+
 	public static boolean isDriven(final Mob mob) {
 		return DRIVEN.containsKey(mob.getUUID());
 	}

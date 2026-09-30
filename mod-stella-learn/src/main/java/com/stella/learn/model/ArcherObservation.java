@@ -206,10 +206,10 @@ public final class ArcherObservation {
 			state.seenZ = center.z;
 			state.seenTick = state.goalTicks;
 			state.visible = true;
-			Vec3 eyes = target.getEyePosition();
-			state.eyeX = eyes.x;
-			state.eyeY = eyes.y;
-			state.eyeZ = eyes.z;
+			Vec3 aim = LearnedArcherGoal.aimPoint(target);
+			state.aimX = aim.x;
+			state.aimY = aim.y;
+			state.aimZ = aim.z;
 			Vec3 relative = center.subtract(eye);
 			Vec3 motion = target.getKnownMovement().subtract(mob.getDeltaMovement());
 			Vec3 look = target.getLookAngle();

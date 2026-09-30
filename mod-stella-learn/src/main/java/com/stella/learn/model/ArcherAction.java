@@ -2,7 +2,7 @@ package com.stella.learn.model;
 
 /**
  * One decision. `forward` and `strafe` (right is positive) move the mob; `yaw` (right is positive) and `pitch` (down is
- * positive) are offsets from the direction to the target's eyes, 30 degrees at full scale. All four are in [-1, 1].
+ * positive) are offsets from the vanilla skeleton's aim point (with its ballistic lift), 30 degrees at full scale. All four are in [-1, 1].
  */
 public record ArcherAction(float forward, float strafe, float yaw, float pitch, boolean jump, Bow bow) {
 	public enum Bow {

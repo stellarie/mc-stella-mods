@@ -30,11 +30,11 @@ public final class ArcherState {
 	/** The model's own pitch in degrees. The mob's look control resets its pitch, so the mob's value is not kept. */
 	float pitch;
 	boolean seen;
-	/** Whether the target was in sight at the last decision, and where its eyes were the last time they were. */
+	/** Whether the target was in sight at the last decision, and where its aim point was the last time it was. */
 	boolean visible;
-	double eyeX;
-	double eyeY;
-	double eyeZ;
+	double aimX;
+	double aimY;
+	double aimZ;
 	double seenX;
 	double seenY;
 	double seenZ;
