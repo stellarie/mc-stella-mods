@@ -1,5 +1,6 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.entity.BlueSlime;
 import com.stella.mobs.StellaMobs;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,7 +82,7 @@ public final class BloodMoon {
 
 	/** A hostile that spawns under the moon carries Strength until dawn. */
 	public static void empower(final Mob mob, final ServerLevel level) {
-		if (!(mob instanceof Enemy) || !active(level)) {
+		if (!(mob instanceof Enemy) || BlueSlime.isHarmless(mob) || !active(level)) {
 			return;
 		}
 
