@@ -30,7 +30,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
  */
 public final class BlueSlimeSpawnRule implements SpawnRule {
 	public static final BlueSlimeSpawnRule INSTANCE = new BlueSlimeSpawnRule();
-	public static final int MAX_PER_BIOME = 3;
+	public static final int MAX_PER_BIOME = 1;
 	public static final int LIGHT_LEVEL = 15;
 	/** Ten seconds. */
 	public static final int REFILL_TICKS = 200;
