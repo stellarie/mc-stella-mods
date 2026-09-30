@@ -101,24 +101,20 @@ mod reads `experienceLevel` and never writes experience, so kills, deaths,
 enchanting, and experience orbs work exactly as in vanilla. There are no custom
 points, no kill awards, and no death penalty.
 
-All five player attributes grow together from the capped level, because there is
-one input. `max_health`, `armor`, `knockback_resistance`, `attack_damage`, and
-`attack_speed` each reach a stated value at level 50 and scale linearly from zero
-at level 1; a level above the cap reads as the cap. Nothing a player owns reads
-their position, so walking can neither raise nor lower their power. The tracker
-rescans every 40 ticks, so the attributes follow a level change within two
-seconds.
+Power grants `max_health` only, from the capped level; a level above the cap
+reads as the cap. The `mod-stella-rpg` mod owns damage, attack speed, and damage
+reduction. Nothing a player owns reads their position, so walking can neither
+raise nor lower their power. The tracker rescans every 40 ticks, so the health
+follows a level change within two seconds.
 
-The attributes are stated in `power.json` as the value at level 50. The armor and
-knockback resistance values leave room on purpose: `armor_at_cap` 11.76 of the
-vanilla 30 and `knockback_resistance_at_cap` 0.294 of 1.0, so the rest of both
-attributes stays free for enchantments. The applied modifier also stops at the
-attribute's own ceiling.
+`power.json` states `health_base` and `health_per_level`. The applied modifier
+also stops at the attribute's own ceiling.
 
 Worlds from before this change: the old `power_state` player attachment is skipped
-with one warning when the player loads, and the first scan replaces the five saved
-`power_*` modifiers with the values for the player's vanilla level. Old combat
-points are not converted into experience.
+with one warning when the player loads. The first scan sets the health modifier
+for the player's vanilla level and removes the four retired `power_armor`,
+`power_knockback_resistance`, `power_attack_damage`, and `power_attack_speed`
+modifiers. Old combat points are not converted into experience.
 
 Mob threat is a separate rating: `min(cap, floor(scaled_distance / blocks_per_level))`
 plus up to `depth_bonus_cap` for depth, capped at `mob_level.level_cap` (36).

@@ -13,12 +13,6 @@ public final class PowerFixtures {
 	public static final double HEALTH_PER_LEVEL = 4.0;
 	public static final double HEALTH_AT_CAP = 216.0;
 	public static final double HEALTH_GAIN_AT_CAP = 196.0;
-	public static final double ARMOR_AT_CAP = 11.76;
-	public static final double KNOCKBACK_RESISTANCE_AT_CAP = 0.294;
-	public static final double ATTACK_DAMAGE_AT_CAP = 20.0;
-	public static final double ATTACK_SPEED_AT_CAP = 1.0;
-	public static final double ARMOR_CEILING = 30.0;
-	public static final double KNOCKBACK_CEILING = 1.0;
 
 	private PowerFixtures() {
 	}
@@ -41,11 +35,7 @@ public final class PowerFixtures {
 			new PowerConfig.Tracker(40, 5),
 			new PowerConfig.Attributes(
 				HEALTH_BASE,
-				HEALTH_PER_LEVEL,
-				ARMOR_AT_CAP,
-				KNOCKBACK_RESISTANCE_AT_CAP,
-				ATTACK_DAMAGE_AT_CAP,
-				ATTACK_SPEED_AT_CAP
+				HEALTH_PER_LEVEL
 			),
 			new PowerConfig.Readout(true, 32.0, 40, 0.9, 0.5)
 		);

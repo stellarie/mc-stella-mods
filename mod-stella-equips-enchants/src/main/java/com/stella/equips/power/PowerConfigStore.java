@@ -11,7 +11,7 @@ public final class PowerConfigStore {
 	public static final String FILE_NAME = "power.json";
 	public static final String DEFAULT_JSON = """
 		{
-			"_note": "Power follows the vanilla experience level. The mod reads the level and never writes experience, so kills, deaths and enchanting work exactly as in vanilla. The level is capped at level_cap. Attributes. Every attribute key below is the value at level 50. Health is a flat gain of health_per_level for every level above the first, from health_base, and stops at the engine ceiling of 1024. The other four scale linearly from 0 at level 1, so there is one unit for those four. Threat. The mob_level section rates how dangerous a mob is from its distance to spawn and its depth; the readout shows that raw threat, and the colour compares it with your level after scaling threat from 0 to mob_level.level_cap onto 0 to level_cap. Upgrades. An older copy of this file is never upgraded: a key you set wins, a deleted key falls back to this document, and the retired curve and award keys are reported and ignored.",
+			"_note": "Power follows the vanilla experience level. The mod reads the level and never writes experience, so kills, deaths and enchanting work exactly as in vanilla. The level is capped at level_cap. Attributes. Power gives health only. Health is a flat gain of health_per_level for every level above the first, from health_base, and stops at the engine ceiling of 1024, so the health value at level 50 is health_base plus 49 times health_per_level. The mod-stella-rpg mod owns damage, attack speed and damage reduction. Threat. The mob_level section rates how dangerous a mob is from its distance to spawn and its depth; the readout shows that raw threat, and the colour compares it with your level after scaling threat from 0 to mob_level.level_cap onto 0 to level_cap. Upgrades. An older copy of this file is never upgraded: a key you set wins, a deleted key falls back to this document, and the retired curve, award, armor, knockback resistance, attack damage and attack speed keys are reported and ignored.",
 			"version": 1,
 			"level_cap": 50,
 			"mob_level": {
@@ -37,11 +37,7 @@ public final class PowerConfigStore {
 			"tracker": { "scan_interval_ticks": 40, "heartbeat_ticks": 5 },
 			"attributes": {
 				"health_base": 20.0,
-				"health_per_level": 4.0,
-				"armor_at_cap": 11.76,
-				"knockback_resistance_at_cap": 0.294,
-				"attack_damage_at_cap": 20.0,
-				"attack_speed_at_cap": 1.0
+				"health_per_level": 4.0
 			},
 			"readout": {
 				"enabled_by_default": true,
