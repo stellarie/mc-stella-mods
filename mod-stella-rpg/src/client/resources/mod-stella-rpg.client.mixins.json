@@ -3,7 +3,9 @@
 	"package": "com.stella.rpg.client.mixin.client",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ContainerScreenPositionAccessor"
+		"ContainerScreenPositionAccessor",
+		"NoDotShakeLivingMixin",
+		"NoDotShakeLocalPlayerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

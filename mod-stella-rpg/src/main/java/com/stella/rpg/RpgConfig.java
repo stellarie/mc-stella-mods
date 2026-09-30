@@ -8,18 +8,22 @@ import java.util.Map;
 import net.minecraft.resources.Identifier;
 
 public record RpgConfig(
-	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobWeights,
-	Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls
+	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
+	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
 	public static final String DICE_KEY = "dice";
-	public static final String MOB_WEIGHTS_KEY = "mob_weights";
+	public static final String MOB_STATS_KEY = "mob_stats";
+	public static final String MOB_AMPLIFIER_KEY = "mob_amplifier";
+	/** The old per-level weight table; mob_stats replaced it. */
+	public static final String RETIRED_MOB_WEIGHTS_KEY = "mob_weights";
+	public static final double DEFAULT_MOB_AMPLIFIER = 0.10;
 	public static final String ARMOR_SETS_KEY = "armor_sets";
 	public static final String WEAPON_ROLLS_KEY = "weapon_rolls";
 	public static final String COUNT_WEIGHTS_KEY = "count_weights";
-	public static final double MAX_MOB_WEIGHT = 100.0;
-	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_WEIGHTS = defaultMobWeights();
+	public static final double MAX_MOB_BASE = StatSheet.CEILING;
+	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_STATS = defaultMobStats();
 	public static final Map<String, ArmorSet> DEFAULT_ARMOR_SETS = defaultArmorSets();
 	public static final WeaponRolls DEFAULT_WEAPON_ROLLS = defaultWeaponRolls();
 	public static final List<String> REMOVED_KEYS = List.of("melee_damage", "ranged_damage");
@@ -37,7 +41,7 @@ public record RpgConfig(
 	}
 
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
-		public static final DiceRules DEFAULT = new DiceRules(1, 4, 50, 100);
+		public static final DiceRules DEFAULT = new DiceRules(1, 4, 25, 100);
 	}
 
 	public enum Effect {
@@ -46,7 +50,8 @@ public record RpgConfig(
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
 		SPELL_POWER("spell_power", 1.50, 200),
 		COOLDOWN_REDUCTION("cooldown_reduction", 0.40, 300),
-		CRIT_CHANCE("crit_chance", 0.50, 300);
+		CRIT_CHANCE("crit_chance", 0.50, 300),
+		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);
 
 		private final String key;
 		private final Curve defaultCurve;
@@ -70,15 +75,16 @@ public record RpgConfig(
 		for (Effect effect : Effect.values()) {
 			curves.put(effect, effect.defaultCurve());
 		}
-		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_WEIGHTS,
-			DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS);
+		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
+			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS);
 	}
 
-	private static Map<String, Map<Stat, Double>> defaultMobWeights() {
+	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */
+	private static Map<String, Map<Stat, Double>> defaultMobStats() {
 		Map<String, Map<Stat, Double>> table = new LinkedHashMap<>();
-		table.put("melee", weights(1.00, 0.50, 1.00, 0.25, 0.25, 0.50));
-		table.put("ranged", weights(0.25, 1.00, 0.50, 1.00, 0.25, 0.50));
-		table.put("magic", weights(0.25, 0.50, 0.50, 0.25, 1.00, 0.50));
+		table.put("melee", weights(12, 6, 12, 3, 1, 3));
+		table.put("ranged", weights(4, 10, 5, 12, 2, 10));
+		table.put("magic", weights(2, 4, 6, 6, 14, 4));
 		return Map.copyOf(table);
 	}
 

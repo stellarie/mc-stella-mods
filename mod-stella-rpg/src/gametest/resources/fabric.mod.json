@@ -28,7 +28,8 @@
 			"com.stella.rpg.PendingStatsGameTest",
 			"com.stella.rpg.RpgSpellsGameTest",
 			"com.stella.rpg.WeaponRollGameTest",
-			"com.stella.rpg.TombstoneGameTest"
+			"com.stella.rpg.TombstoneGameTest",
+			"com.stella.rpg.RpgScalingCoreGameTest"
 		]
 	},
 	"depends": {

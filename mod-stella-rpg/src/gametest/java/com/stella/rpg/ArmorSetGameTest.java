@@ -125,8 +125,9 @@ public final class ArmorSetGameTest {
 			int effectiveStr = StatBonuses.effective(zombie, Stat.STR);
 			RpgTestSupport.result("mobWearsSet", "vit=" + vit + " str=" + str + " effective=" + effectiveVit + "/" + effectiveStr);
 			helper.assertTrue(vit == 12 && str == 4, "vit=" + vit + " str=" + str);
-			helper.assertTrue(effectiveVit == 40 + 12, "effective vit=" + effectiveVit);
-			helper.assertTrue(effectiveStr == 40 + 4, "effective str=" + effectiveStr);
+			// Melee base at threat 40: VIT 12 x 5 and STR 12 x 5.
+			helper.assertTrue(effectiveVit == 60 + 12, "effective vit=" + effectiveVit);
+			helper.assertTrue(effectiveStr == 60 + 4, "effective str=" + effectiveStr);
 		} finally {
 			MobsBridge.setFacts(null);
 		}

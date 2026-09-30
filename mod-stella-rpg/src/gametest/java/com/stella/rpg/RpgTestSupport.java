@@ -53,7 +53,9 @@ final class RpgTestSupport {
 	}
 
 	static float mobGuard(final float damage) {
-		return (float) (damage * RpgCurve.damageTakenMultiplier(MobStats.MINIMUM));
+		// A threat-0 melee mob has its role's base VIT.
+		int vit = MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.VIT, 0);
+		return (float) (damage * RpgCurve.damageTakenMultiplier(vit));
 	}
 
 	static void result(final String test, final String detail) {

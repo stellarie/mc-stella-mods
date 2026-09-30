@@ -23,11 +23,12 @@ import net.minecraft.world.item.Items;
 public final class RpgMobStatsGameTest {
 	private static final float HIT = 4.0F;
 	private static final float TOLERANCE = 0.001F;
+	/** Threat, then STR, AGI, VIT, DEX, INT, LUK: melee base 12, 6, 12, 3, 1, 3 times (1 + 0.1 x threat). */
 	private static final int[][] MELEE_TABLE = {
-		{0, 5, 5, 5, 5, 5, 5},
-		{4, 5, 5, 5, 5, 5, 5},
-		{40, 40, 20, 40, 10, 10, 20},
-		{200, 200, 100, 200, 50, 50, 100}
+		{0, 12, 6, 12, 3, 1, 3},
+		{4, 17, 8, 17, 4, 1, 4},
+		{40, 60, 30, 60, 15, 5, 15},
+		{200, 252, 126, 252, 63, 21, 63}
 	};
 
 	private static final class Stub implements MobsBridge.Facts {
@@ -67,20 +68,20 @@ public final class RpgMobStatsGameTest {
 				}
 			}
 			stub.set(zombie, 200, "ranged");
-			assertStats(helper, zombie, "ranged", 50, 200, 100, 200, 50, 100);
+			assertStats(helper, zombie, "ranged", 84, 210, 105, 252, 42, 210);
 			stub.set(zombie, 200, "magic");
-			assertStats(helper, zombie, "magic", 50, 100, 100, 50, 200, 100);
+			assertStats(helper, zombie, "magic", 42, 84, 126, 126, 294, 84);
 			stub.set(zombie, 200, "unknown");
-			assertStats(helper, zombie, "unknown role", 200, 100, 200, 50, 50, 100);
+			assertStats(helper, zombie, "unknown role", 252, 126, 252, 63, 21, 63);
 			stub.set(zombie, -50, "melee");
-			assertStats(helper, zombie, "negative threat", 5, 5, 5, 5, 5, 5);
+			assertStats(helper, zombie, "negative threat", 12, 6, 12, 3, 1, 3);
 			stub.set(zombie, 5000, "melee");
-			assertStats(helper, zombie, "clamped", 1024, 1024, 1024, 1024, 1024, 1024);
+			assertStats(helper, zombie, "clamped", 1024, 1024, 1024, 1024, 501, 1024);
 			stub.set(zombie, 40, "melee");
 			StatBonuses.Provider bonus = (entity, stat) -> stat == Stat.STR ? 3 : 0;
 			StatBonuses.register(bonus);
 			try {
-				helper.assertTrue(StatBonuses.effective(zombie, Stat.STR) == 43, "a bonus did not add to the mob base");
+				helper.assertTrue(StatBonuses.effective(zombie, Stat.STR) == 63, "a bonus did not add to the mob base");
 			} finally {
 				StatBonuses.unregister(bonus);
 			}
@@ -94,24 +95,22 @@ public final class RpgMobStatsGameTest {
 	public void absentMobsMod(final GameTestHelper helper) {
 		MobsBridge.setFacts(null);
 		Zombie zombie = zombie(helper);
-		for (Stat stat : Stat.values()) {
-			int actual = MobStats.base(zombie, stat);
-			helper.assertTrue(actual == 5, stat + " was " + actual + " without the mobs mod");
-		}
-		RpgTestSupport.result("absentMobsMod", "all stats 5");
+		assertStats(helper, zombie, "absent mobs mod", 12, 6, 12, 3, 1, 3);
+		RpgTestSupport.result("absentMobsMod", "melee base at threat 0");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void weightConfigOverrides(final GameTestHelper helper) {
+	public void mobStatsConfigOverrides(final GameTestHelper helper) {
 		List<String> errors = new ArrayList<>();
 		RpgConfig config = RpgConfigStore.parse(
-			"{\"mob_weights\":{\"melee\":{\"str\":2.0,\"agi\":-1,\"vit\":\"x\"},\"ranged\":7}}", errors::add);
-		helper.assertTrue(errors.size() == 3, "errors=" + errors);
-		helper.assertTrue(config.mobWeights().get("melee").get(Stat.STR) == 2.0, "the valid weight was lost");
-		helper.assertTrue(config.mobWeights().get("melee").get(Stat.AGI) == 0.5, "a negative weight did not fall back");
-		helper.assertTrue(config.mobWeights().get("melee").get(Stat.VIT) == 1.0, "a text weight did not fall back");
-		helper.assertTrue(config.mobWeights().get("ranged").equals(RpgConfig.DEFAULT_MOB_WEIGHTS.get("ranged")),
+			"{\"mob_stats\":{\"melee\":{\"str\":20,\"agi\":-1,\"vit\":\"x\"},\"ranged\":7},\"mob_weights\":{}}", errors::add);
+		helper.assertTrue(errors.size() == 4, "errors=" + errors);
+		helper.assertTrue(errors.stream().anyMatch(message -> message.contains("mob_weights")), "the retired key was not reported");
+		helper.assertTrue(config.mobStats().get("melee").get(Stat.STR) == 20.0, "the valid base was lost");
+		helper.assertTrue(config.mobStats().get("melee").get(Stat.AGI) == 6.0, "a negative base did not fall back");
+		helper.assertTrue(config.mobStats().get("melee").get(Stat.VIT) == 12.0, "a text base did not fall back");
+		helper.assertTrue(config.mobStats().get("ranged").equals(RpgConfig.DEFAULT_MOB_STATS.get("ranged")),
 			"a bad role row did not fall back");
 		RpgConfigStore.set(config);
 		Stub stub = new Stub();
@@ -119,7 +118,7 @@ public final class RpgMobStatsGameTest {
 		try {
 			Zombie zombie = zombie(helper);
 			stub.set(zombie, 40, "melee");
-			helper.assertTrue(MobStats.base(zombie, Stat.STR) == 80, "the configured weight did not scale the stat");
+			helper.assertTrue(MobStats.base(zombie, Stat.STR) == 100, "the configured base did not scale the stat");
 		} finally {
 			RpgConfigStore.set(null);
 			MobsBridge.setFacts(null);
@@ -145,8 +144,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + RpgDice.of(40).max());
-		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + RpgDice.of(200).max());
+		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max());
+		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + RpgDice.of(expected("melee", Stat.STR, 200)).max());
 		helper.succeed();
 	}
 
@@ -165,7 +164,7 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + RpgDice.of(40).max()) * 1.5F);
+		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max()) * 1.5F);
 		helper.succeed();
 	}
 
@@ -188,7 +187,7 @@ public final class RpgMobStatsGameTest {
 			DefenseBonuses.unregister(flat);
 			MobsBridge.setFacts(null);
 		}
-		double multiplier = RpgCurve.damageTakenMultiplier(40);
+		double multiplier = RpgCurve.damageTakenMultiplier(expected("melee", Stat.VIT, 40));
 		assertLoss(helper, "mobVitalityReduces plain", plain, (float) (6.0 * multiplier));
 		assertLoss(helper, "mobVitalityReduces flat", withFlat, (float) (6.0 * multiplier - 1.0));
 		assertLoss(helper, "mobVitalityReduces clamped", clamped, 0.0F);
@@ -218,9 +217,9 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + RpgDice.of(40).max());
-		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + RpgDice.of(200).max());
-		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(40)) && rolled.get(1).equals(RpgDice.of(200)),
+		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + RpgDice.of(expected("ranged", Stat.DEX, 40)).max());
+		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + RpgDice.of(expected("ranged", Stat.DEX, 200)).max());
+		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(expected("ranged", Stat.DEX, 40))) && rolled.get(1).equals(RpgDice.of(expected("ranged", Stat.DEX, 200))),
 			"arrow dice were " + rolled);
 		helper.succeed();
 	}
@@ -243,9 +242,13 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobSpellUsesInt 40", loss40, (float) (HIT * RpgCurve.spellPowerMultiplier(40)));
-		assertLoss(helper, "mobSpellUsesInt 200", loss200, (float) (HIT * RpgCurve.spellPowerMultiplier(200)));
+		assertLoss(helper, "mobSpellUsesInt 40", loss40, (float) (HIT * RpgCurve.spellPowerMultiplier(expected("magic", Stat.INT, 40))));
+		assertLoss(helper, "mobSpellUsesInt 200", loss200, (float) (HIT * RpgCurve.spellPowerMultiplier(expected("magic", Stat.INT, 200))));
 		helper.succeed();
+	}
+
+	private static int expected(final String role, final Stat stat, final int threat) {
+		return MobStats.base(RpgConfig.defaults(), role, stat, threat);
 	}
 
 	private static void assertStats(
