@@ -185,9 +185,39 @@ public final class QuestBoardGameTest {
 		}
 		PatrolTestSupport.result(test, "searches=200 found=" + found.size() + " asked=" + asked.size() + " outOfBand=" + outOfBand
 			+ " inAnchorBand=" + nearAnchorBand + " bellOffsetFromAnchor=" + bell.distManhattan(village.anchor()));
+		helper.assertTrue(MissionService.MISSION_MIN_DISTANCE == 256 && MissionService.MISSION_MAX_DISTANCE == 384, "the target band is not 256 to 384 blocks");
 		helper.assertTrue(found.size() >= 20, "200 searches gave only " + found.size() + " distinct targets");
 		helper.assertTrue(outOfBand == 0, outOfBand + " targets were not 256 to 384 blocks from the bell");
 		helper.assertTrue(nearAnchorBand < found.size(), "every target also sits in the anchor's band, so the search may be centred on the anchor");
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void anAcceptedTargetIsMeasuredFromTheBellNotTheAnchor(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "anAcceptedTargetIsMeasuredFromTheBellNotTheAnchor");
+		if (fixture == null) {
+			return;
+		}
+		ServerLevel level = helper.getLevel();
+		BlockPos bellSpot = fixture.head().blockPosition().offset(40, 0, 0);
+		level.setChunkForced(bellSpot.getX() >> 4, bellSpot.getZ() >> 4, true);
+		level.getChunkAt(bellSpot);
+		level.setBlockAndUpdate(bellSpot.below(), Blocks.STONE.defaultBlockState());
+		level.setBlockAndUpdate(bellSpot, Blocks.BELL.defaultBlockState());
+		var village = VillageWorldData.get(level).villageForMember(fixture.head().getUUID()).orElseThrow();
+		BlockPos bell = PatrolService.bellOf(level, village);
+		helper.assertTrue(bell.equals(bellSpot), "the village bell is " + bell + ", not " + bellSpot);
+		// Ground and a search exist only around the bell, so a search around the anchor finds nothing.
+		BlockPos target = prepareSite(helper, bell);
+		try {
+			MissionRecord mission = accept(helper, fixture, MissionKind.KILL);
+			PatrolTestSupport.result("anAcceptedTargetIsMeasuredFromTheBellNotTheAnchor", "bell=" + bell + " target=" + mission.targetPosition());
+			helper.assertTrue(mission.targetPosition().equals(target), "the contract's target is " + mission.targetPosition() + ", not " + target + " by the bell");
+			VillageWorldData.get(level).removeMission(mission.id());
+		} finally {
+			release(helper, bell, target);
+			level.setChunkForced(bellSpot.getX() >> 4, bellSpot.getZ() >> 4, false);
+		}
 		helper.succeed();
 	}
 
@@ -199,7 +229,7 @@ public final class QuestBoardGameTest {
 			List<Mob> escorts = mission.mobIds().stream().map(id -> mobOf(helper, id)).toList();
 			helper.assertTrue(mission.status() == MissionStatus.ACTIVE && elite != null, "the elite quest did not spawn its elite");
 			helper.assertTrue(Elite.isElite(elite), "the quest's target is not an elite");
-			helper.assertTrue(escorts.size() == QuestMissions.ELITE_ESCORTS && escorts.stream().allMatch(mob -> mob != null && !Elite.isElite(mob)
+			helper.assertTrue(escorts.size() == 2 && QuestMissions.ELITE_ESCORTS == 2 && escorts.stream().allMatch(mob -> mob != null && !Elite.isElite(mob)
 				&& mob.getType() == elite.getType()), "the elite has " + escorts.size() + " escorts, not two ordinary mobs of its type");
 			helper.assertTrue(near(elite, target, 1.5) && escorts.stream().allMatch(mob -> near(mob, target, 4.0)), "the quest mobs are not at the target " + target);
 			PatrolTestSupport.result("eliteQuestSpawns", "elite=" + elite.getUUID() + " escorts=" + escorts.size() + " type=" + elite.getType());
@@ -365,18 +395,24 @@ public final class QuestBoardGameTest {
 
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void aFinishedQuestsMobsAreClearedWhenTheyLoad(final GameTestHelper helper) {
+		Mob[] pair = new Mob[2];
+		MissionRecord[] held = new MissionRecord[1];
 		quest(helper, "aFinishedQuestsMobsAreClearedWhenTheyLoad", List.of(MissionKind.KILL), (fixture, target, missions) -> {
-			MissionRecord mission = missions.get(0);
-			Mob straggler = mobOf(helper, mission.mobIds().get(0));
-			Mob kept = mobOf(helper, mission.mobIds().get(1));
-			ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(kept, helper.getLevel());
-			boolean liveKept = !kept.isRemoved();
-			VillageWorldData.get(helper.getLevel()).removeMission(mission.id());
-			ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(straggler, helper.getLevel());
-			PatrolTestSupport.result("aFinishedQuestsMobsAreClearedWhenTheyLoad", "liveKept=" + liveKept + " stragglerRemoved=" + straggler.isRemoved());
-			helper.assertTrue(liveKept, "a mob of a live quest was cleared when it loaded");
-			helper.assertTrue(straggler.isRemoved(), "a mob of a finished quest stayed in the world");
-			mission.mobIds().forEach(id -> {
+			held[0] = missions.get(0);
+			pair[0] = mobOf(helper, held[0].mobIds().get(0));
+			pair[1] = mobOf(helper, held[0].mobIds().get(1));
+			// The quest is live: loading its mob clears nothing.
+			ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(pair[1], helper.getLevel());
+		}, () -> {
+			helper.assertTrue(!pair[1].isRemoved(), "a mob of a live quest was cleared when it loaded");
+			VillageWorldData.get(helper.getLevel()).removeMission(held[0].id());
+			ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(pair[0], helper.getLevel());
+			// Loading must not remove it on the spot: the chunk is walking its entities.
+			helper.assertTrue(!pair[0].isRemoved(), "the straggler was removed inside its own load");
+		}, () -> {
+			PatrolTestSupport.result("aFinishedQuestsMobsAreClearedWhenTheyLoad", "stragglerRemoved=" + pair[0].isRemoved());
+			helper.assertTrue(pair[0].isRemoved(), "a mob of a finished quest stayed in the world");
+			held[0].mobIds().forEach(id -> {
 				Mob mob = mobOf(helper, id);
 				if (mob != null) {
 					mob.discard();
@@ -458,6 +494,11 @@ public final class QuestBoardGameTest {
 	 * mob they spawned is reachable, which takes the target chunk a few ticks to tick. The body runs after that.
 	 */
 	private static void quest(final GameTestHelper helper, final String test, final List<MissionKind> kinds, final Body body) {
+		quest(helper, test, kinds, body, new Runnable[0]);
+	}
+
+	/** As above, with stages that each run a few ticks after the one before, for what the server does at the end of a tick. */
+	private static void quest(final GameTestHelper helper, final String test, final List<MissionKind> kinds, final Body body, final Runnable... later) {
 		Fixture fixture = fixture(helper, test);
 		if (fixture == null) {
 			return;
@@ -465,17 +506,15 @@ public final class QuestBoardGameTest {
 		BlockPos target = prepareSite(helper, fixture.bell());
 		List<MissionRecord> missions = new ArrayList<>();
 		withPool(List.of(SKELETON), () -> kinds.forEach(kind -> missions.add(accept(helper, fixture, kind))));
-		helper.startSequence()
+		var sequence = helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(missions.stream().allMatch(mission -> reachable(helper, mission)), "the quest mobs are not loaded yet"))
-			.thenExecute(() -> {
-				try {
-					// The record the body reads is the current one: the spawn wrote its mobs into it.
-					body.run(fixture, target, missions.stream().map(mission -> questMission(helper, mission.id())).toList());
-				} finally {
-					release(helper, fixture.bell(), target);
-				}
-			})
-			.thenSucceed();
+			// The record the body reads is the current one: the spawn wrote its mobs into it.
+			.thenExecute(() -> body.run(fixture, target, missions.stream().map(mission -> questMission(helper, mission.id())).toList()));
+		for (Runnable stage : later) {
+			sequence = sequence.thenIdle(3).thenExecute(stage);
+		}
+		// The target stays loaded until the last stage, or its mobs would unload with it.
+		sequence.thenExecute(() -> release(helper, fixture.bell(), target)).thenSucceed();
 	}
 
 	private static boolean reachable(final GameTestHelper helper, final MissionRecord accepted) {

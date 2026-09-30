@@ -59,6 +59,7 @@ public final class QuestMissions {
 	private static final Recorder SILENT = new Recorder() {
 	};
 	private static volatile Recorder recorder = SILENT;
+	private static final List<Mob> STRAGGLERS = new ArrayList<>();
 
 	private QuestMissions() {
 	}
@@ -174,12 +175,25 @@ public final class QuestMissions {
 		return Vec3.atBottomCenterOf(target);
 	}
 
-	/** A quest mob loaded for a mission that no longer exists is cleared, so a finished quest leaves nothing behind. */
+	/**
+	 * A quest mob loaded for a mission that no longer exists is cleared, so a finished quest leaves nothing behind.
+	 * The clearing waits for the end of the tick: a mob is loaded while its chunk walks its entities, and a mob
+	 * removed then breaks that walk.
+	 */
 	static void onLoad(final Mob mob, final ServerLevel level) {
 		UUID missionId = QuestMobState.missionOf(mob);
 		if (missionId != null && VillageWorldData.get(level).mission(missionId).isEmpty()) {
-			mob.discard();
+			STRAGGLERS.add(mob);
 		}
+	}
+
+	static void clearStragglers() {
+		if (STRAGGLERS.isEmpty()) {
+			return;
+		}
+		List<Mob> due = List.copyOf(STRAGGLERS);
+		STRAGGLERS.clear();
+		due.forEach(Mob::discard);
 	}
 
 	static void onDeath(final ServerLevel level, final Mob mob) {

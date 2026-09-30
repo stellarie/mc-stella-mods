@@ -128,6 +128,7 @@ public final class MissionService {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(MissionService::onAfterDamage);
 		ServerLivingEntityEvents.AFTER_DEATH.register(MissionService::onAfterDeath);
 		ServerTickEvents.END_SERVER_TICK.register(server -> server.getAllLevels().forEach(MissionService::tick));
+		ServerTickEvents.END_SERVER_TICK.register(server -> QuestMissions.clearStragglers());
 	}
 
 	public static List<MissionOffer> offersFor(final UUID playerId) {
