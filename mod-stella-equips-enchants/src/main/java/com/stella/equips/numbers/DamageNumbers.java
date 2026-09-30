@@ -27,12 +27,12 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 /**
- * A small number over an entity for each hit it takes (red) and each heal (green), rising and fading,
+ * A small number over an entity for each hit it takes (white) and each heal (green), rising and fading,
  * like an MMO. The number is a text display sent to the nearby players and never added to the level,
  * so it is never saved; the rise and the fade are one update the client interpolates.
  */
 public final class DamageNumbers {
-	public static final int LIFETIME_TICKS = 20;
+	public static final int LIFETIME_TICKS = 60;
 	public static final float RISE_BLOCKS = 1.0F;
 	public static final float SCALE = 0.7F;
 	public static final double VIEW_RADIUS = 32.0;
@@ -128,7 +128,7 @@ public final class DamageNumbers {
 		double jitterZ = (level.getRandom().nextDouble() * 2.0 - 1.0) * JITTER;
 		display.setPos(entity.getX() + jitterX, entity.getY() + entity.getBbHeight() + HEIGHT_ABOVE, entity.getZ() + jitterZ);
 		display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
-		display.setText(Component.literal((heal ? "+" : "") + format(amount)).withStyle(heal ? ChatFormatting.GREEN : ChatFormatting.RED));
+		display.setText(Component.literal((heal ? "+" : "") + format(amount)).withStyle(heal ? ChatFormatting.GREEN : ChatFormatting.WHITE));
 		display.setBackgroundColor(0);
 		display.setTransformation(transformation(0.0F));
 		display.updateDataBeforeSync();

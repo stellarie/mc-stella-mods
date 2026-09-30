@@ -40,17 +40,6 @@ and damage reduction. The keys `attributes.armor_at_cap`,
 and the parser reports them as unknown keys. Each power scan removes the four
 matching `power_*` modifiers from a player who still carries them.
 
-## Health as a number
+## Player level
 
-The owner sees `Lv 12`, their capped vanilla level, as one line, sent by the server on every power
-scan, in the same style as the mob readout. The power scan runs
-every `tracker.scan_interval_ticks`, so the line arrives even when the owner turns
-the mob readout off. The line travels as an overlay system-chat packet, which the
-client draws in the action-bar overlay slot.
-
-The mod sends the text and does not draw the bar: the health bar itself is client
-`Gui` code, so redrawing it needs a client mod, which this package does not have.
-
-**The display slot is not decided.** The line goes to the action-bar overlay now,
-which the client also uses for the selected item name. The owner chooses between
-a numeric line and a kept-hearts display, and that choice fixes the slot.
+The mod sends no level line. The owner reads their level from the vanilla experience bar.
