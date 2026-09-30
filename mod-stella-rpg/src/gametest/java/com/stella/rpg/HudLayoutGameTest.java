@@ -26,6 +26,14 @@ public final class HudLayoutGameTest {
 	}
 
 	@GameTest
+	public void food(final GameTestHelper helper) {
+		helper.assertTrue("17 / 20".equals(HudLayout.foodText(17)), "foodText(17)=" + HudLayout.foodText(17));
+		expect(helper, "fill(10,20)", HudLayout.fillWidth(10, HudLayout.MAX_FOOD, WIDTH), 40);
+		RpgTestSupport.result("food", "value=" + HudLayout.foodText(17));
+		helper.succeed();
+	}
+
+	@GameTest
 	public void absorption(final GameTestHelper helper) {
 		expect(helper, "absorption(8,20)", HudLayout.absorptionWidth(8, 20, WIDTH), 32);
 		expect(helper, "absorption(50,20)", HudLayout.absorptionWidth(50, 20, WIDTH), 81);

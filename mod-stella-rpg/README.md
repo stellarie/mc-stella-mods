@@ -271,7 +271,16 @@ The client part replaces the vanilla hearts with one bar. Creative and spectator
 - The armor strip moves up by the icon rows. The mod registers height providers with `HudStatusBarHeightRegistry`.
 - `HudLayout` holds the layout math in the main source set. `HudLayoutGameTest` covers it.
 
+The hunger row is also one bar, mirrored on the right of the hotbar.
+
+- Centered text shows `food / 20`. The fill is orange. Hunger turns it olive.
+- Saturation draws a 2-pixel yellow strip on the top edge.
+
 The equips mod `HudMixin` caps the vanilla heart rows. It has no visible effect while this bar replaces them.
+
+## Sleep
+
+When a night is skipped, every player still in bed heals to maximum health. `RpgSleepHealMixin` hooks `ServerLevel#wakeUpAllPlayers`, which runs only on a night skip. A player who leaves the bed early does not heal.
 
 ## Build and test
 
