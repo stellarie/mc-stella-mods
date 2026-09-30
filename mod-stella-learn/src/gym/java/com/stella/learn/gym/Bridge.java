@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * whose first byte is the frame type. `training/stella_train/wire.py` mirrors the codec below.
  */
 public final class Bridge implements AutoCloseable {
-	public static final int PROTOCOL_VERSION = 2;
+	public static final int PROTOCOL_VERSION = 3;
 	public static final int HELLO = 1;
 	public static final int STEP = 2;
 	public static final int ACT = 3;
@@ -160,7 +160,7 @@ public final class Bridge implements AutoCloseable {
 	}
 
 	/** Per agent: ticks, engaged ticks, chase ticks, shots. Filled in an episode's last step; zero before. */
-	public static final int METRICS = 4;
+	public static final int METRICS = 10;
 
 	public static byte[] stepFrame(
 		final int stepId, final int[] agents, final int[] flags, final float[] rewards, final float[] shaping, final float[][] metrics,

@@ -43,6 +43,9 @@ public final class GymEpisode {
 	/** Shaping per decision: damage dealt to the bot. */
 	private static final double DAMAGE_REWARD_PER_HP = 0.005;
 	private static final float TIMEOUT_REWARD = -1.0F;
+	/** An archer step shorter than this many blocks a decision does not count as a retreat. */
+	private static final double RETREAT_STEP = 0.1;
+
 	/** The bot counts as engaged within this many blocks of the archer when the archer can see it. */
 	private static final double ENGAGE_BLOCKS = 16.0;
 	private static final double CHASE_STEP = 0.05;
@@ -74,6 +77,7 @@ public final class GymEpisode {
 					if (arrow.getOwner().tickCount != episode.lastShotTick) {
 						episode.lastShotTick = arrow.getOwner().tickCount;
 						episode.shots++;
+						episode.releaseDistance += arrow.getOwner().distanceTo(episode.bot.player());
 					}
 					double power = arrow.getDeltaMovement().length() / 1.6;
 					episode.powerBuckets[power < 0.25 ? 0 : power < 0.5 ? 1 : power < 0.75 ? 2 : 3]++;
@@ -112,6 +116,14 @@ public final class GymEpisode {
 	private int engagedTicks;
 	private int chaseTicks;
 	private int shots;
+	private double releaseDistance;
+	private double travelled;
+	private double forwardSum;
+	private double strafeSum;
+	private int acted;
+	private int measured;
+	private int retreating;
+	private Vec3 lastPosition;
 	private int lastShotTick = -1;
 	private double lastDistance = -1.0;
 	private float noRegenHealth = Float.MAX_VALUE;
@@ -222,6 +234,14 @@ public final class GymEpisode {
 		engagedTicks = 0;
 		chaseTicks = 0;
 		shots = 0;
+		releaseDistance = 0.0;
+		travelled = 0.0;
+		forwardSum = 0.0;
+		strafeSum = 0.0;
+		acted = 0;
+		measured = 0;
+		retreating = 0;
+		lastPosition = null;
 		lastShotTick = -1;
 		lastDistance = -1.0;
 		noRegenHealth = Float.MAX_VALUE;
@@ -504,6 +524,20 @@ public final class GymEpisode {
 			return;
 		}
 
+		Vec3 at = mob.position();
+		if (lastPosition != null) {
+			double dx = at.x - lastPosition.x;
+			double dz = at.z - lastPosition.z;
+			double step = Math.sqrt(dx * dx + dz * dz);
+			travelled += step;
+			measured++;
+			// Away from the bot: the step points along the line from the bot to the archer.
+			if (step > RETREAT_STEP && dx * (at.x - bot.player().getX()) + dz * (at.z - bot.player().getZ()) > 0.0) {
+				retreating++;
+			}
+		}
+
+		lastPosition = at;
 		double distance = mob.distanceTo(bot.player());
 		if (distance <= ENGAGE_BLOCKS && mob.hasLineOfSight(bot.player())) {
 			engagedTicks += decisionTicks;
@@ -521,7 +555,11 @@ public final class GymEpisode {
 	}
 
 	private float[] metrics() {
-		return new float[] {ticks, engagedTicks, chaseTicks, shots};
+		float deathDistance = mob != null && !mob.isAlive() ? mob.distanceTo(bot.player()) : 0.0F;
+		return new float[] {
+			ticks, engagedTicks, chaseTicks, shots, (float) travelled, (float) (forwardSum / Math.max(acted, 1)), (float) (strafeSum / Math.max(acted, 1)),
+			(float) retreating / Math.max(measured, 1), (float) (releaseDistance / Math.max(shots, 1)), deathDistance
+		};
 	}
 
 	private int episodeLimit() {
@@ -550,7 +588,8 @@ public final class GymEpisode {
 		GymLog.info(GymLog.EPISODE, "END", "arena=" + arena.index() + " seed=" + seed + " episode=" + episodes + " brain=" + (brain == null ? "none" : Brains.name(brainIndex))
 			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " limit=" + tickLimit + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
 			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken)
-			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " engagedTicks=" + engagedTicks + " chaseTicks=" + chaseTicks + " shots=" + shots + " mobHealth=" + LearnLog.num(mobHealth)
+			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " engagedTicks=" + engagedTicks + " chaseTicks=" + chaseTicks + " shots=" + shots + " travelled=" + LearnLog.num(travelled) + " absForward=" + LearnLog.num(forwardSum / Math.max(acted, 1)) + " absStrafe=" + LearnLog.num(strafeSum / Math.max(acted, 1))
+			+ " retreatShare=" + LearnLog.num((double) retreating / Math.max(measured, 1)) + " releaseDistance=" + LearnLog.num(releaseDistance / Math.max(shots, 1)) + " deathDistance=" + LearnLog.num(metrics()[9]) + " mobHealth=" + LearnLog.num(mobHealth)
 			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " arrowPower=" + java.util.Arrays.toString(powerBuckets) + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());
 	}
 
@@ -595,6 +634,9 @@ public final class GymEpisode {
 	/** Applies the trainer's action for the next decision. An episode that is not live ignores it. */
 	public void act(final float[] action) {
 		if (state == State.LIVE && source != null) {
+			forwardSum += Math.abs(action[0]);
+			strafeSum += Math.abs(action[1]);
+			acted++;
 			source.set(action);
 		}
 	}

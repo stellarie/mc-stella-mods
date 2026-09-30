@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 HELLO = 1
 STEP = 2
 ACT = 3
@@ -65,7 +65,7 @@ def encode_hello(obs_size: int, act_size: int, arenas: int, contract_hash: bytes
     return _frame(HELLO, struct.pack("<HHHI", PROTOCOL_VERSION, obs_size, act_size, arenas) + contract_hash)
 
 
-METRICS = 4  # ticks, engaged ticks, chase ticks, shots; set in an episode's last step
+METRICS = 10  # ticks, engaged, chase, shots, travelled, |forward|, |strafe|, retreat share, release distance, death distance; in an episode's last step
 
 
 def encode_step(step_id: int, agents, flags, rewards, shaping, obs, metrics=None) -> bytes:

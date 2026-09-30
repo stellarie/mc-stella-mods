@@ -15,7 +15,7 @@ from typing import Callable
 
 import numpy as np
 
-from . import wire
+from . import movement, wire
 from .client import GymClient
 from .model import Sampler
 from .ppo import Batch, gae
@@ -46,6 +46,7 @@ class Result:
     engaged: float = 0.0
     chase: float = 0.0
     shots: float = 0.0
+    move: tuple = ()
 
 
 @dataclass
@@ -78,6 +79,7 @@ class Stats:
     episode_steps_sum: int = 0
     dealt_sum: float = 0.0
     engagement: np.ndarray = field(default_factory=lambda: np.zeros(4))
+    moves: list = field(default_factory=list)
     taken_sum: float = 0.0
     bow_counts: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.int64))
     jump_count: int = 0
@@ -94,6 +96,7 @@ class Stats:
         self.episode_steps_sum += other.episode_steps_sum
         self.dealt_sum += other.dealt_sum
         self.engagement += other.engagement
+        self.moves.extend(other.moves)
         self.taken_sum += other.taken_sum
         self.bow_counts += other.bow_counts
         self.jump_count += other.jump_count
@@ -293,10 +296,12 @@ class Worker(threading.Thread):
         self.stats.episode_return_sum += episode_return
         self.stats.episode_steps_sum += steps
         self.stats.outcomes[brain][outcome] += 1
-        self.stats.engagement += metrics
+        self.stats.engagement += metrics[:4]
+        row = movement.episode_row(metrics)
+        self.stats.moves.append(row)
         if phase.mode == "eval":
             if task is not None:
-                self.stats.results.append(Result(task.brain, task.seed, task.stage, outcome, steps, float(metrics[0]), float(metrics[1]), float(metrics[2]), float(metrics[3])))
+                self.stats.results.append(Result(task.brain, task.seed, task.stage, outcome, steps, float(metrics[0]), float(metrics[1]), float(metrics[2]), float(metrics[3]), row))
 
     # -- batch ---------------------------------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@ from . import roster
 from .bench import cpu_model, git, java_version, ram_gb
 from .contract import load as load_contract
 from .curriculum import Curriculum
+from . import movement
 from .health import Guard, ZeroOffsetArcher, probe_task
 from .gym_launch import GymCluster, prepare_spec
 from .model import ActorCritic, Normalizer, Sampler
@@ -249,15 +250,16 @@ class Trainer:
         engaged = engaged_sum / ticks_sum if ticks_sum else 0.0
         shots_ep = shots_sum / max(episodes, 1)
         chase_ep = chase_sum / max(episodes, 1)
+        move = movement.summarize(stats.moves)
         wins_n = wins
         losses_n = sum(c["loss"] for c in stats.outcomes.values())
         self.log.info(
             "train UPDATE update=%d decisions=%d stage=%s dps=%.0f episodes=%d win_rate=%.3f mean_reward=%.3f terminal_per_decision=%.5f policy_loss=%.4f "
             "value_loss=%.4f entropy=%.3f kl=%.4f clip_fraction=%.3f explained_variance=%.3f lr=%.2e entropy_coef=%.4f shaping_scale=%.4f log_std=%.3f "
-            "timeouts=%d wins=%d losses=%d hp_band=%s shaping_per_episode=%.3f terminal_reward_per_episode=%.3f engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s]",
+            "timeouts=%d wins=%d losses=%d hp_band=%s shaping_per_episode=%.3f terminal_reward_per_episode=%.3f engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s] %s",
             self.updates, self.decisions, roster.STAGE_NAMES[self.curriculum.stage], dps, episodes, finished, mean_return, per_decision,
             metrics["policy_loss"], metrics["value_loss"], metrics["entropy"], metrics["kl"], metrics["clip_fraction"], metrics["explained_variance"],
-            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), wins_n, losses_n, self.curriculum.band_text(), shaping, stats.reward_sum / max(episodes, 1), engaged, shots_ep, chase_ep, *bow, jump, styles)
+            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), wins_n, losses_n, self.curriculum.band_text(), shaping, stats.reward_sum / max(episodes, 1), engaged, shots_ep, chase_ep, *bow, jump, styles, movement.text(move))
         self.log.event(
             "train UPDATE", update=self.updates, decisions=self.decisions, stage=roster.STAGE_NAMES[self.curriculum.stage], dps=dps,
             wall_seconds=self.wall_seconds(), episodes=episodes, win_rate=finished, mean_reward=mean_return, terminal_per_decision=per_decision,
@@ -265,7 +267,7 @@ class Trainer:
             clip_fraction=metrics["clip_fraction"], explained_variance=metrics["explained_variance"], lr=metrics["lr"],
             entropy_coef=metrics["entropy_coef"], shaping_scale=scale, log_std=metrics["log_std"], epochs_run=metrics["epochs_run"],
             update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, hp_band=self.curriculum.band_text(), shaping_per_episode=shaping, wins=wins_n, losses=losses_n, engaged_share=engaged, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep,
-            bow_action_share=bow, jump_share=jump, win_rate_by_style=by_style,
+            bow_action_share=bow, jump_share=jump, movement=move, win_rate_by_style=by_style,
             outcomes={roster.brain_name(b) if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
 
     def evaluate(self, fleet: Fleet) -> None:
@@ -295,13 +297,14 @@ class Trainer:
         engaged_share = sum(r.engaged for r in stats.results) / eng_ticks if eng_ticks else 0.0
         shots_ep = sum(r.shots for r in stats.results) / max(len(stats.results), 1)
         chase_ep = sum(r.chase for r in stats.results) / max(len(stats.results), 1)
+        move = movement.summarize([r.move for r in stats.results if r.move])
         by_toughness = " ".join(f"{name}:{row['win'] / row['n']:.2f}/{row['n']}" for name, row in toughness.items() if row["n"])
         stage = roster.STAGE_NAMES[self.curriculum.stage]
         styles = " ".join(f"{name}:{row['win'] / row['n']:.2f}" for name, row in rows.items())
-        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f hp_band=%s styles=[%s] toughness=[%s] engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f", self.decisions, stage,
-                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, self.curriculum.band_text(), styles, by_toughness, engaged_share, shots_ep, chase_ep)
+        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f hp_band=%s styles=[%s] toughness=[%s] engaged=%.3f shots_per_episode=%.1f chase_ticks_per_episode=%.0f %s", self.decisions, stage,
+                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, self.curriculum.band_text(), styles, by_toughness, engaged_share, shots_ep, chase_ep, movement.text(move))
         self.log.event("trainEval RESULT", decisions=self.decisions, stage=stage, suite_stage=roster.STAGE_NAMES[self.curriculum.eval_stage()],
-                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, hp_band=self.curriculum.band_text(), per_toughness=toughness, engaged_share=engaged_share, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep, per_style=rows, seconds=time.monotonic() - began)
+                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, hp_band=self.curriculum.band_text(), per_toughness=toughness, engaged_share=engaged_share, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep, movement=move, per_style=rows, seconds=time.monotonic() - began)
         self.curriculum.after_eval(self.decisions, rate)
 
 

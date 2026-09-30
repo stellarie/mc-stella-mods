@@ -10,8 +10,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 /** The Java frame codec against the fixed bytes that `training/tests/test_wire.py` checks on the Python side. */
 public class GymWireGameTest {
-	static final String HELLO = "2b0000000102007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
-	static final String STEP = "5300000002070000000200000000000000010000003f0000803e000000000000000000000000000000000000803f00000040050000000e000080bf000000be00001644000096430000204200004041000040c00000803e";
+	static final String HELLO = "2b0000000103007400060020000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+	static final String STEP = "8300000002070000000200000000000000010000003f0000803e000000000000000000000000000000000000000000000000000000000000000000000000000000000000803f00000040050000000e000080bf000000be0000164400009643000020420000404100005e420000003f0000803e0000003e0000184100006040000040c00000803e";
 	static final String ACT = "41000000030700000002000000000000000000803f000000000000003f000080bf0000803f0000004005000000000000000000803f00000000000000000000000000004040";
 	static final String RESET = "2d00000004ffffffff2a000000060000000200000058020000140000001a00000004000000000000000000000000000000";
 	static final String BYE = "0100000005";
@@ -38,7 +38,7 @@ public class GymWireGameTest {
 
 	@GameTest
 	public void stepEncodesToTheFixedBytes(final GameTestHelper helper) {
-		String encoded = hex(Bridge.stepFrame(7, new int[] {0, 5}, new int[] {1, 14}, new float[] {0.5F, -1.0F}, new float[] {0.25F, -0.125F}, new float[][] {{0.0F, 0.0F, 0.0F, 0.0F}, {600.0F, 300.0F, 40.0F, 12.0F}}, new float[][] {{1.0F, 2.0F}, {-3.0F, 0.25F}}));
+		String encoded = hex(Bridge.stepFrame(7, new int[] {0, 5}, new int[] {1, 14}, new float[] {0.5F, -1.0F}, new float[] {0.25F, -0.125F}, new float[][] {{0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F}, {600.0F, 300.0F, 40.0F, 12.0F, 55.5F, 0.5F, 0.25F, 0.125F, 9.5F, 3.5F}}, new float[][] {{1.0F, 2.0F}, {-3.0F, 0.25F}}));
 		helper.assertTrue(encoded.equals(STEP), "step encodes to " + encoded);
 		helper.succeed();
 	}
