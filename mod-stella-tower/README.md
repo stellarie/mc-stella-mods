@@ -402,3 +402,7 @@ Manual acceptance: `towerChestRendersOnTheClientRequiresManualTest` stays red as
 chest in play and see a vanilla-looking chest that opens, with no client crash. The gametest runtime has no spells mod, so the return scroll, scroll and spellbook items are
 tested through a stand-in; in play with the spells mod, open a guaranteed chest and check the scroll is a real
 Scroll of Return. Also look at a chest in play to confirm it renders as a vanilla chest.
+
+### Chests on floors
+
+Every planned floor is built with a double tower chest at each chest spot of its plan (at least 5, plus a guaranteed one on elite and boss floors), stocked once when the floor goes up. Example: `[BEHAVIOR] test=floorChestsOrdinary RESULT ... spots=6 chestBlocks=12 faults=0`.

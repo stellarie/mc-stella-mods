@@ -13,6 +13,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -417,6 +419,7 @@ public final class TowerFloors {
 			TowerBuffs.mist(tower, floor);
 		}
 		stations(tower, plan);
+		chests(tower, floor, plan);
 		// One marker block a version, stacked downward, so the floor records the plan it was built to.
 		for (int i = 0; i < plan.version(); i++) {
 			tower.setBlock(planMarker(floor).below(i), wall, Block.UPDATE_CLIENTS);
@@ -425,6 +428,33 @@ public final class TowerFloors {
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
 		synchronized (BUILT_VERSIONS) {
 			BUILT_VERSIONS.put(new Built(tower.getSeed(), floor), plan.version());
+		}
+	}
+
+	/**
+	 * Places the plan's double chests, once, as the floor goes up, and stocks each from a random of the seed, the floor
+	 * and the spot, so the same floor draws the same loot. A legacy plan has no spots. The blocks are cleared first:
+	 * a spot is open ground by the plan, so nothing is lost.
+	 */
+	private static void chests(final ServerLevel tower, final int floor, final TowerPlan plan) {
+		BlockPos origin = plan.origin();
+		int index = 0;
+		for (TowerPlan.ChestSpot spot : plan.chestSpots()) {
+			TowerPlan.Spot other = spot.second();
+			BlockPos first = origin.offset(spot.x(), 0, spot.z());
+			BlockPos second = origin.offset(other.x(), 0, other.z());
+			tower.setBlock(first, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+			tower.setBlock(second, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+			// The left half is the one the facing's clockwise side lies beyond: the first block for north and east, the second for south and west.
+			boolean firstIsLeft = spot.facing() == Direction.NORTH || spot.facing() == Direction.EAST;
+			BlockPos left = firstIsLeft ? first : second;
+			if (TowerChests.placeDouble(tower, left, spot.facing()) == null) {
+				StellaTower.LOGGER.warn("Tower floor {}: no chest at {}", floor, first);
+				continue;
+			}
+			RandomSource random = RandomSource.create(tower.getSeed() ^ (floor * 0x9E3779B97F4A7C15L) ^ (index * 0xC2B2AE3D27D4EB4FL) ^ 0x43485354L);
+			TowerChests.fill(tower, first, floor, spot.guaranteed(), random);
+			index++;
 		}
 	}
 

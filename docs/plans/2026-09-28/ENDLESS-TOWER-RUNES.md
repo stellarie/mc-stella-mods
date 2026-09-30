@@ -744,3 +744,10 @@ measured numbers.
   item's stack size; `placeDouble` returns null and places nothing unless both spots are air; the client render
   is a manual item (`towerChestRendersOnTheClientRequiresManualTest`). Each new test failed before the change
   (evidence `c2-red`: 5 required tests red) and passed after (`c2-green1`).
+
+## F5: chests placed on built floors
+
+- `TowerFloors.finish` places a `TowerChestBlock` double chest at every `plan.chestSpots()` spot after the walls (spot cleared to air first), facing the spot, stocked by `TowerChests.fill` from a random of seed, floor and spot. Once, at build time; a built floor is never restocked. Legacy plans have no spots, so no chests.
+- The merge renamed the floors-side planner to `TowerChestSpots`; `TowerChests` is the loot and placement class. `TowerAuras` uses `TowerSafety.sheltered` for the safe-zone check (the old `TowerMaze.inSafeZone` is gone).
+- Two older tests treat a tower chest as open ground in their `open()` model (chests are furniture against walls).
+- Tests: `TowerFloorChestGameTest` (5). Suite 328 required.

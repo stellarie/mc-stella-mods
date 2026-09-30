@@ -70,7 +70,7 @@ public class TowerChestGameTest {
 	}
 
 	/** A stand-in for the spells mod, whose items the gametest runtime does not hold. */
-	private static TowerChests.SpellItems standIn(final boolean withReturnScroll) {
+	static TowerChests.SpellItems standIn(final boolean withReturnScroll) {
 		return new TowerChests.SpellItems() {
 			@Override
 			public java.util.Optional<Item> returnScroll() {

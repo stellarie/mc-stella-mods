@@ -33,7 +33,8 @@ public class TowerSafeZoneGameTest {
 		for (int x = 0; x < S; x++) {
 			for (int z = 0; z < S; z++) {
 				BlockPos feet = o.offset(x, 0, z);
-				open[x][z] = tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
+				// The guaranteed chest stands in the room: it is furniture, not wall.
+				open[x][z] = (tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty() || tower.getBlockState(feet).is(TowerBlocks.TOWER_CHEST))
 					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty();
 			}
 		}

@@ -39,7 +39,8 @@
 			"com.stella.tower.TowerSafetyReviewGameTest",
 			"com.stella.tower.TowerVariationGameTest",
 			"com.stella.tower.TowerAuraGameTest",
-			"com.stella.tower.TowerChestGameTest"
+			"com.stella.tower.TowerChestGameTest",
+			"com.stella.tower.TowerFloorChestGameTest"
 		]
 	},
 	"mixins": [

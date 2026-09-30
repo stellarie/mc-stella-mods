@@ -20,7 +20,8 @@ public class TowerMazeGameTest {
 		for (int x = 0; x < S; x++) {
 			for (int z = 0; z < S; z++) {
 				BlockPos feet = o.offset(x, 0, z);
-				open[x][z] = tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
+				// A chest stands against a wall, off the way: the layout is measured as if it were not there.
+				open[x][z] = (tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty() || tower.getBlockState(feet).is(TowerBlocks.TOWER_CHEST))
 					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty();
 			}
 		}
