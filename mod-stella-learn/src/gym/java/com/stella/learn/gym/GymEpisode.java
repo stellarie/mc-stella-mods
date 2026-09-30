@@ -262,6 +262,10 @@ public final class GymEpisode {
 		body = Body.draw(newSeed, bodyRange);
 		BotLoadout.equip(bot, skill.gear(), body.protection());
 		body.apply(bot.player());
+		if (!bot.hittable()) {
+			GymLog.info(GymLog.HEALTH, "FAIL", "arena=" + arena.index() + " seed=" + newSeed + " reason=notHittable " + bot.who());
+		}
+
 		ProfileNoise.apply(bot.player(), random, stage == Terrain.C, arena.index(), newSeed);
 		if (stage == Terrain.C && random.nextDouble() < CREEPER_SHARE) {
 			spawnCreeper(terrain, random);

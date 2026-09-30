@@ -129,9 +129,36 @@ public final class Bot {
 		return bot;
 	}
 
-	/** A player takes no damage until its client reports it has loaded; a bot has no client to say so. */
+	/** Reads the flag a death sets on the connection; a player with it set takes no damage. */
+	private static final java.lang.reflect.Field WAITING_FOR_RESPAWN = respawnField();
+
+	private static java.lang.reflect.Field respawnField() {
+		try {
+			java.lang.reflect.Field field = net.minecraft.server.network.ServerGamePacketListenerImpl.class.getDeclaredField("waitingForRespawn");
+			field.setAccessible(true);
+			return field;
+		} catch (ReflectiveOperationException exception) {
+			throw new IllegalStateException("the connection no longer has a waitingForRespawn flag", exception);
+		}
+	}
+
+	/**
+	 * A player takes no damage until its client reports it has loaded, and never again after a death until it respawns. A
+	 * bot has no client to say either, so both are done here: the death flag is cleared, then the load is reported.
+	 */
 	private static void markLoaded(final ServerPlayer player) {
+		try {
+			WAITING_FOR_RESPAWN.setBoolean(player.connection, false);
+		} catch (IllegalAccessException exception) {
+			throw new IllegalStateException(exception);
+		}
+
 		player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
+	}
+
+	/** Whether an arrow can hurt this bot now: in the world, alive, and past the load and respawn gates. */
+	public boolean hittable() {
+		return !player.isRemoved() && player.isAlive() && player.connection.hasClientLoaded() && !player.isInvulnerable();
 	}
 
 	private static void tickAll(final MinecraftServer server) {

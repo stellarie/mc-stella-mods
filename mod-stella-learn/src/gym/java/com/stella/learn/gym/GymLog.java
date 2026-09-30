@@ -16,6 +16,7 @@ public final class GymLog {
 	public static final String TERRAIN = "gymTerrain";
 	public static final String EVAL = "gymEval";
 	public static final String PROFILE = "gymProfile";
+	public static final String HEALTH = "gymHealth";
 
 	/** The fixed `reason=` values a gym error or fallback line may carry. */
 	public static final String READ_TIMEOUT = "readTimeout";
