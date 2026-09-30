@@ -1,5 +1,7 @@
 package com.stella.food;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -89,11 +91,23 @@ public final class FoodEffects {
 	);
 	public static final Holder<MobEffect> EMBER_SKIN = register("ember_skin", basic(0xD95A2B));
 	public static final Holder<MobEffect> SECOND_WIND = register("second_wind", new SecondWindEffect());
+	/** One effect per stat; the RPG mod reads each by id and counts one stat point per level. */
+	public static final Map<String, Holder<MobEffect>> SEASONED = seasoned();
 
 	private FoodEffects() {
 	}
 
 	public static void register() {
+	}
+
+	private static Map<String, Holder<MobEffect>> seasoned() {
+		int[] colors = {0xD9534F, 0x4FC37A, 0xE08A3C, 0x4FA8D9, 0x8A63D2, 0xE6C83C};
+		Map<String, Holder<MobEffect>> effects = new LinkedHashMap<>();
+		for (int i = 0; i < Seasoning.STATS.size(); i++) {
+			String stat = Seasoning.STATS.get(i);
+			effects.put(stat, register("seasoned_" + stat, basic(colors[i])));
+		}
+		return Map.copyOf(effects);
 	}
 
 	private static MobEffect basic(final int color) {

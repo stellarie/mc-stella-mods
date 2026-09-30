@@ -69,6 +69,12 @@ public final class FoodTooltips {
 						.withStyle(ChatFormatting.GRAY));
 				}
 			}
+			Seasoning seasoning = Seasoning.read(stack);
+			if (seasoning != null) {
+				lines.accept(Component.translatable(
+					"tooltip.mod-stella-food.seasoned", seasoning.amount(), seasoning.label()
+				).withStyle(ChatFormatting.GOLD));
+			}
 		}
 	}
 

@@ -5,6 +5,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,6 +23,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
 
 public final class CookingStationMenu extends AbstractContainerMenu {
 	public static final int RESULT_SLOT = 0;
@@ -41,6 +43,7 @@ public final class CookingStationMenu extends AbstractContainerMenu {
 	private final SimpleContainer result = new SimpleContainer(1);
 	private final DataSlot selectedEntry = DataSlot.standalone();
 	private boolean updating;
+	private Roll roll;
 
 	public CookingStationMenu(final int containerId, final Inventory inventory) {
 		this(containerId, inventory, ContainerLevelAccess.NULL);
@@ -157,15 +160,34 @@ public final class CookingStationMenu extends AbstractContainerMenu {
 		this.access.execute((level, pos) -> this.clearContainer(player, this.input));
 	}
 
+	// The server alone fills the result slot: it rolls the seasoning, and a client guess would differ.
 	private void updateResult() {
+		if (this.inventory.player.level().isClientSide()) {
+			return;
+		}
 		CookingStation.Match match = CookingStation.findMatch(this.input);
-		this.result.setItem(0, match == null ? ItemStack.EMPTY : match.result().copy());
+		this.result.setItem(0, match == null ? ItemStack.EMPTY : this.seasoned(match.result().copy()));
 		this.broadcastChanges();
+	}
+
+	// One roll per dish and potion pair, kept until the output is taken, so changing the grid cannot reroll it.
+	private ItemStack seasoned(final ItemStack output) {
+		PotionContents contents = output.get(DataComponents.POTION_CONTENTS);
+		if (contents == null || !FoodItems.isDish(output.getItem())) {
+			return output;
+		}
+		if (this.roll == null || this.roll.dish() != output.getItem() || !this.roll.contents().equals(contents)) {
+			this.roll = new Roll(output.getItem(), contents, Seasoning.roll(this.inventory.player.getRandom()));
+		}
+		output.set(StellaFood.SEASONING, this.roll.seasoning());
+		return output;
 	}
 
 	private void takeResult(final Player player, final ItemStack taken) {
 		CookingStation.Match match = CookingStation.findMatch(this.input);
-		if (match == null || !ItemStack.isSameItemSameComponents(match.result(), taken)) {
+		ItemStack plain = taken.copy();
+		plain.remove(StellaFood.SEASONING);
+		if (match == null || !ItemStack.isSameItemSameComponents(match.result(), plain)) {
 			this.result.clearContent();
 			return;
 		}
@@ -184,7 +206,11 @@ public final class CookingStationMenu extends AbstractContainerMenu {
 			this.updating = false;
 		}
 		taken.onCraftedBy(player, taken.getCount());
+		this.roll = null;
 		this.updateResult();
+	}
+
+	private record Roll(Item dish, PotionContents contents, Seasoning seasoning) {
 	}
 
 	private void returnBottle(final Player player, final int slot, final ItemStack source) {
