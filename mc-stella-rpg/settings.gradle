@@ -9,4 +9,4 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'mod-stella-rpg'
+rootProject.name = 'mc-stella-rpg'

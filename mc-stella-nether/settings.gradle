@@ -9,12 +9,12 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'mod-stella-nether'
+rootProject.name = 'mc-stella-nether'
 
 // The whole modpack builds from source beside this mod and substitutes for its coordinates below.
-includeBuild '../mod-stella-mobs'
-includeBuild '../mod-stella-equips-enchants'
-includeBuild '../mod-stella-spells'
+includeBuild '../mc-stella-mobs'
+includeBuild '../mc-stella-equips-enchants'
+includeBuild '../mc-stella-spells'
 includeBuild '../mc-stella-villages'
-includeBuild '../mod-stella-tower'
-includeBuild '../mod-stella-food'
+includeBuild '../mc-stella-tower'
+includeBuild '../mc-stella-food'

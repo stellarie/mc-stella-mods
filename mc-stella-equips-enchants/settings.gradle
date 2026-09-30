@@ -9,4 +9,4 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'mod-stella-tower'
+rootProject.name = 'mc-stella-equips-enchants'

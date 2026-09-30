@@ -12,12 +12,12 @@ This repository develops separate Fabric mods on one trunk, `main`: mobs, equips
 
 ## Commands
 
-- `cd mod-stella-mobs; .\gradlew.bat clean build` - Build and run mobs checks. [verified: 2026-09-24] [source: AGENTS.md]
-- `cd mod-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
+- `cd mc-stella-mobs; .\gradlew.bat clean build` - Build and run mobs checks. [verified: 2026-09-24] [source: AGENTS.md]
+- `cd mc-stella-equips-enchants; .\gradlew.bat clean build` - Build and run equips checks. [verified: 2026-09-24] [source: AGENTS.md]
 - `.\gradlew.bat runGameTest --rerun` - Rerun a mod's headless game tests. [verified: 2026-09-24] [source: AGENTS.md]
-- `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
-- `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
-- `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
+- `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mc-stella-spells/build/libs/mc-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
+- `cd mc-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
+- `cd mc-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
 - `python scripts/test-build-release.py` - Check CI discovery, five runs, packed jar contents, and failure handling. [verified: 2026-09-28] [source: command output]
 - `python scripts/build-release.py --list` - Print the current Gradle mod list as JSON. [verified: 2026-09-29] [source: command output]
 - `cd mc-stella-villages; .\gradlew.bat clean build` - Build villages and its required mobs jar. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; clean build]
@@ -125,6 +125,13 @@ This repository develops separate Fabric mods on one trunk, `main`: mobs, equips
 - Why: The two mods have independent source trees and development streams.
 - Alternatives: One shared development branch was superseded by oniichan's direction.
 - Evidence: `git branch --list main-mobs main-equip-ench` and `AGENTS.md`.
+
+### 2026-09-30 - Folder and jar names
+
+- Decision: Folders, Gradle projects and jars are `mc-stella-<feature>`. Mod ids keep `mod-stella-`.
+- Why: One prefix reads cleanly, and the deploy jar is `mc-stella-mods.jar`. A mod id is a registry namespace, so renaming it would break worlds.
+- Alternatives: Renaming the ids too was rejected.
+- Evidence: `AGENTS.md` section Naming.
 
 ### 2026-09-30 - One trunk
 

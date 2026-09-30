@@ -3,10 +3,10 @@ plugins {
 }
 
 def externalMobsJar = project.findProperty("stellaMobsJar")
-def mobsJar = file(externalMobsJar ?: "../mod-stella-mobs/build/libs/mod-stella-mobs-${project.version}.jar")
+def mobsJar = file(externalMobsJar ?: "../mc-stella-mobs/build/libs/mc-stella-mobs-${project.version}.jar")
 
 tasks.register('buildStellaMobsJar', GradleBuild) {
-	dir = file('../mod-stella-mobs')
+	dir = file('../mc-stella-mobs')
 	tasks = ['jar']
 	onlyIf { externalMobsJar == null }
 }
@@ -38,7 +38,7 @@ dependencies {
 // -PwithStellaSpells=true loads the spells jar built beside this mod; any other value is the jar's own path.
 def stellaSpellsJar() {
 	def value = project.findProperty("withStellaSpells")
-	return value == "true" ? "../mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar" : value
+	return value == "true" ? "../mc-stella-spells/build/libs/mc-stella-spells-0.1.0+26.3.jar" : value
 }
 
 fabricApi {

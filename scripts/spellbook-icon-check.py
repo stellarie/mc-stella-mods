@@ -16,11 +16,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 MOD_ID = "mod-stella-spells"
-CATALOG_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellbookCatalog.java")
-VISUAL_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellVisuals.java")
-MODEL_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
-ITEM_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/items")
-TEXTURE_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/textures/item")
+CATALOG_SOURCE = Path("mc-stella-spells/src/main/java/com/stella/spells/SpellbookCatalog.java")
+VISUAL_SOURCE = Path("mc-stella-spells/src/main/java/com/stella/spells/SpellVisuals.java")
+MODEL_ROOT = Path("mc-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
+ITEM_ROOT = Path("mc-stella-spells/src/main/resources/assets/mod-stella-spells/items")
+TEXTURE_ROOT = Path("mc-stella-spells/src/main/resources/assets/mod-stella-spells/textures/item")
 HAND_CONTEXTS = (
     "firstperson_righthand",
     "firstperson_lefthand",

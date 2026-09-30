@@ -9,4 +9,4 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'mod-stella-equips-enchants'
+rootProject.name = 'mc-stella-mobs'

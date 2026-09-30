@@ -21,6 +21,14 @@ works on one. They are the standard, not a suggestion.
 - Delete the branch and its worktree after the merge.
 - `master` is the original repository baseline, not a development target.
 
+## Naming
+
+- A mod's folder, Gradle project and jar are `mc-stella-<feature>`.
+- A mod's id keeps its first name, for example `mod-stella-mobs`. The id is the
+  registry namespace of its blocks, items and entities, and the name of its
+  config folder. Renaming it breaks existing worlds and configs, so do not.
+- Deploy one jar, `mc-stella-mods.jar`, with `scripts/deploy-prism.py`.
+
 ## Mod interoperability
 
 - Every mod in the pack must load and work with every other mod present.
@@ -49,7 +57,7 @@ works on one. They are the standard, not a suggestion.
   proves nothing.
 - Run `gradlew.bat clean build` and `gradlew.bat runGameTest --rerun`. Both must
   exit 0. Run the project from the mod directory, for example
-  `mod-stella-mobs`.
+  `mc-stella-mobs`.
 - Run the full suite at least five times in a row before a completion claim. A
   suite that fails one run in several is not a gate.
 - Verify the artifact, not the summary. Read the generated file, the jar, the

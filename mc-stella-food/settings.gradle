@@ -9,4 +9,4 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'mod-stella-mobs'
+rootProject.name = 'mc-stella-food'

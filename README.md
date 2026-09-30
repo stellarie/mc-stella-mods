@@ -41,12 +41,12 @@ folder to `mods-backup/deploy-single-jar-<time>/`. It then copies
 
 | Directory | Purpose |
 |---|---|
-| `mod-stella-mobs/` | Smarter mob AI, gear, and behavior |
-| `mod-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 |
-| `mod-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments |
+| `mc-stella-mobs/` | Smarter mob AI, gear, and behavior |
+| `mc-stella-equips-enchants/` | Enchantments (74, with chestplate auras and Waveform), player power, mob readouts, floating damage numbers and refining to +15 |
+| `mc-stella-spells/` | Forty-two spellbooks (Summon Skeleton among them), scrolls, the Scroll of Return, imbued gear, clue books, casting mobs, spell visuals, combos and spell-enhancing enchantments |
 | `mc-stella-villages/` | Village patrols, Nemesis missions, daily raids and the bell rally |
-| `mod-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station |
-| `mod-stella-learn/` | Mobs learn each player's fighting habits, counter them, and coordinate through callouts (plan: `docs/plans/2026-09-29/LEARNING-MOBS.md`) |
+| `mc-stella-food/` | Food buffs, combined dishes, potion infusion, and a cooking station |
+| `mc-stella-learn/` | Mobs learn each player's fighting habits, counter them, and coordinate through callouts (plan: `docs/plans/2026-09-29/LEARNING-MOBS.md`) |
 
 `main` is the only trunk. See `AGENTS.md` for branch naming, merge rules and mod
 interoperability. Work in a worktree branched from `origin/main`.
@@ -155,7 +155,7 @@ A consumer can read this optional value without a direct dependency on this mod.
 Build and test:
 
 ```powershell
-cd mod-stella-mobs
+cd mc-stella-mobs
 .\gradlew.bat clean build
 .\gradlew.bat runGameTest --rerun
 ```
@@ -164,7 +164,7 @@ Run the game test command five separate times and save each run log before the
 next run. Use the same gate from the equips mod directory on `main-equip-ench`.
 Pass `-PgameTestFilter=<full-test-id>` to run one server-side GameTest during diagnosis.
 
-The built jar is `mod-stella-mobs/build/libs/mod-stella-mobs-0.1.0+26.3.jar`.
+The built jar is `mc-stella-mobs/build/libs/mc-stella-mobs-0.1.0+26.3.jar`.
 Copy it into a Fabric client instance's `mods` folder, or a server's `mods`
 folder. The mod needs Fabric API. No client mod is required.
 
@@ -239,14 +239,14 @@ Spellbooks have book-only enchantments. Headgear and chestplates have separate s
 Build and test:
 
 ```powershell
-cd mod-stella-spells
+cd mc-stella-spells
 .\gradlew.bat clean build
 .\gradlew.bat runGameTest --rerun
 ```
 
 Run the game-test command five separate times. Save each run log outside `build/` before the next run or a clean build. The mod jar contains 42 book textures and the scroll tint definitions.
 
-The jar is `mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Inspect the icons, hand display, foot circle, and spell effects in a client.
+The jar is `mc-stella-spells/build/libs/mc-stella-spells-0.1.0+26.3.jar`. Copy it into the server and client `mods` folders. Inspect the icons, hand display, foot circle, and spell effects in a client.
 
 ## Target platform
 
