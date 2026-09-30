@@ -13,6 +13,7 @@ public final class StellaRpg implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		StatSheet.EMPTY.allocated();
+		RpgLevelUp.LAST_LEVEL.identifier();
 		RpgDeath.register();
 		RpgAttributes.register();
 		RpgCommand.register();

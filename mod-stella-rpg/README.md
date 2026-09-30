@@ -22,6 +22,13 @@ The stats are STR, AGI, VIT, DEX, INT, and LUK.
 
 A death keeps the experience level and the progress bar. The player drops no experience orbs.
 
+## Level-up refresh
+
+Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.
+Orbs, commands, and every other source trigger it. Several levels at once trigger it one time.
+A level loss, a respawn, and the first check of a player apply nothing.
+The mod stores the last seen level in the `mod-stella-rpg:last_level` attachment.
+
 ## Effects
 
 Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
