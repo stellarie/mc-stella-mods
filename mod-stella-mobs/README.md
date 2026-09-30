@@ -37,7 +37,7 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
 - **Damage:** x1.06^level up to level 80. Melee reads it through the attack attribute. A hostile mob's other hits
   (arrows, fireballs, explosions, spells, fangs) take the same multiplier at the hurt call. Friendly golems keep
   their fixed special hits.
-- The damage curve continues: Past 80 it follows the tower S-curve:
+  Past 80 it follows the tower S-curve:
   `1.06^80 x (1 + 19 x S(level - 80))`, plus 0.02 flat damage per level past 80.
   `S` is 0 at 0, 0.5 at 500, and 1 at 1000.
 - **Piercing:** a mob's hit ignores `min(50%, 1.5% x level)` of the target's armor, toughness, and Protection.
