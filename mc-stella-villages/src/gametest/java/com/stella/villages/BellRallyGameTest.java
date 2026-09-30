@@ -46,16 +46,24 @@ public class BellRallyGameTest {
 	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void ringingTheVillageBellRalliesTheWholePatrol(final GameTestHelper helper) {
 		String test = "ringingTheVillageBellRalliesTheWholePatrol";
-		PatrolDutyGameTest.spreadGround(helper);
-		PatrolDutyGameTest.forceScatterChunks(helper);
 		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
 			return;
 		}
 
 		BlockPos bell = PatrolTestSupport.anchor(helper);
 		List<Mob> patrol = PatrolTestSupport.patrols(helper);
+		// The scatter is random, so one member is set down beyond the radius for the rally to fetch.
+		int radius = com.stella.villages.patrol.PatrolService.HEAD_BELL_RADIUS;
+		Mob straggler = patrol.stream().filter(mob -> com.stella.villages.patrol.PatrolState.role(mob)
+			!= com.stella.villages.patrol.PatrolState.Role.HEAD).findFirst().orElse(null);
+		helper.assertTrue(straggler != null, "the patrol has no member besides the head");
+		BlockPos far = bell.offset(2 * radius, 0, 0);
+		helper.getLevel().setBlockAndUpdate(far.below(), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		helper.getLevel().setBlockAndUpdate(far, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+		helper.getLevel().setBlockAndUpdate(far.above(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+		straggler.teleportTo(far.getX() + 0.5, far.getY(), far.getZ() + 0.5);
 		double farthestBefore = patrol.stream().mapToDouble(mob -> mob.distanceToSqr(Vec3.atCenterOf(bell))).max().orElse(0.0);
-		helper.assertTrue(farthestBefore > 64.0, "no patrol member started beyond the bell guard radius");
+		helper.assertTrue(farthestBefore > radius * radius, "no patrol member started beyond the bell guard radius");
 		ring(helper, bell);
 		List<List<UUID>> rallies = RALLIES.getOrDefault(bell, List.of());
 		helper.assertTrue(rallies.size() == 1, "the bell made " + rallies.size() + " rallies");
@@ -66,7 +74,7 @@ public class BellRallyGameTest {
 			MobEffectInstance strength = member.getEffect(MobEffects.STRENGTH);
 			helper.assertTrue(speed != null && strength != null && speed.getAmplifier() == 1 && strength.getAmplifier() == 1
 				&& speed.getDuration() >= 6000 && strength.getDuration() >= 6000
-				&& member.distanceToSqr(Vec3.atCenterOf(bell)) <= 64.0,
+				&& member.distanceToSqr(Vec3.atCenterOf(bell)) <= radius * radius,
 				PatrolTestSupport.typeId(member) + " was not teleported and strengthened: " + speed + " " + strength);
 		}
 		PatrolTestSupport.result(test, "rallied=" + rallied.size() + " patrol=" + patrol.size());
