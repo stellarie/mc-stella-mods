@@ -181,7 +181,10 @@ works on one. They are the standard, not a suggestion.
 - Record a deviation from a locked plan in the task thread, with its reason.
 - Keep the config editable by hand. An exact entry wins over a generated one,
   and a bad entry logs and skips rather than stops the server.
-- Gameplay stays server side. Put optional client code in `src/client`, never
-  client-only classes in the main source set.
+- Gameplay logic stays server side. Rendering may be client side.
+- A mod may register new entity types and ship their renderers. That mod then
+  requires the client install, and the pack ships it to every player.
+- Put client code in `src/client`, never client-only classes in the main source
+  set.
 - Commit by path, never `git add -A`. This repository holds more than one mod,
   and other sessions work in it.

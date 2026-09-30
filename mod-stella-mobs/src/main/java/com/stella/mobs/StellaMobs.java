@@ -74,6 +74,8 @@ public class StellaMobs implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		// First, so the entity types register before any listener can name them.
+		com.stella.mobs.entity.StellaEntities.register();
 		ReactiveState.register();
 		EliteState.register();
 		ThreatState.register();
