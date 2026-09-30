@@ -10,7 +10,8 @@ import net.minecraft.resources.Identifier;
 
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
-	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale
+	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
+	double mobDiceShare
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -22,6 +23,9 @@ public record RpgConfig(
 	/** The old per-level weight table; mob_stats replaced it. */
 	public static final String RETIRED_MOB_WEIGHTS_KEY = "mob_weights";
 	public static final double DEFAULT_MOB_AMPLIFIER = 0.10;
+	public static final String MOB_DICE_SHARE_KEY = "mob_dice_share";
+	/** Mobs roll this share of their STR and DEX dice, so early mob hits stay near vanilla. */
+	public static final double DEFAULT_MOB_DICE_SHARE = 0.5;
 	public static final String ARMOR_SETS_KEY = "armor_sets";
 	public static final String WEAPON_ROLLS_KEY = "weapon_rolls";
 	public static final String COUNT_WEIGHTS_KEY = "count_weights";
@@ -93,7 +97,7 @@ public record RpgConfig(
 			curves.put(effect, effect.defaultCurve());
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
-			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE);
+			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */

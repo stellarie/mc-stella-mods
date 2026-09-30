@@ -97,6 +97,7 @@ STR sets the melee dice. DEX sets the projectile dice. The dice use the effectiv
 
 - Count `N = 1 + floor(s / 25)`. Sides `M = 4 + floor(s / 100)`.
 - The roll is the sum of `N` rolls of `1..M`.
+- A mob rolls the same dice and keeps `mob_dice_share` (default 0.5) of the result, so early mob hits stay near vanilla.
 
 | Stat | Dice | Minimum | Maximum | Mean |
 |---|---|---|---|---|
@@ -202,6 +203,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
 - `mob_amplifier` is a number of at least 0. The default is 0.10.
+- `mob_dice_share` is a number from 0 to 1. The default is 0.5.
 - The key `mob_weights` is retired. A file that holds it loads and logs it as ignored.
 - `debuff_resistance` is a curve key like the others. The default is `max` 0.75 and `half` 100.
 - `armor_sets.{material}` holds the armor set rules. The materials are `leather`, `chainmail`, `iron`, `gold`,

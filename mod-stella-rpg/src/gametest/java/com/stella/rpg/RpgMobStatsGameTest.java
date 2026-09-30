@@ -144,8 +144,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max() + status("melee", Stat.STR, 40));
-		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + RpgDice.of(expected("melee", Stat.STR, 200)).max() + status("melee", Stat.STR, 200));
+		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 40));
+		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 200));
 		helper.succeed();
 	}
 
@@ -164,7 +164,7 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max() + status("melee", Stat.STR, 40)) * 1.5F);
+		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 40)) * 1.5F);
 		helper.succeed();
 	}
 
@@ -217,8 +217,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + RpgDice.of(expected("ranged", Stat.DEX, 40)).max() + status("ranged", Stat.DEX, 40));
-		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + RpgDice.of(expected("ranged", Stat.DEX, 200)).max() + status("ranged", Stat.DEX, 200));
+		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("ranged", Stat.DEX, 40));
+		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("ranged", Stat.DEX, 200));
 		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(expected("ranged", Stat.DEX, 40))) && rolled.get(1).equals(RpgDice.of(expected("ranged", Stat.DEX, 200))),
 			"arrow dice were " + rolled);
 		helper.succeed();
