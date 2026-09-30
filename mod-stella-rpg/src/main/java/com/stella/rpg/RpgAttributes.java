@@ -1,6 +1,7 @@
 package com.stella.rpg;
 
 import com.stella.rpg.net.RpgNet;
+import com.stella.rpg.roll.Affixes;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.resources.Identifier;
@@ -28,6 +29,7 @@ public final class RpgAttributes {
 	}
 
 	public static void refresh(final ServerPlayer player) {
+		Affixes.refreshHealth(player, RpgScale.k());
 		AttributeInstance instance = player.getAttribute(Attributes.ATTACK_SPEED);
 		if (instance == null) {
 			return;

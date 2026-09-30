@@ -1,6 +1,8 @@
 package com.stella.rpg.client;
 
+import com.stella.rpg.AttackPreview;
 import com.stella.rpg.Stat;
+import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.WeaponRolls;
 import java.util.Map;
 import net.fabricmc.api.EnvType;
@@ -19,6 +21,16 @@ public final class WeaponRollTooltip {
 			Map<String, Integer> rolls = stack.get(WeaponRolls.STAT_ROLLS);
 			if (rolls == null) {
 				return;
+			}
+			Map<String, Integer> affixes = stack.get(WeaponRolls.AFFIX_ROLLS);
+			if (affixes != null) {
+				for (Affix affix : Affix.values()) {
+					Integer stored = affixes.get(affix.key());
+					if (stored != null) {
+						lines.add(Component.translatable("tooltip.mod-stella-rpg.affix." + affix.key(),
+							AttackPreview.number(affix.shown(stored))).withStyle(ChatFormatting.GREEN));
+					}
+				}
 			}
 			for (Stat stat : Stat.values()) {
 				Integer value = rolls.get(stat.key());

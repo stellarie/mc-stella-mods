@@ -144,8 +144,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max());
-		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + RpgDice.of(expected("melee", Stat.STR, 200)).max());
+		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max() + status("melee", Stat.STR, 40));
+		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + RpgDice.of(expected("melee", Stat.STR, 200)).max() + status("melee", Stat.STR, 200));
 		helper.succeed();
 	}
 
@@ -164,7 +164,7 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max()) * 1.5F);
+		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + RpgDice.of(expected("melee", Stat.STR, 40)).max() + status("melee", Stat.STR, 40)) * 1.5F);
 		helper.succeed();
 	}
 
@@ -217,8 +217,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + RpgDice.of(expected("ranged", Stat.DEX, 40)).max());
-		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + RpgDice.of(expected("ranged", Stat.DEX, 200)).max());
+		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + RpgDice.of(expected("ranged", Stat.DEX, 40)).max() + status("ranged", Stat.DEX, 40));
+		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + RpgDice.of(expected("ranged", Stat.DEX, 200)).max() + status("ranged", Stat.DEX, 200));
 		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(expected("ranged", Stat.DEX, 40))) && rolled.get(1).equals(RpgDice.of(expected("ranged", Stat.DEX, 200))),
 			"arrow dice were " + rolled);
 		helper.succeed();
@@ -242,9 +242,23 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobSpellUsesInt 40", loss40, (float) (HIT * RpgCurve.spellPowerMultiplier(expected("magic", Stat.INT, 40))));
-		assertLoss(helper, "mobSpellUsesInt 200", loss200, (float) (HIT * RpgCurve.spellPowerMultiplier(expected("magic", Stat.INT, 200))));
+		assertInMatk(helper, "mobSpellUsesInt 40", loss40, expected("magic", Stat.INT, 40));
+		assertInMatk(helper, "mobSpellUsesInt 200", loss200, expected("magic", Stat.INT, 200));
+		helper.assertTrue(loss200 > loss40, "a stronger mob did not hit harder: " + loss40 + " " + loss200);
 		helper.succeed();
+	}
+
+	/** A spell deals a MATK roll times 100 * amount / 3 percent. The loss is in K units, so K cancels. */
+	private static void assertInMatk(final GameTestHelper helper, final String name, final float loss, final int intel) {
+		double share = 100.0 * HIT / 3.0 / 100.0;
+		double low = RpgSpells.matk(intel, RpgSpells.MIN_DIVISOR, 0.0, 0.0) * share;
+		double high = RpgSpells.matk(intel, RpgSpells.MAX_DIVISOR, 0.0, 0.0) * share;
+		RpgTestSupport.result(name, "loss=" + loss + " range=" + low + ".." + high);
+		helper.assertTrue(loss >= low - 0.05 && loss <= high + 0.05, name + " loss=" + loss + " outside " + low + ".." + high);
+	}
+
+	private static float status(final String role, final Stat stat, final int threat) {
+		return (float) RpgCombat.statusAtk(expected(role, stat, threat));
 	}
 
 	private static int expected(final String role, final Stat stat, final int threat) {

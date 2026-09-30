@@ -104,8 +104,11 @@ public final class HealthScaleGameTest {
 		} finally {
 			helper.getLevel().getServer().setDifficulty(before, true);
 		}
-		RpgTestSupport.result("armorMathUnchanged", "loss=" + loss + " vanillaAfterArmor=4.0 K=" + RpgScale.k());
-		helper.assertTrue(near(loss, 4.0F * RpgScale.kf()) && near(loss, 60.0F), "loss=" + loss + " expected 15 x 4");
+		float hit = 10.0F + (float) RpgCombat.statusAtk(MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.STR, 0));
+		float armor = Math.max(20.0F * 0.2F, Math.min(20.0F, 20.0F - hit / 2.0F));
+		float afterArmor = hit * (1.0F - armor / 25.0F);
+		RpgTestSupport.result("armorMathUnchanged", "loss=" + loss + " vanillaAfterArmor=" + afterArmor + " K=" + RpgScale.k());
+		helper.assertTrue(near(loss, afterArmor * RpgScale.kf()), "loss=" + loss + " expected 15 x " + afterArmor);
 		helper.succeed();
 	}
 

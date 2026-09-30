@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.stella.rpg.roll.Affix;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -172,10 +173,68 @@ public final class RpgConfigStore {
 			tiers.put(tier.getKey(), new RpgConfig.RollTier(
 				itemList(rowObject, "items", path, fallback.items(), onError),
 				itemList(rowObject, "armor_items", path, fallback.armorItems(), onError),
-				range[0], range[1]
+				range[0], range[1],
+				affixRanges(rowObject, path, fallback.affixes(), onError)
 			));
 		}
-		return new RpgConfig.WeaponRolls(countWeights(object, defaults.countWeights(), onError), Map.copyOf(tiers));
+		return new RpgConfig.WeaponRolls(
+			countWeights(object, defaults.countWeights(), onError), Map.copyOf(tiers), affixChance(object, onError)
+		);
+	}
+
+	private static double affixChance(final JsonObject object, final Consumer<String> onError) {
+		JsonElement element = object.get(RpgConfig.AFFIX_CHANCE_KEY);
+		if (element == null) {
+			return RpgConfig.DEFAULT_AFFIX_CHANCE;
+		}
+		Double value = number(element);
+		if (value == null || value < 0.0 || value > 1.0) {
+			onError.accept("stats.json key 'weapon_rolls.affix_chance' must be a number from 0 to 1; using the default");
+			return RpgConfig.DEFAULT_AFFIX_CHANCE;
+		}
+		return value;
+	}
+
+	private static Map<Affix, RpgConfig.AffixRange> affixRanges(
+		final JsonObject row, final String path, final Map<Affix, RpgConfig.AffixRange> fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get(RpgConfig.AFFIXES_KEY);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key '" + path + ".affixes' must be an object; using the defaults");
+			return fallback;
+		}
+		Map<Affix, RpgConfig.AffixRange> ranges = new EnumMap<>(Affix.class);
+		ranges.putAll(fallback);
+		for (Affix affix : Affix.values()) {
+			JsonElement entry = element.getAsJsonObject().get(affix.key());
+			if (entry == null) {
+				continue;
+			}
+			RpgConfig.AffixRange range = affixRange(entry, affix);
+			if (range == null) {
+				onError.accept("stats.json key '" + path + ".affixes." + affix.key() + "' must be [min, max] with 0 <= min <= max"
+					+ (affix.percent() ? " <= 100" : "") + "; using the default");
+				continue;
+			}
+			ranges.put(affix, range);
+		}
+		return Map.copyOf(ranges);
+	}
+
+	private static RpgConfig.AffixRange affixRange(final JsonElement entry, final Affix affix) {
+		if (!entry.isJsonArray() || entry.getAsJsonArray().size() != 2) {
+			return null;
+		}
+		Double min = number(entry.getAsJsonArray().get(0));
+		Double max = number(entry.getAsJsonArray().get(1));
+		double limit = affix.percent() ? 100.0 : StatSheet.CEILING * 1000.0;
+		if (min == null || max == null || min < 0.0 || min > max || max > limit) {
+			return null;
+		}
+		return new RpgConfig.AffixRange(min, max);
 	}
 
 	private static List<Integer> countWeights(
@@ -438,12 +497,19 @@ public final class RpgConfigStore {
 	private static Map<String, Object> weaponRollsJson(final RpgConfig.WeaponRolls rolls) {
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put(RpgConfig.COUNT_WEIGHTS_KEY, rolls.countWeights());
+		out.put(RpgConfig.AFFIX_CHANCE_KEY, rolls.affixChance());
 		for (Map.Entry<String, RpgConfig.RollTier> tier : rolls.tiers().entrySet()) {
 			Map<String, Object> row = new LinkedHashMap<>();
 			row.put("items", tier.getValue().items().stream().map(Identifier::toString).toList());
 			row.put("armor_items", tier.getValue().armorItems().stream().map(Identifier::toString).toList());
 			row.put("min", tier.getValue().min());
 			row.put("max", tier.getValue().max());
+			Map<String, List<Double>> affixes = new LinkedHashMap<>();
+			for (Affix affix : Affix.values()) {
+				RpgConfig.AffixRange range = tier.getValue().affixes().get(affix);
+				affixes.put(affix.key(), List.of(range.min(), range.max()));
+			}
+			row.put(RpgConfig.AFFIXES_KEY, affixes);
 			out.put(tier.getKey(), row);
 		}
 		return out;

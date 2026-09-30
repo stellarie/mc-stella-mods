@@ -88,7 +88,6 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 | Attack speed | AGI | `attack_speed` | 1.00 | 250 | `ADD_MULTIPLIED_BASE` modifier on `ATTACK_SPEED` |
 | Bow draw | AGI | `bow_draw` | 0.50 | 250 | full draw ticks `= round(20 * (1 - value))` |
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
-| Spell power | INT | `spell_power` | 1.50 | 200 | `1 + value`; a later stage uses it |
 | Cooldown | INT | `cooldown_reduction` | 0.40 | 300 | `1 - value`; a later stage uses it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
 
@@ -113,20 +112,26 @@ Outgoing damage from a player or a mob follows these rules:
 1. Melee (`minecraft:player_attack`, `minecraft:mob_attack`, `minecraft:mob_attack_no_aggro`) adds `roll * charge`.
    For a player, `charge = 0.2 + a * a * 0.8`, where `a` is the attack strength at the swing. A mob uses charge 1.0.
 2. A projectile from `#minecraft:is_projectile` that the attacker owns adds the DEX roll.
-3. A mob with `minecraft:indirect_magic` damage multiplies it by the spell power multiplier for its INT. This rule adds no dice and no crit.
+3. A mob with `minecraft:indirect_magic` damage deals `RpgSpells.spellDamage(mob, 100 * amount / 3)`. This rule adds no dice and no crit.
 4. Any other source is unchanged, including player spells and Thorns.
-5. LUK rolls the crit for rules 1 and 2. A crit multiplies the total (base plus roll) by `crit_multiplier`.
+5. Rules 1 and 2 add status ATK after the dice: `(stat + floor(stat / 10)^2) / K`. The stat is STR for melee and DEX for a projectile.
+   Status ATK ignores the swing charge.
+6. Rules 1 and 2 then add the flat damage affix divided by K, and multiply by `1 + damage% + 0.1 * (Strength level - Weakness level)`.
+   The factor is never below 0. Strength and Weakness no longer change the attack damage attribute.
+7. LUK rolls the crit for rules 1 and 2. A crit multiplies the total by `crit_multiplier`.
 
-Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) - flat)`, in vanilla units.
-The health scale then multiplies the result. The dice, the crit, and the flat defense stay in vanilla units.
+The affixes come from the main-hand item. An arrow reads the affixes of the item in the main hand of its owner.
+
+Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) * (1 - reduction%) - flat - reductionFlat / K)`,
+in vanilla units. The health scale then multiplies the result. The dice, the crit, and the flat defense stay in vanilla units.
 `flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. `ArmorSets` registers one.
+`reduction%` and `reductionFlat` are the sums of the worn armor affixes.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
 The server applies the faster bow draw. The client draw animation keeps the vanilla speed.
 
 | Effect | s = 0 | s = 12 | s = 100 | s = 1024 |
 |---|---|---|---|---|
-| Spell power | 1.0000 | 1.0849 | 1.5000 | 2.2549 |
 | Attack speed bonus | 0.0000 | 0.0458 | 0.2857 | 0.8038 |
 | Full draw ticks | 20 | 20 | 17 | 12 |
 | Damage taken | 1.0000 | 0.9769 | 0.8500 | 0.5360 |
@@ -154,6 +159,7 @@ The tabs appear only after the server sent the first stat sync.
 - Pending points stay on the client. `Add Stats` sends them to the server in one request. It is inactive with no pending points.
 - The screen discards pending points when it closes and on each sync with result `OK`.
 - The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd` with the pending points applied.
+  `Matk` is the range from `RpgSpells.matkMin` to `matkMax`, in K units.
   `Atk` is a damage range, such as `Atk 10-13`. The base is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts). The range adds the STR dice minimum and maximum to that base. A critical hit is outside the range.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
@@ -203,7 +209,9 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   - `per_piece`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
   - `flat_per_piece`: a number of at least 0.
   - `set_bonus`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
-- `weapon_rolls` holds the roll rules. The key `count_weights` lists 3 integers from 0 to 1000, for 1, 2, and 3 stats.
+- `weapon_rolls` holds the roll rules. The key `count_weights` lists 3 integers from 0 to 1000, for 1, 2, and 3 roll slots.
+  `affix_chance` is a number from 0 to 1. It is the chance that a roll slot picks an affix. The default is 0.30.
+  Each tier holds an `affixes` object. Each key is an affix and holds `[min, max]`. Flat values are in K units. Percent values are in percent.
   The sum must be above 0. Each tier key holds these keys:
   - `items`: weapon item ids. `armor_items`: armor item ids. An unknown id logs one error and the parser skips it.
   - `min` and `max`: integers from 1 to 1024, with `min` at most `max`. A bad pair uses the default range.
@@ -287,9 +295,11 @@ It reads the four armor slots of any living entity with stats, so a mob that wea
 The bonuses live in the data component `mod-stella-rpg:stat_rolls`, a map of stat key to integer.
 The component is saved and synced to the client.
 
-- A weapon gets 1, 2, or 3 different stats, with weights 50, 35, and 15.
-  Each stat gets a uniform integer from the tier range.
-- An armor piece gets exactly 1 stat. It uses the range of the matching tier.
+- A weapon gets 1, 2, or 3 roll slots, with weights 50, 35, and 15.
+  Each slot picks a stat with 70% chance and an affix with 30% chance. A stat gets a uniform integer from the tier range.
+- An armor piece gets exactly 1 roll slot. It uses the range of the matching tier.
+- A weapon affix is damage or MATK. An armor affix is HP or reduction. Each roll holds a kind of affix once.
+- An item in `#mod-stella-rpg:spellbooks` rolls MATK affixes only, with the `diamond` tier ranges. The tag is empty by default.
 - A stack that already has the component never rolls again.
 - A stack rolls when a player takes it from a crafting result slot, including shift-click.
   It also rolls when a loot table drops it and when a mob drops its equipment on death.
@@ -298,7 +308,7 @@ The component is saved and synced to the client.
 - The bonus applies to the main hand for a weapon and to worn armor slots.
   A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
   A mob that holds or wears a rolled item gets the bonus too.
-- The client shows one green line per stat, such as `+3 STR`, in the item tooltip.
+- The client shows one green line per stat, such as `+3 STR`, and one per affix, such as `+12 Damage` or `+5% Damage`, in the item tooltip.
 - There are no weapon damage dice. The STR dice stay the only dice.
 
 | Tier | Weapons | Armor | Range |
@@ -313,15 +323,58 @@ The component is saved and synced to the client.
 | `ranged` | Bow, crossbow | none | 2 to 5 |
 | `heavy` | Trident, mace | none | 3 to 7 |
 
+### Affixes
+
+The data component `mod-stella-rpg:affix_rolls` holds the affixes beside `stat_rolls`. It maps an affix key to an integer.
+A flat affix is in K units. A percent affix is in tenths of a percent, so `45` is 4.5%. An item rolled before affixes existed has none.
+`stat_rolls` is always set on a rolled item, and is empty when every slot picked an affix.
+
+| Tier | Flat damage | Damage % | Flat HP | HP % | Flat reduction | Reduction % |
+|---|---|---|---|---|---|---|
+| wood, leather | 3-8 | 2-4 | 15-30 | 1-2 | 1-3 | 0.5-1 |
+| stone, chain, copper | 5-12 | 3-5 | 25-50 | 2-3 | 2-4 | 1-1.5 |
+| gold | 6-14 | 3-6 | 30-60 | 2-4 | 2-5 | 1-2 |
+| iron, ranged | 8-18 | 4-7 | 40-80 | 2-4 | 3-6 | 1-2 |
+| diamond, heavy | 12-27 | 5-9 | 60-120 | 3-6 | 4-8 | 1.5-2.5 |
+| netherite | 18-40 | 6-12 | 90-180 | 4-8 | 6-12 | 2-3 |
+
+- Flat MATK and MATK % use the flat damage and damage % ranges of the tier.
+- `RpgAttributes.refresh` puts the worn HP affixes on max health every 20 ticks.
+  Flat HP is an `ADD_VALUE` modifier of `flat / K`. HP % is an `ADD_MULTIPLIED_BASE` modifier.
+  The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
+- Only the main hand adds damage and MATK affixes. Only the four armor slots add HP and reduction affixes.
+
 ## Spells API
 
-`RpgSpells` gives other mods the INT multipliers for player spells. `mod-stella-spells` reads them by name.
+`RpgSpells` gives other mods the INT numbers for spells. `mod-stella-spells` reads them by name.
+The class name and every public method below are a contract.
 
-- `RpgSpells.power(player)` returns the spell power multiplier for the player's effective INT.
+- `RpgSpells.power(player)` returns 1.0. The INT spell power curve is retired, and the `spell_power` config key is ignored.
 - `RpgSpells.cooldown(player)` returns the spell cooldown multiplier for the player's effective INT.
-- Both return 1.0 for a player that is not a `ServerPlayer`.
-- At INT 100 the multipliers are 1.5000 and 0.9000. At INT 0 both are 1.0000.
+  Both return 1.0 for a player that is not a `ServerPlayer`. At INT 100 the cooldown multiplier is 0.9000.
+- `RpgSpells.matkMin(entity)` returns `(INT + floor(INT / 7)^2 + flat) * (1 + matkPct)`, in K units.
+  `RpgSpells.matkMax(entity)` uses `floor(INT / 5)^2`.
+  `flat` holds the flat MATK affixes of the main-hand item, plus 12 for each refine level of the main-hand spellbook.
+  The refine level is the custom data key `stella_refine`. A spellbook is an item in `#mod-stella-rpg:spellbooks`.
+- `RpgSpells.spellDamage(caster, skillPercent)` returns a uniform roll between `matkMin` and `matkMax`, times `skillPercent / 100 / K`.
+  `skillPercent` 150 means 150%. The result is in vanilla units, so the health scale multiplies it once.
+- `RpgSpells.spellHeal(caster, coefficient)` returns `(level + INT) * coefficient / K`, in vanilla units.
+  The level is the experience level of a player, or the threat of a mob.
+
+| INT | matkMin | matkMax |
+|---|---|---|
+| 20 | 24 | 36 |
+| 50 | 99 | 150 |
+| 100 | 296 | 500 |
+| 200 | 984 | 1,800 |
+
 - Spells that use `magic()` damage have no attacker, so STR and DEX dice do not apply.
+
+## Strength and Weakness
+
+Strength adds 10% damage per level. Weakness removes 10% per level, down to 0. Both act in `RpgCombat.scaleOutgoing`.
+`RpgEffectPercentMixin` removes their flat attack damage modifiers, so the vanilla +3 and -4 never apply.
+Strength and Weakness change melee and projectile hits. They do not change spell damage.
 
 ## Tombstone
 
@@ -405,6 +458,7 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgInstantEffectMixin` | `HealOrHarmMobEffect#applyEffectTick` and `#applyInstantaneousEffect`, at `HEAD` |
 | `RpgAbsorptionGrantMixin` | `AbsorptionMobEffect#onEffectStarted`, redirects `setAbsorptionAmount` |
 | `RpgAbsorptionMixin` | `LivingEntity#getMaxAbsorption`, at `RETURN` |
+| `RpgEffectPercentMixin` | `MobEffect#addAttributeModifier`, at `HEAD`. Skips the Strength and Weakness attack modifiers |
 | `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |
 | `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |
 | `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |

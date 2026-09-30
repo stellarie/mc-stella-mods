@@ -28,7 +28,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "meleeAddsDice", loss, guarded(HIT + MAX_DICE_100));
+		assertLoss(helper, "meleeAddsDice", loss, guarded(HIT + MAX_DICE_100 + statusAtk(100)));
 		helper.succeed();
 	}
 
@@ -51,9 +51,9 @@ public final class RpgDamageGameTest {
 			resetRollers();
 		}
 		float factor = (float) (0.2 + 0.5 * 0.5 * 0.8);
-		assertLoss(helper, "chargeScalesDice spam", spam, guarded(HIT + 0.2F * MAX_DICE_100));
-		assertLoss(helper, "chargeScalesDice half", half, guarded(HIT + factor * MAX_DICE_100));
-		assertLoss(helper, "chargeScalesDice after", next, guarded(HIT + MAX_DICE_100));
+		assertLoss(helper, "chargeScalesDice spam", spam, guarded(HIT + 0.2F * MAX_DICE_100 + statusAtk(100)));
+		assertLoss(helper, "chargeScalesDice half", half, guarded(HIT + factor * MAX_DICE_100 + statusAtk(100)));
+		assertLoss(helper, "chargeScalesDice after", next, guarded(HIT + MAX_DICE_100 + statusAtk(100)));
 		helper.succeed();
 	}
 
@@ -66,7 +66,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "arrowAddsDexDice", loss, guarded(HIT + MAX_DICE_100));
+		assertLoss(helper, "arrowAddsDexDice", loss, guarded(HIT + MAX_DICE_100 + statusAtk(100)));
 		helper.succeed();
 	}
 
@@ -93,12 +93,12 @@ public final class RpgDamageGameTest {
 		try {
 			helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
 			partial = zombieHitLoss(helper, 100, 6.0F);
-			clamped = zombieHitLoss(helper, 100, 2.0F);
+			clamped = zombieHitLoss(helper, 100, 1.0F);
 		} finally {
 			DefenseBonuses.unregister(flat);
 			helper.getLevel().getServer().setDifficulty(before, true);
 		}
-		assertLoss(helper, "defense partial", partial, 6.0F * 0.85F - 2.0F);
+		assertLoss(helper, "defense partial", partial, (6.0F + mobStatusAtk()) * 0.85F - 2.0F);
 		assertLoss(helper, "defense clamped", clamped, 0.0F);
 		helper.succeed();
 	}
@@ -216,6 +216,15 @@ public final class RpgDamageGameTest {
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
 		zombie.setHealth(zombie.getMaxHealth());
 		return zombie;
+	}
+
+	/** Status ATK of the STR stat a bare mob attacker has. It adds to every mob melee hit. */
+	private static float mobStatusAtk() {
+		return (float) RpgCombat.statusAtk(MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.STR, 0));
+	}
+
+	private static float statusAtk(final int stat) {
+		return (float) RpgCombat.statusAtk(stat);
 	}
 
 	private static float guarded(final float damage) {
