@@ -557,3 +557,23 @@ void and lightning mark hits or speed. See the tower README for numbers and quot
   `AFTER_DAMAGE` already reports the damage before absorption, so the absorbed-hit case
   (`fireHitStillIgnitesATargetThatAbsorbsItWhole`) passed before the change as well (evidence `e-f-red2`); it stays as a
   guard, and the redundant `taken <= 0` early return was dropped for on-hit effects (Dark still needs damage taken).
+
+## Tower chests and loot (slice C, 2026-09-30)
+
+`TowerChestBlock`, `TowerChests` and `TowerChestGameTest` implement the "Chests" decision: the block and the
+loot only. Placing chests in floors, and the >=5 per floor and guaranteed-chest rules, belong to the floors
+slices, which call `TowerChests.placeDouble` and `TowerChests.fill`. See the tower README for the API and
+measured numbers.
+
+- Deviation: loot is rolled in Java rather than a vanilla JSON table, because the weights, the optional spells
+  items and the enchanting need code. The decision said "vanilla JSON table + optional spells items".
+- Choices where the decisions were silent: a roll whose category has no item (spells mod absent) gives nothing
+  rather than rerolling, so the other categories keep their stated rates; the weights sum to 9005, and the
+  remaining 995 of 10000 is a roll that finds nothing. Books and gear are enchanted at table power
+  min(39, 20 + floor/5). Scrolls and spellbooks come from the tag `mod-stella-spells:spellbooks` (the test
+  resource stands in with `minecraft:book`), each book's scroll being `<id>_scroll`.
+- The chest has no item, so it cannot be picked up or pick-blocked. Mining (start and stop of a
+  break with a netherite pickaxe), a power 6 blast, and the wither, dragon and piston rules are tested. The server
+  internal `ServerPlayerGameMode.destroyBlock` is not: it is not a path a client can drive, and it was not probed.
+- The netherite share measured 10 of 50000 draws against 25 expected, inside the 4 sigma band (5 to 45) but on
+  its low side. The seed is fixed, so the run is deterministic.

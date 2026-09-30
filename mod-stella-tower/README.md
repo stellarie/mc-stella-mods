@@ -89,3 +89,46 @@ Manual acceptance: particles cannot be seen headlessly. The server hands each to
 records them: `everyElementSendsItsOwnParticles`), and `elementParticlesAreVisibleInPlayRequiresManualTest`
 stays red as a not-required case. In play, look for snowflake mist round an ice mob, ink puffs on a dark
 mob, glowing motes on a holy mob, and flames, drips, puffs and portal swirls on fire, water, wind and void hits.
+
+## Tower chests and their loot (slice C)
+
+`TowerChestBlock` (`mod-stella-tower:tower_chest`) is a vanilla chest that stays: hardness -1, blast resistance
+3,600,000, no loot table, immovable by pistons, and on the `wither_immune` and `dragon_immune` tags like the walls.
+It is added to vanilla's chest block entity type (Fabric's `addValidBlock`), so the vanilla renderer draws it,
+the blockstate points at `minecraft:block/chest`, and there is no client code and no item. Players open it,
+hoppers may take from it; two of them side by side pair into a double.
+
+`TowerChests` is the API for the floor placement step:
+
+- `placeDouble(level, leftPos, facing)` places both halves (right half is clockwise of the left) and returns the
+  right half's position.
+- `fill(level, pos, floor, guaranteed, random)` fills either half of a chest with `ROLLS` (10) rolls into free
+  slots and returns the stacks put in. `guaranteed` adds one enchanted book and one Scroll of Return.
+- `roll(level, floor, random)` is one draw; `stackFor(level, category, floor, random)` is one category's item.
+- Weights are `TowerChests.Category.<X>.weight` out of `TOTAL_WEIGHT` 10000: food 1800, potions 1400, scrolls
+  1400, return scroll 600, enchanted book 900, spellbook 500, emerald 1100, misc 700, diamond 400, ancient
+  debris 120, diamond gear 80, netherite gear 5, nothing 995 (the rest).
+- Books and gear are enchanted at table power `enchantLevel(floor)` = min(39, 20 + floor/5), from the
+  enchanting table's enchantments. Emeralds grow by 1 per 25 floors.
+- The spells mod's items are found by name and skipped when absent (the roll then gives nothing):
+  `mod-stella-spells:return_scroll`, every item of the tag `mod-stella-spells:spellbooks` (spellbook), and
+  `<that item's id>_scroll` (scroll). No dependency in `fabric.mod.json`. `installSpellItems` is the test seam.
+
+Measured (`TowerChestGameTest`, 8 cases, 50000 seeded draws, each share within 4 sigma of its weight):
+
+```
+[BEHAVIOR] test=chestPairs RESULT left=SECOND right=FIRST slots=54 validForChestEntity=true
+[BEHAVIOR] test=chestBlast RESULT power=6 controlDirtGone=true leftStands=true rightStands=true
+[BEHAVIOR] test=chestMining RESULT hardness=-1.0 handProgress=0.0 pickProgress=0.0 stands=true
+[BEHAVIOR] test=lootRates RESULT draws=50000 FOOD=9084/exp9000 POTIONS=7012/exp7000 SCROLLS=7080/exp7000 RETURN_SCROLL=2931/exp3000 ENCHANTED_BOOK=4474/exp4500 SPELLBOOK=2533/exp2500 EMERALD=5468/exp5500 MISC=3477/exp3500 DIAMOND=2009/exp2000 ANCIENT_DEBRIS=617/exp600 DIAMOND_GEAR=360/exp400 NETHERITE_GEAR=10/exp25 NOTHING=4945/exp4975 netherite=10
+[BEHAVIOR] test=guaranteedChest RESULT fills=300 withBook=300 withReturnScroll=300 plainWithBook=174 plainWithReturnScroll=130
+[BEHAVIOR] test=chestNoSpellsMod RESULT spellsItemsAbsent=true stacks=8 books=3 spellbookTagResolves=true
+[BEHAVIOR] test=enchantedGear RESULT n=200 diamondEnchanted=200 netheriteEnchanted=200 booksEnchanted=200
+```
+
+By the weights a chest holds about 9 stacks on average with the spells mod (10 rolls less the 10% that find
+nothing) and about 6.5 without it (an expectation, not measured); netherite gear turns up once in 2000 rolls, about once per 200 chests.
+
+Manual acceptance: the gametest runtime has no spells mod, so the return scroll, scroll and spellbook items are
+tested through a stand-in; in play with the spells mod, open a guaranteed chest and check the scroll is a real
+Scroll of Return. Also look at a chest in play to confirm it renders as a vanilla chest.

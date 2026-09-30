@@ -33,7 +33,8 @@
 			"com.stella.tower.TowerVoidGearGameTest",
 			"com.stella.tower.TowerShamanGameTest",
 			"com.stella.tower.TowerGrowthGameTest",
-			"com.stella.tower.TowerAuraGameTest"
+			"com.stella.tower.TowerAuraGameTest",
+			"com.stella.tower.TowerChestGameTest"
 		]
 	},
 	"mixins": [
