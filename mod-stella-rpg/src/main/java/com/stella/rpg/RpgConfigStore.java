@@ -17,6 +17,7 @@ import net.fabricmc.loader.api.FabricLoader;
 
 public final class RpgConfigStore {
 	public static final double MAX_LIMIT = 10.0;
+	public static final int MAX_DICE_VALUE = 1000;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static volatile RpgConfig current = RpgConfig.defaults();
@@ -73,7 +74,47 @@ public final class RpgConfigStore {
 		for (RpgConfig.Effect effect : RpgConfig.Effect.values()) {
 			curves.put(effect, curve(root, effect, onError));
 		}
-		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError));
+		for (String removed : RpgConfig.REMOVED_KEYS) {
+			if (root.has(removed)) {
+				onError.accept("stats.json key '" + removed + "' was removed; dice replace it, so it is ignored");
+			}
+		}
+		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError));
+	}
+
+	private static RpgConfig.DiceRules dice(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.DICE_KEY);
+		RpgConfig.DiceRules fallback = RpgConfig.DiceRules.DEFAULT;
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'dice' must be an object; using the defaults");
+			return fallback;
+		}
+		JsonObject object = element.getAsJsonObject();
+		return new RpgConfig.DiceRules(
+			positive(object, "base_count", fallback.baseCount(), onError),
+			positive(object, "base_sides", fallback.baseSides(), onError),
+			positive(object, "count_step", fallback.countStep(), onError),
+			positive(object, "sides_step", fallback.sidesStep(), onError)
+		);
+	}
+
+	private static int positive(
+		final JsonObject object, final String key, final int fallback, final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < 1.0 || value > MAX_DICE_VALUE || value != Math.rint(value)) {
+			onError.accept("stats.json key 'dice." + key + "' must be an integer from 1 to "
+				+ MAX_DICE_VALUE + "; using the default");
+			return fallback;
+		}
+		return value.intValue();
 	}
 
 	private static RpgConfig.Curve curve(
@@ -124,6 +165,13 @@ public final class RpgConfigStore {
 			out.put(effect.key(), curve);
 		}
 		out.put(RpgConfig.CRIT_MULTIPLIER_KEY, RpgConfig.DEFAULT_CRIT_MULTIPLIER);
+		RpgConfig.DiceRules rules = RpgConfig.DiceRules.DEFAULT;
+		Map<String, Integer> dice = new LinkedHashMap<>();
+		dice.put("base_count", rules.baseCount());
+		dice.put("base_sides", rules.baseSides());
+		dice.put("count_step", rules.countStep());
+		dice.put("sides_step", rules.sidesStep());
+		out.put(RpgConfig.DICE_KEY, dice);
 		try {
 			Files.createDirectories(path.getParent());
 			Files.writeString(path, GSON.toJson(out) + System.lineSeparator(), StandardCharsets.UTF_8);

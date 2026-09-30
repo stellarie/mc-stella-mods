@@ -18,14 +18,6 @@ public final class RpgCurve {
 		return saturate(stat, curve.max(), curve.half());
 	}
 
-	public static double meleeMultiplier(final int str) {
-		return 1.0 + value(Effect.MELEE_DAMAGE, str);
-	}
-
-	public static double rangedMultiplier(final int dex) {
-		return 1.0 + value(Effect.RANGED_DAMAGE, dex);
-	}
-
 	public static double damageTakenMultiplier(final int vit) {
 		return 1.0 - value(Effect.DAMAGE_REDUCTION, vit);
 	}
