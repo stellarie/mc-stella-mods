@@ -291,7 +291,7 @@ public final class StatsScreen extends Screen {
 		List<Component> lines = List.of(
 			Component.translatable(
 				"screen.mod-stella-rpg.atk",
-				AttackPreview.format(attack, RpgDice.of(this.effective(data, Stat.STR)).toString())
+				AttackPreview.format(attack, RpgDice.of(this.effective(data, Stat.STR)))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",

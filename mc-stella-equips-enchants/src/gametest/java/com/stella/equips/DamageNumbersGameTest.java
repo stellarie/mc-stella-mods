@@ -37,7 +37,7 @@ public class DamageNumbersGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void aHitShowsARedNumberThatRisesFadesAndGoes(final GameTestHelper helper) {
+	public void aHitShowsAWhiteNumberThatRisesFadesAndGoes(final GameTestHelper helper) {
 		ServerPlayer viewer = viewer(helper);
 		PacketRecorder packets = PacketRecorder.of(viewer);
 		Mob zombie = zombie(helper);
@@ -47,20 +47,25 @@ public class DamageNumbersGameTest {
 		Shown number = shown.get(0);
 		int id = number.display().getId();
 		helper.assertTrue(!number.heal() && number.amount() == 4.0F && number.display().getText().getString().equals("4"), "the number reads " + number.display().getText().getString());
-		helper.assertTrue(TextColor.fromLegacyFormat(ChatFormatting.RED).equals(number.display().getText().getStyle().getColor()), "a hit's number is not red");
+		helper.assertTrue(TextColor.fromLegacyFormat(ChatFormatting.WHITE).equals(number.display().getText().getStyle().getColor()), "a hit's number is not white");
 		helper.assertTrue(packets.addPackets(id) == 1 && number.display().level() == helper.getLevel() && helper.getLevel().getEntity(id) == null, "the number was not sent as a ghost display");
 		helper.runAfterDelay(2, () -> {
+			helper.assertTrue(number.display().getTransformationInterpolationDuration() > 0, "the first leg is not interpolated");
+			helper.assertTrue(number.display().getTextOpacity() == DamageNumbers.MID_OPACITY, "the first leg does not stay above alpha 128: " + number.display().getTextOpacity());
+		});
+		helper.runAfterDelay(DamageNumbers.SECOND_LEG_TICK + 1L, () -> {
 			// The synced translation, read from the values the client receives.
 			boolean risen = number.display().getEntityData().getNonDefaultValues().stream()
 				.anyMatch(value -> value.value() instanceof org.joml.Vector3fc vector && vector.x() == 0.0F && vector.z() == 0.0F && vector.y() == DamageNumbers.RISE_BLOCKS);
 			helper.assertTrue(risen, "the number does not rise to " + DamageNumbers.RISE_BLOCKS);
-			helper.assertTrue(number.display().getTransformationInterpolationDuration() > 0, "the rise is not interpolated");
+			helper.assertTrue(number.display().getTransformationInterpolationDuration() > 0, "the second leg is not interpolated");
+			helper.assertTrue(number.display().getTransformationInterpolationDelay() == 0, "the second leg does not restart the clock");
 			helper.assertTrue(number.display().getTextOpacity() == DamageNumbers.END_OPACITY, "the number does not fade: " + number.display().getTextOpacity());
-			helper.assertTrue(packets.dataPackets(id) >= 2, "the rise never reached the viewer");
+			helper.assertTrue(packets.dataPackets(id) >= 4, "the three legs never reached the viewer");
 		});
 		helper.runAfterDelay(DamageNumbers.LIFETIME_TICKS + 2L, () -> {
 			helper.assertTrue(packets.removePackets(id) == 1, "the number was never removed");
-			LOG.info("[BEHAVIOR] test=aHitShowsARedNumberThatRisesFadesAndGoes RESULT text={} add={} data={} remove={}", number.display().getText().getString(), packets.addPackets(id), packets.dataPackets(id), packets.removePackets(id));
+			LOG.info("[BEHAVIOR] test=aHitShowsAWhiteNumberThatRisesFadesAndGoes RESULT text={} add={} data={} remove={}", number.display().getText().getString(), packets.addPackets(id), packets.dataPackets(id), packets.removePackets(id));
 			helper.succeed();
 		});
 	}

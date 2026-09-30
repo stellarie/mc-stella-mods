@@ -38,7 +38,6 @@ public final class PowerTracker {
 		if (serverTicks % config.tracker().scanIntervalTicks() == 0) {
 			for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 				changed |= scanPlayer(player, config);
-				sendSelfLine(player, config);
 			}
 		}
 
@@ -62,10 +61,6 @@ public final class PowerTracker {
 
 		PowerLog.recorder().powerLevel(player.getScoreboardName(), level, from);
 		return true;
-	}
-
-	public static void sendSelfLine(final ServerPlayer player, final PowerConfig config) {
-		player.sendSystemMessage(PlayerLevelLine.of(playerLevel(player, config)), true);
 	}
 
 	/** The vanilla experience level, capped, is the only input to player scaling. */

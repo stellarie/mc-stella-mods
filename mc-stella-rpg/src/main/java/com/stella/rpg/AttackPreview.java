@@ -35,7 +35,8 @@ public final class AttackPreview {
 		return text.endsWith(".0") ? text.substring(0, text.length() - 2) : text;
 	}
 
-	public static String format(final double attack, final String dice) {
-		return number(attack) + " + " + dice;
+	/** Dice add after multipliers, as in RpgCombat. */
+	public static String format(final double attack, final RpgDice.Dice dice) {
+		return number(attack + dice.min()) + "-" + number(attack + dice.max());
 	}
 }
