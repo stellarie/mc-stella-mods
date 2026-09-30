@@ -786,66 +786,18 @@ public class ReadoutGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS)
-	public void playerOverlayDisplaysItsLevelWithoutHP(final GameTestHelper helper) {
-		PowerConfig config = liveConfig();
+	public void theScanTickSendsNoLevelLine(final GameTestHelper helper) {
 		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
 
 		whenAreaLoaded(helper, owner, () -> {
-			PowerTracker.scanPlayer(owner, config);
 			int before = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
-			PowerTracker.sendSelfLine(owner, config);
+			int interval = liveConfig().tracker().scanIntervalTicks();
+			for (int i = 0; i < interval; i++) {
+				PowerTracker.onServerTick(owner.level().getServer());
+			}
 			int after = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
-			int level = PowerTracker.playerLevel(owner, config);
-			String expected = "Lv " + level;
-			String rendered = lastHealthLine(owner);
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=selfLineLevel RESULT text={} level={} packets={}", rendered, level, after - before
-			);
-			helper.assertTrue(after == before + 1, "the level line sent " + (after - before) + " packets");
-			helper.assertTrue(
-				expected.equals(rendered),
-				"the self line read '" + rendered + "' instead of '" + expected + "'"
-			);
-			helper.assertTrue(
-				!rendered.contains("/") && !rendered.contains("HP"),
-				"the self line still contains numeric HP: '" + rendered + "'"
-			);
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = MAX_TICKS)
-	public void theHealthLineArrivesWithTheMobReadoutOff(final GameTestHelper helper) {
-		ServerPlayer owner = ownerAt(helper, HEALTH_LINE_TEST_X);
-
-		whenAreaLoaded(helper, owner, () -> {
-			owner.level().getServer().getCommands().performPrefixedCommand(
-				owner.createCommandSourceStack(), "stellaequips readout off"
-			);
-			boolean enabled = ReadoutService.owner(owner).enabled();
-			int before = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
-			PowerTracker.scanPlayer(owner, liveConfig());
-			PowerTracker.sendSelfLine(owner, liveConfig());
-			int after = PacketRecorder.of(owner).countMatching(THE_HEALTH_LINE);
-			String last = lastHealthLine(owner);
-			StellaEquips.LOGGER.info(
-				"[BEHAVIOR] test=selfLineOff RESULT enabled={} before={} after={} text={}",
-				enabled, before, after, last
-			);
-			helper.assertTrue(!enabled, "the opt out command left the mob readout enabled");
-			helper.assertTrue(
-				after > before,
-				"the tick path sent no health line to an opted out player (" + before + " to " + after + ")"
-			);
-			String expected = "Lv " + PowerTracker.playerLevel(owner, liveConfig());
-			helper.assertTrue(
-				expected.equals(last),
-				"the tick path line read '" + last + "' instead of '" + expected + "'"
-			);
-			helper.assertTrue(
-				!last.contains("/") && !last.contains("HP"),
-				"the tick path line still contains numeric HP: '" + last + "'"
-			);
+			StellaEquips.LOGGER.info("[BEHAVIOR] test=noLevelLine RESULT before={} after={}", before, after);
+			helper.assertTrue(after == before, "the scan tick sent " + (after - before) + " level lines");
 			helper.succeed();
 		});
 	}
@@ -865,18 +817,6 @@ public class ReadoutGameTest {
 
 	private static List<ReadoutPayload> payloads(final ServerPlayer player) {
 		return PacketRecorder.of(player).readoutPayloads();
-	}
-
-	private static String lastHealthLine(final ServerPlayer player) {
-		String found = "";
-
-		for (Packet<?> packet : PacketRecorder.of(player).snapshot()) {
-			if (packet instanceof ClientboundSystemChatPacket line && line.overlay()) {
-				found = line.content().getString();
-			}
-		}
-
-		return found;
 	}
 
 	private static PowerConfig liveConfig() {

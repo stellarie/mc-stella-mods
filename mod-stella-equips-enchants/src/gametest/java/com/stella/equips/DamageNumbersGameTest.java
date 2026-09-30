@@ -47,7 +47,7 @@ public class DamageNumbersGameTest {
 		Shown number = shown.get(0);
 		int id = number.display().getId();
 		helper.assertTrue(!number.heal() && number.amount() == 4.0F && number.display().getText().getString().equals("4"), "the number reads " + number.display().getText().getString());
-		helper.assertTrue(TextColor.fromLegacyFormat(ChatFormatting.RED).equals(number.display().getText().getStyle().getColor()), "a hit's number is not red");
+		helper.assertTrue(TextColor.fromLegacyFormat(ChatFormatting.WHITE).equals(number.display().getText().getStyle().getColor()), "a hit's number is not white");
 		helper.assertTrue(packets.addPackets(id) == 1 && number.display().level() == helper.getLevel() && helper.getLevel().getEntity(id) == null, "the number was not sent as a ghost display");
 		helper.runAfterDelay(2, () -> {
 			// The synced translation, read from the values the client receives.

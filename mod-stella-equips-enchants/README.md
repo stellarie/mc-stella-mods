@@ -183,9 +183,9 @@ still load, so old files stay valid, but the plate no longer reads them.
 
 ## Damage numbers
 
-Each hit an entity takes shows a small red number over it, and each heal a green one with a plus
+Each hit an entity takes shows a small white number over it, and each heal a green one with a plus
 sign: the health it actually lost or gained, so a hit that Resistance soaks up shows nothing, and a
-hit on golden hearts still counts. The number drifts up by a block and fades over one second, then
+hit on golden hearts still counts. The number drifts up by a block and fades over three seconds, then
 goes. It is sent to the players within 32 blocks as a display that never joins the world, so it is
 never saved. A player never sees the numbers over their own head. An invisible entity shows no
 number, so a hit never gives its place away, and each entity shows at most one damage number and
