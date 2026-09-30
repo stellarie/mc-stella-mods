@@ -168,8 +168,14 @@ public class TowerChestGameTest {
 		ServerLevel level = helper.getLevel();
 		RandomSource random = RandomSource.create(SEED);
 		Map<TowerChests.Category, Integer> seen = new EnumMap<>(TowerChests.Category.class);
-		for (int i = 0; i < DRAWS; i++) {
-			seen.merge(TowerChests.roll(level, FLOOR, random).category(), 1, Integer::sum);
+		// With the spells items present the stated rates hold; without them a roll is rerolled.
+		TowerChests.installSpellItems(standIn(true));
+		try {
+			for (int i = 0; i < DRAWS; i++) {
+				seen.merge(TowerChests.roll(level, FLOOR, random).category(), 1, Integer::sum);
+			}
+		} finally {
+			TowerChests.installSpellItems(null);
 		}
 		int weights = 0;
 		StringBuilder line = new StringBuilder("draws=" + DRAWS);
@@ -263,5 +269,113 @@ public class TowerChestGameTest {
 		helper.assertTrue(netherite == n, "netherite gear enchanted " + netherite + " of " + n);
 		helper.assertTrue(book == n, "books enchanted " + book + " of " + n);
 		helper.succeed();
+	}
+
+	@GameTest
+	public void fillingAPrefilledChestStillGivesTheGuaranteedItems(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos left = placed(helper);
+		Container container = containerAt(level, left);
+		for (int i = 0; i < container.getContainerSize(); i++) {
+			container.setItem(i, new ItemStack(Items.DIRT, 64));
+		}
+		TowerChests.installSpellItems(standIn(true));
+		int dirt;
+		int books;
+		int scrolls;
+		try {
+			TowerChests.fill(level, left, FLOOR, true, RandomSource.create(SEED));
+			dirt = count(container, Items.DIRT);
+			books = enchantedBooks(container);
+			scrolls = count(container, Items.PAPER);
+		} finally {
+			TowerChests.installSpellItems(null);
+		}
+		TowerTestSupport.result("chestPrefilled", "dirtLeft=" + dirt + " books=" + books + " returnScrolls=" + scrolls);
+		helper.assertTrue(dirt == 0, "the old contents stayed: " + dirt + " dirt stacks");
+		helper.assertTrue(books >= 1 && scrolls >= 1, "the guaranteed items are missing: books=" + books + " scrolls=" + scrolls);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void enchantPowerRisesWithTheFloorAndIsCapped(final GameTestHelper helper) {
+		int first = TowerChests.enchantLevel(1);
+		int mid = TowerChests.enchantLevel(TowerChests.ENCHANT_MAX_FLOOR / 2);
+		int full = TowerChests.enchantLevel(TowerChests.ENCHANT_MAX_FLOOR);
+		int deep = TowerChests.enchantLevel(TowerChests.ENCHANT_MAX_FLOOR * 20);
+		TowerTestSupport.result("chestEnchantCurve", "floor1=" + first + " mid=" + mid + " full=" + full + " deep=" + deep);
+		helper.assertTrue(first == TowerChests.ENCHANT_MIN, "floor 1 gives power " + first);
+		helper.assertTrue(full == TowerChests.ENCHANT_MAX && deep == TowerChests.ENCHANT_MAX, "the cap is " + full + " and " + deep);
+		helper.assertTrue(first < mid && mid < full, "power does not rise: " + first + ", " + mid + ", " + full);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void anEmeraldStackNeverPassesTheStackLimit(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		RandomSource random = RandomSource.create(SEED);
+		int most = 0;
+		for (int i = 0; i < 500; i++) {
+			most = Math.max(most, TowerChests.stackFor(level, TowerChests.Category.EMERALD, 5_000, random).getCount());
+		}
+		int limit = new ItemStack(Items.EMERALD).getMaxStackSize();
+		TowerTestSupport.result("chestEmeraldCap", "largest=" + most + " limit=" + limit);
+		helper.assertTrue(most <= limit, "an emerald stack of " + most + " passes the limit " + limit);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 200)
+	public void anAbsentSpellsItemIsRerolledNotLost(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		RandomSource random = RandomSource.create(SEED);
+		int draws = 5_000;
+		int empty = 0;
+		int scrollCategories = 0;
+		int nothing = 0;
+		for (int i = 0; i < draws; i++) {
+			TowerChests.Draw draw = TowerChests.roll(level, FLOOR, random);
+			if (draw.category() == TowerChests.Category.NOTHING) {
+				nothing++;
+			} else if (draw.stack().isEmpty()) {
+				empty++;
+			}
+			if (draw.category() == TowerChests.Category.SCROLLS || draw.category() == TowerChests.Category.RETURN_SCROLL) {
+				scrollCategories++;
+			}
+		}
+		TowerTestSupport.result("chestReroll", "draws=" + draws + " spellsAbsent=true emptyNonNothing=" + empty + " scrollDraws=" + scrollCategories + " nothing=" + nothing);
+		helper.assertTrue(empty == 0, empty + " rolls gave nothing though their category was not NOTHING");
+		helper.assertTrue(scrollCategories == 0, scrollCategories + " rolls landed on a category with no item");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void placingOverAnOccupiedSpotIsRefused(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos left = left(helper);
+		BlockPos right = left.relative(Direction.NORTH.getClockWise());
+		level.setBlock(right, Blocks.STONE.defaultBlockState(), 3);
+		BlockPos refused = TowerChests.placeDouble(level, left, Direction.NORTH);
+		boolean leftAir = level.getBlockState(left).isAir();
+		boolean stoneStays = level.getBlockState(right).is(Blocks.STONE);
+		level.setBlock(right, Blocks.AIR.defaultBlockState(), 3);
+		level.setBlock(left, Blocks.STONE.defaultBlockState(), 3);
+		BlockPos refusedLeft = TowerChests.placeDouble(level, left, Direction.NORTH);
+		boolean rightAir = level.getBlockState(right).isAir();
+		level.setBlock(left, Blocks.AIR.defaultBlockState(), 3);
+		BlockPos ok = TowerChests.placeDouble(level, left, Direction.NORTH);
+		TowerTestSupport.result("chestPlaceRefused", "blockedRight=" + refused + " blockedLeft=" + refusedLeft + " leftLeftAir=" + leftAir
+			+ " rightLeftAir=" + rightAir + " stoneStays=" + stoneStays + " freeSpot=" + ok);
+		helper.assertTrue(refused == null && refusedLeft == null, "a blocked spot was placed over: " + refused + " " + refusedLeft);
+		helper.assertTrue(leftAir && rightAir && stoneStays, "a refused placement still changed blocks");
+		helper.assertTrue(ok != null, "a free spot was refused");
+		helper.succeed();
+	}
+
+	/** Only a client can show the chest; the harness has none. */
+	@GameTest(required = false)
+	public void towerChestRendersOnTheClientRequiresManualTest(final GameTestHelper helper) {
+		helper.fail("headless server cannot render: in play, open a tower chest and check it looks like a vanilla chest, opens, "
+			+ "and does not crash the client");
 	}
 }

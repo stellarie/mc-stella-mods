@@ -45,6 +45,12 @@ public final class TowerChests {
 	public static final int ROLLS = 10;
 	/** What a roll's weights are measured against. */
 	public static final int TOTAL_WEIGHT = 10_000;
+	/** Table power of a chest's books and gear on floor 1. */
+	public static final int ENCHANT_MIN = 5;
+	/** Table power once a floor is deep enough, and the most any floor gives. */
+	public static final int ENCHANT_MAX = 30;
+	/** The floor at which the table power reaches {@link #ENCHANT_MAX}. */
+	public static final int ENCHANT_MAX_FLOOR = 50;
 	/** The spells mod's id, by name only. */
 	public static final String SPELLS_NAMESPACE = "mod-stella-spells";
 	/** The spells mod's return scroll. */
@@ -146,17 +152,22 @@ public final class TowerChests {
 		spellItems = items == null ? REGISTRY : items;
 	}
 
-	/** The enchanting power of a chest's gear and books on a floor: deeper floors carry better. */
+	/** The enchanting power of a chest's gear and books on a floor: {@link #ENCHANT_MIN} on floor 1, rising in even steps to {@link #ENCHANT_MAX} at floor {@link #ENCHANT_MAX_FLOOR}, and no more after. */
 	public static int enchantLevel(final int floor) {
-		return Math.min(39, 20 + Math.max(0, floor) / 5);
+		int step = Math.max(0, Math.min(floor, ENCHANT_MAX_FLOOR) - 1);
+		return ENCHANT_MIN + (ENCHANT_MAX - ENCHANT_MIN) * step / (ENCHANT_MAX_FLOOR - 1);
 	}
 
 	/**
 	 * Places a double tower chest whose left half is at {@code left}, both halves facing {@code facing}; the
-	 * right half stands clockwise of the left, as seen from the front. Returns the right half's position.
+	 * right half stands clockwise of the left, as seen from the front. Returns the right half's position, or
+	 * null, placing nothing, when either half's spot is not air.
 	 */
-	public static BlockPos placeDouble(final ServerLevel level, final BlockPos left, final Direction facing) {
+	public static @Nullable BlockPos placeDouble(final ServerLevel level, final BlockPos left, final Direction facing) {
 		BlockPos right = left.relative(facing.getClockWise());
+		if (!level.getBlockState(left).isAir() || !level.getBlockState(right).isAir()) {
+			return null;
+		}
 		Block chest = TowerBlocks.TOWER_CHEST;
 		level.setBlock(left, chest.defaultBlockState().setValue(ChestBlock.FACING, facing).setValue(ChestBlock.TYPE, ChestType.LEFT), Block.UPDATE_ALL);
 		level.setBlock(right, chest.defaultBlockState().setValue(ChestBlock.FACING, facing).setValue(ChestBlock.TYPE, ChestType.RIGHT), Block.UPDATE_ALL);
@@ -164,7 +175,7 @@ public final class TowerChests {
 	}
 
 	/**
-	 * Fills the tower chest at {@code pos} (either half of a double, or a single) with {@link #ROLLS} rolls, and
+	 * Empties, then fills, the tower chest at {@code pos} (either half of a double, or a single) with {@link #ROLLS} rolls, and
 	 * with a book and a Scroll of Return more when {@code guaranteed}. Items go to free slots, in random order.
 	 * Returns the stacks put in; a chest with no room for one drops it.
 	 */
@@ -177,18 +188,20 @@ public final class TowerChests {
 		if (container == null) {
 			return List.of();
 		}
+		container.clearContent();
+		// The guaranteed items go in first, so a full chest never loses them.
 		List<ItemStack> loot = new ArrayList<>();
-		for (int i = 0; i < ROLLS; i++) {
-			ItemStack stack = roll(level, floor, random).stack();
-			if (!stack.isEmpty()) {
-				loot.add(stack);
-			}
-		}
 		if (guaranteed) {
 			loot.add(stackFor(level, Category.ENCHANTED_BOOK, floor, random));
 			ItemStack scroll = stackFor(level, Category.RETURN_SCROLL, floor, random);
 			if (!scroll.isEmpty()) {
 				loot.add(scroll);
+			}
+		}
+		for (int i = 0; i < ROLLS; i++) {
+			ItemStack stack = roll(level, floor, random).stack();
+			if (!stack.isEmpty()) {
+				loot.add(stack);
 			}
 		}
 		List<Integer> free = new ArrayList<>();
@@ -209,21 +222,34 @@ public final class TowerChests {
 		return put;
 	}
 
-	/** One roll: the category by weight, and its item; the item is empty when its category has none to give. */
+	/** Rerolls a roll may make when its category's item is absent, before it gives up and finds nothing. */
+	private static final int REROLLS = 32;
+
+	/**
+	 * One roll: the category by weight, and its item. A category with no item to give (the spells mod is
+	 * absent) is rolled again, so the other categories keep more than their stated share only then; with the
+	 * mod present the stated rates hold. NOTHING is the result if every reroll fails.
+	 */
 	public static Draw roll(final ServerLevel level, final int floor, final RandomSource random) {
-		int pick = random.nextInt(TOTAL_WEIGHT);
-		Category chosen = Category.NOTHING;
-		for (Category category : Category.values()) {
-			if (pick < category.weight) {
-				chosen = category;
-				break;
+		for (int attempt = 0; attempt < REROLLS; attempt++) {
+			Category chosen = Category.NOTHING;
+			int pick = random.nextInt(TOTAL_WEIGHT);
+			for (Category category : Category.values()) {
+				if (pick < category.weight) {
+					chosen = category;
+					break;
+				}
+				pick -= category.weight;
 			}
-			pick -= category.weight;
+			ItemStack stack = stackFor(level, chosen, floor, random);
+			if (!stack.isEmpty() || chosen == Category.NOTHING) {
+				return new Draw(chosen, stack);
+			}
 		}
-		return new Draw(chosen, stackFor(level, chosen, floor, random));
+		return new Draw(Category.NOTHING, ItemStack.EMPTY);
 	}
 
-		/** What a category gives on a floor, drawn from the random; empty when it has no item to give. */
+	/** What a category gives on a floor, drawn from the random; empty when it has no item to give. */
 	public static ItemStack stackFor(final ServerLevel level, final Category category, final int floor, final RandomSource random) {
 		int power = enchantLevel(floor);
 		int bonus = Math.max(0, floor) / 25;
@@ -240,7 +266,7 @@ public final class TowerChests {
 				List<Item> books = spellItems.books();
 				yield books.isEmpty() ? ItemStack.EMPTY : new ItemStack(pick(books, random));
 			}
-			case EMERALD -> new ItemStack(Items.EMERALD, 3 + random.nextInt(7) + bonus);
+			case EMERALD -> new ItemStack(Items.EMERALD, Math.min(3 + random.nextInt(7) + bonus, Items.EMERALD.getDefaultMaxStackSize()));
 			case MISC -> {
 				Item item = pick(MISC, random);
 				int count = item == Items.ARROW ? 16 : item == Items.ENDER_PEARL || item == Items.BLAZE_ROD ? 2 : 4 + random.nextInt(9);

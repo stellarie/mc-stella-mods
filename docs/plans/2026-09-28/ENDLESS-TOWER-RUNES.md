@@ -567,13 +567,18 @@ measured numbers.
 
 - Deviation: loot is rolled in Java rather than a vanilla JSON table, because the weights, the optional spells
   items and the enchanting need code. The decision said "vanilla JSON table + optional spells items".
-- Choices where the decisions were silent: a roll whose category has no item (spells mod absent) gives nothing
-  rather than rerolling, so the other categories keep their stated rates; the weights sum to 9005, and the
+- Choices where the decisions were silent: (revised after review) a roll whose category has no item (spells mod
+  absent) is rerolled, up to 32 times; the stated rates hold when the spells mod is present, and the rate test
+  installs a stand-in for it; the weights sum to 9005, and the
   remaining 995 of 10000 is a roll that finds nothing. Books and gear are enchanted at table power
-  min(39, 20 + floor/5). Scrolls and spellbooks come from the tag `mod-stella-spells:spellbooks` (the test
+  5 on floor 1 rising evenly to 30 at floor 50, capped (revised after review from min(39, 20 + floor/5)). Scrolls and spellbooks come from the tag `mod-stella-spells:spellbooks` (the test
   resource stands in with `minecraft:book`), each book's scroll being `<id>_scroll`.
 - The chest has no item, so it cannot be picked up or pick-blocked. Mining (start and stop of a
   break with a netherite pickaxe), a power 6 blast, and the wither, dragon and piston rules are tested. The server
   internal `ServerPlayerGameMode.destroyBlock` is not: it is not a path a client can drive, and it was not probed.
 - The netherite share measured 10 of 50000 draws against 25 expected, inside the 4 sigma band (5 to 45) but on
   its low side. The seed is fixed, so the run is deterministic.
+- Review follow-ups: `fill` empties the chest and places the guaranteed items first; emerald stacks are capped at the
+  item's stack size; `placeDouble` returns null and places nothing unless both spots are air; the client render
+  is a manual item (`towerChestRendersOnTheClientRequiresManualTest`). Each new test failed before the change
+  (evidence `c2-red`: 5 required tests red) and passed after (`c2-green1`).

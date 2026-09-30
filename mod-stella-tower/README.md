@@ -94,27 +94,30 @@ mob, glowing motes on a holy mob, and flames, drips, puffs and portal swirls on 
 
 `TowerChestBlock` (`mod-stella-tower:tower_chest`) is a vanilla chest that stays: hardness -1, blast resistance
 3,600,000, no loot table, immovable by pistons, and on the `wither_immune` and `dragon_immune` tags like the walls.
-It is added to vanilla's chest block entity type (Fabric's `addValidBlock`), so the vanilla renderer draws it,
+In survival it is indestructible; creative players can still break it (as with the walls), and hoppers and
+players can take items out. It is added to vanilla's chest block entity type (Fabric's `addValidBlock`), so the vanilla renderer draws it,
 the blockstate points at `minecraft:block/chest`, and there is no client code and no item. Players open it,
 hoppers may take from it; two of them side by side pair into a double.
 
 `TowerChests` is the API for the floor placement step:
 
 - `placeDouble(level, leftPos, facing)` places both halves (right half is clockwise of the left) and returns the
-  right half's position.
-- `fill(level, pos, floor, guaranteed, random)` fills either half of a chest with `ROLLS` (10) rolls into free
-  slots and returns the stacks put in. `guaranteed` adds one enchanted book and one Scroll of Return.
+  right half's position; it places nothing and returns null when either spot is not air.
+- `fill(level, pos, floor, guaranteed, random)` empties the chest, then fills either half with `ROLLS` (10)
+  rolls into random slots and returns the stacks put in. `guaranteed` adds one enchanted book and one Scroll of
+  Return, placed before the rolls so they are never lost.
 - `roll(level, floor, random)` is one draw; `stackFor(level, category, floor, random)` is one category's item.
 - Weights are `TowerChests.Category.<X>.weight` out of `TOTAL_WEIGHT` 10000: food 1800, potions 1400, scrolls
   1400, return scroll 600, enchanted book 900, spellbook 500, emerald 1100, misc 700, diamond 400, ancient
   debris 120, diamond gear 80, netherite gear 5, nothing 995 (the rest).
-- Books and gear are enchanted at table power `enchantLevel(floor)` = min(39, 20 + floor/5), from the
-  enchanting table's enchantments. Emeralds grow by 1 per 25 floors.
-- The spells mod's items are found by name and skipped when absent (the roll then gives nothing):
+- Books and gear are enchanted at table power `enchantLevel(floor)`: `ENCHANT_MIN` 5 on floor 1, rising evenly
+  to `ENCHANT_MAX` 30 at floor `ENCHANT_MAX_FLOOR` 50, capped there, from the enchanting table's enchantments.
+  Emeralds grow by 1 per 25 floors, never past the item's stack size.
+- The spells mod's items are found by name and, when absent, the roll is rerolled (up to 32 times), so the stated rates hold when the spells mod is present:
   `mod-stella-spells:return_scroll`, every item of the tag `mod-stella-spells:spellbooks` (spellbook), and
   `<that item's id>_scroll` (scroll). No dependency in `fabric.mod.json`. `installSpellItems` is the test seam.
 
-Measured (`TowerChestGameTest`, 8 cases, 50000 seeded draws, each share within 4 sigma of its weight):
+Measured (`TowerChestGameTest`, 13 required cases and 1 manual, 50000 seeded draws, each share within 4 sigma of its weight):
 
 ```
 [BEHAVIOR] test=chestPairs RESULT left=SECOND right=FIRST slots=54 validForChestEntity=true
@@ -129,6 +132,17 @@ Measured (`TowerChestGameTest`, 8 cases, 50000 seeded draws, each share within 4
 By the weights a chest holds about 9 stacks on average with the spells mod (10 rolls less the 10% that find
 nothing) and about 6.5 without it (an expectation, not measured); netherite gear turns up once in 2000 rolls, about once per 200 chests.
 
-Manual acceptance: the gametest runtime has no spells mod, so the return scroll, scroll and spellbook items are
+Follow-up measures:
+
+```
+[BEHAVIOR] test=chestPrefilled RESULT dirtLeft=0 books=3 returnScrolls=1
+[BEHAVIOR] test=chestEnchantCurve RESULT floor1=5 mid=17 full=30 deep=30
+[BEHAVIOR] test=chestEmeraldCap RESULT largest=64 limit=64
+[BEHAVIOR] test=chestReroll RESULT draws=5000 spellsAbsent=true emptyNonNothing=0 scrollDraws=0 nothing=636
+[BEHAVIOR] test=chestPlaceRefused RESULT blockedRight=null blockedLeft=null leftLeftAir=true rightLeftAir=true stoneStays=true freeSpot=BlockPos{...}
+```
+
+Manual acceptance: `towerChestRendersOnTheClientRequiresManualTest` stays red as a not-required case: open a tower
+chest in play and see a vanilla-looking chest that opens, with no client crash. The gametest runtime has no spells mod, so the return scroll, scroll and spellbook items are
 tested through a stand-in; in play with the spells mod, open a guaranteed chest and check the scroll is a real
 Scroll of Return. Also look at a chest in play to confirm it renders as a vanilla chest.
