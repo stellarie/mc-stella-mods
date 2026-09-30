@@ -32,8 +32,6 @@ public final class Refine {
 	public static final String LEVEL_KEY = "stella_refine";
 	public static final double DAMAGE_PER_LEVEL = 0.75;
 	public static final double ARMOR_PER_LEVEL = 0.5;
-	/** A failed refine chips this share of the piece's whole durability. */
-	public static final double FAILURE_CHIP = 0.20;
 	public static final int SEARING_LEVEL = 10;
 	public static final int RENDING_LEVEL = 12;
 	public static final int ASCENDED_LEVEL = 15;
@@ -126,16 +124,6 @@ public final class Refine {
 	/** How much material the next step costs: one more for every three levels the piece already has. */
 	public static int cost(final int currentLevel) {
 		return 1 + currentLevel / 3;
-	}
-
-	/** The durability a failed refine takes: a fifth of the whole, rounded up. */
-	public static int chip(final ItemStack stack) {
-		return (int) Math.ceil(stack.getMaxDamage() * FAILURE_CHIP);
-	}
-
-	/** True when a failure now would break the piece outright. */
-	public static boolean wouldBreak(final ItemStack stack) {
-		return stack.getMaxDamage() - stack.getDamageValue() <= chip(stack);
 	}
 
 	/** Writes a level and brings the piece's bonus, tooltip line and glint in line with it. */
