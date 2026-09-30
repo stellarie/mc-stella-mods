@@ -61,7 +61,7 @@ public class AuraEnchantGameTest {
 				&& pig.getHealth() == pig.getMaxHealth() && !pig.hasEffect(MobEffects.SLOWNESS);
 			LOG.info("[BEHAVIOR] test=mistArmorChillsAndSlowsTheFoesNearby RESULT nearLost={} slowAmplifier={} frozen={} spared={} farDistance={}",
 				lost, slow, near.getTicksFrozen(), spared, far.distanceTo(wearer));
-			helper.assertTrue(lost >= Auras.MIST_DAMAGE_PER_LEVEL * 3 && slow == 2, "the near foe lost " + lost + " at slowness " + slow);
+			helper.assertTrue(lost >= Auras.MIST_SHARE_PER_LEVEL * 3 * wearer.getMaxHealth() - 1.0E-3F && slow == 2, "the near foe lost " + lost + " at slowness " + slow);
 			helper.assertTrue(spared, "the mist reached past its radius or struck a pig");
 			helper.succeed();
 		});
@@ -100,7 +100,7 @@ public class AuraEnchantGameTest {
 			boolean guarded = wearer.hasEffect(MobEffects.FIRE_RESISTANCE);
 			LOG.info("[BEHAVIOR] test=blazeArmorBurnsTheFoesNearbyAndGuardsItsWearer RESULT nearLost={} farLost={} fireResistance={} farDistance={}",
 				lost, far.getMaxHealth() - far.getHealth(), guarded, far.distanceTo(wearer));
-			helper.assertTrue(lost >= Auras.BLAZE_DAMAGE, "the near foe lost only " + lost);
+			helper.assertTrue(lost >= Auras.BLAZE_SHARE * wearer.getMaxHealth() - 1.0E-3F, "the near foe lost only " + lost);
 			helper.assertTrue(far.getHealth() == far.getMaxHealth(), "the heat reached past its radius");
 			helper.assertTrue(guarded, "the wearer has no Fire Resistance");
 			helper.succeed();

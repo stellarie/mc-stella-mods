@@ -58,7 +58,7 @@ public class MasteryPerksGameTest {
 		ServerPlayer player = wielder(helper, master(Items.IRON_SWORD));
 		player.setHealth(WOUNDED);
 		hit(helper, player, zombie(helper, 3, 3));
-		helper.assertTrue(Math.abs(player.getHealth() - WOUNDED - MasteryPerks.LIFESTEAL_HEAL) < EPSILON, "health went from " + WOUNDED + " to " + player.getHealth());
+		helper.assertTrue(Math.abs(player.getHealth() - WOUNDED - HIT * MasteryPerks.LIFESTEAL_SHARE) < EPSILON, "health went from " + WOUNDED + " to " + player.getHealth());
 		result("lifesteal", "health=" + player.getHealth());
 		helper.succeed();
 	}
@@ -117,7 +117,7 @@ public class MasteryPerksGameTest {
 		float before = near.getHealth();
 		hit(helper, player, target);
 		float shaken = before - near.getHealth();
-		helper.assertTrue(Math.abs(shaken - MasteryPerks.AFTERSHOCK_DAMAGE) < EPSILON, "the aftershock dealt " + shaken);
+		helper.assertTrue(Math.abs(shaken - HIT * MasteryPerks.AFTERSHOCK_SHARE) < EPSILON, "the aftershock dealt " + shaken);
 		result("aftershock", "shaken=" + shaken);
 		helper.succeed();
 	}

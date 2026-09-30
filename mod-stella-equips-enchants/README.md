@@ -56,10 +56,15 @@ the intended shape.
 
 ## Chestplate auras
 
-- **Mist Armor** (levels 1 to 3). Once a second, enemies within 4 blocks take 1 freeze damage per
-  level, get Slowness (level I to III) for 1.5 seconds, and frost over.
-- **Blaze Armor** (levels 1 to 3). Once a second, enemies within 3 blocks take a heart of fire
-  damage, with a 10% chance per level to catch fire for 3 seconds. The wearer has Fire Resistance.
+- **Mist Armor** (levels 1 to 3). Once a second, enemies within 4 blocks take freeze damage of 3% of
+  your max health per level, get Slowness (level I to III) for 1.5 seconds, and frost over.
+- **Blaze Armor** (levels 1 to 3). Once a second, enemies within 3 blocks take fire damage of 10% of
+  your max health, with a 10% chance per level to catch fire for 3 seconds. The wearer has Fire
+  Resistance.
+
+Both auras count max health in vanilla units. When mod-stella-rpg publishes its health scale K
+(the object share `mod-stella-rpg:health-scale`, a `Double`), the aura uses max health divided by K.
+Without that share, K is 1.
 
 Both auras pulse for players only, and spare village patrols and the village witch.
 Weightless and Cloudstep are gone from the catalogue, so nothing this mod gives out levitates a
@@ -88,11 +93,11 @@ target.
 
   | Weapon | Perk | Effect |
   | --- | --- | --- |
-  | Sword | Lifesteal | heals you half a heart |
+  | Sword | Lifesteal | heals you 3% of the damage the hit dealt |
   | Axe | Cleave | hostiles within 2.5 blocks of the target take half the hit |
   | Spear | Momentum | Speed I for 3 seconds |
   | Trident | Tidecaller | Conduit Power for 5 seconds |
-  | Mace | Aftershock | hostiles within 3 blocks of the target take 3 damage |
+  | Mace | Aftershock | hostiles within 3 blocks of the target take 30% of the hit |
 
 ## Player power
 
@@ -207,14 +212,63 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
   arrows, and +0.5 armour to a piece of armour.
 - The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.
   It is not an enchantment, so it takes no enchantment's place and leaves the enchantments unchanged.
+  The tooltip lists each special effect the piece has, by name.
+- A **spellbook** of mod-stella-spells refines too. The equips mod finds it by the class name
+  `com.stella.spells.SpellbookItem` and a maximum stack size of 1, so scrolls do not count and
+  there is no dependency on the spells mod. A book refines with amethyst shards at the odds of a
+  grade 3 weapon. It gets no attribute modifier: the level sits in the `stella_refine` custom data
+  for mod-stella-rpg to read. It has no special effects.
 
-| Level | Weapon | Armour (each piece) |
-|---|---|---|
-| +10 | Searing: hits set the target alight for 3 s | Vigor: +2 max health |
-| +12 | Rending: hits also inflict Wither for 3 s | Thorned: a melee blow that lands pricks the attacker for 2 damage |
-| +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks (never village patrols) | Blessed: a player heals 1 health every 5 s |
+Each special effect starts at its level and keeps working at the higher levels, so a +15 piece has the
+effects of +7, +10, +12 and +15. Effects of several armour pieces add up.
 
-Each effect keeps working at the higher levels, so a +15 weapon sears, rends and sends a shockwave.
+**Weapons** (melee)
+
+| Level | Effect |
+|---|---|
+| +7 | Keen: a 5% chance that a hit does 1.5 times its damage |
+| +10 | Wood, stone, gold, copper: Splinter, the target bleeds for 2% of the hit each second for 3 s. Iron: Searing, the target burns for 3 s. Diamond, trident, mace: Frostbite, Slowness II for 2 s. Netherite: Searing, the target burns for 5 s |
+| +12 | Rending: hits also inflict Wither for 3 s |
+| +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks (never village patrols) |
+
+**Bows and crossbows** (on an arrow hit)
+
+| Level | Effect |
+|---|---|
+| +7 | Keen, as above |
+| +10 | Piercing: an arrow passes through one more mob |
+| +12 | Rending: an arrow hit inflicts Wither for 3 s |
+| +15 | Volley: each shot looses one more arrow at 50% of the damage |
+
+**Armour**, by piece at +7:
+
+| Piece | Effect |
+|---|---|
+| Helmet | Clarity: harmful effects on the wearer last 10% less |
+| Chestplate | Fortitude: +3% max health |
+| Leggings | Stride: +5% movement speed |
+| Boots | Featherfall: 30% less fall damage |
+
+**Armour**, by material at +10:
+
+| Material | Effect (each piece) |
+|---|---|
+| Leather | Evasion: a 3% chance to ignore a hit |
+| Chainmail | Riposte: a 10% chance to reflect 20% of a melee blow |
+| Iron | Vigor: +2% max health |
+| Gold | Fortune: +5% experience from kills |
+| Diamond | Bulwark: 3% less damage taken |
+| Netherite | Emberguard: 12.5% less fire damage |
+
+Armour at +12 has **Thorned** for every material: a melee blow that lands pricks the attacker for 10%
+of the damage the wearer took, for each such piece. At +15 it has **Blessed**: a player heals 1% of max
+health every 5 s for each such piece. Four +10 diamond pieces take 12% less damage. Copper armour and the
+turtle helmet have no +10 effect. Four +10 netherite pieces take 50% less fire damage.
+
+Vigor, Fortitude and Stride are `ADD_MULTIPLIED_BASE` attribute modifiers, so they scale with base max
+health and base speed. Blessed uses max health in vanilla units, divided by the health scale K of
+mod-stella-rpg when that mod is present. Keen, Evasion and Riposte roll on the wearer's own random
+source, through a `Roller` that a test can force.
 
 ## Game tests
 
@@ -231,7 +285,8 @@ tags and colors, the plate geometry, its removal on death and on disconnect, its
 invisibility to a second player, and the opt-out command. The pixels of the plate
 need a client, so a not-required test marks them for a manual check. They also
 check refining: the odds tables, the quote and confirm, the price, the chip and the break,
-the cap, the smith, the bonuses, the tooltip, each special effect, and the recipe.
+the cap, the smith, the bonuses, the tooltip, each special effect at its level and one level below,
+the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spellbook refining, and the recipe.
 
 ## Target platform
 
