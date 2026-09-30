@@ -254,7 +254,7 @@ public class PatrolDutyGameTest {
 	}
 
 	// Members are set down only in entity-ticking chunks, so the chunks of the scatter square are forced first.
-	private static void forceScatterChunks(final GameTestHelper helper) {
+	static void forceScatterChunks(final GameTestHelper helper) {
 		BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
 		int radius = PatrolService.MEMBER_SCATTER_RADIUS;
 		for (int x = anchor.getX() - radius; x <= anchor.getX() + radius; x += 16) {
@@ -265,7 +265,7 @@ public class PatrolDutyGameTest {
 	}
 
 	// Stone around the village's own chunk, so members have somewhere to spread to.
-	private static void spreadGround(final GameTestHelper helper) {
+	static void spreadGround(final GameTestHelper helper) {
 		BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
 		for (int x = -PatrolService.MEMBER_SCATTER_RADIUS; x <= PatrolService.MEMBER_SCATTER_RADIUS; x++) {
 			for (int z = -PatrolService.MEMBER_SCATTER_RADIUS; z <= PatrolService.MEMBER_SCATTER_RADIUS; z++) {

@@ -38,9 +38,19 @@ public final class WitchShopMenu extends ChestMenu {
 	}
 
 	static void open(final ServerPlayer player, final Mob witch, final ServerLevel level, final List<ShopOffer> offers) {
-		player.openMenu(new SimpleMenuProvider(
+		if (player.openMenu(new SimpleMenuProvider(
 			(id, inventory, opener) -> new WitchShopMenu(id, inventory, witch, level, offers), Component.literal(TITLE)
-		));
+		)).isPresent()) {
+			Conversation.begin(witch, player);
+		}
+	}
+
+	@Override
+	public void removed(final Player player) {
+		super.removed(player);
+		if (player instanceof ServerPlayer serverPlayer) {
+			Conversation.linger(this.witch, serverPlayer);
+		}
 	}
 
 	/** The offer a slot sells, or -1 for glass, for the reroll control and for any slot outside the shop. */

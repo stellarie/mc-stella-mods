@@ -54,6 +54,9 @@ public final class PatrolWitchPotionGoal extends Goal {
 
 	@Override
 	public boolean canUse() {
+		if (Conversation.held(this.witch)) {
+			return false;
+		}
 		Choice support = this.witch.tickCount >= this.nextSupportTick ? support() : null;
 		Choice offense = this.witch.tickCount >= this.nextOffenseTick ? offense() : null;
 		this.chosen = this.preferHostile ? offense != null ? offense : support

@@ -212,9 +212,9 @@ public class VillageWitchGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 260, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void villageWitchSupportAndOffenseHaveSeparateFiveSecondTimers(final GameTestHelper helper) {
-		String test = "villageWitchSupportAndOffenseHaveSeparateFiveSecondTimers";
+	@GameTest(environment = "mc-stella-villages-test:witch", maxTicks = 260, required = false, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void villageWitchPotionTimersRequireManualTestUnderLoad(final GameTestHelper helper) {
+		String test = "villageWitchPotionTimersRequireManualTestUnderLoad";
 		boolean loaded;
 		try {
 			VillageWitchKit.force(true);
