@@ -158,7 +158,10 @@ Every safe zone (each floor's entrance zone, and the boss room) now keeps mobs o
   every spawn path uses it; measured over 900 spawns (`zoneSpawns`): 0 in a zone.
 - `TowerSafety` sweeps every `SWEEP_TICKS` (5) ticks, over the floors with a player on them only (the pattern of
   the buffs' occupied floors, plan read from `TowerPlan.at`). A tower mob whose body touches a zone is moved to
-  the nearest spot of the room outside every zone where its whole body is clear (on the ground if it stood on it).
+  the spot where it was last seen outside the zones (within the last two sweeps), or with no such sighting the
+  nearest spot of the room outside every zone where its whole body is clear (on the ground if it stood on it).
+  Sending it back the way it came matters: a fast mob (a baby zombie boss at speed V walks four blocks a sweep)
+  can be deeper in the room than the far side is near, and the nearest way out would be the far door.
   Ghosts are on the players' side and are not sent out. A mob put in a zone was out at tick 3, window 6.
 - A player inside a zone draws no aggro from any mob, bosses and elites included. `TowerTargetMixin` (on
   `Mob.asValidTarget`, which `setTarget` and `getTarget` both go through) refuses a player in a zone as a target,
@@ -179,6 +182,7 @@ Every safe zone (each floor's entrance zone, and the boss room) now keeps mobs o
 [BEHAVIOR] test=bossNoAggro RESULT acquiredOutsideAt=24 letGoAfter=2 window=6 reaggroInside=0 reacquiredAfter=16
 [BEHAVIOR] test=bossAtDoor RESULT entries=15 longestInRoom=4 deepest=1.2339045785865892 reach=5.7750001562759286 roomLength=7.0 leaks=0 alive=true
 [BEHAVIOR] test=legacyDoor RESULT floor=29861720 servedVersion=0 servedRing=false gates=0 door=6 towerWallAtFloor=0
+[BEHAVIOR] test=sentBack RESULT deep=5.0 roomLength=7.0 alongAfter=-1.0 inHall=true inside=false
 [BEHAVIOR] test=bossWalksHall RESULT noAi=false startDistance=13.892443989449804 nearest=7.042832621350407 farthestFromStart=6.92241730674571
 ```
 
@@ -191,4 +195,25 @@ whole room (7.7 blocks) and out, 224 ticks in the maze. `bossWalksHall` is the o
 
 Manual item: none for this slice; how it feels to walk a lit two-wide doorway, and to stand in a zone with a
 mob at its edge, is worth a look in play.
+
+`sentBack` sets a zombie five blocks into a room seven long, nearer the entrance than the exit, as a mob that outran
+a sweep would be: it is sent back to the hall's door (along the room -1), where the nearest-spot rule sent it out
+through the far door (+8, the maze). Measured with that rule put back: the case and `bossAtDoor` both fail.
+
+## F2 review follow-ups (F3 commit)
+
+- `TowerFloors.builtVersion` now asks whether the floor stands first, of this world's blocks, before it serves a
+  remembered decision, so a cache built in another world (or for a floor since cleared) is never believed. Both
+  caches (the built-version decisions and `TowerPlan`'s plans, plus the unknown-version warnings) are cleared on
+  `SERVER_STOPPED` (`TowerFloors.clearCaches`), as one JVM can host another world after this one.
+- `TowerPlan.of(seed, floor, version)` for a version newer than this mod knows serves the newest known plan and logs
+  a warning once for each such version, instead of clamping silently.
+- Walkability, on foot from the arrival to the portal: `planWalks` over 750 plans (302 entered from the low side,
+  298 from the high, 82 with the portal in the first cell column and 91 in the last, 75 elite and 75 boss floors at
+  all four turns; the model of each plan's blocks) and `builtWalks` over 16 floors the real builder built (two of each
+  of the four ends an ordinary portal can have, four elite, four boss), where the model must agree with the world.
+  With the safe room's openings one block high (mutation) both fail: 75 of 750 plans, and 4 of 16 built floors.
+- The plinth test can fail: with the ordinary and elite plinth left out, `anOrdinaryFloorsPortalStandsOnAPlinth` and
+  the elite one both fail ("0 of the frame's 4 bottom blocks stand on tower wall"), since the plinth is tower wall
+  where the floor is the palette's stone.
 

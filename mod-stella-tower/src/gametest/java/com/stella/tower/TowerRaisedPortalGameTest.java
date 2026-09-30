@@ -112,6 +112,27 @@ public class TowerRaisedPortalGameTest {
 	 * the portal's inside. Written apart from the plan, so the pyramid is judged by what stands in the world.
 	 */
 	private static int climb(final ServerLevel tower, final BlockPos from, final Set<BlockPos> goals) {
+		return climb(new Ground() {
+			@Override
+			public boolean free(final BlockPos pos) {
+				return TowerRaisedPortalGameTest.free(tower, pos);
+			}
+
+			@Override
+			public boolean standable(final BlockPos pos) {
+				return tower.getBlockState(pos).isFaceSturdy(tower, pos, net.minecraft.core.Direction.UP);
+			}
+		}, from, goals);
+	}
+
+	/** What a walk asks of the ground: room to stand in a spot, and something to stand on. */
+	private interface Ground {
+		boolean free(BlockPos pos);
+
+		boolean standable(BlockPos pos);
+	}
+
+	private static int climb(final Ground ground, final BlockPos from, final Set<BlockPos> goals) {
 		Map<BlockPos, Integer> seen = new HashMap<>();
 		ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 		seen.put(from, 0);
@@ -128,12 +149,12 @@ public class TowerRaisedPortalGameTest {
 					if (seen.containsKey(next) || TowerLayout.floorAt(next) != TowerLayout.floorAt(from)) {
 						continue;
 					}
-					boolean room = free(tower, next) && free(tower, next.above());
-					boolean floor = tower.getBlockState(next.below()).isFaceSturdy(tower, next.below(), net.minecraft.core.Direction.UP);
+					boolean room = ground.free(next) && ground.free(next.above());
+					boolean floor = ground.standable(next.below());
 					// A step up needs room to jump: the block over the head of the spot it is taken from.
-					boolean jump = rise <= 0 || free(tower, at.above(2));
+					boolean jump = rise <= 0 || ground.free(at.above(2));
 					// A step down or across passes through the cell beside, at the same height.
-					boolean clear = rise >= 0 || free(tower, at.relative(way)) && free(tower, at.relative(way).above());
+					boolean clear = rise >= 0 || ground.free(at.relative(way)) && ground.free(at.relative(way).above());
 					if (room && floor && jump && clear) {
 						seen.put(next, walked + 1);
 						queue.add(next);
@@ -142,6 +163,46 @@ public class TowerRaisedPortalGameTest {
 			}
 		}
 		return -1;
+	}
+
+	/**
+	 * The blocks a plan stands as, for a walk over hundreds of plans that could not each be built: the maze's walls
+	 * from floor to ceiling, the plinth, the frame's blocks, the workstations, the safe room's lintels over its
+	 * openings. Solid floor under the room, solid outside it.
+	 */
+	private static Ground modelOf(final TowerPlan plan) {
+		BlockPos o = plan.origin();
+		Set<BlockPos> solid = new HashSet<>(plan.plinth());
+		solid.addAll(plan.portalFrame());
+		solid.addAll(TowerFloors.workstations(plan).keySet());
+		for (TowerPlan.Gate gate : plan.gates()) {
+			for (TowerPlan.Spot cell : gate.cells()) {
+				for (int y = TowerFloors.GATE_HEIGHT; y < TowerLayout.HEIGHT; y++) {
+					solid.add(o.offset(cell.x(), y, cell.z()));
+				}
+			}
+		}
+		return new Ground() {
+			private boolean solid(final BlockPos pos) {
+				int x = pos.getX() - o.getX();
+				int y = pos.getY() - o.getY();
+				int z = pos.getZ() - o.getZ();
+				if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE || y < 0 || y >= TowerLayout.HEIGHT) {
+					return true;
+				}
+				return plan.walls()[x][z] || solid.contains(pos);
+			}
+
+			@Override
+			public boolean free(final BlockPos pos) {
+				return !solid(pos);
+			}
+
+			@Override
+			public boolean standable(final BlockPos pos) {
+				return solid(pos);
+			}
+		};
 	}
 
 	private static boolean free(final ServerLevel tower, final BlockPos pos) {
@@ -175,6 +236,107 @@ public class TowerRaisedPortalGameTest {
 		helper.assertTrue(steps >= TowerPlan.PYRAMID_LAYERS + 1, "the walk to the portal takes " + steps + " steps, fewer than the " + (TowerPlan.PYRAMID_LAYERS + 1) + " climbs it needs");
 		helper.assertTrue(without < 0, "the walk still finds a way with a layer missing, so it proves nothing");
 		helper.assertTrue(restored == steps, "the pyramid was not put back");
+		helper.succeed();
+	}
+
+	private static final int WALK_SEEDS = 25;
+	private static final int WALK_FLOORS = 30;
+
+	/**
+	 * The whole way on foot, from the arrival to the raised portal, over hundreds of plans of every kind: both sides the
+	 * portal is entered from, the portal in the first and the last cell column, the elite and boss halls at every turn,
+	 * and through the boss room's two-high openings.
+	 */
+	@GameTest
+	public void everyPlansPortalCanBeWalkedToFromTheArrivalOnFoot(final GameTestHelper helper) {
+		int plans = 0;
+		int stuck = 0;
+		int[] byFacing = new int[2];
+		int edgeLow = 0;
+		int edgeHigh = 0;
+		int elites = 0;
+		int bosses = 0;
+		Set<Integer> turns = new java.util.TreeSet<>();
+		String first = "";
+		for (int i = 0; i < WALK_SEEDS; i++) {
+			long seed = 7_919L * i + 3L;
+			for (int floor = 1; floor <= WALK_FLOORS; floor++) {
+				TowerPlan plan = TowerPlan.of(seed, floor);
+				plans++;
+				BlockPos start = BlockPos.containing(plan.arrivalPos());
+				int steps = climb(modelOf(plan), start, new HashSet<>(plan.portalInside()));
+				if (steps < 0) {
+					stuck++;
+					first = first.isEmpty() ? seed + "/" + floor : first;
+				}
+				byFacing[plan.portalFacing() < 0 ? 0 : 1] += plan.hall() == 0 ? 1 : 0;
+				edgeLow += plan.hall() == 0 && plan.portalCell()[0] == 0 ? 1 : 0;
+				edgeHigh += plan.hall() == 0 && plan.portalCell()[0] == TowerMaze.CELLS - 1 ? 1 : 0;
+				elites += plan.hall() == TowerMaze.ELITE_HALL ? 1 : 0;
+				if (plan.hall() == TowerMaze.BOSS_HALL) {
+					bosses++;
+					turns.add(plan.rotation());
+				}
+			}
+		}
+		TowerTestSupport.result("planWalks", "plans=" + plans + " stuck=" + stuck + " facingLow=" + byFacing[0] + " facingHigh=" + byFacing[1] + " firstColumn=" + edgeLow
+			+ " lastColumn=" + edgeHigh + " elites=" + elites + " bosses=" + bosses + " turns=" + turns + " first=" + first);
+		helper.assertTrue(byFacing[0] >= 100 && byFacing[1] >= 100 && edgeLow >= 20 && edgeHigh >= 20 && elites >= 50 && bosses >= 50 && turns.size() == 4,
+			"the case proves little: " + byFacing[0] + "/" + byFacing[1] + " facings, edges " + edgeLow + "/" + edgeHigh + ", " + elites + " elites, " + bosses + " bosses at turns " + turns);
+		helper.assertTrue(stuck == 0, stuck + " of " + plans + " plans have no walk from arrival to portal on foot, first " + first);
+		helper.succeed();
+	}
+
+	/**
+	 * The same walk over floors the real builder built: two for each of the four ends an ordinary portal can have
+	 * (either side it is entered from, and the first and last cell column), and four elite and four boss floors. The
+	 * model of a plan's blocks must agree with the world, step for step.
+	 */
+	@GameTest(maxTicks = 100)
+	public void builtFloorsPortalsCanBeWalkedToFromTheArrivalOnFoot(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		long seed = tower.getSeed();
+		int start = TowerTestSupport.freshBlock(400);
+		int[] wanted = {2, 2, 2, 2, 4, 4};
+		int[] got = new int[6];
+		List<Integer> floors = new java.util.ArrayList<>();
+		for (int floor = start; floor < start + 400 - 3; floor++) {
+			TowerPlan plan = TowerPlan.of(seed, floor);
+			int kind;
+			if (plan.hall() == TowerMaze.BOSS_HALL) {
+				kind = 5;
+			} else if (plan.hall() == TowerMaze.ELITE_HALL) {
+				kind = 4;
+			} else if (plan.portalCell()[0] == 0) {
+				kind = 2;
+			} else if (plan.portalCell()[0] == TowerMaze.CELLS - 1) {
+				kind = 3;
+			} else {
+				kind = plan.portalFacing() < 0 ? 0 : 1;
+			}
+			if (got[kind] < wanted[kind]) {
+				got[kind]++;
+				floors.add(floor);
+			}
+		}
+		int stuck = 0;
+		int disagree = 0;
+		int shortest = Integer.MAX_VALUE;
+		for (int floor : floors) {
+			TowerFloors.ensure(tower, floor);
+			TowerPlan plan = TowerPlan.at(tower, floor);
+			BlockPos from = BlockPos.containing(plan.arrivalPos());
+			Set<BlockPos> goals = new HashSet<>(plan.portalInside());
+			int built = climb(tower, from, goals);
+			int model = climb(modelOf(plan), from, goals);
+			stuck += built < 0 ? 1 : 0;
+			disagree += built != model ? 1 : 0;
+			shortest = Math.min(shortest, built);
+		}
+		TowerTestSupport.result("builtWalks", "floors=" + floors.size() + " stuck=" + stuck + " modelDisagrees=" + disagree + " shortest=" + shortest + " kinds=" + java.util.Arrays.toString(got));
+		helper.assertTrue(floors.size() == java.util.Arrays.stream(wanted).sum(), "the block held only " + java.util.Arrays.toString(got) + " of " + java.util.Arrays.toString(wanted));
+		helper.assertTrue(stuck == 0, stuck + " built floors have no walk from arrival to portal on foot");
+		helper.assertTrue(disagree == 0, "the model of a plan's blocks disagrees with the built world on " + disagree + " floors");
 		helper.succeed();
 	}
 

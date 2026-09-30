@@ -108,11 +108,37 @@ public record TowerPlan(
 	/**
 	 * The plan of a floor as the generator of a given version drew it. Every version ever released keeps its
 	 * generator, frozen, in {@link #draw}, so a floor built to it is served the plan it was built to. Version 0
-	 * is the layout of the floors built before there were plans; a version this mod does not know, from a later
-	 * one, is met with the newest it does.
+	 * is the layout of the floors built before there were plans. A version this mod does not know, from a later
+	 * one, is served the newest plan it does know, and a warning is logged (once for each such version): the floor
+	 * may not match it, and someone should know that the world was played on a newer mod.
 	 */
 	public static TowerPlan of(final long seed, final int floor, final int version) {
+		if (version > VERSION) {
+			warnUnknown(version);
+		}
 		return cached(new Key(seed, floor, Math.min(Math.max(version, 0), VERSION)));
+	}
+
+	private static final java.util.Set<Integer> WARNED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	private static void warnUnknown(final int version) {
+		if (WARNED.add(version)) {
+			StellaTower.LOGGER.warn("[TOWER] a floor carries plan version {}, newer than this mod's newest, {}: it is served the version {} plan and may not match its blocks",
+				version, VERSION, VERSION);
+		}
+	}
+
+	/** Whether a warning has been logged for a plan version newer than this mod knows. */
+	static boolean warnedAbout(final int version) {
+		return WARNED.contains(version);
+	}
+
+	/** Forgets every cached plan, and which unknown versions have been warned of, as a stopped server does. */
+	static void clearCache() {
+		synchronized (CACHE_MAP) {
+			CACHE_MAP.clear();
+		}
+		WARNED.clear();
 	}
 
 	/** The plan of a floor built before there were plans: the classic layout. Pure and cached. */

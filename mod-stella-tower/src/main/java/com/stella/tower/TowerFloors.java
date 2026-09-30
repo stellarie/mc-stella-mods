@@ -51,6 +51,17 @@ public final class TowerFloors {
 				QUEUE.clear();
 			}
 		});
+		// The caches are keyed by seed and floor, not by world: one JVM can host another world after this one stops
+		// (a single player leaving one save for another), so nothing decided here may outlive the server.
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> clearCaches());
+	}
+
+	/** Forgets every plan and every built floor's decision, as a stopped server does. */
+	static void clearCaches() {
+		synchronized (BUILT_VERSIONS) {
+			BUILT_VERSIONS.clear();
+		}
+		TowerPlan.clearCache();
 	}
 
 	/** Queues a floor to be built in the background, unless it stands or is queued already. */
@@ -150,19 +161,22 @@ public final class TowerFloors {
 
 	/**
 	 * The plan version of a floor that stands, or -1 for one that does not yet. A standing floor's version is
-	 * read from its blocks once and kept, so a sweep that asks for the plan of every mob's floor reads none.
+	 * read from its blocks once and kept, so a sweep that asks for the plan of every mob's floor reads none of its
+	 * markers (one block, the floor's own, tells that it stands).
 	 * A floor not yet standing is never remembered, so one going up is never taken for an old one.
 	 */
 	static int builtVersion(final ServerLevel tower, final int floor) {
+		// Whether the floor stands is asked first, of this world's blocks: a remembered decision is only ever served
+		// for a floor that stands, so a cache built in another world, or before a floor was cleared, is never believed.
+		if (!isBuilt(tower, floor)) {
+			return -1;
+		}
 		Built key = new Built(tower.getSeed(), floor);
 		synchronized (BUILT_VERSIONS) {
 			Integer known = BUILT_VERSIONS.get(key);
 			if (known != null) {
 				return known;
 			}
-		}
-		if (!isBuilt(tower, floor)) {
-			return -1;
 		}
 		int version = planVersion(tower, floor);
 		synchronized (BUILT_VERSIONS) {

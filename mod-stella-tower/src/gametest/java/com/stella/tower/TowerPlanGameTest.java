@@ -388,10 +388,12 @@ public class TowerPlanGameTest {
 		}
 		TowerFloors.forget(floor);
 		int restored = TowerFloors.planVersion(tower, floor);
+		boolean warned = TowerPlan.warnedAbout(TowerPlan.VERSION + extra) && !TowerPlan.warnedAbout(TowerPlan.VERSION);
 		TowerTestSupport.result("markerVersion", "floor=" + floor + " read=" + later + " served=" + served + " current=" + TowerPlan.VERSION + " restored=" + restored
-			+ " sameAsCurrent=" + sameAsBefore + " zeroIsLegacy=" + legacyOfZero);
+			+ " sameAsCurrent=" + sameAsBefore + " zeroIsLegacy=" + legacyOfZero + " warnedOfLater=" + warned);
 		helper.assertTrue(later == TowerPlan.VERSION + extra, "the stacked markers read as version " + later + ", not " + (TowerPlan.VERSION + extra));
 		helper.assertTrue(served == TowerPlan.VERSION, "a marker from a later generator was served the version " + served + " plan");
+		helper.assertTrue(warned, "a plan version newer than this mod knows was served with no warning logged");
 		helper.assertTrue(restored == TowerPlan.VERSION, "the markers were not put back");
 		helper.assertTrue(sameAsBefore && legacyOfZero, "the plan of a named version is not the plan of that generator");
 		helper.succeed();
@@ -399,21 +401,89 @@ public class TowerPlanGameTest {
 
 	/**
 	 * Whether a floor is old or planned is decided once it stands, and kept: the per-mob sweeps ask for the
-	 * plan often and must not read blocks each time. The floor's markers are cleared to show the decision is kept.
+	 * plan often and must not read the plan markers each time. The floor's plan markers are cleared, its own
+	 * built marker left, to show the decision is kept.
 	 */
 	@GameTest
 	public void theDecisionForABuiltFloorIsKept(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
-		TowerFloors.ensure(tower, floor, TowerPlan.legacy(tower.getSeed(), floor));
+		TowerFloors.ensure(tower, floor);
 		int first = TowerPlan.at(tower, floor).version();
-		tower.setBlock(TowerFloors.marker(floor), Blocks.AIR.defaultBlockState(), 2);
+		for (int i = 0; i < TowerPlan.VERSION; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(i), Blocks.AIR.defaultBlockState(), 2);
+		}
 		int second = TowerPlan.at(tower, floor).version();
-		tower.setBlock(TowerFloors.marker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
-		TowerTestSupport.result("decisionKept", "floor=" + floor + " first=" + first + " second=" + second);
-		helper.assertTrue(first == 0, "a floor built the old way was read as version " + first);
-		helper.assertTrue(second == 0, "the decision was made again from the blocks: version " + second);
+		TowerFloors.forget(floor);
+		int reread = TowerPlan.at(tower, floor).version();
+		for (int i = 0; i < TowerPlan.VERSION; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(i), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
+		}
+		TowerFloors.forget(floor);
+		TowerTestSupport.result("decisionKept", "floor=" + floor + " first=" + first + " second=" + second + " rereadAfterForget=" + reread);
+		helper.assertTrue(first == TowerPlan.VERSION, "a floor built to the plan was read as version " + first);
+		helper.assertTrue(second == TowerPlan.VERSION, "the decision was made again from the blocks: version " + second);
+		helper.assertTrue(reread == 0, "the seam does not make the floor be read again: version " + reread);
 		helper.succeed();
+	}
+
+	/**
+	 * A remembered decision is only served for a floor that stands: a floor whose built marker is gone (another world
+	 * with the same seed, or a floor cleared) is met with the current plan, not the plan remembered for it.
+	 */
+	@GameTest
+	public void aRememberedDecisionIsNotServedForAFloorThatDoesNotStand(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
+		TowerFloors.ensure(tower, floor, TowerPlan.legacy(tower.getSeed(), floor));
+		int standing = TowerPlan.at(tower, floor).version();
+		tower.setBlock(TowerFloors.marker(floor), Blocks.AIR.defaultBlockState(), 2);
+		int gone = TowerPlan.at(tower, floor).version();
+		tower.setBlock(TowerFloors.marker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
+		int back = TowerPlan.at(tower, floor).version();
+		TowerTestSupport.result("decisionNeedsAFloor", "floor=" + floor + " standing=" + standing + " gone=" + gone + " back=" + back);
+		helper.assertTrue(standing == 0, "a floor built the old way was read as version " + standing);
+		helper.assertTrue(gone == TowerPlan.VERSION, "a floor that does not stand was served the remembered version " + gone);
+		helper.assertTrue(back == 0, "the floor's decision was lost: version " + back);
+		helper.succeed();
+	}
+
+	/** The caches a stopped server clears: a decision remembered for a floor is read again afterwards. */
+	@GameTest
+	public void clearingTheCachesReadsAFloorsBlocksAgain(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerMaze.hall(f) == 0);
+		TowerFloors.ensure(tower, floor);
+		TowerPlan cached = TowerPlan.of(tower.getSeed(), floor);
+		int before = TowerPlan.at(tower, floor).version();
+		for (int i = 0; i < TowerPlan.VERSION; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(i), Blocks.AIR.defaultBlockState(), 2);
+		}
+		int kept = TowerPlan.at(tower, floor).version();
+		TowerFloors.clearCaches();
+		int after = TowerPlan.at(tower, floor).version();
+		TowerPlan again = TowerPlan.of(tower.getSeed(), floor);
+		for (int i = 0; i < TowerPlan.VERSION; i++) {
+			tower.setBlock(TowerFloors.planMarker(floor).below(i), TowerBlocks.TOWER_WALL.defaultBlockState(), 2);
+		}
+		TowerFloors.forget(floor);
+		TowerTestSupport.result("cachesCleared", "floor=" + floor + " before=" + before + " kept=" + kept + " after=" + after + " planRebuilt=" + (again != cached)
+			+ " planEqual=" + again.equals(cached));
+		helper.assertTrue(before == TowerPlan.VERSION && kept == TowerPlan.VERSION, "the setup does not hold: before " + before + ", kept " + kept);
+		helper.assertTrue(after == 0, "the cleared cache still served version " + after + " for a floor whose markers are gone");
+		helper.assertTrue(again != cached && java.util.Arrays.deepEquals(again.walls(), cached.walls()), "the plan cache was not cleared, or the plan drawn again differs");
+		helper.succeed();
+	}
+
+	/**
+	 * Not required: the harness cannot stop the server. The caches are cleared by {@code TowerFloors.clearCaches},
+	 * which is tested above, on {@code SERVER_STOPPED}, which is not. Manual item: leave a world and open another in
+	 * the same session and check the second world's first floors are drawn to their own seed (the log carries no
+	 * cached-plan lines to read; watch for a floor that does not match its neighbour's plan).
+	 */
+	@GameTest(required = false)
+	public void theCachesAreClearedWhenTheServerStopsRequiresManualTest(final GameTestHelper helper) {
+		helper.fail("a server stop cannot be run inside the game test harness: the clearing itself is tested, its registration is not");
 	}
 
 	private static void legacyKeeps(final GameTestHelper helper, final String name, final int floor) {

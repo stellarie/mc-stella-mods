@@ -637,4 +637,17 @@ gone and you stand at your bed or the world spawn.
   sweep", which measures the wrong thing and failed one run in about six.
 - One older test placed a mob inside the arrival zone (`mobsOnALitWayAreEnraged`); the sweep sent it off the
   lit way, so it now stands on the first step of the way outside the zones.
+- A second review finding (fast bosses): a boss that drives four blocks into the room between two sweeps was sent to
+  the nearest spot outside, which is the far door. The sweep now sends a mob back to where it was last seen outside a
+  zone (a sighting kept for two sweeps), and only without one to the nearest spot (`sentBack`, `bossAtDoor`).
+
+## Change: F2 review follow-ups (2026-09-30, with slice F3)
+
+- Version cache: `builtVersion` checks `isBuilt` before serving a remembered decision; `TowerFloors.clearCaches` (plans,
+  decisions, unknown-version warnings) runs on `SERVER_STOPPED`. Its registration is a manual item
+  (`theCachesAreClearedWhenTheServerStopsRequiresManualTest`); the clearing itself is tested.
+- An unknown newer plan version is served the newest known plan and warned of once per version.
+- Walk tests over hundreds of plans and over built floors (see the README); plinth mutation proven.
+- `theDecisionForABuiltFloorIsKept` now clears the plan markers and keeps the built marker (the built marker is the
+  first thing asked now); `aRememberedDecisionIsNotServedForAFloorThatDoesNotStand` covers the old case.
 
