@@ -51,10 +51,29 @@ public final class TowerItems {
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.rage").withStyle(net.minecraft.ChatFormatting.RED))))
 	));
 
+	public static final Identifier VOID_INGOT_ID = StellaTower.id("void_ingot");
+	public static final Item VOID_INGOT = Registry.register(BuiltInRegistries.ITEM, VOID_INGOT_ID, new Item(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, VOID_INGOT_ID)).rarity(Rarity.EPIC)
+	));
+	public static final Item VOID_SWORD = voidGear("void_sword", new Item.Properties().sword(VoidGear.TOOL, VoidGear.SWORD_DAMAGE, VoidGear.SWORD_SPEED));
+	public static final Item VOID_HELMET = voidGear("void_helmet", new Item.Properties().humanoidArmor(VoidGear.ARMOR, net.minecraft.world.item.equipment.ArmorType.HELMET));
+	public static final Item VOID_CHESTPLATE = voidGear("void_chestplate", new Item.Properties().humanoidArmor(VoidGear.ARMOR, net.minecraft.world.item.equipment.ArmorType.CHESTPLATE));
+	public static final Item VOID_LEGGINGS = voidGear("void_leggings", new Item.Properties().humanoidArmor(VoidGear.ARMOR, net.minecraft.world.item.equipment.ArmorType.LEGGINGS));
+	public static final Item VOID_BOOTS = voidGear("void_boots", new Item.Properties().humanoidArmor(VoidGear.ARMOR, net.minecraft.world.item.equipment.ArmorType.BOOTS));
+
+	private static Item voidGear(final String path, final Item.Properties properties) {
+		Identifier id = StellaTower.id(path);
+		return Registry.register(BuiltInRegistries.ITEM, id, new Item(properties.setId(ResourceKey.create(Registries.ITEM, id)).rarity(Rarity.EPIC).fireResistant()));
+	}
+
 	/** A ghost rune set into a chestplate or a weapon. */
 	public static final DataComponentType<net.minecraft.util.Unit> GHOSTED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ghosted"),
 		DataComponentType.<net.minecraft.util.Unit>builder().persistent(net.minecraft.util.Unit.CODEC)
 			.networkSynchronized(net.minecraft.network.codec.StreamCodec.unit(net.minecraft.util.Unit.INSTANCE)).build());
+
+	/** What a piece of gear or a spellbook has counted in the tower: its kills and the ascension they earned. */
+	public static final DataComponentType<TowerGrowth.Ascension> ASCENDED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ascended"),
+		DataComponentType.<TowerGrowth.Ascension>builder().persistent(TowerGrowth.Ascension.CODEC).networkSynchronized(TowerGrowth.Ascension.STREAM_CODEC).build());
 
 	public static final DataComponentType<RuneData> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
 		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());

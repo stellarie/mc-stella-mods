@@ -1,0 +1,4 @@
+# The contract hash is the SHA-256 of these exact bytes, so no line-ending conversion may touch them.
+src/main/resources/policies/*.json -text
+src/gametest/resources/policies/test/* -text
+*.bin binary

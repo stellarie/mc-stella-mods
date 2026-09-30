@@ -8,6 +8,9 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.spells.Spellbooks"
+		],
+		"client": [
+			"com.stella.spells.QuickSlotsClient"
 		]
 	},
 	"mixins": [

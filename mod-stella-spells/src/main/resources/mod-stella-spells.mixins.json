@@ -11,7 +11,9 @@
 		"AreaEffectCloudAccessor",
 		"MobGoalsAccessor",
 		"SummonGolemMixin",
-		"SummonPortalMixin"
+		"SummonPortalMixin",
+		"InventoryMenuMixin",
+		"InventoryDropAllMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

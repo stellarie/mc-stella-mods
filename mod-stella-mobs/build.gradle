@@ -50,6 +50,9 @@ java {
 }
 
 tasks.named('runGameTest') {
+	// The game test arenas sit about ten million blocks from 0,0, so the rig measures scaling distance from the level's
+	// spawn. Play never sets this: the shipped game measures from 0,0. The scaling tests switch it off to prove that.
+	systemProperty 'stella.mobs.scalingOrigin', 'worldSpawn'
 	if (project.hasProperty('gameTestFilter')) {
 		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
 	}

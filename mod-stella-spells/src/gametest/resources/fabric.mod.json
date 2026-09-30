@@ -26,8 +26,10 @@
 			"com.stella.spells.MobSpellsGameTest",
 			"com.stella.spells.SummonSkeletonGameTest",
 			"com.stella.spells.DoublecastGameTest",
+			"com.stella.spells.TowerBridgeGameTest",
 			"com.stella.spells.ClueBooksGameTest",
-			"com.stella.spells.ImbueExpansionGameTest"
+			"com.stella.spells.ImbueExpansionGameTest",
+			"com.stella.spells.QuickSlotsGameTest"
 		]
 	},
 	"depends": {

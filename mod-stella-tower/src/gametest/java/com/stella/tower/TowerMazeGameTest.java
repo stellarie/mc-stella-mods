@@ -3,6 +3,7 @@ package com.stella.tower;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -79,39 +80,59 @@ public class TowerMazeGameTest {
 		helper.succeed();
 	}
 
-	/** Every open spot lies in some open two by two: no path narrower than two blocks. */
+	/** Whether an open square of this side has this spot in it. */
+	private static boolean inOpenSquare(final boolean[][] open, final int x, final int z, final int side) {
+		for (int ax = x - side + 1; ax <= x; ax++) {
+			for (int az = z - side + 1; az <= z; az++) {
+				if (ax < 0 || az < 0 || ax + side > S || az + side > S) {
+					continue;
+				}
+				boolean whole = true;
+				for (int dx = 0; dx < side && whole; dx++) {
+					for (int dz = 0; dz < side && whole; dz++) {
+						whole = open[ax + dx][az + dz];
+					}
+				}
+				if (whole) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Paths are mostly as wide as the shipped path, and none is narrower than the shipped minimum. */
 	@GameTest
-	public void everyPathIsTwoBlocksWide(final GameTestHelper helper) {
+	public void everyPathIsWideEnough(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = ordinaryFloor(tower);
 		boolean[][] open = open(tower, floor);
+		BlockPos o = TowerLayout.origin(floor);
+		// The portal's own slot is no path.
+		java.util.Set<Long> slot = TowerLayout.portalInside(floor).stream().map(pos -> ((long) (pos.getX() - o.getX()) << 32) | (pos.getZ() - o.getZ())).collect(java.util.stream.Collectors.toSet());
 		int narrow = 0;
+		int notFull = 0;
 		int spots = 0;
 		BlockPos first = null;
 		for (int x = 0; x < S; x++) {
 			for (int z = 0; z < S; z++) {
-				if (!open[x][z]) {
+				// The portal's slot and the safe zones, workstations and all, are no paths.
+				if (!open[x][z] || slot.contains(((long) x << 32) | z) || TowerMaze.inSafeZone(floor, x, z)) {
 					continue;
 				}
 				spots++;
-				boolean wide = false;
-				for (int dx = -1; dx <= 0 && !wide; dx++) {
-					for (int dz = -1; dz <= 0 && !wide; dz++) {
-						int ax = x + dx;
-						int az = z + dz;
-						wide = ax >= 0 && az >= 0 && ax + 1 < S && az + 1 < S
-							&& open[ax][az] && open[ax + 1][az] && open[ax][az + 1] && open[ax + 1][az + 1];
-					}
-				}
-				if (!wide) {
+				if (!inOpenSquare(open, x, z, TowerMaze.MIN_PATH)) {
 					narrow++;
 					first = first == null ? new BlockPos(x, 0, z) : first;
 				}
+				notFull += inOpenSquare(open, x, z, TowerMaze.PATH) ? 0 : 1;
 			}
 		}
-		TowerTestSupport.result("twoWide", "spots=" + spots + " narrow=" + narrow + " first=" + first);
+		double full = 1.0 - notFull / (double) spots;
+		TowerTestSupport.result("pathWidth", "path=" + TowerMaze.PATH + " min=" + TowerMaze.MIN_PATH + " spots=" + spots + " narrow=" + narrow + " fullShare=" + full + " first=" + first);
 		helper.assertTrue(spots < S * S, "the floor has no walls, so the case proves nothing");
-		helper.assertTrue(narrow == 0, narrow + " spots of floor " + floor + " lie on a path narrower than two, first at " + first);
+		helper.assertTrue(narrow == 0, narrow + " spots of floor " + floor + " lie on a path narrower than " + TowerMaze.MIN_PATH + ", first at " + first);
+		helper.assertTrue(full >= 0.9, "only " + full + " of the open spots lie on a path " + TowerMaze.PATH + " wide");
 		helper.succeed();
 	}
 
@@ -173,6 +194,27 @@ public class TowerMazeGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
 		helper.assertTrue(TowerMaze.hall(floor) == TowerMaze.BOSS_HALL, "a boss floor's hall is " + TowerMaze.hall(floor));
 		hallAndPortal(helper, floor, TowerMaze.BOSS_HALL, "bossHall");
+	}
+
+	/**
+	 * A boss floor's hall is walled exactly at its edge: the ring of blocks just outside it is solid but for
+	 * the one door into the safe room, so no sliver of the grid's cells is left standing beside it.
+	 */
+	@GameTest
+	public void aBossHallIsWalledExactlyAtItsEdge(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		TowerFloors.ensure(tower, floor);
+		boolean[][] open = open(tower, floor);
+		int low = S / 2 - TowerMaze.BOSS_HALL / 2;
+		int high = low + TowerMaze.BOSS_HALL;
+		int ring = 0;
+		for (int t = low; t < high; t++) {
+			ring += (open[low - 1][t] ? 1 : 0) + (open[high][t] ? 1 : 0) + (open[t][low - 1] ? 1 : 0) + (open[t][high] ? 1 : 0);
+		}
+		TowerTestSupport.result("bossHallRing", "floor=" + floor + " ringOpen=" + ring + " door=" + TowerMaze.PATH);
+		helper.assertTrue(ring == TowerMaze.PATH, ring + " blocks of the ring round boss floor " + floor + "'s hall stand open, not just its " + TowerMaze.PATH + " wide door");
+		helper.succeed();
 	}
 
 	@GameTest

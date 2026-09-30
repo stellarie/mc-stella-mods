@@ -24,8 +24,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,8 +48,11 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -62,13 +68,25 @@ public final class MissionService {
 	/** Health a Nemesis carries on top of its type's own. */
 	public static final double NEMESIS_BONUS_HEALTH = 100.0;
 	public static final int NEMESIS_ENRAGE_DURATION = 200;
+	/** A Nemesis pays this many stacks of emeralds, and this many random potions. */
+	public static final int REWARD_EMERALD_STACKS = 2;
+	public static final int REWARD_POTIONS = 2;
+	public static final int REWARD_BONUS_DIAMONDS = 32;
+	/** Chance of the bonus diamonds, and separately of one piece of the Nemesis's gear. */
+	public static final float REWARD_BONUS_CHANCE = 0.05F;
+	/** Chance of one ancient debris, rolled apart from the diamonds and the gear. */
+	public static final float REWARD_DEBRIS_CHANCE = 0.001F;
+	/** The item tag of the spells mod's books; resolved by id so this mod has no link to it. */
+	public static final Identifier SPELL_BOOK_TAG = Identifier.parse("mod-stella-spells:spellbooks");
 
 	/** How many contracts a head offers at once, each a different kind. */
 	public static final int OFFERS_PER_BOARD = 3;
-	/** A dragon out of its own End fight has no fight to fly, so it is the one kind never offered. */
-	/** Types unsuitable for a land-based hostile contract, including neutral monsters. */
+	/** Types unsuitable for a land-based hostile contract, including neutral monsters and bosses. */
 	public static final Set<Identifier> NEVER_OFFERED = Set.of(
-		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:guardian"), Identifier.parse("minecraft:elder_guardian"),
+		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:wither"),
+		Identifier.parse("minecraft:creeper"), Identifier.parse("minecraft:endermite"), Identifier.parse("minecraft:silverfish"),
+		Identifier.parse("minecraft:blaze"), Identifier.parse("minecraft:phantom"), Identifier.parse("minecraft:ghast"),
+		Identifier.parse("minecraft:guardian"), Identifier.parse("minecraft:elder_guardian"),
 		Identifier.parse("minecraft:snow_golem"), Identifier.parse("minecraft:tadpole"),
 		Identifier.parse("minecraft:creaking"), Identifier.parse("minecraft:enderman"),
 		Identifier.parse("minecraft:piglin"), Identifier.parse("minecraft:zombified_piglin"),
@@ -82,6 +100,8 @@ public final class MissionService {
 	);
 	/** Test seam: the kinds a board draws from; null draws from eligible spawn-egg kinds. */
 	private static volatile @Nullable List<Identifier> offerPool;
+	/** Test seam: the spell books a reward draws from; null reads the spells mod's item tag. */
+	private static volatile @Nullable List<Item> spellBookPool;
 	private static final Map<UUID, MissionBoard> BOARDS = new ConcurrentHashMap<>();
 	private static final Map<UUID, Mob> ACTIVE_NEMESES = new ConcurrentHashMap<>();
 	private static final Map<UUID, String> LAST_REJECTIONS = new ConcurrentHashMap<>();
@@ -512,23 +532,87 @@ public final class MissionService {
 			"[BEHAVIOR] mod={} event=nemesis_killed mission={} entity={} killer={}",
 			McStellaVillages.MOD_ID, mission.id(), nemesis.getUUID(), source.getEntity() == null ? "unknown" : source.getEntity().getUUID()
 		);
-		drop(level, nemesis, new ItemStack(Items.EMERALD, 64));
-		drop(level, nemesis, new ItemStack(Items.DIAMOND, 32));
-		drop(level, nemesis, new ItemStack(Items.ANCIENT_DEBRIS, 1));
-		drop(level, nemesis, NemesisHead.create(mission.targetType()));
-		ItemStack equipmentReward = rollEquipmentReward(nemesis, nemesis.getRandom());
-		if (!equipmentReward.isEmpty()) {
-			drop(level, nemesis, equipmentReward);
-		}
+		List<ItemStack> reward = rollReward(level, nemesis, nemesis.getRandom());
+		reward.forEach(stack -> drop(level, nemesis, stack));
 		data.removeMission(mission.id());
 		McStellaVillages.LOGGER.info(
-			"[BEHAVIOR] mod={} event=mission_reward mission={} owner={} emeralds=64 diamonds=32 ancient_debris=1 head={} equipment_roll={}",
-			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), mission.targetType(), !equipmentReward.isEmpty()
+			"[BEHAVIOR] mod={} event=mission_reward mission={} owner={} emerald_stacks={} potions={} book={} diamonds={} ancient_debris={} items={}",
+			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), REWARD_EMERALD_STACKS, REWARD_POTIONS,
+			reward.get(0).getItem(), rewardCount(reward, Items.DIAMOND),
+			rewardCount(reward, Items.ANCIENT_DEBRIS), reward.size()
 		);
 	}
 
+	private static int rewardCount(final List<ItemStack> reward, final Item item) {
+		return reward.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+	}
+
+	/**
+	 * What a Nemesis pays: one book first, then the emeralds and potions, then the rare rolls. Each rare
+	 * roll is independent, so a Nemesis can pay any of them or none.
+	 */
+	public static List<ItemStack> rollReward(final ServerLevel level, final Mob nemesis, final RandomSource random) {
+		List<ItemStack> reward = new ArrayList<>();
+		reward.add(rewardBook(level, random, random.nextBoolean()));
+		for (int stack = 0; stack < REWARD_EMERALD_STACKS; stack++) {
+			reward.add(new ItemStack(Items.EMERALD, Items.EMERALD.getDefaultMaxStackSize()));
+		}
+		for (int potion = 0; potion < REWARD_POTIONS; potion++) {
+			reward.add(rewardPotion(random));
+		}
+		reward.addAll(rollRareRewards(nemesis, random));
+		return reward;
+	}
+
+	/** The three independent rare rolls: diamonds, one ancient debris, and one piece of the Nemesis's gear. */
+	public static List<ItemStack> rollRareRewards(final Mob nemesis, final RandomSource random) {
+		List<ItemStack> rare = new ArrayList<>();
+		if (random.nextFloat() < REWARD_BONUS_CHANCE) {
+			rare.add(new ItemStack(Items.DIAMOND, REWARD_BONUS_DIAMONDS));
+		}
+		if (random.nextFloat() < REWARD_DEBRIS_CHANCE) {
+			rare.add(new ItemStack(Items.ANCIENT_DEBRIS));
+		}
+		ItemStack equipment = rollEquipmentReward(nemesis, random);
+		if (!equipment.isEmpty()) {
+			rare.add(equipment);
+		}
+		return rare;
+	}
+
+	/** A spell book when asked for one and the spells mod has any; an enchanted book otherwise. */
+	public static ItemStack rewardBook(final ServerLevel level, final RandomSource random, final boolean spellBook) {
+		if (spellBook) {
+			List<Item> books = spellBooks(level);
+			if (!books.isEmpty()) {
+				return new ItemStack(books.get(random.nextInt(books.size())));
+			}
+		}
+		return NemesisHead.randomEnchantedBook(level, random);
+	}
+
+	private static List<Item> spellBooks(final ServerLevel level) {
+		List<Item> pool = spellBookPool;
+		if (pool != null) {
+			return pool;
+		}
+		return level.registryAccess().lookupOrThrow(Registries.ITEM).get(TagKey.create(Registries.ITEM, SPELL_BOOK_TAG))
+			.map(tag -> tag.stream().map(holder -> holder.value()).toList()).orElse(List.of());
+	}
+
+	/** A drinkable potion that does something: water, awkward, mundane and thick are left out. */
+	public static ItemStack rewardPotion(final RandomSource random) {
+		List<Holder.Reference<Potion>> potions = BuiltInRegistries.POTION.listElements()
+			.filter(holder -> !holder.value().getEffects().isEmpty()).toList();
+		return PotionContents.createItemStack(Items.POTION, potions.get(random.nextInt(potions.size())));
+	}
+
+	public static void setSpellBookPool(final @Nullable List<Item> pool) {
+		spellBookPool = pool == null ? null : List.copyOf(pool);
+	}
+
 	public static ItemStack rollEquipmentReward(final Mob nemesis, final RandomSource random) {
-		if (random.nextFloat() >= 0.10F) {
+		if (random.nextFloat() >= REWARD_BONUS_CHANCE) {
 			return ItemStack.EMPTY;
 		}
 		List<ItemStack> pieces = new ArrayList<>();

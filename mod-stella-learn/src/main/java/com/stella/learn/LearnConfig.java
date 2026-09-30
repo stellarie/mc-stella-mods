@@ -12,7 +12,8 @@ public record LearnConfig(
 	double retreatSaturation, double chokeThreshold, int chokeGroup, int chokePatienceTicks, int chokeRestTicks,
 	boolean behaviorLog, int logSummaryTicks, boolean calloutFx,
 	double moveSaturation, double moveThreshold, int interceptLeadTicks, double critSaturation, double chargeTighten,
-	double rlAlpha, double rlEpsilon, int rlWindowTicks
+	double rlAlpha, double rlEpsilon, int rlWindowTicks,
+	boolean modelArcher, int modelActLogTicks
 ) {
 	public static final double DEFAULT_CALLOUT_RADIUS = 24.0;
 	public static final int DEFAULT_MAX_RESPONDERS = 4;
@@ -67,6 +68,12 @@ public record LearnConfig(
 	public static final double DEFAULT_RL_EPSILON = 0.05;
 	/** Ticks after a tactic is chosen over which its outcome is measured. */
 	public static final int DEFAULT_RL_WINDOW_TICKS = 30;
+	/** Whether a trained model may drive a bow archer, when one is loaded. Off keeps every archer on its goals. */
+	public static final boolean DEFAULT_MODEL_ARCHER = true;
+	/** Ticks between two `learnModel ACT` lines per model-driven mob; 0 switches them off. */
+	public static final int DEFAULT_MODEL_ACT_LOG_TICKS = 20;
+	static final String MODEL_ARCHER = "model_archer";
+	static final String MODEL_ACT_LOG_TICKS = "model_act_log_ticks";
 	static final String CALLOUT_RADIUS = "callout_radius";
 	static final String MAX_RESPONDERS = "max_responders";
 	static final String CALLOUT_COOLDOWN_TICKS = "callout_cooldown_ticks";
@@ -104,7 +111,8 @@ public record LearnConfig(
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
 			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
-			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, this.modelActLogTicks);
 	}
 
 	public LearnConfig withMaxResponders(final int value) {
@@ -114,7 +122,8 @@ public record LearnConfig(
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
 			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
-			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, this.modelActLogTicks);
 	}
 
 	public LearnConfig withCalloutCooldownTicks(final int value) {
@@ -124,7 +133,30 @@ public record LearnConfig(
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
 			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
-			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, this.modelActLogTicks);
+	}
+
+	public LearnConfig withModelArcher(final boolean value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
+			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			value, this.modelActLogTicks);
+	}
+
+	public LearnConfig withModelActLogTicks(final int value) {
+		return new LearnConfig(this.calloutRadius, this.maxResponders, this.calloutCooldownTicks, this.profileHalfLifeTicks, this.rushBandGain,
+			this.rushSaturation, this.shieldSaturation, this.shieldThreshold, this.shieldPatienceTicks, this.shieldRestTicks,
+			this.rangedSaturation, this.coverThreshold, this.coverRestTicks,
+			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
+			this.behaviorLog, this.logSummaryTicks, this.calloutFx,
+			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, value);
 	}
 
 	public LearnConfig withBehaviorLog(final boolean value) {
@@ -134,7 +166,8 @@ public record LearnConfig(
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
 			value, this.logSummaryTicks, this.calloutFx,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
-			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, this.modelActLogTicks);
 	}
 
 	public LearnConfig withCalloutFx(final boolean value) {
@@ -144,7 +177,8 @@ public record LearnConfig(
 			this.retreatSaturation, this.chokeThreshold, this.chokeGroup, this.chokePatienceTicks, this.chokeRestTicks,
 			this.behaviorLog, this.logSummaryTicks, value,
 			this.moveSaturation, this.moveThreshold, this.interceptLeadTicks, this.critSaturation, this.chargeTighten,
-			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks);
+			this.rlAlpha, this.rlEpsilon, this.rlWindowTicks,
+			this.modelArcher, this.modelActLogTicks);
 	}
 
 	public static LearnConfig defaults() {
@@ -156,7 +190,8 @@ public record LearnConfig(
 			DEFAULT_CHOKE_PATIENCE_TICKS, DEFAULT_CHOKE_REST_TICKS, DEFAULT_BEHAVIOR_LOG, DEFAULT_LOG_SUMMARY_TICKS,
 			DEFAULT_CALLOUT_FX, DEFAULT_MOVE_SATURATION, DEFAULT_MOVE_THRESHOLD, DEFAULT_INTERCEPT_LEAD_TICKS, DEFAULT_CRIT_SATURATION,
 			DEFAULT_CHARGE_TIGHTEN,
-			DEFAULT_RL_ALPHA, DEFAULT_RL_EPSILON, DEFAULT_RL_WINDOW_TICKS
+			DEFAULT_RL_ALPHA, DEFAULT_RL_EPSILON, DEFAULT_RL_WINDOW_TICKS,
+			DEFAULT_MODEL_ARCHER, DEFAULT_MODEL_ACT_LOG_TICKS
 		);
 	}
 
@@ -204,7 +239,9 @@ public record LearnConfig(
 			number(root, CHARGE_TIGHTEN, DEFAULT_CHARGE_TIGHTEN),
 			number(root, RL_ALPHA, DEFAULT_RL_ALPHA),
 			count(root, RL_EPSILON, DEFAULT_RL_EPSILON),
-			(int) number(root, RL_WINDOW_TICKS, DEFAULT_RL_WINDOW_TICKS)
+			(int) number(root, RL_WINDOW_TICKS, DEFAULT_RL_WINDOW_TICKS),
+			flag(root, MODEL_ARCHER, DEFAULT_MODEL_ARCHER),
+			(int) count(root, MODEL_ACT_LOG_TICKS, DEFAULT_MODEL_ACT_LOG_TICKS)
 		);
 	}
 

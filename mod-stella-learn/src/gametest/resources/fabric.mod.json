@@ -28,7 +28,14 @@
 			"com.stella.learn.TacticGoalGameTest",
 			"com.stella.learn.GymBotGameTest",
 			"com.stella.learn.GymArenaGameTest",
-			"com.stella.learn.GymWireGameTest"
+			"com.stella.learn.GymWireGameTest",
+			"com.stella.learn.ModelParityGameTest",
+			"com.stella.learn.ModelContractGameTest",
+			"com.stella.learn.ModelInstallGameTest",
+			"com.stella.learn.ModelFallbackGameTest",
+			"com.stella.learn.ModelFairnessGameTest",
+			"com.stella.learn.ModelCalloutGameTest",
+			"com.stella.learn.ModelPerfGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

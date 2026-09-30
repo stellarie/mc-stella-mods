@@ -23,7 +23,7 @@ import org.jspecify.annotations.Nullable;
  * accepting responders and a receiver's own survival line bound what one call can do.
  */
 public final class CalloutBoard {
-	/** One receiver's answer, with the reason a decline gives: cap, unknown_type, survival, cannot or busier. */
+	/** One receiver's answer, with the reason a decline gives: cap, unknown_type, model, survival, cannot or busier. */
 	public record Answer(UUID receiver, boolean accepted, String reason) {
 	}
 
@@ -103,6 +103,11 @@ public final class CalloutBoard {
 		CalloutHandler handler = CalloutTypes.get(callout.type());
 		if (handler == null) {
 			return new Answer(receiver.getUUID(), false, "unknown_type");
+		}
+
+		// A model-driven archer has no rally goal to answer with, and the model owns its survival.
+		if (receiver.entityTags().contains(StellaMobs.MODEL_DRIVEN_TAG)) {
+			return new Answer(receiver.getUUID(), false, "model");
 		}
 
 		if (receiver.getHealth() <= receiver.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {

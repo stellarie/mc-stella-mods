@@ -1,7 +1,7 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-28
+last_verified: 2026-09-29
 ---
 
 # Project Memory
@@ -20,6 +20,8 @@ This repository develops separate Fabric mods on their own integration branches:
 - `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
 - `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
 - `python scripts/build-release.py --list` - Print the current Gradle mod list as JSON. [verified: 2026-09-29] [source: command output]
+- `cd mc-stella-villages; .\gradlew.bat clean build` - Build villages and its required mobs jar. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; clean build]
+- `cd mc-stella-villages; .\gradlew.bat runGameTest --rerun` - Run villages GameTests with the mobs mod loaded. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; runGameTest --rerun]
 
 ## Architecture
 
@@ -35,8 +37,17 @@ This repository develops separate Fabric mods on their own integration branches:
 - `main` contains mobs, equips, spells, and villages source, including unfinished spells and villages changes. [status: active] [verified: 2026-09-26] [source: git ls-tree --name-only main]
 - Mob threat rolls persist their area level and variation through a Fabric attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/ThreatState.java; threatRollSurvivesEntitySave]
 - The server-wide lifetime threat maximum persists on the Overworld attachment. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/WorldThreatPeak.java; highestThreatPersistsAcrossDimensionsAndNeverFalls]
-- One spawn modifier per attribute combines threat level and the retained depth contribution. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
+- One spawn modifier per attribute combines threat level and the altitude contribution, which is nothing in the Nether and End. [status: active] [verified: 2026-09-28] [source: mod-stella-mobs/src/main/java/com/stella/mobs/scaling/SpawnScaling.java; SpawnScalingGameTest]
 - `main-food` was created from `origin/main` and tracks `origin/main-food`. [status: active] [verified: 2026-09-28] [source: git branch -vv main-food; git ls-remote --heads origin main-food]
+- Wild patrol pair rolls now use persisted 8x8 grid keys on the Overworld. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: mod-stella-mobs/src/main/java/com/stella/mobs/behavior/ChunkEncounters.java; build -x test -x runGameTest]
+- `main-villages` integrates `mc-stella-villages` work. [status: active] [verified: 2026-09-28] [source: git branch --list main-villages]
+- Villages requires `mod-stella-mobs` for Nemesis elite state. Its Gradle build builds the neighboring mobs jar. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; fabric.mod.json; clean build]
+- The village head guards an eight-block bell radius; bell rings teleport loaded members and grant five-minute Speed II and Strength II. [status: active] [verified: 2026-09-28] [source: HeadBellGuardGoal.java; BellRally.java; five combined GameTest runs]
+- Village witches patrol, heal damaged players, villagers, and members, and join bell rallies when spells are loaded. [status: active] [verified: 2026-09-28] [source: PatrolWitchSupportGoal.java; VillageWitchGameTest]
+- Killed Nemesis companions stay dead by mission ID, saved on the Overworld; missing live companions can be replaced. [status: active] [verified: 2026-09-28] [source: NemesisCompanionDeaths.java; killedEliteCompanionNeverRespawns; missingEliteCompanionIsReplaced]
+- Village witches use independent 100-tick support and hostile splash timers. Harmful splash effects apply only to hostile mobs. [status: active] [verified: 2026-09-28] [source: PatrolWitchPotionGoal.java; VillageWitchSplash.java; villageWitchSupportAndOffenseHaveSeparateTwoSecondTimers]
+- Version 3 village rosters request one head, one witch, and two melee Pillagers. Gameplay remains unverified while tests are paused. [status: uncertain] [verified: 2026-09-29] [source: PatrolService.java; VillageWorldData.java; build -x test -x runGameTest]
+- `main` contains the four published mod source trees. [status: active] [verified: 2026-09-28] [source: git ls-tree --name-only main; git log -1 main]
 
 ## Conventions
 
@@ -65,8 +76,22 @@ This repository develops separate Fabric mods on their own integration branches:
 - Minecraft 26.3 rejects `category: food` in crafting recipes -> use `misc`. [status: active] [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/repair-candidate-1-console.log]
 - Cake bypasses `Consumable` -> cover `CakeBlock.eat` when changing all-food rules. [status: active] [verified: 2026-09-28] [source: mod-stella-food/src/main/java/com/stella/food/mixin/CakeBlockMixin.java]
 - Fish buckets expose `FOOD` without `CONSUMABLE` -> require both before adding edible-food tooltips or generic cooking. [status: active] [verified: 2026-09-28] [source: FoodTooltipGameTest.java; FoodGameTest.java]
+- Older GameTests assert the retired ten-member roster -> update them before resuming the suite. [status: active] [verified: 2026-09-29] [source: VillagePatrolGameTest.java; PatrolVisualsGameTest.java]
+- Mock players created at the shared origin can steal a nearby attendance test -> place each player at its own test structure. [status: active] [verified: 2026-09-28] [source: VillageRaidGameTest.attendanceFollowsPlayerDistance]
+- Vanilla Harming heals undead mobs -> village-witch hostile Harming splash applies magic damage to them. [status: active] [verified: 2026-09-28] [source: VillageWitchSplash.java; harmingSplashDamagesUndeadHostiles]
+- `EntityType.getBaseClass()` does not identify hostile subclasses for village offer filtering -> instantiate candidate mobs in the server level. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; GameTest red and green runs]
+- Vanilla `randomTeleport` rejects safe stone floors through its extra block tag -> validate collision, then call `teleportTo`. [status: active] [verified: 2026-09-28] [source: mc-stella-villages/src/main/java/com/stella/villages/mission/MissionService.java; teleport GameTests]
 
 ## Decisions
+
+### 2026-09-29 - Biome, altitude and distance scaling from 0,0
+
+- Decision: Distance is measured from (0, 0) in every dimension at one Overworld level per 100 blocks and eight per 100 in the Nether and End, with bases 50 and 80. The roll is centred on +5 and reaches 25 either side. Damage is +4% per level. Biomes add flat levels from `rolls.biome_levels`. Altitude adds a health and damage multiplier from y=0, depth heavier than height, and never in the Nether or End. Elites start 500 blocks out, bosses 2,000, the elite chance gains 0.05 points per 100 blocks (cap 20), the spawn safety radius is 240 blocks around (0, 0), and natural hostile spawns are halved within 16 blocks of an elite and 32 of a boss.
+- Why: Oniichan's decisions of 2026-09-29, to keep the middle game from going trivial alongside other mods.
+- Alternatives: A ramp that phases the biome offset in with distance, and a distance cap, were offered and declined.
+- Evidence: `SpawnScalingGameTest`, `DistanceGatesGameTest` and `SpawnPressureGameTest`.
+- Deviation: The game test arenas sit about ten million blocks from (0, 0), so `runGameTest` sets `stella.mobs.scalingOrigin=worldSpawn` and the rig measures scaling distance from the level spawn. Play never sets it, and the scaling tests switch it off to prove the 0,0 origin.
+- Deviation: `spawn_safety_radius` in an existing `loadouts.json` is never rewritten, so a file that already says `1000.0` keeps it until edited by hand.
 
 ### 2026-09-28 - Uncapped distance threat with retained depth scaling
 
@@ -88,6 +113,11 @@ This repository develops separate Fabric mods on their own integration branches:
 - Why: The user requested every cooking operation in the crafting UI.
 - Alternatives: Direct right-click controls were superseded by the requested screen.
 - Evidence: `CookingStationMenu.java`, `CookingStationScreen.java`, and twenty-nine headless GameTests.
+### 2026-09-28 - Require mobs mod for Nemesis elite behavior
+- Decision: Villages requires the mobs mod and gives each Nemesis a durable elite companion.
+- Why: The elite characteristic is owned by the mobs mod and must persist across saves.
+- Alternatives: Keep the mobs mod optional and imitate its elite flag in villages.
+- Evidence: Oniichan's choice; `mc-stella-villages/src/main/resources/fabric.mod.json`; Nemesis GameTests.
 
 ### 2026-09-24 - Separate mod integration branches
 

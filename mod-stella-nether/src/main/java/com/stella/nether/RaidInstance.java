@@ -79,8 +79,12 @@ public final class RaidInstance {
 	public static final int CHASE_EVERY_TICKS = 20;
 	private static final net.minecraft.resources.Identifier CHASE_RANGE_MODIFIER = StellaNether.id("enraged_follow_range");
 	/** Every raid mob's health and damage, times this in normal and in hard. The Sovereign keeps its own. */
+	/** Every raid enemy's base health, before its mode's strength; the raid scales its own, and no threat level reaches them. */
+	public static final double MOB_BASE_HEALTH = 64.0;
 	public static final double NORMAL_STRENGTH = 1.25;
 	public static final double HARD_STRENGTH = 1.75;
+	/** The load phase the raid's own rules run in, after every other mod's. */
+	private static final net.minecraft.resources.Identifier AFTER_OTHER_MODS = StellaNether.id("after_other_mods");
 	public static final net.minecraft.resources.Identifier MODE_STRENGTH_ID = StellaNether.id("mode_strength");
 	/** The run a mob was enraged for. */
 	public static final AttachmentType<Integer> MOB_ENRAGED = AttachmentRegistry.createPersistent(StellaNether.id("raid_enraged"), Codec.INT);
@@ -119,9 +123,11 @@ public final class RaidInstance {
 		});
 		ServerTickEvents.END_SERVER_TICK.register(RaidInstance::tick);
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.player));
-		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+		// After every other mod's load handler, so the mobs mod's threat scaling is undone after it is applied.
+		ServerEntityEvents.ENTITY_LOAD.addPhaseOrdering(net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE, AFTER_OTHER_MODS);
+		ServerEntityEvents.ENTITY_LOAD.register(AFTER_OTHER_MODS, (entity, level) -> {
 			if (entity instanceof Mob mob && level.dimension().equals(RaidTravel.RAID)) {
-				raiseThreat(mob);
+				clearThreat(mob);
 			}
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
@@ -143,18 +149,19 @@ public final class RaidInstance {
 		((AttachmentTarget) server.overworld()).setAttached(STATE, state);
 	}
 
-	/** A player who logs in inside a run that has since closed is sent back the way they came. */
+	/**
+	 * A player who logs in inside the raid nether is sent back to the portal they came in by, whether their run
+	 * still lives or has closed. While it lives, they may walk back in through that portal and join it again.
+	 */
 	public static void onJoin(final ServerPlayer player) {
 		if (!player.level().dimension().equals(RaidTravel.RAID)) {
 			return;
 		}
 		RaidState state = state(player.level().getServer());
 		Boons held = player.getAttached(PLAYER_BOONS_HELD);
-		if (state.active() && held != null && held.run() == state.run()) {
-			return;
-		}
-		StellaNether.LOGGER.info("[NETHER] player={} returned to closed run={} now={}; sent out", player.getScoreboardName(),
-			held == null ? null : held.run(), state.run());
+		boolean live = state.active() && held != null && held.run() == state.run();
+		BehaviorLog.info("[NETHER] player={} reconnected in run={} now={} live={}; sent to their portal", player.getScoreboardName(),
+			held == null ? null : held.run(), state.run(), live);
 		player.teleport(RaidTravel.wayBack((ServerLevel) player.level(), player));
 	}
 
@@ -172,7 +179,7 @@ public final class RaidInstance {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid != null && elapsed >= ENRAGE_TICKS) {
 			if (elapsed == ENRAGE_TICKS) {
-				StellaNether.LOGGER.info("[NETHER] raid enraged run={}", state.run());
+				BehaviorLog.info("[NETHER] raid enraged run={}", state.run());
 				raid.players().forEach(player -> player.sendSystemMessage(
 					Component.translatable("message.mod-stella-nether.enraged").withStyle(ChatFormatting.DARK_RED)));
 			}
@@ -212,7 +219,7 @@ public final class RaidInstance {
 		set(server, new RaidState(old.run() + 1, false, Optional.empty(), RaidMode.NORMAL, 0L, false));
 		BlazeSovereign.closeBar(server);
 		BlazeSovereign.forget();
-		StellaNether.LOGGER.info("[NETHER] raid reset run={} next={} reason={}", old.run(), old.run() + 1, reason);
+		BehaviorLog.info("[NETHER] raid reset run={} next={} reason={}", old.run(), old.run() + 1, reason);
 	}
 
 	/** A player crossing in: into an empty raid they become its host with their mode; otherwise they join. */
@@ -222,7 +229,7 @@ public final class RaidInstance {
 		if (!state.active()) {
 			state = new RaidState(state.run(), true, Optional.of(player.getUUID()), requested, 0L, false);
 			set(server, state);
-			StellaNether.LOGGER.info("[NETHER] raid opened run={} host={} mode={}", state.run(), player.getScoreboardName(), requested);
+			BehaviorLog.info("[NETHER] raid opened run={} host={} mode={}", state.run(), player.getScoreboardName(), requested);
 		}
 		return state;
 	}
@@ -274,7 +281,7 @@ public final class RaidInstance {
 		List<Holder<MobEffect>> boons = draw(PLAYER_BOONS, PLAYER_BOONS_EACH, player.getRandom());
 		boons.forEach(effect -> player.addEffect(lasting(effect)));
 		player.setAttached(PLAYER_BOONS_HELD, new Boons(state.run(), boons));
-		StellaNether.LOGGER.debug("[NETHER] player={} boons={}", player.getScoreboardName(), boons);
+		BehaviorLog.info("[NETHER] player={} boons={}", player.getScoreboardName(), boons);
 	}
 
 	/** Takes back only a lasting effect, so a potion of the same kind drunk outside is left alone. */
@@ -298,20 +305,26 @@ public final class RaidInstance {
 	}
 
 	/**
-	 * The mobs mod reads the raid nether as a dimension with no threat floor, so a raid mob's roll is lifted to
-	 * start from the nether's; its own variation is kept, and it is scaled again to match.
+	 * The raid scales its own mobs, so no threat level reaches them: whatever the mobs mod rolled is set to none,
+	 * and the health and damage it scaled by it come off. Runs on every load, after the mobs mod's own.
 	 */
-	static void raiseThreat(final Mob mob) {
-		if (mob.entityTags().contains(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG)) {
-			return;
+	static void clearThreat(final Mob mob) {
+		mob.setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+		if (health != null) {
+			health.removeModifier(SpawnScaling.HEALTH_ID);
+			health.removeModifier(com.stella.mobs.behavior.Bosses.LEVEL_HEALTH_ID);
 		}
-		ThreatState state = ThreatState.getOrRoll(mob);
-		int floor = ThreatState.NETHER_MINIMUM - Math.min(0, state.variation());
-		if (state.areaLevel() >= floor) {
-			return;
+		if (damage != null) {
+			damage.removeModifier(SpawnScaling.DAMAGE_ID);
+			damage.removeModifier(com.stella.mobs.behavior.Bosses.LEVEL_DAMAGE_ID);
 		}
-		mob.setAttached(ThreatState.TYPE, new ThreatState(floor, state.variation()));
-		SpawnScaling.reconcileLoaded(mob);
+		// A hardened mob's extra health was sized on the threat's multiplier; it is sized again without it.
+		com.stella.mobs.behavior.Traits.refreshScaling(mob);
+		if (health != null && mob.getHealth() > mob.getMaxHealth()) {
+			mob.setHealth(mob.getMaxHealth());
+		}
 	}
 
 	/** Endless Speed and Strength, and a long reach for the hunt; once per run. */
@@ -356,6 +369,8 @@ public final class RaidInstance {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		boolean fresh = health != null && health.getModifier(MODE_STRENGTH_ID) == null;
 		if (health != null) {
+			// The raid's own base, the same for every enemy; the mode's strength and any rank sit on top of it.
+			health.setBaseValue(MOB_BASE_HEALTH);
 			health.addOrReplacePermanentModifier(modifier);
 		}
 		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);

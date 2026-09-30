@@ -41,6 +41,6 @@ public final class NetherItems {
 	}
 
 	public static void register() {
-		StellaNether.LOGGER.debug("Registered {} and {}", BLAZE_CORE_ID, FLAME_MANTLE_ID);
+		BehaviorLog.info("Registered {} and {}", BLAZE_CORE_ID, FLAME_MANTLE_ID);
 	}
 }

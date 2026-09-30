@@ -6,6 +6,7 @@ import com.stella.mobs.behavior.BossCompanion;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.BroodMother;
 import com.stella.mobs.behavior.Decay;
+import com.stella.mobs.behavior.DistanceGates;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.EliteKits;
@@ -25,12 +26,14 @@ import com.stella.mobs.behavior.ZombieAfflictions;
 import com.stella.mobs.behavior.RiderSquad;
 import com.stella.mobs.behavior.SecondPhase;
 import com.stella.mobs.behavior.SnowGolemCold;
+import com.stella.mobs.behavior.SpawnPressure;
 import com.stella.mobs.behavior.SpawnSafety;
 import com.stella.mobs.behavior.ChunkEncounters;
 import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.behavior.VoidDrag;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.config.WorldRules;
 import com.stella.mobs.config.Loadout;
 import com.stella.mobs.gear.EnchantRoller;
 import com.stella.mobs.gear.GearApplier;
@@ -64,6 +67,8 @@ public class StellaMobs implements ModInitializer {
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	/** A mob another mod drives entirely, such as the village witch or a summoned skeleton: this mod leaves its goals alone. */
 	public static final String NO_BEHAVIOR_TAG = "mod-stella-mobs.no_behavior";
+	/** Another mod drives this mob's movement and looking, so this mod must not move it. */
+	public static final String MODEL_DRIVEN_TAG = "mod-stella-mobs.model_driven";
 	public static final String MOD_ID = "mod-stella-mobs";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
@@ -128,6 +133,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.behavior.StrayKit.register();
 		com.stella.mobs.behavior.WitherPulse.register();
 		com.stella.mobs.behavior.DepthMobs.register();
+		SpawnPressure.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
@@ -166,21 +172,27 @@ public class StellaMobs implements ModInitializer {
 				state.setGearApplied(true);
 			}
 
-			// M3: a natural overworld spawn near the shared spawn takes no elite or boss roll.
-			boolean suppressed = SpawnSafety.suppresses(
-				mob, level, entity instanceof EntityLoadData spawnData ? spawnData.spawnReason() : null
-			);
+			// M3: a natural overworld spawn near 0,0 takes no elite or boss roll, and none takes one before its own
+			// first distance: elites from 500 blocks out, bosses from 2000.
+			EntitySpawnReason spawnReason = entity instanceof EntityLoadData spawnData ? spawnData.spawnReason() : null;
+			boolean suppressed = SpawnSafety.suppresses(mob, level, spawnReason);
+			WorldRules world = GearConfigStore.get().world();
+			boolean eliteAllowed = !suppressed
+				&& DistanceGates.eliteAllowed(level.dimension(), spawnReason, mob.getX(), mob.getZ(), world.eliteMinDistance());
+			boolean bossAllowed = !suppressed
+				&& DistanceGates.bossAllowed(level.dimension(), spawnReason, mob.getX(), mob.getZ(), world.bossMinDistance());
 
 			// B01 and B02: the boss roll runs before the elite roll, which returns at its own guard.
-			if (!suppressed) {
+			if (bossAllowed) {
 				Bosses.rollAtSpawn(mob, level, GearConfigStore.get().rollFor(entityType).bossChance());
 			}
 
-			if (!suppressed || Elite.isForced(mob)) {
-				// Surprise: under the Blood Moon the elite chance is tripled.
-				Elite.rollAtSpawn(
-					mob, level, BloodMoon.eliteChance(level, GearConfigStore.get().rollFor(entityType).eliteChance()), loadout == null
+			if (eliteAllowed || Elite.isForced(mob)) {
+				// The elite chance grows with distance from 0,0. Surprise: under the Blood Moon it is tripled.
+				double eliteChance = DistanceGates.eliteChance(
+					GearConfigStore.get().rollFor(entityType).eliteChance(), level.dimension(), mob.getX(), mob.getZ(), world
 				);
+				Elite.rollAtSpawn(mob, level, BloodMoon.eliteChance(level, eliteChance), loadout == null);
 			}
 
 			// P3 and P4: a glow squid and a pufferfish are not Enemies, so their roll lives here.
@@ -211,6 +223,11 @@ public class StellaMobs implements ModInitializer {
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
 
+		}
+
+		// A saved elite or boss quiets the spawns around it again as soon as it loads.
+		if (EliteState.hasEliteFlag(mob) || EliteState.hasBossFlag(mob)) {
+			SpawnPressure.watch(mob);
 		}
 
 		// B1: a boss joins its level's bar watch list here, which covers both the roll above and a boss

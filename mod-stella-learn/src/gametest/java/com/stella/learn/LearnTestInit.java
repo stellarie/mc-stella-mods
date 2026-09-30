@@ -1,5 +1,6 @@
 package com.stella.learn;
 
+import com.stella.learn.model.ModelDriver;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,8 @@ public final class LearnTestInit implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LearnLog.tap(LINES::add);
+		// Phase 1 tests run on the archers' own goals; a model test opts in to a policy and puts this back.
+		ModelDriver.useNoPolicy();
 		CalloutFx.setRecorder(new CalloutFx.Recorder() {
 			@Override
 			public void burst(final UUID caller, final Identifier type, final Vec3 at, final int count, final boolean seen) {

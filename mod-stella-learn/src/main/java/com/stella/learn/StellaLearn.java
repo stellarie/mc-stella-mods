@@ -1,5 +1,6 @@
 package com.stella.learn;
 
+import com.stella.learn.model.ModelDriver;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ public final class StellaLearn implements ModInitializer {
 		MovementRecorder.register();
 		LearnedBand.register();
 		LearnGoals.register();
+		ModelDriver.register();
 		Rally.register();
 		LearnSummary.register();
 		Shots.register();

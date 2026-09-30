@@ -7,7 +7,10 @@ import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatState;
 import io.netty.channel.embedded.EmbeddedChannel;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -117,6 +120,7 @@ final class Arena {
 		}
 
 		Mob subject = helper.spawnMob(subjectType, subjectX, SPAWN_Y, subjectZ).spawn();
+		neutralThreat(subject);
 		subject.getAttribute(Attributes.MAX_HEALTH).setBaseValue(SUBJECT_HEALTH);
 		subject.setHealth(SUBJECT_HEALTH);
 		subject.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
@@ -124,6 +128,8 @@ final class Arena {
 		Zombie meleeOpponent = helper.spawnMob(EntityTypes.ZOMBIE, MELEE_X, SPAWN_Y, MELEE_Z).spawn();
 		Skeleton rangedOpponent = helper.spawnMob(EntityTypes.SKELETON, RANGED_X, SPAWN_Y, RANGED_Z).spawn();
 		rangedOpponent.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		neutralThreat(meleeOpponent);
+		neutralThreat(rangedOpponent);
 		makeOpponent(meleeOpponent, !meleeChases);
 		makeOpponent(rangedOpponent, true);
 
@@ -132,6 +138,16 @@ final class Arena {
 		helper.onEachTick(arena::forceTargets);
 		helper.runAfterDelay(STRIP_GOALS_TICK, arena::stripBehaviorGoals);
 		return arena;
+	}
+
+	/**
+	 * Puts a mob at threat level zero. A spawned mob takes a random threat roll, and the roll, the biome and the distance
+	 * all move its health and damage, so a fight that depends on either would depend on the dice. Every arena mob is
+	 * pinned here so the scenario is the same on every run.
+	 */
+	static void neutralThreat(final Mob mob) {
+		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, 0));
+		SpawnScaling.apply(mob);
 	}
 
 	static void buildFloor(final GameTestHelper helper) {

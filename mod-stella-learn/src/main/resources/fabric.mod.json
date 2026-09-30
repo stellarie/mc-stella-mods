@@ -10,6 +10,9 @@
 			"com.stella.learn.StellaLearn"
 		]
 	},
+	"mixins": [
+		"mod-stella-learn.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.19.5",
 		"minecraft": "~26.3",

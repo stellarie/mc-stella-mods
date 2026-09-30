@@ -276,7 +276,10 @@ public class TowerGhostGameTest {
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
 		zombie.snapTo(player.position().add(1.0, 0.0, 0.0));
+		// Still, and the ghost's quarry held on it: what is tested is whose kill the bolt's is, not who finds whom.
+		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);
+		helper.onEachTick(() -> ghost.setTarget(zombie));
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			helper.assertTrue(zombie.getLastHurtByMob() == ghost, "the ghost never cast at the zombie, so the case proves nothing");

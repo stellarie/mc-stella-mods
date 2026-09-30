@@ -13,6 +13,8 @@
 			"com.stella.mobs.BossBehaviourGameTest",
 			"com.stella.mobs.BossGameTest",
 			"com.stella.mobs.ConfigMigrationGameTest",
+			"com.stella.mobs.DistanceGatesGameTest",
+			"com.stella.mobs.SpawnPressureGameTest",
 			"com.stella.mobs.CrossbowCadenceGameTest",
 			"com.stella.mobs.EliteGameTest",
 			"com.stella.mobs.EliteFrameworkGameTest",
@@ -49,6 +51,7 @@
 			"com.stella.mobs.ChunkEncounterGameTest",
 			"com.stella.mobs.IllusionerGameTest",
 			"com.stella.mobs.SkeletonVolleyGameTest",
+			"com.stella.mobs.ArcherKitGameTest",
 			"com.stella.mobs.EvokerFireRainGameTest",
 			"com.stella.mobs.TraitsGameTest",
 			"com.stella.mobs.WitchGameTest"

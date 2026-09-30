@@ -1,15 +1,19 @@
 package com.stella.tower;
 
 /**
- * Each floor is a maze: paths two blocks wide between walls one block thick, on a grid of cells three blocks
- * apart. An elite floor opens a hall in its middle for its guardian, a boss floor a greater one, and the
- * portal stands in the hall's middle; an ordinary floor keeps its portal in a nook across from the arrival.
+ * Each floor is a maze: paths six blocks wide between walls one block thick, on a grid of cells seven blocks
+ * apart. The room fits nine cells to a side exactly, so every path is six wide; where a hall or a safe zone
+ * cuts across the grid, a path beside it can come out narrower, but never under three. An elite floor opens
+ * a hall in its middle for its guardian, a boss floor a greater one, and the portal stands in the hall's
+ * middle; an ordinary floor keeps its portal in a nook across from the arrival.
  */
 public final class TowerMaze {
-	public static final int PATH = 2;
+	public static final int PATH = 6;
+	/** The narrowest a path may come out, where a hall or a safe zone cuts the grid. */
+	public static final int MIN_PATH = 3;
 	public static final int WALL = 1;
 	public static final int PITCH = PATH + WALL;
-	/** Cells along each side: the room less its last wall line, three blocks a cell. */
+	/** Cells along each side: the room less its last wall line, seven blocks a cell. */
 	public static final int CELLS = (TowerLayout.SIZE - WALL) / PITCH;
 	public static final int ELITE_HALL = 16;
 	public static final int BOSS_HALL = 32;
@@ -17,8 +21,8 @@ public final class TowerMaze {
 	private TowerMaze() {
 	}
 
-	/** The portal's nook on an ordinary floor: the last two cell columns, three cell rows round the middle. */
-	public static final int NOOK_LOW_X = 1 + (CELLS - 2) * PITCH;
+	/** The portal's nook on an ordinary floor: the last cell column, three cell rows round the middle. */
+	public static final int NOOK_LOW_X = 1 + (CELLS - 1) * PITCH;
 	public static final int NOOK_HIGH_X = CELLS * PITCH;
 	public static final int NOOK_LOW_Z = 1 + (TowerLayout.MIDDLE_Z / PITCH - 1) * PITCH;
 	public static final int NOOK_HIGH_Z = (TowerLayout.MIDDLE_Z / PITCH + 2) * PITCH - 1;
@@ -29,8 +33,8 @@ public final class TowerMaze {
 	public static final int SAFE_Z = TowerLayout.MIDDLE_Z - SAFE / 2;
 	/** The entrance zone's first column: the room's first cell column, which holds the arrival. */
 	public static final int ENTRANCE_X = 1;
-	/** A boss floor's safe room sits just past its hall, three cells of the maze on a side. */
-	public static final int BOSS_ROOM_X = 1 + (TowerLayout.SIZE / 2 + BOSS_HALL / 2) / PITCH * PITCH;
+	/** A boss floor's safe room sits just past its hall, a wall's thickness beyond it. */
+	public static final int BOSS_ROOM_X = TowerLayout.SIZE / 2 + BOSS_HALL / 2 + WALL;
 
 	/** A safe zone, by the offset of its low corner from the room's inner corner. */
 	public record Zone(int x, int z) {
@@ -78,11 +82,6 @@ public final class TowerMaze {
 		for (boolean[] row : wall) {
 			java.util.Arrays.fill(row, true);
 		}
-		for (int cx = 0; cx < CELLS; cx++) {
-			for (int cz = 0; cz < CELLS; cz++) {
-				open(wall, cell(cx), cell(cz), PATH, PATH);
-			}
-		}
 		java.util.Random random = new java.util.Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L));
 		boolean[][] seen = new boolean[CELLS][CELLS];
 		int hall = hall(floor);
@@ -91,6 +90,14 @@ public final class TowerMaze {
 			// The great hall and its safe room stand apart from the maze, so the room is the only way in.
 			shut(seen, hallLow, hallLow, hall, hall);
 			shut(seen, BOSS_ROOM_X, SAFE_Z, SAFE, SAFE);
+		}
+		// A shut cell stays solid: the hall and the room are opened over it exactly, leaving no sliver of it.
+		for (int cx = 0; cx < CELLS; cx++) {
+			for (int cz = 0; cz < CELLS; cz++) {
+				if (!seen[cx][cz]) {
+					open(wall, cell(cx), cell(cz), PATH, PATH);
+				}
+			}
 		}
 		java.util.ArrayDeque<int[]> trail = new java.util.ArrayDeque<>();
 		int startX = (TowerLayout.ARRIVAL_X - 1) / PITCH;
@@ -125,14 +132,27 @@ public final class TowerMaze {
 		} else {
 			open(wall, NOOK_LOW_X, NOOK_LOW_Z, NOOK_HIGH_X - NOOK_LOW_X, NOOK_HIGH_Z - NOOK_LOW_Z + 1);
 		}
+		if (hall == 0) {
+			// Solid behind the portal, so the way to it is three wide in front, not a two wide pocket beyond.
+			int behind = TowerLayout.PORTAL_X + 1;
+			for (int x = behind; x < NOOK_HIGH_X; x++) {
+				for (int z = NOOK_LOW_Z; z <= NOOK_HIGH_Z; z++) {
+					wall[x][z] = true;
+				}
+			}
+			// The portal's own slot stays open.
+			for (int dz = 0; dz < TowerLayout.PORTAL_INNER_WIDTH; dz++) {
+				wall[TowerLayout.PORTAL_X][TowerLayout.MIDDLE_Z - 1 + dz] = false;
+			}
+		}
 		for (Zone zone : safeZones(floor)) {
 			open(wall, zone.x(), zone.z(), SAFE, SAFE);
 		}
 		if (hall == BOSS_HALL) {
-			// A door from the hall into the safe room, and one from the room out to the maze beyond it.
+			// A door from the hall into the safe room, as wide as a path. The room's far side opens onto the
+			// maze by itself, its wall being cleared with the room.
 			int door = 1 + (TowerLayout.MIDDLE_Z - 1) / PITCH * PITCH;
 			open(wall, BOSS_ROOM_X - WALL, door, WALL, PATH);
-			open(wall, BOSS_ROOM_X + SAFE, door, WALL, PATH);
 		}
 		return wall;
 	}

@@ -51,7 +51,7 @@ public final class EndChest {
 	public static void refused(final ServerLevel level, final BlockPos frame, final @Nullable Player player) {
 		if (nearest(level, frame, false) == null && level.getBlockState(frame.above()).isAir()) {
 			level.setBlock(frame.above(), NetherBlocks.SEALED_CHEST.defaultBlockState(), Block.UPDATE_ALL);
-			StellaNether.LOGGER.info("[NETHER] a sealed chest raised on the frame at {}", frame);
+			BehaviorLog.info("[NETHER] a sealed chest raised on the frame at {}", frame);
 		}
 		if (player instanceof ServerPlayer server) {
 			server.sendOverlayMessage(Component.translatable("message.mod-stella-nether.portal_sealed").withStyle(ChatFormatting.GOLD));
@@ -62,7 +62,7 @@ public final class EndChest {
 	static void fill(final ServerLevel level, final BlockPos chest, final Player player, final ItemStack stack) {
 		stack.consume(1, player);
 		level.setBlock(chest, level.getBlockState(chest).setValue(SealedChestBlock.FILLED, true), Block.UPDATE_ALL);
-		StellaNether.LOGGER.info("[NETHER] a Blaze Core set in the sealed chest at {}", chest);
+		BehaviorLog.info("[NETHER] a Blaze Core set in the sealed chest at {}", chest);
 		openNear(level, chest);
 	}
 
@@ -85,7 +85,7 @@ public final class EndChest {
 				}
 			}
 			level.globalLevelEvent(1038, corner.offset(1, 0, 1), 0);
-			StellaNether.LOGGER.info("[NETHER] End portal opened at {}", corner.offset(1, 0, 1));
+			BehaviorLog.info("[NETHER] End portal opened at {}", corner.offset(1, 0, 1));
 			return true;
 		}
 		return false;
