@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-rpg-test-mod-stella-rpg",
+	"version": "1.0.0",
+	"name": "Stella RPG game tests",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.rpg.RpgTestMod"
+		],
+		"fabric-gametest": [
+			"com.stella.rpg.RpgAgilityGameTest",
+			"com.stella.rpg.RpgBonusGameTest",
+			"com.stella.rpg.RpgCommandGameTest",
+			"com.stella.rpg.RpgConfigGameTest",
+			"com.stella.rpg.RpgCurveGameTest",
+			"com.stella.rpg.RpgDamageGameTest",
+			"com.stella.rpg.RpgDeathGameTest",
+			"com.stella.rpg.RpgPointsGameTest",
+			"com.stella.rpg.RpgRespecGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-rpg": "*"
+	}
+}
