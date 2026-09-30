@@ -86,8 +86,8 @@ public class BossGameTest {
 		helper.setTime(Arena.NIGHT_TIME);
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 2).spawn();
 
-		double tenLevelHealth = SpawnScaling.LEVEL_HEALTH_BONUS * 10;
-		double tenLevelDamage = SpawnScaling.LEVEL_DAMAGE_BONUS * 10;
+		double tenLevelHealth = SpawnScaling.healthMultiplier(10) - 1.0;
+		double tenLevelDamage = SpawnScaling.damageMultiplier(10) - 1.0;
 		int level = SpawnScaling.areaLevel(mob);
 		// The rig measures distance from the level's spawn, and a biome adds its flat levels on top, never below zero.
 		var spawn = helper.getLevel().getRespawnData().pos();
@@ -100,7 +100,7 @@ public class BossGameTest {
 		);
 
 		helper.assertTrue(
-			Math.abs(tenLevelHealth - 0.5) < EPSILON && Math.abs(tenLevelDamage - 0.4) < EPSILON,
+			Math.abs(tenLevelHealth - 1.5) < EPSILON && Math.abs(tenLevelDamage - (Math.pow(1.06, 10) - 1.0)) < EPSILON,
 			"ten threat levels did not raise health and damage by the expected amounts"
 		);
 		helper.assertValueEqual(Integer.valueOf(level), Integer.valueOf(expectedArea), "distance area level");

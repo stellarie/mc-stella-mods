@@ -23,7 +23,9 @@
 		"FriendlyPatrolRestMixin",
 		"MobTargetSelectorAccessor",
 		"NaturalSpawnerQuietMixin",
-		"ThreatExperienceMixin"
+		"ThreatExperienceMixin",
+		"MobPiercingMixin",
+		"MobDamageTailMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

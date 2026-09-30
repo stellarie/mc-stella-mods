@@ -4,6 +4,8 @@ import com.stella.mobs.StellaMobs;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.config.GearConfigStore;
+import com.stella.mobs.config.ScalingConfig;
+import com.stella.mobs.config.ScalingConfigStore;
 import com.stella.mobs.config.WorldRules;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -19,24 +21,19 @@ import net.minecraft.world.level.Level;
 
 /**
  * One durable threat roll sets health and damage. The Overworld climbs one level per 100 blocks from 0,0, the Nether
- * and End eight, from their own base levels. On top of the level, an Overworld mob takes a health and damage
- * multiplier from its altitude: none at y=0, more below it than above it. The Nether and End take none.
+ * and End eight, from their own base levels. Altitude adds levels in the Overworld (see {@link AltitudeLevels}).
+ * Health grows linearly with the level. Damage compounds up to {@code tail_start}, then follows the tower's S-curve.
  */
 public final class SpawnScaling {
 	/** Blocks from 0,0 per step of distance. */
 	public static final int BLOCKS_PER_LEVEL = 100;
 	/** Levels the Nether and End gain per step of distance; the Overworld gains one. */
 	public static final int DIMENSION_LEVELS_PER_STEP = 8;
-	/** Blocks below y=0 where the depth multiplier peaks: the floor of the world. */
-	public static final double DEPTH_CAP = 64.0;
-	/** Blocks above y=0 where the height multiplier peaks: the top of the build limit. */
-	public static final double HEIGHT_CAP = 320.0;
-	public static final double HEALTH_DEPTH_WEIGHT = 0.50;
-	public static final double DAMAGE_DEPTH_WEIGHT = 0.40;
-	public static final double HEALTH_HEIGHT_WEIGHT = 0.20;
-	public static final double DAMAGE_HEIGHT_WEIGHT = 0.16;
-	public static final double LEVEL_HEALTH_BONUS = 0.05;
-	public static final double LEVEL_DAMAGE_BONUS = 0.04;
+	/**
+	 * The default health gained per level. {@code mod-stella-spells} reads this field by name, so keep it public.
+	 * The live rate comes from {@code scaling.json}.
+	 */
+	public static final double LEVEL_HEALTH_BONUS = 0.15;
 	/**
 	 * A test rig sets this system property to {@code worldSpawn} so distance is measured from the level's spawn: the game
 	 * test arenas sit about ten million blocks from 0,0, which would make every test mob a level-100,000 mob. Nothing in
@@ -75,21 +72,6 @@ public final class SpawnScaling {
 			.map(key -> rules.biomeLevel(key.identifier())).orElse(0);
 	}
 
-	/** True where the depth and height multiplier applies. The Nether and End take none. */
-	public static boolean usesAltitude(final ResourceKey<Level> dimension) {
-		return !Level.NETHER.equals(dimension) && !Level.END.equals(dimension);
-	}
-
-	/** The health the altitude adds: nothing at y=0, the depth weight at the world floor, the height weight at the build limit. */
-	public static double altitudeHealth(final double y) {
-		return y < 0.0 ? share(-y, DEPTH_CAP) * HEALTH_DEPTH_WEIGHT : share(y, HEIGHT_CAP) * HEALTH_HEIGHT_WEIGHT;
-	}
-
-	/** The damage the altitude adds, on the same curve as the health. */
-	public static double altitudeDamage(final double y) {
-		return y < 0.0 ? share(-y, DEPTH_CAP) * DAMAGE_DEPTH_WEIGHT : share(y, HEIGHT_CAP) * DAMAGE_HEIGHT_WEIGHT;
-	}
-
 	/**
 	 * The absolute area level where the mob stands: the dimension's base, the levels its distance from 0,0 adds, and the
 	 * flat levels of its biome, never below zero. A dimension the mod does not know has none.
@@ -124,13 +106,41 @@ public final class SpawnScaling {
 		return Math.hypot(mob.getX() - originX, mob.getZ() - originZ);
 	}
 
-	/** Health for a threat level at a height, where the height is a block y and counts only where the dimension uses it. */
-	public static double healthMultiplier(final int threatLevel, final double y) {
-		return 1.0 + Math.max(0, threatLevel) * LEVEL_HEALTH_BONUS + altitudeHealth(y);
+	public static double healthMultiplier(final int threatLevel) {
+		return 1.0 + Math.max(0, threatLevel) * ScalingConfigStore.get().healthPerLevel();
 	}
 
-	public static double damageMultiplier(final int threatLevel, final double y) {
-		return 1.0 + Math.max(0, threatLevel) * LEVEL_DAMAGE_BONUS + altitudeDamage(y);
+	/** Compound growth to the tail start, then the tower S-curve on top of it. */
+	public static double damageMultiplier(final int threatLevel) {
+		ScalingConfig config = ScalingConfigStore.get();
+		int level = Math.max(0, threatLevel);
+		if (level <= config.tailStart()) {
+			return Math.pow(config.damageGrowth(), level);
+		}
+		double base = Math.pow(config.damageGrowth(), config.tailStart());
+		return base * (1.0 + config.tailMax() * tail(level - config.tailStart(), config));
+	}
+
+	/** Flat damage past the tail start: the tower's one heart per 100 floors. */
+	public static double tailFlat(final int threatLevel) {
+		ScalingConfig config = ScalingConfigStore.get();
+		return Math.max(0, threatLevel - config.tailStart()) * config.tailFlatPerLevel();
+	}
+
+	/** The tower S-curve: 0 at 0, 0.5 at the midpoint, 1 at the end and past it. */
+	public static double tail(final double levels, final ScalingConfig config) {
+		if (levels <= 0.0) {
+			return 0.0;
+		}
+		double mid = config.tailMidpoint();
+		double width = config.tailWidth();
+		double low = sigma(-mid / width);
+		double high = sigma((config.tailEnd() - mid) / width);
+		return Math.min(1.0, (sigma((levels - mid) / width) - low) / (high - low));
+	}
+
+	private static double sigma(final double x) {
+		return 1.0 / (1.0 + Math.exp(-x));
 	}
 
 	/** Fresh spawns and deliberate rank promotions heal to their scaled maximum. */
@@ -148,15 +158,14 @@ public final class SpawnScaling {
 			return;
 		}
 		int threatLevel = ThreatState.level(mob);
-		double y = usesAltitude(mob.level().dimension()) ? mob.getY() : 0.0;
 		float oldHealth = mob.getHealth();
 		float oldMaximum = mob.getMaxHealth();
 		boolean removedOldHealth = removeModifier(mob, Attributes.MAX_HEALTH, Bosses.LEVEL_HEALTH_ID);
 		removeModifier(mob, Attributes.ATTACK_DAMAGE, Bosses.LEVEL_DAMAGE_ID);
 		boolean changedHealth = applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID,
-			healthMultiplier(threatLevel, y) - 1.0);
+			healthMultiplier(threatLevel) - 1.0);
 		applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID,
-			damageMultiplier(threatLevel, y) - 1.0);
+			damageMultiplier(threatLevel) - 1.0);
 		boolean changedTrait = Traits.refreshScaling(mob);
 		if (!preserveHealth) {
 			mob.setHealth(mob.getMaxHealth());
@@ -204,7 +213,4 @@ public final class SpawnScaling {
 		return modifier == null ? 1.0 : 1.0 + modifier.amount();
 	}
 
-	private static double share(final double value, final double cap) {
-		return Math.min(1.0, Math.max(0.0, value) / cap);
-	}
 }
