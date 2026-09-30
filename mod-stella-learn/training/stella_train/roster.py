@@ -8,7 +8,7 @@ BRAINS = (
     "PotionHealer", "ArmorTank", "PearlEscaper", "StyleSwitcher", "RandomMix",
 )
 DIGGERS = ("Burrower", "Bunker", "Tunneler")
-STAGE_A_BRAINS = ("CritRusher", "SwordSweeper", "BowKiter")
+STAGE_A_BRAINS = ("CritRusher", "SwordSweeper")
 
 STAGE_A = 0
 STAGE_B = 1

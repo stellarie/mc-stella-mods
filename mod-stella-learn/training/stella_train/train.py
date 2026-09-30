@@ -102,6 +102,21 @@ class Trainer:
         self.log.info("train RESUME path=%s decisions=%d updates=%d stage=%s", path, self.decisions, self.updates,
                       roster.STAGE_NAMES[self.curriculum.stage])
 
+    def restart_stage_a(self) -> None:
+        """Keeps the actor, gives the critic fresh weights, and starts Stage A again at the current decision count."""
+        from .model import _init, _mlp
+        self.model.critic = _mlp(self.contract.obs_size, self.contract.hidden, 1)
+        _init(self.model.critic, 1.0)
+        self.ppo = Ppo(self.model, self.ppo_config)
+        self.curriculum.stage = roster.STAGE_A
+        self.curriculum.stage_start = self.decisions
+        self.curriculum.best = -1.0
+        self.curriculum.stale = 0
+        self.model.set_normalizer(self.normalizer)
+        self.sampler = Sampler(self.model, self.normalizer)
+        self.log.info("train RESTART stage=A decisions=%d critic=reinitialized actor=kept", self.decisions)
+        self.log.event("train RESTART", stage="A", decisions=self.decisions)
+
     def write_cost(self, dps: float | None = None) -> None:
         wall = self.wall_seconds()
         record = {
@@ -116,9 +131,8 @@ class Trainer:
     # -- the loop ---------------------------------------------------------------------------------------------------
 
     def shaping_scale(self) -> float:
-        shaping = self.config["shaping"]
-        progress = self.decisions / self.budget
-        return float(shaping["scale"]) * max(0.0, 1.0 - progress / float(shaping["decay_share"]))
+        # The Java side prices the shaping (0.005 a hit point, 0.0002 an unhit decision); the scale stays fixed.
+        return float(self.config["shaping"]["scale"])
 
     def train(self, fleet: Fleet, max_seconds: float | None) -> None:
         rollout = int(self.ppo_config.rollout_per_agent) * fleet.agent_count
@@ -173,22 +187,23 @@ class Trainer:
         acted = max(stats.acted, 1)
         bow = [float(x) / acted for x in stats.bow_counts]
         jump = stats.jump_count / acted
-        dealt = stats.dealt_sum * 20.0 / max(episodes, 1)
-        taken = stats.taken_sum * 20.0 / max(episodes, 1)
+        shaping = stats.shaping_sum / max(episodes, 1)
+        wins_n = wins
+        losses_n = sum(c["loss"] for c in stats.outcomes.values())
         self.log.info(
             "train UPDATE update=%d decisions=%d stage=%s dps=%.0f episodes=%d win_rate=%.3f mean_reward=%.3f terminal_per_decision=%.5f policy_loss=%.4f "
             "value_loss=%.4f entropy=%.3f kl=%.4f clip_fraction=%.3f explained_variance=%.3f lr=%.2e entropy_coef=%.4f shaping_scale=%.4f log_std=%.3f "
-            "timeouts=%d dealt=%.2f taken=%.2f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s]",
+            "timeouts=%d wins=%d losses=%d shaping_per_episode=%.3f terminal_reward_per_episode=%.3f bow=[%.2f,%.2f,%.2f,%.2f] jump=%.2f styles=[%s]",
             self.updates, self.decisions, roster.STAGE_NAMES[self.curriculum.stage], dps, episodes, finished, mean_return, per_decision,
             metrics["policy_loss"], metrics["value_loss"], metrics["entropy"], metrics["kl"], metrics["clip_fraction"], metrics["explained_variance"],
-            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), dealt, taken, *bow, jump, styles)
+            metrics["lr"], metrics["entropy_coef"], scale, metrics["log_std"], sum(c["timeout"] for c in stats.outcomes.values()), wins_n, losses_n, shaping, stats.reward_sum / max(episodes, 1), *bow, jump, styles)
         self.log.event(
             "train UPDATE", update=self.updates, decisions=self.decisions, stage=roster.STAGE_NAMES[self.curriculum.stage], dps=dps,
             wall_seconds=self.wall_seconds(), episodes=episodes, win_rate=finished, mean_reward=mean_return, terminal_per_decision=per_decision,
             policy_loss=metrics["policy_loss"], value_loss=metrics["value_loss"], entropy=metrics["entropy"], kl=metrics["kl"],
             clip_fraction=metrics["clip_fraction"], explained_variance=metrics["explained_variance"], lr=metrics["lr"],
             entropy_coef=metrics["entropy_coef"], shaping_scale=scale, log_std=metrics["log_std"], epochs_run=metrics["epochs_run"],
-            update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, damage_dealt_per_episode=dealt, damage_taken_per_episode=taken,
+            update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, shaping_per_episode=shaping, wins=wins_n, losses=losses_n,
             bow_action_share=bow, jump_share=jump, win_rate_by_style=by_style,
             outcomes={roster.BRAINS[b] if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
 
@@ -196,6 +211,9 @@ class Trainer:
         began = time.monotonic()
         tasks = self.curriculum.eval_tasks()
         stats = fleet.evaluate(self.sampler, tasks)
+        sampled = fleet.evaluate(self.sampler, tasks, deterministic=False)
+        sampled_wins = sum(r.outcome == "win" for r in sampled.results)
+        sampled_rate = sampled_wins / len(sampled.results) if sampled.results else 0.0
         overall = {"n": 0, "win": 0}
         rows = {}
         for result in stats.results:
@@ -208,10 +226,10 @@ class Trainer:
         rate = overall["win"] / overall["n"] if overall["n"] else 0.0
         stage = roster.STAGE_NAMES[self.curriculum.stage]
         styles = " ".join(f"{name}:{row['win'] / row['n']:.2f}" for name, row in rows.items())
-        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f seconds=%.0f styles=[%s]", self.decisions, stage,
-                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, time.monotonic() - began, styles)
+        self.log.info("trainEval RESULT decisions=%d stage=%s suite_stage=%s episodes=%d/%d win_rate=%.3f win_rate_sampled=%.3f seconds=%.0f styles=[%s]", self.decisions, stage,
+                      roster.STAGE_NAMES[self.curriculum.eval_stage()], overall["n"], len(tasks), rate, sampled_rate, time.monotonic() - began, styles)
         self.log.event("trainEval RESULT", decisions=self.decisions, stage=stage, suite_stage=roster.STAGE_NAMES[self.curriculum.eval_stage()],
-                       episodes=overall["n"], expected=len(tasks), win_rate=rate, per_style=rows, seconds=time.monotonic() - began)
+                       episodes=overall["n"], expected=len(tasks), win_rate=rate, win_rate_sampled=sampled_rate, per_style=rows, seconds=time.monotonic() - began)
         self.curriculum.after_eval(self.decisions, rate)
 
 
@@ -220,6 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, default=Path("configs/archer.toml"))
     parser.add_argument("--run-dir", type=Path, default=None, help="continue in an existing run directory")
     parser.add_argument("--resume", type=Path, default=None, help="a checkpoint to continue from")
+    parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
     parser.add_argument("--max-seconds", type=float, default=None, help="stop after this much wall time, for a smoke run")
     parser.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE", help="override one config value")
     args = parser.parse_args(argv)
@@ -237,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
     trainer = Trainer(config, log, run_dir)
     if args.resume:
         trainer.resume(args.resume)
+        if args.restart_stage_a:
+            trainer.restart_stage_a()
     spec = prepare_spec(log)
     run = config["run"]
     code = 0

@@ -49,6 +49,7 @@ class Phase:
     mode: str                                     # train or eval
     next_task: Callable[[], Task | None]
     remaining: Callable[[], int] = lambda: 0
+    deterministic: bool = True
     target_decisions: int = 0
     shaping_scale: float = 0.0
     discount: float = 0.995
@@ -188,7 +189,7 @@ class Worker(threading.Thread):
     def _process(self, step: wire.Step, phase: Phase) -> None:
         agents = step.agents
         count = len(agents)
-        sample = phase.sampler.act(step.obs, self.rng, deterministic=phase.mode == "eval") if count else None
+        sample = phase.sampler.act(step.obs, self.rng, deterministic=phase.mode == "eval" and phase.deterministic) if count else None
         done_flags = (step.flags & wire.FLAG_TERMINAL) != 0
         acting = []
         for i in range(count):
@@ -355,7 +356,7 @@ class Fleet:
                         ("obs", "u", "jump", "bow", "logp", "advantages", "returns", "values")))
         return batch, stats
 
-    def evaluate(self, sampler: Sampler, tasks: list[Task], timeout: float = 3600.0) -> Stats:
+    def evaluate(self, sampler: Sampler, tasks: list[Task], timeout: float = 3600.0, deterministic: bool = True) -> Stats:
         """Plays `tasks` with the mean actions. The arenas reset first, so training episodes in flight are dropped."""
         queue = collections.deque(tasks)
         lock = threading.Lock()
@@ -366,7 +367,7 @@ class Fleet:
 
         for worker in self.workers:
             worker.drop_progress()
-        phase = Phase(sampler, "eval", next_task, remaining=lambda: len(queue))
+        phase = Phase(sampler, "eval", next_task, deterministic=deterministic, remaining=lambda: len(queue))
         self._run(phase, timeout)
         stats = Stats()
         for worker in self.workers:

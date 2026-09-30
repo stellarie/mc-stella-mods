@@ -37,7 +37,14 @@ public final class GymEpisode {
 	public static final String ESCAPED = "escaped";
 	public static final int START_TIMEOUT_TICKS = 200;
 	public static final double CREEPER_SHARE = 0.10;
-	private static final double TIMEOUT_WEIGHT = 0.5;
+	/** Terminal rewards: a kill of the bot pays most, a loss costs less, and running out of time pays nothing. */
+	private static final float WIN_REWARD = 5.0F;
+	private static final float LOSS_REWARD = -2.0F;
+	/** Shaping per decision: damage dealt to the bot, and a small pay for a decision in which the archer was not hit. */
+	private static final double DAMAGE_REWARD_PER_HP = 0.005;
+	private static final double UNHIT_REWARD = 0.0002;
+	/** Stage A is slower by design: the bots do not heal, and the fight lasts twice as long. */
+	private static final int STAGE_A_TIME_FACTOR = 2;
 	private static final int START_RETRIES = 3;
 	/** Ticks between two sweeps of the archer's arrows that lie still. */
 	private static final int SWEEP_TICKS = 20;
@@ -91,6 +98,8 @@ public final class GymEpisode {
 	private int sweepClock;
 	private double shaping;
 	private double dealt;
+	private double unhit;
+	private float noRegenHealth = Float.MAX_VALUE;
 	private double taken;
 	private float lastMobHealth;
 	private float lastBotHealth;
@@ -180,6 +189,8 @@ public final class GymEpisode {
 		shaping = 0.0;
 		dealt = 0.0;
 		taken = 0.0;
+		unhit = 0.0;
+		noRegenHealth = Float.MAX_VALUE;
 		arrows = 0;
 		endReason = null;
 		pendingError = null;
@@ -329,6 +340,14 @@ public final class GymEpisode {
 
 		if (state == State.STARTING) {
 			startWait++;
+		} else if (state == State.LIVE && stage == Terrain.A && bot.player().isAlive()) {
+			// Stage A bots do not heal: a health rise since the last tick is undone.
+			float health = bot.player().getHealth();
+			if (health > noRegenHealth) {
+				bot.player().setHealth(noRegenHealth);
+			} else {
+				noRegenHealth = health;
+			}
 		}
 
 		if (mob != null && ++sweepClock % SWEEP_TICKS == 0) {
@@ -402,7 +421,10 @@ public final class GymEpisode {
 		double takenNow = Math.max(0.0, lastMobHealth - mobHealth);
 		dealt += dealtNow;
 		taken += takenNow;
-		double step = (dealtNow - takenNow) / maxHealth;
+		// A decision without a hit on the archer pays a little; the damage the archer takes has no term of its own.
+		double bonus = takenNow == 0.0 ? UNHIT_REWARD : 0.0;
+		unhit += bonus;
+		double step = dealtNow * DAMAGE_REWARD_PER_HP + bonus;
 		lastMobHealth = mobHealth;
 		lastBotHealth = botHealth;
 		int flags = 0;
@@ -412,18 +434,17 @@ public final class GymEpisode {
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED | Bridge.FLAG_ERROR;
 		} else if (botHealth <= 0.0F) {
 			endReason = BOT_DIED;
-			reward = 1.0F;
+			reward = WIN_REWARD;
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_WIN;
 		} else if (mobHealth <= 0.0F) {
 			endReason = MOB_DIED;
-			reward = -1.0F;
+			reward = LOSS_REWARD;
 			flags = Bridge.FLAG_TERMINAL;
 		} else if (!arena.contains(mob.position())) {
 			endReason = ESCAPED;
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED | Bridge.FLAG_ERROR;
-		} else if (ticks >= config.episodeTicks()) {
+		} else if (ticks >= episodeLimit()) {
 			endReason = TIMEOUT;
-			reward = (float) (TIMEOUT_WEIGHT * (mobHealth / mob.getMaxHealth() - botHealth / maxHealth));
 			flags = Bridge.FLAG_TERMINAL | Bridge.FLAG_TRUNCATED;
 		}
 
@@ -435,6 +456,10 @@ public final class GymEpisode {
 		}
 
 		return frame;
+	}
+
+	private int episodeLimit() {
+		return stage == Terrain.A ? config.episodeTicks() * STAGE_A_TIME_FACTOR : config.episodeTicks();
 	}
 
 	private Frame frame(final int flags, final float reward, final float shapingStep) {
@@ -458,7 +483,8 @@ public final class GymEpisode {
 	private void logEnd(final float reward, final float mobHealth, final float botHealth) {
 		GymLog.info(GymLog.EPISODE, "END", "arena=" + arena.index() + " seed=" + seed + " episode=" + episodes + " brain=" + (brain == null ? "none" : Brains.name(brainIndex))
 			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
-			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken) + " mobHealth=" + LearnLog.num(mobHealth)
+			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken)
+			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " unhitReward=" + LearnLog.num(unhit) + " mobHealth=" + LearnLog.num(mobHealth)
 			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());
 	}
 

@@ -69,7 +69,7 @@ def test_the_report_lists_each_digger_on_its_own_row():
 
 
 def test_suites_hold_the_planned_episode_counts():
-    assert len(evaluation.build_tasks("stage-a")) == 3 * 50
+    assert len(evaluation.build_tasks("stage-a")) == 2 * 50
     assert len(evaluation.build_tasks("release")) == 19 * 300
     assert min(task.seed for task in evaluation.build_tasks("release")) >= roster.EVAL_SEED_BASE
 

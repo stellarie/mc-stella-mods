@@ -4,8 +4,8 @@
 name = "archer"
 seed = 1
 budget_decisions = 200_000_000   # Stages A to C together
-servers = 6
-arenas = 32
+servers = 3                       # oniichan: at most 3 gym servers at once on this PC
+arenas = 64
 decision_ticks = 2
 episode_ticks = 1200
 heap = "2g"
@@ -31,8 +31,7 @@ bow_bias_init = [-1.0, 1.0, -0.5, -1.0]   # idle, draw, release, volley
 jump_bias_init = [0.5, -0.5]
 
 [shaping]
-scale = 1.0                      # 0.1 taught only running away; see Implementation Notes
-decay_share = 0.6                # falls to 0 over this share of the budget
+scale = 1.0                      # the gym prices the terms: +0.005 a hit point dealt, +0.0002 an unhit decision; no decay
 
 [curriculum]
 # Stage A promotes at this win rate on the `stage-a` suite.

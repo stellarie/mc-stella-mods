@@ -109,7 +109,7 @@ def run_client(client: GymClient, seconds: float, seed: int, barrier: threading.
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--servers", type=int, default=6)
+    parser.add_argument("--servers", type=int, default=3)
     parser.add_argument("--arenas", type=int, default=32)
     parser.add_argument("--seconds", type=float, default=300.0)
     parser.add_argument("--seed", type=int, default=1)
