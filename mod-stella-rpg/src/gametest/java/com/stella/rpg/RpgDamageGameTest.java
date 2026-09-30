@@ -232,9 +232,11 @@ public final class RpgDamageGameTest {
 		RpgCombat.setDiceRoller(null);
 	}
 
+	/** The expected value is in vanilla units. The loss is in health units, so it is K times larger. */
 	private static void assertLoss(final GameTestHelper helper, final String name, final float loss, final float expected) {
-		RpgTestSupport.result(name, "loss=" + loss + " expected=" + expected);
-		helper.assertTrue(Math.abs(loss - expected) < TOLERANCE, name + " loss=" + loss + " expected " + expected);
+		float scaled = expected * RpgScale.kf();
+		RpgTestSupport.result(name, "loss=" + loss + " expected=" + scaled);
+		helper.assertTrue(Math.abs(loss - scaled) < TOLERANCE * RpgScale.kf(), name + " loss=" + loss + " expected " + scaled);
 	}
 
 	private static void assertRatio(

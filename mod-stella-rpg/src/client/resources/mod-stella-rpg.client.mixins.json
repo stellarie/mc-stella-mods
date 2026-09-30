@@ -3,6 +3,7 @@
 	"package": "com.stella.rpg.client.mixin.client",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"AttributeTooltipMixin",
 		"ContainerScreenPositionAccessor",
 		"NoDotShakeLivingMixin",
 		"NoDotShakeLocalPlayerMixin"

@@ -118,7 +118,7 @@ public final class RpgScalingCoreGameTest {
 			RpgCombat.setDiceRoller(null);
 		}
 		RpgTestSupport.result("shareMatchesCombat", "share=" + viaShare + " direct=" + direct);
-		helper.assertTrue(viaShare == direct && viaShare > 5.0F, "share=" + viaShare + " direct=" + direct);
+		helper.assertTrue(viaShare == direct * RpgScale.kf() && direct > 5.0F, "share=" + viaShare + " direct=" + direct);
 		helper.succeed();
 	}
 

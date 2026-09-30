@@ -14,6 +14,10 @@ public final class MobsBridge {
 		int threat(Mob mob);
 
 		String role(Mob mob);
+
+		default boolean eliteOrBoss(final Mob mob) {
+			return false;
+		}
 	}
 
 	private static final Facts NONE = new Facts() {
@@ -45,6 +49,10 @@ public final class MobsBridge {
 		return facts().role(mob);
 	}
 
+	public static boolean eliteOrBoss(final Mob mob) {
+		return facts().eliteOrBoss(mob);
+	}
+
 	private static Facts facts() {
 		Facts found = facts;
 		if (found == null) {
@@ -60,6 +68,7 @@ public final class MobsBridge {
 			MethodHandles.Lookup lookup = MethodHandles.publicLookup();
 			MethodHandle threat = lookup.findStatic(mobs, "threat", MethodType.methodType(int.class, Mob.class));
 			MethodHandle role = lookup.findStatic(mobs, "role", MethodType.methodType(String.class, Mob.class));
+			MethodHandle[] flags = eliteFlags(lookup);
 			return new Facts() {
 				@Override
 				public int threat(final Mob mob) {
@@ -78,9 +87,37 @@ public final class MobsBridge {
 						return MobStats.MELEE;
 					}
 				}
+
+				@Override
+				public boolean eliteOrBoss(final Mob mob) {
+					try {
+						for (MethodHandle flag : flags) {
+							if ((boolean) flag.invokeExact(mob)) {
+								return true;
+							}
+						}
+					} catch (Throwable e) {
+						return false;
+					}
+					return false;
+				}
 			};
 		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
 			return NONE;
+		}
+	}
+
+	// Read without creating state.
+	// A created state saves into every mob.
+	private static MethodHandle[] eliteFlags(final MethodHandles.Lookup lookup) {
+		try {
+			Class<?> state = Class.forName("com.stella.mobs.behavior.EliteState", true, MobsBridge.class.getClassLoader());
+			MethodType type = MethodType.methodType(boolean.class, Mob.class);
+			return new MethodHandle[] {
+				lookup.findStatic(state, "hasEliteFlag", type), lookup.findStatic(state, "hasBossFlag", type)
+			};
+		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+			return new MethodHandle[0];
 		}
 	}
 }

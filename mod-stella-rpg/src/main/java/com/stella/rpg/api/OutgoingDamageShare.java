@@ -1,6 +1,7 @@
 package com.stella.rpg.api;
 
 import com.stella.rpg.RpgCombat;
+import com.stella.rpg.RpgScale;
 import java.util.function.Function;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.damagesource.DamageSource;
@@ -9,7 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 /**
  * Publishes the RPG outgoing damage scaling under {@code mod-stella-rpg:outgoing-damage}.
  * The value is a {@code Function<Object[], Float>} taking {@code {LivingEntity victim, DamageSource source, Float amount}}
- * and returning {@code RpgCombat.scaleOutgoing}. It uses JDK types only, so a reader needs no class from this mod.
+ * and returning {@code RpgCombat.scaleOutgoing} times the health scale K, so the value is in health units. It uses JDK types only, so a reader needs no class from this mod.
  */
 public final class OutgoingDamageShare {
 	public static final String OBJECT_SHARE_KEY = "mod-stella-rpg:outgoing-damage";
@@ -27,6 +28,6 @@ public final class OutgoingDamageShare {
 			|| !(args[2] instanceof Float amount)) {
 			throw new IllegalArgumentException("expected {LivingEntity, DamageSource, Float}");
 		}
-		return RpgCombat.scaleOutgoing(victim, source, amount);
+		return RpgCombat.scaleOutgoing(victim, source, amount) * RpgScale.kf();
 	}
 }

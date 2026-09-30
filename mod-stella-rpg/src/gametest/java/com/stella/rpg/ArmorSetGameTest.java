@@ -154,10 +154,11 @@ public final class ArmorSetGameTest {
 			helper.getLevel().getServer().setDifficulty(before, true);
 		}
 		RpgTestSupport.result("flatReducesHit", "d20 " + withoutFlat20 + "->" + withFlat20 + " d1 " + withoutFlat1 + "->" + withFlat1);
-		helper.assertTrue(withoutFlat20 > 2.0F, "case proves nothing, loss without flat=" + withoutFlat20);
-		helper.assertTrue(Math.abs(withFlat20 - (withoutFlat20 - 2.0F)) < TOLERANCE,
-			"loss=" + withFlat20 + " expected " + (withoutFlat20 - 2.0F));
-		helper.assertTrue(withoutFlat1 > 0.0F && withoutFlat1 < 2.0F, "clamp case proves nothing, loss=" + withoutFlat1);
+		float flatLoss = 2.0F * RpgScale.kf();
+		helper.assertTrue(withoutFlat20 > flatLoss, "case proves nothing, loss without flat=" + withoutFlat20);
+		helper.assertTrue(Math.abs(withFlat20 - (withoutFlat20 - flatLoss)) < TOLERANCE * RpgScale.kf(),
+			"loss=" + withFlat20 + " expected " + (withoutFlat20 - flatLoss));
+		helper.assertTrue(withoutFlat1 > 0.0F && withoutFlat1 < flatLoss, "clamp case proves nothing, loss=" + withoutFlat1);
 		helper.assertTrue(withFlat1 == 0.0F, "loss=" + withFlat1 + " expected 0");
 		helper.succeed();
 	}

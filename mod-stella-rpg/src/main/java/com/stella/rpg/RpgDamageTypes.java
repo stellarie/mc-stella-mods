@@ -7,10 +7,12 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 
-/** The poison tick's own damage type, and the tag of damage-over-time types that do not shake the camera. */
+/** The poison tick's own damage type, plus the damage-over-time and environmental type tags. */
 public final class RpgDamageTypes {
 	public static final ResourceKey<DamageType> POISON = ResourceKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("poison"));
 	public static final TagKey<DamageType> NO_HURT_SHAKE = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("no_hurt_shake"));
+
+	public static final TagKey<DamageType> ENVIRONMENTAL = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("environmental"));
 
 	private RpgDamageTypes() {
 	}

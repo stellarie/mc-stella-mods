@@ -23,6 +23,7 @@ public final class RpgConfigStore {
 	public static final double MAX_LIMIT = 10.0;
 	public static final int MAX_DICE_VALUE = 1000;
 	public static final int MAX_WEIGHT = 1000;
+	public static final double MAX_HEALTH_SCALE = 1000.0;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static volatile RpgConfig current = RpgConfig.defaults();
@@ -88,7 +89,8 @@ public final class RpgConfigStore {
 			onError.accept("stats.json key 'mob_weights' was retired; mob_stats replaces it, so it is ignored");
 		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
-			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError));
+			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
+			healthScale(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -401,6 +403,20 @@ public final class RpgConfigStore {
 		return value;
 	}
 
+	private static double healthScale(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.HEALTH_SCALE_KEY);
+		if (element == null) {
+			return RpgConfig.DEFAULT_HEALTH_SCALE;
+		}
+		Double value = number(element);
+		if (value == null || value < 1.0 || value > MAX_HEALTH_SCALE) {
+			onError.accept("stats.json key '" + RpgConfig.HEALTH_SCALE_KEY + "' must be a number from 1 to "
+				+ MAX_HEALTH_SCALE + "; using the default");
+			return RpgConfig.DEFAULT_HEALTH_SCALE;
+		}
+		return value;
+	}
+
 	private static Double number(final JsonElement element) {
 		if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
 			return null;
@@ -442,6 +458,7 @@ public final class RpgConfigStore {
 			out.put(effect.key(), curve);
 		}
 		out.put(RpgConfig.CRIT_MULTIPLIER_KEY, RpgConfig.DEFAULT_CRIT_MULTIPLIER);
+		out.put(RpgConfig.HEALTH_SCALE_KEY, RpgConfig.DEFAULT_HEALTH_SCALE);
 		RpgConfig.DiceRules rules = RpgConfig.DiceRules.DEFAULT;
 		Map<String, Integer> dice = new LinkedHashMap<>();
 		dice.put("base_count", rules.baseCount());
