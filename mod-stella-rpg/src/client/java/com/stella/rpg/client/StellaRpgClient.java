@@ -14,5 +14,7 @@ public final class StellaRpgClient implements ClientModInitializer {
 		ClientPlayNetworking.registerGlobalReceiver(StatsSyncPayload.TYPE, (payload, context) -> ClientStats.accept(payload));
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientStats.clear());
 		StatsTabs.register();
+		HealthBarHud.register();
+		EffectIconsHud.register();
 	}
 }

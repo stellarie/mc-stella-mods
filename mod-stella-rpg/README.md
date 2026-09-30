@@ -1,6 +1,6 @@
 # mod-stella-rpg
 
-A Fabric mod for Minecraft 26.3. The server holds all rules. The optional client part adds a stats screen.
+A Fabric mod for Minecraft 26.3. The server holds all rules. The optional client part adds a stats screen and a health bar HUD.
 Every player and every mob has six stats.
 Point allocation and level retention apply to players only.
 Dice damage and stat effects apply to players and mobs.
@@ -216,6 +216,20 @@ With `keepInventory` off, a death no longer drops the whole inventory. `keepInve
   Both carry the entity tag `mod-stella-rpg.tombstone`.
 - The block entity is not a `Container`, so hoppers cannot pull from it.
 
+## Health bar HUD
+
+The client part replaces the vanilla hearts with one bar. Creative and spectator modes show no bar, as vanilla shows no hearts.
+
+- The bar is 81 by 9 pixels at the heart row. Centered text shows `ceil(health) / max`.
+- The fill is red. Poison turns it green, Wither dark gray, and freezing light blue.
+- Absorption draws a 2-pixel yellow strip on the top edge, clamped to the bar width.
+- Status effect icons are 9 pixels, in rows of 9, directly above the bar. An icon blinks in its last 10 seconds.
+  The top-right vanilla icons do not draw. The inventory screen still lists effect details.
+- The armor strip moves up by the icon rows. The mod registers height providers with `HudStatusBarHeightRegistry`.
+- `HudLayout` holds the layout math in the main source set. `HudLayoutGameTest` covers it.
+
+The equips mod `HudMixin` caps the vanilla heart rows. It has no visible effect while this bar replaces them.
+
 ## Build and test
 
 Run these from `mod-stella-rpg/` with Java 25:
@@ -225,7 +239,7 @@ Run these from `mod-stella-rpg/` with Java 25:
 .\gradlew.bat runGameTest --rerun
 ```
 
-The `client` source set holds the screen. The main source set never references it.
+The `client` source set holds the screen and the HUD. The main source set never references it.
 Game tests run headless on a server. A new test class must be listed in
 `src/gametest/resources/fabric.mod.json`.
 
