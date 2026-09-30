@@ -25,6 +25,7 @@ public final class StellaRpg implements ModInitializer {
 		RpgDeath.register();
 		RpgAttributes.register();
 		RpgCommand.register();
+		DamageLog.register();
 		RpgNet.register();
 		ArmorSets.register();
 		WeaponRolls.register();
