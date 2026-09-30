@@ -41,7 +41,8 @@
 			"com.stella.learn.GymLogGameTest",
 			"com.stella.learn.ShippedModelGameTest",
 			"com.stella.learn.GymBodyGameTest",
-			"com.stella.learn.ModelHitsGameTest"
+			"com.stella.learn.ModelHitsGameTest",
+			"com.stella.learn.PolicyCheckGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

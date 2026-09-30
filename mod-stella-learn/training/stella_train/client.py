@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import wire
+from .contract import load as load_contract
 from .runlog import RunLog
 
 
@@ -53,6 +54,9 @@ class GymClient:
         self.hello = wire.decode_hello(body)
         if self.hello.version != wire.PROTOCOL_VERSION:
             raise wire.WireError(f"{self.name}: server speaks protocol {self.hello.version}")
+        expected = load_contract().hash
+        if self.hello.contract_hash != expected and any(self.hello.contract_hash):
+            raise wire.WireError(f"{self.name}: the server holds contract {self.hello.contract_hash.hex()[:8]}, the trainer {expected.hex()[:8]}")
         self.log.info("gymClient HELLO name=%s port=%d obs=%d act=%d arenas=%d", self.name, self.port,
                       self.hello.obs_size, self.hello.act_size, self.hello.arenas)
         self.log.event("gymClient HELLO", name=self.name, port=self.port, obs=self.hello.obs_size,
