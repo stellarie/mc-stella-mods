@@ -235,18 +235,36 @@ public class TowerAuraGameTest {
 		ServerPlayer near = playerAt(helper, tower, spot(floor, 2, 0));
 		TowerTestSupport.holdRoom(tower, spot(floor, 0, 0));
 		long[] seen = {-1};
+		boolean[] cleaned = {false};
+		Runnable clean = () -> {
+			if (!cleaned[0]) {
+				cleaned[0] = true;
+				ice.discard();
+				TowerTestSupport.leave(helper, near);
+			}
+		};
+		// A failing wait is silent until the test times out, so the failure path is cleaned just before that.
+		helper.runAfterDelay(95L, clean);
 		helper.succeedWhen(() -> {
 			if (seen[0] < 0 && slowed(near)) {
 				seen[0] = helper.getTick();
 				TowerTestSupport.result("iceOwnPulse", "slowedAtTick=" + seen[0] + " effect=" + slow(near));
 			}
 			helper.assertTrue(seen[0] >= 0, "the mist never reached the player");
-			ice.discard();
-			TowerTestSupport.leave(helper, near);
+			clean.run();
 		});
 	}
 
 	// ---- dark ----
+
+	/** Stacks lost this long after the last hit: one at the end of the hold, and one more at each step after. */
+	private static int stepsLost(final int idle) {
+		int lost = 0;
+		while (TowerAuras.DARK_HOLD_TICKS + lost * TowerAuras.DARK_DECAY_TICKS <= idle) {
+			lost++;
+		}
+		return lost;
+	}
 
 	private static double armor(final LivingEntity mob) {
 		return mob.getAttributeValue(Attributes.ARMOR);
@@ -330,7 +348,10 @@ public class TowerAuraGameTest {
 			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS * (cap - 1),
 			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS * cap + 500
 		};
-		int[] want = {cap, cap - 1, cap - 1, cap - 2, 0, 0};
+		int[] want = new int[offsets.length];
+		for (int i = 0; i < offsets.length; i++) {
+			want[i] = Math.max(0, cap - stepsLost(offsets[i]));
+		}
 		boolean ok = true;
 		for (int i = 0; i < offsets.length; i++) {
 			TowerAuras.pulse(tower, floor, last + offsets[i]);
@@ -358,10 +379,11 @@ public class TowerAuraGameTest {
 		// Two steps into the decay: two of the four stacks are gone.
 		int later = last + TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS;
 		int remaining = TowerAuras.darkStacks(dark, later);
+		int expected = 4 - stepsLost(later - last);
 		TowerTestSupport.result("darkRemainder", "remaining=" + remaining);
 		dark.discard();
 		foe.discard();
-		helper.assertTrue(remaining == 2, "four stacks two decay steps on left " + remaining);
+		helper.assertTrue(remaining == expected && expected == 2, "four stacks two decay steps on left " + remaining + ", wanted " + expected);
 		helper.succeed();
 	}
 
@@ -445,6 +467,28 @@ public class TowerAuraGameTest {
 		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
 		pig.setHealth(200.0F);
 		return pig;
+	}
+
+	/** A blow soaked whole by absorption hearts still lands: it costs no health, and it still burns. */
+	@GameTest
+	public void fireHitStillIgnitesATargetThatAbsorbsItWhole(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = freshBuilt(tower);
+		Zombie fire = towerMob(tower, TowerElement.FIRE, spot(floor, 0, 0));
+		Pig padded = victim(tower, floor, 1.5);
+		padded.getAttribute(Attributes.MAX_ABSORPTION).setBaseValue(1000.0);
+		padded.setAbsorptionAmount(1000.0F);
+		float before = padded.getHealth();
+		hit(tower, padded, fire, 1.0F);
+		int want = Math.round(TowerAuras.FIRE_SECONDS * 20.0F);
+		float lost = before - padded.getHealth();
+		TowerTestSupport.result("fireHitAbsorbed", "healthLost=" + lost + " burnTicks=" + padded.getRemainingFireTicks() + " want=" + want);
+		int burning = padded.getRemainingFireTicks();
+		fire.discard();
+		padded.discard();
+		helper.assertTrue(lost == 0.0F, "the case proves nothing: the hit cost " + lost + " health");
+		helper.assertTrue(burning == want, "an absorbed fire hit left " + burning + " ticks of burning, not " + want);
+		helper.succeed();
 	}
 
 	@GameTest
@@ -565,9 +609,14 @@ public class TowerAuraGameTest {
 
 	// ---- particles ----
 
-	private static List<ParticleOptions> recordFrom(final Runnable action) {
+	/** The particles sent at the named entities only: a neighbour's, sent at another entity, are not heard. */
+	private static List<ParticleOptions> recordFrom(final java.util.Set<LivingEntity> subjects, final Runnable action) {
 		List<ParticleOptions> seen = new ArrayList<>();
-		TowerAuras.particleSink = (particle, count) -> seen.add(particle);
+		TowerAuras.particleSink = (at, particle, count) -> {
+			if (subjects.contains(at)) {
+				seen.add(particle);
+			}
+		};
 		try {
 			action.run();
 		} finally {
@@ -596,8 +645,9 @@ public class TowerAuraGameTest {
 			Zombie other = towerMob(tower, TowerElement.HOLY == element ? TowerElement.FIRE : TowerElement.WIND, spot(floor, 1, 0));
 			Pig target = victim(tower, floor, 1.5);
 			Zombie hurtKin = hurt(other);
+			hurt(mob);
 			mob.setTarget(other);
-			List<ParticleOptions> seen = recordFrom(() -> {
+			List<ParticleOptions> seen = recordFrom(java.util.Set.of(mob, target), () -> {
 				// A pulse for the ambient elements, a hit for the on-hit ones and Dark.
 				TowerAuras.pulse(tower, floor, TowerAuras.HOLY_INTERVAL_TICKS * 3);
 				hit(tower, target, mob, 1.0F);

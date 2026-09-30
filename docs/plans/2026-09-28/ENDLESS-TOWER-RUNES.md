@@ -551,3 +551,9 @@ void and lightning mark hits or speed. See the tower README for numbers and quot
   particles. Neither logs in the shipped jar.
 - Manual item: particles are not observable headlessly (`elementParticlesAreVisibleInPlayRequiresManualTest`).
 - Holy's 2% every 40 ticks is a guess awaiting the owner's confirmation.
+- Rune interaction, left as is: Ice-rune wearers are still slowed by the aura, because it refreshes faster than the
+  rune halves it. The owner decides later.
+- Review follow-up: on-hit effects now apply whenever a hit lands and no shield blocked it. In this build Fabric's
+  `AFTER_DAMAGE` already reports the damage before absorption, so the absorbed-hit case
+  (`fireHitStillIgnitesATargetThatAbsorbsItWhole`) passed before the change as well (evidence `e-f-red2`); it stays as a
+  guard, and the redundant `taken <= 0` early return was dropped for on-hit effects (Dark still needs damage taken).

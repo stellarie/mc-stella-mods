@@ -74,7 +74,7 @@ The element is read from the mob's `TowerMobs.State`. All numbers are public con
 - **Fire** ignites its target for 3 s; **Water** pushes it 0.4 further away; **Wind** lifts it 0.3; **Void**
   gives it Darkness for 60 ticks; **Lightning** runs 10% faster while it has a target.
 
-Measured (`TowerAuraGameTest`, 26 cases, required count 221 to 246):
+Measured (`TowerAuraGameTest`, 27 cases, required count 221 to 247):
 
 ```
 [BEHAVIOR] test=iceSlowsPlayerInRadius RESULT near=amp0/30 radius=4.0
@@ -82,7 +82,7 @@ Measured (`TowerAuraGameTest`, 26 cases, required count 221 to 246):
 [BEHAVIOR] test=darkDecay RESULT hold=100 step=20 samples=[+99=10.0, +100=9.0, +119=9.0, +120=8.0, +280=0.0, +800=0.0]
 [BEHAVIOR] test=holyMends RESULT self=4.2478867 kin=4.2478867 want=4.2478886
 [BEHAVIOR] test=waterHit RESULT extraX=0.4 want=0.4 extraY=0.0
-[BEHAVIOR] test=iceOwnPulse RESULT slowedAtTick=6 effect=amp0/30
+[BEHAVIOR] test=iceOwnPulse RESULT slowedAtTick=7 effect=amp0/30
 ```
 
 Manual acceptance: particles cannot be seen headlessly. The server hands each to the level (a test sink

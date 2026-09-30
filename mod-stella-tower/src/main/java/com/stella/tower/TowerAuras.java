@@ -65,10 +65,10 @@ public final class TowerAuras {
 	public static final Identifier LIGHTNING_SPEED_ID = StellaTower.id("lightning_speed");
 	public static final int VOID_DARKNESS_TICKS = 60;
 
-	/** Seen by tests only: each particle a pulse or a hit sends, with its count. Null in play. */
+	/** Seen by tests only: each particle a pulse or a hit sends, with the entity it is sent at and its count. Null in play. */
 	@FunctionalInterface
 	public interface ParticleSink {
-		void sent(ParticleOptions particle, int count);
+		void sent(LivingEntity at, ParticleOptions particle, int count);
 	}
 
 	public static volatile @Nullable ParticleSink particleSink;
@@ -85,10 +85,14 @@ public final class TowerAuras {
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(TowerAuras::tick);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
-			if (blocked || taken <= 0.0F || !(entity.level() instanceof ServerLevel level)) {
+			if (blocked || !(entity.level() instanceof ServerLevel level)) {
 				return;
 			}
-			struck(level, entity, now(level));
+			// A hit that lands marks its target even when absorption hearts soak it whole; only a shield stops it.
+			// Dark hardens by damage taken, so a hit that cost nothing adds no stack.
+			if (taken > 0.0F) {
+				struck(level, entity, now(level));
+			}
 			if (source.getEntity() instanceof LivingEntity attacker && attacker != entity && !TowerBuffs.reflecting()) {
 				strike(level, attacker, entity, source);
 			}
@@ -310,7 +314,7 @@ public final class TowerAuras {
 		level.sendParticles(particle, at.getX(), at.getY(0.5), at.getZ(), count, 0.3, 0.4, 0.3, 0.02);
 		ParticleSink sink = particleSink;
 		if (sink != null) {
-			sink.sent(particle, count);
+			sink.sent(at, particle, count);
 		}
 	}
 }
