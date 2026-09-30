@@ -229,6 +229,12 @@ enchantment instead.
 
 Quickening and Clear Mind stack, but a cooldown never drops below half its base or below 1 second.
 
+## Intelligence from mod-stella-rpg
+
+When `mod-stella-rpg` is installed, the caster's INT scales player spells. It raises spell power and shortens
+the cooldown of a spellbook cast and of an imbued weapon, arrow or chestplate cast. A cooldown never drops below
+1 second. Without `mod-stella-rpg` every cast is unchanged. Mob spells do not scale.
+
 ## Build and test
 
 ```powershell
