@@ -7,6 +7,7 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"com.stella.nether.ModpackDependencyGameTest",
+			"com.stella.nether.SovereignHealthCapGameTest",
 			"com.stella.nether.RaidPortalGameTest",
 			"com.stella.nether.RaidModeGameTest",
 			"com.stella.nether.RaidLifecycleGameTest",

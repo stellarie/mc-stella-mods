@@ -37,7 +37,6 @@ public final class BlazeSovereign {
 	public static final double HEALTH = 1248.0;
 	public static final double SCALE = 3.0;
 	/** Vanilla's ceiling on the health attribute; what lies past it is kept as a divisor on every hit taken. */
-	public static final double MAX_HEALTH_ATTRIBUTE = 1024.0;
 	/** How high above the ground below it the Sovereign may rise. */
 	public static final double NEAR_GROUND = 2.0;
 	/** How near a player must come to the fortress to wake it, and to see its bar. */
@@ -187,6 +186,14 @@ public final class BlazeSovereign {
 		return 1;
 	}
 
+	/** The most health an attribute may hold here: the live cap, divided by the rpg mod's health scale. */
+	public static double healthCap() {
+		double cap = ((net.minecraft.world.entity.ai.attributes.RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
+		Object scale = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare().get("mod-stella-rpg:health-scale");
+		double k = scale instanceof Double value && value > 0.0 ? value : 1.0;
+		return cap / k;
+	}
+
 	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
 	public static Blaze rise(final ServerLevel raid, final Vec3 at) {
 		MinecraftServer server = raid.getServer();
@@ -198,7 +205,7 @@ public final class BlazeSovereign {
 		// The raid's own health; its threat is none, like every raid mob's.
 		blaze.setAttached(ThreatState.TYPE, new ThreatState(0, 0));
 		double total = HEALTH;
-		double attribute = Math.min(total, MAX_HEALTH_ATTRIBUTE);
+		double attribute = Math.min(total, healthCap());
 		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(attribute);
 		blaze.setAttached(DIVISOR, total / attribute);
 		blaze.setHealth((float) attribute);
