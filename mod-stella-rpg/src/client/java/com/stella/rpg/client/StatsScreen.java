@@ -287,14 +287,11 @@ public final class StatsScreen extends Screen {
 	}
 
 	private void drawDerived(final GuiGraphicsExtractor graphics, final StatsSyncPayload data) {
-		double attack = AttackPreview.withEnchantments(
-			this.minecraft.player.getMainHandItem(),
-			this.minecraft.player.getAttributeValue(Attributes.ATTACK_DAMAGE)
-		);
+		double[] attack = AttackPreview.range(this.minecraft.player, this.effective(data, Stat.STR));
 		List<Component> lines = List.of(
 			Component.translatable(
 				"screen.mod-stella-rpg.atk",
-				AttackPreview.format(attack, RpgDice.of(this.effective(data, Stat.STR)))
+				AttackPreview.format(attack)
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",

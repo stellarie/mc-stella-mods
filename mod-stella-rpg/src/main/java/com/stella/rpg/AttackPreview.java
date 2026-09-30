@@ -1,7 +1,14 @@
 package com.stella.rpg;
 
 import java.util.List;
+import com.stella.rpg.roll.Affix;
+import com.stella.rpg.roll.Affixes;
 import java.util.Locale;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.ConditionalEffect;
@@ -9,7 +16,10 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.effects.EnchantmentValueEffect;
 
-/** Builds the Atk text shown on the stats screen. */
+/**
+ * Builds the Atk text shown on the stats screen. Attack damage is not a synced attribute, so the client reads the
+ * held item's own modifiers instead of the player's attribute.
+ */
 public final class AttackPreview {
 	private AttackPreview() {
 	}
@@ -28,6 +38,23 @@ public final class AttackPreview {
 			}
 		}
 		return value;
+	}
+
+	/** The melee hit range in K units: base and weapon, enchantments, dice, status ATK, flat affix, then damage %. */
+	public static double[] range(final LivingEntity player, final int str) {
+		ItemStack held = player.getMainHandItem();
+		double base = player.getAttributeBaseValue(Attributes.ATTACK_DAMAGE);
+		double attack = withEnchantments(held, held.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY)
+			.compute(Attributes.ATTACK_DAMAGE, base, EquipmentSlot.MAINHAND));
+		RpgDice.Dice dice = RpgDice.of(str);
+		double k = RpgScale.k();
+		double extra = RpgCombat.statusAtk(str) + Affixes.total(player, Affix.DAMAGE_FLAT) / k;
+		double factor = RpgCombat.damageFactor(player) * k;
+		return new double[] {(attack + dice.min() + extra) * factor, (attack + dice.max() + extra) * factor};
+	}
+
+	public static String format(final double[] range) {
+		return number(range[0]) + "-" + number(range[1]);
 	}
 
 	public static String number(final double value) {
