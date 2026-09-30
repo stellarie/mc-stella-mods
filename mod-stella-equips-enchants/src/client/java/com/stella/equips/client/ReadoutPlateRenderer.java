@@ -66,7 +66,8 @@ final class ReadoutPlateRenderer {
 		final float scale
 	) {
 		String label = ReadoutText.label(payload.rankValue(), payload.name());
-		String number = Integer.toString(payload.threat());
+		// A negative threat means no mobs mod: draw no number.
+		String number = payload.threat() < 0 ? "" : Integer.toString(payload.threat());
 		ReadoutPlateLayout.Plan plan = ReadoutPlateLayout.plan(
 			payload.health(), payload.maxHealth(), payload.absorption(), font.width(label)
 		);

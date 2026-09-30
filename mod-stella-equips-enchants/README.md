@@ -96,7 +96,7 @@ target.
 
 ## Player power
 
-Player power follows the vanilla experience level, capped at `level_cap` (50). The
+Player power follows the vanilla experience level, capped at `level_cap` (1024). The
 mod reads `experienceLevel` and never writes experience, so kills, deaths,
 enchanting, and experience orbs work exactly as in vanilla. There are no custom
 points, no kill awards, and no death penalty.
@@ -116,19 +116,16 @@ for the player's vanilla level and removes the four retired `power_armor`,
 `power_knockback_resistance`, `power_attack_damage`, and `power_attack_speed`
 modifiers. Old combat points are not converted into experience.
 
-Mob threat is a separate rating: `min(cap, floor(scaled_distance / blocks_per_level))`
-plus up to `depth_bonus_cap` for depth, capped at `mob_level.level_cap` (36).
-`dimension_scale` multiplies the horizontal distance before the division, so 1200
-nether blocks read as 9600 overworld blocks. Threat never changes a mob or awards
-anything; it only feeds the readout.
+The readout's mob level is the level `mod-stella-mobs` rolled for that mob. The mod reads it
+from the Fabric object share `mod-stella-mobs:threat-level`. Without `mod-stella-mobs`, the
+readout shows no level and a white band.
 
 The config is `config/mod-stella-equips-enchants/power.json`. The mod writes it on
 the first start and re-reads it when the data pack reloads. A hand edit wins, a
 bad entry logs and keeps the previous value, and every tuning number lives there.
 An existing file is never upgraded: a key you set wins and a key you delete falls
 back to the bundled document. The retired `curve` and `award` keys of older files
-are reported as unknown and ignored. The `mob_level` section keeps its name so old
-files still apply.
+and the retired `mob_level` section are reported as unknown and ignored.
 
 ## Mob threat readout
 
@@ -155,9 +152,7 @@ tag is shown.
 The client hides the vanilla floating name tag of every mob, including named pets,
 because the plate carries the name. Players keep their name tags.
 
-For the color, raw threat is scaled onto the player level range:
-`round(threat * level_cap / mob_level.level_cap)`, so threat 0, 18, and 36 compare as
-0, 25, and 50. The gap is that scaled threat minus the owner's capped level. The
+For the color, the gap is the mob's level minus the owner's capped level. The
 bands come from the `bands` block of `power.json`: red at 20 above, yellow at 10
 above, orange at 6 above, green from 5 above to 5 below, and white at 6 or more
 below. `/stellaequips readout off` clears the plate of one player and stops new
@@ -227,7 +222,7 @@ Each effect keeps working at the higher levels, so a +15 weapon sears, rends and
 
 The game tests run a headless server. They check the test-only fixture enchantment
 `mod-stella-equips-enchants-test-mod-stella-equips-enchants:test_marker`, its cost
-fields, the clamped anvil cost, the 74 catalogue enchantments, threat scaling, the
+fields, the clamped anvil cost, the 74 catalogue enchantments, the readout level share, the
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
 saved before this change, and the readout: its look test, range, and line of sight, its payload, its rank
 tags and colors, the plate geometry, its removal on death and on disconnect, its

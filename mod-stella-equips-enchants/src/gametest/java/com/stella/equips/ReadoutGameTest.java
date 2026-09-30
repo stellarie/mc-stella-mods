@@ -8,6 +8,7 @@ import com.stella.equips.power.PowerTracker;
 import com.stella.equips.readout.ReadoutPayload;
 import com.stella.equips.readout.ReadoutRank;
 import com.stella.equips.readout.ReadoutService;
+import com.stella.equips.readout.ReadoutThreat;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import java.io.IOException;
@@ -337,15 +338,16 @@ public class ReadoutGameTest {
 				cow.setAbsorptionAmount(0.0F);
 				ReadoutService.scanPlayer(owner, config);
 				ReadoutPayload without = ReadoutService.owner(owner).current();
-				int threat = PowerTracker.threat(cow, config);
-				int gap = PowerCurve.normalizedThreat(threat, config) - PowerTracker.playerLevel(owner, config);
+				int threat = ReadoutThreat.levelOf(cow);
+				int gap = threat - PowerTracker.playerLevel(owner, config);
+				PowerCurve.Band expectedBand = threat < 0 ? PowerCurve.Band.WHITE : PowerCurve.band(gap, config);
 				StellaEquips.LOGGER.info(
 					"[BEHAVIOR] test=readoutPayloadContent RESULT with={} without={} threat={} gap={}",
 					withAbsorption, without, threat, gap
 				);
 				helper.assertTrue(withAbsorption != null && without != null, "the looked-at mob sent no payload");
 				helper.assertTrue(
-					withAbsorption.threat() == threat && withAbsorption.bandValue() == PowerCurve.band(gap, config),
+					withAbsorption.threat() == threat && withAbsorption.bandValue() == expectedBand,
 					"the payload threat and band read " + withAbsorption.threat() + " " + withAbsorption.bandValue()
 				);
 				helper.assertTrue(
