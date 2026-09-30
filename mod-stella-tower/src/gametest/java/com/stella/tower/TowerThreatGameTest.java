@@ -90,10 +90,10 @@ public class TowerThreatGameTest {
 		float before = zombie.getHealth();
 		zombie.hurtServer(tower, tower.damageSources().generic(), 100.0F);
 		float lost = before - zombie.getHealth();
-		double expected = 100.0 * TowerMobs.MAX_HEALTH_ATTRIBUTE / want;
+		double expected = 100.0 * TowerMobs.healthCap() / want;
 		TowerTestSupport.result("healthPastCap", "max=" + zombie.getMaxHealth() + " want=" + want + " lost=" + lost + " expected=" + expected);
 		zombie.discard();
-		helper.assertTrue(zombie.getMaxHealth() <= TowerMobs.MAX_HEALTH_ATTRIBUTE && Math.abs(lost - expected) < 0.05,
+		helper.assertTrue(zombie.getMaxHealth() <= TowerMobs.healthCap() && Math.abs(lost - expected) < 0.05,
 			"a floor " + floor + " zombie of " + want + " health lost " + lost + " to a 100 hit, not " + expected);
 		helper.succeed();
 	}

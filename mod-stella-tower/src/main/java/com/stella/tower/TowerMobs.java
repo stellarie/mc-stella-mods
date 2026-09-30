@@ -50,7 +50,6 @@ public final class TowerMobs {
 	public static final int SPAWN_TRIES = 24;
 	public static final double MIN_PLAYER_DISTANCE = 12.0;
 	public static final int OVERWORLD_ONLY_UNTIL = 20;
-	public static final double MAX_HEALTH_ATTRIBUTE = 1024.0;
 	public static final Identifier HEALTH_ID = StellaTower.id("floor_health");
 	public static final Identifier ARMOR_ID = StellaTower.id("floor_armor");
 	public static final Identifier SPEED_ID = StellaTower.id("floor_speed");
@@ -117,6 +116,14 @@ public final class TowerMobs {
 		return all;
 	}
 
+	/** The most health an attribute may hold here: the live cap, divided by the rpg mod's health scale. */
+	public static double healthCap() {
+		double cap = ((net.minecraft.world.entity.ai.attributes.RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
+		Object scale = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare().get("mod-stella-rpg:health-scale");
+		double k = scale instanceof Double value && value > 0.0 ? value : 1.0;
+		return cap / k;
+	}
+
 	/** Makes a mob a tower mob of this floor, in this element, at full health. */
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element) {
 		makeTowerMob(mob, floor, element, TowerRank.MOB);
@@ -126,10 +133,13 @@ public final class TowerMobs {
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
 		double want = TowerCurve.health(health.getBaseValue(), floor) * rank.healthFactor();
-		double held = Math.min(want, MAX_HEALTH_ATTRIBUTE);
+		double held = Math.min(want, healthCap());
 		// The floor alone sets a tower mob's health: a zombie leader's bonus or any other is set aside.
 		for (AttributeModifier other : List.copyOf(health.getModifiers())) {
-			health.removeModifier(other.id());
+			// The rpg mod's health scale is not a bonus.
+			if (!other.id().getNamespace().equals("mod-stella-rpg")) {
+				health.removeModifier(other.id());
+			}
 		}
 		health.addPermanentModifier(new AttributeModifier(HEALTH_ID, held - health.getBaseValue(), AttributeModifier.Operation.ADD_VALUE));
 		AttributeInstance armor = mob.getAttribute(Attributes.ARMOR);
@@ -144,7 +154,7 @@ public final class TowerMobs {
 			speed.addPermanentModifier(new AttributeModifier(SPEED_ID, TowerCurve.speedBonus(floor), AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
 		}
 		mob.setHealth(mob.getMaxHealth());
-		mob.setAttached(STATE, new State(floor, element, want / mob.getMaxHealth(), rank));
+		mob.setAttached(STATE, new State(floor, element, want / held, rank));
 		mob.addTag(TAG);
 		mob.addTag(NO_SPAWN_ROLL_TAG);
 		mob.setPersistenceRequired();

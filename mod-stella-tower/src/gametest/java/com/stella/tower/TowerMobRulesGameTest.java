@@ -113,7 +113,7 @@ public class TowerMobRulesGameTest {
 		}
 		helper.assertTrue(state != null && state.floor() == of && state.element() == TowerElement.HOLY,
 			"the zoglin a tower hoglin became is no tower mob: " + state);
-		helper.assertTrue(Math.abs(held - Math.min(want, TowerMobs.MAX_HEALTH_ATTRIBUTE)) < 0.01, "the zoglin has " + held + " health, not its floor's " + want);
+		helper.assertTrue(Math.abs(held - Math.min(want, TowerMobs.healthCap())) < 0.01, "the zoglin has " + held + " health, not its floor's " + want);
 		helper.succeed();
 	}
 
@@ -169,7 +169,7 @@ public class TowerMobRulesGameTest {
 		double divisor = TowerMobs.stateOf(zombie).healthDivisor();
 		TowerTestSupport.result("leaderHealth", "held=" + held + " want=" + want + " effective=" + held * divisor);
 		zombie.discard();
-		helper.assertTrue(Math.abs(held - Math.min(want, TowerMobs.MAX_HEALTH_ATTRIBUTE)) < 0.05 && Math.abs(held * divisor - want) < 0.05,
+		helper.assertTrue(Math.abs(held - Math.min(want, TowerMobs.healthCap())) < 0.05 && Math.abs(held * divisor - want) < 0.05,
 			"a leader zombie shows " + held + " health (effective " + held * divisor + "), not its floor's " + want);
 		helper.succeed();
 	}
