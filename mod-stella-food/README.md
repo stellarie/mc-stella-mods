@@ -44,6 +44,15 @@ You can also combine each dish's ingredients in a crafting table. The station re
 
 Combine a dish with one regular, splash, or lingering potion to infuse it. Its dish buff and timed potion effects last forty-five minutes. Instant effects apply when eaten. Harmful effects remain harmful.
 
+## Seasoned bonus
+
+The station rolls one small stat bonus when it infuses a dish: a random stat (STR, AGI, VIT, DEX, INT, or LUK) and an amount from 5 to 10. The roll is stored on the dish in the `mod-stella-food:seasoning` data component, so the dish keeps it. The tooltip shows it, for example "Seasoned: +7 DEX".
+
+- The roll happens once for each dish and potion pair in the grid. Changing the grid back to the same pair does not reroll it.
+- Eating the dish applies the effect `mod-stella-food:seasoned_<stat>` for forty-five minutes, at level equal to the amount. The effects are `seasoned_str`, `seasoned_agi`, `seasoned_vit`, `seasoned_dex`, `seasoned_int`, and `seasoned_luk`. They have no attribute modifiers.
+- `mod-stella-rpg` reads these effects by id and adds one stat point for each level. Without it the effects do nothing but show an icon.
+- Plain dishes, ordinary food, and dishes infused before this bonus existed carry no bonus.
+
 ## Build and verification
 
 Run these commands from this directory:

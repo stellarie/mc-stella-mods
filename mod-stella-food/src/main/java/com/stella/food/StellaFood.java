@@ -22,6 +22,15 @@ public final class StellaFood implements ModInitializer {
 			.build()
 	);
 
+	public static final DataComponentType<Seasoning> SEASONING = Registry.register(
+		BuiltInRegistries.DATA_COMPONENT_TYPE,
+		id("seasoning"),
+		DataComponentType.<Seasoning>builder()
+			.persistent(Seasoning.CODEC)
+			.networkSynchronized(Seasoning.STREAM_CODEC)
+			.build()
+	);
+
 	@Override
 	public void onInitialize() {
 		FoodEffects.register();

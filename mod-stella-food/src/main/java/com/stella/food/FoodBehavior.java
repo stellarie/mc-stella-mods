@@ -29,6 +29,7 @@ public final class FoodBehavior {
 			int dishTicks = food.has(DataComponents.POTION_CONTENTS) ? INFUSED_TICKS : DISH_TICKS;
 			eater.addEffect(new MobEffectInstance(dishEffect, dishTicks));
 			applyInfusion(eater, food);
+			applySeasoning(eater, food);
 			return;
 		}
 		eater.addEffect(new MobEffectInstance(FoodCategories.effectFor(food.getItem()), ORDINARY_TICKS));
@@ -61,6 +62,13 @@ public final class FoodBehavior {
 			} else {
 				eater.addEffect(new MobEffectInstance(effect, INFUSED_TICKS, source.getAmplifier()));
 			}
+		}
+	}
+
+	private static void applySeasoning(final LivingEntity eater, final ItemStack food) {
+		Seasoning seasoning = Seasoning.read(food);
+		if (seasoning != null) {
+			eater.addEffect(new MobEffectInstance(seasoning.effect(), INFUSED_TICKS, seasoning.amplifier()));
 		}
 	}
 
