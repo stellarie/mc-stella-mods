@@ -43,7 +43,8 @@ The record holds:
 | `python -m stella_train.gym_launch --servers 2 --arenas 8` | Starts servers and keeps them up until Ctrl+C |
 | `python -m stella_train.logview ../run-gym-0/logs/latest.log` | Counts `[BEHAVIOR]` lines per component, verb, and reason |
 | `python -m stella_train.logview runs/bench-{timestamp}/events.jsonl` | The same for a Python event stream |
-| `python -m pytest tests` | Codec test on the fixed bytes that `GymWireGameTest` also checks |
+| `python -m stella_train.testmodels` | Rewrites the test models and the parity golden file under `../src/gametest/resources/policies/test/` |
+| `python -m pytest tests` | Codec test on the fixed bytes that `GymWireGameTest` also checks, and the weights format tests |
 
 ## Wire protocol
 
@@ -66,3 +67,11 @@ The server waits 30 seconds for an Act frame, then logs `gymBridge TIMEOUT` and 
 Every gym component writes `[BEHAVIOR] test=gym<Component> <VERB> key=value ...` lines through `LearnLog`, so the
 `behavior_log` switch in the learn config controls them. Python writes the same facts to `log.txt` and one JSON object
 per line to `events.jsonl`. `logview.py` reads both.
+
+## Contract and weights files
+
+`contract.py` reads `../src/main/resources/policies/archer-v1.contract.json`, the same file the Java `Contract` reads,
+and hashes its bytes with SHA-256. `policy_file.py` writes and reads the `SLMP` weights format that
+`com.stella.learn.model.PolicyFile` loads, and holds a numpy forward pass that gives the numbers the Java network must
+match within 1e-5 (`ModelParityGameTest`). A weights file carries the contract hash, so a file trained against another
+contract is refused at load with `status=contract`.

@@ -111,6 +111,45 @@ skipped, and a broken file gives every default.
 | `crit_saturation` | 4.0 | Crit jumps that count as a full crit-jumper |
 | `rl_alpha` / `rl_epsilon` / `rl_window_ticks` | 0.25 / 0.05 / 30 | Share a value moves to a new reward, the exploration floor, and ticks an episode lasts |
 | `choke_group` / `choke_patience_ticks` / `choke_rest_ticks` | 3 / 200 / 40 | Mobs that must gather, how long one waits for them, and its rest after any other stop |
+| `model_archer` / `model_act_log_ticks` | true / 20 | Whether a trained model may drive a bow archer, and the ticks between two `learnModel ACT` lines per mob (0 turns them off) |
+
+## Trained models
+
+A bow archer (a skeleton, stray or bogged holding a bow, with no shield in its off hand and no stray sniper kit) can
+be driven by a trained network instead of its own goals. No model ships yet: the weights file
+`resources/policies/archer-v1.bin` does not exist, so every archer keeps its current goals.
+
+- **What drives a mob.** With a valid weights file loaded and `model_archer` on, an archer loses `RetreatGoal`,
+  `KeepDistanceGoal`, `HoldStandoffGoal`, `SkeletonVolleyGoal`, the vanilla bow goal and this mod's eight tactic
+  goals, and gains one `LearnedArcherGoal` at rank 0. It carries the tag `mod-stella-mobs.model_driven`. Target
+  selection and goals that do not move the mob stay. A driven archer declines a rally with the reason `model`.
+- **The contract.** `resources/policies/archer-v1.contract.json` is the one definition of the 116 observation
+  fields, the action heads and the network shape. Java and Python both read it, and a weights file carries the
+  SHA-256 of the contract bytes. `training/stella_train/contract.py` is the Python reader.
+- **Every two ticks** the goal builds the observation, asks the network and keeps the answer. Every tick it applies it
+  under limits no model can pass: a turn of at most 30 degrees a tick, a walk at 1.2 times the mob's own speed, a bow
+  released only after a 3 tick draw with power set by the draw, and a volley only 120 ticks after the last one.
+- **Fall back.** A missing file (`status=missing`), a file made for another contract (`contract`) or a broken one
+  (`format`) disables the model for the session and every archer keeps its goals. A mob that gets a non-finite output
+  (`nan`), an error thrown by the observation or the network (`error`, logged with its stack), a switch turned off
+  (`switch`) or a swapped weapon (`gear`) gets its removed goals back, the same objects at
+  the same ranks, and is not driven again this session.
+- **Config.** `model_archer` (default true) switches the model on. `model_act_log_ticks` (default 20) sets the ticks
+  between two `learnModel ACT` lines per mob; 0 turns them off.
+
+| Line | When |
+|---|---|
+| `learnModel LOAD` | The weights file is read at server start: `status=ok\|missing\|contract\|format`, the contract hash prefix, the size |
+| `learnModel INSTALL` | An archer becomes model driven, with the goals it gave up and their ranks |
+| `learnModel FALLBACK` | An archer keeps or gets back its goals, with `reason=missing\|contract\|format\|nan\|error\|switch\|gear`. With a bad weights file only the first five archers per load write it at INFO |
+| `learnModel ACT` | Debug level, every `model_act_log_ticks` ticks per mob: the action and the target distance |
+| `learnModel RELEASE` | Each arrow release: draw ticks, power, whether a volley was asked and loosed |
+| `learnModel SKIP` | Debug level: an archer type that was not installed, and why |
+| `learnModel PERF` | A timing window a test closed: archers, ticks, mean, 95th percentile and worst milliseconds a tick |
+
+The test models and the parity golden file in `src/gametest/resources/policies/test/` come from
+`python -m stella_train.testmodels` in `training/`. Run it again whenever the contract changes; the contract hash
+sits in every file, and `tests/test_policy_file.py` fails on a stale one.
 
 ## Build and test
 

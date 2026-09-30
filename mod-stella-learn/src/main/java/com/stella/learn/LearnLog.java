@@ -46,6 +46,20 @@ public final class LearnLog {
 		StellaLearn.LOGGER.debug(line(test, verb, detail));
 	}
 
+	/**
+	 * A per-decision line, sampled by its caller: debug level in the server log, so a busy server does not write it, and
+	 * always to a test's tap. `behavior_log` still switches it off.
+	 */
+	public static void sampled(final String test, final String verb, final String detail) {
+		if (!LearnConfigStore.get().behaviorLog()) {
+			return;
+		}
+
+		String line = line(test, verb, detail);
+		StellaLearn.LOGGER.debug(line);
+		tap.accept(line);
+	}
+
 	public static String who(final Mob mob) {
 		return "mob=" + BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()) + " id=" + mob.getUUID();
 	}

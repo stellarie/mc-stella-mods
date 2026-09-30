@@ -2,6 +2,7 @@ package com.stella.learn;
 
 import com.stella.learn.gym.Bot;
 import com.stella.learn.gym.BotInput;
+import com.stella.mobs.StellaMobs;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
@@ -65,8 +67,15 @@ public class GymBotGameTest {
 	}
 
 	private static Mob zombieAt(final GameTestHelper helper, final double x, final double z, final boolean ai) {
-		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, (int) x, LearnArena.SPAWN_Y - 2, (int) z).spawn();
+		// Far from the world origin the mobs mod scales a fresh spawn's damage until one hit kills the bot, so this one is
+		// tagged out of the spawn rolls and keeps the vanilla numbers the assertions below rely on.
+		Mob zombie = EntityTypes.ZOMBIE.create(helper.getLevel(), EntitySpawnReason.NATURAL);
+		Vec3 at = helper.absoluteVec(new Vec3((int) x + 0.5, LearnArena.SPAWN_Y - 2, (int) z + 0.5));
+		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		zombie.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		zombie.setPersistenceRequired();
 		zombie.setNoAi(!ai);
+		helper.getLevel().addFreshEntity(zombie);
 		return zombie;
 	}
 
