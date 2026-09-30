@@ -10,6 +10,7 @@
 		],
 		"fabric-gametest": [
 			"com.stella.rpg.ArmorSetGameTest",
+			"com.stella.rpg.HudLayoutGameTest",
 			"com.stella.rpg.RpgAgilityGameTest",
 			"com.stella.rpg.RpgBonusGameTest",
 			"com.stella.rpg.RpgCommandGameTest",
