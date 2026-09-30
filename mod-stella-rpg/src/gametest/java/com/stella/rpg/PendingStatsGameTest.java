@@ -71,7 +71,10 @@ public final class PendingStatsGameTest {
 		sword.enchant(sharpness, 5);
 		double sharp = AttackPreview.withEnchantments(sword, 7.0);
 		helper.assertTrue(Math.abs(sharp - 10.0) < 1e-6, "sharpness V total=" + sharp);
-		helper.assertTrue(AttackPreview.format(sharp, "1d4").equals("10 + 1d4"), "text=" + AttackPreview.format(sharp, "1d4"));
+		String range = AttackPreview.format(sharp, new RpgDice.Dice(1, 4));
+		helper.assertTrue(range.equals("11-14"), "text=" + range);
+		String example = AttackPreview.format(9.0, new RpgDice.Dice(1, 4));
+		helper.assertTrue(example.equals("10-13"), "example=" + example);
 		ItemStack smiter = new ItemStack(Items.DIAMOND_SWORD);
 		smiter.enchant(smite, 5);
 		double smited = AttackPreview.withEnchantments(smiter, 7.0);
