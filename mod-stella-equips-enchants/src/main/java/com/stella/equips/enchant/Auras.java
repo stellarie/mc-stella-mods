@@ -22,22 +22,23 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 /**
  * The chestplate auras. Mist Armor wraps its wearer in a freezing mist that chills and slows the enemies
- * close around; Blaze Armor burns them for a heart a second, now and then sets one alight, and keeps its
- * wearer fire resistant, as a blaze's own heat does. Both pulse once a second for every player wearing one.
+ * close around; Blaze Armor burns them each second, now and then sets one alight, and keeps its wearer
+ * fire resistant, as a blaze's own heat does. Both take a share of the wearer's max health, in vanilla units,
+ * and pulse once a second for every player wearing one.
  */
 public final class Auras {
 	public static final Identifier MIST_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "armor/mist_armor");
 	public static final Identifier BLAZE_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "armor/blaze_armor");
 	public static final int PULSE_TICKS = 20;
 	public static final double MIST_RADIUS = 4.0;
-	/** Freeze damage each pulse, per level. */
-	public static final float MIST_DAMAGE_PER_LEVEL = 1.0F;
+	/** Freeze damage each pulse, per level, as a share of the wearer's max health. */
+	public static final float MIST_SHARE_PER_LEVEL = 0.03F;
 	public static final int MIST_SLOW_TICKS = 30;
 	/** How much colder each pulse leaves a foe, in frozen ticks, so the frost shows on it. */
 	public static final int MIST_FROST_TICKS = 40;
 	public static final double BLAZE_RADIUS = 3.0;
-	/** One heart a second, at every level. */
-	public static final float BLAZE_DAMAGE = 2.0F;
+	/** Fire damage each pulse, at every level, as a share of the wearer's max health. */
+	public static final float BLAZE_SHARE = 0.10F;
 	/** The chance, per level, that a pulse sets a foe alight. */
 	public static final float BLAZE_IGNITE_CHANCE_PER_LEVEL = 0.1F;
 	public static final int BLAZE_IGNITE_TICKS = 60;
@@ -79,7 +80,7 @@ public final class Auras {
 
 	private static void mist(final ServerLevel level, final LivingEntity wearer, final int rank) {
 		DamageSource frost = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypes.FREEZE), null, wearer);
-		float damage = TowerBridge.grow(MIST_DAMAGE_PER_LEVEL * rank, wearer.getItemBySlot(EquipmentSlot.CHEST), "mist_armor");
+		float damage = TowerBridge.grow(MIST_SHARE_PER_LEVEL * rank * HealthScale.vanillaMaxHealth(wearer), wearer.getItemBySlot(EquipmentSlot.CHEST), "mist_armor");
 		for (LivingEntity foe : foes(level, wearer, MIST_RADIUS)) {
 			foe.setTicksFrozen(Math.max(foe.getTicksFrozen(), foe.getTicksRequiredToFreeze()) + MIST_FROST_TICKS);
 			foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, MIST_SLOW_TICKS, rank - 1), wearer);
@@ -91,7 +92,7 @@ public final class Auras {
 	private static void blaze(final ServerLevel level, final LivingEntity wearer, final int rank) {
 		wearer.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, BLAZE_FIRE_RESISTANCE_TICKS, 0, true, false, true));
 		DamageSource heat = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypes.IN_FIRE), null, wearer);
-		float damage = TowerBridge.grow(BLAZE_DAMAGE, wearer.getItemBySlot(EquipmentSlot.CHEST), "blaze_armor");
+		float damage = TowerBridge.grow(BLAZE_SHARE * HealthScale.vanillaMaxHealth(wearer), wearer.getItemBySlot(EquipmentSlot.CHEST), "blaze_armor");
 		for (LivingEntity foe : foes(level, wearer, BLAZE_RADIUS)) {
 			foe.hurtServer(level, heat, damage);
 			if (wearer.getRandom().nextFloat() < BLAZE_IGNITE_CHANCE_PER_LEVEL * rank) {

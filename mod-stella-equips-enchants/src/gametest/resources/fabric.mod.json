@@ -5,6 +5,9 @@
 	"name": "Stella Equips and Enchants game tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.equips.TestItems"
+		],
 		"fabric-gametest": [
 			"com.stella.equips.AnvilCostGameTest",
 			"com.stella.equips.ReadoutThreatGameTest",
@@ -37,7 +40,11 @@
 			"com.stella.equips.DamageNumbersGameTest",
 			"com.stella.equips.RefiningGameTest",
 			"com.stella.equips.AuraEnchantGameTest",
-			"com.stella.equips.TowerBridgeGameTest"
+			"com.stella.equips.TowerBridgeGameTest",
+			"com.stella.equips.PercentProcGameTest",
+			"com.stella.equips.PercentHealGameTest",
+			"com.stella.equips.RefineSpecialsGameTest",
+			"com.stella.equips.RefineSpellbookGameTest"
 		]
 	}
 }

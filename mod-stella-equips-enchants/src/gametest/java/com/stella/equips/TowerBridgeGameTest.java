@@ -69,7 +69,7 @@ public class TowerBridgeGameTest {
 		float grown = mistPulse(helper, 4.0, "mist_armor", 1.5);
 		float elsewhere = mistPulse(helper, 4.0, "blaze_armor", 1.5);
 		LOG.info("[BEHAVIOR] test=aChestplatesGrowthMultipliesMistArmorsDamage RESULT plain={} grown={} elsewhere={}", plain, grown, elsewhere);
-		helper.assertTrue(Math.abs(plain - Auras.MIST_DAMAGE_PER_LEVEL * 2) < 1.0E-3, "a plain mist pulse took " + plain);
+		helper.assertTrue(Math.abs(plain - Auras.MIST_SHARE_PER_LEVEL * 2 * player(helper).getMaxHealth()) < 1.0E-3, "a plain mist pulse took " + plain);
 		helper.assertTrue(Math.abs(grown - plain * 4.0F * 1.5F) < 1.0E-2, "growth x4 with resonance x1.5 took " + grown + " from " + plain);
 		helper.assertTrue(Math.abs(elsewhere - plain * 4.0F) < 1.0E-2, "resonance with another enchantment changed the mist to " + elsewhere);
 		helper.succeed();
@@ -83,8 +83,8 @@ public class TowerBridgeGameTest {
 		float before = foe.getHealth();
 		Auras.pulse(wearer);
 		float lost = before - foe.getHealth();
-		LOG.info("[BEHAVIOR] test=aChestplatesGrowthMultipliesBlazeArmorsHeat RESULT lost={} base={}", lost, Auras.BLAZE_DAMAGE);
-		helper.assertTrue(Math.abs(lost - Auras.BLAZE_DAMAGE * 3.0F * 2.0F) < 1.0E-2, "a grown blaze pulse took " + lost);
+		LOG.info("[BEHAVIOR] test=aChestplatesGrowthMultipliesBlazeArmorsHeat RESULT lost={} base={}", lost, Auras.BLAZE_SHARE * wearer.getMaxHealth());
+		helper.assertTrue(Math.abs(lost - Auras.BLAZE_SHARE * wearer.getMaxHealth() * 3.0F * 2.0F) < 1.0E-2, "a grown blaze pulse took " + lost);
 		helper.succeed();
 	}
 

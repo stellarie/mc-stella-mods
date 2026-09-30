@@ -24,12 +24,12 @@ import org.jspecify.annotations.Nullable;
  */
 public final class MasteryPerks {
 	public static final int PERK_TIER = 4;
-	public static final float LIFESTEAL_HEAL = 1.0F;
+	public static final float LIFESTEAL_SHARE = 0.03F;
 	public static final float CLEAVE_SHARE = 0.5F;
 	public static final double CLEAVE_RADIUS = 2.5;
 	public static final int MOMENTUM_TICKS = 60;
 	public static final int TIDECALLER_TICKS = 100;
-	public static final float AFTERSHOCK_DAMAGE = 3.0F;
+	public static final float AFTERSHOCK_SHARE = 0.30F;
 	public static final double AFTERSHOCK_RADIUS = 3.0;
 
 	public enum Perk {
@@ -105,11 +105,11 @@ public final class MasteryPerks {
 
 		ServerLevel level = player.level();
 		switch (perk) {
-			case LIFESTEAL -> player.heal(LIFESTEAL_HEAL);
+			case LIFESTEAL -> player.heal(taken * LIFESTEAL_SHARE);
 			case CLEAVE -> spread(level, player, victim, CLEAVE_RADIUS, taken * CLEAVE_SHARE);
 			case MOMENTUM -> player.addEffect(new MobEffectInstance(MobEffects.SPEED, MOMENTUM_TICKS, 0), player);
 			case TIDECALLER -> player.addEffect(new MobEffectInstance(MobEffects.CONDUIT_POWER, TIDECALLER_TICKS, 0), player);
-			case AFTERSHOCK -> spread(level, player, victim, AFTERSHOCK_RADIUS, AFTERSHOCK_DAMAGE);
+			case AFTERSHOCK -> spread(level, player, victim, AFTERSHOCK_RADIUS, taken * AFTERSHOCK_SHARE);
 		}
 
 		Vec3 at = victim.position().add(0.0, victim.getBbHeight() / 2.0, 0.0);

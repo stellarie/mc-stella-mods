@@ -60,6 +60,7 @@ public class RefiningGameTest {
 	private static final Map<UUID, List<String>> EVENTS = new ConcurrentHashMap<>();
 
 	static {
+		RefineRolls.install();
 		RefineStation.setRoller((player, random, chance) -> {
 			Boolean forced = FORCED.get(player.getUUID());
 			return forced != null ? forced : RefineStation.fairRoll(random, chance);
@@ -261,16 +262,16 @@ public class RefiningGameTest {
 
 	@GameTest
 	public void armourGainsArmourAndVigorAtTen(final GameTestHelper helper) {
-		ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
-		double before = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.ARMOR, 0.0, EquipmentSlot.CHEST);
-		Refine.setLevel(plate, 4);
-		double atFour = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.ARMOR, 0.0, EquipmentSlot.CHEST);
-		double healthAtFour = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.MAX_HEALTH, 20.0, EquipmentSlot.CHEST);
-		Refine.setLevel(plate, Refine.SEARING_LEVEL);
-		double healthAtTen = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.MAX_HEALTH, 20.0, EquipmentSlot.CHEST);
+		ItemStack helmet = new ItemStack(Items.IRON_HELMET);
+		double before = helmet.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.ARMOR, 0.0, EquipmentSlot.HEAD);
+		Refine.setLevel(helmet, 4);
+		double atFour = helmet.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.ARMOR, 0.0, EquipmentSlot.HEAD);
+		double healthAtFour = helmet.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.MAX_HEALTH, 20.0, EquipmentSlot.HEAD);
+		Refine.setLevel(helmet, Refine.SEARING_LEVEL);
+		double healthAtTen = helmet.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.MAX_HEALTH, 20.0, EquipmentSlot.HEAD);
 		LOG.info("[BEHAVIOR] test=armourGainsArmourAndVigorAtTen RESULT armorGain={} healthAtFour={} healthAtTen={}", atFour - before, healthAtFour, healthAtTen);
 		helper.assertTrue(Math.abs(atFour - before - 4 * Refine.ARMOR_PER_LEVEL) < 1e-6, "+4 armour added " + (atFour - before));
-		helper.assertTrue(healthAtFour == 20.0 && healthAtTen == 20.0 + Refine.VIGOR_HEALTH, "vigor came at the wrong level: " + healthAtFour + ", " + healthAtTen);
+		helper.assertTrue(healthAtFour == 20.0 && Math.abs(healthAtTen - 20.0 * (1.0 + Refine.VIGOR_MULTIPLIER)) < 1e-6, "vigor came at the wrong level: " + healthAtFour + ", " + healthAtTen);
 		helper.succeed();
 	}
 
@@ -338,15 +339,21 @@ public class RefiningGameTest {
 	@GameTest
 	public void twelveArmourPricksAMeleeAttacker(final GameTestHelper helper) {
 		Mob wearer = helper.spawnMob(EntityTypes.ZOMBIE, 3, 2, 3).withNoFreeWill().spawn();
+		wearer.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		wearer.setHealth(200.0F);
 		ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
 		Refine.setLevel(plate, Refine.RENDING_LEVEL);
 		wearer.setItemSlot(EquipmentSlot.CHEST, plate);
 		Mob attacker = helper.spawnMob(EntityTypes.PIG, 5, 2, 3).withNoFreeWill().spawn();
-		float before = attacker.getHealth();
-		wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 2.0F);
-		float lost = before - attacker.getHealth();
-		LOG.info("[BEHAVIOR] test=twelveArmourPricksAMeleeAttacker RESULT attackerLost={}", lost);
-		helper.assertTrue(lost == RefineEffects.THORN_DAMAGE, "the attacker lost " + lost + ", not " + RefineEffects.THORN_DAMAGE);
+		attacker.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		attacker.setHealth(200.0F);
+		float attackerBefore = attacker.getHealth();
+		float wearerBefore = wearer.getHealth();
+		wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 20.0F);
+		float blow = 20.0F;
+		float lost = attackerBefore - attacker.getHealth();
+		LOG.info("[BEHAVIOR] test=twelveArmourPricksAMeleeAttacker RESULT wearerLost={} attackerLost={}", wearerBefore - wearer.getHealth(), lost);
+		helper.assertTrue(wearer.getHealth() < wearerBefore && Math.abs(lost - RefineEffects.THORN_SHARE * blow) < 1e-3, "the attacker lost " + lost + " after a blow of " + blow);
 		helper.succeed();
 	}
 
@@ -361,8 +368,11 @@ public class RefiningGameTest {
 		// A player who has just joined cannot be hurt for three seconds.
 		helper.runAfterDelay(80, () -> {
 			float before = attacker.getHealth();
+			float wearerBefore = wearer.getHealth();
 			wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 2.0F);
 			float afterLanded = attacker.getHealth();
+			float blow = 2.0F;
+			float taken = wearerBefore - wearer.getHealth();
 			// A second blow of the same weight inside the wearer's invulnerability does not land. The attacker's
 			// own invulnerability is cleared, so a second prick would show.
 			attacker.damageCooldownTime = 0;
@@ -370,7 +380,7 @@ public class RefiningGameTest {
 			float afterIgnored = attacker.getHealth();
 			LOG.info("[BEHAVIOR] test=twelveArmourPricksAPlayersAttackerOncePerLandedBlow RESULT landed={} ignored={} wearerHealth={}",
 				before - afterLanded, afterLanded - afterIgnored, wearer.getHealth());
-			helper.assertTrue(before - afterLanded == RefineEffects.THORN_DAMAGE, "a landed blow pricked the attacker for " + (before - afterLanded));
+			helper.assertTrue(taken > 0.0F && Math.abs(before - afterLanded - RefineEffects.THORN_SHARE * blow) < 1e-3, "a landed blow of " + blow + " pricked the attacker for " + (before - afterLanded));
 			helper.assertTrue(afterIgnored == afterLanded, "a blow that never landed still pricked the attacker");
 			helper.succeed();
 		});
@@ -416,7 +426,7 @@ public class RefiningGameTest {
 		helper.runAfterDelay(RefineEffects.BLESSING_INTERVAL_TICKS + 5L, () -> {
 			float gap = blessed.getHealth() - plain.getHealth();
 			LOG.info("[BEHAVIOR] test=fifteenArmourBlessesItsWearer RESULT blessed={} plain={} gap={}", blessed.getHealth(), plain.getHealth(), gap);
-			helper.assertTrue(gap >= 4 * RefineEffects.BLESSING_HEAL - 1e-4, "four +15 pieces healed only " + gap + " more than none");
+			helper.assertTrue(gap >= 4 * RefineEffects.BLESSING_SHARE * blessed.getMaxHealth() - 1e-4, "four +15 pieces healed only " + gap + " more than none");
 			helper.succeed();
 		});
 	}
