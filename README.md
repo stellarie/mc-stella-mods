@@ -7,8 +7,9 @@ Minecraft mods for a private Fabric server.
 The GitHub workflow detects every top-level Gradle mod with a wrapper. Each
 mod builds and runs five headless GameTest suites on its own CI runner.
 All mod jobs must pass before CI combines their production jars into
-`mc-stella-mods.zip`. The workflow uploads that ZIP on pull requests and
-pushes to `main`.
+`mc-stella-mods.zip`. The workflow runs only on pushes to `main`, which
+includes a merge, and uploads that ZIP. Pull requests do not start it.
+Start a run by hand from the Actions tab (`workflow_dispatch`).
 A `v*` tag also creates a GitHub release with that ZIP as its asset.
 
 Run the same gate locally with Java 25 and Python 3:
