@@ -30,7 +30,9 @@
 			"com.stella.spells.ClueBooksGameTest",
 			"com.stella.spells.ImbueExpansionGameTest",
 			"com.stella.spells.QuickSlotsGameTest",
-			"com.stella.spells.RpgBridgeGameTest"
+			"com.stella.spells.RpgBridgeGameTest",
+			"com.stella.spells.SpellMatkGameTest",
+			"com.stella.spells.SummonScalingGameTest"
 		]
 	},
 	"depends": {

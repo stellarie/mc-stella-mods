@@ -123,11 +123,11 @@ public final class SpellCombos {
 		final SpellModifiers.CastModifiers modifiers
 	) {
 		var magic = caster.level().damageSources().magic();
-		float power = (float) modifiers.powerMultiplier();
+		double power = modifiers.powerMultiplier();
 		if (combo == THERMAL_SHOCK && target != null) {
 			// The spell's own hit set the hurt cooldown, so it is cleared: the combo's hit is its own, not a top-up.
 			target.damageCooldownTime = 0;
-			target.hurtServer(caster.level(), magic, THERMAL_SHOCK_DAMAGE * power);
+			target.hurtServer(caster.level(), magic, RpgBridge.damage(caster, THERMAL_SHOCK_DAMAGE, power));
 			return target;
 		}
 
@@ -138,7 +138,7 @@ public final class SpellCombos {
 
 		if (combo == RIPTIDE && target != null) {
 			target.damageCooldownTime = 0;
-			target.hurtServer(caster.level(), magic, RIPTIDE_DAMAGE * power);
+			target.hurtServer(caster.level(), magic, RpgBridge.damage(caster, RIPTIDE_DAMAGE, power));
 			target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, RIPTIDE_SLOW_TICKS, 2), caster);
 			return target;
 		}
@@ -150,7 +150,7 @@ public final class SpellCombos {
 					&& candidate.position().distanceToSqr(point) <= FROZEN_METEOR_RADIUS * FROZEN_METEOR_RADIUS
 			)) {
 				hostile.damageCooldownTime = 0;
-				hostile.hurtServer(caster.level(), magic, FROZEN_METEOR_DAMAGE * power);
+				hostile.hurtServer(caster.level(), magic, RpgBridge.damage(caster, FROZEN_METEOR_DAMAGE, power));
 			}
 			return caster;
 		}

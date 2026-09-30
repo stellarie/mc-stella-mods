@@ -129,7 +129,7 @@ public final class MoreSpells {
 				&& distanceToSegment(candidate.getBoundingBox().getCenter(), from, to) <= ICE_LANCE_WIDTH + candidate.getBbWidth() / 2.0));
 		struck.add(0, target);
 		for (Mob mob : struck) {
-			hurt(caster, mob, ICE_LANCE_DAMAGE * power(modifiers));
+			hurt(caster, mob, RpgBridge.damage(caster, ICE_LANCE_DAMAGE, modifiers.powerMultiplier()));
 			freeze(mob, modifiers.durationTicks(ICE_LANCE_FREEZE_TICKS, false));
 		}
 		int puffs = 0;
@@ -156,7 +156,7 @@ public final class MoreSpells {
 			return false;
 		}
 		float before = target.getHealth();
-		hurt(caster, target, SOUL_SIPHON_DAMAGE * power(modifiers));
+		hurt(caster, target, RpgBridge.damage(caster, SOUL_SIPHON_DAMAGE, modifiers.powerMultiplier()));
 		caster.heal(before - Math.max(0.0F, target.getHealth()));
 		return true;
 	}
@@ -166,7 +166,7 @@ public final class MoreSpells {
 		if (target == null) {
 			return false;
 		}
-		hurt(caster, target, VENOM_DAMAGE * power(modifiers));
+		hurt(caster, target, RpgBridge.damage(caster, VENOM_DAMAGE, modifiers.powerMultiplier()));
 		target.addEffect(new MobEffectInstance(MobEffects.POISON, modifiers.durationTicks(VENOM_TICKS, false), VENOM_AMPLIFIER), caster);
 		return true;
 	}
@@ -208,7 +208,7 @@ public final class MoreSpells {
 		if (target == null) {
 			return false;
 		}
-		hurt(caster, target, EMBER_DAMAGE * power(modifiers));
+		hurt(caster, target, RpgBridge.damage(caster, EMBER_DAMAGE, modifiers.powerMultiplier()));
 		target.igniteForTicks(modifiers.durationTicks(EMBER_BURN_TICKS, false));
 		return true;
 	}
@@ -243,11 +243,11 @@ public final class MoreSpells {
 
 	// The caster and every other player close by; a cast that heals nobody does not count.
 	static boolean applySanctuary(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		boolean healed = heal(caster, SANCTUARY_SELF_HEAL * power(modifiers));
+		boolean healed = heal(caster, RpgBridge.heal(caster, SANCTUARY_SELF_HEAL, modifiers.powerMultiplier()));
 		int linked = 0;
 		for (ServerPlayer ally : caster.level().players()) {
 			if (ally != caster && ally.isAlive() && ally.distanceToSqr(caster) <= SANCTUARY_RADIUS * SANCTUARY_RADIUS) {
-				boolean allyHealed = heal(ally, SANCTUARY_ALLY_HEAL * power(modifiers));
+				boolean allyHealed = heal(ally, RpgBridge.heal(caster, SANCTUARY_ALLY_HEAL, modifiers.powerMultiplier()));
 				healed |= allyHealed;
 				if (allyHealed && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
 					SpellVisuals.linkAffected(caster, "sanctuary", caster.position().add(0.0, 1.0, 0.0), ally.position().add(0.0, 1.0, 0.0));
@@ -282,7 +282,7 @@ public final class MoreSpells {
 
 	static boolean applyFrostNova(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		for (Mob hostile : hostiles(caster.level(), caster.position(), FROST_NOVA_RADIUS * modifiers.radiusMultiplier())) {
-			hurt(caster, hostile, FROST_NOVA_DAMAGE * power(modifiers));
+			hurt(caster, hostile, RpgBridge.damage(caster, FROST_NOVA_DAMAGE, modifiers.powerMultiplier()));
 			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, modifiers.durationTicks(FROST_NOVA_SLOW_TICKS, false), FROST_NOVA_SLOW_AMPLIFIER), caster);
 		}
 		return true;
@@ -294,7 +294,7 @@ public final class MoreSpells {
 			return false;
 		}
 		for (Mob hostile : hostiles(caster.level(), point, EARTHSPIKE_RADIUS * modifiers.radiusMultiplier())) {
-			hurt(caster, hostile, EARTHSPIKE_DAMAGE * power(modifiers));
+			hurt(caster, hostile, RpgBridge.damage(caster, EARTHSPIKE_DAMAGE, modifiers.powerMultiplier()));
 			Vec3 motion = hostile.getDeltaMovement();
 			hostile.setDeltaMovement(motion.x, EARTHSPIKE_LIFT, motion.z);
 		}
@@ -309,7 +309,7 @@ public final class MoreSpells {
 	// The caster wears a burning aura: every second it scorches the hostiles close around and never its wearer.
 	static boolean applyFlameRing(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		SpellTimers.flameAura(caster, modifiers.durationTicks(FLAME_AURA_TICKS, true), FLAME_RING_RADIUS * modifiers.radiusMultiplier(),
-			FLAME_RING_DAMAGE * power(modifiers), modifiers.durationTicks(FLAME_RING_BURN_TICKS, false));
+			RpgBridge.damage(caster, FLAME_RING_DAMAGE, modifiers.powerMultiplier()), modifiers.durationTicks(FLAME_RING_BURN_TICKS, false));
 		return true;
 	}
 
@@ -358,10 +358,6 @@ public final class MoreSpells {
 	 */
 	static void freeze(final net.minecraft.world.entity.LivingEntity body, final int ticks) {
 		body.setTicksFrozen(Math.max(body.getTicksFrozen(), body.getTicksRequiredToFreeze() + 2 * ticks));
-	}
-
-	private static float power(final SpellModifiers.CastModifiers modifiers) {
-		return (float) modifiers.powerMultiplier();
 	}
 
 	// Magic damage, as every spell deals; the hurt cooldown is cleared so a spell right after a hit still lands.

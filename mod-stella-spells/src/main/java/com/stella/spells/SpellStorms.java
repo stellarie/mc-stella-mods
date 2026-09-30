@@ -78,7 +78,7 @@ public final class SpellStorms {
 			return false;
 		}
 
-		return queue(caster, level, point, targets, STRIKE_DAMAGE * (float) modifiers.powerMultiplier());
+		return queue(caster, level, point, targets, RpgBridge.damage(caster, STRIKE_DAMAGE, modifiers.powerMultiplier()));
 	}
 
 	static boolean startForMob(final Mob caster, final Vec3 point) {

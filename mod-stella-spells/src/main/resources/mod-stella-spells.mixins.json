@@ -11,6 +11,7 @@
 		"AreaEffectCloudAccessor",
 		"MobGoalsAccessor",
 		"SummonGolemMixin",
+		"SummonHitMixin",
 		"SummonPortalMixin",
 		"InventoryMenuMixin",
 		"InventoryDropAllMixin"
