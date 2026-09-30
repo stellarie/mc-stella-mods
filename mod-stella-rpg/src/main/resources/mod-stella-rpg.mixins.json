@@ -26,7 +26,8 @@
 		"RpgInstantEffectMixin",
 		"RpgAbsorptionMixin",
 		"RpgAbsorptionGrantMixin",
-		"RpgEffectPercentMixin"
+		"RpgEffectPercentMixin",
+		"RpgNoDamageHeartsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
