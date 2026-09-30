@@ -101,7 +101,7 @@ public final class RpgCombat {
 	}
 
 	/** Damage affixes and Strength add. Weakness subtracts. The result is never below 0. */
-	static double damageFactor(final LivingEntity attacker) {
+	public static double damageFactor(final LivingEntity attacker) {
 		double percent = Affixes.total(attacker, Affix.DAMAGE_PCT) + EFFECT_PERCENT * (level(attacker, MobEffects.STRENGTH)
 			- level(attacker, MobEffects.WEAKNESS));
 		return Math.max(0.0, 1.0 + percent);
