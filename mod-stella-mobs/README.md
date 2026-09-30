@@ -24,7 +24,7 @@ level = max(area + roll + altitude, floor), then +5 for an elite or +10 for a bo
 ```
 
 - **Area:** +1 per 100 blocks from 0,0 in the Overworld, +8 in the Nether and End from their base levels.
-- **Roll:** a Gaussian roll, mean +5, standard deviation 10, clamped to -20..+30.
+- **Roll:** a Gaussian roll, mean 0, standard deviation 6, clamped to -18..+18. A saved mob with a wider roll is clamped on load.
 - **Altitude (Overworld only, no cap):** +1 per 6.4 blocks below y=0 and +1 per 80 blocks above it.
 - **Floor:** the lowest XP level among players within 128 blocks, minus 2. Spectators and players in
   other dimensions do not count. No player in range means no floor.
