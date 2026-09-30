@@ -1,6 +1,9 @@
 package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
+import com.stella.mobs.entity.BlackSlime;
+import com.stella.mobs.entity.BlueSlime;
+import com.stella.mobs.entity.WhiteSlime;
 import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.gear.TierRoller;
@@ -44,7 +47,8 @@ public final class Elite {
 	}
 
 	public static boolean canBeElite(final Mob mob) {
-		return mob instanceof Enemy && !BOSS_TYPES.contains(mob.getType());
+		// The blue slime is a beginner mob: a slime is an Enemy, so it must be refused by name.
+		return mob instanceof Enemy && !(mob instanceof BlueSlime) && !BOSS_TYPES.contains(mob.getType());
 	}
 
 	public static boolean roll(final RandomSource random, final double chance) {
@@ -116,7 +120,8 @@ public final class Elite {
 
 	/** O03: a kind that is elite every time, which no roll gate may skip. */
 	public static boolean isForced(final Mob mob) {
-		return mob.getType() == EntityTypes.ELDER_GUARDIAN || mob.entityTags().contains(ChunkEncounters.CHUNK_ELITE_TAG);
+		return mob.getType() == EntityTypes.ELDER_GUARDIAN || mob instanceof WhiteSlime || mob instanceof BlackSlime
+			|| mob.entityTags().contains(ChunkEncounters.CHUNK_ELITE_TAG);
 	}
 
 	public static boolean isElite(final Mob mob) {
