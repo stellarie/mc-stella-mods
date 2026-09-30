@@ -409,7 +409,7 @@ public class RefineSpecialsGameTest {
 		float notFire = damageTaken(helper, SETS.get(5), Refine.SEARING_LEVEL, 1, false, 6);
 		LOG.info("[BEHAVIOR] test=emberguardHalvesFireDamagePerPiece RESULT one={} four={} nine={} notFire={}", one, four, nine, notFire);
 		helper.assertTrue(Math.abs(one - 50.0F * (1.0F - (float) RefineEffects.EMBERGUARD_SHARE)) < TOLERANCE, "one +10 netherite piece took " + one + " fire damage of 50");
-		helper.assertTrue(four == 0.0F, "four +10 netherite pieces took " + four + " fire damage");
+		helper.assertTrue(Math.abs(four - 50.0F * (1.0F - 4 * (float) RefineEffects.EMBERGUARD_SHARE)) < TOLERANCE, "four +10 netherite pieces took " + four + " fire damage of 50");
 		helper.assertTrue(Math.abs(nine - 50.0F) < TOLERANCE, "a +9 netherite piece took " + nine + " fire damage of 50");
 		helper.assertTrue(Math.abs(notFire - 50.0F) < TOLERANCE, "a +10 netherite piece took " + notFire + " damage of 50 from something that is not fire");
 		helper.succeed();

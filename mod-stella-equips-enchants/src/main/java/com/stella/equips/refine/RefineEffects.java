@@ -68,7 +68,7 @@ public final class RefineEffects {
 	/** +10 diamond, per piece: the share of damage taken away. */
 	public static final double BULWARK_SHARE = 0.03;
 	/** +10 netherite, per piece: the share of fire damage taken away. */
-	public static final double EMBERGUARD_SHARE = 0.50;
+	public static final double EMBERGUARD_SHARE = 0.125;
 	/** +12 armour: the share of a melee blow each such piece deals back. */
 	public static final double THORN_SHARE = 0.10;
 	/** +15 armour: the share of max health, in vanilla units, each such piece restores every interval. */

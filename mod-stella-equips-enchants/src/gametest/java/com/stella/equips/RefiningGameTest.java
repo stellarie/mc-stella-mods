@@ -275,6 +275,59 @@ public class RefiningGameTest {
 		helper.succeed();
 	}
 
+	// The armour attribute stops at 30, so the iron set is read off its modifiers and a lighter leather set off the value.
+	@GameTest(maxTicks = 60)
+	public void fourRefinedPiecesAddTheirArmourTogether(final GameTestHelper helper) {
+		List<List<net.minecraft.world.item.Item>> sets = List.of(
+			List.of(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS),
+			List.of(Items.LEATHER_HELMET, Items.LEATHER_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS));
+		List<EquipmentSlot> slots = List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
+		Mob[] plain = new Mob[2];
+		Mob[] refined = new Mob[2];
+		for (int set = 0; set < 2; set++) {
+			plain[set] = helper.spawnMob(EntityTypes.PIG, 1 + set, 2, 3).withNoFreeWill().spawn();
+			refined[set] = helper.spawnMob(EntityTypes.PIG, 4 + set, 2, 3).withNoFreeWill().spawn();
+			for (int i = 0; i < slots.size(); i++) {
+				plain[set].setItemSlot(slots.get(i), new ItemStack(sets.get(set).get(i)));
+				ItemStack piece = new ItemStack(sets.get(set).get(i));
+				Refine.setLevel(piece, Refine.SEARING_LEVEL);
+				refined[set].setItemSlot(slots.get(i), piece);
+			}
+		}
+		helper.runAfterDelay(5, () -> {
+			double expected = 4 * Refine.SEARING_LEVEL * Refine.ARMOR_PER_LEVEL;
+			double ironModifiers = slots.stream()
+				.mapToDouble(slot -> refined[0].getAttribute(Attributes.ARMOR).getModifier(Refine.armorId(slot)) == null ? 0.0
+					: refined[0].getAttribute(Attributes.ARMOR).getModifier(Refine.armorId(slot)).amount())
+				.sum();
+			double leatherGain = refined[1].getAttributeValue(Attributes.ARMOR) - plain[1].getAttributeValue(Attributes.ARMOR);
+			LOG.info("[BEHAVIOR] test=fourRefinedPiecesAddTheirArmourTogether RESULT ironModifiers={} leatherGain={} expected={}", ironModifiers, leatherGain, expected);
+			helper.assertTrue(Math.abs(ironModifiers - expected) < 1e-6, "four +10 iron pieces carry " + ironModifiers + " refine armour, not " + expected);
+			helper.assertTrue(Math.abs(leatherGain - expected) < 1e-6, "four +10 leather pieces added " + leatherGain + " armour, not " + expected);
+			helper.succeed();
+		});
+	}
+
+	@GameTest
+	public void aRebuildDropsTheSharedLegacyArmourId(final GameTestHelper helper) {
+		ItemStack plate = new ItemStack(Items.IRON_CHESTPLATE);
+		ItemAttributeModifiers.Builder legacy = ItemAttributeModifiers.builder();
+		for (ItemAttributeModifiers.Entry entry : plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers()) {
+			legacy.add(entry.attribute(), entry.modifier(), entry.slot(), entry.display());
+		}
+		legacy.add(Attributes.ARMOR, new net.minecraft.world.entity.ai.attributes.AttributeModifier(Refine.ARMOR_ID, 5.0, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE),
+			net.minecraft.world.entity.EquipmentSlotGroup.CHEST);
+		plate.set(DataComponents.ATTRIBUTE_MODIFIERS, legacy.build());
+		Refine.setLevel(plate, 6);
+		List<net.minecraft.resources.Identifier> ids = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
+			.filter(entry -> entry.attribute().equals(Attributes.ARMOR)).map(entry -> entry.modifier().id()).toList();
+		double armour = plate.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).compute(Attributes.ARMOR, 0.0, EquipmentSlot.CHEST);
+		LOG.info("[BEHAVIOR] test=aRebuildDropsTheSharedLegacyArmourId RESULT ids={} armour={}", ids, armour);
+		helper.assertTrue(!ids.contains(Refine.ARMOR_ID) && ids.contains(Refine.armorId(EquipmentSlot.CHEST)), "the rebuilt armour modifiers are " + ids);
+		helper.assertTrue(Math.abs(armour - (6.0 + 6 * Refine.ARMOR_PER_LEVEL)) < 1e-6, "the rebuilt chestplate has " + armour + " armour, so the legacy bonus stayed or the new one is missing");
+		helper.succeed();
+	}
+
 	@GameTest
 	public void theRefineShowsLikeAnEnchantmentWithoutBeingOne(final GameTestHelper helper) {
 		ItemStack sword = new ItemStack(Items.IRON_SWORD);

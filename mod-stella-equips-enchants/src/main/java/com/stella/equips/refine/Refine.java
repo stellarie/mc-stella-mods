@@ -40,6 +40,7 @@ public final class Refine {
 	public static final int RENDING_LEVEL = 12;
 	public static final int ASCENDED_LEVEL = 15;
 	public static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_damage");
+	/** The id refine armour had before each slot got its own; a piece refined then still carries it until its next refine. */
 	public static final Identifier ARMOR_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_armor");
 	/** The id vigor had before each piece got its own; a piece refined then still carries it until its next refine. */
 	public static final Identifier VIGOR_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_vigor");
@@ -178,14 +179,14 @@ public final class Refine {
 		for (ItemAttributeModifiers.Entry entry : stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers()) {
 			Identifier id = entry.modifier().id();
 			if (!id.equals(DAMAGE_ID) && !id.equals(ARMOR_ID) && !id.equals(VIGOR_ID) && !id.equals(FORTITUDE_ID) && !id.equals(STRIDE_ID)
-				&& !ARMOR_SLOT_NAMES.stream().anyMatch(name -> id.equals(vigorId(name)))) {
+				&& ARMOR_SLOT_NAMES.stream().noneMatch(name -> id.equals(vigorId(name)) || id.equals(armorId(name)))) {
 				builder.add(entry.attribute(), entry.modifier(), entry.slot(), entry.display());
 			}
 		}
 		if (level > 0) {
 			if (isArmor(stack)) {
 				EquipmentSlotGroup slot = armorSlot(stack);
-				add(builder, Attributes.ARMOR, ARMOR_ID, level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, slot);
+				add(builder, Attributes.ARMOR, armorId(armorSlotOf(stack).getName()), level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, slot);
 				List<RefineSpecials.Special> specials = RefineSpecials.of(stack, level);
 				if (specials.contains(RefineSpecials.Special.FORTITUDE)) {
 					add(builder, Attributes.MAX_HEALTH, FORTITUDE_ID, FORTITUDE_MULTIPLIER, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
@@ -229,6 +230,15 @@ public final class Refine {
 			return EquipmentSlot.LEGS;
 		}
 		return EquipmentSlot.FEET;
+	}
+
+	/** The id of the refine armour modifier of the piece worn in a slot; one shared id would count a worn set once. */
+	public static Identifier armorId(final EquipmentSlot slot) {
+		return armorId(slot.getName());
+	}
+
+	private static Identifier armorId(final String slot) {
+		return Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_armor_" + slot);
 	}
 
 	/** The id of the vigor modifier of the armour worn in a slot. */

@@ -172,6 +172,7 @@ public final class RefineSpecials {
 	}
 
 	private static String percent(final double value) {
-		return Math.round(value) + "%";
+		double tenths = Math.round(value * 10) / 10.0;
+		return (tenths == Math.rint(tenths) ? String.valueOf((long) tenths) : String.valueOf(tenths)) + "%";
 	}
 }

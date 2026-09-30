@@ -258,12 +258,12 @@ effects of +7, +10, +12 and +15. Effects of several armour pieces add up.
 | Iron | Vigor: +2% max health |
 | Gold | Fortune: +5% experience from kills |
 | Diamond | Bulwark: 3% less damage taken |
-| Netherite | Emberguard: 50% less fire damage |
+| Netherite | Emberguard: 12.5% less fire damage |
 
 Armour at +12 has **Thorned** for every material: a melee blow that lands pricks the attacker for 10%
 of the damage the wearer took, for each such piece. At +15 it has **Blessed**: a player heals 1% of max
 health every 5 s for each such piece. Four +10 diamond pieces take 12% less damage. Copper armour and the
-turtle helmet have no +10 effect. Emberguard adds up per piece, so two pieces take no fire damage.
+turtle helmet have no +10 effect. Four +10 netherite pieces take 50% less fire damage.
 
 Vigor, Fortitude and Stride are `ADD_MULTIPLIED_BASE` attribute modifiers, so they scale with base max
 health and base speed. Blessed uses max health in vanilla units, divided by the health scale K of
