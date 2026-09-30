@@ -237,7 +237,7 @@ public final class GymEpisode {
 		RandomSource random = RandomSource.create(newSeed * 31L);
 		skill = Skill.draw(random, stage);
 		int index = brainChoice;
-		if (index < 0 || index >= Brains.COUNT) {
+		if (index < 0 || index >= Brains.COUNT && index != Brains.PASSIVE) {
 			if (brainChoice >= Brains.COUNT) {
 				GymLog.info(GymLog.EPISODE, "BAD_RESET", "arena=" + arena.index() + " brain=" + brainChoice + " reason=" + GymLog.BAD_RESET);
 			}
@@ -274,7 +274,7 @@ public final class GymEpisode {
 		state = State.STARTING;
 		startFlag = true;
 		GymLog.info(GymLog.BOT, "BRAIN", "arena=" + arena.index() + " seed=" + newSeed + " episode=" + episodes + " brain=" + Brains.name(index)
-			+ " index=" + index + " stage=" + GymConfig.stageName(stage) + " " + skill.detail() + " " + body.detail() + " " + LearnLog.who(mob) + " " + bot.who());
+			+ " index=" + index + " passive=" + (index == Brains.PASSIVE) + " stage=" + GymConfig.stageName(stage) + " " + skill.detail() + " " + body.detail() + " " + LearnLog.who(mob) + " " + bot.who());
 		GymLog.info(GymLog.EPISODE, "START", "arena=" + arena.index() + " seed=" + newSeed + " episode=" + episodes + " brain=" + Brains.name(index)
 			+ " stage=" + GymConfig.stageName(stage) + " " + LearnLog.who(mob) + " " + bot.who() + " mobAt=" + Bot.fmt(mobSpot) + " botAt=" + Bot.fmt(botSpot)
 			+ " features=" + terrain.features() + " baseline=" + config.baseline());

@@ -71,9 +71,9 @@ def summarize(results, tasks_total: int) -> dict:
     per_toughness: dict[str, Counter] = {name: Counter() for name in bodies.TOUGHNESS_BUCKETS}
     overall = Counter()
     for result in results:
-        name = roster.BRAINS[result.brain]
+        name = roster.brain_name(result.brain)
         bucket = bodies.TOUGHNESS_BUCKETS[bodies.body_for_seed(result.seed, bodies.range_for_stage(result.stage)).toughness_bucket]
-        for counter in (per_brain[name], overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
+        for counter in (per_brain.setdefault(name, Counter()), overall, per_terrain[TERRAIN_CLASSES[result.seed % len(TERRAIN_CLASSES)]], per_toughness[bucket]):
             counter[result.outcome] += 1
             counter["n"] += 1
             counter["ticks"] += result.ticks

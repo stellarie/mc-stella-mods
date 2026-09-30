@@ -27,7 +27,8 @@ class Curriculum:
         self.stale = 0
         self.history: list[dict] = []
         self.ticks = int(config.get("stage_a_ticks", 600))
-        self.bands = [tuple(b) for b in config.get("stage_a_bands", [[22, 26]])]
+        self.bands = [tuple(b) if len(b) == 3 else (b[0], b[1], None) for b in config.get("stage_a_bands", [[22, 26]])]
+        self.eval_series = 0
         self.band = 0
         self.band_start = -1
         self.blocked = False
@@ -36,16 +37,19 @@ class Curriculum:
 
     # -- what to play -----------------------------------------------------------------------------------------------
 
+    def passive(self) -> bool:
+        return self.stage == roster.STAGE_A and self.band == 0 and len(self.bands) > 1 and self.bands[0][1] == self.bands[0][0]
+
     def train_task(self) -> Task:
-        brains = roster.stage_brains(self.stage)
+        brains = (roster.PASSIVE,) if self.passive() else roster.stage_brains(self.stage)
         return Task(int(brains[self.rng.integers(len(brains))]), int(self.rng.integers(0, roster.TRAIN_SEED_LIMIT)), self.stage, self.ticks, self.body().wire())
 
     def body(self) -> bodies.BodyRange:
         return bodies.range_for_stage(self.stage)
 
     def band_text(self) -> str:
-        low, high = self.bands[self.band]
-        return f"{low}-{high}"
+        low, high, _ = self.bands[self.band]
+        return f"{low}-{high}" + ("-passive" if self.passive() else "")
 
     def log_body(self, decisions: int) -> None:
         if self.band_start < 0:
@@ -63,6 +67,8 @@ class Curriculum:
         stage = self.eval_stage()
         names = roster.STAGE_A_BRAINS if stage == roster.STAGE_A else roster.BRAINS
         count = 50 if stage == roster.STAGE_A else int(self.config["eval_episodes_per_brain"])
+        if self.passive():
+            return [Task(roster.PASSIVE, roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(2 * count)]
         return [Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(count) for name in names]
 
     # -- promotion --------------------------------------------------------------------------------------------------
@@ -73,7 +79,8 @@ class Curriculum:
         stage_decisions = decisions - self.stage_start
         last_band = self.band == len(self.bands) - 1
         if self.stage == roster.STAGE_A and not last_band:
-            if win_rate >= self.config.get("band_promote_at", 0.40):
+            need = self.config.get("band0_promote_at", 0.60) if self.passive() else self.config.get("band_promote_at", 0.40)
+            if win_rate >= need:
                 self._next_band(decisions, win_rate)
             elif decisions - self.band_start > int(self.config.get("band_blocked_decisions", 20_000_000)):
                 self.blocked = True
@@ -96,6 +103,18 @@ class Curriculum:
             if patience or share_end:
                 return self._promote(decisions, f"win_rate={win_rate:.3f} best={self.best:.3f} stale_evals={self.stale} budget_share_ended={share_end}")
         return False
+
+    def reset_evals(self, decisions: int, band: int = 0) -> None:
+        """Starts a new eval series and a new band clock at `band`; earlier evals stay in the log and no longer count."""
+        self.eval_series += 1
+        self.band = band
+        self.band_start = decisions
+        self.blocked = False
+        self.stage = roster.STAGE_A
+        self.history = []
+        bodies.set_stage_a_hp(*self.bands[band])
+        self.log.info("trainStage EVAL_RESET series=%d band=%s decisions=%d", self.eval_series, self.band_text(), decisions)
+        self.log.event("trainStage EVAL_RESET", series=self.eval_series, band=self.band_text(), decisions=decisions)
 
     def _next_band(self, decisions: int, win_rate: float) -> None:
         old = self.band_text()
@@ -127,7 +146,7 @@ class Curriculum:
         return True
 
     def state(self) -> dict:
-        return {"stage": self.stage, "stage_start": self.stage_start, "best": self.best, "stale": self.stale, "history": self.history, "ticks": self.ticks, "band": self.band, "band_start": self.band_start}
+        return {"stage": self.stage, "stage_start": self.stage_start, "best": self.best, "stale": self.stale, "history": self.history, "ticks": self.ticks, "band": self.band, "band_start": self.band_start, "eval_series": self.eval_series}
 
     def load(self, state: dict) -> None:
         self.stage = state["stage"]
@@ -138,4 +157,5 @@ class Curriculum:
         self.ticks = state.get("ticks", self.ticks)
         self.band = min(state.get("band", 0), len(self.bands) - 1)
         self.band_start = state.get("band_start", -1)
+        self.eval_series = state.get("eval_series", 0)
         bodies.set_stage_a_hp(*self.bands[self.band])

@@ -35,7 +35,8 @@ scale = 1.0                      # the gym prices the terms: +0.005 a hit point 
 
 [curriculum]
 # Stage A ladder: bot max HP bands. A band promotes on this deterministic eval win rate; the 80 percent bar and the 600 to 400 tick drop apply on the last band only.
-stage_a_bands = [[10, 14], [14, 18], [18, 22], [22, 26]]
+stage_a_bands = [[10, 10, 0], [10, 14, 4], [14, 18, 4], [18, 22, 4], [22, 26, 4]]   # [hp low, hp high, armor max]; band 0 is passive target practice
+band0_promote_at = 0.60
 band_promote_at = 0.40
 band_blocked_decisions = 20_000_000
 # Episode length in ticks. Stage A starts at 600 and drops to 400 once its deterministic win rate passes 40 percent.

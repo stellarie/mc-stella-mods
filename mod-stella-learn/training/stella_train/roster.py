@@ -27,3 +27,10 @@ def brain_index(name: str) -> int:
 def stage_brains(stage: int) -> tuple[int, ...]:
     names = STAGE_A_BRAINS if stage == STAGE_A else BRAINS
     return tuple(brain_index(name) for name in names)
+
+
+PASSIVE = 100  # the band 0 target; not part of the roster of 19
+
+
+def brain_name(index: int) -> str:
+    return "Passive" if index == PASSIVE else BRAINS[index]

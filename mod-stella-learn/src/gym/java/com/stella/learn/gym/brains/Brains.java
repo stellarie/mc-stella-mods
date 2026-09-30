@@ -35,11 +35,17 @@ public final class Brains {
 	public static final int STYLE_SWITCHER = LEAVES.size();
 	public static final int RANDOM_MIX = LEAVES.size() + 1;
 	public static final int COUNT = LEAVES.size() + 2;
+	/** Not part of the roster: the band 0 target, which the trainer names in a Reset frame. */
+	public static final int PASSIVE = 100;
 
 	private Brains() {
 	}
 
 	public static String name(final int index) {
+		if (index == PASSIVE) {
+			return "Passive";
+		}
+
 		if (index == STYLE_SWITCHER) {
 			return "StyleSwitcher";
 		}
@@ -48,6 +54,10 @@ public final class Brains {
 	}
 
 	public static int indexOf(final String name) {
+		if ("Passive".equals(name)) {
+			return PASSIVE;
+		}
+
 		for (int i = 0; i < COUNT; i++) {
 			if (name(i).equals(name)) {
 				return i;
@@ -59,6 +69,10 @@ public final class Brains {
 
 	/** A fresh brain. The random source draws the delegates of the two meta brains, so a seed fixes them. */
 	public static BotBrain create(final int index, final RandomSource random) {
+		if (index == PASSIVE) {
+			return new Passive();
+		}
+
 		if (index == STYLE_SWITCHER) {
 			int a = random.nextInt(LEAVES.size());
 			int b = (a + 1 + random.nextInt(LEAVES.size() - 1)) % LEAVES.size();

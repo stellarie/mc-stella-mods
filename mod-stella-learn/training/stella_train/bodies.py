@@ -40,10 +40,10 @@ def configure(config: dict) -> None:
 _stage_a_hp: tuple | None = None
 
 
-def set_stage_a_hp(low: int, high: int) -> None:
-    """The HP band of the Stage A ladder that is in force; it overrides the health bounds of `[body.A]`."""
+def set_stage_a_hp(low: int, high: int, armor_max: int | None = None) -> None:
+    """The band of the Stage A ladder that is in force; it overrides the health bounds, and the armor bound if given, of `[body.A]`."""
     global _stage_a_hp
-    _stage_a_hp = (low, high)
+    _stage_a_hp = (low, high, armor_max)
 
 
 def range_for_stage(stage: int) -> BodyRange:
@@ -52,7 +52,8 @@ def range_for_stage(stage: int) -> BodyRange:
 
     ranges = _range_table()
     if stage == roster.STAGE_A and _stage_a_hp is not None:
-        return replace(ranges[stage], hp_min=_stage_a_hp[0], hp_max=_stage_a_hp[1])
+        armor = ranges[stage].armor_max if _stage_a_hp[2] is None else _stage_a_hp[2]
+        return replace(ranges[stage], hp_min=_stage_a_hp[0], hp_max=_stage_a_hp[1], armor_max=armor)
     return ranges[stage]
 
 

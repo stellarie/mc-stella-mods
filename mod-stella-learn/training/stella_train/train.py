@@ -221,7 +221,7 @@ class Trainer:
         for brain, counter in stats.outcomes.items():
             n = sum(counter.values())
             if n and brain >= 0:
-                by_style[roster.BRAINS[brain]] = {"n": n, "win_rate": counter["win"] / n}
+                by_style[roster.brain_name(brain)] = {"n": n, "win_rate": counter["win"] / n}
         finished = wins / episodes if episodes else float("nan")
         mean_return = stats.episode_return_sum / episodes if episodes else float("nan")
         per_decision = stats.reward_sum / stats.decisions if stats.decisions else 0.0
@@ -252,7 +252,7 @@ class Trainer:
             entropy_coef=metrics["entropy_coef"], shaping_scale=scale, log_std=metrics["log_std"], epochs_run=metrics["epochs_run"],
             update_seconds=metrics["update_seconds"], collect_seconds=collect_seconds, hp_band=self.curriculum.band_text(), shaping_per_episode=shaping, wins=wins_n, losses=losses_n, engaged_share=engaged, shots_per_episode=shots_ep, chase_ticks_per_episode=chase_ep,
             bow_action_share=bow, jump_share=jump, win_rate_by_style=by_style,
-            outcomes={roster.BRAINS[b] if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
+            outcomes={roster.brain_name(b) if b >= 0 else "unknown": dict(c) for b, c in stats.outcomes.items()})
 
     def evaluate(self, fleet: Fleet) -> None:
         began = time.monotonic()
@@ -264,7 +264,7 @@ class Trainer:
         overall = {"n": 0, "win": 0}
         rows = {}
         for result in stats.results:
-            name = roster.BRAINS[result.brain]
+            name = roster.brain_name(result.brain)
             row = rows.setdefault(name, {"n": 0, "win": 0, "loss": 0, "timeout": 0, "error": 0})
             row["n"] += 1
             row[result.outcome] += 1
@@ -297,6 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", type=Path, default=None, help="continue in an existing run directory")
     parser.add_argument("--resume", type=Path, default=None, help="a checkpoint to continue from")
     parser.add_argument("--widen-from", type=Path, default=None, help="start from the actor of a checkpoint made for a narrower contract")
+    parser.add_argument("--eval-reset", action="store_true", help="after --resume: start a new eval series and band clock at band 0")
     parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
     parser.add_argument("--max-seconds", type=float, default=None, help="stop after this much wall time, for a smoke run")
     parser.add_argument("--set", action="append", default=[], metavar="SECTION.KEY=VALUE", help="override one config value")
@@ -317,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
         trainer.widen_from_checkpoint(args.widen_from)
     elif args.resume:
         trainer.resume(args.resume)
+        if args.eval_reset:
+            trainer.curriculum.reset_evals(trainer.decisions, 0)
         if args.restart_stage_a:
             trainer.restart_stage_a()
     spec = prepare_spec(log)
