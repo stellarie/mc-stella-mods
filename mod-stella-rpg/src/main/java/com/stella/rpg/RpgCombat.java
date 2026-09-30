@@ -117,9 +117,10 @@ public final class RpgCombat {
 			|| source.is(DamageTypes.MOB_ATTACK_NO_AGGRO);
 	}
 
-	private static int roll(final LivingEntity attacker, final Stat stat) {
+	private static double roll(final LivingEntity attacker, final Stat stat) {
 		RpgDice.Dice dice = RpgDice.of(StatBonuses.effective(attacker, stat));
-		return diceRoller.roll(attacker, attacker.getRandom(), dice);
+		int rolled = diceRoller.roll(attacker, attacker.getRandom(), dice);
+		return attacker instanceof Mob ? rolled * RpgConfigStore.current().mobDiceShare() : rolled;
 	}
 
 	public static float scaleIncoming(final LivingEntity entity, final DamageSource source, final float damage) {
