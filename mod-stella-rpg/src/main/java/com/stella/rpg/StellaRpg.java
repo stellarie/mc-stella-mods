@@ -1,5 +1,7 @@
 package com.stella.rpg;
 
+import com.stella.rpg.tomb.TombstoneBlock;
+import com.stella.rpg.tomb.TombstoneBlockEntity;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
@@ -14,6 +16,8 @@ public final class StellaRpg implements ModInitializer {
 	public void onInitialize() {
 		StatSheet.EMPTY.allocated();
 		RpgLevelUp.LAST_LEVEL.identifier();
+		TombstoneBlock.register();
+		TombstoneBlockEntity.register();
 		RpgDeath.register();
 		RpgAttributes.register();
 		RpgCommand.register();

@@ -21,7 +21,8 @@
 			"com.stella.rpg.RpgMobStatsGameTest",
 			"com.stella.rpg.RpgPointsGameTest",
 			"com.stella.rpg.RpgRespecGameTest",
-			"com.stella.rpg.RpgSpellsGameTest"
+			"com.stella.rpg.RpgSpellsGameTest",
+			"com.stella.rpg.TombstoneGameTest"
 		]
 	},
 	"depends": {
