@@ -17,6 +17,7 @@ public final class RpgAttributes {
 
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			server.getPlayerList().getPlayers().forEach(RpgLevelUp::check);
 			if (server.getTickCount() % SCAN_INTERVAL == 0) {
 				server.getPlayerList().getPlayers().forEach(RpgAttributes::refresh);
 			}
