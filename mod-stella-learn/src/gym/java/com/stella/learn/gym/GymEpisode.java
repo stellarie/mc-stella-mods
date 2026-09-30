@@ -68,6 +68,8 @@ public final class GymEpisode {
 				GymEpisode episode = SHOOTERS.get(arrow.getOwner().getUUID());
 				if (episode != null) {
 					episode.arrows++;
+					double power = arrow.getDeltaMovement().length() / 1.6;
+					episode.powerBuckets[power < 0.25 ? 0 : power < 0.5 ? 1 : power < 0.75 ? 2 : 3]++;
 				}
 			}
 		});
@@ -93,6 +95,7 @@ public final class GymEpisode {
 	private int startWait;
 	private int startAttempts;
 	private int arrows;
+	private final int[] powerBuckets = new int[4];
 	private int tickLimit;
 	private int sweepClock;
 	private double shaping;
@@ -197,6 +200,7 @@ public final class GymEpisode {
 		unhit = 0.0;
 		noRegenHealth = Float.MAX_VALUE;
 		arrows = 0;
+		java.util.Arrays.fill(powerBuckets, 0);
 		endReason = null;
 		pendingError = null;
 		brainFault = null;
@@ -408,7 +412,7 @@ public final class GymEpisode {
 		}
 
 		GymLog.info(GymLog.EPISODE, "START_FAILED", "arena=" + arena.index() + " seed=" + seed + " reason=" + GymLog.NOT_DRIVEN + " waited=" + startWait
-			+ " attempt=" + startAttempts + " " + LearnLog.who(mob) + " status=" + ModelDriver.status() + " driven=" + ModelDriver.isDriven(mob));
+			+ " attempt=" + startAttempts + " " + LearnLog.who(mob) + " status=" + ModelDriver.status() + " driven=" + ModelDriver.isDriven(mob) + " " + diagnose());
 		if (++startAttempts < START_RETRIES) {
 			launch(seed, brainIndex, stage);
 			return null;
@@ -490,7 +494,7 @@ public final class GymEpisode {
 			+ " stage=" + GymConfig.stageName(stage) + " ticks=" + ticks + " limit=" + tickLimit + " reason=" + endReason + " terminal=" + LearnLog.num(reward)
 			+ " damageDealt=" + LearnLog.num(dealt) + " damageTaken=" + LearnLog.num(taken)
 			+ " damageReward=" + LearnLog.num(dealt * DAMAGE_REWARD_PER_HP) + " unhitReward=" + LearnLog.num(unhit) + " mobHealth=" + LearnLog.num(mobHealth)
-			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());
+			+ " botHealth=" + LearnLog.num(botHealth) + " arrows=" + arrows + " arrowPower=" + java.util.Arrays.toString(powerBuckets) + " decisions=" + (source == null ? 0 : source.decisions()) + " bot=" + bot.stats().summary());
 	}
 
 	/** Takes the archer and the bot out of play. The arena keeps its blocks until the next start. */
@@ -513,6 +517,17 @@ public final class GymEpisode {
 
 		source = null;
 		state = State.IDLE;
+	}
+
+	/** What decides whether the archer's goal can start: its target, both healths, its goals, and its chunk. */
+	private String diagnose() {
+		var target = mob.getTarget();
+		StringBuilder goals = new StringBuilder();
+		mob.getGoalSelector().getAvailableGoals().forEach(w -> goals.append(w.getGoal().getClass().getSimpleName()).append(w.isRunning() ? "*" : "").append('@').append(w.getPriority()).append(','));
+		return "target=" + (target == null ? "none" : target.getType().toShortString() + (target.isAlive() ? ":alive" : ":dead")) + " botAlive=" + bot.player().isAlive()
+			+ " botRemoved=" + bot.player().isRemoved() + " botHealth=" + LearnLog.num(bot.player().getHealth()) + " mobAlive=" + mob.isAlive() + " mobRemoved=" + mob.isRemoved()
+			+ " noAi=" + mob.isNoAi() + " ticking=" + arena.level().isPositionEntityTicking(mob.blockPosition()) + " tag=" + mob.entityTags().contains(StellaMobs.MODEL_DRIVEN_TAG)
+			+ " tickCount=" + mob.tickCount + " sourceCalls=" + (source == null ? -1 : source.decisions()) + " goals=" + goals;
 	}
 
 	/** Ends the episode without a report, when the session that started it is gone. */

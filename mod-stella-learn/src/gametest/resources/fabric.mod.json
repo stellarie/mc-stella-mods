@@ -39,7 +39,8 @@
 			"com.stella.learn.ArenaTerrainGameTest",
 			"com.stella.learn.RosterGameTest",
 			"com.stella.learn.GymLogGameTest",
-			"com.stella.learn.ShippedModelGameTest"
+			"com.stella.learn.ShippedModelGameTest",
+			"com.stella.learn.AimDiagnosticGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"
