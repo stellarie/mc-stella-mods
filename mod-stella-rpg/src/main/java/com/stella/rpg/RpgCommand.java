@@ -32,7 +32,10 @@ public final class RpgCommand {
 						Arrays.stream(Stat.values()).map(Stat::key), builder))
 					.then(Commands.argument("amount", IntegerArgumentType.integer())
 						.executes(RpgCommand::allocate))))
-			.then(Commands.literal("respec").executes(RpgCommand::respec)));
+			.then(Commands.literal("respec").executes(RpgCommand::respec))
+			.then(Commands.literal("dmgcounter")
+				.then(Commands.literal("on").executes(command -> damageLog(command, true)))
+				.then(Commands.literal("off").executes(command -> damageLog(command, false)))));
 	}
 
 	public static String statusLine(final ServerPlayer player, final Stat stat) {
@@ -68,6 +71,16 @@ public final class RpgCommand {
 			case INVALID_AMOUNT -> "The amount must be at least 1.";
 			case INVALID_STAT -> "Unknown stat.";
 		};
+	}
+
+	private static int damageLog(final CommandContext<CommandSourceStack> command, final boolean on) {
+		ServerPlayer player = player(command);
+		if (player == null) {
+			return 0;
+		}
+		DamageLog.set(player, on);
+		player.sendSystemMessage(Component.literal("Damage counter " + (on ? "on." : "off.")));
+		return 1;
 	}
 
 	private static int status(final CommandContext<CommandSourceStack> command) {
