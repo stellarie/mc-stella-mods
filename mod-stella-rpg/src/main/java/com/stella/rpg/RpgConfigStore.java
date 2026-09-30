@@ -9,11 +9,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 
 public final class RpgConfigStore {
 	public static final double MAX_LIMIT = 10.0;
@@ -80,7 +84,104 @@ public final class RpgConfigStore {
 			}
 		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
-			mobWeights(root, onError));
+			mobWeights(root, onError), armorSets(root, onError));
+	}
+
+	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.ARMOR_SETS_KEY);
+		Map<String, RpgConfig.ArmorSet> defaults = RpgConfig.DEFAULT_ARMOR_SETS;
+		if (element == null) {
+			return defaults;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'armor_sets' must be an object; using the defaults");
+			return defaults;
+		}
+		JsonObject object = element.getAsJsonObject();
+		Map<String, RpgConfig.ArmorSet> table = new LinkedHashMap<>();
+		for (Map.Entry<String, RpgConfig.ArmorSet> material : defaults.entrySet()) {
+			String path = "armor_sets." + material.getKey();
+			JsonElement row = object.get(material.getKey());
+			if (row != null && !row.isJsonObject()) {
+				onError.accept("stats.json key '" + path + "' must be an object; using the defaults");
+			}
+			JsonObject rowObject = row != null && row.isJsonObject() ? row.getAsJsonObject() : new JsonObject();
+			RpgConfig.ArmorSet fallback = material.getValue();
+			table.put(material.getKey(), new RpgConfig.ArmorSet(
+				armorItems(rowObject, path, fallback.items(), onError),
+				statBonuses(rowObject, "per_piece", path, fallback.perPiece(), onError),
+				flatPerPiece(rowObject, path, fallback.flatPerPiece(), onError),
+				statBonuses(rowObject, "set_bonus", path, fallback.setBonus(), onError)
+			));
+		}
+		return Map.copyOf(table);
+	}
+
+	private static List<Identifier> armorItems(
+		final JsonObject row, final String path, final List<Identifier> fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get("items");
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonArray()) {
+			onError.accept("stats.json key '" + path + ".items' must be a list of item ids; using the default");
+			return fallback;
+		}
+		List<Identifier> items = new ArrayList<>();
+		for (JsonElement entry : element.getAsJsonArray()) {
+			Identifier id = entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isString()
+				? Identifier.tryParse(entry.getAsString()) : null;
+			if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
+				onError.accept("stats.json key '" + path + ".items' has an unknown item id " + entry + "; skipping it");
+				continue;
+			}
+			items.add(id);
+		}
+		return List.copyOf(items);
+	}
+
+	private static Map<Stat, Integer> statBonuses(
+		final JsonObject row, final String key, final String path, final Map<Stat, Integer> fallback,
+		final Consumer<String> onError
+	) {
+		JsonElement element = row.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Map<Stat, Integer> bonuses = element.isJsonObject() ? new EnumMap<>(Stat.class) : null;
+		if (bonuses != null) {
+			for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+				Double value = number(entry.getValue());
+				Stat stat = Stat.byKey(entry.getKey()).orElse(null);
+				if (stat == null || value == null || value < 0.0 || value > StatSheet.CEILING || value != Math.rint(value)) {
+					bonuses = null;
+					break;
+				}
+				bonuses.put(stat, value.intValue());
+			}
+		}
+		if (bonuses == null) {
+			onError.accept("stats.json key '" + path + "." + key + "' must map stat keys to integers from 0 to "
+				+ StatSheet.CEILING + "; using the default");
+			return fallback;
+		}
+		return Map.copyOf(bonuses);
+	}
+
+	private static double flatPerPiece(
+		final JsonObject row, final String path, final double fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get("flat_per_piece");
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < 0.0) {
+			onError.accept("stats.json key '" + path + ".flat_per_piece' must be a number of at least 0; using the default");
+			return fallback;
+		}
+		return value;
 	}
 
 	private static RpgConfig.DiceRules dice(final JsonObject root, final Consumer<String> onError) {
@@ -200,6 +301,16 @@ public final class RpgConfigStore {
 		return Double.isFinite(value) ? value : null;
 	}
 
+	private static Map<String, Integer> statKeys(final Map<Stat, Integer> bonuses) {
+		Map<String, Integer> keyed = new LinkedHashMap<>();
+		for (Stat stat : Stat.values()) {
+			if (bonuses.containsKey(stat)) {
+				keyed.put(stat.key(), bonuses.get(stat));
+			}
+		}
+		return keyed;
+	}
+
 	private static void writeDefaults(final Path path, final Consumer<String> onError) {
 		Map<String, Object> out = new LinkedHashMap<>();
 		for (RpgConfig.Effect effect : RpgConfig.Effect.values()) {
@@ -225,6 +336,17 @@ public final class RpgConfigStore {
 			weights.put(role.getKey(), row);
 		}
 		out.put(RpgConfig.MOB_WEIGHTS_KEY, weights);
+		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
+		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {
+			RpgConfig.ArmorSet set = material.getValue();
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("items", set.items().stream().map(Identifier::toString).toList());
+			row.put("per_piece", statKeys(set.perPiece()));
+			row.put("flat_per_piece", set.flatPerPiece());
+			row.put("set_bonus", statKeys(set.setBonus()));
+			armorSets.put(material.getKey(), row);
+		}
+		out.put(RpgConfig.ARMOR_SETS_KEY, armorSets);
 		try {
 			Files.createDirectories(path.getParent());
 			Files.writeString(path, GSON.toJson(out) + System.lineSeparator(), StandardCharsets.UTF_8);

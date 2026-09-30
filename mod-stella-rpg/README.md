@@ -9,7 +9,7 @@ Dice damage and stat effects apply to players and mobs.
 The stats are STR, AGI, VIT, DEX, INT, and LUK.
 
 - The base value comes only from point allocation.
-- The bonus value comes from registered `StatBonuses.Provider` callbacks. Stage 1 registers none.
+- The bonus value comes from registered `StatBonuses.Provider` callbacks. `ArmorSets` registers one.
 - The effective value is base plus bonus, from 0 to 2048.
 
 ## Points
@@ -67,7 +67,7 @@ Outgoing damage from a player or a mob follows these rules:
 5. LUK rolls the crit for rules 1 and 2. A crit multiplies the total (base plus roll) by `crit_multiplier`.
 
 Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) - flat)`.
-`flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. This mod registers none.
+`flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. `ArmorSets` registers one.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
 The server applies the faster bow draw. The client draw animation keeps the vanilla speed.
@@ -102,6 +102,13 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `crit_multiplier` is a number of at least 1. The default is 1.5.
 - `mob_weights.{role}.{stat}` holds the mob weights. The roles are `melee`, `ranged`, and `magic`.
   Each weight is a number from 0 to 100. A bad weight uses its default.
+- `armor_sets.{material}` holds the armor set rules. The materials are `leather`, `chainmail`, `iron`, `gold`,
+  `diamond`, and `netherite`. Each holds these keys:
+  - `items`: a list of item ids. The default is the vanilla helmet, chestplate, leggings, and boots.
+    An unknown id logs one error and the parser skips it.
+  - `per_piece`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
+  - `flat_per_piece`: a number of at least 0.
+  - `set_bonus`: a map of stat key to an integer from 0 to 1024. The map replaces the default map.
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
 
@@ -123,6 +130,26 @@ Mob stats add to the `SpawnScaling` health and damage modifiers. They do not rep
   or after a failed call, the threat is 0 and the role is `melee`, so every mob stat is 5.
 - An unknown role counts as `melee`.
 - Every mob has at least VIT 5, so a hit on any mob loses about 1 percent to the percent rule.
+
+## Armor sets
+
+`ArmorSets` registers a `StatBonuses.Provider` and a `DefenseBonuses.Provider`.
+It reads the four armor slots of any living entity with stats, so a mob that wears armor gets the bonuses too.
+
+- Each worn piece adds the `per_piece` stats and `flat_per_piece` defense of its material.
+- A set bonus applies only when all four slots hold pieces of one material. A mixed set gets none.
+- Only the item ids in the config lists count. The turtle helmet and pieces from other mods give nothing
+  until you add their ids to a list.
+- The bonus shows as the `+ 5` part of `/rpgstats` and as the flat part of the incoming damage rule.
+
+| Material | Per piece | Flat per piece | Set bonus | Full set total |
+|---|---|---|---|---|
+| Leather | AGI +1 | 0.10 | AGI +3, DEX +2 | AGI 7, DEX 2, flat 0.40 |
+| Chainmail | DEX +1 | 0.20 | DEX +3, AGI +2 | DEX 7, AGI 2, flat 0.80 |
+| Iron | VIT +1 | 0.25 | VIT +3, STR +2 | VIT 7, STR 2, flat 1.00 |
+| Gold | LUK +1 | 0.10 | LUK +3, INT +2 | LUK 7, INT 2, flat 0.40 |
+| Diamond | VIT +2 | 0.40 | VIT +4, STR +4 | VIT 12, STR 4, flat 1.60 |
+| Netherite | STR +2, VIT +2 | 0.50 | STR +6, VIT +6, LUK +2 | STR 14, VIT 14, LUK 2, flat 2.00 |
 
 ## Spells API
 

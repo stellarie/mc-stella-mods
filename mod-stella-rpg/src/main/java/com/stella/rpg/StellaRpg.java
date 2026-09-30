@@ -21,6 +21,7 @@ public final class StellaRpg implements ModInitializer {
 		RpgDeath.register();
 		RpgAttributes.register();
 		RpgCommand.register();
+		ArmorSets.register();
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> RpgConfigStore.reload(RpgConfigStore.defaultPath()));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
 			(server, resources, success) -> RpgConfigStore.reload(RpgConfigStore.defaultPath()));
