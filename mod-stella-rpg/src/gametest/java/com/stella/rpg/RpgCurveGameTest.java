@@ -8,8 +8,6 @@ public final class RpgCurveGameTest {
 
 	@GameTest
 	public void curveTable(final GameTestHelper helper) {
-		check(helper, "melee", RpgCurve::meleeMultiplier, 1.0000, 1.0849, 1.5000, 2.2549);
-		check(helper, "ranged", RpgCurve::rangedMultiplier, 1.0000, 1.0849, 1.5000, 2.2549);
 		check(helper, "spellPower", RpgCurve::spellPowerMultiplier, 1.0000, 1.0849, 1.5000, 2.2549);
 		check(helper, "attackSpeed", RpgCurve::attackSpeedBonus, 0.0000, 0.0458, 0.2857, 0.8038);
 		check(helper, "damageTaken", RpgCurve::damageTakenMultiplier, 1.0000, 0.9769, 0.8500, 0.5360);
@@ -20,7 +18,7 @@ public final class RpgCurveGameTest {
 			int actual = RpgCurve.fullDrawTicks(STATS[i]);
 			helper.assertTrue(actual == ticks[i], "fullDrawTicks(" + STATS[i] + ")=" + actual);
 		}
-		RpgTestSupport.result("curveTable", "rows=8");
+		RpgTestSupport.result("curveTable", "rows=6");
 		helper.succeed();
 	}
 

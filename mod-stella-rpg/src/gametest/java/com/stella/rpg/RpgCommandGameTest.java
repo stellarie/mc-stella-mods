@@ -28,6 +28,15 @@ public final class RpgCommandGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void diceLinesShowDice(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		RpgTestSupport.setStat(player, Stat.STR, 100);
+		List<String> lines = RpgCommand.diceLines(player);
+		helper.assertTrue(lines.equals(List.of("Atk dice 3d5", "Ranged dice 1d4")), "lines=" + lines);
+		helper.succeed();
+	}
+
 	private static void run(final GameTestHelper helper, final ServerPlayer player, final String command) {
 		helper.getLevel().getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
 	}

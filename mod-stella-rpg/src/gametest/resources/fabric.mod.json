@@ -16,6 +16,7 @@
 			"com.stella.rpg.RpgCurveGameTest",
 			"com.stella.rpg.RpgDamageGameTest",
 			"com.stella.rpg.RpgDeathGameTest",
+			"com.stella.rpg.RpgDiceGameTest",
 			"com.stella.rpg.RpgPointsGameTest",
 			"com.stella.rpg.RpgRespecGameTest",
 			"com.stella.rpg.RpgSpellsGameTest"

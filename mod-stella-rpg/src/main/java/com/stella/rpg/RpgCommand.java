@@ -50,6 +50,13 @@ public final class RpgCommand {
 		return lines;
 	}
 
+	public static List<String> diceLines(final ServerPlayer player) {
+		return List.of(
+			"Atk dice " + RpgDice.of(StatBonuses.effective(player, Stat.STR)),
+			"Ranged dice " + RpgDice.of(StatBonuses.effective(player, Stat.DEX))
+		);
+	}
+
 	public static String message(final StatPoints.Result result) {
 		return switch (result) {
 			case OK -> "Done.";
@@ -66,7 +73,9 @@ public final class RpgCommand {
 		if (player == null) {
 			return 0;
 		}
-		for (String line : statusLines(player)) {
+		List<String> lines = new ArrayList<>(statusLines(player));
+		lines.addAll(diceLines(player));
+		for (String line : lines) {
 			command.getSource().sendSuccess(() -> Component.literal(line), false);
 		}
 		return 1;

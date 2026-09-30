@@ -3,6 +3,7 @@
 	"package": "com.stella.rpg.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"RpgAttackChargeMixin",
 		"RpgBowDrawMixin",
 		"RpgIncomingDamageMixin",
 		"RpgOutgoingDamageMixin",

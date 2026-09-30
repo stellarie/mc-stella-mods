@@ -14,21 +14,43 @@ public final class RpgConfigGameTest {
 	public void badEntryFallsBack(final GameTestHelper helper) throws IOException {
 		Path file = Files.createTempFile("rpg-stats", ".json");
 		try {
-			Files.writeString(file, "{\"melee_damage\":{\"max\":-1,\"half\":200},\"attack_speed\":{\"max\":2,\"half\":100}}", StandardCharsets.UTF_8);
+			Files.writeString(file, "{\"bow_draw\":{\"max\":-1,\"half\":200},\"attack_speed\":{\"max\":2,\"half\":100}}", StandardCharsets.UTF_8);
 			List<String> errors = new ArrayList<>();
 			RpgConfig config = RpgConfigStore.load(file, errors::add);
 			RpgConfigStore.set(config);
-			double melee = RpgCurve.meleeMultiplier(100);
+			int drawTicks = RpgCurve.fullDrawTicks(100);
 			double speed = RpgCurve.attackSpeedBonus(100);
-			RpgTestSupport.result("badEntryFallsBack", "errors=" + errors + " melee=" + melee + " speed=" + speed);
+			RpgTestSupport.result("badEntryFallsBack", "errors=" + errors + " drawTicks=" + drawTicks + " speed=" + speed);
 			helper.assertTrue(errors.size() == 1, "errors=" + errors);
-			helper.assertTrue(errors.get(0).contains("melee_damage"), "error lacks the key: " + errors.get(0));
-			helper.assertTrue(Math.abs(melee - 1.5) < 1e-9, "melee fell back to " + melee);
+			helper.assertTrue(errors.get(0).contains("bow_draw"), "error lacks the key: " + errors.get(0));
+			helper.assertTrue(drawTicks == 17, "bow draw fell back to " + drawTicks);
 			helper.assertTrue(Math.abs(speed - 1.0) < 1e-9, "the valid entry was lost: " + speed);
 		} finally {
 			RpgConfigStore.set(null);
 			Files.deleteIfExists(file);
 		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void removedKeysAreIgnored(final GameTestHelper helper) {
+		List<String> errors = new ArrayList<>();
+		RpgConfig config = RpgConfigStore.parse(
+			"{\"melee_damage\":{\"max\":1.5,\"half\":200},\"ranged_damage\":{\"max\":1.5,\"half\":200}}", errors::add);
+		helper.assertTrue(errors.size() == 2, "errors=" + errors);
+		helper.assertTrue(errors.get(0).contains("melee_damage") && errors.get(1).contains("ranged_damage"), "errors=" + errors);
+		helper.assertTrue(config.equals(RpgConfig.defaults()), "config=" + config);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void diceConfigOverrides(final GameTestHelper helper) {
+		List<String> errors = new ArrayList<>();
+		RpgConfig config = RpgConfigStore.parse(
+			"{\"dice\":{\"base_count\":2,\"base_sides\":6,\"count_step\":25,\"sides_step\":0}}", errors::add);
+		RpgConfig.DiceRules rules = config.dice();
+		helper.assertTrue(errors.size() == 1 && errors.get(0).contains("dice.sides_step"), "errors=" + errors);
+		helper.assertTrue(rules.equals(new RpgConfig.DiceRules(2, 6, 25, 100)), "rules=" + rules);
 		helper.succeed();
 	}
 

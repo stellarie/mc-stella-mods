@@ -18,22 +18,101 @@ public final class RpgDamageGameTest {
 	private static final float TOLERANCE = 0.001F;
 
 	@GameTest
-	public void strengthScalesMelee(final GameTestHelper helper) {
-		withRoller(false, () -> {
-			float base = meleeLoss(helper, 0);
-			float strong = meleeLoss(helper, 100);
-			assertRatio(helper, "melee", strong, base, 1.5F);
-		});
+	public void meleeAddsDice(final GameTestHelper helper) {
+		float loss;
+		try {
+			forceMax(false);
+			loss = meleeLoss(helper, 100);
+		} finally {
+			resetRollers();
+		}
+		assertLoss(helper, "meleeAddsDice", loss, HIT + 15.0F);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void dexterityScalesArrows(final GameTestHelper helper) {
-		withRoller(false, () -> {
-			float base = arrowLoss(helper, 0);
-			float strong = arrowLoss(helper, 100);
-			assertRatio(helper, "arrow", strong, base, 1.5F);
-		});
+	public void chargeScalesDice(final GameTestHelper helper) {
+		float spam;
+		float half;
+		float next;
+		try {
+			forceMax(false);
+			ServerPlayer player = RpgTestSupport.player(helper);
+			RpgTestSupport.setStat(player, Stat.STR, 100);
+			RpgCombat.beginAttack(player, 0.0F);
+			spam = hitLoss(helper, player);
+			RpgCombat.beginAttack(player, 0.5F);
+			half = hitLoss(helper, player);
+			RpgCombat.endAttack(player);
+			next = hitLoss(helper, player);
+		} finally {
+			resetRollers();
+		}
+		float factor = (float) (0.2 + 0.5 * 0.5 * 0.8);
+		assertLoss(helper, "chargeScalesDice spam", spam, HIT + 0.2F * 15.0F);
+		assertLoss(helper, "chargeScalesDice half", half, HIT + factor * 15.0F);
+		assertLoss(helper, "chargeScalesDice after", next, HIT + 15.0F);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void arrowAddsDexDice(final GameTestHelper helper) {
+		float loss;
+		try {
+			forceMax(false);
+			loss = arrowLoss(helper, 100);
+		} finally {
+			resetRollers();
+		}
+		assertLoss(helper, "arrowAddsDexDice", loss, HIT + 15.0F);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void critMultipliesTotal(final GameTestHelper helper) {
+		float loss;
+		try {
+			forceMax(true);
+			loss = meleeLoss(helper, 0);
+		} finally {
+			resetRollers();
+		}
+		assertLoss(helper, "critMultipliesTotal", loss, (HIT + 4.0F) * 1.5F);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void defensePercentThenFlat(final GameTestHelper helper) {
+		Difficulty before = helper.getLevel().getDifficulty();
+		DefenseBonuses.Provider flat = entity -> 2.0F;
+		float partial;
+		float clamped;
+		DefenseBonuses.register(flat);
+		try {
+			helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
+			partial = zombieHitLoss(helper, 100, 6.0F);
+			clamped = zombieHitLoss(helper, 100, 2.0F);
+		} finally {
+			DefenseBonuses.unregister(flat);
+			helper.getLevel().getServer().setDifficulty(before, true);
+		}
+		assertLoss(helper, "defense partial", partial, 6.0F * 0.85F - 2.0F);
+		assertLoss(helper, "defense clamped", clamped, 0.0F);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void spellsUnchanged(final GameTestHelper helper) {
+		float loss;
+		try {
+			forceMax(true);
+			Zombie victim = zombie(helper);
+			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().magic(), HIT);
+			loss = victim.getMaxHealth() - victim.getHealth();
+		} finally {
+			resetRollers();
+		}
+		assertLoss(helper, "spellsUnchanged", loss, HIT);
 		helper.succeed();
 	}
 
@@ -44,8 +123,8 @@ public final class RpgDamageGameTest {
 		float guarded;
 		try {
 			helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-			base = zombieHitLoss(helper, 0);
-			guarded = zombieHitLoss(helper, 100);
+			base = zombieHitLoss(helper, 0, 6.0F);
+			guarded = zombieHitLoss(helper, 100, 6.0F);
 		} finally {
 			helper.getLevel().getServer().setDifficulty(before, true);
 		}
@@ -58,12 +137,12 @@ public final class RpgDamageGameTest {
 		float plain;
 		float crit;
 		try {
-			RpgCombat.setRoller((attacker, random, chance) -> false);
+			forceMax(false);
 			plain = meleeLoss(helper, 0);
-			RpgCombat.setRoller((attacker, random, chance) -> true);
+			forceMax(true);
 			crit = meleeLoss(helper, 0);
 		} finally {
-			RpgCombat.setRoller(null);
+			resetRollers();
 		}
 		assertRatio(helper, "crit", crit, plain, 1.5F);
 		helper.succeed();
@@ -89,6 +168,10 @@ public final class RpgDamageGameTest {
 	static float meleeLoss(final GameTestHelper helper, final int str) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.STR, str);
+		return hitLoss(helper, player);
+	}
+
+	private static float hitLoss(final GameTestHelper helper, final ServerPlayer player) {
 		Zombie victim = zombie(helper);
 		victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
 		return victim.getMaxHealth() - victim.getHealth();
@@ -107,13 +190,13 @@ public final class RpgDamageGameTest {
 		return victim.getMaxHealth() - victim.getHealth();
 	}
 
-	private static float zombieHitLoss(final GameTestHelper helper, final int vit) {
+	private static float zombieHitLoss(final GameTestHelper helper, final int vit, final float damage) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
 		RpgTestSupport.setStat(player, Stat.VIT, vit);
 		Zombie attacker = zombie(helper);
 		float before = player.getHealth();
-		player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 6.0F);
+		player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), damage);
 		return before - player.getHealth();
 	}
 
@@ -124,13 +207,19 @@ public final class RpgDamageGameTest {
 		return zombie;
 	}
 
-	private static void withRoller(final boolean crit, final Runnable body) {
-		try {
-			RpgCombat.setRoller((attacker, random, chance) -> crit);
-			body.run();
-		} finally {
-			RpgCombat.setRoller(null);
-		}
+	private static void forceMax(final boolean crit) {
+		RpgCombat.setRoller((attacker, random, chance) -> crit);
+		RpgCombat.setDiceRoller((attacker, random, dice) -> dice.max());
+	}
+
+	private static void resetRollers() {
+		RpgCombat.setRoller(null);
+		RpgCombat.setDiceRoller(null);
+	}
+
+	private static void assertLoss(final GameTestHelper helper, final String name, final float loss, final float expected) {
+		RpgTestSupport.result(name, "loss=" + loss + " expected=" + expected);
+		helper.assertTrue(Math.abs(loss - expected) < TOLERANCE, name + " loss=" + loss + " expected " + expected);
 	}
 
 	private static void assertRatio(
