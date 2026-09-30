@@ -26,6 +26,7 @@ public final class Arena {
 	private final ServerLevel level;
 	private final BlockPos origin;
 	private final AABB bounds;
+	private Terrain terrain = Terrain.flat();
 
 	public Arena(final int index, final ServerLevel level, final BlockPos origin) {
 		this.index = index;
@@ -57,15 +58,20 @@ public final class Arena {
 	}
 
 	public boolean contains(final Vec3 at) {
-		return at.x >= bounds.minX && at.x < bounds.maxX && at.y >= bounds.minY - 1.0 && at.y < bounds.maxY && at.z >= bounds.minZ && at.z < bounds.maxZ;
+		return at.x >= bounds.minX && at.x < bounds.maxX && at.y >= bounds.minY - FLOOR && at.y < bounds.maxY && at.z >= bounds.minZ && at.z < bounds.maxZ;
+	}
+
+	public Terrain terrain() {
+		return terrain;
+	}
+
+	/** The block at a cell relative to the origin, read from the live world. */
+	public BlockState blockAt(final int dx, final int dy, final int dz) {
+		return level.getBlockState(origin.offset(dx, dy, dz));
 	}
 
 	private BlockState expected(final int dx, final int dy, final int dz) {
-		if (dy >= 0) {
-			return Blocks.AIR.defaultBlockState();
-		}
-
-		return dy >= -2 ? Blocks.DIRT.defaultBlockState() : Blocks.STONE.defaultBlockState();
+		return terrain.cell(dx, dy, dz);
 	}
 
 	/** Writes the barrier shell, the floor, and the open space. Run once, when the arena is made. */
@@ -94,6 +100,12 @@ public final class Arena {
 	 * milliseconds it took.
 	 */
 	public double reset() {
+		return reset(terrain);
+	}
+
+	/** Like {@link #reset()}, and leaves the arena holding the layout `next`. */
+	public double reset(final Terrain next) {
+		terrain = next;
 		long start = System.nanoTime();
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		int changed = 0;

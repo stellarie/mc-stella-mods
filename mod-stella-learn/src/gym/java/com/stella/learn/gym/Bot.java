@@ -8,9 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action;
@@ -25,6 +27,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEnderpearl;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -43,6 +48,7 @@ public final class Bot {
 
 	static {
 		ServerTickEvents.START_SERVER_TICK.register(Bot::tickAll);
+		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> projectileLoaded(entity));
 	}
 
 	/** Chooses the input for the next tick from the bot state. */
@@ -85,6 +91,10 @@ public final class Bot {
 	private int digTicks;
 	private int sequence;
 	private long drainedMessages;
+	private boolean digFromInput;
+	private BotStats stats = new BotStats();
+	private java.util.function.Supplier<Entity> opponent = () -> null;
+	private int lastPotions = -1;
 
 	private Bot(final BotPlayer player, final EmbeddedChannel channel, final int arena, final int sampleTicks) {
 		this.player = player;
@@ -135,6 +145,16 @@ public final class Bot {
 		return arena;
 	}
 
+	/** What this bot did since the last reset, read from the world and the inputs, not from the brain's own claims. */
+	public BotStats stats() {
+		return stats;
+	}
+
+	/** The entity the stats measure distances against. */
+	public void setOpponent(final java.util.function.Supplier<Entity> next) {
+		opponent = next;
+	}
+
 	public long ticks() {
 		return ticks;
 	}
@@ -183,6 +203,9 @@ public final class Bot {
 		input = BotInput.IDLE;
 		wasUsing = false;
 		digging = null;
+		digFromInput = false;
+		stats = new BotStats();
+		lastPotions = -1;
 		GymLog.info(GymLog.BOT, "RESET", who() + " at=" + fmt(at) + " tick=" + ticks);
 	}
 
@@ -200,6 +223,7 @@ public final class Bot {
 		tickDig();
 		player.doTick();
 		drain();
+		observe();
 		if (ticks % sampleTicks == 0) {
 			GymLog.debug(GymLog.BOT, "INPUT", who() + " tick=" + ticks + " pos=" + fmt(player.position()) + " " + input);
 		}
@@ -211,7 +235,7 @@ public final class Bot {
 		player.setXRot(in.pitch());
 		player.setYHeadRot(in.yaw());
 		player.getInventory().setSelectedSlot(Mth.clamp(in.slot(), 0, 8));
-		float speedScale = player.isUsingItem() ? 0.2F : 1.0F;
+		float speedScale = player.isUsingItem() && !player.getUseItem().is(Items.SHIELD) ? 0.2F : 1.0F;
 		if (in.sneak()) {
 			speedScale *= 0.3F;
 		}
@@ -226,6 +250,21 @@ public final class Bot {
 		} else if (!in.use() && wasUsing) {
 			GymLog.info(GymLog.BOT, "RELEASE", who() + " tick=" + ticks + " item=" + player.getUseItem().getItem() + " usedTicks=" + player.getTicksUsingItem());
 			player.releaseUsingItem();
+		}
+
+		if (in.dig() != null) {
+			if (digging == null || !digging.equals(in.dig())) {
+				startBreaking(in.dig());
+			}
+
+			digFromInput = true;
+		} else if (digFromInput) {
+			stopBreaking();
+			digFromInput = false;
+		}
+
+		if (in.placeAgainst() != null && in.placeFace() != null) {
+			placeAgainst(in.placeAgainst(), in.placeFace());
 		}
 
 		wasUsing = in.use();
@@ -258,6 +297,7 @@ public final class Bot {
 		}
 
 		float strength = player.getAttackStrengthScale(0.0F);
+		stats.attack(strength, player.fallDistance > 0.0 && !player.onGround(), player.getMainHandItem().is(ItemTags.AXES));
 		player.attack(target);
 		GymLog.debug(GymLog.BOT, "ATTACK", who() + " tick=" + ticks + " target=" + target.getType().toShortString()
 			+ " strength=" + LearnLog.num(strength));
@@ -293,6 +333,17 @@ public final class Bot {
 		GymLog.info(GymLog.BOT, "DIG_START", who() + " tick=" + ticks + " pos=" + pos.toShortString());
 	}
 
+	/** Stops mining the block in progress, as a client that lets go of the button would. */
+	public void stopBreaking() {
+		if (digging == null) {
+			return;
+		}
+
+		player.gameMode.handleBlockBreakAction(digging, Action.ABORT_DESTROY_BLOCK, Direction.UP, player.level().getMaxY(), sequence++);
+		GymLog.info(GymLog.BOT, "DIG_END", who() + " tick=" + ticks + " pos=" + digging.toShortString() + " digTicks=" + digTicks + " result=aborted");
+		digging = null;
+	}
+
 	private void tickDig() {
 		if (digging == null) {
 			return;
@@ -301,6 +352,7 @@ public final class Bot {
 		BlockState state = player.level().getBlockState(digging);
 		if (state.isAir()) {
 			GymLog.info(GymLog.BOT, "DIG_END", who() + " tick=" + ticks + " pos=" + digging.toShortString() + " digTicks=" + digTicks + " result=broken");
+			stats.broke(digging, player.blockPosition());
 			digging = null;
 			return;
 		}
@@ -309,6 +361,12 @@ public final class Bot {
 		digProgress += state.getDestroyProgress(player, player.level(), digging);
 		if (digProgress >= 1.0F) {
 			player.gameMode.handleBlockBreakAction(digging, Action.STOP_DESTROY_BLOCK, Direction.UP, player.level().getMaxY(), sequence++);
+			// The block goes at once, and a brain may look away before the next tick sees it gone.
+			if (player.level().getBlockState(digging).isAir()) {
+				GymLog.info(GymLog.BOT, "DIG_END", who() + " tick=" + ticks + " pos=" + digging.toShortString() + " digTicks=" + digTicks + " result=broken");
+				stats.broke(digging, player.blockPosition());
+				digging = null;
+			}
 		}
 	}
 
@@ -320,7 +378,55 @@ public final class Bot {
 		InteractionResult result = player.gameMode.useItemOn(player, player.level(), player.getItemInHand(hand), hand, hit);
 		GymLog.info(GymLog.BOT, "PLACE", who() + " tick=" + ticks + " against=" + against.toShortString() + " face=" + face
 			+ " result=" + result.getClass().getSimpleName());
+		if (result.consumesAction()) {
+			stats.placed(against.relative(face));
+		}
+
 		return result;
+	}
+
+	private void observe() {
+		stats.tick(player.blockPosition(), player.isBlocking(), input.strafe(), player.getMainHandItem().is(ItemTags.AXES));
+		ItemStack potions = player.getInventory().getItem(Hotbar.POTIONS);
+		int held = potions.is(Items.POTION) ? potions.getCount() : 0;
+		if (lastPotions >= 0 && held < lastPotions) {
+			stats.drank();
+		}
+
+		lastPotions = held;
+	}
+
+	/** Height above the opponent and whether the bot moves away from it, read when an arrow leaves the bow. */
+	private void noteShot() {
+		Entity other = opponent.get();
+		if (other == null) {
+			return;
+		}
+
+		Vec3 away = player.position().subtract(other.position());
+		Vec3 velocity = player.getDeltaMovement();
+		double along = (away.x * velocity.x + away.z * velocity.z) / Math.max(Math.hypot(away.x, away.z), 1.0E-6);
+		stats.bowShot(player.getY() - other.getY(), along > 0.02);
+	}
+
+	private static void projectileLoaded(final Entity entity) {
+		if (entity instanceof AbstractArrow arrow && arrow.getOwner() instanceof ServerPlayer owner) {
+			for (Bot bot : ALL) {
+				if (bot.player == owner) {
+					boolean crossbow = owner.getMainHandItem().is(Items.CROSSBOW);
+					bot.stats.arrow(crossbow);
+					if (!crossbow) {
+						bot.noteShot();
+					}
+				}
+			}
+		} else if (entity instanceof ThrownEnderpearl pearl && pearl.getOwner() instanceof ServerPlayer owner) {
+			for (Bot bot : ALL) {
+				if (bot.player == owner) {
+					bot.stats.pearl();
+				}
+			}
+		}
 	}
 
 	/** Drops what the server queued for the missing client, so the queue does not grow with every tick. */

@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * whose first byte is the frame type. `training/stella_train/wire.py` mirrors the codec below.
  */
 public final class Bridge implements AutoCloseable {
-	public static final int PROTOCOL_VERSION = 1;
+	public static final int PROTOCOL_VERSION = 2;
 	public static final int HELLO = 1;
 	public static final int STEP = 2;
 	public static final int ACT = 3;
@@ -27,6 +27,8 @@ public final class Bridge implements AutoCloseable {
 	public static final int FLAG_START = 1;
 	public static final int FLAG_TERMINAL = 2;
 	public static final int FLAG_TRUNCATED = 4;
+	public static final int FLAG_WIN = 8;
+	public static final int FLAG_ERROR = 16;
 	public static final int ALL_ARENAS = -1;
 	public static final int HASH_SIZE = 32;
 	public static final int READ_TIMEOUT_MILLIS = 30_000;
@@ -129,7 +131,8 @@ public final class Bridge implements AutoCloseable {
 	public record Frame(int type, ByteBuffer body) {
 	}
 
-	public record Reset(int arena, int seed) {
+	/** `brain` and `stage` are negative when the trainer leaves the choice to the server. */
+	public record Reset(int arena, int seed, int brain, int stage) {
 	}
 
 	public record Act(int stepId, int[] agents, float[][] actions) {
@@ -156,15 +159,18 @@ public final class Bridge implements AutoCloseable {
 		return buffer.array();
 	}
 
-	public static byte[] stepFrame(final int stepId, final int[] agents, final int[] flags, final float[] rewards, final float[][] observations) {
+	public static byte[] stepFrame(
+		final int stepId, final int[] agents, final int[] flags, final float[] rewards, final float[] shaping, final float[][] observations
+	) {
 		int observationSize = agents.length == 0 ? 0 : observations[0].length;
-		ByteBuffer buffer = frame(STEP, 4 + 4 + agents.length * (4 + 1 + 4 + 4 * observationSize));
+		ByteBuffer buffer = frame(STEP, 4 + 4 + agents.length * (4 + 1 + 4 + 4 + 4 * observationSize));
 		buffer.putInt(stepId);
 		buffer.putInt(agents.length);
 		for (int i = 0; i < agents.length; i++) {
 			buffer.putInt(agents[i]);
 			buffer.put((byte) flags[i]);
 			buffer.putFloat(rewards[i]);
+			buffer.putFloat(shaping[i]);
 			for (float value : observations[i]) {
 				buffer.putFloat(value);
 			}
@@ -188,10 +194,12 @@ public final class Bridge implements AutoCloseable {
 		return buffer.array();
 	}
 
-	public static byte[] resetFrame(final int arena, final int seed) {
-		ByteBuffer buffer = frame(RESET, 8);
+	public static byte[] resetFrame(final int arena, final int seed, final int brain, final int stage) {
+		ByteBuffer buffer = frame(RESET, 16);
 		buffer.putInt(arena);
 		buffer.putInt(seed);
+		buffer.putInt(brain);
+		buffer.putInt(stage);
 		return buffer.array();
 	}
 
@@ -219,10 +227,10 @@ public final class Bridge implements AutoCloseable {
 	}
 
 	public static Reset decodeReset(final ByteBuffer body) {
-		if (body.remaining() != 8) {
+		if (body.remaining() != 16) {
 			throw new IllegalArgumentException("reset frame holds " + body.remaining() + " bytes");
 		}
 
-		return new Reset(body.getInt(), body.getInt());
+		return new Reset(body.getInt(), body.getInt(), body.getInt(), body.getInt());
 	}
 }

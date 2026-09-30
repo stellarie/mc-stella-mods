@@ -1,0 +1,45 @@
+# Every hyperparameter of the archer run. `python -m stella_train.train --config configs/archer.toml`
+
+[run]
+name = "archer"
+seed = 1
+budget_decisions = 200_000_000   # Stages A to C together
+servers = 6
+arenas = 32
+decision_ticks = 2
+episode_ticks = 1200
+heap = "2g"
+eval_every_decisions = 5_000_000
+checkpoint_every_decisions = 5_000_000
+
+[ppo]
+learning_rate = 3e-4
+learning_rate_final = 3e-5
+discount = 0.995
+gae_lambda = 0.95
+clip = 0.2
+entropy = 0.005                    # 0.01 let the turn noise climb from 0.30 to 0.38 in 8M decisions
+entropy_final = 0.0005
+value_coefficient = 0.5
+epochs = 4
+minibatch = 4096
+rollout_per_agent = 256          # decisions per arena in one update
+max_grad_norm = 0.5
+target_kl = 0.03
+log_std_init = -1.2                # 0.5 left too much aim noise for a first arrow to land
+bow_bias_init = [-1.0, 1.0, -0.5, -1.0]   # idle, draw, release, volley
+jump_bias_init = [0.5, -0.5]
+
+[shaping]
+scale = 1.0                      # 0.1 taught only running away; see Implementation Notes
+decay_share = 0.6                # falls to 0 over this share of the budget
+
+[curriculum]
+# Stage A promotes at this win rate on the `stage-a` suite.
+stage_a_win_rate = 0.80
+stage_a_min_decisions = 5_000_000
+# Stage B promotes when the win rate has not risen for this many evals, or when its budget share ends.
+stage_b_patience_evals = 10
+stage_b_budget_share = 0.45
+stage_b_min_decisions = 20_000_000
+eval_episodes_per_brain = 20

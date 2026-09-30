@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 HELLO = 1
 STEP = 2
 ACT = 3
@@ -22,6 +22,8 @@ BYE = 5
 FLAG_START = 1
 FLAG_TERMINAL = 2
 FLAG_TRUNCATED = 4
+FLAG_WIN = 8
+FLAG_ERROR = 16
 
 ALL_ARENAS = 0xFFFFFFFF
 HASH_SIZE = 32
@@ -47,6 +49,7 @@ class Step:
     agents: np.ndarray
     flags: np.ndarray
     rewards: np.ndarray
+    shaping: np.ndarray
     obs: np.ndarray
 
 
@@ -61,20 +64,25 @@ def encode_hello(obs_size: int, act_size: int, arenas: int, contract_hash: bytes
     return _frame(HELLO, struct.pack("<HHHI", PROTOCOL_VERSION, obs_size, act_size, arenas) + contract_hash)
 
 
-def encode_step(step_id: int, agents, flags, rewards, obs) -> bytes:
+def encode_step(step_id: int, agents, flags, rewards, shaping, obs) -> bytes:
     agents = np.asarray(agents, dtype="<u4")
+    if len(agents) == 0:
+        return _frame(STEP, struct.pack("<II", step_id, 0))
     obs = np.asarray(obs, dtype="<f4").reshape(len(agents), -1)
     dtype = _step_dtype(obs.shape[1])
     rows = np.empty(len(agents), dtype=dtype)
     rows["id"] = agents
     rows["flags"] = np.asarray(flags, dtype="u1")
     rows["reward"] = np.asarray(rewards, dtype="<f4")
+    rows["shaping"] = np.asarray(shaping, dtype="<f4")
     rows["obs"] = obs
     return _frame(STEP, struct.pack("<II", step_id, len(agents)) + rows.tobytes())
 
 
 def encode_act(step_id: int, agents, actions) -> bytes:
     agents = np.asarray(agents, dtype="<u4")
+    if len(agents) == 0:
+        return _frame(ACT, struct.pack("<II", step_id, 0))
     actions = np.asarray(actions, dtype="<f4").reshape(len(agents), -1)
     rows = np.empty(len(agents), dtype=[("id", "<u4"), ("act", "<f4", (actions.shape[1],))])
     rows["id"] = agents
@@ -82,8 +90,9 @@ def encode_act(step_id: int, agents, actions) -> bytes:
     return _frame(ACT, struct.pack("<II", step_id, len(agents)) + rows.tobytes())
 
 
-def encode_reset(arena: int, seed: int) -> bytes:
-    return _frame(RESET, struct.pack("<II", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF))
+def encode_reset(arena: int, seed: int, brain: int = -1, stage: int = -1) -> bytes:
+    """Starts a new episode in `arena`. A negative brain or stage leaves the choice to the server."""
+    return _frame(RESET, struct.pack("<IIii", arena & 0xFFFFFFFF, seed & 0xFFFFFFFF, brain, stage))
 
 
 def encode_bye() -> bytes:
@@ -91,7 +100,7 @@ def encode_bye() -> bytes:
 
 
 def _step_dtype(obs_size: int) -> np.dtype:
-    return np.dtype([("id", "<u4"), ("flags", "u1"), ("reward", "<f4"), ("obs", "<f4", (obs_size,))])
+    return np.dtype([("id", "<u4"), ("flags", "u1"), ("reward", "<f4"), ("shaping", "<f4"), ("obs", "<f4", (obs_size,))])
 
 
 def decode_hello(body: bytes) -> Hello:
@@ -108,7 +117,7 @@ def decode_step(body: bytes, obs_size: int) -> Step:
     if len(body) != 8 + count * dtype.itemsize:
         raise WireError(f"step body holds {len(body)} bytes for {count} agents of {obs_size} numbers")
     rows = np.frombuffer(body, dtype=dtype, count=count, offset=8)
-    return Step(step_id, rows["id"], rows["flags"], rows["reward"], rows["obs"])
+    return Step(step_id, rows["id"], rows["flags"], rows["reward"], rows["shaping"], rows["obs"])
 
 
 def decode_act(body: bytes, act_size: int) -> tuple[int, np.ndarray, np.ndarray]:
@@ -120,10 +129,10 @@ def decode_act(body: bytes, act_size: int) -> tuple[int, np.ndarray, np.ndarray]
     return step_id, rows["id"], rows["act"]
 
 
-def decode_reset(body: bytes) -> tuple[int, int]:
-    if len(body) != 8:
-        raise WireError(f"reset body holds {len(body)} bytes, expected 8")
-    return struct.unpack("<II", body)
+def decode_reset(body: bytes) -> tuple[int, int, int, int]:
+    if len(body) != 16:
+        raise WireError(f"reset body holds {len(body)} bytes, expected 16")
+    return struct.unpack("<IIii", body)
 
 
 def recv_exact(sock: socket.socket, count: int) -> bytes:

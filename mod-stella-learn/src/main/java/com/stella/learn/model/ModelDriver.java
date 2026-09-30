@@ -146,6 +146,15 @@ public final class ModelDriver {
 		ModelLog.load(STATUS_OK, contractHash(), file.size(), "path=test");
 	}
 
+	/** Makes every archer eligible with `source` as the default answer. The gym uses it, and sets its own per mob. */
+	public static void useSource(final ActionSource source) {
+		pinned = true;
+		loudFallbacks.set(0);
+		defaultSource = source;
+		status = STATUS_OK;
+		ModelLog.load(STATUS_OK, contractHash(), 0, "path=source");
+	}
+
 	public static void useNoPolicy() {
 		pinned = true;
 		loudFallbacks.set(0);

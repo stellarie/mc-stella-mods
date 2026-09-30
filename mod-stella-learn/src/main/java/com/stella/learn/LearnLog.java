@@ -1,6 +1,7 @@
 package com.stella.learn;
 
 import java.util.Locale;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,6 +15,8 @@ import net.minecraft.world.entity.Mob;
 public final class LearnLog {
 	private static volatile Consumer<String> tap = line -> {
 	};
+	/** Lines the log still writes when `behavior_log` is off. The gym keeps its own lines this way. */
+	private static volatile BiPredicate<String, String> keptWhenOff = (test, verb) -> false;
 
 	private LearnLog() {
 	}
@@ -21,6 +24,11 @@ public final class LearnLog {
 	/** Sends every line that is written to `listener` as well. Meant for tests. */
 	public static void tap(final Consumer<String> listener) {
 		tap = listener;
+	}
+
+	/** With `behavior_log` off, a line for which `kept` returns true is still written. Takes the test name and the verb. */
+	public static void keepWhenOff(final BiPredicate<String, String> kept) {
+		keptWhenOff = kept;
 	}
 
 	public static String line(final String test, final String verb, final String detail) {
@@ -32,7 +40,7 @@ public final class LearnLog {
 	}
 
 	public static void info(final LearnConfig config, final String test, final String verb, final String detail) {
-		if (!config.behaviorLog()) {
+		if (!config.behaviorLog() && !keptWhenOff.test(test, verb)) {
 			return;
 		}
 
@@ -51,7 +59,7 @@ public final class LearnLog {
 	 * always to a test's tap. `behavior_log` still switches it off.
 	 */
 	public static void sampled(final String test, final String verb, final String detail) {
-		if (!LearnConfigStore.get().behaviorLog()) {
+		if (!LearnConfigStore.get().behaviorLog() && !keptWhenOff.test(test, verb)) {
 			return;
 		}
 

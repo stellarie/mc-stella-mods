@@ -15,8 +15,9 @@ from pathlib import Path
 
 BEHAVIOR = re.compile(r"\[BEHAVIOR\] test=(\w+) (\w+)(?: (.*))?$")
 REASON = re.compile(r"\breason=([\w:.-]+)")
-RATE = re.compile(r"(\w+)=([\d.]+)")
-GYM_COMPONENTS = ("gymConfig", "gymArena", "gymEpisode", "gymBot", "gymBridge", "gymStep")
+RATE = re.compile(r"(\w+)=(-?[\d.]+(?:e-?\d+)?)")
+GYM_COMPONENTS = ("gymConfig", "gymArena", "gymTerrain", "gymEpisode", "gymBot", "gymEval", "gymProfile", "gymBridge", "gymStep", "learnModel",
+                  "train", "trainEval", "trainStage", "trainCheckpoint", "export")
 REQUIRED = ("gymArena", "gymEpisode", "gymBridge", "gymStep")
 
 
@@ -66,9 +67,13 @@ def render(summary: Summary, source: Path) -> str:
             out.append(f"  {verb}: {count}")
         for key, count in sorted(summary.reasons[component].items()):
             out.append(f"  reason {key}: {count}")
-    rate = summary.latest.get("gymStep RATE") or summary.latest.get("gymClient RATE")
+    update = summary.latest.get("train UPDATE")
+    rate = update or summary.latest.get("gymStep RATE") or summary.latest.get("gymClient RATE")
     if rate:
         out.append("latest metrics: " + ", ".join(f"{k}={v}" for k, v in RATE.findall(rate)))
+    evaluation = summary.latest.get("trainEval RESULT")
+    if evaluation:
+        out.append("latest eval: " + ", ".join(f"{k}={v}" for k, v in RATE.findall(evaluation)))
     return "\n".join(out)
 
 

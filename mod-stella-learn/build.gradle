@@ -95,6 +95,8 @@ tasks.named('runGameTest') {
 // The mobs and spells mods already reach this mod through included builds, so they are not repeated here.
 def modpackMods = ['mod-stella-equips-enchants', 'mod-stella-food', 'mc-stella-villages', 'mod-stella-tower', 'mod-stella-nether']
 def modpackDir = layout.projectDirectory.dir('training/runs/modpack')
+// A long run pins the modpack to one commit, so `origin/main` moving under it changes nothing: -PmodpackRef=<sha>.
+def modpackRef = (project.findProperty('modpackRef') ?: 'origin/main').toString()
 def modpackJars = fileTree(modpackDir.dir('jars')) {
 	include '*.jar'
 	// The nether mod requires the spells mod, which -PwithoutSpells keeps off the run time class path.
@@ -110,7 +112,7 @@ dependencies {
 
 tasks.register('prepareModpack') {
 	group = 'gym'
-	description = 'Builds the sibling mods from origin/main into training/runs/modpack/jars.'
+	description = 'Builds the sibling mods from origin/main (or -PmodpackRef) into training/runs/modpack/jars.'
 	outputs.upToDateWhen { false }
 	doLast {
 		def run = { List<String> command, File dir, File log ->
@@ -124,11 +126,11 @@ tasks.register('prepareModpack') {
 		File jars = new File(root, 'jars')
 		File marker = new File(root, 'origin-main.sha')
 		File repo = projectDir.parentFile
-		def probe = new ProcessBuilder('git', '-C', repo.path, 'rev-parse', 'origin/main').redirectErrorStream(true).start()
+		def probe = new ProcessBuilder('git', '-C', repo.path, 'rev-parse', modpackRef).redirectErrorStream(true).start()
 		String sha = probe.inputStream.text.trim()
 		probe.waitFor()
 		if (marker.exists() && marker.text.trim() == sha && jars.list()?.length == modpackMods.size()) {
-			logger.lifecycle("modpack: ${modpackMods.size()} jars at origin/main ${sha.take(7)}")
+			logger.lifecycle("modpack: ${modpackMods.size()} jars at ${modpackRef} ${sha.take(7)}")
 			return
 		}
 
@@ -139,7 +141,7 @@ tasks.register('prepareModpack') {
 		File zip = new File(root, 'origin-main.zip')
 		delete(src, jars, zip)
 		jars.mkdirs()
-		run(['git', '-C', repo.path, 'archive', '--format=zip', '-o', zip.path, 'origin/main'], repo, log)
+		run(['git', '-C', repo.path, 'archive', '--format=zip', '-o', zip.path, modpackRef], repo, log)
 		copy {
 			from zipTree(zip)
 			into src
@@ -156,7 +158,7 @@ tasks.register('prepareModpack') {
 		}
 
 		marker.text = sha
-		logger.lifecycle("modpack: built ${modpackMods.size()} mods from origin/main ${sha.take(7)}")
+		logger.lifecycle("modpack: built ${modpackMods.size()} mods from ${modpackRef} ${sha.take(7)}")
 	}
 }
 

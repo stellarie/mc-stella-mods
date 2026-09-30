@@ -62,7 +62,8 @@ def prepare_spec(log: RunLog) -> dict:
 
 class GymServer:
     def __init__(self, index: int, spec: dict, arenas: int, log: RunLog, sprint: bool = True, seed: int = 1,
-                 decision_ticks: int = 2, extra_props: dict | None = None, heap: str = "2g"):
+                 decision_ticks: int = 2, extra_props: dict | None = None, heap: str = "2g", episode_ticks: int = 1200,
+                 port_base: int = BRIDGE_PORT_BASE, game_port_base: int = GAME_PORT_BASE, run_prefix: str = "run-gym"):
         self.index = index
         self.spec = spec
         self.arenas = arenas
@@ -70,11 +71,12 @@ class GymServer:
         self.sprint = sprint
         self.seed = seed
         self.decision_ticks = decision_ticks
+        self.episode_ticks = episode_ticks
         self.extra_props = extra_props or {}
         self.heap = heap
-        self.port = BRIDGE_PORT_BASE + index
-        self.game_port = GAME_PORT_BASE + index
-        self.run_dir = MOD_DIR / f"run-gym-{index}"
+        self.port = port_base + index
+        self.game_port = game_port_base + index
+        self.run_dir = MOD_DIR / f"{run_prefix}-{index}"
         self.process: subprocess.Popen | None = None
         self.console = None
 
@@ -91,6 +93,10 @@ class GymServer:
         (self.run_dir / "logs").mkdir(parents=True)
         (self.run_dir / "server.properties").write_text(SERVER_PROPERTIES.replace("{game_port}", str(self.game_port)), encoding="utf-8")
         (self.run_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
+        # A trained fight writes hundreds of thousands of learn-mod lines a server-minute; the gym lines stay on regardless.
+        config = self.run_dir / "config" / "mod-stella-learn"
+        config.mkdir(parents=True, exist_ok=True)
+        (config / "learn.json").write_text(json.dumps({"behavior_log": False, "model_archer": True}), encoding="utf-8")
 
     def start(self) -> None:
         self._prepare_run_dir()
@@ -99,6 +105,7 @@ class GymServer:
             "stella.gym.arenas": self.arenas,
             "stella.gym.sprint": str(self.sprint).lower(),
             "stella.gym.decisionTicks": self.decision_ticks,
+            "stella.gym.episodeTicks": self.episode_ticks,
             "stella.gym.seed": self.seed + self.index,
             **self.extra_props,
         }

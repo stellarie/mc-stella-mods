@@ -35,7 +35,11 @@
 			"com.stella.learn.ModelFallbackGameTest",
 			"com.stella.learn.ModelFairnessGameTest",
 			"com.stella.learn.ModelCalloutGameTest",
-			"com.stella.learn.ModelPerfGameTest"
+			"com.stella.learn.ModelPerfGameTest",
+			"com.stella.learn.ArenaTerrainGameTest",
+			"com.stella.learn.RosterGameTest",
+			"com.stella.learn.GymLogGameTest",
+			"com.stella.learn.ShippedModelGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

@@ -70,8 +70,8 @@ class GymClient:
     def send_act(self, step_id: int, agents, actions) -> None:
         self.sock.sendall(wire.encode_act(step_id, agents, actions))
 
-    def send_reset(self, arena: int, seed: int) -> None:
-        self.sock.sendall(wire.encode_reset(arena, seed))
+    def send_reset(self, arena: int, seed: int, brain: int = -1, stage: int = -1) -> None:
+        self.sock.sendall(wire.encode_reset(arena, seed, brain, stage))
 
     def close(self) -> None:
         if self.sock is None:
@@ -93,6 +93,9 @@ class GymClient:
         """Answers every Step with random actions for `seconds`. One rate line goes out every `rate_every` seconds."""
         rng = np.random.default_rng(seed)
         pool = rng.uniform(-1.0, 1.0, size=(256, self.hello.arenas, self.hello.act_size)).astype("<f4")
+        pool[..., 4] = (pool[..., 4] > 0).astype("<f4")
+        pool[..., 5] = np.floor((pool[..., 5] + 1.0) * 2.0).clip(0, 3)
+        resets = 0
         self.stats = Stats()
         deadline = self.stats.started + seconds
         next_rate = self.stats.started + rate_every
@@ -107,6 +110,13 @@ class GymClient:
             self.stats.decisions += len(step.agents)
             self.stats.episodes_ended += int(np.count_nonzero(step.flags & wire.FLAG_TERMINAL))
             self.stats.reward_sum += float(step.rewards.sum())
+            # An arena stays idle after a terminal step until it is reset, or when nothing runs yet (the first step).
+            ended = step.agents[(step.flags & wire.FLAG_TERMINAL) != 0]
+            if self.stats.steps == 1:
+                ended = np.arange(self.hello.arenas)
+            for arena in ended:
+                resets += 1
+                self.send_reset(int(arena), resets)
             self.send_act(step.step_id, step.agents, pool[self.stats.steps & 255][: len(step.agents)])
             if now >= next_rate:
                 span = now - last_time
