@@ -36,8 +36,16 @@ public final class DamageNumbers {
 	public static final float RISE_BLOCKS = 1.0F;
 	public static final float SCALE = 0.7F;
 	public static final double VIEW_RADIUS = 32.0;
-	/** The text's alpha at the end of the fade; the client interpolates to it with the rise. */
+	/**
+	 * The client interpolates opacity as a signed byte, so a fade from -1 (alpha 255) to a low alpha passes 0 at once.
+	 * The fade runs in two legs that never cross 0: -1 to -128 (alpha 255 to 128), then 127 to END_OPACITY.
+	 */
+	public static final byte MID_OPACITY = -128;
+	public static final byte SECOND_LEG_OPACITY = 127;
 	public static final byte END_OPACITY = 32;
+	/** The tick the first leg ends, the display snaps to the second leg's start, and the second leg begins. */
+	public static final int SNAP_TICK = LIFETIME_TICKS / 2;
+	public static final int SECOND_LEG_TICK = SNAP_TICK + 1;
 	private static final double HEIGHT_ABOVE = 0.4;
 	private static final double JITTER = 0.4;
 	/** One damage number and one heal number per entity in this many ticks, so a mob farm is not a packet flood. */
@@ -152,7 +160,7 @@ public final class DamageNumbers {
 		recorder.shown(entity, display, amount, heal);
 	}
 
-	// On the tick after it appears, the number is sent its end state, and the client eases it there over its life.
+	// Each leg changes the start delay, so the client restarts the interpolation clock.
 	private static void tick(final MinecraftServer server) {
 		int now = server.getTickCount();
 		synchronized (LIVE) {
@@ -161,22 +169,32 @@ public final class DamageNumbers {
 				Display.TextDisplay display = shown.display();
 				int age = now - shown.bornTick();
 				if (age == 1) {
-					display.setTransformationInterpolationDelay(0);
-					display.setTransformationInterpolationDuration(LIFETIME_TICKS - 1);
-					display.setTransformation(transformation(RISE_BLOCKS));
-					display.setTextOpacity(END_OPACITY);
-					var dirty = display.getEntityData().packDirty();
-					if (dirty != null) {
-						for (ServerPlayer viewer : shown.viewers()) {
-							viewer.connection.send(new ClientboundSetEntityDataPacket(display.getId(), dirty));
-						}
-					}
+					leg(shown, 1, SNAP_TICK - 2, RISE_BLOCKS / 2.0F, MID_OPACITY);
+				} else if (age == SNAP_TICK) {
+					leg(shown, 1, 0, RISE_BLOCKS / 2.0F, SECOND_LEG_OPACITY);
+				} else if (age == SECOND_LEG_TICK) {
+					leg(shown, 0, LIFETIME_TICKS - SECOND_LEG_TICK - 1, RISE_BLOCKS, END_OPACITY);
 				} else if (age >= LIFETIME_TICKS) {
 					for (ServerPlayer viewer : shown.viewers()) {
 						viewer.connection.send(new ClientboundRemoveEntitiesPacket(display.getId()));
 					}
 					it.remove();
 				}
+			}
+		}
+	}
+
+	// A zero duration makes the client snap to this state.
+	private static void leg(final Shown shown, final int delay, final int duration, final float rise, final byte opacity) {
+		Display.TextDisplay display = shown.display();
+		display.setTransformationInterpolationDelay(delay);
+		display.setTransformationInterpolationDuration(duration);
+		display.setTransformation(transformation(rise));
+		display.setTextOpacity(opacity);
+		var dirty = display.getEntityData().packDirty();
+		if (dirty != null) {
+			for (ServerPlayer viewer : shown.viewers()) {
+				viewer.connection.send(new ClientboundSetEntityDataPacket(display.getId(), dirty));
 			}
 		}
 	}
