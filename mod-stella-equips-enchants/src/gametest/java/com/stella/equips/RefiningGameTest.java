@@ -143,8 +143,33 @@ public class RefiningGameTest {
 		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
 		ItemStack after = menu.getSlot(0).getItem();
 		LOG.info("[BEHAVIOR] test=failureDropsLevel RESULT result={} level={} damage={} count={}", result, Refine.level(after), after.getDamageValue(), after.getCount());
-		helper.assertTrue(result == RefineStation.Result.FAILURE && Refine.level(after) == 7, "a failure left +" + Refine.level(after));
+		helper.assertTrue(result == RefineStation.Result.FAILURE && Refine.level(after) == 8, "a failure below +10 left +" + Refine.level(after));
 		helper.assertTrue(after.is(Items.DIAMOND_SWORD) && after.getDamageValue() == 100 && after.getCount() == 1, "a failure cost durability or the piece");
+		helper.succeed();
+	}
+
+	/** Regression guard for the milestone floors: a failure never loses +10 or +12 once reached. */
+	@GameTest
+	public void milestoneFloors(final GameTestHelper helper) {
+		int[] from = {0, 9, 10, 11, 12, 13, 14};
+		int[] expected = {0, 9, 10, 10, 12, 12, 13};
+		StringBuilder seen = new StringBuilder();
+		boolean valid = true;
+		for (int i = 0; i < from.length; i++) {
+			int after = Refine.levelAfterFailure(from[i]);
+			seen.append(from[i]).append("->").append(after).append(' ');
+			valid &= after == expected[i];
+		}
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		Refine.setLevel(sword, 13);
+		ServerPlayer player = refiner(helper, sword, 20);
+		FORCED.put(player.getUUID(), false);
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.refine(player, menu.containerId);
+		int live = Refine.level(menu.getSlot(0).getItem());
+		LOG.info("[BEHAVIOR] test=milestoneFloors RESULT {} live13={}", seen, live);
+		helper.assertTrue(valid, "failure levels were " + seen);
+		helper.assertTrue(live == 12, "a failed +13 attempt left +" + live);
 		helper.succeed();
 	}
 

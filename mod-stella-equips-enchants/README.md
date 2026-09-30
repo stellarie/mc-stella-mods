@@ -201,8 +201,9 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
   material you carry. Press Refine to pay and roll.
 - The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
   for wood; iron for a bow). A step costs 1, plus 1 for every three levels the piece already has.
-- A success raises the level by one. A failure lowers it by one. A failure never costs durability and never
-  breaks the piece.
+- A success raises the level by one. Below +10 a failure keeps the level. From +10 up a failure lowers it by
+  one, but never below +10 or +12 once the piece has reached them. A failure never costs durability and never
+  breaks the piece. Expected cost from +0 to +15 is about 1,700 to 1,800 of the material.
 - Refining never wears an anvil. The Refining Anvil never wears, even when it repairs.
 - Village smiths no longer refine.
 - The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are
