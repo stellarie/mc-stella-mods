@@ -699,3 +699,48 @@ Decisions and deviations from DECISIONS.md (with reasons):
   plan property test exempts SPIRAL from opposite halves; `TowerRaisedPortalGameTest.modelOf` honours wall height.
 - Tests: `TowerVariationGameTest` (11 cases). Written after the implementation, so no red run; the owner waived the
   mutation runs and the five-run gate.
+
+## Element auras (slice E, 2026-09-29)
+
+`TowerAuras` implements the "Elements" section of the batch decisions: ice slows the players' side within 4
+blocks, dark hardens per hit (cap 10, hold 100 ticks, decay 1 per 20), holy mends kin, and fire, water, wind,
+void and lightning mark hits or speed. See the tower README for numbers and quoted `[BEHAVIOR]` lines.
+
+- Deviation, none from the decisions. Choices where they were silent: ghosts count as the players' side for ice;
+  dark armor is a transient modifier that decays only while a player is on the floor (the pulse is occupied
+  floors only); on-hit marks need a living attacker that is a tower mob, and thorns returns do not trigger them.
+- Test seam: `TowerAuras.pulse(level, floor, now)` takes the tick, and `TowerAuras.particleSink` records
+  particles. Neither logs in the shipped jar.
+- Manual item: particles are not observable headlessly (`elementParticlesAreVisibleInPlayRequiresManualTest`).
+- Holy's 2% every 40 ticks is a guess awaiting the owner's confirmation.
+- Rune interaction, left as is: Ice-rune wearers are still slowed by the aura, because it refreshes faster than the
+  rune halves it. The owner decides later.
+- Review follow-up: on-hit effects now apply whenever a hit lands and no shield blocked it. In this build Fabric's
+  `AFTER_DAMAGE` already reports the damage before absorption, so the absorbed-hit case
+  (`fireHitStillIgnitesATargetThatAbsorbsItWhole`) passed before the change as well (evidence `e-f-red2`); it stays as a
+  guard, and the redundant `taken <= 0` early return was dropped for on-hit effects (Dark still needs damage taken).
+
+## Tower chests and loot (slice C, 2026-09-30)
+
+`TowerChestBlock`, `TowerChests` and `TowerChestGameTest` implement the "Chests" decision: the block and the
+loot only. Placing chests in floors, and the >=5 per floor and guaranteed-chest rules, belong to the floors
+slices, which call `TowerChests.placeDouble` and `TowerChests.fill`. See the tower README for the API and
+measured numbers.
+
+- Deviation: loot is rolled in Java rather than a vanilla JSON table, because the weights, the optional spells
+  items and the enchanting need code. The decision said "vanilla JSON table + optional spells items".
+- Choices where the decisions were silent: (revised after review) a roll whose category has no item (spells mod
+  absent) is rerolled, up to 32 times; the stated rates hold when the spells mod is present, and the rate test
+  installs a stand-in for it; the weights sum to 9005, and the
+  remaining 995 of 10000 is a roll that finds nothing. Books and gear are enchanted at table power
+  5 on floor 1 rising evenly to 30 at floor 50, capped (revised after review from min(39, 20 + floor/5)). Scrolls and spellbooks come from the tag `mod-stella-spells:spellbooks` (the test
+  resource stands in with `minecraft:book`), each book's scroll being `<id>_scroll`.
+- The chest has no item, so it cannot be picked up or pick-blocked. Mining (start and stop of a
+  break with a netherite pickaxe), a power 6 blast, and the wither, dragon and piston rules are tested. The server
+  internal `ServerPlayerGameMode.destroyBlock` is not: it is not a path a client can drive, and it was not probed.
+- The netherite share measured 10 of 50000 draws against 25 expected, inside the 4 sigma band (5 to 45) but on
+  its low side. The seed is fixed, so the run is deterministic.
+- Review follow-ups: `fill` empties the chest and places the guaranteed items first; emerald stacks are capped at the
+  item's stack size; `placeDouble` returns null and places nothing unless both spots are air; the client render
+  is a manual item (`towerChestRendersOnTheClientRequiresManualTest`). Each new test failed before the change
+  (evidence `c2-red`: 5 required tests red) and passed after (`c2-green1`).

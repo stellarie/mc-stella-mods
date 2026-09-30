@@ -507,7 +507,7 @@ public class TowerVariationGameTest {
 			double share = openCells / (double) ((S - 2) * (S - 2));
 			leastOpen = Math.min(leastOpen, share);
 			thinFloors += share < 0.75 ? 1 : 0;
-			int walk = TowerChests.walk(plan)[plan.portalX()][plan.portalZ()];
+			int walk = TowerChestSpots.walk(plan)[plan.portalX()][plan.portalZ()];
 			shortest = Math.min(shortest, walk);
 			shortWalks += walk < (n * n - 1) * pitch * 4 / 5 ? 1 : 0;
 			disconnected += walk < 0 ? 1 : 0;
@@ -711,7 +711,7 @@ public class TowerVariationGameTest {
 		for (int floor = 1; floor <= 3000; floor++) {
 			TowerPlan plan = TowerPlan.of(SEED + floor % 3, floor);
 			plans++;
-			int[][] walk = TowerChests.walk(plan);
+			int[][] walk = TowerChestSpots.walk(plan);
 			List<TowerTraps.Trap> traps = TowerTraps.layout(plan.seed(), floor, plan);
 			int regular = 0;
 			int guaranteed = 0;
@@ -735,7 +735,7 @@ public class TowerVariationGameTest {
 			fewest = Math.min(fewest, regular);
 			guaranteedFloors += guaranteed;
 			boolean fifth = floor % TowerElites.ELITE_EVERY == 0;
-			if (regular < TowerChests.MIN_SPOTS || guaranteed != (fifth ? 1 : 0)) {
+			if (regular < TowerChestSpots.MIN_SPOTS || guaranteed != (fifth ? 1 : 0)) {
 				faults++;
 				first = first.isEmpty() ? "floor " + floor + " has " + regular + " regular and " + guaranteed + " guaranteed spots" : first;
 			}
@@ -761,7 +761,7 @@ public class TowerVariationGameTest {
 			if (plan.wall(cell.x() + face.getStepX(), cell.z() + face.getStepZ())) {
 				return "the front of a block is shut";
 			}
-			if (walk[cell.x()][cell.z()] < TowerChests.STAGES[0][0]) {
+			if (walk[cell.x()][cell.z()] < TowerChestSpots.STAGES[0][0]) {
 				return "a block is " + walk[cell.x()][cell.z()] + " steps from the arrival";
 			}
 			if (plan.inSafeZone(cell.x(), cell.z())) {
@@ -770,11 +770,11 @@ public class TowerVariationGameTest {
 			if (plan.hall() > 0 && Math.abs(cell.x() - S / 2) <= plan.hall() / 2 + 1 && Math.abs(cell.z() - S / 2) <= plan.hall() / 2 + 1) {
 				return "in the hall";
 			}
-			if (Math.max(Math.abs(cell.x() - plan.portalX()), Math.abs(cell.z() - plan.portalZ())) <= TowerChests.PORTAL_CLEAR) {
+			if (Math.max(Math.abs(cell.x() - plan.portalX()), Math.abs(cell.z() - plan.portalZ())) <= TowerChestSpots.PORTAL_CLEAR) {
 				return "in the portal's approach";
 			}
 			for (TowerTraps.Trap trap : traps) {
-				if (Math.max(Math.abs(cell.x() - trap.x()), Math.abs(cell.z() - trap.z())) <= TowerChests.TRAP_CLEAR) {
+				if (Math.max(Math.abs(cell.x() - trap.x()), Math.abs(cell.z() - trap.z())) <= TowerChestSpots.TRAP_CLEAR) {
 					return "beside a trap";
 				}
 			}

@@ -1,270 +1,298 @@
 package com.stella.tower;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
-import com.stella.tower.TowerPlan.ChestSpot;
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.alchemy.Potions;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Where a floor's double chests go, decided in the plan and placed by a later slice. Pure: the same plan gives the
- * same spots.
- * <p>
- * A floor has at least {@link #MIN_SPOTS} spots. Each is a double chest's two blocks side by side, standing against a
- * wall on open ground with its front clear: in open ground where walls close in (a dead end, a room's corner), far
- * from the arrival by the walk, clear of the traps, the safe zones, the hall (which holds the boss's pyramid) and the
- * way up to the portal. Where the floor has room for it they are also spread apart. On every fifth floor there is one
- * more, {@link ChestSpot#guaranteed()}: in the entrance zone on an elite floor, and inside the walled boss room on
- * a boss floor.
+ * The tower's chests: placing an indestructible double chest, and filling it.
+ *
+ * <p>A chest is filled by {@link #ROLLS} rolls; each roll lands in one {@link Category} by its weight out of
+ * {@link #TOTAL_WEIGHT}, and the rest of the weight is a roll that finds nothing. A guaranteed chest also
+ * holds one enchanted book and one Scroll of Return. The spells mod's items are found by name in the item
+ * registry and skipped when absent, so this mod has no dependency on it.
+ *
+ * <p>For the placement step: {@link #placeDouble} to build one, then {@link #fill} to stock it.
  */
-final class TowerChests {
-	/** The fewest regular spots a floor has. */
-	static final int MIN_SPOTS = 5;
-	/** How many regular spots a floor is given when it has room for them. */
-	static final int WANTED = 6;
-	/** How far a spot keeps from every trap, in blocks. */
-	static final int TRAP_CLEAR = 3;
-	/** How far a spot keeps from the portal, in blocks: the way up to it, and the pyramid's steps. */
-	static final int PORTAL_CLEAR = 9;
-	/** How far from the arrival a guaranteed spot in the entrance zone keeps from the arrival's own block, in blocks. */
-	static final int ARRIVAL_CLEAR = 3;
-	/** The stages a search goes through, strictest first: the walk from the arrival, and the spacing between spots. */
-	static final int[][] STAGES = {{30, 12}, {20, 9}, {12, 7}, {8, 5}, {4, 4}, {1, 3}};
-	private static final int SIZE = TowerLayout.SIZE;
-	private static final long SALT = 0x43484553L;
-	private static final int[][] WAYS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-	private static final Direction[] FACES = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+public final class TowerChests {
+	/** Rolls made for one chest. */
+	public static final int ROLLS = 10;
+	/** What a roll's weights are measured against. */
+	public static final int TOTAL_WEIGHT = 10_000;
+	/** Table power of a chest's books and gear on floor 1. */
+	public static final int ENCHANT_MIN = 5;
+	/** Table power once a floor is deep enough, and the most any floor gives. */
+	public static final int ENCHANT_MAX = 30;
+	/** The floor at which the table power reaches {@link #ENCHANT_MAX}. */
+	public static final int ENCHANT_MAX_FLOOR = 50;
+	/** The spells mod's id, by name only. */
+	public static final String SPELLS_NAMESPACE = "mod-stella-spells";
+	/** The spells mod's return scroll. */
+	public static final Identifier RETURN_SCROLL_ID = Identifier.fromNamespaceAndPath(SPELLS_NAMESPACE, "return_scroll");
+	/** The spells mod's tag of its spellbooks; a scroll is named after its book, plus {@code _scroll}. */
+	public static final TagKey<Item> SPELLBOOKS = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(SPELLS_NAMESPACE, "spellbooks"));
+
+	/** What a roll can find, and the weight out of {@link #TOTAL_WEIGHT} it does so with. */
+	public enum Category {
+		FOOD(1800),
+		POTIONS(1400),
+		SCROLLS(1400),
+		RETURN_SCROLL(600),
+		ENCHANTED_BOOK(900),
+		SPELLBOOK(500),
+		EMERALD(1100),
+		MISC(700),
+		DIAMOND(400),
+		ANCIENT_DEBRIS(120),
+		DIAMOND_GEAR(80),
+		NETHERITE_GEAR(5),
+		/** The weight no other category takes. */
+		NOTHING(TOTAL_WEIGHT - 9005);
+
+		public final int weight;
+
+		Category(final int weight) {
+			this.weight = weight;
+		}
+	}
+
+	/** One roll: what it landed on, and what it gave; empty when its category has no item to give. */
+	public record Draw(Category category, ItemStack stack) {
+	}
+
+	/** Where the spells mod's items come from; a test can stand in for the mod. */
+	public interface SpellItems {
+		Optional<Item> returnScroll();
+
+		List<Item> scrolls();
+
+		List<Item> books();
+	}
+
+	/** The real lookup: the item registry, by name, whatever it holds. */
+	public static final SpellItems REGISTRY = new SpellItems() {
+		@Override
+		public Optional<Item> returnScroll() {
+			return BuiltInRegistries.ITEM.getOptional(RETURN_SCROLL_ID);
+		}
+
+		@Override
+		public List<Item> scrolls() {
+			List<Item> scrolls = new ArrayList<>();
+			for (Item book : books()) {
+				Identifier id = BuiltInRegistries.ITEM.getKey(book);
+				BuiltInRegistries.ITEM.getOptional(Identifier.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "_scroll")).ifPresent(scrolls::add);
+			}
+			return scrolls;
+		}
+
+		@Override
+		public List<Item> books() {
+			List<Item> books = new ArrayList<>();
+			for (Holder<Item> holder : BuiltInRegistries.ITEM.getTagOrEmpty(SPELLBOOKS)) {
+				books.add(holder.value());
+			}
+			return books;
+		}
+	};
+
+	private static volatile SpellItems spellItems = REGISTRY;
+
+	private static final List<Item> FOODS = List.of(
+		Items.COOKED_BEEF, Items.COOKED_PORKCHOP, Items.COOKED_MUTTON, Items.COOKED_SALMON, Items.BREAD, Items.BAKED_POTATO,
+		Items.GOLDEN_CARROT, Items.PUMPKIN_PIE, Items.APPLE
+	);
+	private static final List<net.minecraft.core.Holder<net.minecraft.world.item.alchemy.Potion>> POTIONS = List.of(
+		Potions.HEALING, Potions.STRONG_HEALING, Potions.REGENERATION, Potions.SWIFTNESS, Potions.STRENGTH,
+		Potions.FIRE_RESISTANCE, Potions.NIGHT_VISION, Potions.WATER_BREATHING
+	);
+	private static final List<Item> MISC = List.of(
+		Items.ARROW, Items.EXPERIENCE_BOTTLE, Items.ENDER_PEARL, Items.IRON_INGOT, Items.GOLD_INGOT, Items.LAPIS_LAZULI, Items.GUNPOWDER, Items.BLAZE_ROD
+	);
+	private static final List<Item> DIAMOND_GEAR = List.of(
+		Items.DIAMOND_SWORD, Items.DIAMOND_PICKAXE, Items.DIAMOND_AXE, Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE,
+		Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS
+	);
+	private static final List<Item> NETHERITE_GEAR = List.of(
+		Items.NETHERITE_SWORD, Items.NETHERITE_PICKAXE, Items.NETHERITE_AXE, Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE,
+		Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS
+	);
 
 	private TowerChests() {
 	}
 
-	/** The walk from the arrival to every open spot of the plan, in blocks; -1 where it does not reach. */
-	static int[][] walk(final TowerPlan plan) {
-		int[][] dist = new int[SIZE][SIZE];
-		for (int[] row : dist) {
-			java.util.Arrays.fill(row, -1);
-		}
-		ArrayDeque<int[]> queue = new ArrayDeque<>();
-		dist[plan.arrivalX()][plan.arrivalZ()] = 0;
-		queue.add(new int[] {plan.arrivalX(), plan.arrivalZ()});
-		while (!queue.isEmpty()) {
-			int[] at = queue.poll();
-			for (int[] way : WAYS) {
-				int x = at[0] + way[0];
-				int z = at[1] + way[1];
-				if (x >= 0 && z >= 0 && x < SIZE && z < SIZE && dist[x][z] < 0 && !plan.walls()[x][z] && !plan.isFramePost(x, z)) {
-					dist[x][z] = dist[at[0]][at[1]] + 1;
-					queue.add(new int[] {x, z});
-				}
-			}
-		}
-		return dist;
+	/** The test seam: the source of the spells mod's items; null restores the registry. */
+	public static void installSpellItems(final @Nullable SpellItems items) {
+		spellItems = items == null ? REGISTRY : items;
 	}
 
-	/** The plan's chest spots, or null when the plan leaves room for fewer than {@link #MIN_SPOTS}. */
-	static List<ChestSpot> place(final TowerPlan plan) {
-		int[][] dist = walk(plan);
-		List<TowerTraps.Trap> traps = TowerTraps.layout(plan.seed(), plan.floor(), plan);
-		Random random = new Random(plan.seed() ^ SALT ^ (plan.floor() * 0x9E3779B97F4A7C15L) ^ plan.attempt());
-		List<Candidate> candidates = new ArrayList<>();
-		for (int x = 1; x < SIZE - 1; x++) {
-			for (int z = 1; z < SIZE - 1; z++) {
-				for (Direction face : FACES) {
-					ChestSpot spot = new ChestSpot(x, z, face, false);
-					if (standsAgainstAWall(plan, spot) && reached(dist, spot) >= 0 && !keepsOut(plan, spot, traps)) {
-						candidates.add(new Candidate(spot, reached(dist, spot), enclosure(plan, spot)));
-					}
-				}
+	/** The enchanting power of a chest's gear and books on a floor: {@link #ENCHANT_MIN} on floor 1, rising in even steps to {@link #ENCHANT_MAX} at floor {@link #ENCHANT_MAX_FLOOR}, and no more after. */
+	public static int enchantLevel(final int floor) {
+		int step = Math.max(0, Math.min(floor, ENCHANT_MAX_FLOOR) - 1);
+		return ENCHANT_MIN + (ENCHANT_MAX - ENCHANT_MIN) * step / (ENCHANT_MAX_FLOOR - 1);
+	}
+
+	/**
+	 * Places a double tower chest whose left half is at {@code left}, both halves facing {@code facing}; the
+	 * right half stands clockwise of the left, as seen from the front. Returns the right half's position, or
+	 * null, placing nothing, when either half's spot is not air.
+	 */
+	public static @Nullable BlockPos placeDouble(final ServerLevel level, final BlockPos left, final Direction facing) {
+		BlockPos right = left.relative(facing.getClockWise());
+		if (!level.getBlockState(left).isAir() || !level.getBlockState(right).isAir()) {
+			return null;
+		}
+		Block chest = TowerBlocks.TOWER_CHEST;
+		level.setBlock(left, chest.defaultBlockState().setValue(ChestBlock.FACING, facing).setValue(ChestBlock.TYPE, ChestType.LEFT), Block.UPDATE_ALL);
+		level.setBlock(right, chest.defaultBlockState().setValue(ChestBlock.FACING, facing).setValue(ChestBlock.TYPE, ChestType.RIGHT), Block.UPDATE_ALL);
+		return right;
+	}
+
+	/**
+	 * Empties, then fills, the tower chest at {@code pos} (either half of a double, or a single) with {@link #ROLLS} rolls, and
+	 * with a book and a Scroll of Return more when {@code guaranteed}. Items go to free slots, in random order.
+	 * Returns the stacks put in; a chest with no room for one drops it.
+	 */
+	public static List<ItemStack> fill(final ServerLevel level, final BlockPos pos, final int floor, final boolean guaranteed, final RandomSource random) {
+		BlockState state = level.getBlockState(pos);
+		if (!(state.getBlock() instanceof ChestBlock chest)) {
+			return List.of();
+		}
+		Container container = ChestBlock.getContainer(chest, state, level, pos, true);
+		if (container == null) {
+			return List.of();
+		}
+		container.clearContent();
+		// The guaranteed items go in first, so a full chest never loses them.
+		List<ItemStack> loot = new ArrayList<>();
+		if (guaranteed) {
+			loot.add(stackFor(level, Category.ENCHANTED_BOOK, floor, random));
+			ItemStack scroll = stackFor(level, Category.RETURN_SCROLL, floor, random);
+			if (!scroll.isEmpty()) {
+				loot.add(scroll);
 			}
 		}
-		Collections.shuffle(candidates, random);
-		// The most shut in first: a dead end or a room's corner before the middle of a wide path.
-		candidates.sort((a, b) -> Integer.compare(b.enclosure(), a.enclosure()));
-		List<ChestSpot> spots = new ArrayList<>();
-		for (int[] stage : STAGES) {
-			spots.clear();
-			for (Candidate candidate : candidates) {
-				if (spots.size() >= WANTED) {
-					break;
-				}
-				if (candidate.walk() >= stage[0] && apart(spots, candidate.spot(), stage[1])) {
-					spots.add(candidate.spot());
-				}
+		for (int i = 0; i < ROLLS; i++) {
+			ItemStack stack = roll(level, floor, random).stack();
+			if (!stack.isEmpty()) {
+				loot.add(stack);
 			}
-			if (spots.size() >= MIN_SPOTS) {
+		}
+		List<Integer> free = new ArrayList<>();
+		for (int slot = 0; slot < container.getContainerSize(); slot++) {
+			if (container.getItem(slot).isEmpty()) {
+				free.add(slot);
+			}
+		}
+		List<ItemStack> put = new ArrayList<>();
+		for (ItemStack stack : loot) {
+			if (free.isEmpty()) {
 				break;
 			}
+			container.setItem(free.remove(random.nextInt(free.size())), stack);
+			put.add(stack);
 		}
-		if (spots.size() < MIN_SPOTS) {
-			return null;
-		}
-		ChestSpot guaranteed = guaranteed(plan, dist);
-		if (plan.floor() % TowerElites.ELITE_EVERY == 0) {
-			if (guaranteed == null) {
-				return null;
-			}
-			spots.add(guaranteed);
-		}
-		return List.copyOf(spots);
+		container.setChanged();
+		return put;
 	}
 
-	private record Candidate(ChestSpot spot, int walk, int enclosure) {
-	}
-
-	private static boolean open(final TowerPlan plan, final int x, final int z) {
-		return x >= 0 && z >= 0 && x < SIZE && z < SIZE && !plan.walls()[x][z] && !plan.isFramePost(x, z);
-	}
-
-	private static int reached(final int[][] dist, final ChestSpot spot) {
-		return Math.min(dist[spot.x()][spot.z()], dist[spot.second().x()][spot.second().z()]);
-	}
-
-	/** Both blocks open, both blocks behind them wall, both blocks in front of them open. */
-	static boolean standsAgainstAWall(final TowerPlan plan, final ChestSpot spot) {
-		Direction face = spot.facing();
-		for (TowerPlan.Spot cell : spot.cells()) {
-			if (!open(plan, cell.x(), cell.z()) || open(plan, cell.x() - face.getStepX(), cell.z() - face.getStepZ())
-				|| !open(plan, cell.x() + face.getStepX(), cell.z() + face.getStepZ())) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/** Whether the spot is somewhere chests do not go: the zones, the hall, the portal's way, near a trap. */
-	private static boolean keepsOut(final TowerPlan plan, final ChestSpot spot, final List<TowerTraps.Trap> traps) {
-		for (TowerPlan.Spot cell : spot.cells()) {
-			if (plan.inSafeZone(cell.x(), cell.z()) || plan.hall() > 0 && inHall(plan, cell.x(), cell.z())) {
-				return true;
-			}
-			if (Math.max(Math.abs(cell.x() - plan.portalX()), Math.abs(cell.z() - plan.portalZ())) <= PORTAL_CLEAR) {
-				return true;
-			}
-			for (TowerTraps.Trap trap : traps) {
-				if (Math.max(Math.abs(cell.x() - trap.x()), Math.abs(cell.z() - trap.z())) <= TRAP_CLEAR) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/** The hall and the wall round it, which the boss floor's pyramid stands in. */
-	private static boolean inHall(final TowerPlan plan, final int x, final int z) {
-		int low = plan.hallLow() - 2;
-		int high = plan.hallLow() + plan.hall() + 1;
-		return x >= low && x <= high && z >= low && z <= high;
-	}
-
-	/** How shut in a spot is: the walls in the nine by nine blocks round it. */
-	private static int enclosure(final TowerPlan plan, final ChestSpot spot) {
-		int walls = 0;
-		for (int dx = -4; dx <= 5; dx++) {
-			for (int dz = -4; dz <= 5; dz++) {
-				int x = spot.x() + dx;
-				int z = spot.z() + dz;
-				if (x < 0 || z < 0 || x >= SIZE || z >= SIZE || plan.walls()[x][z]) {
-					walls++;
-				}
-			}
-		}
-		return walls;
-	}
-
-	private static boolean apart(final List<ChestSpot> spots, final ChestSpot spot, final int gap) {
-		for (ChestSpot other : spots) {
-			if (Math.max(Math.abs(other.x() - spot.x()), Math.abs(other.z() - spot.z())) < gap) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	// ------------------------------------------------------------------ the guaranteed spot
+	/** Rerolls a roll may make when its category's item is absent, before it gives up and finds nothing. */
+	private static final int REROLLS = 32;
 
 	/**
-	 * The one spot a fifth floor is sure to have: the entrance zone's on an elite floor, the walled boss room's on a
-	 * boss floor; null on any other floor, and null if there is nowhere to put it.
+	 * One roll: the category by weight, and its item. A category with no item to give (the spells mod is
+	 * absent) is rolled again, so the other categories keep more than their stated share only then; with the
+	 * mod present the stated rates hold. NOTHING is the result if every reroll fails.
 	 */
-	private static ChestSpot guaranteed(final TowerPlan plan, final int[][] dist) {
-		if (plan.floor() % TowerElites.ELITE_EVERY != 0 || plan.hall() == 0) {
-			return null;
-		}
-		boolean boss = plan.floor() % TowerElites.BOSS_EVERY == 0;
-		TowerMaze.Zone zone = plan.safeZones().get(boss ? 1 : 0);
-		ChestSpot best = null;
-		int bestScore = Integer.MIN_VALUE;
-		for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
-			for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
-				for (Direction face : FACES) {
-					ChestSpot spot = new ChestSpot(x, z, face, true);
-					if (!fitsZone(plan, spot, zone, boss)) {
-						continue;
-					}
-					// Against a wall where there is one; in the entrance zone, off the arrival's own block.
-					boolean backed = true;
-					int away = Integer.MAX_VALUE;
-					for (TowerPlan.Spot cell : spot.cells()) {
-						backed &= !open(plan, cell.x() - face.getStepX(), cell.z() - face.getStepZ());
-						away = Math.min(away, Math.max(Math.abs(cell.x() - plan.arrivalX()), Math.abs(cell.z() - plan.arrivalZ())));
-					}
-					if (!boss && away < ARRIVAL_CLEAR) {
-						continue;
-					}
-					int score = (backed ? 1000 : 0) + (boss ? 0 : away);
-					if (score > bestScore) {
-						bestScore = score;
-						best = spot;
-					}
+	public static Draw roll(final ServerLevel level, final int floor, final RandomSource random) {
+		for (int attempt = 0; attempt < REROLLS; attempt++) {
+			Category chosen = Category.NOTHING;
+			int pick = random.nextInt(TOTAL_WEIGHT);
+			for (Category category : Category.values()) {
+				if (pick < category.weight) {
+					chosen = category;
+					break;
 				}
+				pick -= category.weight;
+			}
+			ItemStack stack = stackFor(level, chosen, floor, random);
+			if (!stack.isEmpty() || chosen == Category.NOTHING) {
+				return new Draw(chosen, stack);
 			}
 		}
-		return best;
+		return new Draw(Category.NOTHING, ItemStack.EMPTY);
 	}
 
-	/**
-	 * Whether a guaranteed spot fits its zone: both blocks and the one in front inside it, open; on a boss floor inside
-	 * the ring, off the two rows the openings run along, and off the workstations' row.
-	 */
-	private static boolean fitsZone(final TowerPlan plan, final ChestSpot spot, final TowerMaze.Zone zone, final boolean boss) {
-		Direction face = spot.facing();
-		for (TowerPlan.Spot cell : spot.cells()) {
-			int fx = cell.x() + face.getStepX();
-			int fz = cell.z() + face.getStepZ();
-			if (!open(plan, cell.x(), cell.z()) || !open(plan, fx, fz) || !zone.contains(cell.x(), cell.z()) || !zone.contains(fx, fz)) {
-				return false;
+	/** What a category gives on a floor, drawn from the random; empty when it has no item to give. */
+	public static ItemStack stackFor(final ServerLevel level, final Category category, final int floor, final RandomSource random) {
+		int power = enchantLevel(floor);
+		int bonus = Math.max(0, floor) / 25;
+		return switch (category) {
+			case FOOD -> new ItemStack(pick(FOODS, random), 4 + random.nextInt(9));
+			case POTIONS -> PotionContents.createItemStack(random.nextInt(4) == 0 ? Items.SPLASH_POTION : Items.POTION, POTIONS.get(random.nextInt(POTIONS.size())));
+			case SCROLLS -> {
+				List<Item> scrolls = spellItems.scrolls();
+				yield scrolls.isEmpty() ? ItemStack.EMPTY : new ItemStack(pick(scrolls, random), 1 + random.nextInt(2));
 			}
-			if (boss) {
-				if (plan.isRing(cell.x(), cell.z()) || plan.isRing(fx, fz) || onOpeningLine(plan, cell.x(), cell.z()) || onOpeningLine(plan, fx, fz)
-					|| onStationRow(plan, cell.x(), cell.z()) || onStationRow(plan, fx, fz)) {
-					return false;
-				}
+			case RETURN_SCROLL -> spellItems.returnScroll().map(ItemStack::new).orElse(ItemStack.EMPTY);
+			case ENCHANTED_BOOK -> enchant(level, new ItemStack(Items.BOOK), power, random);
+			case SPELLBOOK -> {
+				List<Item> books = spellItems.books();
+				yield books.isEmpty() ? ItemStack.EMPTY : new ItemStack(pick(books, random));
 			}
-		}
-		return true;
+			case EMERALD -> new ItemStack(Items.EMERALD, Math.min(3 + random.nextInt(7) + bonus, Items.EMERALD.getDefaultMaxStackSize()));
+			case MISC -> {
+				Item item = pick(MISC, random);
+				int count = item == Items.ARROW ? 16 : item == Items.ENDER_PEARL || item == Items.BLAZE_ROD ? 2 : 4 + random.nextInt(9);
+				yield new ItemStack(item, count);
+			}
+			case DIAMOND -> new ItemStack(Items.DIAMOND, 1 + random.nextInt(3));
+			case ANCIENT_DEBRIS -> new ItemStack(Items.ANCIENT_DEBRIS, 1 + random.nextInt(2));
+			case DIAMOND_GEAR -> enchant(level, new ItemStack(pick(DIAMOND_GEAR, random)), power, random);
+			case NETHERITE_GEAR -> enchant(level, new ItemStack(pick(NETHERITE_GEAR, random)), power, random);
+			case NOTHING -> ItemStack.EMPTY;
+		};
 	}
 
-	/** Whether a room offset lies on a line through the room from one of its openings to the other. */
-	private static boolean onOpeningLine(final TowerPlan plan, final int x, final int z) {
-		for (TowerPlan.Gate gate : plan.gates()) {
-			for (TowerPlan.Spot cell : gate.cells()) {
-				if (cell.x() == x || cell.z() == z) {
-					return true;
-				}
-			}
-		}
-		return false;
+	/** The stack enchanted as at an enchanting table with the table's own enchantments; a book becomes an enchanted book. */
+	private static ItemStack enchant(final ServerLevel level, final ItemStack stack, final int power, final RandomSource random) {
+		Optional<HolderSet.Named<Enchantment>> table = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).get(EnchantmentTags.IN_ENCHANTING_TABLE);
+		return EnchantmentHelper.enchantItem(random, stack, power, level.registryAccess(), table);
 	}
 
-	/** Whether a room offset is on, or in front of, the workstations along the room's wall. */
-	private static boolean onStationRow(final TowerPlan plan, final int x, final int z) {
-		for (TowerPlan.Station station : plan.stations()) {
-			if (Math.abs(station.x() - x) <= 1 && Math.abs(station.z() - z) <= 1) {
-				return true;
-			}
-		}
-		return false;
+	/** True when the stack carries at least one enchantment, as gear or as a book. */
+	public static boolean enchanted(final ItemStack stack) {
+		ItemEnchantments enchantments = stack.getOrDefault(stack.is(Items.ENCHANTED_BOOK) ? DataComponents.STORED_ENCHANTMENTS : DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+		return !enchantments.isEmpty();
+	}
+
+	private static <T> T pick(final List<T> list, final RandomSource random) {
+		return list.get(random.nextInt(list.size()));
 	}
 }

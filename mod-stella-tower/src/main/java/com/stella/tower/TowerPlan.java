@@ -53,7 +53,7 @@ public record TowerPlan(
 	List<TowerMaze.Zone> safeZones,
 	/** The side of the hall in the middle of the room, or nought. */
 	int hall,
-	/** At least {@link TowerChests#MIN_SPOTS} double chests' spots, and on every fifth floor one more, guaranteed. Empty on a legacy floor. */
+	/** At least {@link TowerChestSpots#MIN_SPOTS} double chests' spots, and on every fifth floor one more, guaranteed. Empty on a legacy floor. */
 	List<ChestSpot> chestSpots,
 	/** The rooms of a {@link Variation#WIDE_ROOMS} floor: at least {@link TowerShapes#MIN_ROOMS}, each 6 x 3, 4 or 5 either way round. Empty on any other. */
 	List<Room> rooms
@@ -259,13 +259,13 @@ public record TowerPlan(
 			if (drawn == null || !reaches(drawn) || veto.test(drawn)) {
 				continue;
 			}
-			List<ChestSpot> chests = TowerChests.place(drawn);
+			List<ChestSpot> chests = TowerChestSpots.place(drawn);
 			if (chests != null) {
 				return drawn.withChestSpots(chests);
 			}
 		}
 		TowerPlan fallback = classic(seed, floor, version, FALLBACK);
-		List<ChestSpot> chests = TowerChests.place(fallback);
+		List<ChestSpot> chests = TowerChestSpots.place(fallback);
 		return chests == null ? fallback : fallback.withChestSpots(chests);
 	}
 
