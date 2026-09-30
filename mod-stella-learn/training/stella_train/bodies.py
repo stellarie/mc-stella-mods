@@ -40,7 +40,7 @@ def configure(config: dict) -> None:
 _stage_a_hp: tuple | None = None
 
 
-def set_stage_a_hp(low: int, high: int, armor_max: int | None = None) -> None:
+def set_stage_a_hp(low: int, high: int, armor_max: int | None = None, kind: str = "") -> None:
     """The band of the Stage A ladder that is in force; it overrides the health bounds, and the armor bound if given, of `[body.A]`."""
     global _stage_a_hp
     _stage_a_hp = (low, high, armor_max)

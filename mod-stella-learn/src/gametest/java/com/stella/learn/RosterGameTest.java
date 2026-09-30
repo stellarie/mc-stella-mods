@@ -52,6 +52,7 @@ public class RosterGameTest {
 		list.add(new Scenario("DoorwayHolder@wall", "DoorwayHolder", 9, Terrain.RELEASE, false));
 		list.add(new Scenario("HighGroundShooter@ledge", "HighGroundShooter", 4, Terrain.RELEASE, false));
 		list.add(new Scenario("Passive", "Passive", 61, Terrain.A, true));
+		list.add(new Scenario("Static", "Static", 62, Terrain.A, true));
 		list.add(new Scenario("RandomMix#2", "RandomMix", 31, Terrain.A, true));
 		list.add(new Scenario("RandomMix#3", "RandomMix", 47, Terrain.A, true));
 		return list;
@@ -164,6 +165,7 @@ public class RosterGameTest {
 			case "PotionHealer" -> stats.potions() >= 1 ? null : "no potion drunk";
 			case "ArmorTank" -> tank(one) && stats.attacks() >= 1 ? null : "not in diamond armor, or no attack: " + stats.summary();
 			case "Passive" -> stats.attacks() == 0 && stats.bowArrows() == 0 && stats.maxCellRun() < 40 ? null : "attacked, shot, or stood still: " + stats.summary();
+			case "Static" -> stats.attacks() == 0 && stats.bowArrows() == 0 && stats.maxCellRun() >= 150 ? null : "moved, attacked or shot: " + stats.summary();
 			case "PearlEscaper" -> stats.pearls() >= 1 ? null : "no pearl thrown";
 			case "StyleSwitcher" -> one.episode().activeBrains().size() >= 2 ? null : "one style only: " + one.episode().activeBrains();
 			case "RandomMix", "RandomMix#2", "RandomMix#3" -> one.episode().activeBrains().size() == 1 && !one.episode().activeBrains().contains("RandomMix")

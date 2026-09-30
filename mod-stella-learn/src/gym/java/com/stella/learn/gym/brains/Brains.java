@@ -37,6 +37,13 @@ public final class Brains {
 	public static final int COUNT = LEAVES.size() + 2;
 	/** Not part of the roster: the band 0 target, which the trainer names in a Reset frame. */
 	public static final int PASSIVE = 100;
+	/** The band before it: a target that stands still. */
+	public static final int STATIC = 101;
+
+	/** True for the two practice targets, which sit outside the roster. */
+	public static boolean isTarget(final int index) {
+		return index == PASSIVE || index == STATIC;
+	}
 
 	private Brains() {
 	}
@@ -44,6 +51,10 @@ public final class Brains {
 	public static String name(final int index) {
 		if (index == PASSIVE) {
 			return "Passive";
+		}
+
+		if (index == STATIC) {
+			return "Static";
 		}
 
 		if (index == STYLE_SWITCHER) {
@@ -56,6 +67,10 @@ public final class Brains {
 	public static int indexOf(final String name) {
 		if ("Passive".equals(name)) {
 			return PASSIVE;
+		}
+
+		if ("Static".equals(name)) {
+			return STATIC;
 		}
 
 		for (int i = 0; i < COUNT; i++) {
@@ -71,6 +86,10 @@ public final class Brains {
 	public static BotBrain create(final int index, final RandomSource random) {
 		if (index == PASSIVE) {
 			return new Passive();
+		}
+
+		if (index == STATIC) {
+			return new Static();
 		}
 
 		if (index == STYLE_SWITCHER) {

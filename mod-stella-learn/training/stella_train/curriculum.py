@@ -27,29 +27,36 @@ class Curriculum:
         self.stale = 0
         self.history: list[dict] = []
         self.ticks = int(config.get("stage_a_ticks", 600))
-        self.bands = [tuple(b) if len(b) == 3 else (b[0], b[1], None) for b in config.get("stage_a_bands", [[22, 26]])]
+        self.bands = [(b[0], b[1], b[2] if len(b) > 2 else None, b[3] if len(b) > 3 else "") for b in config.get("stage_a_bands", [[22, 26]])]
         self.eval_series = 0
         self.band = 0
         self.band_start = -1
         self.blocked = False
-        bodies.set_stage_a_hp(*self.bands[0])
+        bodies.set_stage_a_hp(*self.bands[0][:3])
         self.rng = np.random.default_rng(seed)
 
     # -- what to play -----------------------------------------------------------------------------------------------
 
+    def target_kind(self) -> str:
+        """'static' or 'passive' on the practice bands of Stage A, else ''."""
+        return self.bands[self.band][3] if self.stage == roster.STAGE_A else ""
+
     def passive(self) -> bool:
-        return self.stage == roster.STAGE_A and self.band == 0 and len(self.bands) > 1 and self.bands[0][1] == self.bands[0][0]
+        return self.target_kind() != ""
+
+    def target_brain(self) -> int:
+        return roster.STATIC if self.target_kind() == "static" else roster.PASSIVE
 
     def train_task(self) -> Task:
-        brains = (roster.PASSIVE,) if self.passive() else roster.stage_brains(self.stage)
+        brains = (self.target_brain(),) if self.passive() else roster.stage_brains(self.stage)
         return Task(int(brains[self.rng.integers(len(brains))]), int(self.rng.integers(0, roster.TRAIN_SEED_LIMIT)), self.stage, self.ticks, self.body().wire())
 
     def body(self) -> bodies.BodyRange:
         return bodies.range_for_stage(self.stage)
 
     def band_text(self) -> str:
-        low, high, _ = self.bands[self.band]
-        return f"{low}-{high}" + ("-passive" if self.passive() else "")
+        low, high, _, kind = self.bands[self.band]
+        return f"{low}-{high}" + (f"-{kind}" if kind else "")
 
     def log_body(self, decisions: int) -> None:
         if self.band_start < 0:
@@ -68,7 +75,7 @@ class Curriculum:
         names = roster.STAGE_A_BRAINS if stage == roster.STAGE_A else roster.BRAINS
         count = 50 if stage == roster.STAGE_A else int(self.config["eval_episodes_per_brain"])
         if self.passive():
-            return [Task(roster.PASSIVE, roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(2 * count)]
+            return [Task(self.target_brain(), roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(2 * count)]
         return [Task(roster.brain_index(name), roster.EVAL_SEED_BASE + j, stage, self.ticks, bodies.range_for_stage(stage).wire()) for j in range(count) for name in names]
 
     # -- promotion --------------------------------------------------------------------------------------------------
@@ -112,7 +119,7 @@ class Curriculum:
         self.blocked = False
         self.stage = roster.STAGE_A
         self.history = []
-        bodies.set_stage_a_hp(*self.bands[band])
+        bodies.set_stage_a_hp(*self.bands[band][:3])
         self.log.info("trainStage EVAL_RESET series=%d band=%s decisions=%d", self.eval_series, self.band_text(), decisions)
         self.log.event("trainStage EVAL_RESET", series=self.eval_series, band=self.band_text(), decisions=decisions)
 
@@ -120,7 +127,7 @@ class Curriculum:
         old = self.band_text()
         self.band += 1
         self.band_start = decisions
-        bodies.set_stage_a_hp(*self.bands[self.band])
+        bodies.set_stage_a_hp(*self.bands[self.band][:3])
         self.log.info("trainStage HP_BAND old=%s new=%s win_rate=%.3f decisions=%d", old, self.band_text(), win_rate, decisions)
         self.log.event("trainStage HP_BAND", old=old, new=self.band_text(), win_rate=win_rate, decisions=decisions)
 
@@ -158,4 +165,4 @@ class Curriculum:
         self.band = min(state.get("band", 0), len(self.bands) - 1)
         self.band_start = state.get("band_start", -1)
         self.eval_series = state.get("eval_series", 0)
-        bodies.set_stage_a_hp(*self.bands[self.band])
+        bodies.set_stage_a_hp(*self.bands[self.band][:3])

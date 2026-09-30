@@ -29,8 +29,9 @@ def stage_brains(stage: int) -> tuple[int, ...]:
     return tuple(brain_index(name) for name in names)
 
 
-PASSIVE = 100  # the band 0 target; not part of the roster of 19
+PASSIVE = 100  # a moving practice target; not part of the roster of 19
+STATIC = 101   # a target that stands still
 
 
 def brain_name(index: int) -> str:
-    return "Passive" if index == PASSIVE else BRAINS[index]
+    return {PASSIVE: "Passive", STATIC: "Static"}.get(index) or BRAINS[index]

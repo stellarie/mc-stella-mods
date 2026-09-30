@@ -140,6 +140,17 @@ class Trainer:
         self.log.info("train WIDEN path=%s from=%d to=%d decisions=%d", path, len(old_names), len(new_names), self.decisions)
         self.log.event("train WIDEN", path=str(path), old_inputs=len(old_names), new_inputs=len(new_names), decisions=self.decisions)
 
+    def shrink_aim_rows(self, factor: float) -> None:
+        """The yaw and pitch outputs changed meaning (offsets from the target direction), so their rows start near zero."""
+        last = [m for m in self.model.actor if isinstance(m, torch.nn.Linear)][-1]
+        rows = [self.contract.continuous.index("yaw"), self.contract.continuous.index("pitch")]
+        with torch.no_grad():
+            last.weight[rows] *= factor
+            last.bias[rows] *= factor
+        self.sampler = Sampler(self.model, self.normalizer)
+        self.log.info("train SHRINK rows=%s factor=%.2f", rows, factor)
+        self.log.event("train SHRINK", rows=rows, factor=factor)
+
     def restart_stage_a(self, keep_stage: bool = False) -> None:
         """Keeps the actor, gives the critic fresh weights, and starts Stage A again at the current decision count."""
         from .model import _init, _mlp
@@ -297,6 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-dir", type=Path, default=None, help="continue in an existing run directory")
     parser.add_argument("--resume", type=Path, default=None, help="a checkpoint to continue from")
     parser.add_argument("--widen-from", type=Path, default=None, help="start from the actor of a checkpoint made for a narrower contract")
+    parser.add_argument("--shrink-aim-rows", type=float, default=None, help="after --resume: scale the yaw and pitch output rows of the actor by this factor")
     parser.add_argument("--note", default=None, help="a line for the log at the start, written as trainStage NOTE")
     parser.add_argument("--eval-reset", action="store_true", help="after --resume: start a new eval series and band clock at band 0")
     parser.add_argument("--restart-stage-a", action="store_true", help="after --resume: reinitialize the critic and start Stage A again")
@@ -319,6 +331,8 @@ def main(argv: list[str] | None = None) -> int:
         trainer.widen_from_checkpoint(args.widen_from)
     elif args.resume:
         trainer.resume(args.resume)
+        if args.shrink_aim_rows is not None:
+            trainer.shrink_aim_rows(args.shrink_aim_rows)
         if args.note:
             log.info("trainStage NOTE decisions=%d %s", trainer.decisions, args.note)
             log.event("trainStage NOTE", decisions=trainer.decisions, note=args.note)

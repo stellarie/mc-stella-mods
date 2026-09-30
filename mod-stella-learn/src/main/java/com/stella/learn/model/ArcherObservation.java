@@ -205,6 +205,11 @@ public final class ArcherObservation {
 			state.seenY = center.y;
 			state.seenZ = center.z;
 			state.seenTick = state.goalTicks;
+			state.visible = true;
+			Vec3 eyes = target.getEyePosition();
+			state.eyeX = eyes.x;
+			state.eyeY = eyes.y;
+			state.eyeZ = eyes.z;
 			Vec3 relative = center.subtract(eye);
 			Vec3 motion = target.getKnownMovement().subtract(mob.getDeltaMovement());
 			Vec3 look = target.getLookAngle();
@@ -231,6 +236,7 @@ public final class ArcherObservation {
 			return i;
 		}
 
+		state.visible = false;
 		// A hidden target keeps only the last place it was seen and how long ago.
 		i++;
 		if (state.seen) {

@@ -17,6 +17,7 @@ import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Drives a bow archer from an action source. It decides every `decision_ticks` ticks and applies the latest action every
@@ -202,14 +203,38 @@ public final class LearnedArcherGoal extends Goal {
 		return true;
 	}
 
+	/**
+	 * Yaw and pitch are offsets from the direction to the target's eyes, 30 degrees at full scale, so an output of 0 looks
+	 * straight at the target. With the target out of sight the reference is where its eyes were last seen; with none ever
+	 * seen the mob keeps its facing. Each tick the mob turns toward the wanted look by at most the turn limit.
+	 */
 	private void turn() {
 		ArcherAction action = this.state.action;
-		float yaw = this.mob.getYRot() + unit(action.yaw()) * MAX_TURN_DEGREES;
-		this.state.pitch = Mth.clamp(this.state.pitch + unit(action.pitch()) * MAX_TURN_DEGREES, -90.0F, 90.0F);
-		this.mob.setYRot(yaw);
-		this.mob.setYHeadRot(yaw);
-		this.mob.setYBodyRot(yaw);
+		Vec3 reference = this.aimReference();
+		if (reference != null) {
+			Vec3 eye = this.mob.getEyePosition();
+			double dx = reference.x - eye.x;
+			double dy = reference.y - eye.y;
+			double dz = reference.z - eye.z;
+			float wantYaw = (float) (Mth.atan2(-dx, dz) * 180.0 / Math.PI) + unit(action.yaw()) * MAX_TURN_DEGREES;
+			float wantPitch = Mth.clamp((float) (-Mth.atan2(dy, Math.hypot(dx, dz)) * 180.0 / Math.PI) + unit(action.pitch()) * MAX_TURN_DEGREES, -90.0F, 90.0F);
+			float yaw = this.mob.getYRot() + Mth.clamp(Mth.wrapDegrees(wantYaw - this.mob.getYRot()), -MAX_TURN_DEGREES, MAX_TURN_DEGREES);
+			this.state.pitch = Mth.clamp(this.state.pitch + Mth.clamp(wantPitch - this.state.pitch, -MAX_TURN_DEGREES, MAX_TURN_DEGREES), -90.0F, 90.0F);
+			this.mob.setYRot(yaw);
+			this.mob.setYHeadRot(yaw);
+			this.mob.setYBodyRot(yaw);
+		}
+
 		this.mob.setXRot(this.state.pitch);
+	}
+
+	private @Nullable Vec3 aimReference() {
+		LivingEntity target = this.mob.getTarget();
+		if (this.state.visible && target != null) {
+			return target.getEyePosition();
+		}
+
+		return this.state.seen ? new Vec3(this.state.eyeX, this.state.eyeY, this.state.eyeZ) : null;
 	}
 
 	private void move() {

@@ -46,13 +46,17 @@ public class ModelFairnessGameTest {
 		return Math.hypot(to.x - from.x, to.z - from.z);
 	}
 
+	/** An archer that starts facing away from the target turns to it at 30 degrees a tick and no faster, then stays on it. */
 	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
 	public void turnRateIsCapped(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
-		ServerPlayer player = farPlayer(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 34.5);
 		Mob archer = ModelTests.archer(helper, 24.5, 24.5);
-		ModelDriver.setActionSource(archer, new MlpSource(new Mlp(ModelTests.policy("turn-right"))));
+		archer.setYRot(140.0F);
+		archer.setYHeadRot(140.0F);
+		archer.setYBodyRot(140.0F);
+		ModelDriver.setActionSource(archer, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.IDLE)));
 		List<Float> yaws = new ArrayList<>();
 		boolean[] done = {false};
 		ModelTests.everyTick(helper, player, () -> {
@@ -64,16 +68,22 @@ public class ModelFairnessGameTest {
 			if (yaws.size() == TURN_TICKS + 1) {
 				done[0] = true;
 				float largest = 0.0F;
-				float smallest = Float.MAX_VALUE;
+				int atCap = 0;
 				for (int i = 1; i < yaws.size(); i++) {
-					float turned = Mth.wrapDegrees(yaws.get(i) - yaws.get(i - 1));
-					largest = Math.max(largest, Math.abs(turned));
-					smallest = Math.min(smallest, turned);
+					float turned = Math.abs(Mth.wrapDegrees(yaws.get(i) - yaws.get(i - 1)));
+					largest = Math.max(largest, turned);
+					if (turned >= TURN_LIMIT - 1.0F) {
+						atCap++;
+					}
 				}
 
-				StellaLearn.LOGGER.info("[BEHAVIOR] test=turnRateIsCapped RESULT ticks={} largest={} smallest={} limit={}", TURN_TICKS, largest, smallest, TURN_LIMIT);
+				Vec3 toward = player.getEyePosition().subtract(archer.getEyePosition());
+				float wanted = (float) (Mth.atan2(-toward.x, toward.z) * 180.0 / Math.PI);
+				float off = Math.abs(Mth.wrapDegrees(yaws.get(yaws.size() - 1) - wanted));
+				StellaLearn.LOGGER.info("[BEHAVIOR] test=turnRateIsCapped RESULT ticks={} largest={} ticks_at_cap={} final_off={} limit={}", TURN_TICKS, largest, atCap, off, TURN_LIMIT);
 				helper.assertTrue(largest <= TURN_LIMIT + 0.01F, "the archer turned " + largest + " degrees in one tick");
-				helper.assertTrue(smallest >= TURN_LIMIT - 1.0F, "the archer turned right by only " + smallest + " degrees in a tick, so the cap was not reached");
+				helper.assertTrue(atCap >= 3, "the archer reached the cap in only " + atCap + " ticks");
+				helper.assertTrue(off < 5.0F, "the archer ended " + off + " degrees off the target");
 				ModelTests.pass(helper);
 			}
 		}, archer);
@@ -124,7 +134,8 @@ public class ModelFairnessGameTest {
 	public void strafeRightMovesToTheMobsRight(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
-		ServerPlayer player = farPlayer(helper);
+		// The player stands straight ahead, so the mob keeps its facing while it strafes.
+		ServerPlayer player = LearnArena.player(helper, 30.5, 44.5);
 		Mob archer = ModelTests.skeleton(helper, EntityTypes.SKELETON, 30.5, 14.5, true);
 		ModelDriver.setActionSource(archer, ModelTests.script(decision -> new ArcherAction(0.0F, 1.0F, 0.0F, 0.0F, false, ArcherAction.Bow.IDLE)));
 		int[] running = {0};
@@ -142,7 +153,7 @@ public class ModelFairnessGameTest {
 				StellaLearn.LOGGER.info("[BEHAVIOR] test=strafeRightMovesToTheMobsRight RESULT yaw={} dx={} dz={}", archer.getYRot(), moved.x, moved.z);
 				// At yaw 0 the mob faces +z, so its right hand is -x.
 				helper.assertTrue(moved.x < -2.0, "a right strafe moved the mob " + moved.x + " along x");
-				helper.assertTrue(Math.abs(moved.z) < 0.5, "a right strafe moved the mob " + moved.z + " along z");
+				helper.assertTrue(Math.abs(moved.z) < 0.5 * Math.abs(moved.x), "a right strafe moved the mob " + moved.z + " along z");
 				ModelTests.pass(helper);
 			}
 		}, archer);
@@ -243,49 +254,76 @@ public class ModelFairnessGameTest {
 		}, () -> "the clock never passed 90 ticks"), () -> "no CANCEL line after two idle decisions"));
 	}
 
-	/** Looks straight at the target's eyes and draws, then releases once; it reads its own pitch from the observation. */
-	private static ActionSource aimThenRelease(final ServerPlayer player, final int draws) {
-		int pitchAt = Contract.archer().indexOf("self.pitch");
-		float pitchScale = Contract.archer().scale(pitchAt);
-		return new ActionSource() {
-			private int decisions;
-
-			@Override
-			public ArcherAction decide(final Mob mob, final float[] observation) {
-				Vec3 toward = player.getEyePosition().subtract(mob.getEyePosition());
-				float wantYaw = (float) (Mth.atan2(-toward.x, toward.z) * 180.0 / Math.PI);
-				float wantPitch = (float) (-Mth.atan2(toward.y, Math.hypot(toward.x, toward.z)) * 180.0 / Math.PI);
-				float pitch = observation[pitchAt] * pitchScale;
-				float yaw = Mth.clamp(Mth.wrapDegrees(wantYaw - mob.getYRot()) / (TURN_LIMIT * DECISION_TICKS), -1.0F, 1.0F);
-				float down = Mth.clamp((wantPitch - pitch) / (TURN_LIMIT * DECISION_TICKS), -1.0F, 1.0F);
-				int decision = this.decisions++;
-				ArcherAction.Bow bow = ArcherAction.Bow.FIRE;
-				return new ArcherAction(0.0F, 0.0F, yaw, down, false, bow);
-			}
-		};
-	}
-
-	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
-	public void arrowFollowsTheLook(final GameTestHelper helper) {
+	/** Zero offsets and fire at every decision: a still target ten blocks away is hit by at least 40 percent of the arrows. */
+	@GameTest(maxTicks = 700, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	public void zeroOffsetHitsAStillTarget(final GameTestHelper helper) {
 		ModelTests.acquire(helper);
 		LearnArena.floor(helper);
 		ServerPlayer player = LearnArena.player(helper, 24.5, 34.5);
 		Mob archer = ModelTests.archer(helper, 24.5, 24.5);
-		// The archer starts facing away so the aim has to turn it.
 		archer.setYRot(140.0F);
 		archer.setYHeadRot(140.0F);
 		archer.setYBodyRot(140.0F);
-		ModelDriver.setActionSource(archer, aimThenRelease(player, DRAW_DECISIONS + 4));
-		List<AbstractArrow> arrows = new ArrayList<>();
-		ModelTests.everyTick(helper, player, () -> ModelTests.collectArrows(helper, archer, arrows), archer);
-		LearnArena.whenReady(helper, List.of(player, archer), () -> LearnArena.pollUntil(helper, () -> !arrows.isEmpty() && (arrows.get(0).isRemoved() || arrows.get(0).getDeltaMovement().lengthSqr() < 1.0E-4), 300, () -> {
-			AbstractArrow arrow = arrows.get(0);
-			Vec3 centre = player.getBoundingBox().getCenter();
-			double miss = arrow.position().distanceTo(centre);
-			StellaLearn.LOGGER.info("[BEHAVIOR] test=arrowFollowsTheLook RESULT arrows={} miss_blocks={} landed={} target={}", arrows.size(), miss, arrow.position(), centre);
-			helper.assertTrue(arrows.size() == 1, "the archer loosed " + arrows.size() + " arrows");
-			helper.assertTrue(miss <= AIM_CLOSE_BLOCKS, "the arrow landed " + miss + " blocks from a still target ten blocks away");
+		ModelDriver.setActionSource(archer, ModelTests.script(decision -> ModelTests.bow(ArcherAction.Bow.FIRE)));
+		List<AbstractArrow> seen = new ArrayList<>();
+		float[] health = {player.getHealth()};
+		int[] hits = {0};
+		ModelTests.everyTick(helper, player, () -> {
+			ModelTests.collectArrows(helper, archer, seen);
+			if (player.getHealth() < health[0]) {
+				hits[0]++;
+			}
+
+			health[0] = player.getHealth();
+		}, archer);
+		LearnArena.whenReady(helper, List.of(player, archer), () -> helper.runAfterDelay(500L, () -> {
+			int shots = seen.size();
+			StellaLearn.LOGGER.info("[BEHAVIOR] test=zeroOffsetHitsAStillTarget RESULT shots={} hits={}", shots, hits[0]);
+			helper.assertTrue(shots >= 5, "the archer loosed only " + shots + " arrows");
+			helper.assertTrue(hits[0] * 100 >= shots * 40, "only " + hits[0] + " of " + shots + " arrows hit a still target with zero offsets");
 			ModelTests.pass(helper);
-		}, () -> "the arrow never landed: " + arrows.size()));
+		}));
+	}
+
+	private static float arrowYaw(final AbstractArrow arrow) {
+		Vec3 v = arrow.getDeltaMovement();
+		return (float) (Mth.atan2(-v.x, v.z) * 180.0 / Math.PI);
+	}
+
+	/** A yaw output of +1 or -1 turns the arrow 30 degrees to the right or left of the line to the target. */
+	@GameTest(maxTicks = ModelTests.LONG, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	public void offsetShiftsAim(final GameTestHelper helper) {
+		ModelTests.acquire(helper);
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 40.5);
+		Mob right = ModelTests.archer(helper, 14.5, 24.5);
+		Mob left = ModelTests.archer(helper, 34.5, 24.5);
+		ModelDriver.setActionSource(right, ModelTests.script(decision -> new ArcherAction(0.0F, 0.0F, 1.0F, 0.0F, false, ArcherAction.Bow.FIRE)));
+		ModelDriver.setActionSource(left, ModelTests.script(decision -> new ArcherAction(0.0F, 0.0F, -1.0F, 0.0F, false, ArcherAction.Bow.FIRE)));
+		float[] rightYaw = {Float.NaN};
+		float[] leftYaw = {Float.NaN};
+		List<AbstractArrow> rightSeen = new ArrayList<>();
+		List<AbstractArrow> leftSeen = new ArrayList<>();
+		ModelTests.everyTick(helper, player, () -> {
+			ModelTests.collectArrows(helper, right, rightSeen);
+			ModelTests.collectArrows(helper, left, leftSeen);
+			if (Float.isNaN(rightYaw[0]) && !rightSeen.isEmpty()) {
+				rightYaw[0] = arrowYaw(rightSeen.get(0));
+			}
+
+			if (Float.isNaN(leftYaw[0]) && !leftSeen.isEmpty()) {
+				leftYaw[0] = arrowYaw(leftSeen.get(0));
+			}
+		}, right, left);
+		LearnArena.whenReady(helper, List.of(player, right, left), () -> LearnArena.pollUntil(helper, () -> !Float.isNaN(rightYaw[0]) && !Float.isNaN(leftYaw[0]), 200, () -> {
+			Vec3 fromRight = player.getEyePosition().subtract(right.getEyePosition());
+			Vec3 fromLeft = player.getEyePosition().subtract(left.getEyePosition());
+			float rightBy = Mth.wrapDegrees(rightYaw[0] - (float) (Mth.atan2(-fromRight.x, fromRight.z) * 180.0 / Math.PI));
+			float leftBy = Mth.wrapDegrees(leftYaw[0] - (float) (Mth.atan2(-fromLeft.x, fromLeft.z) * 180.0 / Math.PI));
+			StellaLearn.LOGGER.info("[BEHAVIOR] test=offsetShiftsAim RESULT right_by={} left_by={}", rightBy, leftBy);
+			helper.assertTrue(Math.abs(rightBy - 30.0F) < 6.0F, "the +1 archer aimed " + rightBy + " degrees off the line, not 30");
+			helper.assertTrue(Math.abs(leftBy + 30.0F) < 6.0F, "the -1 archer aimed " + leftBy + " degrees off the line, not -30");
+			ModelTests.pass(helper);
+		}, () -> "an archer never loosed"));
 	}
 }

@@ -17,7 +17,7 @@ def contract():
 
 
 def test_contract_matches_the_plan_layout(contract):
-    assert contract.version == 2 and contract.archetype == "archer" and contract.decision_ticks == 2
+    assert contract.version == 3 and contract.archetype == "archer" and contract.decision_ticks == 2
     assert contract.obs_size == 121
     assert contract.out_size == 10
     assert contract.hidden == (64, 64)
