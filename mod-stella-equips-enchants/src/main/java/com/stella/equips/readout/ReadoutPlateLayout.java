@@ -4,26 +4,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The plate as flat rectangles in text pixels, y pointing down. It holds no client class, so a
- * headless game test can read the geometry. No two rectangles overlap, so the renderer needs no
- * depth ordering between them.
+ * The badge and name as flat rectangles in text pixels, y pointing down. It holds no client
+ * class, so a headless test reads the geometry. No two rectangles overlap, so the renderer needs
+ * no depth ordering between them. Angles run clockwise from the top of the badge.
  */
 public final class ReadoutPlateLayout {
-	public static final int RING_RADIUS = 8;
-	public static final int RING_THICKNESS = 2;
-	public static final int RING_GAP = 4;
+	public static final int DISC_RADIUS = 8;
+	public static final int HP_RING_OUTER = 10;
+	public static final int ABSORPTION_RING_OUTER = 12;
+	public static final int BADGE_CENTER = ABSORPTION_RING_OUTER;
+	public static final int BADGE_SIZE = 2 * ABSORPTION_RING_OUTER;
+	public static final int BADGE_GAP = 4;
 	public static final int NAME_HEIGHT = 9;
-	public static final int BAR_GAP = 2;
-	public static final int HP_BAR_WIDTH = 60;
-	public static final int HP_BAR_HEIGHT = 4;
-	public static final int ABSORPTION_BAR_WIDTH = 40;
-	public static final int ABSORPTION_BAR_HEIGHT = 2;
-	public static final int HP_FILL_COLOR = 0xFF3FD13F;
-	public static final int ABSORPTION_FILL_COLOR = 0xFFFFD83A;
-	public static final int BAR_BACK_COLOR = 0xFF202020;
-	public static final int RING_INNER_COLOR = 0xC0101010;
-	public static final int NAME_BACK_COLOR = 0x80000000;
-	public static final int NAME_PADDING = 2;
+	public static final float MIN_ARC = 0.02F;
+	public static final int HP_COLOR = 0xFFE03030;
+	public static final int ABSORPTION_COLOR = 0xFFFFD83A;
+	public static final int HP_TRACK_COLOR = 0xFF202020;
+	public static final int DISC_COLOR = 0xC0101010;
+	public static final int BACKGROUND_COLOR = 0x80606060;
+	public static final int BACKGROUND_PADDING = 3;
 
 	public record Rect(int x0, int y0, int x1, int y1, int color) {
 		public int width() {
@@ -39,108 +38,138 @@ public final class ReadoutPlateLayout {
 		}
 	}
 
+	/**
+	 * `bounds` holds the padded plate. `background` tiles it around the badge, so no drawn
+	 * rectangle overlaps another. `nameBounds` is the name box and is not drawn itself.
+	 */
 	public record Plan(
-		int width,
-		int height,
+		Rect bounds,
 		int numberCenterX,
 		int numberCenterY,
 		int nameX,
 		int nameY,
-		List<Rect> ring,
-		Rect nameBack,
-		Rect hpFill,
-		Rect hpBack,
-		Rect absorptionFill,
-		Rect absorptionBack
+		Rect nameBounds,
+		List<Rect> badge,
+		List<Rect> background
 	) {
-		/** Every rectangle the plate draws, in draw order. */
+		/** Every rectangle the plate draws. */
 		public List<Rect> all() {
-			List<Rect> all = new ArrayList<>(this.ring);
-			all.add(this.nameBack);
-			all.add(this.hpFill);
-			all.add(this.hpBack);
-			if (this.absorptionBack != null) {
-				all.add(this.absorptionFill);
-				all.add(this.absorptionBack);
-			}
-
-			return all.stream().filter(rect -> rect != null && rect.width() > 0 && rect.height() > 0).toList();
+			List<Rect> all = new ArrayList<>(this.background);
+			all.addAll(this.badge);
+			return all;
 		}
 	}
 
 	private ReadoutPlateLayout() {
 	}
 
-	/** The absorption bar exists only when `absorption` is above zero. */
-	public static Plan plan(
-		final int ringColor,
-		final float health,
-		final float maxHealth,
-		final float absorption,
-		final int nameWidth
-	) {
-		int diameter = RING_RADIUS * 2;
-		int nameX = diameter + RING_GAP;
-		int barsWidth = Math.max(nameWidth, HP_BAR_WIDTH);
-		int nextY = NAME_HEIGHT + BAR_GAP;
-		Rect absorptionFill = null;
-		Rect absorptionBack = null;
-
-		if (absorption > 0.0F) {
-			int fill = fillWidth(absorption, Math.max(absorption, maxHealth), ABSORPTION_BAR_WIDTH);
-			absorptionFill = new Rect(nameX, nextY, nameX + fill, nextY + ABSORPTION_BAR_HEIGHT, ABSORPTION_FILL_COLOR);
-			absorptionBack = new Rect(
-				nameX + fill, nextY, nameX + ABSORPTION_BAR_WIDTH, nextY + ABSORPTION_BAR_HEIGHT, BAR_BACK_COLOR
-			);
-			nextY += ABSORPTION_BAR_HEIGHT + BAR_GAP;
+	/** The share of the circumference the red arc covers. A live mob keeps a small arc. */
+	public static float hpFraction(final float health, final float maxHealth) {
+		if (maxHealth <= 0.0F || health <= 0.0F) {
+			return 0.0F;
 		}
 
-		int hpFillWidth = fillWidth(health, maxHealth, HP_BAR_WIDTH);
-		Rect hpFill = new Rect(nameX, nextY, nameX + hpFillWidth, nextY + HP_BAR_HEIGHT, HP_FILL_COLOR);
-		Rect hpBack = new Rect(nameX + hpFillWidth, nextY, nameX + HP_BAR_WIDTH, nextY + HP_BAR_HEIGHT, BAR_BACK_COLOR);
-		int height = Math.max(diameter, nextY + HP_BAR_HEIGHT);
-		return new Plan(
-			nameX + barsWidth, height, RING_RADIUS, RING_RADIUS, nameX, 0, ring(ringColor),
-			new Rect(nameX - NAME_PADDING, 0, nameX + nameWidth + NAME_PADDING, NAME_HEIGHT, NAME_BACK_COLOR),
-			hpFill, hpBack, absorptionFill, absorptionBack
-		);
+		return Math.max(MIN_ARC, Math.min(1.0F, health / maxHealth));
 	}
 
-	/** A live bar keeps one pixel, so a nearly dead mob does not read as an empty bar. */
-	static int fillWidth(final float value, final float max, final int width) {
-		if (max <= 0.0F || value <= 0.0F) {
+	/** The share the yellow arc covers, capped at a full circle. Zero absorption gives zero. */
+	public static float absorptionFraction(final float absorption, final float maxHealth) {
+		if (absorption <= 0.0F) {
+			return 0.0F;
+		}
+
+		if (maxHealth <= 0.0F) {
+			return 1.0F;
+		}
+
+		return Math.max(MIN_ARC, Math.min(1.0F, absorption / maxHealth));
+	}
+
+	public static Plan plan(final float health, final float maxHealth, final float absorption, final int nameWidth) {
+		float hp = hpFraction(health, maxHealth);
+		float shield = absorptionFraction(absorption, maxHealth);
+		int nameX = BADGE_SIZE + BADGE_GAP;
+		int nameY = BADGE_CENTER - NAME_HEIGHT / 2;
+		Rect nameBounds = new Rect(nameX, nameY, nameX + nameWidth, nameY + NAME_HEIGHT, 0);
+		Rect bounds = new Rect(
+			-BACKGROUND_PADDING, -BACKGROUND_PADDING, nameBounds.x1() + BACKGROUND_PADDING,
+			BADGE_SIZE + BACKGROUND_PADDING, BACKGROUND_COLOR
+		);
+		List<Rect> badge = badge(hp, shield);
+		return new Plan(bounds, BADGE_CENTER, BADGE_CENTER, nameX, nameY, nameBounds, badge, background(bounds, badge));
+	}
+
+	/** Fills the gaps between the badge cells of each row, so the background never overlaps them. */
+	private static List<Rect> background(final Rect bounds, final List<Rect> badge) {
+		List<Rect> tiles = new ArrayList<>();
+
+		for (int y = bounds.y0(); y < bounds.y1(); y++) {
+			final int row = y;
+			List<Rect> cells = badge.stream().filter(rect -> rect.y0() == row).sorted(java.util.Comparator.comparingInt(Rect::x0)).toList();
+			int cursor = bounds.x0();
+
+			for (Rect cell : cells) {
+				if (cell.x0() > cursor) {
+					tiles.add(new Rect(cursor, y, cell.x0(), y + 1, BACKGROUND_COLOR));
+				}
+
+				cursor = cell.x1();
+			}
+
+			if (cursor < bounds.x1()) {
+				tiles.add(new Rect(cursor, y, bounds.x1(), y + 1, BACKGROUND_COLOR));
+			}
+		}
+
+		return tiles;
+	}
+
+	/** Runs of one-pixel cells per row, merged by color. */
+	private static List<Rect> badge(final float hp, final float shield) {
+		List<Rect> rects = new ArrayList<>();
+
+		for (int y = 0; y < BADGE_SIZE; y++) {
+			int runStart = 0;
+			int runColor = 0;
+
+			for (int x = 0; x <= BADGE_SIZE; x++) {
+				int color = x < BADGE_SIZE ? cellColor(x, y, hp, shield) : 0;
+
+				if (color != runColor) {
+					if (runColor != 0) {
+						rects.add(new Rect(runStart, y, x, y + 1, runColor));
+					}
+
+					runStart = x;
+					runColor = color;
+				}
+			}
+		}
+
+		return rects;
+	}
+
+	/** Zero means the cell stays empty. */
+	private static int cellColor(final int x, final int y, final float hp, final float shield) {
+		double dx = x + 0.5 - BADGE_CENTER;
+		double dy = y + 0.5 - BADGE_CENTER;
+		double distance = Math.sqrt(dx * dx + dy * dy);
+
+		if (distance >= ABSORPTION_RING_OUTER) {
 			return 0;
 		}
 
-		int fill = Math.round(width * Math.min(1.0F, value / max));
-		return Math.max(1, Math.min(width, fill));
-	}
+		double turn = Math.atan2(dx, -dy) / (2.0 * Math.PI);
+		double angle = turn < 0.0 ? turn + 1.0 : turn;
 
-	/** Rows of a disc: a band-colored rim, a dark middle, and a band-colored rim again. */
-	private static List<Rect> ring(final int ringColor) {
-		List<Rect> rows = new ArrayList<>();
-		int diameter = RING_RADIUS * 2;
-
-		for (int y = 0; y < diameter; y++) {
-			double dy = y + 0.5 - RING_RADIUS;
-			int outer = halfWidth(RING_RADIUS, dy);
-			int inner = halfWidth(RING_RADIUS - RING_THICKNESS, dy);
-
-			if (inner <= 0) {
-				rows.add(new Rect(RING_RADIUS - outer, y, RING_RADIUS + outer, y + 1, ringColor));
-				continue;
-			}
-
-			rows.add(new Rect(RING_RADIUS - outer, y, RING_RADIUS - inner, y + 1, ringColor));
-			rows.add(new Rect(RING_RADIUS - inner, y, RING_RADIUS + inner, y + 1, RING_INNER_COLOR));
-			rows.add(new Rect(RING_RADIUS + inner, y, RING_RADIUS + outer, y + 1, ringColor));
+		if (distance < DISC_RADIUS) {
+			return DISC_COLOR;
 		}
 
-		return rows;
-	}
+		if (distance < HP_RING_OUTER) {
+			return angle < hp ? HP_COLOR : HP_TRACK_COLOR;
+		}
 
-	private static int halfWidth(final int radius, final double dy) {
-		double square = radius * radius - dy * dy;
-		return square <= 0.0 ? 0 : (int) Math.floor(Math.sqrt(square));
+		return angle < shield ? ABSORPTION_COLOR : 0;
 	}
 }

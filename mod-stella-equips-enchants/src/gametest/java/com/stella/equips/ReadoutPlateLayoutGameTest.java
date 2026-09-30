@@ -4,112 +4,81 @@ import com.stella.equips.readout.ReadoutPlateLayout;
 import com.stella.equips.readout.ReadoutPlateLayout.Plan;
 import com.stella.equips.readout.ReadoutPlateLayout.Rect;
 import java.util.List;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 public class ReadoutPlateLayoutGameTest {
-	private static final int RING_COLOR = 0xFFFF5555;
 	private static final int NAME_WIDTH = 70;
 	private static final float MAX_HEALTH = 20.0F;
-	private static final int YELLOW_MIN_CHANNEL = 200;
-	private static final int YELLOW_MAX_BLUE = 100;
+	private static final double FRACTION_TOLERANCE = 0.06;
+	private static final int ALPHA_FLOOR = 0x20;
+	private static final int ALPHA_CEILING = 0xC0;
 
-	private static Plan withAbsorption() {
-		return ReadoutPlateLayout.plan(RING_COLOR, 15.0F, MAX_HEALTH, 4.0F, NAME_WIDTH);
-	}
-
-	private static Plan withoutAbsorption() {
-		return ReadoutPlateLayout.plan(RING_COLOR, 15.0F, MAX_HEALTH, 0.0F, NAME_WIDTH);
+	private static Plan plan(final float health, final float absorption) {
+		return ReadoutPlateLayout.plan(health, MAX_HEALTH, absorption, NAME_WIDTH);
 	}
 
 	@GameTest
-	public void theHpBarSitsBelowTheNameAndTheAbsorptionBarSitsBetween(final GameTestHelper helper) {
-		Plan plan = withAbsorption();
-		helper.assertTrue(plan.absorptionFill() != null, "no absorption bar for absorption above zero");
+	public void theArcFractionsFollowHealthAndAbsorption(final GameTestHelper helper) {
+		helper.assertTrue(ReadoutPlateLayout.hpFraction(10.0F, MAX_HEALTH) == 0.5F, "half health is not half the ring");
+		helper.assertTrue(ReadoutPlateLayout.hpFraction(0.0F, MAX_HEALTH) == 0.0F, "zero health draws an arc");
+		helper.assertTrue(ReadoutPlateLayout.hpFraction(30.0F, MAX_HEALTH) == 1.0F, "health above max is not capped");
 		helper.assertTrue(
-			plan.absorptionFill().y0() >= plan.nameBack().y1(),
-			"the absorption bar starts at " + plan.absorptionFill().y0() + " above the name bottom " + plan.nameBack().y1()
+			ReadoutPlateLayout.hpFraction(0.01F, MAX_HEALTH) >= ReadoutPlateLayout.MIN_ARC,
+			"a live mob draws no arc"
 		);
+		helper.assertTrue(ReadoutPlateLayout.absorptionFraction(5.0F, MAX_HEALTH) == 0.25F, "absorption over max health is wrong");
+		helper.assertTrue(ReadoutPlateLayout.absorptionFraction(0.0F, MAX_HEALTH) == 0.0F, "zero absorption draws an arc");
 		helper.assertTrue(
-			plan.hpFill().y0() >= plan.absorptionBack().y1(),
-			"the HP bar starts at " + plan.hpFill().y0() + " above the absorption bar bottom " + plan.absorptionBack().y1()
-		);
-		helper.assertTrue(
-			plan.hpFill().x0() == plan.nameX() && plan.absorptionFill().x0() == plan.nameX(),
-			"the bars do not line up under the name"
+			ReadoutPlateLayout.absorptionFraction(MAX_HEALTH * 3.0F, MAX_HEALTH) == 1.0F,
+			"absorption above max health is not capped at a full circle"
 		);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theAbsorptionBarIsSmallerAndYellowAndTheHpBarIsGreen(final GameTestHelper helper) {
-		Plan plan = withAbsorption();
-		int hpWidth = plan.hpFill().width() + plan.hpBack().width();
-		int absorptionWidth = plan.absorptionFill().width() + plan.absorptionBack().width();
-		int yellow = plan.absorptionFill().color();
-		int green = plan.hpFill().color();
-		helper.assertTrue(
-			absorptionWidth < hpWidth && plan.absorptionFill().height() < plan.hpFill().height(),
-			"the absorption bar is " + absorptionWidth + "x" + plan.absorptionFill().height()
-				+ " against the HP bar " + hpWidth + "x" + plan.hpFill().height()
-		);
-		helper.assertTrue(
-			red(yellow) > YELLOW_MIN_CHANNEL && green(yellow) > YELLOW_MIN_CHANNEL && blue(yellow) < YELLOW_MAX_BLUE,
-			"the absorption fill is not yellow"
-		);
-		helper.assertTrue(
-			green(green) > red(green) && green(green) > blue(green),
-			"the HP fill is not green"
-		);
+	public void theRedArcCoversTheHealthShareOfTheRing(final GameTestHelper helper) {
+		for (float share : new float[] {0.25F, 0.5F, 0.75F}) {
+			Plan plan = plan(MAX_HEALTH * share, 0.0F);
+			double red = area(plan, ReadoutPlateLayout.HP_COLOR);
+			double ring = red + area(plan, ReadoutPlateLayout.HP_TRACK_COLOR);
+			helper.assertTrue(
+				Math.abs(red / ring - share) < FRACTION_TOLERANCE,
+				"health share " + share + " drew " + red / ring + " of the ring"
+			);
+		}
+
 		helper.succeed();
 	}
 
 	@GameTest
-	public void noAbsorptionBarAppearsAtZeroAbsorption(final GameTestHelper helper) {
-		Plan plan = withoutAbsorption();
-		boolean yellow = plan.all().stream().anyMatch(rect -> rect.color() == ReadoutPlateLayout.ABSORPTION_FILL_COLOR);
-		helper.assertTrue(plan.absorptionFill() == null && plan.absorptionBack() == null, "an absorption bar exists at zero");
-		helper.assertTrue(!yellow, "a yellow rectangle is drawn at zero absorption");
-		helper.assertTrue(
-			plan.hpFill().y0() == withAbsorption().hpFill().y0() - ReadoutPlateLayout.ABSORPTION_BAR_HEIGHT - ReadoutPlateLayout.BAR_GAP,
-			"the HP bar keeps the absorption slot at zero absorption"
-		);
+	public void theYellowRingIsAbsentAtZeroAndCappedAtFull(final GameTestHelper helper) {
+		double none = area(plan(MAX_HEALTH, 0.0F), ReadoutPlateLayout.ABSORPTION_COLOR);
+		double half = area(plan(MAX_HEALTH, MAX_HEALTH / 2.0F), ReadoutPlateLayout.ABSORPTION_COLOR);
+		double full = area(plan(MAX_HEALTH, MAX_HEALTH), ReadoutPlateLayout.ABSORPTION_COLOR);
+		double over = area(plan(MAX_HEALTH, MAX_HEALTH * 3.0F), ReadoutPlateLayout.ABSORPTION_COLOR);
+		helper.assertTrue(none == 0.0, "yellow cells exist at zero absorption");
+		helper.assertTrue(Math.abs(half / full - 0.5) < FRACTION_TOLERANCE, "half absorption drew " + half / full + " of the full ring");
+		helper.assertTrue(over == full, "absorption above max health grew the ring past a full circle");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void theThreatRingSitsLeftOfTheNameAndHoldsTheNumber(final GameTestHelper helper) {
-		Plan plan = withAbsorption();
-		int ringRight = plan.ring().stream().mapToInt(Rect::x1).max().orElse(-1);
-		int ringLeft = plan.ring().stream().mapToInt(Rect::x0).min().orElse(-1);
-		int ringTop = plan.ring().stream().mapToInt(Rect::y0).min().orElse(-1);
-		int ringBottom = plan.ring().stream().mapToInt(Rect::y1).max().orElse(-1);
-		helper.assertTrue(!plan.ring().isEmpty(), "the ring has no rows");
-		helper.assertTrue(
-			ringRight <= plan.nameBack().x0(),
-			"the ring reaches x=" + ringRight + " into the name at x=" + plan.nameBack().x0()
-		);
-		helper.assertTrue(
-			plan.numberCenterX() > ringLeft && plan.numberCenterX() < ringRight
-				&& plan.numberCenterY() > ringTop && plan.numberCenterY() < ringBottom,
-			"the number center sits outside the ring"
-		);
-		helper.assertTrue(
-			plan.ring().stream().anyMatch(rect -> rect.color() == RING_COLOR),
-			"the ring does not carry the band color"
-		);
-		helper.succeed();
-	}
+	public void theYellowRingSitsOutsideTheRedRing(final GameTestHelper helper) {
+		Plan plan = plan(MAX_HEALTH, MAX_HEALTH);
 
-	@GameTest
-	public void noRectanglesOverlap(final GameTestHelper helper) {
-		for (Plan plan : List.of(withAbsorption(), withoutAbsorption())) {
-			List<Rect> all = plan.all();
-
-			for (int i = 0; i < all.size(); i++) {
-				for (int j = i + 1; j < all.size(); j++) {
-					helper.assertTrue(!all.get(i).overlaps(all.get(j)), all.get(i) + " overlaps " + all.get(j));
-				}
+		for (Rect rect : plan.badge()) {
+			if (rect.color() == ReadoutPlateLayout.ABSORPTION_COLOR) {
+				helper.assertTrue(
+					minDistance(rect) >= ReadoutPlateLayout.HP_RING_OUTER,
+					"a yellow cell sits inside the red ring at " + minDistance(rect)
+				);
+			} else if (rect.color() == ReadoutPlateLayout.HP_COLOR) {
+				helper.assertTrue(
+					minDistance(rect) >= ReadoutPlateLayout.DISC_RADIUS && maxDistance(rect) < ReadoutPlateLayout.HP_RING_OUTER,
+					"a red cell sits off the ring at " + minDistance(rect) + ".." + maxDistance(rect)
+				);
 			}
 		}
 
@@ -117,36 +86,105 @@ public class ReadoutPlateLayoutGameTest {
 	}
 
 	@GameTest
-	public void barFillFollowsTheRatioAndKeepsOnePixelWhileAlive(final GameTestHelper helper) {
-		Plan half = ReadoutPlateLayout.plan(RING_COLOR, 10.0F, MAX_HEALTH, 0.0F, NAME_WIDTH);
-		Plan sliver = ReadoutPlateLayout.plan(RING_COLOR, 0.01F, MAX_HEALTH, 0.0F, NAME_WIDTH);
-		Plan full = ReadoutPlateLayout.plan(RING_COLOR, MAX_HEALTH, MAX_HEALTH, 0.0F, NAME_WIDTH);
+	public void theNumberSitsInTheCenterOfTheBadge(final GameTestHelper helper) {
+		Plan plan = plan(MAX_HEALTH, MAX_HEALTH);
+		int left = plan.badge().stream().mapToInt(Rect::x0).min().orElse(-1);
+		int right = plan.badge().stream().mapToInt(Rect::x1).max().orElse(-1);
+		int top = plan.badge().stream().mapToInt(Rect::y0).min().orElse(-1);
+		int bottom = plan.badge().stream().mapToInt(Rect::y1).max().orElse(-1);
 		helper.assertTrue(
-			half.hpFill().width() == ReadoutPlateLayout.HP_BAR_WIDTH / 2,
-			"half health filled " + half.hpFill().width() + " pixels"
-		);
-		helper.assertTrue(sliver.hpFill().width() == 1, "a sliver of health filled " + sliver.hpFill().width() + " pixels");
-		helper.assertTrue(
-			full.hpFill().width() == ReadoutPlateLayout.HP_BAR_WIDTH && full.hpBack().width() == 0,
-			"full health filled " + full.hpFill().width() + " pixels"
-		);
-		Plan overAbsorbed = ReadoutPlateLayout.plan(RING_COLOR, MAX_HEALTH, MAX_HEALTH, 40.0F, NAME_WIDTH);
-		helper.assertTrue(
-			overAbsorbed.absorptionFill().width() == ReadoutPlateLayout.ABSORPTION_BAR_WIDTH,
-			"absorption above max health filled " + overAbsorbed.absorptionFill().width() + " pixels"
+			plan.numberCenterX() * 2 == left + right && plan.numberCenterY() * 2 == top + bottom,
+			"the number center " + plan.numberCenterX() + "," + plan.numberCenterY() + " is off the badge " + left + ".." + right
 		);
 		helper.succeed();
 	}
 
-	private static int red(final int color) {
-		return color >> 16 & 0xFF;
+	@GameTest
+	public void theNameSitsRightOfTheBadgeAndCenteredOnIt(final GameTestHelper helper) {
+		Plan plan = plan(MAX_HEALTH, MAX_HEALTH);
+		int badgeRight = plan.badge().stream().mapToInt(Rect::x1).max().orElse(-1);
+		double nameCenter = (plan.nameBounds().y0() + plan.nameBounds().y1()) / 2.0;
+		helper.assertTrue(plan.nameBounds().x0() >= badgeRight, "the name starts at " + plan.nameBounds().x0() + " inside the badge");
+		helper.assertTrue(
+			Math.abs(nameCenter - plan.numberCenterY()) <= 1.0,
+			"the name center " + nameCenter + " is off the badge center " + plan.numberCenterY()
+		);
+		helper.succeed();
 	}
 
-	private static int green(final int color) {
-		return color >> 8 & 0xFF;
+	@GameTest
+	public void onlyRingsDiscAndBackgroundRemain(final GameTestHelper helper) {
+		Set<Integer> allowed = Set.of(
+			ReadoutPlateLayout.HP_COLOR, ReadoutPlateLayout.HP_TRACK_COLOR, ReadoutPlateLayout.ABSORPTION_COLOR,
+			ReadoutPlateLayout.DISC_COLOR, ReadoutPlateLayout.BACKGROUND_COLOR
+		);
+
+		for (Rect rect : plan(MAX_HEALTH / 2.0F, 5.0F).all()) {
+			helper.assertTrue(allowed.contains(rect.color()), "a bar color is still drawn: " + Integer.toHexString(rect.color()));
+		}
+
+		helper.succeed();
 	}
 
-	private static int blue(final int color) {
-		return color & 0xFF;
+	@GameTest
+	public void theBackgroundHoldsTheBadgeAndTheNameAndOverlapsNothing(final GameTestHelper helper) {
+		Plan plan = plan(MAX_HEALTH / 2.0F, 5.0F);
+		Rect bounds = plan.bounds();
+		int alpha = ReadoutPlateLayout.BACKGROUND_COLOR >>> 24;
+		int red = ReadoutPlateLayout.BACKGROUND_COLOR >> 16 & 0xFF;
+		int green = ReadoutPlateLayout.BACKGROUND_COLOR >> 8 & 0xFF;
+		int blue = ReadoutPlateLayout.BACKGROUND_COLOR & 0xFF;
+		helper.assertTrue(alpha > ALPHA_FLOOR && alpha < ALPHA_CEILING, "the background alpha " + alpha + " is not semi-transparent");
+		helper.assertTrue(red == green && green == blue, "the background is not gray");
+
+		for (Rect rect : plan.badge()) {
+			helper.assertTrue(contains(bounds, rect), "the background misses badge cell " + rect);
+		}
+
+		helper.assertTrue(contains(bounds, plan.nameBounds()), "the background misses the name " + plan.nameBounds());
+		helper.assertTrue(
+			bounds.x0() < plan.badge().stream().mapToInt(Rect::x0).min().orElse(0)
+				&& bounds.y0() < plan.badge().stream().mapToInt(Rect::y0).min().orElse(0)
+				&& bounds.x1() > plan.nameBounds().x1() && bounds.y1() > plan.badge().stream().mapToInt(Rect::y1).max().orElse(0),
+			"the background has no padding around the plate"
+		);
+		List<Rect> all = plan.all();
+		long covered = all.stream().mapToLong(rect -> (long) rect.width() * rect.height()).sum();
+		helper.assertTrue(
+			covered == (long) bounds.width() * bounds.height(),
+			"the drawn rectangles cover " + covered + " of " + (long) bounds.width() * bounds.height() + " cells"
+		);
+
+		for (int i = 0; i < all.size(); i++) {
+			for (int j = i + 1; j < all.size(); j++) {
+				helper.assertTrue(!all.get(i).overlaps(all.get(j)), all.get(i) + " overlaps " + all.get(j));
+			}
+		}
+
+		helper.succeed();
+	}
+
+	private static boolean contains(final Rect outer, final Rect inner) {
+		return outer.x0() <= inner.x0() && outer.y0() <= inner.y0() && outer.x1() >= inner.x1() && outer.y1() >= inner.y1();
+	}
+
+	private static double area(final Plan plan, final int color) {
+		return plan.badge().stream().filter(rect -> rect.color() == color).mapToDouble(rect -> rect.width() * rect.height()).sum();
+	}
+
+	/** Distance from the badge center of the nearest cell of a one-row run. */
+	private static double minDistance(final Rect rect) {
+		double dy = rect.y0() + 0.5 - ReadoutPlateLayout.BADGE_CENTER;
+		double nearest = Math.max(rect.x0() + 0.5, Math.min(ReadoutPlateLayout.BADGE_CENTER, rect.x1() - 0.5));
+		return Math.hypot(nearest - ReadoutPlateLayout.BADGE_CENTER, dy);
+	}
+
+	/** Distance from the badge center of the farthest cell of a one-row run. */
+	private static double maxDistance(final Rect rect) {
+		double dy = rect.y0() + 0.5 - ReadoutPlateLayout.BADGE_CENTER;
+		double far = Math.max(
+			Math.abs(rect.x0() + 0.5 - ReadoutPlateLayout.BADGE_CENTER), Math.abs(rect.x1() - 0.5 - ReadoutPlateLayout.BADGE_CENTER)
+		);
+		return Math.hypot(far, dy);
 	}
 }
