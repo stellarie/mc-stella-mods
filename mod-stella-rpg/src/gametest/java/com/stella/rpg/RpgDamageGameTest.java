@@ -26,7 +26,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "meleeAddsDice", loss, HIT + 15.0F);
+		assertLoss(helper, "meleeAddsDice", loss, guarded(HIT + 15.0F));
 		helper.succeed();
 	}
 
@@ -49,9 +49,9 @@ public final class RpgDamageGameTest {
 			resetRollers();
 		}
 		float factor = (float) (0.2 + 0.5 * 0.5 * 0.8);
-		assertLoss(helper, "chargeScalesDice spam", spam, HIT + 0.2F * 15.0F);
-		assertLoss(helper, "chargeScalesDice half", half, HIT + factor * 15.0F);
-		assertLoss(helper, "chargeScalesDice after", next, HIT + 15.0F);
+		assertLoss(helper, "chargeScalesDice spam", spam, guarded(HIT + 0.2F * 15.0F));
+		assertLoss(helper, "chargeScalesDice half", half, guarded(HIT + factor * 15.0F));
+		assertLoss(helper, "chargeScalesDice after", next, guarded(HIT + 15.0F));
 		helper.succeed();
 	}
 
@@ -64,7 +64,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "arrowAddsDexDice", loss, HIT + 15.0F);
+		assertLoss(helper, "arrowAddsDexDice", loss, guarded(HIT + 15.0F));
 		helper.succeed();
 	}
 
@@ -77,7 +77,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "critMultipliesTotal", loss, (HIT + 4.0F) * 1.5F);
+		assertLoss(helper, "critMultipliesTotal", loss, guarded((HIT + 4.0F) * 1.5F));
 		helper.succeed();
 	}
 
@@ -112,7 +112,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "spellsUnchanged", loss, HIT);
+		assertLoss(helper, "spellsUnchanged", loss, guarded(HIT));
 		helper.succeed();
 	}
 
@@ -149,19 +149,19 @@ public final class RpgDamageGameTest {
 	}
 
 	@GameTest
-	public void mobsAreUnchanged(final GameTestHelper helper) {
+	public void thornsIsNotMelee(final GameTestHelper helper) {
 		float loss;
 		try {
-			RpgCombat.setRoller((attacker, random, chance) -> true);
-			Zombie attacker = zombie(helper);
+			forceMax(true);
+			ServerPlayer player = RpgTestSupport.player(helper);
+			RpgTestSupport.setStat(player, Stat.STR, 100);
 			Zombie victim = zombie(helper);
-			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), HIT);
+			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().thorns(player), HIT);
 			loss = victim.getMaxHealth() - victim.getHealth();
 		} finally {
-			RpgCombat.setRoller(null);
+			resetRollers();
 		}
-		helper.assertTrue(Math.abs(loss - HIT) < TOLERANCE, "zombie hit dealt " + loss + " instead of " + HIT);
-		RpgTestSupport.result("mobsAreUnchanged", "loss=" + loss);
+		assertLoss(helper, "thornsIsNotMelee", loss, guarded(HIT));
 		helper.succeed();
 	}
 
@@ -196,7 +196,13 @@ public final class RpgDamageGameTest {
 		RpgTestSupport.setStat(player, Stat.VIT, vit);
 		Zombie attacker = zombie(helper);
 		float before = player.getHealth();
-		player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), damage);
+		try {
+			RpgCombat.setRoller((roller, random, chance) -> false);
+			RpgCombat.setDiceRoller((roller, random, dice) -> 0);
+			player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), damage);
+		} finally {
+			resetRollers();
+		}
 		return before - player.getHealth();
 	}
 
@@ -205,6 +211,10 @@ public final class RpgDamageGameTest {
 		RpgTestSupport.bare(zombie);
 		zombie.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
 		return zombie;
+	}
+
+	private static float guarded(final float damage) {
+		return RpgTestSupport.mobGuard(damage);
 	}
 
 	private static void forceMax(final boolean crit) {

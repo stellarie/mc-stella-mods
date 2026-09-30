@@ -41,6 +41,7 @@
 			"com.stella.mobs.ReadoutRankGameTest",
 			"com.stella.mobs.RiderPearlGameTest",
 			"com.stella.mobs.RoleGameTest",
+			"com.stella.mobs.RpgFactsGameTest",
 			"com.stella.mobs.SpawnScalingGameTest",
 			"com.stella.mobs.SpawnSafetyGameTest",
 			"com.stella.mobs.SpiderEliteGameTest",

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 
 public final class StatBonuses {
@@ -43,9 +44,14 @@ public final class StatBonuses {
 	}
 
 	public static int effective(final LivingEntity entity, final Stat stat) {
-		if (!(entity instanceof ServerPlayer)) {
+		int base;
+		if (entity instanceof ServerPlayer) {
+			base = base(entity, stat);
+		} else if (entity instanceof Mob mob) {
+			base = MobStats.base(mob, stat);
+		} else {
 			return 0;
 		}
-		return Math.max(0, Math.min(EFFECTIVE_CEILING, base(entity, stat) + bonus(entity, stat)));
+		return Math.max(0, Math.min(EFFECTIVE_CEILING, base + bonus(entity, stat)));
 	}
 }

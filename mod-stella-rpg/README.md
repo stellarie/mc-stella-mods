@@ -1,7 +1,8 @@
 # mod-stella-rpg
 
-A server-side Fabric mod for Minecraft 26.3. Every player has six stats.
-Stats, point allocation, level retention, dice damage, and stat effects apply to players.
+A server-side Fabric mod for Minecraft 26.3. Every player and every mob has six stats.
+Point allocation and level retention apply to players only.
+Dice damage and stat effects apply to players and mobs.
 
 ## Stats
 
@@ -49,14 +50,16 @@ STR sets the melee dice. DEX sets the projectile dice. The dice use the effectiv
 | 250 | 6d6 | 6 | 36 | 21.0 |
 | 1024 | 21d14 | 21 | 294 | 157.5 |
 
-Outgoing damage from a player follows these rules:
+Outgoing damage from a player or a mob follows these rules:
 
-1. Melee (`minecraft:player_attack`) adds `roll * charge`. `charge = 0.2 + a * a * 0.8`, where `a` is the attack strength at the swing.
-2. A projectile from `#minecraft:is_projectile` that the player owns adds the DEX roll.
-3. Any other source is unchanged, including spells and Thorns.
-4. LUK rolls the crit. A crit multiplies the total (base plus roll) by `crit_multiplier`.
+1. Melee (`minecraft:player_attack`, `minecraft:mob_attack`, `minecraft:mob_attack_no_aggro`) adds `roll * charge`.
+   For a player, `charge = 0.2 + a * a * 0.8`, where `a` is the attack strength at the swing. A mob uses charge 1.0.
+2. A projectile from `#minecraft:is_projectile` that the attacker owns adds the DEX roll.
+3. A mob with `minecraft:indirect_magic` damage multiplies it by the spell power multiplier for its INT. This rule adds no dice and no crit.
+4. Any other source is unchanged, including player spells and Thorns.
+5. LUK rolls the crit for rules 1 and 2. A crit multiplies the total (base plus roll) by `crit_multiplier`.
 
-Incoming damage to a player is `max(0, damage * damage_taken(VIT) - flat)`.
+Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) - flat)`.
 `flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. This mod registers none.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
@@ -90,8 +93,29 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   Each must be an integer from 1 to 1000. A bad value uses its default.
 - The keys `melee_damage` and `ranged_damage` no longer exist. A file that holds them loads and logs them as ignored.
 - `crit_multiplier` is a number of at least 1. The default is 1.5.
+- `mob_weights.{role}.{stat}` holds the mob weights. The roles are `melee`, `ranged`, and `magic`.
+  Each weight is a number from 0 to 100. A bad weight uses its default.
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
+
+## Mob stats
+
+A mob stat is `max(5, round(threat * weight))`, at most 1024. A negative threat counts as 0.
+The threat is the mob's `ThreatState` level. The weight depends on the mob role.
+Mob stats add to the `SpawnScaling` health and damage modifiers. They do not replace them.
+
+| Role | STR | AGI | VIT | DEX | INT | LUK |
+|---|---|---|---|---|---|---|
+| `melee` | 1.00 | 0.50 | 1.00 | 0.25 | 0.25 | 0.50 |
+| `ranged` | 0.25 | 1.00 | 0.50 | 1.00 | 0.25 | 0.50 |
+| `magic` | 0.25 | 0.50 | 0.50 | 0.25 | 1.00 | 0.50 |
+
+- `StatBonuses.effective` returns the mob stat plus the registered bonus for a `Mob`.
+- Mob AGI has no effect. Mobs keep their goal cooldowns.
+- `MobsBridge` reads `com.stella.mobs.RpgFacts` by reflection. Without `mod-stella-mobs`,
+  or after a failed call, the threat is 0 and the role is `melee`, so every mob stat is 5.
+- An unknown role counts as `melee`.
+- Every mob has at least VIT 5, so a hit on any mob loses about 1 percent to the percent rule.
 
 ## Spells API
 
