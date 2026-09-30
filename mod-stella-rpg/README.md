@@ -103,7 +103,7 @@ The tabs appear only after the server sent the first stat sync.
 - Pending points stay on the client. `Add Stats` sends them to the server in one request. It is inactive with no pending points.
 - The screen discards pending points when it closes and on each sync with result `OK`.
 - The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd` with the pending points applied.
-  `Atk` is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts), then the STR dice.
+  `Atk` is a damage range, such as `Atk 10-13`. The base is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts). The range adds the STR dice minimum and maximum to that base. A critical hit is outside the range.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
 - `Reset Stats (320em)` needs two clicks within 5 seconds. It removes allocated points. `-` never does.
