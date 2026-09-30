@@ -21,9 +21,9 @@ public class GymEpisodeGameTest {
 	private static final int EPISODES = 3;
 	private static final float[] FIRE_AT_THE_AIM_POINT = {0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 2.0F};
 
-	@GameTest(maxTicks = 1800, padding = LearnArena.PADDING, environment = ModelTests.ENV)
+	// Its own batch: the action source below is global and would still every model archer that runs beside it.
+	@GameTest(maxTicks = 1800, padding = LearnArena.PADDING, environment = "mod-stella-learn-test:gym_episode")
 	public void botStaysHittableAfterItDies(final GameTestHelper helper) {
-		ModelTests.acquire(helper);
 		ModelDriver.useSource((mob, observation) -> ArcherAction.STILL);
 		helper.runBeforeTestEnd(ModelDriver::useNoPolicy);
 		ServerLevel level = helper.getLevel();
@@ -76,7 +76,8 @@ public class GymEpisodeGameTest {
 		}, 1700, () -> {
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=botStaysHittableAfterItDies RESULT episodes={} wins={}", EPISODES, wins[0]);
 			helper.assertTrue(wins[0] == EPISODES, "the archer killed the bot in " + wins[0] + " of " + EPISODES + " episodes; a bot that died once is not hittable");
-			ModelTests.pass(helper);
+			ModelDriver.useNoPolicy();
+			helper.succeed();
 		}, () -> "the episodes never finished: played " + played[0] + ", wins " + wins[0]));
 	}
 }

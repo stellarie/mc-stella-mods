@@ -21,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** An arena is rebuilt exactly, whatever a fight did to it. */
 public class GymArenaGameTest {
-	private static final int INDEX = 917;
+	private static final int INDEX = 980;
 
 	private static BlockState expected(final int dy) {
 		if (dy >= 0) {
