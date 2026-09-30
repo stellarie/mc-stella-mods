@@ -196,12 +196,21 @@ final class TowerTestSupport {
 		return Math.max(dx, dz);
 	}
 
+	/**
+	 * Whether the line from one spot to another runs over open ground the whole way, and so do two lines a third of a block to
+	 * either side of it: a body is wider than a line, and one that grazes a corner sees past it on paper only.
+	 */
 	private static boolean clear(final TowerPlan plan, final double ax, final double az, final double bx, final double bz) {
-		int steps = (int) Math.ceil(Math.hypot(bx - ax, bz - az) * 4.0);
+		double length = Math.hypot(bx - ax, bz - az);
+		double px = length == 0.0 ? 0.0 : -(bz - az) / length * 0.35;
+		double pz = length == 0.0 ? 0.0 : (bx - ax) / length * 0.35;
+		int steps = (int) Math.ceil(length * 4.0);
 		for (int i = 0; i <= steps; i++) {
 			double t = steps == 0 ? 0.0 : i / (double) steps;
-			if (plan.wall((int) Math.floor(ax + (bx - ax) * t), (int) Math.floor(az + (bz - az) * t))) {
-				return false;
+			for (int side = -1; side <= 1; side++) {
+				if (plan.wall((int) Math.floor(ax + (bx - ax) * t + px * side), (int) Math.floor(az + (bz - az) * t + pz * side))) {
+					return false;
+				}
 			}
 		}
 		return true;

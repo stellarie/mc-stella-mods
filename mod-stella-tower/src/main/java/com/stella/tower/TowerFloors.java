@@ -266,6 +266,7 @@ public final class TowerFloors {
 		private final Random random;
 		private final ChunkPos middle;
 		private final TowerPlan plan;
+		private final boolean[][] lamps;
 		private int askedAt = -1;
 		private int column;
 
@@ -274,6 +275,7 @@ public final class TowerFloors {
 			this.floor = floor;
 			this.random = new Random(tower.getSeed() ^ FLOOR_SALT ^ (floor * 0x9E3779B97F4A7C15L));
 			this.plan = plan;
+			this.lamps = lampSpots(plan);
 			BlockPos origin = TowerLayout.origin(floor);
 			this.middle = ChunkPos.containing(origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2));
 		}
@@ -290,7 +292,7 @@ public final class TowerFloors {
 				}
 			}
 			if (this.column <= TowerLayout.SIZE + 1) {
-				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random, this.plan);
+				buildColumn(this.tower, this.floor, TowerLayout.origin(this.floor).getX() - 1 + this.column, this.random, this.plan, this.lamps);
 				this.column++;
 				return Step.PROGRESS;
 			}
@@ -316,7 +318,45 @@ public final class TowerFloors {
 		}
 	}
 
-	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random, final TowerPlan plan) {
+	/**
+	 * Where the ceiling lamps hang, by offset from the room's corner: on the grid of the maze's cells, the spot of a cell where
+	 * its light falls on the path. Where that spot lies under a wall that reaches the ceiling (a variation whose walls do not
+	 * follow the maze's cells), the lamp hangs over the nearest open spot within three blocks instead, or over none.
+	 */
+	static boolean[][] lampSpots(final TowerPlan plan) {
+		boolean[][] lit = new boolean[TowerLayout.SIZE][TowerLayout.SIZE];
+		for (int gx = 0; gx < TowerMaze.CELLS; gx++) {
+			for (int gz = 0; gz < TowerMaze.CELLS; gz++) {
+				int x = 1 + gx * LAMP_SPACING + LAMP_AT;
+				int z = 1 + gz * LAMP_SPACING + LAMP_AT;
+				int best = Integer.MAX_VALUE;
+				int bx = -1;
+				int bz = -1;
+				for (int dx = -3; dx <= 3; dx++) {
+					for (int dz = -3; dz <= 3; dz++) {
+						int ax = x + dx;
+						int az = z + dz;
+						if (ax < 1 || az < 1 || ax > TowerLayout.SIZE - 2 || az > TowerLayout.SIZE - 2) {
+							continue;
+						}
+						boolean under = plan.walls()[ax][az] && plan.wallHeightAt(ax, az) >= TowerLayout.HEIGHT;
+						int away = Math.max(Math.abs(dx), Math.abs(dz)) * 8 + Math.abs(dx) + Math.abs(dz);
+						if (!under && away < best) {
+							best = away;
+							bx = ax;
+							bz = az;
+						}
+					}
+				}
+				if (bx >= 0) {
+					lit[bx][bz] = true;
+				}
+			}
+		}
+		return lit;
+	}
+
+	private static void buildColumn(final ServerLevel tower, final int floor, final int x, final Random random, final TowerPlan plan, final boolean[][] lamps) {
 		BlockPos origin = TowerLayout.origin(floor);
 		int x0 = origin.getX();
 		int z0 = origin.getZ();
@@ -343,7 +383,7 @@ public final class TowerFloors {
 					BlockState ground = palette[random.nextInt(palette.length)];
 					set(tower, x, base - 1, z, plan.inSafeZone(x - x0, z - z0) ? SAFE_FLOOR.defaultBlockState() : ground);
 					// Over a maze cell, never over a wall line, so the light falls on the paths.
-					boolean lit = (x - x0 - 1) % LAMP_SPACING == LAMP_AT && (z - z0 - 1) % LAMP_SPACING == LAMP_AT;
+					boolean lit = lamps[x - x0][z - z0];
 					set(tower, x, top, z, lit ? lamp : wall);
 					if (plan.walls()[x - x0][z - z0]) {
 						// The safe room's ring is tower wall, which nothing breaks; the maze's own is maze wall.

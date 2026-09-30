@@ -605,7 +605,7 @@ public class TowerSafeRoomGameTest {
 					+ " reacquiredAfter=" + (at[4] >= 0 ? at[4] - at[3] : -1));
 				Mob now = tower.getEntity(id) instanceof Mob m ? m : null;
 				if (at[4] < 0 && now != null) {
-					TowerTestSupport.result(name + "Diagnosis", "distance=" + now.distanceTo(player) + " sees=" + now.hasLineOfSight(player) + " target=" + now.getTarget()
+					TowerTestSupport.result(name + "Diagnosis", "variation=" + plan.variation() + " floor=" + floor + " distance=" + now.distanceTo(player) + " sees=" + now.hasLineOfSight(player) + " target=" + now.getTarget()
 						+ " alive=" + now.isAlive() + " at=" + now.blockPosition().subtract(plan.origin()) + " player=" + player.blockPosition().subtract(plan.origin()));
 				}
 				if (now != null) {

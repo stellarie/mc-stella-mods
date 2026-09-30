@@ -52,8 +52,10 @@ public class TowerMazeGameTest {
 		return seen[toX][toZ];
 	}
 
+	/** An ordinary floor of the plain maze variation: these cases are about its cells, paths and walls, which the other variations do not share. */
 	private static int ordinaryFloor(final ServerLevel tower) {
-		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
+		long seed = tower.getSeed();
+		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0 && TowerPlan.variationOf(seed, f) == TowerPlan.Variation.MAZE);
 		TowerFloors.ensure(tower, floor);
 		return floor;
 	}
@@ -281,7 +283,7 @@ public class TowerMazeGameTest {
 		for (int x = 1; x < S - 1; x++) {
 			for (int z = 1; z < S - 1; z++) {
 				if (walls[x][z]) {
-					return TowerLayout.origin(floor).offset(x, 2, z);
+					return TowerLayout.origin(floor).offset(x, 1, z);
 				}
 			}
 		}
