@@ -1,0 +1,4 @@
+{
+	"block.mod-stella-rpg.tombstone": "Tombstone",
+	"message.mod-stella-rpg.tombstone_locked": "This tombstone opens for others in %s minute(s)."
+}

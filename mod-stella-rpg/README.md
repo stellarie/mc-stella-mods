@@ -134,6 +134,28 @@ Mob stats add to the `SpawnScaling` health and damage modifiers. They do not rep
 - At INT 100 the multipliers are 1.5000 and 0.9000. At INT 0 both are 1.0000.
 - Spells that use `magic()` damage have no attacker, so STR and DEX dice do not apply.
 
+## Tombstone
+
+With `keepInventory` off, a death no longer drops the whole inventory. `keepInventory` on changes nothing.
+
+- The death picks `min(n, 5 + random 0..3)` non-empty stacks from the main inventory, the hotbar, the armor slots, and the offhand.
+  `n` is the number of candidate stacks. The pick has no repeats.
+- Items in `#mod-stella-rpg:never_tombstone` are never picked. The tag is empty by default.
+- The picked stacks go into a `mod-stella-rpg:tombstone` block. The player keeps every other stack after respawn.
+- Soulbound stashes its items first, so they are never picked. Spell quick-slot items stay with the player.
+- The block goes at the death position. If that position is not replaceable, it goes at the nearest
+  replaceable position within 8 blocks. With no such position, the picked stacks drop as item entities.
+- The block holds the owner UUID, the owner name, the death game time, and up to 8 stacks.
+- Use opens a take-only 9-slot menu of the vanilla 9x1 type. No slot accepts an item.
+- The owner opens the menu at any time. Other players open it 12000 ticks (10 minutes) after the death.
+  A refused player sees the minutes left in the action bar.
+- The block and its displays disappear when the last stack leaves.
+- The block has destroy time -1 and explosion resistance 3600000. It is immovable for pistons, and
+  the wither and the ender dragon cannot break it. A creative break drops the remaining stacks.
+- A `TextDisplay` with the owner name and an `ItemDisplay` with the owner head float above the block.
+  Both carry the entity tag `mod-stella-rpg.tombstone`.
+- The block entity is not a `Container`, so hoppers cannot pull from it.
+
 ## Build and test
 
 Run these from `mod-stella-rpg/` with Java 25:
@@ -154,4 +176,5 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgAttackChargeMixin` | `Player#attack`, at `HEAD` and `RETURN` |
 | `RpgIncomingDamageMixin` | `LivingEntity#getDamageAfterMagicAbsorb`, at `RETURN` |
 | `RpgPlayerExperienceMixin` | `Player#getBaseExperienceReward`, at `HEAD` |
+| `RpgInventoryDropMixin` | `Inventory#dropAll`, at `HEAD`, cancellable |
 | `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7) |
