@@ -29,6 +29,8 @@ final class RpgTestSupport {
 	static ServerPlayer player(final GameTestHelper helper) {
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		player.getAbilities().invulnerable = false;
+		// The mock holds a sword, and a weapon adds dice and a multiplier.
+		bare(player);
 		return player;
 	}
 
@@ -61,6 +63,18 @@ final class RpgTestSupport {
 
 	static void setStat(final ServerPlayer player, final Stat stat, final int value) {
 		StatPoints.setSheet(player, StatPoints.sheet(player).with(stat, value));
+	}
+
+	/** The VIT guard and the INT magic defense of a threat-0 melee mob, for a magic hit. */
+	static float mobMagicGuard(final float damage) {
+		int intel = MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.INT, 0);
+		return (float) (mobGuard(damage) * RpgCurve.magicDamageTakenMultiplier(intel));
+	}
+
+	/** The LUK share a threat-0 melee mob takes from a critical hit. */
+	static float mobCritGuard() {
+		int luk = MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.LUK, 0);
+		return (float) RpgCurve.critDamageTakenMultiplier(luk);
 	}
 
 	static float mobGuard(final float damage) {

@@ -54,14 +54,15 @@ public final class StrengthPercentGameTest {
 				.append(" w1=").append(weakness1).append(" w3=").append(weakness3).append(" w11=").append(wiped)
 				.append(" both=").append(both).append(" stacked=").append(stacked)
 				.append(" attack=").append(attackBefore).append('/').append(attackWithStrength).append('/').append(attackWithWeakness);
+			// Strength and Weakness also move STR through the effect stats, so status ATK follows the effective STR.
 			helper.assertTrue(near(none, BASE), "no effect changed the hit to " + none);
-			helper.assertTrue(near(strength1, BASE * 1.1F), "Strength I " + strength1);
-			helper.assertTrue(near(strength3, BASE * 1.3F), "Strength III " + strength3);
+			helper.assertTrue(near(strength1, (BASE + status(10)) * 1.1F), "Strength I " + strength1);
+			helper.assertTrue(near(strength3, (BASE + status(30)) * 1.3F), "Strength III " + strength3);
 			helper.assertTrue(near(weakness1, BASE * 0.9F), "Weakness I " + weakness1);
 			helper.assertTrue(near(weakness3, BASE * 0.7F), "Weakness III " + weakness3);
 			helper.assertTrue(wiped == 0.0F, "Weakness XII left damage " + wiped);
 			helper.assertTrue(near(both, BASE), "Strength I and Weakness I " + both);
-			helper.assertTrue(near(stacked, BASE * (1.0F + 0.055F + 0.2F)), "Strength II with a 5.5% affix " + stacked);
+			helper.assertTrue(near(stacked, (BASE + status(20)) * (1.0F + 0.055F + 0.2F)), "Strength II with a 5.5% affix " + stacked);
 			helper.assertTrue(attackWithStrength == attackBefore && attackWithWeakness == attackBefore,
 				"the vanilla attack modifier still applies: " + attackBefore + " " + attackWithStrength + " " + attackWithWeakness);
 		} finally {
@@ -88,6 +89,10 @@ public final class StrengthPercentGameTest {
 		double attack = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
 		player.removeAllEffects();
 		return attack;
+	}
+
+	private static float status(final int strength) {
+		return (float) RpgCombat.statusAtk(strength);
 	}
 
 	private static boolean near(final float actual, final float expected) {

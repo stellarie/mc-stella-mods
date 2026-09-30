@@ -325,7 +325,7 @@ public final class WeaponRollGameTest {
 		menu.clicked(0, 0, ContainerInput.PICKUP, player);
 		ItemStack shieldTaken = menu.getCarried();
 		RpgTestSupport.result("nonWeaponIgnored", "pickaxe=" + taken.has(WeaponRolls.STAT_ROLLS) + " shield=" + shieldTaken.has(WeaponRolls.STAT_ROLLS));
-		helper.assertTrue(shieldTaken.is(Items.SHIELD) && !shieldTaken.has(WeaponRolls.STAT_ROLLS), "shield rolled: " + shieldTaken);
+		helper.assertTrue(shieldTaken.is(Items.SHIELD) && shieldTaken.has(WeaponRolls.STAT_ROLLS), "a shield did not roll: " + shieldTaken);
 		helper.succeed();
 	}
 
@@ -409,7 +409,10 @@ public final class WeaponRollGameTest {
 				helper.assertTrue(rolls.values().stream().allMatch(value -> value == 8), "range override ignored: " + rolls);
 			}
 			ItemStack axe = new ItemStack(Items.IRON_AXE);
-			helper.assertTrue(!WeaponRolls.roll(axe, random), "axe left the item list but still rolled");
+			helper.assertTrue(WeaponRolls.roll(axe, random), "an axe that left the item list did not roll from its tag");
+			helper.assertTrue(axe.get(WeaponRolls.STAT_ROLLS).values().stream().allMatch(value -> value == 8), "the tag roll ignored the iron tier range");
+			ItemStack pickaxe = new ItemStack(Items.IRON_PICKAXE);
+			helper.assertTrue(!WeaponRolls.roll(pickaxe, random), "a pickaxe rolled");
 			ItemStack chest = new ItemStack(Items.IRON_CHESTPLATE);
 			WeaponRolls.roll(chest, random);
 			helper.assertTrue(chest.get(WeaponRolls.STAT_ROLLS).size() == 1, "armor ignored the armor rule");

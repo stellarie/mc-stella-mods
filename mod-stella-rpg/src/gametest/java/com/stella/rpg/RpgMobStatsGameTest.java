@@ -144,8 +144,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 40));
-		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 200));
+		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40));
+		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("melee", Stat.STR, 200));
 		helper.succeed();
 	}
 
@@ -164,7 +164,7 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("melee", Stat.STR, 40)) * 1.5F);
+		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40)) * 1.5F);
 		helper.succeed();
 	}
 
@@ -188,8 +188,9 @@ public final class RpgMobStatsGameTest {
 			MobsBridge.setFacts(null);
 		}
 		double multiplier = RpgCurve.damageTakenMultiplier(expected("melee", Stat.VIT, 40));
-		assertLoss(helper, "mobVitalityReduces plain", plain, (float) (6.0 * multiplier));
-		assertLoss(helper, "mobVitalityReduces flat", withFlat, (float) (6.0 * multiplier - 1.0));
+		double magic = RpgCurve.magicDamageTakenMultiplier(expected("melee", Stat.INT, 40));
+		assertLoss(helper, "mobVitalityReduces plain", plain, (float) (6.0 * multiplier * magic));
+		assertLoss(helper, "mobVitalityReduces flat", withFlat, (float) (6.0 * multiplier * magic - 1.0));
 		assertLoss(helper, "mobVitalityReduces clamped", clamped, 0.0F);
 		helper.succeed();
 	}
@@ -210,6 +211,7 @@ public final class RpgMobStatsGameTest {
 				return dice.max();
 			});
 			Skeleton skeleton = helper.spawnMob(EntityTypes.SKELETON, 1, 1, 2).withNoFreeWill().spawn();
+			RpgTestSupport.bare(skeleton);
 			stub.set(skeleton, 40, "ranged");
 			loss40 = arrowLoss(helper, skeleton);
 			stub.set(skeleton, 200, "ranged");
@@ -217,8 +219,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("ranged", Stat.DEX, 40));
-		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE) + status("ranged", Stat.DEX, 200));
+		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("ranged", Stat.DEX, 40));
+		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("ranged", Stat.DEX, 200));
 		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(expected("ranged", Stat.DEX, 40))) && rolled.get(1).equals(RpgDice.of(expected("ranged", Stat.DEX, 200))),
 			"arrow dice were " + rolled);
 		helper.succeed();
@@ -255,6 +257,11 @@ public final class RpgMobStatsGameTest {
 		double high = RpgSpells.matk(intel, RpgSpells.MAX_DIVISOR, 0.0, 0.0) * share;
 		RpgTestSupport.result(name, "loss=" + loss + " range=" + low + ".." + high);
 		helper.assertTrue(loss >= low - 0.05 && loss <= high + 0.05, name + " loss=" + loss + " outside " + low + ".." + high);
+	}
+
+	/** Mob level is its threat, and the dice multiplier is 1 + 0.02 per level. */
+	private static double levelMultiplier(final int threat) {
+		return 1.0 + RpgConfigStore.current().tables().dicePerLevel() * threat;
 	}
 
 	private static float status(final String role, final Stat stat, final int threat) {
@@ -309,7 +316,8 @@ public final class RpgMobStatsGameTest {
 	private static ServerPlayer victim(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
-		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		// Room for a threat 200 mob, whose dice multiplier is 5.
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(600.0);
 		player.setHealth(player.getMaxHealth());
 		return player;
 	}

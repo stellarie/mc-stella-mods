@@ -59,8 +59,9 @@ The HP bar text shows `ceil(health) / max`. `38650 / 38650` fits the 81 pixel ba
 The stats are STR, AGI, VIT, DEX, INT, and LUK.
 
 - The base value comes only from point allocation.
-- The bonus value comes from registered `StatBonuses.Provider` callbacks. `ArmorSets` and `WeaponRolls` register one each.
-- The effective value is base plus bonus, from 0 to 2048.
+- The bonus value comes from registered `StatBonuses.Provider` callbacks. `ArmorSets`, `WeaponRolls`, `EnchantStats`, and `EffectStats` register one each.
+  A bonus can be negative. The effective value is base plus bonus, from 0 to 2048, so a curse never takes a stat below 0.
+- Enchantments and effects grant stats. See `Stats from enchantments and effects`.
 
 ## Points
 
@@ -90,6 +91,10 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
 | Cooldown | INT | `cooldown_reduction` | 0.40 | 300 | `1 - value`; a later stage uses it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
+| Max roll chance | DEX | `dex_max_roll` | 0.50 | 200 | chance that one physical die rolls its maximum |
+| MATK max roll chance | INT | `int_max_roll` | 0.50 | 200 | chance that a MATK roll is the maximum |
+| Magic defense | INT | `magic_defense` | 0.40 | 300 | `1 - value` on magic damage taken |
+| Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
 
 ## Dice damage
 
@@ -98,6 +103,28 @@ STR sets the melee dice. DEX sets the projectile dice. The dice use the effectiv
 - Count `N = 1 + floor(s / 25)`. Sides `M = 4 + floor(s / 100)`.
 - The roll is the sum of `N` rolls of `1..M`.
 - A mob rolls the same dice and keeps `mob_dice_share` (default 0.5) of the result, so early mob hits stay near vanilla.
+- Each physical die (STR, DEX, and weapon dice) rolls its maximum with chance `0.5 * DEX / (DEX + 200)` of the attacker.
+- A weapon adds its own die to the STR dice for melee, and to the DEX dice for an arrow from a bow or crossbow.
+  The refine level (`stella_refine`) adds dice of the same size: +1 at +10, +2 at +12, +3 at +15.
+- The dice multiplier is `(1 + 0.02 * level) * material * refine`. It multiplies the dice and never the base damage,
+  status ATK, or affixes. A player's level is the XP level. A mob's level is its threat.
+  The material and the refine come from the main-hand item, or from the weapon a projectile names.
+  A mob multiplies first and then keeps `mob_dice_share`.
+
+| Material | Sword | Axe | Spear | Multiplier |
+|---|---|---|---|---|
+| wood | 1d2 | 1d3 | 1d2 | 1.0 |
+| stone, copper | 1d3 | 1d4 | 1d3 | 1.1 |
+| gold | 1d6 | 1d8 | 1d6 | 1.3 |
+| iron | 1d4 | 1d6 | 1d4 | 1.2 |
+| diamond | 1d6 | 1d8 | 1d6 | 1.4 |
+| netherite | 1d8 | 2d6 | 1d8 | 1.6 |
+| void | 2d6 | 2d8 | 2d6 | 2.0 |
+
+A mace rolls 1d10 and a trident 1d6, both with the diamond multiplier. A bow rolls 1d4 and a crossbow 1d6, both with the iron multiplier.
+The refine multiplier is 1.0 below +10, 1.15 at +10 and +11, 2.30 from +12 to +14, and 3.45 at +15.
+The config keys are `weapon_dice`, `material_dice_multiplier`, `dice_multiplier_per_level`, `refine_dice_multiplier`, and `refine_extra_dice`.
+The stats screen `Atk` range includes the weapon dice and all three multipliers.
 
 | Stat | Dice | Minimum | Maximum | Mean |
 |---|---|---|---|---|
@@ -120,6 +147,8 @@ Outgoing damage from a player or a mob follows these rules:
 6. Rules 1 and 2 then add the flat damage affix divided by K, and multiply by `1 + damage% + 0.1 * (Strength level - Weakness level)`.
    The factor is never below 0. Strength and Weakness no longer change the attack damage attribute.
 7. LUK rolls the crit for rules 1 and 2. A crit multiplies the total by `crit_multiplier`.
+   A victim with LUK takes `1 - 0.5 * LUK / (LUK + 300)` of a critical hit. `RpgCombat` passes the crit flag to `scaleIncoming`
+   in a `ThreadLocal` for the victim of that hurt call, and `RpgOutgoingDamageMixin` clears it when `hurtServer` returns.
 
 The affixes come from the main-hand item. An arrow reads the affixes of the item in the main hand of its owner.
 
@@ -127,6 +156,8 @@ Incoming damage to a player or a mob is `max(0, damage * damage_taken(VIT) * (1 
 in vanilla units. The health scale then multiplies the result. The dice, the crit, and the flat defense stay in vanilla units.
 `flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. `ArmorSets` registers one.
 `reduction%` and `reductionFlat` are the sums of the worn armor affixes.
+Damage of type `minecraft:magic`, `minecraft:indirect_magic`, or in the tag `#mod-stella-rpg:magic` is also multiplied by
+`1 - 0.4 * INT / (INT + 300)` of the victim. The tag is empty by default. The poison tick has its own type and is not reduced.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
 The server applies the faster bow draw. The client draw animation keeps the vanilla speed.
@@ -199,6 +230,10 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   Each must be an integer from 1 to 1000. A bad value uses its default.
 - The keys `melee_damage` and `ranged_damage` no longer exist. A file that holds them loads and logs them as ignored.
 - `crit_multiplier` is a number of at least 1. The default is 1.5.
+- `weapon_dice`, `material_dice_multiplier`, `dice_multiplier_per_level`, `refine_dice_multiplier`, and `refine_extra_dice` hold the weapon dice tables.
+  A die is a string such as `"1d6"`. A bad value logs one error and uses the default for that key.
+- `enchant_stats` and `effect_stats` map a name to a stat map from -1024 to 1024. `effect_stats` entries take `"per_level": false` for a flat effect.
+- `dex_max_roll`, `int_max_roll`, `magic_defense`, and `crit_reduction` are curve keys like the others.
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
@@ -307,25 +342,37 @@ The component is saved and synced to the client.
 - A stack that already has the component never rolls again.
 - A stack rolls when a player takes it from a crafting result slot, including shift-click.
   It also rolls when a loot table drops it and when a mob drops its equipment on death.
-  Trades, the creative menu, and items that exist before this feature do not roll.
+  Every 20 ticks the server also rolls each unrolled rollable stack in a player's inventory, armor, and offhand.
+  That catches trades, smithing, crafters, rewards, and commands. A stack that has `stat_rolls` never rolls again.
 - The mixin `RpgCraftRollMixin` hooks `Item#onCraftedBy`, because shift-click empties the stack before `ResultSlot#onTake`.
 - The bonus applies to the main hand for a weapon and to worn armor slots.
   A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
   A mob that holds or wears a rolled item gets the bonus too.
 - The client shows one green line per stat, such as `+3 STR`, and one per affix, such as `+12 Damage` or `+5% Damage`, in the item tooltip.
-- There are no weapon damage dice. The STR dice stay the only dice.
+- A weapon adds its own dice. See `Dice damage`.
 
-| Tier | Weapons | Armor | Range |
-|---|---|---|---|
-| `wood` | Wooden sword and axe | Leather | 1 to 2 |
-| `stone` | Stone sword and axe | Chainmail, turtle helmet | 1 to 3 |
-| `copper` | Copper sword and axe | none | 1 to 3 |
-| `gold` | Golden sword and axe | Golden | 2 to 4 |
-| `iron` | Iron sword and axe | Iron | 2 to 5 |
-| `diamond` | Diamond sword and axe | Diamond | 3 to 7 |
-| `netherite` | Netherite sword and axe | Netherite | 4 to 10 |
-| `ranged` | Bow, crossbow | none | 2 to 5 |
-| `heavy` | Trident, mace | none | 3 to 7 |
+The tier comes from the repair material of the item (`ItemTiers`), so a spear, copper armor, or a modded piece in the vanilla tags needs no list.
+A tier list in the config still wins for the ids it names.
+
+- Weapons are `#minecraft:swords`, `#minecraft:axes`, `#minecraft:spears`, the bow, the crossbow, the trident, and the mace.
+  Armor is `#minecraft:head_armor`, `chest_armor`, `leg_armor`, `foot_armor`, the shield, and the elytra.
+- Leather maps to wood. Chainmail and the turtle helmet map to stone. The shield and the elytra use iron.
+  A shield in the offhand adds its rolls like an armor piece.
+- Void gear of the tower (`mod-stella-tower:void_sword`, `void_axe`, `void_spear`, `void_helmet`, `void_chestplate`, `void_leggings`, `void_boots`)
+  is read by id string and uses the `void` tier: 6 to 12 per stat roll, and the netherite affix ranges times 1.5.
+
+| Tier | Material | Range |
+|---|---|---|
+| `wood` | Wood, leather | 1 to 2 |
+| `stone` | Stone, chainmail, turtle | 1 to 3 |
+| `copper` | Copper | 1 to 3 |
+| `gold` | Gold | 2 to 4 |
+| `iron` | Iron, shield, elytra | 2 to 5 |
+| `diamond` | Diamond | 3 to 7 |
+| `netherite` | Netherite | 4 to 10 |
+| `void` | Void gear | 6 to 12 |
+| `ranged` | Bow, crossbow | 2 to 5 |
+| `heavy` | Trident, mace | 3 to 7 |
 
 ### Affixes
 
@@ -348,6 +395,32 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
 - Only the main hand adds damage and MATK affixes. Only the four armor slots add HP and reduction affixes.
 
+## Stats from enchantments and effects
+
+`EnchantStats` adds stats for each enchantment level on the held item and on the four armor slots. The config key `enchant_stats`
+maps an enchantment name to a stat map. The name is the last part of the id path, so `mod-stella-equips-enchants:weapon/wounding` is `wounding`.
+Only vanilla enchantments and those of `mod-stella-equips-enchants` count. An unknown id grants nothing.
+
+| Stat | Per level 2 | Per level 1 |
+|---|---|---|
+| STR | sharpness, impaling, density, wounding, impale, shockwave | smite, bane_of_arthropods, breach, knockback, sweeping_edge |
+| DEX | power, marksman, railgun | piercing, longshot, arrow_shower, farsight, reach |
+| AGI | quick_charge, fleetfoot, repeater, momentum, tempo | lunge, swift_sneak, feather_falling |
+| VIT | bulwark, guarding_ward, second_wind | protection, blast_protection, fire_protection, projectile_protection, respiration |
+| INT | channeling, stormcaller, meteor, void_brand, ender_ward | loyalty, riptide, frostbite, chill |
+| LUK | looting, fortune, luck_of_the_sea, greed, prospector, enchanted_yield | none |
+
+Curses: reckless and berserker give STR +3 and VIT -2. Heavyweight gives VIT +3 and AGI -2. Leadfoot gives AGI -2.
+Sureshot gives DEX +3 and AGI -2. Deadeye gives DEX +3 and LUK -2.
+
+`EffectStats` adds stats for each level of an active effect (amplifier plus one). The config key `effect_stats` maps an effect name to a stat map.
+Only vanilla effects and those of `mod-stella-food` count. An effect that is not registered grants nothing.
+
+- Speed AGI +10, Slowness AGI -10, Haste DEX +10, Mining Fatigue DEX -10, Resistance VIT +10.
+- Luck LUK +10, Bad Luck LUK -10, Hero of the Village LUK +10, Strength STR +10, Weakness STR -10.
+- Food: `surefooted` STR +20, `deep_breath` VIT +20, `light_step` AGI +20, `current_rider` DEX +20, `ember_skin` INT +20, and `second_wind` LUK +20.
+  These are flat (`"per_level": false`). `seasoned_<stat>` gives +1 of that stat for each level.
+
 ## Spells API
 
 `RpgSpells` gives other mods the INT numbers for spells. `mod-stella-spells` reads them by name.
@@ -360,7 +433,8 @@ The class name and every public method below are a contract.
   `RpgSpells.matkMax(entity)` uses `floor(INT / 5)^2`.
   `flat` holds the flat MATK affixes of the main-hand item, plus 12 for each refine level of the main-hand spellbook.
   The refine level is the custom data key `stella_refine`. A spellbook is an item in `#mod-stella-rpg:spellbooks`.
-- `RpgSpells.spellDamage(caster, skillPercent)` returns a uniform roll between `matkMin` and `matkMax`, times `skillPercent / 100 / K`.
+- `RpgSpells.spellDamage(caster, skillPercent)` returns a roll, times `skillPercent / 100 / K`. The roll is the `matkMax` with chance
+  `0.5 * INT / (INT + 200)`, and uniform between `matkMin` and `matkMax` otherwise.
   `skillPercent` 150 means 150%. The result is in vanilla units, so the health scale multiplies it once.
 - `RpgSpells.spellHeal(caster, coefficient)` returns `(level + INT) * coefficient / K`, in vanilla units.
   The level is the experience level of a player, or the threat of a mob.

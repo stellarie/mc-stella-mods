@@ -18,11 +18,11 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -55,11 +55,6 @@ public final class WeaponRolls implements StatBonuses.Provider {
 
 	private record Entry(Affix.Kind kind, int min, int max, Map<Affix, RpgConfig.AffixRange> affixes) {
 	}
-
-	private record Index(RpgConfig config, Map<Identifier, Entry> byItem) {
-	}
-
-	private static volatile Index index;
 
 	private WeaponRolls() {
 	}
@@ -112,6 +107,16 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		return low + random.nextInt(high - low + 1);
 	}
 
+	/** Rolls every unrolled rollable stack a player holds or wears. Catches trades, rewards, commands, and smithing. */
+	public static void rollPossessed(final ServerPlayer player) {
+		for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+			roll(stack, player.getRandom());
+		}
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			roll(player.getItemBySlot(slot), player.getRandom());
+		}
+	}
+
 	public static void rollEquipment(final Mob mob) {
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			roll(mob.getItemBySlot(slot), mob.getRandom());
@@ -127,6 +132,7 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	@Override
 	public int bonus(final LivingEntity entity, final Stat stat) {
 		long sum = rolled(entity.getItemBySlot(EquipmentSlot.MAINHAND), Affix.Kind.WEAPON, stat);
+		sum += rolled(entity.getItemBySlot(EquipmentSlot.OFFHAND), Affix.Kind.ARMOR, stat);
 		for (EquipmentSlot slot : ARMOR_SLOTS) {
 			sum += rolled(entity.getItemBySlot(slot), Affix.Kind.ARMOR, stat);
 		}
@@ -142,12 +148,17 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	}
 
 	private static Entry entryOf(final ItemStack stack) {
-		Entry entry = index().byItem().get(BuiltInRegistries.ITEM.getKey(stack.getItem()));
-		if (entry == null && stack.is(SPELLBOOKS)) {
-			RpgConfig.RollTier tier = RpgConfigStore.current().weaponRolls().tiers().get(BOOK_TIER);
-			entry = new Entry(Affix.Kind.BOOK, tier.min(), tier.max(), tier.affixes());
+		Map<String, RpgConfig.RollTier> tiers = RpgConfigStore.current().weaponRolls().tiers();
+		ItemTiers.Info info = ItemTiers.of(stack);
+		if (info != null && tiers.containsKey(info.tier())) {
+			RpgConfig.RollTier tier = tiers.get(info.tier());
+			return new Entry(info.kind(), tier.min(), tier.max(), tier.affixes());
 		}
-		return entry;
+		if (stack.is(SPELLBOOKS)) {
+			RpgConfig.RollTier tier = tiers.get(BOOK_TIER);
+			return new Entry(Affix.Kind.BOOK, tier.min(), tier.max(), tier.affixes());
+		}
+		return null;
 	}
 
 	private static int count(final List<Integer> weights, final RandomSource random) {
@@ -160,20 +171,5 @@ public final class WeaponRolls implements StatBonuses.Provider {
 			}
 		}
 		return weights.size();
-	}
-
-	private static Index index() {
-		RpgConfig config = RpgConfigStore.current();
-		Index found = index;
-		if (found == null || found.config() != config) {
-			Map<Identifier, Entry> byItem = new HashMap<>();
-			config.weaponRolls().tiers().forEach((name, tier) -> {
-				tier.items().forEach(id -> byItem.putIfAbsent(id, new Entry(Affix.Kind.WEAPON, tier.min(), tier.max(), tier.affixes())));
-				tier.armorItems().forEach(id -> byItem.putIfAbsent(id, new Entry(Affix.Kind.ARMOR, tier.min(), tier.max(), tier.affixes())));
-			});
-			found = new Index(config, Map.copyOf(byItem));
-			index = found;
-		}
-		return found;
 	}
 }

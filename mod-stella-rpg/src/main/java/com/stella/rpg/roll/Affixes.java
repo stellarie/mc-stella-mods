@@ -32,6 +32,7 @@ public final class Affixes {
 			for (EquipmentSlot slot : ARMOR_SLOTS) {
 				sum += stored(entity.getItemBySlot(slot), affix, Affix.Kind.ARMOR);
 			}
+			sum += stored(entity.getItemBySlot(EquipmentSlot.OFFHAND), affix, Affix.Kind.ARMOR);
 			return sum;
 		}
 		ItemStack held = entity.getItemBySlot(EquipmentSlot.MAINHAND);

@@ -79,7 +79,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "critMultipliesTotal", loss, guarded((HIT + 4.0F) * 1.5F));
+		assertLoss(helper, "critMultipliesTotal", loss, guarded((HIT + 4.0F) * 1.5F) * RpgTestSupport.mobCritGuard());
 		helper.succeed();
 	}
 
@@ -114,7 +114,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertLoss(helper, "spellsUnchanged", loss, guarded(HIT));
+		assertLoss(helper, "spellsUnchanged", loss, RpgTestSupport.mobMagicGuard(HIT));
 		helper.succeed();
 	}
 
@@ -146,7 +146,7 @@ public final class RpgDamageGameTest {
 		} finally {
 			resetRollers();
 		}
-		assertRatio(helper, "crit", crit, plain, 1.5F);
+		assertRatio(helper, "crit", crit, plain, 1.5F * RpgTestSupport.mobCritGuard());
 		helper.succeed();
 	}
 

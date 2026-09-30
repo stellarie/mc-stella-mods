@@ -33,7 +33,7 @@ public final class StatBonuses {
 		for (Provider provider : PROVIDERS) {
 			sum += provider.bonus(entity, stat);
 		}
-		return (int) Math.max(0, Math.min(StatSheet.CEILING, sum));
+		return (int) Math.max(-StatSheet.CEILING, Math.min(StatSheet.CEILING, sum));
 	}
 
 	public static int base(final LivingEntity entity, final Stat stat) {

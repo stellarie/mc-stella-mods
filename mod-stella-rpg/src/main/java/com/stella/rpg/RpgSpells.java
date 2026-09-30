@@ -2,6 +2,7 @@ package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.Affixes;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
@@ -44,9 +45,15 @@ public final class RpgSpells {
 
 	/** A roll between the MATK minimum and maximum, times the skill percent (150 is 150%), in vanilla units. */
 	public static double spellDamage(final LivingEntity caster, final double skillPercent) {
+		return spellDamage(caster, skillPercent, caster.getRandom());
+	}
+
+	/** The roll is the MATK maximum with the INT chance, and uniform between the minimum and maximum otherwise. */
+	public static double spellDamage(final LivingEntity caster, final double skillPercent, final RandomSource random) {
 		double min = matkMin(caster);
 		double max = matkMax(caster);
-		double roll = min + caster.getRandom().nextDouble() * (max - min);
+		double chance = RpgCurve.intMaxRollChance(StatBonuses.effective(caster, Stat.INT));
+		double roll = chance > 0.0 && random.nextDouble() < chance ? max : min + random.nextDouble() * (max - min);
 		return roll * skillPercent / PERCENT / RpgScale.k();
 	}
 

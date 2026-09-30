@@ -5,9 +5,14 @@ import net.minecraft.util.RandomSource;
 public final class RpgDice {
 	public record Dice(int count, int sides) {
 		public int roll(final RandomSource random) {
+			return this.roll(random, 0.0);
+		}
+
+		/** Each die rolls its maximum with the chance, and a fair roll otherwise. */
+		public int roll(final RandomSource random, final double maxChance) {
 			int total = 0;
 			for (int i = 0; i < this.count; i++) {
-				total += 1 + random.nextInt(this.sides);
+				total += maxChance > 0.0 && random.nextDouble() < maxChance ? this.sides : 1 + random.nextInt(this.sides);
 			}
 			return total;
 		}
