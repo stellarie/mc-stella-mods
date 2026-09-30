@@ -25,6 +25,7 @@
 			"com.stella.equips.PowerTrackerGameTest",
 			"com.stella.equips.OreRegenerationGameTest",
 			"com.stella.equips.ReadoutGameTest",
+			"com.stella.equips.ReadoutPlateLayoutGameTest",
 			"com.stella.equips.ReadoutRankGameTest",
 			"com.stella.equips.ReadoutTextGameTest",
 			"com.stella.equips.TempoGameTest",

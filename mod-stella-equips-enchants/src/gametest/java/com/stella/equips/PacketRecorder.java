@@ -11,6 +11,8 @@ import java.util.function.Predicate;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
+import com.stella.equips.readout.ReadoutPayload;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -88,6 +90,19 @@ public final class PacketRecorder extends ServerGamePacketListenerImpl {
 		for (Packet<?> packet : this.snapshot()) {
 			if (filter.test(packet)) {
 				found++;
+			}
+		}
+
+		return found;
+	}
+
+	/** Every readout payload the server sent to this player, oldest first. */
+	public List<ReadoutPayload> readoutPayloads() {
+		List<ReadoutPayload> found = new ArrayList<>();
+
+		for (Packet<?> packet : this.snapshot()) {
+			if (packet instanceof ClientboundCustomPayloadPacket custom && custom.payload() instanceof ReadoutPayload payload) {
+				found.add(payload);
 			}
 		}
 

@@ -1,28 +1,11 @@
 package com.stella.equips.readout;
 
-import com.stella.equips.power.PowerCurve;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.UUID;
-import net.minecraft.world.entity.Display;
 
+/** One player's readout state: the opt-in flag and the payload the client last received. */
 public final class ReadoutOwner {
-	/**
-	 * One readout line. The display stands outside the level, so its id is the only handle a client has.
-	 */
-	public record Readout(
-		UUID mobId,
-		int mobEntityId,
-		Display.TextDisplay display,
-		int threat,
-		PowerCurve.Band band,
-		String text,
-		boolean hostile
-	) {
-	}
-
-	private final Map<UUID, Readout> readouts = new LinkedHashMap<>();
+	private ReadoutPayload current;
+	private UUID currentMobId;
 	private boolean enabled;
 
 	public ReadoutOwner(final boolean enabled) {
@@ -37,27 +20,22 @@ public final class ReadoutOwner {
 		this.enabled = value;
 	}
 
-	public Map<UUID, Readout> readouts() {
-		return Collections.unmodifiableMap(this.readouts);
+	/** The payload the client shows now, or null when no readout is up. */
+	public ReadoutPayload current() {
+		return this.current;
 	}
 
-	public Readout get(final UUID mobId) {
-		return this.readouts.get(mobId);
+	public UUID currentMobId() {
+		return this.currentMobId;
 	}
 
-	public Readout put(final Readout readout) {
-		return this.readouts.put(readout.mobId(), readout);
-	}
-
-	public Readout remove(final UUID mobId) {
-		return this.readouts.remove(mobId);
-	}
-
-	public int size() {
-		return this.readouts.size();
+	public void set(final ReadoutPayload payload, final UUID mobId) {
+		this.current = payload;
+		this.currentMobId = mobId;
 	}
 
 	public void clear() {
-		this.readouts.clear();
+		this.current = null;
+		this.currentMobId = null;
 	}
 }
