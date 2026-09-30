@@ -9,6 +9,7 @@
 			"com.stella.rpg.RpgTestMod"
 		],
 		"fabric-gametest": [
+			"com.stella.rpg.ArmorSetGameTest",
 			"com.stella.rpg.RpgAgilityGameTest",
 			"com.stella.rpg.RpgBonusGameTest",
 			"com.stella.rpg.RpgCommandGameTest",
