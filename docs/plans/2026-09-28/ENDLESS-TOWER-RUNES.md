@@ -537,3 +537,17 @@ at once) listens to that change for every way out: portal, key, scroll or comman
 (`leavingTheTowerTakesTheBuffAtOnce`) moves the player out the same way. The tower harness has no spells mod, so
 the scroll's own path is a manual item: read a Scroll of Return on a boss floor and check the floor's buff is
 gone and you stand at your bed or the world spawn.
+
+## Element auras (slice E, 2026-09-29)
+
+`TowerAuras` implements the "Elements" section of the batch decisions: ice slows the players' side within 4
+blocks, dark hardens per hit (cap 10, hold 100 ticks, decay 1 per 20), holy mends kin, and fire, water, wind,
+void and lightning mark hits or speed. See the tower README for numbers and quoted `[BEHAVIOR]` lines.
+
+- Deviation, none from the decisions. Choices where they were silent: ghosts count as the players' side for ice;
+  dark armor is a transient modifier that decays only while a player is on the floor (the pulse is occupied
+  floors only); on-hit marks need a living attacker that is a tower mob, and thorns returns do not trigger them.
+- Test seam: `TowerAuras.pulse(level, floor, now)` takes the tick, and `TowerAuras.particleSink` records
+  particles. Neither logs in the shipped jar.
+- Manual item: particles are not observable headlessly (`elementParticlesAreVisibleInPlayRequiresManualTest`).
+- Holy's 2% every 40 ticks is a guess awaiting the owner's confirmation.

@@ -57,3 +57,35 @@ An endless tower of floors behind a crying obsidian portal. The design is in
 - Elites have 3x their floor's health and 1.5x its damage; bosses 10x and 2x. Their names carry the rank.
 - A boss shows a health bar to the players on its floor, and drops a Floor Key naming its floor.
 - Entering the tower from outside takes a player to the highest floor key they carry; keys are never spent.
+
+## Element auras (`TowerAuras`)
+
+Each tower mob's element now does something, modestly, and shows it with particles. The pulse runs every
+10 ticks over floors with a player on them only; hits go through `ServerLivingEntityEvents.AFTER_DAMAGE`.
+The element is read from the mob's `TowerMobs.State`. All numbers are public constants on `TowerAuras`.
+
+- **Ice**: Slowness I (30 ticks, refreshed each pulse) within 4 blocks on non-spectator players outside safe
+  zones, the players' ghosts, and player-aligned mobs (tamed pets, mobs tagged `mod-stella-spells.summoned`,
+  player-made iron golems). Never other tower mobs. Snowflake and cloud particles.
+- **Dark**: +1 armor per hit taken, at most 10; kept 100 ticks after the last hit, then one lost every 20.
+  Time is the server tick count. Ink particles.
+- **Holy**: every 40 ticks heals itself and every hurt tower mob within 6 blocks by 2% of max health (a guess,
+  the owner is to confirm). End rod and wax-on particles.
+- **Fire** ignites its target for 3 s; **Water** pushes it 0.4 further away; **Wind** lifts it 0.3; **Void**
+  gives it Darkness for 60 ticks; **Lightning** runs 10% faster while it has a target.
+
+Measured (`TowerAuraGameTest`, 26 cases, required count 221 to 246):
+
+```
+[BEHAVIOR] test=iceSlowsPlayerInRadius RESULT near=amp0/30 radius=4.0
+[BEHAVIOR] test=iceSparesTowerMobs RESULT kin=none otherIce=none self=none
+[BEHAVIOR] test=darkDecay RESULT hold=100 step=20 samples=[+99=10.0, +100=9.0, +119=9.0, +120=8.0, +280=0.0, +800=0.0]
+[BEHAVIOR] test=holyMends RESULT self=4.2478867 kin=4.2478867 want=4.2478886
+[BEHAVIOR] test=waterHit RESULT extraX=0.4 want=0.4 extraY=0.0
+[BEHAVIOR] test=iceOwnPulse RESULT slowedAtTick=6 effect=amp0/30
+```
+
+Manual acceptance: particles cannot be seen headlessly. The server hands each to the level (a test sink
+records them: `everyElementSendsItsOwnParticles`), and `elementParticlesAreVisibleInPlayRequiresManualTest`
+stays red as a not-required case. In play, look for snowflake mist round an ice mob, ink puffs on a dark
+mob, glowing motes on a holy mob, and flames, drips, puffs and portal swirls on fire, water, wind and void hits.
