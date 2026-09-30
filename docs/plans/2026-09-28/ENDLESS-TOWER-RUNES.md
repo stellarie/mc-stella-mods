@@ -657,5 +657,45 @@ gone and you stand at your bed or the world spawn.
 - Shaman quarry filtered through `TowerSafety.sheltered`; the sweep's last-sighting restore checks ground support
   (`Sighting.grounded`); `sheltered` uses the non-loading `TowerPlan.atQuiet` and a per-player, per-tick cache.
 - In-flight projectiles still land, and wardens are not tower mobs: neither is covered by the zones (accepted).
-- Deviation: the owner asked for no test runs from here on, so the new cases (`TowerSafetyReviewGameTest`) are not
-  proven green and there is no mutation evidence.
+- Tests: `TowerSafetyReviewGameTest`, red on three cases before the fixes, green after (see the README).
+
+## Built: floor variations and chest spots (2026-09-30, slice F4)
+
+Five variations in `TowerPlan.Variation` (MAZE, WIDE_ROOMS, STAGGERED, TALL_WALLS, SPIRAL) with weights 35/20/15/15/15,
+chosen by `TowerVariations` from (seed, floor). Plan `VERSION` stays 1; legacy floors unchanged. See the README section
+"Floor variations (slice F4)" for shapes and measured numbers.
+
+Decisions and deviations from DECISIONS.md (with reasons):
+
+- Choosing: "never repeat the last floor's variation" must be computed without walking from floor 1, and the naive draw
+  ("weights minus the last variation") drags the shares toward an even split. The chooser uses a second weight set
+  (`lambda`) for a floor after another, the roots of l(a)(S - l(a)) = w(a), which makes the chain reversible with the
+  weights as its stationary shares, and cuts the chain into 64-floor blocks (block-first floors draw by the weights;
+  the last floor of a block also avoids the next block's first). Floors of elite and boss rank bar variations, so their
+  ranks' measured shares are compared to a kernel-walked expectation, not to the raw weights.
+- Spiral ends: the arrival and the portal sit at the spiral's two ends (the end cell is the safe zone exactly), which
+  overrides "opposite halves"; the plan test exempts SPIRAL from that one rule. Either end may be the arrival.
+- The spiral is 7 x 7 cells of 8 (not the maze's 9 x 9 of 6), so a safe zone fits one cell and does not cut a shortcut
+  through the walls between turns; 49 cells, about 430 blocks from end to end.
+- Wide rooms use 21 x 21 cells of 2 (paths two wide), so the portal's dead end has a front two wide, not three; rooms
+  are recorded in the plan (`rooms()`, rotated with a hall floor's turn) so the test and later slices can see them.
+- Staggered: the portal pocket sits at the end of an even row (east with the odd rows offset 4, west offset 5 so the
+  doors beside the pocket fit), its two behind blocks solid; the two blocks of the portal column beside the posts are
+  left open (the maze's closes them), so the door to the odd row's end room stays two wide.
+- Tall walls: `plan.wallHeightAt` and the builder; the ring and a hall floor's hall enclosure stay full height.
+- Hall floors on the new variations: the variation's walls over the whole room, then the hall (and on a boss floor the
+  solid enclosure 14..49, the room, its ring and gates via `TowerMaze.bossRoom`, and the cell the room's entrance
+  opens on) stamped over them, the canonical layout turned as before. MAZE and TALL_WALLS hall floors are the old
+  carve, byte for byte.
+- Fallback: a floor that falls back is the plain maze while `variationOf` still says the drawn one (the chain does not
+  depend on fallbacks). Fallback rate measured 0 over 3000 floors.
+- Traps (`TowerTraps.layout`): positions redrawn onto open ground, a mostly solid cell holds none, and off the maze
+  none within 6 blocks of the portal. `arrivalCell()` and `portalCell()` are still the maze's 7-block grid and only
+  mean that on MAZE and TALL_WALLS floors; they are used only to keep traps off the ends.
+- Chest spots in the plan (`TowerChests`, `TowerPlan.ChestSpot`): the API and the rules are in the README. Chests are
+  not placed here.
+- Existing tests touched: `spotsBesideZone` takes a zone index and falls back to narrower room for floors of two-wide
+  paths; the shaman cooldown case stands the player outside the zone (a sheltered player is no quarry); the
+  plan property test exempts SPIRAL from opposite halves; `TowerRaisedPortalGameTest.modelOf` honours wall height.
+- Tests: `TowerVariationGameTest` (11 cases). Written after the implementation, so no red run; the owner waived the
+  mutation runs and the five-run gate.

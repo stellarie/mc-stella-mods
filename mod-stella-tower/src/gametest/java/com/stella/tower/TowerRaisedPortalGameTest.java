@@ -111,7 +111,7 @@ public class TowerRaisedPortalGameTest {
 	 * A walk over the built blocks, one block up at most per step, with room to stand: from the hall floor to
 	 * the portal's inside. Written apart from the plan, so the pyramid is judged by what stands in the world.
 	 */
-	private static int climb(final ServerLevel tower, final BlockPos from, final Set<BlockPos> goals) {
+	static int climb(final ServerLevel tower, final BlockPos from, final Set<BlockPos> goals) {
 		return climb(new Ground() {
 			@Override
 			public boolean free(final BlockPos pos) {
@@ -126,13 +126,13 @@ public class TowerRaisedPortalGameTest {
 	}
 
 	/** What a walk asks of the ground: room to stand in a spot, and something to stand on. */
-	private interface Ground {
+	interface Ground {
 		boolean free(BlockPos pos);
 
 		boolean standable(BlockPos pos);
 	}
 
-	private static int climb(final Ground ground, final BlockPos from, final Set<BlockPos> goals) {
+	static int climb(final Ground ground, final BlockPos from, final Set<BlockPos> goals) {
 		Map<BlockPos, Integer> seen = new HashMap<>();
 		ArrayDeque<BlockPos> queue = new ArrayDeque<>();
 		seen.put(from, 0);
@@ -170,7 +170,7 @@ public class TowerRaisedPortalGameTest {
 	 * from floor to ceiling, the plinth, the frame's blocks, the workstations, the safe room's lintels over its
 	 * openings. Solid floor under the room, solid outside it.
 	 */
-	private static Ground modelOf(final TowerPlan plan) {
+	static Ground modelOf(final TowerPlan plan) {
 		BlockPos o = plan.origin();
 		Set<BlockPos> solid = new HashSet<>(plan.plinth());
 		solid.addAll(plan.portalFrame());
@@ -190,7 +190,7 @@ public class TowerRaisedPortalGameTest {
 				if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE || y < 0 || y >= TowerLayout.HEIGHT) {
 					return true;
 				}
-				return plan.walls()[x][z] || solid.contains(pos);
+				return plan.walls()[x][z] && y < plan.wallHeightAt(x, z) || solid.contains(pos);
 			}
 
 			@Override

@@ -53,7 +53,10 @@ public record TowerPlan(
 	List<TowerMaze.Zone> safeZones,
 	/** The side of the hall in the middle of the room, or nought. */
 	int hall,
-	List<Spot> chestSpots
+	/** At least {@link TowerChests#MIN_SPOTS} double chests' spots, and on every fifth floor one more, guaranteed. Empty on a legacy floor. */
+	List<ChestSpot> chestSpots,
+	/** The rooms of a {@link Variation#WIDE_ROOMS} floor: at least {@link TowerShapes#MIN_ROOMS}, each 6 x 3, 4 or 5 either way round. Empty on any other. */
+	List<Room> rooms
 ) {
 	/** The plan a floor is built to now. */
 	public static final int VERSION = 1;
@@ -88,13 +91,74 @@ public record TowerPlan(
 		}
 	};
 
-	/** How a floor is laid out. Only the maze exists so far. */
+	/**
+	 * How a floor is laid out, with the weight it is drawn at (see {@link TowerVariations}).
+	 * <ul>
+	 * <li>MAZE: a perfect maze of paths six wide.</li>
+	 * <li>WIDE_ROOMS: a maze of paths two wide with at least three rooms of 6 x 3, 6 x 4 or 6 x 5.</li>
+	 * <li>STAGGERED: rooms laid like bricks, every two that touch joined by a door.</li>
+	 * <li>TALL_WALLS: the maze with walls {@value #TALL_WALL_HEIGHT} high, open air above them.</li>
+	 * <li>SPIRAL: one corridor from the arrival to the portal, winding over the whole floor.</li>
+	 * </ul>
+	 */
 	public enum Variation {
-		MAZE
+		MAZE(35),
+		WIDE_ROOMS(20),
+		STAGGERED(15),
+		TALL_WALLS(15),
+		SPIRAL(15);
+
+		private final int weight;
+
+		Variation(final int weight) {
+			this.weight = weight;
+		}
+
+		public int weight() {
+			return this.weight;
+		}
+	}
+
+	/** How high the maze's walls stand on a {@link Variation#TALL_WALLS} floor; the hall's enclosure and the room's ring stay full height. */
+	public static final int TALL_WALL_HEIGHT = 2;
+
+	/** The variation of a floor in a tower of this seed: a pure function of the two. */
+	public static Variation variationOf(final long seed, final int floor) {
+		return TowerVariations.of(seed, floor);
+	}
+
+	/**
+	 * A double chest's spot: its first block, the way the chest faces (the open side, away from the wall it stands
+	 * against), and whether it is the floor's guaranteed chest. The other block is {@link #second()}: beside the first
+	 * along x for a chest facing north or south, along z for one facing east or west.
+	 */
+	public record ChestSpot(int x, int z, net.minecraft.core.Direction facing, boolean guaranteed) {
+		public Spot second() {
+			return this.facing.getAxis() == net.minecraft.core.Direction.Axis.Z ? new Spot(this.x + 1, this.z) : new Spot(this.x, this.z + 1);
+		}
+
+		/** Both blocks, the first then the second. */
+		public List<Spot> cells() {
+			return List.of(new Spot(this.x, this.z), second());
+		}
 	}
 
 	/** A spot of the room, as an offset from its inner corner. */
 	public record Spot(int x, int z) {
+	}
+
+	/** A rectangle of open ground the variation laid, by the offset of its low corner and its size in blocks along x and z. */
+	public record Room(int x, int z, int width, int length) {
+		/** Whether this rectangle lies within {@code gap} blocks of another, or overlaps it. */
+		public boolean touches(final Room other, final int gap) {
+			return this.x - gap < other.x + other.width && other.x - gap < this.x + this.width
+				&& this.z - gap < other.z + other.length && other.z - gap < this.z + this.length;
+		}
+
+		/** The rectangle after one quarter turn of the room about its middle, as {@link #turn(int, int)} turns a spot. */
+		Room turned() {
+			return new Room(TowerLayout.SIZE - this.z - this.length, this.x, this.length, this.width);
+		}
 	}
 
 	private record Key(long seed, int floor, int version) {
@@ -192,11 +256,23 @@ public record TowerPlan(
 		for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
 			Random random = new Random(mix(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L) ^ (attempt * 0xC2B2AE3D27D4EB4FL)));
 			TowerPlan drawn = draw(seed, floor, version, attempt, random);
-			if (reaches(drawn) && !veto.test(drawn)) {
-				return drawn;
+			if (drawn == null || !reaches(drawn) || veto.test(drawn)) {
+				continue;
+			}
+			List<ChestSpot> chests = TowerChests.place(drawn);
+			if (chests != null) {
+				return drawn.withChestSpots(chests);
 			}
 		}
-		return classic(seed, floor, version, FALLBACK);
+		TowerPlan fallback = classic(seed, floor, version, FALLBACK);
+		List<ChestSpot> chests = TowerChests.place(fallback);
+		return chests == null ? fallback : fallback.withChestSpots(chests);
+	}
+
+	/** This plan with its chest spots. */
+	TowerPlan withChestSpots(final List<ChestSpot> spots) {
+		return new TowerPlan(this.seed, this.floor, this.version, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
+			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.walls, this.safeZones, this.hall, List.copyOf(spots), this.rooms);
 	}
 
 	/**
@@ -215,7 +291,7 @@ public record TowerPlan(
 	 * changed: a change to how a floor is drawn adds a new version, with its own case here, and bumps
 	 * {@link #VERSION}. Version 1 is the only one so far; its boss floors wall the safe room in a ring, where version 0's joined it to the hall by a path-wide door.
 	 */
-	private static TowerPlan draw(final long seed, final int floor, final int version, final int attempt, final Random random) {
+	private static @org.jspecify.annotations.Nullable TowerPlan draw(final long seed, final int floor, final int version, final int attempt, final Random random) {
 		return switch (version) {
 			case 1 -> drawFrom(seed, floor, version, attempt, random);
 			default -> throw new IllegalArgumentException("no generator for plan version " + version);
@@ -224,12 +300,23 @@ public record TowerPlan(
 
 	/** One draw of a version's generator: the ends and the maze, and a boss floor's safe room walled in a ring from {@link #RING_VERSION}. */
 	private static TowerPlan drawFrom(final long seed, final int floor, final int version, final int attempt, final Random random) {
+		Variation variation = variationOf(seed, floor);
 		int hall = TowerMaze.hall(floor);
 		if (hall > 0) {
 			int turns = random.nextInt(4);
-			boolean[][] walls = TowerMaze.classicWalls(random, floor, version >= RING_VERSION);
+			TowerShapes.HallWalls shaped = TowerShapes.hallWalls(random, variation, floor, version >= RING_VERSION);
+			if (shaped == null) {
+				return null;
+			}
+			boolean[][] walls = shaped.walls();
+			List<Room> rooms = shaped.rooms();
 			for (int i = 0; i < turns; i++) {
 				walls = turn(walls);
+				List<Room> turned = new ArrayList<>();
+				for (Room room : rooms) {
+					turned.add(room.turned());
+				}
+				rooms = turned;
 			}
 			List<TowerMaze.Zone> zones = new ArrayList<>();
 			for (TowerMaze.Zone zone : TowerMaze.classicZones(floor)) {
@@ -243,8 +330,23 @@ public record TowerPlan(
 			for (int i = 0; i < turns; i++) {
 				at = turn(at[0], at[1]);
 			}
-			return new TowerPlan(seed, floor, version, Variation.MAZE, turns, attempt, at[0], at[1], -90.0F + 90.0F * turns,
-				TowerLayout.SIZE / 2, CLASSIC_MIDDLE_Z - 1, -1, walls, List.copyOf(zones), hall, List.of());
+			return new TowerPlan(seed, floor, version, variation, turns, attempt, at[0], at[1], -90.0F + 90.0F * turns,
+				TowerLayout.SIZE / 2, CLASSIC_MIDDLE_Z - 1, -1, walls, List.copyOf(zones), hall, List.of(), List.copyOf(rooms));
+		}
+		TowerShapes.Layout layout = switch (variation) {
+			case WIDE_ROOMS -> TowerShapes.wideRooms(random);
+			case STAGGERED -> TowerShapes.staggered(random);
+			case SPIRAL -> TowerShapes.spiral(random);
+			default -> null;
+		};
+		if (layout != null) {
+			float yaw = (float) Math.toDegrees(Math.atan2(-(layout.portalX() - layout.arrivalX()), layout.portalZ() - layout.arrivalZ()));
+			return new TowerPlan(seed, floor, version, variation, 0, attempt, layout.arrivalX(), layout.arrivalZ(), yaw,
+				layout.portalX(), layout.portalZ(), layout.facing(), layout.walls(), List.of(layout.zone()), 0, List.of(), layout.rooms());
+		}
+		if (variation != Variation.MAZE && variation != Variation.TALL_WALLS) {
+			// A variation whose draw did not fit: drawn again.
+			return null;
 		}
 		// The arrival takes a cell in one half of the room along one axis, the portal a cell in the other.
 		boolean alongX = random.nextBoolean();
@@ -268,8 +370,8 @@ public record TowerPlan(
 		TowerMaze.Zone zone = new TowerMaze.Zone(Math.max(1, Math.min(zoneMax, arrivalX - 3)), Math.max(1, Math.min(zoneMax, arrivalZ - 4)));
 		boolean[][] walls = TowerMaze.scatteredWalls(random, arrivalCx, arrivalCz, portalCx, portalCz, facing, zone);
 		float yaw = (float) Math.toDegrees(Math.atan2(-(portalX - arrivalX), portalZ - arrivalZ));
-		return new TowerPlan(seed, floor, version, Variation.MAZE, 0, attempt, arrivalX, arrivalZ, yaw,
-			portalX, portalZ, facing, walls, List.of(zone), 0, List.of());
+		return new TowerPlan(seed, floor, version, variation, 0, attempt, arrivalX, arrivalZ, yaw,
+			portalX, portalZ, facing, walls, List.of(zone), 0, List.of(), List.of());
 	}
 
 	/** The classic layout, as every floor was before the plans, and as a floor falls back to. */
@@ -279,7 +381,7 @@ public record TowerPlan(
 			: TowerMaze.classicWalls(new Random(seed ^ FALLBACK_SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor, version >= RING_VERSION);
 		return new TowerPlan(seed, floor, version, Variation.MAZE, 0, attempt, CLASSIC_ARRIVAL_X, CLASSIC_MIDDLE_Z, -90.0F,
 			hall > 0 ? TowerLayout.SIZE / 2 : CLASSIC_PORTAL_X, CLASSIC_MIDDLE_Z - 1, -1, walls,
-			TowerMaze.classicZones(floor), hall, List.of());
+			TowerMaze.classicZones(floor), hall, List.of(), List.of());
 	}
 
 	/** One quarter turn of the room about its middle: a spot (x, z) goes to (size - 1 - z, x). */
@@ -334,6 +436,20 @@ public record TowerPlan(
 	/** Whether the spot is one of the two blocks either side of the portal that its frame stands on. */
 	boolean isFramePost(final int x, final int z) {
 		return x == this.portalX && (z == this.portalZ - 1 || z == this.portalZ + TowerLayout.PORTAL_INNER_WIDTH);
+	}
+
+	/**
+	 * How many blocks high the wall at a spot stands: the room's height, except on a {@link Variation#TALL_WALLS} floor,
+	 * where the maze's walls are {@link #TALL_WALL_HEIGHT} high. The boss room's ring and the walls round a hall keep
+	 * the full height, so a mob or a boss in them is still shut in.
+	 */
+	public int wallHeightAt(final int x, final int z) {
+		if (this.variation != Variation.TALL_WALLS || isRing(x, z)) {
+			return TowerLayout.HEIGHT;
+		}
+		int low = hallLow() - 2;
+		int high = hallLow() + this.hall + 1;
+		return this.hall > 0 && x >= low && x <= high && z >= low && z <= high ? TowerLayout.HEIGHT : TALL_WALL_HEIGHT;
 	}
 
 	public boolean wall(final int x, final int z) {

@@ -227,23 +227,28 @@ final class TowerTestSupport {
 	static ZoneSpots spotsBesideZone(final TowerPlan plan, final int zoneIndex) {
 		TowerMaze.Zone zone = plan.safeZones().get(zoneIndex);
 		BlockPos o = plan.origin();
-		for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
-			for (int z = 2; z < TowerLayout.SIZE - 2; z++) {
-				if (cheb(zone, x, z) != 2 || !roomAround(plan, x, z, 1)) {
-					continue;
-				}
-				int ix = Math.max(zone.x() + 1, Math.min(zone.x() + TowerMaze.SAFE - 2, x));
-				int iz = Math.max(zone.z() + 1, Math.min(zone.z() + TowerMaze.SAFE - 2, z));
-				if (!clear(plan, x + 0.5, z + 0.5, ix + 0.5, iz + 0.5)) {
-					continue;
-				}
-				for (int ox = 2; ox < TowerLayout.SIZE - 2; ox++) {
-					for (int oz = 2; oz < TowerLayout.SIZE - 2; oz++) {
-						int apart = Math.max(Math.abs(ox - x), Math.abs(oz - z));
-						if (apart >= 3 && apart <= 5 && cheb(zone, ox, oz) >= 2 && roomAround(plan, ox, oz, 1) && clear(plan, x + 0.5, z + 0.5, ox + 0.5, oz + 0.5)) {
-							return new ZoneSpots(new Vec3(o.getX() + x + 0.5, TowerLayout.BASE_Y, o.getZ() + z + 0.5),
-								new Vec3(o.getX() + ix + 0.5, TowerLayout.BASE_Y, o.getZ() + iz + 0.5),
-								new Vec3(o.getX() + ox + 0.5, TowerLayout.BASE_Y, o.getZ() + oz + 0.5));
+		// Room to spare where the floor has it; a variation with paths two wide has none round a spot, so a single open block will do.
+		for (int reach = 1; reach >= 0; reach--) {
+			for (int beside = 2; beside <= 4; beside++) {
+				for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
+					for (int z = 2; z < TowerLayout.SIZE - 2; z++) {
+						if (cheb(zone, x, z) != beside || !roomAround(plan, x, z, reach)) {
+							continue;
+						}
+						int ix = Math.max(zone.x() + 1, Math.min(zone.x() + TowerMaze.SAFE - 2, x));
+						int iz = Math.max(zone.z() + 1, Math.min(zone.z() + TowerMaze.SAFE - 2, z));
+						if (plan.wall(ix, iz) || !clear(plan, x + 0.5, z + 0.5, ix + 0.5, iz + 0.5)) {
+							continue;
+						}
+						for (int ox = 2; ox < TowerLayout.SIZE - 2; ox++) {
+							for (int oz = 2; oz < TowerLayout.SIZE - 2; oz++) {
+								int apart = Math.max(Math.abs(ox - x), Math.abs(oz - z));
+								if (apart >= 3 && apart <= 5 && cheb(zone, ox, oz) >= 2 && roomAround(plan, ox, oz, reach) && clear(plan, x + 0.5, z + 0.5, ox + 0.5, oz + 0.5)) {
+									return new ZoneSpots(new Vec3(o.getX() + x + 0.5, TowerLayout.BASE_Y, o.getZ() + z + 0.5),
+										new Vec3(o.getX() + ix + 0.5, TowerLayout.BASE_Y, o.getZ() + iz + 0.5),
+										new Vec3(o.getX() + ox + 0.5, TowerLayout.BASE_Y, o.getZ() + oz + 0.5));
+								}
+							}
 						}
 					}
 				}

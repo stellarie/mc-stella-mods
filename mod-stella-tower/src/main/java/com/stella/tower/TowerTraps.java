@@ -104,8 +104,9 @@ public final class TowerTraps {
 				boolean inNook = hall == 0 && (cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1
 					|| cx == portalCell[0] + plan.portalFacing() && cz == portalCell[1]);
 				boolean safe = plan.inSafeZone(x, z) || plan.inSafeZone(x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
-				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap.
-				boolean solid = walls[x][z];
+				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap; nor does a cell of
+				// another variation's floor that is mostly wall.
+				boolean solid = walls[x][z] || openIn(plan, x, z) < MIN_OPEN;
 				if (!byArrival && !inHall && !inNook && !safe && !solid) {
 					cells.add(new int[] {cx, cz});
 				}
@@ -123,9 +124,52 @@ public final class TowerTraps {
 			TrapTheme kind = theme == TrapTheme.CHAOS ? laid.get(random.nextInt(laid.size())) : theme;
 			int x = 1 + cell[0] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
 			int z = 1 + cell[1] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
+			if (!trappable(plan, x, z)) {
+				// Not open ground on this floor (a variation's walls do not follow the maze's cells): the cell's open spots, one drawn.
+				List<int[]> spots = new ArrayList<>();
+				for (int dx = 0; dx < TowerMaze.PATH; dx++) {
+					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
+						int sx = 1 + cell[0] * TowerMaze.PITCH + dx;
+						int sz = 1 + cell[1] * TowerMaze.PITCH + dz;
+						if (trappable(plan, sx, sz)) {
+							spots.add(new int[] {sx, sz});
+						}
+					}
+				}
+				if (spots.isEmpty()) {
+					continue;
+				}
+				int[] pick = spots.get(random.nextInt(spots.size()));
+				x = pick[0];
+				z = pick[1];
+			}
 			traps.add(new Trap(x, z, kind));
 		}
 		return traps;
+	}
+
+	/** The fewest open spots a maze cell of a floor may have, to be given a trap. */
+	private static final int MIN_OPEN = 12;
+	/** On a floor of another variation, how far from the portal a trap keeps, in blocks. */
+	private static final int PORTAL_CLEAR = 6;
+
+	private static int openIn(final TowerPlan plan, final int x, final int z) {
+		int open = 0;
+		for (int dx = 0; dx < TowerMaze.PATH; dx++) {
+			for (int dz = 0; dz < TowerMaze.PATH; dz++) {
+				open += trappable(plan, x + dx, z + dz) ? 1 : 0;
+			}
+		}
+		return open;
+	}
+
+	/** Whether a trap may lie at a spot: open ground, clear of the frame, the safe zones and, off the maze, the portal. */
+	private static boolean trappable(final TowerPlan plan, final int x, final int z) {
+		if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE || plan.walls()[x][z] || plan.isFramePost(x, z) || plan.inSafeZone(x, z)) {
+			return false;
+		}
+		boolean mazeLike = plan.variation() == TowerPlan.Variation.MAZE || plan.variation() == TowerPlan.Variation.TALL_WALLS;
+		return mazeLike || Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > PORTAL_CLEAR;
 	}
 
 	/** Springs a trap of this theme under a player, as for this floor; null while it rests. */

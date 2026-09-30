@@ -348,7 +348,8 @@ public final class TowerFloors {
 					if (plan.walls()[x - x0][z - z0]) {
 						// The safe room's ring is tower wall, which nothing breaks; the maze's own is maze wall.
 						BlockState solid = plan.isRing(x - x0, z - z0) ? wall : mazeWall;
-						for (int y = base; y < top; y++) {
+						int height = Math.min(top, base + plan.wallHeightAt(x - x0, z - z0));
+						for (int y = base; y < height; y++) {
 							set(tower, x, y, z, solid);
 						}
 					}

@@ -160,7 +160,7 @@ public class TowerSafetyReviewGameTest {
 	 * A mob is sent back to where it was last seen outside only where that spot is still a place to stand. With the
 	 * block under the sighting gone, it is sent to the nearest supported spot instead, never hung over the hole.
 	 */
-	@GameTest(maxTicks = 100)
+	@GameTest
 	public void aMobSentBackIsNeverPutOverAHole(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0);
@@ -170,56 +170,47 @@ public class TowerSafetyReviewGameTest {
 		TowerTestSupport.holdRoom(tower, spots.mob());
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.DARK);
+		// A mob with no AI does not fall or settle, so it is stood on the ground by hand.
 		zombie.setNoAi(true);
-		zombie.snapTo(spots.mob().x, spots.mob().y + 1.0, spots.mob().z, 0.0F, 0.0F);
+		zombie.snapTo(spots.mob().x, spots.mob().y, spots.mob().z, 0.0F, 0.0F);
+		zombie.setOnGround(true);
 		tower.addFreshEntity(zombie);
-		UUID id = zombie.getUUID();
 		TowerMaze.Zone zone = plan.safeZones().get(0);
 		BlockPos o = plan.origin();
 		AABB box = TowerSafety.zoneBox(plan, zone);
 		BlockPos seenAt = BlockPos.containing(spots.mob());
+		// Seen outside, on the ground.
+		TowerSafety.sweep(tower, floor);
 		List<BlockPos> holes = new ArrayList<>();
 		List<BlockState> kept = new ArrayList<>();
-		boolean[] holed = {false};
-		boolean[] finished = {false};
-		helper.onEachTick(() -> {
-			if (finished[0] || !(tower.getEntity(id) instanceof Mob now)) {
-				return;
+		for (int dx = -2; dx <= 2; dx++) {
+			for (int dz = -2; dz <= 2; dz++) {
+				BlockPos under = seenAt.offset(dx, -1, dz);
+				holes.add(under);
+				kept.add(tower.getBlockState(under));
+				tower.setBlock(under, Blocks.AIR.defaultBlockState(), 2);
 			}
-			if (!holed[0]) {
-				if (!now.onGround()) {
-					return;
-				}
-				// Seen outside, on the ground.
-				TowerSafety.sweep(tower, floor);
-				for (int dx = -2; dx <= 2; dx++) {
-					for (int dz = -2; dz <= 2; dz++) {
-						BlockPos under = seenAt.offset(dx, -1, dz);
-						holes.add(under);
-						kept.add(tower.getBlockState(under));
-						tower.setBlock(under, Blocks.AIR.defaultBlockState(), 2);
-					}
-				}
-				holed[0] = true;
-				// Driven into the zone within the same sweep, then swept.
-				now.snapTo(o.getX() + zone.x() + 3.5, TowerLayout.BASE_Y, o.getZ() + zone.z() + 3.5, 0.0F, 0.0F);
-				TowerSafety.sweep(tower, floor);
-				Vec3 at = now.position();
-				BlockPos below = BlockPos.containing(at.x, at.y - 0.5, at.z);
-				boolean supported = tower.getBlockState(below).isFaceSturdy(tower, below, Direction.UP);
-				boolean outside = !now.getBoundingBox().intersects(box);
-				boolean overHole = holes.contains(below);
-				finished[0] = true;
-				for (int i = 0; i < holes.size(); i++) {
-					tower.setBlock(holes.get(i), kept.get(i), 2);
-				}
-				TowerTestSupport.result("sentBackSupport", "outside=" + outside + " supported=" + supported + " overHole=" + overHole + " at=" + at.subtract(Vec3.atLowerCornerOf(o)));
-				now.discard();
-				helper.assertTrue(outside, "the mob was not sent out of the zone");
-				helper.assertTrue(supported && !overHole, "the mob was put at " + below + " with no block to stand on");
-				helper.succeed();
+		}
+		try {
+			// Driven into the zone, then swept.
+			zombie.snapTo(o.getX() + zone.x() + 3.5, TowerLayout.BASE_Y, o.getZ() + zone.z() + 3.5, 0.0F, 0.0F);
+			zombie.setOnGround(true);
+			TowerSafety.sweep(tower, floor);
+			Vec3 at = zombie.position();
+			BlockPos below = BlockPos.containing(at.x, at.y - 0.5, at.z);
+			boolean supported = tower.getBlockState(below).isFaceSturdy(tower, below, Direction.UP);
+			boolean outside = !zombie.getBoundingBox().intersects(box);
+			boolean overHole = holes.contains(below);
+			TowerTestSupport.result("sentBackSupport", "outside=" + outside + " supported=" + supported + " overHole=" + overHole + " at=" + at.subtract(Vec3.atLowerCornerOf(o)));
+			helper.assertTrue(outside, "the mob was not sent out of the zone");
+			helper.assertTrue(supported && !overHole, "the mob was put at " + below + " with no block to stand on");
+		} finally {
+			for (int i = 0; i < holes.size(); i++) {
+				tower.setBlock(holes.get(i), kept.get(i), 2);
 			}
-		});
+			zombie.discard();
+		}
+		helper.succeed();
 	}
 
 	/** The boss room's zone can be targeted too: the mob outside its ring, a player inside, and one outside near the mob. */

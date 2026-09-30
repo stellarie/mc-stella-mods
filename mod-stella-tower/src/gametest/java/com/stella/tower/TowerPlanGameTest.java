@@ -145,7 +145,8 @@ public class TowerPlanGameTest {
 					ordinary++;
 					boolean acrossX = plan.arrivalX() < S / 2 != plan.portalX() < S / 2;
 					boolean acrossZ = plan.arrivalZ() < S / 2 != plan.portalZ() < S / 2;
-					opposite += acrossX || acrossZ ? 1 : 0;
+					// The spiral puts its ends at the two ends of its one corridor, which may be anywhere: it is exempt.
+					opposite += plan.variation() == TowerPlan.Variation.SPIRAL || acrossX || acrossZ ? 1 : 0;
 					int straight = Math.abs(plan.portalX() - plan.arrivalX()) + Math.abs(plan.portalZ() - plan.arrivalZ());
 					winding += steps > straight ? 1 : 0;
 				} else {
@@ -198,7 +199,7 @@ public class TowerPlanGameTest {
 		helper.assertTrue(same, "a plan drawn twice is not the same");
 		helper.assertTrue(cached, "the plan is not cached");
 		helper.assertTrue(otherFloor && otherSeed, "a plan is not its own: otherFloor=" + otherFloor + " otherSeed=" + otherSeed);
-		helper.assertTrue(plan.version() == TowerPlan.VERSION && plan.variation() == TowerPlan.Variation.MAZE, "the plan is version " + plan.version());
+		helper.assertTrue(plan.version() == TowerPlan.VERSION && plan.variation() == TowerPlan.variationOf(555L, 42), "the plan is version " + plan.version());
 		helper.succeed();
 	}
 

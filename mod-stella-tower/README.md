@@ -232,6 +232,84 @@ through the far door (+8, the maze). Measured with that rule put back: the case 
 - Projectiles already in flight when a player steps into a zone still land: nothing in the keep-out recalls an arrow.
   Wardens are not tower mobs, so the zones do not cover them.
 - `TowerTestSupport.spotsBesideZone(plan, zoneIndex)` also targets the boss room (zone 1).
-- Not test-proven beyond the first red run: by the owner's instruction (2026-09-30) no gate was run for this commit,
-  only `build compileGametestJava -x runGameTest`. `TowerSafetyReviewGameTest` was red on three of its cases before
-  the fixes (evidence f4-r1-red) and has not been run green.
+- Tests: `TowerSafetyReviewGameTest` (5 cases, listed in `fabric.mod.json`). Red first on three of them (evidence
+  f4-r1-red: `shelteredNeverLoadsAChunkToAnswer`, `shelteredIsLookedUpOncePerPlayerPerTick`, the hole case), green in
+  f4-g2. The shaman-quarry case passed before the fix as well, so it is weak evidence; the owner later dropped the
+  mutation runs and the five-run gate, which were not done.
+
+```
+[BEHAVIOR] test=shelteredNoLoad RESULT sheltered=false markerChunkLoaded=false
+[BEHAVIOR] test=shelteredCost RESULT callsAtOnePlace=50 lookups=1 outsideAnswer=false insideAnswerAfterMove=true
+[BEHAVIOR] test=sentBackSupport RESULT outside=true supported=true overHole=false at=(55.5, 0.0, 44.5)
+[BEHAVIOR] test=shamanQuarry RESULT castsInside=0 castsAfterStepOut=1 steppedOutAt=32 insideWindow=32
+```
+
+## Floor variations (slice F4)
+
+Every planned floor takes one of five variations, drawn from `(seed, floor)` alone (`TowerPlan.variationOf`,
+`TowerVariations`), and every part of the plan follows from the walls the variation makes. Plan `VERSION` stays 1
+(unreleased); a legacy floor is unchanged.
+
+| variation | walls |
+|---|---|
+| MAZE (35) | the perfect maze, paths six wide |
+| WIDE_ROOMS (20) | a maze of paths two wide (21 x 21 cells) with 3 to 5 rooms of 6 x 3, 6 x 4 or 6 x 5, either way round (`plan.rooms()`) |
+| STAGGERED (15) | nine rows of rooms eight wide, every odd row offset by half a room, a door two high between every two rooms that touch |
+| TALL_WALLS (15) | the maze, its walls `TowerPlan.TALL_WALL_HEIGHT` (2) high with air above; `plan.wallHeightAt(x, z)` |
+| SPIRAL (15) | seven x seven cells of eight (a safe zone's size), one corridor of all 49 cells from one end in to the other |
+
+- Floor 1 is always MAZE; a floor never repeats the variation of the floor before; elite and boss floors bar SPIRAL, and
+  boss floors bar WIDE_ROOMS. A floor after another draws by a second set of weights (`TowerVariations.lambda()`), worked
+  out so the chain settles to the weights, not to the pulled-together shares a naive "weights minus last" gives (MAZE
+  would come out near 30). The chain is cut into blocks of 64 floors: the first floor of a block draws by the weights
+  alone and the last keeps clear of the next block's first, so a floor costs at most 64 steps.
+- Hall floors keep the central hall, the pyramid, the walled boss room and its two-high openings; the variation shapes the
+  rest (the hall and the room are stamped over it, and on a boss floor the hall's enclosure is solid). Safe zones stay
+  open 8 x 8. The walk from the arrival to the portal (through the room to the hall) is checked for every draw; a
+  plan with none is drawn again, up to 8 times, then falls back to the plain maze.
+- Tall walls: the ring and the hall's enclosure stay full height. Mobs cannot jump two blocks; spiders climb and stand on
+  top, and players can jump or pillar over (accepted). The keep-out is by position, so nothing changes there; the
+  spawn-fills test counts a body as "in a wall" only inside the wall's own two blocks.
+- The spiral's ends are the corridor's two ends, arrival in the end cell (which is the safe zone exactly) and the portal
+  in the other, entered along x: this overrides the random-halves placement (recorded in the plan doc).
+- Traps now lie on open ground whatever the variation (a cell's random spot is redrawn among its open spots; a mostly
+  solid cell holds none; off the maze, none within 6 blocks of the portal).
+
+### Chest spots
+
+`plan.chestSpots()` is `List<TowerPlan.ChestSpot>`: `ChestSpot(x, z, facing, guaranteed)`, `second()` the other block
+(beside the first along x for a chest facing north or south, along z for east or west), `cells()` both. A spot stands
+against a wall (both blocks behind are wall), its front is open, and it is at least 30 steps from the arrival by the walk
+(`TowerChests.STAGES` relaxes this, and the spacing of 12, only on a floor too tight for it), clear of the traps (3),
+the zones, the hall (which holds the pyramid) and the portal's approach (9), preferring the most walled-in places
+(dead ends, room corners). At least 5 regular spots per floor (6 wanted), plus one `guaranteed` spot on every fifth
+floor: in the entrance zone on elite floors, inside the walled boss room on boss floors (off the openings' lines and the
+workstations' row). Nothing is placed yet.
+
+### Measured
+
+```
+[BEHAVIOR] test=variationDraw RESULT floors=8000 repeats=0 barred=0 r0MA=0.346/0.344 r0WI=0.199/0.204 r0ST=0.150/0.148 r0TA=0.153/0.148 r0SP=0.152/0.155 r1MA=0.391/0.388 r1WI=0.255/0.245 r1ST=0.180/0.183 r1TA=0.174/0.183 r1SP=0.000/0.000 r2MA=0.458/0.466 r2WI=0.000/0.000 r2ST=0.298/0.267 r2TA=0.245/0.267 r2SP=0.000/0.000 worstOfBound=0.27
+[BEHAVIOR] test=variationFallback RESULT floors=3000 fallbacks=0 reseeded=0 fallbackByVariation=[0, 0, 0, 0, 0]
+[BEHAVIOR] test=tallWalls RESULT floor=30109932 wallCells=706 wrongHeight=0 airAboveFaults=0 height=2 mazeWallCells=706 mazeWrongHeight=0 bossFloor=40 ringShort=0 hallWallShort=0
+[BEHAVIOR] test=staggeredRooms RESULT draws=300 neighbourPairs=51000 withoutDoor=0 narrowDoors=0 rowsNotOffsetRight=0
+[BEHAVIOR] test=wideRooms RESULT plans=400 hallFloors=58 tiledPlans=342 pathCellsNotTwoWide=0 rooms=1613 plansWithFewRooms=0 badSizes=0 roomsNotOpen=0 overlapping=0 inZone=0 unjoined=0 sizes=[3x6, 4x6, 5x6, 6x3, 6x4, 6x5]
+[BEHAVIOR] test=spiral RESULT plans=300 cellsNotOpen=0 wrongOpeningCounts=0 cellsWithOverTwo=0 wrongEnds=0 disconnected=0 leastOpenShare=0.912 shortestWalk=356
+[BEHAVIOR] test=variationWalks RESULT MAZE plans=2000 stuck=0 fellBack=0 hallFloors=454; WIDE_ROOMS plans=2000 stuck=0 fellBack=0 hallFloors=272; STAGGERED plans=2000 stuck=0 fellBack=0 hallFloors=569; TALL_WALLS plans=2000 stuck=0 fellBack=0 hallFloors=538; SPIRAL plans=2000 stuck=0 fellBack=0 hallFloors=0; stuckTotal=0
+[BEHAVIOR] test=builtVariationWalks RESULT floors=14 stuck=0 modelDisagrees=0 shortest=28
+[BEHAVIOR] test=chestSpots RESULT plans=3000 fewestRegular=6 nearestByWalk=30 guaranteedSpots=600 faults=0 guaranteedFaults=0 legacySpots=0 first=
+[BEHAVIOR] test=spiralFills RESULT floor=30112624 variation=SPIRAL filledAtTick=165 most=72 cap=72 mobs=72 inWall=0 inZone=0
+[BEHAVIOR] test=tallWallsFills RESULT floor=30112777 variation=TALL_WALLS filledAtTick=164 most=72 cap=72 mobs=72 inWall=0 inZone=0
+```
+
+Shares are per rank of floor (r0 ordinary, r1 elite, r2 boss), measured/expected, the expected one walked from the chain's
+own kernel floor by floor (it differs from the plain weights because elite and boss floors bar variations); the bound
+is five standard deviations, stretched by sqrt 2, plus 0.004. The fallback rate over 3000 floors is 0.
+
+Appearance in play: a player climbing floors sees MAZE 35 % (floor 1 always), WIDE_ROOMS about 20, STAGGERED 15, TALL_WALLS
+15, SPIRAL about 12 to 15 (none on every fifth floor).
+
+Honest gaps: the F4 tests were written after the implementation (no red run; against the old tree they fail to compile),
+and no mutation runs or five-run gate were made, by the owner's instruction. Traps and wisps were not given a case per
+variation: the existing suites ran green on floors of every variation, nothing more. Manual item: walk one floor of each
+variation in play (the tall-walls jump-over, the spiral's length of about 430 blocks, the brick rooms) for feel.

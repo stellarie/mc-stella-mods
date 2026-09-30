@@ -112,9 +112,14 @@ public class TowerShamanGameTest {
 		Fake fake = new Fake(40);
 		TowerSpells.install(floor, fake);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		Skeleton shaman = TowerShamans.summon(tower, floor, player.position().add(2.0, 0.0, 0.0));
+		// Beside the arrival's zone, not in it: a player inside a zone is never a shaman's quarry.
+		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
+		player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
+		TowerTestSupport.holdRoom(tower, spots.mob());
+		Skeleton shaman = TowerShamans.summon(tower, floor, spots.mob());
 		helper.assertTrue(shaman != null, "no shaman could be raised");
 		shaman.setNoAi(true);
+		shaman.snapTo(spots.mob());
 		TowerShamans.Kit kit = shaman.getAttached(TowerShamans.KIT);
 		long ticks = 110L;
 		helper.runAfterDelay(ticks, () -> {

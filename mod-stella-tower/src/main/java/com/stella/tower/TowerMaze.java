@@ -141,9 +141,19 @@ public final class TowerMaze {
 		for (Zone zone : classicZones(floor)) {
 			open(wall, zone.x(), zone.z(), SAFE, SAFE);
 		}
-		if (hall == BOSS_HALL && ring) {
-			// The room's ring is the zone's own outermost blocks, solid but for two openings two wide: the exit
-			// through the hall's wall beside it, and, across the room, the entrance onto the maze's cell.
+		if (hall == BOSS_HALL) {
+			bossRoom(wall, ring);
+		}
+		return wall;
+	}
+
+	/**
+	 * The boss floor's safe room, in the walls carved so far: with a ring, the zone's own outermost blocks are solid but
+	 * for two openings two wide (the exit through the hall's wall beside it and, across the room, the entrance onto the
+	 * maze's cell); without one (before {@link TowerPlan#RING_VERSION}) a door from the hall as wide as a path.
+	 */
+	static void bossRoom(final boolean[][] wall, final boolean ring) {
+		if (ring) {
 			for (int x = BOSS_ROOM_X; x < BOSS_ROOM_X + SAFE; x++) {
 				for (int z = SAFE_Z; z < SAFE_Z + SAFE; z++) {
 					if (x == BOSS_ROOM_X || x == ROOM_ENTRANCE_X || z == SAFE_Z || z == SAFE_Z + SAFE - 1) {
@@ -153,13 +163,12 @@ public final class TowerMaze {
 			}
 			open(wall, BOSS_ROOM_X - WALL, GATE_Z, WALL + 1, 2);
 			open(wall, ROOM_ENTRANCE_X, GATE_Z, 1, 2);
-		} else if (hall == BOSS_HALL) {
+		} else {
 			// A door from the hall into the safe room, as wide as a path. The room's far side opens onto the
 			// maze by itself, its wall being cleared with the room.
 			int door = 1 + (TowerPlan.CLASSIC_MIDDLE_Z - 1) / PITCH * PITCH;
 			open(wall, BOSS_ROOM_X - WALL, door, WALL, PATH);
 		}
-		return wall;
 	}
 
 	/** Carves a perfect maze over the cells not yet seen, from a start cell already marked seen. */
