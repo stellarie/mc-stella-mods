@@ -18,7 +18,7 @@ This repository develops separate Fabric mods on one trunk, `main`: mobs, equips
 - `python scripts/spellbook-icon-check.py --audit --strict-tints --jar mod-stella-spells/build/libs/mod-stella-spells-0.1.0+26.3.jar` - Audit shipped spellbook assets. [verified: 2026-09-28] [source: command output]
 - `cd mod-stella-mobs; .\gradlew.bat runGameTest --rerun -PgameTestFilter=<full-test-id>` - Run one server GameTest. [verified: 2026-09-28] [source: mod-stella-mobs/build.gradle; focused GameTest runs]
 - `cd mod-stella-food; .\gradlew.bat clean build` - Build food and run required GameTests. [verified: 2026-09-28] [source: mc-stella-mods-food.work/verification/parent-clean-build-console.log]
-- `python scripts/test-build-release.py` - Check CI discovery, five runs, ZIP contents, and failure handling. [verified: 2026-09-28] [source: command output]
+- `python scripts/test-build-release.py` - Check CI discovery, five runs, packed jar contents, and failure handling. [verified: 2026-09-28] [source: command output]
 - `python scripts/build-release.py --list` - Print the current Gradle mod list as JSON. [verified: 2026-09-29] [source: command output]
 - `cd mc-stella-villages; .\gradlew.bat clean build` - Build villages and its required mobs jar. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; clean build]
 - `cd mc-stella-villages; .\gradlew.bat runGameTest --rerun` - Run villages GameTests with the mobs mod loaded. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; runGameTest --rerun]
