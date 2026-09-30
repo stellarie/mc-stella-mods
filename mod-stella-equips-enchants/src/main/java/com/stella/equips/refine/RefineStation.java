@@ -98,11 +98,11 @@ public final class RefineStation {
 			player.sendSystemMessage(Component.literal("Success! ").withStyle(ChatFormatting.GREEN).append(piece.getHoverName())
 				.append(" is now +" + next), true);
 		} else {
-			int dropped = Math.max(0, level - 1);
+			int dropped = Refine.levelAfterFailure(level);
 			Refine.setLevel(piece, dropped);
 			player.level().playSound(null, player.blockPosition(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.6F, 0.8F);
 			player.sendSystemMessage(Component.literal("The refine failed: ").withStyle(ChatFormatting.RED).append(piece.getHoverName())
-				.append(" dropped to +" + dropped), true);
+				.append(dropped == level ? " kept +" + dropped : " dropped to +" + dropped), true);
 		}
 		slot.setChanged();
 		menu.broadcastChanges();

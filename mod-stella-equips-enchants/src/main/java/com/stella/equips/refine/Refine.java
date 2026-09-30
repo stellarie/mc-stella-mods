@@ -32,6 +32,8 @@ import net.minecraft.world.item.enchantment.Repairable;
  */
 public final class Refine {
 	public static final int MAX_LEVEL = 15;
+	public static final int MILESTONE_FIRST = 10;
+	public static final int MILESTONE_SECOND = 12;
 	public static final String LEVEL_KEY = "stella_refine";
 	public static final double DAMAGE_PER_LEVEL = 0.75;
 	public static final double ARMOR_PER_LEVEL = 0.5;
@@ -156,6 +158,15 @@ public final class Refine {
 	}
 
 	/** How much material the next step costs: one more for every three levels the piece already has. */
+	/** Below +10 a failure keeps the level; from +10 up it drops one, never below +10 or +12 once reached. */
+	public static int levelAfterFailure(final int level) {
+		if (level < MILESTONE_FIRST) {
+			return level;
+		}
+		int floor = level >= MILESTONE_SECOND ? MILESTONE_SECOND : MILESTONE_FIRST;
+		return Math.max(floor, level - 1);
+	}
+
 	public static int cost(final int currentLevel) {
 		return 1 + currentLevel / 3;
 	}
