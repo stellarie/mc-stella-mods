@@ -74,7 +74,7 @@ public final class ApprenticeChestplateGameTest {
 		helper.succeed();
 	}
 
-	/** The guard is 3% per light level below 15, read where the wearer stands, and only from the chest slot. */
+	/** The guard is 1.5% per light level below 15, read where the wearer stands, and only from the chest slot. */
 	@GameTest(maxTicks = 100)
 	public void darkReduction(final GameTestHelper helper) {
 		float[] byLight = {ApprenticeChestplate.reduction(15), ApprenticeChestplate.reduction(10), ApprenticeChestplate.reduction(0)};
