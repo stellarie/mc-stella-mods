@@ -28,7 +28,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * The red slime rule: a biome holds at most {@link #MAX_PER_BIOME} red slimes. They spawn only in the
- * morning and evening windows, in random loaded chunks near a player. After one dies, its biome waits
+ * morning and evening windows, in random loaded chunks near a player, never within 7 blocks of a light source. After one dies, its biome waits
  * {@link #REFILL_TICKS} ticks before it fills again. The slimes are category MISC, so they never count
  * against the mob cap, and their spawn reason is EVENT.
  */
@@ -128,7 +128,8 @@ public final class RedSlimeSpawnRule implements SpawnRule {
 			BlockPos pos = new BlockPos(x, y, z);
 			if (y <= level.getMinY()
 				|| !SpawnPlacements.isSpawnPositionOk(StellaEntities.RED_SLIME, level, pos)
-				|| !level.noCollision(StellaEntities.RED_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))) {
+				|| !level.noCollision(StellaEntities.RED_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))
+				|| LightSources.near(level, pos, LightSources.RADIUS)) {
 				continue;
 			}
 			Holder<Biome> biome = level.getBiome(pos);
