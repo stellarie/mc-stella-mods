@@ -190,6 +190,29 @@ public class SpellbookLootGameTest {
 	}
 
 	@GameTest
+	public void containerMatcher(final GameTestHelper helper) {
+		java.util.Map<String, Boolean> cases = new java.util.LinkedHashMap<>();
+		cases.put("minecraft:chests/simple_dungeon", true);
+		cases.put("minecraft:chests/village/village_weaponsmith", true);
+		cases.put("minecraft:pots/trial_chambers/corridor", true);
+		cases.put("repurposed_structures:barrels/mansion", true);
+		cases.put("minecraft:blocks/chest", false);
+		cases.put("minecraft:entities/cow", false);
+		cases.put("minecraft:gameplay/fishing", false);
+		cases.put("minecraft:chests/jungle_temple_dispenser", false);
+		cases.put("mod-stella-spells-test-mod-stella-spells:chests/excluded", false);
+		java.util.List<String> wrong = new java.util.ArrayList<>();
+		cases.forEach((id, expected) -> {
+			if (ContainerTables.targets(Identifier.parse(id)) != expected) {
+				wrong.add(id);
+			}
+		});
+		Spellbooks.LOGGER.info("[BEHAVIOR] test=containerMatcher RESULT wrong={}", wrong);
+		helper.assertTrue(wrong.isEmpty(), "the container matcher misjudged " + wrong);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void cowLootTableNeverAddsASpellbook(final GameTestHelper helper) {
 		SpellTestLog.Outcome outcome = SpellTestLog.track(helper, "cowLootTableNeverAddsASpellbook");
 		ItemStack stack = SpellbookTestAccess.rollChest(

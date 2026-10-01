@@ -15,12 +15,12 @@ import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.item.ItemStack;
 
 public final class SpellbookLoot {
-	public static final double CHEST_DROP_CHANCE = 0.05;
+	public static final double CHEST_DROP_CHANCE = 0.10;
 	public static final double WITCH_DROP_CHANCE = 0.50;
-	/** Scrolls are common: this share of vanilla chests holds one or two of a random spell. */
-	public static final double SCROLL_CHEST_CHANCE = 0.40;
+	/** Scrolls are common: this share of containers holds one or two of a random spell. */
+	public static final double SCROLL_CHEST_CHANCE = 0.25;
 	public static final int SCROLL_MAX_COUNT = 2;
-	private static final Set<Identifier> VANILLA_CHEST_TABLES = ConcurrentHashMap.newKeySet();
+	private static final Set<Identifier> CONTAINER_TABLES = ConcurrentHashMap.newKeySet();
 
 	private SpellbookLoot() {
 	}
@@ -28,26 +28,26 @@ public final class SpellbookLoot {
 	public static void register() {
 		LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
 			Identifier table = key.identifier();
-			if (!isVanillaChest(table)) {
+			if (!ContainerTables.targets(table)) {
 				return;
 			}
 
 			if (source.isBuiltin()) {
-				VANILLA_CHEST_TABLES.add(table);
+				CONTAINER_TABLES.add(table);
 			} else {
-				VANILLA_CHEST_TABLES.remove(table);
+				CONTAINER_TABLES.remove(table);
 			}
 		});
 		LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> table.unwrapKey()
 			.map(key -> key.identifier())
-			.filter(VANILLA_CHEST_TABLES::contains)
+			.filter(CONTAINER_TABLES::contains)
 			.ifPresent(id -> modifyChestDrops(id, true, context.getRandom(), drops))
 		);
 		ServerLivingEntityEvents.AFTER_DEATH.register(SpellbookLoot::onDeath);
 	}
 
 	public static ItemStack rollChest(final Identifier table, final boolean builtin, final RandomSource random) {
-		if (!builtin || !isVanillaChest(table)) {
+		if (!builtin || !ContainerTables.targets(table)) {
 			return ItemStack.EMPTY;
 		}
 		return roll(CHEST_DROP_CHANCE, random).stack();
@@ -60,7 +60,7 @@ public final class SpellbookLoot {
 	public static void modifyChestDrops(
 		final Identifier table, final boolean builtin, final RandomSource random, final List<ItemStack> drops
 	) {
-		if (!builtin || !isVanillaChest(table)) {
+		if (!builtin || !ContainerTables.targets(table)) {
 			return;
 		}
 
@@ -116,10 +116,6 @@ public final class SpellbookLoot {
 			"[SPELL] event=DROP source=witch source_entity={} item_id={}",
 			witch.getUUID(), BuiltInRegistries.ITEM.getKey(roll.stack().getItem())
 		);
-	}
-
-	private static boolean isVanillaChest(final Identifier table) {
-		return "minecraft".equals(table.getNamespace()) && table.getPath().startsWith("chests/");
 	}
 
 	private static Roll roll(final double chance, final RandomSource random) {

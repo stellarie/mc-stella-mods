@@ -147,7 +147,7 @@ It never spends a respawn anchor's charge, crumbles when read, and rests 5 secon
 
 ## Clue books
 
-Three vanilla chests in ten hold a tattered clue book (measured: 29.96% of 100,000 seeded chests). Each
+Three searchable containers in ten hold a tattered clue book (measured: 29.96% of 100,000 seeded chests). Each
 is written by one of eight spellbinders, from Archmage Pip to the Cat (dictated), and teaches one
 spell's book and scroll recipes with the material by name, what the spell does, and a postscript. Now
 and then the note is about the Scroll of Return instead.
@@ -171,8 +171,8 @@ book's. Head and chest spell enchantments still apply.
 - **Craft:** one paper and the spell's material make 2 scrolls, shapeless (e.g. paper + flint = 2
   Spark Shot Scrolls). Briar Snare takes two vines, because paper and one vine is vanilla's banner
   pattern.
-- **Find:** 40% of vanilla chests hold 1 or 2 scrolls of a random spell (measured: 39.95% over
-  10,000 seeded chests), on top of the 5% spellbook chance.
+- **Find:** 25% of searchable containers hold 1 or 2 scrolls of a random spell, on top of the 10% spellbook
+  chance. Containers are the same chests, barrels and pots that get the equips gear rolls, in any namespace.
 
 ## Spell combos
 
@@ -230,7 +230,7 @@ patrol, the village witch or a summoned skeleton as a foe.
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
 - **From scrolls:** eight scrolls of one spell around a book make that spellbook. Summon Skeleton has no scroll.
-- **Chest loot:** each generated vanilla chest has a 5% chance to hold one random spellbook.
+- **Container loot:** each searchable container has a 10% chance to hold one random spellbook.
 - **Witches:** each Witch death has a 50% chance to drop one random spellbook.
 
 ## Enchantments
