@@ -29,7 +29,6 @@
 		"RpgEffectPercentMixin",
 		"RpgNoDamageHeartsMixin",
 		"RpgXpCurveMixin",
-		"RpgBagMenuMixin",
 		"RpgBagPickupMixin"
 	],
 	"injectors": {

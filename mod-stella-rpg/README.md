@@ -88,12 +88,12 @@ The `xp_curve` key in `stats.json` holds `base`, `factor`, and `exponent`. A mis
 
 ## Bag
 
-Three extra rows of 9 sit below the inventory screen, under the spells quick-slot row.
+The Bag tab, between Inventory and Stats, opens 27 extra slots as a vanilla three-row chest menu over your
+inventory.
 
 - A pickup goes into the bag only when the main inventory has no room.
-- Shift-click on a bag slot moves the stack into the main inventory.
+- Shift-click moves stacks between the bag and the inventory.
 - The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
-- The rows show only in the survival inventory screen. Chests and other menus, and the creative inventory, do not show them.
 
 ## Level-up refresh
 
@@ -203,10 +203,10 @@ The server applies the faster bow draw. The client draw animation keeps the vani
 
 ## Stats tab
 
-A client with the mod shows two tabs above the inventory panel: Inventory and Stats.
+A client with the mod shows three tabs above the inventory panel: Inventory, Bag, and Stats.
 The tabs sit at `topPos - 28` and follow the panel when the recipe book opens.
 The Stats tab opens a 256 by 200 pixel screen centered on the window.
-The stats screen draws both tabs at `top - 28`. The Inventory tab returns to the inventory.
+The stats screen and the bag screen draw the tabs at `top - 28`. The Inventory tab returns to the inventory.
 The tabs appear only after the server sent the first stat sync.
 
 - The left column shows `Str 25 (+3) + 5` for each stat: base, pending points in blue, then bonus.

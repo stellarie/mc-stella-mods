@@ -169,11 +169,11 @@ public final class StatsScreen extends Screen {
 	public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
 		if (event.button() == 0) {
 			int tab = StatsTabs.hit(this.leftPos, this.topPos, event.x(), event.y());
-			if (tab == StatsTabs.INVENTORY) {
-				StatsTabs.openInventory(this.minecraft);
+			if (tab == StatsTabs.STATS) {
 				return true;
 			}
-			if (tab == StatsTabs.STATS) {
+			if (tab >= 0) {
+				StatsTabs.open(this.minecraft, tab);
 				return true;
 			}
 		}

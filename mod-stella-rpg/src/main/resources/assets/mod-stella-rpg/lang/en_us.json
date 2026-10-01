@@ -4,6 +4,8 @@
 	"screen.mod-stella-rpg.stats": "Status",
 	"screen.mod-stella-rpg.tab.inventory": "Inventory",
 	"screen.mod-stella-rpg.tab.stats": "Stats",
+	"screen.mod-stella-rpg.tab.bag": "Bag",
+	"container.mod-stella-rpg.bag": "Bag",
 	"screen.mod-stella-rpg.row": "%s %s%s + %s",
 	"screen.mod-stella-rpg.pending": " (+%s)",
 	"screen.mod-stella-rpg.stat.str": "Str",
