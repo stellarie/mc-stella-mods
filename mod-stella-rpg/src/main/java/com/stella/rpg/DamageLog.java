@@ -65,6 +65,9 @@ public final class DamageLog {
 		if (lost <= 0) {
 			return;
 		}
+		if (victim instanceof ServerPlayer hurt) {
+			DeathRecap.record(hurt, source, lost);
+		}
 		if (source.getEntity() instanceof ServerPlayer attacker && attacker != victim && enabled(attacker)) {
 			attacker.sendSystemMessage(Component.literal(dealt(lost, victim.getDisplayName().getString())));
 		}

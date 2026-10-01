@@ -101,6 +101,12 @@ inventory.
 - The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
 - Other mods read and write the bag through the share `mod-stella-rpg:bag-view`, a `Function<Player, Container>`. The equips mod uses it to fill an emerald bag kept here.
 
+## Death recap
+
+When you die, chat lists the hits that led to it: up to 6 hits from the last 10 seconds, newest last, and their total.
+Each line names the attacker (with its level, and "elite" for an elite or boss, when `mod-stella-mobs` is installed), the
+damage type, the health the hit removed, and how long before the death it landed. Damage-over-time ticks are left out.
+
 ## Level-up refresh
 
 Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.
