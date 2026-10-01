@@ -62,8 +62,8 @@ public final class FoodTooltipGameTest {
 		);
 		helper.assertTrue(
 			poison.contains("Surefooted") && poison.contains("45 minutes")
-				&& poison.contains("Poison") && !poison.contains("30 minutes")
-				&& occurrences(poison, "Poison") == 1,
+				&& poison.contains("Queasy") && poison.contains("5 minutes") && !poison.contains("Poison")
+				&& !poison.contains("30 minutes") && occurrences(poison, "Queasy") == 1,
 			"infused dish tooltip contradicted its applied effects: " + poison
 		);
 		helper.succeed();

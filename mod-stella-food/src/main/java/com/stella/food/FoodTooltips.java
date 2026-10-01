@@ -56,6 +56,12 @@ public final class FoodTooltips {
 			PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
 			if (potion != null && requested.shows(DataComponents.POTION_CONTENTS)) {
 				for (MobEffectInstance source : potion.getAllEffects()) {
+					var mild = FoodBehavior.mildFor(source.getEffect());
+					if (mild != null) {
+						lines.accept(Component.translatable("tooltip.mod-stella-food.potion", mild.value().getDisplayName(),
+							duration(FoodBehavior.MILD_DEBUFF_TICKS)).withStyle(ChatFormatting.GRAY));
+						continue;
+					}
 					Component name = source.getEffect().value().getDisplayName().copy();
 					if (source.getAmplifier() > 0) {
 						name = name.copy().append(" ").append(Component.translatable(
