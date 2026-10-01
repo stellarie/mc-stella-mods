@@ -4,6 +4,7 @@ import com.stella.food.FoodEffects;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,15 +23,10 @@ public abstract class LivingEntityMixin {
 		}
 	}
 
-	@Inject(method = "getDamageAfterMagicAbsorb", at = @At("RETURN"), cancellable = true)
-	private void stellaFood$reduceFireDamage(
-		final DamageSource source,
-		final float damage,
-		final CallbackInfoReturnable<Float> callback
-	) {
+	// Chains with the other mods' damage hooks; a cancelling inject would skip them.
+	@ModifyReturnValue(method = "getDamageAfterMagicAbsorb", at = @At("RETURN"))
+	private float stellaFood$reduceFireDamage(final float damage, final DamageSource source) {
 		LivingEntity entity = (LivingEntity) (Object) this;
-		if (source.is(DamageTypeTags.IS_FIRE) && entity.hasEffect(FoodEffects.EMBER_SKIN)) {
-			callback.setReturnValue(callback.getReturnValue() * 0.60F);
-		}
+		return source.is(DamageTypeTags.IS_FIRE) && entity.hasEffect(FoodEffects.EMBER_SKIN) ? damage * 0.60F : damage;
 	}
 }
