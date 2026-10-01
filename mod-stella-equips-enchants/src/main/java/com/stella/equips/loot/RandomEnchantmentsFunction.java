@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.Util;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -60,26 +61,30 @@ public class RandomEnchantmentsFunction extends LootItemConditionalFunction {
 	protected ItemStack run(final ItemStack stack, final LootContext context) {
 		boolean book = stack.is(Items.BOOK);
 		ItemStack result = book ? new ItemStack(Items.ENCHANTED_BOOK) : stack;
-		List<Holder<Enchantment>> pool = new ArrayList<>(candidates(stack, book, true));
+		List<Holder<Enchantment>> pool = new ArrayList<>(candidates(stack, book));
 		List<Holder<Enchantment>> granted = new ArrayList<>();
 		RandomSource random = context.getRandom();
-		boolean toppedUp = false;
 
-		while (granted.size() < this.count) {
-			if (pool.isEmpty()) {
-				if (toppedUp) {
-					break;
+		grant(result, pool, granted, random);
+		if (granted.size() < this.count && !book) {
+			// A thin tag tops up from every other enchantment the item supports, never a curse.
+			List<Holder<Enchantment>> wider = new ArrayList<>();
+			context.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).listElements().forEach(enchantment -> {
+				if (!granted.contains(enchantment) && !enchantment.is(EnchantmentTags.CURSE) && enchantment.value().canEnchant(stack)
+					&& !enchantment.unwrapKey().map(key -> key.identifier().getNamespace().contains("-test-")).orElse(false)) {
+					wider.add(enchantment);
 				}
+			});
+			grant(result, wider, granted, random);
+		}
 
-				toppedUp = true;
-				pool = new ArrayList<>(candidates(stack, book, false));
-				pool.removeAll(granted);
-			}
+		return result;
+	}
 
-			if (pool.isEmpty()) {
-				break;
-			}
-
+	private void grant(
+		final ItemStack result, final List<Holder<Enchantment>> pool, final List<Holder<Enchantment>> granted, final RandomSource random
+	) {
+		while (granted.size() < this.count && !pool.isEmpty()) {
 			Holder<Enchantment> pick = Util.getRandom(pool, random);
 			pool.remove(pick);
 
@@ -90,19 +95,14 @@ public class RandomEnchantmentsFunction extends LootItemConditionalFunction {
 			granted.add(pick);
 			result.enchant(pick, Mth.nextInt(random, pick.value().getMinLevel(), pick.value().getMaxLevel()));
 		}
-
-		return result;
 	}
 
-	/**
-	 * The catalogue is thin for some item types, so the tier count is kept by falling back to
-	 * enchantments that the item does not support.
-	 */
-	private List<Holder<Enchantment>> candidates(final ItemStack stack, final boolean book, final boolean supported) {
+	/** Only enchantments the item supports. An item that supports fewer than the count gets fewer. */
+	private List<Holder<Enchantment>> candidates(final ItemStack stack, final boolean book) {
 		List<Holder<Enchantment>> found = new ArrayList<>();
 
 		for (Holder<Enchantment> enchantment : this.options) {
-			if (!supported || book || enchantment.value().canEnchant(stack)) {
+			if (book || enchantment.value().canEnchant(stack)) {
 				found.add(enchantment);
 			}
 		}
