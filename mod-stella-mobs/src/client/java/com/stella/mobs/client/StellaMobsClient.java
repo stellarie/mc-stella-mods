@@ -15,6 +15,7 @@ public final class StellaMobsClient implements ClientModInitializer {
 		EntityRendererRegistry.register(StellaEntities.BLUE_SLIME, context -> new SlimeVariantRenderer(context, slimeTexture("blue_slime")));
 		EntityRendererRegistry.register(StellaEntities.WHITE_SLIME, context -> new SlimeVariantRenderer(context, slimeTexture("white_slime")));
 		EntityRendererRegistry.register(StellaEntities.BLACK_SLIME, context -> new SlimeVariantRenderer(context, slimeTexture("black_slime")));
+		EntityRendererRegistry.register(StellaEntities.RED_SLIME, context -> new SlimeVariantRenderer(context, slimeTexture("red_slime")));
 		EntityRendererRegistry.register(StellaEntities.SKELETON_WORKER, SkeletonRenderer::new);
 		EntityRendererRegistry.register(StellaEntities.GHOST, GhostRenderer::new);
 	}

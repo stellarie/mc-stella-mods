@@ -41,6 +41,8 @@ public final class StellaSpawner {
 	public static void register() {
 		BlueSlimeSpawnRule.registerEvents();
 		addRule(BlueSlimeSpawnRule.INSTANCE);
+		RedSlimeSpawnRule.registerEvents();
+		addRule(RedSlimeSpawnRule.INSTANCE);
 		addRule(SkeletonWorkerSpawnRule.INSTANCE);
 		addRule(GhostSpawnRule.INSTANCE);
 		ServerTickEvents.END_LEVEL_TICK.register(StellaSpawner::tick);

@@ -82,6 +82,17 @@ the default for that mob), `xp_base_hostile`, `xp_base_passive`, `xp_level_facto
 `xp_gap_min` (0.1), `xp_gap_max` (1.5), `xp_elite_multiplier` (3), and `xp_nemesis_multiplier` (5). The old
 `xp_level_divisor` key is retired: the store reports it and ignores it.
 
+## Red slime
+
+The red slime is a beginner mob.
+
+- It attacks players on sight. Base health is 12 and base damage is 2, before mob level scaling.
+- It never splits, never becomes elite, and leaves in peaceful.
+- Its category is MISC, so it does not count toward the hostile mob cap.
+- It spawns near players in the morning (day time 0 to 3000) and the evening (11000 to 14000).
+- A biome holds at most 5 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
+- It drops 1 to 3 slime balls, and a Potion of Healing half of the time.
+
 ## Threat level share
 
 `com.stella.mobs.api.ThreatLevelProvider` puts a `Function<Entity, Integer>` in the Fabric object share under

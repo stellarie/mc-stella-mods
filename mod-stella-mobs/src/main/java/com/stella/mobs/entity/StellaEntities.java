@@ -43,6 +43,8 @@ public final class StellaEntities {
 	public static final EntityType<BlueSlime> BLUE_SLIME = slime("blue_slime", MobCategory.MISC, BlueSlime::new);
 	public static final EntityType<WhiteSlime> WHITE_SLIME = slime("white_slime", MobCategory.MONSTER, WhiteSlime::new);
 	public static final EntityType<BlackSlime> BLACK_SLIME = slime("black_slime", MobCategory.MONSTER, BlackSlime::new);
+	/** MISC like the blue slime, so it stays outside the mob cap, but it attacks and leaves in peaceful. */
+	public static final EntityType<RedSlime> RED_SLIME = slime("red_slime", MobCategory.MISC, RedSlime::new, false);
 
 	public static final EntityType<SkeletonWorker> SKELETON_WORKER = mob(
 		"skeleton_worker", MobCategory.MONSTER, SkeletonWorker::new, 0.6F, 1.99F, 8, true
@@ -56,6 +58,7 @@ public final class StellaEntities {
 		FabricDefaultAttributeRegistry.register(BLUE_SLIME, Monster.createMonsterAttributes());
 		FabricDefaultAttributeRegistry.register(WHITE_SLIME, Monster.createMonsterAttributes());
 		FabricDefaultAttributeRegistry.register(BLACK_SLIME, Monster.createMonsterAttributes());
+		FabricDefaultAttributeRegistry.register(RED_SLIME, Monster.createMonsterAttributes());
 		FabricDefaultAttributeRegistry.register(SKELETON_WORKER, AbstractSkeleton.createAttributes());
 		FabricDefaultAttributeRegistry.register(GHOST, Ghost.createAttributes());
 
@@ -111,6 +114,12 @@ public final class StellaEntities {
 	private static <T extends Slime> EntityType<T> slime(
 		final String path, final MobCategory category, final EntityType.EntityFactory<T> factory
 	) {
+		return slime(path, category, factory, category != MobCategory.MONSTER);
+	}
+
+	private static <T extends Slime> EntityType<T> slime(
+		final String path, final MobCategory category, final EntityType.EntityFactory<T> factory, final boolean peaceful
+	) {
 		ResourceKey<EntityType<?>> key = ResourceKey.create(
 			Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, path)
 		);
@@ -119,8 +128,8 @@ public final class StellaEntities {
 			.eyeHeight(SLIME_EYE_HEIGHT)
 			.spawnDimensionsScale(SLIME_SPAWN_SCALE)
 			.clientTrackingRange(SLIME_TRACKING_RANGE);
-		// The blue slime is a beginner mob and stays in peaceful. The other two are hostile like any slime.
-		if (category == MobCategory.MONSTER) {
+		// The blue slime is a beginner mob and stays in peaceful. The others are hostile like any slime.
+		if (!peaceful) {
 			builder = builder.notInPeaceful();
 		}
 		return Registry.register(BuiltInRegistries.ENTITY_TYPE, key, builder.build(key));
