@@ -81,6 +81,12 @@ The station rolls one small stat bonus when it infuses a dish: a random stat (ST
 - The cooking station uses one potion from a stack and returns one glass bottle.
 - Glass bottles keep the vanilla stack size of 64.
 
+## Well Rested
+
+- Waking in the morning (day time before 2000) after a full sleep gives Well Rested for 20 minutes.
+- While it lasts, kills give 20% more experience. The bonus applies after the mobs mod's kill formula.
+- A nap during the day or a sleep cut short gives nothing.
+
 ## Build and verification
 
 Run these commands from this directory:
