@@ -158,7 +158,9 @@ public final class RpgCombat {
 	}
 
 	private static boolean isMelee(final DamageSource source) {
-		return source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.MOB_ATTACK)
+		// Spears and mace smashes carry their own types.
+		return source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.SPEAR) || source.is(DamageTypes.MACE_SMASH)
+			|| source.is(DamageTypes.MOB_ATTACK)
 			|| source.is(DamageTypes.MOB_ATTACK_NO_AGGRO);
 	}
 
