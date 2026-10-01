@@ -22,6 +22,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.enchantment.Repairable;
+import net.minecraft.world.item.equipment.Equippable;
 
 /**
  * Refining, after Ragnarok Online Renewal: a weapon, a piece of armour or a spellbook climbs from +0 to +15,
@@ -83,8 +84,21 @@ public final class Refine {
 	private Refine() {
 	}
 
+	/** The armor tags, or a piece outside them that equips to an armor slot and gives armor. */
 	public static boolean isArmor(final ItemStack stack) {
-		return stack.is(ItemTags.HEAD_ARMOR) || stack.is(ItemTags.CHEST_ARMOR) || stack.is(ItemTags.LEG_ARMOR) || stack.is(ItemTags.FOOT_ARMOR);
+		return stack.is(ItemTags.HEAD_ARMOR) || stack.is(ItemTags.CHEST_ARMOR) || stack.is(ItemTags.LEG_ARMOR) || stack.is(ItemTags.FOOT_ARMOR)
+			|| equippedArmorSlot(stack) != null;
+	}
+
+	/** The humanoid armor slot of an untagged piece that gives armor, or null. An elytra gives none. */
+	private static EquipmentSlot equippedArmorSlot(final ItemStack stack) {
+		Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+		if (equippable == null || equippable.slot().getType() != EquipmentSlot.Type.HUMANOID_ARMOR) {
+			return null;
+		}
+		boolean armored = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
+			.anyMatch(entry -> entry.attribute().equals(Attributes.ARMOR) && entry.modifier().amount() > 0.0);
+		return armored ? equippable.slot() : null;
 	}
 
 	public static boolean isRanged(final ItemStack stack) {
@@ -240,7 +254,11 @@ public final class Refine {
 		if (stack.is(ItemTags.LEG_ARMOR)) {
 			return EquipmentSlot.LEGS;
 		}
-		return EquipmentSlot.FEET;
+		if (stack.is(ItemTags.FOOT_ARMOR)) {
+			return EquipmentSlot.FEET;
+		}
+		EquipmentSlot equipped = equippedArmorSlot(stack);
+		return equipped != null ? equipped : EquipmentSlot.FEET;
 	}
 
 	/** The id of the refine armour modifier of the piece worn in a slot; one shared id would count a worn set once. */
