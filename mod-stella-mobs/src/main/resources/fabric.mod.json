@@ -14,7 +14,11 @@
 		]
 	},
 	"mixins": [
-		"mod-stella-mobs.mixins.json"
+		"mod-stella-mobs.mixins.json",
+		{
+			"config": "mod-stella-mobs.client.mixins.json",
+			"environment": "client"
+		}
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",

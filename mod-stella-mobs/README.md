@@ -95,6 +95,11 @@ The red slime is a beginner mob.
 - A biome holds at most 5 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
 - It drops 1 to 3 slime balls, and a Potion of Healing half of the time.
 
+## Bosses
+
+- A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.
+- The client draws a boss 2.5 times its base size. Its hitbox stays 1.8 times, so it still fits through caves.
+
 ## Threat level share
 
 `com.stella.mobs.api.ThreatLevelProvider` puts a `Function<Entity, Integer>` in the Fabric object share under
