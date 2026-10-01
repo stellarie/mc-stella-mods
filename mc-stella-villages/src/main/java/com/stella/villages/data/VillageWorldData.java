@@ -37,6 +37,7 @@ public final class VillageWorldData extends SavedData {
 	private static final String VILLAGES_TAG = "villages";
 	private static final String MISSIONS_TAG = "missions";
 	private static final String PENDING_KILL_REWARDS_TAG = "pending_kill_rewards";
+	private static final String PENDING_GUARD_REWARDS_TAG = "pending_guard_rewards";
 	private static final ResourceKey<Level> DEFAULT_MISSION_DIMENSION = ResourceKey.create(
 		Registries.DIMENSION, Identifier.parse("minecraft:overworld")
 	);
@@ -54,6 +55,7 @@ public final class VillageWorldData extends SavedData {
 	private final Map<UUID, VillageRecord> villages = new LinkedHashMap<>();
 	private final Map<UUID, MissionRecord> missionRecords = new LinkedHashMap<>();
 	private final Map<UUID, Integer> pendingKillRewards = new LinkedHashMap<>();
+	private final Map<UUID, Integer> pendingGuardRewards = new LinkedHashMap<>();
 	private long lastAttemptedDay = -1L;
 
 	public VillageWorldData() {
@@ -223,6 +225,21 @@ public final class VillageWorldData extends SavedData {
 		return this.pendingKillRewards.getOrDefault(ownerId, 0);
 	}
 
+	/** A guard-quest reward the owner was not online to receive; paid at their next login. */
+	public void addPendingGuardReward(final UUID ownerId) {
+		this.pendingGuardRewards.merge(ownerId, 1, Integer::sum);
+		setDirty();
+	}
+
+	public int takePendingGuardRewards(final UUID ownerId) {
+		Integer count = this.pendingGuardRewards.remove(ownerId);
+		if (count == null) {
+			return 0;
+		}
+		setDirty();
+		return count;
+	}
+
 	public boolean removeMission(final UUID missionId) {
 		if (this.missionRecords.remove(missionId) != null) {
 			setDirty();
@@ -284,6 +301,14 @@ public final class VillageWorldData extends SavedData {
 			pending.add(entry);
 		});
 		root.put(PENDING_KILL_REWARDS_TAG, pending);
+		ListTag guardPending = new ListTag();
+		this.pendingGuardRewards.forEach((owner, count) -> {
+			CompoundTag entry = new CompoundTag();
+			entry.putString("owner", owner.toString());
+			entry.putInt("count", count);
+			guardPending.add(entry);
+		});
+		root.put(PENDING_GUARD_REWARDS_TAG, guardPending);
 		return root;
 	}
 
@@ -307,6 +332,18 @@ public final class VillageWorldData extends SavedData {
 					data.missionRecords.put(mission.id(), mission);
 				} catch (IllegalArgumentException error) {
 					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_mission_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
+				}
+			}
+		}
+		for (Tag value : root.getListOrEmpty(PENDING_GUARD_REWARDS_TAG)) {
+			if (value instanceof CompoundTag entry) {
+				try {
+					int count = entry.getIntOr("count", 0);
+					if (count > 0) {
+						data.pendingGuardRewards.put(UUID.fromString(entry.getStringOr("owner", "")), count);
+					}
+				} catch (IllegalArgumentException error) {
+					McStellaVillages.LOGGER.warn("[BEHAVIOR] mod={} event=saved_reward_skipped detail={}", McStellaVillages.MOD_ID, error.toString());
 				}
 			}
 		}
@@ -668,7 +705,9 @@ public final class VillageWorldData extends SavedData {
 	public enum MissionKind {
 		NEMESIS,
 		ELITE,
-		KILL
+		KILL,
+		/** A guard's small daily kill quest. */
+		GUARD
 	}
 
 	public enum MissionStatus {

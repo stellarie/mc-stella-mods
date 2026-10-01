@@ -26,7 +26,7 @@ import net.minecraft.world.item.component.ItemLore;
 public final class WitchShopMenu extends ChestMenu {
 	public static final int[] OFFER_SLOTS = {1, 2, 3, 4, 5};
 	public static final int REROLL_SLOT = 7;
-	public static final String TITLE = "Village Witch Shop";
+	public static final String TITLE = "Mage Shop";
 	private static final int ROW = 9;
 
 	private final Mob witch;

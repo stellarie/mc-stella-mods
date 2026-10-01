@@ -8,8 +8,8 @@ import net.minecraft.world.entity.Mob;
 /** A patrol member wears its role over its head: green while the village is calm, red while a player provokes it. */
 public final class PatrolLabels {
 	// Literal, because the village mod ships no language file and a vanilla client must read it too.
-	public static final String HEAD_LABEL = "Village Head";
-	public static final String MEMBER_LABEL = "Village Patrol";
+	public static final String HEAD_LABEL = "Duke";
+	public static final String MEMBER_LABEL = "Guard";
 	public static final ChatFormatting CALM = ChatFormatting.GREEN;
 	public static final ChatFormatting PROVOKED = ChatFormatting.RED;
 

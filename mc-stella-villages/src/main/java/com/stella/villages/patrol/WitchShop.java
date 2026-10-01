@@ -236,16 +236,18 @@ public final class WitchShop {
 	}
 
 	private static boolean pay(final ServerPlayer player, final int price, final String action, final VillageRecord village) {
-		int held = emeralds(player.getInventory());
+		int held = Purse.count(player);
 		if (held < price) {
-			player.sendSystemMessage(Component.literal("The witch wants " + price + " emeralds. You carry " + held + "."));
+			player.sendSystemMessage(Component.literal("The mage wants " + price + " emeralds. You carry " + held + "."));
 			McStellaVillages.LOGGER.info(
 				"[BEHAVIOR] mod={} event=witch_shop_rejected player={} village={} action={} price={} held={} reason=short_purse",
 				McStellaVillages.MOD_ID, player.getUUID(), village.id(), action, price, held
 			);
 			return false;
 		}
-		take(player.getInventory(), price);
+		if (!Purse.spend(player, price)) {
+			return false;
+		}
 		return true;
 	}
 
@@ -261,7 +263,7 @@ public final class WitchShop {
 		return total;
 	}
 
-	private static void take(final Inventory inventory, final int amount) {
+	static void takeLoose(final Inventory inventory, final int amount) {
 		int left = amount;
 		for (int slot = 0; slot < inventory.getContainerSize() && left > 0; slot++) {
 			ItemStack stack = inventory.getItem(slot);

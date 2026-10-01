@@ -44,6 +44,13 @@ public final class QuestMissions {
 	public static final int ELITE_REWARD_IRON = 64;
 	public static final int KILL_REWARD_IRON = 64;
 	public static final int REWARD_POTIONS = 2;
+	public static final int GUARD_REWARD_EMERALDS = 32;
+	public static final int GUARD_REWARD_FOOD = 8;
+	public static final int GUARD_MIN_COUNT = 3;
+	public static final int GUARD_MAX_COUNT = 6;
+	public static final List<net.minecraft.world.item.Item> GUARD_FOODS = List.of(
+		Items.BREAD, Items.COOKED_BEEF, Items.COOKED_PORKCHOP, Items.COOKED_CHICKEN, Items.COOKED_MUTTON, Items.BAKED_POTATO
+	);
 	private static final int SPOT_ATTEMPTS = 12;
 	private static final int SPOT_HEIGHT_TOLERANCE = 4;
 
@@ -77,7 +84,7 @@ public final class QuestMissions {
 	static void spawn(final ServerLevel level, final MissionRecord mission) {
 		if (mission.kind() == MissionKind.ELITE) {
 			spawnElite(level, mission);
-		} else if (mission.kind() == MissionKind.KILL) {
+		} else if (mission.kind() == MissionKind.KILL || mission.kind() == MissionKind.GUARD) {
 			spawnKill(level, mission);
 		}
 	}
@@ -204,7 +211,7 @@ public final class QuestMissions {
 		}
 		if (mission.kind() == MissionKind.ELITE && mission.entityId().filter(mob.getUUID()::equals).isPresent()) {
 			eliteDeath(level, data, mission, mob);
-		} else if (mission.kind() == MissionKind.KILL) {
+		} else if (mission.kind() == MissionKind.KILL || mission.kind() == MissionKind.GUARD) {
 			killDeath(level, data, mission, mob);
 		}
 	}
@@ -250,12 +257,21 @@ public final class QuestMissions {
 			return;
 		}
 		data.removeMission(mission.id());
+		boolean guard = mission.kind() == MissionKind.GUARD;
 		if (owner != null) {
-			payKillReward(level, owner, mob.getRandom());
-			recorder.paid(mission.ownerId(), MissionKind.KILL, "inventory");
+			if (guard) {
+				payGuardReward(level, owner, mob.getRandom());
+			} else {
+				payKillReward(level, owner, mob.getRandom());
+			}
+			recorder.paid(mission.ownerId(), mission.kind(), "inventory");
 		} else {
-			data.addPendingKillReward(mission.ownerId());
-			recorder.paid(mission.ownerId(), MissionKind.KILL, "pending");
+			if (guard) {
+				data.addPendingGuardReward(mission.ownerId());
+			} else {
+				data.addPendingKillReward(mission.ownerId());
+			}
+			recorder.paid(mission.ownerId(), mission.kind(), "pending");
 		}
 		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=kill_quest_complete mission={} owner={} online={}",
 			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), owner != null);
@@ -268,6 +284,18 @@ public final class QuestMissions {
 		for (int potion = 0; potion < REWARD_POTIONS; potion++) {
 			reward.add(MissionService.rewardPotion(random));
 		}
+		give(level, owner, reward);
+	}
+
+	/** Half a stack of emeralds and eight of one cooked food. */
+	static void payGuardReward(final ServerLevel level, final ServerPlayer owner, final RandomSource random) {
+		give(level, owner, List.of(
+			new ItemStack(Items.EMERALD, GUARD_REWARD_EMERALDS),
+			new ItemStack(GUARD_FOODS.get(random.nextInt(GUARD_FOODS.size())), GUARD_REWARD_FOOD)
+		));
+	}
+
+	private static void give(final ServerLevel level, final ServerPlayer owner, final List<ItemStack> reward) {
 		for (ItemStack stack : reward) {
 			owner.getInventory().add(stack);
 			if (!stack.isEmpty()) {
@@ -280,6 +308,11 @@ public final class QuestMissions {
 	static void payPending(final ServerPlayer player) {
 		if (!(player.level() instanceof ServerLevel level)) {
 			return;
+		}
+		int guards = VillageWorldData.get(level).takePendingGuardRewards(player.getUUID());
+		for (int index = 0; index < guards; index++) {
+			payGuardReward(level, player, player.getRandom());
+			recorder.paid(player.getUUID(), MissionKind.GUARD, "login");
 		}
 		int waiting = VillageWorldData.get(level).takePendingKillRewards(player.getUUID());
 		for (int index = 0; index < waiting; index++) {

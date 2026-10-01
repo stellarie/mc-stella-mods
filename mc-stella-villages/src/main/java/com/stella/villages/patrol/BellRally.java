@@ -101,7 +101,7 @@ public final class BellRally {
 		}
 
 		recorder.rallied(bell, villageId, moved);
-		tell(ringer, Component.literal("The patrol rallies to the bell").withStyle(ChatFormatting.GOLD));
+		tell(ringer, Component.literal("The guards rally to the bell").withStyle(ChatFormatting.GOLD));
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=bell_rally village={} bell={} members={}",
 			McStellaVillages.MOD_ID, villageId, bell, moved.size()
