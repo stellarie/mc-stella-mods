@@ -54,6 +54,45 @@ public class ArmorNormalizeGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * A mob without level scaling, and a player, meet vanilla armor at their full hit. A tagged mob at level 60 must not
+	 * be judged at a sixtieth-level base hit.
+	 */
+	@GameTest(maxTicks = 40)
+	public void unscaledHitsKeepVanillaArmor(final GameTestHelper helper) {
+		var previous = GearConfigStore.get();
+		GearConfigStore.set(GearConfigParser.parse(NO_ROLLS));
+		helper.runBeforeTestEnd(() -> GearConfigStore.set(previous));
+		ServerLevel level = helper.getLevel();
+		Zombie tagged = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.EVENT);
+		tagged.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		((AttachmentTarget) tagged).setAttached(ThreatState.TYPE, new ThreatState(60, 0, 0, 0));
+		tagged.snapTo(helper.absoluteVec(new Vec3(1.5, 1.0, 1.5)), 0.0F, 0.0F);
+		tagged.setNoAi(true);
+		level.addFreshEntity(tagged);
+		float taggedHit = (float) tagged.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		float taggedShare = takenShare(helper, tagged, 5.5);
+		net.minecraft.server.level.ServerPlayer player = Arena.addSurvivalPlayer(helper);
+		float playerHit = 10.0F;
+		Zombie victim = victim(helper, 7.5);
+		victim.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
+		float before = victim.getHealth();
+		victim.hurtServer(level, level.damageSources().playerAttack(player), playerHit);
+		float playerShare = (before - victim.getHealth()) / playerHit;
+		float taggedExpected = vanillaShare(taggedHit);
+		float playerExpected = vanillaShare(playerHit);
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=armorUnscaled RESULT tagged={} expected={} player={} expected={}",
+			taggedShare, taggedExpected, playerShare, playerExpected);
+		helper.assertTrue(Math.abs(taggedShare - taggedExpected) < 0.01F, "a tagged level 60 hit kept " + taggedShare + ", expected " + taggedExpected);
+		helper.assertTrue(Math.abs(playerShare - playerExpected) < 0.01F, "a player's hit kept " + playerShare + ", expected " + playerExpected);
+		helper.succeed();
+	}
+
+	/** Vanilla's share of a hit that 20 armor without toughness lets through. */
+	private static float vanillaShare(final float hit) {
+		return 1.0F - net.minecraft.util.Mth.clamp(20.0F - hit / 2.0F, 4.0F, 20.0F) / 25.0F;
+	}
+
 	/** The taken share of one hit on a victim with 20 armor and nothing else that reduces damage. */
 	private static float takenShare(final GameTestHelper helper, final Zombie attacker, final double x) {
 		Zombie victim = victim(helper, x);
