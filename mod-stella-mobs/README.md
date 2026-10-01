@@ -95,6 +95,12 @@ The red slime is a beginner mob.
 - A biome holds at most 5 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
 - It drops 1 to 3 slime balls, and a Potion of Healing half of the time.
 
+## Danger sense
+
+When an elite, a boss, or a mob at least 10 levels above your experience level starts hunting you, the action bar warns
+you (for example `! Elite Skeleton (Lv 42) is hunting you`) and a low note plays that only you hear. Each mob warns at
+most once every 30 seconds. Creative and spectator players get no warning.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.
