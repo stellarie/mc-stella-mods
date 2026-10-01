@@ -7,9 +7,12 @@ import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -54,6 +57,10 @@ public final class SpellCasting {
 
 	private static final DoublecastRoll FAIR_DOUBLECAST = caster -> caster.getRandom().nextFloat() < DOUBLECAST_CHANCE;
 	private static volatile DoublecastRoll doublecastRoll = FAIR_DOUBLECAST;
+	/** A cast under Nausea fizzles at the same rate an attack fumbles in the RPG mod. */
+	public static final double NAUSEA_FIZZLE_CHANCE = 0.70;
+	private static final FizzleRoll FAIR_FIZZLE = caster -> caster.getRandom().nextDouble() < NAUSEA_FIZZLE_CHANCE;
+	private static volatile FizzleRoll fizzleRoll = FAIR_FIZZLE;
 
 	private SpellCasting() {
 	}
@@ -117,6 +124,14 @@ public final class SpellCasting {
 		if (!hasValidTarget(definition.targetMode(), target, point)) {
 			log(caster, definition, CastResult.NO_TARGET, target, modifiers, stack);
 			return CastResult.NO_TARGET;
+		}
+
+		if (caster.hasEffect(MobEffects.NAUSEA) && fizzleRoll.fizzles(caster)) {
+			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
+			caster.level().playSound(null, caster.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.6F, 1.4F);
+			caster.sendSystemMessage(Component.translatable("spellbook." + Spellbooks.MOD_ID + ".fizzle"), true);
+			log(caster, definition, CastResult.FIZZLE, target, modifiers, stack);
+			return CastResult.FIZZLE;
 		}
 
 		Vec3 departure = caster.position();
@@ -552,6 +567,18 @@ public final class SpellCasting {
 	public enum CastResult {
 		CAST,
 		NO_TARGET,
-		COOLDOWN
+		COOLDOWN,
+		/** Nausea spoiled the cast: no effect, the cooldown runs, a scroll is kept. */
+		FIZZLE
+	}
+
+	/** Whether a cast under Nausea fizzles; a test can set it. */
+	@FunctionalInterface
+	public interface FizzleRoll {
+		boolean fizzles(ServerPlayer caster);
+	}
+
+	public static void setFizzleRoll(final FizzleRoll roll) {
+		fizzleRoll = roll == null ? FAIR_FIZZLE : roll;
 	}
 }

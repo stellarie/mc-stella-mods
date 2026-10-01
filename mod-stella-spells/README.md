@@ -152,6 +152,11 @@ is written by one of eight spellbinders, from Archmage Pip to the Cat (dictated)
 spell's book and scroll recipes with the material by name, what the spell does, and a postscript. Now
 and then the note is about the Scroll of Return instead.
 
+## Nausea
+
+A cast under Nausea fizzles 70% of the time: the spell does nothing, the cooldown still starts, and a scroll is not
+used up. The RPG mod makes attacks under Nausea fail at the same rate.
+
 ## Scroll Book
 
 The Scroll Book holds 9 different scrolls, one type per slot, each up to a full stack of 16.

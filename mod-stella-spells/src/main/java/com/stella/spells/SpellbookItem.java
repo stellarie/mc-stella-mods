@@ -34,6 +34,7 @@ public final class SpellbookItem extends Item {
 			case CAST -> InteractionResult.SUCCESS;
 			case COOLDOWN -> InteractionResult.FAIL;
 			case NO_TARGET -> InteractionResult.PASS;
+			case FIZZLE -> InteractionResult.SUCCESS;
 		};
 	}
 }
