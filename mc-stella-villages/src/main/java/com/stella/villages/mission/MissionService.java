@@ -63,6 +63,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class MissionService {
+	/** The mobs mod reads this tag to give a Nemesis its kill XP multiplier. */
+	public static final String NEMESIS_TAG = "stella_nemesis";
 	public static final int MISSION_MENU_RANGE = 8;
 	public static final int MISSION_MIN_DISTANCE = 256;
 	public static final int MISSION_MAX_DISTANCE = 384;
@@ -300,6 +302,7 @@ public final class MissionService {
 		nemesis.snapTo(Vec3.atBottomCenterOf(mission.targetPosition()), 0.0F, 0.0F);
 		nemesis.setPersistenceRequired();
 		nemesis.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		nemesis.addTag(NEMESIS_TAG);
 		ReactiveState.get(nemesis).setGearApplied(true);
 		EliteState.setSummoned(nemesis, true);
 		int buffIndex = NemesisKit.randomBuff(nemesis);
