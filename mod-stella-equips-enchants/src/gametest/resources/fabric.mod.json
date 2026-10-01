@@ -47,7 +47,8 @@
 			"com.stella.equips.PercentProcGameTest",
 			"com.stella.equips.PercentHealGameTest",
 			"com.stella.equips.RefineSpecialsGameTest",
-			"com.stella.equips.RefineSpellbookGameTest"
+			"com.stella.equips.RefineSpellbookGameTest",
+			"com.stella.equips.RefineEquippableGameTest"
 		]
 	}
 }

@@ -197,6 +197,7 @@ Weapons and armour refine from +0 to +15, after Ragnarok Online Renewal. Refine 
 anvil. Two tabs sit above the anvil window: Repair (the vanilla anvil) and Refine. A **Refining Anvil** (a
 silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 
+- Armor is any piece in the vanilla armor tags, or any piece that equips to an armor slot and gives armor.
 - Put the piece in the first slot. The tab shows its level, the next level, the chance, and the cost with the
   material you carry. Press Refine to pay and roll.
 - The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
