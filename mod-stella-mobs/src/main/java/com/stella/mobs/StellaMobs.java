@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.api.ReadoutRankProvider;
+import com.stella.mobs.api.ContainerLevelProvider;
 import com.stella.mobs.api.ThreatLevelProvider;
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.BossCompanion;
@@ -84,6 +85,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
 		ThreatLevelProvider.register();
+		ContainerLevelProvider.register();
 		EscortSquad.register();
 		RiderSquad.register();
 		BossCompanion.register();
