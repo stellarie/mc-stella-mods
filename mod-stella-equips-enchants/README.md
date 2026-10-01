@@ -271,6 +271,15 @@ health and base speed. Blessed uses max health in vanilla units, divided by the 
 mod-stella-rpg when that mod is present. Keen, Evasion and Riposte roll on the wearer's own random
 source, through a `Roller` that a test can force.
 
+## Shakedown and Scholar
+
+- **Shakedown** (I to III, any weapon, bow or crossbow): a hostile mob you kill with it drops 0 to 2 emeralds per level,
+  uniform, so about one per level on average. Passive mobs drop none.
+- **Scholar** (I, armor, pickaxes, shovels, hoes, shears, fishing rods, shields and elytra; never weapons or spellbooks):
+  each worn or held piece with Scholar adds 15% to the experience from an orb, after Mending takes its share. The
+  fraction rounds up by chance.
+- Both can come from the enchanting table, loot, and chest loot.
+
 ## Emerald bag
 
 A bundle and an emerald make an Emerald Bag, a green bundle that holds any number of emeralds. Its tooltip shows the

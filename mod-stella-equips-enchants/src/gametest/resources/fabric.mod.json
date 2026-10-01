@@ -16,6 +16,7 @@
 			"com.stella.equips.ChestLootGameTest",
 			"com.stella.equips.ContainerLootGameTest",
 			"com.stella.equips.EmeraldBagGameTest",
+			"com.stella.equips.ShakedownScholarGameTest",
 			"com.stella.equips.CurseGameTest",
 			"com.stella.equips.CurseLeverProbeGameTest",
 			"com.stella.equips.EffectEnchantGameTest",

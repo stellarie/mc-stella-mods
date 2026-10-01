@@ -63,7 +63,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantDataGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String FIXTURE_PATH = "test_marker";
-	private static final int CATALOGUE_SIZE = 74;
+	private static final int CATALOGUE_SIZE = 76;
 	private static final int ARROW_SHOWER_ARROWS = 7;
 	private static final int PLAIN_SHOT_DURABILITY = 1;
 	private static final int MAXED_TABLE_COST = 30;

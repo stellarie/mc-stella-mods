@@ -83,7 +83,9 @@
 							"mod-stella-equips-enchants:weapon/void_brand",
 							"mod-stella-equips-enchants:weapon/warden_wave",
 							"mod-stella-equips-enchants:weapon/wounding",
-							"mod-stella-equips-enchants:utility/soulbound"
+							"mod-stella-equips-enchants:utility/soulbound",
+							"mod-stella-equips-enchants:weapon/shakedown",
+							"mod-stella-equips-enchants:utility/scholar"
 						]
 					}
 				}

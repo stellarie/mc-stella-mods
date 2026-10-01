@@ -1,0 +1,7 @@
+{
+	"values": [
+		"#mod-stella-equips-enchants:enchantable/any_weapon",
+		"#minecraft:enchantable/bow",
+		"#minecraft:enchantable/crossbow"
+	]
+}
