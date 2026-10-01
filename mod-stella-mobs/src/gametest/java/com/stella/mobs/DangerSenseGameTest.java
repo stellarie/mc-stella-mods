@@ -17,6 +17,8 @@ import net.minecraft.world.phys.Vec3;
 
 /** Danger sense warns a player once when an elite, a boss, or a far stronger mob targets them; an even match stays quiet. */
 public class DangerSenseGameTest {
+	private static final String NO_ROLLS = "{ \"entities\": {}, \"rolls\": { \"roll_chance\": 0.0, \"elite_chance\": 0.0 } }";
+
 	@GameTest
 	public void warnsOnce(final GameTestHelper helper) {
 		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
@@ -55,6 +57,84 @@ public class DangerSenseGameTest {
 		helper.assertTrue(afterRepeat == 1, "a second target within the cooldown warned again: " + warnings);
 		helper.assertTrue(afterEven == 1, "a mob one level above the player warned: " + warnings);
 		helper.assertTrue(warnings.size() == 2 && warnings.getLast().contains("Lv 15"), "a mob ten levels above did not warn: " + warnings);
+		helper.succeed();
+	}
+
+	/**
+	 * A target goal re-sets the target it already holds every few ticks, so a re-set of the same target must not warn,
+	 * even after the cooldown. A second player is a new hunt and gets its own warning.
+	 */
+	@GameTest
+	public void warnsOncePerHuntAndPerPlayer(final GameTestHelper helper) {
+		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
+		var previousGear = com.stella.mobs.config.GearConfigStore.get();
+		com.stella.mobs.config.GearConfigStore.set(com.stella.mobs.config.GearConfigParser.parse(NO_ROLLS));
+		helper.runBeforeTestEnd(() -> com.stella.mobs.config.GearConfigStore.set(previousGear));
+		ServerPlayer first = Arena.addSurvivalPlayer(helper);
+		ServerPlayer second = Arena.addSurvivalPlayer(helper);
+		first.experienceLevel = 5;
+		second.experienceLevel = 5;
+		Zombie elite = zombie(helper, 5, 1.5);
+		EliteState.markElite(elite, com.stella.mobs.gear.GearTier.IRON);
+		List<String> warnings = new ArrayList<>();
+		DangerSense.setRecorder((who, mob, text) -> {
+			if (mob == elite) {
+				warnings.add(who.getUUID() + ":" + text);
+			}
+		});
+		int afterFirst;
+		int afterReset;
+		try {
+			elite.setTarget(first);
+			afterFirst = warnings.size();
+			DangerSense.resetCooldowns();
+			elite.setTarget(first);
+			afterReset = warnings.size();
+			elite.setTarget(second);
+		} finally {
+			DangerSense.setRecorder(null);
+		}
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=dangerSenseHunt RESULT afterFirst={} afterReset={} total={}", afterFirst, afterReset, warnings.size());
+		helper.assertTrue(afterFirst == 1, "the first hunt warned " + afterFirst + " times");
+		helper.assertTrue(afterReset == 1, "a re-set of the same target warned again: " + warnings);
+		helper.assertTrue(warnings.size() == 2 && warnings.getLast().startsWith(second.getUUID().toString()),
+			"the second player was not warned: " + warnings);
+		helper.succeed();
+	}
+
+	/** No warning for a creative player, for a target the mob may not attack, or from a mob without level scaling. */
+	@GameTest
+	public void quietWhenNoRealHunt(final GameTestHelper helper) {
+		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
+		var previousGear = com.stella.mobs.config.GearConfigStore.get();
+		com.stella.mobs.config.GearConfigStore.set(com.stella.mobs.config.GearConfigParser.parse(NO_ROLLS));
+		helper.runBeforeTestEnd(() -> com.stella.mobs.config.GearConfigStore.set(previousGear));
+		// The mock player is creative; the arena player ignores a mode change.
+		ServerPlayer creative = helper.makeMockServerPlayerInLevel();
+		ServerPlayer untouchable = Arena.addSurvivalPlayer(helper);
+		untouchable.setPermanentlyInvulnerable(true);
+		ServerPlayer plain = Arena.addSurvivalPlayer(helper);
+		creative.experienceLevel = 1;
+		untouchable.experienceLevel = 1;
+		plain.experienceLevel = 1;
+		Zombie atCreative = zombie(helper, 30, 1.5);
+		Zombie atUntouchable = zombie(helper, 30, 3.5);
+		Zombie unscaled = zombie(helper, 30, 5.5);
+		unscaled.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		List<String> warnings = new ArrayList<>();
+		java.util.Map<Object, String> label = java.util.Map.of(atCreative, "creative", atUntouchable, "untouchable", unscaled, "unscaled");
+		DangerSense.setRecorder((who, mob, text) -> warnings.add(label.getOrDefault(mob, "stranger " + mob.getUUID()) + ":" + text));
+		try {
+			atCreative.setTarget(creative);
+			atUntouchable.setTarget(untouchable);
+			unscaled.setTarget(plain);
+		} finally {
+			DangerSense.setRecorder(null);
+		}
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=dangerSenseQuiet RESULT warnings={} untouchableTarget={} creative={} tagged={}",
+			warnings, atUntouchable.getTarget(), creative.isCreative(), unscaled.entityTags());
+		helper.assertTrue(creative.isCreative(), "the creative case has no creative player");
+		helper.assertTrue(warnings.isEmpty(), "a warning without a real hunt: " + warnings);
 		helper.succeed();
 	}
 
