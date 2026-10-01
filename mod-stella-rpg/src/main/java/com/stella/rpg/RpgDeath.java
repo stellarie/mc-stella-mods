@@ -20,6 +20,7 @@ public final class RpgDeath {
 			if (!oldPlayer.level().getGameRules().get(GameRules.KEEP_INVENTORY)) {
 				newPlayer.getInventory().replaceWith(oldPlayer.getInventory());
 				oldPlayer.getInventory().clearContent();
+				com.stella.rpg.tomb.GraveCompass.give(oldPlayer, newPlayer);
 			}
 		});
 	}

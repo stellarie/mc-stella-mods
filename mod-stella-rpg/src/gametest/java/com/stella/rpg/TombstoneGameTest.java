@@ -110,6 +110,42 @@ public final class TombstoneGameTest {
 		helper.succeed();
 	}
 
+	/** A death with a tombstone gives one Grave Compass aimed at the tomb; a second death retargets the same compass. */
+	@GameTest(maxTicks = 60)
+	public void graveCompassPointsToTomb(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.realPlayer(helper);
+		player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
+		BlockPos death = player.blockPosition();
+		ServerPlayer reborn = dieAndRespawn(helper, player);
+		BlockPos tomb = tombstonePos(helper.getLevel(), death, player.getUUID());
+		ItemStack first = graveCompass(reborn);
+		helper.assertTrue(tomb != null && first != null, "no tomb or no compass: tomb=" + tomb + " compass=" + first);
+		helper.assertTrue(first.get(net.minecraft.core.component.DataComponents.LODESTONE_TRACKER).target().map(target -> target.pos().equals(tomb)).orElse(false),
+			"the compass points to " + first.get(net.minecraft.core.component.DataComponents.LODESTONE_TRACKER) + ", not " + tomb);
+		// A later death sets a new tomb; giving again must re-aim the compass the player already carries.
+		BlockPos secondTomb = tomb.offset(5, 0, 5);
+		reborn.setAttached(com.stella.rpg.tomb.GraveCompass.LAST_TOMB, net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), secondTomb));
+		com.stella.rpg.tomb.GraveCompass.give(reborn, reborn);
+		ServerPlayer again = reborn;
+		long compasses = java.util.stream.IntStream.range(0, again.getInventory().getContainerSize())
+			.filter(slot -> com.stella.rpg.tomb.GraveCompass.isGraveCompass(again.getInventory().getItem(slot))).count();
+		ItemStack second = graveCompass(again);
+		RpgTestSupport.result("graveCompass", "tomb=" + tomb + " secondTomb=" + secondTomb + " compasses=" + compasses);
+		helper.assertTrue(compasses == 1, "the player carries " + compasses + " grave compasses");
+		helper.assertTrue(second.get(net.minecraft.core.component.DataComponents.LODESTONE_TRACKER).target()
+			.map(target -> target.pos().equals(secondTomb)).orElse(false), "the compass was not retargeted to " + secondTomb);
+		helper.succeed();
+	}
+
+	private static ItemStack graveCompass(final ServerPlayer player) {
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			if (com.stella.rpg.tomb.GraveCompass.isGraveCompass(player.getInventory().getItem(slot))) {
+				return player.getInventory().getItem(slot);
+			}
+		}
+		return null;
+	}
+
 	@GameTest(maxTicks = 40)
 	public void equippedCanBePicked(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
@@ -384,7 +420,9 @@ public final class TombstoneGameTest {
 		Map<String, Integer> totals = new HashMap<>();
 		List<ItemStack> all = new ArrayList<>();
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			all.add(inventory.getItem(slot));
+			if (!com.stella.rpg.tomb.GraveCompass.isGraveCompass(inventory.getItem(slot))) {
+				all.add(inventory.getItem(slot));
+			}
 		}
 		merge(totals, all);
 		return totals;
@@ -401,7 +439,8 @@ public final class TombstoneGameTest {
 	private static int nonEmptyStacks(final Inventory inventory) {
 		int count = 0;
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			if (!inventory.getItem(slot).isEmpty()) {
+			// The grave compass is the mod's gift, not one of the player's own stacks.
+			if (!inventory.getItem(slot).isEmpty() && !com.stella.rpg.tomb.GraveCompass.isGraveCompass(inventory.getItem(slot))) {
 				count++;
 			}
 		}
