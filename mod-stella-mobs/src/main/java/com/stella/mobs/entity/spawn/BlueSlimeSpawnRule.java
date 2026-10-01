@@ -151,6 +151,10 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 				|| LightSources.near(level, pos, LightSources.RADIUS)) {
 				continue;
 			}
+			// One roll per attempt: a retry at another spot would undo the falloff.
+			if (!SlimeFalloff.passes(random, x + 0.5, z + 0.5)) {
+				return false;
+			}
 			if (countInBiome(level, level.getBiome(pos)) >= MAX_PER_BIOME) {
 				return false;
 			}

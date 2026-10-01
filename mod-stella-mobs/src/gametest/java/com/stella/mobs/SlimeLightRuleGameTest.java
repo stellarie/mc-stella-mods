@@ -52,14 +52,19 @@ public class SlimeLightRuleGameTest {
 		Set<UUID> before = new HashSet<>();
 		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
 		List<Double> distances = new ArrayList<>();
-		for (int attempt = 0; attempt < 600 && distances.size() < SPAWNS; attempt++) {
-			if (!RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, 1_000_000L)) {
-				continue;
+		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		try {
+			for (int attempt = 0; attempt < 600 && distances.size() < SPAWNS; attempt++) {
+				if (!RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, 1_000_000L)) {
+					continue;
+				}
+				for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive() && !before.contains(slime.getUUID()))) {
+					distances.add(Math.sqrt(slime.blockPosition().distSqr(light)));
+					slime.discard();
+				}
 			}
-			for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive() && !before.contains(slime.getUUID()))) {
-				distances.add(Math.sqrt(slime.blockPosition().distSqr(light)));
-				slime.discard();
-			}
+		} finally {
+			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
 		}
 		level.setBlockAndUpdate(light, Blocks.AIR.defaultBlockState());
 		long close = distances.stream().filter(distance -> distance <= LightSources.RADIUS).count();
