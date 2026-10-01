@@ -19,11 +19,10 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.EnchantmentTags;
-import net.minecraft.world.BossEvent;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -52,8 +51,10 @@ public final class Bosses {
 	public static final Identifier LEVEL_HEALTH_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_health");
 	public static final Identifier LEVEL_DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_damage");
 	/** The bar radius in blocks: a player further away than this is taken off the bar. */
-	public static final double BAR_RADIUS = 64.0;
-	private static final double BAR_RADIUS_SQR = BAR_RADIUS * BAR_RADIUS;
+	public static final int AURA_INTERVAL = 4;
+	public static final int AURA_SOULS = 2;
+	public static final int AURA_FLAMES = 3;
+	private static volatile AuraRecorder auraRecorder = mob -> { };
 	/** B1: the bosses whose bar is live. One entry per boss, so the sweep never walks the level. */
 	private static final AttachmentType<Set<Mob>> WATCHED = AttachmentRegistry.createDefaulted(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_bar_watchers"), HashSet::new
@@ -78,6 +79,7 @@ public final class Bosses {
 
 	/** B1: adds a boss to its level's watch list, so the sweep visits bosses and not every entity. */
 	public static void watch(final Mob mob) {
+		BossLook.mark(mob);
 		if (mob.level() instanceof ServerLevel level) {
 			Set<Mob> watched = ((AttachmentTarget) level).getAttachedOrCreate(WATCHED);
 			if (watched.add(mob)) {
@@ -89,18 +91,8 @@ public final class Bosses {
 		}
 	}
 
-	/** B1: drops the watch entry and clears the bar. Runs on death, on unload, and on a lost boss. */
+	/** B1: drops the watch entry, which ends the aura. Runs on death, on unload, and on a lost boss. */
 	public static void unwatch(final Mob mob) {
-		ReactiveState state = ReactiveState.get(mob);
-		ServerBossEvent bar = state.bossBar();
-		if (bar != null) {
-			// removeAllPlayers sends one remove packet per player; the bar is then dropped so the
-			// next sweep cannot rebuild it and hand a ghost bar back.
-			bar.removeAllPlayers();
-			bar.setVisible(false);
-			state.setBossBar(null);
-		}
-
 		if (mob.level() instanceof ServerLevel level) {
 			Set<Mob> watched = ((AttachmentTarget) level).getAttached(WATCHED);
 			if (watched != null && watched.remove(mob)) {
@@ -112,7 +104,7 @@ public final class Bosses {
 		}
 	}
 
-	/** B1: the bar sweep. The cost is one entry per watched boss, and nothing at all with no boss. */
+	/** B1: the aura sweep. The cost is one entry per watched boss, and nothing at all with no boss. */
 	public static void tick(final ServerLevel level) {
 		Set<Mob> watched = ((AttachmentTarget) level).getAttached(WATCHED);
 		if (watched == null || watched.isEmpty()) {
@@ -121,7 +113,7 @@ public final class Bosses {
 
 		for (Mob mob : List.copyOf(watched)) {
 			if (mob.isAlive() && !mob.isRemoved()) {
-				updateBossBar(level, mob);
+				emitAura(level, mob);
 			} else {
 				unwatch(mob);
 			}
@@ -169,7 +161,6 @@ public final class Bosses {
 		Elite.mark(mob, GearTier.NETHERITE, healthMultiplier);
 		applyKit(mob, registry);
 		SpawnScaling.apply(mob);
-		updateBossBar(level, mob);
 		watch(mob);
 		// The ability slot is filled here as well as from the installer, so a boss promoted by hand and a
 		// boss promoted by its own roll end in the same state. The second call adds nothing.
@@ -267,34 +258,29 @@ public final class Bosses {
 		);
 	}
 
-	/** The bar follows the health fraction and follows the boss's own players. */
-	public static void updateBossBar(final ServerLevel level, final Mob mob) {
-		ReactiveState state = ReactiveState.get(mob);
-		ServerBossEvent bar = state.bossBar();
-		if (bar == null) {
-			bar = new ServerBossEvent(
-				mob.getUUID(), mob.getName(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS
-			);
-			state.setBossBar(bar);
+	/** Soul and small flame particles around the boss, sized to its drawn body, every few ticks. */
+	public static void emitAura(final ServerLevel level, final Mob mob) {
+		if (level.getGameTime() % AURA_INTERVAL != 0) {
+			return;
 		}
+		float factor = BossLook.renderFactor();
+		double width = mob.getBbWidth() * factor * 0.5;
+		double height = mob.getBbHeight() * factor;
+		level.sendParticles(ParticleTypes.SOUL, mob.getX(), mob.getY() + height * 0.5, mob.getZ(), AURA_SOULS,
+			width, height * 0.4, width, 0.02);
+		level.sendParticles(ParticleTypes.SMALL_FLAME, mob.getX(), mob.getY() + height * 0.3, mob.getZ(), AURA_FLAMES,
+			width, height * 0.3, width, 0.01);
+		auraRecorder.emitted(mob);
+	}
 
-		float progress = mob.getMaxHealth() <= 0.0F ? 0.0F : mob.getHealth() / mob.getMaxHealth();
-		bar.setProgress(progress);
-		bar.setVisible(true);
+	/** Test seam: each aura burst. */
+	@FunctionalInterface
+	public interface AuraRecorder {
+		void emitted(Mob mob);
+	}
 
-		// Removal runs first, over the bar's own player set: a player who changed level, left the
-		// server, or walked out of range is absent from level.players(), so the loop below misses them.
-		for (ServerPlayer player : List.copyOf(bar.getPlayers())) {
-			if (!level.players().contains(player) || player.distanceToSqr(mob) > BAR_RADIUS_SQR) {
-				bar.removePlayer(player);
-			}
-		}
-
-		for (ServerPlayer player : level.players()) {
-			if (player.distanceToSqr(mob) <= BAR_RADIUS_SQR) {
-				bar.addPlayer(player);
-			}
-		}
+	public static void setAuraRecorder(final AuraRecorder recorder) {
+		auraRecorder = recorder == null ? mob -> { } : recorder;
 	}
 
 	private static CombatRole configuredRole(final Mob mob) {

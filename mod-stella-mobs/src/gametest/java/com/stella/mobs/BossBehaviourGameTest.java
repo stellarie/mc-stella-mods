@@ -2,6 +2,7 @@ package com.stella.mobs;
 
 import com.stella.mobs.behavior.BossCompanion;
 import com.stella.mobs.behavior.BossRoll;
+import com.stella.mobs.behavior.BossLook;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
@@ -19,8 +20,6 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerBossEvent;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -40,6 +39,12 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
  */
 public class BossBehaviourGameTest {
 	private static final String TEST = "bossBehaviour";
+	/** Aura bursts per boss, from the shared seam; a test reads only its own boss. */
+	private static final java.util.Map<java.util.UUID, Integer> AURAS = new java.util.concurrent.ConcurrentHashMap<>();
+
+	static {
+		Bosses.setAuraRecorder(mob -> AURAS.merge(mob.getUUID(), 1, Integer::sum));
+	}
 	private static final double EPSILON = 1.0e-6;
 	private static final double SPAWN_X = 3.5;
 	private static final double SPAWN_Z = 3.5;
@@ -48,7 +53,6 @@ public class BossBehaviourGameTest {
 	private static final double OTHER_Z = 9.5;
 	// The bar radius in play is 64 blocks, so this is unambiguously outside it. It is written here
 	// rather than read from the implementation, so the test measures the spec's radius and not a copy.
-	private static final double BAR_TEST_DISTANCE = 200.0;
 	private static final String BOSS_ONE = """
 		{
 			"entities": {},
@@ -454,143 +458,37 @@ public class BossBehaviourGameTest {
 		});
 	}
 
+	/** A boss shows the soul and flame aura every few ticks and carries the synced look mark; a plain mob does neither. */
 	@GameTest(maxTicks = 200)
-	public void theBossBarReportsTheHealthFraction(final GameTestHelper helper) {
+	public void bossAuraAndLook(final GameTestHelper helper) {
 		useConfig(helper, BOSS_MARK);
-		Mob boss = barSubject(helper);
-		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
-		float full = bar == null ? -1.0F : bar.getProgress();
-		boss.setHealth(boss.getMaxHealth() * 0.25F);
-		// The level tick is the writer, so the test waits for the sweep instead of calling it itself.
+		Mob boss = blessedBoss(helper);
+		Mob plain = spawn(helper, SPAWN_X + 3, SPAWN_Z);
 		helper.succeedWhen(() -> {
-			helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
-			helper.assertTrue(Math.abs(full - 1.0F) < 0.01F, "the boss bar does not start full: " + full);
-			helper.assertTrue(
-				Math.abs(bar.getProgress() - 0.25F) < 0.01F,
-				"the boss bar does not follow the health fraction: " + bar.getProgress() + "; "
-					+ subjectState(helper, boss, bar)
-			);
-			result("bossBar", "full=" + full + " quarter=" + bar.getProgress() + " health=" + boss.getHealth());
+			int bursts = AURAS.getOrDefault(boss.getUUID(), 0);
+			helper.assertTrue(EliteState.isBoss(boss) && BossLook.has(boss), "the boss lacks its look mark");
+			helper.assertTrue(bursts >= 2, "the boss showed " + bursts + " aura bursts");
+			helper.assertTrue(!BossLook.has(plain) && AURAS.getOrDefault(plain.getUUID(), 0) == 0, "a plain mob has the boss look");
+			result("bossAura", "bursts=" + bursts + " look=" + BossLook.has(boss) + " plainLook=" + BossLook.has(plain));
 		});
 	}
 
 	@GameTest(maxTicks = 200)
-	public void theBossBarIsRemovedWhenTheBossDies(final GameTestHelper helper) {
+	public void bossAuraStopsOnDeath(final GameTestHelper helper) {
 		useConfig(helper, BOSS_MARK);
-		Mob boss = barSubject(helper);
-		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
-		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
-		ServerPlayer player = playerBeside(helper, boss);
-
+		Mob boss = blessedBoss(helper);
+		int[] atDeath = new int[1];
 		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				bar.getPlayers().contains(player),
-				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
-			))
-			.thenExecute(() -> kill(helper, boss))
-			.thenWaitUntil(() -> {
-				helper.assertFalse(
-					bar.isVisible(),
-					"the bar of a dead boss is still visible, so every player who fought it keeps a ghost bar"
-				);
-				helper.assertValueEqual(
-					Integer.valueOf(bar.getPlayers().size()), Integer.valueOf(0), "players left on the dead boss's bar"
-				);
-				helper.assertTrue(
-					ReactiveState.get(boss).bossBar() == null, "the dead boss still holds its bar object"
-				);
-				result(
-					"bossBarRemovalDeath",
-					"listedBefore=true dead=" + !boss.isAlive() + " visible=" + bar.isVisible()
-						+ " players=" + bar.getPlayers().size()
-				);
+			.thenWaitUntil(() -> helper.assertTrue(AURAS.getOrDefault(boss.getUUID(), 0) >= 1, "the boss never showed its aura"))
+			.thenExecute(() -> {
+				kill(helper, boss);
+				atDeath[0] = AURAS.getOrDefault(boss.getUUID(), 0);
 			})
-			.thenSucceed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void theBossBarIsRemovedWhenTheBossUnloads(final GameTestHelper helper) {
-		useConfig(helper, BOSS_MARK);
-		Mob boss = barSubject(helper);
-		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
-		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
-		ServerPlayer player = playerBeside(helper, boss);
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				bar.getPlayers().contains(player),
-				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
-			))
-			.thenExecute(boss::discard)
-			.thenWaitUntil(() -> {
-				helper.assertFalse(
-					bar.isVisible(),
-					"the bar of an unloaded boss is still visible, so a chunk unload leaves a ghost bar"
-				);
-				helper.assertValueEqual(
-					Integer.valueOf(bar.getPlayers().size()), Integer.valueOf(0), "players left on an unloaded boss's bar"
-				);
-				result(
-					"bossBarRemovalUnload",
-					"removed=" + boss.isRemoved() + " visible=" + bar.isVisible() + " players=" + bar.getPlayers().size()
-				);
-			})
-			.thenSucceed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void theBossBarDropsAPlayerWhoLeavesTheRange(final GameTestHelper helper) {
-		useConfig(helper, BOSS_MARK);
-		Mob boss = barSubject(helper);
-		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
-		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
-		ServerPlayer player = playerBeside(helper, boss);
-		double away = boss.getX() + BAR_TEST_DISTANCE;
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				bar.getPlayers().contains(player),
-				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
-			))
-			.thenExecute(() -> player.setPos(away, boss.getY(), boss.getZ()))
-			.thenWaitUntil(() -> {
-				helper.assertFalse(
-					bar.getPlayers().contains(player),
-					"the bar kept a player who walked " + BAR_TEST_DISTANCE + " blocks away"
-				);
-				result(
-					"bossBarRemovalRange",
-					"distance=" + BAR_TEST_DISTANCE + " distanceSqr=" + player.distanceToSqr(boss)
-						+ " players=" + bar.getPlayers().size()
-				);
-			})
-			.thenSucceed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void theBossBarDropsAPlayerWhoLeavesTheLevel(final GameTestHelper helper) {
-		useConfig(helper, BOSS_MARK);
-		Mob boss = barSubject(helper);
-		ServerBossEvent bar = ReactiveState.get(boss).bossBar();
-		helper.assertTrue(bar != null, "the boss never gained a bar: " + subjectState(helper, boss, null));
-		ServerPlayer player = playerBeside(helper, boss);
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(
-				bar.getPlayers().contains(player),
-				"the bar never listed the player standing at the boss; " + subjectState(helper, boss, bar)
-			))
-			.thenExecute(() -> helper.getLevel().getServer().getPlayerList().remove(player))
-			.thenWaitUntil(() -> {
-				helper.assertFalse(
-					bar.getPlayers().contains(player),
-					"the bar kept a player who is no longer in the level, so a dimension change leaves a ghost bar"
-				);
-				result(
-					"bossBarRemovalLevel",
-					"stillInLevel=" + helper.getLevel().players().contains(player)
-						+ " players=" + bar.getPlayers().size()
-				);
+			.thenIdle(Bosses.AURA_INTERVAL * 5)
+			.thenExecute(() -> {
+				int after = AURAS.getOrDefault(boss.getUUID(), 0);
+				result("bossAuraDeath", "atDeath=" + atDeath[0] + " after=" + after + " alive=" + boss.isAlive());
+				helper.assertTrue(!boss.isAlive() && after == atDeath[0], "a dead boss kept its aura: " + atDeath[0] + " -> " + after);
 			})
 			.thenSucceed();
 	}
@@ -621,35 +519,6 @@ public class BossBehaviourGameTest {
 		return helper.spawnMob(EntityTypes.SKELETON, (int) x, 3, (int) z)
 			.spawnReason(EntitySpawnReason.NATURAL)
 			.spawn();
-	}
-
-	/** A real player in the level at the boss's feet, so the bar has somebody to add and to remove. */
-	@SuppressWarnings("removal")
-	private static ServerPlayer playerBeside(final GameTestHelper helper, final Mob mob) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		player.setPos(mob.getX(), mob.getY(), mob.getZ());
-		return player;
-	}
-
-	/**
-	 * The subject of a bar test. Its uuid is logged, because a bar test runs for two hundred ticks and
-	 * another test's setup can reach the subject's chunk in that window.
-	 */
-	private static Mob barSubject(final GameTestHelper helper) {
-		Mob boss = blessedBoss(helper);
-		StellaMobs.LOGGER.info(
-			"[BEHAVIOR] test=bossBehaviour SUBJECT uuid={} promoted={} barPresent={}",
-			boss.getUUID(), EliteState.isBoss(boss), ReactiveState.get(boss).bossBar() != null
-		);
-		return boss;
-	}
-
-	/** Everything a failed bar assertion needs to say why, in its own message. */
-	private static String subjectState(final GameTestHelper helper, final Mob boss, final ServerBossEvent bar) {
-		return "bossFlag=" + EliteState.isBoss(boss) + " alive=" + boss.isAlive() + " removed=" + boss.isRemoved()
-			+ " health=" + boss.getHealth() + " sameBar=" + (bar != null && ReactiveState.get(boss).bossBar() == bar)
-			+ " barPlayers=" + (bar == null ? -1 : bar.getPlayers().size())
-			+ " levelPlayers=" + helper.getLevel().players().size();
 	}
 
 	private static void kill(final GameTestHelper helper, final Mob mob) {

@@ -9,7 +9,6 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.monster.Creeper;
@@ -44,7 +43,6 @@ public final class ReactiveState {
 	private int witchBuffIndex;
 	private boolean witchInvisibilityCast;
 	private boolean elite;
-	private @Nullable ServerBossEvent bossBar;
 	private long voidDragReadyTick;
 	private long harpoonReadyTick;
 	private int retreatCooldownTicks;
@@ -233,14 +231,7 @@ public final class ReactiveState {
 		this.elite = elite;
 	}
 
-	/** The boss bar is transient: a reloaded boss rebuilds it from its health on the next tick. */
-	public @Nullable ServerBossEvent bossBar() {
-		return this.bossBar;
-	}
 
-	public void setBossBar(final @Nullable ServerBossEvent bossBar) {
-		this.bossBar = bossBar;
-	}
 
 	/**
 	 * The shared rearm cooldown for the two band goals, counted in the goals' own ticks rather than in

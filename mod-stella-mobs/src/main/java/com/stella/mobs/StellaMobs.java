@@ -90,6 +90,7 @@ public class StellaMobs implements ModInitializer {
 		RiderSquad.register();
 		BossCompanion.register();
 		Bosses.register();
+		com.stella.mobs.behavior.BossLook.register();
 		ReinforcementGoal.register();
 		EvokerStorm.register();
 		PiglinWarCall.register();
@@ -240,7 +241,7 @@ public class StellaMobs implements ModInitializer {
 			SpawnPressure.watch(mob);
 		}
 
-		// B1: a boss joins its level's bar watch list here, which covers both the roll above and a boss
+		// B1: a boss joins its level's aura watch list here, which covers both the roll above and a boss
 		// read from disk, whose flag came back from the save.
 		if (EliteState.hasBossFlag(mob)) {
 			Bosses.watch(mob);
@@ -257,7 +258,7 @@ public class StellaMobs implements ModInitializer {
 		SnowGolemCold.rollElite(mob);
 	}
 
-	/** B1: a boss that leaves the level loses its bar, because the sweep can no longer reach it. */
+	/** B1: a boss that leaves the level leaves the aura sweep. */
 	private static void onEntityUnload(final Entity entity, final ServerLevel level) {
 		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
 			StellaMobs.LOGGER.info(
@@ -267,7 +268,7 @@ public class StellaMobs implements ModInitializer {
 		}
 	}
 
-	/** W10 and B1: a witch drops one of every potion it carries, and a boss loses its bar. */
+	/** W10 and B1: a witch drops one of every potion it carries, and a boss leaves the aura sweep. */
 	private static void onEntityDeath(final LivingEntity entity, final DamageSource source) {
 		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
 			StellaMobs.LOGGER.info(
