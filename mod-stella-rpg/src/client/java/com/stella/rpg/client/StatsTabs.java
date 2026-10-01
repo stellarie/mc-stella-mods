@@ -8,7 +8,11 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import com.stella.rpg.bag.Bag;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -18,7 +22,8 @@ import net.minecraft.world.item.Items;
 @Environment(EnvType.CLIENT)
 public final class StatsTabs {
 	public static final int INVENTORY = 0;
-	public static final int STATS = 1;
+	public static final int BAG = 1;
+	public static final int STATS = 2;
 
 	private static final int SIZE = 28;
 	private static final int STEP = 29;
@@ -31,13 +36,18 @@ public final class StatsTabs {
 
 	public static void register() {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-			if (!(screen instanceof InventoryScreen inventory)) {
+			int selected;
+			if (screen instanceof InventoryScreen) {
+				selected = INVENTORY;
+			} else if (screen instanceof ContainerScreen && isBagTitle(screen.getTitle())) {
+				selected = BAG;
+			} else {
 				return;
 			}
-			ContainerScreenPositionAccessor position = (ContainerScreenPositionAccessor) inventory;
+			ContainerScreenPositionAccessor position = (ContainerScreenPositionAccessor) screen;
 			ScreenEvents.afterExtract(screen).register((rendered, graphics, mouseX, mouseY, delta) -> {
 				if (ClientStats.has()) {
-					draw(graphics, client.font, position.stellaRpgLeftPos(), position.stellaRpgTopPos(), INVENTORY, mouseX, mouseY);
+					draw(graphics, client.font, position.stellaRpgLeftPos(), position.stellaRpgTopPos(), selected, mouseX, mouseY);
 				}
 			});
 			ScreenMouseEvents.allowMouseClick(screen).register((clicked, event) -> {
@@ -45,8 +55,8 @@ public final class StatsTabs {
 					return true;
 				}
 				int tab = hit(position.stellaRpgLeftPos(), position.stellaRpgTopPos(), event.x(), event.y());
-				if (tab == STATS) {
-					openStats(client);
+				if (tab >= 0 && tab != selected) {
+					open(client, tab);
 				}
 				return tab < 0;
 			});
@@ -88,9 +98,8 @@ public final class StatsTabs {
 		}
 		int hovered = hit(left, top, mouseX, mouseY);
 		if (hovered >= 0) {
-			graphics.setTooltipForNextFrame(font, Component.translatable(hovered == INVENTORY
-				? "screen.mod-stella-rpg.tab.inventory"
-				: "screen.mod-stella-rpg.tab.stats"), mouseX, mouseY);
+			String key = hovered == INVENTORY ? "inventory" : hovered == BAG ? "bag" : "stats";
+			graphics.setTooltipForNextFrame(font, Component.translatable("screen.mod-stella-rpg.tab." + key), mouseX, mouseY);
 		}
 	}
 
@@ -106,10 +115,33 @@ public final class StatsTabs {
 
 	public static void openInventory(final Minecraft client) {
 		click(client);
+		if (!(client.gui.screen() instanceof InventoryScreen)) {
+			client.player.closeContainer();
+		}
 		client.gui.setScreen(new InventoryScreen(client.player));
 	}
 
+	/** The server opens the bag menu, and the vanilla chest screen shows it. */
+	public static void openBag(final Minecraft client) {
+		click(client);
+		ClientPlayNetworking.send(new Bag.OpenBagPayload());
+	}
+
+	public static void open(final Minecraft client, final int tab) {
+		if (tab == INVENTORY) {
+			openInventory(client);
+		} else if (tab == BAG) {
+			openBag(client);
+		} else if (tab == STATS) {
+			openStats(client);
+		}
+	}
+
+	private static boolean isBagTitle(final Component title) {
+		return title.getContents() instanceof TranslatableContents contents && Bag.TITLE_KEY.equals(contents.getKey());
+	}
+
 	private static ItemStack icon(final int tab) {
-		return tab == INVENTORY ? new ItemStack(Items.CHEST) : new ItemStack(Items.IRON_SWORD);
+		return new ItemStack(tab == INVENTORY ? Items.CHEST : tab == BAG ? Items.BUNDLE : Items.IRON_SWORD);
 	}
 }

@@ -6,8 +6,7 @@
 		"AttributeTooltipMixin",
 		"ContainerScreenPositionAccessor",
 		"NoDotShakeLivingMixin",
-		"NoDotShakeLocalPlayerMixin",
-		"RpgBagClickMixin"
+		"NoDotShakeLocalPlayerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

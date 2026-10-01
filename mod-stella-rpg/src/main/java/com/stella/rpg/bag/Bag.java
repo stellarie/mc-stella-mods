@@ -7,25 +7,32 @@ import java.util.List;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.NonNullList;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Three extra inventory rows. The vanilla inventory keeps its 36 item slots, because its equipment slots use the
- * indices right after them, so the bag is a separate container on the player. It persists, copies on death, and
- * shows as three rows under the inventory screen. A pickup that finds no room in the inventory goes here.
+ * Three extra rows of storage on the player. The vanilla inventory keeps its 36 item slots, because its equipment
+ * slots use the indices right after them, so the bag is a separate container. It persists and copies on death.
+ * The Bag tab opens it as a vanilla three-row chest menu. A pickup that finds no room in the inventory goes here.
  */
 public final class Bag {
 	public static final int ROWS = 3;
 	public static final int SIZE = ROWS * 9;
-	/** Screen layout: the panel sits under the spells quick-slot row, which ends at y 190. */
-	public static final int PANEL_TOP = 192;
-	public static final int SLOT_X = 8;
-	public static final int SLOT_Y = PANEL_TOP + 7;
-	public static final int PANEL_BOTTOM = SLOT_Y + ROWS * 18 + 6;
+	/** The bag menu's title; the client finds the bag screen by this key. */
+	public static final String TITLE_KEY = "container.mod-stella-rpg.bag";
 
 	public static final Codec<Bag> CODEC = ItemStack.OPTIONAL_CODEC.listOf().xmap(Bag::fromList, Bag::toList);
 	public static final AttachmentType<Bag> TYPE = AttachmentRegistry.<Bag>builder()
@@ -37,7 +44,30 @@ public final class Bag {
 	private final NonNullList<ItemStack> stacks = NonNullList.withSize(SIZE, ItemStack.EMPTY);
 
 	public static void register() {
-		StellaRpg.LOGGER.debug("Registered bag attachment {}", TYPE.identifier());
+		PayloadTypeRegistry.serverboundPlay().register(OpenBagPayload.TYPE, OpenBagPayload.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(OpenBagPayload.TYPE, (payload, context) -> open(context.player()));
+	}
+
+	/** Opens the bag as a vanilla three-row chest menu over the player inventory. */
+	public static void open(final ServerPlayer player) {
+		player.openMenu(new SimpleMenuProvider(
+			(id, inventory, opener) -> menu(id, inventory, opener), Component.translatable(TITLE_KEY)
+		));
+	}
+
+	public static ChestMenu menu(final int id, final Inventory inventory, final Player owner) {
+		return new ChestMenu(MenuType.GENERIC_9x3, id, inventory, view(owner), ROWS);
+	}
+
+	/** Asks the server to open the bag. */
+	public record OpenBagPayload() implements CustomPacketPayload {
+		public static final Type<OpenBagPayload> TYPE = new Type<>(StellaRpg.id("open_bag"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, OpenBagPayload> CODEC = StreamCodec.unit(new OpenBagPayload());
+
+		@Override
+		public Type<OpenBagPayload> type() {
+			return TYPE;
+		}
 	}
 
 	private static Bag fromList(final List<ItemStack> list) {
@@ -84,21 +114,6 @@ public final class Bag {
 			if (bag.get(i).isEmpty()) {
 				bag.set(i, stack.copyAndClear());
 			}
-		}
-	}
-
-	/** A bag slot. A creative player cannot use it, because the creative screen packs extra slots onto the hotbar row. */
-	public static final class BagSlot extends Slot {
-		private final Player owner;
-
-		public BagSlot(final Player owner, final Container container, final int index, final int x, final int y) {
-			super(container, index, x, y);
-			this.owner = owner;
-		}
-
-		@Override
-		public boolean isActive() {
-			return !this.owner.hasInfiniteMaterials();
 		}
 	}
 
