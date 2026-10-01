@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"SSS",
+		"SBS",
+		"SSS"
+	],
+	"key": {
+		"S": "mod-stella-spells:ember_brand_scroll",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:ember_brand",
+		"count": 1
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/scroll_book",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 13214826
+			}
+		]
+	}
+}

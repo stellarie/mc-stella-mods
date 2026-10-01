@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"SSS",
+		"SBS",
+		"SSS"
+	],
+	"key": {
+		"S": "mod-stella-spells:haste_rune_scroll",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:haste_rune",
+		"count": 1
+	}
+}
