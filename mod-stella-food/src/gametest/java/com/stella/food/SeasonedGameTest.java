@@ -163,7 +163,7 @@ public final class SeasonedGameTest {
 		String seasoned = tooltip(helper, dish);
 		helper.assertTrue(seasoned.contains("Seasoned: +7 DEX"), "the tooltip has no Seasoned line: " + seasoned);
 		helper.assertTrue(!plain.contains("Seasoned"), "an infused dish with no bonus shows a Seasoned line: " + plain);
-		helper.assertTrue(seasoned.contains("Current Rider") && seasoned.contains("Poison"),
+		helper.assertTrue(seasoned.contains("Current Rider") && seasoned.contains("Queasy"),
 			"the Seasoned line displaced an existing tooltip line: " + seasoned);
 		helper.succeed();
 	}

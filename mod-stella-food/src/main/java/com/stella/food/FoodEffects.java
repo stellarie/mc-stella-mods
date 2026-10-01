@@ -91,6 +91,34 @@ public final class FoodEffects {
 	);
 	public static final Holder<MobEffect> EMBER_SKIN = register("ember_skin", basic(0xD95A2B));
 	public static final Holder<MobEffect> SECOND_WIND = register("second_wind", new SecondWindEffect());
+	/** Mild food debuffs. A damaging potion in a dish turns into one of these, so food never hurts the eater. */
+	public static final Holder<MobEffect> QUEASY = register(
+		"queasy",
+		harmful(0x8DA33A).addAttributeModifier(
+			Attributes.MOVEMENT_SPEED,
+			modifier("queasy"),
+			-0.10,
+			AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+		)
+	);
+	public static final Holder<MobEffect> SLUGGISH = register(
+		"sluggish",
+		harmful(0x6B5B95).addAttributeModifier(
+			Attributes.ATTACK_SPEED,
+			modifier("sluggish"),
+			-0.10,
+			AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+		)
+	);
+	public static final Holder<MobEffect> HEAVY = register(
+		"heavy",
+		harmful(0x5C5C66).addAttributeModifier(
+			Attributes.BLOCK_BREAK_SPEED,
+			modifier("heavy"),
+			-0.15,
+			AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+		)
+	);
 	/** One effect per stat; the RPG mod reads each by id and counts one stat point per level. */
 	public static final Map<String, Holder<MobEffect>> SEASONED = seasoned();
 
@@ -111,7 +139,11 @@ public final class FoodEffects {
 	}
 
 	private static MobEffect basic(final int color) {
-		return new FoodMobEffect(color);
+		return new FoodMobEffect(MobEffectCategory.BENEFICIAL, color);
+	}
+
+	private static MobEffect harmful(final int color) {
+		return new FoodMobEffect(MobEffectCategory.HARMFUL, color);
 	}
 
 	private static Identifier modifier(final String path) {
@@ -123,8 +155,8 @@ public final class FoodEffects {
 	}
 
 	private static class FoodMobEffect extends MobEffect {
-		FoodMobEffect(final int color) {
-			super(MobEffectCategory.BENEFICIAL, color);
+		FoodMobEffect(final MobEffectCategory category, final int color) {
+			super(category, color);
 		}
 	}
 
@@ -132,7 +164,7 @@ public final class FoodEffects {
 		private static final String USED_TAG = StellaFood.MOD_ID + ".second_wind_used";
 
 		SecondWindEffect() {
-			super(0xF2D46B);
+			super(MobEffectCategory.BENEFICIAL, 0xF2D46B);
 		}
 
 		@Override

@@ -7,7 +7,8 @@
 		"ConsumableMixin",
 		"ItemStackTooltipMixin",
 		"LivingEntityMixin",
-		"PlayerMixin"
+		"PlayerMixin",
+		"PotionContentsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

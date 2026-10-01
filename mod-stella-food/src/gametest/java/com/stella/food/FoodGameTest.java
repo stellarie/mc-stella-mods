@@ -393,11 +393,12 @@ public final class FoodGameTest {
 		helper.assertTrue(bottleCount(player, menu) == 1, "station did not return the bottle");
 		consume(helper, player, infused);
 		MobEffectInstance dish = player.getEffect(effect("surefooted"));
-		MobEffectInstance poison = player.getEffect(MobEffects.POISON);
+		MobEffectInstance queasy = player.getEffect(effect("queasy"));
 		helper.assertTrue(dish != null && dish.getDuration() == INFUSED_TICKS, "infusion did not extend the dish buff");
+		// A damaging potion in food becomes a five-minute mild debuff, never poison.
 		helper.assertTrue(
-			poison != null && poison.getAmplifier() == 0 && poison.getDuration() == INFUSED_TICKS,
-			"harmful potion effect did not remain harmful for forty-five minutes"
+			!player.hasEffect(MobEffects.POISON) && queasy != null && queasy.getDuration() == FoodBehavior.MILD_DEBUFF_TICKS,
+			"a poison infusion did not become five minutes of Queasy: " + player.getActiveEffects()
 		);
 		helper.succeed();
 	}

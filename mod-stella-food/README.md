@@ -44,6 +44,19 @@ You can also combine each dish's ingredients in a crafting table. The station re
 
 Combine a dish with one regular, splash, or lingering potion to infuse it. Its dish buff and timed potion effects last forty-five minutes. Instant effects apply when eaten. Harmful effects remain harmful.
 
+## Damaging potions in food
+
+Food never poisons, withers, starves or harms the eater. A damaging effect in an infused dish becomes a mild debuff for
+5 minutes instead:
+
+| Potion effect | Mild debuff |
+|---|---|
+| Poison, Hunger | Queasy: -10% movement speed |
+| Wither | Sluggish: -10% attack speed |
+| Harming | Heavy: -15% mining speed |
+
+Other effects, including Slowness, Weakness and Mining Fatigue, apply as before. The dish tooltip shows the mild debuff.
+
 ## Container loot
 
 Every searchable container, the same chests, barrels and pots the equips gear rolls reach, has two dish rolls:

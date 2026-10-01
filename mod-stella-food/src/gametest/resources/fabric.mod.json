@@ -13,6 +13,7 @@
 			"com.stella.food.FoodGameTest",
 			"com.stella.food.FoodTooltipGameTest",
 			"com.stella.food.SeasonedGameTest",
+			"com.stella.food.MildDebuffGameTest",
 			"com.stella.food.FoodLootGameTest"
 		]
 	},
