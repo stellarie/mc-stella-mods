@@ -25,8 +25,9 @@ import net.minecraft.world.item.component.ItemLore;
 /**
  * V2: the village mission board, a two-row chest menu that any client can show without a mod. Each offer is
  * the target's spawn egg. The top row holds the three Nemesis contracts, the bottom row the three elite
- * contracts on its left and the three kill contracts on its right; the rest is glass. Clicking an offer asks
- * {@link MissionService#acceptOffer}, which stays the only authority, and no item ever leaves the menu.
+ * contracts on its left and the three kill contracts on its right. Slots 9, 13 and 17 hold the
+ * {@link SlimeTrade} potions; the rest is glass. Clicking an offer asks {@link MissionService#acceptOffer},
+ * which stays the only authority, and no item ever leaves the menu.
  */
 public final class MissionBoardMenu extends ChestMenu {
 	/** The slot of each offer, in board order: Nemesis, then elite, then kill. */
@@ -138,12 +139,14 @@ public final class MissionBoardMenu extends ChestMenu {
 		glass.set(DataComponents.ITEM_NAME, Component.literal(" "));
 		for (int slot = 0; slot < SIZE; slot++) {
 			int index = offerIndex(slot);
-			board.setItem(slot, index >= 0 && index < offers.size() ? icon(offers.get(index)) : glass.copy());
+			int trade = SlimeTrade.tradeIndex(slot);
+			board.setItem(slot, index >= 0 && index < offers.size() ? icon(offers.get(index))
+				: trade >= 0 ? SlimeTrade.icon(trade) : glass.copy());
 		}
 		return board;
 	}
 
-	/** No click moves anything; a click on an offer asks the server to accept it. */
+	/** No click moves anything. A click on an offer asks the server to accept it; a click on a trade buys it. */
 	@Override
 	public void clicked(final int slot, final int button, final ContainerInput input, final Player player) {
 		int index = offerIndex(slot);
@@ -151,6 +154,11 @@ public final class MissionBoardMenu extends ChestMenu {
 			&& (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
 			this.choose(serverPlayer, this.offers.get(index));
 			return;
+		}
+		int trade = SlimeTrade.tradeIndex(slot);
+		if (player instanceof ServerPlayer serverPlayer && trade >= 0
+			&& (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
+			SlimeTrade.trade(serverPlayer, trade);
 		}
 
 		// The client predicted a pickup, so it is told the board is unchanged.
