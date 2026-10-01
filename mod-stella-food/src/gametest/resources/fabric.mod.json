@@ -15,6 +15,7 @@
 			"com.stella.food.SeasonedGameTest",
 			"com.stella.food.MildDebuffGameTest",
 			"com.stella.food.PotionStackGameTest",
+			"com.stella.food.CookingStationLootGameTest",
 			"com.stella.food.FoodLootGameTest"
 		]
 	},

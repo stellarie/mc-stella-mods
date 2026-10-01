@@ -4,11 +4,14 @@
 		{
 			"rolls": 1,
 			"entries": [
-				{ "type": "minecraft:item", "name": "mod-stella-equips-enchants:refining_anvil" }
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-equips-enchants:refining_anvil"
+				}
 			],
-			"conditions": [
-				{ "condition": "minecraft:survives_explosion" }
-			]
+			"condition": {
+				"type": "minecraft:survives_explosion"
+			}
 		}
 	],
 	"random_sequence": "mod-stella-equips-enchants:blocks/refining_anvil"

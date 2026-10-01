@@ -36,12 +36,10 @@
 		},
 		{
 			"rolls": 1,
-			"conditions": [
-				{
-					"condition": "minecraft:random_chance",
-					"chance": 0.01
-				}
-			],
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.01
+			},
 			"entries": [
 				{
 					"type": "minecraft:item",

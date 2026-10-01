@@ -16,6 +16,7 @@
 			"com.stella.mobs.DistanceGatesGameTest",
 			"com.stella.mobs.SpawnPressureGameTest",
 			"com.stella.mobs.RedSlimeGameTest",
+			"com.stella.mobs.SlimeLootGameTest",
 			"com.stella.mobs.CrossbowCadenceGameTest",
 			"com.stella.mobs.EliteGameTest",
 			"com.stella.mobs.EliteFrameworkGameTest",
