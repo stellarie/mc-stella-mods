@@ -23,6 +23,7 @@
 	"effect.mod-stella-food.light_step": "Light Step",
 	"effect.mod-stella-food.current_rider": "Current Rider",
 	"effect.mod-stella-food.ember_skin": "Ember Skin",
+	"effect.mod-stella-food.well_rested": "Well Rested",
 	"effect.mod-stella-food.second_wind": "Second Wind",
 	"effect.mod-stella-food.queasy": "Queasy",
 	"effect.mod-stella-food.sluggish": "Sluggish",
@@ -59,5 +60,6 @@
 	"effect.mod-stella-food.light_step.desc": "Take 35% less fall damage.",
 	"effect.mod-stella-food.current_rider.desc": "Move through water more easily.",
 	"effect.mod-stella-food.ember_skin.desc": "Take 40% less fire damage.",
+	"effect.mod-stella-food.well_rested.desc": "Kills give 20% more experience.",
 	"effect.mod-stella-food.second_wind.desc": "Heal two hearts once when health falls to half."
 }
