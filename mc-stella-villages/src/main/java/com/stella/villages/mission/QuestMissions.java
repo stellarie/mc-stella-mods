@@ -86,6 +86,8 @@ public final class QuestMissions {
 			spawnElite(level, mission);
 		} else if (mission.kind() == MissionKind.KILL || mission.kind() == MissionKind.GUARD) {
 			spawnKill(level, mission);
+		} else if (mission.kind() == MissionKind.SLAYER) {
+			SlayerContract.spawnTarget(level, mission);
 		}
 	}
 
@@ -146,14 +148,14 @@ public final class QuestMissions {
 			McStellaVillages.MOD_ID, mission.id(), pack.size(), mission.ownerId(), mission.targetType());
 	}
 
-	private static Mob create(final ServerLevel level, final MissionRecord mission) {
+	static Mob create(final ServerLevel level, final MissionRecord mission) {
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(mission.targetType()).map(holder -> holder.value()).orElse(null);
 		Entity created = type == null ? null : type.create(level, EntitySpawnReason.EVENT);
 		return created instanceof Mob mob ? mob : null;
 	}
 
 	// A summoned mob takes no elite roll of its own, and the mobs mod's other spawn rolls are left to it.
-	private static void place(final Mob mob, final Vec3 position, final MissionRecord mission) {
+	static void place(final Mob mob, final Vec3 position, final MissionRecord mission) {
 		mob.snapTo(position, 0.0F, 0.0F);
 		mob.setPersistenceRequired();
 		EliteState.setSummoned(mob, true);
@@ -213,7 +215,22 @@ public final class QuestMissions {
 			eliteDeath(level, data, mission, mob);
 		} else if (mission.kind() == MissionKind.KILL || mission.kind() == MissionKind.GUARD) {
 			killDeath(level, data, mission, mob);
+		} else if (mission.kind() == MissionKind.SLAYER && mission.entityId().filter(mob.getUUID()::equals).isPresent()) {
+			slayerDeath(level, data, mission, mob);
 		}
+	}
+
+	private static void slayerDeath(final ServerLevel level, final VillageWorldData data, final MissionRecord mission, final Mob slime) {
+		data.removeMission(mission.id());
+		if (!MissionService.paysFor(slime)) {
+			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=slayer_quest_lost mission={} entity={}", McStellaVillages.MOD_ID, mission.id(), slime.getUUID());
+			return;
+		}
+		level.addFreshEntity(new ItemEntity(level, slime.getX(), slime.getY(), slime.getZ(),
+			new ItemStack(com.stella.villages.item.ApprenticeChestplate.ITEM)));
+		recorder.paid(mission.ownerId(), MissionKind.SLAYER, "dropped");
+		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=slayer_quest_reward mission={} owner={}",
+			McStellaVillages.MOD_ID, mission.id(), mission.ownerId());
 	}
 
 	private static void eliteDeath(final ServerLevel level, final VillageWorldData data, final MissionRecord mission, final Mob elite) {

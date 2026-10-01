@@ -11,7 +11,8 @@
 		"PatrolRestMixin",
 		"PatrolHostilesMixin",
 		"VillageWitchSplashMixin",
-		"TrainingDummyHurtMixin"
+		"TrainingDummyHurtMixin",
+		"ApprenticeChestplateMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

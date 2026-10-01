@@ -786,8 +786,31 @@ public final class MissionService {
 			return "no_target_type";
 		}
 		Identifier type = packs.get(level.getRandom().nextInt(packs.size()));
-		Optional<BlockPos> target = findSafeTarget(level, PatrolService.bellOf(level, village), type,
-			GuardQuests.MIN_DISTANCE, GuardQuests.MAX_DISTANCE);
+		int count = QuestMissions.GUARD_MIN_COUNT + level.getRandom().nextInt(QuestMissions.GUARD_MAX_COUNT - QuestMissions.GUARD_MIN_COUNT + 1);
+		return startQuest(level, player, village, type, MissionKind.GUARD, count, GuardQuests.MIN_DISTANCE, GuardQuests.MAX_DISTANCE);
+	}
+
+	/** Starts a slayer contract from a duke's board. Returns null on success, else the reason it refused. */
+	public static @Nullable String acceptSlayerContract(final ServerPlayer player, final UUID headId) {
+		if (!(player.level() instanceof ServerLevel level)) {
+			return "head_not_registered";
+		}
+		VillageRecord village = VillageWorldData.get(level).villageForMember(headId).orElse(null);
+		if (village == null || !village.dimension().equals(level.dimension())) {
+			return "head_not_registered";
+		}
+		if (SlayerContract.hasActive(level, player.getUUID())) {
+			return "slayer_active";
+		}
+		return startQuest(level, player, village, SlayerContract.TARGET, MissionKind.SLAYER, 1,
+			SlayerContract.MIN_DISTANCE, SlayerContract.MAX_DISTANCE);
+	}
+
+	private static @Nullable String startQuest(
+		final ServerLevel level, final ServerPlayer player, final VillageRecord village, final Identifier type,
+		final MissionKind kind, final int count, final int minDistance, final int maxDistance
+	) {
+		Optional<BlockPos> target = findSafeTarget(level, PatrolService.bellOf(level, village), type, minDistance, maxDistance);
 		if (target.isEmpty()) {
 			return "no_safe_target";
 		}
@@ -801,15 +824,14 @@ public final class MissionService {
 		if (mapId == null) {
 			return "map_id_missing";
 		}
-		int count = QuestMissions.GUARD_MIN_COUNT + level.getRandom().nextInt(QuestMissions.GUARD_MAX_COUNT - QuestMissions.GUARD_MIN_COUNT + 1);
 		MissionRecord mission = new MissionRecord(
 			UUID.randomUUID(), player.getUUID(), type, target.get(), Optional.empty(), MissionStatus.TARGET_PENDING,
-			Optional.of(mapId), level.dimension(), MissionKind.GUARD, count, List.of()
+			Optional.of(mapId), level.dimension(), kind, count, List.of()
 		);
 		VillageWorldData.get(level).addMission(mission);
 		deliverMap(level, player, map, mapId);
-		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=guard_quest_accepted mission={} owner={} type={} count={} target={}",
-			McStellaVillages.MOD_ID, mission.id(), player.getUUID(), type, count, target.get());
+		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event={}_quest_accepted mission={} owner={} type={} count={} target={}",
+			McStellaVillages.MOD_ID, kind.name().toLowerCase(java.util.Locale.ROOT), mission.id(), player.getUUID(), type, count, target.get());
 		LevelChunk loaded = level.getChunkSource().getChunkNow(
 			SectionPos.blockToSectionCoord(target.get().getX()), SectionPos.blockToSectionCoord(target.get().getZ()));
 		if (loaded != null) {

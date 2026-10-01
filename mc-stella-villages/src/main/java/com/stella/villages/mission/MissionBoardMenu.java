@@ -26,7 +26,7 @@ import net.minecraft.world.item.component.ItemLore;
  * V2: the village mission board, a two-row chest menu that any client can show without a mod. Each offer is
  * the target's spawn egg. The top row holds the three Nemesis contracts, the bottom row the three elite
  * contracts on its left and the three kill contracts on its right. Slots 9, 13 and 17 hold the
- * {@link SlimeTrade} potions; the rest is glass. Clicking an offer asks {@link MissionService#acceptOffer},
+ * {@link SlimeTrade} potions, and slot 0 the {@link SlayerContract}; the rest is glass. Clicking an offer asks {@link MissionService#acceptOffer},
  * which stays the only authority, and no item ever leaves the menu.
  */
 public final class MissionBoardMenu extends ChestMenu {
@@ -141,7 +141,7 @@ public final class MissionBoardMenu extends ChestMenu {
 			int index = offerIndex(slot);
 			int trade = SlimeTrade.tradeIndex(slot);
 			board.setItem(slot, index >= 0 && index < offers.size() ? icon(offers.get(index))
-				: trade >= 0 ? SlimeTrade.icon(trade) : glass.copy());
+				: trade >= 0 ? SlimeTrade.icon(trade) : slot == SlayerContract.SLOT ? SlayerContract.icon() : glass.copy());
 		}
 		return board;
 	}
@@ -153,6 +153,11 @@ public final class MissionBoardMenu extends ChestMenu {
 		if (player instanceof ServerPlayer serverPlayer && index >= 0 && index < this.offers.size()
 			&& (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
 			this.choose(serverPlayer, this.offers.get(index));
+			return;
+		}
+		if (player instanceof ServerPlayer serverPlayer && slot == SlayerContract.SLOT
+			&& (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
+			this.slayer(serverPlayer);
 			return;
 		}
 		int trade = SlimeTrade.tradeIndex(slot);
@@ -179,9 +184,23 @@ public final class MissionBoardMenu extends ChestMenu {
 			: "The village cannot give you that mission: " + reasonText(reason)));
 	}
 
+	private void slayer(final ServerPlayer player) {
+		String reason = MissionService.acceptSlayerContract(player, this.headId());
+		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=slayer_board_choice owner={} accepted={} reason={}",
+			McStellaVillages.MOD_ID, player.getUUID(), reason == null, reason == null ? "accepted" : reason);
+		if (reason == null) {
+			player.closeContainer();
+			player.sendSystemMessage(Component.literal("Contract accepted. Your map marks the enraged red slime."));
+			return;
+		}
+		player.sendSystemMessage(Component.literal("The duke cannot give you that contract: " + reasonText(reason)));
+		this.sendAllDataToRemote();
+	}
+
 	static String reasonText(final String reason) {
 		return switch (reason) {
 			case "no_safe_target" -> "no safe place to find that target right now";
+			case "slayer_active" -> "you already hunt the enraged red slime";
 			case "head_missing_or_out_of_range" -> "you walked too far from the patrol head";
 			case "stale_offer", "stale_or_foreign_head" -> "the board changed, so open it again";
 			default -> "something went wrong (" + reason + ")";

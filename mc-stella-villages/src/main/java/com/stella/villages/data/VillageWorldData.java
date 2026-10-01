@@ -707,7 +707,9 @@ public final class VillageWorldData extends SavedData {
 		ELITE,
 		KILL,
 		/** A guard's small daily kill quest. */
-		GUARD
+		GUARD,
+		/** The duke's repeatable enraged red slime contract. */
+		SLAYER
 	}
 
 	public enum MissionStatus {

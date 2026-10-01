@@ -9,6 +9,7 @@ import com.stella.villages.data.VillageWorldData.MissionStatus;
 import com.stella.villages.mission.MissionBoardMenu;
 import com.stella.villages.mission.MissionService;
 import com.stella.villages.mission.MissionService.MissionOffer;
+import com.stella.villages.mission.SlayerContract;
 import com.stella.villages.mission.NemesisState;
 import com.stella.villages.mission.GuardQuests;
 import com.stella.villages.mission.QuestMissions;
@@ -705,6 +706,54 @@ public final class QuestBoardGameTest {
 
 	private static @Nullable MissionRecord questMission(final GameTestHelper helper, final UUID id) {
 		return VillageWorldData.get(helper.getLevel()).mission(id).orElse(null);
+	}
+
+	/**
+	 * The slayer contract: slot 0 offers it, one at a time. The enraged slime spawns at the site, and an owner kill
+	 * drops the Apprentice's Chestplate and frees the contract again.
+	 */
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void slayerContractRepeats(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "slayerContractRepeats");
+		if (fixture == null) {
+			return;
+		}
+		BlockPos target = prepareSite(helper, fixture.bell());
+		ServerPlayer owner = fixture.owner();
+		openBoard(helper, fixture);
+		MissionBoardMenu menu = (MissionBoardMenu) owner.containerMenu;
+		ItemStack icon = menu.getContainer().getItem(SlayerContract.SLOT);
+		menu.clicked(SlayerContract.SLOT, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+		openBoard(helper, fixture);
+		((MissionBoardMenu) owner.containerMenu).clicked(SlayerContract.SLOT, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+		List<MissionRecord> slayers = missionsOf(helper, owner).stream().filter(mission -> mission.kind() == MissionKind.SLAYER).toList();
+		helper.assertTrue(icon.is(Items.SLIME_BALL), "slot 0 shows " + icon);
+		helper.assertTrue(slayers.size() == 1 && slayers.getFirst().targetPosition().equals(target)
+			&& slayers.getFirst().targetType().equals(SlayerContract.TARGET), "the slayer contracts are " + slayers);
+		MissionRecord accepted = slayers.getFirst();
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(reachable(helper, accepted), "the enraged slime is not loaded yet"))
+			.thenExecute(() -> {
+				MissionRecord mission = questMission(helper, accepted.id());
+				Mob slime = mobOf(helper, mission.entityId().orElse(null));
+				helper.assertTrue(slime != null, "the enraged slime is missing");
+				com.stella.mobs.scaling.ThreatState state = com.stella.mobs.scaling.ThreatState.get(slime);
+				boolean enraged = slime.hasEffect(net.minecraft.world.effect.MobEffects.SPEED) && slime.hasEffect(net.minecraft.world.effect.MobEffects.STRENGTH);
+				owner.setGameMode(GameType.SURVIVAL);
+				kill(helper, owner, slime);
+				int chestplates = drops(helper, target, com.stella.villages.item.ApprenticeChestplate.ITEM);
+				boolean closed = questMission(helper, accepted.id()) == null;
+				boolean again = MissionService.acceptSlayerContract(owner, fixture.head().getUUID()) == null;
+				PatrolTestSupport.result("slayerContractRepeats", "state=" + state + " enraged=" + enraged + " chestplates=" + chestplates
+					+ " closed=" + closed + " again=" + again);
+				helper.assertTrue(state != null && state.areaLevel() == SlayerContract.LEVEL && enraged, "the slime is " + state + ", enraged " + enraged);
+				helper.assertTrue(chestplates == 1 && closed, "the kill dropped " + chestplates + " chestplates, closed " + closed);
+				helper.assertTrue(again, "the contract did not repeat");
+				missionsOf(helper, owner).stream().filter(record -> record.kind() == MissionKind.SLAYER)
+					.forEach(record -> VillageWorldData.get(helper.getLevel()).removeMission(record.id()));
+			})
+			.thenExecute(() -> release(helper, fixture.bell(), target))
+			.thenSucceed();
 	}
 
 	private static @Nullable Mob mobOf(final GameTestHelper helper, final @Nullable UUID id) {
