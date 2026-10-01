@@ -44,6 +44,12 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   open the Village Missions board, a two-row chest menu with each offer shown as its target's spawn egg.
   The top row holds the Nemesis contracts, the bottom row the elite contracts on the left and the kill
   contracts on the right. Each icon names the kind, the count and the reward.
+  Slot 0 holds the slayer contract, a beginner contract you can repeat. Defeat one enraged red slime
+  128 to 256 blocks from the bell. It is level 20 with permanent Speed II and Strength II. You hold one
+  slayer contract at a time. A player kill drops the Apprentice's Chestplate: iron armor with 1000
+  durability that repairs with iron ingots. It takes no enchantment. In the equips mod's Refine tab it
+  refines like any chestplate. Worn, it removes 3% of incoming damage for each light level below 15,
+  so 45% in full darkness. The red slime needs `mod-stella-mobs` with the red slime.
   The board also sells potions. The second-row slots at the left end, the middle, and the right end hold
   a Potion of Healing, Swiftness, and Strength. Each costs 32 slime balls. With fewer than 32, the duke
   says so and takes nothing. The potion goes to your inventory, or drops at your feet when it is full.

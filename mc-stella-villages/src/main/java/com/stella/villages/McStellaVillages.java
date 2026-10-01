@@ -26,6 +26,7 @@ public final class McStellaVillages implements ModInitializer {
 		PatrolService.register();
 		Conversation.register();
 		MissionService.register();
+		com.stella.villages.item.ApprenticeChestplate.register();
 		BellRally.register();
 		WitchShop.register();
 		VillageRaids.register();

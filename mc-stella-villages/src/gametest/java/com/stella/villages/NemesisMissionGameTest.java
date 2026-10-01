@@ -1216,6 +1216,10 @@ public final class NemesisMissionGameTest {
 		for (int slot = 0; slot < menu.getContainer().getContainerSize(); slot++) {
 			int index = MissionBoardMenu.offerIndex(slot);
 			ItemStack icon = menu.getContainer().getItem(slot);
+			if (index < 0 && slot == com.stella.villages.mission.SlayerContract.SLOT) {
+				helper.assertTrue(icon.is(Items.SLIME_BALL), "the slayer slot holds " + icon);
+				continue;
+			}
 			if (index < 0 && com.stella.villages.mission.SlimeTrade.tradeIndex(slot) >= 0) {
 				helper.assertTrue(icon.is(Items.POTION), "trade slot " + slot + " holds " + icon);
 				continue;
