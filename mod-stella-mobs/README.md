@@ -82,6 +82,22 @@ the default for that mob), `xp_base_hostile`, `xp_base_passive`, `xp_level_facto
 `xp_gap_min` (0.1), `xp_gap_max` (1.5), `xp_elite_multiplier` (3), and `xp_nemesis_multiplier` (5). The old
 `xp_level_divisor` key is retired: the store reports it and ignores it.
 
+## Skeleton archers
+
+A skeleton with a bow looses a burst of arrows, and single shots between bursts. A stray and a bogged keep
+their own arrows.
+
+- **Burst:** separate arrows, one every 10 ticks. A plain skeleton looses 3, an elite 5, and a boss 7.
+- **Aim:** each arrow flies at the spot where the target stands as the arrow leaves the bow. It strays up to
+  3 degrees in yaw and up to 3 degrees in pitch.
+- **Cooldown:** the next burst starts 200 ticks (10 seconds) after the last arrow of the burst before it.
+- **First release:** the first release of a fight is a burst. A burst ends when its target is lost or dead.
+- **Single shot:** between bursts the skeleton looses one arrow every 40 ticks. It slows the target for 2 seconds.
+  The slow is level I from a plain skeleton, level II from an elite, and level III from a boss.
+- **No fire, no cloud:** no skeleton arrow burns, even from a bow with Flame. No skeleton arrow leaves a cloud.
+- **Range:** a skeleton shoots from up to 24 blocks away. Its follow range is at least 32 blocks.
+- **Ammo:** each arrow uses one ammo item. A tipped arrow keeps its own effect on the target it hits.
+
 ## Red slime
 
 The red slime is a beginner mob.
