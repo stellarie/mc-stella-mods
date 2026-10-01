@@ -117,6 +117,49 @@ When an elite, a boss, or a mob at least 10 levels above your experience level s
 you (for example `! Elite Skeleton (Lv 42) is hunting you`) and a low note plays that only you hear. Each mob warns at
 most once every 30 seconds. Creative and spectator players get no warning.
 
+## Shield bearers, zombies, and spiders
+
+This section is for a player who fights these mobs and a developer who tunes them.
+Each number below is a constant in the class named in the heading.
+
+### Shield guard (`ShieldUseGoal`)
+
+A melee mob with a shield in its off hand guards against a survival or adventure player within 16 blocks.
+A creative or spectator player never starts the guard.
+
+- The mob and the player look at each other when each sits inside the other's view cone.
+  The player's cone is 25 degrees to each side. The mob's cone is 60 degrees.
+- While they look at each other, the mob keeps the shield raised and walks toward the player.
+- When the player looks away for 10 ticks, the mob lowers the shield. The melee goal then chases the player.
+- In reach, the mob lowers the shield for its swing and raises it on the next tick.
+  The shield needs 5 ticks to block again, and that gap is the player's counter window.
+- A hit that the raised shield blocks makes the mob strike back once. The strike back has a cooldown of 20 ticks.
+- An axe hit on the raised shield disables it for the axe's time, which is 5 seconds. No strike back follows.
+- A ranged bearer, a non-player target, and an arrow in flight keep the older rule.
+  The mob holds the shield for 20 ticks, stands still, then rests for 40 ticks.
+
+### Zombie pursuit (`ZombiePursuit`)
+
+Every zombie class mob keeps its target for 600 ticks without line of sight. Vanilla drops the target after 60 ticks.
+The class covers the zombie, husk, zombie villager, drowned, and zombified piglin.
+
+- A zombie, husk, zombie villager, and zombified piglin also follow a target that it cannot see.
+  The drowned keeps its own attack goal, and an elite or hardened zombie already follows an unseen target.
+- The follow range does not change. A larger range would also widen how far a zombie picks a target.
+
+### Spider signal (`SpiderSignal`)
+
+A spider that webs a player calls monsters onto that player. The call goes out after a web trap web.
+It also goes out after an elite or boss spider casts at least one web.
+
+- Monsters within 24 blocks of the spider answer, nearest first, up to 6 monsters.
+- A spider calls at most once every 100 of its own ticks.
+- A monster answers when it has no target, a target that is not a player, or a player that stands farther away.
+- A creeper, a neutral mob such as an enderman, and a mob at 35 percent health or below do not answer.
+- A mob that another mod drives does not answer. A village friend is one.
+- A piglin does not answer. It reads its target from the Brain, so the call does not stick.
+- A creative or spectator player never draws a call.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.

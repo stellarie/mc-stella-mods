@@ -72,6 +72,7 @@ public final class SpiderWebTrapGoal extends Goal {
 			"[BEHAVIOR] R08 webPlaced spider={} block={} count={}/{} tick={}",
 			this.spider.getType(), position, this.websPlaced, WEB_CAP, this.spider.tickCount
 		);
+		SpiderSignal.alert(this.spider, player);
 	}
 
 	@Override
