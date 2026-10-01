@@ -31,6 +31,7 @@
 			"com.stella.rpg.TombstoneGameTest",
 			"com.stella.rpg.DamageLogGameTest",
 			"com.stella.rpg.BagGameTest",
+			"com.stella.rpg.NauseaGameTest",
 			"com.stella.rpg.XpCurveGameTest",
 			"com.stella.rpg.AttackPreviewGameTest",
 			"com.stella.rpg.RpgScalingCoreGameTest",
