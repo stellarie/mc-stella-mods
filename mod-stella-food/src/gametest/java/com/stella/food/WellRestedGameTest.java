@@ -1,13 +1,17 @@
 package com.stella.food;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** Well Rested follows a full sleep that ends in the morning, and it multiplies a kill's experience by 1.2. */
@@ -20,6 +24,8 @@ public final class WellRestedGameTest {
 		check(wrong, WellRested.earned(99, 500L), false, "short sleep");
 		check(wrong, WellRested.earned(100, 2000L), false, "woke after the morning");
 		check(wrong, WellRested.earned(100, 13000L), false, "evening nap");
+		check(wrong, WellRested.earned(100, 23470L), true, "natural dawn wake");
+		check(wrong, WellRested.earned(100, 22000L), false, "woke in the night");
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		WellRested.grant(player);
 		var effect = player.getEffect(FoodEffects.WELL_RESTED);
@@ -52,5 +58,39 @@ public final class WellRestedGameTest {
 		if (got != expected) {
 			wrong.add(label);
 		}
+	}
+
+	/**
+	 * A real sleep that ends in the morning gives the effect through the wake event, and a wake at midnight gives
+	 * nothing. Each player sleeps in a real bed with a full sleep timer, then leaves it.
+	 */
+	@GameTest
+	public void sleepingThroughTheNightGrants(final GameTestHelper helper) {
+		ServerPlayer morning = sleeper(helper, new BlockPos(1, 1, 1));
+		ServerPlayer midnight = sleeper(helper, new BlockPos(3, 1, 1));
+		helper.setTime(18000L);
+		midnight.stopSleepInBed(false, true);
+		helper.setTime(500L);
+		morning.stopSleepInBed(false, true);
+		boolean morningRested = morning.hasEffect(FoodEffects.WELL_RESTED);
+		boolean midnightRested = midnight.hasEffect(FoodEffects.WELL_RESTED);
+		StellaFood.LOGGER.info("[BEHAVIOR] test=wellRestedWake RESULT morning={} midnight={}", morningRested, midnightRested);
+		helper.assertTrue(morningRested && !midnightRested, "morning=" + morningRested + " midnight=" + midnightRested);
+		helper.succeed();
+	}
+
+	private static ServerPlayer sleeper(final GameTestHelper helper, final BlockPos bed) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		helper.setBlock(bed, Blocks.STRAW_BED);
+		player.startSleeping(helper.absolutePos(bed));
+		try {
+			Field counter = Player.class.getDeclaredField("sleepCounter");
+			counter.setAccessible(true);
+			counter.setInt(player, WellRested.FULL_SLEEP_TICKS);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException("the sleep timer cannot be set", e);
+		}
+		helper.assertTrue(player.isSleeping() && player.getSleepTimer() == WellRested.FULL_SLEEP_TICKS, "the player is not asleep");
+		return player;
 	}
 }
