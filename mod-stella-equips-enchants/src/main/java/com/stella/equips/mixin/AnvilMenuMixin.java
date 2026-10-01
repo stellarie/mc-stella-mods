@@ -21,6 +21,29 @@ public abstract class AnvilMenuMixin {
 	@Accessor("cost")
 	protected abstract DataSlot stellaEquips$costSlot();
 
+	@Accessor("repairItemCountCost")
+	protected abstract void stellaEquips$setRepairCount(int count);
+
+	/** Armor and a slime heart make the armor with the heart, free, using one heart. */
+	@Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
+	private void stellaEquips$insertHeart(final CallbackInfo ci) {
+		ItemStack addition = this.stellaEquips$addition();
+		if (!addition.is(com.stella.equips.heart.SlimeHeart.ITEM)) {
+			return;
+		}
+		ItemStack input = this.stellaEquips$input();
+		ItemStack result = ItemStack.EMPTY;
+		if (com.stella.equips.refine.Refine.isArmor(input) && !com.stella.equips.heart.SlimeHeart.holdsHeart(input)) {
+			result = input.copy();
+			result.set(com.stella.equips.heart.SlimeHeart.INSERTED, true);
+		}
+		((AnvilMenu) (Object) this).getSlot(AnvilMenu.RESULT_SLOT).set(result);
+		this.stellaEquips$costSlot().set(0);
+		this.stellaEquips$setRepairCount(1);
+		((AnvilMenu) (Object) this).broadcastChanges();
+		ci.cancel();
+	}
+
 	/** The Too Expensive gate compares the emerald price, never the level price. */
 	@ModifyExpressionValue(
 		method = "createResult",

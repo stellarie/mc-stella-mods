@@ -4,6 +4,7 @@
 		"mod-stella-equips-enchants:siege_bolt",
 		"mod-stella-equips-enchants:aegis_breaker",
 		"minecraft:freeze",
-		"minecraft:magic"
+		"minecraft:magic",
+		"mod-stella-equips-enchants:slime_heart"
 	]
 }
