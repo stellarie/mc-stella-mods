@@ -37,6 +37,7 @@ public class StellaEquips implements ModInitializer {
 		ReadoutCommand.register();
 		RandomEnchantmentsFunction.register();
 		ChestLoot.register();
+		com.stella.equips.loot.ContainerLoot.register();
 		HeadDrops.register();
 		WeaponMastery.register();
 		MasteryPerks.register();

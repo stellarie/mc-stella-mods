@@ -271,6 +271,35 @@ health and base speed. Blessed uses max health in vanilla units, divided by the 
 mod-stella-rpg when that mod is present. Keen, Evasion and Riposte roll on the wearer's own random
 source, through a `Roller` that a test can force.
 
+## Container loot
+
+Every container a player searches, vanilla or from a structure mod (chests, barrels, crates, pots and the like),
+keeps its vanilla loot and adds these rolls, each its own draw:
+
+| Roll | Chance | Content |
+|---|---|---|
+| Jackpot | 0.01% | Diamond or netherite gear with 5 enchantments |
+| Enchanted equipment | 1% | A weapon, tool, armor piece or spellbook with 1 enchantment, plus a 2% chance for each extra one |
+| Ordinary equipment | 30% | One weapon, tool or armor piece, unenchanted |
+| Food | 25% | 2 to 5 of one vanilla food |
+| Potion | 5% | One random potion |
+| Emeralds | 5% | 1 to 64, mean 16 |
+
+- Every enchantment is one the item can take, and no curse appears.
+- Gear material follows the container level: the mob floor at the chest plus its altitude levels, from
+  `mod-stella-mobs`. Without that mod it is the opener's level minus 2.
+
+| Level | Material |
+|---|---|
+| 0-9 | Stone tools, leather armor |
+| 10-19 | Copper |
+| 20-49 | Iron |
+| 50-79 | Diamond at 5%, else iron |
+| 80+ | Netherite at 5%, else the 50-79 roll |
+
+- The bonus chest keeps its head start of seven enchanted iron pieces and gets none of these rolls.
+- Scrolls, spellbooks and dishes come from `mod-stella-spells` and `mod-stella-food`.
+
 ## Game tests
 
 ```powershell

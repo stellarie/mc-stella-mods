@@ -16,16 +16,12 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.NestedLootTable;
 
 /**
- * Attaches the chest pools to every container loot table, vanilla or modded. The pools
- * themselves are loot table JSON.
+ * Decides which loot tables are containers a player searches, vanilla or modded. The bonus chest gets the head
+ * start pool. Every other container gets the rolls of {@link ContainerLoot}.
  */
 public final class ChestLoot {
 	private static final String BONUS_CHEST = "spawn_bonus_chest";
-	private static final List<Identifier> POOLS = List.of(
-		id("chest/gear"),
-		id("chest/book"),
-		id("chest/jackpot")
-	);
+	private static final List<Identifier> POOLS = List.of();
 	/** The head start a new player gets, which replaces the ordinary rolls in the bonus chest. */
 	private static final List<Identifier> STARTER_POOLS = List.of(id("chest/starter"));
 	/** Vanilla files every chest a player searches under this one folder. */
@@ -98,7 +94,11 @@ public final class ChestLoot {
 		return namesAContainer(location.getPath());
 	}
 
-	/** The pools a table receives. The bonus chest gets the head start instead of the random rolls. */
+	public static boolean isBonusChest(final ResourceKey<LootTable> key) {
+		return key.identifier().getPath().endsWith(BONUS_CHEST);
+	}
+
+	/** The pools a table receives: the bonus chest gets the head start, and the rest none. */
 	public static List<Identifier> poolsFor(final ResourceKey<LootTable> key) {
 		return key.identifier().getPath().endsWith(BONUS_CHEST) ? STARTER_POOLS : POOLS;
 	}

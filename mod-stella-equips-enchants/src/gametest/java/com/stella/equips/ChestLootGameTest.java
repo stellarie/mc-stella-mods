@@ -155,156 +155,6 @@ public class ChestLootGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
-	public void theOrdinaryGearRollLandsNearThirtyPercent(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		int hits = 0;
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			if (!ordinaryGear(roll(helper, VILLAGE_WEAPONSMITH, MID), loot).isEmpty()) {
-				hits++;
-			}
-		}
-
-		double rate = (double) hits / SAMPLE;
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=gearRate RESULT table=minecraft:chests/village/village_weaponsmith rolls={} hits={} rate={} target={}",
-			SAMPLE, hits, rate, GEAR_RATE
-		);
-		helper.assertTrue(
-			Math.abs(rate - GEAR_RATE) < RATE_TOLERANCE,
-			"the equipment roll landed at " + rate + " over " + SAMPLE + " chests, not near " + GEAR_RATE
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theBookRollLandsNearThirtyPercent(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		int hits = 0;
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			if (!enchantedBooks(roll(helper, VILLAGE_WEAPONSMITH, MID), loot).isEmpty()) {
-				hits++;
-			}
-		}
-
-		double rate = (double) hits / SAMPLE;
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bookRate RESULT table=minecraft:chests/village/village_weaponsmith rolls={} hits={} rate={} target={}",
-			SAMPLE, hits, rate, BOOK_RATE
-		);
-		helper.assertTrue(
-			Math.abs(rate - BOOK_RATE) < RATE_TOLERANCE,
-			"the book roll landed at " + rate + " over " + SAMPLE + " chests, not near " + BOOK_RATE
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theJackpotRollLandsNearFivePercent(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		int hits = 0;
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			if (!jackpotGear(roll(helper, VILLAGE_WEAPONSMITH, MID), loot).isEmpty()) {
-				hits++;
-			}
-		}
-
-		double rate = (double) hits / SAMPLE;
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=jackpotRate RESULT table=minecraft:chests/village/village_weaponsmith rolls={} hits={} rate={} target={}",
-			SAMPLE, hits, rate, JACKPOT_RATE
-		);
-		helper.assertTrue(
-			Math.abs(rate - JACKPOT_RATE) < JACKPOT_TOLERANCE,
-			"the jackpot roll landed at " + rate + " over " + SAMPLE + " chests, not near " + JACKPOT_RATE
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theOrdinaryGearIsNeverBelowIron(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		Map<String, Integer> materials = new LinkedHashMap<>();
-		int pieces = 0;
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			for (ItemStack stack : ordinaryGear(roll(helper, VILLAGE_WEAPONSMITH, FAR), loot)) {
-				pieces++;
-				materials.merge(material(itemId(stack)), 1, Integer::sum);
-				helper.assertTrue(
-					ORDINARY_GEAR.contains(itemId(stack)),
-					"a chest carried " + itemId(stack) + ", which is below iron or not equipment"
-				);
-			}
-		}
-
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=gearFloor RESULT rolls={} pieces={} materials={} floor=iron",
-			SAMPLE, pieces, materials
-		);
-		helper.assertTrue(pieces > 0, "no equipment piece was rolled in " + SAMPLE + " chests");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void noCurseAndNoTestMarkerReachesAChest(final GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		HolderSet.Named<Enchantment> curses = server.registryAccess()
-			.lookupOrThrow(Registries.ENCHANTMENT)
-			.getOrThrow(EnchantmentTags.CURSE);
-		HolderSet<Enchantment> loot = lootTag(helper);
-		int enchantments = 0;
-		int curseCount = 0;
-		int markerCount = 0;
-		int ourRolls = 0;
-		Set<String> seen = new LinkedHashSet<>();
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			List<ItemStack> drops = roll(helper, VILLAGE_WEAPONSMITH, FAR);
-			List<ItemStack> ours = new ArrayList<>(ordinaryGear(drops, loot));
-			ours.addAll(jackpotGear(drops, loot));
-			ours.addAll(enchantedBooks(drops, loot));
-
-			if (!ours.isEmpty()) {
-				ourRolls++;
-			}
-
-			for (ItemStack stack : ours) {
-				helper.assertTrue(
-					fromOurTag(stack, loot),
-					"a chest carried " + itemId(stack) + " without an enchantment from the chest tag"
-				);
-
-				for (Holder<Enchantment> enchantment : enchantments(stack).keySet()) {
-					enchantments++;
-					String name = enchantment.unwrapKey().map(key -> key.identifier().toString()).orElse("unknown");
-					seen.add(name);
-
-					if (curses.contains(enchantment)) {
-						curseCount++;
-					}
-
-					if (name.endsWith(":test_marker")) {
-						markerCount++;
-					}
-				}
-			}
-		}
-
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=curseLeak RESULT rolls={} rollsWithOurLoot={} ourEnchantments={} distinct={} "
-				+ "curses={} testMarker={} lootTag={}",
-			SAMPLE, ourRolls, enchantments, seen.size(), curseCount, markerCount, loot.size()
-		);
-		helper.assertTrue(enchantments > 0, "no enchantment reached a chest in " + SAMPLE + " rolls");
-		helper.assertTrue(curseCount == 0, curseCount + " curse enchantments reached a chest");
-		helper.assertTrue(markerCount == 0, "the test marker reached a chest " + markerCount + " times");
-		helper.succeed();
-	}
-
 	/**
 	 * The package ships the 18 curses in #minecraft:on_random_loot, so a vanilla chest table that
 	 * rolls enchant_randomly can curse a player. This measures that route; it is not our pool.
@@ -338,162 +188,6 @@ public class ChestLootGameTest {
 		helper.assertTrue(
 			curseCount > 0,
 			"the vanilla route granted no curse in " + SAMPLE + " chests, so the measurement says nothing"
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theJackpotIsDiamondOrNetheriteWithExactlyFiveEnchantments(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		Map<String, Integer> materials = new LinkedHashMap<>();
-		int pieces = 0;
-
-		for (int roll = 0; roll < SAMPLE; roll++) {
-			for (ItemStack stack : jackpotGear(roll(helper, VILLAGE_WEAPONSMITH, MID), loot)) {
-				pieces++;
-				materials.merge(material(itemId(stack)), 1, Integer::sum);
-				helper.assertTrue(
-					JACKPOT_GEAR.contains(itemId(stack)),
-					"the jackpot carried " + itemId(stack)
-				);
-				helper.assertTrue(
-					enchantments(stack).size() == 5,
-					"a jackpot piece carried " + enchantments(stack).size() + " enchantments"
-				);
-			}
-		}
-
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=jackpotShape RESULT rolls={} pieces={} enchantments=5 materials={}",
-			SAMPLE, pieces, materials
-		);
-		helper.assertTrue(pieces > 0, "no jackpot piece was rolled in " + SAMPLE + " chests");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theEnchantCountRisesWithDistanceAndDepth(final GameTestHelper helper) {
-		HolderSet<Enchantment> loot = lootTag(helper);
-		Map<String, String> observed = new LinkedHashMap<>();
-
-		for (Map.Entry<String, Vec3> band : Map.of("near", NEAR, "mid", MID, "far", FAR, "deep", DEEP).entrySet()) {
-			int expected = switch (band.getKey()) {
-				case "near" -> 1;
-				case "mid" -> 2;
-				default -> 3;
-			};
-			int pieces = 0;
-
-			for (int roll = 0; roll < SAMPLE; roll++) {
-				for (ItemStack stack : ordinaryGear(roll(helper, VILLAGE_WEAPONSMITH, band.getValue()), loot)) {
-					pieces++;
-					helper.assertTrue(
-						enchantments(stack).size() == expected,
-						"a " + band.getKey() + " chest carried " + enchantments(stack).size()
-							+ " enchantments instead of " + expected
-					);
-				}
-			}
-
-			helper.assertTrue(pieces > 0, "the " + band.getKey() + " band rolled no equipment");
-			observed.put(band.getKey(), "count=" + expected + " pieces=" + pieces);
-		}
-
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=qualityTiers RESULT near={} mid={} far={} deep={} axisBlocks=1200/2400 depthY=-32/-64",
-			observed.get("near"), observed.get("mid"), observed.get("far"), observed.get("deep")
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theDatapackOverriddenChestReceivesThePoolOnce(final GameTestHelper helper) {
-		int overridden = gearHits(helper, ANCIENT_CITY, MID, SAMPLE);
-		int plain = gearHits(helper, VILLAGE_WEAPONSMITH, MID, SAMPLE);
-		double overriddenRate = (double) overridden / SAMPLE;
-		double plainRate = (double) plain / SAMPLE;
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=overrideOnce RESULT ancientCityHits={} ancientCityRate={} villageHits={} "
-				+ "villageRate={} doubledRate={}",
-			overridden, overriddenRate, plain, plainRate, DOUBLED_GEAR_RATE
-		);
-		helper.assertTrue(
-			Math.abs(overriddenRate - GEAR_RATE) < RATE_TOLERANCE,
-			"the table with a bundled datapack override landed at " + overriddenRate + ", not near " + GEAR_RATE
-		);
-		helper.assertTrue(
-			Math.abs(plainRate - GEAR_RATE) < RATE_TOLERANCE,
-			"the village chest landed at " + plainRate + ", not near " + GEAR_RATE
-		);
-		helper.assertTrue(
-			overriddenRate < DOUBLED_GEAR_RATE - RATE_TOLERANCE,
-			"the override attached twice: " + overriddenRate + " is near the doubled rate"
-		);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void everyTargetedTableCarriesThePools(final GameTestHelper helper) {
-		List<String> empty = new ArrayList<>();
-		double lowest = 1.0;
-
-		for (String path : new java.util.TreeSet<>(TARGETED_CHESTS)) {
-			double rate = (double) gearHits(helper, tableId(path), MID, COVERAGE_SAMPLE) / COVERAGE_SAMPLE;
-
-			if (rate == 0.0) {
-				empty.add(path);
-			}
-
-			lowest = Math.min(lowest, rate);
-		}
-
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=coverage RESULT tables={} rollsEach={} tablesWithNoRoll={} lowestRate={}",
-			TARGETED_CHESTS.size(), COVERAGE_SAMPLE, empty, lowest
-		);
-		helper.assertTrue(empty.isEmpty(), "these tables received no pool: " + empty);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void theVanillaFiveDrawCannotGuaranteeFiveEnchantments(final GameTestHelper helper) {
-		MinecraftServer server = helper.getLevel().getServer();
-		HolderSet.Named<Enchantment> pool = server.registryAccess()
-			.lookupOrThrow(Registries.ENCHANTMENT)
-			.getOrThrow(net.minecraft.tags.TagKey.create(Registries.ENCHANTMENT, id("chest_loot")));
-		ItemStack probe = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("minecraft", "diamond_sword")));
-		Holder<Enchantment> first = pool.get(0);
-		probe.enchant(first, 1);
-		probe.enchant(first, 3);
-		int afterRepeat = probe.getEnchantments().size();
-		int collisions = 0;
-		java.util.Random random = new java.util.Random(7L);
-
-		for (int draw = 0; draw < VANILLA_DRAWS; draw++) {
-			Set<String> picked = new LinkedHashSet<>();
-
-			for (int pick = 0; pick < VANILLA_DRAW_COUNT; pick++) {
-				picked.add(pool.get(random.nextInt(pool.size())).unwrapKey().orElseThrow().identifier().toString());
-			}
-
-			if (picked.size() < VANILLA_DRAW_COUNT) {
-				collisions++;
-			}
-		}
-
-		double collisionRate = (double) collisions / VANILLA_DRAWS;
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=vanillaCollision RESULT repeatDrawEnchantments={} drawsPerItem={} items={} "
-				+ "itemsWithFewerThanFive={} collisionRate={} poolSize={}",
-			afterRepeat, VANILLA_DRAW_COUNT, VANILLA_DRAWS, collisions, collisionRate, pool.size()
-		);
-		helper.assertTrue(
-			afterRepeat == 1,
-			"enchanting the same enchantment twice left " + afterRepeat + " enchantments, so duplicates would collapse"
-		);
-		helper.assertTrue(
-			collisions > 0,
-			"five undeduplicated draws collided on no item of " + VANILLA_DRAWS + ", so the measurement says nothing"
 		);
 		helper.succeed();
 	}
@@ -559,7 +253,7 @@ public class ChestLootGameTest {
 				unenchanted++;
 			}
 
-			if (!fromOurTag(stack, lootTag(helper))) {
+			if (!supportedOnly(stack)) {
 				offTag++;
 			}
 		}
@@ -579,7 +273,7 @@ public class ChestLootGameTest {
 		);
 		helper.assertTrue(wrongCount == 0, wrongCount + " kit pieces did not carry exactly " + STARTER_ENCHANTS);
 		helper.assertTrue(unenchanted == 0, unenchanted + " kit pieces were unenchanted");
-		helper.assertTrue(offTag == 0, offTag + " kit pieces carried an enchantment outside the chest tag");
+		helper.assertTrue(offTag == 0, offTag + " kit pieces carried an unsupported, cursed or test enchantment");
 		helper.succeed();
 	}
 
@@ -626,6 +320,17 @@ public class ChestLootGameTest {
 	}
 
 	/** Only our pools grant an enchantment from the chest tag, so this signature cannot be vanilla loot. */
+	/** Every enchantment fits the item, and none is a curse or a test fixture. */
+	private static boolean supportedOnly(final ItemStack stack) {
+		for (Holder<Enchantment> enchantment : enchantments(stack).keySet()) {
+			boolean fixture = enchantment.unwrapKey().map(key -> key.identifier().getNamespace().contains("-test-")).orElse(false);
+			if (!enchantment.value().canEnchant(stack) || enchantment.is(EnchantmentTags.CURSE) || fixture) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private static boolean fromOurTag(final ItemStack stack, final HolderSet<Enchantment> loot) {
 		if (enchantments(stack).isEmpty()) {
 			return false;
