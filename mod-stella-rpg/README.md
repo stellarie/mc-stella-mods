@@ -198,7 +198,7 @@ The server applies the faster bow draw. The client draw animation keeps the vani
 
 - `/rpgstats` prints one line per stat, then `Unspent: N`, `Atk dice`, and `Ranged dice`. A line reads `STR 25 + 5` with a bonus and `STR 25` without.
 - `/rpgstats allocate <stat> <amount>` spends unspent points. Stat keys are `str`, `agi`, `vit`, `dex`, `int`, `luk`.
-- `/rpgstats respec` resets every base value for 320 emeralds.
+- `/rpgstats respec` resets every base value for 320 emeralds. With `mod-stella-equips-enchants`, emeralds in emerald bags count too.
 - `/rpgstats dmgcounter on|off` toggles a chat damage log. Lines read `You dealt 452 damage to Zombie.` and `Zombie dealt 200 damage to you.` The amount is the health lost. Damage-over-time ticks are not logged. The setting persists across death.
 
 ## Stats tab

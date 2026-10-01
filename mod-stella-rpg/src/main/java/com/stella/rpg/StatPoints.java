@@ -1,5 +1,8 @@
 package com.stella.rpg;
 
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -7,6 +10,8 @@ import net.minecraft.world.item.Items;
 public final class StatPoints {
 	public static final int STARTING_POINTS = 12;
 	public static final int RESPEC_EMERALDS = 320;
+	public static final String COUNT_SHARE = "mod-stella-equips-enchants:emerald-count";
+	public static final String SPEND_SHARE = "mod-stella-equips-enchants:emerald-spend";
 
 	public enum Result {
 		OK, NOT_ENOUGH_POINTS, ABOVE_CEILING, NOT_ENOUGH_EMERALDS, NOTHING_TO_RESET, INVALID_AMOUNT, INVALID_STAT
@@ -97,15 +102,37 @@ public final class StatPoints {
 		if (sheet.allocated() == 0) {
 			return Result.NOTHING_TO_RESET;
 		}
-		if (countEmeralds(player) < RESPEC_EMERALDS) {
+		if (countEmeralds(player) < RESPEC_EMERALDS || !spendEmeralds(player, RESPEC_EMERALDS)) {
 			return Result.NOT_ENOUGH_EMERALDS;
 		}
-		removeEmeralds(player, RESPEC_EMERALDS);
 		setSheet(player, StatSheet.EMPTY);
 		return Result.OK;
 	}
 
+	/** Through the equips purse when it is loaded, so emerald bags count; else the loose emeralds. */
+	@SuppressWarnings("unchecked")
 	public static int countEmeralds(final ServerPlayer player) {
+		Object shared = FabricLoader.getInstance().getObjectShare().get(COUNT_SHARE);
+		if (shared instanceof Function<?, ?> function) {
+			Integer value = ((Function<Object, Integer>) function).apply(player);
+			if (value != null) {
+				return value;
+			}
+		}
+		return countLoose(player);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static boolean spendEmeralds(final ServerPlayer player, final int amount) {
+		Object shared = FabricLoader.getInstance().getObjectShare().get(SPEND_SHARE);
+		if (shared instanceof BiFunction<?, ?, ?> function) {
+			return Boolean.TRUE.equals(((BiFunction<Object, Integer, Boolean>) function).apply(player, amount));
+		}
+		removeEmeralds(player, amount);
+		return true;
+	}
+
+	static int countLoose(final ServerPlayer player) {
 		int count = 0;
 		for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
 			if (stack.is(Items.EMERALD)) {

@@ -1,6 +1,10 @@
 package com.stella.rpg;
 
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ObjectShare;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -43,6 +47,34 @@ public final class RpgRespecGameTest {
 		helper.assertTrue(StatPoints.sheet(player).equals(before), "sheet changed: " + StatPoints.sheet(player));
 		helper.assertTrue(StatPoints.countEmeralds(player) == 319, "emeralds=" + StatPoints.countEmeralds(player));
 		RpgTestSupport.result("respecRefusedShort", "result=" + result);
+		helper.succeed();
+	}
+
+	/** With the equips purse shares present, the respec counts and spends through them, bags included. */
+	@GameTest
+	public void respecUsesPurse(final GameTestHelper helper) {
+		ServerPlayer player = allocated(helper);
+		int[] bag = {400};
+		Function<Object, Integer> count = who -> who == player ? bag[0] : StatPoints.countLoose((ServerPlayer) who);
+		BiFunction<Object, Integer, Boolean> spend = (who, price) -> {
+			if (who != player || bag[0] < price) {
+				return false;
+			}
+			bag[0] -= price;
+			return true;
+		};
+		ObjectShare share = FabricLoader.getInstance().getObjectShare();
+		share.put(StatPoints.COUNT_SHARE, count);
+		share.put(StatPoints.SPEND_SHARE, spend);
+		StatPoints.Result result;
+		try {
+			result = StatPoints.respec(player);
+		} finally {
+			share.remove(StatPoints.COUNT_SHARE);
+			share.remove(StatPoints.SPEND_SHARE);
+		}
+		RpgTestSupport.result("respecUsesPurse", "result=" + result + " bagLeft=" + bag[0]);
+		helper.assertTrue(result == StatPoints.Result.OK && bag[0] == 80, "the respec did not pay through the purse: " + result + " " + bag[0]);
 		helper.succeed();
 	}
 
