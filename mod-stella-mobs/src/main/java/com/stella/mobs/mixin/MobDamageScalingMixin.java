@@ -22,7 +22,8 @@ public abstract class MobDamageScalingMixin {
 			return amount;
 		}
 		int threat = ThreatState.level(mob);
-		boolean melee = source.is(DamageTypes.MOB_ATTACK) || source.is(DamageTypes.MOB_ATTACK_NO_AGGRO);
+		// A spear jab reads the scaled attack too.
+		boolean melee = source.is(DamageTypes.MOB_ATTACK) || source.is(DamageTypes.MOB_ATTACK_NO_AGGRO) || source.is(DamageTypes.SPEAR);
 		// Friendly golems keep their fixed special hits.
 		boolean hostile = mob instanceof Enemy;
 		float scaled = melee || !hostile ? amount : amount * (float) SpawnScaling.damageMultiplier(threat);

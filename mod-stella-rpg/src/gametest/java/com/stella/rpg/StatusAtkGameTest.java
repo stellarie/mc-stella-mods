@@ -49,6 +49,48 @@ public final class StatusAtkGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * Regression guard: a spear hit and a mace smash use their own damage types, and they must still count as melee.
+	 * Arrows from a bow and from a crossbow add the ranged bonus.
+	 */
+	@GameTest
+	public void spearMaceAndRangedGetBonuses(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		Zombie victim = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 1, 2, 1);
+		ServerPlayer player = RpgTestSupport.player(helper);
+		RpgTestSupport.setStat(player, Stat.STR, 100);
+		RpgTestSupport.setStat(player, Stat.DEX, 100);
+		float expected = 200.0F / RpgScale.kf();
+		var types = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.DAMAGE_TYPE);
+		float spear;
+		float mace;
+		float bow;
+		float crossbow;
+		RpgCombat.setRoller((attacker, random, chance) -> false);
+		RpgCombat.setDiceRoller((attacker, random, dice) -> 0);
+		try {
+			spear = RpgCombat.scaleOutgoing(victim, new DamageSource(types.getOrThrow(net.minecraft.world.damagesource.DamageTypes.SPEAR), player), 0.0F);
+			mace = RpgCombat.scaleOutgoing(victim, new DamageSource(types.getOrThrow(net.minecraft.world.damagesource.DamageTypes.MACE_SMASH), player), 0.0F);
+			Arrow fromBow = new Arrow(level, player, new ItemStack(Items.ARROW), new ItemStack(Items.BOW));
+			Arrow fromCrossbow = new Arrow(level, player, new ItemStack(Items.ARROW), new ItemStack(Items.CROSSBOW));
+			level.addFreshEntity(fromBow);
+			level.addFreshEntity(fromCrossbow);
+			bow = RpgCombat.scaleOutgoing(victim, level.damageSources().arrow(fromBow, player), 0.0F);
+			crossbow = RpgCombat.scaleOutgoing(victim, level.damageSources().arrow(fromCrossbow, player), 0.0F);
+			fromBow.discard();
+			fromCrossbow.discard();
+		} finally {
+			RpgCombat.setRoller(null);
+			RpgCombat.setDiceRoller(null);
+		}
+		RpgTestSupport.result("spearMaceAndRangedGetBonuses", "spear=" + spear + " mace=" + mace + " bow=" + bow + " crossbow=" + crossbow + " expected=" + expected);
+		helper.assertTrue(Math.abs(spear - expected) < TOLERANCE && Math.abs(mace - expected) < TOLERANCE,
+			"a spear added " + spear + " and a mace smash " + mace + ", expected " + expected);
+		helper.assertTrue(Math.abs(bow - expected) < TOLERANCE && Math.abs(crossbow - expected) < TOLERANCE,
+			"a bow arrow added " + bow + " and a crossbow arrow " + crossbow + ", expected " + expected);
+		helper.succeed();
+	}
+
 	@GameTest
 	public void statusAtkBetweenDiceAndCrit(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
