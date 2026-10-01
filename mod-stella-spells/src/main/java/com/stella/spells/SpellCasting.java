@@ -29,17 +29,17 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class SpellCasting {
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
-	static final double STATIC_LASH_RADIUS = 4.0;
-	static final double WARDENS_ROAR_RADIUS = 5.0;
-	static final double TIME_LOCK_RADIUS = 5.0;
-	static final double VOID_WELL_RADIUS = 5.0;
-	static final double DRAGONFALL_RADIUS = 3.0;
+	static final double STATIC_LASH_RADIUS = SpellNumbers.STATIC_LASH.radius();
+	static final double WARDENS_ROAR_RADIUS = SpellNumbers.WARDENS_ROAR.radius();
+	static final double TIME_LOCK_RADIUS = SpellNumbers.TIME_LOCK.radius();
+	static final double VOID_WELL_RADIUS = SpellNumbers.VOID_WELL.radius();
+	static final double DRAGONFALL_RADIUS = SpellNumbers.DRAGONFALL.radius();
 	/** How far Riftwalk looks down a wall for ground to land on. */
 	static final int RIFTWALK_MAX_DROP_BLOCKS = 4;
 	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
 	public static final int SCROLL_COOLDOWN_TICKS = 20;
-	static final float DAMAGE = 3.0f;
-	static final float BURN_SECONDS = 2.0f;
+	static final float DAMAGE = SpellNumbers.SPARK_SHOT.damage();
+	static final float BURN_SECONDS = SpellNumbers.SPARK_SHOT.extra().ticks() / 20.0f;
 
 	/** Doublecast: the chance a cast with a Doublecast helmet lands twice. */
 	public static final float DOUBLECAST_CHANCE = 0.5F;
@@ -152,20 +152,21 @@ public final class SpellCasting {
 			return false;
 		}
 
-		target.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, DAMAGE, modifiers.powerMultiplier()));
-		target.igniteForSeconds(effectDurationTicks(modifiers, (int) (BURN_SECONDS * 20.0f), false) / 20.0f);
+		SpellNumbers numbers = SpellNumbers.SPARK_SHOT;
+		target.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, numbers.damage(), modifiers.powerMultiplier()));
+		target.igniteForSeconds(numbers.extraTicks(modifiers) / 20.0f);
 		return true;
 	}
 
 	static boolean applyFrostbind(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		return target != null && target.addEffect(
-			new MobEffectInstance(MobEffects.SLOWNESS, effectDurationTicks(modifiers, 80, false), 1), caster
+			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROSTBIND.durationTicks(modifiers), SpellNumbers.FROSTBIND.amplifier()), caster
 		);
 	}
 
 	static boolean applyBriarSnare(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		return target != null && target.addEffect(
-			new MobEffectInstance(MobEffects.SLOWNESS, effectDurationTicks(modifiers, 80, false), 3), caster
+			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.BRIAR_SNARE.durationTicks(modifiers), SpellNumbers.BRIAR_SNARE.amplifier()), caster
 		);
 	}
 
@@ -174,14 +175,14 @@ public final class SpellCasting {
 		Vec3 horizontal = new Vec3(look.x, 0.0, look.z).normalize();
 		caster.setDeltaMovement(horizontal.x * 1.2, 0.45, horizontal.z * 1.2);
 		caster.addEffect(
-			new MobEffectInstance(MobEffects.SLOW_FALLING, effectDurationTicks(modifiers, 40, false), 0), caster
+			new MobEffectInstance(MobEffects.SLOW_FALLING, SpellNumbers.GALE_STEP.durationTicks(modifiers), SpellNumbers.GALE_STEP.amplifier()), caster
 		);
 		return true;
 	}
 
 	static boolean applyMendingWord(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		float healthBefore = caster.getHealth();
-		caster.heal(RpgBridge.heal(caster, 4.0f, modifiers.powerMultiplier()));
+		caster.heal(RpgBridge.heal(caster, SpellNumbers.MENDING_WORD.heal(), modifiers.powerMultiplier()));
 		return caster.getHealth() > healthBefore;
 	}
 
@@ -189,45 +190,48 @@ public final class SpellCasting {
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
 		caster.addEffect(
-			new MobEffectInstance(MobEffects.RESISTANCE, effectDurationTicks(modifiers, 80, true), 0), caster
+			new MobEffectInstance(MobEffects.RESISTANCE, SpellNumbers.STONEGUARD.durationTicks(modifiers), SpellNumbers.STONEGUARD.amplifier()), caster
 		);
 		return true;
 	}
 
 	static boolean applyOwlsGaze(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		caster.addEffect(
-			new MobEffectInstance(MobEffects.NIGHT_VISION, effectDurationTicks(modifiers, 900, false), 0), caster
+			new MobEffectInstance(MobEffects.NIGHT_VISION, SpellNumbers.OWLS_GAZE.durationTicks(modifiers), SpellNumbers.OWLS_GAZE.amplifier()), caster
 		);
 		return true;
 	}
 
 	static boolean applySlimebound(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		int duration = effectDurationTicks(modifiers, 160, false);
-		caster.addEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, duration, 1), caster);
-		caster.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, duration, 0), caster);
+		SpellNumbers numbers = SpellNumbers.SLIMEBOUND;
+		int duration = numbers.durationTicks(modifiers);
+		caster.addEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, duration, numbers.amplifier()), caster);
+		caster.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, duration, numbers.extraAmplifier()), caster);
 		return true;
 	}
 
 	static boolean applyWitherSeal(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		return target != null && target.addEffect(
-			new MobEffectInstance(MobEffects.WITHER, effectDurationTicks(modifiers, 100, false), 1), caster
+			new MobEffectInstance(MobEffects.WITHER, SpellNumbers.WITHER_SEAL.durationTicks(modifiers), SpellNumbers.WITHER_SEAL.amplifier()), caster
 		);
 	}
 
 	static boolean applyPhoenixMantle(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
+		SpellNumbers numbers = SpellNumbers.PHOENIX_MANTLE;
 		caster.addEffect(
-			new MobEffectInstance(MobEffects.FIRE_RESISTANCE, effectDurationTicks(modifiers, 600, true), 0), caster
+			new MobEffectInstance(MobEffects.FIRE_RESISTANCE, numbers.durationTicks(modifiers), numbers.amplifier()), caster
 		);
-		caster.heal(RpgBridge.heal(caster, 4.0f, modifiers.powerMultiplier()));
+		caster.heal(RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
 		return true;
 	}
 
 	static boolean applyLifeBloom(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		caster.heal(RpgBridge.heal(caster, 8.0f, modifiers.powerMultiplier()));
+		SpellNumbers numbers = SpellNumbers.LIFE_BLOOM;
+		caster.heal(RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
 		caster.addEffect(
-			new MobEffectInstance(MobEffects.REGENERATION, effectDurationTicks(modifiers, 100, true), 0), caster
+			new MobEffectInstance(MobEffects.REGENERATION, numbers.durationTicks(modifiers), numbers.amplifier()), caster
 		);
 		return true;
 	}
@@ -235,23 +239,24 @@ public final class SpellCasting {
 	static boolean applyAegisOfTheDeep(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		int duration = effectDurationTicks(modifiers, 80, true);
-		caster.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, duration, 1), caster);
-		caster.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, duration, 0), caster);
+		SpellNumbers numbers = SpellNumbers.AEGIS_OF_THE_DEEP;
+		int duration = numbers.durationTicks(modifiers);
+		caster.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, duration, numbers.amplifier()), caster);
+		caster.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, duration, numbers.extraAmplifier()), caster);
 		return true;
 	}
 
 	static boolean applyWardensRoar(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		double radius = WARDENS_ROAR_RADIUS * modifiers.radiusMultiplier();
+		double radius = SpellNumbers.WARDENS_ROAR.radius(modifiers);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			caster.getBoundingBox().inflate(radius),
 			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(caster.position()) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, 6.0f, modifiers.powerMultiplier()));
+			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, SpellNumbers.WARDENS_ROAR.damage(), modifiers.powerMultiplier()));
 			Vec3 away = hostile.position().subtract(caster.position());
 			Vec3 horizontal = new Vec3(away.x, 0.0, away.z).normalize();
 			hostile.setDeltaMovement(horizontal.x, 0.4, horizontal.z);
@@ -268,8 +273,9 @@ public final class SpellCasting {
 
 		var damage = caster.level().damageSources().magic();
 		double power = modifiers.powerMultiplier();
-		double radius = STATIC_LASH_RADIUS * modifiers.radiusMultiplier();
-		primary.hurt(damage, RpgBridge.damage(caster, DAMAGE, power));
+		SpellNumbers numbers = SpellNumbers.STATIC_LASH;
+		double radius = numbers.radius(modifiers);
+		primary.hurt(damage, RpgBridge.damage(caster, numbers.damage(), power));
 		List<Mob> candidates = new ArrayList<>(caster.level().getEntitiesOfClass(
 			Mob.class,
 			primary.getBoundingBox().inflate(radius),
@@ -282,9 +288,9 @@ public final class SpellCasting {
 			Comparator.comparingDouble((Mob candidate) -> candidate.position().distanceToSqr(primary.position()))
 				.thenComparingInt(Mob::getId)
 		);
-		for (int i = 0; i < Math.min(2, candidates.size()); i++) {
+		for (int i = 0; i < Math.min(numbers.targets(), candidates.size()); i++) {
 			Mob chained = candidates.get(i);
-			chained.hurt(damage, RpgBridge.damage(caster, DAMAGE, power));
+			chained.hurt(damage, RpgBridge.damage(caster, numbers.damage(), power));
 			SpellVisuals.linkAffected(caster, "static_lash",
 				primary.getBoundingBox().getCenter(), chained.getBoundingBox().getCenter());
 		}
@@ -304,8 +310,9 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = TIME_LOCK_RADIUS * modifiers.radiusMultiplier();
-		int duration = effectDurationTicks(modifiers, 100, false);
+		SpellNumbers numbers = SpellNumbers.TIME_LOCK;
+		double radius = numbers.radius(modifiers);
+		int duration = numbers.durationTicks(modifiers);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),
@@ -313,7 +320,7 @@ public final class SpellCasting {
 				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, numbers.amplifier()), caster);
 		}
 		return true;
 	}
@@ -325,8 +332,9 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = VOID_WELL_RADIUS * modifiers.radiusMultiplier();
-		int duration = effectDurationTicks(modifiers, 60, false);
+		SpellNumbers numbers = SpellNumbers.VOID_WELL;
+		double radius = numbers.radius(modifiers);
+		int duration = numbers.durationTicks(modifiers);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),
@@ -337,7 +345,7 @@ public final class SpellCasting {
 			Vec3 toward = point.subtract(hostile.position());
 			Vec3 horizontal = new Vec3(toward.x, 0.0, toward.z).normalize();
 			hostile.setDeltaMovement(horizontal.x * 0.8, 0.1, horizontal.z * 0.8);
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, 1), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, numbers.amplifier()), caster);
 		}
 		return true;
 	}
@@ -378,7 +386,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		double radius = DRAGONFALL_RADIUS * modifiers.radiusMultiplier();
+		double radius = SpellNumbers.DRAGONFALL.radius(modifiers);
 		for (Mob hostile : caster.level().getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),
@@ -386,17 +394,9 @@ public final class SpellCasting {
 				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, 10.0f, modifiers.powerMultiplier()));
+			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
 		}
 		return true;
-	}
-
-	private static int effectDurationTicks(
-		final SpellModifiers.CastModifiers modifiers,
-		final int baseTicks,
-		final boolean defensive
-	) {
-		return modifiers.durationTicks(baseTicks, defensive);
 	}
 
 	// The block face under the crosshair: standing on it when it is a floor, in front of it and down to its ground otherwise.

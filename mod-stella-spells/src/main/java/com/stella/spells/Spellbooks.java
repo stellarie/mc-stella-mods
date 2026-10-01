@@ -122,7 +122,7 @@ public final class Spellbooks implements ModInitializer {
 		return Component.translatable("item." + id.getNamespace() + "." + id.getPath());
 	}
 
-	private static Component line(final MutableComponent text, final ChatFormatting color) {
+	static Component line(final MutableComponent text, final ChatFormatting color) {
 		return text.withStyle(style -> style.withColor(color).withItalic(false));
 	}
 }

@@ -24,6 +24,18 @@ public final class RpgSpellsStandIn {
 		return heal(coefficient);
 	}
 
+	/** The fixed MATK bounds a stand-in caster rolls between, in K units. */
+	public static final double MATK_MIN = 64.0;
+	public static final double MATK_MAX = 96.0;
+
+	public static double matkMin(final LivingEntity entity) {
+		return MATK_MIN;
+	}
+
+	public static double matkMax(final LivingEntity entity) {
+		return MATK_MAX;
+	}
+
 	static double damage(final double skillPercent) {
 		return skillPercent * 0.25;
 	}
