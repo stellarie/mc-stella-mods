@@ -9,6 +9,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -18,7 +19,7 @@ import net.minecraft.world.item.ItemStack;
 @Environment(EnvType.CLIENT)
 public final class EmeraldBagScreen extends Screen {
 	private static final int WIDTH = 220;
-	private static final int HEIGHT = 110;
+	private static final int HEIGHT = 134;
 	private static final int[] AMOUNTS = {1, 16, 64, EmeraldBag.ALL};
 	private static final int BUTTON_WIDTH = 46;
 	private static final int BUTTON_HEIGHT = 20;
@@ -55,6 +56,16 @@ public final class EmeraldBagScreen extends Screen {
 			this.addRenderableWidget(Button.builder(label, button -> this.send(false, amount))
 				.bounds(x, this.top + 82, BUTTON_WIDTH, BUTTON_HEIGHT).build());
 		}
+		this.addAutoBox();
+	}
+
+	private void addAutoBox() {
+		ItemStack bag = this.minecraft.player.getItemInHand(this.hand);
+		this.addRenderableWidget(Checkbox.builder(Component.translatable("screen.mod-stella-equips-enchants.emerald_bag.auto"), this.font)
+			.pos(this.left + 10, this.top + 108)
+			.selected(EmeraldBag.isAuto(bag))
+			.onValueChange((box, value) -> ClientPlayNetworking.send(new EmeraldBag.AutoRequest(this.hand == InteractionHand.OFF_HAND, value)))
+			.build());
 	}
 
 	private void send(final boolean deposit, final int amount) {

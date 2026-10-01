@@ -10,7 +10,8 @@
 		"ItemStackTooltipMixin",
 		"PlayerSoulboundMixin",
 		"LivingEntityHealMixin",
-		"LivingEntityRefineMixin"
+		"LivingEntityRefineMixin",
+		"InventoryEmeraldMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
