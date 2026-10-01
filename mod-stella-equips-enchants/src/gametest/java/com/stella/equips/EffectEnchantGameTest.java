@@ -70,7 +70,7 @@ public class EffectEnchantGameTest {
 	private static final int FUNCTION_WAIT_TICKS = 60;
 	private static final int SHOT_WAIT_TICKS = 25;
 	/** The effect command counts seconds, not ticks. */
-	private static final int CATALOGUE_SIZE = 74;
+	private static final int CATALOGUE_SIZE = 76;
 
 	private static final List<String> NEW_PATHS = List.of(
 		"weapon/chill", "weapon/frostbite", "weapon/pyre", "weapon/venom", "weapon/ashfall",

@@ -1,0 +1,22 @@
+{
+	"description": {
+		"translate": "enchantment.mod-stella-equips-enchants.utility.scholar"
+	},
+	"supported_items": "#mod-stella-equips-enchants:enchantable/scholar",
+	"primary_items": "#mod-stella-equips-enchants:enchantable/scholar",
+	"slots": [
+		"any"
+	],
+	"weight": 3,
+	"max_level": 1,
+	"min_cost": {
+		"base": 5,
+		"per_level_above_first": 8
+	},
+	"max_cost": {
+		"base": 30,
+		"per_level_above_first": 8
+	},
+	"anvil_cost": 1,
+	"effects": {}
+}

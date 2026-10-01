@@ -1,0 +1,12 @@
+{
+	"values": [
+		"#minecraft:enchantable/armor",
+		"#minecraft:pickaxes",
+		"#minecraft:shovels",
+		"#minecraft:hoes",
+		"minecraft:shears",
+		"#minecraft:enchantable/fishing",
+		"minecraft:shield",
+		"minecraft:elytra"
+	]
+}
