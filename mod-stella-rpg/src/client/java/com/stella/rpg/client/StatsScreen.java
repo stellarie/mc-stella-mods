@@ -1,5 +1,6 @@
 package com.stella.rpg.client;
 
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.stella.rpg.AttackPreview;
 import com.stella.rpg.DefPreview;
@@ -28,7 +29,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Util;
@@ -165,19 +165,12 @@ public final class StatsScreen extends Screen {
 		this.drawStatTooltip(graphics, data, mouseX, mouseY);
 	}
 
-	@Override
-	public boolean mouseClicked(final MouseButtonEvent event, final boolean doubleClick) {
-		if (event.button() == 0) {
-			int tab = StatsTabs.hit(this.leftPos, this.topPos, event.x(), event.y());
-			if (tab == StatsTabs.STATS) {
-				return true;
-			}
-			if (tab >= 0) {
-				StatsTabs.open(this.minecraft, tab);
-				return true;
-			}
-		}
-		return super.mouseClicked(event, doubleClick);
+	int left() {
+		return this.leftPos;
+	}
+
+	int top() {
+		return this.topPos;
 	}
 
 	@Override

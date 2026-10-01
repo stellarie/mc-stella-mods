@@ -36,6 +36,17 @@ public final class StatsTabs {
 
 	public static void register() {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+			// Tab clicks take any mouse button, as on the other screens.
+			if (screen instanceof StatsScreen stats) {
+				ScreenMouseEvents.allowMouseClick(screen).register((clicked, event) -> {
+					int tab = hit(stats.left(), stats.top(), event.x(), event.y());
+					if (tab >= 0 && tab != STATS) {
+						open(client, tab);
+					}
+					return tab < 0;
+				});
+				return;
+			}
 			int selected;
 			if (screen instanceof InventoryScreen) {
 				selected = INVENTORY;
