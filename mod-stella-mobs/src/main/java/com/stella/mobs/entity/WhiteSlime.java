@@ -22,7 +22,7 @@ import net.minecraft.world.entity.monster.cubemob.Slime;
 import net.minecraft.world.level.Level;
 
 /**
- * The white slime: always elite, fast, and hard hitting. It keeps {@link #ESCORT_COUNT} aggressive blue
+ * The white slime: always elite, fast, and hard hitting. It keeps {@link #ESCORT_COUNT} passive blue
  * escorts, resummons each one that dies, and refreshes Strength and Speed on itself and on the escorts.
  * The escorts it made are recorded by identity, so a count never depends on a box query.
  */

@@ -62,6 +62,7 @@ public final class VillageWitchSplash {
 	public static boolean hostile(final LivingEntity candidate) {
 		return candidate instanceof Mob mob && mob instanceof Enemy && !PatrolState.isMarked(mob)
 			&& !mob.entityTags().contains("mod-stella-mobs.friendly_patrol")
-			&& !mob.entityTags().contains("mod-stella-spells.summoned");
+			&& !mob.entityTags().contains("mod-stella-spells.summoned")
+			&& !mob.entityTags().contains(com.stella.mobs.entity.BlueSlime.HARMLESS_TAG);
 	}
 }
