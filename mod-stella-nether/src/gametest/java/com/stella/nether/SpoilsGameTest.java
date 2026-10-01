@@ -21,6 +21,9 @@ import net.minecraft.world.item.enchantment.Enchantments;
 
 /** The Sovereign's spoils: the Blaze Core, and the Flame Mantle and what it does worn. */
 public class SpoilsGameTest {
+	/** mod-stella-mobs skips level scaling for a mob with this tag; a plain string keeps the test free of that mod. */
+	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
+
 	@GameTest(environment = "mod-stella-nether-test:spoil_core", maxTicks = 200)
 	public void aSlainSovereignLeavesABlazeCoreAndAPlainBlazeDoesNot(final GameTestHelper helper) {
 		ServerPlayer player = BlazeSovereignGameTest.enter(helper);
@@ -95,6 +98,9 @@ public class SpoilsGameTest {
 		Zombie atBare = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(3, 3, 3));
 		atWorn.clearFire();
 		atBare.clearFire();
+		// The far arena's level adds flat damage that kills.
+		atWorn.addTag(NO_SPAWN_ROLL_TAG);
+		atBare.addTag(NO_SPAWN_ROLL_TAG);
 		worn.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(atWorn), 1.0F);
 		bare.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(atBare), 1.0F);
 		int wornAttackerFire = atWorn.getRemainingFireTicks();
