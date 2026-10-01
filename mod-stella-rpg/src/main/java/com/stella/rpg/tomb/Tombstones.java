@@ -147,6 +147,7 @@ public final class Tombstones {
 		}
 		String name = player.getPlainTextName();
 		tomb.fill(player.getUUID(), name, level.getGameTime(), stacks);
+		GraveCompass.mark(player, level, spot);
 		try {
 			tomb.setDisplays(spawnLabel(level, spot, name), spawnHead(level, spot, player));
 		} catch (RuntimeException e) {
