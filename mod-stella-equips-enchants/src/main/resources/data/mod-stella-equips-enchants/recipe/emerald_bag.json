@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:bundle",
+		"minecraft:emerald"
+	],
+	"result": {
+		"id": "mod-stella-equips-enchants:emerald_bag",
+		"count": 1
+	}
+}
