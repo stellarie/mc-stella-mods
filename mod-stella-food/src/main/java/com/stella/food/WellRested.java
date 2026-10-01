@@ -7,8 +7,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
 
 /**
- * Waking in the morning after a full sleep gives Well Rested for {@link #DURATION_TICKS}: kills give
- * {@link #XP_FACTOR} times the experience. A nap during the day, or a sleep cut short, gives nothing.
+ * Waking at dawn or in the morning after a full sleep gives Well Rested for {@link #DURATION_TICKS}: kills give
+ * {@link #XP_FACTOR} times the experience. A nap during the day, or a sleep cut short, gives nothing. A night that
+ * nobody skips ends at dawn, when the game wakes sleepers itself, so dawn counts as morning.
  */
 public final class WellRested {
 	public static final int DURATION_TICKS = 24000;
@@ -17,6 +18,8 @@ public final class WellRested {
 	public static final int FULL_SLEEP_TICKS = 100;
 	/** Waking before this day time counts as waking in the morning. */
 	public static final long MORNING_END = 2000L;
+	/** Waking after this day time counts too: the game wakes sleepers at about 23,470. */
+	public static final long DAWN_START = 23000L;
 	private static final long DAY_TICKS = 24000L;
 
 	private WellRested() {
@@ -30,9 +33,10 @@ public final class WellRested {
 		});
 	}
 
-	/** True for a full sleep that ends in the morning. */
+	/** True for a full sleep that ends at dawn or in the morning. */
 	public static boolean earned(final int sleptTicks, final long clockTime) {
-		return sleptTicks >= FULL_SLEEP_TICKS && Math.floorMod(clockTime, DAY_TICKS) < MORNING_END;
+		long time = Math.floorMod(clockTime, DAY_TICKS);
+		return sleptTicks >= FULL_SLEEP_TICKS && (time < MORNING_END || time >= DAWN_START);
 	}
 
 	public static void grant(final ServerPlayer player) {

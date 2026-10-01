@@ -288,8 +288,7 @@ public class VillageWitchGameTest {
 		Mob hostile = helper.spawnMob(EntityTypes.PILLAGER, 5, 2, 5).withNoFreeWill().spawn();
 		hostile.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(100.0);
 		hostile.setHealth(100.0F);
-		Vec3 at = witch.position().add(4.0, 0.0, 0.0);
-		hostile.setPos(at.x, at.y, at.z);
+		placeInSight(helper, witch, hostile);
 		var chunk = hostile.chunkPosition();
 		helper.getLevel().setChunkForced(chunk.x(), chunk.z(), true);
 		PatrolTestSupport.detail(test, "hostileEligible=" + VillageWitchSplash.hostile(hostile)
@@ -533,6 +532,29 @@ public class VillageWitchGameTest {
 		PatrolTestSupport.result("onlyAPlayersKillPaysTheNemesisReward", "player=" + player1 + " sun=" + sun);
 		helper.assertTrue(player1 && !sun, "the reward rule read player=" + player1 + " sun=" + sun);
 		helper.succeed();
+	}
+
+	/**
+	 * Puts the hostile 3 to 4 blocks from the witch, at the first open spot the witch can see. A fixed offset sometimes
+	 * landed behind a house wall of the loaded village, and a witch with no sight never throws.
+	 */
+	private static void placeInSight(final GameTestHelper helper, final Mob witch, final Mob hostile) {
+		double[][] offsets = {{4, 0}, {-4, 0}, {0, 4}, {0, -4}, {3, 3}, {-3, 3}, {3, -3}, {-3, -3}};
+		for (double[] offset : offsets) {
+			Vec3 at = witch.position().add(offset[0], 0.0, offset[1]);
+			BlockPos feet = BlockPos.containing(at);
+			if (!helper.getLevel().getBlockState(feet).isAir() || !helper.getLevel().getBlockState(feet.above()).isAir()) {
+				continue;
+			}
+			hostile.setPos(at.x, at.y, at.z);
+			if (witch.hasLineOfSight(hostile)) {
+				PatrolTestSupport.detail("villageWitchThrowsHarmfulSplashAtHostiles", "placed dx=" + offset[0] + " dz=" + offset[1]);
+				return;
+			}
+		}
+		Vec3 at = witch.position().add(4.0, 0.0, 0.0);
+		hostile.setPos(at.x, at.y, at.z);
+		PatrolTestSupport.detail("villageWitchThrowsHarmfulSplashAtHostiles", "no open spot in sight; placed dx=4 dz=0");
 	}
 
 	private static Mob witchOf(final GameTestHelper helper) {

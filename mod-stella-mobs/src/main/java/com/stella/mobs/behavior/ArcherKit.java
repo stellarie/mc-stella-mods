@@ -11,6 +11,7 @@ import java.util.function.Function;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
@@ -25,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The bow skeleton, stray and bogged release, under this mod's own arrow rules and open to another mod's driver.
- * A skeleton looses the slowing single shot or the flaming volley; a stray or a bogged looses the one arrow
+ * A skeleton looses the slowing single shot or one arrow of its burst. A stray or a bogged looses the one arrow
  * vanilla builds for it, with its slowness or its poison.
  */
 public final class ArcherKit {
@@ -61,93 +62,102 @@ public final class ArcherKit {
 		return type == EntityTypes.SKELETON || type == EntityTypes.STRAY || type == EntityTypes.BOGGED;
 	}
 
-	/** Arrows in this mob's volley: 6, 12, or 18 for a skeleton; 0 for a stray or a bogged. */
-	public static int volleySize(final Mob mob) {
+	/** Arrows in this mob's burst: 3, 5, or 7 for a skeleton; 0 for a stray or a bogged. */
+	public static int burstSize(final Mob mob) {
 		return mob.getType() == EntityTypes.SKELETON ? SkeletonVolleyGoal.arrowsFor(mob) : 0;
 	}
 
 	/** One release along a fixed direction, for a driver that has already chosen where the arrow goes. */
 	public static List<UUID> release(
-		final Mob mob, final Vec3 direction, final float power, final float uncertainty, final boolean volley
+		final Mob mob, final Vec3 direction, final float power, final float uncertainty, final boolean burst
 	) {
-		return release(mob, arrow -> direction, power, uncertainty, volley);
+		return release(mob, arrow -> direction, power, uncertainty, burst);
 	}
 
 	/**
-	 * Looses one release; `aim` reads the spawned arrow, whose height the aim may depend on.
-	 * A skeleton volley fans `volleySize` flaming arrows over `SkeletonVolleyGoal.CONE_DEGREES`.
-	 * A skeleton single shot is one slowing arrow.
-	 * A stray or bogged always looses one vanilla arrow; `volley` is ignored.
-	 * Uses one ammo item per arrow. Plays the shoot sound. Returns the spawned arrow ids.
+	 * Looses one arrow; `aim` reads the spawned arrow, whose height the aim may depend on.
+	 * A skeleton burst arrow is plain and strays from the aim by at most `BURST_SPREAD_DEGREES`.
+	 * A skeleton single shot is one slowing arrow on the exact aim.
+	 * No skeleton arrow burns, even from a bow with Flame.
+	 * A stray or bogged always looses one vanilla arrow; `burst` is ignored.
+	 * Uses one ammo item. Plays the shoot sound. Returns the spawned arrow id, or none.
 	 */
 	public static List<UUID> release(
-		final Mob mob, final Function<AbstractArrow, Vec3> aim, final float power, final float uncertainty, final boolean volley
+		final Mob mob, final Function<AbstractArrow, Vec3> aim, final float power, final float uncertainty, final boolean burst
 	) {
 		if (!(mob.level() instanceof ServerLevel level)) {
 			skip(mob, "clientSide");
 			return List.of();
 		}
 
-		// Eligibility is the caller's rule: the volley goal already looses from a bow in either hand or behind a shield.
+		// Eligibility is the caller's rule: the burst goal already looses from a bow in either hand or behind a shield.
 		if (!isKitType(mob.getType()) || !(mob instanceof AbstractSkeleton skeleton)) {
 			skip(mob, "unsupportedType");
 			return List.of();
 		}
 
-		boolean fan = volley && mob.getType() == EntityTypes.SKELETON;
-		int count = fan ? volleySize(mob) : 1;
+		boolean skeletonBurst = burst && mob.getType() == EntityTypes.SKELETON;
 		ItemStack bow = mob.getItemInHand(ProjectileUtil.getWeaponHoldingHand(mob, Items.BOW));
 		// Monster.getProjectile reads the off hand first, so a tipped stack tips every arrow.
 		ItemStack ammo = mob.getProjectile(bow);
-		double turn = Math.toRadians(SkeletonVolleyGoal.spacingDegrees(count));
-		List<UUID> arrows = new ArrayList<>();
-		List<Vec3> velocities = new ArrayList<>();
-
-		for (int i = 0; i < count; i++) {
-			double angle = (i - (count - 1) / 2.0) * turn;
-			double cos = Math.cos(angle);
-			double sin = Math.sin(angle);
-			ItemStack one = ammo.copyWithCount(1);
-			AbstractArrow arrow;
-			if (mob.getType() == EntityTypes.SKELETON) {
-				arrow = new Arrow(level, mob, one, bow);
-				if (fan) {
-					arrow.addTag(SkeletonVolley.VOLLEY_TAG);
-					arrow.igniteForTicks(SkeletonVolleyGoal.FLAME_TICKS);
-				} else {
-					arrow.addTag(SkeletonVolley.SLOW_TAG);
-				}
-			} else {
-				arrow = ((AbstractSkeletonArrowInvoker) skeleton).stella$getArrow(one, FULL_DRAW, bow);
+		ItemStack one = ammo.copyWithCount(1);
+		AbstractArrow arrow;
+		if (mob.getType() == EntityTypes.SKELETON) {
+			arrow = new Arrow(level, mob, one, bow);
+			if (!skeletonBurst) {
+				arrow.addTag(SkeletonVolley.SLOW_TAG);
 			}
-
-			// Only the horizontal part turns, so every arrow of the fan keeps the aim's own height.
-			Vec3 base = aim.apply(arrow);
-			Projectile.spawnProjectileUsingShoot(
-				arrow, level, one, base.x * cos - base.z * sin, base.y, base.x * sin + base.z * cos, power, uncertainty
-			);
-			if (level.getEntity(arrow.getUUID()) == arrow) {
-				arrows.add(arrow.getUUID());
-				velocities.add(arrow.getDeltaMovement());
-			} else {
-				skip(mob, "spawnRejected");
-			}
+		} else {
+			arrow = ((AbstractSkeletonArrowInvoker) skeleton).stella$getArrow(one, FULL_DRAW, bow);
 		}
 
-		ammo.shrink(count);
+		Vec3 aimed = aim.apply(arrow);
+		Vec3 direction = skeletonBurst ? strayed(aimed, mob.getRandom()) : aimed;
+		Projectile.spawnProjectileUsingShoot(arrow, level, one, direction.x, direction.y, direction.z, power, uncertainty);
+		if (mob.getType() == EntityTypes.SKELETON) {
+			// Flame bows light arrows at spawn.
+			arrow.clearFire();
+		}
+
+		List<UUID> arrows = new ArrayList<>();
+		if (level.getEntity(arrow.getUUID()) == arrow) {
+			arrows.add(arrow.getUUID());
+		} else {
+			skip(mob, "spawnRejected");
+		}
+
+		ammo.shrink(arrows.size());
 		mob.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
-		if (fan) {
-			SkeletonVolley.recorder().volley(mob, arrows, velocities);
-		} else if (mob.getType() == EntityTypes.SKELETON) {
-			SkeletonVolley.recorder().shot(mob, arrows);
+		if (!arrows.isEmpty() && mob.getType() == EntityTypes.SKELETON) {
+			if (skeletonBurst) {
+				SkeletonVolley.recorder().burst(mob, arrow.getUUID(), arrow.getDeltaMovement());
+			} else {
+				SkeletonVolley.recorder().shot(mob, arrow.getUUID(), arrow.getDeltaMovement());
+			}
 		}
 
 		log(String.format(
 			Locale.ROOT,
-			"[BEHAVIOR] test=archerKit RELEASE mob=%s type=%s tick=%d arrows=%d wanted=%d volley=%s power=%.2f uncertainty=%.2f",
-			mob.getUUID(), EntityType.getKey(mob.getType()), mob.tickCount, arrows.size(), count, fan, power, uncertainty
+			"[BEHAVIOR] test=archerKit RELEASE mob=%s type=%s tick=%d arrows=%d burst=%s power=%.2f uncertainty=%.2f",
+			mob.getUUID(), EntityType.getKey(mob.getType()), mob.tickCount, arrows.size(), skeletonBurst, power, uncertainty
 		));
 		return arrows;
+	}
+
+	/** Turns a direction by random yaw and pitch. */
+	private static Vec3 strayed(final Vec3 direction, final RandomSource random) {
+		double flat = Math.sqrt(direction.x * direction.x + direction.z * direction.z);
+		double yaw = Math.atan2(direction.z, direction.x) + Math.toRadians(offsetDegrees(random));
+		double pitch = Math.atan2(direction.y, flat) + Math.toRadians(offsetDegrees(random));
+		pitch = Math.max(-Math.PI / 2.0, Math.min(Math.PI / 2.0, pitch));
+		double length = direction.length();
+		return new Vec3(
+			length * Math.cos(pitch) * Math.cos(yaw), length * Math.sin(pitch), length * Math.cos(pitch) * Math.sin(yaw)
+		);
+	}
+
+	private static double offsetDegrees(final RandomSource random) {
+		return (random.nextDouble() * 2.0 - 1.0) * SkeletonVolleyGoal.BURST_SPREAD_DEGREES;
 	}
 
 	private static void skip(final Mob mob, final String reason) {

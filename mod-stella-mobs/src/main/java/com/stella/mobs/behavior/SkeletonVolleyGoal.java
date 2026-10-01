@@ -2,12 +2,14 @@ package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -15,28 +17,39 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A skeleton archer's bow, in place of the vanilla bow goal at rank 4. Its ordinary shot is one arrow that
- * slows what it hits for two seconds, harder from an elite or a boss. Every six seconds the shot is a volley
- * instead: a narrow fan of flaming arrows, six from a plain skeleton, twelve from an elite and eighteen from
- * a boss, each leaving a cloud where it lands. The first release of a fight is the volley. Each release follows
- * a full bow draw, and the cadence counts the goal's own ticks, so it holds wherever the game clock stands.
+ * A skeleton archer's bow, in place of the vanilla bow goal at rank 4.
+ *
+ * <p>The ordinary shot is one arrow. It slows what it hits for two seconds, harder from an elite or a boss.
+ * When its burst is ready, the skeleton looses a burst instead. A burst is separate arrows, one every half
+ * second: three from a plain skeleton, five from an elite and seven from a boss.
+ *
+ * <p>Each burst arrow flies at the spot where the target stands as the arrow leaves the bow, a few degrees off
+ * at random. No skeleton arrow burns, and none leaves a cloud.
+ *
+ * <p>The next burst starts ten seconds after the last arrow of the one before. The slowing shot keeps its own
+ * pace in between. The first release of a fight is a burst. A burst ends when its target is lost or dead.
+ *
+ * <p>Each release follows a bow draw. The cadence counts the skeleton's own ticks, so it holds wherever the
+ * game clock stands.
  */
 public class SkeletonVolleyGoal extends Goal {
 	public static final int ATTACK_PRIORITY = 4;
-	/** The vanilla bow goal's own range. */
-	public static final float RANGE = 15.0F;
-	public static final int ARROWS_PER_VOLLEY = 6;
-	public static final int ELITE_ARROWS_PER_VOLLEY = 12;
-	public static final int BOSS_ARROWS_PER_VOLLEY = 18;
-	/** The whole fan's width, left edge to right edge: narrow, so the volley lands as one. */
-	public static final double CONE_DEGREES = 12.0;
-	public static final int VOLLEY_COOLDOWN_TICKS = 120;
+	public static final float RANGE = 24.0F;
+	/** Target goals drop a target past this range. */
+	public static final double MIN_FOLLOW_RANGE = 32.0;
+	public static final int ARROWS_PER_BURST = 3;
+	public static final int ELITE_ARROWS_PER_BURST = 5;
+	public static final int BOSS_ARROWS_PER_BURST = 7;
+	/** Equals vanilla's hit immunity, so all land. */
+	public static final int BURST_SHOT_INTERVAL_TICKS = 10;
+	public static final double BURST_SPREAD_DEGREES = 3.0;
+	/** Counted from the last arrow of a burst. */
+	public static final int BURST_COOLDOWN_TICKS = 200;
 	/** From one release to the next. */
 	public static final int SHOT_INTERVAL_TICKS = 40;
 	/** The vanilla bow's own draw, so each release is seen coming. */
 	public static final int DRAW_TICKS = 20;
-	/** How long a volley arrow burns, and so how long it sets its target alight. */
-	public static final int FLAME_TICKS = 100;
+	private static final Identifier FOLLOW_RANGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "skeleton_burst_range");
 	private static final float POWER = 1.6F;
 	private static final float UNCERTAINTY = 0.0F;
 	private static final double BALLISTIC_LIFT = 0.2;
@@ -45,8 +58,10 @@ public class SkeletonVolleyGoal extends Goal {
 
 	private final Mob mob;
 	private int attackTime = DRAW_TICKS;
-	/** Ticks since the last volley; starts full, so the first release of a fight is a volley. */
-	private int sinceVolley = VOLLEY_COOLDOWN_TICKS;
+	private int burstSize;
+	private int burstLeft;
+	// Mob age, so a lost target keeps its cooldown.
+	private int lastBurstArrow = -BURST_COOLDOWN_TICKS;
 
 	public SkeletonVolleyGoal(final Mob mob) {
 		this.mob = mob;
@@ -62,21 +77,27 @@ public class SkeletonVolleyGoal extends Goal {
 			return;
 		}
 
+		widenFollowRange(mob);
 		mob.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedBowAttackGoal);
 		mob.getGoalSelector().addGoal(ATTACK_PRIORITY, new SkeletonVolleyGoal(mob));
 	}
 
-	/** How many arrows this skeleton's volley holds. */
-	public static int arrowsFor(final Mob mob) {
-		if (Bosses.isBoss(mob)) {
-			return BOSS_ARROWS_PER_VOLLEY;
+	/** One modifier per mob, even across reloads. */
+	private static void widenFollowRange(final Mob mob) {
+		AttributeInstance range = mob.getAttribute(Attributes.FOLLOW_RANGE);
+		if (range != null && range.getModifier(FOLLOW_RANGE_ID) == null && range.getValue() < MIN_FOLLOW_RANGE) {
+			range.addPermanentModifier(
+				new AttributeModifier(FOLLOW_RANGE_ID, MIN_FOLLOW_RANGE - range.getValue(), AttributeModifier.Operation.ADD_VALUE)
+			);
 		}
-		return Elite.isElite(mob) ? ELITE_ARROWS_PER_VOLLEY : ARROWS_PER_VOLLEY;
 	}
 
-	/** The angle between neighbouring arrows of a volley. */
-	public static double spacingDegrees(final int arrows) {
-		return arrows <= 1 ? 0.0 : CONE_DEGREES / (arrows - 1);
+	/** How many arrows this skeleton's burst holds. */
+	public static int arrowsFor(final Mob mob) {
+		if (Bosses.isBoss(mob)) {
+			return BOSS_ARROWS_PER_BURST;
+		}
+		return Elite.isElite(mob) ? ELITE_ARROWS_PER_BURST : ARROWS_PER_BURST;
 	}
 
 	@Override
@@ -103,6 +124,7 @@ public class SkeletonVolleyGoal extends Goal {
 		this.mob.getNavigation().stop();
 		this.mob.stopUsingItem();
 		this.attackTime = DRAW_TICKS;
+		this.endBurst("stopped");
 	}
 
 	@Override
@@ -117,7 +139,6 @@ public class SkeletonVolleyGoal extends Goal {
 			return;
 		}
 
-		this.sinceVolley = Math.min(VOLLEY_COOLDOWN_TICKS, this.sinceVolley + 1);
 		this.mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
 		boolean inReach = this.mob.distanceToSqr(target) <= (double) (RANGE * RANGE)
 			&& this.mob.getSensing().hasLineOfSight(target);
@@ -135,29 +156,57 @@ public class SkeletonVolleyGoal extends Goal {
 
 		if (this.attackTime <= 0) {
 			this.mob.stopUsingItem();
-			this.attackTime = SHOT_INTERVAL_TICKS;
-			if (this.sinceVolley >= VOLLEY_COOLDOWN_TICKS) {
-				this.sinceVolley = 0;
-				this.loose(target, true);
-			} else {
-				this.loose(target, false);
-			}
+			this.release(target);
 		}
 	}
 
-	/** One release: a single slowing arrow, or a volley's fan of flaming ones. One ammo item per arrow. */
-	private void loose(final LivingEntity target, final boolean volley) {
-		List<UUID> arrows = ArcherKit.release(this.mob, arrow -> {
+	/** The next burst arrow, or a single shot. */
+	private void release(final LivingEntity target) {
+		if (this.burstLeft == 0 && this.mob.tickCount - this.lastBurstArrow >= BURST_COOLDOWN_TICKS) {
+			this.burstSize = arrowsFor(this.mob);
+			this.burstLeft = this.burstSize;
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test=skeletonVolley BURST tick={} arrows={} target={}",
+				this.mob.tickCount, this.burstSize, String.format(Locale.ROOT, "%.1f", Math.sqrt(this.mob.distanceToSqr(target)))
+			);
+		}
+
+		boolean burst = this.burstLeft > 0;
+		this.loose(target, burst);
+		if (!burst) {
+			this.attackTime = SHOT_INTERVAL_TICKS;
+			return;
+		}
+
+		this.lastBurstArrow = this.mob.tickCount;
+		--this.burstLeft;
+		this.attackTime = this.burstLeft > 0 ? BURST_SHOT_INTERVAL_TICKS : SHOT_INTERVAL_TICKS;
+		if (this.burstLeft == 0) {
+			this.logBurstEnd("done");
+		}
+	}
+
+	private void endBurst(final String reason) {
+		if (this.burstLeft > 0) {
+			this.logBurstEnd(reason);
+		}
+
+		this.burstLeft = 0;
+	}
+
+	private void logBurstEnd(final String reason) {
+		StellaMobs.LOGGER.info(
+			"[BEHAVIOR] test=skeletonVolley BURST_END tick={} loosed={} of={} reason={}",
+			this.mob.tickCount, this.burstSize - this.burstLeft, this.burstSize, reason
+		);
+	}
+
+	private void loose(final LivingEntity target, final boolean burst) {
+		ArcherKit.release(this.mob, arrow -> {
 			double xd = target.getX() - this.mob.getX();
 			double zd = target.getZ() - this.mob.getZ();
 			double lift = Math.sqrt(xd * xd + zd * zd) * BALLISTIC_LIFT;
 			return new Vec3(xd, target.getY(TARGET_AIM_HEIGHT) - arrow.getY() + lift, zd);
-		}, POWER, UNCERTAINTY, volley);
-		if (volley) {
-			StellaMobs.LOGGER.info(
-				"[BEHAVIOR] test=skeletonVolley VOLLEY tick={} arrows={} target={}",
-				this.mob.tickCount, arrows.size(), String.format(Locale.ROOT, "%.1f", Math.sqrt(this.mob.distanceToSqr(target)))
-			);
-		}
+		}, POWER, UNCERTAINTY, burst);
 	}
 }
