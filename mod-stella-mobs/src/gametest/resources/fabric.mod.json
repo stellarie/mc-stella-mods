@@ -57,6 +57,7 @@
 			"com.stella.mobs.ArcherKitGameTest",
 			"com.stella.mobs.EvokerFireRainGameTest",
 			"com.stella.mobs.ExperienceRewardGameTest",
+			"com.stella.mobs.ContainerLevelGameTest",
 			"com.stella.mobs.TraitsGameTest",
 			"com.stella.mobs.WitchGameTest"
 		]

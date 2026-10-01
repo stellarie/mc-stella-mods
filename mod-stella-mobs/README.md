@@ -88,4 +88,8 @@ the default for that mob), `xp_base_hostile`, `xp_base_passive`, `xp_level_facto
 `mod-stella-mobs:threat-level`. It returns the mob's level, or -1 for any other entity. The equips readout
 reads it.
 
+`com.stella.mobs.api.ContainerLevelProvider` puts a `BiFunction<ServerLevel, Vec3, Integer>` under
+`mod-stella-mobs:container-level`. It returns the level of a spot for container loot: the mob floor there plus the
+altitude levels, never below the dimension minimum. It has no random variation. The equips container loot reads it.
+
 `SpawnScaling.LEVEL_HEALTH_BONUS` stays public: `mod-stella-spells` reads it by name for its summons.
