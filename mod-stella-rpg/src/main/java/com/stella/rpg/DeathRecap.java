@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,15 +54,28 @@ public final class DeathRecap {
 		recorder = newRecorder == null ? (player, lines) -> { } : newRecorder;
 	}
 
-	/** Called by {@link DamageLog} with the health one hit removed from a player. */
-	static void record(final ServerPlayer player, final DamageSource source, final int lost) {
-		record(player, new Hit(player.level().getGameTime(), attackerOf(player, source), source.getMsgId(), lost));
+	/**
+	 * Called by {@link DamageLog} with the health one hit removed from a player. A damage-over-time tick joins the
+	 * line before it when that line has the same attacker and type, so a burn reads as one line, not twenty.
+	 */
+	static void record(final ServerPlayer player, final DamageSource source, final int lost, final boolean overTime) {
+		record(player, new Hit(player.level().getGameTime(), attackerOf(player, source), source.getMsgId(), lost), overTime);
 	}
 
 	static void record(final ServerPlayer player, final Hit hit) {
+		record(player, hit, false);
+	}
+
+	static void record(final ServerPlayer player, final Hit hit, final boolean merge) {
 		Deque<Hit> hits = RECENT.computeIfAbsent(player.getUUID(), id -> new ArrayDeque<>());
 		synchronized (hits) {
-			hits.addLast(hit);
+			Hit last = hits.peekLast();
+			if (merge && last != null && last.attacker().equals(hit.attacker()) && last.type().equals(hit.type())) {
+				hits.removeLast();
+				hits.addLast(new Hit(hit.tick(), hit.attacker(), hit.type(), last.lost() + hit.lost()));
+			} else {
+				hits.addLast(hit);
+			}
 			prune(hits, hit.tick());
 		}
 	}
@@ -86,9 +100,9 @@ public final class DeathRecap {
 		lines.add("Death recap, last " + (WINDOW_TICKS / 20) + " seconds:");
 		for (Hit hit : shown) {
 			double ago = (now - hit.tick()) / 20.0;
-			lines.add(String.format(" %s - %s - %,d HP (%.1f s before)", hit.attacker(), hit.type(), hit.lost(), ago));
+			lines.add(String.format(Locale.ROOT, " %s - %s - %,d HP (%.1f s before)", hit.attacker(), hit.type(), hit.lost(), ago));
 		}
-		lines.add(String.format(" Total: %,d HP from %d hit%s", total, recent.size(), recent.size() == 1 ? "" : "s"));
+		lines.add(String.format(Locale.ROOT, " Total: %,d HP from %d hit%s", total, recent.size(), recent.size() == 1 ? "" : "s"));
 		return lines;
 	}
 

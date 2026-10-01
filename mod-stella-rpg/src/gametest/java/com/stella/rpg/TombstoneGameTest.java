@@ -137,6 +137,42 @@ public final class TombstoneGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * A second death keeps the grave compass with the player. The picker takes every candidate, so a compass that were
+	 * still a candidate would always go into the tomb, and the respawn would add a second one. A respawned test player
+	 * does not take a second kill, so the second death runs the burial and the respawn step by hand.
+	 */
+	@GameTest(maxTicks = 40)
+	public void graveCompassSurvivesASecondDeath(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.realPlayer(helper);
+		player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 3));
+		ServerPlayer reborn = dieAndRespawn(helper, player);
+		helper.assertTrue(graveCompass(reborn) != null, "the first respawn has no grave compass");
+		reborn.getInventory().setItem(1, new ItemStack(Items.EMERALD, 5));
+		BlockPos secondDeath = reborn.blockPosition();
+		ServerLevel secondLevel = reborn.level();
+		reborn.setHealth(0.0F);
+		Tombstones.setPicker((candidates, random) -> candidates);
+		try {
+			Tombstones.bury(reborn);
+		} finally {
+			Tombstones.resetPicker();
+		}
+		com.stella.rpg.tomb.GraveCompass.give(reborn, reborn);
+		BlockPos secondTomb = tombstonePos(secondLevel, secondDeath, reborn.getUUID());
+		TombstoneBlockEntity tomb = tombstoneOf(secondLevel, secondDeath, reborn.getUUID());
+		boolean buried = tomb != null && tomb.contents().stream().anyMatch(com.stella.rpg.tomb.GraveCompass::isGraveCompass);
+		long carried = java.util.stream.IntStream.range(0, reborn.getInventory().getContainerSize())
+			.filter(slot -> com.stella.rpg.tomb.GraveCompass.isGraveCompass(reborn.getInventory().getItem(slot))).count();
+		ItemStack compass = graveCompass(reborn);
+		RpgTestSupport.result("graveCompassSecondDeath", "tomb=" + secondTomb + " buried=" + buried + " carried=" + carried);
+		helper.assertTrue(secondTomb != null, "the second death left no tomb");
+		helper.assertTrue(!buried && carried == 1, "buried=" + buried + " carried=" + carried);
+		helper.assertTrue(compass.get(DataComponents.LODESTONE_TRACKER).target().map(target -> target.pos().equals(secondTomb)).orElse(false),
+			"the compass points to " + compass.get(DataComponents.LODESTONE_TRACKER) + ", not " + secondTomb);
+		helper.succeed();
+	}
+
 	private static ItemStack graveCompass(final ServerPlayer player) {
 		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
 			if (com.stella.rpg.tomb.GraveCompass.isGraveCompass(player.getInventory().getItem(slot))) {
