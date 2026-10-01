@@ -144,17 +144,20 @@ public class FriendlyPatrolGameTest {
 			mob.setNoAi(true);
 			mob.snapTo(Vec3.atBottomCenterOf(foot.offset(-2, 0, 0)), 0.0F, 0.0F);
 		}
-		var result = player.startSleepInBed((BedBlock) Blocks.BED.red(), helper.getLevel().getBlockState(foot), helper.getLevel().environmentAttributes().getValue(net.minecraft.world.attribute.EnvironmentAttributes.BED_RULE, foot), foot);
-		boolean slept = player.isSleeping();
-		String problem = result.left().map(Object::toString).orElse("none");
-		player.stopSleeping();
-		helper.getLevel().getServer().getPlayerList().remove(player);
-		pair.forEach(Mob::discard);
-		helper.getLevel().setBlockAndUpdate(foot, Blocks.AIR.defaultBlockState());
-		helper.getLevel().setBlockAndUpdate(foot.north(), Blocks.AIR.defaultBlockState());
-		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aPlayerSleepsBesideAPair slept={} problem={}", TEST, slept, problem);
-		helper.assertTrue(slept, "the player could not sleep beside the pair: " + problem);
-		helper.succeed();
+		// Other tests set the shared time, and the sky darkens only on a level tick, so each tick tries again at night.
+		helper.succeedWhen(() -> {
+			helper.setTime(Arena.NIGHT_TIME);
+			var result = player.startSleepInBed((BedBlock) Blocks.BED.red(), helper.getLevel().getBlockState(foot), helper.getLevel().environmentAttributes().getValue(net.minecraft.world.attribute.EnvironmentAttributes.BED_RULE, foot), foot);
+			boolean slept = player.isSleeping();
+			String problem = result.left().map(Object::toString).orElse("none");
+			helper.assertTrue(slept, "the player could not sleep beside the pair: " + problem);
+			player.stopSleeping();
+			helper.getLevel().getServer().getPlayerList().remove(player);
+			pair.forEach(Mob::discard);
+			helper.getLevel().setBlockAndUpdate(foot, Blocks.AIR.defaultBlockState());
+			helper.getLevel().setBlockAndUpdate(foot.north(), Blocks.AIR.defaultBlockState());
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aPlayerSleepsBesideAPair slept={} problem={}", TEST, slept, problem);
+		});
 	}
 
 	@GameTest(maxTicks = 200, padding = 32)

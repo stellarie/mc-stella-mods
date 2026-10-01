@@ -31,6 +31,8 @@ public class RedSlimeGameTest {
 
 	@GameTest(maxTicks = 100)
 	public void statsAndTargeting(final GameTestHelper helper) {
+		// The test level starts peaceful, where no mob can target a player.
+		helper.getLevel().getServer().setDifficulty(net.minecraft.world.Difficulty.NORMAL, true);
 		RedSlime slime = helper.spawn(StellaEntities.RED_SLIME, new Vec3(2.5, 1.0, 2.5));
 		ServerPlayer player = Arena.addSurvivalPlayer(helper);
 		Vec3 spot = helper.absoluteVec(new Vec3(5.5, 1.0, 5.5));
@@ -91,6 +93,8 @@ public class RedSlimeGameTest {
 		ChunkPos chunk = new ChunkPos(origin.getX() >> 4, origin.getZ() >> 4);
 		Holder<Biome> biome = level.getBiome(origin);
 		long clock = 1_000_000L;
+		java.util.Set<java.util.UUID> before = new java.util.HashSet<>();
+		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
 		int spawned = 0;
 		for (int attempt = 0; attempt < 40 && RedSlimeSpawnRule.countInBiome(level, biome) < RedSlimeSpawnRule.MAX_PER_BIOME; attempt++) {
 			if (RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock)) {
@@ -100,7 +104,7 @@ public class RedSlimeGameTest {
 		boolean overCap = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock);
 		int full = RedSlimeSpawnRule.countInBiome(level, biome);
 		List<? extends RedSlime> ours = level.getEntities(StellaEntities.RED_SLIME,
-			slime -> slime.isAlive() && level.getBiome(slime.blockPosition()).is(biome));
+			slime -> slime.isAlive() && !before.contains(slime.getUUID()) && level.getBiome(slime.blockPosition()).is(biome));
 		helper.assertTrue(!ours.isEmpty(), "the rule spawned no red slime");
 		ours.getFirst().kill(level);
 		long refill = RedSlimeSpawnRule.INSTANCE.cooldownUntil(level, biome);
@@ -115,7 +119,7 @@ public class RedSlimeGameTest {
 		helper.assertTrue(refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level) == RedSlimeSpawnRule.REFILL_TICKS,
 			"the refill waits " + (refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level)) + " ticks");
 		helper.assertTrue(!early && late, "the refill spawned early=" + early + " late=" + late);
-		for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive())) {
+		for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive() && !before.contains(slime.getUUID()))) {
 			slime.discard();
 		}
 		RedSlimeSpawnRule.INSTANCE.reset();
