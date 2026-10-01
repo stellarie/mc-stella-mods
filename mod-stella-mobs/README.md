@@ -52,6 +52,7 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
   - A mob that gives no vanilla XP (a villager, an iron golem, a baby animal) still gives none.
   - The ender dragon keeps its vanilla reward.
   - A mob with no rolled level counts as on level with its killer (`T = L`).
+  - A passive mob (not a hostile `Enemy`) gives its base only, with no level part. A breeding farm stays cheap.
   - Other kills, without a player credited, keep the vanilla reward.
 
   Base by type (`xp_base`). An unlisted hostile mob uses `xp_base_hostile` (6). An unlisted other mob uses

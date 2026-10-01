@@ -156,16 +156,16 @@ public class ExperienceRewardGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void adultCowKillDropsFormulaExperience(final GameTestHelper helper) {
+	public void adultCowKillDropsBaseOnly(final GameTestHelper helper) {
 		ServerPlayer player = player(helper, 30);
 		Cow cow = EntityTypes.COW.create(helper.getLevel(), EntitySpawnReason.COMMAND);
 		killedBy(helper, cow, player, 2);
 		helper.runAfterDelay(2, () -> {
 			int orbs = orbsAround(helper, cow);
-			int expected = ThreatExperience.reward(ThreatExperience.base(cow), ThreatState.level(cow), 30);
-			result("adultCowKillDropsFormulaExperience", "orbs=" + orbs + " expected=" + expected
+			int expected = ThreatExperience.base(cow);
+			result("adultCowKillDropsBaseOnly", "orbs=" + orbs + " expected=" + expected
 				+ " level=" + ThreatState.level(cow));
-			helper.assertTrue(!cow.isAlive() && orbs == expected, "the cow kill dropped " + orbs + ", want " + expected);
+			helper.assertTrue(!cow.isAlive() && orbs == expected && expected == 1, "the cow kill dropped " + orbs + ", want " + expected);
 			helper.succeed();
 		});
 	}

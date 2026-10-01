@@ -33,10 +33,13 @@ public final class ThreatExperience {
 		return mob instanceof Enemy ? config.xpBaseHostile() : config.xpBasePassive();
 	}
 
-	/** An unrolled mob has no level, so it counts as on level with its killer. */
+	/**
+	 * An unrolled mob has no level, so it counts as on level with its killer. A passive mob gives its base only,
+	 * so a breeding farm does not pay the level part.
+	 */
 	public static int rewardFor(final Mob mob, final int killerLevel) {
 		int level = mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) ? killerLevel : ThreatState.level(mob);
-		int formula = reward(base(mob), level, killerLevel);
+		int formula = mob instanceof Enemy ? reward(base(mob), level, killerLevel) : base(mob);
 		return clampToInt(Math.round(formula * multiplier(mob)), 1L);
 	}
 
