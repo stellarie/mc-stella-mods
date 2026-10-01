@@ -114,11 +114,13 @@ public class ScrollOfReturnGameTest {
 	public void theScrollOfReturnIsCrafted(final GameTestHelper helper) {
 		var recipe = helper.getLevel().getServer().getRecipeManager()
 			.byKey(ResourceKey.create(Registries.RECIPE, Spellbooks.SCROLL_OF_RETURN_ID));
-		boolean makesScroll = recipe.isPresent() && recipe.get().value() instanceof net.minecraft.world.item.crafting.ShapelessRecipe shapeless
-			&& shapeless.assemble(net.minecraft.world.item.crafting.CraftingInput.of(3, 1, java.util.List.of(
-				new ItemStack(net.minecraft.world.item.Items.PAPER), new ItemStack(net.minecraft.world.item.Items.ENDER_PEARL), new ItemStack(net.minecraft.world.item.Items.FEATHER)))).is(Spellbooks.SCROLL_OF_RETURN);
-		LOG.info("[SPELLTEST] test=theScrollOfReturnIsCrafted RESULT recipe={} makesScroll={}", recipe.isPresent(), makesScroll);
-		helper.assertTrue(makesScroll, "paper, an ender pearl and a feather do not craft a Scroll of Return");
+		ItemStack made = recipe.isPresent() && recipe.get().value() instanceof net.minecraft.world.item.crafting.ShapelessRecipe shapeless
+			? shapeless.assemble(net.minecraft.world.item.crafting.CraftingInput.of(3, 1, java.util.List.of(
+				new ItemStack(net.minecraft.world.item.Items.PAPER), new ItemStack(net.minecraft.world.item.Items.ENDER_PEARL), new ItemStack(net.minecraft.world.item.Items.FEATHER))))
+			: ItemStack.EMPTY;
+		LOG.info("[SPELLTEST] test=theScrollOfReturnIsCrafted RESULT recipe={} made={}", recipe.isPresent(), made);
+		helper.assertTrue(made.is(Spellbooks.SCROLL_OF_RETURN), "paper, an ender pearl and a feather do not craft a Scroll of Return");
+		helper.assertTrue(made.getCount() == 16, "the recipe gives " + made.getCount() + " scrolls, not 16");
 		helper.succeed();
 	}
 

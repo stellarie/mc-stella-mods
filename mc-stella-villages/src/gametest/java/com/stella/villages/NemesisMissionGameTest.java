@@ -1221,7 +1221,9 @@ public final class NemesisMissionGameTest {
 				continue;
 			}
 			if (index < 0 && com.stella.villages.mission.SlimeTrade.tradeIndex(slot) >= 0) {
-				helper.assertTrue(icon.is(Items.POTION), "trade slot " + slot + " holds " + icon);
+				ItemStack expected = com.stella.villages.mission.SlimeTrade.icon(com.stella.villages.mission.SlimeTrade.tradeIndex(slot))
+					.orElse(new ItemStack(Items.STAINED_GLASS_PANE.gray()));
+				helper.assertTrue(icon.is(expected.getItem()), "trade slot " + slot + " holds " + icon);
 				continue;
 			} else if (index < 0) {
 				helper.assertTrue(icon.is(Items.STAINED_GLASS_PANE.gray()), "slot " + slot + " holds " + icon + " instead of glass");

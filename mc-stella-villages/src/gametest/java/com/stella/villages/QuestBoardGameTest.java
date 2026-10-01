@@ -132,7 +132,7 @@ public final class QuestBoardGameTest {
 		openBoard(helper, fixture);
 		MissionBoardMenu menu = (MissionBoardMenu) owner.containerMenu;
 		List<String> icons = new ArrayList<>();
-		for (int slot : com.stella.villages.mission.SlimeTrade.SLOTS) {
+		for (int slot : new int[] {9, 13, 17}) {
 			ItemStack icon = menu.getContainer().getItem(slot);
 			icons.add(icon.getItem() + ":" + icon.get(net.minecraft.core.component.DataComponents.POTION_CONTENTS).potion().map(holder -> holder.getRegisteredName()).orElse("none"));
 		}
@@ -148,6 +148,46 @@ public final class QuestBoardGameTest {
 			"minecraft:potion:minecraft:strength")), "the trade icons are " + icons);
 		helper.assertTrue(ballsAfterBuy == 8 && healing, "a trade left " + ballsAfterBuy + " slime balls, healing=" + healing);
 		helper.assertTrue(ballsAfterRefusal == 8 && !swiftness, "a short trade took balls or gave a potion");
+		helper.succeed();
+	}
+
+	/** Sixteen slime balls buy a Scroll of Return; without the spells mod the slot is glass and the click does nothing. */
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void slimeBallsBuyScroll(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "slimeBallsBuyScroll");
+		if (fixture == null) {
+			return;
+		}
+		ServerPlayer owner = fixture.owner();
+		owner.getInventory().clearContent();
+		owner.getInventory().add(new ItemStack(Items.SLIME_BALL, 20));
+		ItemStack standIn = new ItemStack(Items.PAPER);
+		boolean present;
+		int ballsAfterBuy;
+		int scrolls;
+		boolean absentGlass;
+		int ballsAfterAbsent;
+		try {
+			com.stella.villages.mission.SlimeTrade.setScrollSource(() -> java.util.Optional.of(standIn.copy()));
+			openBoard(helper, fixture);
+			MissionBoardMenu menu = (MissionBoardMenu) owner.containerMenu;
+			present = menu.getContainer().getItem(8).is(Items.PAPER);
+			menu.clicked(8, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+			ballsAfterBuy = owner.getInventory().countItem(Items.SLIME_BALL);
+			scrolls = owner.getInventory().countItem(Items.PAPER);
+			com.stella.villages.mission.SlimeTrade.setScrollSource(java.util.Optional::empty);
+			openBoard(helper, fixture);
+			MissionBoardMenu bare = (MissionBoardMenu) owner.containerMenu;
+			absentGlass = bare.getContainer().getItem(8).is(Items.STAINED_GLASS_PANE.gray());
+			bare.clicked(8, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+			ballsAfterAbsent = owner.getInventory().countItem(Items.SLIME_BALL);
+		} finally {
+			com.stella.villages.mission.SlimeTrade.setScrollSource(null);
+		}
+		PatrolTestSupport.result("slimeBallsBuyScroll", "present=" + present + " afterBuy=" + ballsAfterBuy + " scrolls=" + scrolls
+			+ " absentGlass=" + absentGlass + " afterAbsent=" + ballsAfterAbsent);
+		helper.assertTrue(present && ballsAfterBuy == 4 && scrolls == 1, "a scroll trade left " + ballsAfterBuy + " balls and " + scrolls + " scrolls");
+		helper.assertTrue(absentGlass && ballsAfterAbsent == 4, "without the spells mod slot 8 was not glass or took balls");
 		helper.succeed();
 	}
 
