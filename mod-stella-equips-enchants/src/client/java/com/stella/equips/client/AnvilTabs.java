@@ -6,6 +6,7 @@ import com.stella.equips.refine.OpenRefineTabPayload;
 import com.stella.equips.refine.Refine;
 import com.stella.equips.refine.RefineRequestPayload;
 import com.stella.equips.refine.RefineStation;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.fabricmc.api.EnvType;
@@ -20,6 +21,7 @@ import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -38,14 +40,18 @@ public final class AnvilTabs {
 	private static final int SHORT_TEXT = 0xFFA02020;
 	private static final int BUTTON_FILL = 0xFFA8A8A8;
 	private static final int BUTTON_HOVER = 0xFFE0E0E0;
-	private static final int PANEL_LEFT = 50;
-	private static final int PANEL_TOP = 16;
-	private static final int PANEL_RIGHT = 170;
-	private static final int PANEL_BOTTOM = 80;
-	private static final int BUTTON_LEFT = 110;
-	private static final int BUTTON_TOP = 62;
-	private static final int BUTTON_WIDTH = 54;
-	private static final int BUTTON_HEIGHT = 14;
+	// Covers the anvil title; stops above "Inventory".
+	private static final int PANEL_LEFT = 48;
+	private static final int PANEL_TOP = 4;
+	private static final int PANEL_RIGHT = 172;
+	private static final int PANEL_BOTTOM = 70;
+	private static final int PADDING = 5;
+	private static final int LINE = 11;
+	private static final int TEXT_WIDTH = PANEL_RIGHT - PANEL_LEFT - 2 * PADDING;
+	private static final int BUTTON_WIDTH = 58;
+	private static final int BUTTON_HEIGHT = 16;
+	private static final int BUTTON_LEFT = PANEL_RIGHT - PADDING - BUTTON_WIDTH;
+	private static final int BUTTON_TOP = PANEL_BOTTOM - PADDING - BUTTON_HEIGHT;
 	private static final Map<AnvilScreen, Integer> SELECTED = new WeakHashMap<>();
 	private static boolean openRefineNext;
 
@@ -151,17 +157,17 @@ public final class AnvilTabs {
 	) {
 		graphics.fill(left + PANEL_LEFT, top + PANEL_TOP, left + PANEL_RIGHT, top + PANEL_BOTTOM, ACTIVE_FILL);
 		Font font = client.font;
-		int x = left + PANEL_LEFT + 4;
-		int y = top + PANEL_TOP + 4;
+		int x = left + PANEL_LEFT + PADDING;
+		int y = top + PANEL_TOP + PADDING;
 		ItemStack piece = anvil.getMenu().getSlot(0).getItem();
 		if (!Refine.canRefine(piece)) {
-			graphics.text(font, text("screen.mod-stella-equips-enchants.refine.empty"), x, y, TEXT);
+			wrapped(graphics, font, text("screen.mod-stella-equips-enchants.refine.empty"), x, y, TEXT, 4);
 			return;
 		}
 		int level = Refine.level(piece);
-		graphics.text(font, font.plainSubstrByWidth(piece.getHoverName().getString() + " +" + level, PANEL_RIGHT - PANEL_LEFT - 8), x, y, TEXT);
+		graphics.text(font, font.plainSubstrByWidth(piece.getHoverName().getString() + " +" + level, TEXT_WIDTH), x, y, TEXT, false);
 		if (level >= Refine.MAX_LEVEL) {
-			graphics.text(font, text("screen.mod-stella-equips-enchants.refine.capped"), x, y + 12, TEXT);
+			wrapped(graphics, font, text("screen.mod-stella-equips-enchants.refine.capped"), x, y + LINE, TEXT, 3);
 			return;
 		}
 		int next = level + 1;
@@ -170,17 +176,27 @@ public final class AnvilTabs {
 		Item material = Refine.material(piece);
 		int owned = RefineStation.count(client.player.getInventory(), piece);
 		boolean enabled = owned >= cost;
-		graphics.text(font, text("screen.mod-stella-equips-enchants.refine.next", next, chance), x, y + 12, TEXT);
+		graphics.text(font, text("screen.mod-stella-equips-enchants.refine.next", next, chance), x, y + LINE, TEXT, false);
 		String costLine = text("screen.mod-stella-equips-enchants.refine.cost", cost,
 			material.getName(material.getDefaultInstance()).getString(), owned);
-		graphics.text(font, font.plainSubstrByWidth(costLine, PANEL_RIGHT - PANEL_LEFT - 8), x, y + 24, enabled ? TEXT : SHORT_TEXT);
+		wrapped(graphics, font, costLine, x, y + 2 * LINE, enabled ? TEXT : SHORT_TEXT, 2);
 		int bx = left + BUTTON_LEFT;
 		int by = top + BUTTON_TOP;
 		int fill = !enabled ? IDLE_FILL : inButton(left, top, mouseX, mouseY) ? BUTTON_HOVER : BUTTON_FILL;
 		graphics.fill(bx, by, bx + BUTTON_WIDTH, by + BUTTON_HEIGHT, fill);
 		graphics.outline(bx, by, BUTTON_WIDTH, BUTTON_HEIGHT, EDGE);
 		String label = text("screen.mod-stella-equips-enchants.refine.button");
-		graphics.text(font, label, bx + (BUTTON_WIDTH - font.width(label)) / 2, by + 3, TEXT);
+		graphics.text(font, label, bx + (BUTTON_WIDTH - font.width(label)) / 2, by + (BUTTON_HEIGHT - font.lineHeight) / 2 + 1, TEXT, false);
+	}
+
+	private static void wrapped(
+		final GuiGraphicsExtractor graphics, final Font font, final String line, final int x, final int y, final int color,
+		final int maxLines
+	) {
+		List<FormattedCharSequence> lines = font.split(Component.literal(line), TEXT_WIDTH);
+		for (int index = 0; index < Math.min(maxLines, lines.size()); index++) {
+			graphics.text(font, lines.get(index), x, y + index * LINE, color, false);
+		}
 	}
 
 	private static String text(final String key, final Object... args) {
