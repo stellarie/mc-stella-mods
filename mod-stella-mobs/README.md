@@ -100,6 +100,14 @@ The red slime is a beginner mob.
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.
 - The client draws a boss 2.5 times its base size. Its hitbox stays 1.8 times, so it still fits through caves.
 
+## Armor against scaled mobs
+
+Mob damage grows with the mob's level, and vanilla armor counts as about `armor - hit / 2`, so it collapses against a big hit.
+Armor therefore judges a mob's hit as if it were the mob's unscaled damage: the hit is divided by the mob's level multiplier
+before the armor math, and the result is scaled back. Armor keeps its vanilla share at every level, and armor wears as if
+from the base hit. Mob piercing still strips its share of armor first. Hits from players and from mobs without level
+scaling use vanilla armor.
+
 ## Threat level share
 
 `com.stella.mobs.api.ThreatLevelProvider` puts a `Function<Entity, Integer>` in the Fabric object share under

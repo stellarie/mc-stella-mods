@@ -78,7 +78,7 @@ public final class ApprenticeChestplateGameTest {
 	@GameTest(maxTicks = 100)
 	public void darkReduction(final GameTestHelper helper) {
 		float[] byLight = {ApprenticeChestplate.reduction(15), ApprenticeChestplate.reduction(10), ApprenticeChestplate.reduction(0)};
-		helper.assertTrue(byLight[0] == 0.0F && Math.abs(byLight[1] - 0.15F) < 1.0E-6F && Math.abs(byLight[2] - 0.45F) < 1.0E-6F,
+		helper.assertTrue(byLight[0] == 0.0F && Math.abs(byLight[1] - 0.075F) < 1.0E-6F && Math.abs(byLight[2] - 0.225F) < 1.0E-6F,
 			"the reduction by light is " + java.util.Arrays.toString(byLight));
 		ServerLevel level = helper.getLevel();
 		for (int x = 0; x <= 4; x++) {
