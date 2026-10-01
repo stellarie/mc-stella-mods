@@ -95,32 +95,37 @@ public class RedSlimeGameTest {
 		long clock = 1_000_000L;
 		java.util.Set<java.util.UUID> before = new java.util.HashSet<>();
 		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
-		int spawned = 0;
-		for (int attempt = 0; attempt < 40 && RedSlimeSpawnRule.countInBiome(level, biome) < RedSlimeSpawnRule.MAX_PER_BIOME; attempt++) {
-			if (RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock)) {
-				spawned++;
+		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		try {
+			int spawned = 0;
+			for (int attempt = 0; attempt < 40 && RedSlimeSpawnRule.countInBiome(level, biome) < RedSlimeSpawnRule.MAX_PER_BIOME; attempt++) {
+				if (RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock)) {
+					spawned++;
+				}
 			}
-		}
-		boolean overCap = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock);
-		int full = RedSlimeSpawnRule.countInBiome(level, biome);
-		List<? extends RedSlime> ours = level.getEntities(StellaEntities.RED_SLIME,
-			slime -> slime.isAlive() && !before.contains(slime.getUUID()) && level.getBiome(slime.blockPosition()).is(biome));
-		helper.assertTrue(!ours.isEmpty(), "the rule spawned no red slime");
-		ours.getFirst().kill(level);
-		long refill = RedSlimeSpawnRule.INSTANCE.cooldownUntil(level, biome);
-		boolean early = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, refill - 1);
-		boolean late = false;
-		for (int attempt = 0; attempt < 10 && !late; attempt++) {
-			late = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, refill);
-		}
-		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", "redSlimeCap", "spawned=" + spawned + " full=" + full + " overCap=" + overCap
-			+ " refillDelay=" + (refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level)) + " early=" + early + " late=" + late);
-		helper.assertTrue(full == RedSlimeSpawnRule.MAX_PER_BIOME && !overCap, "the biome holds " + full + ", over cap " + overCap);
-		helper.assertTrue(refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level) == RedSlimeSpawnRule.REFILL_TICKS,
-			"the refill waits " + (refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level)) + " ticks");
-		helper.assertTrue(!early && late, "the refill spawned early=" + early + " late=" + late);
-		for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive() && !before.contains(slime.getUUID()))) {
-			slime.discard();
+			boolean overCap = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, clock);
+			int full = RedSlimeSpawnRule.countInBiome(level, biome);
+			List<? extends RedSlime> ours = level.getEntities(StellaEntities.RED_SLIME,
+				slime -> slime.isAlive() && !before.contains(slime.getUUID()) && level.getBiome(slime.blockPosition()).is(biome));
+			helper.assertTrue(!ours.isEmpty(), "the rule spawned no red slime");
+			ours.getFirst().kill(level);
+			long refill = RedSlimeSpawnRule.INSTANCE.cooldownUntil(level, biome);
+			boolean early = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, refill - 1);
+			boolean late = false;
+			for (int attempt = 0; attempt < 10 && !late; attempt++) {
+				late = RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, refill);
+			}
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", "redSlimeCap", "spawned=" + spawned + " full=" + full + " overCap=" + overCap
+				+ " refillDelay=" + (refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level)) + " early=" + early + " late=" + late);
+			helper.assertTrue(full == RedSlimeSpawnRule.MAX_PER_BIOME && !overCap, "the biome holds " + full + ", over cap " + overCap);
+			helper.assertTrue(refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level) == RedSlimeSpawnRule.REFILL_TICKS,
+				"the refill waits " + (refill - com.stella.mobs.entity.spawn.StellaSpawner.clock(level)) + " ticks");
+			helper.assertTrue(!early && late, "the refill spawned early=" + early + " late=" + late);
+			for (RedSlime slime : level.getEntities(StellaEntities.RED_SLIME, slime -> slime.isAlive() && !before.contains(slime.getUUID()))) {
+				slime.discard();
+			}
+		} finally {
+			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
 		}
 		RedSlimeSpawnRule.INSTANCE.reset();
 		helper.succeed();

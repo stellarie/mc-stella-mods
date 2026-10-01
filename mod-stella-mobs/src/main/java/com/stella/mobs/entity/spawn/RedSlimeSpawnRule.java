@@ -132,6 +132,10 @@ public final class RedSlimeSpawnRule implements SpawnRule {
 				|| LightSources.near(level, pos, LightSources.RADIUS)) {
 				continue;
 			}
+			// One roll per attempt: a retry at another spot would undo the falloff.
+			if (!SlimeFalloff.passes(random, x + 0.5, z + 0.5)) {
+				return false;
+			}
 			Holder<Biome> biome = level.getBiome(pos);
 			if (clock < cooldownUntil(level, biome) || countInBiome(level, biome) >= MAX_PER_BIOME) {
 				return false;
