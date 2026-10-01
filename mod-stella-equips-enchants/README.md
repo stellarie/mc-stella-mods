@@ -271,6 +271,18 @@ health and base speed. Blessed uses max health in vanilla units, divided by the 
 mod-stella-rpg when that mod is present. Keen, Evasion and Riposte roll on the wearer's own random
 source, through a `Roller` that a test can force.
 
+## Emerald bag
+
+A bundle and an emerald make an Emerald Bag, a green bundle that holds any number of emeralds. Its tooltip shows the
+count.
+
+- Use the bag to open its screen. It shows the emeralds in the bag and the loose emeralds you carry, with Deposit and
+  Withdraw buttons for 1, 16, 64, or all.
+- Withdrawn emeralds that do not fit drop at your feet.
+- Purchases count and spend bag emeralds: loose emeralds go first, then bags. This covers the enchanting anvil, and
+  other mods that read the purse shares `mod-stella-equips-enchants:emerald-count` and
+  `mod-stella-equips-enchants:emerald-spend`. The enchanting table's emerald slot still takes real emeralds.
+
 ## Container loot
 
 Every container a player searches, vanilla or from a structure mod (chests, barrels, crates, pots and the like),

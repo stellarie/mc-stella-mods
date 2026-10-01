@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-equips-enchants:item/emerald_bag",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 4182362
+			}
+		]
+	}
+}

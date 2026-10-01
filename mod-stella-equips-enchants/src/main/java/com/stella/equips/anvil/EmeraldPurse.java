@@ -1,30 +1,52 @@
 package com.stella.equips.anvil;
 
+import com.stella.equips.bag.EmeraldBag;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Holder;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 
-/** Emerald custody for the enchanting containers. */
+/**
+ * Emerald custody: loose emeralds in the inventory plus every emerald bag. Spending takes loose emeralds first.
+ * The two ObjectShare keys let the other mods count and spend the same way.
+ */
 public final class EmeraldPurse {
+	public static final String COUNT_SHARE = "mod-stella-equips-enchants:emerald-count";
+	public static final String SPEND_SHARE = "mod-stella-equips-enchants:emerald-spend";
+
 	private EmeraldPurse() {
+	}
+
+	public static void register() {
+		Function<Player, Integer> count = EmeraldPurse::count;
+		BiFunction<Player, Integer, Boolean> spend = EmeraldPurse::trySpend;
+		FabricLoader.getInstance().getObjectShare().put(COUNT_SHARE, count);
+		FabricLoader.getInstance().getObjectShare().put(SPEND_SHARE, spend);
 	}
 
 	public static int count(final Player player) {
 		Inventory inventory = player.getInventory();
-		int emeralds = 0;
+		long emeralds = EmeraldBag.loose(inventory);
 		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			ItemStack stack = inventory.getItem(slot);
-			if (stack.is(Items.EMERALD)) {
-				emeralds += stack.getCount();
-			}
+			emeralds += EmeraldBag.stored(inventory.getItem(slot));
 		}
 
-		return emeralds;
+		return (int) Math.min(Integer.MAX_VALUE, emeralds);
+	}
+
+	/** Spends the whole price, or nothing when the player carries too few. */
+	public static boolean trySpend(final Player player, final int price) {
+		if (price > 0 && !player.hasInfiniteMaterials() && count(player) < price) {
+			return false;
+		}
+		spend(player, price);
+		return true;
 	}
 
 	public static void spend(final Player player, final int price) {
@@ -33,17 +55,18 @@ public final class EmeraldPurse {
 		}
 
 		Inventory inventory = player.getInventory();
-		int left = price;
+		int fromLoose = Math.min(price, EmeraldBag.loose(inventory));
+		EmeraldBag.removeLoose(inventory, fromLoose);
+		int left = price - fromLoose;
 		for (int slot = 0; slot < inventory.getContainerSize() && left > 0; slot++) {
-			ItemStack stack = inventory.getItem(slot);
-			if (!stack.is(Items.EMERALD)) {
-				continue;
+			ItemStack bag = inventory.getItem(slot);
+			int taken = Math.min(left, EmeraldBag.stored(bag));
+			if (taken > 0) {
+				bag.set(EmeraldBag.EMERALDS, EmeraldBag.stored(bag) - taken);
+				left -= taken;
 			}
-
-			int taken = Math.min(left, stack.getCount());
-			inventory.removeItem(slot, taken);
-			left -= taken;
 		}
+		inventory.setChanged();
 	}
 
 	/** The enchantments the operation applies: new ones plus level raises. */
