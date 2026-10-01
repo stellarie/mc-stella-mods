@@ -11,7 +11,9 @@
 		"PlayerSoulboundMixin",
 		"LivingEntityHealMixin",
 		"LivingEntityRefineMixin",
-		"InventoryEmeraldMixin"
+		"InventoryEmeraldMixin",
+		"LivingEntityHurtAccessor",
+		"SlimeHeartMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

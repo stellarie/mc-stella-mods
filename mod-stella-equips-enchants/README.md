@@ -306,6 +306,16 @@ count.
   other mods that read the purse shares `mod-stella-equips-enchants:emerald-count` and
   `mod-stella-equips-enchants:emerald-spend`. The enchanting table's emerald slot still takes real emeralds.
 
+## Slime heart
+
+- Blue and red slimes from `mod-stella-mobs` drop a Slime Heart at 0.01%. It looks like a red slime ball and stacks to 64.
+- Put an armor piece in the anvil's first slot and a heart in the second. The result holds the heart, for free, and one heart is used.
+  A piece holds one heart. Weapons and tools take none.
+- Each worn piece with a heart delays 12.5% of an attack, up to 50% with four pieces. You take the rest at once and the
+  delayed part in five equal parts, one each second. The parts are measured after armor and every defense, so the total
+  equals the hit without hearts. They can kill.
+- Only attacks split: hits with a living attacker, including arrows and mob spells. Falls, fire, poison, and thorns do not.
+
 ## Container loot
 
 Every container a player searches, vanilla or from a structure mod (chests, barrels, crates, pots and the like),
