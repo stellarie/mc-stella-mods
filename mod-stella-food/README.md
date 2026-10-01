@@ -44,6 +44,13 @@ You can also combine each dish's ingredients in a crafting table. The station re
 
 Combine a dish with one regular, splash, or lingering potion to infuse it. Its dish buff and timed potion effects last forty-five minutes. Instant effects apply when eaten. Harmful effects remain harmful.
 
+## Container loot
+
+Every searchable container, the same chests, barrels and pots the equips gear rolls reach, has two dish rolls:
+
+- 10%: one random combined dish.
+- 5%: one random dish tipped with a random potion, with a seasoning bonus, the same as one from the cooking station.
+
 ## Seasoned bonus
 
 The station rolls one small stat bonus when it infuses a dish: a random stat (STR, AGI, VIT, DEX, INT, or LUK) and an amount from 5 to 10. The roll is stored on the dish in the `mod-stella-food:seasoning` data component, so the dish keeps it. The tooltip shows it, for example "Seasoned: +7 DEX".
