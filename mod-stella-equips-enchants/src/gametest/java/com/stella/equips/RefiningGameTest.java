@@ -132,6 +132,54 @@ public class RefiningGameTest {
 		helper.succeed();
 	}
 
+	/** The cap is the piece's own cap plus 50 per level, a drop lowers it, and the damage stays below it. */
+	@GameTest
+	public void capFollowsLevel(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		int base = sword.getMaxDamage();
+		Refine.setLevel(sword, 10);
+		int atTen = sword.getMaxDamage();
+		sword.setDamageValue(atTen - 10);
+		Refine.setLevel(sword, 2);
+		int atTwo = sword.getMaxDamage();
+		int damage = sword.getDamageValue();
+		ItemStack custom = new ItemStack(Items.WOODEN_SWORD);
+		custom.set(net.minecraft.core.component.DataComponents.MAX_DAMAGE, 400);
+		Refine.setLevel(custom, 1);
+		ItemStack book = new ItemStack(Items.IRON_SWORD);
+		Refine.setLevel(book, 0);
+		LOG.info("[BEHAVIOR] test=capFollowsLevel RESULT base={} atTen={} atTwo={} damage={} custom={} zero={}",
+			base, atTen, atTwo, damage, custom.getMaxDamage(), book.getMaxDamage());
+		helper.assertTrue(atTen == base + 500 && atTwo == base + 100, "the cap was " + atTen + " at +10 and " + atTwo + " at +2 from " + base);
+		helper.assertTrue(damage == atTwo - 1, "a lowered cap left damage " + damage + " of " + atTwo);
+		helper.assertTrue(custom.getMaxDamage() == 450 && book.getMaxDamage() == base, "a custom cap became " + custom.getMaxDamage());
+		helper.succeed();
+	}
+
+	/** A success repairs fully and raises the cap; a failure keeps the damage. */
+	@GameTest
+	public void successRepairs(final GameTestHelper helper) {
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		int base = sword.getMaxDamage();
+		Refine.setLevel(sword, 3);
+		sword.setDamageValue(200);
+		ServerPlayer player = refiner(helper, sword, 15);
+		FORCED.put(player.getUUID(), true);
+		AnvilMenu menu = openAnvil(helper, player, sword);
+		RefineStation.refine(player, menu.containerId);
+		ItemStack refined = menu.getSlot(0).getItem();
+		int repairedDamage = refined.getDamageValue();
+		int cap = refined.getMaxDamage();
+		refined.setDamageValue(150);
+		FORCED.put(player.getUUID(), false);
+		RefineStation.refine(player, menu.containerId);
+		int failedDamage = menu.getSlot(0).getItem().getDamageValue();
+		LOG.info("[BEHAVIOR] test=successRepairs RESULT damage={} cap={} failedDamage={}", repairedDamage, cap, failedDamage);
+		helper.assertTrue(repairedDamage == 0 && cap == base + 200, "a success left damage " + repairedDamage + " and cap " + cap);
+		helper.assertTrue(failedDamage == 150, "a failure changed the damage to " + failedDamage);
+		helper.succeed();
+	}
+
 	@GameTest
 	public void failureDropsLevel(final GameTestHelper helper) {
 		ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);

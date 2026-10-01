@@ -42,6 +42,9 @@ public final class Refine {
 	public static final int SEARING_LEVEL = 10;
 	public static final int RENDING_LEVEL = 12;
 	public static final int ASCENDED_LEVEL = 15;
+	/** Each refine level adds this much to the durability cap of a weapon or armor piece. */
+	public static final int DURABILITY_PER_LEVEL = 50;
+	private static final String BASE_DURABILITY_KEY = "stella_refine_base_durability";
 	public static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_damage");
 	/** The id refine armour had before each slot got its own; a piece refined then still carries it until its next refine. */
 	public static final Identifier ARMOR_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_armor");
@@ -185,8 +188,11 @@ public final class Refine {
 		return 1 + currentLevel / 3;
 	}
 
-	/** Writes a level and brings the piece's bonus, tooltip line and glint in line with it. */
+	/** Writes a level and brings the piece's bonus, durability cap, tooltip line and glint in line with it. */
 	public static void setLevel(final ItemStack stack, final int level) {
+		if (!isSpellbook(stack) && stack.isDamageableItem()) {
+			setDurabilityCap(stack, level);
+		}
 		CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putInt(LEVEL_KEY, level));
 		if (!isSpellbook(stack)) {
 			stack.set(DataComponents.ATTRIBUTE_MODIFIERS, withBonuses(stack, level));
@@ -196,6 +202,23 @@ public final class Refine {
 			stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
 		} else {
 			stack.remove(DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
+		}
+	}
+
+	/** The cap before any refine: stored on the first refine, so a piece with its own cap keeps it as the base. */
+	public static int baseDurability(final ItemStack stack) {
+		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+		int stored = data == null ? 0 : data.copyTag().getIntOr(BASE_DURABILITY_KEY, 0);
+		return stored > 0 ? stored : stack.getMaxDamage();
+	}
+
+	private static void setDurabilityCap(final ItemStack stack, final int level) {
+		int base = baseDurability(stack);
+		CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putInt(BASE_DURABILITY_KEY, base));
+		int cap = base + DURABILITY_PER_LEVEL * Math.max(0, level);
+		stack.set(DataComponents.MAX_DAMAGE, cap);
+		if (stack.getDamageValue() >= cap) {
+			stack.setDamageValue(cap - 1);
 		}
 	}
 

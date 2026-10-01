@@ -210,6 +210,8 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 - The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are
   grade 1 (safe to +7); iron is grade 2 (safe to +6); diamond, the trident and the mace are grade 3
   (safe to +5); netherite is grade 4 (safe to +4). Armour is safe to +4. The last step is 15%.
+- Each level adds 50 to the durability cap of a weapon or armor piece, so +10 adds 500. A level drop lowers the cap again.
+- A success repairs the piece fully. A failure never changes its damage.
 - Each level adds +0.75 attack damage to a melee weapon, +0.75 base damage to a bow's or crossbow's
   arrows, and +0.5 armour to a piece of armour.
 - The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.

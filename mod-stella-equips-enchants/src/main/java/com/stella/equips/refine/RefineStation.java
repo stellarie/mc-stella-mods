@@ -94,6 +94,7 @@ public final class RefineStation {
 		boolean success = roller.succeeds(player, player.getRandom(), chance);
 		if (success) {
 			Refine.setLevel(piece, next);
+			piece.setDamageValue(0);
 			player.level().playSound(null, player.blockPosition(), SoundEvents.ANVIL_USE, SoundSource.PLAYERS, 0.8F, 1.2F);
 			player.sendSystemMessage(Component.literal("Success! ").withStyle(ChatFormatting.GREEN).append(piece.getHoverName())
 				.append(" is now +" + next), true);
