@@ -225,6 +225,8 @@ A book of its own: no scroll copies it and no weapon takes it. Crafted from a bo
   It detects foes within 48 blocks, blinks toward distant foes, and retreats from melee range.
   Warden's Roar has a five-second cooldown and spares friendlies. Spark Shot has a 0.2-second
   cooldown. At half health, it casts Life Bloom at most once every five seconds.
+  When an ally within 8 blocks, players included, has a harmful effect, it casts Purify.
+  Purify removes every harmful effect from those allies, at most once every 10 seconds.
   The villages mod adds splash healing and buffs for nearby allies and players, plus harmful
   splash potions for hostile mobs. Support and hostile throws each have a two-second interval.
 

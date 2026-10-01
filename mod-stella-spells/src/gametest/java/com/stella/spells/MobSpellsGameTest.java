@@ -237,6 +237,60 @@ public class MobSpellsGameTest {
 		});
 	}
 
+	/** The mage cleanses a player's harmful effects, keeps the helpful ones, and waits out its cooldown. */
+	@GameTest(maxTicks = MobSpells.VILLAGE_WITCH_PURIFY_COOLDOWN_TICKS + 120)
+	public void theVillageWitchPurifiesAPlayer(final GameTestHelper helper) {
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		witch.getGoalSelector().removeAllGoals(goal -> goal instanceof MobSpells.Blink);
+		net.minecraft.server.level.ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+		player.snapTo(helper.absoluteVec(new Vec3(3.5, 1.0, 3.5)), 0.0F, 0.0F);
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 2400, 0));
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.WEAKNESS, 2400, 0));
+		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SPEED, 2400, 0));
+		helper.onEachTick(() -> {
+			if (CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream().filter(event -> event.spell().equals("purify")).count() == 1
+				&& !player.hasEffect(net.minecraft.world.effect.MobEffects.POISON)) {
+				player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 2400, 0));
+			}
+		});
+		helper.runAfterDelay(MobSpells.VILLAGE_WITCH_PURIFY_COOLDOWN_TICKS + 100, () -> {
+			List<Integer> purifies = CAST_EVENTS.getOrDefault(witch.getUUID(), List.of()).stream()
+				.filter(event -> event.spell().equals("purify")).map(CastEvent::tick).toList();
+			boolean reachedPlayer = REACHED.getOrDefault(witch.getUUID(), List.of()).stream().anyMatch(list -> list.contains(player));
+			LOG.info("[SPELLTEST] test=theVillageWitchPurifiesAPlayer RESULT purifies={} poison={} weakness={} speed={} reached={}",
+				purifies, player.hasEffect(net.minecraft.world.effect.MobEffects.POISON),
+				player.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS), player.hasEffect(net.minecraft.world.effect.MobEffects.SPEED), reachedPlayer);
+			helper.assertTrue(reachedPlayer && purifies.size() == 2, "the mage purified " + purifies.size() + " times");
+			helper.assertTrue(purifies.get(1) - purifies.get(0) >= MobSpells.VILLAGE_WITCH_PURIFY_COOLDOWN_TICKS,
+				"purify ignored its cooldown: " + purifies);
+			helper.assertTrue(!player.hasEffect(net.minecraft.world.effect.MobEffects.POISON)
+				&& !player.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS)
+				&& player.hasEffect(net.minecraft.world.effect.MobEffects.SPEED), "purify left a harmful effect or took a helpful one");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 120)
+	public void theVillageWitchDoesNotPurifyACleanVillage(final GameTestHelper helper) {
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 1, 1, List.of(), MobSpells.VILLAGE_WITCH_TAG);
+		Mob villager = mob(helper, EntityTypes.VILLAGER, 2, 3, List.of());
+		villager.setNoAi(true);
+		Mob zombie = mob(helper, EntityTypes.ZOMBIE, 4, 4, List.of());
+		zombie.setNoAi(true);
+		zombie.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.WEAKNESS, 2400, 0));
+		helper.runAfterDelay(100, () -> {
+			List<String> casts = CASTS.getOrDefault(witch.getUUID(), List.of());
+			LOG.info("[SPELLTEST] test=theVillageWitchDoesNotPurifyACleanVillage RESULT casts={} zombieWeak={}", casts,
+				zombie.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS));
+			helper.assertTrue(!casts.contains("purify") && zombie.hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS),
+				"the mage purified a clean village or a foe: " + casts);
+			helper.succeed();
+		});
+	}
+
 	@GameTest(maxTicks = MobSpells.VILLAGE_WITCH_SPARK_COOLDOWN_TICKS * 9 + 50)
 	public void theVillageWitchSparksOncePerTwoSeconds(final GameTestHelper helper) {
 		helper.setTime(18_000L);
