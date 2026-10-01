@@ -26,7 +26,7 @@ import net.minecraft.world.item.component.ItemLore;
  * V2: the village mission board, a two-row chest menu that any client can show without a mod. Each offer is
  * the target's spawn egg. The top row holds the three Nemesis contracts, the bottom row the three elite
  * contracts on its left and the three kill contracts on its right. Slots 9, 13 and 17 hold the
- * {@link SlimeTrade} potions, and slot 0 the {@link SlayerContract}; the rest is glass. Clicking an offer asks {@link MissionService#acceptOffer},
+ * {@link SlimeTrade} potions, slot 8 the Scroll of Return trade, and slot 0 the {@link SlayerContract}; the rest is glass. Clicking an offer asks {@link MissionService#acceptOffer},
  * which stays the only authority, and no item ever leaves the menu.
  */
 public final class MissionBoardMenu extends ChestMenu {
@@ -141,7 +141,7 @@ public final class MissionBoardMenu extends ChestMenu {
 			int index = offerIndex(slot);
 			int trade = SlimeTrade.tradeIndex(slot);
 			board.setItem(slot, index >= 0 && index < offers.size() ? icon(offers.get(index))
-				: trade >= 0 ? SlimeTrade.icon(trade) : slot == SlayerContract.SLOT ? SlayerContract.icon() : glass.copy());
+				: trade >= 0 ? SlimeTrade.icon(trade).orElse(glass.copy()) : slot == SlayerContract.SLOT ? SlayerContract.icon() : glass.copy());
 		}
 		return board;
 	}

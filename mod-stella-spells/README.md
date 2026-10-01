@@ -141,7 +141,7 @@ A mob that wields an imbued weapon casts its spell too, when the spell strikes a
 
 ## Scroll of Return
 
-One paper, one ender pearl and one feather make 2 Scrolls of Return. Read one and it carries you to
+One paper, one ender pearl and one feather make 16 Scrolls of Return. Read one and it carries you to
 your respawn point in the Overworld: your bed, or the world spawn if you have none, from any dimension.
 It never spends a respawn anchor's charge, crumbles when read, and rests 5 seconds before the next.
 

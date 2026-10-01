@@ -53,6 +53,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   The board also sells potions. The second-row slots at the left end, the middle, and the right end hold
   a Potion of Healing, Swiftness, and Strength. Each costs 32 slime balls. With fewer than 32, the duke
   says so and takes nothing. The potion goes to your inventory, or drops at your feet when it is full.
+  With `mod-stella-spells`, the top-right slot sells a Scroll of Return for 16 slime balls.
   Click an offer to accept it; the server checks it, gives you a map to the target, and closes the
   board, or tells you why it refused. Every accepted contract sends you to a random spot 256 to 384
   blocks, measured sideways, from the village bell. The spot is new for each contract, and it is always safe ground.
