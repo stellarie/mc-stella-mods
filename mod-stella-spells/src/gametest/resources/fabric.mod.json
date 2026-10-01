@@ -9,6 +9,7 @@
 			"com.stella.spells.SparkShotGameTest",
 			"com.stella.spells.SpellEnchantmentsGameTest",
 			"com.stella.spells.SpellbookCatalogGameTest",
+			"com.stella.spells.ScrollBookGameTest",
 			"com.stella.spells.SpellEffectsGameTest",
 			"com.stella.spells.SpellbookLootGameTest",
 			"com.stella.spells.SpellLogGameTest",

@@ -152,6 +152,16 @@ is written by one of eight spellbinders, from Archmage Pip to the Cat (dictated)
 spell's book and scroll recipes with the material by name, what the spell does, and a postscript. Now
 and then the note is about the Scroll of Return instead.
 
+## Scroll Book
+
+The Scroll Book holds 9 different scrolls, one type per slot, each up to a full stack of 16.
+
+- **Craft:** a book in the centre, paper on the four sides, and leather in the four corners.
+- **Use:** right-click opens a vanilla one-row chest menu above your inventory. Only spell scrolls and the Scroll of
+  Return go in, and a type already in the book cannot take a second slot. Shift-click moves a scroll to its slot or
+  back to your inventory.
+- The scrolls stay on the book item, and its tooltip lists them. While the menu is open, no Scroll Book can move.
+
 ## Spell scrolls
 
 Every spell but Summon Skeleton also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
@@ -219,6 +229,7 @@ patrol, the village witch or a summoned skeleton as a foe.
 ## Getting spellbooks
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
+- **From scrolls:** eight scrolls of one spell around a book make that spellbook. Summon Skeleton has no scroll.
 - **Chest loot:** each generated vanilla chest has a 5% chance to hold one random spellbook.
 - **Witches:** each Witch death has a 50% chance to drop one random spellbook.
 

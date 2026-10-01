@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"SSS",
+		"SBS",
+		"SSS"
+	],
+	"key": {
+		"S": "mod-stella-spells:frostbind_scroll",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:frostbind",
+		"count": 1
+	}
+}

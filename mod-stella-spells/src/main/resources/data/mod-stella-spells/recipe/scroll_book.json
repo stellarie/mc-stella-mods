@@ -1,0 +1,17 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"LPL",
+		"PBP",
+		"LPL"
+	],
+	"key": {
+		"L": "minecraft:leather",
+		"P": "minecraft:paper",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:scroll_book",
+		"count": 1
+	}
+}
