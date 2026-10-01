@@ -48,6 +48,9 @@ public final class StarterSwordGameTest {
 		for (int slot = 0; slot < player.getInventory().getNonEquipmentItems().size(); slot++) {
 			player.getInventory().getNonEquipmentItems().set(slot, new ItemStack(Items.DIRT));
 		}
+		for (int slot = 0; slot < com.stella.rpg.bag.Bag.SIZE; slot++) {
+			com.stella.rpg.bag.Bag.of(player).set(slot, new ItemStack(Items.DIRT));
+		}
 		boolean gift = StarterSword.onJoin(player, false);
 		long dropped = helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(player.blockPosition()).inflate(4.0)).stream()
 			.filter(entity -> isBeginner(entity.getItem())).count();

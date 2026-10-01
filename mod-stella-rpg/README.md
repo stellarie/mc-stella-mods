@@ -86,6 +86,15 @@ The XP needed for the next level is `round(10 + 2.5 x L^1.5)`, where `L` is the 
 
 The `xp_curve` key in `stats.json` holds `base`, `factor`, and `exponent`. A missing value uses the default. A client with a different config shows a different XP bar.
 
+## Bag
+
+Three extra rows of 9 sit below the inventory screen, under the spells quick-slot row.
+
+- A pickup goes into the bag only when the main inventory has no room.
+- Shift-click on a bag slot moves the stack into the main inventory.
+- The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
+- The rows show only in the survival inventory screen. Chests and other menus, and the creative inventory, do not show them.
+
 ## Level-up refresh
 
 Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.

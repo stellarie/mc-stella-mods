@@ -422,7 +422,7 @@ public final class TombstoneGameTest {
 		return null;
 	}
 
-	private static TombstoneBlockEntity tombstoneOf(final ServerLevel level, final BlockPos center, final UUID owner) {
+	static TombstoneBlockEntity tombstoneOf(final ServerLevel level, final BlockPos center, final UUID owner) {
 		BlockPos pos = tombstonePos(level, center, owner);
 		return pos == null ? null : (TombstoneBlockEntity) level.getBlockEntity(pos);
 	}
@@ -466,7 +466,7 @@ public final class TombstoneGameTest {
 		}
 	}
 
-	private static ServerPlayer dieAndRespawn(final GameTestHelper helper, final ServerPlayer player) {
+	static ServerPlayer dieAndRespawn(final GameTestHelper helper, final ServerPlayer player) {
 		player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().genericKill(), LETHAL_DAMAGE);
 		helper.assertTrue(player.isDeadOrDying(), "the player survived, so the case proves nothing");
 		return helper.getLevel().getServer().getPlayerList().respawn(player, false, Entity.RemovalReason.KILLED);

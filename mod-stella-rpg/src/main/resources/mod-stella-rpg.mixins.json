@@ -28,7 +28,9 @@
 		"RpgAbsorptionGrantMixin",
 		"RpgEffectPercentMixin",
 		"RpgNoDamageHeartsMixin",
-		"RpgXpCurveMixin"
+		"RpgXpCurveMixin",
+		"RpgBagMenuMixin",
+		"RpgBagPickupMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
