@@ -58,10 +58,11 @@ public final class MobSpells {
 	public static final List<String> PACK_AREA_OFFENSIVE = List.of("void_well", "dragonfall", "wardens_roar",
 		"sapping_hex", "frost_nova", "earthspike", "plague_cloud", "flame_ring", "gravity");
 	public static final List<String> VILLAGE_WITCH_OFFENSIVE = List.of("wardens_roar", "spark_shot");
-	public static final List<String> VILLAGE_WITCH_SUPPORT = List.of("life_bloom");
+	public static final List<String> VILLAGE_WITCH_SUPPORT = List.of("life_bloom", "purify");
 	public static final int VILLAGE_WITCH_ROAR_COOLDOWN_TICKS = 300;
 	public static final int VILLAGE_WITCH_SPARK_COOLDOWN_TICKS = 40;
 	public static final int VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS = 200;
+	public static final int VILLAGE_WITCH_PURIFY_COOLDOWN_TICKS = 200;
 	public static final String FROZEN_METEOR = "frozen_meteor";
 	public static final int FROZEN_METEOR_COOLDOWN_TICKS = 500;
 	public static final String CAST_TAG_PREFIX = "mod-stella-spells.cast.";
@@ -485,6 +486,10 @@ public final class MobSpells {
 			if (this.mob.getHealth() <= this.mob.getMaxHealth() * 0.5F && this.ready("life_bloom")
 				&& support(this.mob, "life_bloom")) {
 				this.readyAt.put("life_bloom", this.ticks + VILLAGE_WITCH_BLOOM_COOLDOWN_TICKS);
+				return;
+			}
+			if (this.ready("purify") && support(this.mob, "purify")) {
+				this.readyAt.put("purify", this.ticks + VILLAGE_WITCH_PURIFY_COOLDOWN_TICKS);
 				return;
 			}
 			LivingEntity target = this.mob.getTarget();
