@@ -905,6 +905,7 @@ public final class NemesisMissionGameTest {
 				Mob nemesis = target[0];
 				boolean prefix = nemesis.getCustomName() != null
 					&& nemesis.getCustomName().getString().startsWith("[Quest] <Nemesis>");
+				boolean tagged = nemesis.entityTags().contains(MissionService.NEMESIS_TAG);
 				double baselineHealth = mission == null ? 0.0 : baseHealth(helper.getLevel(), mission.targetType());
 				double expectedHealth = baselineHealth * Elite.HEALTH_MULTIPLIER
 					+ MissionService.NEMESIS_BONUS_HEALTH;
@@ -913,6 +914,8 @@ public final class NemesisMissionGameTest {
 				Mob companion = state == null ? null : state.companionId()
 					.map(id -> helper.getLevel().getEntity(id)).filter(entity -> entity instanceof Mob)
 					.map(entity -> (Mob) entity).orElse(null);
+				helper.assertTrue(tagged && (companion == null || !companion.entityTags().contains(MissionService.NEMESIS_TAG)),
+					"Nemesis tag missing, or the companion carries it");
 				boolean sharedBuff = companion != null && nemesis.getActiveEffects().stream()
 					.anyMatch(effect -> effect.getDuration() == -1 && companion.hasEffect(effect.getEffect()));
 				boolean elitePair = Elite.isElite(nemesis) && companion != null

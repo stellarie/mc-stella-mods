@@ -57,6 +57,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   odds. Three separate rolls add more: 5% for 32 diamonds, 5% for exactly one equipped piece, and 0.1%
   for one ancient debris. A Nemesis no longer drops a head.
   A Nemesis that dies another way ends its contract without these rewards.
+  A Nemesis carries the entity tag `stella_nemesis`. With `mod-stella-mobs`, it gives five times the kill XP.
 - An **elite contract** spawns one elite and two ordinary mobs of its type at the target. The elite pays
   64 emeralds, 64 iron ingots and two random potions when a player kills it, dropped where it fell. The two
   ordinary mobs pay nothing and leave with the elite. An elite that dies another way ends the contract
