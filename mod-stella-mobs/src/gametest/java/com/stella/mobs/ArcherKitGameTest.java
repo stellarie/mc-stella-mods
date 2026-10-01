@@ -5,10 +5,10 @@ import com.stella.mobs.behavior.CreeperEscapeController;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.SkeletonVolley;
-import com.stella.mobs.behavior.SkeletonVolleyGoal;
 import com.stella.mobs.behavior.StrayKit;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.mixin.ArrowPotionInvoker;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,12 +34,16 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The archer kit looses the arrows the mobs mod already looses, for another mod to call. A skeleton's single shot
- * and volley match its goal, a stray's and a bogged's arrow carry what vanilla gives it, the arrow flies where it
- * is told, and a mob tagged as model driven is left alone by the creeper escape.
+ * and burst arrow match its goal, a stray's and a bogged's arrow carry what vanilla gives it, the arrow flies where
+ * it is told, and a mob tagged as model driven is left alone by the creeper escape.
  */
 public class ArcherKitGameTest {
 	private static final float POWER = 1.6F;
 	private static final double DIRECTION_TOLERANCE_DEGREES = 1.0;
+	private static final double ANGLE_TOLERANCE_DEGREES = 0.01;
+	private static final int SPREAD_SAMPLES = 100;
+	private static final int SPEC_BURST_ARROWS = 3;
+	private static final double SPEC_SPREAD_DEGREES = 3.0;
 	private static final Vec3 AIM = new Vec3(1.0, 0.2, 2.0);
 
 	@GameTest
@@ -47,20 +51,55 @@ public class ArcherKitGameTest {
 		Mob skeleton = archer(helper, EntityTypes.SKELETON);
 		List<AbstractArrow> arrows = arrows(helper, ArcherKit.release(skeleton, AIM, POWER, 0.0F, false));
 		boolean slow = arrows.size() == 1 && arrows.get(0).entityTags().contains(SkeletonVolley.SLOW_TAG);
-		result("skeletonSingle", "arrows=" + arrows.size() + " slowTag=" + slow);
+		long burning = arrows.stream().filter(Entity::isOnFire).count();
+		result("skeletonSingle", "arrows=" + arrows.size() + " slowTag=" + slow + " burning=" + burning);
 		helper.assertTrue(slow, "the single shot loosed " + arrows.size() + " arrows, slow tag " + slow);
+		helper.assertTrue(burning == 0, "the single shot was alight");
 		helper.succeed();
 	}
 
 	@GameTest
-	public void skeletonVolleyMatchesTheGoal(final GameTestHelper helper) {
+	public void skeletonBurstArrowMatchesTheGoal(final GameTestHelper helper) {
 		Mob skeleton = archer(helper, EntityTypes.SKELETON);
 		List<AbstractArrow> arrows = arrows(helper, ArcherKit.release(skeleton, AIM, POWER, 0.0F, true));
-		long tagged = arrows.stream().filter(arrow -> arrow.entityTags().contains(SkeletonVolley.VOLLEY_TAG)).count();
+		boolean slow = arrows.stream().anyMatch(arrow -> arrow.entityTags().contains(SkeletonVolley.SLOW_TAG));
 		long burning = arrows.stream().filter(Entity::isOnFire).count();
-		result("skeletonVolley", "arrows=" + arrows.size() + " tagged=" + tagged + " burning=" + burning);
-		helper.assertTrue(arrows.size() == SkeletonVolleyGoal.ARROWS_PER_VOLLEY, "the volley loosed " + arrows.size() + " arrows");
-		helper.assertTrue(tagged == arrows.size() && burning == arrows.size(), "only " + tagged + " were tagged and " + burning + " alight");
+		result("skeletonBurstArrow", "arrows=" + arrows.size() + " slowTag=" + slow + " burning=" + burning);
+		helper.assertTrue(arrows.size() == 1, "a burst release loosed " + arrows.size() + " arrows, not one");
+		helper.assertTrue(!slow, "a burst arrow carried the single shot's slow");
+		helper.assertTrue(burning == 0, "a burst arrow was alight");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void burstArrowsStrayWithinTheSpreadAndNotAllTheSame(final GameTestHelper helper) {
+		Mob skeleton = archer(helper, EntityTypes.SKELETON);
+		List<Double> yaws = new ArrayList<>();
+		List<Double> pitches = new ArrayList<>();
+		for (int i = 0; i < SPREAD_SAMPLES; i++) {
+			AbstractArrow arrow = arrows(helper, ArcherKit.release(skeleton, AIM, POWER, 0.0F, true)).get(0);
+			Vec3 velocity = arrow.getDeltaMovement();
+			yaws.add(Math.IEEEremainder(yawDegrees(velocity) - yawDegrees(AIM), 360.0));
+			pitches.add(pitchDegrees(velocity) - pitchDegrees(AIM));
+			arrow.discard();
+		}
+
+		double spread = SPEC_SPREAD_DEGREES;
+		double widestYaw = yaws.stream().mapToDouble(Math::abs).max().orElse(0.0);
+		double widestPitch = pitches.stream().mapToDouble(Math::abs).max().orElse(0.0);
+		result("burstSpread", "samples=" + SPREAD_SAMPLES + " widestYaw=" + widestYaw + " widestPitch=" + widestPitch + " spread=" + spread);
+		helper.assertTrue(widestYaw <= spread + ANGLE_TOLERANCE_DEGREES, "an arrow strayed " + widestYaw + " degrees in yaw");
+		helper.assertTrue(widestPitch <= spread + ANGLE_TOLERANCE_DEGREES, "an arrow strayed " + widestPitch + " degrees in pitch");
+		// Half the spread, on both sides:
+		// a fixed or one sided offset fails.
+		helper.assertTrue(
+			widestYaw >= spread / 2.0 && yaws.stream().anyMatch(yaw -> yaw > 0.0) && yaws.stream().anyMatch(yaw -> yaw < 0.0),
+			"the yaw never strayed: " + widestYaw
+		);
+		helper.assertTrue(
+			widestPitch >= spread / 2.0 && pitches.stream().anyMatch(pitch -> pitch > 0.0) && pitches.stream().anyMatch(pitch -> pitch < 0.0),
+			"the pitch never strayed: " + widestPitch
+		);
 		helper.succeed();
 	}
 
@@ -132,9 +171,17 @@ public class ArcherKitGameTest {
 		Mob skeleton = archer(helper, EntityTypes.SKELETON);
 		ItemStack ammo = new ItemStack(Items.ARROW, 64);
 		skeleton.setItemSlot(EquipmentSlot.OFFHAND, ammo);
-		int loosed = ArcherKit.release(skeleton, AIM, POWER, 0.0F, true).size();
+		int loosed = 0;
+		for (int i = 0; i < SPEC_BURST_ARROWS; i++) {
+			loosed += ArcherKit.release(skeleton, AIM, POWER, 0.0F, true).size();
+		}
+
+		loosed += ArcherKit.release(skeleton, AIM, POWER, 0.0F, false).size();
 		result("ammo", "loosed=" + loosed + " left=" + ammo.getCount());
-		helper.assertTrue(loosed == SkeletonVolleyGoal.ARROWS_PER_VOLLEY && ammo.getCount() == 64 - loosed, "the volley of " + loosed + " left " + ammo.getCount() + " of 64 arrows");
+		helper.assertTrue(
+			loosed == SPEC_BURST_ARROWS + 1 && ammo.getCount() == 64 - loosed,
+			"a burst and a single shot loosed " + loosed + " arrows and left " + ammo.getCount() + " of 64"
+		);
 		helper.succeed();
 	}
 
@@ -154,7 +201,7 @@ public class ArcherKitGameTest {
 		result("releaseLine", "lines=" + releases);
 		helper.assertTrue(releases.size() == 1, "the release wrote " + releases.size() + " RELEASE lines");
 		String line = releases.get(0);
-		helper.assertTrue(line.contains("type=minecraft:skeleton") && line.contains("arrows=" + SkeletonVolleyGoal.ARROWS_PER_VOLLEY) && line.contains("volley=true") && line.contains("power=1.60") && line.contains("uncertainty=0.00"), "the line lacks its values: " + line);
+		helper.assertTrue(line.contains("type=minecraft:skeleton") && line.contains("arrows=1") && line.contains("burst=true") && line.contains("power=1.60") && line.contains("uncertainty=0.00"), "the line lacks its values: " + line);
 		helper.succeed();
 	}
 
@@ -209,6 +256,14 @@ public class ArcherKitGameTest {
 
 	private static List<AbstractArrow> arrows(final GameTestHelper helper, final List<UUID> ids) {
 		return ids.stream().map(id -> (AbstractArrow) helper.getLevel().getEntity(id)).toList();
+	}
+
+	private static double yawDegrees(final Vec3 direction) {
+		return Math.toDegrees(Math.atan2(direction.z, direction.x));
+	}
+
+	private static double pitchDegrees(final Vec3 direction) {
+		return Math.toDegrees(Math.atan2(direction.y, Math.sqrt(direction.x * direction.x + direction.z * direction.z)));
 	}
 
 	private static void result(final String test, final String detail) {

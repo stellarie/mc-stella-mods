@@ -60,6 +60,7 @@
 			"com.stella.mobs.ChunkEncounterGameTest",
 			"com.stella.mobs.IllusionerGameTest",
 			"com.stella.mobs.SkeletonVolleyGameTest",
+			"com.stella.mobs.SkeletonBurstRangeGameTest",
 			"com.stella.mobs.ArcherKitGameTest",
 			"com.stella.mobs.EvokerFireRainGameTest",
 			"com.stella.mobs.ExperienceRewardGameTest",

@@ -83,8 +83,9 @@ import net.minecraft.world.phys.Vec3;
 public class BossAbilityGameTest {
 	private static final String TEST = "bossAbility";
 	/** The spec's numbers, restated as literals so a test cannot inherit a typo from the code. */
-	/** A boss skeleton's volley. */
-	private static final int SPEC_ARROWS = SkeletonVolleyGoal.BOSS_ARROWS_PER_VOLLEY;
+	/** A boss skeleton's burst. */
+	private static final int SPEC_ARROWS = 7;
+	private static final double QUARRY_HEALTH = 1000.0;
 	/** The roll test's private chunk, far outside the grid of arenas. See the test's javadoc. */
 	private static final int FAR_SPOT = 400;
 	/** The arena's own floor level, so the far pad repeats the vertical arrangement that is proven. */
@@ -180,6 +181,10 @@ public class BossAbilityGameTest {
 	/** Wide enough for the scatter, tight enough to exclude the next test's structure. */
 	private static final double WAR_BAND_BOX = 12.0;
 
+	static {
+		VolleyRecord.install();
+	}
+
 	@GameTest(maxTicks = 200)
 	public void aHandBlessedBossCarriesItsAbility(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
@@ -232,6 +237,9 @@ public class BossAbilityGameTest {
 		// target keeps the boss moving away and the fan never leaves the bow inside the window.
 		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 1, 3, 7).withNoFreeWill().spawn();
 		target.setPersistenceRequired();
+		// The target must outlive the whole burst: a dead target ends it.
+		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(QUARRY_HEALTH);
+		target.setHealth((float) QUARRY_HEALTH);
 		// The bow is re-asserted every tick: a promotion or a kit that lands after this test writes it
 		// would otherwise take the bow away and the fan would never leave the string, which read as a
 		// fan of zero. Re-asserting is what makes the fixture's own claim true.
@@ -270,8 +278,8 @@ public class BossAbilityGameTest {
 			);
 			result(
 				"boneFan",
-				"volley=" + SPEC_ARROWS + " ownerMatched=" + loosed.size() + " tipped=" + tippedLoosed.size()
-					+ " coneDegrees=" + SkeletonVolleyGoal.CONE_DEGREES + " cooldown=" + SkeletonVolleyGoal.VOLLEY_COOLDOWN_TICKS
+				"burst=" + SPEC_ARROWS + " ownerMatched=" + loosed.size() + " tipped=" + tippedLoosed.size()
+					+ " spreadDegrees=" + SkeletonVolleyGoal.BURST_SPREAD_DEGREES + " cooldown=" + SkeletonVolleyGoal.BURST_COOLDOWN_TICKS
 			);
 		});
 	}
@@ -332,6 +340,9 @@ public class BossAbilityGameTest {
 				.withNoFreeWill()
 				.spawn();
 			quarry[0].setPersistenceRequired();
+			// The quarry must outlive the whole burst: a dead target ends it.
+			quarry[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(QUARRY_HEALTH);
+			quarry[0].setHealth((float) QUARRY_HEALTH);
 			// The fan arms only with a player in range, and the arena's own player is four hundred out.
 			Vec3 beside = helper.absoluteVec(new Vec3(FAR_SPOT + 4.0, FAR_PAD_Y + 1.0, FAR_SPOT));
 			player.setPos(beside.x, beside.y, beside.z);
@@ -358,7 +369,10 @@ public class BossAbilityGameTest {
 				holdingBow, "the boss skeleton's main hand is not a bow, so the fan cannot open: " + boss.getMainHandItem()
 			);
 			helper.assertValueEqual(Integer.valueOf(fans), Integer.valueOf(1), "fan goals installed on the boss");
-			helper.assertValueEqual(Integer.valueOf(loosed.size()), Integer.valueOf(SPEC_ARROWS), "arrows in the fan");
+			// A single shot after the burst shows it is over, so seven cannot pass as six and a single.
+			helper.assertTrue(!VolleyRecord.shots(boss).isEmpty(), "no single shot has followed the burst yet");
+			helper.assertTrue(!VolleyRecord.bursts(boss).isEmpty(), "the boss loosed no burst");
+			helper.assertValueEqual(Integer.valueOf(VolleyRecord.bursts(boss).get(0).size()), Integer.valueOf(SPEC_ARROWS), "arrows in the burst");
 		});
 	}
 
@@ -1276,7 +1290,10 @@ public class BossAbilityGameTest {
 	}
 
 	private static ItemStack harmingArrows() {
-		return PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.HARMING);
+		ItemStack quiver = PotionContents.createItemStack(Items.TIPPED_ARROW, Potions.HARMING);
+		// Each arrow of a burst takes one from the stack.
+		quiver.setCount(SPEC_ARROWS * 2);
+		return quiver;
 	}
 
 	/** The tip rides the pickup stack, which is the stack the ammo path handed to the arrow. */

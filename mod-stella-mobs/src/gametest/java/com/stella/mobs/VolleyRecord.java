@@ -1,76 +1,106 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.SkeletonVolley;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 
-/** What each skeleton's volleys spawned, keyed by the shooter, so a test reads only its own arrows. */
+/** What each skeleton's bow released, keyed by the shooter, so a test reads only its own arrows. */
 final class VolleyRecord {
-	private static final Map<UUID, List<Volley>> VOLLEYS = new ConcurrentHashMap<>();
-	private static final Map<UUID, List<Cloud>> CLOUDS = new ConcurrentHashMap<>();
-	private static final Map<UUID, Integer> SHOTS = new ConcurrentHashMap<>();
+	/** Burst arrows sit 10 ticks apart and bursts 200, so any gap past this starts a burst. */
+	private static final int NEW_BURST_GAP_TICKS = 100;
+	private static final Map<UUID, List<Release>> BURST_ARROWS = new ConcurrentHashMap<>();
+	private static final Map<UUID, List<Release>> SHOTS = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<MobEffectInstance>> SLOWS = new ConcurrentHashMap<>();
+	private static boolean installed;
 
 	private VolleyRecord() {
 	}
 
-	static void install() {
+	static synchronized void install() {
+		if (installed) {
+			return;
+		}
+
+		installed = true;
 		SkeletonVolley.setRecorder(new SkeletonVolley.Recorder() {
 			@Override
-			public void volley(final Mob shooter, final List<UUID> arrows, final List<Vec3> velocities) {
-				int burning = (int) arrows.stream().map(id -> ((net.minecraft.server.level.ServerLevel) shooter.level()).getEntity(id))
-					.filter(entity -> entity != null && entity.isOnFire()).count();
-				VOLLEYS.computeIfAbsent(shooter.getUUID(), key -> new CopyOnWriteArrayList<>())
-					.add(new Volley(List.copyOf(arrows), List.copyOf(velocities), shooter.level().getServer().getTickCount(), burning));
+			public void burst(final Mob shooter, final UUID arrow, final Vec3 velocity) {
+				BURST_ARROWS.computeIfAbsent(shooter.getUUID(), key -> new CopyOnWriteArrayList<>()).add(release(shooter, arrow, velocity));
 			}
 
 			@Override
-			public void shot(final Mob shooter, final List<UUID> arrows) {
-				SHOTS.merge(shooter.getUUID(), arrows.size(), Integer::sum);
+			public void shot(final Mob shooter, final UUID arrow, final Vec3 velocity) {
+				SHOTS.computeIfAbsent(shooter.getUUID(), key -> new CopyOnWriteArrayList<>()).add(release(shooter, arrow, velocity));
 			}
 
 			@Override
-			public void slowed(final Mob shooter, final net.minecraft.world.entity.LivingEntity victim, final MobEffectInstance slow) {
+			public void slowed(final Mob shooter, final LivingEntity victim, final MobEffectInstance slow) {
 				// What the victim now carries, not what the shot meant to give it.
 				MobEffectInstance carried = victim.getEffect(net.minecraft.world.effect.MobEffects.SLOWNESS);
 				if (carried != null) {
 					SLOWS.computeIfAbsent(shooter.getUUID(), key -> new CopyOnWriteArrayList<>()).add(carried);
 				}
 			}
-
-			@Override
-			public void cloud(final Mob shooter, final UUID arrow, final UUID cloud, final Vec3 at, final List<MobEffectInstance> effects) {
-				CLOUDS.computeIfAbsent(shooter.getUUID(), key -> new CopyOnWriteArrayList<>())
-					.add(new Cloud(arrow, cloud, at, List.copyOf(effects)));
-			}
 		});
 	}
 
-	static List<Volley> volleys(final Mob shooter) {
-		return VOLLEYS.getOrDefault(shooter.getUUID(), List.of());
+	/** Burst arrows loosed, in release order. */
+	static List<Release> burstArrows(final Mob shooter) {
+		return BURST_ARROWS.getOrDefault(shooter.getUUID(), List.of());
 	}
 
-	static List<Cloud> clouds(final Mob shooter) {
-		return CLOUDS.getOrDefault(shooter.getUUID(), List.of());
+	/** Single shots loosed, in release order. */
+	static List<Release> shots(final Mob shooter) {
+		return SHOTS.getOrDefault(shooter.getUUID(), List.of());
 	}
 
-	static int shots(final Mob shooter) {
-		return SHOTS.getOrDefault(shooter.getUUID(), 0);
+	/**
+	 * The burst arrows grouped into bursts.
+	 * A gap past `NEW_BURST_GAP_TICKS` starts the next burst.
+	 */
+	static List<List<Release>> bursts(final Mob shooter) {
+		List<List<Release>> bursts = new ArrayList<>();
+		Release previous = null;
+		for (Release arrow : burstArrows(shooter)) {
+			if (previous == null || arrow.serverTick() - previous.serverTick() > NEW_BURST_GAP_TICKS) {
+				bursts.add(new ArrayList<>());
+			}
+
+			bursts.get(bursts.size() - 1).add(arrow);
+			previous = arrow;
+		}
+
+		return bursts;
 	}
 
 	static List<MobEffectInstance> slows(final Mob shooter) {
 		return SLOWS.getOrDefault(shooter.getUUID(), List.of());
 	}
 
-	record Volley(List<UUID> arrows, List<Vec3> velocities, int serverTick, int burning) {
+	private static Release release(final Mob shooter, final UUID arrow, final Vec3 velocity) {
+		LivingEntity target = shooter.getTarget();
+		double distance = Double.NaN;
+		double lineYaw = Double.NaN;
+		if (target != null) {
+			distance = shooter.distanceTo(target);
+			lineYaw = Math.toDegrees(Math.atan2(target.getZ() - shooter.getZ(), target.getX() - shooter.getX()));
+		}
+
+		return new Release(arrow, velocity, shooter.level().getServer().getTickCount(), distance, lineYaw);
 	}
 
-	record Cloud(UUID arrow, UUID cloud, Vec3 at, List<MobEffectInstance> effects) {
+	/**
+	 * One arrow as it left the bow. `lineYaw` is the horizontal bearing from the shooter to its target in degrees,
+	 * so a test reads the spread without knowing the aim's height.
+	 */
+	record Release(UUID arrow, Vec3 velocity, int serverTick, double targetDistance, double lineYaw) {
 	}
 }
