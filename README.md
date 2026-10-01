@@ -49,9 +49,9 @@ wants.
 - **Blood Moon.** Every seventh night, hostiles that spawn roll elite three times as often and carry
   Strength until dawn. Every overworld player is told when it rises and when it sets.
 - **Skeletons.** An archer's single shot slows what it hits for 2 seconds (harder from an elite or a
-  boss). Every 6 seconds it looses a narrow volley of flaming arrows instead: 6 from a plain skeleton, 12
-  from an elite, 18 from a boss. Each volley arrow leaves a small cloud: a tipped arrow's own potion, or
-  Slowness. About 79% of skeletons carry a bow.
+  boss). Every 10 seconds it looses a burst of separate arrows instead, half a second apart and a few
+  degrees off the aim: 3 from a plain skeleton, 5 from an elite, 7 from a boss. Skeleton arrows never
+  burn and leave no cloud. Archers engage from 24 blocks. About 79% of skeletons carry a bow.
 - **Strays.** An ordinary archer's arrow leaves a block of powder snow. An elite or boss archer is a
   solitary sniper: a fast, straight, heavy arrow every 10 seconds that leaves a 3x3 or 5x5 patch of
   powder snow; it slips away when a player it hunts looks straight at it, and once every 2 minutes a blow

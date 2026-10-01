@@ -83,7 +83,8 @@ The station rolls one small stat bonus when it infuses a dish: a random stat (ST
 
 ## Well Rested
 
-- Waking in the morning (day time before 2000) after a full sleep gives Well Rested for 20 minutes.
+- Waking at dawn or in the morning (day time from 23000 to 2000) after a full sleep gives Well Rested for 20 minutes.
+  A night nobody skips ends at dawn, when the game wakes sleepers itself, so that wake counts.
 - While it lasts, kills give 20% more experience. The bonus applies after the mobs mod's kill formula.
 - A nap during the day or a sleep cut short gives nothing.
 

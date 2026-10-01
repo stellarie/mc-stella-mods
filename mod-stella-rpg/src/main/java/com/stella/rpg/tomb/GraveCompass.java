@@ -76,7 +76,8 @@ public final class GraveCompass {
 		BlockPos pos = tomb.pos();
 		compass.set(DataComponents.LORE, new ItemLore(List.of(
 			Component.literal("Points to your tombstone").withStyle(ChatFormatting.GRAY),
-			Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ()).withStyle(ChatFormatting.GRAY)
+			Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + " in " + tomb.dimension().identifier().getPath())
+				.withStyle(ChatFormatting.GRAY)
 		)));
 	}
 }

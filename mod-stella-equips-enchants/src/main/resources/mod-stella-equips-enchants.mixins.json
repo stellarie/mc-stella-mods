@@ -13,7 +13,8 @@
 		"LivingEntityRefineMixin",
 		"InventoryEmeraldMixin",
 		"LivingEntityHurtAccessor",
-		"SlimeHeartMixin"
+		"SlimeHeartMixin",
+		"ShieldBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

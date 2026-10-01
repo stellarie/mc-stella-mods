@@ -20,6 +20,11 @@ public final class RpgDeath {
 			if (!oldPlayer.level().getGameRules().get(GameRules.KEEP_INVENTORY)) {
 				newPlayer.getInventory().replaceWith(oldPlayer.getInventory());
 				oldPlayer.getInventory().clearContent();
+			}
+		});
+		// After the respawn, so an overflow drop lands at the respawn point.
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+			if (!alive) {
 				com.stella.rpg.tomb.GraveCompass.give(oldPlayer, newPlayer);
 			}
 		});
