@@ -41,13 +41,46 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
   `1.06^80 x (1 + 19 x S(level - 80))`, plus 0.02 flat damage per level past 80.
   `S` is 0 at 0, 0.5 at 500, and 1 at 1000.
 - **Piercing:** a mob's hit ignores `min(50%, 1.5% x level)` of the target's armor, toughness, and Protection.
-- **Kill experience:** `vanilla x (1 + level / 10) x clamp(1 + (level - player level) / 10, 0.25, 4)`.
+- **Kill experience:** a base per mob type plus a part from the mob level `T` and the killer's XP level `L`:
+
+  ```
+  reward = base(type) + 1.5 x T x clamp(1 + 0.05 x (T - L), 0.1, 1.5)
+  ```
+
+  The result rounds to the nearest integer, with a minimum of 1. An elite gives 3 times the reward. A mob with
+  the `stella_nemesis` entity tag gives 5 times. The two do not stack: the larger multiplier applies.
+  - A mob that gives no vanilla XP (a villager, an iron golem, a baby animal) still gives none.
+  - The ender dragon keeps its vanilla reward.
+  - A mob with no rolled level counts as on level with its killer (`T = L`).
+  - A passive mob (not a hostile `Enemy`) gives its base only, with no level part. A breeding farm stays cheap.
+  - Other kills, without a player credited, keep the vanilla reward.
+
+  Base by type (`xp_base`). An unlisted hostile mob uses `xp_base_hostile` (6). An unlisted other mob uses
+  `xp_base_passive` (1).
+
+  | Base | Mobs |
+  |---|---|
+  | 2 | slime, magma cube, silverfish |
+  | 3 | endermite, vex |
+  | 6 | zombie, husk, drowned, zombie villager, skeleton, stray, bogged, spider, cave spider, creeper, phantom, zombified piglin, piglin, pillager |
+  | 8 | hoglin, zoglin |
+  | 12 | enderman, witch, blaze, ghast, vindicator, guardian, shulker, wither skeleton, creaking |
+  | 20 | piglin brute, illusioner |
+  | 40 | evoker, ravager, elder guardian, breeze |
+  | 500 | wither, warden |
+
+  On-level examples (base 6): level 0 gives 6, level 50 gives 81, level 100 gives 231 at killer level 50.
 
 Vanilla still caps max health at 1024 and attack damage at 2048.
 
 Every number above lives in `config/mod-stella-mobs/scaling.json`. The file is written with the defaults on
 first start. A missing key uses its default, and an unknown key is reported once and ignored. `/reload` reads
 the file again.
+
+The experience keys are `xp_base` (entity id to integer, a bare name means `minecraft:`; an entry overrides
+the default for that mob), `xp_base_hostile`, `xp_base_passive`, `xp_level_factor` (1.5), `xp_gap_step` (0.05),
+`xp_gap_min` (0.1), `xp_gap_max` (1.5), `xp_elite_multiplier` (3), and `xp_nemesis_multiplier` (5). The old
+`xp_level_divisor` key is retired: the store reports it and ignores it.
 
 ## Threat level share
 

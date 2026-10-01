@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -21,6 +23,8 @@ import net.fabricmc.loader.api.FabricLoader;
  */
 public final class ScalingConfigStore {
 	private static final String FILE_NAME = "scaling.json";
+	private static final String XP_BASE_KEY = "xp_base";
+	private static final Set<String> RETIRED_KEYS = Set.of("xp_level_divisor");
 	private static final Gson PRETTY = new GsonBuilder().setPrettyPrinting().create();
 	private static volatile ScalingConfig config = ScalingConfig.DEFAULTS;
 
@@ -65,7 +69,16 @@ public final class ScalingConfigStore {
 		}
 		JsonObject root = parsed.getAsJsonObject();
 		Map<String, Double> known = values(ScalingConfig.DEFAULTS);
+		Map<String, Integer> xpBase = new LinkedHashMap<>(ScalingConfig.DEFAULTS.xpBase());
 		for (String key : root.keySet()) {
+			if (RETIRED_KEYS.contains(key)) {
+				onError.accept("scaling.json key '" + key + "' is retired and ignored");
+				continue;
+			}
+			if (XP_BASE_KEY.equals(key)) {
+				parseXpBase(root.get(key), xpBase, onError);
+				continue;
+			}
 			if (!known.containsKey(key)) {
 				onError.accept("scaling.json key '" + key + "' is unknown and ignored");
 				continue;
@@ -92,13 +105,42 @@ public final class ScalingConfigStore {
 			known.get("tail_flat_per_level"),
 			known.get("pierce_per_level"),
 			known.get("pierce_cap"),
-			known.get("xp_level_divisor")
+			xpBase,
+			(int) Math.round(known.get("xp_base_hostile")),
+			(int) Math.round(known.get("xp_base_passive")),
+			known.get("xp_level_factor"),
+			known.get("xp_gap_step"),
+			known.get("xp_gap_min"),
+			known.get("xp_gap_max"),
+			known.get("xp_elite_multiplier"),
+			known.get("xp_nemesis_multiplier")
 		);
+	}
+
+	/** An entry overrides the default for that entity. A bare name means the minecraft namespace. */
+	private static void parseXpBase(final JsonElement value, final Map<String, Integer> xpBase, final Consumer<String> onError) {
+		if (!value.isJsonObject()) {
+			onError.accept("scaling.json key '" + XP_BASE_KEY + "' must be an object; using the defaults");
+			return;
+		}
+		JsonObject entries = value.getAsJsonObject();
+		for (String id : entries.keySet()) {
+			JsonElement entry = entries.get(id);
+			if (entry.isJsonPrimitive() && entry.getAsJsonPrimitive().isNumber()) {
+				String key = id.contains(":") ? id : "minecraft:" + id;
+				xpBase.put(key, Math.max(0, (int) Math.round(entry.getAsDouble())));
+			} else {
+				onError.accept("scaling.json " + XP_BASE_KEY + " entry '" + id + "' must be a number; using the default");
+			}
+		}
 	}
 
 	static JsonObject toJson(final ScalingConfig value) {
 		JsonObject out = new JsonObject();
 		values(value).forEach(out::addProperty);
+		JsonObject xpBase = new JsonObject();
+		new TreeMap<>(value.xpBase()).forEach(xpBase::addProperty);
+		out.add(XP_BASE_KEY, xpBase);
 		return out;
 	}
 
@@ -118,7 +160,14 @@ public final class ScalingConfigStore {
 		map.put("tail_flat_per_level", value.tailFlatPerLevel());
 		map.put("pierce_per_level", value.piercePerLevel());
 		map.put("pierce_cap", value.pierceCap());
-		map.put("xp_level_divisor", value.xpLevelDivisor());
+		map.put("xp_base_hostile", (double) value.xpBaseHostile());
+		map.put("xp_base_passive", (double) value.xpBasePassive());
+		map.put("xp_level_factor", value.xpLevelFactor());
+		map.put("xp_gap_step", value.xpGapStep());
+		map.put("xp_gap_min", value.xpGapMin());
+		map.put("xp_gap_max", value.xpGapMax());
+		map.put("xp_elite_multiplier", value.xpEliteMultiplier());
+		map.put("xp_nemesis_multiplier", value.xpNemesisMultiplier());
 		return map;
 	}
 }

@@ -271,6 +271,7 @@ public class SpawnScalingGameTest {
 		var spawn = helper.getLevel().getRespawnData().pos();
 		mob.snapTo(spawn.getX(), helper.getLevel().getSeaLevel() + 1, spawn.getZ(), 0.0F, 0.0F);
 		SpawnScaling.apply(mob);
+		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(0, ThreatState.MIN_VARIATION, 0, 27));
 		var player = helper.makeMockServerPlayerInLevel();
 		player.experienceLevel = 0;
 		int noviceReward = mob.getExperienceReward(helper.getLevel(), player);
@@ -309,7 +310,7 @@ public class SpawnScalingGameTest {
 			var nearby = net.minecraft.world.phys.AABB.ofSize(mob.position(), 8.0, 8.0, 8.0);
 			int orbs = level.getEntitiesOfClass(net.minecraft.world.entity.ExperienceOrb.class, nearby)
 				.stream().mapToInt(net.minecraft.world.entity.ExperienceOrb::getValue).sum();
-			int expected = ThreatExperience.reward(5, ThreatState.level(mob), player.experienceLevel);
+			int expected = ThreatExperience.reward(6, ThreatState.level(mob), player.experienceLevel);
 			boolean valid = !mob.isAlive() && ThreatState.level(mob) == ThreatState.NETHER_MINIMUM
 				&& orbs == expected;
 			result("playerKillDropsThreatAdjustedExperienceOrbs",
