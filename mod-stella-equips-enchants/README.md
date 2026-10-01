@@ -280,6 +280,14 @@ source, through a `Roller` that a test can force.
   fraction rounds up by chance.
 - Both can come from the enchanting table, loot, and chest loot.
 
+## Prospector
+
+- Prospector (I to V) goes on pickaxes.
+- Each block broken with a Prospector tool adds one stack, up to 6 stacks per level. Level V holds 30.
+- Each stack adds 1% block break speed while you hold a Prospector tool.
+- After 3 seconds without a break, one stack falls off each second.
+- Stacks reset when you log in.
+
 ## Emerald bag
 
 A bundle and an emerald make an Emerald Bag, a green bundle that holds any number of emeralds. Its tooltip shows the
