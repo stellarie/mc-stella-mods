@@ -119,6 +119,47 @@ public final class QuestBoardGameTest {
 		helper.succeed();
 	}
 
+	/** Thirty-two slime balls buy one potion at the duke's board; too few buy nothing and take nothing. */
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void slimeBallsBuyPotions(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "slimeBallsBuyPotions");
+		if (fixture == null) {
+			return;
+		}
+		ServerPlayer owner = fixture.owner();
+		owner.getInventory().add(new ItemStack(Items.SLIME_BALL, 40));
+		openBoard(helper, fixture);
+		MissionBoardMenu menu = (MissionBoardMenu) owner.containerMenu;
+		List<String> icons = new ArrayList<>();
+		for (int slot : com.stella.villages.mission.SlimeTrade.SLOTS) {
+			ItemStack icon = menu.getContainer().getItem(slot);
+			icons.add(icon.getItem() + ":" + icon.get(net.minecraft.core.component.DataComponents.POTION_CONTENTS).potion().map(holder -> holder.getRegisteredName()).orElse("none"));
+		}
+		menu.clicked(9, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+		int ballsAfterBuy = owner.getInventory().countItem(Items.SLIME_BALL);
+		boolean healing = hasPotion(owner, net.minecraft.world.item.alchemy.Potions.HEALING);
+		menu.clicked(13, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, owner);
+		int ballsAfterRefusal = owner.getInventory().countItem(Items.SLIME_BALL);
+		boolean swiftness = hasPotion(owner, net.minecraft.world.item.alchemy.Potions.SWIFTNESS);
+		PatrolTestSupport.result("slimeBallsBuyPotions", "icons=" + icons + " afterBuy=" + ballsAfterBuy + " healing=" + healing
+			+ " afterRefusal=" + ballsAfterRefusal + " swiftness=" + swiftness);
+		helper.assertTrue(icons.equals(List.of("minecraft:potion:minecraft:healing", "minecraft:potion:minecraft:swiftness",
+			"minecraft:potion:minecraft:strength")), "the trade icons are " + icons);
+		helper.assertTrue(ballsAfterBuy == 8 && healing, "a trade left " + ballsAfterBuy + " slime balls, healing=" + healing);
+		helper.assertTrue(ballsAfterRefusal == 8 && !swiftness, "a short trade took balls or gave a potion");
+		helper.succeed();
+	}
+
+	private static boolean hasPotion(final ServerPlayer player, final net.minecraft.core.Holder<net.minecraft.world.item.alchemy.Potion> potion) {
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			ItemStack held = player.getInventory().getItem(slot);
+			if (held.is(Items.POTION) && held.get(net.minecraft.core.component.DataComponents.POTION_CONTENTS).is(potion)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void targetsRandomNearBell(final GameTestHelper helper) {
 		String test = "targetsRandomNearBell";
