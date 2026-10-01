@@ -26,7 +26,7 @@ public final class PatrolVisuals {
 	private static final double SPARKLE_SPREAD = 0.3;
 	private static final double SPARKLE_LIFT = 0.3;
 	// Literal, because the village mod ships no language file and a vanilla client must read it too.
-	private static final String BANNER_NAME = "Village Patrol Banner";
+	private static final String BANNER_NAME = "Guard Banner";
 
 	/** Test seam: each sparkle a member gave off, and how many players it reached. */
 	public interface Recorder {

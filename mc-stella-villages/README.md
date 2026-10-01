@@ -74,10 +74,15 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 - Patrol Pillagers and Vindicators wear the village banner (a lime field with a white globe and a
   green border), and every patrol member, the Ravager included, gives off a green village sparkle.
   An ordinary illager keeps its vanilla look.
-- Every patrol member wears a label over its head: "Village Head" on the head and "Village Patrol"
+- Guards and the mage appear only outdoors at street level: nothing solid above them but leaves, and
+  within 3 blocks of the bell's height. The rule reads blocks only, so it keeps them out of buildings and
+  off roofs from any structure mod. The duke still stands by the bell.
+- Right-click a guard (not the duke or the mage) for its daily quest: kill 3 to 6 of one hostile type
+  128 to 256 blocks from the bell, marked on a map, for 32 emeralds and 8 of one cooked food. Each guard
+  gives each player one quest a day; an offline owner is paid at the next login.
+- Every patrol member wears a label over its head: "Duke" on the head and "Guard"
   on the rest. It is green while the village is calm and red while a player provokes the village.
-- With `mod-stella-spells` loaded, every village also has a witch by its bell, labelled "Village
-  Witch", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
+- With `mod-stella-spells` loaded, every village also has a witch by its bell, labelled "Mage", in full diamond armour: Protection IV and Unbreaking III on every piece, with Arcane Sight,
   Clear Mind and Doublecast on the helmet and Arcane Weave and Spellguard on the chestplate. Its kit
   never drops. It is one of the village's own, so golems, the patrol and the villagers never take it for
   a foe. It joins the patrol's 32-block beat and detects enemies within 48 blocks. It can throw
@@ -87,10 +92,10 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   and Harming still damages undead enemies.
   The spells mod gives it Warden's Roar, Spark Shot, Life Bloom, and safe-distance blinks. A village settled before the witch
   existed gets one the next time it loads, and a fallen witch returns with the patrol.
-- Right-click the village witch within 8 blocks to open the Village Witch
+- Right-click the mage within 8 blocks to open the Mage
   Shop, a one-row chest menu. It sells five enchanted books of different enchantments, each at a level
   the enchantment allows and each priced from 320 to 960 emeralds. Click a book to buy it: the price
-  comes out of your whole inventory, the book stays on the shelf, and a short purse changes nothing. The
+  comes out of your whole inventory and your emerald bags (with `mod-stella-equips-enchants`), the book stays on the shelf, and a short purse changes nothing. The
   clock in slot 7 rerolls all five books for 32 emeralds. The shop also rerolls once at every midnight (day
   time 18000). Each village keeps its own offers in its saved data.
 - While a player has the head's mission board or the witch's shop open, that mob stands still, faces the

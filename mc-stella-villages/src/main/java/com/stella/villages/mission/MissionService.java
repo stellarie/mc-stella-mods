@@ -86,7 +86,9 @@ public final class MissionService {
 	/** How many contracts of each kind a head offers at once, each of a different mob type. */
 	public static final int OFFERS_PER_BOARD = 3;
 	/** The whole board: this many contracts of every kind, Nemesis first, then elite, then kill. */
-	public static final int BOARD_SIZE = OFFERS_PER_BOARD * MissionKind.values().length;
+	/** The kinds the duke's board offers. A guard quest comes from a guard, not the board. */
+	public static final List<MissionKind> BOARD_KINDS = List.of(MissionKind.NEMESIS, MissionKind.ELITE, MissionKind.KILL);
+	public static final int BOARD_SIZE = OFFERS_PER_BOARD * BOARD_KINDS.size();
 	/** Types unsuitable for a land-based hostile contract, including neutral monsters and bosses. */
 	public static final Set<Identifier> NEVER_OFFERED = Set.of(
 		Identifier.parse("minecraft:ender_dragon"), Identifier.parse("minecraft:wither"),
@@ -124,6 +126,7 @@ public final class MissionService {
 		QuestMobState.register();
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> QuestMissions.payPending(handler.getPlayer()));
 		UseEntityCallback.EVENT.register(MissionService::onUseEntity);
+		UseEntityCallback.EVENT.register(GuardQuests::onUseEntity);
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, alreadyLoaded) -> onChunkLoad(level, chunk));
 		ServerEntityEvents.ENTITY_LOAD.register(MissionService::onEntityLoad);
 		ServerEntityEvents.ENTITY_UNLOAD.register(MissionService::onEntityUnload);
@@ -210,6 +213,17 @@ public final class MissionService {
 		final BlockPos origin,
 		final Identifier targetType
 	) {
+		return findSafeTarget(level, origin, targetType, MISSION_MIN_DISTANCE, MISSION_MAX_DISTANCE);
+	}
+
+	/** A safe surface spot for the target type within a distance band from the bell. */
+	public static Optional<BlockPos> findSafeTarget(
+		final ServerLevel level,
+		final BlockPos origin,
+		final Identifier targetType,
+		final int minDistance,
+		final int maxDistance
+	) {
 		TargetCandidateSource source = CANDIDATE_SOURCES.get(origin);
 		EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(targetType).map(holder -> holder.value()).orElse(null);
 		Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
@@ -217,7 +231,8 @@ public final class MissionService {
 			return Optional.empty();
 		}
 		for (int attempt = 0; attempt < MISSION_TARGET_SEARCH_LIMIT; attempt++) {
-			BlockPos candidate = source != null ? source.candidate(origin, attempt, level.getRandom()) : targetCandidate(origin, level.getRandom());
+			BlockPos candidate = source != null ? source.candidate(origin, attempt, level.getRandom())
+				: targetCandidate(origin, level.getRandom(), minDistance, maxDistance);
 			int sectionX = SectionPos.blockToSectionCoord(candidate.getX());
 			int sectionZ = SectionPos.blockToSectionCoord(candidate.getZ());
 			LevelChunk chunk = level.getChunk(sectionX, sectionZ);
@@ -227,8 +242,8 @@ public final class MissionService {
 			}
 			BlockPos surface = new BlockPos(candidate.getX(), supportY + 1, candidate.getZ());
 			double distanceSquared = horizontalDistanceSquared(origin, surface);
-			if (distanceSquared < (double) MISSION_MIN_DISTANCE * MISSION_MIN_DISTANCE
-				|| distanceSquared > (double) MISSION_MAX_DISTANCE * MISSION_MAX_DISTANCE
+			if (distanceSquared < (double) minDistance * minDistance
+				|| distanceSquared > (double) maxDistance * maxDistance
 				|| !isSafeSurface(level, probe, surface)) {
 				continue;
 			}
@@ -748,6 +763,61 @@ public final class MissionService {
 		return List.copyOf(picked);
 	}
 
+	/** Hostile types a pack quest may target: Nemesis-eligible and hostile. */
+	static List<Identifier> packTypes(final ServerLevel level) {
+		List<Identifier> packs = new ArrayList<>();
+		for (Identifier id : offerPool()) {
+			EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(id);
+			Entity entity = type == null ? null : type.create(level, EntitySpawnReason.COMMAND);
+			if (entity instanceof Mob mob && canBeNemesis(mob) && mob instanceof Enemy) {
+				packs.add(id);
+			}
+		}
+		return packs;
+	}
+
+	/**
+	 * Starts a guard's daily quest for the player: 3 to 6 of one hostile type, 128 to 256 blocks from the bell.
+	 * Returns the refusal reason, or null when the quest started.
+	 */
+	static @Nullable String acceptGuardQuest(final ServerLevel level, final ServerPlayer player, final VillageRecord village) {
+		List<Identifier> packs = packTypes(level);
+		if (packs.isEmpty()) {
+			return "no_target_type";
+		}
+		Identifier type = packs.get(level.getRandom().nextInt(packs.size()));
+		Optional<BlockPos> target = findSafeTarget(level, PatrolService.bellOf(level, village), type,
+			GuardQuests.MIN_DISTANCE, GuardQuests.MAX_DISTANCE);
+		if (target.isEmpty()) {
+			return "no_safe_target";
+		}
+		ItemStack map;
+		try {
+			map = NemesisMapItem.create(level, target.get());
+		} catch (IllegalArgumentException | IllegalStateException error) {
+			return "map_creation_failed";
+		}
+		net.minecraft.world.level.saveddata.maps.MapId mapId = NemesisMapItem.mapId(map);
+		if (mapId == null) {
+			return "map_id_missing";
+		}
+		int count = QuestMissions.GUARD_MIN_COUNT + level.getRandom().nextInt(QuestMissions.GUARD_MAX_COUNT - QuestMissions.GUARD_MIN_COUNT + 1);
+		MissionRecord mission = new MissionRecord(
+			UUID.randomUUID(), player.getUUID(), type, target.get(), Optional.empty(), MissionStatus.TARGET_PENDING,
+			Optional.of(mapId), level.dimension(), MissionKind.GUARD, count, List.of()
+		);
+		VillageWorldData.get(level).addMission(mission);
+		deliverMap(level, player, map, mapId);
+		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=guard_quest_accepted mission={} owner={} type={} count={} target={}",
+			McStellaVillages.MOD_ID, mission.id(), player.getUUID(), type, count, target.get());
+		LevelChunk loaded = level.getChunkSource().getChunkNow(
+			SectionPos.blockToSectionCoord(target.get().getX()), SectionPos.blockToSectionCoord(target.get().getZ()));
+		if (loaded != null) {
+			spawnPendingMissions(level, loaded);
+		}
+		return null;
+	}
+
 	private static List<MissionOffer> createOffers(final ServerLevel level) {
 		List<MissionOffer> result = new ArrayList<>(BOARD_SIZE);
 		List<Identifier> nemeses = new ArrayList<>();
@@ -782,8 +852,12 @@ public final class MissionService {
 
 	/** A random spot 256 to 384 blocks from the bell: a uniform bearing and a uniform distance. */
 	public static BlockPos targetCandidate(final BlockPos bell, final RandomSource random) {
+		return targetCandidate(bell, random, MISSION_MIN_DISTANCE, MISSION_MAX_DISTANCE);
+	}
+
+	public static BlockPos targetCandidate(final BlockPos bell, final RandomSource random, final int minDistance, final int maxDistance) {
 		double bearing = random.nextDouble() * Math.PI * 2.0;
-		double distance = MISSION_MIN_DISTANCE + random.nextDouble() * (MISSION_MAX_DISTANCE - MISSION_MIN_DISTANCE);
+		double distance = minDistance + random.nextDouble() * (maxDistance - minDistance);
 		return new BlockPos(
 			bell.getX() + (int) Math.round(Math.cos(bearing) * distance), bell.getY(),
 			bell.getZ() + (int) Math.round(Math.sin(bearing) * distance)

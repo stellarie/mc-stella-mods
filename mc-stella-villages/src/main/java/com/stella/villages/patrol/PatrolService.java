@@ -304,13 +304,13 @@ public final class PatrolService {
 			return null;
 		}
 
-		// The head is set down by the bell; every other member somewhere across the village.
+		// The duke stands by the bell. The mage and the guards stand outdoors at street level.
 		BlockPos bell = bellOf(level, village);
-		@Nullable BlockPos position = role == PatrolState.Role.HEAD || role == PatrolState.Role.VILLAGE_WITCH
-			? findSpawnPosition(level, bell, mob)
+		@Nullable BlockPos position = role == PatrolState.Role.HEAD ? findSpawnPosition(level, bell, mob)
+			: role == PatrolState.Role.VILLAGE_WITCH ? OutdoorSpot.near(level, bell, mob)
 			: findScatteredPosition(level, bell, mob);
-		if (position == null && role != PatrolState.Role.HEAD) {
-			position = findSpawnPosition(level, village.anchor(), mob);
+		if (position == null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH) {
+			position = OutdoorSpot.near(level, bell, mob);
 		}
 		if (position == null) {
 			McStellaVillages.LOGGER.info(
@@ -366,7 +366,7 @@ public final class PatrolService {
 		}
 	}
 
-	// A standable spot at the surface within the scatter radius of the village's centre but outside the head's circle, in a loaded chunk.
+	// A standable outdoor spot within the scatter radius of the bell but outside the duke's circle, in a loaded chunk.
 	private static @Nullable BlockPos findScatteredPosition(final ServerLevel level, final BlockPos center, final Mob mob) {
 		for (int attempt = 0; attempt < 24; attempt++) {
 			int x = center.getX() + level.getRandom().nextInt(2 * MEMBER_SCATTER_RADIUS + 1) - MEMBER_SCATTER_RADIUS;
@@ -380,7 +380,7 @@ public final class PatrolService {
 			Vec3 destination = Vec3.atBottomCenterOf(candidate);
 			AABB spawnBox = mob.getBoundingBox().move(destination.subtract(mob.position()));
 			if (candidate.distSqr(center) > HEAD_BELL_RADIUS * HEAD_BELL_RADIUS
-				&& Math.abs(candidate.getY() - center.getY()) <= 8 && level.getBlockState(candidate).isAir()
+				&& OutdoorSpot.isOutdoor(level, candidate, center.getY()) && level.getBlockState(candidate).isAir()
 				&& level.getFluidState(support).isEmpty()
 				&& level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
 				&& level.noCollision(mob, spawnBox)) {

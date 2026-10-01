@@ -10,6 +10,7 @@ import com.stella.villages.mission.MissionBoardMenu;
 import com.stella.villages.mission.MissionService;
 import com.stella.villages.mission.MissionService.MissionOffer;
 import com.stella.villages.mission.NemesisState;
+import com.stella.villages.mission.GuardQuests;
 import com.stella.villages.mission.QuestMissions;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
@@ -96,7 +97,7 @@ public final class QuestBoardGameTest {
 		helper.assertTrue(offers.size() == MissionService.BOARD_SIZE && MissionService.BOARD_SIZE == 9, "the board holds " + offers.size() + " offers");
 		helper.assertTrue(kinds.equals(List.of(MissionKind.NEMESIS, MissionKind.NEMESIS, MissionKind.NEMESIS, MissionKind.ELITE, MissionKind.ELITE,
 			MissionKind.ELITE, MissionKind.KILL, MissionKind.KILL, MissionKind.KILL)), "the board's kinds are " + kinds);
-		for (MissionKind kind : MissionKind.values()) {
+		for (MissionKind kind : MissionService.BOARD_KINDS) {
 			List<Identifier> types = offers.stream().filter(offer -> offer.kind() == kind).map(MissionOffer::targetType).toList();
 			helper.assertTrue(new HashSet<>(types).size() == 3, kind + " offers repeat a type: " + types);
 		}
@@ -314,6 +315,82 @@ public final class QuestBoardGameTest {
 	}
 
 	// An owner who is offline at the last kill has the reward stored and paid at the next login, so no reward is lost.
+	// A guard gives each player one quest a day; the next day it gives another.
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void guardQuestOncePerDay(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "guardQuestOncePerDay");
+		if (fixture == null) {
+			return;
+		}
+		BlockPos target = prepareSite(helper, fixture.bell());
+		Mob guard = guardOf(helper, fixture);
+		boolean[] given = new boolean[3];
+		withPool(List.of(SKELETON), () -> {
+			given[0] = GuardQuests.offer(helper.getLevel(), fixture.owner(), guard);
+			given[1] = GuardQuests.offer(helper.getLevel(), fixture.owner(), guard);
+			GuardQuests.markGiven(guard, fixture.owner().getUUID(), GuardQuests.day(helper.getLevel()) - 1);
+			given[2] = GuardQuests.offer(helper.getLevel(), fixture.owner(), guard);
+		});
+		List<MissionRecord> guardMissions = missionsOf(helper, fixture.owner()).stream().filter(mission -> mission.kind() == MissionKind.GUARD).toList();
+		boolean shaped = guardMissions.stream().allMatch(mission -> mission.remaining() >= QuestMissions.GUARD_MIN_COUNT
+			&& mission.remaining() <= QuestMissions.GUARD_MAX_COUNT);
+		PatrolTestSupport.result("guardQuestOncePerDay", "first=" + given[0] + " sameDay=" + given[1] + " nextDay=" + given[2]
+			+ " missions=" + guardMissions.size() + " shaped=" + shaped);
+		helper.assertTrue(given[0] && !given[1] && given[2], "the guard's daily limit is wrong: " + java.util.Arrays.toString(given));
+		helper.assertTrue(guardMissions.size() == 2 && shaped, "the guard quests are " + guardMissions);
+		release(helper, fixture.bell(), target);
+		helper.succeed();
+	}
+
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void guardQuestRewards(final GameTestHelper helper) {
+		Fixture fixture = fixture(helper, "guardQuestRewards");
+		if (fixture == null) {
+			return;
+		}
+		BlockPos target = prepareSite(helper, fixture.bell());
+		Mob guard = guardOf(helper, fixture);
+		MissionRecord[] accepted = new MissionRecord[1];
+		withPool(List.of(SKELETON), () -> {
+			GuardQuests.offer(helper.getLevel(), fixture.owner(), guard);
+			accepted[0] = missionsOf(helper, fixture.owner()).stream().filter(mission -> mission.kind() == MissionKind.GUARD).findFirst().orElse(null);
+		});
+		helper.assertTrue(accepted[0] != null, "the guard gave no quest");
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(reachable(helper, accepted[0]), "the guard quest mobs are not loaded yet"))
+			.thenExecute(() -> {
+				MissionRecord mission = questMission(helper, accepted[0].id());
+				ServerPlayer owner = fixture.owner();
+				owner.setGameMode(GameType.SURVIVAL);
+				owner.getInventory().clearContent();
+				for (UUID id : mission.mobIds()) {
+					kill(helper, owner, mobOf(helper, id));
+				}
+				int emeralds = owner.getInventory().countItem(Items.EMERALD);
+				int food = QuestMissions.GUARD_FOODS.stream().mapToInt(item -> owner.getInventory().countItem(item)).sum();
+				PatrolTestSupport.result("guardQuestRewards", "mobs=" + mission.mobIds().size() + " emeralds=" + emeralds + " food=" + food);
+				helper.assertTrue(emeralds == QuestMissions.GUARD_REWARD_EMERALDS && food == QuestMissions.GUARD_REWARD_FOOD,
+					"the guard quest paid emeralds=" + emeralds + " food=" + food);
+				helper.assertTrue(questMission(helper, mission.id()) == null, "the guard quest is still open");
+			})
+			.thenExecute(() -> release(helper, fixture.bell(), target))
+			.thenSucceed();
+	}
+
+	/** A pillager guard of the fixture's village, beside the duke. */
+	private static Mob guardOf(final GameTestHelper helper, final Fixture fixture) {
+		ServerLevel level = helper.getLevel();
+		Mob guard = helper.spawn(EntityTypes.PILLAGER, 4, 1, 4);
+		guard.setNoAi(true);
+		guard.setPersistenceRequired();
+		guard.snapTo(fixture.head().position().add(1.0, 0.0, 0.0), 0.0F, 0.0F);
+		var data = VillageWorldData.get(level);
+		var village = data.villageForMember(fixture.head().getUUID()).orElseThrow();
+		PatrolState.attach(guard, village.id(), PatrolState.Role.PILLAGER);
+		data.addMember(village, guard.getUUID(), PatrolState.Role.PILLAGER.name(), fixture.head().blockPosition());
+		return guard;
+	}
+
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void offlineOwnerIsPaidAtNextLogin(final GameTestHelper helper) {
 		quest(helper, "offlineOwnerIsPaidAtNextLogin", List.of(MissionKind.KILL), (fixture, target, missions) -> {
