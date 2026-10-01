@@ -207,6 +207,7 @@ A client with the mod shows three tabs above the inventory panel: Inventory, Bag
 The tabs sit at `topPos - 28` and follow the panel when the recipe book opens.
 The Stats tab opens a 256 by 200 pixel screen centered on the window.
 The stats screen and the bag screen draw the tabs at `top - 28`. The Inventory tab returns to the inventory.
+Every screen takes a tab click with any mouse button.
 The tabs appear only after the server sent the first stat sync.
 
 - The left column shows `Str 25 (+3) + 5` for each stat: base, pending points in blue, then bonus.
