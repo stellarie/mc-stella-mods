@@ -39,6 +39,7 @@
 			"com.stella.rpg.AffixRollGameTest",
 			"com.stella.rpg.AffixCombatGameTest",
 			"com.stella.rpg.StatusAtkGameTest",
+			"com.stella.rpg.DeathRecapGameTest",
 			"com.stella.rpg.BagShareGameTest",
 			"com.stella.rpg.MatkGameTest",
 			"com.stella.rpg.StrengthPercentGameTest",
