@@ -159,6 +159,7 @@
 	"item.mod-stella-spells.flame_ring.effect_live": "Wreathes you in a burning aura for %4$s seconds: each second, hostiles within %6$s blocks take %1$s damage and catch fire. You never burn.",
 	"item.mod-stella-spells.flame_ring_scroll": "Flame Ring Scroll",
 	"item.mod-stella-spells.return_scroll": "Scroll of Return",
+	"spellbook.mod-stella-spells.fizzle": "Your head spins and the spell fizzles.",
 	"item.mod-stella-spells.scroll_book": "Scroll Book",
 	"item.mod-stella-spells.scroll_book.effect": "Holds 9 different scrolls. Use it to open.",
 	"item.mod-stella-spells.return_scroll.effect": "Read it to return to your respawn point in the Overworld.",
