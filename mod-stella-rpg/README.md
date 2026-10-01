@@ -86,6 +86,11 @@ The XP needed for the next level is `round(10 + 2.5 x L^1.5)`, where `L` is the 
 
 The `xp_curve` key in `stats.json` holds `base`, `factor`, and `exponent`. A missing value uses the default. A client with a different config shows a different XP bar.
 
+## Nausea
+
+Nausea no longer warps the screen. An attack by a player or mob with Nausea fails 70% of the time and deals no damage.
+With `mod-stella-spells`, spells cast under Nausea fizzle at the same rate.
+
 ## Bag
 
 The Bag tab, between Inventory and Stats, opens 27 extra slots as a vanilla three-row chest menu over your

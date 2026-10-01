@@ -6,6 +6,7 @@
 		"AttributeTooltipMixin",
 		"ContainerScreenPositionAccessor",
 		"NoDotShakeLivingMixin",
+		"NauseaBlendMixin",
 		"NoDotShakeLocalPlayerMixin"
 	],
 	"injectors": {

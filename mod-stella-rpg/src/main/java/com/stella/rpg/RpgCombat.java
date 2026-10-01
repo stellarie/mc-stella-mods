@@ -42,6 +42,9 @@ public final class RpgCombat {
 
 	private static final Roller FAIR = (attacker, random, chance) -> chance > 0.0 && random.nextDouble() < chance;
 	private static volatile Roller roller = FAIR;
+	/** An attacker with Nausea misses this share of its attacks, for no damage. */
+	public static final double NAUSEA_FUMBLE_CHANCE = 0.70;
+	private static volatile Roller fumbleRoller = FAIR;
 
 	private RpgCombat() {
 	}
@@ -49,6 +52,15 @@ public final class RpgCombat {
 	/** A fair roll where each die is a maximum with the chance DEX gives. */
 	static int fairRoll(final LivingEntity attacker, final RandomSource random, final RpgDice.Dice dice) {
 		return dice.roll(random, RpgCurve.dexMaxRollChance(StatBonuses.effective(attacker, Stat.DEX)));
+	}
+
+	public static void setFumbleRoller(final Roller newRoller) {
+		fumbleRoller = newRoller == null ? FAIR : newRoller;
+	}
+
+	/** True when the attacker has Nausea and this attack fails. */
+	public static boolean fumbles(final LivingEntity attacker) {
+		return attacker.hasEffect(MobEffects.NAUSEA) && fumbleRoller.roll(attacker, attacker.getRandom(), NAUSEA_FUMBLE_CHANCE);
 	}
 
 	public static void setRoller(final Roller newRoller) {
@@ -82,6 +94,9 @@ public final class RpgCombat {
 		}
 		if (CRIT_VICTIM.get() == victim) {
 			CRIT_VICTIM.remove();
+		}
+		if (fumbles(attacker)) {
+			return 0.0F;
 		}
 		double scaled = amount;
 		Entity direct = source.getDirectEntity();
