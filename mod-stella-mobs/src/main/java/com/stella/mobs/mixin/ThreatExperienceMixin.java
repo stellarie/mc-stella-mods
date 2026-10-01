@@ -1,13 +1,12 @@
 package com.stella.mobs.mixin;
 
-import com.stella.mobs.StellaMobs;
 import com.stella.mobs.scaling.ThreatExperience;
-import com.stella.mobs.scaling.ThreatState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +19,8 @@ public abstract class ThreatExperienceMixin {
 		final ServerLevel level, final Entity killer, final CallbackInfoReturnable<Integer> cir
 	) {
 		if (!((Object) this instanceof Mob mob)
-			|| mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
+			|| cir.getReturnValue() <= 0
+			|| mob.getType() == EntityTypes.ENDER_DRAGON) {
 			return;
 		}
 		ServerPlayer player;
@@ -31,7 +31,6 @@ public abstract class ThreatExperienceMixin {
 		} else {
 			return;
 		}
-		cir.setReturnValue(ThreatExperience.reward(cir.getReturnValue(),
-			ThreatState.level(mob), player.experienceLevel));
+		cir.setReturnValue(ThreatExperience.rewardFor(mob, player.experienceLevel));
 	}
 }

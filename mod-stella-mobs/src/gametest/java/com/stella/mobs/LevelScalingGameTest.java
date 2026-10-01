@@ -178,13 +178,13 @@ public class LevelScalingGameTest {
 
 	@GameTest
 	public void rewardTable(final GameTestHelper helper) {
-		int onFloor = ThreatExperience.reward(5, 18, 20);
-		int even = ThreatExperience.reward(5, 0, 0);
-		int above = ThreatExperience.reward(5, 50, 10);
-		int farBelow = ThreatExperience.reward(5, 0, 40);
+		int onFloor = ThreatExperience.reward(6, 18, 20);
+		int even = ThreatExperience.reward(6, 0, 0);
+		int above = ThreatExperience.reward(6, 49, 10);
+		int farBelow = ThreatExperience.reward(6, 20, 60);
 		String detail = "onFloor=" + onFloor + " even=" + even + " above=" + above + " farBelow=" + farBelow;
 		result("rewardTable", detail);
-		helper.assertTrue(onFloor == 11 && even == 5 && above == 120 && farBelow == 1, detail);
+		helper.assertTrue(onFloor == 30 && even == 6 && above == 116 && farBelow == 9, detail);
 		helper.succeed();
 	}
 
