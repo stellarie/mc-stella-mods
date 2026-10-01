@@ -1,6 +1,7 @@
 package com.stella.rpg.tomb;
 
 import com.stella.rpg.StellaRpg;
+import com.stella.rpg.bag.Bag;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,6 +35,8 @@ public final class Tombstones {
 	public static final int MIN_PICK = 5;
 	public static final int SEARCH_RADIUS = 8;
 	private static final int LAST_PICKABLE_SLOT = Inventory.SLOT_OFFHAND;
+	/** A bag stack is a candidate at this offset plus its bag index. */
+	public static final int BAG_CANDIDATE_BASE = 1000;
 	private static final double LABEL_HEIGHT = 1.6;
 	private static final double HEAD_HEIGHT = 1.2;
 	private static Picker picker = Tombstones::randomPick;
@@ -79,6 +82,13 @@ public final class Tombstones {
 				candidates.add(slot);
 			}
 		}
+		Bag bag = Bag.of(player);
+		for (int index = 0; index < Bag.SIZE; index++) {
+			ItemStack stack = bag.get(index);
+			if (!stack.isEmpty() && !stack.is(NEVER_TOMBSTONE)) {
+				candidates.add(BAG_CANDIDATE_BASE + index);
+			}
+		}
 		Set<Integer> chosen = new LinkedHashSet<>(picker.pick(List.copyOf(candidates), player.getRandom()));
 		chosen.retainAll(candidates);
 		List<ItemStack> moved = new ArrayList<>();
@@ -86,8 +96,13 @@ public final class Tombstones {
 			if (moved.size() == TombstoneBlockEntity.CAPACITY) {
 				break;
 			}
-			moved.add(inventory.getItem(slot));
-			inventory.setItem(slot, ItemStack.EMPTY);
+			if (slot >= BAG_CANDIDATE_BASE) {
+				moved.add(bag.get(slot - BAG_CANDIDATE_BASE));
+				bag.set(slot - BAG_CANDIDATE_BASE, ItemStack.EMPTY);
+			} else {
+				moved.add(inventory.getItem(slot));
+				inventory.setItem(slot, ItemStack.EMPTY);
+			}
 		}
 		if (!moved.isEmpty() && !place(level, player, moved)) {
 			for (ItemStack stack : moved) {

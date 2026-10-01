@@ -3,6 +3,7 @@ package com.stella.rpg;
 import com.stella.rpg.api.HealthScaleShare;
 import com.stella.rpg.api.OutgoingDamageShare;
 import com.stella.rpg.net.RpgNet;
+import com.stella.rpg.bag.Bag;
 import com.stella.rpg.roll.WeaponRolls;
 import com.stella.rpg.tomb.TombstoneBlock;
 import com.stella.rpg.tomb.TombstoneBlockEntity;
@@ -26,6 +27,7 @@ public final class StellaRpg implements ModInitializer {
 		RpgAttributes.register();
 		RpgCommand.register();
 		DamageLog.register();
+		Bag.register();
 		RpgNet.register();
 		ArmorSets.register();
 		WeaponRolls.register();
