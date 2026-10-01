@@ -51,7 +51,8 @@
 			"com.stella.equips.RefineEquippableGameTest",
 			"com.stella.equips.EmeraldBagAutoGameTest",
 			"com.stella.equips.SlimeHeartGameTest",
-			"com.stella.equips.RefineBlockLootGameTest"
+			"com.stella.equips.RefineBlockLootGameTest",
+			"com.stella.equips.ShieldRefineGameTest"
 		]
 	}
 }

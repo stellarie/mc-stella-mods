@@ -25,10 +25,11 @@ import net.minecraft.world.item.enchantment.Repairable;
 import net.minecraft.world.item.equipment.Equippable;
 
 /**
- * Refining, after Ragnarok Online Renewal: a weapon, a piece of armour or a spellbook climbs from +0 to +15,
- * one step at a time, each step a gamble whose odds fall with the level and with the gear's grade. The level
- * lives in the stack's own custom data and its bonus rides an ordinary attribute modifier, so it is shown like
- * an enchantment without being one, and never takes an enchantment's place. A spellbook gets no modifier: the
+ * Refining, after Ragnarok Online Renewal: a weapon, a piece of armour, a shield or a spellbook climbs from +0
+ * to +15, one step at a time, each step a gamble whose odds fall with the level and with the gear's grade. The
+ * level lives in the stack's own custom data and its bonus rides an ordinary attribute modifier, so it is shown
+ * like an enchantment without being one, and never takes an enchantment's place. A shield refines like armour,
+ * with iron ingots, and its armour counts while it is held in either hand. A spellbook gets no modifier: the
  * level is all it keeps, for mod-stella-rpg to read.
  */
 public final class Refine {
@@ -52,6 +53,8 @@ public final class Refine {
 	public static final Identifier VIGOR_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_vigor");
 	public static final Identifier FORTITUDE_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_fortitude");
 	public static final Identifier STRIDE_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_stride");
+	/** Hand group: counts in either hand. */
+	public static final Identifier SHIELD_ARMOR_ID = Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, "refine_armor_hand");
 	/** +10 iron armour: this share of base max health more for each such piece worn. */
 	public static final double VIGOR_MULTIPLIER = 0.02;
 	/** +7 chestplate: the same kind of bonus. */
@@ -60,6 +63,8 @@ public final class Refine {
 	public static final double STRIDE_MULTIPLIER = 0.05;
 	/** What a spellbook is refined with. */
 	public static final Item SPELLBOOK_MATERIAL = Items.AMETHYST_SHARD;
+	/** A shield refines with iron, not planks. */
+	public static final Item SHIELD_MATERIAL = Items.IRON_INGOT;
 	private static final List<String> ARMOR_SLOT_NAMES = List.of("head", "chest", "legs", "feet");
 	private static final String SPELLBOOK_CLASS = "com.stella.spells.SpellbookItem";
 	private static final String LORE_PREFIX = "Refine +";
@@ -121,8 +126,16 @@ public final class Refine {
 		return !stack.isEmpty() && stack.getMaxStackSize() == 1 && stack.getItem().getClass().getName().equals(SPELLBOOK_CLASS);
 	}
 
+	/**
+	 * An item that blocks attacks and is neither armour nor a weapon: the vanilla shield, or one that another mod
+	 * adds. A blocking sword or helmet stays a weapon or armour, so it keeps the rules it had.
+	 */
+	public static boolean isShield(final ItemStack stack) {
+		return !stack.isEmpty() && stack.has(DataComponents.BLOCKS_ATTACKS) && !isArmor(stack) && !isWeapon(stack);
+	}
+
 	public static boolean canRefine(final ItemStack stack) {
-		return !stack.isEmpty() && (isSpellbook(stack) || stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack)));
+		return !stack.isEmpty() && (isSpellbook(stack) || stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack) || isShield(stack)));
 	}
 
 	public static int level(final ItemStack stack) {
@@ -132,7 +145,7 @@ public final class Refine {
 
 	/** The grade by what the piece is mended with: wood, stone, gold and copper are grade 1, iron 2, diamond 3, netherite 4. */
 	public static Grade grade(final ItemStack stack) {
-		if (isArmor(stack)) {
+		if (isArmor(stack) || isShield(stack)) {
 			return Grade.ARMOR;
 		}
 		if (isSpellbook(stack)) {
@@ -156,6 +169,9 @@ public final class Refine {
 		if (isSpellbook(stack)) {
 			return SPELLBOOK_MATERIAL;
 		}
+		if (isShield(stack)) {
+			return SHIELD_MATERIAL;
+		}
 		Repairable repairable = stack.get(DataComponents.REPAIRABLE);
 		if (repairable != null) {
 			for (Holder<Item> item : repairable.items()) {
@@ -169,6 +185,9 @@ public final class Refine {
 	public static boolean isMaterial(final ItemStack piece, final ItemStack candidate) {
 		if (isSpellbook(piece)) {
 			return candidate.is(SPELLBOOK_MATERIAL);
+		}
+		if (isShield(piece)) {
+			return candidate.is(SHIELD_MATERIAL);
 		}
 		Repairable repairable = piece.get(DataComponents.REPAIRABLE);
 		return repairable != null ? repairable.isValidRepairItem(candidate) : candidate.is(Items.IRON_INGOT);
@@ -227,7 +246,7 @@ public final class Refine {
 		for (ItemAttributeModifiers.Entry entry : stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers()) {
 			Identifier id = entry.modifier().id();
 			if (!id.equals(DAMAGE_ID) && !id.equals(ARMOR_ID) && !id.equals(VIGOR_ID) && !id.equals(FORTITUDE_ID) && !id.equals(STRIDE_ID)
-				&& ARMOR_SLOT_NAMES.stream().noneMatch(name -> id.equals(vigorId(name)) || id.equals(armorId(name)))) {
+				&& !id.equals(SHIELD_ARMOR_ID) && ARMOR_SLOT_NAMES.stream().noneMatch(name -> id.equals(vigorId(name)) || id.equals(armorId(name)))) {
 				builder.add(entry.attribute(), entry.modifier(), entry.slot(), entry.display());
 			}
 		}
@@ -245,6 +264,8 @@ public final class Refine {
 				if (specials.contains(RefineSpecials.Special.VIGOR)) {
 					add(builder, Attributes.MAX_HEALTH, vigorId(armorSlotOf(stack).getName()), VIGOR_MULTIPLIER, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
 				}
+			} else if (isShield(stack)) {
+				add(builder, Attributes.ARMOR, SHIELD_ARMOR_ID, level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, EquipmentSlotGroup.HAND);
 			} else if (!isRanged(stack)) {
 				add(builder, Attributes.ATTACK_DAMAGE, DAMAGE_ID, level * DAMAGE_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, EquipmentSlotGroup.MAINHAND);
 			}
