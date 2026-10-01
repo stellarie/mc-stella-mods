@@ -24,7 +24,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * The blue slime rule: a biome holds at most {@link #MAX_PER_BIOME} natural blue slimes, placed at
- * light level 15, and a chunk waits {@link #REFILL_TICKS} ticks after one dies before it fills again.
+ * light level 15 and never within 7 blocks of a light source, and a chunk waits {@link #REFILL_TICKS} ticks after one dies before it fills again.
  * The count covers loaded slimes only, and a white slime's escorts are not counted. The slimes are
  * category MISC, so they never count against the mob cap, and their spawn reason is EVENT.
  */
@@ -147,7 +147,8 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 
 			if (y <= level.getMinY() || lightAt(level, pos) != LIGHT_LEVEL
 				|| !SpawnPlacements.isSpawnPositionOk(StellaEntities.BLUE_SLIME, level, pos)
-				|| !level.noCollision(StellaEntities.BLUE_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))) {
+				|| !level.noCollision(StellaEntities.BLUE_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))
+				|| LightSources.near(level, pos, LightSources.RADIUS)) {
 				continue;
 			}
 			if (countInBiome(level, level.getBiome(pos)) >= MAX_PER_BIOME) {
