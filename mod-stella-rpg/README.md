@@ -99,6 +99,7 @@ inventory.
 - A pickup goes into the bag only when the main inventory has no room.
 - Shift-click moves stacks between the bag and the inventory.
 - The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
+- Other mods read and write the bag through the share `mod-stella-rpg:bag-view`, a `Function<Player, Container>`. The equips mod uses it to fill an emerald bag kept here.
 
 ## Level-up refresh
 

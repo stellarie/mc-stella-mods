@@ -49,6 +49,7 @@
 			"com.stella.equips.RefineSpecialsGameTest",
 			"com.stella.equips.RefineSpellbookGameTest",
 			"com.stella.equips.RefineEquippableGameTest",
+			"com.stella.equips.EmeraldBagAutoGameTest",
 			"com.stella.equips.RefineBlockLootGameTest"
 		]
 	}

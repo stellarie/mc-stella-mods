@@ -299,6 +299,9 @@ count.
 - Use the bag to open its screen. It shows the emeralds in the bag and the loose emeralds you carry, with Deposit and
   Withdraw buttons for 1, 16, 64, or all.
 - Withdrawn emeralds that do not fit drop at your feet.
+- With the bag in your inventory or in the rpg bag, emeralds you pick up or receive go straight into it.
+  The checkbox "Collect picked-up emeralds" turns this off for that bag, for example before you trade
+  with a villager. It starts on. Withdrawn emeralds and trade outputs stay loose.
 - Purchases count and spend bag emeralds: loose emeralds go first, then bags. This covers the enchanting anvil, and
   other mods that read the purse shares `mod-stella-equips-enchants:emerald-count` and
   `mod-stella-equips-enchants:emerald-spend`. The enchanting table's emerald slot still takes real emeralds.
