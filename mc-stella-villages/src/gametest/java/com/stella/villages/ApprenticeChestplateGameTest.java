@@ -89,9 +89,9 @@ public final class ApprenticeChestplateGameTest {
 				}
 			}
 		}
-		Zombie worn = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(3.5, 1.0, 3.5));
+		Zombie worn = bare(helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(3.5, 1.0, 3.5)));
 		worn.setItemSlot(EquipmentSlot.CHEST, new ItemStack(ApprenticeChestplate.ITEM));
-		Zombie control = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(3.5, 1.0, 2.5));
+		Zombie control = bare(helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(3.5, 1.0, 2.5)));
 		control.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
 		Zombie held = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(2.5, 1.0, 3.5));
 		held.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(ApprenticeChestplate.ITEM));
@@ -114,6 +114,14 @@ public final class ApprenticeChestplateGameTest {
 				"the worn chestplate took " + taken + " where an iron chestplate took " + controlTaken);
 			helper.succeed();
 		});
+	}
+
+	/** The mobs mod can roll gear onto a spawned zombie; an enchanted piece would change the hit. */
+	private static Zombie bare(final Zombie zombie) {
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			zombie.setItemSlot(slot, ItemStack.EMPTY);
+		}
+		return zombie;
 	}
 
 	/** In the Overworld the enraged slime is exactly level 20, with infinite Speed II and Strength II. */
