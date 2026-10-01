@@ -12,7 +12,8 @@
 			"com.stella.food.CookingStationMenuGameTest",
 			"com.stella.food.FoodGameTest",
 			"com.stella.food.FoodTooltipGameTest",
-			"com.stella.food.SeasonedGameTest"
+			"com.stella.food.SeasonedGameTest",
+			"com.stella.food.FoodLootGameTest"
 		]
 	},
 	"depends": {

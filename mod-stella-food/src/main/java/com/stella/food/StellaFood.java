@@ -37,6 +37,7 @@ public final class StellaFood implements ModInitializer {
 		FoodItems.register();
 		CookingStationMenu.register();
 		CookingStationBlock.register();
+		FoodLoot.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
