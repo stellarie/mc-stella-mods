@@ -675,54 +675,66 @@ public class EffectEnchantGameTest {
 		helper.succeed();
 	}
 
+	/** Each break adds one stack and 1% break speed, up to six stacks per level. */
 	@GameTest(maxTicks = 200)
-	public void prospectorRevealRadiusScalesWithLevel(final GameTestHelper helper) {
-		Enchantment prospector = enchantment(helper, "tool/prospector");
-		String body;
-		try (InputStream stream = EffectEnchantGameTest.class.getResourceAsStream(
-			"/data/mod-stella-equips-enchants/function/prospector.mcfunction"
-		)) {
-			body = stream == null ? null : new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-		} catch (java.io.IOException error) {
-			body = null;
-		}
-
-		helper.assertTrue(body != null, "the prospector function is not on the classpath");
-		if (body == null) {
-			return;
-		}
-
-		int branches = 0;
-		for (int level = 1; level <= 5; level++) {
-			if (body.contains("matches " + level + " run particle")) {
-				branches++;
-			}
-		}
-
-		ServerPlayer miner = mockPlayer(helper, GameType.SURVIVAL);
+	public void prospectorStacksCapAtSixPerLevel(final GameTestHelper helper) {
+		ServerPlayer miner = mockPlayerInLevel(helper);
+		miner.setGameMode(GameType.SURVIVAL);
 		BlockPos block = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
-		helper.getLevel().setBlockAndUpdate(block, Blocks.STONE.defaultBlockState());
-		miner.setPos(block.getX() + 0.5, block.getY(), block.getZ() + 0.5);
+		hold(miner, new ItemStack(Items.DIAMOND_PICKAXE));
+		mine(helper, miner, block, 3);
+		int plain = com.stella.equips.enchant.ProspectorStacks.stacks(miner);
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/prospector", 1));
+		mine(helper, miner, block, 8);
+		int levelOne = com.stella.equips.enchant.ProspectorStacks.stacks(miner);
 		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/prospector", 5));
-		rearmCooldown(helper, miner, "ench_cd_prospect", 40);
-		int before = score(helper, miner, "ench_cd_prospect");
-		breakBlock(miner, block, helper.getLevel());
-		int after = score(helper, miner, "ench_cd_prospect");
-		int readLevel = scratchScore(helper, "#prospect_level");
+		mine(helper, miner, block, 32);
+		int levelFive = com.stella.equips.enchant.ProspectorStacks.stacks(miner);
+		double speed = miner.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=prospectorStacks RESULT plain={} levelOne={} levelFive={} speed={}",
+			plain, levelOne, levelFive, speed);
+		helper.assertTrue(plain == 0, "a plain pickaxe built " + plain + " stacks");
+		helper.assertTrue(levelOne == 6 && levelFive == 30, "the caps are " + levelOne + " and " + levelFive);
+		helper.assertTrue(Math.abs(speed - 1.30) < 1.0E-6, "30 stacks give break speed " + speed);
+		hold(miner, new ItemStack(Items.DIAMOND_PICKAXE));
+		helper.runAfterDelay(2, () -> {
+			double unheld = miner.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
+			helper.assertTrue(Math.abs(unheld - 1.0) < 1.0E-6, "a plain pickaxe keeps break speed " + unheld);
+			com.stella.equips.enchant.ProspectorStacks.reset(miner);
+			helper.succeed();
+		});
+	}
 
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=prospectorRadius RESULT maxLevel={} levelBranches={} expectedMaxLevel=5 "
-				+ "cooldownBefore={} cooldownAfter={} readLevel={}",
-			prospector.getMaxLevel(), branches, before, after, readLevel
-		);
-		helper.assertTrue(prospector.getMaxLevel() == 5, "Prospector still caps at " + prospector.getMaxLevel());
-		helper.assertTrue(branches >= 4, "the reveal radius holds " + branches + " level branches instead of 5");
-		helper.assertTrue(readLevel == 5, "the function read level " + readLevel + " from a level 5 pickaxe");
-		helper.assertTrue(
-			after == before + 40,
-			"the Prospector pulse never ran on a block break: the cooldown went " + before + " to " + after
-		);
-		helper.succeed();
+	/** After three idle seconds the stacks fall by one each second, and the bonus ends at zero. */
+	@GameTest(maxTicks = 200)
+	public void prospectorStacksDecayAfterIdle(final GameTestHelper helper) {
+		ServerPlayer miner = mockPlayerInLevel(helper);
+		miner.setGameMode(GameType.SURVIVAL);
+		BlockPos block = helper.absolutePos(new BlockPos(2, (int) SPAWN_Y, 2));
+		hold(miner, enchanted(helper, Items.DIAMOND_PICKAXE, "tool/prospector", 5));
+		mine(helper, miner, block, 3);
+		int[] seen = new int[3];
+		helper.runAfterDelay(com.stella.equips.enchant.ProspectorStacks.IDLE_TICKS - 10,
+			() -> seen[0] = com.stella.equips.enchant.ProspectorStacks.stacks(miner));
+		helper.runAfterDelay(com.stella.equips.enchant.ProspectorStacks.IDLE_TICKS + 25,
+			() -> seen[1] = com.stella.equips.enchant.ProspectorStacks.stacks(miner));
+		helper.runAfterDelay(com.stella.equips.enchant.ProspectorStacks.IDLE_TICKS + 60, () -> {
+			seen[2] = com.stella.equips.enchant.ProspectorStacks.stacks(miner);
+			double speed = miner.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
+			StellaEquips.LOGGER.info("[BEHAVIOR] test=prospectorDecay RESULT beforeIdle={} midDecay={} end={} speed={}",
+				seen[0], seen[1], seen[2], speed);
+			helper.assertTrue(seen[0] == 3, "stacks fell before the idle pause: " + seen[0]);
+			helper.assertTrue(seen[1] == 1, "decay did not drop one stack a second: " + seen[1]);
+			helper.assertTrue(seen[2] == 0 && Math.abs(speed - 1.0) < 1.0E-6, "the bonus stayed: " + seen[2] + " stacks, speed " + speed);
+			helper.succeed();
+		});
+	}
+
+	private static void mine(final GameTestHelper helper, final ServerPlayer miner, final BlockPos block, final int count) {
+		for (int i = 0; i < count; i++) {
+			helper.getLevel().setBlockAndUpdate(block, Blocks.STONE.defaultBlockState());
+			miner.gameMode.destroyBlock(block);
+		}
 	}
 
 	@GameTest(maxTicks = 200)

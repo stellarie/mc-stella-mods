@@ -33,6 +33,7 @@ public class StellaEquips implements ModInitializer {
 		com.stella.equips.enchant.Waveform.register();
 		OreRegeneration.register();
 		OreMender.register();
+		com.stella.equips.enchant.ProspectorStacks.register();
 		UndertowPull.register();
 		PowerTracker.register();
 		ReadoutService.register();

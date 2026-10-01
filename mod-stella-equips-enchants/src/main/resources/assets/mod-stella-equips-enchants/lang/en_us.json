@@ -60,7 +60,7 @@
   "enchantment.mod-stella-equips-enchants.weapon.shakedown.desc": "A defeated enemy drops up to two emeralds per level.",
   "enchantment.mod-stella-equips-enchants.utility.scholar": "Scholar",
   "enchantment.mod-stella-equips-enchants.utility.scholar.desc": "Each piece with Scholar adds 15% to experience from orbs.",
-  "enchantment.mod-stella-equips-enchants.tool.prospector.desc": "Breaking a block rings a chime and a spark.",
+  "enchantment.mod-stella-equips-enchants.tool.prospector.desc": "Each block broken adds 1% mining speed, up to 6 stacks per level. Stacks fade after 3 idle seconds.",
   "enchantment.mod-stella-equips-enchants.tool.blockfeast": "Blockfeast",
   "enchantment.mod-stella-equips-enchants.tool.blockfeast.desc": "Breaking blocks grants extra experience.",
   "enchantment.mod-stella-equips-enchants.tool.lumberjack": "Lumberjack",
