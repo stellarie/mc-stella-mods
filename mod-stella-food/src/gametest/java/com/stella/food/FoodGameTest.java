@@ -403,6 +403,27 @@ public final class FoodGameTest {
 		helper.succeed();
 	}
 
+	/** A stack of potions infuses one dish and keeps the rest: one potion used, one bottle back. */
+	@GameTest
+	public void infusionFromStackUsesOnePotion(final GameTestHelper helper) {
+		FoodTestLog.track(helper, "infusionFromStackUsesOnePotion");
+		ServerPlayer player = player(helper);
+		ItemStack potions = PotionContents.createItemStack(Items.POTION, Potions.SWIFTNESS);
+		potions.setCount(3);
+		AbstractContainerMenu menu = openStationMenu(helper, player, item("hunter_stew").getDefaultInstance(), potions);
+		ItemStack infused = takeStationResult(helper, player, menu);
+		int left = 0;
+		for (int slot = 1; slot <= 9; slot++) {
+			ItemStack held = menu.getSlot(slot).getItem();
+			if (held.is(Items.POTION)) {
+				left += held.getCount();
+			}
+		}
+		helper.assertTrue(infused.has(DataComponents.POTION_CONTENTS), "station did not infuse the dish");
+		helper.assertTrue(left == 2 && bottleCount(player, menu) == 1, "a stack infusion left potions=" + left + " bottles=" + bottleCount(player, menu));
+		helper.succeed();
+	}
+
 	@GameTest
 	public void infusedInstantPotionAppliesImmediatelyAndOnlyOnce(final GameTestHelper helper) {
 		FoodTestLog.track(helper, "infusedInstantPotionAppliesImmediatelyAndOnlyOnce");

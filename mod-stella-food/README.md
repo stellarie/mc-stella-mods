@@ -73,6 +73,14 @@ The station rolls one small stat bonus when it infuses a dish: a random stat (ST
 - `mod-stella-rpg` reads these effects by id and adds one stat point for each level. Without it the effects do nothing but show an icon.
 - Plain dishes, ordinary food, and dishes infused before this bonus existed carry no bonus.
 
+## Potion stacks
+
+- Potions, splash potions, and lingering potions stack to 16.
+- Only potions with the same contents stack. A Healing potion never merges with a Swiftness potion.
+- Drinking one potion from a stack leaves the rest and gives one glass bottle.
+- The cooking station uses one potion from a stack and returns one glass bottle.
+- Glass bottles keep the vanilla stack size of 64.
+
 ## Build and verification
 
 Run these commands from this directory:
