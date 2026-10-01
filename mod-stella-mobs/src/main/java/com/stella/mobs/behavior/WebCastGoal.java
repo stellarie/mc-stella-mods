@@ -93,5 +93,8 @@ public class WebCastGoal extends Goal {
 		level.sendParticles(ParticleTypes.ITEM_COBWEB, target.getX(), target.getY(0.5), target.getZ(), 20, 1.0, 1.0, 1.0, 0.05);
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=webCast CAST spider={} webs={} wither={}", this.spider.getType(), webs.size(), this.spider instanceof CaveSpider);
 		recorder.cast(this.spider, target, List.copyOf(webs));
+		if (!webs.isEmpty()) {
+			SpiderSignal.alert(this.spider, target);
+		}
 	}
 }

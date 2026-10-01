@@ -208,6 +208,7 @@ public final class BehaviorInstaller {
 		}
 
 		installShield(mob);
+		ZombiePursuit.install(mob);
 		CrossbowCadenceGoal.install(mob);
 		// M4: a Pillager with a sword has no vanilla goal that swings it.
 		PillagerMeleeGoal.install(mob);

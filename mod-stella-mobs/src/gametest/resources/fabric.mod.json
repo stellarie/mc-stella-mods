@@ -67,7 +67,10 @@
 			"com.stella.mobs.ExperienceRewardGameTest",
 			"com.stella.mobs.ContainerLevelGameTest",
 			"com.stella.mobs.TraitsGameTest",
-			"com.stella.mobs.WitchGameTest"
+			"com.stella.mobs.WitchGameTest",
+			"com.stella.mobs.ShieldGuardGameTest",
+			"com.stella.mobs.ZombiePursuitGameTest",
+			"com.stella.mobs.SpiderSignalGameTest"
 		]
 	}
 }

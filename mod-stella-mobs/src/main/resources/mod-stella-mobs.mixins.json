@@ -26,7 +26,8 @@
 		"NaturalSpawnerQuietMixin",
 		"ThreatExperienceMixin",
 		"MobPiercingMixin",
-		"MobDamageScalingMixin"
+		"MobDamageScalingMixin",
+		"MobShieldBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
