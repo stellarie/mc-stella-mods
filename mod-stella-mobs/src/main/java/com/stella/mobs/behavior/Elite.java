@@ -3,6 +3,7 @@ package com.stella.mobs.behavior;
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.entity.BlackSlime;
 import com.stella.mobs.entity.BlueSlime;
+import com.stella.mobs.entity.RedSlime;
 import com.stella.mobs.entity.WhiteSlime;
 import com.stella.mobs.gear.GearRoller;
 import com.stella.mobs.gear.GearTier;
@@ -47,8 +48,9 @@ public final class Elite {
 	}
 
 	public static boolean canBeElite(final Mob mob) {
-		// The blue slime is a beginner mob: a slime is an Enemy, so it must be refused by name.
-		return mob instanceof Enemy && !(mob instanceof BlueSlime) && !BOSS_TYPES.contains(mob.getType());
+		// The blue and red slimes are beginner mobs: a slime is an Enemy, so they are refused by name.
+		return mob instanceof Enemy && !(mob instanceof BlueSlime) && !(mob instanceof RedSlime)
+			&& !BOSS_TYPES.contains(mob.getType());
 	}
 
 	public static boolean roll(final RandomSource random, final double chance) {
