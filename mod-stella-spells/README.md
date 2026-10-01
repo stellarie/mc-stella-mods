@@ -76,7 +76,19 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 Offensive area and chain spells affect only mobs that are hostile by nature (`Enemy`); they do not
 hit players, pets, or villagers. Support area spells affect the caster or nearby allies as described above.
 
-Each book's tooltip lists its target, how to cast it, what it does, and its base cooldown.
+Each book's tooltip lists its target, how to cast it, what it does, and its cooldown. The numbers in the table above are
+base numbers. In game, the effect line and the cooldown line show what a cast by you would do now:
+
+- Damage shows a range, the lowest to the highest hit, in the health units your hearts use. It follows your RPG
+  MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.
+- Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
+- The cooldown line shows your real cooldown after Intelligence and Quickening.
+- A scroll shows the same effect line as its book.
+- Without the RPG mod the line shows the flat numbers times the cast power.
+- A tooltip built with no player, such as on a server, keeps the base numbers.
+
+Every spell keeps its numbers in one place, `SpellNumbers`. The spell effect and the tooltip read that record, so the
+text on a book cannot drift from the cast. A new spell declares its numbers there.
 
 ## Client visuals
 

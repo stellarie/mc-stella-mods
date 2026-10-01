@@ -16,72 +16,72 @@ import net.minecraft.world.phys.Vec3;
 
 /** The second catalogue includes combat, movement, and support spells. */
 public final class MoreSpells {
-	public static final float ICE_LANCE_DAMAGE = 5.0F;
-	public static final int ICE_LANCE_FREEZE_TICKS = 140;
+	public static final float ICE_LANCE_DAMAGE = SpellNumbers.ICE_LANCE.damage();
+	public static final int ICE_LANCE_FREEZE_TICKS = SpellNumbers.ICE_LANCE.duration().ticks();
 	/** How far the lance flies past its caster, and how close to its line a hostile must stand to be struck. */
-	public static final double ICE_LANCE_RANGE = 16.0;
+	public static final double ICE_LANCE_RANGE = SpellNumbers.ICE_LANCE.radius();
 	public static final double ICE_LANCE_WIDTH = 1.0;
 	/** One puff of snow mist every half block along the lance's line. */
 	public static final double ICE_LANCE_TRAIL_STEP = 0.5;
-	public static final float SOUL_SIPHON_DAMAGE = 4.0F;
-	public static final float VENOM_DAMAGE = 2.0F;
-	public static final int VENOM_TICKS = 100;
-	public static final int VENOM_AMPLIFIER = 1;
-	public static final double HEX_RADIUS = 6.0;
+	public static final float SOUL_SIPHON_DAMAGE = SpellNumbers.SOUL_SIPHON.damage();
+	public static final float VENOM_DAMAGE = SpellNumbers.VENOM_DART.damage();
+	public static final int VENOM_TICKS = SpellNumbers.VENOM_DART.duration().ticks();
+	public static final int VENOM_AMPLIFIER = SpellNumbers.VENOM_DART.amplifier();
+	public static final double HEX_RADIUS = SpellNumbers.SAPPING_HEX.radius();
 	/** The hex lasts this long for every hostile it weakens, up to its cap. */
-	public static final int HEX_TICKS_PER_FOE = 60;
-	public static final int HEX_MAX_TICKS = 300;
-	public static final int HEX_AMPLIFIER = 1;
-	public static final int HEX_STRENGTH_AMPLIFIER = 1;
-	public static final double GRAVITY_RADIUS = 6.0;
-	public static final int GRAVITY_TICKS = 160;
-	public static final int GRAVITY_SLOW_AMPLIFIER = 1;
+	public static final int HEX_TICKS_PER_FOE = SpellNumbers.SAPPING_HEX.duration().ticks();
+	public static final int HEX_MAX_TICKS = SpellNumbers.SAPPING_HEX.capTicks();
+	public static final int HEX_AMPLIFIER = SpellNumbers.SAPPING_HEX.amplifier();
+	public static final int HEX_STRENGTH_AMPLIFIER = SpellNumbers.SAPPING_HEX.extraAmplifier();
+	public static final double GRAVITY_RADIUS = SpellNumbers.GRAVITY.radius();
+	public static final int GRAVITY_TICKS = SpellNumbers.GRAVITY.duration().ticks();
+	public static final int GRAVITY_SLOW_AMPLIFIER = SpellNumbers.GRAVITY.amplifier();
 	public static final double GRAVITY_JUMP_FACTOR = 0.5;
-	public static final int FLASH_BLIND_TICKS = 100;
-	public static final int FLASH_GLOW_TICKS = 200;
-	public static final float EMBER_DAMAGE = 2.0F;
-	public static final int EMBER_BURN_TICKS = 200;
-	public static final int QUICKSILVER_TICKS = 400;
-	public static final int QUICKSILVER_AMPLIFIER = 1;
-	public static final int TIDE_BREATH_TICKS = 1200;
-	public static final int TIDE_GRACE_TICKS = 400;
-	public static final int BERSERK_TICKS = 200;
-	public static final int BERSERK_AMPLIFIER = 1;
-	public static final int HASTE_TICKS = 1200;
-	public static final int HASTE_AMPLIFIER = 1;
-	public static final int VEIL_TICKS = 600;
+	public static final int FLASH_BLIND_TICKS = SpellNumbers.BLINDING_FLASH.duration().ticks();
+	public static final int FLASH_GLOW_TICKS = SpellNumbers.BLINDING_FLASH.extra().ticks();
+	public static final float EMBER_DAMAGE = SpellNumbers.EMBER_BRAND.damage();
+	public static final int EMBER_BURN_TICKS = SpellNumbers.EMBER_BRAND.duration().ticks();
+	public static final int QUICKSILVER_TICKS = SpellNumbers.QUICKSILVER.duration().ticks();
+	public static final int QUICKSILVER_AMPLIFIER = SpellNumbers.QUICKSILVER.amplifier();
+	public static final int TIDE_BREATH_TICKS = SpellNumbers.TIDE_LUNGS.duration().ticks();
+	public static final int TIDE_GRACE_TICKS = SpellNumbers.TIDE_LUNGS.extra().ticks();
+	public static final int BERSERK_TICKS = SpellNumbers.BERSERK.duration().ticks();
+	public static final int BERSERK_AMPLIFIER = SpellNumbers.BERSERK.amplifier();
+	public static final int HASTE_TICKS = SpellNumbers.HASTE_RUNE.duration().ticks();
+	public static final int HASTE_AMPLIFIER = SpellNumbers.HASTE_RUNE.amplifier();
+	public static final int VEIL_TICKS = SpellNumbers.SHADOW_VEIL.duration().ticks();
 	/** The blow that breaks the veil strikes this many times over and stops its victim dead. */
 	public static final double VEIL_BREAK_DAMAGE_MULTIPLIER = 2.0;
-	public static final int VEIL_BREAK_SLOW_TICKS = 40;
+	public static final int VEIL_BREAK_SLOW_TICKS = SpellNumbers.SHADOW_VEIL.extra().ticks();
 	/** Slowness VII: seven times fifteen percent, so the victim cannot move at all. */
-	public static final int VEIL_BREAK_SLOW_AMPLIFIER = 6;
-	public static final double PURIFY_RADIUS = 6.0;
-	public static final float SANCTUARY_SELF_HEAL = 6.0F;
-	public static final float SANCTUARY_ALLY_HEAL = 4.0F;
-	public static final double SANCTUARY_RADIUS = 6.0;
-	public static final double FROST_NOVA_RADIUS = 5.0;
-	public static final float FROST_NOVA_DAMAGE = 3.0F;
-	public static final int FROST_NOVA_SLOW_TICKS = 60;
-	public static final int FROST_NOVA_SLOW_AMPLIFIER = 3;
-	public static final double EARTHSPIKE_RADIUS = 3.0;
-	public static final float EARTHSPIKE_DAMAGE = 4.0F;
+	public static final int VEIL_BREAK_SLOW_AMPLIFIER = SpellNumbers.SHADOW_VEIL.extraAmplifier();
+	public static final double PURIFY_RADIUS = SpellNumbers.PURIFY.radius();
+	public static final float SANCTUARY_SELF_HEAL = SpellNumbers.SANCTUARY.heal();
+	public static final float SANCTUARY_ALLY_HEAL = SpellNumbers.SANCTUARY.allyHeal();
+	public static final double SANCTUARY_RADIUS = SpellNumbers.SANCTUARY.radius();
+	public static final double FROST_NOVA_RADIUS = SpellNumbers.FROST_NOVA.radius();
+	public static final float FROST_NOVA_DAMAGE = SpellNumbers.FROST_NOVA.damage();
+	public static final int FROST_NOVA_SLOW_TICKS = SpellNumbers.FROST_NOVA.duration().ticks();
+	public static final int FROST_NOVA_SLOW_AMPLIFIER = SpellNumbers.FROST_NOVA.amplifier();
+	public static final double EARTHSPIKE_RADIUS = SpellNumbers.EARTHSPIKE.radius();
+	public static final float EARTHSPIKE_DAMAGE = SpellNumbers.EARTHSPIKE.damage();
 	public static final double EARTHSPIKE_LIFT = 1.0;
-	public static final float PLAGUE_RADIUS = 3.0F;
-	public static final int PLAGUE_CLOUD_TICKS = 100;
-	public static final int PLAGUE_POISON_TICKS = 100;
-	public static final double FLAME_RING_RADIUS = 3.0;
-	public static final float FLAME_RING_DAMAGE = 3.0F;
-	public static final int FLAME_RING_BURN_TICKS = 60;
+	public static final float PLAGUE_RADIUS = (float) SpellNumbers.PLAGUE_CLOUD.radius();
+	public static final int PLAGUE_CLOUD_TICKS = SpellNumbers.PLAGUE_CLOUD.duration().ticks();
+	public static final int PLAGUE_POISON_TICKS = SpellNumbers.PLAGUE_CLOUD.extra().ticks();
+	public static final double FLAME_RING_RADIUS = SpellNumbers.FLAME_RING.radius();
+	public static final float FLAME_RING_DAMAGE = SpellNumbers.FLAME_RING.damage();
+	public static final int FLAME_RING_BURN_TICKS = SpellNumbers.FLAME_RING.extra().ticks();
 	/** How long the caster wears the burning aura, and how often it scorches the hostiles around. */
-	public static final int FLAME_AURA_TICKS = 200;
+	public static final int FLAME_AURA_TICKS = SpellNumbers.FLAME_RING.duration().ticks();
 	public static final int FLAME_AURA_PULSE_TICKS = 20;
-	public static final double SUPPORT_RADIUS = 8.0;
-	public static final int BULWARK_TICKS = 400;
-	public static final int BULWARK_AMPLIFIER = 1;
-	public static final int TAILWIND_TICKS = 600;
-	public static final int TAILWIND_AMPLIFIER = 1;
-	public static final int BATTLE_HYMN_TICKS = 400;
-	public static final int BATTLE_HYMN_AMPLIFIER = 0;
+	public static final double SUPPORT_RADIUS = SpellNumbers.BULWARK_HYMN.radius();
+	public static final int BULWARK_TICKS = SpellNumbers.BULWARK_HYMN.duration().ticks();
+	public static final int BULWARK_AMPLIFIER = SpellNumbers.BULWARK_HYMN.amplifier();
+	public static final int TAILWIND_TICKS = SpellNumbers.TAILWIND.duration().ticks();
+	public static final int TAILWIND_AMPLIFIER = SpellNumbers.TAILWIND.amplifier();
+	public static final int BATTLE_HYMN_TICKS = SpellNumbers.BATTLE_HYMN.duration().ticks();
+	public static final int BATTLE_HYMN_AMPLIFIER = SpellNumbers.BATTLE_HYMN.amplifier();
 
 	/** Test seam: each cloud a spell left, as it was added to the level. */
 	public interface Recorder {
@@ -130,7 +130,7 @@ public final class MoreSpells {
 		struck.add(0, target);
 		for (Mob mob : struck) {
 			hurt(caster, mob, RpgBridge.damage(caster, ICE_LANCE_DAMAGE, modifiers.powerMultiplier()));
-			freeze(mob, modifiers.durationTicks(ICE_LANCE_FREEZE_TICKS, false));
+			freeze(mob, SpellNumbers.ICE_LANCE.durationTicks(modifiers));
 		}
 		int puffs = 0;
 		double length = from.distanceTo(to);
@@ -167,7 +167,7 @@ public final class MoreSpells {
 			return false;
 		}
 		hurt(caster, target, RpgBridge.damage(caster, VENOM_DAMAGE, modifiers.powerMultiplier()));
-		target.addEffect(new MobEffectInstance(MobEffects.POISON, modifiers.durationTicks(VENOM_TICKS, false), VENOM_AMPLIFIER), caster);
+		target.addEffect(new MobEffectInstance(MobEffects.POISON, SpellNumbers.VENOM_DART.durationTicks(modifiers), VENOM_AMPLIFIER), caster);
 		return true;
 	}
 
@@ -177,17 +177,18 @@ public final class MoreSpells {
 		if (hexed.isEmpty()) {
 			return false;
 		}
+		SpellNumbers numbers = SpellNumbers.SAPPING_HEX;
 		int ticks = Math.min(HEX_MAX_TICKS, HEX_TICKS_PER_FOE * hexed.size());
 		for (Mob mob : hexed) {
-			mob.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, modifiers.durationTicks(ticks, false), HEX_AMPLIFIER), caster);
+			mob.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, numbers.duration().scaled(ticks, modifiers), HEX_AMPLIFIER), caster);
 		}
-		caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH, modifiers.durationTicks(ticks, true), HEX_STRENGTH_AMPLIFIER), caster);
+		caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH, numbers.extra().scaled(ticks, modifiers), HEX_STRENGTH_AMPLIFIER), caster);
 		return true;
 	}
 
 	// Every hostile around the caster is slowed and can jump only half as high until it wears off.
 	static boolean applyGravity(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		int ticks = modifiers.durationTicks(GRAVITY_TICKS, false);
+		int ticks = SpellNumbers.GRAVITY.durationTicks(modifiers);
 		for (Mob mob : hostiles(caster.level(), caster.position(), GRAVITY_RADIUS * modifiers.radiusMultiplier())) {
 			mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, ticks, GRAVITY_SLOW_AMPLIFIER), caster);
 			SpellTimers.ground(mob, ticks);
@@ -199,8 +200,8 @@ public final class MoreSpells {
 		if (target == null) {
 			return false;
 		}
-		target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, modifiers.durationTicks(FLASH_BLIND_TICKS, false), 0), caster);
-		target.addEffect(new MobEffectInstance(MobEffects.GLOWING, modifiers.durationTicks(FLASH_GLOW_TICKS, false), 0), caster);
+		target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, SpellNumbers.BLINDING_FLASH.durationTicks(modifiers), 0), caster);
+		target.addEffect(new MobEffectInstance(MobEffects.GLOWING, SpellNumbers.BLINDING_FLASH.extraTicks(modifiers), 0), caster);
 		return true;
 	}
 
@@ -209,31 +210,31 @@ public final class MoreSpells {
 			return false;
 		}
 		hurt(caster, target, RpgBridge.damage(caster, EMBER_DAMAGE, modifiers.powerMultiplier()));
-		target.igniteForTicks(modifiers.durationTicks(EMBER_BURN_TICKS, false));
+		target.igniteForTicks(SpellNumbers.EMBER_BRAND.durationTicks(modifiers));
 		return true;
 	}
 
 	static boolean applyQuicksilver(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return caster.addEffect(new MobEffectInstance(MobEffects.SPEED, modifiers.durationTicks(QUICKSILVER_TICKS, true), QUICKSILVER_AMPLIFIER), caster);
+		return caster.addEffect(new MobEffectInstance(MobEffects.SPEED, SpellNumbers.QUICKSILVER.durationTicks(modifiers), QUICKSILVER_AMPLIFIER), caster);
 	}
 
 	static boolean applyTideLungs(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		caster.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, modifiers.durationTicks(TIDE_BREATH_TICKS, true), 0), caster);
-		caster.addEffect(new MobEffectInstance(MobEffects.DOLPHINS_GRACE, modifiers.durationTicks(TIDE_GRACE_TICKS, true), 0), caster);
+		caster.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, SpellNumbers.TIDE_LUNGS.durationTicks(modifiers), 0), caster);
+		caster.addEffect(new MobEffectInstance(MobEffects.DOLPHINS_GRACE, SpellNumbers.TIDE_LUNGS.extraTicks(modifiers), 0), caster);
 		return true;
 	}
 
 	static boolean applyBerserk(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH, modifiers.durationTicks(BERSERK_TICKS, true), BERSERK_AMPLIFIER), caster);
+		return caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH, SpellNumbers.BERSERK.durationTicks(modifiers), BERSERK_AMPLIFIER), caster);
 	}
 
 	static boolean applyHasteRune(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return caster.addEffect(new MobEffectInstance(MobEffects.HASTE, modifiers.durationTicks(HASTE_TICKS, true), HASTE_AMPLIFIER), caster);
+		return caster.addEffect(new MobEffectInstance(MobEffects.HASTE, SpellNumbers.HASTE_RUNE.durationTicks(modifiers), HASTE_AMPLIFIER), caster);
 	}
 
 	// The veil holds until it runs out or its wearer strikes, and that first blow is the breaking one.
 	static boolean applyShadowVeil(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		int ticks = modifiers.durationTicks(VEIL_TICKS, true);
+		int ticks = SpellNumbers.SHADOW_VEIL.durationTicks(modifiers);
 		boolean veiled = caster.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, ticks, 0), caster);
 		if (veiled) {
 			SpellTimers.veil(caster, ticks);
@@ -283,7 +284,7 @@ public final class MoreSpells {
 	static boolean applyFrostNova(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		for (Mob hostile : hostiles(caster.level(), caster.position(), FROST_NOVA_RADIUS * modifiers.radiusMultiplier())) {
 			hurt(caster, hostile, RpgBridge.damage(caster, FROST_NOVA_DAMAGE, modifiers.powerMultiplier()));
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, modifiers.durationTicks(FROST_NOVA_SLOW_TICKS, false), FROST_NOVA_SLOW_AMPLIFIER), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROST_NOVA.durationTicks(modifiers), FROST_NOVA_SLOW_AMPLIFIER), caster);
 		}
 		return true;
 	}
@@ -302,27 +303,27 @@ public final class MoreSpells {
 	}
 
 	static boolean applyPlagueCloud(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return point != null && cloud(caster, point, PLAGUE_RADIUS * (float) modifiers.radiusMultiplier(), modifiers.durationTicks(PLAGUE_CLOUD_TICKS, false),
+		return point != null && cloud(caster, point, PLAGUE_RADIUS * (float) modifiers.radiusMultiplier(), SpellNumbers.PLAGUE_CLOUD.durationTicks(modifiers),
 			new MobEffectInstance(MobEffects.POISON, PLAGUE_POISON_TICKS, 0));
 	}
 
 	// The caster wears a burning aura: every second it scorches the hostiles close around and never its wearer.
 	static boolean applyFlameRing(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		SpellTimers.flameAura(caster, modifiers.durationTicks(FLAME_AURA_TICKS, true), FLAME_RING_RADIUS * modifiers.radiusMultiplier(),
-			RpgBridge.damage(caster, FLAME_RING_DAMAGE, modifiers.powerMultiplier()), modifiers.durationTicks(FLAME_RING_BURN_TICKS, false));
+		SpellTimers.flameAura(caster, SpellNumbers.FLAME_RING.durationTicks(modifiers), FLAME_RING_RADIUS * modifiers.radiusMultiplier(),
+			RpgBridge.damage(caster, FLAME_RING_DAMAGE, modifiers.powerMultiplier()), SpellNumbers.FLAME_RING.extraTicks(modifiers));
 		return true;
 	}
 
 	static boolean applyBulwarkHymn(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.ABSORPTION, modifiers.durationTicks(BULWARK_TICKS, true), BULWARK_AMPLIFIER), "bulwark_hymn");
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.ABSORPTION, SpellNumbers.BULWARK_HYMN.durationTicks(modifiers), BULWARK_AMPLIFIER), "bulwark_hymn");
 	}
 
 	static boolean applyTailwind(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.SPEED, modifiers.durationTicks(TAILWIND_TICKS, true), TAILWIND_AMPLIFIER), "tailwind");
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.SPEED, SpellNumbers.TAILWIND.durationTicks(modifiers), TAILWIND_AMPLIFIER), "tailwind");
 	}
 
 	static boolean applyBattleHymn(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		return bless(caster, modifiers, new MobEffectInstance(MobEffects.STRENGTH, modifiers.durationTicks(BATTLE_HYMN_TICKS, true), BATTLE_HYMN_AMPLIFIER), "battle_hymn");
+		return bless(caster, modifiers, new MobEffectInstance(MobEffects.STRENGTH, SpellNumbers.BATTLE_HYMN.durationTicks(modifiers), BATTLE_HYMN_AMPLIFIER), "battle_hymn");
 	}
 
 	// The caster and every ally around: players, villagers, golems and tamed pets, never a hostile.
@@ -330,7 +331,7 @@ public final class MoreSpells {
 		final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers, final MobEffectInstance effect,
 		final String spellPath
 	) {
-		double radius = SUPPORT_RADIUS * modifiers.radiusMultiplier();
+		double radius = SpellNumbers.of(spellPath).radius(modifiers);
 		int linked = 0;
 		for (net.minecraft.world.entity.LivingEntity ally : caster.level().getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class,
 			caster.getBoundingBox().inflate(radius), candidate -> isAlly(candidate) && candidate.distanceToSqr(caster) <= radius * radius)) {

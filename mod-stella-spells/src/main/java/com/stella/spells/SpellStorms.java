@@ -20,10 +20,10 @@ import net.minecraft.world.phys.Vec3;
 
 /** Chainstorm's lightning: strikes that fall one after another onto the hostiles around a spot. */
 public final class SpellStorms {
-	public static final double RADIUS = 5.0;
-	public static final int MAX_STRIKES = 5;
+	public static final double RADIUS = SpellNumbers.CHAINSTORM.radius();
+	public static final int MAX_STRIKES = SpellNumbers.CHAINSTORM.targets();
 	public static final int STRIKE_INTERVAL_TICKS = 6;
-	public static final float STRIKE_DAMAGE = 6.0f;
+	public static final float STRIKE_DAMAGE = SpellNumbers.CHAINSTORM.damage();
 	/** Marks the storm's own bolts, which light the sky but leave copper and lightning rods alone. */
 	public static final String STORM_BOLT_TAG = "mod-stella-spells.storm_bolt";
 
@@ -67,7 +67,7 @@ public final class SpellStorms {
 	/** Strikes the nearest hostiles around the point now and in sequence; false when there is nothing to strike. */
 	static boolean start(final ServerPlayer caster, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		ServerLevel level = caster.level();
-		double radius = RADIUS * modifiers.radiusMultiplier();
+		double radius = SpellNumbers.CHAINSTORM.radius(modifiers);
 		List<LivingEntity> targets = new ArrayList<>(level.getEntitiesOfClass(
 			Mob.class,
 			new AABB(point, point).inflate(radius),

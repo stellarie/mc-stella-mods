@@ -33,6 +33,16 @@ public final class RpgBridge {
 		default double spellHeal(final LivingEntity caster, final double coefficient) {
 			return Double.NaN;
 		}
+
+		/** The lowest MATK roll in K units; NaN when the RPG mod gives none. */
+		default double matkMin(final LivingEntity caster) {
+			return Double.NaN;
+		}
+
+		/** The highest MATK roll in K units; NaN when the RPG mod gives none. */
+		default double matkMax(final LivingEntity caster) {
+			return Double.NaN;
+		}
 	}
 
 	private static final Stats NONE = new Stats() {
@@ -78,6 +88,8 @@ public final class RpgBridge {
 			MethodHandle cooldown = lookup.findStatic(rpg, "cooldown", MethodType.methodType(double.class, Player.class));
 			MethodHandle damage = optional(lookup, rpg, "spellDamage");
 			MethodHandle heal = optional(lookup, rpg, "spellHeal");
+			MethodHandle matkMin = optionalMatk(lookup, rpg, "matkMin");
+			MethodHandle matkMax = optionalMatk(lookup, rpg, "matkMax");
 			return new Stats() {
 				@Override
 				public double power(final Player player) {
@@ -114,6 +126,24 @@ public final class RpgBridge {
 						return Double.NaN;
 					}
 				}
+
+				@Override
+				public double matkMin(final LivingEntity caster) {
+					try {
+						return matkMin == null ? Double.NaN : (double) matkMin.invokeExact(caster);
+					} catch (Throwable e) {
+						return Double.NaN;
+					}
+				}
+
+				@Override
+				public double matkMax(final LivingEntity caster) {
+					try {
+						return matkMax == null ? Double.NaN : (double) matkMax.invokeExact(caster);
+					} catch (Throwable e) {
+						return Double.NaN;
+					}
+				}
 			};
 		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
 			return NONE;
@@ -124,6 +154,14 @@ public final class RpgBridge {
 	private static MethodHandle optional(final MethodHandles.Lookup lookup, final Class<?> rpg, final String name) {
 		try {
 			return lookup.findStatic(rpg, name, MethodType.methodType(double.class, LivingEntity.class, double.class));
+		} catch (ReflectiveOperationException | RuntimeException e) {
+			return null;
+		}
+	}
+
+	private static MethodHandle optionalMatk(final MethodHandles.Lookup lookup, final Class<?> rpg, final String name) {
+		try {
+			return lookup.findStatic(rpg, name, MethodType.methodType(double.class, LivingEntity.class));
 		} catch (ReflectiveOperationException | RuntimeException e) {
 			return null;
 		}
@@ -146,6 +184,16 @@ public final class RpgBridge {
 			base.powerMultiplier() * power, base.radiusMultiplier(), base.durationMultiplier(),
 			base.defensiveDurationMultiplier(), base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown))
 		);
+	}
+
+	/** The lowest MATK roll of the caster in K units, or NaN when the RPG mod gives none. */
+	static double matkMin(final LivingEntity caster) {
+		return stats().matkMin(caster);
+	}
+
+	/** The highest MATK roll of the caster in K units, or NaN when the RPG mod gives none. */
+	static double matkMax(final LivingEntity caster) {
+		return stats().matkMax(caster);
 	}
 
 	/** The RPG mod's own damage for a skill percent, or NaN when it gives none. */
