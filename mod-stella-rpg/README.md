@@ -101,6 +101,13 @@ inventory.
 - The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
 - Other mods read and write the bag through the share `mod-stella-rpg:bag-view`, a `Function<Player, Container>`. The equips mod uses it to fill an emerald bag kept here.
 
+## Death recap
+
+When you die, chat lists the hits that led to it: up to 6 hits from the last 10 seconds, newest last, and their total.
+Each line names the attacker (with its level, and "elite" for an elite or boss, when `mod-stella-mobs` is installed), the
+damage type, the health the hit removed, and how long before the death it landed. Damage-over-time ticks of one kind
+join one line with their total, so a fatal burn reads as one line.
+
 ## Level-up refresh
 
 Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.
@@ -491,6 +498,9 @@ With `keepInventory` off, a death no longer drops the whole inventory. `keepInve
 - The death picks `min(n, 5 + random 0..3)` non-empty stacks from the main inventory, the hotbar, the armor slots, and the offhand.
   `n` is the number of candidate stacks. The pick has no repeats.
 - Items in `#mod-stella-rpg:never_tombstone` are never picked. The tag is empty by default.
+- A death that places a tombstone gives you a Grave Compass when you respawn. It points to the tombstone and lists its
+  coordinates and dimension. A tombstone never takes the compass, so a later death re-aims the compass you carry
+  instead of giving another.
 - The picked stacks go into a `mod-stella-rpg:tombstone` block. The player keeps every other stack after respawn.
 - Soulbound stashes its items first, so they are never picked. Spell quick-slot items stay with the player.
 - The block goes at the death position. If that position is not replaceable, it goes at the nearest

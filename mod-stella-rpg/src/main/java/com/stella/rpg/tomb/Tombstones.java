@@ -68,6 +68,11 @@ public final class Tombstones {
 		return picked;
 	}
 
+	/** The grave compass stays with the player, so the respawn can re-aim it instead of adding a second one. */
+	static boolean buriable(final ItemStack stack) {
+		return !stack.isEmpty() && !stack.is(NEVER_TOMBSTONE) && !GraveCompass.isGraveCompass(stack);
+	}
+
 	/** Returns true when the tombstone took over the death drop, so vanilla must not drop the inventory. */
 	public static boolean bury(final ServerPlayer player) {
 		ServerLevel level = player.level();
@@ -78,14 +83,14 @@ public final class Tombstones {
 		List<Integer> candidates = new ArrayList<>();
 		for (int slot = 0; slot <= LAST_PICKABLE_SLOT; slot++) {
 			ItemStack stack = inventory.getItem(slot);
-			if (!stack.isEmpty() && !stack.is(NEVER_TOMBSTONE)) {
+			if (buriable(stack)) {
 				candidates.add(slot);
 			}
 		}
 		Bag bag = Bag.of(player);
 		for (int index = 0; index < Bag.SIZE; index++) {
 			ItemStack stack = bag.get(index);
-			if (!stack.isEmpty() && !stack.is(NEVER_TOMBSTONE)) {
+			if (buriable(stack)) {
 				candidates.add(BAG_CANDIDATE_BASE + index);
 			}
 		}
@@ -147,6 +152,7 @@ public final class Tombstones {
 		}
 		String name = player.getPlainTextName();
 		tomb.fill(player.getUUID(), name, level.getGameTime(), stacks);
+		GraveCompass.mark(player, level, spot);
 		try {
 			tomb.setDisplays(spawnLabel(level, spot, name), spawnHead(level, spot, player));
 		} catch (RuntimeException e) {

@@ -193,11 +193,13 @@ one heal number every 4 ticks, so a mob farm does not flood its viewers.
 
 ## Refining
 
-Weapons and armour refine from +0 to +15, after Ragnarok Online Renewal. Refine in the **Refine tab** of any
+Weapons, armour and shields refine from +0 to +15, after Ragnarok Online Renewal. Refine in the **Refine tab** of any
 anvil. Two tabs sit above the anvil window: Repair (the vanilla anvil) and Refine. A **Refining Anvil** (a
 silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 
 - Armor is any piece in the vanilla armor tags, or any piece that equips to an armor slot and gives armor.
+- A **shield** is any item that blocks attacks and is neither armor nor a weapon, such as the vanilla shield.
+  It refines with iron ingots, whatever it is mended with, at the armour odds and cost.
 - Put the piece in the first slot. The tab shows its level, the next level, the chance, and the cost with the
   material you carry. Press Refine to pay and roll.
 - The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
@@ -210,10 +212,11 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 - The odds follow Renewal's tables. Weapons are graded by material: wood, stone, gold and copper are
   grade 1 (safe to +7); iron is grade 2 (safe to +6); diamond, the trident and the mace are grade 3
   (safe to +5); netherite is grade 4 (safe to +4). Armour is safe to +4. The last step is 15%.
-- Each level adds 50 to the durability cap of a weapon or armor piece, so +10 adds 500. A level drop lowers the cap again.
+- Each level adds 50 to the durability cap of a weapon, armor piece or shield, so +10 adds 500. A level drop lowers the cap again.
 - A success repairs the piece fully. A failure never changes its damage.
 - Each level adds +0.75 attack damage to a melee weapon, +0.75 base damage to a bow's or crossbow's
-  arrows, and +0.5 armour to a piece of armour.
+  arrows, and +0.5 armour to a piece of armour. A shield adds the same +0.5 armour for each level while you
+  hold it in either hand.
 - The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.
   It is not an enchantment, so it takes no enchantment's place and leaves the enchantments unchanged.
   The tooltip lists each special effect the piece has, by name.
@@ -268,6 +271,21 @@ Armour at +12 has **Thorned** for every material: a melee blow that lands pricks
 of the damage the wearer took, for each such piece. At +15 it has **Blessed**: a player heals 1% of max
 health every 5 s for each such piece. Four +10 diamond pieces take 12% less damage. Copper armour and the
 turtle helmet have no +10 effect. Four +10 netherite pieces take 50% less fire damage.
+
+**Shields** (a raised shield that blocks a melee blow)
+
+| Level | Effect |
+|---|---|
+| +10 | Parry: 25% of the damage the shield blocked goes back to the attacker |
+| +12 | Parry: 50% of the blocked damage |
+| +15 | Parry: 75% of the blocked damage |
+
+Parry hurts the attacker whose own blow the shield blocked. The damage is thorns damage, so a shield never
+parries it back. A blocked arrow or other projectile sends nothing back. A shield has none of the piece,
+material, Thorned or Blessed effects of armour.
+
+Every shield, refined or not, takes exactly 1 durability damage from each hit it blocks, small or large. Unbreaking
+still applies to that point. A hit the shield does not block, such as one from behind, costs nothing.
 
 Vigor, Fortitude and Stride are `ADD_MULTIPLIED_BASE` attribute modifiers, so they scale with base max
 health and base speed. Blessed uses max health in vanilla units, divided by the health scale K of
@@ -362,6 +380,8 @@ need a client, so a not-required test marks them for a manual check. They also
 check refining: the odds tables, the quote and confirm, the price, the chip and the break,
 the cap, the smith, the bonuses, the tooltip, each special effect at its level and one level below,
 the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spellbook refining, and the recipe.
+Shield tests check the refine, held armor, Parry at each level and against arrows, and the one-point cost
+of a block.
 
 ## Target platform
 

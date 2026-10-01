@@ -11,8 +11,8 @@ import net.minecraft.world.item.equipment.Equippable;
 
 /**
  * Which special effects a refined piece has at a level. A weapon's follow its material's grade, a bow's are
- * its own, and armour's follow the piece at +7 and the material at +10. Every level keeps the effects of the
- * levels below it.
+ * its own, and armour's follow the piece at +7 and the material at +10. A shield has Parry alone, from +10.
+ * Every level keeps the effects of the levels below it.
  */
 public final class RefineSpecials {
 	public static final int PIECE_LEVEL = Refine.KEEN_LEVEL;
@@ -38,7 +38,8 @@ public final class RefineSpecials {
 		BULWARK("Bulwark", MATERIAL_LEVEL),
 		EMBERGUARD("Emberguard", MATERIAL_LEVEL),
 		THORNED("Thorned", Refine.RENDING_LEVEL),
-		BLESSED("Blessed", Refine.ASCENDED_LEVEL);
+		BLESSED("Blessed", Refine.ASCENDED_LEVEL),
+		PARRY("Parry", Refine.MILESTONE_FIRST);
 
 		private final String title;
 		private final int level;
@@ -85,6 +86,8 @@ public final class RefineSpecials {
 			all.add(meleeSpecial(stack));
 			all.add(Special.RENDING);
 			all.add(Special.ASCENDED);
+		} else if (Refine.isShield(stack)) {
+			all.add(Special.PARRY);
 		}
 		all.removeIf(special -> special.level > level);
 		return all;
@@ -168,6 +171,7 @@ public final class RefineSpecials {
 			case EMBERGUARD -> "-" + percent(RefineEffects.EMBERGUARD_SHARE * 100) + " fire damage";
 			case THORNED -> "melee attackers take " + percent(RefineEffects.THORN_SHARE * 100) + " of the blow";
 			case BLESSED -> "restores " + percent(RefineEffects.BLESSING_SHARE * 100) + " of max health every 5 s";
+			case PARRY -> "a blocked melee hit sends " + percent(RefineEffects.parryShare(Refine.level(stack)) * 100) + " of the blocked damage back";
 		};
 	}
 

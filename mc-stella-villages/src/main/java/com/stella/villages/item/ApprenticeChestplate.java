@@ -27,7 +27,7 @@ import net.minecraft.world.item.equipment.Equippable;
 public final class ApprenticeChestplate extends Item {
 	public static final int DURABILITY = 1000;
 	public static final int FULL_LIGHT = 15;
-	public static final float REDUCTION_PER_LIGHT = 0.03F;
+	public static final float REDUCTION_PER_LIGHT = 0.015F;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(McStellaVillages.MOD_ID, "apprentice_chestplate");
 	private static final ResourceKey<Item> KEY = ResourceKey.create(Registries.ITEM, ID);
 	public static final ApprenticeChestplate ITEM = Registry.register(BuiltInRegistries.ITEM, KEY, new ApprenticeChestplate(properties()));
@@ -44,7 +44,7 @@ public final class ApprenticeChestplate extends Item {
 				.setEquipSound(ArmorMaterials.IRON.equipSound()).setAsset(ArmorMaterials.IRON.assetId()).build())
 			.repairable(ArmorMaterials.IRON.repairIngredient())
 			.component(DataComponents.LORE, new ItemLore(List.of(
-				Component.literal("3% damage reduction for each"),
+				Component.literal("1.5% damage reduction for each"),
 				Component.literal("light level below 15")
 			)));
 	}
@@ -59,7 +59,7 @@ public final class ApprenticeChestplate extends Item {
 		McStellaVillages.LOGGER.debug("Registered the apprentice chestplate {}", ID);
 	}
 
-	/** The share of damage the chestplate removes at a light level: 3% for each level below 15. */
+	/** The share of damage the chestplate removes at a light level: 1.5% for each level below 15. */
 	public static float reduction(final int light) {
 		return REDUCTION_PER_LIGHT * (FULL_LIGHT - Mth.clamp(light, 0, FULL_LIGHT));
 	}

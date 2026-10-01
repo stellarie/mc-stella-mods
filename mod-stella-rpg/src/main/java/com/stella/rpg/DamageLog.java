@@ -58,11 +58,19 @@ public final class DamageLog {
 		synchronized (BEFORE) {
 			before = BEFORE.remove(victim);
 		}
-		if (before == null || source.is(RpgDamageTypes.NO_HURT_SHAKE)) {
+		if (before == null) {
 			return;
 		}
 		int lost = Math.round(before - vitality(victim));
 		if (lost <= 0) {
+			return;
+		}
+		boolean overTime = source.is(RpgDamageTypes.NO_HURT_SHAKE);
+		// The recap needs the lethal burn too.
+		if (victim instanceof ServerPlayer hurt) {
+			DeathRecap.record(hurt, source, lost, overTime);
+		}
+		if (overTime) {
 			return;
 		}
 		if (source.getEntity() instanceof ServerPlayer attacker && attacker != victim && enabled(attacker)) {

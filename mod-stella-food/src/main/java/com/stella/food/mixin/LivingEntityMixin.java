@@ -23,6 +23,13 @@ public abstract class LivingEntityMixin {
 		}
 	}
 
+	// Runs after the mobs XP formula (priority 900).
+	@ModifyReturnValue(method = "getExperienceReward", at = @At("RETURN"))
+	private int stellaFood$wellRested(final int experience, final net.minecraft.server.level.ServerLevel level, final net.minecraft.world.entity.Entity killer) {
+		return killer instanceof LivingEntity rested && rested.hasEffect(FoodEffects.WELL_RESTED) && experience > 0
+			? com.stella.food.WellRested.boosted(experience, rested.getRandom()) : experience;
+	}
+
 	// Chains with the other mods' damage hooks; a cancelling inject would skip them.
 	@ModifyReturnValue(method = "getDamageAfterMagicAbsorb", at = @At("RETURN"))
 	private float stellaFood$reduceFireDamage(final float damage, final DamageSource source) {

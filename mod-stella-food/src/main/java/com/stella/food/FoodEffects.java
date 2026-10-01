@@ -90,6 +90,7 @@ public final class FoodEffects {
 		)
 	);
 	public static final Holder<MobEffect> EMBER_SKIN = register("ember_skin", basic(0xD95A2B));
+	public static final Holder<MobEffect> WELL_RESTED = register("well_rested", basic(0xF2D27C));
 	public static final Holder<MobEffect> SECOND_WIND = register("second_wind", new SecondWindEffect());
 	/** Mild food debuffs. A damaging potion in a dish turns into one of these, so food never hurts the eater. */
 	public static final Holder<MobEffect> QUEASY = register(

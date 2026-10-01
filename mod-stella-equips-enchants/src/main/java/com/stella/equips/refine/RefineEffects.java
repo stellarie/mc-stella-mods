@@ -74,6 +74,10 @@ public final class RefineEffects {
 	/** +15 armour: the share of max health, in vanilla units, each such piece restores every interval. */
 	public static final double BLESSING_SHARE = 0.01;
 	public static final int BLESSING_INTERVAL_TICKS = 100;
+	// Parry shares at +10, +12 and +15.
+	public static final double PARRY_SHARE_FIRST = 0.25;
+	public static final double PARRY_SHARE_SECOND = 0.50;
+	public static final double PARRY_SHARE_THIRD = 0.75;
 	public static final String VOLLEY_TAG = "mod-stella-equips-enchants.volley_arrow";
 	private static final String ARROW_TAG = "mod-stella-equips-enchants.refined_arrow";
 	private static final List<EquipmentSlot> ARMOR_SLOTS = List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
@@ -127,6 +131,16 @@ public final class RefineEffects {
 
 	public static void setRoller(final Roller newRoller) {
 		roller = newRoller == null ? FAIR : newRoller;
+	}
+
+	public static double parryShare(final int level) {
+		if (level >= Refine.ASCENDED_LEVEL) {
+			return PARRY_SHARE_THIRD;
+		}
+		if (level >= Refine.MILESTONE_SECOND) {
+			return PARRY_SHARE_SECOND;
+		}
+		return level >= Refine.MILESTONE_FIRST ? PARRY_SHARE_FIRST : 0.0;
 	}
 
 	private static boolean roll(final RefineSpecials.Special special, final LivingEntity entity, final int chancePercent) {
