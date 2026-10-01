@@ -60,6 +60,26 @@ public class PatrolFriendsGameTest {
 		helper.succeed();
 	}
 
+	/** A guard never targets a blue slime, and the mage's harmful splash skips it. */
+	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void blueSlimeIsNotAFoe(final GameTestHelper helper) {
+		String test = "blueSlimeIsNotAFoe";
+		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+			return;
+		}
+		Mob guard = member(helper, PatrolState.Role.HEAD);
+		com.stella.mobs.entity.BlueSlime slime = helper.spawn(com.stella.mobs.entity.StellaEntities.BLUE_SLIME, 1, 2, 1);
+		guard.setTarget(slime);
+		boolean targeted = guard.getTarget() == slime;
+		boolean splashed = com.stella.villages.patrol.VillageWitchSplash.hostile(slime);
+		Zombie stranger = helper.spawnMob(EntityTypes.ZOMBIE, 1, 2, 1).withNoFreeWill().spawn();
+		boolean controlSplash = com.stella.villages.patrol.VillageWitchSplash.hostile(stranger);
+		PatrolTestSupport.result(test, "targeted=" + targeted + " splashed=" + splashed + " controlSplash=" + controlSplash);
+		helper.assertTrue(controlSplash, "the splash skips a zombie too, so the case proves nothing");
+		helper.assertTrue(!targeted && !splashed, "a guard targeted the blue slime or the splash took it as a foe");
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void everyPatrolMemberWearsAGreenRoleLabel(final GameTestHelper helper) {
 		String test = "everyPatrolMemberWearsAGreenRoleLabel";

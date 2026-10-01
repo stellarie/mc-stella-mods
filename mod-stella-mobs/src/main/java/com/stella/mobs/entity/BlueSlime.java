@@ -5,31 +5,28 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.cubemob.Slime;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 /**
- * The blue slime: passive, never elite, never a boss. It attacks only as the escort of a white slime,
- * which the shared summoned flag marks. An escort is also worth no experience.
+ * The blue slime: passive, never elite, never a boss. It never targets or hurts anything, a white slime's escort
+ * included, and nothing targets it. Every blue slime carries {@link #HARMLESS_TAG}, so other mods can skip it by tag.
+ * An escort is worth no experience.
  */
 public final class BlueSlime extends StellaSlime {
-	private static final double TARGET_HEIGHT_BAND = 4.0;
-	private static final int TARGET_INTERVAL = 10;
+	/** Marks a blue slime. Golems, patrols, mages, and hostile auras skip it. */
+	public static final String HARMLESS_TAG = "mod-stella-mobs.harmless";
 
 	public BlueSlime(final EntityType<? extends Slime> type, final Level level) {
 		super(type, level);
+		this.addTag(HARMLESS_TAG);
+	}
+
+	public static boolean isHarmless(final Entity entity) {
+		return entity instanceof BlueSlime || entity != null && entity.entityTags().contains(HARMLESS_TAG);
 	}
 
 	/** True for a slime a white slime summoned. Read without creating a state, so a natural slime saves none. */
-	/** Marks a natural blue slime. Golems and hostile auras skip it. */
-	public static final String HARMLESS_TAG = "mod-stella-mobs.harmless";
-
-	public static boolean isHarmless(final Entity entity) {
-		return entity != null && entity.entityTags().contains(HARMLESS_TAG);
-	}
-
 	public boolean isEscort() {
 		EliteState state = ((AttachmentTarget) this).getAttached(EliteState.TYPE);
 		return state != null && state.summoned();
@@ -37,19 +34,20 @@ public final class BlueSlime extends StellaSlime {
 
 	@Override
 	protected void addTargetingGoals() {
-		// The goal is always present and gated by the flag, because goals register before any flag can exist.
-		this.targetSelector.addGoal(
-			1,
-			new NearestAttackableTargetGoal<>(
-				this, Player.class, TARGET_INTERVAL, true, false,
-				(target, level) -> isEscort() && Math.abs(target.getY() - getY()) <= TARGET_HEIGHT_BAND
-			)
-		);
 	}
 
 	@Override
 	protected boolean canDealDamage() {
-		return isEscort() && super.canDealDamage();
+		return false;
+	}
+
+	// A save from before every blue slime was tagged loads without the tag.
+	@Override
+	protected void customServerAiStep(final ServerLevel level) {
+		super.customServerAiStep(level);
+		if (!this.entityTags().contains(HARMLESS_TAG)) {
+			this.addTag(HARMLESS_TAG);
+		}
 	}
 
 	@Override
