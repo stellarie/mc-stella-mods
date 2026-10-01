@@ -11,7 +11,4 @@ public interface ContainerScreenPositionAccessor {
 
 	@Accessor("topPos")
 	int stellaRpgTopPos();
-
-	@Accessor("imageHeight")
-	void stellaRpgSetImageHeight(int height);
 }
