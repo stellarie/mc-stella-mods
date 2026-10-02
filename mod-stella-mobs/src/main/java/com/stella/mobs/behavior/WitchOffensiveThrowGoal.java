@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 	public static final int OFFENSE_INTERVAL_TICKS = 60;
-	public static final double THROW_RANGE = 10.0;
+	public static final double THROW_RANGE = RangedReach.RANGE;
 	private static final int ACTION_TICKS = 10;
 
 	/** W12: one cloud per rearm, because the cloud itself lives 600 ticks. */

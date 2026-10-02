@@ -7,6 +7,7 @@ import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.RollSpec;
 import com.stella.mobs.gear.GearRoller;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -36,6 +37,7 @@ public class PillagerTacticsGameTest {
 	private static final int ROLLS = 2000;
 	private static final float TARGET_HEALTH = 1000.0F;
 	private static final double MELEE_REACH = 2.5;
+	private static final double OUT_OF_REACH_MARGIN = 6.0;
 	private static final long WATCH_TICKS = 120L;
 	private static final long SETTLE_TICK = 20L;
 	private static final double HOLD_DRIFT = 1.0;
@@ -76,17 +78,37 @@ public class PillagerTacticsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = MAX_TICKS)
+	/**
+	 * The Pillager starts past its reach and closes to it. The 8 by 8 floor of the other cases ends inside the reach,
+	 * so this case stands on the wide floor: a target in the old corner was inside the reach from the first tick.
+	 */
+	@GameTest(maxTicks = MAX_TICKS, padding = WideArena.PADDING)
 	public void crossbowPillagerClosesToItsFiringRange(final GameTestHelper helper) {
-		Pillager pillager = pillager(helper, new ItemStack(Items.CROSSBOW), 0, 0);
-		Cow target = target(helper, 7, 7);
-		helper.onEachTick(() -> pillager.setTarget(target));
+		double start = CrossbowCadenceGoal.CHASE_RADIUS + OUT_OF_REACH_MARGIN;
+		double x = WideArena.SIZE / 2.0;
+		WideArena arena = WideArena.build(helper);
+		Pillager[] pillager = new Pillager[1];
+		Cow[] target = new Cow[1];
+		arena.whenReady(List.of(new Vec3(x, 1.0, 6.5), new Vec3(x, 1.0, 6.5 + start)), () -> {
+			target[0] = arena.spawn(EntityTypes.COW, x, 6.5 + start, cow -> {
+				cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(TARGET_HEALTH);
+				cow.setHealth(TARGET_HEALTH);
+				cow.setNoAi(true);
+			});
+			pillager[0] = arena.spawn(EntityTypes.PILLAGER, x, 6.5, mob -> mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW)));
+		});
+		helper.onEachTick(() -> {
+			if (pillager[0] != null) {
+				pillager[0].setTarget(target[0]);
+			}
+		});
 
 		helper.succeedWhen(() -> {
-			double distance = pillager.distanceTo(target);
+			helper.assertTrue(pillager[0] != null, "the arena is not up yet");
+			double distance = pillager[0].distanceTo(target[0]);
 			helper.assertTrue(distance <= CrossbowCadenceGoal.CHASE_RADIUS, "the crossbow Pillager stayed " + distance + " away");
-			result("crossbowPillagerClosesToItsFiringRange", "distance=" + distance + " tick=" + helper.getTick());
-			discard(pillager, target);
+			result("crossbowPillagerClosesToItsFiringRange", "distance=" + distance + " start=" + start + " tick=" + helper.getTick());
+			arena.finish();
 		});
 	}
 

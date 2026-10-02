@@ -117,7 +117,8 @@ public class GhastFireballGoal extends Goal {
 
 		Vec3 view = this.ghast.getViewVector(1.0F);
 		Vec3 from = new Vec3(this.ghast.getX() + view.x * LEAD, this.ghast.getY(0.5), this.ghast.getZ() + view.z * LEAD);
-		Vec3 aim = new Vec3(target.getX() - from.x, target.getY(0.5) - from.y, target.getZ() - from.z);
+		Vec3 lead = ShotLead.offset(this.ghast, target, ShotLead.fireballSpeed(this.ghast.distanceTo(target)));
+		Vec3 aim = new Vec3(target.getX() + lead.x - from.x, target.getY(0.5) + lead.y - from.y, target.getZ() + lead.z - from.z);
 		int amplifier = Elite.isElite(this.ghast) ? ELITE_WITHER_AMPLIFIER : ORDINARY_WITHER_AMPLIFIER;
 		GhastWitherShot shot = new GhastWitherShot(level, this.ghast, aim, amplifier);
 		shot.setPos(from);

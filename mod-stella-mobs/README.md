@@ -98,6 +98,31 @@ their own arrows.
 - **Range:** a skeleton shoots from up to 24 blocks away. Its follow range is at least 32 blocks.
 - **Ammo:** each arrow uses one ammo item. A tipped arrow keeps its own effect on the target it hits.
 
+## Ranged reach
+
+Ranged units shoot from up to 24 blocks away, and their shots lead a moving target.
+
+- **Band:** a unit with a bow, a crossbow, or a trident, a blaze, and a witch hold 5 to 24 blocks from their target.
+  An illusioner and an evoker hold 8 to 20 blocks, because evoker fangs reach only 20 blocks.
+  A gear config entry with its own `near` and `far` keeps them.
+- **Follow range:** a ranged unit sees a target 32 blocks away. A unit that already sees 32 or more keeps its range.
+  The widening never adds to the one a skeleton's burst makes.
+- **Approach:** a unit beyond its band walks in and stops at the edge, then fires. It no longer keeps walking
+  for the rest of its 3 second approach, unable to fire.
+- **Cover:** inside its band a unit holds its ground only while it sees its target. Behind a wall it walks to a
+  spot with a clear line.
+- **Pillager:** a pillager shoots from up to 24 blocks. It walks in only beyond that, or when it cannot see its target.
+- **Piglin:** a piglin with a crossbow shoots from up to 24 blocks. Its own Brain drives the crossbow, at the
+  vanilla cycle of 45 to 64 ticks per bolt. The pillager's cadence goal skips it.
+- **Witch:** a witch throws from up to 24 blocks. A potion flies at 1.5 blocks per tick, and the throw solves the
+  arc for the target's distance and height, so a potion lands within 2 blocks of a still target 24 blocks away.
+  A blink lands 6 to 12 blocks from the witch's threat.
+- **Lead:** a stray, a bogged, an elite stray's sniper arrow, a blaze, a ghast, and a witch aim at where a moving
+  target will be when the shot arrives. A player's movement is the movement the client reported.
+  A skeleton's burst arrows do not lead yet.
+- **Limits:** a mob saved before this change keeps the band that `mod-stella-learn` stored for it. Friendly fire
+  grows with range. A spell caster from `mod-stella-spells` keeps its own range of 16 blocks.
+
 ## Red slime
 
 The red slime is a beginner mob.

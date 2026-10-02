@@ -7,9 +7,10 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A clock, not a measurement. The goal claims MOVE and LOOK while a ranged unit's target is closer than its
- * near band, walks away from the target, and releases when the target is at or beyond the band or when the
- * window expires. The window is the only lifetime; nothing measures progress.
+ * A clock and an edge. The goal claims MOVE and LOOK while a ranged unit's target is closer than its near
+ * band or beyond its far band. It walks away from a close target and toward a far one. It releases when the
+ * window expires. An approach also ends the moment the target is inside the far edge, because the weapon goal
+ * cannot fire while this goal holds MOVE and LOOK. A retreat measures no progress.
  */
 public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public static final int WINDOW_TICKS = 60;
@@ -87,6 +88,10 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		ReactiveState state = ReactiveState.get(this.mob);
+
+		if (!this.retreating && this.mob.distanceTo(target) <= state.getFarDistance()) {
+			return false;
+		}
 
 		if (this.retreating) {
 			if (this.mob.distanceTo(target) >= state.getNearDistance()) {

@@ -12,6 +12,7 @@ import net.minecraft.world.entity.monster.CrossbowAttackMob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.monster.illager.Pillager;
+import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
@@ -21,15 +22,16 @@ import net.minecraft.world.item.Items;
  * T02: a crossbow mob fires fully charged, as fast as its attack speed allows. Vanilla never reads
  * ATTACK_SPEED here: its goal charges through CrossbowItem.getChargeDuration and then holds a plain
  * random 20 + nextInt(20) ticks. This goal replaces it at its own rank, keeps the charge cycle, drops
- * the random hold, and scales the interval by the attack speed attribute.
+ * the random hold, and scales the interval by the attack speed attribute. A piglin is left to its Brain,
+ * which has its own crossbow behavior.
  */
 public class CrossbowCadenceGoal extends Goal {
 	/** Vanilla's crossbow goal rank, which this goal takes: it replaces the goal and preempts nothing. */
 	public static final int ATTACK_PRIORITY = 2;
 	/** The vanilla hold this goal drops, at attack speed 1.0. Kept so a test can state what was removed. */
 	public static final int REMOVED_HOLD_TICKS = 20;
-	/** M5: vanilla's Pillager crossbow radius; beyond it, or out of sight, a Pillager walks in. */
-	public static final double CHASE_RADIUS = 8.0;
+	/** M5: a Pillager out of reach or sight walks in. */
+	public static final double CHASE_RADIUS = RangedReach.RANGE;
 	public static final double CHASE_SPEED = 1.0;
 	private static final int REPATH_TICKS = 10;
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
@@ -53,7 +55,9 @@ public class CrossbowCadenceGoal extends Goal {
 	 * callback: a goal that mutates the selector while the selector iterates it corrupts that iteration.
 	 */
 	public static void install(final Mob mob) {
-		if (!(mob instanceof Monster monster) || !(mob instanceof CrossbowAttackMob) || !holdsCrossbow(mob)) {
+		// The Brain alone drives a piglin.
+		// A second driver fights it for the crossbow.
+		if (!(mob instanceof Monster monster) || !(mob instanceof CrossbowAttackMob) || !holdsCrossbow(mob) || mob instanceof AbstractPiglin) {
 			return;
 		}
 

@@ -59,8 +59,9 @@ public final class BehaviorInstaller {
 	public static final int ILLUSIONER_PRIORITY = WITCH_BLOCK_START;
 	/** M8: flagless, so the rank only orders it against the other flagless goals. */
 	public static final int EVOKER_OPENING_PRIORITY = WITCH_BLOCK_START;
-	// A blaze has no hands and still attacks from range, so the item checks cannot speak for it.
-	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE);
+	// A blaze and a witch hold no ranged weapon.
+	// They still attack from range.
+	private static final Set<EntityType<?>> INNATE_RANGED = Set.of(EntityTypes.BLAZE, EntityTypes.WITCH);
 	private static final Set<EntityType<?>> RETREAT_EXEMPT = Set.of(
 		EntityTypes.WARDEN, EntityTypes.WITHER, EntityTypes.ELDER_GUARDIAN, EntityTypes.RAVAGER
 	);
@@ -183,6 +184,7 @@ public final class BehaviorInstaller {
 
 		Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
 		state.setRoleSpec(resolveRole(mob, state, entityType));
+		RangedReach.install(mob);
 
 		if (!RETREAT_EXEMPT.contains(mob.getType())) {
 			mob.getGoalSelector().addGoal(RETREAT_PRIORITY, new RetreatGoal<>(monster));

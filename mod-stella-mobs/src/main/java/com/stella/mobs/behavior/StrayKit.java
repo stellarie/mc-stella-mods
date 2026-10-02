@@ -333,7 +333,7 @@ public final class StrayKit {
 			if (boss) {
 				arrow.addTag(BOSS_SNIPER_TAG);
 			}
-			Vec3 aim = target.getEyePosition().subtract(0.0, 0.3, 0.0).subtract(arrow.position());
+			Vec3 aim = target.getEyePosition().subtract(0.0, 0.3, 0.0).add(ShotLead.offset(this.stray, target, SNIPER_POWER)).subtract(arrow.position());
 			Projectile.spawnProjectileUsingShoot(arrow, level, one, aim.x, aim.y, aim.z, SNIPER_POWER, 0.0F);
 			track(arrow);
 			this.stray.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 0.6F);
