@@ -243,9 +243,10 @@ public class DefenderGrowthGameTest {
 
 	private static void kill(final GameTestHelper helper, final Mob killer, final LivingEntity victim) {
 		DamageSource source = helper.getLevel().damageSources().mobAttack(killer);
-		if (victim instanceof Player) {
-			// A new player takes no damage for 3 seconds,
-			// so the death is dealt directly.
+		// A new player takes no damage for 3 seconds,
+		// and the patrol never harms a villager or golem.
+		if (victim instanceof Player || victim instanceof net.minecraft.world.entity.npc.villager.AbstractVillager
+			|| victim instanceof net.minecraft.world.entity.animal.golem.AbstractGolem) {
 			victim.setHealth(0.0F);
 			victim.die(source);
 		} else {
