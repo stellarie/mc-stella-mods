@@ -11,15 +11,14 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * M11: a witch that lets its target or a player come close blinks away, to a safe spot between six
- * and eight blocks from that threat, and keeps its target so the throws resume. A cooldown on the
+ * and twelve blocks from that threat, and keeps its target so the throws resume. A cooldown on the
  * goal's own ticks stops it blinking every tick. No flags.
  */
 public class WitchBlinkGoal<T extends Witch> extends Goal {
 	public static final double BLINK_TRIGGER_RANGE = 4.0;
 	public static final double BLINK_MIN_DISTANCE = 6.0;
-	// Inside the throw range with room to spare, so the witch keeps attacking from where it lands.
-	public static final double BLINK_RANGE_MARGIN = 2.0;
-	public static final double BLINK_MAX_DISTANCE = WitchOffensiveThrowGoal.THROW_RANGE - BLINK_RANGE_MARGIN;
+	// A longer blink leaves the fight.
+	public static final double BLINK_MAX_DISTANCE = 12.0;
 	public static final int BLINK_COOLDOWN_TICKS = 100;
 	private static final int ATTEMPTS = 24;
 	private static final double HEIGHT_SEARCH = 4.0;

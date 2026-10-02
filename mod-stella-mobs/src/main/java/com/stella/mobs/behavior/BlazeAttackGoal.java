@@ -149,7 +149,10 @@ public class BlazeAttackGoal extends Goal {
 			return;
 		}
 
-		Vec3 aim = new Vec3(target.getX() - this.blaze.getX(), target.getY(0.5) - this.blaze.getY(0.5), target.getZ() - this.blaze.getZ());
+		Vec3 lead = ShotLead.offset(this.blaze, target, ShotLead.fireballSpeed(this.blaze.distanceTo(target)));
+		Vec3 aim = new Vec3(
+			target.getX() + lead.x - this.blaze.getX(), target.getY(0.5) + lead.y - this.blaze.getY(0.5), target.getZ() + lead.z - this.blaze.getZ()
+		);
 		if (aim.lengthSqr() < 1.0E-4) {
 			return;
 		}

@@ -1,6 +1,7 @@
 package com.stella.mobs;
 
 import com.stella.mobs.behavior.KeepDistanceGoal;
+import com.stella.mobs.behavior.RangedReach;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.config.CombatRole;
@@ -269,7 +270,7 @@ public class GearRollGameTest {
 					Double.valueOf(ReactiveState.get(skeleton).getNearDistance()), Double.valueOf(5.0), "the archer near band"
 				);
 				helper.assertValueEqual(
-					Double.valueOf(ReactiveState.get(skeleton).getFarDistance()), Double.valueOf(15.0), "the archer far band"
+					Double.valueOf(ReactiveState.get(skeleton).getFarDistance()), Double.valueOf(RangedReach.RANGE), "the archer far band"
 				);
 			}
 
