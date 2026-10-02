@@ -9,7 +9,10 @@ integration branch is `main-learn`.
 - **A profile per player.** Each fight adds to counters saved on the player: blocked blows, sword hits, arrow hits
   and retreats (a step of a block or more straight away from a monster that is after them, sampled every 10 ticks). Each counter halves every 6000 ticks (five minutes), so mobs forget old habits.
 - **Archers keep their distance from a rusher.** A skeleton, or another ranged or magic mob, pushes its near band
-  out by up to 6 blocks against a player with 8 recent sword hits, and keeps its band's width.
+  out by up to 6 blocks against a player with 8 recent sword hits, and keeps its band's width. The band the mob
+  started from is not saved. A mob that loads takes the band the mobs mod gives it then, so a change to that band
+  reaches archers that are already saved. A save from an older build holds a `band_base` entry for such a mob.
+  Fabric skips it and logs `Skipping invalid attachments` once for that mob.
 - **Mobs wait out a turtle's shield.** Against a player with 5 recent blocks, a melee mob holds its swing and a ranged
   mob holds its fire while the shield is up, for up to 100 ticks, then rests 40.
 - **Melee mobs take cover from a shooter.** Against a player with 6 recent arrow hits, a melee mob that stands in the
@@ -33,8 +36,10 @@ integration branch is `main-learn`.
 |---|---|---|
 | The player swings within 4.5 blocks | `SHIELD`, `BACK_OFF`, `TRADE` | Raise a shield for 20 ticks (needs one in the off hand), walk out to 6 blocks, or carry on |
 | The player's arrow is flying at the mob | `EVADE`, `SHIELD`, `TANK` | Step 2.5 blocks off the arrow's line, raise the shield, or carry on |
-| A ranged mob has just shot | `HIDE`, `HOLD` | Walk to the nearest spot out of the player's sight (only offered when there is one), or stay put |
+| A ranged mob has just shot | `HIDE`, `HOLD` | Walk to the nearest spot out of the player's sight that is no nearer the player than the mob stands (only offered when there is one), or stay put |
 
+- **A guarding shield bearer keeps its shield up.** While the shield goal of the mobs mod runs against a player, the
+  mob is not offered `SHIELD` or `BACK_OFF`. It walks on under its raised shield and picks from the tactics left.
 - **Callouts.** A monster hurt by a player calls. Every monster within 24 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:

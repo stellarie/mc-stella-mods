@@ -1,8 +1,16 @@
 package com.stella.learn;
 
+import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.ShieldUseGoal;
+import com.stella.mobs.config.GearConfig;
+import com.stella.mobs.config.GearConfigParser;
+import com.stella.mobs.config.GearConfigStore;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -12,6 +20,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.SwingAnimation;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /** A mob picks what to do when a player swings at it from what has worked against that player, and learns from how it goes. */
 public class TacticGoalGameTest {
@@ -222,6 +232,107 @@ public class TacticGoalGameTest {
 		});
 	}
 
+	/**
+	 * A config that rolls no gear, elite, boss or rider.
+	 * A zombie's role and gear are then what the test gives it.
+	 */
+	private static final String BARE_CONFIG = """
+		{
+			"version": 1,
+			"entities": {},
+			"roles": {},
+			"rolls": { "roll_chance": 0.0, "elite_chance": 0.0, "boss_chance": 0.0 },
+			"riders": { "chance": 0.0 }
+		}""";
+
+	/**
+	 * A melee zombie with a sword and a shield.
+	 * It has no shield goal. The caller may add one.
+	 */
+	private static Mob swordAndShield(final GameTestHelper helper, final ServerPlayer player, final int x, final int z) {
+		GearConfig previous = GearConfigStore.get();
+		GearConfigStore.set(GearConfigParser.parse(BARE_CONFIG));
+		Mob zombie;
+		try {
+			zombie = helper.spawnMob(EntityTypes.ZOMBIE, x, LearnArena.SPAWN_Y, z).spawn();
+		} finally {
+			GearConfigStore.set(previous);
+		}
+
+		zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+		zombie.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+		zombie.getGoalSelector().removeAllGoals(goal -> goal instanceof ShieldUseGoal);
+		LearnArena.keepTargeting(helper, zombie, player);
+		steady(zombie);
+		return zombie;
+	}
+
+	private static boolean guardRuns(final Mob mob) {
+		return mob.getGoalSelector().getAvailableGoals().stream().anyMatch(wrapped -> wrapped.isRunning() && wrapped.getGoal() instanceof ShieldUseGoal);
+	}
+
+	/**
+	 * A shield bearer that guards walks on under its raised shield, and a back-off or a second shield would stop that
+	 * advance. While the mobs mod's shield goal runs against a player, a swing leaves the mob the choice to trade and
+	 * nothing else, though the policy rates the back-off first and the shield second. A twin has the same goal, but the
+	 * player looks the other way, so the goal never runs. Under the same swings and policy the twin still backs off.
+	 * The guard starts by mutual gaze: the player's view is set on the zombie each tick, and the zombie faces the
+	 * player it targets.
+	 */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void guardBlocksShieldAndBackOff(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 24.5);
+		java.util.Map<String, Policy.Entry> rated = new java.util.HashMap<>();
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.BACK_OFF), new Policy.Entry(1.0, 10));
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.SHIELD), new Policy.Entry(0.5, 10));
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.TRADE), new Policy.Entry(0.0, 10));
+		Policies.set(player, new Policy(rated));
+		Mob guard = swordAndShield(helper, player, 24, 34);
+		BehaviorInstaller.installShield(guard);
+		Mob twin = swordAndShield(helper, player, 24, 14);
+		BehaviorInstaller.installShield(twin);
+		boolean[] swinging = {false};
+		swingEveryTick(helper, player, swinging);
+		List<Tactic> whileGuarding = new ArrayList<>();
+		Episode[] lastEpisode = {null};
+		boolean[] guardRanLastTick = {false};
+		int[] guardTicks = {0};
+		int[] twinGuardTicks = {0};
+		boolean[] twinBackedOff = {false};
+		helper.onEachTick(() -> {
+			player.lookAt(EntityAnchorArgument.Anchor.EYES, guard.getEyePosition());
+			boolean guarding = guardRuns(guard);
+			guardTicks[0] += guarding ? 1 : 0;
+			Episode episode = Episodes.active(guard);
+			if (episode != null && episode != lastEpisode[0]) {
+				lastEpisode[0] = episode;
+				// A tactic that stops the guard ends it in the
+				// same tick, so the tick before counts as well.
+				if (episode.situation() == Situation.SWING && (guarding || guardRanLastTick[0])) {
+					whileGuarding.add(episode.tactic());
+				}
+			}
+
+			guardRanLastTick[0] = guarding;
+			twinGuardTicks[0] += guardRuns(twin) ? 1 : 0;
+			Episode twinEpisode = Episodes.active(twin);
+			twinBackedOff[0] |= twinEpisode != null && twinEpisode.tactic() == Tactic.BACK_OFF;
+		});
+		LearnArena.whenReady(helper, List.of(player, guard, twin), () -> {
+			swinging[0] = true;
+			LearnArena.pollUntil(helper, () -> !whileGuarding.isEmpty() && twinBackedOff[0], 400, () -> helper.runAfterDelay(60L, () -> {
+				StellaLearn.LOGGER.info(LearnLog.line(
+					"guardBlocksShieldAndBackOff", "RESULT", "guardTicks=" + guardTicks[0] + " whileGuarding=" + whileGuarding
+						+ " twinGuardTicks=" + twinGuardTicks[0] + " twinBackedOff=" + twinBackedOff[0] + " guardGap=" + LearnLog.num(guard.distanceTo(player))
+				));
+				helper.assertTrue(twinGuardTicks[0] == 0, "the twin's shield goal ran for " + twinGuardTicks[0] + " ticks, so the case proves nothing");
+				helper.assertTrue(whileGuarding.stream().allMatch(tactic -> tactic == Tactic.TRADE), "a swing against a guarding mob chose " + whileGuarding);
+				helper.succeed();
+			}), () -> "guardTicks=" + guardTicks[0] + " whileGuarding=" + whileGuarding + " twinGuardTicks=" + twinGuardTicks[0] + " twinBackedOff=" + twinBackedOff[0]);
+		});
+	}
+
 	private static final List<Tactic> INCOMING = List.of(Tactic.EVADE, Tactic.SHIELD, Tactic.TANK);
 
 	/** An arrow of the player's, in slow flight along +x toward the mob, with no gravity so it takes its time. */
@@ -302,12 +413,15 @@ public class TacticGoalGameTest {
 			"rolls": { "roll_chance": 0.0, "elite_chance": 0.0 }
 		}""";
 
-	/** A stone pillar off the line between archer and player, with a spot behind it that is nearer to the player than the archer stands. */
+	/**
+	 * A stone pillar off the line between archer and player. Behind it lie spots nearer the player than the archer stands,
+	 * which a melee mob walks to, and spots no nearer, which an archer may hide at.
+	 */
 	private static void pillarBesideTheArcher(final GameTestHelper helper) {
 		for (int dz = 0; dz < 3; dz++) {
 			for (int dx = 0; dx < 3; dx++) {
 				for (int y = 1; y <= 3; y++) {
-					helper.setBlock(30 + dx, y, 20 + dz, net.minecraft.world.level.block.Blocks.STONE);
+					helper.setBlock(27 + dx, y, 25 + dz, net.minecraft.world.level.block.Blocks.STONE);
 				}
 			}
 		}
@@ -337,7 +451,7 @@ public class TacticGoalGameTest {
 				helper.assertTrue(LearnTestInit.loosedBy(skeleton.getUUID()) > 0, "the archer had not shot when it was found hidden, so it hid for another reason");
 				helper.assertTrue(episode != null && episode.situation() == Situation.AFTER_SHOT && episode.tactic() == Tactic.HIDE, "the episode was " + episode);
 				helper.succeed();
-			}, () -> "the archer never got out of the player's sight; it stood at " + skeleton.position() + " with cover at " + Cover.find(skeleton, player) + " and had loosed " + LearnTestInit.loosedBy(skeleton.getUUID()));
+			}, () -> "the archer never got out of the player's sight; it stood at " + skeleton.position() + " with cover at " + Cover.findHide(skeleton, player) + " and had loosed " + LearnTestInit.loosedBy(skeleton.getUUID()));
 		});
 	}
 
@@ -372,6 +486,77 @@ public class TacticGoalGameTest {
 		LearnArena.whenReady(helper, List.of(player, skeleton), () -> {
 			List<Tactic> open = Tactics.available(skeleton, player, Situation.AFTER_SHOT);
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=hidingIsNotOfferedWhereThereIsNothingToHideBehind RESULT open={}", open);
+			helper.assertTrue(open.equals(List.of(Tactic.HOLD)), "the open tactics were " + open);
+			helper.succeed();
+		});
+	}
+
+	private static final Pattern WALK = Pattern.compile("from=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+) to=(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
+
+	/**
+	 * How many blocks nearer the player a logged walk ends.
+	 * A walk toward the player is positive.
+	 */
+	private static double closedBy(final String walk, final ServerPlayer player) {
+		Matcher match = WALK.matcher(walk);
+		if (!match.find()) {
+			throw new IllegalStateException("not a walk line: " + walk);
+		}
+
+		double from = Math.hypot(Double.parseDouble(match.group(1)) - player.getX(), Double.parseDouble(match.group(2)) - player.getZ());
+		double to = Math.hypot(Double.parseDouble(match.group(3)) - player.getX(), Double.parseDouble(match.group(4)) - player.getZ());
+		return from - to;
+	}
+
+	/**
+	 * An archer that hides goes where it stands no nearer the player than it stood, so cover never costs it ground. The
+	 * pillar offers spots of both kinds, and each walk is read from the line the mod writes when the archer sets out.
+	 */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void archerHideNeverCloses(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		pillarBesideTheArcher(helper);
+		ServerPlayer player = LearnArena.player(helper, 34.5, 24.5);
+		Policies.set(player, preferring(SKELETON, Situation.AFTER_SHOT, AFTER_SHOT, Tactic.HIDE));
+		Mob skeleton = archer(helper, player);
+		steady(skeleton);
+		String id = skeleton.getUUID().toString();
+		LearnArena.whenReady(helper, List.of(player, skeleton), () -> LearnArena.pollUntil(helper, skeleton::onGround, 60, () -> {
+			Vec3 closing = Cover.find(skeleton, player);
+			helper.assertTrue(closing != null, "the pillar offers no cover that closes the distance, so the case proves nothing");
+			LearnArena.pollUntil(helper, () -> !Cover.exposed(helper.getLevel(), player, skeleton.getEyePosition()), 400, () -> {
+				List<String> walks = LearnTestInit.linesWith(id, "learnPolicy MOVE", "tactic=HIDE");
+				double mostClosed = walks.stream().mapToDouble(walk -> closedBy(walk, player)).max().orElse(Double.NaN);
+				StellaLearn.LOGGER.info(LearnLog.line(
+					"archerHideNeverCloses", "RESULT", "walks=" + walks.size() + " mostClosed=" + LearnLog.num(mostClosed) + " coverThatCloses=" + closing
+				));
+				helper.assertTrue(!walks.isEmpty(), "the archer hid without a walk to cover");
+				helper.assertTrue(mostClosed <= 0.05, "a hide walked " + LearnLog.num(mostClosed) + " blocks toward the player: " + walks);
+				helper.succeed();
+			}, () -> "the archer never got out of the player's sight; its walks were " + LearnTestInit.linesWith(id, "learnPolicy MOVE", "tactic=HIDE"));
+		}, () -> "the archer never landed"));
+	}
+
+	/**
+	 * Cover that only lies nearer the player is no place for an archer to hide, for it would leave the open for the
+	 * player's reach. Here one stone block stands by the player, and the only spot behind it that the archer's search
+	 * reaches is nearer the player. A melee mob would walk there, so hiding is not offered.
+	 */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void archerHideIsNotOfferedWhenTheOnlyCoverCloses(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		for (int y = 1; y <= 3; y++) {
+			helper.setBlock(33, y, 22, Blocks.STONE);
+		}
+
+		ServerPlayer player = LearnArena.player(helper, 34.5, 24.5);
+		Mob skeleton = helper.spawnMob(EntityTypes.SKELETON, 24, 1, 24).spawn();
+		skeleton.setNoAi(true);
+		LearnArena.whenReady(helper, List.of(player, skeleton), () -> {
+			Vec3 closing = Cover.find(skeleton, player);
+			List<Tactic> open = Tactics.available(skeleton, player, Situation.AFTER_SHOT);
+			StellaLearn.LOGGER.info(LearnLog.line("archerHideIsNotOfferedWhenTheOnlyCoverCloses", "RESULT", "coverThatCloses=" + closing + " open=" + open));
+			helper.assertTrue(closing != null, "no cover closes the distance, so the case proves nothing");
 			helper.assertTrue(open.equals(List.of(Tactic.HOLD)), "the open tactics were " + open);
 			helper.succeed();
 		});

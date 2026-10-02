@@ -193,7 +193,7 @@ public final class TacticGoal extends Goal {
 	}
 
 	private void hide(final ServerPlayer player) {
-		this.destination = Cover.find(this.mob, player);
+		this.destination = Cover.findHide(this.mob, player);
 		if (this.destination != null) {
 			this.walkTo(this.destination);
 		}
