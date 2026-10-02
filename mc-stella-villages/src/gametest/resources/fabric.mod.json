@@ -26,7 +26,10 @@
 			"com.stella.villages.PatrolLifecycleGameTest",
 			"com.stella.villages.VillageWitchGameTest",
 			"com.stella.villages.VillageHeadFightGameTest",
-			"com.stella.villages.VillageWitchShopGameTest"
+			"com.stella.villages.VillageWitchShopGameTest",
+			"com.stella.villages.PatrolRosterGameTest",
+			"com.stella.villages.DefenderGrowthGameTest",
+			"com.stella.villages.DefenderAiGameTest"
 		]
 	},
 	"mixins": [

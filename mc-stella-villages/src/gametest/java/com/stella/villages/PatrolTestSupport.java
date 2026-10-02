@@ -17,8 +17,10 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.PoiTypeTags;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -32,6 +34,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -784,6 +788,19 @@ final class PatrolTestSupport {
 
 	static String typeId(final Entity entity) {
 		return BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+	}
+
+	/** Saves and loads a mob, as a reload does. */
+	static Mob reload(final GameTestHelper helper, final Mob mob) {
+		ServerLevel level = helper.getLevel();
+		TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+		mob.saveWithoutId(output);
+		CompoundTag saved = output.buildResult();
+		mob.discard();
+		Mob restored = (Mob) mob.getType().create(level, EntitySpawnReason.LOAD);
+		restored.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved));
+		level.addFreshEntity(restored);
+		return restored;
 	}
 
 	static void result(final String test, final String details) {

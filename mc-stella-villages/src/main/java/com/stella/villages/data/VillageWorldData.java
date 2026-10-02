@@ -29,8 +29,8 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
-	/** Version 3 is a head, a witch and two melee Pillagers. */
-	public static final int ROSTER_VERSION = 3;
+	/** Version 4 adds the two ranged guards. */
+	public static final int ROSTER_VERSION = 4;
 	private static final int LEGACY_ROSTER_VERSION = 1;
 	/** Marks a village whose shop has seen no midnight yet. */
 	public static final long NO_MIDNIGHT = Long.MIN_VALUE;
