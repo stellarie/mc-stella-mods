@@ -7,7 +7,8 @@ import net.minecraft.world.entity.ai.goal.Goal;
 /**
  * Holds a ranged unit at its firing band while it sees its target. The goal carries no flags: it stops the
  * navigation only, so the bow or the spell goal stays free to fire, and the mob cannot walk in. A unit that
- * cannot see its target is not held, and its weapon goal walks it to a spot with a clear line.
+ * cannot see its target is not held, and its weapon goal walks it to a spot with a clear line. A unit that walks to cover or
+ * waits there is not held either, so the hide walk is not stopped.
  */
 public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
@@ -26,6 +27,12 @@ public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		if (Stance.suppresses(this.mob)) {
+			return false;
+		}
+
+		// The hide walk starts inside the band.
+		// This goal would stop it on every tick.
+		if (AmbushGoal.repositioning(this.mob)) {
 			return false;
 		}
 
