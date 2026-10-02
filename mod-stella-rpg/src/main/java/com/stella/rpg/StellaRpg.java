@@ -29,6 +29,7 @@ public final class StellaRpg implements ModInitializer {
 		RpgCommand.register();
 		DamageLog.register();
 		DeathRecap.register();
+		MobGrowth.register();
 		Bag.register();
 		com.stella.rpg.api.BagShare.publish();
 		RpgNet.register();

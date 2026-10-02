@@ -25,7 +25,7 @@ public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (this.mob.getHealth() <= this.mob.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {
+		if (Stance.suppresses(this.mob)) {
 			return false;
 		}
 
@@ -35,8 +35,8 @@ public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		double distance = this.mob.distanceTo(target);
-		return distance >= state.getNearDistance()
-			&& distance <= state.getFarDistance()
+		return distance >= StanceBands.near(this.mob, state.getNearDistance())
+			&& distance <= StanceBands.far(this.mob, state.getFarDistance())
 			&& this.mob.getSensing().hasLineOfSight(target);
 	}
 

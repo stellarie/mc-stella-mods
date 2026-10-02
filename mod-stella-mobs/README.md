@@ -185,6 +185,77 @@ It also goes out after an elite or boss spider casts at least one web.
 - A piglin does not answer. It reads its target from the Brain, so the call does not stick.
 - A creative or spectator player never draws a call.
 
+## Stance
+
+A mob that hunts a player reads the player's health and takes one of five stances. This section is for a player who
+fights these mobs and a developer who tunes them. Each number below is a constant in the class named in the heading.
+
+### What a mob reads (`PlayerReadout`, `StanceRules`)
+
+- The player's health share is health plus absorption, divided by the player's maximum health.
+  A raised shield that faces the mob adds 0.25 to the share.
+- The player counts as low at 35 percent or less, and as high again at 50 percent or more.
+- The mob counts as low at 45 percent health or less when it hunts alone.
+  Each other monster within 12 blocks that hunts the same player lowers that line by 7.5 points, down to 15 percent.
+  The mob counts as high again 15 points above its line.
+- The player chases when the movement toward the mob is 0.1 blocks per tick or more, or when the player stands
+  closer than 6 blocks. The movement is the one that the client reported.
+
+### Stances (`Stance`, `StanceGoal`)
+
+| Mob | Player | Chases | Stance |
+|---|---|---|---|
+| low | high | yes | RETREAT |
+| low | high | no | KITE |
+| high | high | any | FIGHT |
+| low | low | any | FIGHT |
+| high | low | any | PURSUE |
+
+- A zombie, husk, drowned, zombie villager, and zombified piglin never retreat or kite. They fight.
+- A mob with a target that is not a player keeps the older rule: it retreats at 35 percent health or less.
+  A warden, wither, elder guardian, ravager, and a mob that another mod drives take no stance.
+- A mob reads the player about every 5 ticks of its own.
+  A mob that enters RETREAT or PURSUE stays in it for at least 40 ticks.
+- A run of retreat that ends moves the mob to KITE at once. The mob kites for 100 ticks, even if the player still chases.
+- Every stance change writes one INFO line: `[BEHAVIOR] test=stance CHANGE mob=... from=... to=...`.
+
+### Retreat (`RetreatGoal`, `FleePositions`)
+
+- A mob in RETREAT runs while the player is closer than 8 blocks. The run ends at a gap of 8 blocks, after 100 ticks,
+  or when no flee spot is left.
+- The mob runs toward the nearest healthy monster within 24 blocks, if the spot still gains a block or more from the
+  player. A healthy monster is above 35 percent health. A witch is one. Without such a monster, the mob runs straight away.
+- A hurt archer in RETREAT drops its band, its standoff, and its shield, so nothing holds it in place.
+
+### Kite (`KiteGoal`, `StanceBands`, `KeepDistanceGoal`)
+
+- A hurt archer in KITE holds at least 12 blocks from the player. It moves for 30 ticks and rests for 30 ticks,
+  and it shoots in the rests.
+- A hurt melee mob in KITE keeps 4 to 8 blocks from a player who looks at it. The player's view cone is 55 degrees
+  to each side. When the player looks away, the mob closes in and strikes.
+- A melee mob never stands still for good. After 60 ticks under the gaze, it strikes.
+  It then keeps the KITE stance for 60 ticks, so a gap under 6 blocks does not turn the strike into a retreat.
+- A healthy archer in PURSUE comes in to 12 blocks of a hurt player. It holds a band of 3 to 12 blocks.
+
+### Blood scent (`BloodScent`)
+
+- A survival or adventure player at 35 percent health or less draws idle monsters within 32 blocks. The server visits
+  each player every 20 ticks, and up to 8 monsters take the player as their target, nearest first.
+- A monster is idle when it has no target or a target that is not a player.
+- These monsters never answer:
+  - a creeper, and a neutral mob such as an enderman
+  - a mob that another mod drives, and a village friend
+  - a mob that reads its target from a Brain, such as a piglin
+  - a monster at 35 percent health or below
+- The action bar shows "Your blood draws them in" when at least one monster answers. The player then waits 200 ticks
+  of their own for the next scent.
+
+### Limits
+
+- A stray, a bogged, and a parched use the vanilla bow goal, which strafes in and out by itself. Their kite
+  is weaker: they can walk a block or more inside the 12 block edge while they rest.
+- The goals of `mod-stella-learn` at rank 0 can still preempt a stance goal. A follow-up change gives them stance guards.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.

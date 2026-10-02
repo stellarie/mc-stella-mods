@@ -315,6 +315,17 @@ At threat 10 the stats double. At threat 50 they are six times the base.
   or after a failed call, the threat is 0 and the role is `melee`, so every mob has the melee base.
 - An unknown role counts as `melee`.
 
+## Mob stat growth
+
+Another mod can make one mob stronger without a compile dependency on this mod. The object share
+`mod-stella-rpg:mob-stat-grow` holds a `java.util.function.BiFunction<Mob, Double, String>`. Calling it
+adds the amount to one of the six stats, chosen at random, and returns that stat's key (`str`, `agi`,
+`vit`, `dex`, `int` or `luk`). The villages mod uses it to reward its defenders for kills.
+
+- The growth is saved on the mob in the `mod-stella-rpg:mob_growth` attachment, as decimals, so half
+  points add up. A stat counts only the whole points.
+- Growth adds to the mob's stat from its role and level, up to the stat ceiling.
+
 ## Debuff resistance
 
 A harmful effect with a finite duration is shortened when it lands on a player or a mob:
