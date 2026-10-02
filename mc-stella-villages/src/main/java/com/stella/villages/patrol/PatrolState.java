@@ -67,11 +67,13 @@ public record PatrolState(UUID villageId, Role role, BlockPos lastPosition, bool
 	public enum Role {
 		HEAD,
 		VINDICATOR,
+		// The melee guard. Its id is kept for saves.
 		PILLAGER,
 		EVOKER,
 		RAVAGER,
 		WITCH,
-		VILLAGE_WITCH;
+		VILLAGE_WITCH,
+		RANGED_GUARD;
 
 		public static final Codec<Role> CODEC = Codec.STRING.xmap(Role::decode, Role::name);
 

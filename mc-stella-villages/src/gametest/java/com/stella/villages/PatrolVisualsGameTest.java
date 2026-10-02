@@ -45,9 +45,11 @@ public class PatrolVisualsGameTest {
 		}
 
 		List<Mob> soldiers = PatrolTestSupport.patrols(helper).stream()
-			.filter(mob -> PatrolState.role(mob) == PatrolState.Role.VINDICATOR || PatrolState.role(mob) == PatrolState.Role.PILLAGER)
+			.filter(mob -> PatrolState.role(mob) == PatrolState.Role.VINDICATOR || PatrolState.role(mob) == PatrolState.Role.PILLAGER
+				|| PatrolState.role(mob) == PatrolState.Role.RANGED_GUARD)
 			.toList();
 		helper.assertTrue(!soldiers.isEmpty(), "the roster has no foot soldiers, so the case proves nothing");
+		helper.assertTrue(soldiers.stream().anyMatch(mob -> PatrolState.role(mob) == PatrolState.Role.RANGED_GUARD), "the roster has no ranged guard, so the case proves nothing");
 		for (Mob soldier : soldiers) {
 			helper.assertTrue(PatrolVisuals.isVillageBanner(soldier.getItemBySlot(EquipmentSlot.HEAD)), PatrolTestSupport.typeId(soldier) + " wears " + soldier.getItemBySlot(EquipmentSlot.HEAD));
 			helper.assertTrue(soldier.getDropChances().byEquipment(EquipmentSlot.HEAD) == 0.0F, "a patrol banner can drop");

@@ -3,22 +3,32 @@ package com.stella.villages.raid;
 import com.stella.villages.McStellaVillages;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.VillageRecord;
+import com.stella.villages.mixin.RaidAccessor;
 import com.stella.villages.mixin.RaidsInvoker;
 import java.util.Comparator;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.entity.raid.Raids;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/** V3: one 10% roll a day for a single-wave raid at a village a player is standing in. */
+/**
+ * V3: one 10% roll a day for a single-wave raid at a village a player is standing in. The wave is a mini-raid
+ * of {@link #MINI_RAID_MIN} to {@link #MINI_RAID_MAX} pillagers. A raid with one wave is a mini-raid, because
+ * every vanilla raid has three waves or more.
+ */
 public final class VillageRaids {
 	public static final double RAID_CHANCE = 0.10;
 	public static final double ATTENDANCE_RANGE = 64.0;
 	public static final long TICKS_PER_DAY = 24_000L;
+	public static final int MINI_RAID_MIN = 3;
+	public static final int MINI_RAID_MAX = 5;
 	private static final long DAY_STRIDE = 0x9E3779B97F4A7C15L;
 	private static final double UNIT = 0x1.0p-53;
 	// True only while this mod builds a raid, so vanilla's own omen raids keep their wave count.
@@ -40,6 +50,29 @@ public final class VillageRaids {
 
 	public static boolean oneWave() {
 		return ONE_WAVE.get();
+	}
+
+	/** Vanilla raids never have one wave. */
+	public static boolean isMiniRaid(final Raid raid) {
+		return ((RaidAccessor) raid).mcStellaVillages$numGroups() == 1;
+	}
+
+	/** Like start, but not in the raid registry. */
+	public static Raid newMiniRaid(final BlockPos center, final Difficulty difficulty) {
+		ONE_WAVE.set(Boolean.TRUE);
+		try {
+			return new Raid(center, difficulty);
+		} finally {
+			ONE_WAVE.set(Boolean.FALSE);
+		}
+	}
+
+	/**
+	 * Only pillagers spawn.
+	 * Their count is uniform in the mini-raid range.
+	 */
+	public static int miniRaidSpawns(final String raiderType, final RandomSource random) {
+		return raiderType.equals("PILLAGER") ? MINI_RAID_MIN + random.nextInt(MINI_RAID_MAX - MINI_RAID_MIN + 1) : 0;
 	}
 
 	/** The day's roll, fixed by the world seed and the day, so a restart can never roll the same day again. */

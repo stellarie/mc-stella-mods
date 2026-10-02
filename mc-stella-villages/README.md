@@ -16,10 +16,16 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 
 ## Features
 
-- One ten-entity patrol per discovered vanilla village. Every 5 seconds, the chunks within 2 of each
+- One patrol of six per discovered vanilla village: the duke, two melee guards, two ranged guards, and
+  the mage. Every 5 seconds, the chunks within 2 of each
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
-  gets its patrol. When a village's head has been missing for a minute while a player is near, the
+  gets its patrol. A village saved by an older version gains its two ranged guards at its next check.
+  When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
+- A melee guard carries an iron sword and a shield. A ranged guard carries a crossbow. Both run the
+  `mod-stella-mobs` AI. A melee guard raises its shield at an incoming arrow. A ranged guard stands and
+  fires at hostile mobs within 24 blocks, and walks closer when its target is farther or out of sight.
+  Both kinds wear the village banner and offer the daily guard quest.
 - The head guards within 8 blocks of the village's bell and never chases a threat beyond that radius.
   Inside that radius it fights any hostile mob it sees, a slime as much as a zombie.
   The other members are set down across
@@ -112,17 +118,32 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   player, and does not fight. It returns to its work 5 seconds after the last player closes the menu.
 - Patrol members are one side. A stray bolt or swing between members, of any village, does no
   damage, and no member ever takes another as its target.
+- A patrol member's stray hit also spares the village: a villager, an iron or snow golem, or a player
+  the member is not fighting takes no damage. A player the patrol hunts as a threat still does.
 - A weaponsmith, toolsmith or armorer hardens a weapon. Sneak and right-click the smith while holding
   anything with its own attack damage: 12 emeralds buy +1 attack damage, up to +5 per weapon. The
   bonus shows in the item's tooltip. Spectators cannot harden.
 - Ring a village's bell, within 48 blocks of the village's first bell, and the loaded patrol teleports
   to safe spots within 8 blocks of it. Each member gets Speed II and Strength II for five minutes.
   Every ring refreshes the rally.
-- One daily 10% roll for a single-wave village raid. The roll is fixed by the world seed and the day,
+- One daily 10% roll for a village mini-raid. The roll is fixed by the world seed and the day,
   so a restart cannot reroll a day. On a raid day, the first village with a player within 64 blocks
   of its centre is raided with one wave and no bonus wave; if no village has a player nearby, the
-  day passes quietly. The first day a world is seen only starts the count. Raids from a player's
-  Raid Omen are unchanged. Measured rate: 10.1% over 100,000 seeded days.
+  day passes quietly. The first day a world is seen only starts the count. The wave holds 3 to 5
+  pillagers, 4 on average, and no other raider. Raids from a player's Raid Omen are unchanged and keep
+  every vanilla number. Measured rate: 10.1% over 100,000 seeded days.
+- Any raid at a village alerts its guards, whether a mini-raid or a Raid Omen raid. Each guard
+  targets the nearest raider within 48 blocks of the bell. The guard needs no line of sight. The raider
+  need not target anyone. The duke keeps its 8-block rule, and the mage keeps its own spells. A guard
+  never joins a raid. The server log holds one `raid_alert_started` line when an alert begins and one
+  `raid_alert_ended` line when its raid ends.
+- Defenders grow with each kill. When a guard, the duke, or the mage kills a mob or a player, it gains
+  0.5 points in one random stat. A fellow defender, a villager, a golem, and the mobs mod's friendly
+  pillagers never count. With `mod-stella-rpg` loaded, the object share `mod-stella-rpg:mob-stat-grow`
+  grows an rpg stat. The share is a `BiFunction<Mob, Double, String>`: it takes the mob and the points,
+  and returns the key of the stat it grew. Without that mod, the defender gains a permanent modifier
+  on max health, attack damage, armor, or armor toughness. One modifier per attribute holds the
+  total. The total survives a save. The log holds one `defender_grown` line per kill.
 
 ## Build and test
 
