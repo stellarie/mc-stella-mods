@@ -111,6 +111,11 @@ public final class VillagePatrolGameTest {
 			.filter(mob -> mob.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
 				.is(net.minecraft.world.item.Items.IRON_SWORD))
 			.count();
+		long crossbowPillagers = patrols.stream()
+			.filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:pillager"))
+			.filter(mob -> mob.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND)
+				.is(net.minecraft.world.item.Items.CROSSBOW))
+			.count();
 		Mob ravager = patrols.stream().filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:ravager"))
 			.findFirst().orElse(null);
 		boolean ravagerUnmounted = ravager != null && ravager.getVehicle() == null && ravager.getPassengers().isEmpty();
@@ -118,16 +123,18 @@ public final class VillagePatrolGameTest {
 		PatrolTestSupport.result(
 			"rosterHasRequiredMembers",
 			"count=" + patrols.size() + " vindicators=" + vindicators + " pillagers=" + pillagers
-				+ " swordPillagers=" + swordPillagers + " evokers=" + evokers + " ravagers=" + ravagers
+				+ " swordPillagers=" + swordPillagers + " crossbowPillagers=" + crossbowPillagers
+				+ " evokers=" + evokers + " ravagers=" + ravagers
 				+ " witches=" + witches + " ravagerUnmounted=" + ravagerUnmounted + " markers=" + markers
 		);
 		helper.assertValueEqual(Integer.valueOf(patrols.size()), Integer.valueOf(PATROL_COUNT), "patrol roster size");
 		helper.assertValueEqual(Long.valueOf(vindicators), Long.valueOf(1), "vindicator count");
-		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(PatrolService.PILLAGER_COUNT), "pillager count");
+		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(PatrolService.PILLAGER_COUNT + PatrolService.RANGED_GUARD_COUNT), "pillager count");
 		helper.assertValueEqual(Long.valueOf(evokers), Long.valueOf(0), "evoker count");
 		helper.assertValueEqual(Long.valueOf(ravagers), Long.valueOf(0), "ravager count");
 		helper.assertValueEqual(Long.valueOf(witches), Long.valueOf(1), "witch count");
 		helper.assertValueEqual(Long.valueOf(swordPillagers), Long.valueOf(PatrolService.PILLAGER_COUNT), "iron sword Pillager count");
+		helper.assertValueEqual(Long.valueOf(crossbowPillagers), Long.valueOf(PatrolService.RANGED_GUARD_COUNT), "crossbow Pillager count");
 		helper.assertTrue(patrols.stream().allMatch(mob -> mob.getVehicle() == null && mob.getPassengers().isEmpty()), "a patrol member was mounted");
 		helper.assertTrue(markers, "a patrol marker was not set before entity insertion");
 		helper.succeed();
@@ -1134,8 +1141,9 @@ public final class VillagePatrolGameTest {
 		}
 
 		List<Mob> beforeMembers = PatrolTestSupport.activePatrols(helper, test);
+		// Melee only. A ranged guard is a Pillager too.
 		List<Mob> beforePillagers = beforeMembers.stream()
-			.filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:pillager"))
+			.filter(mob -> PatrolState.role(mob) == PatrolState.Role.PILLAGER)
 			.toList();
 		List<UUID> beforeIds = beforePillagers.stream().map(Mob::getUUID)
 			.sorted(Comparator.comparing(UUID::toString)).toList();
@@ -1178,7 +1186,7 @@ public final class VillagePatrolGameTest {
 			.thenWaitUntil(() -> {
 				List<Mob> afterMembers = PatrolTestSupport.activePatrols(helper, test);
 				List<Mob> afterPillagers = afterMembers.stream()
-					.filter(mob -> PatrolTestSupport.typeId(mob).equals("minecraft:pillager"))
+					.filter(mob -> PatrolState.role(mob) == PatrolState.Role.PILLAGER)
 					.toList();
 				List<UUID> afterIds = afterPillagers.stream().map(Mob::getUUID)
 					.sorted(Comparator.comparing(UUID::toString)).toList();

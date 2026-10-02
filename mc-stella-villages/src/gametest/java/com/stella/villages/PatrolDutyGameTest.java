@@ -97,19 +97,25 @@ public class PatrolDutyGameTest {
 		String test = "theHeadStartsByTheBellAndTheRestSpreadOut";
 		spreadGround(helper);
 		forceScatterChunks(helper);
-		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
-			return;
-		}
-		BlockPos bell = PatrolTestSupport.anchor(helper);
-		Mob head = PatrolTestSupport.role(helper, test, "HEAD");
-		List<Mob> patrol = PatrolTestSupport.patrols(helper);
-		double headDistance = head.position().distanceTo(Vec3.atBottomCenterOf(bell));
-		long spread = patrol.stream().filter(member -> member != head
-			&& member.position().distanceTo(Vec3.atBottomCenterOf(bell)) > PatrolService.HEAD_BELL_RADIUS).count();
-		PatrolTestSupport.result(test, "headDistance=" + headDistance + " members=" + patrol.size() + " spread=" + spread);
-		helper.assertTrue(headDistance <= PatrolService.HEAD_BELL_RADIUS, "the head starts " + headDistance + " blocks from the bell");
-		helper.assertTrue(spread >= (patrol.size() - 1) / 2, "only " + spread + " of " + (patrol.size() - 1) + " members start beyond the bell's circle");
-		helper.succeed();
+		// A member is set down in a ticking chunk only.
+		// A forced chunk takes a few ticks to tick.
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(scatterChunksTick(helper), "the scatter chunks are not ticking yet"))
+			.thenExecute(() -> {
+				if (!PatrolTestSupport.loadVillage(helper, test, false)) {
+					return;
+				}
+				BlockPos bell = PatrolTestSupport.anchor(helper);
+				Mob head = PatrolTestSupport.role(helper, test, "HEAD");
+				List<Mob> patrol = PatrolTestSupport.patrols(helper);
+				double headDistance = head.position().distanceTo(Vec3.atBottomCenterOf(bell));
+				long spread = patrol.stream().filter(member -> member != head
+					&& member.position().distanceTo(Vec3.atBottomCenterOf(bell)) > PatrolService.HEAD_BELL_RADIUS).count();
+				PatrolTestSupport.result(test, "headDistance=" + headDistance + " members=" + patrol.size() + " spread=" + spread);
+				helper.assertTrue(headDistance <= PatrolService.HEAD_BELL_RADIUS, "the head starts " + headDistance + " blocks from the bell");
+				helper.assertTrue(spread >= (patrol.size() - 1) / 2, "only " + spread + " of " + (patrol.size() - 1) + " members start beyond the bell's circle");
+			})
+			.thenSucceed();
 	}
 
 	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
@@ -262,6 +268,19 @@ public class PatrolDutyGameTest {
 				helper.getLevel().setChunkForced(x >> 4, z >> 4, true);
 			}
 		}
+	}
+
+	static boolean scatterChunksTick(final GameTestHelper helper) {
+		BlockPos anchor = helper.absolutePos(new BlockPos(2, 1, 2));
+		int radius = PatrolService.MEMBER_SCATTER_RADIUS;
+		for (int x = anchor.getX() - radius; x <= anchor.getX() + radius; x += 16) {
+			for (int z = anchor.getZ() - radius; z <= anchor.getZ() + radius; z += 16) {
+				if (!helper.getLevel().isPositionEntityTicking(new BlockPos(x, anchor.getY(), z))) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	// Stone around the village's own chunk, so members have somewhere to spread to.

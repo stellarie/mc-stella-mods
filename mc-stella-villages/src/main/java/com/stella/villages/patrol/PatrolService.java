@@ -1,6 +1,7 @@
 package com.stella.villages.patrol;
 
 import com.stella.villages.McStellaVillages;
+import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.scaling.SpawnScaling;
@@ -24,6 +25,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -37,6 +39,9 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.animal.golem.AbstractGolem;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -46,6 +51,7 @@ import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Witch;
+import net.minecraft.world.entity.raid.Raider;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -75,8 +81,11 @@ public final class PatrolService {
 	public static final int WITCH_POTION_RANGE = 16;
 	private static final long WITCH_GOAL_SWEEP_TICKS = 5L;
 	private static final String MOBS_WITCH_GOAL_PREFIX = "com.stella.mobs.behavior.Witch";
-	public static final int PATROL_MEMBER_COUNT = 4;
+	/** Melee guards. Their role is PILLAGER. */
 	public static final int PILLAGER_COUNT = 2;
+	public static final int RANGED_GUARD_COUNT = 2;
+	/** The duke, the guards and the mage. */
+	public static final int PATROL_MEMBER_COUNT = 2 + PILLAGER_COUNT + RANGED_GUARD_COUNT;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
 	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
@@ -106,6 +115,7 @@ public final class PatrolService {
 	public static void onServerStopping(final net.minecraft.server.MinecraftServer server) {
 		BELLS.clear();
 		VillageCoverage.clear();
+		RaidAlert.clear();
 	}
 
 	/** The village's bell: its meeting point, where the head keeps its watch. */
@@ -152,9 +162,11 @@ public final class PatrolService {
 
 	private static void reconcileRoster(final VillageWorldData data, final VillageRecord village) {
 		int pillagers = 0;
+		int rangedGuards = 0;
 		for (MemberRecord member : List.copyOf(village.members())) {
 			boolean pillager = member.role().equals(PatrolState.Role.PILLAGER.name());
-			boolean excess = pillager && ++pillagers > PILLAGER_COUNT;
+			boolean rangedGuard = member.role().equals(PatrolState.Role.RANGED_GUARD.name());
+			boolean excess = pillager && ++pillagers > PILLAGER_COUNT || rangedGuard && ++rangedGuards > RANGED_GUARD_COUNT;
 			boolean retired = RETIRED_ROLES.stream().anyMatch(role -> role.name().equals(member.role()));
 			if (retired || excess) {
 				data.removeMember(member.id());
@@ -235,9 +247,7 @@ public final class PatrolService {
 		}
 
 		List<Mob> spawned = new ArrayList<>();
-		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
+		spawnMissingRoster(level, data, village, spawned);
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
 			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
@@ -250,9 +260,7 @@ public final class PatrolService {
 		final VillageRecord village
 	) {
 		List<Mob> spawned = new ArrayList<>();
-		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
+		spawnMissingRoster(level, data, village, spawned);
 
 		if (hasCompleteRoster(village)) {
 			data.markRosterStarted(village);
@@ -262,6 +270,18 @@ public final class PatrolService {
 			"[BEHAVIOR] mod={} event=patrol_spawned village={} anchor={} members={} roster_started={}",
 			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size(), village.rosterStarted()
 		);
+	}
+
+	private static void spawnMissingRoster(
+		final ServerLevel level,
+		final VillageWorldData data,
+		final VillageRecord village,
+		final List<Mob> spawned
+	) {
+		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.RANGED_GUARD, RANGED_GUARD_COUNT, spawned);
+		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
 	}
 
 	private static void spawnMissingMembers(
@@ -285,6 +305,7 @@ public final class PatrolService {
 	private static boolean hasCompleteRoster(final VillageRecord village) {
 		return roleCount(village, PatrolState.Role.HEAD) >= 1
 			&& roleCount(village, PatrolState.Role.PILLAGER) >= PILLAGER_COUNT
+			&& roleCount(village, PatrolState.Role.RANGED_GUARD) >= RANGED_GUARD_COUNT
 			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1;
 	}
 
@@ -329,12 +350,16 @@ public final class PatrolService {
 		mob.addTag(PATROL_TAG);
 		ReactiveState.get(mob).setGearApplied(true);
 		EliteState.setSummoned(mob, true);
+		keepOutOfRaids(mob);
 		if (role == PatrolState.Role.HEAD) {
 			HeadKit.apply(mob);
 		} else if (role == PatrolState.Role.VILLAGE_WITCH) {
 			VillageWitchKit.apply(mob);
 		} else if (role == PatrolState.Role.PILLAGER) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+			mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+		} else if (role == PatrolState.Role.RANGED_GUARD) {
+			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
 		}
 		PatrolVisuals.dress(mob, level, role);
 		installGoals(level, mob, village);
@@ -444,6 +469,10 @@ public final class PatrolService {
 		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
 		access.patrolTargetSelector().removeAllGoals(goal -> true);
+		// A raid is the village's first danger.
+		if (isGuard(PatrolState.role(mob))) {
+			access.patrolTargetSelector().addGoal(0, new RaidAlertTargetGoal(mob, village.id()));
+		}
 		access.patrolTargetSelector().addGoal(1, new PatrolThreatTargetGoal(mob, village.id()));
 		access.patrolTargetSelector().addGoal(2, new PatrolDefendTargetGoal(mob, village.id()));
 		access.patrolTargetSelector().addGoal(
@@ -481,6 +510,19 @@ public final class PatrolService {
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
 		} else {
 			mob.getGoalSelector().addGoal(5, new VillageWanderGoal(mob, bell, MEMBER_WANDER_RADIUS, 1.0));
+		}
+	}
+
+	private static boolean isGuard(final PatrolState.@Nullable Role role) {
+		return role == PatrolState.Role.PILLAGER || role == PatrolState.Role.RANGED_GUARD;
+	}
+
+	// Vanilla's spawn code sets the raid flag.
+	// A raider with the flag joins a raid near it.
+	// A member never answers a raid's call.
+	private static void keepOutOfRaids(final Mob mob) {
+		if (mob instanceof Raider raider) {
+			raider.setCanJoinRaid(false);
 		}
 	}
 
@@ -533,6 +575,7 @@ public final class PatrolService {
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
 		stripMobsScaling(mob);
+		keepOutOfRaids(mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(PATROL_TAG);
 		// A head saved in its older diamond kit is re-armed in netherite when it loads.
@@ -627,7 +670,7 @@ public final class PatrolService {
 
 	private static void onLevelTick(final ServerLevel level) {
 		long tick = LEVEL_TICKS.merge(level, 1L, Long::sum);
-		restoreSwords(level);
+		restoreMeleeKit(level);
 		if (tick % WITCH_GOAL_SWEEP_TICKS == 0L) {
 			clearForeignWitchGoals(level);
 		}
@@ -672,7 +715,7 @@ public final class PatrolService {
 
 	// A stray bolt or swing between members does no harm.
 	private static boolean allowDamage(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (!areFellows(victim, source.getEntity())) {
+		if (!areFellows(victim, source.getEntity()) && !strayHit(victim, source.getEntity())) {
 			return true;
 		}
 
@@ -681,6 +724,19 @@ public final class PatrolService {
 			McStellaVillages.MOD_ID, victim.getUUID(), source.getEntity().getUUID(), amount
 		);
 		return false;
+	}
+
+	/**
+	 * A patrol member's hit on a villager, a golem, or a player it is not fighting is a stray one, such as a crossbow
+	 * bolt that misses a raider. A player the patrol hunts as a threat still takes the hit.
+	 */
+	static boolean strayHit(final LivingEntity victim, final @Nullable Entity attacker) {
+		if (!(attacker instanceof Mob member) || !PatrolState.isMarked(member)) {
+			return false;
+		}
+
+		return victim instanceof AbstractVillager || victim instanceof AbstractGolem
+			|| victim instanceof Player && member.getTarget() != victim;
 	}
 
 	/** A member from a retired roster dismounts and leaves the level. */
@@ -715,20 +771,36 @@ public final class PatrolService {
 		}
 	}
 
-	/** A saved patrol Pillager trades its old crossbow for a melee weapon. */
-	private static void restoreSwords(final ServerLevel level) {
+	// A saved melee guard gets its sword and shield.
+	// Old saves held a crossbow and no shield.
+	private static void restoreMeleeKit(final ServerLevel level) {
 		for (Mob mob : List.copyOf(LOADOUT_CHECKS)) {
 			if (mob.level() != level) {
 				continue;
 			}
 
 			LOADOUT_CHECKS.remove(mob);
-			if (mob.isAlive() && !mob.getMainHandItem().is(Items.IRON_SWORD)) {
+			if (!mob.isAlive()) {
+				continue;
+			}
+
+			if (!mob.getMainHandItem().is(Items.IRON_SWORD)) {
 				McStellaVillages.LOGGER.info(
 					"[BEHAVIOR] mod={} event=patrol_sword_restored entity={} replaced={}",
 					McStellaVillages.MOD_ID, mob.getUUID(), mob.getMainHandItem().getItem()
 				);
 				mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+			}
+
+			if (!mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
+				McStellaVillages.LOGGER.info(
+					"[BEHAVIOR] mod={} event=patrol_shield_restored entity={} replaced={}",
+					McStellaVillages.MOD_ID, mob.getUUID(), mob.getOffhandItem().getItem()
+				);
+				mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+				// The mobs mod reads the off hand
+				// once, when the mob loads.
+				BehaviorInstaller.installShield(mob);
 			}
 		}
 	}
