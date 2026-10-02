@@ -69,6 +69,9 @@
 			"com.stella.mobs.ContainerLevelGameTest",
 			"com.stella.mobs.TraitsGameTest",
 			"com.stella.mobs.WitchGameTest",
+			"com.stella.mobs.ShieldGuardGameTest",
+			"com.stella.mobs.ZombiePursuitGameTest",
+			"com.stella.mobs.SpiderSignalGameTest",
 			"com.stella.mobs.RangedReachGameTest",
 			"com.stella.mobs.WitchReachGameTest",
 			"com.stella.mobs.ShotLeadGameTest"

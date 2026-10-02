@@ -27,6 +27,7 @@
 		"ThreatExperienceMixin",
 		"MobPiercingMixin",
 		"MobDamageScalingMixin",
+		"MobShieldBlockMixin",
 		"PiglinAttackRangeMixin",
 		"SkeletonShotLeadMixin"
 	],
