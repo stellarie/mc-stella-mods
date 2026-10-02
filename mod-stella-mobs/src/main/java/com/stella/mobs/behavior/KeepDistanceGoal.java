@@ -11,9 +11,16 @@ import net.minecraft.world.phys.Vec3;
  * band or beyond its far band. It walks away from a close target and toward a far one. It releases when the
  * window expires. An approach also ends the moment the target is inside the far edge, because the weapon goal
  * cannot fire while this goal holds MOVE and LOOK. A retreat measures no progress.
+ *
+ * <p>The edges come from {@link StanceBands}, and a RETREAT stance suppresses the goal. In KITE the unit moves for 30
+ * ticks and rests for 30, so its weapon goal fires in the rests.
  */
 public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public static final int WINDOW_TICKS = 60;
+	/** KITE: move 30 ticks, then rest 30. */
+	public static final int KITE_WINDOW_TICKS = 30;
+	// The rearm budget drops once per two ticks.
+	public static final int KITE_COOLDOWN_TICKS = 15;
 
 	private static final double SPEED_MODIFIER = 1.2;
 	private static final double ENTRY_DEAD_ZONE = 1.0;
@@ -46,7 +53,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (this.mob.getHealth() <= this.mob.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {
+		if (Stance.suppresses(this.mob)) {
 			return false;
 		}
 
@@ -57,12 +64,12 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 
 		double distance = this.mob.distanceTo(target);
 
-		if (distance < state.getNearDistance()) {
+		if (distance < StanceBands.near(this.mob, state.getNearDistance())) {
 			this.retreating = true;
 			return true;
 		}
 
-		if (distance > state.getFarDistance() + ENTRY_DEAD_ZONE) {
+		if (distance > StanceBands.far(this.mob, state.getFarDistance()) + ENTRY_DEAD_ZONE) {
 			this.retreating = false;
 			return true;
 		}
@@ -74,11 +81,11 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public boolean canContinueToUse() {
 		// The window counts the goal's own ticks, not the level clock: a goal ticks once per game tick, so
 		// the two agree in play, and this one still ends where a stopped clock would freeze it.
-		if (this.ticksRunning >= WINDOW_TICKS) {
+		if (this.ticksRunning >= this.windowTicks()) {
 			return false;
 		}
 
-		if (this.mob.getHealth() <= this.mob.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {
+		if (Stance.suppresses(this.mob)) {
 			return false;
 		}
 
@@ -89,12 +96,12 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 
 		ReactiveState state = ReactiveState.get(this.mob);
 
-		if (!this.retreating && this.mob.distanceTo(target) <= state.getFarDistance()) {
+		if (!this.retreating && this.mob.distanceTo(target) <= StanceBands.far(this.mob, state.getFarDistance())) {
 			return false;
 		}
 
 		if (this.retreating) {
-			if (this.mob.distanceTo(target) >= state.getNearDistance()) {
+			if (this.mob.distanceTo(target) >= StanceBands.near(this.mob, state.getNearDistance())) {
 				return false;
 			}
 
@@ -118,7 +125,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public void stop() {
 		this.mob.getNavigation().stop();
 		ReactiveState state = ReactiveState.get(this.mob);
-		state.armRetreatCooldown(COOLDOWN_TICKS);
+		state.armRetreatCooldown(this.isKiting() ? KITE_COOLDOWN_TICKS : COOLDOWN_TICKS);
 	}
 
 	@Override
@@ -159,6 +166,14 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		this.mob.getNavigation().moveTo(away.x, away.y, away.z, SPEED_MODIFIER);
+	}
+
+	private int windowTicks() {
+		return this.isKiting() ? KITE_WINDOW_TICKS : WINDOW_TICKS;
+	}
+
+	private boolean isKiting() {
+		return Stance.of(this.mob) == Stance.KITE;
 	}
 
 	private boolean isAirborne() {

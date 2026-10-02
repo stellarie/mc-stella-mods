@@ -33,6 +33,8 @@ import net.minecraft.world.item.Items;
 public final class BehaviorInstaller {
 	// The retreat must beat every vanilla MOVE goal, and no monster claims MOVE at 0.
 	public static final int RETREAT_PRIORITY = 0;
+	// Flagless, so the rank decides nothing.
+	public static final int STANCE_PRIORITY = RETREAT_PRIORITY;
 	// A tie never preempts, and the vanilla melee goals sit at priority 2 and above.
 	public static final int SHIELD_PRIORITY = 1;
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
@@ -187,7 +189,11 @@ public final class BehaviorInstaller {
 		RangedReach.install(mob);
 
 		if (!RETREAT_EXEMPT.contains(mob.getType())) {
+			// Poll first: later goals read a fresh stance.
+			mob.getGoalSelector().addGoal(STANCE_PRIORITY, new StanceGoal<>(monster));
 			mob.getGoalSelector().addGoal(RETREAT_PRIORITY, new RetreatGoal<>(monster));
+			// Before the shield goal: the first tie wins.
+			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new KiteGoal<>(monster));
 		}
 
 		mob.getGoalSelector().addGoal(DEFEND_PRIORITY, new DefendAllyGoal<>(monster));

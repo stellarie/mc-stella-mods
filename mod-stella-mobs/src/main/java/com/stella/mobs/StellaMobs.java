@@ -145,6 +145,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.behavior.WitherPulse.register();
 		com.stella.mobs.behavior.DepthMobs.register();
 		SpawnPressure.register();
+		com.stella.mobs.behavior.BloodScent.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 

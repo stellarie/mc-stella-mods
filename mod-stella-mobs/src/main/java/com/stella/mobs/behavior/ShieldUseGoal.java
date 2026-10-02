@@ -110,7 +110,7 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (this.mob.isUsingItem() || !this.hasShield() || this.belowRetreatLine()) {
+		if (this.mob.isUsingItem() || !this.hasShield() || this.suppressed()) {
 			return false;
 		}
 
@@ -146,7 +146,7 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 			&& this.threat != null
 			&& this.threat.isAlive()
 			&& !this.isDisabled()
-			&& !this.belowRetreatLine();
+			&& !this.suppressed();
 	}
 
 	@Override
@@ -229,7 +229,7 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 			|| player.isSpectator()
 			|| this.isDisabled()
 			|| !this.hasShield()
-			|| this.belowRetreatLine()
+			|| this.suppressed()
 			|| this.mob.distanceToSqr(player) > GUARD_RANGE * GUARD_RANGE) {
 			return false;
 		}
@@ -337,8 +337,8 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 		return this.mob.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS);
 	}
 
-	private boolean belowRetreatLine() {
-		return this.mob.getHealth() <= this.mob.getMaxHealth() * RetreatGoal.HEALTH_FRACTION;
+	private boolean suppressed() {
+		return Stance.suppresses(this.mob);
 	}
 
 	private boolean isDisabled() {
