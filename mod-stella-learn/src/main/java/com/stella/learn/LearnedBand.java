@@ -1,7 +1,5 @@
 package com.stella.learn;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.RoleSpec;
@@ -16,20 +14,23 @@ import org.jspecify.annotations.Nullable;
 /**
  * A ranged or magic mob's shooting band, pushed outward against a player who rushes. The mob's own band is kept
  * beside it, so the learned band is always the base plus a shift and never drifts by compounding.
+ *
+ * <p>The base is not saved. The mobs mod builds a mob's band again each time the mob loads, and a saved base could
+ * only be older than that band. Saves from builds that did write it keep loading: the entry is skipped.
  */
 public final class LearnedBand {
-	/** The band the mob had before this mod touched it, saved so a reload cannot take the shifted band for its own. */
+	/** The mob's own band, as the mobs mod built it. */
 	public record Base(double near, double far) {
-		public static final Codec<Base> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-			Codec.DOUBLE.fieldOf("near").forGetter(Base::near),
-			Codec.DOUBLE.fieldOf("far").forGetter(Base::far)
-		).apply(instance, Base::new));
 	}
 
 	/** Blocks the band must move from the last logged value before a new line is written. */
 	static final double LOG_STEP = 0.5;
 	private static final AttachmentType<Double> LOGGED_SHIFT = AttachmentRegistry.create(StellaLearn.id("band_logged_shift"));
-	public static final AttachmentType<Base> BASE = AttachmentRegistry.createPersistent(StellaLearn.id("band_base"), Base.CODEC);
+	/**
+	 * The id stays as older builds saved it.
+	 * An old save then still names a known type.
+	 */
+	public static final AttachmentType<Base> BASE = AttachmentRegistry.create(StellaLearn.id("band_base"));
 
 	private LearnedBand() {
 	}
