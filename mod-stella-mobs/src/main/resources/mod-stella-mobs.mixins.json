@@ -27,7 +27,9 @@
 		"ThreatExperienceMixin",
 		"MobPiercingMixin",
 		"MobDamageScalingMixin",
-		"MobShieldBlockMixin"
+		"MobShieldBlockMixin",
+		"PiglinAttackRangeMixin",
+		"SkeletonShotLeadMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

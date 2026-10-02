@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.RangedReach;
 import com.stella.mobs.config.CombatRole;
 import com.stella.mobs.config.RoleSpec;
 import com.stella.mobs.config.RollSpec;
@@ -141,7 +142,7 @@ public class BehaviorRigGameTest {
 			"the shipped ranged near band is " + RoleSpec.RANGED_NEAR
 		);
 		helper.assertTrue(
-			Math.abs(RoleSpec.of(CombatRole.RANGED).farDistance() - 15.0) < EPSILON,
+			Math.abs(RoleSpec.of(CombatRole.RANGED).farDistance() - RangedReach.RANGE) < EPSILON,
 			"the shipped ranged far band is " + RoleSpec.of(CombatRole.RANGED).farDistance()
 		);
 		helper.succeed();

@@ -3,6 +3,7 @@ package com.stella.mobs;
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.DefendAllyGoal;
 import com.stella.mobs.behavior.KeepDistanceGoal;
+import com.stella.mobs.behavior.RangedReach;
 import com.stella.mobs.behavior.ReactiveState;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.config.CombatRole;
@@ -354,9 +355,9 @@ public class RoleGameTest {
 		RoleSpec magic = config.roleFor(Identifier.parse("minecraft:evoker"));
 
 		helper.assertValueEqual(Double.valueOf(ranged.nearDistance()), Double.valueOf(5.0), "ranged near band");
-		helper.assertValueEqual(Double.valueOf(ranged.farDistance()), Double.valueOf(15.0), "ranged far band");
+		helper.assertValueEqual(Double.valueOf(ranged.farDistance()), Double.valueOf(RangedReach.RANGE), "ranged far band");
 		helper.assertValueEqual(Double.valueOf(magic.nearDistance()), Double.valueOf(8.0), "magic near band");
-		helper.assertValueEqual(Double.valueOf(magic.farDistance()), Double.valueOf(12.0), "magic far band");
+		helper.assertValueEqual(Double.valueOf(magic.farDistance()), Double.valueOf(RangedReach.MAGIC_RANGE), "magic far band");
 		helper.succeed();
 	}
 

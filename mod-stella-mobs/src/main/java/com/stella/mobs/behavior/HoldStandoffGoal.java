@@ -5,8 +5,9 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 
 /**
- * Holds a ranged unit at its firing band. The goal carries no flags: it stops the navigation only, so the
- * mob keeps line of sight, the bow or the spell goal stays free to fire, and the mob cannot walk in.
+ * Holds a ranged unit at its firing band while it sees its target. The goal carries no flags: it stops the
+ * navigation only, so the bow or the spell goal stays free to fire, and the mob cannot walk in. A unit that
+ * cannot see its target is not held, and its weapon goal walks it to a spot with a clear line.
  */
 public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
@@ -34,7 +35,9 @@ public class HoldStandoffGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		double distance = this.mob.distanceTo(target);
-		return distance >= state.getNearDistance() && distance <= state.getFarDistance();
+		return distance >= state.getNearDistance()
+			&& distance <= state.getFarDistance()
+			&& this.mob.getSensing().hasLineOfSight(target);
 	}
 
 	@Override
