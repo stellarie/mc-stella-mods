@@ -395,7 +395,10 @@ public class R02ControlGameTest {
 
 	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void r02LowHealthRetreatUnchanged(final GameTestHelper helper) {
-		Scenario scenario = build(helper, "r02LowHealthRetreatUnchanged", EntityTypes.ZOMBIE, 2, 2, 4, 2, false, NO_GEAR_CONFIG);
+		// A zombie never retreats from a player (D1).
+		// The subject stands east, so the platform
+		// gives a flee spot and a route toward the west.
+		Scenario scenario = build(helper, "r02LowHealthRetreatUnchanged", EntityTypes.VINDICATOR, 5, 2, 7, 2, false, NO_GEAR_CONFIG);
 		scenario.subject().setHealth(scenario.subject().getMaxHealth() * 0.30F);
 		long[] retreatAt = {-1L};
 		helper.onEachTick(() -> {

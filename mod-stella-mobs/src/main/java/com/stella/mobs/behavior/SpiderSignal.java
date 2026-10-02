@@ -113,7 +113,7 @@ public final class SpiderSignal {
 		return List.copyOf(accepted);
 	}
 
-	private static boolean eligible(final Spider spider, final Monster monster) {
+	public static boolean eligible(final Spider spider, final Monster monster) {
 		return monster != spider
 			&& monster.isAlive()
 			&& monster.getHealth() > monster.getMaxHealth() * RetreatGoal.HEALTH_FRACTION

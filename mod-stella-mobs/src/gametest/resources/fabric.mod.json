@@ -74,7 +74,10 @@
 			"com.stella.mobs.SpiderSignalGameTest",
 			"com.stella.mobs.RangedReachGameTest",
 			"com.stella.mobs.WitchReachGameTest",
-			"com.stella.mobs.ShotLeadGameTest"
+			"com.stella.mobs.ShotLeadGameTest",
+			"com.stella.mobs.StanceRulesGameTest",
+			"com.stella.mobs.StanceGameTest",
+			"com.stella.mobs.BloodScentGameTest"
 		]
 	}
 }

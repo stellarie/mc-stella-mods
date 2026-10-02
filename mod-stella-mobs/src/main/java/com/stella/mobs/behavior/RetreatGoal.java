@@ -4,11 +4,25 @@ import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Runs a hurt mob away from its target. Two modes share the goal.
+ *
+ * <p>A mob with a player target retreats only in the RETREAT stance. Its stance retreat runs toward the pack, ends when
+ * the gap to the player is {@link #STANCE_GAP} or more, after {@link #STANCE_DURATION_TICKS}, or when no flee spot is
+ * left, and then leaves the mob in KITE. Its timers count the mob's own ticks.
+ *
+ * <p>A mob with any other target keeps the old rule: it retreats at 35 percent health or less, runs straight away, and
+ * stops after a gain of one block, with a rearm of 100 ticks.
+ */
 public class RetreatGoal<T extends PathfinderMob> extends Goal {
 	public static final double HEALTH_FRACTION = 0.35;
+	/** A stance retreat ends at this gap from the threat (decision D2). */
+	public static final double STANCE_GAP = 8.0;
+	public static final int STANCE_DURATION_TICKS = 100;
 	private static final int DURATION_TICKS = 100;
 	private static final int REARM_TICKS = 100;
 	private static final int MAX_ATTEMPTS = 4;
@@ -26,6 +40,7 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 	private double checkedDistance;
 	private int attempts;
 	private boolean gainedDistance;
+	private boolean stanceRun;
 
 	public RetreatGoal(final T mob) {
 		this.mob = mob;
@@ -41,8 +56,19 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 
 		// The shared rearm budget, counted in ticks. This goal sits at rank 0, so it is evaluated first
 		// on every tick a MOVE goal is considered, and it is the single place the budget decreases.
-		if (state.isRetreatCoolingDown()) {
+		boolean coolingDown = state.isRetreatCoolingDown();
+		if (coolingDown) {
 			state.tickRetreatCooldown();
+		}
+
+		LivingEntity threat = this.mob.getTarget();
+		if (threat instanceof Player) {
+			// A stance retreat ignores the rearm.
+			// Only the old retreat arms it.
+			return this.stanceRetreatWanted(threat);
+		}
+
+		if (coolingDown) {
 			return false;
 		}
 
@@ -50,11 +76,10 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (!this.mob.onGround() && !this.mob.isInLiquid() && !this.mob.isPassenger()) {
+		if (!this.grounded()) {
 			return false;
 		}
 
-		LivingEntity threat = this.mob.getTarget();
 		if (threat == null || !threat.isAlive()) {
 			return false;
 		}
@@ -65,12 +90,13 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 	@Override
 	public void start() {
 		this.attacker = this.mob.getTarget();
+		this.stanceRun = this.attacker instanceof Player;
 		this.startDistance = this.attacker == null ? 0.0 : this.mob.distanceTo(this.attacker);
 		this.bestDistance = this.startDistance;
 		this.checkedDistance = this.startDistance;
 		this.attempts = 0;
 		this.gainedDistance = false;
-		this.endTick = this.mob.level().getGameTime() + DURATION_TICKS;
+		this.endTick = this.now() + (this.stanceRun ? STANCE_DURATION_TICKS : DURATION_TICKS);
 		this.repath();
 	}
 
@@ -83,12 +109,21 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 		double distance = this.mob.distanceTo(this.attacker);
 		this.bestDistance = Math.max(this.bestDistance, distance);
 
-		if (this.bestDistance >= this.startDistance + MINIMUM_GAIN) {
+		if (this.stanceRun) {
+			// A new stance or a new target ends the run.
+			if (Stance.of(this.mob) != Stance.RETREAT || this.mob.getTarget() != this.attacker) {
+				return false;
+			}
+
+			if (distance >= STANCE_GAP) {
+				return false;
+			}
+		} else if (this.bestDistance >= this.startDistance + MINIMUM_GAIN) {
 			this.gainedDistance = true;
 			return false;
 		}
 
-		long now = this.mob.level().getGameTime();
+		long now = this.now();
 		if (now >= this.endTick) {
 			return false;
 		}
@@ -113,7 +148,10 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 		this.mob.getNavigation().stop();
 		this.attacker = null;
 
-		if (this.gainedDistance) {
+		if (this.stanceRun) {
+			this.stanceRun = false;
+			Stance.retreatEnded(this.mob);
+		} else if (this.gainedDistance) {
 			ReactiveState state = ReactiveState.get(this.mob);
 			state.armRetreatCooldown(REARM_TICKS);
 		}
@@ -126,6 +164,24 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 		return false;
 	}
 
+	/** True when a stance retreat can start now. */
+	private boolean stanceRetreatWanted(final LivingEntity threat) {
+		return Stance.of(this.mob) == Stance.RETREAT
+			&& threat.isAlive()
+			&& this.grounded()
+			&& this.mob.distanceTo(threat) < STANCE_GAP
+			&& FleePositions.towardPack(this.mob, threat.position()) != null;
+	}
+
+	private boolean grounded() {
+		return this.mob.onGround() || this.mob.isInLiquid() || this.mob.isPassenger();
+	}
+
+	/** A stance run counts the mob's own ticks. */
+	private long now() {
+		return this.stanceRun ? this.mob.tickCount : this.mob.level().getGameTime();
+	}
+
 	private boolean repath() {
 		LivingEntity threat = this.attacker;
 		if (threat == null || this.attempts >= MAX_ATTEMPTS) {
@@ -133,13 +189,15 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		this.attempts++;
-		Vec3 away = FleePositions.away(this.mob, threat.position());
+		Vec3 away = this.stanceRun
+			? FleePositions.towardPack(this.mob, threat.position())
+			: FleePositions.away(this.mob, threat.position());
 		if (away == null) {
 			return false;
 		}
 
 		boolean moved = this.mob.getNavigation().moveTo(away.x, away.y, away.z, SPEED_MODIFIER);
-		this.nextProgressCheckTick = this.mob.level().getGameTime() + PROGRESS_CHECK_TICKS;
+		this.nextProgressCheckTick = this.now() + PROGRESS_CHECK_TICKS;
 		return moved;
 	}
 }
