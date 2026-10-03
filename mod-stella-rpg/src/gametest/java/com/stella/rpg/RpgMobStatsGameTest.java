@@ -188,7 +188,7 @@ public final class RpgMobStatsGameTest {
 			MobsBridge.setFacts(null);
 		}
 		double multiplier = RpgCurve.damageTakenMultiplier(expected("melee", Stat.VIT, 40));
-		double magic = RpgCurve.magicDamageTakenMultiplier(expected("melee", Stat.INT, 40));
+		double magic = 1.0 - RpgCurve.magicResistance(expected("melee", Stat.INT, 40));
 		assertLoss(helper, "mobVitalityReduces plain", plain, (float) (6.0 * multiplier * magic));
 		assertLoss(helper, "mobVitalityReduces flat", withFlat, (float) (6.0 * multiplier * magic - 1.0));
 		assertLoss(helper, "mobVitalityReduces clamped", clamped, 0.0F);
@@ -235,7 +235,7 @@ public final class RpgMobStatsGameTest {
 		MobsBridge.setFacts(stub);
 		try {
 			helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-			forceMax(true);
+			forceMax(false);
 			Zombie caster = zombie(helper);
 			stub.set(caster, 40, "magic");
 			loss40 = spellLoss(helper, caster);
@@ -244,19 +244,22 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertInMatk(helper, "mobSpellUsesInt 40", loss40, expected("magic", Stat.INT, 40));
-		assertInMatk(helper, "mobSpellUsesInt 200", loss200, expected("magic", Stat.INT, 200));
+		assertSpell(helper, "mobSpellUsesInt 40", loss40, 40, expected("magic", Stat.INT, 40));
+		assertSpell(helper, "mobSpellUsesInt 200", loss200, 200, expected("magic", Stat.INT, 200));
 		helper.assertTrue(loss200 > loss40, "a stronger mob did not hit harder: " + loss40 + " " + loss200);
 		helper.succeed();
 	}
 
-	/** A spell deals a MATK roll times 100 * amount / 3 percent. The loss is in K units, so K cancels. */
-	private static void assertInMatk(final GameTestHelper helper, final String name, final float loss, final int intel) {
-		double share = 100.0 * HIT / 3.0 / 100.0;
-		double low = RpgSpells.matk(intel, RpgSpells.MIN_DIVISOR, 0.0, 0.0) * share;
-		double high = RpgSpells.matk(intel, RpgSpells.MAX_DIVISOR, 0.0, 0.0) * share;
-		RpgTestSupport.result(name, "loss=" + loss + " range=" + low + ".." + high);
-		helper.assertTrue(loss >= low - 0.05 && loss <= high + 0.05, name + " loss=" + loss + " outside " + low + ".." + high);
+	/**
+	 * A mob spell uses the player formula with its threat as level: base x 50 percent a point x (1 + INT / 100).
+	 * The bare victim has 25 percent magic resistance. The loss is K times the vanilla value.
+	 */
+	private static void assertSpell(
+		final GameTestHelper helper, final String name, final float loss, final int threat, final int intel
+	) {
+		double base = 12.0 * (1.0 + 0.05 * (threat - 1));
+		double hit = base * (50.0 * HIT / 100.0) * (1.0 + intel / 100.0) * 0.75;
+		assertLoss(helper, name, loss, (float) hit);
 	}
 
 	/** Mob level is its threat, and the dice multiplier is 1 + 0.02 per level. */
@@ -316,8 +319,8 @@ public final class RpgMobStatsGameTest {
 	private static ServerPlayer victim(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
-		// Room for a threat 200 mob, whose dice multiplier is 5.
-		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(600.0);
+		// Room for a threat 200 mob, whose dice multiplier is 5 and whose spell deals about 800.
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(6000.0);
 		player.setHealth(player.getMaxHealth());
 		return player;
 	}

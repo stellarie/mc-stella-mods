@@ -29,10 +29,10 @@ public final class RpgCombat {
 		int roll(LivingEntity attacker, RandomSource random, RpgDice.Dice dice);
 	}
 
+	/** The tag the spells mod puts on a summoned servant. Its spell amount comes from the master's MATK. */
+	public static final String SUMMONED_TAG = "mod-stella-spells.summoned";
 	private static final int STATUS_STEP = 10;
 	private static final double EFFECT_PERCENT = 0.10;
-	private static final double MOB_SPELL_PERCENT = 100.0;
-	private static final double MOB_SPELL_BASE = 3.0;
 	private static final DiceRoller FAIR_DICE = RpgCombat::fairRoll;
 	/** The victim of a critical hit while its hurt call runs, so scaleIncoming can apply LUK. */
 	private static final ThreadLocal<LivingEntity> CRIT_VICTIM = new ThreadLocal<>();
@@ -109,7 +109,10 @@ public final class RpgCombat {
 			ItemStack weapon = source.getWeaponItem() != null ? source.getWeaponItem() : attacker.getMainHandItem();
 			scaled += dice(attacker, weapon, Stat.DEX, true) + statusAtk(StatBonuses.effective(attacker, Stat.DEX));
 		} else if (attacker instanceof Mob && source.is(DamageTypes.INDIRECT_MAGIC)) {
-			return (float) RpgSpells.spellDamage(attacker, MOB_SPELL_PERCENT * amount / MOB_SPELL_BASE);
+			if (attacker.entityTags().contains(SUMMONED_TAG)) {
+				return amount;
+			}
+			return (float) RpgSpells.spellDamage(attacker, RpgConfigStore.current().magic().mobPercentPerPoint() * amount);
 		} else {
 			return amount;
 		}
@@ -121,6 +124,11 @@ public final class RpgCombat {
 			CRIT_VICTIM.set(victim);
 		}
 		return (float) scaled;
+	}
+
+	/** Rolls a critical hit with the LUK chance of the attacker. A spell uses it. */
+	static boolean rollCrit(final LivingEntity attacker) {
+		return roller.roll(attacker, attacker.getRandom(), RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)));
 	}
 
 	/** Ends the critical hit of a victim. The hurt call of that victim runs this when it returns. */
@@ -185,7 +193,8 @@ public final class RpgCombat {
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));
 		if (isMagic(source)) {
-			reduced *= RpgCurve.magicDamageTakenMultiplier(StatBonuses.effective(entity, Stat.INT));
+			double piercing = source.getEntity() instanceof LivingEntity attacker ? RpgSpells.penetration(attacker) : 0.0;
+			reduced *= 1.0 - Math.max(0.0, RpgSpells.resistance(entity) - piercing);
 		}
 		if (critPending(entity)) {
 			reduced *= RpgCurve.critDamageTakenMultiplier(StatBonuses.effective(entity, Stat.LUK));

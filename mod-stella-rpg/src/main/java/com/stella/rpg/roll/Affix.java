@@ -12,7 +12,9 @@ public enum Affix {
 	HP_FLAT("hp_flat", false, Kind.ARMOR),
 	HP_PCT("hp_pct", true, Kind.ARMOR),
 	REDUCTION_FLAT("reduction_flat", false, Kind.ARMOR),
-	REDUCTION_PCT("reduction_pct", true, Kind.ARMOR);
+	REDUCTION_PCT("reduction_pct", true, Kind.ARMOR),
+	MAGIC_PEN("magic_pen", true, Kind.BOOK),
+	MAGIC_RES_PCT("magic_res_pct", true, Kind.ARMOR);
 
 	public static final int TENTHS = 10;
 

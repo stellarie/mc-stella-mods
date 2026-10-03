@@ -65,10 +65,10 @@ final class RpgTestSupport {
 		StatPoints.setSheet(player, StatPoints.sheet(player).with(stat, value));
 	}
 
-	/** The VIT guard and the INT magic defense of a threat-0 melee mob, for a magic hit. */
+	/** The VIT guard and the base magic resistance of a threat-0 melee mob, for a magic hit. */
 	static float mobMagicGuard(final float damage) {
 		int intel = MobStats.base(RpgConfig.defaults(), MobStats.MELEE, Stat.INT, 0);
-		return (float) (mobGuard(damage) * RpgCurve.magicDamageTakenMultiplier(intel));
+		return (float) (mobGuard(damage) * (1.0 - RpgCurve.magicResistance(intel)));
 	}
 
 	/** The LUK share a threat-0 melee mob takes from a critical hit. */

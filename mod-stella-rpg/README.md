@@ -124,11 +124,9 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 | Attack speed | AGI | `attack_speed` | 1.00 | 250 | `ADD_MULTIPLIED_BASE` modifier on `ATTACK_SPEED` |
 | Bow draw | AGI | `bow_draw` | 0.50 | 250 | full draw ticks `= round(20 * (1 - value))` |
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
-| Cooldown | INT | `cooldown_reduction` | 0.40 | 300 | `1 - value`; a later stage uses it |
+| Cooldown | INT + DEX | `cooldown_reduction` | 0.50 | 400 | `1 - value`, with `s = INT + DEX`; the spells mod applies it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
 | Max roll chance | DEX | `dex_max_roll` | 0.50 | 200 | chance that one physical die rolls its maximum |
-| MATK max roll chance | INT | `int_max_roll` | 0.50 | 200 | chance that a MATK roll is the maximum |
-| Magic defense | INT | `magic_defense` | 0.40 | 300 | `1 - value` on magic damage taken |
 | Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
 
 ## Dice damage
@@ -175,7 +173,9 @@ Outgoing damage from a player or a mob follows these rules:
 1. Melee (`minecraft:player_attack`, `minecraft:mob_attack`, `minecraft:mob_attack_no_aggro`) adds `roll * charge`.
    For a player, `charge = 0.2 + a * a * 0.8`, where `a` is the attack strength at the swing. A mob uses charge 1.0.
 2. A projectile from `#minecraft:is_projectile` that the attacker owns adds the DEX roll.
-3. A mob with `minecraft:indirect_magic` damage deals `RpgSpells.spellDamage(mob, 100 * amount / 3)`. This rule adds no dice and no crit.
+3. A mob with `minecraft:indirect_magic` damage deals `RpgSpells.spellDamage(mob, 50 * amount)`: one point is 50 percent of the spell base at the mob's threat level.
+   This rule adds no dice. The spell can crit (see Magic model). A servant with the entity tag `mod-stella-spells.summoned` keeps its amount unchanged,
+   because the spells mod computes it from the master's MATK.
 4. Any other source is unchanged, including player spells and Thorns.
 5. Rules 1 and 2 add status ATK after the dice: `(stat + floor(stat / 10)^2) / K`. The stat is STR for melee and DEX for a projectile.
    Status ATK ignores the swing charge.
@@ -192,7 +192,7 @@ in vanilla units. The health scale then multiplies the result. The dice, the cri
 `flat` is the sum of `DefenseBonuses.Provider` callbacks, from 0 to 1024. `ArmorSets` registers one.
 `reduction%` and `reductionFlat` are the sums of the worn armor affixes.
 Damage of type `minecraft:magic`, `minecraft:indirect_magic`, or in the tag `#mod-stella-rpg:magic` is also multiplied by
-`1 - 0.4 * INT / (INT + 300)` of the victim. The tag is empty by default. The poison tick has its own type and is not reduced.
+`1 - max(0, resistance - penetration)`. See Magic model. The tag is empty by default. The poison tick has its own type and is not reduced.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
 The server applies the faster bow draw. The client draw animation keeps the vanilla speed.
@@ -227,8 +227,8 @@ The tabs appear only after the server sent the first stat sync.
   Rows are 22 pixels apart. `-` removes pending points only. `+` adds pending points. Shift changes by 10.
 - Pending points stay on the client. `Add Stats` sends them to the server in one request. It is inactive with no pending points.
 - The screen discards pending points when it closes and on each sync with result `OK`.
-- The right column shows `Atk`, `Matk`, `Def`, `Crit`, and `Aspd` with the pending points applied.
-  `Matk` is the range from `RpgSpells.matkMin` to `matkMax`, in K units.
+- The right column shows `Atk`, `Matk`, `M.Res`, `M.Pen`, `Def`, `Crit`, and `Aspd` with the pending points applied.
+  `Matk +A% +B` is the MATK percent and the flat MATK. `M.Res` is the magic resistance. `M.Pen` is the magic penetration.
   `Atk` is a damage range, such as `Atk 10-13`. The base is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts). The range adds the STR dice minimum and maximum to that base. A critical hit is outside the range.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
@@ -270,7 +270,10 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `weapon_dice`, `material_dice_multiplier`, `dice_multiplier_per_level`, `refine_dice_multiplier`, and `refine_extra_dice` hold the weapon dice tables.
   A die is a string such as `"1d6"`. A bad value logs one error and uses the default for that key.
 - `enchant_stats` and `effect_stats` map a name to a stat map from -1024 to 1024. `effect_stats` entries take `"per_level": false` for a flat effect.
-- `dex_max_roll`, `int_max_roll`, `magic_defense`, and `crit_reduction` are curve keys like the others.
+- `dex_max_roll` and `crit_reduction` are curve keys like the others. `int_max_roll` and `magic_defense` are retired and ignored.
+- `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50,
+  `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, and `resist_cap` 0.9.
+  A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
@@ -385,8 +388,8 @@ The component is saved and synced to the client.
 - A weapon gets 1, 2, or 3 roll slots, with weights 50, 35, and 15.
   Each slot picks a stat with 70% chance and an affix with 30% chance. A stat gets a uniform integer from the tier range.
 - An armor piece gets exactly 1 roll slot. It uses the range of the matching tier.
-- A weapon affix is damage or MATK. An armor affix is HP or reduction. Each roll holds a kind of affix once.
-- An item in `#mod-stella-rpg:spellbooks` rolls MATK affixes only, with the `diamond` tier ranges. The tag is empty by default.
+- A weapon affix is damage or MATK. An armor affix is HP, reduction, or magic resistance. Each roll holds a kind of affix once.
+- An item in `#mod-stella-rpg:spellbooks` rolls MATK and magic penetration affixes, with the `diamond` tier ranges. The tag is empty by default.
 - A stack that already has the component never rolls again.
 - A stack rolls when a player takes it from a crafting result slot, including shift-click.
   It also rolls when a loot table drops it and when a mob drops its equipment on death.
@@ -475,24 +478,25 @@ Only vanilla effects and those of `mod-stella-food` count. An effect that is not
 The class name and every public method below are a contract.
 
 - `RpgSpells.power(player)` returns 1.0. The INT spell power curve is retired, and the `spell_power` config key is ignored.
-- `RpgSpells.cooldown(player)` returns the spell cooldown multiplier for the player's effective INT.
-  Both return 1.0 for a player that is not a `ServerPlayer`. At INT 100 the cooldown multiplier is 0.9000.
-- `RpgSpells.matkMin(entity)` returns `(INT + floor(INT / 7)^2 + flat) * (1 + matkPct)`, in K units.
-  `RpgSpells.matkMax(entity)` uses `floor(INT / 5)^2`.
-  `flat` holds the flat MATK affixes of the main-hand item, plus 12 for each refine level of the main-hand spellbook.
-  The refine level is the custom data key `stella_refine`. A spellbook is an item in `#mod-stella-rpg:spellbooks`.
-- `RpgSpells.spellDamage(caster, skillPercent)` returns a roll, times `skillPercent / 100 / K`. The roll is the `matkMax` with chance
-  `0.5 * INT / (INT + 200)`, and uniform between `matkMin` and `matkMax` otherwise.
-  `skillPercent` 150 means 150%. The result is in vanilla units, so the health scale multiplies it once.
+- `RpgSpells.cooldown(player)` returns the spell cooldown multiplier `1 - 0.5 * X / (X + 400)`, with `X` = effective INT + DEX.
+  At INT 100 and DEX 100 it is 0.8333. The 20 tick floor belongs to the spells mod.
+- `RpgSpells.spellDamage(caster, skillPercent)` returns, in vanilla units, `base(level) * skillPercent / 100 * (1 + MATK%) + flatMATK / K`.
+  It multiplies the result by `crit_multiplier` when the LUK crit chance rolls. `RpgSpells.spellHit` is the same without the crit.
+  `skillPercent` 150 means 150%. The health scale multiplies the result once.
+- `RpgSpells.matkMin(entity)` and `matkMax(entity)` stay as compatibility helpers. Both return `spellHit(entity, 100) * K`.
 - `RpgSpells.spellHeal(caster, coefficient)` returns `(level + INT) * coefficient / K`, in vanilla units.
   The level is the experience level of a player, or the threat of a mob.
 
-| INT | matkMin | matkMax |
-|---|---|---|
-| 20 | 24 | 36 |
-| 50 | 99 | 150 |
-| 100 | 296 | 500 |
-| 200 | 984 | 1,800 |
+## Magic model
+
+- `base(level) = 12 * (1 + 0.05 * (level - 1))`, in vanilla units. A mob uses its threat as level. The level is at least 1.
+- `MATK% = INT / 100 + the MATK_PCT affixes`. `flatMATK` is the `MATK_FLAT` affixes plus 12 per refine level of a held spellbook, in K units.
+- Magic resistance is `min(0.90, 0.25 + 0.50 * T(INT) + the MAGIC_RES_PCT affixes)`.
+  `T` is a logistic with midpoint 400 and width 120, scaled so `T(0) = 0` and `T(1024) = 1`.
+- A magic hit keeps `1 - max(0, resistance - penetration)` of its value. Penetration is the `MAGIC_PEN` affix of the attacker's held spellbook.
+  A source with no attacker has no penetration. This rule replaces the old INT magic defense curve.
+- A spell hit crits with the LUK crit chance and the `crit_multiplier` of a weapon hit. This holds for a player and a mob caster.
+- New affixes `MAGIC_PEN` (spellbook) and `MAGIC_RES_PCT` (armor) use the ranges of `MATK_PCT` and `HP_PCT`.
 
 - Spells that use `magic()` damage have no attacker, so STR and DEX dice do not apply.
 

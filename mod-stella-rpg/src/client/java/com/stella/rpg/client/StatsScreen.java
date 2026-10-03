@@ -289,8 +289,16 @@ public final class StatsScreen extends Screen {
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",
-				AttackPreview.number(this.matk(this.effective(data, Stat.INT), RpgSpells.MIN_DIVISOR)),
-				AttackPreview.number(this.matk(this.effective(data, Stat.INT), RpgSpells.MAX_DIVISOR))
+				percent(this.matkPercent(this.effective(data, Stat.INT))),
+				AttackPreview.number(Affixes.matkFlat(this.minecraft.player))
+			),
+			Component.translatable(
+				"screen.mod-stella-rpg.mres",
+				percent(this.resistance(this.effective(data, Stat.INT)))
+			),
+			Component.translatable(
+				"screen.mod-stella-rpg.mpen",
+				percent(Affixes.total(this.minecraft.player, Affix.MAGIC_PEN))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.def",
@@ -311,9 +319,12 @@ public final class StatsScreen extends Screen {
 		}
 	}
 
-	private double matk(final int intel, final int divisor) {
-		return RpgSpells.matk(intel, divisor, Affixes.matkFlat(this.minecraft.player),
-			Affixes.total(this.minecraft.player, Affix.MATK_PCT));
+	private double matkPercent(final int intel) {
+		return RpgSpells.matkPercent(intel, Affixes.total(this.minecraft.player, Affix.MATK_PCT));
+	}
+
+	private double resistance(final int intel) {
+		return RpgSpells.resistance(intel, Affixes.total(this.minecraft.player, Affix.MAGIC_RES_PCT));
 	}
 
 	private double previewSpeed(final StatsSyncPayload data) {
@@ -348,13 +359,16 @@ public final class StatsScreen extends Screen {
 			}
 			case VIT -> lines.add(Component.translatable(
 				"screen.mod-stella-rpg.tip.damage_taken", percent(1.0 - RpgCurve.damageTakenMultiplier(value))));
-			case DEX -> lines.add(Component.translatable("screen.mod-stella-rpg.tip.ranged_dice", RpgDice.of(value).toString()));
+			case DEX -> {
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.ranged_dice", RpgDice.of(value).toString()));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.cooldown",
+					percent(1.0 - RpgCurve.cooldownMultiplier(value + this.effective(data, Stat.INT)))));
+			}
 			case INT -> {
-				lines.add(Component.translatable(
-					"screen.mod-stella-rpg.tip.matk", AttackPreview.number(this.matk(value, RpgSpells.MIN_DIVISOR)),
-					AttackPreview.number(this.matk(value, RpgSpells.MAX_DIVISOR))));
-				lines.add(Component.translatable(
-					"screen.mod-stella-rpg.tip.cooldown", percent(1.0 - RpgCurve.cooldownMultiplier(value))));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.matk", percent(this.matkPercent(value))));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.mres", percent(this.resistance(value))));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.cooldown",
+					percent(1.0 - RpgCurve.cooldownMultiplier(value + this.effective(data, Stat.DEX)))));
 			}
 			case LUK -> {
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.crit_chance", percent(RpgCurve.critChance(value))));

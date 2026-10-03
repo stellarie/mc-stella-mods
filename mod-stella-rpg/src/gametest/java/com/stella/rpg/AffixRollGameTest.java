@@ -109,13 +109,15 @@ public final class AffixRollGameTest {
 					expect(helper, row.name() + " armor", armor, Affix.HP_PCT, row.hpPctMin(), row.hpPctMax());
 					expect(helper, row.name() + " armor", armor, Affix.REDUCTION_FLAT, row.reductionFlatMin(), row.reductionFlatMax());
 					expect(helper, row.name() + " armor", armor, Affix.REDUCTION_PCT, row.reductionPctMin(), row.reductionPctMax());
-					helper.assertTrue(armor.size() == 4, row.name() + " armor affix keys " + armor.keySet());
+					expect(helper, row.name() + " armor", armor, Affix.MAGIC_RES_PCT, row.hpPctMin(), row.hpPctMax());
+					helper.assertTrue(armor.size() == 5, row.name() + " armor affix keys " + armor.keySet());
 				}
 			}
 			Map<Affix, double[]> book = observe(helper, Items.BOOK, random);
 			expect(helper, "spellbook", book, Affix.MATK_FLAT, 12, 27);
 			expect(helper, "spellbook", book, Affix.MATK_PCT, 5, 9);
-			helper.assertTrue(book.size() == 2 && book.containsKey(Affix.MATK_FLAT), "spellbook affix keys " + book.keySet());
+			expect(helper, "spellbook", book, Affix.MAGIC_PEN, 5, 9);
+			helper.assertTrue(book.size() == 3 && book.containsKey(Affix.MATK_FLAT), "spellbook affix keys " + book.keySet());
 			ItemStack bookStack = new ItemStack(Items.BOOK);
 			WeaponRolls.roll(bookStack, random);
 			helper.assertTrue(bookStack.get(WeaponRolls.STAT_ROLLS).isEmpty(), "a spellbook rolled a stat");
