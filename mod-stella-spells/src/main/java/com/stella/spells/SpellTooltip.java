@@ -69,7 +69,7 @@ public final class SpellTooltip {
 			stack, viewer.getItemBySlot(EquipmentSlot.HEAD), viewer.getItemBySlot(EquipmentSlot.CHEST)
 		);
 		modifiers = TowerBridge.grow(stack, definition.id().getPath(), modifiers);
-		return RpgBridge.grow(viewer, modifiers);
+		return RpgBridge.grow(viewer, definition.id().getPath(), modifiers);
 	}
 
 	private static Map<String, Component> live(final @Nullable Player viewer, final ItemStack stack) {

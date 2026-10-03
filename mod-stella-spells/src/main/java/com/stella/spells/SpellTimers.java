@@ -134,7 +134,7 @@ public final class SpellTimers {
 		victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, MoreSpells.VEIL_BREAK_SLOW_TICKS, MoreSpells.VEIL_BREAK_SLOW_AMPLIFIER), attacker);
 		int hurtCooldown = victim.damageCooldownTime;
 		victim.damageCooldownTime = 0;
-		victim.hurtServer(level, level.damageSources().magic(), damage * (float) (MoreSpells.VEIL_BREAK_DAMAGE_MULTIPLIER - 1.0));
+		victim.hurtServer(level, SpellCasting.spellSource(attacker), damage * (float) (MoreSpells.VEIL_BREAK_DAMAGE_MULTIPLIER - 1.0));
 		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
 		level.sendParticles(ParticleTypes.WHITE_ASH, victim.getX(), victim.getY(1.0), victim.getZ(), 20, 0.3, 0.3, 0.3, 0.02);
 		Spellbooks.LOGGER.info("[SPELL] veil_broken player={} victim={} damage={}", attacker.getUUID(), victim.getUUID(), damage);

@@ -364,7 +364,7 @@ public final class MoreSpells {
 	// Magic damage, as every spell deals; the hurt cooldown is cleared so a spell right after a hit still lands.
 	static void hurt(final ServerPlayer caster, final Mob target, final float amount) {
 		target.damageCooldownTime = 0;
-		target.hurtServer(caster.level(), caster.level().damageSources().magic(), amount);
+		target.hurtServer(caster.level(), SpellCasting.spellSource(caster), amount);
 	}
 
 	private static boolean heal(final ServerPlayer player, final float amount) {

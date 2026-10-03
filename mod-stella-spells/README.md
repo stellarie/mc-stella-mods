@@ -83,6 +83,9 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
   MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.
 - Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
 - The cooldown line shows your real cooldown after Intelligence and Quickening.
+- Riftwalk, Gale Step, and the Scroll of Return keep a fixed cooldown. Intelligence and Dexterity do not shorten it.
+- A spell that hurts a foe names you as the attacker, as a sword hit does. A struck mob turns on you, and the RPG mod
+  reads your magic penetration and spell crit from that hit.
 - A scroll shows the same effect line as its book.
 - Without the RPG mod the line shows the flat numbers times the cast power.
 - A tooltip built with no player, such as on a server, keeps the base numbers.
@@ -258,7 +261,7 @@ enchantment instead.
 | Clear Mind | Helmet | Cooldown −5% |
 | Arcane Weave | Chestplate | Duration of effects on enemies +10% |
 | Spellguard | Chestplate | Duration of effects on the caster +10% |
-| Doublecast | Helmet | 50% chance a book or scroll cast lands twice, combos included |
+| Doublecast | Helmet, or a spellbook a trainer gives | 50% chance a book or scroll cast lands twice, combos included; a helmet and a book together still roll once |
 
 Quickening and Clear Mind stack, but a cooldown never drops below half its base or below 1 second.
 

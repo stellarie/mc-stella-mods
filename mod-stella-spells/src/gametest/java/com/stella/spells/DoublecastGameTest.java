@@ -88,13 +88,38 @@ public class DoublecastGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void aDoublecastBookWithABareHeadCastsTwice(final GameTestHelper helper) {
+		float lost = castOnce(helper, false, true, true);
+		LOG.info("[SPELLTEST] test=aDoublecastBookWithABareHeadCastsTwice RESULT lost={}", lost);
+		helper.assertTrue(Math.abs(lost - 2.0F * SpellCasting.DAMAGE) < 1.0E-4, "a Doublecast book on a bare head took " + lost);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aBookAndAHelmetDoNotAddUp(final GameTestHelper helper) {
+		float lost = castOnce(helper, true, true, true);
+		LOG.info("[SPELLTEST] test=aBookAndAHelmetDoNotAddUp RESULT lost={}", lost);
+		helper.assertTrue(Math.abs(lost - 2.0F * SpellCasting.DAMAGE) < 1.0E-4, "a Doublecast book and helmet took " + lost);
+		helper.succeed();
+	}
+
 	private static float castOnce(final GameTestHelper helper, final boolean helmet, final boolean twice) {
+		return castOnce(helper, helmet, false, twice);
+	}
+
+	private static float castOnce(final GameTestHelper helper, final boolean helmet, final boolean bookEnchanted, final boolean twice) {
 		ServerPlayer caster = caster(helper, helmet);
 		FORCED.put(caster.getUUID(), twice);
 		Mob zombie = target(helper);
 		float before = zombie.getHealth();
 		SpellbookItem book = (SpellbookItem) net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(Identifier.parse("mod-stella-spells:spark_shot"));
-		caster.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(book));
+		ItemStack held = new ItemStack(book);
+		if (bookEnchanted) {
+			held.enchant(helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+				.getOrThrow(ResourceKey.create(Registries.ENCHANTMENT, Identifier.parse("mod-stella-spells:doublecast"))), 1);
+		}
+		caster.setItemInHand(InteractionHand.MAIN_HAND, held);
 		SpellCasting.cast(caster, book, InteractionHand.MAIN_HAND);
 		helper.getLevel().getServer().getPlayerList().remove(caster);
 		return before - zombie.getHealth();
