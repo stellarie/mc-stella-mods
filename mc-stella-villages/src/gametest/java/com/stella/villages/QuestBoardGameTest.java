@@ -2,6 +2,7 @@ package com.stella.villages;
 
 import com.mojang.authlib.GameProfile;
 import com.stella.mobs.behavior.Elite;
+import com.stella.mobs.scaling.ThreatState;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.MissionKind;
 import com.stella.villages.data.VillageWorldData.MissionRecord;
@@ -12,7 +13,9 @@ import com.stella.villages.mission.MissionService.MissionOffer;
 import com.stella.villages.mission.SlayerContract;
 import com.stella.villages.mission.NemesisState;
 import com.stella.villages.mission.GuardQuests;
+import com.stella.villages.mission.PendingQuestRewards;
 import com.stella.villages.mission.QuestMissions;
+import com.stella.villages.mission.QuestRewards;
 import com.stella.villages.patrol.PatrolService;
 import com.stella.villages.patrol.PatrolState;
 import io.netty.channel.embedded.EmbeddedChannel;
@@ -327,22 +330,22 @@ public final class QuestBoardGameTest {
 			Mob elite = mobOf(helper, mission.entityId().orElse(null));
 			List<Mob> escorts = mission.mobIds().stream().map(id -> mobOf(helper, id)).toList();
 			helper.assertTrue(elite != null && escorts.size() == 2, "the elite quest did not spawn");
-			int itemsBefore = drops(helper, target, Items.IRON_INGOT) + drops(helper, target, Items.EMERALD) + drops(helper, target, Items.POTION);
+			double before = rewardValue(dropsOf(helper, target), false);
+			int emeraldsBefore = drops(helper, target, Items.EMERALD);
 			for (Mob escort : escorts) {
 				kill(helper, fixture.owner(), escort);
 			}
-			int itemsAfterEscorts = drops(helper, target, Items.IRON_INGOT) + drops(helper, target, Items.EMERALD) + drops(helper, target, Items.POTION);
+			double afterEscorts = rewardValue(dropsOf(helper, target), false);
 			boolean stillOpen = questMission(helper, mission.id()) != null;
+			int expected = QuestRewards.budget(QuestRewards.tierOf(elite.getType()), true, ThreatState.level(elite));
 			kill(helper, fixture.owner(), elite);
 			int emeralds = drops(helper, target, Items.EMERALD);
-			int iron = drops(helper, target, Items.IRON_INGOT);
-			int potions = drops(helper, target, Items.POTION);
-			PatrolTestSupport.result("eliteQuestRewards", "escortsPaid=" + (itemsAfterEscorts - itemsBefore) + " stillOpen=" + stillOpen
-				+ " emeralds=" + emeralds + " iron=" + iron + " potions=" + potions);
-			helper.assertTrue(itemsAfterEscorts == itemsBefore && stillOpen, "an escort paid, or ended the quest");
-			helper.assertTrue(emeralds == 64 && emeralds == QuestMissions.ELITE_REWARD_EMERALDS, "the elite paid " + emeralds + " emeralds");
-			helper.assertTrue(iron == 64 && iron == QuestMissions.ELITE_REWARD_IRON, "the elite paid " + iron + " iron ingots");
-			helper.assertTrue(potions == 2 && potions == QuestMissions.REWARD_POTIONS, "the elite paid " + potions + " potions");
+			double paid = rewardValue(dropsOf(helper, target), true) - QuestMissions.ELITE_REWARD_EMERALDS * QuestRewards.value(new ItemStack(Items.EMERALD));
+			PatrolTestSupport.result("eliteQuestRewards", "escortsPaid=" + (afterEscorts - before) + " stillOpen=" + stillOpen
+				+ " emeralds=" + emeralds + " paid=" + paid + " budget=" + expected);
+			helper.assertTrue(afterEscorts == before && stillOpen && emeraldsBefore == 0, "an escort paid, or ended the quest");
+			helper.assertTrue(emeralds >= QuestMissions.ELITE_REWARD_EMERALDS, "the elite paid " + emeralds + " emeralds");
+			helper.assertTrue(paid >= 0.3 * expected, "the elite paid " + paid + " of a " + expected + " budget");
 			helper.assertTrue(questMission(helper, mission.id()) == null, "the quest is still open after the elite fell");
 		});
 	}
@@ -361,15 +364,15 @@ public final class QuestBoardGameTest {
 			for (int index = 0; index < count - 1; index++) {
 				kill(helper, owner, pack.get(index));
 			}
-			int early = owner.getInventory().countItem(Items.IRON_INGOT) + owner.getInventory().countItem(Items.POTION);
-			kill(helper, owner, pack.get(count - 1));
-			int iron = owner.getInventory().countItem(Items.IRON_INGOT);
-			int potions = owner.getInventory().countItem(Items.POTION);
-			PatrolTestSupport.result("killQuestRewardsAtEnd", "mobs=" + count + " earlyReward=" + early + " iron=" + iron + " potions=" + potions
-				+ " paid=" + PAID.get(owner.getUUID()));
-			helper.assertTrue(early == 0, "the quest paid before its last kill");
-			helper.assertTrue(iron == 64 && iron == QuestMissions.KILL_REWARD_IRON, "the owner received " + iron + " iron ingots");
-			helper.assertTrue(potions == 2 && potions == QuestMissions.REWARD_POTIONS, "the owner received " + potions + " potions");
+			double early = inventoryValue(owner);
+			Mob last = pack.get(count - 1);
+			int expected = QuestRewards.budget(QuestRewards.tierOf(last.getType()), false, ThreatState.level(last));
+			kill(helper, owner, last);
+			double paid = inventoryValue(owner);
+			PatrolTestSupport.result("killQuestRewardsAtEnd", "mobs=" + count + " earlyReward=" + early + " paid=" + paid + " budget=" + expected
+				+ " log=" + PAID.get(owner.getUUID()));
+			helper.assertTrue(early == 0.0, "the quest paid before its last kill");
+			helper.assertTrue(paid >= 0.3 * expected, "the owner received " + paid + " of a " + expected + " budget");
 			helper.assertTrue(questMission(helper, mission.id()) == null, "the quest is still open after its last kill");
 		});
 	}
@@ -387,12 +390,13 @@ public final class QuestBoardGameTest {
 				kill(helper, owner, mobOf(helper, id));
 			}
 			BlockPos feet = owner.blockPosition();
-			int iron = drops(helper, feet, Items.IRON_INGOT);
-			int potions = drops(helper, feet, Items.POTION);
-			PatrolTestSupport.result("killQuestDropsRewardAtFeetWhenInventoryIsFull", "iron=" + iron + " potions=" + potions
-				+ " inInventory=" + owner.getInventory().countItem(Items.IRON_INGOT));
-			helper.assertTrue(iron == 64 && potions == 2 && owner.getInventory().countItem(Items.IRON_INGOT) == 0,
-				"a full inventory got iron=" + iron + " potions=" + potions + " at its feet");
+			double fallen = rewardValue(dropsOf(helper, feet), true);
+			boolean onlyCobble = true;
+			for (int slot = 0; slot < owner.getInventory().getContainerSize(); slot++) {
+				onlyCobble &= owner.getInventory().getItem(slot).is(Items.COBBLESTONE);
+			}
+			PatrolTestSupport.result("killQuestDropsRewardAtFeetWhenInventoryIsFull", "fallen=" + fallen + " onlyCobble=" + onlyCobble);
+			helper.assertTrue(fallen >= 10.0 && onlyCobble, "a full inventory got " + fallen + " at its feet, and kept only cobble=" + onlyCobble);
 		});
 	}
 
@@ -449,10 +453,10 @@ public final class QuestBoardGameTest {
 					kill(helper, owner, mobOf(helper, id));
 				}
 				int emeralds = owner.getInventory().countItem(Items.EMERALD);
-				int food = QuestMissions.GUARD_FOODS.stream().mapToInt(item -> owner.getInventory().countItem(item)).sum();
-				PatrolTestSupport.result("guardQuestRewards", "mobs=" + mission.mobIds().size() + " emeralds=" + emeralds + " food=" + food);
-				helper.assertTrue(emeralds == QuestMissions.GUARD_REWARD_EMERALDS && food == QuestMissions.GUARD_REWARD_FOOD,
-					"the guard quest paid emeralds=" + emeralds + " food=" + food);
+				double rolled = inventoryValue(owner) - QuestMissions.GUARD_REWARD_EMERALDS * QuestRewards.value(new ItemStack(Items.EMERALD));
+				PatrolTestSupport.result("guardQuestRewards", "mobs=" + mission.mobIds().size() + " emeralds=" + emeralds + " rolled=" + rolled);
+				helper.assertTrue(emeralds >= QuestMissions.GUARD_REWARD_EMERALDS && rolled >= 10.0,
+					"the guard quest paid emeralds=" + emeralds + " rolled=" + rolled);
 				helper.assertTrue(questMission(helper, mission.id()) == null, "the guard quest is still open");
 			})
 			.thenExecute(() -> release(helper, fixture.bell(), target))
@@ -485,20 +489,37 @@ public final class QuestBoardGameTest {
 			for (UUID id : mission.mobIds()) {
 				kill(helper, killer, mobOf(helper, id));
 			}
-			int fallen = drops(helper, target, Items.IRON_INGOT);
-			int waiting = data.pendingKillRewards(offlineId);
-			helper.assertTrue(waiting == 1 && fallen == 0 && questMission(helper, mission.id()) == null,
-				"the offline owner's reward was not stored: waiting=" + waiting + " dropped=" + fallen);
+			PendingQuestRewards pending = PendingQuestRewards.get(helper.getLevel());
+			double fallen = rewardValue(dropsOf(helper, target), false);
+			int waiting = pending.count(offlineId);
+			helper.assertTrue(waiting == 1 && fallen == 0.0 && questMission(helper, mission.id()) == null,
+				"the offline owner reward was not stored: waiting=" + waiting + " dropped=" + fallen);
 			ServerPlayer returned = login(helper, offlineId);
-			int iron = returned.getInventory().countItem(Items.IRON_INGOT);
-			int potions = returned.getInventory().countItem(Items.POTION);
-			PatrolTestSupport.result("offlineOwnerIsPaidAtNextLogin", "waiting=" + waiting + " iron=" + iron + " potions=" + potions
-				+ " left=" + data.pendingKillRewards(offlineId) + " paid=" + PAID.get(offlineId));
-			helper.assertTrue(iron == 64 && potions == 2 && data.pendingKillRewards(offlineId) == 0, "login paid iron=" + iron + " potions=" + potions);
+			double paid = inventoryValue(returned);
+			PatrolTestSupport.result("offlineOwnerIsPaidAtNextLogin", "waiting=" + waiting + " paid=" + paid
+				+ " left=" + pending.count(offlineId) + " log=" + PAID.get(offlineId));
+			helper.assertTrue(paid >= 10.0 && pending.count(offlineId) == 0, "login paid " + paid);
 			returned.getInventory().clearContent();
 			ServerPlayer again = login(helper, offlineId);
-			helper.assertTrue(again.getInventory().countItem(Items.IRON_INGOT) == 0, "the reward was paid twice");
+			helper.assertTrue(inventoryValue(again) == 0.0, "the reward was paid twice");
 		});
+	}
+
+	// A stored reward keeps its mob type and threat level, so a ravager quest pays a ravager tier at login.
+	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void offlineRewardKeepsItsTier(final GameTestHelper helper) {
+		UUID offlineId = UUID.randomUUID();
+		PendingQuestRewards pending = PendingQuestRewards.get(helper.getLevel());
+		pending.add(offlineId, new PendingQuestRewards.Entry(Identifier.parse("minecraft:ravager"), false, 100, false));
+		var encoded = PendingQuestRewards.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, pending).getOrThrow();
+		PendingQuestRewards reloaded = PendingQuestRewards.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, encoded).getOrThrow();
+		helper.assertTrue(reloaded.count(offlineId) == 1, "the stored reward came back as " + reloaded.count(offlineId));
+		ServerPlayer returned = login(helper, offlineId);
+		int expected = QuestRewards.budget(QuestRewards.MAX_TIER, false, 100);
+		double paid = inventoryValue(returned);
+		PatrolTestSupport.result("offlineRewardKeepsItsTier", "paid=" + paid + " budget=" + expected);
+		helper.assertTrue(paid >= 0.3 * expected && pending.count(offlineId) == 0, "login paid " + paid + " of a " + expected + " budget");
+		helper.succeed();
 	}
 
 	@GameTest(dimension = "minecraft:the_nether", maxTicks = TEST_TICKS, padding = PatrolTestSupport.VILLAGE_PADDING)
@@ -850,6 +871,38 @@ public final class QuestBoardGameTest {
 		double dx = mob.getX() - (target.getX() + 0.5);
 		double dz = mob.getZ() - (target.getZ() + 0.5);
 		return Math.sqrt(dx * dx + dz * dz) <= blocks;
+	}
+
+	private static List<ItemStack> dropsOf(final GameTestHelper helper, final BlockPos around) {
+		List<ItemStack> found = new ArrayList<>();
+		for (ItemEntity drop : helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(around).inflate(SITE_RADIUS + 2.0))) {
+			found.add(drop.getItem());
+		}
+		return found;
+	}
+
+	/** The value of the reward kinds among the stacks: ores, books, tipped food, and with gear, enchanted gear. A mob can drop its own gear. */
+	private static double rewardValue(final List<ItemStack> stacks, final boolean withGear) {
+		double total = 0.0;
+		for (ItemStack stack : stacks) {
+			boolean tipped = stack.has(net.minecraft.core.component.DataComponents.CONSUMABLE)
+				&& stack.get(net.minecraft.core.component.DataComponents.CONSUMABLE).onConsumeEffects().stream()
+					.anyMatch(net.minecraft.world.item.consume_effects.ApplyStatusEffectsConsumeEffect.class::isInstance);
+			boolean ore = stack.is(Items.IRON_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.LAPIS_LAZULI) || stack.is(Items.EMERALD)
+				|| stack.is(Items.AMETHYST_SHARD) || stack.is(Items.DIAMOND);
+			if (ore || tipped || stack.is(Items.ENCHANTED_BOOK) || withGear && stack.isEnchanted()) {
+				total += QuestRewards.value(stack);
+			}
+		}
+		return total;
+	}
+
+	private static double inventoryValue(final ServerPlayer player) {
+		List<ItemStack> stacks = new ArrayList<>();
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			stacks.add(player.getInventory().getItem(slot));
+		}
+		return rewardValue(stacks, true);
 	}
 
 	private static int drops(final GameTestHelper helper, final BlockPos around, final Item item) {

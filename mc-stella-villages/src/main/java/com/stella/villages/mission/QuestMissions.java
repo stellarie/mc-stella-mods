@@ -3,6 +3,7 @@ package com.stella.villages.mission;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.scaling.ThreatState;
 import com.stella.villages.McStellaVillages;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.MissionKind;
@@ -21,7 +22,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -39,18 +42,11 @@ public final class QuestMissions {
 	public static final int KILL_MIN_COUNT = 5;
 	public static final int KILL_MAX_COUNT = 10;
 	public static final int SPREAD_RADIUS = 6;
-	/** An elite contract pays these stacks of emeralds and iron ingots, and this many random potions. */
+	/** An elite or guard contract pays these emeralds, and the {@link QuestRewards} roll of its mob on top. */
 	public static final int ELITE_REWARD_EMERALDS = 64;
-	public static final int ELITE_REWARD_IRON = 64;
-	public static final int KILL_REWARD_IRON = 64;
-	public static final int REWARD_POTIONS = 2;
 	public static final int GUARD_REWARD_EMERALDS = 32;
-	public static final int GUARD_REWARD_FOOD = 8;
 	public static final int GUARD_MIN_COUNT = 3;
 	public static final int GUARD_MAX_COUNT = 6;
-	public static final List<net.minecraft.world.item.Item> GUARD_FOODS = List.of(
-		Items.BREAD, Items.COOKED_BEEF, Items.COOKED_PORKCHOP, Items.COOKED_CHICKEN, Items.COOKED_MUTTON, Items.BAKED_POTATO
-	);
 	private static final int SPOT_ATTEMPTS = 12;
 	private static final int SPOT_HEIGHT_TOLERANCE = 4;
 
@@ -191,8 +187,14 @@ public final class QuestMissions {
 	 */
 	static void onLoad(final Mob mob, final ServerLevel level) {
 		UUID missionId = QuestMobState.missionOf(mob);
-		if (missionId != null && VillageWorldData.get(level).mission(missionId).isEmpty()) {
+		if (missionId == null) {
+			return;
+		}
+		MissionRecord mission = VillageWorldData.get(level).mission(missionId).orElse(null);
+		if (mission == null) {
 			STRAGGLERS.add(mob);
+		} else if (mission.kind() == MissionKind.SLAYER && mob.getAttributeBaseValue(Attributes.MAX_HEALTH) != SlayerContract.HEALTH) {
+			SlayerContract.restoreHealth(mob);
 		}
 	}
 
@@ -247,14 +249,11 @@ public final class QuestMissions {
 		}
 		List<ItemStack> reward = new ArrayList<>();
 		reward.add(new ItemStack(Items.EMERALD, ELITE_REWARD_EMERALDS));
-		reward.add(new ItemStack(Items.IRON_INGOT, ELITE_REWARD_IRON));
-		for (int potion = 0; potion < REWARD_POTIONS; potion++) {
-			reward.add(MissionService.rewardPotion(elite.getRandom()));
-		}
+		reward.addAll(QuestRewards.roll(level, elite.getType(), true, ThreatState.level(elite), elite.getRandom()));
 		reward.forEach(stack -> level.addFreshEntity(new ItemEntity(level, elite.getX(), elite.getY(), elite.getZ(), stack)));
 		recorder.paid(mission.ownerId(), MissionKind.ELITE, "dropped");
-		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=elite_quest_reward mission={} owner={} items={}",
-			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), reward.size());
+		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=elite_quest_reward mission={} owner={} tier={} items={}",
+			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), QuestRewards.tierOf(elite.getType()), reward.size());
 	}
 
 	private static void killDeath(final ServerLevel level, final VillageWorldData data, final MissionRecord mission, final Mob mob) {
@@ -275,41 +274,34 @@ public final class QuestMissions {
 		}
 		data.removeMission(mission.id());
 		boolean guard = mission.kind() == MissionKind.GUARD;
+		int threat = ThreatState.level(mob);
 		if (owner != null) {
 			if (guard) {
-				payGuardReward(level, owner, mob.getRandom());
+				payGuardReward(level, owner, mob.getType(), threat, mob.getRandom());
 			} else {
-				payKillReward(level, owner, mob.getRandom());
+				payKillReward(level, owner, mob.getType(), threat, mob.getRandom());
 			}
 			recorder.paid(mission.ownerId(), mission.kind(), "inventory");
 		} else {
-			if (guard) {
-				data.addPendingGuardReward(mission.ownerId());
-			} else {
-				data.addPendingKillReward(mission.ownerId());
-			}
+			PendingQuestRewards.get(level).add(mission.ownerId(),
+				new PendingQuestRewards.Entry(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()), false, threat, guard));
 			recorder.paid(mission.ownerId(), mission.kind(), "pending");
 		}
 		McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=kill_quest_complete mission={} owner={} online={}",
 			McStellaVillages.MOD_ID, mission.id(), mission.ownerId(), owner != null);
 	}
 
-	/** 64 iron ingots and two potions, into the inventory, and at the feet of a player whose inventory is full. */
-	static void payKillReward(final ServerLevel level, final ServerPlayer owner, final RandomSource random) {
-		List<ItemStack> reward = new ArrayList<>();
-		reward.add(new ItemStack(Items.IRON_INGOT, KILL_REWARD_IRON));
-		for (int potion = 0; potion < REWARD_POTIONS; potion++) {
-			reward.add(MissionService.rewardPotion(random));
-		}
-		give(level, owner, reward);
+	/** The roll of the pack mob, into the inventory, and at the feet of a player whose inventory is full. */
+	static void payKillReward(final ServerLevel level, final ServerPlayer owner, final EntityType<?> type, final int threat, final RandomSource random) {
+		give(level, owner, QuestRewards.roll(level, type, false, threat, random));
 	}
 
-	/** Half a stack of emeralds and eight of one cooked food. */
-	static void payGuardReward(final ServerLevel level, final ServerPlayer owner, final RandomSource random) {
-		give(level, owner, List.of(
-			new ItemStack(Items.EMERALD, GUARD_REWARD_EMERALDS),
-			new ItemStack(GUARD_FOODS.get(random.nextInt(GUARD_FOODS.size())), GUARD_REWARD_FOOD)
-		));
+	/** Half a stack of emeralds, and the roll of the pack mob. */
+	static void payGuardReward(final ServerLevel level, final ServerPlayer owner, final EntityType<?> type, final int threat, final RandomSource random) {
+		List<ItemStack> reward = new ArrayList<>();
+		reward.add(new ItemStack(Items.EMERALD, GUARD_REWARD_EMERALDS));
+		reward.addAll(QuestRewards.roll(level, type, false, threat, random));
+		give(level, owner, reward);
 	}
 
 	private static void give(final ServerLevel level, final ServerPlayer owner, final List<ItemStack> reward) {
@@ -326,18 +318,32 @@ public final class QuestMissions {
 		if (!(player.level() instanceof ServerLevel level)) {
 			return;
 		}
-		int guards = VillageWorldData.get(level).takePendingGuardRewards(player.getUUID());
+		int paid = 0;
+		for (PendingQuestRewards.Entry entry : PendingQuestRewards.get(level).take(player.getUUID())) {
+			EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(entry.type()).orElse(EntityTypes.ZOMBIE);
+			if (entry.guard()) {
+				payGuardReward(level, player, type, entry.threat(), player.getRandom());
+			} else {
+				payKillReward(level, player, type, entry.threat(), player.getRandom());
+			}
+			recorder.paid(player.getUUID(), entry.guard() ? MissionKind.GUARD : MissionKind.KILL, "login");
+			paid++;
+		}
+		// A save from before tiered rewards holds counts only; those pay as a zombie quest.
+		VillageWorldData data = VillageWorldData.get(level);
+		int guards = data.takePendingGuardRewards(player.getUUID());
 		for (int index = 0; index < guards; index++) {
-			payGuardReward(level, player, player.getRandom());
+			payGuardReward(level, player, EntityTypes.ZOMBIE, 0, player.getRandom());
 			recorder.paid(player.getUUID(), MissionKind.GUARD, "login");
 		}
-		int waiting = VillageWorldData.get(level).takePendingKillRewards(player.getUUID());
+		int waiting = data.takePendingKillRewards(player.getUUID());
 		for (int index = 0; index < waiting; index++) {
-			payKillReward(level, player, player.getRandom());
+			payKillReward(level, player, EntityTypes.ZOMBIE, 0, player.getRandom());
 			recorder.paid(player.getUUID(), MissionKind.KILL, "login");
 		}
-		if (waiting > 0) {
-			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=kill_quest_reward_paid_on_login owner={} rewards={}", McStellaVillages.MOD_ID, player.getUUID(), waiting);
+		paid += guards + waiting;
+		if (paid > 0) {
+			McStellaVillages.LOGGER.info("[BEHAVIOR] mod={} event=quest_reward_paid_on_login owner={} rewards={}", McStellaVillages.MOD_ID, player.getUUID(), paid);
 		}
 	}
 }
