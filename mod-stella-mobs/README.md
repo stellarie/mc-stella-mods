@@ -40,7 +40,10 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
   Past 80 it follows the tower S-curve:
   `1.06^80 x (1 + 19 x S(level - 80))`, plus 0.02 flat damage per level past 80.
   `S` is 0 at 0, 0.5 at 500, and 1 at 1000.
-- **Piercing:** a mob's hit ignores `min(50%, 1.5% x level)` of the target's armor, toughness, and Protection.
+- **Piercing:** a mob's hit ignores `min(50%, max(25%, 1.5% x level))` of the target's armor, toughness, and Protection.
+- **Self-scaled mobs:** another mod can give a mob both `mod-stella-mobs.no_spawn_roll` and `mod-stella-mobs.self_scaled`.
+  The mob keeps the health its owner set. Every hit it deals, melee included, takes the level multiplier, armor
+  normalization, and piercing. The Blaze Sovereign uses this.
 - **Kill experience:** a base per mob type plus a part from the mob level `T` and the killer's XP level `L`:
 
   ```
@@ -348,6 +351,11 @@ Armor therefore judges a mob's hit as if it were the mob's unscaled damage: the 
 before the armor math, and the result is scaled back. Armor keeps its vanilla share at every level, and armor wears as if
 from the base hit. Mob piercing still strips its share of armor first. Hits from players and from mobs without level
 scaling use vanilla armor.
+
+## Steady field of view
+
+Speed, Slowness, gear speed, and stat speed do not change the field of view. The view reads the walking speed as if only
+a sprint changed it, so a sprint still widens it as in vanilla.
 
 ## Threat level share
 

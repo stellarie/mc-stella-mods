@@ -4,7 +4,8 @@
 	"package": "com.stella.mobs.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"BossLookRenderMixin"
+		"BossLookRenderMixin",
+		"SteadyFovMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

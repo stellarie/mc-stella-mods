@@ -1,6 +1,6 @@
 package com.stella.mobs.mixin;
 
-import com.stella.mobs.StellaMobs;
+import com.stella.mobs.scaling.SelfScaled;
 import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.mobs.scaling.ThreatState;
 import net.minecraft.server.level.ServerLevel;
@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public abstract class MobDamageScalingMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaMobs$scaleMobDamage(final float amount, final ServerLevel level, final DamageSource source) {
-		if (!(source.getEntity() instanceof Mob mob) || mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
+		if (!(source.getEntity() instanceof Mob mob) || !SelfScaled.levelHits(mob)) {
 			return amount;
 		}
 		int threat = ThreatState.level(mob);
@@ -26,7 +26,9 @@ public abstract class MobDamageScalingMixin {
 		boolean melee = source.is(DamageTypes.MOB_ATTACK) || source.is(DamageTypes.MOB_ATTACK_NO_AGGRO) || source.is(DamageTypes.SPEAR);
 		// Friendly golems keep their fixed special hits.
 		boolean hostile = mob instanceof Enemy;
-		float scaled = melee || !hostile ? amount : amount * (float) SpawnScaling.damageMultiplier(threat);
+		// A self-scaled mob's melee skips the attribute.
+		boolean attributeScaled = melee && !SelfScaled.owned(mob);
+		float scaled = attributeScaled || !hostile ? amount : amount * (float) SpawnScaling.damageMultiplier(threat);
 		return scaled + (float) SpawnScaling.tailFlat(threat);
 	}
 }

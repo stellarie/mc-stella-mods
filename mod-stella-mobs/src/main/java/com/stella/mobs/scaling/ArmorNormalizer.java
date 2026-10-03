@@ -1,6 +1,5 @@
 package com.stella.mobs.scaling;
 
-import com.stella.mobs.StellaMobs;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Mob;
 
@@ -16,7 +15,7 @@ public final class ArmorNormalizer {
 
 	/** The divisor for a hit: the attacker's level multiplier, or 1 for anything that is not a scaled mob. */
 	public static double scale(final DamageSource source) {
-		if (!(source.getEntity() instanceof Mob mob) || mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
+		if (!(source.getEntity() instanceof Mob mob) || !SelfScaled.levelHits(mob)) {
 			return 1.0;
 		}
 		return Math.max(1.0, SpawnScaling.damageMultiplier(ThreatState.level(mob)));
