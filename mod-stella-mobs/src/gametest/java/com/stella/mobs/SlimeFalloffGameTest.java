@@ -38,6 +38,7 @@ public class SlimeFalloffGameTest {
 		ChunkPos chunk = new ChunkPos(origin.getX() >> 4, origin.getZ() >> 4);
 		int[] rolls = new int[1];
 		int spawned = 0;
+		com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(0.0);
 		SlimeFalloff.setRoller((random, chance) -> {
 			rolls[0]++;
 			return false;
@@ -50,6 +51,7 @@ public class SlimeFalloffGameTest {
 			}
 		} finally {
 			SlimeFalloff.setRoller(null);
+			com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(null);
 		}
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=slimeFalloffGate RESULT spawned={} rolls={}", spawned, rolls[0]);
 		helper.assertTrue(rolls[0] > 0 && rolls[0] <= 20, "the attempts rolled " + rolls[0] + " times, expected one per attempt");

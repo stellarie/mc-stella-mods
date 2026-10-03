@@ -96,6 +96,7 @@ public class RedSlimeGameTest {
 		java.util.Set<java.util.UUID> before = new java.util.HashSet<>();
 		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
 		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(0.0);
 		try {
 			int spawned = 0;
 			for (int attempt = 0; attempt < 40 && RedSlimeSpawnRule.countInBiome(level, biome) < RedSlimeSpawnRule.MAX_PER_BIOME; attempt++) {
@@ -126,6 +127,7 @@ public class RedSlimeGameTest {
 			}
 		} finally {
 			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
+			com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(null);
 		}
 		RedSlimeSpawnRule.INSTANCE.reset();
 		helper.succeed();

@@ -53,6 +53,7 @@ public class SlimeLightRuleGameTest {
 		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
 		List<Double> distances = new ArrayList<>();
 		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(0.0);
 		try {
 			for (int attempt = 0; attempt < 600 && distances.size() < SPAWNS; attempt++) {
 				if (!RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, 1_000_000L)) {
@@ -65,6 +66,7 @@ public class SlimeLightRuleGameTest {
 			}
 		} finally {
 			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
+			com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(null);
 		}
 		level.setBlockAndUpdate(light, Blocks.AIR.defaultBlockState());
 		long close = distances.stream().filter(distance -> distance <= LightSources.RADIUS).count();
