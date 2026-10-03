@@ -70,10 +70,11 @@ public record RpgConfig(
 	 */
 	public record MagicRules(
 		double spellBase, double spellGrowth, double matkPerInt, double mobPercentPerPoint, double resistBase,
-		double resistSpan, double resistMidpoint, double resistWidth, double resistMaxInt, double resistCap
+		double resistSpan, double resistMidpoint, double resistWidth, double resistMaxInt, double resistCap,
+		double armorPenBase, double armorPenCap
 	) {
 		public static final String KEY = "magic";
-		public static final MagicRules DEFAULT = new MagicRules(12.0, 0.05, 0.01, 50.0, 0.25, 0.50, 400.0, 120.0, 1024.0, 0.90);
+		public static final MagicRules DEFAULT = new MagicRules(12.0, 0.05, 0.01, 50.0, 0.25, 0.50, 400.0, 120.0, 1024.0, 0.90, 0.25, 0.75);
 
 		public Map<String, Double> toJson() {
 			Map<String, Double> out = new LinkedHashMap<>();
@@ -87,6 +88,8 @@ public record RpgConfig(
 			out.put("resist_width", this.resistWidth);
 			out.put("resist_max_int", this.resistMaxInt);
 			out.put("resist_cap", this.resistCap);
+			out.put("armor_pen_base", this.armorPenBase);
+			out.put("armor_pen_cap", this.armorPenCap);
 			return out;
 		}
 	}
@@ -183,7 +186,9 @@ public record RpgConfig(
 		ranges.put(Affix.HP_PCT, new AffixRange(hpPctMin, hpPctMax));
 		ranges.put(Affix.REDUCTION_FLAT, new AffixRange(reductionFlatMin, reductionFlatMax));
 		ranges.put(Affix.REDUCTION_PCT, new AffixRange(reductionPctMin, reductionPctMax));
+		ranges.put(Affix.ARMOR_PEN, new AffixRange(damagePctMin, damagePctMax));
 		ranges.put(Affix.MAGIC_PEN, new AffixRange(damagePctMin, damagePctMax));
+		ranges.put(Affix.MOVE_SPEED_PCT, new AffixRange(reductionPctMin * 2, reductionPctMax * 2));
 		ranges.put(Affix.MAGIC_RES_PCT, new AffixRange(hpPctMin, hpPctMax));
 		return Map.copyOf(ranges);
 	}

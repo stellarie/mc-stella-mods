@@ -381,7 +381,9 @@ public final class RpgConfigStore {
 			magicPart(o, "resist_midpoint", fallback.resistMidpoint(), 0.0, onError),
 			magicPart(o, "resist_width", fallback.resistWidth(), Double.MIN_NORMAL, onError),
 			magicPart(o, "resist_max_int", fallback.resistMaxInt(), 1.0, onError),
-			magicPart(o, "resist_cap", fallback.resistCap(), 0.0, onError)
+			magicPart(o, "resist_cap", fallback.resistCap(), 0.0, onError),
+			magicPart(o, "armor_pen_base", fallback.armorPenBase(), 0.0, onError),
+			magicPart(o, "armor_pen_cap", fallback.armorPenCap(), 0.0, onError)
 		);
 	}
 

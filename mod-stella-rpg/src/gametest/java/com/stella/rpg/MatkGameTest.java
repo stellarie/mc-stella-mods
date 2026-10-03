@@ -129,7 +129,20 @@ public final class MatkGameTest {
 			RpgCombat.setRoller(null);
 		}
 		RpgTestSupport.result("mobSpellCrits", "plain=" + plain + " crit=" + crit);
-		helper.assertTrue(Math.abs(crit - plain * RpgCurve.critMultiplier()) < 0.01F, "a mob spell crit dealt " + crit + " against " + plain);
+		// A crit ignores the 25 percent magic resistance of the bare victim.
+		helper.assertTrue(Math.abs(crit - plain / 0.75F * RpgCurve.critMultiplier()) < 0.01F, "a mob spell crit dealt " + crit + " against " + plain);
+		float strongPlain;
+		float strongCrit;
+		try {
+			RpgCombat.setRoller((attacker, random, chance) -> false);
+			strongPlain = spellLoss(helper, caster, 1.0F, 1024);
+			RpgCombat.setRoller((attacker, random, chance) -> true);
+			strongCrit = spellLoss(helper, caster, 1.0F, 1024);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		helper.assertTrue(Math.abs(strongCrit - strongPlain / 0.25F * RpgCurve.critMultiplier()) < 0.01F,
+			"a crit on INT 1024 dealt " + strongCrit + " against " + strongPlain);
 		helper.succeed();
 	}
 
@@ -153,8 +166,13 @@ public final class MatkGameTest {
 
 	/** The health lost by a bare player, in vanilla units. The victim's max health is large, so nothing clamps. */
 	private static float spellLoss(final GameTestHelper helper, final Mob caster, final float amount) {
+		return spellLoss(helper, caster, amount, 0);
+	}
+
+	private static float spellLoss(final GameTestHelper helper, final Mob caster, final float amount, final int victimInt) {
 		ServerPlayer victim = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(victim);
+		RpgTestSupport.setStat(victim, Stat.INT, victimInt);
 		victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(2000.0);
 		victim.setHealth(victim.getMaxHealth());
 		float before = victim.getHealth();

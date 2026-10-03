@@ -32,6 +32,7 @@ public final class RpgAttributes {
 
 	public static void refresh(final ServerPlayer player) {
 		Affixes.refreshHealth(player, RpgScale.k());
+		Affixes.refreshSpeed(player);
 		AttributeInstance instance = player.getAttribute(Attributes.ATTACK_SPEED);
 		if (instance == null) {
 			return;

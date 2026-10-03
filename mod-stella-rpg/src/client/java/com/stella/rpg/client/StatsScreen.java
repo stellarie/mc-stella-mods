@@ -5,6 +5,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.stella.rpg.AttackPreview;
 import com.stella.rpg.DefPreview;
 import com.stella.rpg.PendingStats;
+import com.stella.rpg.RpgConfig;
+import com.stella.rpg.RpgConfigStore;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.RpgDice;
 import com.stella.rpg.RpgSpells;
@@ -301,6 +303,10 @@ public final class StatsScreen extends Screen {
 				percent(Affixes.total(this.minecraft.player, Affix.MAGIC_PEN))
 			),
 			Component.translatable(
+				"screen.mod-stella-rpg.apen",
+				percent(this.armorPenetration())
+			),
+			Component.translatable(
 				"screen.mod-stella-rpg.def",
 				percent(DefPreview.combined(
 					this.minecraft.player.getAttributeValue(Attributes.ARMOR),
@@ -321,6 +327,11 @@ public final class StatsScreen extends Screen {
 
 	private double matkPercent(final int intel) {
 		return RpgSpells.matkPercent(intel, Affixes.total(this.minecraft.player, Affix.MATK_PCT));
+	}
+
+	private double armorPenetration() {
+		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
+		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(this.minecraft.player, Affix.ARMOR_PEN));
 	}
 
 	private double resistance(final int intel) {

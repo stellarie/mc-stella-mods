@@ -7,14 +7,17 @@ import java.util.Optional;
 public enum Affix {
 	DAMAGE_FLAT("damage_flat", false, Kind.WEAPON),
 	DAMAGE_PCT("damage_pct", true, Kind.WEAPON),
-	MATK_FLAT("matk_flat", false, Kind.WEAPON, Kind.BOOK),
-	MATK_PCT("matk_pct", true, Kind.WEAPON, Kind.BOOK),
+	ARMOR_PEN("armor_pen", true, Kind.WEAPON),
+	MATK_FLAT("matk_flat", false, Kind.BOOK),
+	MATK_PCT("matk_pct", true, Kind.BOOK),
+	MAGIC_PEN("magic_pen", true, Kind.BOOK),
 	HP_FLAT("hp_flat", false, Kind.ARMOR),
 	HP_PCT("hp_pct", true, Kind.ARMOR),
 	REDUCTION_FLAT("reduction_flat", false, Kind.ARMOR),
 	REDUCTION_PCT("reduction_pct", true, Kind.ARMOR),
-	MAGIC_PEN("magic_pen", true, Kind.BOOK),
-	MAGIC_RES_PCT("magic_res_pct", true, Kind.ARMOR);
+	MAGIC_RES_PCT("magic_res_pct", true, Kind.ARMOR),
+	/** Rolls only on boots. The pool check lives in {@code WeaponRolls}. */
+	MOVE_SPEED_PCT("move_speed_pct", true, Kind.ARMOR);
 
 	public static final int TENTHS = 10;
 
@@ -44,6 +47,11 @@ public enum Affix {
 
 	public boolean rollsOn(final Kind kind) {
 		return this.kinds.contains(kind);
+	}
+
+	/** Old weapons rolled MATK before only books did. Their rolls still count. */
+	public boolean readsOn(final Kind kind) {
+		return this.rollsOn(kind) || (kind == Kind.WEAPON && (this == MATK_FLAT || this == MATK_PCT));
 	}
 
 	public static List<Affix> pool(final Kind kind) {

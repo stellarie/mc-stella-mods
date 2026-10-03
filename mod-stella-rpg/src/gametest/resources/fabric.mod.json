@@ -53,7 +53,9 @@
 			"com.stella.rpg.EnchantStatsGameTest",
 			"com.stella.rpg.EffectStatsGameTest",
 			"com.stella.rpg.MobGrowthGameTest",
-			"com.stella.rpg.MagicModelGameTest"
+			"com.stella.rpg.MagicModelGameTest",
+			"com.stella.rpg.AffixPoolGameTest",
+			"com.stella.rpg.ArmorPenGameTest"
 		]
 	},
 	"depends": {

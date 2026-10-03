@@ -8,6 +8,7 @@
 		"RpgCraftRollMixin",
 		"RpgInventoryDropMixin",
 		"RpgIncomingDamageMixin",
+		"RpgArmorPenMixin",
 		"RpgMobDropRollMixin",
 		"RpgOutgoingDamageMixin",
 		"RpgPlayerExperienceMixin",

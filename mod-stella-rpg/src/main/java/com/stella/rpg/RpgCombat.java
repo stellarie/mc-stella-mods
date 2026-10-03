@@ -112,7 +112,12 @@ public final class RpgCombat {
 			if (attacker.entityTags().contains(SUMMONED_TAG)) {
 				return amount;
 			}
-			return (float) RpgSpells.spellDamage(attacker, RpgConfigStore.current().magic().mobPercentPerPoint() * amount);
+			double hit = RpgSpells.spellHit(attacker, RpgConfigStore.current().magic().mobPercentPerPoint() * amount);
+			if (rollCrit(attacker)) {
+				CRIT_VICTIM.set(victim);
+				hit *= RpgCurve.critMultiplier();
+			}
+			return (float) hit;
 		} else {
 			return amount;
 		}
@@ -138,8 +143,21 @@ public final class RpgCombat {
 		}
 	}
 
-	static boolean critPending(final LivingEntity victim) {
+	public static boolean critPending(final LivingEntity victim) {
 		return CRIT_VICTIM.get() == victim;
+	}
+
+	/** The share of armor and toughness a hit ignores. A crit ignores all of it. A mob uses the mobs mod piercing. */
+	public static double armorIgnored(final LivingEntity victim, final DamageSource source) {
+		if (critPending(victim)) {
+			return 1.0;
+		}
+		if (!(source.getEntity() instanceof LivingEntity attacker) || attacker instanceof Mob
+			|| !(isMelee(source) || source.is(DamageTypeTags.IS_PROJECTILE))) {
+			return 0.0;
+		}
+		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
+		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(attacker, Affix.ARMOR_PEN));
 	}
 
 	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
@@ -192,7 +210,7 @@ public final class RpgCombat {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));
-		if (isMagic(source)) {
+		if (isMagic(source) && !critPending(entity)) {
 			double piercing = source.getEntity() instanceof LivingEntity attacker ? RpgSpells.penetration(attacker) : 0.0;
 			reduced *= 1.0 - Math.max(0.0, RpgSpells.resistance(entity) - piercing);
 		}

@@ -18,6 +18,7 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -79,8 +80,11 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		RpgConfig.WeaponRolls config = RpgConfigStore.current().weaponRolls();
 		boolean book = entry.kind() == Affix.Kind.BOOK;
 		int count = entry.kind() == Affix.Kind.ARMOR ? 1 : count(config.countWeights(), random);
-		List<Stat> stats = new ArrayList<>(book ? List.of() : List.of(Stat.values()));
+		List<Stat> stats = new ArrayList<>(book ? List.of(Stat.INT) : List.of(Stat.values()));
 		List<Affix> affixes = new ArrayList<>(Affix.pool(entry.kind()));
+		if (!stack.is(ItemTags.FOOT_ARMOR)) {
+			affixes.remove(Affix.MOVE_SPEED_PCT);
+		}
 		Map<String, Integer> statRolls = new LinkedHashMap<>();
 		Map<String, Integer> affixRolls = new LinkedHashMap<>();
 		for (int i = 0; i < count; i++) {

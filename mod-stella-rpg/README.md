@@ -181,7 +181,8 @@ Outgoing damage from a player or a mob follows these rules:
    Status ATK ignores the swing charge.
 6. Rules 1 and 2 then add the flat damage affix divided by K, and multiply by `1 + damage% + 0.1 * (Strength level - Weakness level)`.
    The factor is never below 0. Strength and Weakness no longer change the attack damage attribute.
-7. LUK rolls the crit for rules 1 and 2. A crit multiplies the total by `crit_multiplier`.
+7. LUK rolls the crit for rules 1 and 2. A crit ignores all armor and toughness, and all magic resistance, for every attacker.
+   A crit of a mob spell does the same. A crit of a player spell is rolled in `RpgSpells.spellDamage`, before the victim is known, so it ignores neither. A crit multiplies the total by `crit_multiplier`.
    A victim with LUK takes `1 - 0.5 * LUK / (LUK + 300)` of a critical hit. `RpgCombat` passes the crit flag to `scaleIncoming`
    in a `ThreadLocal` for the victim of that hurt call, and `RpgOutgoingDamageMixin` clears it when `hurtServer` returns.
 
@@ -229,6 +230,7 @@ The tabs appear only after the server sent the first stat sync.
 - The screen discards pending points when it closes and on each sync with result `OK`.
 - The right column shows `Atk`, `Matk`, `M.Res`, `M.Pen`, `Def`, `Crit`, and `Aspd` with the pending points applied.
   `Matk +A% +B` is the MATK percent and the flat MATK. `M.Res` is the magic resistance. `M.Pen` is the magic penetration.
+  `A.Pen` is the armor penetration.
   `Atk` is a damage range, such as `Atk 10-13`. The base is the attack attribute plus the untargeted main-hand enchantment bonus (Sharpness counts). The range adds the STR dice minimum and maximum to that base. A critical hit is outside the range.
 - `Status Point` shows the unspent points minus the pending points.
 - Hover a stat row to see its effect.
@@ -272,7 +274,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `enchant_stats` and `effect_stats` map a name to a stat map from -1024 to 1024. `effect_stats` entries take `"per_level": false` for a flat effect.
 - `dex_max_roll` and `crit_reduction` are curve keys like the others. `int_max_roll` and `magic_defense` are retired and ignored.
 - `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50,
-  `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, and `resist_cap` 0.9.
+  `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, `resist_cap` 0.9, `armor_pen_base` 0.25, and `armor_pen_cap` 0.75.
   A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
@@ -388,8 +390,11 @@ The component is saved and synced to the client.
 - A weapon gets 1, 2, or 3 roll slots, with weights 50, 35, and 15.
   Each slot picks a stat with 70% chance and an affix with 30% chance. A stat gets a uniform integer from the tier range.
 - An armor piece gets exactly 1 roll slot. It uses the range of the matching tier.
-- A weapon affix is damage or MATK. An armor affix is HP, reduction, or magic resistance. Each roll holds a kind of affix once.
-- An item in `#mod-stella-rpg:spellbooks` rolls MATK and magic penetration affixes, with the `diamond` tier ranges. The tag is empty by default.
+- A weapon affix is flat damage, damage %, or armor penetration. An armor affix is HP, reduction, magic resistance, or (boots only) movement speed.
+  Each roll holds a kind of affix once.
+- An item in `#mod-stella-rpg:spellbooks` rolls only the INT stat and the affixes `MATK_FLAT`, `MATK_PCT`, and `MAGIC_PEN`,
+  with the `diamond` tier ranges. The tag is empty by default.
+- Weapons no longer roll MATK. An item rolled before this rule keeps its MATK affixes, and they still count when it is held.
 - A stack that already has the component never rolls again.
 - A stack rolls when a player takes it from a crafting result slot, including shift-click.
   It also rolls when a loot table drops it and when a mob drops its equipment on death.
@@ -440,11 +445,13 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
 | diamond, heavy | 12-27 | 5-9 | 60-120 | 3-6 | 4-8 | 1.5-2.5 |
 | netherite | 18-40 | 6-12 | 90-180 | 4-8 | 6-12 | 2-3 |
 
-- Flat MATK and MATK % use the flat damage and damage % ranges of the tier.
+- Flat MATK and MATK % use the flat damage and damage % ranges of the tier. `ARMOR_PEN` uses the damage % range.
+- `MOVE_SPEED_PCT` uses twice the reduction % range. `RpgAttributes.refresh` puts the worn value on `MOVEMENT_SPEED` as an
+  `ADD_MULTIPLIED_BASE` modifier `mod-stella-rpg:affix_move_speed`.
 - `RpgAttributes.refresh` puts the worn HP affixes on max health every 20 ticks.
   Flat HP is an `ADD_VALUE` modifier of `flat / K`. HP % is an `ADD_MULTIPLIED_BASE` modifier.
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
-- Only the main hand adds damage and MATK affixes. Only the four armor slots add HP and reduction affixes.
+- Only the main hand adds damage, MATK, magic penetration, and armor penetration affixes. Only the four armor slots add HP, reduction, magic resistance, and movement speed affixes.
 
 ## Stats from enchantments and effects
 
@@ -497,6 +504,16 @@ The class name and every public method below are a contract.
   A source with no attacker has no penetration. This rule replaces the old INT magic defense curve.
 - A spell hit crits with the LUK crit chance and the `crit_multiplier` of a weapon hit. This holds for a player and a mob caster.
 - New affixes `MAGIC_PEN` (spellbook) and `MAGIC_RES_PCT` (armor) use the ranges of `MATK_PCT` and `HP_PCT`.
+
+## Armor penetration
+
+- A melee or projectile hit from a player ignores `min(0.75, 0.25 + the ARMOR_PEN affixes)` of the target's armor and toughness.
+  The affixes come from the attacker's main hand. An arrow reads the main hand of its owner.
+- A mob attacker is skipped, because `mod-stella-mobs` pierces armor for a mob by its threat level.
+- A crit ignores all armor and toughness, for every attacker, a mob included.
+- The hook is the mixin `RpgArmorPenMixin`, a `@WrapOperation` on `CombatRules#getDamageAfterAbsorb` in `getDamageAfterArmorAbsorb`.
+  It chains with the wrap of the mobs mod on the same call.
+- The stats screen shows `A.Pen`. The config keys `magic.armor_pen_base` (0.25) and `magic.armor_pen_cap` (0.75) hold the numbers.
 
 - Spells that use `magic()` damage have no attacker, so STR and DEX dice do not apply.
 
