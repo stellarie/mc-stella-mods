@@ -38,6 +38,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   is re-armed when it loads.
 - Patrol members never despawn, and they do not count toward the natural mob cap. On Peaceful they leave
   as any illager does, and no new patrol is raised.
+- A village raises its missing members one fill at a time. A fill that finds no place for a member waits
+  600 ticks before the village tries again. The heartbeat and spawn-reject log lines are at DEBUG level.
 - Villagers do not fear their patrol, iron and snow golems never take a member as their target, and a
   player may sleep in a bed beside the patrol.
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
