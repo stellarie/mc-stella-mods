@@ -126,7 +126,8 @@ public final class RaidInstance {
 		// After every other mod's load handler, so the mobs mod's threat scaling is undone after it is applied.
 		ServerEntityEvents.ENTITY_LOAD.addPhaseOrdering(net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE, AFTER_OTHER_MODS);
 		ServerEntityEvents.ENTITY_LOAD.register(AFTER_OTHER_MODS, (entity, level) -> {
-			if (entity instanceof Mob mob && level.dimension().equals(RaidTravel.RAID)) {
+			// The Sovereign keeps the threat level its rise set.
+			if (entity instanceof Mob mob && level.dimension().equals(RaidTravel.RAID) && !BlazeSovereign.isSovereign(mob)) {
 				clearThreat(mob);
 			}
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {

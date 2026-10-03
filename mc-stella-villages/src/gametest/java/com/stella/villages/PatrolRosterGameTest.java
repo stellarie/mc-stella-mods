@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * A village patrol holds six members: the duke, two melee guards, two ranged guards and the mage. A village saved
+ * A village patrol holds seven members: the duke, two melee guards, two ranged guards, the mage and the trainer. A village saved
  * with only the older four gains its ranged guards the next time its patrol is checked, and keeps its melee guards.
  */
 public class PatrolRosterGameTest {
@@ -41,13 +41,14 @@ public class PatrolRosterGameTest {
 
 		Map<PatrolState.Role, List<Mob>> roster = roster(helper);
 		PatrolTestSupport.result(test, "newVillage=" + describe(roster));
-		int expected = 2 + PatrolService.PILLAGER_COUNT + PatrolService.RANGED_GUARD_COUNT;
+		int expected = 2 + PatrolService.PILLAGER_COUNT + PatrolService.RANGED_GUARD_COUNT + PatrolService.TRAINER_COUNT;
 		helper.assertValueEqual(Integer.valueOf(PatrolService.PATROL_MEMBER_COUNT), Integer.valueOf(expected), "the shipped roster size");
 		helper.assertValueEqual(Integer.valueOf(size(roster)), Integer.valueOf(expected), "members of a new village");
 		expect(helper, roster, PatrolState.Role.HEAD, 1);
 		expect(helper, roster, PatrolState.Role.PILLAGER, PatrolService.PILLAGER_COUNT);
 		expect(helper, roster, PatrolState.Role.RANGED_GUARD, PatrolService.RANGED_GUARD_COUNT);
 		expect(helper, roster, PatrolState.Role.VILLAGE_WITCH, 1);
+		expect(helper, roster, PatrolState.Role.TRAINER, PatrolService.TRAINER_COUNT);
 		checkGuardGear(helper, roster);
 
 		// The old village has no ranged guards

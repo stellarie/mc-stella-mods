@@ -12,7 +12,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * An elite that a player kills drops a bounty of emeralds, more for a higher level. A boss drops four times the bounty.
- * A kill by another mob, the void, or a command pays nothing.
+ * A kill by another mob, the void, or a command pays nothing. A summoned elite, such as a quest Nemesis or an escort,
+ * pays its own reward and no bounty.
  */
 public final class EliteBounty {
 	public static final int BASE = 2;
@@ -35,7 +36,7 @@ public final class EliteBounty {
 
 	private static void afterDeath(final LivingEntity entity, final DamageSource source) {
 		if (!(entity instanceof Mob mob) || !(source.getEntity() instanceof Player) || !(mob.level() instanceof ServerLevel level)
-			|| !EliteState.hasEliteFlag(mob)) {
+			|| !EliteState.hasEliteFlag(mob) || EliteState.isSummoned(mob)) {
 			return;
 		}
 		int count = emeralds(ThreatState.level(mob), EliteState.isBoss(mob));

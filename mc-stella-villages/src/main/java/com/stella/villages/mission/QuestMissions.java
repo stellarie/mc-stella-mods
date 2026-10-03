@@ -84,6 +84,8 @@ public final class QuestMissions {
 			spawnKill(level, mission);
 		} else if (mission.kind() == MissionKind.SLAYER) {
 			SlayerContract.spawnTarget(level, mission);
+		} else if (mission.kind() == MissionKind.TRIAL) {
+			JobTrials.spawnTarget(level, mission);
 		}
 	}
 
@@ -219,6 +221,8 @@ public final class QuestMissions {
 			killDeath(level, data, mission, mob);
 		} else if (mission.kind() == MissionKind.SLAYER && mission.entityId().filter(mob.getUUID()::equals).isPresent()) {
 			slayerDeath(level, data, mission, mob);
+		} else if (mission.kind() == MissionKind.TRIAL && mission.entityId().filter(mob.getUUID()::equals).isPresent()) {
+			JobTrials.onBossDeath(level, data, mission, mob);
 		}
 	}
 
