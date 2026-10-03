@@ -1,8 +1,11 @@
 package com.stella.equips;
 
+import com.mojang.serialization.Codec;
 import com.stella.spells.SpellbookItem;
+import java.util.Map;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -16,6 +19,10 @@ public final class TestItems implements ModInitializer {
 	/** The spells mod's scroll shape: the same class as a book, but it stacks. */
 	public static final Item STACKING = register("stand_in_stacking", 16);
 
+	/** Stand-ins for the rpg mod's roll components, registered under its ids so the compare reads them by key. */
+	public static final DataComponentType<Map<String, Integer>> STAT_ROLLS = rolls("stat_rolls");
+	public static final DataComponentType<Map<String, Integer>> AFFIX_ROLLS = rolls("affix_rolls");
+
 	@Override
 	public void onInitialize() {
 		// Loading this class registers the items.
@@ -25,5 +32,13 @@ public final class TestItems implements ModInitializer {
 		Identifier id = Identifier.fromNamespaceAndPath(NAMESPACE, path);
 		return Registry.register(BuiltInRegistries.ITEM, id,
 			new SpellbookItem(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id)).stacksTo(stack)));
+	}
+
+	private static DataComponentType<Map<String, Integer>> rolls(final String path) {
+		return Registry.register(
+			BuiltInRegistries.DATA_COMPONENT_TYPE,
+			Identifier.fromNamespaceAndPath("mod-stella-rpg", path),
+			DataComponentType.<Map<String, Integer>>builder().persistent(Codec.unboundedMap(Codec.STRING, Codec.INT)).build()
+		);
 	}
 }
