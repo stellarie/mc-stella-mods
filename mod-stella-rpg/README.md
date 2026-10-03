@@ -601,6 +601,29 @@ The hurt flash and the hurt sound are separate events and stay. Damage is in K u
 
 When a night is skipped, every player still in bed heals to maximum health. `RpgSleepHealMixin` hooks `ServerLevel#wakeUpAllPlayers`, which runs only on a night skip. A player who leaves the bed early does not heal.
 
+## Jobs
+
+A player chooses one job from level 10. The job is permanent and survives death and a save. The state is the persistent attachment `mod-stella-rpg:job`.
+
+| Job | Main stat, +2 per level | Second stat, +1 per level |
+|---|---|---|
+| Archer | DEX | AGI |
+| Fighter | STR | VIT |
+| Mage | INT | DEX |
+| Priest | VIT | INT |
+
+- `Jobs` registers a `StatBonuses` provider. The bonus counts every level the player has, also the levels before the choice. The `StatBonuses` clamp still applies.
+- A boss trial at level 40, 70, 100, and so on adds +5 to the main stat and +1 to each other stat. `Jobs.grantTrial(player, level)` records each trial level once.
+- Another mod reaches the jobs through the object share `mod-stella-rpg:jobs`, a `Map<String, Object>` of functions:
+
+| Key | Type |
+|---|---|
+| `get` | `Function<ServerPlayer, String>`. The key `none`, `archer`, `fighter`, `mage`, or `priest` |
+| `choose` | `BiFunction<ServerPlayer, String, Boolean>`. False for an unknown key, a level below 10, or a set job |
+| `grantItems` | `Function<ServerPlayer, Boolean>`. Gives the item of the job |
+| `grantTrial` | `BiFunction<ServerPlayer, Integer, Boolean>`. False for a repeat, a level that is no trial, or no job |
+| `trialsDone` | `Function<ServerPlayer, Set<Integer>>` |
+
 ## Build and test
 
 Run these from `mod-stella-rpg/` with Java 25:
