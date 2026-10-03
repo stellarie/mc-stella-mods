@@ -16,6 +16,6 @@ public abstract class SovereignDamageMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaNether$divide(final float amount, final ServerLevel level, final DamageSource source) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		return BlazeEnchantments.scale(self, source, FlameMantle.scaleDamageTaken(self, source, BlazeSovereign.scaleDamageTaken(self, amount)));
+		return BlazeEnchantments.scale(self, source, FlameMantle.scaleDamageTaken(self, source, BlazeSovereign.scaleDamageTaken(self, BlazeSovereign.scaleFireball(source, amount))));
 	}
 }

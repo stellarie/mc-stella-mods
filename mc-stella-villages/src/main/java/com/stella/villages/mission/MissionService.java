@@ -475,7 +475,8 @@ public final class MissionService {
 			boolean oldKit = NemesisKit.needsEquipmentUpgrade(mob);
 			if (!alreadyElite || oldKit) {
 				AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-				if (health != null) {
+				// Only a new elite re-adds the bonus, in armNemesis.
+				if (health != null && !alreadyElite) {
 					health.setBaseValue(Math.max(1.0, health.getBaseValue() - NEMESIS_BONUS_HEALTH));
 				}
 				ReactiveState.get(mob).setGearApplied(true);

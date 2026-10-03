@@ -32,7 +32,8 @@
 			"com.stella.nether.SovereignVortexGameTest",
 			"com.stella.nether.PortalWindowGameTest",
 			"com.stella.nether.RaidSpawnsGameTest",
-			"com.stella.nether.RaidCastersGameTest"
+			"com.stella.nether.RaidCastersGameTest",
+			"com.stella.nether.SovereignScaleGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

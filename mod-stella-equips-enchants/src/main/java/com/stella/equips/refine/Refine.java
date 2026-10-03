@@ -110,7 +110,7 @@ public final class Refine {
 	}
 
 	public static boolean isRanged(final ItemStack stack) {
-		return stack.is(Items.BOW) || stack.is(Items.CROSSBOW);
+		return stack.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem;
 	}
 
 	public static boolean isWeapon(final ItemStack stack) {
