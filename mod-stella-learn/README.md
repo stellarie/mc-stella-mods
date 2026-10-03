@@ -14,12 +14,14 @@ integration branch is `main-learn`.
   reaches archers that are already saved. A save from an older build holds a `band_base` entry for such a mob.
   Fabric skips it and logs `Skipping invalid attachments` once for that mob.
 - **Mobs wait out a turtle's shield.** Against a player with 5 recent blocks, a melee mob holds its swing and a ranged
-  mob holds its fire while the shield is up, for up to 100 ticks, then rests 40.
+  mob holds its fire while the shield is up, for up to 100 ticks, then rests 40. A mob in the `PURSUE` stance does not
+  start a wait.
 - **Melee mobs take cover from a shooter.** Against a player with 6 recent arrow hits, a melee mob that stands in the
   shooter's sight, more than 6 blocks off, walks to the nearest spot out of sight that is nearer the player.
 - **Mobs gather outside a chokepoint.** Against a player who falls back (4 recent retreats), a melee mob whose way in
   runs through a one-block gap walks to a staging point 5 nodes before it and waits there until 3 monsters after the
-  same player have gathered, or 200 ticks have passed, and then goes in. It is then left alone for 120 ticks.
+  same player have gathered, or 200 ticks have passed, and then goes in. It is then left alone for 120 ticks. A mob in
+  the `PURSUE` stance does not start a hold.
 - **Mobs read how a player moves.** Every 5 ticks the mod samples the player against the nearest monster after them.
   A player who circles one way gets flankers on that side, so the strafe runs into them. A player who charges meets a
   tighter ring (slots shrink by up to 40 percent). A player who kites (backs off after an arrow hit) is met at
@@ -40,6 +42,11 @@ integration branch is `main-learn`.
 
 - **A guarding shield bearer keeps its shield up.** While the shield goal of the mobs mod runs against a player, the
   mob is not offered `SHIELD` or `BACK_OFF`. It walks on under its raised shield and picks from the tactics left.
+- **A mob that fights on is not offered a step back or a shield.** The mobs mod gives each mob that hunts a player a
+  stance, from the health of the mob and of the player. `FIGHT` is an even fight (both healthy, or both hurt), and a
+  hurt zombie against a healthy player. `PURSUE` is a healthy mob after a player at 35 percent health or less. In
+  `FIGHT` or `PURSUE` the mob is not offered `SHIELD` or `BACK_OFF`, in any situation. In `RETREAT`, `KITE` and
+  `NORMAL` it is offered them as before.
 - **Callouts.** A monster hurt by a player calls. Every monster within 24 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:
@@ -52,7 +59,8 @@ integration branch is `main-learn`.
 | Otherwise | A rally: stand on a flank, 6 blocks to one side of the player | Any monster |
 
   Focus fire and back off exist as callout types, but the sender does not choose them yet. Retreat and other survival
-  goals outrank any request: a mob below 35 percent health declines with the reason `survival`.
+  goals outrank any request. A mob in the `RETREAT` stance declines with the reason `survival`, and so does a mob in
+  `NORMAL` at 35 percent health or less. A mob in `FIGHT`, `PURSUE` or `KITE` answers at any health.
 
 ## The callout animation
 

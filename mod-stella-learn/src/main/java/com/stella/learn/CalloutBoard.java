@@ -1,7 +1,7 @@
 package com.stella.learn;
 
 import com.stella.mobs.StellaMobs;
-import com.stella.mobs.behavior.RetreatGoal;
+import com.stella.mobs.behavior.Stance;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -20,7 +20,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Sends callouts and records who answered. Every monster within the player's range is asked, whether idle or
  * already fighting, nearest to the caller first, and each one decides for itself. The caller's cooldown, the cap on
- * accepting responders and a receiver's own survival line bound what one call can do.
+ * accepting responders and a receiver's own survival rule bound what one call can do. The survival rule follows the
+ * stance of the mobs mod. A mob in RETREAT declines. A mob in FIGHT, PURSUE or KITE answers at any health. A mob in
+ * NORMAL, which has no stance, declines at 35 percent health or less.
  */
 public final class CalloutBoard {
 	/** One receiver's answer, with the reason a decline gives: cap, unknown_type, survival, cannot or busier. */
@@ -105,7 +107,7 @@ public final class CalloutBoard {
 			return new Answer(receiver.getUUID(), false, "unknown_type");
 		}
 
-		if (receiver.getHealth() <= receiver.getMaxHealth() * RetreatGoal.HEALTH_FRACTION) {
+		if (Stance.suppresses(receiver)) {
 			return new Answer(receiver.getUUID(), false, "survival");
 		}
 

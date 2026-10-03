@@ -112,6 +112,9 @@ public class CalloutFxGameTest {
 		ServerPlayer player = LearnArena.player(helper, 24.5, 24.5);
 		Mob caller = zombie(helper, 20, 20);
 		Mob hurt = zombie(helper, 28, 20);
+		// A stance would let the hurt mob answer.
+		// NORMAL keeps the 35 percent survival line.
+		StanceFixtures.dropStance(helper, hurt);
 		LearnArena.whenReady(helper, List.of(player, caller, hurt), () -> {
 			hurt.setHealth(1.0F);
 			CalloutBoard.send(caller, player, rally(caller, player), LearnConfig.defaults());

@@ -1,5 +1,7 @@
 package com.stella.learn;
 
+import com.stella.mobs.behavior.RetreatGoal;
+import com.stella.mobs.behavior.Stance;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +13,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import org.jspecify.annotations.Nullable;
 
 /** A callout reaches every mob in the player's range, each decides for itself, and the caller keeps the record. */
 public class CalloutGameTest {
@@ -89,6 +92,71 @@ public class CalloutGameTest {
 		helper.assertTrue(!answer.accepted() && answer.reason().equals("survival"), "the hurt mob answered " + answer);
 		helper.assertTrue(CalloutBoard.active(hurt) == null, "the hurt mob holds a request it declined");
 		helper.succeed();
+	}
+
+	private static Mob hurtTo(final Mob mob, final double share) {
+		mob.setHealth((float) (mob.getMaxHealth() * share));
+		return mob;
+	}
+
+	private static CalloutBoard.@Nullable Answer answerOf(final List<CalloutBoard.Answer> answers, final Mob receiver) {
+		return answers.stream().filter(answer -> answer.receiver().equals(receiver.getUUID())).findFirst().orElse(null);
+	}
+
+	/**
+	 * A receiver's survival line follows its stance. A zombie never retreats (decision D1), so a zombie at 30 percent
+	 * health is in FIGHT and answers the call. A vindicator at the same health, after the same healthy player, who is
+	 * near enough to count as chasing, is in RETREAT and declines with the reason survival. Under the old raw line both
+	 * decline. The call goes out on the first tick that both stances hold. The caller has no AI, so it hunts nobody and
+	 * gives neither receiver any morale.
+	 */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void survivalFollowsStance(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		ServerPlayer player = LearnArena.player(helper, 24.5, 24.5);
+		Mob caller = zombie(helper, 20, 20);
+		caller.setNoAi(true);
+		Mob fighter = hurtTo(StanceFixtures.unscaled(helper, EntityTypes.ZOMBIE, 28, 20), 0.30);
+		Mob runner = hurtTo(StanceFixtures.unscaled(helper, EntityTypes.VINDICATOR, 28, 28), 0.30);
+		LearnArena.keepTargeting(helper, fighter, player);
+		LearnArena.keepTargeting(helper, runner, player);
+		boolean[] sent = {false};
+		helper.onEachTick(() -> {
+			if (sent[0]) {
+				return;
+			}
+
+			if (Stance.of(fighter) != Stance.FIGHT || Stance.of(runner) != Stance.RETREAT) {
+				if (helper.getTick() > LONG - 100L) {
+					sent[0] = true;
+					helper.fail("the receivers never read FIGHT and RETREAT together: fighter=" + Stance.of(fighter) + " runner=" + Stance.of(runner));
+				}
+
+				return;
+			}
+
+			sent[0] = true;
+			List<CalloutBoard.Answer> answers = CalloutBoard.send(caller, player, call(caller, player, 1, 100), LearnConfig.defaults());
+			CalloutBoard.Answer fighterAnswer = answerOf(answers, fighter);
+			CalloutBoard.Answer runnerAnswer = answerOf(answers, runner);
+			StellaLearn.LOGGER.info(LearnLog.line(
+				"survivalFollowsStance", "RESULT", "fighter=" + fighterAnswer + " fighterStance=" + Stance.of(fighter) + " runner=" + runnerAnswer + " runnerStance=" + Stance.of(runner)
+			));
+			helper.assertTrue(
+				fighter.getHealth() <= fighter.getMaxHealth() * RetreatGoal.HEALTH_FRACTION && runner.getHealth() <= runner.getMaxHealth() * RetreatGoal.HEALTH_FRACTION,
+				"a receiver is over the raw survival line, so the case proves nothing"
+			);
+			helper.assertTrue(fighterAnswer != null && runnerAnswer != null, "a receiver was not asked: fighter=" + fighterAnswer + " runner=" + runnerAnswer);
+			helper.assertTrue(
+				runnerAnswer.reason().equals("survival") && !runnerAnswer.accepted() && CalloutBoard.active(runner) == null,
+				"the receiver in RETREAT answered " + runnerAnswer
+			);
+			helper.assertTrue(
+				fighterAnswer.accepted() && CalloutBoard.active(fighter) != null && PERFORMED.contains(fighter.getUUID()),
+				"the receiver in FIGHT at 30 percent health answered " + fighterAnswer
+			);
+			helper.succeed();
+		});
 	}
 
 	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
