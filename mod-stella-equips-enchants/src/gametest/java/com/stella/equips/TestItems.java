@@ -18,6 +18,11 @@ public final class TestItems implements ModInitializer {
 	public static final Item BOOK = register("stand_in_book", 1);
 	/** The spells mod's scroll shape: the same class as a book, but it stacks. */
 	public static final Item STACKING = register("stand_in_stacking", 16);
+	/** Another mod's bow, such as the rpg mod's mechanical bow. */
+	public static final Item MOD_BOW = Registry.register(BuiltInRegistries.ITEM,
+		Identifier.fromNamespaceAndPath(NAMESPACE, "stand_in_bow"),
+		new net.minecraft.world.item.BowItem(new Item.Properties().setId(ResourceKey.create(Registries.ITEM,
+			Identifier.fromNamespaceAndPath(NAMESPACE, "stand_in_bow"))).durability(384)));
 
 	/** Stand-ins for the rpg mod's roll components, registered under its ids so the compare reads them by key. */
 	public static final DataComponentType<Map<String, Integer>> STAT_ROLLS = rolls("stat_rolls");
