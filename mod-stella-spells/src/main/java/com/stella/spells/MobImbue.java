@@ -11,6 +11,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An imbued weapon in a mob's hand: each spell that strikes a single foe has a mob's version, cast at the
@@ -72,14 +73,22 @@ final class MobImbue {
 
 	/** One mob spell on one foe, at the given share of the spell's power and duration; false for a spell with no mob form. */
 	static boolean apply(final ServerLevel level, final Mob wielder, final String spell, final LivingEntity victim, final double power, final double duration) {
+		return apply(level, wielder, null, spell, victim, power, duration);
+	}
+
+	/** As above; a non-null owner sets the damage by its MATK while the wielder stays the hit's source. */
+	static boolean apply(
+		final ServerLevel level, final Mob wielder, final @Nullable LivingEntity owner, final String spell,
+		final LivingEntity victim, final double power, final double duration
+	) {
 		switch (spell) {
 			case "spark_shot" -> {
-				hurt(level, wielder, victim, power, SpellCasting.DAMAGE);
+				hurt(level, wielder, owner, victim, power, SpellCasting.DAMAGE);
 				victim.igniteForTicks(ticks(duration, SpellCasting.BURN_SECONDS * 20.0F));
 			}
 			case "frostbind" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 1));
 			case "briar_snare" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 3));
-			case "static_lash" -> hurt(level, wielder, victim, power, SpellCasting.DAMAGE);
+			case "static_lash" -> hurt(level, wielder, owner, victim, power, SpellCasting.DAMAGE);
 			case "tidal_push" -> {
 				Vec3 away = victim.position().subtract(wielder.position());
 				Vec3 horizontal = new Vec3(away.x, 0.0, away.z);
@@ -91,16 +100,16 @@ final class MobImbue {
 			}
 			case "wither_seal" -> effect(wielder, victim, new MobEffectInstance(MobEffects.WITHER, ticks(duration, 100), 1));
 			case "ice_lance" -> {
-				hurt(level, wielder, victim, power, MoreSpells.ICE_LANCE_DAMAGE);
+				hurt(level, wielder, owner, victim, power, MoreSpells.ICE_LANCE_DAMAGE);
 				MoreSpells.freeze(victim, ticks(duration, MoreSpells.ICE_LANCE_FREEZE_TICKS));
 			}
 			case "soul_siphon" -> {
 				float before = victim.getHealth();
-				hurt(level, wielder, victim, power, MoreSpells.SOUL_SIPHON_DAMAGE);
-				wielder.heal(before - Math.max(0.0F, victim.getHealth()));
+				hurt(level, wielder, owner, victim, power, MoreSpells.SOUL_SIPHON_DAMAGE);
+				wielder.heal(RpgBridge.vanilla(before - Math.max(0.0F, victim.getHealth())));
 			}
 			case "venom_dart" -> {
-				hurt(level, wielder, victim, power, MoreSpells.VENOM_DAMAGE);
+				hurt(level, wielder, owner, victim, power, MoreSpells.VENOM_DAMAGE);
 				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(duration, MoreSpells.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
 			}
 			case "blinding_flash" -> {
@@ -108,7 +117,7 @@ final class MobImbue {
 				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(duration, MoreSpells.FLASH_GLOW_TICKS), 0));
 			}
 			case "ember_brand" -> {
-				hurt(level, wielder, victim, power, MoreSpells.EMBER_DAMAGE);
+				hurt(level, wielder, owner, victim, power, MoreSpells.EMBER_DAMAGE);
 				victim.igniteForTicks(ticks(duration, MoreSpells.EMBER_BURN_TICKS));
 			}
 			default -> {
@@ -127,9 +136,12 @@ final class MobImbue {
 	}
 
 	// Magic from the wielder, so the victim knows who cast it; the melee hit's own cooldown is set aside for it.
-	private static void hurt(final ServerLevel level, final Mob wielder, final LivingEntity victim, final double power, final float amount) {
+	private static void hurt(
+		final ServerLevel level, final Mob wielder, final @Nullable LivingEntity owner, final LivingEntity victim,
+		final double power, final float amount
+	) {
 		DamageSource magic = level.damageSources().indirectMagic(wielder, wielder);
 		victim.damageCooldownTime = 0;
-		victim.hurtServer(level, magic, amount * (float) power);
+		victim.hurtServer(level, magic, owner == null ? amount * (float) power : RpgBridge.damage(owner, amount, power));
 	}
 }

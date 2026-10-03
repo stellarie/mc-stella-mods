@@ -35,10 +35,14 @@
 			"com.stella.spells.RpgBridgeGameTest",
 			"com.stella.spells.SpellMatkGameTest",
 			"com.stella.spells.SummonScalingGameTest",
-			"com.stella.spells.SpellTooltipGameTest"
+			"com.stella.spells.SpellTooltipGameTest",
+			"com.stella.spells.SpellKGameTest"
 		]
 	},
 	"depends": {
 		"mod-stella-spells": "*"
-	}
+	},
+	"mixins": [
+		"mod-stella-spells-test.mixins.json"
+	]
 }

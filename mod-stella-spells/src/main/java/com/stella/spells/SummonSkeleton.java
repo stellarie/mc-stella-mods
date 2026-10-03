@@ -71,7 +71,7 @@ public final class SummonSkeleton {
 	public static final double MASTER_HEALTH_SHARE = 0.1;
 	/** A servant's hit is this percent of its master's MATK. */
 	public static final double HIT_SKILL_PERCENT = 100.0;
-	public static final String HEALTH_SCALE_SHARE = "mod-stella-rpg:health-scale";
+	public static final String HEALTH_SCALE_SHARE = RpgBridge.HEALTH_SCALE_SHARE;
 	public static final Identifier THREAT_HEALTH_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_threat_health");
 	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
@@ -253,8 +253,7 @@ public final class SummonSkeleton {
 	}
 
 	static double healthScale() {
-		Object scale = FabricLoader.getInstance().getObjectShare().get(HEALTH_SCALE_SHARE);
-		return scale instanceof Double value && value > 0.0 ? value : 1.0;
+		return RpgBridge.k();
 	}
 
 	/** What a blow from this servant is worth: its master's MATK at {@link #HIT_SKILL_PERCENT}; NaN when it is not a servant's blow. */
@@ -362,7 +361,7 @@ public final class SummonSkeleton {
 		return mob.entityTags().contains(SUMMON_TAG) && ownerOf(mob).filter(player.getUUID()::equals).isPresent();
 	}
 
-	private static @Nullable ServerPlayer owner(final Mob mob) {
+	static @Nullable ServerPlayer owner(final Mob mob) {
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return null;
 		}

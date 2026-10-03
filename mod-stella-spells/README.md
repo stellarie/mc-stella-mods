@@ -206,6 +206,9 @@ A book of its own: no scroll copies it and no weapon takes it. Crafted from a bo
   death, and it follows you between worlds with them. It cannot enter portals on its own.
 - Combat and support spellbooks in its pack let it cast their mob forms without consuming the books.
   Travel, movement, vision, breathing, mining, and Summon Skeleton books stay in its pack without casting.
+  A pack cast deals damage by your MATK, not the skeleton's own Intelligence. The skeleton stays the source of the hit,
+  so a foe turns on the skeleton and the kill counts for it. Without `mod-stella-rpg`, or with you offline, the cast
+  deals its flat damage.
 - Use it (not sneaking) to open its screen: the top row is its head, chest, legs, feet, main hand and
   off hand, then two locked panes and a name slot. A named item left in the name slot renames it when
   you close the screen, and comes back to you. The two rows below are its pack.
