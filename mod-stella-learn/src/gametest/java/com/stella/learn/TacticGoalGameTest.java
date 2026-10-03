@@ -2,6 +2,7 @@ package com.stella.learn;
 
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.ShieldUseGoal;
+import com.stella.mobs.behavior.Stance;
 import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
@@ -48,6 +49,9 @@ public class TacticGoalGameTest {
 		zombie.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
 		// The mobs mod's own shield goal raises it at any threat, which would hide what this goal decided.
 		zombie.getGoalSelector().removeAllGoals(goal -> goal instanceof ShieldUseGoal);
+		// A healthy zombie reads FIGHT and loses
+		// SHIELD and BACK_OFF. NORMAL keeps them.
+		StanceFixtures.dropStance(helper, zombie);
 		LearnArena.keepTargeting(helper, zombie, player);
 		return zombie;
 	}
@@ -262,6 +266,8 @@ public class TacticGoalGameTest {
 		zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
 		zombie.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
 		zombie.getGoalSelector().removeAllGoals(goal -> goal instanceof ShieldUseGoal);
+		// The guard cases test the guard filter alone.
+		StanceFixtures.dropStance(helper, zombie);
 		LearnArena.keepTargeting(helper, zombie, player);
 		steady(zombie);
 		return zombie;
@@ -331,6 +337,93 @@ public class TacticGoalGameTest {
 				helper.succeed();
 			}), () -> "guardTicks=" + guardTicks[0] + " whileGuarding=" + whileGuarding + " twinGuardTicks=" + twinGuardTicks[0] + " twinBackedOff=" + twinBackedOff[0]);
 		});
+	}
+
+	/** Each swing decision of a mob, and its stance. */
+	private record Subject(ServerPlayer player, Mob mob, List<Tactic> chose, List<Stance> heldThen) {
+		String describe() {
+			return "chose=" + this.chose + " stances=" + this.heldThen;
+		}
+	}
+
+	/** Rates BACK_OFF first, SHIELD second, TRADE last. */
+	private static Policy backOffFirst() {
+		java.util.Map<String, Policy.Entry> rated = new java.util.HashMap<>();
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.BACK_OFF), new Policy.Entry(1.0, 10));
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.SHIELD), new Policy.Entry(0.5, 10));
+		rated.put(Policy.key(ZOMBIE, Situation.SWING, Tactic.TRADE), new Policy.Entry(0.0, 10));
+		return new Policy(rated);
+	}
+
+	/**
+	 * A shielded zombie, and its player at this share.
+	 * With `readsStance` off the zombie stays in NORMAL.
+	 * Each swing decision of the zombie is recorded.
+	 */
+	private static Subject stanceSubject(final GameTestHelper helper, final double x, final double share, final boolean readsStance) {
+		ServerPlayer player = LearnArena.player(helper, x, 24.5);
+		Policies.set(player, backOffFirst());
+		Mob zombie = StanceFixtures.unscaled(helper, EntityTypes.ZOMBIE, (int) x, 27);
+		zombie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+		zombie.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+		if (!readsStance) {
+			StanceFixtures.dropStance(helper, zombie);
+		}
+
+		StanceFixtures.holdHealth(helper, player, share);
+		LearnArena.keepTargeting(helper, zombie, player);
+		Subject subject = new Subject(player, zombie, new ArrayList<>(), new ArrayList<>());
+		Episode[] last = {null};
+		helper.onEachTick(() -> {
+			Episode episode = Episodes.active(zombie);
+			if (episode != null && episode != last[0]) {
+				last[0] = episode;
+				if (episode.situation() == Situation.SWING) {
+					subject.chose().add(episode.tactic());
+					subject.heldThen().add(Stance.of(zombie));
+				}
+			}
+		});
+		return subject;
+	}
+
+	/**
+	 * A mob that fights on does not step back or raise a shield at a swing. A zombie in FIGHT (both healthy) and one in
+	 * PURSUE (the player at 10 percent) face a policy that rates the back-off first and the shield second, and each
+	 * trades. A third zombie has no stance goal, so it stays in NORMAL, and under the same policy it still backs off.
+	 * The swings start once both stance goals have read their players.
+	 */
+	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
+	public void stanceBlocksBackOff(final GameTestHelper helper) {
+		LearnArena.floor(helper);
+		Subject fight = stanceSubject(helper, 8.5, StanceFixtures.HEALTHY, true);
+		Subject pursue = stanceSubject(helper, 24.5, StanceFixtures.HURT, true);
+		Subject normal = stanceSubject(helper, 40.5, StanceFixtures.HEALTHY, false);
+		List<Subject> all = List.of(fight, pursue, normal);
+		boolean[] swinging = {false};
+		all.forEach(subject -> swingEveryTick(helper, subject.player(), swinging));
+		List<net.minecraft.world.entity.Entity> watched = List.of(fight.player(), fight.mob(), pursue.player(), pursue.mob(), normal.player(), normal.mob());
+		// The tactic goal is there once the mobs tick.
+		LearnArena.whenReady(helper, watched, () -> LearnArena.pollUntil(
+			helper, () -> Stance.of(fight.mob()) == Stance.FIGHT && Stance.of(pursue.mob()) == Stance.PURSUE, 100, () -> {
+				all.forEach(subject -> steady(subject.mob()));
+				swinging[0] = true;
+				LearnArena.pollUntil(helper, () -> all.stream().noneMatch(subject -> subject.chose().isEmpty()), 200,
+					() -> helper.runAfterDelay(LearnConfigStore.get().rlWindowTicks() + 10L, () -> {
+						StellaLearn.LOGGER.info(LearnLog.line(
+							"stanceBlocksBackOff", "RESULT", "fight=[" + fight.describe() + "] pursue=[" + pursue.describe() + "] normal=[" + normal.describe() + "]"
+						));
+						helper.assertTrue(normal.heldThen().stream().allMatch(stance -> stance == Stance.NORMAL), "the control read a stance: " + normal.describe());
+						helper.assertTrue(normal.chose().contains(Tactic.BACK_OFF), "a mob in NORMAL never backed off, so the case proves nothing: " + normal.describe());
+						helper.assertTrue(fight.heldThen().stream().allMatch(stance -> stance == Stance.FIGHT), "the first mob left FIGHT: " + fight.describe());
+						helper.assertTrue(pursue.heldThen().stream().allMatch(stance -> stance == Stance.PURSUE), "the second mob left PURSUE: " + pursue.describe());
+						helper.assertTrue(fight.chose().stream().allMatch(tactic -> tactic == Tactic.TRADE), "a swing at a mob in FIGHT chose " + fight.describe());
+						helper.assertTrue(pursue.chose().stream().allMatch(tactic -> tactic == Tactic.TRADE), "a swing at a mob in PURSUE chose " + pursue.describe());
+						helper.succeed();
+					}),
+					() -> "a mob made no swing decision: fight=[" + fight.describe() + "] pursue=[" + pursue.describe() + "] normal=[" + normal.describe() + "]");
+			},
+			() -> "the stances never read FIGHT and PURSUE: fight=" + Stance.of(fight.mob()) + " pursue=" + Stance.of(pursue.mob())));
 	}
 
 	private static final List<Tactic> INCOMING = List.of(Tactic.EVADE, Tactic.SHIELD, Tactic.TANK);
@@ -464,6 +557,9 @@ public class TacticGoalGameTest {
 		Mob skeleton = archer(helper, player);
 		boolean[] everHidden = {false};
 		helper.onEachTick(() -> everHidden[0] |= !Cover.exposed(helper.getLevel(), player, skeleton.getEyePosition()));
+		// The player sees each shot, so no ambush starts.
+		// The look sets yaw, pitch and head yaw.
+		helper.onEachTick(() -> player.lookAt(EntityAnchorArgument.Anchor.EYES, skeleton.getEyePosition()));
 		LearnArena.whenReady(helper, List.of(player, skeleton), () -> {
 			steady(skeleton);
 			LearnArena.pollUntil(helper, () -> Episodes.active(skeleton) != null, 300, () -> {

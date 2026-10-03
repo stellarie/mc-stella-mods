@@ -1,6 +1,7 @@
 package com.stella.learn;
 
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.behavior.Stance;
 import com.stella.mobs.config.CombatRole;
 import java.util.EnumSet;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,7 +15,8 @@ import org.jspecify.annotations.Nullable;
  * A melee mob after a player who falls back does not go through a narrow gap alone. It walks to a staging point a few
  * blocks before the gap and waits there until enough monsters after the same player have gathered, or until its
  * patience runs out, and then the vanilla attack takes it in with the rest. After a group goes, the goal rests for a
- * while so the group is not held again on the way through.
+ * while so the group is not held again on the way through. A mob in the PURSUE stance never starts a hold: it presses a
+ * hurt player, and a hold would let that player get away.
  */
 public final class HoldAtChokeGoal extends Goal {
 	/** Ticks a released mob is left alone, so a group that gathered has time to pass. */
@@ -39,7 +41,7 @@ public final class HoldAtChokeGoal extends Goal {
 
 	@Override
 	public boolean canUse() {
-		if (ReactiveState.get(this.mob).getRole() != CombatRole.MELEE || this.mob.tickCount < this.restUntilTick) {
+		if (ReactiveState.get(this.mob).getRole() != CombatRole.MELEE || this.mob.tickCount < this.restUntilTick || Stance.of(this.mob) == Stance.PURSUE) {
 			return false;
 		}
 

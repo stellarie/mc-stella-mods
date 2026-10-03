@@ -1,6 +1,7 @@
 package com.stella.learn;
 
 import com.stella.mobs.behavior.ShieldUseGoal;
+import com.stella.mobs.behavior.Stance;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.component.DataComponents;
@@ -11,7 +12,8 @@ import net.minecraft.world.entity.player.Player;
 
 /**
  * Which tactics are open to a mob in a situation. A shield needs a shield in hand. Cover needs a spot that leaves the
- * shooter no nearer. A mob whose shield goal guards against a player keeps its shield and its advance.
+ * shooter no nearer. A mob whose shield goal guards against a player keeps its shield and its advance. So does a mob
+ * whose stance is FIGHT or PURSUE: it is offered neither a shield nor a step back.
  */
 public final class Tactics {
 	private Tactics() {
@@ -38,6 +40,15 @@ public final class Tactics {
 		}
 
 		return false;
+	}
+
+	/**
+	 * True while the stance is FIGHT or PURSUE.
+	 * A shield or a step back would end the attack.
+	 */
+	static boolean pressing(final Mob mob) {
+		Stance stance = Stance.of(mob);
+		return stance == Stance.FIGHT || stance == Stance.PURSUE;
 	}
 
 	public static List<Tactic> available(final Mob mob, final ServerPlayer player, final Situation situation) {
@@ -68,7 +79,7 @@ public final class Tactics {
 			}
 		}
 
-		if (guarding(mob)) {
+		if (guarding(mob) || pressing(mob)) {
 			open.removeIf(tactic -> tactic == Tactic.SHIELD || tactic == Tactic.BACK_OFF);
 		}
 

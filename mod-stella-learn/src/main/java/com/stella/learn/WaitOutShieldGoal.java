@@ -1,6 +1,7 @@
 package com.stella.learn;
 
 import com.stella.mobs.behavior.ReactiveState;
+import com.stella.mobs.behavior.Stance;
 import com.stella.mobs.config.CombatRole;
 import java.util.EnumSet;
 import net.minecraft.core.component.DataComponents;
@@ -12,7 +13,8 @@ import net.minecraft.world.entity.ai.goal.Goal;
 /**
  * Against a player who has been seen turtling, a mob stands off while that player's shield is up: a melee mob
  * holds its swing and a ranged one holds its fire, until the shield drops or its patience runs out. It takes the
- * MOVE and LOOK flags, so the vanilla attack goals below its rank cannot run meanwhile.
+ * MOVE and LOOK flags, so the vanilla attack goals below its rank cannot run meanwhile. A mob in the PURSUE stance never
+ * starts a wait: it presses a hurt player, and a wait would let that player get away.
  */
 public final class WaitOutShieldGoal extends Goal {
 	private static final double HOLD_RADIUS = 10.0;
@@ -31,7 +33,7 @@ public final class WaitOutShieldGoal extends Goal {
 
 	@Override
 	public boolean canUse() {
-		if (!this.playsThisRole() || this.mob.tickCount < this.restUntilTick) {
+		if (!this.playsThisRole() || this.mob.tickCount < this.restUntilTick || Stance.of(this.mob) == Stance.PURSUE) {
 			return false;
 		}
 
