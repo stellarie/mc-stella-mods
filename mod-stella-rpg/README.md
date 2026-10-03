@@ -279,7 +279,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
-- `mob_amplifier` is a number of at least 0. The default is 0.10.
+- `mob_amplifier` is a number of at least 0. The default is 0.03.
 - `mob_dice_share` is a number from 0 to 1. The default is 0.5.
 - The key `mob_weights` is retired. A file that holds it loads and logs it as ignored.
 - `debuff_resistance` is a curve key like the others. The default is `max` 0.75 and `half` 100.
@@ -303,7 +303,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 ## Mob stats
 
 A mob stat is `round(base * (1 + mob_amplifier * threat))`, from 1 to 1024. A negative threat counts as 0.
-The threat is the mob's `ThreatState` level. The base depends on the mob role. The default amplifier is 0.10.
+The threat is the mob's `ThreatState` level. The base depends on the mob role. The default amplifier is 0.03.
 Mob stats add to the `SpawnScaling` health and damage modifiers. They do not replace them.
 
 | Role | STR | AGI | VIT | DEX | INT | LUK |
