@@ -172,7 +172,8 @@ public final class JobGameTest {
 		helper.assertTrue(trialsDone.apply(player).equals(Set.of(40)), "trialsDone " + trialsDone.apply(player));
 		Boolean items = grantItems.apply(player);
 		RpgTestSupport.result("shareWorks", "job=" + get.apply(player) + " trials=" + trialsDone.apply(player) + " items=" + items);
-		helper.assertTrue(items != null, "grantItems gave null");
+		helper.assertTrue(Boolean.TRUE.equals(items), "grantItems gave " + items);
+		helper.assertTrue(player.getInventory().contains(stack -> stack.is(com.stella.rpg.job.JobItems.WITCH_HAT)), "the mage got no hat");
 		helper.succeed();
 	}
 }

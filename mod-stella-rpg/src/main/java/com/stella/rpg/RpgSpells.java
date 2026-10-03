@@ -1,5 +1,6 @@
 package com.stella.rpg;
 
+import com.stella.rpg.job.JobItems;
 import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.Affixes;
 import net.minecraft.util.RandomSource;
@@ -25,7 +26,8 @@ public final class RpgSpells {
 
 	/** The cooldown multiplier. INT and DEX both cut it. */
 	public static double cooldown(final Player player) {
-		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT) + StatBonuses.effective(player, Stat.DEX));
+		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT) + StatBonuses.effective(player, Stat.DEX))
+			* JobItems.cooldownFactor(player);
 	}
 
 	/** The spell base at a level, in vanilla units. A hit of 100 percent deals this at 0 MATK percent. */
@@ -60,7 +62,7 @@ public final class RpgSpells {
 
 	/** Magic penetration as a fraction, from the attacker's held book. */
 	public static double penetration(final LivingEntity attacker) {
-		return Affixes.total(attacker, Affix.MAGIC_PEN);
+		return Affixes.total(attacker, Affix.MAGIC_PEN) + JobItems.magicPenetration(attacker);
 	}
 
 	/** Compatibility: the hit of a 100 percent skill, in K units. */
@@ -84,7 +86,7 @@ public final class RpgSpells {
 	/** The skill percent (150 is 150%) of the base, times MATK percent, plus flat MATK. No crit. */
 	public static double spellHit(final LivingEntity caster, final double skillPercent) {
 		double scaled = base(level(caster)) * skillPercent / PERCENT * (1.0 + matkPercent(caster));
-		return scaled + matkFlat(caster) / RpgScale.k();
+		return (scaled + matkFlat(caster) / RpgScale.k()) * JobItems.spellDamageFactor(caster);
 	}
 
 	/** Compatibility: the random source is unused. The crit uses the combat roller. */
@@ -94,7 +96,8 @@ public final class RpgSpells {
 
 	/** Level plus INT times the coefficient, in vanilla units. */
 	public static double spellHeal(final LivingEntity caster, final double coefficient) {
-		return (level(caster) + StatBonuses.effective(caster, Stat.INT)) * coefficient / RpgScale.k();
+		return (level(caster) + StatBonuses.effective(caster, Stat.INT)) * coefficient / RpgScale.k()
+			* JobItems.healingFactor(caster);
 	}
 
 	private static int level(final LivingEntity caster) {

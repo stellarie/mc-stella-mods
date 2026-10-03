@@ -3,6 +3,7 @@ package com.stella.rpg.mixin;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatBonuses;
+import com.stella.rpg.job.JobItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.BowItem;
@@ -27,6 +28,6 @@ public abstract class RpgBowDrawMixin {
 			return held;
 		}
 		int full = RpgCurve.fullDrawTicks(StatBonuses.effective(player, Stat.AGI));
-		return (int) Math.floor(held * 20.0 / full);
+		return (int) Math.floor(held * 20.0 / full * JobItems.drawFactor(stack));
 	}
 }
