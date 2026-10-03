@@ -22,13 +22,14 @@ public abstract class MobDamageScalingMixin {
 			return amount;
 		}
 		int threat = ThreatState.level(mob);
+		if (SelfScaled.owned(mob)) {
+			return amount * (float) SelfScaled.factor(threat);
+		}
 		// A spear jab reads the scaled attack too.
 		boolean melee = source.is(DamageTypes.MOB_ATTACK) || source.is(DamageTypes.MOB_ATTACK_NO_AGGRO) || source.is(DamageTypes.SPEAR);
 		// Friendly golems keep their fixed special hits.
 		boolean hostile = mob instanceof Enemy;
-		// A self-scaled mob's melee skips the attribute.
-		boolean attributeScaled = melee && !SelfScaled.owned(mob);
-		float scaled = attributeScaled || !hostile ? amount : amount * (float) SpawnScaling.damageMultiplier(threat);
-		return scaled + (float) SpawnScaling.tailFlat(threat);
+		float scaled = melee || !hostile ? amount : amount * (float) SpawnScaling.damageMultiplier(threat);
+		return hostile ? scaled + (float) SpawnScaling.tailFlat(threat) : scaled;
 	}
 }

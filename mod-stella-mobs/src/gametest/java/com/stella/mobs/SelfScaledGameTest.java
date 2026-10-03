@@ -30,7 +30,7 @@ public class SelfScaledGameTest {
 	@GameTest
 	public void selfScaledHitsTakeTheLevelPath(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		double expected = HIT * SpawnScaling.damageMultiplier(THREAT) + SpawnScaling.tailFlat(THREAT);
+		double expected = HIT * com.stella.mobs.scaling.SelfScaled.factor(THREAT);
 		Mob zombie = mob(helper, EntityTypes.ZOMBIE, true);
 		float melee = loss(helper, level.damageSources().mobAttack(zombie));
 		Mob skeleton = mob(helper, EntityTypes.SKELETON, true);
@@ -61,7 +61,7 @@ public class SelfScaledGameTest {
 		float expectedPierce = MobPiercing.share(THREAT, ScalingConfigStore.get());
 		result("armorAndPiercingFollowTheLevel", "scale=" + scale + " pierce=" + pierce + " rawScale=" + ArmorNormalizer.scale(raw)
 			+ " rawPierce=" + MobPiercing.share(raw));
-		helper.assertTrue(Math.abs(scale - SpawnScaling.damageMultiplier(THREAT)) < 0.001, "armor scale " + scale);
+		helper.assertTrue(Math.abs(scale - com.stella.mobs.scaling.SelfScaled.factor(THREAT)) < 0.001, "armor scale " + scale);
 		helper.assertTrue(Math.abs(pierce - expectedPierce) < 0.0001F, "piercing " + pierce + ", expected " + expectedPierce);
 		helper.assertTrue(ArmorNormalizer.scale(raw) == 1.0 && MobPiercing.share(raw) == 0.0F, "a no-roll mob got the level path");
 		helper.succeed();

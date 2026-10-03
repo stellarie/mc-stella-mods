@@ -6,6 +6,8 @@ import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.config.GearConfig;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.RollSpec;
+import com.stella.mobs.config.ScalingConfig;
+import com.stella.mobs.config.ScalingConfigStore;
 import com.stella.mobs.gear.GearTier;
 import com.stella.mobs.scaling.SpawnScaling;
 import java.util.Optional;
@@ -87,7 +89,10 @@ public class BossGameTest {
 		Mob mob = helper.spawnMob(EntityTypes.ZOMBIE, 2, 3, 2).spawn();
 
 		double tenLevelHealth = SpawnScaling.healthMultiplier(10) - 1.0;
-		double tenLevelDamage = SpawnScaling.damageMultiplier(10) - 1.0;
+		double tenLevelDamage = SpawnScaling.damageMultiplier(10) - 1.0 + SpawnScaling.tailFlat(10);
+		ScalingConfig config = ScalingConfigStore.get();
+		double expectedHealth = 10 * config.healthPerLevel();
+		double expectedDamage = 10 * config.tailFlatPerLevel();
 		int level = SpawnScaling.areaLevel(mob);
 		// The rig measures distance from the level's spawn, and a biome adds its flat levels on top, never below zero.
 		var spawn = helper.getLevel().getRespawnData().pos();
@@ -100,7 +105,7 @@ public class BossGameTest {
 		);
 
 		helper.assertTrue(
-			Math.abs(tenLevelHealth - 2.0) < EPSILON && Math.abs(tenLevelDamage - (Math.pow(1.06, 10) - 1.0)) < EPSILON,
+			Math.abs(tenLevelHealth - expectedHealth) < EPSILON && Math.abs(tenLevelDamage - expectedDamage) < EPSILON,
 			"ten threat levels did not raise health and damage by the expected amounts"
 		);
 		helper.assertValueEqual(Integer.valueOf(level), Integer.valueOf(expectedArea), "distance area level");
