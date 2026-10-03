@@ -208,6 +208,51 @@ public class SummonSkeletonGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void packCastUsesTheMaster(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, 5).withNoFreeWill().spawn();
+		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR).setBaseValue(0.0);
+		target.setHealth(1000.0F);
+		servant.setTarget(target);
+		try {
+			RpgBridge.setStats(new RpgBridge.Stats() {
+				@Override
+				public double power(final net.minecraft.world.entity.player.Player player) {
+					return 1.0;
+				}
+
+				@Override
+				public double cooldown(final net.minecraft.world.entity.player.Player player) {
+					return 1.0;
+				}
+
+				@Override
+				public double spellDamage(final net.minecraft.world.entity.LivingEntity caster, final double skillPercent) {
+					return caster == master ? skillPercent * 0.1 : skillPercent * 0.01;
+				}
+			});
+			float before = target.getHealth();
+			boolean cast = MobSpells.castAt(servant, "spark_shot", target);
+			double taken = before - target.getHealth();
+			double fromMaster = SpellCasting.DAMAGE * RpgBridge.SKILL_PERCENT_PER_FLAT * 0.1;
+			LOG.info("[SPELLTEST] test=packCastUsesTheMaster RESULT cast={} taken={} expected={}", cast, taken, fromMaster);
+			helper.assertTrue(cast, "the servant did not cast");
+			helper.assertTrue(Math.abs(taken - fromMaster) < 1.0E-3,
+				"the pack cast took " + taken + " from the target, not the master's " + fromMaster);
+			helper.assertTrue(target.getLastHurtByMob() == servant, "the target does not blame the servant");
+		} finally {
+			RpgBridge.setStats(null);
+			target.discard();
+			servant.discard();
+			leave(helper, master);
+		}
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 120)
 	public void aServantCastsAnAreaBookWithoutHarmingItsMaster(final GameTestHelper helper) {
 		helper.setTime(18_000L);

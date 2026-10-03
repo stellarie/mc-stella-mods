@@ -189,8 +189,9 @@ public final class MobSpells {
 			return false;
 		}
 		List<LivingEntity> reached;
+		LivingEntity owner = damageOwner(caster);
 		if (FROZEN_METEOR.equals(spell)) {
-			reached = frozenMeteor(level, caster, target.position());
+			reached = frozenMeteor(level, caster, owner, target.position());
 		} else if ("chainstorm".equals(spell) && SpellStorms.startForMob(caster, target.position())) {
 			reached = List.of(target);
 		} else if ("time_lock".equals(spell)) {
@@ -201,11 +202,11 @@ public final class MobSpells {
 				other.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 100, 1), caster);
 			}
 		} else if (PACK_AREA_OFFENSIVE.contains(spell)) {
-			reached = castArea(caster, spell, target);
+			reached = castArea(caster, owner, spell, target);
 			if (reached.isEmpty()) {
 				return false;
 			}
-		} else if (MobImbue.apply(level, caster, spell, target, 1.0, 1.0)) {
+		} else if (MobImbue.apply(level, caster, owner, spell, target, 1.0, 1.0)) {
 			reached = List.of(target);
 		} else {
 			return false;
@@ -216,7 +217,7 @@ public final class MobSpells {
 		return true;
 	}
 
-	private static List<LivingEntity> castArea(final Mob caster, final String spell, final LivingEntity target) {
+	private static List<LivingEntity> castArea(final Mob caster, final @Nullable LivingEntity owner, final String spell, final LivingEntity target) {
 		if (!(caster.level() instanceof ServerLevel level)) {
 			return List.of();
 		}
@@ -250,28 +251,28 @@ public final class MobSpells {
 					}
 					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 1), caster);
 				}
-				case "dragonfall" -> hurt(level, caster, foe, 10.0F);
+				case "dragonfall" -> hurt(level, caster, owner, foe, 10.0F);
 				case "wardens_roar" -> {
-					hurt(level, caster, foe, 6.0F);
+					hurt(level, caster, owner, foe, 6.0F);
 					Vec3 away = foe.position().subtract(caster.position()).normalize();
 					foe.push(away.x, 0.2, away.z);
 				}
 				case "sapping_hex" -> foe.addEffect(new MobEffectInstance(MobEffects.WEAKNESS,
 					Math.min(MoreSpells.HEX_MAX_TICKS, MoreSpells.HEX_TICKS_PER_FOE * foes.size()), MoreSpells.HEX_AMPLIFIER), caster);
 				case "frost_nova" -> {
-					hurt(level, caster, foe, MoreSpells.FROST_NOVA_DAMAGE);
+					hurt(level, caster, owner, foe, MoreSpells.FROST_NOVA_DAMAGE);
 					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
 						MoreSpells.FROST_NOVA_SLOW_TICKS, MoreSpells.FROST_NOVA_SLOW_AMPLIFIER), caster);
 				}
 				case "earthspike" -> {
-					hurt(level, caster, foe, MoreSpells.EARTHSPIKE_DAMAGE);
+					hurt(level, caster, owner, foe, MoreSpells.EARTHSPIKE_DAMAGE);
 					Vec3 motion = foe.getDeltaMovement();
 					foe.setDeltaMovement(motion.x, MoreSpells.EARTHSPIKE_LIFT, motion.z);
 				}
 				case "plague_cloud" -> foe.addEffect(new MobEffectInstance(MobEffects.POISON,
 					MoreSpells.PLAGUE_POISON_TICKS, 0), caster);
 				case "flame_ring" -> {
-					hurt(level, caster, foe, MoreSpells.FLAME_RING_DAMAGE);
+					hurt(level, caster, owner, foe, MoreSpells.FLAME_RING_DAMAGE);
 					foe.igniteForTicks(MoreSpells.FLAME_RING_BURN_TICKS);
 				}
 				case "gravity" -> {
@@ -292,19 +293,26 @@ public final class MobSpells {
 		return foes;
 	}
 
-	private static void hurt(final ServerLevel level, final Mob caster, final LivingEntity foe, final float damage) {
+	// A pack cast hits by its master's MATK; none if offline.
+	private static @Nullable LivingEntity damageOwner(final Mob caster) {
+		return caster.entityTags().contains(SummonSkeleton.SUMMON_TAG) ? SummonSkeleton.owner(caster) : null;
+	}
+
+	private static void hurt(final ServerLevel level, final Mob caster, final @Nullable LivingEntity owner, final LivingEntity foe, final float damage) {
 		foe.damageCooldownTime = 0;
-		foe.hurtServer(level, level.damageSources().indirectMagic(caster, caster), damage);
+		foe.hurtServer(level, level.damageSources().indirectMagic(caster, caster),
+			owner == null ? damage : RpgBridge.damage(owner, damage, 1.0));
 	}
 
 	/** Frozen Meteor from a mob: a crash of ice that hurts and freezes the caster's foes around the point. */
-	static List<LivingEntity> frozenMeteor(final ServerLevel level, final Mob caster, final Vec3 point) {
+	static List<LivingEntity> frozenMeteor(final ServerLevel level, final Mob caster, final @Nullable LivingEntity owner, final Vec3 point) {
 		double radius = SpellCombos.FROZEN_METEOR_RADIUS;
 		List<LivingEntity> reached = level.getEntitiesOfClass(LivingEntity.class, new AABB(point, point).inflate(radius),
 			other -> other != caster && other.isAlive() && other.position().distanceToSqr(point) <= radius * radius && isFoeOf(caster, other));
 		for (LivingEntity victim : reached) {
 			victim.damageCooldownTime = 0;
-			victim.hurtServer(level, level.damageSources().indirectMagic(caster, caster), SpellCombos.FROZEN_METEOR_DAMAGE);
+			victim.hurtServer(level, level.damageSources().indirectMagic(caster, caster),
+				owner == null ? SpellCombos.FROZEN_METEOR_DAMAGE : RpgBridge.damage(owner, SpellCombos.FROZEN_METEOR_DAMAGE, 1.0));
 			MoreSpells.freeze(victim, 140);
 		}
 		level.sendParticles(ParticleTypes.SNOWFLAKE, point.x, point.y + 0.5, point.z, 80, radius * 0.5, 0.5, radius * 0.5, 0.05);

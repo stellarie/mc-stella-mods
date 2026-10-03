@@ -150,14 +150,14 @@ public final class MoreSpells {
 		return point.distanceTo(from.add(line.scale(t)));
 	}
 
-	// The caster gains the health the mob actually lost.
+	// The caster gains the health the mob lost; heal scales by K.
 	static boolean applySoulSiphon(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		if (target == null) {
 			return false;
 		}
 		float before = target.getHealth();
 		hurt(caster, target, RpgBridge.damage(caster, SOUL_SIPHON_DAMAGE, modifiers.powerMultiplier()));
-		caster.heal(before - Math.max(0.0F, target.getHealth()));
+		caster.heal(RpgBridge.vanilla(before - Math.max(0.0F, target.getHealth())));
 		return true;
 	}
 
