@@ -14,6 +14,8 @@ import net.minecraft.world.phys.Vec3;
 public final class Gaze {
 	public static final double PLAYER_GAZE_HALF_ANGLE = 25.0;
 	public static final double MOB_FACE_HALF_ANGLE = 60.0;
+	/** The wide cone in which a player notices a mob. */
+	public static final double SEEN_HALF_ANGLE = 55.0;
 
 	private Gaze() {
 	}
@@ -33,5 +35,10 @@ public final class Gaze {
 
 	public static boolean mutual(final Mob mob, final Player player) {
 		return looksAt(player, mob, PLAYER_GAZE_HALF_ANGLE) && looksAt(mob, player, MOB_FACE_HALF_ANGLE);
+	}
+
+	/** True when the mob stands in the player's wide view cone with a clear line between the eyes. */
+	public static boolean seenBy(final Player player, final Mob mob) {
+		return looksAt(player, mob, SEEN_HALF_ANGLE);
 	}
 }

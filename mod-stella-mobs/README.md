@@ -226,6 +226,7 @@ fights these mobs and a developer who tunes them. Each number below is a constan
 - The mob runs toward the nearest healthy monster within 24 blocks, if the spot still gains a block or more from the
   player. A healthy monster is above 35 percent health. A witch is one. Without such a monster, the mob runs straight away.
 - A hurt archer in RETREAT drops its band, its standoff, and its shield, so nothing holds it in place.
+- An archer that a chasing player reaches within 8 blocks kites instead, when no cover is near. See "Ambush and cover".
 
 ### Kite (`KiteGoal`, `StanceBands`, `KeepDistanceGoal`)
 
@@ -255,6 +256,85 @@ fights these mobs and a developer who tunes them. Each number below is a constan
 - A stray, a bogged, and a parched use the vanilla bow goal, which strafes in and out by itself. Their kite
   is weaker: they can walk a block or more inside the 12 block edge while they rest.
 - The goals of `mod-stella-learn` at rank 0 can still preempt a stance goal. A follow-up change gives them stance guards.
+
+## Ambush and cover
+
+A ranged unit shoots from the dark, then ducks behind cover. This section is for a player who fights these mobs
+and a developer who tunes them. Each number below is a constant in the class named in the heading.
+
+### Who ambushes (`AmbushGoal`)
+
+- A unit with a ranged role ambushes, and so does a witch. Game tests cover a stray and a skeleton.
+  A pillager and a witch get the same goals but have no game test of their own.
+- A unit ambushes only a player. A mob with any other target keeps its normal fight.
+- These mobs never ambush:
+  - an elite or boss stray with a bow, which is a sniper
+  - a piglin, which runs on its Brain
+  - a melee mob, an illusioner, and an evoker
+  - a mob that rides another mob, and a mob that another mod drives
+
+### What the player has seen (`Gaze`, `ShotWatch`)
+
+- The player sees a mob when the mob stands within 55 degrees of the view direction. A clear line must join the two eyes.
+- A mob counts as seen after 10 ticks of unbroken sight. The mark clears after 100 ticks without a sighting.
+- Every arrow, trident, potion, and fireball that a mob looses at a player is a shot.
+  The shot keeps the mob's tick and whether the mob counted as seen at that moment.
+
+### The cycle (`AmbushGoal`)
+
+| Phase | What the unit does | How it ends |
+|---|---|---|
+| STALK | fights with its normal weapon goals | an opening shot |
+| HIDE | walks to a cover spot | at the spot, or after 60 ticks |
+| WAIT | holds in cover | after 40 to 100 ticks, or when the player comes within 5 blocks |
+| PEEK | walks back into view and fires | the next shot |
+
+- A shot is an opening shot when the player has not seen the unit. The unit then searches once for cover.
+- A shot that the player has seen is a normal shot. No hide follows.
+- A unit in PURSUE does not hide. It presses a hurt player.
+- A unit that finds no spot or no path fights on. So does a unit that is still in the open after 60 ticks of HIDE.
+- The hide ends when the player dies or the unit takes another target.
+  The retreat goal and the tactic goal of `mod-stella-learn` can cut a hide short.
+- The target goal of vanilla forgets a player that it has not seen for 60 ticks. The hide goal sets the target again,
+  so a long wait still ends in a peek.
+- Every phase change writes one DEBUG line: `[BEHAVIOR] test=ambush PHASE mob=... from=... to=...`.
+
+### Cover (`CoverSearch`)
+
+The search runs once for each opening shot. It samples 12 angles at radii of 3, 5, 7, and 10 blocks around the unit.
+A spot is valid when all of these hold:
+
+- The unit can stand on it, and a path leads to it.
+- Blocks hide the spot from the player's eye. A ray at the unit's eye height hits a block,
+  and so do two rays 0.3 blocks to each side.
+- The spot lies at least 2 blocks beyond the unit's near band, and no farther than 24 blocks from the player.
+- No other unit has claimed a spot within 2 blocks. A claim lasts 200 ticks, and ends sooner when the unit stops hiding.
+
+Darker spots rank first, then nearer spots. The search tests a path for the best 6 spots only.
+
+### Pursued without cover (`AmbushWatchGoal`)
+
+- A unit is pursued when a chasing player stands within the larger of two distances. One is its near band plus 2 blocks.
+  The other is the retreat gap of 8 blocks. For an archer that is 8 blocks.
+- A pursued unit searches for cover, at most once every 20 ticks. With none, it calls `Stance.requestKite` for 100 ticks.
+- The call turns RETREAT into KITE at once. A unit in FIGHT or PURSUE keeps its stance, so a healthy unit fights on.
+- A hurt archer that a player chases within 8 blocks therefore kites, and does not run away.
+- The radius covers the retreat gap. The goal sits before the retreat goal, so no retreat run starts first.
+
+### Measured
+
+The game test `AmbushGameTest` puts a stray in the open, with a stone wall 1.5 blocks east of it. The wall is 7 blocks wide
+and 4 blocks high. The player stands 20 blocks away, with the back to the stray.
+
+- The stray hides 22 ticks after its opening shot. The limit is 80 ticks.
+- A hidden stray fires again 84 ticks after it hid in the recorded run. The limit is 200 ticks.
+- A stray at 30 percent health reaches KITE on tick 21 of the chase, with no retreat run. The limit is 40 ticks.
+  Without the call, it runs a retreat for 40 ticks and reaches KITE on tick 61.
+
+### Limits
+
+- A pursued unit that has cover, and took no unseen shot, follows the stance script. It does not hide.
+- A learned HOLD after a shot of `mod-stella-learn` does not stop a hide. A follow-up change makes learn yield.
 
 ## Bosses
 

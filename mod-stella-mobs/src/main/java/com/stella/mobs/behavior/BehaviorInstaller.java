@@ -37,6 +37,9 @@ public final class BehaviorInstaller {
 	public static final int STANCE_PRIORITY = RETREAT_PRIORITY;
 	// A tie never preempts, and the vanilla melee goals sit at priority 2 and above.
 	public static final int SHIELD_PRIORITY = 1;
+	// Only the retreat and learn's tactic goal
+	// can cut a hide short.
+	public static final int AMBUSH_PRIORITY = 1;
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
 	public static final int DEFEND_PRIORITY = 4;
@@ -191,6 +194,9 @@ public final class BehaviorInstaller {
 		if (!RETREAT_EXEMPT.contains(mob.getType())) {
 			// Poll first: later goals read a fresh stance.
 			mob.getGoalSelector().addGoal(STANCE_PRIORITY, new StanceGoal<>(monster));
+			// Before the retreat goal, so a pursued archer
+			// kites and never starts the run.
+			AmbushGoal.install(monster);
 			mob.getGoalSelector().addGoal(RETREAT_PRIORITY, new RetreatGoal<>(monster));
 			// Before the shield goal: the first tie wins.
 			mob.getGoalSelector().addGoal(SHIELD_PRIORITY, new KiteGoal<>(monster));
