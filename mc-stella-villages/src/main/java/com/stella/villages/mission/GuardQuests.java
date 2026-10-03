@@ -93,7 +93,7 @@ public final class GuardQuests {
 			return false;
 		}
 		markGiven(guard, player.getUUID(), day);
-		player.sendSystemMessage(Component.literal("The guard marks a task on your map: 32 emeralds and food when it is done.")
+		player.sendSystemMessage(Component.literal("The guard marks a task on your map: 32 emeralds and a haul that grows with the mob when it is done.")
 			.withStyle(ChatFormatting.GOLD));
 		return true;
 	}

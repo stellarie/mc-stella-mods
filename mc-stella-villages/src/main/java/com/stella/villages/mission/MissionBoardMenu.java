@@ -103,7 +103,7 @@ public final class MissionBoardMenu extends ChestMenu {
 				icon.set(DataComponents.LORE, new ItemLore(List.of(
 					Component.literal("Elite contract: one elite and two " + plural(name) + " guard it"),
 					Component.literal(distance),
-					Component.literal("Reward: 64 emeralds, 64 iron ingots, 2 potions"),
+					Component.literal("Reward: 64 emeralds and a haul that grows with the mob"),
 					Component.literal("Click to accept")
 				)));
 			}
@@ -112,7 +112,7 @@ public final class MissionBoardMenu extends ChestMenu {
 				icon.set(DataComponents.LORE, new ItemLore(List.of(
 					Component.literal("Kill contract: " + offer.count() + " of them"),
 					Component.literal(distance),
-					Component.literal("Reward at the last kill: 64 iron ingots, 2 potions"),
+					Component.literal("Reward at the last kill: a haul that grows with the mob"),
 					Component.literal("Click to accept")
 				)));
 			}

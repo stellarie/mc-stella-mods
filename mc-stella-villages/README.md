@@ -51,7 +51,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   The top row holds the Nemesis contracts, the bottom row the elite contracts on the left and the kill
   contracts on the right. Each icon names the kind, the count and the reward.
   Slot 0 holds the slayer contract, a beginner contract you can repeat. Defeat one enraged red slime
-  128 to 256 blocks from the bell. It is level 20 with permanent Speed II and Strength II. You hold one
+  128 to 256 blocks from the bell. It is level 20 with 1000 health and permanent Speed II and Strength II. You hold one
   slayer contract at a time. A player kill drops the Apprentice's Chestplate: iron armor with 1000
   durability that repairs with iron ingots. It takes no enchantment. In the equips mod's Refine tab it
   refines like any chestplate. Worn, it removes 1.5% of incoming damage for each light level below 15,
@@ -75,14 +75,32 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   A Nemesis that dies another way ends its contract without these rewards.
   A Nemesis carries the entity tag `stella_nemesis`. With `mod-stella-mobs`, it gives five times the kill XP.
 - An **elite contract** spawns one elite and two ordinary mobs of its type at the target. The elite pays
-  64 emeralds, 64 iron ingots and two random potions when a player kills it, dropped where it fell. The two
-  ordinary mobs pay nothing and leave with the elite. An elite that dies another way ends the contract
+  64 emeralds and a reward roll (see Quest rewards) at double budget when a player kills it, dropped where
+  it fell. The two ordinary mobs pay nothing and leave with the elite. An elite that dies another way ends the contract
   without a reward.
 - A **kill contract** spawns 5 to 10 ordinary mobs of one type within 6 blocks of the target. The action
   bar shows `[Quest] Kill Zombie 3/7` after each kill. Any death of one of the pack counts, whoever or
-  whatever causes it. The last death pays its owner 64 iron ingots and two random potions into the
+  whatever causes it. The last death pays its owner one reward roll (see Quest rewards) into the
   inventory, or at the owner's feet when the inventory is full. When the owner is offline at the last
-  death, the reward is stored and paid at the owner's next login.
+  death, the mob type and its level are stored, and the roll is paid at the owner's next login.
+- **Quest rewards.** The elite, kill, and guard contracts pay by the mob. Each mob type has a tier from 1 to 5,
+  taken from its vanilla health plus three times its attack damage (below 25, 40, 70, and 120 for tiers 1
+  to 4, and above that tier 5). The ravager, evoker, and elder guardian sit at tier 5, the top ordinary
+  tier. Some examples: skeleton 2, zombie 2, vindicator 2, hoglin 3, piglin brute 4, ravager 5.
+  The budget, in value points where an iron ingot is 1, is `base x elite x threat`:
+  - base by tier: 60, 90, 140, 220, 350.
+  - elite: x2 for an elite contract, x1 otherwise.
+  - threat: `1 + level / 50`, with the level capped at 150.
+
+  A zombie kill contract pays about 100 points and a ravager contract about 400. The budget buys up to
+  six picks from a weighted pool:
+  - Ores and ingots (40%): iron, gold, lapis, emerald, amethyst shard, and rarely diamond.
+  - Enchanted gear (20%): iron, or diamond at a larger budget. Sword, axe, bow, crossbow, and armor.
+  - Enchanted books (20%).
+  - Cooked food (20%): stacks of 4 to 32 tipped with one or two beneficial effects. They are Regeneration,
+    Speed, Haste, Resistance, and Fire Resistance, and the first three reach level II at tier 4.
+
+  Stacks never exceed the item maximum. No elite, kill, or guard reward holds netherite.
 - Every mob a contract spawns, the Nemesis and its companion included, never despawns and carries a
   `[Quest] ` name prefix. A quest mob that loads after its contract has ended is removed. A saved contract
   keeps its kind and the count that remains, and a save from before the quest kinds loads as a Nemesis contract. Hold a mob head you already
@@ -94,7 +112,7 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   within 3 blocks of the bell's height. The rule reads blocks only, so it keeps them out of buildings and
   off roofs from any structure mod. The duke still stands by the bell.
 - Right-click a guard (not the duke or the mage) for its daily quest: kill 3 to 6 of one hostile type
-  128 to 256 blocks from the bell, marked on a map, for 32 emeralds and 8 of one cooked food. Each guard
+  128 to 256 blocks from the bell, marked on a map, for 32 emeralds and one reward roll. Each guard
   gives each player one quest a day; an offline owner is paid at the next login.
 - Every patrol member wears a label over its head: "Duke" on the head and "Guard"
   on the rest. It is green while the village is calm and red while a player provokes the village.
