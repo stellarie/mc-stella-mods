@@ -79,5 +79,6 @@
 	"item.mod-stella-rpg.witch_hat.lore1": "+25% spell damage",
 	"item.mod-stella-rpg.priest_garbs": "Priest's Garbs",
 	"item.mod-stella-rpg.priest_garbs.lore1": "20% less damage from undead",
-	"item.mod-stella-rpg.priest_garbs.lore2": "+50% healing done"
+	"item.mod-stella-rpg.priest_garbs.lore2": "+50% healing done",
+	"message.mod-stella-rpg.second_wind": "Second Wind! You cling to life. (ready again in 5 minutes)"
 }

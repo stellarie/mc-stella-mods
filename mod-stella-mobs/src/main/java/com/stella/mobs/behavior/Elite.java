@@ -32,7 +32,10 @@ public final class Elite {
 	public static final double SCALE_BONUS = 0.4;
 	/** A boss stands this much larger again, on top of the elite's own size. */
 	public static final double BOSS_SCALE_BONUS = 0.4;
-	public static final double HEALTH_MULTIPLIER = 2.0;
+	public static final double HEALTH_MULTIPLIER = 1.5;
+	/** An elite's kit sword hits 3 less, so the kit does not triple a zombie's base hit. */
+	public static final double SWORD_TRIM = -3.0;
+	public static final Identifier SWORD_TRIM_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_sword_trim");
 	public static final Identifier SCALE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "elite_scale");
 	public static final Identifier BOSS_SCALE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_scale");
 	/** The elite kit roll: diamond is four times as likely as netherite, per the tier weights. */
@@ -59,6 +62,15 @@ public final class Elite {
 
 	public static GearTier pickTier(final RandomSource random) {
 		return TierRoller.pick(KIT_TIERS, TierRoller.totalWeight(KIT_TIERS), random);
+	}
+
+	/** Trims the kit sword's attack, once; the trim stays after a weapon swap. */
+	static void trimSword(final Mob mob) {
+		AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+		if (attack != null && mob.getMainHandItem().is(net.minecraft.tags.ItemTags.SWORDS)) {
+			attack.addOrReplacePermanentModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+				SWORD_TRIM_ID, SWORD_TRIM, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+		}
 	}
 
 	/**
@@ -163,6 +175,7 @@ public final class Elite {
 			GearRoller.rollSet(
 				mob, tier, KIT_DROP_CHANCE, mob.getRandom(), level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
 			);
+			trimSword(mob);
 		}
 
 		// O03: a forced path passes no escort count, because an escort of guardians would change the fight.

@@ -15,6 +15,7 @@ public record ReadoutPayload(
 	int entityId,
 	int threat,
 	byte band,
+	byte danger,
 	byte rank,
 	boolean hostile,
 	float health,
@@ -30,6 +31,7 @@ public record ReadoutPayload(
 		ByteBufCodecs.INT, ReadoutPayload::entityId,
 		ByteBufCodecs.INT, ReadoutPayload::threat,
 		ByteBufCodecs.BYTE, ReadoutPayload::band,
+		ByteBufCodecs.BYTE, ReadoutPayload::danger,
 		ByteBufCodecs.BYTE, ReadoutPayload::rank,
 		ByteBufCodecs.BOOL, ReadoutPayload::hostile,
 		ByteBufCodecs.FLOAT, ReadoutPayload::health,
@@ -40,13 +42,14 @@ public record ReadoutPayload(
 	);
 
 	public static ReadoutPayload clear() {
-		return new ReadoutPayload(CLEAR_ID, 0, (byte) 0, (byte) 0, false, 0.0F, 0.0F, 0.0F, "");
+		return new ReadoutPayload(CLEAR_ID, 0, (byte) 0, (byte) 0, (byte) 0, false, 0.0F, 0.0F, 0.0F, "");
 	}
 
 	public static ReadoutPayload of(
 		final int entityId,
 		final int threat,
 		final PowerCurve.Band band,
+		final DangerColor danger,
 		final ReadoutRank rank,
 		final boolean hostile,
 		final float health,
@@ -55,7 +58,7 @@ public record ReadoutPayload(
 		final String name
 	) {
 		return new ReadoutPayload(
-			entityId, threat, (byte) band.ordinal(), (byte) rank.ordinal(), hostile, health, maxHealth, absorption, name
+			entityId, threat, (byte) band.ordinal(), (byte) danger.ordinal(), (byte) rank.ordinal(), hostile, health, maxHealth, absorption, name
 		);
 	}
 
@@ -66,6 +69,11 @@ public record ReadoutPayload(
 	public PowerCurve.Band bandValue() {
 		PowerCurve.Band[] bands = PowerCurve.Band.values();
 		return bands[Math.floorMod(this.band, bands.length)];
+	}
+
+	public DangerColor dangerValue() {
+		DangerColor[] colors = DangerColor.values();
+		return colors[Math.floorMod(this.danger, colors.length)];
 	}
 
 	public ReadoutRank rankValue() {

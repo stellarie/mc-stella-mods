@@ -28,6 +28,7 @@
 			"com.stella.villages.VillageHeadFightGameTest",
 			"com.stella.villages.VillageWitchShopGameTest",
 			"com.stella.villages.PatrolRosterGameTest",
+			"com.stella.villages.RosterChurnGameTest",
 			"com.stella.villages.DefenderGrowthGameTest",
 			"com.stella.villages.DefenderAiGameTest",
 			"com.stella.villages.QuestRewardGameTest",

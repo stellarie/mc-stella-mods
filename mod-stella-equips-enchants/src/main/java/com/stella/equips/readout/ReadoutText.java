@@ -14,7 +14,7 @@ public final class ReadoutText {
 		return rank.tag().isEmpty() ? mobName : rank.tag() + " " + mobName;
 	}
 
-	/** Only the name carries the hostility color; the threat ring keeps the band color. */
+	/** Only the name carries the hostility color; the level number takes the danger color. */
 	public static ChatFormatting nameColor(final boolean hostile) {
 		return hostile ? ChatFormatting.RED : ChatFormatting.GREEN;
 	}

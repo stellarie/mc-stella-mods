@@ -24,6 +24,7 @@ public final class StellaRpg implements ModInitializer {
 		TombstoneBlock.register();
 		TombstoneBlockEntity.register();
 		RpgDeath.register();
+		SecondWind.register();
 		com.stella.rpg.tomb.GraveCompass.register();
 		RpgAttributes.register();
 		RpgCommand.register();

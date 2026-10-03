@@ -147,7 +147,7 @@ covers `absorption / max health`, capped at a full circle, and it is absent at z
 absorption. The name, `<Rank> Name`, sits to the right of the badge, centered on it.
 There are no bars.
 
-The level number takes the band color, so one mob can read green for one player and
+The level number takes the danger color, so one mob can read green for one player and
 red for another. With `mod-stella-mobs` installed, elite and boss mobs also carry a
 rank tag, as in `<Elite> Zombie` or `<Boss> Wither`; boss wins when both apply.
 The rank comes from the optional `mod-stella-mobs:readout-rank` provider, so this
@@ -158,10 +158,13 @@ The client hides the vanilla floating name tag of every mob, including named pet
 because the plate carries the name. Players keep their name tags.
 
 For the color, the gap is the mob's level minus the owner's capped level. The
-bands come from the `bands` block of `power.json`: red at 20 above, yellow at 10
-above, orange at 6 above, green from 5 above to 5 below, and white at 6 or more
-below. `/stellaequips readout off` clears the plate of one player and stops new
-ones; `on` restores them.
+danger color is fixed in `DangerColor`: green at 5 or more levels below, white from
+4 below to 4 above, yellow at 5 to 9 above, and red at 10 or more above. A mob with
+no level (no `mod-stella-mobs`) draws no number. The server works out the color per
+viewer and sends it in the payload, because a client does not know the capped level.
+The `bands` block of `power.json` still loads and still travels in the payload, but
+the plate no longer draws it. `/stellaequips readout off` clears the plate of one
+player and stops new ones; `on` restores them.
 
 The mob's name is colored by how it treats the viewer: red when the mob is an enemy
 by nature (every `Enemy`, including endermen, piglins, zombified piglins, and
@@ -180,6 +183,25 @@ the mod on the client: a vanilla client discards the payload and shows no plate.
 The `readout` block of `power.json` holds `enabled_by_default` and `radius`, the
 look range in blocks. The keys `max_per_player`, `height_offset`, and `view_range`
 still load, so old files stay valid, but the plate no longer reads them.
+
+## Combat readability
+
+Two client features help a player read a fight. Both need the mod on the client.
+
+**Low-health warning.** Below 30 percent of max health, a heartbeat sound plays
+every 20 ticks and a red vignette fades in from the screen edge. The vignette
+deepens as health falls and pulses with the beat. It shows only in survival and
+adventure mode. The rules live in `LowHealthWarning`; the client only plays the
+sound and draws the edge.
+
+**Gear compare.** A rolled weapon or armor tooltip shows a gray hint, `Hold Shift to
+compare`. While Shift is held, the tooltip lists the difference of each stat and
+affix against the item in the same slot: the worn slot for armor, the main hand for
+everything else. Gains are green and losses are red. An empty slot counts as zero.
+The compare reads the `mod-stella-rpg:stat_rolls` and `mod-stella-rpg:affix_rolls`
+components by id, so this mod needs no link to the rpg mod. Without it, no tooltip
+changes. Percent affixes are stored in tenths and show as percent. The rules live in
+`GearCompare`.
 
 ## Damage numbers
 
@@ -375,7 +397,8 @@ fields, the clamped anvil cost, the 74 catalogue enchantments, the readout level
 config parser, the attribute modifiers, the vanilla-level tracker, loading worlds
 saved before this change, and the readout: its look test, range, and line of sight, its payload, its rank
 tags and colors, the plate geometry, its removal on death and on disconnect, its
-invisibility to a second player, and the opt-out command. The pixels of the plate
+invisibility to a second player, and the opt-out command. They also check the danger color bounds, the
+low-health threshold, heartbeat and vignette rules, and the gear compare diff. The pixels of the plate
 need a client, so a not-required test marks them for a manual check. They also
 check refining: the odds tables, the quote and confirm, the price, the chip and the break,
 the cap, the smith, the bonuses, the tooltip, each special effect at its level and one level below,
