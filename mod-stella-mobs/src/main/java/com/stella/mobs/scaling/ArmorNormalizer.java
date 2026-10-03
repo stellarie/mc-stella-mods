@@ -13,11 +13,12 @@ public final class ArmorNormalizer {
 	private ArmorNormalizer() {
 	}
 
-	/** The divisor for a hit: the attacker's level multiplier, or 1 for anything that is not a scaled mob. */
+	/** The divisor for a hit: the level factor on a zombie's base hit, or 1 for anything that is not a scaled mob. */
 	public static double scale(final DamageSource source) {
 		if (!(source.getEntity() instanceof Mob mob) || !SelfScaled.levelHits(mob)) {
 			return 1.0;
 		}
-		return Math.max(1.0, SpawnScaling.damageMultiplier(ThreatState.level(mob)));
+		int level = ThreatState.level(mob);
+		return Math.max(1.0, SelfScaled.factor(level));
 	}
 }

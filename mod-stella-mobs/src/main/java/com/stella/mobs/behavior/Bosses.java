@@ -44,7 +44,7 @@ import net.minecraft.world.phys.AABB;
  */
 public final class Bosses {
 	/** B03: the boss base is twice an elite's, and an elite's multiplier is the shared 2.0. */
-	public static final double ELITE_HEALTH_MULTIPLIER = 2.0;
+	public static final double ELITE_HEALTH_MULTIPLIER = Elite.HEALTH_MULTIPLIER;
 	/** B08: the boss drop rate. */
 	public static final float DROP_CHANCE = 0.80F;
 	/** Legacy boss modifiers remain named so saved mobs can remove them during threat migration. */

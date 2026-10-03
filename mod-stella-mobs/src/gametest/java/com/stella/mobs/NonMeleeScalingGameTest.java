@@ -26,7 +26,7 @@ public class NonMeleeScalingGameTest {
 			Arrow arrow = new Arrow(level, mob, new ItemStack(Items.ARROW), null);
 			return level.damageSources().arrow(arrow, mob);
 		});
-		double expected = SpawnScaling.damageMultiplier(20);
+		double expected = hitRatio(20, true);
 		result("arrowScales", "ratio=" + ratio + " expected=" + expected);
 		helper.assertTrue(Math.abs(ratio - expected) < 0.01, "arrow ratio " + ratio + " expected " + expected);
 		helper.succeed();
@@ -36,7 +36,7 @@ public class NonMeleeScalingGameTest {
 	public void explosionScales(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		float ratio = ratio(helper, EntityTypes.CREEPER, mob -> level.damageSources().explosion(mob, mob));
-		double expected = SpawnScaling.damageMultiplier(20);
+		double expected = hitRatio(20, true);
 		result("explosionScales", "ratio=" + ratio + " expected=" + expected);
 		helper.assertTrue(Math.abs(ratio - expected) < 0.01, "explosion ratio " + ratio + " expected " + expected);
 		helper.succeed();
@@ -47,7 +47,8 @@ public class NonMeleeScalingGameTest {
 		ServerLevel level = helper.getLevel();
 		float ratio = ratio(helper, EntityTypes.ZOMBIE, mob -> level.damageSources().mobAttack(mob));
 		result("meleeNotDoubled", "ratio=" + ratio);
-		helper.assertTrue(Math.abs(ratio - 1.0F) < 0.001F, "a melee hit was scaled at the hurt call: " + ratio);
+		double expected = hitRatio(20, false);
+		helper.assertTrue(Math.abs(ratio - expected) < 0.001F, "a melee hit was scaled at the hurt call: " + ratio + " expected " + expected);
 		helper.succeed();
 	}
 
@@ -61,6 +62,12 @@ public class NonMeleeScalingGameTest {
 		result("noRollTagSkipped", "loss=" + loss);
 		helper.assertTrue(Math.abs(loss - HIT) < 0.001F, "a no-roll mob was scaled: " + loss);
 		helper.succeed();
+	}
+
+	/** A level's hit against a level 0 hit: the multiplier applies to non-melee only, the flat term to both. */
+	private static double hitRatio(final int threat, final boolean multiplied) {
+		double scaled = multiplied ? HIT * SpawnScaling.damageMultiplier(threat) : HIT;
+		return (scaled + SpawnScaling.tailFlat(threat)) / HIT;
 	}
 
 	private static <T extends Mob> float ratio(
