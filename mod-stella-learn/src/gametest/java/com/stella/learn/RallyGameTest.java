@@ -129,6 +129,9 @@ public class RallyGameTest {
 		ServerPlayer player = facingSouth(helper);
 		Mob caller = zombie(helper, 20, 16);
 		Mob hurt = zombie(helper, 24, 42);
+		// A stance would let the hurt mob answer.
+		// NORMAL keeps the 35 percent survival line.
+		StanceFixtures.dropStance(helper, hurt);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, hurt), () -> {
 			// Set once the mob has loaded: the mobs mod tops a mob's health up when it joins the world.
 			hurt.setHealth(1.0F);
