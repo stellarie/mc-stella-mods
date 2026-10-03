@@ -29,8 +29,8 @@ import net.minecraft.world.level.saveddata.maps.MapId;
 
 public final class VillageWorldData extends SavedData {
 	private static final int DATA_VERSION = 1;
-	/** Version 4 adds the two ranged guards. */
-	public static final int ROSTER_VERSION = 4;
+	/** Version 4 adds the two ranged guards. Version 5 adds the trainer. */
+	public static final int ROSTER_VERSION = 5;
 	private static final int LEGACY_ROSTER_VERSION = 1;
 	/** Marks a village whose shop has seen no midnight yet. */
 	public static final long NO_MIDNIGHT = Long.MIN_VALUE;
@@ -709,7 +709,9 @@ public final class VillageWorldData extends SavedData {
 		/** A guard's small daily kill quest. */
 		GUARD,
 		/** The duke's repeatable enraged red slime contract. */
-		SLAYER
+		SLAYER,
+		/** A job trainer's boss trial; the remaining count holds the trial level. */
+		TRIAL
 	}
 
 	public enum MissionStatus {

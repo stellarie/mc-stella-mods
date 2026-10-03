@@ -73,7 +73,9 @@ public record PatrolState(UUID villageId, Role role, BlockPos lastPosition, bool
 		RAVAGER,
 		WITCH,
 		VILLAGE_WITCH,
-		RANGED_GUARD;
+		RANGED_GUARD,
+		// Stays beside the duke and gives jobs.
+		TRAINER;
 
 		public static final Codec<Role> CODEC = Codec.STRING.xmap(Role::decode, Role::name);
 

@@ -48,7 +48,9 @@ import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -87,8 +89,9 @@ public final class PatrolService {
 	/** Melee guards. Their role is PILLAGER. */
 	public static final int PILLAGER_COUNT = 2;
 	public static final int RANGED_GUARD_COUNT = 2;
-	/** The duke, the guards and the mage. */
-	public static final int PATROL_MEMBER_COUNT = 2 + PILLAGER_COUNT + RANGED_GUARD_COUNT;
+	public static final int TRAINER_COUNT = 1;
+	/** The duke, the guards, the mage and the trainer. */
+	public static final int PATROL_MEMBER_COUNT = 2 + PILLAGER_COUNT + RANGED_GUARD_COUNT + TRAINER_COUNT;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
 	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
@@ -342,6 +345,7 @@ public final class PatrolService {
 		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
 		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.RANGED_GUARD, RANGED_GUARD_COUNT, spawned);
 		failed |= spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
+		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.TRAINER, TRAINER_COUNT, spawned);
 		return failed;
 	}
 
@@ -369,7 +373,8 @@ public final class PatrolService {
 		return roleCount(village, PatrolState.Role.HEAD) >= 1
 			&& roleCount(village, PatrolState.Role.PILLAGER) >= PILLAGER_COUNT
 			&& roleCount(village, PatrolState.Role.RANGED_GUARD) >= RANGED_GUARD_COUNT
-			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1;
+			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1
+			&& roleCount(village, PatrolState.Role.TRAINER) >= TRAINER_COUNT;
 	}
 
 	private static long roleCount(final VillageRecord village, final PatrolState.Role role) {
@@ -388,6 +393,7 @@ public final class PatrolService {
 		EntityDimensions size = type.getDimensions();
 		@Nullable BlockPos position = role == PatrolState.Role.HEAD ? findSpawnPosition(level, bell, size)
 			: role == PatrolState.Role.VILLAGE_WITCH ? OutdoorSpot.near(level, bell, size)
+			: role == PatrolState.Role.TRAINER ? findSpawnPosition(level, trainerAnchor(level, village, bell), size)
 			: findScatteredPosition(level, bell, size);
 		if (position == null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH) {
 			position = OutdoorSpot.near(level, bell, size);
@@ -427,6 +433,9 @@ public final class PatrolService {
 			mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
 		} else if (role == PatrolState.Role.RANGED_GUARD) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+		} else if (role == PatrolState.Role.TRAINER) {
+			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOOK));
+			mob.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
 		}
 		PatrolVisuals.dress(mob, level, role);
 		installGoals(level, mob, village);
@@ -444,6 +453,12 @@ public final class PatrolService {
 		stripMobsScaling(mob);
 		logSpawn(village, mob, role);
 		return mob;
+	}
+
+	/** The trainer stands beside the duke, or by the bell while the duke is not loaded. */
+	private static BlockPos trainerAnchor(final ServerLevel level, final VillageRecord village, final BlockPos bell) {
+		Mob head = headFor(level, village.id());
+		return head != null ? head.blockPosition() : bell;
 	}
 
 	private static void stripMobsScaling(final Mob mob) {
@@ -534,6 +549,15 @@ public final class PatrolService {
 		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
 		access.patrolTargetSelector().removeAllGoals(goal -> true);
+		if (PatrolState.role(mob) == PatrolState.Role.TRAINER) {
+			// The trainer has no fight in it: no target goal, no attack goal, no beat.
+			mob.getGoalSelector().removeAllGoals(goal -> true);
+			mob.getGoalSelector().addGoal(0, new FloatGoal(mob));
+			mob.getGoalSelector().addGoal(2, new TrainerStayGoal(mob, village.id()));
+			mob.getGoalSelector().addGoal(8, new LookAtPlayerGoal(mob, Player.class, 8.0F));
+			mob.setTarget(null);
+			return;
+		}
 		// A raid is the village's first danger.
 		if (isGuard(PatrolState.role(mob))) {
 			access.patrolTargetSelector().addGoal(0, new RaidAlertTargetGoal(mob, village.id()));
@@ -738,6 +762,7 @@ public final class PatrolService {
 		restoreMeleeKit(level);
 		if (tick % WITCH_GOAL_SWEEP_TICKS == 0L) {
 			clearForeignWitchGoals(level);
+			keepTrainersPeaceful(level);
 		}
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
@@ -832,6 +857,20 @@ public final class PatrolService {
 		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
 			if (mob.level() == level && PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
 				mob.removeAllGoals(goal -> goal.getClass().getName().startsWith(MOBS_WITCH_GOAL_PREFIX));
+			}
+		}
+	}
+
+	/** Another mod's load listener may add an attack goal to the trainer, so the goals it did not get here leave. */
+	private static void keepTrainersPeaceful(final ServerLevel level) {
+		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
+			if (mob.level() != level || PatrolState.role(mob) != PatrolState.Role.TRAINER) {
+				continue;
+			}
+			mob.removeAllGoals(goal -> !(goal instanceof TrainerStayGoal || goal instanceof FloatGoal || goal instanceof LookAtPlayerGoal));
+			((MobPatrolAccess) mob).patrolTargetSelector().removeAllGoals(goal -> true);
+			if (mob.getTarget() != null) {
+				mob.setTarget(null);
 			}
 		}
 	}
