@@ -65,6 +65,7 @@ final class WideArena {
 	private final GameTestHelper helper;
 	private final List<Entity> spawned = new ArrayList<>();
 	private final List<ChunkPos> forced = new ArrayList<>();
+	private boolean finished;
 
 	private WideArena(final GameTestHelper helper) {
 		this.helper = helper;
@@ -84,12 +85,16 @@ final class WideArena {
 		ServerLevel level = helper.getLevel();
 		BlockPos low = helper.absolutePos(new BlockPos(0, 0, 0));
 		BlockPos high = helper.absolutePos(new BlockPos(SIZE, 0, SIZE));
-		for (int chunkX = Math.min(low.getX(), high.getX()) >> 4; chunkX <= Math.max(low.getX(), high.getX()) >> 4; chunkX++) {
-			for (int chunkZ = Math.min(low.getZ(), high.getZ()) >> 4; chunkZ <= Math.max(low.getZ(), high.getZ()) >> 4; chunkZ++) {
+		// An edge chunk stopped ticking entities.
+		// A margin chunk keeps it ticking.
+		for (int chunkX = (Math.min(low.getX(), high.getX()) >> 4) - 1; chunkX <= (Math.max(low.getX(), high.getX()) >> 4) + 1; chunkX++) {
+			for (int chunkZ = (Math.min(low.getZ(), high.getZ()) >> 4) - 1; chunkZ <= (Math.max(low.getZ(), high.getZ()) >> 4) + 1; chunkZ++) {
 				level.setChunkForced(chunkX, chunkZ, true);
 				arena.forced.add(new ChunkPos(chunkX, chunkZ));
 			}
 		}
+
+		helper.onEachTick(arena::holdChunks);
 
 		for (int x = 0; x < SIZE; x++) {
 			for (int z = 0; z < SIZE; z++) {
@@ -221,8 +226,32 @@ final class WideArena {
 		});
 	}
 
+	/**
+	 * Forces again any chunk of the arena that another test released. A neighbour that frees a shared chunk stops every
+	 * entity in it, so a mob that walks into that chunk freezes.
+	 */
+	private void holdChunks() {
+		if (this.finished) {
+			return;
+		}
+
+		ServerLevel level = this.helper.getLevel();
+		for (ChunkPos chunk : this.forced) {
+			if (!level.getForceLoadedChunks().contains(chunk.pack())) {
+				level.setChunkForced(chunk.x(), chunk.z(), true);
+				StellaMobs.LOGGER.info("[BEHAVIOR] test=wideArena REFORCE chunk={}", chunk);
+			}
+		}
+	}
+
+	/** True when the arena forced this chunk. */
+	boolean holds(final ChunkPos chunk) {
+		return this.forced.contains(chunk);
+	}
+
 	/** Removes what the test spawned and frees its chunks, so a finished test leaves no armed mob behind. */
 	void finish() {
+		this.finished = true;
 		this.spawned.forEach(Entity::discard);
 		this.forced.forEach(chunk -> this.helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false));
 	}

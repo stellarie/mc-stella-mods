@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -18,6 +19,12 @@ final class FleePositions {
 	// Stop short of the ally. Do not crowd it.
 	private static final double PACK_STANDOFF = 2.0;
 	private static final double PACK_MINIMUM_RUN = 0.5;
+	// Degrees off the away axis, straightest first.
+	private static final double[] RING_ANGLES = {0.0, 35.0, -35.0, 70.0, -70.0, 100.0, -100.0};
+	private static final double[] RING_DISTANCES = {8.0, 5.0, 3.0};
+	// A path search is the costly step.
+	private static final int MAX_PATH_TESTS = 6;
+	private static final int[] FLOOR_STEPS = {0, -1, 1};
 
 	private FleePositions() {
 	}
@@ -33,6 +40,63 @@ final class FleePositions {
 				&& candidate.distanceTo(threatPosition) > currentDistance + MINIMUM_AWAY_DISTANCE
 				&& candidate.subtract(mob.position()).dot(awayAxis) > 0.0) {
 				return candidate;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * A path away from the threat that reaches its end, or null when the mob is cornered. A fixed ring of spots comes
+	 * first: straight away, then at wider angles, at 8, 5, and 3 blocks. The random flee spot is the last try. One random
+	 * miss therefore never reads as a corner. At most {@link #MAX_PATH_TESTS} spots are tested for a path.
+	 */
+	static @Nullable Path reachableAway(final PathfinderMob mob, final Vec3 threatPosition) {
+		int tests = 0;
+		double currentDistance = mob.position().distanceTo(threatPosition);
+		Vec3 axis = new Vec3(mob.getX() - threatPosition.x, 0.0, mob.getZ() - threatPosition.z);
+		// On top of the threat: any way is away.
+		axis = axis.lengthSqr() < 1.0E-6 ? mob.getForward().multiply(-1.0, 0.0, -1.0) : axis;
+		axis = axis.normalize();
+		ring:
+		for (double distance : RING_DISTANCES) {
+			for (double angle : RING_ANGLES) {
+				// One test stays for the random spot.
+				if (tests >= MAX_PATH_TESTS - 1) {
+					break ring;
+				}
+
+				Vec3 direction = axis.yRot((float) Math.toRadians(angle));
+				BlockPos feet = standing(mob, BlockPos.containing(mob.getX() + direction.x * distance, mob.getY(), mob.getZ() + direction.z * distance));
+				if (feet == null || Vec3.atBottomCenterOf(feet).distanceTo(threatPosition) <= currentDistance + MINIMUM_AWAY_DISTANCE) {
+					continue;
+				}
+
+				tests++;
+				Path path = reachable(mob, feet);
+				if (path != null) {
+					return path;
+				}
+			}
+		}
+
+		Vec3 random = away(mob, threatPosition);
+		return random == null ? null : reachable(mob, BlockPos.containing(random));
+	}
+
+	private static @Nullable Path reachable(final PathfinderMob mob, final BlockPos target) {
+		Path path = mob.getNavigation().createPath(target, 0);
+		return path != null && path.canReach() ? path : null;
+	}
+
+	/** The feet position in this column, a step up or down at most. */
+	private static @Nullable BlockPos standing(final PathfinderMob mob, final BlockPos column) {
+		for (int step : FLOOR_STEPS) {
+			BlockPos feet = column.above(step);
+			if (mob.getNavigation().isStableDestination(feet)
+				&& mob.level().getBlockState(feet).getCollisionShape(mob.level(), feet).isEmpty()
+				&& mob.level().getBlockState(feet.above()).getCollisionShape(mob.level(), feet.above()).isEmpty()) {
+				return feet;
 			}
 		}
 

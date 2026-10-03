@@ -4,27 +4,38 @@ import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A clock and an edge. The goal claims MOVE and LOOK while a ranged unit's target is closer than its near
  * band or beyond its far band. It walks away from a close target and toward a far one. It releases when the
  * window expires. An approach also ends the moment the target is inside the far edge, because the weapon goal
- * cannot fire while this goal holds MOVE and LOOK. A retreat measures no progress.
+ * cannot fire while this goal holds MOVE and LOOK. A retreat ends at the near edge.
  *
- * <p>The edges come from {@link StanceBands}, and a RETREAT stance suppresses the goal. In KITE the unit moves for 30
- * ticks and rests for 30, so its weapon goal fires in the rests.
+ * <p>A retreat walks a path that reaches its end. A unit is cornered when no such path exists, or when it moves less than
+ * {@link #PROGRESS_BLOCKS} in {@link #PROGRESS_TICKS}. A cornered unit stops and rests for {@link #CORNERED_REST_TICKS},
+ * so its weapon goal fires instead of the unit standing still. A pursuer that keeps pace does not corner it.
+ *
+ * <p>An expired window rests the goal for {@link #REST_TICKS}, so the weapon goal fires in the rest. A goal that reaches
+ * the band does not rest: a pursuer that presses in again meets a new retreat. The edges come from {@link StanceBands},
+ * and a RETREAT stance suppresses the goal. In KITE the unit moves for 30 ticks and rests for 30. Every rest counts the
+ * mob's own ticks.
  */
 public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public static final int WINDOW_TICKS = 60;
 	/** KITE: move 30 ticks, then rest 30. */
 	public static final int KITE_WINDOW_TICKS = 30;
-	// The rearm budget drops once per two ticks.
-	public static final int KITE_COOLDOWN_TICKS = 15;
+	public static final int KITE_REST_TICKS = 30;
+	/** Longer than one bow draw, so a shot fits in. */
+	public static final int REST_TICKS = 40;
+	public static final int CORNERED_REST_TICKS = 60;
+	public static final int PROGRESS_TICKS = 20;
+	public static final double PROGRESS_BLOCKS = 0.5;
 
 	private static final double SPEED_MODIFIER = 1.2;
 	private static final double ENTRY_DEAD_ZONE = 1.0;
-	private static final int COOLDOWN_TICKS = 40;
 	private static final int REPATH_TICKS = 20;
 	private static final float LOOK_ROTATION_SPEED = 30.0F;
 
@@ -32,6 +43,9 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	private int ticksRunning;
 	private int ticksToRepath;
 	private boolean retreating;
+	private boolean cornered;
+	private int progressTick;
+	private @Nullable Vec3 progressFrom;
 
 	public KeepDistanceGoal(final T mob) {
 		this.mob = mob;
@@ -39,7 +53,7 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	}
 
 	public boolean isRetreatExhausted() {
-		return ReactiveState.get(this.mob).isRetreatCoolingDown();
+		return ReactiveState.get(this.mob).isRetreatCoolingDown(this.mob);
 	}
 
 	@Override
@@ -105,9 +119,8 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 				return false;
 			}
 
-			// Nowhere left to go: release MOVE so the ranged goal can fire. The spec is that a unit which
-			// cannot get away fights instead of standing still, and holding the flags is what froze it.
-			if (FleePositions.away(this.mob, target.position()) == null) {
+			// Nowhere to go: the weapon goal fights.
+			if (this.cornered) {
 				return false;
 			}
 		}
@@ -119,13 +132,30 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public void start() {
 		this.ticksRunning = 0;
 		this.ticksToRepath = 0;
+		this.cornered = false;
+		this.progressFrom = null;
 	}
 
 	@Override
 	public void stop() {
 		this.mob.getNavigation().stop();
-		ReactiveState state = ReactiveState.get(this.mob);
-		state.armRetreatCooldown(this.isKiting() ? KITE_COOLDOWN_TICKS : COOLDOWN_TICKS);
+		int rest = this.restTicks();
+		if (rest > 0) {
+			ReactiveState.get(this.mob).armRetreatCooldown(this.mob, rest);
+		}
+	}
+
+	/** No rest when the goal reached its band. */
+	private int restTicks() {
+		if (this.cornered) {
+			return CORNERED_REST_TICKS;
+		}
+
+		if (this.ticksRunning < this.windowTicks()) {
+			return 0;
+		}
+
+		return this.isKiting() ? KITE_REST_TICKS : REST_TICKS;
 	}
 
 	@Override
@@ -142,8 +172,14 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		this.ticksRunning++;
+		if (this.retreating && this.stuck()) {
+			this.cornered = true;
+			this.mob.getNavigation().stop();
+			return;
+		}
 
-		if (--this.ticksToRepath > 0) {
+		// A short flee path ends before the timer.
+		if (--this.ticksToRepath > 0 && !(this.retreating && this.mob.getNavigation().isDone())) {
 			return;
 		}
 
@@ -159,13 +195,36 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 			return;
 		}
 
-		Vec3 away = FleePositions.away(this.mob, target.position());
+		Path away = FleePositions.reachableAway(this.mob, target.position());
 		if (away == null) {
+			this.cornered = true;
 			this.mob.getNavigation().stop();
 			return;
 		}
 
-		this.mob.getNavigation().moveTo(away.x, away.y, away.z, SPEED_MODIFIER);
+		this.mob.getNavigation().moveTo(away, SPEED_MODIFIER);
+	}
+
+	/** A path can exist that the unit cannot walk. A hovering unit is stuck too. */
+	private boolean stuck() {
+		Vec3 now = this.mob.position();
+		if (this.progressFrom == null) {
+			this.progressTick = this.mob.tickCount + PROGRESS_TICKS;
+			this.progressFrom = now;
+			return false;
+		}
+
+		if (this.mob.tickCount < this.progressTick) {
+			return false;
+		}
+
+		if (now.distanceTo(this.progressFrom) < PROGRESS_BLOCKS) {
+			return true;
+		}
+
+		this.progressTick = this.mob.tickCount + PROGRESS_TICKS;
+		this.progressFrom = now;
+		return false;
 	}
 
 	private int windowTicks() {

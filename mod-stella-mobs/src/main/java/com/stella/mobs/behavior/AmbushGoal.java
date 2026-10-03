@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -20,8 +21,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <ul>
  * <li>STALK: the unit fights with its normal weapon goals.
- * <li>HIDE: the unit has loosed a shot that the player did not see. It walks to a cover spot for at most
- * {@link #HIDE_TICKS} ticks.
+ * <li>HIDE: an archer has loosed a shot, or another unit has loosed a shot that the player did not see. The unit walks
+ * to a cover spot for at most {@link #HIDE_TICKS} ticks.
  * <li>WAIT: the unit holds in cover for {@link #WAIT_MIN_TICKS} to {@link #WAIT_MAX_TICKS} ticks.
  * <li>PEEK: the goal has ended. The weapon goal walks the unit back into view, because the standoff goal holds a unit
  * only while it sees its target. The unit then fires again.
@@ -31,13 +32,14 @@ import org.jspecify.annotations.Nullable;
  * retreat goal and learn's tactic goal can still cut a hide short. {@link AmbushWatchGoal} does the reading: it keeps the
  * seen state, finds the cover spot after an opening shot, and leaves the spot for this goal.
  *
- * <p>A shot that the player saw is a normal shot, and no hide follows (decision D9). A unit that is pursued with no cover
- * near asks for the KITE stance. The request only turns RETREAT into KITE. A healthy unit keeps fighting by the stance
- * script.
+ * <p>An archer, a unit with a bow or a crossbow, hides after every shot when cover is near. A skeleton's burst counts
+ * as one shot. For any other unit, a shot that the player saw is a normal shot, and no hide follows (decision D9). A unit
+ * in the PURSUE stance never hides. A unit that is pursued with no cover near asks for the KITE stance. The request only
+ * turns RETREAT into KITE. A healthy unit keeps fighting by the stance script.
  *
  * <p>An elite sniper stray, a piglin, a melee unit, a spellcaster, a rider, and a mob that another mod drives never
- * ambush. The hide ends when the player dies or the unit takes another target. A waiting unit leaves cover when the player
- * comes inside its near band.
+ * ambush. The hide ends when the player dies or the unit takes another target. A player inside the near band ends the
+ * hide and stops a new one, so the distance goal's retreat wins over cover.
  *
  * <p>The unit remembers the player through the hide. The vanilla target goal forgets a player that it has not seen for 60
  * ticks, which is less than the longest wait. This goal sets the target again, so the unit can peek and fire.
@@ -116,6 +118,16 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 		mob.getGoalSelector().addGoal(BehaviorInstaller.AMBUSH_PRIORITY, new AmbushGoal<>(mob));
 	}
 
+	/** A unit with a bow or a crossbow hides after every shot. */
+	static boolean archer(final Mob mob) {
+		return mob.isHolding(Items.BOW) || mob.isHolding(Items.CROSSBOW);
+	}
+
+	/** True while the player stands inside the unit's near band. */
+	static boolean pressed(final Mob mob, final Player player) {
+		return mob.distanceTo(player) < StanceBands.near(mob, ReactiveState.get(mob).getNearDistance());
+	}
+
 	/** A ranged unit by role, or a witch. A piglin runs on its Brain and never ambushes. */
 	static boolean isUnit(final Mob mob) {
 		return (ReactiveState.get(mob).getRole() == CombatRole.RANGED || mob instanceof Witch) && !(mob instanceof AbstractPiglin);
@@ -166,6 +178,7 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 		ShotWatch.Record record = ShotWatch.peek(this.mob);
 		return record != null
 			&& record.pending(this.mob.tickCount, player.getUUID()) != null
+			&& !pressed(this.mob, player)
 			&& (this.mob.onGround() || this.mob.isInLiquid());
 	}
 
@@ -178,13 +191,12 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		if (!this.waiting) {
-			return true;
+		// A pursuer inside the band: retreat wins.
+		if (pressed(this.mob, this.player)) {
+			return false;
 		}
 
-		// A player inside the near band found the unit.
-		return this.mob.tickCount < this.waitUntilTick
-			&& this.mob.distanceTo(this.player) >= StanceBands.near(this.mob, ReactiveState.get(this.mob).getNearDistance());
+		return !this.waiting || this.mob.tickCount < this.waitUntilTick;
 	}
 
 	@Override
@@ -275,8 +287,9 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 	 * selector asks it about every second tick, and each ask runs one reading and answers false. The stance goal polls the
 	 * same way.
 	 *
-	 * <p>The goal keeps the seen counter of its unit in {@link ShotWatch}. A shot taken while unseen is an opening shot.
-	 * The goal then searches once for cover. When it finds a spot, it leaves the spot for {@link AmbushGoal}.
+	 * <p>The goal keeps the seen counter of its unit in {@link ShotWatch}. An archer's shot, or a shot taken while unseen,
+	 * is an opening shot. The goal then searches once for cover. When it finds a spot, it leaves the spot for
+	 * {@link AmbushGoal}.
 	 *
 	 * <p>A unit that is pursued with no cover calls {@link Stance#requestKite}. The goal reads the pursuit here, so that
 	 * it works while the unit holds no flags. The goal sits before the retreat goal. A pursued archer then kites on the
@@ -310,7 +323,8 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		private void readShot(final ShotWatch.Record record, final Player player, final int now) {
-			if (!record.hasUnhandledShot()) {
+			// A burst is one shot.
+			if (!record.hasUnhandledShot() || SkeletonVolleyGoal.bursting(this.mob)) {
 				return;
 			}
 
@@ -321,8 +335,8 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 				return;
 			}
 
-			// A seen shot is a normal shot (decision D9).
-			if (record.lastShotSeen() || Stance.of(this.mob) == Stance.PURSUE) {
+			// D9 holds for units that are not archers.
+			if ((record.lastShotSeen() && !archer(this.mob)) || Stance.of(this.mob) == Stance.PURSUE) {
 				change(this.mob, record, Phase.STALK, null);
 				return;
 			}

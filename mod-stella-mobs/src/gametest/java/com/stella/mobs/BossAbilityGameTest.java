@@ -90,6 +90,7 @@ public class BossAbilityGameTest {
 	private static final int FAR_SPOT = 400;
 	/** The arena's own floor level, so the far pad repeats the vertical arrangement that is proven. */
 	private static final int FAR_PAD_Y = 0;
+	private static final int FAR_PAD_RADIUS = 10;
 	private static final int SPEC_SPIDERS = 4;
 	/** The arena's own area, which is the cap on a field that only replaces a replaceable block. */
 	private static final int ARENA_TILES = 8 * 8;
@@ -303,7 +304,15 @@ public class BossAbilityGameTest {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		BlockPos pad = BlockPos.containing(helper.absoluteVec(new Vec3(FAR_SPOT, FAR_PAD_Y, FAR_SPOT)));
-		level.setChunkForced(pad.getX() >> 4, pad.getZ() >> 4, true);
+		// The skeleton strafes into neighbour chunks.
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dz = -1; dz <= 1; dz++) {
+				int chunkX = (pad.getX() >> 4) + dx;
+				int chunkZ = (pad.getZ() >> 4) + dz;
+				level.setChunkForced(chunkX, chunkZ, true);
+				helper.runBeforeTestEnd(() -> level.setChunkForced(chunkX, chunkZ, false));
+			}
+		}
 
 		Mob[] subject = new Mob[1];
 		Mob[] quarry = new Mob[1];
@@ -332,7 +341,8 @@ public class BossAbilityGameTest {
 			}
 
 			GearConfigStore.set(GearConfigParser.parse(BOSS_ROLL));
-			floorAt(helper, FAR_SPOT, FAR_PAD_Y, FAR_SPOT, 3);
+			// Wide, so a strafe never meets the edge.
+			floorAt(helper, FAR_SPOT, FAR_PAD_Y, FAR_SPOT, FAR_PAD_RADIUS);
 			foreign[0] = bossesIn(level, pad).size();
 			Mob boss = helper.spawnMob(EntityTypes.SKELETON, FAR_SPOT, FAR_PAD_Y + 3, FAR_SPOT).spawn();
 			boss.setPersistenceRequired();
@@ -343,6 +353,8 @@ public class BossAbilityGameTest {
 			// The quarry must outlive the whole burst: a dead target ends it.
 			quarry[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(QUARRY_HEALTH);
 			quarry[0].setHealth((float) QUARRY_HEALTH);
+			// Seven arrows would knock it out of reach.
+			quarry[0].getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
 			// The fan arms only with a player in range, and the arena's own player is four hundred out.
 			Vec3 beside = helper.absoluteVec(new Vec3(FAR_SPOT + 4.0, FAR_PAD_Y + 1.0, FAR_SPOT));
 			player.setPos(beside.x, beside.y, beside.z);
@@ -637,7 +649,7 @@ public class BossAbilityGameTest {
 		helper.onEachTick(() -> {
 			target.setPos(hold.x, hold.y, hold.z);
 			archer.setTarget(target);
-			boolean cooling = state.isRetreatCoolingDown();
+			boolean cooling = state.isRetreatCoolingDown(archer);
 			sampled[0]++;
 
 			if (cooling) {

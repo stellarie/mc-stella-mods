@@ -91,8 +91,7 @@ public class RoleGameTest {
 		});
 	}
 
-	// Tagged: three attempts could not settle this against the clock. oniichan verifies it by hand.
-	@GameTest(maxTicks = MAX_TICKS, required = false)
+	@GameTest(maxTicks = MAX_TICKS)
 	public void rangedUnitTooCloseMovesAway(final GameTestHelper helper) {
 		prepare(helper, skeletonBand(4.0, 6.0));
 		Zombie attacker = spawnAttacker(helper, 4, 3);

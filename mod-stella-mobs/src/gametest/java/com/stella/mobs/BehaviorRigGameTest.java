@@ -52,8 +52,7 @@ public class BehaviorRigGameTest {
 		});
 	}
 
-	// Tagged: three attempts could not settle this against the arena. oniichan verifies it by hand in game.
-	@GameTest(maxTicks = Arena.MAX_TICKS, required = false)
+	@GameTest(maxTicks = Arena.MAX_TICKS)
 	public void rangedSkeletonRetreatsToItsBandAndFiresOnlyThere(final GameTestHelper helper) {
 		Arena arena = Arena.build(helper, "rangedSkeleton", bowConfig(""), EntityTypes.SKELETON, 4, 4, false);
 		helper.runBeforeTestEnd(() -> arena.log().result());

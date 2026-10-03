@@ -79,8 +79,8 @@ public class AmbushGameTest {
 	private static final int HIDE_WINDOW = 80;
 	/** The plan: within 200 ticks of hiding the stray is back in sight and fires again. */
 	private static final int RECOVER_WINDOW = 200;
-	private static final int SEEN_SHOTS = 2;
-	private static final int SEEN_WINDOW = 400;
+	/** The mark is read this many ticks either side of the forget time. */
+	private static final int MARK_SLACK = 10;
 	private static final double CHASE_SPEED = 0.2;
 	private static final double CHASE_GAP = 14.0;
 	/** The player closes to here and holds: inside the pursued radius of 8, and outside the near band of 5. */
@@ -328,13 +328,13 @@ public class AmbushGameTest {
 	}
 
 	/**
-	 * A shot that the player sees is a normal shot, and no hide follows (decision D9). The scene is the one of the unseen
-	 * case, with the player turned toward the stray. The cover exists, so a stray that hid would show it. The stray fires
-	 * twice with the player watching, and starts no hide.
+	 * An archer hides after a shot that the player sees, too. Decision D9 now holds only for a unit without a bow or a
+	 * crossbow. The scene is the one of the unseen case, with the player turned toward the stray. The stray fires with the
+	 * player watching, and starts a hide within 80 ticks.
 	 */
 	@GameTest(maxTicks = MAX_TICKS, padding = WideArena.PADDING)
-	public void seenShotNoHide(final GameTestHelper helper) {
-		Scene scene = coverScene(helper, "seenShotNoHide");
+	public void seenShotHidesAnArcher(final GameTestHelper helper) {
+		Scene scene = coverScene(helper, "seenShotHidesAnArcher");
 		helper.onEachTick(() -> {
 			if (!scene.step(Look.AT_MOB)) {
 				return;
@@ -342,38 +342,43 @@ public class AmbushGameTest {
 
 			if (scene.ticks == 1) {
 				helper.assertTrue(
-					CoverSearch.hidden(scene.mob, scene.player).isPresent(), "the control has no cover within reach, so it proves nothing: " + scene.describe()
+					CoverSearch.hidden(scene.mob, scene.player).isPresent(), "the scene has no cover within reach, so it proves nothing: " + scene.describe()
 				);
 			}
 
-			helper.assertTrue(firstChange(scene.mob, AmbushGoal.Phase.HIDE) == null, "the stray hid after a shot that the player saw: " + scene.describe());
 			List<ShotLog> shots = shots(scene.mob);
-			if (shots.size() < SEEN_SHOTS) {
-				helper.assertTrue(scene.ticks < SEEN_WINDOW, "the stray loosed " + shots.size() + " arrows in " + SEEN_WINDOW + " ticks: " + scene.describe());
+			if (shots.isEmpty()) {
+				helper.assertTrue(scene.ticks < SHOT_WINDOW, "the stray loosed no arrow in " + SHOT_WINDOW + " ticks: " + scene.describe());
+				return;
+			}
+
+			ShotLog shot = shots.get(0);
+			PhaseEvent hide = firstChange(scene.mob, AmbushGoal.Phase.HIDE);
+			if (hide == null) {
+				helper.assertTrue(
+					scene.mob.tickCount - shot.ownerTick() <= HIDE_WINDOW,
+					"the stray did not hide within " + HIDE_WINDOW + " ticks of a seen shot: " + scene.describe()
+				);
 				return;
 			}
 
 			scene.done = true;
-			scene.result("shots=" + shots.size() + " seenByAtShots=" + shots.stream().map(ShotLog::seenBy).toList()
-				+ " seenMarkAtShots=" + shots.stream().map(ShotLog::seenMark).toList());
-			for (ShotLog shot : shots) {
-				helper.assertTrue(shot.seenBy(), "the player did not see the stray at a shot, so the control is not a seen shot: " + scene.describe());
-				helper.assertTrue(shot.seenMark(), "the stray did not count as seen at a shot: " + scene.describe());
-			}
-
+			scene.result("hideAfter=" + (hide.mobTick() - shot.ownerTick()) + " seenByAtShot=" + shot.seenBy() + " seenMarkAtShot=" + shot.seenMark());
+			helper.assertTrue(shot.seenBy(), "the player did not see the stray at its shot, so the case proves nothing: " + scene.describe());
 			helper.succeed();
 		});
 	}
 
 	/**
-	 * The seen mark outlasts the look and then clears. The player watches the stray until it has fired once, then turns away.
-	 * Each shot in the next 100 ticks still counts as seen, because the mark clears only after 100 ticks without a sighting,
-	 * and none of them starts a hide. The first shot after the mark clears is unseen, and the stray hides again.
+	 * The seen mark outlasts the look and then clears. The player watches the stray until it has fired once, then turns
+	 * away. The mark still holds 10 ticks before 100 ticks have passed without a sighting, and it is clear 10 ticks after.
 	 */
 	@GameTest(maxTicks = MAX_TICKS, padding = WideArena.PADDING)
 	public void seenMarkClearsAfterAHundredTicks(final GameTestHelper helper) {
 		Scene scene = coverScene(helper, "seenMarkClearsAfterAHundredTicks");
 		int[] turnedAt = {-1};
+		boolean[] heldLate = {false};
+		boolean[] sampled = {false};
 		helper.onEachTick(() -> {
 			if (!scene.step(turnedAt[0] < 0 ? Look.AT_MOB : Look.AWAY)) {
 				return;
@@ -390,23 +395,21 @@ public class AmbushGameTest {
 				return;
 			}
 
-			PhaseEvent hide = firstChange(scene.mob, AmbushGoal.Phase.HIDE);
-			if (hide == null) {
-				helper.assertTrue(
-					scene.mob.tickCount - turnedAt[0] <= ShotWatch.FORGET_TICKS + SHOT_WINDOW,
-					"the stray never hid again after the mark could clear: " + scene.describe()
-				);
+			int since = scene.mob.tickCount - turnedAt[0];
+			if (!sampled[0] && since >= ShotWatch.FORGET_TICKS - MARK_SLACK) {
+				sampled[0] = true;
+				heldLate[0] = ShotWatch.seenMark(scene.mob);
+			}
+
+			if (since < ShotWatch.FORGET_TICKS + MARK_SLACK) {
 				return;
 			}
 
 			scene.done = true;
-			ShotLog hidingShot = shots.stream().filter(shot -> !shot.seenMark()).findFirst().orElse(null);
-			scene.result("turnedAt=" + turnedAt[0] + " hideAt=" + hide.mobTick() + " shotsBeforeHide=" + shots.stream().filter(shot -> shot.ownerTick() < hide.mobTick()).count());
-			helper.assertTrue(
-				hide.mobTick() - turnedAt[0] >= ShotWatch.FORGET_TICKS,
-				"the stray hid " + (hide.mobTick() - turnedAt[0]) + " ticks after the player turned away, before the mark could clear: " + scene.describe()
-			);
-			helper.assertTrue(hidingShot != null && !hidingShot.seenBy(), "the stray hid, but no unseen shot came before it: " + scene.describe());
+			boolean clear = !ShotWatch.seenMark(scene.mob);
+			scene.result("turnedAt=" + turnedAt[0] + " heldLate=" + heldLate[0] + " clear=" + clear);
+			helper.assertTrue(heldLate[0], "the mark cleared before " + ShotWatch.FORGET_TICKS + " ticks without a sighting: " + scene.describe());
+			helper.assertTrue(clear, "the mark held past " + ShotWatch.FORGET_TICKS + " ticks without a sighting: " + scene.describe());
 			helper.succeed();
 		});
 	}
