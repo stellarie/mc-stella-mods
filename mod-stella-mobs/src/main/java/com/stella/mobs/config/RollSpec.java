@@ -21,7 +21,7 @@ public record RollSpec(
 	 */
 	public static final double DEFAULT_BOSS_CHANCE = 0.0;
 	/** B03: twice an elite's health, whose own multiplier is 2.0. */
-	public static final double DEFAULT_BOSS_HEALTH_MULTIPLIER = 4.0;
+	public static final double DEFAULT_BOSS_HEALTH_MULTIPLIER = 3.0;
 	/** Multiplies the boss's default ten-level threat bonus. */
 	public static final double DEFAULT_BOSS_LEVEL_BONUS = 1.0;
 	/** R24: one called piglin in a hundred arrives as an elite piglin brute instead. */

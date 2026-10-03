@@ -220,7 +220,7 @@ public final class ItemTiers {
 		if (stack.is(Items.TRIDENT)) {
 			return Type.TRIDENT;
 		}
-		if (stack.is(Items.BOW)) {
+		if (stack.is(Items.BOW) || stack.getItem() instanceof com.stella.rpg.job.MechanicalBow) {
 			return Type.BOW;
 		}
 		if (stack.is(Items.CROSSBOW)) {

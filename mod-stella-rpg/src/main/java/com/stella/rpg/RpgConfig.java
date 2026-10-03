@@ -22,7 +22,7 @@ public record RpgConfig(
 	public static final String MOB_AMPLIFIER_KEY = "mob_amplifier";
 	/** The old per-level weight table; mob_stats replaced it. */
 	public static final String RETIRED_MOB_WEIGHTS_KEY = "mob_weights";
-	public static final double DEFAULT_MOB_AMPLIFIER = 0.10;
+	public static final double DEFAULT_MOB_AMPLIFIER = 0.03;
 	public static final String MOB_DICE_SHARE_KEY = "mob_dice_share";
 	/** Mobs roll this share of their STR and DEX dice, so early mob hits stay near vanilla. */
 	public static final double DEFAULT_MOB_DICE_SHARE = 0.5;

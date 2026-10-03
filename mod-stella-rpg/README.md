@@ -279,7 +279,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
-- `mob_amplifier` is a number of at least 0. The default is 0.10.
+- `mob_amplifier` is a number of at least 0. The default is 0.03.
 - `mob_dice_share` is a number from 0 to 1. The default is 0.5.
 - The key `mob_weights` is retired. A file that holds it loads and logs it as ignored.
 - `debuff_resistance` is a curve key like the others. The default is `max` 0.75 and `half` 100.
@@ -303,7 +303,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 ## Mob stats
 
 A mob stat is `round(base * (1 + mob_amplifier * threat))`, from 1 to 1024. A negative threat counts as 0.
-The threat is the mob's `ThreatState` level. The base depends on the mob role. The default amplifier is 0.10.
+The threat is the mob's `ThreatState` level. The base depends on the mob role. The default amplifier is 0.03.
 Mob stats add to the `SpawnScaling` health and damage modifiers. They do not replace them.
 
 | Role | STR | AGI | VIT | DEX | INT | LUK |
@@ -601,6 +601,45 @@ The hurt flash and the hurt sound are separate events and stay. Damage is in K u
 
 When a night is skipped, every player still in bed heals to maximum health. `RpgSleepHealMixin` hooks `ServerLevel#wakeUpAllPlayers`, which runs only on a night skip. A player who leaves the bed early does not heal.
 
+## Jobs
+
+A player chooses one job from level 10. The job is permanent and survives death and a save. The state is the persistent attachment `mod-stella-rpg:job`.
+
+| Job | Main stat, +2 per level | Second stat, +1 per level |
+|---|---|---|
+| Archer | DEX | AGI |
+| Fighter | STR | VIT |
+| Mage | INT | DEX |
+| Priest | VIT | INT |
+
+- `Jobs` registers a `StatBonuses` provider. The bonus counts every level the player has, also the levels before the choice. The `StatBonuses` clamp still applies.
+- A boss trial at level 40, 70, 100, and so on adds +5 to the main stat and +1 to each other stat. `Jobs.grantTrial(player, level)` records each trial level once.
+- Another mod reaches the jobs through the object share `mod-stella-rpg:jobs`, a `Map<String, Object>` of functions:
+
+| Key | Type |
+|---|---|
+| `get` | `Function<ServerPlayer, String>`. The key `none`, `archer`, `fighter`, `mage`, or `priest` |
+| `choose` | `BiFunction<ServerPlayer, String, Boolean>`. False for an unknown key, a level below 10, or a set job |
+| `grantItems` | `Function<ServerPlayer, Boolean>`. Gives the item of the job |
+| `grantTrial` | `BiFunction<ServerPlayer, Integer, Boolean>`. False for a repeat, a level that is no trial, or no job |
+| `trialsDone` | `Function<ServerPlayer, Set<Integer>>` |
+
+### Job items
+
+`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and lore. Perks read the refine level `stella_refine` of the held or worn item.
+
+| Item | Slot | Base | +7 | +10 | +12 | +15 |
+|---|---|---|---|---|---|---|
+| `mechanical_bow` | Hand | Full draw in 10 ticks, 1000 durability, 25% free arrow | Free arrow 35% | Arrows pierce 1 more target | Full draw in 7 ticks | Free arrow 50%. Every 5th shot fires 3 arrows |
+| `knight_sword` | Hand | +10% armor penetration, 10% bleed | Bleed 15% | Armor penetration +20% | Bleed 7% per second | +20% damage to a bleeding target |
+| `witch_hat` | Head | +25% spell damage | +30% | Magic penetration +10% | Spell cooldowns -10% | +40% spell damage, +10% spell crit chance |
+| `priest_garbs` | Chest | 20% less damage from undead, +50% healing | Healing +60% | Undead damage -30% | Each heal removes one harmful effect | Healing +75%, healed allies get Regeneration I for 3 s |
+
+- The free arrow cannot be picked up in survival.
+- A bleed loses 5% of current health each second for 5 seconds. A new bleed refreshes the timer and does not stack. Poison immunity does not stop it.
+- The healing perks use `RpgSpells.spellHeal`. The target perks reach a heal in the same tick, within 48 blocks of that healer.
+- The equips mod refines an item only when it knows the item. It does not know the mechanical bow yet.
+
 ## Build and test
 
 Run these from `mod-stella-rpg/` with Java 25:
@@ -623,14 +662,15 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgIncomingDamageMixin` | `LivingEntity#getDamageAfterMagicAbsorb`, at `RETURN` |
 | `RpgPlayerExperienceMixin` | `Player#getBaseExperienceReward`, at `HEAD` |
 | `RpgInventoryDropMixin` | `Inventory#dropAll`, at `HEAD`, cancellable |
-| `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7) |
+| `RpgBowDrawMixin` | `BowItem#releaseUsing`, held-tick local (index 7). The mechanical bow scales it too |
 | `RpgDebuffResistanceMixin` | `LivingEntity#addEffect` and `#forceAddEffect`, argument `effect`, at `HEAD` |
 | `RpgPoisonTypeMixin` | `PoisonMobEffect#applyEffectTick`, redirects `DamageSources#magic` |
 | `RpgAttributeCapMixin` | `RangedAttribute` constructor, at `RETURN`. Both sides |
 | `RpgScaleDamageMixin` | `LivingEntity#actuallyHurt`, `dmg` after `getDamageAfterMagicAbsorb` |
 | `RpgScalePlayerDamageMixin` | `Player#actuallyHurt`, `dmg` after `getDamageAfterMagicAbsorb` |
 | `RpgArmorStandDamageMixin` | `ArmorStand#causeDamage`, argument `dmg`, at `HEAD` |
-| `RpgScaleHealMixin` | `LivingEntity#heal`, argument `heal`, at `HEAD` |
+| `RpgScaleHealMixin` | `LivingEntity#heal`, argument `heal`, at `HEAD`. A second inject runs the garbs target perks |
+| `AbstractArrowPierceInvoker` | Invoker for `AbstractArrow#setPierceLevel` |
 | `RpgEnvironmentDamageMixin` | `LivingEntity#hurtServer`, argument `amount`, at `HEAD` |
 | `RpgPoisonAmountMixin` | `PoisonMobEffect#applyEffectTick`, redirects `hurtServer` |
 | `RpgWitherAmountMixin` | `WitherMobEffect#applyEffectTick`, redirects `hurtServer` |
@@ -644,3 +684,9 @@ Game tests run headless on a server. A new test class must be listed in
 | `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |
 | `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |
 | `NoDotShakeLocalPlayerMixin` | Client only. `LocalPlayer#hurtTo`, at `TAIL` |
+
+## Second Wind
+
+Once per 300 seconds, a hit that would kill a player leaves the player at 1 health with Resistance V for 2 seconds,
+a sound, and an action-bar message. A held totem of undying fires instead. Damage that bypasses invulnerability, such as
+the void or `/kill`, is never caught. The cooldown is saved with the player.

@@ -15,6 +15,8 @@ public final class ReadoutClient implements ClientModInitializer {
 		);
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ReadoutPlateState.set(null));
 		LevelRenderEvents.COLLECT_SUBMITS.register(ReadoutPlateRenderer::submit);
+		LowHealthWarningClient.register();
+		GearCompareTooltip.register();
 		AnvilTabs.register();
 		EmeraldBagScreen.register();
 	}

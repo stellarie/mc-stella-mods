@@ -3,9 +3,9 @@ package com.stella.villages.patrol;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -29,6 +29,11 @@ public final class OutdoorSpot {
 
 	/** The nearest standable outdoor spot around the bell, searching outward ring by ring, or null. */
 	public static @Nullable BlockPos near(final ServerLevel level, final BlockPos bell, final Mob mob) {
+		return near(level, bell, mob.getType().getDimensions());
+	}
+
+	/** The same search for a mob that does not exist yet, sized by its type. */
+	public static @Nullable BlockPos near(final ServerLevel level, final BlockPos bell, final EntityDimensions size) {
 		for (int radius = 1; radius <= SEARCH_RADIUS; radius++) {
 			for (int dx = -radius; dx <= radius; dx++) {
 				for (int dz = -radius; dz <= radius; dz++) {
@@ -41,7 +46,7 @@ public final class OutdoorSpot {
 						continue;
 					}
 					BlockPos candidate = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-					if (standable(level, candidate, mob) && isOutdoor(level, candidate, bell.getY())) {
+					if (standable(level, candidate, size) && isOutdoor(level, candidate, bell.getY())) {
 						return candidate;
 					}
 				}
@@ -50,13 +55,11 @@ public final class OutdoorSpot {
 		return null;
 	}
 
-	static boolean standable(final ServerLevel level, final BlockPos feet, final Mob mob) {
+	static boolean standable(final ServerLevel level, final BlockPos feet, final EntityDimensions size) {
 		BlockPos support = feet.below();
-		Vec3 destination = Vec3.atBottomCenterOf(feet);
-		AABB box = mob.getBoundingBox().move(destination.subtract(mob.position()));
 		return level.getBlockState(feet).isAir()
 			&& level.getFluidState(support).isEmpty()
 			&& level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
-			&& level.noCollision(mob, box);
+			&& level.noCollision(size.makeBoundingBox(Vec3.atBottomCenterOf(feet)));
 	}
 }

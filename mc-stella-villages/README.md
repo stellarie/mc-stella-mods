@@ -38,6 +38,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   is re-armed when it loads.
 - Patrol members never despawn, and they do not count toward the natural mob cap. On Peaceful they leave
   as any illager does, and no new patrol is raised.
+- A village raises its missing members one fill at a time. A fill that finds no place for a member waits
+  600 ticks before the village tries again. The heartbeat and spawn-reject log lines are at DEBUG level.
 - Villagers do not fear their patrol, iron and snow golems never take a member as their target, and a
   player may sleep in a bed beside the patrol.
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
@@ -189,8 +191,8 @@ Each recorded village gets one training dummy by its bell: a large armor stand (
 blocks from the bell, on a sturdy floor with 3 blocks of room.
 
 - Every hit on the dummy is recorded and cancelled, so nothing breaks it, not even `/kill`.
-- Its name reads `Avg 18.6 · Last 21 · 12 hits`: the average of the last 20 hits, the last hit, and the count.
-  The window resets after 10 seconds without a hit.
+- Its name reads `Avg 18.6 · Last 21 · 12 hits · DPS 44.2`: the average of the last 20 hits, the last hit, the count,
+  and the damage per second over the last 5 seconds. The window resets after 10 seconds without a hit.
 - With `mod-stella-rpg`, the recorded damage passes through the object share `mod-stella-rpg:outgoing-damage`,
   so it includes the STR dice, crits, and the attack charge. Without it, the dummy records the raw hit.
 - Every 10 seconds, a village whose bell is loaded gets its dummy back if it was removed.

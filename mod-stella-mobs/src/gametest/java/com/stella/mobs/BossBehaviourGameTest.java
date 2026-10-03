@@ -60,7 +60,7 @@ public class BossBehaviourGameTest {
 				"roll_chance": 0.0,
 				"elite_chance": 0.0,
 				"boss_chance": 1.0,
-				"boss_health_multiplier": 4.0,
+				"boss_health_multiplier": 3.0,
 				"boss_level_bonus": 1.0
 			}
 		}""";
@@ -94,7 +94,7 @@ public class BossBehaviourGameTest {
 				"roll_chance": 0.0,
 				"elite_chance": 0.0,
 				"boss_chance": 0.0,
-				"boss_health_multiplier": 4.0,
+				"boss_health_multiplier": 3.0,
 				"boss_level_bonus": 1.0
 			}
 		}""";
@@ -232,7 +232,7 @@ public class BossBehaviourGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void aBossCarriesTwiceAnElitesHealthAndTheTenLevelBonus(final GameTestHelper helper) {
+	public void aBossCarriesItsConfiguredHealthAndTheTenLevelBonus(final GameTestHelper helper) {
 		useConfig(helper, BOSS_MARK);
 		Mob boss = blessedBoss(helper);
 		float bossHealth = boss.getMaxHealth();
@@ -248,7 +248,7 @@ public class BossBehaviourGameTest {
 		double x = boss.getX();
 		double y = boss.getY();
 		double z = boss.getZ();
-		// The spec in oniichan's own words: a boss has twice the health of an elite standing beside it.
+		// The boss multiplier comes from the config, the elite one from Elite.
 		// Spawn a real elite of the same kind at the same spot and read the pair, rather than rebuilding
 		// the implementation's own arithmetic and agreeing with it.
 		boss.discard();
@@ -258,6 +258,9 @@ public class BossBehaviourGameTest {
 		int eliteLevel = ThreatState.level(elite);
 		ThreatState eliteRoll = ThreatState.get(elite);
 		double ratio = eliteBase <= 0.0 ? 0.0 : bossBase / eliteBase;
+		double expectedRatio = GearConfigStore.get()
+			.rollFor(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(elite.getType()))
+			.bossHealthMultiplier() / Elite.HEALTH_MULTIPLIER;
 		double expectedMax = bossBase * SpawnScaling.healthMultiplier(bossLevel);
 		double expectedEliteMax = eliteBase * SpawnScaling.healthMultiplier(eliteLevel);
 		double maxRatio = eliteHealth <= 0.0F ? 0.0 : bossHealth / eliteHealth;
@@ -283,8 +286,9 @@ public class BossBehaviourGameTest {
 			Integer.valueOf(Math.max(0, eliteRoll.areaLevel() + eliteRoll.variation()) + ThreatState.ELITE_BONUS),
 			"elite threat level");
 		helper.assertTrue(
-			Math.abs(ratio - 2.0) < 0.01,
+			Math.abs(ratio - expectedRatio) < 0.01,
 			"the boss base is " + bossBase + " against an elite's " + eliteBase + ", a ratio of " + ratio
+				+ ", expected " + expectedRatio
 		);
 		helper.assertTrue(
 			Math.abs(bossHealth - expectedMax) < 0.01 && Math.abs(eliteHealth - expectedEliteMax) < 0.01,

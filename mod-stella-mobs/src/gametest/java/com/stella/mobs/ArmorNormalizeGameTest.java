@@ -17,7 +17,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Armor judges a mob's hit at the mob's unscaled damage: an armored target keeps the same taken share against a level 0
+ * Armor judges a mob's hit at a zombie's base hit: an armored target keeps the same taken share against a level 0
  * and a level 60 zombie, and armor wears as if from the base hit. A hit from a mob without level scaling is unchanged.
  */
 public class ArmorNormalizeGameTest {
@@ -44,7 +44,7 @@ public class ArmorNormalizeGameTest {
 		int wear = wearer.getItemBySlot(EquipmentSlot.CHEST).getDamageValue();
 		// Piercing still strips its share of armor; the hit itself is judged at the base damage.
 		float pierced = 20.0F * (1.0F - com.stella.mobs.scaling.MobPiercing.share(level.damageSources().mobAttack(high)));
-		float base = (float) (high.getAttributeValue(Attributes.ATTACK_DAMAGE) / com.stella.mobs.scaling.SpawnScaling.damageMultiplier(60));
+		float base = (float) (incoming(high) / com.stella.mobs.scaling.SelfScaled.factor(60));
 		float expected = 1.0F - net.minecraft.util.Mth.clamp(pierced - base / 2.0F, pierced * 0.2F, 20.0F) / 25.0F;
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=armorNormalize RESULT low={} high={} expectedHigh={} piercedArmor={} base={} wear={}",
 			lowShare, highShare, expected, pierced, base, wear);
@@ -100,7 +100,16 @@ public class ArmorNormalizeGameTest {
 		float hit = (float) attacker.getAttributeValue(Attributes.ATTACK_DAMAGE);
 		float before = victim.getHealth();
 		victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), hit);
-		return (before - victim.getHealth()) / hit;
+		return (before - victim.getHealth()) / incoming(attacker);
+	}
+
+	/** The hit armor sees: the attack plus the flat per-level damage the hurt call adds to a hostile level hit. */
+	private static float incoming(final Zombie attacker) {
+		float hit = (float) attacker.getAttributeValue(Attributes.ATTACK_DAMAGE);
+		if (!com.stella.mobs.scaling.SelfScaled.levelHits(attacker)) {
+			return hit;
+		}
+		return hit + (float) com.stella.mobs.scaling.SpawnScaling.tailFlat(ThreatState.level(attacker));
 	}
 
 	private static Zombie attacker(final GameTestHelper helper, final int threat, final double x) {

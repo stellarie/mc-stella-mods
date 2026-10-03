@@ -25,6 +25,10 @@ public final class TakeCoverGoal extends Goal {
 	private @Nullable Vec3 spot;
 	private int walked;
 	private int restUntilTick;
+	/** Ticks a mob waits after a search finds no cover. */
+	static final int SEARCH_REST_TICKS = 10;
+	/** Test seam: how many cover searches canUse has run. */
+	static int searches;
 
 	public TakeCoverGoal(final Mob mob) {
 		this.mob = mob;
@@ -41,8 +45,13 @@ public final class TakeCoverGoal extends Goal {
 			return false;
 		}
 
+		searches++;
 		this.spot = Cover.find(this.mob, player);
-		return this.spot != null;
+		if (this.spot == null) {
+			this.restUntilTick = this.mob.tickCount + SEARCH_REST_TICKS;
+			return false;
+		}
+		return true;
 	}
 
 	@Override
