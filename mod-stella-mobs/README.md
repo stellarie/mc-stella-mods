@@ -370,3 +370,8 @@ reads it.
 altitude levels, never below the dimension minimum. It has no random variation. The equips container loot reads it.
 
 `SpawnScaling.LEVEL_HEALTH_BONUS` stays public: `mod-stella-spells` reads it by name for its summons.
+
+## Elite bounty
+
+An elite that a player kills drops `min(32, 2 + level / 10)` emeralds. A boss drops four times that. A kill by
+another mob, the void, or a command pays nothing.

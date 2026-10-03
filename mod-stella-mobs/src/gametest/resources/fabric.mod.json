@@ -54,6 +54,7 @@
 			"com.stella.mobs.LevelScalingGameTest",
 			"com.stella.mobs.NonMeleeScalingGameTest",
 			"com.stella.mobs.SelfScaledGameTest",
+			"com.stella.mobs.EliteBountyGameTest",
 			"com.stella.mobs.SpawnSafetyGameTest",
 			"com.stella.mobs.SpiderEliteGameTest",
 			"com.stella.mobs.SpiderWebTrapGameTest",
