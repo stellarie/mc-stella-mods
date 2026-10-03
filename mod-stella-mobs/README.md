@@ -132,8 +132,9 @@ The red slime is a beginner mob.
 - Its category is MISC, so it does not count toward the hostile mob cap.
 - It spawns near players in the morning (day time 0 to 3000) and the evening (11000 to 14000).
 - It never spawns within 7 blocks of a light source, such as a torch, lantern, glowstone, or lava. The blue slime follows the same rule.
+- It never spawns within 24 blocks of a player. The blue slime follows the same rule.
 - Both slimes thin out with distance: the spawn chance is 0.85 to the power of the whole 200-block steps from 0,0, at least 10%. At 1,000 blocks it is about 44%.
-- A biome holds at most 5 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
+- A biome holds at most 2 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
 - It drops 1 to 3 slime balls, and a Potion of Healing half of the time.
 
 ## Danger sense
