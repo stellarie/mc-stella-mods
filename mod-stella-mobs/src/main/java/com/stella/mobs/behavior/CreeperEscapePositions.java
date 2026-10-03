@@ -32,7 +32,32 @@ public final class CreeperEscapePositions {
 	private CreeperEscapePositions() {
 	}
 
+	/** Server ticks between the level-wide checks for a swelling creeper. */
+	public static final int SWELL_CHECK_TICKS = 2;
+	private static final java.util.Map<net.minecraft.world.level.Level, long[]> SWELLING = new java.util.WeakHashMap<>();
+
+	/**
+	 * True when some creeper in the level is swelling at a player. Every mob asks this each tick, so the answer is
+	 * kept for {@link #SWELL_CHECK_TICKS} server ticks; the per-mob search runs only while it is true.
+	 */
+	public static boolean anySwelling(final net.minecraft.world.level.Level level) {
+		if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
+			return true;
+		}
+		long now = server.getServer().getTickCount();
+		long[] cached = SWELLING.get(level);
+		if (cached == null || now - cached[0] >= SWELL_CHECK_TICKS) {
+			boolean found = !server.getEntities(net.minecraft.world.entity.EntityTypes.CREEPER, CreeperEscapePositions::isActiveThreat).isEmpty();
+			cached = new long[] {now, found ? 1L : 0L};
+			SWELLING.put(level, cached);
+		}
+		return cached[1] == 1L;
+	}
+
 	public static @Nullable Creeper threatFor(final Mob mob) {
+		if (!anySwelling(mob.level())) {
+			return null;
+		}
 		ReactiveState state = ReactiveState.get(mob);
 		List<Creeper> threats = state.cachedR02Threats(mob.tickCount);
 		if (threats == null) {
