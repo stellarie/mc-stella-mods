@@ -5,6 +5,7 @@ import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
 import com.stella.equips.power.PowerTracker;
+import com.stella.equips.readout.DangerColor;
 import com.stella.equips.readout.ReadoutPayload;
 import com.stella.equips.readout.ReadoutRank;
 import com.stella.equips.readout.ReadoutService;
@@ -377,7 +378,7 @@ public class ReadoutGameTest {
 	@GameTest
 	public void thePayloadSurvivesTheWire(final GameTestHelper helper) {
 		ReadoutPayload original = ReadoutPayload.of(
-			42, 17, PowerCurve.Band.ORANGE, ReadoutRank.BOSS, true, 12.5F, 40.0F, 6.0F, "Wither"
+			42, 17, PowerCurve.Band.ORANGE, DangerColor.YELLOW, ReadoutRank.BOSS, true, 12.5F, 40.0F, 6.0F, "Wither"
 		);
 		RegistryFriendlyByteBuf buffer = wireBuffer(helper);
 		ReadoutPayload.CODEC.encode(buffer, original);

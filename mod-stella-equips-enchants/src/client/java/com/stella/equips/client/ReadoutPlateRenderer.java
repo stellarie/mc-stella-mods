@@ -90,7 +90,7 @@ final class ReadoutPlateRenderer {
 		collector.submitText(
 			poseStack, plan.numberCenterX() - font.width(number) / 2.0F, plan.numberCenterY() - HALF_LINE,
 			Component.literal(number).getVisualOrderText(), false, MODE, LightCoordsUtil.FULL_BRIGHT,
-			OPAQUE | ReadoutText.rgb(ReadoutText.color(payload.bandValue())), 0, 0
+			OPAQUE | ReadoutText.rgb(payload.dangerValue().format()), 0, 0
 		);
 		collector.submitText(
 			poseStack, plan.nameX(), plan.nameY(), Component.literal(label).getVisualOrderText(), false, MODE,
