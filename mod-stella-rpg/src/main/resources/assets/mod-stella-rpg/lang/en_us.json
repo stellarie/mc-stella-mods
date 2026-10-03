@@ -68,5 +68,6 @@
 	"tooltip.mod-stella-rpg.stat.dex": "DEX",
 	"tooltip.mod-stella-rpg.stat.int": "INT",
 	"tooltip.mod-stella-rpg.stat.luk": "LUK",
-	"screen.mod-stella-rpg.result.invalid_stat": "Unknown stat."
+	"screen.mod-stella-rpg.result.invalid_stat": "Unknown stat.",
+	"message.mod-stella-rpg.second_wind": "Second Wind! You cling to life. (ready again in 5 minutes)"
 }

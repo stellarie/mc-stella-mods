@@ -644,3 +644,9 @@ Game tests run headless on a server. A new test class must be listed in
 | `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |
 | `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |
 | `NoDotShakeLocalPlayerMixin` | Client only. `LocalPlayer#hurtTo`, at `TAIL` |
+
+## Second Wind
+
+Once per 300 seconds, a hit that would kill a player leaves the player at 1 health with Resistance V for 2 seconds,
+a sound, and an action-bar message. A held totem of undying fires instead. Damage that bypasses invulnerability, such as
+the void or `/kill`, is never caught. The cooldown is saved with the player.
