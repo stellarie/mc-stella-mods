@@ -38,7 +38,7 @@ integration branch is `main-learn`.
 |---|---|---|
 | The player swings within 4.5 blocks | `SHIELD`, `BACK_OFF`, `TRADE` | Raise a shield for 20 ticks (needs one in the off hand), walk out to 6 blocks, or carry on |
 | The player's arrow is flying at the mob | `EVADE`, `SHIELD`, `TANK` | Step 2.5 blocks off the arrow's line, raise the shield, or carry on |
-| A ranged mob has just shot | `HIDE`, `HOLD` | Walk to the nearest spot out of the player's sight that is no nearer the player than the mob stands (only offered when there is one), or stay put |
+| A ranged mob has just shot | `HIDE`, `HOLD` | Walk to the nearest spot out of the player's sight that is no nearer the player than the mob stands (only offered when there is one), or stay put. The mobs mod hides an archer after every shot when cover is near, so `HOLD` decides only in the open |
 
 - **A guarding shield bearer keeps its shield up.** While the shield goal of the mobs mod runs against a player, the
   mob is not offered `SHIELD` or `BACK_OFF`. It walks on under its raised shield and picks from the tactics left.

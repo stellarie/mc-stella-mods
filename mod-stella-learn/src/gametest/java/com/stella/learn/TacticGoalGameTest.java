@@ -549,7 +549,7 @@ public class TacticGoalGameTest {
 	}
 
 	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
-	public void anArcherStaysPutAfterAShotWhenHoldingIsWhatWorked(final GameTestHelper helper) {
+	public void anArcherHidesAfterAShotEvenWhenHoldingIsWhatWorked(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		pillarBesideTheArcher(helper);
 		ServerPlayer player = LearnArena.player(helper, 34.5, 24.5);
@@ -557,7 +557,7 @@ public class TacticGoalGameTest {
 		Mob skeleton = archer(helper, player);
 		boolean[] everHidden = {false};
 		helper.onEachTick(() -> everHidden[0] |= !Cover.exposed(helper.getLevel(), player, skeleton.getEyePosition()));
-		// The player sees each shot, so no ambush starts.
+		// Seen or not, a shot starts a hide when cover is near.
 		// The look sets yaw, pitch and head yaw.
 		helper.onEachTick(() -> player.lookAt(EntityAnchorArgument.Anchor.EYES, skeleton.getEyePosition()));
 		LearnArena.whenReady(helper, List.of(player, skeleton), () -> {
@@ -565,8 +565,8 @@ public class TacticGoalGameTest {
 			LearnArena.pollUntil(helper, () -> Episodes.active(skeleton) != null, 300, () -> {
 				helper.runAfterDelay(60L, () -> {
 					Episode episode = Episodes.active(skeleton);
-					StellaLearn.LOGGER.info("[BEHAVIOR] test=anArcherStaysPutAfterAShotWhenHoldingIsWhatWorked RESULT everHidden={}", everHidden[0]);
-					helper.assertTrue(!everHidden[0], "the archer hid when holding was what worked");
+					StellaLearn.LOGGER.info("[BEHAVIOR] test=anArcherHidesAfterAShotEvenWhenHoldingIsWhatWorked RESULT everHidden={}", everHidden[0]);
+					helper.assertTrue(everHidden[0], "the archer held in the open beside cover; shoot then hide comes first");
 					helper.succeed();
 				});
 			}, () -> "the archer never made a decision after a shot");
