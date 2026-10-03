@@ -49,6 +49,11 @@ public final class SpellModifiers {
 		);
 	}
 
+	/** True when the helmet or the cast book carries Doublecast; the higher level counts, never the sum. */
+	public static boolean doublecast(final ItemStack head, final ItemStack book) {
+		return Math.max(level(head, DOUBLECAST), level(book, DOUBLECAST)) > 0;
+	}
+
 	/** True when the helmet carries Doublecast. */
 	public static boolean doublecast(final ItemStack head) {
 		return level(head, DOUBLECAST) > 0;

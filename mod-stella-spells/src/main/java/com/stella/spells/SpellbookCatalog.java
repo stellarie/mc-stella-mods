@@ -2,6 +2,7 @@ package com.stella.spells;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import net.minecraft.resources.Identifier;
@@ -9,6 +10,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 public final class SpellbookCatalog {
+	/** Movement and utility spells: INT and DEX do not shorten their cooldown. */
+	public static final Set<String> FIXED_COOLDOWN = Set.of("riftwalk", "gale_step");
 	public static final List<SpellDefinition> DEFINITIONS = List.of(
 		definition("spark_shot", Items.FLINT, 60, 4_708_351, TargetMode.HOSTILE, SpellCasting::applySparkShot),
 		definition("frostbind", Items.SNOWBALL, 60, 11_789_820, TargetMode.HOSTILE, SpellCasting::applyFrostbind),

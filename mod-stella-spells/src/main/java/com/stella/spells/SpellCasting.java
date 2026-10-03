@@ -14,11 +14,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -31,6 +34,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class SpellCasting {
+	/** A spell hit names its caster, so the RPG mod reads penetration and the spell crit from the attacker. */
+	static DamageSource spellSource(final LivingEntity caster) {
+		return caster instanceof Player ? caster.level().damageSources().indirectMagic(caster, caster) : caster.level().damageSources().magic();
+	}
+
 	static final double RANGE = SpellModifiers.BASE_TARGET_RANGE_BLOCKS;
 	static final double STATIC_LASH_RADIUS = SpellNumbers.STATIC_LASH.radius();
 	static final double WARDENS_ROAR_RADIUS = SpellNumbers.WARDENS_ROAR.radius();
@@ -44,7 +52,7 @@ public final class SpellCasting {
 	static final float DAMAGE = SpellNumbers.SPARK_SHOT.damage();
 	static final float BURN_SECONDS = SpellNumbers.SPARK_SHOT.extra().ticks() / 20.0f;
 
-	/** Doublecast: the chance a cast with a Doublecast helmet lands twice. */
+	/** Doublecast: the chance a cast with a Doublecast helmet or book lands twice. */
 	public static final float DOUBLECAST_CHANCE = 0.5F;
 	private static final ThreadLocal<Boolean> SKIP_COOLDOWN = new ThreadLocal<>();
 	/** How many doublecasts have landed since the server started; a test seam. */
@@ -104,7 +112,7 @@ public final class SpellCasting {
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
 		);
 		modifiers = TowerBridge.grow(stack, definition.id().getPath(), modifiers);
-		modifiers = RpgBridge.grow(caster, modifiers);
+		modifiers = RpgBridge.grow(caster, definition.id().getPath(), modifiers);
 		Mob target = null;
 		Vec3 point = null;
 		switch (definition.targetMode()) {
@@ -151,7 +159,7 @@ public final class SpellCasting {
 		log(caster, definition, CastResult.CAST, target, modifiers, stack);
 		SpellCombos.afterCast(caster, definition, target, point, modifiers);
 		// Doublecast: the same spell, on the same target, once more, combos included; never a second summon.
-		if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD)) && !Spellbooks.BOOK_ONLY.contains(definition.id())
+		if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
 			&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
 			&& landAgain(caster, definition, target, point, modifiers)) {
 			SpellVisuals.play(caster, definition, target, point, caster.position(), modifiers);
@@ -168,7 +176,7 @@ public final class SpellCasting {
 		}
 
 		SpellNumbers numbers = SpellNumbers.SPARK_SHOT;
-		target.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, numbers.damage(), modifiers.powerMultiplier()));
+		target.hurt(spellSource(caster), RpgBridge.damage(caster, numbers.damage(), modifiers.powerMultiplier()));
 		target.igniteForSeconds(numbers.extraTicks(modifiers) / 20.0f);
 		return true;
 	}
@@ -271,7 +279,7 @@ public final class SpellCasting {
 			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(caster.position()) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, SpellNumbers.WARDENS_ROAR.damage(), modifiers.powerMultiplier()));
+			hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.WARDENS_ROAR.damage(), modifiers.powerMultiplier()));
 			Vec3 away = hostile.position().subtract(caster.position());
 			Vec3 horizontal = new Vec3(away.x, 0.0, away.z).normalize();
 			hostile.setDeltaMovement(horizontal.x, 0.4, horizontal.z);
@@ -286,7 +294,7 @@ public final class SpellCasting {
 			return false;
 		}
 
-		var damage = caster.level().damageSources().magic();
+		var damage = spellSource(caster);
 		double power = modifiers.powerMultiplier();
 		SpellNumbers numbers = SpellNumbers.STATIC_LASH;
 		double radius = numbers.radius(modifiers);
@@ -409,7 +417,7 @@ public final class SpellCasting {
 				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
-			hostile.hurt(caster.level().damageSources().magic(), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
+			hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
 		}
 		return true;
 	}
