@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
 	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
-	double mobDiceShare, StatTables tables, XpCurve xpCurve
+	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -64,6 +64,56 @@ public record RpgConfig(
 	public record WeaponRolls(List<Integer> countWeights, Map<String, RollTier> tiers, double affixChance) {
 	}
 
+	/**
+	 * The magic model. The spell base is in vanilla units. The resistance logistic runs from 0 at INT 0 to 1 at
+	 * {@code resistMaxInt}. Resistance is {@code resistBase + resistSpan x logistic}, at most {@code resistCap}.
+	 */
+	public record MagicRules(
+		double spellBase, double spellGrowth, double matkPerInt, double mobPercentPerPoint, double resistBase,
+		double resistSpan, double resistMidpoint, double resistWidth, double resistMaxInt, double resistCap,
+		double armorPenBase, double armorPenCap
+	) {
+		public static final String KEY = "magic";
+		public static final MagicRules DEFAULT = new MagicRules(12.0, 0.05, 0.01, 50.0, 0.25, 0.50, 400.0, 120.0, 1024.0, 0.90, 0.25, 0.75);
+
+		public Map<String, Double> toJson() {
+			Map<String, Double> out = new LinkedHashMap<>();
+			out.put("spell_base", this.spellBase);
+			out.put("spell_growth", this.spellGrowth);
+			out.put("matk_per_int", this.matkPerInt);
+			out.put("mob_percent_per_point", this.mobPercentPerPoint);
+			out.put("resist_base", this.resistBase);
+			out.put("resist_span", this.resistSpan);
+			out.put("resist_midpoint", this.resistMidpoint);
+			out.put("resist_width", this.resistWidth);
+			out.put("resist_max_int", this.resistMaxInt);
+			out.put("resist_cap", this.resistCap);
+			out.put("armor_pen_base", this.armorPenBase);
+			out.put("armor_pen_cap", this.armorPenCap);
+			return out;
+		}
+	}
+
+	/**
+	 * Level and DEX numbers. A die rolls its maximum with {@code dexMaxRollPerPoint} per DEX, at most 100 percent.
+	 * A player gets {@code bonusPoints} in every stat per {@code bonusLevelStep} levels.
+	 * A mob hit gains {@code gapPercent} per {@code gapLevelStep} levels of threat above the player's level.
+	 */
+	public record ScalingRules(double dexMaxRollPerPoint, int bonusLevelStep, int bonusPoints, int gapLevelStep, double gapPercent) {
+		public static final String KEY = "scaling";
+		public static final ScalingRules DEFAULT = new ScalingRules(0.01, 10, 3, 10, 0.10);
+
+		public Map<String, Number> toJson() {
+			Map<String, Number> out = new LinkedHashMap<>();
+			out.put("dex_max_roll_per_point", this.dexMaxRollPerPoint);
+			out.put("bonus_level_step", this.bonusLevelStep);
+			out.put("bonus_points", this.bonusPoints);
+			out.put("gap_level_step", this.gapLevelStep);
+			out.put("gap_percent", this.gapPercent);
+			return out;
+		}
+	}
+
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
 		public static final DiceRules DEFAULT = new DiceRules(1, 4, 25, 100);
 	}
@@ -72,11 +122,8 @@ public record RpgConfig(
 		ATTACK_SPEED("attack_speed", 1.00, 250),
 		BOW_DRAW("bow_draw", 0.50, 250),
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
-		COOLDOWN_REDUCTION("cooldown_reduction", 0.40, 300),
+		COOLDOWN_REDUCTION("cooldown_reduction", 0.50, 400),
 		CRIT_CHANCE("crit_chance", 0.50, 300),
-		DEX_MAX_ROLL("dex_max_roll", 0.50, 200),
-		INT_MAX_ROLL("int_max_roll", 0.50, 200),
-		MAGIC_DEFENSE("magic_defense", 0.40, 300),
 		CRIT_REDUCTION("crit_reduction", 0.50, 300),
 		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);
 
@@ -104,7 +151,7 @@ public record RpgConfig(
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
 			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE,
-			StatTables.DEFAULT, XpCurve.DEFAULT);
+			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */
@@ -158,6 +205,10 @@ public record RpgConfig(
 		ranges.put(Affix.HP_PCT, new AffixRange(hpPctMin, hpPctMax));
 		ranges.put(Affix.REDUCTION_FLAT, new AffixRange(reductionFlatMin, reductionFlatMax));
 		ranges.put(Affix.REDUCTION_PCT, new AffixRange(reductionPctMin, reductionPctMax));
+		ranges.put(Affix.ARMOR_PEN, new AffixRange(damagePctMin, damagePctMax));
+		ranges.put(Affix.MAGIC_PEN, new AffixRange(damagePctMin, damagePctMax));
+		ranges.put(Affix.MOVE_SPEED_PCT, new AffixRange(reductionPctMin * 2, reductionPctMax * 2));
+		ranges.put(Affix.MAGIC_RES_PCT, new AffixRange(hpPctMin, hpPctMax));
 		return Map.copyOf(ranges);
 	}
 

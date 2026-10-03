@@ -92,7 +92,7 @@ public final class RpgConfigStore {
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
 			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError),
-			xpCurve(root, onError));
+			xpCurve(root, onError), magic(root, onError), scaling(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -360,6 +360,83 @@ public final class RpgConfigStore {
 		);
 	}
 
+	private static RpgConfig.ScalingRules scaling(final JsonObject root, final Consumer<String> onError) {
+		RpgConfig.ScalingRules fallback = RpgConfig.ScalingRules.DEFAULT;
+		JsonElement element = root.get(RpgConfig.ScalingRules.KEY);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'scaling' must be an object; using the defaults");
+			return fallback;
+		}
+		JsonObject o = element.getAsJsonObject();
+		return new RpgConfig.ScalingRules(
+			scalingPart(o, "dex_max_roll_per_point", fallback.dexMaxRollPerPoint(), 0.0, onError),
+			(int) scalingPart(o, "bonus_level_step", fallback.bonusLevelStep(), 1.0, onError),
+			(int) scalingPart(o, "bonus_points", fallback.bonusPoints(), 0.0, onError),
+			(int) scalingPart(o, "gap_level_step", fallback.gapLevelStep(), 1.0, onError),
+			scalingPart(o, "gap_percent", fallback.gapPercent(), 0.0, onError)
+		);
+	}
+
+	private static double scalingPart(
+		final JsonObject object, final String key, final double fallback, final double min, final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < min) {
+			onError.accept("stats.json key 'scaling." + key + "' must be a number of at least " + min + "; using the default");
+			return fallback;
+		}
+		return value;
+	}
+
+	private static RpgConfig.MagicRules magic(final JsonObject root, final Consumer<String> onError) {
+		RpgConfig.MagicRules fallback = RpgConfig.MagicRules.DEFAULT;
+		JsonElement element = root.get(RpgConfig.MagicRules.KEY);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'magic' must be an object; using the defaults");
+			return fallback;
+		}
+		JsonObject o = element.getAsJsonObject();
+		return new RpgConfig.MagicRules(
+			magicPart(o, "spell_base", fallback.spellBase(), 0.0, onError),
+			magicPart(o, "spell_growth", fallback.spellGrowth(), 0.0, onError),
+			magicPart(o, "matk_per_int", fallback.matkPerInt(), 0.0, onError),
+			magicPart(o, "mob_percent_per_point", fallback.mobPercentPerPoint(), 0.0, onError),
+			magicPart(o, "resist_base", fallback.resistBase(), 0.0, onError),
+			magicPart(o, "resist_span", fallback.resistSpan(), 0.0, onError),
+			magicPart(o, "resist_midpoint", fallback.resistMidpoint(), 0.0, onError),
+			magicPart(o, "resist_width", fallback.resistWidth(), Double.MIN_NORMAL, onError),
+			magicPart(o, "resist_max_int", fallback.resistMaxInt(), 1.0, onError),
+			magicPart(o, "resist_cap", fallback.resistCap(), 0.0, onError),
+			magicPart(o, "armor_pen_base", fallback.armorPenBase(), 0.0, onError),
+			magicPart(o, "armor_pen_cap", fallback.armorPenCap(), 0.0, onError)
+		);
+	}
+
+	private static double magicPart(
+		final JsonObject object, final String key, final double fallback, final double min, final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < min) {
+			onError.accept("stats.json key 'magic." + key + "' must be a number of at least " + min + "; using the default");
+			return fallback;
+		}
+		return value;
+	}
+
 	private static XpCurve xpCurve(final JsonObject root, final Consumer<String> onError) {
 		JsonElement element = root.get(XpCurve.KEY);
 		if (element == null) {
@@ -589,6 +666,8 @@ public final class RpgConfigStore {
 		out.put(RpgConfig.MOB_AMPLIFIER_KEY, RpgConfig.DEFAULT_MOB_AMPLIFIER);
 		out.put(RpgConfig.MOB_DICE_SHARE_KEY, RpgConfig.DEFAULT_MOB_DICE_SHARE);
 		out.put(XpCurve.KEY, XpCurve.DEFAULT.toJson());
+		out.put(RpgConfig.MagicRules.KEY, RpgConfig.MagicRules.DEFAULT.toJson());
+		out.put(RpgConfig.ScalingRules.KEY, RpgConfig.ScalingRules.DEFAULT.toJson());
 		StatTables.write(out);
 		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
 		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {

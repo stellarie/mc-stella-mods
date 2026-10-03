@@ -202,7 +202,8 @@ public final class HealthScaleGameTest {
 				float harm = instantHarm(helper, player, amplifier);
 				float absorption = absorptionGrant(player, amplifier);
 				float expectedHeal = doubling * (float) Math.max(60.0, 0.15 * max);
-				float expectedHarm = doubling * (float) Math.max(90.0, 0.20 * max);
+				// A bare player resists 25 percent of magic.
+				float expectedHarm = doubling * (float) Math.max(90.0, 0.20 * max) * 0.75F;
 				float expectedAbsorption = (1 + amplifier) * (float) Math.max(60.0, 0.10 * max);
 				log.append("max=").append(max).append(" amp=").append(amplifier).append(" heal=").append(heal)
 					.append(" harm=").append(harm).append(" absorption=").append(absorption).append(' ');
@@ -314,7 +315,7 @@ public final class HealthScaleGameTest {
 		RpgConfig before = RpgConfigStore.current();
 		RpgConfig doubled = new RpgConfig(before.curves(), before.critMultiplier(), before.dice(), before.mobStats(),
 			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables(),
-			before.xpCurve());
+			before.xpCurve(), before.magic(), before.scaling());
 		Object published;
 		try {
 			RpgConfigStore.set(doubled);

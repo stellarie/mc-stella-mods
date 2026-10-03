@@ -5,6 +5,7 @@ import com.stella.rpg.roll.WeaponRolls;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.util.RandomSource;
@@ -98,9 +99,8 @@ public final class AffixRollGameTest {
 				Map<Affix, double[]> weapon = observe(helper, row.weapon(), random);
 				expect(helper, row.name() + " weapon", weapon, Affix.DAMAGE_FLAT, row.damageFlatMin(), row.damageFlatMax());
 				expect(helper, row.name() + " weapon", weapon, Affix.DAMAGE_PCT, row.damagePctMin(), row.damagePctMax());
-				expect(helper, row.name() + " weapon", weapon, Affix.MATK_FLAT, row.damageFlatMin(), row.damageFlatMax());
-				expect(helper, row.name() + " weapon", weapon, Affix.MATK_PCT, row.damagePctMin(), row.damagePctMax());
-				helper.assertTrue(weapon.size() == 4, row.name() + " weapon affix keys " + weapon.keySet());
+				expect(helper, row.name() + " weapon", weapon, Affix.ARMOR_PEN, row.damagePctMin(), row.damagePctMax());
+				helper.assertTrue(weapon.size() == 3, row.name() + " weapon affix keys " + weapon.keySet());
 				log.append(row.name()).append(" dmg=").append(weapon.get(Affix.DAMAGE_FLAT)[0]).append("..")
 					.append(weapon.get(Affix.DAMAGE_FLAT)[1]).append(' ');
 				if (row.armor() != null) {
@@ -109,16 +109,18 @@ public final class AffixRollGameTest {
 					expect(helper, row.name() + " armor", armor, Affix.HP_PCT, row.hpPctMin(), row.hpPctMax());
 					expect(helper, row.name() + " armor", armor, Affix.REDUCTION_FLAT, row.reductionFlatMin(), row.reductionFlatMax());
 					expect(helper, row.name() + " armor", armor, Affix.REDUCTION_PCT, row.reductionPctMin(), row.reductionPctMax());
-					helper.assertTrue(armor.size() == 4, row.name() + " armor affix keys " + armor.keySet());
+					expect(helper, row.name() + " armor", armor, Affix.MAGIC_RES_PCT, row.hpPctMin(), row.hpPctMax());
+					helper.assertTrue(armor.size() == 5, row.name() + " armor affix keys " + armor.keySet());
 				}
 			}
 			Map<Affix, double[]> book = observe(helper, Items.BOOK, random);
 			expect(helper, "spellbook", book, Affix.MATK_FLAT, 12, 27);
 			expect(helper, "spellbook", book, Affix.MATK_PCT, 5, 9);
-			helper.assertTrue(book.size() == 2 && book.containsKey(Affix.MATK_FLAT), "spellbook affix keys " + book.keySet());
+			expect(helper, "spellbook", book, Affix.MAGIC_PEN, 5, 9);
+			helper.assertTrue(book.size() == 3 && book.containsKey(Affix.MATK_FLAT), "spellbook affix keys " + book.keySet());
 			ItemStack bookStack = new ItemStack(Items.BOOK);
 			WeaponRolls.roll(bookStack, random);
-			helper.assertTrue(bookStack.get(WeaponRolls.STAT_ROLLS).isEmpty(), "a spellbook rolled a stat");
+			helper.assertTrue(Set.of("int").containsAll(bookStack.get(WeaponRolls.STAT_ROLLS).keySet()), "a spellbook rolled a stat other than INT");
 			RpgTestSupport.result("rangesPerTier", log.toString().trim() + " book=" + book.keySet());
 		});
 		helper.succeed();

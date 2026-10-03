@@ -37,6 +37,7 @@ public final class StellaRpg implements ModInitializer {
 		WeaponRolls.register();
 		RpgScale.register();
 		EnchantStats.register();
+		LevelBonus.register();
 		EffectStats.register();
 		StarterSword.register();
 		OutgoingDamageShare.register();

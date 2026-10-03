@@ -10,7 +10,7 @@ public final class RpgCurveGameTest {
 	public void curveTable(final GameTestHelper helper) {
 		check(helper, "attackSpeed", RpgCurve::attackSpeedBonus, 0.0000, 0.0458, 0.2857, 0.8038);
 		check(helper, "damageTaken", RpgCurve::damageTakenMultiplier, 1.0000, 0.9769, 0.8500, 0.5360);
-		check(helper, "cooldown", RpgCurve::cooldownMultiplier, 1.0000, 0.9846, 0.9000, 0.6906);
+		check(helper, "cooldown", RpgCurve::cooldownMultiplier, 1.0000, 0.9854, 0.9000, 0.6404);
 		check(helper, "critChance", RpgCurve::critChance, 0.0000, 0.0192, 0.1250, 0.3867);
 		int[] ticks = {20, 20, 17, 12};
 		for (int i = 0; i < STATS.length; i++) {

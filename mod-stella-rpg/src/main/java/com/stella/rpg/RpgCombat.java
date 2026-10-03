@@ -2,6 +2,9 @@ package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.Affixes;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
@@ -29,13 +32,16 @@ public final class RpgCombat {
 		int roll(LivingEntity attacker, RandomSource random, RpgDice.Dice dice);
 	}
 
+	/** The tag the spells mod puts on a summoned servant. Its spell amount comes from the master's MATK. */
+	public static final String SUMMONED_TAG = "mod-stella-spells.summoned";
 	private static final int STATUS_STEP = 10;
 	private static final double EFFECT_PERCENT = 0.10;
-	private static final double MOB_SPELL_PERCENT = 100.0;
-	private static final double MOB_SPELL_BASE = 3.0;
 	private static final DiceRoller FAIR_DICE = RpgCombat::fairRoll;
 	/** The victim of a critical hit while its hurt call runs, so scaleIncoming can apply LUK. */
 	private static final ThreadLocal<LivingEntity> CRIT_VICTIM = new ThreadLocal<>();
+	/** Casters whose last spell crit, with the game tick of the roll. The next magic hit they cause that tick is a crit. */
+	private static final Map<UUID, Long> SPELL_CRITS = new ConcurrentHashMap<>();
+	private static final int SPELL_CRIT_PRUNE = 64;
 	private static volatile DiceRoller diceRoller = FAIR_DICE;
 	private static Player swinger;
 	private static float swingStrength = 1.0F;
@@ -109,18 +115,71 @@ public final class RpgCombat {
 			ItemStack weapon = source.getWeaponItem() != null ? source.getWeaponItem() : attacker.getMainHandItem();
 			scaled += dice(attacker, weapon, Stat.DEX, true) + statusAtk(StatBonuses.effective(attacker, Stat.DEX));
 		} else if (attacker instanceof Mob && source.is(DamageTypes.INDIRECT_MAGIC)) {
-			return (float) RpgSpells.spellDamage(attacker, MOB_SPELL_PERCENT * amount / MOB_SPELL_BASE);
+			if (attacker.entityTags().contains(SUMMONED_TAG)) {
+				return amount;
+			}
+			double hit = RpgSpells.spellHit(attacker, RpgConfigStore.current().magic().mobPercentPerPoint() * amount)
+				* levelGap((Mob) attacker, victim);
+			if (rollCrit(attacker)) {
+				CRIT_VICTIM.set(victim);
+				hit *= RpgCurve.critMultiplier();
+			}
+			return (float) hit;
 		} else {
 			return amount;
 		}
 		scaled += Affixes.total(attacker, Affix.DAMAGE_FLAT) / RpgScale.k();
 		scaled *= damageFactor(attacker);
+		if (attacker instanceof Mob mob) {
+			scaled *= levelGap(mob, victim);
+		}
 		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK));
 		if (roller.roll(attacker, attacker.getRandom(), chance)) {
 			scaled *= RpgCurve.critMultiplier();
 			CRIT_VICTIM.set(victim);
 		}
 		return (float) scaled;
+	}
+
+	/** Rolls a critical hit with the LUK chance of the attacker. A spell uses it. */
+	static boolean rollCrit(final LivingEntity attacker) {
+		return roller.roll(attacker, attacker.getRandom(), RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)));
+	}
+
+	/** Records the result of a spell crit roll. The magic hit of that caster in the same tick then counts as a crit. */
+	static void markSpellCrit(final LivingEntity caster, final boolean crit) {
+		long now = caster.level().getGameTime();
+		if (!crit) {
+			SPELL_CRITS.remove(caster.getUUID());
+			return;
+		}
+		if (SPELL_CRITS.size() > SPELL_CRIT_PRUNE) {
+			SPELL_CRITS.values().removeIf(tick -> tick < now);
+		}
+		SPELL_CRITS.put(caster.getUUID(), now);
+	}
+
+	private static boolean spellCrit(final DamageSource source) {
+		if (!isMagic(source) || !(source.getEntity() instanceof LivingEntity caster)) {
+			return false;
+		}
+		Long tick = SPELL_CRITS.get(caster.getUUID());
+		return tick != null && tick == caster.level().getGameTime();
+	}
+
+	/** True for a weapon crit in progress on the victim, or a spell crit of the attacker this tick. */
+	public static boolean isCrit(final LivingEntity victim, final DamageSource source) {
+		return critPending(victim) || spellCrit(source);
+	}
+
+	/** A mob hit on a player gains a share for each full block of threat levels above the player's level. */
+	private static double levelGap(final Mob attacker, final LivingEntity victim) {
+		if (!(victim instanceof ServerPlayer player)) {
+			return 1.0;
+		}
+		RpgConfig.ScalingRules rules = RpgConfigStore.current().scaling();
+		int gap = MobsBridge.threat(attacker) - player.experienceLevel;
+		return gap <= 0 ? 1.0 : 1.0 + rules.gapPercent() * (gap / rules.gapLevelStep());
 	}
 
 	/** Ends the critical hit of a victim. The hurt call of that victim runs this when it returns. */
@@ -130,8 +189,21 @@ public final class RpgCombat {
 		}
 	}
 
-	static boolean critPending(final LivingEntity victim) {
+	public static boolean critPending(final LivingEntity victim) {
 		return CRIT_VICTIM.get() == victim;
+	}
+
+	/** The share of armor and toughness a hit ignores. A crit ignores all of it. A mob uses the mobs mod piercing. */
+	public static double armorIgnored(final LivingEntity victim, final DamageSource source) {
+		if (isCrit(victim, source)) {
+			return 1.0;
+		}
+		if (!(source.getEntity() instanceof LivingEntity attacker) || attacker instanceof Mob
+			|| !(isMelee(source) || source.is(DamageTypeTags.IS_PROJECTILE))) {
+			return 0.0;
+		}
+		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
+		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(attacker, Affix.ARMOR_PEN));
 	}
 
 	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
@@ -184,10 +256,11 @@ public final class RpgCombat {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));
-		if (isMagic(source)) {
-			reduced *= RpgCurve.magicDamageTakenMultiplier(StatBonuses.effective(entity, Stat.INT));
+		if (isMagic(source) && !isCrit(entity, source)) {
+			double piercing = source.getEntity() instanceof LivingEntity attacker ? RpgSpells.penetration(attacker) : 0.0;
+			reduced *= 1.0 - Math.max(0.0, RpgSpells.resistance(entity) - piercing);
 		}
-		if (critPending(entity)) {
+		if (isCrit(entity, source)) {
 			reduced *= RpgCurve.critDamageTakenMultiplier(StatBonuses.effective(entity, Stat.LUK));
 		}
 		reduced *= 1.0 - Math.min(1.0, Affixes.total(entity, Affix.REDUCTION_PCT));

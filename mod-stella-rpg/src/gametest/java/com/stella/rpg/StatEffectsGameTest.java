@@ -10,7 +10,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 
-/** DEX and INT raise the chance of a maximum roll. INT defends against magic. LUK softens critical hits. */
+/** DEX raises the chance of a maximum roll. INT defends against magic. LUK softens critical hits. */
 public final class StatEffectsGameTest {
 	private static final float TOLERANCE = 0.0005F;
 
@@ -37,10 +37,6 @@ public final class StatEffectsGameTest {
 
 	@GameTest
 	public void maxRollChance(final GameTestHelper helper) {
-		helper.assertTrue(RpgCurve.dexMaxRollChance(0) == 0.0 && Math.abs(RpgCurve.dexMaxRollChance(200) - 0.25) < 1e-12
-			&& Math.abs(RpgCurve.dexMaxRollChance(800) - 0.4) < 1e-12, "the DEX curve");
-		helper.assertTrue(RpgCurve.intMaxRollChance(0) == 0.0 && Math.abs(RpgCurve.intMaxRollChance(200) - 0.25) < 1e-12
-			&& Math.abs(RpgCurve.intMaxRollChance(1000) - 0.5 * 1000.0 / 1200.0) < 1e-12, "the INT curve");
 
 		// Three 1d6 dice and chance 0.25: 0.24 is a maximum, 0.26 is a fair roll of 1, and 0.10 is a maximum.
 		int dice = new RpgDice.Dice(3, 6).roll(new Scripted(0.24, 0.26, 0.10), 0.25);
@@ -48,25 +44,12 @@ public final class StatEffectsGameTest {
 		helper.assertTrue(new RpgDice.Dice(3, 6).roll(new Scripted(0.0), 0.0) == 3, "a zero chance rolled a maximum");
 
 		ServerPlayer archer = RpgTestSupport.player(helper);
-		RpgTestSupport.setStat(archer, Stat.DEX, 200);
+		RpgTestSupport.setStat(archer, Stat.DEX, 25);
 		int viaFair = RpgCombat.fairRoll(archer, new Scripted(0.24, 0.26, 0.10), new RpgDice.Dice(3, 6));
-		helper.assertTrue(viaFair == 13, "the fair dice roller used DEX 200 and rolled " + viaFair);
+		helper.assertTrue(viaFair == 13, "the fair dice roller used DEX 25 and rolled " + viaFair);
 		RpgTestSupport.setStat(archer, Stat.DEX, 0);
 		helper.assertTrue(RpgCombat.fairRoll(archer, new Scripted(0.0), new RpgDice.Dice(3, 6)) == 3, "DEX 0 rolled a maximum");
 
-		ServerPlayer caster = RpgTestSupport.player(helper);
-		RpgTestSupport.setStat(caster, Stat.INT, 200);
-		double max = RpgSpells.matkMax(caster);
-		double min = RpgSpells.matkMin(caster);
-		double maxRoll = RpgSpells.spellDamage(caster, 100.0, new Scripted(0.20));
-		double fairRoll = RpgSpells.spellDamage(caster, 100.0, new Scripted(0.30, 0.5));
-		double k = RpgScale.k();
-		RpgTestSupport.result("maxRollChance", "dice=" + dice + " viaFair=" + viaFair + " matk=" + min + "-" + max + " maxRoll=" + maxRoll + " fairRoll=" + fairRoll);
-		helper.assertTrue(Math.abs(maxRoll - max / k) < 1e-9, "a MATK roll under the chance was " + maxRoll + " instead of the maximum " + max / k);
-		helper.assertTrue(Math.abs(fairRoll - (min + 0.5 * (max - min)) / k) < 1e-9, "a MATK roll over the chance was " + fairRoll);
-		RpgTestSupport.setStat(caster, Stat.INT, 0);
-		double plain = RpgSpells.spellDamage(caster, 100.0, new Scripted(0.0, 0.0));
-		helper.assertTrue(Math.abs(plain - RpgSpells.matkMin(caster) / k) < 1e-9, "INT 0 rolled a maximum: " + plain);
 		helper.succeed();
 	}
 
@@ -76,7 +59,7 @@ public final class StatEffectsGameTest {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
 		RpgTestSupport.setStat(player, Stat.INT, 300);
-		float factor = 1.0F - 0.4F * 300.0F / (300.0F + 300.0F);
+		float factor = (float) (1.0 - 0.3898314385112098);
 		float damage = 10.0F;
 		float generic = RpgCombat.scaleIncoming(player, level.damageSources().generic(), damage);
 		float magic = RpgCombat.scaleIncoming(player, level.damageSources().magic(), damage);

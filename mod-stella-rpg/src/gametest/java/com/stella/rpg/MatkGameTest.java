@@ -17,9 +17,6 @@ import net.minecraft.world.item.component.CustomData;
 
 /** MATK, the spell damage and heal calls, and the mob spell rule. */
 public final class MatkGameTest {
-	private static final int[] INT = {20, 50, 100, 200};
-	private static final int[] MIN = {24, 99, 296, 984};
-	private static final int[] MAX = {36, 150, 500, 1800};
 	private static final double EPSILON = 1e-9;
 
 	private static final class Stub implements MobsBridge.Facts {
@@ -37,34 +34,29 @@ public final class MatkGameTest {
 	}
 
 	@GameTest
-	public void matkTable(final GameTestHelper helper) {
+	public void matkPartsFromGear(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
-		StringBuilder log = new StringBuilder();
-		for (int i = 0; i < INT.length; i++) {
-			RpgTestSupport.setStat(player, Stat.INT, INT[i]);
-			double min = RpgSpells.matkMin(player);
-			double max = RpgSpells.matkMax(player);
-			log.append(INT[i]).append(':').append(min).append('-').append(max).append(' ');
-			helper.assertTrue(Math.abs(min - MIN[i]) < EPSILON, "matkMin at INT " + INT[i] + " was " + min + " expected " + MIN[i]);
-			helper.assertTrue(Math.abs(max - MAX[i]) < EPSILON, "matkMax at INT " + INT[i] + " was " + max + " expected " + MAX[i]);
-		}
 		RpgTestSupport.setStat(player, Stat.INT, 100);
+		helper.assertTrue(Math.abs(RpgSpells.matkPercent(player) - 1.0) < EPSILON, "bare MATK percent " + RpgSpells.matkPercent(player));
 		ItemStack book = RpgTestSupport.withAffixes(Items.BOOK, Map.of("matk_flat", 20, "matk_pct", 50));
 		CustomData.update(DataComponents.CUSTOM_DATA, book, tag -> tag.putInt("stella_refine", 3));
 		player.setItemSlot(EquipmentSlot.MAINHAND, book);
-		double flat = 20.0 + 12.0 * 3;
-		double bookMin = RpgSpells.matkMin(player);
-		double bookMax = RpgSpells.matkMax(player);
-		helper.assertTrue(Math.abs(bookMin - (296 + flat) * 1.05) < EPSILON, "book matkMin " + bookMin);
-		helper.assertTrue(Math.abs(bookMax - (500 + flat) * 1.05) < EPSILON, "book matkMax " + bookMax);
+		double percent = RpgSpells.matkPercent(player);
+		double flat = RpgSpells.matkFlat(player);
+		helper.assertTrue(Math.abs(percent - 1.05) < EPSILON, "book MATK percent " + percent);
+		helper.assertTrue(Math.abs(flat - (20.0 + 12.0 * 3)) < EPSILON, "book flat MATK " + flat);
 
 		ItemStack sword = RpgTestSupport.withAffixes(Items.IRON_SWORD, Map.of("matk_flat", 10));
 		CustomData.update(DataComponents.CUSTOM_DATA, sword, tag -> tag.putInt("stella_refine", 9));
 		player.setItemSlot(EquipmentSlot.MAINHAND, sword);
-		double swordMin = RpgSpells.matkMin(player);
-		helper.assertTrue(Math.abs(swordMin - 306) < EPSILON, "a refined sword gave book refine MATK: " + swordMin);
+		double swordFlat = RpgSpells.matkFlat(player);
+		helper.assertTrue(Math.abs(swordFlat - 10.0) < EPSILON, "a refined sword gave book refine MATK: " + swordFlat);
+		player.setItemSlot(EquipmentSlot.MAINHAND, book);
+		double hundred = RpgSpells.spellDamage(player, 100.0);
+		helper.assertTrue(Math.abs(RpgSpells.matkMin(player) - hundred * RpgScale.k()) < EPSILON
+			&& RpgSpells.matkMax(player) == RpgSpells.matkMin(player), "the compatibility helpers drifted");
 		player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
-		RpgTestSupport.result("matkTable", log.toString().trim() + " book=" + bookMin + "-" + bookMax + " sword=" + swordMin);
+		RpgTestSupport.result("matkPartsFromGear", "percent=" + percent + " flat=" + flat + " swordFlat=" + swordFlat);
 		helper.succeed();
 	}
 
@@ -72,31 +64,29 @@ public final class MatkGameTest {
 	public void spellDamageAndHeal(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		float k = RpgScale.kf();
-		RpgTestSupport.setStat(player, Stat.INT, 100);
-		double low = Double.MAX_VALUE;
-		double high = 0.0;
-		for (int i = 0; i < 600; i++) {
-			double damage = RpgSpells.spellDamage(player, 150.0);
-			low = Math.min(low, damage);
-			high = Math.max(high, damage);
-			helper.assertTrue(damage >= 296 * 1.5 / k - EPSILON && damage <= 500 * 1.5 / k + EPSILON, "spellDamage " + damage + " left the range");
-		}
-		helper.assertTrue(low < 296 * 1.5 / k + 1.0 && high > 500 * 1.5 / k - 1.0, "spellDamage never spread: " + low + ".." + high);
-
-		RpgTestSupport.setStat(player, Stat.INT, 14);
-		double exact = RpgSpells.spellDamage(player, 200.0);
-		helper.assertTrue(Math.abs(exact - 18 * 2.0 / k) < EPSILON, "spellDamage at INT 14 was " + exact);
-
-		RpgTestSupport.setStat(player, Stat.INT, 20);
 		player.experienceLevel = 10;
+		// Level 10 adds 3 bonus points, so base 97 makes INT 100.
+		RpgTestSupport.setStat(player, Stat.INT, 97);
+		// base(10) = 12 x 1.45 = 17.4. No roll, so every cast is the same.
+		double expected = 17.4 * 1.5 * 2.0;
+		RpgCombat.setRoller((attacker, random, chance) -> false);
+		try {
+			for (int i = 0; i < 50; i++) {
+				double damage = RpgSpells.spellDamage(player, 150.0);
+				helper.assertTrue(Math.abs(damage - expected) < EPSILON, "spellDamage " + damage + " expected " + expected);
+			}
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		RpgTestSupport.setStat(player, Stat.INT, 17);
 		double heal = RpgSpells.spellHeal(player, 2.0);
-		RpgTestSupport.result("spellDamageAndHeal", "low=" + low + " high=" + high + " exact=" + exact + " heal=" + heal);
+		RpgTestSupport.result("spellDamageAndHeal", "damage=" + expected + " heal=" + heal);
 		helper.assertTrue(Math.abs(heal - (10 + 20) * 2.0 / k) < EPSILON && Math.abs(heal * k - 60.0) < 1e-6, "spellHeal was " + heal);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void mobSpellsUseMatk(final GameTestHelper helper) {
+	public void mobSpellsUseThreatAndInt(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.INT, 100);
 		helper.assertTrue(RpgSpells.power(player) == 1.0, "power is " + RpgSpells.power(player));
@@ -104,40 +94,96 @@ public final class MatkGameTest {
 
 		Stub stub = new Stub();
 		MobsBridge.setFacts(stub);
+		// Mob LUK gives a crit chance, so the no-crit case needs a fixed roller.
+		RpgCombat.setRoller((attacker, random, chance) -> false);
 		try {
 			Zombie caster = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 1, 2, 1);
 			RpgTestSupport.bare(caster);
-			float k = RpgScale.kf();
 			int intel = StatBonuses.effective(caster, Stat.INT);
-			helper.assertTrue(intel == 14 && RpgSpells.matkMin(caster) == RpgSpells.matkMax(caster), "the caster has INT " + intel);
+			helper.assertTrue(intel == 14, "the caster has INT " + intel);
+			float one = spellLoss(helper, caster, 1.0F);
 			float three = spellLoss(helper, caster, 3.0F);
-			float six = spellLoss(helper, caster, 6.0F);
-			double matk = RpgSpells.matkMin(caster);
-			stub.threats.put(caster, 200);
-			double lowMatk = RpgSpells.matkMin(caster);
-			double highMatk = RpgSpells.matkMax(caster);
-			float strong = spellLoss(helper, caster, 3.0F);
-			RpgTestSupport.result("mobSpellsUseMatk", "matk=" + matk + " three=" + three + " six=" + six + " strong=" + strong
-				+ " range=" + lowMatk + "-" + highMatk);
-			helper.assertTrue(Math.abs(three - matk) < 0.01F, "a 3 point mob spell dealt " + three + " expected " + matk);
-			helper.assertTrue(Math.abs(six - 2.0 * matk) < 0.01F, "a 6 point mob spell dealt " + six + " expected " + 2.0 * matk);
-			helper.assertTrue(lowMatk < highMatk && strong >= lowMatk - 0.01F && strong <= highMatk + 0.01F,
-				"a threat 200 spell dealt " + strong + " outside " + lowMatk + ".." + highMatk);
-			helper.assertTrue(k > 1.0F, "K is " + k);
+			stub.threats.put(caster, 41);
+			float strong = spellLoss(helper, caster, 1.0F);
+			// Threat 0 counts as level 1. A point is 50 percent. The bare victim resists 25 percent.
+			double level1 = 12.0 * 0.5 * 1.14 * 0.75;
+			int strongInt = MobStats.base(RpgConfig.defaults(), "magic", Stat.INT, 41);
+			// The level 0 victim takes 10 percent more for each 10 threat levels, so 40 levels give 1.4.
+			double level41 = 12.0 * (1.0 + 0.05 * 40) * 0.5 * (1.0 + strongInt / 100.0) * 0.75 * 1.4;
+			RpgTestSupport.result("mobSpellsUseThreatAndInt", "one=" + one + " three=" + three + " strong=" + strong);
+			helper.assertTrue(Math.abs(one - level1) < 0.01F, "a 1 point mob spell dealt " + one + " expected " + level1);
+			helper.assertTrue(Math.abs(three - 3.0 * level1) < 0.01F, "a 3 point mob spell dealt " + three);
+			helper.assertTrue(Math.abs(strong - level41) < 0.01F, "a threat 41 spell dealt " + strong + " expected " + level41);
 		} finally {
+			RpgCombat.setRoller(null);
 			MobsBridge.setFacts(null);
 		}
 		helper.succeed();
 	}
 
-	/** The health lost by a bare player without stats, in K units, so it equals the MATK roll times the skill share. */
+	@GameTest
+	public void mobSpellCrits(final GameTestHelper helper) {
+		Zombie caster = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 1, 2, 1);
+		RpgTestSupport.bare(caster);
+		float plain;
+		float crit;
+		try {
+			RpgCombat.setRoller((attacker, random, chance) -> false);
+			plain = spellLoss(helper, caster, 1.0F);
+			RpgCombat.setRoller((attacker, random, chance) -> true);
+			crit = spellLoss(helper, caster, 1.0F);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		RpgTestSupport.result("mobSpellCrits", "plain=" + plain + " crit=" + crit);
+		// A crit ignores the 25 percent magic resistance of the bare victim.
+		helper.assertTrue(Math.abs(crit - plain / 0.75F * RpgCurve.critMultiplier()) < 0.01F, "a mob spell crit dealt " + crit + " against " + plain);
+		float strongPlain;
+		float strongCrit;
+		try {
+			RpgCombat.setRoller((attacker, random, chance) -> false);
+			strongPlain = spellLoss(helper, caster, 1.0F, 1024);
+			RpgCombat.setRoller((attacker, random, chance) -> true);
+			strongCrit = spellLoss(helper, caster, 1.0F, 1024);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		helper.assertTrue(Math.abs(strongCrit - strongPlain / 0.25F * RpgCurve.critMultiplier()) < 0.01F,
+			"a crit on INT 1024 dealt " + strongCrit + " against " + strongPlain);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void summonedSpellPassesThrough(final GameTestHelper helper) {
+		Zombie servant = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 1, 2, 1);
+		RpgTestSupport.bare(servant);
+		servant.addTag("mod-stella-spells.summoned");
+		float loss;
+		try {
+			RpgCombat.setRoller((attacker, random, chance) -> true);
+			loss = spellLoss(helper, servant, 4.0F);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		RpgTestSupport.result("summonedSpellPassesThrough", "loss=" + loss);
+		// The amount stays 4, and only the 25 percent magic resistance of the bare victim applies.
+		helper.assertTrue(Math.abs(loss - 3.0F) < 0.01F, "a servant spell dealt " + loss + " expected 3.0");
+		helper.succeed();
+	}
+
+	/** The health lost by a bare player, in vanilla units. The victim's max health is large, so nothing clamps. */
 	private static float spellLoss(final GameTestHelper helper, final Mob caster, final float amount) {
+		return spellLoss(helper, caster, amount, 0);
+	}
+
+	private static float spellLoss(final GameTestHelper helper, final Mob caster, final float amount, final int victimInt) {
 		ServerPlayer victim = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(victim);
+		RpgTestSupport.setStat(victim, Stat.INT, victimInt);
 		victim.getAttribute(Attributes.MAX_HEALTH).setBaseValue(2000.0);
 		victim.setHealth(victim.getMaxHealth());
 		float before = victim.getHealth();
 		victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().indirectMagic(caster, caster), amount);
-		return before - victim.getHealth();
+		return (before - victim.getHealth()) / RpgScale.kf();
 	}
 }

@@ -10,11 +10,9 @@ import net.minecraft.world.entity.player.Player;
 /**
  * Spell numbers other mods read. {@code mod-stella-spells} finds this class by name, so
  * the class name and every public method signature are a public contract.
- * MATK is in K units. A damage or heal result is in vanilla units, so the health scale multiplies it once.
+ * A damage or heal result is in vanilla units, so the health scale multiplies it once.
  */
 public final class RpgSpells {
-	public static final int MIN_DIVISOR = 7;
-	public static final int MAX_DIVISOR = 5;
 	private static final double PERCENT = 100.0;
 
 	private RpgSpells() {
@@ -25,47 +23,78 @@ public final class RpgSpells {
 		return 1.0;
 	}
 
+	/** The cooldown multiplier. INT and DEX both cut it. */
 	public static double cooldown(final Player player) {
-		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT));
+		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT) + StatBonuses.effective(player, Stat.DEX));
 	}
 
+	/** The spell base at a level, in vanilla units. A hit of 100 percent deals this at 0 MATK percent. */
+	public static double base(final int level) {
+		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
+		return rules.spellBase() * (1.0 + rules.spellGrowth() * (Math.max(1, level) - 1));
+	}
+
+	/** MATK percent as a fraction: INT times the share per point, plus the MATK percent affixes. */
+	public static double matkPercent(final LivingEntity entity) {
+		return matkPercent(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MATK_PCT));
+	}
+
+	public static double matkPercent(final int intel, final double affixPercent) {
+		return intel * RpgConfigStore.current().magic().matkPerInt() + affixPercent;
+	}
+
+	/** Flat MATK from affixes and book refine, in K units. */
+	public static double matkFlat(final LivingEntity entity) {
+		return Affixes.matkFlat(entity);
+	}
+
+	/** Magic resistance as a fraction: the INT curve plus the resistance affixes, at most the cap. */
+	public static double resistance(final LivingEntity entity) {
+		return resistance(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MAGIC_RES_PCT));
+	}
+
+	public static double resistance(final int intel, final double affixPercent) {
+		double cap = RpgConfigStore.current().magic().resistCap();
+		return Math.min(cap, RpgCurve.magicResistance(intel) + affixPercent);
+	}
+
+	/** Magic penetration as a fraction, from the attacker's held book. */
+	public static double penetration(final LivingEntity attacker) {
+		return Affixes.total(attacker, Affix.MAGIC_PEN);
+	}
+
+	/** Compatibility: the hit of a 100 percent skill, in K units. */
 	public static double matkMin(final LivingEntity entity) {
-		return matk(entity, MIN_DIVISOR);
+		return spellHit(entity, PERCENT) * RpgScale.k();
 	}
 
+	/** Compatibility: equals {@link #matkMin}, because the model has no roll. */
 	public static double matkMax(final LivingEntity entity) {
-		return matk(entity, MAX_DIVISOR);
+		return matkMin(entity);
 	}
 
-	/** MATK for a given INT, flat bonus, and percent bonus. */
-	public static double matk(final int intel, final int divisor, final double flat, final double percent) {
-		int step = intel / divisor;
-		return (intel + step * step + flat) * (1.0 + percent);
-	}
-
-	/** A roll between the MATK minimum and maximum, times the skill percent (150 is 150%), in vanilla units. */
+	/** A hit that can crit with the LUK chance and the multiplier of a weapon hit, in vanilla units. */
 	public static double spellDamage(final LivingEntity caster, final double skillPercent) {
-		return spellDamage(caster, skillPercent, caster.getRandom());
+		double hit = spellHit(caster, skillPercent);
+		boolean crit = RpgCombat.rollCrit(caster);
+		RpgCombat.markSpellCrit(caster, crit);
+		return crit ? hit * RpgCurve.critMultiplier() : hit;
 	}
 
-	/** The roll is the MATK maximum with the INT chance, and uniform between the minimum and maximum otherwise. */
+	/** The skill percent (150 is 150%) of the base, times MATK percent, plus flat MATK. No crit. */
+	public static double spellHit(final LivingEntity caster, final double skillPercent) {
+		double scaled = base(level(caster)) * skillPercent / PERCENT * (1.0 + matkPercent(caster));
+		return scaled + matkFlat(caster) / RpgScale.k();
+	}
+
+	/** Compatibility: the random source is unused. The crit uses the combat roller. */
 	public static double spellDamage(final LivingEntity caster, final double skillPercent, final RandomSource random) {
-		double min = matkMin(caster);
-		double max = matkMax(caster);
-		double chance = RpgCurve.intMaxRollChance(StatBonuses.effective(caster, Stat.INT));
-		double roll = chance > 0.0 && random.nextDouble() < chance ? max : min + random.nextDouble() * (max - min);
-		return roll * skillPercent / PERCENT / RpgScale.k();
+		return spellDamage(caster, skillPercent);
 	}
 
 	/** Level plus INT times the coefficient, in vanilla units. */
 	public static double spellHeal(final LivingEntity caster, final double coefficient) {
 		return (level(caster) + StatBonuses.effective(caster, Stat.INT)) * coefficient / RpgScale.k();
-	}
-
-	private static double matk(final LivingEntity entity, final int divisor) {
-		return matk(
-			StatBonuses.effective(entity, Stat.INT), divisor, Affixes.matkFlat(entity), Affixes.total(entity, Affix.MATK_PCT)
-		);
 	}
 
 	private static int level(final LivingEntity caster) {

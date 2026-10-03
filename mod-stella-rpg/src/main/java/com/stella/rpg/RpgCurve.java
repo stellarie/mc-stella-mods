@@ -39,19 +39,23 @@ public final class RpgCurve {
 		return RpgConfigStore.current().critMultiplier();
 	}
 
-	/** The chance that one physical die rolls its maximum. */
+	/** The chance that one physical die rolls its maximum: a share per DEX, at most 100 percent. */
 	public static double dexMaxRollChance(final int dex) {
-		return value(Effect.DEX_MAX_ROLL, dex);
+		return Math.min(1.0, Math.max(0, dex) * RpgConfigStore.current().scaling().dexMaxRollPerPoint());
 	}
 
-	/** The chance that a MATK roll is the maximum. */
-	public static double intMaxRollChance(final int intel) {
-		return value(Effect.INT_MAX_ROLL, intel);
+	/** The INT share of magic resistance: base plus the span times the logistic, at most the cap. */
+	public static double magicResistance(final int intel) {
+		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
+		double x = Math.max(0.0, Math.min(rules.resistMaxInt(), intel));
+		double low = logistic(0.0, rules);
+		double span = logistic(rules.resistMaxInt(), rules) - low;
+		double share = span > 0.0 ? (logistic(x, rules) - low) / span : 0.0;
+		return Math.min(rules.resistCap(), rules.resistBase() + rules.resistSpan() * share);
 	}
 
-	/** The multiplier on magic damage taken. */
-	public static double magicDamageTakenMultiplier(final int intel) {
-		return 1.0 - value(Effect.MAGIC_DEFENSE, intel);
+	private static double logistic(final double x, final RpgConfig.MagicRules rules) {
+		return 1.0 / (1.0 + Math.exp(-(x - rules.resistMidpoint()) / rules.resistWidth()));
 	}
 
 	/** The multiplier on a critical hit taken. */
@@ -59,7 +63,8 @@ public final class RpgCurve {
 		return 1.0 - value(Effect.CRIT_REDUCTION, luk);
 	}
 
-	public static double cooldownMultiplier(final int intel) {
-		return 1.0 - value(Effect.COOLDOWN_REDUCTION, intel);
+	/** The spell cooldown multiplier for INT plus DEX. */
+	public static double cooldownMultiplier(final int intelAndDex) {
+		return 1.0 - value(Effect.COOLDOWN_REDUCTION, intelAndDex);
 	}
 }

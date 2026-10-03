@@ -16,6 +16,7 @@ import net.minecraft.world.item.component.CustomData;
 public final class Affixes {
 	public static final Identifier HP_FLAT_ID = StellaRpg.id("affix_hp_flat");
 	public static final Identifier HP_PCT_ID = StellaRpg.id("affix_hp_pct");
+	public static final Identifier MOVE_SPEED_ID = StellaRpg.id("affix_move_speed");
 	public static final String REFINE_KEY = "stella_refine";
 	public static final double MATK_PER_REFINE = 12.0;
 
@@ -37,7 +38,7 @@ public final class Affixes {
 		}
 		ItemStack held = entity.getItemBySlot(EquipmentSlot.MAINHAND);
 		Affix.Kind kind = WeaponRolls.kindOf(held);
-		return kind != null && affix.rollsOn(kind) ? stored(held, affix, kind) : 0.0;
+		return kind != null && affix.readsOn(kind) ? stored(held, affix, kind) : 0.0;
 	}
 
 	/** Flat MATK from affixes and from the refine level of the main-hand spellbook. K units. */
@@ -60,6 +61,14 @@ public final class Affixes {
 		}
 		set(health, HP_FLAT_ID, total(entity, Affix.HP_FLAT) / k, AttributeModifier.Operation.ADD_VALUE);
 		set(health, HP_PCT_ID, total(entity, Affix.HP_PCT), AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+	}
+
+	/** Puts the worn movement speed affixes on the speed attribute. */
+	public static void refreshSpeed(final LivingEntity entity) {
+		AttributeInstance speed = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+		if (speed != null) {
+			set(speed, MOVE_SPEED_ID, total(entity, Affix.MOVE_SPEED_PCT), AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
+		}
 	}
 
 	private static void set(
