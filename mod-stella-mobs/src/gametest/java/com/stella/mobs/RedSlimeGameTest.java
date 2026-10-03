@@ -96,6 +96,7 @@ public class RedSlimeGameTest {
 		java.util.Set<java.util.UUID> before = new java.util.HashSet<>();
 		level.getEntities(StellaEntities.RED_SLIME, slime -> true).forEach(slime -> before.add(slime.getUUID()));
 		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(0.0);
 		try {
 			int spawned = 0;
 			for (int attempt = 0; attempt < 40 && RedSlimeSpawnRule.countInBiome(level, biome) < RedSlimeSpawnRule.MAX_PER_BIOME; attempt++) {
@@ -126,8 +127,34 @@ public class RedSlimeGameTest {
 			}
 		} finally {
 			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
+			com.stella.mobs.entity.spawn.RedSlimeSpawnRule.setPlayerGap(null);
 		}
 		RedSlimeSpawnRule.INSTANCE.reset();
+		helper.succeed();
+	}
+
+	/** A player at the chunk's centre keeps every spot in it inside the 24-block ring, so no slime spawns. */
+	@GameTest(maxTicks = 100)
+	public void noSpawnNearAPlayer(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos origin = helper.absolutePos(BlockPos.ZERO);
+		ChunkPos chunk = new ChunkPos(origin.getX() >> 4, origin.getZ() >> 4);
+		ServerPlayer player = Arena.addSurvivalPlayer(helper);
+		player.snapTo(chunk.getMiddleBlockX() + 0.5, origin.getY() + 1, chunk.getMiddleBlockZ() + 0.5, 0.0F, 0.0F);
+		com.stella.mobs.entity.spawn.SlimeFalloff.setRoller((random, chance) -> true);
+		int red = 0;
+		try {
+			for (int attempt = 0; attempt < 20; attempt++) {
+				if (RedSlimeSpawnRule.INSTANCE.trySpawn(level, chunk, 1_000_000L)) {
+					red++;
+				}
+			}
+		} finally {
+			com.stella.mobs.entity.spawn.SlimeFalloff.setRoller(null);
+			RedSlimeSpawnRule.INSTANCE.reset();
+		}
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", "noSpawnNearAPlayer", "red=" + red);
+		helper.assertTrue(red == 0, red + " red slimes spawned within 24 blocks of a player");
 		helper.succeed();
 	}
 

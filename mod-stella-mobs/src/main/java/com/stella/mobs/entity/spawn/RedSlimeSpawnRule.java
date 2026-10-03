@@ -34,9 +34,12 @@ import net.minecraft.world.level.levelgen.Heightmap;
  */
 public final class RedSlimeSpawnRule implements SpawnRule {
 	public static final RedSlimeSpawnRule INSTANCE = new RedSlimeSpawnRule();
-	public static final int MAX_PER_BIOME = 5;
+	public static final int MAX_PER_BIOME = 2;
 	/** Ten seconds. */
 	public static final int REFILL_TICKS = 200;
+	/** A slime never spawns this close to a player. */
+	public static final double MIN_PLAYER_DISTANCE = 24.0;
+	private static double playerGap = MIN_PLAYER_DISTANCE;
 	public static final int CHUNK_RADIUS = 2;
 	public static final int TRIES_PER_CHUNK = 16;
 	public static final long DAY_TICKS = 24000L;
@@ -95,6 +98,11 @@ public final class RedSlimeSpawnRule implements SpawnRule {
 		}
 	}
 
+	/** Test seam: other tests' players stand near; null restores the rule. */
+	public static void setPlayerGap(final Double gap) {
+		playerGap = gap == null ? MIN_PLAYER_DISTANCE : gap;
+	}
+
 	/** How many loaded red slimes stand in the biome. */
 	public static int countInBiome(final ServerLevel level, final Holder<Biome> biome) {
 		return level.getEntities(
@@ -129,7 +137,8 @@ public final class RedSlimeSpawnRule implements SpawnRule {
 			if (y <= level.getMinY()
 				|| !SpawnPlacements.isSpawnPositionOk(StellaEntities.RED_SLIME, level, pos)
 				|| !level.noCollision(StellaEntities.RED_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))
-				|| LightSources.near(level, pos, LightSources.RADIUS)) {
+				|| LightSources.near(level, pos, LightSources.RADIUS)
+				|| playerGap > 0.0 && level.getNearestPlayer(x + 0.5, y, z + 0.5, playerGap, false) != null) {
 				continue;
 			}
 			// One roll per attempt: a retry at another spot would undo the falloff.

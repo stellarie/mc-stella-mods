@@ -34,6 +34,8 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 	public static final int LIGHT_LEVEL = 15;
 	/** Ten seconds. */
 	public static final int REFILL_TICKS = 200;
+	/** A slime never spawns this close to a player. */
+	public static final double MIN_PLAYER_DISTANCE = 24.0;
 	/** The chunks around a player that the rule fills, on each side. */
 	public static final int CHUNK_RADIUS = 2;
 	public static final int TRIES_PER_SLOT = 16;
@@ -148,7 +150,8 @@ public final class BlueSlimeSpawnRule implements SpawnRule {
 			if (y <= level.getMinY() || lightAt(level, pos) != LIGHT_LEVEL
 				|| !SpawnPlacements.isSpawnPositionOk(StellaEntities.BLUE_SLIME, level, pos)
 				|| !level.noCollision(StellaEntities.BLUE_SLIME.getSpawnAABB(x + 0.5, y, z + 0.5))
-				|| LightSources.near(level, pos, LightSources.RADIUS)) {
+				|| LightSources.near(level, pos, LightSources.RADIUS)
+				|| level.getNearestPlayer(x + 0.5, y, z + 0.5, MIN_PLAYER_DISTANCE, false) != null) {
 				continue;
 			}
 			// One roll per attempt: a retry at another spot would undo the falloff.
