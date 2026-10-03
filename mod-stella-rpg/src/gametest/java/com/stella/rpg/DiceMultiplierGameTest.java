@@ -79,11 +79,12 @@ public final class DiceMultiplierGameTest {
 				// Bare hand: STR 0 rolls 1d4, no weapon die, material 1.
 				player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
 				float bare = RpgCombat.scaleOutgoing(victim, melee, HIT);
-				helper.assertTrue(near(bare, HIT + 4 * (1.0F + 0.02F * experience)), "bare hand at level " + experience + " hit " + bare);
+				float status = (float) RpgCombat.statusAtk(StatBonuses.effective(player, Stat.STR));
+				helper.assertTrue(near(bare, HIT + 4 * (1.0F + 0.02F * experience) + status), "bare hand at level " + experience + " hit " + bare);
 				// Netherite sword +15: 1d4 + (1 + 3)d8 dice, x1.6 material, x3.45 refine.
 				player.setItemSlot(EquipmentSlot.MAINHAND, WeaponDiceGameTest.refined(Items.NETHERITE_SWORD, 15));
 				float sword = RpgCombat.scaleOutgoing(victim, melee, HIT);
-				float expected = HIT + (4 + 4 * 8) * (1.0F + 0.02F * experience) * 1.6F * 3.45F;
+				float expected = HIT + (4 + 4 * 8) * (1.0F + 0.02F * experience) * 1.6F * 3.45F + status;
 				log.append("L").append(experience).append(':').append(bare).append('/').append(sword).append(' ');
 				helper.assertTrue(near(sword, expected), "netherite +15 at level " + experience + " hit " + sword + " expected " + expected);
 			}
@@ -91,7 +92,8 @@ public final class DiceMultiplierGameTest {
 			player.setItemSlot(EquipmentSlot.MAINHAND, WeaponDiceGameTest.refined(Items.IRON_SWORD, 12));
 			RpgCombat.setDiceRoller((attacker, random, dice) -> 0);
 			float base = RpgCombat.scaleOutgoing(victim, melee, HIT);
-			helper.assertTrue(near(base, HIT), "the multiplier reached the base damage: " + base);
+			float levelStatus = (float) RpgCombat.statusAtk(StatBonuses.effective(player, Stat.STR));
+			helper.assertTrue(near(base, HIT + levelStatus), "the multiplier reached the base damage: " + base);
 		} finally {
 			RpgCombat.setRoller(null);
 			RpgCombat.setDiceRoller(null);
@@ -122,7 +124,8 @@ public final class DiceMultiplierGameTest {
 			}
 			int str = StatBonuses.effective(attacker, Stat.STR);
 			float dice = RpgDice.of(str).max() + 4;
-			float expected = HIT + dice * (1.0F + 0.02F * 50) * 1.2F * (float) RpgConfig.DEFAULT_MOB_DICE_SHARE + (float) RpgCombat.statusAtk(str);
+			// The level 0 victim takes 10 percent more for each 10 threat levels: 1.5 at threat 50.
+			float expected = 1.5F * (HIT + dice * (1.0F + 0.02F * 50) * 1.2F * (float) RpgConfig.DEFAULT_MOB_DICE_SHARE + (float) RpgCombat.statusAtk(str));
 			RpgTestSupport.result("mobMultiplierAndShare", "hit=" + hit + " expected=" + expected + " threat=50");
 			helper.assertTrue(near(hit, expected), "a threat 50 mob with an iron sword hit " + hit + " expected " + expected);
 		} finally {

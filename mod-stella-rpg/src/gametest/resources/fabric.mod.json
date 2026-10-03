@@ -55,7 +55,8 @@
 			"com.stella.rpg.MobGrowthGameTest",
 			"com.stella.rpg.MagicModelGameTest",
 			"com.stella.rpg.AffixPoolGameTest",
-			"com.stella.rpg.ArmorPenGameTest"
+			"com.stella.rpg.ArmorPenGameTest",
+			"com.stella.rpg.LevelRulesGameTest"
 		]
 	},
 	"depends": {

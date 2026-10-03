@@ -39,9 +39,9 @@ public final class RpgCurve {
 		return RpgConfigStore.current().critMultiplier();
 	}
 
-	/** The chance that one physical die rolls its maximum. */
+	/** The chance that one physical die rolls its maximum: a share per DEX, at most 100 percent. */
 	public static double dexMaxRollChance(final int dex) {
-		return value(Effect.DEX_MAX_ROLL, dex);
+		return Math.min(1.0, Math.max(0, dex) * RpgConfigStore.current().scaling().dexMaxRollPerPoint());
 	}
 
 	/** The INT share of magic resistance: base plus the span times the logistic, at most the cap. */

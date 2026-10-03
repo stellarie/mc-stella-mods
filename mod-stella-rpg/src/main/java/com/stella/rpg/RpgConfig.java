@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
 	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
-	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic
+	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -94,6 +94,26 @@ public record RpgConfig(
 		}
 	}
 
+	/**
+	 * Level and DEX numbers. A die rolls its maximum with {@code dexMaxRollPerPoint} per DEX, at most 100 percent.
+	 * A player gets {@code bonusPoints} in every stat per {@code bonusLevelStep} levels.
+	 * A mob hit gains {@code gapPercent} per {@code gapLevelStep} levels of threat above the player's level.
+	 */
+	public record ScalingRules(double dexMaxRollPerPoint, int bonusLevelStep, int bonusPoints, int gapLevelStep, double gapPercent) {
+		public static final String KEY = "scaling";
+		public static final ScalingRules DEFAULT = new ScalingRules(0.01, 10, 3, 10, 0.10);
+
+		public Map<String, Number> toJson() {
+			Map<String, Number> out = new LinkedHashMap<>();
+			out.put("dex_max_roll_per_point", this.dexMaxRollPerPoint);
+			out.put("bonus_level_step", this.bonusLevelStep);
+			out.put("bonus_points", this.bonusPoints);
+			out.put("gap_level_step", this.gapLevelStep);
+			out.put("gap_percent", this.gapPercent);
+			return out;
+		}
+	}
+
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
 		public static final DiceRules DEFAULT = new DiceRules(1, 4, 25, 100);
 	}
@@ -104,7 +124,6 @@ public record RpgConfig(
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
 		COOLDOWN_REDUCTION("cooldown_reduction", 0.50, 400),
 		CRIT_CHANCE("crit_chance", 0.50, 300),
-		DEX_MAX_ROLL("dex_max_roll", 0.50, 200),
 		CRIT_REDUCTION("crit_reduction", 0.50, 300),
 		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);
 
@@ -132,7 +151,7 @@ public record RpgConfig(
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
 			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE,
-			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT);
+			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */

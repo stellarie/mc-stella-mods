@@ -76,7 +76,9 @@ public final class RpgSpells {
 	/** A hit that can crit with the LUK chance and the multiplier of a weapon hit, in vanilla units. */
 	public static double spellDamage(final LivingEntity caster, final double skillPercent) {
 		double hit = spellHit(caster, skillPercent);
-		return RpgCombat.rollCrit(caster) ? hit * RpgCurve.critMultiplier() : hit;
+		boolean crit = RpgCombat.rollCrit(caster);
+		RpgCombat.markSpellCrit(caster, crit);
+		return crit ? hit * RpgCurve.critMultiplier() : hit;
 	}
 
 	/** The skill percent (150 is 150%) of the base, times MATK percent, plus flat MATK. No crit. */

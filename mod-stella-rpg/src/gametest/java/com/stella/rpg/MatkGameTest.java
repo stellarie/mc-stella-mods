@@ -65,14 +65,20 @@ public final class MatkGameTest {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		float k = RpgScale.kf();
 		player.experienceLevel = 10;
-		RpgTestSupport.setStat(player, Stat.INT, 100);
+		// Level 10 adds 3 bonus points, so base 97 makes INT 100.
+		RpgTestSupport.setStat(player, Stat.INT, 97);
 		// base(10) = 12 x 1.45 = 17.4. No roll, so every cast is the same.
 		double expected = 17.4 * 1.5 * 2.0;
-		for (int i = 0; i < 50; i++) {
-			double damage = RpgSpells.spellDamage(player, 150.0);
-			helper.assertTrue(Math.abs(damage - expected) < EPSILON, "spellDamage " + damage + " expected " + expected);
+		RpgCombat.setRoller((attacker, random, chance) -> false);
+		try {
+			for (int i = 0; i < 50; i++) {
+				double damage = RpgSpells.spellDamage(player, 150.0);
+				helper.assertTrue(Math.abs(damage - expected) < EPSILON, "spellDamage " + damage + " expected " + expected);
+			}
+		} finally {
+			RpgCombat.setRoller(null);
 		}
-		RpgTestSupport.setStat(player, Stat.INT, 20);
+		RpgTestSupport.setStat(player, Stat.INT, 17);
 		double heal = RpgSpells.spellHeal(player, 2.0);
 		RpgTestSupport.result("spellDamageAndHeal", "damage=" + expected + " heal=" + heal);
 		helper.assertTrue(Math.abs(heal - (10 + 20) * 2.0 / k) < EPSILON && Math.abs(heal * k - 60.0) < 1e-6, "spellHeal was " + heal);
@@ -102,7 +108,8 @@ public final class MatkGameTest {
 			// Threat 0 counts as level 1. A point is 50 percent. The bare victim resists 25 percent.
 			double level1 = 12.0 * 0.5 * 1.14 * 0.75;
 			int strongInt = MobStats.base(RpgConfig.defaults(), "magic", Stat.INT, 41);
-			double level41 = 12.0 * (1.0 + 0.05 * 40) * 0.5 * (1.0 + strongInt / 100.0) * 0.75;
+			// The level 0 victim takes 10 percent more for each 10 threat levels, so 40 levels give 1.4.
+			double level41 = 12.0 * (1.0 + 0.05 * 40) * 0.5 * (1.0 + strongInt / 100.0) * 0.75 * 1.4;
 			RpgTestSupport.result("mobSpellsUseThreatAndInt", "one=" + one + " three=" + three + " strong=" + strong);
 			helper.assertTrue(Math.abs(one - level1) < 0.01F, "a 1 point mob spell dealt " + one + " expected " + level1);
 			helper.assertTrue(Math.abs(three - 3.0 * level1) < 0.01F, "a 3 point mob spell dealt " + three);

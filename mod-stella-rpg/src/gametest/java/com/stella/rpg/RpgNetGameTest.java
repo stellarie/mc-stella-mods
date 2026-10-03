@@ -150,8 +150,8 @@ public final class RpgNetGameTest {
 			helper.assertTrue(payload.base().length == 6 && payload.bonus().length == 6, "lengths=" + payload);
 			helper.assertTrue(payload.base()[Stat.STR.ordinal()] == 25, "str base=" + payload);
 			helper.assertTrue(payload.base()[Stat.LUK.ordinal()] == 7, "luk base=" + payload);
-			helper.assertTrue(payload.bonus()[Stat.STR.ordinal()] == 5, "str bonus=" + payload);
-			helper.assertTrue(payload.bonus()[Stat.AGI.ordinal()] == 0, "agi bonus=" + payload);
+			helper.assertTrue(payload.bonus()[Stat.STR.ordinal()] == 5 + 9, "str bonus=" + payload);
+			helper.assertTrue(payload.bonus()[Stat.AGI.ordinal()] == 9, "agi bonus=" + payload);
 			helper.assertTrue(payload.unspent() == StatPoints.total(30) - 32, "unspent=" + payload.unspent());
 			helper.assertTrue(payload.level() == 30, "level=" + payload.level());
 			RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());

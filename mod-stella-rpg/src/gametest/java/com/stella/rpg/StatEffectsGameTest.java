@@ -37,8 +37,6 @@ public final class StatEffectsGameTest {
 
 	@GameTest
 	public void maxRollChance(final GameTestHelper helper) {
-		helper.assertTrue(RpgCurve.dexMaxRollChance(0) == 0.0 && Math.abs(RpgCurve.dexMaxRollChance(200) - 0.25) < 1e-12
-			&& Math.abs(RpgCurve.dexMaxRollChance(800) - 0.4) < 1e-12, "the DEX curve");
 
 		// Three 1d6 dice and chance 0.25: 0.24 is a maximum, 0.26 is a fair roll of 1, and 0.10 is a maximum.
 		int dice = new RpgDice.Dice(3, 6).roll(new Scripted(0.24, 0.26, 0.10), 0.25);
@@ -46,9 +44,9 @@ public final class StatEffectsGameTest {
 		helper.assertTrue(new RpgDice.Dice(3, 6).roll(new Scripted(0.0), 0.0) == 3, "a zero chance rolled a maximum");
 
 		ServerPlayer archer = RpgTestSupport.player(helper);
-		RpgTestSupport.setStat(archer, Stat.DEX, 200);
+		RpgTestSupport.setStat(archer, Stat.DEX, 25);
 		int viaFair = RpgCombat.fairRoll(archer, new Scripted(0.24, 0.26, 0.10), new RpgDice.Dice(3, 6));
-		helper.assertTrue(viaFair == 13, "the fair dice roller used DEX 200 and rolled " + viaFair);
+		helper.assertTrue(viaFair == 13, "the fair dice roller used DEX 25 and rolled " + viaFair);
 		RpgTestSupport.setStat(archer, Stat.DEX, 0);
 		helper.assertTrue(RpgCombat.fairRoll(archer, new Scripted(0.0), new RpgDice.Dice(3, 6)) == 3, "DEX 0 rolled a maximum");
 

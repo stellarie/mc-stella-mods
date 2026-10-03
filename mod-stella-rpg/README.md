@@ -126,7 +126,6 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
 | Cooldown | INT + DEX | `cooldown_reduction` | 0.50 | 400 | `1 - value`, with `s = INT + DEX`; the spells mod applies it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
-| Max roll chance | DEX | `dex_max_roll` | 0.50 | 200 | chance that one physical die rolls its maximum |
 | Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
 
 ## Dice damage
@@ -181,8 +180,9 @@ Outgoing damage from a player or a mob follows these rules:
    Status ATK ignores the swing charge.
 6. Rules 1 and 2 then add the flat damage affix divided by K, and multiply by `1 + damage% + 0.1 * (Strength level - Weakness level)`.
    The factor is never below 0. Strength and Weakness no longer change the attack damage attribute.
-7. LUK rolls the crit for rules 1 and 2. A crit ignores all armor and toughness, and all magic resistance, for every attacker.
-   A crit of a mob spell does the same. A crit of a player spell is rolled in `RpgSpells.spellDamage`, before the victim is known, so it ignores neither. A crit multiplies the total by `crit_multiplier`.
+7. LUK rolls the crit for rules 1 and 2. A crit multiplies the total by `crit_multiplier`.
+   A crit ignores all armor and toughness, and all magic resistance, for every attacker.
+   A spell crit does the same, for a mob caster and for a player caster (see Magic model).
    A victim with LUK takes `1 - 0.5 * LUK / (LUK + 300)` of a critical hit. `RpgCombat` passes the crit flag to `scaleIncoming`
    in a `ThreadLocal` for the victim of that hurt call, and `RpgOutgoingDamageMixin` clears it when `hurtServer` returns.
 
@@ -272,7 +272,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `weapon_dice`, `material_dice_multiplier`, `dice_multiplier_per_level`, `refine_dice_multiplier`, and `refine_extra_dice` hold the weapon dice tables.
   A die is a string such as `"1d6"`. A bad value logs one error and uses the default for that key.
 - `enchant_stats` and `effect_stats` map a name to a stat map from -1024 to 1024. `effect_stats` entries take `"per_level": false` for a flat effect.
-- `dex_max_roll` and `crit_reduction` are curve keys like the others. `int_max_roll` and `magic_defense` are retired and ignored.
+- `crit_reduction` is a curve key like the others. `dex_max_roll`, `int_max_roll`, and `magic_defense` are retired and ignored.
 - `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50,
   `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, `resist_cap` 0.9, `armor_pen_base` 0.25, and `armor_pen_cap` 0.75.
   A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
@@ -504,6 +504,19 @@ The class name and every public method below are a contract.
   A source with no attacker has no penetration. This rule replaces the old INT magic defense curve.
 - A spell hit crits with the LUK crit chance and the `crit_multiplier` of a weapon hit. This holds for a player and a mob caster.
 - New affixes `MAGIC_PEN` (spellbook) and `MAGIC_RES_PCT` (armor) use the ranges of `MATK_PCT` and `HP_PCT`.
+
+- `RpgSpells.spellDamage` rolls the spell crit for a player. It records the caster and the game tick (`RpgCombat.markSpellCrit`).
+  A magic hit whose source entity is that caster, in the same tick, counts as a crit in `armorIgnored` and `scaleIncoming`:
+  it ignores armor and magic resistance, and the victim's LUK crit reduction applies. A later plain cast by the caster clears the mark.
+  The spells mod must send the spell as `indirectMagic(direct, caster)` so the source names the caster.
+
+## Dice, DEX, and level rules
+
+- A die rolls its maximum with chance `min(1, 0.01 * DEX)`. This replaces the old `dex_max_roll` curve key, which is ignored.
+- A player gets 3 bonus points in every stat for each full 10 levels (level 10 gives 3, level 20 gives 6), through `StatBonuses` (`LevelBonus`).
+- A mob hit on a player deals `1 + 0.10 * floor((threat - player level) / 10)` times as much when the threat is above the level. There is no cap.
+  It applies to melee, projectile, and mob spell hits. A summoned servant is exempt.
+- The config block `scaling` holds `dex_max_roll_per_point` 0.01, `bonus_level_step` 10, `bonus_points` 3, `gap_level_step` 10, and `gap_percent` 0.10.
 
 ## Armor penetration
 

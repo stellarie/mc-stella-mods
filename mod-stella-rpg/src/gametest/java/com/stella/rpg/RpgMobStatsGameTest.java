@@ -144,8 +144,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobMeleeAddsDice 40", loss40, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40));
-		assertLoss(helper, "mobMeleeAddsDice 200", loss200, HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("melee", Stat.STR, 200));
+		assertLoss(helper, "mobMeleeAddsDice 40", loss40, (float) gap(40) * (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40)));
+		assertLoss(helper, "mobMeleeAddsDice 200", loss200, (float) gap(200) * (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("melee", Stat.STR, 200)));
 		helper.succeed();
 	}
 
@@ -164,7 +164,7 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobCritMultipliesTotal", loss, (HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40)) * 1.5F);
+		assertLoss(helper, "mobCritMultipliesTotal", loss, (float) gap(40) * ((HIT + (float) (RpgDice.of(expected("melee", Stat.STR, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("melee", Stat.STR, 40)) * 1.5F));
 		helper.succeed();
 	}
 
@@ -219,8 +219,8 @@ public final class RpgMobStatsGameTest {
 		} finally {
 			resetAll(helper, before);
 		}
-		assertLoss(helper, "mobArrowUsesDex 40", loss40, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("ranged", Stat.DEX, 40));
-		assertLoss(helper, "mobArrowUsesDex 200", loss200, HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("ranged", Stat.DEX, 200));
+		assertLoss(helper, "mobArrowUsesDex 40", loss40, (float) gap(40) * (HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 40)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(40)) + status("ranged", Stat.DEX, 40)));
+		assertLoss(helper, "mobArrowUsesDex 200", loss200, (float) gap(200) * (HIT + (float) (RpgDice.of(expected("ranged", Stat.DEX, 200)).max() * RpgConfig.DEFAULT_MOB_DICE_SHARE * levelMultiplier(200)) + status("ranged", Stat.DEX, 200)));
 		helper.assertTrue(rolled.size() == 2 && rolled.get(0).equals(RpgDice.of(expected("ranged", Stat.DEX, 40))) && rolled.get(1).equals(RpgDice.of(expected("ranged", Stat.DEX, 200))),
 			"arrow dice were " + rolled);
 		helper.succeed();
@@ -258,8 +258,13 @@ public final class RpgMobStatsGameTest {
 		final GameTestHelper helper, final String name, final float loss, final int threat, final int intel
 	) {
 		double base = 12.0 * (1.0 + 0.05 * (threat - 1));
-		double hit = base * (50.0 * HIT / 100.0) * (1.0 + intel / 100.0) * 0.75;
+		double hit = base * (50.0 * HIT / 100.0) * (1.0 + intel / 100.0) * 0.75 * gap(threat);
 		assertLoss(helper, name, loss, (float) hit);
+	}
+
+	/** A mob hit on a level 0 player gains 10 percent per full 10 threat levels. */
+	private static double gap(final int threat) {
+		return 1.0 + 0.1 * (threat / 10);
 	}
 
 	/** Mob level is its threat, and the dice multiplier is 1 + 0.02 per level. */

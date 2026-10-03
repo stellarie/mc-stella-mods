@@ -19,6 +19,17 @@ public final class MagicModelGameTest {
 	@GameTest
 	public void spellHitFollowsTheFormula(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
+		// Level bonus points give LUK, and LUK gives a crit chance. The hit under test has no crit.
+		RpgCombat.setRoller((attacker, random, chance) -> false);
+		try {
+			checkFormula(helper, player);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		helper.succeed();
+	}
+
+	private static void checkFormula(final GameTestHelper helper, final ServerPlayer player) {
 		player.experienceLevel = 1;
 		RpgTestSupport.setStat(player, Stat.INT, 13);
 		// 12 x 1.5 x (1 + 0.13), no gear.
@@ -26,7 +37,8 @@ public final class MagicModelGameTest {
 		helper.assertTrue(Math.abs(plain - 20.34) < EPSILON, "level 1 INT 13 dealt " + plain + " expected 20.34");
 
 		player.experienceLevel = 100;
-		RpgTestSupport.setStat(player, Stat.INT, 112);
+		// Level 100 adds 30 bonus points, so base 82 makes INT 112.
+		RpgTestSupport.setStat(player, Stat.INT, 82);
 		player.setItemSlot(EquipmentSlot.MAINHAND, RpgTestSupport.withAffixes(Items.BOOK, Map.of("matk_pct", 150, "matk_flat", 50)));
 		// base(100) = 71.4. 71.4 x 1.5 x (1 + 1.12 + 0.15) + 50 / 15.
 		double geared = RpgSpells.spellDamage(player, 150.0);
@@ -34,7 +46,6 @@ public final class MagicModelGameTest {
 		RpgTestSupport.result("spellHitFollowsTheFormula", "plain=" + plain + " geared=" + geared);
 		helper.assertTrue(Math.abs(geared - 246.45033333) < EPSILON, "level 100 INT 112 dealt " + geared + " expected 246.4503");
 		helper.assertTrue(geared == again, "two casts differ: " + geared + " " + again);
-		helper.succeed();
 	}
 
 	@GameTest
