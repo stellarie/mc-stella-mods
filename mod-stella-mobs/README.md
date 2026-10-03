@@ -374,4 +374,4 @@ altitude levels, never below the dimension minimum. It has no random variation. 
 ## Elite bounty
 
 An elite that a player kills drops `min(32, 2 + level / 10)` emeralds. A boss drops four times that. A kill by
-another mob, the void, or a command pays nothing.
+another mob, the void, or a command pays nothing. A summoned elite, such as a quest Nemesis, pays no bounty.
