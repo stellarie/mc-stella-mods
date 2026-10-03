@@ -927,6 +927,8 @@ public final class VillagePatrolGameTest {
 		}
 
 		List<UUID> beforeRetry = PatrolTestSupport.patrols(helper).stream().map(Mob::getUUID).toList();
+		// The rejected insertion started a back-off; the retry under test comes after it.
+		PatrolService.endBackoff(PatrolTestSupport.villageId(helper));
 		if (!PatrolTestSupport.scanChunk(helper, test)) {
 			return;
 		}
@@ -1013,6 +1015,8 @@ public final class VillagePatrolGameTest {
 				}
 			}
 		}
+		// The failed fill started a back-off; the sites return after it.
+		PatrolService.endBackoff(PatrolTestSupport.villageId(helper));
 		if (!PatrolTestSupport.scanChunk(helper, test)) {
 			return;
 		}
