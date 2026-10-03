@@ -42,10 +42,24 @@ public class EliteBountyGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void summonedElitesPayNothing(final GameTestHelper helper) {
+		ServerPlayer player = Arena.addSurvivalPlayer(helper);
+		int paid = kill(helper, helper.getLevel().damageSources().playerAttack(player), true);
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT {}", "eliteBountySummoned", "paid=" + paid);
+		helper.assertTrue(paid == 0, "a summoned elite paid " + paid);
+		helper.succeed();
+	}
+
 	private static int kill(final GameTestHelper helper, final DamageSource source) {
+		return kill(helper, source, false);
+	}
+
+	private static int kill(final GameTestHelper helper, final DamageSource source, final boolean summoned) {
 		Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 2, 2, 2);
 		zombie.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		Elite.mark(zombie, GearTier.DIAMOND, 1.0);
+		com.stella.mobs.behavior.EliteState.setSummoned(zombie, summoned);
 		((AttachmentTarget) zombie).setAttached(ThreatState.TYPE, new ThreatState(0, ThreatState.MIN_VARIATION, 0, LEVEL));
 		zombie.setHealth(1.0F);
 		zombie.hurtServer(helper.getLevel(), source, 1000.0F);
