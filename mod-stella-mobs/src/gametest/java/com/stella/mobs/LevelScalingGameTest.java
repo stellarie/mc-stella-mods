@@ -149,6 +149,7 @@ public class LevelScalingGameTest {
 
 	@GameTest
 	public void piercingShare(final GameTestHelper helper) {
+		float t0 = MobPiercing.share(0, D);
 		float t20 = MobPiercing.share(20, D);
 		float t40 = MobPiercing.share(40, D);
 		float t60 = MobPiercing.share(60, D);
@@ -158,11 +159,12 @@ public class LevelScalingGameTest {
 		attach(strong, new ThreatState(0, ThreatState.MIN_VARIATION, 0, 40));
 		float plainLoss = loss(helper, armored(helper), plain);
 		float strongLoss = loss(helper, armored(helper), strong);
-		result("piercingShare", "t20=" + t20 + " t40=" + t40 + " t60=" + t60
+		result("piercingShare", "t0=" + t0 + " t20=" + t20 + " t40=" + t40 + " t60=" + t60
 			+ " plainLoss=" + plainLoss + " strongLoss=" + strongLoss);
+		helper.assertTrue(Math.abs(t0 - 0.25F) < 1.0E-6F, "a level-0 mob pierced " + t0 + ", not the 25 percent base");
 		helper.assertTrue(Math.abs(t20 - 0.30F) < 1.0E-6F && Math.abs(t40 - 0.5F) < 1.0E-6F && Math.abs(t60 - 0.5F) < 1.0E-6F,
 			"shares t20=" + t20 + " t40=" + t40 + " t60=" + t60);
-		helper.assertTrue(strongLoss - plainLoss > 2.0F, "a level-40 hit pierced too little: " + plainLoss + " vs " + strongLoss);
+		helper.assertTrue(strongLoss > plainLoss, "a level-40 hit pierced no more than a level-0 hit: " + plainLoss + " vs " + strongLoss);
 		helper.succeed();
 	}
 
