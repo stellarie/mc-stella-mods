@@ -30,7 +30,7 @@ public record ScalingConfig(
 	double xpNemesisMultiplier
 ) {
 	public static final ScalingConfig DEFAULTS = new ScalingConfig(
-		128, 2, 6.4, 80.0, 0.20, 1.06, 80, 19.0, 500.0, 150.0, 1000.0, 0.02, 0.015, 0.5,
+		128, 2, 6.4, 80.0, 0.50, 1.0, 0, 0.0, 500.0, 150.0, 1000.0, 0.50, 0.015, 0.5,
 		defaultXpBase(), 6, 1, 1.5, 0.05, 0.1, 1.5, 3.0, 5.0
 	);
 

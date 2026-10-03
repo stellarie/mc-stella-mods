@@ -28,10 +28,13 @@
 			"com.stella.villages.VillageHeadFightGameTest",
 			"com.stella.villages.VillageWitchShopGameTest",
 			"com.stella.villages.PatrolRosterGameTest",
+			"com.stella.villages.RosterChurnGameTest",
 			"com.stella.villages.DefenderGrowthGameTest",
 			"com.stella.villages.DefenderAiGameTest",
 			"com.stella.villages.QuestRewardGameTest",
-			"com.stella.villages.SlayerContractGameTest"
+			"com.stella.villages.DummyDpsGameTest",
+			"com.stella.villages.SlayerContractGameTest",
+			"com.stella.villages.TrainerGameTest"
 		]
 	},
 	"mixins": [

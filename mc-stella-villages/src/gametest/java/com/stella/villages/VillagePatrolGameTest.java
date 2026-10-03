@@ -129,7 +129,7 @@ public final class VillagePatrolGameTest {
 		);
 		helper.assertValueEqual(Integer.valueOf(patrols.size()), Integer.valueOf(PATROL_COUNT), "patrol roster size");
 		helper.assertValueEqual(Long.valueOf(vindicators), Long.valueOf(1), "vindicator count");
-		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(PatrolService.PILLAGER_COUNT + PatrolService.RANGED_GUARD_COUNT), "pillager count");
+		helper.assertValueEqual(Long.valueOf(pillagers), Long.valueOf(PatrolService.PILLAGER_COUNT + PatrolService.RANGED_GUARD_COUNT + PatrolService.TRAINER_COUNT), "pillager count, trainer included");
 		helper.assertValueEqual(Long.valueOf(evokers), Long.valueOf(0), "evoker count");
 		helper.assertValueEqual(Long.valueOf(ravagers), Long.valueOf(0), "ravager count");
 		helper.assertValueEqual(Long.valueOf(witches), Long.valueOf(1), "witch count");
@@ -927,6 +927,8 @@ public final class VillagePatrolGameTest {
 		}
 
 		List<UUID> beforeRetry = PatrolTestSupport.patrols(helper).stream().map(Mob::getUUID).toList();
+		// The rejected insertion started a back-off; the retry under test comes after it.
+		PatrolService.endBackoff(PatrolTestSupport.villageId(helper));
 		if (!PatrolTestSupport.scanChunk(helper, test)) {
 			return;
 		}
@@ -1013,6 +1015,8 @@ public final class VillagePatrolGameTest {
 				}
 			}
 		}
+		// The failed fill started a back-off; the sites return after it.
+		PatrolService.endBackoff(PatrolTestSupport.villageId(helper));
 		if (!PatrolTestSupport.scanChunk(helper, test)) {
 			return;
 		}

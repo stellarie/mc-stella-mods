@@ -33,7 +33,14 @@ public final class TrainingDummy {
 	public static final double SEARCH_RADIUS = 8.0;
 	private static final int CLEARANCE = 3;
 
-	private record Window(Deque<Float> hits, long lastHitTick) {
+	/** One hit and the game tick it landed on. */
+	public record Hit(long tick, float damage) {
+	}
+
+	/** The span the damage-per-second figure covers. */
+	public static final int DPS_TICKS = 100;
+
+	private record Window(Deque<Float> hits, long lastHitTick, Deque<Hit> recent) {
 	}
 
 	private static final Map<ArmorStand, Window> WINDOWS = new WeakHashMap<>();
@@ -113,13 +120,19 @@ public final class TrainingDummy {
 		float scaled = DamageShare.scale(stand, source, amount);
 		long now = stand.level().getGameTime();
 		Window window = WINDOWS.get(stand);
-		Deque<Float> hits = window == null || now - window.lastHitTick() > IDLE_TICKS ? new ArrayDeque<>() : window.hits();
+		boolean fresh = window == null || now - window.lastHitTick() > IDLE_TICKS;
+		Deque<Float> hits = fresh ? new ArrayDeque<>() : window.hits();
+		Deque<Hit> recent = fresh ? new ArrayDeque<>() : window.recent();
 		hits.addLast(scaled);
 		while (hits.size() > WINDOW) {
 			hits.removeFirst();
 		}
-		WINDOWS.put(stand, new Window(hits, now));
-		stand.setCustomName(Component.literal(label(hits)));
+		recent.addLast(new Hit(now, scaled));
+		while (!recent.isEmpty() && now - recent.peekFirst().tick() >= DPS_TICKS) {
+			recent.removeFirst();
+		}
+		WINDOWS.put(stand, new Window(hits, now, recent));
+		stand.setCustomName(Component.literal(label(hits) + " · DPS " + number(dps(recent, now))));
 	}
 
 	public static String label(final Deque<Float> hits) {
@@ -130,6 +143,17 @@ public final class TrainingDummy {
 		double average = hits.isEmpty() ? 0.0 : sum / hits.size();
 		return "Avg " + number(average) + " · Last " + number(hits.isEmpty() ? 0.0 : hits.peekLast()) + " · "
 			+ hits.size() + " hits";
+	}
+
+	/** Damage per second over the last {@link #DPS_TICKS} ticks. */
+	public static double dps(final Iterable<Hit> hits, final long now) {
+		double sum = 0.0;
+		for (Hit hit : hits) {
+			if (now - hit.tick() < DPS_TICKS) {
+				sum += hit.damage();
+			}
+		}
+		return sum / (DPS_TICKS / 20.0);
 	}
 
 	/** One decimal, and whole numbers bare. */

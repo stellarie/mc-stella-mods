@@ -24,6 +24,7 @@ public final class StellaRpg implements ModInitializer {
 		TombstoneBlock.register();
 		TombstoneBlockEntity.register();
 		RpgDeath.register();
+		SecondWind.register();
 		com.stella.rpg.tomb.GraveCompass.register();
 		RpgAttributes.register();
 		RpgCommand.register();
@@ -38,6 +39,8 @@ public final class StellaRpg implements ModInitializer {
 		RpgScale.register();
 		EnchantStats.register();
 		LevelBonus.register();
+		com.stella.rpg.job.Jobs.register();
+		com.stella.rpg.job.JobItems.register();
 		EffectStats.register();
 		StarterSword.register();
 		OutgoingDamageShare.register();

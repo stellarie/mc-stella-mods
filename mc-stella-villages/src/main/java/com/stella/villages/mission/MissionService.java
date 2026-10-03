@@ -126,6 +126,7 @@ public final class MissionService {
 		QuestMobState.register();
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> QuestMissions.payPending(handler.getPlayer()));
 		UseEntityCallback.EVENT.register(MissionService::onUseEntity);
+		UseEntityCallback.EVENT.register(JobTrainer::onUseEntity);
 		UseEntityCallback.EVENT.register(GuardQuests::onUseEntity);
 		ServerChunkEvents.CHUNK_LOAD.register((level, chunk, alreadyLoaded) -> onChunkLoad(level, chunk));
 		ServerEntityEvents.ENTITY_LOAD.register(MissionService::onEntityLoad);
@@ -474,7 +475,8 @@ public final class MissionService {
 			boolean oldKit = NemesisKit.needsEquipmentUpgrade(mob);
 			if (!alreadyElite || oldKit) {
 				AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-				if (health != null) {
+				// Only a new elite re-adds the bonus, in armNemesis.
+				if (health != null && !alreadyElite) {
 					health.setBaseValue(Math.max(1.0, health.getBaseValue() - NEMESIS_BONUS_HEALTH));
 				}
 				ReactiveState.get(mob).setGearApplied(true);
@@ -630,7 +632,7 @@ public final class MissionService {
 		return NemesisHead.randomEnchantedBook(level, random);
 	}
 
-	private static List<Item> spellBooks(final ServerLevel level) {
+	static List<Item> spellBooks(final ServerLevel level) {
 		List<Item> pool = spellBookPool;
 		if (pool != null) {
 			return pool;
@@ -806,7 +808,7 @@ public final class MissionService {
 			SlayerContract.MIN_DISTANCE, SlayerContract.MAX_DISTANCE);
 	}
 
-	private static @Nullable String startQuest(
+	static @Nullable String startQuest(
 		final ServerLevel level, final ServerPlayer player, final VillageRecord village, final Identifier type,
 		final MissionKind kind, final int count, final int minDistance, final int maxDistance
 	) {

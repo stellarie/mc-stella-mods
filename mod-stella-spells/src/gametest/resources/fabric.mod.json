@@ -36,7 +36,8 @@
 			"com.stella.spells.SpellMatkGameTest",
 			"com.stella.spells.SummonScalingGameTest",
 			"com.stella.spells.SpellTooltipGameTest",
-			"com.stella.spells.SpellKGameTest"
+			"com.stella.spells.SpellKGameTest",
+			"com.stella.spells.SpellSourceGameTest"
 		]
 	},
 	"depends": {

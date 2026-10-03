@@ -31,6 +31,7 @@ final class RpgTestSupport {
 		player.getAbilities().invulnerable = false;
 		// The mock holds a sword, and a weapon adds dice and a multiplier.
 		bare(player);
+		spendSecondWind(player);
 		return player;
 	}
 
@@ -39,7 +40,13 @@ final class RpgTestSupport {
 	}
 
 	static ServerPlayer realPlayer(final GameTestHelper helper) {
-		return recordedPlayer(helper).player();
+		return spendSecondWind(recordedPlayer(helper).player());
+	}
+
+	/** Tests that stage a death must not be caught; the Second Wind test clears this. */
+	static ServerPlayer spendSecondWind(final ServerPlayer player) {
+		player.setAttached(SecondWind.READY_AT, Long.MAX_VALUE);
+		return player;
 	}
 
 	static Recorded recordedPlayer(final GameTestHelper helper) {

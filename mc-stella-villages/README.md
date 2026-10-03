@@ -16,10 +16,10 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 
 ## Features
 
-- One patrol of six per discovered vanilla village: the duke, two melee guards, two ranged guards, and
-  the mage. Every 5 seconds, the chunks within 2 of each
+- One patrol of seven per discovered vanilla village: the duke, two melee guards, two ranged guards, the
+  mage, and the job trainer. Every 5 seconds, the chunks within 2 of each
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
-  gets its patrol. A village saved by an older version gains its two ranged guards at its next check.
+  gets its patrol. A village saved by an older version gains its missing members, such as the trainer, at its next check.
   When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
 - A melee guard carries an iron sword and a shield. A ranged guard carries a crossbow. Both run the
@@ -38,6 +38,8 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   is re-armed when it loads.
 - Patrol members never despawn, and they do not count toward the natural mob cap. On Peaceful they leave
   as any illager does, and no new patrol is raised.
+- A village raises its missing members one fill at a time. A fill that finds no place for a member waits
+  600 ticks before the village tries again. The heartbeat and spawn-reject log lines are at DEBUG level.
 - Villagers do not fear their patrol, iron and snow golems never take a member as their target, and a
   player may sleep in a bed beside the patrol.
 - A patrol takes on any mob that has a player or a villager as its target, of whatever kind: a slime or a
@@ -163,6 +165,26 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   on max health, attack damage, armor, or armor toughness. One modifier per attribute holds the
   total. The total survives a save. The log holds one `defender_grown` line per kill.
 
+## Job trainer
+
+Each village has one trainer: a guard with a book in its hand and the label Trainer. It stays within 3 blocks of the duke,
+does not patrol, never picks a target, and does not offer the guard quest. A fallen trainer returns with the rest of the patrol.
+
+Right-click the trainer within 8 blocks to open the Job Trainer, a three-row chest menu. Any client can show it.
+
+- Jobs need `mod-stella-rpg`. This mod reaches it through the object share `mod-stella-rpg:jobs` and has no link to it.
+  Without the share the trainer says jobs are unavailable and opens no menu.
+- At level 10 or higher, with no job, the menu shows the archer, fighter, mage, and priest. A choice is permanent. It calls
+  the share's `choose` and `grantItems`. Below level 10, or with a job already, the menu states the reason and changes nothing.
+- A mage also receives a Spark Shot spellbook and one random spellbook that is not Summon Skeleton. A priest also receives
+  the Mending Word heal book and the Stoneguard buff book. Every book carries the Doublecast enchantment.
+  The books come from `mod-stella-spells` by item id. Without that mod a job gets its own item only.
+- From level 40, and every 30 levels after (70, 100, and so on), a player with a job sees a boss trial in the menu for the lowest
+  trial level the player has reached and the share's `trialsDone` does not list. Accepting it gives a map to a skeleton, spider,
+  or evoker boss of that level, 128 to 256 blocks from the bell. The boss has the mobs mod boss kit. A player kill calls the share's
+  `grantTrial`, which adds 5 to the main stat and 1 to every other stat, once for each trial level.
+- A boss lost to the sun, a fall, or another mob pays nothing. Ask the trainer again for a new boss. A new request replaces the old one.
+
 ## Build and test
 
 Run commands from this directory.
@@ -189,8 +211,8 @@ Each recorded village gets one training dummy by its bell: a large armor stand (
 blocks from the bell, on a sturdy floor with 3 blocks of room.
 
 - Every hit on the dummy is recorded and cancelled, so nothing breaks it, not even `/kill`.
-- Its name reads `Avg 18.6 · Last 21 · 12 hits`: the average of the last 20 hits, the last hit, and the count.
-  The window resets after 10 seconds without a hit.
+- Its name reads `Avg 18.6 · Last 21 · 12 hits · DPS 44.2`: the average of the last 20 hits, the last hit, the count,
+  and the damage per second over the last 5 seconds. The window resets after 10 seconds without a hit.
 - With `mod-stella-rpg`, the recorded damage passes through the object share `mod-stella-rpg:outgoing-damage`,
   so it includes the STR dice, crits, and the attack charge. Without it, the dummy records the raw hit.
 - Every 10 seconds, a village whose bell is loaded gets its dummy back if it was removed.

@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
@@ -33,6 +35,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.PoiTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
@@ -45,7 +48,9 @@ import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -84,8 +89,9 @@ public final class PatrolService {
 	/** Melee guards. Their role is PILLAGER. */
 	public static final int PILLAGER_COUNT = 2;
 	public static final int RANGED_GUARD_COUNT = 2;
-	/** The duke, the guards and the mage. */
-	public static final int PATROL_MEMBER_COUNT = 2 + PILLAGER_COUNT + RANGED_GUARD_COUNT;
+	public static final int TRAINER_COUNT = 1;
+	/** The duke, the guards, the mage and the trainer. */
+	public static final int PATROL_MEMBER_COUNT = 2 + PILLAGER_COUNT + RANGED_GUARD_COUNT + TRAINER_COUNT;
 	private static final Map<UUID, Mob> ACTIVE_MEMBERS = new ConcurrentHashMap<>();
 	private static final Map<ServerLevel, Long> LEVEL_TICKS = new WeakHashMap<>();
 	private static final Set<Mob> LOADOUT_CHECKS = ConcurrentHashMap.newKeySet();
@@ -93,6 +99,14 @@ public final class PatrolService {
 		PatrolState.Role.EVOKER, PatrolState.Role.WITCH, PatrolState.Role.VINDICATOR, PatrolState.Role.RAVAGER
 	);
 	private static final Set<Mob> RETIREMENTS = ConcurrentHashMap.newKeySet();
+	/** A failed fill leaves a village alone for this many level ticks. */
+	public static final long SPAWN_BACKOFF_TICKS = 600L;
+	/** Villages whose roster fill is running now. */
+	private static final Set<UUID> FILLING = ConcurrentHashMap.newKeySet();
+	/** The level tick before which a failed fill is not tried again. */
+	private static final Map<UUID, Long> FILL_RETRY_AT = new ConcurrentHashMap<>();
+	private static final Map<UUID, Integer> FILL_ATTEMPTS = new ConcurrentHashMap<>();
+	private static volatile Predicate<BlockPos> positionFilter = position -> true;
 	/** Each village's bell, found once per server; the anchor stands in when no bell is found. */
 	private static final Map<UUID, BlockPos> BELLS = new ConcurrentHashMap<>();
 
@@ -114,6 +128,9 @@ public final class PatrolService {
 	/** A new server's level counters start again at zero, so nothing keyed on them outlives its server. */
 	public static void onServerStopping(final net.minecraft.server.MinecraftServer server) {
 		BELLS.clear();
+		FILLING.clear();
+		FILL_RETRY_AT.clear();
+		FILL_ATTEMPTS.clear();
 		VillageCoverage.clear();
 		RaidAlert.clear();
 	}
@@ -153,7 +170,7 @@ public final class PatrolService {
 			} else if (village.rosterStarted() && roleCount(village, PatrolState.Role.VILLAGE_WITCH) == 0
 				&& level.getDifficulty() != net.minecraft.world.Difficulty.PEACEFUL) {
 				// A village settled before the witch existed gets its witch the next time it loads.
-				spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, new ArrayList<>());
+				fillRoster(level, village, () -> spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, new ArrayList<>()));
 			}
 		}
 
@@ -247,7 +264,9 @@ public final class PatrolService {
 		}
 
 		List<Mob> spawned = new ArrayList<>();
-		spawnMissingRoster(level, data, village, spawned);
+		if (!fillRoster(level, village, () -> spawnMissingRoster(level, data, village, spawned))) {
+			return;
+		}
 		McStellaVillages.LOGGER.info(
 			"[BEHAVIOR] mod={} event=patrol_refilled village={} anchor={} spawned={}",
 			McStellaVillages.MOD_ID, village.id(), village.anchor(), spawned.size()
@@ -260,7 +279,9 @@ public final class PatrolService {
 		final VillageRecord village
 	) {
 		List<Mob> spawned = new ArrayList<>();
-		spawnMissingRoster(level, data, village, spawned);
+		if (!fillRoster(level, village, () -> spawnMissingRoster(level, data, village, spawned))) {
+			return;
+		}
 
 		if (hasCompleteRoster(village)) {
 			data.markRosterStarted(village);
@@ -272,19 +293,63 @@ public final class PatrolService {
 		);
 	}
 
-	private static void spawnMissingRoster(
+	/**
+	 * Runs one roster fill for a village, or none. A fill does not start while another runs for the same village,
+	 * because a chunk that loads in the middle of a fill calls this again. It does not start inside the back-off
+	 * either. The fill returns true when a member found no place. This method returns true when the fill ran.
+	 */
+	private static boolean fillRoster(final ServerLevel level, final VillageRecord village, final BooleanSupplier fill) {
+		long now = levelTick(level);
+		Long retryAt = FILL_RETRY_AT.get(village.id());
+		if (retryAt != null && now < retryAt || !FILLING.add(village.id())) {
+			return false;
+		}
+
+		boolean failed;
+		try {
+			FILL_ATTEMPTS.merge(village.id(), 1, Integer::sum);
+			failed = fill.getAsBoolean();
+		} finally {
+			FILLING.remove(village.id());
+		}
+		if (failed) {
+			FILL_RETRY_AT.put(village.id(), now + SPAWN_BACKOFF_TICKS);
+		} else {
+			FILL_RETRY_AT.remove(village.id());
+		}
+		return true;
+	}
+
+	/** Test seam: a position the filter refuses counts as no place. */
+	public static void setPositionFilter(final Predicate<BlockPos> filter) {
+		positionFilter = filter;
+	}
+
+	/** Test seam: ends a village's back-off, as the passing of its ticks would. */
+	public static void endBackoff(final UUID villageId) {
+		FILL_RETRY_AT.remove(villageId);
+	}
+
+	/** Test seam: how many roster fills have started for a village since the server began. */
+	public static int fillAttempts(final UUID villageId) {
+		return FILL_ATTEMPTS.getOrDefault(villageId, 0);
+	}
+
+	private static boolean spawnMissingRoster(
 		final ServerLevel level,
 		final VillageWorldData data,
 		final VillageRecord village,
 		final List<Mob> spawned
 	) {
-		spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.RANGED_GUARD, RANGED_GUARD_COUNT, spawned);
-		spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
+		boolean failed = spawnMissingMembers(level, data, village, EntityTypes.VINDICATOR, PatrolState.Role.HEAD, 1, spawned);
+		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.PILLAGER, PILLAGER_COUNT, spawned);
+		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.RANGED_GUARD, RANGED_GUARD_COUNT, spawned);
+		failed |= spawnMissingMembers(level, data, village, EntityTypes.WITCH, PatrolState.Role.VILLAGE_WITCH, 1, spawned);
+		failed |= spawnMissingMembers(level, data, village, EntityTypes.PILLAGER, PatrolState.Role.TRAINER, TRAINER_COUNT, spawned);
+		return failed;
 	}
 
-	private static void spawnMissingMembers(
+	private static boolean spawnMissingMembers(
 		final ServerLevel level,
 		final VillageWorldData data,
 		final VillageRecord village,
@@ -293,20 +358,23 @@ public final class PatrolService {
 		final int required,
 		final List<Mob> spawned
 	) {
-		long existing = village.members().stream().filter(member -> member.role().equals(role.name())).count();
-		for (long index = existing; index < required; index++) {
+		// The count is read again for each member, so a spawn that loaded a chunk cannot leave it stale.
+		while (roleCount(village, role) < required) {
 			Mob member = spawnMember(level, data, village, type, role);
-			if (member != null) {
-				spawned.add(member);
+			if (member == null) {
+				return true;
 			}
+			spawned.add(member);
 		}
+		return false;
 	}
 
 	private static boolean hasCompleteRoster(final VillageRecord village) {
 		return roleCount(village, PatrolState.Role.HEAD) >= 1
 			&& roleCount(village, PatrolState.Role.PILLAGER) >= PILLAGER_COUNT
 			&& roleCount(village, PatrolState.Role.RANGED_GUARD) >= RANGED_GUARD_COUNT
-			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1;
+			&& roleCount(village, PatrolState.Role.VILLAGE_WITCH) >= 1
+			&& roleCount(village, PatrolState.Role.TRAINER) >= TRAINER_COUNT;
 	}
 
 	private static long roleCount(final VillageRecord village, final PatrolState.Role role) {
@@ -320,24 +388,29 @@ public final class PatrolService {
 		final EntityType<? extends Mob> type,
 		final PatrolState.Role role
 	) {
-		Mob mob = type.create(level, EntitySpawnReason.EVENT);
-		if (mob == null) {
+		// The duke stands by the bell. The mage and the guards stand outdoors at street level.
+		BlockPos bell = bellOf(level, village);
+		EntityDimensions size = type.getDimensions();
+		@Nullable BlockPos position = role == PatrolState.Role.HEAD ? findSpawnPosition(level, bell, size)
+			: role == PatrolState.Role.VILLAGE_WITCH ? OutdoorSpot.near(level, bell, size)
+			: role == PatrolState.Role.TRAINER ? findSpawnPosition(level, trainerAnchor(level, village, bell), size)
+			: findScatteredPosition(level, bell, size);
+		if (position == null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH) {
+			position = OutdoorSpot.near(level, bell, size);
+		}
+		if (position != null && !positionFilter.test(position)) {
+			position = null;
+		}
+		if (position == null) {
+			McStellaVillages.LOGGER.debug(
+				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} role={} reason=no_safe_loaded_position",
+				McStellaVillages.MOD_ID, village.id(), role
+			);
 			return null;
 		}
 
-		// The duke stands by the bell. The mage and the guards stand outdoors at street level.
-		BlockPos bell = bellOf(level, village);
-		@Nullable BlockPos position = role == PatrolState.Role.HEAD ? findSpawnPosition(level, bell, mob)
-			: role == PatrolState.Role.VILLAGE_WITCH ? OutdoorSpot.near(level, bell, mob)
-			: findScatteredPosition(level, bell, mob);
-		if (position == null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH) {
-			position = OutdoorSpot.near(level, bell, mob);
-		}
-		if (position == null) {
-			McStellaVillages.LOGGER.info(
-				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} entity={} role={} reason=no_safe_loaded_position",
-				McStellaVillages.MOD_ID, village.id(), mob.getUUID(), role
-			);
+		Mob mob = type.create(level, EntitySpawnReason.EVENT);
+		if (mob == null) {
 			return null;
 		}
 
@@ -360,13 +433,16 @@ public final class PatrolService {
 			mob.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
 		} else if (role == PatrolState.Role.RANGED_GUARD) {
 			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+		} else if (role == PatrolState.Role.TRAINER) {
+			mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOOK));
+			mob.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
 		}
 		PatrolVisuals.dress(mob, level, role);
 		installGoals(level, mob, village);
 		data.addMember(village, mob.getUUID(), role.name(), position);
 		if (!level.addFreshEntity(mob)) {
 			data.removeMember(mob.getUUID());
-			McStellaVillages.LOGGER.info(
+			McStellaVillages.LOGGER.debug(
 				"[BEHAVIOR] mod={} event=patrol_member_spawn_rejected village={} entity={} role={} reason=entity_insertion",
 				McStellaVillages.MOD_ID, village.id(), mob.getUUID(), role
 			);
@@ -377,6 +453,12 @@ public final class PatrolService {
 		stripMobsScaling(mob);
 		logSpawn(village, mob, role);
 		return mob;
+	}
+
+	/** The trainer stands beside the duke, or by the bell while the duke is not loaded. */
+	private static BlockPos trainerAnchor(final ServerLevel level, final VillageRecord village, final BlockPos bell) {
+		Mob head = headFor(level, village.id());
+		return head != null ? head.blockPosition() : bell;
 	}
 
 	private static void stripMobsScaling(final Mob mob) {
@@ -392,7 +474,7 @@ public final class PatrolService {
 	}
 
 	// A standable outdoor spot within the scatter radius of the bell but outside the duke's circle, in a loaded chunk.
-	private static @Nullable BlockPos findScatteredPosition(final ServerLevel level, final BlockPos center, final Mob mob) {
+	private static @Nullable BlockPos findScatteredPosition(final ServerLevel level, final BlockPos center, final EntityDimensions size) {
 		for (int attempt = 0; attempt < 24; attempt++) {
 			int x = center.getX() + level.getRandom().nextInt(2 * MEMBER_SCATTER_RADIUS + 1) - MEMBER_SCATTER_RADIUS;
 			int z = center.getZ() + level.getRandom().nextInt(2 * MEMBER_SCATTER_RADIUS + 1) - MEMBER_SCATTER_RADIUS;
@@ -402,20 +484,19 @@ public final class PatrolService {
 			}
 			BlockPos candidate = new BlockPos(x, level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
 			BlockPos support = candidate.below();
-			Vec3 destination = Vec3.atBottomCenterOf(candidate);
-			AABB spawnBox = mob.getBoundingBox().move(destination.subtract(mob.position()));
+			AABB spawnBox = size.makeBoundingBox(Vec3.atBottomCenterOf(candidate));
 			if (candidate.distSqr(center) > HEAD_BELL_RADIUS * HEAD_BELL_RADIUS
 				&& OutdoorSpot.isOutdoor(level, candidate, center.getY()) && level.getBlockState(candidate).isAir()
 				&& level.getFluidState(support).isEmpty()
 				&& level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
-				&& level.noCollision(mob, spawnBox)) {
+				&& level.noCollision(spawnBox)) {
 				return candidate;
 			}
 		}
 		return null;
 	}
 
-	private static @Nullable BlockPos findSpawnPosition(final ServerLevel level, final BlockPos anchor, final Mob mob) {
+	private static @Nullable BlockPos findSpawnPosition(final ServerLevel level, final BlockPos anchor, final EntityDimensions size) {
 		int chunkMinX = SectionPos.blockToSectionCoord(anchor.getX()) * 16;
 		int chunkMinZ = SectionPos.blockToSectionCoord(anchor.getZ()) * 16;
 		int chunkMaxX = chunkMinX + 15;
@@ -432,11 +513,10 @@ public final class PatrolService {
 					int z = Math.max(chunkMinZ, Math.min(chunkMaxZ, anchor.getZ() + dz));
 					BlockPos candidate = new BlockPos(x, anchor.getY(), z);
 					BlockPos support = candidate.below();
-					Vec3 destination = Vec3.atBottomCenterOf(candidate);
-					AABB spawnBox = mob.getBoundingBox().move(destination.subtract(mob.position()));
+					AABB spawnBox = size.makeBoundingBox(Vec3.atBottomCenterOf(candidate));
 					if (level.hasChunkAt(candidate) && level.getBlockState(candidate).isAir()
 						&& level.getBlockState(support).isFaceSturdy(level, support, Direction.UP)
-						&& level.noCollision(mob, spawnBox)) {
+						&& level.noCollision(spawnBox)) {
 						return candidate;
 					}
 				}
@@ -469,6 +549,15 @@ public final class PatrolService {
 		}
 		MobPatrolAccess access = (MobPatrolAccess) mob;
 		access.patrolTargetSelector().removeAllGoals(goal -> true);
+		if (PatrolState.role(mob) == PatrolState.Role.TRAINER) {
+			// The trainer has no fight in it: no target goal, no attack goal, no beat.
+			mob.getGoalSelector().removeAllGoals(goal -> true);
+			mob.getGoalSelector().addGoal(0, new FloatGoal(mob));
+			mob.getGoalSelector().addGoal(2, new TrainerStayGoal(mob, village.id()));
+			mob.getGoalSelector().addGoal(8, new LookAtPlayerGoal(mob, Player.class, 8.0F));
+			mob.setTarget(null);
+			return;
+		}
 		// A raid is the village's first danger.
 		if (isGuard(PatrolState.role(mob))) {
 			access.patrolTargetSelector().addGoal(0, new RaidAlertTargetGoal(mob, village.id()));
@@ -673,6 +762,7 @@ public final class PatrolService {
 		restoreMeleeKit(level);
 		if (tick % WITCH_GOAL_SWEEP_TICKS == 0L) {
 			clearForeignWitchGoals(level);
+			keepTrainersPeaceful(level);
 		}
 		PatrolVisuals.sparkle(level, tick, ACTIVE_MEMBERS.values());
 		retireStaleMembers(level);
@@ -690,7 +780,7 @@ public final class PatrolService {
 					.filter(mob -> mob != null && mob.isAlive())
 					.count();
 				if (active > 0) {
-					McStellaVillages.LOGGER.info(
+					McStellaVillages.LOGGER.debug(
 						"[BEHAVIOR] mod={} event=heartbeat village={} active={} tick={}",
 						McStellaVillages.MOD_ID, village.id(), active, tick
 					);
@@ -767,6 +857,20 @@ public final class PatrolService {
 		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
 			if (mob.level() == level && PatrolState.role(mob) == PatrolState.Role.VILLAGE_WITCH) {
 				mob.removeAllGoals(goal -> goal.getClass().getName().startsWith(MOBS_WITCH_GOAL_PREFIX));
+			}
+		}
+	}
+
+	/** Another mod's load listener may add an attack goal to the trainer, so the goals it did not get here leave. */
+	private static void keepTrainersPeaceful(final ServerLevel level) {
+		for (Mob mob : List.copyOf(ACTIVE_MEMBERS.values())) {
+			if (mob.level() != level || PatrolState.role(mob) != PatrolState.Role.TRAINER) {
+				continue;
+			}
+			mob.removeAllGoals(goal -> !(goal instanceof TrainerStayGoal || goal instanceof FloatGoal || goal instanceof LookAtPlayerGoal));
+			((MobPatrolAccess) mob).patrolTargetSelector().removeAllGoals(goal -> true);
+			if (mob.getTarget() != null) {
+				mob.setTarget(null);
 			}
 		}
 	}

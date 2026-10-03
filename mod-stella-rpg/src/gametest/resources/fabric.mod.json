@@ -56,7 +56,10 @@
 			"com.stella.rpg.MagicModelGameTest",
 			"com.stella.rpg.AffixPoolGameTest",
 			"com.stella.rpg.ArmorPenGameTest",
-			"com.stella.rpg.LevelRulesGameTest"
+			"com.stella.rpg.LevelRulesGameTest",
+			"com.stella.rpg.JobGameTest",
+			"com.stella.rpg.JobItemGameTest",
+			"com.stella.rpg.SecondWindGameTest"
 		]
 	},
 	"depends": {

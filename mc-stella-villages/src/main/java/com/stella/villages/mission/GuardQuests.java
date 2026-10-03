@@ -42,7 +42,8 @@ public final class GuardQuests {
 
 	public static boolean isGuard(final Mob mob) {
 		PatrolState.Role role = PatrolState.role(mob);
-		return role != null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH;
+		return role != null && role != PatrolState.Role.HEAD && role != PatrolState.Role.VILLAGE_WITCH
+			&& role != PatrolState.Role.TRAINER;
 	}
 
 	public static long day(final ServerLevel level) {

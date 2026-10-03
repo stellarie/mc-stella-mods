@@ -122,7 +122,7 @@ public final class SpellCombos {
 		final ServerPlayer caster, final Combo combo, final @Nullable Mob target, final @Nullable Vec3 point,
 		final SpellModifiers.CastModifiers modifiers
 	) {
-		var magic = caster.level().damageSources().magic();
+		var magic = SpellCasting.spellSource(caster);
 		double power = modifiers.powerMultiplier();
 		if (combo == THERMAL_SHOCK && target != null) {
 			// The spell's own hit set the hurt cooldown, so it is cleared: the combo's hit is its own, not a top-up.

@@ -21,6 +21,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -234,7 +235,8 @@ public final class SpellImbue {
 			mobCast(wielder, victim);
 			return;
 		}
-		if (!(source.getEntity() instanceof ServerPlayer player) || victim == player) {
+		// A player's own spell hit names the player as both attacker and direct entity; it is not a blow.
+		if (!(source.getEntity() instanceof ServerPlayer player) || victim == player || source.is(DamageTypes.INDIRECT_MAGIC)) {
 			return;
 		}
 		// A melee hit casts the spells of the hand that struck; an arrow, the spells of the arrow itself.
@@ -293,7 +295,7 @@ public final class SpellImbue {
 			piece, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), definition.baseCooldownTicks()
 		);
 		base = TowerBridge.grow(piece, definition.id().getPath(), base);
-		base = RpgBridge.grow(player, base);
+		base = RpgBridge.grow(player, definition.id().getPath(), base);
 		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
 			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks()

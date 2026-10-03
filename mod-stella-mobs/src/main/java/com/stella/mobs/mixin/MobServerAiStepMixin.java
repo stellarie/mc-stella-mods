@@ -22,7 +22,9 @@ public abstract class MobServerAiStepMixin {
 	private void stella$evadeCreepers(final CallbackInfo callbackInfo) {
 		Mob mob = (Mob)(Object)this;
 		ReactiveState state = ReactiveState.get(mob);
-		String before = CreeperEscapeController.nativeCommand(mob.getMoveControl());
+		// The command text is only read after a failed escape, which needs a swelling creeper.
+		String before = com.stella.mobs.behavior.CreeperEscapePositions.anySwelling(mob.level())
+			? CreeperEscapeController.nativeCommand(mob.getMoveControl()) : null;
 		state.setR02NativeCommands(null, null);
 		EscapeDecision decision = CreeperEscapeController.apply(mob);
 		if (decision == EscapeDecision.NO_SAFE_ROUTE) {

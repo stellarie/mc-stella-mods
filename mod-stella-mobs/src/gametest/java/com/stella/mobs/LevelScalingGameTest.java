@@ -122,16 +122,14 @@ public class LevelScalingGameTest {
 
 	@GameTest
 	public void curveTable(final GameTestHelper helper) {
-		double base80 = Math.pow(1.06, 80);
+		// Health is linear; the compounding and S-curve damage terms are off, so damage grows only by the flat term.
 		boolean valid = close(SpawnScaling.healthMultiplier(0), 1.0)
-			&& close(SpawnScaling.healthMultiplier(10), 3.0)
-			&& close(SpawnScaling.damageMultiplier(0), 1.0)
-			&& close(SpawnScaling.damageMultiplier(10), Math.pow(1.06, 10))
-			&& close(SpawnScaling.damageMultiplier(80), base80)
-			&& close(SpawnScaling.damageMultiplier(100), base80 * (1.0 + 19.0 * SpawnScaling.tail(20, D)))
-			&& close(SpawnScaling.damageMultiplier(580), base80 * 10.5)
-			&& close(SpawnScaling.damageMultiplier(1080), base80 * 20.0)
-			&& close(SpawnScaling.damageMultiplier(5000), base80 * 20.0);
+			&& close(SpawnScaling.healthMultiplier(10), 1.0 + 10 * D.healthPerLevel())
+			&& close(SpawnScaling.healthMultiplier(100), 1.0 + 100 * D.healthPerLevel())
+			&& D.damageGrowth() == 1.0 && D.tailStart() == 0 && D.tailMax() == 0.0;
+		for (int level : new int[] {0, 10, 80, 100, 580, 1080, 5000}) {
+			valid &= close(SpawnScaling.damageMultiplier(level), 1.0);
+		}
 		result("curveTable", "d100=" + SpawnScaling.damageMultiplier(100) + " d580=" + SpawnScaling.damageMultiplier(580)
 			+ " d1080=" + SpawnScaling.damageMultiplier(1080));
 		helper.assertTrue(valid, "a curve value left the spec");
@@ -143,7 +141,8 @@ public class LevelScalingGameTest {
 		double at80 = SpawnScaling.tailFlat(80);
 		double at580 = SpawnScaling.tailFlat(580);
 		result("damageTailAddsFlat", "at80=" + at80 + " at580=" + at580);
-		helper.assertTrue(close(at80, 0.0) && close(at580, 10.0), "at80=" + at80 + " at580=" + at580);
+		helper.assertTrue(close(at80, 80 * D.tailFlatPerLevel()) && close(at580, 580 * D.tailFlatPerLevel()),
+			"at80=" + at80 + " at580=" + at580);
 		helper.succeed();
 	}
 

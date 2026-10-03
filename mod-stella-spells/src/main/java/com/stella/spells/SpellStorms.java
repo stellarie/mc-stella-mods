@@ -141,7 +141,7 @@ public final class SpellStorms {
 			strike.level().addFreshEntity(bolt);
 		}
 		target.damageCooldownTime = 0;
-		target.hurtServer(strike.level(), strike.level().damageSources().magic(), strike.damage());
+		target.hurtServer(strike.level(), SpellCasting.spellSource(strike.caster()), strike.damage());
 		recorder.struck(strike.caster(), target.getUUID(), now);
 	}
 }

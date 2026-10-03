@@ -23,12 +23,12 @@ import net.minecraft.world.item.Items;
 public final class RpgMobStatsGameTest {
 	private static final float HIT = 4.0F;
 	private static final float TOLERANCE = 0.001F;
-	/** Threat, then STR, AGI, VIT, DEX, INT, LUK: melee base 12, 6, 12, 3, 1, 3 times (1 + 0.1 x threat). */
+	/** Threat, then STR, AGI, VIT, DEX, INT, LUK: melee base 12, 6, 12, 3, 1, 3 times (1 + 0.03 x threat). */
 	private static final int[][] MELEE_TABLE = {
 		{0, 12, 6, 12, 3, 1, 3},
-		{4, 17, 8, 17, 4, 1, 4},
-		{40, 60, 30, 60, 15, 5, 15},
-		{200, 252, 126, 252, 63, 21, 63}
+		{4, 13, 7, 13, 3, 1, 3},
+		{40, 26, 13, 26, 7, 2, 7},
+		{200, 84, 42, 84, 21, 7, 21}
 	};
 
 	private static final class Stub implements MobsBridge.Facts {
@@ -68,20 +68,20 @@ public final class RpgMobStatsGameTest {
 				}
 			}
 			stub.set(zombie, 200, "ranged");
-			assertStats(helper, zombie, "ranged", 84, 210, 105, 252, 42, 210);
+			assertStats(helper, zombie, "ranged", 28, 70, 35, 84, 14, 70);
 			stub.set(zombie, 200, "magic");
-			assertStats(helper, zombie, "magic", 42, 84, 126, 126, 294, 84);
+			assertStats(helper, zombie, "magic", 14, 28, 42, 42, 98, 28);
 			stub.set(zombie, 200, "unknown");
-			assertStats(helper, zombie, "unknown role", 252, 126, 252, 63, 21, 63);
+			assertStats(helper, zombie, "unknown role", 84, 42, 84, 21, 7, 21);
 			stub.set(zombie, -50, "melee");
 			assertStats(helper, zombie, "negative threat", 12, 6, 12, 3, 1, 3);
 			stub.set(zombie, 5000, "melee");
-			assertStats(helper, zombie, "clamped", 1024, 1024, 1024, 1024, 501, 1024);
+			assertStats(helper, zombie, "clamped", 1024, 906, 1024, 453, 151, 453);
 			stub.set(zombie, 40, "melee");
 			StatBonuses.Provider bonus = (entity, stat) -> stat == Stat.STR ? 3 : 0;
 			StatBonuses.register(bonus);
 			try {
-				helper.assertTrue(StatBonuses.effective(zombie, Stat.STR) == 63, "a bonus did not add to the mob base");
+				helper.assertTrue(StatBonuses.effective(zombie, Stat.STR) == 29, "a bonus did not add to the mob base");
 			} finally {
 				StatBonuses.unregister(bonus);
 			}
@@ -118,7 +118,7 @@ public final class RpgMobStatsGameTest {
 		try {
 			Zombie zombie = zombie(helper);
 			stub.set(zombie, 40, "melee");
-			helper.assertTrue(MobStats.base(zombie, Stat.STR) == 100, "the configured base did not scale the stat");
+			helper.assertTrue(MobStats.base(zombie, Stat.STR) == 44, "the configured base did not scale the stat");
 		} finally {
 			RpgConfigStore.set(null);
 			MobsBridge.setFacts(null);

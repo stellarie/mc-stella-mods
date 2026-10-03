@@ -174,11 +174,16 @@ public final class RpgBridge {
 		return stats() != NONE;
 	}
 
-	/** A cast's modifiers once the caster's Intelligence has had its say: power by its multiplier, cooldown by its own. */
 	static SpellModifiers.CastModifiers grow(final Player caster, final SpellModifiers.CastModifiers base) {
+		return grow(caster, "", base);
+	}
+
+	/** A cast's modifiers once the caster's Intelligence has had its say: power by its multiplier, cooldown by its own. */
+	static SpellModifiers.CastModifiers grow(final Player caster, final String spellId, final SpellModifiers.CastModifiers base) {
 		Stats rpg = stats();
 		double power = rpg.power(caster);
-		double cooldown = rpg.cooldown(caster);
+		// Fixed-cooldown spells keep their base cooldown.
+		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : rpg.cooldown(caster);
 		if (!positive(power) || !positive(cooldown) || (power == 1.0 && cooldown == 1.0)) {
 			return base;
 		}

@@ -25,6 +25,11 @@ public final class HoldAtChokeGoal extends Goal {
 	private static final int REPATH_TICKS = 10;
 	private static final int RESCAN_TICKS = 20;
 	private static final double SPEED = 1.0;
+	/** Ticks a mob waits after two searches in a row find no gap. */
+	static final int SEARCH_REST_TICKS = 20;
+	/** Test seam: how many gap searches canUse has run. */
+	static int searches;
+	private int misses;
 
 	private final Mob mob;
 	private Choke.@Nullable Mouth mouth;
@@ -49,8 +54,18 @@ public final class HoldAtChokeGoal extends Goal {
 			return false;
 		}
 
+		searches++;
 		this.mouth = Choke.findMouth(this.mob, player);
-		return this.mouth != null && this.gatheredAt(this.mouth, player) < LearnConfigStore.get().chokeGroup();
+		if (this.mouth == null) {
+			// One miss can be a path not ready yet.
+			if (++this.misses >= 2) {
+				this.misses = 0;
+				this.restUntilTick = this.mob.tickCount + SEARCH_REST_TICKS;
+			}
+			return false;
+		}
+		this.misses = 0;
+		return this.gatheredAt(this.mouth, player) < LearnConfigStore.get().chokeGroup();
 	}
 
 	@Override

@@ -33,17 +33,18 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
 
 ## Health, damage, piercing, and experience
 
-- **Health:** x(1 + 0.20 x level).
-- **Damage:** x1.06^level up to level 80. Melee reads it through the attack attribute. A hostile mob's other hits
-  (arrows, fireballs, explosions, spells, fangs) take the same multiplier at the hurt call. Friendly golems keep
-  their fixed special hits.
-  Past 80 it follows the tower S-curve:
-  `1.06^80 x (1 + 19 x S(level - 80))`, plus 0.02 flat damage per level past 80.
-  `S` is 0 at 0, 0.5 at 500, and 1 at 1000.
+- **Health:** x(1 + 0.50 x level). An elite has 1.5 times its base health (`Elite.HEALTH_MULTIPLIER`).
+- **Damage:** a hostile hit gains 0.5 vanilla damage per level (`tail_flat_per_level`). The compounding term
+  (`damage_growth` 1.0) and the S-curve term (`tail_max` 0) are off by default, so the damage multiplier stays 1.
+  Melee reads the attack attribute, and its hit gains the flat term at the hurt call. A hostile mob's other hits
+  (arrows, fireballs, explosions, spells, fangs) take the multiplier and the flat term at the hurt call. Friendly
+  golems keep their fixed special hits and get no flat damage.
+  An elite's kit sword hits 3 less, so the kit does not triple a zombie's base hit.
 - **Piercing:** a mob's hit ignores `min(50%, max(25%, 1.5% x level))` of the target's armor, toughness, and Protection.
 - **Self-scaled mobs:** another mod can give a mob both `mod-stella-mobs.no_spawn_roll` and `mod-stella-mobs.self_scaled`.
-  The mob keeps the health its owner set. Every hit it deals, melee included, takes the level multiplier, armor
-  normalization, and piercing. The Blaze Sovereign uses this.
+  The mob keeps the health its owner set. Every hit it deals, melee included, is multiplied by
+  `SelfScaled.factor(level)`, which is `damage multiplier x (1 + flat / 3)`, so each attack keeps its size next to the
+  others. It also takes armor normalization and piercing. The Blaze Sovereign uses this.
 - **Kill experience:** a base per mob type plus a part from the mob level `T` and the killer's XP level `L`:
 
   ```
@@ -359,10 +360,10 @@ and 4 blocks high. The player stands 20 blocks away, with the back to the stray.
 ## Armor against scaled mobs
 
 Mob damage grows with the mob's level, and vanilla armor counts as about `armor - hit / 2`, so it collapses against a big hit.
-Armor therefore judges a mob's hit as if it were the mob's unscaled damage: the hit is divided by the mob's level multiplier
-before the armor math, and the result is scaled back. Armor keeps its vanilla share at every level, and armor wears as if
-from the base hit. Mob piercing still strips its share of armor first. Hits from players and from mobs without level
-scaling use vanilla armor.
+Armor therefore judges a mob's hit as a zombie's base hit: the hit is divided by the factor `damage multiplier x (1 + flat / 3)`
+(3 is a zombie's base hit) before the armor math, and the result is scaled back. Armor keeps its vanilla share at every
+level, and armor wears as if from the base hit. Mob piercing still strips its share of armor first. Hits from players and
+from mobs without level scaling use vanilla armor.
 
 ## Steady field of view
 
@@ -380,3 +381,8 @@ reads it.
 altitude levels, never below the dimension minimum. It has no random variation. The equips container loot reads it.
 
 `SpawnScaling.LEVEL_HEALTH_BONUS` stays public: `mod-stella-spells` reads it by name for its summons.
+
+## Elite bounty
+
+An elite that a player kills drops `min(32, 2 + level / 10)` emeralds. A boss drops four times that. A kill by
+another mob, the void, or a command pays nothing. A summoned elite, such as a quest Nemesis, pays no bounty.

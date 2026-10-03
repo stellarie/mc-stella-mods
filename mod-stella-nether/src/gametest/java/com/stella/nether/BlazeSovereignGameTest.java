@@ -1,5 +1,6 @@
 package com.stella.nether;
 
+import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.mobs.scaling.ThreatState;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -81,18 +82,20 @@ public class BlazeSovereignGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:sov_health", maxTicks = 100)
-	public void theSovereignsHealthIsTheRaidsOwnAndNoThreats(final GameTestHelper helper) {
+	public void theSovereignsHealthFollowsTheRaidsThreatLevel(final GameTestHelper helper) {
 		ServerPlayer player = enter(helper);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
 		Blaze blaze = BlazeSovereign.rise(raid, arena(raid, server, 8));
 		double effective = BlazeSovereign.effectiveHealth(blaze);
 		int threat = ThreatState.level(blaze);
-		NetherTestSupport.result("sovereignHealth", "effective=" + effective + " expected=" + BlazeSovereign.HEALTH + " threat=" + threat + " attribute=" + blaze.getMaxHealth());
+		int expectedThreat = BlazeSovereign.LEVEL_FLOOR + BlazeSovereign.LEVEL_BONUS;
+		double expected = BlazeSovereign.BASE_HEALTH * SpawnScaling.healthMultiplier(expectedThreat);
+		NetherTestSupport.result("sovereignHealth", "effective=" + effective + " expected=" + expected + " threat=" + threat + " attribute=" + blaze.getMaxHealth());
 		blaze.discard();
 		NetherTestSupport.leave(helper, player);
-		helper.assertTrue(Math.abs(effective - BlazeSovereign.HEALTH) < 1.0 && threat == 0,
-			"the Sovereign holds " + effective + " of " + BlazeSovereign.HEALTH + " at threat " + threat);
+		helper.assertTrue(Math.abs(effective - expected) < 1.0 && threat == expectedThreat,
+			"the Sovereign holds " + effective + " of " + expected + " at threat " + threat);
 		helper.succeed();
 	}
 
