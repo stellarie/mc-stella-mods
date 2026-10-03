@@ -2,6 +2,7 @@ package com.stella.nether;
 
 import com.mojang.serialization.Codec;
 import com.stella.mobs.StellaMobs;
+import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.mobs.scaling.ThreatState;
 import java.util.List;
 import java.util.UUID;
@@ -29,12 +30,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Blaze Sovereign: one per run, risen on open ground at the run's fortress the first time a player comes
  * near, and never again in that run. It stands three times a blaze's size and keeps near the ground; its
- * health is the raid's own {@link #HEALTH}, which no threat level touches, and every hit it lands
- * sets its target alight.
+ * health follows the raid's best player: {@link #BASE_HEALTH} times the mobs mod's health curve at its threat level,
+ * and every hit it lands sets its target alight.
  */
 public final class BlazeSovereign {
-	/** The Sovereign's whole health, the raid's own; no threat level touches it. */
-	public static final double HEALTH = 1248.0;
+	/** The health at threat level 0; the level multiplies it. */
+	public static final double BASE_HEALTH = 300.0;
+	/** The threat level never falls under the floor, and always adds the bonus. */
+	public static final int LEVEL_FLOOR = 50;
+	public static final int LEVEL_BONUS = 10;
 	public static final double SCALE = 3.0;
 	/** Vanilla's ceiling on the health attribute; what lies past it is kept as a divisor on every hit taken. */
 	/** How high above the ground below it the Sovereign may rise. */
@@ -123,6 +127,23 @@ public final class BlazeSovereign {
 		return blaze.getHealth() * (divisor == null ? 1.0 : divisor);
 	}
 
+	/** Its whole health at full: the attribute's maximum times the divisor. */
+	public static double effectiveMaxHealth(final Blaze blaze) {
+		Double divisor = blaze.getAttached(DIVISOR);
+		return blaze.getMaxHealth() * (divisor == null ? 1.0 : divisor);
+	}
+
+	/** A Sovereign's small fireball deals this share of vanilla's damage before the level factor. */
+	public static final float FIREBALL_SHARE = 0.5F;
+
+	/** The damage of a hit taken: halved for a small fireball the Sovereign threw. */
+	public static float scaleFireball(final DamageSource source, final float amount) {
+		boolean thrown = source.is(net.minecraft.world.damagesource.DamageTypes.FIREBALL)
+			&& source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
+			&& isSovereign(source.getEntity());
+		return thrown ? amount * FIREBALL_SHARE : amount;
+	}
+
 	static void tick(final MinecraftServer server, final RaidState state) {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
 		if (raid == null) {
@@ -186,12 +207,29 @@ public final class BlazeSovereign {
 		return 1;
 	}
 
+	/** The threat level of a raid: its best player, never under the floor, plus the bonus. */
+	public static int threatLevel(final ServerLevel raid) {
+		return threatLevel(raid.players());
+	}
+
+	public static int threatLevel(final java.util.Collection<? extends net.minecraft.world.entity.player.Player> players) {
+		int best = LEVEL_FLOOR;
+		for (net.minecraft.world.entity.player.Player player : players) {
+			best = Math.max(best, player.experienceLevel);
+		}
+		return best + LEVEL_BONUS;
+	}
+
+	/** The rpg mod's multiplier on every hit taken; 1 when that mod is absent. */
+	public static double healthScale() {
+		Object scale = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare().get("mod-stella-rpg:health-scale");
+		return scale instanceof Double value && value > 0.0 ? value : 1.0;
+	}
+
 	/** The most health an attribute may hold here: the live cap, divided by the rpg mod's health scale. */
 	public static double healthCap() {
 		double cap = ((net.minecraft.world.entity.ai.attributes.RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
-		Object scale = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare().get("mod-stella-rpg:health-scale");
-		double k = scale instanceof Double value && value > 0.0 ? value : 1.0;
-		return cap / k;
+		return cap / healthScale();
 	}
 
 	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
@@ -200,11 +238,12 @@ public final class BlazeSovereign {
 		RaidState state = RaidInstance.state(server);
 		Blaze blaze = EntityTypes.BLAZE.create(raid, EntitySpawnReason.EVENT);
 		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		blaze.addTag(StellaMobs.SELF_SCALED_TAG);
 		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		blaze.setAttached(SOVEREIGN, state.run());
-		// The raid's own health; its threat is none, like every raid mob's.
-		blaze.setAttached(ThreatState.TYPE, new ThreatState(0, 0));
-		double total = HEALTH;
+		int level = threatLevel(raid);
+		blaze.setAttached(ThreatState.TYPE, new ThreatState(level, 0));
+		double total = BASE_HEALTH * SpawnScaling.healthMultiplier(level);
 		double attribute = Math.min(total, healthCap());
 		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(attribute);
 		blaze.setAttached(DIVISOR, total / attribute);
@@ -220,7 +259,7 @@ public final class BlazeSovereign {
 		RaidInstance.set(server, state.withSovereignRisen());
 		closeBar(server);
 		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		BehaviorLog.info("[NETHER] sovereign risen run={} at={} health={}", state.run(), blaze.blockPosition(), total);
+		BehaviorLog.info("[NETHER] sovereign risen run={} at={} level={} health={}", state.run(), blaze.blockPosition(), level, total);
 		return blaze;
 	}
 
