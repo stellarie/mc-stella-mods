@@ -16,10 +16,10 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
 
 ## Features
 
-- One patrol of six per discovered vanilla village: the duke, two melee guards, two ranged guards, and
-  the mage. Every 5 seconds, the chunks within 2 of each
+- One patrol of seven per discovered vanilla village: the duke, two melee guards, two ranged guards, the
+  mage, and the job trainer. Every 5 seconds, the chunks within 2 of each
   player are checked, so a village whose villagers claimed their beds after its chunk loaded still
-  gets its patrol. A village saved by an older version gains its two ranged guards at its next check.
+  gets its patrol. A village saved by an older version gains its missing members, such as the trainer, at its next check.
   When a village's head has been missing for a minute while a player is near, the
   village gets a new patrol: fallen members are replaced, and living ones stay.
 - A melee guard carries an iron sword and a shield. A ranged guard carries a crossbow. Both run the
@@ -164,6 +164,26 @@ Install the jar and Mod Stella Mobs on the server and each client. The mission b
   and returns the key of the stat it grew. Without that mod, the defender gains a permanent modifier
   on max health, attack damage, armor, or armor toughness. One modifier per attribute holds the
   total. The total survives a save. The log holds one `defender_grown` line per kill.
+
+## Job trainer
+
+Each village has one trainer: a guard with a book in its hand and the label Trainer. It stays within 3 blocks of the duke,
+does not patrol, never picks a target, and does not offer the guard quest. A fallen trainer returns with the rest of the patrol.
+
+Right-click the trainer within 8 blocks to open the Job Trainer, a three-row chest menu. Any client can show it.
+
+- Jobs need `mod-stella-rpg`. This mod reaches it through the object share `mod-stella-rpg:jobs` and has no link to it.
+  Without the share the trainer says jobs are unavailable and opens no menu.
+- At level 10 or higher, with no job, the menu shows the archer, fighter, mage, and priest. A choice is permanent. It calls
+  the share's `choose` and `grantItems`. Below level 10, or with a job already, the menu states the reason and changes nothing.
+- A mage also receives a Spark Shot spellbook and one random spellbook that is not Summon Skeleton. A priest also receives
+  the Mending Word heal book and the Stoneguard buff book. Every book carries the Doublecast enchantment.
+  The books come from `mod-stella-spells` by item id. Without that mod a job gets its own item only.
+- From level 40, and every 30 levels after (70, 100, and so on), a player with a job sees a boss trial in the menu for the lowest
+  trial level the player has reached and the share's `trialsDone` does not list. Accepting it gives a map to a skeleton, spider,
+  or evoker boss of that level, 128 to 256 blocks from the bell. The boss has the mobs mod boss kit. A player kill calls the share's
+  `grantTrial`, which adds 5 to the main stat and 1 to every other stat, once for each trial level.
+- A boss lost to the sun, a fall, or another mob pays nothing. Ask the trainer again for a new boss. A new request replaces the old one.
 
 ## Build and test
 

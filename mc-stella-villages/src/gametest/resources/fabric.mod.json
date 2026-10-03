@@ -32,7 +32,8 @@
 			"com.stella.villages.DefenderGrowthGameTest",
 			"com.stella.villages.DefenderAiGameTest",
 			"com.stella.villages.QuestRewardGameTest",
-			"com.stella.villages.SlayerContractGameTest"
+			"com.stella.villages.SlayerContractGameTest",
+			"com.stella.villages.TrainerGameTest"
 		]
 	},
 	"mixins": [

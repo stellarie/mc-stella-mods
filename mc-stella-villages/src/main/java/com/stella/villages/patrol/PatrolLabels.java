@@ -10,6 +10,7 @@ public final class PatrolLabels {
 	// Literal, because the village mod ships no language file and a vanilla client must read it too.
 	public static final String HEAD_LABEL = "Duke";
 	public static final String MEMBER_LABEL = "Guard";
+	public static final String TRAINER_LABEL = "Trainer";
 	public static final ChatFormatting CALM = ChatFormatting.GREEN;
 	public static final ChatFormatting PROVOKED = ChatFormatting.RED;
 
@@ -17,7 +18,8 @@ public final class PatrolLabels {
 	}
 
 	public static Component label(final PatrolState.Role role, final boolean provoked) {
-		String text = role == PatrolState.Role.HEAD ? HEAD_LABEL : role == PatrolState.Role.VILLAGE_WITCH ? VillageWitchKit.LABEL : MEMBER_LABEL;
+		String text = role == PatrolState.Role.HEAD ? HEAD_LABEL : role == PatrolState.Role.VILLAGE_WITCH ? VillageWitchKit.LABEL
+			: role == PatrolState.Role.TRAINER ? TRAINER_LABEL : MEMBER_LABEL;
 		return Component.literal(text).withStyle(provoked ? PROVOKED : CALM);
 	}
 
