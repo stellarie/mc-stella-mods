@@ -24,7 +24,7 @@ import net.minecraft.world.level.Level;
  */
 public final class StellaSpawner {
 	/** A cycle runs once every this many level ticks. */
-	public static final int CYCLE_INTERVAL_TICKS = 20;
+	public static final int CYCLE_INTERVAL_TICKS = 60;
 	/**
 	 * The test runner sets this to false, so its other tests never gain a stray spawn. Play leaves it on.
 	 * A test drives {@link #runCycle} itself and reads the same rule code the tick hook reaches.

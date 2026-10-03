@@ -55,7 +55,7 @@ public final class SpawnSafety {
 		);
 
 		if (suppressed) {
-			StellaMobs.LOGGER.info(
+			StellaMobs.LOGGER.debug(
 				"[BEHAVIOR] test=spawnSafety SUPPRESS type={} distance={} radius={}",
 				mob.getType(), Math.hypot(mob.getX() - ORIGIN_X, mob.getZ() - ORIGIN_Z), GearConfigStore.get().spawnSafetyRadius()
 			);
