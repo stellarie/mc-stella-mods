@@ -115,11 +115,13 @@ public final class ReadoutService {
 
 	public static ReadoutPayload payloadFor(final Mob mob, final ServerPlayer player, final PowerConfig config) {
 		int threat = ReadoutThreat.levelOf(mob);
+		int playerLevel = PowerTracker.playerLevel(player, config);
 		PowerCurve.Band band = threat == ReadoutThreat.NONE
 			? PowerCurve.Band.WHITE
-			: PowerCurve.band(threat - PowerTracker.playerLevel(player, config), config);
+			: PowerCurve.band(threat - playerLevel, config);
+		DangerColor danger = threat == ReadoutThreat.NONE ? DangerColor.WHITE : DangerColor.of(threat, playerLevel);
 		return ReadoutPayload.of(
-			mob.getId(), threat, band, ReadoutRank.of(mob), hostile(mob, player),
+			mob.getId(), threat, band, danger, ReadoutRank.of(mob), hostile(mob, player),
 			mob.getHealth(), mob.getMaxHealth(), mob.getAbsorptionAmount(), mob.getDisplayName().getString()
 		);
 	}

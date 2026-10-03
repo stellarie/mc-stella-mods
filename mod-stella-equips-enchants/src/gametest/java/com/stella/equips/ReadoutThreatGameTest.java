@@ -5,6 +5,7 @@ import com.stella.equips.power.PowerConfig;
 import com.stella.equips.power.PowerConfigParser;
 import com.stella.equips.power.PowerConfigStore;
 import com.stella.equips.power.PowerCurve;
+import com.stella.equips.readout.DangerColor;
 import com.stella.equips.readout.ReadoutPayload;
 import com.stella.equips.readout.ReadoutService;
 import com.stella.equips.readout.ReadoutThreat;
@@ -37,9 +38,18 @@ public class ReadoutThreatGameTest {
 		ReadoutPayload shared;
 		ReadoutPayload negative;
 		ReadoutPayload absent;
+		DangerColor weaker;
+		DangerColor even;
+		DangerColor stronger;
 		try {
 			share.put(ReadoutThreat.OBJECT_SHARE_KEY, (Function<Entity, Integer>) entity -> 37);
 			shared = ReadoutService.payloadFor(mob, player, config);
+			share.put(ReadoutThreat.OBJECT_SHARE_KEY, (Function<Entity, Integer>) entity -> 12);
+			weaker = ReadoutService.payloadFor(mob, player, config).dangerValue();
+			share.put(ReadoutThreat.OBJECT_SHARE_KEY, (Function<Entity, Integer>) entity -> 20);
+			even = ReadoutService.payloadFor(mob, player, config).dangerValue();
+			share.put(ReadoutThreat.OBJECT_SHARE_KEY, (Function<Entity, Integer>) entity -> 26);
+			stronger = ReadoutService.payloadFor(mob, player, config).dangerValue();
 			share.put(ReadoutThreat.OBJECT_SHARE_KEY, (Function<Entity, Integer>) entity -> -1);
 			negative = ReadoutService.payloadFor(mob, player, config);
 			share.remove(ReadoutThreat.OBJECT_SHARE_KEY);
@@ -54,6 +64,13 @@ public class ReadoutThreatGameTest {
 		StellaEquips.LOGGER.info("[BEHAVIOR] test=readoutFollowsTheShare RESULT shared={} negative={} absent={}",
 			shared, negative, absent);
 		helper.assertTrue(shared.threat() == 37, "the payload ignored the share: " + shared.threat());
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=readoutDanger RESULT shared={} weaker={} even={} stronger={} absent={}",
+			shared.dangerValue(), weaker, even, stronger, absent.dangerValue());
+		helper.assertTrue(shared.dangerValue() == DangerColor.RED, "a gap of 17 read " + shared.dangerValue());
+		helper.assertTrue(stronger == DangerColor.YELLOW, "a gap of 6 read " + stronger);
+		helper.assertTrue(even == DangerColor.WHITE, "a gap of 0 read " + even);
+		helper.assertTrue(weaker == DangerColor.GREEN, "a gap of -8 read " + weaker);
+		helper.assertTrue(absent.dangerValue() == DangerColor.WHITE, "a missing level read " + absent.dangerValue());
 		helper.assertTrue(shared.bandValue() == PowerCurve.band(17, config),
 			"the band did not use the raw gap of 17: " + shared.bandValue());
 		helper.assertTrue(negative.threat() == ReadoutThreat.NONE && negative.bandValue() == PowerCurve.Band.WHITE,
