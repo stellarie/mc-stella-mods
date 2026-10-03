@@ -139,7 +139,7 @@ public class TrainingDummyGameTest {
 			stand.hurtServer(level, level.damageSources().generic(), 7.0F);
 			String label = stand.getCustomName().getString();
 			result("resetsAfterIdle", label);
-			helper.assertTrue(label.endsWith("1 hits") && label.startsWith("Avg 7 "), "the window did not reset: " + label);
+			helper.assertTrue(label.contains("· 1 hits") && label.startsWith("Avg 7 "), "the window did not reset: " + label);
 			helper.succeed();
 		});
 	}
