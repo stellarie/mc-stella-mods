@@ -68,7 +68,7 @@ public final class SovereignSpecials {
 	private static final int DIVE_MAX_TICKS = 80;
 	/** Half the side of the dive's square blast: twelve by twelve. */
 	public static final double DIVE_HALF_WIDTH = 6.0;
-	public static final float DIVE_DAMAGE = 20.0F;
+	public static final float DIVE_DAMAGE = 6.0F;
 	public static final int DIVE_BURN_SECONDS = 8;
 	public static final double DIVE_FIRE_CHANCE = 0.35;
 
@@ -88,13 +88,13 @@ public final class SovereignSpecials {
 	public static final int VORTEX_BULLETS_EACH = 3;
 	/** A flame this near a player's body has hit them. */
 	public static final double VORTEX_HIT_REACH = 0.3;
-	public static final float VORTEX_BULLET_DAMAGE = 4.0F;
+	public static final float VORTEX_BULLET_DAMAGE = 1.5F;
 	public static final int VORTEX_BULLET_BURN_SECONDS = 4;
-	/** The shield it channels behind, in its whole health. */
-	public static final double VORTEX_SHIELD = 100.0;
+	/** The share of the Sovereign's whole health the shield holds. */
+	public static final double VORTEX_SHIELD_SHARE = 0.08;
 	/** How long a Sovereign whose shield is broken stands staggered, neither moving nor attacking. */
 	public static final int VORTEX_STAGGER_TICKS = 8 * 20;
-	public static final float VORTEX_BLAST_DAMAGE = 30.0F;
+	public static final float VORTEX_BLAST_DAMAGE = 10.0F;
 	public static final float VORTEX_BLAST_KNOCKBACK = 3.0F;
 	public static final net.minecraft.resources.Identifier VORTEX_SHIELD_ID = StellaNether.id("vortex_shield");
 	private static final int SHIELD_COLOUR = 0x5AA0FF;
@@ -102,7 +102,7 @@ public final class SovereignSpecials {
 	public static final double WAVE_RADIUS = 16.0;
 	public static final double WAVE_SPEED = 1.0;
 	public static final double WAVE_HEIGHT = 4.0;
-	public static final float WAVE_DAMAGE = 4.0F;
+	public static final float WAVE_DAMAGE = 1.5F;
 	public static final float WAVE_KNOCKBACK = 2.5F;
 
 	/** The soul nova: slow blue flames in every direction, which burst where they are after five seconds. */
@@ -114,7 +114,7 @@ public final class SovereignSpecials {
 	public static final double NOVA_REACH = 16.0;
 	public static final int NOVA_LIFE_TICKS = 6 * 20;
 	public static final double NOVA_BURST_RADIUS = 3.0;
-	public static final float NOVA_DAMAGE = 6.0F;
+	public static final float NOVA_DAMAGE = 2.5F;
 	public static final float NOVA_KNOCKBACK = 1.5F;
 	/** Soul flames each burst sets on the blocks around it. */
 	public static final int NOVA_FLAMES_EACH = 3;
@@ -682,7 +682,7 @@ public final class SovereignSpecials {
 		}
 	}
 
-	/** The channel begins: a shield of {@link #VORTEX_SHIELD}, in its whole health, as absorption. */
+	/** The channel begins: a shield of {@link #VORTEX_SHIELD_SHARE} of its whole health, as absorption. */
 	private static void raiseShield(final ServerLevel raid, final Cast cast) {
 		Blaze blaze = cast.blaze;
 		double points = shieldPoints(blaze);
@@ -695,13 +695,13 @@ public final class SovereignSpecials {
 		cast.shield = true;
 		cast.shieldAt = blaze.position();
 		raid.playSound(null, blaze.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.HOSTILE, 3.0F, 0.6F);
-		BehaviorLog.info("[NETHER] sovereign vortex shield up points={} whole={}", points, VORTEX_SHIELD);
+		BehaviorLog.info("[NETHER] sovereign vortex shield up points={} whole={}", points, VORTEX_SHIELD_SHARE * BlazeSovereign.effectiveMaxHealth(blaze));
 	}
 
-	/** The shield in absorption points: its whole-health size through the Sovereign's divisor. */
+	/** The shield in absorption points: its whole-health size through the divisor, then the rpg multiplier on hits. */
 	private static double shieldPoints(final Blaze blaze) {
 		Double divisor = blaze.getAttached(BlazeSovereign.DIVISOR);
-		return VORTEX_SHIELD / (divisor == null || divisor < 1.0 ? 1.0 : divisor);
+		return VORTEX_SHIELD_SHARE * BlazeSovereign.effectiveMaxHealth(blaze) / (divisor == null || divisor < 1.0 ? 1.0 : divisor) * BlazeSovereign.healthScale();
 	}
 
 	private static void dropShield(final Blaze blaze) {

@@ -19,7 +19,64 @@ public class SovereignVortexGameTest {
 	/** The shield left, in the Sovereign's whole health. */
 	static double shieldLeft(final SovereignSpecialsGameTest.Scene scene) {
 		Double divisor = scene.sovereign().getAttached(BlazeSovereign.DIVISOR);
-		return scene.sovereign().getAbsorptionAmount() * (divisor == null ? 1.0 : divisor);
+		return scene.sovereign().getAbsorptionAmount() / BlazeSovereign.healthScale() * (divisor == null ? 1.0 : divisor);
+	}
+
+	/** The shield's size in the Sovereign's whole health: its share of the health it has at full. */
+	static double wholeShield(final SovereignSpecialsGameTest.Scene scene) {
+		Double divisor = scene.sovereign().getAttached(BlazeSovereign.DIVISOR);
+		return SovereignSpecials.VORTEX_SHIELD_SHARE * scene.sovereign().getMaxHealth() * (divisor == null ? 1.0 : divisor);
+	}
+
+	static final String SHARE = "mod-stella-rpg:health-scale";
+
+	/** Raises the vortex shield with the rpg share set to k (absent when null) and checks its points and its whole size. */
+	static void shieldUnderShare(final GameTestHelper helper, final Double k) {
+		net.fabricmc.loader.api.ObjectShare share = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare();
+		Object previous = share.get(SHARE);
+		if (k == null) {
+			share.remove(SHARE);
+		} else {
+			share.put(SHARE, k);
+		}
+		SovereignSpecialsGameTest.Scene scene = SoulNovaGameTest.wideScene(helper);
+		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene), "the Sovereign is not loaded"))
+			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.VORTEX, scene.player()))
+			.thenWaitUntil(() -> helper.assertTrue(cast[0].age() >= 1, "the channel has not begun"))
+			.thenExecute(() -> {
+				try {
+					double scale = k == null ? 1.0 : k;
+					Double divisor = scene.sovereign().getAttached(BlazeSovereign.DIVISOR);
+					double effectiveMax = scene.sovereign().getMaxHealth() * (divisor == null ? 1.0 : divisor);
+					double points = scene.sovereign().getAbsorptionAmount();
+					double expectedPoints = SovereignSpecials.VORTEX_SHIELD_SHARE * effectiveMax / (divisor == null ? 1.0 : divisor) * scale;
+					double whole = points / scale * (divisor == null ? 1.0 : divisor);
+					NetherTestSupport.result("vortexShieldUnits", "share=" + k + " points=" + points + " expectedPoints=" + expectedPoints
+						+ " whole=" + whole + " effectiveMax=" + effectiveMax);
+					SovereignSpecialsGameTest.end(helper, scene);
+					helper.assertTrue(Math.abs(points - expectedPoints) < 0.05 && Math.abs(whole - SovereignSpecials.VORTEX_SHIELD_SHARE * effectiveMax) < 0.5,
+						"shield of " + points + " points (expected " + expectedPoints + ") and " + whole + " whole (share " + k + ")");
+				} finally {
+					if (previous == null) {
+						share.remove(SHARE);
+					} else {
+						share.put(SHARE, previous);
+					}
+				}
+			})
+			.thenSucceed();
+	}
+
+	@GameTest(environment = "mod-stella-nether-test:vortex_units_k", maxTicks = 600)
+	public void theShieldIsInTheUnitsOfActuallyHurtWhenTheRpgShareIsSet(final GameTestHelper helper) {
+		shieldUnderShare(helper, 15.0);
+	}
+
+	@GameTest(environment = "mod-stella-nether-test:vortex_units_plain", maxTicks = 600)
+	public void theShieldIsInPlainPointsWithoutTheRpgShare(final GameTestHelper helper) {
+		shieldUnderShare(helper, null);
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:vortex_pull", maxTicks = 1200)
@@ -52,7 +109,7 @@ public class SovereignVortexGameTest {
 					+ " slowed=" + slowed + " bullets=" + bullets.size() + " onSphere=" + onSphere + " above=" + above + " below=" + below + " blue=" + blue
 					+ " moved=" + String.format("%.3f", moved));
 				SovereignSpecialsGameTest.end(helper, scene);
-				helper.assertTrue(Math.abs(shield[0] - SovereignSpecials.VORTEX_SHIELD) < 0.5 && slowed && onSphere && above > 0 && below > 0
+				helper.assertTrue(Math.abs(shield[0] - wholeShield(scene)) < 0.5 && slowed && onSphere && above > 0 && below > 0
 						&& blue > 0 && blue < bullets.size() && moved < 0.1,
 					"shield " + shield[0] + ", slowed=" + slowed + ", " + bullets.size() + " flames on the sphere=" + onSphere + ", " + above + " from above, "
 						+ below + " from below, " + blue + " blue, moved " + moved);
@@ -107,7 +164,7 @@ public class SovereignVortexGameTest {
 			.thenExecute(() -> {
 				// A blow worth more than the shield, in the Sovereign's whole health.
 				scene.sovereign().damageCooldownTime = 0;
-				scene.sovereign().hurtServer(scene.raid(), scene.raid().damageSources().generic(), (float) (SovereignSpecials.VORTEX_SHIELD * 1.5));
+				scene.sovereign().hurtServer(scene.raid(), scene.raid().damageSources().generic(), (float) (wholeShield(scene) * 1.5));
 			})
 			.thenWaitUntil(() -> helper.assertTrue(cast[0].staggeredAt() >= 0, "the Sovereign has not staggered"))
 			.thenExecute(() -> held[0] = scene.sovereign().position())

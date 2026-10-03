@@ -97,9 +97,9 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   chunk is loaded, the Blaze Sovereign rises there. It stands on the nearest open floor within 32 blocks
   of the fortress start (solid below, seven blocks of air above, no lava). It never rises again in that
   run, slain or not; a new run raises a new one.
-- Health: the raid's own 1,248, whatever the threat (changed 2026-09-29; it was 1000 plus 50 per threat
-  level, 2,500 to 3,000 in practice). The health attribute holds at most 1,024; the rest is a divisor on
-  every hit it takes, so a 100-point hit costs 100 of its whole health.
+- Health: 300 times the mobs mod's health multiplier at its threat level (slice 16 below; it was the raid's
+  own 1,248 until then). The health attribute holds at most 1,024; the rest is a divisor on every hit it
+  takes, so a 100-point hit costs 100 of its whole health.
   It opts out of the mobs mod's spawn rolls, so its kit and scaling are its own.
 - It stands three times a blaze's size (5.4 blocks) and keeps within two blocks of the ground below it,
   drawn down half a block a tick if higher.
@@ -117,11 +117,11 @@ facing one, then another 8 seconds after each ends, in this turn (slices 12f and
 2. **Brood**: five ordinary blazes rise in a ring around it and take its target.
 3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood,
    breaking every block it moves into.
-   Everything alive in the 12 by 12 area takes 20 damage and burns for 8 seconds, and about a third of
+   Everything alive in the 12 by 12 area takes 6 base damage (slice 16) and burns for 8 seconds, and about a third of
    the ground in the area catches fire. Blazes are spared.
 4. **Vortex** (replaced the Meteor Storm in slice 14; see there).
 5. **Charged Wave**: a ring spreads from it at a block a tick out to 16 blocks, striking each creature it
-   passes once: 4 damage, a push of 2.5 away, and a stun.
+   passes once: 1.5 base damage (slice 16), a push of 2.5 away, and a stun.
 
 A stun is 3 seconds of Slowness VII, Mining Fatigue III and Weakness II. Every hit the Sovereign lands
 also burns, as before.
@@ -198,7 +198,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 
 - A sixth special, last in the rotation. Eighteen slow blue flames (a ring of twelve, and six angled
   upward) drift out at 3 blocks a second.
-- Each one bursts on its own, at whichever comes first: a wall, 16 blocks out, or 6 seconds. It hurts (6)
+- Each one bursts on its own, at whichever comes first: a wall, 16 blocks out, or 6 seconds. It hurts (2.5 base, slice 16)
   and throws back whatever stands within 3 blocks, and sets three soul flames on the floor around it. It
   breaks no block.
 - The soul flame is the mod's own block, drawn with vanilla's soul-fire models. It holds on any solid
@@ -271,16 +271,16 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - **Reaches.** Spiral fireballs are spent at 32 blocks. Soul nova flames burst at a wall, 16 blocks or
   6 seconds (slice 12f above).
 - **The vortex** replaces the Meteor Storm (reworked 2026-09-29):
-  - For 15 seconds the Sovereign channels: it stands still behind a shield worth 100 of its whole health,
+  - For 15 seconds the Sovereign channels: it stands still behind a shield worth 8 percent of its whole health (slice 16),
     drawn as a shell of blue motes around it that thins and shrinks as the shield wears down.
   - Every player within 16 blocks has Slowness III while it channels.
   - A mix of blue and yellow flames flies in to it from a 16-block sphere all around: above, below and on
     every side. A flame ends when it hits a player or reaches the centre. Blue flames burst like the soul
-    nova; yellow ones burn (4 damage, 4 seconds alight).
+    nova; yellow ones burn (1.5 base damage, 4 seconds alight).
   - Break the shield before the channel ends, and the Sovereign is staggered for 8 seconds: it can neither
     move nor attack.
   - Leave it whole for the full 15 seconds, and it bursts: every breakable block within 16 blocks is
-    broken (liquids stay), and everyone within 16 takes 30 damage and is thrown back hard.
+    broken (liquids stay), and everyone within 16 takes the blast (10 base damage, slice 16) and is thrown back hard.
 - **A debug command**, for game masters: `/stellanether sovereign summon` raises a Blaze Sovereign where it
   is run, in the raid nether only.
 - Measured:
@@ -291,7 +291,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   - Vortex: see the reworked measurements below.
 
 - Vortex, reworked, measured:
-  - The shield held 100.0 of whole health. A player 10 blocks off had Slowness III, and the Sovereign moved
+  - The shield held 100.0 of whole health (before slice 16). A player 10 blocks off had Slowness III, and the Sovereign moved
     0.000 while it channelled.
   - Half way through there were 114 flames, all from the sphere, 20 to 31 from above and 29 to 33 from
     below. A blue flame burst on the player it hit.
@@ -318,6 +318,29 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   came up short once in five runs, after five fixes. The blaze is shoved about by the blasts of its own
   fireballs at a target that close.
 
+## Slice 16: the Sovereign takes a threat level
+
+- **Level rule.** When the Sovereign rises, its threat level is `max(50, highest experience level of a
+  player in the raid dimension) + 10`. With no player inside it is 60. The level is set once, at the
+  rise, and the raid's load handler leaves it alone.
+- **Health rule.** Whole health is 300 times the mobs mod's health multiplier at that level
+  (`1 + 0.5 x level` by default). Level 60 gives 9,300. The health attribute still holds at most 1,024
+  divided by the rpg health scale; the rest is the divisor on every hit it takes.
+- **Hits.** The Sovereign is tagged self-scaled. Each hit it lands is its base value times the mobs mod's
+  self-scaled factor for its level (`SelfScaled.factor`). Armor and Protection judge the base value.
+- **Base hits.** Dive 6. Vortex blast 10. Soul nova burst 2.5. Charged wave 1.5. Vortex flame 1.5. A small
+  fireball the Sovereign throws deals half of vanilla's 5, so 2.5.
+- **Vortex shield.** It holds 8 percent of the Sovereign's whole health. In absorption points that is
+  the share of the attribute's health, times the rpg health scale when that mod is present, because the
+  rpg mod multiplies damage by it before absorption takes it. Without the rpg mod the scale is 1.
+- Not changed: raid mobs and the Brood stay at level 0, the rotation and its timing, the hard-mode boons,
+  the enrage, and the suffocation blast.
+- Measured at level 60 with no rpg mod (factor 11 with the default curve): health 9,300 (attribute 1,024,
+  divisor 9.08); shield 81.92 points; a bare target lost 66.0 to the dive, 16.5 to the wave and 27.5 to a
+  fireball. At level 90 (a level-80 player) health was 13,800. The test lines
+  `scaledDive`, `scaledWave`, `scaledFireball`, `sovereignLevel` and `vortexShieldUnits` carry the raw numbers.
+- Residual: a save and reload of the Sovereign is not tested.
+
 ## Logging
 
 - The mod's behaviour lines (a Sovereign rising, a special cast, a raid reset, a portal choice) go through
@@ -340,6 +363,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Start the client with the mod: it reaches the title screen (the client mixins apply), and the
   Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
+- Fight the Sovereign at your own level: it rises at max(50, your level) + 10. Note how long the fight lasts and which attacks feel unfair (slice 16).
 - Stand inside the vortex: the flames come from every side, above and below; the shield's shell is plain
   and thins as you break it; a broken shield leaves the Sovereign visibly reeling; an unbroken one bursts.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
