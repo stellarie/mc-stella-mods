@@ -30,7 +30,8 @@
 		"RpgEffectPercentMixin",
 		"RpgNoDamageHeartsMixin",
 		"RpgXpCurveMixin",
-		"RpgBagPickupMixin"
+		"RpgBagPickupMixin",
+		"AbstractArrowPierceInvoker"
 	],
 	"injectors": {
 		"defaultRequire": 1

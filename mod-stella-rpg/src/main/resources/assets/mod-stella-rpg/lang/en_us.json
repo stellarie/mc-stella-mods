@@ -69,5 +69,16 @@
 	"tooltip.mod-stella-rpg.stat.int": "INT",
 	"tooltip.mod-stella-rpg.stat.luk": "LUK",
 	"screen.mod-stella-rpg.result.invalid_stat": "Unknown stat.",
+	"item.mod-stella-rpg.mechanical_bow": "Mechanical Bow",
+	"item.mod-stella-rpg.mechanical_bow.lore1": "Draws fully in 10 ticks",
+	"item.mod-stella-rpg.mechanical_bow.lore2": "25% chance to fire a free arrow",
+	"item.mod-stella-rpg.knight_sword": "Knight Sword",
+	"item.mod-stella-rpg.knight_sword.lore1": "Ignores 10% more armor",
+	"item.mod-stella-rpg.knight_sword.lore2": "10% chance to bleed the target",
+	"item.mod-stella-rpg.witch_hat": "Witch Hat",
+	"item.mod-stella-rpg.witch_hat.lore1": "+25% spell damage",
+	"item.mod-stella-rpg.priest_garbs": "Priest's Garbs",
+	"item.mod-stella-rpg.priest_garbs.lore1": "20% less damage from undead",
+	"item.mod-stella-rpg.priest_garbs.lore2": "+50% healing done",
 	"message.mod-stella-rpg.second_wind": "Second Wind! You cling to life. (ready again in 5 minutes)"
 }

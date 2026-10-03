@@ -1,6 +1,7 @@
 package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
+import com.stella.rpg.job.JobItems;
 import com.stella.rpg.roll.Affixes;
 import java.util.Map;
 import java.util.UUID;
@@ -130,6 +131,9 @@ public final class RpgCombat {
 		}
 		scaled += Affixes.total(attacker, Affix.DAMAGE_FLAT) / RpgScale.k();
 		scaled *= damageFactor(attacker);
+		if (isMelee(source)) {
+			scaled *= JobItems.meleeFactor(attacker, victim);
+		}
 		if (attacker instanceof Mob mob) {
 			scaled *= levelGap(mob, victim);
 		}
@@ -143,7 +147,8 @@ public final class RpgCombat {
 
 	/** Rolls a critical hit with the LUK chance of the attacker. A spell uses it. */
 	static boolean rollCrit(final LivingEntity attacker) {
-		return roller.roll(attacker, attacker.getRandom(), RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)));
+		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)) + JobItems.spellCritBonus(attacker);
+		return roller.roll(attacker, attacker.getRandom(), chance);
 	}
 
 	/** Records the result of a spell crit roll. The magic hit of that caster in the same tick then counts as a crit. */
@@ -203,7 +208,8 @@ public final class RpgCombat {
 			return 0.0;
 		}
 		RpgConfig.MagicRules rules = RpgConfigStore.current().magic();
-		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(attacker, Affix.ARMOR_PEN));
+		double job = isMelee(source) ? JobItems.armorPenetration(attacker) : 0.0;
+		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(attacker, Affix.ARMOR_PEN) + job);
 	}
 
 	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
@@ -264,6 +270,7 @@ public final class RpgCombat {
 			reduced *= RpgCurve.critDamageTakenMultiplier(StatBonuses.effective(entity, Stat.LUK));
 		}
 		reduced *= 1.0 - Math.min(1.0, Affixes.total(entity, Affix.REDUCTION_PCT));
+		reduced *= JobItems.incomingFactor(entity, source);
 		double flat = DefenseBonuses.flat(entity) + Affixes.total(entity, Affix.REDUCTION_FLAT) / RpgScale.k();
 		return (float) Math.max(0.0, reduced - flat);
 	}
