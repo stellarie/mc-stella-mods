@@ -45,7 +45,7 @@ public final class ReactiveState {
 	private boolean elite;
 	private long voidDragReadyTick;
 	private long harpoonReadyTick;
-	private int retreatCooldownTicks;
+	private int bandRestUntilTick;
 	private boolean companionSpawned;
 	private @Nullable UUID companionId;
 	private String r02Decision = "NO_THREAT";
@@ -234,24 +234,16 @@ public final class ReactiveState {
 
 
 	/**
-	 * The shared rearm cooldown for the two band goals, counted in the goals' own ticks rather than in
-	 * game time, because a goal ticks once per game tick and the harness clock does not advance. Exactly
-	 * one caller decrements it, RetreatGoal, which sits at rank 0 and is therefore evaluated first on
-	 * every tick where a MOVE goal is considered. Both goals read the same budget, so neither can call a
-	 * mob exhausted while the other calls it ready.
+	 * The shared rearm cooldown for the two band goals. It ends on a tick of the mob's own clock, because the
+	 * harness clock does not advance. No goal has to run for it to expire. Both goals read the same budget, so
+	 * neither can call a mob exhausted while the other calls it ready.
 	 */
-	public boolean isRetreatCoolingDown() {
-		return this.retreatCooldownTicks > 0;
+	public boolean isRetreatCoolingDown(final Mob mob) {
+		return mob.tickCount < this.bandRestUntilTick;
 	}
 
-	public void armRetreatCooldown(final int ticks) {
-		this.retreatCooldownTicks = ticks;
-	}
-
-	public void tickRetreatCooldown() {
-		if (this.retreatCooldownTicks > 0) {
-			this.retreatCooldownTicks--;
-		}
+	public void armRetreatCooldown(final Mob mob, final int ticks) {
+		this.bandRestUntilTick = mob.tickCount + ticks;
 	}
 
 		/** R25 style cooldown for the void drag: transient, because a reload may arm it again. */

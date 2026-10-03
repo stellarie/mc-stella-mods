@@ -11,6 +11,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Items;
@@ -31,6 +32,10 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>Each release follows a bow draw. The cadence counts the skeleton's own ticks, so it holds wherever the
  * game clock stands.
+ *
+ * <p>In reach and after its first release, the skeleton strafes sideways as the vanilla bow goal does, so it never
+ * stands still in a fight. It may turn about every two seconds, and it turns when it walks into a wall. Inside its near
+ * band plus two blocks it also steps back.
  */
 public class SkeletonVolleyGoal extends Goal {
 	public static final int ATTACK_PRIORITY = 4;
@@ -55,6 +60,14 @@ public class SkeletonVolleyGoal extends Goal {
 	private static final double BALLISTIC_LIFT = 0.2;
 	private static final double TARGET_AIM_HEIGHT = 0.3333333333333333;
 	private static final double CHASE_SPEED = 1.0;
+	/** The vanilla bow goal's strafe input. */
+	private static final float STRAFE_SPEED = 0.5F;
+	private static final int STRAFE_TURN_TICKS = 40;
+	private static final float STRAFE_TURN_CHANCE = 0.3F;
+	// A wall turns the strafe, but not every tick.
+	private static final int STRAFE_MIN_LEG_TICKS = 10;
+	private static final double STRAFE_BACK_MARGIN = 2.0;
+	private static final float LOOK_ROTATION_SPEED = 30.0F;
 
 	private final Mob mob;
 	private int attackTime = DRAW_TICKS;
@@ -62,6 +75,10 @@ public class SkeletonVolleyGoal extends Goal {
 	private int burstLeft;
 	// Mob age, so a lost target keeps its cooldown.
 	private int lastBurstArrow = -BURST_COOLDOWN_TICKS;
+	private int strafeTicks;
+	private boolean clockwise;
+	// No wandering before the fight opens.
+	private boolean released;
 
 	public SkeletonVolleyGoal(final Mob mob) {
 		this.mob = mob;
@@ -90,6 +107,17 @@ public class SkeletonVolleyGoal extends Goal {
 				new AttributeModifier(FOLLOW_RANGE_ID, MIN_FOLLOW_RANGE - range.getValue(), AttributeModifier.Operation.ADD_VALUE)
 			);
 		}
+	}
+
+	/** True while the skeleton's running volley goal has burst arrows left. */
+	public static boolean bursting(final Mob mob) {
+		for (WrappedGoal wrapped : mob.getGoalSelector().getAvailableGoals()) {
+			if (wrapped.isRunning() && wrapped.getGoal() instanceof SkeletonVolleyGoal volley && volley.burstLeft > 0) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/** How many arrows this skeleton's burst holds. */
@@ -124,6 +152,7 @@ public class SkeletonVolleyGoal extends Goal {
 		this.mob.getNavigation().stop();
 		this.mob.stopUsingItem();
 		this.attackTime = DRAW_TICKS;
+		this.released = false;
 		this.endBurst("stopped");
 	}
 
@@ -149,6 +178,10 @@ public class SkeletonVolleyGoal extends Goal {
 		}
 
 		this.mob.getNavigation().stop();
+		if (this.released) {
+			this.strafe(target);
+		}
+
 		--this.attackTime;
 		if (!this.mob.isUsingItem() && this.attackTime <= DRAW_TICKS) {
 			this.mob.startUsingItem(ProjectileUtil.getWeaponHoldingHand(this.mob, Items.BOW));
@@ -158,6 +191,23 @@ public class SkeletonVolleyGoal extends Goal {
 			this.mob.stopUsingItem();
 			this.release(target);
 		}
+	}
+
+	private void strafe(final LivingEntity target) {
+		this.strafeTicks++;
+		boolean turn = this.strafeTicks >= STRAFE_TURN_TICKS && this.mob.getRandom().nextFloat() < STRAFE_TURN_CHANCE;
+		if (turn || (this.strafeTicks >= STRAFE_MIN_LEG_TICKS && this.mob.horizontalCollision)) {
+			this.clockwise = !this.clockwise;
+			this.strafeTicks = 0;
+		} else if (this.strafeTicks >= STRAFE_TURN_TICKS) {
+			this.strafeTicks = 0;
+		}
+
+		double near = StanceBands.near(this.mob, ReactiveState.get(this.mob).getNearDistance());
+		float forward = this.mob.distanceTo(target) < near + STRAFE_BACK_MARGIN ? -STRAFE_SPEED : 0.0F;
+		this.mob.getMoveControl().strafe(forward, this.clockwise ? STRAFE_SPEED : -STRAFE_SPEED);
+		// Strafe axes follow the body, not the head.
+		this.mob.lookAt(target, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
 	}
 
 	/** The next burst arrow, or a single shot. */
@@ -173,6 +223,7 @@ public class SkeletonVolleyGoal extends Goal {
 
 		boolean burst = this.burstLeft > 0;
 		this.loose(target, burst);
+		this.released = true;
 		if (!burst) {
 			this.attackTime = SHOT_INTERVAL_TICKS;
 			return;

@@ -54,13 +54,7 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 			return false;
 		}
 
-		// The shared rearm budget, counted in ticks. This goal sits at rank 0, so it is evaluated first
-		// on every tick a MOVE goal is considered, and it is the single place the budget decreases.
-		boolean coolingDown = state.isRetreatCoolingDown();
-		if (coolingDown) {
-			state.tickRetreatCooldown();
-		}
-
+		boolean coolingDown = state.isRetreatCoolingDown(this.mob);
 		LivingEntity threat = this.mob.getTarget();
 		if (threat instanceof Player) {
 			// A stance retreat ignores the rearm.
@@ -153,7 +147,7 @@ public class RetreatGoal<T extends PathfinderMob> extends Goal {
 			Stance.retreatEnded(this.mob);
 		} else if (this.gainedDistance) {
 			ReactiveState state = ReactiveState.get(this.mob);
-			state.armRetreatCooldown(REARM_TICKS);
+			state.armRetreatCooldown(this.mob, REARM_TICKS);
 		}
 
 		this.gainedDistance = false;

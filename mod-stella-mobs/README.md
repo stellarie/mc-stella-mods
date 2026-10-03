@@ -100,6 +100,14 @@ their own arrows.
 - **No fire, no cloud:** no skeleton arrow burns, even from a bow with Flame. No skeleton arrow leaves a cloud.
 - **Range:** a skeleton shoots from up to 24 blocks away. Its follow range is at least 32 blocks.
 - **Ammo:** each arrow uses one ammo item. A tipped arrow keeps its own effect on the target it hits.
+- **Strafe:** after its first release, a skeleton in reach strafes sideways, as the vanilla bow goal does.
+  It may turn every 40 ticks, and it turns when it walks into a wall. Within 2 blocks of its near band it also
+  steps back.
+- **Retreat:** a target inside the near band makes the archer walk away until it is back in the band.
+  The walk follows a path that reaches its end: straight away first, then at wider angles, at 8, 5, and 3 blocks.
+  The archer is cornered when no such path exists, or when it moves less than half a block in 20 ticks.
+  A cornered archer rests for 60 ticks and fires. A retreat that runs its 60 tick window rests for 40 ticks.
+  A retreat that reaches the band does not rest. Every rest counts the archer's own ticks.
 
 ## Ranged reach
 
@@ -290,11 +298,14 @@ and a developer who tunes them. Each number below is a constant in the class nam
 |---|---|---|
 | STALK | fights with its normal weapon goals | an opening shot |
 | HIDE | walks to a cover spot | at the spot, or after 60 ticks |
-| WAIT | holds in cover | after 40 to 100 ticks, or when the player comes within 5 blocks |
+| WAIT | holds in cover | after 40 to 100 ticks, or when the player comes inside the near band |
 | PEEK | walks back into view and fires | the next shot |
 
-- A shot is an opening shot when the player has not seen the unit. The unit then searches once for cover.
-- A shot that the player has seen is a normal shot. No hide follows.
+- An archer, a unit with a bow or a crossbow, hides after every shot when cover is near. A skeleton's burst counts
+  as one shot. The archer peeks, shoots, and hides again.
+- For any other unit, a shot is an opening shot only when the player has not seen the unit. A seen shot is a normal
+  shot, and no hide follows.
+- A player inside the near band ends a hide and stops a new one, so the retreat wins over cover.
 - A unit in PURSUE does not hide. It presses a hurt player.
 - A unit that finds no spot or no path fights on. So does a unit that is still in the open after 60 ticks of HIDE.
 - The hide ends when the player dies or the unit takes another target.
