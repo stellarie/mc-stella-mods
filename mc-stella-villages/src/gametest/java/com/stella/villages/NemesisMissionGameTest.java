@@ -335,9 +335,11 @@ public final class NemesisMissionGameTest {
 			return;
 		}
 		double baseline = saved.getMaxHealth();
-		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseline + MissionService.NEMESIS_BONUS_HEALTH);
 		saved.addTag(McStellaVillages.NO_SPAWN_ROLL_TAG);
+		// The build order of a real Nemesis: elite health first, then the bonus.
 		Elite.mark(saved, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
+		saved.getAttribute(Attributes.MAX_HEALTH).setBaseValue(saved.getAttribute(Attributes.MAX_HEALTH).getBaseValue()
+			+ MissionService.NEMESIS_BONUS_HEALTH);
 		saved.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_AXE));
 		NemesisState.attach(saved, UUID.randomUUID());
 		saved.snapTo(Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(2, 2, 2))), 0.0F, 0.0F);
