@@ -33,9 +33,7 @@ public final class TowerRunes {
 	public static final double SAME = 0.5;
 	public static final double OWN_ELEMENT_BASE = 0.05;
 	public static final double OWN_ELEMENT_CAP = 0.80;
-	public static final double MOB_CHANCE = 0.002;
-	public static final double ELITE_CHANCE = 0.01;
-	public static final double BOSS_CHANCE = 0.05;
+	public static final double DROP_CHANCE = 0.001;
 
 	static final EquipmentSlot[] ARMOR_SLOTS ={EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
@@ -61,7 +59,7 @@ public final class TowerRunes {
 				return;
 			}
 			double chance = PINNED_DROP.getOrDefault(state.floor(), dropChanceOf(entity));
-			if (entity.getRandom().nextDouble() < chance) {
+			if (dropRoll(entity) < chance) {
 				TowerElement element = TowerElement.values()[entity.getRandom().nextInt(TowerElement.values().length)];
 				entity.spawnAtLocation(level, rune(element, state.floor()));
 				StellaTower.LOGGER.debug("[TOWER] a {} rune of floor {} dropped", element, state.floor());
@@ -70,6 +68,18 @@ public final class TowerRunes {
 	}
 
 	private static final Map<Integer, Double> PINNED_DROP = new java.util.concurrent.ConcurrentHashMap<>();
+
+	private static volatile @Nullable Double pinnedRoll;
+
+	/** The test seam: pins the roll a drop is made against. */
+	public static void pinDropRoll(final @Nullable Double roll) {
+		pinnedRoll = roll;
+	}
+
+	private static double dropRoll(final LivingEntity mob) {
+		Double pin = pinnedRoll;
+		return pin != null ? pin : mob.getRandom().nextDouble();
+	}
 
 	/** The test seam: pins, by the mob's floor, the chance a slain tower mob leaves a rune. */
 	public static void pinDropChance(final int floor, final @Nullable Double chance) {
@@ -89,13 +99,9 @@ public final class TowerRunes {
 		return state == null ? 0.0 : dropChance(state.rank());
 	}
 
-	/** The chance a slain tower mob of this rank leaves a rune. */
+	/** The chance a slain tower mob of any rank leaves a rune. */
 	public static double dropChance(final TowerRank rank) {
-		return switch (rank) {
-			case MOB -> MOB_CHANCE;
-			case ELITE -> ELITE_CHANCE;
-			case BOSS -> BOSS_CHANCE;
-		};
+		return DROP_CHANCE;
 	}
 
 	/** A rune's power for its percentages: its floor to 100, then slower, and no further past 1000. */
@@ -178,12 +184,13 @@ public final class TowerRunes {
 			// Void weapons strike their own element in full.
 			added *= SAME;
 		}
-		return RuneEffects.modify(victim, source, (float) (amount + added), rune, power(weapon, rune));
+		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
 	}
 
 	/** A blow a player struck with the weapon in hand, not one their thorns or their armor returned. */
 	public static boolean struckWith(final DamageSource source) {
-		return source.getEntity() instanceof Player && source.getWeaponItem() != null && !source.is(net.minecraft.world.damagesource.DamageTypes.THORNS);
+		return source.getEntity() instanceof Player && source.getWeaponItem() != null && !source.is(net.minecraft.world.damagesource.DamageTypes.THORNS)
+			&& !source.is(RuneEffects.BURST);
 	}
 
 	/** A tower mob's blow, of its element, once the victim's armor runes have turned it. */
@@ -203,11 +210,42 @@ public final class TowerRunes {
 		return (float) (amount / divisor * (1.0 - Math.min(OWN_ELEMENT_CAP, own)));
 	}
 
-	public static void describe(final RuneData rune, final Consumer<Component> lines) {
+	/** The rune's tier and each effect with its number for the stats, as the full armor set carries it. */
+	public static void describe(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats, final Consumer<Component> lines) {
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.floor", rune.floor()).withStyle(ChatFormatting.GRAY));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon", String.format(java.util.Locale.ROOT, "%.1f", weaponMultiplier(rune.floor())),
 			Component.literal(rune.element().opposite().label()).withStyle(rune.element().opposite().color())).withStyle(ChatFormatting.BLUE));
+		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon." + rune.element().getSerializedName(), weaponNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor", String.format(java.util.Locale.ROOT, "%.2f", armorDivisor(rune.floor())),
 			String.format(java.util.Locale.ROOT, "%.0f", (OWN_ELEMENT_BASE + power(rune.floor()) / 1000.0) * 100.0)).withStyle(ChatFormatting.BLUE));
+		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor." + rune.element().getSerializedName(), armorNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
+	}
+
+	/** The number a weapon effect shows, in percent. */
+	public static String weaponNumber(final TowerElement element, final java.util.function.ToIntFunction<RuneStats.Stat> stats) {
+		return RuneValues.show(switch (element) {
+			case FIRE -> RuneValues.fireCombust(stats.applyAsInt(RuneStats.Stat.STR));
+			case ICE -> RuneValues.iceBonus(stats.applyAsInt(RuneStats.Stat.INT));
+			case WATER -> RuneValues.waterSoak(stats.applyAsInt(RuneStats.Stat.LUK));
+			case LIGHTNING -> RuneValues.lightningChain(stats.applyAsInt(RuneStats.Stat.DEX));
+			case WIND -> RuneValues.windAirborne(stats.applyAsInt(RuneStats.Stat.AGI));
+			case VOID -> RuneValues.voidShredCap(stats.applyAsInt(RuneStats.Stat.INT));
+			case HOLY -> RuneValues.holyHeal(stats.applyAsInt(RuneStats.Stat.VIT));
+			case DARK -> RuneValues.darkLowHealth(stats.applyAsInt(RuneStats.Stat.STR));
+		});
+	}
+
+	/** The number an armor effect shows for a full set: percent, or seconds for Dark. */
+	public static String armorNumber(final TowerElement element, final java.util.function.ToIntFunction<RuneStats.Stat> stats) {
+		return RuneValues.show(switch (element) {
+			case FIRE -> RuneValues.fireThorns(stats.applyAsInt(RuneStats.Stat.VIT), 1.0);
+			case ICE -> RuneValues.iceFreeze(stats.applyAsInt(RuneStats.Stat.AGI), 1.0);
+			case WATER -> RuneValues.waterRegen(stats.applyAsInt(RuneStats.Stat.VIT), 1.0);
+			case LIGHTNING -> RuneValues.lightningCharge(stats.applyAsInt(RuneStats.Stat.DEX), 1.0);
+			case WIND -> RuneValues.windDodge(stats.applyAsInt(RuneStats.Stat.AGI), 1.0);
+			case VOID -> RuneValues.voidResist(stats.applyAsInt(RuneStats.Stat.INT), 1.0);
+			case HOLY -> RuneValues.holyUndead(stats.applyAsInt(RuneStats.Stat.VIT), 1.0);
+			case DARK -> RuneValues.darkWeakSeconds(stats.applyAsInt(RuneStats.Stat.LUK), 1.0);
+		});
 	}
 }

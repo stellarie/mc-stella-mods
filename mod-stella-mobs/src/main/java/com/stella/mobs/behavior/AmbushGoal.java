@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  * <li>STALK: the unit fights with its normal weapon goals.
  * <li>HIDE: an archer has loosed a shot, or another unit has loosed a shot that the player did not see. The unit walks
- * to a cover spot for at most {@link #HIDE_TICKS} ticks.
+ * to a cover spot for at most {@link #HIDE_TICKS} ticks. A unit that moves less than {@link #PROGRESS_BLOCKS} in
+ * {@link #PROGRESS_TICKS} drops the spot and fights on, and its next searches skip that spot for a while.
  * <li>WAIT: the unit holds in cover for {@link #WAIT_MIN_TICKS} to {@link #WAIT_MAX_TICKS} ticks.
  * <li>PEEK: the goal has ended. The weapon goal walks the unit back into view, because the standoff goal holds a unit
  * only while it sees its target. The unit then fires again.
@@ -48,6 +49,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class AmbushGoal<T extends PathfinderMob> extends Goal {
 	public static final int HIDE_TICKS = 60;
+	public static final int PROGRESS_TICKS = 20;
+	public static final double PROGRESS_BLOCKS = 0.5;
 	public static final int WAIT_MIN_TICKS = 40;
 	public static final int WAIT_MAX_TICKS = 100;
 	/** Blocks beyond the near band at which a chasing player counts as a pursuer. */
@@ -92,6 +95,8 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 	private @Nullable Player player;
 	private int startTick;
 	private int repathTick;
+	private int progressTick;
+	private @Nullable Vec3 progressFrom;
 	private int waitUntilTick;
 	private boolean waiting;
 	private boolean failed;
@@ -214,6 +219,8 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 		this.player = player;
 		this.startTick = this.mob.tickCount;
 		this.repathTick = this.mob.tickCount + REPATH_TICKS;
+		this.progressTick = this.mob.tickCount + PROGRESS_TICKS;
+		this.progressFrom = this.mob.position();
 		CoverSearch.claim(this.mob, this.spot);
 		change(this.mob, record, Phase.HIDE, this.spot);
 		this.walk();
@@ -262,10 +269,30 @@ public class AmbushGoal<T extends PathfinderMob> extends Goal {
 		} else if (now - this.startTick >= HIDE_TICKS) {
 			// Still in the open: the unit fights on.
 			this.failed = true;
+		} else if (this.stuck(now)) {
+			// A path the unit cannot walk.
+			CoverSearch.reject(this.mob, this.spot);
+			this.failed = true;
 		} else if (this.mob.getNavigation().isDone() && now >= this.repathTick) {
 			this.repathTick = now + REPATH_TICKS;
 			this.walk();
 		}
+	}
+
+	/** True when the unit moved less than the progress distance in the last window. */
+	private boolean stuck(final int now) {
+		if (now < this.progressTick || this.progressFrom == null) {
+			return false;
+		}
+
+		Vec3 position = this.mob.position();
+		if (position.distanceTo(this.progressFrom) < PROGRESS_BLOCKS) {
+			return true;
+		}
+
+		this.progressTick = now + PROGRESS_TICKS;
+		this.progressFrom = position;
+		return false;
 	}
 
 	private void walk() {

@@ -60,8 +60,8 @@ public final class TowerSafety {
 			return false;
 		}
 		BlockPos at = player.blockPosition();
-		int floor = TowerLayout.floorAt(at);
-		if (floor <= 0) {
+		int floor = TowerLayout.roomAt(at);
+		if (floor == 0) {
 			return false;
 		}
 		int tick = tower.getServer().getTickCount();
@@ -100,8 +100,9 @@ public final class TowerSafety {
 		}
 		Set<Integer> occupied = new LinkedHashSet<>();
 		for (ServerPlayer player : tower.players()) {
-			int floor = TowerLayout.floorAt(player.blockPosition());
-			if (floor > 0 && !player.isSpectator() && TowerFloors.isBuilt(tower, floor)) {
+			// Lost rooms are swept too.
+			int floor = TowerLayout.roomAt(player.blockPosition());
+			if (floor != 0 && !player.isSpectator() && TowerFloors.isBuilt(tower, floor)) {
 				occupied.add(floor);
 			}
 		}

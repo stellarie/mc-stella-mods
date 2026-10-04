@@ -1,7 +1,6 @@
 {
   "replace": false,
   "values": [
-    "mod-stella-tower:delayed_wound",
     "mod-stella-tower:rune_burst"
   ]
 }

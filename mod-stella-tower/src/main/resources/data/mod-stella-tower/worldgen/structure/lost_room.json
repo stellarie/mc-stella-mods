@@ -1,0 +1,6 @@
+{
+  "type": "mod-stella-tower:lost_room",
+  "biomes": "#minecraft:is_overworld",
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

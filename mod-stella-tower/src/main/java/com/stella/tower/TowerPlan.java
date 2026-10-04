@@ -216,6 +216,9 @@ public record TowerPlan(
 	 * is old or planned is read from its blocks once, when it stands, and kept.
 	 */
 	public static TowerPlan at(final ServerLevel tower, final int floor) {
+		if (floor < 0) {
+			return LostRooms.plan(tower.getSeed(), floor);
+		}
 		int built = TowerFloors.builtVersion(tower, floor);
 		return built < 0 ? of(tower.getSeed(), floor) : of(tower.getSeed(), floor, built);
 	}
@@ -225,6 +228,9 @@ public record TowerPlan(
 	 * that is not loaded is served from the remembered version, or the current plan if none is remembered.
 	 */
 	static TowerPlan atQuiet(final ServerLevel tower, final int floor) {
+		if (floor < 0) {
+			return LostRooms.plan(tower.getSeed(), floor);
+		}
 		int built = TowerFloors.builtVersionQuiet(tower, floor);
 		return built < 0 ? of(tower.getSeed(), floor) : of(tower.getSeed(), floor, built);
 	}
@@ -267,6 +273,12 @@ public record TowerPlan(
 		TowerPlan fallback = classic(seed, floor, version, FALLBACK);
 		List<ChestSpot> chests = TowerChestSpots.place(fallback);
 		return chests == null ? fallback : fallback.withChestSpots(chests);
+	}
+
+	/** This plan moved to another room: every spot keeps its offset from the room's corner. */
+	TowerPlan relocated(final int room) {
+		return new TowerPlan(this.seed, room, this.version, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
+			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.walls, this.safeZones, this.hall, this.chestSpots, this.rooms);
 	}
 
 	/** This plan with its chest spots. */
