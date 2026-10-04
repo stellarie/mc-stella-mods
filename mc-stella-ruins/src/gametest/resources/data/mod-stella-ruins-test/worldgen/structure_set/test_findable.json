@@ -1,0 +1,18 @@
+{
+	"placement": {
+		"type": "minecraft:random_spread",
+		"exclusion_zone": {
+			"chunk_count": 8,
+			"other_set": "minecraft:villages"
+		},
+		"salt": 1099,
+		"separation": 4,
+		"spacing": 12
+	},
+	"structures": [
+		{
+			"structure": "mod-stella-ruins-test:test_findable",
+			"weight": 1
+		}
+	]
+}
