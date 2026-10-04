@@ -181,6 +181,27 @@ final class WorldTestSupport {
 		return arena(level, site, rotation, 100_000 + (n % 4000) * 144, 100_000 + (n / 4000) * 144, n);
 	}
 
+	private static final AtomicInteger NEAR = new AtomicInteger();
+
+	/** A site a few hundred blocks from the origin, where the mobs mod gives low levels and a hit has a sane size. */
+	static Arena nearOriginArena(final ServerLevel level, final RuinSite site) {
+		int k = NEAR.getAndIncrement();
+		return arena(level, site, Rotation.NONE, 160 + (k % 10) * 160, 160 + (k / 10 % 10) * 160, NEXT.getAndIncrement());
+	}
+
+	/** Like {@link #inArena}, near the origin. */
+	static void inNearOriginArena(final GameTestHelper helper, final RuinSite site, final ArenaBody body) {
+		runIn(helper, nearOriginArena(helper.getLevel(), site), body);
+	}
+
+	/** A player with no client counts as still loading, which makes them invulnerable; this clears that. */
+	static void vulnerable(final ServerPlayer player) {
+		player.hasChangedDimension();
+		for (int i = 0; i < 200 && !player.connection.hasClientLoaded(); i++) {
+			player.connection.tickClientLoadTimeout();
+		}
+	}
+
 	private static Arena arena(final ServerLevel level, final RuinSite site, final Rotation rotation, final int x0, final int z0, final int n) {
 		RuinFrame probe = new RuinFrame(site.id(), new BlockPos(x0, 0, z0), rotation.ordinal(), 0L, site.sizeX(), site.sizeY(), site.sizeZ(), site.placement().foundation());
 		BoundingBox box = probe.box();

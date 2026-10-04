@@ -86,6 +86,11 @@ public final class RuinMobs {
 	}
 
 	private static void onDamage(final LivingEntity target, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked) {
+		heardHit(source, target);
+	}
+
+	/** An ability hears every hit of its mob, a killing blow too. AFTER_DAMAGE does not fire for a death, so AFTER_DEATH covers it. */
+	private static void heardHit(final DamageSource source, final LivingEntity target) {
 		if (source.getEntity() instanceof Mob attacker && isRuinMob(attacker)) {
 			RuinMobKind kind = kindOf(attacker);
 			if (kind != null && kind.ability() != null) {
@@ -99,6 +104,7 @@ public final class RuinMobs {
 	}
 
 	private static void onDeath(final LivingEntity entity, final DamageSource source) {
+		heardHit(source, entity);
 		if (!(entity instanceof Mob mob) || !isRuinMob(mob) || !(mob.level() instanceof ServerLevel level)) {
 			return;
 		}
