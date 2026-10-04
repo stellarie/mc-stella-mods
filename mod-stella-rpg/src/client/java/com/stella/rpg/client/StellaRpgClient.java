@@ -18,5 +18,7 @@ public final class StellaRpgClient implements ClientModInitializer {
 		FoodBarHud.register();
 		EffectIconsHud.register();
 		WeaponRollTooltip.register();
+		WeaponSlotClient.register();
+		AutoPickupClient.register();
 	}
 }
