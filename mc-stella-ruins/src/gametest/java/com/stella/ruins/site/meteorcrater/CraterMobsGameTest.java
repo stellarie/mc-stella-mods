@@ -88,11 +88,13 @@ public class CraterMobsGameTest {
 				for (int slot = 0; slot < 3; slot++) {
 					if (CraterMobs.StarStrike.pending(golems[slot]) != null && !log.contains("slot" + slot)) {
 						log.add("slot" + slot);
-						helper.assertTrue(tick == CraterMobs.STRIKE_TICKS + CraterMobs.StarStrike.offset(slot), "golem " + slot + " marked at tick " + tick);
+						helper.assertTrue(tick == CraterMobs.STRIKE_TICKS + slot * CraterMobs.STRIKE_STAGGER, "golem " + slot + " marked at tick " + tick);
+						helper.assertTrue(CraterMobs.StarStrike.offset(slot) == slot * CraterMobs.STRIKE_STAGGER, "golem " + slot + " offset " + CraterMobs.StarStrike.offset(slot));
 					}
 				}
 			}
 			CraterTestSupport.result("stagger", "marks=" + log + " offsets=0," + CraterMobs.StarStrike.offset(1) + "," + CraterMobs.StarStrike.offset(2));
+			helper.assertTrue(CraterMobs.STRIKE_STAGGER == 50 && CraterMobs.STRIKE_TICKS == 160, "the stagger is " + CraterMobs.STRIKE_STAGGER + " of " + CraterMobs.STRIKE_TICKS);
 			helper.assertTrue(log.size() == 3, "only " + log + " marked a strike");
 			for (Mob golem : golems) {
 				golem.discard();
