@@ -67,7 +67,7 @@ public class RuinMobGameTest {
 		return saved.toString().toLowerCase(Locale.ROOT).contains("nemesis") || elite.getBooleanOr("elite", false) || elite.getBooleanOr("boss", false);
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void aKindBuildsAThemedMobWithItsNameGearScaleAttributesAndEffect(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			Mob mob = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
@@ -89,14 +89,15 @@ public class RuinMobGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void aKindsAbilityTicksOnItsOwnAndHearsItsMobsHits(final GameTestHelper helper) {
 		WorldTestSupport.Arena arena = WorldTestSupport.arena(helper.getLevel(), WorldTestInit.surface, net.minecraft.world.level.block.Rotation.NONE);
 		Mob[] mob = {null};
 		Pig[] victim = {null};
 		int[] before = {0, 0};
+		long begun = System.nanoTime();
 		helper.succeedWhen(() -> WorldTestSupport.guarded(helper, () -> {
-			helper.assertTrue(WorldTestSupport.ready(arena), "the arena chunks do not tick entities yet");
+			WorldTestSupport.awaitReady(helper, arena, begun);
 			if (mob[0] == null) {
 				before[0] = WorldTestInit.ABILITY_TICKS.get();
 				mob[0] = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
@@ -116,7 +117,7 @@ public class RuinMobGameTest {
 		}));
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void aThemedMobKilledByAPlayerDropsFromItsKindTable(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			ServerPlayer player = arena.join(arena.standAt(3, 3));
@@ -131,7 +132,7 @@ public class RuinMobGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void aDeathByAnythingButAPlayerRollsNothingExtra(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			RuinConfig.Values old = RuinConfig.replace(RuinConfig.get().withUniqueDropChance(1.0));
@@ -148,7 +149,7 @@ public class RuinMobGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void theUniqueDropsAtTheConfiguredChanceForASiteMobsOnly(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			RuinConfig.Values old = RuinConfig.get();
@@ -200,7 +201,7 @@ public class RuinMobGameTest {
 		return hits;
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void withTheMobsModARuinMobHasALevelAtLeastTheContainerLevelAndNoPromotion(final GameTestHelper helper) {
 		if (!mobsModLoaded()) {
 			WorldTestSupport.result("mobsPresent", "skipped=true reason=sibling-absent");
@@ -235,7 +236,7 @@ public class RuinMobGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void withoutTheMobsModLevelsReadAsAbsentAndAMobStillSpawns(final GameTestHelper helper) {
 		if (mobsModLoaded()) {
 			WorldTestSupport.result("mobsAbsent", "skipped=true reason=sibling-present");

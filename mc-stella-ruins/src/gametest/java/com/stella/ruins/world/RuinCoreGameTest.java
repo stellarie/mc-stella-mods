@@ -27,7 +27,7 @@ import net.minecraft.world.phys.Vec3;
 /** Items 4 to 7: waking, completing, the locked vault, and the claim and reset clock. */
 public class RuinCoreGameTest {
 	static final String LEVEL_SHARE = RuinLevels.CONTAINER_LEVEL_KEY;
-	static final int TICKS = 400;
+	static final int TICKS = 6000;
 
 	static int count(final RuinVaultBlockEntity vault, final Item item) {
 		int total = 0;

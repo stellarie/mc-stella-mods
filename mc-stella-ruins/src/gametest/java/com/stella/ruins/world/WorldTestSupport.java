@@ -205,6 +205,7 @@ final class WorldTestSupport {
 	private static void runIn(final GameTestHelper helper, final Arena arena, final ArenaBody body) {
 		boolean[] started = {false};
 		RuntimeException[] failure = {null};
+		long begun = System.nanoTime();
 		helper.succeedWhen(() -> guarded(helper, () -> {
 			if (failure[0] != null) {
 				throw failure[0];
@@ -212,7 +213,7 @@ final class WorldTestSupport {
 			if (started[0]) {
 				return;
 			}
-			helper.assertTrue(ready(arena), "the arena chunks do not tick entities yet");
+			awaitReady(helper, arena, begun);
 			started[0] = true;
 			try {
 				body.run(arena);
@@ -238,6 +239,20 @@ final class WorldTestSupport {
 			StellaRuins.LOGGER.error("[RUINS] a test body threw", e);
 			helper.fail("the test body threw " + e);
 		}
+	}
+
+	/** The wall-clock wait for chunk loading. Ticks run fast when the server is behind, so ticks cannot bound a chunk load. */
+	static final long READY_NANOS = 120_000_000_000L;
+
+	/** Fails the test only when the arena chunks stay unready past the wall-clock deadline. */
+	static void awaitReady(final GameTestHelper helper, final Arena arena, final long startedNanos) {
+		if (ready(arena)) {
+			return;
+		}
+		if (System.nanoTime() - startedNanos > READY_NANOS) {
+			helper.fail("the arena chunks did not tick entities within " + READY_NANOS / 1_000_000_000L + " s");
+		}
+		helper.assertTrue(false, "the arena chunks do not tick entities yet");
 	}
 
 	static boolean ready(final Arena arena) {

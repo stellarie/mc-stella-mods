@@ -197,7 +197,7 @@ public class RuinLootGameTest {
 		return start;
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void usingAClueNearAPlacedSiteTurnsItIntoAFilledMapWithATargetAtThatSite(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.findable, arena -> {
 			ServerLevel level = arena.level();
@@ -246,7 +246,7 @@ public class RuinLootGameTest {
 	 * normal world. It stays in the suite as evidence of the gap. Manual item: with a ruins mod loaded and a clue in the
 	 * inventory, use the clue in a survival world and walk to the marked spot.
 	 */
-	@GameTest(maxTicks = 400, required = false)
+	@GameTest(maxTicks = 6000, required = false)
 	public void gapTestWorldGeneratesNoStructuresSoTheRealClueSearchIsNotObservable(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.findable, arena -> {
 			ServerLevel level = arena.level();
@@ -263,7 +263,7 @@ public class RuinLootGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400)
+	@GameTest(maxTicks = 6000)
 	public void aClueToASiteNoStructureNamesKeepsTheClue(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			ServerPlayer player = arena.join(arena.standAt(3, 3));

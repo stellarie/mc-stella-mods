@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Item 8: wave, offer, keys and sequence objectives each complete, and the core's block carries the item uses. */
 public class ObjectiveGameTest {
-	static final int TICKS = 400;
+	static final int TICKS = 6000;
 
 	/** Uses the core block with the item in the player's main hand, as a right click does. */
 	static InteractionResult useCore(final WorldTestSupport.Arena arena, final ServerPlayer player, final ItemStack stack) {
