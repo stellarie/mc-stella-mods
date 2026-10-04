@@ -36,15 +36,14 @@ import org.jspecify.annotations.Nullable;
 public final class BlazeSovereign {
 	/** The health at threat level 0; the level multiplies it. */
 	public static final double BASE_HEALTH = 300.0;
-	/** The threat level never falls under the floor, and always adds the bonus. */
-	public static final int LEVEL_FLOOR = 50;
+	/** The Sovereign stands this many levels above the raid mobs. */
 	public static final int LEVEL_BONUS = 10;
 	public static final double SCALE = 3.0;
 	/** Vanilla's ceiling on the health attribute; what lies past it is kept as a divisor on every hit taken. */
 	/** How high above the ground below it the Sovereign may rise. */
 	public static final double NEAR_GROUND = 2.0;
-	/** How near a player must come to the fortress to wake it, and to see its bar. */
-	public static final double WAKE_RANGE = 96.0;
+	/** A run opens 48 blocks out, so a player must enter the fortress to wake it. */
+	public static final double WAKE_RANGE = 24.0;
 	public static final double BAR_RANGE = 96.0;
 	public static final int BURN_SECONDS = 5;
 	/** The Flame Mantle's chance to fall with a Blaze Core. */
@@ -207,17 +206,14 @@ public final class BlazeSovereign {
 		return 1;
 	}
 
-	/** The threat level of a raid: its best player, never under the floor, plus the bonus. */
+	/** The Sovereign's level in a raid: the raid mob level of the run's mode and best player, plus the bonus. */
 	public static int threatLevel(final ServerLevel raid) {
-		return threatLevel(raid.players());
+		return threatLevel(raid.players(), RaidInstance.state(raid.getServer()).mode());
 	}
 
-	public static int threatLevel(final java.util.Collection<? extends net.minecraft.world.entity.player.Player> players) {
-		int best = LEVEL_FLOOR;
-		for (net.minecraft.world.entity.player.Player player : players) {
-			best = Math.max(best, player.experienceLevel);
-		}
-		return best + LEVEL_BONUS;
+	/** The Sovereign's level: the raid mob level of its mode, plus the bonus. */
+	public static int threatLevel(final java.util.Collection<? extends net.minecraft.world.entity.player.Player> players, final RaidMode mode) {
+		return RaidInstance.mobLevel(mode, players) + LEVEL_BONUS;
 	}
 
 	/** The rpg mod's multiplier on every hit taken; 1 when that mod is absent. */

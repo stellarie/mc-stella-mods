@@ -68,7 +68,7 @@ public final class RaidInstance {
 	public static final int ARRIVAL_Y = 64;
 	/** How long the raid must stand empty before it resets. */
 	public static final int EMPTY_TICKS = 100;
-	/** Every run's arrival lies within this many blocks of a fortress and of a bastion. */
+	/** Runs lie more than twice this apart; it was the reach of the old fortress-and-bastion midpoint rule. */
 	public static final int STRUCTURE_REACH = 256;
 	/** Thirty minutes: then every raid mob turns on the players. */
 	public static final int ENRAGE_TICKS = 30 * 60 * 20;
@@ -78,14 +78,29 @@ public final class RaidInstance {
 	public static final double CHASE_RANGE = 64.0;
 	public static final int CHASE_EVERY_TICKS = 20;
 	private static final net.minecraft.resources.Identifier CHASE_RANGE_MODIFIER = StellaNether.id("enraged_follow_range");
-	/** Every raid mob's health and damage, times this in normal and in hard. The Sovereign keeps its own. */
-	/** Every raid enemy's base health, before its mode's strength; the raid scales its own, and no threat level reaches them. */
-	public static final double MOB_BASE_HEALTH = 64.0;
-	public static final double NORMAL_STRENGTH = 1.25;
-	public static final double HARD_STRENGTH = 1.75;
+	/** Every run's arrival lies within this many blocks (horizontal) of its fortress start. */
+	public static final int FORTRESS_REACH = 64;
+	/** A raid mob's lowest level in normal mode, and in hard mode; a better player raises it. */
+	public static final int MIN_LEVEL_NORMAL = 35;
+	public static final int MIN_LEVEL_HARD = 45;
+
+	public static int minimumLevel(final RaidMode mode) {
+		return mode == RaidMode.HARD ? MIN_LEVEL_HARD : MIN_LEVEL_NORMAL;
+	}
+
+	/** The level of a raid mob: its mode's minimum, or the best player's level when that is higher. */
+	public static int mobLevel(final RaidMode mode, final java.util.Collection<? extends Player> players) {
+		int best = minimumLevel(mode);
+		for (Player player : players) {
+			best = Math.max(best, player.experienceLevel);
+		}
+		return best;
+	}
+
 	/** The load phase the raid's own rules run in, after every other mod's. */
 	private static final net.minecraft.resources.Identifier AFTER_OTHER_MODS = StellaNether.id("after_other_mods");
-	public static final net.minecraft.resources.Identifier MODE_STRENGTH_ID = StellaNether.id("mode_strength");
+	/** The run whose level a raid enemy took, so a reloaded one keeps its level and health. */
+	public static final AttachmentType<Integer> MOB_LEVELLED = AttachmentRegistry.createPersistent(StellaNether.id("raid_levelled"), Codec.INT);
 	/** The run a mob was enraged for. */
 	public static final AttachmentType<Integer> MOB_ENRAGED = AttachmentRegistry.createPersistent(StellaNether.id("raid_enraged"), Codec.INT);
 
@@ -123,16 +138,19 @@ public final class RaidInstance {
 		});
 		ServerTickEvents.END_SERVER_TICK.register(RaidInstance::tick);
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.player));
-		// After every other mod's load handler, so the mobs mod's threat scaling is undone after it is applied.
+		// After every other mod's load handler, so the raid's level replaces the one the mobs mod rolled.
 		ServerEntityEvents.ENTITY_LOAD.addPhaseOrdering(net.fabricmc.fabric.api.event.Event.DEFAULT_PHASE, AFTER_OTHER_MODS);
 		ServerEntityEvents.ENTITY_LOAD.register(AFTER_OTHER_MODS, (entity, level) -> {
 			// The Sovereign keeps the threat level its rise set.
 			if (entity instanceof Mob mob && level.dimension().equals(RaidTravel.RAID) && !BlazeSovereign.isSovereign(mob)) {
-				clearThreat(mob);
+				if (mob instanceof Enemy) {
+					levelMob(level, mob);
+				} else {
+					clearThreat(mob);
+				}
 			}
 			if (entity instanceof Mob mob && mob instanceof Enemy && level.dimension().equals(RaidTravel.RAID)) {
 				boostMob(level, mob);
-				strengthen(level, mob);
 				RaidState state = state(level.getServer());
 				if (state.active() && state.elapsed() >= ENRAGE_TICKS) {
 					enrage(state.run(), mob);
@@ -359,29 +377,29 @@ public final class RaidInstance {
 		}
 	}
 
-	/** Multiplies a raid mob's health and damage by its run's mode; a mob new to the modifier starts whole. */
-	static void strengthen(final ServerLevel level, final Mob mob) {
+	/**
+	 * A raid enemy takes the raid's level once, at its first load: its mode's minimum or the best player's level.
+	 * The mobs mod then scales its health and hits by that level, as it does anywhere else. A reload keeps it.
+	 */
+	static void levelMob(final ServerLevel level, final Mob mob) {
 		RaidState state = state(level.getServer());
-		if (!state.active() || BlazeSovereign.isSovereign(mob)) {
+		Integer levelled = mob.getAttached(MOB_LEVELLED);
+		if (levelled != null && levelled == state.run()) {
 			return;
 		}
-		double bonus = (state.mode() == RaidMode.HARD ? HARD_STRENGTH : NORMAL_STRENGTH) - 1.0;
-		AttributeModifier modifier = new AttributeModifier(MODE_STRENGTH_ID, bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
-		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-		boolean fresh = health != null && health.getModifier(MODE_STRENGTH_ID) == null;
-		if (health != null) {
-			// The raid's own base, the same for every enemy; the mode's strength and any rank sit on top of it.
-			health.setBaseValue(MOB_BASE_HEALTH);
-			health.addOrReplacePermanentModifier(modifier);
+		if (mob.hasAttached(SovereignSpecials.BROOD_MARK)) {
+			// The tag only kept rolls off while it loaded.
+			mob.removeTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
 		}
-		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
-		if (damage != null) {
-			damage.addOrReplacePermanentModifier(modifier);
+		if (mob.entityTags().contains(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG)) {
+			return;
 		}
-		if (fresh) {
-			mob.setHealth(mob.getMaxHealth());
-		}
+		int raidLevel = mobLevel(state.mode(), level.players());
+		mob.setAttached(ThreatState.TYPE, new ThreatState(raidLevel, 0));
+		SpawnScaling.apply(mob);
+		mob.setAttached(MOB_LEVELLED, state.run());
 	}
+
 
 	static void boostMob(final ServerLevel level, final Mob mob) {
 		RaidState state = state(level.getServer());
