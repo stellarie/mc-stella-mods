@@ -48,12 +48,13 @@ public final class LostCastles {
 	/** Queues a castle a chunk has just built; any thread. */
 	public static void found(final ResourceKey<Level> dimension, final LostRoomPiece piece) {
 		BoundingBox box = piece.getBoundingBox();
-		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false));
+		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false, piece.variant().ordinal()));
 	}
 
 	/** The castle's piece, rebuilt from its record. */
 	static LostRoomPiece piece(final LostRoomData.Castle castle) {
-		return new LostRoomPiece(castle.corner().getX(), castle.corner().getY(), castle.corner().getZ(), castle.facing());
+		return new LostRoomPiece(castle.corner().getX(), castle.corner().getY(), castle.corner().getZ(), castle.facing(),
+			LostCastleVariant.values()[Math.floorMod(castle.variant(), LostCastleVariant.values().length)]);
 	}
 
 	/** Records the queued castles, then stocks the grounds of each castle a player has come near; the mobs raised. */
@@ -85,7 +86,7 @@ public final class LostCastles {
 		RandomSource random = level.getRandom();
 		int average = LostRooms.averageLevel(players);
 		int count = MIN_MOBS + random.nextInt(MAX_MOBS - MIN_MOBS + 1);
-		int[] yard = LostRoomPiece.YARD;
+		int[] yard = piece.yard();
 		List<Mob> raised = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
 			int mobLevel = Math.max(0, average + random.nextIntBetweenInclusive(-LostRooms.LEVEL_BELOW, LostRooms.LEVEL_ABOVE));

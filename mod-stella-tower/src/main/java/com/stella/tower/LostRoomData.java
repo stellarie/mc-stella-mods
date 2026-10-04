@@ -28,12 +28,14 @@ public final class LostRoomData extends SavedData {
 
 	/** One castle on the map: where its box stands, which way it faces, and whether its grounds were stocked. */
 	public record Castle(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, net.minecraft.core.BlockPos corner,
-		net.minecraft.core.Direction facing, boolean stocked) {
+		net.minecraft.core.Direction facing, boolean stocked, int variant) {
 		public static final Codec<Castle> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			net.minecraft.world.level.Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(Castle::dimension),
 			net.minecraft.core.BlockPos.CODEC.fieldOf("corner").forGetter(Castle::corner),
 			net.minecraft.core.Direction.CODEC.fieldOf("facing").forGetter(Castle::facing),
-			Codec.BOOL.fieldOf("stocked").forGetter(Castle::stocked)
+			Codec.BOOL.fieldOf("stocked").forGetter(Castle::stocked),
+			// Recorded before the variants: the castle.
+			Codec.INT.optionalFieldOf("variant", 0).forGetter(Castle::variant)
 		).apply(instance, Castle::new));
 
 		public String key() {
@@ -88,7 +90,7 @@ public final class LostRoomData extends SavedData {
 	}
 
 	public void stocked(final Castle castle) {
-		this.castles.put(castle.key(), new Castle(castle.dimension(), castle.corner(), castle.facing(), true));
+		this.castles.put(castle.key(), new Castle(castle.dimension(), castle.corner(), castle.facing(), true, castle.variant()));
 		setDirty();
 	}
 

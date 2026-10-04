@@ -443,6 +443,26 @@ Every planned floor is built with a double tower chest at each chest spot of its
 - The boss pays what a floor's boss pays, its rune roll included, but no floor key. Its fall clears the
   room. Nothing respawns: a second entry, before or after the clear, finds the room as it was left.
 
+### Castle variants (`LostCastleVariant`)
+
+The castle's seed chooses one of five shapes, each about a fifth of the time. Every shape keeps the gate at
+the front middle, the workstations in the portal's room, four stocked chests or more, the courtyard mobs,
+and the floor one block above the ground.
+
+- Castle: the ruined castle above, unchanged.
+- Keep: a keep of 2 or 3 floors, 15 to 19 wide and 11 to 13 deep, joined by two-wide stairs along its side
+  walls. Its upper floors open onto broken balconies over the courtyard. The portal is on the top floor.
+- Maze ward: a 5 by 5 maze of four-wide ways inside the walls, drawn from the gate's cell. Its middle two
+  cells form one room with the portal and the workstations. Chests stand in its dead ends.
+- Flooded ruin: a water moat across the front ward, bridged from the gate. Behind it, a room 7 or 9 wide
+  stands on an island in a ring of lava two wide, with one bridge to its door. Side pits of lava have bridges
+  of their own. The portal is in the island room.
+- Sunken crypt: a low, half-buried ward round a mausoleum. Its stair goes down six steps to a vaulted hall,
+  and from the hall's far end six more to the lowest hall, which holds the portal. The crypt is cut from a
+  block of tower wall, so no cave or water reaches into it.
+
+A castle saved before the variants stays the ruined castle.
+
 ### Boss rewards
 
 - Every tower boss slain by a player, on a floor or in a lost room, also drops `128 + 2 x level`
