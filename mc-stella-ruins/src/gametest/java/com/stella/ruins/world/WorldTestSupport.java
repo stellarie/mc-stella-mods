@@ -137,6 +137,18 @@ final class WorldTestSupport {
 			return player;
 		}
 
+		/** Every chunk the arena needs ticking: its box and a one chunk margin, whoever forced them. */
+		List<ChunkPos> frameChunks() {
+			BoundingBox box = this.frame.box();
+			List<ChunkPos> all = new ArrayList<>();
+			for (int cx = (box.minX() >> 4) - 1; cx <= (box.maxX() >> 4) + 1; cx++) {
+				for (int cz = (box.minZ() >> 4) - 1; cz <= (box.maxZ() >> 4) + 1; cz++) {
+					all.add(new ChunkPos(cx, cz));
+				}
+			}
+			return all;
+		}
+
 		/** The site's box, a little wider, for item and mob queries. */
 		AABB area() {
 			return AABB.of(this.frame.box()).inflate(2.0);
@@ -175,8 +187,10 @@ final class WorldTestSupport {
 		List<ChunkPos> forced = new ArrayList<>();
 		for (int cx = (box.minX() >> 4) - 1; cx <= (box.maxX() >> 4) + 1; cx++) {
 			for (int cz = (box.minZ() >> 4) - 1; cz <= (box.maxZ() >> 4) + 1; cz++) {
-				level.setChunkForced(cx, cz, true);
-				forced.add(new ChunkPos(cx, cz));
+				// Forced chunks are a set, not a count: keep only what this arena newly forced, so its release cannot unforce a neighbour.
+				if (level.setChunkForced(cx, cz, true)) {
+					forced.add(new ChunkPos(cx, cz));
+				}
 			}
 		}
 		int ground = Placement.Probe.of(level.getChunkSource().getGenerator(), level, level.getChunkSource().randomState()).groundY(x0, z0);
@@ -252,11 +266,14 @@ final class WorldTestSupport {
 		if (System.nanoTime() - startedNanos > READY_NANOS) {
 			helper.fail("the arena chunks did not tick entities within " + READY_NANOS / 1_000_000_000L + " s");
 		}
-		helper.assertTrue(false, "the arena chunks do not tick entities yet");
+		long ticking = arena.frameChunks().stream().filter(c -> arena.level().isPositionEntityTicking(new BlockPos(c.getMiddleBlockX(), 64, c.getMiddleBlockZ()))).count();
+		ServerPlayer keeper = arena.players().isEmpty() ? null : arena.players().get(0);
+		helper.assertTrue(false, "the arena chunks do not tick entities yet: " + ticking + "/" + arena.frameChunks().size() + " tick, keeper "
+			+ (keeper == null ? "none" : "in level " + arena.level().players().contains(keeper) + " at " + keeper.blockPosition().toShortString() + " removed " + keeper.isRemoved()));
 	}
 
 	static boolean ready(final Arena arena) {
-		for (ChunkPos chunk : arena.forced()) {
+		for (ChunkPos chunk : arena.frameChunks()) {
 			if (!arena.level().isPositionEntityTicking(new BlockPos(chunk.getMiddleBlockX(), 64, chunk.getMiddleBlockZ()))) {
 				return false;
 			}

@@ -65,6 +65,8 @@ final class RewardTestSupport {
 	static Cow cow(final GameTestHelper helper, final double x, final double z, final float health) {
 		ServerLevel level = helper.getLevel();
 		Cow cow = EntityTypes.COW.create(level, EntitySpawnReason.COMMAND);
+		// The mobs mod would scale this cow by its distance from the origin; the tag keeps the subject at its own health.
+		cow.addTag(com.stella.ruins.world.RuinMobKind.NO_SPAWN_ROLL_TAG);
 		cow.snapTo(helper.absoluteVec(new Vec3(x, 2.0, z)));
 		cow.setNoAi(true);
 		cow.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(Math.max(health, 20.0F));

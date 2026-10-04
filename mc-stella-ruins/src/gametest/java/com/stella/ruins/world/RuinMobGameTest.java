@@ -103,7 +103,11 @@ public class RuinMobGameTest {
 				mob[0] = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
 				mob[0].setNoAi(true);
 				victim[0] = EntityTypes.PIG.create(arena.level(), EntitySpawnReason.EVENT);
+				victim[0].addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
 				victim[0].snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
+				// A ruin mob hits at its level, which kills a pig outright, and AFTER_DAMAGE never fires for a death.
+				victim[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
+				victim[0].setHealth(1_000_000.0F);
 				arena.level().addFreshEntity(victim[0]);
 				before[1] = WorldTestInit.ABILITY_HITS.get();
 				victim[0].hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob[0]), 1.0F);

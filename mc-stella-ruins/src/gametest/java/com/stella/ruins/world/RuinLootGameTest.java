@@ -179,8 +179,10 @@ public class RuinLootGameTest {
 		net.minecraft.world.level.ChunkPos candidate = placement.getPotentialStructureChunk(level.getSeed(), chunkX, chunkZ);
 		for (int cx = candidate.x() - 3; cx <= candidate.x() + 3; cx++) {
 			for (int cz = candidate.z() - 3; cz <= candidate.z() + 3; cz++) {
-				level.setChunkForced(cx, cz, true);
-				forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+				// Forced chunks are a set, not a count: release only what this call newly forced, or a neighbour arena loses its chunks.
+				if (level.setChunkForced(cx, cz, true)) {
+					forced.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+				}
 			}
 		}
 		var start = StructureGameTest.generate(level, "test_findable", candidate);
