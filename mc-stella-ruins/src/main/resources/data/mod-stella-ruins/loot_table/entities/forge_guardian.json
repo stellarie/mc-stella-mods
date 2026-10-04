@@ -1,0 +1,31 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:deepsteel_ingot",
+					"modifier": {
+						"type": "minecraft:set_count",
+						"count": {
+							"type": "minecraft:uniform",
+							"min": 4,
+							"max": 6
+						}
+					}
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:forgeheart_shard"
+				}
+			]
+		}
+	]
+}

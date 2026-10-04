@@ -23,7 +23,12 @@
 			"com.stella.ruins.reward.RuinSetsGameTest",
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",
-			"com.stella.ruins.reward.RuinGearGameTest"
+			"com.stella.ruins.reward.RuinGearGameTest",
+			"com.stella.ruins.site.deepforge.DeepForgeLayoutGameTest",
+			"com.stella.ruins.site.deepforge.DeepForgeObjectiveGameTest",
+			"com.stella.ruins.site.deepforge.DeepForgeMobGameTest",
+			"com.stella.ruins.site.deepforge.DeepForgeRewardGameTest",
+			"com.stella.ruins.site.deepforge.DeepForgeDataGameTest"
 		]
 	},
 	"depends": {
