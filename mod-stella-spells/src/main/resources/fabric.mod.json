@@ -10,7 +10,6 @@
 			"com.stella.spells.Spellbooks"
 		],
 		"client": [
-			"com.stella.spells.QuickSlotsClient",
 			"com.stella.spells.SpellTooltipClient"
 		]
 	},

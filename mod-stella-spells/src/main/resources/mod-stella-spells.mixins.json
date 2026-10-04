@@ -12,9 +12,7 @@
 		"MobGoalsAccessor",
 		"SummonGolemMixin",
 		"SummonHitMixin",
-		"SummonPortalMixin",
-		"InventoryMenuMixin",
-		"InventoryDropAllMixin"
+		"SummonPortalMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

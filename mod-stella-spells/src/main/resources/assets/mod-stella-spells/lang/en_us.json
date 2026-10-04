@@ -182,10 +182,5 @@
 	"item.mod-stella-spells.battle_hymn_scroll": "Battle Hymn Scroll",
 	"tag.item.mod-stella-spells.spell_focus": "Spell Focus",
 	"item.mod-stella-spells.summon_skeleton": "Summon Skeleton Spellbook",
-	"item.mod-stella-spells.summon_skeleton.effect": "Raises a skeleton that serves you. Cast again to call it to your side. Use it to open its gear.",
-	"key.category.mod-stella-spells.quick_slots": "Stella Quick Slots",
-	"key.mod-stella-spells.quick_slot_1": "Quick Slot 1",
-	"key.mod-stella-spells.quick_slot_2": "Quick Slot 2",
-	"key.mod-stella-spells.quick_slot_3": "Quick Slot 3",
-	"key.mod-stella-spells.quick_slot_4": "Quick Slot 4"
+	"item.mod-stella-spells.summon_skeleton.effect": "Raises a skeleton that serves you. Cast again to call it to your side. Use it to open its gear."
 }

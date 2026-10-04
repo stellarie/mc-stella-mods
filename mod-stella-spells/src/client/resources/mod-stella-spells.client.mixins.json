@@ -4,9 +4,7 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"FirstPersonHandsMixin",
-		"PlayerItemInHandLayerMixin",
-		"AbstractContainerScreenAccessor",
-		"AbstractContainerScreenMixin"
+		"PlayerItemInHandLayerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
