@@ -148,6 +148,9 @@ public final class TowerTravel {
 		if (tower == null) {
 			return null;
 		}
+		if (from.dimension().equals(TOWER) ? TowerLayout.roomAt(portal) < 0 : LostRooms.isHutPortal(from, portal)) {
+			return LostRooms.destination(from, entity, portal);
+		}
 		int floor;
 		if (from.dimension().equals(TOWER)) {
 			int here = TowerLayout.floorAt(portal);
@@ -179,7 +182,7 @@ public final class TowerTravel {
 		);
 	}
 
-	private static void record(final ServerPlayer player, final Entry entry) {
+	static void record(final ServerPlayer player, final Entry entry) {
 		player.setAttached(ENTRY, entry);
 		RECORDED.add(player.getUUID());
 	}

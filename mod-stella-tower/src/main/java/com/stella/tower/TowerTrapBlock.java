@@ -39,7 +39,8 @@ public class TowerTrapBlock extends Block {
 			}
 		}
 		if (player != null && !player.isSpectator() && !player.isCreative()) {
-			TowerTraps.spring(tower, pos, player, this.theme, Math.max(1, TowerLayout.floorAt(pos)));
+			int floor = TowerLayout.floorAt(pos);
+			TowerTraps.spring(tower, pos, player, this.theme, floor > 0 ? floor : LostRooms.floorAt(tower, pos));
 		}
 	}
 }

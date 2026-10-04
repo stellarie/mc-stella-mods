@@ -66,7 +66,9 @@ public final class TowerElites {
 				// The rest runs from the death itself.
 				data.set(state.floor(), state.rank(), new GuardianData.Post(Optional.empty(), data.ticks() + respawnTicks(state.floor())));
 			}
-			if (state.rank() == TowerRank.BOSS && entity.getLastHurtByPlayer() != null && level.getGameRules().get(GameRules.MOB_DROPS)) {
+			// A lost room's boss drops no key.
+			if (state.rank() == TowerRank.BOSS && !LostRooms.isLostMob(entity) && entity.getLastHurtByPlayer() != null
+				&& level.getGameRules().get(GameRules.MOB_DROPS)) {
 				entity.spawnAtLocation(level, FloorKeyItem.forFloor(state.floor()));
 			}
 		});
@@ -304,6 +306,11 @@ public final class TowerElites {
 		return null;
 	}
 
+	/** Gives a boss raised outside a floor's post, as a lost room's is, its bar. */
+	static void showBar(final Mob boss) {
+		BARS.computeIfAbsent(boss.getUUID(), key -> newBar(boss));
+	}
+
 	private static ServerBossEvent newBar(final Mob boss) {
 		return new ServerBossEvent(boss.getUUID(), boss.getDisplayName(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.NOTCHED_10);
 	}
@@ -317,9 +324,9 @@ public final class TowerElites {
 				return true;
 			}
 			bar.setProgress(boss.getHealth() / boss.getMaxHealth());
-			int floor = TowerLayout.floorAt(boss.blockPosition());
+			int floor = TowerLayout.roomAt(boss.blockPosition());
 			for (ServerPlayer player : tower.players()) {
-				boolean there = floor > 0 && TowerLayout.floorAt(player.blockPosition()) == floor;
+				boolean there = floor != 0 && TowerLayout.roomAt(player.blockPosition()) == floor;
 				if (there && !bar.getPlayers().contains(player)) {
 					bar.addPlayer(player);
 				} else if (!there && bar.getPlayers().contains(player)) {

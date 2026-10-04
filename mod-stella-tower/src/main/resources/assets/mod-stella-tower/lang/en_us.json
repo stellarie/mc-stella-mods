@@ -46,5 +46,6 @@
   "item.mod-stella-tower.rune.how": "Set at an anvil for %s emeralds",
   "item.mod-stella-tower.runed": "%s Rune (floor %s)",
   "death.attack.stella_delayed_wound": "%1$s succumbed to a blow they had spread too thin",
-  "death.attack.stella_rune_burst": "%1$s burst into flame from within"
+  "death.attack.stella_rune_burst": "%1$s burst into flame from within",
+  "message.mod-stella-tower.lost_room": "Lost Tower Room - Level %s"
 }

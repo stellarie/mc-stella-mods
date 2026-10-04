@@ -401,9 +401,31 @@ public final class TowerFloors {
 	}
 
 	private static void finish(final ServerLevel tower, final int floor, final TowerPlan plan) {
+		finish(tower, floor, plan, floor, floor);
+	}
+
+	/**
+	 * Builds a lost room's instance at once, to a plan moved to its cell: the traps of {@code trapFloor} and
+	 * chests stocked as on {@code lootFloor}. True when it was built now.
+	 */
+	static boolean buildRoom(final ServerLevel tower, final int room, final TowerPlan plan, final int trapFloor, final int lootFloor) {
+		if (isBuilt(tower, room)) {
+			return false;
+		}
+		Random random = new Random(tower.getSeed() ^ FLOOR_SALT ^ (room * 0x9E3779B97F4A7C15L));
+		boolean[][] lamps = lampSpots(plan);
+		int x0 = TowerLayout.origin(room).getX();
+		for (int column = 0; column <= TowerLayout.SIZE + 1; column++) {
+			buildColumn(tower, room, x0 - 1 + column, random, plan, lamps);
+		}
+		finish(tower, room, plan, trapFloor, lootFloor);
+		return true;
+	}
+
+	private static void finish(final ServerLevel tower, final int floor, final TowerPlan plan, final int trapFloor, final int lootFloor) {
 		BlockPos origin = TowerLayout.origin(floor);
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
-		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor, plan)) {
+		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), trapFloor, plan)) {
 			tower.setBlock(origin.offset(trap.x(), -1, trap.z()), TowerBlocks.TRAPS.get(trap.theme()).defaultBlockState(), Block.UPDATE_CLIENTS);
 		}
 		// A planned floor's portal stands on wall: a block under its frame, or a boss floor's pyramid.
@@ -415,11 +437,11 @@ public final class TowerFloors {
 		for (BlockPos pos : plan.portalFrame()) {
 			tower.setBlock(pos, frame, Block.UPDATE_CLIENTS);
 		}
-		if (TowerBuffs.isBossFloor(floor)) {
+		if (TowerBuffs.isBossFloor(trapFloor)) {
 			TowerBuffs.mist(tower, floor);
 		}
 		stations(tower, plan);
-		chests(tower, floor, plan);
+		chests(tower, floor, plan, lootFloor);
 		// One marker block a version, stacked downward, so the floor records the plan it was built to.
 		for (int i = 0; i < plan.version(); i++) {
 			tower.setBlock(planMarker(floor).below(i), wall, Block.UPDATE_CLIENTS);
@@ -436,7 +458,7 @@ public final class TowerFloors {
 	 * and the spot, so the same floor draws the same loot. A legacy plan has no spots. The blocks are cleared first:
 	 * a spot is open ground by the plan, so nothing is lost.
 	 */
-	private static void chests(final ServerLevel tower, final int floor, final TowerPlan plan) {
+	private static void chests(final ServerLevel tower, final int floor, final TowerPlan plan, final int lootFloor) {
 		BlockPos origin = plan.origin();
 		int index = 0;
 		for (TowerPlan.ChestSpot spot : plan.chestSpots()) {
@@ -453,7 +475,7 @@ public final class TowerFloors {
 				continue;
 			}
 			RandomSource random = RandomSource.create(tower.getSeed() ^ (floor * 0x9E3779B97F4A7C15L) ^ (index * 0xC2B2AE3D27D4EB4FL) ^ 0x43485354L);
-			TowerChests.fill(tower, first, floor, spot.guaranteed(), random);
+			TowerChests.fill(tower, first, lootFloor, spot.guaranteed(), random);
 			index++;
 		}
 	}
