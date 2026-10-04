@@ -1,6 +1,5 @@
 package com.stella.equips.shield;
 
-import com.stella.equips.refine.Refine;
 import com.stella.equips.refine.RefineEffects;
 import com.stella.equips.refine.RefineSpecials;
 import net.minecraft.server.level.ServerLevel;
@@ -33,7 +32,7 @@ public final class Parry {
 		if (shield == null || !RefineSpecials.has(shield, RefineSpecials.Special.PARRY)) {
 			return;
 		}
-		float back = blocked * (float) RefineEffects.parryShare(Refine.level(shield));
+		float back = blocked * (float) RefineEffects.parryShare(shield);
 		if (back > 0.0F) {
 			attacker.hurtServer(level, level.damageSources().thorns(defender), back);
 		}

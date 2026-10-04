@@ -36,7 +36,7 @@ final class RefineRolls {
 		return ROLLS.getOrDefault(entity.getUUID(), List.of());
 	}
 
-	static String roll(final RefineSpecials.Special special, final int chance) {
+	static String roll(final RefineSpecials.Special special, final double chance) {
 		return special.name() + "@" + chance;
 	}
 }
