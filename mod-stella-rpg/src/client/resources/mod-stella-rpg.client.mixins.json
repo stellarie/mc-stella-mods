@@ -10,7 +10,8 @@
 		"NoDotShakeLocalPlayerMixin",
 		"WeaponHotkeyMixin",
 		"WeaponScrollMixin",
-		"WeaponHeldSlotMixin"
+		"WeaponHeldSlotMixin",
+		"HotbarSelectionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

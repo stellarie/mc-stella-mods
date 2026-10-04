@@ -8,7 +8,7 @@ import net.minecraft.world.entity.player.Inventory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-/** With no hotbar on screen the wheel selects nothing. The server owns the selection. */
+/** The wheel selects nothing: hotkeys go through the server rule, so a weapon is never picked by scrolling. */
 @Mixin(MouseHandler.class)
 public abstract class WeaponScrollMixin {
 	@WrapOperation(
