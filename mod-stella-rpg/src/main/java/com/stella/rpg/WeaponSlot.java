@@ -11,7 +11,13 @@ import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySelector;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -182,7 +188,7 @@ public final class WeaponSlot {
 		return Result.EATING;
 	}
 
-	/** Vanilla client order: use on the targeted block, then use in the air. */
+	/** Vanilla order: entity, then block, then air. */
 	private static Result useAtTarget(final ServerPlayer player, final int index) {
 		if (player.isUsingItem()) {
 			return Result.REFUSED;
@@ -193,7 +199,13 @@ public final class WeaponSlot {
 		inventory.setSelectedSlot(index);
 		try {
 			HitResult hit = player.pick(player.blockInteractionRange(), 1.0F, false);
-			if (hit.getType() == HitResult.Type.BLOCK && hit instanceof BlockHitResult block
+			EntityHitResult entityHit = targetEntity(player, hit);
+			if (entityHit != null) {
+				Entity entity = entityHit.getEntity();
+				Vec3 location = entityHit.getLocation().subtract(entity.getX(), entity.getY(), entity.getZ());
+				result = player.interactOn(entity, InteractionHand.MAIN_HAND, location);
+			}
+			if (!result.consumesAction() && hit.getType() == HitResult.Type.BLOCK && hit instanceof BlockHitResult block
 				&& player.level().mayInteract(player, block.getBlockPos())) {
 				result = player.gameMode.useItemOn(player, player.level(), inventory.getSelectedItem(), InteractionHand.MAIN_HAND, block);
 			}
@@ -211,6 +223,21 @@ public final class WeaponSlot {
 			inventory.setSelectedSlot(previous);
 		}
 		return result.consumesAction() ? Result.USED : Result.NO_EFFECT;
+	}
+
+	/** The entity the vanilla client would pick. */
+	private static EntityHitResult targetEntity(final ServerPlayer player, final HitResult blockHit) {
+		double range = player.entityInteractionRange();
+		Vec3 from = player.getEyePosition();
+		double nearest = range * range;
+		if (blockHit.getType() != HitResult.Type.MISS) {
+			nearest = Math.min(nearest, blockHit.getLocation().distanceToSqr(from));
+		}
+		Vec3 view = player.getViewVector(1.0F);
+		Vec3 to = from.add(view.scale(range));
+		AABB box = player.getBoundingBox().expandTowards(view.scale(range)).inflate(1.0);
+		EntityHitResult hit = ProjectileUtil.getEntityHitResult(player, from, to, box, EntitySelector.CAN_BE_PICKED, nearest);
+		return hit != null && hit.getLocation().distanceToSqr(from) < nearest ? hit : null;
 	}
 
 	// A head block such as a pumpkin is placed.
