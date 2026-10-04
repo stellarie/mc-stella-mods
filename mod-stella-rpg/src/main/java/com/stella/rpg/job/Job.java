@@ -6,21 +6,28 @@ import java.util.Optional;
 
 /** A job grows its main stat by 2 and its second stat by 1 for each level. */
 public enum Job {
-	NONE(null, null),
-	ARCHER(Stat.DEX, Stat.AGI),
-	FIGHTER(Stat.STR, Stat.VIT),
-	MAGE(Stat.INT, Stat.DEX),
-	PRIEST(Stat.VIT, Stat.INT);
+	NONE(null, null, 1.0),
+	ARCHER(Stat.DEX, Stat.AGI, 1.0),
+	FIGHTER(Stat.STR, Stat.VIT, 1.3),
+	MAGE(Stat.INT, Stat.DEX, 0.85),
+	PRIEST(Stat.VIT, Stat.INT, 1.1);
 
 	public static final int MAIN_PER_LEVEL = 2;
 	public static final int SECOND_PER_LEVEL = 1;
 
 	private final Stat main;
 	private final Stat second;
+	private final double hpFactor;
 
-	Job(final Stat main, final Stat second) {
+	Job(final Stat main, final Stat second, final double hpFactor) {
 		this.main = main;
 		this.second = second;
+		this.hpFactor = hpFactor;
+	}
+
+	/** The default max health factor. The config key hp.job_factors overrides it. */
+	public double hpFactor() {
+		return this.hpFactor;
 	}
 
 	/** Null for {@link #NONE}. */

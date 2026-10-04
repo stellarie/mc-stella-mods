@@ -26,6 +26,7 @@ public final class RpgLevelUp {
 		}
 		player.setAttached(LAST_LEVEL, level);
 		if (last != null && level > last) {
+			RpgAttributes.refresh(player);
 			player.setHealth(player.getMaxHealth());
 			player.addEffect(new MobEffectInstance(MobEffects.SPEED, SPEED_TICKS, SPEED_AMPLIFIER));
 		}

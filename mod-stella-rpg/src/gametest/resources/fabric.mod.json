@@ -36,6 +36,7 @@
 			"com.stella.rpg.AttackPreviewGameTest",
 			"com.stella.rpg.RpgScalingCoreGameTest",
 			"com.stella.rpg.HealthScaleGameTest",
+			"com.stella.rpg.HpModelGameTest",
 			"com.stella.rpg.AffixRollGameTest",
 			"com.stella.rpg.AffixCombatGameTest",
 			"com.stella.rpg.StatusAtkGameTest",

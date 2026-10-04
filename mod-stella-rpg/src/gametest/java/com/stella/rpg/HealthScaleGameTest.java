@@ -58,11 +58,12 @@ public final class HealthScaleGameTest {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		Zombie zombie = zombie(helper);
 		float expected = 20.0F * RpgScale.kf();
+		float playerExpected = 30.0F * RpgScale.kf();
 		RpgTestSupport.result("maxHealthTimesK", "player=" + player.getMaxHealth() + " zombie=" + zombie.getMaxHealth()
 			+ " health=" + player.getHealth() + "/" + zombie.getHealth());
-		helper.assertTrue(player.getMaxHealth() == expected && expected == 300.0F, "player max health " + player.getMaxHealth());
+		helper.assertTrue(player.getMaxHealth() == playerExpected && playerExpected == 450.0F, "player max health " + player.getMaxHealth());
 		helper.assertTrue(zombie.getMaxHealth() == expected, "zombie max health " + zombie.getMaxHealth());
-		helper.assertTrue(player.getHealth() == expected && zombie.getHealth() == expected,
+		helper.assertTrue(player.getHealth() == playerExpected && zombie.getHealth() == expected,
 			"health " + player.getHealth() + " " + zombie.getHealth());
 		helper.succeed();
 	}
@@ -277,7 +278,7 @@ public final class HealthScaleGameTest {
 			.getOrThrow(RpgDamageTypes.ENVIRONMENTAL);
 		RpgTestSupport.result("environmentPercent", "plain=" + plain + " scaled=" + scaled + " share=" + share
 			+ " mob=" + mobLoss + " tag=" + tag.size());
-		helper.assertTrue(near(plain, 7.0F * RpgScale.kf()), "a fall at 300 max health removed " + plain);
+		helper.assertTrue(near(plain, 7.0F * 1.5F * RpgScale.kf()), "a fall at 450 max health removed " + plain);
 		helper.assertTrue(Math.abs(share - 0.35F) < 0.001F, "a 10 block fall at 2137 max health removed " + share + " of it");
 		helper.assertTrue(near(mobLoss, RpgTestSupport.mobGuard(7.0F) * RpgScale.kf()), "a mob fall removed " + mobLoss);
 		helper.assertTrue(tag.size() == 13, "the environmental tag holds " + tag.size() + " types");
@@ -315,7 +316,7 @@ public final class HealthScaleGameTest {
 		RpgConfig before = RpgConfigStore.current();
 		RpgConfig doubled = new RpgConfig(before.curves(), before.critMultiplier(), before.dice(), before.mobStats(),
 			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables(),
-			before.xpCurve(), before.magic(), before.scaling());
+			before.xpCurve(), before.magic(), before.scaling(), before.hp());
 		Object published;
 		try {
 			RpgConfigStore.set(doubled);
