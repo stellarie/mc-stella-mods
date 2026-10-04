@@ -1,0 +1,7 @@
+{
+	"type": "mod-stella-ruins:ruin",
+	"site": "deep_forge",
+	"biomes": "#minecraft:is_overworld",
+	"spawn_overrides": {},
+	"step": "underground_structures"
+}
