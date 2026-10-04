@@ -2,11 +2,15 @@ package com.stella.tower;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.stella.mobs.StellaMobs;
+import com.stella.mobs.scaling.SpawnScaling;
+import com.stella.mobs.scaling.ThreatState;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -36,14 +40,17 @@ import org.jspecify.annotations.Nullable;
 /**
  * The tower's own mobs: who they are, how strong their floor makes them, and how many a floor holds.
  * <p>
- * A floor with a player on it is kept stocked, a few at a time, up to {@link #FLOOR_CAP}. A tower mob's
+ * A floor with a player on it is kept stocked, a few at a time, up to {@link #FLOOR_CAP}. A tower mob is a
+ * mob of {@link #levelOf its floor's level}: the mobs mod's curves set its health and what it deals. Its
  * health is raised on its attribute as far as the game allows; the rest of its size is kept as a divisor
- * on every hit it takes. What it deals, by any means, grows with its floor on the way in.
+ * on every hit it takes. The tower adds only the rank's damage factor to what the mobs mod deals.
  */
 public final class TowerMobs {
 	public static final String TAG = "mod-stella-tower.mob";
 	/** Mobs from the mobs mod roll no elites of their own in the tower; the tower decides that. */
-	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
+	public static final String NO_SPAWN_ROLL_TAG = StellaMobs.NO_SPAWN_ROLL_TAG;
+	/** The first floor is a level 20 mob, and each floor adds one level. */
+	public static final int FIRST_FLOOR_LEVEL = 20;
 	public static final int FLOOR_CAP = 72;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
 	public static final int SPAWN_BATCH = 8;
@@ -106,6 +113,11 @@ public final class TowerMobs {
 		return entity.getAttached(STATE);
 	}
 
+	/** The mob level of a floor. */
+	public static int levelOf(final int floor) {
+		return floor + FIRST_FLOOR_LEVEL - 1;
+	}
+
 	/** The kinds a floor may hold. */
 	public static List<EntityType<? extends Mob>> pool(final int floor) {
 		if (floor <= OVERWORLD_ONLY_UNTIL) {
@@ -132,7 +144,8 @@ public final class TowerMobs {
 	/** Makes a mob a tower mob of this floor and rank, in this element, at full health. */
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-		double want = TowerCurve.health(health.getBaseValue(), floor) * rank.healthFactor();
+		int level = levelOf(floor);
+		double want = health.getBaseValue() * SpawnScaling.healthMultiplier(level) * rank.healthFactor();
 		double held = Math.min(want, healthCap());
 		// The floor alone sets a tower mob's health: a zombie leader's bonus or any other is set aside.
 		for (AttributeModifier other : List.copyOf(health.getModifiers())) {
@@ -157,6 +170,9 @@ public final class TowerMobs {
 		mob.setAttached(STATE, new State(floor, element, want / held, rank));
 		mob.addTag(TAG);
 		mob.addTag(NO_SPAWN_ROLL_TAG);
+		// Its hits take the mobs mod's level path; the health is the tower's own.
+		mob.addTag(StellaMobs.SELF_SCALED_TAG);
+		((AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(level, 0));
 		mob.setPersistenceRequired();
 		net.minecraft.network.chat.MutableComponent name = Component.empty();
 		if (rank != TowerRank.MOB) {
@@ -329,7 +345,7 @@ public final class TowerMobs {
 		}
 	}
 
-	/** A hit's damage once the tower has had its say: a tower mob hits harder, and a big one takes less. */
+	/** A hit's damage once the tower has had its say: a tower mob's rank hits harder, and a big one takes less. */
 	public static float scaleDamage(final LivingEntity victim, final DamageSource source, final float amount) {
 		// A weapon rune multiplies the blow as it is struck; armor runes turn a tower mob's blow as it lands.
 		// Stored heat is added after the tier, so a weapon rune does not multiply it.
@@ -337,7 +353,8 @@ public final class TowerMobs {
 		if (source.getEntity() instanceof LivingEntity attacker && attacker != victim && !TowerBuffs.reflecting()) {
 			State from = stateOf(attacker);
 			if (from != null) {
-				scaled = (float) (TowerCurve.damage(scaled, from.floor()) * from.rank().damageFactor());
+				// The level part comes from the mobs mod; adding it here would scale the hit twice.
+				scaled = (float) (scaled * from.rank().damageFactor());
 				scaled = TowerRunes.armor(victim, from.element(), scaled);
 			}
 		}

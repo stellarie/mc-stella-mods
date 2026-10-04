@@ -52,6 +52,11 @@ public final class TowerTravel {
 		StellaTower.id("tower_entry"), builder -> builder.persistent(Entry.CODEC).copyOnDeath()
 	);
 
+	/** The floor a player last stood on in the tower; absent until their first visit. */
+	public static final AttachmentType<Integer> LAST_FLOOR = AttachmentRegistry.create(
+		StellaTower.id("last_floor"), builder -> builder.persistent(Codec.INT).copyOnDeath()
+	);
+
 	/** Players whose way back a portal has just written; their teleport keeps it. */
 	private static final Set<UUID> RECORDED = ConcurrentHashMap.newKeySet();
 
@@ -65,6 +70,29 @@ public final class TowerTravel {
 			}
 		});
 		ServerTickEvents.END_SERVER_TICK.register(server -> RECORDED.clear());
+		ServerTickEvents.END_SERVER_TICK.register(TowerTravel::rememberFloors);
+	}
+
+	private static void rememberFloors(final net.minecraft.server.MinecraftServer server) {
+		if (server.getTickCount() % TowerProgress.CHECK_TICKS != 0) {
+			return;
+		}
+		ServerLevel tower = server.getLevel(TOWER);
+		if (tower == null) {
+			return;
+		}
+		for (ServerPlayer player : tower.players()) {
+			int floor = TowerLayout.floorAt(player.blockPosition());
+			if (floor > 0 && !player.isSpectator() && TowerFloors.isBuilt(tower, floor)) {
+				remember(player, floor);
+			}
+		}
+	}
+
+	private static void remember(final ServerPlayer player, final int floor) {
+		if (lastFloor(player) != floor) {
+			player.setAttached(LAST_FLOOR, floor);
+		}
 	}
 
 	/**
@@ -75,6 +103,10 @@ public final class TowerTravel {
 		if (!RECORDED.remove(player.getUUID())) {
 			player.setAttached(ENTRY, new Entry(player.level().dimension(), player.position(), player.getYRot()));
 		}
+	}
+
+	public static int lastFloor(final ServerPlayer player) {
+		return player.getAttachedOrElse(LAST_FLOOR, 0);
 	}
 
 	/** Gives a Void Key unless the player holds one, or keeps one in the ender chest. */
@@ -90,7 +122,10 @@ public final class TowerTravel {
 		}
 	}
 
-	/** The floor a portal outside the tower leads to: the highest floor key a player holds, else the first. */
+	/**
+	 * The floor a portal outside the tower leads to: the highest of the floor keys a player holds and the
+	 * floors each traveller last stood on, else the first.
+	 */
 	public static int startFloor(final Entity entity) {
 		int floor = 1;
 		List<Entity> travellers = new java.util.ArrayList<>();
@@ -99,6 +134,7 @@ public final class TowerTravel {
 		// A rider's keys count as much as a walker's.
 		for (Entity traveller : travellers) {
 			if (traveller instanceof ServerPlayer player) {
+				floor = Math.max(floor, lastFloor(player));
 				for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
 					floor = Math.max(floor, FloorKeyItem.floorOf(player.getInventory().getItem(i)));
 				}
@@ -172,6 +208,8 @@ public final class TowerTravel {
 		if (!(entity instanceof ServerPlayer player)) {
 			return;
 		}
+		// A pulse may miss a player who leaves within a second.
+		remember(player, floor);
 		player.sendOverlayMessage(Component.translatable("message.mod-stella-tower.floor", floor));
 		StellaTower.LOGGER.debug("[TOWER] player={} ARRIVED floor={}", player.getScoreboardName(), floor);
 	}

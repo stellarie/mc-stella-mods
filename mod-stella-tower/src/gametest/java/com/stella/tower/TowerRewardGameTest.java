@@ -24,7 +24,7 @@ public class TowerRewardGameTest {
 	public void aDeepFloorsMobGivesMoreExperience(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Zombie plain = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		Zombie plain = TowerTestSupport.unrolled(EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND));
 		Zombie tower = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(tower, XP_FLOOR, TowerElement.WIND);
 		int base = plain.getExperienceReward(level, player);

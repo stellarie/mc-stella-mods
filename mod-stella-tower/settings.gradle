@@ -10,3 +10,6 @@ pluginManagement {
 }
 
 rootProject.name = 'mod-stella-tower'
+
+// The mobs mod builds from source beside this mod and substitutes for its coordinates.
+includeBuild '../mod-stella-mobs'

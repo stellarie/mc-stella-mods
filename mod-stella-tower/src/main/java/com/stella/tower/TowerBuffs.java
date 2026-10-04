@@ -1,5 +1,6 @@
 package com.stella.tower;
 
+import com.stella.mobs.StellaMobs;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -153,9 +154,14 @@ public final class TowerBuffs {
 			if (source.getEntity() instanceof LivingEntity attacker && attacker != entity && attacker.isAlive()) {
 				float back = (float) (taken * Math.min(THORNS_CAP, THORNS_PER_LEVEL * level(state.floor())));
 				REFLECTING.set(true);
+				// Off while it hits back: the mobs mod would scale the returned blow by the level again.
+				boolean selfScaled = entity.removeTag(StellaMobs.SELF_SCALED_TAG);
 				try {
 					attacker.hurtServer(level, entity.damageSources().thorns(entity), back);
 				} finally {
+					if (selfScaled) {
+						entity.addTag(StellaMobs.SELF_SCALED_TAG);
+					}
 					REFLECTING.set(false);
 				}
 			}

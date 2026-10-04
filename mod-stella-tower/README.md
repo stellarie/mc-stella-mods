@@ -44,11 +44,19 @@ An endless tower of floors behind a crying obsidian portal. The design is in
 - A tower mob's health is its floor's alone: other health bonuses (a zombie leader's) are set aside.
 - An occupied floor's whole room is held loaded, so no mob in it goes uncounted.
 - Each tower mob carries one of eight elements, shown in its name in the element's colour.
-- Threat follows `TowerCurve`: health `base * (1 + 99 S(f)) + 2f`, damage `base * (1 + 19 S(f)) + 0.02f`,
-  `+1` armor per 5 floors up to 30, `+0.2%` speed per floor up to `+50%`. A floor-100 zombie has 285
-  health and 22 armor.
-- Health past the attribute's cap of 1024 is kept as a divisor on every hit the mob takes; a tower mob's
-  damage, by swing, arrow, blast or potion, grows with its floor as the hit lands.
+- A tower mob is a mob of level `floor + 19`: floor 1 is level 20, and each floor adds one level. The
+  mob carries this level as its `mod-stella-mobs` threat state, so the shown level and the rpg mod read it.
+- Health is the mob's own times the mobs mod's health multiplier for its level (`1 + 0.5 x level` by
+  default), times the rank's health factor. Hits follow the mobs mod's level path through the self-scaled
+  tag; the tower adds only the rank's damage factor. A floor-100 zombie has 1210 health and 22 armor.
+- `TowerCurve` still sets armor (`+1` per 5 floors up to 30), speed (`+0.2%` per floor up to `+50%`), and the
+  damage of traps and runes. Mobs no longer follow its health or damage curves.
+- Health past the attribute's cap of 1024 is kept as a divisor on every hit the mob takes. Thorns that a
+  mob returns do not take the level factor again.
+- A portal from outside leads a player to the highest of: the floor keys they hold, and the floor they
+  last stood on in the tower (saved with the player; floor 1 for a new player). Void keys are unchanged.
+- `mod-stella-mobs` is a required dependency of this mod. Build it from source beside this mod
+  (`settings.gradle` includes `../mod-stella-mobs`).
 
 ## Slice 3a: elites, bosses and floor keys
 
