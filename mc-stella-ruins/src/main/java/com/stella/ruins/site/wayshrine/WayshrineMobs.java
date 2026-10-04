@@ -131,13 +131,27 @@ public final class WayshrineMobs {
 		}
 	}
 
-	/** A hit from the wisp blinds the player it hit. */
+	/**
+	 * A hit from the wisp blinds the player it hit. Two signals carry it: the damage event, and the wisp's own record of its
+	 * last melee hit. With the mobs mod a scaled hit on a player raises no damage event, so the record keeps the sting.
+	 */
 	static final class WispAbility implements MobAbility {
+		@Override
+		public void tick(final Mob mob, final ServerLevel level) {
+			if (mob.getLastHurtMob() instanceof Player player && mob.tickCount - mob.getLastHurtMobTimestamp() <= RuinMobs.ABILITY_TICKS) {
+				blind(player);
+			}
+		}
+
 		@Override
 		public void onHurtTarget(final Mob mob, final LivingEntity target) {
 			if (target instanceof Player player) {
-				player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, BLIND_TICKS, 0));
+				blind(player);
 			}
+		}
+
+		private static void blind(final Player player) {
+			player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, BLIND_TICKS, 0));
 		}
 	}
 

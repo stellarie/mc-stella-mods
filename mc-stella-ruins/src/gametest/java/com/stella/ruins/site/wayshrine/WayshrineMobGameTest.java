@@ -135,27 +135,33 @@ public class WayshrineMobGameTest {
 		helper.succeed();
 	}
 
+	private static ServerPlayer sturdy(final GameTestHelper helper, final double x, final double z) {
+		ServerPlayer player = WayshrineTestSupport.join(helper, new Vec3(x, 2.0, z));
+		WayshrineTestSupport.vulnerable(player);
+		// With the mobs mod a ruin mob hits at its level, so the subject must survive the scaled hit.
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
+		player.setHealth(1_000_000.0F);
+		return player;
+	}
+
+	/** A melee hit, as the wisp's own attack goal lands it, and then one ability tick. It holds with or without the mobs mod. */
 	@GameTest(maxTicks = 100)
 	public void aWispHitBlindsThePlayerForFortyTicksAndAPlainVexDoesNot(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		Mob wisp = spawn(helper, WayshrineMobs.wisp(), 0.5, 0.5);
-		ServerPlayer player = WayshrineTestSupport.join(helper, new Vec3(1.5, 2.0, 0.5));
-		WayshrineTestSupport.vulnerable(player);
-		// With the mobs mod a ruin mob hits at its level, and AFTER_DAMAGE never fires for a death, so the subject must survive.
-		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
-		player.setHealth(1_000_000.0F);
-		ServerPlayer control = WayshrineTestSupport.join(helper, new Vec3(1.5, 2.0, 4.5));
-		WayshrineTestSupport.vulnerable(control);
+		ServerPlayer player = sturdy(helper, 1.5, 0.5);
+		ServerPlayer control = sturdy(helper, 1.5, 4.5);
 		Mob plain = EntityTypes.VEX.create(level, EntitySpawnReason.COMMAND);
 		plain.addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
 		plain.snapTo(helper.absoluteVec(new Vec3(0.5, 2.0, 4.5)));
 		plain.setNoAi(true);
 		level.addFreshEntity(plain);
 		float before = player.getHealth();
-		boolean hit = player.hurtServer(level, level.damageSources().mobAttack(wisp), 1.0F);
-		control.hurtServer(level, level.damageSources().mobAttack(plain), 1.0F);
+		boolean hit = wisp.doHurtTarget(level, player);
+		plain.doHurtTarget(level, control);
+		tick(helper, wisp);
 		MobEffectInstance blind = player.getEffect(MobEffects.BLINDNESS);
-		WayshrineTestSupport.result("wispBlind", "hurt=" + hit + " healthLost=" + (before - player.getHealth()) + " blindTicks=" + (blind == null ? -1 : blind.getDuration()) + " controlBlind=" + control.hasEffect(MobEffects.BLINDNESS));
+		WayshrineTestSupport.result("wispBlind", "hit=" + hit + " healthLost=" + (before - player.getHealth()) + " blindTicks=" + (blind == null ? -1 : blind.getDuration()) + " controlBlind=" + control.hasEffect(MobEffects.BLINDNESS));
 		helper.assertTrue(hit && player.getHealth() < before, "the wisp's hit did not hurt the player, so the check proves nothing");
 		helper.assertTrue(blind != null && blind.getDuration() == WayshrineMobs.BLIND_TICKS && blind.getAmplifier() == 0, "the player's Blindness is " + blind);
 		helper.assertTrue(control.getHealth() < control.getMaxHealth() && !control.hasEffect(MobEffects.BLINDNESS), "a plain vex's hit blinded the player");
@@ -167,6 +173,18 @@ public class WayshrineMobGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
+	public void theDamageEventAlsoBlindsAPlayerThroughTheAbilityHook(final GameTestHelper helper) {
+		Mob wisp = spawn(helper, WayshrineMobs.wisp(), 0.5, 0.5);
+		ServerPlayer player = sturdy(helper, 1.5, 0.5);
+		WayshrineMobs.wisp().ability().onHurtTarget(wisp, player);
+		MobEffectInstance blind = player.getEffect(MobEffects.BLINDNESS);
+		helper.assertTrue(blind != null && blind.getDuration() == WayshrineMobs.BLIND_TICKS, "the hook gave Blindness " + blind);
+		wisp.discard();
+		WayshrineTestSupport.leave(helper, player);
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 100)
 	public void aWispHitOnAMobDoesNotBlindIt(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		Mob wisp = spawn(helper, WayshrineMobs.wisp(), 0.5, 0.5);
@@ -174,11 +192,13 @@ public class WayshrineMobGameTest {
 		pig.addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
 		pig.snapTo(helper.absoluteVec(new Vec3(1.5, 2.0, 0.5)));
 		pig.setNoAi(true);
-		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
-		pig.setHealth(1000.0F);
+		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
+		pig.setHealth(1_000_000.0F);
 		level.addFreshEntity(pig);
-		pig.hurtServer(level, level.damageSources().mobAttack(wisp), 1.0F);
-		helper.assertTrue(pig.getHealth() < 1000.0F, "the hit did not land, so the check proves nothing");
+		boolean hit = wisp.doHurtTarget(level, pig);
+		tick(helper, wisp);
+		WayshrineMobs.wisp().ability().onHurtTarget(wisp, pig);
+		helper.assertTrue(hit && pig.getHealth() < 1_000_000.0F, "the hit did not land, so the check proves nothing");
 		helper.assertTrue(!pig.hasEffect(MobEffects.BLINDNESS), "the wisp blinded a pig");
 		wisp.discard();
 		pig.discard();
