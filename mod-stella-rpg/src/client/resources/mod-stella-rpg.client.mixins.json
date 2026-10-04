@@ -7,7 +7,10 @@
 		"ContainerScreenPositionAccessor",
 		"NoDotShakeLivingMixin",
 		"NauseaBlendMixin",
-		"NoDotShakeLocalPlayerMixin"
+		"NoDotShakeLocalPlayerMixin",
+		"WeaponHotkeyMixin",
+		"WeaponScrollMixin",
+		"WeaponHeldSlotMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
