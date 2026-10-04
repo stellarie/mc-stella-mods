@@ -35,6 +35,8 @@ public final class StellaRpg implements ModInitializer {
 		com.stella.rpg.api.BagShare.publish();
 		RpgNet.register();
 		AutoPickup.register();
+		QuickbarMode.register();
+		WeaponSlot.register();
 		ArmorSets.register();
 		WeaponRolls.register();
 		RpgScale.register();

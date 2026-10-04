@@ -34,7 +34,6 @@
 		"AbstractArrowPierceInvoker",
 		"RpgWeaponSelectMixin",
 		"RpgWeaponCarriedMixin",
-		"RpgWeaponMenuMixin",
 		"SlotPositionAccessor",
 		"RpgAutoPickupMixin"
 	],

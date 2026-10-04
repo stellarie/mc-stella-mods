@@ -6,6 +6,8 @@
 	"key.category.mod-stella-rpg.weapon_slot": "Weapon Slot",
 	"key.mod-stella-rpg.ready_weapon": "Ready Weapon",
 	"screen.mod-stella-rpg.auto_pickup": "Auto-pickup",
+	"screen.mod-stella-rpg.mode.quickbar": "Mode: Quick bar",
+	"screen.mod-stella-rpg.mode.vanilla": "Mode: Vanilla",
 	"screen.mod-stella-rpg.tab.stats": "Stats",
 	"screen.mod-stella-rpg.tab.bag": "Bag",
 	"container.mod-stella-rpg.bag": "Bag",

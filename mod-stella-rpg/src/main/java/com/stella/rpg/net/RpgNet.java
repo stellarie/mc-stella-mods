@@ -31,7 +31,7 @@ public final class RpgNet {
 		ServerPlayNetworking.registerGlobalReceiver(
 			RespecPayload.TYPE, (payload, context) -> respec(context.player()));
 		ServerPlayNetworking.registerGlobalReceiver(
-			WeaponHotkeyPayload.TYPE, (payload, context) -> WeaponSlot.press(context.player(), payload.index()));
+			WeaponHotkeyPayload.TYPE, (payload, context) -> WeaponSlot.hotkey(context.player(), payload.index(), payload.down()));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sync(handler.getPlayer()));
 		ServerPlayConnectionEvents.DISCONNECT.register(
 			(handler, server) -> LAST_SENT.remove(handler.getPlayer().getUUID()));

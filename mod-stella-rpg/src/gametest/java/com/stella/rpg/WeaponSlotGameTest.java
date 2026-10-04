@@ -110,28 +110,27 @@ public final class WeaponSlotGameTest {
 	}
 
 	@GameTest
-	public void blockSelectsThenWeaponReturns(final GameTestHelper helper) {
+	public void pickaxeSwapsAndNoUseKeepsTheWeapon(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		Inventory inventory = player.getInventory();
 		inventory.clearContent();
 		inventory.setItem(SLOT, new ItemStack(Items.IRON_AXE));
-		inventory.setItem(3, new ItemStack(Items.DIRT, 16));
-		inventory.setItem(5, new ItemStack(Items.IRON_SWORD));
+		inventory.setItem(3, new ItemStack(Items.STICK, 16));
+		inventory.setItem(5, new ItemStack(Items.IRON_PICKAXE));
 		inventory.setSelectedSlot(SLOT);
 
-		WeaponSlot.Result block = WeaponSlot.press(player, 3);
-		helper.assertTrue(block == WeaponSlot.Result.SELECTED, "block press " + block);
-		helper.assertTrue(inventory.getSelectedSlot() == 3 && player.getMainHandItem().is(Items.DIRT), "the block is not in hand");
-		helper.assertTrue(inventory.getItem(SLOT).is(Items.IRON_AXE), "the weapon left its slot");
+		WeaponSlot.Result stick = WeaponSlot.press(player, 3);
+		helper.assertTrue(stick == WeaponSlot.Result.NO_EFFECT, "stick press " + stick);
+		helper.assertTrue(inventory.getSelectedSlot() == SLOT && player.getMainHandItem().is(Items.IRON_AXE), "the stick took the hand");
 
+		WeaponSlot.Result pickaxe = WeaponSlot.press(player, 5);
+		helper.assertTrue(pickaxe == WeaponSlot.Result.EQUIPPED && player.getMainHandItem().is(Items.IRON_PICKAXE), "the pickaxe did not swap in");
+		helper.assertTrue(inventory.getItem(5).is(Items.IRON_AXE) && inventory.getItem(3).is(Items.STICK), "the swap moved the wrong items");
+
+		inventory.setSelectedSlot(0);
 		WeaponSlot.Result ready = WeaponSlot.press(player, WeaponSlot.READY);
-		helper.assertTrue(ready == WeaponSlot.Result.READIED && player.getMainHandItem().is(Items.IRON_AXE), "the ready key did not return the axe");
-
-		WeaponSlot.press(player, 3);
-		WeaponSlot.Result weapon = WeaponSlot.press(player, 5);
-		helper.assertTrue(weapon == WeaponSlot.Result.EQUIPPED && player.getMainHandItem().is(Items.IRON_SWORD), "a weapon key did not return to the weapon slot");
-		helper.assertTrue(inventory.getItem(5).is(Items.IRON_AXE) && inventory.getItem(3).is(Items.DIRT), "the swap moved the wrong items");
-		RpgTestSupport.result("blockSelectsThenWeaponReturns", "block=" + block + " ready=" + ready + " weapon=" + weapon);
+		helper.assertTrue(ready == WeaponSlot.Result.READIED && player.getMainHandItem().is(Items.IRON_PICKAXE), "the ready key did not return the weapon");
+		RpgTestSupport.result("pickaxeSwapsAndNoUseKeepsTheWeapon", "stick=" + stick + " pickaxe=" + pickaxe + " ready=" + ready);
 		helper.succeed();
 	}
 
