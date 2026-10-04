@@ -62,7 +62,7 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 10 seconds |
 | Haste Rune | Redstone | 15 s | Self | Gives you Haste II for 60 seconds |
 | Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 seconds; your first blow breaks the veil, deals double damage and stops its victim dead for 2 seconds |
-| Sanctuary | Honeycomb | 20 s | Self | Heals you by 6, and every other player within 6 blocks by 4 |
+| Sanctuary | Honeycomb | 20 s | Self | A fixed zone of 3 blocks at the cast spot for 10 seconds: every second, players in it get Regeneration I and undead in it take 3 damage |
 | Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you and each player within 6 blocks |
 | Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 3 seconds |
 | Earthspike | Pointed Dripstone | 12 s | Block | Throws hostiles within 3 blocks of the spot into the air for 4 damage |
@@ -82,6 +82,8 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 - Damage shows a range, the lowest to the highest hit, in the health units your hearts use. It follows your RPG
   MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.
 - Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
+- With `mod-stella-rpg`, your Intelligence also stretches every spell effect duration through `RpgSpells.durationMultiplier`. Cooldowns are not stretched. Without it the multiplier is 1.
+- Sanctuary raises a zone of 3 blocks at the cast spot, for 10 seconds times the duration multiplier. It does not follow you. Every second, players in it get Regeneration I, and undead in it take your spell hit.
 - The cooldown line shows your real cooldown after Intelligence and Quickening.
 - Riftwalk, Gale Step, and the Scroll of Return keep a fixed cooldown. Intelligence and Dexterity do not shorten it.
 - A spell that hurts a foe names you as the attacker, as a sword hit does. A struck mob turns on you, and the RPG mod
@@ -110,7 +112,7 @@ Every successful cast draws spell-specific particles, sent from the server to ne
 Each magic circle has an outer ring, inner ring, spokes, and two delayed pulses. Other successful
 casts also add delayed particles. Each of the 42 spells adds a named motion suited to its effect.
 Frostbind closes an ice cage; Chainstorm falls in a column; Battle Hymn lifts golden notes.
-Static Lash connects selected chained victims. Sanctuary, Purify, and the hymns link affected allies.
+Static Lash connects selected chained victims. Purify and the hymns link affected allies.
 Visual links stop after eight recipients to bound particles; the gameplay effect still reaches every eligible ally.
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
@@ -275,7 +277,7 @@ retired: the caster's MATK sets what a damage spell or a heal is worth.
   vanilla damage times 50, so Spark Shot (3) is 150% and Dragonfall (10) is 500%. A combo bonus is its
   vanilla damage times 50 as well: Thermal Shock 200%, Riptide Current 150%, Frozen Meteor 250%.
 - **Heals.** A heal calls `RpgSpells.spellHeal(caster, coefficient)`. The coefficient is the vanilla heal
-  divided by 2, so Mending Word (4) is 2 and Life Bloom (8) is 4. Sanctuary uses the caster's numbers for its allies.
+  divided by 2, so Mending Word (4) is 2 and Life Bloom (8) is 4. The zone of Sanctuary does not heal; it hits undead as a damage spell.
 - **Growth.** Runes and ascension from the tower multiply the result once, as they multiply any spell.
   Imbued casts keep their reduced strength. Each hit rolls its own MATK, except Chainstorm and Flame Ring,
   which roll once per cast.

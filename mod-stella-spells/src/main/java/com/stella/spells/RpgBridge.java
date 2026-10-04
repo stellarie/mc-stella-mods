@@ -36,6 +36,11 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
+		/** What the caster's Intelligence multiplies every spell effect duration by; 1 when the RPG mod gives none. */
+		default double durationMultiplier(final LivingEntity caster) {
+			return 1.0;
+		}
+
 		/** The lowest MATK roll in K units; NaN when the RPG mod gives none. */
 		default double matkMin(final LivingEntity caster) {
 			return Double.NaN;
@@ -92,6 +97,7 @@ public final class RpgBridge {
 			MethodHandle heal = optional(lookup, rpg, "spellHeal");
 			MethodHandle matkMin = optionalMatk(lookup, rpg, "matkMin");
 			MethodHandle matkMax = optionalMatk(lookup, rpg, "matkMax");
+			MethodHandle duration = optionalMatk(lookup, rpg, "durationMultiplier");
 			return new Stats() {
 				@Override
 				public double power(final Player player) {
@@ -126,6 +132,15 @@ public final class RpgBridge {
 						return heal == null ? Double.NaN : (double) heal.invokeExact(caster, coefficient);
 					} catch (Throwable e) {
 						return Double.NaN;
+					}
+				}
+
+				@Override
+				public double durationMultiplier(final LivingEntity caster) {
+					try {
+						return duration == null ? 1.0 : (double) duration.invokeExact(caster);
+					} catch (Throwable e) {
+						return 1.0;
 					}
 				}
 
@@ -184,13 +199,21 @@ public final class RpgBridge {
 		double power = rpg.power(caster);
 		// Fixed-cooldown spells keep their base cooldown.
 		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : rpg.cooldown(caster);
-		if (!positive(power) || !positive(cooldown) || (power == 1.0 && cooldown == 1.0)) {
+		double duration = durationMultiplier(caster);
+		if (!positive(power) || !positive(cooldown) || (power == 1.0 && cooldown == 1.0 && duration == 1.0)) {
 			return base;
 		}
+		// Durations only: the cooldown keeps its own multiplier.
 		return new SpellModifiers.CastModifiers(
-			base.powerMultiplier() * power, base.radiusMultiplier(), base.durationMultiplier(),
-			base.defensiveDurationMultiplier(), base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown))
+			base.powerMultiplier() * power, base.radiusMultiplier(), base.durationMultiplier() * duration,
+			base.defensiveDurationMultiplier() * duration, base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown))
 		);
+	}
+
+	/** The caster's duration multiplier from the RPG mod; 1 when it gives none or a number that is not usable. */
+	static double durationMultiplier(final LivingEntity caster) {
+		double multiplier = stats().durationMultiplier(caster);
+		return positive(multiplier) ? multiplier : 1.0;
 	}
 
 	/** The lowest MATK roll of the caster in K units, or NaN when the RPG mod gives none. */
