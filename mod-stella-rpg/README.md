@@ -127,11 +127,13 @@ The server rule `WeaponSlot.hotkey` acts on the item in that hotkey slot, in thi
 | Weapon: attack damage, the `weapon` component, or a bow or crossbow. Pickaxes, axes, shovels, and hoes count | Swaps with the weapon slot. The old weapon lands in the pressed slot. |
 | Armor (not a block) | Swaps with the worn piece. A Curse of Binding piece refuses outside creative. |
 | Food or a potion (the `consumable` component) | Held and used while the key is down. Key up stops it, and the weapon returns. |
-| Anything else: blocks, flint and steel, buckets, bone meal, shears, fire charges | Used at the targeted block, else in the air. The weapon stays in hand. |
+| Anything else: blocks, flint and steel, buckets, bone meal, shears, fire charges, name tags, leads | Used on the targeted entity, else the targeted block, else in the air. The weapon stays in hand. |
 | Empty slot | Nothing. |
 
-- The target is the block under the player's view on the server, within block reach.
-- A use calls `useItemOn`, then `useItem` when the first does not act, as the vanilla client does. Spawn protection applies.
+- The server picks the target from the player's view, as the client does.
+  An entity counts when it is nearer than the block hit and within entity reach. A block counts within block reach.
+- A use calls `Player#interactOn` on the entity, then `useItemOn` on the block, then `useItem`.
+  Each step runs only when the step before does not act, as on the vanilla client. Spawn protection applies to the block step.
 - A use holds the hotkey slot as the main hand for that one server call only, and restores the weapon in a `finally` block.
 - While eating, the food is the main hand. Other mods see it there for that window.
 - The weapon returns when the use ends, on key up, on another hotkey, on a mode switch, and on disconnect.
@@ -139,7 +141,7 @@ The server rule `WeaponSlot.hotkey` acts on the item in that hotkey slot, in thi
 - The Ready Weapon key (default `R`) selects the weapon slot again.
 - The scroll wheel does not change the selection in quick bar mode.
 - A swap exchanges two slots, so it never loses an item, even with a full inventory.
-- Entities are not targets. A hotkey on shears does not shear a sheep.
+- Shears on a sheep shear it. A bucket on a cow fills with milk.
 - On a server without this mod, the client keeps the vanilla hotbar and the vanilla hotkeys.
 - Residual risk: a save made with the weapon slot selected stores `SelectedItemSlot` 35. Vanilla rejects that value on load, so removing this mod breaks such a save.
 
