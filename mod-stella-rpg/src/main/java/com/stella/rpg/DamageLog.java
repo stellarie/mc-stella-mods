@@ -23,7 +23,21 @@ public final class DamageLog {
 	);
 	private static final Map<LivingEntity, Float> BEFORE = new WeakHashMap<>();
 
+	/** The damage a hit applied, which can pass the health the victim had. */
+	private static final java.util.Map<LivingEntity, Float> APPLIED = new java.util.WeakHashMap<>();
+
 	private DamageLog() {
+	}
+
+	public static void noteApplied(final LivingEntity entity, final float damage) {
+		synchronized (BEFORE) {
+			APPLIED.put(entity, damage);
+		}
+	}
+
+	/** Health lost, or the full applied damage when it passed the health left. */
+	public static int shown(final float lost, final @org.jspecify.annotations.Nullable Float applied) {
+		return Math.round(applied == null ? lost : Math.max(lost, applied));
 	}
 
 	public static void register() {
@@ -55,13 +69,15 @@ public final class DamageLog {
 
 	private static void report(final LivingEntity victim, final DamageSource source) {
 		Float before;
+		Float applied;
 		synchronized (BEFORE) {
 			before = BEFORE.remove(victim);
+			applied = APPLIED.remove(victim);
 		}
 		if (before == null) {
 			return;
 		}
-		int lost = Math.round(before - vitality(victim));
+		int lost = shown(before - vitality(victim), applied);
 		if (lost <= 0) {
 			return;
 		}

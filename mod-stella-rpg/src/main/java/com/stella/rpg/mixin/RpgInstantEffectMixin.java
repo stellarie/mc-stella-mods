@@ -46,10 +46,8 @@ public abstract class RpgInstantEffectMixin {
 			return;
 		}
 		float amount = (float) (PercentEffects.instantHarm(mob, amplification) * scale);
-		if (source == null) {
-			mob.hurtServer(level, mob.damageSources().magic(), amount);
-		} else {
-			mob.hurtServer(level, mob.damageSources().indirectMagic(source, owner), amount);
-		}
+		net.minecraft.world.damagesource.DamageSource damage = source == null
+			? mob.damageSources().magic() : mob.damageSources().indirectMagic(source, owner);
+		PercentEffects.fixedHit(() -> mob.hurtServer(level, damage, amount));
 	}
 }

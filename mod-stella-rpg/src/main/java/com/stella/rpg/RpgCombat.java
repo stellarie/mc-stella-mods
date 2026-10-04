@@ -95,7 +95,7 @@ public final class RpgCombat {
 	}
 
 	public static float scaleOutgoing(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (!(source.getEntity() instanceof LivingEntity attacker)
+		if (PercentEffects.inFixedHit() || !(source.getEntity() instanceof LivingEntity attacker)
 			|| !(attacker instanceof ServerPlayer || attacker instanceof Mob)) {
 			return amount;
 		}

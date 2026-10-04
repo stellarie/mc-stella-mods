@@ -18,6 +18,8 @@ public abstract class RpgScaleDamageMixin {
 		argsOnly = true
 	)
 	private float stellaRpg$scaleDamage(final float damage) {
-		return damage * RpgScale.kf();
+		float scaled = damage * RpgScale.kf();
+		com.stella.rpg.DamageLog.noteApplied((LivingEntity) (Object) this, scaled);
+		return scaled;
 	}
 }
