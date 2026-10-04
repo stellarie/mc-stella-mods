@@ -32,7 +32,13 @@ public final class WorldTestInit implements ModInitializer {
 
 	/** Counts the ticks the test kind's ability ran, and the hits it landed. */
 	static final AtomicInteger ABILITY_TICKS = new AtomicInteger();
-	static final AtomicInteger ABILITY_HITS = new AtomicInteger();
+	/** Hits the test kind ability heard, by attacker, so tests running side by side never count each other. */
+	static final java.util.Map<java.util.UUID, AtomicInteger> ABILITY_HITS = new java.util.concurrent.ConcurrentHashMap<>();
+
+	static int hitsOf(final Mob mob) {
+		AtomicInteger hits = ABILITY_HITS.get(mob.getUUID());
+		return hits == null ? 0 : hits.get();
+	}
 
 	static RuinMobKind husk;
 	static Item relic;
@@ -79,7 +85,7 @@ public final class WorldTestInit implements ModInitializer {
 
 				@Override
 				public void onHurtTarget(final Mob mob, final LivingEntity target) {
-					ABILITY_HITS.incrementAndGet();
+					ABILITY_HITS.computeIfAbsent(mob.getUUID(), id -> new AtomicInteger()).incrementAndGet();
 				}
 			})
 			.drops(HUSK_DROPS)

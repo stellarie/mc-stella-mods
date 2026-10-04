@@ -109,12 +109,11 @@ public class RuinMobGameTest {
 				victim[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
 				victim[0].setHealth(1_000_000.0F);
 				arena.level().addFreshEntity(victim[0]);
-				before[1] = WorldTestInit.ABILITY_HITS.get();
 				victim[0].hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob[0]), 1.0F);
 			}
-			helper.assertTrue(WorldTestInit.ABILITY_HITS.get() == before[1] + 1, "the ability heard " + (WorldTestInit.ABILITY_HITS.get() - before[1]) + " hits, not 1");
+			helper.assertTrue(WorldTestInit.hitsOf(mob[0]) == 1, "the ability heard " + WorldTestInit.hitsOf(mob[0]) + " hits, not 1");
 			helper.assertTrue(WorldTestInit.ABILITY_TICKS.get() > before[0], "the ability has not ticked");
-			WorldTestSupport.result("abilityTicks", "ticks=" + (WorldTestInit.ABILITY_TICKS.get() - before[0]) + " hits=" + (WorldTestInit.ABILITY_HITS.get() - before[1]));
+			WorldTestSupport.result("abilityTicks", "ticks=" + (WorldTestInit.ABILITY_TICKS.get() - before[0]) + " hits=" + WorldTestInit.hitsOf(mob[0]));
 			mob[0].discard();
 			victim[0].discard();
 			arena.release();
@@ -131,10 +130,9 @@ public class RuinMobGameTest {
 			victim.snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
 			victim.setHealth(1.0F);
 			arena.level().addFreshEntity(victim);
-			int before = WorldTestInit.ABILITY_HITS.get();
 			victim.hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob), 1_000_000.0F);
 			helper.assertTrue(!victim.isAlive(), "the victim survived the blow");
-			helper.assertTrue(WorldTestInit.ABILITY_HITS.get() == before + 1, "the ability heard " + (WorldTestInit.ABILITY_HITS.get() - before) + " hits for a killing blow, not 1");
+			helper.assertTrue(WorldTestInit.hitsOf(mob) == 1, "the ability heard " + WorldTestInit.hitsOf(mob) + " hits for a killing blow, not 1");
 			mob.discard();
 		});
 	}
