@@ -21,6 +21,6 @@ public abstract class RpgPoisonAmountMixin {
 	private boolean stellaRpg$poisonAmount(
 		final LivingEntity target, final ServerLevel level, final DamageSource source, final float vanilla
 	) {
-		return target.hurtServer(level, source, PercentEffects.survivableTick(target));
+		return PercentEffects.fixedHit(() -> target.hurtServer(level, source, PercentEffects.survivableTick(target)));
 	}
 }

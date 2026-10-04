@@ -18,7 +18,25 @@ public final class PercentEffects {
 	public static final double ABSORPTION_FLOOR = 4.0;
 	public static final double ELITE_SHARE = 0.25;
 
+	/** True while a percent hit is applied; the attacker's rpg scaling skips it. */
+	private static final ThreadLocal<Boolean> FIXED = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
 	private PercentEffects() {
+	}
+
+	/** Runs a percent hit; it already scales with the victim's max health. */
+	public static boolean fixedHit(final java.util.function.BooleanSupplier hit) {
+		boolean outer = FIXED.get();
+		FIXED.set(Boolean.TRUE);
+		try {
+			return hit.getAsBoolean();
+		} finally {
+			FIXED.set(outer);
+		}
+	}
+
+	public static boolean inFixedHit() {
+		return FIXED.get();
 	}
 
 	/** Poison, Wither, and Regeneration, per tick. */
