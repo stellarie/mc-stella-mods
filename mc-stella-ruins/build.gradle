@@ -1,0 +1,77 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"mod-stella-ruins" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "mod-stella-ruins-test"
+		enableGameTests = true
+		enableClientGameTests = false
+		eula = true
+	}
+}
+
+// Each owner keeps its own lang part in src/main/lang; the build merges them and rejects a duplicate key.
+def langParts = file('src/main/lang')
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	inputs.dir(langParts)
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+
+	doLast {
+		def merged = new TreeMap()
+		fileTree(langParts).matching { include '*.json' }.files.sort { it.name }.each { part ->
+			new JsonSlurper().parse(part).each { key, value ->
+				if (merged.containsKey(key)) {
+					throw new GradleException("Lang key ${key} appears twice; second copy in ${part.name}")
+				}
+				merged[key] = value
+			}
+		}
+		def out = new File(destinationDir, 'assets/mod-stella-ruins/lang/en_us.json')
+		out.parentFile.mkdirs()
+		out.setText(JsonOutput.prettyPrint(JsonOutput.toJson(merged)), 'UTF-8')
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+tasks.named('runGameTest') {
+	if (project.hasProperty('gameTestFilter')) {
+		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
+	}
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

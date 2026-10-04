@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-ruins-test",
+	"version": "1.0.0",
+	"name": "Stella Ruins game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"com.stella.ruins.ScaffoldGameTest"
+		]
+	},
+	"depends": {
+		"mod-stella-ruins": "*"
+	}
+}
