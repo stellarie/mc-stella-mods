@@ -35,14 +35,6 @@ import net.minecraft.world.phys.Vec3;
 
 /** Lost rooms: the hut, its portal both ways, the room's levels, its traps, zones and chests, and its boss. */
 public class TowerLostRoomGameTest {
-	/** A hut laid facing north at relative (1, 1, 1), its floor on the test's floor plate. */
-	static LostRoomPiece hut(final GameTestHelper helper) {
-		BlockPos at = helper.absolutePos(new BlockPos(1, 1, 1));
-		LostRoomPiece piece = new LostRoomPiece(at.getX(), at.getY(), at.getZ(), Direction.NORTH);
-		piece.build(helper.getLevel(), BoundingBox.infinite(), helper.getLevel().getRandom());
-		return piece;
-	}
-
 	/** A hut key no earlier run has used. */
 	static String freshHut() {
 		return "test@" + TowerTestSupport.freshArea() + "/" + System.nanoTime();
@@ -58,71 +50,298 @@ public class TowerLostRoomGameTest {
 		return player;
 	}
 
-	@GameTest(maxTicks = 20)
-	public void theHutHoldsEveryBlockOfTheRequest(final GameTestHelper helper) {
-		LostRoomPiece piece = hut(helper);
-		ServerLevel level = helper.getLevel();
-		StringBuilder wrong = new StringBuilder();
-		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-			for (int y = 0; y < LostRoomPiece.HEIGHT; y++) {
-				for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-					boolean shell = x == 0 || x == LostRoomPiece.LENGTH - 1 || y == 0 || y == LostRoomPiece.HEIGHT - 1
-						|| z == 0 || z == LostRoomPiece.WIDTH - 1;
-					boolean door = z == 0 && (y == 1 || y == 2) && (x == LostRoomPiece.DOOR_X || x == LostRoomPiece.DOOR_X + 1);
-					boolean frameBottom = x == LostRoomPiece.PORTAL_X && y == 0 && z == LostRoomPiece.PORTAL_Z;
-					if (shell && !door && !frameBottom && !level.getBlockState(piece.worldPos(x, y, z)).is(TowerBlocks.TOWER_WALL)) {
-						wrong.append(" wall@").append(x).append(',').append(y).append(',').append(z);
-					}
+	/** A castle's footprint, in an empty spot of the tower dimension no earlier run has used. */
+	record Arena(ServerLevel level, int minX, int minZ, int maxX, int maxZ, LostRoomPiece piece) {
+	}
+
+	/** The ground's top under a column: the hill each arena is given, 0 to 4 blocks over y 60. */
+	static int hill(final int x, final int z) {
+		return 60 + Math.floorMod(x * 7 + z * 3, 5);
+	}
+
+	/** A castle built over a hill of stone, its floor set by the castle's own rule. */
+	static Arena castle(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int area = TowerTestSupport.freshArea();
+		int minX = Math.floorMod(area, 4096) * 64;
+		int minZ = -200_000 - Math.floorMod(area / 4096, 1000) * 64;
+		int maxX = minX + LostRoomPiece.LENGTH - 1;
+		int maxZ = minZ + LostRoomPiece.WIDTH - 1;
+		for (int x = minX; x <= maxX; x++) {
+			for (int z = minZ; z <= maxZ; z++) {
+				for (int y = 56; y <= hill(x, z); y++) {
+					tower.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
 				}
 			}
 		}
-		for (int x = LostRoomPiece.DOOR_X; x <= LostRoomPiece.DOOR_X + 1; x++) {
-			BlockState lower = level.getBlockState(piece.worldPos(x, 1, 0));
-			BlockState upper = level.getBlockState(piece.worldPos(x, 2, 0));
-			if (!lower.is(Blocks.OAK_DOOR) || lower.getValue(DoorBlock.HALF) != DoubleBlockHalf.LOWER || !upper.is(Blocks.OAK_DOOR)) {
-				wrong.append(" door@").append(x);
-			}
-		}
-		if (level.getBlockState(piece.worldPos(LostRoomPiece.DOOR_X, 1, 0)).getValue(DoorBlock.HINGE)
-			== level.getBlockState(piece.worldPos(LostRoomPiece.DOOR_X + 1, 1, 0)).getValue(DoorBlock.HINGE)) {
-			wrong.append(" notDouble");
-		}
-		BlockPos portal = piece.worldPos(LostRoomPiece.PORTAL_X, 1, LostRoomPiece.PORTAL_Z);
-		boolean portalOk = level.getBlockState(portal).is(TowerBlocks.TOWER_PORTAL) && level.getBlockState(portal.above()).is(TowerBlocks.TOWER_PORTAL);
-		boolean lined = level.getBlockState(portal.below()).is(TowerBlocks.TOWER_FRAME) && level.getBlockState(portal.above(2)).is(TowerBlocks.TOWER_FRAME);
-		for (int y = 1; y <= 3; y++) {
-			lined &= level.getBlockState(piece.worldPos(LostRoomPiece.PORTAL_X, y, 1)).is(TowerBlocks.TOWER_FRAME);
-			lined &= level.getBlockState(piece.worldPos(LostRoomPiece.PORTAL_X, y, 3)).is(TowerBlocks.TOWER_FRAME);
-		}
-		Set<Block> inside = new java.util.HashSet<>();
-		int cobwebs = 0;
-		int loot = 0;
-		for (int x = 1; x < LostRoomPiece.LENGTH - 1; x++) {
-			for (int y = 1; y < LostRoomPiece.HEIGHT - 1; y++) {
-				for (int z = 1; z < LostRoomPiece.WIDTH - 1; z++) {
-					BlockPos at = piece.worldPos(x, y, z);
-					BlockState state = level.getBlockState(at);
-					inside.add(state.getBlock());
-					cobwebs += state.is(Blocks.COBWEB) ? 1 : 0;
-					if (level.getBlockEntity(at) instanceof ChestBlockEntity chest) {
-						loot += chest.isEmpty() ? 0 : 1;
-					}
+		int floor = LostRoomPiece.floorOver(minX, minZ, maxX, maxZ, 1,
+			(x, z) -> tower.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1);
+		LostRoomPiece piece = new LostRoomPiece(minX, floor, minZ, Direction.NORTH);
+		piece.build(tower, BoundingBox.infinite());
+		return new Arena(tower, minX, minZ, maxX, maxZ, piece);
+	}
+
+	@GameTest(maxTicks = 40)
+	public void theCastleStandsAboveTheGroundOnAFoundation(final GameTestHelper helper) {
+		Arena arena = castle(helper);
+		ServerLevel level = arena.level();
+		int floor = arena.piece().getBoundingBox().minY();
+		int highest = Integer.MIN_VALUE;
+		int gaps = 0;
+		int columns = 0;
+		for (int x = arena.minX(); x <= arena.maxX(); x++) {
+			for (int z = arena.minZ(); z <= arena.maxZ(); z++) {
+				highest = Math.max(highest, hill(x, z));
+				for (int y = hill(x, z) + 1; y < floor; y++) {
+					gaps += level.getBlockState(new BlockPos(x, y, z)).is(TowerBlocks.TOWER_WALL) ? 0 : 1;
 				}
+				columns++;
 			}
 		}
-		boolean furnished = inside.contains(Blocks.CRAFTING_TABLE) && inside.contains(Blocks.CHEST) && inside.contains(Blocks.FURNACE)
-			&& inside.contains(Blocks.CANDLE) && inside.stream().anyMatch(block -> block.defaultBlockState().is(BlockTags.ANVIL));
-		boolean known = LostRooms.isHutPortal(level, portal);
-		TowerTestSupport.result("lostHut", "wrong=[" + wrong + "] portal=" + portalOk + " lined=" + lined + " furnished=" + furnished
-			+ " cobwebs=" + cobwebs + " stockedChests=" + loot + " hutPortal=" + known);
-		helper.assertTrue(wrong.isEmpty() && portalOk && lined && furnished && cobwebs > 0 && loot > 0 && known,
-			"the hut is not the box of the request: " + wrong + " portal=" + portalOk + " lined=" + lined + " furnished=" + furnished
-				+ " cobwebs=" + cobwebs + " loot=" + loot + " hutPortal=" + known);
+		StringBuilder corners = new StringBuilder();
+		boolean cornersOk = true;
+		for (int[] c : new int[][] {{arena.minX(), arena.minZ()}, {arena.maxX(), arena.minZ()}, {arena.minX(), arena.maxZ()}, {arena.maxX(), arena.maxZ()}}) {
+			boolean above = floor > hill(c[0], c[1]) && level.getBlockState(new BlockPos(c[0], floor, c[1])).is(TowerBlocks.TOWER_WALL);
+			cornersOk &= above;
+			corners.append(' ').append(hill(c[0], c[1])).append(above ? "<floor" : "!");
+		}
+		TowerTestSupport.result("castleSurface", "floor=" + floor + " highestGround=" + highest + " corners=[" + corners + "] columns=" + columns
+			+ " foundationGaps=" + gaps);
+		helper.assertTrue(floor == highest + 1, "the castle's floor is not one block above the highest ground: " + floor + " over " + highest);
+		helper.assertTrue(cornersOk, "a corner of the castle is not above the ground:" + corners);
+		helper.assertTrue(gaps == 0, "the foundation leaves " + gaps + " gaps down to the ground");
 		helper.succeed();
 	}
 
+	@GameTest(maxTicks = 40)
+	public void theCastleHasItsHallsGateTowersAndPortal(final GameTestHelper helper) {
+		Arena arena = castle(helper);
+		ServerLevel level = arena.level();
+		LostRoomPiece piece = arena.piece();
+		StringBuilder wrong = new StringBuilder();
+		int halls = 0;
+		for (int x0 : new int[] {LostRoomPiece.PORTAL_HALL_X, LostRoomPiece.STORE_HALL_X}) {
+			int size = LostRoomPiece.HALL_INNER + 2;
+			int arch = x0 + size / 2 - 1;
+			boolean clear = true;
+			boolean walled = true;
+			int roofGaps = 0;
+			int roofed = 0;
+			for (int dx = 0; dx < size; dx++) {
+				for (int dz = 0; dz < size; dz++) {
+					int x = x0 + dx;
+					int z = LostRoomPiece.HALL_Z + dz;
+					boolean ring = dx == 0 || dz == 0 || dx == size - 1 || dz == size - 1;
+					for (int y = 1; y <= LostRoomPiece.HALL_HEIGHT; y++) {
+						BlockState here = level.getBlockState(piece.worldPos(x, y, z));
+						boolean wall = here.is(TowerBlocks.TOWER_WALL) || ring && here.is(TowerBlocks.TOWER_LAMP);
+						boolean archway = dz == 0 && (x == arch || x == arch + 1) && y <= 3;
+						if (ring && !archway) {
+							walled &= wall;
+						} else if (!ring) {
+							clear &= !wall;
+						}
+					}
+					if (!ring) {
+						boolean roof = level.getBlockState(piece.worldPos(x, LostRoomPiece.HALL_HEIGHT + 1, z)).is(TowerBlocks.TOWER_WALL);
+						roofed += roof ? 1 : 0;
+						roofGaps += roof ? 0 : 1;
+					}
+				}
+			}
+			boolean hall = clear && walled && roofed > 0 && roofGaps > 0;
+			halls += hall ? 1 : 0;
+			if (!hall) {
+				wrong.append(" hall@").append(x0).append(" clear=").append(clear).append(" walled=").append(walled)
+					.append(" roof=").append(roofed).append('/').append(roofGaps);
+			}
+		}
+		BlockPos portal = piece.portalPos();
+		boolean portalOk = level.getBlockState(portal).is(TowerBlocks.TOWER_PORTAL) && level.getBlockState(portal.above()).is(TowerBlocks.TOWER_PORTAL)
+			&& level.getBlockState(portal.below()).is(TowerBlocks.TOWER_FRAME) && level.getBlockState(portal.above(2)).is(TowerBlocks.TOWER_FRAME);
+		Set<Block> inPortalHall = new java.util.HashSet<>();
+		for (int x = LostRoomPiece.PORTAL_HALL_X + 1; x <= LostRoomPiece.PORTAL_HALL_X + LostRoomPiece.HALL_INNER; x++) {
+			for (int z = LostRoomPiece.HALL_Z + 1; z <= LostRoomPiece.HALL_Z + LostRoomPiece.HALL_INNER; z++) {
+				for (int y = 1; y <= LostRoomPiece.HALL_HEIGHT; y++) {
+					inPortalHall.add(level.getBlockState(piece.worldPos(x, y, z)).getBlock());
+				}
+			}
+		}
+		boolean furnished = inPortalHall.contains(TowerBlocks.TOWER_PORTAL) && inPortalHall.contains(Blocks.CRAFTING_TABLE) && inPortalHall.contains(Blocks.CHEST)
+			&& inPortalHall.contains(Blocks.FURNACE) && inPortalHall.contains(Blocks.CANDLE)
+			&& inPortalHall.stream().anyMatch(block -> block.defaultBlockState().is(BlockTags.ANVIL));
+		BlockState left = level.getBlockState(piece.worldPos(LostRoomPiece.GATE_X, 1, 0));
+		BlockState right = level.getBlockState(piece.worldPos(LostRoomPiece.GATE_X + 1, 1, 0));
+		boolean gate = left.is(Blocks.OAK_DOOR) && right.is(Blocks.OAK_DOOR) && left.getValue(DoorBlock.HINGE) != right.getValue(DoorBlock.HINGE);
+		int towers = 0;
+		int[][] corners = {{0, 0}, {LostRoomPiece.LENGTH - LostRoomPiece.TOWER, 0}, {0, LostRoomPiece.WIDTH - LostRoomPiece.TOWER},
+			{LostRoomPiece.LENGTH - LostRoomPiece.TOWER, LostRoomPiece.WIDTH - LostRoomPiece.TOWER}};
+		for (int[] c : corners) {
+			int tallest = 0;
+			for (int d = 0; d < LostRoomPiece.TOWER; d++) {
+				for (int[] cell : new int[][] {{c[0] + d, c[1]}, {c[0], c[1] + d}, {c[0] + d, c[1] + LostRoomPiece.TOWER - 1}, {c[0] + LostRoomPiece.TOWER - 1, c[1] + d}}) {
+					int y = 1;
+					while (y < LostRoomPiece.HEIGHT && level.getBlockState(piece.worldPos(cell[0], y, cell[1])).is(TowerBlocks.TOWER_WALL)) {
+						y++;
+					}
+					tallest = Math.max(tallest, y - 1);
+				}
+			}
+			towers += tallest >= LostRoomPiece.TOWER_LOW ? 1 : 0;
+		}
+		int cobwebs = 0;
+		int vines = 0;
+		int rubble = 0;
+		int stocked = 0;
+		int breaches = 0;
+		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
+			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
+				boolean edge = x == 0 || z == 0 || x == LostRoomPiece.LENGTH - 1 || z == LostRoomPiece.WIDTH - 1;
+				if (edge && !level.getBlockState(piece.worldPos(x, 2, z)).is(TowerBlocks.TOWER_WALL) && !level.getBlockState(piece.worldPos(x, 1, z)).is(Blocks.OAK_DOOR)) {
+					breaches++;
+				}
+				for (int y = 1; y < LostRoomPiece.HEIGHT; y++) {
+					BlockPos at = piece.worldPos(x, y, z);
+					BlockState state = level.getBlockState(at);
+					cobwebs += state.is(Blocks.COBWEB) ? 1 : 0;
+					vines += state.is(Blocks.VINE) ? 1 : 0;
+					rubble += state.is(Blocks.GILDED_BLACKSTONE) || state.is(Blocks.BLACKSTONE) || state.is(Blocks.COBBLESTONE)
+						|| state.is(Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS) || state.is(Blocks.POLISHED_BLACKSTONE_BRICK_SLAB) ? 1 : 0;
+					if (level.getBlockEntity(at) instanceof ChestBlockEntity chest && !chest.isEmpty()) {
+						stocked++;
+					}
+				}
+			}
+		}
+		dump(helper, arena);
+		TowerTestSupport.result("castleRooms", "halls=" + halls + " wrong=[" + wrong + "] portal=" + portalOk + " furnished=" + furnished + " gate=" + gate
+			+ " towers=" + towers + " breaches=" + breaches + " cobwebs=" + cobwebs + " vines=" + vines + " rubble=" + rubble + " stockedChests=" + stocked);
+		helper.assertTrue(LostRoomPiece.HALL_INNER >= 9 && LostRoomPiece.HALL_HEIGHT >= 5 && halls >= 2, "the castle lacks two 9x9x5 halls:" + wrong);
+		helper.assertTrue(portalOk && furnished, "the portal hall lacks its portal or a workstation");
+		helper.assertTrue(gate, "the gate is not an oak double door");
+		helper.assertTrue(towers >= 2 && towers <= 3, "the castle has " + towers + " standing corner towers");
+		helper.assertTrue(breaches > 0 && cobwebs > 0 && vines > 0 && rubble > 0, "the castle is not ruined");
+		helper.assertTrue(stocked >= 4, "the castle has " + stocked + " stocked chests, not four");
+		helper.succeed();
+	}
+
+	/** Writes the castle's blocks, foundation included, for the preview render. */
+	static void dump(final GameTestHelper helper, final Arena arena) {
+		StringBuilder out = new StringBuilder();
+		int floor = arena.piece().getBoundingBox().minY();
+		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
+			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
+				for (int y = 56 - floor; y < LostRoomPiece.HEIGHT; y++) {
+					BlockState state = arena.level().getBlockState(arena.piece().worldPos(x, y, z));
+					if (!state.isAir()) {
+						out.append(x).append(' ').append(y).append(' ').append(z).append(' ')
+							.append(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock())).append('\n');
+					}
+				}
+			}
+		}
+		try {
+			java.nio.file.Files.writeString(helper.getLevel().getServer().getServerDirectory().resolve("lost_castle_layout.txt"), out.toString());
+		} catch (java.io.IOException e) {
+			TowerTestSupport.LOG.warn("no castle layout written", e);
+		}
+	}
+
+	@GameTest(maxTicks = 40)
+	public void theGroundsWakeOnceWhenAPlayerComesNear(final GameTestHelper helper) {
+		Arena arena = castle(helper);
+		ServerLevel level = arena.level();
+		LostRoomPiece piece = arena.piece();
+		AABB box = AABB.of(piece.getBoundingBox());
+		LostCastles.found(level.dimension(), piece);
+		ServerPlayer player = withLevel(helper, 40);
+		// Out from the gate, in the castle's frame.
+		Vec3 away = Vec3.atBottomCenterOf(piece.worldPos(LostRoomPiece.GATE_X, 1, -LostCastles.WAKE_DISTANCE - 8));
+		Vec3 near = Vec3.atBottomCenterOf(piece.worldPos(LostRoomPiece.GATE_X, 1, -LostCastles.WAKE_DISTANCE + 8));
+		player.teleportTo(level, away.x, away.y, away.z, Set.of(), 0.0F, 0.0F, true);
+		int far = (int) LostCastles.wake(level.getServer()).stream().filter(mob -> box.contains(mob.position())).count();
+		player.teleportTo(level, near.x, near.y, near.z, Set.of(), 0.0F, 0.0F, true);
+		int average = LostRooms.averageLevel(level.getServer().getPlayerList().getPlayers());
+		List<Mob> woke = LostCastles.wake(level.getServer()).stream().filter(mob -> box.contains(mob.position())).toList();
+		int outOfRange = 0;
+		StringBuilder levels = new StringBuilder();
+		for (Mob mob : woke) {
+			int mobLevel = mob.getAttached(ThreatState.TYPE).areaLevel();
+			levels.append(' ').append(mobLevel);
+			boolean out = mobLevel < Math.max(0, average - LostRooms.LEVEL_BELOW) || mobLevel > average + LostRooms.LEVEL_ABOVE || !LostRooms.isLostMob(mob);
+			outOfRange += out ? 1 : 0;
+		}
+		woke.forEach(Mob::discard);
+		int again = (int) LostCastles.wake(level.getServer()).stream().filter(mob -> box.contains(mob.position())).count();
+		TowerTestSupport.result("castleGrounds", "far=" + far + " woke=" + woke.size() + " average=" + average + " levels=[" + levels + "] again=" + again);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(far == 0, "the grounds woke for a player " + (LostCastles.WAKE_DISTANCE + 8) + " blocks away");
+		helper.assertTrue(woke.size() >= LostCastles.MIN_MOBS && woke.size() <= LostCastles.MAX_MOBS, "the grounds raised " + woke.size() + " mobs");
+		helper.assertTrue(outOfRange == 0, "a grounds mob's level left [average - 5, average + 15]:" + levels);
+		helper.assertTrue(again == 0, "the grounds raised mobs a second time");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 100)
+	public void everyTowerBossPaysEmeraldsDiamondsAndOneRune(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
+		TowerFloors.ensure(tower, floor);
+		TowerBuffs.pinMobBuffs(floor, List.of(TowerBuffs.MobBuff.SPEED, TowerBuffs.MobBuff.RESISTANCE));
+		Mob floorBoss = TowerElites.rise(tower, floor, TowerRank.BOSS);
+		ServerPlayer player = withLevel(helper, 61);
+		LostRoomData.Instance instance = LostRooms.open(tower, freshHut(), anywhere(helper), List.of(player));
+		Mob lostBoss = LostRooms.mobsIn(tower, instance.room()).stream().filter(mob -> TowerMobs.stateOf(mob).rank() == TowerRank.BOSS).findFirst().orElse(null);
+		helper.assertTrue(floorBoss != null && lostBoss != null, "a boss could not rise, so the case proves nothing");
+		String floorDrops = bossDrops(tower, player, floorBoss, floor);
+		String lostDrops = bossDrops(tower, player, lostBoss, LostRooms.equivalentFloor(instance.level()));
+		TowerBuffs.pinMobBuffs(floor, null);
+		TowerTestSupport.result("bossDrops", "floor=" + floorDrops + " lost=" + lostDrops);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(floorDrops.startsWith("ok"), "an endless tower boss paid wrong: " + floorDrops);
+		helper.assertTrue(lostDrops.startsWith("ok"), "a lost room boss paid wrong: " + lostDrops);
+		helper.succeed();
+	}
+
+	/** Kills a boss for the player with the rune roll pinned to nothing, and reads what it left. */
+	static String bossDrops(final ServerLevel tower, final ServerPlayer player, final Mob boss, final int runeFloor) {
+		int floor = TowerMobs.stateOf(boss).floor();
+		int mobLevel = boss.getAttached(ThreatState.TYPE).areaLevel();
+		TowerRunes.pinDropChance(floor, 0.0);
+		player.teleportTo(tower, boss.getX(), boss.getY(), boss.getZ(), Set.of(), 0.0F, 0.0F, true);
+		boss.setLastHurtByPlayer(player, 100);
+		boss.kill(tower);
+		List<ItemEntity> drops = tower.getEntitiesOfClass(ItemEntity.class, boss.getBoundingBox().inflate(4.0));
+		int emeralds = drops.stream().filter(item -> item.getItem().is(net.minecraft.world.item.Items.EMERALD)).mapToInt(item -> item.getItem().getCount()).sum();
+		int diamonds = drops.stream().filter(item -> item.getItem().is(net.minecraft.world.item.Items.DIAMOND)).mapToInt(item -> item.getItem().getCount()).sum();
+		List<ItemEntity> runes = drops.stream().filter(item -> item.getItem().is(TowerItems.RUNE)).toList();
+		int runeAt = runes.size() == 1 ? runes.get(0).getItem().get(TowerItems.RUNE_DATA).floor() : -1;
+		TowerRunes.pinDropChance(floor, null);
+		drops.forEach(ItemEntity::discard);
+		int wantEmeralds = TowerRewards.BOSS_EMERALDS + TowerRewards.BOSS_EMERALDS_PER_LEVEL * mobLevel;
+		int low = TowerRewards.BOSS_DIAMONDS_MIN + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
+		int high = TowerRewards.BOSS_DIAMONDS_MAX + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
+		boolean ok = emeralds == wantEmeralds && diamonds >= low && diamonds <= high && runes.size() == 1 && runeAt == runeFloor;
+		return (ok ? "ok" : "WRONG") + " level=" + mobLevel + " emeralds=" + emeralds + "/" + wantEmeralds + " diamonds=" + diamonds + " in " + low + ".." + high
+			+ " runes=" + runes.size() + " runeFloor=" + runeAt + "/" + runeFloor;
+	}
+
+	/** The castle's portal as it stands in the portal hall: one wide, two high, axis x, tower frame round it. */
+	static BlockPos castlePortal(final GameTestHelper helper) {
+		for (int y = 1; y <= 4; y++) {
+			helper.setBlock(1, y, 2, TowerBlocks.TOWER_FRAME);
+			helper.setBlock(3, y, 2, TowerBlocks.TOWER_FRAME);
+		}
+		helper.setBlock(2, 1, 2, TowerBlocks.TOWER_FRAME);
+		helper.setBlock(2, 4, 2, TowerBlocks.TOWER_FRAME);
+		BlockState portal = TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(net.minecraft.world.level.block.NetherPortalBlock.AXIS, Direction.Axis.X);
+		helper.setBlock(2, 2, 2, portal);
+		helper.setBlock(2, 3, 2, portal);
+		return helper.absolutePos(new BlockPos(2, 2, 2));
+	}
+
 	@GameTest(maxTicks = 20)
-	public void theHutsKeepFourChunksFromVillages(final GameTestHelper helper) {
+	public void theCastlesKeepClearOfVillages(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		ResourceKey<StructureSet> key = ResourceKey.create(Registries.STRUCTURE_SET, StellaTower.id("lost_rooms"));
 		StructureSet set = level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).getValue(key);
@@ -134,7 +353,8 @@ public class TowerLostRoomGameTest {
 		boolean typed = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getValue(LostRooms.STRUCTURE) instanceof LostRoomStructure;
 		TowerTestSupport.result("lostVillages", "placement=" + placement + " houses=" + houses + " typed=" + typed);
 		helper.assertTrue(zone != null && "minecraft:villages".equals(zone.get("other_set").getAsString())
-			&& zone.get("chunk_count").getAsInt() * 16 == 64 && houses && typed, "the huts are not kept 64 blocks from villages: " + placement);
+			&& zone.get("chunk_count").getAsInt() * 16 >= 64 + Math.max(LostRoomPiece.LENGTH, LostRoomPiece.WIDTH) && houses && typed,
+			"the castles are not kept 64 blocks and a footprint from villages: " + placement);
 		helper.succeed();
 	}
 
@@ -142,11 +362,10 @@ public class TowerLostRoomGameTest {
 	public void thePortalLeadsToTheRoomAndBack(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		ServerLevel level = helper.getLevel();
-		LostRoomPiece piece = hut(helper);
-		BlockPos portal = piece.worldPos(LostRoomPiece.PORTAL_X, 1, LostRoomPiece.PORTAL_Z);
+		BlockPos portal = castlePortal(helper);
 		LostRooms.forget(level.getServer(), LostRooms.hutKey(level, portal));
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-		Vec3 before = Vec3.atBottomCenterOf(piece.worldPos(LostRoomPiece.PORTAL_X - 1, 1, LostRoomPiece.PORTAL_Z));
+		Vec3 before = Vec3.atBottomCenterOf(portal.north());
 		player.teleportTo(level, before.x, before.y, before.z, Set.of(), 0.0F, 0.0F, true);
 		TeleportTransition in = TowerTravel.destination(level, player, portal);
 		int room = in == null ? 0 : TowerLayout.roomAt(BlockPos.containing(in.position()));

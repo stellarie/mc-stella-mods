@@ -71,6 +71,13 @@ public final class TowerElites {
 				&& level.getGameRules().get(GameRules.MOB_DROPS)) {
 				entity.spawnAtLocation(level, FloorKeyItem.forFloor(state.floor()));
 			}
+			if (state.rank() == TowerRank.BOSS && entity.getLastHurtByPlayer() != null && level.getGameRules().get(GameRules.MOB_DROPS)) {
+				com.stella.mobs.scaling.ThreatState threat = entity.getAttached(com.stella.mobs.scaling.ThreatState.TYPE);
+				int mobLevel = threat != null ? threat.areaLevel() : TowerMobs.levelOf(state.floor());
+				// A lost room's rune is of its room's level.
+				int runeFloor = LostRooms.isLostMob(entity) ? LostRooms.floorAt(level, entity.blockPosition()) : state.floor();
+				TowerRewards.bossDrops(mobLevel, runeFloor, entity.getRandom()).forEach(stack -> entity.spawnAtLocation(level, stack));
+			}
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			BARS.values().forEach(ServerBossEvent::removeAllPlayers);

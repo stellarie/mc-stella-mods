@@ -29,9 +29,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Lost rooms: overworld huts whose portal leads to a one-floor boss room of the tower.
+ * Lost rooms: overworld castles ({@link LostRoomPiece}) whose portal leads to a one-floor boss room of the tower.
  * <p>
- * Each hut's room is an instance in the tower dimension, west of the floors, so no floor's spawning,
+ * Each castle's room is an instance in the tower dimension, west of the floors, so no floor's spawning,
  * progress or keys reach it. The room is a boss floor's plan, moved there, with every kind of trap.
  * Its level is the average level of the players online when it is first entered; each mob is that
  * level less five to fifteen more, and the boss fifteen more. Nothing respawns: a second entry finds the
@@ -114,7 +114,7 @@ public final class LostRooms {
 		return count == 0 ? 0 : Math.round((float) total / count);
 	}
 
-	/** A hut's portal: the blue portal outside the tower, standing on tower frame, which no player can place. */
+	/** A castle's portal: the blue portal outside the tower, standing on tower frame, which no player can place. */
 	public static boolean isHutPortal(final ServerLevel level, final BlockPos portal) {
 		return !level.dimension().equals(TowerTravel.TOWER) && level.getBlockState(portal).is(TowerBlocks.TOWER_PORTAL)
 			&& level.getBlockState(bottom(level, portal).below()).is(TowerBlocks.TOWER_FRAME);
@@ -249,7 +249,7 @@ public final class LostRooms {
 		StellaTower.LOGGER.warn("Lost room {}: no spot for its boss", instance.room());
 	}
 
-	private static boolean raise(final ServerLevel tower, final Mob mob, final int level, final TowerRank rank, final RandomSource random) {
+	static boolean raise(final ServerLevel tower, final Mob mob, final int level, final TowerRank rank, final RandomSource random) {
 		TowerElement element = TowerElement.values()[random.nextInt(TowerElement.values().length)];
 		TowerMobs.makeTowerMob(mob, equivalentFloor(level), element, rank, level);
 		mob.addTag(TAG);

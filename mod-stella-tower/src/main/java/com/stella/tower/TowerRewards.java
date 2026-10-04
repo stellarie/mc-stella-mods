@@ -32,6 +32,33 @@ public final class TowerRewards {
 		});
 	}
 
+	public static final int BOSS_EMERALDS = 128;
+	public static final int BOSS_EMERALDS_PER_LEVEL = 2;
+	public static final int BOSS_DIAMONDS_MIN = 4;
+	public static final int BOSS_DIAMONDS_MAX = 8;
+	public static final int LEVELS_PER_BOSS_DIAMOND = 20;
+
+	/**
+	 * What every tower boss slain by a player leaves, on top of its loot and the rune roll: emeralds and
+	 * diamonds by its level, and one rune of a random element at its floor's tier.
+	 */
+	public static List<ItemStack> bossDrops(final int mobLevel, final int runeFloor, final RandomSource random) {
+		int level = Math.max(0, mobLevel);
+		List<ItemStack> drops = new ArrayList<>();
+		addStacks(drops, net.minecraft.world.item.Items.EMERALD, BOSS_EMERALDS + BOSS_EMERALDS_PER_LEVEL * level);
+		int diamonds = BOSS_DIAMONDS_MIN + random.nextInt(BOSS_DIAMONDS_MAX - BOSS_DIAMONDS_MIN + 1) + level / LEVELS_PER_BOSS_DIAMOND;
+		addStacks(drops, net.minecraft.world.item.Items.DIAMOND, diamonds);
+		TowerElement element = TowerElement.values()[random.nextInt(TowerElement.values().length)];
+		drops.add(TowerRunes.rune(element, runeFloor));
+		return drops;
+	}
+
+	private static void addStacks(final List<ItemStack> drops, final net.minecraft.world.item.Item item, final int count) {
+		for (int left = count; left > 0; left -= item.getDefaultMaxStackSize()) {
+			drops.add(new ItemStack(item, Math.min(left, item.getDefaultMaxStackSize())));
+		}
+	}
+
 	public static double dropFactor(final int floor) {
 		return 1.0 + DROPS_PER_FLOOR * Math.max(0, floor);
 	}
