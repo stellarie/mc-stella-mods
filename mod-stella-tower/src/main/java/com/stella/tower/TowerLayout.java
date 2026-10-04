@@ -28,8 +28,15 @@ public final class TowerLayout {
 	private TowerLayout() {
 	}
 
-	/** The room's inner corner, at {@link #BASE_Y}. */
+	/**
+	 * The room's inner corner, at {@link #BASE_Y}. A negative number is a lost room's instance
+	 * ({@link LostRooms}): its cells lie west of the floors, where {@link #floorAt} sees nothing.
+	 */
 	public static BlockPos origin(final int floor) {
+		if (floor < 0) {
+			int slot = -floor - 1;
+			return new BlockPos(-((slot % COLUMNS) + 1) * CELL, BASE_Y, (slot / COLUMNS) * CELL);
+		}
 		int index = floor - 1;
 		return new BlockPos((index % COLUMNS) * CELL, BASE_Y, (index / COLUMNS) * CELL);
 	}
@@ -50,6 +57,25 @@ public final class TowerLayout {
 			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
 			&& pos.getY() >= BASE_Y - 2 && pos.getY() <= BASE_Y + HEIGHT;
 		return inside ? floor : 0;
+	}
+
+	/** The floor or the lost room whose room or walls hold this spot: positive, negative, or 0 for none. */
+	public static int roomAt(final BlockPos pos) {
+		int floor = floorAt(pos);
+		if (floor != 0 || pos.getX() >= -1 || pos.getZ() < -1) {
+			return floor;
+		}
+		int column = -Math.floorDiv(pos.getX() + 1, CELL) - 1;
+		int row = Math.floorDiv(pos.getZ() + 1, CELL);
+		if (column >= COLUMNS) {
+			return 0;
+		}
+		int id = -(row * COLUMNS + column + 1);
+		BlockPos origin = origin(id);
+		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + SIZE
+			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
+			&& pos.getY() >= BASE_Y - 2 && pos.getY() <= BASE_Y + HEIGHT;
+		return inside ? id : 0;
 	}
 
 	/**

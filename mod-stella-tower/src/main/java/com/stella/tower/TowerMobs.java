@@ -143,8 +143,12 @@ public final class TowerMobs {
 
 	/** Makes a mob a tower mob of this floor and rank, in this element, at full health. */
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
+		makeTowerMob(mob, floor, element, rank, levelOf(floor));
+	}
+
+	/** Makes a mob a tower mob of this floor and rank at a level of its own, as a lost room's mobs are. */
+	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element, final TowerRank rank, final int level) {
 		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-		int level = levelOf(floor);
 		double want = health.getBaseValue() * SpawnScaling.healthMultiplier(level) * rank.healthFactor();
 		double held = Math.min(want, healthCap());
 		// The floor alone sets a tower mob's health: a zombie leader's bonus or any other is set aside.
@@ -285,7 +289,7 @@ public final class TowerMobs {
 	static List<ServerPlayer> playersOn(final ServerLevel tower, final int floor) {
 		List<ServerPlayer> on = new ArrayList<>();
 		for (ServerPlayer player : tower.players()) {
-			if (!player.isSpectator() && TowerLayout.floorAt(player.blockPosition()) == floor) {
+			if (!player.isSpectator() && TowerLayout.roomAt(player.blockPosition()) == floor) {
 				on.add(player);
 			}
 		}
