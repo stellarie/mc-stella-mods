@@ -51,7 +51,7 @@ public class RuinCoreGameTest {
 	public void aPlayerInsideTheRadiusWakesTheCoreOnItsOwnClockAndTheRosterSpawnsTaggedAndPersistent(final GameTestHelper helper) {
 		WorldTestSupport.Arena arena = WorldTestSupport.arena(helper.getLevel(), WorldTestInit.surface, net.minecraft.world.level.block.Rotation.NONE);
 		arena.join(arena.standAt(3, 3));
-		helper.succeedWhen(() -> {
+		helper.succeedWhen(() -> WorldTestSupport.guarded(helper, () -> {
 			helper.assertTrue(arena.phase() == RuinPhase.ACTIVE, "the core is still " + arena.phase());
 			RuinData.Entry entry = arena.entry();
 			helper.assertTrue(entry.roster().size() == WorldTestInit.surface.roster().size(), "the roster holds " + entry.roster().size());
@@ -71,7 +71,7 @@ public class RuinCoreGameTest {
 			helper.assertTrue(tagged == entry.roster().size(), "only " + tagged + " mobs carry both ruin tags");
 			helper.assertTrue(persistent == entry.roster().size(), "only " + persistent + " mobs are persistent");
 			arena.release();
-		});
+		}));
 	}
 
 	@GameTest(maxTicks = TICKS)

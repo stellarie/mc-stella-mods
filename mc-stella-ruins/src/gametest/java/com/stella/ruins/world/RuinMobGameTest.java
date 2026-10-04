@@ -95,7 +95,7 @@ public class RuinMobGameTest {
 		Mob[] mob = {null};
 		Pig[] victim = {null};
 		int[] before = {0, 0};
-		helper.succeedWhen(() -> {
+		helper.succeedWhen(() -> WorldTestSupport.guarded(helper, () -> {
 			helper.assertTrue(WorldTestSupport.ready(arena), "the arena chunks do not tick entities yet");
 			if (mob[0] == null) {
 				before[0] = WorldTestInit.ABILITY_TICKS.get();
@@ -113,7 +113,7 @@ public class RuinMobGameTest {
 			mob[0].discard();
 			victim[0].discard();
 			arena.release();
-		});
+		}));
 	}
 
 	@GameTest(maxTicks = 400)

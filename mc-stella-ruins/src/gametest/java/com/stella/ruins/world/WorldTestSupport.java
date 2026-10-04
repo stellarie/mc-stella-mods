@@ -205,7 +205,7 @@ final class WorldTestSupport {
 	private static void runIn(final GameTestHelper helper, final Arena arena, final ArenaBody body) {
 		boolean[] started = {false};
 		RuntimeException[] failure = {null};
-		helper.succeedWhen(() -> {
+		helper.succeedWhen(() -> guarded(helper, () -> {
 			if (failure[0] != null) {
 				throw failure[0];
 			}
@@ -222,7 +222,22 @@ final class WorldTestSupport {
 			} finally {
 				arena.release();
 			}
-		});
+		}));
+	}
+
+	/**
+	 * Runs a check that a test repeats each tick. A check that throws anything but an assertion error would kill the
+	 * test server in the tick loop, so it is turned into a failure of that test.
+	 */
+	static void guarded(final GameTestHelper helper, final Runnable check) {
+		try {
+			check.run();
+		} catch (net.minecraft.gametest.framework.GameTestAssertException e) {
+			throw e;
+		} catch (RuntimeException e) {
+			StellaRuins.LOGGER.error("[RUINS] a test body threw", e);
+			helper.fail("the test body threw " + e);
+		}
 	}
 
 	static boolean ready(final Arena arena) {
