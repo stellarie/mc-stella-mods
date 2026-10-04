@@ -140,6 +140,7 @@ public final class SpellCombos {
 			target.damageCooldownTime = 0;
 			target.hurtServer(caster.level(), magic, RpgBridge.damage(caster, RIPTIDE_DAMAGE, power));
 			target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, RIPTIDE_SLOW_TICKS, 2), caster);
+			SpellStatusApi.soak(target, RIPTIDE_SLOW_TICKS, caster);
 			return target;
 		}
 

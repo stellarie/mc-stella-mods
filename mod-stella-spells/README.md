@@ -25,16 +25,16 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Book | Material | Cooldown | Target | Effect |
 | --- | --- | --- | --- | --- |
 | Spark Shot | Flint | 3 s | Hostile | 3 magic damage and 6 s of fire |
-| Frostbind | Snowball | 3 s | Hostile | Slowness II, 8 s |
+| Frostbind | Snowball | 3 s | Hostile | Slowness II, 8 s, and one Chilled stack; a fourth chill turns into Frozen for 3 s |
 | Gale Step | Feather | 3 s | Self | A forward leap, then Slow Falling, 2 s |
 | Mending Word | Gold Ingot | 7 s | Self | Heals 4 |
 | Stoneguard | Iron Ingot | 8 s | Self | Resistance I, 30 min |
-| Static Lash | Copper Ingot | 6 s | Hostile | 3 damage to the target and to up to 2 hostiles within 4 blocks of it |
+| Static Lash | Copper Ingot | 6 s | Hostile | 3 damage to the target and to up to 2 hostiles within 4 blocks of it; a Soaked hostile takes 1.5 times that |
 | Briar Snare | Vine | 6 s | Hostile | Slowness IV, 8 s |
-| Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster |
+| Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster and leaves it Soaked for 10 s |
 | Owl's Gaze | Amethyst Shard | 10 s | Self | Night Vision, 30 min |
 | Slimebound | Slime Ball | 5 s | Self | Jump Boost II and Slow Falling, 30 min |
-| Chainstorm | Lightning Rod | 15 s | Block | Lightning that jumps from mob to mob: the first strike is a sky bolt on the hostile nearest the point, then each strike leaps by a jagged arc to the nearest unstruck hostile within 5 blocks of the point, up to 5 strikes, one every 6 ticks, 6 damage each; the sky bolt starts no fire, scrapes no copper and powers no rod |
+| Chainstorm | Lightning Rod | 15 s | Block | Lightning that jumps from mob to mob: the first strike is a sky bolt on the hostile nearest the point, then each strike leaps by a jagged arc to the nearest unstruck hostile within 5 blocks of the point, up to 5 strikes, one every 6 ticks, 6 damage each; the sky bolt starts no fire, scrapes no copper and powers no rod; a Soaked hostile takes 1.5 times each strike |
 | Riftwalk | Ender Pearl | 10 s | Aimed spot | Teleports the caster onto the spot they look at, up to 16 blocks away |
 | Phoenix Mantle | Blaze Rod | 15 s | Self | Fire Resistance, 30 min, and heals 4 |
 | Life Bloom | Ghast Tear | 17 s | Self | Heals 8 and Regeneration I, 15 s |
@@ -48,8 +48,8 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Soul Siphon | Soul Soil | 9 s | Hostile | Drains 4 health from the mob and gives it to you |
 | Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 15 seconds |
 | Sapping Hex | Fermented Spider Eye | 12 s | Self | Weakness II on every hostile within 6 blocks and Strength II on you, 9 seconds for each hostile hexed, up to 45 |
-| Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 15 seconds and makes it glow for 30 |
-| Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage and sets it burning for 30 seconds |
+| Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 15 seconds and makes it glow for 30, Marked for the same 30 |
+| Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage, sets it burning and Scorched for 30 seconds; a Soaked mob only loses Soaked and does not burn |
 | Quicksilver | Sugar | 15 s | Self | Gives you Speed II for 30 minutes |
 | Tide Lungs | Pufferfish | 15 s | Self | Lets you breathe underwater for 30 minutes and swim fast for 30 minutes |
 | Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 30 minutes |
@@ -57,7 +57,7 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 minutes; your first blow breaks the veil, deals double damage and stops its victim dead for 2 seconds |
 | Sanctuary | Honeycomb | 20 s | Self | A fixed zone of 6 blocks at the cast spot for 30 seconds: every second, players in it get Regeneration I and undead in it take 3 damage |
 | Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you and each player within 6 blocks |
-| Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 6 seconds |
+| Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 6 seconds and gives each one Chilled stack |
 | Earthspike | Pointed Dripstone | 12 s | Block | Throws hostiles within 3 blocks of the spot into the air for 4 damage |
 | Plague Cloud | Poisonous Potato | 15 s | Block | Leaves a cloud of Poison at the spot for 15 seconds |
 | Flame Ring | Fire Charge | 20 s | Self | A burning aura for 5 minutes: each second, hostiles within 5 blocks take 3 damage and catch fire; a recast replaces the aura |
@@ -179,6 +179,30 @@ book's. Head and chest spell enchantments still apply.
 - **Find:** 25% of searchable containers hold 1 or 2 scrolls of a random spell, on top of the 10% spellbook
   chance. Containers are the same chests, barrels and pots that get the equips gear rolls, in any namespace.
 
+## Status effects
+
+The spells apply nine effects of their own, each with an 18x18 icon in the inventory effect list. A later stage
+reaches them only through `SpellStatusApi`. The effect numbers are fixed in code and have no config.
+
+| Effect | Kind | What it does |
+| --- | --- | --- |
+| Chilled | Harmful | A stack of cold, amplifier 0 to 2, each level slowing by 15 percent. A fourth chill turns into Frozen. |
+| Frozen | Harmful | The mob cannot move or attack. A player melee hit deals 1.5 times damage and ends it. Half as long on an elite or a boss. |
+| Soaked | Harmful | Lightning spells (Static Lash, Chainstorm) deal 1.5 times damage. Ember Brand removes it. |
+| Scorched | Harmful | Healing received is halved. |
+| Brittle | Harmful | The next player hit deals 1.5 times damage, then Brittle ends. |
+| Marked | Harmful | Player hits deal 1.2 times damage and the mob glows. |
+| Staggered | Harmful | The mob cannot move or attack. Half as long on an elite or a boss. |
+| Arcane Ward | Beneficial | A pool of damage that is taken before health. The effect is the timer; the ward ends when the pool is spent. |
+| Bleeding | Harmful | Loses 2 percent of its current health every second, at least 0.5 health. Each amplifier level adds 2 percent. |
+
+- A stun (Frozen or Staggered) sets the speed to zero and switches off a mob's AI. When the stun ends, the AI comes back
+  only if the stun switched it off, so a mob that had no AI before keeps none. A save made mid-stun is repaired on load.
+- A player under a stun loses speed only.
+- Only a direct player hit shatters Frozen: a melee hit, a spear thrust or a mace smash, never a spell.
+- Bleeding damage carries no knockback, ignores armor and the hurt cooldown, and does not trigger the RPG mod's hurt shake.
+- Mob spells and mob imbues do not apply these effects yet.
+
 ## Spell combos
 
 Cast the right two spells in order, within 5 seconds, and they land a combo. Hostile combos need the same
@@ -189,7 +213,7 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 | --- | --- | --- | --- |
 | Frostbind | Spark Shot | Thermal Shock | 4 more magic damage |
 | Briar Snare | Wither Seal | Blight Bloom | Poison II, 5 s |
-| Static Lash | Tidal Push | Riptide Current | 3 more damage and Slowness III, 3 s |
+| Static Lash | Tidal Push | Riptide Current | 3 more damage, Slowness III and Soaked, 3 s |
 | Stoneguard | Aegis of the Deep | Bastion | Absorption IV, 8 s |
 | Time Lock | Dragonfall | Frozen Meteor | 5 more damage to hostiles within 3 blocks |
 

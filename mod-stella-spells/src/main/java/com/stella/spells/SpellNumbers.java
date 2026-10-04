@@ -107,7 +107,12 @@ public record SpellNumbers(
 
 	/** Ticks of this spell's control on the target: half on an elite or a boss. */
 	int controlTicks(final LivingEntity target, final int ticks) {
-		return this.control && target instanceof Mob mob && MobSpells.isElite(mob) ? ticks / 2 : ticks;
+		return this.control ? controlTicksFor(target, ticks) : ticks;
+	}
+
+	/** Control of any kind lasts half as long on an elite or a boss. */
+	static int controlTicksFor(final LivingEntity target, final int ticks) {
+		return target instanceof Mob mob && MobSpells.isElite(mob) ? ticks / 2 : ticks;
 	}
 
 	/** The numbers of the spell with this id, or null when none were declared. */
