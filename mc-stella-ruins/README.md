@@ -143,3 +143,39 @@ gradlew.bat runGameTest --rerun -PwithStellaMobs=true
 
 The second run builds `../mod-stella-mobs` and loads its jar into the game tests only. The tests for a present
 sibling run in that mode. The tests for an absent sibling run in the first mode.
+
+## Wayshrine
+
+The wayshrine is the first site. It is small, stands on the surface, and fits in 21 x 16 x 21 blocks. Its package is
+`com.stella.ruins.site.wayshrine`.
+
+- **The rite.** A player offers a gold ingot, an emerald, or a Shrine Shard at the core. Then three waves come:
+  4 Hollow Pilgrims; 3 Pilgrims and 3 Lantern Wisps; 2 Pilgrims, 2 Wisps, and the Fallen Acolyte. The vault opens
+  and fills from `chests/wayshrine`. The shrine rearms one day later.
+- **Three shapes, one footprint.** The seed picks a ring of pillars, a cross chapel, or a sunken altar. It also picks
+  one of three palettes (stone brick, calcite with quartz, deepslate brick), a decay rate of 20 to 40 percent, and
+  2 to 4 candles. Decayed pillar and wall blocks turn mossy, turn cracked, or go. A settle pass then removes any
+  block that no longer touches the floor. The path side is the piece rotation.
+- **The plan is drawn whole.** `WayshrinePlan` builds the shrine in memory in the local frame, with the floor course at
+  local y 0. The layout then emits the cells of the current chunk. The sketch is `mc-stella-ruins-wayshrine.work`
+  on the blackboard.
+- **Spawns by kind.** The layout names `spawn.hollow_pilgrim`, `spawn.lantern_wisp`, and `spawn.fallen_acolyte`.
+  `ShrineWaves` puts each mob at a marker of its own kind and reuses the markers in order when a wave is larger.
+- **The watch.** `ShrineRite` wraps the offer and the waves. If no player stays within 32 blocks of the core for
+  600 ticks, the wave mobs vanish and the core returns to `DORMANT`. The offering is spent.
+- **The lamp.** A shrine lamp tops an obelisk 8 to 11 blocks tall. It burns while the core is dormant or active and
+  goes dark while the shrine rests, so the reset state shows from far off. The lamp has no item.
+- **Mobs.** The Pilgrim heals the most hurt ruin ally within 6 blocks by 4 every 100 ticks. It wears a white dyed,
+  unbreakable leather hood, so the sun never burns it. The Wisp's hit blinds a player for 40 ticks. The Acolyte slows
+  players within 8 blocks every 160 ticks.
+- **Rewards.** `shrine_shard`, `pilgrim_ash`, and `wisp_light` are exclusive. They craft the Pilgrim set
+  (`pilgrim_helmet`, `_chestplate`, `_leggings`, `_boots`). Two pieces add 10 percent maximum health. Four pieces
+  give Regeneration I to the wearer and to players within 8 blocks. The unique is the Pilgrim's Censer, an off-hand
+  item: below half health it heals 1 each second, and a kill heals 2.
+- **Art.** `tools/specs/wayshrine.json` draws the item and armor textures with `tools/ruin_textures.py`. The dark lamp
+  texture is hand made.
+
+Known limits:
+
+- A wave mob that stands in an unloaded chunk when a rite is abandoned stays until a player kills it.
+- Sunburn is proved at noon in a game test. Feel and look are for a client.
