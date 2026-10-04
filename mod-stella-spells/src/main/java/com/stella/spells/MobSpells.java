@@ -233,7 +233,7 @@ public final class MobSpells {
 			case "frost_nova" -> MoreSpells.FROST_NOVA_RADIUS;
 			case "earthspike" -> MoreSpells.EARTHSPIKE_RADIUS;
 			case "plague_cloud" -> MoreSpells.PLAGUE_RADIUS;
-			case "flame_ring" -> MoreSpells.FLAME_RING_RADIUS;
+			case "flame_ring" -> MobSpellTimings.FLAME_RING_RADIUS;
 			case "gravity" -> MoreSpells.GRAVITY_RADIUS;
 			default -> 0.0;
 		};
@@ -258,11 +258,11 @@ public final class MobSpells {
 					foe.push(away.x, 0.2, away.z);
 				}
 				case "sapping_hex" -> foe.addEffect(new MobEffectInstance(MobEffects.WEAKNESS,
-					Math.min(MoreSpells.HEX_MAX_TICKS, MoreSpells.HEX_TICKS_PER_FOE * foes.size()), MoreSpells.HEX_AMPLIFIER), caster);
+					Math.min(MobSpellTimings.HEX_MAX_TICKS, MobSpellTimings.HEX_TICKS_PER_FOE * foes.size()), MoreSpells.HEX_AMPLIFIER), caster);
 				case "frost_nova" -> {
 					hurt(level, caster, owner, foe, MoreSpells.FROST_NOVA_DAMAGE);
 					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
-						MoreSpells.FROST_NOVA_SLOW_TICKS, MoreSpells.FROST_NOVA_SLOW_AMPLIFIER), caster);
+						MobSpellTimings.FROST_NOVA_SLOW_TICKS, MoreSpells.FROST_NOVA_SLOW_AMPLIFIER), caster);
 				}
 				case "earthspike" -> {
 					hurt(level, caster, owner, foe, MoreSpells.EARTHSPIKE_DAMAGE);
@@ -270,16 +270,16 @@ public final class MobSpells {
 					foe.setDeltaMovement(motion.x, MoreSpells.EARTHSPIKE_LIFT, motion.z);
 				}
 				case "plague_cloud" -> foe.addEffect(new MobEffectInstance(MobEffects.POISON,
-					MoreSpells.PLAGUE_POISON_TICKS, 0), caster);
+					MobSpellTimings.PLAGUE_POISON_TICKS, 0), caster);
 				case "flame_ring" -> {
 					hurt(level, caster, owner, foe, MoreSpells.FLAME_RING_DAMAGE);
-					foe.igniteForTicks(MoreSpells.FLAME_RING_BURN_TICKS);
+					foe.igniteForTicks(MobSpellTimings.FLAME_RING_BURN_TICKS);
 				}
 				case "gravity" -> {
 					foe.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
-						MoreSpells.GRAVITY_TICKS, MoreSpells.GRAVITY_SLOW_AMPLIFIER), caster);
+						MobSpellTimings.GRAVITY_TICKS, MoreSpells.GRAVITY_SLOW_AMPLIFIER), caster);
 					if (foe instanceof Mob mob) {
-						SpellTimers.ground(mob, MoreSpells.GRAVITY_TICKS);
+						SpellTimers.ground(mob, MobSpellTimings.GRAVITY_TICKS);
 					}
 				}
 				default -> { }
@@ -287,7 +287,7 @@ public final class MobSpells {
 		}
 		if ("sapping_hex".equals(spell) && !foes.isEmpty()) {
 			caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH,
-				Math.min(MoreSpells.HEX_MAX_TICKS, MoreSpells.HEX_TICKS_PER_FOE * foes.size()),
+				Math.min(MobSpellTimings.HEX_MAX_TICKS, MobSpellTimings.HEX_TICKS_PER_FOE * foes.size()),
 				MoreSpells.HEX_STRENGTH_AMPLIFIER), caster);
 		}
 		return foes;
@@ -363,9 +363,9 @@ public final class MobSpells {
 			boolean done = switch (spell) {
 				case "sanctuary" -> heal(friend, self ? MoreSpells.SANCTUARY_SELF_HEAL : MoreSpells.SANCTUARY_ALLY_HEAL);
 				case "mending_word" -> heal(friend, 6.0F);
-				case "bulwark_hymn" -> friend.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, MoreSpells.BULWARK_TICKS, MoreSpells.BULWARK_AMPLIFIER), caster);
-				case "tailwind" -> friend.addEffect(new MobEffectInstance(MobEffects.SPEED, MoreSpells.TAILWIND_TICKS, MoreSpells.TAILWIND_AMPLIFIER), caster);
-				case "battle_hymn" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MoreSpells.BATTLE_HYMN_TICKS, MoreSpells.BATTLE_HYMN_AMPLIFIER), caster);
+				case "bulwark_hymn" -> friend.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, MobSpellTimings.BULWARK_TICKS, MoreSpells.BULWARK_AMPLIFIER), caster);
+				case "tailwind" -> friend.addEffect(new MobEffectInstance(MobEffects.SPEED, MobSpellTimings.TAILWIND_TICKS, MoreSpells.TAILWIND_AMPLIFIER), caster);
+				case "battle_hymn" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MobSpellTimings.BATTLE_HYMN_TICKS, MoreSpells.BATTLE_HYMN_AMPLIFIER), caster);
 				case "stoneguard" -> self && friend.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 160, 0), caster);
 				case "phoenix_mantle" -> friend.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 600, 0), caster)
 					| heal(friend, 4.0F);
@@ -373,11 +373,11 @@ public final class MobSpells {
 					| friend.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0), caster);
 				case "aegis_of_the_deep" -> friend.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 80, 1), caster)
 					| friend.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 80, 0), caster);
-				case "berserk" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MoreSpells.BERSERK_TICKS,
+				case "berserk" -> friend.addEffect(new MobEffectInstance(MobEffects.STRENGTH, MobSpellTimings.BERSERK_TICKS,
 					MoreSpells.BERSERK_AMPLIFIER), caster);
-				case "shadow_veil" -> friend.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, MoreSpells.VEIL_TICKS, 0), caster);
+				case "shadow_veil" -> friend.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, MobSpellTimings.VEIL_TICKS, 0), caster);
 				case "quicksilver" -> friend.addEffect(new MobEffectInstance(MobEffects.SPEED,
-					MoreSpells.QUICKSILVER_TICKS, MoreSpells.QUICKSILVER_AMPLIFIER), caster);
+					MobSpellTimings.QUICKSILVER_TICKS, MoreSpells.QUICKSILVER_AMPLIFIER), caster);
 				case "purify" -> {
 					var harmful = friend.getActiveEffects().stream().map(MobEffectInstance::getEffect)
 						.filter(effect -> effect.value().getCategory() == MobEffectCategory.HARMFUL).toList();

@@ -358,16 +358,19 @@ public class SpellVisualsGameTest {
 		SpellbookItem book = Spellbooks.CATALOG.stream()
 			.filter(candidate -> candidate.definition().id().getPath().equals("bulwark_hymn"))
 			.findFirst().orElseThrow();
-		cast(helper, caster, book);
-		long blessed = allies.stream().filter(ally -> ally.hasEffect(net.minecraft.world.effect.MobEffects.ABSORPTION)).count();
-		helper.assertTrue(blessed == allies.size(), "Bulwark Hymn missed " + (allies.size() - blessed) + " allies");
-		long links = SpellVisualLog.played(caster.getUUID(), book.definition().id()).stream()
-			.filter(entry -> entry.particle() instanceof DustParticleOptions && entry.at().y > caster.position().y + 0.6)
-			.count();
-		helper.assertTrue(links > 0 && links <= SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS * SpellVisuals.MAX_EFFECT_LINK_POINTS,
-			"Bulwark Hymn emitted " + links + " link points for " + allies.size() + " allies");
-		LOG.info("[SPELLTEST] test=bulwarkHymnBlessesTwentyAlliesWithBoundedVisualLinks RESULT allies={} blessed={} linkPoints={}", allies.size(), blessed, links);
-		helper.succeed();
+		// A villager in a chunk the harness has not made entity-accessible is missed by the cast; see Findable.
+		Findable.then(helper, allies, () -> {
+			cast(helper, caster, book);
+			long blessed = allies.stream().filter(ally -> ally.hasEffect(net.minecraft.world.effect.MobEffects.ABSORPTION)).count();
+			helper.assertTrue(blessed == allies.size(), "Bulwark Hymn missed " + (allies.size() - blessed) + " allies");
+			long links = SpellVisualLog.played(caster.getUUID(), book.definition().id()).stream()
+				.filter(entry -> entry.particle() instanceof DustParticleOptions && entry.at().y > caster.position().y + 0.6)
+				.count();
+			helper.assertTrue(links > 0 && links <= SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS * SpellVisuals.MAX_EFFECT_LINK_POINTS,
+				"Bulwark Hymn emitted " + links + " link points for " + allies.size() + " allies");
+			LOG.info("[SPELLTEST] test=bulwarkHymnBlessesTwentyAlliesWithBoundedVisualLinks RESULT allies={} blessed={} linkPoints={}", allies.size(), blessed, links);
+			helper.succeed();
+		});
 	}
 
 	private static List<SpellVisualLog.Played> heldDust(final ServerPlayer player, final SpellbookItem book) {
