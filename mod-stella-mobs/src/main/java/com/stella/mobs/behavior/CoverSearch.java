@@ -1,11 +1,10 @@
 package com.stella.mobs.behavior;
 
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,11 +28,15 @@ import org.jspecify.annotations.Nullable;
  * <li>The spot lies at least {@link #BAND_MARGIN} blocks beyond the near band of the unit and no farther than
  * {@link RangedReach#RANGE} from the player.
  * <li>No other unit has claimed a spot within {@link #CLAIM_SPACING} blocks.
+ * <li>The unit has not dropped a spot within {@link #CLAIM_SPACING} blocks in the last {@link #REJECT_TICKS} ticks.
  * </ul>
  *
- * <p>Darker spots rank first, then nearer ones. Only the best few spots are tested for a path, because a path search is the
- * costly step. The caller searches once per opening shot. A claim lasts {@link #CLAIM_TICKS} ticks of the claiming unit's
- * own clock and ends sooner when the unit stops hiding or dies.
+ * <p>One path search runs toward every valid spot at once, and the spot that the path reaches first wins. So the spot with
+ * the shortest path wins, not the spot nearest in a straight line. A spot behind a wall is no nearer than the walk round
+ * it. The path must reach its spot and hold at most {@link #MAX_PATH_NODES} nodes, so the walk fits in the hide window.
+ *
+ * <p>The caller searches once per opening shot. A claim lasts {@link #CLAIM_TICKS} ticks of the claiming unit's own clock
+ * and ends sooner when the unit stops hiding or dies.
  */
 public final class CoverSearch {
 	public static final int ANGLES = 12;
@@ -41,18 +44,19 @@ public final class CoverSearch {
 	public static final double BAND_MARGIN = 2.0;
 	public static final double CLAIM_SPACING = 2.0;
 	public static final int CLAIM_TICKS = 200;
+	/** A longer walk does not end inside the hide window. */
+	public static final int MAX_PATH_NODES = 16;
+	/** A dropped spot stays out of the search this long. */
+	public static final int REJECT_TICKS = 200;
 
 	private static final double[] RADII = {3.0, 5.0, 7.0, 10.0};
 	private static final double SIGHT_MARGIN = 0.3;
-	private static final int MAX_PATH_TESTS = 6;
 	// A floor one block up or down counts too.
 	private static final int[] STEPS = {0, -1, 1};
 	private static final Map<Mob, Claim> CLAIMS = new WeakHashMap<>();
+	private static final Map<Mob, Claim> REJECTS = new WeakHashMap<>();
 
 	private record Claim(Vec3 spot, int untilTick) {
-	}
-
-	private record Spot(Vec3 position, int light, double walk) {
 	}
 
 	private CoverSearch() {
@@ -64,7 +68,7 @@ public final class CoverSearch {
 		double nearest = StanceBands.near(mob, ReactiveState.get(mob).getNearDistance()) + BAND_MARGIN;
 		Vec3 eye = player.getEyePosition();
 		double eyeHeight = mob.getEyeHeight();
-		List<Spot> spots = new ArrayList<>();
+		Set<BlockPos> spots = new HashSet<>();
 		for (double radius : RADII) {
 			for (int index = 0; index < ANGLES; index++) {
 				double angle = Math.PI * 2.0 * index / ANGLES;
@@ -75,32 +79,38 @@ public final class CoverSearch {
 
 				Vec3 position = Vec3.atBottomCenterOf(feet);
 				double distance = position.distanceTo(player.position());
-				if (distance < nearest || distance > RangedReach.RANGE || claimedNear(mob, position)) {
+				if (distance < nearest || distance > RangedReach.RANGE || claimedNear(mob, position) || rejected(mob, position)) {
 					continue;
 				}
 
 				if (inShadow(level, player, eye, position.add(0.0, eyeHeight, 0.0))) {
-					spots.add(new Spot(position, level.getMaxLocalRawBrightness(feet), position.distanceToSqr(mob.position())));
+					spots.add(feet);
 				}
 			}
 		}
 
-		spots.sort(Comparator.comparingInt(Spot::light).thenComparingDouble(Spot::walk));
-		int tested = 0;
-		for (Spot spot : spots) {
-			if (tested++ >= MAX_PATH_TESTS) {
-				break;
-			}
-
-			// The probe leaves the navigation target set.
-			// A hide start sets it again.
-			Path path = mob.getNavigation().createPath(BlockPos.containing(spot.position()), 0);
-			if (path != null && path.canReach()) {
-				return Optional.of(spot.position());
-			}
+		if (spots.isEmpty()) {
+			return Optional.empty();
 		}
 
-		return Optional.empty();
+		// The search ends at the first spot it reaches.
+		// The navigation keeps that spot as its target.
+		Path path = mob.getNavigation().createPath(spots, 0);
+		if (path == null || !path.canReach() || path.getNodeCount() > MAX_PATH_NODES || !spots.contains(path.getTarget())) {
+			return Optional.empty();
+		}
+
+		return Optional.of(Vec3.atBottomCenterOf(path.getTarget()));
+	}
+
+	/** Keeps a spot that the unit could not walk to out of its own searches for a while. */
+	public static void reject(final Mob mob, final Vec3 spot) {
+		REJECTS.put(mob, new Claim(spot, mob.tickCount + REJECT_TICKS));
+	}
+
+	private static boolean rejected(final Mob mob, final Vec3 spot) {
+		Claim reject = REJECTS.get(mob);
+		return reject != null && mob.tickCount < reject.untilTick() && reject.spot().distanceToSqr(spot) < CLAIM_SPACING * CLAIM_SPACING;
 	}
 
 	/** Reserves the spot for this unit, in place of an earlier claim of the same unit. */
