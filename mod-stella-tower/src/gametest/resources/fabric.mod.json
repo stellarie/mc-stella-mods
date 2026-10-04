@@ -43,7 +43,8 @@
 			"com.stella.tower.TowerAuraGameTest",
 			"com.stella.tower.TowerChestGameTest",
 			"com.stella.tower.TowerFloorChestGameTest",
-			"com.stella.tower.TowerLostRoomGameTest"
+			"com.stella.tower.TowerLostRoomGameTest",
+			"com.stella.tower.TowerLostCastleVariantGameTest"
 		]
 	},
 	"mixins": [
