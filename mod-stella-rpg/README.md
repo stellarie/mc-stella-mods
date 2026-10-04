@@ -126,7 +126,7 @@ The server rule `WeaponSlot.hotkey` acts on the item in that hotkey slot, in thi
 | Spellbook (tag `mod-stella-rpg:spellbooks`) | Casts through the ordinary use path. The book stays, and the weapon stays in hand. |
 | Weapon: attack damage, the `weapon` component, or a bow or crossbow. Pickaxes, axes, shovels, and hoes count | Swaps with the weapon slot. The old weapon lands in the pressed slot. |
 | Armor (not a block) | Swaps with the worn piece. A Curse of Binding piece refuses outside creative. |
-| Food or a potion (the `consumable` component) | Held and used while the key is down. Key up stops it, and the weapon returns. |
+| Food or a potion (the `consumable` component) | Eaten or drunk at once, if vanilla allows it (food needs hunger unless always edible). The weapon stays in hand. |
 | Anything else: blocks, flint and steel, buckets, bone meal, shears, fire charges, name tags, leads | Used on the targeted entity, else the targeted block, else in the air. The weapon stays in hand. |
 | Empty slot | Nothing. |
 
@@ -136,7 +136,7 @@ The server rule `WeaponSlot.hotkey` acts on the item in that hotkey slot, in thi
   Each step runs only when the step before does not act, as on the vanilla client. Spawn protection applies to the block step.
 - A use holds the hotkey slot as the main hand for that one server call only, and restores the weapon in a `finally` block.
 - While eating, the food is the main hand. Other mods see it there for that window.
-- The weapon returns when the use ends, on key up, on another hotkey, on a mode switch, and on disconnect.
+- The weapon stays selected after every hotkey action.
 - The client sends one key down per press. Key repeats do not send again.
 - The Ready Weapon key (default `R`) selects the weapon slot again.
 - The scroll wheel does not change the selection in quick bar mode.
