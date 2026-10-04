@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "mod-stella-ruins:item/deepsteel_axe"
+	}
+}

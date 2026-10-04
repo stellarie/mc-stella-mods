@@ -1,0 +1,14 @@
+{
+	"layers": {
+		"humanoid": [
+			{
+				"texture": "mod-stella-ruins:deepsteel"
+			}
+		],
+		"humanoid_leggings": [
+			{
+				"texture": "mod-stella-ruins:deepsteel"
+			}
+		]
+	}
+}

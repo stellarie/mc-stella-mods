@@ -1,0 +1,14 @@
+{
+	"block.mod-stella-ruins.resonant_crystal": "Resonant Crystal",
+	"item.mod-stella-ruins.resonant_shard": "Resonant Shard",
+	"item.mod-stella-ruins.prism_gel": "Prism Gel",
+	"item.mod-stella-ruins.resonant_crystal_core": "Resonant Crystal Core",
+	"item.mod-stella-ruins.resonant_affix": "Resonant Affix",
+	"item.mod-stella-ruins.echo_prism": "Echo Prism",
+	"mob.mod-stella-ruins.shard_sentinel": "Shard Sentinel",
+	"mob.mod-stella-ruins.prism_slime": "Prism Slime",
+	"affix.mod-stella-ruins.resonant": "Resonant: +10% attack speed",
+	"effect.mod-stella-ruins.echo": "Echo: 15% chance to repeat a hit at half damage",
+	"clue.mod-stella-ruins.crystal_grotto": "Where the stone sings, strike the notes in the order they were sung.",
+	"message.mod-stella-ruins.chime.replay": "The crystals sing again. Something stirs."
+}
