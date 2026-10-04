@@ -106,11 +106,12 @@ public final class AffixCombatGameTest {
 		player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
 		RpgAttributes.refresh(player);
 		float removed = player.getMaxHealth();
-		float expectedWorn = (20.0F + 100.0F / k) * 1.05F * k;
-		float expectedLegs = (20.0F + 40.0F / k) * 1.02F * k;
+		// Each iron piece adds 1 VIT, and VIT raises the 30 base of the HP model by 1 percent per point.
+		float expectedWorn = (30.0F * 1.02F + 100.0F / k) * 1.05F * k;
+		float expectedLegs = (30.0F * 1.01F + 40.0F / k) * 1.02F * k;
 		RpgTestSupport.result("healthAffixes", "base=" + base + " worn=" + worn + " expected=" + expectedWorn + " legsOnly=" + legsOnly
 			+ " removed=" + removed + " modifiers=" + modifiers);
-		helper.assertTrue(near(base, 20.0F * k) && near(removed, base), "base " + base + " removed " + removed);
+		helper.assertTrue(near(base, 30.0F * k) && near(removed, base), "base " + base + " removed " + removed);
 		helper.assertTrue(Math.abs(worn - expectedWorn) < 0.01F, "worn " + worn + " expected " + expectedWorn);
 		helper.assertTrue(again == worn && modifiers == 2, "a second refresh changed max health or the modifier count " + modifiers);
 		helper.assertTrue(Math.abs(legsOnly - expectedLegs) < 0.01F, "legs only " + legsOnly + " expected " + expectedLegs);
