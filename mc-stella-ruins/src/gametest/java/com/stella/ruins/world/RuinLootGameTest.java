@@ -107,7 +107,9 @@ public class RuinLootGameTest {
 		WorldTestSupport.result("clueRate", "rolls=" + CLUE_ROLLS + " clues=" + clues + " rate=" + rate + " configured=" + chance + " bySite=" + bySite);
 		helper.assertTrue(chance == RuinConfig.DEFAULT_CLUE_CHANCE, "the configured chance is " + chance + ", not the plan's default");
 		helper.assertTrue(Math.abs(rate - chance) <= 0.25 * chance, "the clue rate " + rate + " is outside 25% of " + chance);
-		helper.assertTrue(bySite.containsKey("test_surface") && bySite.containsKey("test_cave") && bySite.size() == 2, "the clues did not follow the sites' weights: " + bySite);
+		// Real sites add keys; check the test pair.
+		long testSites = bySite.keySet().stream().filter(site -> site.startsWith("test_")).count();
+		helper.assertTrue(bySite.containsKey("test_surface") && bySite.containsKey("test_cave") && testSites == 2, "the clues did not follow the sites' weights: " + bySite);
 		helper.assertTrue(bySite.get("test_surface") > bySite.get("test_cave"), "the weight 3 site did not beat the weight 1 site: " + bySite);
 		helper.succeed();
 	}
