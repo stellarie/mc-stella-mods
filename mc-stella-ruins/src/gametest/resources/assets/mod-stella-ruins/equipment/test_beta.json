@@ -1,0 +1,14 @@
+{
+	"layers": {
+		"humanoid": [
+			{
+				"texture": "mod-stella-ruins:test_beta"
+			}
+		],
+		"humanoid_leggings": [
+			{
+				"texture": "mod-stella-ruins:test_beta"
+			}
+		]
+	}
+}

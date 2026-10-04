@@ -6,7 +6,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.stella.ruins.world.WorldTestInit"
+			"com.stella.ruins.world.WorldTestInit",
+			"com.stella.ruins.reward.RewardTestInit"
 		],
 		"fabric-gametest": [
 			"com.stella.ruins.ScaffoldGameTest",
@@ -18,7 +19,11 @@
 			"com.stella.ruins.world.RuinCoreGameTest",
 			"com.stella.ruins.world.ObjectiveGameTest",
 			"com.stella.ruins.world.RuinMobGameTest",
-			"com.stella.ruins.world.RuinLootGameTest"
+			"com.stella.ruins.world.RuinLootGameTest",
+			"com.stella.ruins.reward.RuinSetsGameTest",
+			"com.stella.ruins.reward.RuinAffixesGameTest",
+			"com.stella.ruins.reward.RuinUniquesGameTest",
+			"com.stella.ruins.reward.RuinGearGameTest"
 		]
 	},
 	"depends": {
