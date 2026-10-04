@@ -1,7 +1,9 @@
 package com.stella.ruins;
 
 import com.stella.ruins.reward.RuinsRewards;
+import com.stella.ruins.reward.RuinsTab;
 import com.stella.ruins.site.Sites;
+import com.stella.ruins.world.RuinClueItem;
 import com.stella.ruins.world.RuinsWorld;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
@@ -24,6 +26,7 @@ public final class StellaRuins implements ModInitializer {
 	public void onInitialize() {
 		RuinsWorld.register();
 		RuinsRewards.register();
+		RuinsTab.add(RuinClueItem.ITEM);
 		Sites.register();
 	}
 }
