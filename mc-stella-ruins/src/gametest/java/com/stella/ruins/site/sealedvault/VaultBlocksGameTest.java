@@ -202,7 +202,7 @@ public class VaultBlocksGameTest {
 			double top = arena.frame().min().getY() + 6;
 			double start = stick.getY();
 			// The test clock stands still, so the item falls by ticking it by hand.
-			for (int i = 0; i < 40 && stick.getY() > top + 0.05; i++) {
+			for (int i = 0; i < 40; i++) {
 				stick.tick();
 			}
 			VaultTestSupport.result("dropFall", "start=" + start + " landed=" + stick.getY() + " daisTop=" + top + " fall=" + (start - stick.getY()));
