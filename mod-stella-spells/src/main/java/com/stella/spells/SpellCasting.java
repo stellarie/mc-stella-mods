@@ -50,7 +50,6 @@ public final class SpellCasting {
 	/** A scroll's own cooldown, just long enough that a held button cannot burn a stack in a second. */
 	public static final int SCROLL_COOLDOWN_TICKS = 20;
 	static final float DAMAGE = SpellNumbers.SPARK_SHOT.damage();
-	static final float BURN_SECONDS = SpellNumbers.SPARK_SHOT.extra().ticks() / 20.0f;
 
 	/** Doublecast: the chance a cast with a Doublecast helmet or book lands twice. */
 	public static final float DOUBLECAST_CHANCE = 0.5F;
@@ -183,13 +182,15 @@ public final class SpellCasting {
 
 	static boolean applyFrostbind(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		return target != null && target.addEffect(
-			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROSTBIND.durationTicks(modifiers), SpellNumbers.FROSTBIND.amplifier()), caster
+			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROSTBIND.controlTicks(target, SpellNumbers.FROSTBIND.durationTicks(modifiers)),
+				SpellNumbers.FROSTBIND.amplifier()), caster
 		);
 	}
 
 	static boolean applyBriarSnare(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		return target != null && target.addEffect(
-			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.BRIAR_SNARE.durationTicks(modifiers), SpellNumbers.BRIAR_SNARE.amplifier()), caster
+			new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.BRIAR_SNARE.controlTicks(target, SpellNumbers.BRIAR_SNARE.durationTicks(modifiers)),
+				SpellNumbers.BRIAR_SNARE.amplifier()), caster
 		);
 	}
 
@@ -343,7 +344,7 @@ public final class SpellCasting {
 				&& Friends.isFoe(candidate)
 				&& candidate.position().distanceToSqr(point) <= radius * radius
 		)) {
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, numbers.amplifier()), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, numbers.controlTicks(hostile, duration), numbers.amplifier()), caster);
 		}
 		return true;
 	}
@@ -368,7 +369,7 @@ public final class SpellCasting {
 			Vec3 toward = point.subtract(hostile.position());
 			Vec3 horizontal = new Vec3(toward.x, 0.0, toward.z).normalize();
 			hostile.setDeltaMovement(horizontal.x * 0.8, 0.1, horizontal.z * 0.8);
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, duration, numbers.amplifier()), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, numbers.controlTicks(hostile, duration), numbers.amplifier()), caster);
 		}
 		return true;
 	}

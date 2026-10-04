@@ -39,7 +39,9 @@
 			"com.stella.spells.SpellKGameTest",
 			"com.stella.spells.SpellSourceGameTest",
 			"com.stella.spells.IntDurationGameTest",
-			"com.stella.spells.SanctuaryZoneGameTest"
+			"com.stella.spells.SanctuaryZoneGameTest",
+			"com.stella.spells.RpgDurationsGameTest",
+			"com.stella.spells.ChainLightningGameTest"
 		]
 	},
 	"depends": {

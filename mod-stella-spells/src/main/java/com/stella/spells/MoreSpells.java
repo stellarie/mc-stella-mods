@@ -134,7 +134,7 @@ public final class MoreSpells {
 		struck.add(0, target);
 		for (Mob mob : struck) {
 			hurt(caster, mob, RpgBridge.damage(caster, ICE_LANCE_DAMAGE, modifiers.powerMultiplier()));
-			freeze(mob, SpellNumbers.ICE_LANCE.durationTicks(modifiers));
+			freeze(mob, SpellNumbers.ICE_LANCE.controlTicks(mob, SpellNumbers.ICE_LANCE.durationTicks(modifiers)));
 		}
 		int puffs = 0;
 		double length = from.distanceTo(to);
@@ -192,8 +192,9 @@ public final class MoreSpells {
 
 	// Every hostile around the caster is slowed and can jump only half as high until it wears off.
 	static boolean applyGravity(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		int ticks = SpellNumbers.GRAVITY.durationTicks(modifiers);
+		int base = SpellNumbers.GRAVITY.durationTicks(modifiers);
 		for (Mob mob : hostiles(caster.level(), caster.position(), GRAVITY_RADIUS * modifiers.radiusMultiplier())) {
+			int ticks = SpellNumbers.GRAVITY.controlTicks(mob, base);
 			mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, ticks, GRAVITY_SLOW_AMPLIFIER), caster);
 			SpellTimers.ground(mob, ticks);
 		}
@@ -278,7 +279,8 @@ public final class MoreSpells {
 	static boolean applyFrostNova(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		for (Mob hostile : hostiles(caster.level(), caster.position(), FROST_NOVA_RADIUS * modifiers.radiusMultiplier())) {
 			hurt(caster, hostile, RpgBridge.damage(caster, FROST_NOVA_DAMAGE, modifiers.powerMultiplier()));
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROST_NOVA.durationTicks(modifiers), FROST_NOVA_SLOW_AMPLIFIER), caster);
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
+				SpellNumbers.FROST_NOVA.controlTicks(hostile, SpellNumbers.FROST_NOVA.durationTicks(modifiers)), FROST_NOVA_SLOW_AMPLIFIER), caster);
 		}
 		return true;
 	}

@@ -48,6 +48,7 @@ public class SpellImbueGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.imbue");
 	private static final Identifier SPARK_SHOT = Identifier.parse("mod-stella-spells:spark_shot");
 	private static final Identifier STONEGUARD = Identifier.parse("mod-stella-spells:stoneguard");
+	private static final Identifier LIFE_BLOOM = Identifier.parse("mod-stella-spells:life_bloom");
 	private static final Identifier DRAGONFALL = Identifier.parse("mod-stella-spells:dragonfall");
 	private static final Identifier RIFTWALK = Identifier.parse("mod-stella-spells:riftwalk");
 	private static final float HIT = 4.0F;
@@ -138,11 +139,11 @@ public class SpellImbueGameTest {
 
 	@GameTest(maxTicks = 100)
 	public void anImbuedSelfSpellActsOnTheWielderForAShorterTime(final GameTestHelper helper) {
-		ServerPlayer player = wielder(helper, STONEGUARD);
+		ServerPlayer player = wielder(helper, LIFE_BLOOM);
 		Mob zombie = zombie(helper, 2, 4);
 		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
-		MobEffectInstance resistance = player.getEffect(MobEffects.RESISTANCE);
-		int expected = (int) Math.round(80 * SpellImbue.IMBUE_DURATION);
+		MobEffectInstance resistance = player.getEffect(MobEffects.REGENERATION);
+		int expected = (int) Math.round(300 * SpellImbue.IMBUE_DURATION);
 		LOG.info("[SPELLTEST] test=anImbuedSelfSpellActsOnTheWielderForAShorterTime RESULT duration={} expected={}", resistance == null ? -1 : resistance.getDuration(), expected);
 		helper.assertTrue(resistance != null && resistance.getDuration() == expected, "the wielder got " + resistance);
 		helper.succeed();

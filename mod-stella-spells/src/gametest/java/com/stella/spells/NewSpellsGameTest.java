@@ -56,7 +56,7 @@ public class NewSpellsGameTest {
 	}
 
 	// Outside powder snow a mob thaws two ticks for every tick, so the freeze must hold for its whole stated time.
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 400)
 	public void iceLanceKeepsTheMobFrozenForItsWholeDuration(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		Mob mob = zombie(helper, 2, 5);
@@ -190,7 +190,7 @@ public class NewSpellsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 300)
+	@GameTest(maxTicks = 500)
 	public void gravityWearsOffAfterItsTime(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		Mob near = zombie(helper, 4, 3);
@@ -241,9 +241,31 @@ public class NewSpellsGameTest {
 	@GameTest(maxTicks = 300)
 	public void flameRingsAuraFadesAfterItsTime(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
-		cast(helper, caster, "flame_ring");
+		// The 5-minute aura is shrunk to 200 ticks by a duration multiplier, so the test sees it end.
+		long shrunk = 200L;
+		RpgBridge.setStats(new RpgBridge.Stats() {
+			@Override
+			public double power(final net.minecraft.world.entity.player.Player player) {
+				return 1.0;
+			}
+
+			@Override
+			public double cooldown(final net.minecraft.world.entity.player.Player player) {
+				return 1.0;
+			}
+
+			@Override
+			public double durationMultiplier(final LivingEntity who) {
+				return (double) shrunk / MoreSpells.FLAME_AURA_TICKS;
+			}
+		});
+		try {
+			cast(helper, caster, "flame_ring");
+		} finally {
+			RpgBridge.setStats(null);
+		}
 		boolean during = SpellTimers.hasFlameAura(caster);
-		helper.runAfterDelay(MoreSpells.FLAME_AURA_TICKS + 5L, () -> {
+		helper.runAfterDelay(shrunk + 5L, () -> {
 			boolean after = SpellTimers.hasFlameAura(caster);
 			result("flameRingsAuraFadesAfterItsTime", "during=" + during + " after=" + after);
 			helper.assertTrue(during && !after, "the aura was " + during + " at the cast and " + after + " after its time");
