@@ -28,7 +28,12 @@
 			"com.stella.ruins.site.ruinedkeep.KeepLayoutGameTest",
 			"com.stella.ruins.site.ruinedkeep.KeepObjectiveGameTest",
 			"com.stella.ruins.site.ruinedkeep.KeepMobGameTest",
-			"com.stella.ruins.site.ruinedkeep.KeepRewardGameTest"
+			"com.stella.ruins.site.ruinedkeep.KeepRewardGameTest",
+			"com.stella.ruins.site.crystalgrotto.GrottoPlanGameTest",
+			"com.stella.ruins.site.crystalgrotto.ChimeObjectiveGameTest",
+			"com.stella.ruins.site.crystalgrotto.GrottoMobsGameTest",
+			"com.stella.ruins.site.crystalgrotto.GrottoRewardsGameTest",
+			"com.stella.ruins.site.crystalgrotto.GrottoSiteGameTest"
 		]
 	},
 	"depends": {

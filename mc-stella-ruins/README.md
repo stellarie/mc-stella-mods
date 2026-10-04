@@ -143,3 +143,59 @@ gradlew.bat runGameTest --rerun -PwithStellaMobs=true
 
 The second run builds `../mod-stella-mobs` and loads its jar into the game tests only. The tests for a present
 sibling run in that mode. The tests for an absent sibling run in the first mode.
+
+## Crystal Grotto
+
+Site id `crystal_grotto`, package `com.stella.ruins.site.crystalgrotto`. A small cave site: a geode chamber of singing
+crystal pillars. The crystals chime in an order, and the player strikes them in the same order.
+
+- Box 25 x 16 x 41. The grotto is the north 25 blocks. The south 16 blocks are an entrance tunnel, 3 x 3, that reaches out
+  toward cave air. The tunnel lining clings to rock only, so a tunnel that meets cave air simply ends there.
+  A tunnel that meets no air is a dead end. The clue map still leads the player to it.
+- `Placement.cave(-48, 40, 8)`. Reset after 3 days. Activation radius 12. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 618244907, village exclusion 8 chunks.
+
+### The plan
+
+`GrottoPlan.derive(RandomSource)` draws everything random and holds every block of the grotto as a function of the seed.
+It reads no world block. The layout and the tests both read it.
+
+- 4 to 6 pillars from 6 ring slots (north and south stay free for the vault and the tunnel). Ring radius 4 to 5,
+  angle jitter +/- 8 degrees, height 3 to 5, capped by the ceiling. Six tints, none repeated in one grotto.
+- Each tint has one fixed pitch (`Tint.pitch`), so a player can solve a round by ear.
+- The shell is a noisy ellipsoid (radius 8 +/- 1): amethyst lining, calcite, smooth basalt.
+- Markers: `core`, `vault`, `entrance`, `pillar` (in pillar order), `spoke_n`, `sentinel` (4) and `spawn` (3 slimes).
+
+### The objective
+
+`ChimeObjective` plays three rounds of 4, 5 and 6 chimes. The core ticks every 20 ticks, so each tick plays one chime.
+The orders come from the run random, never from the layout seed. No pillar sounds twice in a row.
+
+- A strike is an attack on a `resonant_crystal` block (`AttackBlockCallback`, always cancelled, so a pillar never breaks).
+  A strike while the chimes play counts for nothing.
+- A wrong strike summons 2 Shard Sentinels at 2 of the 4 sentinel markers. A new order of the same length plays.
+- A right-click on the core replays the order on the player's turn. Each replay in a round adds one Prism Slime.
+- The floor spoke of each pillar struck so far lights (sea lantern under tinted glass). A wrong strike, a replay, and
+  a new round put them out.
+- The last strike of round 3 marks the objective done. The core completes on its next pulse, up to one second later,
+  because only the core can complete a site.
+
+### Mobs and rewards
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `shard_sentinel` | stray, scale 1.1, amethyst leather, bow | a hit gives Slowness I for 60 ticks | `resonant_shard` 1 to 2 at 70% |
+| `prism_slime` | slime, size 2, glowing | hops up to 6 blocks every 100 ticks | `prism_gel` at 50% |
+
+- Vault table `chests/crystal_grotto`: 1 `resonant_affix`, 2 to 4 `resonant_shard`, 35% `resonant_crystal_core`,
+  amethyst shards, lapis lazuli, emeralds. Each vault roll draws the whole table.
+- Affix `resonant`: +10% attack speed on swords, axes, bows, crossbows, and spellbooks of `mod-stella-spells` (by id).
+  The spells mod has no public cooldown API, so the affix does not cut cooldowns.
+- Unique `echo_prism`: held in a hand, a hit repeats at half damage 10 ticks later, at a 15% chance. An echo does not echo.
+
+### Files
+
+- Block textures `textures/block/resonant_crystal_<tint>.png` came from a one-off script. Item textures come from
+  `tools/specs/crystal_grotto.json` and `tools/ruin_textures.py`.
+- Tests: `GrottoPlanGameTest`, `ChimeObjectiveGameTest`, `GrottoMobsGameTest`, `GrottoRewardsGameTest`,
+  `GrottoSiteGameTest`, all listed in the gametest `fabric.mod.json`.
