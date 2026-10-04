@@ -41,7 +41,7 @@ public class TowerRuneArmorGameTest {
 	/** A mob of the world, not the tower's: every signature works on it too. */
 	private static Zombie plain(final GameTestHelper helper, final double x) {
 		ServerLevel level = helper.getLevel();
-		Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		Zombie zombie = TowerTestSupport.unrolled(EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND));
 		zombie.snapTo(helper.absoluteVec(new Vec3(x, 2.0, 4.5)));
 		zombie.setNoAi(true);
 		level.addFreshEntity(zombie);
@@ -56,7 +56,7 @@ public class TowerRuneArmorGameTest {
 		player.hurtServer(level, level.damageSources().inFire(), 4.0F);
 		float stored = RuneGuards.storedHeat(player);
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, TowerRunes.apply(new ItemStack(Items.DIAMOND_SWORD), new RuneData(TowerElement.ICE, TOP)));
-		net.minecraft.world.entity.animal.pig.Pig pig = EntityTypes.PIG.create(level, EntitySpawnReason.COMMAND);
+		net.minecraft.world.entity.animal.pig.Pig pig = TowerTestSupport.unrolled(EntityTypes.PIG.create(level, EntitySpawnReason.COMMAND));
 		pig.snapTo(helper.absoluteVec(new Vec3(4.5, 2.0, 4.5)));
 		pig.setNoAi(true);
 		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400.0);
@@ -127,8 +127,9 @@ public class TowerRuneArmorGameTest {
 		ServerPlayer player = wearer(helper, TowerElement.WATER);
 		Zombie zombie = zombie(helper, LOW, TowerRank.MOB);
 		float before = player.getHealth();
-		float blow = 12.0F;
-		double landed = TowerCurve.damage(blow, LOW) / Math.pow(TowerRunes.armorDivisor(TOP), 1);
+		// Small enough that the level-scaled blow stays under the wearer's 20 health.
+		float blow = 4.0F;
+		double landed = blow * com.stella.mobs.scaling.SelfScaled.factor(LOW + 19) / Math.pow(TowerRunes.armorDivisor(TOP), 1);
 		player.hurtServer(level, zombie.damageSources().mobAttack(zombie), blow);
 		float now = before - player.getHealth();
 		float pending = RuneGuards.pendingWound(player);
@@ -151,8 +152,9 @@ public class TowerRuneArmorGameTest {
 		player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 2000, 1));
 		Zombie zombie = zombie(helper, LOW, TowerRank.MOB);
 		float before = player.getHealth();
-		float blow = 12.0F;
-		double landed = TowerCurve.damage(blow, LOW) / TowerRunes.armorDivisor(TOP);
+		// Small enough that the level-scaled blow stays under the wearer's 20 health.
+		float blow = 4.0F;
+		double landed = blow * com.stella.mobs.scaling.SelfScaled.factor(LOW + 19) / TowerRunes.armorDivisor(TOP);
 		// Resistance II turns 40% of every blow.
 		double want = landed * (1.0 - 0.4);
 		player.hurtServer(level, zombie.damageSources().mobAttack(zombie), blow);

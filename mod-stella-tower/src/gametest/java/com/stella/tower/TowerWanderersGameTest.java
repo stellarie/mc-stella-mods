@@ -120,7 +120,7 @@ public class TowerWanderersGameTest {
 				return "an open tower sent no tower mob";
 			}
 			double held = mob.getMaxHealth() * TowerMobs.stateOf(mob).healthDivisor();
-			double want = TowerCurve.health(mob.getAttribute(Attributes.MAX_HEALTH).getBaseValue(), OPEN_FLOOR);
+			double want = TowerTestSupport.floorHealth(mob.getAttribute(Attributes.MAX_HEALTH).getBaseValue(), OPEN_FLOOR, TowerRank.MOB);
 			boolean inWorld = level.getEntity(mob.getUUID()) == mob;
 			TowerTestSupport.result("wandererHealth", "held=" + held + " want=" + want + " inWorld=" + inWorld);
 			mob.discard();

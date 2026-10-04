@@ -36,7 +36,7 @@ public class TowerGhostRuneGameTest {
 
 	private static Zombie zombie(final GameTestHelper helper, final double x, final double z) {
 		ServerLevel level = helper.getLevel();
-		Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+		Zombie zombie = TowerTestSupport.unrolled(EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND));
 		zombie.snapTo(helper.absoluteVec(new Vec3(x, 2.0, z)));
 		zombie.setNoAi(true);
 		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400.0);
