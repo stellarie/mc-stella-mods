@@ -2,6 +2,7 @@ package com.stella.rpg.net;
 
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatPoints;
+import com.stella.rpg.WeaponSlot;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,12 +23,15 @@ public final class RpgNet {
 		PayloadTypeRegistry.serverboundPlay().register(AllocatePayload.TYPE, AllocatePayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(AllocateBatchPayload.TYPE, AllocateBatchPayload.CODEC);
 		PayloadTypeRegistry.serverboundPlay().register(RespecPayload.TYPE, RespecPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(WeaponHotkeyPayload.TYPE, WeaponHotkeyPayload.CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(
 			AllocatePayload.TYPE, (payload, context) -> allocate(context.player(), payload));
 		ServerPlayNetworking.registerGlobalReceiver(
 			AllocateBatchPayload.TYPE, (payload, context) -> allocateBatch(context.player(), payload));
 		ServerPlayNetworking.registerGlobalReceiver(
 			RespecPayload.TYPE, (payload, context) -> respec(context.player()));
+		ServerPlayNetworking.registerGlobalReceiver(
+			WeaponHotkeyPayload.TYPE, (payload, context) -> WeaponSlot.press(context.player(), payload.index()));
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> sync(handler.getPlayer()));
 		ServerPlayConnectionEvents.DISCONNECT.register(
 			(handler, server) -> LAST_SENT.remove(handler.getPlayer().getUUID()));
