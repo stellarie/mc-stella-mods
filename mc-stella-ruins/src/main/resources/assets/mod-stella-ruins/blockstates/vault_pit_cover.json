@@ -1,0 +1,10 @@
+{
+	"variants": {
+		"open=false": {
+			"model": "mod-stella-ruins:block/vault_pit_cover_closed"
+		},
+		"open=true": {
+			"model": "mod-stella-ruins:block/vault_pit_cover_open"
+		}
+	}
+}

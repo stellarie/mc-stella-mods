@@ -23,7 +23,13 @@
 			"com.stella.ruins.reward.RuinSetsGameTest",
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",
-			"com.stella.ruins.reward.RuinGearGameTest"
+			"com.stella.ruins.reward.RuinGearGameTest",
+			"com.stella.ruins.site.sealedvault.VaultPlanGameTest",
+			"com.stella.ruins.site.sealedvault.VaultLayoutGameTest",
+			"com.stella.ruins.site.sealedvault.VaultBlocksGameTest",
+			"com.stella.ruins.site.sealedvault.VaultMobsGameTest",
+			"com.stella.ruins.site.sealedvault.VaultRewardsGameTest",
+			"com.stella.ruins.site.sealedvault.VaultSiteGameTest"
 		]
 	},
 	"depends": {

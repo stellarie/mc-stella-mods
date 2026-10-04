@@ -1,0 +1,20 @@
+{
+	"block.mod-stella-ruins.vault_wall": "Vault Wall",
+	"block.mod-stella-ruins.vault_floor": "Vault Floor",
+	"block.mod-stella-ruins.vault_seal": "Vault Seal",
+	"block.mod-stella-ruins.vault_pit_cover": "Vault Pit Cover",
+	"block.mod-stella-ruins.vault_arrow_plate": "Vault Arrow Plate",
+	"block.mod-stella-ruins.vault_drop_plate": "Vault Drop Plate",
+	"block.mod-stella-ruins.vault_vent": "Vault Vent",
+	"item.mod-stella-ruins.vault_seal": "Vault Seal",
+	"item.mod-stella-ruins.void_essence": "Void Essence",
+	"item.mod-stella-ruins.vault_dust": "Vault Dust",
+	"item.mod-stella-ruins.void_touched_affix": "Void-touched Affix",
+	"item.mod-stella-ruins.abyssal_edge": "Abyssal Edge",
+	"mob.mod-stella-ruins.void_wraith": "Void Wraith",
+	"mob.mod-stella-ruins.vault_guardian": "Vault Guardian",
+	"mob.mod-stella-ruins.vault_warden": "Vault Warden",
+	"affix.mod-stella-ruins.void_touched": "Void-touched: +15% damage as armor-piercing magic damage, 5% life steal",
+	"effect.mod-stella-ruins.abyss": "Abyss: a kill opens a void rift that pulls hostile mobs in",
+	"clue.mod-stella-ruins.sealed_vault": "At the bottom of the world, three seals sleep in six rooms. Something walks the halls that never sleeps."
+}
