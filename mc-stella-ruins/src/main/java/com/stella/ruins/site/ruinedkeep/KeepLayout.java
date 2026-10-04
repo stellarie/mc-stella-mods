@@ -418,7 +418,7 @@ public final class KeepLayout {
 		Rect keep = this.plan.floors[2].up().rect().grow(2);
 		for (int x = Math.max(x1, 8); x <= Math.min(x2, 39); x++) {
 			for (int z = Math.max(z1, 6); z <= Math.min(z2, 37); z++) {
-				boolean clear = keep.contains(x, z) || (x >= 18 && x <= 29 && z >= 26 && z <= 34) || z == DOOR_Z || (x >= 18 && x <= 29 && z <= 12);
+				boolean clear = keep.contains(x, z) || (x >= 18 && x <= 29 && z >= 26 && z <= 34) || z == DOOR_Z || (x >= 18 && x <= 29 && z <= 12) || nearTower(x, z);
 				if (!clear && roll(x, s, z, 23) < 22) {
 					this.ctx.set(x, s, z, rubble(x, s, z));
 				}
@@ -431,6 +431,17 @@ public final class KeepLayout {
 		int x1 = c.west() ? KeepPlan.BODY_MIN_X : KeepPlan.BODY_MAX_X - 11;
 		int z1 = c.north() ? KeepPlan.BODY_MIN_Z : KeepPlan.BODY_MAX_Z - 11;
 		return x >= x1 && x <= x1 + 11 && z >= z1 && z <= z1 + 11;
+	}
+
+	/** True within one block of any tower's footprint: the posterns must stay as drawn. */
+	private boolean nearTower(final int x, final int z) {
+		for (Tower t : this.plan.towers) {
+			KeepPlan.Corner c = t.corner();
+			if (x >= c.footX - 1 && x <= c.footX + 9 && z >= c.footZ - 1 && z <= c.footZ + 9) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private boolean inFoot(final KeepPlan.Corner c, final int x, final int z) {

@@ -70,12 +70,19 @@ public class KeepMobGameTest {
 	@GameTest
 	public void aSpectralKnightsHitGivesWeaknessOneForSixtyTicks(final GameTestHelper helper) {
 		Mob knight = spawn(helper, KeepMobs.knight, 2.5, 2.5);
-		Cow cow = KeepTestSupport.cow(helper, 4.5, 2.5, 20.0F, 20.0F);
+		Cow cow = KeepTestSupport.cow(helper, 4.5, 2.5, 1000.0F, 1000.0F);
 		try {
 			helper.assertTrue(!cow.hasEffect(MobEffects.WEAKNESS), "the target was weak before the hit");
-			cow.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(knight), 1.0F);
+			// With the mobs mod a ruin mob hits at its level, which kills any victim, and a death fires no hit event.
+			// There the test calls the hook the hit event would call.
+			boolean sibling = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("mod-stella-mobs");
+			if (sibling) {
+				KeepMobs.knight.ability().onHurtTarget(knight, cow);
+			} else {
+				cow.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(knight), 1.0F);
+			}
 			MobEffectInstance weakness = cow.getEffect(MobEffects.WEAKNESS);
-			KeepTestSupport.result("knightWeakness", "effect=" + (weakness == null ? "none" : "amp" + weakness.getAmplifier() + " ticks" + weakness.getDuration()));
+			KeepTestSupport.result("knightWeakness", "path=" + (sibling ? "hook" : "damage") + " effect=" + (weakness == null ? "none" : "amp" + weakness.getAmplifier() + " ticks" + weakness.getDuration()));
 			helper.assertTrue(weakness != null, "the knight's hit gave no weakness");
 			helper.assertTrue(weakness.getAmplifier() == 0, "the weakness amplifier is " + weakness.getAmplifier());
 			helper.assertTrue(weakness.getDuration() > 0 && weakness.getDuration() <= KeepMobs.WEAKNESS_TICKS, "the weakness lasts " + weakness.getDuration() + " ticks");

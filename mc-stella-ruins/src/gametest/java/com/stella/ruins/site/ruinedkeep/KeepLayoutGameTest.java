@@ -279,6 +279,50 @@ public class KeepLayoutGameTest {
 		helper.succeed();
 	}
 
+	@GameTest(maxTicks = 200)
+	public void theTowersAreHollowWithALadderAndShutWithBarsOnTheThroneFloor(final GameTestHelper helper) {
+		int barred = 0;
+		int open = 0;
+		int ladders = 0;
+		for (int i = 0; i < SEEDS; i++) {
+			RuinFrame frame = KeepTestSupport.frame(seedOf(i), 1, MIN);
+			KeepPlan plan = KeepTestSupport.planOf(frame);
+			Map<BlockPos, BlockState> blocks = KeepTestSupport.draw(frame, false);
+			for (KeepPlan.Tower t : plan.towers) {
+				int fx = t.corner().footX;
+				int fz = t.corner().footZ;
+				int top = t.top();
+				helper.assertTrue(blocks.getOrDefault(frame.toWorld(fx + 3, 12, fz + 3), Blocks.AIR.defaultBlockState()).isAir(), "seed " + i + ": the tower " + t.corner() + " is solid inside");
+				for (int y = 3; y <= top - 4; y++) {
+					BlockState ladder = blocks.get(frame.toWorld(fx + 4, y, fz + 2));
+					helper.assertTrue(ladder != null && ladder.is(Blocks.LADDER), "seed " + i + ": the tower " + t.corner() + " has no ladder at layer " + y);
+					ladders++;
+				}
+				int pz = t.corner().north() ? fz + 6 : fz + 2;
+				int px = t.corner().west() ? fx + 7 : fx;
+				for (int f = 0; f < 4; f++) {
+					int s = KeepPlan.STAND[f];
+					if (s + 1 >= top - 5) {
+						continue;
+					}
+					for (int dx = 0; dx < 2; dx++) {
+						BlockState low = blocks.getOrDefault(frame.toWorld(px + dx, s, pz), Blocks.AIR.defaultBlockState());
+						if (f < 3) {
+							helper.assertTrue(low.isAir(), "seed " + i + ": the postern of " + t.corner() + " is shut on floor " + (f + 1));
+							open++;
+						} else {
+							helper.assertTrue(low.is(Blocks.IRON_BARS), "seed " + i + ": the postern of " + t.corner() + " is not barred on the throne floor, it is " + low + " at " + px + "," + s + "," + pz + " top " + top);
+							barred++;
+						}
+					}
+				}
+			}
+		}
+		KeepTestSupport.result("towers", "posternsOpen=" + open + " posternsBarred=" + barred + " ladderBlocks=" + ladders);
+		helper.assertTrue(barred > 0 && open > 0, "the test saw " + barred + " barred and " + open + " open posterns, so it proves little");
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 600)
 	public void generationOfAFullKeepStaysUnderFiftyMillisecondsPerChunk(final GameTestHelper helper) {
 		KeepTestSupport.inArena(helper, arena -> {
