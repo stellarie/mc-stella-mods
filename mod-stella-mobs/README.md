@@ -309,6 +309,8 @@ and a developer who tunes them. Each number below is a constant in the class nam
 - A player inside the near band ends a hide and stops a new one, so the retreat wins over cover.
 - A unit in PURSUE does not hide. It presses a hurt player.
 - A unit that finds no spot or no path fights on. So does a unit that is still in the open after 60 ticks of HIDE.
+- A unit that moves less than half a block in 20 ticks of HIDE drops its spot and fights on. Its searches skip that
+  spot for 200 ticks.
 - The hide ends when the player dies or the unit takes another target.
   The retreat goal and the tactic goal of `mod-stella-learn` can cut a hide short.
 - The target goal of vanilla forgets a player that it has not seen for 60 ticks. The hide goal sets the target again,
@@ -326,7 +328,8 @@ A spot is valid when all of these hold:
 - The spot lies at least 2 blocks beyond the unit's near band, and no farther than 24 blocks from the player.
 - No other unit has claimed a spot within 2 blocks. A claim lasts 200 ticks, and ends sooner when the unit stops hiding.
 
-Darker spots rank first, then nearer spots. The search tests a path for the best 6 spots only.
+One path search runs toward every valid spot at once. The spot with the shortest path wins, so a spot behind a wall
+counts the walk round the wall. The path must reach the spot in 16 nodes or fewer, so the walk fits in the hide window.
 
 ### Pursued without cover (`AmbushWatchGoal`)
 

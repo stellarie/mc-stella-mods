@@ -1,5 +1,6 @@
 {
 	"values": [
-		"minecraft:book"
+		"minecraft:book",
+		"mod-stella-rpg-test-mod-stella-rpg:test_spellbook"
 	]
 }

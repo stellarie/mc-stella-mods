@@ -101,6 +101,38 @@ inventory.
 - The bag persists. On death, the tombstone picks from the bag as well as the inventory, and the rest of the bag stays.
 - Other mods read and write the bag through the share `mod-stella-rpg:bag-view`, a `Function<Player, Container>`. The equips mod uses it to fill an emerald bag kept here.
 
+## Weapon slot
+
+The HUD hotbar is hidden. The inventory window shows a weapon slot above the shield slot. The nine hotkey slots stay as the bottom row of the inventory window.
+
+- The weapon slot is inventory index 35 (`WeaponSlot.SLOT`). While the selected index is 35, the main hand is the weapon slot.
+  Attack, use, dice, attribute modifiers, and other mods read it through the vanilla main hand.
+- Saves, death drops, the tombstone, and keep-inventory treat index 35 as any inventory slot. A pickup fills it last.
+- Other container screens show index 35 in the grid, at the bottom right.
+
+A hotkey (1 to 9) sends `mod-stella-rpg:weapon_hotkey` to the server. The server rule `WeaponSlot.press` acts on the item in that hotkey slot:
+
+| Item | Action |
+|---|---|
+| Spellbook (tag `mod-stella-rpg:spellbooks`) | Casts through the ordinary use path. The book stays, and the weapon stays in hand. |
+| Weapon or tool: attack damage, the `tool` or `weapon` component, or a bow or crossbow | Swaps with the weapon slot and selects it. The old weapon lands in the pressed slot. |
+| Armor (not a block) | Swaps with the worn piece. A Curse of Binding piece refuses outside creative. |
+| Anything else, or an empty slot | Selects that slot, as vanilla does. |
+
+- The Ready Weapon key (default `R`) selects the weapon slot again. A weapon hotkey does the same and swaps the weapon.
+- The scroll wheel does not change the selection.
+- A swap exchanges two slots, so it never loses an item, even with a full inventory.
+- On a server without this mod, the client keeps the vanilla hotbar and the vanilla hotkeys.
+- Residual risk: a save made with the weapon slot selected stores `SelectedItemSlot` 35. Vanilla rejects that value on load, so removing this mod breaks such a save.
+
+## Auto-pickup
+
+The Inventory tab has an Auto-pickup checkbox. The value is saved per player, kept on death, and synced to that player.
+
+- On (the default): pickup is vanilla.
+- Off: walking over an item entity does not pick it up. Sneaking picks it up. Experience orbs are not affected.
+- The checkbox sends `mod-stella-rpg:auto_pickup` to the server.
+
 ## Death recap
 
 When you die, chat lists the hits that led to it: up to 6 hits from the last 10 seconds, newest last, and their total.
@@ -277,6 +309,8 @@ A dedicated server with a custom `stats.json` shows the default curves on the cl
 | `mod-stella-rpg:allocate` | client to server | `stat` (ordinal of `Stat`), `amount` |
 | `mod-stella-rpg:allocate_batch` | client to server | `int[] amounts` (length 6, order of `Stat.values()`) |
 | `mod-stella-rpg:respec` | client to server | none |
+| `mod-stella-rpg:weapon_hotkey` | client to server | `index` (0 to 8, or -1 for Ready Weapon) |
+| `mod-stella-rpg:auto_pickup` | client to server | `boolean on` |
 
 - The server validates every request. A bad stat ordinal returns `INVALID_STAT`. Other limits come from `StatPoints`.
 - A batch is checked in full, then written once. A wrong length, a negative entry, or a zero sum returns `INVALID_AMOUNT`. A refusal changes nothing.
@@ -709,6 +743,14 @@ Game tests run headless on a server. A new test class must be listed in
 | `RpgAbsorptionMixin` | `LivingEntity#getMaxAbsorption`, at `RETURN` |
 | `RpgNoDamageHeartsMixin` | `Player#damageStatsAndHearts`, redirects `ServerLevel#sendParticles` |
 | `RpgEffectPercentMixin` | `MobEffect#addAttributeModifier`, at `HEAD`. Skips the Strength and Weakness attack modifiers |
+| `RpgWeaponSelectMixin` | `Inventory#setSelectedSlot`, at `HEAD`, cancellable. Accepts index 35. Both sides |
+| `RpgWeaponCarriedMixin` | `ServerGamePacketListenerImpl#handleSetCarriedItem`, the `getSelectionSize` bound. Accepts index 35 |
+| `RpgWeaponMenuMixin` | `InventoryMenu` constructor, at `TAIL`. Moves menu slot 35 to (77, 44) |
+| `SlotPositionAccessor` | Mutable accessor for `Slot#x` and `Slot#y` |
+| `RpgAutoPickupMixin` | `ItemEntity#playerTouch`, at `HEAD`, cancellable |
+| `WeaponHotkeyMixin` | Client only. `Minecraft#handleKeybinds`, wraps `Inventory#setSelectedSlot` |
+| `WeaponScrollMixin` | Client only. `MouseHandler#onScroll`, wraps `Inventory#setSelectedSlot` |
+| `WeaponHeldSlotMixin` | Client only. `ClientPacketListener#handleSetHeldSlot`, the `isHotbarSlot` check |
 | `ContainerScreenPositionAccessor` | Client only. Reads `leftPos` and `topPos` of `AbstractContainerScreen` |
 | `AttributeTooltipMixin` | Client only. `ItemAttributeModifiers.Display.Default#apply`, the shown amount |
 | `NoDotShakeLivingMixin` | Client only. `LivingEntity#handleDamageEvent`, at `TAIL` |

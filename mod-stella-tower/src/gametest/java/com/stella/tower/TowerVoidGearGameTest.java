@@ -117,36 +117,19 @@ public class TowerVoidGearGameTest {
 			.filter(entry -> entry.attribute().is(Attributes.ARMOR)).mapToDouble(entry -> entry.modifier().amount()).sum();
 	}
 
-	/**
-	 * A rune in a void sword counts half as much again: an Ice rune strikes the slowed harder, by its power
-	 * as the sword carries it, than the same rune in a netherite sword.
-	 */
+	/** A rune in a void sword counts half as much again: its power, for resonance, is the sword's. */
 	@GameTest
 	public void aRuneInAVoidSwordCountsHalfAsMuchAgain(final GameTestHelper helper) {
-		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		RuneData rune = new RuneData(TowerElement.ICE, TOP);
-		Zombie plain = zombieOf(helper, TowerElement.WIND);
-		Zombie slowed = zombieOf(helper, TowerElement.WIND);
-		slowed.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOWNESS, 200, 0));
-		double[] ratios = new double[2];
-		int i = 0;
-		for (net.minecraft.world.item.Item sword : new net.minecraft.world.item.Item[] {Items.NETHERITE_SWORD, TowerItems.VOID_SWORD}) {
-			player.setItemInHand(InteractionHand.MAIN_HAND, TowerRunes.apply(new ItemStack(sword), rune));
-			float a = TowerMobs.scaleDamage(plain, player.damageSources().playerAttack(player), 10.0F);
-			float b = TowerMobs.scaleDamage(slowed, player.damageSources().playerAttack(player), 10.0F);
-			ratios[i++] = b / a;
-		}
+		double plain = TowerRunes.power(TowerRunes.apply(new ItemStack(Items.NETHERITE_SWORD), rune), rune);
+		double voided = TowerRunes.power(TowerRunes.apply(new ItemStack(TowerItems.VOID_SWORD), rune), rune);
 		double base = TowerRunes.power(TOP);
-		double wantPlain = 1.0 + RuneEffects.iceBonus(base);
-		double wantVoid = 1.0 + RuneEffects.iceBonus(base * VoidGear.POWER_FACTOR);
-		TowerTestSupport.result("voidSwordPower", "netherite=" + ratios[0] + "/" + wantPlain + " void=" + ratios[1] + "/" + wantVoid);
-		plain.discard();
-		slowed.discard();
-		TowerTestSupport.leave(helper, player);
-		helper.assertTrue(Math.abs(ratios[0] - wantPlain) < 1.0E-3, "a netherite sword struck the slowed at x" + ratios[0] + ", not x" + wantPlain);
-		helper.assertTrue(Math.abs(ratios[1] - wantVoid) < 1.0E-3, "a void sword struck the slowed at x" + ratios[1] + ", not x" + wantVoid);
+		TowerTestSupport.result("voidSwordPower", "netherite=" + plain + " void=" + voided + " base=" + base);
+		helper.assertTrue(Math.abs(plain - base) < 1.0E-9, "a netherite sword carries power " + plain + ", not " + base);
+		helper.assertTrue(Math.abs(voided - base * VoidGear.POWER_FACTOR) < 1.0E-9, "a void sword carries power " + voided + ", not " + base * VoidGear.POWER_FACTOR);
 		helper.succeed();
 	}
+
 
 	/** A void sword's rune is struck in full against its own element, where any other sword's is halved. */
 	@GameTest

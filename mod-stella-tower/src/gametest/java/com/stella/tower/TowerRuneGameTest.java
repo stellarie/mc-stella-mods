@@ -85,14 +85,36 @@ public class TowerRuneGameTest {
 		helper.succeed();
 	}
 
+	/** Every source drops a rune at one in a thousand: a mob, an elite, a boss and a shaman, by a pinned roll. */
 	@GameTest
-	public void theRuneChanceGrowsWithRank(final GameTestHelper helper) {
-		double mob = TowerRunes.dropChance(TowerRank.MOB);
-		double elite = TowerRunes.dropChance(TowerRank.ELITE);
-		double boss = TowerRunes.dropChance(TowerRank.BOSS);
-		TowerTestSupport.result("runeChances", "mob=" + mob + " elite=" + elite + " boss=" + boss);
-		helper.assertTrue(mob == TowerRunes.MOB_CHANCE && elite == TowerRunes.ELITE_CHANCE && boss == TowerRunes.BOSS_CHANCE && mob < elite && elite < boss,
-			"rune chances are mob=" + mob + " elite=" + elite + " boss=" + boss);
+	public void everyRuneSourceDropsAtOneInAThousand(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		double[] chances = {TowerRunes.dropChance(TowerRank.MOB), TowerRunes.dropChance(TowerRank.ELITE), TowerRunes.dropChance(TowerRank.BOSS), TowerShamans.RUNE_CHANCE};
+		int[] dropped = new int[2];
+		double[] rolls = {0.0009, 0.0011};
+		try {
+			for (int i = 0; i < rolls.length; i++) {
+				TowerRunes.pinDropRoll(rolls[i]);
+				Zombie zombie = EntityTypes.ZOMBIE.create(level, EntitySpawnReason.COMMAND);
+				TowerMobs.makeTowerMob(zombie, DROP_FLOOR, TowerElement.FIRE);
+				Vec3 at = helper.absoluteVec(new Vec3(3.5, 2.0, 3.5));
+				zombie.snapTo(at);
+				level.addFreshEntity(zombie);
+				zombie.hurtServer(level, player.damageSources().playerAttack(player), 1.0E30F);
+				List<ItemEntity> runes = level.getEntitiesOfClass(ItemEntity.class, new AABB(at, at).inflate(3.0), item -> item.getItem().is(TowerItems.RUNE));
+				dropped[i] = runes.size();
+				runes.forEach(ItemEntity::discard);
+			}
+		} finally {
+			TowerRunes.pinDropRoll(null);
+		}
+		TowerTestSupport.result("runeChances", "chances=" + java.util.Arrays.toString(chances) + " dropped=" + java.util.Arrays.toString(dropped));
+		TowerTestSupport.leave(helper, player);
+		for (double chance : chances) {
+			helper.assertTrue(chance == 0.001, "a rune source drops at " + chance + ", not 0.001");
+		}
+		helper.assertTrue(dropped[0] == 1 && dropped[1] == 0, "a roll under the chance dropped " + dropped[0] + " runes and a roll over it " + dropped[1]);
 		helper.succeed();
 	}
 

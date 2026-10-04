@@ -60,7 +60,9 @@
 			"com.stella.rpg.LevelRulesGameTest",
 			"com.stella.rpg.JobGameTest",
 			"com.stella.rpg.JobItemGameTest",
-			"com.stella.rpg.SecondWindGameTest"
+			"com.stella.rpg.SecondWindGameTest",
+			"com.stella.rpg.WeaponSlotGameTest",
+			"com.stella.rpg.AutoPickupGameTest"
 		]
 	},
 	"depends": {

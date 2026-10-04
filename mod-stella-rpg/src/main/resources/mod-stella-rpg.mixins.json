@@ -31,7 +31,12 @@
 		"RpgNoDamageHeartsMixin",
 		"RpgXpCurveMixin",
 		"RpgBagPickupMixin",
-		"AbstractArrowPierceInvoker"
+		"AbstractArrowPierceInvoker",
+		"RpgWeaponSelectMixin",
+		"RpgWeaponCarriedMixin",
+		"RpgWeaponMenuMixin",
+		"SlotPositionAccessor",
+		"RpgAutoPickupMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
