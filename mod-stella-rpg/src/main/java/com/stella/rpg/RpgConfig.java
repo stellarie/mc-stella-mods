@@ -1,6 +1,7 @@
 package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
+import com.stella.rpg.job.Job;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -11,7 +12,7 @@ import net.minecraft.resources.Identifier;
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
 	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
-	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling
+	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling, HpRules hp
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -114,6 +115,46 @@ public record RpgConfig(
 		}
 	}
 
+	/**
+	 * The player HP model, in vanilla units before K. Max HP is {@code (base + perLevel x (level - 1))
+	 * x (1 + vitPercent x VIT) x job factor}. Regeneration heals {@code regenBase + regenPerVit x VIT} of max HP
+	 * every {@code regenInterval} ticks. Spell duration is {@code min(durationCap, 1 + INT / durationIntDivisor)}.
+	 */
+	public record HpRules(
+		double base, double perLevel, double vitPercent, int regenInterval, double regenBase, double regenPerVit,
+		double durationIntDivisor, double durationCap, Map<String, Double> jobFactors
+	) {
+		public static final String KEY = "hp";
+		public static final String JOB_FACTORS_KEY = "job_factors";
+		public static final HpRules DEFAULT = new HpRules(30.0, 3.0, 0.01, 100, 0.005, 0.0002, 200.0, 3.0, defaultJobFactors());
+
+		public double jobFactor(final Job job) {
+			return this.jobFactors.getOrDefault(job.key(), job.hpFactor());
+		}
+
+		private static Map<String, Double> defaultJobFactors() {
+			Map<String, Double> factors = new LinkedHashMap<>();
+			for (Job job : Job.values()) {
+				factors.put(job.key(), job.hpFactor());
+			}
+			return Map.copyOf(factors);
+		}
+
+		public Map<String, Object> toJson() {
+			Map<String, Object> out = new LinkedHashMap<>();
+			out.put("base", this.base);
+			out.put("per_level", this.perLevel);
+			out.put("vit_percent", this.vitPercent);
+			out.put("regen_interval", this.regenInterval);
+			out.put("regen_base", this.regenBase);
+			out.put("regen_per_vit", this.regenPerVit);
+			out.put("duration_int_divisor", this.durationIntDivisor);
+			out.put("duration_cap", this.durationCap);
+			out.put(JOB_FACTORS_KEY, new LinkedHashMap<>(this.jobFactors));
+			return out;
+		}
+	}
+
 	public record DiceRules(int baseCount, int baseSides, int countStep, int sidesStep) {
 		public static final DiceRules DEFAULT = new DiceRules(1, 4, 25, 100);
 	}
@@ -151,7 +192,7 @@ public record RpgConfig(
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
 			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE,
-			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT);
+			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT, HpRules.DEFAULT);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */

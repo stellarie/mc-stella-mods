@@ -79,9 +79,11 @@ public final class MatkGameTest {
 			RpgCombat.setRoller(null);
 		}
 		RpgTestSupport.setStat(player, Stat.INT, 17);
+		RpgTestSupport.setStat(player, Stat.VIT, 27);
+		// Level 10 adds 3 to INT and VIT: level 10, INT 20, VIT 30.
 		double heal = RpgSpells.spellHeal(player, 2.0);
 		RpgTestSupport.result("spellDamageAndHeal", "damage=" + expected + " heal=" + heal);
-		helper.assertTrue(Math.abs(heal - (10 + 20) * 2.0 / k) < EPSILON && Math.abs(heal * k - 60.0) < 1e-6, "spellHeal was " + heal);
+		helper.assertTrue(Math.abs(heal - (10 + 20 + 30) * 2.0 / k) < EPSILON && Math.abs(heal * k - 120.0) < 1e-6, "spellHeal was " + heal);
 		helper.succeed();
 	}
 

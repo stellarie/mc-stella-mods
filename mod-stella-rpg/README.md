@@ -13,7 +13,7 @@ The health scale K (default 15) multiplies health once, at the end.
 - `max_health`, `attack_damage`, and `max_absorption` accept values up to 1,000,000 on the server and the client.
   The cap is the constant `RpgScale.ATTRIBUTE_CAP`. It is not a config key, because it must match on both sides.
 - Every living entity gets the permanent `ADD_MULTIPLIED_TOTAL` modifier `mod-stella-rpg:health_scale` of `K - 1`
-  on `MAX_HEALTH` and `MAX_ABSORPTION`. A player has 300 max health at level 1. A zombie has 300 at threat 0.
+  on `MAX_HEALTH` and `MAX_ABSORPTION`. A player has 450 max health at level 1 (see `Player HP`). A zombie has 300 at threat 0.
   The modifier applies after every other modifier.
 - `RpgScale.apply` adds the modifier when an entity loads, joins, or respawns. A new modifier keeps the health and
   absorption fraction, so an old world does not leave entities at 1/15 health. A second apply changes nothing.
@@ -108,9 +108,36 @@ Each line names the attacker (with its level, and "elite" for an elite or boss, 
 damage type, the health the hit removed, and how long before the death it landed. Damage-over-time ticks of one kind
 join one line with their total, so a fatal burn reads as one line.
 
+## Player HP
+
+Max health of a player, in vanilla units before K, is
+`(30 + 3 x (level - 1)) x (1 + VIT / 100) x job factor`. VIT is the effective VIT.
+At level 1 with no VIT and no job it is 30, so 450 after K = 15.
+
+| Job | Factor |
+|---|---|
+| fighter | 1.3 |
+| priest | 1.1 |
+| archer | 1.0 |
+| mage | 0.85 |
+| none | 1.0 |
+
+- `HpModel.refresh` sets the permanent `ADD_VALUE` modifier `mod-stella-rpg:hp_model` on `MAX_HEALTH`.
+  It runs on join, on respawn, on a level-up, on a job change, and every 20 ticks.
+  A change of the modifier keeps the share of current health to max health.
+- The equips mod sets the modifier `mod-stella-equips-enchants:power_max_health` (`20 + 2.5 x (level - 1)`).
+  The refresh subtracts its amount, so the level part never stacks. That works with any equips config.
+  The equips default `health_per_level: 0` would make the cancel unnecessary, but an old config file keeps its old value.
+- Passive regeneration: every `regen_interval` ticks (100), a living player below full health heals
+  `max health x (0.005 + 0.0002 x VIT)`. The heal passes through `LivingEntity#heal`, so the amount is divided by K first.
+- Heal spells use `(level + INT + VIT) x coefficient`. Spell duration uses `min(3, 1 + INT / 200)`.
+- The config block `hp` holds `base` (30), `per_level` (3), `vit_percent` (0.01), `regen_interval` (100),
+  `regen_base` (0.005), `regen_per_vit` (0.0002), `duration_int_divisor` (200), `duration_cap` (3),
+  and `job_factors` (a map from job key to factor, above 0 and at most 10). A bad value uses its default.
+
 ## Level-up refresh
 
-Any gain of the experience level heals the player to maximum health and adds Speed II for 30 seconds.
+Any gain of the experience level heals the player to maximum health (the new maximum) and adds Speed II for 30 seconds.
 Orbs, commands, and every other source trigger it. Several levels at once trigger it one time.
 A level loss, a respawn, and the first check of a player apply nothing.
 The mod stores the last seen level in the `mod-stella-rpg:last_level` attachment.
@@ -491,8 +518,10 @@ The class name and every public method below are a contract.
   It multiplies the result by `crit_multiplier` when the LUK crit chance rolls. `RpgSpells.spellHit` is the same without the crit.
   `skillPercent` 150 means 150%. The health scale multiplies the result once.
 - `RpgSpells.matkMin(entity)` and `matkMax(entity)` stay as compatibility helpers. Both return `spellHit(entity, 100) * K`.
-- `RpgSpells.spellHeal(caster, coefficient)` returns `(level + INT) * coefficient / K`, in vanilla units.
+- `RpgSpells.spellHeal(caster, coefficient)` returns `(level + INT + VIT) * coefficient / K`, in vanilla units.
   The level is the experience level of a player, or the threat of a mob.
+- `RpgSpells.durationMultiplier(caster)` returns `min(3, 1 + INT / 200)`. The spells mod multiplies a spell duration by it.
+  The spells mod must call it by name. Until it does, durations do not change.
 
 ## Magic model
 
