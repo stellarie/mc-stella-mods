@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 public final class TowerShamans {
 	/** The share of floors that hold a shaman. */
 	public static final double FLOOR_CHANCE = 0.02;
-	public static final double RUNE_CHANCE = 0.02;
+	public static final double RUNE_CHANCE = TowerRunes.DROP_CHANCE;
 	/** A slain shaman leaves a void ingot with this chance, and this much more for each floor it stood on. */
 	public static final double INGOT_BASE = 0.005;
 	public static final double INGOT_PER_FLOOR = 0.0001;
