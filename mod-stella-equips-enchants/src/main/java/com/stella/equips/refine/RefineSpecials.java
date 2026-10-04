@@ -1,5 +1,6 @@
 package com.stella.equips.refine;
 
+import com.stella.equips.unique.Uniques;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.component.DataComponents;
@@ -62,10 +63,10 @@ public final class RefineSpecials {
 	private RefineSpecials() {
 	}
 
-	/** The effects a piece has at a level, lowest level first. Empty for a spellbook and for anything unrefined. */
+	/** The effects a piece has at a level, lowest level first. Empty for a spellbook, a unique and anything unrefined. */
 	public static List<Special> of(final ItemStack stack, final int level) {
 		List<Special> all = new ArrayList<>();
-		if (level <= 0 || stack.isEmpty() || Refine.isSpellbook(stack)) {
+		if (level <= 0 || stack.isEmpty() || Refine.isSpellbook(stack) || Uniques.def(stack) != null) {
 			return all;
 		}
 		if (Refine.isArmor(stack)) {

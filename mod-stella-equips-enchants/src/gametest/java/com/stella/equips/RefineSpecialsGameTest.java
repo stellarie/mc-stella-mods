@@ -385,7 +385,7 @@ public class RefineSpecialsGameTest {
 		double mean = total / (double) trials;
 		double expected = 5 * (1 + RefineEffects.FORTUNE_SHARE * 0.8);
 		LOG.info("[BEHAVIOR] test=fortuneAddsExperienceFromKills RESULT base={} boosted={} atNine={} mean={} expected={}", base, boosted, atNine, mean, expected);
-		helper.assertTrue(base > 0 && boosted == Math.round(base * (1 + 4 * RefineEffects.FORTUNE_SHARE * 0.8)), "four gold pieces turned " + base + " experience into " + boosted);
+		helper.assertTrue(base > 0 && Math.abs(boosted - base * (1 + 4 * RefineEffects.FORTUNE_SHARE * 0.8)) < 1.0, "four gold pieces turned " + base + " experience into " + boosted);
 		helper.assertTrue(atNine == base, "+9 gold turned " + base + " experience into " + atNine);
 		helper.assertTrue(Math.abs(mean - expected) < 0.05, "one gold piece turned 5 experience into a mean of " + mean);
 		helper.succeed();

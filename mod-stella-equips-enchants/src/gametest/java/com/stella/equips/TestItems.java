@@ -31,6 +31,7 @@ public final class TestItems implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		// Loading this class registers the items.
+		UniqueFixtures.init();
 	}
 
 	private static Item register(final String path, final int stack) {
