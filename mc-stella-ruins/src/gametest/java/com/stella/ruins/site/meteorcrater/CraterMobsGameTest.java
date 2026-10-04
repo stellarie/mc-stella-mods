@@ -5,6 +5,7 @@ import com.stella.ruins.world.RuinMobs;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
@@ -29,6 +30,7 @@ public class CraterMobsGameTest {
 	static final long SEED = 0xBEEFL;
 	static final int TICKS = 6000;
 	static final int ROLLS = 4000;
+	static final boolean MOBS_PRESENT = FabricLoader.getInstance().isModLoaded("mod-stella-mobs");
 
 	private static Vec3 spot(final BlockPos pos) {
 		return new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
@@ -46,7 +48,9 @@ public class CraterMobsGameTest {
 		CraterTestSupport.inArena(helper, SEED, arena -> {
 			Mob mob = golem(arena, 0, spot(arena.markers(CraterMarkers.GOLEM).get(0)));
 			helper.assertTrue(mob.getType() == EntityTypes.IRON_GOLEM, "the golem is a " + mob.getType());
-			helper.assertTrue(Math.abs(mob.getAttributeValue(Attributes.SCALE) - 1.3) < 1.0E-6, "scale " + mob.getAttributeValue(Attributes.SCALE));
+			// The mobs mod forces every iron golem elite (G01), which adds to the scale, so there the scale is at least ours.
+			double scale = mob.getAttributeValue(Attributes.SCALE);
+			helper.assertTrue(MOBS_PRESENT ? scale >= 1.3 - 1.0E-6 : Math.abs(scale - 1.3) < 1.0E-6, "scale " + scale);
 			helper.assertTrue(mob.hasEffect(MobEffects.GLOWING), "the golem does not glow");
 			helper.assertTrue(RuinMobs.kindOf(mob) == CraterMobs.STAR_GOLEM && CraterMobs.STAR_GOLEM.drops().equals(CraterMobs.GOLEM_DROPS), "kind or drop table");
 			helper.assertTrue(mob.entityTags().contains(RuinMobKind.TAG_MOB) && mob.isPersistenceRequired(), "not tagged or not persistent");
@@ -122,7 +126,8 @@ public class CraterMobsGameTest {
 			float lost = before - player.getHealth();
 			CraterTestSupport.result("strike", "marked=" + marked + " lost=" + lost);
 			helper.assertTrue(CraterMobs.StarStrike.pending(mob) == null, "the strike is still pending");
-			helper.assertTrue(Math.abs(lost - CraterMobs.STRIKE_DAMAGE) < 1.0E-4F, "the strike did " + lost);
+			// With the mobs mod a ruin mob's hit follows its level, so the strike is at least the base damage there.
+			helper.assertTrue(MOBS_PRESENT ? lost >= CraterMobs.STRIKE_DAMAGE - 1.0E-4F : Math.abs(lost - CraterMobs.STRIKE_DAMAGE) < 1.0E-4F, "the strike did " + lost);
 			mob.discard();
 		});
 	}

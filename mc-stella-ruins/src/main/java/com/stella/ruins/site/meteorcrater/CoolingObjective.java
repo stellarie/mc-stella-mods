@@ -54,7 +54,7 @@ public final class CoolingObjective implements Objective {
 				CraterMobs.size(slime);
 			}
 		}
-		StellaRuins.LOGGER.info("[RUINS] meteor core={} woke golems={} slimes={}", run.core().toShortString(), golemSpots.size(), run.markers(CraterMarkers.SLIME).size());
+		StellaRuins.LOGGER.debug("[RUINS] meteor core={} woke golems={} slimes={}", run.core().toShortString(), golemSpots.size(), run.markers(CraterMarkers.SLIME).size());
 	}
 
 	@Override
@@ -84,7 +84,7 @@ public final class CoolingObjective implements Objective {
 	private void begin(final ServerLevel level, final BlockPos core, final String why) {
 		this.started = true;
 		this.startTick = RuinClock.now(level);
-		StellaRuins.LOGGER.info("[RUINS] meteor core={} timer started ({}) at tick {}", core.toShortString(), why, this.startTick);
+		StellaRuins.LOGGER.debug("[RUINS] meteor core={} timer started ({}) at tick {}", core.toShortString(), why, this.startTick);
 	}
 
 	/** A player mined a hot ore block. The first one starts the timer. Returns true when a slime woke. */
@@ -139,7 +139,7 @@ public final class CoolingObjective implements Objective {
 				}
 			}
 		}
-		StellaRuins.LOGGER.info("[RUINS] meteor core={} cooled ore={} slimesGone={}", run.core().toShortString(), cooled, dead);
+		StellaRuins.LOGGER.debug("[RUINS] meteor core={} cooled ore={} slimesGone={}", run.core().toShortString(), cooled, dead);
 	}
 
 	public boolean started() {
