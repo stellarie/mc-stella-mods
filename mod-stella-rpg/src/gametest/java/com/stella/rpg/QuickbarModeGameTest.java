@@ -20,7 +20,6 @@ import net.minecraft.world.phys.Vec3;
 public final class QuickbarModeGameTest {
 	private static final int SLOT = WeaponSlot.SLOT;
 	private static final BlockPos TARGET = new BlockPos(2, 1, 4);
-	private static final int EAT_TICKS = 40;
 
 	@GameTest
 	public void switchingModes(final GameTestHelper helper) {
@@ -104,46 +103,29 @@ public final class QuickbarModeGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100)
-	public void heldFoodIsEaten(final GameTestHelper helper) {
+	@GameTest
+	public void foodIsEatenAtOnce(final GameTestHelper helper) {
 		ServerPlayer player = hungry(helper);
+		int before = player.getFoodData().getFoodLevel();
 		WeaponSlot.Result result = WeaponSlot.hotkey(player, 2, true);
-		helper.assertTrue(result == WeaponSlot.Result.EATING && player.isUsingItem(), "eating did not start: " + result);
-		tick(player, EAT_TICKS);
-		helper.runAfterDelay(1, () -> {
-			helper.assertTrue(player.getInventory().getItem(2).getCount() == 1, "apples " + player.getInventory().getItem(2).getCount());
-			helper.assertTrue(stillArmed(player) && !WeaponSlot.isEating(player), "the weapon did not return after eating");
-			RpgTestSupport.result("heldFoodIsEaten", "apples=" + player.getInventory().getItem(2).getCount());
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = 100)
-	public void releasedEarlyEatsNothing(final GameTestHelper helper) {
-		ServerPlayer player = hungry(helper);
-		WeaponSlot.hotkey(player, 2, true);
-		tick(player, 5);
-		WeaponSlot.hotkey(player, 2, false);
-		tick(player, EAT_TICKS);
-		helper.assertTrue(player.getInventory().getItem(2).getCount() == 2, "apples " + player.getInventory().getItem(2).getCount());
+		int apples = player.getInventory().getItem(2).getCount();
+		RpgTestSupport.result("foodIsEatenAtOnce", "result=" + result + " apples=" + apples + " food=" + before + "->" + player.getFoodData().getFoodLevel());
+		helper.assertTrue(result == WeaponSlot.Result.USED && apples == 1, "result " + result + ", apples " + apples);
+		helper.assertTrue(player.getFoodData().getFoodLevel() > before, "the food level did not rise");
 		helper.assertTrue(stillArmed(player) && !player.isUsingItem(), "the weapon is not back in hand");
-		RpgTestSupport.result("releasedEarlyEatsNothing", "apples=" + player.getInventory().getItem(2).getCount());
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100)
-	public void anotherHotkeyInterruptsEating(final GameTestHelper helper) {
-		ServerPlayer player = hungry(helper);
-		player.getInventory().setItem(5, new ItemStack(Items.IRON_SWORD));
-		WeaponSlot.hotkey(player, 2, true);
-		tick(player, 5);
-		WeaponSlot.Result swap = WeaponSlot.hotkey(player, 5, true);
-		tick(player, EAT_TICKS);
-		helper.assertTrue(swap == WeaponSlot.Result.EQUIPPED, "swap " + swap);
-		helper.assertTrue(player.getInventory().getItem(2).getCount() == 2, "apples " + player.getInventory().getItem(2).getCount());
-		helper.assertTrue(player.getInventory().getSelectedSlot() == SLOT && player.getMainHandItem().is(Items.IRON_SWORD), "main hand " + player.getMainHandItem());
-		helper.assertTrue(!player.isUsingItem() && !WeaponSlot.isEating(player), "eating went on");
-		RpgTestSupport.result("anotherHotkeyInterruptsEating", "apples=" + player.getInventory().getItem(2).getCount());
+	@GameTest
+	public void potionIsDrunkAtOnce(final GameTestHelper helper) {
+		ServerPlayer player = armed(helper);
+		player.getInventory().setItem(3, net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION, net.minecraft.world.item.alchemy.Potions.SWIFTNESS));
+		WeaponSlot.Result result = WeaponSlot.hotkey(player, 3, true);
+		boolean fast = player.hasEffect(net.minecraft.world.effect.MobEffects.SPEED);
+		RpgTestSupport.result("potionIsDrunkAtOnce", "result=" + result + " fast=" + fast + " slot3=" + player.getInventory().getItem(3));
+		helper.assertTrue(result == WeaponSlot.Result.USED && fast, "result " + result + ", speed " + fast);
+		helper.assertTrue(player.getInventory().getItem(3).is(Items.GLASS_BOTTLE), "slot 3 holds " + player.getInventory().getItem(3));
+		helper.assertTrue(stillArmed(player), "the weapon is not back in hand");
 		helper.succeed();
 	}
 
@@ -184,9 +166,4 @@ public final class QuickbarModeGameTest {
 		return player.getInventory().getSelectedSlot() == SLOT && player.getMainHandItem().is(Items.IRON_AXE);
 	}
 
-	private static void tick(final ServerPlayer player, final int ticks) {
-		for (int i = 0; i < ticks; i++) {
-			player.doTick();
-		}
-	}
 }

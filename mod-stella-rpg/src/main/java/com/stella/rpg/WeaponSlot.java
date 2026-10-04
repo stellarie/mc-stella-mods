@@ -33,7 +33,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 /**
  * The weapon slot is inventory index {@link #SLOT}. While {@code selected} is that index, vanilla reads the main hand
  * from it, so attack, use, dice, and other mods need no redirect. In quick bar mode a hotkey asks the server for an
- * action on its slot, and the weapon stays in hand. Only eating holds another item, and only while the key is down.
+ * action on its slot, and the weapon stays in hand. Food and potions are eaten or drunk at once.
  */
 public final class WeaponSlot {
 	/** The last index, so pickups fill it last. */
@@ -184,8 +184,15 @@ public final class WeaponSlot {
 			select(player, SLOT);
 			return result.consumesAction() ? Result.USED : Result.NO_EFFECT;
 		}
-		EATING.put(player.getUUID(), index);
-		return Result.EATING;
+		// Food and potions finish at once in quick bar mode.
+		ItemStack used = player.getUseItem();
+		ItemStack left = used.finishUsingItem(player.level(), player);
+		if (left != used) {
+			player.setItemInHand(InteractionHand.MAIN_HAND, left);
+		}
+		player.stopUsingItem();
+		select(player, SLOT);
+		return Result.USED;
 	}
 
 	/** Vanilla order: entity, then block, then air. */
