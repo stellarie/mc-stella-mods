@@ -23,8 +23,8 @@ public class SovereignScaleGameTest {
 	/** Vanilla's small fireball damage; the Sovereign's deals half of it before the level factor. */
 	static final float VANILLA_FIREBALL = 5.0F;
 	static final double TOLERANCE = 0.05;
-	/** A level-0 player in the raid: the floor plus the bonus. */
-	static final int LEVEL = BlazeSovereign.LEVEL_FLOOR + BlazeSovereign.LEVEL_BONUS;
+	/** A level-0 player in a normal raid: the mode's minimum plus the bonus. */
+	static final int LEVEL = RaidInstance.MIN_LEVEL_NORMAL + BlazeSovereign.LEVEL_BONUS;
 
 	/** Runs the real small-fireball impact on a victim without flying it there. */
 	static final class Striker extends SmallFireball {
@@ -64,13 +64,14 @@ public class SovereignScaleGameTest {
 		int risen = ThreatState.level(blaze);
 		high.experienceLevel = 10;
 		int floored = BlazeSovereign.threatLevel(raid);
-		int empty = BlazeSovereign.threatLevel(List.of());
-		NetherTestSupport.result("sovereignLevel", "best=" + best + " risen=" + risen + " floored=" + floored + " empty=" + empty);
+		int empty = BlazeSovereign.threatLevel(List.of(), RaidMode.NORMAL);
+		int emptyHard = BlazeSovereign.threatLevel(List.of(), RaidMode.HARD);
+		NetherTestSupport.result("sovereignLevel", "best=" + best + " risen=" + risen + " floored=" + floored + " empty=" + empty + " emptyHard=" + emptyHard);
 		blaze.discard();
 		NetherTestSupport.leave(helper, high);
 		NetherTestSupport.leave(helper, low);
-		helper.assertTrue(best == 90 && risen == 90 && floored == 60 && empty == 60,
-			"levels: best " + best + ", risen " + risen + ", floored " + floored + ", empty " + empty);
+		helper.assertTrue(best == 90 && risen == 90 && floored == LEVEL && empty == LEVEL && emptyHard == RaidInstance.MIN_LEVEL_HARD + BlazeSovereign.LEVEL_BONUS,
+			"levels: best " + best + ", risen " + risen + ", floored " + floored + ", empty " + empty + ", empty hard " + emptyHard);
 		helper.succeed();
 	}
 
@@ -150,5 +151,23 @@ public class SovereignScaleGameTest {
 				helper.assertTrue(Math.abs(lost - expected) < TOLERANCE && live == LEVEL, "the fireball took " + lost + " of " + expected + " at level " + live);
 			})
 			.thenSucceed();
+	}
+
+	@GameTest(environment = "mod-stella-nether-test:sovereign_scale_hard", maxTicks = 100)
+	public void levelFollowsTheHardMinimum(final GameTestHelper helper) {
+		NetherTestSupport.fresh(helper);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
+		MinecraftServer server = helper.getLevel().getServer();
+		ServerLevel raid = (ServerLevel) player.level();
+		Blaze blaze = BlazeSovereign.rise(raid, BlazeSovereignGameTest.arena(raid, server, 8));
+		int risen = ThreatState.level(blaze);
+		player.experienceLevel = 70;
+		int better = BlazeSovereign.threatLevel(raid);
+		NetherTestSupport.result("sovereignHardLevel", "risen=" + risen + " better=" + better);
+		blaze.discard();
+		NetherTestSupport.leave(helper, player);
+		int hard = RaidInstance.MIN_LEVEL_HARD + BlazeSovereign.LEVEL_BONUS;
+		helper.assertTrue(risen == hard && better == 70 + BlazeSovereign.LEVEL_BONUS, "hard levels: risen " + risen + " of " + hard + ", with a level-70 player " + better);
+		helper.succeed();
 	}
 }

@@ -275,13 +275,14 @@ public final class RaidTravel {
 	 * player was sent.
 	 */
 	public static boolean chooseFromWindow(final ServerPlayer player, final PortalWindow.Option option) {
-		WINDOW_OPEN.remove(player.getUUID());
+		BlockPos opened = WINDOW_OPEN.remove(player.getUUID());
 		RaidState state = RaidInstance.state(player.level().getServer());
 		if (!option.open(state.active() ? state.mode() : null)) {
 			return false;
 		}
 		choose(player, option.choice(), option.mode());
-		BlockPos portal = portalAt(player);
+		// The player may have slid off the block by now.
+		BlockPos portal = opened != null && player.level().getBlockState(opened).is(Blocks.NETHER_PORTAL) ? opened : portalAt(player);
 		if (portal == null || !(player.level() instanceof ServerLevel level)) {
 			return false;
 		}

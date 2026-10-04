@@ -59,6 +59,9 @@ public final class SovereignSpecials {
 	public static final double SPIRAL_REACH = 32.0;
 
 	public static final int BROOD_SIZE = 5;
+	/** Marks a Sovereign's brood blaze, so the raid gives it a level of its own when it loads. */
+	public static final net.fabricmc.fabric.api.attachment.v1.AttachmentType<Boolean> BROOD_MARK =
+		net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry.createPersistent(StellaNether.id("brood"), com.mojang.serialization.Codec.BOOL);
 	private static final double BROOD_RING = 3.0;
 
 	public static final double DIVE_RISE = 8.0;
@@ -509,8 +512,9 @@ public final class SovereignSpecials {
 			if (child == null) {
 				continue;
 			}
-			// A brood is ordinary blazes: the tag keeps the mobs mod's elite and boss rolls off them.
+			// Ordinary blazes: the tag keeps elite and boss rolls off while they load.
 			child.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
+			child.setAttached(BROOD_MARK, true);
 			child.snapTo(blaze.getX() + Math.cos(angle) * BROOD_RING, blaze.getY() + 0.5, blaze.getZ() + Math.sin(angle) * BROOD_RING, 0.0F, 0.0F);
 			child.setTarget(cast.target);
 			if (raid.addFreshEntity(child)) {
