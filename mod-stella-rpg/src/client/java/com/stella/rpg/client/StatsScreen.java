@@ -50,8 +50,10 @@ public final class StatsScreen extends Screen {
 	private static final int PLUS_X = 128;
 	private static final int RIGHT_X = 152;
 	private static final int RIGHT_Y = 27;
-	private static final int RIGHT_STEP = 14;
-	private static final int POINTS_GAP = 12;
+	private static final int RIGHT_STEP = 13;
+	/** Atk, Matk, M.Res, M.Pen, A.Pen, Def, Crit, Aspd. */
+	private static final int DERIVED_LINES = 8;
+	private static final int POINTS_GAP = 3;
 	private static final int MESSAGE_Y = 154;
 	private static final int MESSAGE_WIDTH = 124;
 	private static final int ACTION_WIDTH = 110;
@@ -149,7 +151,7 @@ public final class StatsScreen extends Screen {
 			this.font,
 			Component.translatable("screen.mod-stella-rpg.points", data.unspent() - this.pending.total()),
 			this.leftPos + RIGHT_X,
-			this.topPos + RIGHT_Y + 5 * RIGHT_STEP + POINTS_GAP,
+			this.topPos + RIGHT_Y + DERIVED_LINES * RIGHT_STEP + POINTS_GAP,
 			TEXT,
 			false
 		);

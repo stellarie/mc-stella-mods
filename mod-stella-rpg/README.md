@@ -172,7 +172,7 @@ Outgoing damage from a player or a mob follows these rules:
 1. Melee (`minecraft:player_attack`, `minecraft:mob_attack`, `minecraft:mob_attack_no_aggro`) adds `roll * charge`.
    For a player, `charge = 0.2 + a * a * 0.8`, where `a` is the attack strength at the swing. A mob uses charge 1.0.
 2. A projectile from `#minecraft:is_projectile` that the attacker owns adds the DEX roll.
-3. A mob with `minecraft:indirect_magic` damage deals `RpgSpells.spellDamage(mob, 50 * amount)`: one point is 50 percent of the spell base at the mob's threat level.
+3. A mob with `minecraft:indirect_magic` damage keeps its amount, which the mobs mod already scaled by the mob's level, times `1 + MATK percent` of the mob, times the level-gap factor. A witch's potion therefore hits like a mob attack of its level, not like a player spell.
    This rule adds no dice. The spell can crit (see Magic model). A servant with the entity tag `mod-stella-spells.summoned` keeps its amount unchanged,
    because the spells mod computes it from the master's MATK.
 4. Any other source is unchanged, including player spells and Thorns.
@@ -273,7 +273,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   A die is a string such as `"1d6"`. A bad value logs one error and uses the default for that key.
 - `enchant_stats` and `effect_stats` map a name to a stat map from -1024 to 1024. `effect_stats` entries take `"per_level": false` for a flat effect.
 - `crit_reduction` is a curve key like the others. `dex_max_roll`, `int_max_roll`, and `magic_defense` are retired and ignored.
-- `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50,
+- `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50 (no longer read),
   `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, `resist_cap` 0.9, `armor_pen_base` 0.25, and `armor_pen_cap` 0.75.
   A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
 - `health_scale` is a number from 1 to 1000. The default is 15.
