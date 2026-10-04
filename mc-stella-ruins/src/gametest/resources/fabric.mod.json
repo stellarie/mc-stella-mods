@@ -23,7 +23,12 @@
 			"com.stella.ruins.reward.RuinSetsGameTest",
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",
-			"com.stella.ruins.reward.RuinGearGameTest"
+			"com.stella.ruins.reward.RuinGearGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingLayoutGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRiteGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingMobGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRewardGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingSiteGameTest"
 		]
 	},
 	"depends": {

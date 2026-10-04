@@ -143,3 +143,35 @@ gradlew.bat runGameTest --rerun -PwithStellaMobs=true
 
 The second run builds `../mod-stella-mobs` and loads its jar into the game tests only. The tests for a present
 sibling run in that mode. The tests for an absent sibling run in the first mode.
+
+## Proving Grounds
+
+The proving grounds are a large ruined arena on the surface. The footprint is 48 x 20 x 48 and the package is
+`com.stella.ruins.site.provinggrounds`. The sketch is `mc-stella-ruins-proving-grounds.work` on the blackboard.
+
+- **The contest.** A player rings the gong in the south gate. That arms the three lecterns on the herald stage for
+  6000 ticks. A lectern picks tier I, II or III: 5, 7 or 10 waves. The core records the tier, the main portcullis
+  drops, and wave 1 spawns. Each wave starts 100 ticks after the last one dies. A cleared last wave opens the vault and
+  fills it from `chests/proving_grounds_<tier>`. Each cleared wave also plays a roar and fireworks over the stands.
+- **Claims.** Each tier claims for one day on its own, in `ProvingData`. The framework core keeps one claim for a
+  whole site, which would let tier I lock tiers II and III. So `TierObjective` never completes: the core stays active.
+  The `reset_days` config entry for `proving_grounds` sets the delay.
+- **Failure.** A run player who dies, or who stays 600 ticks outside the box grown by 2 blocks on the sides and
+  below, fails the run. The wave mobs vanish, the portcullis rises, and the tier can start again. No claim is set.
+- **Hazards.** Tiers II and III light 4 braziers on the wall. Tier III opens 2 fire grates for 60 ticks every 400
+  ticks, the first 200 ticks after the start. The objective runs every 20 ticks, so a hazard may lag by up to 20.
+- **The arena.** The seed picks a round or octagonal floor of radius 16 to 20, 4 to 8 cover pillars, 1 to 3 floor
+  features, 2 to 4 gates (the south gate always, the others barred), stand decay of 20 to 50 percent, and banner colors.
+  The lowest two courses of the wall never decay.
+- **Mobs.** Gladiator (vindicator), Retiarius (drowned; a hit slows for 40 ticks), Arena Hound (wolf, always angry),
+  Pit Beast (ravager, tier III wave 10 only). Spawns use markers of the kind and reuse them in order.
+- **Rewards.** `champion_token`, `net_fiber` and `hound_fang` craft the Champion set. Two pieces add 10 percent
+  attack damage. Four pieces add 10 percent attack speed and Strength I for 100 ticks after each kill. The unique is the
+  Gladius of the Crowd: each consecutive hit adds 6 percent damage to the next, up to 5 stacks; 60 ticks without a
+  hit reset it.
+- **Art.** `tools/specs/proving_grounds.json` draws the item and armor textures.
+
+Known limits:
+
+- The roar, the fireworks, the look of the arena and the gong sound are for a client to judge.
+- The hatch only bursts with smoke. It does not open, because a Pit Beast would fall in.
