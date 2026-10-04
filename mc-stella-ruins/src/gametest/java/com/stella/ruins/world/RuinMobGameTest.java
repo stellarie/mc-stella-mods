@@ -105,7 +105,7 @@ public class RuinMobGameTest {
 				victim[0] = EntityTypes.PIG.create(arena.level(), EntitySpawnReason.EVENT);
 				victim[0].addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
 				victim[0].snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
-				// A ruin mob hits at its level, which kills a pig outright, and AFTER_DAMAGE never fires for a death.
+				// With the mobs mod a ruin mob hits at its level and may kill even this pig; the ability hears the blow either way.
 				victim[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
 				victim[0].setHealth(1_000_000.0F);
 				arena.level().addFreshEntity(victim[0]);
@@ -119,6 +119,24 @@ public class RuinMobGameTest {
 			victim[0].discard();
 			arena.release();
 		}));
+	}
+
+	@GameTest(maxTicks = 6000)
+	public void aKillingBlowIsHeardByTheAbilityOnce(final GameTestHelper helper) {
+		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
+			Mob mob = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
+			mob.setNoAi(true);
+			Pig victim = EntityTypes.PIG.create(arena.level(), EntitySpawnReason.EVENT);
+			victim.addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
+			victim.snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
+			victim.setHealth(1.0F);
+			arena.level().addFreshEntity(victim);
+			int before = WorldTestInit.ABILITY_HITS.get();
+			victim.hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob), 1_000_000.0F);
+			helper.assertTrue(!victim.isAlive(), "the victim survived the blow");
+			helper.assertTrue(WorldTestInit.ABILITY_HITS.get() == before + 1, "the ability heard " + (WorldTestInit.ABILITY_HITS.get() - before) + " hits for a killing blow, not 1");
+			mob.discard();
+		});
 	}
 
 	@GameTest(maxTicks = 6000)
