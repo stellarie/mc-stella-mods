@@ -143,40 +143,44 @@ public final class RefineSpecials {
 		return equippable == null ? null : equippable.assetId().orElse(null);
 	}
 
-	/** How long a hit from the weapon keeps its target alight, in ticks. */
-	public static int searingTicks(final ItemStack stack) {
-		return Refine.grade(stack) == Refine.Grade.WEAPON_4 ? RefineEffects.NETHERITE_SEARING_TICKS : RefineEffects.SEARING_TICKS;
-	}
-
 	/** The tooltip line for an effect: its name, a colon, and what it does. */
 	public static String describe(final Special special, final ItemStack stack) {
+		double tier = RefineTier.factor(stack);
 		return special.title + ": " + switch (special) {
-			case KEEN -> percent(RefineEffects.KEEN_CHANCE) + " chance to hit for " + RefineEffects.KEEN_MULTIPLIER + " times the damage";
-			case SPLINTER -> "hits bleed for " + percent(RefineEffects.SPLINTER_SHARE * 100) + " of the hit each second, " + RefineEffects.SPLINTER_SECONDS + " s";
-			case SEARING -> "hits set foes alight for " + searingTicks(stack) / 20 + " s";
-			case FROSTBITE -> "hits give Slowness II for " + RefineEffects.FROSTBITE_TICKS / 20 + " s";
+			case KEEN -> percent(RefineEffects.chance(RefineEffects.KEEN_CHANCE, tier)) + " chance to hit for " + RefineEffects.KEEN_MULTIPLIER + " times the damage";
+			case SPLINTER -> "hits bleed for " + percent(RefineEffects.SPLINTER_SHARE * tier * 100) + " of the hit each second, " + RefineEffects.SPLINTER_SECONDS + " s";
+			case SEARING -> "hits set foes alight for " + seconds(RefineEffects.ticks(RefineEffects.SEARING_TICKS, stack));
+			case FROSTBITE -> "hits give Slowness II for " + seconds(RefineEffects.ticks(RefineEffects.FROSTBITE_TICKS, stack));
 			case PIERCING -> "arrows pass through one more mob";
-			case RENDING -> "hits inflict Wither for " + RefineEffects.RENDING_TICKS / 20 + " s";
-			case ASCENDED -> "hits send a shockwave of " + percent(RefineEffects.SHOCKWAVE_SHARE * 100) + " of the hit";
-			case VOLLEY -> "each shot looses one more arrow at " + percent(RefineEffects.VOLLEY_SHARE * 100) + " damage";
-			case CLARITY -> "harmful effects on you last " + percent(RefineEffects.CLARITY_SHARE * 100) + " less";
-			case FORTITUDE -> "+" + percent(Refine.FORTITUDE_MULTIPLIER * 100) + " max health";
-			case STRIDE -> "+" + percent(Refine.STRIDE_MULTIPLIER * 100) + " movement speed";
-			case FEATHERFALL -> "-" + percent(RefineEffects.FEATHERFALL_SHARE * 100) + " fall damage";
-			case EVASION -> percent(RefineEffects.EVASION_CHANCE) + " chance to ignore a hit";
-			case RIPOSTE -> percent(RefineEffects.RIPOSTE_CHANCE) + " chance to reflect " + percent(RefineEffects.RIPOSTE_SHARE * 100) + " of a blow";
-			case VIGOR -> "+" + percent(Refine.VIGOR_MULTIPLIER * 100) + " max health";
-			case FORTUNE -> "+" + percent(RefineEffects.FORTUNE_SHARE * 100) + " experience from kills";
-			case BULWARK -> "-" + percent(RefineEffects.BULWARK_SHARE * 100) + " damage taken";
-			case EMBERGUARD -> "-" + percent(RefineEffects.EMBERGUARD_SHARE * 100) + " fire damage";
-			case THORNED -> "melee attackers take " + percent(RefineEffects.THORN_SHARE * 100) + " of the blow";
-			case BLESSED -> "restores " + percent(RefineEffects.BLESSING_SHARE * 100) + " of max health every 5 s";
-			case PARRY -> "a blocked melee hit sends " + percent(RefineEffects.parryShare(Refine.level(stack)) * 100) + " of the blocked damage back";
+			case RENDING -> "hits inflict Wither for " + seconds(RefineEffects.ticks(RefineEffects.RENDING_TICKS, stack));
+			case ASCENDED -> "hits send a shockwave of " + percent(RefineEffects.SHOCKWAVE_SHARE * tier * 100) + " of the hit";
+			case VOLLEY -> "each shot looses one more arrow at " + percent(RefineEffects.VOLLEY_SHARE * tier * 100) + " damage";
+			case CLARITY -> "harmful effects on you last " + percent(RefineEffects.CLARITY_SHARE * tier * 100) + " less";
+			case FORTITUDE -> "+" + percent(Refine.FORTITUDE_MULTIPLIER * tier * 100) + " max health";
+			case STRIDE -> "+" + percent(Refine.STRIDE_MULTIPLIER * tier * 100) + " movement speed";
+			case FEATHERFALL -> "-" + percent(RefineEffects.FEATHERFALL_SHARE * tier * 100) + " fall damage";
+			case EVASION -> percent(RefineEffects.chance(RefineEffects.EVASION_CHANCE, tier)) + " chance to ignore a hit";
+			case RIPOSTE -> percent(RefineEffects.chance(RefineEffects.RIPOSTE_CHANCE, tier)) + " chance to reflect " + percent(RefineEffects.RIPOSTE_SHARE * 100) + " of a blow";
+			case VIGOR -> "+" + percent(Refine.VIGOR_MULTIPLIER * tier * 100) + " max health";
+			case FORTUNE -> "+" + percent(RefineEffects.FORTUNE_SHARE * tier * 100) + " experience from kills";
+			case BULWARK -> "-" + percent(RefineEffects.BULWARK_SHARE * tier * 100) + " damage taken";
+			case EMBERGUARD -> "-" + percent(RefineEffects.EMBERGUARD_SHARE * tier * 100) + " fire damage";
+			case THORNED -> "melee attackers take " + percent(RefineEffects.THORN_SHARE * tier * 100) + " of the blow";
+			case BLESSED -> "restores " + percent(RefineEffects.BLESSING_SHARE * tier * 100) + " of max health every 5 s";
+			case PARRY -> "a blocked melee hit sends " + percent(RefineEffects.parryShare(stack) * 100) + " of the blocked damage back";
 		};
 	}
 
-	private static String percent(final double value) {
+	private static String seconds(final int ticks) {
+		return trim(ticks / 20.0) + " s";
+	}
+
+	private static String trim(final double value) {
 		double tenths = Math.round(value * 10) / 10.0;
-		return (tenths == Math.rint(tenths) ? String.valueOf((long) tenths) : String.valueOf(tenths)) + "%";
+		return tenths == Math.rint(tenths) ? String.valueOf((long) tenths) : String.valueOf(tenths);
+	}
+
+	private static String percent(final double value) {
+		return trim(value) + "%";
 	}
 }

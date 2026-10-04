@@ -69,6 +69,11 @@ public final class RefineStation {
 		return random.nextInt(100) < chancePercent;
 	}
 
+	/** The same odds for a chance that has a fraction. */
+	public static boolean fairRoll(final RandomSource random, final double chancePercent) {
+		return random.nextDouble() * 100.0 < chancePercent;
+	}
+
 	/** One refine of the piece in the open anvil's first slot. */
 	public static Result refine(final ServerPlayer player, final int containerId) {
 		if (!(player.containerMenu instanceof AnvilMenu menu) || menu.containerId != containerId) {
