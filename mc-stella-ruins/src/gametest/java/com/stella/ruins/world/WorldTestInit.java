@@ -3,6 +3,7 @@ package com.stella.ruins.world;
 import com.stella.ruins.StellaRuins;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -35,6 +36,15 @@ public final class WorldTestInit implements ModInitializer {
 	/** Hits the test kind ability heard, by attacker, so tests running side by side never count each other. */
 	static final java.util.Map<java.util.UUID, AtomicInteger> ABILITY_HITS = new java.util.concurrent.ConcurrentHashMap<>();
 
+	/** Fabric damage and death events seen by victim, so a test can show a hit raised one. */
+	static final java.util.Map<java.util.UUID, AtomicInteger> DAMAGE_EVENTS = new java.util.concurrent.ConcurrentHashMap<>();
+	static final java.util.Map<java.util.UUID, AtomicInteger> DEATH_EVENTS = new java.util.concurrent.ConcurrentHashMap<>();
+
+	static int count(final java.util.Map<java.util.UUID, AtomicInteger> events, final java.util.UUID id) {
+		AtomicInteger n = events.get(id);
+		return n == null ? 0 : n.get();
+	}
+
 	static int hitsOf(final Mob mob) {
 		AtomicInteger hits = ABILITY_HITS.get(mob.getUUID());
 		return hits == null ? 0 : hits.get();
@@ -61,6 +71,8 @@ public final class WorldTestInit implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> DAMAGE_EVENTS.computeIfAbsent(entity.getUUID(), id -> new AtomicInteger()).incrementAndGet());
+		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> DEATH_EVENTS.computeIfAbsent(entity.getUUID(), id -> new AtomicInteger()).incrementAndGet());
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			server.getPlayerList().setSimulationDistance(SIMULATION_DISTANCE);
 			server.getPlayerList().setViewDistance(SIMULATION_DISTANCE);

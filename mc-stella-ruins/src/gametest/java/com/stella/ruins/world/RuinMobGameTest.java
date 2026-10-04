@@ -121,6 +121,30 @@ public class RuinMobGameTest {
 	}
 
 	@GameTest(maxTicks = 6000)
+	public void aRuinMobMeleeHitOnAPlayerRaisesADamageEventAndIsHeardByTheAbilityWithASaneSize(final GameTestHelper helper) {
+		WorldTestSupport.inNearOriginArena(helper, WorldTestInit.surface, arena -> {
+			ServerLevel level = arena.level();
+			ServerPlayer player = arena.join(spawnSpot(arena).add(1.0, 0.0, 0.0));
+			WorldTestSupport.vulnerable(player);
+			player.damageCooldownTime = 0;
+			Mob mob = WorldTestInit.husk.spawn(level, spawnSpot(arena));
+			mob.setNoAi(true);
+			float before = player.getHealth();
+			boolean hit = mob.doHurtTarget(level, player);
+			float lost = before - player.getHealth();
+			int damageEvents = WorldTestInit.count(WorldTestInit.DAMAGE_EVENTS, player.getUUID());
+			int deathEvents = WorldTestInit.count(WorldTestInit.DEATH_EVENTS, player.getUUID());
+			WorldTestSupport.result("ruinMeleeHit", "mobsMod=" + mobsModLoaded() + " hit=" + hit + " healthLost=" + lost + " damageEvents=" + damageEvents + " deathEvents=" + deathEvents
+				+ " heard=" + WorldTestInit.hitsOf(mob) + " mobLevel=" + RuinLevels.of(mob) + " at=" + mob.blockPosition().toShortString());
+			helper.assertTrue(hit, "the melee hit did not land");
+			helper.assertTrue(damageEvents + deathEvents == 1, "the hit raised " + damageEvents + " damage and " + deathEvents + " death events, not 1");
+			helper.assertTrue(WorldTestInit.hitsOf(mob) == 1, "the ability heard " + WorldTestInit.hitsOf(mob) + " hits, not 1");
+			helper.assertTrue(lost > 0.0F && player.isAlive() && lost < player.getMaxHealth(), "the hit took " + lost + " health from " + player.getMaxHealth() + ", not a sane share");
+			mob.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 6000)
 	public void aKillingBlowIsHeardByTheAbilityOnce(final GameTestHelper helper) {
 		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
 			Mob mob = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
