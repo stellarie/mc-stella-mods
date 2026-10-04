@@ -26,7 +26,13 @@ import net.minecraft.world.phys.Vec3;
 
 /** Acceptance item 12, and the kit and drops of the four mobs. */
 public class DeepForgeMobGameTest {
+	static final String MOBS_MOD = "mod-stella-mobs";
 	static final int TICKS = 12000;
+
+	/** With the mobs mod a ruin mob keeps its own kit but also takes a level, so stats and hits can only be at least the kind's. */
+	static boolean mobsModLoaded() {
+		return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded(MOBS_MOD);
+	}
 	static final long SEED = 0xF0E6E700L;
 
 	static Vec3 spot(final ForgeTestSupport.Arena arena, final int dx) {
@@ -56,9 +62,16 @@ public class DeepForgeMobGameTest {
 			Husk control = target(level, spot(arena, -2));
 			control.hurtServer(level, level.damageSources().generic(), 1.0F);
 			helper.assertTrue(!control.isOnFire(), "a plain hit set the control on fire, so the check proves nothing");
-			victim.hurtServer(level, level.damageSources().mobAttack(imp), 1.0F);
+			DeepForgeMobs.imp.ability().onHurtTarget(imp, victim);
 			DeepForgeMobGameTest.result("impIgnites", "fireTicks=" + victim.getRemainingFireTicks() + " control=" + control.getRemainingFireTicks());
 			helper.assertTrue(victim.isOnFire() && victim.getRemainingFireTicks() >= DeepForgeMobs.IMP_FIRE_TICKS - 5, "the imp's target burns for " + victim.getRemainingFireTicks() + " ticks");
+			// The same through a real hit. Beside the mobs mod the hit scales with a level and may kill, and a death fires no hook.
+			victim.clearFire();
+			float before = victim.getHealth();
+			victim.hurtServer(level, level.damageSources().mobAttack(imp), 1.0F);
+			if (victim.isAlive() && victim.getHealth() < before) {
+				helper.assertTrue(victim.isOnFire(), "a real hit from the imp did not set its target on fire");
+			}
 			imp.discard();
 			victim.discard();
 			control.discard();
@@ -96,7 +109,12 @@ public class DeepForgeMobGameTest {
 				default -> 0.0F;
 			};
 			helper.assertTrue(expected > 0.0F, "the test world is peaceful, so a slam cannot be measured");
-			helper.assertTrue(Math.abs((nearBefore - near.getHealth()) - expected) < 0.01F, "the slam dealt " + (nearBefore - near.getHealth()) + " damage on " + level.getDifficulty() + ", not " + expected);
+			float dealt = nearBefore - near.getHealth();
+			if (mobsModLoaded()) {
+				helper.assertTrue(dealt >= expected - 0.01F, "the slam dealt " + dealt + " damage beside the mobs mod, under the base " + expected);
+			} else {
+				helper.assertTrue(Math.abs(dealt - expected) < 0.01F, "the slam dealt " + dealt + " damage on " + level.getDifficulty() + ", not " + expected);
+			}
 			helper.assertTrue(along > 1.0, "the slam pushed the player " + along + " blocks per tick away, not clear of the guardian");
 			helper.assertTrue(far.getHealth() == farBefore && far.getDeltaMovement().horizontalDistance() < 0.1, "a player nine blocks away was slammed");
 			guardian.discard();
@@ -139,9 +157,12 @@ public class DeepForgeMobGameTest {
 			helper.assertTrue(keeper.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.STONE_AXE) && keeper.getDropChances().byEquipment(EquipmentSlot.MAINHAND) == 0.0F, "the keeper's axe is missing or can drop");
 			helper.assertTrue(Math.abs(imp.getAttributeValue(Attributes.SCALE) - 0.6) < 1.0E-6, "imp scale " + imp.getAttributeValue(Attributes.SCALE));
 			helper.assertTrue(Math.abs(imp.getMaxHealth() - plainBlaze.getMaxHealth() * 0.8) < 1.0E-3, "imp health " + imp.getMaxHealth());
-			helper.assertTrue(Math.abs(golem.getAttributeValue(Attributes.SCALE) - 1.0) < 1.0E-6 && Math.abs(golem.getMaxHealth() - plainGolem.getMaxHealth()) < 1.0E-3, "golem differs from a plain golem");
-			helper.assertTrue(Math.abs(guardian.getAttributeValue(Attributes.SCALE) - 1.8) < 1.0E-6, "guardian scale " + guardian.getAttributeValue(Attributes.SCALE));
-			helper.assertTrue(Math.abs(guardian.getMaxHealth() - plainGolem.getMaxHealth() * 6.0) < 1.0E-3, "guardian health " + guardian.getMaxHealth());
+			boolean mods = mobsModLoaded();
+			helper.assertTrue(mods ? golem.getAttributeValue(Attributes.SCALE) >= 1.0 - 1.0E-6 && golem.getMaxHealth() >= plainGolem.getMaxHealth() - 1.0E-3
+				: Math.abs(golem.getAttributeValue(Attributes.SCALE) - 1.0) < 1.0E-6 && Math.abs(golem.getMaxHealth() - plainGolem.getMaxHealth()) < 1.0E-3,
+				"golem differs from a plain golem: scale " + golem.getAttributeValue(Attributes.SCALE) + " health " + golem.getMaxHealth() + " against " + plainGolem.getMaxHealth());
+			helper.assertTrue(mods ? guardian.getAttributeValue(Attributes.SCALE) >= 1.8 - 1.0E-6 : Math.abs(guardian.getAttributeValue(Attributes.SCALE) - 1.8) < 1.0E-6, "guardian scale " + guardian.getAttributeValue(Attributes.SCALE));
+			helper.assertTrue(mods ? guardian.getMaxHealth() >= plainGolem.getMaxHealth() * 6.0 - 1.0E-3 : Math.abs(guardian.getMaxHealth() - plainGolem.getMaxHealth() * 6.0) < 1.0E-3, "guardian health " + guardian.getMaxHealth());
 			helper.assertTrue(guardian.isCustomNameVisible() && !keeper.isCustomNameVisible(), "the boss name is not shown, or a keeper's is");
 			for (Mob mob : new Mob[] {keeper, imp, golem, guardian}) {
 				mob.setNoAi(true);
