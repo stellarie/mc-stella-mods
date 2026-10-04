@@ -103,7 +103,7 @@ inventory.
 
 ## Weapon slot
 
-The HUD hotbar is hidden. The inventory window shows a weapon slot above the shield slot. The nine hotkey slots stay as the bottom row of the inventory window.
+The vanilla hotbar stays on screen; a weapon box beside it shows the weapon slot and lights while the weapon is held. The inventory window shows a weapon slot above the shield slot. The nine hotkey slots stay as the bottom row of the inventory window.
 
 - The weapon slot is inventory index 35 (`WeaponSlot.SLOT`). While the selected index is 35, the main hand is the weapon slot.
   Attack, use, dice, attribute modifiers, and other mods read it through the vanilla main hand.
