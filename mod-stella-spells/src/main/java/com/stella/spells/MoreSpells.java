@@ -206,7 +206,7 @@ public final class MoreSpells {
 			return false;
 		}
 		target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, SpellNumbers.BLINDING_FLASH.durationTicks(modifiers), 0), caster);
-		target.addEffect(new MobEffectInstance(MobEffects.GLOWING, SpellNumbers.BLINDING_FLASH.extraTicks(modifiers), 0), caster);
+		SpellStatusApi.mark(target, SpellNumbers.BLINDING_FLASH.extraTicks(modifiers), caster);
 		return true;
 	}
 
@@ -215,7 +215,14 @@ public final class MoreSpells {
 			return false;
 		}
 		hurt(caster, target, RpgBridge.damage(caster, EMBER_DAMAGE, modifiers.powerMultiplier()));
-		target.igniteForTicks(SpellNumbers.EMBER_BRAND.durationTicks(modifiers));
+		// Fire boils the water off first, so a Soaked mob does not catch light on this cast.
+		if (target.hasEffect(SpellStatus.SOAKED)) {
+			target.removeEffect(SpellStatus.SOAKED);
+			return true;
+		}
+		int burn = SpellNumbers.EMBER_BRAND.durationTicks(modifiers);
+		target.igniteForTicks(burn);
+		SpellStatusApi.scorch(target, burn, caster);
 		return true;
 	}
 
@@ -279,8 +286,9 @@ public final class MoreSpells {
 	static boolean applyFrostNova(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		for (Mob hostile : hostiles(caster.level(), caster.position(), FROST_NOVA_RADIUS * modifiers.radiusMultiplier())) {
 			hurt(caster, hostile, RpgBridge.damage(caster, FROST_NOVA_DAMAGE, modifiers.powerMultiplier()));
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS,
-				SpellNumbers.FROST_NOVA.controlTicks(hostile, SpellNumbers.FROST_NOVA.durationTicks(modifiers)), FROST_NOVA_SLOW_AMPLIFIER), caster);
+			int slow = SpellNumbers.FROST_NOVA.controlTicks(hostile, SpellNumbers.FROST_NOVA.durationTicks(modifiers));
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, slow, FROST_NOVA_SLOW_AMPLIFIER), caster);
+			SpellStatusApi.chill(hostile, slow, SpellStatusApi.CHILL_FREEZE_TICKS, caster);
 		}
 		return true;
 	}

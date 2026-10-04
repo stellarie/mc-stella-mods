@@ -188,7 +188,7 @@ public final class SpellStorms {
 			EXTRA_RECORDERS.forEach(extra -> extra.arced(strike.caster(), fromId, target.getUUID(), particles, now));
 		}
 		target.damageCooldownTime = 0;
-		target.hurtServer(strike.level(), SpellCasting.spellSource(strike.caster()), strike.damage());
+		target.hurtServer(strike.level(), SpellCasting.spellSource(strike.caster()), strike.damage() * SpellStatusApi.lightningFactor(target));
 		recorder.struck(strike.caster(), target.getUUID(), now);
 		EXTRA_RECORDERS.forEach(extra -> extra.struck(strike.caster(), target.getUUID(), now));
 	}
