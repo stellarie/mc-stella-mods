@@ -124,32 +124,4 @@ public class RaidMobRulesGameTest {
 		helper.assertTrue(players >= 2 && scrolls == players + RaidDrops.SOVEREIGN_EXTRA_SCROLLS, players + " players, " + scrolls + " scrolls");
 		helper.succeed();
 	}
-
-	static void strengthByMode(final GameTestHelper helper, final RaidMode mode, final double expected, final String name) {
-		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, mode);
-		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(2.0, 0.0, 0.0));
-		helper.succeedWhen(() -> {
-			helper.assertTrue(NetherGameTestInit.LOADED_IN_RAID.contains(mob.getUUID()), "the mob has not loaded yet");
-			AttributeModifier health = mob.getAttribute(Attributes.MAX_HEALTH).getModifier(RaidInstance.MODE_STRENGTH_ID);
-			AttributeModifier damage = mob.getAttribute(Attributes.ATTACK_DAMAGE).getModifier(RaidInstance.MODE_STRENGTH_ID);
-			boolean full = Math.abs(mob.getHealth() - mob.getMaxHealth()) < 0.01;
-			NetherTestSupport.result(name, "health=" + (health == null ? null : health.amount()) + " damage=" + (damage == null ? null : damage.amount()) + " full=" + full);
-			helper.assertTrue(health != null && damage != null && Math.abs(health.amount() - (expected - 1.0)) < 1.0E-9
-				&& Math.abs(damage.amount() - (expected - 1.0)) < 1.0E-9 && health.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL && full,
-				mode + " raid mob health=" + health + " damage=" + damage + " full=" + full);
-			mob.discard();
-			NetherTestSupport.leave(helper, player);
-		});
-	}
-
-	@GameTest(environment = "mod-stella-nether-test:strength_normal", maxTicks = 400)
-	public void normalRaidMobsHaveAQuarterMoreHealthAndDamage(final GameTestHelper helper) {
-		strengthByMode(helper, RaidMode.NORMAL, RaidInstance.NORMAL_STRENGTH, "strengthNormal");
-	}
-
-	@GameTest(environment = "mod-stella-nether-test:strength_hard", maxTicks = 400)
-	public void hardRaidMobsHaveThreeQuartersMoreHealthAndDamage(final GameTestHelper helper) {
-		strengthByMode(helper, RaidMode.HARD, RaidInstance.HARD_STRENGTH, "strengthHard");
-	}
 }

@@ -1,5 +1,6 @@
 package com.stella.tower;
 
+import com.stella.mobs.StellaMobs;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -153,9 +154,14 @@ public final class TowerBuffs {
 			if (source.getEntity() instanceof LivingEntity attacker && attacker != entity && attacker.isAlive()) {
 				float back = (float) (taken * Math.min(THORNS_CAP, THORNS_PER_LEVEL * level(state.floor())));
 				REFLECTING.set(true);
+				// Off while it hits back: the mobs mod would scale the returned blow by the level again.
+				boolean selfScaled = entity.removeTag(StellaMobs.SELF_SCALED_TAG);
 				try {
 					attacker.hurtServer(level, entity.damageSources().thorns(entity), back);
 				} finally {
+					if (selfScaled) {
+						entity.addTag(StellaMobs.SELF_SCALED_TAG);
+					}
 					REFLECTING.set(false);
 				}
 			}
@@ -235,10 +241,7 @@ public final class TowerBuffs {
 			return List.of();
 		}
 		List<MobBuff> pin = PINNED.get(state.floor());
-		List<MobBuff> buffs = pin != null ? pin : mobBuffs(level.getSeed(), state.floor());
-		// What a Holy rune has struck off stays off.
-		List<MobBuff> stripped = RuneEffects.strippedFrom(mob);
-		return stripped.isEmpty() ? buffs : buffs.stream().filter(buff -> !stripped.contains(buff)).toList();
+		return pin != null ? pin : mobBuffs(level.getSeed(), state.floor());
 	}
 
 	/** How much a buffed mob's extra health divides each hit it takes. */
@@ -287,14 +290,8 @@ public final class TowerBuffs {
 		for (int floor : occupied.keySet()) {
 			for (Mob mob : tower.getEntitiesOfClass(Mob.class, TowerMobs.room(floor), mob -> mob.isAlive() && TowerMobs.stateOf(mob) != null)) {
 				int own = TowerMobs.stateOf(mob).floor();
-				// Void armor halves a boon given near its wearer; a full dose from before gives way at once.
-				boolean dampened = RuneGuards.dampened(mob);
 				for (MobBuff buff : mobBuffsOf(mob)) {
 					if (buff.effect() != null) {
-						MobEffectInstance held = mob.getEffect(buff.effect());
-						if (dampened && held != null && held.isAmbient() && held.getAmplifier() > buff.amplifier(own) / 2) {
-							mob.removeEffect(buff.effect());
-						}
 						mob.addEffect(new MobEffectInstance(buff.effect(), DURATION_TICKS, buff.amplifier(own), true, true));
 					}
 				}

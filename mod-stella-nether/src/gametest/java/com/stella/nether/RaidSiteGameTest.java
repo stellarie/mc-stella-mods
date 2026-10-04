@@ -14,7 +14,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 
 /**
- * Every run's arrival lies within reach of both a fortress and a bastion. The check scans every chunk in
+ * Every run's arrival lies within reach of a fortress start. The check scans every chunk in
  * reach for a structure start, so it does not lean on the site search it measures.
  */
 public class RaidSiteGameTest {
@@ -41,7 +41,7 @@ public class RaidSiteGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:sites", maxTicks = 100)
-	public void everyRunArrivesWithinReachOfAFortressAndABastion(final GameTestHelper helper) {
+	public void everyRunArrivesWithinSixtyFourBlocksOfItsFortressStart(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = NetherTestSupport.raid(helper);
 		int within = 0;
@@ -49,15 +49,16 @@ public class RaidSiteGameTest {
 		for (int i = 0; i < RUNS; i++) {
 			NetherTestSupport.fresh(helper);
 			BlockPos arrival = RaidInstance.arrival(server);
-			double fortress = nearestStart(raid, BuiltinStructures.FORTRESS, arrival);
-			double bastion = nearestStart(raid, BuiltinStructures.BASTION_REMNANT, arrival);
-			runs.append(String.format(" run%d=%.0f/%.0f", RaidInstance.state(server).run(), fortress, bastion));
-			if (fortress <= RaidInstance.STRUCTURE_REACH && bastion <= RaidInstance.STRUCTURE_REACH) {
+			BlockPos fortressStart = RaidInstance.site(server).fortress();
+			double toSite = RaidSites.gap(arrival, fortressStart);
+			double toNearest = nearestStart(raid, BuiltinStructures.FORTRESS, arrival);
+			runs.append(String.format(" run%d=%.0f/%.0f", RaidInstance.state(server).run(), toSite, toNearest));
+			if (toSite <= RaidInstance.FORTRESS_REACH && toNearest <= RaidInstance.FORTRESS_REACH) {
 				within++;
 			}
 		}
-		NetherTestSupport.result("structuresInReach", "within=" + within + " of=" + RUNS + runs);
-		helper.assertTrue(within == RUNS, within + " of " + RUNS + " runs had both structures in reach:" + runs);
+		NetherTestSupport.result("arrivalNearFortress", "within=" + within + " of=" + RUNS + " site/nearest=" + runs);
+		helper.assertTrue(within == RUNS, within + " of " + RUNS + " runs arrived within " + RaidInstance.FORTRESS_REACH + " blocks of a fortress start:" + runs);
 		helper.succeed();
 	}
 }

@@ -13,7 +13,6 @@
 			"com.stella.nether.RaidLifecycleGameTest",
 			"com.stella.nether.RaidEnrageGameTest",
 			"com.stella.nether.RaidSiteGameTest",
-			"com.stella.nether.RaidThreatGameTest",
 			"com.stella.nether.BlazeSovereignGameTest",
 			"com.stella.nether.SovereignSpecialsGameTest",
 			"com.stella.nether.SpoilsGameTest",
@@ -33,7 +32,8 @@
 			"com.stella.nether.PortalWindowGameTest",
 			"com.stella.nether.RaidSpawnsGameTest",
 			"com.stella.nether.RaidCastersGameTest",
-			"com.stella.nether.SovereignScaleGameTest"
+			"com.stella.nether.SovereignScaleGameTest",
+			"com.stella.nether.RaidLevelGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

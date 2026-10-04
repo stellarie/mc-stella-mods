@@ -29,7 +29,7 @@ public class RuneItem extends Item {
 	) {
 		RuneData rune = stack.get(TowerItems.RUNE_DATA);
 		if (rune != null) {
-			TowerRunes.describe(rune, lines);
+			TowerRunes.describe(rune, RuneStats::local, lines);
 		}
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.how", TowerRunes.EMERALDS).withStyle(ChatFormatting.DARK_GRAY));
 	}

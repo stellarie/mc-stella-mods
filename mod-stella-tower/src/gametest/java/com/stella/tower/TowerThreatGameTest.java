@@ -35,20 +35,14 @@ public class TowerThreatGameTest {
 	}
 
 	@GameTest
-	public void healthAndDamageKeepGrowingPastTheEnd(final GameTestHelper helper) {
+	public void damageKeepsGrowingPastTheEnd(final GameTestHelper helper) {
 		int end = (int) TowerCurve.END;
-		double healthAtEnd = TowerCurve.health(20.0, end);
-		double healthBeyond = TowerCurve.health(20.0, end + 100);
 		double damageAtEnd = TowerCurve.damage(3.0, end);
 		double damageBeyond = TowerCurve.damage(3.0, end + 100);
-		double expectedHealth = 20.0 * TowerCurve.HEALTH_MAX + TowerCurve.HEALTH_PER_FLOOR * end;
 		double expectedDamage = 3.0 * TowerCurve.DAMAGE_MAX + TowerCurve.DAMAGE_PER_FLOOR * end;
-		TowerTestSupport.result("threatGrowth", "healthAtEnd=" + healthAtEnd + " healthBeyond=" + healthBeyond
-			+ " damageAtEnd=" + damageAtEnd + " damageBeyond=" + damageBeyond);
-		helper.assertTrue(Math.abs(healthAtEnd - expectedHealth) < EPSILON && Math.abs(damageAtEnd - expectedDamage) < EPSILON,
-			"floor " + end + " gives health " + healthAtEnd + " and damage " + damageAtEnd);
-		helper.assertTrue(Math.abs(healthBeyond - healthAtEnd - TowerCurve.HEALTH_PER_FLOOR * 100) < EPSILON
-			&& Math.abs(damageBeyond - damageAtEnd - TowerCurve.DAMAGE_PER_FLOOR * 100) < EPSILON, "past the end the floors stop growing");
+		TowerTestSupport.result("threatGrowth", "damageAtEnd=" + damageAtEnd + " damageBeyond=" + damageBeyond);
+		helper.assertTrue(Math.abs(damageAtEnd - expectedDamage) < EPSILON, "floor " + end + " gives damage " + damageAtEnd);
+		helper.assertTrue(Math.abs(damageBeyond - damageAtEnd - TowerCurve.DAMAGE_PER_FLOOR * 100) < EPSILON, "past the end the floors stop growing");
 		helper.succeed();
 	}
 
@@ -61,10 +55,10 @@ public class TowerThreatGameTest {
 		double baseArmor = zombie.getAttributeValue(Attributes.ARMOR);
 		double baseSpeed = zombie.getAttributeValue(Attributes.MOVEMENT_SPEED);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.FIRE);
-		double health = zombie.getMaxHealth();
+		double health = zombie.getMaxHealth() * TowerMobs.stateOf(zombie).healthDivisor();
 		double armor = zombie.getAttributeValue(Attributes.ARMOR);
 		double speed = zombie.getAttributeValue(Attributes.MOVEMENT_SPEED);
-		double wantHealth = TowerCurve.health(baseHealth, floor);
+		double wantHealth = TowerTestSupport.floorHealth(baseHealth, floor, TowerRank.MOB);
 		double wantArmor = Math.min(TowerCurve.ARMOR_CAP, baseArmor + TowerCurve.armorBonus(floor));
 		double wantSpeed = baseSpeed * (1.0 + TowerCurve.speedBonus(floor));
 		TowerTestSupport.result("mobScaled", "health=" + health + "/" + wantHealth + " armor=" + armor + "/" + wantArmor
@@ -81,7 +75,7 @@ public class TowerThreatGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = (int) TowerCurve.END;
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
-		double want = TowerCurve.health(zombie.getAttributeBaseValue(Attributes.MAX_HEALTH), floor);
+		double want = TowerTestSupport.floorHealth(zombie.getAttributeBaseValue(Attributes.MAX_HEALTH), floor, TowerRank.MOB);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.ICE);
 		Vec3 at = TowerLayout.arrival(tower, TowerTestSupport.freshFloor());
 		TowerFloors.ensure(tower, TowerLayout.floorAt(net.minecraft.core.BlockPos.containing(at)));
@@ -102,7 +96,7 @@ public class TowerThreatGameTest {
 	@GameTest
 	public void aTowerMobHitsHarderOnAHigherFloor(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = 500;
+		int floor = 50;
 		int home = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, home);
 		Vec3 at = TowerLayout.arrival(tower, home);
@@ -110,14 +104,14 @@ public class TowerThreatGameTest {
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.DARK);
 		zombie.snapTo(at);
 		tower.addFreshEntity(zombie);
-		Pig pig = EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND);
+		Pig pig = TowerTestSupport.unrolled(EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND));
 		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		pig.setHealth(1000.0F);
 		pig.snapTo(at.add(2.0, 0.0, 0.0));
 		tower.addFreshEntity(pig);
 		pig.hurtServer(tower, zombie.damageSources().mobAttack(zombie), 3.0F);
 		float lost = 1000.0F - pig.getHealth();
-		double expected = TowerCurve.damage(3.0, floor);
+		double expected = 3.0 * com.stella.mobs.scaling.SelfScaled.factor(floor + 19);
 		TowerTestSupport.result("mobHitsHarder", "lost=" + lost + " expected=" + expected);
 		zombie.discard();
 		pig.discard();

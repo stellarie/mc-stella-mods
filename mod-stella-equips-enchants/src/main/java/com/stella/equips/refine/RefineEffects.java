@@ -39,14 +39,13 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class RefineEffects {
 	public static final int SEARING_TICKS = 60;
-	public static final int NETHERITE_SEARING_TICKS = 100;
 	public static final int RENDING_TICKS = 60;
 	public static final int FROSTBITE_TICKS = 40;
 	public static final int FROSTBITE_AMPLIFIER = 1;
 	public static final double SHOCKWAVE_RADIUS = 3.0;
 	public static final double SHOCKWAVE_SHARE = 0.4;
 	/** +7 weapon: the chance in percent that a hit strikes for {@link #KEEN_MULTIPLIER} times the damage. */
-	public static final int KEEN_CHANCE = 5;
+	public static final double KEEN_CHANCE = 5;
 	public static final float KEEN_MULTIPLIER = 1.5F;
 	/** +10 wood, stone, gold and copper weapon: a share of the hit, each second, for this many seconds. */
 	public static final double SPLINTER_SHARE = 0.02;
@@ -59,9 +58,9 @@ public final class RefineEffects {
 	/** +7 boots: the share of fall damage taken away. */
 	public static final double FEATHERFALL_SHARE = 0.30;
 	/** +10 leather, per piece: the chance in percent to ignore a hit. */
-	public static final int EVASION_CHANCE = 3;
+	public static final double EVASION_CHANCE = 3;
 	/** +10 chainmail, per piece: the chance in percent to reflect a share of a melee blow. */
-	public static final int RIPOSTE_CHANCE = 10;
+	public static final double RIPOSTE_CHANCE = 10;
 	public static final double RIPOSTE_SHARE = 0.20;
 	/** +10 gold, per piece: the share of experience from kills added. */
 	public static final double FORTUNE_SHARE = 0.05;
@@ -85,7 +84,7 @@ public final class RefineEffects {
 
 	/** Whether a chance effect fires, given its chance in percent; the test seam can force either side. */
 	public interface Roller {
-		boolean succeeds(RefineSpecials.Special special, LivingEntity entity, RandomSource random, int chancePercent);
+		boolean succeeds(RefineSpecials.Special special, LivingEntity entity, RandomSource random, double chancePercent);
 	}
 
 	private static final Roller FAIR = (special, entity, random, chance) -> RefineStation.fairRoll(random, chance);
@@ -143,8 +142,23 @@ public final class RefineEffects {
 		return level >= Refine.MILESTONE_FIRST ? PARRY_SHARE_FIRST : 0.0;
 	}
 
-	private static boolean roll(final RefineSpecials.Special special, final LivingEntity entity, final int chancePercent) {
-		return roller.succeeds(special, entity, entity.getRandom(), Math.min(100, chancePercent));
+	/** The share a shield sends back at its level, held to the whole blocked blow. */
+	public static double parryShare(final ItemStack shield) {
+		return Math.min(1.0, parryShare(Refine.level(shield)) * RefineTier.factor(shield));
+	}
+
+	private static boolean roll(final RefineSpecials.Special special, final LivingEntity entity, final double chancePercent) {
+		return roller.succeeds(special, entity, entity.getRandom(), Math.min(100.0, chancePercent));
+	}
+
+	/** A base chance in percent, scaled by a material factor and held to 100. */
+	public static double chance(final double base, final double factor) {
+		return Math.min(100.0, base * factor);
+	}
+
+	/** A base duration in ticks, scaled by the factor of the material of the stack. */
+	public static int ticks(final int base, final ItemStack stack) {
+		return (int) Math.round(base * RefineTier.factor(stack));
 	}
 
 	/** A refined bow's arrow carries the bow's bonus, once. */
@@ -159,7 +173,7 @@ public final class RefineEffects {
 			}
 			if (specials.contains(RefineSpecials.Special.VOLLEY) && arrow instanceof Arrow && arrow.level() instanceof ServerLevel world && arrow.getOwner() != null) {
 				VOLLEYS.add(new Volley(world, arrow.position(), arrow.getDeltaMovement(), arrow.getOwner(), bow.copy(), arrow.getPickupItemStackOrigin(),
-					baseDamage(arrow) * VOLLEY_SHARE, arrow.isCritArrow()));
+					baseDamage(arrow) * VOLLEY_SHARE * RefineTier.factor(bow), arrow.isCritArrow()));
 			}
 		}
 	}
@@ -212,7 +226,7 @@ public final class RefineEffects {
 		if (weapon.isEmpty() || !RefineSpecials.has(weapon, RefineSpecials.Special.KEEN)) {
 			return amount;
 		}
-		return roll(RefineSpecials.Special.KEEN, attacker, KEEN_CHANCE) ? amount * KEEN_MULTIPLIER : amount;
+		return roll(RefineSpecials.Special.KEEN, attacker, chance(KEEN_CHANCE, RefineTier.factor(weapon))) ? amount * KEEN_MULTIPLIER : amount;
 	}
 
 	/** The damage a victim finally takes, after the armour it wears has taken its share away. */
@@ -221,18 +235,18 @@ public final class RefineEffects {
 			return damage;
 		}
 		double factor = 1.0;
-		factor *= keep(BULWARK_SHARE, pieces(victim, RefineSpecials.Special.BULWARK));
+		factor *= keep(BULWARK_SHARE, weight(victim, RefineSpecials.Special.BULWARK));
 		if (source.is(DamageTypeTags.IS_FIRE)) {
-			factor *= keep(EMBERGUARD_SHARE, pieces(victim, RefineSpecials.Special.EMBERGUARD));
+			factor *= keep(EMBERGUARD_SHARE, weight(victim, RefineSpecials.Special.EMBERGUARD));
 		}
 		if (source.is(DamageTypeTags.IS_FALL)) {
-			factor *= keep(FEATHERFALL_SHARE, pieces(victim, RefineSpecials.Special.FEATHERFALL));
+			factor *= keep(FEATHERFALL_SHARE, weight(victim, RefineSpecials.Special.FEATHERFALL));
 		}
 		return (float) (damage * factor);
 	}
 
-	private static double keep(final double sharePerPiece, final int pieces) {
-		return Math.max(0.0, 1.0 - sharePerPiece * pieces);
+	private static double keep(final double sharePerPiece, final double weight) {
+		return Math.max(0.0, 1.0 - sharePerPiece * weight);
 	}
 
 	/** A harmful effect the wearer of Clarity is about to suffer, shortened. */
@@ -241,11 +255,11 @@ public final class RefineEffects {
 			|| effect.getEffect().value().isInstantaneous()) {
 			return effect;
 		}
-		int pieces = pieces(wearer, RefineSpecials.Special.CLARITY);
-		if (pieces == 0) {
+		double weight = weight(wearer, RefineSpecials.Special.CLARITY);
+		if (weight == 0.0) {
 			return effect;
 		}
-		int ticks = (int) Math.max(1L, Math.round(effect.getDuration() * keep(CLARITY_SHARE, pieces)));
+		int ticks = (int) Math.max(1L, Math.round(effect.getDuration() * keep(CLARITY_SHARE, weight)));
 		return new MobEffectInstance(effect.getEffect(), ticks, effect.getAmplifier(), effect.isAmbient(), effect.isVisible(), effect.showIcon());
 	}
 
@@ -254,11 +268,11 @@ public final class RefineEffects {
 		if (base <= 0 || !(killer instanceof LivingEntity wearer)) {
 			return base;
 		}
-		int pieces = pieces(wearer, RefineSpecials.Special.FORTUNE);
-		if (pieces == 0) {
+		double weight = weight(wearer, RefineSpecials.Special.FORTUNE);
+		if (weight == 0.0) {
 			return base;
 		}
-		double scaled = base * (1.0 + FORTUNE_SHARE * pieces);
+		double scaled = base * (1.0 + FORTUNE_SHARE * weight);
 		int whole = (int) scaled;
 		return whole + (wearer.getRandom().nextDouble() < scaled - whole ? 1 : 0);
 	}
@@ -268,8 +282,8 @@ public final class RefineEffects {
 		if (amount <= 0.0F || source.getEntity() == null || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
 			return true;
 		}
-		int pieces = pieces(wearer, RefineSpecials.Special.EVASION);
-		return pieces == 0 || !roll(RefineSpecials.Special.EVASION, wearer, EVASION_CHANCE * pieces);
+		double weight = weight(wearer, RefineSpecials.Special.EVASION);
+		return weight == 0.0 || !roll(RefineSpecials.Special.EVASION, wearer, EVASION_CHANCE * weight);
 	}
 
 	private static void afterDamage(final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked) {
@@ -285,11 +299,11 @@ public final class RefineEffects {
 		}
 		for (RefineSpecials.Special special : RefineSpecials.of(weapon, refine)) {
 			switch (special) {
-				case SEARING -> victim.igniteForTicks(RefineSpecials.searingTicks(weapon));
-				case SPLINTER -> bleed(victim, damage * (float) SPLINTER_SHARE);
-				case FROSTBITE -> victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, FROSTBITE_TICKS, FROSTBITE_AMPLIFIER), attacker);
-				case RENDING -> victim.addEffect(new MobEffectInstance(MobEffects.WITHER, RENDING_TICKS, 0), attacker);
-				case ASCENDED -> shockwave(level, attacker, victim, damage);
+				case SEARING -> victim.igniteForTicks(ticks(SEARING_TICKS, weapon));
+				case SPLINTER -> bleed(victim, damage * (float) (SPLINTER_SHARE * RefineTier.factor(weapon)));
+				case FROSTBITE -> victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, ticks(FROSTBITE_TICKS, weapon), FROSTBITE_AMPLIFIER), attacker);
+				case RENDING -> victim.addEffect(new MobEffectInstance(MobEffects.WITHER, ticks(RENDING_TICKS, weapon), 0), attacker);
+				case ASCENDED -> shockwave(level, attacker, victim, damage * (float) RefineTier.factor(weapon));
 				default -> {
 				}
 			}
@@ -350,9 +364,9 @@ public final class RefineEffects {
 			|| !(source.getDirectEntity() instanceof LivingEntity attacker) || attacker == wearer || !(wearer.level() instanceof ServerLevel level)) {
 			return;
 		}
-		float back = damage * (float) THORN_SHARE * pieces(wearer, RefineSpecials.Special.THORNED);
-		int riposte = pieces(wearer, RefineSpecials.Special.RIPOSTE);
-		if (riposte > 0 && roll(RefineSpecials.Special.RIPOSTE, wearer, RIPOSTE_CHANCE * riposte)) {
+		float back = damage * (float) (THORN_SHARE * weight(wearer, RefineSpecials.Special.THORNED));
+		double riposte = weight(wearer, RefineSpecials.Special.RIPOSTE);
+		if (riposte > 0.0 && roll(RefineSpecials.Special.RIPOSTE, wearer, RIPOSTE_CHANCE * riposte)) {
 			back += damage * (float) RIPOSTE_SHARE;
 		}
 		if (back > 0.0F) {
@@ -371,21 +385,21 @@ public final class RefineEffects {
 
 	/** One interval's mending for a wearer of Blessed armour: a share of max health, in vanilla units, for each piece. */
 	public static void blessOnce(final LivingEntity wearer) {
-		int blessed = pieces(wearer, RefineSpecials.Special.BLESSED);
-		if (blessed > 0 && wearer.isAlive() && wearer.getHealth() < wearer.getMaxHealth()) {
-			wearer.heal(HealthScale.vanillaMaxHealth(wearer) * (float) BLESSING_SHARE * blessed);
+		double blessed = weight(wearer, RefineSpecials.Special.BLESSED);
+		if (blessed > 0.0 && wearer.isAlive() && wearer.getHealth() < wearer.getMaxHealth()) {
+			wearer.heal(HealthScale.vanillaMaxHealth(wearer) * (float) (BLESSING_SHARE * blessed));
 		}
 	}
 
-	/** How many of the pieces an entity wears, each in its own slot, have the effect at their refine level. */
-	public static int pieces(final LivingEntity wearer, final RefineSpecials.Special special) {
-		int pieces = 0;
+	/** The summed material factor of the pieces an entity wears, each in its own slot, that have the effect at their refine level. */
+	public static double weight(final LivingEntity wearer, final RefineSpecials.Special special) {
+		double weight = 0.0;
 		for (EquipmentSlot slot : ARMOR_SLOTS) {
 			ItemStack piece = wearer.getItemBySlot(slot);
 			if (!piece.isEmpty() && Refine.isArmor(piece) && Refine.armorSlotOf(piece) == slot && RefineSpecials.has(piece, special)) {
-				pieces++;
+				weight += RefineTier.factor(piece);
 			}
 		}
-		return pieces;
+		return weight;
 	}
 }

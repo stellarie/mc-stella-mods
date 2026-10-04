@@ -18,6 +18,9 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 	productionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// The mobs mod sets a tower mob's level; settings.gradle substitutes its included build.
+	implementation "com.stella.mobs:mod-stella-mobs:${project.version}"
 }
 
 fabricApi {

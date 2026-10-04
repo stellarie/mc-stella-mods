@@ -41,6 +41,27 @@ public class PortalWindowGameTest {
 		helper.succeed();
 	}
 
+	@GameTest(environment = "mod-stella-nether-test:window_displaced", maxTicks = 100)
+	public void anOptionClickedAfterThePlayerDriftedOffThePortalStillSendsThemAtOnce(final GameTestHelper helper) {
+		NetherTestSupport.fresh(helper);
+		ServerPlayer player = inPortal(helper, 1.5, 1.5);
+		BlockPos portal = player.blockPosition();
+		int[] opened = new int[1];
+		boolean[] sent = new boolean[1];
+		withWindow(player, opened, () -> {
+			step(helper, player);
+			// The click comes a moment after the step; the player has slid out of the portal's reach by then.
+			player.teleportTo(helper.getLevel(), player.getX(), player.getY(), portal.getZ() + 3.5, java.util.Set.of(), 0.0F, 0.0F, true);
+			sent[0] = RaidTravel.chooseFromWindow(player, PortalWindow.Option.RAID_HARD);
+		});
+		boolean inRaid = player.level().dimension().equals(RaidTravel.RAID);
+		NetherTestSupport.result("windowDrifted", "opened=" + opened[0] + " sent=" + sent[0] + " inRaid=" + inRaid);
+		helper.getLevel().setBlock(portal, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+		NetherTestSupport.leave(helper, player);
+		helper.assertTrue(opened[0] == 1 && sent[0] && inRaid, "a drifted player's click: window opened " + opened[0] + " times, sent=" + sent[0] + ", in the raid=" + inRaid);
+		helper.succeed();
+	}
+
 	@GameTest(environment = "mod-stella-nether-test:window_closed", maxTicks = 100)
 	public void anOptionClosedByTheRunningRaidSendsNoOne(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);

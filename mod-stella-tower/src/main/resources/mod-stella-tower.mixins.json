@@ -10,8 +10,6 @@
 		"MobEffectInstanceAccessor",
 		"TowerExperienceMixin",
 		"TowerRuneAnvilMixin",
-		"RuneGuardEffectMixin",
-		"RuneGuardFrostMixin",
 		"EndermanTakeMixin",
 		"LivingEntityAccessor",
 		"GhostPhaseMixin",
