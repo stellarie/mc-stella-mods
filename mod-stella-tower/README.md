@@ -415,19 +415,27 @@ Scroll of Return. Also look at a chest in play to confirm it renders as a vanill
 
 Every planned floor is built with a double tower chest at each chest spot of its plan (at least 5, plus a guaranteed one on elite and boss floors), stocked once when the floor goes up. Example: `[BEHAVIOR] test=floorChestsOrdinary RESULT ... spots=6 chestBlocks=12 faults=0`.
 
-## Lost rooms (`LostRooms`)
+## Lost rooms (`LostRooms`, `LostCastles`)
 
-- A hut, `mod-stella-tower:lost_room`, generates in the overworld. The structure set
-  `mod-stella-tower:lost_rooms` spreads huts 24 chunks apart, at least 8, and keeps them 4 chunks
-  (64 blocks) from `minecraft:villages`. A start on water, or on ground that rises more than 2 blocks
-  across the hut's corners, is skipped.
-- The hut is a sealed box of tower wall, 6 long, 3 wide and 3 high inside, with an oak double door.
-  Inside: a blue portal, 1 wide and 2 high, lined with tower frame at the far end; a crafting table with
-  a lit candle; a chest of tower loot from a random floor up to 100; an anvil; a furnace; and cobwebs.
-- The hut's portal leads to the hut's own room, an instance in the tower dimension west of the floors.
+- A lost castle, `mod-stella-tower:lost_room`, generates in the overworld. The structure set
+  `mod-stella-tower:lost_rooms` spreads castles 24 chunks apart, at least 8, and keeps them 6 chunks
+  (96 blocks: 64 and a footprint) from `minecraft:villages`. A start on water, or on ground that falls more
+  than 6 blocks under the floor, is skipped.
+- The castle stands on the surface: its floor is one block above the highest ground under its 31 by 27
+  footprint, read every 3 blocks and at the edges. A foundation of tower wall fills down to the terrain.
+- The castle is a ruin of tower wall: a curtain wall with three breaches and merlons, an oak double door
+  for the gate under two tower lamps, three broken corner towers and a fallen fourth, a courtyard with moss,
+  rubble and a broken well, and two halls, each 9 by 9 and 5 high inside, under roofs with holes in them.
+  Vines hang down the walls; cobwebs fill the corners.
+- The west hall holds the blue portal, 1 wide and 2 high, lined with tower frame, and the crafting table
+  with a lit candle, an anvil, a furnace, and a chest. Three more chests stand in the east hall and in the
+  two front towers. Each chest holds tower loot from a random floor up to 100.
+- The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its courtyard,
+  each at the online players' average level less 5 to 15 more. They never rise again.
+- The castle's portal leads to its own room, an instance in the tower dimension west of the floors.
   No floor's spawning, progress, last floor, or keys reach it. The room is a hundredth floor's boss plan
   moved there: its hall, pyramid, walled safe room, workstations, chests, and twenty traps of every kind.
-  Its portal leads back beside the hut's portal. The way back is also recorded for the Void Key.
+  Its portal leads back beside the castle's portal. The way back is also recorded for the Void Key.
 - The room's level is the average experience level of the players online at its first entry, shown on
   arrival. It holds 24 mobs, each at that level less 5 to 15 more, and a boss at 15 more. Each mob takes
   the mobs mod's level path, as a floor's do. Its rewards, runes, and gear follow the matching floor
@@ -435,10 +443,16 @@ Every planned floor is built with a double tower chest at each chest spot of its
 - The boss pays what a floor's boss pays, its rune roll included, but no floor key. Its fall clears the
   room. Nothing respawns: a second entry, before or after the clear, finds the room as it was left.
 
+### Boss rewards
+
+- Every tower boss slain by a player, on a floor or in a lost room, also drops `128 + 2 x level`
+  emeralds, `4 to 8 + level / 20` diamonds, and one rune of a random element at its floor's tier. A lost
+  room boss's rune is of its room's level. The rune roll still runs on top.
+
 ### Manual acceptance
 
-- Find a hut in a new world, enter its portal, see the level message, clear the room, and return
-  through the room's portal to the hut.
+- Find a castle in a new world: it stands on the ground, not in it. Approach it and meet its courtyard
+  mobs. Enter its portal, see the level message, clear the room, and return through the room's portal.
 
 ## Runes
 

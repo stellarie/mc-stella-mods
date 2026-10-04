@@ -42,6 +42,7 @@ public final class StellaTower implements ModInitializer {
 		TowerGrowth.register();
 		TowerAuras.register();
 		LostRooms.register();
+		LostCastles.register();
 		LOGGER.info("Endless Tower ready: floors of {} by {} blocks, {} high", TowerLayout.SIZE, TowerLayout.SIZE, TowerLayout.HEIGHT);
 	}
 }
