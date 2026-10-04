@@ -6,5 +6,10 @@ public final class RuinsRewards {
 	}
 
 	public static void register() {
+		RuinsTab.register();
+		RuinAffixes.register();
+		RuinUniques.register();
+		RuinSets.register();
+		UniqueEffects.register();
 	}
 }

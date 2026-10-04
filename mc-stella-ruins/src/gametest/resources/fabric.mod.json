@@ -5,8 +5,15 @@
 	"name": "Stella Ruins game tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.ruins.reward.RewardTestInit"
+		],
 		"fabric-gametest": [
-			"com.stella.ruins.ScaffoldGameTest"
+			"com.stella.ruins.ScaffoldGameTest",
+			"com.stella.ruins.reward.RuinSetsGameTest",
+			"com.stella.ruins.reward.RuinAffixesGameTest",
+			"com.stella.ruins.reward.RuinUniquesGameTest",
+			"com.stella.ruins.reward.RuinGearGameTest"
 		]
 	},
 	"depends": {
