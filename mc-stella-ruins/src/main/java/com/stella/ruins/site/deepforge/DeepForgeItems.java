@@ -14,9 +14,9 @@ import net.minecraft.world.item.equipment.ArmorType;
 /** The materials, the Deepsteel gear and the unique hammer of the Deep Forge. */
 public final class DeepForgeItems {
 	public static final TagKey<Item> DEEPSTEEL_REPAIR = TagKey.create(Registries.ITEM, StellaRuins.id("deepsteel_repair"));
-	/** Between diamond and netherite, except mining speed: the plan names 9.5, above netherite's 9.0. */
+	/** Every stat sits between diamond and netherite. */
 	public static final GearSpec DEEPSTEEL = new GearSpec(
-		1800, 9.5F, 3.5F, BlockTags.INCORRECT_FOR_DIAMOND_TOOL,
+		1800, 8.5F, 3.5F, BlockTags.INCORRECT_FOR_DIAMOND_TOOL,
 		35, 3, 8, 6, 3, 2.5F, 0.05F, 14,
 		DEEPSTEEL_REPAIR, StellaRuins.id("deepsteel"));
 	public static final String HAMMER_EFFECT = "forgeheart";

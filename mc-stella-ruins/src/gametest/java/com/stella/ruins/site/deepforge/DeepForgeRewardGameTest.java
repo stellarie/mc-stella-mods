@@ -113,8 +113,7 @@ public class DeepForgeRewardGameTest {
 		ArmorMaterial armor = com.stella.ruins.reward.RuinGear.armorMaterial(DeepForgeItems.DEEPSTEEL);
 		helper.assertTrue(tool.durability() > ToolMaterial.DIAMOND.durability() && tool.durability() < ToolMaterial.NETHERITE.durability(), "tool durability " + tool.durability());
 		helper.assertTrue(tool.attackDamageBonus() > ToolMaterial.DIAMOND.attackDamageBonus() && tool.attackDamageBonus() < ToolMaterial.NETHERITE.attackDamageBonus(), "attack bonus " + tool.attackDamageBonus());
-		// The plan names 9.5, which is above netherite's 9.0. The speed is pinned to the plan, not to the bracket.
-		helper.assertTrue(tool.speed() == 9.5F && tool.speed() > ToolMaterial.DIAMOND.speed(), "mining speed " + tool.speed());
+		helper.assertTrue(tool.speed() > ToolMaterial.DIAMOND.speed() && tool.speed() < ToolMaterial.NETHERITE.speed(), "mining speed " + tool.speed());
 		helper.assertTrue(armor.durability() > ArmorMaterials.DIAMOND.durability() && armor.durability() < ArmorMaterials.NETHERITE.durability(), "armor durability factor " + armor.durability());
 		helper.assertTrue(armor.toughness() == 2.5F && armor.toughness() > ArmorMaterials.DIAMOND.toughness() && armor.toughness() < ArmorMaterials.NETHERITE.toughness(), "toughness " + armor.toughness());
 		helper.assertTrue(armor.knockbackResistance() == 0.05F && armor.knockbackResistance() > ArmorMaterials.DIAMOND.knockbackResistance() && armor.knockbackResistance() < ArmorMaterials.NETHERITE.knockbackResistance(), "knockback resistance " + armor.knockbackResistance());
