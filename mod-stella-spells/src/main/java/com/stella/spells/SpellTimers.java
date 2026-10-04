@@ -1,14 +1,18 @@
 package com.stella.spells;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,6 +24,9 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * What a spell leaves running after its cast: Flame Ring's burning aura, Gravity's hold on a mob's jump,
@@ -32,6 +39,10 @@ public final class SpellTimers {
 	private record Aura(int endsAt, int nextPulse, double radius, float damage, int burnTicks) {
 	}
 
+	private record Zone(ResourceKey<Level> dimension, UUID caster, Vec3 center, double radius, int endsAt, int nextPulse, double power) {
+	}
+
+	private static final List<Zone> ZONES = new CopyOnWriteArrayList<>();
 	private static final Map<UUID, Aura> AURAS = new ConcurrentHashMap<>();
 	/** Each grounded mob, and the tick its jump comes back. The modifier is transient, so a reload clears it too. */
 	private static final Map<Mob, Integer> GROUNDED = new ConcurrentHashMap<>();
@@ -44,6 +55,7 @@ public final class SpellTimers {
 		ServerTickEvents.END_SERVER_TICK.register(SpellTimers::tick);
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
 			AURAS.clear();
+			ZONES.clear();
 			GROUNDED.clear();
 			VEILED.clear();
 		});
@@ -57,6 +69,16 @@ public final class SpellTimers {
 	static void flameAura(final ServerPlayer caster, final int ticks, final double radius, final float damage, final int burnTicks) {
 		int now = caster.level().getServer().getTickCount();
 		AURAS.put(caster.getUUID(), new Aura(now + ticks, now + 1, radius, damage, burnTicks));
+	}
+
+	/** The zones running now; a test seam. */
+	static int sanctuaryZones() {
+		return ZONES.size();
+	}
+
+	static void sanctuary(final ServerPlayer caster, final Vec3 center, final double radius, final int ticks, final double power) {
+		int now = caster.level().getServer().getTickCount();
+		ZONES.add(new Zone(caster.level().dimension(), caster.getUUID(), center, radius, now + ticks, now + 1, power));
 	}
 
 	static void ground(final Mob mob, final int ticks) {
@@ -96,6 +118,8 @@ public final class SpellTimers {
 			}
 		}
 
+		tickZones(server, now);
+
 		for (Iterator<Map.Entry<Mob, Integer>> it = GROUNDED.entrySet().iterator(); it.hasNext(); ) {
 			Map.Entry<Mob, Integer> entry = it.next();
 			Mob mob = entry.getKey();
@@ -109,6 +133,45 @@ public final class SpellTimers {
 		}
 
 		VEILED.values().removeIf(endsAt -> now >= endsAt);
+	}
+
+	// A zone ends with its time, its caster, or its level; it never follows the caster.
+	private static void tickZones(final MinecraftServer server, final int now) {
+		for (Zone zone : ZONES) {
+			ServerLevel level = server.getLevel(zone.dimension());
+			ServerPlayer caster = server.getPlayerList().getPlayer(zone.caster());
+			if (level == null || caster == null || !caster.isAlive() || now >= zone.endsAt()) {
+				ZONES.remove(zone);
+				continue;
+			}
+			if (now % 4 == 0) {
+				edge(level, zone);
+			}
+			if (now < zone.nextPulse()) {
+				continue;
+			}
+			ZONES.set(ZONES.indexOf(zone), new Zone(zone.dimension(), zone.caster(), zone.center(), zone.radius(),
+				zone.endsAt(), now + MoreSpells.SANCTUARY_PULSE_TICKS, zone.power()));
+			double reach = zone.radius() * zone.radius();
+			for (ServerPlayer player : level.players()) {
+				if (player.isAlive() && player.position().distanceToSqr(zone.center()) <= reach) {
+					player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, MoreSpells.SANCTUARY_REGEN_TICKS, 0), caster);
+				}
+			}
+			AABB box = new AABB(zone.center(), zone.center()).inflate(zone.radius());
+			for (Mob mob : level.getEntitiesOfClass(Mob.class, box, other -> other.isAlive() && other.is(EntityTypeTags.UNDEAD)
+				&& other.position().distanceToSqr(zone.center()) <= reach)) {
+				MoreSpells.hurt(caster, mob, RpgBridge.damage(caster, MoreSpells.SANCTUARY_UNDEAD_DAMAGE, zone.power()));
+			}
+		}
+	}
+
+	private static void edge(final ServerLevel level, final Zone zone) {
+		for (int i = 0; i < 16; i++) {
+			double angle = Math.PI * 2.0 * i / 16.0;
+			level.sendParticles(ParticleTypes.END_ROD, zone.center().x + Math.cos(angle) * zone.radius(), zone.center().y + 0.1,
+				zone.center().z + Math.sin(angle) * zone.radius(), 1, 0.0, 0.05, 0.0, 0.0);
+		}
 	}
 
 	// A ring of flame at the wearer's feet, so the aura's reach can be seen.

@@ -84,7 +84,7 @@ public record SpellNumbers(
 	/** Shadow Veil's extra timing is how long its breaking blow stops the victim; the cast does not scale it. */
 	public static final SpellNumbers SHADOW_VEIL = builder("shadow_veil").duration(600, Scale.DEFENSIVE).extra(40, Scale.FIXED)
 		.extraAmplifier(6).build();
-	public static final SpellNumbers SANCTUARY = builder("sanctuary").heal(6.0f).allyHeal(4.0f).radius(6.0).build();
+	public static final SpellNumbers SANCTUARY = builder("sanctuary").damage(3.0f).radius(3.0).duration(200, Scale.DEFENSIVE).build();
 	public static final SpellNumbers PURIFY = builder("purify").radius(6.0).build();
 	public static final SpellNumbers FROST_NOVA = builder("frost_nova").damage(3.0f).radius(5.0).duration(60, Scale.OFFENSIVE).amplifier(3).build();
 	public static final SpellNumbers EARTHSPIKE = builder("earthspike").damage(4.0f).radius(3.0).build();

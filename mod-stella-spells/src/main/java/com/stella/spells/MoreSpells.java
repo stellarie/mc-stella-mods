@@ -56,9 +56,13 @@ public final class MoreSpells {
 	/** Slowness VII: seven times fifteen percent, so the victim cannot move at all. */
 	public static final int VEIL_BREAK_SLOW_AMPLIFIER = SpellNumbers.SHADOW_VEIL.extraAmplifier();
 	public static final double PURIFY_RADIUS = SpellNumbers.PURIFY.radius();
-	public static final float SANCTUARY_SELF_HEAL = SpellNumbers.SANCTUARY.heal();
-	public static final float SANCTUARY_ALLY_HEAL = SpellNumbers.SANCTUARY.allyHeal();
+	/** The instant heals of a mob's Sanctuary; the player's Sanctuary is a zone. */
+	public static final float SANCTUARY_SELF_HEAL = 6.0F;
+	public static final float SANCTUARY_ALLY_HEAL = 4.0F;
 	public static final double SANCTUARY_RADIUS = SpellNumbers.SANCTUARY.radius();
+	public static final float SANCTUARY_UNDEAD_DAMAGE = SpellNumbers.SANCTUARY.damage();
+	public static final int SANCTUARY_PULSE_TICKS = 20;
+	public static final int SANCTUARY_REGEN_TICKS = 40;
 	public static final double FROST_NOVA_RADIUS = SpellNumbers.FROST_NOVA.radius();
 	public static final float FROST_NOVA_DAMAGE = SpellNumbers.FROST_NOVA.damage();
 	public static final int FROST_NOVA_SLOW_TICKS = SpellNumbers.FROST_NOVA.duration().ticks();
@@ -242,21 +246,11 @@ public final class MoreSpells {
 		return veiled;
 	}
 
-	// The caster and every other player close by; a cast that heals nobody does not count.
+	// A zone fixed at the cast spot: it regenerates players inside and burns undead inside, each pulse.
 	static boolean applySanctuary(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		boolean healed = heal(caster, RpgBridge.heal(caster, SANCTUARY_SELF_HEAL, modifiers.powerMultiplier()));
-		int linked = 0;
-		for (ServerPlayer ally : caster.level().players()) {
-			if (ally != caster && ally.isAlive() && ally.distanceToSqr(caster) <= SANCTUARY_RADIUS * SANCTUARY_RADIUS) {
-				boolean allyHealed = heal(ally, RpgBridge.heal(caster, SANCTUARY_ALLY_HEAL, modifiers.powerMultiplier()));
-				healed |= allyHealed;
-				if (allyHealed && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
-					SpellVisuals.linkAffected(caster, "sanctuary", caster.position().add(0.0, 1.0, 0.0), ally.position().add(0.0, 1.0, 0.0));
-					linked++;
-				}
-			}
-		}
-		return healed;
+		SpellTimers.sanctuary(caster, caster.position(), SANCTUARY_RADIUS * modifiers.radiusMultiplier(),
+			SpellNumbers.SANCTUARY.durationTicks(modifiers), modifiers.powerMultiplier());
+		return true;
 	}
 
 	// Harmful effects only, from the caster and every player close by; a cast with nothing to clear does not count.
