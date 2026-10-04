@@ -27,6 +27,7 @@ public final class StellaNether implements ModInitializer {
 		RaidCasters.register();
 		RaidSpawns.register();
 		BlazeSovereign.register();
+		SovereignShare.register();
 		SovereignBody.register();
 		SovereignSpecials.register();
 		FlameMantle.register();
