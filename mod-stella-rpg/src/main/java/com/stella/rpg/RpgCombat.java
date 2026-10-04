@@ -119,8 +119,8 @@ public final class RpgCombat {
 			if (attacker.entityTags().contains(SUMMONED_TAG)) {
 				return amount;
 			}
-			double hit = RpgSpells.spellHit(attacker, RpgConfigStore.current().magic().mobPercentPerPoint() * amount)
-				* levelGap((Mob) attacker, victim);
+			// The mobs mod already scaled the hit by level; INT adds its percent.
+			double hit = amount * (1.0 + RpgSpells.matkPercent(attacker)) * levelGap((Mob) attacker, victim);
 			if (rollCrit(attacker)) {
 				CRIT_VICTIM.set(victim);
 				hit *= RpgCurve.critMultiplier();

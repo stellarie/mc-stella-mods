@@ -105,11 +105,11 @@ public final class MatkGameTest {
 			float three = spellLoss(helper, caster, 3.0F);
 			stub.threats.put(caster, 41);
 			float strong = spellLoss(helper, caster, 1.0F);
-			// Threat 0 counts as level 1. A point is 50 percent. The bare victim resists 25 percent.
-			double level1 = 12.0 * 0.5 * 1.14 * 0.75;
+			// The amount stays; INT 14 adds 14 percent. The bare victim resists 25 percent.
+			double level1 = 1.14 * 0.75;
 			int strongInt = MobStats.base(RpgConfig.defaults(), "magic", Stat.INT, 41);
 			// The level 0 victim takes 10 percent more for each 10 threat levels, so 40 levels give 1.4.
-			double level41 = 12.0 * (1.0 + 0.05 * 40) * 0.5 * (1.0 + strongInt / 100.0) * 0.75 * 1.4;
+			double level41 = (1.0 + strongInt / 100.0) * 0.75 * 1.4;
 			RpgTestSupport.result("mobSpellsUseThreatAndInt", "one=" + one + " three=" + three + " strong=" + strong);
 			helper.assertTrue(Math.abs(one - level1) < 0.01F, "a 1 point mob spell dealt " + one + " expected " + level1);
 			helper.assertTrue(Math.abs(three - 3.0 * level1) < 0.01F, "a 3 point mob spell dealt " + three);
