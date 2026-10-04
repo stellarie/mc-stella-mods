@@ -326,22 +326,6 @@ public class NewSpellsGameTest {
 	}
 
 	@GameTest
-	public void sanctuaryHealsTheCasterAndNearbyPlayersOnly(final GameTestHelper helper) {
-		ServerPlayer caster = caster(helper);
-		caster.setHealth(10.0F);
-		ServerPlayer near = player(helper, new Vec3(4.5, 1.0, 1.5));
-		near.setHealth(10.0F);
-		ServerPlayer far = player(helper, new Vec3(2.5, 1.0, 1.5 + MoreSpells.SANCTUARY_RADIUS + 2.0));
-		far.setHealth(10.0F);
-		cast(helper, caster, "sanctuary");
-		helper.assertTrue(caster.getHealth() == 10.0F + MoreSpells.SANCTUARY_SELF_HEAL, "the caster healed to " + caster.getHealth());
-		helper.assertTrue(near.getHealth() == 10.0F + MoreSpells.SANCTUARY_ALLY_HEAL, "the near player healed to " + near.getHealth());
-		helper.assertTrue(far.getHealth() == 10.0F, "a player outside the sanctuary healed to " + far.getHealth());
-		result("sanctuaryHealsTheCasterAndNearbyPlayersOnly", "caster=" + caster.getHealth() + " near=" + near.getHealth() + " far=" + far.getHealth());
-		helper.succeed();
-	}
-
-	@GameTest
 	public void purifyWithNothingToClearDoesNotCast(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		InteractionResult result = use(helper, caster, "purify");

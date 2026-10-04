@@ -92,7 +92,7 @@ public final class RpgConfigStore {
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
 			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError),
-			xpCurve(root, onError), magic(root, onError), scaling(root, onError));
+			xpCurve(root, onError), magic(root, onError), scaling(root, onError), hp(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -378,6 +378,73 @@ public final class RpgConfigStore {
 			(int) scalingPart(o, "gap_level_step", fallback.gapLevelStep(), 1.0, onError),
 			scalingPart(o, "gap_percent", fallback.gapPercent(), 0.0, onError)
 		);
+	}
+
+	private static RpgConfig.HpRules hp(final JsonObject root, final Consumer<String> onError) {
+		RpgConfig.HpRules fallback = RpgConfig.HpRules.DEFAULT;
+		JsonElement element = root.get(RpgConfig.HpRules.KEY);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'hp' must be an object; using the defaults");
+			return fallback;
+		}
+		JsonObject o = element.getAsJsonObject();
+		return new RpgConfig.HpRules(
+			hpPart(o, "base", fallback.base(), 1.0, onError),
+			hpPart(o, "per_level", fallback.perLevel(), 0.0, onError),
+			hpPart(o, "vit_percent", fallback.vitPercent(), 0.0, onError),
+			(int) hpPart(o, "regen_interval", fallback.regenInterval(), 1.0, onError),
+			hpPart(o, "regen_base", fallback.regenBase(), 0.0, onError),
+			hpPart(o, "regen_per_vit", fallback.regenPerVit(), 0.0, onError),
+			hpPart(o, "duration_int_divisor", fallback.durationIntDivisor(), 1.0, onError),
+			hpPart(o, "duration_cap", fallback.durationCap(), 1.0, onError),
+			jobFactors(o, fallback.jobFactors(), onError)
+		);
+	}
+
+	private static Map<String, Double> jobFactors(
+		final JsonObject hp, final Map<String, Double> fallback, final Consumer<String> onError
+	) {
+		JsonElement element = hp.get(RpgConfig.HpRules.JOB_FACTORS_KEY);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'hp.job_factors' must be an object; using the defaults");
+			return fallback;
+		}
+		Map<String, Double> factors = new LinkedHashMap<>(fallback);
+		for (String key : fallback.keySet()) {
+			JsonElement entry = element.getAsJsonObject().get(key);
+			if (entry == null) {
+				continue;
+			}
+			Double value = number(entry);
+			if (value == null || value <= 0.0 || value > MAX_LIMIT) {
+				onError.accept("stats.json key 'hp.job_factors." + key + "' must be a number above 0 and at most "
+					+ MAX_LIMIT + "; using the default");
+				continue;
+			}
+			factors.put(key, value);
+		}
+		return Map.copyOf(factors);
+	}
+
+	private static double hpPart(
+		final JsonObject object, final String key, final double fallback, final double min, final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < min) {
+			onError.accept("stats.json key 'hp." + key + "' must be a number of at least " + min + "; using the default");
+			return fallback;
+		}
+		return value;
 	}
 
 	private static double scalingPart(
@@ -668,6 +735,7 @@ public final class RpgConfigStore {
 		out.put(XpCurve.KEY, XpCurve.DEFAULT.toJson());
 		out.put(RpgConfig.MagicRules.KEY, RpgConfig.MagicRules.DEFAULT.toJson());
 		out.put(RpgConfig.ScalingRules.KEY, RpgConfig.ScalingRules.DEFAULT.toJson());
+		out.put(RpgConfig.HpRules.KEY, RpgConfig.HpRules.DEFAULT.toJson());
 		StatTables.write(out);
 		Map<String, Map<String, Object>> armorSets = new LinkedHashMap<>();
 		for (Map.Entry<String, RpgConfig.ArmorSet> material : RpgConfig.DEFAULT_ARMOR_SETS.entrySet()) {

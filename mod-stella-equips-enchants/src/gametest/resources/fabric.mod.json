@@ -47,6 +47,7 @@
 			"com.stella.equips.PercentProcGameTest",
 			"com.stella.equips.PercentHealGameTest",
 			"com.stella.equips.RefineSpecialsGameTest",
+			"com.stella.equips.RefineTierGameTest",
 			"com.stella.equips.RefineSpellbookGameTest",
 			"com.stella.equips.RefineEquippableGameTest",
 			"com.stella.equips.EmeraldBagAutoGameTest",
@@ -55,6 +56,7 @@
 			"com.stella.equips.ShieldRefineGameTest",
 			"com.stella.equips.DangerColorGameTest",
 			"com.stella.equips.RefineAnyBowGameTest",
+			"com.stella.equips.AnvilNeverBreaksGameTest",
 			"com.stella.equips.LowHealthWarningGameTest",
 			"com.stella.equips.GearCompareGameTest"
 		]

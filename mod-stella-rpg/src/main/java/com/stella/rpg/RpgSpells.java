@@ -94,10 +94,15 @@ public final class RpgSpells {
 		return spellDamage(caster, skillPercent);
 	}
 
-	/** Level plus INT times the coefficient, in vanilla units. */
+	/** Level plus INT plus VIT times the coefficient, in vanilla units. */
 	public static double spellHeal(final LivingEntity caster, final double coefficient) {
-		return (level(caster) + StatBonuses.effective(caster, Stat.INT)) * coefficient / RpgScale.k()
-			* JobItems.healingFactor(caster);
+		int stats = StatBonuses.effective(caster, Stat.INT) + StatBonuses.effective(caster, Stat.VIT);
+		return (level(caster) + stats) * coefficient / RpgScale.k() * JobItems.healingFactor(caster);
+	}
+
+	/** The spell duration multiplier from INT. {@code mod-stella-spells} reads it by name. */
+	public static double durationMultiplier(final LivingEntity caster) {
+		return HpModel.durationMultiplier(StatBonuses.effective(caster, Stat.INT));
 	}
 
 	private static int level(final LivingEntity caster) {

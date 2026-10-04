@@ -63,7 +63,7 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
   within 64 blocks. A neutral mob stays angry at them.
 - The enrage lasts until the raid resets.
 
-## Slice 5: a fortress and a bastion in reach
+## Slice 5: a fortress and a bastion in reach (the midpoint rule is replaced by slice 17)
 
 - Each run's origin lies 8,192 blocks from the last (800 runs per row, inside the nether's world border).
 - The run opens midway between a fortress and a bastion of the raid nether's own generation that lie no
@@ -78,7 +78,7 @@ An instanced nether raid. The design is in `docs/plans/2026-09-28/NETHER-RAID.md
 - A server with structures switched off has no fortress or bastion to find; the run then opens at its
   origin and logs a warning.
 
-## Slice 6a: the raid's own scaling (was: its threat level)
+## Slice 6a: the raid's own scaling (replaced by slice 17)
 
 - No threat level reaches the raid nether (changed 2026-09-29; it used to lift raid mobs to the nether's
   threat floor). Every mob that loads there has its threat set to none, and the mobs mod's threat health
@@ -185,8 +185,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - **Scrolls home**: any mob slain in the raid leaves the spells mod's Scroll of Return 1% of the time.
   Measured: 0.01002 over 100,000 rolls. The Sovereign leaves one per player in the raid, plus two:
   4 with two players.
-- **Strength by mode**: every raid enemy but the Sovereign has x1.25 health and damage in normal and
-  x1.75 in hard, and starts at full health. The Sovereign keeps its own formula.
+- **Strength by mode** (replaced by slice 17): every raid enemy but the Sovereign had x1.25 health and damage in normal and
+  x1.75 in hard, and started at full health.
 
 ## Slice 12e: the Sovereign's burst
 
@@ -320,8 +320,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 
 ## Slice 16: the Sovereign takes a threat level
 
-- **Level rule.** When the Sovereign rises, its threat level is `max(50, highest experience level of a
-  player in the raid dimension) + 10`. With no player inside it is 60. The level is set once, at the
+- **Level rule.** When the Sovereign rises, its threat level was `max(50, highest experience level of a
+  player in the raid dimension) + 10` (slice 17 changes the floor to the mode's minimum). It is set once, at the
   rise, and the raid's load handler leaves it alone.
 - **Health rule.** Whole health is 300 times the mobs mod's health multiplier at that level
   (`1 + 0.5 x level` by default). Level 60 gives 9,300. The health attribute still holds at most 1,024
@@ -333,13 +333,34 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - **Vortex shield.** It holds 8 percent of the Sovereign's whole health. In absorption points that is
   the share of the attribute's health, times the rpg health scale when that mod is present, because the
   rpg mod multiplies damage by it before absorption takes it. Without the rpg mod the scale is 1.
-- Not changed: raid mobs and the Brood stay at level 0, the rotation and its timing, the hard-mode boons,
+- Not changed: the rotation and its timing, the hard-mode boons,
   the enrage, and the suffocation blast.
 - Measured at level 60 with no rpg mod (factor 11 with the default curve): health 9,300 (attribute 1,024,
   divisor 9.08); shield 81.92 points; a bare target lost 66.0 to the dive, 16.5 to the wave and 27.5 to a
   fireball. At level 90 (a level-80 player) health was 13,800. The test lines
   `scaledDive`, `scaledWave`, `scaledFireball`, `sovereignLevel` and `vortexShieldUnits` carry the raw numbers.
 - Residual: a save and reload of the Sovereign is not tested.
+
+## Slice 17: raid levels, fortress arrival, instant mode travel
+
+- **Raid mob level.** A raid enemy takes its level once, at its first load: `max(35 in normal or 45 in hard,
+  the best experience level of a player in the raid dimension)`. The mobs mod then scales it as anywhere
+  else: health is the mob's vanilla health times `1 + 0.5 x level`, and a hit adds the flat per-level
+  damage. A zombified piglin at level 35 has 370 health. The old base health of 64 and the 1.25 and 1.75
+  factors are gone. Hard mode keeps its boons. A reload keeps the level, and the player who joins later
+  does not change a mob already loaded.
+- **Brood.** The Sovereign's brood blazes take the raid level too. They carry the no-roll tag only while they
+  load, to keep elite and boss rolls off them.
+- **Sovereign level.** It is the raid mob level plus 10: 45 in normal and 55 in hard with a level-0 player.
+  It replaces `max(50, best player) + 10` of slice 16.
+- **Arrival.** A run opens 48 blocks from the start of a fortress, toward the bastion that lies close to it.
+  This replaces the midpoint rule of slice 5. The arrival is always within 64 blocks of that fortress start.
+  The Sovereign wakes within 96 blocks of the fortress start, so it rises as soon as a player arrives.
+- **Instant travel.** Clicking a raid option in the portal window sends the player at once, through the
+  portal the window opened for. Before, the portal came from the player's position at the click, and a
+  player who had slid off the portal block was not sent; only the choice was kept.
+- Measured: see the log lines `raidLevelNormal`, `raidLevelHard`, `raidLevelBestPlayerNormal`,
+  `raidLevelBestPlayerHard`, `raidLevelBrood`, `sovereignHardLevel`, `arrivalNearFortress` and `windowDrifted`.
 
 ## Logging
 
@@ -363,7 +384,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Start the client with the mod: it reaches the title screen (the client mixins apply), and the
   Sovereign is drawn blue, its fireballs blue orbs.
 - Walk to the fortress in a new run: the Sovereign rises there, its bar appears, and its fireballs burn.
-- Fight the Sovereign at your own level: it rises at max(50, your level) + 10. Note how long the fight lasts and which attacks feel unfair (slice 16).
+- Fight the Sovereign at your own level: it rises at max(35 or 45, your level) + 10. Note how long the fight lasts and which attacks feel unfair (slice 16).
 - Stand inside the vortex: the flames come from every side, above and below; the shield's shell is plain
   and thins as you break it; a broken shield leaves the Sovereign visibly reeling; an unbroken one bursts.
 - The Sovereign's burst reads as five quick blue shots, then a pause.
@@ -387,6 +408,7 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - In a new world's stronghold: the black chest stands in the portal room. Fill the eyes (the portal stays
   shut, with a message), then use a Blaze Core on the chest: the portal opens. The chest's look is built
   from blackstone textures until it has art of its own.
-- From a new run's arrival, a fortress and a bastion are both in sight within a short walk.
+- From a new run's arrival, a fortress is within a short walk (48 blocks from its start).
+- Open a normal and a hard run: raid mobs read level 35 and 45 (or your level if higher), and clicking an option in the portal window sends you at once.
 - After the enrage, a crowd of zombified piglins actually chases a player back to the hall's portal.
   The test proves the targeting, not the pathing through nether terrain.

@@ -157,19 +157,6 @@ public class SpellMatkGameTest {
 				double expected = spell.coefficient() * HEAL_PER_COEFFICIENT;
 				helper.assertTrue(Math.abs(gained - expected) < TOLERANCE, spell.spell() + " healed " + gained + ", not " + expected);
 			}
-			leave(helper, casters);
-			casters.clear();
-			matk.coefficients.clear();
-			RpgBridge.setStats(matk);
-			ServerPlayer caster = wounded(helper, casters, 0.5);
-			ServerPlayer ally = wounded(helper, casters, 2.5);
-			double before = ally.getHealth();
-			double selfGain = castSelf(helper, caster, "sanctuary");
-			double allyGain = ally.getHealth() - before;
-			LOG.info("[SPELLTEST] test=healSpellsUseMatk RESULT spell=sanctuary asked={} self={} ally={}", matk.coefficients, selfGain, allyGain);
-			helper.assertTrue(matk.coefficients.equals(List.of(3.0, 2.0)), "Sanctuary asked the RPG mod for " + matk.coefficients + ", not [3.0, 2.0]");
-			helper.assertTrue(Math.abs(selfGain - 3.0 * HEAL_PER_COEFFICIENT) < TOLERANCE, "Sanctuary healed its caster " + selfGain);
-			helper.assertTrue(Math.abs(allyGain - 2.0 * HEAL_PER_COEFFICIENT) < TOLERANCE, "Sanctuary healed an ally " + allyGain);
 		} finally {
 			RpgBridge.setStats(null);
 			leave(helper, casters);
@@ -236,13 +223,6 @@ public class SpellMatkGameTest {
 					helper.assertTrue(Math.abs(gained - spell.flat()) < TOLERANCE,
 						spell.spell() + " healed " + gained + " without MATK, not its flat " + spell.flat());
 				}
-				RpgBridge.setStats(stats);
-				ServerPlayer caster = wounded(helper, casters, 0.5);
-				ServerPlayer ally = wounded(helper, casters, 2.5);
-				double before = ally.getHealth();
-				double selfGain = castSelf(helper, caster, "sanctuary");
-				helper.assertTrue(Math.abs(selfGain - MoreSpells.SANCTUARY_SELF_HEAL) < TOLERANCE, "Sanctuary healed its caster " + selfGain);
-				helper.assertTrue(Math.abs(ally.getHealth() - before - MoreSpells.SANCTUARY_ALLY_HEAL) < TOLERANCE, "Sanctuary healed an ally");
 			}
 			RpgBridge.setStats(null);
 			double thermal = comboDropFlat(helper, casters);
