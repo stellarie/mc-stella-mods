@@ -1,0 +1,28 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.7
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:resonant_shard",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 1,
+								"max": 2
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}
