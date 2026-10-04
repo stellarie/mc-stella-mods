@@ -1,0 +1,22 @@
+{
+	"variants": {
+		"tint=blue": {
+			"model": "mod-stella-ruins:block/resonant_crystal_blue"
+		},
+		"tint=magenta": {
+			"model": "mod-stella-ruins:block/resonant_crystal_magenta"
+		},
+		"tint=cyan": {
+			"model": "mod-stella-ruins:block/resonant_crystal_cyan"
+		},
+		"tint=lime": {
+			"model": "mod-stella-ruins:block/resonant_crystal_lime"
+		},
+		"tint=yellow": {
+			"model": "mod-stella-ruins:block/resonant_crystal_yellow"
+		},
+		"tint=orange": {
+			"model": "mod-stella-ruins:block/resonant_crystal_orange"
+		}
+	}
+}
