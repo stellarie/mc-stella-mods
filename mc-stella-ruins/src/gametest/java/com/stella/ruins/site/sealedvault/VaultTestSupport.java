@@ -333,6 +333,11 @@ final class VaultTestSupport {
 	}
 
 	static Arena arena(final ServerLevel level, final Rotation rotation, final long seed) {
+		return arena(level, rotation, seed, true);
+	}
+
+	/** Like {@link #arena(ServerLevel, Rotation, long)}, and draws the vault only when asked, so a test can time the draw. */
+	static Arena arena(final ServerLevel level, final Rotation rotation, final long seed, final boolean draw) {
 		int n = NEXT.getAndIncrement();
 		int x0 = 100_000 + (n % 4000) * 160;
 		int z0 = 100_000 + (n / 4000) * 160;
@@ -351,7 +356,9 @@ final class VaultTestSupport {
 		BlockPos min = new BlockPos(x0, ground + 1, z0);
 		RuinFrame frame = new RuinFrame(site.id(), min, rotation.ordinal(), seed, site.sizeX(), site.sizeY(), site.sizeZ(), site.placement().foundation());
 		RuinPiece piece = new RuinPiece(frame);
-		piece.build(level, frame.box());
+		if (draw) {
+			piece.build(level, frame.box());
+		}
 		LayoutContext dry = LayoutContext.forDryRun(frame);
 		site.layout().draw(dry);
 		Arena arena = new Arena(level, site, frame, piece, forced, dry.markers(), new ArrayList<>(), plan(seed), seed);

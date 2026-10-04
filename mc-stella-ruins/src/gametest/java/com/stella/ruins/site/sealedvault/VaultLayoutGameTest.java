@@ -241,4 +241,60 @@ public class VaultLayoutGameTest {
 		}
 		helper.succeed();
 	}
+
+	static final double CHUNK_BUDGET_MS = 50.0;
+
+	/** The layout cost alone: one capture per chunk, as the framework's own budget test measures it. */
+	@GameTest
+	public void theLayoutCostsLessThanTheBudgetPerChunkOnAverage(final GameTestHelper helper) {
+		com.stella.ruins.world.RuinFrame frame = VaultTestSupport.frame(VaultPlanGameTest.seedOf(3), Rotation.NONE);
+		net.minecraft.world.level.levelgen.structure.BoundingBox box = frame.box();
+		com.stella.ruins.world.SiteLayout layout = VaultTestSupport.site().layout();
+		layout.draw(com.stella.ruins.world.LayoutContext.forCapture(frame, new java.util.HashMap<>(), box));
+		double total = 0.0;
+		double worst = 0.0;
+		int chunks = 0;
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
+				net.minecraft.world.level.levelgen.structure.BoundingBox clip = new net.minecraft.world.level.levelgen.structure.BoundingBox(cx << 4, box.minY(), cz << 4, (cx << 4) + 15, box.maxY(), (cz << 4) + 15);
+				long start = System.nanoTime();
+				layout.draw(com.stella.ruins.world.LayoutContext.forCapture(frame, new java.util.HashMap<>(), clip));
+				double millis = (System.nanoTime() - start) / 1_000_000.0;
+				total += millis;
+				worst = Math.max(worst, millis);
+				chunks++;
+			}
+		}
+		VaultTestSupport.result("layoutCost", String.format("size=%dx%dx%d chunks=%d meanMs=%.2f worstMs=%.2f budgetMs=%.0f", frame.sizeX(), frame.sizeY(), frame.sizeZ(), chunks, total / chunks, worst, CHUNK_BUDGET_MS));
+		helper.assertTrue(chunks >= 16, "the vault crossed only " + chunks + " chunks");
+		helper.assertTrue(total / chunks <= CHUNK_BUDGET_MS, "a chunk took " + (total / chunks) + " ms on average, over " + CHUNK_BUDGET_MS);
+		helper.succeed();
+	}
+
+	/** The draw into a live level, where every write also updates lighting. The mean must hold the budget; the worst chunk is logged. */
+	@GameTest(maxTicks = 6000)
+	public void theLiveDrawCostsLessThanTheBudgetPerChunkOnAverage(final GameTestHelper helper) {
+		VaultTestSupport.Arena arena = VaultTestSupport.arena(helper.getLevel(), Rotation.NONE, VaultPlanGameTest.seedOf(3), false);
+		net.minecraft.world.level.levelgen.structure.BoundingBox box = arena.frame().box();
+		double worst = 0.0;
+		double total = 0.0;
+		int chunks = 0;
+		for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+			for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
+				net.minecraft.world.level.levelgen.structure.BoundingBox clip = new net.minecraft.world.level.levelgen.structure.BoundingBox(
+					Math.max(box.minX(), cx << 4), box.minY(), Math.max(box.minZ(), cz << 4),
+					Math.min(box.maxX(), (cx << 4) + 15), box.maxY(), Math.min(box.maxZ(), (cz << 4) + 15));
+				long started = System.nanoTime();
+				arena.piece().build(arena.level(), clip);
+				double took = (System.nanoTime() - started) / 1_000_000.0;
+				worst = Math.max(worst, took);
+				total += took;
+				chunks++;
+			}
+		}
+		arena.release();
+		VaultTestSupport.result("liveDraw", String.format("chunks=%d meanMs=%.2f worstMs=%.2f budgetMs=%.0f blocks=%d", chunks, total / chunks, worst, CHUNK_BUDGET_MS, VaultPlan.SIZE_X * VaultPlan.SIZE_Y * VaultPlan.SIZE_Z));
+		helper.assertTrue(total / chunks <= CHUNK_BUDGET_MS, "a chunk took " + (total / chunks) + " ms on average, over " + CHUNK_BUDGET_MS);
+		helper.succeed();
+	}
 }
