@@ -62,6 +62,7 @@
 			"com.stella.rpg.JobItemGameTest",
 			"com.stella.rpg.SecondWindGameTest",
 			"com.stella.rpg.WeaponSlotGameTest",
+			"com.stella.rpg.QuickbarModeGameTest",
 			"com.stella.rpg.AutoPickupGameTest"
 		]
 	},

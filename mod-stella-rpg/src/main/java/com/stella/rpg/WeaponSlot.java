@@ -1,11 +1,18 @@
 package com.stella.rpg;
 
 import com.stella.rpg.roll.WeaponRolls;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
@@ -19,40 +26,66 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 /**
  * The weapon slot is inventory index {@link #SLOT}. While {@code selected} is that index, vanilla reads the main hand
- * from it, so attack, use, dice, and other mods need no redirect. A hotkey press asks the server for one of four actions.
+ * from it, so attack, use, dice, and other mods need no redirect. In quick bar mode a hotkey asks the server for an
+ * action on its slot, and the weapon stays in hand. Only eating holds another item, and only while the key is down.
  */
 public final class WeaponSlot {
 	/** The last index, so pickups fill it last. */
 	public static final int SLOT = 35;
 	/** The hotkey index of the ready-weapon key. */
 	public static final int READY = -1;
-	/** Above the shield slot at (77, 62). */
+	/** Above the shield slot at (77, 62), in quick bar mode. */
 	public static final int MENU_X = 77;
 	public static final int MENU_Y = 44;
 
 	public enum Result {
 		EQUIPPED,
 		CAST,
+		USED,
+		EATING,
 		NO_EFFECT,
 		ARMOR,
-		SELECTED,
 		READIED,
 		REFUSED
 	}
 
+	/** Players eating from a hotkey, by the hotkey index. */
+	private static final Map<UUID, Integer> EATING = new ConcurrentHashMap<>();
+
 	private WeaponSlot() {
+	}
+
+	public static void register() {
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			for (UUID id : EATING.keySet()) {
+				ServerPlayer player = server.getPlayerList().getPlayer(id);
+				if (player == null) {
+					EATING.remove(id);
+				} else if (!player.isUsingItem()) {
+					endEating(player);
+				}
+			}
+		});
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> endEating(handler.getPlayer()));
+		// A fresh or older save may hold a hotbar slot.
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			ServerPlayer player = handler.getPlayer();
+			if (QuickbarMode.isOn(player) && !isSlot(player.getInventory().getSelectedSlot())) {
+				select(player, SLOT);
+			}
+		});
 	}
 
 	public static boolean isSlot(final int slot) {
 		return slot == SLOT;
 	}
 
-	/** Anything that attacks or mines, or shoots. */
+	/** A weapon, a tool that attacks (pickaxe, axe, shovel, hoe), or a bow. Shears are used, not held. */
 	public static boolean isEquipment(final ItemStack stack) {
 		if (stack.isEmpty()) {
 			return false;
 		}
-		if (stack.has(DataComponents.TOOL) || stack.has(DataComponents.WEAPON) || stack.getItem() instanceof ProjectileWeaponItem) {
+		if (stack.has(DataComponents.WEAPON) || stack.getItem() instanceof ProjectileWeaponItem) {
 			return true;
 		}
 		ItemAttributeModifiers modifiers = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
@@ -60,10 +93,23 @@ public final class WeaponSlot {
 			.anyMatch(entry -> entry.attribute().is(Attributes.ATTACK_DAMAGE) && entry.slot().test(EquipmentSlot.MAINHAND));
 	}
 
+	public static Result hotkey(final ServerPlayer player, final int index, final boolean down) {
+		if (down) {
+			return press(player, index);
+		}
+		release(player, index);
+		return Result.NO_EFFECT;
+	}
+
 	public static Result press(final ServerPlayer player, final int index) {
-		if (player.isSpectator()) {
+		if (player.isSpectator() || !QuickbarMode.isOn(player)) {
 			return Result.REFUSED;
 		}
+		Integer eating = EATING.get(player.getUUID());
+		if (eating != null && eating == index) {
+			return Result.EATING;
+		}
+		endEating(player);
 		if (index == READY) {
 			select(player, SLOT);
 			return Result.READIED;
@@ -87,8 +133,84 @@ public final class WeaponSlot {
 		if (armor != null) {
 			return equipArmor(player, index, stack, armor);
 		}
+		if (stack.isEmpty()) {
+			return Result.NO_EFFECT;
+		}
+		if (stack.has(DataComponents.CONSUMABLE)) {
+			return startEating(player, index);
+		}
+		return useAtTarget(player, index);
+	}
+
+	/** A key-up ends the eating window that key opened. */
+	public static void release(final ServerPlayer player, final int index) {
+		Integer eating = EATING.get(player.getUUID());
+		if (eating != null && eating == index) {
+			endEating(player);
+		}
+	}
+
+	public static boolean isEating(final ServerPlayer player) {
+		return EATING.containsKey(player.getUUID());
+	}
+
+	/** Stops an unfinished use and puts the weapon back in hand. */
+	public static void endEating(final ServerPlayer player) {
+		if (EATING.remove(player.getUUID()) == null) {
+			return;
+		}
+		if (player.isUsingItem()) {
+			player.stopUsingItem();
+		}
+		if (QuickbarMode.isOn(player)) {
+			select(player, SLOT);
+		}
+	}
+
+	private static Result startEating(final ServerPlayer player, final int index) {
+		if (player.isUsingItem()) {
+			return Result.REFUSED;
+		}
 		select(player, index);
-		return Result.SELECTED;
+		InteractionResult result = player.gameMode.useItem(player, player.level(), player.getInventory().getSelectedItem(), InteractionHand.MAIN_HAND);
+		if (!player.isUsingItem()) {
+			// Not hungry, or instant: weapon back now.
+			select(player, SLOT);
+			return result.consumesAction() ? Result.USED : Result.NO_EFFECT;
+		}
+		EATING.put(player.getUUID(), index);
+		return Result.EATING;
+	}
+
+	/** Vanilla client order: use on the targeted block, then use in the air. */
+	private static Result useAtTarget(final ServerPlayer player, final int index) {
+		if (player.isUsingItem()) {
+			return Result.REFUSED;
+		}
+		Inventory inventory = player.getInventory();
+		int previous = inventory.getSelectedSlot();
+		InteractionResult result = InteractionResult.PASS;
+		inventory.setSelectedSlot(index);
+		try {
+			HitResult hit = player.pick(player.blockInteractionRange(), 1.0F, false);
+			if (hit.getType() == HitResult.Type.BLOCK && hit instanceof BlockHitResult block
+				&& player.level().mayInteract(player, block.getBlockPos())) {
+				result = player.gameMode.useItemOn(player, player.level(), inventory.getSelectedItem(), InteractionHand.MAIN_HAND, block);
+			}
+			if (!result.consumesAction()) {
+				result = player.gameMode.useItem(player, player.level(), inventory.getSelectedItem(), InteractionHand.MAIN_HAND);
+			}
+			if (player.isUsingItem()) {
+				// A held use cannot outlive the swap back.
+				player.stopUsingItem();
+			}
+			if (result.consumesAction()) {
+				player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
+			}
+		} finally {
+			inventory.setSelectedSlot(previous);
+		}
+		return result.consumesAction() ? Result.USED : Result.NO_EFFECT;
 	}
 
 	// A head block such as a pumpkin is placed.
@@ -136,7 +258,7 @@ public final class WeaponSlot {
 		return used ? Result.CAST : Result.NO_EFFECT;
 	}
 
-	private static void select(final ServerPlayer player, final int slot) {
+	public static void select(final ServerPlayer player, final int slot) {
 		Inventory inventory = player.getInventory();
 		if (inventory.getSelectedSlot() != slot && player.isUsingItem() && player.getUsedItemHand() == InteractionHand.MAIN_HAND) {
 			player.stopUsingItem();
