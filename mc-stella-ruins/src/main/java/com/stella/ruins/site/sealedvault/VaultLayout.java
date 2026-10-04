@@ -43,8 +43,9 @@ public final class VaultLayout {
 		return level == 0 ? TOP_0 : TOP_1;
 	}
 
-	public static void draw(final LayoutContext ctx) {
-		VaultPlan plan = VaultPlan.derive(ctx.random());
+	public static void draw(final LayoutContext real) {
+		Grid ctx = new Grid(real);
+		VaultPlan plan = VaultPlan.derive(real.random());
 		BlockState wall = VaultBlocks.WALL.defaultBlockState();
 		BlockState floor = VaultBlocks.FLOOR.defaultBlockState();
 		int mx = VaultPlan.SIZE_X - 1;
@@ -73,11 +74,12 @@ public final class VaultLayout {
 		}
 		buildGate(ctx, plan);
 		markRoster(ctx, plan);
+		ctx.emit();
 	}
 
 	// ---- rooms and passages ----
 
-	private static void carveRoom(final LayoutContext ctx, final VaultPlan plan, final int level, final int cell) {
+	private static void carveRoom(final Grid ctx, final VaultPlan plan, final int level, final int cell) {
 		int ax = VaultPlan.cellMinX(cell % VaultPlan.GRID);
 		int az = VaultPlan.cellMinZ(cell / VaultPlan.GRID);
 		int y = VaultPlan.stand(level);
@@ -90,14 +92,14 @@ public final class VaultLayout {
 		}
 	}
 
-	private static void carveDome(final LayoutContext ctx) {
+	private static void carveDome(final Grid ctx) {
 		int ax = VaultPlan.cellMinX(3);
 		int az = VaultPlan.cellMinZ(3);
 		ctx.fill(ax + 1, 15, az + 1, ax + 4, 17, az + 4, AIR);
 		ctx.fill(ax + 2, 18, az + 2, ax + 3, 20, az + 3, AIR);
 	}
 
-	private static void buildGate(final LayoutContext ctx, final VaultPlan plan) {
+	private static void buildGate(final Grid ctx, final VaultPlan plan) {
 		int ax = VaultPlan.cellMinX(plan.entrance());
 		int gateZ = VaultPlan.EXTENSION + VaultPlan.OFFSET;
 		ctx.fill(ax + 2, 9, gateZ, ax + 4, 13, gateZ, AIR);
@@ -112,7 +114,7 @@ public final class VaultLayout {
 
 	// ---- dressing ----
 
-	private static void dressCandidates(final LayoutContext ctx, final VaultPlan plan) {
+	private static void dressCandidates(final Grid ctx, final VaultPlan plan) {
 		int k = 0;
 		for (Cell cell : plan.candidates()) {
 			int ax = VaultPlan.cellMinX(cell.i());
@@ -133,7 +135,7 @@ public final class VaultLayout {
 		}
 	}
 
-	private static void dressLanterns(final LayoutContext ctx, final VaultPlan plan) {
+	private static void dressLanterns(final Grid ctx, final VaultPlan plan) {
 		for (int level = 0; level < VaultPlan.LEVELS; level++) {
 			for (int c = 0; c < VaultPlan.CELLS; c++) {
 				int i = c % VaultPlan.GRID;
@@ -166,7 +168,7 @@ public final class VaultLayout {
 	 * over the whole lane, so the Warden clears the ceiling. A low rail keeps a walker on level 1 out of the
 	 * stairwell. The plan keeps the west wall of a stair cell closed, so no doorway opens onto the lane.
 	 */
-	private static void buildSwitchback(final LayoutContext ctx, final int cell) {
+	private static void buildSwitchback(final Grid ctx, final int cell) {
 		int ax = VaultPlan.cellMinX(cell % VaultPlan.GRID);
 		int az = VaultPlan.cellMinZ(cell / VaultPlan.GRID);
 		ctx.fill(ax, SLAB, az, ax + 1, SLAB, az + 5, AIR);
@@ -189,7 +191,7 @@ public final class VaultLayout {
 	 * The spiral from the core room down to the inner vault, in the south-west corner of both rooms. Seven steps
 	 * wind round a 2 x 2 well. The slab is open over two of its cells, and the last step sits in the slab layer.
 	 */
-	private static void spiral(final LayoutContext ctx, final int ax, final int az) {
+	private static void spiral(final Grid ctx, final int ax, final int az) {
 		int[][] ring = {{1, 0}, {1, 1}, {0, 1}, {0, 0}};
 		Direction[] ascend = {Direction.SOUTH, Direction.WEST, Direction.NORTH, Direction.EAST};
 		for (int s = 0; s <= 6; s++) {
@@ -208,7 +210,7 @@ public final class VaultLayout {
 
 	// ---- the core room and the inner vault ----
 
-	private static void buildCoreRoom(final LayoutContext ctx) {
+	private static void buildCoreRoom(final Grid ctx) {
 		int ax = VaultPlan.cellMinX(3);
 		int az = VaultPlan.cellMinZ(3);
 		ctx.fill(ax + 2, 9, az + 2, ax + 3, 9, az + 3, PLINTH);
@@ -223,7 +225,7 @@ public final class VaultLayout {
 		spiral(ctx, ax, az);
 	}
 
-	private static void buildVaultCell(final LayoutContext ctx) {
+	private static void buildVaultCell(final Grid ctx) {
 		int ax = VaultPlan.cellMinX(3);
 		int az = VaultPlan.cellMinZ(3);
 		ctx.placeVault(ax + 2, 2, az + 5);
@@ -239,7 +241,7 @@ public final class VaultLayout {
 	 * An arrow corridor has a row of plates across its middle and four vents in its walls. A drop corridor has a
 	 * row of plates over a pit of covers, 6 wide and 3 long, and the level 0 dead end below holds a catch dais.
 	 */
-	private static void buildTrap(final LayoutContext ctx, final Trap trap) {
+	private static void buildTrap(final Grid ctx, final Trap trap) {
 		int ax = VaultPlan.cellMinX(trap.at().i());
 		int az = VaultPlan.cellMinZ(trap.at().j());
 		int y = VaultPlan.stand(trap.level());
@@ -269,7 +271,7 @@ public final class VaultLayout {
 		}
 	}
 
-	private static void buildVents(final LayoutContext ctx, final Trap trap, final int ax, final int az, final int y) {
+	private static void buildVents(final Grid ctx, final Trap trap, final int ax, final int az, final int y) {
 		BlockState vent = VaultBlocks.VENT.defaultBlockState();
 		int[] along = {1, 4};
 		for (int a : along) {
@@ -285,7 +287,7 @@ public final class VaultLayout {
 
 	// ---- the roster ----
 
-	private static void markRoster(final LayoutContext ctx, final VaultPlan plan) {
+	private static void markRoster(final Grid ctx, final VaultPlan plan) {
 		for (Cell candidate : plan.candidates()) {
 			int ax = VaultPlan.cellMinX(candidate.i());
 			int az = VaultPlan.cellMinZ(candidate.j());
@@ -299,5 +301,92 @@ public final class VaultLayout {
 			ctx.marker(VaultMarkers.WRAITH, VaultPlan.cellMinX(wraith.i()) + 3, VaultPlan.stand(wraith.level()) + 2, VaultPlan.cellMinZ(wraith.j()) + 3);
 		}
 		ctx.marker(VaultMarkers.WARDEN, VaultPlan.cellMinX(plan.lair() % VaultPlan.GRID) + 3, 2, VaultPlan.cellMinZ(plan.lair() / VaultPlan.GRID) + 3);
+	}
+
+	/**
+	 * The vault in memory. The layout builds the whole plan here, and {@link #emit} then writes each block once. A
+	 * block of wall or floor that has solid wall on all six sides stays the rock the world already holds, so the
+	 * layout writes a skin round every room, not the whole mass. A miner still has to break the skin to get in.
+	 */
+	static final class Grid {
+		private static final int SX = VaultPlan.SIZE_X;
+		private static final int SY = VaultPlan.SIZE_Y;
+		private static final int SZ = VaultPlan.SIZE_Z;
+
+		private final LayoutContext real;
+		private final BlockState[] cells = new BlockState[SX * SY * SZ];
+		private final java.util.List<int[]> core = new java.util.ArrayList<>();
+
+		Grid(final LayoutContext real) {
+			this.real = real;
+		}
+
+		private static int index(final int x, final int y, final int z) {
+			return (x * SY + y) * SZ + z;
+		}
+
+		void set(final int x, final int y, final int z, final BlockState state) {
+			if (x >= 0 && x < SX && y >= 0 && y < SY && z >= 0 && z < SZ) {
+				this.cells[index(x, y, z)] = state;
+			}
+		}
+
+		void fill(final int x1, final int y1, final int z1, final int x2, final int y2, final int z2, final BlockState state) {
+			for (int x = Math.max(0, Math.min(x1, x2)); x <= Math.min(SX - 1, Math.max(x1, x2)); x++) {
+				for (int y = Math.max(0, Math.min(y1, y2)); y <= Math.min(SY - 1, Math.max(y1, y2)); y++) {
+					for (int z = Math.max(0, Math.min(z1, z2)); z <= Math.min(SZ - 1, Math.max(z1, z2)); z++) {
+						this.cells[index(x, y, z)] = state;
+					}
+				}
+			}
+		}
+
+		void marker(final String name, final int x, final int y, final int z) {
+			this.real.marker(name, x, y, z);
+		}
+
+		void placeCore(final int x, final int y, final int z) {
+			this.core.add(new int[] {0, x, y, z});
+		}
+
+		void placeVault(final int x, final int y, final int z) {
+			this.core.add(new int[] {1, x, y, z});
+		}
+
+		private boolean mass(final int x, final int y, final int z) {
+			if (x < 0 || x >= SX || y < 0 || y >= SY || z < 0 || z >= SZ) {
+				return true;
+			}
+			BlockState state = this.cells[index(x, y, z)];
+			return state != null && (state.is(VaultBlocks.WALL) || state.is(VaultBlocks.FLOOR));
+		}
+
+		private boolean buried(final int x, final int y, final int z) {
+			return mass(x - 1, y, z) && mass(x + 1, y, z) && mass(x, y - 1, z) && mass(x, y + 1, z) && mass(x, y, z - 1) && mass(x, y, z + 1);
+		}
+
+		void emit() {
+			for (int x = 0; x < SX; x++) {
+				for (int y = 0; y < SY; y++) {
+					for (int z = 0; z < SZ; z++) {
+						BlockState state = this.cells[index(x, y, z)];
+						if (state == null) {
+							continue;
+						}
+						if ((state.is(VaultBlocks.WALL) || state.is(VaultBlocks.FLOOR)) && buried(x, y, z)) {
+							continue;
+						}
+						this.real.set(x, y, z, state);
+					}
+				}
+			}
+			for (int[] placed : this.core) {
+				if (placed[0] == 0) {
+					this.real.placeCore(placed[1], placed[2], placed[3]);
+				} else {
+					this.real.placeVault(placed[1], placed[2], placed[3]);
+				}
+			}
+		}
 	}
 }

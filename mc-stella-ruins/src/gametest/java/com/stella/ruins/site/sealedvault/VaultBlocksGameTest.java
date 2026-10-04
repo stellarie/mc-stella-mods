@@ -94,8 +94,8 @@ public class VaultBlocksGameTest {
 	public void explosionsLeaveTheSealsAndTheWallsStanding(final GameTestHelper helper) {
 		VaultTestSupport.inArena(helper, WALL_SEED, arena -> {
 			BlockPos seal = arena.markers(VaultMarkers.SEAL).get(0);
-			BlockPos wall = arena.local(1, 10, 30);
-			BlockPos floor = arena.local(20, 8, 20);
+			BlockPos wall = arena.probeWall();
+			BlockPos floor = arena.probeFloor();
 			helper.assertTrue(arena.level().getBlockState(wall).is(VaultBlocks.WALL) && arena.level().getBlockState(floor).is(VaultBlocks.FLOOR), "the probe spots are not vault blocks");
 			Vec3 at = Vec3.atCenterOf(seal);
 			arena.level().explode(null, at.x, at.y, at.z, 8.0F, Level.ExplosionInteraction.TNT);
@@ -118,8 +118,8 @@ public class VaultBlocksGameTest {
 			try {
 				ServerPlayer player = arena.join(arena.standNearCore());
 				player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
-				BlockPos wall = arena.local(1, 10, 30);
-				BlockPos floor = arena.local(20, 8, 20);
+				BlockPos wall = arena.probeWall();
+				BlockPos floor = arena.probeFloor();
 				float deepslate = Blocks.DEEPSLATE.defaultBlockState().getDestroyProgress(player, arena.level(), wall);
 				helper.assertTrue(deepslate > 0.0F, "the reference progress is " + deepslate);
 				float before = arena.level().getBlockState(wall).getDestroyProgress(player, arena.level(), wall);
@@ -206,7 +206,11 @@ public class VaultBlocksGameTest {
 				stick.tick();
 			}
 			VaultTestSupport.result("dropFall", "start=" + start + " landed=" + stick.getY() + " daisTop=" + top + " fall=" + (start - stick.getY()));
-			helper.assertTrue(Math.abs(stick.getY() - top) < 0.2, "the item stopped at " + stick.getY() + ", the dais top is " + top);
+			StringBuilder column = new StringBuilder();
+			for (int y = 8; y >= 2; y--) {
+				column.append(" y").append(y - arena.frame().min().getY()).append('=').append(arena.level().getBlockState(BlockPos.containing(stick.getX(), arena.frame().min().getY() + y, stick.getZ())).getBlock());
+			}
+			helper.assertTrue(Math.abs(stick.getY() - top) < 0.2, "the item stopped at " + stick.getY() + " at " + stick.position() + ", the dais top is " + top + ", plate " + plate + ", column" + column);
 			helper.assertTrue(start - stick.getY() <= 3.3 && start - stick.getY() >= 2.7, "the fall was " + (start - stick.getY()) + " blocks, not 3");
 			stick.discard();
 		});

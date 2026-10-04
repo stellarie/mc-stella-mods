@@ -105,6 +105,15 @@ final class VaultTestSupport {
 	static Capture capture(final long seed, final Rotation rotation) {
 		RuinFrame frame = frame(seed, rotation);
 		Map<BlockPos, BlockState> sink = new HashMap<>();
+		BoundingBox box = frame.box();
+		BlockState rock = Blocks.STONE.defaultBlockState();
+		for (int x = box.minX(); x <= box.maxX(); x++) {
+			for (int y = box.minY(); y <= box.maxY(); y++) {
+				for (int z = box.minZ(); z <= box.maxZ(); z++) {
+					sink.put(new BlockPos(x, y, z), rock);
+				}
+			}
+		}
 		LayoutContext ctx = LayoutContext.forCapture(frame, sink, frame.box());
 		site().layout().draw(ctx);
 		return new Capture(frame, sink, ctx.markers());
@@ -329,6 +338,22 @@ final class VaultTestSupport {
 
 		BlockPos local(final int x, final int y, final int z) {
 			return this.frame.toWorld(x, y, z);
+		}
+
+		/** A wall block on the west skin of the maze, clear of every doorway: the layout writes it. */
+		BlockPos probeWall() {
+			return local(VaultPlan.OFFSET, 10, VaultPlan.cellMinZ(3) + 1);
+		}
+
+		/** A floor block of the slab under a level 1 room that holds nothing else. */
+		BlockPos probeFloor() {
+			for (int c = 0; c < VaultPlan.CELLS; c++) {
+				BlockPos at = local(VaultPlan.cellMinX(c % VaultPlan.GRID), VaultLayout.SLAB, VaultPlan.cellMinZ(c / VaultPlan.GRID));
+				if (this.level.getBlockState(at).is(VaultBlocks.FLOOR)) {
+					return at;
+				}
+			}
+			throw new IllegalStateException("no slab block found");
 		}
 	}
 
