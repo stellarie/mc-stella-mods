@@ -106,7 +106,7 @@ public class TowerGhostRuneGameTest {
 	public void aGhostChestplateEvadesAboutAThirdOfBlows(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = phased(helper, 1.5, 1.5);
-		DamageSource wound = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(RuneGuards.DELAYED_WOUND));
+		DamageSource wound = new DamageSource(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(RuneEffects.BURST));
 		int tries = 2000;
 		int evaded = 0;
 		ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST).copy();

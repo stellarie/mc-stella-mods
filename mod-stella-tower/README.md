@@ -414,3 +414,26 @@ Scroll of Return. Also look at a chest in play to confirm it renders as a vanill
 ### Chests on floors
 
 Every planned floor is built with a double tower chest at each chest spot of its plan (at least 5, plus a guaranteed one on elite and boss floors), stocked once when the floor goes up. Example: `[BEHAVIOR] test=floorChestsOrdinary RESULT ... spots=6 chestBlocks=12 faults=0`.
+
+## Runes
+
+- Every tower mob, elite, boss and void shaman drops a rune with chance 0.001. A rune holds one of eight
+  elements and the floor it dropped on. An anvil sets it into a weapon or one armor piece for 64 emeralds.
+- The floor sets the tier multiplier only: weapon hits multiply by it, and armor divides tower mob blows
+  by it. The signature effects below read the wearer's effective stats, not the floor.
+- Stats come from `mod-stella-rpg` by reflection on `com.stella.rpg.StatBonuses.effective`. Without that
+  mod every stat is 0 and each effect stays at its floor. The tooltip reads the stats the server last sent.
+- Every effect works on any mob in any dimension. Damage a rune deals itself (a combustion, a chain, a
+  thorn) triggers no rune effect.
+- Each worn armor piece of an element adds a quarter of the full set value. The caps apply to the sum.
+
+| Element | Weapon | Armor (full set) |
+|---|---|---|
+| Fire | Hits stack Heat. The fifth stack combusts for STR x 2% of the hit. | Attackers burn 3 s and take VIT / 10% of their hit back. |
+| Ice | Hits chill (Slowness I, 2 s). +INT / 4% damage to slowed or frozen targets. | AGI / 10% chance (cap 40) to freeze an attacker for 1 s. |
+| Water | Soaked targets take +LUK / 3% damage from all sources for 5 s. | Regenerate VIT / 20% of max health every 10 s. |
+| Lightning | Every 4th hit chains to 2 hostile mobs within 4 blocks for DEX / 2% of the hit. | Each hit taken stores a charge (max 5). The next attack deals +DEX / 5% per charge. |
+| Wind | +AGI / 3% damage to airborne targets, and extra knockback. | AGI / 20% dodge chance (cap 30). |
+| Void | Hits shred 2% of target armor, up to INT / 5%. | INT / 20% magic resistance (cap 30). |
+| Holy | Heal VIT / 10% of damage dealt, double against undead. | VIT / 5% less damage from undead (cap 60). |
+| Dark | +STR / 5% damage to targets below 30% health. | Attackers get Weakness I for LUK / 20 s (min 1 s). |
