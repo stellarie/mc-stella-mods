@@ -137,6 +137,26 @@ public class LayoutSeedGameTest {
 	}
 
 	@GameTest
+	public void aChunkDrawWritesOnlyInsideItsOwnClipAndReadsAirBeyondIt(final GameTestHelper helper) {
+		RuinFrame frame = frame(11L, 0);
+		BoundingBox box = frame.box();
+		BoundingBox clip = new BoundingBox(16, box.minY(), 16, 31, box.maxY(), 31);
+		Map<BlockPos, BlockState> sink = new TreeMap<>(java.util.Comparator.comparingLong(BlockPos::asLong));
+		LayoutContext ctx = LayoutContext.forCapture(frame, sink, clip);
+		WorldTestInit.surface.layout().draw(ctx);
+		long outside = sink.keySet().stream().filter(pos -> !clip.isInside(pos)).count();
+		helper.assertTrue(!sink.isEmpty() && outside == 0, outside + " of " + sink.size() + " blocks were written outside the chunk clip");
+		BlockPos inside = sink.keySet().iterator().next();
+		BlockPos far = new BlockPos(box.minX(), box.maxY(), box.minZ());
+		Map<BlockPos, BlockState> shared = new TreeMap<>(java.util.Comparator.comparingLong(BlockPos::asLong));
+		shared.put(far, Blocks.DIAMOND_BLOCK.defaultBlockState());
+		LayoutContext reader = LayoutContext.forCapture(frame, shared, clip);
+		helper.assertTrue(reader.get(0, frame.sizeY() - 1, 0).isAir(), "a read outside the clip gave a block");
+		helper.assertTrue(clip.isInside(inside), "the sample spot is outside the clip");
+		helper.succeed();
+	}
+
+	@GameTest
 	public void aQuarterTurnSendsLocalNorthToTheDirectionTheBlocksFace(final GameTestHelper helper) {
 		for (int turns = 0; turns < 4; turns++) {
 			RuinFrame frame = frame(1L, turns);

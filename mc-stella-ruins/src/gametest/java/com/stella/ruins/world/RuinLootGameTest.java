@@ -199,7 +199,7 @@ public class RuinLootGameTest {
 
 	@GameTest(maxTicks = 400)
 	public void usingAClueNearAPlacedSiteTurnsItIntoAFilledMapWithATargetAtThatSite(final GameTestHelper helper) {
-		WorldTestSupport.inFarArena(helper, WorldTestInit.findable, arena -> {
+		WorldTestSupport.inArena(helper, WorldTestInit.findable, arena -> {
 			ServerLevel level = arena.level();
 			List<net.minecraft.world.level.ChunkPos> forced = new ArrayList<>();
 			RuinClues.Locator old = null;
@@ -248,7 +248,7 @@ public class RuinLootGameTest {
 	 */
 	@GameTest(maxTicks = 400, required = false)
 	public void gapTestWorldGeneratesNoStructuresSoTheRealClueSearchIsNotObservable(final GameTestHelper helper) {
-		WorldTestSupport.inFarArena(helper, WorldTestInit.findable, arena -> {
+		WorldTestSupport.inArena(helper, WorldTestInit.findable, arena -> {
 			ServerLevel level = arena.level();
 			List<net.minecraft.world.level.ChunkPos> forced = new ArrayList<>();
 			try {

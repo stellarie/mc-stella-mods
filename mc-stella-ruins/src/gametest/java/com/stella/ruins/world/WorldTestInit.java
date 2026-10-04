@@ -3,6 +3,7 @@ package com.stella.ruins.world;
 import com.stella.ruins.StellaRuins;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -49,8 +50,15 @@ public final class WorldTestInit implements ModInitializer {
 		return ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(NAMESPACE, path));
 	}
 
+	/** Chunks round a test player that tick entities. Each arena holds a player, so a wide ring costs the whole suite. */
+	static final int SIMULATION_DISTANCE = 4;
+
 	@Override
 	public void onInitialize() {
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+			server.getPlayerList().setSimulationDistance(SIMULATION_DISTANCE);
+			server.getPlayerList().setViewDistance(SIMULATION_DISTANCE);
+		});
 		ResourceKey<Item> relicKey = ResourceKey.create(Registries.ITEM, StellaRuins.id("test_relic"));
 		relic = Registry.register(BuiltInRegistries.ITEM, relicKey, new Item(new Item.Properties().setId(relicKey)));
 

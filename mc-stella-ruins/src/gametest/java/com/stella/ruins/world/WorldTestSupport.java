@@ -169,12 +169,6 @@ final class WorldTestSupport {
 		return arena(level, site, rotation, 100_000 + (n % 4000) * 144, 100_000 + (n / 4000) * 144, n);
 	}
 
-	/** A site in chunks no run has ever saved: far out, where the structure check holds no stale record. */
-	static Arena farArena(final ServerLevel level, final RuinSite site) {
-		int n = NEXT.getAndIncrement();
-		return arena(level, site, Rotation.NONE, 19_000_000 + (n % 500) * 600, 19_000_000 + (n / 500) * 600, n);
-	}
-
 	private static Arena arena(final ServerLevel level, final RuinSite site, final Rotation rotation, final int x0, final int z0, final int n) {
 		RuinFrame probe = new RuinFrame(site.id(), new BlockPos(x0, 0, z0), rotation.ordinal(), 0L, site.sizeX(), site.sizeY(), site.sizeZ(), site.placement().foundation());
 		BoundingBox box = probe.box();
@@ -206,11 +200,6 @@ final class WorldTestSupport {
 	 */
 	static void inArena(final GameTestHelper helper, final RuinSite site, final ArenaBody body) {
 		runIn(helper, arena(helper.getLevel(), site, Rotation.NONE), body);
-	}
-
-	/** Like {@link #inArena}, in chunks no run has saved. */
-	static void inFarArena(final GameTestHelper helper, final RuinSite site, final ArenaBody body) {
-		runIn(helper, farArena(helper.getLevel(), site), body);
 	}
 
 	private static void runIn(final GameTestHelper helper, final Arena arena, final ArenaBody body) {
