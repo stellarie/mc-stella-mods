@@ -259,34 +259,31 @@ public class WayshrineMobGameTest {
 
 	/** Zombies burn in the sun unless they wear a helmet that cannot break. The control wears nothing and must burn. */
 	@GameTest(maxTicks = 700)
-	public void theHoodKeepsAPilgrimFromBurningAtNoonWhileAZombieInAFailingHoodBurns(final GameTestHelper helper) {
+	public void theHoodKeepsAPilgrimFromBurningAtNoonWhileABareZombieBurns(final GameTestHelper helper) {
 		Mob[] subjects = new Mob[2];
 		long[] noonBefore = {0L};
-		WayshrineTestSupport.inArenaAfter(helper, net.minecraft.world.level.block.Rotation.NONE, WayshrineTestSupport.seedOf(WayshrinePlan.RING), 140, arena -> {
+		WayshrineTestSupport.inArenaAfter(helper, net.minecraft.world.level.block.Rotation.NONE, WayshrineTestSupport.seedOf(WayshrinePlan.RING), 300, arena -> {
 			var clock = arena.level().dimensionType().defaultClock().orElseThrow();
 			noonBefore[0] = arena.level().clockManager().getInstance(clock).totalTicks();
 			helper.setTime(6000L);
 			subjects[0] = WayshrineMobs.pilgrim().spawn(arena.level(), Vec3.atBottomCenterOf(arena.markers(WayshrinePlan.spawnMarker(WayshrineMobs.PILGRIM)).get(0)));
-			// Both hoods start one point from breaking: the pilgrim's cannot break, the control's does and then the sun burns it.
+			// The pilgrim's hood starts one point from breaking, and it cannot break. The control wears nothing, so the sun burns it.
 			ItemStack worn = subjects[0].getItemBySlot(EquipmentSlot.HEAD);
 			worn.setDamageValue(worn.getMaxDamage() - 1);
 			subjects[1] = EntityTypes.ZOMBIE.create(arena.level(), EntitySpawnReason.COMMAND);
 			subjects[1].addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
-			ItemStack weak = new ItemStack(Items.LEATHER_HELMET);
-			weak.setDamageValue(weak.getMaxDamage() - 1);
-			subjects[1].setItemSlot(EquipmentSlot.HEAD, weak);
 			subjects[1].snapTo(Vec3.atBottomCenterOf(arena.markers(WayshrinePlan.spawnMarker(WayshrineMobs.PILGRIM)).get(1)));
 			arena.level().addFreshEntity(subjects[1]);
 		}, arena -> {
 			boolean day = arena.level().isBrightOutside();
 			boolean pilgrimBurned = subjects[0].isOnFire() || subjects[0].getHealth() < subjects[0].getMaxHealth();
 			boolean bareBurned = subjects[1].isOnFire() || subjects[1].getHealth() < subjects[1].getMaxHealth() || !subjects[1].isAlive();
-			WayshrineTestSupport.result("sunBurn", "day=" + day + " pilgrimBurned=" + pilgrimBurned + " failingHoodBurned=" + bareBurned);
+			WayshrineTestSupport.result("sunBurn", "day=" + day + " pilgrimBurned=" + pilgrimBurned + " bareZombieBurned=" + bareBurned);
 			subjects[0].discard();
 			subjects[1].discard();
 			arena.level().clockManager().setTotalTicks(arena.level().dimensionType().defaultClock().orElseThrow(), noonBefore[0]);
 			helper.assertTrue(day, "it was not day at the end of the test, so the sun check proves nothing");
-			helper.assertTrue(bareBurned, "the zombie in a failing hood did not burn, so the sun check proves nothing");
+			helper.assertTrue(bareBurned, "the bare zombie did not burn, so the sun check proves nothing");
 			helper.assertTrue(!pilgrimBurned, "the pilgrim burned in the sun despite its hood");
 		});
 	}

@@ -114,9 +114,14 @@ public class WayshrineRewardGameTest {
 		}
 	}
 
-	private static void quiet(final ServerPlayer player) {
+	/**
+	 * Leaves the censer as the only heal. Food is low, and Regeneration is stripped every tick: the Pilgrim aura of a
+	 * neighbouring test, up to 8 blocks away in the shared level, once gave every player in this test one heart.
+	 */
+	private static void quiet(final GameTestHelper helper, final ServerPlayer player) {
 		player.getFoodData().setFoodLevel(6);
 		player.getFoodData().setSaturation(0.0F);
+		helper.onEachTick(() -> player.removeEffect(MobEffects.REGENERATION));
 	}
 
 	@GameTest(maxTicks = 200)
@@ -187,7 +192,7 @@ public class WayshrineRewardGameTest {
 
 	private static ServerPlayer holder(final GameTestHelper helper, final double z, final boolean offHand) {
 		ServerPlayer player = WayshrineTestSupport.join(helper, new Vec3(1.5, 1.0, z));
-		quiet(player);
+		quiet(helper, player);
 		ItemStack censer = new ItemStack(WayshrineRewards.censer());
 		if (offHand) {
 			player.setItemSlot(EquipmentSlot.OFFHAND, censer);
@@ -203,7 +208,7 @@ public class WayshrineRewardGameTest {
 		ServerPlayer high = holder(helper, 6.5, true);
 		ServerPlayer mainHand = holder(helper, 11.5, false);
 		ServerPlayer bare = WayshrineTestSupport.join(helper, new Vec3(1.5, 1.0, 16.5));
-		quiet(bare);
+		quiet(helper, bare);
 		low.setHealth(5.0F);
 		high.setHealth(15.0F);
 		mainHand.setHealth(5.0F);
@@ -229,7 +234,7 @@ public class WayshrineRewardGameTest {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer holder = holder(helper, 1.5, true);
 		ServerPlayer bare = WayshrineTestSupport.join(helper, new Vec3(1.5, 1.0, 6.5));
-		quiet(bare);
+		quiet(helper, bare);
 		holder.setHealth(10.0F);
 		bare.setHealth(10.0F);
 		Cow first = cow(helper, 4.5, 1.5);
