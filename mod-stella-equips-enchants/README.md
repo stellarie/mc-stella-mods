@@ -251,12 +251,30 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 Each special effect starts at its level and keeps working at the higher levels, so a +15 piece has the
 effects of +7, +10, +12 and +15. Effects of several armour pieces add up.
 
+**Material tiers.** The numbers below are for iron. A piece's material scales every special it has:
+a chance, a share, a damage or a duration. A chance never passes 100%. Piercing, which counts mobs, does not scale.
+
+| Material | Factor |
+|---|---|
+| Leather, wood | 0.6 |
+| Stone, chainmail, copper, gold | 0.8 |
+| Iron, and anything of unknown material | 1.0 |
+| Diamond | 1.35 |
+| Netherite | 1.7 |
+| Void (mod-stella-tower) | 2.0 |
+
+The material comes from the repair tag of the piece. A shield, a bow and a spellbook have factor 1.0.
+A +10 diamond chestplate has Fortitude +4.05% max health where iron has +3%. A netherite sword burns for
+5.1 s at +10 and has an 8.5% Keen chance. Armour effects add the factors of the worn pieces. The
+refine lore line and the attribute modifiers are written when a piece is refined, so a piece refined before
+this change shows the old numbers until its next refine. Chance and share effects take the new factor at once.
+
 **Weapons** (melee)
 
 | Level | Effect |
 |---|---|
 | +7 | Keen: a 5% chance that a hit does 1.5 times its damage |
-| +10 | Wood, stone, gold, copper: Splinter, the target bleeds for 2% of the hit each second for 3 s. Iron: Searing, the target burns for 3 s. Diamond, trident, mace: Frostbite, Slowness II for 2 s. Netherite: Searing, the target burns for 5 s |
+| +10 | Wood, stone, gold, copper: Splinter, the target bleeds for 2% of the hit each second for 3 s. Iron: Searing, the target burns for 3 s. Diamond, trident, mace: Frostbite, Slowness II for 2 s. Netherite: Searing, the target burns for 3 s |
 | +12 | Rending: hits also inflict Wither for 3 s |
 | +15 | Ascended: hits send a shockwave, 40% of the hit to hostiles within 3 blocks (never village patrols) |
 
@@ -291,8 +309,8 @@ effects of +7, +10, +12 and +15. Effects of several armour pieces add up.
 
 Armour at +12 has **Thorned** for every material: a melee blow that lands pricks the attacker for 10%
 of the damage the wearer took, for each such piece. At +15 it has **Blessed**: a player heals 1% of max
-health every 5 s for each such piece. Four +10 diamond pieces take 12% less damage. Copper armour and the
-turtle helmet have no +10 effect. Four +10 netherite pieces take 50% less fire damage.
+health every 5 s for each such piece. Four +10 diamond pieces take 16.2% less damage. Copper armour and the
+turtle helmet have no +10 effect. Four +10 netherite pieces take 85% less fire damage.
 
 **Shields** (a raised shield that blocks a melee blow)
 

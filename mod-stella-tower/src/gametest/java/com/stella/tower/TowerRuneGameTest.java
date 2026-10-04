@@ -173,7 +173,8 @@ public class TowerRuneGameTest {
 		double divisor = Math.pow(TowerRunes.armorDivisor(TOP), TowerRunes.ARMOR_PIECES);
 		double own = Math.min(TowerRunes.OWN_ELEMENT_CAP, TowerRunes.ARMOR_PIECES * (TowerRunes.OWN_ELEMENT_BASE + TowerRunes.power(TOP) / 1000.0));
 		float base = 3.0F;
-		double raw = TowerCurve.damage(base, LOW);
+		// scaleDamage keeps only the rank factor; the level part is the mobs mod's, on the hit itself.
+		double raw = base;
 		double[] got = new double[2];
 		double[] want = {raw / divisor, raw / divisor * (1.0 - own)};
 		TowerElement[] attackers = {TowerElement.WIND, TowerElement.DARK};

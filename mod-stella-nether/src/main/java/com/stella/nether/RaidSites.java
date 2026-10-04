@@ -18,15 +18,17 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
 /**
- * Picks where a run opens: midway between a fortress and a bastion that lie close together, so both are
- * within {@link RaidInstance#STRUCTURE_REACH} of the arrival. The raid nether's own structures are used, so
+ * Picks where a run opens: beside a fortress that has a bastion close by, 48 blocks from the fortress start toward it.
+ * The raid nether's own structures are used, so
  * nothing is forced into the land. Each placement cell near the origin is read for its actual structure
  * start; the locate search is not used, because it answers with the first ring that holds a match rather
  * than the nearest one.
  */
 public final class RaidSites {
-	/** How far apart the pair may lie: midway, each is then within reach, with a margin for rounding. */
+	/** How far apart the fortress and its bastion may lie. */
 	static final int MAX_PAIR_GAP = 2 * RaidInstance.STRUCTURE_REACH - 32;
+	/** How far from the fortress start a run opens; inside the 64 blocks the run promises. */
+	static final int ARRIVAL_STANDOFF = 48;
 	/** Placement cells searched on each side of the origin's cell. */
 	static final int CELL_RADIUS = 3;
 	/** The nether complexes' cell, 27 chunks, as vanilla places fortresses and bastions. */
@@ -82,7 +84,7 @@ public final class RaidSites {
 				if (!f.fortress() || b.fortress() || gap(f.at(), b.at()) > MAX_PAIR_GAP) {
 					continue;
 				}
-				BlockPos mid = new BlockPos((f.at().getX() + b.at().getX()) / 2, RaidInstance.ARRIVAL_Y, (f.at().getZ() + b.at().getZ()) / 2);
+				BlockPos mid = standoff(f.at(), b.at());
 				double distance = gap(mid, origin);
 				if (distance < bestDistance) {
 					bestDistance = distance;
@@ -96,6 +98,16 @@ public final class RaidSites {
 		}
 		BehaviorLog.info("[NETHER] raid site={} from origin={} structures={} ms={}", best.arrival(), origin, found.size(), (System.nanoTime() - began) / 1_000_000L);
 		return best;
+	}
+
+	/** A spot a fixed standoff from the fortress start, toward the bastion, so the run opens beside the fortress and clear of its core. */
+	static BlockPos standoff(final BlockPos fortress, final BlockPos bastion) {
+		double gap = gap(fortress, bastion);
+		double step = Math.min(ARRIVAL_STANDOFF, gap / 2.0);
+		double scale = gap < 1.0E-6 ? 0.0 : step / gap;
+		return new BlockPos(
+			fortress.getX() + (int) Math.round((bastion.getX() - fortress.getX()) * scale), RaidInstance.ARRIVAL_Y,
+			fortress.getZ() + (int) Math.round((bastion.getZ() - fortress.getZ()) * scale));
 	}
 
 	private static boolean valid(final StructureStart start) {

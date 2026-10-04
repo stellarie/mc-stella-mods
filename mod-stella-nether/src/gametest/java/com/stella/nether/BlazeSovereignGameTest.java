@@ -89,7 +89,7 @@ public class BlazeSovereignGameTest {
 		Blaze blaze = BlazeSovereign.rise(raid, arena(raid, server, 8));
 		double effective = BlazeSovereign.effectiveHealth(blaze);
 		int threat = ThreatState.level(blaze);
-		int expectedThreat = BlazeSovereign.LEVEL_FLOOR + BlazeSovereign.LEVEL_BONUS;
+		int expectedThreat = RaidInstance.MIN_LEVEL_NORMAL + BlazeSovereign.LEVEL_BONUS;
 		double expected = BlazeSovereign.BASE_HEALTH * SpawnScaling.healthMultiplier(expectedThreat);
 		NetherTestSupport.result("sovereignHealth", "effective=" + effective + " expected=" + expected + " threat=" + threat + " attribute=" + blaze.getMaxHealth());
 		blaze.discard();

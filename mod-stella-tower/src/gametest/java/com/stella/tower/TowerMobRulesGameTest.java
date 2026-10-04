@@ -105,7 +105,7 @@ public class TowerMobRulesGameTest {
 		tower.addFreshEntity(hoglin);
 		Mob zoglin = hoglin.convertTo(EntityTypes.ZOGLIN, ConversionParams.single(hoglin, true, false), converted -> { });
 		TowerMobs.State state = zoglin == null ? null : TowerMobs.stateOf(zoglin);
-		double want = zoglin == null ? 0.0 : TowerCurve.health(zoglin.getAttributeBaseValue(Attributes.MAX_HEALTH), of);
+		double want = zoglin == null ? 0.0 : TowerTestSupport.floorHealth(zoglin.getAttributeBaseValue(Attributes.MAX_HEALTH), of, TowerRank.MOB);
 		double held = zoglin == null ? 0.0 : zoglin.getMaxHealth();
 		TowerTestSupport.result("conversionKeeps", "state=" + state + " held=" + held + " want=" + want);
 		if (zoglin != null) {
@@ -163,7 +163,7 @@ public class TowerMobRulesGameTest {
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		zombie.getAttribute(Attributes.MAX_HEALTH).addPermanentModifier(
 			new AttributeModifier(Identifier.withDefaultNamespace("leader_zombie_bonus"), 3.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-		double want = TowerCurve.health(zombie.getAttributeBaseValue(Attributes.MAX_HEALTH), floor);
+		double want = TowerTestSupport.floorHealth(zombie.getAttributeBaseValue(Attributes.MAX_HEALTH), floor, TowerRank.MOB);
 		TowerMobs.makeTowerMob(zombie, floor, TowerElement.VOID);
 		double held = zombie.getMaxHealth();
 		double divisor = TowerMobs.stateOf(zombie).healthDivisor();

@@ -51,6 +51,17 @@ final class TowerTestSupport {
 		helper.getLevel().getServer().getPlayerList().remove(player);
 	}
 
+	/** A mob of the world with no level of its own, so the mobs mod does not rescale it when it joins. */
+	static <T extends net.minecraft.world.entity.Mob> T unrolled(final T mob) {
+		mob.addTag(com.stella.mobs.StellaMobs.NO_SPAWN_ROLL_TAG);
+		return mob;
+	}
+
+	/** What a floor's mob of this rank holds: its own health times the mobs mod's multiplier for the floor's level. */
+	static double floorHealth(final double base, final int floor, final TowerRank rank) {
+		return base * com.stella.mobs.scaling.SpawnScaling.healthMultiplier(floor + 19) * rank.healthFactor();
+	}
+
 	static ServerLevel tower(final GameTestHelper helper) {
 		ServerLevel tower = helper.getLevel().getServer().getLevel(TowerTravel.TOWER);
 		helper.assertTrue(tower != null, "the tower dimension is not loaded");

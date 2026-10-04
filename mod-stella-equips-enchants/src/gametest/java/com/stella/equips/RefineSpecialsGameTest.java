@@ -41,19 +41,19 @@ public class RefineSpecialsGameTest {
 	private static final int PADDING = 20;
 	private static final List<EquipmentSlot> ARMOR_SLOTS = List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
 
-	private record ArmourSet(String name, List<Item> pieces, Special material) {
+	private record ArmourSet(String name, List<Item> pieces, Special material, double factor) {
 		Item chestplate() {
 			return this.pieces.get(1);
 		}
 	}
 
 	private static final List<ArmourSet> SETS = List.of(
-		new ArmourSet("leather", List.of(Items.LEATHER_HELMET, Items.LEATHER_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS), Special.EVASION),
-		new ArmourSet("chainmail", List.of(Items.CHAINMAIL_HELMET, Items.CHAINMAIL_CHESTPLATE, Items.CHAINMAIL_LEGGINGS, Items.CHAINMAIL_BOOTS), Special.RIPOSTE),
-		new ArmourSet("iron", List.of(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS), Special.VIGOR),
-		new ArmourSet("gold", List.of(Items.GOLDEN_HELMET, Items.GOLDEN_CHESTPLATE, Items.GOLDEN_LEGGINGS, Items.GOLDEN_BOOTS), Special.FORTUNE),
-		new ArmourSet("diamond", List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS), Special.BULWARK),
-		new ArmourSet("netherite", List.of(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS), Special.EMBERGUARD)
+		new ArmourSet("leather", List.of(Items.LEATHER_HELMET, Items.LEATHER_CHESTPLATE, Items.LEATHER_LEGGINGS, Items.LEATHER_BOOTS), Special.EVASION, 0.6),
+		new ArmourSet("chainmail", List.of(Items.CHAINMAIL_HELMET, Items.CHAINMAIL_CHESTPLATE, Items.CHAINMAIL_LEGGINGS, Items.CHAINMAIL_BOOTS), Special.RIPOSTE, 0.8),
+		new ArmourSet("iron", List.of(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS), Special.VIGOR, 1.0),
+		new ArmourSet("gold", List.of(Items.GOLDEN_HELMET, Items.GOLDEN_CHESTPLATE, Items.GOLDEN_LEGGINGS, Items.GOLDEN_BOOTS), Special.FORTUNE, 0.8),
+		new ArmourSet("diamond", List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS), Special.BULWARK, 1.35),
+		new ArmourSet("netherite", List.of(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS), Special.EMBERGUARD, 1.7)
 	);
 
 	static {
@@ -120,7 +120,7 @@ public class RefineSpecialsGameTest {
 		float first = melee(helper, splinter, bled, HIT);
 		float controlFirst = melee(helper, below, control, HIT);
 		helper.assertTrue(Math.abs(first - HIT) < TOLERANCE && Math.abs(controlFirst - HIT) < TOLERANCE, "the first hits did " + first + " and " + controlFirst);
-		float expected = HIT + RefineEffects.SPLINTER_SECONDS * (float) RefineEffects.SPLINTER_SHARE * HIT;
+		float expected = HIT + RefineEffects.SPLINTER_SECONDS * (float) (RefineEffects.SPLINTER_SHARE * 0.6) * HIT;
 		helper.runAfterDelay(70, () -> {
 			float total = bledBefore - bled.getHealth();
 			LOG.info("[BEHAVIOR] test=splinterBleedsForLowTierWeapons RESULT total={} expected={} control={}", total, expected, controlBefore - control.getHealth());
@@ -142,7 +142,7 @@ public class RefineSpecialsGameTest {
 		int diamond = burn(helper, Items.DIAMOND_SWORD, Refine.SEARING_LEVEL, 3);
 		LOG.info("[BEHAVIOR] test=searingBurnsForIronAndLongerForNetherite RESULT iron={} netherite={} ironNine={} netheriteNine={} diamond={}", iron, netherite, ironNine, netheriteNine, diamond);
 		helper.assertTrue(iron > RefineEffects.SEARING_TICKS - 5 && iron <= RefineEffects.SEARING_TICKS, "an iron +10 hit burned for " + iron + " ticks");
-		helper.assertTrue(netherite > RefineEffects.NETHERITE_SEARING_TICKS - 5 && netherite <= RefineEffects.NETHERITE_SEARING_TICKS, "a netherite +10 hit burned for " + netherite + " ticks");
+		helper.assertTrue(netherite > Math.round(RefineEffects.SEARING_TICKS * 1.7) - 5 && netherite <= Math.round(RefineEffects.SEARING_TICKS * 1.7), "a netherite +10 hit burned for " + netherite + " ticks");
 		helper.assertTrue(ironNine <= 0 && netheriteNine <= 0, "a +9 hit burned: " + ironNine + ", " + netheriteNine);
 		helper.assertTrue(diamond <= 0, "a diamond +10 hit burned for " + diamond + " ticks");
 		helper.succeed();
@@ -152,8 +152,9 @@ public class RefineSpecialsGameTest {
 	public void frostbiteSlowsForDiamondTridentAndMace(final GameTestHelper helper) {
 		for (Item item : List.of(Items.DIAMOND_SWORD, Items.TRIDENT, Items.MACE)) {
 			MobEffectInstance slow = slowAfterHit(helper, item, Refine.SEARING_LEVEL, 3);
-			helper.assertTrue(slow != null && slow.getAmplifier() == RefineEffects.FROSTBITE_AMPLIFIER && slow.getDuration() > RefineEffects.FROSTBITE_TICKS - 5
-				&& slow.getDuration() <= RefineEffects.FROSTBITE_TICKS, item + " at +10 left " + slow);
+			long want = Math.round(RefineEffects.FROSTBITE_TICKS * (item == Items.DIAMOND_SWORD ? 1.35 : 1.0));
+			helper.assertTrue(slow != null && slow.getAmplifier() == RefineEffects.FROSTBITE_AMPLIFIER && slow.getDuration() > want - 5
+				&& slow.getDuration() <= want, item + " at +10 left " + slow);
 			helper.assertTrue(slowAfterHit(helper, item, Refine.SEARING_LEVEL - 1, 5) == null, item + " at +9 slowed");
 		}
 		helper.assertTrue(slowAfterHit(helper, Items.IRON_SWORD, Refine.SEARING_LEVEL, 3) == null, "an iron sword slowed at +10");
@@ -170,7 +171,8 @@ public class RefineSpecialsGameTest {
 			Mob spared = spider(helper, 5, 3);
 			melee(helper, below, spared, HIT);
 			MobEffectInstance wither = withered.getEffect(MobEffects.WITHER);
-			helper.assertTrue(wither != null && wither.getDuration() > RefineEffects.RENDING_TICKS - 5 && wither.getDuration() <= RefineEffects.RENDING_TICKS, item + " at +12 left " + wither);
+			long want = Math.round(RefineEffects.RENDING_TICKS * (item == Items.WOODEN_SWORD ? 0.6 : item == Items.DIAMOND_SWORD ? 1.35 : item == Items.NETHERITE_SWORD ? 1.7 : 1.0));
+			helper.assertTrue(wither != null && wither.getDuration() > want - 5 && wither.getDuration() <= want, item + " at +12 left " + wither);
 			helper.assertTrue(!spared.hasEffect(MobEffects.WITHER), item + " at +11 withered");
 		}
 		helper.succeed();
@@ -343,7 +345,7 @@ public class RefineSpecialsGameTest {
 		LOG.info("[BEHAVIOR] test=evasionIgnoresAHitWithThreePercentPerPiece RESULT landed={} evaded={} hurt={} nineLost={} rolls={}", landed, evaded, hurt, nineBefore - nine.getHealth(), RefineRolls.rolls(wearer));
 		helper.assertTrue(!landed && evaded == 0.0F, "an evaded hit still hurt: " + evaded);
 		helper.assertTrue(hurt > 0.0F, "a hit that lost the roll did nothing");
-		helper.assertTrue(RefineRolls.rolls(wearer).equals(List.of(RefineRolls.roll(Special.EVASION, 4 * RefineEffects.EVASION_CHANCE), RefineRolls.roll(Special.EVASION, 4 * RefineEffects.EVASION_CHANCE))),
+		helper.assertTrue(RefineRolls.rolls(wearer).equals(List.of(RefineRolls.roll(Special.EVASION, RefineEffects.EVASION_CHANCE * (0.6 + 0.6 + 0.6 + 0.6)), RefineRolls.roll(Special.EVASION, RefineEffects.EVASION_CHANCE * (0.6 + 0.6 + 0.6 + 0.6)))),
 			"four pieces rolled " + RefineRolls.rolls(wearer));
 		helper.assertTrue(nineBefore - nine.getHealth() > 0.0F && RefineRolls.rolls(nine).isEmpty(), "+9 leather rolled " + RefineRolls.rolls(nine));
 		helper.succeed();
@@ -381,9 +383,9 @@ public class RefineSpecialsGameTest {
 			total += RefineEffects.experience(one, 5);
 		}
 		double mean = total / (double) trials;
-		double expected = 5 * (1 + RefineEffects.FORTUNE_SHARE);
+		double expected = 5 * (1 + RefineEffects.FORTUNE_SHARE * 0.8);
 		LOG.info("[BEHAVIOR] test=fortuneAddsExperienceFromKills RESULT base={} boosted={} atNine={} mean={} expected={}", base, boosted, atNine, mean, expected);
-		helper.assertTrue(base > 0 && boosted == Math.round(base * (1 + 4 * RefineEffects.FORTUNE_SHARE)), "four gold pieces turned " + base + " experience into " + boosted);
+		helper.assertTrue(base > 0 && boosted == Math.round(base * (1 + 4 * RefineEffects.FORTUNE_SHARE * 0.8)), "four gold pieces turned " + base + " experience into " + boosted);
 		helper.assertTrue(atNine == base, "+9 gold turned " + base + " experience into " + atNine);
 		helper.assertTrue(Math.abs(mean - expected) < 0.05, "one gold piece turned 5 experience into a mean of " + mean);
 		helper.succeed();
@@ -395,8 +397,8 @@ public class RefineSpecialsGameTest {
 		float one = damageTaken(helper, SETS.get(4), Refine.SEARING_LEVEL, 1, false, 4);
 		float nine = damageTaken(helper, SETS.get(4), Refine.SEARING_LEVEL - 1, 4, false, 5);
 		LOG.info("[BEHAVIOR] test=bulwarkTakesAShareOffEveryPiece RESULT four={} one={} nine={}", four, one, nine);
-		helper.assertTrue(Math.abs(four - 50.0F * (1.0F - 4 * (float) RefineEffects.BULWARK_SHARE)) < TOLERANCE, "four +10 diamond pieces took " + four + " of 50");
-		helper.assertTrue(Math.abs(one - 50.0F * (1.0F - (float) RefineEffects.BULWARK_SHARE)) < TOLERANCE, "one +10 diamond piece took " + one + " of 50");
+		helper.assertTrue(Math.abs(four - 50.0F * (1.0F - 4 * (float) (RefineEffects.BULWARK_SHARE * 1.35))) < TOLERANCE, "four +10 diamond pieces took " + four + " of 50");
+		helper.assertTrue(Math.abs(one - 50.0F * (1.0F - (float) (RefineEffects.BULWARK_SHARE * 1.35))) < TOLERANCE, "one +10 diamond piece took " + one + " of 50");
 		helper.assertTrue(Math.abs(nine - 50.0F) < TOLERANCE, "four +9 diamond pieces took " + nine + " of 50");
 		helper.succeed();
 	}
@@ -408,8 +410,8 @@ public class RefineSpecialsGameTest {
 		float nine = damageTaken(helper, SETS.get(5), Refine.SEARING_LEVEL - 1, 1, true, 5);
 		float notFire = damageTaken(helper, SETS.get(5), Refine.SEARING_LEVEL, 1, false, 6);
 		LOG.info("[BEHAVIOR] test=emberguardHalvesFireDamagePerPiece RESULT one={} four={} nine={} notFire={}", one, four, nine, notFire);
-		helper.assertTrue(Math.abs(one - 50.0F * (1.0F - (float) RefineEffects.EMBERGUARD_SHARE)) < TOLERANCE, "one +10 netherite piece took " + one + " fire damage of 50");
-		helper.assertTrue(Math.abs(four - 50.0F * (1.0F - 4 * (float) RefineEffects.EMBERGUARD_SHARE)) < TOLERANCE, "four +10 netherite pieces took " + four + " fire damage of 50");
+		helper.assertTrue(Math.abs(one - 50.0F * (1.0F - (float) (RefineEffects.EMBERGUARD_SHARE * 1.7))) < TOLERANCE, "one +10 netherite piece took " + one + " fire damage of 50");
+		helper.assertTrue(Math.abs(four - 50.0F * (1.0F - 4 * (float) (RefineEffects.EMBERGUARD_SHARE * 1.7))) < TOLERANCE, "four +10 netherite pieces took " + four + " fire damage of 50");
 		helper.assertTrue(Math.abs(nine - 50.0F) < TOLERANCE, "a +9 netherite piece took " + nine + " fire damage of 50");
 		helper.assertTrue(Math.abs(notFire - 50.0F) < TOLERANCE, "a +10 netherite piece took " + notFire + " damage of 50 from something that is not fire");
 		helper.succeed();
@@ -426,7 +428,7 @@ public class RefineSpecialsGameTest {
 				set.name + " has Thorned at the wrong level");
 			float[] pricked = thornedExchange(helper, set, Refine.RENDING_LEVEL, 3);
 			float[] spared = thornedExchange(helper, set, Refine.RENDING_LEVEL - 1, 5);
-			helper.assertTrue(pricked[0] > 0.0F && Math.abs(pricked[1] - RefineEffects.THORN_SHARE * pricked[0]) < TOLERANCE, set.name + " +12 pricked for " + pricked[1] + " after " + pricked[0]);
+			helper.assertTrue(pricked[0] > 0.0F && Math.abs(pricked[1] - RefineEffects.THORN_SHARE * set.factor * pricked[0]) < TOLERANCE, set.name + " +12 pricked for " + pricked[1] + " after " + pricked[0]);
 			helper.assertTrue(spared[1] == 0.0F, set.name + " +11 pricked for " + spared[1]);
 
 			Mob blessed = wearing(helper, set, Refine.ASCENDED_LEVEL, 3);
@@ -437,7 +439,7 @@ public class RefineSpecialsGameTest {
 			float nearlyBefore = nearly.getHealth();
 			RefineEffects.blessOnce(blessed);
 			RefineEffects.blessOnce(nearly);
-			helper.assertTrue(Math.abs(blessed.getHealth() - blessedBefore - 4 * RefineEffects.BLESSING_SHARE * blessed.getMaxHealth()) < TOLERANCE, set.name + " +15 healed " + (blessed.getHealth() - blessedBefore));
+			helper.assertTrue(Math.abs(blessed.getHealth() - blessedBefore - 4 * RefineEffects.BLESSING_SHARE * set.factor * blessed.getMaxHealth()) < TOLERANCE, set.name + " +15 healed " + (blessed.getHealth() - blessedBefore));
 			helper.assertTrue(nearly.getHealth() == nearlyBefore, set.name + " +14 healed " + (nearly.getHealth() - nearlyBefore));
 		}
 		helper.succeed();
@@ -470,15 +472,15 @@ public class RefineSpecialsGameTest {
 		Mob attacker = spider(helper, 5, 5);
 		float attackerBefore = attacker.getHealth();
 		wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), HIT);
-		helper.assertTrue(Math.abs(attackerBefore - attacker.getHealth() - RefineEffects.THORN_SHARE * HIT) < TOLERANCE, "the +12 effect of +15 armour was lost");
+		helper.assertTrue(Math.abs(attackerBefore - attacker.getHealth() - RefineEffects.THORN_SHARE * 1.35 * HIT) < TOLERANCE, "the +12 effect of +15 armour was lost");
 		wearer.setHealth(wearer.getMaxHealth() / 2);
 		float healedFrom = wearer.getHealth();
 		RefineEffects.blessOnce(wearer);
-		helper.assertTrue(Math.abs(wearer.getHealth() - healedFrom - RefineEffects.BLESSING_SHARE * wearer.getMaxHealth()) < TOLERANCE, "the +15 effect of +15 armour was lost");
+		helper.assertTrue(Math.abs(wearer.getHealth() - healedFrom - RefineEffects.BLESSING_SHARE * 1.35 * wearer.getMaxHealth()) < TOLERANCE, "the +15 effect of +15 armour was lost");
 		wearer.damageCooldownTime = 0;
 		float sharedBefore = wearer.getHealth();
 		wearer.hurtServer(helper.getLevel(), helper.getLevel().damageSources().magic(), HIT);
-		helper.assertTrue(Math.abs(sharedBefore - wearer.getHealth() - HIT * (1.0F - (float) RefineEffects.BULWARK_SHARE)) < TOLERANCE, "the +10 effect of +15 armour was lost");
+		helper.assertTrue(Math.abs(sharedBefore - wearer.getHealth() - HIT * (1.0F - (float) (RefineEffects.BULWARK_SHARE * 1.35))) < TOLERANCE, "the +10 effect of +15 armour was lost");
 		helper.succeed();
 	}
 

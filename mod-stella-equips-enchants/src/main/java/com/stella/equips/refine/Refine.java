@@ -255,14 +255,15 @@ public final class Refine {
 				EquipmentSlotGroup slot = armorSlot(stack);
 				add(builder, Attributes.ARMOR, armorId(armorSlotOf(stack).getName()), level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, slot);
 				List<RefineSpecials.Special> specials = RefineSpecials.of(stack, level);
+				double tier = RefineTier.factor(stack);
 				if (specials.contains(RefineSpecials.Special.FORTITUDE)) {
-					add(builder, Attributes.MAX_HEALTH, FORTITUDE_ID, FORTITUDE_MULTIPLIER, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
+					add(builder, Attributes.MAX_HEALTH, FORTITUDE_ID, FORTITUDE_MULTIPLIER * tier, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
 				}
 				if (specials.contains(RefineSpecials.Special.STRIDE)) {
-					add(builder, Attributes.MOVEMENT_SPEED, STRIDE_ID, STRIDE_MULTIPLIER, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
+					add(builder, Attributes.MOVEMENT_SPEED, STRIDE_ID, STRIDE_MULTIPLIER * tier, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
 				}
 				if (specials.contains(RefineSpecials.Special.VIGOR)) {
-					add(builder, Attributes.MAX_HEALTH, vigorId(armorSlotOf(stack).getName()), VIGOR_MULTIPLIER, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
+					add(builder, Attributes.MAX_HEALTH, vigorId(armorSlotOf(stack).getName()), VIGOR_MULTIPLIER * tier, AttributeModifier.Operation.ADD_MULTIPLIED_BASE, slot);
 				}
 			} else if (isShield(stack)) {
 				add(builder, Attributes.ARMOR, SHIELD_ARMOR_ID, level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, EquipmentSlotGroup.HAND);

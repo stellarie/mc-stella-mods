@@ -317,7 +317,7 @@ public class TowerBuffGameTest {
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);
 		Zombie zombie = mobOn(tower, floor, 20.0, GUARDS_FLOOR);
-		Pig pig = EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND);
+		Pig pig = TowerTestSupport.unrolled(EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND));
 		pig.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		pig.setHealth(1000.0F);
 		pig.snapTo(zombie.position().add(1.5, 0.0, 0.0));
