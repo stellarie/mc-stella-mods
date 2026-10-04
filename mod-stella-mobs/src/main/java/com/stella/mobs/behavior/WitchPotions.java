@@ -55,9 +55,9 @@ public final class WitchPotions {
 		return offensive().stream().filter(carried -> !carried.effect().equals(MobEffects.BLINDNESS)).toList();
 	}
 
-	/** W11: the three ally buffs, in the order the support goal cycles them. */
+	/** W11: the ally buffs, in the order the support goal cycles them. Invisibility was removed by request. */
 	public static List<Carried> buffs() {
-		return List.of(invisibility(), swiftness(), strength());
+		return List.of(swiftness(), strength());
 	}
 
 	public static Carried invisibility() {

@@ -43,7 +43,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The witch kit on a headless rig: invisibility on aggro, the five offensive potions, the two heal
+ * The witch kit on a headless rig: no invisibility, the five offensive potions, the two heal
  * thresholds, the priority order, the burst, the elite variant, and the death drop.
  */
 public class WitchGameTest {
@@ -65,19 +65,20 @@ public class WitchGameTest {
 	private static final double WATCH_RADIUS = 40.0;
 	private static final double EPSILON = 1.0e-6;
 
+	/** Oniichan removed witch invisibility: an aggroed witch throws, but never turns invisible. */
 	@GameTest(maxTicks = MAX_TICKS)
-	public void witchTurnsInvisibleOnAggro(final GameTestHelper helper) {
+	public void witchStaysVisibleOnAggro(final GameTestHelper helper) {
 		Witch witch = prepare(helper, 2, 2);
 		Zombie enemy = enemy(helper, 7, 7);
 		helper.onEachTick(() -> witch.setTarget(enemy));
 		PotionWatch watch = watch(helper, witch);
+		boolean[] invisible = {false};
+		helper.onEachTick(() -> invisible[0] |= witch.hasEffect(MobEffects.INVISIBILITY));
 
-		helper.succeedWhen(() -> {
-			helper.assertTrue(
-				witch.hasEffect(MobEffects.INVISIBILITY),
-				"the witch never turned invisible: " + watch.summary() + " goals: " + goals(witch)
-			);
-			result("witchTurnsInvisibleOnAggro", "invisibleTicks=" + invisibilityTicks(witch) + " " + watch.summary());
+		helper.runAfterDelay(200, () -> {
+			result("witchStaysVisibleOnAggro", "invisible=" + invisible[0] + " " + watch.summary());
+			helper.assertTrue(!invisible[0], "the witch turned invisible: " + watch.summary());
+			helper.succeed();
 		});
 	}
 

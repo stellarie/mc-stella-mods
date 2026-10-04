@@ -6,7 +6,7 @@ import net.minecraft.world.entity.monster.Witch;
 import org.jspecify.annotations.Nullable;
 
 /**
- * W01 and M11: on aggro the witch splashes invisibility on itself, then throws one random harmful potion
+ * W01 and M11: on aggro the witch waits one action, then throws one random harmful potion
  * at its target every three seconds. W12: an elite witch's throw is its lingering poison cloud whenever
  * that cloud's own rearm allows. The cadence counts the goal's own ticks, so it holds wherever the game
  * clock stands. No flags, so it never contends for MOVE or LOOK.
@@ -65,7 +65,6 @@ public class WitchOffensiveThrowGoal<T extends Witch> extends Goal {
 		if (!state.isWitchInvisibilityCast()) {
 			state.setWitchInvisibilityCast(true);
 			state.setWitchActionUntilTick(this.witch.level().getGameTime() + ACTION_TICKS);
-			WitchThrow.atSelf(this.witch, WitchPotions.stack(WitchPotions.invisibility()));
 			this.ticksToThrow = OFFENSE_INTERVAL_TICKS;
 		}
 	}

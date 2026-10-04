@@ -21,6 +21,11 @@ public abstract class MobDamageScalingMixin {
 		if (!(source.getEntity() instanceof Mob mob) || !SelfScaled.levelHits(mob)) {
 			return amount;
 		}
+		// A potion's harm is a share of the victim's health already.
+		if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion
+			|| source.getDirectEntity() instanceof net.minecraft.world.entity.AreaEffectCloud) {
+			return amount;
+		}
 		int threat = ThreatState.level(mob);
 		if (SelfScaled.owned(mob)) {
 			return amount * (float) SelfScaled.factor(threat);
