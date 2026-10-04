@@ -5,8 +5,20 @@
 	"name": "Stella Ruins game tests",
 	"environment": "*",
 	"entrypoints": {
+		"main": [
+			"com.stella.ruins.world.WorldTestInit"
+		],
 		"fabric-gametest": [
-			"com.stella.ruins.ScaffoldGameTest"
+			"com.stella.ruins.ScaffoldGameTest",
+			"com.stella.ruins.world.LayoutSeedGameTest",
+			"com.stella.ruins.world.PlacementGameTest",
+			"com.stella.ruins.world.StructureGameTest",
+			"com.stella.ruins.world.RuinDataGameTest",
+			"com.stella.ruins.world.RuinConfigGameTest",
+			"com.stella.ruins.world.RuinCoreGameTest",
+			"com.stella.ruins.world.ObjectiveGameTest",
+			"com.stella.ruins.world.RuinMobGameTest",
+			"com.stella.ruins.world.RuinLootGameTest"
 		]
 	},
 	"depends": {

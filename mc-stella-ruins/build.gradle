@@ -16,6 +16,16 @@ loom {
 	}
 }
 
+// -PwithStellaMobs=true loads the mobs jar into the game tests only; the ruins mod never depends on it.
+def withStellaMobs = project.findProperty("withStellaMobs") == "true"
+def mobsJar = file("../mod-stella-mobs/build/libs/mod-stella-mobs-${project.version}.jar")
+
+tasks.register('buildStellaMobsJar', GradleBuild) {
+	dir = file('../mod-stella-mobs')
+	tasks = ['jar']
+	onlyIf { withStellaMobs }
+}
+
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -61,11 +71,18 @@ processResources {
 	}
 }
 
+afterEvaluate {
+	if (withStellaMobs) {
+		project.dependencies.add("gametestRuntimeOnly", project.files(mobsJar))
+	}
+}
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
 }
 
 tasks.named('runGameTest') {
+	dependsOn 'buildStellaMobsJar'
 	if (project.hasProperty('gameTestFilter')) {
 		systemProperty 'fabric-api.gametest.filter', project.property('gameTestFilter')
 	}

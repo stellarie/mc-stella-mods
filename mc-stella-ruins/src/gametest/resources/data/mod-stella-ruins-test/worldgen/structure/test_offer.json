@@ -1,0 +1,7 @@
+{
+	"type": "mod-stella-ruins:ruin",
+	"site": "test_offer",
+	"biomes": [],
+	"spawn_overrides": {},
+	"step": "surface_structures"
+}
