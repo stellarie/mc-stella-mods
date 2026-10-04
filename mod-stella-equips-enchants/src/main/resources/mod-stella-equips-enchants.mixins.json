@@ -5,6 +5,7 @@
 	"mixins": [
 		"AbstractArrowAccessor",
 		"AnvilMenuMixin",
+		"AnvilNeverBreaksMixin",
 		"ScholarOrbMixin",
 		"EnchantmentMenuMixin",
 		"ItemStackTooltipMixin",
