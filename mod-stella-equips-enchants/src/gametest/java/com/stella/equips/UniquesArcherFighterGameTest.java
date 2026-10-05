@@ -19,6 +19,13 @@ import com.stella.equips.unique.af.RaiderRepeater;
 import com.stella.equips.unique.af.GaleshotCrossbow;
 import com.stella.equips.unique.af.TidewatcherCrossbow;
 import com.stella.equips.unique.af.ForemanArbalest;
+import com.stella.equips.unique.af.RotgutCleaver;
+import com.stella.equips.unique.af.JohnnysAxe;
+import com.stella.equips.unique.af.VenomDirk;
+import com.stella.equips.unique.af.BurrowerShiv;
+import com.stella.equips.unique.af.WitheringGreatsword;
+import com.stella.equips.unique.UniqueRank;
+import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.CrossbowItem;
@@ -141,6 +148,27 @@ public class UniquesArcherFighterGameTest {
 		List<AbstractArrow> bolts = fireCrossbow(helper, c);
 		helper.assertTrue(bolts.size() == 1, "expected one bolt, got " + bolts.size());
 		return bolts.get(0);
+	}
+
+	private static Mob durableFoe(final GameTestHelper helper, final double x, final double z) {
+		Mob target = foeAt(helper, x, z);
+		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(500.0);
+		target.setHealth(target.getMaxHealth());
+		return target;
+	}
+
+	private static float melee(final GameTestHelper helper, final UniqueContext c, final Mob target, final float amount) {
+		c.holder().setItemInHand(InteractionHand.MAIN_HAND, c.stack());
+		target.damageCooldownTime = 0;
+		float before = target.getHealth();
+		boolean hurt = target.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(c.holder()), amount);
+		helper.assertTrue(hurt && target.getHealth() < before, "the real melee damage must reach its subject");
+		return before - target.getHealth();
+	}
+
+	private static float armoredDamage(final GameTestHelper helper, final UniqueContext c, final Mob target, final float amount) {
+		return CombatRules.getDamageAfterAbsorb(target, amount, helper.getLevel().damageSources().playerAttack(c.holder()),
+			target.getArmorValue(), (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
 	}
 
 	private static void potionBase(final GameTestHelper helper, final String id, final Holder<MobEffect> effect,
@@ -766,5 +794,251 @@ public class UniquesArcherFighterGameTest {
 		helper.assertTrue(below.size() == 1 && at.size() == ForemanArbalest.TUNING.bolts() && pickup <= 1
 			&& at.stream().allMatch(a -> ForemanArbalest.ID.equals(UniqueArrows.of(a).id())), "three-bolt gate, marking, or pickup differs");
 		helper.succeed();
+	}
+
+	@GameTest public void rotgutBaseHealsFromActualMeleeDamage(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, RotgutCleaver.ID, 0, 1.5);
+		Mob target = durableFoe(helper, 2.5, 3.5);
+		c.holder().setHealth(c.holder().getMaxHealth() / 2);
+		float before = c.holder().getHealth();
+		float dealt = melee(helper, c, target, 10.0F);
+		float healed = c.holder().getHealth() - before;
+		UniqueTestKit.result("rotgutBase", "dealt=" + dealt + " healed=" + healed);
+		helper.assertTrue(Math.abs(healed - dealt * RotgutCleaver.TUNING.healShare()) < 0.001, "melee healing share differs");
+		helper.succeed();
+	}
+
+	@GameTest public void rotgutPlus15DoublesHealingBelowThresholdOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, RotgutCleaver.ID, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, RotgutCleaver.ID, Uniques.PLUS_15, 5.5);
+		float threshold = (float) (high.holder().getMaxHealth() * RotgutCleaver.TUNING.lowThreshold());
+		low.holder().setHealth(Math.nextDown(threshold));
+		high.holder().setHealth(Math.nextDown(threshold));
+		float lowBefore = low.holder().getHealth();
+		float highBefore = high.holder().getHealth();
+		float lowDamage = melee(helper, low, durableFoe(helper, 2.5, 3.5), 10.0F);
+		Mob highTarget = durableFoe(helper, 6.5, 3.5);
+		float highDamage = melee(helper, high, highTarget, 10.0F);
+		float lowHeal = low.holder().getHealth() - lowBefore;
+		float highHeal = high.holder().getHealth() - highBefore;
+		high.holder().setHealth(threshold);
+		float thresholdDamage = melee(helper, high, highTarget, 10.0F);
+		float thresholdHeal = high.holder().getHealth() - threshold;
+		UniqueTestKit.result("rotgutPlus15", "below=" + lowHeal + " at=" + highHeal + " exactThreshold=" + thresholdHeal);
+		helper.assertTrue(Math.abs(lowHeal - lowDamage * RotgutCleaver.TUNING.healPlus12()) < 0.001
+			&& Math.abs(highHeal - highDamage * RotgutCleaver.TUNING.healPlus12() * RotgutCleaver.TUNING.lowMultiplier()) < 0.001
+			&& Math.abs(thresholdHeal - thresholdDamage * RotgutCleaver.TUNING.healPlus12()) < 0.001, "low-health healing gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void rotgutPlus10ConvertsOverflowAndCapsAbsorption(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, RotgutCleaver.ID, Uniques.PLUS_10 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, RotgutCleaver.ID, Uniques.PLUS_10, 5.5);
+		// Overflow needs a full holder, so the fixture fills both rather than trusting the join.
+		low.holder().setHealth(low.holder().getMaxHealth());
+		high.holder().setHealth(high.holder().getMaxHealth());
+		Mob lowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob highTarget = durableFoe(helper, 6.5, 3.5);
+		float full = high.holder().getHealth();
+		float damage = melee(helper, high, highTarget, 100.0F);
+		float first = high.holder().getAbsorptionAmount();
+		melee(helper, high, highTarget, 100.0F);
+		melee(helper, low, lowTarget, 100.0F);
+		float cap = (float) (high.holder().getMaxHealth() * RotgutCleaver.TUNING.absorptionCap());
+		UniqueTestKit.result("rotgutPlus10", "below=" + low.holder().getAbsorptionAmount() + " first=" + first + " capped=" + high.holder().getAbsorptionAmount()
+			+ " full=" + full + " max=" + high.holder().getMaxHealth()
+			+ " limit=" + high.holder().getAttributeValue(Attributes.MAX_ABSORPTION));
+		helper.assertTrue(low.holder().getAbsorptionAmount() == 0
+			&& Math.abs(first - Math.min(cap, damage * RotgutCleaver.TUNING.healPlus7())) < 0.001
+			&& Math.abs(high.holder().getAbsorptionAmount() - cap) < 0.001, "overflow absorption gate or cap differs");
+		helper.succeed();
+	}
+
+	@GameTest public void johnnysBaseAppliesArmorBonusBeforeNativeMitigation(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, JohnnysAxe.ID, 0, 1.5);
+		double capArmor = JohnnysAxe.TUNING.cap() / JohnnysAxe.TUNING.armorShare();
+		Mob atCap = durableFoe(helper, 2.5, 3.5);
+		Mob aboveCap = durableFoe(helper, 4.5, 3.5);
+		atCap.getAttribute(Attributes.ARMOR).setBaseValue(capArmor);
+		aboveCap.getAttribute(Attributes.ARMOR).setBaseValue(capArmor * 2);
+		float outgoing = 10.0F * (1 + (float) JohnnysAxe.TUNING.cap());
+		float expectedAt = armoredDamage(helper, c, atCap, outgoing);
+		float expectedAbove = armoredDamage(helper, c, aboveCap, outgoing);
+		float actualAt = melee(helper, c, atCap, 10.0F);
+		float actualAbove = melee(helper, c, aboveCap, 10.0F);
+		UniqueTestKit.result("johnnysBase", "at=" + actualAt + " expectedAt=" + expectedAt + " above=" + actualAbove + " expectedAbove=" + expectedAbove);
+		helper.assertTrue(Math.abs(actualAt - expectedAt) < 0.001 && Math.abs(actualAbove - expectedAbove) < 0.001,
+			"armor-point bonus or its pre-mitigation cap differs");
+		helper.succeed();
+	}
+
+	@GameTest public void johnnysPlus15ExecutesBelowThresholdButNeverBosses(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, JohnnysAxe.ID, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, JohnnysAxe.ID, Uniques.PLUS_15, 5.5);
+		Mob lowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob highTarget = durableFoe(helper, 4.5, 3.5);
+		Mob exact = durableFoe(helper, 6.5, 3.5);
+		var boss = helper.spawnWithNoFreeWill(EntityTypes.ELDER_GUARDIAN, new Vec3(3.5, 2.0, 6.5));
+		lowTarget.setHealth(Math.nextDown((float) (lowTarget.getMaxHealth() * JohnnysAxe.TUNING.executeThreshold())));
+		highTarget.setHealth(Math.nextDown((float) (highTarget.getMaxHealth() * JohnnysAxe.TUNING.executeThreshold())));
+		exact.setHealth((float) (exact.getMaxHealth() * JohnnysAxe.TUNING.executeThreshold()));
+		boss.setHealth(Math.nextDown((float) (boss.getMaxHealth() * JohnnysAxe.TUNING.executeThreshold())));
+		melee(helper, low, lowTarget, 1.0F);
+		melee(helper, high, highTarget, 1.0F);
+		melee(helper, high, exact, 1.0F);
+		melee(helper, high, boss, 1.0F);
+		UniqueTestKit.result("johnnysPlus15", "belowAlive=" + lowTarget.isAlive() + " atAlive=" + highTarget.isAlive()
+			+ " thresholdAlive=" + exact.isAlive() + " bossAlive=" + boss.isAlive() + " rank=" + UniqueRank.of(boss));
+		helper.assertTrue(lowTarget.isAlive() && !highTarget.isAlive() && exact.isAlive() && boss.isAlive()
+			&& UniqueRank.of(boss) == UniqueRank.BOSS, "execution refine, health, or boss gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void venomBaseRealHitsStackPoisonToEachTierCap(final GameTestHelper helper) {
+		int[] tiers = {0, Uniques.PLUS_7, Uniques.PLUS_12};
+		boolean valid = true;
+		StringBuilder outcome = new StringBuilder();
+		for (int i = 0; i < tiers.length; i++) {
+			int refine = tiers[i];
+			UniqueContext c = connectedContext(helper, VenomDirk.ID, refine, 1.5 + i * 2);
+			Mob target = durableFoe(helper, 2.5 + i * 2, 3.5);
+			int cap = refine >= Uniques.PLUS_12 ? VenomDirk.TUNING.maxTicksPlus12() : VenomDirk.TUNING.maxTicks();
+			int hits = (cap + VenomDirk.TUNING.stackTicks() - 1) / VenomDirk.TUNING.stackTicks() + 1;
+			float lastDamage = 0;
+			for (int hit = 0; hit < hits; hit++) {
+				lastDamage = melee(helper, c, target, 1.0F);
+			}
+			MobEffectInstance poison = target.getEffect(MobEffects.POISON);
+			int amplifier = refine >= Uniques.PLUS_7 ? VenomDirk.TUNING.amplifierPlus7() : VenomDirk.TUNING.amplifier();
+			float expected = refine >= Uniques.PLUS_10 ? 1 + (float) VenomDirk.TUNING.poisonedBonus() : 1;
+			outcome.append(" tier=").append(refine).append(" poison=").append(poison).append(" lastDamage=").append(lastDamage);
+			valid &= poison != null && poison.getDuration() == cap && poison.getAmplifier() == amplifier
+				&& Math.abs(lastDamage - expected) < 0.001;
+		}
+		UniqueTestKit.result("venomBase", outcome.toString());
+		helper.assertTrue(valid, "poison stack, amplifier, or poisoned-hit bonus differs");
+		helper.succeed();
+	}
+
+	private static void meleeKillSpreadAt15(final GameTestHelper helper, final String id, final Holder<MobEffect> effect,
+		final int sourceTicks, final int sourceAmplifier, final int expectedTicks, final int expectedAmplifier, final double radius) {
+		UniqueContext low = connectedContext(helper, id, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, id, Uniques.PLUS_15, 5.5);
+		Mob lowVictim = durableFoe(helper, 3.5, 3.5);
+		Mob lowNear = durableFoe(helper, 3.5 + Math.min(1, radius / 2), 3.5);
+		lowVictim.addEffect(new MobEffectInstance(effect, sourceTicks, sourceAmplifier));
+		lowVictim.setHealth(1.0F);
+		melee(helper, low, lowVictim, 10.0F);
+		boolean below = lowNear.hasEffect(effect);
+		lowNear.discard();
+		lowVictim.discard();
+		Mob highVictim = durableFoe(helper, 3.5, 3.5);
+		Mob highNear = durableFoe(helper, 3.5 + Math.min(1, radius / 2), 3.5);
+		var friendly = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new Vec3(3.5, 2.0, 4.5));
+		highVictim.addEffect(new MobEffectInstance(effect, sourceTicks, sourceAmplifier));
+		highVictim.setHealth(1.0F);
+		melee(helper, high, highVictim, 10.0F);
+		MobEffectInstance actual = highNear.getEffect(effect);
+		UniqueTestKit.result(id + "Plus15", "below=" + below + " at=" + actual + " friendly=" + friendly.hasEffect(effect));
+		helper.assertTrue(!below && !highVictim.isAlive() && actual != null && actual.getDuration() == expectedTicks
+			&& actual.getAmplifier() == expectedAmplifier && !friendly.hasEffect(effect), "real kill spread gate or foe filter differs");
+		helper.succeed();
+	}
+
+	@GameTest public void venomPlus15RealKillTransfersItsPoisonOnlyToFoes(final GameTestHelper helper) {
+		meleeKillSpreadAt15(helper, VenomDirk.ID, MobEffects.POISON, VenomDirk.TUNING.maxTicksPlus12(),
+			VenomDirk.TUNING.amplifierPlus7(), VenomDirk.TUNING.maxTicksPlus12(), VenomDirk.TUNING.amplifierPlus7(), VenomDirk.TUNING.spreadRadius());
+	}
+
+	@GameTest(maxTicks = 200) public void burrowerBaseRealHitStrikesOnceAfterDelay(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, BurrowerShiv.ID, 0, 1.5);
+		CHANCE.put(c.holder().getUUID(), true);
+		Mob target = durableFoe(helper, 2.5, 3.5);
+		float before = target.getHealth();
+		float primary = melee(helper, c, target, 10.0F);
+		helper.runAfterDelay(BurrowerShiv.TUNING.delayTicks() - 1, () ->
+			helper.assertTrue(Math.abs(before - target.getHealth() - primary) < 0.001, "the delayed strike landed early"));
+		helper.runAfterDelay(BurrowerShiv.TUNING.delayTicks() * 2 + 2, () -> {
+			float actual = before - target.getHealth();
+			float expected = primary * (1 + BurrowerShiv.TUNING.strikeShare());
+			UniqueTestKit.result("burrowerBase", "primary=" + primary + " total=" + actual + " expected=" + expected);
+			helper.assertTrue(target.isAlive() && Math.abs(actual - expected) < 0.001, "the delayed strike was missing or repeated");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200) public void burrowerPlus15RepeatsTheSecondStrikeOnlyOnce(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, BurrowerShiv.ID, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, BurrowerShiv.ID, Uniques.PLUS_15, 5.5);
+		CHANCE.put(low.holder().getUUID(), true);
+		CHANCE.put(high.holder().getUUID(), true);
+		Mob lowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob highTarget = durableFoe(helper, 6.5, 3.5);
+		float lowBefore = lowTarget.getHealth();
+		float highBefore = highTarget.getHealth();
+		float lowPrimary = melee(helper, low, lowTarget, 10.0F);
+		float highPrimary = melee(helper, high, highTarget, 10.0F);
+		helper.runAfterDelay(BurrowerShiv.TUNING.delayTicks() * (BurrowerShiv.TUNING.maxExtraStrikes() + 1) + 2, () -> {
+			float share = BurrowerShiv.TUNING.strikeShare();
+			float below = lowBefore - lowTarget.getHealth();
+			float at = highBefore - highTarget.getHealth();
+			UniqueTestKit.result("burrowerPlus15", "below=" + below + " at=" + at);
+			helper.assertTrue(Math.abs(below - lowPrimary * (1 + share)) < 0.001
+				&& Math.abs(at - highPrimary * (1 + share + share * share)) < 0.001, "second-strike repeat gate or recursion bound differs");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200) public void burrowerPlus10DelayedStrikeIgnoresArmorOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, BurrowerShiv.ID, Uniques.PLUS_10 - 1, 1.5);
+		UniqueContext high = connectedContext(helper, BurrowerShiv.ID, Uniques.PLUS_10, 5.5);
+		CHANCE.put(low.holder().getUUID(), true);
+		CHANCE.put(high.holder().getUUID(), true);
+		Mob lowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob highTarget = durableFoe(helper, 6.5, 3.5);
+		lowTarget.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
+		highTarget.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
+		float lowPrimary = melee(helper, low, lowTarget, 10.0F);
+		float highPrimary = melee(helper, high, highTarget, 10.0F);
+		float lowBefore = lowTarget.getHealth();
+		float highBefore = highTarget.getHealth();
+		float expectedBelow = armoredDamage(helper, low, lowTarget, lowPrimary * BurrowerShiv.TUNING.strikeShare());
+		helper.runAfterDelay(BurrowerShiv.TUNING.delayTicks() + 2, () -> {
+			float below = lowBefore - lowTarget.getHealth();
+			float at = highBefore - highTarget.getHealth();
+			UniqueTestKit.result("burrowerPlus10", "below=" + below + " at=" + at + " expectedBelow=" + expectedBelow);
+			helper.assertTrue(below > 0 && Math.abs(below - expectedBelow) < 0.001
+				&& Math.abs(at - highPrimary * BurrowerShiv.TUNING.strikeShare()) < 0.001, "delayed armor bypass gate differs");
+			helper.succeed();
+		});
+	}
+
+	@GameTest public void witheringBaseRealHitsApplyEachTierAndBonus(final GameTestHelper helper) {
+		int[] tiers = {0, Uniques.PLUS_7, Uniques.PLUS_12};
+		boolean valid = true;
+		StringBuilder outcome = new StringBuilder();
+		for (int i = 0; i < tiers.length; i++) {
+			int refine = tiers[i];
+			UniqueContext c = connectedContext(helper, WitheringGreatsword.ID, refine, 1.5 + i * 2);
+			Mob target = durableFoe(helper, 2.5 + i * 2, 3.5);
+			melee(helper, c, target, 1.0F);
+			MobEffectInstance wither = target.getEffect(MobEffects.WITHER);
+			int ticks = refine >= Uniques.PLUS_12 ? WitheringGreatsword.TUNING.ticksPlus12() : WitheringGreatsword.TUNING.ticks();
+			int amplifier = refine >= Uniques.PLUS_7 ? WitheringGreatsword.TUNING.amplifierPlus7() : WitheringGreatsword.TUNING.amplifier();
+			float expected = refine >= Uniques.PLUS_10 ? 1 + (float) WitheringGreatsword.TUNING.bonus() : 1;
+			float nextDamage = melee(helper, c, target, 1.0F);
+			outcome.append(" tier=").append(refine).append(" wither=").append(wither).append(" nextDamage=").append(nextDamage);
+			valid &= wither != null && wither.getDuration() == ticks && wither.getAmplifier() == amplifier
+				&& Math.abs(nextDamage - expected) < 0.001;
+		}
+		UniqueTestKit.result("witheringBase", outcome.toString());
+		helper.assertTrue(valid, "Wither tier or withered-target bonus differs");
+		helper.succeed();
+	}
+
+	@GameTest public void witheringPlus15RealKillSpreadsFixedWitherOnlyToFoes(final GameTestHelper helper) {
+		meleeKillSpreadAt15(helper, WitheringGreatsword.ID, MobEffects.WITHER, WitheringGreatsword.TUNING.ticksPlus12(),
+			WitheringGreatsword.TUNING.amplifier(), WitheringGreatsword.TUNING.spreadTicks(), WitheringGreatsword.TUNING.spreadAmplifier(),
+			WitheringGreatsword.TUNING.spreadRadius());
 	}
 }
