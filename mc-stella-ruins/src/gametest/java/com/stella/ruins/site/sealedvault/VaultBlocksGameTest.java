@@ -198,6 +198,8 @@ public class VaultBlocksGameTest {
 			step(arena.level(), plate, player);
 			ItemEntity stick = new ItemEntity(arena.level(), plate.getX() + 0.5, plate.getY() + 0.1, plate.getZ() + 0.5, new ItemStack(Items.STICK));
 			stick.setNoPickUpDelay();
+			// A new item entity gets a random sideways push, which can carry it out of the pit.
+			stick.setDeltaMovement(Vec3.ZERO);
 			arena.level().addFreshEntity(stick);
 			double top = arena.frame().min().getY() + 6;
 			double start = stick.getY();
@@ -208,7 +210,7 @@ public class VaultBlocksGameTest {
 			VaultTestSupport.result("dropFall", "start=" + start + " landed=" + stick.getY() + " daisTop=" + top + " fall=" + (start - stick.getY()));
 			StringBuilder column = new StringBuilder();
 			for (int y = 8; y >= 2; y--) {
-				column.append(" y").append(y - arena.frame().min().getY()).append('=').append(arena.level().getBlockState(BlockPos.containing(stick.getX(), arena.frame().min().getY() + y, stick.getZ())).getBlock());
+				column.append(" y").append(y).append('=').append(arena.level().getBlockState(BlockPos.containing(stick.getX(), arena.frame().min().getY() + y, stick.getZ())).getBlock());
 			}
 			helper.assertTrue(Math.abs(stick.getY() - top) < 0.2, "the item stopped at " + stick.getY() + " at " + stick.position() + ", the dais top is " + top + ", plate " + plate + ", column" + column);
 			helper.assertTrue(start - stick.getY() <= 3.3 && start - stick.getY() >= 2.7, "the fall was " + (start - stick.getY()) + " blocks, not 3");
