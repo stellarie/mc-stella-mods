@@ -84,7 +84,7 @@ final class MobImbue {
 		switch (spell) {
 			case "spark_shot" -> {
 				hurt(level, wielder, owner, victim, power, SpellCasting.DAMAGE);
-				victim.igniteForTicks(ticks(duration, SpellCasting.BURN_SECONDS * 20.0F));
+				victim.igniteForTicks(ticks(duration, SpellNumbers.SPARK_SHOT.extra().ticks()));
 			}
 			case "frostbind" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 1));
 			case "briar_snare" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 3));

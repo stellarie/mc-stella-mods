@@ -352,4 +352,12 @@ public final class TowerBuffs {
 		}
 		tower.getChunkSource().chunkMap.resendBiomesForChunks(chunks);
 	}
+
+	static void mistChunk(final ServerLevel tower, final int cx, final int cz) {
+		Holder<Biome> biome = tower.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(BOSS_BIOME);
+		ChunkAccess chunk = tower.getChunk(cx, cz);
+		chunk.fillBiomesFromNoise((x, y, z) -> biome);
+		chunk.markUnsaved();
+		tower.getChunkSource().chunkMap.resendBiomesForChunks(List.of(chunk));
+	}
 }

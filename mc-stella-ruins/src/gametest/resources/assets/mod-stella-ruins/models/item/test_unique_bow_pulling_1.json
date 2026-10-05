@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/bow",
+	"textures": {
+		"layer0": "mod-stella-ruins:item/test_unique_bow_pulling_1"
+	}
+}

@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "mod-stella-ruins",
+	"version": "${version}",
+	"name": "Stella Ruins",
+	"description": "Ruins and dungeons on the surface and in caves, each with an objective, themed mobs and rewards found nowhere else.",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.stella.ruins.StellaRuins"
+		],
+		"client": [
+			"com.stella.ruins.client.RuinsClient"
+		]
+	},
+	"mixins": [
+		"mod-stella-ruins.world.mixins.json",
+		"mod-stella-ruins.reward.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

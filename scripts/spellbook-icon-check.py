@@ -21,6 +21,11 @@ VISUAL_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellVis
 MODEL_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
 ITEM_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/items")
 TEXTURE_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/textures/item")
+AWAKENED_COMPONENT = f"{MOD_ID}:awakened"
+GOLD_LIGHT = (0xF7, 0xD0, 0x46, 255)
+GOLD_DARK = (0xB8, 0x86, 0x0B, 255)
+SPARKLE_PIXELS = ((15, 0), (14, 0), (15, 1))
+SPARKLE_COLOR = (255, 255, 255, 255)
 HAND_CONTEXTS = (
     "firstperson_righthand",
     "firstperson_lefthand",
@@ -132,6 +137,92 @@ def draw_book(book: Book) -> Image.Image:
     return image
 
 
+def plain_model(book: Book) -> dict:
+    return {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}"}
+
+
+def awakened_fallback(book: Book) -> dict:
+    """The inventory model: the awakened model when the stack carries the awakened component."""
+    return {
+        "type": "minecraft:condition",
+        "property": "minecraft:has_component",
+        "component": AWAKENED_COMPONENT,
+        "on_true": {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}_awakened"},
+        "on_false": plain_model(book),
+    }
+
+
+def draw_awakened(source: Image.Image) -> Image.Image:
+    """Recolors the one pixel outer frame ring to gold and adds a three pixel sparkle; the inner art stays."""
+    image = source.convert("RGBA")
+    pixels = image.load()
+    width, height = image.size
+    last_x, last_y = width - 1, height - 1
+    for y in range(height):
+        for x in range(width):
+            if x not in (0, last_x) and y not in (0, last_y):
+                continue
+            # A corner is the ring pixel itself and the two ring pixels beside it.
+            near_x = x <= 1 or x >= last_x - 1
+            near_y = y <= 1 or y >= last_y - 1
+            pixels[x, y] = GOLD_LIGHT if near_x and near_y else GOLD_DARK
+    for x, y in SPARKLE_PIXELS:
+        pixels[x, y] = SPARKLE_COLOR
+    return image
+
+
+def write_awakened(root: Path) -> None:
+    texture_root = root / TEXTURE_ROOT
+    model_root = root / MODEL_ROOT
+    item_root = root / ITEM_ROOT
+    for book in BOOKS:
+        with Image.open(texture_root / f"{book.path}.png") as source:
+            draw_awakened(source).save(
+                texture_root / f"{book.path}_awakened.png", format="PNG", optimize=False, compress_level=9
+            )
+        model = {
+            "parent": "minecraft:item/generated",
+            "textures": {"layer0": f"{MOD_ID}:item/{book.path}_awakened"},
+        }
+        (model_root / f"{book.path}_awakened.json").write_text(
+            json.dumps(model, indent="\t") + "\n", encoding="utf-8"
+        )
+        item_path = item_root / f"{book.path}.json"
+        definition = json.loads(item_path.read_text(encoding="utf-8"))
+        definition["model"]["fallback"] = awakened_fallback(book)
+        item_path.write_text(json.dumps(definition, indent="\t") + "\n", encoding="utf-8")
+
+
+def check_awakened(root: Path) -> list[str]:
+    errors: list[str] = []
+    for book in BOOKS:
+        texture = root / TEXTURE_ROOT / f"{book.path}_awakened.png"
+        model = root / MODEL_ROOT / f"{book.path}_awakened.json"
+        item = root / ITEM_ROOT / f"{book.path}.json"
+        if not texture.exists():
+            errors.append(f"missing awakened texture: {texture}")
+        else:
+            with Image.open(texture) as image:
+                if image.size != (16, 16) or image.mode != "RGBA":
+                    errors.append(f"awakened texture is {image.size} {image.mode}: {texture}")
+                elif image.getpixel(SPARKLE_PIXELS[0]) != SPARKLE_COLOR:
+                    errors.append(f"awakened texture has no sparkle: {texture}")
+        if not model.exists():
+            errors.append(f"missing awakened model: {model}")
+        else:
+            data = json.loads(model.read_text(encoding="utf-8"))
+            if data.get("textures", {}).get("layer0") != f"{MOD_ID}:item/{book.path}_awakened":
+                errors.append(f"awakened model layer mismatch: {model}")
+        if not item.exists():
+            errors.append(f"missing item definition: {item}")
+        else:
+            fallback = json.loads(item.read_text(encoding="utf-8")).get("model", {}).get("fallback", {})
+            if fallback != awakened_fallback(book):
+                errors.append(f"item definition has no awakened condition case: {item}")
+    print(f"awakened books={len(BOOKS)} errors={len(errors)}")
+    return errors
+
+
 def write_models(root: Path) -> None:
     model_root = root / MODEL_ROOT
     model_root.mkdir(parents=True, exist_ok=True)
@@ -156,7 +247,7 @@ def write_items(root: Path) -> None:
             "type": "minecraft:select",
             "property": "minecraft:display_context",
             "cases": [{"when": list(HAND_CONTEXTS), "model": {"type": "minecraft:empty"}}],
-            "fallback": {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}"},
+            "fallback": awakened_fallback(book),
         }
         path.write_text(json.dumps(definition, indent="\t") + "\n", encoding="utf-8")
 
@@ -242,9 +333,9 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
                     or item_model.get("property") != "minecraft:display_context"
                     or set(hand_case.get("when", [])) != set(HAND_CONTEXTS)
                     or hand_case.get("model") != {"type": "minecraft:empty"}
-                    or fallback != {"type": "minecraft:model", "model": f"{MOD_ID}:item/{book.path}"}):
+                    or fallback not in (plain_model(book), awakened_fallback(book))):
                 errors.append(f"hand or inventory model mismatch: {item_path}")
-            if "tints" in item_model or "tints" in fallback:
+            if "tints" in item_model or "tints" in fallback or "tints" in fallback.get("on_false", {}):
                 message = f"obsolete item tint remains: {item_path}"
                 if strict_tints:
                     errors.append(message)
@@ -290,12 +381,36 @@ def contact_sheet(root: Path, destination: Path) -> None:
     sheet.save(destination, format="PNG", optimize=False, compress_level=9)
 
 
+def contact_sheet_awakened(root: Path, destination: Path) -> None:
+    columns = 4
+    scale = 6
+    cell_width = 214
+    cell_height = 126
+    rows = (len(BOOKS) + columns - 1) // columns
+    sheet = Image.new("RGB", (columns * cell_width, rows * cell_height), (20, 23, 34))
+    draw = ImageDraw.Draw(sheet)
+    font = ImageFont.load_default()
+    for index, book in enumerate(BOOKS):
+        x = (index % columns) * cell_width + 10
+        y = (index // columns) * cell_height + 7
+        for offset, suffix in enumerate(("", "_awakened")):
+            with Image.open(root / TEXTURE_ROOT / f"{book.path}{suffix}.png") as source:
+                icon = source.convert("RGBA").resize((16 * scale, 16 * scale), Image.Resampling.NEAREST)
+            sheet.paste(icon, (x + offset * (16 * scale + 6), y), icon)
+        draw.text((x, y + 16 * scale + 4), book.label, fill=(238, 238, 242), font=font)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(destination, format="PNG", optimize=False, compress_level=9)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--generate", action="store_true", help="write models, book definitions, and textures")
     parser.add_argument("--audit", action="store_true", help="audit catalog resources")
     parser.add_argument("--strict-tints", action="store_true", help="fail if a book item retains a tint")
+    parser.add_argument("--write-awakened", action="store_true", help="write awakened textures, models, and the item condition case")
+    parser.add_argument("--check-awakened", action="store_true", help="fail when a book lacks its awakened texture, model, or condition case")
+    parser.add_argument("--contact-sheet-awakened", type=Path, metavar="PATH", help="write plain and awakened icons side by side")
     parser.add_argument("--jar", type=Path, help="inspect resources in a built jar")
     parser.add_argument("--contact-sheet", type=Path, metavar="PATH", help="write an enlarged contact sheet")
     args = parser.parse_args()
@@ -305,6 +420,18 @@ def main() -> int:
         if args.generate:
             generate(root)
             print(f"generated {len(BOOKS)} book models, item definitions, and textures")
+        if args.write_awakened:
+            write_awakened(root)
+            print(f"wrote {len(BOOKS)} awakened textures, models, and item condition cases")
+        if args.contact_sheet_awakened is not None:
+            destination = args.contact_sheet_awakened if args.contact_sheet_awakened.is_absolute() else root / args.contact_sheet_awakened
+            contact_sheet_awakened(root, destination)
+            print(f"awakened contact sheet: {destination}")
+        if args.check_awakened:
+            errors = check_awakened(root)
+            for error in errors:
+                print(f"error: {error}", file=sys.stderr)
+            return 1 if errors else 0
         if args.contact_sheet is not None:
             destination = args.contact_sheet if args.contact_sheet.is_absolute() else root / args.contact_sheet
             contact_sheet(root, destination)

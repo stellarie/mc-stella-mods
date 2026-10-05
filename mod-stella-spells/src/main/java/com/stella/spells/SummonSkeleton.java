@@ -195,6 +195,7 @@ public final class SummonSkeleton {
 			return false;
 		}
 		SUMMONED.put(caster.getUUID(), skeleton.getUUID());
+		CastHits.touch(caster);
 		caster.level().sendParticles(ParticleTypes.SOUL, at.x, at.y + 1.0, at.z, 30, 0.4, 0.8, 0.4, 0.05);
 		caster.level().playSound(null, at.x, at.y, at.z, SoundEvents.EVOKER_PREPARE_SUMMON, caster.getSoundSource(), 0.8F, 0.8F);
 		return true;

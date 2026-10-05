@@ -61,6 +61,11 @@ public class TowerLostRoomGameTest {
 
 	/** A castle built over a hill of stone, its floor set by the castle's own rule. */
 	static Arena castle(final GameTestHelper helper) {
+		return castle(helper, LostCastleVariant.CASTLE, Direction.NORTH);
+	}
+
+	/** A castle of one variant, facing one way, built over a hill of stone, its floor set by the castle's own rule. */
+	static Arena castle(final GameTestHelper helper, final LostCastleVariant variant, final Direction facing) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int area = TowerTestSupport.freshArea();
 		int minX = Math.floorMod(area, 4096) * 64;
@@ -76,7 +81,7 @@ public class TowerLostRoomGameTest {
 		}
 		int floor = LostRoomPiece.floorOver(minX, minZ, maxX, maxZ, 1,
 			(x, z) -> tower.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1);
-		LostRoomPiece piece = new LostRoomPiece(minX, floor, minZ, Direction.NORTH);
+		LostRoomPiece piece = new LostRoomPiece(minX, floor, minZ, facing, variant);
 		piece.build(tower, BoundingBox.infinite());
 		return new Arena(tower, minX, minZ, maxX, maxZ, piece);
 	}
@@ -227,11 +232,15 @@ public class TowerLostRoomGameTest {
 
 	/** Writes the castle's blocks, foundation included, for the preview render. */
 	static void dump(final GameTestHelper helper, final Arena arena) {
+		dump(helper, arena, "lost_castle_layout.txt");
+	}
+
+	static void dump(final GameTestHelper helper, final Arena arena, final String name) {
 		StringBuilder out = new StringBuilder();
 		int floor = arena.piece().getBoundingBox().minY();
 		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				for (int y = 56 - floor; y < LostRoomPiece.HEIGHT; y++) {
+				for (int y = Math.min(56 - floor, arena.piece().lowest() - 1); y < LostRoomPiece.HEIGHT; y++) {
 					BlockState state = arena.level().getBlockState(arena.piece().worldPos(x, y, z));
 					if (!state.isAir()) {
 						out.append(x).append(' ').append(y).append(' ').append(z).append(' ')
@@ -241,7 +250,7 @@ public class TowerLostRoomGameTest {
 			}
 		}
 		try {
-			java.nio.file.Files.writeString(helper.getLevel().getServer().getServerDirectory().resolve("lost_castle_layout.txt"), out.toString());
+			java.nio.file.Files.writeString(helper.getLevel().getServer().getServerDirectory().resolve(name), out.toString());
 		} catch (java.io.IOException e) {
 			TowerTestSupport.LOG.warn("no castle layout written", e);
 		}
@@ -303,6 +312,9 @@ public class TowerLostRoomGameTest {
 		helper.succeed();
 	}
 
+	/** The most emeralds a boss's own vanilla loot adds, its floor's growth included. */
+	static final int VANILLA_EMERALDS = 8;
+
 	/** Kills a boss for the player with the rune roll pinned to nothing, and reads what it left. */
 	static String bossDrops(final ServerLevel tower, final ServerPlayer player, final Mob boss, final int runeFloor) {
 		int floor = TowerMobs.stateOf(boss).floor();
@@ -321,7 +333,8 @@ public class TowerLostRoomGameTest {
 		int wantEmeralds = TowerRewards.BOSS_EMERALDS + TowerRewards.BOSS_EMERALDS_PER_LEVEL * mobLevel;
 		int low = TowerRewards.BOSS_DIAMONDS_MIN + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
 		int high = TowerRewards.BOSS_DIAMONDS_MAX + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
-		boolean ok = emeralds == wantEmeralds && diamonds >= low && diamonds <= high && runes.size() == 1 && runeAt == runeFloor;
+		// Its own loot may hold an emerald.
+		boolean ok = emeralds >= wantEmeralds && emeralds <= wantEmeralds + VANILLA_EMERALDS && diamonds >= low && diamonds <= high && runes.size() == 1 && runeAt == runeFloor;
 		return (ok ? "ok" : "WRONG") + " level=" + mobLevel + " emeralds=" + emeralds + "/" + wantEmeralds + " diamonds=" + diamonds + " in " + low + ".." + high
 			+ " runes=" + runes.size() + " runeFloor=" + runeAt + "/" + runeFloor;
 	}

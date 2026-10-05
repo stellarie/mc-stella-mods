@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
@@ -30,6 +31,7 @@ public final class LostCastles {
 	public static final int WAKE_DISTANCE = 32;
 	public static final int MIN_MOBS = 3;
 	public static final int MAX_MOBS = 6;
+	public static final int MAX_STOCK_ATTEMPTS = MAX_MOBS * 4;
 	public static final int CHECK_TICKS = 20;
 	public static final int SPOT_TRIES = 40;
 	private static final Queue<LostRoomData.Castle> FOUND = new ConcurrentLinkedQueue<>();
@@ -48,12 +50,13 @@ public final class LostCastles {
 	/** Queues a castle a chunk has just built; any thread. */
 	public static void found(final ResourceKey<Level> dimension, final LostRoomPiece piece) {
 		BoundingBox box = piece.getBoundingBox();
-		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false));
+		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false, piece.variant().ordinal()));
 	}
 
 	/** The castle's piece, rebuilt from its record. */
 	static LostRoomPiece piece(final LostRoomData.Castle castle) {
-		return new LostRoomPiece(castle.corner().getX(), castle.corner().getY(), castle.corner().getZ(), castle.facing());
+		return new LostRoomPiece(castle.corner().getX(), castle.corner().getY(), castle.corner().getZ(), castle.facing(),
+			LostCastleVariant.values()[Math.floorMod(castle.variant(), LostCastleVariant.values().length)]);
 	}
 
 	/** Records the queued castles, then stocks the grounds of each castle a player has come near; the mobs raised. */
@@ -83,11 +86,16 @@ public final class LostCastles {
 	/** Raises three to six mobs in the courtyard, each at the players' average level less five to fifteen more. */
 	static List<Mob> stock(final ServerLevel level, final LostRoomPiece piece, final List<ServerPlayer> players) {
 		RandomSource random = level.getRandom();
-		int average = LostRooms.averageLevel(players);
 		int count = MIN_MOBS + random.nextInt(MAX_MOBS - MIN_MOBS + 1);
-		int[] yard = LostRoomPiece.YARD;
+		return stock(level, piece, players, random, count, mob -> true);
+	}
+
+	static List<Mob> stock(final ServerLevel level, final LostRoomPiece piece, final List<ServerPlayer> players,
+		final RandomSource random, final int count, final Predicate<Mob> allowed) {
+		int average = LostRooms.averageLevel(players);
+		int[] yard = piece.yard();
 		List<Mob> raised = new ArrayList<>();
-		for (int i = 0; i < count; i++) {
+		for (int attempt = 0; attempt < MAX_STOCK_ATTEMPTS && raised.size() < count; attempt++) {
 			int mobLevel = Math.max(0, average + random.nextIntBetweenInclusive(-LostRooms.LEVEL_BELOW, LostRooms.LEVEL_ABOVE));
 			List<EntityType<? extends Mob>> pool = TowerMobs.pool(LostRooms.equivalentFloor(mobLevel));
 			Mob mob = pool.get(random.nextInt(pool.size())).create(level, EntitySpawnReason.EVENT);
@@ -99,17 +107,21 @@ public final class LostCastles {
 			mob.finalizeSpawn(level, level.getCurrentDifficultyAt(first), EntitySpawnReason.EVENT, null);
 			TowerMobs.settle(mob);
 			boolean placed = false;
-			for (int attempt = 0; attempt < SPOT_TRIES && !placed; attempt++) {
+			for (int spotAttempt = 0; spotAttempt < SPOT_TRIES && !placed; spotAttempt++) {
 				BlockPos feet = piece.worldPos(yard[0] + random.nextInt(yard[2] - yard[0] + 1), 1, yard[1] + random.nextInt(yard[3] - yard[1] + 1));
 				Vec3 spot = TowerMobs.spotFor(mob, feet);
 				mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
 				placed = level.isLoaded(feet) && TowerMobs.standsFree(level, mob, feet);
 			}
-			if (placed && LostRooms.raise(level, mob, mobLevel, TowerRank.MOB, random)) {
+			if (placed && allowed.test(mob) && LostRooms.raise(level, mob, mobLevel, TowerRank.MOB, random)) {
 				raised.add(mob);
 			} else {
 				mob.discard();
 			}
+		}
+		if (raised.size() < count) {
+			StellaTower.LOGGER.warn("Lost castle at {}: requested {} yard mobs, raised {} after {} candidates",
+				piece.getBoundingBox(), count, raised.size(), MAX_STOCK_ATTEMPTS);
 		}
 		StellaTower.LOGGER.debug("[TOWER] lost castle at {} WOKE with {} mobs", piece.getBoundingBox(), raised.size());
 		return raised;

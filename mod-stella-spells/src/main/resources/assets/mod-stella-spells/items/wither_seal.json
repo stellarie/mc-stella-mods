@@ -16,8 +16,17 @@
 			}
 		],
 		"fallback": {
-			"type": "minecraft:model",
-			"model": "mod-stella-spells:item/wither_seal"
+			"type": "minecraft:condition",
+			"property": "minecraft:has_component",
+			"component": "mod-stella-spells:awakened",
+			"on_true": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/wither_seal_awakened"
+			},
+			"on_false": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/wither_seal"
+			}
 		}
 	}
 }

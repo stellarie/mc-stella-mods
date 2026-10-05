@@ -578,6 +578,33 @@ The class name and every public method below are a contract.
 - `RpgSpells.durationMultiplier(caster)` returns `min(3, 1 + INT / 200)`. The spells mod multiplies a spell duration by it.
   The spells mod must call it by name. Until it does, durations do not change.
 
+## Skills API
+
+`RpgSkills` gives other mods the STR, DEX, and VIT numbers for skill books. `mod-stella-spells` reads them by name.
+The class name and every public method below are a contract. Every result is in vanilla units, so the health scale multiplies it once.
+A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. A key is case-insensitive. An unknown key reads as stat 0.
+`S` is the effective stat for the key. `k` is `RpgScale.k()`.
+
+- `double stat(LivingEntity entity, String key)` returns the effective stat for the key.
+- `ItemStack weapon(LivingEntity entity)` returns the item in the weapon slot when it is equipment,
+  else the main hand when it is equipment, else empty. A cast from the quick slot therefore reads the weapon, not the held book.
+- `double physicalHit(LivingEntity caster, String key, double skillPercent)` returns, with no crit,
+  `skillPercent / 100 * (attack + dice + statusAtk(S) + DAMAGE_FLAT / k) * damageFactor(caster)`.
+  `dice` is the average of the stat die `RpgDice.of(S)` plus the weapon die, times `PhysicalDice.multiplier`.
+  `attack` is the weapon `ATTACK_DAMAGE` with enchantments for any key except `"dex"`.
+  For `"dex"` it is the arrow base 2.0 plus 0.5 per Power level of the weapon, and the weapon die is the ranged die of the bow.
+- `double[] physicalRange(LivingEntity caster, String key, double skillPercent)` returns the lowest and the highest hit, with no crit, for tooltips.
+- `double physicalDamage(LivingEntity caster, String key, double skillPercent)` returns the hit with rolled dice and the LUK crit roll.
+  It uses the dice roller of `RpgCombat`. A crit multiplies the hit by `crit_multiplier`.
+- `double skillHeal(LivingEntity caster, double coefficient)` returns `(level + 2 * VIT) * coefficient / k * healingFactor`.
+  The level is the experience level of a player, or the threat of a mob.
+- `double cooldown(Player player, String key)` returns `cooldownMultiplier(S + T) * cooldownFactor(player)`.
+  `T` is INT for `"vit"` and AGI for every other key. The floor of the curve applies.
+- `double durationMultiplier(LivingEntity caster, String key)` returns `HpModel.durationMultiplier(S)`, with the cap of the INT one.
+- `DamageSource skillSource(LivingEntity caster)` returns a source of the type `mod-stella-rpg:skill` with the caster as direct and causing entity.
+  Def and armor apply to it. `RpgCombat.scaleOutgoing` returns its amount unchanged, because the type is not melee, projectile, or magic.
+  The dice are therefore never added twice.
+
 ## Magic model
 
 - `base(level) = 12 * (1 + 0.05 * (level - 1))`, in vanilla units. A mob uses its threat as level. The level is at least 1.

@@ -72,7 +72,7 @@ public final class TowerSafety {
 		BlockPos origin = TowerLayout.origin(floor);
 		LOOKUPS++;
 		// Answered from the plan without loading a chunk: the plan's markers may lie in a chunk that is not loaded.
-		boolean answer = TowerPlan.atQuiet(tower, floor).inSafeZone(at.getX() - origin.getX(), at.getZ() - origin.getZ());
+		boolean answer = TowerPlan.atQuiet(tower, floor).inSafeZone(at.getX() - origin.getX(), at.getY() - origin.getY(), at.getZ() - origin.getZ());
 		SHELTER.put(player.getUUID(), new Shelter(tick, at.immutable(), answer));
 		return answer;
 	}
@@ -149,11 +149,11 @@ public final class TowerSafety {
 		return TowerMobs.stateOf(mob) != null && !(mob instanceof TowerGhost);
 	}
 
-	/** A zone's whole column of air, as the box a mob's body is tested against. */
+	/** A zone's whole band of air, from its story's floor to its top, as the box a mob's body is tested against. */
 	static AABB zoneBox(final TowerPlan plan, final TowerMaze.Zone zone) {
 		BlockPos o = plan.origin();
-		return new AABB(o.getX() + zone.x(), o.getY() - 1, o.getZ() + zone.z(),
-			o.getX() + zone.x() + TowerMaze.SAFE, o.getY() + TowerLayout.HEIGHT, o.getZ() + zone.z() + TowerMaze.SAFE);
+		return new AABB(o.getX() + zone.x(), o.getY() + zone.y() - 1, o.getZ() + zone.z(),
+			o.getX() + zone.x() + TowerMaze.SAFE, o.getY() + zone.top(), o.getZ() + zone.z() + TowerMaze.SAFE);
 	}
 
 	static boolean touchesZone(final TowerPlan plan, final AABB body) {

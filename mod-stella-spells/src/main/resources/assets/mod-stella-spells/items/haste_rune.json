@@ -16,8 +16,17 @@
 			}
 		],
 		"fallback": {
-			"type": "minecraft:model",
-			"model": "mod-stella-spells:item/haste_rune"
+			"type": "minecraft:condition",
+			"property": "minecraft:has_component",
+			"component": "mod-stella-spells:awakened",
+			"on_true": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/haste_rune_awakened"
+			},
+			"on_false": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/haste_rune"
+			}
 		}
 	}
 }

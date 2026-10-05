@@ -1,0 +1,60 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"amethyst": [
+			"#1d0f33",
+			"#4a2a7a",
+			"#8a56d0",
+			"#c79cff",
+			"#f3e3ff"
+		],
+		"gel": [
+			"#0b2a2e",
+			"#1d6b73",
+			"#38c4c8",
+			"#8ff0e8",
+			"#e6fffb"
+		],
+		"core": [
+			"#33102a",
+			"#7a2a68",
+			"#d04bb8",
+			"#ff9ae8",
+			"#fff0fb"
+		],
+		"prism": [
+			"#10203a",
+			"#2f5f9a",
+			"#6fb0e8",
+			"#bfe6ff",
+			"#ffffff"
+		]
+	},
+	"items": [
+		{
+			"id": "resonant_shard",
+			"template": "shard",
+			"palette": "amethyst"
+		},
+		{
+			"id": "prism_gel",
+			"template": "gem",
+			"palette": "gel"
+		},
+		{
+			"id": "resonant_crystal_core",
+			"template": "gem",
+			"palette": "core"
+		},
+		{
+			"id": "resonant_affix",
+			"template": "shard",
+			"palette": "core"
+		},
+		{
+			"id": "echo_prism",
+			"template": "gem",
+			"palette": "prism"
+		}
+	]
+}

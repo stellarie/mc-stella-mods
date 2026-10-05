@@ -1,0 +1,18 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:chiefs_ledger",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin",
+		"mod-stella-ruins:stolen_coin"
+	],
+	"result": {
+		"id": "mod-stella-ruins:bandits_mark_affix"
+	}
+}

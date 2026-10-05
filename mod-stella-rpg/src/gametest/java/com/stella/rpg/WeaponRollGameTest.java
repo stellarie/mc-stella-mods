@@ -395,6 +395,26 @@ public final class WeaponRollGameTest {
 	}
 
 	@GameTest
+	public void multiRollArmorUsesWeaponCount(final GameTestHelper helper) {
+		try {
+			RpgConfigStore.set(RpgConfigStore.parse("{\"weapon_rolls\":{\"affix_chance\":0,\"count_weights\":[0,0,1]}}", message -> { }));
+			RandomSource random = RandomSource.create(11L);
+			ItemStack tagged = new ItemStack(Items.COPPER_BOOTS);
+			ItemStack plain = new ItemStack(Items.IRON_BOOTS);
+			WeaponRolls.roll(tagged, random);
+			WeaponRolls.roll(plain, random);
+			int taggedCount = tagged.get(WeaponRolls.STAT_ROLLS).size();
+			int plainCount = plain.get(WeaponRolls.STAT_ROLLS).size();
+			RpgTestSupport.result("multiRollArmorUsesWeaponCount", "tagged=" + taggedCount + " plain=" + plainCount);
+			helper.assertTrue(tagged.is(WeaponRolls.MULTI_ROLL), "copper boots are not in the test multi_roll tag");
+			helper.assertTrue(taggedCount == 3 && plainCount == 1, "tagged=" + taggedCount + " plain=" + plainCount);
+		} finally {
+			RpgConfigStore.set(null);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
 	public void configOverride(final GameTestHelper helper) {
 		try {
 			RpgConfigStore.set(RpgConfigStore.parse(

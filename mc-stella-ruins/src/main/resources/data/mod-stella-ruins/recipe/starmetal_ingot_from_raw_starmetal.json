@@ -1,0 +1,10 @@
+{
+	"type": "minecraft:smelting",
+	"category": "misc",
+	"ingredient": "mod-stella-ruins:raw_starmetal",
+	"result": {
+		"id": "mod-stella-ruins:starmetal_ingot"
+	},
+	"experience": 0.7,
+	"cookingtime": 200
+}

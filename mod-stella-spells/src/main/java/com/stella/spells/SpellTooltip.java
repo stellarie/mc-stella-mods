@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 public final class SpellTooltip {
 	private static final double PERCENT = 100.0;
 	private static final double TICKS_PER_SECOND = 20.0;
+	private static final double SECONDS_PER_MINUTE = 60.0;
 	private static final String[] ROMAN = {"0", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"};
 
 	private SpellTooltip() {
@@ -45,6 +46,24 @@ public final class SpellTooltip {
 	 */
 	public static List<Component> lines(final @Nullable Player viewer, final ItemStack stack) {
 		return List.copyOf(live(viewer, stack).values());
+	}
+
+	/** A book's awakening lines: its cast count and what is left, or Awakened. A scroll shows none. */
+	public static List<Component> awakeningLines(final ItemStack stack) {
+		if (!(stack.getItem() instanceof SpellbookItem)) {
+			return List.of();
+		}
+		if (Awakening.isAwakened(stack)) {
+			return List.of(Spellbooks.line(Component.translatable("spellbook." + Spellbooks.MOD_ID + ".awakened_state"), ChatFormatting.GOLD));
+		}
+		return List.of(
+			Spellbooks.line(Component.translatable(
+				"spellbook." + Spellbooks.MOD_ID + ".awakening", Awakening.count(stack), Awakening.CASTS_TO_AWAKEN
+			), ChatFormatting.GRAY),
+			Spellbooks.line(Component.translatable(
+				"spellbook." + Spellbooks.MOD_ID + ".awakens_in", Awakening.castsLeft(stack)
+			), ChatFormatting.GRAY)
+		);
 	}
 
 	/** Swaps the static effect and cooldown lines in a tooltip for the live ones; touches nothing else. */
@@ -112,9 +131,9 @@ public final class SpellTooltip {
 			damage(viewer, numbers.damage(), power, scale),
 			heal(viewer, numbers.heal(), power, scale),
 			heal(viewer, numbers.allyHeal(), power, scale),
-			numbers.duration().ticks() > 0 ? seconds(numbers.durationTicks(modifiers)) : "0",
-			capped ? seconds(numbers.duration().scaled(numbers.capTicks(), modifiers))
-				: numbers.extra().ticks() > 0 ? seconds(numbers.extraTicks(modifiers)) : "0",
+			numbers.duration().ticks() > 0 ? duration(numbers.durationTicks(modifiers)) : "0",
+			capped ? duration(numbers.duration().scaled(numbers.capTicks(), modifiers))
+				: numbers.extra().ticks() > 0 ? duration(numbers.extraTicks(modifiers)) : "0",
 			tenths(numbers.radius(modifiers)),
 			Integer.toString(numbers.targets()),
 			roman(numbers.amplifier() + 1),
@@ -150,6 +169,17 @@ public final class SpellTooltip {
 
 	private static String seconds(final int ticks) {
 		return tenths(ticks / TICKS_PER_SECOND);
+	}
+
+	// A minute or more reads in minutes, so a 30-minute buff is not 1800 seconds.
+	static String duration(final int ticks) {
+		double seconds = ticks / TICKS_PER_SECOND;
+		if (seconds >= SECONDS_PER_MINUTE) {
+			String minutes = tenths(seconds / SECONDS_PER_MINUTE);
+			return minutes + ("1".equals(minutes) ? " minute" : " minutes");
+		}
+		String shown = tenths(seconds);
+		return shown + ("1".equals(shown) ? " second" : " seconds");
 	}
 
 	// Whole numbers from ten up; below that one decimal, dropped when it is zero.

@@ -1,0 +1,69 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"token": [
+			"#2a1a05",
+			"#8a5a10",
+			"#d8a420",
+			"#f6d860",
+			"#fff6c0"
+		],
+		"fiber": [
+			"#1a1f1c",
+			"#4a5a50",
+			"#7e9488",
+			"#b4c8bc",
+			"#eaf6ee"
+		],
+		"fang": [
+			"#2a2620",
+			"#8a8470",
+			"#c8c2aa",
+			"#ece6d2",
+			"#ffffff"
+		],
+		"gladius": [
+			"#1c1c22",
+			"#5a5e6a",
+			"#9aa0ae",
+			"#d4d8e2",
+			"#ffffff"
+		],
+		"champion": [
+			"#1e1410",
+			"#6a3218",
+			"#b0521f",
+			"#e0842e",
+			"#ffd08a"
+		]
+	},
+	"items": [
+		{
+			"id": "champion_token",
+			"template": "ingot",
+			"palette": "token"
+		},
+		{
+			"id": "net_fiber",
+			"template": "feather",
+			"palette": "fiber"
+		},
+		{
+			"id": "hound_fang",
+			"template": "shard",
+			"palette": "fang"
+		},
+		{
+			"id": "gladius_of_the_crowd",
+			"template": "sword",
+			"palette": "gladius"
+		}
+	],
+	"sets": [
+		{
+			"id": "champion",
+			"asset": "champion",
+			"palette": "champion"
+		}
+	]
+}

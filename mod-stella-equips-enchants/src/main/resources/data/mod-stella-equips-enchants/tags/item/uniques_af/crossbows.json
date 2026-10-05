@@ -1,3 +1,8 @@
 {
-	"values": []
+  "values": [
+    "mod-stella-equips-enchants:raider_repeater",
+    "mod-stella-equips-enchants:galeshot_crossbow",
+    "mod-stella-equips-enchants:tidewatcher_crossbow",
+    "mod-stella-equips-enchants:foreman_arbalest"
+  ]
 }

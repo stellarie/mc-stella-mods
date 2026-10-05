@@ -1,5 +1,17 @@
 {
-	"values": [
-		"mod-stella-equips-enchants:bonewhisper_bow"
-	]
+  "values": [
+    "mod-stella-equips-enchants:bonewhisper_bow",
+    "mod-stella-equips-enchants:rimefrost_bow",
+    "mod-stella-equips-enchants:mire_bow",
+    "mod-stella-equips-enchants:sunscorch_bow",
+    "mod-stella-equips-enchants:witherbone_longbow",
+    "mod-stella-equips-enchants:ancient_eye_bow",
+    "mod-stella-equips-enchants:sunfire_bow",
+    "mod-stella-equips-enchants:nightwing_bow",
+    "mod-stella-equips-enchants:wailing_bow",
+    "mod-stella-equips-enchants:levitator_bow",
+    "mod-stella-equips-enchants:dragonbreath_bow",
+    "mod-stella-equips-enchants:sonic_bow",
+    "mod-stella-equips-enchants:phasebite_bow"
+  ]
 }

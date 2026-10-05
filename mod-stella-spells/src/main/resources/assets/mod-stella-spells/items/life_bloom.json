@@ -16,8 +16,17 @@
 			}
 		],
 		"fallback": {
-			"type": "minecraft:model",
-			"model": "mod-stella-spells:item/life_bloom"
+			"type": "minecraft:condition",
+			"property": "minecraft:has_component",
+			"component": "mod-stella-spells:awakened",
+			"on_true": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/life_bloom_awakened"
+			},
+			"on_false": {
+				"type": "minecraft:model",
+				"model": "mod-stella-spells:item/life_bloom"
+			}
 		}
 	}
 }

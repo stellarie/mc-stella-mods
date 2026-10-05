@@ -14,6 +14,7 @@
 			"com.stella.nether.RaidEnrageGameTest",
 			"com.stella.nether.RaidSiteGameTest",
 			"com.stella.nether.BlazeSovereignGameTest",
+			"com.stella.nether.SovereignShareGameTest",
 			"com.stella.nether.SovereignSpecialsGameTest",
 			"com.stella.nether.SpoilsGameTest",
 			"com.stella.nether.RaidLootGameTest",

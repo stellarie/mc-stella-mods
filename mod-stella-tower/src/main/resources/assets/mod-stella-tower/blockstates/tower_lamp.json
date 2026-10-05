@@ -1,1 +1,22 @@
-{ "variants": { "": { "model": "mod-stella-tower:block/tower_lamp" } } }
+{
+  "variants": {
+    "skin=sea_lantern": {
+      "model": "mod-stella-tower:block/tower_lamp"
+    },
+    "skin=glowstone": {
+      "model": "minecraft:block/glowstone"
+    },
+    "skin=shroomlight": {
+      "model": "minecraft:block/shroomlight"
+    },
+    "skin=ochre_froglight": {
+      "model": "minecraft:block/ochre_froglight"
+    },
+    "skin=pearlescent_froglight": {
+      "model": "minecraft:block/pearlescent_froglight"
+    },
+    "skin=verdant_froglight": {
+      "model": "minecraft:block/verdant_froglight"
+    }
+  }
+}

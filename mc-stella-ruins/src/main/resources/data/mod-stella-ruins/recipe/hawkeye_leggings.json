@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"key": {
+		"F": "mod-stella-ruins:hawkfeather",
+		"L": "minecraft:leather"
+	},
+	"pattern": [
+		"LLL",
+		"F F",
+		"L L"
+	],
+	"result": {
+		"id": "mod-stella-ruins:hawkeye_leggings"
+	}
+}

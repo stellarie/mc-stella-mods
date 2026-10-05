@@ -51,6 +51,8 @@ public class SpellEnchantmentsGameTest {
 	private static final Identifier MENDING_WORD = spellbookId("mending_word");
 	private static final Identifier STONEGUARD = spellbookId("stoneguard");
 	private static final Identifier FROSTBIND = spellbookId("frostbind");
+	// A defensive-scale spell, because the self buffs no longer stretch.
+	private static final Identifier LIFE_BLOOM = spellbookId("life_bloom");
 	private static final Identifier WARDENS_ROAR = spellbookId("wardens_roar");
 	private static final List<Identifier> SPELL_ENCHANTMENTS = List.of(
 		QUICKENING, POTENCY, PRECISION, ARCANE_SIGHT, CLEAR_MIND, ARCANE_WEAVE, SPELLGUARD
@@ -255,23 +257,24 @@ public class SpellEnchantmentsGameTest {
 		helper.setTime(18_000L);
 		clearTargetRayBarriers(helper);
 		for (int level = 1; level <= 3; level++) {
-			int extended = Math.round(80.0f * (1.0f + 0.10f * level));
+			int extended = Math.round(160.0f * (1.0f + 0.10f * level));
+			int extendedBloom = Math.round(300.0f * (1.0f + 0.10f * level));
 			assertDuration(
 				helper, FROSTBIND, arcaneWeave, level, MobEffects.SLOWNESS, extended, false, EquipmentSlot.CHEST
 			);
-			assertDuration(helper, FROSTBIND, spellguard, level, MobEffects.SLOWNESS, 80, false, EquipmentSlot.CHEST);
+			assertDuration(helper, FROSTBIND, spellguard, level, MobEffects.SLOWNESS, 160, false, EquipmentSlot.CHEST);
 			assertDuration(
-				helper, STONEGUARD, spellguard, level, MobEffects.RESISTANCE, extended, true, EquipmentSlot.CHEST
+				helper, LIFE_BLOOM, spellguard, level, MobEffects.REGENERATION, extendedBloom, true, EquipmentSlot.CHEST
 			);
 			assertDuration(
-				helper, STONEGUARD, arcaneWeave, level, MobEffects.RESISTANCE, 80, true, EquipmentSlot.CHEST
+				helper, LIFE_BLOOM, arcaneWeave, level, MobEffects.REGENERATION, 300, true, EquipmentSlot.CHEST
 			);
 		}
 		assertDuration(
-			helper, FROSTBIND, arcaneWeave, 3, MobEffects.SLOWNESS, 80, false, EquipmentSlot.HEAD
+			helper, FROSTBIND, arcaneWeave, 3, MobEffects.SLOWNESS, 160, false, EquipmentSlot.HEAD
 		);
 		assertDuration(
-			helper, STONEGUARD, spellguard, 3, MobEffects.RESISTANCE, 80, true, EquipmentSlot.HEAD
+			helper, LIFE_BLOOM, spellguard, 3, MobEffects.REGENERATION, 300, true, EquipmentSlot.HEAD
 		);
 		int durationAtLevelOne = productionCalculation(
 			"durationTicks", new Class<?>[] {int.class, int.class}, 85, 1

@@ -96,11 +96,13 @@ public class TowerGhostGameTest {
 		// is sent out of it within a sweep, to wherever is nearest).
 		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(TowerPlan.at(tower, floor));
 		player.teleportTo(tower, spots.inside().x, spots.inside().y, spots.inside().z, java.util.Set.of(), 0.0F, 0.0F, true);
-		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
 		zombie.snapTo(spots.mob());
+		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);
+		TowerGhost ghost = TowerGhosts.summon(tower, LOW, spots.mob().add(0.0, 1.0, 0.0));
+		helper.assertTrue(ghost != null && ghost.hasLineOfSight(zombie), "the casting fixture has no visible ghost and zombie");
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth() && zombie.getLastHurtByMob() == ghost, "the ghost never cast at the zombie");

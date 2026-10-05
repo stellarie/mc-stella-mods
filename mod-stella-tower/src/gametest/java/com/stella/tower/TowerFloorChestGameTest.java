@@ -66,9 +66,9 @@ public class TowerFloorChestGameTest {
 
 	/** Both halves are tower chests, a pair, facing the spot's way; returns a fault or null. */
 	private static String fault(final ServerLevel tower, final TowerPlan plan, final TowerPlan.ChestSpot spot) {
-		BlockPos first = plan.origin().offset(spot.x(), 0, spot.z());
+		BlockPos first = plan.origin().offset(spot.x(), spot.y(), spot.z());
 		TowerPlan.Spot other = spot.second();
-		BlockPos second = plan.origin().offset(other.x(), 0, other.z());
+		BlockPos second = plan.origin().offset(other.x(), spot.y(), other.z());
 		BlockState a = tower.getBlockState(first);
 		BlockState b = tower.getBlockState(second);
 		if (!a.is(TowerBlocks.TOWER_CHEST) || !b.is(TowerBlocks.TOWER_CHEST)) {
@@ -129,7 +129,7 @@ public class TowerFloorChestGameTest {
 		TowerMaze.Zone zone = plan.safeZones().get(boss ? 1 : 0);
 		TowerPlan.Spot other = spot.second();
 		boolean inside = zone.contains(spot.x(), spot.z()) && zone.contains(other.x(), other.z());
-		Container container = containerAt(tower, plan.origin().offset(spot.x(), 0, spot.z()));
+		Container container = containerAt(tower, plan.origin().offset(spot.x(), spot.y(), spot.z()));
 		int books = enchantedBooks(container);
 		int scrolls = has(container, Items.PAPER);
 		TowerTestSupport.result(name, "floor=" + floor + " fault=" + fault + " insideZone=" + inside + " enchantedBooks=" + books + " returnScrolls=" + scrolls);
@@ -151,23 +151,12 @@ public class TowerFloorChestGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void legacyFloorGetsNoChests(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = TowerTestSupport.freshFloor();
-		TowerFloors.ensure(tower, floor, TowerPlan.legacy(tower.getSeed(), floor));
-		int blocks = chestBlocks(tower, floor);
-		TowerTestSupport.result("floorChestsLegacy", "floor=" + floor + " chestBlocks=" + blocks);
-		helper.assertTrue(blocks == 0, "a legacy floor holds " + blocks + " chest blocks");
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
 	public void builtFloorIsNotRestockedOnReentry(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		TowerPlan plan = build(tower, floor);
 		TowerPlan.ChestSpot spot = plan.chestSpots().get(0);
-		BlockPos first = plan.origin().offset(spot.x(), 0, spot.z());
+		BlockPos first = plan.origin().offset(spot.x(), spot.y(), spot.z());
 		containerAt(tower, first).clearContent();
 		build(tower, floor);
 		int after = filled(tower, first);
