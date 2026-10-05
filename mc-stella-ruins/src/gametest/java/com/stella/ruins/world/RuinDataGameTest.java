@@ -1,13 +1,18 @@
 package com.stella.ruins.world;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 
 /** Item 14: what a core knows survives a save and a load. */
 public class RuinDataGameTest {
@@ -75,6 +80,24 @@ public class RuinDataGameTest {
 		RuinData.Entry fresh = data.entryFor(ACTIVE_CORE, "test_reset");
 		helper.assertTrue(fresh.phase() == RuinPhase.DORMANT && fresh.roster().isEmpty(), "a record of another site was reused");
 		helper.assertTrue(data.coreOf(a) == null, "the old roster still maps to the spot");
+		helper.succeed();
+	}
+
+	/** Every stone a ruin builds with must answer a pickaxe, or the dig is slower than the block looks. */
+	@GameTest
+	public void everyStoneBlockOfARuinCarriesThePickaxeTag(final GameTestHelper helper) {
+		TagKey<Block> pickaxe = TagKey.create(BuiltInRegistries.BLOCK.key(), Identifier.withDefaultNamespace("mineable/pickaxe"));
+		List<String> stone = List.of("deep_forge", "starmetal_ore", "cooled_meteorite", "vault_wall", "vault_floor", "vault_seal",
+			"vault_arrow_plate", "vault_drop_plate", "vault_vent");
+		List<String> missing = new ArrayList<>();
+		for (String id : stone) {
+			Block block = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("mod-stella-ruins", id));
+			if (block == null || !block.defaultBlockState().is(pickaxe)) {
+				missing.add(id);
+			}
+		}
+		WorldTestSupport.result("pickaxeTag", "checked=" + stone.size() + " missing=" + missing);
+		helper.assertTrue(missing.isEmpty(), "these ruin blocks answer no pickaxe: " + missing);
 		helper.succeed();
 	}
 }
