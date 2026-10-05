@@ -272,7 +272,7 @@ public class RpgDurationsGameTest {
 	}
 
 	@GameTest(maxTicks = 60)
-	public void mobKeepsOldDurations(final GameTestHelper helper) {
+	public void mobUsesNewDurations(final GameTestHelper helper) {
 		List<String> wrong = new ArrayList<>();
 		floor(helper);
 		net.minecraft.world.entity.monster.Witch witch = helper.spawnMob(EntityTypes.WITCH, 2, 1, 2).withNoFreeWill().spawn();
@@ -281,40 +281,46 @@ public class RpgDurationsGameTest {
 		witch.setTarget(foe);
 
 		MobSpells.support(witch, "berserk");
-		expect(wrong, "witch berserk ally", ally.getEffect(MobEffects.STRENGTH), 200);
+		expect(wrong, "witch berserk ally", ally.getEffect(MobEffects.STRENGTH), MoreSpells.BERSERK_TICKS);
 		ally.removeAllEffects();
 		MobSpells.support(witch, "battle_hymn");
-		expect(wrong, "witch battle_hymn ally", ally.getEffect(MobEffects.STRENGTH), 400);
+		expect(wrong, "witch battle_hymn ally", ally.getEffect(MobEffects.STRENGTH), MoreSpells.BATTLE_HYMN_TICKS);
 		ally.removeAllEffects();
 		MobSpells.support(witch, "quicksilver");
-		expect(wrong, "witch quicksilver ally", ally.getEffect(MobEffects.SPEED), 400);
+		expect(wrong, "witch quicksilver ally", ally.getEffect(MobEffects.SPEED), MoreSpells.QUICKSILVER_TICKS);
 		ally.removeAllEffects();
 		MobSpells.support(witch, "tailwind");
-		expect(wrong, "witch tailwind ally", ally.getEffect(MobEffects.SPEED), 600);
+		expect(wrong, "witch tailwind ally", ally.getEffect(MobEffects.SPEED), MoreSpells.TAILWIND_TICKS);
 
 		Mob pig = pig(helper, 4, 3);
 		MobSpells.castAt(witch, "venom_dart", pig);
-		expect(wrong, "witch venom_dart", pig.getEffect(MobEffects.POISON), 100);
+		expect(wrong, "witch venom_dart", pig.getEffect(MobEffects.POISON), MoreSpells.VENOM_TICKS);
 		MobSpells.castAt(witch, "gravity", foe);
-		expect(wrong, "witch gravity", foe.getEffect(MobEffects.SLOWNESS), 160);
+		expect(wrong, "witch gravity", foe.getEffect(MobEffects.SLOWNESS), MoreSpells.GRAVITY_TICKS);
 		foe.removeAllEffects();
 		MobSpells.castAt(witch, "frost_nova", foe);
-		expect(wrong, "witch frost_nova", foe.getEffect(MobEffects.SLOWNESS), 60);
+		expect(wrong, "witch frost_nova", foe.getEffect(MobEffects.SLOWNESS), MoreSpells.FROST_NOVA_SLOW_TICKS);
 		foe.removeAllEffects();
 		witch.removeAllEffects();
 		MobSpells.castAt(witch, "sapping_hex", foe);
-		expect(wrong, "witch sapping_hex", foe.getEffect(MobEffects.WEAKNESS), 60);
+		expect(wrong, "witch sapping_hex", foe.getEffect(MobEffects.WEAKNESS), MoreSpells.HEX_TICKS_PER_FOE);
 		foe.clearFire();
 		MobSpells.castAt(witch, "ember_brand", foe);
-		expectInt(wrong, "witch ember_brand", foe.getRemainingFireTicks(), 200);
+		expectInt(wrong, "witch ember_brand", foe.getRemainingFireTicks(), MoreSpells.EMBER_BURN_TICKS);
 
-		Mob distant = zombie(helper, 2, 7);
+		Mob distant = zombie(helper, 2, 9);
 		witch.setTarget(distant);
 		distant.clearFire();
 		MobSpells.castAt(witch, "flame_ring", distant);
-		expectInt(wrong, "witch flame_ring reach (radius 3)", distant.getRemainingFireTicks(), 0);
+		expectInt(wrong, "witch flame_ring reach (radius 5)", distant.getRemainingFireTicks(), 0);
 
-		LOG.info("[SPELLTEST] class=RpgDurationsGameTest test=mobKeepsOldDurations RESULT wrong={}", wrong);
+		Mob near = zombie(helper, 2, 6);
+		near.clearFire();
+		witch.setTarget(near);
+		MobSpells.castAt(witch, "flame_ring", near);
+		expectInt(wrong, "witch flame_ring burn inside radius 5", near.getRemainingFireTicks(), MoreSpells.FLAME_RING_BURN_TICKS);
+
+		LOG.info("[SPELLTEST] class=RpgDurationsGameTest test=mobUsesNewDurations RESULT wrong={}", wrong);
 		helper.assertTrue(wrong.isEmpty(), "mob numbers: " + wrong);
 		helper.succeed();
 	}

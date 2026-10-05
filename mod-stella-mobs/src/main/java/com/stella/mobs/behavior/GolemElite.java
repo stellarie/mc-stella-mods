@@ -2,6 +2,7 @@ package com.stella.mobs.behavior;
 
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.gear.GearTier;
+import com.stella.mobs.scaling.SelfScaled;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
@@ -35,7 +36,8 @@ public final class GolemElite {
 
 	/** Idempotent: the mark returns early on an elite, so an iron golem can never be marked twice. */
 	public static void force(final Mob mob) {
-		if (!(mob instanceof IronGolem golem) || Elite.isElite(golem)) {
+		// G08: a kit that owns its scaling owns its golem too.
+		if (!(mob instanceof IronGolem golem) || Elite.isElite(golem) || SelfScaled.owned(golem)) {
 			return;
 		}
 

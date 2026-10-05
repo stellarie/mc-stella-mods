@@ -7,7 +7,8 @@
 	"entrypoints": {
 		"main": [
 			"com.stella.ruins.world.WorldTestInit",
-			"com.stella.ruins.reward.RewardTestInit"
+			"com.stella.ruins.reward.RewardTestInit",
+			"com.stella.ruins.site.wayshrine.WayshrineTestInit"
 		],
 		"fabric-gametest": [
 			"com.stella.ruins.ScaffoldGameTest",
@@ -24,6 +25,21 @@
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",
 			"com.stella.ruins.reward.RuinGearGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingLayoutGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRiteGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingMobGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRewardGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingSiteGameTest",
+			"com.stella.ruins.site.wayshrine.WayshrineLayoutGameTest",
+			"com.stella.ruins.site.wayshrine.WayshrineRiteGameTest",
+			"com.stella.ruins.site.wayshrine.WayshrineMobGameTest",
+			"com.stella.ruins.site.wayshrine.WayshrineRewardGameTest",
+			"com.stella.ruins.site.wayshrine.WayshrineSiteGameTest",
+			"com.stella.ruins.site.ruinedkeep.KeepPlanGameTest",
+			"com.stella.ruins.site.ruinedkeep.KeepLayoutGameTest",
+			"com.stella.ruins.site.ruinedkeep.KeepObjectiveGameTest",
+			"com.stella.ruins.site.ruinedkeep.KeepMobGameTest",
+			"com.stella.ruins.site.ruinedkeep.KeepRewardGameTest",
 			"com.stella.ruins.site.deepforge.DeepForgeLayoutGameTest",
 			"com.stella.ruins.site.deepforge.DeepForgeObjectiveGameTest",
 			"com.stella.ruins.site.deepforge.DeepForgeMobGameTest",

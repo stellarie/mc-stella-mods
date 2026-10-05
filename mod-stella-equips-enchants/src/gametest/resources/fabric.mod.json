@@ -58,7 +58,16 @@
 			"com.stella.equips.RefineAnyBowGameTest",
 			"com.stella.equips.AnvilNeverBreaksGameTest",
 			"com.stella.equips.LowHealthWarningGameTest",
-			"com.stella.equips.GearCompareGameTest"
+			"com.stella.equips.GearCompareGameTest",
+			"com.stella.equips.UniqueDropRateGameTest",
+			"com.stella.equips.UniqueDropGameTest",
+			"com.stella.equips.UniqueRegistryGameTest",
+			"com.stella.equips.UniqueRefineGameTest",
+			"com.stella.equips.UniqueDispatchGameTest",
+			"com.stella.equips.UniqueHelpersGameTest",
+			"com.stella.equips.BonewhisperBowGameTest",
+			"com.stella.equips.UniquesArcherFighterGameTest",
+			"com.stella.equips.UniquesMagePriestGameTest"
 		]
 	}
 }

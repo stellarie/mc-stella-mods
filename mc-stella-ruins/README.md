@@ -144,6 +144,74 @@ gradlew.bat runGameTest --rerun -PwithStellaMobs=true
 The second run builds `../mod-stella-mobs` and loads its jar into the game tests only. The tests for a present
 sibling run in that mode. The tests for an absent sibling run in the first mode.
 
+## Proving Grounds
+
+The proving grounds are a large ruined arena on the surface. The footprint is 48 x 20 x 48 and the package is
+`com.stella.ruins.site.provinggrounds`. The sketch is `mc-stella-ruins-proving-grounds.work` on the blackboard.
+
+- **The contest.** A player rings the gong in the south gate. That arms the three lecterns on the herald stage for
+  6000 ticks. A lectern picks tier I, II or III: 5, 7 or 10 waves. The core records the tier, the main portcullis
+  drops, and wave 1 spawns. Each wave starts 100 ticks after the last one dies. A cleared last wave opens the vault and
+  fills it from `chests/proving_grounds_<tier>`. Each cleared wave also plays a roar and fireworks over the stands.
+- **Claims.** Each tier claims for one day on its own, in `ProvingData`. The framework core keeps one claim for a
+  whole site, which would let tier I lock tiers II and III. So `TierObjective` never completes: the core stays active.
+  The `reset_days` config entry for `proving_grounds` sets the delay.
+- **Failure.** A run player who dies, or who stays 600 ticks outside the box grown by 2 blocks on the sides and
+  below, fails the run. The wave mobs vanish, the portcullis rises, and the tier can start again. No claim is set.
+- **Hazards.** Tiers II and III light 4 braziers on the wall. Tier III opens 2 fire grates for 60 ticks every 400
+  ticks, the first 200 ticks after the start. The objective runs every 20 ticks, so a hazard may lag by up to 20.
+- **The arena.** The seed picks a round or octagonal floor of radius 16 to 20, 4 to 8 cover pillars, 1 to 3 floor
+  features, 2 to 4 gates (the south gate always, the others barred), stand decay of 20 to 50 percent, and banner colors.
+  The lowest two courses of the wall never decay.
+- **Mobs.** Gladiator (vindicator), Retiarius (drowned; a hit slows for 40 ticks), Arena Hound (wolf, always angry),
+  Pit Beast (ravager, tier III wave 10 only). Spawns use markers of the kind and reuse them in order.
+- **Rewards.** `champion_token`, `net_fiber` and `hound_fang` craft the Champion set. Two pieces add 10 percent
+  attack damage. Four pieces add 10 percent attack speed and Strength I for 100 ticks after each kill. The unique is the
+  Gladius of the Crowd: each consecutive hit adds 6 percent damage to the next, up to 5 stacks; 60 ticks without a
+  hit reset it.
+- **Art.** `tools/specs/proving_grounds.json` draws the item and armor textures.
+
+Known limits:
+
+- The roar, the fireworks, the look of the arena and the gong sound are for a client to judge.
+- The hatch only bursts with smoke. It does not open, because a Pit Beast would fall in.
+
+## Wayshrine
+
+The wayshrine is the first site. It is small, stands on the surface, and fits in 21 x 16 x 21 blocks. Its package is
+`com.stella.ruins.site.wayshrine`.
+
+- **The rite.** A player offers a gold ingot, an emerald, or a Shrine Shard at the core. Then three waves come:
+  4 Hollow Pilgrims; 3 Pilgrims and 3 Lantern Wisps; 2 Pilgrims, 2 Wisps, and the Fallen Acolyte. The vault opens
+  and fills from `chests/wayshrine`. The shrine rearms one day later.
+- **Three shapes, one footprint.** The seed picks a ring of pillars, a cross chapel, or a sunken altar. It also picks
+  one of three palettes (stone brick, calcite with quartz, deepslate brick), a decay rate of 20 to 40 percent, and
+  2 to 4 candles. Decayed pillar and wall blocks turn mossy, turn cracked, or go. A settle pass then removes any
+  block that no longer touches the floor. The path side is the piece rotation.
+- **The plan is drawn whole.** `WayshrinePlan` builds the shrine in memory in the local frame, with the floor course at
+  local y 0. The layout then emits the cells of the current chunk. The sketch is `mc-stella-ruins-wayshrine.work`
+  on the blackboard.
+- **Spawns by kind.** The layout names `spawn.hollow_pilgrim`, `spawn.lantern_wisp`, and `spawn.fallen_acolyte`.
+  `ShrineWaves` puts each mob at a marker of its own kind and reuses the markers in order when a wave is larger.
+- **The watch.** `ShrineRite` wraps the offer and the waves. If no player stays within 32 blocks of the core for
+  600 ticks, the wave mobs vanish and the core returns to `DORMANT`. The offering is spent.
+- **The lamp.** A shrine lamp tops an obelisk 8 to 11 blocks tall. It burns while the core is dormant or active and
+  goes dark while the shrine rests, so the reset state shows from far off. The lamp has no item.
+- **Mobs.** The Pilgrim heals the most hurt ruin ally within 6 blocks by 4 every 100 ticks. It wears a white dyed,
+  unbreakable leather hood, so the sun never burns it. The Wisp's hit blinds a player for 40 ticks. The Acolyte slows
+  players within 8 blocks every 160 ticks.
+- **Rewards.** `shrine_shard`, `pilgrim_ash`, and `wisp_light` are exclusive. They craft the Pilgrim set
+  (`pilgrim_helmet`, `_chestplate`, `_leggings`, `_boots`). Two pieces add 10 percent maximum health. Four pieces
+  give Regeneration I to the wearer and to players within 8 blocks. The unique is the Pilgrim's Censer, an off-hand
+  item: below half health it heals 1 each second, and a kill heals 2.
+- **Art.** `tools/specs/wayshrine.json` draws the item and armor textures with `tools/ruin_textures.py`. The dark lamp
+  texture is hand made.
+
+Known limits:
+
+- A wave mob that stands in an unloaded chunk when a rite is abandoned stays until a player kills it.
+- Sunburn is proved at noon in a game test. Feel and look are for a client.
+
 ## Crystal Grotto
 
 Site id `crystal_grotto`, package `com.stella.ruins.site.crystalgrotto`. A small cave site: a geode chamber of singing
