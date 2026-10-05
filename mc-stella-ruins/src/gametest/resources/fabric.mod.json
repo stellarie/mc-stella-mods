@@ -33,7 +33,14 @@
 			"com.stella.ruins.site.crystalgrotto.ChimeObjectiveGameTest",
 			"com.stella.ruins.site.crystalgrotto.GrottoMobsGameTest",
 			"com.stella.ruins.site.crystalgrotto.GrottoRewardsGameTest",
-			"com.stella.ruins.site.crystalgrotto.GrottoSiteGameTest"
+			"com.stella.ruins.site.crystalgrotto.GrottoSiteGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerPlanGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerLayoutGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerWorldGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerObjectiveGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerMobsGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerRewardsGameTest",
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerSiteGameTest"
 		]
 	},
 	"depends": {
