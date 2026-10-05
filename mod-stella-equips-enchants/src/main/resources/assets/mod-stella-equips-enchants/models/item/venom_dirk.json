@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "mod-stella-equips-enchants:item/venom_dirk"
+	}
+}

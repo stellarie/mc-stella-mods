@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/crossbow",
+	"textures": {
+		"layer0": "mod-stella-equips-enchants:item/galeshot_crossbow"
+	}
+}
