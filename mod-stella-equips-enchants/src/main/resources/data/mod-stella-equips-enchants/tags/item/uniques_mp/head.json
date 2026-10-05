@@ -1,3 +1,12 @@
 {
-	"values": []
+	"values": [
+		"mod-stella-equips-enchants:hexweaver_hat",
+		"mod-stella-equips-enchants:sulfur_crown",
+		"mod-stella-equips-enchants:spectral_circlet",
+		"mod-stella-equips-enchants:starfall_crown",
+		"mod-stella-equips-enchants:volatile_hood",
+		"mod-stella-equips-enchants:echo_circlet",
+		"mod-stella-equips-enchants:mirror_mask",
+		"mod-stella-equips-enchants:sovereign_crown"
+	]
 }
