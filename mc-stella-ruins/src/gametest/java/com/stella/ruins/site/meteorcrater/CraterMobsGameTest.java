@@ -48,9 +48,8 @@ public class CraterMobsGameTest {
 		CraterTestSupport.inArena(helper, SEED, arena -> {
 			Mob mob = golem(arena, 0, spot(arena.markers(CraterMarkers.GOLEM).get(0)));
 			helper.assertTrue(mob.getType() == EntityTypes.IRON_GOLEM, "the golem is a " + mob.getType());
-			// The mobs mod forces every iron golem elite (G01), which adds to the scale, so there the scale is at least ours.
 			double scale = mob.getAttributeValue(Attributes.SCALE);
-			helper.assertTrue(MOBS_PRESENT ? scale >= 1.3 - 1.0E-6 : Math.abs(scale - 1.3) < 1.0E-6, "scale " + scale);
+			helper.assertTrue(Math.abs(scale - 1.3) < 1.0E-6, "scale " + scale);
 			helper.assertTrue(mob.hasEffect(MobEffects.GLOWING), "the golem does not glow");
 			helper.assertTrue(RuinMobs.kindOf(mob) == CraterMobs.STAR_GOLEM && CraterMobs.STAR_GOLEM.drops().equals(CraterMobs.GOLEM_DROPS), "kind or drop table");
 			helper.assertTrue(mob.entityTags().contains(RuinMobKind.TAG_MOB) && mob.isPersistenceRequired(), "not tagged or not persistent");
@@ -112,6 +111,8 @@ public class CraterMobsGameTest {
 			ServerLevel level = arena.level();
 			ServerPlayer player = arena.join(arena.standAt());
 			CraterTestSupport.vulnerable(player);
+			player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+			player.setHealth(1000.0F);
 			Mob mob = golem(arena, 0, arena.standAt().add(5.0, 0.0, 5.0));
 			mob.tickCount = CraterMobs.STRIKE_TICKS;
 			CraterMobs.STAR_GOLEM.ability().tick(mob, level);
@@ -124,10 +125,20 @@ public class CraterMobsGameTest {
 			mob.tickCount = CraterMobs.STRIKE_TICKS + CraterMobs.WARNING_TICKS;
 			CraterMobs.STAR_GOLEM.ability().tick(mob, level);
 			float lost = before - player.getHealth();
-			CraterTestSupport.result("strike", "marked=" + marked + " lost=" + lost);
+			CraterTestSupport.result("strike", "marked=" + marked + " lost=" + lost + " level=" + com.stella.ruins.world.RuinLevels.of(mob));
 			helper.assertTrue(CraterMobs.StarStrike.pending(mob) == null, "the strike is still pending");
-			// With the mobs mod a ruin mob's hit follows its level, so the strike is at least the base damage there.
-			helper.assertTrue(MOBS_PRESENT ? lost >= CraterMobs.STRIKE_DAMAGE - 1.0E-4F : Math.abs(lost - CraterMobs.STRIKE_DAMAGE) < 1.0E-4F, "the strike did " + lost);
+			// A ruin mob's hit follows its level with the mobs mod, so the control is the same golem hitting a cow
+			// for 5 points. A player can only lose the health it has.
+			net.minecraft.world.entity.animal.cow.Cow cow = CraterTestSupport.cow(helper, 3.5, 3.5, 1_000_000.0F);
+			cow.damageCooldownTime = 0;
+			float cowBefore = cow.getHealth();
+			cow.hurtServer(level, level.damageSources().indirectMagic(mob, mob), CraterMobs.STRIKE_DAMAGE);
+			float cowLost = cowBefore - cow.getHealth();
+			cow.discard();
+			float expected = Math.min(1000.0F, cowLost);
+			CraterTestSupport.result("strikeControl", "strike=" + lost + " cowControl=" + cowLost + " expected=" + expected);
+			helper.assertTrue(Math.abs(lost - expected) < 1.0E-3F, "the strike did " + lost + " but the same golem's 5 point hit did " + cowLost);
+			helper.assertTrue(MOBS_PRESENT ? lost > CraterMobs.STRIKE_DAMAGE : Math.abs(lost - CraterMobs.STRIKE_DAMAGE) < 1.0E-4F, "the strike did " + lost);
 			mob.discard();
 		});
 	}
