@@ -33,8 +33,8 @@ public final class CampPlan {
 	public static final int CAMP_DEPTH = 12;
 	/** The z the tunnel aims for: the south edge of the camp. */
 	public static final int CAMP_Z = SIZE_Z - CAMP_DEPTH;
-	/** The local y of the tunnel and camp floor. */
-	public static final int FLOOR = 4;
+	/** The local y of the mouth floor. The walk may drop MAX_DROP below it. */
+	public static final int FLOOR = 5;
 	public static final int TUNNEL_WIDTH = 3;
 	public static final int TUNNEL_HEIGHT = 3;
 	public static final int MIN_BENDS = 3;
@@ -155,9 +155,16 @@ public final class CampPlan {
 				}
 			}
 			if (i % 4 == 0 && i > 0 && i < this.centre.size() - 2) {
-				for (int dy = 0; dy < TUNNEL_HEIGHT; dy++) {
-					set(spot.x() - half - 1, spot.y() + dy, spot.z(), Blocks.OAK_LOG.defaultBlockState());
-					set(spot.x() + half + 1, spot.y() + dy, spot.z(), Blocks.OAK_LOG.defaultBlockState());
+				// A post stands in rock only: a bend opens the wall beside it.
+				if (wallFree(spot.x() - half - 1, spot.z())) {
+					for (int dy = 0; dy < TUNNEL_HEIGHT; dy++) {
+						set(spot.x() - half - 1, spot.y() + dy, spot.z(), Blocks.OAK_LOG.defaultBlockState());
+					}
+				}
+				if (wallFree(spot.x() + half + 1, spot.z())) {
+					for (int dy = 0; dy < TUNNEL_HEIGHT; dy++) {
+						set(spot.x() + half + 1, spot.y() + dy, spot.z(), Blocks.OAK_LOG.defaultBlockState());
+					}
 				}
 				for (int dx = -half - 1; dx <= half + 1; dx++) {
 					set(spot.x() + dx, spot.y() + TUNNEL_HEIGHT, spot.z(), Blocks.OAK_LOG.defaultBlockState());
@@ -187,11 +194,35 @@ public final class CampPlan {
 
 	// ---- the camp ----
 
+	/** True when no cell of the walk at the same z carves the tunnel at x. */
+	private boolean wallFree(final int x, final int z) {
+		int half = TUNNEL_WIDTH / 2;
+		for (Spot spot : this.centre) {
+			if (spot.z() == z && Math.abs(spot.x() - x) <= half) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/** The camp at the north end: the tally post, the supply pile, the tent and the fire. */
 	private void camp(final RandomSource random) {
 		int cx = SIZE_X / 2;
 		int cz = SIZE_Z - 6;
-		int y = FLOOR;
+		// The camp stands where the walk arrives, so the tunnel opens into it.
+		int y = this.lectern.y();
+		// The room of the camp first, so its own walls and seats stand in open air.
+		// The room reaches the dead end, wherever the walk left the tunnel.
+		int west = Math.min(cx - CAMP_DEPTH / 2 - 1, this.lectern.x() - 2);
+		int east = Math.max(cx + CAMP_DEPTH / 2 + 2, this.lectern.x() + 2);
+		for (int x = west; x <= east; x++) {
+			for (int dz = 0; dz < CAMP_DEPTH; dz++) {
+				set(x, y - 1, CAMP_Z + dz, Blocks.COARSE_DIRT.defaultBlockState());
+				for (int dy = 0; dy < 4; dy++) {
+					set(x, y + dy, CAMP_Z + dz, Blocks.AIR.defaultBlockState());
+				}
+			}
+		}
 		this.core = new Spot(cx, y + 1, cz);
 		set(cx, y, cz, Blocks.OAK_FENCE.defaultBlockState());
 		set(cx, y + 1, cz, Blocks.OAK_FENCE.defaultBlockState());
@@ -216,15 +247,6 @@ public final class CampPlan {
 					if (wall || dy == 2) {
 						set(cx + 3 + dx, y + dy, cz - 2 + dz, dz == 0 && dx == 2 ? Blocks.AIR.defaultBlockState() : Blocks.WOOL.white().defaultBlockState());
 					}
-				}
-			}
-		}
-		// The floor of the camp and its clearing, so the camp stands on ground and not on cave rubble.
-		for (int dx = 0; dx < CAMP_DEPTH; dx++) {
-			for (int dz = 0; dz < CAMP_DEPTH; dz++) {
-				set(dx + 1, y - 1, CAMP_Z + dz, Blocks.COARSE_DIRT.defaultBlockState());
-				for (int dy = 0; dy < 4; dy++) {
-					set(dx + 1, y + dy, CAMP_Z + dz, Blocks.AIR.defaultBlockState());
 				}
 			}
 		}

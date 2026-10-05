@@ -1,0 +1,82 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"gleam": [
+			"#2b2110",
+			"#7a5a1c",
+			"#c79a2c",
+			"#f2d472",
+			"#fff6d0"
+		],
+		"tail": [
+			"#241a18",
+			"#5c4640",
+			"#8f736a",
+			"#c4a79c",
+			"#e8d8cf"
+		],
+		"page": [
+			"#3a2a18",
+			"#6b5230",
+			"#a8874e",
+			"#d8bd86",
+			"#f6ead0"
+		],
+		"pick": [
+			"#20160c",
+			"#6b4a1a",
+			"#b8862a",
+			"#e8c260",
+			"#fff0b8"
+		],
+		"lamp": [
+			"#231c14",
+			"#6f5a34",
+			"#b09150",
+			"#e6cd8a",
+			"#fff3c4"
+		],
+		"needle": [
+			"#1b1b20",
+			"#4c4c58",
+			"#8b8b9c",
+			"#c8c8d8",
+			"#f4f4ff"
+		]
+	},
+	"items": [
+		{
+			"id": "gleaming_ore_chunk",
+			"template": "gem",
+			"palette": "gleam"
+		},
+		{
+			"id": "rat_tail",
+			"template": "feather",
+			"palette": "tail"
+		},
+		{
+			"id": "miners_journal_page",
+			"template": "map",
+			"palette": "page"
+		},
+		{
+			"id": "prospectors_pick",
+			"template": "pickaxe",
+			"palette": "pick"
+		},
+		{
+			"id": "miners_compass",
+			"template": "compass",
+			"palette": "needle"
+		}
+	],
+	"pieces": [
+		{
+			"id": "lucky_headlamp",
+			"armor": "helmet",
+			"asset": "lucky_headlamp",
+			"palette": "lamp"
+		}
+	]
+}

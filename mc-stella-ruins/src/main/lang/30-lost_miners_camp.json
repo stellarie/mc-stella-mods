@@ -1,0 +1,22 @@
+{
+	"item.mod-stella-ruins.gleaming_ore_chunk": "Gleaming Ore Chunk",
+	"item.mod-stella-ruins.rat_tail": "Rat Tail",
+	"item.mod-stella-ruins.miners_journal_page": "Miner's Journal Page",
+	"item.mod-stella-ruins.prospectors_pick": "Prospector's Pick",
+	"item.mod-stella-ruins.lucky_headlamp": "Lucky Headlamp",
+	"item.mod-stella-ruins.miners_compass": "Miner's Compass",
+	"mob.mod-stella-ruins.restless_miner": "Restless Miner",
+	"mob.mod-stella-ruins.tunnel_rat": "Tunnel Rat",
+	"effect.mod-stella-ruins.prospector": "Prospector: Haste I while the pick is held",
+	"effect.mod-stella-ruins.headlamp": "Headlamp: Night Vision below Y 40, and one ore drop in ten comes twice",
+	"site.mod-stella-ruins.lost_miners_camp": "Lost Miner's Camp",
+	"clue.mod-stella-ruins.lost_miners_camp": "A pick still leans where the shift stopped. Read the last page, and mind the ones who never left.",
+	"message.mod-stella-ruins.camp.journal_read": "The journal ends here. The cache opens.",
+	"message.mod-stella-ruins.camp.journal_guarded": "The miners still walk. The cache stays shut.",
+	"message.mod-stella-ruins.camp.compass_nothing": "The needle swings loose: no great ruin within 100 chunks.",
+	"message.mod-stella-ruins.camp.compass_found": "The needle swings toward %s.",
+	"message.mod-stella-ruins.camp.ruin.deep_forge": "the forge below",
+	"message.mod-stella-ruins.camp.ruin.ruined_keep": "the keep on the hill",
+	"message.mod-stella-ruins.camp.ruin.sealed_vault": "the vault at the bottom of the world",
+	"message.mod-stella-ruins.camp.ruin.proving_grounds": "the proving grounds"
+}

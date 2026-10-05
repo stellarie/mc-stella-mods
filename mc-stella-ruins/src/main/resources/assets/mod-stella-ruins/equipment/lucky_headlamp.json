@@ -1,0 +1,14 @@
+{
+	"layers": {
+		"humanoid": [
+			{
+				"texture": "mod-stella-ruins:lucky_headlamp"
+			}
+		],
+		"humanoid_leggings": [
+			{
+				"texture": "mod-stella-ruins:lucky_headlamp"
+			}
+		]
+	}
+}
