@@ -32,6 +32,8 @@ public class RuinMobGameTest {
 	static final long ROLL_SEED = 20261004L;
 	static final int ROLLS = 200_000;
 	static final int CONTROL_MOBS = 300;
+	/** Blocks from 0,0 inside which a distance level stays below the roll of a mob level. */
+	static final int NEAR_ORIGIN = 3000;
 
 	static boolean mobsModLoaded() {
 		return FabricLoader.getInstance().isModLoaded(MOBS_MOD);
@@ -127,8 +129,12 @@ public class RuinMobGameTest {
 			ServerPlayer player = arena.join(spawnSpot(arena).add(1.0, 0.0, 0.0));
 			WorldTestSupport.vulnerable(player);
 			player.damageCooldownTime = 0;
+			// The hit scales with the mob level, which holds a random roll of up to 18 levels. The player carries the largest health pool the game allows, so a high roll cannot kill and hide the event.
+			player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1024.0);
+			player.setHealth(1024.0F);
 			Mob mob = WorldTestInit.husk.spawn(level, spawnSpot(arena));
 			mob.setNoAi(true);
+			helper.assertTrue(Math.abs(mob.getX()) < NEAR_ORIGIN && Math.abs(mob.getZ()) < NEAR_ORIGIN, "the subject stands at " + mob.blockPosition().toShortString() + ", not near the origin");
 			float before = player.getHealth();
 			boolean hit = mob.doHurtTarget(level, player);
 			float lost = before - player.getHealth();
@@ -139,7 +145,7 @@ public class RuinMobGameTest {
 			helper.assertTrue(hit, "the melee hit did not land");
 			helper.assertTrue(damageEvents + deathEvents == 1, "the hit raised " + damageEvents + " damage and " + deathEvents + " death events, not 1");
 			helper.assertTrue(WorldTestInit.hitsOf(mob) == 1, "the ability heard " + WorldTestInit.hitsOf(mob) + " hits, not 1");
-			helper.assertTrue(lost > 0.0F && player.isAlive() && lost < player.getMaxHealth(), "the hit took " + lost + " health from " + player.getMaxHealth() + ", not a sane share");
+			helper.assertTrue(lost > 0.0F && player.isAlive() && lost < player.getMaxHealth(), "the hit took " + lost + " health from " + player.getMaxHealth() + " at mob level " + RuinLevels.of(mob) + ", not a sane share");
 			mob.discard();
 		});
 	}
