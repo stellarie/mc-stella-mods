@@ -34,7 +34,8 @@
 			"com.stella.villages.QuestRewardGameTest",
 			"com.stella.villages.DummyDpsGameTest",
 			"com.stella.villages.SlayerContractGameTest",
-			"com.stella.villages.TrainerGameTest"
+			"com.stella.villages.TrainerGameTest",
+			"com.stella.villages.PatrolSummonFriendGameTest"
 		]
 	},
 	"mixins": [

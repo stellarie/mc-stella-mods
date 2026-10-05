@@ -19,6 +19,8 @@ import java.util.UUID;
 /** Applies a village witch's harmful splash only to hostile mobs. */
 public final class VillageWitchSplash {
 	public static final String OFFENSIVE_TAG = "mc-stella-villages.witch_offensive_splash";
+	/** The spells mod's friend mark for a summon, named here so this mod needs no compile-time link. */
+	public static final String SUMMONED_TAG = "mod-stella-spells.summoned";
 	private static final double RADIUS = 4.0;
 	public interface Recorder {
 		void applied(UUID witch, List<UUID> victims);
@@ -62,7 +64,7 @@ public final class VillageWitchSplash {
 	public static boolean hostile(final LivingEntity candidate) {
 		return candidate instanceof Mob mob && mob instanceof Enemy && !PatrolState.isMarked(mob)
 			&& !mob.entityTags().contains("mod-stella-mobs.friendly_patrol")
-			&& !mob.entityTags().contains("mod-stella-spells.summoned")
+			&& !mob.entityTags().contains(SUMMONED_TAG)
 			&& !mob.entityTags().contains(com.stella.mobs.entity.BlueSlime.HARMLESS_TAG);
 	}
 }
