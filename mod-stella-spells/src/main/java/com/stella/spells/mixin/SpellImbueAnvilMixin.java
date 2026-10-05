@@ -24,11 +24,12 @@ public abstract class SpellImbueAnvilMixin {
 	private void modStellaSpells$imbue(final CallbackInfo ci) {
 		AnvilMenu menu = (AnvilMenu) (Object) this;
 		ItemStack weapon = menu.getSlot(AnvilMenu.INPUT_SLOT).getItem();
-		if (!(menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem().getItem() instanceof SpellbookItem book) || !SpellImbue.canImbue(weapon)) {
+		ItemStack book = menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem();
+		if (!(book.getItem() instanceof SpellbookItem) || !SpellImbue.canImbue(weapon)) {
 			return;
 		}
 
-		ItemStack result = SpellImbue.imbue(weapon, book.definition());
+		ItemStack result = SpellImbue.imbue(weapon, book);
 		menu.getSlot(AnvilMenu.RESULT_SLOT).set(result);
 		this.modStellaSpells$setRepairItemCountCost(0);
 		this.modStellaSpells$imbueCost().set(result.isEmpty() ? 0 : SpellImbue.imbueCost(weapon));

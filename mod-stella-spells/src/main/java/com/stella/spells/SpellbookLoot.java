@@ -66,7 +66,7 @@ public final class SpellbookLoot {
 
 		// The scroll roll comes first and on its own draw, so the book roll keeps its own chance.
 		if (random.nextDouble() < SCROLL_CHEST_CHANCE) {
-			ItemStack scroll = new ItemStack(Spellbooks.SCROLLS.get(random.nextInt(Spellbooks.SCROLLS.size())), 1 + random.nextInt(SCROLL_MAX_COUNT));
+			ItemStack scroll = Awakening.strip(new ItemStack(Spellbooks.SCROLLS.get(random.nextInt(Spellbooks.SCROLLS.size())), 1 + random.nextInt(SCROLL_MAX_COUNT)));
 			drops.add(scroll);
 			Spellbooks.LOGGER.info(
 				"[SPELL] event=DROP source=chest table_id={} item_id={} count={}",
@@ -121,7 +121,7 @@ public final class SpellbookLoot {
 	private static Roll roll(final double chance, final RandomSource random) {
 		double value = random.nextDouble();
 		ItemStack stack = value < chance
-			? new ItemStack(Spellbooks.CATALOG.get(random.nextInt(Spellbooks.CATALOG.size())))
+			? Awakening.strip(new ItemStack(Spellbooks.CATALOG.get(random.nextInt(Spellbooks.CATALOG.size()))))
 			: ItemStack.EMPTY;
 		return new Roll(value, stack);
 	}

@@ -48,6 +48,24 @@ public final class SpellTooltip {
 		return List.copyOf(live(viewer, stack).values());
 	}
 
+	/** A book's awakening lines: its cast count and what is left, or Awakened. A scroll shows none. */
+	public static List<Component> awakeningLines(final ItemStack stack) {
+		if (!(stack.getItem() instanceof SpellbookItem)) {
+			return List.of();
+		}
+		if (Awakening.isAwakened(stack)) {
+			return List.of(Spellbooks.line(Component.translatable("spellbook." + Spellbooks.MOD_ID + ".awakened_state"), ChatFormatting.GOLD));
+		}
+		return List.of(
+			Spellbooks.line(Component.translatable(
+				"spellbook." + Spellbooks.MOD_ID + ".awakening", Awakening.count(stack), Awakening.CASTS_TO_AWAKEN
+			), ChatFormatting.GRAY),
+			Spellbooks.line(Component.translatable(
+				"spellbook." + Spellbooks.MOD_ID + ".awakens_in", Awakening.castsLeft(stack)
+			), ChatFormatting.GRAY)
+		);
+	}
+
 	/** Swaps the static effect and cooldown lines in a tooltip for the live ones; touches nothing else. */
 	public static void apply(final @Nullable Player viewer, final ItemStack stack, final List<Component> tooltip) {
 		Map<String, Component> live = live(viewer, stack);

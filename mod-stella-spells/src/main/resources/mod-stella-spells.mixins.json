@@ -13,7 +13,8 @@
 		"SummonGolemMixin",
 		"SummonHitMixin",
 		"SummonPortalMixin",
-		"SpellStatusDamageMixin"
+		"SpellStatusDamageMixin",
+		"AddEffectHitMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

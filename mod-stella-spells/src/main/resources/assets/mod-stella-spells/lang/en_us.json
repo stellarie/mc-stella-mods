@@ -191,5 +191,13 @@
 	"effect.mod-stella-spells.marked": "Marked",
 	"effect.mod-stella-spells.staggered": "Staggered",
 	"effect.mod-stella-spells.arcane_ward": "Arcane Ward",
-	"effect.mod-stella-spells.bleeding": "Bleeding"
+	"effect.mod-stella-spells.bleeding": "Bleeding",
+	"item.mod-stella-spells.awakened": "Awakened %s",
+	"spellbook.mod-stella-spells.awakening": "Awakening %s/%s",
+	"spellbook.mod-stella-spells.awakens_in": "Awakens in %s casts",
+	"spellbook.mod-stella-spells.awakened_state": "Awakened",
+	"spellbook.mod-stella-spells.awakened": "Your %s awakens!",
+	"spellbook.mod-stella-spells.awaken.no_player": "Only a player can awaken a spellbook.",
+	"spellbook.mod-stella-spells.awaken.no_book": "Hold a spellbook in your main hand.",
+	"spellbook.mod-stella-spells.awaken.already": "That spellbook is already awakened."
 }

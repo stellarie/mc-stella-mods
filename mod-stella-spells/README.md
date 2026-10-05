@@ -139,6 +139,37 @@ weapon's spells as they shape a book's. The tooltip names every imbued spell.
 
 A mob that wields an imbued weapon casts its spell too, when the spell strikes a single foe.
 
+## Awakening
+
+Each spellbook counts its own casts that hit something. At 120 such casts it awakens by itself.
+
+- **A cast hits** when it damages, heals, or applies an effect to any living entity, the caster included.
+  Moving or summoning spells (Riftwalk, Gale Step, Tidal Push, a new Summon Skeleton) also hit.
+  A buff therefore awakens a book more easily than an attack does.
+- **A cast does not hit** when it touches nothing: Time Lock or Frost Nova with no hostile in range,
+  or Mending Word at full health. A cast that ends in cooldown, no target, or a fizzle adds nothing.
+  A scroll cast adds nothing to any book. A doublecast adds one, not two.
+- **Delayed spells:** Sanctuary, Flame Ring and Plague Cloud act on later ticks. The cast adds one the
+  first time a later pulse touches something, and never more than one for each cast. The first plain book
+  of that spell in the caster's inventory takes the credit.
+- **The tooltip** of a plain book shows `Awakening n/120` and `Awakens in m casts`. An awakened book shows
+  `Awakened` and its name reads `Awakened {Spell}`. Scrolls never awaken and show no such lines.
+- **The flip** keeps every component of the book: enchantments, refine level, stat rolls, and the rest.
+  The book gains a glint and a gold icon. The player hears a toast sound, sees a burst of particles, and
+  gets a message.
+- **Loot:** books and scrolls from containers, witches and other loot never carry a count or the awakened flag.
+- **Imbue:** an awakened book on an anvil sets the weapon's awakened imbue to its spell. A weapon holds at
+  most one awakened imbue, so a second awakened book gives no anvil result, and a plain book still imbues.
+  An awakened book of a spell the weapon already holds as plain upgrades that spell. Imbued arrows never
+  take an awakened imbue.
+- **Combos** still fire with awakened books. This round gives the awakened state no spell behaviour of its
+  own: it only reaches each spell effect as `modifiers.awakened()`.
+- **Command:** `/spellbook awaken` (permission level 2) sets the count of the book in the main hand to 120
+  and awakens it.
+
+The book art for the awakened state comes from `scripts/spellbook-icon-check.py --write-awakened`, and
+`--check-awakened` fails when a book lacks the texture, the model, or the item definition's condition case.
+
 ## Scroll of Return
 
 One paper, one ender pearl and one feather make 16 Scrolls of Return. Read one and it carries you to
