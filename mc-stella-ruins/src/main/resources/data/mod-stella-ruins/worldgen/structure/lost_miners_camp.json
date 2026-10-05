@@ -1,0 +1,7 @@
+{
+	"type": "mod-stella-ruins:ruin",
+	"site": "lost_miners_camp",
+	"biomes": "#minecraft:is_overworld",
+	"spawn_overrides": {},
+	"step": "underground_structures"
+}
