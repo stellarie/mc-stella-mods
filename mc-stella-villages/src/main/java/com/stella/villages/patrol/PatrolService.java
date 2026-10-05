@@ -575,6 +575,7 @@ public final class PatrolService {
 				(target, targetLevel) -> target instanceof Enemy
 					&& (!(target instanceof Mob targetMob) || !PatrolState.isMarked(targetMob))
 					&& !target.entityTags().contains(PatrolDefendTargetGoal.FRIENDLY_PATROL_TAG)
+					&& !target.entityTags().contains(VillageWitchSplash.SUMMONED_TAG)
 					&& !target.entityTags().contains(com.stella.mobs.entity.BlueSlime.HARMLESS_TAG)
 					&& withinHeadBell(mob, bellOf(level, village), target.position())
 			)

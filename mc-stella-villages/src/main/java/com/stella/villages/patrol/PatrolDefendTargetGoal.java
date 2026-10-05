@@ -50,7 +50,8 @@ final class PatrolDefendTargetGoal extends TargetGoal {
 		LivingEntity victim = mob.getTarget();
 		return mob.isAlive() && victim != null && victim.isAlive()
 			&& (victim instanceof Player || victim instanceof AbstractVillager)
-			&& !PatrolState.isMarked(mob) && !mob.entityTags().contains(FRIENDLY_PATROL_TAG) && !(mob instanceof AbstractGolem);
+			&& !PatrolState.isMarked(mob) && !mob.entityTags().contains(FRIENDLY_PATROL_TAG)
+			&& !mob.entityTags().contains(VillageWitchSplash.SUMMONED_TAG) && !(mob instanceof AbstractGolem);
 	}
 
 	@Override

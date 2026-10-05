@@ -790,6 +790,18 @@ final class PatrolTestSupport {
 		return BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
 	}
 
+	/** The patrol's own defend predicate, reached by name because it is package private. */
+	static @Nullable Boolean defendSeesThreat(final Mob mob) {
+		try {
+			Class<?> goal = Class.forName("com.stella.villages.patrol.PatrolDefendTargetGoal");
+			Method isThreat = goal.getDeclaredMethod("isThreat", Mob.class);
+			isThreat.setAccessible(true);
+			return (Boolean) isThreat.invoke(null, mob);
+		} catch (ReflectiveOperationException | RuntimeException error) {
+			return null;
+		}
+	}
+
 	/** Saves and loads a mob, as a reload does. */
 	static Mob reload(final GameTestHelper helper, final Mob mob) {
 		ServerLevel level = helper.getLevel();
