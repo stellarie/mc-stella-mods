@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +31,8 @@ public class SkeletonMenu extends AbstractContainerMenu {
 	public static final int NAME_SLOT = 8;
 	public static final int PACK_START = 9;
 	public static final int SIZE = 27;
+	/** The grey pane beside the gear, which carries the target mode the master last chose. */
+	public static final int MODE_SLOT = 6;
 
 	private final Skeleton skeleton;
 	private final ServantContainer container;
@@ -48,6 +52,29 @@ public class SkeletonMenu extends AbstractContainerMenu {
 
 	public Container container() {
 		return this.container;
+	}
+
+	/** The skeleton this screen belongs to. */
+	public Skeleton skeleton() {
+		return this.skeleton;
+	}
+
+	/** The target mode shown in the pane slot: search the ground, or mirror the master's own target. */
+	public static SummonSkeleton.Mode mode(final Skeleton skeleton) {
+		ServerPlayer master = SummonSkeleton.owner(skeleton);
+		return master == null ? SummonSkeleton.Mode.SEARCH : SummonSkeleton.targetMode(master);
+	}
+
+	// The grey pane beside the gear answers a click by turning to the other mode.
+	@Override
+	public void clicked(final int slotId, final int button, final ContainerInput input, final Player player) {
+		if (slotId == MODE_SLOT && player instanceof net.minecraft.server.level.ServerPlayer master) {
+			SummonSkeleton.Mode next = mode(this.skeleton) == SummonSkeleton.Mode.SEARCH
+				? SummonSkeleton.Mode.MIRROR : SummonSkeleton.Mode.SEARCH;
+			SummonSkeleton.setTargetMode(master, next);
+			return;
+		}
+		super.clicked(slotId, button, input, player);
 	}
 
 	@Override
@@ -151,7 +178,11 @@ public class SkeletonMenu extends AbstractContainerMenu {
 			if (index < GEAR.length) {
 				return this.skeleton.getItemBySlot(GEAR[index]);
 			}
-			if (index == 6 || index == 7) {
+			if (index == MODE_SLOT) {
+				return SummonSkeleton.Mode.MIRROR == mode(this.skeleton)
+					? new ItemStack(Items.STAINED_GLASS_PANE.red()) : new ItemStack(Items.STAINED_GLASS_PANE.lime());
+			}
+			if (index == 7) {
 				return new ItemStack(Items.STAINED_GLASS_PANE.gray());
 			}
 			if (index == NAME_SLOT) {

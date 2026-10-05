@@ -1,13 +1,13 @@
 {
 	"type": "minecraft:crafting_shaped",
 	"pattern": [
-		"M M",
-		" B ",
-		"M M"
+		"B B",
+		" N ",
+		"B B"
 	],
 	"key": {
-		"M": "minecraft:bone_block",
-		"B": "minecraft:book"
+		"B": "minecraft:bone",
+		"N": "minecraft:book"
 	},
 	"result": {
 		"id": "mod-stella-spells:summon_skeleton",

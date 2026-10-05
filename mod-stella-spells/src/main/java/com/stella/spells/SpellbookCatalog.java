@@ -54,7 +54,7 @@ public final class SpellbookCatalog {
 		definition("bulwark_hymn", Items.GLISTERING_MELON_SLICE, 400, 16_766_720, TargetMode.SELF, MoreSpells::applyBulwarkHymn),
 		definition("tailwind", Items.RABBIT_FOOT, 300, 12_251_895, TargetMode.SELF, MoreSpells::applyTailwind),
 		definition("battle_hymn", Items.GLOWSTONE_DUST, 400, 14_423_100, TargetMode.SELF, MoreSpells::applyBattleHymn),
-		definition("summon_skeleton", Items.BONE_BLOCK, SummonSkeleton.COOLDOWN_TICKS, 14_540_253, TargetMode.SELF, SummonSkeleton::apply)
+		definition("summon_skeleton", Items.BONE, SummonSkeleton.COOLDOWN_TICKS, 14_540_253, TargetMode.SELF, SummonSkeleton::apply)
 	);
 	private static final Map<Identifier, SpellDefinition> DEFINITIONS_BY_ID = DEFINITIONS.stream()
 		.collect(Collectors.toUnmodifiableMap(SpellDefinition::id, Function.identity()));

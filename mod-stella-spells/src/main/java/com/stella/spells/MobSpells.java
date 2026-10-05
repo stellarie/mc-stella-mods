@@ -322,6 +322,9 @@ public final class MobSpells {
 
 	/** A caster's foe: for the village witch, the village's foes; for any other caster, players and its target. */
 	public static boolean isFoeOf(final Mob caster, final LivingEntity other) {
+		if (Friends.isFriend(other)) {
+			return false;
+		}
 		if (caster.entityTags().contains(VILLAGE_WITCH_TAG)) {
 			return Friends.isFoe(other) || other == caster.getTarget();
 		}

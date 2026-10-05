@@ -14,7 +14,8 @@
 		"SummonHitMixin",
 		"SummonPortalMixin",
 		"SpellStatusDamageMixin",
-		"AddEffectHitMixin"
+		"AddEffectHitMixin",
+		"SummonExperienceMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
