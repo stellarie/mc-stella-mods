@@ -1,0 +1,14 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "equipment",
+	"ingredients": [
+		"mod-stella-ruins:champion_token",
+		"mod-stella-ruins:champion_token",
+		"mod-stella-ruins:net_fiber",
+		"mod-stella-ruins:hound_fang"
+	],
+	"result": {
+		"id": "mod-stella-ruins:champion_boots",
+		"count": 1
+	}
+}

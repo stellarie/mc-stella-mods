@@ -144,6 +144,38 @@ gradlew.bat runGameTest --rerun -PwithStellaMobs=true
 The second run builds `../mod-stella-mobs` and loads its jar into the game tests only. The tests for a present
 sibling run in that mode. The tests for an absent sibling run in the first mode.
 
+## Proving Grounds
+
+The proving grounds are a large ruined arena on the surface. The footprint is 48 x 20 x 48 and the package is
+`com.stella.ruins.site.provinggrounds`. The sketch is `mc-stella-ruins-proving-grounds.work` on the blackboard.
+
+- **The contest.** A player rings the gong in the south gate. That arms the three lecterns on the herald stage for
+  6000 ticks. A lectern picks tier I, II or III: 5, 7 or 10 waves. The core records the tier, the main portcullis
+  drops, and wave 1 spawns. Each wave starts 100 ticks after the last one dies. A cleared last wave opens the vault and
+  fills it from `chests/proving_grounds_<tier>`. Each cleared wave also plays a roar and fireworks over the stands.
+- **Claims.** Each tier claims for one day on its own, in `ProvingData`. The framework core keeps one claim for a
+  whole site, which would let tier I lock tiers II and III. So `TierObjective` never completes: the core stays active.
+  The `reset_days` config entry for `proving_grounds` sets the delay.
+- **Failure.** A run player who dies, or who stays 600 ticks outside the box grown by 2 blocks on the sides and
+  below, fails the run. The wave mobs vanish, the portcullis rises, and the tier can start again. No claim is set.
+- **Hazards.** Tiers II and III light 4 braziers on the wall. Tier III opens 2 fire grates for 60 ticks every 400
+  ticks, the first 200 ticks after the start. The objective runs every 20 ticks, so a hazard may lag by up to 20.
+- **The arena.** The seed picks a round or octagonal floor of radius 16 to 20, 4 to 8 cover pillars, 1 to 3 floor
+  features, 2 to 4 gates (the south gate always, the others barred), stand decay of 20 to 50 percent, and banner colors.
+  The lowest two courses of the wall never decay.
+- **Mobs.** Gladiator (vindicator), Retiarius (drowned; a hit slows for 40 ticks), Arena Hound (wolf, always angry),
+  Pit Beast (ravager, tier III wave 10 only). Spawns use markers of the kind and reuse them in order.
+- **Rewards.** `champion_token`, `net_fiber` and `hound_fang` craft the Champion set. Two pieces add 10 percent
+  attack damage. Four pieces add 10 percent attack speed and Strength I for 100 ticks after each kill. The unique is the
+  Gladius of the Crowd: each consecutive hit adds 6 percent damage to the next, up to 5 stacks; 60 ticks without a
+  hit reset it.
+- **Art.** `tools/specs/proving_grounds.json` draws the item and armor textures.
+
+Known limits:
+
+- The roar, the fireworks, the look of the arena and the gong sound are for a client to judge.
+- The hatch only bursts with smoke. It does not open, because a Pit Beast would fall in.
+
 ## Wayshrine
 
 The wayshrine is the first site. It is small, stands on the surface, and fits in 21 x 16 x 21 blocks. Its package is
@@ -313,3 +345,138 @@ The orders come from the run random, never from the layout seed. No pillar sound
   `tools/specs/crystal_grotto.json` and `tools/ruin_textures.py`.
 - Tests: `GrottoPlanGameTest`, `ChimeObjectiveGameTest`, `GrottoMobsGameTest`, `GrottoRewardsGameTest`,
   `GrottoSiteGameTest`, all listed in the gametest `fabric.mod.json`.
+
+## Spider Nest
+
+Site id `spider_nest`, package `com.stella.ruins.site.spidernest`. A small cave site: a web-choked nest of egg sacs.
+The first sac that breaks starts a clock. The player breaks every sac before it ends, or the Nest Matriarch hatches.
+
+- Box 30 x 14 x 46. The nest is the north 30 blocks. The south 16 blocks are a mouth tunnel, 3 x 3, that reaches out
+  toward cave air. The tunnel lining clings to rock only, so a tunnel that meets cave air simply ends there.
+  A tunnel that meets no air is a dead end. The clue map still leads the player to it.
+- `Placement.cave(-32, 48, 8)`. Reset after 3 days. Activation radius 14. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 873311259, village exclusion 8 chunks.
+
+### The plan
+
+`NestPlan.of(seed)` draws everything random and holds every block of the nest as a function of the seed. It reads no
+world block. The layout, the objective, and the tests all read it. The layouts of one site share the last 16 plans.
+
+- The cave is a height field of 30 x 30 columns: a floor (y2 or y3), a roof (up to y11), and a tag. Rock holds y0 and
+  y12 to y13, and a 2 block rim on every face except the mouth.
+- 3 to 5 domed chambers (the heart A holds the core, its bone pedestal, and the vault nook), necks, one 2 wide dead-end
+  side tunnel, and a flat brood pit (5 x 5, five high) in the largest side chamber.
+- 6 to 10 egg sacs, on walls (2 or 3 above the floor) and under the roof. At least 2 on the roof, 3 on walls, one in each
+  chamber, one at the end of the side tunnel. Each sac has a floor cell within 4.0 blocks of the eye and a clear line.
+- Webs fill 15 to 35 percent of the shell cells (air cells that touch rock). The web share is ranked by a per-cell
+  hash, so the 15 percent set lies inside the 35 percent set.
+- The plan finds the best route over the sacs (exact tour, Dijkstra between the sacs) and keeps it, the paths to the
+  core and the vault, and every spawn marker free of web. If the greedy walk would take more than 34 s, it picks
+  its sacs again, up to 10 times.
+- Cocoons hang over the lanes, bone piles and skulls lie along the walls, 4 to 8 patches of glow lichen cling to the
+  walls, and 3 layers of cobweb plug the mouth.
+- Markers: `core`, `vault`, `entrance`, `spawn` (3 Weavers), `spawn_crawler` (6), `spawn_matriarch`, and `sac` in sac order.
+
+### The objective
+
+`SacObjective` has four stages: `ARMED`, `TIMING`, `HATCHED`, `DONE`.
+
+- The first sac that is removed from the world starts the clock: 1800 ticks plus 60 ticks for each sac above 6.
+  A sac breaks in one hit, drops nothing, and glows at light 4. `EggSacBlock` tells `SacBreaks` when it goes, by any cause.
+  The core completes on its next pulse, up to one second later, when the last sac is gone.
+- A player inside the bounds sees the sacs left and the seconds left on the action bar every second. Each standing sac
+  beats every 40 ticks, and every 8 ticks by the end (`NestHeartbeat`, from the last 20 seconds).
+- When the clock ends, the sacs that stand burst. The Nest Matriarch rises at `spawn_matriarch` with 6 Brood Crawlers at
+  `spawn_crawler`. Her death completes the core. `NestVaults` then swaps the vault fill for `chests/spider_nest_hatched`,
+  at the end of the same tick, because the framework fills a vault from the one table the site names.
+- After the framework rearms the core (3 days), `NestRegrowth` grows the sacs, webs, and cocoons back into air. Rock that a
+  player mined stays mined. The framework has no rearm hook, so a tick event polls the remembered cores.
+
+### Mobs and rewards
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `nest_weaver` | spider, scale 1.1 | a hit puts a cobweb at the target's feet, once per 100 ticks for each Weaver | `silkweave` 1 to 2 at 60% |
+| `brood_crawler` | cave spider, scale 0.8 | none | `venom_sac` at 30% |
+| `nest_matriarch` | spider, scale 2.2, health x6, boss | every 200 ticks, 2 Crawlers, at most 8 alive | `silkweave` 4 to 6, `matriarch_fang` |
+
+- Vault table `chests/spider_nest`: 4 to 8 `silkweave`, 4 to 10 string, 2 to 5 emeralds. The hatched table holds 2 to 4 `silkweave`.
+- Silkweave hood, vest, leggings, and boots (defense 2, 5, 4, 2, +5% movement speed each) and the Silkstring Bow
+  (draws 20% faster) craft from `silkweave`.
+- Unique `widows_fang`, an iron sword. Effect `widow`: Poison I for 60 ticks, and a 20% chance of a cobweb at the target.
+
+### Files
+
+- The block texture `textures/block/egg_sac.png` came from a one-off script. Item textures come from
+  `tools/specs/spider_nest.json` and `tools/ruin_textures.py`.
+- Tests: `NestPlanGameTest`, `SacObjectiveGameTest`, `NestMobsGameTest`, `NestRewardsGameTest`, `NestSiteGameTest`, all
+  listed in the gametest `fabric.mod.json`. `NestPlanChecks` holds the plan checks and needs no world.
+
+## Meteor Crater
+
+Site id `meteor_crater`, package `com.stella.ruins.site.meteorcrater`. A small surface site: a scorched crater with
+a fallen star at its heart. The star's ore is hot. Mining it pays Starmetal and wakes Ember Slimes while Star Golems
+strike from the wall. After 2400 ticks the star cools, and the vault opens once for good.
+
+- Box 42 x 8 x 42 above the floor, with a foundation of 17 blocks below it for the bowl. `Placement.surface(17)`.
+  The foundation also sets the largest slope the placement accepts: 17 blocks across the footprint.
+- The floor of the box is one block above the highest ground. So the reference ground is local y -1, and the crater
+  is cut down from there. A column the plan draws is written whole, from the foundation to the top of the box.
+- `Claim.once()`. Activation radius 20. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 466102735, village exclusion 8 chunks.
+
+### The plan
+
+`CraterPlan.derive(RandomSource)` draws everything random and reads no world block. The layout and the tests both
+read it.
+
+- Bowl radius 12 to 18 and depth 8 to 16. The depth never passes radius minus 3, so every wall is walkable. The rim
+  has noise of 1.5 blocks and never passes radius 18.4, so the scorched ring always fits in the box.
+- A lip of spoil, 1 to 3 blocks, highest on the north. The south side is a gouge with no lip. The 3-wide route
+  strip from the south edge to the notch is graded to steps of at most one block.
+- Scorched ring: coarse dirt, blackstone and magma. Inside the ring: blackstone, smooth basalt, coarse dirt, magma.
+- Meteor: a blob of 30 to 60 blocks grown from the core, with 8 to 16 hot Starmetal ore blocks. At least 6 ore blocks
+  touch air. The cell south of the core, the notch, stays open.
+- The vault stands in a 3 x 2 x 2 niche in the north wall, 5 to 16 blocks from the core.
+- 3 to 6 fire features: fire on magma, or a smoke campfire on hay.
+- Markers: `core`, `vault`, `ore` (each ore block), `golem` (3), `slime` (4), `notch`, `entrance`.
+
+### The objective
+
+`CoolingObjective` has no state but a start tick. The timer starts when a player who counts is within 12 blocks of
+the core in 3D, or when a player mines the first ore. A fight on the rim does not start it. It reads `RuinClock`.
+
+- Activation spawns 3 Star Golems on the bowl wall and 4 Ember Slimes on the floor. Each golem has a slot, 0 to 2.
+- A mined hot ore block drops 1 to 2 `raw_starmetal` and wakes one Ember Slime, at most 6 alive. A Fabric event
+  (`PlayerBlockBreakEvents.AFTER`) carries it.
+- At tick 2400 each remaining ore block becomes `cooled_meteorite`, the Ember Slimes die in smoke, and the core
+  completes. The vault opens. The golems stay until killed.
+- While the meteor is hot, the core sends a column of smoke every 10 ticks to every player within 64 blocks.
+
+### Mobs and rewards
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `star_golem` | iron golem, scale 1.3, glowing | every 160 ticks a 20-tick warning, then 5 magic damage at the marked spot; each slot shifts 50 ticks | `star_fragment` 1 to 2 at 70% |
+| `ember_slime` | magma cube, size 2 | none | `ember_core` at 40% |
+
+- A golem hunts players only. A themed mob that targets another themed mob forgets the target.
+- Materials: `raw_starmetal` (smelts into `starmetal_ingot`), `star_fragment`, `ember_core`.
+- Set `starweave` (mage): defense 2/6/5/2, toughness 1, repaired with ingots. 2 pieces: +10% attack speed.
+  4 pieces: magic damage +15% (an event on `minecraft:magic` and `minecraft:indirect_magic` damage) and Fire Resistance.
+- Unique `fallen_star`: in a hand, 10% of hits call a small star for 6 magic damage. A star does not call a star.
+- Vault table `chests/meteor_crater`: 2 to 4 ingots, 2 to 4 star fragments, 3 to 6 gold ingots, 1 to 3 emeralds.
+
+### Merge notes
+
+- The blocks `starmetal_ore` and `cooled_meteorite` need the tag entry `minecraft:mineable/pickaxe`. Those tag files
+  live in `data/minecraft`, outside this mod's data directory, so the merge adds them. Without them the blocks break
+  by hand at the same speed.
+- Neither block has an item.
+
+### Files
+
+- Block textures `textures/block/starmetal_ore.png` and `cooled_meteorite.png` came from a one-off script. Item and
+  armor art comes from `tools/specs/meteor_crater.json` and `tools/ruin_textures.py`.
+- Tests: `CraterPlanGameTest`, `CraterSiteGameTest`, `CoolingObjectiveGameTest`, `CraterMobsGameTest`,
+  `CraterRewardsGameTest`, all listed in the gametest `fabric.mod.json`.
