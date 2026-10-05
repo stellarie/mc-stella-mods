@@ -1,0 +1,6 @@
+{
+	"variants": {
+		"lit=true": { "model": "mod-stella-ruins:block/wayshrine_lamp_lit" },
+		"lit=false": { "model": "mod-stella-ruins:block/wayshrine_lamp_dark" }
+	}
+}

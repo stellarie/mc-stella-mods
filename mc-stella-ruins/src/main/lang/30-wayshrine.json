@@ -1,0 +1,18 @@
+{
+	"site.mod-stella-ruins.wayshrine": "Wayshrine",
+	"clue.mod-stella-ruins.wayshrine": "The road ends where a soul-light keeps count of the faithful. Leave one offering at the altar and the dead will walk it again.",
+	"block.mod-stella-ruins.wayshrine_lamp": "Shrine Lamp",
+	"item.mod-stella-ruins.shrine_shard": "Shrine Shard",
+	"item.mod-stella-ruins.pilgrim_ash": "Pilgrim Ash",
+	"item.mod-stella-ruins.wisp_light": "Wisp Light",
+	"item.mod-stella-ruins.pilgrim_helmet": "Pilgrim Hood",
+	"item.mod-stella-ruins.pilgrim_chestplate": "Pilgrim Robe",
+	"item.mod-stella-ruins.pilgrim_leggings": "Pilgrim Trousers",
+	"item.mod-stella-ruins.pilgrim_boots": "Pilgrim Sandals",
+	"item.mod-stella-ruins.pilgrims_censer": "Pilgrim's Censer",
+	"set.mod-stella-ruins.pilgrim": "Pilgrim Vestments",
+	"effect.mod-stella-ruins.censer": "Off hand: below half health, heal 1 each second. A kill heals 2.",
+	"mob.mod-stella-ruins.hollow_pilgrim": "Hollow Pilgrim",
+	"mob.mod-stella-ruins.lantern_wisp": "Lantern Wisp",
+	"mob.mod-stella-ruins.fallen_acolyte": "Fallen Acolyte"
+}

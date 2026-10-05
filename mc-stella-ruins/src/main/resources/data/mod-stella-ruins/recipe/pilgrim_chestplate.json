@@ -1,0 +1,18 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "equipment",
+	"ingredients": [
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:pilgrim_ash",
+		"mod-stella-ruins:pilgrim_ash",
+		"mod-stella-ruins:wisp_light"
+	],
+	"result": {
+		"id": "mod-stella-ruins:pilgrim_chestplate",
+		"count": 1
+	}
+}
