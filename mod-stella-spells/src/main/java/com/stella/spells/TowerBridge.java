@@ -107,7 +107,8 @@ public final class TowerBridge {
 		}
 		return new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * flat * resonance, base.radiusMultiplier(), base.durationMultiplier() * resonance,
-			base.defensiveDurationMultiplier() * resonance, base.targetRangeBlocks(), base.cooldownTicks()
+			base.defensiveDurationMultiplier() * resonance, base.targetRangeBlocks(), base.cooldownTicks(),
+			base.awakened()
 		);
 	}
 

@@ -46,7 +46,12 @@ public final class SpellCombos {
 		void landed(ServerPlayer caster, Combo combo, LivingEntity target);
 	}
 
-	private record Cast(Identifier spell, @Nullable UUID target, @Nullable Vec3 point, int serverTick) {
+	private record Cast(Identifier spell, @Nullable UUID target, @Nullable Vec3 point, int serverTick, boolean awakened) {
+	}
+
+	/** True when both halves of a combo were cast awakened; stage 8 reads it. */
+	static boolean bothAwakened(final boolean first, final boolean second) {
+		return first && second;
 	}
 
 	private static final Recorder SILENT = (caster, combo, target) -> {
@@ -83,7 +88,7 @@ public final class SpellCombos {
 	) {
 		int now = caster.level().getServer().getTickCount();
 		Cast previous = LAST.get(caster.getUUID());
-		Cast current = new Cast(definition.id(), target == null ? null : target.getUUID(), point, now);
+		Cast current = new Cast(definition.id(), target == null ? null : target.getUUID(), point, now, modifiers.awakened());
 		Combo combo = previous == null || now - previous.serverTick() > WINDOW_TICKS ? null : match(previous, current);
 		if (combo == null) {
 			LAST.put(caster.getUUID(), current);

@@ -115,7 +115,8 @@ public final class SpellStatus {
 
 	/** The healing an entity really receives; Scorched halves it. Called by the damage mixin. */
 	public static float onHeal(final LivingEntity entity, final float amount) {
-		return entity.hasEffect(SCORCHED) ? amount * SCORCHED_HEAL_FACTOR : amount;
+		float result = entity.hasEffect(SCORCHED) ? amount * SCORCHED_HEAL_FACTOR : amount;
+		return result;
 	}
 
 	private static boolean isMelee(final DamageSource source) {

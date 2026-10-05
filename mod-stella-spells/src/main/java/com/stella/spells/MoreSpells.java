@@ -161,7 +161,7 @@ public final class MoreSpells {
 		}
 		float before = target.getHealth();
 		hurt(caster, target, RpgBridge.damage(caster, SOUL_SIPHON_DAMAGE, modifiers.powerMultiplier()));
-		caster.heal(RpgBridge.vanilla(before - Math.max(0.0F, target.getHealth())));
+		CastHits.heal(caster, caster, RpgBridge.vanilla(before - Math.max(0.0F, target.getHealth())));
 		return true;
 	}
 
@@ -274,6 +274,9 @@ public final class MoreSpells {
 					.toList();
 				harmful.forEach(player::removeEffect);
 				cleared |= !harmful.isEmpty();
+				if (!harmful.isEmpty()) {
+					CastHits.touch(caster);
+				}
 				if (player != caster && !harmful.isEmpty() && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
 					SpellVisuals.linkAffected(caster, "purify", caster.position().add(0.0, 1.0, 0.0), player.position().add(0.0, 1.0, 0.0));
 					linked++;
@@ -372,9 +375,7 @@ public final class MoreSpells {
 	}
 
 	private static boolean heal(final ServerPlayer player, final float amount) {
-		float before = player.getHealth();
-		player.heal(amount);
-		return player.getHealth() > before;
+		return CastHits.heal(player, player, amount);
 	}
 
 	static List<Mob> hostiles(final ServerLevel level, final Vec3 center, final double radius) {
@@ -395,6 +396,7 @@ public final class MoreSpells {
 		if (!caster.level().addFreshEntity(cloud)) {
 			return false;
 		}
+		CastHits.deferTo(cloud, caster);
 		recorder.cloud(caster, cloud, effect);
 		return true;
 	}

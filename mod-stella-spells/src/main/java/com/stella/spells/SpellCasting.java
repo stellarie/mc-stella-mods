@@ -74,6 +74,11 @@ public final class SpellCasting {
 	private SpellCasting() {
 	}
 
+	/** The roll now in force, so a test can put it back. */
+	static DoublecastRoll doublecastRoll() {
+		return doublecastRoll;
+	}
+
 	public static void setDoublecastRoll(final DoublecastRoll roll) {
 		doublecastRoll = roll == null ? FAIR_DOUBLECAST : roll;
 	}
@@ -145,30 +150,42 @@ public final class SpellCasting {
 
 		Vec3 departure = caster.position();
 		SKIP_COOLDOWN.remove();
-		if (!definition.effect().apply(caster, target, point, modifiers)) {
-			SKIP_COOLDOWN.remove();
-			log(caster, definition, CastResult.NO_TARGET, target, modifiers, stack);
-			return CastResult.NO_TARGET;
-		}
+		Awakening.report(definition.id(), modifiers.awakened());
+		boolean completed = false;
+		CastHits.begin(caster, definition.id(), !scroll);
+		try {
+			boolean applied = definition.effect().apply(caster, target, point, modifiers);
+			if (!applied) {
+				log(caster, definition, CastResult.NO_TARGET, target, modifiers, stack);
+				return CastResult.NO_TARGET;
+			}
 
-		boolean skip = SKIP_COOLDOWN.get() != null;
-		SKIP_COOLDOWN.remove();
-		SpellVisuals.play(caster, definition, target, point, departure, modifiers);
-		if (!skip) {
-			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
-		}
-		log(caster, definition, CastResult.CAST, target, modifiers, stack);
-		SpellCombos.afterCast(caster, definition, target, point, modifiers);
-		// Doublecast: the same spell, on the same target, once more, combos included; never a second summon.
-		if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
-			&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
-			&& landAgain(caster, definition, target, point, modifiers)) {
-			SpellVisuals.play(caster, definition, target, point, caster.position(), modifiers);
+			boolean skip = SKIP_COOLDOWN.get() != null;
+			SKIP_COOLDOWN.remove();
+			SpellVisuals.play(caster, definition, target, point, departure, modifiers);
+			if (!skip) {
+				caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
+			}
+			log(caster, definition, CastResult.CAST, target, modifiers, stack);
 			SpellCombos.afterCast(caster, definition, target, point, modifiers);
-			doublecasts++;
-			Spellbooks.LOGGER.info("[SPELL] spell_id={} result=DOUBLECAST caster={}", definition.id(), caster.getScoreboardName());
+			// Both landings share one cast credit.
+			if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
+				&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
+				&& landAgain(caster, definition, target, point, modifiers)) {
+				SpellVisuals.play(caster, definition, target, point, caster.position(), modifiers);
+				SpellCombos.afterCast(caster, definition, target, point, modifiers);
+				doublecasts++;
+				Spellbooks.LOGGER.info("[SPELL] spell_id={} result=DOUBLECAST caster={}", definition.id(), caster.getScoreboardName());
+			}
+			completed = true;
+			return CastResult.CAST;
+		} finally {
+			boolean hit = CastHits.end(completed);
+			SKIP_COOLDOWN.remove();
+			if (hit && !scroll) {
+				Awakening.recordCast(caster, stack);
+			}
 		}
-		return CastResult.CAST;
 	}
 
 	static boolean applySparkShot(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
@@ -203,6 +220,7 @@ public final class SpellCasting {
 		Vec3 look = caster.getLookAngle();
 		Vec3 horizontal = new Vec3(look.x, 0.0, look.z).normalize();
 		caster.setDeltaMovement(horizontal.x * 1.2, 0.45, horizontal.z * 1.2);
+		CastHits.touch(caster);
 		caster.addEffect(
 			new MobEffectInstance(MobEffects.SLOW_FALLING, SpellNumbers.GALE_STEP.durationTicks(modifiers), SpellNumbers.GALE_STEP.amplifier()), caster
 		);
@@ -211,7 +229,7 @@ public final class SpellCasting {
 
 	static boolean applyMendingWord(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		float healthBefore = caster.getHealth();
-		caster.heal(RpgBridge.heal(caster, SpellNumbers.MENDING_WORD.heal(), modifiers.powerMultiplier()));
+		CastHits.heal(caster, caster, RpgBridge.heal(caster, SpellNumbers.MENDING_WORD.heal(), modifiers.powerMultiplier()));
 		return caster.getHealth() > healthBefore;
 	}
 
@@ -252,13 +270,13 @@ public final class SpellCasting {
 		caster.addEffect(
 			new MobEffectInstance(MobEffects.FIRE_RESISTANCE, numbers.durationTicks(modifiers), numbers.amplifier()), caster
 		);
-		caster.heal(RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
+		CastHits.heal(caster, caster, RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
 		return true;
 	}
 
 	static boolean applyLifeBloom(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		SpellNumbers numbers = SpellNumbers.LIFE_BLOOM;
-		caster.heal(RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
+		CastHits.heal(caster, caster, RpgBridge.heal(caster, numbers.heal(), modifiers.powerMultiplier()));
 		caster.addEffect(
 			new MobEffectInstance(MobEffects.REGENERATION, numbers.durationTicks(modifiers), numbers.amplifier()), caster
 		);
@@ -388,6 +406,7 @@ public final class SpellCasting {
 		Vec3 horizontal = new Vec3(away.x, 0.0, away.z).normalize();
 		target.setDeltaMovement(horizontal.x * 1.2, 0.2, horizontal.z * 1.2);
 		SpellStatusApi.soak(target, modifiers.durationTicks(TIDAL_SOAK_TICKS, false), caster);
+		CastHits.touch(caster);
 		return true;
 	}
 
@@ -406,6 +425,7 @@ public final class SpellCasting {
 
 		caster.teleportTo(point.x, point.y, point.z);
 		caster.resetFallDistance();
+		CastHits.touch(caster);
 		return true;
 	}
 
