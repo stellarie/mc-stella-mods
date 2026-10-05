@@ -45,6 +45,8 @@ import net.minecraft.world.phys.Vec3;
 final class TowerTestSupport {
 	private static final AtomicInteger NEXT = new AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 100_000L) * 8 + 3);
 	static final long READY_NANOS = 120_000_000_000L;
+	/** The arena wait is decided by the wall clock above, so the tick limit is out of reach. */
+	static final int ARENA_TICKS = 1_000_000;
 
 	private TowerTestSupport() {
 	}

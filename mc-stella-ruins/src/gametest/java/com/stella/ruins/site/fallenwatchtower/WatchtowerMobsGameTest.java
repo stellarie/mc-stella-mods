@@ -226,7 +226,7 @@ public class WatchtowerMobsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 12000)
+	@GameTest(maxTicks = TowerTestSupport.ARENA_TICKS)
 	public void aPlayerKillOfTheCaptainDropsItsInsigniaThroughTheRealDeath(final GameTestHelper helper) {
 		TowerTestSupport.inArena(helper, SEED, arena -> {
 			ServerPlayer player = arena.join(arena.standAt());

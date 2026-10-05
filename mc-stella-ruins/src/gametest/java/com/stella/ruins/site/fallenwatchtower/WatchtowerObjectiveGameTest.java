@@ -18,7 +18,7 @@ import net.minecraft.world.item.Item;
 
 /** Acceptance items 3 to 5: the garrison spawns on the floors and the roof, clearing it completes the core, and it stays complete. */
 public class WatchtowerObjectiveGameTest {
-	static final int TICKS = 12000;
+	static final int TICKS = TowerTestSupport.ARENA_TICKS;
 	static final long SEED = 0x6A22150AL;
 
 	static int count(final RuinVaultBlockEntity vault, final Item item) {
