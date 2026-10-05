@@ -39,12 +39,13 @@
 			"com.stella.tower.TowerRaisedPortalGameTest",
 			"com.stella.tower.TowerSafeRoomGameTest",
 			"com.stella.tower.TowerSafetyReviewGameTest",
-			"com.stella.tower.TowerVariationGameTest",
 			"com.stella.tower.TowerAuraGameTest",
 			"com.stella.tower.TowerChestGameTest",
 			"com.stella.tower.TowerFloorChestGameTest",
 			"com.stella.tower.TowerLostRoomGameTest",
-			"com.stella.tower.TowerLostCastleVariantGameTest"
+			"com.stella.tower.TowerLostCastleVariantGameTest",
+			"com.stella.tower.TowerArchetypeSpawnGameTest",
+			"com.stella.tower.TowerPreviewGameTest"
 		]
 	},
 	"mixins": [

@@ -1,15 +1,25 @@
 package com.stella.tower;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import net.minecraft.core.Direction;
+import org.jspecify.annotations.Nullable;
+
 /**
- * Each floor is a maze: paths six blocks wide between walls one block thick, on a grid of cells seven blocks
- * apart. The room fits nine cells to a side exactly, so every path is six wide; where a hall or a safe zone
- * cuts across the grid, a path beside it can come out narrower, but never under three. An elite floor opens
- * a hall in its middle for its guardian, a boss floor a greater one, and the portal stands in the hall's
- * middle; an ordinary floor keeps its portal in a dead-end cell across the room from the arrival.
+ * The maze: paths six blocks wide between walls one block thick, on a grid of cells seven blocks apart. The room
+ * fits nine cells to a side exactly, so every path is six wide; where a hall or a safe zone cuts across the grid, a
+ * path beside it can come out narrower, but never under three.
+ * <p>
+ * A labyrinth floor ({@link TowerArchetype#LABYRINTH}) is two mazes, one above the other: the arrival in the lower,
+ * the portal in a dead end of the upper, and one stair between. An elite floor opens a hall in the middle of its one
+ * maze for its guardian, a boss floor a greater one, and the portal stands in the hall's middle.
  * <p>
  * Where the ends and the safe zones stand is the floor's {@link TowerPlan}; this class only carves. The
- * {@code classic} layout, the arrival on the middle line at the west and the portal in a nook at the east,
- * is what every floor built before the plans has, and the fallback a plan drops to if it finds no path.
+ * {@code classic} layout, the arrival on the middle line at the west and the portal in a nook at the east, is the
+ * fallback a plan drops to if it finds no path.
  */
 public final class TowerMaze {
 	public static final int PATH = 6;
@@ -21,6 +31,10 @@ public final class TowerMaze {
 	public static final int CELLS = (TowerLayout.SIZE - WALL) / PITCH;
 	public static final int ELITE_HALL = 16;
 	public static final int BOSS_HALL = 32;
+	/** The labyrinth's stair: two wide, from the lower maze's floor to the upper's. */
+	static final int STAIR_WIDTH = 2;
+	private static final int PAIR_TRIES = 64;
+	private static final int[][] WAYS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
 	private TowerMaze() {
 	}
@@ -30,7 +44,6 @@ public final class TowerMaze {
 	public static final int NOOK_HIGH_X = CELLS * PITCH;
 	public static final int NOOK_LOW_Z = 1 + (TowerPlan.CLASSIC_MIDDLE_Z / PITCH - 1) * PITCH;
 	public static final int NOOK_HIGH_Z = (TowerPlan.CLASSIC_MIDDLE_Z / PITCH + 2) * PITCH - 1;
-	static final long SALT = 0x4D415A45L;
 	/** A safe zone's side: no mob is raised in it. */
 	public static final int SAFE = 8;
 	/** The classic safe zones' line across the room: round the middle, so the arrival and the doors fall in them. */
@@ -48,17 +61,30 @@ public final class TowerMaze {
 	/** The room's ring stands on the zone's outermost blocks. The east side of the ring, the entrance's. */
 	public static final int ROOM_ENTRANCE_X = BOSS_ROOM_X + SAFE - 1;
 
-	/** A safe zone, by the offset of its low corner from the room's inner corner. */
-	public record Zone(int x, int z) {
+	/**
+	 * A safe zone, by the offset of its low corner from the room's inner corner: a square {@link #SAFE} to a side, from
+	 * its story's height {@code y} up to {@code top}, which it does not include.
+	 */
+	public record Zone(int x, int z, int y, int top) {
+		/** A zone of the ground story, up to the roof. */
+		public Zone(final int x, final int z) {
+			this(x, z, 0, TowerLayout.HEIGHT);
+		}
+
 		public boolean contains(final int atX, final int atZ) {
 			return atX >= this.x && atX < this.x + SAFE && atZ >= this.z && atZ < this.z + SAFE;
 		}
+
+		/** Whether the spot, at a height from {@link TowerLayout#BASE_Y}, is in the zone's square and its band. */
+		public boolean contains(final int atX, final int atY, final int atZ) {
+			return contains(atX, atZ) && atY >= this.y && atY < this.top;
+		}
 	}
 
-	/** The classic floor's safe zones: its entrance, and on a boss floor the room before the hall. */
-	static java.util.List<Zone> classicZones(final int floor) {
-		Zone entrance = new Zone(ENTRANCE_X, SAFE_Z);
-		return hall(floor) == BOSS_HALL ? java.util.List.of(entrance, new Zone(BOSS_ROOM_X, SAFE_Z)) : java.util.List.of(entrance);
+	/** The classic floor's safe zones, under a hall floor's lid: its entrance, and on a boss floor the room before the hall. */
+	static List<Zone> classicZones(final int floor) {
+		Zone entrance = new Zone(ENTRANCE_X, SAFE_Z, 0, TowerPlan.HALL_TOP);
+		return hall(floor) == BOSS_HALL ? List.of(entrance, new Zone(BOSS_ROOM_X, SAFE_Z, 0, TowerPlan.HALL_TOP)) : List.of(entrance);
 	}
 
 	/** The side of the floor's hall, or nought for an ordinary floor. */
@@ -70,36 +96,21 @@ public final class TowerMaze {
 	}
 
 	/**
-	 * Where full-height walls stand on the floor built to its plan, by offset from the room's inner corner,
-	 * [x][z]. A pure function of the seed and the floor, and the plan's own array: never write to it.
+	 * Where a body cannot walk on the ground story of the floor built to its plan, by offset from the room's inner
+	 * corner, [x][z]. A pure function of the seed and the floor, and the plan's own array: never write to it.
 	 */
 	public static boolean[][] walls(final long seed, final int floor) {
 		return TowerPlan.of(seed, floor).walls();
 	}
 
-	/** The walls of a floor built before the plans: the classic layout, drawn from the seed and the floor. */
-	static boolean[][] legacyWalls(final long seed, final int floor) {
-		return classicWalls(new java.util.Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L)), floor, false);
-	}
-
 	/**
 	 * The classic layout: carved as a perfect maze from the arrival's cell at the west, so every cell has
-	 * exactly one way to every other; then the hall or the portal's nook at the east is opened.
+	 * exactly one way to every other; then the hall or the portal's nook at the east is opened, and a boss floor's
+	 * safe room walled in a ring.
 	 */
-	static boolean[][] classicWalls(final java.util.Random random, final int floor) {
-		return classicWalls(random, floor, false);
-	}
-
-	/**
-	 * The classic layout, with the boss floor's safe room walled as a ring (from {@link TowerPlan#RING_VERSION}) or joined to the hall
-	 * by a path-wide door (before).
-	 */
-	static boolean[][] classicWalls(final java.util.Random random, final int floor, final boolean ring) {
+	static boolean[][] classicWalls(final Random random, final int floor) {
 		int size = TowerLayout.SIZE;
-		boolean[][] wall = new boolean[size][size];
-		for (boolean[] row : wall) {
-			java.util.Arrays.fill(row, true);
-		}
+		boolean[][] wall = solid();
 		boolean[][] seen = new boolean[CELLS][CELLS];
 		int hall = hall(floor);
 		int hallLow = size / 2 - hall / 2;
@@ -119,21 +130,17 @@ public final class TowerMaze {
 		int startX = (TowerPlan.CLASSIC_ARRIVAL_X - 1) / PITCH;
 		int startZ = (TowerPlan.CLASSIC_MIDDLE_Z - 1) / PITCH;
 		seen[startX][startZ] = true;
-		carve(random, wall, seen, startX, startZ);
+		carve(random, wall, seen, startX, startZ, null);
 		if (hall > 0) {
 			open(wall, hallLow, hallLow, hall, hall);
 		} else {
 			open(wall, NOOK_LOW_X, NOOK_LOW_Z, NOOK_HIGH_X - NOOK_LOW_X, NOOK_HIGH_Z - NOOK_LOW_Z + 1);
-		}
-		if (hall == 0) {
 			// Solid behind the portal, so the way to it is three wide in front, not a two wide pocket beyond.
-			int behind = TowerPlan.CLASSIC_PORTAL_X + 1;
-			for (int x = behind; x < NOOK_HIGH_X; x++) {
+			for (int x = TowerPlan.CLASSIC_PORTAL_X + 1; x < NOOK_HIGH_X; x++) {
 				for (int z = NOOK_LOW_Z; z <= NOOK_HIGH_Z; z++) {
 					wall[x][z] = true;
 				}
 			}
-			// The portal's own slot stays open.
 			for (int dz = 0; dz < TowerLayout.PORTAL_INNER_WIDTH; dz++) {
 				wall[TowerPlan.CLASSIC_PORTAL_X][TowerPlan.CLASSIC_MIDDLE_Z - 1 + dz] = false;
 			}
@@ -142,48 +149,44 @@ public final class TowerMaze {
 			open(wall, zone.x(), zone.z(), SAFE, SAFE);
 		}
 		if (hall == BOSS_HALL) {
-			bossRoom(wall, ring);
+			bossRoom(wall);
 		}
 		return wall;
 	}
 
 	/**
-	 * The boss floor's safe room, in the walls carved so far: with a ring, the zone's own outermost blocks are solid but
-	 * for two openings two wide (the exit through the hall's wall beside it and, across the room, the entrance onto the
-	 * maze's cell); without one (before {@link TowerPlan#RING_VERSION}) a door from the hall as wide as a path.
+	 * The boss floor's safe room, in the walls carved so far: the zone's own outermost blocks are solid but for two
+	 * openings two wide, the exit through the hall's wall beside it and, across the room, the entrance onto the
+	 * maze's cell.
 	 */
-	static void bossRoom(final boolean[][] wall, final boolean ring) {
-		if (ring) {
-			for (int x = BOSS_ROOM_X; x < BOSS_ROOM_X + SAFE; x++) {
-				for (int z = SAFE_Z; z < SAFE_Z + SAFE; z++) {
-					if (x == BOSS_ROOM_X || x == ROOM_ENTRANCE_X || z == SAFE_Z || z == SAFE_Z + SAFE - 1) {
-						wall[x][z] = true;
-					}
+	static void bossRoom(final boolean[][] wall) {
+		for (int x = BOSS_ROOM_X; x < BOSS_ROOM_X + SAFE; x++) {
+			for (int z = SAFE_Z; z < SAFE_Z + SAFE; z++) {
+				if (x == BOSS_ROOM_X || x == ROOM_ENTRANCE_X || z == SAFE_Z || z == SAFE_Z + SAFE - 1) {
+					wall[x][z] = true;
 				}
 			}
-			open(wall, BOSS_ROOM_X - WALL, GATE_Z, WALL + 1, 2);
-			open(wall, ROOM_ENTRANCE_X, GATE_Z, 1, 2);
-		} else {
-			// A door from the hall into the safe room, as wide as a path. The room's far side opens onto the
-			// maze by itself, its wall being cleared with the room.
-			int door = 1 + (TowerPlan.CLASSIC_MIDDLE_Z - 1) / PITCH * PITCH;
-			open(wall, BOSS_ROOM_X - WALL, door, WALL, PATH);
 		}
+		open(wall, BOSS_ROOM_X - WALL, GATE_Z, WALL + 1, 2);
+		open(wall, ROOM_ENTRANCE_X, GATE_Z, 1, 2);
 	}
 
-	/** Carves a perfect maze over the cells not yet seen, from a start cell already marked seen. */
-	static void carve(final java.util.Random random, final boolean[][] wall, final boolean[][] seen, final int startX, final int startZ) {
-		java.util.ArrayDeque<int[]> trail = new java.util.ArrayDeque<>();
+	/**
+	 * Carves a perfect maze over the cells not yet seen, from a start cell already marked seen. Where {@code joined}
+	 * is given, each join is marked in it, both ways, by cell and by way ({@link #WAYS}' order).
+	 */
+	static void carve(final Random random, final boolean[][] wall, final boolean[][] seen, final int startX, final int startZ,
+		final boolean[][][] joined) {
+		ArrayDeque<int[]> trail = new ArrayDeque<>();
 		trail.push(new int[] {startX, startZ});
-		int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 		while (!trail.isEmpty()) {
 			int[] at = trail.peek();
-			java.util.List<int[]> next = new java.util.ArrayList<>();
-			for (int[] way : ways) {
-				int nx = at[0] + way[0];
-				int nz = at[1] + way[1];
+			List<int[]> next = new ArrayList<>();
+			for (int w = 0; w < WAYS.length; w++) {
+				int nx = at[0] + WAYS[w][0];
+				int nz = at[1] + WAYS[w][1];
 				if (nx >= 0 && nz >= 0 && nx < CELLS && nz < CELLS && !seen[nx][nz]) {
-					next.add(new int[] {nx, nz});
+					next.add(new int[] {nx, nz, w});
 				}
 			}
 			if (next.isEmpty()) {
@@ -191,41 +194,37 @@ public final class TowerMaze {
 				continue;
 			}
 			int[] to = next.get(random.nextInt(next.size()));
-			// The wall line between the two cells opens along the path's width.
-			int lowX = Math.min(cell(at[0]), cell(to[0]));
-			int lowZ = Math.min(cell(at[1]), cell(to[1]));
-			open(wall, lowX, lowZ, at[0] != to[0] ? PITCH + PATH : PATH, at[1] != to[1] ? PITCH + PATH : PATH);
+			join(wall, at[0], at[1], to[0], to[1]);
+			if (joined != null) {
+				joined[at[0]][at[1]][to[2]] = true;
+				joined[to[0]][to[1]][to[2] ^ 1] = true;
+			}
 			seen[to[0]][to[1]] = true;
-			trail.push(to);
+			trail.push(new int[] {to[0], to[1]});
 		}
 	}
 
+	/** Opens the wall line between two neighbouring cells along the path's width. */
+	static void join(final boolean[][] wall, final int ax, final int az, final int bx, final int bz) {
+		int lowX = Math.min(cell(ax), cell(bx));
+		int lowZ = Math.min(cell(az), cell(bz));
+		open(wall, lowX, lowZ, ax != bx ? PITCH + PATH : PATH, az != bz ? PITCH + PATH : PATH);
+	}
+
 	/**
-	 * An ordinary floor's walls with its ends where the plan put them: a perfect maze carved from the
-	 * arrival's cell over every cell but the portal's, which is then joined to one neighbour along x, so it
-	 * is a dead end whose one way in is from that side. The far side of the portal's cell is filled solid,
-	 * as the classic nook's is, leaving the way to the portal {@code FRONT} wide in front of it. The
-	 * arrival's safe zone is opened last.
+	 * A maze with its ends where the plan put them: a perfect maze carved from a start cell over every cell but the
+	 * portal's, which is then joined to one neighbour along x, so it is a dead end whose one way in is from that side.
+	 * The far side of the portal's cell is filled solid, leaving the way to the portal {@link #PORTAL_FRONT} wide in
+	 * front of it.
 	 */
-	static boolean[][] scatteredWalls(final java.util.Random random, final int arrivalCx, final int arrivalCz,
-		final int portalCx, final int portalCz, final int facing, final Zone zone) {
-		int size = TowerLayout.SIZE;
-		boolean[][] wall = new boolean[size][size];
-		for (boolean[] row : wall) {
-			java.util.Arrays.fill(row, true);
-		}
-		for (int cx = 0; cx < CELLS; cx++) {
-			for (int cz = 0; cz < CELLS; cz++) {
-				open(wall, cell(cx), cell(cz), PATH, PATH);
-			}
-		}
+	static boolean[][] scatteredWalls(final Random random, final int startCx, final int startCz, final int portalCx, final int portalCz,
+		final int facing) {
+		boolean[][] wall = cellsOpen();
 		boolean[][] seen = new boolean[CELLS][CELLS];
 		seen[portalCx][portalCz] = true;
-		seen[arrivalCx][arrivalCz] = true;
-		carve(random, wall, seen, arrivalCx, arrivalCz);
-		int lowX = Math.min(cell(portalCx), cell(portalCx + facing));
-		open(wall, lowX, cell(portalCz), PITCH + PATH, PATH);
-		// Solid behind the portal, so the way to it is three wide in front, not a pocket beyond.
+		seen[startCx][startCz] = true;
+		carve(random, wall, seen, startCx, startCz, null);
+		join(wall, portalCx, portalCz, portalCx + facing, portalCz);
 		int local = portalLocal(facing);
 		int behind = cell(portalCx) + (facing < 0 ? local + 1 : 0);
 		int behindEnd = cell(portalCx) + (facing < 0 ? PATH - 1 : local - 1);
@@ -237,8 +236,116 @@ public final class TowerMaze {
 		// The two blocks of the portal's column beside its frame's posts are solid too, so no pocket is left.
 		wall[cell(portalCx) + local][cell(portalCz)] = true;
 		wall[cell(portalCx) + local][cell(portalCz) + PATH - 1] = true;
-		open(wall, zone.x(), zone.z(), SAFE, SAFE);
 		return wall;
+	}
+
+	/**
+	 * A labyrinth: the arrival in the lower maze, the portal in a dead end of the upper, and a stair two wide between
+	 * them. The stair climbs along a corridor of two neighbouring cells the lower maze is made to join, against the
+	 * corridor's side that opens on no other cell, so its low wall faces the corridor and no doorway. Null when no such
+	 * pair is found clear of the arrival's zone.
+	 */
+	static TowerPlan.@Nullable Draft labyrinth(final Random random) {
+		int top = TowerPlan.STORY - 1;
+		boolean alongX = random.nextBoolean();
+		boolean arrivalLow = random.nextBoolean();
+		int arrivalAlong = arrivalLow ? random.nextInt(TowerPlan.END_CELLS) : CELLS - 1 - random.nextInt(TowerPlan.END_CELLS);
+		int portalAlong = arrivalLow ? CELLS - 1 - random.nextInt(TowerPlan.END_CELLS) : random.nextInt(TowerPlan.END_CELLS);
+		int arrivalAcross = random.nextInt(CELLS);
+		int portalAcross = random.nextInt(CELLS);
+		int arrivalCx = alongX ? arrivalAlong : arrivalAcross;
+		int arrivalCz = alongX ? arrivalAcross : arrivalAlong;
+		int portalCx = alongX ? portalAlong : portalAcross;
+		int portalCz = alongX ? portalAcross : portalAlong;
+		boolean lowNeighbour = portalCx > 0 && (portalCx == CELLS - 1 || random.nextBoolean());
+		int facing = lowNeighbour ? -1 : 1;
+		int arrivalX = cell(arrivalCx) + PATH / 2;
+		int arrivalZ = cell(arrivalCz) + PATH / 2;
+		int zoneMax = TowerLayout.SIZE - 1 - SAFE;
+		Zone zone = new Zone(Math.max(1, Math.min(zoneMax, arrivalX - 3)), Math.max(1, Math.min(zoneMax, arrivalZ - 4)), 0, top);
+		boolean[][] lower = cellsOpen();
+		boolean[][] seen = new boolean[CELLS][CELLS];
+		boolean[][][] joined = new boolean[CELLS][CELLS][WAYS.length];
+		seen[arrivalCx][arrivalCz] = true;
+		carve(random, lower, seen, arrivalCx, arrivalCz, joined);
+		TowerFlight flight = null;
+		for (int tries = 0; tries < PAIR_TRIES && flight == null; tries++) {
+			flight = stairBetween(random, joined, zone, arrivalCx, arrivalCz, portalCx, portalCz);
+		}
+		if (flight == null) {
+			return null;
+		}
+		int ax = flight.cellX(-1, 0);
+		int az = flight.cellZ(-1, 0);
+		int bx = flight.cellX(flight.length(), 0);
+		int bz = flight.cellZ(flight.length(), 0);
+		join(lower, (ax - 1) / PITCH, (az - 1) / PITCH, (bx - 1) / PITCH, (bz - 1) / PITCH);
+		open(lower, zone.x(), zone.z(), SAFE, SAFE);
+		boolean[][] upper = scatteredWalls(random, (bx - 1) / PITCH, (bz - 1) / PITCH, portalCx, portalCz, facing);
+		int portalX = cell(portalCx) + portalLocal(facing);
+		int portalZ = cell(portalCz) + 2;
+		List<TowerStory> stories = List.of(
+			TowerStory.of(0, top, TowerStory.full(), lower),
+			TowerStory.of(TowerPlan.STORY, TowerPlan.STORY + top, TowerStory.full(), upper));
+		return new TowerPlan.Draft(stories, List.of(flight), arrivalX, arrivalZ, portalX, portalZ, facing, 1, List.of(zone), null);
+	}
+
+	/**
+	 * One try at the stair: two neighbouring cells, neither the arrival's nor the portal's, along a corridor side
+	 * that neither cell opens through, clear of the zone. The stair's entry is the first cell's near end, its eight
+	 * steps run on through the wall line between, and its exit is in the second cell.
+	 */
+	private static @Nullable TowerFlight stairBetween(final Random random, final boolean[][][] joined, final Zone zone,
+		final int arrivalCx, final int arrivalCz, final int portalCx, final int portalCz) {
+		int way = random.nextInt(WAYS.length);
+		int acx = random.nextInt(CELLS);
+		int acz = random.nextInt(CELLS);
+		int bcx = acx + WAYS[way][0];
+		int bcz = acz + WAYS[way][1];
+		if (bcx < 0 || bcz < 0 || bcx >= CELLS || bcz >= CELLS) {
+			return null;
+		}
+		boolean ends = acx == arrivalCx && acz == arrivalCz || bcx == arrivalCx && bcz == arrivalCz
+			|| acx == portalCx && acz == portalCz || bcx == portalCx && bcz == portalCz;
+		if (ends) {
+			return null;
+		}
+		Direction direction = switch (way) {
+			case 0 -> Direction.EAST;
+			case 1 -> Direction.WEST;
+			case 2 -> Direction.SOUTH;
+			default -> Direction.NORTH;
+		};
+		boolean high = random.nextBoolean();
+		// The ways across: the side the stair keeps to must open on no other cell from either.
+		int sideWay = direction.getAxis() == Direction.Axis.X ? (high ? 2 : 3) : (high ? 0 : 1);
+		if (joined[acx][acz][sideWay] || joined[bcx][bcz][sideWay]) {
+			return null;
+		}
+		boolean positive = direction.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+		int rise = TowerPlan.STORY;
+		int alongStart = direction.getAxis() == Direction.Axis.X ? cell(acx) : cell(acz);
+		int across = direction.getAxis() == Direction.Axis.X ? cell(acz) : cell(acx);
+		int stripLow = high ? across + PATH - STAIR_WIDTH : across;
+		// Step 0 is one block in from the cell's near end, which is its entry.
+		int first = positive ? alongStart + 1 : alongStart + PATH - 2;
+		Direction clockwise = direction.getClockWise();
+		boolean clockwisePositive = clockwise.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+		int rightEdge = clockwisePositive ? stripLow : stripLow + STAIR_WIDTH - 1;
+		int x = direction.getAxis() == Direction.Axis.X ? first : rightEdge;
+		int z = direction.getAxis() == Direction.Axis.X ? rightEdge : first;
+		TowerFlight flight = new TowerFlight(x, z, direction, STAIR_WIDTH, 0, rise, TowerFlight.STAIRS);
+		// The whole corridor the stair runs in, entry to exit, keeps clear of the zone.
+		for (int i = -1; i <= flight.length(); i++) {
+			for (int w = -PATH; w <= PATH; w++) {
+				int cx = flight.cellX(i, w);
+				int cz = flight.cellZ(i, w);
+				if (Math.abs(cx - (zone.x() + SAFE / 2)) <= SAFE / 2 + 1 && Math.abs(cz - (zone.z() + SAFE / 2)) <= SAFE / 2 + 1) {
+					return null;
+				}
+			}
+		}
+		return flight;
 	}
 
 	/** The portal's column within its cell: {@link #PORTAL_FRONT} blocks in from the side it is entered by. */
@@ -252,6 +359,25 @@ public final class TowerMaze {
 	/** The low corner of a cell's open square, as an offset along either side. */
 	static int cell(final int index) {
 		return 1 + index * PITCH;
+	}
+
+	private static boolean[][] solid() {
+		boolean[][] wall = new boolean[TowerLayout.SIZE][TowerLayout.SIZE];
+		for (boolean[] row : wall) {
+			Arrays.fill(row, true);
+		}
+		return wall;
+	}
+
+	/** Solid but for every cell's open square. */
+	private static boolean[][] cellsOpen() {
+		boolean[][] wall = solid();
+		for (int cx = 0; cx < CELLS; cx++) {
+			for (int cz = 0; cz < CELLS; cz++) {
+				open(wall, cell(cx), cell(cz), PATH, PATH);
+			}
+		}
+		return wall;
 	}
 
 	/** Marks every cell within a stretch of the room as taken, so the maze carves no way into it. */

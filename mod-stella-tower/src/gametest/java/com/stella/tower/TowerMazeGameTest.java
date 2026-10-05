@@ -53,10 +53,10 @@ public class TowerMazeGameTest {
 		return seen[toX][toZ];
 	}
 
-	/** An ordinary floor of the plain maze variation: these cases are about its cells, paths and walls, which the other variations do not share. */
+	/** A labyrinth floor: these cases are about its lower maze's cells, paths and walls, which the other archetypes do not share. */
 	private static int ordinaryFloor(final ServerLevel tower) {
 		long seed = tower.getSeed();
-		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY != 0 && TowerPlan.variationOf(seed, f) == TowerPlan.Variation.MAZE);
+		int floor = TowerTestSupport.freshFloorWhere(f -> TowerArchetypes.of(seed, f) == TowerArchetype.LABYRINTH);
 		TowerFloors.ensure(tower, floor);
 		return floor;
 	}
@@ -103,7 +103,21 @@ public class TowerMazeGameTest {
 		return false;
 	}
 
-	/** Paths are mostly as wide as the shipped path, and none is narrower than the shipped minimum. */
+	/** Stair landings use the plan's two-wide rule. */
+	private static boolean nearFlight(final TowerPlan plan, final int x, final int z) {
+		for (TowerFlight flight : plan.flights()) {
+			for (int step = -1; step <= flight.length(); step++) {
+				for (int width = 0; width < flight.width(); width++) {
+					if (Math.abs(x - flight.cellX(step, width)) <= 1 && Math.abs(z - flight.cellZ(step, width)) <= 1) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Maze paths keep their width outside the two-wide stair and its landings. */
 	@GameTest
 	public void everyPathIsWideEnough(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
@@ -116,11 +130,16 @@ public class TowerMazeGameTest {
 		int narrow = 0;
 		int notFull = 0;
 		int spots = 0;
+		int stairSpots = 0;
 		BlockPos first = null;
 		for (int x = 0; x < S; x++) {
 			for (int z = 0; z < S; z++) {
 				// The portal's slot and the safe zones, workstations and all, are no paths.
 				if (!open[x][z] || slot.contains(((long) x << 32) | z) || plan.inSafeZone(x, z)) {
+					continue;
+				}
+				if (nearFlight(plan, x, z)) {
+					stairSpots++;
 					continue;
 				}
 				spots++;
@@ -132,8 +151,10 @@ public class TowerMazeGameTest {
 			}
 		}
 		double full = 1.0 - notFull / (double) spots;
-		TowerTestSupport.result("pathWidth", "path=" + TowerMaze.PATH + " min=" + TowerMaze.MIN_PATH + " spots=" + spots + " narrow=" + narrow + " fullShare=" + full + " first=" + first);
+		TowerTestSupport.result("pathWidth", "floor=" + floor + " path=" + TowerMaze.PATH + " min=" + TowerMaze.MIN_PATH + " spots=" + spots
+			+ " stairSpots=" + stairSpots + " narrow=" + narrow + " fullShare=" + full + " first=" + first + " flights=" + plan.flights());
 		helper.assertTrue(spots < S * S, "the floor has no walls, so the case proves nothing");
+		helper.assertTrue(stairSpots > 0, "the floor has no stair landing, so the exception proves nothing");
 		helper.assertTrue(narrow == 0, narrow + " spots of floor " + floor + " lie on a path narrower than " + TowerMaze.MIN_PATH + ", first at " + first);
 		helper.assertTrue(full >= 0.9, "only " + full + " of the open spots lie on a path " + TowerMaze.PATH + " wide");
 		helper.succeed();
@@ -238,7 +259,7 @@ public class TowerMazeGameTest {
 		helper.succeed();
 	}
 
-	/** Every ceiling lamp hangs over a path, where its light reaches the maze, not over a wall. */
+	/** Every ceiling lamp of each maze story hangs over a path, where its light reaches the maze, not over a wall. */
 	@GameTest
 	public void everyLampLightsAPath(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
@@ -246,11 +267,13 @@ public class TowerMazeGameTest {
 		BlockPos o = TowerLayout.origin(floor);
 		int lamps = 0;
 		int overWalls = 0;
-		for (int x = 0; x < S; x++) {
-			for (int z = 0; z < S; z++) {
-				if (tower.getBlockState(o.offset(x, TowerLayout.HEIGHT, z)).is(TowerBlocks.TOWER_LAMP)) {
-					lamps++;
-					overWalls += tower.getBlockState(o.offset(x, TowerLayout.HEIGHT - 1, z)).isAir() ? 0 : 1;
+		for (TowerStory story : TowerPlan.at(tower, floor).stories()) {
+			for (int x = 0; x < S; x++) {
+				for (int z = 0; z < S; z++) {
+					if (tower.getBlockState(o.offset(x, story.top(), z)).is(TowerBlocks.TOWER_LAMP)) {
+						lamps++;
+						overWalls += tower.getBlockState(o.offset(x, story.top() - 1, z)).isAir() ? 0 : 1;
+					}
 				}
 			}
 		}

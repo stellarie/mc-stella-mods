@@ -3,11 +3,60 @@
 An endless tower of floors behind a crying obsidian portal. The design is in
 `docs/plans/2026-09-28/ENDLESS-TOWER-RUNES.md`.
 
+## Tower remake, stage 1: stories and archetypes
+
+This section supersedes the 8-high room, the plan versions and markers (F1, F2), and the floor variations
+(F4) described further down. Old saves do not carry over; start a new world.
+
+- `TowerLayout.HEIGHT` is 24. A floor holds one to three stories (`TowerStory`), 8 apart: feet at y 0, 8
+  and 16 over `BASE_Y`. An upper story stands on a slab of maze wall. A story band ends at the next slab, a
+  lid of tower wall, or the roof at y 24.
+- Stories are joined by straight stairs (one up per block) or ramps (one up per two blocks), two to three
+  wide (`TowerFlight`). No ladders. A step clears its own headroom, and that cuts the hole in the slab above.
+  A low wall with a rail runs along each open side below the upper slab. Where an upper story's edge drops two
+  or more, a rail stands on a lip of slab, or on the edge itself where the drop is a stair's headroom.
+- Each floor's archetype comes from `TowerArchetypes.of(seed, floor)`. Every fifth floor is a HALL: the old
+  elite or boss hall geometry under a lid at y 7, with the hall itself open to the roof and a railed
+  spectators' ledge at y 12. Every other floor draws one of three archetypes evenly. It never takes the
+  archetype of the floor below.
+  - LABYRINTH: two 6-wide perfect mazes at y 0 and y 8, a lid at y 15. One 2-wide stair runs in a corridor
+    of two joined cells. The portal is in a dead end of the upper maze.
+  - GREAT_HALL: a nave open to the roof between free-standing pillars, a gallery ring 4 to 6 wide at y 8,
+    one 3-wide stair at each end, pews with lamps, 2 to 4 walled chapels, and the portal in the gallery's apse.
+  - CRYSTAL_CAVERN: 2 or 3 cave stories, one cellular automaton cave per story, every spot in an open 2x2
+    square, joined by tunnels. 3-wide ramps join the stories. Noise raises some floor by 1 block and lowers
+    the ceilings, and leaves 3 blocks of headroom everywhere. There are stalagmites and amethyst clusters.
+    The portal is in a nook on the top story.
+- A plan is proved over its whole volume (`TowerVolume`: every block the builder sets, rails, lamps and
+  chests included). The walk (`TowerWalk`) is 3-D on foot: level, up 1 with room to jump, or down 1. It is
+  the same rule for a plan and for a built floor. A draw with no walk is drawn again, up to 8 times, then
+  falls back to the classic maze under a lid.
+- Safe zones have height bounds (`Zone.y`, `Zone.top`). The Great Hall arrival zone covers y 0 to 24.
+  Other arrival zones cover their ground story.
+- Chests: at least 5 on any story, at most 2 to a quarter of the room, at least 12 blocks apart. Traps: up
+  to 20 over all stories, on a story's own floor. Mobs spawn on any story.
+- Lamps per archetype: a grid in the labyrinth and hall floors, pillar sconces and pew lamps in the great
+  hall, and lamps set into the rock in the cavern. Then every spot a body stands on gets a lamp of its story
+  within 6 blocks (a wall sconce, a ceiling lamp, a lantern on a chain of 4 or less, or a floor lamp).
+- Skins: `TOWER_MAZE_WALL` has a `skin` property (`TowerSkin`) and `TOWER_LAMP` has one too (`TowerLampSkin`).
+  Each value draws with a vanilla block model, so every wall still `is(TOWER_MAZE_WALL)`. A floor's walls,
+  slabs, pillars, lamps, ground, stairs and rails come from `TowerTheme`, by archetype and band of ten floors.
+- The builder checks its block budget after every cell. It writes air only where another block stands.
+  Each final step places one trap, chest, station, or boss-biome chunk. The built marker goes down last.
+  A bounded worker prepares the plan and volume from the captured world seed.
+
+Measured in the 2026-10-05 GameTest run (`reachesOver500Plans`, `built*`, `buildBudget`):
+
+- Each ordinary archetype passed 500 seeded plans with zero fallbacks and zero unreachable portals.
+- Two built floors per archetype had zero block disagreements and matching plan and world walks.
+- Four background floors prepared in at most 0.0723 ms; the final marker step took at most 0.0894 ms.
+- The longest wall-clock build step took 3.0577 ms against a 3 ms budget. That acceptance check remains open.
+
 ## Slice 1
 
 - A crying obsidian frame, lit by fire from any source, holds a blue portal to the tower.
   Obsidian frames still make nether portals.
-- Floors are 64 by 64 blocks and 8 high, one per cell of a grid in the `mod-stella-tower:endless_tower`
+- Floors are 64 by 64 blocks and 24 high (8 high before the remake below), one per cell of a grid in the `mod-stella-tower:endless_tower`
   dimension. Each is built the first time anyone reaches it, drawn from the world seed and the floor
   number, and kept for good.
 - Walls, ceiling, lamps and each floor's frame cannot be mined, blown up, or broken by a wither or the

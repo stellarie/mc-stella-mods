@@ -1,9 +1,6 @@
 package com.stella.tower;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -39,9 +36,13 @@ public final class TowerWisps {
 
 	/**
 	 * A lit way on a floor: whose it is, its steps from the player to the portal, the server tick it fades
-	 * at, and the spots of the room within its reach, [x][z] from the room's inner corner.
+	 * at, and the blocks within its reach, as {@link BlockPos#asLong()}.
 	 */
-	public record Trail(java.util.UUID owner, int floor, List<BlockPos> path, int until, boolean[][] reach) {
+	public record Trail(java.util.UUID owner, int floor, List<BlockPos> path, int until, java.util.Set<Long> reach) {
+		/** Whether a body standing at the block is on the way. */
+		public boolean reaches(final BlockPos feet) {
+			return this.reach.contains(feet.asLong());
+		}
 	}
 
 	private static final Map<Integer, Integer> PINNED_LIGHT = new java.util.concurrent.ConcurrentHashMap<>();
@@ -86,12 +87,12 @@ public final class TowerWisps {
 		if (floor < 1 || !TowerFloors.isBuilt(tower, floor)) {
 			return null;
 		}
-		List<BlockPos> path = path(tower, floor, new BlockPos(player.getBlockX(), TowerLayout.BASE_Y, player.getBlockZ()));
+		List<BlockPos> path = path(tower, floor, player.blockPosition());
 		if (path.isEmpty()) {
 			return null;
 		}
 		Trail trail = new Trail(player.getUUID(), floor, List.copyOf(path),
-			tower.getServer().getTickCount() + PINNED_LIGHT.getOrDefault(floor, LIGHT_TICKS), reach(floor, path));
+			tower.getServer().getTickCount() + PINNED_LIGHT.getOrDefault(floor, LIGHT_TICKS), reach(path));
 		// A player keeps one lit way: a new one puts out the old.
 		TRAILS.removeIf(old -> old.owner().equals(player.getUUID()));
 		TRAILS.add(trail);
@@ -99,95 +100,45 @@ public final class TowerWisps {
 		return trail;
 	}
 
-	/** The shortest walk over the floor from a spot to its portal, both ends included; empty if there is none. */
+	/**
+	 * The shortest walk on foot over the floor as it stands, from a spot to its portal, both ends included; empty if
+	 * there is none. The walk climbs the stairs and the boss's pyramid a block at a time, as {@link TowerWalk} walks,
+	 * and ends standing in the portal's inside. A spot in mid-air or in a block starts from the spot below or above it.
+	 */
 	public static List<BlockPos> path(final ServerLevel tower, final int floor, final BlockPos from) {
 		BlockPos origin = TowerLayout.origin(floor);
-		int size = TowerLayout.SIZE;
-		int startX = from.getX() - origin.getX();
-		int startZ = from.getZ() - origin.getZ();
 		TowerPlan plan = TowerPlan.at(tower, floor);
-		List<BlockPos> portal = plan.portalInside();
-		// The raised portal's way: the pyramid's steps are walked over, and each step is drawn at its height.
-		int[][] rise = new int[size][size];
-		for (BlockPos wall : plan.plinth()) {
-			if (wall.getY() >= TowerLayout.BASE_Y) {
-				rise[wall.getX() - origin.getX()][wall.getZ() - origin.getZ()] = wall.getY() - TowerLayout.BASE_Y + 1;
+		TowerWalk.Space space = TowerWalk.world(tower, floor);
+		int x = from.getX() - origin.getX();
+		int z = from.getZ() - origin.getZ();
+		int y = from.getY() - origin.getY();
+		int[] start = null;
+		for (int dy : new int[] {0, 1, -1}) {
+			if (start == null && TowerWalk.inRoom(x, y + dy, z) && TowerWalk.stands(space, x, y + dy, z)) {
+				start = new int[] {x, y + dy, z};
 			}
 		}
-		if (startX < 0 || startZ < 0 || startX >= size || startZ >= size) {
+		if (start == null) {
 			return List.of();
 		}
-		int[][] came = new int[size][size];
-		for (int[] row : came) {
-			java.util.Arrays.fill(row, -1);
+		List<BlockPos> steps = new ArrayList<>();
+		for (int[] step : TowerWalk.path(space, start, TowerVolume.portalGoals(plan))) {
+			steps.add(origin.offset(step[0], step[1], step[2]));
 		}
-		Deque<int[]> queue = new ArrayDeque<>();
-		came[startX][startZ] = startX * size + startZ;
-		queue.add(new int[] {startX, startZ});
-		int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-		while (!queue.isEmpty()) {
-			int[] at = queue.poll();
-			BlockPos here = origin.offset(at[0], 0, at[1]);
-			BlockPos goal = portalAt(portal, here);
-			if (goal != null) {
-				List<BlockPos> steps = new ArrayList<>();
-				int x = at[0];
-				int z = at[1];
-				while (true) {
-					steps.add(origin.offset(x, x == at[0] && z == at[1] ? goal.getY() - origin.getY() : rise[x][z], z));
-					int back = came[x][z];
-					if (back == x * size + z) {
-						break;
-					}
-					x = back / size;
-					z = back % size;
-				}
-				Collections.reverse(steps);
-				return steps;
-			}
-			for (int[] way : ways) {
-				int x = at[0] + way[0];
-				int z = at[1] + way[1];
-				if (x < 0 || z < 0 || x >= size || z >= size || came[x][z] >= 0) {
-					continue;
-				}
-				BlockPos feet = origin.offset(x, 0, z);
-				boolean stepped = rise[x][z] > 0 && !plan.isFramePost(x, z) && portalAt(portal, feet) == null;
-				boolean reaches = portalAt(portal, feet) != null;
-				if (stepped || reaches || tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
-					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty()) {
-					came[x][z] = at[0] * size + at[1];
-					queue.add(new int[] {x, z});
-				}
-			}
-		}
-		return List.of();
+		return steps;
 	}
 
-	/** The portal's lowest inside spot in the column of this one, or null when the column is not the portal's. */
-	private static @Nullable BlockPos portalAt(final List<BlockPos> portal, final BlockPos column) {
-		BlockPos lowest = null;
-		for (BlockPos inside : portal) {
-			if (inside.getX() == column.getX() && inside.getZ() == column.getZ() && (lowest == null || inside.getY() < lowest.getY())) {
-				lowest = inside;
-			}
-		}
-		return lowest;
-	}
-
-	/** The spots of the room within reach of a way's steps. */
-	private static boolean[][] reach(final int floor, final List<BlockPos> path) {
-		BlockPos origin = TowerLayout.origin(floor);
-		int size = TowerLayout.SIZE;
+	/** The blocks within reach of a way's steps: across, within {@link #RAGE_REACH}; up and down, a block. */
+	private static java.util.Set<Long> reach(final List<BlockPos> path) {
 		int span = (int) Math.ceil(RAGE_REACH);
-		boolean[][] near = new boolean[size][size];
+		java.util.Set<Long> near = new java.util.HashSet<>();
 		for (BlockPos step : path) {
-			int sx = step.getX() - origin.getX();
-			int sz = step.getZ() - origin.getZ();
-			for (int x = Math.max(0, sx - span); x <= Math.min(size - 1, sx + span); x++) {
-				for (int z = Math.max(0, sz - span); z <= Math.min(size - 1, sz + span); z++) {
-					if ((x - sx) * (x - sx) + (z - sz) * (z - sz) <= RAGE_REACH * RAGE_REACH) {
-						near[x][z] = true;
+			for (int dx = -span; dx <= span; dx++) {
+				for (int dz = -span; dz <= span; dz++) {
+					if (dx * dx + dz * dz <= RAGE_REACH * RAGE_REACH) {
+						for (int dy = -1; dy <= 1; dy++) {
+							near.add(step.offset(dx, dy, dz).asLong());
+						}
 					}
 				}
 			}
@@ -228,9 +179,7 @@ public final class TowerWisps {
 		AABB room = new AABB(origin.getX(), TowerLayout.BASE_Y, origin.getZ(),
 			origin.getX() + TowerLayout.SIZE, TowerLayout.BASE_Y + TowerLayout.HEIGHT, origin.getZ() + TowerLayout.SIZE);
 		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> Hostiles.isHostile(mob) && !(mob instanceof TowerGhost) && mob.isAlive())) {
-			int x = mob.getBlockX() - origin.getX();
-			int z = mob.getBlockZ() - origin.getZ();
-			if (x >= 0 && z >= 0 && x < TowerLayout.SIZE && z < TowerLayout.SIZE && trail.reach()[x][z]) {
+			if (trail.reaches(mob.blockPosition())) {
 				mob.addEffect(new MobEffectInstance(MobEffects.SPEED, RAGE_TICKS, RAGE_SPEED));
 				mob.addEffect(new MobEffectInstance(MobEffects.STRENGTH, RAGE_TICKS, RAGE_STRENGTH));
 				tower.sendParticles(ParticleTypes.ANGRY_VILLAGER, mob.getX(), mob.getY() + mob.getBbHeight() + 0.3, mob.getZ(), 1, 0.2, 0.1, 0.2, 0.0);

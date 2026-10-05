@@ -1,1 +1,76 @@
-{ "variants": { "": { "model": "mod-stella-tower:block/tower_maze_wall" } } }
+{
+  "variants": {
+    "skin=blackstone": {
+      "model": "mod-stella-tower:block/tower_maze_wall"
+    },
+    "skin=polished_blackstone_bricks": {
+      "model": "minecraft:block/polished_blackstone_bricks"
+    },
+    "skin=polished_blackstone": {
+      "model": "minecraft:block/polished_blackstone"
+    },
+    "skin=gilded_blackstone": {
+      "model": "minecraft:block/gilded_blackstone"
+    },
+    "skin=deepslate_tiles": {
+      "model": "minecraft:block/deepslate_tiles"
+    },
+    "skin=deepslate_bricks": {
+      "model": "minecraft:block/deepslate_bricks"
+    },
+    "skin=polished_deepslate": {
+      "model": "minecraft:block/polished_deepslate"
+    },
+    "skin=cobbled_deepslate": {
+      "model": "minecraft:block/cobbled_deepslate"
+    },
+    "skin=stone_bricks": {
+      "model": "minecraft:block/stone_bricks"
+    },
+    "skin=mossy_stone_bricks": {
+      "model": "minecraft:block/mossy_stone_bricks"
+    },
+    "skin=quartz_bricks": {
+      "model": "minecraft:block/quartz_bricks"
+    },
+    "skin=tuff": {
+      "model": "minecraft:block/tuff"
+    },
+    "skin=tuff_bricks": {
+      "model": "minecraft:block/tuff_bricks"
+    },
+    "skin=polished_tuff": {
+      "model": "minecraft:block/polished_tuff"
+    },
+    "skin=calcite": {
+      "model": "minecraft:block/calcite"
+    },
+    "skin=smooth_basalt": {
+      "model": "minecraft:block/smooth_basalt"
+    },
+    "skin=amethyst_block": {
+      "model": "minecraft:block/amethyst_block"
+    },
+    "skin=nether_bricks": {
+      "model": "minecraft:block/nether_bricks"
+    },
+    "skin=red_nether_bricks": {
+      "model": "minecraft:block/red_nether_bricks"
+    },
+    "skin=end_stone_bricks": {
+      "model": "minecraft:block/end_stone_bricks"
+    },
+    "skin=purpur_block": {
+      "model": "minecraft:block/purpur_block"
+    },
+    "skin=prismarine_bricks": {
+      "model": "minecraft:block/prismarine_bricks"
+    },
+    "skin=dark_prismarine": {
+      "model": "minecraft:block/dark_prismarine"
+    },
+    "skin=mud_bricks": {
+      "model": "minecraft:block/mud_bricks"
+    }
+  }
+}

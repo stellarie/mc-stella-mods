@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -14,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -59,6 +62,47 @@ public class TowerLostCastleVariantGameTest {
 	@GameTest(maxTicks = 40)
 	public void theCryptVariantIsWalkableAndWhole(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.CRYPT);
+	}
+
+	@GameTest(maxTicks = 40)
+	public void rubbleKeepsTheGateEntranceOpen(final GameTestHelper helper) {
+		TowerLostRoomGameTest.Arena arena = TowerLostRoomGameTest.castle(helper);
+		LostRoomPiece piece = arena.piece();
+		BoundingBox box = BoundingBox.infinite();
+		for (int x = LostRoomPiece.GATE_X; x <= LostRoomPiece.GATE_X + 1; x++) {
+			piece.set(arena.level(), box, Blocks.AIR.defaultBlockState(), x, 1, 1);
+			piece.set(arena.level(), box, Blocks.AIR.defaultBlockState(), x, 2, 1);
+			piece.placeRubble(arena.level(), box, RandomSource.create(x), x, 1, 1);
+		}
+		BlockPos gate = piece.gateInside();
+		boolean open = standable(arena.level(), gate) && standable(arena.level(), gate.relative(Direction.EAST));
+		TowerTestSupport.result("gateRubble", "open=" + open);
+		helper.assertTrue(open, "rubble blocked the built gate entrance");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 40)
+	public void aRejectedYardCandidateGetsReplaced(final GameTestHelper helper) {
+		TowerLostRoomGameTest.Arena arena = TowerLostRoomGameTest.castle(helper, LostCastleVariant.CASTLE, Direction.NORTH);
+		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+		player.experienceLevel = 40;
+		AtomicInteger eligible = new AtomicInteger();
+		List<Mob> raised = List.of();
+		try {
+			raised = LostCastles.stock(arena.level(), arena.piece(), List.of(player), RandomSource.create(20261005L),
+				LostCastles.MIN_MOBS, mob -> eligible.getAndIncrement() > 0);
+			Set<UUID> identities = raised.stream().map(Mob::getUUID).collect(java.util.stream.Collectors.toSet());
+			long present = raised.stream().filter(mob -> arena.level().getEntity(mob.getUUID()) == mob).count();
+			TowerTestSupport.result("castleRetry", "requested=" + LostCastles.MIN_MOBS + " eligible=" + eligible.get()
+				+ " added=" + raised.size() + " distinct=" + identities.size() + " present=" + present);
+			helper.assertTrue(eligible.get() > 0, "no eligible yard candidate reached the injected rejection");
+			helper.assertTrue(raised.size() == LostCastles.MIN_MOBS && identities.size() == raised.size() && present == raised.size(),
+				"a rejected candidate left only " + raised.size() + " actual yard mobs");
+			helper.succeed();
+		} finally {
+			raised.forEach(Mob::discard);
+			TowerTestSupport.leave(helper, player);
+		}
 	}
 
 	@GameTest(maxTicks = 20)
@@ -136,7 +180,8 @@ public class TowerLostCastleVariantGameTest {
 		Set<BlockPos> fromGate = walk(level, box, low, gate);
 		Set<BlockPos> fromPortal = walk(level, box, low, portal);
 		if (!standable(level, gate)) {
-			fault.append(" gateBlocked");
+			fault.append(" gateBlocked(").append(level.getBlockState(gate.below()).getBlock()).append('/').append(level.getBlockState(gate).getBlock())
+				.append('/').append(level.getBlockState(gate.above()).getBlock()).append(')');
 		}
 		if (!fromGate.contains(portal)) {
 			fault.append(" noWayIn(reached=").append(fromGate.size()).append(')');
