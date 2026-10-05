@@ -152,7 +152,7 @@ public final class SpellCasting {
 		SKIP_COOLDOWN.remove();
 		Awakening.report(definition.id(), modifiers.awakened());
 		boolean completed = false;
-		CastHits.begin(caster, definition.id(), !scroll);
+		CastHits.begin(caster, definition.id(), !scroll && !Awakening.isAwakened(stack));
 		try {
 			boolean applied = definition.effect().apply(caster, target, point, modifiers);
 			if (!applied) {

@@ -199,6 +199,27 @@ public class AwakeningGameTest {
 	}
 
 	@GameTest(maxTicks = 120)
+	public void awakenedAuraDoesNotTrainASpareBook(final GameTestHelper helper) {
+		Arena arena = arena(helper, 2);
+		Mob victim = arena.zombie(2, 3);
+		ItemStack mastered = awakened(FLAME_RING);
+		ItemStack spare = book(FLAME_RING);
+		arena.player.getInventory().setItem(1, spare);
+		arena.cast(mastered);
+		helper.runAfterDelay(85, () -> {
+			LOG.info("[SPELLTEST] test=awakenedAuraDoesNotTrainASpareBook RESULT health={} spareCount={}",
+				victim.getHealth(), Awakening.count(spare));
+			try {
+				helper.assertTrue(victim.getHealth() < BIG_HEALTH, "the awakened aura hit nothing");
+				helper.assertTrue(Awakening.count(spare) == 0, "an awakened aura trained the spare book");
+			} finally {
+				arena.leave();
+			}
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 120)
 	public void aFlameRingDoublecastKeepsOneDeferredCredit(final GameTestHelper helper) {
 		Arena arena = arena(helper, 2);
 		Mob victim = arena.zombie(2, 3);
