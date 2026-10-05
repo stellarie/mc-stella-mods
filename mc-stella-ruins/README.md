@@ -212,6 +212,84 @@ Known limits:
 - A wave mob that stands in an unloaded chunk when a rite is abandoned stays until a player kills it.
 - Sunburn is proved at noon in a game test. Feel and look are for a client.
 
+## Sealed Vault
+
+Site id `sealed_vault`, package `com.stella.ruins.site.sealedvault`. A large cave site at the bottom of the world: two
+levels of a 7 x 7 maze. Three seals rest in three of six rooms while the Vault Warden hunts the player. Three seals used on
+the core open the inner vault, which pays out once.
+
+- Box 56 x 24 x 64. The maze fills the north 56 blocks. The south 8 blocks and the 3-block shell hold a 1-wide, 3-high
+  tunnel, 11 blocks long, and a 3 x 5 gate. The tunnel reaches the south face. It leads on to cave air only when a cave
+  lies there. Otherwise the clue map still leads the player to a dead end.
+- `Placement.cave(-58, -16, 16)`: the floor is at Y -58 or higher and the top is at Y -16 or lower. `Claim.once()`.
+  Activation radius 28. Clue weight 1.
+- Structure set: spacing 56, separation 20, salt 512830417, village exclusion 8 chunks.
+- Layers: y0-1 base, y2-7 level 0, y8 slab (1 thick), y9-14 level 1, y15-17 roof, y18-23 capstone. Cell pitch 7 (6 open,
+  1 wall). A passage is 3 wide and 5 high.
+
+### The plan
+
+`VaultPlan.derive(RandomSource)` draws everything random and holds no block. The layout, the Warden's guide, and the tests
+all read it. The draw order is fixed: entrance, level 1 maze, level 0 maze, loops, stairs, lair, candidates, seals,
+traps, wraith cells.
+
+- Mazes: recursive backtracker on 49 cells (level 1, starts at the entrance) and 48 cells (level 0, the centre cell is the
+  inner vault). 10% of the remaining walls open as loops: 4 on level 1 and 3 on level 0.
+- Two stairs join the levels. A stair cell has no west passage on either level, because its flight runs along the west lane.
+- The Warden's lair is the level 0 cell farthest from the stairs.
+- Six candidate seal rooms, three per level: dead ends first, then the farthest from the entrance (level 1) or the stairs
+  (level 0). Three of the six hold a seal, with at least one on each level (18 combinations).
+- 2 to 4 trap corridors, each a straight corridor cell. A corridor on level 1 over a level 0 dead end that opens along the same
+  axis, within 8 cells of a stair, is a void drop when one is free. Every other trap is an arrow trap.
+- 6 wraith cells from the free cells.
+
+### Walls, seals, traps
+
+- `vault_wall` and `vault_floor` make the whole box. Neither can be mined while its vault is not complete, and neither can be
+  blown up. After completion each mines like deepslate. A woken vault is listed in `VaultRegistry` (saved data), and a wall
+  reads that list, so a miner cannot skip the maze.
+- A seal is the block `vault_seal` on a plinth. A player breaks it and gets one `vault_seal` item. Explosions leave it.
+- A trap corridor holds a row of 6 hidden plates across its middle. A player on an armed plate fires the trap and the whole
+  row goes dark.
+  - Arrow corridor: four `vault_vent` blocks in the walls each shoot one arrow.
+  - Drop corridor: 18 `vault_pit_cover` blocks open, a 6 x 3 pit. The player falls 3 blocks onto a catch dais, then steps
+    off into the dead end.
+  - After 100 ticks the pit closes and the row rearms. A server tick counter and a scheduled block tick both do this.
+- Stairs: a switchback in a stair cell and a spiral from the core room to the inner vault (the spiral is too tight for the
+  Warden, so the Warden never uses it).
+
+### The objective and the hunt
+
+`VaultObjective` wraps `Objectives.keys(vault_seal, 3)`. At activation it lists the vault and spawns the whole roster at
+the markers of each kind: 8 guardians, 6 wraiths, 1 Warden. The site roster is empty.
+
+- The Warden (wither skeleton, scale 1.8, health x10, boss) hunts the nearest player inside the bounds, through walls.
+  It reads the plan of its own vault (`VaultGuide`), finds the route from cell to cell through the stairs, and walks one leg
+  at a time. It heals 2 health a second while no player is within 16 blocks. It cannot leave the bounds.
+- Within 16 blocks of the Warden a player hears a heartbeat every 40 ticks. Within 8 blocks the player has Darkness.
+- Void Wraiths (vex, health x3) give Darkness for 60 ticks with a hit, and cannot leave the bounds.
+  Vault Guardians (husk, scale 1.2, health x3, netherite helmet) have no ability.
+
+### Mobs and rewards
+
+| Kind | Drop |
+|---|---|
+| `void_wraith` | `void_essence` at 40% |
+| `vault_guardian` | `vault_dust` 1 to 2 at 60% |
+| `vault_warden` | `void_essence` 3 to 5 |
+
+- Vault table `chests/sealed_vault`: 1 `void_touched_affix`, 4 to 8 `void_essence`, 2 to 5 diamonds, 1 to 3 netherite scrap
+  at 60%, 4 to 10 emeralds.
+- Affix `void_touched` (addition: `void_essence`; swords, axes, maces, tridents, bows, crossbows): a hit adds 15% of its damage
+  as magic damage that armor does not reduce, and heals the holder by 5% of its damage.
+- Unique `abyssal_edge` (netherite sword): a kill opens a void rift for 60 ticks that pulls hostile mobs within 4 blocks.
+
+### Files
+
+- Block assets use vanilla textures. Item textures come from `tools/specs/sealed_vault.json` and `tools/ruin_textures.py`.
+- Tests: `VaultPlanGameTest`, `VaultLayoutGameTest`, `VaultBlocksGameTest`, `VaultMobsGameTest`, `VaultRewardsGameTest`,
+  `VaultSiteGameTest`, all listed in the gametest `fabric.mod.json`.
+
 ## Crystal Grotto
 
 Site id `crystal_grotto`, package `com.stella.ruins.site.crystalgrotto`. A small cave site: a geode chamber of singing
@@ -267,6 +345,126 @@ The orders come from the run random, never from the layout seed. No pillar sound
   `tools/specs/crystal_grotto.json` and `tools/ruin_textures.py`.
 - Tests: `GrottoPlanGameTest`, `ChimeObjectiveGameTest`, `GrottoMobsGameTest`, `GrottoRewardsGameTest`,
   `GrottoSiteGameTest`, all listed in the gametest `fabric.mod.json`.
+
+## Fallen Watchtower
+
+Site id `fallen_watchtower`, package `com.stella.ruins.site.fallenwatchtower`. A small surface site: a tall stone tower,
+half fallen. Archers and crossbowmen hold its floors and the Watch Captain holds the roof. Clearing the garrison opens
+the vault once.
+
+- Box 21 x 44 x 21. The shaft is 9 x 9, with a 7 x 7 inside. `Placement.surface(4)`. Pays out once. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 159662037, village exclusion 8 chunks.
+- The core measures distance in three dimensions and sits on the roof, up to 37 blocks over the door. The activation
+  radius is 43 so that a player 20 blocks from the foot of the tallest tower wakes it.
+
+### The plan
+
+`WatchtowerPlan.derive(seed)` draws every block of the tower and every marker. It reads no world block. The layout and
+the tests both read it. It uses its own random stream for the rolls, the weathering, the collapse, and the rubble.
+
+- Floors: 4 to 6 floors of 6 blocks, plus a crown of 0 to 4 blocks. The design height is 6 N + c, 24 to 40.
+- Stair: a square spiral on the 24 inner ring cells, clockwise or counter-clockwise. A flight is a landing, 5 stair
+  blocks, and a landing. The next floor has no block over steps 3 to 5, so the garrison can shoot down onto the climber.
+- Breach: one V-notch in one wall, on one of 4 sides. Floor blocks within 2 to 4 rows of it fall. A floor block falls
+  only when the block under it stands, so no fall is longer than one floor. Rubble lies on the floor below and in a fan
+  outside, at most 5 high. The wall beside every stair block, the stair, the landings, and a one block walkway to
+  every post never fall. A 3 wide strip from the door stays clear.
+- Floors 1 to N-1 draw from four templates, no two neighbours equal: bunks, armory, lookout, and storage.
+  A storage floor holds one chest with the table `chests/fallen_watchtower_store`: arrows, food, and iron.
+- The roof has the core, the vault, a dais, the captain, and 2 archers. A lookout platform overhangs the wall by one
+  block on corbels. It has merlons and a lit watch fire in two corners.
+- The foundation and the door steps run down to the ground, so a slope of 4 still has a way in.
+
+### The garrison
+
+`GarrisonObjective` spawns one mob at each marker. The tower has 11 to 16 mobs: 2 or 3 on every floor, 3 on the roof.
+Every mob carries the box of the shaft's inside and its post. `WatchtowerMobs.keepInside` puts a mob back on its post when
+it stands outside that box, so a retreat cannot carry an archer out through the breach.
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `watch_archer` | skeleton, green leather cap | keeps inside the shaft | `hawkfeather` 1 at 50% |
+| `tower_crossbowman` | pillager, iron helmet | keeps inside the shaft | `signal_ember` 1 at 40% |
+| `watch_captain` | stray, scale 1.3, health x5, damage x1.5, boss | keeps inside; every 200 ticks 3 arrows in a 9 degree fan | `hawkfeather` 3 to 4, `captains_insignia` 1 |
+
+### Rewards
+
+- Set `hawkeye`: defense 3, 7, 5, 2, toughness 1. Hawkfeather repairs it. Each piece is 2 to 3 Hawkfeathers and leather.
+  2 pieces: +10% movement speed. 4 pieces: arrows hit 20% harder. The 4 piece bonus has no attribute, so its lore line is empty.
+- Unique `hawkeye_longbow`: every fifth arrow pierces 2 targets and gives each target Glowing for 100 ticks. The pierce
+  level has no public setter, so the fifth arrow is replaced by one that is built from the bow with Piercing II on it.
+- Vault table `chests/fallen_watchtower`: 4 to 8 Hawkfeathers, arrows, iron, and emeralds.
+- Textures come from `tools/specs/fallen_watchtower.json` and `tools/ruin_textures.py`.
+
+### Tests
+
+`WatchtowerPlanGameTest`, `WatchtowerLayoutGameTest`, `WatchtowerWorldGameTest`, `WatchtowerObjectiveGameTest`,
+`WatchtowerMobsGameTest`, `WatchtowerRewardsGameTest`, and `WatchtowerSiteGameTest`, all listed in the gametest
+`fabric.mod.json`. The world tests walk 24 seeds under every rotation, and 8 towers on ground 4 blocks low, with a walker
+that climbs 1, falls 3, and needs 2 blocks of head room.
+
+## Ambush Camp
+
+Site id `ambush_camp`, package `com.stella.ruins.site.ambushcamp`. A small surface site: a bandit camp of wool tents
+behind a broken palisade. The Bandit Chief hides invisible in one tent. A decoy bandit waits in each of the others.
+
+- Box 31 x 10 x 31. `Placement.surface(4)`. Reset after 2 days. Activation radius 20. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 702913845, village exclusion 8 chunks.
+- The site roster is empty. The objective spawns every mob at its own marker, because the framework roster spawns every
+  kind at the same `spawn` markers.
+
+### The plan
+
+`CampPlan.derive(RandomSource)` draws everything random and holds every block of the camp as a function of the seed.
+It reads no world block. The layout and the tests both read it.
+
+- Octagon palisade with 2 to 4 gaps of 2 or 3 blocks. One gap is the trail gap and has a worn path out to the bounds edge.
+  Posts stand 3 to 5 high, 12 percent are snapped to 2, and posts beside a gap stay low.
+- Two lookout towers on 2 of the 4 corners. The ladder faces the fire. The platform is on y5, the flag pole reaches y9.
+- 3 to 6 wool tents, 5 x 5, in distinct colours at random spots. The door faces the fire. Every tent has the same shape and
+  the same furniture, so the blocks never give the Chief away.
+- Campfire at a random spot with four log seats. The core is a tally post two blocks north of the fire. The vault sits
+  in the first of 2 or 3 supply piles of barrels. Weapon rack, hay bales, three lanterns on the palisade, trampled ground.
+- A draw is rejected when the tents do not fit, or when a flood fill from the trail misses the core, the vault, a tent
+  door or a tower ladder. The next draw continues the same random stream. Over 3000 test seeds every plan connects.
+- Markers: `core`, `vault`, `tent.N` (tent floor centre), `door.N` (the step in front of the door), `spawn.bandit`
+  (patrol cells), `spawn.lookout` (tower platforms, y6) and `trail`.
+
+### The objective
+
+`ChiefObjective` picks the Chief's tent from the run random on every activation. It never picks the tent of the last
+Chief of the same camp. The core wipes the objective on every reset, so `CampMemory` (saved data) holds that tent.
+
+- Activation spawns 8 bandits (one decoy in each other tent, the rest on patrol markers), 2 lookouts, and the Chief.
+  The Chief spawns invisible, gearless, and with no AI, so he stands where he hid.
+- A lit candle stands at the door of the Chief's tent and at the door of one random decoy tent. They go out when the core
+  completes. This is the only tell. A block tell cannot work, because the blocks do not change between resets.
+- The Chief reveals when a non-spectator player stands within 4 blocks, or when anything hits him.
+  The reveal gives him his hood and axe, sets every ruin mob within 48 blocks on the player, and makes each lookout fire
+  a flare (firework sparks and a rocket sound). It also writes the reveal time into the objective.
+- 100 ticks after the reveal, on `RuinClock`, 2 more bandits arrive at the `trail` marker.
+- The Chief's death completes the core, even with other bandits alive.
+
+### Mobs and rewards
+
+| Kind | Base | Look | Drop |
+|---|---|---|---|
+| `bandit` | vindicator | brown leather hood, iron axe | `bandits_mark` 1 at 20% |
+| `lookout` | skeleton | leather cap, bow | `stolen_coin` 1 to 3 at 60% |
+| `bandit_chief` | vindicator | scale 1.2, health x5, boss | `bandits_mark` 2 to 3, `chiefs_ledger` 1 |
+
+- Vault table `chests/ambush_camp`: 2 to 3 marks, 4 to 10 coins, emeralds, iron, leather.
+- Affix `bandits_mark`: +10% attack damage on swords, axes and maces, and a 10% chance that a hit adds half its damage as a
+  crit (through the attack hook, because the game has no crit chance attribute). The template is crafted from 1
+  `chiefs_ledger` and 8 `stolen_coin`, then used at the smithing table with a `bandits_mark`.
+- Unique `cutthroats_cloak`, a light chestplate. After the wearer takes a hit, Invisibility for 60 ticks, then 600 ticks of rest.
+
+### Files and tests
+
+- Item textures come from `tools/specs/ambush_camp.json` and `tools/ruin_textures.py`. The set entry only makes the cloak's
+  armor layer. Its four item files were removed, because the cloak is the only piece.
+- Tests: `CampPlanGameTest`, `ChiefObjectiveGameTest`, `CampMobsGameTest`, `CampRewardsGameTest`, `CampSiteGameTest`,
+  all listed in the gametest `fabric.mod.json`.
 
 ## Spider Nest
 

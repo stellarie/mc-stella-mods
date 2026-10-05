@@ -1,0 +1,10 @@
+{
+	"variants": {
+		"armed=true": {
+			"model": "mod-stella-ruins:block/vault_drop_plate_armed"
+		},
+		"armed=false": {
+			"model": "mod-stella-ruins:block/vault_drop_plate_dark"
+		}
+	}
+}

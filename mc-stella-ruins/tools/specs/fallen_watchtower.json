@@ -1,0 +1,18 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"feather": ["#1f2a10", "#4c6a22", "#8fb43c", "#cfe874", "#f7ffd0"],
+		"ember": ["#3a0f06", "#8a2a10", "#e0601c", "#ffa845", "#fff0b0"],
+		"insignia": ["#2a2410", "#6e5a1a", "#c9a227", "#f2d768", "#fffbe0"],
+		"hawk": ["#17240e", "#3f5d1e", "#7a9e34", "#b9d86a", "#eaffb0"]
+	},
+	"items": [
+		{"id": "hawkfeather", "template": "feather", "palette": "feather"},
+		{"id": "signal_ember", "template": "gem", "palette": "ember"},
+		{"id": "captains_insignia", "template": "gem", "palette": "insignia"},
+		{"id": "hawkeye_longbow", "template": "bow", "palette": "hawk"}
+	],
+	"sets": [
+		{"id": "hawkeye", "asset": "hawkeye", "palette": "hawk"}
+	]
+}
