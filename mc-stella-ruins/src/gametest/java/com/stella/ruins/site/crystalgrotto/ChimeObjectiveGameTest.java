@@ -24,7 +24,7 @@ import net.minecraft.world.level.block.Rotation;
 
 /** Items 4 to 8, and the sketch review additions: the chime order, the strikes, the replay and the spokes. */
 public class ChimeObjectiveGameTest {
-	static final int TICKS = 6000;
+	static final int TICKS = GrottoTestSupport.ARENA_TICKS;
 	static final long SEED = 0x61A770L;
 
 	private static boolean orderIsValid(final int[] order, final int pillars) {
