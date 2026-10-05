@@ -1,0 +1,60 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"seal": [
+			"#2b1a05",
+			"#7a5412",
+			"#d9a21b",
+			"#ffd75e",
+			"#fff6c9"
+		],
+		"void": [
+			"#07030f",
+			"#2a1250",
+			"#5a2aa6",
+			"#a06bff",
+			"#e7d4ff"
+		],
+		"dust": [
+			"#1a1a1f",
+			"#3d3b49",
+			"#6c6a7c",
+			"#a6a4b8",
+			"#e4e2f2"
+		],
+		"abyss": [
+			"#050208",
+			"#1c0c3a",
+			"#3c1d7a",
+			"#8a4dff",
+			"#d9c2ff"
+		]
+	},
+	"items": [
+		{
+			"id": "vault_seal",
+			"template": "gem",
+			"palette": "seal"
+		},
+		{
+			"id": "void_essence",
+			"template": "gem",
+			"palette": "void"
+		},
+		{
+			"id": "vault_dust",
+			"template": "shard",
+			"palette": "dust"
+		},
+		{
+			"id": "void_touched_affix",
+			"template": "shard",
+			"palette": "void"
+		},
+		{
+			"id": "abyssal_edge",
+			"template": "sword",
+			"palette": "abyss"
+		}
+	]
+}

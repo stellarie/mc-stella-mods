@@ -212,6 +212,84 @@ Known limits:
 - A wave mob that stands in an unloaded chunk when a rite is abandoned stays until a player kills it.
 - Sunburn is proved at noon in a game test. Feel and look are for a client.
 
+## Sealed Vault
+
+Site id `sealed_vault`, package `com.stella.ruins.site.sealedvault`. A large cave site at the bottom of the world: two
+levels of a 7 x 7 maze. Three seals rest in three of six rooms while the Vault Warden hunts the player. Three seals used on
+the core open the inner vault, which pays out once.
+
+- Box 56 x 24 x 64. The maze fills the north 56 blocks. The south 8 blocks and the 3-block shell hold a 1-wide, 3-high
+  tunnel, 11 blocks long, and a 3 x 5 gate. The tunnel reaches the south face. It leads on to cave air only when a cave
+  lies there. Otherwise the clue map still leads the player to a dead end.
+- `Placement.cave(-58, -16, 16)`: the floor is at Y -58 or higher and the top is at Y -16 or lower. `Claim.once()`.
+  Activation radius 28. Clue weight 1.
+- Structure set: spacing 56, separation 20, salt 512830417, village exclusion 8 chunks.
+- Layers: y0-1 base, y2-7 level 0, y8 slab (1 thick), y9-14 level 1, y15-17 roof, y18-23 capstone. Cell pitch 7 (6 open,
+  1 wall). A passage is 3 wide and 5 high.
+
+### The plan
+
+`VaultPlan.derive(RandomSource)` draws everything random and holds no block. The layout, the Warden's guide, and the tests
+all read it. The draw order is fixed: entrance, level 1 maze, level 0 maze, loops, stairs, lair, candidates, seals,
+traps, wraith cells.
+
+- Mazes: recursive backtracker on 49 cells (level 1, starts at the entrance) and 48 cells (level 0, the centre cell is the
+  inner vault). 10% of the remaining walls open as loops: 4 on level 1 and 3 on level 0.
+- Two stairs join the levels. A stair cell has no west passage on either level, because its flight runs along the west lane.
+- The Warden's lair is the level 0 cell farthest from the stairs.
+- Six candidate seal rooms, three per level: dead ends first, then the farthest from the entrance (level 1) or the stairs
+  (level 0). Three of the six hold a seal, with at least one on each level (18 combinations).
+- 2 to 4 trap corridors, each a straight corridor cell. A corridor on level 1 over a level 0 dead end that opens along the same
+  axis, within 8 cells of a stair, is a void drop when one is free. Every other trap is an arrow trap.
+- 6 wraith cells from the free cells.
+
+### Walls, seals, traps
+
+- `vault_wall` and `vault_floor` make the whole box. Neither can be mined while its vault is not complete, and neither can be
+  blown up. After completion each mines like deepslate. A woken vault is listed in `VaultRegistry` (saved data), and a wall
+  reads that list, so a miner cannot skip the maze.
+- A seal is the block `vault_seal` on a plinth. A player breaks it and gets one `vault_seal` item. Explosions leave it.
+- A trap corridor holds a row of 6 hidden plates across its middle. A player on an armed plate fires the trap and the whole
+  row goes dark.
+  - Arrow corridor: four `vault_vent` blocks in the walls each shoot one arrow.
+  - Drop corridor: 18 `vault_pit_cover` blocks open, a 6 x 3 pit. The player falls 3 blocks onto a catch dais, then steps
+    off into the dead end.
+  - After 100 ticks the pit closes and the row rearms. A server tick counter and a scheduled block tick both do this.
+- Stairs: a switchback in a stair cell and a spiral from the core room to the inner vault (the spiral is too tight for the
+  Warden, so the Warden never uses it).
+
+### The objective and the hunt
+
+`VaultObjective` wraps `Objectives.keys(vault_seal, 3)`. At activation it lists the vault and spawns the whole roster at
+the markers of each kind: 8 guardians, 6 wraiths, 1 Warden. The site roster is empty.
+
+- The Warden (wither skeleton, scale 1.8, health x10, boss) hunts the nearest player inside the bounds, through walls.
+  It reads the plan of its own vault (`VaultGuide`), finds the route from cell to cell through the stairs, and walks one leg
+  at a time. It heals 2 health a second while no player is within 16 blocks. It cannot leave the bounds.
+- Within 16 blocks of the Warden a player hears a heartbeat every 40 ticks. Within 8 blocks the player has Darkness.
+- Void Wraiths (vex, health x3) give Darkness for 60 ticks with a hit, and cannot leave the bounds.
+  Vault Guardians (husk, scale 1.2, health x3, netherite helmet) have no ability.
+
+### Mobs and rewards
+
+| Kind | Drop |
+|---|---|
+| `void_wraith` | `void_essence` at 40% |
+| `vault_guardian` | `vault_dust` 1 to 2 at 60% |
+| `vault_warden` | `void_essence` 3 to 5 |
+
+- Vault table `chests/sealed_vault`: 1 `void_touched_affix`, 4 to 8 `void_essence`, 2 to 5 diamonds, 1 to 3 netherite scrap
+  at 60%, 4 to 10 emeralds.
+- Affix `void_touched` (addition: `void_essence`; swords, axes, maces, tridents, bows, crossbows): a hit adds 15% of its damage
+  as magic damage that armor does not reduce, and heals the holder by 5% of its damage.
+- Unique `abyssal_edge` (netherite sword): a kill opens a void rift for 60 ticks that pulls hostile mobs within 4 blocks.
+
+### Files
+
+- Block assets use vanilla textures. Item textures come from `tools/specs/sealed_vault.json` and `tools/ruin_textures.py`.
+- Tests: `VaultPlanGameTest`, `VaultLayoutGameTest`, `VaultBlocksGameTest`, `VaultMobsGameTest`, `VaultRewardsGameTest`,
+  `VaultSiteGameTest`, all listed in the gametest `fabric.mod.json`.
+
 ## Crystal Grotto
 
 Site id `crystal_grotto`, package `com.stella.ruins.site.crystalgrotto`. A small cave site: a geode chamber of singing

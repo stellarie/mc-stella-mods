@@ -44,6 +44,7 @@ import net.minecraft.world.phys.Vec3;
 /** Items 8 to 10: the Silkweave recipes, the bow, Widow's Fang, and the drops and tables of the nest. */
 public class NestRewardsGameTest {
 	static final int ROLLS = 4000;
+	static final int DRAW_SHOTS = 64;
 	/** A shot's speed varies a little: the arrow's aim gets a random spread that is not normalized again. */
 	static final float ARROW_SPREAD = 0.08F;
 
@@ -127,6 +128,17 @@ public class NestRewardsGameTest {
 	}
 
 	private static float arrowSpeed(final GameTestHelper helper, final ServerPlayer player, final Item bowItem, final int held) {
+		player.getInventory().setItem(9, new ItemStack(Items.ARROW, DRAW_SHOTS));
+		double total = 0.0;
+		for (int shot = 0; shot < DRAW_SHOTS; shot++) {
+			float speed = shotSpeed(helper, player, bowItem, held);
+			helper.assertTrue(speed > 0.0F, "no arrow from draw " + held + ", shot " + shot);
+			total += speed;
+		}
+		return (float) (total / DRAW_SHOTS);
+	}
+
+	private static float shotSpeed(final GameTestHelper helper, final ServerPlayer player, final Item bowItem, final int held) {
 		ServerLevel level = helper.getLevel();
 		ItemStack bow = new ItemStack(bowItem);
 		player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, bow);
@@ -137,7 +149,7 @@ public class NestRewardsGameTest {
 		bowItem.releaseUsing(bow, level, player, duration - held);
 		float speed = -1.0F;
 		for (AbstractArrow arrow : level.getEntitiesOfClass(AbstractArrow.class, area)) {
-			if (!before.contains(arrow.getUUID())) {
+			if (arrow.getOwner() == player && !before.contains(arrow.getUUID())) {
 				speed = (float) arrow.getDeltaMovement().length();
 				arrow.discard();
 			}
@@ -151,21 +163,30 @@ public class NestRewardsGameTest {
 		player.getInventory().setItem(9, new ItemStack(Items.ARROW, 64));
 		helper.assertTrue(!player.getProjectile(new ItemStack(Items.BOW)).isEmpty(), "the test player found no arrows in its inventory");
 		BowItem plain = (BowItem) Items.BOW;
+		int plainFullTicks = 0;
+		while (BowItem.getPowerForTime(plainFullTicks) < 1.0F) {
+			plainFullTicks++;
+		}
+		int silkFullTicks = 0;
+		while (Math.ceil(silkFullTicks * SilkstringBow.DRAW_FACTOR) < plainFullTicks) {
+			silkFullTicks++;
+		}
 		StringBuilder log = new StringBuilder();
-		for (int held : new int[] {6, 8, 10, 12, 15, 17, 20}) {
+		for (int held : new int[] {6, 8, 10, 12, 15, silkFullTicks, plainFullTicks}) {
+			int expectedTicks = (int) Math.ceil(held * SilkstringBow.DRAW_FACTOR);
 			float silk = arrowSpeed(helper, player, NestItems.SILKSTRING_BOW, held);
-			float same = arrowSpeed(helper, player, plain, SilkstringBow.effectiveTicks(held));
+			float same = arrowSpeed(helper, player, plain, expectedTicks);
 			float slower = arrowSpeed(helper, player, plain, held);
 			log.append(held).append(':').append(silk).append('/').append(same).append('/').append(slower).append(' ');
-			helper.assertTrue(silk > 0.0F && Math.abs(silk - same) < ARROW_SPREAD, "a draw of " + held + " ticks gave " + silk + ", the plain draw of " + SilkstringBow.effectiveTicks(held) + " gave " + same);
-			helper.assertTrue(held >= 17 || silk > slower + 0.01F, "a draw of " + held + " ticks was not faster than the plain bow: " + silk + " vs " + slower);
+			helper.assertTrue(silk > 0.0F && Math.abs(silk - same) < ARROW_SPREAD, "a draw of " + held + " ticks gave " + silk + ", the plain draw of " + expectedTicks + " gave " + same);
+			helper.assertTrue(held >= silkFullTicks || silk > slower + 0.01F, "a draw of " + held + " ticks was not faster than the plain bow: " + silk + " vs " + slower);
 		}
-		float full = arrowSpeed(helper, player, NestItems.SILKSTRING_BOW, 17);
-		float plainSixteen = arrowSpeed(helper, player, plain, 16);
-		NestTestSupport.result("bowDraw", log + "full17=" + full + " plain16=" + plainSixteen);
-		helper.assertTrue(Math.abs(full - 3.0F) < ARROW_SPREAD, "the silk bow at 17 ticks is not at full power: " + full);
-		helper.assertTrue(plainSixteen < 3.0F - 0.05F, "the plain bow was already at full power at 16 ticks");
-		helper.assertTrue(Math.abs(SilkstringBow.DRAW_FACTOR - 1.2) < 1.0E-9, "the draw factor moved");
+		float full = arrowSpeed(helper, player, NestItems.SILKSTRING_BOW, silkFullTicks);
+		float plainPartial = arrowSpeed(helper, player, plain, silkFullTicks);
+		float plainFull = arrowSpeed(helper, player, plain, plainFullTicks);
+		NestTestSupport.result("bowDraw", "shotsPerDraw=" + DRAW_SHOTS + " " + log + "fullTicks=" + silkFullTicks + " full=" + full + " plainPartial=" + plainPartial);
+		helper.assertTrue(Math.abs(full - plainFull) < ARROW_SPREAD, "the silk bow was not at full power after " + silkFullTicks + " ticks");
+		helper.assertTrue(silkFullTicks < plainFullTicks && full > plainPartial + 0.01F, "the silk bow reached full power no sooner than the plain bow");
 		NestTestSupport.leave(helper, player);
 		helper.succeed();
 	}
