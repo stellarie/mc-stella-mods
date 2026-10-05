@@ -14,10 +14,12 @@ The spec is JSON:
     "namespace": "mod-stella-ruins",
     "palettes": {"name": ["#outline", "#shadow", "#base", "#light", "#highlight"]},
     "items": [{"id": "x_ingot", "template": "ingot", "palette": "name"}],
-    "sets": [{"id": "x", "asset": "x", "palette": "name"}]
+    "sets": [{"id": "x", "asset": "x", "palette": "name"}],
+    "pieces": [{"id": "x_helmet", "armor": "helmet", "asset": "x", "palette": "name"}]
   }
 A set writes four armor items (`<id>_helmet`, `_chestplate`, `_leggings`, `_boots`), the equipment asset,
-and both humanoid layer textures. The tool uses the Python standard library only.
+and both humanoid layer textures. A piece writes one armor item and the same asset and layers. The tool
+uses the Python standard library only.
 """
 
 import argparse
@@ -30,7 +32,7 @@ import tempfile
 import zlib
 
 SIZE = 16
-ITEM_TEMPLATES = ("ingot", "shard", "feather", "gem", "map", "sword", "axe", "bow")
+ITEM_TEMPLATES = ("ingot", "shard", "feather", "gem", "map", "sword", "axe", "bow", "pickaxe", "compass")
 ARMOR_TYPES = ("helmet", "chestplate", "leggings", "boots")
 HANDHELD = ("sword", "axe")
 WOOD = [(52, 34, 18), (84, 56, 28), (120, 84, 44), (150, 108, 60), (176, 132, 78)]
@@ -223,6 +225,38 @@ def draw_bow(c, pal, pull=-1):
         c.put(12, 7, pal[4])
 
 
+def draw_pickaxe(c, pal):
+    for i in range(11):
+        c.put(2 + i, 14 - i, WOOD[2])
+        c.put(3 + i, 14 - i, WOOD[1])
+    for i in range(0, 11, 3):
+        c.put(3 + i, 13 - i, WOOD[3])
+    rows = [(2, 8, 13), (3, 6, 15), (4, 6, 7), (4, 14, 15), (5, 6, 6), (5, 15, 15)]
+    for y, x0, x1 in rows:
+        for x in range(x0, x1 + 1):
+            color = pal[2]
+            if x == x0:
+                color = pal[1]
+            if x == x1:
+                color = pal[4]
+            if y == 2:
+                color = pal[3]
+            c.put(x, y, color)
+    c.put(11, 3, pal[3])
+    c.put(12, 3, pal[3])
+
+
+def draw_compass(c, pal):
+    rows = [(3, 6, 9), (4, 5, 10), (5, 4, 11), (6, 4, 11), (7, 4, 11), (8, 4, 11), (9, 4, 11), (10, 5, 10), (11, 6, 9)]
+    spans(c, rows, pal, light_top=2)
+    c.line(6, 10, 9, 5, pal[1])
+    c.line(7, 10, 10, 6, pal[2])
+    c.line(9, 6, 10, 9, pal[4])
+    c.line(9, 5, 10, 8, pal[3])
+    c.put(9, 4, pal[4])
+    c.put(6, 11, pal[0])
+
+
 def draw_helmet(c, pal):
     spans(c, [(2, 6, 9), (3, 5, 10), (4, 4, 11), (5, 3, 12), (6, 3, 12), (7, 3, 12), (8, 3, 12), (9, 3, 5), (10, 3, 5), (11, 3, 4)], pal)
     spans(c, [(9, 10, 12), (10, 10, 12), (11, 11, 12)], pal, light_top=0)
@@ -268,7 +302,7 @@ def draw_boots(c, pal):
 
 DRAWERS = {
     "ingot": draw_ingot, "shard": draw_shard, "feather": draw_feather, "gem": draw_gem, "map": draw_map,
-    "sword": draw_sword, "axe": draw_axe, "bow": draw_bow,
+    "sword": draw_sword, "axe": draw_axe, "bow": draw_bow, "pickaxe": draw_pickaxe, "compass": draw_compass,
     "helmet": draw_helmet, "chestplate": draw_chestplate, "leggings": draw_leggings, "boots": draw_boots,
 }
 
@@ -376,6 +410,18 @@ def write_set(out, ns, set_id, asset, pal):
     write_png(os.path.join(base, "humanoid_leggings", asset + ".png"), humanoid_layer(pal, True))
 
 
+def write_piece(out, ns, item_id, pal, armor="helmet", asset=None):
+    """One armor item on its own, with the equipment asset its layer needs."""
+    asset = asset or item_id
+    write_item(out, ns, item_id, armor, pal)
+    write_json(os.path.join(out, "equipment", asset + ".json"), {"layers": {
+        "humanoid": [{"texture": f"{ns}:{asset}"}],
+        "humanoid_leggings": [{"texture": f"{ns}:{asset}"}]}})
+    base = os.path.join(out, "textures", "entity", "equipment")
+    write_png(os.path.join(base, "humanoid", asset + ".png"), humanoid_layer(pal, False))
+    write_png(os.path.join(base, "humanoid_leggings", asset + ".png"), humanoid_layer(pal, True))
+
+
 def generate(spec, out):
     ns = spec["namespace"]
     palettes = {name: parse_palette(values) for name, values in spec.get("palettes", {}).items()}
@@ -385,7 +431,7 @@ def generate(spec, out):
             raise ValueError("unknown palette " + name)
         return palettes[name]
 
-    written = {"items": 0, "sets": 0}
+    written = {"items": 0, "sets": 0, "pieces": 0}
     for item in spec.get("items", []):
         if item["template"] not in DRAWERS:
             raise ValueError("unknown template " + item["template"])
@@ -394,6 +440,12 @@ def generate(spec, out):
     for entry in spec.get("sets", []):
         write_set(out, ns, entry["id"], entry.get("asset", entry["id"]), palette(entry["palette"]))
         written["sets"] += 1
+    for entry in spec.get("pieces", []):
+        armor = entry.get("armor", "helmet")
+        if armor not in ARMOR_TYPES:
+            raise ValueError("unknown armor piece " + armor)
+        write_piece(out, ns, entry["id"], palette(entry["palette"]), armor, entry.get("asset"))
+        written["pieces"] += 1
     return written
 
 
@@ -477,6 +529,7 @@ def validate(spec, out):
     item_ids = [item["id"] for item in spec.get("items", [])]
     for entry in spec.get("sets", []):
         item_ids += [f"{entry['id']}_{armor}" for armor in ARMOR_TYPES]
+    item_ids += [entry["id"] for entry in spec.get("pieces", [])]
     for item_id in item_ids:
         definition = load_json(os.path.join(out, "items", item_id + ".json"))
         count["definitions"] += 1
@@ -495,7 +548,7 @@ def validate(spec, out):
                 namespace, tpath = split(texture)
                 check_png(os.path.join(out, "textures", tpath + ".png"), SIZE, SIZE, 20)
                 count["item_textures"] += 1
-    for entry in spec.get("sets", []):
+    for entry in list(spec.get("sets", [])) + list(spec.get("pieces", [])):
         asset = entry.get("asset", entry["id"])
         equipment = load_json(os.path.join(out, "equipment", asset + ".json"))
         count["equipment"] += 1

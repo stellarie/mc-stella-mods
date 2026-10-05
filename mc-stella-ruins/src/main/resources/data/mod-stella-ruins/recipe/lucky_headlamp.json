@@ -1,0 +1,15 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"key": {
+		"X": "mod-stella-ruins:gleaming_ore_chunk",
+		"L": "minecraft:torch"
+	},
+	"pattern": [
+		"XXX",
+		"XLX"
+	],
+	"result": {
+		"id": "mod-stella-ruins:lucky_headlamp"
+	}
+}
