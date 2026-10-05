@@ -43,7 +43,8 @@
 			"com.stella.spells.RpgDurationsGameTest",
 			"com.stella.spells.ChainLightningGameTest",
 			"com.stella.spells.SpellStatusGameTest",
-			"com.stella.spells.AwakeningGameTest"
+			"com.stella.spells.AwakeningGameTest",
+			"com.stella.spells.SummonCompanionGameTest"
 		]
 	},
 	"depends": {

@@ -87,7 +87,7 @@ public class SpellbookCatalogGameTest {
 		new RecipeEntry("bulwark_hymn", Items.GLISTERING_MELON_SLICE),
 		new RecipeEntry("tailwind", Items.RABBIT_FOOT),
 		new RecipeEntry("battle_hymn", Items.GLOWSTONE_DUST),
-		new RecipeEntry("summon_skeleton", Items.BONE_BLOCK)
+		new RecipeEntry("summon_skeleton", Items.BONE)
 	);
 	private static final Set<Identifier> EXPECTED_IDS = EXPECTED_BOOKS.stream()
 		.map(RecipeEntry::id)

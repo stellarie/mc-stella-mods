@@ -17,14 +17,15 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.item.ItemStack;
 
-/** One saved gear and pack snapshot per owner, held on the Overworld across deaths and dimensions. */
+/** One saved gear, pack and growth snapshot per owner, held on the Overworld across deaths and dimensions. */
 final class SummonInventoryStore {
-	private record Kit(UUID owner, List<ItemStack> gear, List<ItemStack> pack, String name) {
+	private record Kit(UUID owner, List<ItemStack> gear, List<ItemStack> pack, String name, SummonSkeleton.Growth growth) {
 		private static final Codec<Kit> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			UUIDUtil.CODEC.fieldOf("owner").forGetter(Kit::owner),
 			ItemStack.OPTIONAL_CODEC.listOf().fieldOf("gear").forGetter(Kit::gear),
 			ItemStack.OPTIONAL_CODEC.listOf().fieldOf("pack").forGetter(Kit::pack),
-			Codec.STRING.optionalFieldOf("name", "").forGetter(Kit::name)
+			Codec.STRING.optionalFieldOf("name", "").forGetter(Kit::name),
+			SummonSkeleton.Growth.CODEC.optionalFieldOf("growth", SummonSkeleton.FRESH).forGetter(Kit::growth)
 		).apply(instance, Kit::new));
 	}
 
@@ -58,7 +59,7 @@ final class SummonInventoryStore {
 		List<Kit> previous = world.getAttached(TYPE);
 		List<Kit> updated = new ArrayList<>(previous == null ? List.of() : previous);
 		updated.removeIf(kit -> kit.owner().equals(owner));
-		updated.add(new Kit(owner, List.copyOf(gear), List.copyOf(pack), name));
+		updated.add(new Kit(owner, List.copyOf(gear), List.copyOf(pack), name, SummonSkeleton.growth(skeleton)));
 		world.setAttached(TYPE, List.copyOf(updated));
 	}
 
@@ -84,6 +85,8 @@ final class SummonInventoryStore {
 		if (!kit.name().isEmpty()) {
 			skeleton.setCustomName(Component.literal(kit.name()));
 		}
+		SummonSkeleton.Growth growth = kit.growth();
+		SummonSkeleton.restoreGrowth(skeleton, growth.level(), growth.xp(), growth.stats());
 		return true;
 	}
 }
