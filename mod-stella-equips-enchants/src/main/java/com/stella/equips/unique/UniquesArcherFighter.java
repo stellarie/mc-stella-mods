@@ -23,6 +23,14 @@ import com.stella.equips.unique.af.JohnnysAxe;
 import com.stella.equips.unique.af.VenomDirk;
 import com.stella.equips.unique.af.BurrowerShiv;
 import com.stella.equips.unique.af.WitheringGreatsword;
+import com.stella.equips.unique.af.DuneriderLance;
+import com.stella.equips.unique.af.AbyssalSpear;
+import com.stella.equips.unique.af.SearingGelGreaves;
+import com.stella.equips.unique.af.NetherStarBlade;
+import com.stella.equips.unique.af.AbyssalSpinesword;
+import com.stella.equips.unique.af.SovereignFlamberge;
+import com.stella.equips.unique.af.WidowsFang;
+import com.stella.equips.unique.af.RabidTusk;
 
 /** The archer and fighter uniques of the second slice. W002 owns this file. */
 public final class UniquesArcherFighter {
@@ -51,5 +59,13 @@ public final class UniquesArcherFighter {
 		VenomDirk.register();
 		BurrowerShiv.register();
 		WitheringGreatsword.register();
+		DuneriderLance.register();
+		AbyssalSpear.register();
+		SearingGelGreaves.register();
+		NetherStarBlade.register();
+		AbyssalSpinesword.register();
+		SovereignFlamberge.register();
+		WidowsFang.register();
+		RabidTusk.register();
 	}
 }

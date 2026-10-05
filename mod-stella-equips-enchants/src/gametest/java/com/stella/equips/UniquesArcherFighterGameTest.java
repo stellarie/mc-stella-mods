@@ -24,6 +24,15 @@ import com.stella.equips.unique.af.JohnnysAxe;
 import com.stella.equips.unique.af.VenomDirk;
 import com.stella.equips.unique.af.BurrowerShiv;
 import com.stella.equips.unique.af.WitheringGreatsword;
+import com.stella.equips.unique.af.DuneriderLance;
+import com.stella.equips.unique.af.AbyssalSpear;
+import com.stella.equips.unique.af.SearingGelGreaves;
+import com.stella.equips.unique.af.NetherStarBlade;
+import com.stella.equips.unique.af.AbyssalSpinesword;
+import com.stella.equips.unique.af.SovereignFlamberge;
+import com.stella.equips.unique.af.WidowsFang;
+import com.stella.equips.unique.af.RabidTusk;
+import net.minecraft.world.damagesource.DamageSource;
 import com.stella.equips.unique.UniqueRank;
 import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.core.BlockPos;
@@ -1040,5 +1049,123 @@ public class UniquesArcherFighterGameTest {
 		meleeKillSpreadAt15(helper, WitheringGreatsword.ID, MobEffects.WITHER, WitheringGreatsword.TUNING.ticksPlus12(),
 			WitheringGreatsword.TUNING.amplifier(), WitheringGreatsword.TUNING.spreadTicks(), WitheringGreatsword.TUNING.spreadAmplifier(),
 			WitheringGreatsword.TUNING.spreadRadius());
+	}
+
+	@GameTest public void duneriderLanceScalesOnlyWhileMoving(final GameTestHelper helper) {
+		UniqueContext still = connectedContext(helper, DuneriderLance.ID, 0, 1.5);
+		UniqueContext moving = connectedContext(helper, DuneriderLance.ID, 0, 5.5);
+		moving.holder().setSprinting(true);
+		float stillDamage = melee(helper, still, durableFoe(helper, 2.5, 3.5), 10.0F);
+		float movingDamage = melee(helper, moving, durableFoe(helper, 6.5, 3.5), 10.0F);
+		UniqueTestKit.result("duneriderBase", "still=" + stillDamage + " moving=" + movingDamage);
+		helper.assertTrue(Math.abs(stillDamage - 10.0F) < 0.001
+			&& Math.abs(movingDamage - 10.0F * (1.0F + (float) DuneriderLance.TUNING.bonus())) < 0.001,
+			"mounted or sprint damage gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void abyssalSpearHoldsItsBreathBuffsOnlyAtPlus10(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, AbyssalSpear.ID, Uniques.PLUS_10 - 1, 1.5);
+		UniqueContext at = connectedContext(helper, AbyssalSpear.ID, Uniques.PLUS_10, 5.5);
+		Uniques.byId(AbyssalSpear.ID).effect().everySecond(below);
+		Uniques.byId(AbyssalSpear.ID).effect().everySecond(at);
+		MobEffectInstance belowGrace = below.holder().getEffect(MobEffects.DOLPHINS_GRACE);
+		MobEffectInstance atGrace = at.holder().getEffect(MobEffects.DOLPHINS_GRACE);
+		UniqueTestKit.result("abyssalHeld", "below=" + belowGrace + " at=" + atGrace
+			+ " breathing=" + at.holder().hasEffect(MobEffects.WATER_BREATHING));
+		helper.assertTrue(belowGrace == null && atGrace != null && at.holder().hasEffect(MobEffects.WATER_BREATHING),
+			"held breath buff gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void searingGelGreavesBurnsItsMeleeAttacker(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SearingGelGreaves.ID, 0, 1.5);
+		Mob attacker = foeAt(helper, 2.5, 3.5);
+		Uniques.byId(SearingGelGreaves.ID).effect().afterIncoming(c, helper.getLevel().damageSources().mobAttack(attacker), 10.0F);
+		UniqueTestKit.result("searingBase", "fire=" + attacker.getRemainingFireTicks() + " expected=" + SearingGelGreaves.TUNING.baseTicks());
+		helper.assertTrue(attacker.getRemainingFireTicks() >= SearingGelGreaves.TUNING.baseTicks(), "the melee attacker was not set alight");
+		helper.succeed();
+	}
+
+	@GameTest public void searingGelGreavesPlus15TakesItsShareOfTheBlow(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, SearingGelGreaves.ID, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext at = connectedContext(helper, SearingGelGreaves.ID, Uniques.PLUS_15, 5.5);
+		Mob belowAttacker = foeAt(helper, 2.5, 3.5);
+		Mob atAttacker = foeAt(helper, 6.5, 3.5);
+		float belowBefore = belowAttacker.getHealth();
+		float atBefore = atAttacker.getHealth();
+		Uniques.byId(SearingGelGreaves.ID).effect().afterIncoming(below, helper.getLevel().damageSources().mobAttack(belowAttacker), 10.0F);
+		Uniques.byId(SearingGelGreaves.ID).effect().afterIncoming(at, helper.getLevel().damageSources().mobAttack(atAttacker), 10.0F);
+		float belowLost = belowBefore - belowAttacker.getHealth();
+		float atLost = atBefore - atAttacker.getHealth();
+		UniqueTestKit.result("searingPlus15", "below=" + belowLost + " at=" + atLost);
+		helper.assertTrue(belowLost == 0.0F
+			&& Math.abs(atLost - 10.0F * (float) SearingGelGreaves.TUNING.reflectShare()) < 0.001, "the returned share gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void netherStarBladeBurstsWitherOnAHit(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, NetherStarBlade.ID, 0, 1.5);
+		CHANCE.put(c.holder().getUUID(), true);
+		Mob target = durableFoe(helper, 2.5, 3.5);
+		Mob near = durableFoe(helper, 4.5, 3.5);
+		melee(helper, c, target, 10.0F);
+		MobEffectInstance wither = near.getEffect(MobEffects.WITHER);
+		UniqueTestKit.result("netherStarBase", "near=" + wither + " target=" + target.getEffect(MobEffects.WITHER));
+		helper.assertTrue(wither != null && wither.getDuration() == NetherStarBlade.TUNING.burstTicks()
+			&& wither.getAmplifier() == NetherStarBlade.TUNING.burstAmplifier(), "the wither burst did not reach the neighbour");
+		helper.succeed();
+	}
+
+	@GameTest public void abyssalSpineswordFatiguesOnlyAtPlus15(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, AbyssalSpinesword.ID, Uniques.PLUS_15 - 1, 1.5);
+		UniqueContext at = connectedContext(helper, AbyssalSpinesword.ID, Uniques.PLUS_15, 5.5);
+		Mob belowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob atTarget = durableFoe(helper, 6.5, 3.5);
+		Uniques.byId(AbyssalSpinesword.ID).effect().afterMelee(below, belowTarget,
+			helper.getLevel().damageSources().playerAttack(below.holder()), 10.0F, false, false);
+		Uniques.byId(AbyssalSpinesword.ID).effect().afterMelee(at, atTarget,
+			helper.getLevel().damageSources().playerAttack(at.holder()), 10.0F, false, false);
+		MobEffectInstance belowFatigue = belowTarget.getEffect(MobEffects.MINING_FATIGUE);
+		MobEffectInstance atFatigue = atTarget.getEffect(MobEffects.MINING_FATIGUE);
+		UniqueTestKit.result("abyssalSpines", "below=" + belowFatigue + " at=" + atFatigue);
+		helper.assertTrue(belowFatigue == null && atFatigue != null
+			&& atFatigue.getAmplifier() == AbyssalSpinesword.TUNING.fatigueAmplifier(), "Mining Fatigue gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void sovereignFlambergeSetsItsTargetAlight(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SovereignFlamberge.ID, 0, 1.5);
+		Mob target = durableFoe(helper, 2.5, 3.5);
+		melee(helper, c, target, 10.0F);
+		UniqueTestKit.result("sovereignBase", "fire=" + target.getRemainingFireTicks() + " expected=" + SovereignFlamberge.TUNING.fireTicks());
+		helper.assertTrue(target.getRemainingFireTicks() >= SovereignFlamberge.TUNING.fireTicks(), "the hit did not set the target alight");
+		helper.succeed();
+	}
+
+	@GameTest public void widowsFangSlowsOnlyOnACriticalHit(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, WidowsFang.ID, 0, 1.5);
+		Mob plain = durableFoe(helper, 2.5, 3.5);
+		Mob critical = durableFoe(helper, 4.5, 3.5);
+		DamageSource source = helper.getLevel().damageSources().playerAttack(c.holder());
+		Uniques.byId(WidowsFang.ID).effect().afterMelee(c, plain, source, 10.0F, false, false);
+		Uniques.byId(WidowsFang.ID).effect().afterMelee(c, critical, source, 10.0F, true, false);
+		MobEffectInstance plainSlow = plain.getEffect(MobEffects.SLOWNESS);
+		MobEffectInstance criticalSlow = critical.getEffect(MobEffects.SLOWNESS);
+		UniqueTestKit.result("widowsBase", "plain=" + plainSlow + " critical=" + criticalSlow);
+		helper.assertTrue(plainSlow == null && criticalSlow != null && criticalSlow.getDuration() == WidowsFang.TUNING.baseTicks()
+			&& criticalSlow.getAmplifier() == 3, "the critical-only Slowness gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void rabidTuskBuildsItsBonusOnTheSameTarget(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, RabidTusk.ID, 0, 1.5);
+		Mob target = durableFoe(helper, 2.5, 3.5);
+		float first = melee(helper, c, target, 10.0F);
+		float second = melee(helper, c, target, 10.0F);
+		UniqueTestKit.result("rabidTuskBase", "first=" + first + " second=" + second + " stacks=" + RabidTusk.stacks(c.holder(), target));
+		helper.assertTrue(Math.abs(first - 10.0F) < 0.001
+			&& Math.abs(second - 10.0F * (1.0F + (float) RabidTusk.TUNING.perHit())) < 0.001, "the same-target stack bonus differs");
+		helper.succeed();
 	}
 }
