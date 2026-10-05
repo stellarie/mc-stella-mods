@@ -110,6 +110,12 @@ public final class SummonSkeleton {
 		builder -> builder.persistent(Growth.CODEC)
 	);
 	public static final Growth FRESH = new Growth(0, 0, List.of());
+	/**
+	 * The servant's live level, under {@code mod-stella-spells:servant-level} as a
+	 * {@code Function<Entity, Integer>} that answers its true level or -1 for any other entity. A reader
+	 * needs no class from this mod, and reads the level as it stands now, not as it was at the spawn.
+	 */
+	public static final String LEVEL_SHARE_KEY = "mod-stella-spells:servant-level";
 	/** Each master's skeleton, by the skeleton's id; the skeleton's own tag is the truth, this only finds it. */
 	private static final Map<UUID, UUID> SUMMONED = new ConcurrentHashMap<>();
 	/** The target mode each master last chose: search the ground, or mirror the master's own target. */
@@ -129,6 +135,7 @@ public final class SummonSkeleton {
 			RETIRING.clear();
 			SHARING.remove();
 		});
+		FabricLoader.getInstance().getObjectShare().put(LEVEL_SHARE_KEY, (java.util.function.Function<net.minecraft.world.entity.Entity, Integer>) SummonSkeleton::sharedLevel);
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG)) {
 				if (stale(skeleton)) {
@@ -342,6 +349,9 @@ public final class SummonSkeleton {
 		double best = Double.MAX_VALUE;
 		for (Mob mob : master.level().getEntitiesOfClass(Mob.class, master.getBoundingBox().inflate(GUARD_RADIUS),
 			other -> other.isAlive() && Friends.isFoe(other) && other.distanceToSqr(master) <= GUARD_RADIUS * GUARD_RADIUS)) {
+			if (!sighted(skeleton, master, mob)) {
+				continue;
+			}
 			double distance = mob.distanceToSqr(skeleton);
 			if (distance < best) {
 				best = distance;
@@ -349,6 +359,19 @@ public final class SummonSkeleton {
 			}
 		}
 		return nearest;
+	}
+
+	/**
+	 * Whether the servant may take this foe. Its own line of sight is not the only one: a servant shares
+	 * its master's eyes, so a foe the master sees is one the servant sees, wall or no wall.
+	 */
+	static boolean sighted(final Skeleton skeleton, final ServerPlayer master, final Mob foe) {
+		return skeleton.hasLineOfSight(foe) || master.hasLineOfSight(foe);
+	}
+
+	/** A servant's live level for a reader outside this mod; -1 for anything that is not a servant. */
+	static int sharedLevel(final net.minecraft.world.entity.Entity entity) {
+		return entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG) ? level(skeleton) : -1;
 	}
 
 	/** Every stat point the servant has rolled, one per level. */
