@@ -1,0 +1,14 @@
+{
+	"layers": {
+		"humanoid": [
+			{
+				"texture": "mod-stella-ruins:pilgrim"
+			}
+		],
+		"humanoid_leggings": [
+			{
+				"texture": "mod-stella-ruins:pilgrim"
+			}
+		]
+	}
+}

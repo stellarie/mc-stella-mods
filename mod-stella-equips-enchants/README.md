@@ -366,13 +366,54 @@ count.
 
 ## Slime heart
 
-- Blue and red slimes from `mod-stella-mobs` drop a Slime Heart at 0.01%. It looks like a red slime ball and stacks to 64.
+- Blue and red slimes from `mod-stella-mobs` drop a Slime Heart through the unique drop roller (see Uniques). The base chance is 0.1%.
+  It looks like a red slime ball and stacks to 64.
 - Put an armor piece in the anvil's first slot and a heart in the second. The result holds the heart, for free, and one heart is used.
   A piece holds one heart. Weapons and tools take none.
 - Each worn piece with a heart delays 12.5% of an attack, up to 50% with four pieces. You take the rest at once and the
   delayed part in five equal parts, one each second. The parts are measured after armor and every defense, so the total
   equals the hit without hearts. They can kill.
 - Only attacks split: hits with a living attacker, including arrows and mob spells. Falls, fire, poison, and thorns do not.
+
+## Uniques
+
+A unique is an epic item with one base effect and four refine bonuses, at +7, +10, +12 and +15. Each belongs to one
+job (archer, fighter, mage or priest). The job only describes the item: any player can use it.
+The first unique is the Bonewhisper Bow from the skeleton. Other slices add the rest.
+
+**Drops.** A kill with a credited player rolls each unique of the victim's source on its own. A mob can drop more than one.
+
+- Chance: `0.001 x rank x (1 + 0.5 x Looting + share bonus)`, capped at 1.
+- Rank, the largest that applies: normal 1, elite 3, Nemesis 5, boss 10. A summoned mob has rank 0 and drops nothing.
+  The Wither, Ender Dragon, Warden, Elder Guardian and the Blaze Sovereign always count as bosses.
+- Looting is read from the weapon of the kill, else from the main hand.
+- A drop lands at the victim and the server tells every player: `{player} found {item}!`.
+- The Slime Heart rolls the same way, at the same base chance.
+
+**Shares.** The mod reads and publishes shares by key, so a missing mod changes nothing.
+
+| Key | Type | Direction |
+|---|---|---|
+| `mod-stella-mobs:mob-rank` | `Function<Entity, String>` returning `boss`, `elite`, `summoned` or `normal` | read |
+| `mod-stella-nether:sovereign` | `Predicate<Entity>`, true for the Sovereign | read |
+| `mod-stella-equips-enchants:drop-rate` | `Consumer<ToDoubleBiFunction<ServerPlayer, LivingEntity>>` | published |
+
+Each source given to the `drop-rate` consumer returns an additive bonus, for example 0.25 for +25%.
+
+**Refine.** A unique has no generic refine specials. Durability, the damage or armor per level and the milestone floors
+still apply. The tooltip shows the job, the source mobs, the base effect and one line for each tier. An active tier is gold
+and a locked tier is dark gray.
+
+**Adding a unique.** Call `Uniques.register(new UniqueDef(...))` from a slice class while the mod initializes, add the item to its
+slice item tag under `data/mod-stella-equips-enchants/tags/item/uniques_*`, and draw its icon:
+
+```powershell
+python tools/uniques/icons.py build      # sprites/*.txt to 16x16 PNG textures
+python tools/uniques/icons.py models ID KIND   # item definition and model files
+```
+
+A sprite is a palette block of `char=#RRGGBBAA` lines, a blank line, then 16 rows of 16 characters. `.` is transparent.
+The tool needs Python 3 with Pillow 12.
 
 ## Container loot
 
@@ -423,6 +464,8 @@ the cap, the smith, the bonuses, the tooltip, each special effect at its level a
 the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spellbook refining, and the recipe.
 Shield tests check the refine, held armor, Parry at each level and against arrows, and the one-point cost
 of a block.
+Unique tests check the drop chance and rank, the roll and its drop, the registry (items, tags, models and
+textures), the refine and tooltip rules, the hook dispatch, the shared helpers, and the Bonewhisper Bow.
 
 ## Target platform
 

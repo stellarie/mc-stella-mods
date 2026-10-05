@@ -1,0 +1,19 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"shard": ["#1d1a2e", "#5a4a8c", "#9a86d8", "#d2c4ff", "#fbf6ff"],
+		"ash": ["#1c1c20", "#4a4a52", "#7c7c86", "#b4b4be", "#e6e6ee"],
+		"light": ["#0b2430", "#1f6a82", "#46c1d8", "#9be8f0", "#f2ffff"],
+		"censer": ["#2a1a05", "#7a5210", "#c8921f", "#f2c85a", "#fff2b8"],
+		"robe": ["#2e2a24", "#9a9486", "#d8d2c4", "#f2eee4", "#ffffff"]
+	},
+	"items": [
+		{ "id": "shrine_shard", "template": "shard", "palette": "shard" },
+		{ "id": "pilgrim_ash", "template": "ingot", "palette": "ash" },
+		{ "id": "wisp_light", "template": "gem", "palette": "light" },
+		{ "id": "pilgrims_censer", "template": "gem", "palette": "censer" }
+	],
+	"sets": [
+		{ "id": "pilgrim", "asset": "pilgrim", "palette": "robe" }
+	]
+}

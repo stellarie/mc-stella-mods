@@ -84,7 +84,7 @@ final class MobImbue {
 		switch (spell) {
 			case "spark_shot" -> {
 				hurt(level, wielder, owner, victim, power, SpellCasting.DAMAGE);
-				victim.igniteForTicks(ticks(duration, MobSpellTimings.SPARK_BURN_TICKS));
+				victim.igniteForTicks(ticks(duration, SpellNumbers.SPARK_SHOT.extra().ticks()));
 			}
 			case "frostbind" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 1));
 			case "briar_snare" -> effect(wielder, victim, new MobEffectInstance(MobEffects.SLOWNESS, ticks(duration, 80), 3));
@@ -101,7 +101,7 @@ final class MobImbue {
 			case "wither_seal" -> effect(wielder, victim, new MobEffectInstance(MobEffects.WITHER, ticks(duration, 100), 1));
 			case "ice_lance" -> {
 				hurt(level, wielder, owner, victim, power, MoreSpells.ICE_LANCE_DAMAGE);
-				MoreSpells.freeze(victim, ticks(duration, MobSpellTimings.ICE_LANCE_FREEZE_TICKS));
+				MoreSpells.freeze(victim, ticks(duration, MoreSpells.ICE_LANCE_FREEZE_TICKS));
 			}
 			case "soul_siphon" -> {
 				float before = victim.getHealth();
@@ -110,15 +110,15 @@ final class MobImbue {
 			}
 			case "venom_dart" -> {
 				hurt(level, wielder, owner, victim, power, MoreSpells.VENOM_DAMAGE);
-				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(duration, MobSpellTimings.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
+				effect(wielder, victim, new MobEffectInstance(MobEffects.POISON, ticks(duration, MoreSpells.VENOM_TICKS), MoreSpells.VENOM_AMPLIFIER));
 			}
 			case "blinding_flash" -> {
-				effect(wielder, victim, new MobEffectInstance(MobEffects.BLINDNESS, ticks(duration, MobSpellTimings.FLASH_BLIND_TICKS), 0));
-				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(duration, MobSpellTimings.FLASH_GLOW_TICKS), 0));
+				effect(wielder, victim, new MobEffectInstance(MobEffects.BLINDNESS, ticks(duration, MoreSpells.FLASH_BLIND_TICKS), 0));
+				effect(wielder, victim, new MobEffectInstance(MobEffects.GLOWING, ticks(duration, MoreSpells.FLASH_GLOW_TICKS), 0));
 			}
 			case "ember_brand" -> {
 				hurt(level, wielder, owner, victim, power, MoreSpells.EMBER_DAMAGE);
-				victim.igniteForTicks(ticks(duration, MobSpellTimings.EMBER_BURN_TICKS));
+				victim.igniteForTicks(ticks(duration, MoreSpells.EMBER_BURN_TICKS));
 			}
 			default -> {
 				return false;

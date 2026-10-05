@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "mod-stella-ruins:item/gladius_of_the_crowd"
+	}
+}

@@ -29,7 +29,7 @@ public class GrottoMobsGameTest {
 		return new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
 	}
 
-	@GameTest(maxTicks = 6000)
+	@GameTest(maxTicks = GrottoTestSupport.ARENA_TICKS)
 	public void aShardSentinelIsAnAmethystStrayWithABowAndTheSentinelDrops(final GameTestHelper helper) {
 		GrottoTestSupport.inArena(helper, SEED, arena -> {
 			Mob mob = GrottoMobs.SHARD_SENTINEL.spawn(arena.level(), spot(arena.markers(GrottoMarkers.SENTINEL).get(0)));
@@ -68,7 +68,7 @@ public class GrottoMobsGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 6000)
+	@GameTest(maxTicks = GrottoTestSupport.ARENA_TICKS)
 	public void aPrismSlimeGrowsToSizeTwoAndHopsWithinSixBlocksEveryHundredTicks(final GameTestHelper helper) {
 		GrottoTestSupport.inArena(helper, SEED, arena -> {
 			BlockPos marker = arena.markers(com.stella.ruins.world.RuinMarkers.SPAWN).get(0);
@@ -94,7 +94,7 @@ public class GrottoMobsGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 6000)
+	@GameTest(maxTicks = GrottoTestSupport.ARENA_TICKS)
 	public void everyActivationRosterIsThreePrismSlimesAtTheirOwnMarkers(final GameTestHelper helper) {
 		GrottoTestSupport.inArena(helper, SEED, arena -> {
 			arena.wake();
