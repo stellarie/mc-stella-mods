@@ -15,6 +15,15 @@ import com.stella.equips.unique.af.LevitatorBow;
 import com.stella.equips.unique.af.DragonbreathBow;
 import com.stella.equips.unique.af.SonicBow;
 import com.stella.equips.unique.af.PhasebiteBow;
+import com.stella.equips.unique.af.RaiderRepeater;
+import com.stella.equips.unique.af.GaleshotCrossbow;
+import com.stella.equips.unique.af.TidewatcherCrossbow;
+import com.stella.equips.unique.af.ForemanArbalest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.component.ChargedProjectiles;
+import net.minecraft.world.level.block.Blocks;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -115,6 +124,23 @@ public class UniquesArcherFighterGameTest {
 		Method hit = AbstractArrow.class.getDeclaredMethod("onHitEntity", EntityHitResult.class);
 		hit.setAccessible(true);
 		hit.invoke(arrow, new EntityHitResult(target));
+	}
+
+	private static List<AbstractArrow> fireCrossbow(final GameTestHelper helper, final UniqueContext c) {
+		ServerPlayer holder = c.holder();
+		holder.setYRot(0.0F);
+		holder.setXRot(0.0F);
+		holder.setItemInHand(InteractionHand.MAIN_HAND, c.stack());
+		c.stack().set(DataComponents.CHARGED_PROJECTILES, ChargedProjectiles.ofNonEmpty(List.of(new ItemStack(Items.ARROW))));
+		((CrossbowItem) c.stack().getItem()).performShooting(holder.level(), holder, InteractionHand.MAIN_HAND,
+			c.stack(), CrossbowItem.MOB_ARROW_POWER, 0.0F, null);
+		return UniqueTestKit.arrowsOf(holder.level(), holder, holder.position());
+	}
+
+	private static AbstractArrow oneBolt(final GameTestHelper helper, final UniqueContext c) {
+		List<AbstractArrow> bolts = fireCrossbow(helper, c);
+		helper.assertTrue(bolts.size() == 1, "expected one bolt, got " + bolts.size());
+		return bolts.get(0);
 	}
 
 	private static void potionBase(final GameTestHelper helper, final String id, final Holder<MobEffect> effect,
@@ -555,6 +581,190 @@ public class UniquesArcherFighterGameTest {
 			+ " atLoss=" + (highBefore - high.holder().getHealth()));
 		helper.assertTrue(low.holder().getHealth() < lowBefore && high.holder().getHealth() == highBefore,
 			"post-teleport fall safety gate differs after switching the bow");
+		helper.succeed();
+	}
+
+	@GameTest public void raiderBaseKeepsRealCrossbowLoadedOnPassingRoll(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, RaiderRepeater.ID, 0, 1.5);
+		CHANCE.put(c.holder().getUUID(), true);
+		AbstractArrow bolt = oneBolt(helper, c);
+		boolean loaded = CrossbowItem.isCharged(c.stack());
+		UniqueTestKit.result("raiderBase", "loaded=" + loaded + " mark=" + UniqueArrows.of(bolt));
+		helper.assertTrue(loaded && RaiderRepeater.ID.equals(UniqueArrows.of(bolt).id()), "passing shot unloaded the repeater");
+		helper.succeed();
+	}
+
+	@GameTest public void raiderPlus15BoostsOnlySprintShotsAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, RaiderRepeater.ID, Uniques.PLUS_15 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, RaiderRepeater.ID, Uniques.PLUS_15, 6.5);
+		CHANCE.put(low.holder().getUUID(), false);
+		CHANCE.put(high.holder().getUUID(), false);
+		low.holder().setSprinting(true);
+		high.holder().setSprinting(true);
+		AbstractArrow below = oneBolt(helper, low);
+		AbstractArrow at = oneBolt(helper, high);
+		low.holder().setSprinting(false);
+		high.holder().setSprinting(false);
+		Mob target = foe(helper, 9.5);
+		UniqueDef def = Uniques.byId(RaiderRepeater.ID);
+		float lowDamage = def.effect().outgoingArrow(low, target, below, 10.0F);
+		float highDamage = def.effect().outgoingArrow(high, target, at, 10.0F);
+		UniqueTestKit.result("raiderPlus15", "below=" + lowDamage + " at=" + highDamage);
+		helper.assertTrue(lowDamage == 10.0F && Math.abs(highDamage - 10.0F * (1 + RaiderRepeater.TUNING.sprintBonus())) < 0.001,
+			"sprint shot damage gate differs after sprint ends");
+		helper.succeed();
+	}
+
+	@GameTest public void raiderPlus10AddsPierceOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, RaiderRepeater.ID, Uniques.PLUS_10 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, RaiderRepeater.ID, Uniques.PLUS_10, 6.5);
+		CHANCE.put(low.holder().getUUID(), false);
+		CHANCE.put(high.holder().getUUID(), false);
+		AbstractArrow below = oneBolt(helper, low);
+		AbstractArrow at = oneBolt(helper, high);
+		UniqueTestKit.result("raiderPlus10", "below=" + below.getPierceLevel() + " at=" + at.getPierceLevel());
+		helper.assertTrue(below.getPierceLevel() == 0 && at.getPierceLevel() == RaiderRepeater.TUNING.piercePlus(), "piercing gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void galeshotBaseDoublesActualBoltKnockback(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext plain = connectedContext(helper, GaleshotCrossbow.ID, 0, 2.5);
+		UniqueContext gale = connectedContext(helper, GaleshotCrossbow.ID, 0, 6.5);
+		Mob plainTarget = foeAt(helper, 2.5, 5.5);
+		Mob galeTarget = foeAt(helper, 6.5, 5.5);
+		AbstractArrow plainBolt = oneBolt(helper, plain);
+		AbstractArrow galeBolt = oneBolt(helper, gale);
+		plainBolt.setCritArrow(false);
+		galeBolt.setCritArrow(false);
+		UniqueArrows.mark(plainBolt, "test_no_gale", 0);
+		impact(plainBolt, plainTarget);
+		impact(galeBolt, galeTarget);
+		double reference = plainTarget.getDeltaMovement().horizontalDistance();
+		double actual = galeTarget.getDeltaMovement().horizontalDistance();
+		UniqueTestKit.result("galeshotBase", "plain=" + reference + " gale=" + actual);
+		helper.assertTrue(reference > 0 && Math.abs(actual - reference * GaleshotCrossbow.TUNING.knockback()) < 0.001,
+			"real bolt did not double horizontal knockback");
+		helper.succeed();
+	}
+
+	@GameTest public void galeshotPlus15LiftsNearbyFoesOnlyAtGate(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext low = connectedContext(helper, GaleshotCrossbow.ID, Uniques.PLUS_15 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, GaleshotCrossbow.ID, Uniques.PLUS_15, 8.5);
+		Mob lowTarget = foeAt(helper, 2.5, 5.5);
+		Mob highTarget = foeAt(helper, 8.5, 5.5);
+		Mob lowNear = foeAt(helper, 3.5, 5.5);
+		Mob highNear = foeAt(helper, 9.5, 5.5);
+		var friendly = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new Vec3(8.5, 2.0, 6.5));
+		impact(oneBolt(helper, low), lowTarget);
+		impact(oneBolt(helper, high), highTarget);
+		MobEffectInstance lift = highNear.getEffect(MobEffects.LEVITATION);
+		UniqueTestKit.result("galeshotPlus15", "below=" + lowNear.hasEffect(MobEffects.LEVITATION) + " at=" + lift
+			+ " friendly=" + friendly.hasEffect(MobEffects.LEVITATION));
+		helper.assertTrue(!lowNear.hasEffect(MobEffects.LEVITATION) && lift != null
+			&& lift.getDuration() == GaleshotCrossbow.TUNING.liftTicks() && !friendly.hasEffect(MobEffects.LEVITATION), "area lift gate or foe filter differs");
+		helper.succeed();
+	}
+
+	@GameTest public void galeshotPlus10RealShotGivesSpeedOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, GaleshotCrossbow.ID, Uniques.PLUS_10 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, GaleshotCrossbow.ID, Uniques.PLUS_10, 6.5);
+		oneBolt(helper, low);
+		oneBolt(helper, high);
+		MobEffectInstance speed = high.holder().getEffect(MobEffects.SPEED);
+		UniqueTestKit.result("galeshotPlus10", "below=" + low.holder().hasEffect(MobEffects.SPEED) + " at=" + speed);
+		helper.assertTrue(!low.holder().hasEffect(MobEffects.SPEED) && speed != null
+			&& speed.getDuration() == GaleshotCrossbow.TUNING.speedTicks(), "shot Speed gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void tidewatcherBaseBoostsOnlyWetTarget(final GameTestHelper helper) {
+		UniqueContext c = context(helper, TidewatcherCrossbow.ID, 0);
+		Mob wet = foe(helper, 3.5);
+		Mob dry = foe(helper, 7.5);
+		helper.setBlock(new BlockPos(3, 2, 3), Blocks.WATER);
+		wet.baseTick();
+		helper.assertTrue(wet.isInWaterOrRain() && !dry.isInWaterOrRain(), "wet and dry fixtures differ");
+		UniqueDef def = Uniques.byId(TidewatcherCrossbow.ID);
+		float wetDamage = def.effect().outgoingArrow(c, wet, null, 10.0F);
+		float dryDamage = def.effect().outgoingArrow(c, dry, null, 10.0F);
+		UniqueTestKit.result("tidewatcherBase", "wet=" + wetDamage + " dry=" + dryDamage);
+		helper.assertTrue(dryDamage == 10.0F && Math.abs(wetDamage - 10 * (1 + TidewatcherCrossbow.TUNING.bonus())) < 0.001, "wet target bonus differs");
+		helper.succeed();
+	}
+
+	@GameTest public void tidewatcherPlus15RealBoltCursesOnlyAtGate(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext low = connectedContext(helper, TidewatcherCrossbow.ID, Uniques.PLUS_15 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, TidewatcherCrossbow.ID, Uniques.PLUS_15, 6.5);
+		Mob lowTarget = foeAt(helper, 2.5, 5.5);
+		Mob highTarget = foeAt(helper, 6.5, 5.5);
+		lowTarget.getAttribute(Attributes.MAX_HEALTH).setBaseValue(500.0);
+		highTarget.getAttribute(Attributes.MAX_HEALTH).setBaseValue(500.0);
+		lowTarget.setHealth(lowTarget.getMaxHealth());
+		highTarget.setHealth(highTarget.getMaxHealth());
+		float lowBefore = lowTarget.getHealth();
+		float highBefore = highTarget.getHealth();
+		AbstractArrow lowBolt = oneBolt(helper, low);
+		AbstractArrow highBolt = oneBolt(helper, high);
+		impact(lowBolt, lowTarget);
+		impact(highBolt, highTarget);
+		MobEffectInstance fatigue = highTarget.getEffect(MobEffects.MINING_FATIGUE);
+		MobEffectInstance slow = highTarget.getEffect(MobEffects.SLOWNESS);
+		UniqueTestKit.result("tidewatcherPlus15", "below=" + lowTarget.hasEffect(MobEffects.MINING_FATIGUE) + " fatigue=" + fatigue + " slow=" + slow
+			+ " belowHealth=" + lowBefore + "->" + lowTarget.getHealth() + " atHealth=" + highBefore + "->" + highTarget.getHealth()
+			+ " belowDamage=" + (lowBefore - lowTarget.getHealth()) + " atDamage=" + (highBefore - highTarget.getHealth())
+			+ " belowCrit=" + lowBolt.isCritArrow() + " atCrit=" + highBolt.isCritArrow()
+			+ " belowBase=" + com.stella.equips.refine.RefineEffects.baseDamage(lowBolt)
+			+ " atBase=" + com.stella.equips.refine.RefineEffects.baseDamage(highBolt)
+			+ " belowMark=" + UniqueArrows.of(lowBolt) + " atMark=" + UniqueArrows.of(highBolt));
+		helper.assertTrue(lowTarget.isAlive() && highTarget.isAlive() && lowTarget.getHealth() < lowBefore
+			&& highTarget.getHealth() < highBefore, "real refined bolts must damage surviving subjects");
+		UniqueArrows.Mark lowMark = UniqueArrows.of(lowBolt);
+		UniqueArrows.Mark highMark = UniqueArrows.of(highBolt);
+		helper.assertTrue(lowMark != null && highMark != null && TidewatcherCrossbow.ID.equals(lowMark.id())
+			&& TidewatcherCrossbow.ID.equals(highMark.id()) && lowMark.refine() == Uniques.PLUS_15 - 1
+			&& highMark.refine() == Uniques.PLUS_15, "real bolts must retain their unique and refine marks");
+		helper.assertTrue(!lowTarget.hasEffect(MobEffects.MINING_FATIGUE) && !lowTarget.hasEffect(MobEffects.SLOWNESS)
+			&& fatigue != null && slow != null && fatigue.getAmplifier() == TidewatcherCrossbow.TUNING.fatigueAmplifier()
+			&& slow.getAmplifier() == TidewatcherCrossbow.TUNING.slowAmplifier()
+			&& fatigue.getDuration() == TidewatcherCrossbow.TUNING.curseTicks() && slow.getDuration() == TidewatcherCrossbow.TUNING.curseTicks(), "bolt curse gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void tidewatcherPlus10HeldBlessingsOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, TidewatcherCrossbow.ID, Uniques.PLUS_10 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, TidewatcherCrossbow.ID, Uniques.PLUS_10, 6.5);
+		UniqueDef def = Uniques.byId(TidewatcherCrossbow.ID);
+		def.effect().everySecond(low);
+		def.effect().everySecond(high);
+		UniqueTestKit.result("tidewatcherPlus10", "below=" + low.holder().hasEffect(MobEffects.WATER_BREATHING)
+			+ " water=" + high.holder().hasEffect(MobEffects.WATER_BREATHING) + " dolphin=" + high.holder().hasEffect(MobEffects.DOLPHINS_GRACE));
+		helper.assertTrue(!low.holder().hasEffect(MobEffects.WATER_BREATHING) && !low.holder().hasEffect(MobEffects.DOLPHINS_GRACE)
+			&& high.holder().hasEffect(MobEffects.WATER_BREATHING) && high.holder().hasEffect(MobEffects.DOLPHINS_GRACE), "held blessing gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void foremanBaseRealReloadUsesEveryTierReduction(final GameTestHelper helper) {
+		UniqueContext c = context(helper, ForemanArbalest.ID, 0);
+		int reference = CrossbowItem.getChargeDuration(new ItemStack(Items.CROSSBOW), c.holder());
+		int base = CrossbowItem.getChargeDuration(c.stack(), c.holder());
+		int plus7 = CrossbowItem.getChargeDuration(UniqueTestKit.stack(Uniques.byId(ForemanArbalest.ID), Uniques.PLUS_7), c.holder());
+		int plus12 = CrossbowItem.getChargeDuration(UniqueTestKit.stack(Uniques.byId(ForemanArbalest.ID), Uniques.PLUS_12), c.holder());
+		UniqueTestKit.result("foremanBase", "plain=" + reference + " base=" + base + " plus7=" + plus7 + " plus12=" + plus12);
+		helper.assertTrue(base == Math.max(1, (int) Math.floor(reference * (1 - ForemanArbalest.TUNING.reload())))
+			&& plus7 == Math.max(1, (int) Math.floor(reference * (1 - ForemanArbalest.TUNING.reloadPlus7())))
+			&& plus12 == Math.max(1, (int) Math.floor(reference * (1 - ForemanArbalest.TUNING.reloadPlus12()))), "reload reductions differ");
+		helper.succeed();
+	}
+
+	@GameTest public void foremanPlus15RealShotLoosesThreeBoltsOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = connectedContext(helper, ForemanArbalest.ID, Uniques.PLUS_15 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, ForemanArbalest.ID, Uniques.PLUS_15, 6.5);
+		List<AbstractArrow> below = fireCrossbow(helper, low);
+		List<AbstractArrow> at = fireCrossbow(helper, high);
+		long pickup = at.stream().filter(a -> a.pickup == AbstractArrow.Pickup.ALLOWED).count();
+		UniqueTestKit.result("foremanPlus15", "below=" + below.size() + " at=" + at.size() + " pickup=" + pickup);
+		helper.assertTrue(below.size() == 1 && at.size() == ForemanArbalest.TUNING.bolts() && pickup <= 1
+			&& at.stream().allMatch(a -> ForemanArbalest.ID.equals(UniqueArrows.of(a).id())), "three-bolt gate, marking, or pickup differs");
 		helper.succeed();
 	}
 }

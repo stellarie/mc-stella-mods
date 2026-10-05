@@ -13,6 +13,11 @@ import com.stella.equips.unique.af.DragonbreathBow;
 import com.stella.equips.unique.af.SonicBow;
 import com.stella.equips.unique.af.PhasebiteBow;
 
+import com.stella.equips.unique.af.RaiderRepeater;
+import com.stella.equips.unique.af.GaleshotCrossbow;
+import com.stella.equips.unique.af.TidewatcherCrossbow;
+import com.stella.equips.unique.af.ForemanArbalest;
+
 /** The archer and fighter uniques of the second slice. W002 owns this file. */
 public final class UniquesArcherFighter {
 	private UniquesArcherFighter() {
@@ -31,5 +36,9 @@ public final class UniquesArcherFighter {
 		DragonbreathBow.register();
 		SonicBow.register();
 		PhasebiteBow.register();
+		RaiderRepeater.register();
+		GaleshotCrossbow.register();
+		TidewatcherCrossbow.register();
+		ForemanArbalest.register();
 	}
 }
