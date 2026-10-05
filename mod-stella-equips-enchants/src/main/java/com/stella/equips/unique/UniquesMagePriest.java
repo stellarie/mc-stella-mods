@@ -29,6 +29,12 @@ import com.stella.equips.unique.mp.RavagersBenediction;
 import com.stella.equips.unique.mp.BoarhideVest;
 import com.stella.equips.unique.mp.ThreeSkullReliquary;
 import com.stella.equips.unique.mp.MilkgelHood;
+import com.stella.equips.unique.mp.GildedReliquary;
+import com.stella.equips.unique.mp.MartyrsMace;
+import com.stella.equips.unique.mp.MummyWraps;
+import com.stella.equips.unique.mp.WyrmguardVestments;
+import com.stella.equips.unique.mp.SculkVestments;
+import com.stella.equips.unique.mp.SoulflameAegis;
 
 /** The mage and priest uniques of the third slice. W003 owns this file. */
 public final class UniquesMagePriest {
@@ -65,5 +71,11 @@ public final class UniquesMagePriest {
 		BoarhideVest.register();
 		ThreeSkullReliquary.register();
 		MilkgelHood.register();
+		GildedReliquary.register();
+		MartyrsMace.register();
+		MummyWraps.register();
+		WyrmguardVestments.register();
+		SculkVestments.register();
+		SoulflameAegis.register();
 	}
 }

@@ -31,6 +31,12 @@ import com.stella.equips.unique.mp.RavagersBenediction;
 import com.stella.equips.unique.mp.BoarhideVest;
 import com.stella.equips.unique.mp.ThreeSkullReliquary;
 import com.stella.equips.unique.mp.MilkgelHood;
+import com.stella.equips.unique.mp.GildedReliquary;
+import com.stella.equips.unique.mp.MartyrsMace;
+import com.stella.equips.unique.mp.MummyWraps;
+import com.stella.equips.unique.mp.WyrmguardVestments;
+import com.stella.equips.unique.mp.SculkVestments;
+import com.stella.equips.unique.mp.SoulflameAegis;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -734,5 +740,65 @@ public class UniquesMagePriestGameTest {
 		Uniques.byId(MilkgelHood.ID).effect().everySecond(c);
 		check(helper, "milkgelCleanse", !c.holder().hasEffect(MobEffects.POISON),
 			"poison after the hood: " + c.holder().hasEffect(MobEffects.POISON));
+	}
+
+	@GameTest
+	public void gildedReliquaryGildsItsHolder(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, GildedReliquary.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		force(c, GildedReliquary.ID);
+		LivingEntity target = foe(helper, 3.5, 1.5);
+		Uniques.byId(GildedReliquary.ID).effect().afterMelee(c, target,
+			helper.getLevel().damageSources().playerAttack(c.holder()), 10.0F, false, false);
+		float expected = (float) (c.holder().getMaxHealth() * GildedReliquary.TUNING.share());
+		check(helper, "gildedGift", Math.abs(c.holder().getAbsorptionAmount() - expected) < 0.001,
+			"absorption=" + c.holder().getAbsorptionAmount() + " expected=" + expected);
+	}
+
+	@GameTest
+	public void martyrsMaceChargesOnAnAllyBlow(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, MartyrsMace.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		c.holder().setItemSlot(EquipmentSlot.MAINHAND, c.stack());
+		MartyrsMace.grieve(c.holder(), 10.0F);
+		float charged = Uniques.byId(MartyrsMace.ID).effect().outgoingMelee(c, foe(helper, 3.5, 1.5),
+			helper.getLevel().damageSources().playerAttack(c.holder()), 10.0F);
+		float expected = 10.0F * (1.0F + (float) MartyrsMace.TUNING.bonus());
+		check(helper, "martyrsCharge", Math.abs(charged - expected) < 0.001, "charged=" + charged + " expected=" + expected);
+	}
+
+	@GameTest
+	public void mummyWrapsShortensHarmfulEffects(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, MummyWraps.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		int shortened = Uniques.byId(MummyWraps.ID).effect().harmfulDuration(c, new MobEffectInstance(MobEffects.POISON, 100), 100);
+		int expected = (int) (100 * (1.0 - MummyWraps.TUNING.shorter()));
+		check(helper, "mummyShorter", shortened == expected, "shortened=" + shortened + " expected=" + expected);
+	}
+
+	@GameTest
+	public void wyrmguardVestmentsSavesAWard(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, WyrmguardVestments.ID, Uniques.PLUS_15, new Vec3(1.5, 2.0, 1.5));
+		c.holder().setItemSlot(EquipmentSlot.CHEST, c.stack());
+		c.holder().setHealth(4.0F);
+		boolean saved = WyrmguardVestments.save(c.holder(), 10.0F);
+		check(helper, "wyrmguardSave", saved && c.holder().isAlive() && c.holder().getHealth() == 1.0F
+			&& c.holder().hasEffect(MobEffects.RESISTANCE),
+			"saved=" + saved + " health=" + c.holder().getHealth() + " resistance=" + c.holder().hasEffect(MobEffects.RESISTANCE));
+	}
+
+	@GameTest
+	public void sculkVestmentsMarksEveryFoeInReach(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SculkVestments.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		LivingEntity target = foe(helper, 4.5, 1.5);
+		SculkVestments.pulse(c);
+		check(helper, "sculkMark", target.hasEffect(MobEffects.GLOWING), "glowing=" + target.hasEffect(MobEffects.GLOWING));
+	}
+
+	@GameTest
+	public void soulflameAegisBurnsTheAttackerOfAWard(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SoulflameAegis.ID, Uniques.PLUS_15, new Vec3(1.5, 2.0, 1.5));
+		c.holder().setItemSlot(EquipmentSlot.CHEST, c.stack());
+		LivingEntity attacker = foe(helper, 3.5, 1.5);
+		SoulflameAegis.avenge(c.holder(), helper.getLevel().damageSources().mobAttack(attacker));
+		check(helper, "soulflameAvenge", attacker.getRemainingFireTicks() >= SoulflameAegis.TUNING.fireTicks(),
+			"fire=" + attacker.getRemainingFireTicks() + " expected=" + SoulflameAegis.TUNING.fireTicks());
 	}
 }
