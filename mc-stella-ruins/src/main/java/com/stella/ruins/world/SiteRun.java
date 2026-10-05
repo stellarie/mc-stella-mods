@@ -80,6 +80,7 @@ public final class SiteRun {
 	public @Nullable Mob spawn(final RuinMobKind kind, final Vec3 at) {
 		Mob mob = kind.spawn(this.level, at);
 		if (mob != null) {
+			mob.addTag(RuinMobs.coreTag(this.core.getX(), this.core.getY(), this.core.getZ()));
 			RuinData.Entry entry = this.data.entry(this.core);
 			if (entry != null) {
 				entry.addMob(mob.getUUID());

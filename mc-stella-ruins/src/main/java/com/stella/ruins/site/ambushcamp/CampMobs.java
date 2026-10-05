@@ -33,7 +33,7 @@ import net.minecraft.world.phys.AABB;
  * <p>
  * The Chief spawns without gear and invisible, with no AI, so he stands where he hid. A player within
  * {@link #REVEAL_RADIUS} blocks, or a hit on him, reveals him. The reveal gives him his hood and axe, calls every
- * ruin mob near him onto the player, sends up a flare from each lookout, and starts the reinforcement timer.
+ * mob of his own run near him onto the player, sends up a flare from each lookout, and starts the reinforcement timer.
  */
 public final class CampMobs {
 	public static final ResourceKey<LootTable> VAULT_LOOT = table("chests/ambush_camp");
@@ -165,7 +165,7 @@ public final class CampMobs {
 		level.playSound(null, chief.blockPosition(), SoundEvents.VINDICATOR_AMBIENT, SoundSource.HOSTILE, 2.0F, 0.7F);
 		AABB area = chief.getBoundingBox().inflate(CALL_RADIUS);
 		for (Mob mob : level.getEntitiesOfClass(Mob.class, area, RuinMobs::isRuinMob)) {
-			if (mob == chief) {
+			if (mob == chief || !RuinMobs.sameCore(mob, chief)) {
 				continue;
 			}
 			if (by != null) {

@@ -50,6 +50,24 @@ public final class RuinMobs {
 		return entity.entityTags().contains(RuinMobKind.TAG_MOB);
 	}
 
+	/** The tag a mob carries for the core of the run that spawned it. */
+	public static final String TAG_CORE_PREFIX = "mod-stella-ruins.core.";
+
+	/** The core tag of a run, so a mob can say which core called it. */
+	public static String coreTag(final int x, final int y, final int z) {
+		return TAG_CORE_PREFIX + x + "_" + y + "_" + z;
+	}
+
+	/** True when two mobs came from the same run. A mob of one ruin never answers another. */
+	public static boolean sameCore(final Entity one, final Entity other) {
+		for (String tag : one.entityTags()) {
+			if (tag.startsWith(TAG_CORE_PREFIX) && other.entityTags().contains(tag)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** The kind a mob belongs to, or null for any other entity. */
 	public static @Nullable RuinMobKind kindOf(final Entity entity) {
 		for (String tag : entity.entityTags()) {

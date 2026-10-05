@@ -179,4 +179,31 @@ public class CampMobsGameTest {
 		helper.assertTrue(chiefMarks2 > ROLLS / 3 && chiefMarks3 > ROLLS / 3, "chief mark counts " + chiefMarks2 + "/" + chiefMarks3);
 		helper.succeed();
 	}
+
+	/** A camp next to another ruin: the Chief's call must reach his own band only. */
+	@GameTest
+	public void aRevealCallsOnlyTheMobsOfItsOwnRun(final GameTestHelper helper) {
+		ServerPlayer player = CampTestSupport.join(helper);
+		String ownCore = RuinMobs.coreTag(0, 64, 0);
+		String otherCore = RuinMobs.coreTag(2000, 64, 2000);
+		Mob chief = spawn(helper, CampMobs.CHIEF, 1.5 + 1.0, 1.5);
+		Mob own = spawn(helper, CampMobs.BANDIT, 1.5 + 3.0, 1.5);
+		Mob foreignBandit = spawn(helper, CampMobs.BANDIT, 1.5 + 5.0, 1.5);
+		Mob foreignLookout = spawn(helper, CampMobs.LOOKOUT, 1.5 + 7.0, 1.5);
+		chief.addTag(ownCore);
+		own.addTag(ownCore);
+		foreignBandit.addTag(otherCore);
+		foreignLookout.addTag(otherCore);
+		CampMobs.hide(chief);
+		int before = CampMobs.flaresFired();
+		CampMobs.reveal(chief, player);
+		int flares = CampMobs.flaresFired() - before;
+		CampTestSupport.result("foreignCore", "own=" + (own.getTarget() == player) + " bandit=" + (foreignBandit.getTarget() == null)
+			+ " lookout=" + (foreignLookout.getTarget() == null) + " flares=" + flares);
+		helper.assertTrue(own.getTarget() == player, "the Chief did not call his own bandit");
+		helper.assertTrue(foreignBandit.getTarget() == null && foreignLookout.getTarget() == null && flares == 0,
+			"the Chief reached a mob of another run");
+		CampTestSupport.leave(helper, player);
+		helper.succeed();
+	}
 }
