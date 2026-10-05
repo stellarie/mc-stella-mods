@@ -1,0 +1,74 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"silk": [
+			"#2a2a33",
+			"#6b6b7a",
+			"#b9b9c9",
+			"#e6e6f2",
+			"#ffffff"
+		],
+		"venom": [
+			"#0d2a10",
+			"#1f6a28",
+			"#3fb34a",
+			"#9be88a",
+			"#eaffd8"
+		],
+		"fang": [
+			"#2a2218",
+			"#7a6a4a",
+			"#cfc4a0",
+			"#f0ead2",
+			"#ffffff"
+		],
+		"widow": [
+			"#1a0a14",
+			"#4a1230",
+			"#8e1f5a",
+			"#d04a8a",
+			"#ffd0e6"
+		],
+		"silkbow": [
+			"#1d1a14",
+			"#5a4a30",
+			"#8a7a56",
+			"#c9bd96",
+			"#f4f1e4"
+		]
+	},
+	"items": [
+		{
+			"id": "silkweave",
+			"template": "feather",
+			"palette": "silk"
+		},
+		{
+			"id": "venom_sac",
+			"template": "gem",
+			"palette": "venom"
+		},
+		{
+			"id": "matriarch_fang",
+			"template": "shard",
+			"palette": "fang"
+		},
+		{
+			"id": "widows_fang",
+			"template": "sword",
+			"palette": "widow"
+		},
+		{
+			"id": "silkstring_bow",
+			"template": "bow",
+			"palette": "silkbow"
+		}
+	],
+	"sets": [
+		{
+			"id": "silkweave",
+			"asset": "silkweave",
+			"palette": "silk"
+		}
+	]
+}
