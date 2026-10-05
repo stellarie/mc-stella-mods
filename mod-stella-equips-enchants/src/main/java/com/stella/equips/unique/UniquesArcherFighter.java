@@ -31,6 +31,10 @@ import com.stella.equips.unique.af.AbyssalSpinesword;
 import com.stella.equips.unique.af.SovereignFlamberge;
 import com.stella.equips.unique.af.WidowsFang;
 import com.stella.equips.unique.af.RabidTusk;
+import com.stella.equips.unique.af.BruteMaul;
+import com.stella.equips.unique.af.GiantsFemur;
+import com.stella.equips.unique.af.SculkCleaver;
+import com.stella.equips.unique.af.DragonscaleGreatsword;
 
 /** The archer and fighter uniques of the second slice. W002 owns this file. */
 public final class UniquesArcherFighter {
@@ -67,5 +71,9 @@ public final class UniquesArcherFighter {
 		SovereignFlamberge.register();
 		WidowsFang.register();
 		RabidTusk.register();
+		BruteMaul.register();
+		GiantsFemur.register();
+		SculkCleaver.register();
+		DragonscaleGreatsword.register();
 	}
 }

@@ -32,6 +32,10 @@ import com.stella.equips.unique.af.AbyssalSpinesword;
 import com.stella.equips.unique.af.SovereignFlamberge;
 import com.stella.equips.unique.af.WidowsFang;
 import com.stella.equips.unique.af.RabidTusk;
+import com.stella.equips.unique.af.BruteMaul;
+import com.stella.equips.unique.af.GiantsFemur;
+import com.stella.equips.unique.af.SculkCleaver;
+import com.stella.equips.unique.af.DragonscaleGreatsword;
 import net.minecraft.world.damagesource.DamageSource;
 import com.stella.equips.unique.UniqueRank;
 import net.minecraft.world.damagesource.CombatRules;
@@ -164,6 +168,17 @@ public class UniquesArcherFighterGameTest {
 		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(500.0);
 		target.setHealth(target.getMaxHealth());
 		return target;
+	}
+
+	/** Fills the attack meter of a mock player. The field is protected, so a sweep cannot be charged any other way. */
+	private static void charge(final ServerPlayer player) {
+		try {
+			java.lang.reflect.Field ticker = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("attackStrengthTicker");
+			ticker.setAccessible(true);
+			ticker.setInt(player, 100);
+		} catch (ReflectiveOperationException failure) {
+			throw new IllegalStateException("the attack meter of a mock player cannot be charged", failure);
+		}
 	}
 
 	private static float melee(final GameTestHelper helper, final UniqueContext c, final Mob target, final float amount) {
@@ -1166,6 +1181,64 @@ public class UniquesArcherFighterGameTest {
 		UniqueTestKit.result("rabidTuskBase", "first=" + first + " second=" + second + " stacks=" + RabidTusk.stacks(c.holder(), target));
 		helper.assertTrue(Math.abs(first - 10.0F) < 0.001
 			&& Math.abs(second - 10.0F * (1.0F + (float) RabidTusk.TUNING.perHit())) < 0.001, "the same-target stack bonus differs");
+		helper.succeed();
+	}
+
+	@GameTest public void bruteMaulSmashSlowsItsNeighboursAtPlus10(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, BruteMaul.ID, Uniques.PLUS_10 - 1, 1.5);
+		UniqueContext at = connectedContext(helper, BruteMaul.ID, Uniques.PLUS_10, 7.5);
+		below.holder().fallDistance = 3.0F;
+		at.holder().fallDistance = 3.0F;
+		Mob belowNear = durableFoe(helper, 3.5, 3.5);
+		Mob atNear = durableFoe(helper, 9.5, 3.5);
+		Uniques.byId(BruteMaul.ID).effect().afterMelee(below, durableFoe(helper, 2.5, 3.5),
+			helper.getLevel().damageSources().playerAttack(below.holder()), 10.0F, false, false);
+		Uniques.byId(BruteMaul.ID).effect().afterMelee(at, durableFoe(helper, 8.5, 3.5),
+			helper.getLevel().damageSources().playerAttack(at.holder()), 10.0F, false, false);
+		MobEffectInstance belowSlow = belowNear.getEffect(MobEffects.SLOWNESS);
+		MobEffectInstance atSlow = atNear.getEffect(MobEffects.SLOWNESS);
+		UniqueTestKit.result("bruteSmash", "below=" + belowSlow + " at=" + atSlow);
+		helper.assertTrue(belowSlow == null && atSlow != null && atSlow.getDuration() == BruteMaul.TUNING.slowTicks()
+			&& atSlow.getAmplifier() == BruteMaul.TUNING.slowAmplifier(), "the smash slowdown gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void giantsFemurTradesSpeedForDamage(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, GiantsFemur.ID, 0, 1.5);
+		float damage = melee(helper, c, durableFoe(helper, 2.5, 3.5), 10.0F);
+		UniqueTestKit.result("giantsBase", "damage=" + damage + " expected=" + 10.0F * (1.0F + (float) GiantsFemur.TUNING.damage()));
+		helper.assertTrue(Math.abs(damage - 10.0F * (1.0F + (float) GiantsFemur.TUNING.damage())) < 0.001, "the femur damage share differs");
+		helper.succeed();
+	}
+
+	@GameTest public void sculkCleaverGrowsWithTheBlowsItTook(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SculkCleaver.ID, 0, 1.5);
+		DamageSource source = helper.getLevel().damageSources().playerAttack(c.holder());
+		for (int hit = 0; hit < 3; hit++) {
+			Uniques.byId(SculkCleaver.ID).effect().afterIncoming(c, source, 4.0F);
+		}
+		float damage = melee(helper, c, durableFoe(helper, 2.5, 3.5), 10.0F);
+		double expected = 10.0 * (1.0 + SculkCleaver.bonus(0, SculkCleaver.taken(c.holder())));
+		UniqueTestKit.result("sculkBase", "damage=" + damage + " taken=" + SculkCleaver.taken(c.holder()) + " expected=" + expected);
+		helper.assertTrue(Math.abs(damage - expected) < 0.001, "the damage-taken bonus differs");
+		helper.succeed();
+	}
+
+	@GameTest public void dragonscaleGreatswordResistsOnAChargedSweepAtPlus10(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, DragonscaleGreatsword.ID, Uniques.PLUS_10 - 1, 1.5);
+		UniqueContext at = connectedContext(helper, DragonscaleGreatsword.ID, Uniques.PLUS_10, 5.5);
+		charge(below.holder());
+		charge(at.holder());
+		Mob belowTarget = durableFoe(helper, 2.5, 3.5);
+		Mob atTarget = durableFoe(helper, 6.5, 3.5);
+		Uniques.byId(DragonscaleGreatsword.ID).effect().afterMelee(below, belowTarget,
+			helper.getLevel().damageSources().playerAttack(below.holder()), 10.0F, false, false);
+		Uniques.byId(DragonscaleGreatsword.ID).effect().afterMelee(at, atTarget,
+			helper.getLevel().damageSources().playerAttack(at.holder()), 10.0F, false, false);
+		UniqueTestKit.result("dragonscaleSweep", "below=" + below.holder().getEffect(MobEffects.RESISTANCE)
+			+ " at=" + at.holder().getEffect(MobEffects.RESISTANCE));
+		helper.assertTrue(below.holder().getEffect(MobEffects.RESISTANCE) == null
+			&& at.holder().getEffect(MobEffects.RESISTANCE) != null, "the sweep Resistance gate differs");
 		helper.succeed();
 	}
 }
