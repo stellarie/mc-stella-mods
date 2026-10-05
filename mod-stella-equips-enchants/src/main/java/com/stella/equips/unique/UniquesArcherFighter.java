@@ -11,6 +11,7 @@ import com.stella.equips.unique.af.WailingBow;
 import com.stella.equips.unique.af.LevitatorBow;
 import com.stella.equips.unique.af.DragonbreathBow;
 import com.stella.equips.unique.af.SonicBow;
+import com.stella.equips.unique.af.PhasebiteBow;
 
 /** The archer and fighter uniques of the second slice. W002 owns this file. */
 public final class UniquesArcherFighter {
@@ -29,5 +30,6 @@ public final class UniquesArcherFighter {
 		LevitatorBow.register();
 		DragonbreathBow.register();
 		SonicBow.register();
+		PhasebiteBow.register();
 	}
 }

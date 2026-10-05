@@ -4,6 +4,7 @@ import com.stella.equips.unique.UniqueContext;
 import com.stella.equips.unique.UniqueDef;
 import com.stella.equips.unique.UniqueFields;
 import com.stella.equips.unique.UniqueArrows;
+import com.stella.equips.unique.UniqueCooldowns;
 import com.stella.equips.unique.Uniques;
 import com.stella.equips.unique.af.AncientEyeBow;
 import com.stella.equips.unique.af.MireBow;
@@ -13,6 +14,7 @@ import com.stella.equips.unique.af.WailingBow;
 import com.stella.equips.unique.af.LevitatorBow;
 import com.stella.equips.unique.af.DragonbreathBow;
 import com.stella.equips.unique.af.SonicBow;
+import com.stella.equips.unique.af.PhasebiteBow;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +62,13 @@ public class UniquesArcherFighterGameTest {
 		UniqueDef def = Uniques.byId(id);
 		helper.assertTrue(def != null, "missing unique " + id);
 		ServerPlayer holder = UniqueTestKit.survivor(helper, new Vec3(x, 2.0, 1.5));
+		return new UniqueContext(holder, UniqueTestKit.stack(def, refine), refine);
+	}
+
+	private static UniqueContext connectedContext(final GameTestHelper helper, final String id, final int refine, final double x) {
+		UniqueDef def = Uniques.byId(id);
+		helper.assertTrue(def != null, "missing unique " + id);
+		ServerPlayer holder = UniqueTestKit.connected(helper, new Vec3(x, 2.0, 1.5));
 		return new UniqueContext(holder, UniqueTestKit.stack(def, refine), refine);
 	}
 
@@ -493,5 +502,59 @@ public class UniquesArcherFighterGameTest {
 
 	@GameTest public void sonicRealPowerArrowMatchesPlus12Beam(final GameTestHelper helper) throws ReflectiveOperationException {
 		sonicEnchantedShotMatchesArrow(helper, Uniques.PLUS_12);
+	}
+
+	@GameTest public void phasebiteBaseTeleportsOnArrowImpactAndStartsCooldown(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext c = connectedContext(helper, PhasebiteBow.ID, 0, 1.5);
+		c.holder().setShiftKeyDown(true);
+		Mob target = foeAt(helper, 1.5, 5.5);
+		Vec3 origin = c.holder().position();
+		Vec3 landing = target.position();
+		AbstractArrow arrow = fireReal(helper, c);
+		UniqueArrows.Mark mark = UniqueArrows.of(arrow);
+		impact(arrow, target);
+		boolean cooling = !UniqueCooldowns.ready(c.holder(), PhasebiteBow.ID, PhasebiteBow.TUNING.cooldownTicks());
+		UniqueTestKit.result("phasebiteBase", "mark=" + mark + " origin=1.5 landing=" + landing + " holder=" + c.holder().position() + " cooling=" + cooling);
+		helper.assertTrue(mark != null && mark.id().equals(PhasebiteBow.ID) && c.holder().position().distanceTo(origin) > 3.0
+			&& Math.abs(c.holder().getX() - landing.x) < 1.0
+			&& Math.abs(c.holder().getZ() - landing.z) < 1.0 && cooling, "sneaking arrow missed the teleport or cooldown");
+		helper.succeed();
+	}
+
+	@GameTest public void phasebitePlus15GivesSpeedOnlyAtGate(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext low = connectedContext(helper, PhasebiteBow.ID, Uniques.PLUS_15 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, PhasebiteBow.ID, Uniques.PLUS_15, 6.5);
+		low.holder().setShiftKeyDown(true);
+		high.holder().setShiftKeyDown(true);
+		Mob targetLow = foeAt(helper, 2.5, 5.5);
+		Mob targetHigh = foeAt(helper, 6.5, 5.5);
+		impact(fireReal(helper, low), targetLow);
+		impact(fireReal(helper, high), targetHigh);
+		MobEffectInstance speed = high.holder().getEffect(MobEffects.SPEED);
+		UniqueTestKit.result("phasebitePlus15", "low=" + low.holder().getEffect(MobEffects.SPEED) + " high=" + speed);
+		helper.assertTrue(!low.holder().hasEffect(MobEffects.SPEED) && speed != null
+			&& speed.getAmplifier() == PhasebiteBow.TUNING.speedAmplifier()
+			&& speed.getDuration() == PhasebiteBow.TUNING.speedTicks(), "teleport Speed gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void phasebitePlus10PreventsFallAfterWeaponSwitch(final GameTestHelper helper) throws ReflectiveOperationException {
+		UniqueContext low = connectedContext(helper, PhasebiteBow.ID, Uniques.PLUS_10 - 1, 2.5);
+		UniqueContext high = connectedContext(helper, PhasebiteBow.ID, Uniques.PLUS_10, 6.5);
+		low.holder().setShiftKeyDown(true);
+		high.holder().setShiftKeyDown(true);
+		impact(fireReal(helper, low), foeAt(helper, 2.5, 5.5));
+		impact(fireReal(helper, high), foeAt(helper, 6.5, 5.5));
+		low.holder().setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		high.holder().setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		float lowBefore = low.holder().getHealth();
+		float highBefore = high.holder().getHealth();
+		low.holder().hurtServer(helper.getLevel(), helper.getLevel().damageSources().fall(), 6.0F);
+		high.holder().hurtServer(helper.getLevel(), helper.getLevel().damageSources().fall(), 6.0F);
+		UniqueTestKit.result("phasebitePlus10", "belowLoss=" + (lowBefore - low.holder().getHealth())
+			+ " atLoss=" + (highBefore - high.holder().getHealth()));
+		helper.assertTrue(low.holder().getHealth() < lowBefore && high.holder().getHealth() == highBefore,
+			"post-teleport fall safety gate differs after switching the bow");
+		helper.succeed();
 	}
 }
