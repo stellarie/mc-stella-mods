@@ -1,0 +1,19 @@
+{
+	"block.mod-stella-ruins.egg_sac": "Egg Sac",
+	"item.mod-stella-ruins.silkweave": "Silkweave",
+	"item.mod-stella-ruins.venom_sac": "Venom Sac",
+	"item.mod-stella-ruins.matriarch_fang": "Matriarch Fang",
+	"item.mod-stella-ruins.silkweave_helmet": "Silkweave Hood",
+	"item.mod-stella-ruins.silkweave_chestplate": "Silkweave Vest",
+	"item.mod-stella-ruins.silkweave_leggings": "Silkweave Leggings",
+	"item.mod-stella-ruins.silkweave_boots": "Silkweave Boots",
+	"item.mod-stella-ruins.silkstring_bow": "Silkstring Bow",
+	"item.mod-stella-ruins.widows_fang": "Widow's Fang",
+	"mob.mod-stella-ruins.nest_weaver": "Nest Weaver",
+	"mob.mod-stella-ruins.brood_crawler": "Brood Crawler",
+	"mob.mod-stella-ruins.nest_matriarch": "Nest Matriarch",
+	"effect.mod-stella-ruins.widow": "Widow: poisons on hit, and 1 hit in 5 webs the target",
+	"clue.mod-stella-ruins.spider_nest": "Where the walls hum and the roof sags with silk, break every pale heart before the clock runs out.",
+	"message.mod-stella-ruins.nest.clock": "Egg sacs left: %s  |  Time left: %s",
+	"message.mod-stella-ruins.nest.hatched": "The clock is out. The mother hatches."
+}

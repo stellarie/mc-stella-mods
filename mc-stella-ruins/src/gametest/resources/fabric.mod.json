@@ -25,6 +25,11 @@
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",
 			"com.stella.ruins.reward.RuinGearGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingLayoutGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRiteGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingMobGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingRewardGameTest",
+			"com.stella.ruins.site.provinggrounds.ProvingSiteGameTest",
 			"com.stella.ruins.site.wayshrine.WayshrineLayoutGameTest",
 			"com.stella.ruins.site.wayshrine.WayshrineRiteGameTest",
 			"com.stella.ruins.site.wayshrine.WayshrineMobGameTest",
@@ -51,7 +56,17 @@
 			"com.stella.ruins.site.fallenwatchtower.WatchtowerObjectiveGameTest",
 			"com.stella.ruins.site.fallenwatchtower.WatchtowerMobsGameTest",
 			"com.stella.ruins.site.fallenwatchtower.WatchtowerRewardsGameTest",
-			"com.stella.ruins.site.fallenwatchtower.WatchtowerSiteGameTest"
+			"com.stella.ruins.site.fallenwatchtower.WatchtowerSiteGameTest",
+			"com.stella.ruins.site.spidernest.NestPlanGameTest",
+			"com.stella.ruins.site.spidernest.SacObjectiveGameTest",
+			"com.stella.ruins.site.spidernest.NestMobsGameTest",
+			"com.stella.ruins.site.spidernest.NestRewardsGameTest",
+			"com.stella.ruins.site.spidernest.NestSiteGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterPlanGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterSiteGameTest",
+			"com.stella.ruins.site.meteorcrater.CoolingObjectiveGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterMobsGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterRewardsGameTest"
 		]
 	},
 	"depends": {

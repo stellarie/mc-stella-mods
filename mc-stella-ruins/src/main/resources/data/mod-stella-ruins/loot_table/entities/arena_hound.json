@@ -1,0 +1,22 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"condition": {
+				"chance": 0.4,
+				"type": "minecraft:random_chance"
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:hound_fang",
+					"modifier": {
+						"type": "minecraft:set_count",
+						"count": 1
+					}
+				}
+			]
+		}
+	]
+}
