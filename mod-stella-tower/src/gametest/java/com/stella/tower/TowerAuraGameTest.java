@@ -226,8 +226,13 @@ public class TowerAuraGameTest {
 		helper.succeed();
 	}
 
-	/** The whole road: the server's own tick pulses an occupied floor, and the mist reaches the player. */
-	@GameTest(maxTicks = 100)
+	/**
+	 * The whole road: the server's own tick pulses an occupied floor, and the mist reaches the player.
+	 * <p>
+	 * The window spans thirty pulses, not ten. A full suite run once missed the mist over ten of them and
+	 * the same suite passed on the next run, so the wait was too short for the slower of two runs.
+	 */
+	@GameTest(maxTicks = 300)
 	public void iceMistReachesAPlayerOnTheServersOwnPulse(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
@@ -244,13 +249,14 @@ public class TowerAuraGameTest {
 			}
 		};
 		// A failing wait is silent until the test times out, so the failure path is cleaned just before that.
-		helper.runAfterDelay(95L, clean);
+		helper.runAfterDelay(295L, clean);
 		helper.succeedWhen(() -> {
 			if (seen[0] < 0 && slowed(near)) {
 				seen[0] = helper.getTick();
 				TowerTestSupport.result("iceOwnPulse", "slowedAtTick=" + seen[0] + " effect=" + slow(near));
 			}
-			helper.assertTrue(seen[0] >= 0, "the mist never reached the player");
+			helper.assertTrue(seen[0] >= 0, "the mist never reached the player: towerPlayers=" + tower.players().size()
+				+ " inTower=" + (near.level() == tower) + " at=" + near.blockPosition() + " floor=" + floor + " iceAlive=" + ice.isAlive());
 			clean.run();
 		});
 	}
