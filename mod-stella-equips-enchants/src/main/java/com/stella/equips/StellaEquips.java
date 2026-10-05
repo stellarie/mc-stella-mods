@@ -29,6 +29,7 @@ public class StellaEquips implements ModInitializer {
 		com.stella.equips.enchant.Shakedown.register();
 		com.stella.equips.bag.EmeraldBag.register();
 		com.stella.equips.heart.SlimeHeart.register();
+		com.stella.equips.unique.Uniques.bootstrap();
 		com.stella.equips.anvil.EmeraldPurse.register();
 		com.stella.equips.enchant.Auras.register();
 		com.stella.equips.enchant.Waveform.register();
