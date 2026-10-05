@@ -2,6 +2,7 @@ package com.stella.rpg;
 
 import com.stella.rpg.api.HealthScaleShare;
 import com.stella.rpg.api.OutgoingDamageShare;
+import com.stella.rpg.api.XpCurveShare;
 import com.stella.rpg.net.RpgNet;
 import com.stella.rpg.bag.Bag;
 import com.stella.rpg.roll.WeaponRolls;
@@ -48,6 +49,7 @@ public final class StellaRpg implements ModInitializer {
 		StarterSword.register();
 		OutgoingDamageShare.register();
 		HealthScaleShare.publish();
+		XpCurveShare.publish();
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> reloadConfig());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> reloadConfig());
 		LOGGER.info("{} initialized", MOD_ID);
@@ -56,6 +58,7 @@ public final class StellaRpg implements ModInitializer {
 	private static void reloadConfig() {
 		RpgConfigStore.reload(RpgConfigStore.defaultPath());
 		HealthScaleShare.publish();
+		XpCurveShare.publish();
 	}
 
 	public static Identifier id(final String path) {
