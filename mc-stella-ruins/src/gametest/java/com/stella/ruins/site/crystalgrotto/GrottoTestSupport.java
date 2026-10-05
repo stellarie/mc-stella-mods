@@ -49,7 +49,10 @@ import net.minecraft.world.phys.Vec3;
  */
 final class GrottoTestSupport {
 	private static final AtomicInteger NEXT = new AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 100_000L) * 8);
+	/** The wall-clock wait for chunk loading. Ticks run fast when the server is behind, so ticks cannot bound a chunk load. */
 	static final long READY_NANOS = 120_000_000_000L;
+	/** The tick limit of an arena test. It is far above what 120 s can hold, so the wall clock ends a stuck wait. */
+	static final int ARENA_TICKS = 1_000_000;
 
 	private GrottoTestSupport() {
 	}
@@ -292,12 +295,14 @@ final class GrottoTestSupport {
 		}
 	}
 
+	/** Fails the test only when the arena chunks stay unready past the wall-clock deadline. */
 	static void awaitReady(final GameTestHelper helper, final Arena arena, final long startedNanos) {
 		if (ready(arena)) {
 			return;
 		}
 		if (System.nanoTime() - startedNanos > READY_NANOS) {
-			helper.fail("the arena chunks did not tick entities within " + READY_NANOS / 1_000_000_000L + " s");
+			long ticking = arena.frameChunks().stream().filter(c -> arena.level().isPositionEntityTicking(new BlockPos(c.getMiddleBlockX(), 64, c.getMiddleBlockZ()))).count();
+			helper.fail("the arena chunks did not tick entities within " + READY_NANOS / 1_000_000_000L + " s: " + ticking + "/" + arena.frameChunks().size() + " tick");
 		}
 		helper.assertTrue(false, "the arena chunks do not tick entities yet");
 	}

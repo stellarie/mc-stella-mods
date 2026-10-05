@@ -1,0 +1,73 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"iron": [
+			"#14161c",
+			"#3a3f4a",
+			"#6b7280",
+			"#a7b0bd",
+			"#e6ebf2"
+		],
+		"gold": [
+			"#2a1d05",
+			"#7a5410",
+			"#c8901f",
+			"#f0c24a",
+			"#fff1a8"
+		],
+		"ghost": [
+			"#0c1a22",
+			"#2a5a6e",
+			"#5fb0c8",
+			"#a8e4f0",
+			"#f0ffff"
+		],
+		"crimson": [
+			"#2a0a10",
+			"#6e1626",
+			"#b3263d",
+			"#e8596e",
+			"#ffb3bf"
+		],
+		"steel": [
+			"#10141c",
+			"#2c3a52",
+			"#5878a8",
+			"#9bbcec",
+			"#e4f0ff"
+		]
+	},
+	"items": [
+		{
+			"id": "keep_key_fragment",
+			"template": "shard",
+			"palette": "gold"
+		},
+		{
+			"id": "tarnished_crest",
+			"template": "gem",
+			"palette": "iron"
+		},
+		{
+			"id": "spectral_thread",
+			"template": "feather",
+			"palette": "ghost"
+		},
+		{
+			"id": "castellans_oath",
+			"template": "sword",
+			"palette": "steel"
+		},
+		{
+			"id": "keep_sigil_affix",
+			"template": "shard",
+			"palette": "crimson"
+		},
+		{
+			"id": "banner_of_the_keep",
+			"template": "map",
+			"palette": "crimson"
+		}
+	],
+	"sets": []
+}

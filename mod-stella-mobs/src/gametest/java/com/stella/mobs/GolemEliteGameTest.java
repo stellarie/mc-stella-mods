@@ -7,12 +7,15 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * G01 to G04: an iron golem is elite every time rather than by roll, moves 25 percent faster, slows what it
@@ -150,6 +153,36 @@ public class GolemEliteGameTest {
 			);
 			helper.succeed();
 		});
+	}
+
+	/** G08: a golem whose kit owns its scaling (no roll and self scaled) is never forced elite. */
+	@GameTest(maxTicks = 200)
+	public void anOwnedIronGolemIsNotForcedElite(final GameTestHelper helper) {
+		Arena.buildFloor(helper);
+		Mob owned = taggedGolem(helper, 2, 2, StellaMobs.NO_SPAWN_ROLL_TAG, StellaMobs.SELF_SCALED_TAG);
+		Mob noRollOnly = taggedGolem(helper, 6, 6, StellaMobs.NO_SPAWN_ROLL_TAG);
+
+		helper.runAfterDelay(4L, () -> {
+			helper.assertFalse(Elite.isElite(owned), "an owned iron golem was forced elite");
+			helper.assertTrue(Elite.isElite(noRollOnly), "a no-roll iron golem without self scaling lost its elite force");
+			StellaMobs.LOGGER.info(
+				"[BEHAVIOR] test={} RESULT ownedElite={} noRollOnlyElite={}",
+				TEST, Elite.isElite(owned), Elite.isElite(noRollOnly)
+			);
+			helper.succeed();
+		});
+	}
+
+	private static Mob taggedGolem(final GameTestHelper helper, final int x, final int z, final String... tags) {
+		IronGolem golem = EntityTypes.IRON_GOLEM.create(helper.getLevel(), EntitySpawnReason.EVENT);
+		for (String tag : tags) {
+			golem.addTag(tag);
+		}
+		BlockPos at = helper.absolutePos(new BlockPos(x, 3, z));
+		golem.snapTo(Vec3.atBottomCenterOf(at));
+		golem.setPersistenceRequired();
+		helper.getLevel().addFreshEntity(golem);
+		return golem;
 	}
 
 	private static Mob spawnGolem(final GameTestHelper helper, final int x, final int z) {

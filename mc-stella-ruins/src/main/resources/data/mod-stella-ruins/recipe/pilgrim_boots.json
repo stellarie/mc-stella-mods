@@ -1,0 +1,14 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "equipment",
+	"ingredients": [
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:shrine_shard",
+		"mod-stella-ruins:pilgrim_ash",
+		"mod-stella-ruins:pilgrim_ash"
+	],
+	"result": {
+		"id": "mod-stella-ruins:pilgrim_boots",
+		"count": 1
+	}
+}
