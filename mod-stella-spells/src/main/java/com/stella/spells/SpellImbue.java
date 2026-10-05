@@ -190,17 +190,32 @@ public final class SpellImbue {
 		return cost;
 	}
 
-	/** The piece with the book's spell added and nothing else of the book; empty when it holds that spell already. */
-	public static ItemStack imbue(final ItemStack weapon, final SpellDefinition spell) {
+	/**
+	 * The piece with the book's spell added and nothing else of the book; empty when it holds that spell already.
+	 * An awakened book also marks the spell as the piece's one awakened imbue, and upgrades a plain imbue of the
+	 * same spell; a piece that has an awakened imbue takes no second awakened book. Arrows never take the mark.
+	 */
+	public static ItemStack imbue(final ItemStack weapon, final ItemStack book) {
+		SpellDefinition spell = ((SpellbookItem) book.getItem()).definition();
 		List<Identifier> current = spellsOf(weapon);
-		if (NOT_IMBUABLE.contains(spell.id()) || current.contains(spell.id())) {
+		boolean awakened = Awakening.isAwakened(book) && !weapon.is(ItemTags.ARROWS);
+		if (NOT_IMBUABLE.contains(spell.id()) || (awakened && weapon.has(Awakening.AWAKENED_IMBUE))) {
+			return ItemStack.EMPTY;
+		}
+		boolean upgrade = awakened && current.contains(spell.id());
+		if (current.contains(spell.id()) && !upgrade) {
 			return ItemStack.EMPTY;
 		}
 
 		ItemStack result = weapon.copy();
 		List<Identifier> spells = new java.util.ArrayList<>(current);
-		spells.add(spell.id());
+		if (!upgrade) {
+			spells.add(spell.id());
+		}
 		result.set(IMBUED, new ImbuedSpell(spells));
+		if (awakened) {
+			result.set(Awakening.AWAKENED_IMBUE, spell.id());
+		}
 		// A weapon in hand shows its spell's cooldown in the hotbar; its own group keeps other weapons clear of it.
 		if (showsCooldown(result)) {
 			result.set(DataComponents.USE_COOLDOWN, new UseCooldown(COOLDOWN_GROUP_SECONDS, java.util.Optional.of(cooldownGroup(spells.get(0)))));
@@ -298,8 +313,10 @@ public final class SpellImbue {
 		base = RpgBridge.grow(player, definition.id().getPath(), base);
 		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
-			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks()
+			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks(), base.awakened()
 		);
+		// The piece's own awakened imbue decides; the cast book's flag never reaches an imbued hit.
+		modifiers = modifiers.withAwakened(definition.id().equals(piece.get(Awakening.AWAKENED_IMBUE)));
 		Mob target = null;
 		Vec3 point = null;
 		switch (definition.targetMode()) {
@@ -317,6 +334,7 @@ public final class SpellImbue {
 		int hurtCooldown = victim.damageCooldownTime;
 		victim.damageCooldownTime = 0;
 		Vec3 departure = player.position();
+		Awakening.report(definition.id(), modifiers.awakened());
 		boolean cast = definition.effect().apply(player, target, point, modifiers);
 		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
 		if (!cast) {

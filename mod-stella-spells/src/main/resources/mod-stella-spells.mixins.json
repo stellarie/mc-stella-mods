@@ -12,7 +12,9 @@
 		"MobGoalsAccessor",
 		"SummonGolemMixin",
 		"SummonHitMixin",
-		"SummonPortalMixin"
+		"SummonPortalMixin",
+		"SpellStatusDamageMixin",
+		"AddEffectHitMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

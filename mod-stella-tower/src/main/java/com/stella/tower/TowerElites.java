@@ -106,27 +106,16 @@ public final class TowerElites {
 		}
 	}
 
-	/**
-	 * Where a floor's guardians stand guard, as the floor was actually built: a floor built before the halls
-	 * keeps its portal across the room, and its guardians keep to that.
-	 */
+	/** Where a floor's guardians stand guard. */
 	public static BlockPos post(final ServerLevel tower, final int floor) {
-		TowerPlan plan = TowerPlan.at(tower, floor);
-		int moved = TowerPlan.CLASSIC_PORTAL_X - plan.portalX();
-		if (plan.version() == 0 && moved != 0) {
-			BlockPos hallFrame = plan.portalFrame().get(0);
-			if (!tower.getBlockState(hallFrame).is(TowerBlocks.TOWER_FRAME) && tower.getBlockState(hallFrame.offset(moved, 0, 0)).is(TowerBlocks.TOWER_FRAME)) {
-				return post(plan).offset(moved, 0, 0);
-			}
-		}
-		return post(plan);
+		return post(TowerPlan.at(tower, floor));
 	}
 
 	/** Where a floor's guardians stand guard: a few steps in front of its portal, on the side it is entered by. */
 	public static BlockPos post(final TowerPlan plan) {
-		// On the floor of the hall, however high the portal stands.
+		// On the floor of the portal's story, however high the portal stands.
 		BlockPos inside = plan.portalInside().get(0);
-		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y - inside.getY(), 0);
+		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y + plan.portalY() - inside.getY(), 0);
 	}
 
 	public static boolean keepsElite(final int floor) {

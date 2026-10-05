@@ -14,6 +14,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 
@@ -28,6 +31,10 @@ public final class SpellVisuals {
 	static final int HELD_GLOW_POINTS = 4;
 	static final int MAX_HELD_PARTICLES_PER_PULSE = HELD_OUTER_POINTS + HELD_INNER_POINTS + HELD_GLOW_POINTS;
 	static final int ACCENT_POINTS = 12;
+	private static final int ARC_MIN_PARTS = 6;
+	private static final int ARC_MAX_PARTS = 10;
+	private static final double ARC_MAX_OFFSET_BLOCKS = 0.35;
+	private static final double ARC_STEP_BLOCKS = 0.2;
 	private static final double EFFECT_LINK_STEP_BLOCKS = 0.4;
 	static final int MAX_EFFECT_LINK_RECIPIENTS = 8;
 	static final int MAX_EFFECT_LINK_POINTS = 12;
@@ -560,6 +567,43 @@ public final class SpellVisuals {
 			case "summon_skeleton" -> Motif.SUMMON;
 			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
 		};
+	}
+
+	/** A jagged lightning arc between two points, sent to every player in range. */
+	static int arc(final ServerLevel level, final Vec3 from, final Vec3 to, final RandomSource random) {
+		Vec3 line = to.subtract(from);
+		double length = line.length();
+		Vec3 along = length < 1.0e-6 ? new Vec3(0.0, 1.0, 0.0) : line.scale(1.0 / length);
+		Vec3 helper = Math.abs(along.y) > 0.9 ? new Vec3(1.0, 0.0, 0.0) : new Vec3(0.0, 1.0, 0.0);
+		Vec3 sideA = along.cross(helper).normalize();
+		Vec3 sideB = along.cross(sideA);
+		int parts = ARC_MIN_PARTS + random.nextInt(ARC_MAX_PARTS - ARC_MIN_PARTS + 1);
+		List<Vec3> joints = new ArrayList<>();
+		joints.add(from);
+		for (int i = 1; i < parts; i++) {
+			double angle = random.nextDouble() * Math.PI * 2.0;
+			double offset = random.nextDouble() * ARC_MAX_OFFSET_BLOCKS;
+			joints.add(from.add(line.scale((double) i / parts))
+				.add(sideA.scale(Math.cos(angle) * offset)).add(sideB.scale(Math.sin(angle) * offset)));
+		}
+		joints.add(to);
+		int sent = 0;
+		for (int i = 1; i < joints.size(); i++) {
+			Vec3 start = joints.get(i - 1);
+			Vec3 end = joints.get(i);
+			int steps = Math.max(1, (int) Math.ceil(start.distanceTo(end) / ARC_STEP_BLOCKS));
+			for (int step = 0; step < steps; step++) {
+				Vec3 at = start.lerp(end, (double) step / steps);
+				level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
+				sent++;
+			}
+			if (i < joints.size() - 1) {
+				level.sendParticles(ParticleTypes.END_ROD, end.x, end.y, end.z, 1, 0.0, 0.0, 0.0, 0.0);
+				sent++;
+			}
+		}
+		level.playSound(null, to.x, to.y, to.z, SoundEvents.LIGHTNING_BOLT_IMPACT, SoundSource.WEATHER, 0.6F, 1.6F);
+		return sent;
 	}
 
 	private static Map.Entry<Identifier, Integer> heldColor(final String path, final int color) {

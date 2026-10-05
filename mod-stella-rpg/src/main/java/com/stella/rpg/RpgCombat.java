@@ -145,6 +145,11 @@ public final class RpgCombat {
 		return (float) scaled;
 	}
 
+	/** Rolls the dice with the active dice roller, so a test roller applies. */
+	static int rollDice(final LivingEntity attacker, final RpgDice.Dice dice) {
+		return diceRoller.roll(attacker, attacker.getRandom(), dice);
+	}
+
 	/** Rolls a critical hit with the LUK chance of the attacker. A spell uses it. */
 	static boolean rollCrit(final LivingEntity attacker) {
 		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)) + JobItems.spellCritBonus(attacker);

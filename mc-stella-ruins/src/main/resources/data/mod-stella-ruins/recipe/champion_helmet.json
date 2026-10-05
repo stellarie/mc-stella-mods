@@ -1,0 +1,15 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "equipment",
+	"ingredients": [
+		"mod-stella-ruins:champion_token",
+		"mod-stella-ruins:champion_token",
+		"mod-stella-ruins:champion_token",
+		"mod-stella-ruins:net_fiber",
+		"mod-stella-ruins:net_fiber"
+	],
+	"result": {
+		"id": "mod-stella-ruins:champion_helmet",
+		"count": 1
+	}
+}

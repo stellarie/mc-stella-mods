@@ -3,6 +3,8 @@ package com.stella.spells;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -20,7 +22,8 @@ public record SpellNumbers(
 	int extraAmplifier,
 	double radius,
 	int targets,
-	int capTicks
+	int capTicks,
+	boolean control
 ) {
 	/** Which cast duration multiplier a timing follows. */
 	public enum Scale {
@@ -46,59 +49,71 @@ public record SpellNumbers(
 
 	private static final Map<String, SpellNumbers> BY_PATH = new LinkedHashMap<>();
 	private static final Timing NO_TIMING = Timing.NONE;
+	/** A self buff or a party hymn lasts half an hour, and no multiplier stretches it. */
+	private static final int BUFF_TICKS = 36_000;
 
 	public static final SpellNumbers EMPTY = builder("").build();
-	public static final SpellNumbers SPARK_SHOT = builder("spark_shot").damage(3.0f).extra(40, Scale.OFFENSIVE).build();
-	public static final SpellNumbers FROSTBIND = builder("frostbind").duration(80, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers SPARK_SHOT = builder("spark_shot").damage(3.0f).extra(120, Scale.OFFENSIVE).build();
+	public static final SpellNumbers FROSTBIND = builder("frostbind").duration(160, Scale.OFFENSIVE).amplifier(1).control().build();
 	public static final SpellNumbers GALE_STEP = builder("gale_step").duration(40, Scale.OFFENSIVE).build();
 	public static final SpellNumbers MENDING_WORD = builder("mending_word").heal(4.0f).build();
-	public static final SpellNumbers STONEGUARD = builder("stoneguard").duration(80, Scale.DEFENSIVE).build();
+	public static final SpellNumbers STONEGUARD = builder("stoneguard").duration(BUFF_TICKS, Scale.FIXED).build();
 	public static final SpellNumbers STATIC_LASH = builder("static_lash").damage(3.0f).radius(4.0).targets(2).build();
-	public static final SpellNumbers BRIAR_SNARE = builder("briar_snare").duration(80, Scale.OFFENSIVE).amplifier(3).build();
+	public static final SpellNumbers BRIAR_SNARE = builder("briar_snare").duration(160, Scale.OFFENSIVE).amplifier(3).control().build();
 	public static final SpellNumbers TIDAL_PUSH = builder("tidal_push").build();
-	public static final SpellNumbers OWLS_GAZE = builder("owls_gaze").duration(900, Scale.OFFENSIVE).build();
-	public static final SpellNumbers SLIMEBOUND = builder("slimebound").duration(160, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers OWLS_GAZE = builder("owls_gaze").duration(BUFF_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers SLIMEBOUND = builder("slimebound").duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
 	public static final SpellNumbers CHAINSTORM = builder("chainstorm").damage(6.0f).radius(5.0).targets(5).build();
 	public static final SpellNumbers RIFTWALK = builder("riftwalk").build();
-	public static final SpellNumbers PHOENIX_MANTLE = builder("phoenix_mantle").heal(4.0f).duration(600, Scale.DEFENSIVE).build();
-	public static final SpellNumbers LIFE_BLOOM = builder("life_bloom").heal(8.0f).duration(100, Scale.DEFENSIVE).build();
-	public static final SpellNumbers VOID_WELL = builder("void_well").radius(5.0).duration(60, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers PHOENIX_MANTLE = builder("phoenix_mantle").heal(4.0f).duration(BUFF_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers LIFE_BLOOM = builder("life_bloom").heal(8.0f).duration(300, Scale.DEFENSIVE).build();
+	public static final SpellNumbers VOID_WELL = builder("void_well").radius(5.0).duration(120, Scale.OFFENSIVE).amplifier(1).control().build();
 	public static final SpellNumbers WARDENS_ROAR = builder("wardens_roar").damage(6.0f).radius(5.0).build();
-	public static final SpellNumbers AEGIS_OF_THE_DEEP = builder("aegis_of_the_deep").duration(80, Scale.DEFENSIVE).amplifier(1).build();
-	public static final SpellNumbers WITHER_SEAL = builder("wither_seal").duration(100, Scale.OFFENSIVE).amplifier(1).build();
-	public static final SpellNumbers TIME_LOCK = builder("time_lock").radius(5.0).duration(100, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers AEGIS_OF_THE_DEEP = builder("aegis_of_the_deep").duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
+	public static final SpellNumbers WITHER_SEAL = builder("wither_seal").duration(300, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers TIME_LOCK = builder("time_lock").radius(5.0).duration(200, Scale.OFFENSIVE).amplifier(1).control().build();
 	public static final SpellNumbers DRAGONFALL = builder("dragonfall").damage(10.0f).radius(3.0).build();
 	/** Ice Lance's radius is its reach in blocks. */
-	public static final SpellNumbers ICE_LANCE = builder("ice_lance").damage(5.0f).radius(16.0).duration(140, Scale.OFFENSIVE).build();
+	public static final SpellNumbers ICE_LANCE = builder("ice_lance").damage(5.0f).radius(16.0).duration(280, Scale.OFFENSIVE).control().build();
 	public static final SpellNumbers SOUL_SIPHON = builder("soul_siphon").damage(4.0f).build();
-	public static final SpellNumbers VENOM_DART = builder("venom_dart").damage(2.0f).duration(100, Scale.OFFENSIVE).amplifier(1).build();
+	public static final SpellNumbers VENOM_DART = builder("venom_dart").damage(2.0f).duration(300, Scale.OFFENSIVE).amplifier(1).build();
 	/** Sapping Hex lasts its duration for every hostile it weakens, up to the cap; the extra timing is the caster's Strength. */
-	public static final SpellNumbers SAPPING_HEX = builder("sapping_hex").radius(6.0).duration(60, Scale.OFFENSIVE)
-		.extra(60, Scale.DEFENSIVE).cap(300).amplifier(1).extraAmplifier(1).build();
-	public static final SpellNumbers BLINDING_FLASH = builder("blinding_flash").duration(100, Scale.OFFENSIVE).extra(200, Scale.OFFENSIVE).build();
-	public static final SpellNumbers EMBER_BRAND = builder("ember_brand").damage(2.0f).duration(200, Scale.OFFENSIVE).build();
-	public static final SpellNumbers QUICKSILVER = builder("quicksilver").duration(400, Scale.DEFENSIVE).amplifier(1).build();
-	public static final SpellNumbers TIDE_LUNGS = builder("tide_lungs").duration(1200, Scale.DEFENSIVE).extra(400, Scale.DEFENSIVE).build();
-	public static final SpellNumbers BERSERK = builder("berserk").duration(200, Scale.DEFENSIVE).amplifier(1).build();
-	public static final SpellNumbers HASTE_RUNE = builder("haste_rune").duration(1200, Scale.DEFENSIVE).amplifier(1).build();
+	public static final SpellNumbers SAPPING_HEX = builder("sapping_hex").radius(6.0).duration(180, Scale.OFFENSIVE)
+		.extra(180, Scale.DEFENSIVE).cap(900).amplifier(1).extraAmplifier(1).build();
+	public static final SpellNumbers BLINDING_FLASH = builder("blinding_flash").duration(300, Scale.OFFENSIVE).extra(600, Scale.OFFENSIVE).build();
+	public static final SpellNumbers EMBER_BRAND = builder("ember_brand").damage(2.0f).duration(600, Scale.OFFENSIVE).build();
+	public static final SpellNumbers QUICKSILVER = builder("quicksilver").duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
+	public static final SpellNumbers TIDE_LUNGS = builder("tide_lungs").duration(BUFF_TICKS, Scale.FIXED).extra(BUFF_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers BERSERK = builder("berserk").duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
+	public static final SpellNumbers HASTE_RUNE = builder("haste_rune").duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
 	/** Shadow Veil's extra timing is how long its breaking blow stops the victim; the cast does not scale it. */
-	public static final SpellNumbers SHADOW_VEIL = builder("shadow_veil").duration(600, Scale.DEFENSIVE).extra(40, Scale.FIXED)
+	public static final SpellNumbers SHADOW_VEIL = builder("shadow_veil").duration(BUFF_TICKS, Scale.FIXED).extra(40, Scale.FIXED)
 		.extraAmplifier(6).build();
-	public static final SpellNumbers SANCTUARY = builder("sanctuary").damage(3.0f).radius(3.0).duration(200, Scale.DEFENSIVE).build();
+	public static final SpellNumbers SANCTUARY = builder("sanctuary").damage(3.0f).radius(6.0).duration(600, Scale.DEFENSIVE).build();
 	public static final SpellNumbers PURIFY = builder("purify").radius(6.0).build();
-	public static final SpellNumbers FROST_NOVA = builder("frost_nova").damage(3.0f).radius(5.0).duration(60, Scale.OFFENSIVE).amplifier(3).build();
+	public static final SpellNumbers FROST_NOVA = builder("frost_nova").damage(3.0f).radius(5.0).duration(120, Scale.OFFENSIVE).amplifier(3).control().build();
 	public static final SpellNumbers EARTHSPIKE = builder("earthspike").damage(4.0f).radius(3.0).build();
 	/** Plague Cloud's duration is the cloud's; the extra timing is its Poison, which the cast does not scale. */
-	public static final SpellNumbers PLAGUE_CLOUD = builder("plague_cloud").radius(3.0).duration(100, Scale.OFFENSIVE)
-		.extra(100, Scale.FIXED).build();
+	public static final SpellNumbers PLAGUE_CLOUD = builder("plague_cloud").radius(3.0).duration(300, Scale.OFFENSIVE)
+		.extra(300, Scale.FIXED).build();
 	/** Flame Ring's duration is its aura; the extra timing is the fire it sets on each hostile. */
-	public static final SpellNumbers FLAME_RING = builder("flame_ring").damage(3.0f).radius(3.0).duration(200, Scale.DEFENSIVE)
-		.extra(60, Scale.OFFENSIVE).build();
-	public static final SpellNumbers GRAVITY = builder("gravity").radius(6.0).duration(160, Scale.OFFENSIVE).amplifier(1).build();
-	public static final SpellNumbers BULWARK_HYMN = builder("bulwark_hymn").radius(8.0).duration(400, Scale.DEFENSIVE).amplifier(1).build();
-	public static final SpellNumbers TAILWIND = builder("tailwind").radius(8.0).duration(600, Scale.DEFENSIVE).amplifier(1).build();
-	public static final SpellNumbers BATTLE_HYMN = builder("battle_hymn").radius(8.0).duration(400, Scale.DEFENSIVE).build();
+	public static final SpellNumbers FLAME_RING = builder("flame_ring").damage(3.0f).radius(5.0).duration(6000, Scale.DEFENSIVE)
+		.extra(180, Scale.OFFENSIVE).build();
+	public static final SpellNumbers GRAVITY = builder("gravity").radius(6.0).duration(320, Scale.OFFENSIVE).amplifier(1).control().build();
+	public static final SpellNumbers BULWARK_HYMN = builder("bulwark_hymn").radius(8.0).duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
+	public static final SpellNumbers TAILWIND = builder("tailwind").radius(8.0).duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
+	public static final SpellNumbers BATTLE_HYMN = builder("battle_hymn").radius(8.0).duration(BUFF_TICKS, Scale.FIXED).build();
 	public static final SpellNumbers SUMMON_SKELETON = builder("summon_skeleton").build();
+
+	/** Ticks of this spell's control on the target: half on an elite or a boss. */
+	int controlTicks(final LivingEntity target, final int ticks) {
+		return this.control ? controlTicksFor(target, ticks) : ticks;
+	}
+
+	/** Control of any kind lasts half as long on an elite or a boss. */
+	static int controlTicksFor(final LivingEntity target, final int ticks) {
+		return target instanceof Mob mob && MobSpells.isElite(mob) ? ticks / 2 : ticks;
+	}
 
 	/** The numbers of the spell with this id, or null when none were declared. */
 	public static @Nullable SpellNumbers find(final Identifier spell) {
@@ -154,6 +169,7 @@ public record SpellNumbers(
 		private double radius;
 		private int targets;
 		private int capTicks;
+		private boolean control;
 
 		Builder(final String path) {
 			this.path = path;
@@ -209,10 +225,15 @@ public record SpellNumbers(
 			return this;
 		}
 
+		Builder control() {
+			this.control = true;
+			return this;
+		}
+
 		SpellNumbers build() {
 			SpellNumbers numbers = new SpellNumbers(
 				this.damage, this.heal, this.allyHeal, this.duration, this.extra, this.amplifier, this.extraAmplifier,
-				this.radius, this.targets, this.capTicks
+				this.radius, this.targets, this.capTicks, this.control
 			);
 			if (!this.path.isEmpty()) {
 				BY_PATH.put(this.path, numbers);

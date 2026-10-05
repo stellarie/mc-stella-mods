@@ -1,0 +1,8 @@
+{
+	"replace": false,
+	"values": [
+		"mod-stella-ruins:ruin_core",
+		"mod-stella-ruins:ruin_vault",
+		"mod-stella-ruins:keep_throne_door"
+	]
+}

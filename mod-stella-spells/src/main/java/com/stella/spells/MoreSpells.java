@@ -134,7 +134,7 @@ public final class MoreSpells {
 		struck.add(0, target);
 		for (Mob mob : struck) {
 			hurt(caster, mob, RpgBridge.damage(caster, ICE_LANCE_DAMAGE, modifiers.powerMultiplier()));
-			freeze(mob, SpellNumbers.ICE_LANCE.durationTicks(modifiers));
+			freeze(mob, SpellNumbers.ICE_LANCE.controlTicks(mob, SpellNumbers.ICE_LANCE.durationTicks(modifiers)));
 		}
 		int puffs = 0;
 		double length = from.distanceTo(to);
@@ -161,7 +161,7 @@ public final class MoreSpells {
 		}
 		float before = target.getHealth();
 		hurt(caster, target, RpgBridge.damage(caster, SOUL_SIPHON_DAMAGE, modifiers.powerMultiplier()));
-		caster.heal(RpgBridge.vanilla(before - Math.max(0.0F, target.getHealth())));
+		CastHits.heal(caster, caster, RpgBridge.vanilla(before - Math.max(0.0F, target.getHealth())));
 		return true;
 	}
 
@@ -192,8 +192,9 @@ public final class MoreSpells {
 
 	// Every hostile around the caster is slowed and can jump only half as high until it wears off.
 	static boolean applyGravity(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		int ticks = SpellNumbers.GRAVITY.durationTicks(modifiers);
+		int base = SpellNumbers.GRAVITY.durationTicks(modifiers);
 		for (Mob mob : hostiles(caster.level(), caster.position(), GRAVITY_RADIUS * modifiers.radiusMultiplier())) {
+			int ticks = SpellNumbers.GRAVITY.controlTicks(mob, base);
 			mob.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, ticks, GRAVITY_SLOW_AMPLIFIER), caster);
 			SpellTimers.ground(mob, ticks);
 		}
@@ -205,7 +206,7 @@ public final class MoreSpells {
 			return false;
 		}
 		target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, SpellNumbers.BLINDING_FLASH.durationTicks(modifiers), 0), caster);
-		target.addEffect(new MobEffectInstance(MobEffects.GLOWING, SpellNumbers.BLINDING_FLASH.extraTicks(modifiers), 0), caster);
+		SpellStatusApi.mark(target, SpellNumbers.BLINDING_FLASH.extraTicks(modifiers), caster);
 		return true;
 	}
 
@@ -214,7 +215,14 @@ public final class MoreSpells {
 			return false;
 		}
 		hurt(caster, target, RpgBridge.damage(caster, EMBER_DAMAGE, modifiers.powerMultiplier()));
-		target.igniteForTicks(SpellNumbers.EMBER_BRAND.durationTicks(modifiers));
+		// Fire boils the water off first, so a Soaked mob does not catch light on this cast.
+		if (target.hasEffect(SpellStatus.SOAKED)) {
+			target.removeEffect(SpellStatus.SOAKED);
+			return true;
+		}
+		int burn = SpellNumbers.EMBER_BRAND.durationTicks(modifiers);
+		target.igniteForTicks(burn);
+		SpellStatusApi.scorch(target, burn, caster);
 		return true;
 	}
 
@@ -266,6 +274,9 @@ public final class MoreSpells {
 					.toList();
 				harmful.forEach(player::removeEffect);
 				cleared |= !harmful.isEmpty();
+				if (!harmful.isEmpty()) {
+					CastHits.touch(caster);
+				}
 				if (player != caster && !harmful.isEmpty() && linked < SpellVisuals.MAX_EFFECT_LINK_RECIPIENTS) {
 					SpellVisuals.linkAffected(caster, "purify", caster.position().add(0.0, 1.0, 0.0), player.position().add(0.0, 1.0, 0.0));
 					linked++;
@@ -278,7 +289,9 @@ public final class MoreSpells {
 	static boolean applyFrostNova(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		for (Mob hostile : hostiles(caster.level(), caster.position(), FROST_NOVA_RADIUS * modifiers.radiusMultiplier())) {
 			hurt(caster, hostile, RpgBridge.damage(caster, FROST_NOVA_DAMAGE, modifiers.powerMultiplier()));
-			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SpellNumbers.FROST_NOVA.durationTicks(modifiers), FROST_NOVA_SLOW_AMPLIFIER), caster);
+			int slow = SpellNumbers.FROST_NOVA.controlTicks(hostile, SpellNumbers.FROST_NOVA.durationTicks(modifiers));
+			hostile.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, slow, FROST_NOVA_SLOW_AMPLIFIER), caster);
+			SpellStatusApi.chill(hostile, slow, SpellStatusApi.CHILL_FREEZE_TICKS, caster);
 		}
 		return true;
 	}
@@ -362,9 +375,7 @@ public final class MoreSpells {
 	}
 
 	private static boolean heal(final ServerPlayer player, final float amount) {
-		float before = player.getHealth();
-		player.heal(amount);
-		return player.getHealth() > before;
+		return CastHits.heal(player, player, amount);
 	}
 
 	static List<Mob> hostiles(final ServerLevel level, final Vec3 center, final double radius) {
@@ -385,6 +396,7 @@ public final class MoreSpells {
 		if (!caster.level().addFreshEntity(cloud)) {
 			return false;
 		}
+		CastHits.deferTo(cloud, caster);
 		recorder.cloud(caster, cloud, effect);
 		return true;
 	}

@@ -175,9 +175,15 @@ public class SpellScrollsGameTest {
 				}
 				JsonObject hidden = handCase.getAsJsonObject("model");
 				JsonObject fallback = model.getAsJsonObject("fallback");
+				// The inventory model is the plain book unless the stack is awakened, which swaps in the gold art.
+				JsonObject plain = fallback == null ? null : fallback.getAsJsonObject("on_false");
+				JsonObject awakened = fallback == null ? null : fallback.getAsJsonObject("on_true");
 				if (!selected.equals(hands) || hidden == null || !"minecraft:empty".equals(hidden.get("type").getAsString())
-					|| fallback == null || !"minecraft:model".equals(fallback.get("type").getAsString())
-					|| !("mod-stella-spells:item/" + definition.id().getPath()).equals(fallback.get("model").getAsString())) {
+					|| fallback == null || !"minecraft:condition".equals(fallback.get("type").getAsString())
+					|| !"minecraft:has_component".equals(fallback.get("property").getAsString())
+					|| !"mod-stella-spells:awakened".equals(fallback.get("component").getAsString())
+					|| plain == null || !("mod-stella-spells:item/" + definition.id().getPath()).equals(plain.get("model").getAsString())
+					|| awakened == null || !("mod-stella-spells:item/" + definition.id().getPath() + "_awakened").equals(awakened.get("model").getAsString())) {
 					wrong.add(definition.id() + " hides the wrong view or loses its inventory model");
 				}
 			} catch (java.io.IOException | RuntimeException error) {

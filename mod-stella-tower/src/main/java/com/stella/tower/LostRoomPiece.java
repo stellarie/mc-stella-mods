@@ -44,7 +44,9 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSeriali
 public class LostRoomPiece extends StructurePiece {
 	public static final int LENGTH = 31;
 	public static final int WIDTH = 27;
-	public static final int HEIGHT = 11;
+	public static final int HEIGHT = 20;
+	/** How far below the floor a crypt reaches. */
+	public static final int DEPTH = 14;
 	/** The curtain wall's height above the floor, merlons aside. */
 	public static final int WALL_HEIGHT = 4;
 	public static final int TOWER = 5;
@@ -71,24 +73,56 @@ public class LostRoomPiece extends StructurePiece {
 	private static final long SALT = 0x43415354L;
 
 	private final long ruinSeed;
+	private final LostCastleVariant variant;
+	private final LostCastleVariant.Layout layout;
 
 	public LostRoomPiece(final RandomSource random, final int west, final int floor, final int north) {
 		this(west, floor, north, Direction.Plane.HORIZONTAL.getRandomDirection(random));
 	}
 
 	public LostRoomPiece(final int west, final int floor, final int north, final Direction facing) {
+		this(west, floor, north, facing, LostCastleVariant.of(SALT ^ BlockPos.asLong(west, floor, north)));
+	}
+
+	/** A castle of a given variant: the seam a test places each variant by. */
+	public LostRoomPiece(final int west, final int floor, final int north, final Direction facing, final LostCastleVariant variant) {
 		super(LostRooms.PIECE, 0, makeBoundingBox(west, floor, north, facing, LENGTH, HEIGHT, WIDTH));
 		this.setOrientation(facing);
 		this.ruinSeed = SALT ^ BlockPos.asLong(west, floor, north);
+		this.variant = variant;
+		this.layout = variant.layout(this.ruinSeed);
 	}
 
 	public LostRoomPiece(final CompoundTag tag) {
 		super(LostRooms.PIECE, tag);
 		this.ruinSeed = SALT ^ BlockPos.asLong(this.boundingBox.minX(), this.boundingBox.minY(), this.boundingBox.minZ());
+		// Saved before the variants: the castle.
+		this.variant = LostCastleVariant.values()[Math.floorMod(tag.getIntOr("Variant", 0), LostCastleVariant.values().length)];
+		this.layout = this.variant.layout(this.ruinSeed);
 	}
 
 	@Override
 	protected void addAdditionalSaveData(final StructurePieceSerializationContext context, final CompoundTag tag) {
+		tag.putInt("Variant", this.variant.ordinal());
+	}
+
+	public LostCastleVariant variant() {
+		return this.variant;
+	}
+
+	/** Where the roaming mobs rise: x and z, low and high, inclusive, at floor level. */
+	public int[] yard() {
+		return this.layout.yard();
+	}
+
+	/** The lowest y, from the floor, that the castle builds at. */
+	public int lowest() {
+		return this.layout.lowest();
+	}
+
+	/** The spot just inside the gate, from which every part of the castle is reached. */
+	public BlockPos gateInside() {
+		return worldPos(GATE_X, 1, 1);
 	}
 
 	/**
@@ -125,7 +159,8 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** The lower block of the castle's portal. */
 	public BlockPos portalPos() {
-		return worldPos(PORTAL_X, 1, PORTAL_Z);
+		int[] portal = this.layout.portal();
+		return worldPos(portal[0], portal[1], portal[2]);
 	}
 
 	public Direction facing() {
@@ -142,6 +177,10 @@ public class LostRoomPiece extends StructurePiece {
 			for (int z = 0; z < WIDTH; z++) {
 				this.fillColumnDown(level, wall, x, -1, z, chunkBB);
 			}
+		}
+		if (this.variant != LostCastleVariant.CASTLE) {
+			LostCastleVariant.build(this, this.variant, this.layout, level, chunkBB, ruin);
+			return;
 		}
 		curtain(level, chunkBB, ruin);
 		gate(level, chunkBB);
@@ -170,7 +209,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** The curtain wall: merlons on every other block, and three breaches that rubble spills out of. */
-	private void curtain(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
+	void curtain(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
 		int[][] breaches = {
 			{TOWER + 2 + ruin.nextInt(4), 0}, {LENGTH - 1, TOWER + 3 + ruin.nextInt(8)}, {TOWER + 4 + ruin.nextInt(12), WIDTH - 1}
@@ -203,7 +242,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** The gatehouse: a higher stretch of wall, the oak double door, and a lamp over it. */
-	private void gate(final WorldGenLevel level, final BoundingBox chunkBB) {
+	void gate(final WorldGenLevel level, final BoundingBox chunkBB) {
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
 		for (int x = GATE_X - 2; x <= GATE_X + 3; x++) {
 			for (int y = 1; y <= WALL_HEIGHT + 2; y++) {
@@ -221,7 +260,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** A hollow corner tower, its top broken to a jagged line, a doorway onto the yard. */
-	private void tower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x0, final int z0, final Direction door) {
+	void tower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x0, final int z0, final Direction door) {
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
 		int fallen = ruin.nextInt(4);
 		for (int dx = 0; dx < TOWER; dx++) {
@@ -251,7 +290,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** The fourth corner's tower lies in a ring of stumps and rubble. */
-	private void fallenTower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
+	void fallenTower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
 		int z0 = WIDTH - TOWER;
 		for (int dx = 0; dx < TOWER; dx++) {
@@ -374,7 +413,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** Vines down the walls' inner faces, and down the halls' fronts. */
-	private void vines(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
+	void vines(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
 		for (int i = 0; i < 14; i++) {
 			int side = ruin.nextInt(4);
 			int x;
@@ -414,7 +453,7 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** A pile of broken stone, at most {@code size} blocks, on open floor. */
-	private void rubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int z, final int size) {
+	void rubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int z, final int size) {
 		for (int i = 0; i < size; i++) {
 			int px = Math.max(1, Math.min(LENGTH - 2, x + ruin.nextInt(3) - 1));
 			int pz = Math.max(1, Math.min(WIDTH - 2, z + ruin.nextInt(3) - 1));
@@ -422,7 +461,10 @@ public class LostRoomPiece extends StructurePiece {
 		}
 	}
 
-	private void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
+	void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
+		if (z == 1 && (x == GATE_X || x == GATE_X + 1) && (y == 1 || y == 2)) {
+			return;
+		}
 		if (!getBlock(level, x, y, z, chunkBB).isAir() || !getBlock(level, x, y - 1, z, chunkBB).isSolid()) {
 			return;
 		}
@@ -436,7 +478,7 @@ public class LostRoomPiece extends StructurePiece {
 		this.placeBlock(level, stone, x, y, z, chunkBB);
 	}
 
-	private void door(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int z, final DoorHingeSide hinge) {
+	void door(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int z, final DoorHingeSide hinge) {
 		BlockState door = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.FACING, Direction.NORTH).setValue(DoorBlock.HINGE, hinge);
 		this.placeBlock(level, door.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), x, 1, z, chunkBB);
 		this.placeBlock(level, door.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), x, 2, z, chunkBB);
@@ -450,13 +492,17 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	/** A chest, stocked as a tower chest of a random floor would be, drawn from the castle's spot and its own. */
-	private void chest(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int z, final Direction facing) {
-		this.placeBlock(level, Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing), x, 1, z, chunkBB);
-		BlockPos at = worldPos(x, 1, z);
+	void chest(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int z, final Direction facing) {
+		chest(level, chunkBB, x, 1, z, facing);
+	}
+
+	void chest(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z, final Direction facing) {
+		this.placeBlock(level, Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing), x, y, z, chunkBB);
+		BlockPos at = worldPos(x, y, z);
 		if (!chunkBB.isInside(at) || !(level.getBlockEntity(at) instanceof ChestBlockEntity chest)) {
 			return;
 		}
-		RandomSource random = RandomSource.create(this.ruinSeed ^ 0x4C4F4F54L ^ (x * 31L + z));
+		RandomSource random = RandomSource.create(this.ruinSeed ^ 0x4C4F4F54L ^ (x * 31L + z) ^ (y == 1 ? 0L : y * 961L));
 		int floor = 1 + random.nextInt(LOOT_FLOORS);
 		for (int i = 0; i < TowerChests.ROLLS; i++) {
 			ItemStack stack = TowerChests.roll(level.getLevel(), floor, random).stack();
@@ -464,6 +510,47 @@ public class LostRoomPiece extends StructurePiece {
 				chest.setItem(i, stack);
 			}
 		}
+	}
+
+	/** Sets a block at a spot of the piece's own frame, turned with the piece. */
+	void set(final WorldGenLevel level, final BoundingBox chunkBB, final BlockState state, final int x, final int y, final int z) {
+		this.placeBlock(level, state, x, y, z, chunkBB);
+	}
+
+	BlockState get(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z) {
+		return this.getBlock(level, x, y, z, chunkBB);
+	}
+
+	/** Fills a box of the piece's own frame with one block. */
+	void fill(final WorldGenLevel level, final BoundingBox chunkBB, final int x0, final int y0, final int z0, final int x1, final int y1, final int z1, final BlockState state) {
+		this.generateBox(level, chunkBB, x0, y0, z0, x1, y1, z1, state, state, false);
+	}
+
+	/** Lines the blue portal, one wide and two high, axis x, entered from lower z; {@code y} is its lower block. */
+	void portal(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z) {
+		BlockState frame = TowerBlocks.TOWER_FRAME.defaultBlockState();
+		for (int dy = 0; dy <= 2; dy++) {
+			this.placeBlock(level, frame, x - 1, y + dy, z, chunkBB);
+			this.placeBlock(level, frame, x + 1, y + dy, z, chunkBB);
+		}
+		this.placeBlock(level, frame, x, y + 2, z, chunkBB);
+		this.placeBlock(level, frame, x, y - 1, z, chunkBB);
+		BlockState portal = TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.X);
+		this.placeBlock(level, portal, x, y, z, chunkBB);
+		this.placeBlock(level, portal, x, y + 1, z, chunkBB);
+	}
+
+	/**
+	 * The workstations in a row from a spot, a step of (dx, dz) apart: a crafting table with a lit candle,
+	 * a furnace, an anvil, and a chest, each facing {@code facing}.
+	 */
+	void workstations(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z, final int dx, final int dz, final Direction facing) {
+		this.placeBlock(level, Blocks.CRAFTING_TABLE.defaultBlockState(), x, y, z, chunkBB);
+		this.placeBlock(level, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true), x, y + 1, z, chunkBB);
+		this.placeBlock(level, Blocks.FURNACE.defaultBlockState().setValue(FurnaceBlock.FACING, facing), x + dx, y, z + dz, chunkBB);
+		Direction along = facing.getClockWise();
+		this.placeBlock(level, Blocks.ANVIL.defaultBlockState().setValue(AnvilBlock.FACING, along), x + 2 * dx, y, z + 2 * dz, chunkBB);
+		chest(level, chunkBB, x + 3 * dx, y, z + 3 * dz, facing);
 	}
 
 	/** Where a spot of the piece's own frame lies in the world. */

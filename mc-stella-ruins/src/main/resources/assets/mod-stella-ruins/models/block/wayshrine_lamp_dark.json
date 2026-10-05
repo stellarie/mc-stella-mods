@@ -1,0 +1,1 @@
+{ "parent": "minecraft:block/template_lantern", "textures": { "lantern": "mod-stella-ruins:block/wayshrine_lamp_dark" } }

@@ -1,0 +1,17 @@
+{
+	"block.mod-stella-ruins.keep_throne_door": "Throne Door",
+	"item.mod-stella-ruins.keep_key_fragment": "Keep Key Fragment",
+	"item.mod-stella-ruins.tarnished_crest": "Tarnished Crest",
+	"item.mod-stella-ruins.spectral_thread": "Spectral Thread",
+	"item.mod-stella-ruins.castellans_oath": "Castellan's Oath",
+	"item.mod-stella-ruins.keep_sigil_affix": "Keep Sigil",
+	"item.mod-stella-ruins.banner_of_the_keep": "Banner of the Keep",
+	"effect.mod-stella-ruins.oath": "Oath: a hit on a target below 30% health strikes again for 25% more",
+	"effect.mod-stella-ruins.rally": "Rally: in the off hand, Resistance I for you and allies within 6 blocks while a hostile is near",
+	"affix.mod-stella-ruins.keep_sigil": "Keep Sigil: +2 armor, +1 armor toughness",
+	"mob.mod-stella-ruins.keep_sentinel": "Keep Sentinel",
+	"mob.mod-stella-ruins.spectral_knight": "Spectral Knight",
+	"mob.mod-stella-ruins.floor_warden": "Floor Warden",
+	"mob.mod-stella-ruins.castellan": "The Castellan",
+	"clue.mod-stella-ruins.ruined_keep": "Three wardens guard a stair that climbs into the clouds. The last door wants all their keys."
+}

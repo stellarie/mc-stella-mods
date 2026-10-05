@@ -398,18 +398,26 @@ public class TowerAuraGameTest {
 	public void holyMendsItselfAndAHurtTowerMobNearby(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
-		Zombie holy = hurt(towerMob(tower, TowerElement.HOLY, spot(floor, 0, 0)));
-		Zombie kin = hurt(towerMob(tower, TowerElement.WIND, spot(floor, TowerAuras.HOLY_RADIUS - 1.0, 0)));
+		Zombie holy = towerMob(tower, TowerElement.HOLY, spot(floor, 0, 0));
+		Zombie kin = towerMob(tower, TowerElement.WIND, spot(floor, TowerAuras.HOLY_RADIUS - 1.0, 0));
+		holy.getAttribute(Attributes.MAX_HEALTH).removeModifiers();
+		kin.getAttribute(Attributes.MAX_HEALTH).removeModifiers();
+		holy.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+		kin.getAttribute(Attributes.MAX_HEALTH).setBaseValue(400.0);
+		hurt(holy);
+		hurt(kin);
 		float holyBefore = holy.getHealth();
 		float kinBefore = kin.getHealth();
 		TowerAuras.pulse(tower, floor, TowerAuras.HOLY_INTERVAL_TICKS * 3);
 		float holyGain = holy.getHealth() - holyBefore;
 		float kinGain = kin.getHealth() - kinBefore;
-		float want = (float) (holy.getMaxHealth() * TowerAuras.HOLY_HEAL_SHARE);
-		TowerTestSupport.result("holyMends", "self=" + holyGain + " kin=" + kinGain + " want=" + want);
+		float wantSelf = (float) (holy.getMaxHealth() * TowerAuras.HOLY_HEAL_SHARE);
+		float wantKin = (float) (kin.getMaxHealth() * TowerAuras.HOLY_HEAL_SHARE);
+		TowerTestSupport.result("holyMends", "self=" + holyGain + " kin=" + kinGain + " wantSelf=" + wantSelf + " wantKin=" + wantKin);
 		holy.discard();
 		kin.discard();
-		helper.assertTrue(Math.abs(holyGain - want) < 0.01F && Math.abs(kinGain - want) < 0.01F, "holy mended self " + holyGain + " and kin " + kinGain + ", wanted " + want);
+		helper.assertTrue(Math.abs(holyGain - wantSelf) < 0.01F && Math.abs(kinGain - wantKin) < 0.01F,
+			"holy mended self " + holyGain + " and kin " + kinGain + ", wanted " + wantSelf + " and " + wantKin);
 		helper.succeed();
 	}
 

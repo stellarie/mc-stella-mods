@@ -52,10 +52,11 @@ public class TowerRaisedPortalGameTest {
 		for (BlockPos pos : plan.portalInside()) {
 			open += tower.getBlockState(pos).getCollisionShape(tower, pos).isEmpty() ? 1 : 0;
 		}
-		TowerTestSupport.result(name, "floor=" + floor + " insideY=" + insideY + " expected=" + (TowerLayout.BASE_Y + lift) + " frameOnWall=" + onWall + "/" + bottomRow
+		int expected = TowerLayout.BASE_Y + plan.portalY() + lift;
+		TowerTestSupport.result(name, "floor=" + floor + " insideY=" + insideY + " expected=" + expected + " frameOnWall=" + onWall + "/" + bottomRow
 			+ " insideOpen=" + open + "/" + plan.portalInside().size());
 		helper.assertTrue(plan.lift() == lift, "the plan lifts the portal " + plan.lift() + ", not " + lift);
-		helper.assertTrue(insideY == TowerLayout.BASE_Y + lift, "the portal's inside is at y " + insideY + ", not " + (TowerLayout.BASE_Y + lift));
+		helper.assertTrue(insideY == expected, "the portal's inside is at y " + insideY + ", not " + expected);
 		helper.assertTrue(onWall == bottomRow && bottomRow > 0, "only " + onWall + " of the frame's " + bottomRow + " bottom blocks stand on tower wall");
 		helper.assertTrue(open == plan.portalInside().size(), "the raised portal's slot is not open: " + open + " of " + plan.portalInside().size());
 		helper.succeed();
@@ -108,8 +109,8 @@ public class TowerRaisedPortalGameTest {
 	}
 
 	/**
-	 * A walk over the built blocks, one block up at most per step, with room to stand: from the hall floor to
-	 * the portal's inside. Written apart from the plan, so the pyramid is judged by what stands in the world.
+	 * A walk over the built blocks, one block up at most per step, with room to stand, a block counted by its
+	 * collision as {@link TowerWalk} counts it: from the hall floor to the portal's inside. Written apart from the plan, so the pyramid is judged by what stands in the world.
 	 */
 	static int climb(final ServerLevel tower, final BlockPos from, final Set<BlockPos> goals) {
 		return climb(new Ground() {
@@ -120,7 +121,7 @@ public class TowerRaisedPortalGameTest {
 
 			@Override
 			public boolean standable(final BlockPos pos) {
-				return tower.getBlockState(pos).isFaceSturdy(tower, pos, net.minecraft.core.Direction.UP);
+				return TowerWalk.classify(tower, pos) == TowerWalk.SOLID;
 			}
 		}, from, goals);
 	}
@@ -166,47 +167,31 @@ public class TowerRaisedPortalGameTest {
 	}
 
 	/**
-	 * The blocks a plan stands as, for a walk over hundreds of plans that could not each be built: the maze's walls
-	 * from floor to ceiling, the plinth, the frame's blocks, the workstations, the safe room's lintels over its
-	 * openings. Solid floor under the room, solid outside it.
+	 * The blocks a plan stands as, for a walk over hundreds of plans that could not each be built: its whole volume,
+	 * stories, stairs, rails, plinth, frame, stations and chests.
 	 */
 	static Ground modelOf(final TowerPlan plan) {
 		BlockPos o = plan.origin();
-		Set<BlockPos> solid = new HashSet<>(plan.plinth());
-		solid.addAll(plan.portalFrame());
-		solid.addAll(TowerFloors.workstations(plan).keySet());
-		for (TowerPlan.Gate gate : plan.gates()) {
-			for (TowerPlan.Spot cell : gate.cells()) {
-				for (int y = TowerFloors.GATE_HEIGHT; y < TowerLayout.HEIGHT; y++) {
-					solid.add(o.offset(cell.x(), y, cell.z()));
-				}
-			}
-		}
+		TowerVolume volume = TowerVolume.of(plan);
 		return new Ground() {
-			private boolean solid(final BlockPos pos) {
-				int x = pos.getX() - o.getX();
-				int y = pos.getY() - o.getY();
-				int z = pos.getZ() - o.getZ();
-				if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE || y < 0 || y >= TowerLayout.HEIGHT) {
-					return true;
-				}
-				return plan.walls()[x][z] && y < plan.wallHeightAt(x, z) || solid.contains(pos);
+			private byte at(final BlockPos pos) {
+				return volume.at(pos.getX() - o.getX(), pos.getY() - o.getY(), pos.getZ() - o.getZ());
 			}
 
 			@Override
 			public boolean free(final BlockPos pos) {
-				return !solid(pos);
+				return at(pos) == TowerWalk.OPEN;
 			}
 
 			@Override
 			public boolean standable(final BlockPos pos) {
-				return solid(pos);
+				return at(pos) == TowerWalk.SOLID;
 			}
 		};
 	}
 
 	private static boolean free(final ServerLevel tower, final BlockPos pos) {
-		return tower.getBlockState(pos).getCollisionShape(tower, pos).isEmpty();
+		return TowerWalk.classify(tower, pos) == TowerWalk.OPEN;
 	}
 
 	@GameTest
@@ -469,37 +454,5 @@ public class TowerRaisedPortalGameTest {
 			helper.assertTrue(drift == 0.0, "the boss was snapped " + drift + " blocks");
 			helper.assertTrue(idle, "the boss was sent walking back to its post");
 		});
-	}
-
-	private static void legacyStaysFlat(final GameTestHelper helper, final String name, final int floor) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		TowerFloors.ensure(tower, floor, TowerPlan.legacy(tower.getSeed(), floor));
-		TowerPlan plan = TowerPlan.at(tower, floor);
-		BlockPos inside = plan.portalInside().get(0);
-		int walls = 0;
-		for (int dx = -TowerPlan.PYRAMID_LAYERS; dx <= TowerPlan.PYRAMID_LAYERS; dx++) {
-			for (int dz = -2; dz <= 3; dz++) {
-				BlockPos at = inside.offset(dx, 0, dz);
-				walls += tower.getBlockState(at).is(TowerBlocks.TOWER_WALL) ? 1 : 0;
-			}
-		}
-		boolean flat = tower.getBlockState(inside.below()).is(TowerBlocks.TOWER_FRAME);
-		TowerTestSupport.result(name, "floor=" + floor + " version=" + plan.version() + " lift=" + plan.lift() + " insideY=" + inside.getY()
-			+ " plinth=" + plan.plinth().size() + " wallBlocksAround=" + walls + " frameFlush=" + flat + " postY=" + TowerElites.post(tower, floor).getY());
-		helper.assertTrue(plan.version() == 0 && plan.lift() == 0 && plan.plinth().isEmpty(), "a legacy floor's portal was lifted");
-		helper.assertTrue(inside.getY() == TowerLayout.BASE_Y && flat, "the legacy portal is not flush with the floor");
-		helper.assertTrue(walls == 0, walls + " wall blocks stand around the legacy portal");
-		helper.assertTrue(TowerElites.post(tower, floor).getY() == TowerLayout.BASE_Y, "the legacy post moved");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void aLegacyOrdinaryFloorKeepsItsFlatPortal(final GameTestHelper helper) {
-		legacyStaysFlat(helper, "legacyFlatOrdinary", ordinary());
-	}
-
-	@GameTest
-	public void aLegacyBossFloorKeepsItsFlatPortalAndNoPyramid(final GameTestHelper helper) {
-		legacyStaysFlat(helper, "legacyFlatBoss", boss());
 	}
 }

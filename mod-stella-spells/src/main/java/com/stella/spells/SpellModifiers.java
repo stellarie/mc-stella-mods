@@ -45,7 +45,8 @@ public final class SpellModifiers {
 			multiplier(arcaneWeave),
 			multiplier(spellguard),
 			BASE_TARGET_RANGE_BLOCKS + 2 * arcaneSight,
-			cooldownTicks(baseCooldown, quickening, clearMind)
+			cooldownTicks(baseCooldown, quickening, clearMind),
+			Awakening.isAwakened(book)
 		);
 	}
 
@@ -97,8 +98,17 @@ public final class SpellModifiers {
 		double durationMultiplier,
 		double defensiveDurationMultiplier,
 		int targetRangeBlocks,
-		int cooldownTicks
+		int cooldownTicks,
+		boolean awakened
 	) {
+		/** The same cast with the awakened flag set; nothing else changes. */
+		CastModifiers withAwakened(final boolean awakened) {
+			return new CastModifiers(
+				this.powerMultiplier, this.radiusMultiplier, this.durationMultiplier, this.defensiveDurationMultiplier,
+				this.targetRangeBlocks, this.cooldownTicks, awakened
+			);
+		}
+
 		int durationTicks(final int baseTicks, final boolean defensive) {
 			double durationMultiplier = defensive
 				? this.defensiveDurationMultiplier

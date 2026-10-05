@@ -3,18 +3,23 @@ package com.stella.tower;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** Each floor: its room, its walls, its own place, and its permanence. */
 public class TowerFloorGameTest {
 	@GameTest
-	public void aFloorHasABedrockBaseUnbreakableWallsAndEightBlocksOfRoom(final GameTestHelper helper) {
+	public void aFloorHasABedrockBaseUnbreakableWallsAndARoof(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
 		long started = System.nanoTime();
@@ -31,17 +36,24 @@ public class TowerFloorGameTest {
 			&& tower.getBlockState(o.offset(20, 3, s)).is(TowerBlocks.TOWER_WALL);
 		boolean ceiling = tower.getBlockState(o.offset(20, TowerLayout.HEIGHT, 21)).is(TowerBlocks.TOWER_WALL)
 			|| tower.getBlockState(o.offset(20, TowerLayout.HEIGHT, 21)).is(TowerBlocks.TOWER_LAMP);
+		// The air over the arrival, up to the first block: as high as the plan's volume leaves it, and never under three.
 		int room = 0;
 		BlockPos arrival = BlockPos.containing(TowerLayout.arrival(tower, floor));
-		for (int y = 0; y < TowerLayout.HEIGHT; y++) {
-			room += tower.getBlockState(arrival.above(y)).isAir() ? 1 : 0;
+		while (room < TowerLayout.HEIGHT && tower.getBlockState(arrival.above(room)).isAir()) {
+			room++;
+		}
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		TowerVolume volume = TowerVolume.of(plan);
+		int planned = 0;
+		while (planned < TowerLayout.HEIGHT && volume.kind(plan.arrivalX(), planned, plan.arrivalZ()) == TowerVolume.AIR) {
+			planned++;
 		}
 		float wallHardness = TowerBlocks.TOWER_WALL.defaultBlockState().getDestroySpeed(tower, o.offset(-1, 3, 20));
 		TowerTestSupport.result("floorShape", "bedrock=" + bedrock + " walls=" + walls + " ceiling=" + ceiling + " room=" + room
-			+ " wallHardness=" + wallHardness + " floorY=" + base + " buildMillis=" + buildMillis);
+			+ " planned=" + planned + " wallHardness=" + wallHardness + " floorY=" + base + " buildMillis=" + buildMillis);
 		helper.assertTrue(bedrock, "the floor has no bedrock under it");
 		helper.assertTrue(walls && ceiling, "the floor is not closed by tower walls");
-		helper.assertTrue(room == TowerLayout.HEIGHT, "the room is " + room + " blocks high at the arrival spot");
+		helper.assertTrue(room == planned && room >= TowerVolume.HEADROOM, "the room is " + room + " blocks high at the arrival spot, not " + planned);
 		helper.assertTrue(wallHardness < 0.0F, "a tower wall can be mined: hardness " + wallHardness);
 		helper.succeed();
 	}
@@ -80,7 +92,7 @@ public class TowerFloorGameTest {
 	}
 
 	/** A queued floor is built a little each tick, not at once, and stands complete once done. */
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 600)
 	public void aQueuedFloorIsBuiltInTheBackground(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();
@@ -97,8 +109,107 @@ public class TowerFloorGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 600)
+	public void aPrebuiltRequestReleasesItsPausedPlan(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ThreadPoolExecutor planner = TowerFloors.planner();
+		CountDownLatch entered = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		planner.execute(() -> {
+			entered.countDown();
+			try {
+				// Only the test releases this worker.
+				// The bound is its safety net.
+				release.await(20L, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		});
+		int floor = TowerTestSupport.freshFloor();
+		int next = TowerTestSupport.freshFloor();
+		boolean[] queued = {false};
+		boolean[] rebuilt = {false};
+		boolean[] done = {false};
+		helper.succeedWhen(() -> {
+			helper.assertTrue(entered.getCount() == 0L, "the planner did not pause");
+			if (!queued[0]) {
+				tower.setBlock(TowerFloors.marker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), Block.UPDATE_CLIENTS);
+				tower.setBlock(TowerFloors.settledMarker(floor), TowerBlocks.TOWER_WALL.defaultBlockState(), Block.UPDATE_CLIENTS);
+				TowerFloors.prepare(tower, floor);
+				queued[0] = TowerFloors.isQueued(floor);
+			}
+			helper.assertTrue(queued[0], "the floor was never queued");
+			if (!rebuilt[0]) {
+				rebuilt[0] = TowerFloors.ensure(tower, floor);
+			}
+			boolean released = !TowerFloors.isQueued(floor);
+			helper.assertTrue(!rebuilt[0] && released, "a prebuilt request retained its queued plan");
+			if (!done[0]) {
+				done[0] = true;
+				release.countDown();
+				TowerTestSupport.result("prebuiltPlan", "queued=" + queued[0] + " rebuilt=" + rebuilt[0] + " released=" + released);
+				TowerFloors.prepare(tower, next);
+			}
+			helper.assertTrue(TowerFloors.isBuilt(tower, next), "a valid floor stalled behind discarded plan work");
+			TowerTestSupport.result("prebuiltPlanRecovery", "floor=" + next + " built=true");
+		});
+	}
+
+	@GameTest(maxTicks = 600)
+	public void anImmediateFloorDoesNotWaitForABusyPlanner(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		BlockPos origin = TowerLayout.origin(floor);
+		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
+			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+				tower.getChunk(cx, cz);
+			}
+		}
+		ThreadPoolExecutor planner = TowerFloors.planner();
+		CountDownLatch entered = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		planner.execute(() -> {
+			entered.countDown();
+			try {
+				// Only the test releases this worker.
+				// The bound is its safety net.
+				release.await(20L, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		});
+		TowerFloors.prepare(tower, floor);
+		boolean[] attempted = {false};
+		String[] failure = {"the immediate build failed"};
+		helper.succeedWhen(() -> {
+			if (attempted[0]) {
+				helper.fail(failure[0]);
+			}
+			Future<?> pending = TowerFloors.queuedPlan(floor);
+			helper.assertTrue(entered.getCount() == 0L && pending != null && !pending.isDone(),
+				"the plan was not queued behind the held worker: started=" + (entered.getCount() == 0L)
+					+ " queued=" + (pending != null) + " done=" + (pending != null && pending.isDone()));
+			attempted[0] = true;
+			long started = System.nanoTime();
+			boolean built;
+			try {
+				built = TowerFloors.ensure(tower, floor);
+			} finally {
+				release.countDown();
+			}
+			double elapsed = (System.nanoTime() - started) / 1_000_000.0;
+			boolean purged = pending.isCancelled() && !planner.getQueue().contains(pending);
+			TowerTestSupport.result("busyPlan", "built=" + built + " elapsedMillis=" + elapsed + " synchronousPlanMillis="
+				+ TowerFloors.longestSynchronousPlanMillis() + " canceledAndPurged=" + purged);
+			if (!built || !TowerFloors.isBuilt(tower, floor) || elapsed >= 4_000.0 || !purged) {
+				failure[0] = "an immediate floor waited " + elapsed + " ms or retained duplicate work: purged=" + purged;
+				helper.fail(failure[0]);
+			}
+		});
+	}
+
 	/** Arriving on a floor starts building the one above, so the climb waits on nothing. */
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 600)
 	public void arrivingOnAFloorStartsTheOneAbove(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloor();

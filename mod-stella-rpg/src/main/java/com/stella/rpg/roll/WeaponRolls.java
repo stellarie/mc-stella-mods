@@ -48,6 +48,8 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	);
 	/** Items that roll only MATK affixes, at the diamond tier. Empty until a mod lists its books. */
 	public static final TagKey<Item> SPELLBOOKS = TagKey.create(Registries.ITEM, StellaRpg.id("spellbooks"));
+	/** Armor in this tag rolls its count from the weapon weights, like a weapon. */
+	public static final TagKey<Item> MULTI_ROLL = TagKey.create(Registries.ITEM, StellaRpg.id("multi_roll"));
 	public static final String BOOK_TIER = "diamond";
 
 	private static final EquipmentSlot[] ARMOR_SLOTS = {
@@ -79,7 +81,8 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		}
 		RpgConfig.WeaponRolls config = RpgConfigStore.current().weaponRolls();
 		boolean book = entry.kind() == Affix.Kind.BOOK;
-		int count = entry.kind() == Affix.Kind.ARMOR ? 1 : count(config.countWeights(), random);
+		boolean single = entry.kind() == Affix.Kind.ARMOR && !stack.is(MULTI_ROLL);
+		int count = single ? 1 : count(config.countWeights(), random);
 		List<Stat> stats = new ArrayList<>(book ? List.of(Stat.INT) : List.of(Stat.values()));
 		List<Affix> affixes = new ArrayList<>(Affix.pool(entry.kind()));
 		if (!stack.is(ItemTags.FOOT_ARMOR)) {

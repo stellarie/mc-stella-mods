@@ -1,0 +1,6 @@
+{
+	"variants": {
+		"locked=true": { "model": "mod-stella-ruins:block/ruin_vault_locked" },
+		"locked=false": { "model": "mod-stella-ruins:block/ruin_vault_open" }
+	}
+}

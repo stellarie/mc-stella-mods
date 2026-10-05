@@ -43,9 +43,19 @@ public class TowerEscapeGameTest {
 			TowerBlocks.TOWER_WALL.defaultBlockState(), TowerBlocks.TOWER_LAMP.defaultBlockState(), TowerBlocks.TOWER_MAZE_WALL.defaultBlockState(),
 			TowerBlocks.TOWER_FRAME.defaultBlockState(), TowerFloors.SAFE_FLOOR.defaultBlockState(), Blocks.BEDROCK.defaultBlockState()));
 		TowerBlocks.TRAPS.values().forEach(trap -> built.add(trap.defaultBlockState()));
-		for (int floor : new int[] {1, 21, 31, 41}) {
-			built.addAll(java.util.Arrays.asList(TowerFloors.palette(floor)));
+		for (int floor : new int[] {1, 11, 21, 31, 41}) {
+			for (TowerArchetype archetype : TowerArchetype.values()) {
+				TowerTheme theme = archetype.theme(floor);
+				built.addAll(java.util.Arrays.asList(theme.ground()));
+				built.addAll(List.of(theme.runner(), theme.stair(), theme.step(), theme.rail(), theme.lantern()));
+				for (TowerSkin skin : theme.wall()) {
+					built.add(TowerBlocks.TOWER_MAZE_WALL.skinned(skin));
+				}
+				built.add(TowerBlocks.TOWER_LAMP.skinned(theme.lamp()));
+			}
 		}
+		built.add(Blocks.IRON_CHAIN.defaultBlockState());
+		built.add(Blocks.AMETHYST_CLUSTER.defaultBlockState());
 		List<String> holdable = built.stream().filter(state -> state.is(BlockTags.ENDERMAN_HOLDABLE)).map(state -> state.getBlock().toString()).toList();
 		TowerTestSupport.result("endermanHoldable", "checked=" + built.size() + " holdable=" + holdable);
 		helper.assertTrue(holdable.isEmpty(), "endermen may hold " + holdable);

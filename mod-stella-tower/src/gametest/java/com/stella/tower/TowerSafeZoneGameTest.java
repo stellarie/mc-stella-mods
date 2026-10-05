@@ -113,9 +113,9 @@ public class TowerSafeZoneGameTest {
 			for (int x = zone.x(); x < zone.x() + TowerMaze.SAFE; x++) {
 				for (int z = zone.z(); z < zone.z() + TowerMaze.SAFE; z++) {
 					// The floor's own stone, as an older floor was laid.
-					tower.setBlock(o.offset(x, -1, z), TowerFloors.palette(floor)[0], 3);
+					tower.setBlock(o.offset(x, -1, z), TowerFloors.palette(plan)[0], 3);
 					BlockState column = x % TowerMaze.PITCH == 0 ? TowerBlocks.TOWER_MAZE_WALL.defaultBlockState() : Blocks.AIR.defaultBlockState();
-					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
+					for (int y = zone.y(); y < zone.top(); y++) {
 						tower.setBlock(o.offset(x, y, z), column, 3);
 					}
 				}

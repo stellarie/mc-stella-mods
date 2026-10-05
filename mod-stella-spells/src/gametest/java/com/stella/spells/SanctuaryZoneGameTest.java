@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
 /** Sanctuary: a fixed zone that regenerates the players in it and burns the undead in it. */
 public class SanctuaryZoneGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.sanctuary");
-	/** Shrinks the 200-tick zone to 50 ticks, so the test sees it end. */
-	private static final double MULTIPLIER = 0.25;
 	private static final int ZONE_TICKS = 50;
+	/** Shrinks the 600-tick zone to 50 ticks, so the test sees it end. */
+	private static final double MULTIPLIER = (double) ZONE_TICKS / SpellNumbers.SANCTUARY.duration().ticks();
 
 	@GameTest(maxTicks = 120)
 	public void sanctuaryZoneRegeneratesPlayersAndBurnsUndead(final GameTestHelper helper) {

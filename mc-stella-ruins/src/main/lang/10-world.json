@@ -1,0 +1,12 @@
+{
+	"block.mod-stella-ruins.ruin_core": "Ruin Core",
+	"block.mod-stella-ruins.ruin_vault": "Ruin Vault",
+	"item.mod-stella-ruins.ruin_clue": "Ruin Clue",
+	"item.mod-stella-ruins.ruin_clue.map": "Map to %s",
+	"message.mod-stella-ruins.vault_locked": "The vault is sealed.",
+	"message.mod-stella-ruins.clue_nothing": "The clue leads nowhere you can reach.",
+	"message.mod-stella-ruins.core.dormant": "The core is dormant.",
+	"message.mod-stella-ruins.core.active": "The core is awake. Finish the trial.",
+	"message.mod-stella-ruins.core.complete": "The core is spent. The vault is open.",
+	"message.mod-stella-ruins.core.cooldown": "The core is resting."
+}

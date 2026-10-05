@@ -1,8 +1,5 @@
 package com.stella.tower;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -39,36 +36,6 @@ public class TowerWispGameTest {
 		return player;
 	}
 
-	/** Steps from one spot of the room to another over open ground, or -1 when there is no way. */
-	private static int steps(final ServerLevel tower, final int floor, final BlockPos from, final BlockPos to) {
-		BlockPos o = TowerLayout.origin(floor);
-		int[][] seen = new int[S][S];
-		for (int[] row : seen) {
-			Arrays.fill(row, -1);
-		}
-		Deque<int[]> queue = new ArrayDeque<>();
-		seen[from.getX() - o.getX()][from.getZ() - o.getZ()] = 0;
-		queue.add(new int[] {from.getX() - o.getX(), from.getZ() - o.getZ()});
-		int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-		while (!queue.isEmpty()) {
-			int[] at = queue.poll();
-			for (int[] way : ways) {
-				int x = at[0] + way[0];
-				int z = at[1] + way[1];
-				if (x < 0 || z < 0 || x >= S || z >= S || seen[x][z] >= 0) {
-					continue;
-				}
-				BlockPos feet = o.offset(x, 0, z);
-				if (tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
-					&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty()) {
-					seen[x][z] = seen[at[0]][at[1]] + 1;
-					queue.add(new int[] {x, z});
-				}
-			}
-		}
-		return seen[to.getX() - o.getX()][to.getZ() - o.getZ()];
-	}
-
 	@GameTest
 	public void aGhostRuneTwoEchoShardsAndGlowstoneMakeAWisp(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
@@ -101,19 +68,19 @@ public class TowerWispGameTest {
 		List<TowerWisps.Trail> trails = TowerWisps.trailsOn(floor);
 		TowerWisps.Trail trail = trails.isEmpty() ? null : trails.get(0);
 		BlockPos feet = player.blockPosition();
-		// The portal is two blocks wide: the way ends at whichever is nearer.
-		// The portal stands raised, so its own spot is not open ground: the walk is to the spot before it, and one more.
+		// The portal is two blocks wide: the way ends at whichever is nearer, by a walk on foot over the floor as built.
 		TowerPlan plan = TowerPlan.at(tower, floor);
-		int shortest = plan.portalInside().stream().filter(pos -> pos.getY() == plan.portalInside().get(0).getY())
-			.mapToInt(pos -> steps(tower, floor, feet, new BlockPos(pos.getX() + plan.portalFacing(), TowerLayout.BASE_Y, pos.getZ())) + 1)
+		BlockPos o = plan.origin();
+		int[] dist = TowerWalk.distances(TowerWalk.world(tower, floor), feet.getX() - o.getX(), feet.getY() - o.getY(), feet.getZ() - o.getZ());
+		int shortest = TowerVolume.portalGoals(plan).stream().mapToInt(goal -> dist[TowerWalk.index(goal[0], goal[1], goal[2])])
 			.filter(n -> n >= 1).min().orElse(-1);
 		int broken = 0;
 		if (trail != null) {
 			for (int i = 1; i < trail.path().size(); i++) {
-				// Level steps, but for the last, up onto the portal's frame.
+				// One block across each step, and at most one up or down.
 				BlockPos step = trail.path().get(i);
 				BlockPos before = trail.path().get(i - 1);
-				broken += Math.abs(step.getX() - before.getX()) + Math.abs(step.getZ() - before.getZ()) == 1 ? 0 : 1;
+				broken += Math.abs(step.getX() - before.getX()) + Math.abs(step.getZ() - before.getZ()) == 1 && Math.abs(step.getY() - before.getY()) <= 1 ? 0 : 1;
 			}
 		}
 		int damage = TowerWisps.USES - TowerWisps.usesOf(player.getMainHandItem());

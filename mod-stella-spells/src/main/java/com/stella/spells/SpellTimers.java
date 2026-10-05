@@ -27,6 +27,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What a spell leaves running after its cast: Flame Ring's burning aura, Gravity's hold on a mob's jump,
@@ -36,10 +37,11 @@ import net.minecraft.world.phys.Vec3;
 public final class SpellTimers {
 	public static final Identifier GRAVITY_MODIFIER_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "gravity");
 
-	private record Aura(int endsAt, int nextPulse, double radius, float damage, int burnTicks) {
+	record Aura(int endsAt, int nextPulse, double radius, float damage, int burnTicks, CastHits.PendingCredit credit) {
 	}
 
-	private record Zone(ResourceKey<Level> dimension, UUID caster, Vec3 center, double radius, int endsAt, int nextPulse, double power) {
+	record Zone(ResourceKey<Level> dimension, UUID caster, Vec3 center, double radius, int endsAt, int nextPulse, double power,
+		CastHits.PendingCredit credit) {
 	}
 
 	private static final List<Zone> ZONES = new CopyOnWriteArrayList<>();
@@ -68,7 +70,17 @@ public final class SpellTimers {
 
 	static void flameAura(final ServerPlayer caster, final int ticks, final double radius, final float damage, final int burnTicks) {
 		int now = caster.level().getServer().getTickCount();
-		AURAS.put(caster.getUUID(), new Aura(now + ticks, now + 1, radius, damage, burnTicks));
+		AURAS.put(caster.getUUID(), new Aura(now + ticks, now + 1, radius, damage, burnTicks, CastHits.deferred(caster)));
+	}
+
+	/** The caster's running aura, or null; a test seam. */
+	static @Nullable Aura flameAuraOf(final UUID caster) {
+		return AURAS.get(caster);
+	}
+
+	/** The caster's running zones; a test seam. */
+	static List<Zone> zonesOf(final UUID caster) {
+		return ZONES.stream().filter(zone -> zone.caster().equals(caster)).toList();
 	}
 
 	/** The zones running now; a test seam. */
@@ -78,7 +90,7 @@ public final class SpellTimers {
 
 	static void sanctuary(final ServerPlayer caster, final Vec3 center, final double radius, final int ticks, final double power) {
 		int now = caster.level().getServer().getTickCount();
-		ZONES.add(new Zone(caster.level().dimension(), caster.getUUID(), center, radius, now + ticks, now + 1, power));
+		ZONES.add(new Zone(caster.level().dimension(), caster.getUUID(), center, radius, now + ticks, now + 1, power, CastHits.deferred(caster)));
 	}
 
 	static void ground(final Mob mob, final int ticks) {
@@ -113,8 +125,11 @@ public final class SpellTimers {
 				for (Mob hostile : MoreSpells.hostiles(caster.level(), caster.position(), aura.radius())) {
 					MoreSpells.hurt(caster, hostile, aura.damage());
 					hostile.igniteForTicks(aura.burnTicks());
+					if (aura.credit() != null) {
+						aura.credit().fire(server);
+					}
 				}
-				entry.setValue(new Aura(aura.endsAt(), now + MoreSpells.FLAME_AURA_PULSE_TICKS, aura.radius(), aura.damage(), aura.burnTicks()));
+				entry.setValue(new Aura(aura.endsAt(), now + MoreSpells.FLAME_AURA_PULSE_TICKS, aura.radius(), aura.damage(), aura.burnTicks(), aura.credit()));
 			}
 		}
 
@@ -151,17 +166,23 @@ public final class SpellTimers {
 				continue;
 			}
 			ZONES.set(ZONES.indexOf(zone), new Zone(zone.dimension(), zone.caster(), zone.center(), zone.radius(),
-				zone.endsAt(), now + MoreSpells.SANCTUARY_PULSE_TICKS, zone.power()));
+				zone.endsAt(), now + MoreSpells.SANCTUARY_PULSE_TICKS, zone.power(), zone.credit()));
 			double reach = zone.radius() * zone.radius();
 			for (ServerPlayer player : level.players()) {
 				if (player.isAlive() && player.position().distanceToSqr(zone.center()) <= reach) {
-					player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, MoreSpells.SANCTUARY_REGEN_TICKS, 0), caster);
+					boolean touched = player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, MoreSpells.SANCTUARY_REGEN_TICKS, 0), caster);
+					if (touched && zone.credit() != null) {
+						zone.credit().fire(server);
+					}
 				}
 			}
 			AABB box = new AABB(zone.center(), zone.center()).inflate(zone.radius());
 			for (Mob mob : level.getEntitiesOfClass(Mob.class, box, other -> other.isAlive() && other.is(EntityTypeTags.UNDEAD)
 				&& other.position().distanceToSqr(zone.center()) <= reach)) {
 				MoreSpells.hurt(caster, mob, RpgBridge.damage(caster, MoreSpells.SANCTUARY_UNDEAD_DAMAGE, zone.power()));
+				if (zone.credit() != null) {
+					zone.credit().fire(server);
+				}
 			}
 		}
 	}

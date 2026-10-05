@@ -38,8 +38,8 @@ public class TowerSafeRoomGameTest {
 
 	private static AABB zoneBox(final TowerPlan plan, final TowerMaze.Zone zone) {
 		BlockPos o = plan.origin();
-		return new AABB(o.getX() + zone.x(), o.getY() - 1, o.getZ() + zone.z(),
-			o.getX() + zone.x() + TowerMaze.SAFE, o.getY() + TowerLayout.HEIGHT, o.getZ() + zone.z() + TowerMaze.SAFE);
+		return new AABB(o.getX() + zone.x(), o.getY() + zone.y() - 1, o.getZ() + zone.z(),
+			o.getX() + zone.x() + TowerMaze.SAFE, o.getY() + zone.top(), o.getZ() + zone.z() + TowerMaze.SAFE);
 	}
 
 	private static boolean intersectsAnyZone(final TowerPlan plan, final AABB box) {
@@ -231,7 +231,7 @@ public class TowerSafeRoomGameTest {
 					if (through) {
 						open.add(new int[] {x, z});
 					}
-					for (int y = 0; y < TowerLayout.HEIGHT; y++) {
+					for (int y = 0; y < TowerPlan.HALL_TOP; y++) {
 						BlockState state = tower.getBlockState(o.offset(x, y, z));
 						boolean mustBeSolid = !through || y >= 2;
 						if (mustBeSolid && !solid(state)) {
@@ -263,7 +263,7 @@ public class TowerSafeRoomGameTest {
 					lampFaults += passable(tower, o.offset(cell.x(), 0, cell.z())) && passable(tower, o.offset(cell.x(), 1, cell.z())) ? 0 : 1;
 					lampFaults += tower.getBlockState(o.offset(cell.x(), 2, cell.z())).is(TowerBlocks.TOWER_LAMP) ? 0 : 1;
 					lamps += tower.getBlockState(o.offset(cell.x(), 2, cell.z())).is(TowerBlocks.TOWER_LAMP) ? 1 : 0;
-					for (int y = 3; y < TowerLayout.HEIGHT; y++) {
+					for (int y = 3; y < TowerPlan.HALL_TOP; y++) {
 						lampFaults += tower.getBlockState(o.offset(cell.x(), y, cell.z())).is(TowerBlocks.TOWER_WALL) ? 0 : 1;
 					}
 				}
@@ -273,7 +273,7 @@ public class TowerSafeRoomGameTest {
 						lampFaults += lamp ? 0 : 1;
 						lamps += lamp ? 1 : 0;
 					}
-					for (int y = 3; y < TowerLayout.HEIGHT; y++) {
+					for (int y = 3; y < TowerPlan.HALL_TOP; y++) {
 						// A jamb in the hall's own wall keeps the maze's wall above its lamps.
 						BlockState above = tower.getBlockState(o.offset(jamb.x(), y, jamb.z()));
 						lampFaults += solid(above) || above.is(TowerBlocks.TOWER_MAZE_WALL) ? 0 : 1;
@@ -373,45 +373,6 @@ public class TowerSafeRoomGameTest {
 		helper.assertTrue(leaks == 0, leaks + " halls reach the maze without the room, first " + first);
 		helper.assertTrue(throughRoom == plans, "only " + throughRoom + " of " + plans + " halls reach the arrival through the room");
 		helper.assertTrue(throughExit == plans, "only " + throughExit + " of " + plans + " halls are sealed by their exit");
-		helper.succeed();
-	}
-
-	// ---------------------------------------------------------------- floors built before the plans
-
-	/**
-	 * A boss floor built before the plans keeps its path-wide door: served the legacy plan, no ring, no gates, six
-	 * open blocks in the hall's wall, the room's ring blocks never laid.
-	 */
-	@GameTest(maxTicks = 100)
-	public void aBossFloorBuiltBeforeThePlansKeepsItsWideDoor(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		long seed = tower.getSeed();
-		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
-		TowerPlan old = TowerPlan.legacy(seed, floor);
-		TowerFloors.ensure(tower, floor, old);
-		TowerPlan served = TowerPlan.at(tower, floor);
-		BlockPos o = old.origin();
-		int low = old.hallLow();
-		int high = low + old.hall();
-		int door = 0;
-		for (int t = low; t < high; t++) {
-			int[][] edge = {{low - 1, t}, {high, t}, {t, low - 1}, {t, high}};
-			for (int[] cell : edge) {
-				BlockPos feet = o.offset(cell[0], 0, cell[1]);
-				door += passable(tower, feet) && passable(tower, feet.above()) ? 1 : 0;
-			}
-		}
-		int ringBlocks = 0;
-		for (int x = 0; x < S; x++) {
-			for (int z = 0; z < S; z++) {
-				ringBlocks += tower.getBlockState(o.offset(x, 0, z)).is(TowerBlocks.TOWER_WALL) ? 1 : 0;
-			}
-		}
-		TowerTestSupport.result("legacyDoor", "floor=" + floor + " servedVersion=" + served.version() + " servedRing=" + served.ring()
-			+ " gates=" + served.gates().size() + " door=" + door + " towerWallAtFloor=" + ringBlocks);
-		helper.assertTrue(served.version() == 0 && !served.ring() && served.gates().isEmpty(), "the built floor is served plan " + served.version() + ", ring " + served.ring());
-		helper.assertTrue(door == TowerMaze.PATH, "the old floor's door is " + door + " wide, not " + TowerMaze.PATH);
-		helper.assertTrue(ringBlocks == 0, "the old floor has " + ringBlocks + " tower wall blocks at floor level: a ring was laid");
 		helper.succeed();
 	}
 
@@ -551,6 +512,8 @@ public class TowerSafeRoomGameTest {
 			mob.snapTo(spots.mob());
 			tower.addFreshEntity(mob);
 		}
+		helper.assertTrue(TowerGhosts.on(tower, floor).isEmpty(), "a ghost competes with the test player for aggro");
+		TowerGhosts.pinRiseChance(floor, 0.0);
 		UUID id = mob.getUUID();
 		long window = TowerSafety.SWEEP_TICKS + 1L;
 		long[] at = {-1, -1, -1, -1, -1};
@@ -618,6 +581,7 @@ public class TowerSafeRoomGameTest {
 				helper.assertTrue(at[4] >= 0, "the " + name + " never took the player on again after the player stepped out");
 				helper.succeed();
 			} finally {
+				TowerGhosts.pinRiseChance(floor, null);
 				if (boss) {
 					TowerElites.pinGuardianKind(floor, null);
 				}

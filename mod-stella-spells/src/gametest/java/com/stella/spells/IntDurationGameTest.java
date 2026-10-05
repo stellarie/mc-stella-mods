@@ -50,9 +50,14 @@ public class IntDurationGameTest {
 		try {
 			RpgBridge.setStats(new Stub());
 			caster = caster(helper);
-			Mob zombie = zombie(helper, 4);
-			check(helper, caster, "quicksilver", caster, MobEffects.SPEED, SpellNumbers.QUICKSILVER.duration().ticks());
-			check(helper, caster, "berserk", caster, MobEffects.STRENGTH, SpellNumbers.BERSERK.duration().ticks());
+			Mob zombie = zombie(helper, 6);
+			zombie.setPos(zombie.getX() + 1.0, zombie.getY(), zombie.getZ());
+			// A zombie shrugs off Poison, so Venom Dart takes a vindicator straight ahead.
+			Mob venomTarget = helper.spawnMob(EntityTypes.VINDICATOR, 2, 1, 4).withNoFreeWill().spawn();
+			check(helper, caster, "life_bloom", caster, MobEffects.REGENERATION, SpellNumbers.LIFE_BLOOM.duration().ticks());
+			check(helper, caster, "venom_dart", venomTarget, MobEffects.POISON, SpellNumbers.VENOM_DART.duration().ticks());
+			venomTarget.discard();
+			zombie.setPos(zombie.getX() - 1.0, zombie.getY(), zombie.getZ());
 			check(helper, caster, "frostbind", zombie, MobEffects.SLOWNESS, SpellNumbers.FROSTBIND.duration().ticks());
 			zombie.discard();
 
@@ -76,7 +81,7 @@ public class IntDurationGameTest {
 		try {
 			RpgBridge.setStats(null);
 			caster = caster(helper);
-			check(helper, caster, "quicksilver", caster, MobEffects.SPEED, SpellNumbers.QUICKSILVER.duration().ticks(), 1.0);
+			check(helper, caster, "life_bloom", caster, MobEffects.REGENERATION, SpellNumbers.LIFE_BLOOM.duration().ticks(), 1.0);
 		} finally {
 			if (caster != null) {
 				helper.getLevel().getServer().getPlayerList().remove(caster);

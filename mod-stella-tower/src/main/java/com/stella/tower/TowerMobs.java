@@ -222,16 +222,17 @@ public final class TowerMobs {
 		return tower.addFreshEntity(mob) ? mob : null;
 	}
 
-	/** Finds the mob a spot on the floor, clear and away from every player; false if none fit in the tries. */
+	/** Finds the mob a spot on any story of the floor, clear and away from every player; false if none fit in the tries. */
 	public static boolean placeInRoom(final ServerLevel tower, final int floor, final Mob mob, final RandomSource random) {
 		BlockPos origin = TowerLayout.origin(floor);
 		List<ServerPlayer> players = playersOn(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		Vec3 arrival = plan.arrivalPos();
+		List<TowerStory> stories = plan.stories();
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
-			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y, z);
+			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y + stories.get(random.nextInt(stories.size())).y(), z);
 			Vec3 spot = spotFor(mob, feet);
 			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)
 				|| inSafeZone(plan, mob, spot)) {
@@ -253,10 +254,14 @@ public final class TowerMobs {
 		int highX = (int) Math.floor(spot.x + half) - origin.getX();
 		int lowZ = (int) Math.floor(spot.z - half) - origin.getZ();
 		int highZ = (int) Math.floor(spot.z + half) - origin.getZ();
+		int lowY = (int) Math.floor(spot.y) - TowerLayout.BASE_Y;
+		int highY = (int) Math.floor(spot.y + mob.getBbHeight()) - TowerLayout.BASE_Y;
 		for (int x = lowX; x <= highX; x++) {
 			for (int z = lowZ; z <= highZ; z++) {
-				if (plan.inSafeZone(x, z)) {
-					return true;
+				for (int y = lowY; y <= highY; y++) {
+					if (plan.inSafeZone(x, y, z)) {
+						return true;
+					}
 				}
 			}
 		}

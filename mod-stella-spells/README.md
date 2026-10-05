@@ -24,47 +24,47 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 
 | Book | Material | Cooldown | Target | Effect |
 | --- | --- | --- | --- | --- |
-| Spark Shot | Flint | 3 s | Hostile | 3 magic damage and 2 s of fire |
-| Frostbind | Snowball | 3 s | Hostile | Slowness II, 4 s |
+| Spark Shot | Flint | 3 s | Hostile | 3 magic damage and 6 s of fire |
+| Frostbind | Snowball | 3 s | Hostile | Slowness II, 8 s, and one Chilled stack; a fourth chill turns into Frozen for 3 s |
 | Gale Step | Feather | 3 s | Self | A forward leap, then Slow Falling, 2 s |
 | Mending Word | Gold Ingot | 7 s | Self | Heals 4 |
-| Stoneguard | Iron Ingot | 8 s | Self | Resistance I, 4 s |
-| Static Lash | Copper Ingot | 6 s | Hostile | 3 damage to the target and to up to 2 hostiles within 4 blocks of it |
-| Briar Snare | Vine | 6 s | Hostile | Slowness IV, 4 s |
-| Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster |
-| Owl's Gaze | Amethyst Shard | 10 s | Self | Night Vision, 45 s |
-| Slimebound | Slime Ball | 5 s | Self | Jump Boost II and Slow Falling |
-| Chainstorm | Lightning Rod | 15 s | Block | Lightning from the sky onto up to 5 hostiles within 5 blocks of the point, nearest first, one strike every 6 ticks, 6 damage each; the bolts start no fire, scrape no copper and power no rod |
+| Stoneguard | Iron Ingot | 8 s | Self | Resistance I, 30 min |
+| Static Lash | Copper Ingot | 6 s | Hostile | 3 damage to the target and to up to 2 hostiles within 4 blocks of it; a Soaked hostile takes 1.5 times that |
+| Briar Snare | Vine | 6 s | Hostile | Slowness IV, 8 s |
+| Tidal Push | Prismarine Shard | 5 s | Hostile | Throws the target away from the caster and leaves it Soaked for 10 s |
+| Owl's Gaze | Amethyst Shard | 10 s | Self | Night Vision, 30 min |
+| Slimebound | Slime Ball | 5 s | Self | Jump Boost II and Slow Falling, 30 min |
+| Chainstorm | Lightning Rod | 15 s | Block | Lightning that jumps from mob to mob: the first strike is a sky bolt on the hostile nearest the point, then each strike leaps by a jagged arc to the nearest unstruck hostile within 5 blocks of the point, up to 5 strikes, one every 6 ticks, 6 damage each; the sky bolt starts no fire, scrapes no copper and powers no rod; a Soaked hostile takes 1.5 times each strike |
 | Riftwalk | Ender Pearl | 10 s | Aimed spot | Teleports the caster onto the spot they look at, up to 16 blocks away |
-| Phoenix Mantle | Blaze Rod | 15 s | Self | Fire Resistance, 30 s, and heals 4 |
-| Life Bloom | Ghast Tear | 17 s | Self | Heals 8 and Regeneration I, 5 s |
-| Void Well | Obsidian | 17 s | Block | Pulls hostiles within 5 blocks toward the point; Slowness II, 3 s |
+| Phoenix Mantle | Blaze Rod | 15 s | Self | Fire Resistance, 30 min, and heals 4 |
+| Life Bloom | Ghast Tear | 17 s | Self | Heals 8 and Regeneration I, 15 s |
+| Void Well | Obsidian | 17 s | Block | Pulls hostiles within 5 blocks toward the point; Slowness II, 6 s |
 | Warden's Roar | Echo Shard | 15 s | Self | 6 damage to hostiles within 5 blocks and knocks them back |
-| Aegis of the Deep | Turtle Scute | 20 s | Self | Absorption II and Resistance I |
-| Wither Seal | Wither Rose | 18 s | Hostile | Wither II, 5 s |
-| Time Lock | Clock | 20 s | Block | Slowness II, 5 s, on hostiles within 5 blocks of the point |
+| Aegis of the Deep | Turtle Scute | 20 s | Self | Absorption II and Resistance I, 30 min |
+| Wither Seal | Wither Rose | 18 s | Hostile | Wither II, 15 s |
+| Time Lock | Clock | 20 s | Block | Slowness II, 10 s, on hostiles within 5 blocks of the point |
 | Dragonfall | Dragon's Breath | 25 s | Block | 10 damage to hostiles within 3 blocks of the point |
-| Ice Lance | Packed Ice | 5 s | Hostile | Hurls a lance through the mob and 16 blocks on: every hostile on its line takes 5 damage and freezes solid for 7 seconds, and the lance leaves a trail of snow mist |
+| Ice Lance | Packed Ice | 5 s | Hostile | Hurls a lance through the mob and 16 blocks on: every hostile on its line takes 5 damage and freezes solid for 14 seconds, and the lance leaves a trail of snow mist |
 | Soul Siphon | Soul Soil | 9 s | Hostile | Drains 4 health from the mob and gives it to you |
-| Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 5 seconds |
-| Sapping Hex | Fermented Spider Eye | 12 s | Self | Weakness II on every hostile within 6 blocks and Strength II on you, 3 seconds for each hostile hexed, up to 15 |
-| Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 5 seconds and makes it glow for 10 |
-| Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage and sets it burning for 10 seconds |
-| Quicksilver | Sugar | 15 s | Self | Gives you Speed II for 20 seconds |
-| Tide Lungs | Pufferfish | 15 s | Self | Lets you breathe underwater for 60 seconds and swim fast for 20 |
-| Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 10 seconds |
-| Haste Rune | Redstone | 15 s | Self | Gives you Haste II for 60 seconds |
-| Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 seconds; your first blow breaks the veil, deals double damage and stops its victim dead for 2 seconds |
-| Sanctuary | Honeycomb | 20 s | Self | A fixed zone of 3 blocks at the cast spot for 10 seconds: every second, players in it get Regeneration I and undead in it take 3 damage |
+| Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 15 seconds |
+| Sapping Hex | Fermented Spider Eye | 12 s | Self | Weakness II on every hostile within 6 blocks and Strength II on you, 9 seconds for each hostile hexed, up to 45 |
+| Blinding Flash | Glow Ink Sac | 7 s | Hostile | Blinds the mob for 15 seconds and makes it glow for 30, Marked for the same 30 |
+| Ember Brand | Magma Cream | 6 s | Hostile | Brands the mob for 2 damage, sets it burning and Scorched for 30 seconds; a Soaked mob only loses Soaked and does not burn |
+| Quicksilver | Sugar | 15 s | Self | Gives you Speed II for 30 minutes |
+| Tide Lungs | Pufferfish | 15 s | Self | Lets you breathe underwater for 30 minutes and swim fast for 30 minutes |
+| Berserk | Blaze Powder | 20 s | Self | Gives you Strength II for 30 minutes |
+| Haste Rune | Redstone | 15 s | Self | Gives you Haste II for 30 minutes |
+| Shadow Veil | Tinted Glass | 20 s | Self | Makes you invisible for 30 minutes; your first blow breaks the veil, deals double damage and stops its victim dead for 2 seconds |
+| Sanctuary | Honeycomb | 20 s | Self | A fixed zone of 6 blocks at the cast spot for 30 seconds: every second, players in it get Regeneration I and undead in it take 3 damage |
 | Purify | Nether Quartz | 15 s | Self | Clears every harmful effect from you and each player within 6 blocks |
-| Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 3 seconds |
+| Frost Nova | Ice | 15 s | Self | Deals 3 damage to hostiles within 5 blocks of you and slows them with Slowness IV for 6 seconds and gives each one Chilled stack |
 | Earthspike | Pointed Dripstone | 12 s | Block | Throws hostiles within 3 blocks of the spot into the air for 4 damage |
-| Plague Cloud | Poisonous Potato | 15 s | Block | Leaves a cloud of Poison at the spot for 5 seconds |
-| Flame Ring | Fire Charge | 20 s | Self | A burning aura for 10 seconds: each second, hostiles within 3 blocks take 3 damage and catch fire |
-| Gravity | Phantom Membrane | 12 s | Self | Hostiles within 6 blocks are slowed and jump only half as high for 8 seconds |
-| Bulwark Hymn | Glistering Melon Slice | 20 s | Self | Absorption II for 20 seconds on you and every ally within 8 blocks: players, villagers, golems and tamed pets |
-| Tailwind | Rabbit's Foot | 15 s | Self | Speed II for 30 seconds on you and every ally within 8 blocks |
-| Battle Hymn | Glowstone Dust | 20 s | Self | Strength I for 20 seconds on you and every ally within 8 blocks |
+| Plague Cloud | Poisonous Potato | 15 s | Block | Leaves a cloud of Poison at the spot for 15 seconds |
+| Flame Ring | Fire Charge | 20 s | Self | A burning aura for 5 minutes: each second, hostiles within 5 blocks take 3 damage and catch fire; a recast replaces the aura |
+| Gravity | Phantom Membrane | 12 s | Self | Hostiles within 6 blocks are slowed and jump only half as high for 16 seconds |
+| Bulwark Hymn | Glistering Melon Slice | 20 s | Self | Absorption II for 30 minutes on you and every ally within 8 blocks: players, villagers, golems and tamed pets |
+| Tailwind | Rabbit's Foot | 15 s | Self | Speed II for 30 minutes on you and every ally within 8 blocks |
+| Battle Hymn | Glowstone Dust | 20 s | Self | Strength I for 30 minutes on you and every ally within 8 blocks |
 
 Offensive area and chain spells affect only mobs that are hostile by nature (`Enemy`); they do not
 hit players, pets, or villagers. Support area spells affect the caster or nearby allies as described above.
@@ -75,8 +75,10 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 - Damage shows a range, the lowest to the highest hit, in the health units your hearts use. It follows your RPG
   MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.
 - Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
-- With `mod-stella-rpg`, your Intelligence also stretches every spell effect duration through `RpgSpells.durationMultiplier`. Cooldowns are not stretched. Without it the multiplier is 1.
-- Sanctuary raises a zone of 3 blocks at the cast spot, for 10 seconds times the duration multiplier. It does not follow you. Every second, players in it get Regeneration I, and undead in it take your spell hit.
+- With `mod-stella-rpg`, your Intelligence also stretches the duration of offensive effects, debuffs, zones and heals through `RpgSpells.durationMultiplier`. The 30-minute self buffs and hymns do not stretch. Cooldowns are not stretched. Without it the multiplier is 1.
+- Spell lengths follow three rules. Self buffs and party hymns last 30 minutes. Hard crowd control (Frostbind, Briar Snare, Void Well, Time Lock, Gravity, Frost Nova, Ice Lance) lasts twice as long as before, and half as long on an elite or a boss. Debuffs and damage over time last three times as long.
+- Mob casts and mob imbues use the same durations and radii as player casts.
+- Sanctuary raises a zone of 6 blocks at the cast spot, for 30 seconds times the duration multiplier. It does not follow you. Every second, players in it get Regeneration I, and undead in it take your spell hit.
 - The cooldown line shows your real cooldown after Intelligence and Quickening.
 - Riftwalk, Gale Step, and the Scroll of Return keep a fixed cooldown. Intelligence and Dexterity do not shorten it.
 - A spell that hurts a foe names you as the attacker, as a sword hit does. A struck mob turns on you, and the RPG mod
@@ -137,6 +139,37 @@ weapon's spells as they shape a book's. The tooltip names every imbued spell.
 
 A mob that wields an imbued weapon casts its spell too, when the spell strikes a single foe.
 
+## Awakening
+
+Each spellbook counts its own casts that hit something. At 120 such casts it awakens by itself.
+
+- **A cast hits** when it damages, heals, or applies an effect to any living entity, the caster included.
+  Moving or summoning spells (Riftwalk, Gale Step, Tidal Push, a new Summon Skeleton) also hit.
+  A buff therefore awakens a book more easily than an attack does.
+- **A cast does not hit** when it touches nothing: Time Lock or Frost Nova with no hostile in range,
+  or Mending Word at full health. A cast that ends in cooldown, no target, or a fizzle adds nothing.
+  A scroll cast adds nothing to any book. A doublecast adds one, not two.
+- **Delayed spells:** Sanctuary, Flame Ring and Plague Cloud act on later ticks. The cast adds one the
+  first time a later pulse touches something, and never more than one for each cast. The first plain book
+  of that spell in the caster's inventory takes the credit.
+- **The tooltip** of a plain book shows `Awakening n/120` and `Awakens in m casts`. An awakened book shows
+  `Awakened` and its name reads `Awakened {Spell}`. Scrolls never awaken and show no such lines.
+- **The flip** keeps every component of the book: enchantments, refine level, stat rolls, and the rest.
+  The book gains a glint and a gold icon. The player hears a toast sound, sees a burst of particles, and
+  gets a message.
+- **Loot:** books and scrolls from containers, witches and other loot never carry a count or the awakened flag.
+- **Imbue:** an awakened book on an anvil sets the weapon's awakened imbue to its spell. A weapon holds at
+  most one awakened imbue, so a second awakened book gives no anvil result, and a plain book still imbues.
+  An awakened book of a spell the weapon already holds as plain upgrades that spell. Imbued arrows never
+  take an awakened imbue.
+- **Combos** still fire with awakened books. This round gives the awakened state no spell behaviour of its
+  own: it only reaches each spell effect as `modifiers.awakened()`.
+- **Command:** `/spellbook awaken` (permission level 2) sets the count of the book in the main hand to 120
+  and awakens it.
+
+The book art for the awakened state comes from `scripts/spellbook-icon-check.py --write-awakened`, and
+`--check-awakened` fails when a book lacks the texture, the model, or the item definition's condition case.
+
 ## Scroll of Return
 
 One paper, one ender pearl and one feather make 16 Scrolls of Return. Read one and it carries you to
@@ -177,6 +210,30 @@ book's. Head and chest spell enchantments still apply.
 - **Find:** 25% of searchable containers hold 1 or 2 scrolls of a random spell, on top of the 10% spellbook
   chance. Containers are the same chests, barrels and pots that get the equips gear rolls, in any namespace.
 
+## Status effects
+
+The spells apply nine effects of their own, each with an 18x18 icon in the inventory effect list. A later stage
+reaches them only through `SpellStatusApi`. The effect numbers are fixed in code and have no config.
+
+| Effect | Kind | What it does |
+| --- | --- | --- |
+| Chilled | Harmful | A stack of cold, amplifier 0 to 2, each level slowing by 15 percent. A fourth chill turns into Frozen. |
+| Frozen | Harmful | The mob cannot move or attack. A player melee hit deals 1.5 times damage and ends it. Half as long on an elite or a boss. |
+| Soaked | Harmful | Lightning spells (Static Lash, Chainstorm) deal 1.5 times damage. Ember Brand removes it. |
+| Scorched | Harmful | Healing received is halved. |
+| Brittle | Harmful | The next player hit deals 1.5 times damage, then Brittle ends. |
+| Marked | Harmful | Player hits deal 1.2 times damage and the mob glows. |
+| Staggered | Harmful | The mob cannot move or attack. Half as long on an elite or a boss. |
+| Arcane Ward | Beneficial | A pool of damage that is taken before health. The effect is the timer; the ward ends when the pool is spent. |
+| Bleeding | Harmful | Loses 2 percent of its current health every second, at least 0.5 health. Each amplifier level adds 2 percent. |
+
+- A stun (Frozen or Staggered) sets the speed to zero and switches off a mob's AI. When the stun ends, the AI comes back
+  only if the stun switched it off, so a mob that had no AI before keeps none. A save made mid-stun is repaired on load.
+- A player under a stun loses speed only.
+- Only a direct player hit shatters Frozen: a melee hit, a spear thrust or a mace smash, never a spell.
+- Bleeding damage carries no knockback, ignores armor and the hurt cooldown, and does not trigger the RPG mod's hurt shake.
+- Mob spells and mob imbues do not apply these effects yet.
+
 ## Spell combos
 
 Cast the right two spells in order, within 5 seconds, and they land a combo. Hostile combos need the same
@@ -187,7 +244,7 @@ spends the pair, so one opener never feeds two combos. Each combo book's tooltip
 | --- | --- | --- | --- |
 | Frostbind | Spark Shot | Thermal Shock | 4 more magic damage |
 | Briar Snare | Wither Seal | Blight Bloom | Poison II, 5 s |
-| Static Lash | Tidal Push | Riptide Current | 3 more damage and Slowness III, 3 s |
+| Static Lash | Tidal Push | Riptide Current | 3 more damage, Slowness III and Soaked, 3 s |
 | Stoneguard | Aegis of the Deep | Bastion | Absorption IV, 8 s |
 | Time Lock | Dragonfall | Frozen Meteor | 5 more damage to hostiles within 3 blocks |
 
@@ -255,7 +312,7 @@ enchantment instead.
 | Arcane Sight | Helmet | Target range +2 blocks |
 | Clear Mind | Helmet | Cooldown −5% |
 | Arcane Weave | Chestplate | Duration of effects on enemies +10% |
-| Spellguard | Chestplate | Duration of effects on the caster +10% |
+| Spellguard | Chestplate | Duration of effects on the caster +10%, except the 30-minute buffs and hymns |
 | Doublecast | Helmet, or a spellbook a trainer gives | 50% chance a book or scroll cast lands twice, combos included; a helmet and a book together still roll once |
 
 Quickening and Clear Mind stack, but a cooldown never drops below half its base or below 1 second.

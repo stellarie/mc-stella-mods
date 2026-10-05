@@ -1,0 +1,24 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:void_essence",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 3,
+								"max": 5
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

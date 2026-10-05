@@ -1,0 +1,16 @@
+{
+	"item.mod-stella-ruins.hawkfeather": "Hawkfeather",
+	"item.mod-stella-ruins.signal_ember": "Signal Ember",
+	"item.mod-stella-ruins.captains_insignia": "Captain's Insignia",
+	"item.mod-stella-ruins.hawkeye_longbow": "Hawkeye Longbow",
+	"item.mod-stella-ruins.hawkeye_helmet": "Hawkeye Cap",
+	"item.mod-stella-ruins.hawkeye_chestplate": "Hawkeye Jerkin",
+	"item.mod-stella-ruins.hawkeye_leggings": "Hawkeye Leggings",
+	"item.mod-stella-ruins.hawkeye_boots": "Hawkeye Boots",
+	"mob.mod-stella-ruins.watch_archer": "Watch Archer",
+	"mob.mod-stella-ruins.tower_crossbowman": "Tower Crossbowman",
+	"mob.mod-stella-ruins.watch_captain": "Watch Captain",
+	"set.mod-stella-ruins.hawkeye": "Hawkeye set: +10% movement speed with 2 pieces, arrows hit 20% harder with 4",
+	"effect.mod-stella-ruins.hawkeye": "Hawkeye: every fifth arrow pierces 2 targets and makes them glow",
+	"clue.mod-stella-ruins.fallen_watchtower": "Where the Watch fell, the stair still climbs. Count the floors by the arrows."
+}

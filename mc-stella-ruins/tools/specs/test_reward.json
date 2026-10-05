@@ -1,0 +1,115 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"a": [
+			"#2a0f0a",
+			"#7a2616",
+			"#c8481f",
+			"#f08a3c",
+			"#ffd27a"
+		],
+		"b": [
+			"#0b1d2e",
+			"#2c5778",
+			"#5a9cc8",
+			"#9fd6f0",
+			"#e4f8ff"
+		],
+		"c": [
+			"#1a2410",
+			"#3d5a1f",
+			"#6fa032",
+			"#a6d85a",
+			"#e0ffa8"
+		]
+	},
+	"items": [
+		{
+			"id": "test_keen_affix",
+			"template": "shard",
+			"palette": "c"
+		},
+		{
+			"id": "test_sharp_affix",
+			"template": "shard",
+			"palette": "b"
+		},
+		{
+			"id": "test_ward_affix",
+			"template": "shard",
+			"palette": "a"
+		},
+		{
+			"id": "test_echo_affix",
+			"template": "shard",
+			"palette": "c"
+		},
+		{
+			"id": "test_unique_sword",
+			"template": "sword",
+			"palette": "b"
+		},
+		{
+			"id": "test_unique_helm",
+			"template": "helmet",
+			"palette": "a"
+		},
+		{
+			"id": "test_unique_bow",
+			"template": "bow",
+			"palette": "c"
+		},
+		{
+			"id": "test_unique_charm",
+			"template": "gem",
+			"palette": "b"
+		},
+		{
+			"id": "test_unique_thrower",
+			"template": "gem",
+			"palette": "b"
+		},
+		{
+			"id": "test_unique_recurse",
+			"template": "gem",
+			"palette": "b"
+		},
+		{
+			"id": "test_unique_orphan",
+			"template": "gem",
+			"palette": "b"
+		},
+		{
+			"id": "test_gear_sword",
+			"template": "sword",
+			"palette": "a"
+		},
+		{
+			"id": "test_gear_axe",
+			"template": "axe",
+			"palette": "a"
+		},
+		{
+			"id": "test_gear_pickaxe",
+			"template": "axe",
+			"palette": "c"
+		},
+		{
+			"id": "test_gear_chestplate",
+			"template": "chestplate",
+			"palette": "c"
+		}
+	],
+	"sets": [
+		{
+			"id": "test_alpha",
+			"asset": "test_alpha",
+			"palette": "a"
+		},
+		{
+			"id": "test_beta",
+			"asset": "test_beta",
+			"palette": "b"
+		}
+	]
+}
