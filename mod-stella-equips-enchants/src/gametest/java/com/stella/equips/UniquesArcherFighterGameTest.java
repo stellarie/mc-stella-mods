@@ -2,14 +2,21 @@ package com.stella.equips;
 
 import com.stella.equips.unique.UniqueContext;
 import com.stella.equips.unique.UniqueDef;
+import com.stella.equips.unique.UniqueFields;
+import com.stella.equips.unique.UniqueArrows;
 import com.stella.equips.unique.Uniques;
 import com.stella.equips.unique.af.AncientEyeBow;
 import com.stella.equips.unique.af.MireBow;
 import com.stella.equips.unique.af.NightwingBow;
 import com.stella.equips.unique.af.AfChance;
 import com.stella.equips.unique.af.WailingBow;
+import com.stella.equips.unique.af.LevitatorBow;
+import com.stella.equips.unique.af.DragonbreathBow;
+import com.stella.equips.unique.af.SonicBow;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
+import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import com.stella.equips.unique.af.RimefrostBow;
 import com.stella.equips.unique.af.SunfireBow;
@@ -23,10 +30,15 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.core.Holder;
 
 /** Outcome tests for the archer and fighter uniques. */
@@ -41,14 +53,59 @@ public class UniquesArcherFighterGameTest {
 	}
 
 	private static UniqueContext context(final GameTestHelper helper, final String id, final int refine) {
+		return context(helper, id, refine, 1.5);
+	}
+
+	private static UniqueContext context(final GameTestHelper helper, final String id, final int refine, final double x) {
 		UniqueDef def = Uniques.byId(id);
 		helper.assertTrue(def != null, "missing unique " + id);
-		ServerPlayer holder = UniqueTestKit.survivor(helper, new Vec3(1.5, 2.0, 1.5));
+		ServerPlayer holder = UniqueTestKit.survivor(helper, new Vec3(x, 2.0, 1.5));
 		return new UniqueContext(holder, UniqueTestKit.stack(def, refine), refine);
 	}
 
 	private static Mob foe(final GameTestHelper helper, final double x) {
-		return helper.spawnWithNoFreeWill(EntityTypes.PILLAGER, new Vec3(x, 2.0, 3.5));
+		return foeAt(helper, x, 3.5);
+	}
+
+	private static Mob foeAt(final GameTestHelper helper, final double x, final double z) {
+		return helper.spawnWithNoFreeWill(EntityTypes.PILLAGER, new Vec3(x, 2.0, z));
+	}
+
+	private static int arrows(final ServerPlayer holder) {
+		int count = 0;
+		for (int slot = 0; slot < holder.getInventory().getContainerSize(); slot++) {
+			ItemStack stack = holder.getInventory().getItem(slot);
+			if (stack.is(Items.ARROW)) {
+				count += stack.getCount();
+			}
+		}
+		return count;
+	}
+
+	private static Arrow shot(final GameTestHelper helper, final UniqueContext c) {
+		Arrow arrow = new Arrow(helper.getLevel(), c.holder(), new ItemStack(Items.ARROW), c.stack());
+		arrow.setDeltaMovement(0.0, 0.0, 3.0);
+		arrow.setBaseDamage(2.0);
+		return arrow;
+	}
+
+	private static AbstractArrow fireReal(final GameTestHelper helper, final UniqueContext c) {
+		ServerPlayer holder = c.holder();
+		holder.setYRot(0.0F);
+		holder.setXRot(0.0F);
+		holder.setItemInHand(InteractionHand.MAIN_HAND, c.stack());
+		holder.getInventory().add(new ItemStack(Items.ARROW, 8));
+		ItemStack bow = holder.getMainHandItem();
+		bow.getItem().releaseUsing(bow, holder.level(), holder, 0);
+		List<AbstractArrow> arrows = UniqueTestKit.arrowsOf(holder.level(), holder, holder.position());
+		helper.assertTrue(arrows.size() == 1, "the real bow loosed " + arrows.size() + " arrows");
+		return arrows.get(0);
+	}
+
+	private static void impact(final AbstractArrow arrow, final Mob target) throws ReflectiveOperationException {
+		Method hit = AbstractArrow.class.getDeclaredMethod("onHitEntity", EntityHitResult.class);
+		hit.setAccessible(true);
+		hit.invoke(arrow, new EntityHitResult(target));
 	}
 
 	private static void potionBase(final GameTestHelper helper, final String id, final Holder<MobEffect> effect,
@@ -253,5 +310,188 @@ public class UniquesArcherFighterGameTest {
 		UniqueTestKit.result("wailingPlus15", "low=" + nearLow.getHealth() + " high=" + nearHigh.getHealth());
 		helper.assertTrue(nearLow.getHealth() == beforeLow && nearHigh.getHealth() < beforeHigh, "fourth burst gate differs");
 		helper.succeed();
+	}
+
+	@GameTest public void levitatorBaseLiftsOnPassingRoll(final GameTestHelper helper) {
+		UniqueContext c = context(helper, LevitatorBow.ID, 0);
+		CHANCE.put(c.holder().getUUID(), true);
+		Mob target = foe(helper, 3.5);
+		Uniques.byId(LevitatorBow.ID).effect().afterArrow(c, target, shot(helper, c), 6.0F, false);
+		MobEffectInstance lift = target.getEffect(MobEffects.LEVITATION);
+		UniqueTestKit.result("levitatorBase", "lift=" + lift);
+		helper.assertTrue(lift != null && lift.getDuration() == LevitatorBow.TUNING.ticks(), "passing lift differs");
+		helper.succeed();
+	}
+
+	@GameTest public void levitatorPlus15GivesArrowOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = context(helper, LevitatorBow.ID, Uniques.PLUS_15 - 1);
+		UniqueContext high = context(helper, LevitatorBow.ID, Uniques.PLUS_15);
+		CHANCE.put(low.holder().getUUID(), false);
+		CHANCE.put(high.holder().getUUID(), false);
+		Mob targetLow = foe(helper, 3.5);
+		Mob targetHigh = foe(helper, 8.5);
+		targetLow.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 100));
+		targetHigh.addEffect(new MobEffectInstance(MobEffects.LEVITATION, 100));
+		Arrow lowArrow = shot(helper, low);
+		Arrow highArrow = shot(helper, high);
+		lowArrow.setCritArrow(true);
+		highArrow.setCritArrow(true);
+		UniqueDef def = Uniques.byId(LevitatorBow.ID);
+		def.effect().afterArrow(low, targetLow, lowArrow, 6.0F, false);
+		def.effect().afterArrow(high, targetHigh, highArrow, 6.0F, false);
+		UniqueTestKit.result("levitatorPlus15", "below=" + arrows(low.holder()) + " at=" + arrows(high.holder()));
+		helper.assertTrue(arrows(low.holder()) == 0 && arrows(high.holder()) == 1, "critical arrow grant gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void dragonbreathBaseCreatesDamagingField(final GameTestHelper helper) {
+		UniqueContext c = context(helper, DragonbreathBow.ID, 0);
+		CHANCE.put(c.holder().getUUID(), true);
+		Mob target = foe(helper, 3.5);
+		Uniques.byId(DragonbreathBow.ID).effect().afterArrow(c, target, shot(helper, c), 10.0F, false);
+		var field = UniqueFields.active().stream().filter(f -> f.center().equals(target.position())).findFirst().orElse(null);
+		UniqueTestKit.result("dragonbreathBase", "field=" + field);
+		helper.assertTrue(field != null && field.radius() == DragonbreathBow.TUNING.radius()
+			&& field.ticksLeft() == DragonbreathBow.TUNING.ticks()
+			&& field.perSecond() == 10.0F * DragonbreathBow.TUNING.damageShare(), "breath field differs");
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 80) public void dragonbreathPlus15PullsOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = context(helper, DragonbreathBow.ID, Uniques.PLUS_15 - 1);
+		UniqueContext high = context(helper, DragonbreathBow.ID, Uniques.PLUS_15);
+		CHANCE.put(low.holder().getUUID(), true);
+		CHANCE.put(high.holder().getUUID(), true);
+		Mob centerLow = foeAt(helper, 2.5, 3.5);
+		Mob nearLow = foeAt(helper, 2.5, 5.5);
+		Mob centerHigh = foeAt(helper, 6.5, 3.5);
+		Mob nearHigh = foeAt(helper, 6.5, 5.5);
+		double lowStart = nearLow.getZ();
+		double highStart = nearHigh.getZ();
+		UniqueDef def = Uniques.byId(DragonbreathBow.ID);
+		def.effect().afterArrow(low, centerLow, shot(helper, low), 10.0F, false);
+		def.effect().afterArrow(high, centerHigh, shot(helper, high), 10.0F, false);
+		helper.runAfterDelay(30L, () -> {
+			UniqueTestKit.result("dragonbreathPlus15", "lowDz=" + (nearLow.getZ() - lowStart) + " highDz=" + (nearHigh.getZ() - highStart)
+				+ " highHealth=" + nearHigh.getHealth());
+			double pulled = highStart - nearHigh.getZ();
+			helper.assertTrue(Math.abs(nearLow.getZ() - lowStart) < 0.1
+				&& Math.abs(pulled - DragonbreathBow.TUNING.pullBlocks()) <= 0.1, "breath pull gate differs");
+			helper.succeed();
+		});
+	}
+
+	@GameTest public void sonicBaseFifthFullDrawPiercesArmor(final GameTestHelper helper) {
+		UniqueContext c = context(helper, SonicBow.ID, 0);
+		c.holder().setYRot(0.0F);
+		c.holder().setXRot(0.0F);
+		Mob target = foe(helper, 1.5);
+		target.getAttribute(Attributes.ARMOR).setBaseValue(20.0);
+		float before = target.getHealth();
+		UniqueDef def = Uniques.byId(SonicBow.ID);
+		for (int count = 1; count <= SonicBow.TUNING.every(); count++) {
+			def.effect().onShot(c, shot(helper, c), 3.0F);
+			if (count < SonicBow.TUNING.every()) {
+				helper.assertTrue(target.getHealth() == before, "sonic beam fired before fifth shot");
+			}
+		}
+		UniqueTestKit.result("sonicBase", "lost=" + (before - target.getHealth()));
+		helper.assertTrue(Math.abs(before - target.getHealth() - 6.0F * SonicBow.TUNING.damageShare()) < 0.001F, "fifth sonic beam or armor pierce differs");
+		helper.succeed();
+	}
+
+	@GameTest public void sonicPlus15FiresEveryThirdOnlyAtGate(final GameTestHelper helper) {
+		UniqueContext low = context(helper, SonicBow.ID, Uniques.PLUS_15 - 1);
+		UniqueContext high = context(helper, SonicBow.ID, Uniques.PLUS_15, 8.5);
+		low.holder().setYRot(0.0F);
+		low.holder().setXRot(0.0F);
+		high.holder().setYRot(0.0F);
+		high.holder().setXRot(0.0F);
+		Mob targetLow = foe(helper, 1.5);
+		Mob targetHigh = foe(helper, 8.5);
+		float beforeLow = targetLow.getHealth();
+		float beforeHigh = targetHigh.getHealth();
+		UniqueDef def = Uniques.byId(SonicBow.ID);
+		for (int count = 0; count < SonicBow.TUNING.everyPlus15(); count++) {
+			def.effect().onShot(low, shot(helper, low), 3.0F);
+			def.effect().onShot(high, shot(helper, high), 3.0F);
+		}
+		UniqueTestKit.result("sonicPlus15", "low=" + targetLow.getHealth() + " high=" + targetHigh.getHealth());
+		helper.assertTrue(targetLow.getHealth() == beforeLow && targetHigh.getHealth() < beforeHigh, "sonic interval gate differs");
+		helper.succeed();
+	}
+
+	@GameTest public void realRimefrostArrowAppliesSlowness(final GameTestHelper helper) {
+		UniqueContext c = context(helper, RimefrostBow.ID, 0);
+		AbstractArrow arrow = fireReal(helper, c);
+		UniqueArrows.Mark mark = UniqueArrows.of(arrow);
+		Mob target = foe(helper, 1.5);
+		target.hurtServer(helper.getLevel(), helper.getLevel().damageSources().arrow(arrow, c.holder()), 6.0F);
+		MobEffectInstance slow = target.getEffect(MobEffects.SLOWNESS);
+		UniqueTestKit.result("realRimefrost", "mark=" + mark + " slow=" + slow);
+		helper.assertTrue(mark != null && mark.id().equals(RimefrostBow.ID) && slow != null, "real arrow missed Slowness dispatch");
+		helper.succeed();
+	}
+
+	@GameTest public void realSunscorchKillingArrowBursts(final GameTestHelper helper) {
+		UniqueContext c = context(helper, SunscorchBow.ID, Uniques.PLUS_15);
+		AbstractArrow arrow = fireReal(helper, c);
+		UniqueArrows.Mark mark = UniqueArrows.of(arrow);
+		Mob victim = foe(helper, 1.5);
+		Mob near = foe(helper, 2.5);
+		victim.setHealth(4.0F);
+		victim.igniteForSeconds(5);
+		float before = near.getHealth();
+		victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().arrow(arrow, c.holder()), 30.0F);
+		UniqueTestKit.result("realSunscorchKill", "mark=" + mark + " dead=" + !victim.isAlive() + " areaLoss=" + (before - near.getHealth()));
+		helper.assertTrue(mark != null && mark.id().equals(SunscorchBow.ID) && !victim.isAlive() && near.getHealth() < before,
+			"real killing arrow missed the area dispatch");
+		helper.succeed();
+	}
+
+	@GameTest public void realNightwingShotMarksCritical(final GameTestHelper helper) {
+		UniqueDef def = Uniques.byId(NightwingBow.ID);
+		ServerPlayer holder = UniqueTestKit.connected(helper, new Vec3(1.5, 2.0, 1.5));
+		UniqueContext c = new UniqueContext(holder, UniqueTestKit.stack(def, Uniques.PLUS_15), Uniques.PLUS_15);
+		holder.setOnGround(false);
+		AbstractArrow arrow = fireReal(helper, c);
+		UniqueArrows.Mark mark = UniqueArrows.of(arrow);
+		UniqueTestKit.result("realNightwingShot", "mark=" + mark + " crit=" + arrow.isCritArrow()
+			+ " slowFalling=" + holder.hasEffect(MobEffects.SLOW_FALLING));
+		helper.assertTrue(mark != null && mark.id().equals(NightwingBow.ID) && arrow.isCritArrow()
+			&& holder.hasEffect(MobEffects.SLOW_FALLING), "real airborne shot missed the shot hook");
+		helper.succeed();
+	}
+
+	private static void sonicEnchantedShotMatchesArrow(final GameTestHelper helper, final int refine) throws ReflectiveOperationException {
+		UniqueContext c = context(helper, SonicBow.ID, refine);
+		c.stack().enchant(UniqueTestKit.enchantment(helper.getLevel(), Enchantments.POWER), 5);
+		Mob target = foe(helper, 1.5);
+		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(500.0);
+		target.setHealth(500.0F);
+		UniqueDef def = Uniques.byId(SonicBow.ID);
+		for (int count = 1; count < SonicBow.every(refine); count++) {
+			def.effect().onShot(c, shot(helper, c), 3.0F);
+		}
+		AbstractArrow arrow = fireReal(helper, c);
+		UniqueArrows.Mark mark = UniqueArrows.of(arrow);
+		float beamLoss = 500.0F - target.getHealth();
+		impact(arrow, target);
+		float arrowLoss = 500.0F - target.getHealth() - beamLoss;
+		UniqueTestKit.result("sonicEnchanted" + refine, "mark=" + mark + " beam=" + beamLoss + " arrow=" + arrowLoss);
+		helper.assertTrue(mark != null && mark.id().equals(SonicBow.ID) && arrow.isCritArrow(), "the full-draw Sonic arrow lost its mark or critical state");
+		helper.assertTrue(beamLoss > 6.0F * SonicBow.share(refine) && arrowLoss > 6.0F,
+			"Power did not raise the beam and arrow above the plain shot");
+		helper.assertTrue(Math.abs(beamLoss - arrowLoss * SonicBow.share(refine)) < 0.01F,
+			"beam share differs from the actual arrow: " + beamLoss + " vs " + arrowLoss);
+		helper.succeed();
+	}
+
+	@GameTest public void sonicRealPowerArrowMatchesBaseBeam(final GameTestHelper helper) throws ReflectiveOperationException {
+		sonicEnchantedShotMatchesArrow(helper, 0);
+	}
+
+	@GameTest public void sonicRealPowerArrowMatchesPlus12Beam(final GameTestHelper helper) throws ReflectiveOperationException {
+		sonicEnchantedShotMatchesArrow(helper, Uniques.PLUS_12);
 	}
 }

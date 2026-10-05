@@ -8,6 +8,9 @@ import com.stella.equips.unique.af.SunfireBow;
 import com.stella.equips.unique.af.SunscorchBow;
 import com.stella.equips.unique.af.WitherboneLongbow;
 import com.stella.equips.unique.af.WailingBow;
+import com.stella.equips.unique.af.LevitatorBow;
+import com.stella.equips.unique.af.DragonbreathBow;
+import com.stella.equips.unique.af.SonicBow;
 
 /** The archer and fighter uniques of the second slice. W002 owns this file. */
 public final class UniquesArcherFighter {
@@ -23,5 +26,8 @@ public final class UniquesArcherFighter {
 		SunfireBow.register();
 		NightwingBow.register();
 		WailingBow.register();
+		LevitatorBow.register();
+		DragonbreathBow.register();
+		SonicBow.register();
 	}
 }
