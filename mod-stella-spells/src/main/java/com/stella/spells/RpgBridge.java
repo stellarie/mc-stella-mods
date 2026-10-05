@@ -3,6 +3,7 @@ package com.stella.spells;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.function.IntUnaryOperator;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -18,6 +19,10 @@ public final class RpgBridge {
 	/** A vanilla flat heal of 1 is this heal coefficient. */
 	public static final double HEAL_COEFFICIENT_PER_FLAT = 0.5;
 	public static final String HEALTH_SCALE_SHARE = "mod-stella-rpg:health-scale";
+	/** The RPG mod's own player curve, an {@code IntUnaryOperator} from a level to what the next one needs. */
+	public static final String XP_CURVE_SHARE = "mod-stella-rpg:xp-curve";
+	/** What vanilla charges a player for one level, the fallback when the RPG mod publishes no curve. */
+	public static final int VANILLA_LEVEL_XP = 100;
 	static final String RPG_SPELLS_CLASS = "com.stella.rpg.RpgSpells";
 
 	/** What the RPG mod gives a spell: the calls its {@code RpgSpells} makes. */
@@ -231,6 +236,26 @@ public final class RpgBridge {
 	static double k() {
 		Object shared = FabricLoader.getInstance().getObjectShare().get(HEALTH_SCALE_SHARE);
 		return shared instanceof Double scale && positive(scale) ? scale : 1.0;
+	}
+
+	/** What vanilla charges a player of this level for the next one. */
+	public static int vanillaXpNeededFor(final int level) {
+		return VANILLA_LEVEL_XP * (level + 1);
+	}
+
+	/**
+	 * The experience a player of this level needs for the next one: the RPG mod's own curve when it
+	 * publishes one, vanilla's hundred a level otherwise. Read on each call, so a config reload counts.
+	 */
+	public static int xpNeededFor(final int level) {
+		Object shared = FabricLoader.getInstance().getObjectShare().get(XP_CURVE_SHARE);
+		if (shared instanceof IntUnaryOperator curve) {
+			int needed = curve.applyAsInt(Math.max(0, level));
+			if (needed > 0) {
+				return needed;
+			}
+		}
+		return vanillaXpNeededFor(level);
 	}
 
 	/** Real health points as the vanilla number that {@code heal} or {@code hurtServer} scales back by K. */

@@ -5,6 +5,7 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
@@ -307,7 +308,7 @@ public class SummonCompanionGameTest {
 		ServerPlayer master = master(helper, 1.5, 1.5);
 		Skeleton servant = servant(helper, master, 3, 3);
 		int needed = SummonSkeleton.xpNeeded(servant);
-		int firstStep = SummonSkeleton.VANILLA_LEVEL_XP / 2;
+		int playerStep = RpgBridge.xpNeededFor(SummonSkeleton.level(servant));
 		int before = sum(SummonSkeleton.stats(servant));
 		SummonSkeleton.gain(servant, master, needed - 1);
 		int nearly = SummonSkeleton.level(servant);
@@ -315,17 +316,67 @@ public class SummonCompanionGameTest {
 		SummonSkeleton.gain(servant, master, 1);
 		int after = sum(SummonSkeleton.stats(servant));
 		int secondStep = SummonSkeleton.xpNeeded(servant);
-		LOG.info("[BEHAVIOR] test=theServantLevelsOnHalfAPlayersCurveAndRollsAStat RESULT needed={} vanillaHalf={} nearly={} level={} before={} after={} mods={} secondStep={}",
-			needed, firstStep, nearly, SummonSkeleton.level(servant), before, after, mods, secondStep);
-		helper.assertTrue(needed == firstStep, "the servant's first step is " + needed + ", not half a level's " + firstStep);
+		int secondPlayerStep = RpgBridge.xpNeededFor(SummonSkeleton.level(servant));
+		LOG.info("[BEHAVIOR] test=theServantLevelsOnHalfAPlayersCurveAndRollsAStat RESULT needed={} playerStep={} nearly={} level={} before={} after={} mods={} secondStep={} secondPlayerStep={}",
+			needed, playerStep, nearly, SummonSkeleton.level(servant), before, after, mods, secondStep, secondPlayerStep);
+		helper.assertTrue(needed == playerStep / 2,
+			"the servant's first step is " + needed + ", not half a player's " + playerStep);
 		helper.assertTrue(nearly == 0 && mods == 0, "the servant rose or rolled a stat one point early");
 		helper.assertTrue(SummonSkeleton.level(servant) == 1, "the servant stayed at level " + SummonSkeleton.level(servant));
 		helper.assertTrue(after == before + 1, "one level rolled " + (after - before) + " stat points");
 		helper.assertTrue(statModifiers(servant) > 0, "the rolled stat never reached the servant's attributes");
-		helper.assertTrue(secondStep > needed, "the second step " + secondStep + " is no longer than the first " + needed);
+		helper.assertTrue(secondStep == secondPlayerStep / 2,
+			"the servant's second step is " + secondStep + ", not half a player's " + secondPlayerStep);
 		servant.discard();
 		leave(helper, master);
 		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 20)
+	public void theServantCurveFallsBackToVanillaWithoutTheRpgShare(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "theServantCurveFallsBackToVanillaWithoutTheRpgShare");
+		Object saved = FabricLoader.getInstance().getObjectShare().get(RpgBridge.XP_CURVE_SHARE);
+		int[] levels = {0, 1, 10};
+		StringBuilder shared = new StringBuilder();
+		StringBuilder vanilla = new StringBuilder();
+		java.util.List<Integer> sharedSteps = new java.util.ArrayList<>();
+		java.util.List<Integer> vanillaSteps = new java.util.ArrayList<>();
+		try {
+			FabricLoader.getInstance().getObjectShare().put(RpgBridge.XP_CURVE_SHARE,
+				(java.util.function.IntUnaryOperator) value -> 20 + 10 * value);
+			for (int level : levels) {
+				sharedSteps.add(SummonSkeleton.xpStep(level));
+				shared.append(level).append("->").append(SummonSkeleton.xpStep(level)).append(' ');
+			}
+			FabricLoader.getInstance().getObjectShare().remove(RpgBridge.XP_CURVE_SHARE);
+			for (int level : levels) {
+				vanillaSteps.add(SummonSkeleton.xpStep(level));
+				vanilla.append(level).append("->").append(SummonSkeleton.xpStep(level)).append(' ');
+			}
+		} finally {
+			restoreShare(saved);
+		}
+		LOG.info("[BEHAVIOR] test=theServantCurveFallsBackToVanillaWithoutTheRpgShare RESULT shared={} vanilla={} sharedFirst={} vanillaFirst={}",
+			shared, vanilla, sharedSteps.get(0), vanillaSteps.get(0));
+		List<Integer> expectedShared = new java.util.ArrayList<>();
+		List<Integer> expectedVanilla = new java.util.ArrayList<>();
+		for (int level : levels) {
+			expectedShared.add((20 + 10 * level) / 2);
+			expectedVanilla.add(RpgBridge.vanillaXpNeededFor(level) / 2);
+		}
+		helper.assertTrue(sharedSteps.equals(expectedShared),
+			"with the share at 20 + 10L the servant needed " + shared + ", not " + expectedShared);
+		helper.assertTrue(vanillaSteps.equals(expectedVanilla),
+			"without the share the servant needed " + vanilla + ", not " + expectedVanilla);
+		helper.succeed();
+	}
+
+	private static void restoreShare(final Object saved) {
+		if (saved == null) {
+			FabricLoader.getInstance().getObjectShare().remove(RpgBridge.XP_CURVE_SHARE);
+		} else {
+			FabricLoader.getInstance().getObjectShare().put(RpgBridge.XP_CURVE_SHARE, saved);
+		}
 	}
 
 	@GameTest(maxTicks = 40)

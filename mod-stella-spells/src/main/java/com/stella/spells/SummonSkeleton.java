@@ -76,8 +76,6 @@ public final class SummonSkeleton {
 	public static final double KILL_XP_SHARE = 1.0;
 	/** The share of the servant's own gain its master collects. */
 	public static final double XP_SHARE = 0.5;
-	/** What vanilla charges a player for one level, which the servant halves for its own next level. */
-	public static final int VANILLA_LEVEL_XP = 100;
 	public static final int STAT_COUNT = 3;
 	public static final double STAT_HEALTH = 2.0;
 	public static final double STAT_SPEED = 0.02;
@@ -390,14 +388,17 @@ public final class SummonSkeleton {
 		applyStats(skeleton, rolled);
 	}
 
-	/** What the servant needs for its next level: half of vanilla's hundred a level step. */
+	/** What the servant needs for its next level: half of what a player of that level needs. */
 	public static int xpNeeded(final Skeleton skeleton) {
 		return xpStep(level(skeleton));
 	}
 
-	/** The servant's own curve, at half the size of the player's: fifty for the first level. */
+	/**
+	 * The servant's own curve, at half the size of a player's: half of the RPG mod's curve when that mod
+	 * publishes one, half of vanilla's hundred a level otherwise. The share is read on each call.
+	 */
 	static int xpStep(final int level) {
-		return VANILLA_LEVEL_XP * (level + 1) / 2;
+		return RpgBridge.xpNeededFor(level) / 2;
 	}
 
 	/** Adds the serving share of a fallen foe's experience to the servant that struck it down. */
