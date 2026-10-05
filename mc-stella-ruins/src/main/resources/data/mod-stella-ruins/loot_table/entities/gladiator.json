@@ -1,0 +1,22 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"condition": {
+				"chance": 0.15,
+				"type": "minecraft:random_chance"
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:champion_token",
+					"modifier": {
+						"type": "minecraft:set_count",
+						"count": 1
+					}
+				}
+			]
+		}
+	]
+}
