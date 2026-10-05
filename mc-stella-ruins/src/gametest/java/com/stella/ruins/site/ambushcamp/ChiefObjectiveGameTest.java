@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Acceptance items 3 to 6 and the sketch review additions: the hidden Chief, the tell, the reveal, the call, and the reset. */
 public class ChiefObjectiveGameTest {
-	static final int TICKS = 6000;
+	static final int TICKS = CampTestSupport.ARENA_TICKS;
 
 	private static boolean at(final Mob mob, final BlockPos marker) {
 		return mob.blockPosition().equals(marker);
@@ -216,7 +216,7 @@ public class ChiefObjectiveGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = TICKS * 2)
+	@GameTest(maxTicks = TICKS)
 	public void aCompletedCampRearmsAfterTwoDaysWithTheChiefInADifferentTent(final GameTestHelper helper) {
 		CampTestSupport.inArena(helper, CampTestSupport.SEED, arena -> {
 			long[] now = {1_000_000L};

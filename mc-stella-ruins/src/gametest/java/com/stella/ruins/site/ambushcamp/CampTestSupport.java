@@ -46,6 +46,10 @@ import net.minecraft.world.phys.Vec3;
 final class CampTestSupport {
 	private static final AtomicInteger NEXT = new AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 100_000L) * 8 + 4);
 	static final long READY_NANOS = 120_000_000_000L;
+	/** The tick limit of an arena test. It is far above what 120 s can hold, so the wall clock ends a stuck wait. */
+	static final int ARENA_TICKS = 1_000_000;
+	/** A test player takes hits of any size: with the mobs mod a ruin mob hits by its level. */
+	static final double TEST_HEALTH = 1_000_000.0;
 	/** A seed whose camp has at least four tents and a trail start that lies inside the activation radius. */
 	static final long SEED = playableSeed();
 
@@ -138,6 +142,7 @@ final class CampTestSupport {
 			new EmbeddedChannel(connection);
 			this.level.getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
 			player.setGameMode(GameType.SURVIVAL);
+			sturdy(player);
 			player.teleportTo(this.level, at.x, at.y, at.z, java.util.Set.of(), 0.0F, 0.0F, true);
 			this.players.add(player);
 			return player;
@@ -308,6 +313,7 @@ final class CampTestSupport {
 		new EmbeddedChannel(connection);
 		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
 		player.setGameMode(GameType.SURVIVAL);
+		sturdy(player);
 		Vec3 at = helper.absoluteVec(new Vec3(1.5, 1.0, 1.5));
 		player.teleportTo(helper.getLevel(), at.x, at.y, at.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		helper.onEachTick(() -> {
@@ -316,6 +322,11 @@ final class CampTestSupport {
 			}
 		});
 		return player;
+	}
+
+	static void sturdy(final ServerPlayer player) {
+		player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(TEST_HEALTH);
+		player.setHealth((float) TEST_HEALTH);
 	}
 
 	/** A player with no client counts as still loading, and that makes them invulnerable. */
