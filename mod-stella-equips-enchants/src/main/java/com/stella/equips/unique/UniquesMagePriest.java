@@ -17,6 +17,13 @@ import com.stella.equips.unique.mp.SulfurCrown;
 import com.stella.equips.unique.mp.TarShroud;
 import com.stella.equips.unique.mp.VolatileHood;
 import com.stella.equips.unique.mp.VoidstepBoots;
+import com.stella.equips.unique.mp.TidecallerVestments;
+import com.stella.equips.unique.mp.ClericsMitre;
+import com.stella.equips.unique.mp.HeartwoodBark;
+import com.stella.equips.unique.mp.GelMantle;
+import com.stella.equips.unique.mp.SpectralVestments;
+import com.stella.equips.unique.mp.ConduitMantle;
+import com.stella.equips.unique.mp.Priests;
 
 /** The mage and priest uniques of the third slice. W003 owns this file. */
 public final class UniquesMagePriest {
@@ -24,6 +31,7 @@ public final class UniquesMagePriest {
 	}
 
 	public static void register() {
+		Priests.register();
 		HexweaversHat.register();
 		BlazingMantle.register();
 		SulfurCrown.register();
@@ -41,5 +49,11 @@ public final class UniquesMagePriest {
 		EctoplasmVeil.register();
 		PrismarineLeggings.register();
 		SovereignCrown.register();
+		TidecallerVestments.register();
+		ClericsMitre.register();
+		HeartwoodBark.register();
+		GelMantle.register();
+		SpectralVestments.register();
+		ConduitMantle.register();
 	}
 }

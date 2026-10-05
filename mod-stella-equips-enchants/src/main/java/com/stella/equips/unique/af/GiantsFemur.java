@@ -7,6 +7,7 @@ import com.stella.equips.unique.UniqueJob;
 import com.stella.equips.unique.UniqueKind;
 import com.stella.equips.unique.Uniques;
 import java.util.List;
+import com.stella.equips.unique.UniquePassives;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
@@ -41,7 +42,7 @@ public final class GiantsFemur {
 
 		@Override
 		public void everySecond(final UniqueContext c) {
-			AfPassives.hold(c.holder(), PASSIVE, Attributes.ATTACK_SPEED, TUNING.slowSpeed());
+			UniquePassives.hold(c.holder(), PASSIVE, Attributes.ATTACK_SPEED, TUNING.slowSpeed());
 		}
 	};
 

@@ -20,6 +20,12 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import com.stella.equips.unique.mp.TidecallerVestments;
+import com.stella.equips.unique.mp.ClericsMitre;
+import com.stella.equips.unique.mp.HeartwoodBark;
+import com.stella.equips.unique.mp.GelMantle;
+import com.stella.equips.unique.mp.SpectralVestments;
+import com.stella.equips.unique.mp.ConduitMantle;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -604,5 +610,69 @@ public class UniquesMagePriestGameTest {
 		hit(helper, "sovereign_crown", high, highTarget, true);
 		check(helper, "sovereignTier", lowNeighbor.getHealth() == lowNeighbor.getMaxHealth() && highNeighbor.getHealth() < highNeighbor.getMaxHealth(),
 			"lowNeighbor=" + lowNeighbor.getHealth() + " highNeighbor=" + highNeighbor.getHealth());
+	}
+
+	@GameTest
+	public void tidecallerPulseCleansesOnlyAtPlus15(final GameTestHelper helper) {
+		UniqueContext below = connectedContext(helper, TidecallerVestments.ID, Uniques.PLUS_15 - 1, new Vec3(1.5, 2.0, 1.5));
+		below.holder().addEffect(new MobEffectInstance(MobEffects.POISON, 100));
+		TidecallerVestments.pulse(below);
+		// Sampled before the higher pulse, which reaches this holder as an ally.
+		boolean belowStays = below.holder().hasEffect(MobEffects.POISON);
+		UniqueContext at = connectedContext(helper, TidecallerVestments.ID, Uniques.PLUS_15, new Vec3(5.5, 2.0, 1.5));
+		at.holder().addEffect(new MobEffectInstance(MobEffects.POISON, 100));
+		TidecallerVestments.pulse(at);
+		boolean atCleared = !at.holder().hasEffect(MobEffects.POISON);
+		check(helper, "tidecallerPulse", belowStays && atCleared, "belowStays=" + belowStays + " atCleared=" + atCleared);
+	}
+
+	@GameTest
+	public void clericsMitreMitigatesUndeadBlows(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, ClericsMitre.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		LivingEntity undead = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(3.5, 2.0, 1.5));
+		LivingEntity living = helper.spawnWithNoFreeWill(EntityTypes.PILLAGER, new Vec3(5.5, 2.0, 1.5));
+		float fromUndead = Uniques.byId(ClericsMitre.ID).effect().incoming(c, helper.getLevel().damageSources().mobAttack(undead), 10.0F);
+		float fromLiving = Uniques.byId(ClericsMitre.ID).effect().incoming(c, helper.getLevel().damageSources().mobAttack(living), 10.0F);
+		float expected = 10.0F * (1.0F - (float) ClericsMitre.TUNING.reduce());
+		check(helper, "clericsMitre", Math.abs(fromUndead - expected) < 0.001 && Math.abs(fromLiving - 10.0F) < 0.001,
+			"undead=" + fromUndead + " living=" + fromLiving + " expected=" + expected);
+	}
+
+	@GameTest(maxTicks = 200)
+	public void heartwoodBarkResistsAfterStandingStill(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, HeartwoodBark.ID, 0, new Vec3(1.5, 3.0, 1.5));
+		helper.runAfterDelay(10, () -> Uniques.byId(HeartwoodBark.ID).effect().everySecond(c));
+		helper.runAfterDelay(10 + HeartwoodBark.TUNING.baseTicks() + 5, () -> {
+			Uniques.byId(HeartwoodBark.ID).effect().everySecond(c);
+			check(helper, "heartwoodStill", c.holder().hasEffect(MobEffects.RESISTANCE),
+				"still resistance: " + c.holder().getEffect(MobEffects.RESISTANCE));
+		});
+	}
+
+	@GameTest
+	public void gelMantleShieldsALowAlly(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, GelMantle.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		c.holder().setHealth(c.holder().getMaxHealth() * 0.2F);
+		Uniques.byId(GelMantle.ID).effect().everySecond(c);
+		float expected = (float) (c.holder().getMaxHealth() * GelMantle.TUNING.share());
+		check(helper, "gelMantle", Math.abs(c.holder().getAbsorptionAmount() - expected) < 0.001,
+			"absorption=" + c.holder().getAbsorptionAmount() + " expected=" + expected);
+	}
+
+	@GameTest
+	public void spectralVestmentsVeilALowHolder(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, SpectralVestments.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		c.holder().setHealth(c.holder().getMaxHealth() * 0.1F);
+		Uniques.byId(SpectralVestments.ID).effect().afterIncoming(c, helper.getLevel().damageSources().generic(), 5.0F);
+		check(helper, "spectralVeil", c.holder().hasEffect(MobEffects.INVISIBILITY) && c.holder().hasEffect(MobEffects.RESISTANCE),
+			"invisibility=" + c.holder().hasEffect(MobEffects.INVISIBILITY) + " resistance=" + c.holder().hasEffect(MobEffects.RESISTANCE));
+	}
+
+	@GameTest
+	public void conduitMantleGivesConduitPower(final GameTestHelper helper) {
+		UniqueContext c = connectedContext(helper, ConduitMantle.ID, 0, new Vec3(1.5, 2.0, 1.5));
+		Uniques.byId(ConduitMantle.ID).effect().everySecond(c);
+		check(helper, "conduitPower", c.holder().hasEffect(MobEffects.CONDUIT_POWER),
+			"conduit power: " + c.holder().getEffect(MobEffects.CONDUIT_POWER));
 	}
 }
