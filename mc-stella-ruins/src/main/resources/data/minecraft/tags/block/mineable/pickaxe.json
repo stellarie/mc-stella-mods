@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "mod-stella-ruins:deep_forge",
+    "mod-stella-ruins:starmetal_ore",
+    "mod-stella-ruins:cooled_meteorite",
+    "mod-stella-ruins:vault_wall",
+    "mod-stella-ruins:vault_floor",
+    "mod-stella-ruins:vault_seal",
+    "mod-stella-ruins:vault_arrow_plate",
+    "mod-stella-ruins:vault_drop_plate",
+    "mod-stella-ruins:vault_vent"
+  ]
+}
