@@ -57,8 +57,11 @@ public final class TowerTraps {
 	/** When each trap last sprang, by the server's tick count, which runs on whatever the level's clock does. */
 	private static final Map<Long, Integer> SPRUNG = new HashMap<>();
 
-	/** One trap: its spot, as an offset from the room's inner corner, and its theme. */
-	public record Trap(int x, int z, TrapTheme theme) {
+	/** One trap: its spot, as an offset from the room's inner corner, its theme, and its story's height. */
+	public record Trap(int x, int z, TrapTheme theme, int y) {
+		public Trap(final int x, final int z, final TrapTheme theme) {
+			this(x, z, theme, 0);
+		}
 	}
 
 	/** What a trap did when sprung: its theme, and what it brought into the world. */
@@ -78,8 +81,8 @@ public final class TowerTraps {
 	}
 
 	/**
-	 * The floor's traps on a given plan: clear of the arrival's cells, the hall, the portal's cell and the cell it is
-	 * entered from, and the safe zones.
+	 * The floor's traps on a given plan, over all its stories: one at most to each maze cell of a story, on the
+	 * story's own floor, clear of the arrival's cells, the hall, the portal's way, the stairs' ends and the safe zones.
 	 */
 	public static List<Trap> layout(final long seed, final int floor, final TowerPlan plan) {
 		TrapTheme theme = TrapTheme.of(floor);
@@ -93,22 +96,21 @@ public final class TowerTraps {
 		int[] portalCell = plan.portalCell();
 		int hall = plan.hall();
 		int hallLow = plan.hallLow();
-		boolean[][] walls = plan.walls();
-		for (int cx = 0; cx < TowerMaze.CELLS; cx++) {
-			for (int cz = 0; cz < TowerMaze.CELLS; cz++) {
-				int x = 1 + cx * TowerMaze.PITCH;
-				int z = 1 + cz * TowerMaze.PITCH;
-				boolean byArrival = Math.max(Math.abs(cx - startX), Math.abs(cz - startZ)) <= ARRIVAL_CLEAR_CELLS;
-				boolean inHall = hall > 0 && x + TowerMaze.PATH > hallLow && x < hallLow + hall && z + TowerMaze.PATH > hallLow && z < hallLow + hall;
-				// The portal's cell, the cell either side of it along the frame, and the cell it is entered from.
-				boolean inNook = hall == 0 && (cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1
-					|| cx == portalCell[0] + plan.portalFacing() && cz == portalCell[1]);
-				boolean safe = plan.inSafeZone(x, z) || plan.inSafeZone(x + TowerMaze.PATH - 1, z + TowerMaze.PATH - 1);
-				// A cell the maze left solid, beside a boss floor's hall or its safe room, holds no trap; nor does a cell of
-				// another variation's floor that is mostly wall.
-				boolean solid = walls[x][z] || openIn(plan, x, z) < MIN_OPEN;
-				if (!byArrival && !inHall && !inNook && !safe && !solid) {
-					cells.add(new int[] {cx, cz});
+		for (int s = 0; s < plan.stories().size(); s++) {
+			for (int cx = 0; cx < TowerMaze.CELLS; cx++) {
+				for (int cz = 0; cz < TowerMaze.CELLS; cz++) {
+					int x = 1 + cx * TowerMaze.PITCH;
+					int z = 1 + cz * TowerMaze.PITCH;
+					boolean byArrival = s == 0 && Math.max(Math.abs(cx - startX), Math.abs(cz - startZ)) <= ARRIVAL_CLEAR_CELLS;
+					boolean inHall = s == 0 && hall > 0 && x + TowerMaze.PATH > hallLow && x < hallLow + hall && z + TowerMaze.PATH > hallLow && z < hallLow + hall;
+					// The portal's cell, the cell either side of it along the frame, and the cell it is entered from.
+					boolean inNook = mazeLike(plan) && s == plan.portalStory() && hall == 0
+						&& (cx == portalCell[0] && Math.abs(cz - portalCell[1]) <= 1 || cx == portalCell[0] + plan.portalFacing() && cz == portalCell[1]);
+					// A cell that is mostly wall, or mostly off the story's floor, holds no trap.
+					boolean solid = openIn(plan, s, x, z) < MIN_OPEN;
+					if (!byArrival && !inHall && !inNook && !solid) {
+						cells.add(new int[] {s, cx, cz});
+					}
 				}
 			}
 		}
@@ -122,16 +124,17 @@ public final class TowerTraps {
 		List<Trap> traps = new ArrayList<>();
 		for (int[] cell : cells.subList(0, Math.min(TRAPS_PER_FLOOR, cells.size()))) {
 			TrapTheme kind = theme == TrapTheme.CHAOS ? laid.get(random.nextInt(laid.size())) : theme;
-			int x = 1 + cell[0] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
-			int z = 1 + cell[1] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
-			if (!trappable(plan, x, z)) {
-				// Not open ground on this floor (a variation's walls do not follow the maze's cells): the cell's open spots, one drawn.
+			int s = cell[0];
+			int x = 1 + cell[1] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
+			int z = 1 + cell[2] * TowerMaze.PITCH + random.nextInt(TowerMaze.PATH);
+			if (!trappable(plan, s, x, z)) {
+				// Not the story's open floor: the cell's open spots, one drawn.
 				List<int[]> spots = new ArrayList<>();
 				for (int dx = 0; dx < TowerMaze.PATH; dx++) {
 					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
-						int sx = 1 + cell[0] * TowerMaze.PITCH + dx;
-						int sz = 1 + cell[1] * TowerMaze.PITCH + dz;
-						if (trappable(plan, sx, sz)) {
+						int sx = 1 + cell[1] * TowerMaze.PITCH + dx;
+						int sz = 1 + cell[2] * TowerMaze.PITCH + dz;
+						if (trappable(plan, s, sx, sz)) {
 							spots.add(new int[] {sx, sz});
 						}
 					}
@@ -143,33 +146,55 @@ public final class TowerTraps {
 				x = pick[0];
 				z = pick[1];
 			}
-			traps.add(new Trap(x, z, kind));
+			traps.add(new Trap(x, z, kind, plan.stories().get(s).y()));
 		}
 		return traps;
 	}
 
-	/** The fewest open spots a maze cell of a floor may have, to be given a trap. */
+	/** The fewest open spots a maze cell of a story may have, to be given a trap. */
 	private static final int MIN_OPEN = 12;
-	/** On a floor of another variation, how far from the portal a trap keeps, in blocks. */
+	/** On a floor that is not a maze, how far from the portal a trap keeps on its story, in blocks. */
 	private static final int PORTAL_CLEAR = 6;
+	/** How far from a stair's or a ramp's ends a trap keeps, in blocks. */
+	private static final int WAY_CLEAR = 1;
 
-	private static int openIn(final TowerPlan plan, final int x, final int z) {
+	/** A floor whose paths follow the maze's cells: a hall floor or a labyrinth, whose portal sits in a nook. */
+	private static boolean mazeLike(final TowerPlan plan) {
+		return plan.archetype() == TowerArchetype.HALL || plan.archetype() == TowerArchetype.LABYRINTH;
+	}
+
+	private static int openIn(final TowerPlan plan, final int story, final int x, final int z) {
 		int open = 0;
 		for (int dx = 0; dx < TowerMaze.PATH; dx++) {
 			for (int dz = 0; dz < TowerMaze.PATH; dz++) {
-				open += trappable(plan, x + dx, z + dz) ? 1 : 0;
+				open += trappable(plan, story, x + dx, z + dz) ? 1 : 0;
 			}
 		}
 		return open;
 	}
 
-	/** Whether a trap may lie at a spot: open ground, clear of the frame, the safe zones and, off the maze, the portal. */
-	private static boolean trappable(final TowerPlan plan, final int x, final int z) {
-		if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE || plan.walls()[x][z] || plan.isFramePost(x, z) || plan.inSafeZone(x, z)) {
+	/**
+	 * Whether a trap may lie at a spot of a story: its own floor to stand on, clear of the frame, the safe zones and the
+	 * stairs' ends, and off the maze, clear of the portal.
+	 */
+	private static boolean trappable(final TowerPlan plan, final int story, final int x, final int z) {
+		TowerStory at = plan.stories().get(story);
+		if (!at.flatAt(x, z) || story == plan.portalStory() && plan.isFramePost(x, z) || plan.inSafeZone(x, at.y(), z)) {
 			return false;
 		}
-		boolean mazeLike = plan.variation() == TowerPlan.Variation.MAZE || plan.variation() == TowerPlan.Variation.TALL_WALLS;
-		return mazeLike || Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > PORTAL_CLEAR;
+		for (TowerFlight flight : plan.flights()) {
+			for (int w = 0; w < flight.width(); w++) {
+				if (flight.base() == at.y() && near(flight.cellX(-1, w), flight.cellZ(-1, w), x, z)
+					|| flight.top() == at.y() && near(flight.cellX(flight.length(), w), flight.cellZ(flight.length(), w), x, z)) {
+					return false;
+				}
+			}
+		}
+		return mazeLike(plan) || story != plan.portalStory() || Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > PORTAL_CLEAR;
+	}
+
+	private static boolean near(final int ax, final int az, final int bx, final int bz) {
+		return Math.max(Math.abs(ax - bx), Math.abs(az - bz)) <= WAY_CLEAR;
 	}
 
 	/** Springs a trap of this theme under a player, as for this floor; null while it rests. */
@@ -245,7 +270,7 @@ public final class TowerTraps {
 	private static void desert(final ServerLevel tower, final ServerPlayer player, final int floor, final List<Entity> spawned) {
 		player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 2));
 		RandomSource random = tower.getRandom();
-		double ceiling = TowerLayout.BASE_Y + TowerLayout.HEIGHT - 1.0;
+		double ceiling = ceilingOver(tower, player) - 1.0;
 		for (int i = 0; i < DESERT_ARROWS; i++) {
 			Arrow arrow = EntityTypes.ARROW.create(tower, EntitySpawnReason.TRIGGERED);
 			if (arrow == null) {
@@ -267,7 +292,21 @@ public final class TowerTraps {
 		burst(tower, player, ParticleTypes.CLOUD, SoundEvents.ARROW_SHOOT);
 	}
 
-	/** The floor throws the player to some open spot of the maze, well away. */
+	/** How high the arrows start: under the first block over the player's head, at most a few blocks up. */
+	private static int ceilingOver(final ServerLevel tower, final ServerPlayer player) {
+		BlockPos head = player.blockPosition().above(2);
+		for (int up = 0; up < ARROW_DROP; up++) {
+			if (!tower.getBlockState(head.above(up)).isAir()) {
+				return head.getY() + up;
+			}
+		}
+		return head.getY() + ARROW_DROP;
+	}
+
+	/** The highest the desert's arrows fall from, over the player's head. */
+	private static final int ARROW_DROP = 5;
+
+	/** The floor throws the player to some open spot of one of its stories, well away. */
 	private static void throwAway(final ServerLevel tower, final BlockPos pos, final ServerPlayer player) {
 		int floor = TowerLayout.floorAt(pos);
 		if (floor < 1) {
@@ -275,8 +314,10 @@ public final class TowerTraps {
 		}
 		BlockPos origin = TowerLayout.origin(floor);
 		RandomSource random = tower.getRandom();
+		List<TowerStory> stories = TowerPlan.at(tower, floor).stories();
 		for (int attempt = 0; attempt < PLACE_TRIES; attempt++) {
-			BlockPos feet = origin.offset(random.nextInt(TowerLayout.SIZE), 0, random.nextInt(TowerLayout.SIZE));
+			int y = stories.get(random.nextInt(stories.size())).y();
+			BlockPos feet = origin.offset(random.nextInt(TowerLayout.SIZE), y, random.nextInt(TowerLayout.SIZE));
 			Vec3 to = Vec3.atBottomCenterOf(feet);
 			if (landsSafely(tower, feet) && to.distanceTo(player.position()) >= VOID_MIN_DISTANCE) {
 				burst(tower, player, ParticleTypes.PORTAL, SoundEvents.ENDERMAN_TELEPORT);

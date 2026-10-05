@@ -29,9 +29,10 @@ public final class TowerBlocks {
 	public static final float MAZE_HARDNESS_OVER_OBSIDIAN = 4.0F;
 	/**
 	 * The maze's walls: a pickaxe of diamond or better breaks one, at four times obsidian's hardness, and
-	 * obsidian's resistance to blasts. Withers and the dragon cannot, and a broken wall yields nothing.
+	 * obsidian's resistance to blasts. Withers and the dragon cannot, and a broken wall yields nothing. Its
+	 * {@link TowerSkin} is the floor's look; every skin is this one block.
 	 */
-	public static final Block TOWER_MAZE_WALL = register("tower_maze_wall", Block::new, BlockBehaviour.Properties.of()
+	public static final TowerWallBlock TOWER_MAZE_WALL = register("tower_maze_wall", TowerWallBlock::new, BlockBehaviour.Properties.of()
 		.mapColor(MapColor.COLOR_BLACK)
 		.strength(Blocks.OBSIDIAN.defaultDestroyTime() * MAZE_HARDNESS_OVER_OBSIDIAN, Blocks.OBSIDIAN.getExplosionResistance())
 		.requiresCorrectToolForDrops()
@@ -46,8 +47,8 @@ public final class TowerBlocks {
 		.lightLevel(state -> 10)
 		.sound(SoundType.STONE)
 		.pushReaction(PushReaction.IMMOVEABLE));
-	/** The light set into each floor's ceiling. */
-	public static final Block TOWER_LAMP = register("tower_lamp", Block::new, BlockBehaviour.Properties.of()
+	/** The light set into each floor's ceilings, in its band's {@link TowerLampSkin}. */
+	public static final TowerLampBlock TOWER_LAMP = register("tower_lamp", TowerLampBlock::new, BlockBehaviour.Properties.of()
 		.mapColor(MapColor.QUARTZ)
 		.strength(-1.0F, 3_600_000.0F)
 		.noLootTable()

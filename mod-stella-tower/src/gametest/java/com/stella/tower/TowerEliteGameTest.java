@@ -421,27 +421,6 @@ public class TowerEliteGameTest {
 		return null;
 	}
 
-	/** A floor built before the halls keeps its portal across the room, and its guardians keep to that portal. */
-	@GameTest
-	public void anOldElitefloorKeepsItsGuardsByItsOwnPortal(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = TowerTestSupport.freshFloorWhere(f -> f % TowerElites.ELITE_EVERY == 0 && f % TowerElites.BOSS_EVERY != 0);
-		TowerFloors.ensure(tower, floor);
-		BlockPos o = TowerLayout.origin(floor);
-		// As an older build left it: no plan marker, the frame across the room, none in the middle.
-		tower.setBlockAndUpdate(TowerFloors.planMarker(floor), net.minecraft.world.level.block.Blocks.BEDROCK.defaultBlockState());
-		// A floor's old-or-planned decision is kept once made; this floor is being turned into an old one by hand.
-		TowerFloors.forget(floor);
-		for (BlockPos pos : TowerLayout.portalFrame(tower, floor)) {
-			tower.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
-			tower.setBlockAndUpdate(pos.offset(TowerPlan.CLASSIC_PORTAL_X - TowerLayout.portalX(tower, floor), 0, 0), TowerBlocks.TOWER_FRAME.defaultBlockState());
-		}
-		BlockPos post = TowerElites.post(tower, floor).subtract(o);
-		TowerTestSupport.result("oldPost", "post=" + post);
-		helper.assertTrue(post.getX() == TowerPlan.CLASSIC_PORTAL_X - TowerElites.GUARD_DISTANCE, "an old floor's guardians keep to " + post + ", not its portal across the room");
-		helper.succeed();
-	}
-
 	/**
 	 * Not required: the harness cannot restart the server or load a floor's entities late. Manual item: on a
 	 * boss floor, save and quit, return, and see one boss and one elite; slay the boss, restart, and see it

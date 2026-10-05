@@ -14,7 +14,7 @@ public final class TowerLayout {
 	/** The room's inside width and length. */
 	public static final int SIZE = 64;
 	/** The room's inside height. */
-	public static final int HEIGHT = 8;
+	public static final int HEIGHT = 24;
 	/** One grid cell: the room, its walls, and a gap, so two floors never share a chunk. */
 	public static final int CELL = 128;
 	/** Floors per grid row. */

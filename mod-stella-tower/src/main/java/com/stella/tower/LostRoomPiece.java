@@ -462,6 +462,9 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
+		if (z == 1 && (x == GATE_X || x == GATE_X + 1) && (y == 1 || y == 2)) {
+			return;
+		}
 		if (!getBlock(level, x, y, z, chunkBB).isAir() || !getBlock(level, x, y - 1, z, chunkBB).isSolid()) {
 			return;
 		}
