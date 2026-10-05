@@ -43,22 +43,15 @@ public class CampItemsGameTest {
 			.map(holder -> holder.value().assemble(input)).orElse(ItemStack.EMPTY);
 	}
 
-	private static Supplier<RandomSource> always() {
-		long seed = 0;
-		while (RandomSource.create(seed).nextDouble() >= HeadlampEffect.EXTRA_DROP_CHANCE) {
-			seed++;
+	/** A source that always rolls the extra drop, or one that never does. Never loops forever. */
+	private static Supplier<RandomSource> seeded(final boolean hit) {
+		for (long seed = 0; seed < 100_000L; seed++) {
+			if ((RandomSource.create(seed).nextDouble() < HeadlampEffect.EXTRA_DROP_CHANCE) == hit) {
+				long found = seed;
+				return () -> RandomSource.create(found);
+			}
 		}
-		long found = seed;
-		return () -> RandomSource.create(found);
-	}
-
-	private static Supplier<RandomSource> never() {
-		long seed = 0;
-		while (RandomSource.create(seed).nextDouble() < HeadlampEffect.EXTRA_DROP_CHANCE) {
-			seed++;
-		}
-		long found = seed;
-		return () -> RandomSource.create(found);
+		throw new IllegalStateException("no seed rolls " + hit + " at " + HeadlampEffect.EXTRA_DROP_CHANCE);
 	}
 
 	@GameTest
@@ -126,13 +119,13 @@ public class CampItemsGameTest {
 		BlockPos pos = helper.absolutePos(new BlockPos(3, 2, 3));
 		BlockState ore = Blocks.IRON_ORE.defaultBlockState();
 		player.setItemSlot(EquipmentSlot.HEAD, new ItemStack(CampItems.LUCKY_HEADLAMP));
-		HeadlampEffect.setRandom(player.getUUID(), always());
+		HeadlampEffect.setRandom(player.getUUID(), seeded(true));
 		ItemStack extra = HeadlampEffect.extraDrop(level, player, pos, ore);
 		MinerTestSupport.result("lampDrop", "extra=" + extra + " chance=" + HeadlampEffect.EXTRA_DROP_CHANCE);
 		helper.assertTrue(extra.is(Items.RAW_IRON) && extra.getCount() == 1, "the lamp gave " + extra);
-		HeadlampEffect.setRandom(player.getUUID(), never());
+		HeadlampEffect.setRandom(player.getUUID(), seeded(false));
 		helper.assertTrue(HeadlampEffect.extraDrop(level, player, pos, ore).isEmpty(), "a lost roll paid out");
-		HeadlampEffect.setRandom(player.getUUID(), always());
+		HeadlampEffect.setRandom(player.getUUID(), seeded(true));
 		helper.assertTrue(HeadlampEffect.extraDrop(level, player, pos, Blocks.STONE.defaultBlockState()).isEmpty(), "the lamp paid for stone");
 		player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
 		helper.assertTrue(HeadlampEffect.extraDrop(level, player, pos, ore).isEmpty(), "the lamp paid without being worn");

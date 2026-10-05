@@ -452,7 +452,9 @@ final class MinerTestSupport {
 		long begun = System.nanoTime();
 		helper.succeedWhen(() -> guarded(helper, () -> {
 			if (failure[0] != null) {
-				throw failure[0];
+				// A failed body fails the test again without logging the same trace every tick.
+				helper.fail("the test body threw " + failure[0]);
+				return;
 			}
 			if (started[0]) {
 				return;
