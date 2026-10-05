@@ -1,0 +1,74 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"starmetal": [
+			"#12122b",
+			"#3a3f7a",
+			"#6f7fd6",
+			"#b9c4ff",
+			"#ffffff"
+		],
+		"hot": [
+			"#2b0f06",
+			"#7a2a0f",
+			"#e0701a",
+			"#ffc247",
+			"#fff1b5"
+		],
+		"gold": [
+			"#2d1f05",
+			"#7a5a12",
+			"#e0b02a",
+			"#ffe27a",
+			"#fffbe0"
+		],
+		"ember": [
+			"#2b0a04",
+			"#8a1d0b",
+			"#e8481c",
+			"#ff9a3d",
+			"#fff0a0"
+		],
+		"star": [
+			"#1a1030",
+			"#4b3a8a",
+			"#a58cff",
+			"#ffe9a8",
+			"#ffffff"
+		]
+	},
+	"items": [
+		{
+			"id": "raw_starmetal",
+			"template": "gem",
+			"palette": "hot"
+		},
+		{
+			"id": "starmetal_ingot",
+			"template": "ingot",
+			"palette": "starmetal"
+		},
+		{
+			"id": "star_fragment",
+			"template": "shard",
+			"palette": "gold"
+		},
+		{
+			"id": "ember_core",
+			"template": "gem",
+			"palette": "ember"
+		},
+		{
+			"id": "fallen_star",
+			"template": "gem",
+			"palette": "star"
+		}
+	],
+	"sets": [
+		{
+			"id": "starweave",
+			"asset": "starweave",
+			"palette": "starmetal"
+		}
+	]
+}

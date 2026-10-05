@@ -333,3 +333,72 @@ world block. The layout, the objective, and the tests all read it. The layouts o
   `tools/specs/spider_nest.json` and `tools/ruin_textures.py`.
 - Tests: `NestPlanGameTest`, `SacObjectiveGameTest`, `NestMobsGameTest`, `NestRewardsGameTest`, `NestSiteGameTest`, all
   listed in the gametest `fabric.mod.json`. `NestPlanChecks` holds the plan checks and needs no world.
+
+## Meteor Crater
+
+Site id `meteor_crater`, package `com.stella.ruins.site.meteorcrater`. A small surface site: a scorched crater with
+a fallen star at its heart. The star's ore is hot. Mining it pays Starmetal and wakes Ember Slimes while Star Golems
+strike from the wall. After 2400 ticks the star cools, and the vault opens once for good.
+
+- Box 42 x 8 x 42 above the floor, with a foundation of 17 blocks below it for the bowl. `Placement.surface(17)`.
+  The foundation also sets the largest slope the placement accepts: 17 blocks across the footprint.
+- The floor of the box is one block above the highest ground. So the reference ground is local y -1, and the crater
+  is cut down from there. A column the plan draws is written whole, from the foundation to the top of the box.
+- `Claim.once()`. Activation radius 20. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 466102735, village exclusion 8 chunks.
+
+### The plan
+
+`CraterPlan.derive(RandomSource)` draws everything random and reads no world block. The layout and the tests both
+read it.
+
+- Bowl radius 12 to 18 and depth 8 to 16. The depth never passes radius minus 3, so every wall is walkable. The rim
+  has noise of 1.5 blocks and never passes radius 18.4, so the scorched ring always fits in the box.
+- A lip of spoil, 1 to 3 blocks, highest on the north. The south side is a gouge with no lip. The 3-wide route
+  strip from the south edge to the notch is graded to steps of at most one block.
+- Scorched ring: coarse dirt, blackstone and magma. Inside the ring: blackstone, smooth basalt, coarse dirt, magma.
+- Meteor: a blob of 30 to 60 blocks grown from the core, with 8 to 16 hot Starmetal ore blocks. At least 6 ore blocks
+  touch air. The cell south of the core, the notch, stays open.
+- The vault stands in a 3 x 2 x 2 niche in the north wall, 5 to 16 blocks from the core.
+- 3 to 6 fire features: fire on magma, or a smoke campfire on hay.
+- Markers: `core`, `vault`, `ore` (each ore block), `golem` (3), `slime` (4), `notch`, `entrance`.
+
+### The objective
+
+`CoolingObjective` has no state but a start tick. The timer starts when a player who counts is within 12 blocks of
+the core in 3D, or when a player mines the first ore. A fight on the rim does not start it. It reads `RuinClock`.
+
+- Activation spawns 3 Star Golems on the bowl wall and 4 Ember Slimes on the floor. Each golem has a slot, 0 to 2.
+- A mined hot ore block drops 1 to 2 `raw_starmetal` and wakes one Ember Slime, at most 6 alive. A Fabric event
+  (`PlayerBlockBreakEvents.AFTER`) carries it.
+- At tick 2400 each remaining ore block becomes `cooled_meteorite`, the Ember Slimes die in smoke, and the core
+  completes. The vault opens. The golems stay until killed.
+- While the meteor is hot, the core sends a column of smoke every 10 ticks to every player within 64 blocks.
+
+### Mobs and rewards
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `star_golem` | iron golem, scale 1.3, glowing | every 160 ticks a 20-tick warning, then 5 magic damage at the marked spot; each slot shifts 50 ticks | `star_fragment` 1 to 2 at 70% |
+| `ember_slime` | magma cube, size 2 | none | `ember_core` at 40% |
+
+- A golem hunts players only. A themed mob that targets another themed mob forgets the target.
+- Materials: `raw_starmetal` (smelts into `starmetal_ingot`), `star_fragment`, `ember_core`.
+- Set `starweave` (mage): defense 2/6/5/2, toughness 1, repaired with ingots. 2 pieces: +10% attack speed.
+  4 pieces: magic damage +15% (an event on `minecraft:magic` and `minecraft:indirect_magic` damage) and Fire Resistance.
+- Unique `fallen_star`: in a hand, 10% of hits call a small star for 6 magic damage. A star does not call a star.
+- Vault table `chests/meteor_crater`: 2 to 4 ingots, 2 to 4 star fragments, 3 to 6 gold ingots, 1 to 3 emeralds.
+
+### Merge notes
+
+- The blocks `starmetal_ore` and `cooled_meteorite` need the tag entry `minecraft:mineable/pickaxe`. Those tag files
+  live in `data/minecraft`, outside this mod's data directory, so the merge adds them. Without them the blocks break
+  by hand at the same speed.
+- Neither block has an item.
+
+### Files
+
+- Block textures `textures/block/starmetal_ore.png` and `cooled_meteorite.png` came from a one-off script. Item and
+  armor art comes from `tools/specs/meteor_crater.json` and `tools/ruin_textures.py`.
+- Tests: `CraterPlanGameTest`, `CraterSiteGameTest`, `CoolingObjectiveGameTest`, `CraterMobsGameTest`,
+  `CraterRewardsGameTest`, all listed in the gametest `fabric.mod.json`.

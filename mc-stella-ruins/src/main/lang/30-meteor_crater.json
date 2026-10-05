@@ -1,0 +1,18 @@
+{
+	"block.mod-stella-ruins.starmetal_ore": "Hot Starmetal Ore",
+	"block.mod-stella-ruins.cooled_meteorite": "Cooled Meteorite",
+	"item.mod-stella-ruins.raw_starmetal": "Raw Starmetal",
+	"item.mod-stella-ruins.starmetal_ingot": "Starmetal Ingot",
+	"item.mod-stella-ruins.star_fragment": "Star Fragment",
+	"item.mod-stella-ruins.ember_core": "Ember Core",
+	"item.mod-stella-ruins.fallen_star": "Fallen Star",
+	"item.mod-stella-ruins.starweave_helmet": "Starweave Hood",
+	"item.mod-stella-ruins.starweave_chestplate": "Starweave Robe",
+	"item.mod-stella-ruins.starweave_leggings": "Starweave Leggings",
+	"item.mod-stella-ruins.starweave_boots": "Starweave Boots",
+	"set.mod-stella-ruins.starweave": "Starweave: 2 pieces +10% attack speed. 4 pieces +15% magic damage and Fire Resistance.",
+	"mob.mod-stella-ruins.star_golem": "Star Golem",
+	"mob.mod-stella-ruins.ember_slime": "Ember Slime",
+	"effect.mod-stella-ruins.starfall": "Starfall: 10% chance on a hit to call a small star for 6 magic damage",
+	"clue.mod-stella-ruins.meteor_crater": "Follow the smoke that does not drift. The star that fell there is still burning."
+}

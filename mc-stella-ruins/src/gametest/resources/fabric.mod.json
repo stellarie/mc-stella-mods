@@ -54,7 +54,12 @@
 			"com.stella.ruins.site.spidernest.SacObjectiveGameTest",
 			"com.stella.ruins.site.spidernest.NestMobsGameTest",
 			"com.stella.ruins.site.spidernest.NestRewardsGameTest",
-			"com.stella.ruins.site.spidernest.NestSiteGameTest"
+			"com.stella.ruins.site.spidernest.NestSiteGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterPlanGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterSiteGameTest",
+			"com.stella.ruins.site.meteorcrater.CoolingObjectiveGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterMobsGameTest",
+			"com.stella.ruins.site.meteorcrater.CraterRewardsGameTest"
 		]
 	},
 	"depends": {
