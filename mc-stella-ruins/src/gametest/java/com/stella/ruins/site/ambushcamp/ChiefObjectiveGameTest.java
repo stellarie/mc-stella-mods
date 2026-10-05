@@ -174,7 +174,7 @@ public class ChiefObjectiveGameTest {
 	}
 
 	@GameTest(maxTicks = TICKS)
-	public void aLitCandleMarksTheChiefsDoorAndOneDecoyDoorAndTheyGoOutWhenTheCoreCompletes(final GameTestHelper helper) {
+	public void aLitCandleMarksTheChiefsDoorAndOneDecoyDoor(final GameTestHelper helper) {
 		CampTestSupport.inArena(helper, CampTestSupport.SEED, arena -> {
 			ServerPlayer player = arena.wake();
 			arena.freeze();
@@ -191,10 +191,27 @@ public class ChiefObjectiveGameTest {
 			}
 			CampTestSupport.result("candles", "lit=" + lit + " chief=" + objective.chiefTent() + " tell=" + objective.tellTent());
 			helper.assertTrue(lit.size() == 2 && lit.contains(objective.chiefTent()) && lit.contains(objective.tellTent()), "lit doors " + lit);
+			arena.leave(player);
+		});
+	}
+
+	@GameTest(maxTicks = TICKS)
+	public void theCandlesGoOutWhenTheCoreCompletes(final GameTestHelper helper) {
+		CampTestSupport.inArena(helper, CampTestSupport.SEED, arena -> {
+			ServerPlayer player = arena.wake();
+			arena.freeze();
+			int tents = arena.tents();
+			int burning = 0;
+			for (int tent = 0; tent < tents; tent++) {
+				burning += arena.level().getBlockState(arena.door(tent + 1)).is(Blocks.CANDLE) ? 1 : 0;
+			}
+			helper.assertTrue(burning == 2, burning + " candles burn before the kill");
 			killChief(arena, player);
+			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core is " + arena.phase());
 			for (int tent = 0; tent < tents; tent++) {
 				helper.assertTrue(!arena.level().getBlockState(arena.door(tent + 1)).is(Blocks.CANDLE), "a candle still burns at door " + (tent + 1));
 			}
+			CampTestSupport.result("candlesOut", "burningBefore=" + burning + " burningAfter=0");
 			arena.leave(player);
 		});
 	}
