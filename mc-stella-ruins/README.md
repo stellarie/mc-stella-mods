@@ -331,6 +331,72 @@ Chief of the same camp. The core wipes the objective on every reset, so `CampMem
 - Tests: `CampPlanGameTest`, `ChiefObjectiveGameTest`, `CampMobsGameTest`, `CampRewardsGameTest`, `CampSiteGameTest`,
   all listed in the gametest `fabric.mod.json`.
 
+## Spider Nest
+
+Site id `spider_nest`, package `com.stella.ruins.site.spidernest`. A small cave site: a web-choked nest of egg sacs.
+The first sac that breaks starts a clock. The player breaks every sac before it ends, or the Nest Matriarch hatches.
+
+- Box 30 x 14 x 46. The nest is the north 30 blocks. The south 16 blocks are a mouth tunnel, 3 x 3, that reaches out
+  toward cave air. The tunnel lining clings to rock only, so a tunnel that meets cave air simply ends there.
+  A tunnel that meets no air is a dead end. The clue map still leads the player to it.
+- `Placement.cave(-32, 48, 8)`. Reset after 3 days. Activation radius 14. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 873311259, village exclusion 8 chunks.
+
+### The plan
+
+`NestPlan.of(seed)` draws everything random and holds every block of the nest as a function of the seed. It reads no
+world block. The layout, the objective, and the tests all read it. The layouts of one site share the last 16 plans.
+
+- The cave is a height field of 30 x 30 columns: a floor (y2 or y3), a roof (up to y11), and a tag. Rock holds y0 and
+  y12 to y13, and a 2 block rim on every face except the mouth.
+- 3 to 5 domed chambers (the heart A holds the core, its bone pedestal, and the vault nook), necks, one 2 wide dead-end
+  side tunnel, and a flat brood pit (5 x 5, five high) in the largest side chamber.
+- 6 to 10 egg sacs, on walls (2 or 3 above the floor) and under the roof. At least 2 on the roof, 3 on walls, one in each
+  chamber, one at the end of the side tunnel. Each sac has a floor cell within 4.0 blocks of the eye and a clear line.
+- Webs fill 15 to 35 percent of the shell cells (air cells that touch rock). The web share is ranked by a per-cell
+  hash, so the 15 percent set lies inside the 35 percent set.
+- The plan finds the best route over the sacs (exact tour, Dijkstra between the sacs) and keeps it, the paths to the
+  core and the vault, and every spawn marker free of web. If the greedy walk would take more than 34 s, it picks
+  its sacs again, up to 10 times.
+- Cocoons hang over the lanes, bone piles and skulls lie along the walls, 4 to 8 patches of glow lichen cling to the
+  walls, and 3 layers of cobweb plug the mouth.
+- Markers: `core`, `vault`, `entrance`, `spawn` (3 Weavers), `spawn_crawler` (6), `spawn_matriarch`, and `sac` in sac order.
+
+### The objective
+
+`SacObjective` has four stages: `ARMED`, `TIMING`, `HATCHED`, `DONE`.
+
+- The first sac that is removed from the world starts the clock: 1800 ticks plus 60 ticks for each sac above 6.
+  A sac breaks in one hit, drops nothing, and glows at light 4. `EggSacBlock` tells `SacBreaks` when it goes, by any cause.
+  The core completes on its next pulse, up to one second later, when the last sac is gone.
+- A player inside the bounds sees the sacs left and the seconds left on the action bar every second. Each standing sac
+  beats every 40 ticks, and every 8 ticks by the end (`NestHeartbeat`, from the last 20 seconds).
+- When the clock ends, the sacs that stand burst. The Nest Matriarch rises at `spawn_matriarch` with 6 Brood Crawlers at
+  `spawn_crawler`. Her death completes the core. `NestVaults` then swaps the vault fill for `chests/spider_nest_hatched`,
+  at the end of the same tick, because the framework fills a vault from the one table the site names.
+- After the framework rearms the core (3 days), `NestRegrowth` grows the sacs, webs, and cocoons back into air. Rock that a
+  player mined stays mined. The framework has no rearm hook, so a tick event polls the remembered cores.
+
+### Mobs and rewards
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `nest_weaver` | spider, scale 1.1 | a hit puts a cobweb at the target's feet, once per 100 ticks for each Weaver | `silkweave` 1 to 2 at 60% |
+| `brood_crawler` | cave spider, scale 0.8 | none | `venom_sac` at 30% |
+| `nest_matriarch` | spider, scale 2.2, health x6, boss | every 200 ticks, 2 Crawlers, at most 8 alive | `silkweave` 4 to 6, `matriarch_fang` |
+
+- Vault table `chests/spider_nest`: 4 to 8 `silkweave`, 4 to 10 string, 2 to 5 emeralds. The hatched table holds 2 to 4 `silkweave`.
+- Silkweave hood, vest, leggings, and boots (defense 2, 5, 4, 2, +5% movement speed each) and the Silkstring Bow
+  (draws 20% faster) craft from `silkweave`.
+- Unique `widows_fang`, an iron sword. Effect `widow`: Poison I for 60 ticks, and a 20% chance of a cobweb at the target.
+
+### Files
+
+- The block texture `textures/block/egg_sac.png` came from a one-off script. Item textures come from
+  `tools/specs/spider_nest.json` and `tools/ruin_textures.py`.
+- Tests: `NestPlanGameTest`, `SacObjectiveGameTest`, `NestMobsGameTest`, `NestRewardsGameTest`, `NestSiteGameTest`, all
+  listed in the gametest `fabric.mod.json`. `NestPlanChecks` holds the plan checks and needs no world.
+
 ## Meteor Crater
 
 Site id `meteor_crater`, package `com.stella.ruins.site.meteorcrater`. A small surface site: a scorched crater with
