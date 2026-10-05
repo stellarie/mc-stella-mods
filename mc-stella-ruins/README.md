@@ -346,6 +346,63 @@ The orders come from the run random, never from the layout seed. No pillar sound
 - Tests: `GrottoPlanGameTest`, `ChimeObjectiveGameTest`, `GrottoMobsGameTest`, `GrottoRewardsGameTest`,
   `GrottoSiteGameTest`, all listed in the gametest `fabric.mod.json`.
 
+## Fallen Watchtower
+
+Site id `fallen_watchtower`, package `com.stella.ruins.site.fallenwatchtower`. A small surface site: a tall stone tower,
+half fallen. Archers and crossbowmen hold its floors and the Watch Captain holds the roof. Clearing the garrison opens
+the vault once.
+
+- Box 21 x 44 x 21. The shaft is 9 x 9, with a 7 x 7 inside. `Placement.surface(4)`. Pays out once. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 159662037, village exclusion 8 chunks.
+- The core measures distance in three dimensions and sits on the roof, up to 37 blocks over the door. The activation
+  radius is 43 so that a player 20 blocks from the foot of the tallest tower wakes it.
+
+### The plan
+
+`WatchtowerPlan.derive(seed)` draws every block of the tower and every marker. It reads no world block. The layout and
+the tests both read it. It uses its own random stream for the rolls, the weathering, the collapse, and the rubble.
+
+- Floors: 4 to 6 floors of 6 blocks, plus a crown of 0 to 4 blocks. The design height is 6 N + c, 24 to 40.
+- Stair: a square spiral on the 24 inner ring cells, clockwise or counter-clockwise. A flight is a landing, 5 stair
+  blocks, and a landing. The next floor has no block over steps 3 to 5, so the garrison can shoot down onto the climber.
+- Breach: one V-notch in one wall, on one of 4 sides. Floor blocks within 2 to 4 rows of it fall. A floor block falls
+  only when the block under it stands, so no fall is longer than one floor. Rubble lies on the floor below and in a fan
+  outside, at most 5 high. The wall beside every stair block, the stair, the landings, and a one block walkway to
+  every post never fall. A 3 wide strip from the door stays clear.
+- Floors 1 to N-1 draw from four templates, no two neighbours equal: bunks, armory, lookout, and storage.
+  A storage floor holds one chest with the table `chests/fallen_watchtower_store`: arrows, food, and iron.
+- The roof has the core, the vault, a dais, the captain, and 2 archers. A lookout platform overhangs the wall by one
+  block on corbels. It has merlons and a lit watch fire in two corners.
+- The foundation and the door steps run down to the ground, so a slope of 4 still has a way in.
+
+### The garrison
+
+`GarrisonObjective` spawns one mob at each marker. The tower has 11 to 16 mobs: 2 or 3 on every floor, 3 on the roof.
+Every mob carries the box of the shaft's inside and its post. `WatchtowerMobs.keepInside` puts a mob back on its post when
+it stands outside that box, so a retreat cannot carry an archer out through the breach.
+
+| Kind | Base | Ability | Drop |
+|---|---|---|---|
+| `watch_archer` | skeleton, green leather cap | keeps inside the shaft | `hawkfeather` 1 at 50% |
+| `tower_crossbowman` | pillager, iron helmet | keeps inside the shaft | `signal_ember` 1 at 40% |
+| `watch_captain` | stray, scale 1.3, health x5, damage x1.5, boss | keeps inside; every 200 ticks 3 arrows in a 9 degree fan | `hawkfeather` 3 to 4, `captains_insignia` 1 |
+
+### Rewards
+
+- Set `hawkeye`: defense 3, 7, 5, 2, toughness 1. Hawkfeather repairs it. Each piece is 2 to 3 Hawkfeathers and leather.
+  2 pieces: +10% movement speed. 4 pieces: arrows hit 20% harder. The 4 piece bonus has no attribute, so its lore line is empty.
+- Unique `hawkeye_longbow`: every fifth arrow pierces 2 targets and gives each target Glowing for 100 ticks. The pierce
+  level has no public setter, so the fifth arrow is replaced by one that is built from the bow with Piercing II on it.
+- Vault table `chests/fallen_watchtower`: 4 to 8 Hawkfeathers, arrows, iron, and emeralds.
+- Textures come from `tools/specs/fallen_watchtower.json` and `tools/ruin_textures.py`.
+
+### Tests
+
+`WatchtowerPlanGameTest`, `WatchtowerLayoutGameTest`, `WatchtowerWorldGameTest`, `WatchtowerObjectiveGameTest`,
+`WatchtowerMobsGameTest`, `WatchtowerRewardsGameTest`, and `WatchtowerSiteGameTest`, all listed in the gametest
+`fabric.mod.json`. The world tests walk 24 seeds under every rotation, and 8 towers on ground 4 blocks low, with a walker
+that climbs 1, falls 3, and needs 2 blocks of head room.
+
 ## Spider Nest
 
 Site id `spider_nest`, package `com.stella.ruins.site.spidernest`. A small cave site: a web-choked nest of egg sacs.
