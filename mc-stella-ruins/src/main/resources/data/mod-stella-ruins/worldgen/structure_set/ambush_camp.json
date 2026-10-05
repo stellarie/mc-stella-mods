@@ -1,0 +1,18 @@
+{
+	"placement": {
+		"type": "minecraft:random_spread",
+		"exclusion_zone": {
+			"chunk_count": 8,
+			"other_set": "minecraft:villages"
+		},
+		"salt": 702913845,
+		"separation": 12,
+		"spacing": 34
+	},
+	"structures": [
+		{
+			"structure": "mod-stella-ruins:ambush_camp",
+			"weight": 1
+		}
+	]
+}

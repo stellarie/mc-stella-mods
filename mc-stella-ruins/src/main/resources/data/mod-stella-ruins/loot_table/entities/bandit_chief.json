@@ -1,0 +1,39 @@
+{
+	"type": "minecraft:entity",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:bandits_mark",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 2,
+								"max": 3
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:chiefs_ledger",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": 1
+						}
+					]
+				}
+			]
+		}
+	]
+}

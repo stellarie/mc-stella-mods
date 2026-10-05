@@ -1,0 +1,13 @@
+{
+	"item.mod-stella-ruins.bandits_mark": "Bandit's Mark",
+	"item.mod-stella-ruins.stolen_coin": "Stolen Coin",
+	"item.mod-stella-ruins.chiefs_ledger": "Chief's Ledger",
+	"item.mod-stella-ruins.bandits_mark_affix": "Bandit's Mark Affix",
+	"item.mod-stella-ruins.cutthroats_cloak": "Cutthroat's Cloak",
+	"mob.mod-stella-ruins.bandit": "Bandit",
+	"mob.mod-stella-ruins.lookout": "Bandit Lookout",
+	"mob.mod-stella-ruins.bandit_chief": "Bandit Chief",
+	"affix.mod-stella-ruins.bandits_mark": "Bandit's Mark: +10% attack damage, 10% chance to crit",
+	"effect.mod-stella-ruins.cutthroat": "Cutthroat: Invisibility for 3 seconds after a hit, 30 second rest",
+	"clue.mod-stella-ruins.ambush_camp": "Many tents, one bed that matters. Find the chief before he finds you."
+}

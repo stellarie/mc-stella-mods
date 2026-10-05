@@ -403,6 +403,69 @@ it stands outside that box, so a retreat cannot carry an archer out through the 
 `fabric.mod.json`. The world tests walk 24 seeds under every rotation, and 8 towers on ground 4 blocks low, with a walker
 that climbs 1, falls 3, and needs 2 blocks of head room.
 
+## Ambush Camp
+
+Site id `ambush_camp`, package `com.stella.ruins.site.ambushcamp`. A small surface site: a bandit camp of wool tents
+behind a broken palisade. The Bandit Chief hides invisible in one tent. A decoy bandit waits in each of the others.
+
+- Box 31 x 10 x 31. `Placement.surface(4)`. Reset after 2 days. Activation radius 20. Clue weight 3.
+- Structure set: spacing 34, separation 12, salt 702913845, village exclusion 8 chunks.
+- The site roster is empty. The objective spawns every mob at its own marker, because the framework roster spawns every
+  kind at the same `spawn` markers.
+
+### The plan
+
+`CampPlan.derive(RandomSource)` draws everything random and holds every block of the camp as a function of the seed.
+It reads no world block. The layout and the tests both read it.
+
+- Octagon palisade with 2 to 4 gaps of 2 or 3 blocks. One gap is the trail gap and has a worn path out to the bounds edge.
+  Posts stand 3 to 5 high, 12 percent are snapped to 2, and posts beside a gap stay low.
+- Two lookout towers on 2 of the 4 corners. The ladder faces the fire. The platform is on y5, the flag pole reaches y9.
+- 3 to 6 wool tents, 5 x 5, in distinct colours at random spots. The door faces the fire. Every tent has the same shape and
+  the same furniture, so the blocks never give the Chief away.
+- Campfire at a random spot with four log seats. The core is a tally post two blocks north of the fire. The vault sits
+  in the first of 2 or 3 supply piles of barrels. Weapon rack, hay bales, three lanterns on the palisade, trampled ground.
+- A draw is rejected when the tents do not fit, or when a flood fill from the trail misses the core, the vault, a tent
+  door or a tower ladder. The next draw continues the same random stream. Over 3000 test seeds every plan connects.
+- Markers: `core`, `vault`, `tent.N` (tent floor centre), `door.N` (the step in front of the door), `spawn.bandit`
+  (patrol cells), `spawn.lookout` (tower platforms, y6) and `trail`.
+
+### The objective
+
+`ChiefObjective` picks the Chief's tent from the run random on every activation. It never picks the tent of the last
+Chief of the same camp. The core wipes the objective on every reset, so `CampMemory` (saved data) holds that tent.
+
+- Activation spawns 8 bandits (one decoy in each other tent, the rest on patrol markers), 2 lookouts, and the Chief.
+  The Chief spawns invisible, gearless, and with no AI, so he stands where he hid.
+- A lit candle stands at the door of the Chief's tent and at the door of one random decoy tent. They go out when the core
+  completes. This is the only tell. A block tell cannot work, because the blocks do not change between resets.
+- The Chief reveals when a non-spectator player stands within 4 blocks, or when anything hits him.
+  The reveal gives him his hood and axe, sets every ruin mob within 48 blocks on the player, and makes each lookout fire
+  a flare (firework sparks and a rocket sound). It also writes the reveal time into the objective.
+- 100 ticks after the reveal, on `RuinClock`, 2 more bandits arrive at the `trail` marker.
+- The Chief's death completes the core, even with other bandits alive.
+
+### Mobs and rewards
+
+| Kind | Base | Look | Drop |
+|---|---|---|---|
+| `bandit` | vindicator | brown leather hood, iron axe | `bandits_mark` 1 at 20% |
+| `lookout` | skeleton | leather cap, bow | `stolen_coin` 1 to 3 at 60% |
+| `bandit_chief` | vindicator | scale 1.2, health x5, boss | `bandits_mark` 2 to 3, `chiefs_ledger` 1 |
+
+- Vault table `chests/ambush_camp`: 2 to 3 marks, 4 to 10 coins, emeralds, iron, leather.
+- Affix `bandits_mark`: +10% attack damage on swords, axes and maces, and a 10% chance that a hit adds half its damage as a
+  crit (through the attack hook, because the game has no crit chance attribute). The template is crafted from 1
+  `chiefs_ledger` and 8 `stolen_coin`, then used at the smithing table with a `bandits_mark`.
+- Unique `cutthroats_cloak`, a light chestplate. After the wearer takes a hit, Invisibility for 60 ticks, then 600 ticks of rest.
+
+### Files and tests
+
+- Item textures come from `tools/specs/ambush_camp.json` and `tools/ruin_textures.py`. The set entry only makes the cloak's
+  armor layer. Its four item files were removed, because the cloak is the only piece.
+- Tests: `CampPlanGameTest`, `ChiefObjectiveGameTest`, `CampMobsGameTest`, `CampRewardsGameTest`, `CampSiteGameTest`,
+  all listed in the gametest `fabric.mod.json`.
+
 ## Spider Nest
 
 Site id `spider_nest`, package `com.stella.ruins.site.spidernest`. A small cave site: a web-choked nest of egg sacs.
