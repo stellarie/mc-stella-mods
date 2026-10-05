@@ -1,6 +1,7 @@
 package com.stella.equips;
 
 import com.stella.equips.heart.SlimeHeart;
+import com.stella.equips.unique.UniqueDrops;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.api.loot.v3.LootTableSource;
@@ -28,8 +29,9 @@ import net.minecraft.world.phys.Vec3;
 public final class SlimeHeartGameTest {
 	private static final float HIT = 8.0F;
 
+	/** The heart left the loot tables: it drops through the unique roller, at one in a thousand as its base chance. */
 	@GameTest(maxTicks = 200)
-	public void dropPool(final GameTestHelper helper) {
+	public void dropChanceIsOneInAThousandAndTheLootTableHoldsNoHeart(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		LootTable.Builder builder = LootTable.lootTable();
 		ResourceKey<LootTable> key = ResourceKey.create(Registries.LOOT_TABLE, Identifier.parse("mod-stella-mobs:entities/red_slime"));
@@ -45,8 +47,11 @@ public final class SlimeHeartGameTest {
 				}
 			}
 		}
-		StellaEquips.LOGGER.info("[BEHAVIOR] test=slimeHeartDrop RESULT rolls={} hearts={} maxStack={}", rolls, hearts, new ItemStack(SlimeHeart.ITEM).getMaxStackSize());
-		helper.assertTrue(hearts >= 5 && hearts <= 45, hearts + " hearts in " + rolls + " rolls, expected about 20");
+		UniqueDrops.Entry entry = UniqueDrops.entry("slime_heart");
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=slimeHeartDrop RESULT rolls={} lootTableHearts={} chance={} maxStack={}", rolls, hearts, SlimeHeart.DROP_CHANCE, new ItemStack(SlimeHeart.ITEM).getMaxStackSize());
+		helper.assertTrue(Math.abs(SlimeHeart.DROP_CHANCE - 0.001F) < 1.0E-9F, "the heart's base chance is " + SlimeHeart.DROP_CHANCE);
+		helper.assertTrue(entry != null && entry.baseChance() == (double) SlimeHeart.DROP_CHANCE, "the roller entry is " + entry);
+		helper.assertTrue(hearts == 0, "the loot table still drops hearts: " + hearts + " in " + rolls + " rolls");
 		helper.assertTrue(new ItemStack(SlimeHeart.ITEM).getMaxStackSize() == 64, "the heart does not stack to 64");
 		helper.succeed();
 	}

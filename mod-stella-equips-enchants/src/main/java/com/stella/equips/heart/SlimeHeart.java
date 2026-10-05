@@ -3,13 +3,11 @@ package com.stella.equips.heart;
 import com.mojang.serialization.Codec;
 import com.stella.equips.StellaEquips;
 import com.stella.equips.mixin.LivingEntityHurtAccessor;
+import com.stella.equips.unique.UniqueDrops;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
-import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,12 +27,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.storage.loot.LootPool;
-import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 
 /**
- * The slime heart. Blue and red slimes drop it rarely, and the anvil puts one into an armor piece. Each piece with a
+ * The slime heart. Blue and red slimes drop it through {@link UniqueDrops}, and the anvil puts one into an armor piece. Each piece with a
  * heart delays {@link #SHARE_PER_PIECE} of an attack: the wearer takes the rest at once and the delayed part in
  * {@link #DRAIN_STEPS} equal parts, one every {@link #DRAIN_INTERVAL} ticks. The delayed part is measured after all
  * mitigation, so each part lands exactly, through its own damage type.
@@ -44,9 +39,10 @@ public final class SlimeHeart {
 	public static final float SHARE_PER_PIECE = 0.125F;
 	public static final int DRAIN_STEPS = 5;
 	public static final int DRAIN_INTERVAL = 20;
-	public static final float DROP_CHANCE = 0.0001F;
-	public static final Set<Identifier> DROPPING_TABLES = Set.of(
-		Identifier.parse("mod-stella-mobs:entities/blue_slime"), Identifier.parse("mod-stella-mobs:entities/red_slime"));
+	/** The base chance of a drop, before rank, Looting and the drop-rate share. */
+	public static final float DROP_CHANCE = 0.001F;
+	public static final List<Identifier> DROP_SOURCES = List.of(
+		Identifier.parse("mod-stella-mobs:blue_slime"), Identifier.parse("mod-stella-mobs:red_slime"));
 	public static final ResourceKey<DamageType> DAMAGE_TYPE = ResourceKey.create(Registries.DAMAGE_TYPE, ID);
 	private static final List<EquipmentSlot> ARMOR = List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
 	/** True on an armor piece that holds a heart. */
@@ -69,12 +65,7 @@ public final class SlimeHeart {
 
 	public static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(SlimeHeart::tick);
-		LootTableEvents.MODIFY.register((key, builder, source, registries) -> {
-			if (DROPPING_TABLES.contains(key.identifier())) {
-				builder.withPool(LootPool.lootPool().add(LootItem.lootTableItem(ITEM))
-					.when(Holder.direct(LootItemRandomChanceCondition.randomChance(DROP_CHANCE).build())));
-			}
-		});
+		UniqueDrops.add(new UniqueDrops.Entry("slime_heart", DROP_SOURCES, DROP_CHANCE, () -> new ItemStack(ITEM)));
 	}
 
 	public static boolean holdsHeart(final ItemStack piece) {
