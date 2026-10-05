@@ -54,7 +54,7 @@
 			"com.stella.ruins.site.ambushcamp.ChiefObjectiveGameTest",
 			"com.stella.ruins.site.ambushcamp.CampMobsGameTest",
 			"com.stella.ruins.site.ambushcamp.CampRewardsGameTest",
-			"com.stella.ruins.site.ambushcamp.CampSiteGameTest",,
+			"com.stella.ruins.site.ambushcamp.CampSiteGameTest",
 			"com.stella.ruins.site.spidernest.NestPlanGameTest",
 			"com.stella.ruins.site.spidernest.SacObjectiveGameTest",
 			"com.stella.ruins.site.spidernest.NestMobsGameTest",
