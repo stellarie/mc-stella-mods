@@ -9,6 +9,7 @@ import com.stella.equips.unique.UniqueKind;
 import com.stella.equips.unique.Uniques;
 import java.util.List;
 import net.minecraft.resources.Identifier;
+import com.stella.equips.unique.UniquePassives;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
@@ -51,7 +52,7 @@ public final class BruteMaul {
 
 		@Override
 		public void everySecond(final UniqueContext c) {
-			AfPassives.hold(c.holder(), PASSIVE, Attributes.KNOCKBACK_RESISTANCE, 1.0);
+			UniquePassives.hold(c.holder(), PASSIVE, Attributes.KNOCKBACK_RESISTANCE, 1.0);
 		}
 	};
 

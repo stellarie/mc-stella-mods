@@ -1,6 +1,5 @@
-package com.stella.equips.unique.af;
+package com.stella.equips.unique;
 
-import com.stella.equips.unique.UniqueScheduler;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,12 +15,13 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
  * A passive attribute of a held unique. The unique refreshes it every second, and one sweep removes the attribute of
  * every holder that stopped refreshing it, so an item that leaves the hand takes its attribute with it.
  */
-public final class AfPassives {
+public final class UniquePassives {
 	private static final int GRACE_TICKS = 40;
+	private static final String NAMESPACE = "mod-stella-equips-enchants";
 	private static final Map<String, Map<UUID, Long>> SEEN = new ConcurrentHashMap<>();
 	private static final Map<String, Boolean> SWEEPING = new ConcurrentHashMap<>();
 
-	private AfPassives() {
+	private UniquePassives() {
 	}
 
 	/** Keeps the attribute on the holder while the unique stays held. */
@@ -65,6 +65,6 @@ public final class AfPassives {
 	}
 
 	private static Identifier id(final String key) {
-		return Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", "hold_" + key);
+		return Identifier.fromNamespaceAndPath(NAMESPACE, "hold_" + key);
 	}
 }
