@@ -1,5 +1,7 @@
 {
 	"values": [
-		"mod-stella-equips-enchants:slime_heart"
+		"mod-stella-equips-enchants:slime_heart",
+		"mod-stella-equips-enchants:unique",
+		"mod-stella-equips-enchants:unique_pierce"
 	]
 }

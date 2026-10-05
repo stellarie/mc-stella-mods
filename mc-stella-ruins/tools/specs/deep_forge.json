@@ -1,0 +1,24 @@
+{
+	"namespace": "mod-stella-ruins",
+	"palettes": {
+		"steel": ["#0d1118", "#2b3442", "#56657d", "#8ea0bc", "#d6e4f7"],
+		"ember": ["#2a0f0a", "#7a2616", "#c8481f", "#f08a3c", "#ffd27a"],
+		"core": ["#1c0a2e", "#5a2a8a", "#a050d8", "#e8a0ff", "#fff0ff"],
+		"cinder": ["#14100e", "#3a2c26", "#6b574c", "#b08a6a", "#f0c89a"],
+		"heart": ["#2a1204", "#8a3a0a", "#e07a14", "#ffc04a", "#fff4b0"]
+	},
+	"items": [
+		{"id": "forge_core", "template": "gem", "palette": "core"},
+		{"id": "deepsteel_ore_chunk", "template": "shard", "palette": "steel"},
+		{"id": "deepsteel_ingot", "template": "ingot", "palette": "steel"},
+		{"id": "cinder_dust", "template": "feather", "palette": "cinder"},
+		{"id": "forgeheart_shard", "template": "shard", "palette": "heart"},
+		{"id": "deepsteel_sword", "template": "sword", "palette": "steel"},
+		{"id": "deepsteel_axe", "template": "axe", "palette": "steel"},
+		{"id": "deepsteel_pickaxe", "template": "axe", "palette": "cinder"},
+		{"id": "forgeheart_hammer", "template": "axe", "palette": "heart"}
+	],
+	"sets": [
+		{"id": "deepsteel", "asset": "deepsteel", "palette": "steel"}
+	]
+}

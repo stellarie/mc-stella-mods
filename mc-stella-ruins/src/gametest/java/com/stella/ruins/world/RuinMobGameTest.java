@@ -105,20 +105,60 @@ public class RuinMobGameTest {
 				victim[0] = EntityTypes.PIG.create(arena.level(), EntitySpawnReason.EVENT);
 				victim[0].addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
 				victim[0].snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
-				// A ruin mob hits at its level, which kills a pig outright, and AFTER_DAMAGE never fires for a death.
+				// With the mobs mod a ruin mob hits at its level and may kill even this pig; the ability hears the blow either way.
 				victim[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000_000.0);
 				victim[0].setHealth(1_000_000.0F);
 				arena.level().addFreshEntity(victim[0]);
-				before[1] = WorldTestInit.ABILITY_HITS.get();
 				victim[0].hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob[0]), 1.0F);
 			}
-			helper.assertTrue(WorldTestInit.ABILITY_HITS.get() == before[1] + 1, "the ability heard " + (WorldTestInit.ABILITY_HITS.get() - before[1]) + " hits, not 1");
+			helper.assertTrue(WorldTestInit.hitsOf(mob[0]) == 1, "the ability heard " + WorldTestInit.hitsOf(mob[0]) + " hits, not 1");
 			helper.assertTrue(WorldTestInit.ABILITY_TICKS.get() > before[0], "the ability has not ticked");
-			WorldTestSupport.result("abilityTicks", "ticks=" + (WorldTestInit.ABILITY_TICKS.get() - before[0]) + " hits=" + (WorldTestInit.ABILITY_HITS.get() - before[1]));
+			WorldTestSupport.result("abilityTicks", "ticks=" + (WorldTestInit.ABILITY_TICKS.get() - before[0]) + " hits=" + WorldTestInit.hitsOf(mob[0]));
 			mob[0].discard();
 			victim[0].discard();
 			arena.release();
 		}));
+	}
+
+	@GameTest(maxTicks = 6000)
+	public void aRuinMobMeleeHitOnAPlayerRaisesADamageEventAndIsHeardByTheAbilityWithASaneSize(final GameTestHelper helper) {
+		WorldTestSupport.inNearOriginArena(helper, WorldTestInit.surface, arena -> {
+			ServerLevel level = arena.level();
+			ServerPlayer player = arena.join(spawnSpot(arena).add(1.0, 0.0, 0.0));
+			WorldTestSupport.vulnerable(player);
+			player.damageCooldownTime = 0;
+			Mob mob = WorldTestInit.husk.spawn(level, spawnSpot(arena));
+			mob.setNoAi(true);
+			float before = player.getHealth();
+			boolean hit = mob.doHurtTarget(level, player);
+			float lost = before - player.getHealth();
+			int damageEvents = WorldTestInit.count(WorldTestInit.DAMAGE_EVENTS, player.getUUID());
+			int deathEvents = WorldTestInit.count(WorldTestInit.DEATH_EVENTS, player.getUUID());
+			WorldTestSupport.result("ruinMeleeHit", "mobsMod=" + mobsModLoaded() + " hit=" + hit + " healthLost=" + lost + " damageEvents=" + damageEvents + " deathEvents=" + deathEvents
+				+ " heard=" + WorldTestInit.hitsOf(mob) + " mobLevel=" + RuinLevels.of(mob) + " at=" + mob.blockPosition().toShortString());
+			helper.assertTrue(hit, "the melee hit did not land");
+			helper.assertTrue(damageEvents + deathEvents == 1, "the hit raised " + damageEvents + " damage and " + deathEvents + " death events, not 1");
+			helper.assertTrue(WorldTestInit.hitsOf(mob) == 1, "the ability heard " + WorldTestInit.hitsOf(mob) + " hits, not 1");
+			helper.assertTrue(lost > 0.0F && player.isAlive() && lost < player.getMaxHealth(), "the hit took " + lost + " health from " + player.getMaxHealth() + ", not a sane share");
+			mob.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 6000)
+	public void aKillingBlowIsHeardByTheAbilityOnce(final GameTestHelper helper) {
+		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
+			Mob mob = WorldTestInit.husk.spawn(arena.level(), spawnSpot(arena));
+			mob.setNoAi(true);
+			Pig victim = EntityTypes.PIG.create(arena.level(), EntitySpawnReason.EVENT);
+			victim.addTag(RuinMobKind.NO_SPAWN_ROLL_TAG);
+			victim.snapTo(spawnSpot(arena).add(2.0, 0.0, 0.0));
+			victim.setHealth(1.0F);
+			arena.level().addFreshEntity(victim);
+			victim.hurtServer(arena.level(), arena.level().damageSources().mobAttack(mob), 1_000_000.0F);
+			helper.assertTrue(!victim.isAlive(), "the victim survived the blow");
+			helper.assertTrue(WorldTestInit.hitsOf(mob) == 1, "the ability heard " + WorldTestInit.hitsOf(mob) + " hits for a killing blow, not 1");
+			mob.discard();
+		});
 	}
 
 	@GameTest(maxTicks = 6000)

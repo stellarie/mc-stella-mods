@@ -15,7 +15,9 @@
 		"InventoryEmeraldMixin",
 		"LivingEntityHurtAccessor",
 		"SlimeHeartMixin",
-		"ShieldBlockMixin"
+		"ShieldBlockMixin",
+		"LivingEntityUniqueMixin",
+		"PlayerAttackMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

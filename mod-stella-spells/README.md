@@ -77,7 +77,7 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 - Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
 - With `mod-stella-rpg`, your Intelligence also stretches the duration of offensive effects, debuffs, zones and heals through `RpgSpells.durationMultiplier`. The 30-minute self buffs and hymns do not stretch. Cooldowns are not stretched. Without it the multiplier is 1.
 - Spell lengths follow three rules. Self buffs and party hymns last 30 minutes. Hard crowd control (Frostbind, Briar Snare, Void Well, Time Lock, Gravity, Frost Nova, Ice Lance) lasts twice as long as before, and half as long on an elite or a boss. Debuffs and damage over time last three times as long.
-- Mob casts and mob imbues keep their old, short durations and radii.
+- Mob casts and mob imbues use the same durations and radii as player casts.
 - Sanctuary raises a zone of 6 blocks at the cast spot, for 30 seconds times the duration multiplier. It does not follow you. Every second, players in it get Regeneration I, and undead in it take your spell hit.
 - The cooldown line shows your real cooldown after Intelligence and Quickening.
 - Riftwalk, Gale Step, and the Scroll of Return keep a fixed cooldown. Intelligence and Dexterity do not shorten it.
