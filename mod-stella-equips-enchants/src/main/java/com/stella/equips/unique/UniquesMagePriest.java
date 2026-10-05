@@ -24,6 +24,11 @@ import com.stella.equips.unique.mp.GelMantle;
 import com.stella.equips.unique.mp.SpectralVestments;
 import com.stella.equips.unique.mp.ConduitMantle;
 import com.stella.equips.unique.mp.Priests;
+import com.stella.equips.unique.mp.RevenantGreaves;
+import com.stella.equips.unique.mp.RavagersBenediction;
+import com.stella.equips.unique.mp.BoarhideVest;
+import com.stella.equips.unique.mp.ThreeSkullReliquary;
+import com.stella.equips.unique.mp.MilkgelHood;
 
 /** The mage and priest uniques of the third slice. W003 owns this file. */
 public final class UniquesMagePriest {
@@ -55,5 +60,10 @@ public final class UniquesMagePriest {
 		GelMantle.register();
 		SpectralVestments.register();
 		ConduitMantle.register();
+		RevenantGreaves.register();
+		RavagersBenediction.register();
+		BoarhideVest.register();
+		ThreeSkullReliquary.register();
+		MilkgelHood.register();
 	}
 }
