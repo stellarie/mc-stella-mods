@@ -52,9 +52,6 @@ def glyph(*rows: str) -> tuple[str, ...]:
     return tuple(rows)
 
 
-SKILL_ROW = re.compile(r'Skill\("([a-z0-9_]+)"')
-
-
 BOOKS = (
     Book("spark_shot", "Spark Shot", "lightning", "#f5d35e", glyph("..#....", ".##....", "..#....", ".###...", "...#...", "..##...", "...#..."), 1),
     Book("frostbind", "Frostbind", "frost", "#74d7ff", glyph("..#....", ".###...", "..#....", "#######", "..#....", ".###...", "..#...."), 2),
@@ -98,16 +95,6 @@ BOOKS = (
     Book("tailwind", "Tailwind", "air", "#b8e8ff", glyph("#......", ".##....", "...##..", "#####..", "...##..", ".##....", "#......"), 39),
     Book("battle_hymn", "Battle Hymn", "storm", "#f5dc65", glyph("...#...", "..###..", ".#####.", "#######", ".#####.", "..###..", "...#..."), 41),
     Book("summon_skeleton", "Summon Skeleton", "summoning", "#a9bed8", glyph(".#####.", "##...##", "#.#.#.#", "#.....#", "#.###.#", ".#.#.#.", "..###.."), 42),
-    Book("multishot", "Multishot", "archery", "#3e8e41", glyph("...#...", "...##..", "..###..", ".####..", "..###..", "...##..", "...#..."), 43),
-    Book("piercing_shot", "Piercing Shot", "archery", "#3e8e41", glyph("#......", ".#.....", "..#####", "...#...", "..#....", ".#.....", "#......"), 44),
-    Book("arrow_rain", "Arrow Rain", "archery", "#3e8e41", glyph(".#####.", "#.....#", ".#####.", "..#.#..", ".#...#.", "..#.#..", ".#...#."), 45),
-    Book("rapid_fire", "Rapid Fire", "archery", "#3e8e41", glyph("..#....", ".##....", "..#....", "...#...", "..##...", "...#...", "....#.."), 46),
-    Book("hunters_mark", "Hunter's Mark", "archery", "#e0303a", glyph("..###..", ".#...#.", "#..#..#", "#.#.#.#", "#..#..#", ".#...#.", "..###.."), 47),
-    Book("explosive_arrow", "Explosive Arrow", "archery", "#e0303a", glyph("...#...", ".#.#.#.", "..###..", "##.#.##", "..###..", ".#.#.#.", "...#..."), 48),
-    Book("disengage", "Disengage", "archery", "#3e8e41", glyph("...###.", "..#....", ".#.....", "#......", ".#.....", "..#....", "...###."), 49),
-    Book("snare_trap", "Snare Trap", "archery", "#3e8e41", glyph("#.....#", ".#...#.", "..###..", "..###..", ".#...#.", "#.....#", "..###.."), 50),
-    Book("eagle_eye", "Eagle Eye", "archery", "#6fb34a", glyph(".#####.", "#.....#", "#.###.#", "##.#.##", "#.###.#", "#.....#", ".#####."), 51),
-    Book("elemental_quiver", "Elemental Quiver", "archery", "#c8a24b", glyph(".#...#.", "#####..", ".#...#.", ".#...#.", "#.....#", "#.....#", "#####.."), 52),
 )
 
 
@@ -119,12 +106,12 @@ def parse_catalog(root: Path) -> list[str]:
     skill = re.findall(r'definition\("([a-z0-9_]+)"', skill_source.read_text(encoding="utf-8")) if skill_source.exists() else []
     return mage + skill
 
+
 def parse_skill_icons(root: Path) -> list[str]:
     """Every skill book path skillbook-icons.py draws. That script owns the 16x16 skill art; this one owns
-    the 7x7 mage plates, so the audit reads both tables rather than keeping a second copy of either. Every
-    ``Skill`` row counts, whatever tuple it sits in, so a new school's own tuple is still read."""
+    the 7x7 mage plates, so the audit reads both tables rather than keeping a second copy of either."""
     source = (root / SKILL_ICON_SOURCE).read_text(encoding="utf-8")
-    return SKILL_ROW.findall(source)
+    return re.findall(r'Skill\("([a-z0-9_]+)"', source)
 
 
 def shade(color: str, factor: float) -> tuple[int, int, int]:
@@ -304,16 +291,13 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
     errors: list[str] = []
     catalog = parse_catalog(root)
     mage_paths = [book.path for book in BOOKS]
-    skill_paths = catalog[len(mage_paths):]
-    drawn_paths = parse_skill_icons(root)
+    skill_paths = parse_skill_icons(root)
     known_paths = mage_paths + skill_paths
     if catalog[: len(mage_paths)] != mage_paths:
         errors.append(f"catalog mage mismatch: expected {len(mage_paths)} known paths, found {catalog[: len(mage_paths)]}")
-    # The catalogue is the source of truth for which skill books exist. The art table is checked only for rows
-    # whose book is gone, so a new skill book needs its own files and nothing else.
-    stale = [path for path in drawn_paths if path not in known_paths]
-    if stale:
-        errors.append(f"skill icon art for books that no longer exist: {sorted(stale)}")
+    catalog_skill = catalog[len(mage_paths):]
+    if sorted(catalog_skill) != sorted(skill_paths):
+        errors.append(f"skill catalog mismatch: catalogue has {sorted(catalog_skill)}, drawn icons are {sorted(skill_paths)}")
 
     visual_source = (root / VISUAL_SOURCE).read_text(encoding="utf-8")
     area_colors = dict(re.findall(r'areaVisual\("([a-z0-9_]+)"[^\n]*,\s*(0x[0-9A-Fa-f]{6})\)', visual_source))
