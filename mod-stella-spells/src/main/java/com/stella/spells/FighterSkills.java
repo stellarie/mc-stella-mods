@@ -17,6 +17,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.golem.AbstractGolem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
@@ -95,8 +96,9 @@ public final class FighterSkills {
 		WHIRLWINDS.clear();
 	}
 
-	static int counterWindows() {
-		return COUNTER_UNTIL.size();
+	/** How many Counter Stance windows this caster still has open; the test seam for the window's life. */
+	static int counterWindows(final ServerPlayer caster) {
+		return countered(caster, caster.level().getServer().getTickCount()) ? 1 : 0;
 	}
 
 	// A player hit on a frozen or brittle mob shatters it; a fighter's own status is read from its effect.
@@ -287,8 +289,9 @@ public final class FighterSkills {
 		if (modifiers.awakened()) {
 			Vec3 behind = target.position().subtract(caster.position());
 			double wake = numbers.radius(modifiers);
-			for (Mob foe : foesAround(caster, numbers.radius(modifiers) * 2.0)) {
-				if (foe == target || !behind(target, foe, behind, wake)) {
+			// The wake stands behind the target, so the search runs from the target and not from the caster.
+			for (Mob foe : foesAround(caster, target.position().distanceTo(caster.position()) + wake + 0.5)) {
+				if (foe == target || foe.position().distanceTo(target.position()) > wake + 0.5 || !behind(target, foe, behind, wake)) {
 					continue;
 				}
 				SpellStatusApi.stagger(foe, numbers.durationTicks(modifiers), caster);
@@ -367,6 +370,7 @@ public final class FighterSkills {
 			for (LivingEntity ally : alliesAround(caster, WAR_CRY_RADIUS)) {
 				ally.addEffect(new MobEffectInstance(MobEffects.STRENGTH, WAR_CRY_BUFF_TICKS, SpellNumbers.WAR_CRY.amplifier()), caster);
 			}
+			caster.addEffect(new MobEffectInstance(MobEffects.STRENGTH, WAR_CRY_BUFF_TICKS, SpellNumbers.WAR_CRY.amplifier()), caster);
 		}
 		caster.level().playSound(null, caster.blockPosition(), SoundEvents.RAVAGER_ROAR, SoundSource.PLAYERS, 0.9F, 0.8F);
 		return true;
@@ -581,13 +585,13 @@ public final class FighterSkills {
 		return offset.lengthSqr() <= wake * wake && offset.normalize().dot(forward.normalize()) > 0.0;
 	}
 
-	/** The caster's side within this reach: other players, and anything the mods mark a friend. */
+	/** Every ally within this reach: other players, vanilla golems, and anything the mods mark a friend. */
 	static List<LivingEntity> alliesAround(final ServerPlayer caster, final double range) {
 		List<LivingEntity> allies = new ArrayList<>(caster.level().getEntitiesOfClass(
 			LivingEntity.class,
 			caster.getBoundingBox().inflate(range),
 			candidate -> candidate != caster && candidate.isAlive()
-				&& (candidate instanceof Player || Friends.isFriend(candidate))
+				&& (candidate instanceof Player || candidate instanceof AbstractGolem || Friends.isFriend(candidate))
 				&& candidate.position().distanceToSqr(caster.position()) <= range * range
 		));
 		allies.sort(Comparator.comparingDouble(ally -> ally.position().distanceToSqr(caster.position())));

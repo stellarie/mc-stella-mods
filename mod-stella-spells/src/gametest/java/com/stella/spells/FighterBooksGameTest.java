@@ -1,10 +1,14 @@
 package com.stella.spells;
 
+import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -18,6 +22,7 @@ import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -320,10 +325,10 @@ public class FighterBooksGameTest {
 		SkillSchoolGameTest.cast(caster, "counter_stance", null, false);
 		float casterBefore = caster.getHealth();
 		float attackerBefore = attacker.getHealth();
-		caster.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 4.0F);
+		boolean returned = caster.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 4.0F);
 		float taken = casterBefore - caster.getHealth();
-		LOG.info("[BEHAVIOR] test=counterStanceTurnsTheFirstMeleeBlowAsideAndAnswersIt RESULT windows={} taken={} attackerLost={} attackerStaggered={}",
-			FighterSkills.counterWindows(), taken, attackerBefore - attacker.getHealth(), attacker.hasEffect(SpellStatus.STAGGERED));
+		LOG.info("[BEHAVIOR] test=counterStanceTurnsTheFirstMeleeBlowAsideAndAnswersIt RESULT windows={} taken={} attackerLost={} attackerStaggered={} hurtReturned={}",
+			FighterSkills.counterWindows(caster), taken, attackerBefore - attacker.getHealth(), attacker.hasEffect(SpellStatus.STAGGERED), returned);
 		helper.assertTrue(taken == 0.0F, "the first blow inside the window took " + taken + " health");
 		helper.assertTrue(attackerBefore - attacker.getHealth() > 0.0F, "the answer took nothing from the attacker");
 		helper.assertTrue(attacker.hasEffect(SpellStatus.STAGGERED), "the answer did not stagger the attacker");
@@ -337,7 +342,7 @@ public class FighterBooksGameTest {
 		Mob attacker = foe(helper, CASTER_X, CASTER_Z + 2.0);
 		SkillSchoolGameTest.cast(caster, "counter_stance", null, false);
 		caster.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 4.0F);
-		int windowsAfterAnswer = FighterSkills.counterWindows();
+		int windowsAfterAnswer = FighterSkills.counterWindows(caster);
 		helper.runAfterDelay(6L, () -> {
 			float before = caster.getHealth();
 			caster.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 4.0F);
@@ -361,9 +366,9 @@ public class FighterBooksGameTest {
 		caster.hurtServer(helper.getLevel(), helper.getLevel().damageSources().mobAttack(attacker), 4.0F);
 		float taken = before - caster.getHealth();
 		LOG.info("[BEHAVIOR] test=awakenedCounterStanceTurnsEveryBlowInsideItsWindow RESULT twoBlowsTaken={} windowsLeft={} tagged={}",
-			taken, FighterSkills.counterWindows(), caster.entityTags().contains(FighterSkills.COUNTER_AWAKENED_TAG));
+			taken, FighterSkills.counterWindows(caster), caster.entityTags().contains(FighterSkills.COUNTER_AWAKENED_TAG));
 		helper.assertTrue(taken == 0.0F, "an awakened stance let " + taken + " through two blows");
-		helper.assertTrue(FighterSkills.counterWindows() == 1, "the awakened window closed after its first answer");
+		helper.assertTrue(FighterSkills.counterWindows(caster) == 1, "the awakened window closed after its first answer");
 		cleanup(helper, attacker);
 		helper.succeed();
 	}
@@ -462,12 +467,21 @@ public class FighterBooksGameTest {
 	static ServerPlayer caster(final GameTestHelper helper) {
 		SkillSchoolGameTest.floor(helper);
 		helper.setTime(18_000L);
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
-		// The harness marks a mock player invulnerable; a case about taking blows clears both readings first.
+		// A survival body with a loaded client: a mock player without one reads as invulnerable, so its blows
+		// are dropped before ALLOW_DAMAGE ever fires, and a creative body is never a foe's target at all.
+		ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
+		Connection connection = new Connection(PacketFlow.SERVERBOUND);
+		EmbeddedChannel channel = new EmbeddedChannel(connection);
+		helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player,
+			CommonListenerCookie.createInitial(player.getGameProfile(), false));
+		player.setGameMode(GameType.SURVIVAL);
+		// The load handshake is what clears the "no client loaded" invulnerability a mock player starts with.
+		player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
 		player.setPermanentlyInvulnerable(false);
 		player.setInvulnerableTime(0);
 		player.getAbilities().invulnerable = false;
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		player.setHealth(1000.0F);
 		Vec3 at = helper.absoluteVec(new Vec3(CASTER_X, 1.0, CASTER_Z));
 		player.setPos(at.x, at.y, at.z);
 		player.setYRot(0.0F);

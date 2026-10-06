@@ -85,7 +85,15 @@ public class SpellVisualsGameTest {
 		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("tidal_push"))
 			.thenComparing(movesLast()));
 		for (SpellbookItem book : books) {
+			// The sweeps' books damage their subject and some move the caster, so every cast gets a live
+			// subject at the same spot and aims from the arena's own spot.
+			home(helper, player);
+			target.discard();
+			target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
+			target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+			target.setHealth(1000.0F);
 			Vec3 center = target.getBoundingBox().getCenter();
+			player.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
 			cast(helper, player, book);
 			assertPlayedNear(helper, player, book, center);
 		}
@@ -196,6 +204,15 @@ public class SpellVisualsGameTest {
 		for (SpellbookItem book : areaBooks) {
 			String path = book.definition().id().getPath();
 			SpellVisuals.Visual visual = SpellVisuals.visual(book.definition().id());
+			// A book that moved the caster would leave the next one aiming from the wrong spot, so every cast
+			// starts from the sweeps' own arena spot. A self-cast book also needs a live subject to act on.
+			home(helper, player);
+			if (book.definition().targetMode() != TargetMode.BLOCK) {
+				target.discard();
+				target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 4).withNoFreeWill().spawn();
+				target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+				target.setHealth(1000.0F);
+			}
 			Vec3 center;
 			switch (book.definition().targetMode()) {
 			case SELF -> {
@@ -406,6 +423,17 @@ public class SpellVisualsGameTest {
 		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
 		InteractionResult result = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
 		helper.assertTrue(result == InteractionResult.SUCCESS, book.definition().id() + " did not cast: " + result);
+	}
+
+	/** Back to the sweeps' own spot and facing +Z, so a book that moved the caster cannot skew the next cast. */
+	private static void home(final GameTestHelper helper, final ServerPlayer player) {
+		Vec3 position = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
+		player.teleportTo(position.x, position.y, position.z);
+		player.setYRot(0.0F);
+		player.setXRot(0.0F);
+		player.setDeltaMovement(Vec3.ZERO);
+		player.resetFallDistance();
+		player.setHealth(4.0F);
 	}
 
 	private static void assertPlayedNear(final GameTestHelper helper, final ServerPlayer player, final SpellbookItem book, final Vec3 where) {
