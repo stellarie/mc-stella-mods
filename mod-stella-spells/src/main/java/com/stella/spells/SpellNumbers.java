@@ -146,6 +146,28 @@ public record SpellNumbers(
 	public static final SpellNumbers ELEMENTAL_QUIVER = builder("elemental_quiver")
 		.allyHeal(ArcherSkills.QUIVER_ARROWS).extra(ArcherSkills.AWAKENED_QUIVER_ARROWS, Scale.FIXED).build();
 
+	// The priest books: the heals and the holy hits read VIT through RpgBridge.skillHeal.
+	public static final SpellNumbers HOLY_LIGHT = builder("holy_light").heal(PriestSkills.HOLY_LIGHT_HEAL).build();
+	public static final SpellNumbers PRAYER_OF_MENDING = builder("prayer_of_mending").heal(PriestSkills.PRAYER_HEAL)
+		.extra(PriestSkills.PRAYER_AWAKENED_JUMPS, Scale.FIXED).targets(PriestSkills.PRAYER_JUMPS).build();
+	public static final SpellNumbers RENEW = builder("renew").heal(PriestSkills.RENEW_HEAL)
+		.duration(PriestSkills.RENEW_TICKS, Scale.DEFENSIVE).extra(PriestSkills.RENEW_PERIOD_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers DIVINE_SHIELD = builder("divine_shield").allyHeal(PriestSkills.DIVINE_SHIELD_WARD)
+		.duration(PriestSkills.DIVINE_SHIELD_TICKS, Scale.FIXED).radius(PriestSkills.DIVINE_SHIELD_AWAKENED_RADIUS).build();
+	public static final SpellNumbers HOLY_ARMS = builder("holy_arms").damage(PriestSkills.HOLY_ARMS_BONUS)
+		.duration(PriestSkills.HOLY_ARMS_TICKS, Scale.FIXED).radius(PriestSkills.HOLY_ARMS_RADIUS).build();
+	public static final SpellNumbers BLESSING_OF_FORTITUDE = builder("blessing_of_fortitude")
+		.duration(PriestSkills.FORTITUDE_TICKS, Scale.FIXED).radius(PriestSkills.FORTITUDE_RADIUS).build();
+	public static final SpellNumbers SMITE = builder("smite").damage(PriestSkills.SMITE_DAMAGE)
+		.radius(PriestSkills.SMITE_CHAIN_RADIUS).targets(PriestSkills.SMITE_CHAIN_TARGETS).build();
+	public static final SpellNumbers RESURRECTION_WARD = builder("resurrection_ward")
+		.duration(PriestSkills.RESURRECTION_WARD_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers CONSECRATE = builder("consecrate").heal(PriestSkills.CONSECRATE_HEAL)
+		.damage(PriestSkills.CONSECRATE_DAMAGE).radius(PriestSkills.CONSECRATE_RADIUS)
+		.duration(PriestSkills.CONSECRATE_TICKS, Scale.DEFENSIVE).extra(PriestSkills.CONSECRATE_PERIOD_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers GUARDIAN_ANGEL = builder("guardian_angel").allyHeal(PriestSkills.GUARDIAN_SHARE)
+		.duration(PriestSkills.GUARDIAN_ANGEL_TICKS, Scale.DEFENSIVE).build();
+
 	/** Ticks of this spell's control on the target: half on an elite or a boss. */
 	int controlTicks(final LivingEntity target, final int ticks) {
 		return this.control ? controlTicksFor(target, ticks) : ticks;

@@ -42,6 +42,9 @@ COLORS = {
     "arcane_ward": 0x9C6BFF,
     "bleeding": 0x9E1B1B,
     "eagle_eye": 0x6FB34A,
+    "holy_arms": 0xFFE08A,
+    "resurrection_ward": 0xF2E2A8,
+    "guardian_angel": 0xFFF4C2,
 }
 
 
@@ -158,6 +161,38 @@ def eye(d: ImageDraw.ImageDraw, c) -> None:
     d.line([(2, 0), (5, 3)], fill=c)
 
 
+def halo_sword(d: ImageDraw.ImageDraw, c) -> None:
+    hi = light(c)
+    # A halo over a raised blade: the school's own mark.
+    d.rectangle([6, 1, 9, 2], fill=hi)
+    d.rectangle([4, 3, 11, 4], fill=hi)
+    d.rectangle([7, 5, 8, 11], fill=c)
+    d.rectangle([6, 12, 9, 12], fill=c)
+    d.rectangle([7, 13, 8, 14], fill=c)
+
+
+def ankh(d: ImageDraw.ImageDraw, c) -> None:
+    hi = light(c)
+    # The loop, then the cross below it.
+    d.rectangle([6, 0, 9, 1], fill=hi)
+    d.rectangle([5, 1, 5, 4], fill=hi)
+    d.rectangle([10, 1, 10, 4], fill=hi)
+    d.rectangle([6, 5, 9, 5], fill=hi)
+    d.rectangle([7, 6, 8, 14], fill=c)
+    d.rectangle([4, 8, 11, 9], fill=c)
+
+
+def wings(d: ImageDraw.ImageDraw, c) -> None:
+    hi = light(c)
+    # Two wings and the head between them.
+    d.rectangle([7, 4, 8, 6], fill=hi)
+    d.point((6, 5), fill=hi)
+    d.point((9, 5), fill=hi)
+    for row, (left, right) in enumerate(((3, 12), (2, 13), (1, 14), (2, 13), (3, 12), (4, 11))):
+        y = 7 + row
+        d.line([(left, y), (right, y)], fill=c if row % 2 else hi)
+
+
 PAINTERS = {
     "chilled": snowflake,
     "frozen": ice_cube,
@@ -169,6 +204,9 @@ PAINTERS = {
     "arcane_ward": shield,
     "bleeding": drops,
     "eagle_eye": eye,
+    "holy_arms": halo_sword,
+    "resurrection_ward": ankh,
+    "guardian_angel": wings,
 }
 
 

@@ -62,6 +62,10 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> BLEEDING = register("bleeding", new Bleeding());
 	/** The archer's own eye: a mark that its skill hits are worth more, read by {@link ArcherSkills#hit}. */
 	public static final Holder<MobEffect> EAGLE_EYE = register("eagle_eye", new Status(MobEffectCategory.BENEFICIAL, 0x6FB34A));
+	/** A priest's own three: the holy bonus, the death ward, and the link that shares a blow. */
+	public static final Holder<MobEffect> HOLY_ARMS = register("holy_arms", new Status(MobEffectCategory.BENEFICIAL, 0xFFE08A));
+	public static final Holder<MobEffect> RESURRECTION_WARD = register("resurrection_ward", new Status(MobEffectCategory.BENEFICIAL, 0xF2E2A8));
+	public static final Holder<MobEffect> GUARDIAN_ANGEL = register("guardian_angel", new Status(MobEffectCategory.BENEFICIAL, 0xFFF4C2));
 
 	/** Who made a mob bleed, so the damage can credit them. Weak, and gone with the effect or the mob. */
 	private static final Map<LivingEntity, UUID> BLEED_SOURCES = Collections.synchronizedMap(new WeakHashMap<>());
@@ -98,6 +102,9 @@ public final class SpellStatus {
 			return amount;
 		}
 		float result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, amount) : amount;
+		// A Guardian Angel shares the blow with its priest here, in the one path every hit takes, so the
+		// shared part is taken before any other effect scales what is left.
+		result = PriestSkills.guardianShare(victim, level, source, result);
 		if (result <= 0.0F || source.is(BLEEDING_DAMAGE) || !(source.getEntity() instanceof Player)) {
 			return result;
 		}

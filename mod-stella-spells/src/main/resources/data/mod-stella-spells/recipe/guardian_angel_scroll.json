@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:white_wool"
+  ],
+  "result": {
+    "id": "mod-stella-spells:guardian_angel_scroll",
+    "count": 2
+  }
+}

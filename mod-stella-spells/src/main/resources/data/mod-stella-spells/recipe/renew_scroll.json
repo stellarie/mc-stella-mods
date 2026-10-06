@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:sweet_berries"
+  ],
+  "result": {
+    "id": "mod-stella-spells:renew_scroll",
+    "count": 2
+  }
+}

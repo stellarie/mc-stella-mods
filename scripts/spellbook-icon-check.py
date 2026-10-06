@@ -113,6 +113,17 @@ SKILL_BOOKS = (
     Book("snare_trap", "Snare Trap", "archery", "#3e8e41", glyph("#.....#", ".#...#.", "..###..", "..###..", ".#...#.", "#.....#", "..###.."), 50),
     Book("eagle_eye", "Eagle Eye", "archery", "#6fb34a", glyph(".#####.", "#.....#", "#.###.#", "##.#.##", "#.###.#", "#.....#", ".#####."), 51),
     Book("elemental_quiver", "Elemental Quiver", "archery", "#c8a24b", glyph(".#...#.", "#####..", ".#...#.", ".#...#.", "#.....#", "#.....#", "#####.."), 52),
+    # The priest books: the drawn sixteen-pixel art of skillbook-icons.py, in the school's own gold.
+    Book("holy_light", "Holy Light", "priest", "#ffe08a", glyph("...#...", ".#.#.#.", "#..#..#", "...#...", "#..#..#", ".#.#.#.", "...#..."), 53),
+    Book("prayer_of_mending", "Prayer of Mending", "priest", "#ffd166", glyph(".#...#.", "#.#.#.#", ".#...#.", "...#...", "..###..", "...#...", "...#..."), 54),
+    Book("renew", "Renew", "priest", "#b8e986", glyph(".....##", "....#..", "...##..", "..##...", ".##....", ".#.....", "##....."), 55),
+    Book("divine_shield", "Divine Shield", "priest", "#f2c94c", glyph(".#####.", "#.....#", "#.###.#", "#.###.#", "#.....#", ".#...#.", "..###.."), 56),
+    Book("holy_arms", "Holy Arms", "priest", "#ffe08a", glyph("..###..", ".#...#.", "..###..", "...#...", "...#...", "..###..", "...#..."), 57),
+    Book("blessing_of_fortitude", "Blessing of Fortitude", "priest", "#fff4c2", glyph("##...##", "#.#.#.#", "#..#..#", "#.#.#.#", "#..#..#", ".#...#.", "..###.."), 58),
+    Book("smite", "Smite", "priest", "#f7d046", glyph("...#...", "..###..", "..###..", ".#####.", "#######", "#######", "......."), 59),
+    Book("resurrection_ward", "Resurrection Ward", "priest", "#f2e2a8", glyph("...#...", "..###..", "..#.#..", "#####..", "..#.#..", "..#.#..", ".###..."), 60),
+    Book("consecrate", "Consecrate", "priest", "#ffefb0", glyph(".#####.", "#.....#", "#.###.#", "#.#.#.#", "#.###.#", "#.....#", ".#####."), 61),
+    Book("guardian_angel", "Guardian Angel", "priest", "#fff4c2", glyph("#.....#", "##...##", "##.#.##", ".#.#.#.", ".##.##.", "..###..", "...#..."), 62),
 )
 
 # Every book of the catalogue: the seven-pixel mage plates and the drawn skill art together. This one list

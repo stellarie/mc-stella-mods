@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "M M",
+    " B ",
+    "M M"
+  ],
+  "key": {
+    "M": "minecraft:golden_apple",
+    "B": "minecraft:book"
+  },
+  "result": {
+    "id": "mod-stella-spells:blessing_of_fortitude",
+    "count": 1
+  }
+}
