@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 MOD_ID = "mod-stella-spells"
 CATALOG_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellbookCatalog.java")
+SKILL_CATALOG_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SkillbookCatalog.java")
 VISUAL_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellVisuals.java")
 MODEL_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
 ITEM_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/items")
@@ -97,8 +98,12 @@ BOOKS = (
 
 
 def parse_catalog(root: Path) -> list[str]:
+    """Every book path in registration order: the mage catalogue, then the skill catalogue."""
     source = (root / CATALOG_SOURCE).read_text(encoding="utf-8")
-    return re.findall(r'definition\("([a-z0-9_]+)"', source)
+    mage = re.findall(r'definition\("([a-z0-9_]+)"', source)
+    skill_source = root / SKILL_CATALOG_SOURCE
+    skill = re.findall(r'definition\("([a-z0-9_]+)"', skill_source.read_text(encoding="utf-8")) if skill_source.exists() else []
+    return mage + skill
 
 
 def shade(color: str, factor: float) -> tuple[int, int, int]:

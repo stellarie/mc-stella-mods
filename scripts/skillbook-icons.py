@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+"""Generate the 16x16 item art of the skill books: fighter, archer and priest.
+
+One pixel map per book, sixteen strings of sixteen characters, drawn over the
+school's own plate. The plain texture is all this script writes; the awakened
+frame and sparkle come from ``spellbook-icon-check.py --write-awakened``.
+
+  python scripts/skillbook-icons.py                     write every skill icon
+  python scripts/skillbook-icons.py --sheet out.png     also write an 8x contact sheet
+  python scripts/skillbook-icons.py --check             fail on a missing or wrong-sized icon
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+from PIL import Image, ImageDraw
+
+MOD_ID = "mod-stella-spells"
+TEXTURE_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/textures/item")
+SIZE = 16
+SCALE = 8
+# Drawn outside the plate, so the frame reads as a border rather than as art.
+OUTLINE = (15, 18, 28, 255)
+
+
+@dataclass(frozen=True)
+class School:
+    name: str
+    frame: tuple[int, int, int, int]
+    background: tuple[int, int, int, int]
+    highlight: tuple[int, int, int, int]
+    shade: tuple[int, int, int, int]
+
+
+SCHOOLS = {
+    "fighter": School("fighter", (0xB3, 0x3A, 0x3A, 255), (0x3A, 0x1E, 0x1E, 255),
+                      (0xE8, 0xE8, 0xE8, 255), (0x6E, 0x22, 0x22, 255)),
+    "archer": School("archer", (0x4F, 0xA6, 0x5C, 255), (0x1E, 0x35, 0x22, 255),
+                     (0xE8, 0xE8, 0xE8, 255), (0x2C, 0x5E, 0x36, 255)),
+    "priest": School("priest", (0xE3, 0xC2, 0x5A, 255), (0x3A, 0x34, 0x20, 255),
+                     (0xFF, 0xFF, 0xFF, 255), (0x8A, 0x73, 0x2E, 255)),
+}
+
+
+@dataclass(frozen=True)
+class Skill:
+    path: str
+    label: str
+    school: str
+    symbol: tuple[str, ...]
+
+
+def art(*rows: str) -> tuple[str, ...]:
+    if len(rows) != SIZE or any(len(row) != SIZE for row in rows):
+        raise ValueError("every symbol must be sixteen rows of sixteen pixels")
+    return tuple(rows)
+
+
+FIGHTER = (
+    Skill("cleave", "Cleave", "fighter", art(
+        "................",
+        "......#####.....",
+        ".....##...##....",
+        "....#.......#...",
+        "...##....#####..",
+        "..#......#......",
+        ".#......#.......",
+        ".#.....#........",
+        ".#....#.........",
+        "..##.##.........",
+        "...###..........",
+        "....#...........",
+        "...#.#..........",
+        "..#...#.........",
+        ".#.....#........",
+        "................",
+    )),
+    Skill("leap_slam", "Leap Slam", "fighter", art(
+        "................",
+        ".....####.......",
+        "....#....#......",
+        "....#....#......",
+        "....######......",
+        "....#.....#.....",
+        "....#.....#.....",
+        "....######......",
+        "................",
+        "................",
+        "...##......##...",
+        "..####....####..",
+        ".######..######.",
+        "..#..#....#..#..",
+        "................",
+        "................",
+    )),
+    Skill("whirlwind", "Whirlwind", "fighter", art(
+        "................",
+        "......####......",
+        "....##....##....",
+        "...#........#...",
+        "..#.....##...#..",
+        ".#....##..#...#.",
+        ".#...#....#...#.",
+        ".#...#...##...#.",
+        ".#....##......#.",
+        "..#......##..#..",
+        "...#........#...",
+        "....##....##....",
+        "......####......",
+        ".......##.......",
+        "................",
+        "................",
+    )),
+    Skill("shield_bash", "Shield Bash", "fighter", art(
+        "................",
+        "....########....",
+        "...#........#...",
+        "..#..######..#..",
+        ".#..#......#..#.",
+        ".#..#..##..#..#.",
+        ".#..#..##..#..#.",
+        ".#..#......#..#.",
+        ".#..#......#..#.",
+        "..#..######..#..",
+        "...#........#...",
+        "....########....",
+        "......####......",
+        ".......##.......",
+        "................",
+        "................",
+    )),
+    Skill("charge", "Charge", "fighter", art(
+        "................",
+        "..........###...",
+        ".........#####..",
+        "........#######.",
+        "........#######.",
+        "........#######.",
+        ".........#####..",
+        "..........###...",
+        "................",
+        "................",
+        "...#....#....#..",
+        "..##...##...##..",
+        ".###..###..###..",
+        "..##...##...##..",
+        "...#....#....#..",
+        "................",
+    )),
+    Skill("execute", "Execute", "fighter", art(
+        "................",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        "......####......",
+        "......####......",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        ".......##.......",
+        ".....######.....",
+        "................",
+        "................",
+    )),
+    Skill("war_cry", "War Cry", "fighter", art(
+        "................",
+        ".......##.......",
+        "......####......",
+        ".....######.....",
+        "....########....",
+        "....#.##.##.#...",
+        "....#.##.##.#...",
+        "....########....",
+        "....#......#....",
+        ".....#....#.....",
+        "..##..####..##..",
+        ".#..#......#..#.",
+        ".#..#......#..#.",
+        "..##........##..",
+        "................",
+        "................",
+    )),
+    Skill("counter_stance", "Counter Stance", "fighter", art(
+        "................",
+        ".##.........##..",
+        "..##.......##...",
+        "...#.#....#.#...",
+        "....##...##.....",
+        ".....##.##......",
+        "......###.......",
+        ".......#........",
+        "......###.......",
+        ".....##.##......",
+        "....##...##.....",
+        "...#.#....#.#...",
+        "..##.......##...",
+        ".##.........##..",
+        "................",
+        "................",
+    )),
+    Skill("iron_skin", "Iron Skin", "fighter", art(
+        "................",
+        "................",
+        "......####......",
+        ".....#....#.....",
+        "....#.####.#....",
+        "....#.#..#.#....",
+        "....#.####.#....",
+        "....#......#....",
+        "....#.####.#....",
+        "....#.#..#.#....",
+        "....#.####.#....",
+        ".....#....#.....",
+        "......####......",
+        ".......##.......",
+        "................",
+        "................",
+    )),
+    Skill("earthsplitter", "Earthsplitter", "fighter", art(
+        "................",
+        "................",
+        "..#########.....",
+        "..#.......#.....",
+        "..#..###..#..##.",
+        "..#.#....##.#...",
+        "..###..#...#....",
+        "....#.#..#......",
+        "...#..#.#.......",
+        "..#...#..#......",
+        ".#....#...#.....",
+        "......#....#....",
+        ".......#....#...",
+        "........#....#..",
+        "................",
+        "................",
+    )),
+)
+
+SKILLS = FIGHTER
+
+
+def render(skill: Skill) -> Image.Image:
+    school = SCHOOLS[skill.school]
+    image = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    # A full square plate: one pixel of outline, one of frame, then the school's background.
+    draw.rectangle([0, 0, SIZE - 1, SIZE - 1], fill=OUTLINE)
+    draw.rectangle([1, 1, SIZE - 2, SIZE - 2], fill=school.frame)
+    draw.rectangle([2, 2, SIZE - 3, SIZE - 3], fill=school.background)
+    for y, row in enumerate(skill.symbol, start=0):
+        for x, pixel in enumerate(row, start=0):
+            if pixel == "#":
+                draw.point((x, y), fill=school.highlight)
+            elif pixel == "+":
+                draw.point((x, y), fill=school.shade)
+    return image
+
+
+def write_icons(root: Path) -> None:
+    target = root / TEXTURE_ROOT
+    target.mkdir(parents=True, exist_ok=True)
+    for skill in SKILLS:
+        render(skill).save(target / f"{skill.path}.png", format="PNG", optimize=False, compress_level=9)
+    print(f"wrote {len(SKILLS)} skill icons to {target}")
+
+
+def check(root: Path) -> int:
+    problems: list[str] = []
+    for skill in SKILLS:
+        icon = root / TEXTURE_ROOT / f"{skill.path}.png"
+        if not icon.exists():
+            problems.append(f"missing icon: {icon}")
+            continue
+        with Image.open(icon) as image:
+            if image.size != (SIZE, SIZE):
+                problems.append(f"{skill.path}: icon is {image.size}, want {(SIZE, SIZE)}")
+            elif image.mode != "RGBA":
+                problems.append(f"{skill.path}: icon mode is {image.mode}")
+    for problem in problems:
+        print(f"FAIL {problem}", file=sys.stderr)
+    if not problems:
+        print(f"OK {len(SKILLS)} skill icons")
+    return 1 if problems else 0
+
+
+def contact_sheet(root: Path, destination: Path) -> None:
+    columns = 5
+    cell = SIZE * SCALE + 12
+    rows = (len(SKILLS) + columns - 1) // columns
+    sheet = Image.new("RGB", (columns * cell + 12, rows * (cell + 14) + 12), (20, 23, 34))
+    draw = ImageDraw.Draw(sheet)
+    for index, skill in enumerate(SKILLS):
+        x = 12 + (index % columns) * cell
+        y = 12 + (index // columns) * (cell + 14)
+        with Image.open(root / TEXTURE_ROOT / f"{skill.path}.png") as source:
+            icon = source.convert("RGBA").resize((SIZE * SCALE, SIZE * SCALE), Image.Resampling.NEAREST)
+        sheet.paste(icon, (x, y), icon)
+        school = SCHOOLS[skill.school]
+        draw.text((x, y + SIZE * SCALE + 2), skill.label, fill=school.frame[:3])
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(destination, format="PNG", optimize=False, compress_level=9)
+    print(f"wrote contact sheet {destination}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--check", action="store_true", help="audit the committed icons instead of writing them")
+    parser.add_argument("--sheet", type=Path, metavar="PATH", help="write an 8x contact sheet of every icon")
+    args = parser.parse_args()
+    root = args.root.resolve()
+    if args.check:
+        return check(root)
+    write_icons(root)
+    if args.sheet is not None:
+        destination = args.sheet if args.sheet.is_absolute() else root / args.sheet
+        contact_sheet(root, destination)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
