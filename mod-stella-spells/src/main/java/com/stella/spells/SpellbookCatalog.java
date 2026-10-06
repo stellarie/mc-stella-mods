@@ -12,7 +12,7 @@ import net.minecraft.world.item.Items;
 public final class SpellbookCatalog {
 	/** Movement and utility spells: INT and DEX do not shorten their cooldown. */
 	public static final Set<String> FIXED_COOLDOWN = Set.of("riftwalk", "gale_step");
-	public static final List<SpellDefinition> DEFINITIONS = List.of(
+	public static final List<SpellDefinition> MAGE_DEFINITIONS = List.of(
 		definition("spark_shot", Items.FLINT, 60, 4_708_351, TargetMode.HOSTILE, SpellCasting::applySparkShot),
 		definition("frostbind", Items.SNOWBALL, 60, 11_789_820, TargetMode.HOSTILE, SpellCasting::applyFrostbind),
 		definition("gale_step", Items.FEATHER, 60, 15_527_921, TargetMode.SELF, SpellCasting::applyGaleStep),
@@ -56,6 +56,10 @@ public final class SpellbookCatalog {
 		definition("battle_hymn", Items.GLOWSTONE_DUST, 400, 14_423_100, TargetMode.SELF, MoreSpells::applyBattleHymn),
 		definition("summon_skeleton", Items.BONE, SummonSkeleton.COOLDOWN_TICKS, 14_540_253, TargetMode.SELF, SummonSkeleton::apply)
 	);
+	/** The mage books, then every skill book: registration, scrolls, loot, and tooltips read this one list. */
+	public static final List<SpellDefinition> DEFINITIONS = java.util.stream.Stream.concat(
+		MAGE_DEFINITIONS.stream(), SkillbookCatalog.DEFINITIONS.stream()
+	).toList();
 	private static final Map<Identifier, SpellDefinition> DEFINITIONS_BY_ID = DEFINITIONS.stream()
 		.collect(Collectors.toUnmodifiableMap(SpellDefinition::id, Function.identity()));
 
@@ -85,8 +89,15 @@ public final class SpellbookCatalog {
 		final String path, final Item ingredient, final int cooldown, final int tint,
 		final TargetMode targetMode, final SpellEffect effect
 	) {
+		return definition(path, ingredient, cooldown, tint, targetMode, effect, School.MAGE);
+	}
+
+	static SpellDefinition definition(
+		final String path, final Item ingredient, final int cooldown, final int tint,
+		final TargetMode targetMode, final SpellEffect effect, final School school
+	) {
 		return new SpellDefinition(
-			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path), ingredient, cooldown, tint, targetMode, effect
+			Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path), ingredient, cooldown, tint, targetMode, effect, school
 		);
 	}
 }

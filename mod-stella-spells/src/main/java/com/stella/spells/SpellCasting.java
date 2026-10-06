@@ -97,6 +97,11 @@ public final class SpellCasting {
 		SKIP_COOLDOWN.set(Boolean.TRUE);
 	}
 
+	/** Test seam: whether the cast on this thread asked for no cooldown. */
+	public static boolean skipCooldownRequested() {
+		return SKIP_COOLDOWN.get() != null;
+	}
+
 	public static CastResult cast(final ServerPlayer caster, final SpellbookItem book, final InteractionHand hand) {
 		return cast(caster, book.definition(), caster.getItemInHand(hand), false);
 	}
@@ -118,7 +123,7 @@ public final class SpellCasting {
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
 		);
 		modifiers = TowerBridge.grow(stack, definition.id().getPath(), modifiers);
-		modifiers = RpgBridge.grow(caster, definition.id().getPath(), modifiers);
+		modifiers = RpgBridge.grow(caster, definition.id().getPath(), modifiers, definition.school());
 		Mob target = null;
 		Vec3 point = null;
 		switch (definition.targetMode()) {

@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "mod-stella-spells:item/whirlwind_scroll",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 8860204
+      }
+    ]
+  }
+}

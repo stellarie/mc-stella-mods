@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "mod-stella-spells:item/charge_scroll",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 11329321
+      }
+    ]
+  }
+}

@@ -67,6 +67,7 @@ public final class Spellbooks implements ModInitializer {
 		MobSpells.register();
 		SummonInventoryStore.register();
 		SummonSkeleton.register();
+		FighterSkills.register();
 		SpellbookLoot.register();
 		SpellStorms.register();
 		SpellVisuals.register();

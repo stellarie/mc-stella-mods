@@ -59,7 +59,7 @@ public final class SpellVisuals {
 	/** The shape drawn around the landing spot; ringRadius 0 draws a spiral on the caster instead. */
 	enum Motif {
 		DART, CAGE, WIND, BLOOM, SHIELD, NOVA, WAVE, EYE, BOUNCE, FALLING,
-		PORTAL, WINGS, VORTEX, SEAL, SIGIL, SOUL_TETHER, CLOUD, SPIKE, NOTES, CURTAIN, BUBBLES, SUMMON
+		PORTAL, WINGS, VORTEX, SEAL, SIGIL, SOUL_TETHER, CLOUD, SPIKE, NOTES, CURTAIN, BUBBLES, SUMMON, WARD
 	}
 
 	public record Visual(
@@ -121,7 +121,17 @@ public final class SpellVisuals {
 		areaVisual("bulwark_hymn", ParticleTypes.FALLING_HONEY, ParticleTypes.WAX_ON, MoreSpells.SUPPORT_RADIUS, 0x6ABCCB),
 		areaVisual("tailwind", ParticleTypes.SMALL_GUST, ParticleTypes.CLOUD, MoreSpells.SUPPORT_RADIUS, 0xB8E8FF),
 		areaVisual("battle_hymn", ParticleTypes.NOTE, ParticleTypes.CRIT, MoreSpells.SUPPORT_RADIUS, 0xF5DC65),
-		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0)
+		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0),
+		visual("cleave", ParticleTypes.DAMAGE_INDICATOR, ParticleTypes.CRIT, 0.0),
+		areaVisual("leap_slam", ParticleTypes.EXPLOSION_EMITTER, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH + 2.5, 0xB33A3A),
+		areaVisual("whirlwind", ParticleTypes.CLOUD, ParticleTypes.CRIT, FighterSkills.CHARGE_WIDTH + 1.5, 0xB33A3A),
+		visual("shield_bash", ParticleTypes.ENCHANTED_HIT, ParticleTypes.CRIT, 0.0),
+		areaVisual("charge", ParticleTypes.SMOKE, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH, 0xB33A3A),
+		visual("execute", ParticleTypes.SCULK_SOUL, ParticleTypes.CRIT, 0.0),
+		areaVisual("war_cry", ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, ParticleTypes.ANGRY_VILLAGER, FighterSkills.WAR_CRY_RADIUS, 0xB33A3A),
+		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
+		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
+		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),
@@ -148,7 +158,12 @@ public final class SpellVisuals {
 		heldColor("berserk", 0xFF6A3D),
 		heldColor("haste_rune", 0xB88CFF),
 		heldColor("shadow_veil", 0x8062D6),
-		heldColor("summon_skeleton", 0xA9BED8)
+		heldColor("summon_skeleton", 0xA9BED8),
+		heldColor("cleave", 0xB33A3A),
+		heldColor("shield_bash", 0x8C8C99),
+		heldColor("execute", 0x8E1F1F),
+		heldColor("counter_stance", 0xA8B4C8),
+		heldColor("iron_skin", 0xBBBFC9)
 	);
 
 	static void register() {
@@ -292,6 +307,8 @@ public final class SpellVisuals {
 					z * (0.4 + u * 0.1));
 				case SUMMON -> center.add(x * (0.4 + u * 0.45), 0.1 + u * 1.8 + phase * 0.15,
 					z * (0.4 + u * 0.45));
+				case WARD -> center.add(x * (0.5 + u * 0.5), 0.7 + Math.sin(angle * 2.0) * 0.35,
+					z * (0.5 + u * 0.5));
 			};
 			emitRecorded(level, caster, spell, visual.secondary(), at);
 		}
@@ -565,6 +582,14 @@ public final class SpellVisuals {
 			case "shadow_veil" -> Motif.CURTAIN;
 			case "tide_lungs" -> Motif.BUBBLES;
 			case "summon_skeleton" -> Motif.SUMMON;
+			case "cleave", "earthsplitter" -> Motif.SPIKE;
+			case "leap_slam", "shield_bash" -> Motif.NOVA;
+			case "whirlwind" -> Motif.VORTEX;
+			case "charge" -> Motif.WIND;
+			case "execute" -> Motif.DART;
+			case "war_cry" -> Motif.SIGIL;
+			case "counter_stance" -> Motif.SHIELD;
+			case "iron_skin" -> Motif.WARD;
 			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
 		};
 	}

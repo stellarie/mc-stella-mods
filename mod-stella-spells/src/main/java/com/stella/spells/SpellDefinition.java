@@ -9,6 +9,7 @@ public record SpellDefinition(
 	int baseCooldownTicks,
 	int tintRgb,
 	TargetMode targetMode,
-	SpellEffect effect
+	SpellEffect effect,
+	School school
 ) {
 }

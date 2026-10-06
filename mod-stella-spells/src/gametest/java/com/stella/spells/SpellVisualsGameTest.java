@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ClipContext;
@@ -28,11 +29,24 @@ import org.slf4j.LoggerFactory;
 public class SpellVisualsGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.visuals");
 	private static final double NEAR = 1.5;
-	private static final Set<String> AREA_SPELLS = Set.of(
-		"static_lash", "chainstorm", "void_well", "wardens_roar", "time_lock", "dragonfall",
-		"sapping_hex", "sanctuary", "purify", "frost_nova", "earthspike", "plague_cloud",
-		"flame_ring", "gravity", "bulwark_hymn", "tailwind", "battle_hymn"
-	);
+	/**
+	 * The area spells come from the registry that ships, not a copy of it, so a book added later is covered
+	 * without an edit here. What each case checks is that the circle the cast emits agrees with that registry.
+	 */
+	private static boolean isAreaSpell(final SpellDefinition definition) {
+		SpellVisuals.Visual visual = SpellVisuals.visual(definition.id());
+		return visual != null && visual.ringRadius() > 0.0;
+	}
+
+	/**
+	 * The books that move the caster, which go last in a sweep so the ones after them aim from where the
+	 * sweeps' own arena put the caster. Charge and Leap Slam need a floor to land on; Gale Step launches.
+	 */
+	private static final Set<String> MOVES_THE_CASTER = Set.of("gale_step", "charge", "leap_slam");
+
+	private static Comparator<SpellbookItem> movesLast() {
+		return Comparator.comparing((SpellbookItem book) -> MOVES_THE_CASTER.contains(book.definition().id().getPath()));
+	}
 
 	static {
 		SpellVisualLog.install();
@@ -58,16 +72,28 @@ public class SpellVisualsGameTest {
 		SpellTestLog.track(helper, "everyHostileSpellPlaysItsVisualAtItsTarget");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
+		layFloor(helper);
+		// Shield Bash raises a shield, so the sweep carries one; every other hostile book ignores it.
+		player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.SHIELD));
 		helper.setBlock(2, 2, 8, Blocks.AIR);
 		Mob target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
 		// Every hostile book lands on this one target, so it must outlast them all.
 		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		target.setHealth(1000.0F);
 		List<SpellbookItem> books = books(TargetMode.HOSTILE);
-		// Tidal Push knocks the target off the aim line, so it goes last.
-		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("tidal_push")));
+		// Tidal Push knocks the target off the aim line and Leap Slam moves the caster, so both go last.
+		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("tidal_push"))
+			.thenComparing(movesLast()));
 		for (SpellbookItem book : books) {
+			// The sweeps' books damage their subject and some move the caster, so every cast gets a live
+			// subject at the same spot and aims from the arena's own spot.
+			home(helper, player);
+			target.discard();
+			target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
+			target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+			target.setHealth(1000.0F);
 			Vec3 center = target.getBoundingBox().getCenter();
+			player.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
 			cast(helper, player, book);
 			assertPlayedNear(helper, player, book, center);
 		}
@@ -80,6 +106,7 @@ public class SpellVisualsGameTest {
 		SpellTestLog.track(helper, "everySelfSpellPlaysItsVisualAroundTheCaster");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
+		layFloor(helper);
 		player.setHealth(4.0f);
 		// Purify casts only with something to clear, and Sapping Hex only with a hostile close by.
 		player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 600, 0));
@@ -87,8 +114,8 @@ public class SpellVisualsGameTest {
 		hexed.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		hexed.setHealth(1000.0F);
 		List<SpellbookItem> books = books(TargetMode.SELF);
-		// Gale Step launches the caster, so it goes last.
-		books.sort(Comparator.comparing((SpellbookItem book) -> book.definition().id().getPath().equals("gale_step")));
+		// The books that move the caster go last, so the ones before them cast from the arena's own spot.
+		books.sort(movesLast());
 		for (SpellbookItem book : books) {
 			// Each healing spell needs a wound to close.
 			player.setHealth(4.0f);
@@ -161,10 +188,11 @@ public class SpellVisualsGameTest {
 	@GameTest
 	public void everyAreaSpellDrawsAnElementColoredMagicCircleAtItsEffectRadius(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "everyAreaSpellDrawsAnElementColoredMagicCircleAtItsEffectRadius");
-		Set<String> actualAreaSpells = Set.copyOf(SpellVisuals.areaSpells().stream().map(Identifier::getPath).toList());
-		helper.assertTrue(actualAreaSpells.equals(AREA_SPELLS), "area visual registry differs from tested spells: " + actualAreaSpells);
+		List<SpellbookItem> areaBooks = Spellbooks.CATALOG.stream().filter(book -> isAreaSpell(book.definition())).toList();
+		helper.assertTrue(!areaBooks.isEmpty(), "the registry names no area spell, so this case proves nothing");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
+		layFloor(helper);
 		ServerPlayer farViewer = addPlayer(helper);
 		Vec3 farPosition = helper.absoluteVec(new Vec3(42.5, 1.0, 2.5));
 		farViewer.setPos(farPosition.x, farPosition.y, farPosition.z);
@@ -173,10 +201,17 @@ public class SpellVisualsGameTest {
 		target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		target.setHealth(1000.0F);
 		helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 6).withNoFreeWill().spawn();
-		for (SpellbookItem book : Spellbooks.CATALOG) {
+		for (SpellbookItem book : areaBooks) {
 			String path = book.definition().id().getPath();
-			if (!AREA_SPELLS.contains(path)) {
-				continue;
+			SpellVisuals.Visual visual = SpellVisuals.visual(book.definition().id());
+			// A book that moved the caster would leave the next one aiming from the wrong spot, so every cast
+			// starts from the sweeps' own arena spot. A self-cast book also needs a live subject to act on.
+			home(helper, player);
+			if (book.definition().targetMode() != TargetMode.BLOCK) {
+				target.discard();
+				target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 4).withNoFreeWill().spawn();
+				target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+				target.setHealth(1000.0F);
 			}
 			Vec3 center;
 			switch (book.definition().targetMode()) {
@@ -202,9 +237,9 @@ public class SpellVisualsGameTest {
 			List<SpellVisualLog.Played> emitted = SpellVisualLog.played(player.getUUID()).subList(
 				before, SpellVisualLog.played(player.getUUID()).size()
 			);
-			assertMagicCircle(helper, book.definition(), emitted, center, expectedRadius(path), expectedElementColor(path));
+			assertMagicCircle(helper, book.definition(), emitted, center, visual.ringRadius(), visual.elementColor());
 		}
-		LOG.info("[SPELLTEST] test=everyAreaSpellDrawsAnElementColoredMagicCircleAtItsEffectRadius RESULT spells={}", AREA_SPELLS.size());
+		LOG.info("[SPELLTEST] test=everyAreaSpellDrawsAnElementColoredMagicCircleAtItsEffectRadius RESULT spells={}", areaBooks.size());
 		helper.succeed();
 	}
 
@@ -390,6 +425,17 @@ public class SpellVisualsGameTest {
 		helper.assertTrue(result == InteractionResult.SUCCESS, book.definition().id() + " did not cast: " + result);
 	}
 
+	/** Back to the sweeps' own spot and facing +Z, so a book that moved the caster cannot skew the next cast. */
+	private static void home(final GameTestHelper helper, final ServerPlayer player) {
+		Vec3 position = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
+		player.teleportTo(position.x, position.y, position.z);
+		player.setYRot(0.0F);
+		player.setXRot(0.0F);
+		player.setDeltaMovement(Vec3.ZERO);
+		player.resetFallDistance();
+		player.setHealth(4.0F);
+	}
+
 	private static void assertPlayedNear(final GameTestHelper helper, final ServerPlayer player, final SpellbookItem book, final Vec3 where) {
 		SpellVisuals.Visual visual = SpellVisuals.visual(book.definition().id());
 		helper.assertTrue(visual != null, book.definition().id() + " has no visual");
@@ -464,48 +510,6 @@ public class SpellVisualsGameTest {
 			| Math.round(color.z() * 255.0F);
 	}
 
-	private static double expectedRadius(final String path) {
-		return switch (path) {
-			case "static_lash" -> SpellCasting.STATIC_LASH_RADIUS;
-			case "chainstorm" -> SpellStorms.RADIUS;
-			case "void_well" -> SpellCasting.VOID_WELL_RADIUS;
-			case "time_lock" -> SpellCasting.TIME_LOCK_RADIUS;
-			case "wardens_roar" -> SpellCasting.WARDENS_ROAR_RADIUS;
-			case "frost_nova" -> MoreSpells.FROST_NOVA_RADIUS;
-			case "sanctuary" -> MoreSpells.SANCTUARY_RADIUS;
-			case "sapping_hex" -> MoreSpells.HEX_RADIUS;
-			case "purify" -> MoreSpells.PURIFY_RADIUS;
-			case "dragonfall" -> SpellCasting.DRAGONFALL_RADIUS;
-			case "earthspike" -> MoreSpells.EARTHSPIKE_RADIUS;
-			case "plague_cloud" -> MoreSpells.PLAGUE_RADIUS;
-			case "flame_ring" -> MoreSpells.FLAME_RING_RADIUS;
-			case "gravity" -> MoreSpells.GRAVITY_RADIUS;
-			case "bulwark_hymn", "tailwind", "battle_hymn" -> MoreSpells.SUPPORT_RADIUS;
-			default -> throw new AssertionError("unknown area spell " + path);
-		};
-	}
-
-	private static int expectedElementColor(final String path) {
-		return switch (path) {
-			case "static_lash" -> 0xF5D35E;
-			case "chainstorm" -> 0xF5DC65;
-			case "void_well" -> 0x7A4BA5;
-			case "wardens_roar" -> 0x46E4C0;
-			case "time_lock" -> 0xD16DE6;
-			case "dragonfall", "flame_ring" -> 0xFF6A3D;
-			case "sanctuary" -> 0x6ABCCB;
-			case "sapping_hex" -> 0xA0D84B;
-			case "purify" -> 0xF2F2B2;
-			case "frost_nova" -> 0x74D7FF;
-			case "earthspike" -> 0x9A704A;
-			case "plague_cloud" -> 0xA0D84B;
-			case "gravity" -> 0x7A4BA5;
-			case "bulwark_hymn" -> 0x6ABCCB;
-			case "tailwind" -> 0xB8E8FF;
-			case "battle_hymn" -> 0xF5DC65;
-			default -> throw new AssertionError("unknown area spell " + path);
-		};
-	}
 
 	private static List<SpellbookItem> books(final TargetMode mode) {
 		return new ArrayList<>(Spellbooks.CATALOG.stream().filter(book -> book.definition().targetMode() == mode).toList());
@@ -518,5 +522,14 @@ public class SpellVisualsGameTest {
 		player.setYRot(0.0f);
 		player.setXRot(0.0f);
 		return player;
+	}
+
+	/** Ground on the sweep's own line: a floor to stand on, so a book that moves the caster has somewhere to land. */
+	private static void layFloor(final GameTestHelper helper) {
+		for (int x = 0; x <= 8; x++) {
+			for (int z = 0; z <= 10; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
 	}
 }

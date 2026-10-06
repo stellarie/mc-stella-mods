@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS",
+    "SBS",
+    "SSS"
+  ],
+  "key": {
+    "S": "mod-stella-spells:iron_skin_scroll",
+    "B": "minecraft:book"
+  },
+  "result": {
+    "id": "mod-stella-spells:iron_skin",
+    "count": 1
+  }
+}
