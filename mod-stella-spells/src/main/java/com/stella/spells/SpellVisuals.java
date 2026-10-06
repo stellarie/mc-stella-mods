@@ -59,7 +59,10 @@ public final class SpellVisuals {
 	/** The shape drawn around the landing spot; ringRadius 0 draws a spiral on the caster instead. */
 	enum Motif {
 		DART, CAGE, WIND, BLOOM, SHIELD, NOVA, WAVE, EYE, BOUNCE, FALLING,
-		PORTAL, WINGS, VORTEX, SEAL, SIGIL, SOUL_TETHER, CLOUD, SPIKE, NOTES, CURTAIN, BUBBLES, SUMMON, WARD
+		PORTAL, WINGS, VORTEX, SEAL, SIGIL, SOUL_TETHER, CLOUD, SPIKE, NOTES, CURTAIN, BUBBLES, SUMMON, WARD,
+		// The shapes the skill books needed and did not have: a fan of rays, one driven lance, a run of
+		// darts, a blast, a mark that closes on its target, and the three holy rises.
+		FAN, LANCE, VOLLEY, BLAST, MARK, PRAYER, RISE, HEART
 	}
 
 	public record Visual(
@@ -146,12 +149,12 @@ public final class SpellVisuals {
 		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
 		// owns a particle no other book uses, because a shared primary is a shared shape on screen.
 		visual("holy_light", ParticleTypes.TRIAL_OMEN, ParticleTypes.GLOW, 0.0),
-		visual("prayer_of_mending", ParticleTypes.ELDER_GUARDIAN, ParticleTypes.END_ROD, 0.0),
-		visual("renew", ParticleTypes.UNDERWATER, ParticleTypes.END_ROD, 0.0),
+		visual("prayer_of_mending", ParticleTypes.BUBBLE, ParticleTypes.END_ROD, 0.0),
+		visual("renew", ParticleTypes.HAPPY_VILLAGER, ParticleTypes.END_ROD, 0.0),
 		visual("divine_shield", ParticleTypes.BUBBLE_POP, ParticleTypes.END_ROD, 0.0),
 		visual("holy_arms", ParticleTypes.COPPER_FIRE_FLAME, ParticleTypes.END_ROD, 0.0),
 		visual("blessing_of_fortitude", ParticleTypes.GUST_EMITTER_SMALL, ParticleTypes.TOTEM_OF_UNDYING, 0.0),
-		visual("smite", ParticleTypes.HAPPY_VILLAGER, ParticleTypes.ELECTRIC_SPARK, 0.0),
+		visual("smite", ParticleTypes.SMALL_FLAME, ParticleTypes.ELECTRIC_SPARK, 0.0),
 		visual("resurrection_ward", ParticleTypes.DRIPPING_HONEY, ParticleTypes.END_ROD, 0.0),
 		areaVisual("consecrate", ParticleTypes.FALLING_NECTAR, ParticleTypes.GLOW, PriestSkills.CONSECRATE_RADIUS, 0xFFE08A),
 		visual("guardian_angel", ParticleTypes.FIREFLY, ParticleTypes.HEART, 0.0)
@@ -348,6 +351,22 @@ public final class SpellVisuals {
 					z * (0.4 + u * 0.45));
 				case WARD -> center.add(x * (0.5 + u * 0.5), 0.7 + Math.sin(angle * 2.0) * 0.35,
 					z * (0.5 + u * 0.5));
+				case FAN -> center.add(look.scale(0.5 + u * 2.2))
+					.add(side.scale((i % 3 - 1) * (0.2 + u * 1.1))).add(0.0, 0.9 + u * 0.25, 0.0);
+				case LANCE -> center.add(look.scale(-1.0 + u * 3.2)).add(side.scale(Math.sin(angle * 3.0) * 0.06))
+					.add(0.0, 1.0, 0.0);
+				case VOLLEY -> center.add(look.scale(-0.6 + (i % 4) * 1.05 + u * 0.4))
+					.add(side.scale((i / 4 - 1) * 0.22)).add(0.0, 0.9 - u * 0.15, 0.0);
+				case BLAST -> center.add(x * (0.5 + u * 1.7), 0.45 + Math.cos(angle) * (0.5 + u * 1.5),
+					z * (0.5 + u * 1.7));
+				case MARK -> center.add(x * (0.95 - u * 0.6), 1.15 + Math.sin(angle) * 0.12,
+					z * (0.95 - u * 0.6));
+				case PRAYER -> center.add(x * (0.35 + (i % 4) * 0.09), 0.3 + u * 1.9 + phase * 0.1,
+					z * (0.35 + (i % 4) * 0.09));
+				case RISE -> center.add(x * 0.35, 0.1 + u * 2.6 + phase * 0.2, z * 0.35);
+				case HEART -> center.add(side.scale(Math.pow(Math.sin(angle), 3) * 0.62))
+					.add(0.0, 1.35 + (0.8125 * Math.cos(angle) - 0.3125 * Math.cos(2.0 * angle)
+						- 0.125 * Math.cos(3.0 * angle) - 0.0625 * Math.cos(4.0 * angle)) * 0.62, 0.0);
 			};
 			emitRecorded(level, caster, spell, visual.secondary(), at);
 		}
@@ -626,14 +645,22 @@ public final class SpellVisuals {
 			case "war_cry" -> Motif.SIGIL;
 			case "counter_stance" -> Motif.SHIELD;
 			case "iron_skin" -> Motif.WARD;
-			case "multishot", "piercing_shot", "rapid_fire", "explosive_arrow", "eagle_eye" -> Motif.DART;
-			case "hunters_mark", "snare_trap" -> Motif.SIGIL;
+			case "multishot" -> Motif.FAN;
+			case "piercing_shot" -> Motif.LANCE;
+			case "rapid_fire" -> Motif.VOLLEY;
+			case "explosive_arrow" -> Motif.BLAST;
+			case "eagle_eye" -> Motif.DART;
+			case "hunters_mark" -> Motif.MARK;
+			case "snare_trap" -> Motif.SIGIL;
 			case "arrow_rain" -> Motif.FALLING;
 			case "disengage" -> Motif.WIND;
 			case "elemental_quiver" -> Motif.NOTES;
 			// The priest books: a heal blooms, a ward closes, and the holy ground carries a sigil.
-			case "holy_light", "prayer_of_mending", "renew" -> Motif.BLOOM;
-			case "divine_shield", "resurrection_ward", "blessing_of_fortitude" -> Motif.WARD;
+			case "holy_light", "renew" -> Motif.BLOOM;
+			case "prayer_of_mending" -> Motif.PRAYER;
+			case "divine_shield" -> Motif.WARD;
+			case "resurrection_ward" -> Motif.RISE;
+			case "blessing_of_fortitude" -> Motif.HEART;
 			case "holy_arms" -> Motif.SHIELD;
 			case "smite" -> Motif.FALLING;
 			case "consecrate" -> Motif.SIGIL;
