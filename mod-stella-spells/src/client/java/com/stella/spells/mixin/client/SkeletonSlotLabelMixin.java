@@ -35,7 +35,8 @@ public abstract class SkeletonSlotLabelMixin {
 			slotLabel(extractor, font, menu.slots.get(index), LABELS[index], 0xFFFFD24A);
 		}
 		String mode = SkeletonMenu.mode(menu.skeleton()) == SummonSkeleton.Mode.MIRROR ? "Mirror" : "Search";
-		slotLabel(extractor, font, menu.slots.get(SkeletonMenu.MODE_SLOT), mode, 0xFFFFFFFF);
+		slotLabel(extractor, font, menu.slots.get(SkeletonMenu.MODE_SLOT),
+			mode + " " + SummonSkeleton.screenReach(), 0xFFFFFFFF);
 	}
 
 	private void slotLabel(
