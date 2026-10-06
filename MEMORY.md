@@ -1,7 +1,7 @@
 ---
 schema: codex-project-memory/v1
 project: mc-stella-mods
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 ---
 
 # Project Memory
@@ -24,6 +24,10 @@ This repository develops separate Fabric mods on one trunk, `main`: mobs, equips
 - `cd mc-stella-villages; .\gradlew.bat runGameTest --rerun` - Run villages GameTests with the mobs mod loaded. [verified: 2026-09-28] [source: mc-stella-villages/build.gradle; runGameTest --rerun]
 
 ## Architecture
+
+- Spellbooks persist per-stack cast counts and awaken at 120 landed casts. Other item components remain intact. [status: active] [verified: 2026-10-05] [source: mod-stella-spells/src/main/java/com/stella/spells/Awakening.java; AwakeningGameTest]
+- One cast context covers both doublecast landings. Deferred effects share one pending credit, cancelled when the cast aborts. [status: active] [verified: 2026-10-05] [source: mod-stella-spells/src/main/java/com/stella/spells/CastHits.java; SpellCasting.java; AwakeningGameTest]
+- Spell heal credit comes from attributed effect call sites after actual health gains. Unrelated global heals earn no cast credit. [status: active] [verified: 2026-10-05] [source: mod-stella-spells/src/main/java/com/stella/spells/CastHits.java; AwakeningGameTest.anUnrelatedHealDoesNotTouchAnOpenCast]
 
 - `main-mobs` integrates `mod-stella-mobs` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-24] [source: git branch --list main-mobs]
 - `main-equip-ench` integrates `mod-stella-equips-enchants` work. [status: retired 2026-09-30; merged into main] [verified: 2026-09-24] [source: git branch --list main-equip-ench]
