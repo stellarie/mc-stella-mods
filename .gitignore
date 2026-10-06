@@ -6,3 +6,6 @@ __pycache__/
 
 # Local scratch
 .scratch-*/
+
+# Agent worktrees inside the checkout.
+.worktrees/
