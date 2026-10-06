@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:signal_ember",
+		"mod-stella-ruins:signal_ember",
+		"mod-stella-ruins:captains_insignia",
+		"minecraft:feather",
+		"minecraft:feather"
+	],
+	"result": { "id": "mod-stella-ruins:hawkfeather", "count": 3 }
+}

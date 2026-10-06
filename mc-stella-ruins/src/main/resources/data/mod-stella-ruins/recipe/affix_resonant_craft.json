@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:prism_gel",
+		"mod-stella-ruins:prism_gel",
+		"mod-stella-ruins:resonant_crystal_core",
+		"mod-stella-ruins:resonant_shard",
+		"mod-stella-ruins:resonant_shard"
+	],
+	"result": { "id": "mod-stella-ruins:resonant_affix" }
+}

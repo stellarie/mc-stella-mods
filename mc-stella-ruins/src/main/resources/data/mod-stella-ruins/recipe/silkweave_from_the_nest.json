@@ -1,0 +1,14 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:venom_sac",
+		"mod-stella-ruins:venom_sac",
+		"mod-stella-ruins:matriarch_fang",
+		"minecraft:string",
+		"minecraft:string",
+		"minecraft:string",
+		"minecraft:string"
+	],
+	"result": { "id": "mod-stella-ruins:silkweave", "count": 2 }
+}

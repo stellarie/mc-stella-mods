@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:keep_key_fragment",
+		"mod-stella-ruins:tarnished_crest",
+		"mod-stella-ruins:tarnished_crest",
+		"mod-stella-ruins:spectral_thread",
+		"mod-stella-ruins:spectral_thread"
+	],
+	"result": { "id": "mod-stella-ruins:keep_sigil_affix" }
+}
