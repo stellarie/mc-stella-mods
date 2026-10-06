@@ -103,12 +103,12 @@ public final class PriestSkills {
 	}
 
 	/** Holy ground, and the tick of its next pulse. */
-	private record Ground(ResourceKey<net.minecraft.world.level.Level> dimension, UUID caster, Vec3 center, double radius,
+	record Ground(ResourceKey<net.minecraft.world.level.Level> dimension, UUID caster, Vec3 center, double radius,
 		int endsAt, int nextPulse, double power) {
 	}
 
 	/** A renew running on one ally, and the tick of its next pulse. */
-	private record Renew(UUID caster, float heal, int endsAt, int nextPulse) {
+	record Renew(UUID caster, float heal, int endsAt, int nextPulse) {
 	}
 
 	private static final Map<UUID, HolyBonus> HOLY_ARMS = new ConcurrentHashMap<>();
@@ -374,7 +374,10 @@ public final class PriestSkills {
 	private static final java.util.Set<UUID> FOLLOWING_GROUNDS = ConcurrentHashMap.newKeySet();
 
 	private static void tick(final MinecraftServer server) {
-		int now = server.getTickCount();
+		tick(server, server.getTickCount());
+	}
+
+	private static void tick(final MinecraftServer server, final int now) {
 		tickPrayers(server, now);
 		tickRenews(server, now);
 		tickGrounds(server, now);
@@ -664,5 +667,10 @@ public final class PriestSkills {
 	/** Unused parameter kept for a readable call site: the mob a case passes is not the ally. */
 	static boolean heals(final LivingEntity ally) {
 		return ally instanceof Player || MoreSpells.isAlly(ally);
+	}
+
+	/** Runs one tick of everything the books leave behind the given moment. */
+	static void tickAt(final MinecraftServer server, final int tick) {
+		tick(server, tick);
 	}
 }
