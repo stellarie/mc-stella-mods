@@ -21,6 +21,7 @@ import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** What each element does for a tower mob: the ice mist, dark armor, holy mending and the on-hit marks. */
@@ -236,6 +237,18 @@ public class TowerAuraGameTest {
 	public void iceMistReachesAPlayerOnTheServersOwnPulse(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
+		// The trap under the source is cleared: a floor's own trap may end the fixture mid-case, and what the
+		// case measures is the pulse reaching the player, not the fixture surviving the floor's traps.
+		BlockPos source = BlockPos.containing(spot(floor, 0, 0));
+		int cleared = 0;
+		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor, TowerPlan.at(tower, floor))) {
+			if (Math.abs(trap.x() - (source.getX() - TowerLayout.origin(floor).getX())) <= 6
+				&& Math.abs(trap.z() - (source.getZ() - TowerLayout.origin(floor).getZ())) <= 6) {
+				tower.setBlock(TowerLayout.origin(floor).offset(trap.x(), trap.y() - 1, trap.z()), Blocks.AIR.defaultBlockState(), 3);
+				cleared++;
+			}
+		}
+		TowerTestSupport.result("iceMistPrep", "floor=" + floor + " trapsCleared=" + cleared);
 		Zombie ice = towerMob(tower, TowerElement.ICE, spot(floor, 0, 0));
 		ServerPlayer near = playerAt(helper, tower, spot(floor, 2, 0));
 		TowerTestSupport.holdRoom(tower, spot(floor, 0, 0));

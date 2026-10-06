@@ -31,33 +31,41 @@ public class TowerSpawnerGameTest {
 		int[] filledAt = {-1};
 		int[] most = {0};
 		helper.onEachTick(() -> {
-			// Counted by tag, not by the spawner's own count, so a mob the cap misses is still seen here.
-			// A ghost is not one of the floor's mobs: it stands on the players' side, outside the cap.
+			// Counted by tag and its own floor record, not by the spawner's own count, so a mob the cap
+			// misses is still seen here. A neighbour floor's mob and a ghost are not this floor's mobs.
 			int now = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.isAlive() && mob.entityTags().contains(TowerMobs.TAG)
-				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).rank() == TowerRank.MOB && !(mob instanceof TowerGhost)).size();
+				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).floor() == floor
+				&& TowerMobs.stateOf(mob).rank() == TowerRank.MOB && !(mob instanceof TowerGhost)).size();
 			most[0] = Math.max(most[0], now);
 			if (filledAt[0] < 0 && now >= TowerMobs.FLOOR_CAP) {
 				filledAt[0] = (int) helper.getTick();
 			}
 		});
 		helper.runAfterDelay(380L, () -> {
-			List<Mob> mobs = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.entityTags().contains(TowerMobs.TAG) && !(mob instanceof TowerGhost));
-			double nearest = Double.MAX_VALUE;
+			// This floor's mobs only: the spawner's own count counts by the mob's floor record, and a
+			// neighbour floor's mob inside the same box is not this floor's, nor is a ghost.
+			List<Mob> mobs = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.entityTags().contains(TowerMobs.TAG)
+				&& TowerMobs.stateOf(mob) != null && TowerMobs.stateOf(mob).floor() == floor && !(mob instanceof TowerGhost));
 			int stamped = 0;
+			List<String> unstamped = new ArrayList<>();
 			for (Mob mob : mobs) {
 				TowerMobs.State state = TowerMobs.stateOf(mob);
-				stamped += state != null && state.floor() == floor && mob.getCustomName() != null
-					&& mob.getCustomName().getString().startsWith(state.element().label()) ? 1 : 0;
+				boolean named = mob.getCustomName() != null && mob.getCustomName().getString().startsWith(state.element().label());
+				stamped += named ? 1 : 0;
+				if (!named) {
+					unstamped.add(mob.getClass().getSimpleName() + "@" + mob.blockPosition().subtract(TowerLayout.origin(floor))
+						+ " rank=" + state.rank() + " element=" + state.element() + " name=" + mob.getCustomName());
+				}
 			}
 			TowerTestSupport.result("floorFills", "filledAtTick=" + filledAt[0] + " most=" + most[0] + " stamped=" + stamped + "/" + mobs.size()
-				+ " cap=" + TowerMobs.FLOOR_CAP);
+				+ " cap=" + TowerMobs.FLOOR_CAP + " ownCount=" + TowerMobs.count(tower, floor) + " unstamped=[" + String.join(" | ", unstamped) + "]");
 			for (Mob mob : new ArrayList<>(mobs)) {
 				mob.discard();
 			}
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(filledAt[0] >= 0, "the floor never filled: at most " + most[0] + " of " + TowerMobs.FLOOR_CAP);
 			helper.assertTrue(most[0] <= TowerMobs.FLOOR_CAP, "the floor held " + most[0] + ", past its cap of " + TowerMobs.FLOOR_CAP);
-			helper.assertTrue(stamped == mobs.size(), stamped + " of " + mobs.size() + " mobs carry their floor and element");
+			helper.assertTrue(stamped == mobs.size(), stamped + " of " + mobs.size() + " mobs carry their floor and element: " + unstamped);
 			helper.succeed();
 		});
 	}

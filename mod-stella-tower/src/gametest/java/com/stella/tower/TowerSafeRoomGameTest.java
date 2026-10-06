@@ -487,6 +487,29 @@ public class TowerSafeRoomGameTest {
 	}
 
 	/**
+	 * One spot a body of this size stands in and is seen from another: the cell's feet and head are open, the
+	 * ground below holds it, and a body at one can see the other. The maze's walls are a plan of its ground
+	 * story, so a plan-open cell can still be a wall's top: what stands there is read from the world.
+	 */
+	private static boolean standsAndSees(final ServerLevel tower, final Vec3 from, final Vec3 to) {
+		if (!openAt(tower, from) || !openAt(tower, to)) {
+			return false;
+		}
+		net.minecraft.world.level.ClipContext sight = new net.minecraft.world.level.ClipContext(from.add(0.0, 0.5, 0.0), to.add(0.0, 0.5, 0.0),
+			net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE,
+			net.minecraft.world.phys.shapes.CollisionContext.empty());
+		return !tower.clip(sight).getType().equals(net.minecraft.world.phys.HitResult.Type.BLOCK);
+	}
+
+	/** Whether a two-high body stands free at a spot, on ground that holds it. */
+	private static boolean openAt(final ServerLevel tower, final Vec3 at) {
+		BlockPos feet = BlockPos.containing(at);
+		return tower.getBlockState(feet).getCollisionShape(tower, feet).isEmpty()
+			&& tower.getBlockState(feet.above()).getCollisionShape(tower, feet.above()).isEmpty()
+			&& !tower.getBlockState(feet.below()).getCollisionShape(tower, feet.below()).isEmpty();
+	}
+
+	/**
 	 * One mob against a player who steps into the entrance zone and out again. Outside, the mob takes the player
 	 * on; inside, whatever it held is dropped within a sweep and nothing is taken up again; outside once more, it
 	 * takes the player on again.
@@ -497,8 +520,29 @@ public class TowerSafeRoomGameTest {
 		TowerFloors.ensure(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		TowerTestSupport.ZoneSpots spots = TowerTestSupport.spotsBesideZone(plan);
+		// The spots beside the zone are chosen from the plan; a plan-open cell can still be a wall's top, and
+		// a wall between the two can hide one from the other. The nearest spot that both holds a body and is
+		// seen from the mob's is taken, so the case measures the taking up, not where the floor grew.
+		final Vec3 mobSpot = spots.mob();
+		Vec3 outside = spots.outside();
+		if (!standsAndSees(tower, mobSpot, outside)) {
+			double best = Double.MAX_VALUE;
+			BlockPos o = plan.origin();
+			for (int x = 2; x < TowerLayout.SIZE - 2; x++) {
+				for (int z = 2; z < TowerLayout.SIZE - 2; z++) {
+					Vec3 tryIt = new Vec3(o.getX() + x + 0.5, TowerLayout.BASE_Y, o.getZ() + z + 0.5);
+					double away = tryIt.distanceTo(mobSpot);
+					if (away < 3.0 || away > 12.0 || away >= best || !standsAndSees(tower, mobSpot, tryIt)) {
+						continue;
+					}
+					best = away;
+					outside = tryIt;
+				}
+			}
+		}
+		final Vec3 watching = outside;
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
-		player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
+		player.teleportTo(tower, watching.x, watching.y, watching.z, java.util.Set.of(), 0.0F, 0.0F, true);
 		TowerTestSupport.holdRoom(tower, spots.mob());
 		Mob mob;
 		if (boss) {
@@ -552,7 +596,7 @@ public class TowerSafeRoomGameTest {
 					// stood back where it was, so what the case measures is the taking up, not where it strolled.
 					now.snapTo(spots.mob().x, spots.mob().y, spots.mob().z, now.getYRot(), now.getXRot());
 					now.getNavigation().stop();
-					player.teleportTo(tower, spots.outside().x, spots.outside().y, spots.outside().z, java.util.Set.of(), 0.0F, 0.0F, true);
+					player.teleportTo(tower, watching.x, watching.y, watching.z, java.util.Set.of(), 0.0F, 0.0F, true);
 					at[3] = tick;
 				}
 			} else if (at[3] >= 0 && holds) {

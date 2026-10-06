@@ -287,7 +287,15 @@ public class TowerGhostGameTest {
 		// Still, and the ghost's quarry held on it: what is tested is whose kill the bolt's is, not who finds whom.
 		zombie.setNoAi(true);
 		tower.addFreshEntity(zombie);
-		helper.onEachTick(() -> ghost.setTarget(zombie));
+		Vec3 overPlayer = player.position().add(0.0, 2.5, 0.0);
+		helper.onEachTick(() -> {
+			ghost.setTarget(zombie);
+			// A ghost that drifts behind a wall is stood back over the player, where the case put it: the
+			// case measures whose kill the bolt is, not what the ghost's own wandering does with a wall.
+			if (helper.getTick() % 20 == 0 && !ghost.hasLineOfSight(zombie)) {
+				ghost.snapTo(overPlayer.x, overPlayer.y, overPlayer.z);
+			}
+		});
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			helper.assertTrue(zombie.getLastHurtByMob() == ghost, "the ghost never cast at the zombie, so the case proves nothing");
