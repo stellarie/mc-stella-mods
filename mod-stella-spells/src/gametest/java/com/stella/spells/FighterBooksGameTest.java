@@ -318,6 +318,43 @@ public class FighterBooksGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * A golem another mod marks hostile is a foe, not an ally: a war cry that heartened the star golem
+	 * trying to kill the caster would be the opposite of what the tag exists for.
+	 */
+	@GameTest(maxTicks = 80)
+	public void awakenedWarCryNeverHeartensAHostileTaggedGolem(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		IronGolem foe = helper.spawn(EntityTypes.IRON_GOLEM, (int) CASTER_X + 2, 1, (int) CASTER_Z + 2);
+		Friends.FOE_TAGS.forEach(foe::addTag);
+		SkillSchoolGameTest.cast(caster, "war_cry", null, true);
+		LOG.info("[BEHAVIOR] test=awakenedWarCryNeverHeartensAHostileTaggedGolem RESULT tags={} isFoe={} golemStrength={} distance={}",
+			foe.entityTags(), Friends.isFoe(foe), foe.hasEffect(MobEffects.STRENGTH), foe.distanceTo(caster));
+		helper.assertTrue(Friends.isFoe(foe), "a golem tagged " + Friends.FOE_TAGS + " is not a foe, so the case proves nothing");
+		helper.assertTrue(!foe.hasEffect(MobEffects.STRENGTH), "an awakened war cry heartened a hostile golem");
+		foe.discard();
+		helper.succeed();
+	}
+
+	/** A plain golem is still an ally, and so is a golem that carries a friend tag. */
+	@GameTest(maxTicks = 80)
+	public void awakenedWarCryStillHeartensAPlainGolem(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		IronGolem plain = helper.spawn(EntityTypes.IRON_GOLEM, (int) CASTER_X + 2, 1, (int) CASTER_Z + 2);
+		IronGolem friend = helper.spawn(EntityTypes.IRON_GOLEM, (int) CASTER_X - 2, 1, (int) CASTER_Z + 2);
+		friend.addTag(SummonSkeleton.SUMMON_TAG);
+		SkillSchoolGameTest.cast(caster, "war_cry", null, true);
+		LOG.info("[BEHAVIOR] test=awakenedWarCryStillHeartensAPlainGolem RESULT plainStrength={} plainIsFoe={} friendStrength={} friendIsFriend={}",
+			plain.hasEffect(MobEffects.STRENGTH), Friends.isFoe(plain), friend.hasEffect(MobEffects.STRENGTH), Friends.isFriend(friend));
+		helper.assertFalse(Friends.isFoe(plain), "a plain golem reads as a foe");
+		helper.assertTrue(plain.hasEffect(MobEffects.STRENGTH), "a plain golem within reach was not heartened");
+		helper.assertTrue(Friends.isFriend(friend), "the friend tag did not register as a friend");
+		helper.assertTrue(friend.hasEffect(MobEffects.STRENGTH), "a friend-tagged golem within reach was not heartened");
+		plain.discard();
+		friend.discard();
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 120)
 	public void counterStanceTurnsTheFirstMeleeBlowAsideAndAnswersIt(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);

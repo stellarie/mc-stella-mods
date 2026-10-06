@@ -585,12 +585,15 @@ public final class FighterSkills {
 		return offset.lengthSqr() <= wake * wake && offset.normalize().dot(forward.normalize()) > 0.0;
 	}
 
-	/** Every ally within this reach: other players, vanilla golems, and anything the mods mark a friend. */
+	/**
+	 * Every ally within this reach: other players, vanilla golems, and anything the mods mark a friend.
+	 * A foe is never an ally, so a golem another mod marks hostile is left out even though it is a golem.
+	 */
 	static List<LivingEntity> alliesAround(final ServerPlayer caster, final double range) {
 		List<LivingEntity> allies = new ArrayList<>(caster.level().getEntitiesOfClass(
 			LivingEntity.class,
 			caster.getBoundingBox().inflate(range),
-			candidate -> candidate != caster && candidate.isAlive()
+			candidate -> candidate != caster && candidate.isAlive() && !Friends.isFoe(candidate)
 				&& (candidate instanceof Player || candidate instanceof AbstractGolem || Friends.isFriend(candidate))
 				&& candidate.position().distanceToSqr(caster.position()) <= range * range
 		));
