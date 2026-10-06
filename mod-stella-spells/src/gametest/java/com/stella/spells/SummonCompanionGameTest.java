@@ -67,6 +67,7 @@ public class SummonCompanionGameTest {
 		helper.assertTrue(served != null, "the first cast raised no servant, so the case proves nothing");
 		Vec3 far = helper.absoluteVec(new Vec3(6.5, 1.0, 6.5));
 		master.teleportTo(far.x, far.y, far.z);
+		// The rest binds a recast too, so the recall waits for it and the case proves the wait by the refusal.
 		SpellCasting.CastResult recall = SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
 		boolean back = served.distanceTo(master) <= SummonSkeleton.FOLLOW_DISTANCE;
 		served.discard();
@@ -76,6 +77,8 @@ public class SummonCompanionGameTest {
 			seconds, first, resting, recall, back, blocked, raised);
 		helper.assertTrue(seconds == 30, "the book's cooldown is " + seconds + " seconds, not 30");
 		helper.assertTrue(first == SpellCasting.CastResult.CAST && resting, "the first cast was " + first + " with resting=" + resting);
+		helper.assertTrue(recall == SpellCasting.CastResult.COOLDOWN && !back,
+			"a recast inside the rest answered " + recall + " and the servant was home=" + back);
 		helper.assertTrue(!raised && blocked == SpellCasting.CastResult.COOLDOWN,
 			"a cast inside the rest answered " + blocked + " and raised=" + raised);
 		leave(helper, master);
@@ -95,6 +98,8 @@ public class SummonCompanionGameTest {
 		UUID raised = first.getUUID();
 		Vec3 far = helper.absoluteVec(new Vec3(6.5, 1.0, 6.5));
 		master.teleportTo(far.x, far.y, far.z);
+		// The book rests between casts, so this case waits the rest out before it calls the servant back.
+		master.getCooldowns().removeCooldown(master.getCooldowns().getCooldownGroup(master.getMainHandItem()));
 		SpellCasting.CastResult second = SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
 		Skeleton after = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
 		// The master's bond is the single servant it holds: the recast must leave it on the same one.
@@ -380,8 +385,8 @@ public class SummonCompanionGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void aServantGainPaysTheMasterHalf(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "aServantGainPaysTheMasterHalf");
+	public void aServantGainPaysTheMasterItsShare(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "aServantGainPaysTheMasterItsShare");
 		floor(helper);
 		ServerPlayer master = master(helper, 1.5, 1.5);
 		Skeleton servant = servant(helper, master, 3, 3);
@@ -391,8 +396,8 @@ public class SummonCompanionGameTest {
 		int expected = (int) Math.floor(served * SummonSkeleton.XP_SHARE);
 		SummonSkeleton.gain(servant, master, served);
 		int after = master.totalExperience;
-		LOG.info("[BEHAVIOR] test=aServantGainPaysTheMasterHalf RESULT served={} expected={} masterBefore=0 masterAfter={}",
-			served, expected, after);
+		LOG.info("[BEHAVIOR] test=aServantGainPaysTheMasterItsShare RESULT share={} served={} expected={} masterBefore=0 masterAfter={}",
+			SummonSkeleton.XP_SHARE, served, expected, after);
 		helper.assertTrue(after == expected, "the master gained " + after + " from a servant gain of " + served);
 		servant.discard();
 		leave(helper, master);

@@ -177,8 +177,9 @@ public final class SpellTimers {
 				}
 			}
 			AABB box = new AABB(zone.center(), zone.center()).inflate(zone.radius());
+			// A summoned servant is no undead to this zone: Sanctuary mends its own side rather than burning it.
 			for (Mob mob : level.getEntitiesOfClass(Mob.class, box, other -> other.isAlive() && other.is(EntityTypeTags.UNDEAD)
-				&& other.position().distanceToSqr(zone.center()) <= reach)) {
+				&& !SummonSkeleton.isServant(other) && other.position().distanceToSqr(zone.center()) <= reach)) {
 				MoreSpells.hurt(caster, mob, RpgBridge.damage(caster, MoreSpells.SANCTUARY_UNDEAD_DAMAGE, zone.power()));
 				if (zone.credit() != null) {
 					zone.credit().fire(server);

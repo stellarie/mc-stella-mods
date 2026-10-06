@@ -15,7 +15,10 @@
 		"SummonPortalMixin",
 		"SpellStatusDamageMixin",
 		"AddEffectHitMixin",
-		"SummonExperienceMixin"
+		"SummonExperienceMixin",
+		"SummonMountHealthMixin",
+		"SummonHealInversionMixin",
+		"HorseInventoryMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

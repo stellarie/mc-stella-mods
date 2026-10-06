@@ -337,7 +337,7 @@ public class SummonSkeletonGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void aSecondCastCallsTheServantBackAtNoCooldown(final GameTestHelper helper) {
+	public void aRecastAfterTheRestCallsTheServantBack(final GameTestHelper helper) {
 		floor(helper);
 		ServerPlayer master = master(helper, 1.5, 1.5);
 		SpellbookItem book = book();
@@ -347,10 +347,12 @@ public class SummonSkeletonGameTest {
 		helper.assertTrue(servant != null, "no servant rose, so the case proves nothing");
 		Vec3 far = helper.absoluteVec(new Vec3(6.5, 1.0, 6.5));
 		master.teleportTo(far.x, far.y, far.z);
+		// The recast obeys the book's rest, so this case waits the rest out before it calls the servant back.
+		master.getCooldowns().removeCooldown(master.getCooldowns().getCooldownGroup(master.getMainHandItem()));
 		SpellCasting.CastResult second = SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
 		Skeleton after = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
 		double distance = after == null ? -1.0 : after.distanceTo(master);
-		LOG.info("[SPELLTEST] test=aSecondCastCallsTheServantBackAtNoCooldown RESULT result={} same={} distance={}", second, after == servant, distance);
+		LOG.info("[SPELLTEST] test=aRecastAfterTheRestCallsTheServantBack RESULT result={} same={} distance={}", second, after == servant, distance);
 		helper.assertTrue(second == SpellCasting.CastResult.CAST && after == servant && distance <= 3.0, "the recall went " + second + " and left it " + distance + " away");
 		servant.discard();
 		leave(helper, master);

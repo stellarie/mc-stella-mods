@@ -18,8 +18,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -29,6 +32,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.Entity;
@@ -37,6 +41,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -46,6 +51,7 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.animal.equine.SkeletonHorse;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -69,6 +75,11 @@ public final class SummonSkeleton {
 	public static final int COOLDOWN_TICKS = 600;
 	/** How far around its master the servant seeks a foe; the screen shows this same reach. */
 	public static final double GUARD_RADIUS = 24.0;
+	/**
+	 * The reach around its master the servant clears before it returns to following. A foe inside it is a
+	 * priority the servant hunts; only with none left does it follow again.
+	 */
+	public static final double CLEAR_RADIUS = 16.0;
 	/** The distance at which the servant looses an arrow; vanilla's bow gives up at fifteen. */
 	public static final double RANGED_ATTACK_RANGE = GUARD_RADIUS;
 	public static final double FOLLOW_DISTANCE = 6.0;
@@ -76,10 +87,16 @@ public final class SummonSkeleton {
 	public static final double LOOT_REACH = 1.5;
 	public static final int PACK_SIZE = 18;
 	public static final double BASE_HEALTH = 30.0;
+	/** The share of its own maximum health a living servant recovers when its master casts the spell again. */
+	public static final double RECALL_HEAL_FRACTION = 0.25;
 	/** The whole fraction of a killed foe's experience the servant takes, at its own slower curve. */
 	public static final double KILL_XP_SHARE = 1.0;
 	/** The share of the servant's own gain its master collects. */
-	public static final double XP_SHARE = 0.5;
+	public static final double XP_SHARE = 0.25;
+	/** An awakened servant's own mount. It is the servant's kit, so its armor and pack save with the servant's. */
+	public static final double HORSE_MAX_HEALTH = 24000.0;
+	public static final int HORSE_PACK_SIZE = 27;
+	public static final String HORSE_TAG = "mod-stella-spells.summon_horse";
 	public static final int STAT_COUNT = 3;
 	public static final double STAT_HEALTH = 2.0;
 	public static final double STAT_SPEED = 0.02;
@@ -183,6 +200,7 @@ public final class SummonSkeleton {
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			if (entity instanceof Skeleton skeleton && skeleton.entityTags().contains(SUMMON_TAG) && skeleton.level() instanceof ServerLevel level) {
 				SummonInventoryStore.save(skeleton);
+				dismissHorse(skeleton);
 				skeleton.setAttached(PACK, List.of());
 				ownerOf(skeleton).ifPresent(owner -> SUMMONED.remove(owner, skeleton.getUUID()));
 			} else if (entity instanceof Mob fallen && entity.level() instanceof ServerLevel) {
@@ -206,12 +224,18 @@ public final class SummonSkeleton {
 		});
 	}
 
-	/** The spell: a new servant, or the old one called to the caster's side. */
+	/** The spell: a new servant, or the old one called to the caster's side and healed on the way. */
 	static boolean apply(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		Skeleton existing = find(caster.level().getServer(), caster.getUUID());
 		if (existing != null) {
-			SpellCasting.skipCooldown();
-			return recall(existing, caster);
+			boolean recalled = recall(existing, caster);
+			if (recalled) {
+				healOnRecall(existing);
+				if (modifiers.awakened()) {
+					mount(existing);
+				}
+			}
+			return recalled;
 		}
 		Skeleton skeleton = EntityTypes.SKELETON.create(caster.level(), EntitySpawnReason.MOB_SUMMONED);
 		if (skeleton == null) {
@@ -246,10 +270,75 @@ public final class SummonSkeleton {
 			return false;
 		}
 		SUMMONED.put(caster.getUUID(), skeleton.getUUID());
+		if (modifiers.awakened()) {
+			mount(skeleton);
+		}
 		CastHits.touch(caster);
 		caster.level().sendParticles(ParticleTypes.SOUL, at.x, at.y + 1.0, at.z, 30, 0.4, 0.8, 0.4, 0.05);
 		caster.level().playSound(null, at.x, at.y, at.z, SoundEvents.EVOKER_PREPARE_SUMMON, caster.getSoundSource(), 0.8F, 0.8F);
 		return true;
+	}
+
+	/** The servant's own mount, or null for a servant a plain cast raised. */
+	public static @Nullable SkeletonHorse horse(final Mob servant) {
+		return servant.getVehicle() instanceof SkeletonHorse mount && mount.entityTags().contains(HORSE_TAG) ? mount : null;
+	}
+
+	/**
+	 * Puts an awakened servant on its own skeleton horse. The horse is raised once and kept: a servant that
+	 * already rides one keeps it, and the saved armor and pack are put back on the mount it arrives with.
+	 */
+	static @Nullable SkeletonHorse mount(final Skeleton servant) {
+		SkeletonHorse existing = horse(servant);
+		if (existing != null) {
+			return existing;
+		}
+		if (!(servant.level() instanceof ServerLevel level)) {
+			return null;
+		}
+		SkeletonHorse raised = EntityTypes.SKELETON_HORSE.create(level, EntitySpawnReason.MOB_SUMMONED);
+		if (raised == null) {
+			return null;
+		}
+		raised.addTag(HORSE_TAG);
+		raised.addTag(SUMMON_TAG);
+		ownerOf(servant).ifPresent(owner -> raised.addTag(OWNER_TAG_PREFIX + owner));
+		for (String friend : FRIEND_TAGS) {
+			raised.addTag(friend);
+		}
+		raised.addTag(MobSpells.NO_BEHAVIOR_TAG);
+		raised.addTag(NO_SPAWN_ROLL_TAG);
+		raised.setPersistenceRequired();
+		raised.setTamed(true);
+		raised.setHealth((float) HORSE_MAX_HEALTH);
+		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_HORSE servant={} horse={} maxHealth={} health={} riding={}",
+			servant.getUUID(), raised.getUUID(), raised.getMaxHealth(), raised.getHealth(), servant.isPassenger());
+		raised.snapTo(servant.getX(), servant.getY(), servant.getZ(), servant.getYRot(), 0.0F);
+		if (!level.addFreshEntity(raised)) {
+			return null;
+		}
+		SummonInventoryStore.restoreHorse(raised);
+		servant.startRiding(raised);
+		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_HORSE servant={} horse={} maxHealth={} riding={}",
+			servant.getUUID(), raised.getUUID(), raised.getMaxHealth(), servant.isPassenger());
+		return raised;
+	}
+
+	/**
+	 * The mount's own maximum health. Vanilla's {@code minecraft:max_health} attribute is capped at 1024, so the
+	 * awakened mount answers {@link #HORSE_MAX_HEALTH} here instead, and the health it carries is read the same way.
+	 */
+	public static boolean isMount(final Mob mob) {
+		return mob.entityTags().contains(HORSE_TAG);
+	}
+
+	/** Sends the servant's mount away with it, so a retired or dead servant leaves no horse behind. */
+	static void dismissHorse(final Mob servant) {
+		SkeletonHorse mount = horse(servant);
+		if (mount != null) {
+			SummonInventoryStore.saveHorse(mount);
+			mount.discard();
+		}
 	}
 
 	/** Saves the servant's equipped gear for its next life. */
@@ -257,6 +346,25 @@ public final class SummonSkeleton {
 		skeleton.setItemSlot(slot, stack);
 		skeleton.setDropChance(slot, 0.0F);
 		SummonInventoryStore.save(skeleton);
+	}
+
+	/**
+	 * A recast mends the servant it called back by {@link #RECALL_HEAL_FRACTION} of its maximum health. A servant
+	 * already at full health takes nothing, and one wound past the mend keeps the rest of its wound.
+	 */
+	static float healOnRecall(final Skeleton servant) {
+		float before = servant.getHealth();
+		float mend = (float) (servant.getMaxHealth() * RECALL_HEAL_FRACTION);
+		servant.setHealth(Math.min(servant.getMaxHealth(), before + mend));
+		float gained = servant.getHealth() - before;
+		Spellbooks.LOGGER.info("[SPELL] event=SUMMON_RECALL_HEAL servant={} fraction={} before={} after={} gained={}",
+			servant.getUUID(), RECALL_HEAL_FRACTION, before, servant.getHealth(), gained);
+		return gained;
+	}
+
+	/** True when this entity is a summoned servant, the one kind of undead that takes healing as healing. */
+	public static boolean isServant(final Entity entity) {
+		return entity.entityTags().contains(SUMMON_TAG);
 	}
 
 	/** A servant that carries no growth yet starts at level zero with no experience. */
@@ -359,10 +467,21 @@ public final class SummonSkeleton {
 		if (mode == Mode.MIRROR) {
 			return master.getLastHurtMob() instanceof Mob foe && Friends.isFoe(foe) && foe.isAlive() ? foe : null;
 		}
+		// The clear radius leads: the ground around the master comes first, and only a master whose ground is
+		// clear lets the servant reach out to its wider seek reach.
+		Mob inTheClear = nearestFoe(skeleton, master, CLEAR_RADIUS);
+		return inTheClear != null ? inTheClear : nearestFoe(skeleton, master, GUARD_RADIUS);
+	}
+
+	/**
+	 * The nearest foe the servant can sight within {@code reach} blocks of its master, or null. A foe closer
+	 * to the servant wins, so the one it can fall on first is the one it takes.
+	 */
+	static @Nullable Mob nearestFoe(final Skeleton skeleton, final ServerPlayer master, final double reach) {
 		Mob nearest = null;
 		double best = Double.MAX_VALUE;
-		for (Mob mob : master.level().getEntitiesOfClass(Mob.class, master.getBoundingBox().inflate(GUARD_RADIUS),
-			other -> other.isAlive() && Friends.isFoe(other) && other.distanceToSqr(master) <= GUARD_RADIUS * GUARD_RADIUS)) {
+		for (Mob mob : master.level().getEntitiesOfClass(Mob.class, master.getBoundingBox().inflate(reach),
+			other -> other.isAlive() && Friends.isFoe(other) && other.distanceToSqr(master) <= reach * reach)) {
 			if (!sighted(skeleton, master, mob)) {
 				continue;
 			}
@@ -373,6 +492,11 @@ public final class SummonSkeleton {
 			}
 		}
 		return nearest;
+	}
+
+	/** True when a foe of the master stands inside the reach the servant clears before it follows again. */
+	static boolean clearing(final Skeleton skeleton, final ServerPlayer master) {
+		return nearestFoe(skeleton, master, CLEAR_RADIUS) != null;
 	}
 
 	/**
@@ -622,6 +746,7 @@ public final class SummonSkeleton {
 		if (skeleton.isRemoved() || !(skeleton.level() instanceof ServerLevel level)) {
 			return;
 		}
+		dismissHorse(skeleton);
 		skeleton.setAttached(PACK, List.of());
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
 			skeleton.setItemSlot(slot, ItemStack.EMPTY);
@@ -851,6 +976,10 @@ public final class SummonSkeleton {
 			if (quarry != null && quarry.isAlive() && this.skeleton.distanceToSqr(quarry) <= GUARD_RADIUS * GUARD_RADIUS) {
 				return false;
 			}
+			// A foe inside the clear radius of the master is the servant's work before it walks home.
+			if (clearing(this.skeleton, master)) {
+				return false;
+			}
 			return this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
 		}
 
@@ -882,8 +1011,14 @@ public final class SummonSkeleton {
 		@Override
 		public boolean canUse() {
 			ServerPlayer master = owner(this.skeleton);
-			return master != null && master.level() == this.skeleton.level()
-				&& this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
+			if (master == null || master.level() != this.skeleton.level()) {
+				return false;
+			}
+			// The same work the follow goal waits on: the servant walks home only with its master's ground clear.
+			if (clearing(this.skeleton, master)) {
+				return false;
+			}
+			return this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
 		}
 
 		@Override
