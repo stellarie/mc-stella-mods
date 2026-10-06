@@ -174,19 +174,18 @@ public class KeepRewardGameTest {
 	@GameTest
 	public void theStructureSetSpreadsLargeSitesWithTheKeepSaltAndExcludesVillages(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		var sets = level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET);
-		var set = sets.get(ResourceKey.create(Registries.STRUCTURE_SET, com.stella.ruins.StellaRuins.id("ruined_keep")));
-		helper.assertTrue(set.isPresent(), "the ruined_keep structure set did not load");
+		var set = com.stella.ruins.world.RuinSitePlanGameTest.sites(level);
+		helper.assertTrue(set != null, "the " + com.stella.ruins.world.RuinSitePlanGameTest.SITES + " structure set did not load");
 		com.google.gson.JsonElement json = net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC.encodeStart(
-			net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, level.registryAccess()), set.get().value().placement()).getOrThrow();
+			net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, level.registryAccess()), set.placement()).getOrThrow();
 		com.google.gson.JsonObject placement = json.getAsJsonObject();
 		KeepTestSupport.result("structureSet", placement.toString());
-		helper.assertTrue(placement.get("spacing").getAsInt() == 56 && placement.get("separation").getAsInt() == 20, "the spread is " + placement.get("spacing") + "/" + placement.get("separation"));
-		helper.assertTrue(placement.get("salt").getAsInt() == 377095163, "the salt is " + placement.get("salt"));
-		var zone = placement.getAsJsonObject("exclusion_zone");
-		helper.assertTrue("minecraft:villages".equals(zone.get("other_set").getAsString()) && zone.get("chunk_count").getAsInt() == 8, "the village exclusion is " + zone);
+		helper.assertTrue(placement.get("spacing").getAsInt() == 12 && placement.get("separation").getAsInt() == 9, "the spread is " + placement.get("spacing") + "/" + placement.get("separation"));
+		helper.assertTrue(placement.get("salt").getAsInt() == 702913845, "the salt is " + placement.get("salt"));
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.excludesVillages(placement), "the village exclusion is " + placement);
 		var structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).get(ResourceKey.create(Registries.STRUCTURE, com.stella.ruins.StellaRuins.id("ruined_keep")));
 		helper.assertTrue(structure.isPresent() && structure.get().value() instanceof com.stella.ruins.world.RuinStructure ruin && ruin.site().equals(RuinedKeepSite.ID), "the structure does not name the keep");
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.theSitesSetHolds(level, RuinedKeepSite.ID), "the one ruin set does not hold the keep");
 		helper.succeed();
 	}
 

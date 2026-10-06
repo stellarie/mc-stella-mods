@@ -22,7 +22,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 
 /** What the site registers and ships as data: its place, its tables, its worldgen files and its exclusivity. */
 public class DeepForgeDataGameTest {
-	static final int SALT = 905_517_283;
+	static final int SALT = 702_913_845;
 
 	@GameTest
 	public void theSiteIsRegisteredWithThePlanNumbers(final GameTestHelper helper) {
@@ -44,20 +44,20 @@ public class DeepForgeDataGameTest {
 		ServerLevel level = helper.getLevel();
 		ResourceKey<Structure> structure = ResourceKey.create(Registries.STRUCTURE, StellaRuins.id(DeepForgeSite.ID));
 		helper.assertTrue(level.registryAccess().lookupOrThrow(Registries.STRUCTURE).get(structure).isPresent(), "the structure file did not load");
-		ResourceKey<StructureSet> set = ResourceKey.create(Registries.STRUCTURE_SET, StellaRuins.id(DeepForgeSite.ID));
-		StructureSet loaded = level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).getOrThrow(set).value();
+		StructureSet loaded = com.stella.ruins.world.RuinSitePlanGameTest.sites(level);
+		helper.assertTrue(loaded != null, "no " + com.stella.ruins.world.RuinSitePlanGameTest.SITES + " structure set");
 		RandomSpreadStructurePlacement placement = (RandomSpreadStructurePlacement) loaded.placement();
-		helper.assertTrue(placement.spacing() == 56 && placement.separation() == 20, "spacing " + placement.spacing() + " separation " + placement.separation());
-		JsonObject file = readSetFile();
-		JsonObject spread = file.getAsJsonObject("placement");
+		helper.assertTrue(placement.spacing() == 12 && placement.separation() == 9, "spacing " + placement.spacing() + " separation " + placement.separation());
+		JsonObject spread = readSetFile().getAsJsonObject("placement");
 		helper.assertTrue(spread.get("salt").getAsInt() == SALT, "the salt is " + spread.get("salt"));
-		JsonObject zone = spread.getAsJsonObject("exclusion_zone");
-		helper.assertTrue(zone.get("other_set").getAsString().equals("minecraft:villages") && zone.get("chunk_count").getAsInt() >= 8, "the village exclusion is missing or short: " + zone);
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.excludesVillages(spread), "the village exclusion is missing or short: " + spread);
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.theSitesSetHolds(level, DeepForgeSite.ID), "the one ruin set does not hold the deep forge");
 		helper.succeed();
 	}
 
+	/** The merged set file, which is the only structure set file this mod ships. */
 	private static JsonObject readSetFile() {
-		try (java.io.InputStream in = DeepForgeDataGameTest.class.getResourceAsStream("/data/mod-stella-ruins/worldgen/structure_set/deep_forge.json")) {
+		try (java.io.InputStream in = DeepForgeDataGameTest.class.getResourceAsStream("/data/mod-stella-ruins/worldgen/structure_set/sites.json")) {
 			return JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
 		} catch (java.io.IOException e) {
 			throw new IllegalStateException(e);
