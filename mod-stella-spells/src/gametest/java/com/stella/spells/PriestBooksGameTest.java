@@ -1,12 +1,16 @@
 package com.stella.spells;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.EntityTypeTags;
@@ -21,6 +25,9 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
@@ -233,6 +240,107 @@ public class PriestBooksGameTest {
 		} finally {
 			CastContext.setAlly(null);
 		}
+	}
+
+	@GameTest
+	public void noMobCastsAPriestBook(final GameTestHelper helper) {
+		List<String> mobSpells = new ArrayList<>(MobSpells.OFFENSIVE);
+		mobSpells.addAll(MobSpells.SUPPORT);
+		mobSpells.addAll(MobSpells.PACK_SUPPORT);
+		mobSpells.addAll(MobSpells.PACK_AREA_OFFENSIVE);
+		mobSpells.addAll(MobSpells.VILLAGE_WITCH_OFFENSIVE);
+		mobSpells.addAll(MobSpells.VILLAGE_WITCH_SUPPORT);
+		List<String> mob = mobSpells.stream().filter(SkillSchoolGameTest.PRIEST_IDS::contains).toList();
+		List<Identifier> imbued = SpellImbue.MOB_SPELLS.stream()
+			.filter(identifier -> SkillSchoolGameTest.PRIEST_IDS.contains(identifier.getPath()))
+			.toList();
+		LOG.info("[BEHAVIOR] test=noMobCastsAPriestBook RESULT mobSpellLists={} priestInMobLists={} mobImbueSpells={} priestImbued={}",
+			mobSpells.size(), mob, SpellImbue.MOB_SPELLS.size(), imbued);
+		helper.assertTrue(mob.isEmpty(), "a mob spell list holds a priest book: " + mob);
+		helper.assertTrue(imbued.isEmpty(), "a mob's imbued weapon can cast a priest book: " + imbued);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void twentyThousandContainerRollsProduceEveryPriestBookAndNoAwakenedOne(final GameTestHelper helper) {
+		Set<Identifier> priest = SkillSchoolGameTest.PRIEST_IDS.stream()
+			.map(PriestBooksGameTest::id)
+			.collect(Collectors.toUnmodifiableSet());
+		Map<Identifier, Integer> counts = new LinkedHashMap<>();
+		priest.forEach(book -> counts.put(book, 0));
+		Identifier table = Identifier.parse("minecraft:chests/simple_dungeon");
+		RandomSource random = RandomSource.create(90210L);
+		int awakened = 0;
+		int total = 0;
+		for (int roll = 0; roll < 20_000; roll++) {
+			ItemStack stack = SpellbookTestAccess.rollChest(table, true, random);
+			if (stack.isEmpty()) {
+				continue;
+			}
+			total++;
+			counts.computeIfPresent(BuiltInRegistries.ITEM.getKey(stack.getItem()), (ignored, count) -> count + 1);
+			if (Awakening.isAwakened(stack)) {
+				awakened++;
+			}
+		}
+		LOG.info("[BEHAVIOR] test=twentyThousandContainerRollsProduceEveryPriestBookAndNoAwakenedOne RESULT rolls=20000 pool={} total={} awakened={} counts={}",
+			SpellbookCatalog.DEFINITIONS.size(), total, awakened, counts);
+		helper.assertTrue(counts.values().stream().allMatch(count -> count > 0), "a priest book never dropped: " + counts);
+		helper.assertTrue(awakened == 0, "a container roll produced " + awakened + " awakened books");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyPriestBookCraftsFromItsOwnRecipes(final GameTestHelper helper) {
+		List<String> wrong = new ArrayList<>();
+		for (String path : SkillSchoolGameTest.PRIEST_IDS) {
+			if (Spellbooks.BOOK_ONLY.contains(id(path))) {
+				continue;
+			}
+			ItemStack material = new ItemStack(BuiltInRegistries.ITEM.getValue(SkillSchoolGameTest.materialOf(path)));
+			ItemStack crafted = craft(helper, shaped("M M", " B ", "M M", 'M', material, 'B', new ItemStack(Items.BOOK)));
+			ItemStack scroll = craft(helper, shapeless(new ItemStack(Items.PAPER), material));
+			ItemStack fromScrolls = craft(helper, shaped("SSS", "SBS", "SSS", 'S',
+				new ItemStack(BuiltInRegistries.ITEM.getValue(id(path + "_scroll"))), 'B', new ItemStack(Items.BOOK)));
+			if (!crafted.is(SkillSchoolGameTest.book(path))) {
+				wrong.add(path + " book -> " + BuiltInRegistries.ITEM.getKey(crafted.getItem()));
+			}
+			if (scroll.getCount() != 2 || !scroll.is(BuiltInRegistries.ITEM.getValue(id(path + "_scroll")))) {
+				wrong.add(path + " scroll -> " + BuiltInRegistries.ITEM.getKey(scroll.getItem()) + " x" + scroll.getCount());
+			}
+			if (!fromScrolls.is(SkillSchoolGameTest.book(path))) {
+				wrong.add(path + " from scrolls -> " + BuiltInRegistries.ITEM.getKey(fromScrolls.getItem()));
+			}
+		}
+		LOG.info("[BEHAVIOR] test=everyPriestBookCraftsFromItsOwnRecipes RESULT books={} wrong={}",
+			SkillSchoolGameTest.PRIEST_IDS.size(), wrong);
+		helper.assertTrue(wrong.isEmpty(), "these recipes craft the wrong item: " + wrong);
+		helper.succeed();
+	}
+
+	private static CraftingInput shaped(
+		final String rowA, final String rowB, final String rowC,
+		final char first, final ItemStack firstStack, final char second, final ItemStack secondStack
+	) {
+		List<ItemStack> items = new ArrayList<>();
+		for (String row : List.of(rowA, rowB, rowC)) {
+			for (char symbol : row.toCharArray()) {
+				items.add(symbol == first ? firstStack : symbol == second ? secondStack : ItemStack.EMPTY);
+			}
+		}
+		return CraftingInput.of(3, 3, items);
+	}
+
+	private static CraftingInput shapeless(final ItemStack... stacks) {
+		return CraftingInput.of(1, stacks.length, List.of(stacks));
+	}
+
+	private static ItemStack craft(final GameTestHelper helper, final CraftingInput input) {
+		CraftingRecipe recipe = helper.getLevel().getServer().getRecipeManager()
+			.getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel())
+			.map(holder -> holder.value())
+			.orElse(null);
+		return recipe == null ? ItemStack.EMPTY : recipe.assemble(input);
 	}
 
 	static Identifier id(final String path) {
