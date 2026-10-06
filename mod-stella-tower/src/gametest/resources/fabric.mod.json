@@ -45,7 +45,9 @@
 			"com.stella.tower.TowerLostRoomGameTest",
 			"com.stella.tower.TowerLostCastleVariantGameTest",
 			"com.stella.tower.TowerArchetypeSpawnGameTest",
-			"com.stella.tower.TowerPreviewGameTest"
+			"com.stella.tower.TowerPreviewGameTest",
+			"com.stella.tower.TowerLostRoomStructureGameTest",
+			"com.stella.tower.TowerLostCastlePaletteGameTest"
 		]
 	},
 	"mixins": [
