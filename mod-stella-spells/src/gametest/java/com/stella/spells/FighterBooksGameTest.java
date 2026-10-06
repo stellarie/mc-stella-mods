@@ -65,12 +65,15 @@ public class FighterBooksGameTest {
 			MobEffectInstance bleeding = foe.getEffect(SpellStatus.BLEEDING);
 			amplifiers.add(bleeding == null ? -1 : bleeding.getAmplifier());
 		}
-		LOG.info("[BEHAVIOR] test=awakenedCleaveDeepensTheBleedWithEachCastAndStopsAtTwo RESULT amplifiers={} cap={}",
-			amplifiers, SpellNumbers.CLEAVE.amplifier());
-		helper.assertTrue(amplifiers.get(0) == 1, "the first awakened cleave left amplifier " + amplifiers.get(0));
-		helper.assertTrue(amplifiers.get(1) == 2, "the second awakened cleave left amplifier " + amplifiers.get(1));
-		helper.assertTrue(amplifiers.get(2) == 2 && amplifiers.get(3) == 2,
-			"a third or fourth cleave went past the cap: " + amplifiers);		cleanup(helper, foe);
+		LOG.info("[BEHAVIOR] test=awakenedCleaveDeepensTheBleedWithEachCastAndStopsAtTwo RESULT amplifiers={} levels={}",
+			amplifiers, FighterSkills.CLEAVE_BLEED_LEVELS);
+		helper.assertTrue(amplifiers.get(0) == 0, "the first awakened cleave left amplifier " + amplifiers.get(0));
+		helper.assertTrue(amplifiers.get(1) == 1, "the second awakened cleave left amplifier " + amplifiers.get(1));
+		helper.assertTrue(amplifiers.get(2) == FighterSkills.CLEAVE_BLEED_LEVELS,
+			"the third awakened cleave left amplifier " + amplifiers.get(2));
+		helper.assertTrue(amplifiers.get(3) == FighterSkills.CLEAVE_BLEED_LEVELS,
+			"a fourth cleave went past the cap: " + amplifiers);
+		cleanup(helper, foe);
 		helper.succeed();
 	}
 
@@ -461,8 +464,9 @@ public class FighterBooksGameTest {
 		helper.setTime(18_000L);
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
-		// The harness marks a mock player permanently invulnerable; a case about taking blows must clear that first.
+		// The harness marks a mock player invulnerable; a case about taking blows clears both readings first.
 		player.setPermanentlyInvulnerable(false);
+		player.setInvulnerableTime(0);
 		player.getAbilities().invulnerable = false;
 		Vec3 at = helper.absoluteVec(new Vec3(CASTER_X, 1.0, CASTER_Z));
 		player.setPos(at.x, at.y, at.z);

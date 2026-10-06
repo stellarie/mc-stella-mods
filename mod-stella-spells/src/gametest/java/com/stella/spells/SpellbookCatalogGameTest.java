@@ -45,50 +45,13 @@ public class SpellbookCatalogGameTest {
 	private static final Identifier TEST_ENCHANTMENT = Identifier.parse(
 		"mod-stella-spells-test-mod-stella-spells:anvil_log_test"
 	);
-	private static final List<RecipeEntry> EXPECTED_BOOKS = List.of(
-		new RecipeEntry("spark_shot", Items.FLINT),
-		new RecipeEntry("frostbind", Items.SNOWBALL),
-		new RecipeEntry("gale_step", Items.FEATHER),
-		new RecipeEntry("mending_word", Items.GOLD_INGOT),
-		new RecipeEntry("stoneguard", Items.IRON_INGOT),
-		new RecipeEntry("static_lash", Items.COPPER_INGOT),
-		new RecipeEntry("briar_snare", Items.VINE),
-		new RecipeEntry("tidal_push", Items.PRISMARINE_SHARD),
-		new RecipeEntry("owls_gaze", Items.AMETHYST_SHARD),
-		new RecipeEntry("slimebound", Items.SLIME_BALL),
-		new RecipeEntry("chainstorm", Items.LIGHTNING_ROD.weathering().unaffected()),
-		new RecipeEntry("riftwalk", Items.ENDER_PEARL),
-		new RecipeEntry("phoenix_mantle", Items.BLAZE_ROD),
-		new RecipeEntry("life_bloom", Items.GHAST_TEAR),
-		new RecipeEntry("void_well", Items.OBSIDIAN),
-		new RecipeEntry("wardens_roar", Items.ECHO_SHARD),
-		new RecipeEntry("aegis_of_the_deep", Items.TURTLE_SCUTE),
-		new RecipeEntry("wither_seal", Items.WITHER_ROSE),
-		new RecipeEntry("time_lock", Items.CLOCK),
-		new RecipeEntry("dragonfall", Items.DRAGON_BREATH),
-		new RecipeEntry("ice_lance", Items.PACKED_ICE),
-		new RecipeEntry("soul_siphon", Items.SOUL_SOIL),
-		new RecipeEntry("venom_dart", Items.SPIDER_EYE),
-		new RecipeEntry("sapping_hex", Items.FERMENTED_SPIDER_EYE),
-		new RecipeEntry("blinding_flash", Items.GLOW_INK_SAC),
-		new RecipeEntry("ember_brand", Items.MAGMA_CREAM),
-		new RecipeEntry("quicksilver", Items.SUGAR),
-		new RecipeEntry("tide_lungs", Items.PUFFERFISH),
-		new RecipeEntry("berserk", Items.BLAZE_POWDER),
-		new RecipeEntry("haste_rune", Items.REDSTONE),
-		new RecipeEntry("shadow_veil", Items.TINTED_GLASS),
-		new RecipeEntry("sanctuary", Items.HONEYCOMB),
-		new RecipeEntry("purify", Items.QUARTZ),
-		new RecipeEntry("frost_nova", Items.ICE),
-		new RecipeEntry("earthspike", Items.POINTED_DRIPSTONE),
-		new RecipeEntry("plague_cloud", Items.POISONOUS_POTATO),
-		new RecipeEntry("flame_ring", Items.FIRE_CHARGE),
-		new RecipeEntry("gravity", Items.PHANTOM_MEMBRANE),
-		new RecipeEntry("bulwark_hymn", Items.GLISTERING_MELON_SLICE),
-		new RecipeEntry("tailwind", Items.RABBIT_FOOT),
-		new RecipeEntry("battle_hymn", Items.GLOWSTONE_DUST),
-		new RecipeEntry("summon_skeleton", Items.BONE)
-	);
+	/**
+	 * Every book the mod ships, each with the ingredient its own catalogue declares. This is the catalogue and
+	 * not a copy of it, so a book added later arrives here on its own and no count needs editing.
+	 */
+	private static final List<RecipeEntry> EXPECTED_BOOKS = SpellbookCatalog.DEFINITIONS.stream()
+		.map(definition -> new RecipeEntry(definition.id(), definition.ingredient()))
+		.toList();
 	private static final Set<Identifier> EXPECTED_IDS = EXPECTED_BOOKS.stream()
 		.map(RecipeEntry::id)
 		.collect(Collectors.toUnmodifiableSet());
@@ -220,8 +183,5 @@ public class SpellbookCatalogGameTest {
 	}
 
 	private record RecipeEntry(Identifier id, Item ingredient) {
-		private RecipeEntry(final String path, final Item ingredient) {
-			this(Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path), ingredient);
-		}
 	}
 }

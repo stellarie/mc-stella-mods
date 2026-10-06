@@ -38,11 +38,15 @@ import org.jspecify.annotations.Nullable;
 public final class FighterSkills {
 	/** Cleave's arc: this many degrees either side of the caster's look. */
 	static final double CLEAVE_HALF_ANGLE = 60.0;
+	/** How many Bleeding levels an awakened Cleave can reach above the plain one, counting from amplifier 0. */
+	static final int CLEAVE_BLEED_LEVELS = 2;
 	/** The three-quarter point of a cone, in radians, before the arc's own half angle. */
 	private static final double DEGREES_TO_RADIANS = Math.PI / 180.0;
 	/** How far above the landing a Leap Slam or an Earthsplitter throws what it hits. */
 	static final double LAUNCH_UP = 0.6;
 	static final double EARTHSPLITTER_UP = 0.5;
+	/** The half-width of the broken ground Earthsplitter hits along, in blocks. */
+	static final double EARTHSPLITTER_WIDTH = 1.5;
 	/** Charge's own reach, and the reach of the ground it stops on. */
 	static final double CHARGE_REACH = 8.0;
 	static final double CHARGE_WIDTH = 1.5;
@@ -206,7 +210,7 @@ public final class FighterSkills {
 		List<Mob> struck = foesInCone(caster, numbers.radius(modifiers), CLEAVE_HALF_ANGLE);
 		for (Mob foe : struck) {
 			hit(caster, foe, numbers.damage(), modifiers);
-			bleed(caster, foe, numbers.durationTicks(modifiers), modifiers.awakened() ? numbers.amplifier() : 0);
+			bleed(caster, foe, numbers.durationTicks(modifiers), modifiers.awakened() ? CLEAVE_BLEED_LEVELS : 0);
 		}
 		return !struck.isEmpty();
 	}
@@ -235,7 +239,9 @@ public final class FighterSkills {
 			hit(caster, foe, numbers.damage(), modifiers);
 			pushUp(caster, foe, LAUNCH_UP);
 			if (modifiers.awakened()) {
-				SpellStatusApi.stagger(foe, numbers.extraTicks(modifiers), caster);
+				foe.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+					MobEffects.SLOWNESS, numbers.extraTicks(modifiers), SpellNumbers.LEAP_SLAM.amplifier()
+				), caster);
 			}
 		}
 		return struck || true;
@@ -402,7 +408,7 @@ public final class FighterSkills {
 		for (double degrees : angles) {
 			Vec3 direction = rotate(caster.getLookAngle(), degrees);
 			Vec3 end = caster.position().add(direction.x * numbers.radius(modifiers), 0.0, direction.z * numbers.radius(modifiers));
-			for (Mob foe : foesNearLine(caster, caster.position(), end, numbers.extra().ticks())) {
+			for (Mob foe : foesNearLine(caster, caster.position(), end, EARTHSPLITTER_WIDTH)) {
 				if (!struck.contains(foe)) {
 					struck.add(foe);
 				}

@@ -41,6 +41,16 @@
 		"mod-stella-spells:bulwark_hymn",
 		"mod-stella-spells:tailwind",
 		"mod-stella-spells:battle_hymn",
-		"mod-stella-spells:summon_skeleton"
+		"mod-stella-spells:summon_skeleton",
+		"mod-stella-spells:cleave",
+		"mod-stella-spells:leap_slam",
+		"mod-stella-spells:whirlwind",
+		"mod-stella-spells:shield_bash",
+		"mod-stella-spells:charge",
+		"mod-stella-spells:execute",
+		"mod-stella-spells:war_cry",
+		"mod-stella-spells:counter_stance",
+		"mod-stella-spells:iron_skin",
+		"mod-stella-spells:earthsplitter"
 	]
 }

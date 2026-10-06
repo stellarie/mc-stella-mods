@@ -122,16 +122,16 @@ public final class SpellVisuals {
 		areaVisual("tailwind", ParticleTypes.SMALL_GUST, ParticleTypes.CLOUD, MoreSpells.SUPPORT_RADIUS, 0xB8E8FF),
 		areaVisual("battle_hymn", ParticleTypes.NOTE, ParticleTypes.CRIT, MoreSpells.SUPPORT_RADIUS, 0xF5DC65),
 		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0),
-		visual("cleave", ParticleTypes.FIREWORK, ParticleTypes.DAMAGE_INDICATOR, 0.0),
-		areaVisual("leap_slam", ParticleTypes.EXPLOSION, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH + 2.5, 0xB33A3A),
-		areaVisual("whirlwind", ParticleTypes.SWEEP_ATTACK, ParticleTypes.CRIT, FighterSkills.CHARGE_WIDTH + 1.5, 0xB33A3A),
+		visual("cleave", ParticleTypes.DAMAGE_INDICATOR, ParticleTypes.CRIT, 0.0),
+		areaVisual("leap_slam", ParticleTypes.EXPLOSION_EMITTER, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH + 2.5, 0xB33A3A),
+		areaVisual("whirlwind", ParticleTypes.CLOUD, ParticleTypes.CRIT, FighterSkills.CHARGE_WIDTH + 1.5, 0xB33A3A),
 		visual("shield_bash", ParticleTypes.ENCHANTED_HIT, ParticleTypes.CRIT, 0.0),
-		areaVisual("charge", ParticleTypes.SMALL_GUST, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH, 0xB33A3A),
-		visual("execute", ParticleTypes.DAMAGE_INDICATOR, ParticleTypes.CRIT, 0.0),
-		areaVisual("war_cry", ParticleTypes.TOTEM_OF_UNDYING, ParticleTypes.ANGRY_VILLAGER, FighterSkills.WAR_CRY_RADIUS, 0xB33A3A),
-		visual("counter_stance", ParticleTypes.ENCHANT, ParticleTypes.WAX_ON, 0.0),
-		visual("iron_skin", ParticleTypes.DUST_PLUME, ParticleTypes.POOF, 0.0),
-		areaVisual("earthsplitter", ParticleTypes.MYCELIUM, ParticleTypes.DUST_PLUME, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A)
+		areaVisual("charge", ParticleTypes.SMOKE, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH, 0xB33A3A),
+		visual("execute", ParticleTypes.SCULK_SOUL, ParticleTypes.CRIT, 0.0),
+		areaVisual("war_cry", ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, ParticleTypes.ANGRY_VILLAGER, FighterSkills.WAR_CRY_RADIUS, 0xB33A3A),
+		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
+		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
+		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),
@@ -160,15 +160,10 @@ public final class SpellVisuals {
 		heldColor("shadow_veil", 0x8062D6),
 		heldColor("summon_skeleton", 0xA9BED8),
 		heldColor("cleave", 0xB33A3A),
-		heldColor("leap_slam", 0xC4553A),
-		heldColor("whirlwind", 0xD9A441),
 		heldColor("shield_bash", 0x8C8C99),
-		heldColor("charge", 0xE0A24B),
 		heldColor("execute", 0x8E1F1F),
-		heldColor("war_cry", 0xE05A3A),
 		heldColor("counter_stance", 0xA8B4C8),
-		heldColor("iron_skin", 0xBBBFC9),
-		heldColor("earthsplitter", 0x8A6A46)
+		heldColor("iron_skin", 0xBBBFC9)
 	);
 
 	static void register() {

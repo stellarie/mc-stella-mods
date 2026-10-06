@@ -39,13 +39,21 @@ public class MobImbueGameTest {
 	}
 
 	@GameTest
-	public void theMobSpellsAreEverySpellThatStrikesOneFoe(final GameTestHelper helper) {
+	public void theMobSpellsAreEveryMageSpellThatStrikesOneFoe(final GameTestHelper helper) {
 		Set<Identifier> hostile = SpellbookCatalog.DEFINITIONS.stream()
+			.filter(definition -> definition.school() == School.MAGE)
 			.filter(definition -> definition.targetMode() == TargetMode.HOSTILE)
 			.map(SpellDefinition::id)
 			.collect(Collectors.toSet());
-		LOG.info("[SPELLTEST] test=theMobSpellsAreEverySpellThatStrikesOneFoe RESULT hostile={} mob={}", hostile.size(), SpellImbue.MOB_SPELLS.size());
-		helper.assertTrue(hostile.equals(SpellImbue.MOB_SPELLS), "the mob spells " + SpellImbue.MOB_SPELLS + " are not the hostile spells " + hostile);
+		Set<Identifier> skillBooks = SpellbookCatalog.DEFINITIONS.stream()
+			.filter(definition -> definition.school() != School.MAGE)
+			.map(SpellDefinition::id)
+			.filter(SpellImbue.MOB_SPELLS::contains)
+			.collect(Collectors.toSet());
+		LOG.info("[SPELLTEST] test=theMobSpellsAreEveryMageSpellThatStrikesOneFoe RESULT mageHostile={} mob={} skillBooksInMobSpells={}",
+			hostile.size(), SpellImbue.MOB_SPELLS.size(), skillBooks);
+		helper.assertTrue(hostile.equals(SpellImbue.MOB_SPELLS), "the mob spells " + SpellImbue.MOB_SPELLS + " are not the mage hostile spells " + hostile);
+		helper.assertTrue(skillBooks.isEmpty(), "a mob's imbued weapon can cast a skill book: " + skillBooks);
 		helper.succeed();
 	}
 

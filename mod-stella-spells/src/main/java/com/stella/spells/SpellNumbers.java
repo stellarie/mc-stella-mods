@@ -108,7 +108,7 @@ public record SpellNumbers(
 	// ---- fighter books: damage is flat, and the bridge turns it into the caster's Strength percent. ----
 	/** Cleave's own reach is its radius; its duration is the bleed it leaves. */
 	public static final SpellNumbers CLEAVE = builder("cleave").damage(4.0f).radius(4.0).duration(300, Scale.DEFENSIVE).build();
-	/** Leap Slam's extra is the stagger its awakened landing leaves. */
+	/** Leap Slam's extra is the Slowness its awakened landing leaves. */
 	public static final SpellNumbers LEAP_SLAM = builder("leap_slam").damage(3.0f).radius(3.0).extra(120, Scale.DEFENSIVE).amplifier(1).build();
 	/** Whirlwind's duration is its own pulse gap, read by the book rather than by a cast. */
 	public static final SpellNumbers WHIRLWIND = builder("whirlwind").damage(2.0f).radius(3.0).duration(20, Scale.FIXED).build();
@@ -121,8 +121,8 @@ public record SpellNumbers(
 	/** Counter Stance's extra is how long its answer staggers the attacker. */
 	public static final SpellNumbers COUNTER_STANCE = builder("counter_stance").damage(4.0f).duration(30, Scale.FIXED).extra(40, Scale.DEFENSIVE).build();
 	public static final SpellNumbers IRON_SKIN = builder("iron_skin").duration(BUFF_TICKS, Scale.FIXED).amplifier(0).build();
-	/** Earthsplitter's extra is the width of the broken ground it hits along. */
-	public static final SpellNumbers EARTHSPLITTER = builder("earthsplitter").damage(3.0f).radius(8.0).extra(15, Scale.FIXED).build();
+	/** Earthsplitter's radius is the length of the broken ground; its width is {@code EARTHSPLITTER_WIDTH}. */
+	public static final SpellNumbers EARTHSPLITTER = builder("earthsplitter").damage(3.0f).radius(8.0).build();
 
 	/** Ticks of this spell's control on the target: half on an elite or a boss. */
 	int controlTicks(final LivingEntity target, final int ticks) {

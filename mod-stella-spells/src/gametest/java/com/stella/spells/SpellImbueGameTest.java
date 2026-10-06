@@ -194,16 +194,21 @@ public class SpellImbueGameTest {
 	@GameTest(maxTicks = 100)
 	public void everyNewSpellCastsFromAnImbuedHit(final GameTestHelper helper) {
 		List<String> missing = new ArrayList<>();
-		int newSpells = 0;
+		List<String> unswept = new ArrayList<>();
+		int swept = 0;
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
 			if (!isSecondCatalogue(definition)) {
+				if (!SpellImbue.NOT_IMBUABLE.contains(definition.id())) {
+					unswept.add(definition.id().getPath());
+				}
 				continue;
 			}
-			newSpells++;
+			swept++;
 			ServerPlayer player = wielder(helper, definition.id());
-			// Purify needs something to clear, and Sanctuary a wound to close.
+			// Purify needs something to clear, Sanctuary a wound to close, and Shield Bash a shield to raise.
 			player.addEffect(new MobEffectInstance(MobEffects.POISON, 200, 0));
 			player.setHealth(10.0F);
+			player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.SHIELD));
 			Mob zombie = zombie(helper, 2, 4);
 			zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
 			if (!CASTS.getOrDefault(player.getUUID(), List.of()).contains(definition.id())) {
@@ -211,14 +216,21 @@ public class SpellImbueGameTest {
 			}
 			zombie.discard();
 		}
-		LOG.info("[SPELLTEST] test=everyNewSpellCastsFromAnImbuedHit RESULT spells={} missing={}", newSpells, missing);
-		helper.assertTrue(newSpells == SpellbookCatalog.DEFINITIONS.size() - 20, "the second catalogue has " + newSpells + " spells, so the case proves the wrong set");
+		LOG.info("[SPELLTEST] test=everyNewSpellCastsFromAnImbuedHit RESULT spells={} missing={} unswept={}", swept, missing, unswept);
+		// Every book this case does not sweep is one an earlier case in this class already covers, so no
+		// catalogue growth can leave a book untested without turning this line red.
+		helper.assertTrue(unswept.size() == FIRST_CATALOGUE_SIZE, "the books outside this sweep are " + unswept.size() + ", not the first catalogue's " + FIRST_CATALOGUE_SIZE + ": " + unswept);
 		helper.assertTrue(missing.isEmpty(), "imbued hits that cast nothing: " + missing);
 		helper.succeed();
 	}
 
+	/** The books an earlier round shipped, which the cases above this one already sweep. */
+	private static final int FIRST_CATALOGUE_SIZE = 20;
+
+	/** A book that arrived after the first catalogue: a later mage book, or any skill book. */
 	private static boolean isSecondCatalogue(final SpellDefinition definition) {
-		return SpellbookCatalog.DEFINITIONS.indexOf(definition) >= 20;
+		return definition.school() != School.MAGE
+			|| SpellbookCatalog.MAGE_DEFINITIONS.indexOf(definition) >= FIRST_CATALOGUE_SIZE;
 	}
 
 	@GameTest
