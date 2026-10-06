@@ -128,9 +128,9 @@ public final class SpellCasting {
 			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
 		}
 
-		// A summon's recall answers even while the book rests, since calling a servant back is not a new summon.
-		boolean recall = definition.id().equals(SummonSkeleton.ID) && SummonSkeleton.find(caster.level().getServer(), caster.getUUID()) != null;
-		if (caster.getCooldowns().isOnCooldown(stack) && !recall) {
+		// The cooldown applies to every cast of a spell, a summon's recall included, so a recast cannot heal or
+		// move a living servant for free.
+		if (caster.getCooldowns().isOnCooldown(stack)) {
 			log(caster, definition, CastResult.COOLDOWN, target, modifiers, stack);
 			return CastResult.COOLDOWN;
 		}

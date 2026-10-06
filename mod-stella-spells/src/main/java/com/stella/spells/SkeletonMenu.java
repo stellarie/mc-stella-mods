@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.animal.equine.SkeletonHorse;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -33,6 +34,8 @@ public class SkeletonMenu extends AbstractContainerMenu {
 	public static final int SIZE = 27;
 	/** The grey pane beside the gear, which carries the target mode the master last chose. */
 	public static final int MODE_SLOT = 6;
+	/** The mount's own armor, on an awakened servant's horse. Empty for a servant that rides nothing. */
+	public static final int HORSE_ARMOR_SLOT = 7;
 
 	private final Skeleton skeleton;
 	private final ServantContainer container;
@@ -44,7 +47,7 @@ public class SkeletonMenu extends AbstractContainerMenu {
 		for (int row = 0; row < 3; row++) {
 			for (int column = 0; column < 9; column++) {
 				int index = row * 9 + column;
-				this.addSlot(new ServantSlot(this.container, index, 8 + column * 18, 18 + row * 18));
+				this.addSlot(new ServantSlot(skeleton, this.container, index, 8 + column * 18, 18 + row * 18));
 			}
 		}
 		this.addStandardInventorySlots(inventory, 8, 84);
@@ -124,16 +127,28 @@ public class SkeletonMenu extends AbstractContainerMenu {
 		SummonInventoryStore.save(this.skeleton);
 	}
 
+	/** True when the stack is armor a horse wears, which is what the mount's own slot takes. */
+	static boolean horseArmor(final ItemStack stack) {
+		Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+		return equippable != null && equippable.slot() == EquipmentSlot.BODY;
+	}
+
 	private static final class ServantSlot extends Slot {
-		ServantSlot(final Container container, final int index, final int x, final int y) {
+		private final Skeleton skeleton;
+
+		ServantSlot(final Skeleton skeleton, final Container container, final int index, final int x, final int y) {
 			super(container, index, x, y);
+			this.skeleton = skeleton;
 		}
 
 		@Override
 		public boolean mayPlace(final ItemStack stack) {
 			int index = this.getContainerSlot();
-			if (index == 6 || index == 7) {
+			if (index == MODE_SLOT) {
 				return false;
+			}
+			if (index == HORSE_ARMOR_SLOT) {
+				return SummonSkeleton.horse(this.skeleton) != null && horseArmor(stack);
 			}
 			if (index < GEAR.length && GEAR[index].isArmor() && GEAR[index] != EquipmentSlot.HEAD) {
 				Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
@@ -145,7 +160,7 @@ public class SkeletonMenu extends AbstractContainerMenu {
 		@Override
 		public boolean mayPickup(final Player player) {
 			int index = this.getContainerSlot();
-			return index != 6 && index != 7;
+			return index != MODE_SLOT && (index != HORSE_ARMOR_SLOT || SummonSkeleton.horse(this.skeleton) != null);
 		}
 
 		@Override
@@ -182,8 +197,9 @@ public class SkeletonMenu extends AbstractContainerMenu {
 				return SummonSkeleton.Mode.MIRROR == mode(this.skeleton)
 					? new ItemStack(Items.STAINED_GLASS_PANE.red()) : new ItemStack(Items.STAINED_GLASS_PANE.lime());
 			}
-			if (index == 7) {
-				return new ItemStack(Items.STAINED_GLASS_PANE.gray());
+			if (index == HORSE_ARMOR_SLOT) {
+				net.minecraft.world.entity.animal.equine.SkeletonHorse mount = SummonSkeleton.horse(this.skeleton);
+				return mount == null ? ItemStack.EMPTY : mount.getItemBySlot(EquipmentSlot.BODY);
 			}
 			if (index == NAME_SLOT) {
 				return this.name;
@@ -194,7 +210,7 @@ public class SkeletonMenu extends AbstractContainerMenu {
 		@Override
 		public ItemStack removeItem(final int index, final int count) {
 			ItemStack current = this.getItem(index);
-			if (current.isEmpty() || index == 6 || index == 7) {
+			if (current.isEmpty() || index == MODE_SLOT) {
 				return ItemStack.EMPTY;
 			}
 			ItemStack taken = current.split(count);
@@ -213,6 +229,12 @@ public class SkeletonMenu extends AbstractContainerMenu {
 		public void setItem(final int index, final ItemStack stack) {
 			if (index < GEAR.length) {
 				SummonSkeleton.equip(this.skeleton, GEAR[index], stack);
+			} else if (index == HORSE_ARMOR_SLOT) {
+				SkeletonHorse mount = SummonSkeleton.horse(this.skeleton);
+				if (mount != null) {
+					mount.setItemSlot(EquipmentSlot.BODY, stack);
+					SummonInventoryStore.saveHorse(mount);
+				}
 			} else if (index == NAME_SLOT) {
 				this.name = stack;
 			} else if (index >= PACK_START) {
