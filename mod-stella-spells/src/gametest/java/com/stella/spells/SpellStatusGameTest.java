@@ -1,6 +1,8 @@
 package com.stella.spells;
 
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.ArrayList;
+import java.util.List;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
@@ -11,6 +13,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
@@ -40,8 +44,9 @@ import org.slf4j.LoggerFactory;
 public class SpellStatusGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.status");
 	private static final float EPSILON = 0.02F;
-	// How long the stagger lane waits before it stuns: enough for a live zombie spawned two blocks up to land.
-	private static final long SETTLE_TICKS = 14L;
+	// A stun of 100 ticks is still up 90 ticks after the lane started fighting, and is gone 210 ticks after.
+	private static final long STAGGER_WINDOW_TICKS = 90L;
+	private static final long STAGGER_SETTLE_TICKS = 210L;
 	// The landing is polled for, never asserted at a fixed tick; this is only how long to wait before the first look.
 	private static final long LANDING_GRACE_TICKS = 10L;
 	// A late landing is waited out; one that never comes fails loudly here instead of timing the test out.
@@ -108,34 +113,12 @@ public class SpellStatusGameTest {
 				controlFirstHit[0] = helper.getTick();
 			}
 		});
-		final boolean[] engaged = {false};
-		helper.onEachTick(() -> {
-			if (engaged[0] || helper.getTick() < LANDING_GRACE_TICKS) {
-				return;
-			}
-			for (Lane lane : new Lane[] {adjacent, distant, control}) {
-				if (!lane.player().isAlive()) {
-					helper.fail("a lane player died while its zombie was still landing");
-				}
-			}
-			if (helper.getTick() >= 2L * LANDING_GRACE_TICKS && helper.getTick() % 10L == 0L) {
-				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack WAIT tick={} adjacent={} distant={} control={}",
-					helper.getTick(), state(adjacent), state(distant), state(control));
-			}
-			helper.assertTrue(helper.getTick() <= LANDING_DEADLINE_TICKS,
-				"a lane zombie never landed: " + state(adjacent) + " " + state(distant) + " " + state(control));
-			if (!landed(adjacent) || !landed(distant) || !landed(control)) {
-				return;
-			}
+		afterLanding(helper, () -> {
 			SpellStatusApi.freeze(adjacent.zombie(), 200, null);
 			SpellStatusApi.freeze(distant.zombie(), 200, null);
 			helper.assertTrue(adjacent.zombie().hasEffect(SpellStatus.FROZEN), "the adjacent zombie is not Frozen");
 			helper.assertTrue(distant.zombie().hasEffect(SpellStatus.FROZEN), "the distant zombie is not Frozen");
-			long landedAt = helper.getTick();
-			engaged[0] = true;
 			engage(helper, adjacent, distant, control);
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack LANDED at={} difficulty={}",
-				landedAt, helper.getLevel().getDifficulty());
 			helper.runAfterDelay(CONTROL_WINDOW_TICKS, () -> {
 				float adjacentLost = lost(adjacent.player());
 				float distantLost = lost(distant.player());
@@ -152,7 +135,7 @@ public class SpellStatusGameTest {
 				lanesOff(helper, adjacent, distant, control);
 				helper.succeed();
 			});
-		});
+		}, adjacent, distant, control);
 	}
 
 	// Item 3.
@@ -370,27 +353,28 @@ public class SpellStatusGameTest {
 		arena(helper);
 		fightingDifficulty(helper);
 		Lane lane = lane(helper, 2, 3, 2.5);
-		helper.runAfterDelay(SETTLE_TICKS, () -> {
+		assertLanesInside(helper, lane);
+		afterLanding(helper, () -> {
 			SpellStatusApi.stagger(lane.zombie(), 100, null);
 			helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "the zombie is not Staggered");
 			engage(helper, lane);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 90L, () -> {
-			float lostWhileStaggered = lost(lane.player());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostWhileStaggered={} staggered={}", lostWhileStaggered,
-				lane.zombie().hasEffect(SpellStatus.STAGGERED));
-			helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered ended before its 100 ticks");
-			helper.assertTrue(lostWhileStaggered == 0.0F, "the Staggered zombie dealt " + lostWhileStaggered);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 210L, () -> {
-			float lostAfter = lost(lane.player());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostAfter={} staggered={}", lostAfter,
-				lane.zombie().hasEffect(SpellStatus.STAGGERED));
-			helper.assertTrue(!lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered never ended");
-			helper.assertTrue(lostAfter > 0.0F, "the zombie never attacked after Staggered ended");
-			lanesOff(helper, lane);
-			helper.succeed();
-		});
+			helper.runAfterDelay(STAGGER_WINDOW_TICKS, () -> {
+				float lostWhileStaggered = lost(lane.player());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostWhileStaggered={} staggered={}", lostWhileStaggered,
+					lane.zombie().hasEffect(SpellStatus.STAGGERED));
+				helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered ended before its 100 ticks");
+				helper.assertTrue(lostWhileStaggered == 0.0F, "the Staggered zombie dealt " + lostWhileStaggered);
+			});
+			helper.runAfterDelay(STAGGER_SETTLE_TICKS, () -> {
+				float lostAfter = lost(lane.player());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostAfter={} staggered={}", lostAfter,
+					lane.zombie().hasEffect(SpellStatus.STAGGERED));
+				helper.assertTrue(!lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered never ended");
+				helper.assertTrue(lostAfter > 0.0F, "the zombie never attacked after Staggered ended");
+				lanesOff(helper, lane);
+				helper.succeed();
+			});
+		}, lane);
 	}
 
 	// Item 10, the stun sets and clears NoAI on a mob that had it off.
@@ -527,10 +511,18 @@ public class SpellStatusGameTest {
 			difficultyBefore = helper.getLevel().getDifficulty();
 		}
 		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-		helper.runBeforeTestEnd(() -> {
-			if (--fighters == 0) {
-				helper.getLevel().getServer().setDifficulty(difficultyBefore, true);
+		// A test that succeeds stops ticking, so a restore cannot ride on a last-tick callback. The test's own
+		// completion fires whether the case passed or failed, which is where a global write belongs.
+		final MinecraftServer server = helper.getLevel().getServer();
+		final Difficulty saved = difficultyBefore;
+		SpellTestLog.onCompletion(helper, passed -> {
+			if (--fighters > 0) {
+				return;
 			}
+			server.setDifficulty(saved, true);
+			Difficulty restored = server.getLevel(net.minecraft.world.level.Level.OVERWORLD).getDifficulty();
+			LOG.info("[SPELLTEST] test=fightingDifficulty RESTORED to={} expected={} passed={}", restored, saved, passed);
+			helper.assertTrue(restored == saved, "the fighting difficulty leaked: restored " + restored + ", expected " + saved);
 		});
 	}
 
@@ -600,6 +592,47 @@ public class SpellStatusGameTest {
 	/** True once the lane's zombie has landed and its player is still a live target, so the lane can fight. */
 	private static boolean landed(final Lane lane) {
 		return lane.zombie().onGround() && lane.player().isAlive() && lane.zombie().isAlive();
+	}
+
+	/**
+	 * Runs the body once every lane zombie has landed. The landing is polled, never asserted at a fixed tick:
+	 * a falling mob is not tick-deterministic. A landing that never comes fails loudly at the deadline.
+	 */
+	private static void afterLanding(final GameTestHelper helper, final Runnable body, final Lane... lanes) {
+		final boolean[] started = {false};
+		helper.onEachTick(() -> {
+			if (started[0] || helper.getTick() < LANDING_GRACE_TICKS) {
+				return;
+			}
+			for (Lane lane : lanes) {
+				if (!lane.player().isAlive()) {
+					helper.fail("a lane player died while its zombie was still landing");
+				}
+			}
+			if (helper.getTick() >= 2L * LANDING_GRACE_TICKS && helper.getTick() % 10L == 0L) {
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=afterLanding WAIT tick={} lanes={}",
+					helper.getTick(), states(lanes));
+			}
+			helper.assertTrue(helper.getTick() <= LANDING_DEADLINE_TICKS, "a lane zombie never landed: " + states(lanes));
+			for (Lane lane : lanes) {
+				if (!landed(lane)) {
+					return;
+				}
+			}
+			started[0] = true;
+			long landedAt = helper.getTick();
+			body.run();
+			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=afterLanding LANDED at={} difficulty={}",
+				landedAt, helper.getLevel().getDifficulty());
+		});
+	}
+
+	private static String states(final Lane... lanes) {
+		List<String> seen = new ArrayList<>(lanes.length);
+		for (Lane lane : lanes) {
+			seen.add(state(lane));
+		}
+		return seen.toString();
 	}
 
 	private static void engage(final GameTestHelper helper, final Lane... lanes) {
