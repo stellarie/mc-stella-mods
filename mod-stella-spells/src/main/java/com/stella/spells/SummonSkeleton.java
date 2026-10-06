@@ -41,6 +41,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -66,7 +67,10 @@ public final class SummonSkeleton {
 	public static final String[] FRIEND_TAGS = {"mc-stella-villages.patrol", "mod-stella-mobs.friendly_patrol"};
 	/** Thirty seconds of rest between summons. */
 	public static final int COOLDOWN_TICKS = 600;
-	public static final double GUARD_RADIUS = 16.0;
+	/** How far around its master the servant seeks a foe; the screen shows this same reach. */
+	public static final double GUARD_RADIUS = 24.0;
+	/** The distance at which the servant looses an arrow; vanilla's bow gives up at fifteen. */
+	public static final double RANGED_ATTACK_RANGE = GUARD_RADIUS;
 	public static final double FOLLOW_DISTANCE = 6.0;
 	public static final double TELEPORT_DISTANCE = 24.0;
 	public static final double LOOT_REACH = 1.5;
@@ -222,6 +226,8 @@ public final class SummonSkeleton {
 		skeleton.addTag(NO_SPAWN_ROLL_TAG);
 		skeleton.setPersistenceRequired();
 		skeleton.setCanPickUpLoot(false);
+		// The servant reaches as far as it seeks, so a foe it takes is a foe it can fight.
+		skeleton.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(GUARD_RADIUS);
 		servantGrow(skeleton);
 		skeleton.setCustomName(Component.literal(caster.getScoreboardName() + "'s Skeleton"));
 		skeleton.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
@@ -325,6 +331,14 @@ public final class SummonSkeleton {
 	/** The mode this master chose: search the ground around it, or mirror its own target. */
 	public static Mode targetMode(final ServerPlayer caster) {
 		return MODES.getOrDefault(caster.getUUID(), Mode.SEARCH);
+	}
+
+	/**
+	 * The reach the screen tells the player about. It is read from the one constant the search uses, so
+	 * the number a player reads and the number the servant seeks with cannot drift apart.
+	 */
+	public static int screenReach() {
+		return (int) GUARD_RADIUS;
 	}
 
 	/** Sets the mode, and drops a target the new mode no longer covers. */
@@ -685,10 +699,21 @@ public final class SummonSkeleton {
 		targets.removeAllGoals(goal -> true);
 		targets.addGoal(1, new AnswerBlowGoal(skeleton));
 		targets.addGoal(2, new GuardGoal(skeleton));
+		widenBowRange(skeleton);
 		skeleton.getGoalSelector().addGoal(2, new FollowGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(3, new TrotGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new PackCasterGoal(skeleton));
+	}
+
+	/** Swaps vanilla's fifteen-block bow goal for one that looses at the servant's own reach. */
+	private static void widenBowRange(final Skeleton skeleton) {
+		for (var wrapped : List.copyOf(skeleton.getGoalSelector().getAvailableGoals())) {
+			if (wrapped.getGoal() instanceof RangedBowAttackGoal<?>) {
+				skeleton.getGoalSelector().removeGoal(wrapped.getGoal());
+			}
+		}
+		skeleton.getGoalSelector().addGoal(2, new RangedBowAttackGoal<>(skeleton, 1.0, 20, (float) RANGED_ATTACK_RANGE));
 	}
 
 	/** Casts combat and support books from the servant's pack without consuming them. */
@@ -818,8 +843,15 @@ public final class SummonSkeleton {
 				return false;
 			}
 			ServerPlayer master = owner(this.skeleton);
-			return master != null && master.level() == this.skeleton.level()
-				&& this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
+			if (master == null || master.level() != this.skeleton.level()) {
+				return false;
+			}
+			// Walking home would break the servant off a foe it is still fighting, so it waits its turn.
+			LivingEntity quarry = this.skeleton.getTarget();
+			if (quarry != null && quarry.isAlive() && this.skeleton.distanceToSqr(quarry) <= GUARD_RADIUS * GUARD_RADIUS) {
+				return false;
+			}
+			return this.skeleton.distanceToSqr(master) > FOLLOW_DISTANCE * FOLLOW_DISTANCE;
 		}
 
 		@Override
