@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "M M",
+    " B ",
+    "M M"
+  ],
+  "key": {
+    "M": "minecraft:tripwire_hook",
+    "B": "minecraft:book"
+  },
+  "result": {
+    "id": "mod-stella-spells:counter_stance",
+    "count": 1
+  }
+}

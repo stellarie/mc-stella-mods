@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:breeze_rod"
+  ],
+  "result": {
+    "id": "mod-stella-spells:whirlwind_scroll",
+    "count": 2
+  }
+}

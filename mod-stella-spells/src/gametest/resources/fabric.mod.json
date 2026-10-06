@@ -49,7 +49,9 @@
 			"com.stella.spells.SummonSightGameTest",
 			"com.stella.spells.SummonReachGameTest",
 			"com.stella.spells.HostileFoeGameTest",
-			"com.stella.spells.SummonServantPlusGameTest"
+			"com.stella.spells.SummonServantPlusGameTest",
+			"com.stella.spells.SkillSchoolGameTest",
+			"com.stella.spells.FighterBooksGameTest"
 		]
 	},
 	"depends": {
