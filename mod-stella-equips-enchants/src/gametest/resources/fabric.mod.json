@@ -11,6 +11,7 @@
 		"fabric-gametest": [
 			"com.stella.equips.AnvilCostGameTest",
 			"com.stella.equips.ReadoutThreatGameTest",
+			"com.stella.equips.ReadoutServantLevelGameTest",
 			"com.stella.equips.BookLootGameTest",
 			"com.stella.equips.BookLootProbeGameTest",
 			"com.stella.equips.ChestLootGameTest",
