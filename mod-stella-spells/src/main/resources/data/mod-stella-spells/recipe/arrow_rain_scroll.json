@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:dispenser"
+	],
+	"result": {
+		"id": "mod-stella-spells:arrow_rain_scroll",
+		"count": 2
+	}
+}

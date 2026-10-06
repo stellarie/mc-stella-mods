@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/piercing_shot_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 7148392
+			}
+		]
+	}
+}

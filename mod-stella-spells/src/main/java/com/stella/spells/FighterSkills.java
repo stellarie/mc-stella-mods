@@ -585,52 +585,19 @@ public final class FighterSkills {
 		return offset.lengthSqr() <= wake * wake && offset.normalize().dot(forward.normalize()) > 0.0;
 	}
 
-	/**
-	 * Every ally within this reach: other players, vanilla golems, and anything the mods mark a friend.
-	 * A foe is never an ally, so a golem another mod marks hostile is left out even though it is a golem.
-	 */
+	/** Every ally within this reach, nearest first; {@link SkillTargeting#isAlly} owns the rule. */
 	static List<LivingEntity> alliesAround(final ServerPlayer caster, final double range) {
-		List<LivingEntity> allies = new ArrayList<>(caster.level().getEntitiesOfClass(
-			LivingEntity.class,
-			caster.getBoundingBox().inflate(range),
-			candidate -> candidate != caster && candidate.isAlive() && !Friends.isFoe(candidate)
-				&& (candidate instanceof Player || candidate instanceof AbstractGolem || Friends.isFriend(candidate))
-				&& candidate.position().distanceToSqr(caster.position()) <= range * range
-		));
-		allies.sort(Comparator.comparingDouble(ally -> ally.position().distanceToSqr(caster.position())));
-		return allies;
+		return SkillTargeting.alliesAround(caster, range);
 	}
 
 	/** The nearest foe a caster looks at within this reach, or null. */
 	static @Nullable Mob rayFoe(final ServerPlayer caster, final Vec3 direction, final double range) {
-		ServerLevel level = (ServerLevel) caster.level();
-		Vec3 start = caster.getEyePosition();
-		Vec3 end = start.add(direction.scale(range));
-		BlockHitResult blockHit = level.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, caster));
-		double reach = blockHit.getType() == HitResult.Type.MISS ? range : start.distanceTo(blockHit.getLocation());
-		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
-			caster, start, end, caster.getBoundingBox().expandTowards(direction.scale(range)).inflate(1.0),
-			candidate -> candidate instanceof Mob mob && mob.isAlive() && Friends.isFoe(mob), reach * reach
-		);
-		return entityHit != null && entityHit.getEntity() instanceof Mob mob ? mob : null;
+		return SkillTargeting.rayFoe(caster, direction, range);
 	}
 
 	/** Every foe on a ray, nearest first. */
 	static List<Mob> rayFoes(final ServerPlayer caster, final Vec3 direction, final double range) {
-		Vec3 start = caster.getEyePosition();
-		Vec3 end = start.add(direction.scale(range));
-		List<Mob> crossed = new ArrayList<>();
-		for (Mob foe : caster.level().getEntitiesOfClass(
-			Mob.class,
-			caster.getBoundingBox().expandTowards(direction.scale(range)).inflate(1.0),
-			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
-		)) {
-			if (foe.getBoundingBox().inflate(foe.getPickRadius()).clip(start, end).isPresent()) {
-				crossed.add(foe);
-			}
-		}
-		crossed.sort(Comparator.comparingDouble(foe -> foe.position().distanceToSqr(caster.position())));
-		return crossed;
+		return SkillTargeting.rayFoes(caster, direction, range);
 	}
 
 	/** The item a fighter swings, for a tooltip and for the report; empty when nothing is equipped. */

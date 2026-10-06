@@ -17,7 +17,17 @@ public final class SkillbookCatalog {
 		definition("war_cry", Items.NOTE_BLOCK, 400, 16_851_253, TargetMode.SELF, FighterSkills::applyWarCry),
 		definition("counter_stance", Items.TRIPWIRE_HOOK, 200, 15_102_646, TargetMode.SELF, FighterSkills::applyCounterStance),
 		definition("iron_skin", Items.RAW_IRON, 600, 9_530_554, TargetMode.SELF, FighterSkills::applyIronSkin),
-		definition("earthsplitter", Items.TUFF, 240, 9_137_998, TargetMode.SELF, FighterSkills::applyEarthsplitter)
+		definition("earthsplitter", Items.TUFF, 240, 9_137_998, TargetMode.SELF, FighterSkills::applyEarthsplitter),
+		definition("multishot", Items.ARROW, 100, 12_073_291, TargetMode.SELF, ArcherSkills::applyMultishot, School.ARCHER),
+		definition("piercing_shot", Items.SPECTRAL_ARROW, 160, 7_148_392, TargetMode.SELF, ArcherSkills::applyPiercingShot, School.ARCHER),
+		definition("arrow_rain", Items.DISPENSER, 300, 3_986_402, TargetMode.BLOCK, ArcherSkills::applyArrowRain, School.ARCHER),
+		definition("rapid_fire", Items.STRING, 300, 15_750_933, TargetMode.HOSTILE, ArcherSkills::applyRapidFire, School.ARCHER),
+		definition("hunters_mark", Items.TARGET, 200, 8_619_217, TargetMode.HOSTILE, ArcherSkills::applyHuntersMark, School.ARCHER),
+		definition("explosive_arrow", Items.TNT, 240, 1_428_765, TargetMode.HOSTILE, ArcherSkills::applyExplosiveArrow, School.ARCHER),
+		definition("disengage", Items.RABBIT_HIDE, 160, 10_409_338, TargetMode.SELF, ArcherSkills::applyDisengage, School.ARCHER),
+		definition("snare_trap", Items.COBWEB, 200, 5_372_846, TargetMode.BLOCK, ArcherSkills::applySnareTrap, School.ARCHER),
+		definition("eagle_eye", Items.SPYGLASS, 600, 13_964_170, TargetMode.SELF, ArcherSkills::applyEagleEye, School.ARCHER),
+		definition("elemental_quiver", Items.BOW, 400, 2_935_071, TargetMode.SELF, ArcherSkills::applyElementalQuiver, School.ARCHER)
 	);
 
 	private SkillbookCatalog() {
@@ -27,6 +37,13 @@ public final class SkillbookCatalog {
 		final String path, final Item ingredient, final int cooldown, final int tint,
 		final TargetMode targetMode, final SpellEffect effect
 	) {
-		return SpellbookCatalog.definition(path, ingredient, cooldown, tint, targetMode, effect, School.FIGHTER);
+		return definition(path, ingredient, cooldown, tint, targetMode, effect, School.FIGHTER);
+	}
+
+	private static SpellDefinition definition(
+		final String path, final Item ingredient, final int cooldown, final int tint,
+		final TargetMode targetMode, final SpellEffect effect, final School school
+	) {
+		return SpellbookCatalog.definition(path, ingredient, cooldown, tint, targetMode, effect, school);
 	}
 }

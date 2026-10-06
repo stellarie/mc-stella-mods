@@ -90,7 +90,7 @@ public final class SpellVisuals {
 		visual("tidal_push", ParticleTypes.SPLASH, ParticleTypes.BUBBLE_POP, 0.0),
 		visual("owls_gaze", ParticleTypes.ENCHANT, ParticleTypes.GLOW, 0.0),
 		visual("slimebound", ParticleTypes.ITEM_SLIME, ParticleTypes.CLOUD, 0.0),
-		areaVisual("chainstorm", ParticleTypes.FIREWORK, ParticleTypes.ELECTRIC_SPARK, SpellStorms.RADIUS, 0xF5DC65),
+		areaVisual("chainstorm", chainstormSparks(), ParticleTypes.ELECTRIC_SPARK, SpellStorms.RADIUS, 0xF5DC65),
 		visual("riftwalk", ParticleTypes.PORTAL, ParticleTypes.REVERSE_PORTAL, 0.0),
 		visual("phoenix_mantle", ParticleTypes.LAVA, ParticleTypes.SMALL_FLAME, 0.0),
 		visual("life_bloom", ParticleTypes.CHERRY_LEAVES, ParticleTypes.HEART, 0.0),
@@ -131,7 +131,17 @@ public final class SpellVisuals {
 		areaVisual("war_cry", ParticleTypes.CAMPFIRE_SIGNAL_SMOKE, ParticleTypes.ANGRY_VILLAGER, FighterSkills.WAR_CRY_RADIUS, 0xB33A3A),
 		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
 		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
-		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A)
+		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A),
+		visual("multishot", ParticleTypes.FIREWORK, ParticleTypes.ENCHANTED_HIT, 0.0),
+		visual("piercing_shot", new DustParticleOptions(0x3E8E41, 1.0F), ParticleTypes.CRIT, 0.0),
+		areaVisual("arrow_rain", ParticleTypes.FALLING_OBSIDIAN_TEAR, ParticleTypes.CRIT, SpellNumbers.ARROW_RAIN.radius(), 0x3E8E41),
+		visual("rapid_fire", ParticleTypes.SCULK_CHARGE_POP, ParticleTypes.SMOKE, 0.0),
+		visual("hunters_mark", ParticleTypes.DUST_PLUME, ParticleTypes.GLOW, 0.0),
+		areaVisual("explosive_arrow", ParticleTypes.EXPLOSION, ParticleTypes.FLAME, SpellNumbers.EXPLOSIVE_ARROW.radius(), 0xE0303A),
+		areaVisual("disengage", ParticleTypes.GUST, ParticleTypes.CLOUD, SpellNumbers.DISENGAGE.radius(), 0x3E8E41),
+		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.CRIT, 0.0),
+		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
+		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),
@@ -163,7 +173,14 @@ public final class SpellVisuals {
 		heldColor("shield_bash", 0x8C8C99),
 		heldColor("execute", 0x8E1F1F),
 		heldColor("counter_stance", 0xA8B4C8),
-		heldColor("iron_skin", 0xBBBFC9)
+		heldColor("iron_skin", 0xBBBFC9),
+		heldColor("multishot", 0x3E8E41),
+		heldColor("hunters_mark", 0xE0303A),
+		heldColor("eagle_eye", 0x6FB34A),
+		heldColor("elemental_quiver", 0xC8A24B),
+		heldColor("piercing_shot", 0x3E8E41),
+		heldColor("rapid_fire", 0x3E8E41),
+		heldColor("snare_trap", 0x3E8E41)
 	);
 
 	static void register() {
@@ -548,6 +565,10 @@ public final class SpellVisuals {
 			new Visual(primary, secondary, ringRadius, null, motifFor(path)));
 	}
 
+	private static ParticleOptions chainstormSparks() {
+		return new DustParticleOptions(0xF5DC65, 1.0F);
+	}
+
 	private static Map.Entry<Identifier, Visual> areaVisual(
 		final String path, final ParticleOptions primary, final ParticleOptions secondary,
 		final double radius, final int elementColor
@@ -590,6 +611,11 @@ public final class SpellVisuals {
 			case "war_cry" -> Motif.SIGIL;
 			case "counter_stance" -> Motif.SHIELD;
 			case "iron_skin" -> Motif.WARD;
+			case "multishot", "piercing_shot", "rapid_fire", "explosive_arrow", "eagle_eye" -> Motif.DART;
+			case "hunters_mark", "snare_trap" -> Motif.SIGIL;
+			case "arrow_rain" -> Motif.FALLING;
+			case "disengage" -> Motif.WIND;
+			case "elemental_quiver" -> Motif.NOTES;
 			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
 		};
 	}

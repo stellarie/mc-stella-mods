@@ -41,6 +41,31 @@ public class SkillSchoolGameTest {
 		"cleave", "leap_slam", "whirlwind", "shield_bash", "charge", "execute", "war_cry", "counter_stance",
 		"iron_skin", "earthsplitter"
 	);
+	/** The archer books: DEX, a ray, and never an arrow entity. */
+	static final Set<String> ARCHER_IDS = Set.of(
+		"multishot", "piercing_shot", "arrow_rain", "rapid_fire", "hunters_mark", "explosive_arrow",
+		"disengage", "snare_trap", "eagle_eye", "elemental_quiver"
+	);
+	/** The priest books: VIT, healing and holy damage. */
+	static final Set<String> PRIEST_IDS = Set.of(
+		"holy_light", "prayer_of_mending", "renew", "divine_shield", "holy_arms", "blessing_of_fortitude",
+		"smite", "resurrection_ward", "consecrate", "guardian_angel"
+	);
+
+	/** The school a skill book belongs to, read from the one table each id sits in. */
+	static School schoolOf(final String path) {
+		if (FIGHTER_IDS.contains(path)) {
+			return School.FIGHTER;
+		}
+		if (ARCHER_IDS.contains(path)) {
+			return School.ARCHER;
+		}
+		if (PRIEST_IDS.contains(path)) {
+			return School.PRIEST;
+		}
+		return School.MAGE;
+	}
+
 	/** What a stub reports for a stat key; the test sets the coefficients, so a change is visible. */
 	static final double STRENGTH_COEFFICIENT = 1.0;
 	static final double INTELLIGENCE_COEFFICIENT = 0.0;
@@ -52,7 +77,7 @@ public class SkillSchoolGameTest {
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
 			counts.merge(definition.school(), 1, Integer::sum);
 			String path = definition.id().getPath();
-			School expected = FIGHTER_IDS.contains(path) ? School.FIGHTER : School.MAGE;
+			School expected = schoolOf(path);
 			if (definition.school() != expected) {
 				wrong.add(path + "=" + definition.school());
 			}
@@ -62,8 +87,12 @@ public class SkillSchoolGameTest {
 		helper.assertTrue(wrong.isEmpty(), "these books carry the wrong school: " + wrong);
 		helper.assertTrue(counts.getOrDefault(School.MAGE, 0) == SpellbookCatalog.MAGE_DEFINITIONS.size(),
 			"the mage books number " + counts.getOrDefault(School.MAGE, 0) + ", not " + SpellbookCatalog.MAGE_DEFINITIONS.size());
-		helper.assertTrue(counts.getOrDefault(School.FIGHTER, 0) == FIGHTER_IDS.size(),
-			"the fighter books number " + counts.getOrDefault(School.FIGHTER, 0) + ", not " + FIGHTER_IDS.size());
+		for (School school : List.of(School.FIGHTER, School.ARCHER)) {
+			int declared = SkillbookCatalog.DEFINITIONS.stream().filter(book -> book.school() == school).toList().size();
+			helper.assertTrue(declared > 0, "no book of school " + school + " ships at all");
+			helper.assertTrue(counts.getOrDefault(school, 0) == declared,
+				"the " + school + " books number " + counts.getOrDefault(school, 0) + ", not " + declared);
+		}
 		helper.succeed();
 	}
 

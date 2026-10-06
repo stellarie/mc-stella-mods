@@ -52,6 +52,9 @@ def glyph(*rows: str) -> tuple[str, ...]:
     return tuple(rows)
 
 
+SKILL_ROW = re.compile(r'Skill\("([a-z0-9_]+)"')
+
+
 BOOKS = (
     Book("spark_shot", "Spark Shot", "lightning", "#f5d35e", glyph("..#....", ".##....", "..#....", ".###...", "...#...", "..##...", "...#..."), 1),
     Book("frostbind", "Frostbind", "frost", "#74d7ff", glyph("..#....", ".###...", "..#....", "#######", "..#....", ".###...", "..#...."), 2),
@@ -97,6 +100,25 @@ BOOKS = (
     Book("summon_skeleton", "Summon Skeleton", "summoning", "#a9bed8", glyph(".#####.", "##...##", "#.#.#.#", "#.....#", "#.###.#", ".#.#.#.", "..###.."), 42),
 )
 
+# The skill books: sixteen-pixel art from skillbook-icons.py, and every mage-only table stays out of here,
+# so a generator pass can never overwrite a drawn skill texture with a seven-pixel plate.
+SKILL_BOOKS = (
+    Book("multishot", "Multishot", "archery", "#3e8e41", glyph("...#...", "...##..", "..###..", ".####..", "..###..", "...##..", "...#..."), 43),
+    Book("piercing_shot", "Piercing Shot", "archery", "#3e8e41", glyph("#......", ".#.....", "..#####", "...#...", "..#....", ".#.....", "#......"), 44),
+    Book("arrow_rain", "Arrow Rain", "archery", "#3e8e41", glyph(".#####.", "#.....#", ".#####.", "..#.#..", ".#...#.", "..#.#..", ".#...#."), 45),
+    Book("rapid_fire", "Rapid Fire", "archery", "#3e8e41", glyph("..#....", ".##....", "..#....", "...#...", "..##...", "...#...", "....#.."), 46),
+    Book("hunters_mark", "Hunter's Mark", "archery", "#e0303a", glyph("..###..", ".#...#.", "#..#..#", "#.#.#.#", "#..#..#", ".#...#.", "..###.."), 47),
+    Book("explosive_arrow", "Explosive Arrow", "archery", "#e0303a", glyph("...#...", ".#.#.#.", "..###..", "##.#.##", "..###..", ".#.#.#.", "...#..."), 48),
+    Book("disengage", "Disengage", "archery", "#3e8e41", glyph("...###.", "..#....", ".#.....", "#......", ".#.....", "..#....", "...###."), 49),
+    Book("snare_trap", "Snare Trap", "archery", "#3e8e41", glyph("#.....#", ".#...#.", "..###..", "..###..", ".#...#.", "#.....#", "..###.."), 50),
+    Book("eagle_eye", "Eagle Eye", "archery", "#6fb34a", glyph(".#####.", "#.....#", "#.###.#", "##.#.##", "#.###.#", "#.....#", ".#####."), 51),
+    Book("elemental_quiver", "Elemental Quiver", "archery", "#c8a24b", glyph(".#...#.", "#####..", ".#...#.", ".#...#.", "#.....#", "#.....#", "#####.."), 52),
+)
+
+# Every book of the catalogue: the seven-pixel mage plates and the drawn skill art together. This one list
+# drives the models, the item definitions and the awakened pass, so a new book needs one row and no more.
+ALL_BOOKS = BOOKS + SKILL_BOOKS
+
 
 def parse_catalog(root: Path) -> list[str]:
     """Every book path in registration order: the mage catalogue, then the skill catalogue."""
@@ -109,9 +131,10 @@ def parse_catalog(root: Path) -> list[str]:
 
 def parse_skill_icons(root: Path) -> list[str]:
     """Every skill book path skillbook-icons.py draws. That script owns the 16x16 skill art; this one owns
-    the 7x7 mage plates, so the audit reads both tables rather than keeping a second copy of either."""
+    the 7x7 mage plates, so the audit reads both tables rather than keeping a second copy of either. Every
+    ``Skill`` row counts, whatever tuple it sits in, so a new school's own tuple is still read."""
     source = (root / SKILL_ICON_SOURCE).read_text(encoding="utf-8")
-    return re.findall(r'Skill\("([a-z0-9_]+)"', source)
+    return SKILL_ROW.findall(source)
 
 
 def shade(color: str, factor: float) -> tuple[int, int, int]:
@@ -188,7 +211,7 @@ def write_awakened(root: Path) -> None:
     texture_root = root / TEXTURE_ROOT
     model_root = root / MODEL_ROOT
     item_root = root / ITEM_ROOT
-    for book in BOOKS:
+    for book in ALL_BOOKS:
         with Image.open(texture_root / f"{book.path}.png") as source:
             draw_awakened(source).save(
                 texture_root / f"{book.path}_awakened.png", format="PNG", optimize=False, compress_level=9
@@ -208,7 +231,7 @@ def write_awakened(root: Path) -> None:
 
 def check_awakened(root: Path) -> list[str]:
     errors: list[str] = []
-    for book in BOOKS:
+    for book in ALL_BOOKS:
         texture = root / TEXTURE_ROOT / f"{book.path}_awakened.png"
         model = root / MODEL_ROOT / f"{book.path}_awakened.json"
         item = root / ITEM_ROOT / f"{book.path}.json"
@@ -232,14 +255,14 @@ def check_awakened(root: Path) -> list[str]:
             fallback = json.loads(item.read_text(encoding="utf-8")).get("model", {}).get("fallback", {})
             if fallback != awakened_fallback(book):
                 errors.append(f"item definition has no awakened condition case: {item}")
-    print(f"awakened books={len(BOOKS)} errors={len(errors)}")
+    print(f"awakened books={len(ALL_BOOKS)} errors={len(errors)}")
     return errors
 
 
 def write_models(root: Path) -> None:
     model_root = root / MODEL_ROOT
     model_root.mkdir(parents=True, exist_ok=True)
-    for book in BOOKS:
+    for book in ALL_BOOKS:
         model = {
             "parent": "minecraft:item/generated",
             "textures": {"layer0": f"{MOD_ID}:item/{book.path}"},
@@ -251,7 +274,7 @@ def write_models(root: Path) -> None:
 
 def write_items(root: Path) -> None:
     item_root = root / ITEM_ROOT
-    for book in BOOKS:
+    for book in ALL_BOOKS:
         path = item_root / f"{book.path}.json"
         definition = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(definition.get("model"), dict):
@@ -385,13 +408,13 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
         else:
             with zipfile.ZipFile(jar_path) as archive:
                 entries = set(archive.namelist())
-                for book in BOOKS:
+                for book in ALL_BOOKS:
                     for kind in ("items", "models/item", "textures/item"):
                         entry = expected_jar_entry(book, kind)
                         if entry not in entries:
                             errors.append(f"missing jar entry: {entry}")
 
-    print(f"catalog={len(catalog)} books={len(BOOKS)} textures={len(hashes)} errors={len(errors)}")
+    print(f"catalog={len(catalog)} books={len(ALL_BOOKS)} textures={len(hashes)} errors={len(errors)}")
     return errors
 
 
@@ -456,10 +479,10 @@ def main() -> int:
     try:
         if args.generate:
             generate(root)
-            print(f"generated {len(BOOKS)} book models, item definitions, and textures")
+            print(f"generated {len(ALL_BOOKS)} book models, item definitions, and textures")
         if args.write_awakened:
             write_awakened(root)
-            print(f"wrote {len(BOOKS)} awakened textures, models, and item condition cases")
+            print(f"wrote {len(ALL_BOOKS)} awakened textures, models, and item condition cases")
         if args.contact_sheet_awakened is not None:
             destination = args.contact_sheet_awakened if args.contact_sheet_awakened.is_absolute() else root / args.contact_sheet_awakened
             contact_sheet_awakened(root, destination)

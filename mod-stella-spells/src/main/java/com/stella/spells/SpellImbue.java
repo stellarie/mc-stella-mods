@@ -106,7 +106,7 @@ public final class SpellImbue {
 		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("blinding_flash"), id("ember_brand")
 	);
 	/** Spells no weapon takes: Tide Lungs is a breath held underwater, not a blow. */
-	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"), id("summon_skeleton"));
+	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(id("tide_lungs"), id("summon_skeleton"), id("elemental_quiver"));
 	/** Arrows imbued for one price. */
 	public static final int ARROWS_PER_PRICE = 16;
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {

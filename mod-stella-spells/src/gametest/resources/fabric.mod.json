@@ -51,7 +51,8 @@
 			"com.stella.spells.HostileFoeGameTest",
 			"com.stella.spells.SummonServantPlusGameTest",
 			"com.stella.spells.SkillSchoolGameTest",
-			"com.stella.spells.FighterBooksGameTest"
+			"com.stella.spells.FighterBooksGameTest",
+			"com.stella.spells.ArcherBooksGameTest"
 		]
 	},
 	"depends": {

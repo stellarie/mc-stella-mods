@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:rabbit_hide"
+	],
+	"result": {
+		"id": "mod-stella-spells:disengage_scroll",
+		"count": 2
+	}
+}

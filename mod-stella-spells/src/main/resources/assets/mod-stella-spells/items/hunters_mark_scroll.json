@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/hunters_mark_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 8619217
+			}
+		]
+	}
+}
