@@ -60,6 +60,8 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> STAGGERED = register("staggered", new Stun(0xE8C547, "staggered"));
 	public static final Holder<MobEffect> ARCANE_WARD = register("arcane_ward", new Ward());
 	public static final Holder<MobEffect> BLEEDING = register("bleeding", new Bleeding());
+	/** The archer's own eye: a mark that its skill hits are worth more, read by {@link ArcherSkills#hit}. */
+	public static final Holder<MobEffect> EAGLE_EYE = register("eagle_eye", new Status(MobEffectCategory.BENEFICIAL, 0x6FB34A));
 
 	/** Who made a mob bleed, so the damage can credit them. Weak, and gone with the effect or the mob. */
 	private static final Map<LivingEntity, UUID> BLEED_SOURCES = Collections.synchronizedMap(new WeakHashMap<>());

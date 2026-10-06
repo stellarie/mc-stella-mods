@@ -52,6 +52,16 @@
 		"mod-stella-spells:war_cry",
 		"mod-stella-spells:counter_stance",
 		"mod-stella-spells:iron_skin",
-		"mod-stella-spells:earthsplitter"
+		"mod-stella-spells:earthsplitter",
+		"mod-stella-spells:multishot",
+		"mod-stella-spells:piercing_shot",
+		"mod-stella-spells:arrow_rain",
+		"mod-stella-spells:rapid_fire",
+		"mod-stella-spells:hunters_mark",
+		"mod-stella-spells:explosive_arrow",
+		"mod-stella-spells:disengage",
+		"mod-stella-spells:snare_trap",
+		"mod-stella-spells:eagle_eye",
+		"mod-stella-spells:elemental_quiver"
 	]
 }

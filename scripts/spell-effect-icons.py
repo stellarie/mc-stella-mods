@@ -41,6 +41,7 @@ COLORS = {
     "staggered": 0xE8C547,
     "arcane_ward": 0x9C6BFF,
     "bleeding": 0x9E1B1B,
+    "eagle_eye": 0x6FB34A,
 }
 
 
@@ -146,6 +147,17 @@ def drops(d: ImageDraw.ImageDraw, c) -> None:
     drop(8, 8)
 
 
+def eye(d: ImageDraw.ImageDraw, c) -> None:
+    d.polygon([(8, 3), (14, 7), (8, 12), (2, 7)], fill=c)
+    d.polygon([(8, 4), (12, 7), (8, 11), (4, 7)], fill=shade(c))
+    d.ellipse([6, 5, 10, 10], fill=(0x1A, 0x24, 0x14, 255))
+    d.point((8, 7), fill=light(c))
+    d.point((7, 6), fill=(255, 255, 255, 255))
+    # A feather beside the eye, so the mark reads as an archer's and not as a plain eye.
+    d.line([(1, 1), (4, 4)], fill=light(c))
+    d.line([(2, 0), (5, 3)], fill=c)
+
+
 PAINTERS = {
     "chilled": snowflake,
     "frozen": ice_cube,
@@ -156,6 +168,7 @@ PAINTERS = {
     "staggered": star_ring,
     "arcane_ward": shield,
     "bleeding": drops,
+    "eagle_eye": eye,
 }
 
 
