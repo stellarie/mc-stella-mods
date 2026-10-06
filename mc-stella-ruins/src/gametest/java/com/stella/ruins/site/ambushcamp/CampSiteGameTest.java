@@ -47,16 +47,17 @@ public class CampSiteGameTest {
 		ResourceKey<Structure> key = ResourceKey.create(Registries.STRUCTURE, StellaRuins.id("ambush_camp"));
 		Holder<Structure> structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(key);
 		helper.assertTrue(structure.value() instanceof RuinStructure ruin && ruin.site().equals("ambush_camp"), "the structure does not name the site");
-		ResourceKey<StructureSet> setKey = ResourceKey.create(Registries.STRUCTURE_SET, StellaRuins.id("ambush_camp"));
-		StructureSet set = level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).getOrThrow(setKey).value();
+		StructureSet set = com.stella.ruins.world.RuinSitePlanGameTest.sites(level);
+		helper.assertTrue(set != null, "no sites structure set");
 		RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, level.registryAccess());
 		JsonObject placement = StructurePlacement.CODEC.encodeStart(ops, set.placement()).getOrThrow().getAsJsonObject();
 		CampTestSupport.result("structureSet", placement.toString());
-		helper.assertTrue(placement.get("spacing").getAsInt() == 34 && placement.get("separation").getAsInt() == 12, "spread " + placement);
+		helper.assertTrue(placement.get("spacing").getAsInt() == 12 && placement.get("separation").getAsInt() == 9, "spread " + placement);
 		helper.assertTrue(placement.get("salt").getAsInt() == 702913845, "salt " + placement.get("salt"));
 		JsonObject zone = placement.getAsJsonObject("exclusion_zone");
-		helper.assertTrue("minecraft:villages".equals(zone.get("other_set").getAsString()) && zone.get("chunk_count").getAsInt() >= 8, "exclusion " + zone);
-		helper.assertTrue(set.structures().size() == 1 && set.structures().getFirst().structure().value() == structure.value(), "the set holds another structure");
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.excludesVillages(placement), "exclusion " + placement);
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.theSitesSetHolds(level, "ambush_camp"), "the one ruin set does not hold ambush_camp");
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.theSitesSetHolds(level, "ambush_camp"), "the one ruin set does not hold ambush_camp");
 		helper.succeed();
 	}
 

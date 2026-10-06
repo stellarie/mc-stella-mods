@@ -182,6 +182,64 @@ public class CraterMobsGameTest {
 		});
 	}
 
+	/**
+	 * Item 1. A star golem carries the published foe mark, and the mark follows the kind's own flag, so a kind that
+	 * does not opt in carries nothing.
+	 */
+	@GameTest(maxTicks = TICKS)
+	public void aStarGolemCarriesThePublishedHostileMarkAndTheSlimeDoesNot(final GameTestHelper helper) {
+		CraterTestSupport.inArena(helper, SEED, arena -> {
+			Mob golem = CraterMobs.STAR_GOLEM.spawn(arena.level(), spot(arena.markers(CraterMarkers.GOLEM).get(0)));
+			golem.setNoAi(true);
+			Mob slime = CraterMobs.EMBER_SLIME.spawn(arena.level(), spot(arena.markers(CraterMarkers.SLIME).get(0)));
+			slime.setNoAi(true);
+			helper.assertTrue(CraterMobs.STAR_GOLEM.hostile(), "the star golem kind is not marked hostile");
+			helper.assertTrue(golem.entityTags().contains(RuinMobKind.TAG_HOSTILE), "the golem tags are " + golem.entityTags());
+			helper.assertTrue("mod-stella-ruins.hostile".equals(RuinMobKind.TAG_HOSTILE), "the published mark is " + RuinMobKind.TAG_HOSTILE);
+			helper.assertTrue(!slime.entityTags().contains(RuinMobKind.TAG_HOSTILE), "a kind that did not opt in carries the mark: " + slime.entityTags());
+			helper.assertTrue(!CraterMobs.EMBER_SLIME.hostile(), "the ember slime kind is marked hostile");
+			CraterTestSupport.result("hostileMark", "golemTags=" + golem.entityTags().size() + " mark=" + RuinMobKind.TAG_HOSTILE + " slimeMarked=" + slime.entityTags().contains(RuinMobKind.TAG_HOSTILE));
+			golem.discard();
+			slime.discard();
+		});
+	}
+
+	/**
+	 * Item 1, the fight. A golem beside a player turns on that player, and its own blow takes health. The mark alone
+	 * is not hostile: the golem must land a hit. The strike window is driven through the golem's own tick count,
+	 * because an entity in a test arena does not advance it.
+	 */
+	@GameTest(maxTicks = TICKS)
+	public void aGolemBesideAPlayerTurnsOnItAndItsBlowTakesHealth(final GameTestHelper helper) {
+		CraterTestSupport.inArena(helper, SEED, arena -> {
+			ServerLevel level = arena.level();
+			ServerPlayer player = arena.join(arena.standAt());
+			CraterTestSupport.vulnerable(player);
+			player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1024.0);
+			player.setHealth(1024.0F);
+			Mob golem = CraterMobs.STAR_GOLEM.spawn(level, arena.standAt().add(2.0, 0.0, 0.0));
+			boolean targets = false;
+			boolean marked = false;
+			for (int tick = 0; tick <= CraterMobs.STRIKE_TICKS && !marked; tick++) {
+				golem.tickCount = tick;
+				CraterMobs.STAR_GOLEM.ability().tick(golem, level);
+				targets |= golem.getTarget() == player;
+				marked = CraterMobs.StarStrike.pending(golem) != null;
+			}
+			float before = player.getHealth();
+			player.damageCooldownTime = 0;
+			boolean landed = golem.doHurtTarget(level, player);
+			float lost = before - player.getHealth();
+			CraterTestSupport.result("hostileFight", "targeted=" + targets + " marked=" + marked + " landed=" + landed + " healthLost=" + lost
+				+ " health=" + player.getHealth() + "/" + player.getMaxHealth());
+			helper.assertTrue(targets, "the golem beside the player targets " + golem.getTarget());
+			helper.assertTrue(marked, "the golem never marked its strike at the player");
+			helper.assertTrue(landed && lost > 0.0F, "the golem's blow landed=" + landed + " and took " + lost + " health");
+			helper.assertTrue(player.isAlive(), "the subject player died, so the health reading proves nothing");
+			golem.discard();
+		});
+	}
+
 	private static List<ItemStack> roll(final ServerLevel level, final ResourceKey<LootTable> key, final long seed) {
 		LootTable table = level.getServer().reloadableRegistries().getLootTable(key);
 		Mob mob = EntityTypes.IRON_GOLEM.create(level, EntitySpawnReason.COMMAND);

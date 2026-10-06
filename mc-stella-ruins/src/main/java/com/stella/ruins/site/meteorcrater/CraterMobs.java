@@ -63,6 +63,7 @@ public final class CraterMobs {
 			.scale(GOLEM_SCALE)
 			.effect(MobEffects.GLOWING, 0)
 			.ability(new StarStrike())
+			.hostile()
 			.drops(GOLEM_DROPS)
 			.register();
 		EMBER_SLIME = RuinMobKind.builder("ember_slime")

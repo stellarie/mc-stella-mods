@@ -14,6 +14,7 @@
 			"com.stella.ruins.ScaffoldGameTest",
 			"com.stella.ruins.world.LayoutSeedGameTest",
 			"com.stella.ruins.world.PlacementGameTest",
+			"com.stella.ruins.world.RuinSitePlanGameTest",
 			"com.stella.ruins.world.StructureGameTest",
 			"com.stella.ruins.world.RuinDataGameTest",
 			"com.stella.ruins.world.RuinConfigGameTest",

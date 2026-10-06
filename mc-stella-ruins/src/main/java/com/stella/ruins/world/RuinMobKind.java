@@ -41,6 +41,11 @@ import org.jspecify.annotations.Nullable;
 public final class RuinMobKind {
 	public static final String TAG_MOB = "mod-stella-ruins.mob";
 	public static final String TAG_KIND_PREFIX = "mod-stella-ruins.kind.";
+	/**
+	 * The published mark of a ruin mob that is a foe. The spells mod reads this exact string, so a ruin mob that
+	 * carries it is a spell target. An iron golem is not an Enemy, so without the tag no spell treats it as a foe.
+	 */
+	public static final String TAG_HOSTILE = "mod-stella-ruins.hostile";
 	/** Owned by the mobs mod: a tagged mob takes none of its spawn rolls. */
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	/** Owned by the mobs mod: with the tag above, the mob's hits still follow its level. */
@@ -67,6 +72,7 @@ public final class RuinMobKind {
 	private final @Nullable MobAbility ability;
 	private final @Nullable ResourceKey<LootTable> drops;
 	private final boolean boss;
+	private final boolean hostile;
 
 	private RuinMobKind(final Builder b) {
 		this.id = b.id;
@@ -81,6 +87,7 @@ public final class RuinMobKind {
 		this.ability = b.ability;
 		this.drops = b.drops;
 		this.boss = b.boss;
+		this.hostile = b.hostile;
 	}
 
 	public static Builder builder(final String id) {
@@ -115,6 +122,10 @@ public final class RuinMobKind {
 		return this.boss;
 	}
 
+	public boolean hostile() {
+		return this.hostile;
+	}
+
 	/**
 	 * Builds the mob, adds it to the level and fixes its level with the mobs mod. Returns null when the base type
 	 * will not build. The caller owns the roster record.
@@ -129,6 +140,9 @@ public final class RuinMobKind {
 		mob.addTag(TAG_KIND_PREFIX + this.id);
 		mob.addTag(NO_SPAWN_ROLL_TAG);
 		mob.addTag(SELF_SCALED_TAG);
+		if (this.hostile) {
+			mob.addTag(TAG_HOSTILE);
+		}
 		mob.setPersistenceRequired();
 		mob.setCanPickUpLoot(false);
 		mob.setCustomName(Component.translatable(this.nameKey));
@@ -178,6 +192,7 @@ public final class RuinMobKind {
 		private @Nullable MobAbility ability;
 		private @Nullable ResourceKey<LootTable> drops;
 		private boolean boss;
+		private boolean hostile;
 
 		private Builder(final String id) {
 			if (id == null || !id.matches("[a-z0-9_]+")) {
@@ -244,6 +259,12 @@ public final class RuinMobKind {
 
 		public Builder boss(final boolean value) {
 			this.boss = value;
+			return this;
+		}
+
+		/** A foe: the mob carries {@link #TAG_HOSTILE}, so a spell that reads the tag treats it as a target. */
+		public Builder hostile() {
+			this.hostile = true;
 			return this;
 		}
 

@@ -105,19 +105,14 @@ public class WayshrineSiteGameTest {
 		Holder<Structure> structure = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(structureKey());
 		helper.assertTrue(structure.value() instanceof RuinStructure ruin && ruin.site().equals(WayshrineSite.ID), "the structure is not the wayshrine's");
 		RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, level.registryAccess());
-		StructureSet found = null;
-		for (Holder.Reference<StructureSet> holder : level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).listElements().toList()) {
-			if (holder.value().structures().stream().anyMatch(entry -> entry.structure().value() == structure.value())) {
-				found = holder.value();
-			}
-		}
-		helper.assertTrue(found != null, "no structure set holds the wayshrine");
+		StructureSet found = com.stella.ruins.world.RuinSitePlanGameTest.sites(level);
+		helper.assertTrue(found != null, "no sites structure set");
 		JsonObject placement = StructurePlacement.CODEC.encodeStart(ops, found.placement()).getOrThrow().getAsJsonObject();
 		WayshrineTestSupport.result("structureSet", placement.toString());
-		helper.assertTrue(placement.get("spacing").getAsInt() == 34 && placement.get("separation").getAsInt() == 12, "the spread is " + placement.get("spacing") + "/" + placement.get("separation"));
-		helper.assertTrue(placement.get("salt").getAsInt() == 734120551, "the salt is " + placement.get("salt"));
-		JsonObject zone = placement.getAsJsonObject("exclusion_zone");
-		helper.assertTrue(zone != null && "minecraft:villages".equals(zone.get("other_set").getAsString()) && zone.get("chunk_count").getAsInt() == 8, "the village exclusion is " + zone);
+		helper.assertTrue(placement.get("spacing").getAsInt() == 12 && placement.get("separation").getAsInt() == 9, "the spread is " + placement.get("spacing") + "/" + placement.get("separation"));
+		helper.assertTrue(placement.get("salt").getAsInt() == 702913845, "the salt is " + placement.get("salt"));
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.excludesVillages(placement), "the village exclusion is " + placement);
+		helper.assertTrue(com.stella.ruins.world.RuinSitePlanGameTest.theSitesSetHolds(level, WayshrineSite.ID), "the one ruin set does not hold the wayshrine");
 		helper.succeed();
 	}
 

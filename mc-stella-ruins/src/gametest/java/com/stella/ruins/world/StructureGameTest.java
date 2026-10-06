@@ -155,14 +155,13 @@ public class StructureGameTest {
 		helper.succeed();
 	}
 
-	/** True when the placement JSON excludes villages by at least 8 chunks. */
+	/**
+	 * True when the placement excludes villages by at least 8 chunks. The exclusion names a tag, because each set
+	 * also excludes the other ruin sets and one placement carries one exclusion zone. A tag holds villages, so the
+	 * village exclusion still stands and the tag is what carries it.
+	 */
 	static boolean excludesVillages(final JsonElement placement) {
-		if (!placement.isJsonObject() || !placement.getAsJsonObject().has("exclusion_zone")) {
-			return false;
-		}
-		var zone = placement.getAsJsonObject().getAsJsonObject("exclusion_zone");
-		return zone.has("other_set") && "minecraft:villages".equals(zone.get("other_set").getAsString())
-			&& zone.has("chunk_count") && zone.get("chunk_count").getAsInt() >= 8;
+		return RuinSitePlanGameTest.excludesVillages(placement);
 	}
 
 	@GameTest
@@ -170,6 +169,7 @@ public class StructureGameTest {
 		ServerLevel level = helper.getLevel();
 		RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, level.registryAccess());
 		List<String> missing = new ArrayList<>();
+		List<String> holders = new ArrayList<>();
 		int ruinSets = 0;
 		for (Holder.Reference<StructureSet> holder : level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).listElements().toList()) {
 			StructureSet set = holder.value();
@@ -177,13 +177,17 @@ public class StructureGameTest {
 				continue;
 			}
 			ruinSets++;
+			holders.add(holder.key().identifier().toString());
 			JsonElement placement = StructurePlacement.CODEC.encodeStart(ops, set.placement()).getOrThrow();
 			if (!excludesVillages(placement)) {
 				missing.add(holder.key().identifier() + " " + placement);
 			}
 		}
-		WorldTestSupport.result("villageExclusion", "ruinSets=" + ruinSets + " missing=" + missing.size());
-		helper.assertTrue(ruinSets >= 9, "only " + ruinSets + " ruin structure sets were found, so the check proves little");
+		boolean merged = RuinSitePlanGameTest.sites(level) != null && !RuinSitePlanGameTest.plans(level).isEmpty();
+		WorldTestSupport.result("villageExclusion", "ruinSets=" + ruinSets + " holders=" + holders + " mergedSet=" + merged
+			+ " thisModSets=" + RuinSitePlanGameTest.ruinSetIds(level) + " missing=" + missing.size());
+		helper.assertTrue(ruinSets >= 1, "no ruin structure set was found, so the check proves little");
+		helper.assertTrue(merged, "no " + RuinSitePlanGameTest.SITES + " set holds the ruin structures");
 		helper.assertTrue(missing.isEmpty(), "structure sets without a village exclusion of 8 chunks: " + missing);
 		helper.succeed();
 	}
@@ -193,10 +197,12 @@ public class StructureGameTest {
 		String strong = "{\"exclusion_zone\":{\"chunk_count\":8,\"other_set\":\"minecraft:villages\"}}";
 		String tooClose = "{\"exclusion_zone\":{\"chunk_count\":7,\"other_set\":\"minecraft:villages\"}}";
 		String otherSet = "{\"exclusion_zone\":{\"chunk_count\":9,\"other_set\":\"minecraft:ancient_cities\"}}";
+		String tag = "{\"exclusion_zone\":{\"chunk_count\":8,\"other_set\":\"#mod-stella-ruins:sites\"}}";
 		String none = "{\"salt\":1}";
 		helper.assertTrue(excludesVillages(JsonParser.parseString(strong)), "the check refused a correct exclusion");
 		helper.assertTrue(!excludesVillages(JsonParser.parseString(tooClose)), "the check accepted 7 chunks");
 		helper.assertTrue(!excludesVillages(JsonParser.parseString(otherSet)), "the check accepted another set");
+		helper.assertTrue(!excludesVillages(JsonParser.parseString(tag)), "the check accepted a tag, and the codec takes a set id");
 		helper.assertTrue(!excludesVillages(JsonParser.parseString(none)), "the check accepted no exclusion");
 		helper.succeed();
 	}
