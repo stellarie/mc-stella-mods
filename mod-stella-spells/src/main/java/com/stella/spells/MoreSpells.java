@@ -10,7 +10,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -353,7 +352,7 @@ public final class MoreSpells {
 	}
 
 	static boolean isAlly(final net.minecraft.world.entity.LivingEntity entity) {
-		return entity.isAlive() && (!(entity instanceof Enemy) || Friends.isFriend(entity))
+		return entity.isAlive() && !Friends.isFoe(entity)
 			&& (Friends.isFriend(entity) || entity instanceof net.minecraft.world.entity.player.Player
 				|| entity instanceof net.minecraft.world.entity.npc.villager.AbstractVillager
 				|| entity instanceof net.minecraft.world.entity.animal.golem.AbstractGolem

@@ -47,7 +47,8 @@
 			"com.stella.spells.SummonCompanionGameTest",
 			"com.stella.spells.SummonKitGameTest",
 			"com.stella.spells.SummonSightGameTest",
-			"com.stella.spells.SummonReachGameTest"
+			"com.stella.spells.SummonReachGameTest",
+			"com.stella.spells.HostileFoeGameTest"
 		]
 	},
 	"depends": {
