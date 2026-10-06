@@ -1,6 +1,7 @@
 package com.stella.spells;
 
 import java.lang.reflect.Field;
+import java.util.function.Consumer;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.gametest.framework.GameTestListener;
@@ -22,6 +23,37 @@ final class SpellTestLog {
 			throw new IllegalStateException("Cannot read the GameTestInfo from GameTestHelper", exception);
 		}
 		return new Outcome();
+	}
+
+	/**
+	 * Hears this test's own pass or fail. A test that succeeds stops ticking, so a callback scheduled for its
+	 * last tick never runs: this is the only moment a global write can be restored whatever the outcome.
+	 */
+	static void onCompletion(final GameTestHelper helper, final Consumer<Boolean> passed) {
+		try {
+			GameTestInfo testInfo = (GameTestInfo) TEST_INFO_FIELD.get(helper);
+			testInfo.addListener(new GameTestListener() {
+				@Override
+				public void testStructureLoaded(final GameTestInfo info) {
+				}
+
+				@Override
+				public void testPassed(final GameTestInfo info, final GameTestRunner runner) {
+					passed.accept(true);
+				}
+
+				@Override
+				public void testFailed(final GameTestInfo info, final GameTestRunner runner) {
+					passed.accept(false);
+				}
+
+				@Override
+				public void testAddedForRerun(final GameTestInfo original, final GameTestInfo rerun, final GameTestRunner runner) {
+				}
+			});
+		} catch (IllegalAccessException exception) {
+			throw new IllegalStateException("Cannot read the GameTestInfo from GameTestHelper", exception);
+		}
 	}
 
 	private static Field testInfoField() {

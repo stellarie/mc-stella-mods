@@ -1,6 +1,8 @@
 package com.stella.spells;
 
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.ArrayList;
+import java.util.List;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
@@ -11,6 +13,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
@@ -27,6 +31,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +44,15 @@ import org.slf4j.LoggerFactory;
 public class SpellStatusGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.status");
 	private static final float EPSILON = 0.02F;
-	// A live zombie spawned on the floor never registers onGround, so it drops two blocks and gets this long to land.
-	private static final long SETTLE_TICKS = 14L;
+	// A stun of 100 ticks is still up 90 ticks after the lane started fighting, and is gone 210 ticks after.
+	private static final long STAGGER_WINDOW_TICKS = 90L;
+	private static final long STAGGER_SETTLE_TICKS = 210L;
+	// The landing is polled for, never asserted at a fixed tick; this is only how long to wait before the first look.
+	private static final long LANDING_GRACE_TICKS = 10L;
+	// A late landing is waited out; one that never comes fails loudly here instead of timing the test out.
+	private static final long LANDING_DEADLINE_TICKS = 90L;
+	// The control zombie lands its first hit 50 to 70 ticks after it gets a target, so the window is 120 of them.
+	private static final long CONTROL_WINDOW_TICKS = 120L;
 	// Tests share one level and run side by side, so the difficulty is restored by the last live-zombie test to end.
 	private static int fighters;
 	private static Difficulty difficultyBefore = Difficulty.PEACEFUL;
@@ -85,42 +97,45 @@ public class SpellStatusGameTest {
 	}
 
 	// Item 2. The window is long because an unfrozen zombie lands its first hit 50 to 70 ticks after it gets a target.
-	@GameTest(maxTicks = 170)
+	@GameTest(maxTicks = 200)
 	public void frozenMobCannotMoveOrAttack(final GameTestHelper helper) {
 		arena(helper);
 		fightingDifficulty(helper);
-		Lane adjacent = lane(helper, 0, 3);
-		Lane distant = lane(helper, 2, 9);
-		Lane control = lane(helper, 4, 3);
+		// The structure is 9 by 9 by 9 with its floor at the bottom, so every lane sits inside it.
+		Lane adjacent = lane(helper, 0, 3, 2.5);
+		Lane distant = lane(helper, 2, 6, 0.5);
+		Lane control = lane(helper, 4, 3, 2.5);
+		// The harness only ticks entities inside this box; a lane outside it never lands and never fights.
+		assertLanesInside(helper, adjacent, distant, control);
 		final long[] controlFirstHit = {-1L};
 		helper.onEachTick(() -> {
 			if (controlFirstHit[0] < 0 && lost(control.player()) > 0.0F) {
 				controlFirstHit[0] = helper.getTick();
 			}
 		});
-		helper.runAfterDelay(SETTLE_TICKS, () -> {
+		afterLanding(helper, () -> {
 			SpellStatusApi.freeze(adjacent.zombie(), 200, null);
 			SpellStatusApi.freeze(distant.zombie(), 200, null);
 			helper.assertTrue(adjacent.zombie().hasEffect(SpellStatus.FROZEN), "the adjacent zombie is not Frozen");
 			helper.assertTrue(distant.zombie().hasEffect(SpellStatus.FROZEN), "the distant zombie is not Frozen");
 			engage(helper, adjacent, distant, control);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 120L, () -> {
-			float adjacentLost = lost(adjacent.player());
-			float distantLost = lost(distant.player());
-			float controlLost = lost(control.player());
-			double adjacentMoved = adjacent.zombie().position().distanceTo(adjacent.start());
-			double distantMoved = distant.zombie().position().distanceTo(distant.start());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack RESULT adjacentLost={} distantLost={} controlLost={} "
-				+ "controlFirstHit={} adjacentMoved={} distantMoved={}", adjacentLost, distantLost, controlLost, controlFirstHit[0], adjacentMoved, distantMoved);
-			helper.assertTrue(controlLost > 0.0F, "the unfrozen control never hurt its player, so the arena proves nothing");
-			helper.assertTrue(adjacentLost == 0.0F, "the adjacent Frozen zombie dealt " + adjacentLost);
-			helper.assertTrue(distantLost == 0.0F, "the distant Frozen zombie dealt " + distantLost);
-			helper.assertTrue(adjacentMoved < 0.1, "the adjacent Frozen zombie moved " + adjacentMoved);
-			helper.assertTrue(distantMoved < 0.1, "the distant Frozen zombie moved " + distantMoved);
-			lanesOff(helper, adjacent, distant, control);
-			helper.succeed();
-		});
+			helper.runAfterDelay(CONTROL_WINDOW_TICKS, () -> {
+				float adjacentLost = lost(adjacent.player());
+				float distantLost = lost(distant.player());
+				float controlLost = lost(control.player());
+				double adjacentMoved = adjacent.zombie().position().distanceTo(adjacent.start());
+				double distantMoved = distant.zombie().position().distanceTo(distant.start());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack RESULT adjacentLost={} distantLost={} controlLost={} "
+					+ "controlFirstHit={} adjacentMoved={} distantMoved={}", adjacentLost, distantLost, controlLost, controlFirstHit[0], adjacentMoved, distantMoved);
+				helper.assertTrue(controlLost > 0.0F, "the unfrozen control never hurt its player, so the arena proves nothing");
+				helper.assertTrue(adjacentLost == 0.0F, "the adjacent Frozen zombie dealt " + adjacentLost);
+				helper.assertTrue(distantLost == 0.0F, "the distant Frozen zombie dealt " + distantLost);
+				helper.assertTrue(adjacentMoved < 0.1, "the adjacent Frozen zombie moved " + adjacentMoved);
+				helper.assertTrue(distantMoved < 0.1, "the distant Frozen zombie moved " + distantMoved);
+				lanesOff(helper, adjacent, distant, control);
+				helper.succeed();
+			});
+		}, adjacent, distant, control);
 	}
 
 	// Item 3.
@@ -337,28 +352,29 @@ public class SpellStatusGameTest {
 	public void staggerStopsAttackThenEnds(final GameTestHelper helper) {
 		arena(helper);
 		fightingDifficulty(helper);
-		Lane lane = lane(helper, 2, 3);
-		helper.runAfterDelay(SETTLE_TICKS, () -> {
+		Lane lane = lane(helper, 2, 3, 2.5);
+		assertLanesInside(helper, lane);
+		afterLanding(helper, () -> {
 			SpellStatusApi.stagger(lane.zombie(), 100, null);
 			helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "the zombie is not Staggered");
 			engage(helper, lane);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 90L, () -> {
-			float lostWhileStaggered = lost(lane.player());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostWhileStaggered={} staggered={}", lostWhileStaggered,
-				lane.zombie().hasEffect(SpellStatus.STAGGERED));
-			helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered ended before its 100 ticks");
-			helper.assertTrue(lostWhileStaggered == 0.0F, "the Staggered zombie dealt " + lostWhileStaggered);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 210L, () -> {
-			float lostAfter = lost(lane.player());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostAfter={} staggered={}", lostAfter,
-				lane.zombie().hasEffect(SpellStatus.STAGGERED));
-			helper.assertTrue(!lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered never ended");
-			helper.assertTrue(lostAfter > 0.0F, "the zombie never attacked after Staggered ended");
-			lanesOff(helper, lane);
-			helper.succeed();
-		});
+			helper.runAfterDelay(STAGGER_WINDOW_TICKS, () -> {
+				float lostWhileStaggered = lost(lane.player());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostWhileStaggered={} staggered={}", lostWhileStaggered,
+					lane.zombie().hasEffect(SpellStatus.STAGGERED));
+				helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered ended before its 100 ticks");
+				helper.assertTrue(lostWhileStaggered == 0.0F, "the Staggered zombie dealt " + lostWhileStaggered);
+			});
+			helper.runAfterDelay(STAGGER_SETTLE_TICKS, () -> {
+				float lostAfter = lost(lane.player());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=staggerStopsAttackThenEnds RESULT lostAfter={} staggered={}", lostAfter,
+					lane.zombie().hasEffect(SpellStatus.STAGGERED));
+				helper.assertTrue(!lane.zombie().hasEffect(SpellStatus.STAGGERED), "Staggered never ended");
+				helper.assertTrue(lostAfter > 0.0F, "the zombie never attacked after Staggered ended");
+				lanesOff(helper, lane);
+				helper.succeed();
+			});
+		}, lane);
 	}
 
 	// Item 10, the stun sets and clears NoAI on a mob that had it off.
@@ -495,10 +511,18 @@ public class SpellStatusGameTest {
 			difficultyBefore = helper.getLevel().getDifficulty();
 		}
 		helper.getLevel().getServer().setDifficulty(Difficulty.NORMAL, true);
-		helper.runBeforeTestEnd(() -> {
-			if (--fighters == 0) {
-				helper.getLevel().getServer().setDifficulty(difficultyBefore, true);
+		// A test that succeeds stops ticking, so a restore cannot ride on a last-tick callback. The test's own
+		// completion fires whether the case passed or failed, which is where a global write belongs.
+		final MinecraftServer server = helper.getLevel().getServer();
+		final Difficulty saved = difficultyBefore;
+		SpellTestLog.onCompletion(helper, passed -> {
+			if (--fighters > 0) {
+				return;
 			}
+			server.setDifficulty(saved, true);
+			Difficulty restored = server.getLevel(net.minecraft.world.level.Level.OVERWORLD).getDifficulty();
+			LOG.info("[SPELLTEST] test=fightingDifficulty RESTORED to={} expected={} passed={}", restored, saved, passed);
+			helper.assertTrue(restored == saved, "the fighting difficulty leaked: restored " + restored + ", expected " + saved);
 		});
 	}
 
@@ -537,8 +561,9 @@ public class SpellStatusGameTest {
 		}
 	}
 
-	// A durable player and a live zombie dropped two blocks onto the floor; engage() lets it fight once it has landed.
-	private static Lane lane(final GameTestHelper helper, final int x, final int zombieZ) {
+	// A durable player and a live zombie dropped two blocks onto the floor; the landing is polled, then engage() lets it fight.
+	// The player stands the given blocks into the arena along z, so a distant lane has to walk before it can swing.
+	private static Lane lane(final GameTestHelper helper, final int x, final int zombieZ, final double playerZ) {
 		// A survival player a zombie may target; the in-level mock player counts as creative and is never a valid target.
 		ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
 		Connection connection = new Connection(PacketFlow.SERVERBOUND);
@@ -547,15 +572,72 @@ public class SpellStatusGameTest {
 			CommonListenerCookie.createInitial(player.getGameProfile(), false));
 		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		player.setHealth(1000.0F);
-		Vec3 at = helper.absoluteVec(new Vec3(x + 0.5, 1.0, 2.5));
+		Vec3 at = helper.absoluteVec(new Vec3(x + 0.5, 1.0, playerZ));
 		player.setPos(at.x, at.y, at.z);
 		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, x, 3, zombieZ).spawn();
 		return new Lane(player, zombie);
 	}
 
+	/** Every lane sits inside the box the harness ticks entities in, or its zombie never lands and never fights. */
+	private static void assertLanesInside(final GameTestHelper helper, final Lane... lanes) {
+		AABB inside = helper.getBounds();
+		for (Lane lane : lanes) {
+			Vec3 player = lane.player().position();
+			Vec3 zombie = lane.zombie().position();
+			helper.assertTrue(inside.contains(player) && inside.contains(zombie),
+				"a lane sits outside the ticking box " + inside + ": player=" + player + " zombie=" + zombie);
+		}
+	}
+
+	/** True once the lane's zombie has landed and its player is still a live target, so the lane can fight. */
+	private static boolean landed(final Lane lane) {
+		return lane.zombie().onGround() && lane.player().isAlive() && lane.zombie().isAlive();
+	}
+
+	/**
+	 * Runs the body once every lane zombie has landed. The landing is polled, never asserted at a fixed tick:
+	 * a falling mob is not tick-deterministic. A landing that never comes fails loudly at the deadline.
+	 */
+	private static void afterLanding(final GameTestHelper helper, final Runnable body, final Lane... lanes) {
+		final boolean[] started = {false};
+		helper.onEachTick(() -> {
+			if (started[0] || helper.getTick() < LANDING_GRACE_TICKS) {
+				return;
+			}
+			for (Lane lane : lanes) {
+				if (!lane.player().isAlive()) {
+					helper.fail("a lane player died while its zombie was still landing");
+				}
+			}
+			if (helper.getTick() >= 2L * LANDING_GRACE_TICKS && helper.getTick() % 10L == 0L) {
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=afterLanding WAIT tick={} lanes={}",
+					helper.getTick(), states(lanes));
+			}
+			helper.assertTrue(helper.getTick() <= LANDING_DEADLINE_TICKS, "a lane zombie never landed: " + states(lanes));
+			for (Lane lane : lanes) {
+				if (!landed(lane)) {
+					return;
+				}
+			}
+			started[0] = true;
+			long landedAt = helper.getTick();
+			body.run();
+			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=afterLanding LANDED at={} difficulty={}",
+				landedAt, helper.getLevel().getDifficulty());
+		});
+	}
+
+	private static String states(final Lane... lanes) {
+		List<String> seen = new ArrayList<>(lanes.length);
+		for (Lane lane : lanes) {
+			seen.add(state(lane));
+		}
+		return seen.toString();
+	}
+
 	private static void engage(final GameTestHelper helper, final Lane... lanes) {
 		for (Lane lane : lanes) {
-			helper.assertTrue(lane.zombie().onGround(), "a lane zombie has not landed after " + SETTLE_TICKS + " ticks");
+			helper.assertTrue(lane.zombie().onGround(), "a lane zombie has not landed yet");
 			lane.start = lane.zombie().position();
 			lane.zombie().setTarget(lane.player());
 		}
@@ -570,6 +652,13 @@ public class SpellStatusGameTest {
 
 	private static float lost(final ServerPlayer player) {
 		return player.getMaxHealth() - player.getHealth();
+	}
+
+	/** One lane as it stands now: what it cost its player, where its zombie is, and whether it is still hunting. */
+	private static String state(final Lane lane) {
+		return "{lost=" + lost(lane.player()) + " pos=" + lane.zombie().position() + " onGround=" + lane.zombie().onGround()
+			+ " target=" + (lane.zombie().getTarget() == lane.player()) + " targetAlive=" + lane.player().isAlive()
+			+ " zombieAlive=" + lane.zombie().isAlive() + " noAi=" + lane.zombie().isNoAi() + "}";
 	}
 
 	private static ServerPlayer aimedCaster(final GameTestHelper helper) {
