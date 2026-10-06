@@ -143,17 +143,18 @@ public final class SpellVisuals {
 		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
 		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),
-		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows.
-		visual("holy_light", ParticleTypes.END_ROD, ParticleTypes.GLOW, 0.0),
-		visual("prayer_of_mending", ParticleTypes.HEART, ParticleTypes.END_ROD, 0.0),
-		visual("renew", ParticleTypes.HAPPY_VILLAGER, ParticleTypes.END_ROD, 0.0),
-		visual("divine_shield", ParticleTypes.ENCHANT, ParticleTypes.END_ROD, 0.0),
-		visual("holy_arms", ParticleTypes.ENCHANTED_HIT, ParticleTypes.END_ROD, 0.0),
-		visual("blessing_of_fortitude", ParticleTypes.HEART, ParticleTypes.TOTEM_OF_UNDYING, 0.0),
-		visual("smite", ParticleTypes.END_ROD, ParticleTypes.ELECTRIC_SPARK, 0.0),
-		visual("resurrection_ward", ParticleTypes.TOTEM_OF_UNDYING, ParticleTypes.END_ROD, 0.0),
-		areaVisual("consecrate", ParticleTypes.END_ROD, ParticleTypes.GLOW, PriestSkills.CONSECRATE_RADIUS, 0xFFE08A),
-		visual("guardian_angel", ParticleTypes.END_ROD, ParticleTypes.HEART, 0.0)
+		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
+		// owns a particle no other book uses, because a shared primary is a shared shape on screen.
+		visual("holy_light", ParticleTypes.TRIAL_OMEN, ParticleTypes.GLOW, 0.0),
+		visual("prayer_of_mending", ParticleTypes.ELDER_GUARDIAN, ParticleTypes.END_ROD, 0.0),
+		visual("renew", ParticleTypes.UNDERWATER, ParticleTypes.END_ROD, 0.0),
+		visual("divine_shield", ParticleTypes.BUBBLE_POP, ParticleTypes.END_ROD, 0.0),
+		visual("holy_arms", ParticleTypes.COPPER_FIRE_FLAME, ParticleTypes.END_ROD, 0.0),
+		visual("blessing_of_fortitude", ParticleTypes.GUST_EMITTER_SMALL, ParticleTypes.TOTEM_OF_UNDYING, 0.0),
+		visual("smite", ParticleTypes.HAPPY_VILLAGER, ParticleTypes.ELECTRIC_SPARK, 0.0),
+		visual("resurrection_ward", ParticleTypes.DRIPPING_HONEY, ParticleTypes.END_ROD, 0.0),
+		areaVisual("consecrate", ParticleTypes.FALLING_NECTAR, ParticleTypes.GLOW, PriestSkills.CONSECRATE_RADIUS, 0xFFE08A),
+		visual("guardian_angel", ParticleTypes.FIREFLY, ParticleTypes.HEART, 0.0)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),

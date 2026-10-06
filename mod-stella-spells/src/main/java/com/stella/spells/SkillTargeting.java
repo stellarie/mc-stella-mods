@@ -9,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.animal.golem.AbstractGolem;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -30,11 +31,13 @@ public final class SkillTargeting {
 
 	/**
 	 * Whether this entity may be helped. A hostile is never one, so a golem another mod tags hostile is
-	 * left out even though its kind is friendly. {@link Friends#isFoe} is asked first and last.
+	 * left out even though its kind is friendly. {@link Friends#isFoe} is asked first and last. A villager
+	 * is a body the mod helps, beside a player, a vanilla golem and anything the mods mark a friend.
 	 */
 	static boolean isAlly(final LivingEntity caster, final LivingEntity candidate) {
 		return candidate != caster && candidate.isAlive() && !Friends.isFoe(candidate)
-			&& (candidate instanceof Player || candidate instanceof AbstractGolem || Friends.isFriend(candidate));
+			&& (candidate instanceof Player || candidate instanceof AbstractGolem || candidate instanceof AbstractVillager
+				|| Friends.isFriend(candidate));
 	}
 
 	/**

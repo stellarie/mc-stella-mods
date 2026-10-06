@@ -1,12 +1,12 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "mod-stella-spells:item/blessing_of_fortitude_scroll",
-    "tints": [
-      {
-        "type": "minecraft:constant",
-        "value": 16777215
-      }
-    ]
-  }
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/blessing_of_fortitude_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 16712832
+			}
+		]
+	}
 }
