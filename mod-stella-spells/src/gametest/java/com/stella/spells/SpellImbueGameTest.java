@@ -197,7 +197,9 @@ public class SpellImbueGameTest {
 		List<String> unswept = new ArrayList<>();
 		int swept = 0;
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
-			if (!isSecondCatalogue(definition)) {
+			// A book the mod refuses to imbue cannot cast from an imbued hit, so it is out of this sweep for
+			// the same reason a first-catalogue book is: another case owns that refusal.
+			if (!isSecondCatalogue(definition) || SpellImbue.NOT_IMBUABLE.contains(definition.id())) {
 				if (!SpellImbue.NOT_IMBUABLE.contains(definition.id())) {
 					unswept.add(definition.id().getPath());
 				}

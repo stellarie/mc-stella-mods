@@ -77,8 +77,6 @@ public final class ArcherSkills {
 	/** Elemental Quiver: how many arrows one scroll imbues, plain and awakened. */
 	static final int QUIVER_ARROWS = 10;
 	static final int AWAKENED_QUIVER_ARROWS = 20;
-	/** One block of slack, so a body on the edge of a blast is still read. */
-	private static final double SLACK = 1.0;
 
 	/** The pulses still owed, by caster, oldest first. */
 	private static final Map<UUID, List<Job>> JOBS = new ConcurrentHashMap<>();
@@ -105,12 +103,22 @@ public final class ArcherSkills {
 		});
 	}
 
-	/** No job or trap outlives the server it was put on. */
+	/** No job or trap outlives the server it was put on, and no job keeps a due tick from another server. */
 	static void clear() {
 		JOBS.clear();
 		TRAPS.clear();
 		PULSES_RUN.clear();
 		clock = 0;
+	}
+
+	/**
+	 * Everything this caster owes, dropped without touching the server's clock. A test that only wants its
+	 * own state gone calls this: resetting the clock would leave every other job in the process un-due.
+	 */
+	static void clearFor(final ServerPlayer caster) {
+		JOBS.remove(caster.getUUID());
+		TRAPS.remove(caster.getUUID());
+		PULSES_RUN.remove(caster.getUUID());
 	}
 
 	/** The tick a job scheduled now would be due on, plus this many ticks. */
@@ -213,6 +221,7 @@ public final class ArcherSkills {
 			return false;
 		}
 		int pulses = modifiers.awakened() ? AWAKENED_ARROW_RAIN_PULSES : ARROW_RAIN_PULSES;
+
 		rain(caster, point, modifiers);
 		for (int pulse = 1; pulse < pulses; pulse++) {
 			owe(caster, new Job(point, dueIn(pulse * RAIN_INTERVAL_TICKS), JobKind.RAIN, modifiers));
@@ -398,6 +407,7 @@ public final class ArcherSkills {
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
 		ItemStack scroll = firstScroll(caster);
+
 		if (scroll.isEmpty()) {
 			return false;
 		}
@@ -507,13 +517,16 @@ public final class ArcherSkills {
 	 * Every foe within this reach of a point in the caster's own level. The reach carries {@link #SLACK}, so a
 	 * body standing exactly on the edge is inside the area rather than a rounding error outside it.
 	 */
+	/**
+	 * Every foe within this reach of a point in the caster's own level. The squared check on the body's own
+	 * position is the rule, and the box is fitted to it, so a body exactly on the reach counts as inside.
+	 */
 	static List<Mob> foesAroundPoint(final ServerPlayer caster, final Vec3 at, final double range) {
-		double reach = range + SLACK;
 		List<Mob> foes = new ArrayList<>(caster.level().getEntitiesOfClass(
 			Mob.class,
-			new AABB(at, at).inflate(reach),
+			new AABB(at, at).inflate(range),
 			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
-				&& candidate.position().distanceToSqr(at) <= reach * reach
+				&& candidate.position().distanceToSqr(at) <= range * range
 		));
 		foes.sort(Comparator.comparingDouble(foe -> foe.position().distanceToSqr(at)));
 		return foes;
@@ -547,6 +560,7 @@ public final class ArcherSkills {
 			jobs.sort(Comparator.comparingInt(Job::dueTick));
 			return jobs;
 		});
+
 	}
 
 	// A job whose caster is gone is dropped, so no pulse outlives the player who owed it.
@@ -598,6 +612,7 @@ public final class ArcherSkills {
 
 	private static void run(final ServerPlayer caster, final Job job) {
 		PULSES_RUN.merge(caster.getUUID(), 1, Integer::sum);
+
 		switch (job.kind()) {
 			case RAIN -> rain(caster, job.at(), job.modifiers());
 			case RAPID_FIRE -> shoot(caster, job.modifiers());

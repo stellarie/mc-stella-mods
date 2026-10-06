@@ -132,13 +132,14 @@ public final class SpellVisuals {
 		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
 		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
 		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A),
-		visual("multishot", ParticleTypes.FIREWORK, ParticleTypes.ENCHANTED_HIT, 0.0),
-		visual("piercing_shot", new DustParticleOptions(0x3E8E41, 1.0F), ParticleTypes.CRIT, 0.0),
+		visual("multishot", ParticleTypes.SPIT, ParticleTypes.ENCHANTED_HIT, 0.0),
+		// The piercing shot draws its own line, not an area ring, and owns the bursting arrow's spark.
+		visual("piercing_shot", ParticleTypes.FIREWORK, ParticleTypes.CRIT, 0.0),
 		areaVisual("arrow_rain", ParticleTypes.FALLING_OBSIDIAN_TEAR, ParticleTypes.CRIT, SpellNumbers.ARROW_RAIN.radius(), 0x3E8E41),
 		visual("rapid_fire", ParticleTypes.SCULK_CHARGE_POP, ParticleTypes.SMOKE, 0.0),
 		visual("hunters_mark", ParticleTypes.DUST_PLUME, ParticleTypes.GLOW, 0.0),
 		areaVisual("explosive_arrow", ParticleTypes.EXPLOSION, ParticleTypes.FLAME, SpellNumbers.EXPLOSIVE_ARROW.radius(), 0xE0303A),
-		areaVisual("disengage", ParticleTypes.GUST, ParticleTypes.CLOUD, SpellNumbers.DISENGAGE.radius(), 0x3E8E41),
+		areaVisual("disengage", ParticleTypes.SWEEP_ATTACK, ParticleTypes.SMOKE, SpellNumbers.DISENGAGE.radius(), 0x3E8E41),
 		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
 		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0)
@@ -331,21 +332,16 @@ public final class SpellVisuals {
 		}
 	}
 
+	// Each step is recorded where it was sent, so a reader can still match a record to its own spot.
 	private static void beam(
 		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final ParticleOptions particle,
 		final Vec3 from, final Vec3 to
 	) {
 		Vec3 offset = to.subtract(from);
 		int steps = Math.max(1, (int) Math.ceil(offset.length() / BEAM_STEP_BLOCKS));
-		int sent = 0;
-		boolean casterSaw = false;
 		for (int i = 1; i <= steps; i++) {
-			Vec3 at = from.add(offset.scale((double) i / steps));
-			Emitted emitted = emit(level, caster, particle, at, 1, 0.0, 0.0);
-			sent += emitted.particles();
-			casterSaw |= emitted.casterSaw();
+			emitRecorded(level, caster, spell, particle, from.add(offset.scale((double) i / steps)));
 		}
-		recorder.played(caster.getUUID(), spell, particle, to, sent, casterSaw);
 	}
 
 	private static void burst(
@@ -522,24 +518,21 @@ public final class SpellVisuals {
 		}
 	}
 
-	// A rising helix around a standing body, two blocks tall.
+	// A rising helix around a standing body, two blocks tall. Each point is recorded where it was sent, so a
+	// reader can still match a record to the viewers that were near that spot.
 	private static void spiral(
 		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final ParticleOptions particle,
 		final Vec3 feet
 	) {
-		int sent = 0;
-		boolean casterSaw = false;
 		for (int i = 0; i < SPIRAL_POINTS; i++) {
 			double angle = 4.0 * Math.PI * i / SPIRAL_POINTS;
 			Vec3 at = feet.add(Math.cos(angle) * 0.7, 2.0 * i / SPIRAL_POINTS, Math.sin(angle) * 0.7);
-			Emitted emitted = emit(level, caster, particle, at, 1, 0.0, 0.0);
-			sent += emitted.particles();
-			casterSaw |= emitted.casterSaw();
+			emitRecorded(level, caster, spell, particle, at);
 		}
-		recorder.played(caster.getUUID(), spell, particle, feet, sent, casterSaw);
 	}
 
-	// Sends to every player in range and reports whether the caster was among them.
+	// Sends to every live player in range and reports whether the caster was among them. A body the level still
+	// lists after it was removed gets no packets, so the count matches the players a reader can see.
 	private static Emitted emit(
 		final ServerLevel level, final ServerPlayer caster, final ParticleOptions particle, final Vec3 at,
 		final int count, final double spread, final double speed
@@ -547,7 +540,8 @@ public final class SpellVisuals {
 		int sent = 0;
 		boolean casterSaw = false;
 		for (ServerPlayer viewer : level.players()) {
-			if (viewer.position().distanceToSqr(at) > VIEW_RADIUS_BLOCKS * VIEW_RADIUS_BLOCKS) {
+			if (viewer.isRemoved() || !viewer.isAlive()
+				|| viewer.position().distanceToSqr(at) > VIEW_RADIUS_BLOCKS * VIEW_RADIUS_BLOCKS) {
 				continue;
 			}
 			if (level.sendParticles(viewer, particle, false, true, at.x, at.y, at.z, count, spread, spread, spread, speed)) {

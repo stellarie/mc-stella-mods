@@ -380,6 +380,35 @@ public class ArcherBooksGameTest {
 		});
 	}
 
+	/**
+	 * The squared check on the body's own position is the rule for "inside the area", and the search box is
+	 * fitted to it. A body exactly on the reach is inside; one past it is not. This pins that boundary, so
+	 * neither check can drift away from the other again.
+	 */
+	@GameTest(maxTicks = 80)
+	public void explosiveArrowHitsTheBodyExactlyOnItsReachAndNotTheOnePastIt(final GameTestHelper helper) {
+		ServerPlayer caster = FighterBooksGameTest.caster(helper);
+		double reach = ArcherSkills.EXPLOSIVE_SPLASH_RADIUS;
+		Vec3 at = helper.absoluteVec(new Vec3(5.5, FLOOR_Y, CASTER_Z + 5.0));
+		Mob inside = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, (int) CASTER_Z + 5).withNoFreeWill().spawn();
+		inside.setPos(at.x, at.y, at.z);
+		Mob outside = helper.spawnMob(EntityTypes.ZOMBIE, 5, 1, (int) CASTER_Z + 5).withNoFreeWill().spawn();
+		outside.setPos(at.x, at.y, at.z + reach + 0.5);
+		for (Mob foe : List.of(inside, outside)) {
+			foe.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+			foe.setHealth(1000.0F);
+		}
+		List<Mob> caught = ArcherSkills.foesAroundPoint(caster, at, reach);
+		LOG.info("[BEHAVIOR] test=explosiveArrowHitsTheBodyExactlyOnItsReachAndNotTheOnePastIt RESULT reach={} insideDistance={} outsideDistance={} caught={}",
+			reach, inside.position().distanceTo(at), outside.position().distanceTo(at), caught.size());
+		helper.assertTrue(caught.contains(inside), "a body exactly on the reach was left out");
+		helper.assertFalse(caught.contains(outside), "a body past the reach was counted inside");
+		helper.assertTrue(caught.size() == 1, "the sweep caught " + caught.size() + " bodies, not one");
+		inside.discard();
+		outside.discard();
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 120)
 	public void snareTrapHoldsOnePerCasterAndAwakenedHoldsThree(final GameTestHelper helper) {
 		ServerPlayer caster = FighterBooksGameTest.caster(helper);
@@ -388,7 +417,7 @@ public class ArcherBooksGameTest {
 			ArcherSkills.applySnareTrap(caster, null, point, SkillSchoolGameTest.modifiers(caster, false));
 		}
 		int plain = ArcherSkills.trapsStanding(caster);
-		ArcherSkills.clear();
+		ArcherSkills.clearFor(caster);
 		for (int trap = 0; trap < 5; trap++) {
 			ArcherSkills.applySnareTrap(caster, null, point, SkillSchoolGameTest.modifiers(caster, true));
 		}
@@ -400,7 +429,7 @@ public class ArcherBooksGameTest {
 		helper.assertTrue(ArcherSkills.AWAKENED_TRAPS_PER_CASTER == 3,
 			"the awakened cap is " + ArcherSkills.AWAKENED_TRAPS_PER_CASTER + ", not 3");
 		helper.assertTrue(awakened == ArcherSkills.AWAKENED_TRAPS_PER_CASTER, "five awakened casts left " + awakened + " traps standing");
-		ArcherSkills.clear();
+		ArcherSkills.clearFor(caster);
 		helper.assertTrue(ArcherSkills.trapsStanding(caster) == 0, "the server stop left a trap behind");
 		helper.succeed();
 	}
