@@ -377,7 +377,9 @@ public class TowerEliteGameTest {
 			if (movedAt[0] < 0) {
 				movedAt[0] = (int) helper.getTick();
 				elite.snapTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5, 0.0F, 0.0F);
+				// The placing is the test's own hand, not the guardian walking: the walk is measured from here.
 				last[0] = elite.position();
+				return;
 			}
 			biggestStep[0] = Math.max(biggestStep[0], elite.position().distanceTo(last[0]));
 			last[0] = elite.position();

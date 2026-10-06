@@ -311,13 +311,35 @@ public class TowerLostRoomGameTest {
 		helper.succeed();
 	}
 
-	/** The most emeralds a boss's own vanilla loot adds, its floor's growth included. */
-	static final int VANILLA_EMERALDS = 8;
+	/**
+	 * What a boss's own loot may add as emeralds: the same kind, as a plain tower mob of the same floor and
+	 * level, killed the same way, and its own loot read. The pack grows a mob's own loot by the floor's drop
+	 * factor, so a hand-written count is wrong at any floor but the first; the same kind at the same level is
+	 * the pack's own number for it.
+	 */
+	static int ownLootEmeralds(final ServerLevel tower, final ServerPlayer player, final Mob boss, final int floor) {
+		net.minecraft.world.entity.Entity twin = boss.getType().create(tower, net.minecraft.world.entity.EntitySpawnReason.EVENT);
+		if (!(twin instanceof Mob own)) {
+			return 0;
+		}
+		own.snapTo(boss.getX(), boss.getY(), boss.getZ());
+		TowerMobs.makeTowerMob(own, floor, TowerElement.DARK, TowerRank.MOB, TowerMobs.levelOf(floor));
+		if (!tower.addFreshEntity(own)) {
+			return 0;
+		}
+		own.setLastHurtByPlayer(player, 100);
+		own.kill(tower);
+		List<ItemEntity> left = tower.getEntitiesOfClass(ItemEntity.class, own.getBoundingBox().inflate(4.0));
+		int emeralds = left.stream().filter(item -> item.getItem().is(net.minecraft.world.item.Items.EMERALD)).mapToInt(item -> item.getItem().getCount()).sum();
+		left.forEach(ItemEntity::discard);
+		return emeralds;
+	}
 
 	/** Kills a boss for the player with the rune roll pinned to nothing, and reads what it left. */
 	static String bossDrops(final ServerLevel tower, final ServerPlayer player, final Mob boss, final int runeFloor) {
 		int floor = TowerMobs.stateOf(boss).floor();
 		int mobLevel = boss.getAttached(ThreatState.TYPE).areaLevel();
+		int own = ownLootEmeralds(tower, player, boss, floor);
 		TowerRunes.pinDropChance(floor, 0.0);
 		player.teleportTo(tower, boss.getX(), boss.getY(), boss.getZ(), Set.of(), 0.0F, 0.0F, true);
 		boss.setLastHurtByPlayer(player, 100);
@@ -332,10 +354,11 @@ public class TowerLostRoomGameTest {
 		int wantEmeralds = TowerRewards.BOSS_EMERALDS + TowerRewards.BOSS_EMERALDS_PER_LEVEL * mobLevel;
 		int low = TowerRewards.BOSS_DIAMONDS_MIN + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
 		int high = TowerRewards.BOSS_DIAMONDS_MAX + mobLevel / TowerRewards.LEVELS_PER_BOSS_DIAMOND;
-		// Its own loot may hold an emerald.
-		boolean ok = emeralds >= wantEmeralds && emeralds <= wantEmeralds + VANILLA_EMERALDS && diamonds >= low && diamonds <= high && runes.size() == 1 && runeAt == runeFloor;
-		return (ok ? "ok" : "WRONG") + " level=" + mobLevel + " emeralds=" + emeralds + "/" + wantEmeralds + " diamonds=" + diamonds + " in " + low + ".." + high
-			+ " runes=" + runes.size() + " runeFloor=" + runeAt + "/" + runeFloor;
+		// The tower's pay is exact; the boss's own loot is its kind's own loot, with a roll's worth of room.
+		int bound = own * 2 + 8;
+		boolean ok = emeralds >= wantEmeralds && emeralds <= wantEmeralds + bound && diamonds >= low && diamonds <= high && runes.size() == 1 && runeAt == runeFloor;
+		return (ok ? "ok" : "WRONG") + " level=" + mobLevel + " emeralds=" + emeralds + "/" + wantEmeralds + "+" + bound + "(own=" + own + ") diamonds=" + diamonds
+			+ " in " + low + ".." + high + " runes=" + runes.size() + " runeFloor=" + runeAt + "/" + runeFloor;
 	}
 
 	/** The castle's portal as it stands in the portal hall: one wide, two high, axis x, tower frame round it. */

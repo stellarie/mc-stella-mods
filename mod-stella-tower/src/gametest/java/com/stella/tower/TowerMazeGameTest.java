@@ -301,17 +301,23 @@ public class TowerMazeGameTest {
 		helper.succeed();
 	}
 
-	/** A spot of the floor's maze where a wall stands, not in a clearing. */
+	/** A spot of the floor's maze where a wall stands and no trap was laid, not in a clearing. */
 	private static BlockPos mazeWall(final ServerLevel tower, final int floor) {
 		boolean[][] walls = TowerMaze.walls(tower.getSeed(), floor);
+		java.util.Set<Long> traps = new java.util.HashSet<>();
+		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), floor, TowerPlan.at(tower, floor))) {
+			traps.add(trap.x() * 1000L + trap.z());
+		}
+		BlockPos origin = TowerLayout.origin(floor);
 		for (int x = 1; x < S - 1; x++) {
 			for (int z = 1; z < S - 1; z++) {
-				if (walls[x][z]) {
-					return TowerLayout.origin(floor).offset(x, 1, z);
+				// A trap's own block takes the cell it is laid in, wall or not: the maze's wall is read where one stands.
+				if (walls[x][z] && !traps.contains(x * 1000L + z)) {
+					return origin.offset(x, 1, z);
 				}
 			}
 		}
-		throw new IllegalStateException("floor " + floor + " has no maze wall");
+		throw new IllegalStateException("floor " + floor + " has no untrapped maze wall");
 	}
 
 	/** The maze's walls can be broken, but only at four times obsidian's hardness, and they yield nothing to carry out. */
@@ -320,6 +326,9 @@ public class TowerMazeGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = ordinaryFloor(tower);
 		BlockPos at = mazeWall(tower, floor);
+		// A trap may take the cell after the floor's build, so the wall under test is set here: what is
+		// measured is a maze wall's hardness, tool and drops, not which writer reached the cell last.
+		tower.setBlock(at, TowerBlocks.TOWER_MAZE_WALL.defaultBlockState(), 3);
 		net.minecraft.world.level.block.state.BlockState state = tower.getBlockState(at);
 		float hardness = state.getDestroySpeed(tower, at);
 		float obsidian = net.minecraft.world.level.block.Blocks.OBSIDIAN.defaultBlockState().getDestroySpeed(tower, at);
