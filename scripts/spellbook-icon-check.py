@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 MOD_ID = "mod-stella-spells"
 CATALOG_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellbookCatalog.java")
 SKILL_CATALOG_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SkillbookCatalog.java")
+SKILL_ICON_SOURCE = Path("scripts/skillbook-icons.py")
 VISUAL_SOURCE = Path("mod-stella-spells/src/main/java/com/stella/spells/SpellVisuals.java")
 MODEL_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/models/item")
 ITEM_ROOT = Path("mod-stella-spells/src/main/resources/assets/mod-stella-spells/items")
@@ -104,6 +105,13 @@ def parse_catalog(root: Path) -> list[str]:
     skill_source = root / SKILL_CATALOG_SOURCE
     skill = re.findall(r'definition\("([a-z0-9_]+)"', skill_source.read_text(encoding="utf-8")) if skill_source.exists() else []
     return mage + skill
+
+
+def parse_skill_icons(root: Path) -> list[str]:
+    """Every skill book path skillbook-icons.py draws. That script owns the 16x16 skill art; this one owns
+    the 7x7 mage plates, so the audit reads both tables rather than keeping a second copy of either."""
+    source = (root / SKILL_ICON_SOURCE).read_text(encoding="utf-8")
+    return re.findall(r'Skill\("([a-z0-9_]+)"', source)
 
 
 def shade(color: str, factor: float) -> tuple[int, int, int]:
@@ -282,23 +290,31 @@ def expected_jar_entry(book: Book, kind: str) -> str:
 def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
     errors: list[str] = []
     catalog = parse_catalog(root)
-    expected = [book.path for book in BOOKS]
-    if catalog != expected:
-        errors.append(f"catalog mismatch: expected {len(expected)} known paths, found {len(catalog)}")
+    mage_paths = [book.path for book in BOOKS]
+    skill_paths = parse_skill_icons(root)
+    known_paths = mage_paths + skill_paths
+    if catalog[: len(mage_paths)] != mage_paths:
+        errors.append(f"catalog mage mismatch: expected {len(mage_paths)} known paths, found {catalog[: len(mage_paths)]}")
+    catalog_skill = catalog[len(mage_paths):]
+    if sorted(catalog_skill) != sorted(skill_paths):
+        errors.append(f"skill catalog mismatch: catalogue has {sorted(catalog_skill)}, drawn icons are {sorted(skill_paths)}")
 
     visual_source = (root / VISUAL_SOURCE).read_text(encoding="utf-8")
     area_colors = dict(re.findall(r'areaVisual\("([a-z0-9_]+)"[^\n]*,\s*(0x[0-9A-Fa-f]{6})\)', visual_source))
     held_colors = dict(re.findall(r'heldColor\("([a-z0-9_]+)",\s*(0x[0-9A-Fa-f]{6})\)', visual_source))
     if set(area_colors) & set(held_colors):
         errors.append(f"duplicate area and held color paths: {sorted(set(area_colors) & set(held_colors))}")
-    if set(area_colors) | set(held_colors) != set(expected):
+    if set(area_colors) | set(held_colors) != set(known_paths):
         errors.append("visual colors do not cover the spellbook catalog")
+    book_colors = {book.path: book.color for book in BOOKS}
     for path, color in (area_colors | held_colors).items():
-        book = next((entry for entry in BOOKS if entry.path == path), None)
-        if book is None:
-            errors.append(f"visual color has no book icon: {path}")
-        elif int(color, 16) != int(book.color[1:], 16):
-            errors.append(f"circle color differs from book icon: {path} ({color} != {book.color})")
+        if path not in book_colors:
+            # A skill book draws its own art in skillbook-icons.py, so only its presence is checked here.
+            # The mage books carry a colour in BOOKS to compare against the visual.
+            if path not in set(skill_paths):
+                errors.append(f"visual color has no book icon: {path}")
+        elif int(color, 16) != int(book_colors[path][1:], 16):
+            errors.append(f"circle color differs from book icon: {path} ({color} != {book_colors[path]})")
 
     hashes: dict[str, str] = {}
     for book in BOOKS:
@@ -346,6 +362,22 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
                     errors.append(message)
                 else:
                     print(f"warning: {message}")
+
+    for path in skill_paths:
+        # The skill art and its item shape belong to skillbook-icons.py; this checks that the files the
+        # game loads are present and are the right kind of image, so a missing one still fails here.
+        for needed in (root / MODEL_ROOT / f"{path}.json", root / TEXTURE_ROOT / f"{path}.png", root / ITEM_ROOT / f"{path}.json"):
+            if not needed.exists():
+                errors.append(f"missing skill book file: {needed}")
+        skill_texture = root / TEXTURE_ROOT / f"{path}.png"
+        if skill_texture.exists():
+            with Image.open(skill_texture) as image:
+                if image.size != (16, 16) or image.mode != "RGBA":
+                    errors.append(f"skill texture is {image.size} {image.mode}: {skill_texture}")
+            digest = hashlib.sha256(skill_texture.read_bytes()).hexdigest()
+            if digest in hashes:
+                errors.append(f"duplicate texture bytes: {path} and {hashes[digest]}")
+            hashes[digest] = path
 
     if jar_path is not None:
         if not jar_path.exists():
