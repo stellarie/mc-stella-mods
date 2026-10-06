@@ -3,6 +3,7 @@ package com.stella.tower;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
@@ -41,6 +42,28 @@ public enum LostCastleVariant {
 	public static final int CRYPT_HALL = -5;
 	public static final int CRYPT_LOW = -11;
 	private static final long LAYOUT_SALT = 0x4C41594FL;
+
+	/** The castle of the furnace: blackstone, burnt through. */
+	public static final LostCastlePalette INFERNO = new LostCastlePalette(TrapTheme.INFERNO, Blocks.POLISHED_BLACKSTONE, Blocks.BASALT, Blocks.MAGMA_BLOCK);
+	/** The castle of the frost: deepslate under a crown of ice. */
+	public static final LostCastlePalette FROST = new LostCastlePalette(TrapTheme.FROST, Blocks.DEEPSLATE_BRICKS, Blocks.COBBLED_DEEPSLATE, Blocks.BLUE_ICE);
+	/** The castle of the void: end stone, where nothing grows. */
+	public static final LostCastlePalette VOID = new LostCastlePalette(TrapTheme.VOID, Blocks.END_STONE_BRICKS, Blocks.END_STONE, Blocks.PURPUR_BLOCK);
+	/** The castle of the shadow: blackstone the dark has taken back. */
+	public static final LostCastlePalette SHADOW = new LostCastlePalette(TrapTheme.SHADOW, Blocks.BLACKSTONE, Blocks.DEEPSLATE, Blocks.SCULK);
+	/** The castle of the bog: mud brick, wet through. */
+	public static final LostCastlePalette BOG = new LostCastlePalette(TrapTheme.BOG, Blocks.MUD_BRICKS, Blocks.PACKED_MUD, Blocks.MOSS_BLOCK);
+
+	/** The surface this variant is built from. */
+	public LostCastlePalette palette() {
+		return switch (this) {
+			case CASTLE -> INFERNO;
+			case KEEP -> FROST;
+			case MAZE -> VOID;
+			case FLOODED -> SHADOW;
+			case CRYPT -> BOG;
+		};
+	}
 
 	/**
 	 * What is fixed before building: the portal's lower block, the yard (x and z, low and high), the lowest
@@ -91,19 +114,19 @@ public enum LostCastleVariant {
 	}
 
 	static void build(final LostRoomPiece piece, final LostCastleVariant variant, final Layout layout, final WorldGenLevel level,
-		final BoundingBox bb, final RandomSource ruin) {
+		final BoundingBox bb, final RandomSource ruin, final LostCastlePalette palette) {
 		switch (variant) {
-			case KEEP -> keep(piece, layout, level, bb, ruin);
-			case MAZE -> maze(piece, layout, level, bb, ruin);
-			case FLOODED -> flooded(piece, layout, level, bb, ruin);
-			case CRYPT -> crypt(piece, layout, level, bb, ruin);
+			case KEEP -> keep(piece, layout, level, bb, ruin, palette);
+			case MAZE -> maze(piece, layout, level, bb, ruin, palette);
+			case FLOODED -> flooded(piece, layout, level, bb, ruin, palette);
+			case CRYPT -> crypt(piece, layout, level, bb, ruin, palette);
 			default -> {
 			}
 		}
 	}
 
-	private static BlockState wall() {
-		return TowerBlocks.TOWER_WALL.defaultBlockState();
+	private static BlockState wall(final LostCastlePalette palette) {
+		return palette.wall().defaultBlockState();
 	}
 
 	private static BlockState air() {
@@ -136,7 +159,8 @@ public enum LostCastleVariant {
 	 * The keep: floors {@value #STOREY} apart, each joined to the next by a two-wide stair along a side wall,
 	 * west and east by turns. Its upper floors open onto broken balconies over the courtyard.
 	 */
-	private static void keep(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin) {
+	private static void keep(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin,
+		final LostCastlePalette palette) {
 		ward(piece, level, bb, ruin);
 		int[] n = layout.numbers();
 		int x0 = n[0];
@@ -147,7 +171,7 @@ public enum LostCastleVariant {
 		int x1 = x0 + width - 1;
 		int z1 = z0 + depth - 1;
 		int roof = STOREY * floors;
-		piece.fill(level, bb, x0, 1, z0, x1, roof, z1, wall());
+		piece.fill(level, bb, x0, 1, z0, x1, roof, z1, wall(palette));
 		for (int s = 0; s < floors; s++) {
 			int feet = 1 + STOREY * s;
 			piece.fill(level, bb, x0 + 1, feet, z0 + 1, x1 - 1, feet + STOREY - 2, z1 - 1, air());
@@ -163,7 +187,7 @@ public enum LostCastleVariant {
 			for (int z = z0; z <= z1; z++) {
 				boolean ring = x == x0 || x == x1 || z == z0 || z == z1;
 				if (ring && (x + z) % 2 == 0 && ruin.nextInt(4) != 0) {
-					piece.set(level, bb, wall(), x, roof + 1, z);
+					piece.set(level, bb, wall(palette), x, roof + 1, z);
 				}
 			}
 		}
@@ -176,10 +200,10 @@ public enum LostCastleVariant {
 			int sx = s % 2 == 0 ? x0 + 1 : x1 - 2;
 			// Headroom for the climb: no floor above it.
 			piece.fill(level, bb, sx, feet + STOREY - 1, z0 + 1, sx + 1, feet + STOREY - 1, z0 + 6, air());
-			BlockState step = Blocks.POLISHED_BLACKSTONE_BRICK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.NORTH);
+			BlockState step = Blocks.DEEPSLATE_TILE_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.NORTH);
 			for (int i = 0; i < STOREY; i++) {
 				piece.fill(level, bb, sx, feet + i, z0 + 2 + i, sx + 1, feet + i, z0 + 2 + i, step);
-				piece.fill(level, bb, sx, feet, z0 + 2 + i, sx + 1, feet + i - 1, z0 + 2 + i, wall());
+				piece.fill(level, bb, sx, feet, z0 + 2 + i, sx + 1, feet + i - 1, z0 + 2 + i, wall(palette));
 			}
 		}
 		for (int s = 0; s < floors; s++) {
@@ -215,6 +239,7 @@ public enum LostCastleVariant {
 		for (int i = 0; i < 4; i++) {
 			piece.rubble(level, bb, ruin, 6 + ruin.nextInt(LostRoomPiece.LENGTH - 12), 2 + ruin.nextInt(Math.max(1, z0 - 4)), 3);
 		}
+		piece.crown(level, bb, palette);
 	}
 
 	/** A balcony out over the courtyard from a doorway in the keep's front, its floor and its rail broken. */
@@ -242,9 +267,10 @@ public enum LostCastleVariant {
 	 * The maze ward: a {@value #MAZE_CELLS} by {@value #MAZE_CELLS} maze of four-wide ways, drawn as a tree from
 	 * the gate's cell, inside a whole curtain. The middle two cells, joined, hold the portal and workstations.
 	 */
-	private static void maze(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin) {
+	private static void maze(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin,
+		final LostCastlePalette palette) {
 		piece.curtain(level, bb, ruin);
-		BlockState stone = TowerBlocks.TOWER_MAZE_WALL.defaultBlockState();
+		BlockState stone = palette.wall().defaultBlockState();
 		int x1 = MAZE_X + MAZE_CELLS * MAZE_PITCH;
 		int z1 = MAZE_CELLS * MAZE_PITCH;
 		// No towers: the corners stand solid.
@@ -254,15 +280,15 @@ public enum LostCastleVariant {
 					&& (z < LostRoomPiece.TOWER || z >= LostRoomPiece.WIDTH - LostRoomPiece.TOWER);
 				boolean maze = x > MAZE_X && x < x1 && z >= 1 && z < z1;
 				if (corner && !maze) {
-					piece.fill(level, bb, x, 1, z, x, LostRoomPiece.WALL_HEIGHT, z, wall());
+					piece.fill(level, bb, x, 1, z, x, LostRoomPiece.WALL_HEIGHT, z, wall(palette));
 				}
 			}
 		}
 		piece.gate(level, bb);
 		// No second way round the maze.
-		piece.fill(level, bb, 1, 1, 1, MAZE_X, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall());
-		piece.fill(level, bb, x1, 1, 1, LostRoomPiece.LENGTH - 2, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall());
-		piece.fill(level, bb, MAZE_X, 1, z1, x1, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall());
+		piece.fill(level, bb, 1, 1, 1, MAZE_X, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall(palette));
+		piece.fill(level, bb, x1, 1, 1, LostRoomPiece.LENGTH - 2, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall(palette));
+		piece.fill(level, bb, MAZE_X, 1, z1, x1, LostRoomPiece.WALL_HEIGHT, LostRoomPiece.WIDTH - 2, wall(palette));
 		for (int i = 0; i <= MAZE_CELLS; i++) {
 			int line = MAZE_X + i * MAZE_PITCH;
 			piece.fill(level, bb, line, 1, 1, line, LostRoomPiece.WALL_HEIGHT, z1, stone);
@@ -396,7 +422,8 @@ public enum LostCastleVariant {
 	 * back a room on an island ringed by lava two wide, reached by one bridge to its door. Lava pits lie at the
 	 * sides, each with a bridge of its own.
 	 */
-	private static void flooded(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin) {
+	private static void flooded(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin,
+		final LostCastlePalette palette) {
 		ward(piece, level, bb, ruin);
 		BlockState water = Blocks.WATER.defaultBlockState();
 		BlockState lava = Blocks.LAVA.defaultBlockState();
@@ -406,7 +433,7 @@ public enum LostCastleVariant {
 		piece.fill(level, bb, 1, -1, moatLow, LostRoomPiece.LENGTH - 2, 0, moatHigh, water);
 		int gate = LostRoomPiece.GATE_X;
 		piece.fill(level, bb, gate - 1, 0, moatLow, gate + 2, 0, moatHigh, bridge);
-		piece.fill(level, bb, gate - 1, -1, moatLow, gate + 2, -1, moatHigh, wall());
+		piece.fill(level, bb, gate - 1, -1, moatLow, gate + 2, -1, moatHigh, wall(palette));
 		int[] n = layout.numbers();
 		int x0 = n[0];
 		int z0 = n[1];
@@ -415,8 +442,8 @@ public enum LostCastleVariant {
 		int back = n[4];
 		int x1 = x0 + width + 1;
 		piece.fill(level, bb, x0 - 2, 0, z0 - 2, x1 + 2, 0, back + 2, lava);
-		piece.fill(level, bb, x0, 0, z0, x1, 0, back, wall());
-		piece.fill(level, bb, x0, 1, z0, x1, 1 + LostRoomPiece.HALL_HEIGHT, back, wall());
+		piece.fill(level, bb, x0, 0, z0, x1, 0, back, wall(palette));
+		piece.fill(level, bb, x0, 1, z0, x1, 1 + LostRoomPiece.HALL_HEIGHT, back, wall(palette));
 		piece.fill(level, bb, x0 + 1, 1, z0 + 1, x1 - 1, LostRoomPiece.HALL_HEIGHT, back - 1, air());
 		for (int x = x0 + 1; x < x1; x++) {
 			for (int z = z0 + 1; z < back; z++) {
@@ -463,14 +490,15 @@ public enum LostCastleVariant {
 	 * hall, and from its far end six more, back under it, to the lowest hall, which holds the portal. The whole
 	 * crypt is cut out of a block of tower wall, so no cave or water reaches into it.
 	 */
-	private static void crypt(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin) {
+	private static void crypt(final LostRoomPiece piece, final Layout layout, final WorldGenLevel level, final BoundingBox bb, final RandomSource ruin,
+		final LostCastlePalette palette) {
 		// Half buried: earth against a low wall.
 		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
 				boolean edge = x == 0 || z == 0 || x == LostRoomPiece.LENGTH - 1 || z == LostRoomPiece.WIDTH - 1;
 				if (edge) {
 					int top = 1 + ruin.nextInt(3);
-					piece.fill(level, bb, x, 1, z, x, top, z, wall());
+					piece.fill(level, bb, x, 1, z, x, top, z, wall(palette));
 				} else if ((x == 1 || z == 1 || x == LostRoomPiece.LENGTH - 2 || z == LostRoomPiece.WIDTH - 2) && ruin.nextInt(3) == 0) {
 					piece.set(level, bb, ruin.nextBoolean() ? Blocks.COARSE_DIRT.defaultBlockState() : Blocks.MOSS_BLOCK.defaultBlockState(), x, 1, z);
 				}
@@ -481,9 +509,9 @@ public enum LostCastleVariant {
 		int upper = layout.numbers()[0];
 		int lower = layout.numbers()[1];
 		// The block the crypt is cut from.
-		piece.fill(level, bb, 9, -LostRoomPiece.DEPTH, 3, 21, -1, LostRoomPiece.WIDTH - 2, wall());
+		piece.fill(level, bb, 9, -LostRoomPiece.DEPTH, 3, 21, -1, LostRoomPiece.WIDTH - 2, wall(palette));
 		// The mausoleum, its door facing the gate.
-		piece.fill(level, bb, 11, 1, 4, 19, 5, 10, wall());
+		piece.fill(level, bb, 11, 1, 4, 19, 5, 10, wall(palette));
 		piece.fill(level, bb, 12, 1, 5, 18, 4, 9, air());
 		piece.fill(level, bb, 15, 1, 4, 16, 3, 4, air());
 		for (int x = 12; x <= 18; x++) {
@@ -506,7 +534,7 @@ public enum LostCastleVariant {
 		int hx0 = 15 - upper / 2;
 		int hx1 = hx0 + upper - 1;
 		vault(piece, level, bb, ruin, hx0, hx1, CRYPT_HALL, 12, LostRoomPiece.WIDTH - 3);
-		BlockState back = Blocks.POLISHED_BLACKSTONE_BRICK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.NORTH);
+		BlockState back = Blocks.DEEPSLATE_TILE_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.NORTH);
 		int start = LostRoomPiece.WIDTH - 3;
 		for (int i = 1; i <= 6; i++) {
 			int z = start - i;
@@ -539,11 +567,11 @@ public enum LostCastleVariant {
 		final int x0, final int x1, final int feet, final int z0, final int z1) {
 		piece.fill(level, bb, x0, feet, z0, x1, feet + 4, z1, air());
 		for (int z = z0; z <= z1; z++) {
-			piece.set(level, bb, wall(), x0, feet + 4, z);
-			piece.set(level, bb, wall(), x1, feet + 4, z);
+			piece.set(level, bb, piece.palette().rubble().defaultBlockState(), x0, feet + 4, z);
+			piece.set(level, bb, piece.palette().rubble().defaultBlockState(), x1, feet + 4, z);
 			if ((z - z0) % 3 == 2 && x1 - x0 >= 6) {
-				piece.fill(level, bb, x0 + 1, feet, z, x0 + 1, feet + 4, z, wall());
-				piece.fill(level, bb, x1 - 1, feet, z, x1 - 1, feet + 4, z, wall());
+				piece.fill(level, bb, x0 + 1, feet, z, x0 + 1, feet + 4, z, piece.palette().rubble().defaultBlockState());
+				piece.fill(level, bb, x1 - 1, feet, z, x1 - 1, feet + 4, z, piece.palette().rubble().defaultBlockState());
 			}
 		}
 		cobwebs(piece, level, bb, ruin, x0, x1, feet + 3, z0, z1, 3);

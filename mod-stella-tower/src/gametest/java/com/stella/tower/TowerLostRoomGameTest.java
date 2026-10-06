@@ -59,12 +59,12 @@ public class TowerLostRoomGameTest {
 		return 60 + Math.floorMod(x * 7 + z * 3, 5);
 	}
 
-	/** A castle built over a hill of stone, its floor set by the castle's own rule. */
+	/** A castle built over a hill of stone, its floor one block above that hill. */
 	static Arena castle(final GameTestHelper helper) {
 		return castle(helper, LostCastleVariant.CASTLE, Direction.NORTH);
 	}
 
-	/** A castle of one variant, facing one way, built over a hill of stone, its floor set by the castle's own rule. */
+	/** A castle of one variant, facing one way, built over a hill of stone, its floor one block above that hill. */
 	static Arena castle(final GameTestHelper helper, final LostCastleVariant variant, final Direction facing) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int area = TowerTestSupport.freshArea();
@@ -79,8 +79,7 @@ public class TowerLostRoomGameTest {
 				}
 			}
 		}
-		int floor = LostRoomPiece.floorOver(minX, minZ, maxX, maxZ, 1,
-			(x, z) -> tower.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1);
+		int floor = LostRoomPiece.floorOver(minX, minZ, maxX, maxZ, 1, (x, z) -> hill(x, z));
 		LostRoomPiece piece = new LostRoomPiece(minX, floor, minZ, facing, variant);
 		piece.build(tower, BoundingBox.infinite());
 		return new Arena(tower, minX, minZ, maxX, maxZ, piece);
@@ -98,7 +97,7 @@ public class TowerLostRoomGameTest {
 			for (int z = arena.minZ(); z <= arena.maxZ(); z++) {
 				highest = Math.max(highest, hill(x, z));
 				for (int y = hill(x, z) + 1; y < floor; y++) {
-					gaps += level.getBlockState(new BlockPos(x, y, z)).is(TowerBlocks.TOWER_WALL) ? 0 : 1;
+					gaps += level.getBlockState(new BlockPos(x, y, z)).is(arena.piece().palette().wall()) ? 0 : 1;
 				}
 				columns++;
 			}
@@ -106,7 +105,7 @@ public class TowerLostRoomGameTest {
 		StringBuilder corners = new StringBuilder();
 		boolean cornersOk = true;
 		for (int[] c : new int[][] {{arena.minX(), arena.minZ()}, {arena.maxX(), arena.minZ()}, {arena.minX(), arena.maxZ()}, {arena.maxX(), arena.maxZ()}}) {
-			boolean above = floor > hill(c[0], c[1]) && level.getBlockState(new BlockPos(c[0], floor, c[1])).is(TowerBlocks.TOWER_WALL);
+			boolean above = floor > hill(c[0], c[1]) && level.getBlockState(new BlockPos(c[0], floor, c[1])).is(arena.piece().palette().wall());
 			cornersOk &= above;
 			corners.append(' ').append(hill(c[0], c[1])).append(above ? "<floor" : "!");
 		}
@@ -139,7 +138,7 @@ public class TowerLostRoomGameTest {
 					boolean ring = dx == 0 || dz == 0 || dx == size - 1 || dz == size - 1;
 					for (int y = 1; y <= LostRoomPiece.HALL_HEIGHT; y++) {
 						BlockState here = level.getBlockState(piece.worldPos(x, y, z));
-						boolean wall = here.is(TowerBlocks.TOWER_WALL) || ring && here.is(TowerBlocks.TOWER_LAMP);
+						boolean wall = here.is(arena.piece().palette().wall()) || ring && here.is(TowerBlocks.TOWER_LAMP);
 						boolean archway = dz == 0 && (x == arch || x == arch + 1) && y <= 3;
 						if (ring && !archway) {
 							walled &= wall;
@@ -148,7 +147,7 @@ public class TowerLostRoomGameTest {
 						}
 					}
 					if (!ring) {
-						boolean roof = level.getBlockState(piece.worldPos(x, LostRoomPiece.HALL_HEIGHT + 1, z)).is(TowerBlocks.TOWER_WALL);
+						boolean roof = level.getBlockState(piece.worldPos(x, LostRoomPiece.HALL_HEIGHT + 1, z)).is(arena.piece().palette().wall());
 						roofed += roof ? 1 : 0;
 						roofGaps += roof ? 0 : 1;
 					}
@@ -186,7 +185,7 @@ public class TowerLostRoomGameTest {
 			for (int d = 0; d < LostRoomPiece.TOWER; d++) {
 				for (int[] cell : new int[][] {{c[0] + d, c[1]}, {c[0], c[1] + d}, {c[0] + d, c[1] + LostRoomPiece.TOWER - 1}, {c[0] + LostRoomPiece.TOWER - 1, c[1] + d}}) {
 					int y = 1;
-					while (y < LostRoomPiece.HEIGHT && level.getBlockState(piece.worldPos(cell[0], y, cell[1])).is(TowerBlocks.TOWER_WALL)) {
+					while (y < LostRoomPiece.HEIGHT && level.getBlockState(piece.worldPos(cell[0], y, cell[1])).is(arena.piece().palette().wall())) {
 						y++;
 					}
 					tallest = Math.max(tallest, y - 1);
@@ -202,7 +201,7 @@ public class TowerLostRoomGameTest {
 		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
 				boolean edge = x == 0 || z == 0 || x == LostRoomPiece.LENGTH - 1 || z == LostRoomPiece.WIDTH - 1;
-				if (edge && !level.getBlockState(piece.worldPos(x, 2, z)).is(TowerBlocks.TOWER_WALL) && !level.getBlockState(piece.worldPos(x, 1, z)).is(Blocks.OAK_DOOR)) {
+				if (edge && !level.getBlockState(piece.worldPos(x, 2, z)).is(arena.piece().palette().wall()) && !level.getBlockState(piece.worldPos(x, 1, z)).is(Blocks.OAK_DOOR)) {
 					breaches++;
 				}
 				for (int y = 1; y < LostRoomPiece.HEIGHT; y++) {

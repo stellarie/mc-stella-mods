@@ -37,6 +37,9 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSeriali
  * holds the blue portal, one wide and two high in a lining of tower frame, and the workstations: a crafting
  * table with a candle, a chest of tower loot, an anvil and a furnace.
  * <p>
+ * The wall stone is the variant's own ({@link LostCastlePalette}), so a castle names the tower environment
+ * its blocks come from. The portal, the workstations, the gate and the frame stay as they are.
+ * <p>
  * Spots are in the piece's own frame: x along the front, z from the gate inward, y up from the floor. States
  * face as in a north-facing piece, where +z is north, and the piece turns them with itself. What is ruined
  * is drawn from the piece's own spot, so every chunk the castle crosses draws the same ruin.
@@ -75,6 +78,8 @@ public class LostRoomPiece extends StructurePiece {
 	private final long ruinSeed;
 	private final LostCastleVariant variant;
 	private final LostCastleVariant.Layout layout;
+	/** The surface this castle is built from: its variant's tower environment. */
+	private final LostCastlePalette palette;
 
 	public LostRoomPiece(final RandomSource random, final int west, final int floor, final int north) {
 		this(west, floor, north, Direction.Plane.HORIZONTAL.getRandomDirection(random));
@@ -91,6 +96,7 @@ public class LostRoomPiece extends StructurePiece {
 		this.ruinSeed = SALT ^ BlockPos.asLong(west, floor, north);
 		this.variant = variant;
 		this.layout = variant.layout(this.ruinSeed);
+		this.palette = variant.palette();
 	}
 
 	public LostRoomPiece(final CompoundTag tag) {
@@ -99,6 +105,7 @@ public class LostRoomPiece extends StructurePiece {
 		// Saved before the variants: the castle.
 		this.variant = LostCastleVariant.values()[Math.floorMod(tag.getIntOr("Variant", 0), LostCastleVariant.values().length)];
 		this.layout = this.variant.layout(this.ruinSeed);
+		this.palette = this.variant.palette();
 	}
 
 	@Override
@@ -108,6 +115,16 @@ public class LostRoomPiece extends StructurePiece {
 
 	public LostCastleVariant variant() {
 		return this.variant;
+	}
+
+	/** The surface this castle is built from. */
+	public LostCastlePalette palette() {
+		return this.palette;
+	}
+
+	/** The stone of the castle's own walls. */
+	private BlockState wall() {
+		return this.palette.wall().defaultBlockState();
 	}
 
 	/** Where the roaming mobs rise: x and z, low and high, inclusive, at floor level. */
@@ -170,7 +187,7 @@ public class LostRoomPiece extends StructurePiece {
 	/** Lays the castle where its box stands: the seam a test places it by. */
 	public void build(final WorldGenLevel level, final BoundingBox chunkBB) {
 		RandomSource ruin = RandomSource.create(this.ruinSeed);
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		this.generateBox(level, chunkBB, 0, 0, 0, LENGTH - 1, 0, WIDTH - 1, wall, wall, false);
 		this.generateAirBox(level, chunkBB, 0, 1, 0, LENGTH - 1, HEIGHT - 1, WIDTH - 1);
 		for (int x = 0; x < LENGTH; x++) {
@@ -179,7 +196,7 @@ public class LostRoomPiece extends StructurePiece {
 			}
 		}
 		if (this.variant != LostCastleVariant.CASTLE) {
-			LostCastleVariant.build(this, this.variant, this.layout, level, chunkBB, ruin);
+			LostCastleVariant.build(this, this.variant, this.layout, level, chunkBB, ruin, this.palette);
 			return;
 		}
 		curtain(level, chunkBB, ruin);
@@ -194,6 +211,7 @@ public class LostRoomPiece extends StructurePiece {
 		storeHall(level, chunkBB, ruin);
 		yard(level, chunkBB, ruin);
 		vines(level, chunkBB, ruin);
+		crown(level, chunkBB, this.palette);
 	}
 
 	private static boolean inTower(final int x, final int z) {
@@ -210,7 +228,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** The curtain wall: merlons on every other block, and three breaches that rubble spills out of. */
 	void curtain(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		int[][] breaches = {
 			{TOWER + 2 + ruin.nextInt(4), 0}, {LENGTH - 1, TOWER + 3 + ruin.nextInt(8)}, {TOWER + 4 + ruin.nextInt(12), WIDTH - 1}
 		};
@@ -243,7 +261,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** The gatehouse: a higher stretch of wall, the oak double door, and a lamp over it. */
 	void gate(final WorldGenLevel level, final BoundingBox chunkBB) {
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		for (int x = GATE_X - 2; x <= GATE_X + 3; x++) {
 			for (int y = 1; y <= WALL_HEIGHT + 2; y++) {
 				boolean opening = (x == GATE_X || x == GATE_X + 1) && y <= 2;
@@ -261,7 +279,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** A hollow corner tower, its top broken to a jagged line, a doorway onto the yard. */
 	void tower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x0, final int z0, final Direction door) {
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		int fallen = ruin.nextInt(4);
 		for (int dx = 0; dx < TOWER; dx++) {
 			for (int dz = 0; dz < TOWER; dz++) {
@@ -291,7 +309,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** The fourth corner's tower lies in a ring of stumps and rubble. */
 	void fallenTower(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin) {
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		int z0 = WIDTH - TOWER;
 		for (int dx = 0; dx < TOWER; dx++) {
 			for (int dz = 0; dz < TOWER; dz++) {
@@ -307,7 +325,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** A hall's walls and its broken roof; a three-high arch in the middle of its yard side. */
 	private void hall(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x0) {
-		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
+		BlockState wall = this.wall();
 		int size = HALL_INNER + 2;
 		int roof = HALL_HEIGHT + 1;
 		this.generateAirBox(level, chunkBB, x0 + 1, 1, HALL_Z + 1, x0 + HALL_INNER, HALL_HEIGHT, HALL_Z + HALL_INNER);
@@ -397,13 +415,13 @@ public class LostRoomPiece extends StructurePiece {
 		}
 		int wellX = GATE_X;
 		int wellZ = 6;
-		BlockState stone = Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+		BlockState stone = this.wall();
 		for (int dx = -1; dx <= 2; dx++) {
 			for (int dz = -1; dz <= 2; dz++) {
 				boolean ring = dx == -1 || dz == -1 || dx == 2 || dz == 2;
 				this.placeBlock(level, ring ? stone : Blocks.WATER.defaultBlockState(), wellX + dx, 0, wellZ + dz, chunkBB);
 				if (ring && ruin.nextInt(3) != 0) {
-					this.placeBlock(level, Blocks.POLISHED_BLACKSTONE_BRICK_WALL.defaultBlockState(), wellX + dx, 1, wellZ + dz, chunkBB);
+					this.placeBlock(level, this.palette.rubble().defaultBlockState(), wellX + dx, 1, wellZ + dz, chunkBB);
 				}
 			}
 		}
@@ -461,6 +479,17 @@ public class LostRoomPiece extends StructurePiece {
 		}
 	}
 
+	/** The variant's own stone, one block, on the north wall's first merlon: a castle's mark of its environment. */
+	void crown(final WorldGenLevel level, final BoundingBox chunkBB, final LostCastlePalette palette) {
+		for (int x = TOWER; x < LENGTH - TOWER; x++) {
+			// A merlon stands on the wall stone the curtain laid, and the crown sits where one still stands.
+			if (getBlock(level, x, WALL_HEIGHT + 1, WIDTH - 1, chunkBB).is(palette.wall())) {
+				this.set(level, chunkBB, palette.accent().defaultBlockState(), x, WALL_HEIGHT + 1, WIDTH - 1);
+				return;
+			}
+		}
+	}
+
 	void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
 		if (z == 1 && (x == GATE_X || x == GATE_X + 1) && (y == 1 || y == 2)) {
 			return;
@@ -468,12 +497,12 @@ public class LostRoomPiece extends StructurePiece {
 		if (!getBlock(level, x, y, z, chunkBB).isAir() || !getBlock(level, x, y - 1, z, chunkBB).isSolid()) {
 			return;
 		}
+		// The castle's own rubble stone leads, so a pile names its environment, and the ruin keeps its mix.
 		BlockState stone = switch (ruin.nextInt(5)) {
-			case 0 -> Blocks.CRACKED_POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
-			case 1 -> Blocks.BLACKSTONE.defaultBlockState();
-			case 2 -> Blocks.POLISHED_BLACKSTONE_BRICK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM);
-			case 3 -> Blocks.COBBLESTONE.defaultBlockState();
-			default -> Blocks.GILDED_BLACKSTONE.defaultBlockState();
+			case 0, 1 -> this.palette.rubble().defaultBlockState();
+			case 2 -> Blocks.BLACKSTONE.defaultBlockState();
+			case 3 -> Blocks.POLISHED_BLACKSTONE_BRICK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+			default -> Blocks.COBBLESTONE.defaultBlockState();
 		};
 		this.placeBlock(level, stone, x, y, z, chunkBB);
 	}
