@@ -61,6 +61,16 @@
 		"mod-stella-spells:disengage",
 		"mod-stella-spells:snare_trap",
 		"mod-stella-spells:eagle_eye",
-		"mod-stella-spells:elemental_quiver"
+		"mod-stella-spells:elemental_quiver",
+		"mod-stella-spells:holy_light",
+		"mod-stella-spells:prayer_of_mending",
+		"mod-stella-spells:renew",
+		"mod-stella-spells:divine_shield",
+		"mod-stella-spells:holy_arms",
+		"mod-stella-spells:blessing_of_fortitude",
+		"mod-stella-spells:smite",
+		"mod-stella-spells:resurrection_ward",
+		"mod-stella-spells:consecrate",
+		"mod-stella-spells:guardian_angel"
 	]
 }

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:glow_berries"
+  ],
+  "result": {
+    "id": "mod-stella-spells:holy_light_scroll",
+    "count": 2
+  }
+}

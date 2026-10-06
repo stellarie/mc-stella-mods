@@ -1,6 +1,7 @@
 {
 	"replace": false,
 	"values": [
-		"mod-stella-spells:bleeding"
+		"mod-stella-spells:bleeding",
+		"mod-stella-spells:holy"
 	]
 }

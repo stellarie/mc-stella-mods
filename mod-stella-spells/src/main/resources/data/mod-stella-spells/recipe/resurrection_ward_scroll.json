@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:totem_of_undying"
+  ],
+  "result": {
+    "id": "mod-stella-spells:resurrection_ward_scroll",
+    "count": 2
+  }
+}

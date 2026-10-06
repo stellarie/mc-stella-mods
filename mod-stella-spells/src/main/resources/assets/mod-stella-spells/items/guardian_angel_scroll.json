@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "mod-stella-spells:item/guardian_angel_scroll",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 16777215
+      }
+    ]
+  }
+}

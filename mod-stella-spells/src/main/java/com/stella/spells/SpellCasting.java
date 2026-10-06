@@ -32,6 +32,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jspecify.annotations.Nullable;
 
 public final class SpellCasting {
 	/** A spell hit names its caster, so the RPG mod reads penetration and the spell crit from the attacker. */
@@ -106,6 +107,48 @@ public final class SpellCasting {
 		return cast(caster, book.definition(), caster.getItemInHand(hand), false);
 	}
 
+	/**
+	 * The ally an {@code ALLY} cast resolves: the one the caster looks at within reach, else the caster
+	 * itself. {@link SkillTargeting#isAlly} owns the rule, so a foe is never helped.
+	 */
+	static LivingEntity findAlly(final ServerPlayer caster, final int rangeBlocks) {
+		LivingEntity looked = findAlongRay(caster, rangeBlocks, candidate -> MoreSpells.isAlly(candidate));
+		return looked == null ? caster : looked;
+	}
+
+	// The first body on the caster's look ray, a block stopping it, that this filter accepts.
+	private static @Nullable LivingEntity findAlongRay(final ServerPlayer caster, final int rangeBlocks, final java.util.function.Predicate<LivingEntity> wanted) {
+		ServerLevel level = caster.level();
+		Vec3 start = caster.getEyePosition();
+		Vec3 look = caster.getLookAngle();
+		Vec3 end = start.add(look.scale(rangeBlocks));
+		BlockHitResult blockHit = level.clip(
+			new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, caster)
+		);
+		double maxDistance = blockHit.getType() == HitResult.Type.MISS
+			? rangeBlocks
+			: start.distanceTo(blockHit.getLocation());
+		double maxDistanceSquared = maxDistance * maxDistance;
+		AABB search = caster.getBoundingBox().expandTowards(look.scale(rangeBlocks)).inflate(1.0);
+		LivingEntity nearest = null;
+		double nearestDistanceSquared = maxDistanceSquared;
+
+		for (LivingEntity body : level.getEntitiesOfClass(LivingEntity.class, search, candidate -> candidate.isAlive() && wanted.test(candidate))) {
+			Optional<Vec3> hit = body.getBoundingBox().inflate(body.getPickRadius()).clip(start, end);
+			if (hit.isEmpty()) {
+				continue;
+			}
+
+			double distanceSquared = start.distanceToSqr(hit.orElseThrow());
+			if (distanceSquared < nearestDistanceSquared) {
+				nearest = body;
+				nearestDistanceSquared = distanceSquared;
+			}
+		}
+
+		return nearest;
+	}
+
 	/** A scroll casts through the same path, keeps its own short cooldown, and crumbles only when the spell lands. */
 	public static CastResult castScroll(final ServerPlayer caster, final SpellScrollItem scroll, final InteractionHand hand) {
 		ItemStack stack = caster.getItemInHand(hand);
@@ -126,11 +169,13 @@ public final class SpellCasting {
 		modifiers = RpgBridge.grow(caster, definition.id().getPath(), modifiers, definition.school());
 		Mob target = null;
 		Vec3 point = null;
+		LivingEntity ally = null;
 		switch (definition.targetMode()) {
 			case SELF -> point = caster.position();
 			case HOSTILE -> target = findTarget(caster, modifiers.targetRangeBlocks());
 			case BLOCK -> point = findBlockTarget(caster, modifiers.targetRangeBlocks());
 			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
+			case ALLY -> ally = findAlly(caster, modifiers.targetRangeBlocks());
 		}
 
 		// The cooldown applies to every cast of a spell, a summon's recall included, so a recast cannot heal or
@@ -158,6 +203,7 @@ public final class SpellCasting {
 		Awakening.report(definition.id(), modifiers.awakened());
 		boolean completed = false;
 		CastHits.begin(caster, definition.id(), !scroll && !Awakening.isAwakened(stack));
+		CastContext.setAlly(ally);
 		try {
 			boolean applied = definition.effect().apply(caster, target, point, modifiers);
 			if (!applied) {
@@ -187,6 +233,7 @@ public final class SpellCasting {
 		} finally {
 			boolean hit = CastHits.end(completed);
 			SKIP_COOLDOWN.remove();
+			CastContext.setAlly(null);
 			if (hit && !scroll) {
 				Awakening.recordCast(caster, stack);
 			}
@@ -417,7 +464,7 @@ public final class SpellCasting {
 
 	private static boolean hasValidTarget(final TargetMode mode, final Mob target, final Vec3 point) {
 		return switch (mode) {
-			case SELF -> true;
+			case SELF, ALLY -> true;
 			case HOSTILE -> target != null && target.isAlive() && !target.isInvulnerable();
 			case BLOCK, SAFE_TELEPORT -> point != null;
 		};

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS",
+    "SBS",
+    "SSS"
+  ],
+  "key": {
+    "S": "mod-stella-spells:resurrection_ward_scroll",
+    "B": "minecraft:book"
+  },
+  "result": {
+    "id": "mod-stella-spells:resurrection_ward",
+    "count": 1
+  }
+}

@@ -142,7 +142,18 @@ public final class SpellVisuals {
 		areaVisual("disengage", ParticleTypes.SWEEP_ATTACK, ParticleTypes.SMOKE, SpellNumbers.DISENGAGE.radius(), 0x3E8E41),
 		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
-		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0)
+		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),
+		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows.
+		visual("holy_light", ParticleTypes.END_ROD, ParticleTypes.GLOW, 0.0),
+		visual("prayer_of_mending", ParticleTypes.HEART, ParticleTypes.END_ROD, 0.0),
+		visual("renew", ParticleTypes.HAPPY_VILLAGER, ParticleTypes.END_ROD, 0.0),
+		visual("divine_shield", ParticleTypes.ENCHANT, ParticleTypes.END_ROD, 0.0),
+		visual("holy_arms", ParticleTypes.ENCHANTED_HIT, ParticleTypes.END_ROD, 0.0),
+		visual("blessing_of_fortitude", ParticleTypes.HEART, ParticleTypes.TOTEM_OF_UNDYING, 0.0),
+		visual("smite", ParticleTypes.END_ROD, ParticleTypes.ELECTRIC_SPARK, 0.0),
+		visual("resurrection_ward", ParticleTypes.TOTEM_OF_UNDYING, ParticleTypes.END_ROD, 0.0),
+		areaVisual("consecrate", ParticleTypes.END_ROD, ParticleTypes.GLOW, PriestSkills.CONSECRATE_RADIUS, 0xFFE08A),
+		visual("guardian_angel", ParticleTypes.END_ROD, ParticleTypes.HEART, 0.0)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),
@@ -179,6 +190,15 @@ public final class SpellVisuals {
 		heldColor("hunters_mark", 0xE0303A),
 		heldColor("eagle_eye", 0x6FB34A),
 		heldColor("elemental_quiver", 0xC8A24B),
+		heldColor("holy_light", 0xFFF1B8),
+		heldColor("prayer_of_mending", 0xFFD166),
+		heldColor("renew", 0xB8E986),
+		heldColor("divine_shield", 0xF2C94C),
+		heldColor("holy_arms", 0xFFE08A),
+		heldColor("blessing_of_fortitude", 0xFFF4C2),
+		heldColor("smite", 0xF7D046),
+		heldColor("resurrection_ward", 0xF2E2A8),
+		heldColor("guardian_angel", 0xFFF4C2),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
 		heldColor("snare_trap", 0x3E8E41)
@@ -610,6 +630,13 @@ public final class SpellVisuals {
 			case "arrow_rain" -> Motif.FALLING;
 			case "disengage" -> Motif.WIND;
 			case "elemental_quiver" -> Motif.NOTES;
+			// The priest books: a heal blooms, a ward closes, and the holy ground carries a sigil.
+			case "holy_light", "prayer_of_mending", "renew" -> Motif.BLOOM;
+			case "divine_shield", "resurrection_ward", "blessing_of_fortitude" -> Motif.WARD;
+			case "holy_arms" -> Motif.SHIELD;
+			case "smite" -> Motif.FALLING;
+			case "consecrate" -> Motif.SIGIL;
+			case "guardian_angel" -> Motif.WINGS;
 			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
 		};
 	}

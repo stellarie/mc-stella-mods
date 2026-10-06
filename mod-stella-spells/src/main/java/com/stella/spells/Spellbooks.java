@@ -48,9 +48,13 @@ public final class Spellbooks implements ModInitializer {
 		Identifier.fromNamespaceAndPath(MOD_ID, "briar_snare")
 	);
 
-	/** Spells a later round removed, each pointing at the book that took its place, so a stack in a saved world survives. */
+	/**
+	 * Spells a later round removed, each pointing at the book that took its place, so a stack in a saved world
+	 * survives. {@code smite} was one of them; stage 7 gives that id a priest book of its own, so it is no
+	 * longer retired: an old stack of the mage Smite now loads as the priest book rather than as Battle Hymn.
+	 */
 	public static final java.util.Map<String, String> RETIRED = java.util.Map.of(
-		"smite", "battle_hymn", "skyhook", "gravity", "healing_spring", "bulwark_hymn"
+		"skyhook", "gravity", "healing_spring", "bulwark_hymn"
 	);
 
 	@Override
@@ -69,6 +73,7 @@ public final class Spellbooks implements ModInitializer {
 		SummonSkeleton.register();
 		FighterSkills.register();
 		ArcherSkills.register();
+		PriestSkills.register();
 		SpellbookLoot.register();
 		SpellStorms.register();
 		SpellVisuals.register();
