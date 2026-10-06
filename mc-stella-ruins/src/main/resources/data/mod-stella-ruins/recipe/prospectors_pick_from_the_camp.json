@@ -1,0 +1,14 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:rat_tail",
+		"mod-stella-ruins:rat_tail",
+		"mod-stella-ruins:miners_journal_page",
+		"mod-stella-ruins:gleaming_ore_chunk",
+		"mod-stella-ruins:gleaming_ore_chunk",
+		"minecraft:stick",
+		"minecraft:stick"
+	],
+	"result": { "id": "mod-stella-ruins:prospectors_pick" }
+}

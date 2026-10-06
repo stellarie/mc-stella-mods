@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:star_fragment",
+		"mod-stella-ruins:star_fragment",
+		"mod-stella-ruins:ember_core",
+		"mod-stella-ruins:raw_starmetal",
+		"mod-stella-ruins:raw_starmetal"
+	],
+	"result": { "id": "mod-stella-ruins:starmetal_ingot", "count": 2 }
+}

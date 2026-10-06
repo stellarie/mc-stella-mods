@@ -11,7 +11,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 
 /** Item 14: what a core knows survives a save and a load. */
@@ -99,5 +103,64 @@ public class RuinDataGameTest {
 		WorldTestSupport.result("pickaxeTag", "checked=" + stone.size() + " missing=" + missing);
 		helper.assertTrue(missing.isEmpty(), "these ruin blocks answer no pickaxe: " + missing);
 		helper.succeed();
+	}
+
+	/**
+	 * Every loose material a ruin site hands out must feed a craft of that site's own gear, its affix
+	 * template, or the ingot its gear is made of, or the loot is a trinket. Each entry names its craft's
+	 * output and one cell per ingredient, so a recipe removed, renamed, or re-balanced turns this red.
+	 */
+	@GameTest
+	public void everyLooseSiteMaterialFeedsACraft(final GameTestHelper helper) {
+		List<SiteCraft> crafts = List.of(
+			new SiteCraft("keep_sigil_affix", List.of("keep_key_fragment", "tarnished_crest", "tarnished_crest",
+				"spectral_thread", "spectral_thread")),
+			new SiteCraft("resonant_affix", List.of("prism_gel", "prism_gel", "resonant_crystal_core",
+				"resonant_shard", "resonant_shard")),
+			new SiteCraft("void_touched_affix", List.of("vault_dust", "vault_dust", "vault_dust", "vault_dust",
+				"void_essence", "void_essence")),
+			new SiteCraft("starmetal_ingot", List.of("star_fragment", "star_fragment", "ember_core", "raw_starmetal",
+				"raw_starmetal")),
+			new SiteCraft("hawkfeather", List.of("signal_ember", "signal_ember", "captains_insignia",
+				"minecraft:feather", "minecraft:feather")),
+			new SiteCraft("silkweave", List.of("venom_sac", "venom_sac", "matriarch_fang", "minecraft:string",
+				"minecraft:string", "minecraft:string", "minecraft:string")),
+			new SiteCraft("prospectors_pick", List.of("rat_tail", "rat_tail", "miners_journal_page",
+				"gleaming_ore_chunk", "gleaming_ore_chunk", "minecraft:stick", "minecraft:stick"))
+		);
+		ServerLevel level = helper.getLevel();
+		List<String> missing = new ArrayList<>();
+		for (SiteCraft craft : crafts) {
+			List<ItemStack> cells = new ArrayList<>();
+			for (String ingredient : craft.ingredients()) {
+				cells.add(stack(ingredient));
+			}
+			while (cells.size() < 9) {
+				cells.add(ItemStack.EMPTY);
+			}
+			CraftingInput input = CraftingInput.of(3, 3, cells);
+			ItemStack made = level.getServer().getRecipeManager()
+				.getRecipeFor(RecipeType.CRAFTING, input, level)
+				.map(holder -> holder.value().assemble(input))
+				.orElse(ItemStack.EMPTY);
+			if (!made.is(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("mod-stella-ruins", craft.output())))) {
+				missing.add(craft.output());
+			}
+		}
+		WorldTestSupport.result("siteMaterialCrafts", "checked=" + crafts.size() + " missing=" + missing);
+		helper.assertTrue(missing.isEmpty(), "these site crafts make nothing: " + missing);
+		helper.succeed();
+	}
+
+	/** One site craft: what it makes, and one cell per ingredient, in the order the recipe lists them. */
+	private record SiteCraft(String output, List<String> ingredients) {
+	}
+
+	private static ItemStack stack(final String id) {
+		int colon = id.indexOf(':');
+		Identifier key = colon < 0
+			? Identifier.fromNamespaceAndPath("mod-stella-ruins", id)
+			: Identifier.fromNamespaceAndPath(id.substring(0, colon), id.substring(colon + 1));
+		return new ItemStack(BuiltInRegistries.ITEM.getValue(key));
 	}
 }

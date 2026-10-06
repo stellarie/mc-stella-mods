@@ -1,0 +1,13 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:vault_dust",
+		"mod-stella-ruins:vault_dust",
+		"mod-stella-ruins:vault_dust",
+		"mod-stella-ruins:vault_dust",
+		"mod-stella-ruins:void_essence",
+		"mod-stella-ruins:void_essence"
+	],
+	"result": { "id": "mod-stella-ruins:void_touched_affix" }
+}
