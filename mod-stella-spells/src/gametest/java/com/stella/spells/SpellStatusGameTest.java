@@ -27,6 +27,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +40,14 @@ import org.slf4j.LoggerFactory;
 public class SpellStatusGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.status");
 	private static final float EPSILON = 0.02F;
-	// A live zombie spawned on the floor never registers onGround, so it drops two blocks and gets this long to land.
+	// How long the stagger lane waits before it stuns: enough for a live zombie spawned two blocks up to land.
 	private static final long SETTLE_TICKS = 14L;
+	// The landing is polled for, never asserted at a fixed tick; this is only how long to wait before the first look.
+	private static final long LANDING_GRACE_TICKS = 10L;
+	// A late landing is waited out; one that never comes fails loudly here instead of timing the test out.
+	private static final long LANDING_DEADLINE_TICKS = 90L;
+	// The control zombie lands its first hit 50 to 70 ticks after it gets a target, so the window is 120 of them.
+	private static final long CONTROL_WINDOW_TICKS = 120L;
 	// Tests share one level and run side by side, so the difficulty is restored by the last live-zombie test to end.
 	private static int fighters;
 	private static Difficulty difficultyBefore = Difficulty.PEACEFUL;
@@ -85,41 +92,66 @@ public class SpellStatusGameTest {
 	}
 
 	// Item 2. The window is long because an unfrozen zombie lands its first hit 50 to 70 ticks after it gets a target.
-	@GameTest(maxTicks = 170)
+	@GameTest(maxTicks = 200)
 	public void frozenMobCannotMoveOrAttack(final GameTestHelper helper) {
 		arena(helper);
 		fightingDifficulty(helper);
-		Lane adjacent = lane(helper, 0, 3);
-		Lane distant = lane(helper, 2, 9);
-		Lane control = lane(helper, 4, 3);
+		// The structure is 9 by 9 by 9 with its floor at the bottom, so every lane sits inside it.
+		Lane adjacent = lane(helper, 0, 3, 2.5);
+		Lane distant = lane(helper, 2, 6, 0.5);
+		Lane control = lane(helper, 4, 3, 2.5);
+		// The harness only ticks entities inside this box; a lane outside it never lands and never fights.
+		assertLanesInside(helper, adjacent, distant, control);
 		final long[] controlFirstHit = {-1L};
 		helper.onEachTick(() -> {
 			if (controlFirstHit[0] < 0 && lost(control.player()) > 0.0F) {
 				controlFirstHit[0] = helper.getTick();
 			}
 		});
-		helper.runAfterDelay(SETTLE_TICKS, () -> {
+		final boolean[] engaged = {false};
+		helper.onEachTick(() -> {
+			if (engaged[0] || helper.getTick() < LANDING_GRACE_TICKS) {
+				return;
+			}
+			for (Lane lane : new Lane[] {adjacent, distant, control}) {
+				if (!lane.player().isAlive()) {
+					helper.fail("a lane player died while its zombie was still landing");
+				}
+			}
+			if (helper.getTick() >= 2L * LANDING_GRACE_TICKS && helper.getTick() % 10L == 0L) {
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack WAIT tick={} adjacent={} distant={} control={}",
+					helper.getTick(), state(adjacent), state(distant), state(control));
+			}
+			helper.assertTrue(helper.getTick() <= LANDING_DEADLINE_TICKS,
+				"a lane zombie never landed: " + state(adjacent) + " " + state(distant) + " " + state(control));
+			if (!landed(adjacent) || !landed(distant) || !landed(control)) {
+				return;
+			}
 			SpellStatusApi.freeze(adjacent.zombie(), 200, null);
 			SpellStatusApi.freeze(distant.zombie(), 200, null);
 			helper.assertTrue(adjacent.zombie().hasEffect(SpellStatus.FROZEN), "the adjacent zombie is not Frozen");
 			helper.assertTrue(distant.zombie().hasEffect(SpellStatus.FROZEN), "the distant zombie is not Frozen");
+			long landedAt = helper.getTick();
+			engaged[0] = true;
 			engage(helper, adjacent, distant, control);
-		});
-		helper.runAfterDelay(SETTLE_TICKS + 120L, () -> {
-			float adjacentLost = lost(adjacent.player());
-			float distantLost = lost(distant.player());
-			float controlLost = lost(control.player());
-			double adjacentMoved = adjacent.zombie().position().distanceTo(adjacent.start());
-			double distantMoved = distant.zombie().position().distanceTo(distant.start());
-			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack RESULT adjacentLost={} distantLost={} controlLost={} "
-				+ "controlFirstHit={} adjacentMoved={} distantMoved={}", adjacentLost, distantLost, controlLost, controlFirstHit[0], adjacentMoved, distantMoved);
-			helper.assertTrue(controlLost > 0.0F, "the unfrozen control never hurt its player, so the arena proves nothing");
-			helper.assertTrue(adjacentLost == 0.0F, "the adjacent Frozen zombie dealt " + adjacentLost);
-			helper.assertTrue(distantLost == 0.0F, "the distant Frozen zombie dealt " + distantLost);
-			helper.assertTrue(adjacentMoved < 0.1, "the adjacent Frozen zombie moved " + adjacentMoved);
-			helper.assertTrue(distantMoved < 0.1, "the distant Frozen zombie moved " + distantMoved);
-			lanesOff(helper, adjacent, distant, control);
-			helper.succeed();
+			LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack LANDED at={} difficulty={}",
+				landedAt, helper.getLevel().getDifficulty());
+			helper.runAfterDelay(CONTROL_WINDOW_TICKS, () -> {
+				float adjacentLost = lost(adjacent.player());
+				float distantLost = lost(distant.player());
+				float controlLost = lost(control.player());
+				double adjacentMoved = adjacent.zombie().position().distanceTo(adjacent.start());
+				double distantMoved = distant.zombie().position().distanceTo(distant.start());
+				LOG.info("[SPELLTEST] class=SpellStatusGameTest test=frozenMobCannotMoveOrAttack RESULT adjacentLost={} distantLost={} controlLost={} "
+					+ "controlFirstHit={} adjacentMoved={} distantMoved={}", adjacentLost, distantLost, controlLost, controlFirstHit[0], adjacentMoved, distantMoved);
+				helper.assertTrue(controlLost > 0.0F, "the unfrozen control never hurt its player, so the arena proves nothing");
+				helper.assertTrue(adjacentLost == 0.0F, "the adjacent Frozen zombie dealt " + adjacentLost);
+				helper.assertTrue(distantLost == 0.0F, "the distant Frozen zombie dealt " + distantLost);
+				helper.assertTrue(adjacentMoved < 0.1, "the adjacent Frozen zombie moved " + adjacentMoved);
+				helper.assertTrue(distantMoved < 0.1, "the distant Frozen zombie moved " + distantMoved);
+				lanesOff(helper, adjacent, distant, control);
+				helper.succeed();
+			});
 		});
 	}
 
@@ -337,7 +369,7 @@ public class SpellStatusGameTest {
 	public void staggerStopsAttackThenEnds(final GameTestHelper helper) {
 		arena(helper);
 		fightingDifficulty(helper);
-		Lane lane = lane(helper, 2, 3);
+		Lane lane = lane(helper, 2, 3, 2.5);
 		helper.runAfterDelay(SETTLE_TICKS, () -> {
 			SpellStatusApi.stagger(lane.zombie(), 100, null);
 			helper.assertTrue(lane.zombie().hasEffect(SpellStatus.STAGGERED), "the zombie is not Staggered");
@@ -537,8 +569,9 @@ public class SpellStatusGameTest {
 		}
 	}
 
-	// A durable player and a live zombie dropped two blocks onto the floor; engage() lets it fight once it has landed.
-	private static Lane lane(final GameTestHelper helper, final int x, final int zombieZ) {
+	// A durable player and a live zombie dropped two blocks onto the floor; the landing is polled, then engage() lets it fight.
+	// The player stands the given blocks into the arena along z, so a distant lane has to walk before it can swing.
+	private static Lane lane(final GameTestHelper helper, final int x, final int zombieZ, final double playerZ) {
 		// A survival player a zombie may target; the in-level mock player counts as creative and is never a valid target.
 		ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
 		Connection connection = new Connection(PacketFlow.SERVERBOUND);
@@ -547,15 +580,31 @@ public class SpellStatusGameTest {
 			CommonListenerCookie.createInitial(player.getGameProfile(), false));
 		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		player.setHealth(1000.0F);
-		Vec3 at = helper.absoluteVec(new Vec3(x + 0.5, 1.0, 2.5));
+		Vec3 at = helper.absoluteVec(new Vec3(x + 0.5, 1.0, playerZ));
 		player.setPos(at.x, at.y, at.z);
 		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, x, 3, zombieZ).spawn();
 		return new Lane(player, zombie);
 	}
 
+	/** Every lane sits inside the box the harness ticks entities in, or its zombie never lands and never fights. */
+	private static void assertLanesInside(final GameTestHelper helper, final Lane... lanes) {
+		AABB inside = helper.getBounds();
+		for (Lane lane : lanes) {
+			Vec3 player = lane.player().position();
+			Vec3 zombie = lane.zombie().position();
+			helper.assertTrue(inside.contains(player) && inside.contains(zombie),
+				"a lane sits outside the ticking box " + inside + ": player=" + player + " zombie=" + zombie);
+		}
+	}
+
+	/** True once the lane's zombie has landed and its player is still a live target, so the lane can fight. */
+	private static boolean landed(final Lane lane) {
+		return lane.zombie().onGround() && lane.player().isAlive() && lane.zombie().isAlive();
+	}
+
 	private static void engage(final GameTestHelper helper, final Lane... lanes) {
 		for (Lane lane : lanes) {
-			helper.assertTrue(lane.zombie().onGround(), "a lane zombie has not landed after " + SETTLE_TICKS + " ticks");
+			helper.assertTrue(lane.zombie().onGround(), "a lane zombie has not landed yet");
 			lane.start = lane.zombie().position();
 			lane.zombie().setTarget(lane.player());
 		}
@@ -570,6 +619,13 @@ public class SpellStatusGameTest {
 
 	private static float lost(final ServerPlayer player) {
 		return player.getMaxHealth() - player.getHealth();
+	}
+
+	/** One lane as it stands now: what it cost its player, where its zombie is, and whether it is still hunting. */
+	private static String state(final Lane lane) {
+		return "{lost=" + lost(lane.player()) + " pos=" + lane.zombie().position() + " onGround=" + lane.zombie().onGround()
+			+ " target=" + (lane.zombie().getTarget() == lane.player()) + " targetAlive=" + lane.player().isAlive()
+			+ " zombieAlive=" + lane.zombie().isAlive() + " noAi=" + lane.zombie().isNoAi() + "}";
 	}
 
 	private static ServerPlayer aimedCaster(final GameTestHelper helper) {
