@@ -314,6 +314,79 @@ public class SpellImbueGameTest {
 		helper.succeed();
 	}
 
+	// Heal-on-hit is a playstyle, not a gap: an ally book on a weapon passes the wielder as its ally, so a
+	// blow on a mob mends the body that swung it.
+	@GameTest(maxTicks = 100)
+	public void anImbuedAllyBookMendsTheWielderWhoSwung(final GameTestHelper helper) {
+		// The anvil first: a book that cannot be imbued would make everything below prove nothing.
+		List<String> refused = new ArrayList<>();
+		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
+			if (definition.school() != School.PRIEST || definition.targetMode() != TargetMode.ALLY) {
+				continue;
+			}
+			ItemStack onSword = SpellImbue.imbue(new ItemStack(Items.IRON_SWORD), book(definition.id()));
+			if (onSword.isEmpty() || !SpellImbue.spellsOf(onSword).contains(definition.id())) {
+				refused.add(definition.id().getPath());
+			}
+		}
+		ServerPlayer player = wielder(helper, Identifier.parse("mod-stella-spells:holy_light"));
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100.0);
+		player.setHealth(30.0F);
+		Mob zombie = zombie(helper, 2, 4);
+		float before = player.getHealth();
+		hit(helper, player, zombie);
+		float healed = player.getHealth() - before;
+		// The speed the weapon actually carries, not a copy of it: the piece is read back through the
+		// same resolution an imbued hit uses.
+		Identifier holyLight = Identifier.parse("mod-stella-spells:holy_light");
+		SpellModifiers.CastModifiers base = SpellModifiers.resolve(
+			player.getMainHandItem(), player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD),
+			player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST),
+			SpellbookCatalog.get(holyLight).baseCooldownTicks());
+		SpellModifiers.CastModifiers modifiers = new SpellModifiers.CastModifiers(
+			base.powerMultiplier() * SpellImbue.IMBUE_POWER, base.radiusMultiplier(),
+			base.durationMultiplier() * SpellImbue.IMBUE_DURATION,
+			base.defensiveDurationMultiplier() * SpellImbue.IMBUE_DURATION, base.targetRangeBlocks(),
+			base.cooldownTicks(), base.awakened());
+		float expected = RpgBridge.skillHeal(player, School.PRIEST, PriestSkills.HOLY_LIGHT_HEAL, modifiers.powerMultiplier());
+		boolean cast = CASTS.getOrDefault(player.getUUID(), List.of()).contains(holyLight);
+		LOG.info("[SPELLTEST] test=anImbuedAllyBookMendsTheWielderWhoSwung RESULT cast={} before={} healed={} expected={} flat={} power={}",
+			cast, before, healed, expected, PriestSkills.HOLY_LIGHT_HEAL, modifiers.powerMultiplier());
+		helper.assertTrue(refused.isEmpty(), "a sword refused these ally books: " + refused);
+		helper.assertTrue(cast, "the imbued ally book never cast, so the case proves nothing");
+		helper.assertTrue(Math.abs(healed - expected) <= 0.01F,
+			"the wielder rose by " + healed + ", not the " + expected + " that " + PriestSkills.HOLY_LIGHT_HEAL
+				+ " heals for at power " + modifiers.powerMultiplier());
+		zombie.discard();
+		helper.succeed();
+	}
+
+	// Three books stay off weapons, each for its own reason: a breath is not a blow, a skeleton is book-only,
+	// and the archer's own imbue book on a weapon would be circular.
+	@GameTest
+	public void threeBooksStayOffWeapons(final GameTestHelper helper) {
+		List<String> wronglyImbued = new ArrayList<>();
+		List<String> notListed = new ArrayList<>();
+		List<String> spells = List.of("tide_lungs", "summon_skeleton", "elemental_quiver");
+		for (String path : spells) {
+			Identifier spell = Identifier.parse("mod-stella-spells:" + path);
+			if (!SpellImbue.NOT_IMBUABLE.contains(spell)) {
+				notListed.add(path);
+			}
+			ServerPlayer player = player(helper);
+			AnvilMenu anvil = anvil(helper, player, new ItemStack(Items.IRON_SWORD), book(spell));
+			ItemStack result = anvil.getSlot(AnvilMenu.RESULT_SLOT).getItem();
+			if (!result.isEmpty() && result.get(SpellImbue.IMBUED) != null) {
+				wronglyImbued.add(path + " -> " + result);
+			}
+		}
+		LOG.info("[SPELLTEST] test=threeBooksStayOffWeapons RESULT spells={} wronglyImbued={} notListed={} exclusions={}",
+			spells, wronglyImbued, notListed, SpellImbue.NOT_IMBUABLE.size());
+		helper.assertTrue(notListed.isEmpty(), "these books left the exclusion set: " + notListed);
+		helper.assertTrue(wronglyImbued.isEmpty(), "a sword took these books: " + wronglyImbued);
+		helper.succeed();
+	}
+
 	private static void hit(final GameTestHelper helper, final ServerPlayer player, final Mob zombie) {
 		zombie.damageCooldownTime = 0;
 		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);

@@ -106,14 +106,13 @@ public final class SpellImbue {
 		id("ice_lance"), id("soul_siphon"), id("venom_dart"), id("blinding_flash"), id("ember_brand")
 	);
 	/**
-	 * Spells no weapon takes. An ally book is here on purpose: the wielder is the only body an imbued hit
-	 * can pass as its own ally, so a heal would land on the attacker that took the hit, which nothing
-	 * specced. Tide Lungs is a breath held underwater, not a blow, and the rest have nothing to do here.
+	 * Spells no weapon takes. An ally book is not here: heal-on-hit is a playstyle, and an imbued ally book
+	 * passes the wielder - the body that swung - as its ally, so a blow on a mob mends the attacker. What
+	 * stays out has no blow to ride: Tide Lungs is a breath held underwater, Summon Skeleton is book-only,
+	 * and Elemental Quiver is the archer's own imbue book, so a weapon holding it would be circular.
 	 */
 	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(
-		id("tide_lungs"), id("summon_skeleton"), id("elemental_quiver"),
-		id("holy_light"), id("prayer_of_mending"), id("renew"), id("divine_shield"),
-		id("resurrection_ward"), id("guardian_angel")
+		id("tide_lungs"), id("summon_skeleton"), id("elemental_quiver")
 	);
 	/** Arrows imbued for one price. */
 	public static final int ARROWS_PER_PRICE = 16;
@@ -327,10 +326,13 @@ public final class SpellImbue {
 		modifiers = modifiers.withAwakened(definition.id().equals(piece.get(Awakening.AWAKENED_IMBUE)));
 		Mob target = null;
 		Vec3 point = null;
+		LivingEntity ally = player;
 		switch (definition.targetMode()) {
 			case HOSTILE -> target = victim instanceof Mob mob && mob.isAlive() ? mob : null;
 			case BLOCK -> point = victim.position();
-			case SELF -> point = player.position();
+			// An ally book on a weapon has one ally, the wielder, and it points at that wielder, as the
+			// book path does when it finds no other body to mend.
+			case SELF, ALLY -> point = player.position();
 			case SAFE_TELEPORT -> point = behind(player, victim);
 		}
 		if ((definition.targetMode() == TargetMode.HOSTILE && target == null) || (definition.targetMode() != TargetMode.HOSTILE && point == null)) {
@@ -343,7 +345,16 @@ public final class SpellImbue {
 		victim.damageCooldownTime = 0;
 		Vec3 departure = player.position();
 		Awakening.report(definition.id(), modifiers.awakened());
-		boolean cast = definition.effect().apply(player, target, point, modifiers);
+		// An ally book on a weapon has one ally: the wielder. Set here rather than in findAlly, because
+		// an imbued hit never walks that path - it hands the effect its target directly - and because the
+		// book path's rule, the ally the caster looks at, stays its own.
+		CastContext.setAlly(ally);
+		boolean cast;
+		try {
+			cast = definition.effect().apply(player, target, point, modifiers);
+		} finally {
+			CastContext.setAlly(null);
+		}
 		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
 		if (!cast) {
 			return false;
