@@ -165,7 +165,11 @@ public class TowerLostRoomGameTest {
 							continue;
 						}
 						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
-						lid &= above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP);
+						boolean lidded = above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP);
+						lid &= lidded;
+						if (!lidded) {
+							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString());
+						}
 					}
 				}
 				clearWays += clear ? 1 : 0;
