@@ -172,7 +172,7 @@ public class TowerLostRoomGameTest {
 						if (!lidded) {
 							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString())
 								.append(" kind=").append(TowerHex.kind(x, z))
-								.append(" palette=").append(piece.palette().wall().getBlock().getName().getString())
+								.append(" palette=").append(piece.palette().wall().getName().getString())
 								.append(" foot=").append(level.getBlockState(piece.worldPos(x, feet, z)).getBlock().getName().getString());
 						}
 					}
