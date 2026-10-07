@@ -102,9 +102,12 @@ public final class TowerHex {
 		return middleZ() - TowerMaze.PATH / 2 + (index - COLS / 2) * TowerMaze.PITCH;
 	}
 
-	/** Whether a spot lies on a cell's middle pair both ways: the crossing every walker of a way uses. */
+	/**
+	 * Whether a spot lies on the cross a way is walked by: its middle pair of columns, or of rows. Every
+	 * doorway of a lattice cell opens onto that cross, so the ruin keeps off it and the way stays reached.
+	 */
 	public static boolean onCrossing(final int x, final int z) {
-		return middlePair(x, cellX(0)) && middlePair(z, cellZ(0));
+		return middlePair(x, cellX(0)) || middlePair(z, cellZ(0));
 	}
 
 	private static boolean middlePair(final int at, final int start) {
