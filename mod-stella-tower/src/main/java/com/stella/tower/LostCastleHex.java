@@ -239,21 +239,6 @@ public final class LostCastleHex {
 		return null;
 	}
 
-	/** Whether a column is one of the steps of a storey's stair, whose floor has to hold the walker up. */
-	private static boolean onStair(final List<TowerHex.Cell> cells, final int storey, final int x, final int z) {
-		TowerHex.Cell back = backCell(cells);
-		if (back == null || storey + 1 >= TowerHex.STOREYS) {
-			return false;
-		}
-		for (int rise = 0; rise < TowerHex.STOREY; rise++) {
-			int[] at = stairStep(back, rise);
-			if (at[0] == x && at[1] == z) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	/**
 	 * Breaks the ground storey's south wall over a way, not over the stone buttress beside it: a wide, low
 	 * breach with fallen stone at its sides and a lamp over each end of it.
@@ -359,8 +344,9 @@ public final class LostCastleHex {
 				if (TowerHex.onCrossing(x, z)) {
 					continue;
 				}
-				// A gap in the floor over a stair step would break the climb out of the storey below.
-				if (storey > 0 && onStair(cells, storey - 1, x, z)) {
+				// A gap in the corner a stair climbs through would leave its steps and their approach with
+				// no floor, so the walker drops past the storey instead of reaching it.
+				if (inStairLane(x, z)) {
 					continue;
 				}
 				if (!standsOn(piece, level, bb, x, feet - 1, z)) {

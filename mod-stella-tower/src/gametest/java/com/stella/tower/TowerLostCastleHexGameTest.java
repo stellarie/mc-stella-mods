@@ -246,6 +246,96 @@ public class TowerLostCastleHexGameTest {
 		return faults;
 	}
 
+	/**
+	 * Every castle of a run is walked to its top storey: in from the breach, up both stairs, and onto the
+	 * lost room's portal. The run is long because the fault it guards was about one castle in twenty.
+	 */
+	@GameTest(maxTicks = 120)
+	public void everyCastleOfARunIsWalkedToItsTopStorey(final GameTestHelper helper) {
+		int run = 140;
+		int broken = 0;
+		StringBuilder first = new StringBuilder();
+		for (int i = 0; i < run; i++) {
+			LostCastleVariant variant = LostCastleVariant.values()[i % LostCastleVariant.values().length];
+			Direction facing = Direction.Plane.HORIZONTAL.getRandomDirection(RandomSource.create(i * 17L + 3));
+			TowerLostRoomGameTest.Arena arena = TowerLostRoomGameTest.castle(helper, variant, facing);
+			List<String> faults = storeys(arena);
+			if (faults.isEmpty()) {
+				continue;
+			}
+			broken++;
+			TowerLostRoomGameTest.dump(helper, arena, "lost_castle_broken_" + broken + ".txt");
+			if (broken > 2) {
+				continue;
+			}
+			first.append(" [").append(variant).append(' ').append(facing).append(' ').append(faults);
+			for (int storey = 1; storey < TowerHex.STOREYS; storey++) {
+				first.append(" s").append(storey).append('=').append(route(arena, storey)).append(" grid=").append(connectivity(arena, storey));
+			}
+			first.append(']');
+		}
+		TowerTestSupport.result("castleClimbCensus", "castles=" + run + " broken=" + broken + " first=" + first);
+		helper.assertTrue(broken == 0, broken + " of " + run + " castles cannot be walked to their top storey:" + first);
+		helper.succeed();
+	}
+
+	/** Whether a walk from each way's middle reaches every other on a storey: the size it reached, then 1 or 0. */
+	static String connectivity(final TowerLostRoomGameTest.Arena arena, final int storey) {
+		ServerLevel level = arena.level();
+		LostRoomPiece piece = arena.piece();
+		int localY = TowerHex.floorAt(storey) + 1;
+		StringBuilder out = new StringBuilder();
+		for (TowerHex.Cell from : TowerHex.cells()) {
+			Set<BlockPos> seen = TowerLostCastleVariantGameTest.walk(level, piece.getBoundingBox(), piece.getBoundingBox().minY() - 1,
+				piece.worldPos(from.middle().getX(), localY, from.middle().getZ()));
+			out.append(" from").append(from.cx()).append(from.cz()).append('=').append(seen.size()).append('/');
+			for (TowerHex.Cell to : TowerHex.cells()) {
+				out.append(seen.contains(piece.worldPos(to.middle().getX(), localY, to.middle().getZ())) ? '1' : '0');
+			}
+		}
+		return out.toString();
+	}
+
+	/** The climb's own line for the instrument: every way's middle, its four landings and its four doorways. */
+	static String route(final TowerLostRoomGameTest.Arena arena, final int storey) {
+		ServerLevel level = arena.level();
+		LostRoomPiece piece = arena.piece();
+		int localY = TowerHex.floorAt(storey) + 1;
+		Set<BlockPos> seen = TowerLostCastleVariantGameTest.walk(level, piece.getBoundingBox(), piece.getBoundingBox().minY() - 1,
+			piece.worldPos(TowerHex.cells().get(0).middle().getX(), localY, TowerHex.cells().get(0).middle().getZ()));
+		StringBuilder out = new StringBuilder("reached=" + seen.size());
+		for (TowerHex.Cell cell : TowerHex.cells()) {
+			int lowX = TowerHex.cellX(cell.cx());
+			int lowZ = TowerHex.cellZ(cell.cz());
+			int midX = cell.middle().getX();
+			int midZ = cell.middle().getZ();
+			out.append(" c").append(cell.cx()).append(cell.cz()).append('=')
+				.append(mark(level, seen, piece, midX, localY, midZ))
+				.append(" n").append(mark(level, seen, piece, midX, localY, lowZ))
+				.append(door(level, piece, midX, localY, lowZ - 1))
+				.append(" s").append(mark(level, seen, piece, midX, localY, lowZ + TowerMaze.PATH - 1))
+				.append(door(level, piece, midX, localY, lowZ + TowerMaze.PATH))
+				.append(" w").append(mark(level, seen, piece, lowX, localY, midZ))
+				.append(door(level, piece, lowX - 1, localY, midZ))
+				.append(" e").append(mark(level, seen, piece, lowX + TowerMaze.PATH - 1, localY, midZ))
+				.append(door(level, piece, lowX + TowerMaze.PATH, localY, midZ));
+		}
+		return out.toString();
+	}
+
+	/** The room over a spot and whether the walk reached it: S both, s standable only, r reached only, - neither. */
+	static char mark(final ServerLevel level, final Set<BlockPos> seen, final LostRoomPiece piece, final int x, final int y, final int z) {
+		BlockPos at = piece.worldPos(x, y, z);
+		boolean stand = TowerLostCastleVariantGameTest.standable(level, at);
+		boolean reached = seen.contains(at);
+		return reached && stand ? 'S' : stand ? 's' : reached ? 'r' : '-';
+	}
+
+	/** Whether a doorway's own block is open to walk through: p open, x blocked. */
+	static char door(final ServerLevel level, final LostRoomPiece piece, final int x, final int y, final int z) {
+		return TowerLostCastleVariantGameTest.passable(level, piece.worldPos(x, y, z), true) ? 'p' : 'x';
+	}
+
 	/** Whether every way of every storey is a path {@link TowerMaze#PATH} wide, with the stone around it. */
 	static String ways(final TowerLostRoomGameTest.Arena arena) {
 		ServerLevel level = arena.level();
