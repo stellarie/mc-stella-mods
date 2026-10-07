@@ -52,6 +52,8 @@ public final class TowerMobs {
 	/** The first floor is a level 20 mob, and each floor adds one level. */
 	public static final int FIRST_FLOOR_LEVEL = 20;
 	public static final int FLOOR_CAP = 72;
+	/** The strays one floor holds: a floor of archers is a firing line, not a fight. */
+	public static final int STRAY_FLOOR_CAP = 5;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
 	public static final int SPAWN_BATCH = 8;
 	public static final int SPAWN_TRIES = 24;
@@ -199,11 +201,37 @@ public final class TowerMobs {
 		}
 	}
 
+	/** A kind from the pool that the floor may take; a kind the floor is full of is passed over. */
+	private static EntityType<? extends Mob> pick(
+		final ServerLevel tower, final int floor, final List<EntityType<? extends Mob>> pool, final RandomSource random
+	) {
+		for (int attempt = 0; attempt < pool.size() * 2; attempt++) {
+			EntityType<? extends Mob> type = pool.get(random.nextInt(pool.size()));
+			if (maySpawn(tower, floor, type)) {
+				return type;
+			}
+		}
+		return pool.stream().filter(type -> maySpawn(tower, floor, type)).findFirst().orElse(pool.get(0));
+	}
+
+	/** The strays standing on the floor now: its own record and its own kind together. */
+	public static int strays(final ServerLevel tower, final int floor) {
+		return tower.getEntitiesOfClass(Mob.class, room(floor), mob -> {
+			State state = stateOf(mob);
+			return mob.isAlive() && mob.getType() == EntityTypes.STRAY && state != null && state.floor() == floor;
+		}).size();
+	}
+
+	/** Whether the floor may take one more of this kind: a stray is passed over once the floor holds its strays. */
+	public static boolean maySpawn(final ServerLevel tower, final int floor, final EntityType<? extends Mob> type) {
+		return type != EntityTypes.STRAY || strays(tower, floor) < STRAY_FLOOR_CAP;
+	}
+
 	/** Raises one tower mob on the floor, somewhere clear and away from every player; null if none fit. */
 	public static @Nullable Mob spawnOne(final ServerLevel tower, final int floor) {
 		RandomSource random = tower.getRandom();
 		List<EntityType<? extends Mob>> pool = pool(floor);
-		EntityType<? extends Mob> type = pool.get(random.nextInt(pool.size()));
+		EntityType<? extends Mob> type = pick(tower, floor, pool, random);
 		Mob mob = type.create(tower, EntitySpawnReason.EVENT);
 		if (mob == null) {
 			return null;
@@ -306,12 +334,16 @@ public final class TowerMobs {
 		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.HEIGHT, o.getZ() + TowerLayout.SIZE);
 	}
 
-	/** Tower mobs standing on the floor now; its own record, not a kind, says which floor a mob is of. */
+	/**
+	 * Every hostile standing on the floor now, a guardian and a guardian's escort included. A tower mob's own
+	 * record says which floor it is of; anything else that fights on the floor takes a place among its occupants,
+	 * so a floor cannot hold its cap in mobs and its ceiling in escorts. A ghost stands outside, on the players' side.
+	 */
 	public static int count(final ServerLevel tower, final int floor) {
 		return tower.getEntitiesOfClass(Mob.class, room(floor), mob -> {
 			State state = stateOf(mob);
-			// A ghost stands on the players' side, outside the floor's cap.
-			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB && !(mob instanceof TowerGhost);
+			return mob.isAlive() && mob instanceof net.minecraft.world.entity.monster.Monster
+				&& !(mob instanceof TowerGhost) && (state == null || state.floor() == floor);
 		}).size();
 	}
 

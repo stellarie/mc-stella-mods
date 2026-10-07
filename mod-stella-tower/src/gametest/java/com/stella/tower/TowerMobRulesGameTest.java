@@ -19,6 +19,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.monster.skeleton.Stray;
 import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.ChunkPos;
@@ -201,6 +202,56 @@ public class TowerMobRulesGameTest {
 		zombie.discard();
 		helper.assertTrue(Math.abs(held - Math.min(want, TowerMobs.healthCap())) < 0.05 && Math.abs(held * divisor - want) < 0.05,
 			"a leader zombie shows " + held + " health (effective " + held * divisor + "), not its floor's " + want);
+		helper.succeed();
+	}
+
+	/** A floor holds its strays and no more: the spawner passes over the kind once the floor is that full. */
+	@GameTest(maxTicks = 200)
+	public void aFloorHoldsItsStraysAndNoMore(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.ensure(tower, floor);
+		holdLoaded(tower, floor);
+		for (int i = 0; i < TowerMobs.STRAY_FLOOR_CAP; i++) {
+			Stray stray = EntityTypes.STRAY.create(tower, EntitySpawnReason.COMMAND);
+			TowerMobs.makeTowerMob(stray, floor, TowerElement.WIND);
+			stray.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 12.0 + i));
+			tower.addFreshEntity(stray);
+		}
+		int filled = TowerMobs.strays(tower, floor);
+		int straysSpawned = 0;
+		for (int i = 0; i < 120; i++) {
+			Mob mob = TowerMobs.spawnOne(tower, floor);
+			if (mob != null && mob.getType() == EntityTypes.STRAY) {
+				straysSpawned++;
+			}
+		}
+		int now = TowerMobs.strays(tower, floor);
+		TowerTestSupport.result("strayCap", "cap=" + TowerMobs.STRAY_FLOOR_CAP + " filled=" + filled + " spawned=" + straysSpawned + " now=" + now);
+		helper.assertTrue(filled == TowerMobs.STRAY_FLOOR_CAP, "the floor took " + filled + " of its " + TowerMobs.STRAY_FLOOR_CAP + " strays");
+		helper.assertTrue(straysSpawned == 0 && now == filled,
+			"the spawner added " + straysSpawned + " strays to a floor holding " + filled + ", now " + now);
+		helper.succeed();
+	}
+
+	/** The floor's count covers every hostile on it: a guardian and a guardian's escort each take a place. */
+	@GameTest
+	public void theFloorCountCoversGuardiansAndTheirEscorts(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = TowerTestSupport.freshFloor();
+		TowerFloors.ensure(tower, floor);
+		holdLoaded(tower, floor);
+		int before = TowerMobs.count(tower, floor);
+		Zombie guardian = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+		TowerMobs.makeTowerMob(guardian, floor, TowerElement.WIND, TowerRank.ELITE);
+		guardian.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 12.0));
+		tower.addFreshEntity(guardian);
+		Zombie escort = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
+		escort.snapTo(TowerTestSupport.awayFromArrival(tower, floor, 14.0));
+		tower.addFreshEntity(escort);
+		int now = TowerMobs.count(tower, floor);
+		TowerTestSupport.result("floorCount", "before=" + before + " now=" + now + " added=" + (now - before));
+		helper.assertTrue(now == before + 2, "the floor counted " + (now - before) + " of a guardian and its escort, not 2");
 		helper.succeed();
 	}
 }
