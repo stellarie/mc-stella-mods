@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "mod-stella-spells:item/steadfast_prayer_scroll",
+    "tints": [
+      {
+        "type": "minecraft:constant",
+        "value": 15787704
+      }
+    ]
+  }
+}

@@ -224,6 +224,20 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("line", 9, 8, 12, 8, 1, "a"),
         ("line", 9, 10, 12, 11, 1, "a"),
     )),
+    ("unbroken_vow", "Unbroken Vow", "priest", 0xC8D2DE, (
+        ("box", 5, 5, 11, 6, "a"),
+        ("line", 8, 6, 8, 8, 1, "s"),
+        ("line", 6, 8, 10, 8, 2, "a"),
+        ("box", 5, 11, 11, 12, "s"),
+        ("dot", 8, 3, 1, "h"),
+    )),
+    ("steadfast_prayer", "Steadfast Prayer", "priest", 0xF0E6B8, (
+        ("line", 8, 5, 8, 12, 2, "a"),
+        ("ring", 8, 4, 2, 1, "h"),
+        ("box", 6, 12, 10, 12, "s"),
+        ("dot", 4, 8, 0, "a"),
+        ("dot", 12, 8, 0, "a"),
+    )),
 )
 
 

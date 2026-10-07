@@ -93,6 +93,8 @@ SKILLS = (
     Skill("resurrection_ward", "Resurrection Ward", "priest", art("resurrection_ward")),
     Skill("consecrate", "Consecrate", "priest", art("consecrate")),
     Skill("guardian_angel", "Guardian Angel", "priest", art("guardian_angel")),
+    Skill("unbroken_vow", "Unbroken Vow", "priest", art("unbroken_vow")),
+    Skill("steadfast_prayer", "Steadfast Prayer", "priest", art("steadfast_prayer")),
 )
 
 

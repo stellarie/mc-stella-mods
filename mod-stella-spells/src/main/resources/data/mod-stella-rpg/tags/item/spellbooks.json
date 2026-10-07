@@ -72,6 +72,8 @@
 		"mod-stella-spells:smite",
 		"mod-stella-spells:resurrection_ward",
 		"mod-stella-spells:consecrate",
-		"mod-stella-spells:guardian_angel"
+		"mod-stella-spells:guardian_angel",
+		"mod-stella-spells:unbroken_vow",
+		"mod-stella-spells:steadfast_prayer"
 	]
 }

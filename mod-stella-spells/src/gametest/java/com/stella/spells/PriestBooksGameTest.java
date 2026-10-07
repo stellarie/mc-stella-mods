@@ -52,7 +52,7 @@ public class PriestBooksGameTest {
 	private static final double ALLY_Z = 5.5;
 
 	@GameTest(maxTicks = 60)
-	public void theTenPriestBooksShipAsPriestBooks(final GameTestHelper helper) {
+	public void thePriestBooksShipAsPriestBooks(final GameTestHelper helper) {
 		List<String> wrong = new ArrayList<>();
 		int priest = 0;
 		for (SpellDefinition definition : SpellbookCatalog.DEFINITIONS) {
@@ -71,13 +71,13 @@ public class PriestBooksGameTest {
 				wrong.add(path + " is not registered at all");
 			}
 		}
-		LOG.info("[BEHAVIOR] test=theTenPriestBooksShipAsPriestBooks RESULT priest={} declared={} books={} wrong={}",
+		LOG.info("[BEHAVIOR] test=thePriestBooksShipAsPriestBooks RESULT priest={} declared={} books={} wrong={}",
 			priest, SkillSchoolGameTest.PRIEST_IDS.size(), SpellbookCatalog.DEFINITIONS.size(), wrong);
 		helper.assertTrue(wrong.isEmpty(), "the priest books do not match the school guard: " + wrong);
 		helper.assertTrue(priest == SkillSchoolGameTest.PRIEST_IDS.size(),
 			priest + " books carry School.PRIEST, not the " + SkillSchoolGameTest.PRIEST_IDS.size() + " the stage declares");
-		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 72,
-			"the pack holds " + SpellbookCatalog.DEFINITIONS.size() + " books, not 72");
+		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 74,
+			"the pack holds " + SpellbookCatalog.DEFINITIONS.size() + " books, not 74");
 		helper.succeed();
 	}
 
