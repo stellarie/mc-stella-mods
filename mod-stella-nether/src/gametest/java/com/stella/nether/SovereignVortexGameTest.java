@@ -207,6 +207,9 @@ public class SovereignVortexGameTest {
 	public void anUnbrokenShieldBurstsInASixteenBlockSphere(final GameTestHelper helper) {
 		SovereignSpecialsGameTest.Scene scene = SoulNovaGameTest.wideScene(helper);
 		Zombie caught = SovereignSpecialsGameTest.standIn(helper, scene, scene.floor().add(8.0, 0.0, 0.0));
+		// The channel is twice as long now, so the stand-in needs a pool the drawn flames cannot empty.
+		caught.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		caught.setHealth(1000.0F);
 		// A block well inside the sphere, and one just past it.
 		BlockPos inside = BlockPos.containing(scene.floor()).offset(0, 2, -10);
 		BlockPos outside = BlockPos.containing(scene.floor()).offset(0, 2, -(SoulNovaGameTest.HALF - 1));
