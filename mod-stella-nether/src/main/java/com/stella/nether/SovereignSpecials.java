@@ -76,11 +76,11 @@ public final class SovereignSpecials {
 	public static final double DIVE_FIRE_CHANCE = 0.35;
 
 	/**
-	 * The vortex: for fifteen seconds the Sovereign channels behind a shield, slowing every player near it, while
+	 * The vortex: for thirty seconds the Sovereign channels behind a shield, slowing every player near it, while
 	 * flames fly in to it from a sphere all around. Broken in time, the shield leaves it staggered; held to the end,
 	 * it bursts in a sphere that breaks the ground and throws everyone back.
 	 */
-	public static final int VORTEX_TICKS = 15 * 20;
+	public static final int VORTEX_TICKS = 30 * 20;
 	/** The sphere the flames set out from, the reach of its slowing, and the reach of its burst. */
 	public static final double VORTEX_RADIUS = 16.0;
 	/** Slowness III, on every player within the sphere while it channels. */
@@ -93,8 +93,8 @@ public final class SovereignSpecials {
 	public static final double VORTEX_HIT_REACH = 0.3;
 	public static final float VORTEX_BULLET_DAMAGE = 1.5F;
 	public static final int VORTEX_BULLET_BURN_SECONDS = 4;
-	/** The share of the Sovereign's whole health the shield holds. */
-	public static final double VORTEX_SHIELD_SHARE = 0.08;
+	/** The fixed share of the Sovereign's whole health the shield holds: a fifth. */
+	public static final double VORTEX_SHIELD_SHARE = 0.20;
 	/** How long a Sovereign whose shield is broken stands staggered, neither moving nor attacking. */
 	public static final int VORTEX_STAGGER_TICKS = 8 * 20;
 	public static final float VORTEX_BLAST_DAMAGE = 10.0F;

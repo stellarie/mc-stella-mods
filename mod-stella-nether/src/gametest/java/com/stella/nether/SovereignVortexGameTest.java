@@ -12,10 +12,26 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The vortex: fifteen seconds channelling behind a shield, slowing players and drawing flames in from a sphere all
+ * The vortex: thirty seconds channelling behind a shield, slowing players and drawing flames in from a sphere all
  * around; broken in time it staggers the Sovereign, held to the end it bursts.
  */
 public class SovereignVortexGameTest {
+	/** The approved specification of the absorption phase, pinned here so a retune cannot pass unnoticed. */
+	static final double SHIELD_SHARE_SPEC = 0.20;
+	static final int CHANNEL_SECONDS_SPEC = 30;
+
+	/** The shield covers a fifth of the Sovereign's whole health, and the channel runs thirty seconds. */
+	@GameTest
+	public void theShieldCoversAFifthOfTheHealthForThirtySeconds(final GameTestHelper helper) {
+		NetherTestSupport.result("vortexSpec", "share=" + SovereignSpecials.VORTEX_SHIELD_SHARE + " ticks=" + SovereignSpecials.VORTEX_TICKS
+			+ " wantShare=" + SHIELD_SHARE_SPEC + " wantTicks=" + CHANNEL_SECONDS_SPEC * 20);
+		helper.assertTrue(Math.abs(SovereignSpecials.VORTEX_SHIELD_SHARE - SHIELD_SHARE_SPEC) < 1.0E-9,
+			"the vortex shield covers " + SovereignSpecials.VORTEX_SHIELD_SHARE + " of the whole health, not " + SHIELD_SHARE_SPEC);
+		helper.assertTrue(SovereignSpecials.VORTEX_TICKS == CHANNEL_SECONDS_SPEC * 20,
+			"the vortex channel runs " + SovereignSpecials.VORTEX_TICKS + " ticks, not " + CHANNEL_SECONDS_SPEC * 20);
+		helper.succeed();
+	}
+
 	/** The shield left, in the Sovereign's whole health. */
 	static double shieldLeft(final SovereignSpecialsGameTest.Scene scene) {
 		Double divisor = scene.sovereign().getAttached(BlazeSovereign.DIVISOR);
