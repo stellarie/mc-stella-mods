@@ -267,7 +267,7 @@ public final class LostCastleHex {
 				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
 					int x = spread(cell, 2, draw, 0);
 					int z = spread(cell, 2, draw, 1);
-					if (offTheMiddle(x) && offTheMiddle(z)) {
+					if (roomForRuin(x, z)) {
 						piece.chest(level, bb, x, feet, z, Direction.Plane.HORIZONTAL.getRandomDirection(draw));
 						break;
 					}
@@ -291,7 +291,7 @@ public final class LostCastleHex {
 				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
 				int x = spread(cell, 3, draw, 0);
 				int z = spread(cell, 3, draw, 1);
-				if (offTheMiddle(x) && offTheMiddle(z) && piece.get(level, bb, x, feet, z).isAir()) {
+				if (roomForRuin(x, z) && piece.get(level, bb, x, feet, z).isAir()) {
 					piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
 				}
 			}
@@ -352,8 +352,8 @@ public final class LostCastleHex {
 			TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
 			int x = spread(cell, reach, draw, 0);
 			int z = spread(cell, reach, draw, 1);
-			// The middle pair of a cell is the crossing every walker uses, so the ruin keeps off it.
-			if (!offTheMiddle(x) || !offTheMiddle(z)) {
+			// The middle pair of a cell is the crossing every walker uses, and the ruin keeps to the way.
+			if (!roomForRuin(x, z)) {
 				continue;
 			}
 			if (piece.get(level, bb, x, feet, z).isAir() && standsOn(piece, level, bb, x, feet - 1, z)) {
@@ -361,6 +361,11 @@ public final class LostCastleHex {
 				return;
 			}
 		}
+	}
+
+	/** A spot a ruin block may stand on: inside a way of the hexagon, and off that cell's crossing. */
+	private static boolean roomForRuin(final int x, final int z) {
+		return TowerHex.kind(x, z) == TowerHex.Part.WAY && offTheMiddle(x) && offTheMiddle(z);
 	}
 
 	/** False on the middle pair of a lattice cell along one axis: the crossing of every way stays clear. */

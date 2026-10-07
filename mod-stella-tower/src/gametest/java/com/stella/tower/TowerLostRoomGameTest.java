@@ -148,13 +148,18 @@ public class TowerLostRoomGameTest {
 			for (TowerHex.Cell cell : TowerHex.cells()) {
 				boolean clear = true;
 				boolean lid = true;
-				for (int y = feet; y < ceiling; y++) {
+				// A walker needs the two blocks of its own height at the middle, not the whole column to the ceiling.
+				for (int y = feet; y <= feet + 1; y++) {
 					clear &= level.getBlockState(piece.worldPos(cell.middle().getX(), y, cell.middle().getZ())).isAir();
 				}
 				for (int dx = 0; dx < TowerMaze.PATH; dx++) {
 					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
 						int x = cell.middle().getX() - TowerMaze.PATH / 2 + dx;
 						int z = cell.middle().getZ() - TowerMaze.PATH / 2 + dz;
+						// Only the cell's own blocks carry a lid: the hexagon's cut corner has no room for one.
+						if (TowerHex.kind(x, z) != TowerHex.Part.WAY) {
+							continue;
+						}
 						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
 						lid &= above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP);
 					}
