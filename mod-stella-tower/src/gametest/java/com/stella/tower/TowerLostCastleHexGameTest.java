@@ -87,9 +87,10 @@ public class TowerLostCastleHexGameTest {
 
 	/**
 	 * Whether the castle stands as the hexagon and no other shape. Every column of the piece is read at the
-	 * ground storey's feet and compared with {@link TowerHex#kind}: a way is open, anything inside the
-	 * hexagon is a block, and anything outside it is open. The rows read back must also be the rows
-	 * {@link TowerHex#widthAt} draws, and that shape must be symmetric about the piece's middle.
+	 * ground storey's feet and compared with {@link TowerHex#kind}: a way's crossing is open and the rest of a
+	 * way may carry the ruin, anything inside the hexagon that is not a way is a block, and anything outside it
+	 * is open. The rows read back must also be the rows {@link TowerHex#widthAt} draws, and that shape must be
+	 * symmetric about the piece's middle.
 	 */
 	static List<String> footprint(final TowerLostRoomGameTest.Arena arena) {
 		List<String> faults = new ArrayList<>();
@@ -108,7 +109,7 @@ public class TowerLostCastleHexGameTest {
 					outsideHeld += held ? 1 : 0;
 				} else if (part == TowerHex.Part.WAY) {
 					open += held ? 0 : 1;
-					if (held) {
+					if (held && middleOfAWay(x) && middleOfAWay(z)) {
 						blocked.add(x + "," + z);
 					}
 				} else {
@@ -140,8 +141,8 @@ public class TowerLostCastleHexGameTest {
 		if (outsideHeld != 0) {
 			faults.add("holds " + outsideHeld + " blocks outside the hexagon");
 		}
-		if (open != 0) {
-			faults.add("walls off " + open + " blocks of a way at " + blocked);
+		if (!blocked.isEmpty()) {
+			faults.add("walls off " + blocked.size() + " blocks of a way's crossing at " + blocked);
 		}
 		if (rows != LostRoomPiece.WIDTH) {
 			faults.add("stands nothing on " + (LostRoomPiece.WIDTH - rows) + " rows of the frame");
@@ -155,6 +156,12 @@ public class TowerLostCastleHexGameTest {
 		TowerTestSupport.result("castleHexRows", "rows=" + rows + "/" + LostRoomPiece.WIDTH + " open=" + open + " solid=" + solid + " outside="
 			+ outsideHeld + " roofOutside=" + outside);
 		return faults;
+	}
+
+	/** Whether a column lies on the middle pair of a lattice cell along one axis: the crossing of a way. */
+	private static boolean middleOfAWay(final int axis) {
+		int inside = Math.floorMod(axis - TowerHex.CELL_AT, TowerMaze.PITCH);
+		return inside == TowerMaze.PATH / 2 - 1 || inside == TowerMaze.PATH / 2;
 	}
 
 	/**

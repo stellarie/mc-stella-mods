@@ -18,8 +18,10 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * then ruins it: cracked and missing floor, rubble, cobwebs, candles, skulls and chains.
  */
 public final class LostCastleHex {
-	/** At least this many chests stand on every storey. */
-	public static final int CHESTS_PER_STOREY = 4;
+	/** At least this many chests stand on every storey: oniichan asked for six a floor. */
+	public static final int CHESTS_PER_STOREY = 6;
+	/** The tries a ruin block or a chest takes to find a spot that keeps a way crossable. */
+	private static final int SPOT_TRIES = 12;
 	/** How many candles, skulls, chains, floor gaps, rubble blocks, cobwebs and growths every storey is given. */
 	public static final int CANDLES = 4;
 	public static final int SKULLS = 4;
@@ -262,7 +264,14 @@ public final class LostCastleHex {
 			int ceiling = TowerHex.ceilingAt(storey);
 			for (int i = 0; i < CHESTS_PER_STOREY; i++) {
 				TowerHex.Cell cell = cells.get(i % cells.size());
-				piece.chest(level, bb, spread(cell, 2, draw, 0), feet, spread(cell, 2, draw, 1), Direction.Plane.HORIZONTAL.getRandomDirection(draw));
+				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
+					int x = spread(cell, 2, draw, 0);
+					int z = spread(cell, 2, draw, 1);
+					if (offTheMiddle(x) && offTheMiddle(z)) {
+						piece.chest(level, bb, x, feet, z, Direction.Plane.HORIZONTAL.getRandomDirection(draw));
+						break;
+					}
+				}
 			}
 			for (int i = 0; i < CANDLES; i++) {
 				place(piece, level, bb, draw, cells, feet,
@@ -282,7 +291,7 @@ public final class LostCastleHex {
 				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
 				int x = spread(cell, 3, draw, 0);
 				int z = spread(cell, 3, draw, 1);
-				if (piece.get(level, bb, x, feet, z).isAir()) {
+				if (offTheMiddle(x) && offTheMiddle(z) && piece.get(level, bb, x, feet, z).isAir()) {
 					piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
 				}
 			}
@@ -332,15 +341,29 @@ public final class LostCastleHex {
 		return cells.get(0);
 	}
 
-	/** Puts one ruin block on open floor of a drawn cell, where the floor under it holds it up. */
+	/** Puts one ruin block on open floor of a drawn cell, where the floor under it holds it up and the way stays crossable. */
 	private static void place(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw,
 		final List<TowerHex.Cell> cells, final int feet, final BlockState state, final int reach) {
-		TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-		int x = spread(cell, reach, draw, 0);
-		int z = spread(cell, reach, draw, 1);
-		if (piece.get(level, bb, x, feet, z).isAir() && standsOn(piece, level, bb, x, feet - 1, z)) {
-			piece.set(level, bb, state, x, feet, z);
+		for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
+			TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
+			int x = spread(cell, reach, draw, 0);
+			int z = spread(cell, reach, draw, 1);
+			// The middle pair of a cell is the crossing every walker uses, so the ruin keeps off it.
+			if (!offTheMiddle(x) || !offTheMiddle(z)) {
+				continue;
+			}
+			if (piece.get(level, bb, x, feet, z).isAir() && standsOn(piece, level, bb, x, feet - 1, z)) {
+				piece.set(level, bb, state, x, feet, z);
+				return;
+			}
 		}
+	}
+
+	/** False on the middle pair of a lattice cell along one axis: the crossing of every way stays clear. */
+	private static boolean offTheMiddle(final int axis) {
+		int inside = Math.floorMod(axis - TowerHex.CELL_AT, TowerMaze.PITCH);
+		int middle = TowerMaze.PATH / 2;
+		return inside >= TowerMaze.PATH || inside < middle - 1 || inside > middle;
 	}
 
 	/** Whether the block at a spot holds a block up: a full block, and for the ruin's own kind, any sturdy face. */
