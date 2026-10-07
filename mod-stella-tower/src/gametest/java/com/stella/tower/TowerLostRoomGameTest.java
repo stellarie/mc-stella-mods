@@ -170,7 +170,10 @@ public class TowerLostRoomGameTest {
 							|| above.is(TowerBlocks.TOWER_FRAME) || above.is(Blocks.DEEPSLATE_TILES);
 						lid &= lidded;
 						if (!lidded) {
-							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString());
+							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString())
+								.append(" kind=").append(TowerHex.kind(x, z))
+								.append(" palette=").append(piece.palette().wall().getBlock().getName().getString())
+								.append(" foot=").append(level.getBlockState(piece.worldPos(x, feet, z)).getBlock().getName().getString());
 						}
 					}
 				}
