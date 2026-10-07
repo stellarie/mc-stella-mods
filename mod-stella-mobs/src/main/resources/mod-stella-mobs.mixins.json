@@ -29,7 +29,8 @@
 		"MobDamageScalingMixin",
 		"MobShieldBlockMixin",
 		"PiglinAttackRangeMixin",
-		"SkeletonShotLeadMixin"
+		"SkeletonShotLeadMixin",
+		"StrayShotBlinkMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
