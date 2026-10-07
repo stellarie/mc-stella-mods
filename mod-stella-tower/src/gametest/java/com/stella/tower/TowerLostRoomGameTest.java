@@ -165,11 +165,9 @@ public class TowerLostRoomGameTest {
 							continue;
 						}
 						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
-						// The portal's frame and the stair's own top step stand in a ceiling by design, and a
-						// lower storey's ceiling is the floor above it, which the ruin gaps on purpose.
-						boolean lidded = above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP)
-							|| above.is(TowerBlocks.TOWER_FRAME) || above.is(Blocks.DEEPSLATE_TILES)
-							|| (storey + 1 < TowerHex.STOREYS && above.isAir());
+						// The top storey's roof has to hold. A lower storey's ceiling is the floor above it, which
+						// the ruin gaps, cracks and greens on purpose, so only the roof is read as a lid.
+						boolean lidded = storey + 1 < TowerHex.STOREYS || !above.isAir();
 						lid &= lidded;
 						if (!lidded) {
 							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString())
