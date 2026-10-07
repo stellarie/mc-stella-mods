@@ -331,6 +331,10 @@ public class AmbushGameTest {
 					ownDistance >= RoleSpec.RANGED_NEAR + CoverSearch.BAND_MARGIN,
 					"the slipped spot lies " + number(ownDistance) + " blocks from the player, inside the near band: " + scene.describe()
 				);
+				helper.assertTrue(
+					ownDistance <= RangedReach.RANGE + com.stella.mobs.behavior.Blink.SLIP_GAIN,
+					"the slipped spot lies " + number(ownDistance) + " blocks from the player, past the band and a slip's own gain: " + scene.describe()
+				);
 				helper.succeed();
 				return;
 			}

@@ -1,5 +1,6 @@
 package com.stella.mobs.mixin;
 
+import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.StrayKit;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
@@ -18,7 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class StrayShotBlinkMixin {
 	@Inject(method = "performRangedAttack", at = @At("TAIL"))
 	private void stella$slipAwayAfterTheShot(final LivingEntity target, final float pullVelocity, final CallbackInfo ci) {
-		if ((Object) this instanceof Stray stray && stray.isHolding(net.minecraft.world.item.Items.BOW)) {
+		if ((Object) this instanceof Stray stray && stray.isHolding(net.minecraft.world.item.Items.BOW)
+			&& BossAbilities.copiesOf(stray, StrayKit.SniperGoal.class) == 0) {
+			// The elite bow slips for its own shot; a stray that kept both goals must not slip twice.
 			StrayKit.afterShot(stray, target);
 		}
 	}

@@ -238,10 +238,12 @@ public class GuardianEliteGameTest {
 	}
 
 	/**
-	 * Tagged, not required: this case reads the elder's maximum through the attribute clamp, so on a shared test
-	 * level whose threat scaling lifts the pool past 1024 it reads the ceiling instead of the scaled maximum. It
-	 * failed in four runs of eight in one session, either side of green runs, and the behaviour it measures is
-	 * unchanged. The base-health and elite-mark checks around it stay in the same case and still fail loudly.
+	 * Tagged, not required: this case read the vanilla attribute ceiling, 1024, in place of the level-scaled
+	 * maximum in four runs of eight in one session, either side of green runs, and the behaviour it measures is
+	 * not in question. The cause was not measured, so it is stated as the open question it is: either the shared
+	 * level's threat scaling lifts the pool past the ceiling before the read, or a sibling case leaves a gear
+	 * config behind. The first repair attempt is to run this case alone, then after the siblings that write
+	 * {@code GearConfigStore}. The case stays in the suite, still runs and still fails visibly.
 	 */
 	@GameTest(maxTicks = 200, required = false)
 	public void elderGuardianIsAlwaysEliteAtZeroChance(final GameTestHelper helper) {
