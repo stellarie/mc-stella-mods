@@ -43,18 +43,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * The stray, by what it holds and what it is.
  * <ul>
- * <li>An ordinary archer's arrow leaves one block of powder snow where it lands.</li>
  * <li>An elite or boss archer is a solitary sniper: it comes with no escort, it shoots once every ten seconds
- * with a fast, straight, heavy arrow that leaves a 3x3 (elite) or 5x5 (boss) patch of powder snow, it slips
  * away to a new spot around a player who looks straight at it while it hunts them, and a blow sends it away
  * too, blinding the attacker for a second, at most once every two minutes.</li>
  * <li>A melee stray is fast and freezes the players it strikes. An elite or boss one, far from its target,
  * blinds the target for a second and appears beside it, at most once every thirty seconds.</li>
  * </ul>
- * Powder snow clears itself after ten seconds.
  */
 public final class StrayKit {
-	public static final int POWDER_LIFETIME_TICKS = 200;
 	public static final int SNIPER_INTERVAL_TICKS = 200;
 	public static final int SNIPER_DRAW_TICKS = 20;
 	public static final double SNIPER_RANGE = 32.0;
@@ -64,12 +60,13 @@ public final class StrayKit {
 	public static final double BOSS_SNIPER_DAMAGE = 4.0;
 	/** A straight arrow never falls, so one that hits nothing is removed after this long. */
 	public static final int SNIPER_ARROW_LIFE_TICKS = 100;
-	public static final int ELITE_POWDER_RADIUS = 1;
-	public static final int BOSS_POWDER_RADIUS = 2;
 	public static final int LOOK_BLINK_COOLDOWN_TICKS = 60;
 	public static final double LOOK_BLINK_MIN = 10.0;
 	public static final double LOOK_BLINK_MAX = 16.0;
 	public static final int ESCAPE_COOLDOWN_TICKS = 2400;
+	/** How far a stray slips after its own arrow leaves the bow, and the far end of that band. */
+	public static final double SHOT_BLINK_MIN = 8.0;
+	public static final double SHOT_BLINK_MAX = 16.0;
 	public static final double ESCAPE_MIN = 12.0;
 	public static final double ESCAPE_MAX = 20.0;
 	public static final int BLINDNESS_TICKS = 20;
@@ -84,11 +81,7 @@ public final class StrayKit {
 	public static final Identifier FURY_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "stray_fury");
 	public static final Identifier FURY_RANGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "stray_fury_range");
 
-	/** Test seam: the powder snow each arrow left, and each blink with its reason. */
 	public interface Recorder {
-		default void powder(final Mob stray, final List<BlockPos> placed) {
-		}
-
 		default void blink(final Mob stray, final String reason) {
 		}
 
@@ -182,45 +175,6 @@ public final class StrayKit {
 		return view.dot(to.normalize()) > 1.0 - 0.025 / distance && player.hasLineOfSight(mob);
 	}
 
-	/** Any arrow's landing: a stray's arrow leaves powder snow, one block or a sniper's patch. */
-	public static void onArrowHit(final AbstractArrow arrow, final BlockPos at) {
-		if (!(arrow.getOwner() instanceof Stray stray) || !(arrow.level() instanceof ServerLevel level)
-			|| !level.getGameRules().get(GameRules.MOB_GRIEFING)) {
-			return;
-		}
-		boolean sniper = arrow.entityTags().contains(SNIPER_TAG);
-		if (!sniper && isElite(stray)) {
-			return;
-		}
-		int radius = !sniper ? 0 : arrow.entityTags().contains(BOSS_SNIPER_TAG) ? BOSS_POWDER_RADIUS : ELITE_POWDER_RADIUS;
-		arrow.removeTag(SNIPER_TAG);
-		List<BlockPos> placed = new ArrayList<>();
-		for (int dx = -radius; dx <= radius; dx++) {
-			for (int dz = -radius; dz <= radius; dz++) {
-				BlockPos spot = floorAt(level, at.offset(dx, 0, dz));
-				if (spot != null && TemporaryBlocks.place(level, spot, Blocks.POWDER_SNOW.defaultBlockState(), POWDER_LIFETIME_TICKS)) {
-					placed.add(spot);
-				}
-			}
-		}
-		if (!placed.isEmpty()) {
-			recorder.powder(stray, placed);
-			StellaMobs.LOGGER.info("[BEHAVIOR] test=strayPowder PLACE stray={} sniper={} blocks={}", stray.getUUID(), sniper, placed.size());
-		}
-	}
-
-	// The free spot on the floor nearest this column's height: the spot itself, or one above or below it.
-	private static @Nullable BlockPos floorAt(final ServerLevel level, final BlockPos column) {
-		for (int dy : new int[] {0, 1, -1}) {
-			BlockPos spot = column.above(dy);
-			if (level.getBlockState(spot).canBeReplaced() && !level.getBlockState(spot).liquid()
-				&& level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
-				return spot;
-			}
-		}
-		return null;
-	}
-
 	private static void afterDamage(final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked) {
 		// A melee stray's blow freezes a player solid.
 		if (!blocked && victim instanceof Player && source.getDirectEntity() instanceof Stray stray && !isArcher(stray)) {
@@ -240,6 +194,11 @@ public final class StrayKit {
 			attacker.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, BLINDNESS_TICKS, 0), stray);
 			recorder.blink(stray, Blink.around(stray, attacker, ESCAPE_MIN, ESCAPE_MAX) ? "escape" : "escape-stuck");
 		}
+	}
+
+	/** A shot leaves the stray somewhere else: it slips out to the band around its target at once. */
+	public static void afterShot(final Mob stray, final Entity target) {
+		recorder.blink(stray, Blink.around(stray, target, SHOT_BLINK_MIN, SHOT_BLINK_MAX) ? "shot" : "shot-stuck");
 	}
 
 	private static void expireArrows(final MinecraftServer server) {
