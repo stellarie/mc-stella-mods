@@ -38,6 +38,7 @@ public final class StellaRpg implements ModInitializer {
 		AutoPickup.register();
 		QuickbarMode.register();
 		WeaponSlot.register();
+		SecondHotbar.register();
 		ArmorSets.register();
 		WeaponRolls.register();
 		RpgScale.register();
