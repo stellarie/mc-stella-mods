@@ -1,5 +1,6 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.ArcherKit;
 import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
@@ -38,17 +39,11 @@ import net.minecraft.world.phys.Vec3;
  */
 public class StrayKitGameTest {
 	private static final String TEST = "strayKit";
-	private static final Map<UUID, List<List<BlockPos>>> POWDER = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<String>> BLINKS = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<AbstractArrow>> SHOTS = new ConcurrentHashMap<>();
 
 	static {
 		StrayKit.setRecorder(new StrayKit.Recorder() {
-			@Override
-			public void powder(final Mob stray, final List<BlockPos> placed) {
-				POWDER.computeIfAbsent(stray.getUUID(), key -> new CopyOnWriteArrayList<>()).add(List.copyOf(placed));
-			}
-
 			@Override
 			public void blink(final Mob stray, final String reason) {
 				BLINKS.computeIfAbsent(stray.getUUID(), key -> new CopyOnWriteArrayList<>()).add(reason);
@@ -62,56 +57,46 @@ public class StrayKitGameTest {
 	}
 
 	@GameTest
-	public void anOrdinaryStrayArrowLeavesOneBlockOfPowderSnow(final GameTestHelper helper) {
-		Arena.buildFloor(helper);
-		Stray stray = stray(helper, Items.BOW, 1, 1);
-		BlockPos at = helper.absolutePos(new BlockPos(4, 1, 4));
-		StrayKit.onArrowHit(arrow(helper, stray), at);
-		List<List<BlockPos>> placed = POWDER.getOrDefault(stray.getUUID(), List.of());
-		result("ordinaryPowder", "patches=" + placed + " block=" + helper.getLevel().getBlockState(at));
-		helper.assertTrue(placed.size() == 1 && placed.get(0).equals(List.of(at)) && helper.getLevel().getBlockState(at).is(Blocks.POWDER_SNOW),
-			"an ordinary stray arrow left " + placed);
-		helper.succeed();
+	public void aStrayArrowLeavesNoPowderSnowWhereItLands(final GameTestHelper helper) {
+	Arena.buildFloor(helper);
+	Stray stray = stray(helper, Items.BOW, 1, 1);
+	BlockPos at = helper.absolutePos(new BlockPos(4, 1, 4));
+	AbstractArrow shot = arrow(helper, stray);
+	shot.snapTo(at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5, 0.0F, 0.0F);
+	shot.setDeltaMovement(0.0, -0.4, 0.0);
+	helper.getLevel().addFreshEntity(shot);
+	helper.runAfterDelay(6L, () -> {
+	var landed = helper.getLevel().getBlockState(at);
+	result("noPowder", "block=" + landed + " removed=" + shot.isRemoved());
+	helper.assertTrue(!landed.is(Blocks.POWDER_SNOW), "the stray's arrow left powder snow at " + at);
+	helper.succeed();
+	});
 	}
-
+	
+	/** A stray is never where its last arrow came from: it slips away the moment it fires. */
 	@GameTest
-	public void anEliteSniperArrowLeavesAThreeByThreeAndABossAFiveByFive(final GameTestHelper helper) {
-		Arena.buildFloor(helper);
-		Stray elite = stray(helper, Items.BOW, 0, 0);
-		Elite.mark(elite, GearTier.IRON, 1.0);
-		AbstractArrow eliteArrow = arrow(helper, elite);
-		eliteArrow.addTag(StrayKit.SNIPER_TAG);
-		// Two patches that do not overlap, on the floor.
-		StrayKit.onArrowHit(eliteArrow, helper.absolutePos(new BlockPos(1, 1, 6)));
-		Stray boss = stray(helper, Items.BOW, 0, 3);
-		Elite.mark(boss, GearTier.IRON, 1.0);
-		AbstractArrow bossArrow = arrow(helper, boss);
-		bossArrow.addTag(StrayKit.SNIPER_TAG);
-		bossArrow.addTag(StrayKit.BOSS_SNIPER_TAG);
-		StrayKit.onArrowHit(bossArrow, helper.absolutePos(new BlockPos(5, 1, 2)));
-		int eliteCount = POWDER.getOrDefault(elite.getUUID(), List.of()).stream().mapToInt(List::size).sum();
-		int bossCount = POWDER.getOrDefault(boss.getUUID(), List.of()).stream().mapToInt(List::size).sum();
-		int eliteSide = 2 * StrayKit.ELITE_POWDER_RADIUS + 1;
-		int bossSide = 2 * StrayKit.BOSS_POWDER_RADIUS + 1;
-		result("sniperPowder", "elite=" + eliteCount + " boss=" + bossCount);
-		helper.assertTrue(eliteCount == eliteSide * eliteSide && bossCount == bossSide * bossSide, "the patches held " + eliteCount + " and " + bossCount + " blocks");
-		helper.succeed();
+	public void aStrayTeleportsAfterItFires(final GameTestHelper helper) {
+	Arena.buildFloor(helper);
+	helper.setTime(Arena.NIGHT_TIME);
+	Stray stray = stray(helper, Items.BOW, 2, 2);
+	Zombie anchor = target(helper, 2, 12);
+	stray.setTarget(anchor);
+	Vec3 before = stray.position();
+	List<UUID> loosed = ArcherKit.release(stray, ignored -> new Vec3(0.0, 0.0, 1.0), 1.0F, 0.0F, false);
+	double moved = stray.position().distanceTo(before);
+	double away = stray.position().distanceTo(anchor.position());
+	List<String> blinks = BLINKS.getOrDefault(stray.getUUID(), List.of());
+	result("shotBlink", "arrows=" + loosed.size() + " blinks=" + blinks + " moved=" + number(moved) + " away=" + number(away));
+	helper.assertTrue(!loosed.isEmpty(), "the stray loosed no arrow, so the case proves nothing: " + blinks);
+	helper.assertTrue(!blinks.isEmpty(), "the stray recorded no blink after it fired");
+	helper.assertTrue(blinks.get(blinks.size() - 1).startsWith("shot"), "the stray's blink was not the shot's: " + blinks);
+	helper.assertTrue(moved > 1.0, "the stray moved " + number(moved) + " blocks when it fired");
+	// The band is the teleport's own, read from the constants so moving them moves this check.
+	helper.assertTrue(away >= StrayKit.SHOT_BLINK_MIN - 1.5 && away <= StrayKit.SHOT_BLINK_MAX + 1.5,
+	    "the stray stood " + number(away) + " blocks from its target, outside " + StrayKit.SHOT_BLINK_MIN + " to " + StrayKit.SHOT_BLINK_MAX);
+	helper.succeed();
 	}
-
-	@GameTest(maxTicks = 300)
-	public void powderSnowClearsItself(final GameTestHelper helper) {
-		Arena.buildFloor(helper);
-		Stray stray = stray(helper, Items.BOW, 1, 1);
-		BlockPos at = helper.absolutePos(new BlockPos(4, 1, 4));
-		StrayKit.onArrowHit(arrow(helper, stray), at);
-		helper.runAfterDelay(StrayKit.POWDER_LIFETIME_TICKS + 5L, () -> {
-			boolean cleared = helper.getLevel().getBlockState(at).isAir();
-			result("powderClears", "cleared=" + cleared);
-			helper.assertTrue(cleared, "the powder snow is still there: " + helper.getLevel().getBlockState(at));
-			helper.succeed();
-		});
-	}
-
+	
 	@GameTest(maxTicks = 200)
 	public void anEliteSniperShootsOnceEveryTenSecondsStraightAndFast(final GameTestHelper helper) {
 		Arena.buildFloor(helper);
@@ -273,5 +258,9 @@ public class StrayKitGameTest {
 
 	private static void result(final String test, final String outcome) {
 		StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test={} {}", TEST, test, outcome);
+	}
+
+	private static String number(final double value) {
+		return Math.round(value * 100.0) / 100.0 + "";
 	}
 }

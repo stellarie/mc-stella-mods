@@ -17,6 +17,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.entity.monster.skeleton.Stray;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
@@ -127,6 +128,9 @@ public final class ArcherKit {
 		}
 
 		ammo.shrink(arrows.size());
+		if (!arrows.isEmpty() && mob instanceof Stray stray && stray.getTarget() != null) {
+			StrayKit.afterShot(stray, stray.getTarget());
+		}
 		mob.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F / (mob.getRandom().nextFloat() * 0.4F + 0.8F));
 		if (!arrows.isEmpty() && mob.getType() == EntityTypes.SKELETON) {
 			if (skeletonBurst) {
