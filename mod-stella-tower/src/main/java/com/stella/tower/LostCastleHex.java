@@ -311,6 +311,10 @@ public final class LostCastleHex {
 				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
 				int x = spread(cell, 3, draw, 0);
 				int z = spread(cell, 3, draw, 1);
+				// A gap under the crossing would take the floor out from under the walker who uses it.
+				if (!offTheMiddle(x) || !offTheMiddle(z)) {
+					continue;
+				}
 				if (!standsOn(piece, level, bb, x, feet - 1, z)) {
 					continue;
 				}

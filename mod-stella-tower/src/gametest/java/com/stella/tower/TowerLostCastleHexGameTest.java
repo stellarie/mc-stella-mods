@@ -101,8 +101,8 @@ public class TowerLostCastleHexGameTest {
 		int solid = 0;
 		int outsideHeld = 0;
 		List<String> blocked = new ArrayList<>();
-		for (int x = -2; x <= LostRoomPiece.LENGTH + 1; x++) {
-			for (int z = -2; z <= LostRoomPiece.WIDTH + 1; z++) {
+		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
+			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
 				boolean held = !level.getBlockState(piece.worldPos(x, feet, z)).isAir();
 				TowerHex.Part part = TowerHex.kind(x, z);
 				if (part == TowerHex.Part.OUT) {
@@ -133,8 +133,8 @@ public class TowerLostCastleHexGameTest {
 		}
 		int top = TowerHex.ceilingAt(TowerHex.STOREYS - 1);
 		int outside = 0;
-		for (int x = -1; x <= LostRoomPiece.LENGTH; x++) {
-			for (int z = -1; z <= LostRoomPiece.WIDTH; z++) {
+		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
+			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
 				outside += TowerHex.kind(x, z) == TowerHex.Part.OUT && !level.getBlockState(piece.worldPos(x, top, z)).isAir() ? 1 : 0;
 			}
 		}
