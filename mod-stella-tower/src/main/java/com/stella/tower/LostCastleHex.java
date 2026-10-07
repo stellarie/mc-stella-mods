@@ -66,8 +66,9 @@ public final class LostCastleHex {
 					if (part == TowerHex.Part.OUT) {
 						continue;
 					}
-					// A lattice cell is open from the storey's floor to the block under its ceiling; all else is stone.
-					boolean open = TowerHex.inCell(x, z);
+					// A way is a lattice cell the hexagon holds, which is the one test TowerHex.cells() reads:
+					// the lattice alone would open the two corner cells as shafts through the outer wall.
+					boolean open = part == TowerHex.Part.WAY;
 					for (int y = floor; y <= ceiling; y++) {
 						piece.set(level, bb, open && y >= feet && y < ceiling ? air : wall, x, y, z);
 					}
