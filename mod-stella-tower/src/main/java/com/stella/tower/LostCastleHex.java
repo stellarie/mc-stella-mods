@@ -413,10 +413,15 @@ public final class LostCastleHex {
 		}
 	}
 
-	/** A spot a ruin block may stand on: inside a way, off its crossing, and clear of the stair and the portal. */
+	/** A spot a ruin block may stand on: the middle of a way, clear of the crossing, the stair and the portal. */
 	private static boolean roomForRuin(final int x, final int feet, final int z) {
-		return TowerHex.kind(x, z) == TowerHex.Part.WAY && !TowerHex.onCrossing(x, z) && !inStairLane(x, z)
-			&& !inPortalHall(x, feet, z);
+		if (TowerHex.kind(x, z) != TowerHex.Part.WAY || TowerHex.onCrossing(x, z) || inStairLane(x, z) || inPortalHall(x, feet, z)) {
+			return false;
+		}
+		// The ruin stands inside a way, and its outer ring stays clear: every door opens onto that ring.
+		int dx = TowerHex.intoCellX(x);
+		int dz = TowerHex.intoCellZ(z);
+		return dx > 0 && dx < TowerMaze.PATH - 1 && dz > 0 && dz < TowerMaze.PATH - 1;
 	}
 
 	/** Whether a spot lies in the corner of the back cell a stair climbs through, which the ruin keeps off. */

@@ -107,6 +107,21 @@ public final class TowerHex {
 		return middlePair(x, cellX(0)) && middlePair(z, cellZ(0));
 	}
 
+	/** How far a column lies into a lattice cell along x, or {@link TowerMaze#PATH} when it misses every cell. */
+	public static int intoCellX(final int x) {
+		return intoCell(x, cellX(0));
+	}
+
+	/** How far a column lies into a lattice cell along z. */
+	public static int intoCellZ(final int z) {
+		return intoCell(z, cellZ(0));
+	}
+
+	private static int intoCell(final int at, final int start) {
+		int inside = Math.floorMod(at - start, TowerMaze.PITCH);
+		return inside < TowerMaze.PATH ? inside : TowerMaze.PATH;
+	}
+
 	private static boolean middlePair(final int at, final int start) {
 		int inside = Math.floorMod(at - start, TowerMaze.PITCH);
 		return inside == TowerMaze.PATH / 2 - 1 || inside == TowerMaze.PATH / 2;
