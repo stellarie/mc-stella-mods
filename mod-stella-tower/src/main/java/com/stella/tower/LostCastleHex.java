@@ -322,27 +322,33 @@ public final class LostCastleHex {
 					draw.nextBoolean() ? Blocks.BROWN_MUSHROOM.defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState(), 3);
 			}
 			for (int i = 0; i < COBWEBS; i++) {
-				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-				int x = spread(cell, 3, draw, 0);
-				int z = spread(cell, 3, draw, 1);
-				if (roomForRuin(x, feet, z) && piece.get(level, bb, x, feet, z).isAir()) {
-					piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
+				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
+					TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
+					int x = spread(cell, 3, draw, 0);
+					int z = spread(cell, 3, draw, 1);
+					if (roomForRuin(x, feet, z) && piece.get(level, bb, x, feet, z).isAir()) {
+						piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
+						break;
+					}
 				}
 			}
 			for (int i = 0; i < CHAINS; i++) {
-				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-				int x = spread(cell, 3, draw, 0);
-				int z = spread(cell, 3, draw, 1);
-				// A chain hangs into the room a walker needs, so it keeps off the crossing, the stair and the portal.
-				if (!roomForRuin(x, feet, z)) {
-					continue;
-				}
-				// A chain hangs from the ceiling onto open air, so no block is left holding nothing.
-				if (!piece.get(level, bb, x, ceiling - 1, z).isAir()) {
-					continue;
-				}
-				for (int drop = 1; drop <= 1 + draw.nextInt(2); drop++) {
-					piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, ceiling - drop, z);
+				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
+					TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
+					int x = spread(cell, 3, draw, 0);
+					int z = spread(cell, 3, draw, 1);
+					// A chain hangs into the room a walker needs, so it keeps off the crossing, the stair and the portal.
+					if (!roomForRuin(x, feet, z)) {
+						continue;
+					}
+					// A chain hangs from the ceiling onto open air, so no block is left holding nothing.
+					if (!piece.get(level, bb, x, ceiling - 1, z).isAir()) {
+						continue;
+					}
+					for (int drop = 1; drop <= 1 + draw.nextInt(2); drop++) {
+						piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, ceiling - drop, z);
+					}
+					break;
 				}
 			}
 			for (int i = 0; i < FLOOR_GAPS; i++) {
