@@ -64,8 +64,7 @@ public final class StrayKit {
 	public static final double LOOK_BLINK_MIN = 10.0;
 	public static final double LOOK_BLINK_MAX = 16.0;
 	public static final int ESCAPE_COOLDOWN_TICKS = 2400;
-	/** How far a stray slips after its own arrow leaves the bow, and the far end of that band. */
-	public static final double SHOT_BLINK_MIN = 8.0;
+	/** How far a stray may slip after its own arrow leaves the bow. The slip never comes nearer its target. */
 	public static final double SHOT_BLINK_MAX = 16.0;
 	public static final double ESCAPE_MIN = 12.0;
 	public static final double ESCAPE_MAX = 20.0;
@@ -196,9 +195,9 @@ public final class StrayKit {
 		}
 	}
 
-	/** A shot leaves the stray somewhere else: it slips out to the band around its target at once. */
+	/** A shot slips the stray to a spot its target cannot see, within reach and inside its own band; nowhere hidden, nowhere to go. */
 	public static void afterShot(final Mob stray, final Entity target) {
-		recorder.blink(stray, Blink.around(stray, target, SHOT_BLINK_MIN, SHOT_BLINK_MAX) ? "shot" : "shot-stuck");
+		recorder.blink(stray, Blink.slipOutOfSight(stray, target, SHOT_BLINK_MAX) ? "shot-hidden" : "shot-stuck");
 	}
 
 	private static void expireArrows(final MinecraftServer server) {
@@ -297,6 +296,8 @@ public final class StrayKit {
 			track(arrow);
 			this.stray.playSound(SoundEvents.SKELETON_SHOOT, 1.0F, 0.6F);
 			recorder.sniped(this.stray, arrow);
+			// The elite bow looses its own arrow, so it asks for the slip itself.
+			afterShot(this.stray, target);
 			StellaMobs.LOGGER.info("[BEHAVIOR] test=straySniper SHOT stray={} boss={} distance={}", this.stray.getUUID(), boss, this.stray.distanceTo(target));
 		}
 	}

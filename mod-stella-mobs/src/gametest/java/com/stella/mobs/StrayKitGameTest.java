@@ -1,6 +1,6 @@
 package com.stella.mobs;
 
-import com.stella.mobs.behavior.ArcherKit;
+import com.stella.mobs.behavior.Blink;
 import com.stella.mobs.behavior.BossAbilities;
 import com.stella.mobs.behavior.Bosses;
 import com.stella.mobs.behavior.Elite;
@@ -22,6 +22,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
 import net.minecraft.world.entity.monster.skeleton.Stray;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
@@ -73,28 +74,83 @@ public class StrayKitGameTest {
 	});
 	}
 	
-	/** A stray is never where its last arrow came from: it slips away the moment it fires. */
-	@GameTest
+	/** A stray is never where its last arrow came from: the bow goal's own shot slips it out of its target's sight. */
+	@GameTest(maxTicks = 100, padding = 24)
 	public void aStrayTeleportsAfterItFires(final GameTestHelper helper) {
-	Arena.buildFloor(helper);
-	helper.setTime(Arena.NIGHT_TIME);
-	Stray stray = stray(helper, Items.BOW, 2, 2);
-	Zombie anchor = target(helper, 2, 12);
-	stray.setTarget(anchor);
-	Vec3 before = stray.position();
-	List<UUID> loosed = ArcherKit.release(stray, ignored -> new Vec3(0.0, 0.0, 1.0), 1.0F, 0.0F, false);
-	double moved = stray.position().distanceTo(before);
-	double away = stray.position().distanceTo(anchor.position());
-	List<String> blinks = BLINKS.getOrDefault(stray.getUUID(), List.of());
-	result("shotBlink", "arrows=" + loosed.size() + " blinks=" + blinks + " moved=" + number(moved) + " away=" + number(away));
-	helper.assertTrue(!loosed.isEmpty(), "the stray loosed no arrow, so the case proves nothing: " + blinks);
-	helper.assertTrue(!blinks.isEmpty(), "the stray recorded no blink after it fired");
-	helper.assertTrue(blinks.get(blinks.size() - 1).startsWith("shot"), "the stray's blink was not the shot's: " + blinks);
-	helper.assertTrue(moved > 1.0, "the stray moved " + number(moved) + " blocks when it fired");
-	// The band is the teleport's own, read from the constants so moving them moves this check.
-	helper.assertTrue(away >= StrayKit.SHOT_BLINK_MIN - 1.5 && away <= StrayKit.SHOT_BLINK_MAX + 1.5,
-	    "the stray stood " + number(away) + " blocks from its target, outside " + StrayKit.SHOT_BLINK_MIN + " to " + StrayKit.SHOT_BLINK_MAX);
-	helper.succeed();
+	floor(helper, 20, 26);
+	// A well around the player, so the shot has somewhere hidden to take the stray to.
+	for (int x = 9; x <= 11; x++) {
+	    for (int z = 9; z <= 11; z++) {
+		for (int y = 1; y <= 3; y++) {
+		    if (x != 10 || z != 10) {
+			helper.setBlock(x, y, z, Blocks.STONE);
+		    }
+		}
+	    }
+	}
+	ServerPlayer player = watcher(helper, 10.5, 10.5);
+	Stray stray = stray(helper, Items.BOW, 10, 22, 3);
+	helper.startSequence()
+	    .thenIdle(10)
+	    .thenExecute(() -> {
+		stray.setTarget(player);
+		double stood = stray.distanceTo(player);
+		Vec3 before = stray.position();
+		// The vanilla bow goal's own call, so the case measures the path a stray really shoots through.
+		((AbstractSkeleton) stray).performRangedAttack(player, 1.0F);
+		double moved = stray.position().distanceTo(before);
+		double away = stray.distanceTo(player);
+		boolean hidden = !player.hasLineOfSight(stray);
+		List<String> blinks = BLINKS.getOrDefault(stray.getUUID(), List.of());
+		result("shotBlink", "blinks=" + blinks + " moved=" + number(moved) + " stood=" + number(stood) + " away=" + number(away) + " hidden=" + hidden);
+		helper.assertTrue(!blinks.isEmpty() && blinks.get(blinks.size() - 1).startsWith("shot"), "the stray's bow goal recorded no blink after it fired: " + blinks);
+		helper.assertTrue(!blinks.get(blinks.size() - 1).endsWith("stuck"), "the stray found nowhere to slip to: " + blinks);
+		helper.assertTrue(moved > 0.5 && moved <= StrayKit.SHOT_BLINK_MAX + 0.5, "the stray slipped " + number(moved) + " blocks");
+		// The reach is the slip's own constant, and the floor and ceiling are the band it must stay inside.
+		helper.assertTrue(away >= stood - 0.5, "the stray slipped to " + number(away) + " blocks, nearer its target than the " + number(stood) + " it stood");
+		helper.assertTrue(away <= stood + Blink.SLIP_GAIN + 0.5,
+		    "the stray slipped to " + number(away) + " blocks, past the " + Blink.SLIP_GAIN + " blocks of gain a slip may take");
+		helper.assertTrue(hidden, "the stray still stands in its target's sight after the slip");
+	    })
+	    .thenSucceed();
+	}
+
+	/** With no block above the floor to hide behind, the shot has nowhere hidden to go and the stray stays put. */
+	@GameTest(maxTicks = 100, padding = 24)
+	public void aStrayStaysPutWhenItsShotHasNowhereHidden(final GameTestHelper helper) {
+	floor(helper, 20, 26);
+	ServerPlayer player = watcher(helper, 10.5, 10.5);
+	Stray stray = stray(helper, Items.BOW, 10, 22, 3);
+	helper.startSequence()
+	    .thenIdle(10)
+	    .thenExecute(() -> {
+		stray.setTarget(player);
+		Vec3 before = stray.position();
+		StrayKit.afterShot(stray, player);
+		List<String> blinks = BLINKS.getOrDefault(stray.getUUID(), List.of());
+		double moved = stray.position().distanceTo(before);
+		result("shotOpenBlink", "blinks=" + blinks + " moved=" + number(moved));
+		helper.assertTrue(!blinks.isEmpty() && blinks.get(blinks.size() - 1).equals("shot-stuck"),
+		    "the open scene hid the stray after all, so the fallback is not measured: " + blinks);
+		helper.assertTrue(moved < 0.5, "the stray moved " + number(moved) + " blocks with nowhere hidden to go");
+	    })
+	    .thenSucceed();
+	}
+
+	private static void floor(final GameTestHelper helper, final int maxX, final int maxZ) {
+		for (int x = 0; x <= maxX; x++) {
+			for (int z = 0; z <= maxZ; z++) {
+				helper.setBlock(x, 0, z, Blocks.STONE);
+			}
+		}
+	}
+
+	private static ServerPlayer watcher(final GameTestHelper helper, final double x, final double z) {
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		Vec3 at = helper.absoluteVec(new Vec3(x, 1.0, z));
+		player.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		return player;
 	}
 	
 	@GameTest(maxTicks = 200)
@@ -109,9 +165,13 @@ public class StrayKitGameTest {
 		helper.runAfterDelay(150L, () -> {
 			List<AbstractArrow> shots = SHOTS.getOrDefault(stray.getUUID(), List.of());
 			boolean straight = !shots.isEmpty() && shots.get(0).isNoGravity();
-			result("sniperCadence", "shots=" + shots.size() + " straight=" + straight + " goals=" + BossAbilities.copiesOf(stray, StrayKit.SniperGoal.class));
+			List<String> blinks = BLINKS.getOrDefault(stray.getUUID(), List.of());
+			result("sniperCadence", "shots=" + shots.size() + " straight=" + straight + " blinks=" + blinks
+				+ " goals=" + BossAbilities.copiesOf(stray, StrayKit.SniperGoal.class));
 			helper.assertTrue(shots.size() == 1, "the sniper shot " + shots.size() + " times in 150 ticks, not once");
 			helper.assertTrue(straight, "the sniper's arrow falls");
+			helper.assertTrue(!blinks.isEmpty() && blinks.get(blinks.size() - 1).startsWith("shot"),
+				"the sniper's own shot recorded no blink: " + blinks);
 			helper.succeed();
 		});
 	}
@@ -214,9 +274,13 @@ public class StrayKitGameTest {
 	}
 
 	private static Stray stray(final GameTestHelper helper, final net.minecraft.world.item.Item weapon, final int x, final int z) {
+		return stray(helper, weapon, x, z, 1);
+	}
+
+	private static Stray stray(final GameTestHelper helper, final net.minecraft.world.item.Item weapon, final int x, final int z, final int y) {
 		Stray stray = EntityTypes.STRAY.create(helper.getLevel(), EntitySpawnReason.EVENT);
 		stray.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
-		stray.snapTo(helper.absoluteVec(new Vec3(x + 0.5, 1.0, z + 0.5)), 0.0F, 0.0F);
+		stray.snapTo(helper.absoluteVec(new Vec3(x + 0.5, y, z + 0.5)), 0.0F, 0.0F);
 		stray.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapon));
 		stray.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
 		stray.setPersistenceRequired();
