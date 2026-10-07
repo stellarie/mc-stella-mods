@@ -109,7 +109,7 @@ public class TowerLostCastleHexGameTest {
 					outsideHeld += held ? 1 : 0;
 				} else if (part == TowerHex.Part.WAY) {
 					open += held ? 0 : 1;
-					if (held && middleOfAWay(x) && middleOfAWay(z)) {
+					if (held && TowerHex.onCrossing(x, z)) {
 						blocked.add(x + "," + z);
 					}
 				} else {
@@ -119,7 +119,7 @@ public class TowerLostCastleHexGameTest {
 		}
 		int rows = 0;
 		int sway = 0;
-		for (int z = 0; z <= LostRoomPiece.WIDTH; z++) {
+		for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
 			int width = TowerHex.widthAt(z);
 			int low = TowerHex.middleX() - width / 2;
 			int held = 0;
@@ -127,7 +127,7 @@ public class TowerLostCastleHexGameTest {
 				held += !level.getBlockState(piece.worldPos(x, feet, z)).isAir() ? 1 : 0;
 			}
 			rows += held > 0 ? 1 : 0;
-			if (low != TowerHex.middleX() - TowerHex.widthAt(LostRoomPiece.WIDTH - z) / 2) {
+			if (low != TowerHex.middleX() - TowerHex.widthAt(LostRoomPiece.WIDTH - 1 - z) / 2) {
 				sway++;
 			}
 		}
@@ -158,12 +158,6 @@ public class TowerLostCastleHexGameTest {
 		return faults;
 	}
 
-	/** Whether a column lies on the middle pair of a lattice cell along one axis: the crossing of a way. */
-	private static boolean middleOfAWay(final int axis) {
-		int inside = Math.floorMod(axis - TowerHex.CELL_AT, TowerMaze.PITCH);
-		return inside == TowerMaze.PATH / 2 - 1 || inside == TowerMaze.PATH / 2;
-	}
-
 	/**
 	 * Whether the castle is {@link TowerHex#STOREYS} storeys on foot: every storey's cell middles are
 	 * standable and reached from the breach, every storey below the top one reaches the storey above it, and
@@ -192,7 +186,7 @@ public class TowerLostCastleHexGameTest {
 				// The breach leads onto the ground storey, and every way of it is reached from there.
 				Set<BlockPos> fromBreach = TowerLostCastleVariantGameTest.walk(level, box, originY - 1, piece.gateInside());
 				StringBuilder probes = new StringBuilder();
-				int through = TowerHex.cellAt(0) - 1;
+				int through = LostCastleHex.breachRow();
 				for (int dx = 0; dx < 2; dx++) {
 					for (int dz = through; dz < through + 4; dz++) {
 						BlockPos at = piece.worldPos(LostCastleHex.breachLow() + dx, 1, dz);
@@ -217,6 +211,19 @@ public class TowerLostCastleHexGameTest {
 				if (!fromBelow.contains(first)) {
 					faults.add("storey " + (storey - 1) + " does not reach storey " + storey + " on foot");
 				}
+				StringBuilder climb = new StringBuilder("storey=" + storey + " reached=" + fromBelow.size());
+				for (TowerHex.Cell cell : TowerHex.cells()) {
+					BlockPos at = piece.worldPos(cell.middle().getX(), 0, cell.middle().getZ()).atY(y);
+					climb.append(" c").append(cell.cx()).append(cell.cz()).append('=').append(fromBelow.contains(at) ? 'y' : 'n');
+				}
+				TowerHex.Cell backStair = TowerHex.cells().get(TowerHex.cells().size() - 1);
+				for (int rise = 0; rise < TowerHex.STOREY; rise++) {
+					int[] step = LostCastleHex.stairStep(backStair, rise);
+					BlockPos spot = piece.worldPos(step[0], 0, step[1]).atY(originY + TowerHex.floorAt(storey - 1) + 2 + rise);
+					climb.append(" r").append(rise).append('=').append(fromBelow.contains(spot) ? 'y' : 'n')
+						.append(TowerLostCastleVariantGameTest.standable(level, spot) ? "" : "!stand");
+				}
+				TowerTestSupport.result("castleHexClimb", climb.toString());
 			}
 		}
 		BlockPos portal = piece.portalPos();
@@ -239,49 +246,52 @@ public class TowerLostCastleHexGameTest {
 		return faults;
 	}
 
-	/** Whether every way of every storey is a path {@link TowerMaze#PATH} wide, measured at its own middle. */
+	/** Whether every way of every storey is a path {@link TowerMaze#PATH} wide, with the stone around it. */
 	static String ways(final TowerLostRoomGameTest.Arena arena) {
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
 		int narrow = 0;
-		int wide = 0;
+		int unwalled = 0;
 		int measured = 0;
 		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
+			int feet = TowerHex.floorAt(storey) + 1;
 			for (TowerHex.Cell cell : TowerHex.cells()) {
-				int y = piece.getBoundingBox().minY() + TowerHex.floorAt(storey) + 1;
-				BlockPos at = piece.worldPos(cell.middle().getX(), 0, cell.middle().getZ()).atY(y);
-				int span = Math.min(openSpan(level, at, Direction.Axis.X), openSpan(level, at, Direction.Axis.Z));
+				int x = cell.middle().getX();
+				int z = cell.middle().getZ();
 				measured++;
-				narrow += span < TowerMaze.PATH ? 1 : 0;
-				wide += span > TowerMaze.PATH ? 1 : 0;
+				narrow += wholeWay(cell.cx(), cell.cz()) ? 0 : 1;
+				// The way runs between stone on all four sides, at the row and the column of its middle.
+				boolean walled = wallsTheWay(level, piece, TowerHex.cellX(cell.cx()) - 1, feet, z)
+					&& wallsTheWay(level, piece, TowerHex.cellX(cell.cx()) + TowerMaze.PATH, feet, z)
+					&& wallsTheWay(level, piece, x, feet, TowerHex.cellZ(cell.cz()) - 1)
+					&& wallsTheWay(level, piece, x, feet, TowerHex.cellZ(cell.cz()) + TowerMaze.PATH);
+				unwalled += walled ? 0 : 1;
 			}
 		}
 		if (narrow != 0) {
 			return narrow + " of " + measured + " ways are under the " + TowerMaze.PATH + " wide path";
 		}
-		if (wide != 0) {
-			return wide + " of " + measured + " ways are wider than the " + TowerMaze.PATH + " wide path";
+		if (unwalled != 0) {
+			return unwalled + " of " + measured + " ways stand open to the outside";
 		}
 		return "";
 	}
 
-	/** How many open blocks a line holds from a spot along an axis, the spot itself counted. */
-	static int openSpan(final ServerLevel level, final BlockPos at, final Direction.Axis axis) {
-		Direction way = axis == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
-		int span = 1;
-		for (int step = 1; step <= LostRoomPiece.LENGTH; step++) {
-			if (!TowerLostCastleVariantGameTest.passable(level, at.relative(way, step), true)) {
-				break;
+	/** Whether a block holds the way's side there, or the breach is cut there: the castle's own way in. */
+	static boolean wallsTheWay(final ServerLevel level, final LostRoomPiece piece, final int x, final int feet, final int z) {
+		return !level.getBlockState(piece.worldPos(x, feet, z)).isAir() || LostCastleHex.inBreach(x, feet, z);
+	}
+
+	/** Whether a cell's whole path is held by the hexagon: every one of its columns is a way of it. */
+	static boolean wholeWay(final int cx, final int cz) {
+		for (int dx = 0; dx < TowerMaze.PATH; dx++) {
+			for (int dz = 0; dz < TowerMaze.PATH; dz++) {
+				if (TowerHex.kind(TowerHex.cellX(cx) + dx, TowerHex.cellZ(cz) + dz) != TowerHex.Part.WAY) {
+					return false;
+				}
 			}
-			span++;
 		}
-		for (int step = 1; step <= LostRoomPiece.LENGTH; step++) {
-			if (!TowerLostCastleVariantGameTest.passable(level, at.relative(way, -step), true)) {
-				break;
-			}
-			span++;
-		}
-		return span;
+		return true;
 	}
 
 	/** Whether every storey holds at least {@link LostCastleHex#CHESTS_PER_STOREY} chests, each with loot in it. */
@@ -343,7 +353,7 @@ public class TowerLostCastleHexGameTest {
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
 		BoundingBox box = BoundingBox.infinite();
-		int z = TowerHex.cellAt(0) - 1;
+		int z = LostCastleHex.breachRow();
 		// Rubble dropped in the breach must not close it.
 		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
 			for (int y = 1; y <= LostCastleHex.BREACH_HEIGHT; y++) {

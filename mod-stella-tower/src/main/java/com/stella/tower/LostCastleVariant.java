@@ -1,5 +1,6 @@
 package com.stella.tower;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -48,11 +49,13 @@ public enum LostCastleVariant {
 	public record Layout(int[] portal, int[] yard, int lowest, int[] numbers) {
 	}
 
-	/** The court the roaming mobs keep to: the castle's first way on the ground storey, x and z inclusive. */
+	/**
+	 * The court the roaming mobs keep to: the ground storey's front way, x and z inclusive.
+	 */
 	public static int[] court() {
-		int low = TowerHex.cellAt(0) + 1;
-		int high = TowerHex.cellAt(0) + TowerMaze.PATH - 1;
-		return new int[] {low, low, high, high};
+		int lowX = TowerHex.cellX(TowerHex.COLS / 2) + 1;
+		int lowZ = TowerHex.cellZ(0) + 1;
+		return new int[] {lowX, lowZ, lowX + TowerMaze.PATH - 3, lowZ + TowerMaze.PATH - 3};
 	}
 
 	/** The variant a castle of this seed takes. */
@@ -63,11 +66,11 @@ public enum LostCastleVariant {
 	}
 
 	/**
-	 * The castle's fixed spots: its court on the ground storey's first way, and the lost room's portal on the
+	 * The castle's fixed spots: its court on the ground storey's front way, and the lost room's portal on the
 	 * middle of the top storey's middle way, entered from its lower z.
 	 */
 	public Layout layout(final long seed) {
-		int middle = TowerHex.cellAt(1) + TowerMaze.PATH / 2;
-		return new Layout(new int[] {middle, TowerHex.floorAt(TowerHex.STOREYS - 1) + 1, TowerHex.cellAt(0) + 2}, court(), 0, new int[0]);
+		BlockPos portal = LostCastleHex.portalSpot();
+		return new Layout(new int[] {portal.getX(), portal.getY(), portal.getZ()}, court(), 0, new int[0]);
 	}
 }

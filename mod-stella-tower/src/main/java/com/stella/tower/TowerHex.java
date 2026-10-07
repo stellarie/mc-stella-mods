@@ -21,9 +21,8 @@ public final class TowerHex {
 	/** The hexagon's reach along x and z from the piece's middle, and the cut of its six corners. */
 	public static final int HALF_X = 15;
 	public static final int HALF_Z = 13;
-	/** The lattice's cells a side, and how far the first cell starts along either side. */
+	/** The lattice's cells a side. */
 	public static final int COLS = 3;
-	public static final int CELL_AT = 3;
 	/** A doorway is this wide: two blocks. */
 	public static final int DOOR_WIDTH = 2;
 
@@ -87,12 +86,30 @@ public final class TowerHex {
 	}
 
 	static boolean inCell(final int x, final int z, final int cx, final int cz) {
-		return x >= cellAt(cx) && x < cellAt(cx) + TowerMaze.PATH && z >= cellAt(cz) && z < cellAt(cz) + TowerMaze.PATH;
+		return x >= cellX(cx) && x < cellX(cx) + TowerMaze.PATH && z >= cellZ(cz) && z < cellZ(cz) + TowerMaze.PATH;
 	}
 
-	/** The first block of a lattice cell, along either side. */
-	public static int cellAt(final int index) {
-		return CELL_AT + index * TowerMaze.PITCH;
+	/**
+	 * The first block of a lattice cell along x. The lattice is centred on the piece: the middle cell's
+	 * middle is the piece's own middle, so every cell the hexagon holds is a whole six-wide way.
+	 */
+	public static int cellX(final int index) {
+		return middleX() - TowerMaze.PATH / 2 + (index - COLS / 2) * TowerMaze.PITCH;
+	}
+
+	/** The first block of a lattice cell along z, centred on the piece's middle the same way. */
+	public static int cellZ(final int index) {
+		return middleZ() - TowerMaze.PATH / 2 + (index - COLS / 2) * TowerMaze.PITCH;
+	}
+
+	/** Whether a spot lies on a cell's middle pair both ways: the crossing every walker of a way uses. */
+	public static boolean onCrossing(final int x, final int z) {
+		return middlePair(x, cellX(0)) && middlePair(z, cellZ(0));
+	}
+
+	private static boolean middlePair(final int at, final int start) {
+		int inside = Math.floorMod(at - start, TowerMaze.PITCH);
+		return inside == TowerMaze.PATH / 2 - 1 || inside == TowerMaze.PATH / 2;
 	}
 
 	/** The ways of one storey: every lattice cell whose middle the hexagon holds. */
@@ -100,7 +117,7 @@ public final class TowerHex {
 		List<Cell> cells = new ArrayList<>();
 		for (int cz = 0; cz < COLS; cz++) {
 			for (int cx = 0; cx < COLS; cx++) {
-				BlockPos middle = new BlockPos(cellAt(cx) + TowerMaze.PATH / 2, 0, cellAt(cz) + TowerMaze.PATH / 2);
+				BlockPos middle = new BlockPos(cellX(cx) + TowerMaze.PATH / 2, 0, cellZ(cz) + TowerMaze.PATH / 2);
 				if (kind(middle.getX(), middle.getZ()) == Part.WAY) {
 					cells.add(new Cell(cx, cz, middle));
 				}

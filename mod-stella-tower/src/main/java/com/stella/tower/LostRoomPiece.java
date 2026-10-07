@@ -50,8 +50,6 @@ public class LostRoomPiece extends StructurePiece {
 	public static final int LENGTH = 31;
 	public static final int WIDTH = 27;
 	public static final int HEIGHT = 25;
-	/** The gate the breach is cut about: the middle of the south wall. */
-	public static final int GATE_X = 15;
 	/** The deepest floor the chest may be stocked as. */
 	public static final int LOOT_FLOORS = 100;
 	private static final long SALT = 0x43415354L;
@@ -120,7 +118,7 @@ public class LostRoomPiece extends StructurePiece {
 
 	/** The spot just inside the gate, from which every part of the castle is reached: the middle of the breach. */
 	public BlockPos gateInside() {
-		return worldPos(LostCastleHex.breachMiddle(), 1, 0);
+		return worldPos(LostCastleHex.breachMiddle(), 1, LostCastleHex.breachRow());
 	}
 
 	/**
@@ -177,7 +175,8 @@ public class LostRoomPiece extends StructurePiece {
 	}
 
 	void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
-		if (z == 1 && (x == GATE_X || x == GATE_X + 1) && (y == 1 || y == 2)) {
+		// The fallen stone keeps to the breach's sides: its middle stays open and only its floor row takes stone.
+		if (LostCastleHex.inBreach(x, y, z) && !LostCastleHex.inBreachSide(x, y, z)) {
 			return;
 		}
 		if (!getBlock(level, x, y, z, chunkBB).isAir() || !getBlock(level, x, y - 1, z, chunkBB).isSolid()) {

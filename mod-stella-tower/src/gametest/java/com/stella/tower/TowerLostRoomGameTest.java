@@ -190,15 +190,22 @@ public class TowerLostRoomGameTest {
 			&& level.getBlockState(portal.below()).is(TowerBlocks.TOWER_FRAME) && level.getBlockState(portal.above(2)).is(TowerBlocks.TOWER_FRAME);
 		boolean onTop = portal.getY() - piece.getBoundingBox().minY() - 1 == TowerHex.floorAt(TowerHex.STOREYS - 1);
 		int open = 0;
+		int row = LostCastleHex.breachRow();
 		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
 			for (int y = 2; y <= LostCastleHex.BREACH_HEIGHT; y++) {
-				open += level.getBlockState(piece.worldPos(x, y, 0)).isAir() ? 1 : 0;
+				open += level.getBlockState(piece.worldPos(x, y, row)).isAir() ? 1 : 0;
 			}
 		}
-		boolean walled = level.getBlockState(piece.worldPos(LostCastleHex.breachLow() - 1, 1, 0)).is(piece.palette().wall())
-			&& level.getBlockState(piece.worldPos(LostCastleHex.breachLow() + LostCastleHex.BREACH, 1, 0)).is(piece.palette().wall());
-		boolean lit = level.getBlockState(piece.worldPos(LostCastleHex.breachLow(), LostCastleHex.BREACH_HEIGHT + 1, 0)).is(TowerBlocks.TOWER_LAMP)
-			&& level.getBlockState(piece.worldPos(LostCastleHex.breachLow() + LostCastleHex.BREACH - 1, LostCastleHex.BREACH_HEIGHT + 1, 0)).is(TowerBlocks.TOWER_LAMP);
+		// The wall the breach was cut through still stands over it, on the columns the hexagon holds.
+		boolean walled = true;
+		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
+			if (TowerHex.kind(x, row) == TowerHex.Part.OUT) {
+				continue;
+			}
+			walled &= !level.getBlockState(piece.worldPos(x, LostCastleHex.BREACH_HEIGHT + 1, row)).isAir();
+		}
+		boolean lit = level.getBlockState(piece.worldPos(LostCastleHex.entranceLow(), LostCastleHex.BREACH_HEIGHT + 1, row)).is(TowerBlocks.TOWER_LAMP)
+			&& level.getBlockState(piece.worldPos(LostCastleHex.entranceHigh(), LostCastleHex.BREACH_HEIGHT + 1, row)).is(TowerBlocks.TOWER_LAMP);
 		dump(helper, arena);
 		int chests = 0;
 		int cobwebs = 0;
@@ -237,16 +244,17 @@ public class TowerLostRoomGameTest {
 		helper.succeed();
 	}
 
-	/** Whether a column lies in the mouth a storey's stair rises through its own ceiling. */
+	/** Whether a column is one a storey's stair climbs, whose ceiling is open over every step. */
 	private static boolean stairMouth(final int x, final int z) {
 		for (TowerHex.Cell cell : TowerHex.cells()) {
 			if (cell.cz() != TowerHex.COLS - 1) {
 				continue;
 			}
-			int lowX = TowerHex.cellAt(cell.cx());
-			int lowZ = TowerHex.cellAt(cell.cz()) + TowerMaze.PATH - TowerHex.DOOR_WIDTH;
-			if (z >= lowZ && z < lowZ + TowerHex.DOOR_WIDTH && x >= lowX && x <= lowX + TowerHex.STOREY) {
-				return true;
+			for (int rise = 0; rise < TowerHex.STOREY; rise++) {
+				int[] at = LostCastleHex.stairStep(cell, rise);
+				if (at[0] == x && at[1] == z) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -287,8 +295,8 @@ public class TowerLostRoomGameTest {
 		LostCastles.found(level.dimension(), piece);
 		ServerPlayer player = withLevel(helper, 40);
 		// Out from the gate, in the castle's frame.
-		Vec3 away = Vec3.atBottomCenterOf(piece.worldPos(LostRoomPiece.GATE_X, 1, -LostCastles.WAKE_DISTANCE - 8));
-		Vec3 near = Vec3.atBottomCenterOf(piece.worldPos(LostRoomPiece.GATE_X, 1, -LostCastles.WAKE_DISTANCE + 8));
+		Vec3 away = Vec3.atBottomCenterOf(piece.worldPos(LostCastleHex.breachMiddle(), 1, -LostCastles.WAKE_DISTANCE - 8));
+		Vec3 near = Vec3.atBottomCenterOf(piece.worldPos(LostCastleHex.breachMiddle(), 1, -LostCastles.WAKE_DISTANCE + 8));
 		player.teleportTo(level, away.x, away.y, away.z, Set.of(), 0.0F, 0.0F, true);
 		int far = (int) LostCastles.wake(level.getServer()).stream().filter(mob -> box.contains(mob.position())).count();
 		player.teleportTo(level, near.x, near.y, near.z, Set.of(), 0.0F, 0.0F, true);
