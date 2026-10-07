@@ -66,6 +66,9 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> HOLY_ARMS = register("holy_arms", new Status(MobEffectCategory.BENEFICIAL, 0xFFE08A));
 	public static final Holder<MobEffect> RESURRECTION_WARD = register("resurrection_ward", new Status(MobEffectCategory.BENEFICIAL, 0xF2E2A8));
 	public static final Holder<MobEffect> GUARDIAN_ANGEL = register("guardian_angel", new Status(MobEffectCategory.BENEFICIAL, 0xFFF4C2));
+	/** The last two priest skills: the wear the vow carries, and the prayer that refuses harm. */
+	public static final Holder<MobEffect> UNBROKEN_VOW = register("unbroken_vow", new Status(MobEffectCategory.BENEFICIAL, 0xC8D2DE));
+	public static final Holder<MobEffect> STEADFAST_PRAYER = register("steadfast_prayer", new Status(MobEffectCategory.BENEFICIAL, 0xF0E6B8));
 
 	/** Who made a mob bleed, so the damage can credit them. Weak, and gone with the effect or the mob. */
 	private static final Map<LivingEntity, UUID> BLEED_SOURCES = Collections.synchronizedMap(new WeakHashMap<>());

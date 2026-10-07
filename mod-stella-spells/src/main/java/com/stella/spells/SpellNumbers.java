@@ -167,6 +167,11 @@ public record SpellNumbers(
 		.duration(PriestSkills.CONSECRATE_TICKS, Scale.DEFENSIVE).extra(PriestSkills.CONSECRATE_PERIOD_TICKS, Scale.FIXED).build();
 	public static final SpellNumbers GUARDIAN_ANGEL = builder("guardian_angel").allyHeal(PriestSkills.GUARDIAN_SHARE)
 		.duration(PriestSkills.GUARDIAN_ANGEL_TICKS, Scale.DEFENSIVE).build();
+	/** The vow's own length is the half hour it grants, and no multiplier stretches it. */
+	public static final SpellNumbers UNBROKEN_VOW = builder("unbroken_vow")
+		.duration(UnbrokenVow.VOW_TICKS, Scale.FIXED).build();
+	public static final SpellNumbers STEADFAST_PRAYER = builder("steadfast_prayer")
+		.duration(SteadfastPrayer.PRAYER_TICKS, Scale.FIXED).build();
 
 	/** Ticks of this spell's control on the target: half on an elite or a boss. */
 	int controlTicks(final LivingEntity target, final int ticks) {

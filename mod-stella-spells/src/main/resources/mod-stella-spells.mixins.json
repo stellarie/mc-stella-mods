@@ -18,7 +18,9 @@
 		"SummonExperienceMixin",
 		"SummonMountHealthMixin",
 		"SummonHealInversionMixin",
-		"HorseInventoryMixin"
+		"HorseInventoryMixin",
+		"ItemStackVowMixin",
+		"LivingEntitySteadfastMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

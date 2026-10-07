@@ -49,7 +49,7 @@ public class SkillSchoolGameTest {
 	/** The priest books: VIT, healing and holy damage. */
 	static final Set<String> PRIEST_IDS = Set.of(
 		"holy_light", "prayer_of_mending", "renew", "divine_shield", "holy_arms", "blessing_of_fortitude",
-		"smite", "resurrection_ward", "consecrate", "guardian_angel"
+		"smite", "resurrection_ward", "consecrate", "guardian_angel", "unbroken_vow", "steadfast_prayer"
 	);
 
 	/** The school a skill book belongs to, read from the one table each id sits in. */

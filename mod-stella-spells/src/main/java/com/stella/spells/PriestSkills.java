@@ -673,4 +673,16 @@ public final class PriestSkills {
 	static void tickAt(final MinecraftServer server, final int tick) {
 		tick(server, tick);
 	}
+
+	/** Unbroken Vow: the caster's gear spends one durability per level of Vitality and Intelligence of wear. */
+	static boolean applyUnbrokenVow(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
+		caster.addEffect(new MobEffectInstance(SpellStatus.UNBROKEN_VOW, UnbrokenVow.VOW_TICKS, 0), caster);
+		return true;
+	}
+
+	/** Steadfast Prayer: no harmful status lands on the caster, and the caster's blows are worth a tenth. */
+	static boolean applySteadfastPrayer(final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers) {
+		caster.addEffect(new MobEffectInstance(SpellStatus.STEADFAST_PRAYER, SteadfastPrayer.PRAYER_TICKS, 0), caster);
+		return true;
+	}
 }

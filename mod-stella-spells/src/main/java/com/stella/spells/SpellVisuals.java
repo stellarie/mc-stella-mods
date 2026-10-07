@@ -157,7 +157,9 @@ public final class SpellVisuals {
 		visual("smite", ParticleTypes.SMALL_FLAME, ParticleTypes.ELECTRIC_SPARK, 0.0),
 		visual("resurrection_ward", ParticleTypes.DRIPPING_HONEY, ParticleTypes.END_ROD, 0.0),
 		areaVisual("consecrate", ParticleTypes.FALLING_NECTAR, ParticleTypes.GLOW, PriestSkills.CONSECRATE_RADIUS, 0xFFE08A),
-		visual("guardian_angel", ParticleTypes.FIREFLY, ParticleTypes.HEART, 0.0)
+		visual("guardian_angel", ParticleTypes.FIREFLY, ParticleTypes.HEART, 0.0),
+		visual("unbroken_vow", ParticleTypes.CAMPFIRE_COSY_SMOKE, ParticleTypes.END_ROD, 0.0),
+		visual("steadfast_prayer", ParticleTypes.VAULT_CONNECTION, ParticleTypes.CRIT, 0.0)
 	);
 	private static final Map<Identifier, Integer> HELD_ICON_COLORS = Map.ofEntries(
 		heldColor("spark_shot", 0xF5D35E),
@@ -203,6 +205,8 @@ public final class SpellVisuals {
 		heldColor("smite", 0xF7D046),
 		heldColor("resurrection_ward", 0xF2E2A8),
 		heldColor("guardian_angel", 0xFFF4C2),
+		heldColor("unbroken_vow", 0xC8D2DE),
+		heldColor("steadfast_prayer", 0xF0E6B8),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
 		heldColor("snare_trap", 0x3E8E41)
@@ -665,6 +669,8 @@ public final class SpellVisuals {
 			case "smite" -> Motif.FALLING;
 			case "consecrate" -> Motif.SIGIL;
 			case "guardian_angel" -> Motif.WINGS;
+			case "unbroken_vow" -> Motif.SHIELD;
+			case "steadfast_prayer" -> Motif.PRAYER;
 			default -> throw new IllegalArgumentException("No effect motif for spell " + path);
 		};
 	}

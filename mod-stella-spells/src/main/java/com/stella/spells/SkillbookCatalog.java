@@ -38,7 +38,9 @@ public final class SkillbookCatalog {
 		definition("smite", Items.GOLDEN_AXE, 160, 16_711_475, TargetMode.HOSTILE, PriestSkills::applySmite, School.PRIEST),
 		definition("resurrection_ward", Items.TOTEM_OF_UNDYING, 2400, 15_908_520, TargetMode.ALLY, PriestSkills::applyResurrectionWard, School.PRIEST),
 		definition("consecrate", Items.CANDLE, 400, 16_647_360, TargetMode.BLOCK, PriestSkills::applyConsecrate, School.PRIEST),
-		definition("guardian_angel", Items.WOOL.pick(net.minecraft.world.item.DyeColor.WHITE), 400, 16_774_338, TargetMode.ALLY, PriestSkills::applyGuardianAngel, School.PRIEST)
+		definition("guardian_angel", Items.WOOL.pick(net.minecraft.world.item.DyeColor.WHITE), 400, 16_774_338, TargetMode.ALLY, PriestSkills::applyGuardianAngel, School.PRIEST),
+		definition("unbroken_vow", Items.ANVIL, 600, 13_161_182, TargetMode.SELF, PriestSkills::applyUnbrokenVow, School.PRIEST),
+		definition("steadfast_prayer", Items.IRON_BARS, 600, 15_787_704, TargetMode.SELF, PriestSkills::applySteadfastPrayer, School.PRIEST)
 	);
 
 	private SkillbookCatalog() {

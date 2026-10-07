@@ -325,5 +325,15 @@
 	"item.mod-stella-spells.guardian_angel": "Guardian Angel Spellbook",
 	"item.mod-stella-spells.guardian_angel.effect": "Links the ally you look at for 30 seconds. 30 percent of each hit on it goes to you instead.",
 	"item.mod-stella-spells.guardian_angel.effect_live": "Links the ally you look at for %4$s. 30 percent of each hit on it goes to you instead.",
-	"item.mod-stella-spells.guardian_angel_scroll": "Guardian Angel Scroll"
+	"item.mod-stella-spells.guardian_angel_scroll": "Guardian Angel Scroll",
+	"item.mod-stella-spells.unbroken_vow": "Unbroken Vow Spellbook",
+	"item.mod-stella-spells.unbroken_vow.effect": "For 30 minutes your equipment spends one point of durability per point of Vitality and Intelligence of wear it takes.",
+	"item.mod-stella-spells.unbroken_vow.effect_live": "For %4$s your equipment spends one point of durability per point of Vitality and Intelligence of wear it takes.",
+	"item.mod-stella-spells.unbroken_vow_scroll": "Unbroken Vow Scroll",
+	"item.mod-stella-spells.steadfast_prayer": "Steadfast Prayer Spellbook",
+	"item.mod-stella-spells.steadfast_prayer.effect": "For 20 seconds no harmful status lands on you, and every blow you deal is worth a tenth.",
+	"item.mod-stella-spells.steadfast_prayer.effect_live": "For %4$s no harmful status lands on you, and every blow you deal is worth a tenth.",
+	"item.mod-stella-spells.steadfast_prayer_scroll": "Steadfast Prayer Scroll",
+	"effect.mod-stella-spells.unbroken_vow": "Unbroken Vow",
+	"effect.mod-stella-spells.steadfast_prayer": "Steadfast Prayer"
 }

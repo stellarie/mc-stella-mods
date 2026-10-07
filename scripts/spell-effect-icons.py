@@ -45,6 +45,8 @@ COLORS = {
     "holy_arms": 0xFFE08A,
     "resurrection_ward": 0xF2E2A8,
     "guardian_angel": 0xFFF4C2,
+    "unbroken_vow": 0xC8D2DE,
+    "steadfast_prayer": 0xF0E6B8,
 }
 
 
@@ -193,6 +195,26 @@ def wings(d: ImageDraw.ImageDraw, c) -> None:
         d.line([(left, y), (right, y)], fill=c if row % 2 else hi)
 
 
+def anvil(d: ImageDraw.ImageDraw, c) -> None:
+    hi = light(c)
+    # A hammer over an anvil: gear kept whole.
+    d.rectangle([3, 12, 12, 13], fill=c)
+    d.rectangle([5, 10, 10, 11], fill=shade(c))
+    d.rectangle([4, 7, 11, 9], fill=c)
+    d.line([(4, 7), (11, 7)], fill=hi)
+    d.line([(8, 2), (8, 6)], fill=c)
+    d.rectangle([5, 1, 10, 2], fill=c)
+
+
+def standing_stone(d: ImageDraw.ImageDraw, c) -> None:
+    hi = light(c)
+    # A pillar inside a ring: a prayer nothing moves.
+    d.rectangle([6, 5, 9, 14], fill=c)
+    d.line([(6, 5), (6, 14)], fill=hi)
+    d.ellipse([3, 1, 12, 10], outline=c, width=1)
+    d.point((8, 3), fill=hi)
+
+
 PAINTERS = {
     "chilled": snowflake,
     "frozen": ice_cube,
@@ -207,6 +229,8 @@ PAINTERS = {
     "holy_arms": halo_sword,
     "resurrection_ward": ankh,
     "guardian_angel": wings,
+    "unbroken_vow": anvil,
+    "steadfast_prayer": standing_stone,
 }
 
 
