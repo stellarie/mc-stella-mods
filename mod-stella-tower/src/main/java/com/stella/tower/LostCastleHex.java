@@ -179,10 +179,10 @@ public final class LostCastleHex {
 		int top = Math.min(feet + TowerHex.DOOR - 1, head);
 		if (nx != cx) {
 			int x = (nx > cx ? TowerHex.cellX(nx) : TowerHex.cellX(cx)) - TowerMaze.WALL;
-			int z = TowerHex.cellZ(cz);
+			int z = TowerHex.cellZ(cz) + TowerMaze.PATH / 2 - 1;
 			piece.fill(level, bb, x, feet, z, x + TowerMaze.WALL - 1, top, z + TowerHex.DOOR_WIDTH - 1, air);
 		} else {
-			int x = TowerHex.cellX(cx);
+			int x = TowerHex.cellX(cx) + TowerMaze.PATH / 2 - 1;
 			int z = (nz > cz ? TowerHex.cellZ(nz) : TowerHex.cellZ(cz)) - TowerMaze.WALL;
 			piece.fill(level, bb, x, feet, z, x + TowerHex.DOOR_WIDTH - 1, top, z + TowerMaze.WALL - 1, air);
 		}
@@ -413,15 +413,10 @@ public final class LostCastleHex {
 		}
 	}
 
-	/** A spot a ruin block may stand on: the middle of a way, clear of the crossing, the stair and the portal. */
+	/** A spot a ruin block may stand on: inside a way, off its crossing, and clear of the stair and the portal. */
 	private static boolean roomForRuin(final int x, final int feet, final int z) {
-		if (TowerHex.kind(x, z) != TowerHex.Part.WAY || TowerHex.onCrossing(x, z) || inStairLane(x, z) || inPortalHall(x, feet, z)) {
-			return false;
-		}
-		// The ruin stands inside a way, and its outer ring stays clear: every door opens onto that ring.
-		int dx = TowerHex.intoCellX(x);
-		int dz = TowerHex.intoCellZ(z);
-		return dx > 0 && dx < TowerMaze.PATH - 1 && dz > 0 && dz < TowerMaze.PATH - 1;
+		return TowerHex.kind(x, z) == TowerHex.Part.WAY && !TowerHex.onCrossing(x, z) && !inStairLane(x, z)
+			&& !inPortalHall(x, feet, z);
 	}
 
 	/** Whether a spot lies in the corner of the back cell a stair climbs through, which the ruin keeps off. */

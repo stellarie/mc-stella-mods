@@ -260,11 +260,13 @@ public class TowerLostCastleHexGameTest {
 				int z = cell.middle().getZ();
 				measured++;
 				narrow += wholeWay(cell.cx(), cell.cz()) ? 0 : 1;
-				// The way runs between stone on all four sides, at the row and the column of its middle.
-				boolean walled = wallsTheWay(level, piece, TowerHex.cellX(cell.cx()) - 1, feet, z)
-					&& wallsTheWay(level, piece, TowerHex.cellX(cell.cx()) + TowerMaze.PATH, feet, z)
-					&& wallsTheWay(level, piece, x, feet, TowerHex.cellZ(cell.cz()) - 1)
-					&& wallsTheWay(level, piece, x, feet, TowerHex.cellZ(cell.cz()) + TowerMaze.PATH);
+				// The way stands behind stone on every side the hexagon closes: its inner sides carry doors.
+				int lowX = TowerHex.cellX(cell.cx());
+				int lowZ = TowerHex.cellZ(cell.cz());
+				boolean walled = walledSide(level, piece, lowX - 1, lowX - 2, feet, z, z)
+					&& walledSide(level, piece, lowX + TowerMaze.PATH, lowX + TowerMaze.PATH + 1, feet, z, z)
+					&& walledSide(level, piece, x, x, feet, lowZ - 1, lowZ - 2)
+					&& walledSide(level, piece, x, x, feet, lowZ + TowerMaze.PATH, lowZ + TowerMaze.PATH + 1);
 				unwalled += walled ? 0 : 1;
 			}
 		}
@@ -277,9 +279,12 @@ public class TowerLostCastleHexGameTest {
 		return "";
 	}
 
-	/** Whether a block holds the way's side there, or the breach is cut there: the castle's own way in. */
-	static boolean wallsTheWay(final ServerLevel level, final LostRoomPiece piece, final int x, final int feet, final int z) {
-		return !level.getBlockState(piece.worldPos(x, feet, z)).isAir() || LostCastleHex.inBreach(x, feet, z);
+	/** Whether a way stands behind stone on one side, or the hexagon leaves that side open: the breach, or a door. */
+	static boolean walledSide(final ServerLevel level, final LostRoomPiece piece, final int sideX, final int outX, final int feet, final int sideZ, final int outZ) {
+		if (TowerHex.kind(outX, outZ) != TowerHex.Part.OUT || LostCastleHex.inBreach(sideX, feet, sideZ)) {
+			return true;
+		}
+		return !level.getBlockState(piece.worldPos(sideX, feet, sideZ)).isAir();
 	}
 
 	/** Whether a cell's whole path is held by the hexagon: every one of its columns is a way of it. */
