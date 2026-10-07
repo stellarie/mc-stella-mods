@@ -69,10 +69,12 @@ public class TowerLostCastleVariantGameTest {
 		TowerLostRoomGameTest.Arena arena = TowerLostRoomGameTest.castle(helper);
 		LostRoomPiece piece = arena.piece();
 		BoundingBox box = BoundingBox.infinite();
-		for (int x = LostRoomPiece.GATE_X; x <= LostRoomPiece.GATE_X + 1; x++) {
-			piece.set(arena.level(), box, Blocks.AIR.defaultBlockState(), x, 1, 1);
-			piece.set(arena.level(), box, Blocks.AIR.defaultBlockState(), x, 2, 1);
-			piece.placeRubble(arena.level(), box, RandomSource.create(x), x, 1, 1);
+		// The castle's own fallen stone drops in the breach; the way through it must stay open.
+		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
+			for (int y = 1; y <= LostCastleHex.BREACH_HEIGHT; y++) {
+				piece.set(arena.level(), box, Blocks.AIR.defaultBlockState(), x, y, 0);
+				piece.placeRubble(arena.level(), box, RandomSource.create(x), x, y, 0);
+			}
 		}
 		BlockPos gate = piece.gateInside();
 		boolean open = standable(arena.level(), gate) && standable(arena.level(), gate.relative(Direction.EAST));
@@ -173,7 +175,7 @@ public class TowerLostCastleVariantGameTest {
 		if (!stations) {
 			fault.append(" noStations");
 		}
-		if (stocked < 4) {
+		if (stocked < TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY) {
 			fault.append(" chests=").append(stocked);
 		}
 		BlockPos gate = piece.gateInside();
