@@ -165,7 +165,9 @@ public class TowerLostRoomGameTest {
 							continue;
 						}
 						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
-						boolean lidded = above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP);
+						// The portal's frame and the stair's own top step stand in a ceiling by design.
+						boolean lidded = above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP)
+							|| above.is(TowerBlocks.TOWER_FRAME) || above.is(Blocks.DEEPSLATE_TILES);
 						lid &= lidded;
 						if (!lidded) {
 							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString());
