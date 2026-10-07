@@ -46,10 +46,10 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSeriali
  * is drawn from the piece's own seed, so every chunk the castle crosses draws the same ruin.
  */
 public class LostRoomPiece extends StructurePiece {
-	/** The castle's frame: three storeys of the hexagon fit inside it. */
+	/** The castle's frame: three storeys of the hexagon fit inside it, the top one's ceiling included. */
 	public static final int LENGTH = 31;
 	public static final int WIDTH = 27;
-	public static final int HEIGHT = 24;
+	public static final int HEIGHT = 25;
 	/** The gate the breach is cut about: the middle of the south wall. */
 	public static final int GATE_X = 15;
 	/** The deepest floor the chest may be stocked as. */

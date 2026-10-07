@@ -160,6 +160,10 @@ public class TowerLostRoomGameTest {
 						if (TowerHex.kind(x, z) != TowerHex.Part.WAY) {
 							continue;
 						}
+						// The stair of this storey rises through its own ceiling, so that mouth is open.
+						if (storey + 1 < TowerHex.STOREYS && stairMouth(x, z)) {
+							continue;
+						}
 						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
 						lid &= above.is(piece.palette().wall()) || above.is(TowerBlocks.TOWER_LAMP);
 					}
@@ -222,6 +226,21 @@ public class TowerLostRoomGameTest {
 			"the castle has " + chests + " stocked chests, not " + TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY);
 		helper.assertTrue(cobwebs > 0 && rubble > 0 && bones > 0 && candles > 0 && chains > 0, "the castle is not ruined");
 		helper.succeed();
+	}
+
+	/** Whether a column lies in the mouth a storey's stair rises through its own ceiling. */
+	private static boolean stairMouth(final int x, final int z) {
+		for (TowerHex.Cell cell : TowerHex.cells()) {
+			if (cell.cz() != TowerHex.COLS - 1) {
+				continue;
+			}
+			int lowX = TowerHex.cellAt(cell.cx());
+			int lowZ = TowerHex.cellAt(cell.cz()) + TowerMaze.PATH - TowerHex.DOOR_WIDTH;
+			if (z >= lowZ && z < lowZ + TowerHex.DOOR_WIDTH && x >= lowX && x <= lowX + TowerHex.STOREY) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Writes the castle's blocks, foundation included, for the preview render. */
