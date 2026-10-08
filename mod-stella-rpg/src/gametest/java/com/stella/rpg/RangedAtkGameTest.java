@@ -208,13 +208,6 @@ public final class RangedAtkGameTest {
 		return level.damageSources().arrow(arrow, player);
 	}
 
-	/** A shot whose projectile names no weapon, so the main hand gives no ranged die. */
-	private static DamageSource loose(final ServerLevel level, final ServerPlayer player) {
-		Arrow arrow = new Arrow(level, player, new ItemStack(Items.ARROW), null);
-		level.addFreshEntity(arrow);
-		return level.damageSources().arrow(arrow, player);
-	}
-
 	private static boolean close(final double actual, final double expected) {
 		return Math.abs(actual - expected) < Math.max(1.0E-4, Math.abs(expected) * 1.0E-5);
 	}
