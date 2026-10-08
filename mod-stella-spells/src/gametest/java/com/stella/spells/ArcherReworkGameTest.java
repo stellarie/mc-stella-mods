@@ -80,19 +80,24 @@ public class ArcherReworkGameTest {
 		ServerPlayer caster = archer(helper);
 		boolean applied = SkillSchoolGameTest.cast(caster, "snare_trap", null, false);
 		MobEffectInstance concentrate = caster.getEffect(SpellStatus.CONCENTRATE);
-		LOG.info("[BEHAVIOR] test=concentrateGrantsItsThreeBonusesForHalfAnHourWhileABowIsHeld RESULT applied={} held={} duration={} expected={} dexBonus={} critFactor={}",
+		double dex = ConcentrateStats.dexterityBonus(caster);
+		double half = ConcentrateStats.criticalChanceBonus(caster);
+		LOG.info("[BEHAVIOR] test=concentrateGrantsItsThreeBonusesForHalfAnHourWhileABowIsHeld RESULT applied={} held={} duration={} expected={} dex={} chance={} bow={}",
 			applied, concentrate != null, concentrate == null ? 0 : concentrate.getDuration(),
-			SpellNumbers.SNARE_TRAP.duration().ticks(), ArcherSkills.CONCENTRATE_DEX_BONUS, ArcherSkills.CONCENTRATE_CRIT_FACTOR);
+			SpellNumbers.SNARE_TRAP.duration().ticks(), dex, half, ArcherSkills.hasBowOrCrossbow(caster));
 		helper.assertTrue(applied, "concentrate never applied");
 		helper.assertTrue(concentrate != null, "concentrate left no effect on the caster");
 		helper.assertTrue(concentrate.getDuration() == SpellNumbers.SNARE_TRAP.duration().ticks(),
 			"concentrate lasts " + concentrate.getDuration() + " ticks, not " + SpellNumbers.SNARE_TRAP.duration().ticks());
 		helper.assertTrue(SpellNumbers.SNARE_TRAP.duration().ticks() == ArcherSkills.CONCENTRATE_TICKS,
 			"the effect and the book disagree on the length");
-		helper.assertTrue(ArcherSkills.concentrateFactor(caster) > 1.0,
-			"concentrate raised an archer hit by nothing: " + ArcherSkills.concentrateFactor(caster));
-		helper.assertTrue(ArcherSkills.CONCENTRATE_DEX_BONUS > 0.0 && ArcherSkills.CONCENTRATE_CRIT_FACTOR >= 1.0,
-			"a concentrate bonus is not a bonus at all");
+		helper.assertTrue(ConcentrateStats.CONCENTRATE_DEXTERITY > 0.0
+				&& ConcentrateStats.CONCENTRATE_CRITICAL_HALF > 0.0,
+			"a concentrate grant is not a bonus at all");
+		// The grant is read through the RPG mod's own seams, which this harness has no copy of, so the
+		// effect case proves the caster is worth the grant and ConcentrateSeamGameTest reads the seams.
+		helper.assertTrue(ConcentrateStats.worth(caster),
+			"an armed caster was not worth the grant: dex=" + dex + " chance=" + half);
 		helper.succeed();
 	}
 
@@ -104,14 +109,16 @@ public class ArcherReworkGameTest {
 		caster.getInventory().setItem(ArcherReworkGameTest.WEAPON_SLOT, ItemStack.EMPTY);
 		caster.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 		boolean applied = SkillSchoolGameTest.cast(caster, "snare_trap", null, false);
-		double factor = ArcherSkills.concentrateFactor(caster);
-		LOG.info("[BEHAVIOR] test=concentrateReadsAsNoBonusWithoutABowInHand RESULT applied={} factor={} bow={} held={}",
-			applied, factor, ArcherSkills.hasBowOrCrossbow(caster), caster.hasEffect(SpellStatus.CONCENTRATE));
+		double dex = ConcentrateStats.dexterityBonus(caster);
+		double half = ConcentrateStats.criticalDamageBonus(caster);
+		LOG.info("[BEHAVIOR] test=concentrateReadsAsNoBonusWithoutABowInHand RESULT applied={} dex={} damage={} bow={} held={}",
+			applied, dex, half, ArcherSkills.hasBowOrCrossbow(caster), caster.hasEffect(SpellStatus.CONCENTRATE));
 		helper.assertFalse(applied, "concentrate cast on a bare hand");
 		helper.assertTrue(caster.getEffect(SpellStatus.CONCENTRATE) == null,
 			"a refused concentrate still left its effect behind");
 		helper.assertFalse(ArcherSkills.hasBowOrCrossbow(caster), "an empty hand read as a bow");
-		helper.assertTrue(factor == 1.0, "concentrate paid its bonus with no bow held: " + factor);
+		helper.assertTrue(dex == 0.0 && half == 0.0,
+			"concentrate paid a bonus with no bow held: dex=" + dex + " damage=" + half);
 		helper.succeed();
 	}
 

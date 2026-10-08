@@ -43,6 +43,9 @@ afterEvaluate {
 			"gametestRuntimeOnly", project.files(project.file(project.property("equipsEnchantJar")))
 		)
 	}
+	if (project.hasProperty("rpgJar")) {
+		project.dependencies.add("gametestRuntimeOnly", project.files(project.file(project.property("rpgJar"))))
+	}
 }
 
 

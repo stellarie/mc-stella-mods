@@ -73,6 +73,7 @@ public final class Spellbooks implements ModInitializer {
 		SummonSkeleton.register();
 		FighterSkills.register();
 		ArcherSkills.register();
+		ConcentrateStats.register();
 		PriestSkills.register();
 		SpellbookLoot.register();
 		SpellStorms.register();
