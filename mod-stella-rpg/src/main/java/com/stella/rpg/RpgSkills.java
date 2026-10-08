@@ -70,7 +70,7 @@ public final class RpgSkills {
 			rolled += RpgCombat.rollDice(caster, dice.weapon);
 		}
 		double hit = hit(caster, key, skillPercent, rolled * dice.multiplier);
-		return RpgCombat.rollCrit(caster) ? hit * RpgCurve.critMultiplier() : hit;
+		return RpgCombat.rollCrit(caster) ? hit * CritBonuses.critMultiplier(caster) : hit;
 	}
 
 	/** Level plus two times VIT, times the coefficient. */
