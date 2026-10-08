@@ -80,7 +80,9 @@ public final class SecondHotbarClient {
 			return null;
 		}
 		return new int[] {
-			position.stellaRpgLeftPos() + first.x - WIDTH,
+			// A panel narrower than the toggle plus its margin would push the box off the window's left edge,
+			// where it could not be pressed at all, so the box keeps a margin on screen.
+			Math.max(GAP, position.stellaRpgLeftPos() + first.x - WIDTH),
 			position.stellaRpgTopPos() + first.y - HEIGHT - GAP
 		};
 	}
