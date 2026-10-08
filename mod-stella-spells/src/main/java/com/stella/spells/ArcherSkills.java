@@ -249,6 +249,9 @@ public final class ArcherSkills {
 	static boolean applySnareTrap(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
+		if (!armed(caster)) {
+			return false;
+		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.CONCENTRATE, CONCENTRATE_TICKS, SpellNumbers.SNARE_TRAP.amplifier()), caster);
 		caster.level().sendParticles(ParticleTypes.ITEM_COBWEB, caster.getX(), caster.getY(1.0), caster.getZ(), 16, 0.4, 0.4, 0.4, 0.02);
 		Spellbooks.LOGGER.info("[SPELL] event=CONCENTRATE caster={} ticks={} dex={} crit={} bow={}",
@@ -268,6 +271,9 @@ public final class ArcherSkills {
 	static boolean applyElementalQuiver(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
+		if (!armed(caster)) {
+			return false;
+		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.SPECTRAL_QUIVER, SPECTRAL_QUIVER_TICKS, SpellNumbers.ELEMENTAL_QUIVER.amplifier()), caster);
 		caster.level().sendParticles(ParticleTypes.OMINOUS_SPAWNING, caster.getX(), caster.getY(1.0), caster.getZ(), 16, 0.4, 0.4, 0.4, 0.02);
 		Spellbooks.LOGGER.info("[SPELL] event=SPECTRAL_QUIVER caster={} ticks={} factor={}",
@@ -284,6 +290,9 @@ public final class ArcherSkills {
 	static boolean applyDisengage(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
+		if (!armed(caster)) {
+			return false;
+		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.WIND_WALK, WIND_WALK_TICKS, modifiers.awakened() ? 1 : 0), caster);
 		caster.level().sendParticles(ParticleTypes.CRIMSON_SPORE, caster.getX(), caster.getY(0.2), caster.getZ(), 12, 0.4, 0.1, 0.4, 0.05);
 		Spellbooks.LOGGER.info("[SPELL] event=WIND_WALK caster={} ticks={} speed={}",
