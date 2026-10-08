@@ -3,6 +3,7 @@ package com.stella.rpg.job;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.stella.rpg.RpgAttributes;
+import com.stella.rpg.SpellsBridge;
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatBonuses;
 import com.stella.rpg.StellaRpg;
@@ -97,7 +98,13 @@ public final class Jobs implements StatBonuses.Provider {
 	/** Gives the item of the player's job. False without a job or when nothing was given. */
 	public static boolean grantItems(final ServerPlayer player) {
 		Job job = of(player);
-		return job != Job.NONE && JobItems.grant(player, job);
+		if (job == Job.NONE) {
+			return false;
+		}
+		boolean kit = JobItems.grant(player, job);
+		// An archer also gets the starter books.
+		boolean starter = job == Job.ARCHER && SpellsBridge.grantArcherStarter(player);
+		return kit || starter;
 	}
 
 	@Override
