@@ -115,6 +115,17 @@ public final class SecondHotbarGameTest {
 		helper.succeed();
 	}
 
+	/**
+	 * The second row has one way in, the toggle at the right end of the inventory screen's hotbar row, and the
+	 * HUD carries the selected row alone. Both are drawn by the client, which this harness does not run, so the
+	 * check is by hand in play.
+	 */
+	@GameTest(required = false)
+	public void theToggleStandsInTheInventoryAndTheHudShowsOneRowRequiresManualTest(final GameTestHelper helper) {
+		helper.assertTrue(false, "in play: no key opens the second row, the inventory screen shows one toggle at the"
+			+ " right of the hotbar row, pressing it exchanges the rows, and the HUD carries one row");
+	}
+
 	/** The main row: slot i holds the odd item on an even index, so a swap that does nothing is visible. */
 	private static ItemStack[] fill(final Inventory row, final Item odd, final Item even) {
 		ItemStack[] before = new ItemStack[SIZE];
