@@ -151,14 +151,21 @@ Every player carries a second hotbar row of nine slots. It is saved with the pla
 The rows exchange in place, so the vanilla hotbar always shows the selected row and the HUD carries one row.
 
 - One toggle stands at the top left corner of the hotbar row in the inventory screen: it ends where the row begins and
-  its bottom sits just above the row's top, so it covers the panel's own left margin and never a slot. It clears the
-  effect column and the creative inventory's scrollbar, which both stand at the panel's right.
+  its bottom sits just above the row's top, so it covers the panel's own left margin. It clears the effect column and
+  the creative inventory's scrollbar, which both stand at the panel's right.
+- It covers no slot while the window is wide enough for that margin. At GUI widths under 212 (survival) or 229 (creative)
+  the panel would push the box off the window's left edge and leave it unpressable, so the box keeps a 2-pixel margin
+  instead and can then cover the leftmost slot of the row above the hotbar, fully so at GUI width 176. The label stays
+  whole at every width.
 - The toggle shows for the survival inventory and for the creative inventory's Inventory tab and item tabs. Its position
   comes from the hotbar row the screen lays out, so it follows the GUI scale and the creative panel's own size.
 - Pressing it sends the swap to the server. A server without this mod draws no toggle, and no key opens the second row.
 - Check by hand: open the inventory, press the toggle, and confirm the rows swap, the toggle clicks and shows its tooltip,
   the HUD keeps one row, the same toggle stands at the top left of the creative inventory's hotbar row, and the controls
   list carries no swap key.
+- Two checks that need a screen and a window, so only play settles them: with the recipe book open the survival panel
+  shifts right and the box hangs to its left, over the book's right strip, and in a very narrow window (about 850 pixels
+  at GUI scale 4) the toggle holds a 2-pixel margin and covers the leftmost slot of the row above the hotbar.
 
 ## Auto-pickup
 
