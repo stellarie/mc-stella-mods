@@ -52,10 +52,8 @@ public final class ArcherSkills {
 	static final int SHOT_OFFER_TICKS = 600;
 	/** How long a triangle shot stands ready: half an hour, the school's own buff length. */
 	static final int TRIANGLE_SHOT_OFFER_TICKS = 36_000;
-	/** Concentrate: half an hour of a quarter more Dexterity, and half again the crit chance and damage. */
+	/** Concentrate: half an hour of a steadier aim, paid through the RPG mod's own stat and critical seams. */
 	static final int CONCENTRATE_TICKS = 36_000;
-	static final double CONCENTRATE_DEX_BONUS = 0.10;
-	static final double CONCENTRATE_CRIT_FACTOR = 1.75;
 	/** Spectral Quiver: half an hour of arrows the bow does not need, at three quarters the damage. */
 	static final int SPECTRAL_QUIVER_TICKS = 36_000;
 	static final double QUIVER_DAMAGE_FACTOR = 0.75;
@@ -254,17 +252,10 @@ public final class ArcherSkills {
 		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.CONCENTRATE, CONCENTRATE_TICKS, SpellNumbers.SNARE_TRAP.amplifier()), caster);
 		caster.level().sendParticles(ParticleTypes.ITEM_COBWEB, caster.getX(), caster.getY(1.0), caster.getZ(), 16, 0.4, 0.4, 0.4, 0.02);
-		Spellbooks.LOGGER.info("[SPELL] event=CONCENTRATE caster={} ticks={} dex={} crit={} bow={}",
-			caster.getUUID(), CONCENTRATE_TICKS, CONCENTRATE_DEX_BONUS, CONCENTRATE_CRIT_FACTOR, hasBowOrCrossbow(caster));
+		Spellbooks.LOGGER.info("[SPELL] event=CONCENTRATE caster={} ticks={} dex={} half={} bow={}",
+			caster.getUUID(), CONCENTRATE_TICKS, ConcentrateStats.CONCENTRATE_DEXTERITY,
+			ConcentrateStats.CONCENTRATE_CRITICAL_HALF, hasBowOrCrossbow(caster));
 		return true;
-	}
-
-	/** The share an archer skill hit gains from this caster's Concentrate; 1.0 without it or without a bow. */
-	static double concentrateFactor(final ServerPlayer caster) {
-		if (!caster.hasEffect(SpellStatus.CONCENTRATE) || !hasBowOrCrossbow(caster)) {
-			return 1.0;
-		}
-		return (1.0 + CONCENTRATE_DEX_BONUS) * CONCENTRATE_CRIT_FACTOR;
 	}
 
 	/** Spectral Quiver: half an hour in which the bow needs no arrow, at three quarters the damage. */
@@ -650,7 +641,7 @@ public final class ArcherSkills {
 	/** A hit: the school's own dice once, then the caster's own buffs, and nothing else. */
 	static void hit(final ServerPlayer caster, final Mob target, final float flat, final SpellModifiers.CastModifiers modifiers) {
 		float amount = (float) (RpgBridge.skillDamage(caster, School.ARCHER, flat, modifiers.powerMultiplier())
-			* eagleEyeFactor(caster) * concentrateFactor(caster) * quiverDamageFactor(caster));
+			* eagleEyeFactor(caster) * quiverDamageFactor(caster));
 		if (target.damageCooldownTime > 0) {
 			target.damageCooldownTime = 0;
 		}
