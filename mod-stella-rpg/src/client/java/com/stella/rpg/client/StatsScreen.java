@@ -285,7 +285,9 @@ public final class StatsScreen extends Screen {
 	}
 
 	private void drawDerived(final GuiGraphicsExtractor graphics, final StatsSyncPayload data) {
-		double[] attack = AttackPreview.range(this.minecraft.player, this.effective(data, Stat.STR));
+		double[] attack = AttackPreview.heldRanged(this.minecraft.player)
+			? AttackPreview.ranged(this.minecraft.player, this.effective(data, Stat.DEX))
+			: AttackPreview.range(this.minecraft.player, this.effective(data, Stat.STR));
 		List<Component> lines = List.of(
 			Component.translatable(
 				"screen.mod-stella-rpg.atk",
