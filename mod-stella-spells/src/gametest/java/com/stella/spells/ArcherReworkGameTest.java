@@ -198,13 +198,20 @@ public class ArcherReworkGameTest {
 	@GameTest(maxTicks = 80)
 	public void explosiveArrowQueuesOneExplosiveShotAndUsesItUp(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
-		Mob plainVictim = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 20.0);
+		// The blast victim stands alone on the firing line, and the plain arrow's victim stands well off it,
+		// so the plain shot can never land on the blast victim or on the neighbour the blast must catch.
+		Mob plainVictim = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 24.0);
 		Mob boomVictim = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 20.0);
-		Mob beside = FighterBooksGameTest.foe(helper, CASTER_X + 1.5, CASTER_Z + 20.0);
+		// The neighbour sits inside the shipped splash radius, sideways off the line, so the ray never reaches it.
+		Mob beside = FighterBooksGameTest.foe(helper, CASTER_X + ArcherSkills.EXPLOSIVE_SPLASH_RADIUS / 2.0, CASTER_Z + 20.0);
+		helper.assertTrue(beside.position().distanceTo(boomVictim.position()) <= ArcherSkills.EXPLOSIVE_SPLASH_RADIUS,
+			"the neighbour stands outside the blast it is meant to prove");
 		float besideBefore = beside.getHealth();
 		float plainBefore = plainVictim.getHealth();
 		float boomBefore = boomVictim.getHealth();
 		double plain = plainBefore - arrowHit(helper, caster, plainVictim).getHealth();
+		helper.assertTrue(plainVictim.getHealth() == plainBefore - plain && beside.getHealth() == besideBefore,
+			"the plain shot reached the neighbour, so the blast is not what this case measures");
 		boolean applied = SkillSchoolGameTest.cast(caster, "explosive_arrow", null, false);
 		double boom = boomBefore - arrowHit(helper, caster, boomVictim).getHealth();
 		double splash = besideBefore - beside.getHealth();
