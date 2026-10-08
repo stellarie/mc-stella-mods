@@ -21,6 +21,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -44,7 +45,7 @@ public class SkillSchoolGameTest {
 	/** The archer books: DEX, a ray, and never an arrow entity. */
 	static final Set<String> ARCHER_IDS = Set.of(
 		"multishot", "piercing_shot", "arrow_rain", "rapid_fire", "hunters_mark", "explosive_arrow",
-		"disengage", "snare_trap", "eagle_eye", "elemental_quiver"
+		"disengage", "snare_trap", "aimed_bolt", "triangle_shot", "eagle_eye", "elemental_quiver"
 	);
 	/** The priest books: VIT, healing and holy damage. */
 	static final Set<String> PRIEST_IDS = Set.of(
@@ -595,6 +596,9 @@ public class SkillSchoolGameTest {
 	 * has it, and the modifiers are then read from that hand with the case's awakened flag set on them.
 	 */
 	static boolean cast(final ServerPlayer caster, final String path, final Mob target, final boolean awakened) {
+		if (ARCHER_IDS.contains(path) && autoKit) {
+			supplyArrowsIfGripped(caster);
+		}
 		caster.setItemInHand(InteractionHand.MAIN_HAND, awakened ? awakenedBook(path) : new ItemStack(book(path)));
 		SpellModifiers.CastModifiers modifiers = modifiers(caster, awakened).withAwakened(awakened);
 		Vec3 feet = caster.position();
@@ -606,4 +610,30 @@ public class SkillSchoolGameTest {
 		);
 		return applied;
 	}
+
+	/**
+	 * The school's own kit, put on a caster that carries neither: every archer book needs a bow or a crossbow
+	 * and an arrow or a bolt, so a case that only wants one book's behaviour gets them without asking. A case
+	 * that wants a bare hand turns {@link #autoKit} off first, which is what the gate cases do.
+	 */
+	static void supplyArrowsIfGripped(final ServerPlayer caster) {
+		if (!(caster.getInventory().getItem(ARCHER_WEAPON_SLOT).getItem() instanceof ProjectileWeaponItem)
+			&& !(caster.getMainHandItem().getItem() instanceof ProjectileWeaponItem)) {
+			caster.getInventory().setItem(ARCHER_WEAPON_SLOT, new ItemStack(Items.BOW));
+		}
+		if (caster.getInventory().getItem(ARCHER_ARROW_SLOT).isEmpty()) {
+			caster.getInventory().setItem(ARCHER_ARROW_SLOT, new ItemStack(Items.ARROW, 64));
+		}
+	}
+
+	/** Whether a cast supplies the school's kit first; a case that reads the gate turns this off. */
+	private static boolean autoKit = true;
+
+	static void setAutoKit(final boolean on) {
+		autoKit = on;
+	}
+
+	/** The weapon slot the mod reads a bow from, and a pack slot that a cast never replaces. */
+	private static final int ARCHER_WEAPON_SLOT = 35;
+	private static final int ARCHER_ARROW_SLOT = 20;
 }

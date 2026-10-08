@@ -43,6 +43,8 @@ public class SpellVisualsGameTest {
 	 * sweeps' own arena put the caster. Charge and Leap Slam need a floor to land on; Gale Step launches.
 	 */
 	private static final Set<String> MOVES_THE_CASTER = Set.of("gale_step", "charge", "leap_slam");
+	/** The self spells that read a foe on the look ray, so their cast needs one standing on that line. */
+	private static final Set<String> TARGET_READING_BOOKS = Set.of("piercing_shot", "rapid_fire", "hunters_mark");
 
 	private static Comparator<SpellbookItem> movesLast() {
 		return Comparator.comparing((SpellbookItem book) -> MOVES_THE_CASTER.contains(book.definition().id().getPath()));
@@ -73,6 +75,7 @@ public class SpellVisualsGameTest {
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
 		layFloor(helper);
+		archerKit(player);
 		// Shield Bash raises a shield, so the sweep carries one; every other hostile book ignores it.
 		player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.SHIELD));
 		helper.setBlock(2, 2, 8, Blocks.AIR);
@@ -88,6 +91,7 @@ public class SpellVisualsGameTest {
 			// The sweeps' books damage their subject and some move the caster, so every cast gets a live
 			// subject at the same spot and aims from the arena's own spot.
 			home(helper, player);
+			rearm(player);
 			target.discard();
 			target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
 			target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
@@ -113,18 +117,22 @@ public class SpellVisualsGameTest {
 		net.minecraft.world.entity.Mob hexed = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 4).withNoFreeWill().spawn();
 		hexed.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		hexed.setHealth(1000.0F);
+		// The archer books that read a foe through the ray ahead need one on that line, at the sweep's own spot.
+		net.minecraft.world.entity.Mob ahead = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 8).withNoFreeWill().spawn();
+		ahead.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
+		ahead.setHealth(1000.0F);
+		player.getInventory().setItem(35, new ItemStack(Items.BOW));
+		player.getInventory().setItem(20, new ItemStack(Items.ARROW, 64));
 		List<SpellbookItem> books = books(TargetMode.SELF);
-		// The books that move the caster go last, so the ones before them cast from the arena's own spot.
 		books.sort(movesLast());
 		for (SpellbookItem book : books) {
-			// Each healing spell needs a wound to close. The quiver needs an imbuable scroll in the pack: it
-			// reads the hand first, and the hand holds the quiver book, so an extra scroll goes after it.
+			// Each healing spell needs a wound to close, and every archer book needs the bow and an arrow.
 			player.setHealth(4.0f);
-			if (book.definition().id().getPath().equals("elemental_quiver")) {
-				player.getInventory().add(new net.minecraft.world.item.ItemStack(
-					net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
-						Spellbooks.scrollId(net.minecraft.resources.Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "multishot"))), 2));
-				player.getInventory().add(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW, 16));
+			rearm(player);
+			// The three that read a foe look straight at it again: another book may have moved the caster.
+			if (TARGET_READING_BOOKS.contains(book.definition().id().getPath())) {
+				home(helper, player);
+				player.lookAt(EntityAnchorArgument.Anchor.EYES, ahead.getEyePosition());
 			}
 			Vec3 center = player.position();
 			cast(helper, player, book);
@@ -139,6 +147,7 @@ public class SpellVisualsGameTest {
 		SpellTestLog.track(helper, "everyBlockSpellPlaysItsVisualAtTheAimedPoint");
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
+		archerKit(player);
 		helper.setBlock(2, 2, 5, Blocks.STONE);
 		Vec3 eye = player.getEyePosition();
 		var hit = helper.getLevel().clip(new ClipContext(
@@ -149,6 +158,7 @@ public class SpellVisualsGameTest {
 		helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 6).withNoFreeWill().spawn();
 		List<SpellbookItem> books = books(TargetMode.BLOCK);
 		for (SpellbookItem book : books) {
+			rearm(player);
 			cast(helper, player, book);
 			assertPlayedNear(helper, player, book, hit.getLocation());
 		}
@@ -445,10 +455,32 @@ public class SpellVisualsGameTest {
 			&& Math.abs(at.y - feet.y) < 0.35;
 	}
 
+	/** The archer books of a sweep cast only with a bow in the weapon slot and an arrow in the pack. */
+	private static void archerKit(final ServerPlayer player) {
+		player.getInventory().setItem(35, new ItemStack(Items.BOW));
+		// A cast replaces the held hotbar row this mock body reports, so the quiver sits above it.
+		for (int slot = 9; slot < 35; slot++) {
+			if (player.getInventory().getItem(slot).isEmpty()) {
+				player.getInventory().setItem(slot, new ItemStack(Items.ARROW, 64));
+				return;
+			}
+		}
+	}
+
+	/** The same kit, put back between casts: a sweep's books each need the bow and an arrow of their own. */
+	private static void rearm(final ServerPlayer player) {
+		player.getInventory().setItem(35, new ItemStack(Items.BOW));
+		if (player.getInventory().countItem(Items.ARROW) == 0) {
+			player.getInventory().setItem(20, new ItemStack(Items.ARROW, 64));
+		}
+	}
+
 	private static void cast(final GameTestHelper helper, final ServerPlayer player, final SpellbookItem book) {
 		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
 		InteractionResult result = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
-		helper.assertTrue(result == InteractionResult.SUCCESS, book.definition().id() + " did not cast: " + result);
+		helper.assertTrue(result == InteractionResult.SUCCESS, book.definition().id() + " did not cast: " + result
+			+ " armed=" + ArcherSkills.armed(player) + " bow=" + ArcherSkills.hasBowOrCrossbow(player)
+			+ " ammo=" + ArcherSkills.hasAmmo(player));
 	}
 
 	/** Back to the sweeps' own spot and facing +Z, so a book that moved the caster cannot skew the next cast. */

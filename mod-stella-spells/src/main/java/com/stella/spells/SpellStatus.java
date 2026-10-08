@@ -25,6 +25,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -62,6 +63,14 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> BLEEDING = register("bleeding", new Bleeding());
 	/** The archer's own eye: a mark that its skill hits are worth more, read by {@link ArcherSkills#hit}. */
 	public static final Holder<MobEffect> EAGLE_EYE = register("eagle_eye", new Status(MobEffectCategory.BENEFICIAL, 0x6FB34A));
+	/** The reworked archer buffs: a steadied aim, a quiver that needs no arrow, and a faster step. */
+	public static final Holder<MobEffect> CONCENTRATE = register("concentrate", new Status(MobEffectCategory.BENEFICIAL, 0xD8B44A));
+	public static final Holder<MobEffect> SPECTRAL_QUIVER = register("spectral_quiver", new Status(MobEffectCategory.BENEFICIAL, 0xA8E4F0));
+	public static final Holder<MobEffect> WIND_WALK = register("wind_walk", new WindWalk());
+	public static final Holder<MobEffect> TRIANGLE_SHOT = register("triangle_shot", new Status(MobEffectCategory.BENEFICIAL, 0x9BE8A8));
+	/** The movement modifier Wind Walk adds, and how much faster its holder walks. */
+	public static final Identifier WIND_WALK_ID = id("effect/wind_walk");
+	public static final double WIND_WALK_SPEED = 1.25;
 	/** A priest's own three: the holy bonus, the death ward, and the link that shares a blow. */
 	public static final Holder<MobEffect> HOLY_ARMS = register("holy_arms", new Status(MobEffectCategory.BENEFICIAL, 0xFFE08A));
 	public static final Holder<MobEffect> RESURRECTION_WARD = register("resurrection_ward", new Status(MobEffectCategory.BENEFICIAL, 0xF2E2A8));
@@ -104,7 +113,9 @@ public final class SpellStatus {
 		if (amount <= 0.0F || victim.isDeadOrDying() || victim.isInvulnerableTo(level, source)) {
 			return amount;
 		}
-		float result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, amount) : amount;
+		// A shot that owes a book pays for it here, so the whole hit of that arrow is worth the book's number.
+		float result = amount * ArcherSkills.projectileDamage(victim, source);
+		result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, result) : result;
 		// A Guardian Angel shares the blow with its priest here, in the one path every hit takes, so the
 		// shared part is taken before any other effect scales what is left.
 		result = PriestSkills.guardianShare(victim, level, source, result);
@@ -199,6 +210,33 @@ public final class SpellStatus {
 		@Override
 		public void onEffectRemoved(final MobEffectInstance instance, final LivingEntity entity) {
 			((AttachmentTarget) entity).removeAttached(WARD_POOL);
+		}
+	}
+
+	/** Wind Walk: a quarter more walking speed, granted and dropped with the effect itself. */
+	private static final class WindWalk extends Status {
+		WindWalk() {
+			super(MobEffectCategory.BENEFICIAL, 0xC8F0B4);
+		}
+
+		@Override
+		public void onEffectAdded(final MobEffectInstance instance, final LivingEntity entity) {
+			AttributeInstance speed = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+			if (speed == null) {
+				return;
+			}
+			speed.removeModifier(WIND_WALK_ID);
+			speed.addTransientModifier(new AttributeModifier(
+				WIND_WALK_ID, WIND_WALK_SPEED - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
+			));
+		}
+
+		@Override
+		public void onEffectRemoved(final MobEffectInstance instance, final LivingEntity entity) {
+			AttributeInstance speed = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+			if (speed != null) {
+				speed.removeModifier(WIND_WALK_ID);
+			}
 		}
 	}
 

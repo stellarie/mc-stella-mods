@@ -53,6 +53,7 @@
 			"com.stella.spells.SkillSchoolGameTest",
 			"com.stella.spells.FighterBooksGameTest",
 			"com.stella.spells.ArcherBooksGameTest",
+			"com.stella.spells.ArcherReworkGameTest",
 			"com.stella.spells.PriestBooksGameTest",
 			"com.stella.spells.UnbrokenVowGameTest",
 			"com.stella.spells.SteadfastPrayerGameTest"

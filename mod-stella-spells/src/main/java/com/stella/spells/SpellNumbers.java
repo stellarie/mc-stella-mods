@@ -125,26 +125,34 @@ public record SpellNumbers(
 	public static final SpellNumbers EARTHSPLITTER = builder("earthsplitter").damage(3.0f).radius(8.0).build();
 
 	// ---- archer books: a ray reads its reach from the radius, and its damage once. ----
-	/** Multishot's radius is the reach of one ray, which is its own line of sight. */
-	public static final SpellNumbers MULTISHOT = builder("multishot").damage(2.0f).radius(24.0).build();
+	/** The amplifier that stops a body where it stands, shared by every root the mod applies. */
+	public static final int SLOWNESS_ROOT_AMPLIFIER = 6;
+	/** Grappling Hook's radius is how far its arrow may fly; Multishot's old fan number is gone with the fan. */
+	public static final SpellNumbers MULTISHOT = builder("multishot").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	public static final SpellNumbers PIERCING_SHOT = builder("piercing_shot").damage(4.0f).radius(32.0).build();
 	/** Arrow Rain's radius is its ground; its extra is the splash an Explosive Arrow leaves. */
 	public static final SpellNumbers ARROW_RAIN = builder("arrow_rain").damage(1.5f).radius(ArcherSkills.ARROW_RAIN_RADIUS).build();
 	public static final SpellNumbers RAPID_FIRE = builder("rapid_fire").damage(1.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	public static final SpellNumbers HUNTERS_MARK = builder("hunters_mark").duration(ArcherSkills.MARK_TICKS, Scale.OFFENSIVE).build();
+	/** The next-shot books: the duration is how long the offer stands, and the extra is what the shot leaves. */
+	public static final SpellNumbers AIMED_BOLT = builder("aimed_bolt").damage(3.0f)
+		.duration(ArcherSkills.SHOT_OFFER_TICKS, Scale.FIXED).extra(40, Scale.FIXED)
+		.extraAmplifier(SLOWNESS_ROOT_AMPLIFIER).build();
+	public static final SpellNumbers TRIANGLE_SHOT = builder("triangle_shot")
+		.duration(ArcherSkills.TRIANGLE_SHOT_OFFER_TICKS, Scale.FIXED).build();
 	/** Explosive Arrow's extra timing carries its splash damage, the one number left after damage and radius. */
 	public static final SpellNumbers EXPLOSIVE_ARROW = builder("explosive_arrow").damage(3.0f)
-		.radius(ArcherSkills.EXPLOSIVE_SPLASH_RADIUS).extra(2, Scale.FIXED).build();
+		.radius(ArcherSkills.EXPLOSIVE_SPLASH_RADIUS).extra(2, Scale.FIXED)
+		.duration(ArcherSkills.SHOT_OFFER_TICKS, Scale.FIXED).build();
 	/** Disengage's extra is how long its slow lasts; the radius is the ground it leaves behind. */
-	public static final SpellNumbers DISENGAGE = builder("disengage").radius(ArcherSkills.DISENGAGE_RADIUS)
-		.duration(ArcherSkills.DISENGAGE_SLOW_TICKS, Scale.FIXED).amplifier(1).build();	/** Snare Trap's extra is how long it waits before it arms. */
-	public static final SpellNumbers SNARE_TRAP = builder("snare_trap").damage(2.0f).radius(ArcherSkills.TRAP_RADIUS)
-		.duration(ArcherSkills.TRAP_TRIGGER_TICKS, Scale.FIXED).extra(ArcherSkills.TRAP_ARMED_TICKS, Scale.FIXED)
-		.amplifier(6).build();
+	public static final SpellNumbers DISENGAGE = builder("disengage").duration(ArcherSkills.WIND_WALK_TICKS, Scale.FIXED).build();
+	/** Snare Trap's own number is the half hour of aim it grants, and its amplifier the awakened mark. */
+	public static final SpellNumbers SNARE_TRAP = builder("snare_trap")
+		.duration(ArcherSkills.CONCENTRATE_TICKS, Scale.FIXED).amplifier(0).build();
 	public static final SpellNumbers EAGLE_EYE = builder("eagle_eye").duration(ArcherSkills.EAGLE_EYE_TICKS, Scale.FIXED).build();
-	/** Elemental Quiver's own number is the arrows it imbues; its extra timing is the awakened count. */
+	/** Elemental Quiver's own number is the half hour it lasts, and its amplifier the awakened mark. */
 	public static final SpellNumbers ELEMENTAL_QUIVER = builder("elemental_quiver")
-		.allyHeal(ArcherSkills.QUIVER_ARROWS).extra(ArcherSkills.AWAKENED_QUIVER_ARROWS, Scale.FIXED).build();
+		.duration(ArcherSkills.SPECTRAL_QUIVER_TICKS, Scale.FIXED).amplifier(0).build();
 
 	// The priest books: the heals and the holy hits read VIT through RpgBridge.skillHeal.
 	public static final SpellNumbers HOLY_LIGHT = builder("holy_light").heal(PriestSkills.HOLY_LIGHT_HEAL).build();
