@@ -20,7 +20,10 @@
 		"SummonHealInversionMixin",
 		"HorseInventoryMixin",
 		"ItemStackVowMixin",
-		"LivingEntitySteadfastMixin"
+		"LivingEntitySteadfastMixin",
+		"ArcherWeaponMixin",
+		"SpectralQuiverMixin",
+		"AimedBoltDrawMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

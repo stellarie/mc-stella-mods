@@ -135,18 +135,19 @@ public final class SpellVisuals {
 		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
 		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
 		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A),
-		visual("multishot", ParticleTypes.SPIT, ParticleTypes.ENCHANTED_HIT, 0.0),
+		visual("multishot", ParticleTypes.GUST_EMITTER_LARGE, ParticleTypes.ENCHANTED_HIT, 0.0),
 		// The piercing shot draws its own line, not an area ring, and owns the bursting arrow's spark.
 		visual("piercing_shot", ParticleTypes.FIREWORK, ParticleTypes.CRIT, 0.0),
 		areaVisual("arrow_rain", ParticleTypes.FALLING_OBSIDIAN_TEAR, ParticleTypes.CRIT, SpellNumbers.ARROW_RAIN.radius(), 0x3E8E41),
 		visual("rapid_fire", ParticleTypes.SCULK_CHARGE_POP, ParticleTypes.SMOKE, 0.0),
 		visual("hunters_mark", ParticleTypes.DUST_PLUME, ParticleTypes.GLOW, 0.0),
 		areaVisual("explosive_arrow", ParticleTypes.EXPLOSION, ParticleTypes.FLAME, SpellNumbers.EXPLOSIVE_ARROW.radius(), 0xE0303A),
-		areaVisual("disengage", ParticleTypes.SWEEP_ATTACK, ParticleTypes.SMOKE, SpellNumbers.DISENGAGE.radius(), 0x3E8E41),
-		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.CRIT, 0.0),
+		visual("disengage", ParticleTypes.CRIMSON_SPORE, ParticleTypes.CLOUD, 0.0),
+		visual("snare_trap", ParticleTypes.ITEM_COBWEB, ParticleTypes.ENCHANT, 0.0),
+		visual("aimed_bolt", ParticleTypes.DRIPPING_OBSIDIAN_TEAR, ParticleTypes.CRIT, 0.0),
+		visual("triangle_shot", ParticleTypes.INFESTED, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
-		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),
-		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
+		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
 		// owns a particle no other book uses, because a shared primary is a shared shape on screen.
 		visual("holy_light", ParticleTypes.TRIAL_OMEN, ParticleTypes.GLOW, 0.0),
 		visual("prayer_of_mending", ParticleTypes.BUBBLE, ParticleTypes.END_ROD, 0.0),
@@ -209,7 +210,10 @@ public final class SpellVisuals {
 		heldColor("steadfast_prayer", 0xF0E6B8),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
-		heldColor("snare_trap", 0x3E8E41)
+		heldColor("snare_trap", 0x3E8E41),
+		heldColor("aimed_bolt", 0x8E6BC8),
+		heldColor("triangle_shot", 0x3E8E41),
+		heldColor("disengage", 0x7FE8C0)
 	);
 
 	static void register() {
@@ -649,13 +653,15 @@ public final class SpellVisuals {
 			case "war_cry" -> Motif.SIGIL;
 			case "counter_stance" -> Motif.SHIELD;
 			case "iron_skin" -> Motif.WARD;
-			case "multishot" -> Motif.FAN;
+			case "multishot" -> Motif.DART;
 			case "piercing_shot" -> Motif.LANCE;
 			case "rapid_fire" -> Motif.VOLLEY;
 			case "explosive_arrow" -> Motif.BLAST;
 			case "eagle_eye" -> Motif.DART;
 			case "hunters_mark" -> Motif.MARK;
-			case "snare_trap" -> Motif.SIGIL;
+			case "snare_trap" -> Motif.DART;
+			case "aimed_bolt" -> Motif.LANCE;
+			case "triangle_shot" -> Motif.FAN;
 			case "arrow_rain" -> Motif.FALLING;
 			case "disengage" -> Motif.WIND;
 			case "elemental_quiver" -> Motif.NOTES;

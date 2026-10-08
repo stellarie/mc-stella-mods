@@ -44,7 +44,7 @@ public class SkillSchoolGameTest {
 	/** The archer books: DEX, a ray, and never an arrow entity. */
 	static final Set<String> ARCHER_IDS = Set.of(
 		"multishot", "piercing_shot", "arrow_rain", "rapid_fire", "hunters_mark", "explosive_arrow",
-		"disengage", "snare_trap", "eagle_eye", "elemental_quiver"
+		"disengage", "snare_trap", "aimed_bolt", "triangle_shot", "eagle_eye", "elemental_quiver"
 	);
 	/** The priest books: VIT, healing and holy damage. */
 	static final Set<String> PRIEST_IDS = Set.of(

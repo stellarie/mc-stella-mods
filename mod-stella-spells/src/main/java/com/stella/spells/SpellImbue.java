@@ -108,12 +108,15 @@ public final class SpellImbue {
 	/**
 	 * Spells no weapon takes. An ally book is not here: heal-on-hit is a playstyle, and an imbued ally book
 	 * passes the wielder - the body that swung - as its ally, so a blow on a mob mends the attacker. What
-	 * stays out has no blow to ride: Tide Lungs is a breath held underwater, Summon Skeleton is book-only,
-	 * and Elemental Quiver is the archer's own imbue book, so a weapon holding it would be circular.
+	 * stays out has no bow behind it: every archer book is refused without a bow and an arrow, so an imbued
+	 * weapon could never cast one. Tide Lungs is a breath held underwater, and Summon Skeleton is book-only.
 	 */
-	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.Set.of(
-		id("tide_lungs"), id("summon_skeleton"), id("elemental_quiver")
-	);
+	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.stream.Stream.concat(
+		SpellbookCatalog.DEFINITIONS.stream()
+			.filter(definition -> definition.school() == School.ARCHER)
+			.map(SpellDefinition::id),
+		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"))
+	).collect(java.util.stream.Collectors.toUnmodifiableSet());
 	/** Arrows imbued for one price. */
 	public static final int ARROWS_PER_PRICE = 16;
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {

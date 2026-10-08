@@ -1,0 +1,12 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-spells:item/triangle_shot_scroll",
+		"tints": [
+			{
+				"type": "minecraft:constant",
+				"value": 12073293
+			}
+		]
+	}
+}
