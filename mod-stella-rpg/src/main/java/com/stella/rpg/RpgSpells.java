@@ -80,7 +80,7 @@ public final class RpgSpells {
 		double hit = spellHit(caster, skillPercent);
 		boolean crit = RpgCombat.rollCrit(caster);
 		RpgCombat.markSpellCrit(caster, crit);
-		return crit ? hit * RpgCurve.critMultiplier() : hit;
+		return crit ? hit * CritBonuses.critMultiplier(caster) : hit;
 	}
 
 	/** The skill percent (150 is 150%) of the base, times MATK percent, plus flat MATK. No crit. */
