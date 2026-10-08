@@ -81,6 +81,8 @@ SKILLS = (
     Skill("explosive_arrow", "Explosive Arrow", "archer", art("explosive_arrow")),
     Skill("disengage", "Disengage", "archer", art("disengage")),
     Skill("snare_trap", "Snare Trap", "archer", art("snare_trap")),
+    Skill("aimed_bolt", "Aimed Bolt", "archer", art("aimed_bolt")),
+    Skill("triangle_shot", "Triangle Shot", "archer", art("triangle_shot")),
     Skill("eagle_eye", "Eagle Eye", "archer", art("eagle_eye")),
     Skill("elemental_quiver", "Elemental Quiver", "archer", art("elemental_quiver")),
     Skill("holy_light", "Holy Light", "priest", art("holy_light")),

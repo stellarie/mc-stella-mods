@@ -162,6 +162,18 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("line", 10, 6, 11, 3, 1, "h"),
         ("line", 6, 8, 10, 8, 1, "s"),
     )),
+    # The two books the archer rework added: one long bolt under a ring, and three darts from one point.
+    ("aimed_bolt", "Aimed Bolt", "archer", 0xC79BFF, (
+        ("arrow", 3, 11, 12, 4, 2, "a"),
+        ("ring", 8, 8, 5, 1, "s"),
+        ("dot", 11, 4, 1, "h"),
+    )),
+    ("triangle_shot", "Triangle Shot", "archer", 0x9BE8A8, (
+        ("arrow", 5, 11, 5, 4, 1, "a"),
+        ("arrow", 8, 11, 8, 3, 1, "h"),
+        ("arrow", 11, 11, 11, 4, 1, "a"),
+        ("poly", "5,5 11,5 8,8", "s"),
+    )),
     # ---- priest: gold and light, an octagon reliquary ----
     ("holy_light", "Holy Light", "priest", 0xFFF3C4, (
         ("disc", 8, 8, 3, "a"),

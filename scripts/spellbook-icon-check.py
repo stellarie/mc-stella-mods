@@ -113,6 +113,8 @@ SKILL_BOOKS = (
     Book("snare_trap", "Snare Trap", "archery", "#3e8e41", glyph("#.....#", ".#...#.", "..###..", "..###..", ".#...#.", "#.....#", "..###.."), 50),
     Book("eagle_eye", "Eagle Eye", "archery", "#6fb34a", glyph(".#####.", "#.....#", "#.###.#", "##.#.##", "#.###.#", "#.....#", ".#####."), 51),
     Book("elemental_quiver", "Elemental Quiver", "archery", "#c8a24b", glyph(".#...#.", "#####..", ".#...#.", ".#...#.", "#.....#", "#.....#", "#####.."), 52),
+    Book("aimed_bolt", "Aimed Bolt", "archery", "#c79bff", glyph(".....#.", "...##..", "..##...", ".#####.", "..##...", ".##....", "#......"), 53),
+    Book("triangle_shot", "Triangle Shot", "archery", "#9be8a8", glyph("#..#..#", "#..#..#", ".#.#.#.", ".#.#.#.", "..###..", "...#...", "...#..."), 54),
     # The priest books: the drawn sixteen-pixel art of skillbook-icons.py, in the school's own gold.
     Book("holy_light", "Holy Light", "priest", "#ffe08a", glyph("...#...", ".#.#.#.", "#..#..#", "...#...", "#..#..#", ".#.#.#.", "...#..."), 53),
     Book("prayer_of_mending", "Prayer of Mending", "priest", "#ffd166", glyph(".#...#.", "#.#.#.#", ".#...#.", "...#...", "..###..", "...#...", "...#..."), 54),
