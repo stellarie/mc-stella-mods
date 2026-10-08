@@ -279,7 +279,7 @@
 	"item.mod-stella-spells.snare_trap_scroll": "Concentrate Scroll",
 	"item.mod-stella-spells.aimed_bolt": "Aimed Bolt Spellbook",
 	"item.mod-stella-spells.aimed_bolt.effect": "Draws your next arrow half again as slowly, makes it deal 4 times its damage, and stops what it strikes for 2 seconds.",
-	"item.mod-stella-spells.aimed_bolt.effect_live": "Draws your next arrow half again as slowly, makes it deal %1$s times its damage, and stops what it strikes for 2 seconds.",
+	"item.mod-stella-spells.aimed_bolt.effect_live": "Draws your next arrow half again as slowly, makes it deal 4 times its damage, and stops what it strikes for 2 seconds. Its flat damage is %1$s.",
 	"item.mod-stella-spells.aimed_bolt_scroll": "Aimed Bolt Scroll",
 	"item.mod-stella-spells.triangle_shot": "Triangle Shot Spellbook",
 	"item.mod-stella-spells.triangle_shot.effect": "Gives every shot of yours a 30 percent chance to loose three arrows instead of one, for 30 minutes.",

@@ -91,6 +91,7 @@ public class SpellVisualsGameTest {
 			// The sweeps' books damage their subject and some move the caster, so every cast gets a live
 			// subject at the same spot and aims from the arena's own spot.
 			home(helper, player);
+			rearm(player);
 			target.discard();
 			target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
 			target.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(1000.0);
@@ -125,19 +126,13 @@ public class SpellVisualsGameTest {
 		List<SpellbookItem> books = books(TargetMode.SELF);
 		books.sort(movesLast());
 		for (SpellbookItem book : books) {
-			// Each healing spell needs a wound to close. The quiver needs an imbuable scroll in the pack: it
-			// reads the hand first, and the hand holds the quiver book, so an extra scroll goes after it.
+			// Each healing spell needs a wound to close, and every archer book needs the bow and an arrow.
 			player.setHealth(4.0f);
+			rearm(player);
 			// The three that read a foe look straight at it again: another book may have moved the caster.
 			if (TARGET_READING_BOOKS.contains(book.definition().id().getPath())) {
 				home(helper, player);
 				player.lookAt(EntityAnchorArgument.Anchor.EYES, ahead.getEyePosition());
-			}
-			if (book.definition().id().getPath().equals("elemental_quiver")) {
-				player.getInventory().add(new net.minecraft.world.item.ItemStack(
-					net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
-						Spellbooks.scrollId(net.minecraft.resources.Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "multishot"))), 2));
-				player.getInventory().add(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW, 16));
 			}
 			Vec3 center = player.position();
 			cast(helper, player, book);
@@ -163,6 +158,7 @@ public class SpellVisualsGameTest {
 		helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 6).withNoFreeWill().spawn();
 		List<SpellbookItem> books = books(TargetMode.BLOCK);
 		for (SpellbookItem book : books) {
+			rearm(player);
 			cast(helper, player, book);
 			assertPlayedNear(helper, player, book, hit.getLocation());
 		}
@@ -468,6 +464,14 @@ public class SpellVisualsGameTest {
 				player.getInventory().setItem(slot, new ItemStack(Items.ARROW, 64));
 				return;
 			}
+		}
+	}
+
+	/** The same kit, put back between casts: a sweep's books each need the bow and an arrow of their own. */
+	private static void rearm(final ServerPlayer player) {
+		player.getInventory().setItem(35, new ItemStack(Items.BOW));
+		if (player.getInventory().countItem(Items.ARROW) == 0) {
+			player.getInventory().setItem(20, new ItemStack(Items.ARROW, 64));
 		}
 	}
 

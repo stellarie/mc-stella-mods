@@ -147,7 +147,8 @@ public final class SpellVisuals {
 		visual("aimed_bolt", ParticleTypes.DRIPPING_OBSIDIAN_TEAR, ParticleTypes.CRIT, 0.0),
 		visual("triangle_shot", ParticleTypes.INFESTED, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
-		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
+		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),
+		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
 		// owns a particle no other book uses, because a shared primary is a shared shape on screen.
 		visual("holy_light", ParticleTypes.TRIAL_OMEN, ParticleTypes.GLOW, 0.0),
 		visual("prayer_of_mending", ParticleTypes.BUBBLE, ParticleTypes.END_ROD, 0.0),
