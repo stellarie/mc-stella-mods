@@ -67,7 +67,8 @@
 			"com.stella.rpg.AutoPickupGameTest",
 			"com.stella.rpg.RpgSkillsGameTest",
 			"com.stella.rpg.XpCurveShareGameTest",
-			"com.stella.rpg.SecondHotbarGameTest"
+			"com.stella.rpg.SecondHotbarGameTest",
+			"com.stella.rpg.RangedAtkGameTest"
 		]
 	},
 	"depends": {

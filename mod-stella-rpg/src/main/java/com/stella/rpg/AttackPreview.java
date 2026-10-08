@@ -3,6 +3,7 @@ package com.stella.rpg;
 import java.util.List;
 import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.Affixes;
+import com.stella.rpg.roll.ItemTiers;
 import java.util.Locale;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -58,6 +59,30 @@ public final class AttackPreview {
 		double extra = RpgCombat.statusAtk(str) + Affixes.total(player, Affix.DAMAGE_FLAT) / k;
 		double factor = RpgCombat.damageFactor(player) * k;
 		return new double[] {(attack + low * multiplier + extra) * factor, (attack + high * multiplier + extra) * factor};
+	}
+
+	/**
+	 * The ranged shot range in K units for a held bow or crossbow: the same DEX dice, the bow's own die, status ATK,
+	 * the flat affix and the damage percent that {@link RpgCombat} rolls for a shot. No weapon damage attribute is
+	 * added, because a vanilla bow and crossbow carry none.
+	 */
+	public static double[] ranged(final LivingEntity player, final int dex) {
+		ItemStack held = player.getMainHandItem();
+		RpgDice.Dice dice = RpgDice.of(dex);
+		RpgDice.Dice weapon = PhysicalDice.weaponDice(held, true);
+		int low = dice.min() + (weapon == null ? 0 : weapon.min());
+		int high = dice.max() + (weapon == null ? 0 : weapon.max());
+		double multiplier = PhysicalDice.multiplier(player, held);
+		double k = RpgScale.k();
+		double extra = RpgCombat.statusAtk(dex) + Affixes.total(player, Affix.DAMAGE_FLAT) / k;
+		double factor = RpgCombat.damageFactor(player) * k;
+		return new double[] {(low * multiplier + extra) * factor, (high * multiplier + extra) * factor};
+	}
+
+	/** True when a held bow or crossbow makes the Atk line read the ranged number. */
+	public static boolean heldRanged(final LivingEntity player) {
+		ItemTiers.Info info = ItemTiers.of(player.getMainHandItem());
+		return info != null && info.type() != null && info.type().ranged();
 	}
 
 	public static String format(final double[] range) {
