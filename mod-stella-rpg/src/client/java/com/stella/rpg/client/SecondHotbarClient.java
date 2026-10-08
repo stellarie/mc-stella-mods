@@ -28,10 +28,8 @@ import net.minecraft.world.inventory.Slot;
 public final class SecondHotbarClient {
 	private static final int WIDTH = 24;
 	private static final int HEIGHT = 20;
-	/** The gap between the hotbar row and the toggle under it. */
+	/** The gap between the toggle and the hotbar row's top. */
 	private static final int GAP = 2;
-	/** A vanilla slot is 18 pixels wide. */
-	private static final int SLOT = 18;
 	private static final int FILL = 0xFF6C6C6C;
 	private static final int FILL_HOVER = 0xFF8B8B8B;
 	private static final int EDGE = 0xFF000000;
@@ -56,10 +54,12 @@ public final class SecondHotbarClient {
 	}
 
 	/**
-	 * The toggle's own box, or null: at the right end of the hotbar row and just under it, inside the panel's
-	 * width, so it clears the effect column at the panel's right and the creative inventory's scrollbar. The row
-	 * is the bottom row of the player's own slots, which is where both inventories lay their hotbar out. The
-	 * creative inventory wraps its menu slots, so the row is read by position and never by slot index.
+	 * The toggle's own box, or null: at the top left corner of the hotbar row, so it ends where the row begins
+	 * and its bottom sits just above the row's top. It covers the panel's own left margin and the space beyond
+	 * it, never a slot, and it clears the effect column and the creative inventory's scrollbar, which are both
+	 * at the panel's right. The row is the bottom row of the player's own slots, which is where both inventories
+	 * lay their hotbar out. The creative inventory wraps its menu slots, so the row is read by position and
+	 * never by slot index.
 	 */
 	private static int[] box(final Screen screen) {
 		Minecraft client = Minecraft.getInstance();
@@ -80,8 +80,8 @@ public final class SecondHotbarClient {
 			return null;
 		}
 		return new int[] {
-			position.stellaRpgLeftPos() + first.x + SecondHotbar.SIZE * SLOT - WIDTH,
-			position.stellaRpgTopPos() + first.y + SLOT + GAP
+			position.stellaRpgLeftPos() + first.x - WIDTH,
+			position.stellaRpgTopPos() + first.y - HEIGHT - GAP
 		};
 	}
 

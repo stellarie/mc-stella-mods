@@ -150,14 +150,15 @@ The server rule `WeaponSlot.hotkey` acts on the item in that hotkey slot, in thi
 Every player carries a second hotbar row of nine slots. It is saved with the player and kept on death.
 The rows exchange in place, so the vanilla hotbar always shows the selected row and the HUD carries one row.
 
-- One toggle stands at the right end of the hotbar row in the inventory screen, just under it, inside the panel's width.
-  It clears the effect column at the panel's right and the creative inventory's scrollbar.
+- One toggle stands at the top left corner of the hotbar row in the inventory screen: it ends where the row begins and
+  its bottom sits just above the row's top, so it covers the panel's own left margin and never a slot. It clears the
+  effect column and the creative inventory's scrollbar, which both stand at the panel's right.
 - The toggle shows for the survival inventory and for the creative inventory's Inventory tab and item tabs. Its position
   comes from the hotbar row the screen lays out, so it follows the GUI scale and the creative panel's own size.
 - Pressing it sends the swap to the server. A server without this mod draws no toggle, and no key opens the second row.
 - Check by hand: open the inventory, press the toggle, and confirm the rows swap, the toggle clicks and shows its tooltip,
-  the HUD keeps one row, the same toggle stands beside the creative inventory's hotbar row, and the controls list carries
-  no swap key.
+  the HUD keeps one row, the same toggle stands at the top left of the creative inventory's hotbar row, and the controls
+  list carries no swap key.
 
 ## Auto-pickup
 
