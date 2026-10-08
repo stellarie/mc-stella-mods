@@ -57,7 +57,7 @@ public final class SecondHotbar {
 		this.stacks = stacks;
 	}
 
-	/** A key press asks the server to exchange the two rows. */
+	/** The inventory screen's toggle asks the server to exchange the two rows. */
 	public record SwapPayload() implements CustomPacketPayload {
 		public static final Type<SwapPayload> TYPE = new Type<>(StellaRpg.id("swap_hotbar_row"));
 		public static final StreamCodec<RegistryFriendlyByteBuf, SwapPayload> CODEC = StreamCodec.unit(new SwapPayload());
