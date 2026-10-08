@@ -280,13 +280,8 @@ public class ArcherReworkGameTest {
 		List<String> gateOpen = new ArrayList<>();
 		caster.getInventory().clearContent();
 		caster.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-		boolean quiverBefore = caster.hasEffect(SpellStatus.SPECTRAL_QUIVER);
 		caster.removeAllEffects();
-		boolean quiverAfter = caster.hasEffect(SpellStatus.SPECTRAL_QUIVER);
 		caster.getInventory().setItem(ArcherReworkGameTest.WEAPON_SLOT, new ItemStack(Items.BOW));
-		LOG.info("[BEHAVIOR] test=gateTwoProbe RESULT quiverBefore={} quiverAfter={} ammo={} armed={} arrows={}",
-			quiverBefore, quiverAfter, ArcherSkills.hasAmmo(caster),
-			ArcherSkills.armed(caster), caster.getInventory().countItem(Items.ARROW));
 		for (String path : ATTACK_BOOKS) {
 			boolean applied = SkillSchoolGameTest.cast(caster, path, null, false);
 			if (ArcherSkills.armed(caster)) {
