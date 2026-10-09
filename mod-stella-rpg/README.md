@@ -570,6 +570,10 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
 - `RpgAttributes.refresh` puts the worn HP affixes on max health every 20 ticks.
   Flat HP is an `ADD_VALUE` modifier of `flat / K`. HP % is an `ADD_MULTIPLIED_BASE` modifier.
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
+- `DURABILITY_PCT` (`durability_pct`) uses the damage % range of the tier. It is weapon and armor kind.
+  Each point of use damage is skipped with the chance `p / (100 + p)`, so the expected life of the item grows by `p` percent.
+  The hook is `RpgDurabilityMixin` on `ItemStack#processDurabilityChange`, after Unbreaking. It never changes `max_damage`, so Refine and smithing keep their numbers.
+  The random gear roll never picks it. Mined materials and `grant-bonus` carry it.
 - Only the main hand adds damage, MATK, magic penetration, and armor penetration affixes. Only the four armor slots add HP, reduction, magic resistance, and movement speed affixes.
 
 ## Craft sum
@@ -592,6 +596,40 @@ A recipe hands its result the sum of its materials. One item of each slot counts
 - Grid repair of two gear pieces keeps the bonus of the piece with the higher stat total. It does not sum and it does not reroll.
 - The ruins affix smithing recipe and recipes that build their own result are not covered.
 
+### Bonus gear tags
+
+`#mod-stella-rpg:bonus_weapons` and `#mod-stella-rpg:bonus_armor` list gear outside the vanilla tags, such as a modded bow or a ruins sword.
+Listed gear carries stat and affix bonuses, the craft sum feeds it, `grant-bonus` accepts it, and chest loot marks it as rolled.
+It counts like a weapon (main hand) or like armor (worn slot, and a shield in the offhand).
+It never rolls at random, because it has no tier. Both tags are empty by default. A pack or a mod adds ids with `"required": false` for a mod that may be absent.
+Pickaxes, shovels, and hoes carry nothing unless a pack lists them.
+This mod lists the gear of its siblings itself, each id with `"required": false`, so a pack without that sibling still loads:
+the nine crafted bows of `mod-stella-equips-enchants`, and the swords, axes, hammer, bows, and six armor sets of `mod-stella-ruins`.
+A new sibling item needs one line here. No sibling mod changes.
+
+## Mined material bonuses
+
+Deep mining feeds crafted gear. The path has four steps, and each has its own section below.
+
+1. A player mines copper, iron, gold, or diamond ore, or ancient debris. The drop carries one profile of 1 to 4 bonuses, and rarely an enchantment. See `Mined material profiles`.
+2. A furnace keeps the bonus on the smelted result. See `Stacking and smelting`.
+3. A recipe sums the bonuses and the enchantments of its materials into the result. See `Craft sum`.
+4. The gear gives the stats while it is held or worn. The stats screen, the tooltip, and `Stat-bonus contract` use the same two maps.
+
+Materials and gear from chests and containers carry nothing. Equipment that a mob drops, a trade, fishing, or a vault gives keeps the random gear roll.
+Pickaxes, shovels, and hoes carry nothing, and the bonus of a material used in them is lost.
+
+## Stacking and smelting
+
+Two mined stacks merge only when their item and bonus maps are equal. A tier has 8 to 16 fixed profiles, so mined stacks of one profile merge and a deep mine fills at most 8 to 16 stacks of raw ore per tier, plus rare enchanted ones.
+
+- A furnace smelts one profile at a time. It refuses a stack of another profile in the output slot until the player takes the output. This is the vanilla furnace rule.
+- A hopper into a furnace waits while the input holds a different profile. A hopper out of the output slot empties it, so a line keeps running. Test this in play.
+- A chest sorter with one furnace per profile removes the manual work.
+- Unpacking a storage block divides the bonus by the result count and rounds down, and an enchanted block cannot unpack. Packing and unpacking never raises the total.
+- An outside smelter that builds its result without `Recipe#assemble` loses the bonus.
+- Ore Regeneration and a placed ore each give one normal roll per break. Silk Touch gives the ore block, which carries nothing.
+
 ## Mined material profiles
 
 A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.
@@ -606,7 +644,7 @@ Equal profiles are equal maps, so mined stacks of one profile stack together. A 
 | `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 16 | 3.0% |
 
 - A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per profile.
-  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, and reduction %.
+  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, reduction %, and durability %.
   An affix value is the range of the gear tier times `affix_scale` (0.25), and at least 1. The gear tier of `debris` is `netherite`.
 - Depth raises the weight of strong profiles. A profile weighs `1 + depth_rank_weight x depth x rank`, and `rank` runs from 0 for the weakest to 1 for the strongest.
 - `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.
@@ -874,6 +912,7 @@ Game tests run headless on a server. A new test class must be listed in
 | Mixin | Target |
 |---|---|
 | `RpgCraftRollMixin` | `Item#onCraftedBy`, at `HEAD`. Marks uncovered gear as rolled |
+| `RpgDurabilityMixin` | `ItemStack#processDurabilityChange`, at `RETURN`, cancellable. Applies `durability_pct` |
 | `RpgCraftSumMixin` | `ShapedRecipe#assemble` and `ShapelessRecipe#assemble`, at `RETURN`, cancellable |
 | `RpgRepairSumMixin` | `RepairItemRecipe#assemble`, at `RETURN`, cancellable |
 | `RpgSmithingSumMixin` | `SmithingTransformRecipe#assemble`, at `RETURN`, cancellable |

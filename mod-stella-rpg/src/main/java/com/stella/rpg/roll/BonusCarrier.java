@@ -8,6 +8,10 @@ import net.minecraft.world.item.ItemStack;
 
 /** What can carry a bonus: gear carries the maps it rolls, a material carries the maps it sums into gear. */
 public final class BonusCarrier {
+	/** Gear outside the vanilla tags that carries and uses weapon bonuses. It never rolls at random. */
+	public static final TagKey<Item> WEAPONS = TagKey.create(Registries.ITEM, StellaRpg.id("bonus_weapons"));
+	/** Gear outside the vanilla tags that carries and uses armor bonuses. It never rolls at random. */
+	public static final TagKey<Item> ARMOR = TagKey.create(Registries.ITEM, StellaRpg.id("bonus_armor"));
 	public static final TagKey<Item> MATERIALS = TagKey.create(Registries.ITEM, StellaRpg.id("bonus_materials"));
 
 	private BonusCarrier() {
