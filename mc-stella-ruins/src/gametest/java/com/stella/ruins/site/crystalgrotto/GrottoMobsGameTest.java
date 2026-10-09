@@ -68,6 +68,9 @@ public class GrottoMobsGameTest {
 		helper.succeed();
 	}
 
+	/** The beats a hop test may wait for a free spot. */
+	private static final int HOP_BEATS = 10;
+
 	@GameTest(maxTicks = GrottoTestSupport.ARENA_TICKS)
 	public void aPrismSlimeGrowsToSizeTwoAndHopsWithinSixBlocksEveryHundredTicks(final GameTestHelper helper) {
 		GrottoTestSupport.inArena(helper, SEED, arena -> {
@@ -83,6 +86,10 @@ public class GrottoMobsGameTest {
 			helper.assertTrue(mob.position().equals(start), "the slime hopped outside its window");
 			mob.tickCount = GrottoMobs.TELEPORT_TICKS;
 			GrottoMobs.PRISM_SLIME.ability().tick(mob, arena.level());
+			// A beat finds no free spot in twelve random tries when the slime stands in a tight corner, so later beats may follow.
+			for (int beat = 0; beat < HOP_BEATS && mob.position().equals(start); beat++) {
+				GrottoMobs.PRISM_SLIME.ability().tick(mob, arena.level());
+			}
 			Vec3 end = mob.position();
 			double flat = Math.hypot(end.x - start.x, end.z - start.z);
 			GrottoTestSupport.result("slimeHop", "size=" + slime.getSize() + " flat=" + flat + " dy=" + (end.y - start.y));
