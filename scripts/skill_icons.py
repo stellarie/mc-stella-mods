@@ -32,6 +32,20 @@ SCHOOLS = {
     "archer": ((0x4F, 0xA6, 0x5C), (0x1E, 0x35, 0x22), 3),
     "priest": ((0xE3, 0xC2, 0x5A), (0x3A, 0x34, 0x20), 2),
 }
+# The square tile each school sits on, as the mage spellbooks do: frame, bevel, upper fill, lower fill.
+TILES = {
+    "fighter": ((0x24, 0x08, 0x08), (0x6E, 0x22, 0x22), (0x46, 0x16, 0x16), (0x56, 0x1E, 0x1C)),
+    "archer": ((0x0A, 0x1C, 0x12), (0x2A, 0x5A, 0x38), (0x17, 0x3A, 0x24), (0x1F, 0x4A, 0x2E)),
+    "priest": ((0x26, 0x1E, 0x08), (0x8A, 0x73, 0x2E), (0x4A, 0x3C, 0x16), (0x5C, 0x4A, 0x1C)),
+}
+# Colours a "pixels" op may name, one letter each.
+PIXELS = {
+    "w": (0xFA, 0xFA, 0xFF), "m": (0xC8, 0xD2, 0xDC), "M": (0x7C, 0x88, 0x94), "b": (0xA8, 0x72, 0x3E),
+    "B": (0x6A, 0x44, 0x22), "g": (0x9B, 0xE8, 0x7A), "G": (0x4F, 0xA6, 0x5C), "y": (0xFF, 0xD1, 0x66),
+    "Y": (0xE0, 0x9A, 0x2A), "r": (0xF0, 0x60, 0x5A), "R": (0xA8, 0x2E, 0x2A), "o": (0xFF, 0x9A, 0x3C),
+    "c": (0x8F, 0xE4, 0xF0), "C": (0x3E, 0x9C, 0xC0), "p": (0xC7, 0x9B, 0xFF), "P": (0x7A, 0x4E, 0xC0),
+    "k": (0x05, 0x12, 0x0A), "n": (0x8A, 0x6A, 0x4A), "N": (0x4E, 0x3A, 0x28), "f": (0xE8, 0xD8, 0xB8),
+}
 
 
 def mix(colour: tuple[int, int, int], other: tuple[int, int, int], t: float) -> tuple[int, int, int, int]:
@@ -99,92 +113,258 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("dot", 3, 10, 1, "s"),
         ("dot", 12, 9, 1, "s"),
     )),
-    # ---- archer: green and steel, a hull plate with a pointed top ----
-    ("multishot", "Multishot", "archer", 0xDFF3D8, (
-        ("line", 3, 8, 7, 8, 2, "a"),
-        ("arrow", 7, 8, 12, 4, 1, "h"),
-        ("arrow", 7, 8, 12, 8, 1, "h"),
-        ("arrow", 7, 8, 12, 12, 1, "h"),
+    # ---- archer: Ragnarok archer line, hand-placed pixels on a forest tile ----
+    ("multishot", "Grappling Hook", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "......m.......",
+            ".....mMm......",
+            "......m.......",
+            "..m...m...m...",
+            "..m...m...m...",
+            "..mm..m..mm...",
+            "...mmmmmmm....",
+            "......M.......",
+            "......n.......",
+            ".......n......",
+            "........n.....",
+            ".........nn...",
+            "...........nn.",
+            ".............n",
+        ), "a"),
     )),
-    ("piercing_shot", "Piercing Shot", "archer", 0x8FD4F0, (
-        ("arrow", 3, 8, 12, 8, 1, "h"),
-        ("line", 5, 4, 5, 12, 2, "a"),
-        ("line", 9, 4, 9, 12, 2, "a"),
+    ("piercing_shot", "Sharp Shooting", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "...........w..",
+            "..............",
+            ".........w...w",
+            "..............",
+            "...........w..",
+            ".ccrr...rr..m.",
+            ".bbbbbbbbbbbMm",
+            ".ccwwr.rwwr.m.",
+            "...rr...rr....",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+        ), "a"),
     )),
-    ("arrow_rain", "Arrow Rain", "archer", 0xA8C8FF, (
-        ("ring", 8, 10, 2, 1, "s"),
-        ("arrow", 5, 3, 5, 9, 1, "a"),
-        ("arrow", 8, 3, 8, 8, 1, "a"),
-        ("arrow", 11, 3, 11, 9, 1, "a"),
+    ("arrow_rain", "Arrow Shower", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "..cbc.....cbc.",
+            "...b..cbc..b..",
+            "...b...b...b..",
+            "...b...b...b..",
+            "...b...b...b..",
+            "...b...b...b..",
+            "..mMm..b..mMm.",
+            "...m..mMm..m..",
+            ".......m......",
+            "M............M",
+            "..............",
+            "MnnnnnnnnnnnnM",
+            "..............",
+        ), "a"),
     )),
-    ("rapid_fire", "Rapid Fire", "archer", 0xFFD166, (
-        ("arrow", 3, 5, 10, 5, 1, "a"),
-        ("arrow", 4, 8, 11, 8, 1, "a"),
-        ("arrow", 3, 11, 10, 11, 1, "a"),
+    ("rapid_fire", "Double Strafe", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            ".......mm.....",
+            ".......Mm.....",
+            "......b.......",
+            ".....b........",
+            "....b......mm.",
+            "...b.......Mm.",
+            ".yb.......b...",
+            ".yy......b....",
+            "........b.....",
+            ".......b......",
+            ".....yb.......",
+            ".....yy.......",
+            "..............",
+        ), "a"),
     )),
-    ("hunters_mark", "Hunter's Mark", "archer", 0xF0605A, (
-        ("ring", 8, 8, 4, 1, "a"),
-        ("line", 8, 3, 8, 5, 1, "a"),
-        ("line", 8, 11, 8, 12, 1, "a"),
-        ("line", 3, 8, 4, 8, 1, "a"),
-        ("line", 12, 8, 12, 8, 1, "a"),
-        ("dot", 8, 8, 1, "h"),
+    ("hunters_mark", "Blitz Beat", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "N...........N.",
+            "nN.........Nn.",
+            ".nN.......Nn..",
+            ".nnN.....Nnn..",
+            "..nnN...Nnn...",
+            "...nnNfNnn....",
+            "....nNfNn.....",
+            "......f.......",
+            ".....yfy......",
+            "...w..y...w...",
+            "..............",
+            "...w......w...",
+            "..............",
+        ), "a"),
     )),
-    # The two books the Ragnarok archer tree added: a tripwire hook with its ring, and a bolt that shoves a foe back.
-    ("ankle_snare", "Ankle Snare", "archer", 0xB8E08A, (
-        ("ring", 8, 9, 3, 1, "a"),
-        ("line", 3, 12, 12, 12, 1, "s"),
-        ("dot", 8, 4, 1, "h"),
-        ("line", 8, 5, 8, 6, 1, "h"),
+    ("ankle_snare", "Ankle Snare", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "..............",
+            "..m.m.m.m.m...",
+            "..m.m.m.m.m...",
+            ".MmmmmmmmmmM..",
+            ".M.........M..",
+            ".M.........M..",
+            ".MmmmmmmmmmM..",
+            "..m.m.m.m.m...",
+            "..m.m.m.m.m...",
+            "......M.......",
+            "......M.......",
+            "....nnMnn.....",
+            "..............",
+        ), "a"),
     )),
-    ("arrow_repel", "Arrow Repel", "archer", 0xF0B060, (
-        ("arrow", 3, 8, 9, 8, 2, "a"),
-        ("chev", 11, 8, 2, "right", "h"),
-        ("line", 12, 4, 12, 12, 1, "s"),
+    ("arrow_repel", "Arrow Repel", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "..............",
+            ".............y",
+            "............y.",
+            "...........oy.",
+            "..........o.y.",
+            ".oo.....m.o.y.",
+            ".bbbbbbbMmo.y.",
+            ".oo.....m.o.y.",
+            "..........o.y.",
+            "...........oy.",
+            ".............y",
+            "..............",
+            "..............",
+        ), "a"),
     )),
-    ("explosive_arrow", "Explosive Arrow", "archer", 0xFF9A3C, (
-        ("arrow", 3, 11, 8, 6, 1, "a"),
-        ("spokes", 9, 5, 1, 4, 6, 1, "h"),
+    ("explosive_arrow", "Explosive Arrow", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "........y.o.y.",
+            ".........oyo..",
+            ".......yoywyo.",
+            ".........oyo..",
+            "........y.o.y.",
+            "......mm......",
+            "......Mm......",
+            ".....b........",
+            "....b.........",
+            "...b..........",
+            ".gb...........",
+            ".gg...........",
+            "..............",
+        ), "a"),
     )),
-    ("disengage", "Disengage", "archer", 0x7FE8C0, (
-        ("arrow", 5, 9, 11, 3, 1, "a"),
-        ("dot", 3, 11, 1, "s"),
-        ("dot", 6, 12, 1, "s"),
-        ("dot", 9, 12, 1, "s"),
+    ("disengage", "Wind Walk", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "..............",
+            "ccc...........",
+            "..............",
+            ".cccc....NNN..",
+            ".........NnN..",
+            "cc.......NnN..",
+            ".........NnN..",
+            "........NnnN..",
+            "....NNNNnnnN..",
+            "...NnnnnnnnNN.",
+            "...NNNNNNNNNN.",
+            "..............",
+            "..............",
+        ), "a"),
     )),
-    ("snare_trap", "Snare Trap", "archer", 0x9BD24E, (
-        ("line", 3, 5, 12, 5, 1, "s"),
-        ("poly", "3,9 12,9 11,12 4,12", "a"),
-        ("line", 5, 5, 5, 8, 1, "s"),
-        ("line", 8, 5, 8, 8, 1, "s"),
-        ("line", 11, 5, 11, 8, 1, "s"),
-        ("line", 6, 9, 6, 6, 1, "h"),
-        ("line", 9, 9, 9, 6, 1, "h"),
+    ("snare_trap", "Concentrate", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            ".yy........yy.",
+            ".y..........y.",
+            "......B.......",
+            ".....B........",
+            "....B...m.....",
+            "....B..mm.....",
+            "....BwbbbbbbM.",
+            "....B..mm.....",
+            "....B...m.....",
+            ".....B........",
+            ".y....B.....y.",
+            ".yy........yy.",
+            "..............",
+        ), "a"),
     )),
-    ("eagle_eye", "Eagle Eye", "archer", 0xFFE08A, (
-        ("ellipse", 8, 7, 5, 3, "a"),
-        ("dot", 8, 7, 1, "h"),
-        ("line", 4, 11, 8, 8, 1, "s"),
-        ("line", 7, 12, 9, 9, 1, "s"),
+    ("eagle_eye", "True Sight", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "......y.......",
+            "..y...y...y...",
+            "...y.....y....",
+            "..............",
+            "....wwwww.....",
+            "..wwwcccwww...",
+            ".wwwcCkCcwww..",
+            "..wwwcccwww...",
+            "....wwwww.....",
+            "..............",
+            "...y.....y....",
+            "..y...y...y...",
+            "......y.......",
+            "..............",
+        ), "a"),
     )),
-    ("elemental_quiver", "Elemental Quiver", "archer", 0xC79BFF, (
-        ("poly", "5,12 11,12 10,6 6,6", "a"),
-        ("line", 6, 6, 5, 3, 1, "h"),
-        ("line", 8, 6, 8, 3, 1, "h"),
-        ("line", 10, 6, 11, 3, 1, "h"),
-        ("line", 6, 8, 10, 8, 1, "s"),
+    ("elemental_quiver", "Spectral Quiver", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..c...c...c...",
+            ".ccc.ccc.ccc..",
+            "..w...w...w...",
+            "..w...w...w...",
+            ".PPPPPPPPPPP..",
+            ".PpppppppppP..",
+            ".PpcpppppcpP..",
+            ".PppppppppPP..",
+            "..PpppppppP...",
+            "..PpcppppcP...",
+            "..PppppppPP...",
+            "...PpppppP....",
+            "...PPPPPPP....",
+            "..............",
+        ), "a"),
     )),
-    # The two books the archer rework added: one long bolt under a ring, and three darts from one point.
-    ("aimed_bolt", "Aimed Bolt", "archer", 0xC79BFF, (
-        ("arrow", 3, 11, 12, 4, 2, "a"),
-        ("ring", 8, 8, 5, 1, "s"),
-        ("dot", 11, 4, 1, "h"),
+    ("aimed_bolt", "Aimed Bolt", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "......r....ww.",
+            "......r....Mw.",
+            "...rrrrrrrb...",
+            "..r...r..br...",
+            ".r....r.b..r..",
+            ".r....pb....r.",
+            "rrrr..pp.rrrr.",
+            ".r..........r.",
+            ".r....r....r..",
+            "..r...r...r...",
+            "...rrrrrrr....",
+            "......r.......",
+            "......r.......",
+            "..............",
+        ), "a"),
     )),
-    ("triangle_shot", "Triangle Shot", "archer", 0x9BE8A8, (
-        ("arrow", 5, 11, 5, 4, 1, "a"),
-        ("arrow", 8, 11, 8, 3, 1, "h"),
-        ("arrow", 11, 11, 11, 4, 1, "a"),
-        ("poly", "5,5 11,5 8,8", "s"),
+    ("triangle_shot", "Triangle Shot", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "......m.......",
+            ".....mMm......",
+            "......b.......",
+            ".mm...b...mm..",
+            ".mM...b...Mm..",
+            "...b..b..b....",
+            "....b.b.b.....",
+            ".....bbb......",
+            "......b.......",
+            "....gb.bg.....",
+            "....gg.gg.....",
+            "..............",
+            "....y.y.y.....",
+            "..............",
+        ), "a"),
     )),
     # ---- priest: gold and light, an octagon reliquary ----
     ("holy_light", "Holy Light", "priest", 0xFFF3C4, (
@@ -270,6 +450,7 @@ class Art:
 
     def __init__(self) -> None:
         self.layers: dict[str, tuple[Image.Image, ImageDraw.ImageDraw]] = {}
+        self.pixels: dict[tuple[int, int], tuple[int, int, int]] = {}
 
     def layer(self, key: str) -> ImageDraw.ImageDraw:
         if key not in self.layers:
@@ -288,6 +469,13 @@ def clip(value: float) -> float:
 def draw_ops(art: Art, ops: tuple[tuple, ...]) -> None:
     for op in ops:
         kind, args, key = op[0], op[1:-1], op[-1]
+        if kind == "pixels":
+            x0, y0, rows = args
+            for y, row in enumerate(rows):
+                for x, letter in enumerate(row):
+                    if letter != ".":
+                        art.pixels[(x0 + x, y0 + y)] = PIXELS[letter]
+            continue
         draw = art.layer(key)
         if kind == "dot":
             x, y, r = args
@@ -344,25 +532,20 @@ def draw_ops(art: Art, ops: tuple[tuple, ...]) -> None:
 
 
 def plate(school: str) -> tuple[Image.Image, Image.Image]:
-    """The school's plate, and the mask of the pixels the art may outline."""
-    frame, background, cut = SCHOOLS[school]
+    """The school's square tile, and the mask of the pixels the art may outline: all but the frame."""
+    frame, bevel, upper, lower = TILES[school]
     image = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    for y in range(SIZE):
-        for x in range(SIZE):
-            corner = min(x, y, SIZE - 1 - x, SIZE - 1 - y)
-            if corner < cut:
-                continue
-            if corner == cut:
-                image.putpixel((x, y), OUTLINE)
-            elif corner == cut + 1:
-                image.putpixel((x, y), frame + (255,))
-            else:
-                image.putpixel((x, y), background + (255,))
     solid = Image.new("L", (SIZE, SIZE), 0)
     for y in range(SIZE):
         for x in range(SIZE):
-            if image.getpixel((x, y))[3] != 0:
+            if x in (0, SIZE - 1) or y in (0, SIZE - 1):
+                colour = frame
+            elif x == 1 or y == 1:
+                colour = bevel
+            else:
+                colour = upper if y < SIZE // 2 + 1 else lower
+            image.putpixel((x, y), colour + (255,))
+            if 0 < x < SIZE - 1 and 0 < y < SIZE - 1:
                 solid.putpixel((x, y), 255)
     return image, solid
 
@@ -383,6 +566,8 @@ def render(path: str, school: str, accent: int, ops: tuple[tuple, ...]) -> Image
         if key == "k":
             continue
         art_mask.paste(255, mask=mask)
+    for spot in art.pixels:
+        art_mask.putpixel(spot, 255)
     # Outline every art pixel that touches the plate, so the shape holds on any background.
     edge = Image.new("L", (SIZE, SIZE), 0)
     for y in range(SIZE):
@@ -401,6 +586,8 @@ def render(path: str, school: str, accent: int, ops: tuple[tuple, ...]) -> Image
         mask = art.mask(key)
         if mask is not None:
             image.paste(colours[key], mask=mask)
+    for spot, colour in art.pixels.items():
+        image.putpixel(spot, colour + (255,))
     image.paste(colours["k"], mask=edge)
     return image
 
