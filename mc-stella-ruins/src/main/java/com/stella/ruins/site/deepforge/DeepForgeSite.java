@@ -21,7 +21,6 @@ public final class DeepForgeSite {
 	public static final ResourceKey<LootTable> VAULT_TABLE = ResourceKey.create(Registries.LOOT_TABLE, StellaRuins.id("chests/deep_forge"));
 	public static final ResourceKey<LootTable> CACHE_TABLE = ResourceKey.create(Registries.LOOT_TABLE, StellaRuins.id("chests/deep_forge_cache"));
 	public static final int ACTIVATION_RADIUS = 40;
-	public static final int CLUE_WEIGHT = 2;
 	/** The hammer's effect, kept so a test can clear its hit counts. */
 	static final ForgeheartEffect FORGEHEART = new ForgeheartEffect();
 
@@ -44,7 +43,6 @@ public final class DeepForgeSite {
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(VAULT_TABLE)
 			.unique(() -> new ItemStack(DeepForgeItems.HAMMER))
-			.clueWeight(CLUE_WEIGHT)
 			.register();
 	}
 }

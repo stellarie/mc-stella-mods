@@ -39,6 +39,7 @@ public final class MeteorCraterSite {
 			.vaultLoot(CraterMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(CraterItems.FALLEN_STAR))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("deep_forge")
 			.register();
 	}
 }

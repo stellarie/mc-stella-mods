@@ -314,6 +314,27 @@ public class ProvingRiteGameTest {
 	}
 
 	@GameTest(maxTicks = TICKS)
+	public void onlyATierThreeClearCanPayTheGladiusTrophy(final GameTestHelper helper) {
+		ProvingTestSupport.inArena(helper, arena -> {
+			RuinConfig.Values old = RuinConfig.replace(RuinConfig.get().withTrophy(1.0, 0.0));
+			try (ProvingTestSupport.Clock clock = new ProvingTestSupport.Clock()) {
+				ServerPlayer player = arena.wake();
+				int[] gladii = new int[3];
+				for (int tier = 1; tier <= 3; tier++) {
+					playTier(helper, arena, player, clock, tier);
+					gladii[tier - 1] = arena.itemsInVault(GroundsRewards.gladius());
+				}
+				ProvingTestSupport.result("tierThreeTrophy", "gladiusAfterTiers=" + java.util.Arrays.toString(gladii));
+				helper.assertTrue(gladii[0] == 0 && gladii[1] == 0, "a clear of tier I or II paid the trophy: " + java.util.Arrays.toString(gladii));
+				helper.assertTrue(gladii[2] == 1, "tier III left " + gladii[2] + " gladii in the vault at a trophy chance of 1.0, not 1");
+			} finally {
+				RuinConfig.replace(old);
+				com.stella.ruins.world.RuinPity.get(arena.level()).reset(ProvingGroundsSite.ID);
+			}
+		});
+	}
+
+	@GameTest(maxTicks = TICKS)
 	public void theVaultStaysSealedWhileATierRunsAndATierThatFailsPaysNothing(final GameTestHelper helper) {
 		ProvingTestSupport.inArena(helper, arena -> {
 			try (ProvingTestSupport.Clock clock = new ProvingTestSupport.Clock()) {

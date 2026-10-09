@@ -126,6 +126,9 @@ final class RuinRuns {
 			if (level.getBlockEntity(vault) instanceof RuinVaultBlockEntity chest) {
 				chest.setSealed(level, false);
 				chest.fill(level, site.vaultLoot(), rolls);
+				if (opened == 0) {
+					RuinTrophies.award(level, site, chest);
+				}
 				opened++;
 			}
 		}

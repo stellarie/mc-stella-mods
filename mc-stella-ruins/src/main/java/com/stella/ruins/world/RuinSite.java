@@ -1,5 +1,6 @@
 package com.stella.ruins.world;
 
+import java.util.List;
 import java.util.function.Supplier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
@@ -31,6 +32,7 @@ public final class RuinSite {
 	private final ResourceKey<LootTable> vaultLoot;
 	private final @Nullable Supplier<ItemStack> unique;
 	private final int clueWeight;
+	private final List<String> leads;
 
 	private RuinSite(final Builder b) {
 		this.id = b.id;
@@ -47,6 +49,7 @@ public final class RuinSite {
 		this.vaultLoot = b.vaultLoot;
 		this.unique = b.unique;
 		this.clueWeight = b.clueWeight;
+		this.leads = List.copyOf(b.leads);
 	}
 
 	public static Builder builder(final String id) {
@@ -115,6 +118,11 @@ public final class RuinSite {
 		return this.clueWeight;
 	}
 
+	/** The sites a clear of this site can point to, as clues in the vault. */
+	public List<String> leads() {
+		return this.leads;
+	}
+
 	public static final class Builder {
 		private final String id;
 		private SiteSize size = SiteSize.SMALL;
@@ -130,6 +138,7 @@ public final class RuinSite {
 		private @Nullable ResourceKey<LootTable> vaultLoot;
 		private @Nullable Supplier<ItemStack> unique;
 		private int clueWeight;
+		private List<String> leads = List.of();
 
 		private Builder(final String id) {
 			if (id == null || id.isEmpty() || !id.matches("[a-z0-9_/.-]+")) {
@@ -203,6 +212,12 @@ public final class RuinSite {
 				throw new IllegalArgumentException("the clue weight is negative");
 			}
 			this.clueWeight = weight;
+			return this;
+		}
+
+		/** The sites a clear may pay a clue to. A clue to an unknown site is a data error, so register() checks nothing about them. */
+		public Builder leads(final String... sites) {
+			this.leads = List.of(sites);
 			return this;
 		}
 

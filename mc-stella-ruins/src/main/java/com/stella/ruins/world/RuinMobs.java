@@ -16,6 +16,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -48,6 +49,19 @@ public final class RuinMobs {
 
 	public static boolean isRuinMob(final Entity entity) {
 		return entity.entityTags().contains(RuinMobKind.TAG_MOB);
+	}
+
+	/** The tag of a mob a boss or a trap called in. It rolls no kind table and no unique. */
+	public static final String TAG_SUMMONED = "mod-stella-ruins.summoned";
+
+	/** Marks a mob as called in by another mob or by a repeatable trigger. */
+	public static void markSummoned(final Mob mob) {
+		mob.addTag(TAG_SUMMONED);
+	}
+
+	/** True for a foe: an Enemy by vanilla class, or a ruin mob that carries the published hostile mark. */
+	public static boolean isFoe(final Entity entity) {
+		return entity instanceof Enemy || entity.entityTags().contains(RuinMobKind.TAG_HOSTILE);
 	}
 
 	/** The tag a mob carries for the core of the run that spawned it. */
@@ -126,7 +140,7 @@ public final class RuinMobs {
 		if (!(entity instanceof Mob mob) || !isRuinMob(mob) || !(mob.level() instanceof ServerLevel level)) {
 			return;
 		}
-		if (source.getEntity() instanceof ServerPlayer player) {
+		if (source.getEntity() instanceof ServerPlayer player && !mob.entityTags().contains(TAG_SUMMONED)) {
 			dropExtras(level, mob, source, player);
 		}
 		RuinRuns.onMobDeath(level, mob);

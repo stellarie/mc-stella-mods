@@ -41,6 +41,7 @@ public final class CrystalGrottoSite {
 			.vaultLoot(GrottoMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(GrottoItems.ECHO_PRISM))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("sealed_vault")
 			.register();
 	}
 }

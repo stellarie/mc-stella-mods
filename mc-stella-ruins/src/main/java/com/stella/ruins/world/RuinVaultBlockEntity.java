@@ -57,6 +57,18 @@ public final class RuinVaultBlockEntity extends BaseContainerBlockEntity {
 		setChanged();
 	}
 
+	/** Puts one stack in the first free slot. Returns false when the vault is full. */
+	public boolean addReward(final ItemStack stack) {
+		for (int slot = 0; slot < this.items.size(); slot++) {
+			if (this.items.get(slot).isEmpty()) {
+				this.items.set(slot, stack);
+				setChanged();
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@Override
 	protected Component getDefaultName() {
 		return Component.translatable("block.mod-stella-ruins.ruin_vault");

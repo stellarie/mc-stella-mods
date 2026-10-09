@@ -55,12 +55,12 @@ public class CampItemsGameTest {
 	}
 
 	@GameTest
-	public void gleamingOreChunksCraftTheProspectorsPickAndTheLuckyHeadlamp(final GameTestHelper helper) {
+	public void gleamingOreChunksCraftTheProspectorsPickButNotTheLuckyHeadlamp(final GameTestHelper helper) {
 		Item ore = CampItems.GLEAMING_ORE_CHUNK;
 		ItemStack pick = craft(helper, 3, 3, ore, ore, ore, null, Items.STICK, null, null, Items.STICK, null);
 		helper.assertTrue(pick.is(CampItems.PROSPECTORS_PICK) && pick.getCount() == 1, "three chunks and two sticks gave " + pick);
 		ItemStack lamp = craft(helper, 3, 2, ore, ore, ore, ore, Items.TORCH, ore);
-		helper.assertTrue(lamp.is(CampItems.LUCKY_HEADLAMP), "five chunks and a torch gave " + lamp);
+		helper.assertTrue(lamp.isEmpty(), "five chunks and a torch gave " + lamp + ", but the headlamp is a unique and has no recipe");
 		helper.assertTrue(craft(helper, 3, 3, ore, ore, ore, null, Items.STICK, null, null, Items.STICK, null).get(RuinUniques.UNIQUE) != null
 			&& craft(helper, 3, 3, ore, ore, ore, null, Items.STICK, null, null, Items.STICK, null).get(RuinUniques.UNIQUE).equals(ProspectorEffect.ID),
 			"the pick carries no prospector effect");

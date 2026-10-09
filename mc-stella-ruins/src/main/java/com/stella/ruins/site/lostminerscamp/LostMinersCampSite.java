@@ -37,6 +37,7 @@ public final class LostMinersCampSite {
 			.vaultLoot(CampMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(CampItems.LUCKY_HEADLAMP))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("deep_forge")
 			.register();
 	}
 }

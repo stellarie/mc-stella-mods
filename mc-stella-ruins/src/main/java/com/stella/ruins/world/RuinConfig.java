@@ -22,27 +22,40 @@ public final class RuinConfig {
 	public static final double DEFAULT_UNIQUE_DROP_CHANCE = 0.001;
 	public static final int DEFAULT_VAULT_LEVELS_PER_ROLL = 25;
 	public static final int DEFAULT_VAULT_ROLLS_MAX = 5;
+	public static final double DEFAULT_TROPHY_CHANCE = 0.04;
+	public static final double DEFAULT_PITY_STEP = 0.06;
+	public static final double DEFAULT_LEAD_CHANCE = 0.5;
 
 	/** One reading of the file. */
-	public record Values(double clueChance, double uniqueDropChance, int vaultLevelsPerRoll, int vaultRollsMax, Map<String, Integer> resetDays) {
+	public record Values(double clueChance, double uniqueDropChance, int vaultLevelsPerRoll, int vaultRollsMax, Map<String, Integer> resetDays,
+		double trophyChance, double pityStep, double leadChance) {
 		public Values {
 			resetDays = Map.copyOf(resetDays);
 		}
 
 		public static Values defaults() {
-			return new Values(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX, Map.of());
+			return new Values(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX, Map.of(),
+				DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE);
 		}
 
 		public Values withClueChance(final double value) {
-			return new Values(value, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays);
+			return new Values(value, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, this.leadChance);
 		}
 
 		public Values withUniqueDropChance(final double value) {
-			return new Values(this.clueChance, value, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays);
+			return new Values(this.clueChance, value, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, this.leadChance);
 		}
 
 		public Values withResetDays(final Map<String, Integer> value) {
-			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, value);
+			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, value, this.trophyChance, this.pityStep, this.leadChance);
+		}
+
+		public Values withTrophy(final double chance, final double step) {
+			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, chance, step, this.leadChance);
+		}
+
+		public Values withLeadChance(final double value) {
+			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, value);
 		}
 
 		/** How many times a vault rolls its table at this level. */
@@ -118,7 +131,10 @@ public final class RuinConfig {
 		} else if (resets != null) {
 			StellaRuins.LOGGER.warn("[RUINS] reset_days is not an object, skipped");
 		}
-		return new Values(clue, unique, perRoll, rollsMax, days);
+		double trophy = chance(object, "trophy_chance", defaults.trophyChance());
+		double pity = chance(object, "pity_step", defaults.pityStep());
+		double lead = chance(object, "lead_chance", defaults.leadChance());
+		return new Values(clue, unique, perRoll, rollsMax, days, trophy, pity, lead);
 	}
 
 	private static double chance(final JsonObject object, final String key, final double fallback) {
@@ -167,8 +183,12 @@ public final class RuinConfig {
 			  "unique_drop_chance": %s,
 			  "vault_levels_per_roll": %d,
 			  "vault_rolls_max": %d,
-			  "reset_days": {}
+			  "reset_days": {},
+			  "trophy_chance": %s,
+			  "pity_step": %s,
+			  "lead_chance": %s
 			}
-			""".formatted(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX);
+			""".formatted(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX,
+			DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE);
 	}
 }

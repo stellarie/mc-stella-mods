@@ -66,6 +66,7 @@ public final class WayshrineSite {
 			.vaultLoot(VAULT_LOOT)
 			.unique(() -> new ItemStack(WayshrineRewards.censer()))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("proving_grounds")
 			.register();
 	}
 }

@@ -156,6 +156,21 @@ public class KeepRewardGameTest {
 			.thenSucceed();
 	}
 
+	@GameTest(maxTicks = 300)
+	public void theBannerOfTheKeepAlsoRalliesWhenOnlyARuinFoeIsNear(final GameTestHelper helper) {
+		ServerPlayer holder = KeepTestSupport.joinPlayer(helper, 1.5, 1.5);
+		holder.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(KeepRewards.bannerOfTheKeep));
+		Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(helper.getLevel(), helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 1.0, 9.5)));
+		golem.setNoAi(true);
+		helper.startSequence()
+			.thenWaitUntil(() -> helper.assertTrue(holder.hasEffect(MobEffects.RESISTANCE), "a deep golem near the holder did not count as a hostile"))
+			.thenExecute(() -> {
+				golem.discard();
+				KeepTestSupport.leave(helper, holder);
+			})
+			.thenSucceed();
+	}
+
 	@GameTest
 	public void everyKeepItemIsExclusiveAndNoKeepRoomChestYieldsOne(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
@@ -197,7 +212,7 @@ public class KeepRewardGameTest {
 		helper.assertTrue(site.sizeX() == 48 && site.sizeY() == 48 && site.sizeZ() == 48, "the bounds are " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.claim().isOnce() && site.claim().resetTicks(site.id()) == -1L, "the claim is not once");
 		helper.assertTrue(site.activationRadius() == 32, "the activation radius is " + site.activationRadius());
-		helper.assertTrue(site.clueWeight() == 2, "the clue weight is " + site.clueWeight());
+		helper.assertTrue(site.clueWeight() == 0, "the clue weight is " + site.clueWeight());
 		helper.assertTrue(site.placement() instanceof com.stella.ruins.world.Placement.Surface surface && surface.maxSlope() == 6, "the placement is " + site.placement());
 		helper.assertTrue(site.placement().foundation() == 6, "the foundation is " + site.placement().foundation());
 		helper.assertTrue(site.hasUnique() && site.newUnique().is(KeepRewards.bannerOfTheKeep), "the site's unique is not the banner");

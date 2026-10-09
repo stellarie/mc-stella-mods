@@ -150,6 +150,7 @@ public class KeepMobGameTest {
 			List<Mob> kids = level.getEntitiesOfClass(Mob.class, castellan.getBoundingBox().inflate(40.0), m -> m.entityTags().contains(KeepMobs.SUMMON_TAG));
 			for (Mob kid : kids) {
 				helper.assertTrue(kid.entityTags().contains(RuinMobKind.TAG_KIND_PREFIX + "keep_sentinel"), "a summon is not a keep sentinel");
+				helper.assertTrue(kid.entityTags().contains(com.stella.ruins.world.RuinMobs.TAG_SUMMONED), "a summon does not carry the summoned tag");
 			}
 			// At half health or less, the summons stop.
 			castellan.setHealth(castellan.getMaxHealth() * 0.5F);

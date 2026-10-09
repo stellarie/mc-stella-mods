@@ -43,6 +43,7 @@ public final class SpiderNestSite {
 			.vaultLoot(NestMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(NestItems.WIDOWS_FANG))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("sealed_vault")
 			.register();
 	}
 }

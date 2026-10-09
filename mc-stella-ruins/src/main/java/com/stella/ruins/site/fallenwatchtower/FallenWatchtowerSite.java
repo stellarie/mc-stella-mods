@@ -39,6 +39,7 @@ public final class FallenWatchtowerSite {
 			.vaultLoot(WatchtowerMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(WatchtowerItems.LONGBOW))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("ruined_keep")
 			.register();
 	}
 }

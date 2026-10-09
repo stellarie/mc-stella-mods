@@ -10,6 +10,7 @@ import com.stella.ruins.world.RuinCoreBlockEntity;
 import com.stella.ruins.world.RuinData;
 import com.stella.ruins.world.RuinFrame;
 import com.stella.ruins.world.RuinMarkers;
+import com.stella.ruins.world.RuinTrophies;
 import com.stella.ruins.world.RuinVaultBlockEntity;
 import com.stella.ruins.world.Roster;
 import com.stella.ruins.world.SiteRun;
@@ -344,6 +345,9 @@ public final class TierObjective implements Objective {
 			if (level.getBlockEntity(vault) instanceof RuinVaultBlockEntity chest) {
 				chest.setSealed(level, false);
 				chest.fill(level, table, rolls);
+				if (opened == 0 && finished == TIERS) {
+					RuinTrophies.award(level, ProvingGroundsSite.site(), chest);
+				}
 				opened++;
 			}
 		}

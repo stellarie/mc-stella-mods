@@ -38,7 +38,6 @@ public final class RuinedKeepSite {
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(VAULT_LOOT)
 			.unique(() -> new ItemStack(KeepRewards.bannerOfTheKeep))
-			.clueWeight(2)
 			.register();
 	}
 }

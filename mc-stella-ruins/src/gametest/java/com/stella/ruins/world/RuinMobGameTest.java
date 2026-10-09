@@ -303,4 +303,22 @@ public class RuinMobGameTest {
 			mob.discard();
 		});
 	}
+
+	@GameTest(maxTicks = 6000)
+	public void theDeepGolemTheForgeGuardianAndTheArenaHoundCountAsFoes(final GameTestHelper helper) {
+		WorldTestSupport.inArena(helper, WorldTestInit.surface, arena -> {
+			for (String id : List.of("deep_golem", "forge_guardian", "arena_hound")) {
+				RuinMobKind kind = RuinMobKind.get(id);
+				helper.assertTrue(kind != null && kind.hostile(), id + " is not registered as a foe");
+				Mob mob = kind.spawn(arena.level(), spawnSpot(arena));
+				mob.setNoAi(true);
+				boolean tagged = mob.entityTags().contains(RuinMobKind.TAG_HOSTILE);
+				boolean foe = RuinMobs.isFoe(mob);
+				mob.discard();
+				WorldTestSupport.result("foeKind", "kind=" + id + " tagged=" + tagged + " foe=" + foe);
+				helper.assertTrue(tagged, id + " carries no hostile tag, so no spell treats it as a target");
+				helper.assertTrue(foe, id + " is not a foe to the ruin effects");
+			}
+		});
+	}
 }

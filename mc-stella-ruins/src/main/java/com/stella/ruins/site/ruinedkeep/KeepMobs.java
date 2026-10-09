@@ -4,6 +4,7 @@ import com.stella.ruins.StellaRuins;
 import com.stella.ruins.world.MobAbility;
 import com.stella.ruins.world.RuinData;
 import com.stella.ruins.world.RuinMobKind;
+import com.stella.ruins.world.RuinMobs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -160,6 +161,7 @@ public final class KeepMobs {
 			Mob summoned = sentinel.spawn(level, at);
 			if (summoned != null) {
 				summoned.addTag(SUMMON_TAG);
+				RuinMobs.markSummoned(summoned);
 				if (entry != null) {
 					entry.addMob(summoned.getUUID());
 				}

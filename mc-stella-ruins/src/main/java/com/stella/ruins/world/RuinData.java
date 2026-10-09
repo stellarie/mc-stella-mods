@@ -160,6 +160,21 @@ public final class RuinData extends SavedData {
 		return entry;
 	}
 
+	/** True when a core of this site within the radius, flat, has completed. Callers use it for once sites only. */
+	public boolean completedNear(final String site, final BlockPos pos, final int radius) {
+		long limit = (long) radius * radius;
+		for (Entry entry : this.entries.values()) {
+			if (entry.phase == RuinPhase.COMPLETE && entry.site.equals(site)) {
+				long dx = entry.pos.getX() - pos.getX();
+				long dz = entry.pos.getZ() - pos.getZ();
+				if (dx * dx + dz * dz <= limit) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	/** Drops a core's record and its roster index. */
 	public void forget(final BlockPos pos) {
 		Entry entry = this.entries.remove(pos);
