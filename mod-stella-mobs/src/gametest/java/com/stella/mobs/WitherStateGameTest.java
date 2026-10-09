@@ -2,6 +2,8 @@ package com.stella.mobs;
 
 import com.stella.mobs.behavior.WitherState;
 import com.stella.mobs.scaling.ThreatState;
+import java.util.List;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -19,13 +21,13 @@ import net.minecraft.world.phys.Vec3;
 public final class WitherStateGameTest {
 	@GameTest
 	public void codecRoundTrips(final GameTestHelper helper) {
-		WitherState state = new WitherState(true, 71.5);
+		WitherState state = new WitherState(true, 71.5, 25.2, true, false, WitherState.RAGE_BARRAGE, 431, List.of(UUID.randomUUID(), UUID.randomUUID()));
 		Tag encoded = WitherState.CODEC.encodeStart(NbtOps.INSTANCE, state).getOrThrow();
 		WitherState decoded = WitherState.CODEC.parse(NbtOps.INSTANCE, encoded).getOrThrow();
 		WitherState empty = WitherState.CODEC.parse(NbtOps.INSTANCE, new CompoundTag()).getOrThrow();
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherStateCodec RESULT decoded={} empty={}", decoded, empty);
 		helper.assertTrue(decoded.equals(state), "the state changed in a round trip: " + decoded);
-		helper.assertTrue(!empty.activated() && empty.anchorY() == 0.0, "an empty save did not give the defaults");
+		helper.assertTrue(empty.equals(WitherState.fresh()), "an empty save did not give the defaults: " + empty);
 		helper.succeed();
 	}
 

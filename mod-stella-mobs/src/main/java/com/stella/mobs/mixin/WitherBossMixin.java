@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,6 +21,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class WitherBossMixin {
 	@Shadow
 	private int destroyBlocksTick;
+
+	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
+	private float stellaMobs$healthDivisor(final float amount) {
+		return WitherEncounter.scaleDamage((WitherBoss) (Object) this, amount);
+	}
 
 	@Inject(method = "customServerAiStep", at = @At("HEAD"))
 	private void stellaMobs$keepBlocks(final ServerLevel level, final CallbackInfo callbackInfo) {

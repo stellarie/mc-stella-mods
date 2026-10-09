@@ -85,24 +85,26 @@ public final class WitherLevelGameTest {
 			player.experienceLevel = 0;
 			arena.finish();
 		});
-		WitherBoss wither = EntityTypes.WITHER.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
-		Vec3 spot = arena.at(28, 12, 40);
-		wither.snapTo(spot.x, spot.y, spot.z, 0.0F, 0.0F);
-		helper.getLevel().addFreshEntity(wither);
-		arena.track(wither);
-		int expected = 150 + config.getInt(WitherConfig.LEVEL_OVER_PLAYER);
-		int level = ThreatState.level(wither);
-		float health = wither.getMaxHealth();
-		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherSpawnLevel RESULT level={} health={} flag={}", level, health, WitherState.hasWitherFlag(wither));
-		helper.assertTrue(WitherState.hasWitherFlag(wither), "a fresh Wither has no encounter state");
-		helper.assertTrue(level == expected, "the Wither is level " + level + ", want " + expected);
-		// The vanilla attribute caps max health, so a high level reaches the cap.
-		double cap = ((RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
-		float scaled = (float) Math.min(cap, SpawnScaling.healthMultiplier(expected) * 300.0);
-		helper.assertTrue(Math.abs(health - scaled) < 1.0F, "max health " + health + ", want " + scaled);
-		player.experienceLevel = 500;
-		helper.assertTrue(ThreatState.level(wither) == expected, "the level moved with the player: " + ThreatState.level(wither));
-		helper.succeed();
+		arena.whenReady(List.of(new Vec3(28, 12, 40)), () -> {
+			WitherBoss wither = EntityTypes.WITHER.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
+			Vec3 spot = arena.at(28, 12, 40);
+			wither.snapTo(spot.x, spot.y, spot.z, 0.0F, 0.0F);
+			helper.getLevel().addFreshEntity(wither);
+			arena.track(wither);
+			int expected = 150 + config.getInt(WitherConfig.LEVEL_OVER_PLAYER);
+			int level = ThreatState.level(wither);
+			float health = wither.getMaxHealth();
+			StellaMobs.LOGGER.info("[BEHAVIOR] test=witherSpawnLevel RESULT level={} health={} flag={}", level, health, WitherState.hasWitherFlag(wither));
+			helper.assertTrue(WitherState.hasWitherFlag(wither), "a fresh Wither has no encounter state");
+			helper.assertTrue(level == expected, "the Wither is level " + level + ", want " + expected);
+			// The vanilla attribute caps max health, so a high level reaches the cap.
+			double cap = ((RangedAttribute) Attributes.MAX_HEALTH.value()).getMaxValue();
+			float scaled = (float) Math.min(cap, SpawnScaling.healthMultiplier(expected) * 300.0);
+			helper.assertTrue(Math.abs(health - scaled) < 1.0F, "max health " + health + ", want " + scaled);
+			player.experienceLevel = 500;
+			helper.assertTrue(ThreatState.level(wither) == expected, "the level moved with the player: " + ThreatState.level(wither));
+			helper.succeed();
+		});
 	}
 
 	@GameTest

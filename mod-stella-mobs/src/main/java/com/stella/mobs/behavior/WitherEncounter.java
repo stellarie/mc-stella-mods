@@ -6,6 +6,7 @@ import com.stella.mobs.config.ScalingConfigStore;
 import com.stella.mobs.config.WitherConfig;
 import com.stella.mobs.config.WitherConfigStore;
 import com.stella.mobs.mixin.MobTargetSelectorAccessor;
+import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.mobs.scaling.ThreatState;
 import java.util.List;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -13,6 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
@@ -73,7 +76,7 @@ public final class WitherEncounter {
 	public static void begin(final Mob wither, final ServerLevel level) {
 		int summonLevel = levelFor(level.players(), wither.position(), ScalingConfigStore.get(), WitherConfigStore.get());
 		((AttachmentTarget) wither).setAttached(ThreatState.TYPE, new ThreatState(summonLevel, 0, 0, 0));
-		WitherState.set(wither, new WitherState(false, 0.0));
+		WitherState.set(wither, WitherState.fresh());
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter BEGIN uuid={} level={}", wither.getUUID(), summonLevel);
 	}
 
@@ -103,7 +106,7 @@ public final class WitherEncounter {
 		if (state == null || state.activated() || wither.getInvulnerableTicks() > 0) {
 			return;
 		}
-		WitherState.set(wither, new WitherState(true, wither.getY()));
+		WitherState.set(wither, state.withActivated(wither.getY()));
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter ACTIVATE uuid={} anchorY={}", wither.getUUID(), wither.getY());
 	}
 
@@ -152,10 +155,26 @@ public final class WitherEncounter {
 		}
 	}
 
-	public static void reportSpawn(final Mob mob) {
-		if (WitherState.hasWitherFlag(mob)) {
-			StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter SPAWN uuid={} level={} health={}",
-				mob.getUUID(), ThreatState.level(mob), mob.getMaxHealth());
+	/**
+	 * Runs after the spawn scaling. The vanilla attribute caps max health, so the part it cannot hold is kept as a divisor
+	 * on every hit the Wither takes. The health bar and the rage thresholds still read health over max health.
+	 */
+	public static void afterScaling(final Mob mob) {
+		WitherState state = WitherState.find(mob);
+		if (state == null) {
+			return;
 		}
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		double formula = health.getBaseValue() * SpawnScaling.healthMultiplier(ThreatState.level(mob));
+		double divisor = Math.max(1.0, formula / mob.getMaxHealth());
+		WitherState.set(mob, state.withHealthDivisor(divisor));
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter SPAWN uuid={} level={} health={} formula={} divisor={}",
+			mob.getUUID(), ThreatState.level(mob), mob.getMaxHealth(), formula, divisor);
+	}
+
+	/** A hit's damage once the health the attribute could not hold is taken off. */
+	public static float scaleDamage(final Mob wither, final float amount) {
+		WitherState state = WitherState.find(wither);
+		return state != null && state.healthDivisor() > 1.0 ? (float) (amount / state.healthDivisor()) : amount;
 	}
 }

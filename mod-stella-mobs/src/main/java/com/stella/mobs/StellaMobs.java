@@ -247,7 +247,7 @@ public class StellaMobs implements ModInitializer {
 			com.stella.mobs.behavior.DepthMobs.rollAtSpawn(mob, level, entity instanceof EntityLoadData depthData ? depthData.spawnReason() : null);
 
 			SpawnScaling.apply(mob);
-			com.stella.mobs.behavior.WitherEncounter.reportSpawn(mob);
+			com.stella.mobs.behavior.WitherEncounter.afterScaling(mob);
 			BloodMoon.empower(mob, level);
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
