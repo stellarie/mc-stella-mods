@@ -207,7 +207,6 @@ public class SacObjectiveGameTest {
 				}
 				arena.core().pulse(arena.level());
 				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the nest did not complete: " + arena.phase());
-				helper.assertTrue(NestRegrowth.data(arena.level()).cores().contains(arena.corePos()), "the won nest is not remembered for regrowth");
 				BlockPos web = find(arena, NestPlan.WEB, true);
 				BlockPos cocoon = find(arena, NestPlan.COCOON, false);
 				BlockPos rock = findRockWall(arena);
@@ -216,15 +215,13 @@ public class SacObjectiveGameTest {
 				arena.level().setBlock(rock, Blocks.AIR.defaultBlockState(), 3);
 				now[0] = START + 3L * Claim.DAY_TICKS - 1L;
 				arena.core().pulse(arena.level());
-				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && !NestRegrowth.pollCore(arena.level(), arena.corePos()), "the nest grew back one tick early");
+				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the nest rearmed one tick early");
 				helper.assertTrue(arena.standing() == 0, "a sac grew back before the delay");
 				now[0] = START + 3L * Claim.DAY_TICKS;
 				arena.leave(player);
 				arena.core().pulse(arena.level());
 				helper.assertTrue(arena.phase() == RuinPhase.DORMANT && arena.vault().sealed(), "after three days: " + arena.phase());
-				boolean grown = NestRegrowth.pollCore(arena.level(), arena.corePos());
-				NestTestSupport.result("regrow", "grown=" + grown + " standing=" + arena.standing() + "/" + sacs);
-				helper.assertTrue(grown, "the poll did not grow the nest back");
+				NestTestSupport.result("regrow", "standing=" + arena.standing() + "/" + sacs);
 				helper.assertTrue(arena.standing() == sacs, "only " + arena.standing() + " of " + sacs + " sacs grew back");
 				for (BlockPos pos : arena.sacs()) {
 					helper.assertTrue(arena.level().getBlockState(pos).is(EggSacBlock.BLOCK), "no sac at its marker " + pos);
@@ -232,7 +229,6 @@ public class SacObjectiveGameTest {
 				helper.assertTrue(arena.level().getBlockState(web).is(Blocks.COBWEB), "the web did not grow back: " + arena.level().getBlockState(web));
 				helper.assertTrue(arena.level().getBlockState(cocoon).is(Blocks.WOOL.white()), "the cocoon did not grow back: " + arena.level().getBlockState(cocoon));
 				helper.assertTrue(arena.level().getBlockState(rock).isAir(), "mined rock grew back: " + arena.level().getBlockState(rock));
-				helper.assertTrue(!NestRegrowth.data(arena.level()).cores().contains(arena.corePos()), "the nest is still on the regrowth list");
 				ServerPlayer again = arena.wake();
 				helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && arena.objective().stage() == SacObjective.Stage.ARMED && arena.objective().total() == sacs, "the regrown nest did not arm again");
 				arena.leave(again);

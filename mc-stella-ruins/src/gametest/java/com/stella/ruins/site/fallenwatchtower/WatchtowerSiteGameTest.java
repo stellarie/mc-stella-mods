@@ -1,5 +1,6 @@
 package com.stella.ruins.site.fallenwatchtower;
 
+import com.stella.ruins.world.Claim;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -24,7 +25,7 @@ public class WatchtowerSiteGameTest {
 		RuinSite site = TowerTestSupport.site();
 		helper.assertTrue(site.sizeX() == 21 && site.sizeY() == 44 && site.sizeZ() == 21, "bounds " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.size() == com.stella.ruins.world.SiteSize.SMALL && site.placement() instanceof com.stella.ruins.world.Placement.Surface surface && surface.maxSlope() == 4, "placement " + site.placement());
-		helper.assertTrue(site.claim().isOnce(), "the claim is not once");
+		helper.assertTrue(!site.claim().isOnce() && site.claim().days() == 7 && site.claim().resetTicks(site.id()) == 7L * Claim.DAY_TICKS, "the claim is not a seven day reset");
 		helper.assertTrue(site.activationRadius() == FallenWatchtowerSite.ACTIVATION_RADIUS && site.clueWeight() == 3, "radius " + site.activationRadius() + " clue " + site.clueWeight());
 		helper.assertTrue(site.roster().isEmpty() && site.newObjective() instanceof GarrisonObjective, "the roster is fixed or the objective is not the garrison");
 		helper.assertTrue(site.hasUnique() && site.vaultLoot().equals(WatchtowerMobs.VAULT_LOOT), "unique or vault table");

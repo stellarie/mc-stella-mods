@@ -92,7 +92,7 @@ public class CampJournalGameTest {
 	}
 
 	@GameTest(maxTicks = MinerTestSupport.ARENA_TICKS)
-	public void theCompletedCoreStaysCompleteAfterThirtyDays(final GameTestHelper helper) {
+	public void theCompletedCoreRearmsAfterSevenDaysAndNotBefore(final GameTestHelper helper) {
 		MinerTestSupport.inArena(helper, SEED, arena -> {
 			MinerTestSupport.Joined joined = arena.wake();
 			arena.freeze();
@@ -104,18 +104,19 @@ public class CampJournalGameTest {
 			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core is " + arena.phase() + " before the wait");
 			long claimed = arena.entry().claimTime();
 			long base = RuinClock.now(arena.level());
-			RuinClock.Source old = RuinClock.replace(level -> base + 30L * Claim.DAY_TICKS);
+			RuinClock.Source old = RuinClock.replace(level -> base + 7L * Claim.DAY_TICKS - 1L);
 			try {
+				arena.core().pulse(arena.level());
+				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && arena.entry().claimTime() == claimed && !arena.vault().sealed(), "the camp reset one tick early: " + arena.phase());
+				RuinClock.replace(level -> base + 7L * Claim.DAY_TICKS);
 				arena.core().pulse(arena.level());
 			} finally {
 				RuinClock.replace(old);
 			}
-			MinerTestSupport.result("thirtyDays", "phase=" + arena.phase() + " claimed=" + claimed + " claimTime=" + arena.entry().claimTime()
-				+ " sealed=" + arena.vault().sealed() + " after=" + 30L * Claim.DAY_TICKS + " ticks");
-			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core rearmed to " + arena.phase() + " after 30 days");
-			helper.assertTrue(arena.entry().claimTime() == claimed, "the claim time moved to " + arena.entry().claimTime());
-			helper.assertTrue(!arena.vault().sealed(), "the cache shut again after 30 days");
-			helper.assertTrue(compasses(player) == 1, "the reader holds " + compasses(player) + " compasses after 30 days");
+			MinerTestSupport.result("sevenDays", "phase=" + arena.phase() + " claimed=" + claimed + " claimTime=" + arena.entry().claimTime() + " sealed=" + arena.vault().sealed());
+			helper.assertTrue(arena.phase() != RuinPhase.COMPLETE, "the core stayed COMPLETE after 7 days");
+			helper.assertTrue(arena.entry().claimTime() == -1L && arena.vault().sealed(), "the claim or the cache did not reset: " + arena.entry().claimTime() + " sealed " + arena.vault().sealed());
+			helper.assertTrue(compasses(player) == 1, "the reader holds " + compasses(player) + " compasses after the reset");
 		});
 	}
 

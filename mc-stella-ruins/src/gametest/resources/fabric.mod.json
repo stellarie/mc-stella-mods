@@ -24,6 +24,8 @@
 			"com.stella.ruins.world.RuinLootGameTest",
 			"com.stella.ruins.world.RuinTrophyGameTest",
 			"com.stella.ruins.world.RuinLeadGameTest",
+			"com.stella.ruins.world.RuinTierGameTest",
+			"com.stella.ruins.world.RuinOmenGameTest",
 			"com.stella.ruins.reward.RuinSetsGameTest",
 			"com.stella.ruins.reward.RuinAffixesGameTest",
 			"com.stella.ruins.reward.RuinUniquesGameTest",

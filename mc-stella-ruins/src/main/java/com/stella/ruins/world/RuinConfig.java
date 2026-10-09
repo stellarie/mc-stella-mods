@@ -25,37 +25,44 @@ public final class RuinConfig {
 	public static final double DEFAULT_TROPHY_CHANCE = 0.04;
 	public static final double DEFAULT_PITY_STEP = 0.06;
 	public static final double DEFAULT_LEAD_CHANCE = 0.5;
+	public static final int DEFAULT_TIER_CAP = 3;
+	public static final double DEFAULT_TIER_HEALTH_STEP = 0.25;
+	public static final double DEFAULT_TIER_DAMAGE_STEP = 0.10;
 
 	/** One reading of the file. */
 	public record Values(double clueChance, double uniqueDropChance, int vaultLevelsPerRoll, int vaultRollsMax, Map<String, Integer> resetDays,
-		double trophyChance, double pityStep, double leadChance) {
+		double trophyChance, double pityStep, double leadChance, int tierCap, double tierHealthStep, double tierDamageStep) {
 		public Values {
 			resetDays = Map.copyOf(resetDays);
 		}
 
 		public static Values defaults() {
 			return new Values(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX, Map.of(),
-				DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE);
+				DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE, DEFAULT_TIER_CAP, DEFAULT_TIER_HEALTH_STEP, DEFAULT_TIER_DAMAGE_STEP);
 		}
 
 		public Values withClueChance(final double value) {
-			return new Values(value, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, this.leadChance);
+			return new Values(value, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
 		}
 
 		public Values withUniqueDropChance(final double value) {
-			return new Values(this.clueChance, value, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, this.leadChance);
+			return new Values(clueChance, value, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
 		}
 
 		public Values withResetDays(final Map<String, Integer> value) {
-			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, value, this.trophyChance, this.pityStep, this.leadChance);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, value, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
 		}
 
 		public Values withTrophy(final double chance, final double step) {
-			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, chance, step, this.leadChance);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, chance, step, leadChance, tierCap, tierHealthStep, tierDamageStep);
 		}
 
 		public Values withLeadChance(final double value) {
-			return new Values(this.clueChance, this.uniqueDropChance, this.vaultLevelsPerRoll, this.vaultRollsMax, this.resetDays, this.trophyChance, this.pityStep, value);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, value, tierCap, tierHealthStep, tierDamageStep);
+		}
+
+		public Values withTiers(final int cap, final double healthStep, final double damageStep) {
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, cap, healthStep, damageStep);
 		}
 
 		/** How many times a vault rolls its table at this level. */
@@ -134,7 +141,10 @@ public final class RuinConfig {
 		double trophy = chance(object, "trophy_chance", defaults.trophyChance());
 		double pity = chance(object, "pity_step", defaults.pityStep());
 		double lead = chance(object, "lead_chance", defaults.leadChance());
-		return new Values(clue, unique, perRoll, rollsMax, days, trophy, pity, lead);
+		int tierCap = positive(object, "tier_cap", defaults.tierCap());
+		double healthStep = chance(object, "tier_health_step", defaults.tierHealthStep());
+		double damageStep = chance(object, "tier_damage_step", defaults.tierDamageStep());
+		return new Values(clue, unique, perRoll, rollsMax, days, trophy, pity, lead, tierCap, healthStep, damageStep);
 	}
 
 	private static double chance(final JsonObject object, final String key, final double fallback) {
@@ -186,9 +196,12 @@ public final class RuinConfig {
 			  "reset_days": {},
 			  "trophy_chance": %s,
 			  "pity_step": %s,
-			  "lead_chance": %s
+			  "lead_chance": %s,
+			  "tier_cap": %d,
+			  "tier_health_step": %s,
+			  "tier_damage_step": %s
 			}
 			""".formatted(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX,
-			DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE);
+			DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE, DEFAULT_TIER_CAP, DEFAULT_TIER_HEALTH_STEP, DEFAULT_TIER_DAMAGE_STEP);
 	}
 }

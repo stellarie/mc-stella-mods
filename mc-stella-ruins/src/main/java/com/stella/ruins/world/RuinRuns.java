@@ -34,7 +34,12 @@ final class RuinRuns {
 					activate(level, site, data, entry, core.markers());
 				}
 			}
-			case ACTIVE -> tickObjective(level, site, data, entry, core.markers());
+			case ACTIVE -> {
+				if (site.omens()) {
+					Omens.pulse(SiteRun.playersNear(level, pos, site.activationRadius()), Omens.of(entry.omens()));
+				}
+				tickObjective(level, site, data, entry, core.markers());
+			}
 			case COMPLETE -> {
 				long delay = site.claim().resetTicks(site.id());
 				if (delay >= 0 && RuinClock.now(level) - entry.claimTime() >= delay) {
@@ -97,6 +102,9 @@ final class RuinRuns {
 		entry.clearRoster();
 		entry.setClaimTime(-1L);
 		entry.setPhase(RuinPhase.ACTIVE);
+		List<Omen> omens = site.omens() ? Omens.roll(level.getRandom(), entry.tier()) : List.of();
+		entry.setOmens(Omens.ids(omens));
+		Omens.announce(SiteRun.playersNear(level, entry.pos(), site.activationRadius()), omens);
 		SiteRun run = new SiteRun(level, entry.pos(), site, data, markers);
 		run.spawn(site.roster());
 		Objective objective = site.newObjective();
@@ -120,7 +128,7 @@ final class RuinRuns {
 		entry.setPhase(RuinPhase.COMPLETE);
 		entry.setClaimTime(RuinClock.now(level));
 		int mobLevel = run.containerLevel();
-		int rolls = RuinConfig.get().vaultRolls(mobLevel);
+		int rolls = RuinConfig.get().vaultRolls(mobLevel) + entry.tier() + entry.omens().size();
 		int opened = 0;
 		for (BlockPos vault : run.markers(RuinMarkers.VAULT)) {
 			if (level.getBlockEntity(vault) instanceof RuinVaultBlockEntity chest) {
@@ -144,9 +152,14 @@ final class RuinRuns {
 		entry.clearRoster();
 		entry.setObjective(new CompoundTag());
 		entry.setClaimTime(-1L);
+		entry.setOmens(List.of());
+		entry.setTier(Math.min(RuinConfig.get().tierCap(), entry.tier() + 1));
 		boolean watched = !SiteRun.playersNear(level, entry.pos(), site.activationRadius()).isEmpty();
 		entry.setPhase(watched ? RuinPhase.COOLDOWN : RuinPhase.DORMANT);
-		StellaRuins.LOGGER.debug("[RUINS] core {} {} rearmed phase={}", site.id(), entry.pos().toShortString(), entry.phase());
+		StellaRuins.LOGGER.debug("[RUINS] core {} {} rearmed phase={} tier={}", site.id(), entry.pos().toShortString(), entry.phase(), entry.tier());
+		if (site.rearmHook() != null) {
+			site.rearmHook().onRearm(level, entry.pos(), markers);
+		}
 	}
 
 	/** Drops roster mobs the world can show are gone: found, and removed or dead. */

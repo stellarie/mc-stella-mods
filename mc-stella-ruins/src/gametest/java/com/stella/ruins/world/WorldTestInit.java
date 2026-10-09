@@ -63,6 +63,9 @@ public final class WorldTestInit implements ModInitializer {
 	static RuinSite findable;
 	static RuinSite trophy;
 	static RuinSite leader;
+	static RuinSite hooked;
+	/** Rearms the hooked site saw, by core. */
+	static final java.util.Map<net.minecraft.core.BlockPos, AtomicInteger> REARMS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	static ResourceKey<LootTable> table(final String path) {
 		return ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(NAMESPACE, path));
@@ -80,6 +83,8 @@ public final class WorldTestInit implements ModInitializer {
 			server.getPlayerList().setViewDistance(SIMULATION_DISTANCE);
 			// Trophies and leads add stacks to a vault, so the suite pins them off and a test that needs one turns it on.
 			RuinConfig.replace(RuinConfig.get().withTrophy(0.0, 0.0).withLeadChance(0.0));
+			// An omen changes a roster and a vault, so the suite rolls none and a test that needs one sets it.
+			Omens.replaceRoller((random, tier) -> java.util.List.of());
 		});
 		ResourceKey<Item> relicKey = ResourceKey.create(Registries.ITEM, StellaRuins.id("test_relic"));
 		relic = Registry.register(BuiltInRegistries.ITEM, relicKey, new Item(new Item.Properties().setId(relicKey)));
@@ -132,6 +137,8 @@ public final class WorldTestInit implements ModInitializer {
 			.objective(Objectives::clear).unique(() -> new ItemStack(Items.NETHER_STAR)).register();
 		leader = base("test_leader", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
 			.objective(Objectives::clear).leads("test_findable").register();
+		hooked = base("test_hooked", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
+			.objective(Objectives::clear).onRearm((level, core, markers) -> REARMS.computeIfAbsent(core, key -> new AtomicInteger()).incrementAndGet()).register();
 		findable = base("test_findable", yard).placement(Placement.surface(3)).roster(one).objective(Objectives::clear).register();
 	}
 

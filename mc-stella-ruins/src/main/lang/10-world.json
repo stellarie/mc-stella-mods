@@ -8,5 +8,11 @@
 	"message.mod-stella-ruins.core.dormant": "The core is dormant.",
 	"message.mod-stella-ruins.core.active": "The core is awake. Finish the trial.",
 	"message.mod-stella-ruins.core.complete": "The core is spent. The vault is open.",
-	"message.mod-stella-ruins.core.cooldown": "The core is resting."
+	"message.mod-stella-ruins.core.cooldown": "The core is resting.",
+	"message.mod-stella-ruins.omen": "An omen hangs over the ruin: %s",
+	"omen.mod-stella-ruins.frenzied": "Frenzied",
+	"omen.mod-stella-ruins.bulwark": "Bulwark",
+	"omen.mod-stella-ruins.ferocious": "Ferocious",
+	"omen.mod-stella-ruins.swarming": "Swarming",
+	"omen.mod-stella-ruins.hexed": "Hexed"
 }

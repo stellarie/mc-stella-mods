@@ -260,7 +260,7 @@ public class CoolingObjectiveGameTest {
 	}
 
 	@GameTest(maxTicks = TICKS)
-	public void theCoreStaysCompleteAfterThirtyDays(final GameTestHelper helper) {
+	public void aCooledCraterHeatsItsOreAgainWhenItsCoreRearmsAfterSevenDays(final GameTestHelper helper) {
 		CraterTestSupport.inArena(helper, SEED, arena -> {
 			long[] now = {5_000_000L};
 			RuinClock.Source saved = RuinClock.replace(level -> now[0]);
@@ -271,14 +271,17 @@ public class CoolingObjectiveGameTest {
 				now[0] += CoolingObjective.COOL_TICKS;
 				arena.core().pulse(arena.level());
 				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core is " + arena.phase());
+				int total = arena.markers(CraterMarkers.ORE).size();
 				int cooled = cooledOre(arena);
-				now[0] += 30L * 24_000L;
-				for (int i = 0; i < 3; i++) {
-					arena.core().pulse(arena.level());
-				}
-				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && !arena.vault().sealed() && cooledOre(arena) == cooled && hotOre(arena) == 0,
-					"after 30 days: " + arena.phase() + " sealed " + arena.vault().sealed());
-				CraterTestSupport.result("thirtyDays", "phase=" + arena.phase() + " cooled=" + cooledOre(arena));
+				helper.assertTrue(cooled > 0 && hotOre(arena) == 0, "the crater did not cool: cooled " + cooled + " hot " + hotOre(arena));
+				now[0] += 7L * 24_000L - 1L;
+				arena.core().pulse(arena.level());
+				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && cooledOre(arena) == cooled, "the crater reset one tick early: " + arena.phase());
+				now[0] += 1L;
+				arena.core().pulse(arena.level());
+				CraterTestSupport.result("sevenDays", "phase=" + arena.phase() + " hot=" + hotOre(arena) + " cooled=" + cooledOre(arena) + " of " + total + " vaultSealed=" + arena.vault().sealed());
+				helper.assertTrue(arena.phase() != RuinPhase.COMPLETE && arena.vault().sealed(), "after 7 days the core is " + arena.phase() + ", vault sealed " + arena.vault().sealed());
+				helper.assertTrue(hotOre(arena) == total && cooledOre(arena) == 0, "the ore did not heat again: hot " + hotOre(arena) + " cooled " + cooledOre(arena) + " of " + total);
 			} finally {
 				RuinClock.replace(saved);
 			}

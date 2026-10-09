@@ -202,7 +202,6 @@ final class NestTestSupport {
 				near.discard();
 			}
 			NestHeartbeat.clear(this.level, corePos());
-			NestRegrowth.forget(this.level, corePos());
 			RuinData.get(this.level).forget(corePos());
 			this.forced.forEach(chunk -> this.level.setChunkForced(chunk.x(), chunk.z(), false));
 		}

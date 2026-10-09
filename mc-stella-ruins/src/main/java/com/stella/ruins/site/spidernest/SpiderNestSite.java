@@ -30,7 +30,6 @@ public final class SpiderNestSite {
 		NestItems.register();
 		NestHeartbeat.register();
 		NestVaults.register();
-		NestRegrowth.register();
 		RuinSite.builder(ID)
 			.size(SiteSize.SMALL)
 			.placement(Placement.cave(-32, 48, COVER))
@@ -44,6 +43,7 @@ public final class SpiderNestSite {
 			.unique(() -> new ItemStack(NestItems.WIDOWS_FANG))
 			.clueWeight(CLUE_WEIGHT)
 			.leads("sealed_vault")
+			.onRearm((level, core, markers) -> NestRegrowth.regrow(level, core))
 			.register();
 	}
 }
