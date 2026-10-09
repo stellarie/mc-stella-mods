@@ -59,7 +59,14 @@ final class TowerTestSupport {
 
 	/** What a floor's mob of this rank holds: its own health times the mobs mod's multiplier for the floor's level. */
 	static double floorHealth(final double base, final int floor, final TowerRank rank) {
-		return base * com.stella.mobs.scaling.SpawnScaling.healthMultiplier(floor + 19) * rank.healthFactor();
+		return base * com.stella.mobs.scaling.SpawnScaling.healthMultiplier(levelOf(floor)) * rank.healthFactor();
+	}
+
+	/** The level of a floor's mob, written out apart from the production formula so a change to it fails here. */
+	static int levelOf(final int floor) {
+		int tens = (floor - 1) / 10;
+		int fifties = (floor - 1) / 50;
+		return 50 + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
 	}
 
 	static ServerLevel tower(final GameTestHelper helper) {
@@ -85,10 +92,11 @@ final class TowerTestSupport {
 	/**
 	 * Floors no earlier run has built: the test world keeps its floors, so a reused number proves nothing.
 	 * Runs start a minute and more apart, and a run takes some two thousand floors, so the start moves on
-	 * forty floors a second; forty million floors still lie well inside the world border.
+	 * forty floors a second. The start wraps after a day: a boss pays emeralds by its level, so the floor
+	 * numbers stay low enough that one boss does not drop millions of stacks and fill the heap.
 	 */
 	private static final java.util.concurrent.atomic.AtomicInteger NEXT_FLOOR =
-		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 40);
+		new java.util.concurrent.atomic.AtomicInteger(100_000 + (int) ((System.currentTimeMillis() / 1000L) % 100_000L) * 40);
 	/** Overworld areas no earlier run has rolled, counted apart from the floors. */
 	private static final java.util.concurrent.atomic.AtomicInteger NEXT_AREA =
 		new java.util.concurrent.atomic.AtomicInteger((int) ((System.currentTimeMillis() / 1000L) % 1_000_000L) * 8);

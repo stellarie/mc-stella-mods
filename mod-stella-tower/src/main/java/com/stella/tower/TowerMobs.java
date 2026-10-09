@@ -49,8 +49,10 @@ public final class TowerMobs {
 	public static final String TAG = "mod-stella-tower.mob";
 	/** Mobs from the mobs mod roll no elites of their own in the tower; the tower decides that. */
 	public static final String NO_SPAWN_ROLL_TAG = StellaMobs.NO_SPAWN_ROLL_TAG;
-	/** The first floor is a level 20 mob, and each floor adds one level. */
-	public static final int FIRST_FLOOR_LEVEL = 20;
+	/** The first floor is a level 50 mob. */
+	public static final int FIRST_FLOOR_LEVEL = 50;
+	/** A lost room's level is its floor plus this, less one. The room keeps this rule apart from the floors'. */
+	public static final int LOST_ROOM_FLOOR_OFFSET = 20;
 	public static final int FLOOR_CAP = 72;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
 	public static final int SPAWN_BATCH = 8;
@@ -113,9 +115,14 @@ public final class TowerMobs {
 		return entity.getAttached(STATE);
 	}
 
-	/** The mob level of a floor. */
+	/**
+	 * The mob level of a floor: 50 on floor 1, one more per floor, ten more at each tenth floor, and fifty
+	 * instead of ten at each fiftieth.
+	 */
 	public static int levelOf(final int floor) {
-		return floor + FIRST_FLOOR_LEVEL - 1;
+		int tens = (floor - 1) / 10;
+		int fifties = (floor - 1) / 50;
+		return FIRST_FLOOR_LEVEL + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
 	}
 
 	/** The kinds a floor may hold. */

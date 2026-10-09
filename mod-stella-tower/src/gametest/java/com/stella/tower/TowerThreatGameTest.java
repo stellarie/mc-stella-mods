@@ -111,7 +111,7 @@ public class TowerThreatGameTest {
 		tower.addFreshEntity(pig);
 		pig.hurtServer(tower, zombie.damageSources().mobAttack(zombie), 3.0F);
 		float lost = 1000.0F - pig.getHealth();
-		double expected = 3.0 * com.stella.mobs.scaling.SelfScaled.factor(floor + 19);
+		double expected = 3.0 * com.stella.mobs.scaling.SelfScaled.factor(TowerTestSupport.levelOf(floor));
 		TowerTestSupport.result("mobHitsHarder", "lost=" + lost + " expected=" + expected);
 		zombie.discard();
 		pig.discard();

@@ -336,6 +336,8 @@ public final class TowerTraps {
 		int room = TowerLayout.floorAt(pos);
 		RandomSource random = tower.getRandom();
 		List<EntityType<? extends Mob>> pool = TowerMobs.pool(floor);
+		// A lost room's trap calls mobs of the room's own level, not of the floors' formula.
+		int level = room > 0 ? TowerMobs.levelOf(floor) : floor + TowerMobs.LOST_ROOM_FLOOR_OFFSET - 1;
 		// A kind that finds no room is let go, and another called in its place.
 		for (int called = 0; called < AMBUSH * 4 && spawned.size() < AMBUSH; called++) {
 			if (room > 0 && TowerMobs.count(tower, room) >= TowerMobs.FLOOR_CAP) {
@@ -360,7 +362,7 @@ public final class TowerTraps {
 				mob.discard();
 				continue;
 			}
-			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)]);
+			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)], TowerRank.MOB, level);
 			if (tower.addFreshEntity(mob)) {
 				spawned.add(mob);
 			}

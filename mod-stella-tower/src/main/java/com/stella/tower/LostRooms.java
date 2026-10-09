@@ -91,7 +91,7 @@ public final class LostRooms {
 
 	/** The tower floor a mob level matches: its rewards, gear and pool. */
 	public static int equivalentFloor(final int level) {
-		return Math.max(1, level - TowerMobs.FIRST_FLOOR_LEVEL + 1);
+		return Math.max(1, level - TowerMobs.LOST_ROOM_FLOOR_OFFSET + 1);
 	}
 
 	/** The floor a trap in a lost room springs as: its room's level; 1 anywhere else. */

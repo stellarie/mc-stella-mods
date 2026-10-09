@@ -19,14 +19,38 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
-/** A tower mob is a mob of level floor + 19, and the mobs mod's curves do the rest. */
+/** A tower mob is a mob of its floor's level, and the mobs mod's curves do the rest. */
 public class TowerLevelGameTest {
-	private static final int[] FLOORS = {1, 10, 200};
+	private static final int[] FLOORS = {1, 10, 51, 200};
 	private static final float HIT = 3.0F;
 
-	/** Pinned apart from the production constant, so a change to it fails here. */
 	private static int levelOf(final int floor) {
-		return floor + 19;
+		return TowerTestSupport.levelOf(floor);
+	}
+
+	/** Catches a formula that is off by one at a tenth or a fiftieth floor. */
+	@GameTest
+	public void levelsMatchTheTableAtEveryBoundary(final GameTestHelper helper) {
+		int[] floors = {1, 10, 11, 20, 21, 50, 51, 60, 100, 101};
+		int[] want = {50, 59, 70, 79, 90, 139, 190, 199, 279, 330};
+		for (int i = 0; i < floors.length; i++) {
+			int level = TowerMobs.levelOf(floors[i]);
+			TowerTestSupport.result("levelBoundary", "floor=" + floors[i] + " level=" + level + " want=" + want[i]);
+			helper.assertTrue(level == want[i], "floor " + floors[i] + " is level " + level + ", not " + want[i]);
+		}
+		helper.succeed();
+	}
+
+	/** Catches a lost room that follows the new floor formula: it keeps the level it was opened at. */
+	@GameTest
+	public void aLostRoomKeepsItsOwnFloorOffset(final GameTestHelper helper) {
+		for (int level : new int[] {20, 45, 120, 300}) {
+			int floor = LostRooms.equivalentFloor(level);
+			int back = floor + TowerMobs.LOST_ROOM_FLOOR_OFFSET - 1;
+			TowerTestSupport.result("lostRoomOffset", "level=" + level + " floor=" + floor + " back=" + back);
+			helper.assertTrue(back == level, "level " + level + " maps to floor " + floor + " and back to " + back);
+		}
+		helper.succeed();
 	}
 
 	@GameTest
