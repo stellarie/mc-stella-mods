@@ -149,6 +149,17 @@ The red slime is a beginner mob.
 - A biome holds at most 2 red slimes. After one dies, that biome waits 10 seconds before a new one spawns at a random spot.
 - It drops 1 to 3 slime balls, and a Potion of Healing half of the time.
 
+## True invisibility (`TrueInvisibility`)
+
+The invisibility effect hides a player from mobs and hides the player's equipment, for every job.
+
+- A mob that is not undead never targets an invisible player, and drops a target it holds within one tick.
+- An undead mob (tag `#minecraft:undead`) sees the player as it would without the effect.
+- Any damage the player deals reveals the player for 200 ticks (10 seconds). The player then draws in full and every mob can target them. Full invisibility returns when the 200 ticks end.
+- A hidden player shows no armor, held item, stuck arrow, bee stinger, elytra, cape, or head item. A revealed player shows all of them.
+- **Limits:** the reveal is not saved, so a server restart ends it. A player who drinks the potion after an attack starts hidden. Mobs that read their target from a Brain (piglin, hoglin, warden) rely on the `canAttack` gate and have no test. The first-person hand still draws.
+- **Manual check:** drink an invisibility potion. A spider and a pillager ignore you, a zombie attacks, and no equipment shows in third person. After one hit you show for 10 seconds.
+
 ## Danger sense
 
 When an elite, a boss, or a mob at least 10 levels above your experience level starts hunting you, the action bar warns
