@@ -188,7 +188,7 @@ public final class BiomeBlocks {
 	public static boolean ground(final byte code) {
 		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS || code == COBBLE
 			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS || code == PODZOL
-			|| code == SNOW_BLOCK || code == PACKED_ICE || code == SAND || code == RED_SAND || code == SANDSTONE || code == CUT_SANDSTONE || code == BASALT || code == TUFF || code == CALCITE;
+			|| code == SNOW_BLOCK || code == PACKED_ICE || code == SAND || code == RED_SAND || code == SANDSTONE || code == CUT_SANDSTONE || code == BASALT || code == TUFF || code == CALCITE || code == CRACKED_DEEPSLATE;
 	}
 
 	/** Whether the entry is a block that shuts out the light, so that grass under it would die. */

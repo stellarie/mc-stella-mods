@@ -37,6 +37,7 @@ final class BiomeGen {
 	/** Steps of the portal's stair on an ordinary floor, and on an elite or a boss floor. */
 	private static final int STEPS = 5;
 	private static final int GUARDED_STEPS = 6;
+	private static final int HALL_STEPS = 8;
 	/** Chest nooks drawn on every floor, how far they lie from the arrival by foot, and apart from each other. */
 	private static final int NOOKS = 8;
 	private static final int NOOK_WALK = 30;
@@ -51,7 +52,7 @@ final class BiomeGen {
 
 	/** The plan of a biome floor: drawn and proved by a walk, or the plain yard. */
 	static TowerPlan plan(final long seed, final int floor) {
-		FloorBiome biome = FloorBiomes.of(seed, floor);
+		FloorBiome biome = floor % TowerElites.BOSS_EVERY == 0 ? FloorBiome.GREAT_HALL : FloorBiomes.of(seed, floor);
 		for (int attempt = 0; attempt < TowerPlan.ATTEMPTS; attempt++) {
 			Random random = new Random(TowerPlan.mix(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L) ^ (attempt * 0xC2B2AE3D27D4EB4FL)));
 			TowerPlan drawn = draw(seed, floor, biome, attempt, random, true);
@@ -73,7 +74,11 @@ final class BiomeGen {
 
 	private static TowerPlan draw(final long seed, final int floor, final FloorBiome biome, final int attempt, final Random random, final boolean features) {
 		Work w = new Work(seed, floor, biome, random);
-		w.ends();
+		if (biome == FloorBiome.GREAT_HALL) {
+			w.hallEnds();
+		} else {
+			w.ends();
+		}
 		w.terrain(features);
 		w.prepare();
 		if (features) {
@@ -90,6 +95,7 @@ final class BiomeGen {
 				case DESERT_STORM -> w.desert();
 				case AMETHYST_CAVE -> w.cave();
 				case SUNKEN_CATACOMBS -> w.catacombs();
+				case GREAT_HALL -> w.hall();
 			}
 		}
 		w.nooks();
@@ -182,7 +188,7 @@ final class BiomeGen {
 			this.floor = floor;
 			this.biome = biome;
 			this.random = random;
-			this.steps = floor % TowerElites.ELITE_EVERY == 0 ? GUARDED_STEPS : STEPS;
+			this.steps = biome == FloorBiome.GREAT_HALL ? HALL_STEPS : floor % TowerElites.ELITE_EVERY == 0 ? GUARDED_STEPS : STEPS;
 		}
 
 		// ---- cells
@@ -321,7 +327,7 @@ final class BiomeGen {
 				case BASALT_DELTAS -> 13;
 				case DESERT_STORM -> 22;
 				case AMETHYST_CAVE -> 10;
-				case SUNKEN_CATACOMBS -> 16;
+				case SUNKEN_CATACOMBS, GREAT_HALL -> 16;
 			};
 			double scale = switch (this.biome) {
 				case RAINY_FOREST -> 3.4;
@@ -335,7 +341,7 @@ final class BiomeGen {
 				case ETERNAL_SNOWSTORM -> 4.4;
 				case DESERT_STORM -> 5.4;
 				case AMETHYST_CAVE -> 2.5;
-				case SUNKEN_CATACOMBS -> 0.0;
+				case SUNKEN_CATACOMBS, GREAT_HALL -> 0.0;
 			};
 			byte base = switch (this.biome) {
 				case SCORCHED_BATTLEFIELD -> BiomeBlocks.BLACKSTONE;
@@ -345,6 +351,7 @@ final class BiomeGen {
 				case DESERT_STORM -> BiomeBlocks.SAND;
 				case AMETHYST_CAVE -> BiomeBlocks.TUFF;
 				case SUNKEN_CATACOMBS -> BiomeBlocks.STONE_BRICKS;
+				case GREAT_HALL -> BiomeBlocks.DEEPSLATE_BRICKS;
 				default -> BiomeBlocks.GRASS;
 			};
 			byte patch = switch (this.biome) {
@@ -356,6 +363,7 @@ final class BiomeGen {
 				case DESERT_STORM -> BiomeBlocks.RED_SAND;
 				case AMETHYST_CAVE -> BiomeBlocks.CALCITE;
 				case SUNKEN_CATACOMBS -> BiomeBlocks.MOSSY_BRICKS;
+				case GREAT_HALL -> BiomeBlocks.CRACKED_DEEPSLATE;
 				default -> BiomeBlocks.MUD;
 			};
 			for (int x = 0; x < N; x++) {
@@ -491,6 +499,10 @@ final class BiomeGen {
 		// ---- the spine
 
 		void route() {
+			if (this.biome == FloorBiome.GREAT_HALL) {
+				this.spine = nave();
+				return;
+			}
 			int[] from = {this.ax, this.az};
 			int[] to = {this.foot, this.pz};
 			int k = 3 + this.random.nextInt(3);
@@ -1828,6 +1840,89 @@ final class BiomeGen {
 			}
 		}
 
+		// ---- the great hall
+
+		/** The ends of a hall: the arrival at one end of the nave, the portal's stair at the other, on the nave's middle line. */
+		void hallEnds() {
+			this.facing = this.random.nextBoolean() ? -1 : 1;
+			this.ax = this.facing == -1 ? 6 : 57;
+			this.px = this.facing == -1 ? 53 : 10;
+			this.pz = 31;
+			this.az = 31;
+			this.foot = this.px + this.facing * (2 + this.steps);
+			int a = this.px - this.facing * 3;
+			int b = this.px + this.facing * (2 + this.steps + TowerElites.GUARD_DISTANCE_BIOME + 3);
+			this.boxX0 = Math.min(a, b) - 1;
+			this.boxX1 = Math.max(a, b) + 1;
+			this.boxZ0 = this.pz - 4 - this.steps;
+			this.boxZ1 = this.pz + 5 + this.steps;
+		}
+
+		/** The spine of a hall runs straight down the nave. */
+		private List<int[]> nave() {
+			List<int[]> line = new ArrayList<>();
+			for (int x = this.ax; x != this.foot; x += Integer.signum(this.foot - this.ax)) {
+				line.add(new int[] {x, this.pz});
+			}
+			line.add(new int[] {this.foot, this.pz});
+			return line;
+		}
+
+		/**
+		 * The hall: walls three thick, a vaulted rock roof, two rows of pillars down the nave, pews between them and the
+		 * carpet, and a gallery over each aisle, on pillars with a railing. The boss walks the nave; there is no safe room.
+		 */
+		void hall() {
+			boolean[][] open = new boolean[N][N];
+			for (int x = 3; x < N - 3; x++) {
+				for (int z = 3; z < N - 3; z++) {
+					open[x][z] = true;
+				}
+			}
+			boolean[][] solid = rock(open);
+			int low = this.facing == -1 ? 12 : this.foot + 6;
+			int high = this.facing == -1 ? this.foot - 6 : 52;
+			for (int x = low; x <= high; x += 6) {
+				for (int z : new int[] {22, 40}) {
+					if (free(x, z, 1)) {
+						stack(x, z, BiomeBlocks.DEEPSLATE_BRICKS, 22);
+					}
+				}
+			}
+			int from = this.facing == -1 ? this.ax + 8 : this.foot + 8;
+			int to = this.facing == -1 ? this.foot - 8 : this.ax - 8;
+			for (int x = from; x <= to; x++) {
+				if ((x - from) % 4 == 3) {
+					continue;
+				}
+				for (int z : new int[] {25, 26, 27, 35, 36, 37}) {
+					if (free(x, z)) {
+						put(x, this.h[x][z], z, BiomeBlocks.PLANKS);
+						this.used[x][z] = true;
+					}
+				}
+			}
+			for (int x = 3; x < N - 3; x++) {
+				for (int z = 3; z < N - 3; z++) {
+					boolean aisle = z <= 18 || z >= 45;
+					if (aisle) {
+						put(x, 6, z, BiomeBlocks.STONE_BRICKS);
+					}
+					if ((z == 18 || z == 45) && x >= 4 && x < N - 4) {
+						put(x, 7, z, BiomeBlocks.COBBLE_WALL);
+					}
+				}
+			}
+			for (int x = 6; x < N - 3; x += 6) {
+				for (int z : new int[] {18, 45}) {
+					if (free(x, z)) {
+						stack(x, z, BiomeBlocks.DEEPSLATE_BRICKS, 6);
+					}
+				}
+			}
+			enclose(solid, (x, z) -> 30 - Math.abs(z - 31) / 5, new byte[] {BiomeBlocks.DEEPSLATE_BRICKS, BiomeBlocks.CRACKED_DEEPSLATE});
+		}
+
 		// ---- chest nooks
 
 		/** The columns a body reaches from the arrival, in steps, by the ground alone: a coarse stand-in for the walk proof. */
@@ -1914,8 +2009,8 @@ final class BiomeGen {
 				int fx = cx + face.getStepX();
 				int fz = cz + face.getStepZ();
 				if (!free(cx, cz, 1) || !in(bx, bz, 1) || !in(fx, fz, 1) || this.h[cx][cz] != base || this.h[fx][fz] != base
-					|| this.keep[bx][bz] != 0 || this.used[bx][bz] || this.water[bx][bz] || this.tall[bx][bz] || this.used[fx][fz]
-					|| this.keep[fx][fz] != 0 || this.water[fx][fz] || this.tall[fx][fz] || get(cx, base, cz) != 0 || get(fx, base, fz) != 0
+					|| this.keep[bx][bz] != 0 || this.used[bx][bz] || this.water[bx][bz] || this.lava[bx][bz] || this.tall[bx][bz] || this.used[fx][fz]
+					|| this.keep[fx][fz] != 0 || this.water[fx][fz] || this.lava[fx][fz] || this.tall[fx][fz] || get(cx, base, cz) != 0 || get(fx, base, fz) != 0
 					|| this.h[bx][bz] > base + 1) {
 					return false;
 				}

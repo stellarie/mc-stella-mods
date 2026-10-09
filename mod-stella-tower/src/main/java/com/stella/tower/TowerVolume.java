@@ -418,6 +418,9 @@ public final class TowerVolume implements TowerWalk.Space {
 		for (int i = 0; i < placed.length; i += 4) {
 			block(placed[i], placed[i + 1], placed[i + 2], (byte) placed[i + 3]);
 		}
+		for (TowerPlan.Station station : plan.stations()) {
+			set(station.x(), 0, station.z(), STATION);
+		}
 	}
 
 	private void portal(final TowerPlan plan) {

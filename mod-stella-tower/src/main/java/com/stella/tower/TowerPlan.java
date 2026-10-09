@@ -732,6 +732,9 @@ public record TowerPlan(
 	 * room's north wall, inside the ring: the classic row turned as the plan was. Empty on any other floor.
 	 */
 	public List<Station> stations() {
+		if (this.biome != null) {
+			return biomeStations();
+		}
 		if (this.hall != TowerMaze.BOSS_HALL) {
 			return List.of();
 		}
@@ -748,6 +751,21 @@ public record TowerPlan(
 			stations.add(new Station(at[0], at[1], face, i));
 		}
 		return stations;
+	}
+
+	/**
+	 * Floor 1's crafting table, furnace and anvil, in its safe zone, on the row of the zone farthest from the arrival's
+	 * row. A biome floor has no other safe zone, so no other floor has stations.
+	 */
+	private List<Station> biomeStations() {
+		if (this.floor != 1 || this.safeZones.isEmpty()) {
+			return List.of();
+		}
+		TowerMaze.Zone zone = this.safeZones.get(0);
+		boolean near = Math.abs(this.arrivalZ - zone.z() - 1) < 2;
+		int z = zone.z() + (near ? TowerMaze.SAFE - 2 : 1);
+		net.minecraft.core.Direction in = near ? net.minecraft.core.Direction.NORTH : net.minecraft.core.Direction.SOUTH;
+		return List.of(new Station(zone.x() + 2, z, null, 0), new Station(zone.x() + 4, z, in, 1), new Station(zone.x() + 6, z, in, 2));
 	}
 
 	/** Whether the floor's safe room is walled in a ring: a boss floor's. */

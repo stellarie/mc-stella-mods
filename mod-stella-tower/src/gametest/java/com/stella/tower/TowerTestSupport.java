@@ -112,13 +112,13 @@ final class TowerTestSupport {
 
 	/** A fresh biome floor that passes the test, from a block of floors taken whole. */
 	static int freshBiomeFloorWhere(final java.util.function.IntPredicate wanted) {
-		int start = NEXT_BIOME_FLOOR.getAndAdd(40);
-		for (int floor = start; floor < start + 36; floor++) {
+		int start = NEXT_BIOME_FLOOR.getAndAdd(80);
+		for (int floor = start; floor < start + 76; floor++) {
 			if (wanted.test(floor)) {
 				return floor;
 			}
 		}
-		throw new IllegalStateException("no biome floor in " + start + ".." + (start + 35) + " fits");
+		throw new IllegalStateException("no biome floor in " + start + ".." + (start + 75) + " fits");
 	}
 
 	/** Overworld areas no earlier run has rolled, counted apart from the floors. */

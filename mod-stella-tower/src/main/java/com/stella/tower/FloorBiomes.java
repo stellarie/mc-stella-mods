@@ -24,14 +24,14 @@ public final class FloorBiomes {
 		if (floor <= 1) {
 			return first(seed);
 		}
-		int count = FloorBiome.values().length;
+		int count = FloorBiome.DRAWN.size();
 		int index = floor - 2;
-		return FloorBiome.values()[block(seed, Math.floorDiv(index, count))[index % count]];
+		return FloorBiome.DRAWN.get(block(seed, Math.floorDiv(index, count))[index % count]);
 	}
 
 	private static FloorBiome first(final long seed) {
 		List<FloorBiome> gentle = new ArrayList<>();
-		for (FloorBiome biome : FloorBiome.values()) {
+		for (FloorBiome biome : FloorBiome.DRAWN) {
 			if (biome.gentle()) {
 				gentle.add(biome);
 			}
@@ -43,7 +43,7 @@ public final class FloorBiomes {
 	static int[] block(final long seed, final int block) {
 		int[] order = shuffle(seed, block);
 		int count = order.length;
-		int[] before = block == 0 ? new int[] {first(seed).ordinal()} : last(shuffle(seed, block - 1));
+		int[] before = block == 0 ? new int[] {FloorBiome.DRAWN.indexOf(first(seed))} : last(shuffle(seed, block - 1));
 		int mend = count >= TWO_BACK_FROM ? 2 : 1;
 		for (int place = 0; place < mend; place++) {
 			if (!contains(before, order[place])) {
@@ -76,7 +76,7 @@ public final class FloorBiomes {
 	}
 
 	private static int[] shuffle(final long seed, final int block) {
-		int count = FloorBiome.values().length;
+		int count = FloorBiome.DRAWN.size();
 		int[] order = new int[count];
 		for (int i = 0; i < count; i++) {
 			order[i] = i;

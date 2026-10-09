@@ -32,7 +32,9 @@ public enum FloorBiome {
 	/** Caves of tuff under a rock roof, with geodes of amethyst, stalagmites and pools. */
 	AMETHYST_CAVE("amethyst_cave", false, TowerSkin.CALCITE, true),
 	/** Rooms of stone brick cut from rock, joined by halls, some flooded, under a low roof. */
-	SUNKEN_CATACOMBS("sunken_catacombs", false, TowerSkin.STONE_BRICKS, false);
+	SUNKEN_CATACOMBS("sunken_catacombs", false, TowerSkin.STONE_BRICKS, false),
+	/** The nave of a boss floor: pillars, pews and galleries under a vault, and the portal on a stair of eight steps. Never drawn among the others. */
+	GREAT_HALL("great_hall", false, TowerSkin.GILDED_BLACKSTONE, false);
 
 	/** What blows across a floor of this biome, in the open. */
 	public enum Weather {
@@ -41,8 +43,8 @@ public enum FloorBiome {
 		SAND
 	}
 
-	/** The biomes a floor is drawn among. */
-	public static final java.util.List<FloorBiome> DRAWN = java.util.List.of(values());
+	/** The biomes an ordinary floor is drawn among: all but the hall of a boss floor. */
+	public static final java.util.List<FloorBiome> DRAWN = java.util.Arrays.stream(values()).filter(biome -> biome != GREAT_HALL).toList();
 
 	private final Weather weather;
 	private final String id;

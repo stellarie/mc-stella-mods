@@ -18,7 +18,8 @@ public class TowerBiomeSetGameTest {
 	private static List<Integer> floorsOf(final long seed, final FloorBiome biome, final int count) {
 		List<Integer> floors = new ArrayList<>();
 		for (int floor = 2; floors.size() < count && floor < 100_000; floor++) {
-			if (FloorBiomes.of(seed, floor) == biome) {
+			// A boss floor is a great hall, whatever the draw would give it.
+			if (floor % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, floor) == biome) {
 				floors.add(floor);
 			}
 		}
@@ -38,7 +39,7 @@ public class TowerBiomeSetGameTest {
 			adjacent += biome == before ? 1 : 0;
 			before = biome;
 		}
-		double share = 1.0 / FloorBiome.values().length;
+		double share = 1.0 / FloorBiome.DRAWN.size();
 		double sigma = Math.sqrt(floors * share * (1 - share));
 		StringBuilder off = new StringBuilder();
 		for (FloorBiome biome : FloorBiome.DRAWN) {
@@ -48,7 +49,7 @@ public class TowerBiomeSetGameTest {
 			}
 		}
 		int twoBack = 0;
-		if (FloorBiome.values().length >= 6) {
+		if (FloorBiome.DRAWN.size() >= 6) {
 			for (int floor = 4; floor < 2 + floors; floor++) {
 				twoBack += FloorBiomes.of(SEED, floor) == FloorBiomes.of(SEED, floor - 2) ? 1 : 0;
 			}
@@ -62,7 +63,7 @@ public class TowerBiomeSetGameTest {
 		helper.assertTrue(adjacent == 0, adjacent + " floors share the biome of the floor below");
 		helper.assertTrue(twoBack == 0, twoBack + " floors share the biome of the floor two below");
 		helper.assertTrue(gentle, "floor 1 drew a biome that is not a gentle one");
-		helper.assertTrue(counts.size() == FloorBiome.values().length, "only " + counts.keySet() + " came up");
+		helper.assertTrue(counts.size() == FloorBiome.DRAWN.size(), "only " + counts.keySet() + " came up");
 		helper.succeed();
 	}
 
@@ -93,7 +94,7 @@ public class TowerBiomeSetGameTest {
 		TowerTestSupport.result("biomeDraws", report.toString());
 		helper.assertTrue(wrong == 0, wrong + " plans carry another biome than the one asked");
 		helper.assertTrue(stuck == 0, stuck + " plans have no walk to the portal: " + report);
-		helper.assertTrue(fallbacks * 200 <= per * FloorBiome.values().length, fallbacks + " plans fell back to the plain yard: " + report);
+		helper.assertTrue(fallbacks * 200 <= per * FloorBiome.DRAWN.size(), fallbacks + " plans fell back to the plain yard: " + report);
 		helper.succeed();
 	}
 
@@ -290,6 +291,19 @@ public class TowerBiomeSetGameTest {
 			before.add(snapshot(tower, plan));
 			}
 		}
+		// The hall of a boss floor stands still as well.
+		int hall = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY == 0);
+		TowerFloors.ensure(tower, hall);
+		TowerPlan hallPlan = TowerPlan.at(tower, hall);
+		BlockPos hallOrigin = hallPlan.origin();
+		for (int cx = (hallOrigin.getX() - 1) >> 4; cx <= (hallOrigin.getX() + TowerLayout.SIZE) >> 4; cx++) {
+			for (int cz = (hallOrigin.getZ() - 1) >> 4; cz <= (hallOrigin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+				tower.setChunkForced(cx, cz, true);
+				forced.add(new ChunkPos(cx, cz));
+			}
+		}
+		plans.add(hallPlan);
+		before.add(snapshot(tower, hallPlan));
 		helper.runAfterDelay(400, () -> {
 			StringBuilder report = new StringBuilder();
 			int changed = 0;

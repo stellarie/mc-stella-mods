@@ -41,7 +41,7 @@ public class TowerWeatherGameTest {
 		int nearTheRoad = 0;
 		int nearTheStair = 0;
 		for (int floor = 2; plans < 40 && floor < 5000; floor++) {
-			if (FloorBiomes.of(SEED, floor) != FloorBiome.BASALT_DELTAS) {
+			if (floor % TowerElites.BOSS_EVERY == 0 || FloorBiomes.of(SEED, floor) != FloorBiome.BASALT_DELTAS) {
 				continue;
 			}
 			plans++;
