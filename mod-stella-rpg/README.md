@@ -595,6 +595,29 @@ This mod lists the gear of its siblings itself, each id with `"required": false`
 the nine crafted bows of `mod-stella-equips-enchants`, and the swords, axes, hammer, bows, and six armor sets of `mod-stella-ruins`.
 A new sibling item needs one line here. No sibling mod changes.
 
+## Mined material bonuses
+
+Deep mining feeds crafted gear. The path has four steps, and each has its own section below.
+
+1. A player mines copper, iron, gold, or diamond ore, or ancient debris. The drop carries one profile of 1 to 4 bonuses, and rarely an enchantment. See `Mined material profiles`.
+2. A furnace keeps the bonus on the smelted result. See `Stacking and smelting`.
+3. A recipe sums the bonuses and the enchantments of its materials into the result. See `Craft sum`.
+4. The gear gives the stats while it is held or worn. The stats screen, the tooltip, and `Stat-bonus contract` use the same two maps.
+
+Materials and gear from chests and containers carry nothing. Equipment that a mob drops, a trade, fishing, or a vault gives keeps the random gear roll.
+Pickaxes, shovels, and hoes carry nothing, and the bonus of a material used in them is lost.
+
+## Stacking and smelting
+
+Two mined stacks merge only when their item and bonus maps are equal. A tier has 8 to 16 fixed profiles, so mined stacks of one profile merge and a deep mine fills at most 8 to 16 stacks of raw ore per tier, plus rare enchanted ones.
+
+- A furnace smelts one profile at a time. It refuses a stack of another profile in the output slot until the player takes the output. This is the vanilla furnace rule.
+- A hopper into a furnace waits while the input holds a different profile. A hopper out of the output slot empties it, so a line keeps running. Test this in play.
+- A chest sorter with one furnace per profile removes the manual work.
+- Unpacking a storage block divides the bonus by the result count and rounds down, and an enchanted block cannot unpack. Packing and unpacking never raises the total.
+- An outside smelter that builds its result without `Recipe#assemble` loses the bonus.
+- Ore Regeneration and a placed ore each give one normal roll per break. Silk Touch gives the ore block, which carries nothing.
+
 ## Mined material profiles
 
 A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.
@@ -877,6 +900,7 @@ Game tests run headless on a server. A new test class must be listed in
 | Mixin | Target |
 |---|---|
 | `RpgCraftRollMixin` | `Item#onCraftedBy`, at `HEAD`. Marks uncovered gear as rolled |
+| `RpgDurabilityMixin` | `ItemStack#processDurabilityChange`, at `RETURN`, cancellable. Applies `durability_pct` |
 | `RpgCraftSumMixin` | `ShapedRecipe#assemble` and `ShapelessRecipe#assemble`, at `RETURN`, cancellable |
 | `RpgRepairSumMixin` | `RepairItemRecipe#assemble`, at `RETURN`, cancellable |
 | `RpgSmithingSumMixin` | `SmithingTransformRecipe#assemble`, at `RETURN`, cancellable |
