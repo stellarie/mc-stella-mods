@@ -401,6 +401,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   - `items`: weapon item ids. `armor_items`: armor item ids. An unknown id logs one error and the parser skips it.
   - `min` and `max`: integers from 1 to 1024, with `min` at most `max`. A bad pair uses the default range.
   - The tier keys are `wood`, `stone`, `copper`, `gold`, `iron`, `diamond`, `netherite`, `ranged`, and `heavy`.
+- `material_rolls` holds the mined material bonuses. See `Mined material profiles`.
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
 
@@ -577,6 +578,28 @@ A recipe hands its result the sum of its materials. One item of each slot counts
   Gear smelted into a material carries nothing. A furnace output stacks only with the same bonus set, so a different set waits until the output is taken.
 - Grid repair of two gear pieces keeps the bonus of the piece with the higher stat total. It does not sum and it does not reroll.
 - The ruins affix smithing recipe and recipes that build their own result are not covered.
+
+## Mined material profiles
+
+A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.
+Equal profiles are equal maps, so mined stacks of one profile stack together. A tier has at most `profiles` distinct sets.
+
+| Tier | Mined drop | Stat range | Count weights 1, 2, 3, 4 | Profiles | Enchant chance |
+|---|---|---|---|---|---|
+| `copper` | `raw_copper` | 1 to 2 | 55, 30, 12, 3 | 8 | 0.1% |
+| `iron` | `raw_iron` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.2% |
+| `gold` | `raw_gold` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.4% |
+| `diamond` | `diamond` | 2 to 4 | 30, 32, 24, 14 | 16 | 2.0% |
+| `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 16 | 3.0% |
+
+- A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per profile.
+  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, and reduction %.
+  An affix value is the range of the gear tier times `affix_scale` (0.25), and at least 1. The gear tier of `debris` is `netherite`.
+- Depth raises the weight of strong profiles. A profile weighs `1 + depth_rank_weight x depth x rank`, and `rank` runs from 0 for the weakest to 1 for the strongest.
+- `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.
+- Each tier key holds `items`, `min`, `max`, `count_weights`, `profiles` (1 to 256), `enchant_chance`, and `explicit`.
+  `explicit` lists exact sets such as `{"str": 5}`. A non-empty list replaces the generated sets. A bad entry logs one error and is skipped.
+- Items already mined keep their maps after a config change. A new set does not merge with an old one.
 
 ## Stat-bonus contract
 

@@ -74,7 +74,8 @@
 			"com.stella.rpg.BonusGrantGameTest",
 			"com.stella.rpg.StatBonusReachGameTest",
 			"com.stella.rpg.CraftSumGameTest",
-			"com.stella.rpg.SmeltBonusGameTest"
+			"com.stella.rpg.SmeltBonusGameTest",
+			"com.stella.rpg.MaterialProfilesGameTest"
 		]
 	},
 	"depends": {

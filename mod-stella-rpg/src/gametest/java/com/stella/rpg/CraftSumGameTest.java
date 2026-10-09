@@ -266,4 +266,24 @@ public final class CraftSumGameTest {
 		helper.assertTrue(BonusTestSupport.level(upgraded, sharpness) == 1, "sharpness " + BonusTestSupport.level(upgraded, sharpness));
 		helper.succeed();
 	}
+
+	@GameTest
+	public void craftRandomRollToggleKeepsTheOldRoll(final GameTestHelper helper) {
+		try {
+			RpgConfigStore.set(RpgConfigStore.parse("{\"material_rolls\":{\"craft_random_roll\":true},\"weapon_rolls\":{\"affix_chance\":0}}", message -> { }));
+			ServerPlayer player = RpgTestSupport.realPlayer(helper);
+			CraftingMenu menu = menu(helper, player);
+			fillSword(menu, new ItemStack(Items.DIAMOND), new ItemStack(Items.DIAMOND));
+			menu.clicked(0, 0, ContainerInput.PICKUP, player);
+			Map<String, Integer> plain = BonusTestSupport.stats(menu.getCarried());
+			menu.setCarried(ItemStack.EMPTY);
+			ItemStack summed = BonusTestSupport.craft(helper, 1, 3, BonusTestSupport.rolled(Items.DIAMOND, 1, Map.of("str", 2)), new ItemStack(Items.DIAMOND), new ItemStack(Items.STICK));
+			RpgTestSupport.result("craftRandomRollToggleKeepsTheOldRoll", "plain=" + plain + " summed=" + BonusTestSupport.stats(summed));
+			helper.assertTrue(plain != null && !plain.isEmpty() && plain.values().stream().allMatch(value -> value >= 3 && value <= 7), "plain craft rolls " + plain);
+			helper.assertTrue(Map.of("str", 2).equals(BonusTestSupport.stats(summed)), "a material sum must win over the random roll: " + BonusTestSupport.stats(summed));
+		} finally {
+			RpgConfigStore.set(null);
+		}
+		helper.succeed();
+	}
 }

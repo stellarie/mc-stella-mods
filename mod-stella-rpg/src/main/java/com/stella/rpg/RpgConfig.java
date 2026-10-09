@@ -12,7 +12,8 @@ import net.minecraft.resources.Identifier;
 public record RpgConfig(
 	Map<Effect, Curve> curves, double critMultiplier, DiceRules dice, Map<String, Map<Stat, Double>> mobStats,
 	double mobAmplifier, Map<String, ArmorSet> armorSets, WeaponRolls weaponRolls, double healthScale,
-	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling, HpRules hp
+	double mobDiceShare, StatTables tables, XpCurve xpCurve, MagicRules magic, ScalingRules scaling, HpRules hp,
+	MaterialRolls materialRolls
 ) {
 	public static final double DEFAULT_CRIT_MULTIPLIER = 1.5;
 	public static final String CRIT_MULTIPLIER_KEY = "crit_multiplier";
@@ -33,6 +34,8 @@ public record RpgConfig(
 	public static final String AFFIX_CHANCE_KEY = "affix_chance";
 	public static final String AFFIXES_KEY = "affixes";
 	public static final double DEFAULT_AFFIX_CHANCE = 0.30;
+	public static final String MATERIAL_ROLLS_KEY = "material_rolls";
+	public static final long DEFAULT_MATERIAL_SEED = 20261009L;
 	public static final double MAX_MOB_BASE = StatSheet.CEILING;
 	private static final Map<Affix, AffixRange> AFFIXES_WOOD = affixes(3, 8, 2, 4, 15, 30, 1, 2, 1, 3, 0.5, 1);
 	private static final Map<Affix, AffixRange> AFFIXES_STONE = affixes(5, 12, 3, 5, 25, 50, 2, 3, 2, 4, 1, 1.5);
@@ -45,6 +48,7 @@ public record RpgConfig(
 	public static final Map<String, Map<Stat, Double>> DEFAULT_MOB_STATS = defaultMobStats();
 	public static final Map<String, ArmorSet> DEFAULT_ARMOR_SETS = defaultArmorSets();
 	public static final WeaponRolls DEFAULT_WEAPON_ROLLS = defaultWeaponRolls();
+	public static final MaterialRolls DEFAULT_MATERIAL_ROLLS = defaultMaterialRolls();
 	public static final List<String> REMOVED_KEYS = List.of("melee_damage", "ranged_damage");
 
 	public record Curve(double max, double half) {
@@ -63,6 +67,27 @@ public record RpgConfig(
 	}
 
 	public record WeaponRolls(List<Integer> countWeights, Map<String, RollTier> tiers, double affixChance) {
+	}
+
+	/**
+	 * One mined material tier. {@code items} are the ore drops that roll it. A profile is a fixed set of 1 to 4 bonuses,
+	 * and {@code profiles} is how many sets exist. {@code explicit} lists exact sets, and a non-empty list replaces the generated ones.
+	 */
+	public record MaterialTier(
+		List<Identifier> items, int min, int max, List<Integer> countWeights, int profiles, double enchantChance,
+		List<Map<String, Integer>> explicit
+	) {
+	}
+
+	/**
+	 * The mined material bonuses. {@code craftRandomRoll} keeps the old random roll on crafted gear that has no material bonus.
+	 * Typed affixes make up {@code affixShare} of the picks and use the gear tier range times {@code affixScale}.
+	 * Depth raises the weight of strong profiles by {@code depthRankWeight} and the enchant chance by {@code depthEnchantBonus}.
+	 */
+	public record MaterialRolls(
+		boolean craftRandomRoll, long seed, double affixShare, double affixScale, double depthRankWeight,
+		double depthEnchantBonus, double secondEnchantChance, Map<String, MaterialTier> tiers
+	) {
 	}
 
 	/**
@@ -192,7 +217,8 @@ public record RpgConfig(
 		}
 		return new RpgConfig(Map.copyOf(curves), DEFAULT_CRIT_MULTIPLIER, DiceRules.DEFAULT, DEFAULT_MOB_STATS,
 			DEFAULT_MOB_AMPLIFIER, DEFAULT_ARMOR_SETS, DEFAULT_WEAPON_ROLLS, DEFAULT_HEALTH_SCALE, DEFAULT_MOB_DICE_SHARE,
-			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT, HpRules.DEFAULT);
+			StatTables.DEFAULT, XpCurve.DEFAULT, MagicRules.DEFAULT, ScalingRules.DEFAULT, HpRules.DEFAULT,
+			DEFAULT_MATERIAL_ROLLS);
 	}
 
 	/** Base stats per role, in Stat order: STR, AGI, VIT, DEX, INT, LUK. */
@@ -229,6 +255,22 @@ public record RpgConfig(
 		tiers.put("heavy", tier(3, 7, List.of("trident", "mace"), List.of(), AFFIXES_DIAMOND));
 		tiers.put("void", tier(6, 12, List.of(), List.of(), AFFIXES_VOID));
 		return new WeaponRolls(List.of(50, 35, 15), Map.copyOf(tiers), DEFAULT_AFFIX_CHANCE);
+	}
+
+	private static MaterialRolls defaultMaterialRolls() {
+		Map<String, MaterialTier> tiers = new LinkedHashMap<>();
+		tiers.put("copper", materialTier("raw_copper", 1, 2, List.of(55, 30, 12, 3), 8, 0.001));
+		tiers.put("iron", materialTier("raw_iron", 1, 3, List.of(45, 32, 17, 6), 12, 0.002));
+		tiers.put("gold", materialTier("raw_gold", 1, 3, List.of(45, 32, 17, 6), 12, 0.004));
+		tiers.put("diamond", materialTier("diamond", 2, 4, List.of(30, 32, 24, 14), 16, 0.02));
+		tiers.put("debris", materialTier("ancient_debris", 1, 3, List.of(30, 32, 24, 14), 16, 0.03));
+		return new MaterialRolls(false, DEFAULT_MATERIAL_SEED, 0.25, 0.25, 3.0, 2.0, 0.15, Map.copyOf(tiers));
+	}
+
+	private static MaterialTier materialTier(
+		final String item, final int min, final int max, final List<Integer> weights, final int profiles, final double enchantChance
+	) {
+		return new MaterialTier(vanilla(List.of(item)), min, max, weights, profiles, enchantChance, List.of());
 	}
 
 	/** Ranges in the order of {@link Affix}: damage, MATK, HP, reduction, each flat then percent. K units. */

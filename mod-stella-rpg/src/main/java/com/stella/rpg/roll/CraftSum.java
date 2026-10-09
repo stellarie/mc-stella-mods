@@ -1,5 +1,6 @@
 package com.stella.rpg.roll;
 
+import com.stella.rpg.RpgConfigStore;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -112,8 +113,12 @@ public final class CraftSum {
 		final ItemEnchantments existing
 	) {
 		if (kind != null) {
-			result.set(WeaponRolls.STAT_ROLLS, Map.copyOf(stats));
 			Map<String, Integer> fitting = BonusMath.keepKeys(affixes, key -> Affix.byKey(key).filter(affix -> affix.rollsOn(kind)).isPresent());
+			// With the toggle on, gear from plain materials stays unrolled and takes the old random roll.
+			boolean leaveUnrolled = stats.isEmpty() && fitting.isEmpty() && RpgConfigStore.current().materialRolls().craftRandomRoll();
+			if (!leaveUnrolled) {
+				result.set(WeaponRolls.STAT_ROLLS, Map.copyOf(stats));
+			}
 			if (!fitting.isEmpty()) {
 				result.set(WeaponRolls.AFFIX_ROLLS, Map.copyOf(fitting));
 			}
