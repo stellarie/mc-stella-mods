@@ -295,9 +295,13 @@ public final class TowerFloors {
 	/** How many blocks a step sets between looks at the clock. */
 	private static final int CLOCK_EVERY = 1;
 	private static final int SPAN_XZ = TowerLayout.SIZE + 2;
-	private static final int SPAN_Y = TowerVolume.HIGH - TowerVolume.LOW + 1;
-	/** Every block a floor's building sets before its finish: the room and its walls, bedrock to roof. */
-	public static final int CELLS = SPAN_XZ * SPAN_Y * SPAN_XZ;
+	/** Every block the building of the tallest floor sets before its finish: the room and its walls, bedrock to roof. */
+	public static final int CELLS = SPAN_XZ * (TowerLayout.ROOM_HEIGHT - TowerLayout.ROOM_LOW + 1) * SPAN_XZ;
+
+	/** Every block a plan's building sets before its finish: the room and its walls, bedrock to roof. */
+	static int cellsOf(final TowerPlan plan) {
+		return SPAN_XZ * (plan.roofY() - plan.low() + 1) * SPAN_XZ;
+	}
 
 	/** One floor's building, block by block in a fixed order, a short stretch a step, then the traps, the chests, and the marker. */
 	private static final class Build {
@@ -315,6 +319,7 @@ public final class TowerFloors {
 		private @Nullable List<Map.Entry<BlockPos, BlockState>> stations;
 		private int trapIndex;
 		private int mistIndex;
+		private int paintIndex;
 		private int stationIndex;
 		private int chestIndex;
 		private int lootIndex;
@@ -418,13 +423,14 @@ public final class TowerFloors {
 			}
 			TowerPlan plan = this.plan;
 			TowerVolume volume = this.volume;
-			if (this.cell < CELLS) {
+			int cells = cellsOf(plan);
+			if (this.cell < cells) {
 				long until = System.nanoTime() + STEP_WORK_NANOS;
 				TowerTheme theme = plan.theme();
 				do {
 					buildCell(this.tower, this.floor, this.cell, plan, theme, volume);
 					this.cell++;
-				} while (this.cell < CELLS && (this.cell % CLOCK_EVERY != 0 || System.nanoTime() < until));
+				} while (this.cell < cells && (this.cell % CLOCK_EVERY != 0 || System.nanoTime() < until));
 				return Step.PROGRESS;
 			}
 			return finishStep(plan);
@@ -445,6 +451,13 @@ public final class TowerFloors {
 			int lowZ = (origin.getZ() - 1) >> 4;
 			int chunksX = ((origin.getX() + TowerLayout.SIZE) >> 4) - lowX + 1;
 			int chunksZ = ((origin.getZ() + TowerLayout.SIZE) >> 4) - lowZ + 1;
+			if (plan.isBiome() && !TowerBuffs.isBossFloor(this.floor) && this.paintIndex < chunksX * chunksZ) {
+				int cx = lowX + this.paintIndex / chunksZ;
+				int cz = lowZ + this.paintIndex % chunksZ;
+				TowerBiomes.paintChunk(this.tower, cx, cz, plan.biome().biome());
+				this.paintIndex++;
+				return Step.PROGRESS;
+			}
 			if (TowerBuffs.isBossFloor(this.floor) && this.mistIndex < chunksX * chunksZ) {
 				int cx = lowX + this.mistIndex / chunksZ;
 				int cz = lowZ + this.mistIndex % chunksZ;
@@ -507,8 +520,9 @@ public final class TowerFloors {
 	 */
 	private static void buildCell(final ServerLevel tower, final int floor, final int index, final TowerPlan plan, final TowerTheme theme,
 		final TowerVolume volume) {
-		int lx = index / (SPAN_Y * SPAN_XZ) - 1;
-		int y = (index / SPAN_XZ) % SPAN_Y + TowerVolume.LOW;
+		int spanY = plan.roofY() - plan.low() + 1;
+		int lx = index / (spanY * SPAN_XZ) - 1;
+		int y = (index / SPAN_XZ) % spanY + plan.low();
 		int lz = index % SPAN_XZ - 1;
 		BlockPos origin = TowerLayout.origin(floor);
 		int size = TowerLayout.SIZE;
@@ -517,7 +531,7 @@ public final class TowerFloors {
 		if (edge) {
 			// The corner that marks the floor as built goes down last, in the finish.
 			if (!(lx == -1 && lz == -1 && y == -1)) {
-				tower.setBlock(pos, y == TowerVolume.LOW ? Blocks.BEDROCK.defaultBlockState() : TowerBlocks.TOWER_WALL.defaultBlockState(), BUILD_FLAGS);
+				tower.setBlock(pos, y == plan.low() ? Blocks.BEDROCK.defaultBlockState() : TowerBlocks.TOWER_WALL.defaultBlockState(), BUILD_FLAGS);
 			}
 			return;
 		}
@@ -551,6 +565,7 @@ public final class TowerFloors {
 			case TowerVolume.CHAIN -> Blocks.IRON_CHAIN.defaultBlockState();
 			case TowerVolume.CLUSTER -> Blocks.AMETHYST_CLUSTER.defaultBlockState().setValue(AmethystClusterBlock.FACING, Direction.DOWN);
 			case TowerVolume.FRAME -> TowerBlocks.TOWER_FRAME.defaultBlockState();
+			case TowerVolume.BIOME_BLOCK -> BiomeBlocks.state(volume.code(x, y, z));
 			case TowerVolume.PORTAL_FILL -> TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.Z);
 			default -> Blocks.AIR.defaultBlockState();
 		};
@@ -582,7 +597,7 @@ public final class TowerFloors {
 		}
 		TowerVolume volume = TowerVolume.of(plan);
 		TowerTheme theme = plan.theme();
-		for (int cell = 0; cell < CELLS; cell++) {
+		for (int cell = 0; cell < cellsOf(plan); cell++) {
 			buildCell(tower, room, cell, plan, theme, volume);
 		}
 		finishRoom(tower, room, plan, trapFloor, lootFloor);

@@ -90,6 +90,9 @@ public final class TowerTraps {
 			return List.of();
 		}
 		Random random = new Random(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L));
+		if (plan.isBiome()) {
+			return biomeLayout(random, theme, plan);
+		}
 		List<int[]> cells = new ArrayList<>();
 		int startX = plan.arrivalCell()[0];
 		int startZ = plan.arrivalCell()[1];
@@ -147,6 +150,48 @@ public final class TowerTraps {
 				z = pick[1];
 			}
 			traps.add(new Trap(x, z, kind, plan.stories().get(s).y()));
+		}
+		return traps;
+	}
+
+	/** On a biome floor, how far from the portal and from the arrival a trap keeps, and from another trap, in blocks. */
+	private static final int BIOME_PORTAL_CLEAR = 10;
+	private static final int BIOME_ARRIVAL_CLEAR = 10;
+	private static final int BIOME_APART = 8;
+
+	/** A biome floor's traps: bare level ground, off the stair, the arrival and the water, spread apart. */
+	private static List<Trap> biomeLayout(final Random random, final TrapTheme theme, final TowerPlan plan) {
+		TowerStory story = plan.stories().get(0);
+		List<int[]> spots = new ArrayList<>();
+		for (int x = 1; x < TowerLayout.SIZE - 1; x++) {
+			for (int z = 1; z < TowerLayout.SIZE - 1; z++) {
+				boolean far = Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > BIOME_PORTAL_CLEAR
+					&& Math.max(Math.abs(x - plan.arrivalX()), Math.abs(z - plan.arrivalZ())) > BIOME_ARRIVAL_CLEAR;
+				int y = plan.standY(x, z);
+				if (far && story.flatAt(x, z) && y >= 0 && !plan.biome().water()[x][z] && !plan.inSafeZone(x, y, z) && !plan.biome().inDais(plan, x, z)) {
+					spots.add(new int[] {x, z, y});
+				}
+			}
+		}
+		Collections.shuffle(spots, random);
+		List<TrapTheme> laid = new ArrayList<>();
+		for (TrapTheme each : TrapTheme.values()) {
+			if (each.laid()) {
+				laid.add(each);
+			}
+		}
+		List<Trap> traps = new ArrayList<>();
+		for (int[] spot : spots) {
+			if (traps.size() >= TRAPS_PER_FLOOR) {
+				break;
+			}
+			boolean apart = true;
+			for (Trap other : traps) {
+				apart &= Math.max(Math.abs(other.x() - spot[0]), Math.abs(other.z() - spot[1])) >= BIOME_APART;
+			}
+			if (apart) {
+				traps.add(new Trap(spot[0], spot[1], theme == TrapTheme.CHAOS ? laid.get(random.nextInt(laid.size())) : theme, spot[2]));
+			}
 		}
 		return traps;
 	}
@@ -314,10 +359,16 @@ public final class TowerTraps {
 		}
 		BlockPos origin = TowerLayout.origin(floor);
 		RandomSource random = tower.getRandom();
-		List<TowerStory> stories = TowerPlan.at(tower, floor).stories();
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		List<TowerStory> stories = plan.stories();
 		for (int attempt = 0; attempt < PLACE_TRIES; attempt++) {
-			int y = stories.get(random.nextInt(stories.size())).y();
-			BlockPos feet = origin.offset(random.nextInt(TowerLayout.SIZE), y, random.nextInt(TowerLayout.SIZE));
+			int x = random.nextInt(TowerLayout.SIZE);
+			int z = random.nextInt(TowerLayout.SIZE);
+			int y = plan.isBiome() ? plan.standY(x, z) : stories.get(random.nextInt(stories.size())).y();
+			if (y < TowerWalk.LOW) {
+				continue;
+			}
+			BlockPos feet = origin.offset(x, y, z);
 			Vec3 to = Vec3.atBottomCenterOf(feet);
 			if (landsSafely(tower, feet) && to.distanceTo(player.position()) >= VOID_MIN_DISTANCE) {
 				burst(tower, player, ParticleTypes.PORTAL, SoundEvents.ENDERMAN_TELEPORT);

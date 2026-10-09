@@ -40,6 +40,8 @@ public final class TowerElites {
 	public static final int RESPAWN_TICKS = 6000;
 	/** Where they stand: this far in front of the portal, and how far they stray from it before walking back. */
 	public static final int GUARD_DISTANCE = 5;
+	/** On a biome floor the guard stands this far past the foot of the portal's stair. */
+	public static final int GUARD_DISTANCE_BIOME = 3;
 	public static final int GUARD_RADIUS = 8;
 	public static final int CHECK_TICKS = 20;
 	public static final int PLACE_TRIES = 40;
@@ -115,6 +117,10 @@ public final class TowerElites {
 	public static BlockPos post(final TowerPlan plan) {
 		// On the floor of the portal's story, however high the portal stands.
 		BlockPos inside = plan.portalInside().get(0);
+		if (plan.isBiome()) {
+			// Past the foot of the stair, on the ground.
+			return inside.offset(plan.portalFacing() * (2 + plan.biome().steps() + GUARD_DISTANCE_BIOME), TowerLayout.BASE_Y - inside.getY(), 0);
+		}
 		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y + plan.portalY() - inside.getY(), 0);
 	}
 

@@ -58,6 +58,8 @@ public final class TowerMobs {
 	public static final int SPAWN_BATCH = 8;
 	public static final int SPAWN_TRIES = 24;
 	public static final double MIN_PLAYER_DISTANCE = 12.0;
+	/** On a biome floor, which has no safe zone past floor 1, no mob is raised this near the arrival. */
+	public static final double BIOME_ARRIVAL_CLEAR = 16.0;
 	public static final int OVERWORLD_ONLY_UNTIL = 20;
 	public static final Identifier HEALTH_ID = StellaTower.id("floor_health");
 	public static final Identifier ARMOR_ID = StellaTower.id("floor_armor");
@@ -239,9 +241,14 @@ public final class TowerMobs {
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
-			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y + stories.get(random.nextInt(stories.size())).y(), z);
+			int sy = plan.isBiome() ? plan.standY(x - origin.getX(), z - origin.getZ()) : stories.get(random.nextInt(stories.size())).y();
+			if (sy < TowerWalk.LOW || plan.isBiome() && plan.biome().inDais(plan, x - origin.getX(), z - origin.getZ())) {
+				continue;
+			}
+			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y + sy, z);
 			Vec3 spot = spotFor(mob, feet);
-			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)
+			double clear = plan.isBiome() ? BIOME_ARRIVAL_CLEAR : MIN_PLAYER_DISTANCE;
+			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < clear || tooClose(players, spot)
 				|| inSafeZone(plan, mob, spot)) {
 				continue;
 			}
@@ -310,7 +317,7 @@ public final class TowerMobs {
 
 	static AABB room(final int floor) {
 		BlockPos o = TowerLayout.origin(floor);
-		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.HEIGHT, o.getZ() + TowerLayout.SIZE);
+		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.ROOM_HEIGHT, o.getZ() + TowerLayout.SIZE);
 	}
 
 	/** Tower mobs standing on the floor now; its own record, not a kind, says which floor a mob is of. */

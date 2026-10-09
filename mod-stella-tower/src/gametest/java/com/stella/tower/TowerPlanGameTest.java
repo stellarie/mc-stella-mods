@@ -494,6 +494,10 @@ public class TowerPlanGameTest {
 		long[] longestPreparation = {0L};
 		TowerFloors.clearStepTimes();
 		for (TowerArchetype archetype : TowerArchetype.values()) {
+			// A biome floor's budget is the biome tests' (TowerBiomeFloorGameTest).
+			if (archetype == TowerArchetype.BIOME) {
+				continue;
+			}
 			int floor = freshFloorOf(tower, archetype);
 			floors.add(floor);
 			long started = System.nanoTime();

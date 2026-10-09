@@ -61,7 +61,9 @@ public record TowerPlan(
 	/** A great hall's carpet down its nave, laid into the ground; null on any other floor. */
 	@Nullable Room runner,
 	/** The floor whose band the plan's look follows: its own, or a lost room's borrowed floor. */
-	int look
+	int look,
+	/** A biome floor's ground and water, its blocks and its stair; null on a plan drawn before the biome floors. */
+	@Nullable BiomeDraft biome
 ) {
 	/** How many times a plan is drawn before the floor falls back to the classic maze. */
 	public static final int ATTEMPTS = 8;
@@ -248,11 +250,23 @@ public record TowerPlan(
 				return plan;
 			}
 		}
-		TowerPlan plan = generate(seed, floor, drawn -> false);
+		TowerPlan plan = LEGACY_FLOORS.test(floor) ? generate(seed, floor, drawn -> false) : BiomeGen.plan(seed, floor);
 		synchronized (CACHE_MAP) {
 			CACHE_MAP.put(key, plan);
 		}
 		return plan;
+	}
+
+	/**
+	 * Which floors are still drawn by the generator of the plans before the biome floors. None, in play. The game tests
+	 * keep the old floors' tests on that generator, which stays for floors built before the biome floors.
+	 */
+	private static volatile java.util.function.IntPredicate LEGACY_FLOORS = floor -> false;
+
+	/** The test seam: draws the floors this accepts by the older generator. */
+	static void drawLegacyFloors(final java.util.function.IntPredicate floors) {
+		LEGACY_FLOORS = floors;
+		clearCache();
 	}
 
 	/**
@@ -294,7 +308,7 @@ public record TowerPlan(
 	}
 
 	/** {@link #at} for a caller that must never load a chunk (the targeting mixins). Plans read no blocks, so the two agree. */
-	static TowerPlan atQuiet(final ServerLevel tower, final int floor) {
+	public static TowerPlan atQuiet(final ServerLevel tower, final int floor) {
 		return at(tower, floor);
 	}
 
@@ -325,7 +339,7 @@ public record TowerPlan(
 	 * placed, and walked again with the chests in. Null when either walk fails, the veto turns it down, or too few
 	 * chest spots fit.
 	 */
-	private static @Nullable TowerPlan finish(final TowerPlan drawn, final Predicate<TowerPlan> veto) {
+	static @Nullable TowerPlan finish(final TowerPlan drawn, final Predicate<TowerPlan> veto) {
 		TowerVolume volume = TowerVolume.of(drawn);
 		if (!volume.reaches(drawn) || veto.test(drawn)) {
 			return null;
@@ -343,19 +357,22 @@ public record TowerPlan(
 	TowerPlan relocated(final int room) {
 		return new TowerPlan(this.seed, room, this.archetype, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
 			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.portalStory, this.walls, this.stories, this.flights,
-			this.safeZones, this.hall, this.chestSpots, this.rooms, this.runner, this.look);
+			this.safeZones, this.hall, this.chestSpots, this.rooms, this.runner, this.look, this.biome);
 	}
 
 	/** This plan with its chest spots. */
 	TowerPlan withChestSpots(final List<ChestSpot> spots) {
 		return new TowerPlan(this.seed, this.floor, this.archetype, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
 			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.portalStory, this.walls, this.stories, this.flights,
-			this.safeZones, this.hall, List.copyOf(spots), this.rooms, this.runner, this.look);
+			this.safeZones, this.hall, List.copyOf(spots), this.rooms, this.runner, this.look, this.biome);
 	}
 
 	/** This plan with each story read for where bodies stand over its volume, and the ground's walls read from it. */
 	TowerPlan withStands(final TowerVolume volume) {
 		int size = TowerLayout.SIZE;
+		if (this.biome != null) {
+			return withBiomeStands(volume);
+		}
 		List<TowerStory> read = new ArrayList<>();
 		for (TowerStory story : this.stories) {
 			boolean[][] stand = new boolean[size][size];
@@ -376,7 +393,37 @@ public record TowerPlan(
 		}
 		return new TowerPlan(this.seed, this.floor, this.archetype, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
 			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.portalStory, ground, List.copyOf(read), this.flights,
-			this.safeZones, this.hall, this.chestSpots, this.rooms, this.runner, this.look);
+			this.safeZones, this.hall, this.chestSpots, this.rooms, this.runner, this.look, this.biome);
+	}
+
+	/**
+	 * A biome plan read over its volume: where a body stands in each column at the lowest, and so the story's stand and
+	 * flat grids and the ground's walls. A column is a wall where nothing stands in it.
+	 */
+	private TowerPlan withBiomeStands(final TowerVolume volume) {
+		int size = TowerLayout.SIZE;
+		short[][] stand = new short[size][size];
+		boolean[][] stands = new boolean[size][size];
+		boolean[][] flat = new boolean[size][size];
+		boolean[][] ground = new boolean[size][size];
+		for (int x = 0; x < size; x++) {
+			for (int z = 0; z < size; z++) {
+				stand[x][z] = BiomeDraft.NONE;
+				for (int y = TowerWalk.LOW; y < roofY() - 2; y++) {
+					if (volume.stands(x, y, z)) {
+						stand[x][z] = (short) y;
+						stands[x][z] = true;
+						flat[x][z] = volume.standsFlat(x, y, z);
+						break;
+					}
+				}
+				ground[x][z] = !stands[x][z];
+			}
+		}
+		TowerStory story = this.stories.get(0).withStands(stands, flat);
+		return new TowerPlan(this.seed, this.floor, this.archetype, this.variation, this.rotation, this.attempt, this.arrivalX, this.arrivalZ,
+			this.arrivalYaw, this.portalX, this.portalZ, this.portalFacing, this.portalStory, ground, List.of(story), this.flights,
+			this.safeZones, this.hall, this.chestSpots, this.rooms, this.runner, this.look, this.biome.withStand(stand));
 	}
 
 	/** The parts that make a ground spot a wall: the structure, not the portal's plinth and frame, a station, a light or a chest. */
@@ -417,7 +464,7 @@ public record TowerPlan(
 		float yaw = (float) Math.toDegrees(Math.atan2(-(draft.portalX() - draft.arrivalX()), draft.portalZ() - draft.arrivalZ()));
 		return new TowerPlan(seed, floor, archetype, Variation.MAZE, 0, attempt, draft.arrivalX(), draft.arrivalZ(), yaw,
 			draft.portalX(), draft.portalZ(), draft.portalFacing(), draft.portalStory(), draft.stories().get(0).wall(),
-			List.copyOf(draft.stories()), List.copyOf(draft.flights()), List.copyOf(draft.zones()), 0, List.of(), List.of(), draft.runner(), floor);
+			List.copyOf(draft.stories()), List.copyOf(draft.flights()), List.copyOf(draft.zones()), 0, List.of(), List.of(), draft.runner(), floor, null);
 	}
 
 	/** An elite or boss floor: its variation's walls round the canonical hall, turned, under a lid. */
@@ -455,7 +502,7 @@ public record TowerPlan(
 		TowerStory story = TowerStory.of(0, HALL_TOP, TowerStory.full(), walls);
 		return new TowerPlan(seed, floor, TowerArchetype.HALL, variation, turns, attempt, at[0], at[1], -90.0F + 90.0F * turns,
 			TowerLayout.SIZE / 2, CLASSIC_MIDDLE_Z - 1, -1, 0, walls, List.of(story), List.of(), List.copyOf(zones), hall, List.of(),
-			List.copyOf(rooms), null, floor);
+			List.copyOf(rooms), null, floor, null);
 	}
 
 	/** The classic layout under a lid: the arrival at the west and the portal in a nook at the east, as a floor falls back to. */
@@ -465,7 +512,7 @@ public record TowerPlan(
 		TowerStory story = TowerStory.of(0, HALL_TOP, TowerStory.full(), walls);
 		return new TowerPlan(seed, floor, archetype, Variation.MAZE, 0, attempt, CLASSIC_ARRIVAL_X, CLASSIC_MIDDLE_Z, -90.0F,
 			hall > 0 ? TowerLayout.SIZE / 2 : CLASSIC_PORTAL_X, CLASSIC_MIDDLE_Z - 1, -1, 0, walls, List.of(story), List.of(),
-			TowerMaze.classicZones(floor), hall, List.of(), List.of(), null, floor);
+			TowerMaze.classicZones(floor), hall, List.of(), List.of(), null, floor, null);
 	}
 
 	/** One quarter turn of the room about its middle: a spot (x, z) goes to (size - 1 - z, x). */
@@ -557,6 +604,35 @@ public record TowerPlan(
 		return TowerLayout.SIZE / 2 - this.hall / 2;
 	}
 
+	/** Whether this is a biome floor's plan. */
+	public boolean isBiome() {
+		return this.biome != null;
+	}
+
+	/** The lowest block of the room: its bedrock. */
+	public int low() {
+		return this.biome != null ? TowerLayout.ROOM_LOW : TowerVolume.LOW;
+	}
+
+	/** The room's roof: the highest block of the room, above the air. */
+	public int roofY() {
+		return this.biome != null ? TowerLayout.ROOM_HEIGHT : TowerLayout.HEIGHT;
+	}
+
+	/**
+	 * Where a body stands in a column, as a feet level from the base: on a biome floor the lowest, on any other the
+	 * ground story's when it stands there. {@link BiomeDraft#NONE} where none does, or before the plan is read.
+	 */
+	public int standY(final int x, final int z) {
+		if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE) {
+			return BiomeDraft.NONE;
+		}
+		if (this.biome != null) {
+			return this.biome.stand() == null ? BiomeDraft.NONE : this.biome.stand()[x][z];
+		}
+		return this.stories.get(0).stands(x, z) ? this.stories.get(0).y() : BiomeDraft.NONE;
+	}
+
 	/** The room's inner corner. */
 	public BlockPos origin() {
 		return TowerLayout.origin(this.floor);
@@ -580,6 +656,9 @@ public record TowerPlan(
 
 	/** How far the portal's inside stands above its story: {@link #LIFT} on an ordinary or elite floor, {@link #BOSS_LIFT} on a boss floor. */
 	public int lift() {
+		if (this.biome != null) {
+			return this.biome.steps();
+		}
 		return this.hall == TowerMaze.BOSS_HALL ? BOSS_LIFT : LIFT;
 	}
 
@@ -589,6 +668,9 @@ public record TowerPlan(
 	 * step narrower than the one below.
 	 */
 	public List<BlockPos> plinth() {
+		if (this.biome != null) {
+			return this.biome.plinth(this);
+		}
 		List<BlockPos> wall = new ArrayList<>();
 		BlockPos origin = origin();
 		int base = TowerLayout.BASE_Y + portalY();
