@@ -25,7 +25,8 @@
 		"SpectralQuiverMixin",
 		"AimedBoltDrawMixin",
 		"AbstractArrowAccessor",
-		"AbstractArrowHitMixin"
+		"AbstractArrowHitMixin",
+		"QuiverAmmoMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

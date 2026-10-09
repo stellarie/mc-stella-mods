@@ -37,8 +37,9 @@ import org.jspecify.annotations.Nullable;
  * damage through {@link RpgBridge#skillDamage} with {@link School#ARCHER} exactly once, so no shot takes the
  * ranged dice a second time. Two books instead arm the next real arrow, and {@link SpellStatus#onHurt}
  * hands that arrow its blast through {@link #projectileDamage}.
- * Every book needs a bow or a crossbow. Only {@link #AMMO_BOOKS} also need an arrow or a bolt. A book
- * imbued on a bow casts from an arrow hit and needs neither.
+ * Every book needs a bow or a crossbow and no arrow. A quiver in the off hand lends its arrows to the skills
+ * that name them: each spent arrow adds its kind damage and effect to the hits it feeds. A book imbued on a
+ * bow casts from an arrow hit, needs neither, and spends nothing.
  */
 public final class ArcherSkills {
 	/** How many arrows one Arrow Crafting cast makes, and how many an awakened one makes. */
@@ -107,8 +108,8 @@ public final class ArcherSkills {
 	static final double ARROW_REPEL_STRENGTH = 2.4;
 	static final double ARROW_REPEL_LIFT = 0.3;
 	static final double ARROW_REPEL_MIN_BLOCKS = 3.0;
-	/** The books that fire or spend a physical arrow, so they also need ammunition. */
-	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of("multishot", "explosive_arrow", "aimed_bolt", "triangle_shot");
+	/** The books that need ammunition. None does: a bow is enough, and a quiver adds its arrows to the skills. */
+	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of();
 	/** Explosive Arrow's splash, and the three bomblets an awakened one scatters. */
 	static final double EXPLOSIVE_SPLASH_RADIUS = 3.0;
 	static final int EXPLOSIVE_BOMBLETS = 3;
@@ -253,7 +254,7 @@ public final class ArcherSkills {
 		if (landing == null) {
 			return false;
 		}
-		spendOneArrow(caster);
+		takeSkillArrow(caster);
 		ServerLevel level = (ServerLevel) caster.level();
 		Vec3 from = caster.position();
 		caster.teleportTo(landing.x, landing.y, landing.z);
@@ -506,10 +507,11 @@ public final class ArcherSkills {
 		List<Mob> crossed = SkillTargeting.rayFoes(caster, direction, numbers.radius(modifiers));
 		trail(caster, direction, numbers.radius(modifiers), crossed.isEmpty() ? null : crossed.get(crossed.size() - 1));
 		float factor = 1.0F;
+		ItemStack arrow = crossed.isEmpty() ? ItemStack.EMPTY : takeSkillArrow(caster);
 		SHARP_SHOOTING.set(Boolean.TRUE);
 		try {
 			for (Mob foe : crossed) {
-				hit(caster, foe, numbers.damage() * factor, modifiers);
+				hit(caster, foe, numbers.damage() * factor, modifiers, arrow);
 				if (modifiers.awakened()) {
 					factor += PIERCING_STEP;
 				}
@@ -545,7 +547,7 @@ public final class ArcherSkills {
 		}
 		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
 		for (int shot = 0; shot < DOUBLE_STRAFE_HITS; shot++) {
-			hit(caster, target, SpellNumbers.RAPID_FIRE.damage(), modifiers);
+			hit(caster, target, SpellNumbers.RAPID_FIRE.damage(), modifiers, takeSkillArrow(caster));
 		}
 		return true;
 	}
@@ -602,7 +604,7 @@ public final class ArcherSkills {
 		}
 		Vec3 away = target.position().subtract(caster.position());
 		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
-		hit(caster, target, SpellNumbers.ARROW_REPEL.damage(), modifiers);
+		hit(caster, target, SpellNumbers.ARROW_REPEL.damage(), modifiers, takeSkillArrow(caster));
 		shove(target, away, ARROW_REPEL_STRENGTH, ARROW_REPEL_LIFT);
 		Spellbooks.LOGGER.info("[SPELL] event=ARROW_REPEL caster={} target={} strength={}",
 			caster.getUUID(), target.getUUID(), ARROW_REPEL_STRENGTH);
@@ -779,9 +781,9 @@ public final class ArcherSkills {
 		return imbuedCast() || hasBowOrCrossbow(caster);
 	}
 
-	/** The gate for the four {@link #AMMO_BOOKS}: a bow or a crossbow, and something to loose. */
+	/** The gate of the books that once needed ammunition; a bow or a crossbow is all they need now. */
 	static boolean armed(final ServerPlayer caster) {
-		return bowReady(caster) && (imbuedCast() || hasAmmo(caster));
+		return bowReady(caster);
 	}
 
 	/** True when this weapon fires with an empty quiver under the caster's Spectral Quiver. */
@@ -797,12 +799,9 @@ public final class ArcherSkills {
 		return stack.getItem() instanceof ProjectileWeaponItem;
 	}
 
-	// One arrow of the first stack in the pack pays for a grappling hook.
-	private static void spendOneArrow(final ServerPlayer caster) {
-		ItemStack arrows = firstAmmo(caster);
-		if (arrows != null) {
-			arrows.shrink(1);
-		}
+	// The arrow a skill spends from the off-hand quiver; an imbued cast spends none, and no quiver gives none.
+	private static ItemStack takeSkillArrow(final ServerPlayer caster) {
+		return imbuedCast() ? ItemStack.EMPTY : Quiver.takeArrow(caster);
 	}
 
 	// A line of arrow motes from the launch to the landing, so the hook's flight can be seen.
@@ -822,12 +821,20 @@ public final class ArcherSkills {
 
 	/** A hit: the school's own dice once, then the caster's own buffs, and nothing else. */
 	static void hit(final ServerPlayer caster, final Mob target, final float flat, final SpellModifiers.CastModifiers modifiers) {
+		hit(caster, target, flat, modifiers, ItemStack.EMPTY);
+	}
+
+	/** The same hit, carrying the damage and the effect of the arrow it spent from the quiver. */
+	static void hit(
+		final ServerPlayer caster, final Mob target, final float flat, final SpellModifiers.CastModifiers modifiers, final ItemStack arrow
+	) {
 		float amount = (float) (RpgBridge.skillDamage(caster, School.ARCHER, flat, modifiers.powerMultiplier())
-			* eagleEyeFactor(caster) * quiverDamageFactor(caster));
+			* eagleEyeFactor(caster) * quiverDamageFactor(caster) * ArrowHits.skillFactor(arrow));
 		if (target.damageCooldownTime > 0) {
 			target.damageCooldownTime = 0;
 		}
 		target.hurtServer((ServerLevel) caster.level(), RpgBridge.skillSource(caster), amount);
+		ArrowHits.skillEffect(caster, target, arrow);
 	}
 
 	/** The arrow trail of a skill shot: motes along the path, and the arrow's own sound where it stops. */
@@ -995,8 +1002,9 @@ public final class ArcherSkills {
 			level.sendParticles(ParticleTypes.FALLING_OBSIDIAN_TEAR, x, point.y + 4.0, z, 2, 0.0, 0.0, 0.0, 0.0);
 		}
 		level.playSound(null, point.x, point.y, point.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.6F, 0.9F);
+		ItemStack arrow = takeSkillArrow(caster);
 		for (Mob foe : foesAroundPoint(caster, point, radius)) {
-			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers);
+			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers, arrow);
 			Vec3 away = foe.position().subtract(point);
 			shove(foe, away.multiply(1.0, 0.0, 1.0).lengthSqr() < 1.0E-6 ? foe.position().subtract(caster.position()) : away,
 				ARROW_SHOWER_PUSH, ARROW_SHOWER_LIFT);

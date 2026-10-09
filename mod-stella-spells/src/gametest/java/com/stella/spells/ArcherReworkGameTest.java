@@ -36,12 +36,14 @@ public class ArcherReworkGameTest {
 	@GameTest(maxTicks = 80)
 	public void grapplingHookMovesTheCasterToWhereTheArrowLands(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
-		ItemStack arrows = caster.getInventory().getItem(ArcherReworkGameTest.HELD_QUIVER_SLOT);
-		int arrowsBefore = arrows.getCount();
+		ItemStack quiver = new ItemStack(Quiver.ITEM);
+		Quiver.store(quiver, List.of(new ItemStack(Items.ARROW, 10)));
+		caster.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, quiver);
+		int arrowsBefore = Quiver.count(Quiver.held(caster), Items.ARROW);
 		Vec3 landing = ArcherSkills.arrowLanding(caster);
 		boolean applied = SkillSchoolGameTest.cast(caster, "multishot", null, false);
 		Vec3 stopped = caster.position();
-		int arrowsAfter = caster.getInventory().getItem(ArcherReworkGameTest.HELD_QUIVER_SLOT).getCount();
+		int arrowsAfter = Quiver.count(Quiver.held(caster), Items.ARROW);
 		double travelled = stopped.distanceTo(new Vec3(CASTER_X, stopped.y, CASTER_Z));
 		LOG.info("[BEHAVIOR] test=grapplingHookMovesTheCasterToWhereTheArrowLands RESULT applied={} landing={} stopped={} travelled={} arrowsBefore={} arrowsAfter={} armed={} bow={} ammo={}",
 			applied, landing, stopped, travelled, arrowsBefore, arrowsAfter,
@@ -55,23 +57,23 @@ public class ArcherReworkGameTest {
 		helper.assertTrue(travelled > ArcherSkills.GRAPPLE_MIN_DISTANCE,
 			"the arrow landed on the caster's own feet: " + travelled + " blocks");
 		helper.assertTrue(arrowsAfter == arrowsBefore - 1,
-			"the cast spent " + (arrowsBefore - arrowsAfter) + " arrows, not one");
+			"the cast spent " + (arrowsBefore - arrowsAfter) + " quiver arrows, not one");
 		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 80)
-	public void grapplingHookRefusesWithNoArrowAndLeavesTheCasterWhereItStands(final GameTestHelper helper) {
+	public void grapplingHookNeedsNoArrowAndMovesTheCasterWithABowAlone(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		SkillSchoolGameTest.setAutoKit(false);
 		caster.getInventory().clearContent();
 		caster.getInventory().setItem(ArcherReworkGameTest.WEAPON_SLOT, new ItemStack(Items.BOW));
 		Vec3 before = caster.position();
 		boolean applied = SkillSchoolGameTest.cast(caster, "multishot", null, false);
-		LOG.info("[BEHAVIOR] test=grapplingHookRefusesWithNoArrowAndLeavesTheCasterWhereItStands RESULT applied={} before={} after={} arrows={}",
+		LOG.info("[BEHAVIOR] test=grapplingHookNeedsNoArrowAndMovesTheCasterWithABowAlone RESULT applied={} before={} after={} arrows={}",
 			applied, before, caster.position(), caster.getInventory().countItem(Items.ARROW));
-		helper.assertFalse(applied, "the grappling hook fired with no arrow");
-		helper.assertTrue(caster.position().distanceTo(before) == 0.0,
-			"a refused grapple moved the caster to " + caster.position());
+		helper.assertTrue(applied, "the grappling hook refused a bow and no arrow");
+		helper.assertTrue(caster.position().distanceTo(before) > ArcherSkills.GRAPPLE_MIN_DISTANCE,
+			"the grapple left the caster at " + caster.position());
 		helper.succeed();
 	}
 

@@ -134,7 +134,7 @@ public class SpellbookCatalogGameTest {
 		Set<Identifier> actualRecipeIds = manager.getRecipes().stream()
 			.map(recipe -> recipe.id().identifier())
 			.filter(id -> Spellbooks.MOD_ID.equals(id.getNamespace()) && !id.getPath().endsWith("_scroll")
-				&& !id.getPath().endsWith("_from_scrolls") && !id.equals(Spellbooks.SCROLL_BOOK_ID))
+				&& !id.getPath().endsWith("_from_scrolls") && !id.equals(Spellbooks.SCROLL_BOOK_ID) && !id.equals(Quiver.ID))
 			.collect(Collectors.toSet());
 		List<String> mismatches = new ArrayList<>();
 		if (!actualRecipeIds.equals(EXPECTED_IDS)) {

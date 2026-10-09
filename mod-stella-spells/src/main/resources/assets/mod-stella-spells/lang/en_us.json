@@ -248,6 +248,8 @@
 	"item.mod-stella-spells.arrow_crafting": "Arrow Crafting Spellbook",
 	"item.mod-stella-spells.arrow_crafting.effect": "Turns one arrow material into 8 arrows of its kind, 12 when awakened. It takes the material in your off hand first, else the first one in your pack. Needs no bow.",
 	"item.mod-stella-spells.arrow_crafting_scroll": "Arrow Crafting Scroll",
+	"item.mod-stella-spells.quiver": "Quiver",
+	"item.mod-stella-spells.quiver.effect": "Right-click to fill its nine slots with arrows and fireworks. Hold it in your off hand: a bow or crossbow draws from it first, and archer skills spend its arrows.",
 	"item.mod-stella-spells.flint_arrow": "Flint Arrow",
 	"item.mod-stella-spells.flint_arrow.effect": "Hits 20 percent harder than a plain arrow.",
 	"item.mod-stella-spells.iron_arrow": "Iron Arrow",

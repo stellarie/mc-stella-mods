@@ -3,6 +3,7 @@ package com.stella.spells;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -12,6 +13,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +26,8 @@ public final class ArrowHits {
 	static final double BLAST_RADIUS = 2.0;
 	static final float BLAST_DAMAGE = 3.0F;
 	static final int FIRE_SECONDS = 4;
+	/** The glow a spectral arrow gives, as the vanilla arrow does. */
+	static final int SPECTRAL_GLOW_TICKS = 200;
 	static final int FROST_TICKS = 60;
 	static final int FROST_AMPLIFIER = 1;
 	static final int VENOM_TICKS = 80;
@@ -72,7 +77,11 @@ public final class ArrowHits {
 		if (kind == null) {
 			return;
 		}
-		Entity owner = ((AbstractArrow) source.getDirectEntity()).getOwner();
+		applyEffect(level, kind, victim, ((AbstractArrow) source.getDirectEntity()).getOwner());
+	}
+
+	// One place for what a kind does to a foe, shared by an arrow in flight and an archer skill that spent one.
+	private static void applyEffect(final ServerLevel level, final ArrowKind kind, final LivingEntity victim, final @Nullable Entity owner) {
 		switch (kind) {
 			case FIRE -> victim.igniteForSeconds(FIRE_SECONDS);
 			case FROST -> victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, FROST_TICKS, FROST_AMPLIFIER), owner);
@@ -80,6 +89,23 @@ public final class ArrowHits {
 			case BLAST -> burst(level, victim.getBoundingBox().getCenter(), owner, victim);
 			default -> {
 			}
+		}
+	}
+
+	/** The share of damage an archer skill hit keeps for the arrow it spent; 1.0 for no arrow or a vanilla one. */
+	static float skillFactor(final ItemStack arrow) {
+		return arrow.getItem() instanceof CraftedArrowItem crafted ? crafted.kind().damageFactor() : 1.0F;
+	}
+
+	/** What the arrow an archer skill spent does to the foe that skill hit. */
+	static void skillEffect(final ServerPlayer caster, final LivingEntity victim, final ItemStack arrow) {
+		if (arrow.isEmpty() || !(victim.level() instanceof ServerLevel level)) {
+			return;
+		}
+		if (arrow.getItem() instanceof CraftedArrowItem crafted) {
+			applyEffect(level, crafted.kind(), victim, caster);
+		} else if (arrow.is(Items.SPECTRAL_ARROW)) {
+			victim.addEffect(new MobEffectInstance(MobEffects.GLOWING, SPECTRAL_GLOW_TICKS), caster);
 		}
 	}
 

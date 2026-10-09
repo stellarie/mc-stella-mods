@@ -287,44 +287,35 @@ public class ArcherRagnarokGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void onlyTheFourArrowBooksNeedAnArrowAndASpectralQuiverPaysIt(final GameTestHelper helper) {
+	public void everyArcherBookCastsWithABowAndNoArrowAnywhere(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper, false);
 		SkillSchoolGameTest.setAutoKit(false);
 		Mob foe = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 2.5);
 		caster.removeAllEffects();
-		List<String> arrowBooks = new ArrayList<>(ArcherSkills.AMMO_BOOKS);
-		List<String> arrowCast = new ArrayList<>();
-		for (String path : arrowBooks) {
-			if (SkillSchoolGameTest.cast(caster, path, foe, false)) {
-				arrowCast.add(path);
-			}
-			ArcherSkills.clearFor(caster);
-		}
 		List<String> refused = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			if (arrowBooks.contains(path) || path.equals("arrow_crafting")) {
+			// Arrow Crafting makes arrows from a material; its own cases prove it.
+			if (path.equals("arrow_crafting")) {
 				continue;
 			}
+			// An earlier book may have moved the caster or the foe, and the set order is not fixed.
+			Vec3 at = helper.absoluteVec(new Vec3(CASTER_X, 1.0, CASTER_Z));
+			caster.setPos(at.x, at.y, at.z);
+			caster.setYRot(0.0F);
+			caster.setXRot(0.0F);
+			Vec3 foeAt = helper.absoluteVec(new Vec3(CASTER_X, 1.0, CASTER_Z + 2.5));
+			foe.snapTo(foeAt.x, foeAt.y, foeAt.z, 180.0F, 0.0F);
 			if (!SkillSchoolGameTest.cast(caster, path, foe, false)) {
 				refused.add(path);
 			}
 			ArcherSkills.clearFor(caster);
 		}
-		boolean quiver = caster.hasEffect(SpellStatus.SPECTRAL_QUIVER);
-		List<String> withQuiver = new ArrayList<>();
-		for (String path : arrowBooks) {
-			if (SkillSchoolGameTest.cast(caster, path, foe, false)) {
-				withQuiver.add(path);
-			}
-			ArcherSkills.clearFor(caster);
-		}
-		LOG.info("[BEHAVIOR] test=onlyTheFourArrowBooksNeedAnArrowAndASpectralQuiverPaysIt RESULT arrowBooks={} arrowBooksCastWithZeroArrows={} otherBooksRefused={} quiver={} arrowBooksCastWithQuiver={}",
-			arrowBooks, arrowCast, refused, quiver, withQuiver);
-		helper.assertTrue(arrowBooks.size() == 4, "the ammunition books number " + arrowBooks.size());
-		helper.assertTrue(arrowCast.isEmpty(), "these arrow books cast with zero arrows: " + arrowCast);
-		helper.assertTrue(refused.isEmpty(), "these books wanted an arrow they do not spend: " + refused);
-		helper.assertTrue(quiver, "the quiver book never applied");
-		helper.assertTrue(withQuiver.size() == arrowBooks.size(), "a spectral quiver paid only " + withQuiver);
+		int arrows = caster.getInventory().countItem(Items.ARROW) + caster.getInventory().countItem(Items.SPECTRAL_ARROW);
+		LOG.info("[BEHAVIOR] test=everyArcherBookCastsWithABowAndNoArrowAnywhere RESULT books={} refused={} arrowsCarried={} ammoBooks={}",
+			SkillSchoolGameTest.ARCHER_IDS.size(), refused, arrows, ArcherSkills.AMMO_BOOKS);
+		helper.assertTrue(ArcherSkills.AMMO_BOOKS.isEmpty(), "these books still need an arrow: " + ArcherSkills.AMMO_BOOKS);
+		helper.assertTrue(arrows == 0, "the case carried " + arrows + " arrows, so it proves nothing");
+		helper.assertTrue(refused.isEmpty(), "these books refused a bow and no arrow: " + refused);
 		foe.discard();
 		helper.succeed();
 	}
