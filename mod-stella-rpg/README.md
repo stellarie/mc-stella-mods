@@ -36,8 +36,8 @@ These effects use a share of the target's max health. `M` is the max health divi
 | Instant Damage | `6 << amp` | `max(6, 0.20 * M) * 2^amp` |
 | Absorption | `4 * (1 + amp)` | `max(4, 0.10 * M) * (1 + amp)` |
 
-- A mob that `mod-stella-mobs` marks elite or boss takes one quarter of the percent part. The flat floor stays.
-  `MobsBridge.eliteOrBoss` reads `EliteState#hasEliteFlag` and `#hasBossFlag` by reflection. Without the mod it is false.
+- A mob that `mod-stella-mobs` marks elite, boss or encounter Wither takes one quarter of the percent part. The flat floor stays.
+  `MobsBridge.eliteOrBoss` reads `EliteState#hasEliteFlag`, `#hasBossFlag` and `WitherState#hasWitherFlag` by reflection, each on its own. Without the mod it is false.
 - `LivingEntity#getMaxAbsorption` returns at least the Absorption grant while the effect is active.
   Without it the max would clamp the percent grant.
 - Instant Damage keeps the magic damage source. It still passes through VIT and flat defense before K.
@@ -435,6 +435,18 @@ adds the amount to one of the six stats, chosen at random, and returns that stat
 - The growth is saved on the mob in the `mod-stella-rpg:mob_growth` attachment, as decimals, so half
   points add up. A stat counts only the whole points.
 - Growth adds to the mob's stat from its role and level, up to the stat ceiling.
+
+## Mob stat set
+
+Another mod can fix chosen stats of one mob. The object share `mod-stella-rpg:mob-stat-set` holds a
+`java.util.function.BiConsumer<Mob, Map<String, Integer>>`. A key is `str`, `agi`, `vit`, `dex`, `int` or `luk`.
+The Wither boss in `mod-stella-mobs` uses it.
+
+- A listed stat reads the given value instead of the role formula. An unlisted stat keeps the formula.
+- Growth from `mob-stat-grow` still adds on top of a listed value.
+- A value clamps to 0 through 1024. An unknown key, a negative value or a non-number is skipped.
+- A call with a valid entry replaces the earlier map. A call with none changes nothing.
+- The values are saved on the mob in the `mod-stella-rpg:mob_stat_override` attachment.
 
 ## Debuff resistance
 
