@@ -132,7 +132,7 @@ public class TowerLostRoomGameTest {
 	/**
 	 * The castle's frame: three octagonal storeys of six-wide ways, a breach through the ground storey's
 	 * south wall for its way in, the lost room's portal on the top storey with the workstations beside it,
-	 * and the ruin over all of it. The old two halls and their oak gate are gone: the castle is a maze now.
+	 * and the ruin over all of it. The castle is a maze of nine rooms.
 	 */
 	@GameTest(maxTicks = 40)
 	public void theCastleHasItsStoreysItsBreachAndItsPortal(final GameTestHelper helper) {
