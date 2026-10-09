@@ -158,9 +158,9 @@ public class KeepRewardGameTest {
 
 	@GameTest(maxTicks = 300)
 	public void theBannerOfTheKeepAlsoRalliesWhenOnlyARuinFoeIsNear(final GameTestHelper helper) {
-		ServerPlayer holder = KeepTestSupport.joinPlayer(helper, 1.5, 1.5);
+		ServerPlayer holder = KeepTestSupport.joinPlayer(helper, 1.5, 150.5);
 		holder.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(KeepRewards.bannerOfTheKeep));
-		Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(helper.getLevel(), helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 1.0, 9.5)));
+		Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(helper.getLevel(), helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 1.0, 158.5)));
 		golem.setNoAi(true);
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(holder.hasEffect(MobEffects.RESISTANCE), "a deep golem near the holder did not count as a hostile"))
