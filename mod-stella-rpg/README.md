@@ -584,6 +584,14 @@ A recipe hands its result the sum of its materials. One item of each slot counts
 - Grid repair of two gear pieces keeps the bonus of the piece with the higher stat total. It does not sum and it does not reroll.
 - The ruins affix smithing recipe and recipes that build their own result are not covered.
 
+### Bonus gear tags
+
+`#mod-stella-rpg:bonus_weapons` and `#mod-stella-rpg:bonus_armor` list gear outside the vanilla tags, such as a modded bow or a ruins sword.
+Listed gear carries stat and affix bonuses, the craft sum feeds it, `grant-bonus` accepts it, and chest loot marks it as rolled.
+It counts like a weapon (main hand) or like armor (worn slot, and a shield in the offhand).
+It never rolls at random, because it has no tier. Both tags are empty by default. A pack or a mod adds ids with `"required": false` for a mod that may be absent.
+Pickaxes, shovels, and hoes carry nothing unless a pack lists them.
+
 ## Mined material profiles
 
 A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.

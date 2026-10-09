@@ -147,7 +147,17 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	/** The kind of roll this stack carries, or null when it never rolls. */
 	public static Affix.Kind kindOf(final ItemStack stack) {
 		Entry entry = stack.isEmpty() ? null : entryOf(stack);
-		return entry == null ? null : entry.kind();
+		if (entry != null) {
+			return entry.kind();
+		}
+		// Tagged gear carries and uses bonuses, but entryOf has no tier for it, so it never rolls at random.
+		if (stack.isEmpty()) {
+			return null;
+		}
+		if (stack.is(BonusCarrier.WEAPONS)) {
+			return Affix.Kind.WEAPON;
+		}
+		return stack.is(BonusCarrier.ARMOR) ? Affix.Kind.ARMOR : null;
 	}
 
 	@Override

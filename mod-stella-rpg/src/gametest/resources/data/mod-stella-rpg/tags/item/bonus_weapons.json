@@ -1,0 +1,7 @@
+{
+	"replace": false,
+	"values": [
+		"minecraft:shears",
+		{ "id": "mod-stella-absent-sibling:imaginary_blade", "required": false }
+	]
+}

@@ -1,0 +1,7 @@
+{
+	"replace": false,
+	"values": [
+		"minecraft:carved_pumpkin",
+		{ "id": "mod-stella-absent-sibling:imaginary_helm", "required": false }
+	]
+}
