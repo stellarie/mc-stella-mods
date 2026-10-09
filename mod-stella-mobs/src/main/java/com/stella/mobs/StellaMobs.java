@@ -265,6 +265,7 @@ public class StellaMobs implements ModInitializer {
 			Bosses.watch(mob);
 		}
 
+		com.stella.mobs.behavior.WitherEncounter.install(mob);
 		BehaviorInstaller.install(mob);
 		// R24: a ghast is not a Monster, so the installer returns before this and the ghast path is its own.
 		BehaviorInstaller.installGhastFireball(mob);

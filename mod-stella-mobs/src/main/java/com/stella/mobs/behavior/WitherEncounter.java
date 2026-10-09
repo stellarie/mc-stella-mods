@@ -5,12 +5,20 @@ import com.stella.mobs.config.ScalingConfig;
 import com.stella.mobs.config.ScalingConfigStore;
 import com.stella.mobs.config.WitherConfig;
 import com.stella.mobs.config.WitherConfigStore;
+import com.stella.mobs.mixin.MobTargetSelectorAccessor;
 import com.stella.mobs.scaling.ThreatState;
 import java.util.List;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.ai.goal.RangedAttackGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -18,7 +26,20 @@ import net.minecraft.world.phys.Vec3;
  * from disk without a {@link WitherState} is a legacy one and stays vanilla.
  */
 public final class WitherEncounter {
+	/** The vanilla Wither shoots from rank 2, so the pursuit takes the same rank and wins the tie by order. */
+	public static final int PURSUE_PRIORITY = 2;
+
 	private WitherEncounter() {
+	}
+
+	public static boolean isEncounter(final Mob mob) {
+		return WitherState.hasWitherFlag(mob);
+	}
+
+	/** True once the charge-up is over. */
+	public static boolean isActive(final Mob mob) {
+		WitherState state = WitherState.find(mob);
+		return state != null && state.activated();
 	}
 
 	/**
@@ -54,6 +75,81 @@ public final class WitherEncounter {
 		((AttachmentTarget) wither).setAttached(ThreatState.TYPE, new ThreatState(summonLevel, 0, 0, 0));
 		WitherState.set(wither, new WitherState(false, 0.0));
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter BEGIN uuid={} level={}", wither.getUUID(), summonLevel);
+	}
+
+	/**
+	 * Swaps the vanilla ranged goal and the nearest-living target goal for a pursuit of the nearest player. It runs at
+	 * load and never inside a goal tick. A Wither with no state keeps its vanilla goals.
+	 */
+	public static void install(final Mob mob) {
+		if (!(mob instanceof WitherBoss wither) || !isEncounter(mob)) {
+			return;
+		}
+		boolean installed = wither.getGoalSelector().getAvailableGoals().stream()
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof WitherPursueGoal);
+		if (installed) {
+			return;
+		}
+		wither.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedAttackGoal);
+		wither.getGoalSelector().addGoal(PURSUE_PRIORITY, new WitherPursueGoal(wither));
+		GoalSelector targets = ((MobTargetSelectorAccessor) wither).stellaMobs$targetSelector();
+		targets.removeAllGoals(goal -> goal instanceof NearestAttackableTargetGoal);
+		targets.addGoal(PURSUE_PRIORITY, new NearestAttackableTargetGoal<>(wither, Player.class, false, false));
+	}
+
+	/** Runs on the Wither's server tick. The first tick after the charge-up marks it active. */
+	public static void tick(final WitherBoss wither) {
+		WitherState state = WitherState.find(wither);
+		if (state == null || state.activated() || wither.getInvulnerableTicks() > 0) {
+			return;
+		}
+		WitherState.set(wither, new WitherState(true, wither.getY()));
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter ACTIVATE uuid={} anchorY={}", wither.getUUID(), wither.getY());
+	}
+
+	/**
+	 * The highest height the Wither may fly at: the ground under it plus the configured margin. With no ground within
+	 * the search depth, the height it stood at on activation stands in for the ground.
+	 */
+	public static double ceilingFor(final WitherBoss wither) {
+		WitherConfig config = WitherConfigStore.get();
+		double ground = groundTop(wither.level(), wither.getX(), wither.getY(), wither.getZ(), config.getInt(WitherConfig.MOVE_GROUND_SEARCH));
+		WitherState state = WitherState.find(wither);
+		if (Double.isNaN(ground)) {
+			ground = state == null ? wither.getY() : state.anchorY();
+		}
+		return ground + config.get(WitherConfig.MOVE_CEILING);
+	}
+
+	/** The top of the first solid block at or below the point, or NaN when none lies within the search depth. */
+	public static double groundTop(final Level level, final double x, final double y, final double z, final int depth) {
+		BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(x, y, z);
+		int top = cursor.getY();
+		int floor = Math.max(level.getMinY(), top - depth);
+		for (int blockY = top; blockY >= floor; blockY--) {
+			cursor.setY(blockY);
+			var shape = level.getBlockState(cursor).getCollisionShape(level, cursor);
+			if (!shape.isEmpty()) {
+				return blockY + shape.max(Direction.Axis.Y);
+			}
+		}
+		return Double.NaN;
+	}
+
+	/** Pulls an active Wither back under its ceiling and stops it rising. Vanilla lifts it toward its target. */
+	public static void clampToCeiling(final WitherBoss wither) {
+		if (!isActive(wither)) {
+			return;
+		}
+		double ceiling = ceilingFor(wither);
+		if (wither.getY() <= ceiling) {
+			return;
+		}
+		wither.setPos(wither.getX(), ceiling, wither.getZ());
+		Vec3 motion = wither.getDeltaMovement();
+		if (motion.y > 0.0) {
+			wither.setDeltaMovement(motion.x, 0.0, motion.z);
+		}
 	}
 
 	public static void reportSpawn(final Mob mob) {

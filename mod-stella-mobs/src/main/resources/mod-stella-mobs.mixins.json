@@ -32,7 +32,8 @@
 		"SkeletonShotLeadMixin",
 		"StrayShotBlinkMixin",
 		"TrueInvisibilityMobMixin",
-		"TrueInvisibilitySightMixin"
+		"TrueInvisibilitySightMixin",
+		"WitherBossMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

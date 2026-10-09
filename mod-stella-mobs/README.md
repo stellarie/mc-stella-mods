@@ -378,6 +378,15 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
 - The numbers live in `config/mod-stella-mobs/wither.json`, grouped by section. A missing key falls back to its default.
   An unknown key or a bad value is logged and skipped.
 
+- Charge-up: the vanilla 220 ticks and the power-7 blast stay. Every new system is inert until the charge-up ends. The
+  first tick after it marks the Wither active and records the height it stood at.
+- Movement: it flies at the nearest player (creative and spectator players are skipped) and holds at
+  `move.stop_distance` (9 blocks) once it sees the player. It never flies more than `move.ceiling_above_ground`
+  (3 blocks) above the ground under it, so it follows a player up a hill but not into the sky. With no ground within
+  `move.ground_search` blocks below it, the activation height stands in for the ground.
+- Once active, its body breaks no blocks after a hit, arrows hurt it at any health, and its side heads no longer fire on
+  their own.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.

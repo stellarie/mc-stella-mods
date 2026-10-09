@@ -9,6 +9,7 @@
 			"com.stella.mobs.WitherLevelGameTest",
 			"com.stella.mobs.WitherConfigGameTest",
 			"com.stella.mobs.WitherStateGameTest",
+			"com.stella.mobs.WitherMovementGameTest",
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
 			"com.stella.mobs.BlazeAttackGameTest",
