@@ -156,11 +156,15 @@ public class KeepRewardGameTest {
 			.thenSucceed();
 	}
 
+	private static final double HIGH = 240.0;
+
 	@GameTest(maxTicks = 300)
 	public void theBannerOfTheKeepAlsoRalliesWhenOnlyARuinFoeIsNear(final GameTestHelper helper) {
-		ServerPlayer holder = KeepTestSupport.joinPlayer(helper, 1.5, 150.5);
+		ServerPlayer holder = KeepTestSupport.joinPlayer(helper, 1.5, 1.5);
+		// A rally reaches any player within 6 blocks, so this holder stands 240 blocks over the other keep tests.
+		holder.teleportTo(helper.getLevel(), holder.getX(), holder.getY() + HIGH, holder.getZ(), java.util.Set.of(), 0.0F, 0.0F, true);
 		holder.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(KeepRewards.bannerOfTheKeep));
-		Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(helper.getLevel(), helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 1.0, 158.5)));
+		Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(helper.getLevel(), helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 1.0 + HIGH, 9.5)));
 		golem.setNoAi(true);
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(holder.hasEffect(MobEffects.RESISTANCE), "a deep golem near the holder did not count as a hostile"))
