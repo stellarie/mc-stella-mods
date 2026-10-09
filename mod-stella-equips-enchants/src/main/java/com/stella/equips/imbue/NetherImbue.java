@@ -2,15 +2,28 @@ package com.stella.equips.imbue;
 
 import com.stella.equips.StellaEquips;
 import com.stella.equips.refine.Refine;
+import com.stella.equips.unique.UniqueDamage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
@@ -27,6 +40,14 @@ public final class NetherImbue {
 	public static final int STAT_PER_IMBUE = 10;
 	/** The emerald price of the next imbue is this much for each imbue the piece will then hold. */
 	public static final int PRICE_STEP = 16;
+	public static final int WITHER_TICKS = 100;
+	/** Amplifier 1 is Wither II. */
+	public static final int WITHER_AMPLIFIER = 1;
+	/** A hit on a withered target deals this many times its damage. The imbue count does not change it. */
+	public static final float BONUS_MULTIPLIER = 3.0F;
+	/** How often a worn imbue cures a Wither that was already on the wearer, in ticks. */
+	public static final int CURE_INTERVAL = 10;
+	private static final List<EquipmentSlot> ARMOR = List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
 	public static final List<String> STATS = List.of("str", "agi", "vit", "dex", "int", "luk");
 	private static final String LORE_PREFIX = "Nether Star x";
 
@@ -73,6 +94,75 @@ public final class NetherImbue {
 			((Function<Object[], Boolean>) function).apply(new Object[] {stack, delta});
 		} catch (RuntimeException failure) {
 			StellaEquips.LOGGER.warn("The stat grant share {} failed: {}", GRANT_SHARE, failure.toString());
+		}
+	}
+
+	public static void register() {
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(NetherImbue::afterDamage);
+		ServerTickEvents.END_SERVER_TICK.register(NetherImbue::tick);
+	}
+
+	/** True when any worn armor piece holds an imbue. */
+	public static boolean wearsImbue(final LivingEntity entity) {
+		for (EquipmentSlot slot : ARMOR) {
+			if (count(entity.getItemBySlot(slot)) > 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Armor with an imbue refuses the Wither effect and every other effect lands as usual. */
+	public static boolean blocksEffect(final LivingEntity entity, final MobEffectInstance effect) {
+		return effect.is(MobEffects.WITHER) && wearsImbue(entity);
+	}
+
+	/** Removes a Wither that was on the entity before it put on imbued armor. */
+	public static void cure(final LivingEntity entity) {
+		if (entity.hasEffect(MobEffects.WITHER) && wearsImbue(entity)) {
+			entity.removeEffect(MobEffects.WITHER);
+		}
+	}
+
+	/**
+	 * The weapon of a melee or an arrow hit, or empty for any other damage.
+	 * Unique damage, thorns and spells name the attacker as the direct entity too, so they are listed out.
+	 */
+	public static ItemStack weaponOf(final DamageSource source) {
+		if (!(source.getEntity() instanceof LivingEntity attacker) || source.is(UniqueDamage.UNIQUE) || source.is(UniqueDamage.UNIQUE_PIERCE)
+			|| source.is(DamageTypes.THORNS) || source.is(DamageTypes.MAGIC) || source.is(DamageTypes.INDIRECT_MAGIC) || source.is(DamageTypes.WITHER)) {
+			return ItemStack.EMPTY;
+		}
+		Entity direct = source.getDirectEntity();
+		if (direct != attacker && !(direct instanceof AbstractArrow)) {
+			return ItemStack.EMPTY;
+		}
+		ItemStack weapon = source.getWeaponItem();
+		return weapon == null ? ItemStack.EMPTY : weapon;
+	}
+
+	/** The hit's damage before blocking and armor: times {@link #BONUS_MULTIPLIER} for an imbued weapon on a withered victim. */
+	public static float outgoing(final LivingEntity victim, final DamageSource source, final float amount) {
+		if (amount <= 0.0F || !victim.hasEffect(MobEffects.WITHER) || count(weaponOf(source)) <= 0 || source.getEntity() == victim) {
+			return amount;
+		}
+		return amount * BONUS_MULTIPLIER;
+	}
+
+	private static void afterDamage(final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked) {
+		if (blocked || !victim.isAlive() || victim.level().isClientSide() || source.getEntity() == victim || count(weaponOf(source)) <= 0) {
+			return;
+		}
+		// The source is the attacker, and canBeAffected still refuses the effect for Wither-proof victims.
+		victim.addEffect(new MobEffectInstance(MobEffects.WITHER, WITHER_TICKS, WITHER_AMPLIFIER), source.getEntity());
+	}
+
+	private static void tick(final MinecraftServer server) {
+		if (server.getTickCount() % CURE_INTERVAL != 0) {
+			return;
+		}
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			cure(player);
 		}
 	}
 

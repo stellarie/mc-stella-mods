@@ -71,7 +71,8 @@
 			"com.stella.equips.UniquesMagePriestGameTest",
 			"com.stella.equips.CraftedBowsGameTest",
 			"com.stella.equips.EnchantedBookShareGameTest",
-			"com.stella.equips.NetherImbueAnvilGameTest"
+			"com.stella.equips.NetherImbueAnvilGameTest",
+			"com.stella.equips.NetherImbueEffectGameTest"
 		]
 	}
 }
