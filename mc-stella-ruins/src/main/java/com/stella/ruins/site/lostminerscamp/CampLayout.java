@@ -89,6 +89,9 @@ public final class CampLayout {
 		ctx.marker(CampMarkers.TENT, tent.x(), tent.y(), tent.z());
 		CampPlan.Spot fire = plan.fire();
 		ctx.marker(CampMarkers.FIRE, fire.x(), fire.y(), fire.z());
+		for (CampPlan.Spot spot : plan.lanterns()) {
+			ctx.marker(CampMarkers.LANTERN, spot.x(), spot.y(), spot.z());
+		}
 		for (CampPlan.Spot spot : plan.miners()) {
 			ctx.marker(CampMarkers.MINER, spot.x(), spot.y(), spot.z());
 			ctx.marker(RuinMarkers.SPAWN, spot.x(), spot.y(), spot.z());

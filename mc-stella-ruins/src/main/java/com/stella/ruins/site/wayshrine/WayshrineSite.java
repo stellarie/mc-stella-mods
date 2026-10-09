@@ -29,6 +29,10 @@ public final class WayshrineSite {
 
 	private static RuinSite site;
 	private static WavePlan waves;
+	private static WavePlan wispWaves;
+	private static WavePlan acolyteWaves;
+	/** The vault rolls the acolyte rite adds. */
+	public static final int ACOLYTE_EXTRA_ROLLS = 1;
 
 	private WayshrineSite() {
 	}
@@ -39,6 +43,21 @@ public final class WayshrineSite {
 
 	public static WavePlan waves() {
 		return waves;
+	}
+
+	/** The waves a gold offering starts: the pilgrims' own rite. */
+	public static WavePlan pilgrimWaves() {
+		return waves;
+	}
+
+	/** The wisp heavy rite that an emerald starts. */
+	public static WavePlan wispWaves() {
+		return wispWaves;
+	}
+
+	/** The acolyte led rite that a shrine shard starts. It pays one more vault roll. */
+	public static WavePlan acolyteWaves() {
+		return acolyteWaves;
 	}
 
 	/** True for the three things the altar takes. */
@@ -55,13 +74,24 @@ public final class WayshrineSite {
 		Roster second = Roster.builder().add(WayshrineMobs.pilgrim(), 3).add(WayshrineMobs.wisp(), 3).build();
 		Roster third = Roster.builder().add(WayshrineMobs.pilgrim(), 2).add(WayshrineMobs.wisp(), 2).add(WayshrineMobs.acolyte(), 1).build();
 		waves = WavePlan.of(first, second, third);
+		wispWaves = WavePlan.of(
+			Roster.builder().add(WayshrineMobs.wisp(), 4).build(),
+			Roster.builder().add(WayshrineMobs.wisp(), 5).add(WayshrineMobs.pilgrim(), 1).build(),
+			Roster.builder().add(WayshrineMobs.wisp(), 4).add(WayshrineMobs.pilgrim(), 1).add(WayshrineMobs.acolyte(), 1).build());
+		acolyteWaves = WavePlan.of(
+			Roster.builder().add(WayshrineMobs.pilgrim(), 2).add(WayshrineMobs.acolyte(), 1).build(),
+			Roster.builder().add(WayshrineMobs.pilgrim(), 2).add(WayshrineMobs.wisp(), 2).add(WayshrineMobs.acolyte(), 1).build(),
+			Roster.builder().add(WayshrineMobs.pilgrim(), 1).add(WayshrineMobs.wisp(), 1).add(WayshrineMobs.acolyte(), 2).build());
 		site = RuinSite.builder(ID)
 			.size(SiteSize.SMALL)
 			.placement(Placement.surface(SLOPE))
 			.bounds(WayshrinePlan.SIZE, 16, WayshrinePlan.SIZE)
 			.layout(WayshrineLayout::draw)
 			.claim(Claim.resetAfterDays(RESET_DAYS))
-			.objective(() -> new ShrineRite(() -> Objectives.sequence(Objectives.offer(WayshrineSite::accepts), new ShrineWaves(waves))))
+			.objective(() -> new ShrineRite(() -> Objectives.choose(
+				new Objectives.Choice(stack -> stack.is(Items.GOLD_INGOT), new ShrineWaves(waves)),
+				new Objectives.Choice(stack -> stack.is(Items.EMERALD), new ShrineWaves(wispWaves)),
+				new Objectives.Choice(stack -> stack.is(WayshrineItems.SHRINE_SHARD), new ShrineWaves(acolyteWaves), ACOLYTE_EXTRA_ROLLS))))
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(VAULT_LOOT)
 			.unique(() -> new ItemStack(WayshrineRewards.censer()))

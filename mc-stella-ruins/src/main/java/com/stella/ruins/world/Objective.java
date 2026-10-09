@@ -25,6 +25,11 @@ public interface Objective {
 		return false;
 	}
 
+	/** Vault rolls this run earns on top of the usual count, such as a harder rite the player chose. */
+	default int extraRolls() {
+		return 0;
+	}
+
 	CompoundTag save();
 
 	void load(CompoundTag tag);

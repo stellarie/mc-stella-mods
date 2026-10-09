@@ -33,6 +33,21 @@ public final class Objectives {
 		return new Keys(key, count);
 	}
 
+	/** One way to answer {@link #choose}: the offer that picks it, the objective it starts, and the rolls it adds. */
+	public record Choice(Predicate<ItemStack> accepts, Objective then, int extraRolls) {
+		public Choice(final Predicate<ItemStack> accepts, final Objective then) {
+			this(accepts, then, 0);
+		}
+	}
+
+	/**
+	 * Wait for an offer that one choice accepts, spend one item, and run that choice's objective from then on. The
+	 * first choice that accepts the item wins.
+	 */
+	public static Objective choose(final Choice... choices) {
+		return new Choose(List.of(choices));
+	}
+
 	/** Run the objectives in order. The next one starts when the last one completes. */
 	public static Objective sequence(final Objective... steps) {
 		return new Sequence(List.of(steps));
@@ -144,6 +159,80 @@ public final class Objectives {
 		}
 	}
 
+	private static final class Choose implements Objective {
+		private final List<Choice> choices;
+		private int chosen = -1;
+
+		private Choose(final List<Choice> choices) {
+			if (choices.isEmpty()) {
+				throw new IllegalArgumentException("a choose objective needs at least one choice");
+			}
+			this.choices = choices;
+		}
+
+		@Override
+		public void start(final SiteRun run) {
+			this.chosen = -1;
+		}
+
+		@Override
+		public Progress tick(final SiteRun run) {
+			return this.chosen < 0 ? Progress.RUNNING : this.choices.get(this.chosen).then().tick(run);
+		}
+
+		@Override
+		public void onKill(final SiteRun run, final LivingEntity mob) {
+			if (this.chosen >= 0) {
+				this.choices.get(this.chosen).then().onKill(run, mob);
+			}
+		}
+
+		@Override
+		public boolean onUse(final SiteRun run, final ServerPlayer player, final ItemStack held) {
+			if (this.chosen >= 0) {
+				return this.choices.get(this.chosen).then().onUse(run, player, held);
+			}
+			if (held.isEmpty()) {
+				return false;
+			}
+			for (int i = 0; i < this.choices.size(); i++) {
+				if (this.choices.get(i).accepts().test(held)) {
+					held.shrink(1);
+					this.chosen = i;
+					this.choices.get(i).then().start(run);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		@Override
+		public int extraRolls() {
+			return this.chosen < 0 ? 0 : this.choices.get(this.chosen).extraRolls() + this.choices.get(this.chosen).then().extraRolls();
+		}
+
+		@Override
+		public CompoundTag save() {
+			CompoundTag tag = new CompoundTag();
+			tag.putInt("chosen", this.chosen);
+			if (this.chosen >= 0) {
+				tag.put("branch", this.choices.get(this.chosen).then().save());
+			}
+			return tag;
+		}
+
+		@Override
+		public void load(final CompoundTag tag) {
+			this.chosen = tag.getIntOr("chosen", -1);
+			if (this.chosen >= this.choices.size()) {
+				this.chosen = -1;
+			}
+			if (this.chosen >= 0) {
+				this.choices.get(this.chosen).then().load(tag.getCompoundOrEmpty("branch"));
+			}
+		}
+	}
+
 	private static final class Keys implements Objective {
 		private final Item key;
 		private final int count;
@@ -219,6 +308,11 @@ public final class Objectives {
 				this.steps.get(this.index).start(run);
 			}
 			return Progress.RUNNING;
+		}
+
+		@Override
+		public int extraRolls() {
+			return this.steps.stream().mapToInt(Objective::extraRolls).sum();
 		}
 
 		@Override

@@ -129,6 +129,9 @@ final class RuinRuns {
 		entry.setClaimTime(RuinClock.now(level));
 		int mobLevel = run.containerLevel();
 		int rolls = RuinConfig.get().vaultRolls(mobLevel) + entry.tier() + entry.omens().size();
+		Objective objective = site.newObjective();
+		objective.load(entry.objective());
+		rolls += objective.extraRolls();
 		int opened = 0;
 		for (BlockPos vault : run.markers(RuinMarkers.VAULT)) {
 			if (level.getBlockEntity(vault) instanceof RuinVaultBlockEntity chest) {

@@ -90,4 +90,43 @@ public class ObjectiveGameTest {
 			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && !arena.vault().sealed(), "the sequence ended " + arena.phase());
 		});
 	}
+
+	@GameTest(maxTicks = TICKS)
+	public void aChooseObjectiveStartsTheBranchOfTheItemOfferedAndThenIgnoresTheOtherOffer(final GameTestHelper helper) {
+		WorldTestSupport.inArena(helper, WorldTestInit.chooser, arena -> {
+			ServerPlayer player = arena.wake();
+			helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && arena.entry().roster().isEmpty(), "the core woke with mobs before any offer");
+			ItemStack wrong = new ItemStack(Items.STICK, 2);
+			helper.assertTrue(!useCore(arena, player, wrong).consumesAction() && wrong.getCount() == 2 && arena.entry().roster().isEmpty(), "a wrong item chose a branch");
+			ItemStack diamonds = new ItemStack(Items.DIAMOND, 2);
+			helper.assertTrue(useCore(arena, player, diamonds).consumesAction() && diamonds.getCount() == 1, "the diamond was not spent");
+			helper.assertTrue(arena.entry().roster().size() == 1, "the diamond branch holds " + arena.entry().roster().size() + " mobs, not 1");
+			ItemStack gold = new ItemStack(Items.GOLD_INGOT, 2);
+			helper.assertTrue(!useCore(arena, player, gold).consumesAction() && gold.getCount() == 2 && arena.entry().roster().size() == 1, "a second offer changed the branch");
+			int base = RuinConfig.get().vaultRolls(RuinLevels.at(arena.level(), Vec3.atCenterOf(arena.corePos())));
+			arena.freeze();
+			arena.killRoster(player);
+			int emeralds = RuinCoreGameTest.count(arena.vault(), Items.EMERALD);
+			WorldTestSupport.result("chooseDiamond", "roster=1 emeralds=" + emeralds + " base=" + base);
+			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && emeralds == base, "the diamond branch left " + arena.phase() + " with " + emeralds + " rolls, not " + base);
+		});
+	}
+
+	@GameTest(maxTicks = TICKS)
+	public void aChoiceCanAddVaultRollsAndTheChoiceSurvivesASaveOfTheObjective(final GameTestHelper helper) {
+		WorldTestSupport.inArena(helper, WorldTestInit.chooser, arena -> {
+			ServerPlayer player = arena.wake();
+			helper.assertTrue(useCore(arena, player, new ItemStack(Items.GOLD_INGOT, 2)).consumesAction(), "the gold was not taken");
+			helper.assertTrue(arena.entry().roster().size() == 2, "the gold branch holds " + arena.entry().roster().size() + " mobs, not 2");
+			Objective reloaded = WorldTestInit.chooser.newObjective();
+			reloaded.load(arena.entry().objective());
+			helper.assertTrue(reloaded.extraRolls() == 2, "the reloaded objective adds " + reloaded.extraRolls() + " rolls, not 2");
+			int base = RuinConfig.get().vaultRolls(RuinLevels.at(arena.level(), Vec3.atCenterOf(arena.corePos())));
+			arena.freeze();
+			arena.killRoster(player);
+			int emeralds = RuinCoreGameTest.count(arena.vault(), Items.EMERALD);
+			WorldTestSupport.result("chooseGold", "emeralds=" + emeralds + " base=" + base);
+			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && emeralds == base + 2, "the gold branch paid " + emeralds + " rolls, not " + (base + 2));
+		});
+	}
 }

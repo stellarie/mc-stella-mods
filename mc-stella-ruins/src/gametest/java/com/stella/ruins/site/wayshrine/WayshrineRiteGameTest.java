@@ -28,32 +28,48 @@ import net.minecraft.world.level.block.Rotation;
 public class WayshrineRiteGameTest {
 	static final int TICKS = 6000;
 
-	private static void startsWaveOneWith(final GameTestHelper helper, final Item offering) {
+	private static void startsWaveOneWith(final GameTestHelper helper, final Item offering, final com.stella.ruins.world.WavePlan rite) {
 		WayshrineTestSupport.inArena(helper, WayshrinePlan.RING, arena -> {
 			ServerPlayer player = arena.wake();
 			helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && arena.entry().roster().isEmpty(), "the core woke with " + arena.entry().roster().size() + " mobs before any offering");
 			ItemStack stack = new ItemStack(offering, 2);
 			InteractionResult taken = arena.offer(player, stack);
-			WayshrineTestSupport.result("offering", "item=" + offering + " taken=" + taken.consumesAction() + " left=" + stack.getCount() + " pilgrims=" + arena.count(WayshrineMobs.PILGRIM)
-				+ " roster=" + arena.entry().roster().size());
+			int total = rite.waves().get(0).entries().stream().mapToInt(com.stella.ruins.world.Roster.Entry::count).sum();
+			WayshrineTestSupport.result("offering", "item=" + offering + " taken=" + taken.consumesAction() + " left=" + stack.getCount() + " roster=" + arena.entry().roster().size() + " expected=" + total);
 			helper.assertTrue(taken.consumesAction() && stack.getCount() == 1, "the offering was not taken, or took more than one item: left " + stack.getCount());
-			helper.assertTrue(arena.entry().roster().size() == 4 && arena.count(WayshrineMobs.PILGRIM) == 4, "wave 1 holds " + arena.entry().roster().size() + " mobs, " + arena.count(WayshrineMobs.PILGRIM) + " of them pilgrims, not 4");
+			helper.assertTrue(arena.entry().roster().size() == total, "wave 1 holds " + arena.entry().roster().size() + " mobs, not " + total);
+			for (com.stella.ruins.world.Roster.Entry entry : rite.waves().get(0).entries()) {
+				helper.assertTrue(arena.count(entry.kind().id()) == entry.count(), "wave 1 holds " + arena.count(entry.kind().id()) + " of " + entry.kind().id() + ", not " + entry.count());
+			}
 		});
+	}
+
+	@GameTest
+	public void eachOfferingChoosesADifferentRite(final GameTestHelper helper) {
+		java.util.Set<String> firstWaves = new java.util.HashSet<>();
+		for (com.stella.ruins.world.WavePlan plan : List.of(WayshrineSite.pilgrimWaves(), WayshrineSite.wispWaves(), WayshrineSite.acolyteWaves())) {
+			StringBuilder shape = new StringBuilder();
+			plan.waves().forEach(wave -> wave.entries().forEach(entry -> shape.append(entry.kind().id()).append(entry.count()).append(',')));
+			firstWaves.add(shape.toString());
+		}
+		helper.assertTrue(firstWaves.size() == 3, "the three rites are not three different plans: " + firstWaves);
+		helper.assertTrue(WayshrineSite.ACOLYTE_EXTRA_ROLLS >= 1, "the acolyte rite pays no more than the others");
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = TICKS)
 	public void aGoldIngotOfferedAtTheCoreStartsWaveOne(final GameTestHelper helper) {
-		startsWaveOneWith(helper, Items.GOLD_INGOT);
+		startsWaveOneWith(helper, Items.GOLD_INGOT, WayshrineSite.pilgrimWaves());
 	}
 
 	@GameTest(maxTicks = TICKS)
 	public void anEmeraldOfferedAtTheCoreStartsWaveOne(final GameTestHelper helper) {
-		startsWaveOneWith(helper, Items.EMERALD);
+		startsWaveOneWith(helper, Items.EMERALD, WayshrineSite.wispWaves());
 	}
 
 	@GameTest(maxTicks = TICKS)
 	public void aShrineShardOfferedAtTheCoreStartsWaveOne(final GameTestHelper helper) {
-		startsWaveOneWith(helper, WayshrineItems.SHRINE_SHARD);
+		startsWaveOneWith(helper, WayshrineItems.SHRINE_SHARD, WayshrineSite.acolyteWaves());
 	}
 
 	@GameTest(maxTicks = TICKS)
@@ -125,7 +141,7 @@ public class WayshrineRiteGameTest {
 	public void everyMobAppearsAtAMarkerOfItsOwnKind(final GameTestHelper helper) {
 		WayshrineTestSupport.inArena(helper, WayshrinePlan.SUNKEN, arena -> {
 			ServerPlayer player = arena.wake();
-			arena.offer(player, new ItemStack(Items.EMERALD, 2));
+			arena.offer(player, new ItemStack(Items.GOLD_INGOT, 2));
 			Map<BlockPos, Integer> pilgrims1 = spotsOf(arena, WayshrineMobs.PILGRIM);
 			helper.assertTrue(pilgrims1.equals(firstMarkers(arena, WayshrineMobs.PILGRIM, 4)), "wave 1 pilgrims stand at " + pilgrims1 + ", markers " + arena.markers(WayshrinePlan.spawnMarker(WayshrineMobs.PILGRIM)));
 			arena.killRoster(player);

@@ -78,6 +78,7 @@ public class CampJournalGameTest {
 			BlockPos lectern = arena.lecternPos();
 			int killed = arena.killRoster();
 			arena.core().pulse(arena.level());
+			CampLanternGameTest.lightAll(arena);
 			JournalObjective.Outcome outcome = JournalObjective.read(arena.level(), lectern, player);
 			helper.assertTrue(outcome == JournalObjective.Outcome.READ, "the quiet read gave " + outcome);
 			helper.assertTrue(arena.objective().hasRead(), "the quiet read did not count");
@@ -99,6 +100,7 @@ public class CampJournalGameTest {
 			ServerPlayer player = joined.player();
 			arena.killRoster();
 			arena.core().pulse(arena.level());
+			CampLanternGameTest.lightAll(arena);
 			JournalObjective.read(arena.level(), arena.lecternPos(), player);
 			arena.core().pulse(arena.level());
 			helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core is " + arena.phase() + " before the wait");

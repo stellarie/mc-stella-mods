@@ -64,6 +64,7 @@ public final class WorldTestInit implements ModInitializer {
 	static RuinSite trophy;
 	static RuinSite leader;
 	static RuinSite hooked;
+	static RuinSite chooser;
 	/** Rearms the hooked site saw, by core. */
 	static final java.util.Map<net.minecraft.core.BlockPos, AtomicInteger> REARMS = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -139,6 +140,9 @@ public final class WorldTestInit implements ModInitializer {
 			.objective(Objectives::clear).leads("test_findable").register();
 		hooked = base("test_hooked", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
 			.objective(Objectives::clear).onRearm((level, core, markers) -> REARMS.computeIfAbsent(core, key -> new AtomicInteger()).incrementAndGet()).register();
+		chooser = base("test_chooser", yard).placement(Placement.surface(3)).objective(() -> Objectives.choose(
+			new Objectives.Choice(stack -> stack.is(Items.DIAMOND), Objectives.waves(WavePlan.of(one))),
+			new Objectives.Choice(stack -> stack.is(Items.GOLD_INGOT), Objectives.waves(WavePlan.of(two)), 2))).register();
 		findable = base("test_findable", yard).placement(Placement.surface(3)).roster(one).objective(Objectives::clear).register();
 	}
 
