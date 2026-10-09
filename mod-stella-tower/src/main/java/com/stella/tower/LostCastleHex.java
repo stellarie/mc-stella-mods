@@ -8,6 +8,8 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
+import net.minecraft.world.level.block.SkullBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -30,13 +32,13 @@ public final class LostCastleHex {
 	private static final long MAZE_SALT = 0x4D415A45L;
 	private static final long GATE_SALT = 0x47415445L;
 	/** How many candles, skulls, chains, floor gaps, rubble blocks, cobwebs and growths every storey is given. */
-	public static final int CANDLES = 4;
-	public static final int SKULLS = 4;
-	public static final int CHAINS = 6;
-	public static final int FLOOR_GAPS = 8;
-	public static final int RUBBLE = 3;
-	public static final int COBWEBS = 3;
-	public static final int GROWTH = 2;
+	public static final int CANDLES = 2;
+	public static final int SKULLS = 2;
+	public static final int CHAINS = 3;
+	public static final int FLOOR_GAPS = 4;
+	public static final int RUBBLE = 2;
+	public static final int COBWEBS = 2;
+	public static final int GROWTH = 1;
 	/** One wall block in this many comes down as a crack or a mossy stone. */
 	public static final int DECAY = 14;
 	/** The breach in the ground storey's south wall: how wide, how high, and how many blocks of it still stand. */
@@ -311,6 +313,56 @@ public final class LostCastleHex {
 		}
 	}
 
+	/** A block turned to face a direction, for every block that has a facing. */
+	private static BlockState facing(final BlockState state, final Direction facing) {
+		if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+			return state.setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
+		}
+		if (state.hasProperty(BlockStateProperties.FACING)) {
+			return state.setValue(BlockStateProperties.FACING, facing);
+		}
+		return state;
+	}
+
+	/** Paints one prop of a room. A prop is one block, or two for a bed, or a stack for an altar or a hanging rack. */
+	private static void furnish(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan.Furnishing prop,
+		final int feet, final int ceiling) {
+		int x = prop.x();
+		int z = prop.z();
+		Direction face = prop.facing();
+		switch (prop.prop()) {
+			case BED -> piece.bed(level, bb, feet, prop);
+			case CRAFTING_TABLE -> piece.set(level, bb, Blocks.CRAFTING_TABLE.defaultBlockState(), x, feet, z);
+			case COBWEB -> piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
+			case FURNACE -> piece.set(level, bb, facing(Blocks.FURNACE.defaultBlockState(), face), x, feet, z);
+			case ANVIL -> piece.set(level, bb, facing(Blocks.ANVIL.defaultBlockState(), face), x, feet, z);
+			case SMITHING_TABLE -> piece.set(level, bb, Blocks.SMITHING_TABLE.defaultBlockState(), x, feet, z);
+			case BLAST_FURNACE -> piece.set(level, bb, facing(Blocks.BLAST_FURNACE.defaultBlockState(), face), x, feet, z);
+			case GRINDSTONE -> piece.set(level, bb, facing(Blocks.GRINDSTONE.defaultBlockState(), face), x, feet, z);
+			case FLETCHING_TABLE -> piece.set(level, bb, Blocks.FLETCHING_TABLE.defaultBlockState(), x, feet, z);
+			case CHAIN_RACK -> {
+				piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, ceiling - 1, z);
+				piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, ceiling - 2, z);
+			}
+			case SMOKER -> piece.set(level, bb, facing(Blocks.SMOKER.defaultBlockState(), face), x, feet, z);
+			case BARREL -> piece.set(level, bb, facing(Blocks.BARREL.defaultBlockState(), face), x, feet, z);
+			case CAULDRON -> piece.set(level, bb, Blocks.CAULDRON.defaultBlockState(), x, feet, z);
+			case HAY -> piece.set(level, bb, Blocks.HAY_BLOCK.defaultBlockState(), x, feet, z);
+			case BOOKSHELF -> piece.set(level, bb, Blocks.BOOKSHELF.defaultBlockState(), x, feet, z);
+			case LECTERN -> piece.set(level, bb, facing(Blocks.LECTERN.defaultBlockState(), face), x, feet, z);
+			case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, 1 + prop.arg() % 3), x, feet, z);
+			case CRATE -> piece.set(level, bb, Blocks.SPRUCE_PLANKS.defaultBlockState(), x, feet, z);
+			case PEW -> piece.set(level, bb, Blocks.OAK_SLAB.defaultBlockState(), x, feet, z);
+			case ALTAR -> {
+				piece.set(level, bb, Blocks.CHISELED_STONE_BRICKS.defaultBlockState(), x, feet, z);
+				piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true), x, feet + 1, z);
+			}
+			case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, prop.arg()), x, feet, z);
+			case GRAVE -> piece.set(level, bb, Blocks.STONE_BRICK_SLAB.defaultBlockState(), x, feet, z);
+			case SOUL_LANTERN -> piece.set(level, bb, Blocks.SOUL_LANTERN.defaultBlockState(), x, feet, z);
+		}
+	}
+
 	/**
 	 * The storey's turret: its nook is a pillar of wall from the floor to the ceiling, and the spawner is
 	 * set in the tuck column one block over the floor. Its sides are two walls of the lattice and two blocks
@@ -343,6 +395,11 @@ public final class LostCastleHex {
 			}
 			for (LostCastlePlan.Chest chest : floor.chests()) {
 				piece.chestSite(level, bb, feet, chest);
+			}
+			for (LostCastlePlan.Room room : floor.rooms()) {
+				for (LostCastlePlan.Furnishing prop : room.props()) {
+					furnish(piece, level, bb, prop, feet, ceiling);
+				}
 			}
 			for (LostCastlePlan.Scatter item : floor.scatter()) {
 				switch (item.kind()) {

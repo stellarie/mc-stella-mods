@@ -42,6 +42,7 @@ public class TowerLostCastlePlanGameTest {
 		int blocks = 0;
 		int doubles = 0;
 		List<TowerHex.Nook> below = List.of();
+		Set<Long> hanging = new HashSet<>();
 		if (plan.floors().size() != TowerHex.STOREYS) {
 			return "holds " + plan.floors().size() + " storeys";
 		}
@@ -96,6 +97,50 @@ public class TowerLostCastlePlanGameTest {
 				}
 				if (!LostCastlePlan.reachHeld(site)) {
 					return "storey " + storey + " turret reaches outside the octagon";
+				}
+			}
+			if (floor.rooms().size() != TowerHex.cells().size()) {
+				return "storey " + storey + " holds " + floor.rooms().size() + " themed rooms";
+			}
+			Set<LostRoomTheme> themes = EnumSet.noneOf(LostRoomTheme.class);
+			for (LostCastlePlan.Room room : floor.rooms()) {
+				if (!themes.add(room.theme())) {
+					return "storey " + storey + " repeats the theme " + room.theme();
+				}
+				if (room.props().size() != room.theme().recipe().size()) {
+					return "storey " + storey + " room " + room.cx() + "," + room.cz() + " " + room.theme() + " holds " + room.props().size()
+						+ " props, not " + room.theme().recipe().size();
+				}
+				for (LostCastlePlan.Furnishing prop : room.props()) {
+					int[][] covered = prop.prop() == LostRoomTheme.Prop.BED ? new int[][] {{prop.x(), prop.z()}, {prop.x2(), prop.z2()}} : new int[][] {{prop.x(), prop.z()}};
+					for (int[] column : covered) {
+						if (!claimed.add(key(column[0], column[1])) || TowerHex.onCrossing(column[0], column[1]) || LostCastleHex.inStairLane(column[0], column[1])
+							|| TowerHex.kind(column[0], column[1]) != TowerHex.Part.WAY || top && LostCastleHex.inPortalHall(column[0], LostCastleHex.portalSpot().getY(), column[1])
+							|| TowerHex.cellOf(column[0], column[1]) == null || TowerHex.cellOf(column[0], column[1]).cx() != room.cx() || TowerHex.cellOf(column[0], column[1]).cz() != room.cz()) {
+							return "storey " + storey + " prop " + prop.prop() + " stands where it may not, or twice, at " + column[0] + "," + column[1];
+						}
+					}
+					if (prop.prop() == LostRoomTheme.Prop.BED && Math.abs(prop.x() - prop.x2()) + Math.abs(prop.z() - prop.z2()) != 1) {
+						return "storey " + storey + " bed halves do not touch";
+					}
+				}
+			}
+			for (LostCastlePlan.Scatter item : floor.scatter()) {
+				if (item.kind() == LostCastlePlan.ScatterKind.GAP && hanging.contains(key(item.x(), item.z()))) {
+					return "storey " + storey + " has a floor gap at " + item.x() + "," + item.z() + " under a chain or rack of the storey below";
+				}
+			}
+			hanging = new HashSet<>();
+			for (LostCastlePlan.Scatter item : floor.scatter()) {
+				if (item.kind() == LostCastlePlan.ScatterKind.CHAIN) {
+					hanging.add(key(item.x(), item.z()));
+				}
+			}
+			for (LostCastlePlan.Room room : floor.rooms()) {
+				for (LostCastlePlan.Furnishing prop : room.props()) {
+					if (prop.prop() == LostRoomTheme.Prop.CHAIN_RACK) {
+						hanging.add(key(prop.x(), prop.z()));
+					}
 				}
 			}
 			int storeyBlocks = top ? 1 : 0;

@@ -12,6 +12,7 @@ import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.AnvilBlock;
 import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
@@ -265,6 +267,28 @@ public class LostRoomPiece extends StructurePiece {
 		if (chunkBB.isInside(b)) {
 			level.setBlock(b, aLeft ? right : left, Block.UPDATE_CLIENTS);
 			stock(level, chunkBB, b, site.x2(), y, site.z2());
+		}
+	}
+
+	/**
+	 * A bed of the plan, written from the world's own view of its two halves, so a turned or mirrored piece
+	 * still joins them. Each half is written only inside the chunk.
+	 */
+	void bed(final WorldGenLevel level, final BoundingBox chunkBB, final int y, final LostCastlePlan.Furnishing bed) {
+		BlockPos foot = worldPos(bed.x(), y, bed.z());
+		BlockPos head = worldPos(bed.x2(), y, bed.z2());
+		Direction facing = Direction.NORTH;
+		for (Direction candidate : Direction.Plane.HORIZONTAL) {
+			if (foot.relative(candidate).equals(head)) {
+				facing = candidate;
+			}
+		}
+		BlockState base = Blocks.STRAW_BED.defaultBlockState().setValue(BedBlock.FACING, facing);
+		if (chunkBB.isInside(foot)) {
+			level.setBlock(foot, base.setValue(BedBlock.PART, BedPart.FOOT), Block.UPDATE_CLIENTS);
+		}
+		if (chunkBB.isInside(head)) {
+			level.setBlock(head, base.setValue(BedBlock.PART, BedPart.HEAD), Block.UPDATE_CLIENTS);
 		}
 	}
 
