@@ -5,12 +5,18 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Predicate;
+import com.stella.mobs.StellaMobs;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.lifecycle.v1.EntityLoadData;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -34,17 +40,81 @@ public final class LostCastles {
 	public static final int MAX_STOCK_ATTEMPTS = MAX_MOBS * 4;
 	public static final int CHECK_TICKS = 20;
 	public static final int SPOT_TRIES = 40;
+	/** What a mob of a storey spawner carries, so the storey cap can count its own mobs. */
+	public static final String SPAWN_TAG = "mod-stella-tower.lost_castle_spawn";
+	/** The most spawner mobs alive on a ground or a middle storey of a castle, and on the top storey, which holds more turrets. */
+	public static final int STOREY_CAP = 6;
+	public static final int TOP_STOREY_CAP = 10;
 	private static final Queue<LostRoomData.Castle> FOUND = new ConcurrentLinkedQueue<>();
 
 	private LostCastles() {
 	}
 
 	public static void register() {
+		// Before the mobs mod's own listener, so a spawner mob is a tower mob before it can roll an elite or a boss.
+		Identifier early = StellaTower.id("lost_castle_spawner");
+		ServerEntityEvents.ENTITY_LOAD.addPhaseOrdering(early, Event.DEFAULT_PHASE);
+		ServerEntityEvents.ENTITY_LOAD.register(early, LostCastles::onSpawnerMob);
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % CHECK_TICKS == 0) {
 				wake(server);
 			}
 		});
+	}
+
+	/**
+	 * Turns a mob that a vanilla spawner has just raised inside a lost castle into a tower mob of the lost
+	 * room's level rule, unless its storey already holds {@link #STOREY_CAP} of them. Any other mob, a mob
+	 * loaded from disk and a mob that is a tower mob already are left alone, so the hook can run twice.
+	 */
+	static void onSpawnerMob(final Entity entity, final ServerLevel level) {
+		if (!(entity instanceof Mob mob) || !(entity instanceof EntityLoadData load) || load.isLoadedFromDisk()
+			|| load.spawnReason() != EntitySpawnReason.SPAWNER || TowerMobs.stateOf(mob) != null) {
+			return;
+		}
+		BoundingBox box = castleBoxAt(level, mob.blockPosition());
+		if (box == null) {
+			return;
+		}
+		int storey = Math.max(0, Math.min(TowerHex.STOREYS - 1, (mob.blockPosition().getY() - box.minY()) / TowerHex.STOREY));
+		int low = box.minY() + TowerHex.floorAt(storey);
+		AABB slab = new AABB(box.minX(), low, box.minZ(), box.maxX() + 1, low + TowerHex.STOREY, box.maxZ() + 1);
+		int alive = level.getEntitiesOfClass(Mob.class, slab, other -> other != mob && other.isAlive() && other.entityTags().contains(SPAWN_TAG)).size();
+		if (alive >= storeyCap(storey)) {
+			mob.discard();
+			return;
+		}
+		// The no-roll tag comes first: the mobs mod reads it when it loads the mob, right after this.
+		mob.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		TowerMobs.settle(mob);
+		RandomSource random = mob.getRandom();
+		int mobLevel = Math.max(0, LostRooms.averageLevel(level.getServer().getPlayerList().getPlayers())
+			+ random.nextIntBetweenInclusive(-LostRooms.LEVEL_BELOW, LostRooms.LEVEL_ABOVE));
+		TowerElement element = TowerElement.values()[random.nextInt(TowerElement.values().length)];
+		TowerMobs.makeTowerMob(mob, LostRooms.equivalentFloor(mobLevel), element, TowerRank.MOB, mobLevel);
+		mob.addTag(LostRooms.TAG);
+		mob.addTag(SPAWN_TAG);
+	}
+
+	/** The most spawner mobs alive on a storey. */
+	public static int storeyCap(final int storey) {
+		return storey == TowerHex.STOREYS - 1 ? TOP_STOREY_CAP : STOREY_CAP;
+	}
+
+	/** The box of the recorded lost castle that holds a spot, or null. */
+	private static BoundingBox castleBoxAt(final ServerLevel level, final BlockPos at) {
+		for (LostRoomData.Castle castle : LostRoomData.get(level.getServer()).castles()) {
+			BlockPos corner = castle.corner();
+			if (!castle.dimension().equals(level.dimension()) || Math.abs(at.getX() - corner.getX()) > LostRoomPiece.LENGTH
+				|| Math.abs(at.getZ() - corner.getZ()) > LostRoomPiece.LENGTH) {
+				continue;
+			}
+			BoundingBox box = piece(castle).getBoundingBox();
+			if (box.isInside(at)) {
+				return box;
+			}
+		}
+		return null;
 	}
 
 	/** Queues a castle a chunk has just built; any thread. */

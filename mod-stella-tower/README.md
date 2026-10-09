@@ -471,14 +471,39 @@ Every planned floor is built with a double tower chest at each chest spot of its
   (96 blocks: 64 and a footprint) from `minecraft:villages`. A start on water, or on ground that falls more
   than 6 blocks under the floor, is skipped.
 - The castle stands on the surface: its floor is one block above the highest ground under its 31 by 27
-  footprint, read every 3 blocks and at the edges. A foundation of tower wall fills down to the terrain.
-- The castle is a ruin of tower wall: a curtain wall with three breaches and merlons, an oak double door
-  for the gate under two tower lamps, three broken corner towers and a fallen fourth, a courtyard with moss,
-  rubble and a broken well, and two halls, each 9 by 9 and 5 high inside, under roofs with holes in them.
-  Vines hang down the walls; cobwebs fill the corners.
-- The west hall holds the blue portal, 1 wide and 2 high, lined with tower frame, and the crafting table
-  with a lit candle, an anvil, a furnace, and a chest. Three more chests stand in the east hall and in the
-  two front towers. Each chest holds tower loot from a random floor up to 100.
+  frame, read every 3 blocks and at the edges. A foundation of tower wall fills down to the terrain.
+- The castle is an octagon over a 3 by 3 lattice of rooms, three storeys high. Each room is a six-wide
+  path between walls one block thick, 7 high inside. Each outer corner is cut by a diagonal wall two blocks
+  thick, and each corner room keeps 26 of its 36 floor columns. The other five rooms are whole. A maze
+  joins the nine rooms on every storey, with two doors more than it needs. The stair stands in the back
+  middle room and climbs one block at a time. The way in is a breach in the front wall, under two tower
+  lamps, into the front middle room, which is the courtyard.
+- Every storey is an abandoned base. Each of its nine rooms has one theme and no theme repeats on a storey:
+  bedroom, smithy, larder, study, storeroom, barracks, chapel, crypt and armory. A theme is a few props
+  along the walls and in the corners of its room: a bed or two, a furnace, an anvil, a smithing table, a
+  blast furnace, a smoker, barrels, a cauldron, hay, bookshelves, a lectern, candles, crates, pews, an altar,
+  skulls, graves, soul lanterns, grindstones, a fletching table, hanging chains and cobwebs. The crossing of
+  every room and every doorway stay clear. A few candles, skulls, chains, cobwebs, mossy and cracked stone,
+  and gaps in the floor above the first storey are strewn over what is left. Stone decays at random. No
+  lava, fire, magma, cactus, berry bush, powder snow, wither rose or TNT stands in a castle.
+- The blue portal, 1 wide and 2 high and lined with tower frame, stands in the middle room of the top
+  storey, with the workstations beside it: a crafting table with a lit candle, an anvil, a furnace and a
+  chest of tower loot.
+- A castle holds 8 chest blocks: 2 on the first storey, 3 on the second, and 3 on the top, which counts the
+  workstation chest. At least 2 of them are whole double chests. Each chest block holds 15 rolls of tower
+  loot from a random floor up to 100.
+- A castle is the same castle however it is cut into chunks: its floor kinds, themes, chests and ruin come
+  from its seed alone, and nothing is chosen by reading blocks already laid.
+- Each storey hides spawners in turrets: a 2 by 2 pillar of wall in a room's corner, with a vanilla spawner
+  set one block over the floor, and no air against it. A turret is covered by iron bars on one side, or by
+  stone alone with one accent block at its outer corner. The first and second storeys have one turret each.
+  The top storey has one in every room but the portal room, 8 in all. A spawner wakes when a player is
+  within 10 blocks, spawns up to 2 mobs within 3 blocks of it every 20 to 50 seconds, and lists mobs by its
+  storey's kind and the castle's environment. It never lists a creeper. Its light rule spans every level,
+  because the castle is lit.
+- A mob a spawner raises in a castle is a tower mob of the players' average level less 5 to 15 more, as the
+  courtyard mobs are. It never rolls an elite or a boss. A storey holds at most 6 live spawner mobs, and the
+  top storey 10. A player can break a turret to reach its spawner and stop it.
 - The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its courtyard,
   each at the online players' average level less 5 to 15 more. They never rise again.
 - The castle's portal leads to its own room, an instance in the tower dimension west of the floors.
@@ -494,23 +519,17 @@ Every planned floor is built with a double tower chest at each chest spot of its
 
 ### Castle variants (`LostCastleVariant`)
 
-The castle's seed chooses one of five shapes, each about a fifth of the time. Every shape keeps the gate at
-the front middle, the workstations in the portal's room, four stocked chests or more, the courtyard mobs,
-and the floor one block above the ground.
+The castle's seed chooses one of five environments, each about a fifth of the time. They share one plan and
+differ in stone and in one mob added to every spawner list. The floor is one block above the ground.
 
-- Castle: the ruined castle above, unchanged.
-- Keep: a keep of 2 or 3 floors, 15 to 19 wide and 11 to 13 deep, joined by two-wide stairs along its side
-  walls. Its upper floors open onto broken balconies over the courtyard. The portal is on the top floor.
-- Maze ward: a 5 by 5 maze of four-wide ways inside the walls, drawn from the gate's cell. Its middle two
-  cells form one room with the portal and the workstations. Chests stand in its dead ends.
-- Flooded ruin: a water moat across the front ward, bridged from the gate. Behind it, a room 7 or 9 wide
-  stands on an island in a ring of lava two wide, with one bridge to its door. Side pits of lava have bridges
-  of their own. The portal is in the island room.
-- Sunken crypt: a low, half-buried ward round a mausoleum. Its stair goes down six steps to a vaulted hall,
-  and from the hall's far end six more to the lowest hall, which holds the portal. The crypt is cut from a
-  block of tower wall, so no cave or water reaches into it.
+- Castle: polished blackstone, with basalt rubble. Adds the husk.
+- Keep: deepslate bricks, with cobbled deepslate rubble. Adds the stray.
+- Maze ward: end stone bricks, with end stone rubble. Adds the spider.
+- Flooded ruin: blackstone, with deepslate rubble. Adds the cave spider.
+- Sunken crypt: mud bricks, with packed mud rubble. Adds the zombie.
 
-A castle saved before the variants stays the ruined castle.
+A castle saved before this shape keeps the seed it had, so a castle only part generated before an update may
+show seams where its chunks differ.
 
 ### Boss rewards
 
@@ -521,7 +540,9 @@ A castle saved before the variants stays the ruined castle.
 ### Manual acceptance
 
 - Find a castle in a new world: it stands on the ground, not in it. Approach it and meet its courtyard
-  mobs. Enter its portal, see the level message, clear the room, and return through the room's portal.
+  mobs. Walk all three storeys and check that the rooms read as different places and that the doorways and
+  floors stay clear. Find a turret, see the bars or the accent block, and wait near it for mobs.
+- Enter the castle's portal, see the level message, clear the room, and return through the room's portal.
 
 ## Runes
 

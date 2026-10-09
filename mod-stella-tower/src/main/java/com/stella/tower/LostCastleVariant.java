@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * The five surfaces a lost castle is built from, chosen by its seed. Every castle is the same hexagonal
+ * The five surfaces a lost castle is built from, chosen by its seed. Every castle is the same octagonal
  * maze of storeys ({@link TowerHex}); a variant names the tower environment its stone comes from, so one
  * castle reads as the furnace's, the frost's, the void's, the shadow's or the bog's.
  */
@@ -39,6 +39,17 @@ public enum LostCastleVariant {
 			case MAZE -> VOID;
 			case FLOODED -> SHADOW;
 			case CRYPT -> BOG;
+		};
+	}
+
+	/** The mob this environment adds to its spawner tables: the husk of the furnace, the stray of the frost, and so on. */
+	public String flavour() {
+		return switch (this) {
+			case CASTLE -> "minecraft:husk";
+			case KEEP -> "minecraft:stray";
+			case MAZE -> "minecraft:spider";
+			case FLOODED -> "minecraft:cave_spider";
+			case CRYPT -> "minecraft:zombie";
 		};
 	}
 

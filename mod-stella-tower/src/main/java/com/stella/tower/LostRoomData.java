@@ -80,6 +80,11 @@ public final class LostRoomData extends SavedData {
 		}
 	}
 
+	/** Every castle on the map. */
+	public java.util.Collection<Castle> castles() {
+		return java.util.List.copyOf(this.castles.values());
+	}
+
 	public @Nullable Castle castle(final String key) {
 		return this.castles.get(key);
 	}

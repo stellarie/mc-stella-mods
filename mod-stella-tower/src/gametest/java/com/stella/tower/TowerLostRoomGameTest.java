@@ -86,8 +86,8 @@ public class TowerLostRoomGameTest {
 	}
 
 	/**
-	 * The castle's foundation: one block above the highest ground, and held up under the hexagon it stands on.
-	 * The corners of the frame lie outside the hexagon, so the corners read are the hexagon's own four.
+	 * The castle's foundation: one block above the highest ground, and held up under the octagon it stands on.
+	 * The corners of the frame lie outside the octagon, so the corners read are the octagon's own four.
 	 */
 	@GameTest(maxTicks = 40)
 	public void theCastleStandsAboveTheGroundOnAFoundation(final GameTestHelper helper) {
@@ -130,9 +130,9 @@ public class TowerLostRoomGameTest {
 	}
 
 	/**
-	 * The castle's frame: three hexagonal storeys of six-wide ways, a breach through the ground storey's
+	 * The castle's frame: three octagonal storeys of six-wide ways, a breach through the ground storey's
 	 * south wall for its way in, the lost room's portal on the top storey with the workstations beside it,
-	 * and the ruin over all of it. The old two halls and their oak gate are gone: the castle is a maze now.
+	 * and the ruin over all of it. The castle is a maze of nine rooms.
 	 */
 	@GameTest(maxTicks = 40)
 	public void theCastleHasItsStoreysItsBreachAndItsPortal(final GameTestHelper helper) {
@@ -156,7 +156,7 @@ public class TowerLostRoomGameTest {
 					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
 						int x = cell.middle().getX() - TowerMaze.PATH / 2 + dx;
 						int z = cell.middle().getZ() - TowerMaze.PATH / 2 + dz;
-						// Only the cell's own blocks carry a lid: the hexagon's cut corner has no room for one.
+						// Only the cell's own blocks carry a lid: the octagon's cut corner has no room for one.
 						if (TowerHex.kind(x, z) != TowerHex.Part.WAY) {
 							continue;
 						}
@@ -196,7 +196,7 @@ public class TowerLostRoomGameTest {
 				open += level.getBlockState(piece.worldPos(x, y, row)).isAir() ? 1 : 0;
 			}
 		}
-		// The wall the breach was cut through still stands over it, on the columns the hexagon holds.
+		// The wall the breach was cut through still stands over it, on the columns the octagon holds.
 		boolean walled = true;
 		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
 			if (TowerHex.kind(x, row) == TowerHex.Part.OUT) {
@@ -238,8 +238,8 @@ public class TowerLostRoomGameTest {
 		helper.assertTrue(portalOk && onTop, "the lost room's portal is not lit on the top storey at " + portal);
 		helper.assertTrue(open == LostCastleHex.BREACH * (LostCastleHex.BREACH_HEIGHT - 1) && walled && lit,
 			"the breach in the south wall is not open, walled at its sides and lit: open=" + open + " walled=" + walled + " lit=" + lit);
-		helper.assertTrue(chests >= TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY,
-			"the castle has " + chests + " stocked chests, not " + TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY);
+		helper.assertTrue(chests == LostCastleHex.castleChestBlocks(),
+			"the castle has " + chests + " stocked chests, not " + LostCastleHex.castleChestBlocks());
 		helper.assertTrue(cobwebs > 0 && rubble > 0 && bones > 0 && candles > 0 && chains > 0, "the castle is not ruined");
 		helper.succeed();
 	}
@@ -321,8 +321,13 @@ public class TowerLostRoomGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100)
-	public void everyTowerBossPaysEmeraldsDiamondsAndOneRune(final GameTestHelper helper) {
+	/**
+	 * Not required: the drop count is a box query over the shared level, and in about one run in five a
+	 * neighbouring case's emeralds land in the box (run 3 of 6 on c12fc966: 21067 extra at level 21212249).
+	 * Manual item: kill an Endless Tower boss and a lost room boss in play and count one rune and the emeralds.
+	 */
+	@GameTest(maxTicks = 100, required = false)
+	public void everyTowerBossPaysEmeraldsDiamondsAndOneRuneButANeighboursDropCanLandInTheCount(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshFloorWhere(TowerBuffs::isBossFloor);
 		TowerFloors.ensure(tower, floor);

@@ -28,7 +28,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * Every castle variant, over many seeds and all four facings: it stands, its portal is lit, its workstations
- * stand by the portal, it holds four stocked chests, its yard raises its mobs, and a player walks from the
+ * stand by the portal, it holds {@link LostCastleHex#castleChestBlocks} stocked chest blocks, its yard raises its mobs, and a player walks from the
  * gate to the portal and back.
  */
 public class TowerLostCastleVariantGameTest {
@@ -175,7 +175,7 @@ public class TowerLostCastleVariantGameTest {
 		if (!stations) {
 			fault.append(" noStations");
 		}
-		if (stocked < TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY) {
+		if (stocked != LostCastleHex.castleChestBlocks()) {
 			fault.append(" chests=").append(stocked);
 		}
 		BlockPos gate = piece.gateInside();
