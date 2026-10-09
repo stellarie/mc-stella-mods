@@ -65,6 +65,10 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	public static void register() {
 		StatBonuses.register(new WeaponRolls());
 		LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> {
+			// Chest gear carries nothing. MiningRolls marks it after every other handler has added its gear.
+			if (MiningRolls.isChestTable(table)) {
+				return;
+			}
 			for (ItemStack stack : drops) {
 				roll(stack, context.getRandom());
 			}

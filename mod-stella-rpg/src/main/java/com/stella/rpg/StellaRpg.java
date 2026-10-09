@@ -41,6 +41,7 @@ public final class StellaRpg implements ModInitializer {
 		SecondHotbar.register();
 		ArmorSets.register();
 		WeaponRolls.register();
+		com.stella.rpg.roll.MiningRolls.register();
 		RpgScale.register();
 		EnchantStats.register();
 		LevelBonus.register();

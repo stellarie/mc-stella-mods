@@ -503,6 +503,7 @@ The component is saved and synced to the client.
 - A stack that already has the component never rolls again.
 - A crafted stack does not roll at random. The craft sum gives it the bonus of its materials. See `Craft sum`.
   A stack also rolls when a loot table drops it and when a mob drops its equipment on death.
+  A chest, container, or chest minecart table is the exception: its gear gets an empty `stat_rolls` map and carries nothing.
   Every 20 ticks the server also rolls each unrolled rollable stack in a player's inventory, armor, and offhand.
   That catches trades, rewards, and commands. A stack that has `stat_rolls` never rolls again.
 - The mixin `RpgCraftRollMixin` hooks `Item#onCraftedBy`, because shift-click empties the stack before `ResultSlot#onTake`.
@@ -599,6 +600,15 @@ Equal profiles are equal maps, so mined stacks of one profile stack together. A 
 - `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.
 - Each tier key holds `items`, `min`, `max`, `count_weights`, `profiles` (1 to 256), `enchant_chance`, and `explicit`.
   `explicit` lists exact sets such as `{"str": 5}`. A non-empty list replaces the generated sets. A bad entry logs one error and is skipped.
+- A mined drop rolls when a player breaks a block of `#mod-stella-rpg:bonus_ores` (copper, iron, gold, and diamond ores, and ancient debris)
+  and the drop is the mined item of a tier. All stacks of one item from one break share one profile, so Fortune never splits a roll.
+  Silk Touch drops the ore block, which carries nothing. A piston, an explosion, or a nugget from nether gold ore rolls nothing.
+- Depth is 0 at y 64 and above, and 1 at the bottom of the world. It comes from the break position.
+- Each mined stack is enchanted with the tier chance times `1 + depth_enchant_bonus x depth`.
+  The enchantment comes from `#minecraft:on_random_loot` without curses, at a level from 1 to its maximum.
+  A second, compatible enchantment follows with `second_enchant_chance`.
+- A material from a chest or container carries nothing, because only a player's block break rolls.
+  Chest gear is marked in a late phase of `LootTableEvents.MODIFY_DROPS`, so gear that another mod adds to the same table is marked too.
 - Items already mined keep their maps after a config change. A new set does not merge with an old one.
 
 ## Stat-bonus contract
