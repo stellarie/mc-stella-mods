@@ -88,10 +88,15 @@ public final class ArcherSkills {
 	/** Double Strafe's hits on its target, and the reach of its shot. */
 	static final int DOUBLE_STRAFE_HITS = 2;
 	static final double RAPID_FIRE_RANGE = 24.0;
-	/** Blitz Beat: how many strikes the falcon makes, and how many ticks apart. An awakened falcon strikes twice as often. */
-	static final int BLITZ_BEAT_STRIKES = 5;
-	static final int AWAKENED_BLITZ_BEAT_STRIKES = 10;
+	/** Blitz Beat: half an hour of a chance to call the falcon, which strikes this often, this many ticks apart. */
+	static final int BLITZ_BEAT_TICKS = 36_000;
+	static final double BLITZ_BEAT_CHANCE = 0.25;
+	static final double BLITZ_BEAT_BOW_CHANCE = 0.35;
+	static final int BLITZ_BEAT_STRIKES = 3;
+	static final int BLITZ_BEAT_BOW_STRIKES = 6;
 	static final int BLITZ_BEAT_INTERVAL_TICKS = 6;
+	/** An awakened falcon strikes this many times as often. */
+	static final int AWAKENED_BLITZ_BEAT_FACTOR = 2;
 	/** The critical chance Sharp Shooting adds to its own hits, and True Sight adds while it lasts. */
 	static final double SHARP_SHOOTING_CRIT_CHANCE = 0.30;
 	static final double TRUE_SIGHT_CRIT_CHANCE = 0.15;
@@ -147,6 +152,7 @@ public final class ArcherSkills {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> clear());
 		// An aimed bolt and an explosive arrow are paid on the arrow that lands, not on the cast that armed it.
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterArrowDamage);
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterOwnBlow);
 	}
 
 	/** No shot, job or mark outlives the server it was put on, and none keeps a due tick from another server. */
@@ -191,6 +197,13 @@ public final class ArcherSkills {
 	/** How many timed pulses this caster has actually run; the test seam for a sequence that really fired. */
 	static int pulsesRun(final ServerPlayer caster) {
 		return PULSES_RUN.getOrDefault(caster.getUUID(), 0);
+	}
+
+	/** The test seam for the falcon roll: null rolls on the caster own source. */
+	private static volatile @Nullable RandomSource blitzRandom;
+
+	static void setBlitzRandom(final @Nullable RandomSource random) {
+		blitzRandom = random;
 	}
 
 	/** True while this caster's next arrow still owes a book; the test seam for the next-shot books. */
@@ -552,19 +565,69 @@ public final class ArcherSkills {
 		return true;
 	}
 
-	/** Blitz Beat: a spectral falcon strikes the target several times, and each strike is one archer hit. */
+	/** Blitz Beat: half an hour in which a hit may call a spectral falcon. It needs no bow and no target. */
 	static boolean applyBlitzBeat(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!bowReady(caster) || target == null) {
-			return false;
-		}
-		int strikes = modifiers.awakened() ? AWAKENED_BLITZ_BEAT_STRIKES : BLITZ_BEAT_STRIKES;
-		strike(caster, target, modifiers);
-		for (int strike = 1; strike < strikes; strike++) {
-			owe(caster, new Job(null, target.getUUID(), dueIn(strike * BLITZ_BEAT_INTERVAL_TICKS), JobKind.BLITZ, modifiers));
-		}
+		caster.addEffect(new MobEffectInstance(SpellStatus.BLITZ_BEAT, BLITZ_BEAT_TICKS, modifiers.awakened() ? 1 : 0), caster);
+		caster.level().sendParticles(ParticleTypes.DUST_PLUME, caster.getX(), caster.getY(1.0), caster.getZ(), 14, 0.4, 0.4, 0.4, 0.02);
+		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT caster={} ticks={} chance={} bowChance={} awakened={}",
+			caster.getUUID(), BLITZ_BEAT_TICKS, BLITZ_BEAT_CHANCE, BLITZ_BEAT_BOW_CHANCE, modifiers.awakened());
 		return true;
+	}
+
+	/** How many falcon strikes this caster hit calls: 0 for none. The roll is the caller, so a seeded source drives it. */
+	static int blitzStrikes(final ServerPlayer caster, final RandomSource random) {
+		MobEffectInstance buff = caster.getEffect(SpellStatus.BLITZ_BEAT);
+		if (buff == null) {
+			return 0;
+		}
+		boolean bow = bowInHand(caster);
+		if (random.nextDouble() >= (bow ? BLITZ_BEAT_BOW_CHANCE : BLITZ_BEAT_CHANCE)) {
+			return 0;
+		}
+		int strikes = bow ? BLITZ_BEAT_BOW_STRIKES : BLITZ_BEAT_STRIKES;
+		return buff.getAmplifier() >= 1 ? strikes * AWAKENED_BLITZ_BEAT_FACTOR : strikes;
+	}
+
+	// Only a hand counts here: a bow in the RPG weapon slot or the pack does not make the caster an archer at the blow.
+	private static boolean bowInHand(final ServerPlayer caster) {
+		return ranged(caster.getMainHandItem()) || ranged(caster.getOffhandItem());
+	}
+
+	// A blow of the caster own, melee or arrow: the hit that may call the falcon. Skill damage and an imbued cast never do.
+	private static void afterOwnBlow(
+		final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source,
+		final float baseDamage, final float damage, final boolean blocked
+	) {
+		if (blocked || damage <= 0.0F || !(victim instanceof Mob foe) || !foe.isAlive() || CastContext.imbuedVictim() != null
+			|| RpgBridge.isSkillSource(source)) {
+			return;
+		}
+		ServerPlayer owner = null;
+		if (source.getDirectEntity() instanceof ServerPlayer player && source.getEntity() == player && SpellStatus.isMelee(source)) {
+			owner = player;
+		} else if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.arrow.AbstractArrow arrow
+			&& arrow.getOwner() instanceof ServerPlayer shooter) {
+			owner = shooter;
+		}
+		if (owner == null) {
+			return;
+		}
+		RandomSource override = blitzRandom;
+		int strikes = blitzStrikes(owner, override != null ? override : owner.getRandom());
+		if (strikes <= 0) {
+			return;
+		}
+		boolean ranged = bowInHand(owner);
+		float amount = strikeDamage(owner, ranged);
+		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
+		for (int strike = 0; strike < strikes; strike++) {
+			owe(owner, new Job(null, foe.getUUID(), dueIn(1 + strike * BLITZ_BEAT_INTERVAL_TICKS), JobKind.BLITZ, plain, amount));
+		}
+		((ServerLevel) owner.level()).playSound(null, owner.getX(), owner.getY(), owner.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.6F);
+		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT_CALL caster={} foe={} strikes={} ranged={}",
+			owner.getUUID(), foe.getUUID(), strikes, ranged);
 	}
 
 	/**
@@ -628,12 +691,23 @@ public final class ArcherSkills {
 		foe.needsSync = true;
 	}
 
-	// One falcon strike: a flash on the foe, and one archer hit.
-	private static void strike(final ServerPlayer caster, final Mob foe, final SpellModifiers.CastModifiers modifiers) {
+	/** What one falcon strike deals: the caster floor ATK, else the book own number when the RPG mod gives none. */
+	static float strikeDamage(final ServerPlayer caster, final boolean ranged) {
+		double floor = RpgBridge.floorAtk(caster, ranged);
+		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+	}
+
+	// One falcon strike: a burst and a sound on the foe, then the amount fixed when it was called. A fixed number never rolls a crit.
+	private static void strike(final ServerPlayer caster, final Mob foe, final float amount) {
 		ServerLevel level = (ServerLevel) caster.level();
 		level.sendParticles(ParticleTypes.CRIT, foe.getX(), foe.getY(1.0), foe.getZ(), 8, 0.3, 0.4, 0.3, 0.1);
+		level.sendParticles(ParticleTypes.ENCHANTED_HIT, foe.getX(), foe.getY(0.6), foe.getZ(), 6, 0.3, 0.3, 0.3, 0.05);
 		level.playSound(null, foe.getX(), foe.getY(), foe.getZ(), SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.6F, 1.6F);
-		hit(caster, foe, SpellNumbers.HUNTERS_MARK.damage(), modifiers);
+		level.playSound(null, foe.getX(), foe.getY(), foe.getZ(), SoundEvents.PHANTOM_BITE, SoundSource.PLAYERS, 0.4F, 1.8F);
+		if (foe.damageCooldownTime > 0) {
+			foe.damageCooldownTime = 0;
+		}
+		foe.hurtServer(level, RpgBridge.skillSource(caster), amount);
 	}
 
 	// A snare springs on the nearest foe within its reach; true when it did.
@@ -910,7 +984,12 @@ public final class ArcherSkills {
 	private record Shot(ShotKind kind, SpellModifiers.CastModifiers modifiers, int expiresAt) {
 	}
 
-	private record Job(@Nullable Vec3 at, @Nullable UUID foe, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers) {
+	private record Job(
+		@Nullable Vec3 at, @Nullable UUID foe, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers, float amount
+	) {
+		Job(final @Nullable Vec3 at, final @Nullable UUID foe, final int dueTick, final JobKind kind, final SpellModifiers.CastModifiers modifiers) {
+			this(at, foe, dueTick, kind, modifiers, 0.0F);
+		}
 	}
 
 	private record Snare(Vec3 at, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, int expiresAt,
@@ -974,7 +1053,7 @@ public final class ArcherSkills {
 			case RAIN -> rain(caster, job.at(), job.modifiers());
 			case BLITZ -> {
 				if (job.foe() != null && ((ServerLevel) caster.level()).getEntity(job.foe()) instanceof Mob foe && foe.isAlive()) {
-					strike(caster, foe, job.modifiers());
+					strike(caster, foe, job.amount());
 				}
 			}
 			case BOMBLET -> {

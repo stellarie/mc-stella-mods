@@ -23,7 +23,7 @@ public final class SkillbookCatalog {
 		definition("piercing_shot", Items.SPECTRAL_ARROW, 160, 7_148_392, TargetMode.SELF, ArcherSkills::applyPiercingShot, School.ARCHER),
 		definition("arrow_rain", Items.DISPENSER, 300, 3_986_402, TargetMode.BLOCK, ArcherSkills::applyArrowRain, School.ARCHER),
 		definition("rapid_fire", Items.STRING, 120, 15_750_933, TargetMode.HOSTILE, ArcherSkills::applyDoubleStrafe, School.ARCHER),
-		definition("hunters_mark", Items.TARGET, 200, 8_619_217, TargetMode.HOSTILE, ArcherSkills::applyBlitzBeat, School.ARCHER),
+		definition("hunters_mark", Items.TARGET, 200, 8_619_217, TargetMode.SELF, ArcherSkills::applyBlitzBeat, School.ARCHER),
 		definition("ankle_snare", Items.LEAD, 200, 6_908_265, TargetMode.BLOCK, ArcherSkills::applyAnkleSnare, School.ARCHER),
 		definition("arrow_repel", Items.STICKY_PISTON, 160, 11_184_810, TargetMode.HOSTILE, ArcherSkills::applyArrowRepel, School.ARCHER),
 		definition("explosive_arrow", Items.TNT, 200, 1_428_765, TargetMode.SELF, ArcherSkills::applyExplosiveArrow, School.ARCHER),

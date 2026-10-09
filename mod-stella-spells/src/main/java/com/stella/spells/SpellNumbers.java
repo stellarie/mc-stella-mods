@@ -135,8 +135,8 @@ public record SpellNumbers(
 	public static final SpellNumbers ARROW_RAIN = builder("arrow_rain").damage(1.5f).radius(ArcherSkills.ARROW_RAIN_RADIUS).build();
 	/** Double Strafe's damage is per hit; it lands twice. */
 	public static final SpellNumbers RAPID_FIRE = builder("rapid_fire").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
-	/** Blitz Beat's damage is per falcon strike. */
-	public static final SpellNumbers HUNTERS_MARK = builder("hunters_mark").damage(1.5f).build();
+	/** Blitz Beat: the damage is a strike without the RPG mod, and the duration is the half hour of the buff. */
+	public static final SpellNumbers HUNTERS_MARK = builder("hunters_mark").damage(1.5f).duration(ArcherSkills.BLITZ_BEAT_TICKS, Scale.FIXED).build();
 	/** Ankle Snare: the duration is the root, the extra is how long the trap waits, and the radius is its reach. */
 	public static final SpellNumbers ANKLE_SNARE = builder("ankle_snare").radius(ArcherSkills.ANKLE_SNARE_RADIUS)
 		.duration(ArcherSkills.ANKLE_SNARE_ROOT_TICKS, Scale.OFFENSIVE).extra(ArcherSkills.ANKLE_SNARE_LIFE_TICKS, Scale.FIXED)

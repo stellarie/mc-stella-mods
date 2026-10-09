@@ -124,7 +124,7 @@ need. Every other archer book casts with a bow and an empty quiver.
 | Double Strafe | Two archer hits on the hostile you look at |
 | Sharp Shooting | One arrow through every hostile on a 32 block line, with a 30 percent better critical chance |
 | Arrow Shower | Five pulses over the ground you look at; each hurts every hostile within 4 blocks and pushes it away from that point, never the caster |
-| Blitz Beat | A spectral falcon strikes the hostile you look at 5 times, 10 when awakened; each strike is one archer hit |
+| Blitz Beat | 30 min, no bow needed: each melee blow or arrow of yours has a 25 percent chance (35 percent with a bow or crossbow in either hand) to call a spectral falcon that strikes the target 3 times (6 with a bow, doubled when awakened). A strike deals your floor ATK, the low end of the Atk range, and base damage without the RPG mod. It never crits, and skill damage, imbued casts and falcon strikes never call it |
 | Ankle Snare | A trap on the ground you look at, kept 30 s; the first hostile that comes within 1.5 blocks is rooted for 3 s |
 | Arrow Repel | One heavy shot that knocks the hostile back several blocks |
 | True Sight | 30 min: every archer skill hit deals 1.2 times its damage, and the critical chance rises by 15 percent with a bow in hand (25 percent when awakened) |
@@ -156,8 +156,8 @@ Battle Hymn, Skyhook becomes Gravity and Healing Spring becomes Bulwark Hymn, bo
   Right-click a hostile with the weapon to cast every ready spell at the book's full strength instead.
   A sword, axe or mace shows the spell's cooldown in the hotbar.
 - **Arrows:** an imbued arrow casts its spells on whatever it strikes, at half power.
-- **Bow or crossbow:** a bow or a crossbow takes the seven archer books that strike a target: Double
-  Strafe, Sharp Shooting, Arrow Shower, Blitz Beat, Ankle Snare, Arrow Repel and Explosive Arrow. An
+- **Bow or crossbow:** a bow or a crossbow takes the six archer books that strike a target: Double
+  Strafe, Sharp Shooting, Arrow Shower, Ankle Snare, Arrow Repel and Explosive Arrow. An
   arrow it looses casts them on the victim at half power. Arrow Shower, Ankle Snare and the
   Explosive Arrow blast centre on the victim. The cast needs no arrow and spends none, and it waits
   out the book's own cooldown. A sword refuses these books, and a bow refuses every other archer book.

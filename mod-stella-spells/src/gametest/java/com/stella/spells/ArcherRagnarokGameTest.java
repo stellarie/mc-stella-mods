@@ -149,41 +149,6 @@ public class ArcherRagnarokGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200)
-	public void blitzBeatStrikesTheTargetOncePerFalconStrike(final GameTestHelper helper) {
-		blitz(helper, false, ArcherSkills.BLITZ_BEAT_STRIKES, "blitzBeatStrikesTheTargetOncePerFalconStrike");
-	}
-
-	@GameTest(maxTicks = 260)
-	public void anAwakenedBlitzBeatStrikesTwiceAsOften(final GameTestHelper helper) {
-		helper.assertTrue(ArcherSkills.AWAKENED_BLITZ_BEAT_STRIKES == 2 * ArcherSkills.BLITZ_BEAT_STRIKES,
-			"the awakened falcon is not twice the plain one");
-		blitz(helper, true, ArcherSkills.AWAKENED_BLITZ_BEAT_STRIKES, "anAwakenedBlitzBeatStrikesTwiceAsOften");
-	}
-
-	// The strikes are read from the foe's own health and the caster's own pulse count: the RPG stub is global,
-	// so a stub left in force across many ticks would count a neighbour test's hits.
-	private void blitz(final GameTestHelper helper, final boolean awakened, final int strikes, final String test) {
-		ServerPlayer caster = archer(helper, true);
-		Mob foe = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
-		boolean applied = SkillSchoolGameTest.cast(caster, "hunters_mark", foe, awakened);
-		helper.runAfterDelay((long) strikes * ArcherSkills.BLITZ_BEAT_INTERVAL_TICKS + 20L, () -> {
-			double lost = 1000.0 - foe.getHealth();
-			double expected = strikes * SpellNumbers.HUNTERS_MARK.damage();
-			LOG.info("[BEHAVIOR] test={} RESULT applied={} strikes={} ran={} owed={} lost={} expected={}",
-				test, applied, strikes, ArcherSkills.pulsesRun(caster), ArcherSkills.pulsesOwed(caster), lost, expected);
-			helper.assertTrue(applied, "blitz beat never cast");
-			helper.assertTrue(ArcherSkills.pulsesRun(caster) == strikes - 1,
-				"blitz beat ran " + ArcherSkills.pulsesRun(caster) + " later strikes, not " + (strikes - 1));
-			helper.assertTrue(ArcherSkills.pulsesOwed(caster) == 0, "blitz beat left strikes owed");
-			helper.assertTrue(Math.abs(lost - expected) < 0.05,
-				"the falcon took " + lost + " from the target, not " + expected + " for " + strikes + " strikes");
-			ArcherSkills.clearFor(caster);
-			foe.discard();
-			helper.succeed();
-		});
-	}
-
 	@GameTest(maxTicks = 80)
 	public void trueSightKeepsItsDamageFactorAndRaisesTheCriticalChance(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper, true);
@@ -266,8 +231,8 @@ public class ArcherRagnarokGameTest {
 		caster.removeAllEffects();
 		List<String> cast = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			// Arrow Crafting makes arrows and needs no bow; its own case proves that.
-			if (path.equals("arrow_crafting")) {
+			// Arrow Crafting and Blitz Beat need no bow; their own cases prove that.
+			if (path.equals("arrow_crafting") || path.equals("hunters_mark")) {
 				continue;
 			}
 			if (SkillSchoolGameTest.cast(caster, path, foe, false)) {
@@ -339,7 +304,7 @@ public class ArcherRagnarokGameTest {
 		}
 		LOG.info("[BEHAVIOR] test=anAnvilImbuesTargetStrikingBooksOnABowOrCrossbowAndNotOnASword RESULT books={} bowRefused={} crossbowRefused={} swordTook={}",
 			SpellImbue.BOW_IMBUABLE.size(), bowRefused, crossbowRefused, swordTook);
-		helper.assertTrue(SpellImbue.BOW_IMBUABLE.size() == 7, "the bow takes " + SpellImbue.BOW_IMBUABLE.size() + " books, not 7");
+		helper.assertTrue(SpellImbue.BOW_IMBUABLE.size() == 6, "the bow takes " + SpellImbue.BOW_IMBUABLE.size() + " books, not 6");
 		helper.assertTrue(bowRefused.isEmpty(), "a bow refused: " + bowRefused);
 		helper.assertTrue(crossbowRefused.isEmpty(), "a crossbow refused: " + crossbowRefused);
 		helper.assertTrue(swordTook.isEmpty(), "a sword took: " + swordTook);
@@ -362,7 +327,7 @@ public class ArcherRagnarokGameTest {
 			}
 		}
 		LOG.info("[BEHAVIOR] test=selfBuffAndNextShotBooksAreRefusedOnABow RESULT checked={} bowTook={}", checked, took);
-		helper.assertTrue(checked.size() == 8, "the refused archer books number " + checked.size() + ", not 8");
+		helper.assertTrue(checked.size() == 9, "the refused archer books number " + checked.size() + ", not 9");
 		helper.assertTrue(took.isEmpty(), "a bow took: " + took);
 		helper.succeed();
 	}

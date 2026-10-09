@@ -34,6 +34,7 @@ public final class RpgBridge {
 	public static final int VANILLA_LEVEL_XP = 100;
 	static final String RPG_SPELLS_CLASS = "com.stella.rpg.RpgSpells";
 	static final String RPG_SKILLS_CLASS = "com.stella.rpg.RpgSkills";
+	static final String ATTACK_PREVIEW_CLASS = "com.stella.rpg.AttackPreview";
 
 	/** What the RPG mod gives a spell: the calls its {@code RpgSpells} makes. */
 	public interface Stats {
@@ -86,6 +87,11 @@ public final class RpgBridge {
 			return 1.0;
 		}
 
+		/** The caster floor ATK in K units: the low end of the Atk range, ranged or melee; NaN when the RPG mod gives none. */
+		default double floorAtk(final LivingEntity caster, final boolean ranged) {
+			return Double.NaN;
+		}
+
 		/** The lowest MATK roll in K units; NaN when the RPG mod gives none. */
 		default double matkMin(final LivingEntity caster) {
 			return Double.NaN;
@@ -112,6 +118,9 @@ public final class RpgBridge {
 		@Nullable ItemStack weapon(LivingEntity caster);
 
 		@Nullable DamageSource source(LivingEntity caster);
+
+		/** The low end of the Atk range, ranged from DEX or melee from STR, in K units; NaN when unknown. */
+		double floorAtk(LivingEntity caster, boolean ranged);
 	}
 
 	/** A bridge with no skill numbers: every question answers NaN, so each caller keeps its own flat number. */
@@ -149,6 +158,11 @@ public final class RpgBridge {
 		@Override
 		public DamageSource source(final LivingEntity caster) {
 			return null;
+		}
+
+		@Override
+		public double floorAtk(final LivingEntity caster, final boolean ranged) {
+			return Double.NaN;
 		}
 	};
 
@@ -207,6 +221,11 @@ public final class RpgBridge {
 		@Override
 		public double durationMultiplier(final LivingEntity caster) {
 			return this.spells.durationMultiplier(caster);
+		}
+
+		@Override
+		public double floorAtk(final LivingEntity caster, final boolean ranged) {
+			return this.skills.floorAtk(caster, ranged);
 		}
 
 		@Override
@@ -272,14 +291,38 @@ public final class RpgBridge {
 		}
 	}
 
+	/** The bridge bound to stand-ins of the RPG skill and attack-preview classes, for a harness that lacks the mod. */
+	static Stats findAttack(final String skillsClass, final String previewClass) {
+		try {
+			ClassLoader loader = RpgBridge.class.getClassLoader();
+			return new Bound(NONE, bindSkills(Class.forName(skillsClass, true, loader), Class.forName(previewClass, true, loader)));
+		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+			return NONE;
+		}
+	}
+
+	/** The caster floor ATK in K units, or NaN when the RPG mod gives none. */
+	static double floorAtk(final LivingEntity caster, final boolean ranged) {
+		return stats().floorAtk(caster, ranged);
+	}
+
 	/** The bridge bound to the RPG mod itself: its spell numbers and its skill numbers, both by name. */
 	private static Stats bind() {
 		try {
 			Class<?> spells = Class.forName(RPG_SPELLS_CLASS, true, RpgBridge.class.getClassLoader());
 			Class<?> skills = Class.forName(RPG_SKILLS_CLASS, true, RpgBridge.class.getClassLoader());
-			return new Bound(bindSpells(spells), bindSkills(skills));
+			return new Bound(bindSpells(spells), bindSkills(skills, attackPreview()));
 		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
 			return NONE;
+		}
+	}
+
+	// The RPG attack preview, or null for an older RPG mod that lacks it.
+	private static @Nullable Class<?> attackPreview() {
+		try {
+			return Class.forName(ATTACK_PREVIEW_CLASS, true, RpgBridge.class.getClassLoader());
+		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+			return null;
 		}
 	}
 
@@ -360,8 +403,11 @@ public final class RpgBridge {
 	}
 
 	/** {@code RpgSkills}: every handle is read on its own, so an older RPG mod still binds for what it has. */
-	private static Skills bindSkills(final Class<?> skills) {
+	private static Skills bindSkills(final Class<?> skills, final @Nullable Class<?> preview) {
 		MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+		MethodHandle stat = skillStatHandle(lookup, skills, "stat");
+		MethodHandle melee = preview == null ? null : staticHandle(lookup, preview, "range", double[].class, LivingEntity.class, int.class);
+		MethodHandle ranged = preview == null ? null : staticHandle(lookup, preview, "ranged", double[].class, LivingEntity.class, int.class);
 		MethodHandle damage = skillDamageHandle(lookup, skills, "physicalDamage");
 		MethodHandle range = skillRangeHandle(lookup, skills, "physicalRange");
 		MethodHandle heal = skillHealHandle(lookup, skills, "skillHeal");
@@ -430,6 +476,22 @@ public final class RpgBridge {
 					return source == null ? null : (DamageSource) source.invokeExact(caster);
 				} catch (Throwable e) {
 					return null;
+				}
+			}
+
+			@Override
+			public double floorAtk(final LivingEntity caster, final boolean farShot) {
+				MethodHandle preview = farShot ? ranged : melee;
+				if (stat == null || preview == null) {
+					return Double.NaN;
+				}
+				try {
+					String key = farShot ? School.ARCHER.statKey() : School.FIGHTER.statKey();
+					int points = (int) Math.round((double) stat.invokeExact(caster, key));
+					double[] range = (double[]) preview.invokeExact(caster, points);
+					return range == null || range.length == 0 ? Double.NaN : range[0];
+				} catch (Throwable e) {
+					return Double.NaN;
 				}
 			}
 		};
@@ -682,15 +744,23 @@ public final class RpgBridge {
 		}
 	}
 
+	/** The skill source last handed out on this thread, so a hit it carried is told from a blow of the caster own. */
+	private static final ThreadLocal<java.lang.ref.WeakReference<DamageSource>> LAST_SKILL_SOURCE = new ThreadLocal<>();
+
 	/** A skill's damage source, from the RPG mod when it publishes one and a plain player attack otherwise. */
 	static DamageSource skillSource(final LivingEntity caster) {
 		DamageSource fromRpg = stats() instanceof Bound bound ? bound.skills().source(caster) : null;
-		if (fromRpg != null) {
-			return fromRpg;
-		}
-		return caster instanceof Player
+		DamageSource source = fromRpg != null ? fromRpg : caster instanceof Player
 			? caster.level().damageSources().playerAttack((Player) caster)
 			: caster.level().damageSources().mobAttack(caster);
+		LAST_SKILL_SOURCE.set(new java.lang.ref.WeakReference<>(source));
+		return source;
+	}
+
+	/** True when this damage source is the one a skill hit has just been given. */
+	static boolean isSkillSource(final DamageSource source) {
+		java.lang.ref.WeakReference<DamageSource> last = LAST_SKILL_SOURCE.get();
+		return last != null && last.get() == source;
 	}
 
 	private static double usable(final double fromRpg, final double flat) {

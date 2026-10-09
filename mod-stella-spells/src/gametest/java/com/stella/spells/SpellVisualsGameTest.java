@@ -44,7 +44,7 @@ public class SpellVisualsGameTest {
 	 */
 	private static final Set<String> MOVES_THE_CASTER = Set.of("gale_step", "charge", "leap_slam");
 	/** The self spells that read a foe on the look ray, so their cast needs one standing on that line. */
-	private static final Set<String> TARGET_READING_BOOKS = Set.of("piercing_shot", "rapid_fire", "hunters_mark", "arrow_repel");
+	private static final Set<String> TARGET_READING_BOOKS = Set.of("piercing_shot", "rapid_fire", "arrow_repel");
 
 	private static Comparator<SpellbookItem> movesLast() {
 		return Comparator.comparing((SpellbookItem book) -> MOVES_THE_CASTER.contains(book.definition().id().getPath()));

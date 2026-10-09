@@ -62,6 +62,7 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> ARCANE_WARD = register("arcane_ward", new Ward());
 	public static final Holder<MobEffect> BLEEDING = register("bleeding", new Bleeding());
 	/** The archer's own eye: a mark that its skill hits are worth more, read by {@link ArcherSkills#hit}. */
+	public static final Holder<MobEffect> BLITZ_BEAT = register("blitz_beat", new Status(MobEffectCategory.BENEFICIAL, 0xE0303A));
 	public static final Holder<MobEffect> EAGLE_EYE = register("eagle_eye", new Status(MobEffectCategory.BENEFICIAL, 0x6FB34A));
 	/** The reworked archer buffs: a steadied aim, a quiver that needs no arrow, and a faster step. */
 	public static final Holder<MobEffect> CONCENTRATE = register("concentrate", new Status(MobEffectCategory.BENEFICIAL, 0xD8B44A));
@@ -142,7 +143,7 @@ public final class SpellStatus {
 		return result;
 	}
 
-	private static boolean isMelee(final DamageSource source) {
+	static boolean isMelee(final DamageSource source) {
 		return source.is(DamageTypes.PLAYER_ATTACK) || source.is(DamageTypes.SPEAR) || source.is(DamageTypes.MACE_SMASH);
 	}
 
