@@ -212,7 +212,7 @@ public final class ContainerLoot {
 		}
 	}
 
-	private static boolean isTestFixture(final Holder<Enchantment> enchantment) {
+	static boolean isTestFixture(final Holder<Enchantment> enchantment) {
 		return enchantment.unwrapKey().map(key -> key.identifier().getNamespace().contains("-test-")).orElse(false);
 	}
 
