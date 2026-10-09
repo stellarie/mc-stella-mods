@@ -51,7 +51,8 @@
 			"com.stella.tower.TowerLostCastleHexGameTest",
 			"com.stella.tower.TowerLostCastleChunkGameTest",
 			"com.stella.tower.TowerLostCastlePlanGameTest",
-			"com.stella.tower.TowerLostCastleChestGameTest"
+			"com.stella.tower.TowerLostCastleChestGameTest",
+			"com.stella.tower.TowerLostCastleSpawnerGameTest"
 		]
 	},
 	"mixins": [

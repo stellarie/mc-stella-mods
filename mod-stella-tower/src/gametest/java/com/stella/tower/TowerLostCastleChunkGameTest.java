@@ -94,6 +94,9 @@ public class TowerLostCastleChunkGameTest {
 		for (int i = 0; i < a.states().size(); i++) {
 			if (!a.states().get(i).equals(b.states().get(i))) {
 				differing++;
+				if (differing <= 3) {
+					TowerTestSupport.LOG.info("[BEHAVIOR] test=castleChunkSplit DIFF index={} whole={} split={}", i, a.states().get(i), b.states().get(i));
+				}
 			}
 		}
 		return differing;
@@ -103,8 +106,9 @@ public class TowerLostCastleChunkGameTest {
 	@GameTest(maxTicks = 200)
 	public void aCastleBuiltChunkByChunkEqualsOneBuiltWhole(final GameTestHelper helper) {
 		ServerLevel level = TowerTestSupport.tower(helper);
-		Direction[] facings = {Direction.NORTH, Direction.EAST, Direction.SOUTH};
-		LostCastleVariant[] variants = {LostCastleVariant.CASTLE, LostCastleVariant.KEEP, LostCastleVariant.CRYPT};
+		Direction[] facings = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+		LostCastleVariant[] variants = {LostCastleVariant.CASTLE, LostCastleVariant.KEEP, LostCastleVariant.CRYPT, LostCastleVariant.MAZE,
+			LostCastleVariant.FLOODED, LostCastleVariant.CASTLE, LostCastleVariant.KEEP, LostCastleVariant.CRYPT};
 		StringBuilder report = new StringBuilder();
 		boolean same = true;
 		for (int run = 0; run < facings.length; run++) {

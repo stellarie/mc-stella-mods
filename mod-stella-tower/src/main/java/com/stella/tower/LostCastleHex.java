@@ -315,12 +315,36 @@ public final class LostCastleHex {
 		}
 	}
 
+	/**
+	 * The storey's turret: its nook is a pillar of wall from the floor to the ceiling, and the spawner is
+	 * set in the tuck column one block over the floor. Its sides are two walls of the lattice and two blocks
+	 * of the pillar, one of which may be iron bars, and no face of it touches air.
+	 */
+	private static void turret(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan.FloorPlan floor,
+		final LostCastlePlan.Turret turret, final int feet, final int ceiling) {
+		TowerHex.Nook nook = turret.nook();
+		BlockState wall = piece.palette().wall().defaultBlockState();
+		for (int[] column : nook.columns()) {
+			piece.fill(level, bb, column[0], feet, column[1], column[0], ceiling - 1, column[1], wall);
+		}
+		int y = feet + 1;
+		piece.spawner(level, bb, nook.tuckX(), y, nook.tuckZ(), LostCastleSpawner.tag(floor.kind(), piece.variant()));
+		switch (turret.cover()) {
+			case BARRED_ALONG_X -> piece.bars(level, bb, nook.tuckX() + nook.dx(), y, nook.tuckZ(), -nook.dx(), 0, new int[][] {{0, -nook.dz()}, {0, nook.dz()}});
+			case BARRED_ALONG_Z -> piece.bars(level, bb, nook.tuckX(), y, nook.tuckZ() + nook.dz(), 0, -nook.dz(), new int[][] {{-nook.dx(), 0}, {nook.dx(), 0}});
+			case SOLID -> piece.set(level, bb, piece.palette().accent().defaultBlockState(), nook.tuckX() + nook.dx(), y, nook.tuckZ() + nook.dz());
+		}
+	}
+
 	/** The furniture of every storey as the plan lays it: chests, ruin and lamps, then the lost room's portal. */
 	private static void dress(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan plan) {
 		List<TowerHex.Cell> cells = TowerHex.cells();
 		for (LostCastlePlan.FloorPlan floor : plan.floors()) {
 			int feet = TowerHex.floorAt(floor.storey()) + 1;
 			int ceiling = TowerHex.ceilingAt(floor.storey());
+			for (LostCastlePlan.Turret turret : floor.turrets()) {
+				turret(piece, level, bb, floor, turret, feet, ceiling);
+			}
 			for (LostCastlePlan.Chest chest : floor.chests()) {
 				piece.chestSite(level, bb, feet, chest);
 			}

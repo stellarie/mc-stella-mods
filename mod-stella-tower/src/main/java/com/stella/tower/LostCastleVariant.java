@@ -42,6 +42,17 @@ public enum LostCastleVariant {
 		};
 	}
 
+	/** The mob this environment adds to its spawner tables: the husk of the furnace, the stray of the frost, and so on. */
+	public String flavour() {
+		return switch (this) {
+			case CASTLE -> "minecraft:husk";
+			case KEEP -> "minecraft:stray";
+			case MAZE -> "minecraft:spider";
+			case FLOODED -> "minecraft:cave_spider";
+			case CRYPT -> "minecraft:zombie";
+		};
+	}
+
 	/**
 	 * What is fixed before building: the portal's lower block, the court (x and z, low and high), the lowest
 	 * layer from the floor, and the variant's own numbers.

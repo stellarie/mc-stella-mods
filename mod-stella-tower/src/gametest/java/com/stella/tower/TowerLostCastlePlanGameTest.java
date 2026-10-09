@@ -41,7 +41,7 @@ public class TowerLostCastlePlanGameTest {
 		int[] court = LostCastleVariant.court();
 		int blocks = 0;
 		int doubles = 0;
-		TowerHex.Nook below = null;
+		List<TowerHex.Nook> below = List.of();
 		if (plan.floors().size() != TowerHex.STOREYS) {
 			return "holds " + plan.floors().size() + " storeys";
 		}
@@ -55,17 +55,26 @@ public class TowerLostCastlePlanGameTest {
 			if (floor.kind().slot() != slot) {
 				return "storey " + storey + " is " + floor.kind() + ", a " + floor.kind().slot() + " kind";
 			}
-			if (!floor.turret().usable() || floor.turret().equals(below) || top && floor.turret().hub()) {
-				return "storey " + storey + " turret " + floor.turret() + " is unusable or stacked";
-			}
-			for (int[] column : floor.turret().columns()) {
-				if (LostCastleHex.inStairLane(column[0], column[1])) {
-					return "storey " + storey + " turret stands in the stair lane";
-				}
+			if (floor.turrets().size() != LostCastlePlan.turretsAt(storey)) {
+				return "storey " + storey + " holds " + floor.turrets().size() + " turrets, not " + LostCastlePlan.turretsAt(storey);
 			}
 			Set<Long> claimed = new HashSet<>();
-			for (int[] column : floor.turret().columns()) {
-				claimed.add(key(column[0], column[1]));
+			for (LostCastlePlan.Turret turret : floor.turrets()) {
+				TowerHex.Nook site = turret.nook();
+				if (!site.usable() || below.contains(site) || top && site.hub() || turret.cover() == null) {
+					return "storey " + storey + " turret " + site + " is unusable, stacked or uncovered";
+				}
+				for (int[] column : site.columns()) {
+					if (LostCastleHex.inStairLane(column[0], column[1])) {
+						return "storey " + storey + " turret stands in the stair lane";
+					}
+					if (!claimed.add(key(column[0], column[1]))) {
+						return "storey " + storey + " two turrets claim a column";
+					}
+				}
+				if (!LostCastlePlan.reachHeld(site)) {
+					return "storey " + storey + " turret reaches outside the hexagon";
+				}
 			}
 			int storeyBlocks = top ? 1 : 0;
 			for (LostCastlePlan.Chest chest : floor.chests()) {
@@ -122,7 +131,7 @@ public class TowerLostCastlePlanGameTest {
 					return "storey " + storey + " holds " + counts[order[i].ordinal()] + " " + order[i] + ", not " + wanted[i];
 				}
 			}
-			below = floor.turret();
+			below = floor.turrets().stream().map(LostCastlePlan.Turret::nook).toList();
 		}
 		if (blocks != LostCastleHex.castleChestBlocks()) {
 			return "holds " + blocks + " chest blocks, not " + LostCastleHex.castleChestBlocks();

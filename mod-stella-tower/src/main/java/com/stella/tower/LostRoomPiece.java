@@ -4,6 +4,7 @@ import java.util.function.IntBinaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -17,11 +18,14 @@ import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FurnaceBlock;
+import net.minecraft.world.level.block.IronBarsBlock;
 import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.VineBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
+import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
@@ -262,6 +266,59 @@ public class LostRoomPiece extends StructurePiece {
 			level.setBlock(b, aLeft ? right : left, Block.UPDATE_CLIENTS);
 			stock(level, chunkBB, b, site.x2(), y, site.z2());
 		}
+	}
+
+	/** A vanilla spawner at a spot of the piece's own frame, set from a block entity tag when the spot is in the chunk. */
+	void spawner(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z, final CompoundTag config) {
+		this.placeBlock(level, Blocks.SPAWNER.defaultBlockState(), x, y, z, chunkBB);
+		BlockPos at = worldPos(x, y, z);
+		if (!chunkBB.isInside(at) || !(level.getBlockEntity(at) instanceof SpawnerBlockEntity spawner)) {
+			return;
+		}
+		spawner.loadCustomOnly(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), config));
+		spawner.setChanged();
+	}
+
+	/**
+	 * Iron bars at a spot of the piece's own frame, joined as they would end up in the finished castle. The
+	 * spawner stands one step away in {@code (spawnerDx, spawnerDz)}, wall in each of {@code walls}, and air
+	 * in the rest. Bars set bare change when a neighbour is set after them, which would make a castle built
+	 * in chunks differ from one built whole by the order of the chunks.
+	 */
+	void bars(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z, final int spawnerDx, final int spawnerDz, final int[][] walls) {
+		BlockPos at = worldPos(x, y, z);
+		if (!chunkBB.isInside(at)) {
+			return;
+		}
+		IronBarsBlock block = (IronBarsBlock) Blocks.IRON_BARS;
+		BlockState state = block.defaultBlockState();
+		int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+		for (int[] step : steps) {
+			Direction side = null;
+			BlockPos next = worldPos(x + step[0], y, z + step[1]);
+			for (Direction candidate : Direction.Plane.HORIZONTAL) {
+				if (at.relative(candidate).equals(next)) {
+					side = candidate;
+				}
+			}
+			BlockState neighbour = Blocks.AIR.defaultBlockState();
+			if (step[0] == spawnerDx && step[1] == spawnerDz) {
+				neighbour = Blocks.SPAWNER.defaultBlockState();
+			}
+			for (int[] wall : walls) {
+				if (step[0] == wall[0] && step[1] == wall[1]) {
+					neighbour = this.wall();
+				}
+			}
+			boolean joined = block.attachsTo(neighbour, neighbour.isFaceSturdy(level, next, side.getOpposite()));
+			state = state.setValue(switch (side) {
+				case NORTH -> IronBarsBlock.NORTH;
+				case EAST -> IronBarsBlock.EAST;
+				case SOUTH -> IronBarsBlock.SOUTH;
+				default -> IronBarsBlock.WEST;
+			}, joined);
+		}
+		level.setBlock(at, state, Block.UPDATE_CLIENTS);
 	}
 
 	/** Sets a block at a spot of the piece's own frame, turned with the piece. */

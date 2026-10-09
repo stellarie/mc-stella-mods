@@ -42,8 +42,22 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 		}
 	}
 
-	/** One storey: its kind, the nook kept for its spawner turret, its chests and its ruin. */
-	public record FloorPlan(int storey, LostFloorKind kind, TowerHex.Nook turret, List<Chest> chests, List<Scatter> scatter) {
+	/**
+	 * How a turret shows its spawner. Barred: one block beside the spawner, along x or along z, is iron bars.
+	 * Solid: all stone, with one accent block at the pillar's outer corner as the only tell.
+	 */
+	public enum Cover {
+		BARRED_ALONG_X,
+		BARRED_ALONG_Z,
+		SOLID
+	}
+
+	/** One spawner turret: the nook it stands in and how it is covered. */
+	public record Turret(TowerHex.Nook nook, Cover cover) {
+	}
+
+	/** One storey: its kind, its spawner turrets, its chests and its ruin. */
+	public record FloorPlan(int storey, LostFloorKind kind, List<Turret> turrets, List<Chest> chests, List<Scatter> scatter) {
 		public int chestBlocks() {
 			int blocks = 0;
 			for (Chest chest : this.chests) {
@@ -65,7 +79,7 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 		}
 		LostFloorKind[] kinds = kinds(rng);
 		List<FloorPlan> floors = new ArrayList<>();
-		TowerHex.Nook below = null;
+		List<TowerHex.Nook> below = List.of();
 		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
 			LostFloorKind kind = kinds[storey];
 			boolean top = storey == TowerHex.STOREYS - 1;
@@ -77,11 +91,23 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 				}
 			}
 			List<TowerHex.Nook> reserved = new ArrayList<>();
-			List<TowerHex.Nook> turrets = new ArrayList<>(free);
-			turrets.remove(below);
-			TowerHex.Nook turret = turrets.get(rng.nextInt(turrets.size()));
-			free.remove(turret);
-			reserved.add(turret);
+			List<Turret> turrets = new ArrayList<>();
+			for (int i = 0; i < turretsAt(storey); i++) {
+				List<TowerHex.Nook> sites = new ArrayList<>();
+				for (TowerHex.Nook nook : free) {
+					if (reachHeld(nook) && !below.contains(nook)) {
+						sites.add(nook);
+					}
+				}
+				if (sites.isEmpty()) {
+					sites.addAll(free);
+					sites.removeAll(below);
+				}
+				TowerHex.Nook nook = sites.get(rng.nextInt(sites.size()));
+				free.remove(nook);
+				reserved.add(nook);
+				turrets.add(new Turret(nook, null));
+			}
 			List<Chest> chests = new ArrayList<>();
 			List<TowerHex.Nook> chestNooks = new ArrayList<>();
 			for (int i = 0; i < kind.doubles(); i++) {
@@ -98,10 +124,20 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 				chestNooks.add(nook);
 				chests.add(site(nook, false, rng));
 			}
-			floors.add(new FloorPlan(storey, kind, turret, List.copyOf(chests), List.copyOf(scatter(every, reserved, top, storey, rng))));
-			below = turret;
+			List<Scatter> ruin = scatter(every, reserved, top, storey, rng);
+			List<Turret> covered = new ArrayList<>();
+			for (Turret turret : turrets) {
+				covered.add(new Turret(turret.nook(), Cover.values()[Math.min(rng.nextInt(4), Cover.SOLID.ordinal())]));
+			}
+			floors.add(new FloorPlan(storey, kind, List.copyOf(covered), List.copyOf(chests), List.copyOf(ruin)));
+			below = covered.stream().map(Turret::nook).toList();
 		}
 		return new LostCastlePlan(List.copyOf(floors));
+	}
+
+	/** How many spawner turrets a storey holds. */
+	public static int turretsAt(final int storey) {
+		return 1;
 	}
 
 	/** The kinds of the storeys, ground to top: no kind twice, and the top storey is always the sanctum. */
@@ -122,6 +158,22 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 		}
 		kinds[TowerHex.STOREYS - 1] = LostFloorKind.SANCTUM;
 		return kinds;
+	}
+
+	/**
+	 * Whether the hexagon holds every column a spawner in the nook can raise a mob in, so no mob appears in
+	 * the air outside the walls and leaves.
+	 */
+	public static boolean reachHeld(final TowerHex.Nook nook) {
+		int reach = LostCastleSpawner.SPAWN_RANGE;
+		for (int x = nook.tuckX() - reach; x <= nook.tuckX() + reach; x++) {
+			for (int z = nook.tuckZ() - reach; z <= nook.tuckZ() + reach; z++) {
+				if (TowerHex.kind(x, z) == TowerHex.Part.OUT) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	private static TowerHex.Nook pick(final List<TowerHex.Nook> free, final RandomSource rng, final Predicate<TowerHex.Nook> prefer) {
