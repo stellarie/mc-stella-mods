@@ -558,6 +558,10 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
 - `RpgAttributes.refresh` puts the worn HP affixes on max health every 20 ticks.
   Flat HP is an `ADD_VALUE` modifier of `flat / K`. HP % is an `ADD_MULTIPLIED_BASE` modifier.
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
+- `DURABILITY_PCT` (`durability_pct`) uses the damage % range of the tier. It is weapon and armor kind.
+  Each point of use damage is skipped with the chance `p / (100 + p)`, so the expected life of the item grows by `p` percent.
+  The hook is `RpgDurabilityMixin` on `ItemStack#processDurabilityChange`, after Unbreaking. It never changes `max_damage`, so Refine and smithing keep their numbers.
+  The random gear roll never picks it. Mined materials and `grant-bonus` carry it.
 - Only the main hand adds damage, MATK, magic penetration, and armor penetration affixes. Only the four armor slots add HP, reduction, magic resistance, and movement speed affixes.
 
 ## Craft sum
@@ -594,7 +598,7 @@ Equal profiles are equal maps, so mined stacks of one profile stack together. A 
 | `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 16 | 3.0% |
 
 - A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per profile.
-  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, and reduction %.
+  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, reduction %, and durability %.
   An affix value is the range of the gear tier times `affix_scale` (0.25), and at least 1. The gear tier of `debris` is `netherite`.
 - Depth raises the weight of strong profiles. A profile weighs `1 + depth_rank_weight x depth x rank`, and `rank` runs from 0 for the weakest to 1 for the strongest.
 - `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.

@@ -292,6 +292,7 @@ public record RpgConfig(
 		ranges.put(Affix.MAGIC_PEN, new AffixRange(damagePctMin, damagePctMax));
 		ranges.put(Affix.MOVE_SPEED_PCT, new AffixRange(reductionPctMin * 2, reductionPctMax * 2));
 		ranges.put(Affix.MAGIC_RES_PCT, new AffixRange(hpPctMin, hpPctMax));
+		ranges.put(Affix.DURABILITY_PCT, new AffixRange(damagePctMin, damagePctMax));
 		return Map.copyOf(ranges);
 	}
 

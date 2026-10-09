@@ -89,6 +89,7 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		int count = single ? 1 : count(config.countWeights(), random);
 		List<Stat> stats = new ArrayList<>(book ? List.of(Stat.INT) : List.of(Stat.values()));
 		List<Affix> affixes = new ArrayList<>(Affix.pool(entry.kind()));
+		affixes.remove(Affix.DURABILITY_PCT);
 		if (!stack.is(ItemTags.FOOT_ARMOR)) {
 			affixes.remove(Affix.MOVE_SPEED_PCT);
 		}
