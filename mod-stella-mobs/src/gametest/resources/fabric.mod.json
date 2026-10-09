@@ -80,6 +80,7 @@
 			"com.stella.mobs.ShotLeadGameTest",
 			"com.stella.mobs.StanceRulesGameTest",
 			"com.stella.mobs.StanceGameTest",
+			"com.stella.mobs.TrueInvisibilityGameTest",
 			"com.stella.mobs.BloodScentGameTest",
 			"com.stella.mobs.AmbushGameTest",
 			"com.stella.mobs.ArcherMovementGameTest",

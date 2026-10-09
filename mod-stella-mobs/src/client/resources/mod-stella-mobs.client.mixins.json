@@ -5,7 +5,8 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"BossLookRenderMixin",
-		"SteadyFovMixin"
+		"SteadyFovMixin",
+		"TrueInvisibilityRenderMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -30,7 +30,9 @@
 		"MobShieldBlockMixin",
 		"PiglinAttackRangeMixin",
 		"SkeletonShotLeadMixin",
-		"StrayShotBlinkMixin"
+		"StrayShotBlinkMixin",
+		"TrueInvisibilityMobMixin",
+		"TrueInvisibilitySightMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

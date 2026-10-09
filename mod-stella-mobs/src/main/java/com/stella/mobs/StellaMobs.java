@@ -95,6 +95,7 @@ public class StellaMobs implements ModInitializer {
 		BossCompanion.register();
 		Bosses.register();
 		com.stella.mobs.behavior.BossLook.register();
+		com.stella.mobs.behavior.TrueInvisibility.register();
 		ReinforcementGoal.register();
 		EvokerStorm.register();
 		PiglinWarCall.register();
