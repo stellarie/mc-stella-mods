@@ -168,7 +168,7 @@ public final class TowerTraps {
 				boolean far = Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > BIOME_PORTAL_CLEAR
 					&& Math.max(Math.abs(x - plan.arrivalX()), Math.abs(z - plan.arrivalZ())) > BIOME_ARRIVAL_CLEAR;
 				int y = plan.standY(x, z);
-				if (far && story.flatAt(x, z) && y >= 0 && !plan.biome().water()[x][z] && !plan.inSafeZone(x, y, z) && !plan.biome().inDais(plan, x, z)) {
+				if (far && story.flatAt(x, z) && y >= 0 && !plan.biome().water()[x][z] && !plan.biome().fragile()[x][z] && !plan.inSafeZone(x, y, z) && !plan.biome().inDais(plan, x, z)) {
 					spots.add(new int[] {x, z, y});
 				}
 			}

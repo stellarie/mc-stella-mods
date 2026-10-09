@@ -65,7 +65,22 @@ public final class BiomeBlocks {
 	public static final byte BROWN_MUSHROOM = 47;
 	public static final byte RED_MUSHROOM = 48;
 	public static final byte SEA_LANTERN = 49;
-	public static final byte COUNT = 50;
+	public static final byte LAVA = 50;
+	public static final byte POWDER_SNOW = 51;
+	public static final byte SNOW_BLOCK = 52;
+	public static final byte PACKED_ICE = 53;
+	public static final byte BLUE_ICE = 54;
+	public static final byte WHITE_WOOL = 55;
+	public static final byte SAND = 56;
+	public static final byte RED_SAND = 57;
+	public static final byte SANDSTONE = 58;
+	public static final byte CUT_SANDSTONE = 59;
+	public static final byte CACTUS = 60;
+	public static final byte SOUL_SAND = 61;
+	public static final byte BASALT = 62;
+	public static final byte NETHER_BRICK_FENCE = 63;
+	public static final byte SOUL_LANTERN = 64;
+	public static final byte COUNT = 65;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -116,6 +131,21 @@ public final class BiomeBlocks {
 		define(BROWN_MUSHROOM, Blocks.BROWN_MUSHROOM.defaultBlockState(), TowerWalk.OPEN);
 		define(RED_MUSHROOM, Blocks.RED_MUSHROOM.defaultBlockState(), TowerWalk.OPEN);
 		define(SEA_LANTERN, Blocks.SEA_LANTERN.defaultBlockState(), TowerWalk.SOLID);
+		define(LAVA, Blocks.LAVA.defaultBlockState(), TowerWalk.TALL);
+		define(POWDER_SNOW, Blocks.POWDER_SNOW.defaultBlockState(), TowerWalk.TALL);
+		define(SNOW_BLOCK, Blocks.SNOW_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(PACKED_ICE, Blocks.PACKED_ICE.defaultBlockState(), TowerWalk.SOLID);
+		define(BLUE_ICE, Blocks.BLUE_ICE.defaultBlockState(), TowerWalk.SOLID);
+		define(WHITE_WOOL, Blocks.WOOL.white().defaultBlockState(), TowerWalk.SOLID);
+		define(SAND, Blocks.SAND.defaultBlockState(), TowerWalk.SOLID);
+		define(RED_SAND, Blocks.RED_SAND.defaultBlockState(), TowerWalk.SOLID);
+		define(SANDSTONE, Blocks.SANDSTONE.defaultBlockState(), TowerWalk.SOLID);
+		define(CUT_SANDSTONE, Blocks.CUT_SANDSTONE.defaultBlockState(), TowerWalk.SOLID);
+		define(CACTUS, Blocks.CACTUS.defaultBlockState(), TowerWalk.SOLID);
+		define(SOUL_SAND, Blocks.SOUL_SAND.defaultBlockState(), TowerWalk.SOLID);
+		define(BASALT, Blocks.BASALT.defaultBlockState(), TowerWalk.SOLID);
+		define(NETHER_BRICK_FENCE, Blocks.NETHER_BRICK_FENCE.defaultBlockState(), TowerWalk.TALL);
+		define(SOUL_LANTERN, Blocks.SOUL_LANTERN.defaultBlockState(), TowerWalk.SOLID);
 		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
@@ -143,20 +173,21 @@ public final class BiomeBlocks {
 	/** Whether the entry is a ground to trap, to chest and to raise a mob on: bare, level, and full. */
 	public static boolean ground(final byte code) {
 		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS || code == COBBLE
-			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS || code == PODZOL;
+			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS || code == PODZOL
+			|| code == SNOW_BLOCK || code == PACKED_ICE || code == SAND || code == RED_SAND || code == SANDSTONE || code == CUT_SANDSTONE || code == BASALT;
 	}
 
 	/** Whether the entry is a block that shuts out the light, so that grass under it would die. */
 	public static boolean opaque(final byte code) {
 		return switch (code) {
 			case NONE, WATER, FERN, FENCE, LANTERN, HANGING_LANTERN, SOUL_CAMPFIRE, SKULL, SOUL_FIRE, CHAIN, COBBLE_WALL, ANVIL, BARRIER,
-				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM -> false;
+				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM, LAVA, POWDER_SNOW, CACTUS, NETHER_BRICK_FENCE, SOUL_LANTERN -> false;
 			default -> true;
 		};
 	}
 
 	/** Whether the entry gives light. */
 	public static boolean lights(final byte code) {
-		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE || code == SEA_LANTERN;
+		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE || code == SEA_LANTERN || code == LAVA || code == SOUL_LANTERN;
 	}
 }

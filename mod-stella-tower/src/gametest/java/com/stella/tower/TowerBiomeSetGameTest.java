@@ -41,7 +41,7 @@ public class TowerBiomeSetGameTest {
 		double share = 1.0 / FloorBiome.values().length;
 		double sigma = Math.sqrt(floors * share * (1 - share));
 		StringBuilder off = new StringBuilder();
-		for (FloorBiome biome : FloorBiome.values()) {
+		for (FloorBiome biome : FloorBiome.DRAWN) {
 			// A block holds each biome once, so the count is steadier than chance's; the bound is chance's.
 			if (Math.abs(counts.getOrDefault(biome, 0) - floors * share) > 4 * sigma) {
 				off.append(biome).append('=').append(counts.getOrDefault(biome, 0)).append(' ');
@@ -74,7 +74,7 @@ public class TowerBiomeSetGameTest {
 		int stuck = 0;
 		int fallbacks = 0;
 		int wrong = 0;
-		for (FloorBiome biome : FloorBiome.values()) {
+		for (FloorBiome biome : FloorBiome.DRAWN) {
 			int own = 0;
 			int myStuck = 0;
 			int myFallbacks = 0;
@@ -124,7 +124,7 @@ public class TowerBiomeSetGameTest {
 	public void everyBiomeIsLit(final GameTestHelper helper) {
 		StringBuilder report = new StringBuilder();
 		int dark = 0;
-		for (FloorBiome biome : FloorBiome.values()) {
+		for (FloorBiome biome : FloorBiome.DRAWN) {
 			int own = 0;
 			for (int floor : floorsOf(SEED, biome, 6)) {
 				TowerPlan plan = BiomeGen.plan(SEED, floor);
@@ -176,7 +176,7 @@ public class TowerBiomeSetGameTest {
 		int stuck = 0;
 		int unlit = 0;
 		int unpainted = 0;
-		for (FloorBiome biome : FloorBiome.values()) {
+		for (FloorBiome biome : FloorBiome.DRAWN) {
 			int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f) == biome);
 			TowerFloors.ensure(tower, floor);
 			TowerPlan plan = TowerPlan.at(tower, floor);
@@ -219,7 +219,9 @@ public class TowerBiomeSetGameTest {
 		List<BlockState[]> before = new ArrayList<>();
 		List<TowerPlan> plans = new ArrayList<>();
 		List<ChunkPos> forced = new ArrayList<>();
-		for (FloorBiome biome : FloorBiome.values()) {
+		// Two floors of each biome: a floor's trouble may lie in its draw.
+		for (FloorBiome biome : FloorBiome.DRAWN) {
+			for (int copy = 0; copy < 2; copy++) {
 			int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f) == biome);
 			TowerFloors.ensure(tower, floor);
 			TowerPlan plan = TowerPlan.at(tower, floor);
@@ -232,6 +234,7 @@ public class TowerBiomeSetGameTest {
 			}
 			plans.add(plan);
 			before.add(snapshot(tower, plan));
+			}
 		}
 		helper.runAfterDelay(400, () -> {
 			StringBuilder report = new StringBuilder();
@@ -250,7 +253,8 @@ public class TowerBiomeSetGameTest {
 							int y = k % span + plan.low();
 							int z = k / span % TowerLayout.SIZE;
 							int x = k / span / TowerLayout.SIZE;
-							first = then[k] + " -> " + now[k] + " at " + x + "," + y + "," + z;
+							first = then[k] + " -> " + now[k] + " at " + x + "," + y + "," + z + " above " + (k + 1 < now.length ? then[k + 1] : "-")
+								+ " beside " + around(then, k, span);
 						}
 						own++;
 					}
@@ -267,6 +271,16 @@ public class TowerBiomeSetGameTest {
 		});
 	}
 
+	/** The four neighbours of a cell of a snapshot, for a report. */
+	private static String around(final BlockState[] states, final int k, final int span) {
+		StringBuilder text = new StringBuilder();
+		int[] steps = {span, -span, span * TowerLayout.SIZE, -span * TowerLayout.SIZE};
+		for (int step : steps) {
+			text.append(k + step >= 0 && k + step < states.length ? states[k + step].getBlock().toString() : "-").append(' ');
+		}
+		return text.toString();
+	}
+
 	private static BlockState[] snapshot(final ServerLevel tower, final TowerPlan plan) {
 		int span = plan.roofY() - plan.low() + 1;
 		BlockState[] states = new BlockState[TowerLayout.SIZE * TowerLayout.SIZE * span];
@@ -275,7 +289,9 @@ public class TowerBiomeSetGameTest {
 		for (int x = 0; x < TowerLayout.SIZE; x++) {
 			for (int z = 0; z < TowerLayout.SIZE; z++) {
 				for (int y = plan.low(); y <= plan.roofY(); y++) {
-					states[k++] = tower.getBlockState(origin.offset(x, y, z));
+					BlockState state = tower.getBlockState(origin.offset(x, y, z));
+					// A cactus ages in place; its age is no block moving.
+					states[k++] = state.is(net.minecraft.world.level.block.Blocks.CACTUS) ? net.minecraft.world.level.block.Blocks.CACTUS.defaultBlockState() : state;
 				}
 			}
 		}

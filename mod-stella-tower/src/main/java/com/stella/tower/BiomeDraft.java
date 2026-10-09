@@ -13,18 +13,22 @@ import org.jspecify.annotations.Nullable;
  * @param feet the feet level of each column: 0 and up on land, -1 where the column holds water
  * @param surface the palette entry of each column's surface block
  * @param water whether the column holds a block of water at its feet level
+ * @param fragile whether a cactus stands in or beside the column, so nothing solid may be set beside it
+ * @param ceiling the height of the first block of rock over each column's air, or the column's own feet level where it is rock; null under an open roof
+ * @param ceilCode the palette entry of that rock
+ * @param lava whether the column holds a block of lava at its feet level, which no body walks
  * @param placed blocks above the surface, as runs of x, y, z and a palette entry
  * @param stand where a body stands in each column at the lowest, or {@link #NONE}; null until the plan is read
  * @param steps how many steps the portal's platform stands above the ground
  */
-public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, int[] placed, short @Nullable [][] stand, int steps) {
+public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, boolean[][] lava, boolean[][] fragile, short @Nullable [][] ceiling, byte @Nullable [][] ceilCode, int[] placed, short @Nullable [][] stand, int steps) {
 	/** A column where no body stands. */
 	public static final short NONE = -99;
 	/** How far above the feet the portal's backdrop wall rises, in blocks. */
 	public static final int BACKDROP = 8;
 
 	BiomeDraft withStand(final short[][] read) {
-		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.placed, read, this.steps);
+		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.lava, this.fragile, this.ceiling, this.ceilCode, this.placed, read, this.steps);
 	}
 
 	/** Whether the column is one the portal's stair, platform or backdrop covers, or the apron at its foot. */

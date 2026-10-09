@@ -85,6 +85,9 @@ final class BiomeGen {
 				case SCORCHED_BATTLEFIELD -> w.battlefield();
 				case JUNGLE -> w.jungle();
 				case MISTBOUND_MARSH -> w.marsh();
+				case BASALT_DELTAS -> w.basalt();
+				case ETERNAL_SNOWSTORM -> w.snow();
+				case DESERT_STORM -> w.desert();
 			}
 		}
 		w.nooks();
@@ -95,6 +98,7 @@ final class BiomeGen {
 			return null;
 		}
 		w.lights(first.withStands(volume), volume);
+		w.trimCacti();
 		return w.assemble(attempt, w.draft());
 	}
 
@@ -144,6 +148,11 @@ final class BiomeGen {
 		final int[][] h = new int[N][N];
 		final byte[][] surface = new byte[N][N];
 		final boolean[][] water = new boolean[N][N];
+		final boolean[][] lava = new boolean[N][N];
+		final boolean[][] fragile = new boolean[N][N];
+		/** The first block of rock over each column, and its look; null under an open roof. */
+		short[][] ceil;
+		byte[][] ceilCode;
 		/** 1 the spine, 2 the stair, 3 the arrival's pad, 4 a feature's flat ground. */
 		final byte[][] keep = new byte[N][N];
 		final boolean[][] used = new boolean[N][N];
@@ -195,7 +204,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			return !this.tall[x][z] && !this.water[x][z];
+			return !this.tall[x][z] && !this.water[x][z] && !this.lava[x][z];
 		}
 
 		private int overIndex(final int x, final int y, final int z) {
@@ -261,7 +270,7 @@ final class BiomeGen {
 			}
 			for (int x = x0 - margin; x < x0 + w + margin; x++) {
 				for (int z = z0 - margin; z < z0 + l + margin; z++) {
-					if (this.keep[x][z] != 0 || this.used[x][z] || this.water[x][z] || this.tall[x][z]) {
+					if (this.keep[x][z] != 0 || this.used[x][z] || this.water[x][z] || this.lava[x][z] || this.tall[x][z]) {
 						return false;
 					}
 				}
@@ -304,9 +313,11 @@ final class BiomeGen {
 			double cell = switch (this.biome) {
 				case RAINY_FOREST, MISTBOUND_MARSH -> 16;
 				case JUNGLE -> 12;
-				case DESTROYED_VILLAGE -> 20;
+				case DESTROYED_VILLAGE, ETERNAL_SNOWSTORM -> 20;
 				case DESTROYED_CASTLE, SCORCHED_BATTLEFIELD -> 18;
 				case ADVENTURERS_GRAVEYARD -> 17;
+				case BASALT_DELTAS -> 13;
+				case DESERT_STORM -> 22;
 			};
 			double scale = switch (this.biome) {
 				case RAINY_FOREST -> 3.4;
@@ -316,17 +327,36 @@ final class BiomeGen {
 				case SCORCHED_BATTLEFIELD -> 2.6;
 				case JUNGLE -> 4.6;
 				case MISTBOUND_MARSH -> 1.9;
+				case BASALT_DELTAS -> 3.4;
+				case ETERNAL_SNOWSTORM -> 4.4;
+				case DESERT_STORM -> 5.4;
 			};
-			byte base = this.biome == FloorBiome.SCORCHED_BATTLEFIELD ? BiomeBlocks.BLACKSTONE : this.biome == FloorBiome.MISTBOUND_MARSH ? BiomeBlocks.MUD : BiomeBlocks.GRASS;
+			byte base = switch (this.biome) {
+				case SCORCHED_BATTLEFIELD -> BiomeBlocks.BLACKSTONE;
+				case MISTBOUND_MARSH -> BiomeBlocks.MUD;
+				case BASALT_DELTAS -> BiomeBlocks.BASALT;
+				case ETERNAL_SNOWSTORM -> BiomeBlocks.SNOW_BLOCK;
+				case DESERT_STORM -> BiomeBlocks.SAND;
+				default -> BiomeBlocks.GRASS;
+			};
 			byte patch = switch (this.biome) {
 				case DESTROYED_CASTLE -> BiomeBlocks.STONE;
 				case ADVENTURERS_GRAVEYARD, DESTROYED_VILLAGE -> BiomeBlocks.COARSE_DIRT;
 				case MISTBOUND_MARSH, JUNGLE -> BiomeBlocks.MOSS;
+				case BASALT_DELTAS -> BiomeBlocks.BLACKSTONE;
+				case ETERNAL_SNOWSTORM -> BiomeBlocks.SNOW_BLOCK;
+				case DESERT_STORM -> BiomeBlocks.RED_SAND;
 				default -> BiomeBlocks.MUD;
 			};
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
-					this.h[x][z] = features ? (int) (fbm(this.seed, x, z, cell) * scale) : 0;
+					double n = switch (this.biome) {
+						// Drifts stretched along z, and dunes in ridges.
+						case ETERNAL_SNOWSTORM -> fbm(this.seed, x, z / 3, cell);
+						case DESERT_STORM -> 1.0 - Math.abs(2.0 * fbm(this.seed, x, z * 22 / 9, cell) - 1.0);
+						default -> fbm(this.seed, x, z, cell);
+					};
+					this.h[x][z] = features ? (int) (n * scale) : 0;
 					this.surface[x][z] = vnoise(this.seed, x, z, 9, 3) > 0.3 ? base : patch;
 					if (features && this.biome == FloorBiome.RAINY_FOREST && vnoise(this.seed, x, z, 7, 5) > 0.82) {
 						this.surface[x][z] = BiomeBlocks.MOSS;
@@ -1315,6 +1345,198 @@ final class BiomeGen {
 			}
 		}
 
+		// ---- the basalt deltas
+
+		void basalt() {
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					// A lava lake keeps three blocks from the road, the stair, the guard's yard and the arrival.
+					if (in(x, z, 1) && vnoise(this.seed, x, z, 11, 6) < 0.30 && free(x, z, 3)) {
+						this.lava[x][z] = true;
+						this.h[x][z] = -1;
+						this.surface[x][z] = BiomeBlocks.BASALT;
+					}
+				}
+			}
+			relax(true);
+			for (int x = 1; x < N - 1; x++) {
+				for (int z = 1; z < N - 1; z++) {
+					if (this.keep[x][z] != 0 || this.lava[x][z] || this.used[x][z]) {
+						continue;
+					}
+					boolean beside = this.lava[x + 1][z] || this.lava[x - 1][z] || this.lava[x][z + 1] || this.lava[x][z - 1];
+					if (this.random.nextDouble() < (beside ? 0.28 : 0.02)) {
+						this.surface[x][z] = BiomeBlocks.MAGMA;
+					}
+				}
+			}
+			for (int[] c : poisson(30, 5, (x, z) -> free(x, z, 2))) {
+				int r = this.random.nextDouble() < 0.25 ? 2 : 1;
+				int height = 3 + this.random.nextInt(7);
+				for (int[] d : disc(c[0], c[1], r)) {
+					if (free(d[0], d[1])) {
+						stack(d[0], d[1], BiomeBlocks.BASALT, height);
+					}
+				}
+			}
+			fires(8);
+		}
+
+		// ---- the eternal snowstorm
+
+		void snow() {
+			for (int[] c : poisson(16, 5, (x, z) -> free(x, z, 1))) {
+				for (int[] d : disc(c[0], c[1], 1 + this.random.nextInt(2))) {
+					if (free(d[0], d[1])) {
+						this.surface[d[0]][d[1]] = BiomeBlocks.POWDER_SNOW;
+						this.used[d[0]][d[1]] = true;
+					}
+				}
+			}
+			for (int i = 0; i < 3; i++) {
+				int cx = 8 + this.random.nextInt(N - 16);
+				int cz = 8 + this.random.nextInt(N - 16);
+				for (int[] d : disc(cx, cz, 3 + this.random.nextInt(3))) {
+					if (free(d[0], d[1], 1)) {
+						this.surface[d[0]][d[1]] = BiomeBlocks.PACKED_ICE;
+					}
+				}
+			}
+			List<int[]> camps = new ArrayList<>();
+			for (int i = 0; i < 3; i++) {
+				int[] spot = pad(5, 5, 60);
+				if (spot != null) {
+					camps.add(spot);
+				}
+			}
+			relax(true);
+			for (int[] c : poisson(14, 7, (x, z) -> free(x, z, 1))) {
+				stack(c[0], c[1], BiomeBlocks.BLUE_ICE, 5 + this.random.nextInt(8));
+			}
+			for (int[] camp : camps) {
+				ruin(camp[0], camp[1], 5, 5, new byte[] {BiomeBlocks.WHITE_WOOL}, 2, 2, 0.2, (byte) 0);
+				int y = this.h[camp[0] + 2][camp[1] + 2];
+				put(camp[0] + 2, y, camp[1] + 2, BiomeBlocks.SOUL_CAMPFIRE);
+				put(camp[0] + 1, y, camp[1] + 1, BiomeBlocks.BARREL);
+			}
+		}
+
+		// ---- the desert storm
+
+		void desert() {
+			int[] oasis = null;
+			for (int tries = 0; tries < 60 && oasis == null; tries++) {
+				int cx = 10 + this.random.nextInt(N - 20);
+				int cz = 10 + this.random.nextInt(N - 20);
+				if (free(cx, cz, 6)) {
+					oasis = new int[] {cx, cz};
+				}
+			}
+			List<int[]> ruins = new ArrayList<>();
+			for (int i = 0; i < 4; i++) {
+				int size = 6 + this.random.nextInt(4);
+				int[] spot = pad(size, size, 60);
+				if (spot != null) {
+					ruins.add(new int[] {spot[0], spot[1], size});
+				}
+			}
+			if (oasis != null) {
+				for (int[] d : disc(oasis[0], oasis[1], 5)) {
+					if (free(d[0], d[1])) {
+						this.surface[d[0]][d[1]] = BiomeBlocks.GRASS;
+						this.h[d[0]][d[1]] = 0;
+						this.keep[d[0]][d[1]] = 4;
+					}
+				}
+			}
+			relax(true);
+			if (oasis != null) {
+				for (int[] d : disc(oasis[0], oasis[1], 3)) {
+					if (this.keep[d[0]][d[1]] == 4) {
+						this.water[d[0]][d[1]] = true;
+						this.h[d[0]][d[1]] = -1;
+						this.surface[d[0]][d[1]] = BiomeBlocks.MUD;
+					}
+				}
+				for (int palm = 0, placed = 0; palm < 40 && placed < 3; palm++) {
+					int[] d = disc(oasis[0], oasis[1], 5).get(this.random.nextInt(disc(oasis[0], oasis[1], 5).size()));
+					if (this.keep[d[0]][d[1]] == 4 && !this.water[d[0]][d[1]] && !this.tall[d[0]][d[1]] && !this.used[d[0]][d[1]]
+						&& grow(d[0], d[1], 1, 2, 3, BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES)) {
+						placed++;
+					}
+				}
+			}
+			byte[] stone = {BiomeBlocks.SANDSTONE, BiomeBlocks.CUT_SANDSTONE};
+			for (int[] r : ruins) {
+				ruin(r[0], r[1], r[2], r[2], stone, 1, 5, 0.4, BiomeBlocks.CUT_SANDSTONE);
+			}
+			for (int[] c : poisson(3, 10, (x, z) -> free(x, z, 2))) {
+				stack(c[0], c[1], BiomeBlocks.CUT_SANDSTONE, 8 + this.random.nextInt(5));
+			}
+			for (int i = 0, placed = 0; placed < 3 && i < 200; i++) {
+				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			}
+			for (int i = 0; i < 5; i++) {
+				int cx = 4 + this.random.nextInt(N - 8);
+				int cz = 4 + this.random.nextInt(N - 8);
+				for (int[] d : disc(cx, cz, 1)) {
+					if (free(d[0], d[1], 1)) {
+						this.surface[d[0]][d[1]] = BiomeBlocks.SOUL_SAND;
+					}
+				}
+			}
+			for (int[] c : poisson(34, 4, (x, z) -> free(x, z, 1) && (this.surface[x][z] == BiomeBlocks.SAND || this.surface[x][z] == BiomeBlocks.RED_SAND))) {
+				// Three high or more: a cactus that tall neither grows nor ages.
+				stack(c[0], c[1], BiomeBlocks.CACTUS, 3 + this.random.nextInt(2));
+				markFragile(c[0], c[1]);
+			}
+		}
+
+		/** A cactus breaks beside any solid block: its column and the four beside it are kept from anything solid. */
+		void markFragile(final int x, final int z) {
+			int[][] around = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int[] a : around) {
+				if (in(x + a[0], z + a[1], 0)) {
+					this.fragile[x + a[0]][z + a[1]] = true;
+				}
+			}
+		}
+
+		/** Takes down every cactus that something set beside it, and marks the columns of the rest. */
+		void trimCacti() {
+			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					this.fragile[x][z] = false;
+				}
+			}
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (get(x, this.h[x][z], z) != BiomeBlocks.CACTUS) {
+						continue;
+					}
+					boolean crowded = false;
+					for (int[] way : ways) {
+						for (int y = this.h[x][z]; y < this.h[x][z] + 4; y++) {
+							byte beside = get(x + way[0], y, z + way[1]);
+							crowded |= beside != 0 && beside != BiomeBlocks.CACTUS;
+						}
+					}
+					if (crowded) {
+						clearAbove(x, z, this.h[x][z], this.h[x][z] + 5);
+						this.tall[x][z] = false;
+					}
+				}
+			}
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (get(x, this.h[x][z], z) == BiomeBlocks.CACTUS) {
+						markFragile(x, z);
+					}
+				}
+			}
+		}
+
 		// ---- chest nooks
 
 		/** The columns a body reaches from the arrival, in steps, by the ground alone: a coarse stand-in for the walk proof. */
@@ -1487,8 +1709,9 @@ final class BiomeGen {
 				if (this.water[best[0]][best[2]]) {
 					put(best[0], best[1], best[2], BiomeBlocks.SEA_LANTERN);
 				} else {
-					put(best[0], best[1] - 1, best[2], BiomeBlocks.FENCE);
-					put(best[0], best[1], best[2], BiomeBlocks.LANTERN);
+					// Nether brick does not burn beside lava; a soul lantern does not melt the snow.
+					put(best[0], best[1] - 1, best[2], this.biome == FloorBiome.BASALT_DELTAS ? BiomeBlocks.NETHER_BRICK_FENCE : BiomeBlocks.FENCE);
+					put(best[0], best[1], best[2], this.biome == FloorBiome.ETERNAL_SNOWSTORM ? BiomeBlocks.SOUL_LANTERN : BiomeBlocks.LANTERN);
 				}
 				this.tall[best[0]][best[2]] = true;
 				for (int j = 0; j < stands.size(); j++) {
@@ -1510,12 +1733,22 @@ final class BiomeGen {
 			short[][] feet = new short[N][N];
 			byte[][] surface = new byte[N][N];
 			boolean[][] water = new boolean[N][N];
+			boolean[][] lava = new boolean[N][N];
+			boolean[][] fragile = new boolean[N][N];
+			short[][] ceiling = new short[N][N];
+			byte[][] ceilCodes = new byte[N][N];
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
 					feet[x][z] = (short) this.h[x][z];
 				}
 				surface[x] = this.surface[x].clone();
 				water[x] = this.water[x].clone();
+				lava[x] = this.lava[x].clone();
+				fragile[x] = this.fragile[x].clone();
+				if (this.ceil != null) {
+					ceiling[x] = this.ceil[x].clone();
+					ceilCodes[x] = this.ceilCode[x].clone();
+				}
 			}
 			// Grass dies under a block that shuts out the light, and dirt would spread back: bare dirt under any cover.
 			for (int x = 0; x < N; x++) {
@@ -1548,7 +1781,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			return new BiomeDraft(this.biome, feet, surface, water, placed, null, this.steps);
+			return new BiomeDraft(this.biome, feet, surface, water, lava, fragile, this.ceil == null ? null : ceiling, this.ceil == null ? null : ceilCodes, placed, null, this.steps);
 		}
 
 		TowerPlan assemble(final int attempt, final BiomeDraft draft) {

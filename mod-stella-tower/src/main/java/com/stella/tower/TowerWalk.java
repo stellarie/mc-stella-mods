@@ -161,6 +161,10 @@ public final class TowerWalk {
 	/** How a block counts to a walking body: by its collision shape. */
 	public static byte classify(final ServerLevel level, final BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
+		// Lava and powder snow have no collision, yet nobody walks into them: they count as higher than a block.
+		if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.LAVA) || state.is(net.minecraft.world.level.block.Blocks.POWDER_SNOW)) {
+			return TALL;
+		}
 		VoxelShape shape = state.getCollisionShape(level, pos);
 		if (shape.isEmpty()) {
 			return OPEN;

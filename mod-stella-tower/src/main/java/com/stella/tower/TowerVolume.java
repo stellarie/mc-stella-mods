@@ -399,6 +399,14 @@ public final class TowerVolume implements TowerWalk.Space {
 				if (draft.water()[x][z]) {
 					block(x, feet, z, BiomeBlocks.WATER);
 				}
+				if (draft.lava()[x][z]) {
+					block(x, feet, z, BiomeBlocks.LAVA);
+				}
+				if (draft.ceiling() != null) {
+					for (int y = Math.max(feet, draft.ceiling()[x][z]); y < this.high; y++) {
+						block(x, y, z, draft.ceilCode()[x][z]);
+					}
+				}
 				if (open) {
 					block(x, this.high, z, BiomeBlocks.BARRIER);
 				} else {

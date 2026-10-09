@@ -156,7 +156,10 @@ final class TowerChestSpots {
 				return true;
 			}
 			if (plan.isBiome() && (plan.biome().inDais(plan, cell.x(), cell.z()) || plan.biome().water()[cell.x()][cell.z()]
-				|| plan.biome().water()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()])) {
+				|| plan.biome().water()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()]
+				// Not on the road, which a chest on it would turn to dirt, nor by a cactus, which a chest beside it would break.
+				|| plan.biome().surface()[cell.x()][cell.z()] == BiomeBlocks.PATH || plan.biome().fragile()[cell.x()][cell.z()]
+				|| plan.biome().fragile()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()])) {
 				return true;
 			}
 			if (volume.isWay(cell.x(), y, cell.z()) || volume.isWay(cell.x() + face.getStepX(), y, cell.z() + face.getStepZ())) {

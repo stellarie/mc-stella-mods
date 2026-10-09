@@ -22,8 +22,25 @@ public enum FloorBiome {
 	/** Giant trees, thickets, ponds and overgrown temples. */
 	JUNGLE("jungle", true, TowerSkin.MOSSY_STONE_BRICKS, false),
 	/** Mud, still water, dead trunks and stilt huts under a fog six blocks deep, crossed by a boardwalk. */
-	MISTBOUND_MARSH("mistbound_marsh", true, TowerSkin.MUD_BRICKS, false);
+	MISTBOUND_MARSH("mistbound_marsh", true, TowerSkin.MUD_BRICKS, false),
+	/** Lava lakes, magma and basalt columns under a closed roof. */
+	BASALT_DELTAS("basalt_deltas", false, TowerSkin.POLISHED_BLACKSTONE_BRICKS, false),
+	/** Drifts, powder snow, ice and a frost that builds on a body in the open. */
+	ETERNAL_SNOWSTORM("eternal_snowstorm", true, TowerSkin.BLUE_ICE, false, Weather.SNOW),
+	/** Dunes, cacti, ruins and an oasis under a gust that slows a body in the open. */
+	DESERT_STORM("desert_storm", true, TowerSkin.CUT_SANDSTONE, false, Weather.SAND);
 
+	/** What blows across a floor of this biome, in the open. */
+	public enum Weather {
+		NONE,
+		SNOW,
+		SAND
+	}
+
+	/** The biomes a floor is drawn among. */
+	public static final java.util.List<FloorBiome> DRAWN = java.util.List.of(values());
+
+	private final Weather weather;
 	private final String id;
 	private final boolean openRoof;
 	private final TowerSkin daisSkin;
@@ -31,6 +48,11 @@ public enum FloorBiome {
 	private final ResourceKey<Biome> key;
 
 	FloorBiome(final String id, final boolean openRoof, final TowerSkin daisSkin, final boolean gentle) {
+		this(id, openRoof, daisSkin, gentle, Weather.NONE);
+	}
+
+	FloorBiome(final String id, final boolean openRoof, final TowerSkin daisSkin, final boolean gentle, final Weather weather) {
+		this.weather = weather;
 		this.id = id;
 		this.openRoof = openRoof;
 		this.daisSkin = daisSkin;
@@ -45,6 +67,10 @@ public enum FloorBiome {
 	/** Whether the room's roof is a barrier, so the sky shows through, rather than a wall. */
 	public boolean openRoof() {
 		return this.openRoof;
+	}
+
+	public Weather weather() {
+		return this.weather;
 	}
 
 	/** Whether floor 1 may be this biome: a gentle start. */
