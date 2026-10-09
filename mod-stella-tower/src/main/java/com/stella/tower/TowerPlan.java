@@ -96,6 +96,13 @@ public record TowerPlan(
 		}
 	};
 
+	private static final Map<Key, TowerPlan> LEGACY_MAP = new LinkedHashMap<>(16, 0.75F, true) {
+		@Override
+		protected boolean removeEldestEntry(final Map.Entry<Key, TowerPlan> eldest) {
+			return this.size() > CACHE;
+		}
+	};
+
 	/**
 	 * How a hall floor's maze round its hall is laid, drawn evenly among those the floor may take.
 	 * <ul>
@@ -248,10 +255,33 @@ public record TowerPlan(
 		return plan;
 	}
 
+	/**
+	 * The plan of a floor as the tower drew it before the biome floors, pure and cached apart from {@link #of}.
+	 * A lost room borrows its plan from here ({@link LegacyRoomPlan}), so a change to how floors are drawn
+	 * never moves a room.
+	 */
+	static TowerPlan legacy(final long seed, final int floor) {
+		Key key = new Key(seed, floor);
+		synchronized (LEGACY_MAP) {
+			TowerPlan plan = LEGACY_MAP.get(key);
+			if (plan != null) {
+				return plan;
+			}
+		}
+		TowerPlan plan = generate(seed, floor, drawn -> false);
+		synchronized (LEGACY_MAP) {
+			LEGACY_MAP.put(key, plan);
+		}
+		return plan;
+	}
+
 	/** Forgets every cached plan, as a stopped server does. */
 	static void clearCache() {
 		synchronized (CACHE_MAP) {
 			CACHE_MAP.clear();
+		}
+		synchronized (LEGACY_MAP) {
+			LEGACY_MAP.clear();
 		}
 	}
 

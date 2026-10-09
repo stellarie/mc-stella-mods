@@ -43,6 +43,7 @@
 			"com.stella.tower.TowerChestGameTest",
 			"com.stella.tower.TowerFloorChestGameTest",
 			"com.stella.tower.TowerLostRoomGameTest",
+			"com.stella.tower.TowerLostRoomFrozenGameTest",
 			"com.stella.tower.TowerLostCastleVariantGameTest",
 			"com.stella.tower.TowerArchetypeSpawnGameTest",
 			"com.stella.tower.TowerPreviewGameTest",

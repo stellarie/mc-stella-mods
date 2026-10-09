@@ -86,7 +86,7 @@ public final class LostRooms {
 	}
 
 	public static TowerPlan plan(final long seed, final int room) {
-		return TowerPlan.of(seed, looksFloor(room)).relocated(room);
+		return LegacyRoomPlan.of(seed, room);
 	}
 
 	/** The tower floor a mob level matches: its rewards, gear and pool. */
