@@ -70,7 +70,9 @@
 			"com.stella.rpg.SecondHotbarGameTest",
 			"com.stella.rpg.RangedAtkGameTest",
 			"com.stella.rpg.CritSeamGameTest",
-			"com.stella.rpg.ArcherGrantGameTest"
+			"com.stella.rpg.ArcherGrantGameTest",
+			"com.stella.rpg.BonusGrantGameTest",
+			"com.stella.rpg.StatBonusReachGameTest"
 		]
 	},
 	"depends": {

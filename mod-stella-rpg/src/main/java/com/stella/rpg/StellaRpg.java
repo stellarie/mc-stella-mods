@@ -49,6 +49,7 @@ public final class StellaRpg implements ModInitializer {
 		EffectStats.register();
 		StarterSword.register();
 		OutgoingDamageShare.register();
+		com.stella.rpg.api.BonusGrantShare.register();
 		HealthScaleShare.publish();
 		XpCurveShare.publish();
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> reloadConfig());
