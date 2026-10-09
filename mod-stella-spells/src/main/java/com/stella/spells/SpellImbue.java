@@ -27,6 +27,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.TooltipProvider;
@@ -108,8 +109,9 @@ public final class SpellImbue {
 	/**
 	 * Spells no weapon takes. An ally book is not here: heal-on-hit is a playstyle, and an imbued ally book
 	 * passes the wielder - the body that swung - as its ally, so a blow on a mob mends the attacker. What
-	 * stays out has no bow behind it: every archer book is refused without a bow and an arrow, so an imbued
-	 * weapon could never cast one. Tide Lungs is a breath held underwater, and Summon Skeleton is book-only.
+	 * stays out has no bow behind it: an archer book is refused on a sword, which is no bow; only a bow or a
+	 * crossbow takes one, from {@link #BOW_IMBUABLE}. Tide Lungs is a breath held underwater, and Summon
+	 * Skeleton is book-only.
 	 */
 	public static final java.util.Set<Identifier> NOT_IMBUABLE = java.util.stream.Stream.concat(
 		SpellbookCatalog.DEFINITIONS.stream()
@@ -117,6 +119,16 @@ public final class SpellImbue {
 			.map(SpellDefinition::id),
 		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"))
 	).collect(java.util.stream.Collectors.toUnmodifiableSet());
+	/**
+	 * The archer books a bow or a crossbow takes: the ones that strike a target. A self buff or a next-shot
+	 * book has no victim on an arrow hit, so a bow refuses it.
+	 */
+	public static final java.util.Set<Identifier> BOW_IMBUABLE = java.util.Set.of(
+		id("rapid_fire"), id("piercing_shot"), id("arrow_rain"), id("hunters_mark"), id("ankle_snare"),
+		id("arrow_repel"), id("explosive_arrow")
+	);
+	/** Set while a player's imbued spell lands, so the damage it deals never counts as a fresh blow. */
+	private static final ThreadLocal<Boolean> PLAYER_CASTING = new ThreadLocal<>();
 	/** Arrows imbued for one price. */
 	public static final int ARROWS_PER_PRICE = 16;
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
@@ -146,6 +158,7 @@ public final class SpellImbue {
 	};
 	private static volatile Recorder recorder = SILENT;
 	private static volatile Recorder secondRecorder = SILENT;
+	private static final List<Recorder> EXTRA_RECORDERS = new CopyOnWriteArrayList<>();
 	/** The cooldown component's own use time: one tick, since a sword's use is nothing to wait on. */
 	private static final float COOLDOWN_GROUP_SECONDS = 0.05F;
 	/** Server tick at which each player's imbued spell is ready again. */
@@ -159,6 +172,11 @@ public final class SpellImbue {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(SpellImbue::afterDamage);
 		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(SpellImbue::onUseEntity);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(SpellImbue::onServerStopping);
+	}
+
+	/** Test seam: any number of extra listeners, for classes that cannot share the two single slots. */
+	public static void addRecorder(final Recorder extra) {
+		EXTRA_RECORDERS.add(extra);
 	}
 
 	public static void setRecorder(final Recorder newRecorder) {
@@ -179,7 +197,8 @@ public final class SpellImbue {
 	// A weapon is anything whose own attack damage the game adds to the hand holding it; arrows of every kind
 	// and chestplates take spells too.
 	public static boolean canImbue(final ItemStack stack) {
-		return !stack.isEmpty() && (isWeapon(stack) || stack.is(ItemTags.ARROWS) || stack.is(ItemTags.CHEST_ARMOR));
+		return !stack.isEmpty() && (isWeapon(stack) || stack.getItem() instanceof ProjectileWeaponItem
+			|| stack.is(ItemTags.ARROWS) || stack.is(ItemTags.CHEST_ARMOR));
 	}
 
 	static boolean isWeapon(final ItemStack stack) {
@@ -209,7 +228,9 @@ public final class SpellImbue {
 		SpellDefinition spell = ((SpellbookItem) book.getItem()).definition();
 		List<Identifier> current = spellsOf(weapon);
 		boolean awakened = Awakening.isAwakened(book) && !weapon.is(ItemTags.ARROWS);
-		if (NOT_IMBUABLE.contains(spell.id()) || (awakened && weapon.has(Awakening.AWAKENED_IMBUE))) {
+		boolean barred = weapon.getItem() instanceof ProjectileWeaponItem
+			? !BOW_IMBUABLE.contains(spell.id()) : NOT_IMBUABLE.contains(spell.id());
+		if (barred || (awakened && weapon.has(Awakening.AWAKENED_IMBUE))) {
 			return ItemStack.EMPTY;
 		}
 		boolean upgrade = awakened && current.contains(spell.id());
@@ -245,7 +266,7 @@ public final class SpellImbue {
 	private static void afterDamage(
 		final LivingEntity victim, final DamageSource source, final float baseDamage, final float damage, final boolean blocked
 	) {
-		if (blocked || MobImbue.casting()) {
+		if (blocked || MobImbue.casting() || PLAYER_CASTING.get() != null) {
 			return;
 		}
 		// An imbued chestplate answers a blow that landed on its wearer: not one a shield stopped, nor one inside
@@ -273,11 +294,25 @@ public final class SpellImbue {
 			}
 		} else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
 			focus = arrow.getPickupItemStackOrigin();
+			castFromBow(player, arrow, victim);
 		} else {
 			return;
 		}
 		for (Identifier spell : spellsOf(focus)) {
 			cast(player, spell, victim, focus, false);
+		}
+	}
+
+	// The bow or crossbow that loosed the arrow casts its imbued archer books on the victim.
+	private static void castFromBow(final ServerPlayer player, final AbstractArrow arrow, final LivingEntity victim) {
+		ItemStack bow = arrow.getWeaponItem();
+		if (bow == null || !(bow.getItem() instanceof ProjectileWeaponItem)) {
+			return;
+		}
+		for (Identifier spell : spellsOf(bow)) {
+			if (BOW_IMBUABLE.contains(spell)) {
+				cast(player, spell, victim, bow, false);
+			}
 		}
 	}
 
@@ -352,10 +387,14 @@ public final class SpellImbue {
 		// an imbued hit never walks that path - it hands the effect its target directly - and because the
 		// book path's rule, the ally the caster looks at, stays its own.
 		CastContext.setAlly(ally);
+		CastContext.setImbuedVictim(victim);
+		PLAYER_CASTING.set(Boolean.TRUE);
 		boolean cast;
 		try {
 			cast = definition.effect().apply(player, target, point, modifiers);
 		} finally {
+			PLAYER_CASTING.remove();
+			CastContext.setImbuedVictim(null);
 			CastContext.setAlly(null);
 		}
 		victim.damageCooldownTime = Math.max(victim.damageCooldownTime, hurtCooldown);
@@ -380,6 +419,9 @@ public final class SpellImbue {
 		);
 		recorder.cast(player, definition.id(), victim);
 		secondRecorder.cast(player, definition.id(), victim);
+		for (Recorder extra : EXTRA_RECORDERS) {
+			extra.cast(player, definition.id(), victim);
+		}
 		return true;
 	}
 
