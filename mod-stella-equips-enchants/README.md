@@ -375,6 +375,24 @@ count.
   equals the hit without hearts. They can kill.
 - Only attacks split: hits with a living attacker, including arrows and mob spells. Falls, fire, poison, and thorns do not.
 
+## Nether star imbue
+
+- Put a weapon, a bow, or an armor piece in the anvil's first slot and a nether star in the second. The result holds one more imbue and one star is used.
+  A shield, a book, and a plain item take none. A piece can be imbued again and again.
+- The price is emeralds, never levels: `16 * (n + 1)` for a piece that holds `n` imbues. The first is 16, the second 32, the tenth 160.
+- The count is the custom-data integer `stella_nether_star` on the stack. The lore line `Nether Star xN` shows it. Refining keeps both.
+- On a weapon, a melee hit or an arrow hit applies Wither II for 5 seconds. A hit on a target that holds Wither deals 3 times its damage.
+  The count does not raise the 3. Unique damage, thorns, and spells do not trigger it. A Wither boss and a wither skeleton cannot be withered.
+- On armor, one worn imbued piece makes the wearer immune to Wither. A player who puts it on is cured within 10 ticks.
+- Each imbue also gives +10 to all six stats. This mod calls the share `mod-stella-rpg:grant-bonus` once per imbue and needs no class
+  from that mod. When the share is absent, the imbue still works and skips the stat grant.
+
+## Enchanted book share
+
+This mod publishes `mod-stella-equips-enchants:enchanted-book`, a `Function<Object[], ItemStack>`. The arguments are
+`{ServerLevel, RandomSource, Integer count}`. It returns an enchanted book with `count` distinct, compatible, non-curse enchantments,
+each at a random level in its own range, from every enchantment in the registry. Bad input returns an empty stack.
+
 ## Uniques
 
 A unique is an epic item with one base effect and four refine bonuses, at +7, +10, +12 and +15. Each belongs to one
@@ -507,6 +525,7 @@ the cap, the smith, the bonuses, the tooltip, each special effect at its level a
 the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spellbook refining, and the recipe.
 Shield tests check the refine, held armor, Parry at each level and against arrows, and the one-point cost
 of a block.
+Nether star tests check the anvil recipe and price, the stat grant call with the rpg share present and absent, the weapon and armor effects, and the enchanted-book share.
 Unique tests check the drop chance and rank, the roll and its drop, the registry (items, tags, models and
 textures), the refine and tooltip rules, the hook dispatch, the shared helpers, and the Bonewhisper Bow.
 

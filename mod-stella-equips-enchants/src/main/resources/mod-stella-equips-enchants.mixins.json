@@ -17,7 +17,8 @@
 		"SlimeHeartMixin",
 		"ShieldBlockMixin",
 		"LivingEntityUniqueMixin",
-		"PlayerAttackMixin"
+		"PlayerAttackMixin",
+		"LivingEntityImbueMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
