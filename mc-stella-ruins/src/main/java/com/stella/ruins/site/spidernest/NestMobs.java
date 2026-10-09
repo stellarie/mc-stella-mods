@@ -127,6 +127,7 @@ public final class NestMobs {
 			Vec3 at = new Vec3(mother.getX() + Math.cos(angle) * radius, mother.getY(), mother.getZ() + Math.sin(angle) * radius);
 			Mob crawler = BROOD_CRAWLER.spawn(level, at);
 			if (crawler != null) {
+				RuinMobs.markSummoned(crawler);
 				spawned++;
 				if (entry != null) {
 					entry.addMob(crawler.getUUID());

@@ -1,8 +1,10 @@
 package com.stella.ruins.site.meteorcrater;
 
 import com.stella.ruins.StellaRuins;
+import com.stella.ruins.reward.AffixSpec;
 import com.stella.ruins.reward.AttributeBonus;
 import com.stella.ruins.reward.PeriodicEffect;
+import com.stella.ruins.reward.RuinAffixes;
 import com.stella.ruins.reward.RuinItems;
 import com.stella.ruins.reward.RuinSets;
 import com.stella.ruins.reward.RuinUniques;
@@ -13,9 +15,14 @@ import java.util.List;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.equipment.Equippable;
 
 /** The exclusive items of the crater: four materials, the Starweave mage set, and the Fallen Star. */
 public final class CraterItems {
@@ -33,6 +40,10 @@ public final class CraterItems {
 	public static Item EMBER_CORE;
 	public static RuinSets.SetDefinition STARWEAVE;
 	public static Item FALLEN_STAR;
+	public static RuinAffixes.Affix EMBERWARD;
+	public static final EmberwardEffect EMBERWARD_EFFECT = new EmberwardEffect();
+	/** Armor toughness the Emberward affix adds. */
+	public static final double EMBERWARD_TOUGHNESS = 1.0;
 
 	private CraterItems() {
 	}
@@ -54,6 +65,16 @@ public final class CraterItems {
 			.bonus(new SetBonus(4, List.of(), new PeriodicEffect(MobEffects.FIRE_RESISTANCE, 0, FIRE_RESISTANCE_TICKS)))
 			.build());
 		UniqueEffects.define(StarfallEffect.ID, new StarfallEffect());
+		UniqueEffects.define(EmberwardEffect.ID, EMBERWARD_EFFECT);
+		EMBERWARD = RuinAffixes.define("emberward", new AffixSpec(
+			CraterItems::isArmor, Ingredient.of(EMBER_CORE),
+			List.of(AttributeBonus.add(Attributes.ARMOR_TOUGHNESS, EMBERWARD_TOUGHNESS)), EmberwardEffect.ID));
 		FALLEN_STAR = RuinUniques.register("fallen_star", Item::new, new Item.Properties().stacksTo(1), StarfallEffect.ID);
+	}
+
+	/** Any piece of humanoid armor. */
+	static boolean isArmor(final ItemStack stack) {
+		Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+		return equippable != null && equippable.slot().getType() == EquipmentSlot.Type.HUMANOID_ARMOR;
 	}
 }

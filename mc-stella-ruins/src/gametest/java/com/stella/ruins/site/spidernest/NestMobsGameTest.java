@@ -151,6 +151,7 @@ public class NestMobsGameTest {
 			helper.assertTrue(first == 2 && second == 4 && third == 6 && fourth == 8, "the broods came as " + first + "," + second + "," + third + "," + fourth);
 			helper.assertTrue(fifth == 8, "she went past the cap: " + fifth);
 			List<Mob> all = level.getEntitiesOfClass(Mob.class, mother.getBoundingBox().inflate(64.0), mob -> RuinMobs.kindOf(mob) == NestMobs.BROOD_CRAWLER);
+			helper.assertTrue(!all.isEmpty() && all.stream().allMatch(crawler -> crawler.entityTags().contains(RuinMobs.TAG_SUMMONED)), "the brood does not carry the summoned tag");
 			for (Mob crawler : all) {
 				crawler.discard();
 			}

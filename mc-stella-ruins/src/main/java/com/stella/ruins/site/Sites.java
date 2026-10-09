@@ -28,5 +28,6 @@ public final class Sites {
 		AmbushCampSite.register();
 		RuinedKeepSite.register();
 		SealedVaultSite.register();
+		Hybrids.register();
 	}
 }

@@ -278,4 +278,29 @@ public class RuinSitePlanGameTest {
 		return zone.has("other_set") && "minecraft:villages".equals(zone.get("other_set").getAsString())
 			&& zone.has("chunk_count") && zone.get("chunk_count").getAsInt() >= 8;
 	}
+
+	static int weightOf(final List<Plan> plans, final String id) {
+		return plans.stream().filter(plan -> plan.id().equals(id)).mapToInt(Plan::weight).sum();
+	}
+
+	/**
+	 * Placement odds. The three large and deep sites share at most a tenth of the weight, and the wayshrine
+	 * outweighs the sealed vault at least four to one, so the big hunts are rare and the small sites stay near.
+	 */
+	@GameTest(maxTicks = 400)
+	public void rareSitesStayRare(final GameTestHelper helper) {
+		List<Plan> plans = plans(helper.getLevel());
+		int total = plans.stream().mapToInt(Plan::weight).sum();
+		int keep = weightOf(plans, "ruined_keep");
+		int forge = weightOf(plans, "deep_forge");
+		int vault = weightOf(plans, "sealed_vault");
+		int wayshrine = weightOf(plans, "wayshrine");
+		int rare = keep + forge + vault;
+		WorldTestSupport.result("rareSitesStayRare", "total=" + total + " keep=" + keep + " forge=" + forge + " vault=" + vault + " wayshrine=" + wayshrine
+			+ " rareShare=" + String.format("%.4f", total == 0 ? 0.0 : (double) rare / total));
+		helper.assertTrue(plans.size() >= SITE_COUNT && rare > 0, "the set holds " + plans.size() + " structures and the rare three weigh " + rare);
+		helper.assertTrue(rare * 10 <= total, "keep, forge and vault weigh " + rare + " of " + total + ", above a tenth");
+		helper.assertTrue(wayshrine >= 4 * vault, "the wayshrine weighs " + wayshrine + ", under four times the vault " + vault);
+		helper.succeed();
+	}
 }

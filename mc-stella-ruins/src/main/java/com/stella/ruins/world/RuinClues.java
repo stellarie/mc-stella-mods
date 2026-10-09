@@ -26,6 +26,8 @@ public final class RuinClues {
 	public static final int SEARCH_CHUNKS = 100;
 	/** The map zoom: 2 covers 512 blocks across, like a vanilla explorer map. */
 	public static final byte MAP_SCALE = 2;
+	/** The most searches one locate may run: the first, and the retries that look past a spent site. */
+	public static final int MAX_SEARCHES = 4;
 
 	private RuinClues() {
 	}
@@ -93,9 +95,46 @@ public final class RuinClues {
 		return old;
 	}
 
-	/** The nearest start of a site within {@link #SEARCH_CHUNKS} chunks, or nothing. */
+	/** How far a located spot may stand from a core and still be that core's site, in blocks. */
+	static final int SPENT_RADIUS = 96;
+	/** How far each retry moves the search origin past a spent site, in blocks. */
+	static final int RETRY_SHIFT = 512;
+
+	/**
+	 * The nearest start of a site within {@link #SEARCH_CHUNKS} chunks, or nothing. A once site that was cleared
+	 * is spent: the search then restarts from a point further out, away from the spent site, at most
+	 * {@link #MAX_SEARCHES} times in all.
+	 */
 	public static Optional<BlockPos> locate(final ServerLevel level, final String siteId, final BlockPos from) {
-		return locator.find(level, siteId, from);
+		RuinSite site = RuinSites.get(siteId);
+		if (site == null || !site.claim().isOnce()) {
+			return locator.find(level, siteId, from);
+		}
+		RuinData data = RuinData.get(level);
+		BlockPos origin = from;
+		for (int attempt = 1; attempt <= MAX_SEARCHES; attempt++) {
+			Optional<BlockPos> found = locator.find(level, siteId, origin);
+			if (found.isEmpty() || !data.completedNear(siteId, found.get(), SPENT_RADIUS)) {
+				return found;
+			}
+			StellaRuins.LOGGER.debug("[RUINS] clue search {} found spent {} at {}", attempt, siteId, found.get().toShortString());
+			origin = pastSpent(from, found.get(), attempt);
+		}
+		return Optional.empty();
+	}
+
+	/** A search origin beyond a spent site, on the side the player stands, {@code step} shifts away from it. */
+	private static BlockPos pastSpent(final BlockPos from, final BlockPos spent, final int step) {
+		double dx = from.getX() - spent.getX();
+		double dz = from.getZ() - spent.getZ();
+		double length = Math.sqrt(dx * dx + dz * dz);
+		if (length < 1.0) {
+			dx = 1.0;
+			dz = 0.0;
+			length = 1.0;
+		}
+		double reach = (double) RETRY_SHIFT * step;
+		return new BlockPos((int) Math.round(spent.getX() + dx / length * reach), from.getY(), (int) Math.round(spent.getZ() + dz / length * reach));
 	}
 
 	private static Optional<BlockPos> searchStructures(final ServerLevel level, final String siteId, final BlockPos from) {

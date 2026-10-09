@@ -1,5 +1,6 @@
 package com.stella.ruins.site.meteorcrater;
 
+import com.stella.ruins.world.Claim;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -41,12 +42,12 @@ public class CraterSiteGameTest {
 	static final int SEEDS = 24;
 
 	@GameTest
-	public void theSiteRegistersAsASurfaceSiteWithAOnceClaimAndTheCoolingObjective(final GameTestHelper helper) {
+	public void theSiteRegistersAsASurfaceSiteWithASevenDayClaimAndTheCoolingObjective(final GameTestHelper helper) {
 		RuinSite site = CraterTestSupport.site();
 		helper.assertTrue(site.sizeX() == 42 && site.sizeZ() == 42 && site.sizeY() == CraterPlan.SIZE_Y, "bounds " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.placement() instanceof Placement.Surface surface && surface.maxSlope() == CraterPlan.FOUNDATION, "placement " + site.placement());
 		helper.assertTrue(site.placement().foundation() + site.sizeY() <= 48, "the box is " + (site.placement().foundation() + site.sizeY()) + " tall");
-		helper.assertTrue(site.claim().isOnce() && site.claim().resetTicks(site.id()) == -1L, "the claim is not once");
+		helper.assertTrue(!site.claim().isOnce() && site.claim().days() == 7 && site.claim().resetTicks(site.id()) == 7L * Claim.DAY_TICKS, "the claim is not a seven day reset");
 		helper.assertTrue(site.activationRadius() == 20 && site.clueWeight() == 3, "radius " + site.activationRadius() + " clue " + site.clueWeight());
 		helper.assertTrue(site.roster().isEmpty() && site.hasUnique() && site.vaultLoot().equals(CraterMobs.VAULT_LOOT), "roster, unique or vault table");
 		helper.assertTrue(site.newObjective() instanceof CoolingObjective, "the objective is not the cooling objective");

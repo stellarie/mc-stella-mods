@@ -12,6 +12,8 @@ public final class CampMarkers {
 	public static final String TENT = "tent";
 	/** The campfire. */
 	public static final String FIRE = "fire";
+	/** The three unlit campfires of the lantern rite. */
+	public static final String LANTERN = "lantern";
 	/** The first block of the mouth, at the cave air end. */
 	public static final String MOUTH = "mouth";
 

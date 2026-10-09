@@ -4,7 +4,7 @@ Stella Ruins (`mod-stella-ruins`) adds structures to the overworld surface and t
 objective, themed mobs, and rewards that exist nowhere else. Clues to the structures turn up in ordinary chests.
 
 This file covers the world library, package `com.stella.ruins.world`. A site slice uses it to build a site. The
-reward library, package `com.stella.ruins.reward`, has its own section when it lands.
+reward library, package `com.stella.ruins.reward`, is in `docs/rewards.md`. Every site has its own section below.
 
 ## What the world library does
 
@@ -50,13 +50,30 @@ Each site also ships two data files. Use the structure type and the exclusion va
   "spawn_overrides": {}, "step": "surface_structures" }
 ```
 
+All eleven sites share one structure set, `mod-stella-ruins:sites`. A new site adds one entry to it.
+
 ```json
-{ "placement": { "type": "minecraft:random_spread", "salt": 1308171246, "spacing": 34, "separation": 12,
+{ "placement": { "type": "minecraft:random_spread", "salt": 702913845, "spacing": 12, "separation": 9,
     "exclusion_zone": { "other_set": "minecraft:villages", "chunk_count": 8 } },
-  "structures": [ { "structure": "mod-stella-ruins:wayshrine", "weight": 1 } ] }
+  "structures": [ { "structure": "mod-stella-ruins:wayshrine", "weight": 6 }, ... ] }
 ```
 
-Small sites use spacing 34 and separation 12. Large sites use 56 and 20. Every set needs a unique salt.
+Spacing 12 and separation 9 place one candidate in each cell of 12 x 12 chunks. Two sites never stand closer than 9
+chunks, which is wider than the two widest footprints. The weights decide which site a candidate becomes. A small
+site is common and stays near a base. The three large sites are rare, so finding one is a hunt.
+
+| Site | Weight | Share |
+|---|---|---|
+| `wayshrine` | 6 | 16.7% |
+| `ambush_camp`, `fallen_watchtower` | 5 each | 13.9% each |
+| `crystal_grotto`, `spider_nest`, `lost_miners_camp` | 4 each | 11.1% each |
+| `meteor_crater` | 3 | 8.3% |
+| `proving_grounds` | 2 | 5.6% |
+| `ruined_keep`, `deep_forge`, `sealed_vault` | 1 each | 2.8% each |
+
+The shares are the weights over the total of 36. They are the odds of a placed candidate. Real counts also depend on
+whether the ground takes the site, and a failed placement is not measured. A game test (`rareSitesStayRare`) holds
+the three large sites to at most a tenth of the weight, and the wayshrine to at least four times the vault.
 
 ## Layouts
 
@@ -72,19 +89,59 @@ A layout is a `SiteLayout`. It draws in the site's local frame, as if the site f
 
 ## Objectives
 
-`Objectives.clear()`, `waves(WavePlan)`, `offer(Predicate<ItemStack>)`, `keys(Item, int)` and
-`sequence(Objective...)` ship with the library. A site slice may write its own `Objective` in its own package.
+`Objectives.clear()`, `waves(WavePlan)`, `offer(Predicate<ItemStack>)`, `keys(Item, int)`,
+`sequence(Objective...)` and `choose(Choice...)` ship with the library. `choose` waits for an offer that one
+`Choice` accepts, spends one item, and runs that choice's objective from then on. A choice may add vault rolls
+through `Objective.extraRolls()`. A site slice may write its own `Objective` in its own package.
 An objective keeps all state in `save()` and `load()`. The core builds a new instance for every call.
 
 A core has four phases: `DORMANT`, `ACTIVE`, `COMPLETE` and `COOLDOWN`.
 
 - A non-spectator player inside the activation radius wakes a `DORMANT` core. The core checks every 20 ticks.
-- When the objective completes, the core opens its vault and rolls the site table `1 + level / 25` times, at most 5.
-- A reset site returns to `DORMANT` when the delay ends. The vault shuts and keeps its stacks.
+- When the objective completes, the core opens its vault and rolls the site table. The count is
+  `min(5, 1 + level / 25)` for the mob level, plus the tier, plus one for each omen, plus the extra rolls of the
+  objective. See "Tiers, omens and trophies".
+- A reset site returns to `DORMANT` when the delay ends, and its tier rises. The vault shuts and keeps its stacks.
+  A site may declare a rearm hook (`RuinSite.Builder.onRearm`) that runs at that moment.
   If a player still stands in the radius, the core waits in `COOLDOWN` until the player leaves.
 - `RuinClock` supplies the tick count. Tests replace it, because the game test clock stands still.
 
 The core and the vault have no item, and neither can be broken. The vault opens as a 9 x 3 chest.
+
+## Tiers, omens and trophies
+
+These rules ride on every reset site, and the trophy and the omens ride on every site.
+
+- **Tiers.** A reset site starts at tier 0. Each rearm raises its tier by one, up to `tier_cap` (3). A mob that a run
+  spawns through the core gains `tier_health_step` (25%) health and `tier_damage_step` (10%) damage for each tier.
+  The run pays one more vault roll for each tier. A once site stays at tier 0. The tier is saved in the core record
+  (`tier`, default 0), so an old save loads at tier 0.
+- **Resets.** The wayshrine resets after 1 day, the ambush camp after 2, the grotto and the nest after 3, and the
+  watchtower, the crater and the miners camp after 7. The keep, the forge and the vault never reset, because their
+  blocks change for good. The proving grounds keep one claim for each tier.
+- **Omens.** When a core wakes it rolls 0 to 2 omens. The first comes at `min(0.9, 0.25 + 0.15 * tier)`, and the second
+  at half that chance. Players in the radius see the omens on the action bar. Each omen adds one vault roll.
+
+  | Omen | Effect |
+  |---|---|
+  | Frenzied | Roster mobs move 25% faster |
+  | Bulwark | Roster mobs gain 8 armor and 25% health |
+  | Ferocious | Roster mobs deal 35% more damage |
+  | Swarming | The first roster kind comes in 25% greater number (rounded up) |
+  | Hexed | Players in the radius get Weakness, renewed at each core pulse |
+
+  The health gain of tier plus omens never passes 100%. A site whose core never completes, such as the arena, sets
+  `noOmens()`.
+- **Trophies and pity.** A clear adds the site's unique item to the vault at the chance
+  `trophy_chance + pity_step * dry clears` (0.04 and 0.06, capped at 1). A clear without a trophy adds one dry clear
+  for that site kind in that dimension. A trophy resets the count. The count is saved (`mod-stella-ruins:pity`). Every
+  clear of the kind counts, in any instance. The proving grounds pay the trophy for tier III only. The old chance per
+  kill (`unique_drop_chance`) stays.
+- **Summoned mobs.** A mob that a boss or a trap calls in carries `mod-stella-ruins.summoned`. It rolls no kind table and
+  no unique, so a boss cannot be farmed for its summons. The Castellan's sentinels, the Matriarch's crawlers, and the
+  camp's help in the dark carry it.
+- **Vault capacity.** A vault holds 27 stacks. A reward that has no free slot waits in the vault, is saved with it,
+  and drops above the vault when a player opens it.
 
 ## Themed mobs
 
@@ -98,7 +155,10 @@ RuinMobKind.builder("watch_captain").base(EntityTypes.SKELETON).scale(1.2F).heal
   `mod-stella-ruins.mob` and `mod-stella-ruins.kind.<id>`.
 - Gear never drops. Effects have no end.
 - A kill by a player rolls the kind's table and the site's unique, at `unique_drop_chance`.
-  A death by anything else rolls nothing extra.
+  A death by anything else rolls nothing extra, and so does the death of a summoned mob.
+- `.hostile()` adds the tag `mod-stella-ruins.hostile`. A mob whose base type is not a vanilla `Enemy` (an iron golem, a
+  wolf) needs it, so the spells mod and the ruin effects treat it as a foe. The deep golem, the forge guardian, the
+  star golem and the arena hound carry it.
 - With the mobs mod present, a ruin mob carries `mod-stella-mobs.no_spawn_roll` and `mod-stella-mobs.self_scaled`.
   It never rolls an elite, a boss or a nemesis promotion. It has a level, and its hits follow it.
   The library reads the mobs mod through Fabric object shares only.
@@ -115,6 +175,23 @@ The item `mod-stella-ruins:ruin_clue` carries the component `mod-stella-ruins:cl
 Using a clue finds the nearest site of that kind within 100 chunks and turns the clue into a map with a target mark.
 If no site is in reach, the clue stays. The tooltip shows the lang key `clue.mod-stella-ruins.<site>`.
 
+**Leads.** The keep, the forge and the vault have clue weight 0, so no chest points at them. A cleared common site
+can pay a lead instead: a clue to a rarer site, put in its vault at `lead_chance` (0.5).
+
+| Site that pays | Lead to |
+|---|---|
+| `wayshrine` | `proving_grounds` |
+| `ambush_camp`, `fallen_watchtower` | `ruined_keep` |
+| `lost_miners_camp`, `meteor_crater` | `deep_forge` |
+| `crystal_grotto`, `spider_nest` | `sealed_vault` |
+
+The proving grounds keep clue weight 2, and the Miner's Compass is a second route to every large site.
+
+**Spent sites.** A map or a compass never points at a once site whose core is complete. The search runs again from a
+point 512 blocks times the attempt further out, away from the spent site, at most 4 searches in all. If every search
+finds a spent site, the clue stays. The shifted search is checked only against a stub in the game tests, because the
+test world generates no structures. Check it by hand in a normal world.
+
 ## Config
 
 The file is `config/mod-stella-ruins/ruins.json`. A bad entry logs a warning and keeps its default.
@@ -126,6 +203,41 @@ The file is `config/mod-stella-ruins/ruins.json`. A bad entry logs a warning and
 | `vault_levels_per_roll` | 25 | Container levels for each extra vault roll |
 | `vault_rolls_max` | 5 | The most vault rolls |
 | `reset_days` | `{}` | Site id to days, for reset sites |
+| `trophy_chance` | 0.04 | The base chance a clear adds the site's unique to the vault |
+| `pity_step` | 0.06 | What each dry clear of the kind adds to that chance |
+| `lead_chance` | 0.5 | The chance a clear of a common site adds a lead clue |
+| `tier_cap` | 3 | The highest tier |
+| `tier_health_step` | 0.25 | Health gain for each tier |
+| `tier_damage_step` | 0.10 | Damage gain for each tier |
+
+## Sets, hybrids and affixes
+
+The reward library (`docs/rewards.md`) holds sets, affixes and uniques. Two additions work across sites.
+
+**Hybrid bonuses.** Two pieces of one set and two of another grant a bonus that neither set gives. It holds while
+both counts hold and drops when a piece leaves. Each piece names its hybrid partners in its tooltip. Deepsteel and
+Silkweave are four piece sets with no bonus of their own, so they can join a hybrid.
+
+| Pair (2 + 2) | Bonus |
+|---|---|
+| Pilgrim + Champion | +4 maximum health |
+| Hawkeye + Starweave | +3 safe fall distance, +10% jump strength |
+| Silkweave + Deepsteel | +1 armor toughness, +5% movement speed |
+| Pilgrim + Hawkeye | +5% movement speed, +1 luck |
+| Champion + Deepsteel | +1 attack damage |
+| Starweave + Silkweave | +8% attack speed |
+
+**Affixes from drops that had no use.** An item holds one ruins affix, and a new one replaces the old.
+
+| Affix | Goes on | Material | Effect |
+|---|---|---|---|
+| Cinderbrand | melee weapons | Cinder Dust | A hit sets the target afire for 5 seconds |
+| Deepdelver | pickaxes and axes | Forgeheart Shard | +2 mining efficiency |
+| Emberward | armor | Ember Core | +1 armor toughness. A wearer who burns is put out and gets Fire Resistance for 5 seconds |
+
+A template crafts from the forge or crater drops: Cinderbrand is a Forge Core and 4 Cinder Dust, Deepdelver is a
+Forge Core and 2 Forgeheart Shards, and Emberward is 3 Ember Cores and a Star Fragment. Templates also turn up in the
+forge vault (20% each) and the crater vault (25%).
 
 ## Known limits
 
@@ -181,9 +293,14 @@ Known limits:
 The wayshrine is the first site. It is small, stands on the surface, and fits in 21 x 16 x 21 blocks. Its package is
 `com.stella.ruins.site.wayshrine`.
 
-- **The rite.** A player offers a gold ingot, an emerald, or a Shrine Shard at the core. Then three waves come:
-  4 Hollow Pilgrims; 3 Pilgrims and 3 Lantern Wisps; 2 Pilgrims, 2 Wisps, and the Fallen Acolyte. The vault opens
-  and fills from `chests/wayshrine`. The shrine rearms one day later.
+- **The rite.** The offering picks the rite (`Objectives.choose`). Each rite has three waves. The vault opens and
+  fills from `chests/wayshrine`. The shrine rearms one day later. Leads to the Proving Grounds.
+
+  | Offering | Rite | Waves |
+  |---|---|---|
+  | Gold ingot | The pilgrims' own | 4 Pilgrims; 3 Pilgrims and 3 Wisps; 2 Pilgrims, 2 Wisps and the Acolyte |
+  | Emerald | Wisp heavy | 4 Wisps; 5 Wisps and 1 Pilgrim; 4 Wisps, 1 Pilgrim and the Acolyte |
+  | Shrine Shard | Acolyte led, one more vault roll | 2 Pilgrims and the Acolyte; 2 Pilgrims, 2 Wisps and the Acolyte; 1 Pilgrim, 1 Wisp and 2 Acolytes |
 - **Three shapes, one footprint.** The seed picks a ring of pillars, a cross chapel, or a sunken altar. It also picks
   one of three palettes (stone brick, calcite with quartz, deepslate brick), a decay rate of 20 to 40 percent, and
   2 to 4 candles. Decayed pillar and wall blocks turn mossy, turn cracked, or go. A settle pass then removes any
@@ -223,7 +340,7 @@ the core open the inner vault, which pays out once.
   lies there. Otherwise the clue map still leads the player to a dead end.
 - `Placement.cave(-58, -16, 16)`: the floor is at Y -58 or higher and the top is at Y -16 or lower. `Claim.once()`.
   Activation radius 28. Clue weight 1.
-- Structure set: spacing 56, separation 20, salt 512830417, village exclusion 8 chunks.
+- Weight 1 in the shared structure set.
 - Layers: y0-1 base, y2-7 level 0, y8 slab (1 thick), y9-14 level 1, y15-17 roof, y18-23 capstone. Cell pitch 7 (6 open,
   1 wall). A passage is 3 wide and 5 high.
 
@@ -298,8 +415,8 @@ crystal pillars. The crystals chime in an order, and the player strikes them in 
 - Box 25 x 16 x 41. The grotto is the north 25 blocks. The south 16 blocks are an entrance tunnel, 3 x 3, that reaches out
   toward cave air. The tunnel lining clings to rock only, so a tunnel that meets cave air simply ends there.
   A tunnel that meets no air is a dead end. The clue map still leads the player to it.
-- `Placement.cave(-48, 40, 8)`. Reset after 3 days. Activation radius 12. Clue weight 3.
-- Structure set: spacing 34, separation 12, salt 618244907, village exclusion 8 chunks.
+- `Placement.cave(-48, 40, 8)`. Reset after 3 days. Activation radius 12. Clue weight 3. Leads to the Sealed Vault.
+- Weight 4 in the shared structure set.
 
 ### The plan
 
@@ -350,10 +467,11 @@ The orders come from the run random, never from the layout seed. No pillar sound
 
 Site id `fallen_watchtower`, package `com.stella.ruins.site.fallenwatchtower`. A small surface site: a tall stone tower,
 half fallen. Archers and crossbowmen hold its floors and the Watch Captain holds the roof. Clearing the garrison opens
-the vault once.
+the vault. It rearms after 7 days.
 
-- Box 21 x 44 x 21. The shaft is 9 x 9, with a 7 x 7 inside. `Placement.surface(4)`. Pays out once. Clue weight 3.
-- Structure set: spacing 34, separation 12, salt 159662037, village exclusion 8 chunks.
+- Box 21 x 44 x 21. The shaft is 9 x 9, with a 7 x 7 inside. `Placement.surface(4)`. Reset after 7 days. Clue weight 3.
+  Leads to the Ruined Keep.
+- Weight 5 in the shared structure set.
 - The core measures distance in three dimensions and sits on the roof, up to 37 blocks over the door. The activation
   radius is 43 so that a player 20 blocks from the foot of the tallest tower wakes it.
 
@@ -377,7 +495,9 @@ the tests both read it. It uses its own random stream for the rolls, the weather
 
 ### The garrison
 
-`GarrisonObjective` spawns one mob at each marker. The tower has 11 to 16 mobs: 2 or 3 on every floor, 3 on the roof.
+`GarrisonObjective` spawns one mob at each marker. The first archer is the lookout. While it lives and a player stands
+inside the activation radius for 600 ticks, it lights a soul campfire on the roof and a late squad of 3 crossbowmen
+arrives at the foot of the tower. A dead lookout calls nothing, and the signal comes once. The tower has 11 to 16 mobs: 2 or 3 on every floor, 3 on the roof.
 Every mob carries the box of the shaft's inside and its post. `WatchtowerMobs.keepInside` puts a mob back on its post when
 it stands outside that box, so a retreat cannot carry an archer out through the breach.
 
@@ -408,8 +528,8 @@ that climbs 1, falls 3, and needs 2 blocks of head room.
 Site id `ambush_camp`, package `com.stella.ruins.site.ambushcamp`. A small surface site: a bandit camp of wool tents
 behind a broken palisade. The Bandit Chief hides invisible in one tent. A decoy bandit waits in each of the others.
 
-- Box 31 x 10 x 31. `Placement.surface(4)`. Reset after 2 days. Activation radius 20. Clue weight 3.
-- Structure set: spacing 34, separation 12, salt 702913845, village exclusion 8 chunks.
+- Box 31 x 10 x 31. `Placement.surface(4)`. Reset after 2 days. Activation radius 20. Clue weight 3. Leads to the Ruined Keep.
+- Weight 5 in the shared structure set.
 - The site roster is empty. The objective spawns every mob at its own marker, because the framework roster spawns every
   kind at the same `spawn` markers.
 
@@ -474,8 +594,8 @@ The first sac that breaks starts a clock. The player breaks every sac before it 
 - Box 30 x 14 x 46. The nest is the north 30 blocks. The south 16 blocks are a mouth tunnel, 3 x 3, that reaches out
   toward cave air. The tunnel lining clings to rock only, so a tunnel that meets cave air simply ends there.
   A tunnel that meets no air is a dead end. The clue map still leads the player to it.
-- `Placement.cave(-32, 48, 8)`. Reset after 3 days. Activation radius 14. Clue weight 3.
-- Structure set: spacing 34, separation 12, salt 873311259, village exclusion 8 chunks.
+- `Placement.cave(-32, 48, 8)`. Reset after 3 days. Activation radius 14. Clue weight 3. Leads to the Sealed Vault. The rearm hook grows the sacs, webs and cocoons back.
+- Weight 4 in the shared structure set.
 
 ### The plan
 
@@ -536,14 +656,14 @@ world block. The layout, the objective, and the tests all read it. The layouts o
 
 Site id `meteor_crater`, package `com.stella.ruins.site.meteorcrater`. A small surface site: a scorched crater with
 a fallen star at its heart. The star's ore is hot. Mining it pays Starmetal and wakes Ember Slimes while Star Golems
-strike from the wall. After 2400 ticks the star cools, and the vault opens once for good.
+strike from the wall. After 2400 ticks the star cools, and the vault opens. After 7 days the cooled ore turns hot again.
 
 - Box 42 x 8 x 42 above the floor, with a foundation of 17 blocks below it for the bowl. `Placement.surface(17)`.
   The foundation also sets the largest slope the placement accepts: 17 blocks across the footprint.
 - The floor of the box is one block above the highest ground. So the reference ground is local y -1, and the crater
   is cut down from there. A column the plan draws is written whole, from the foundation to the top of the box.
-- `Claim.once()`. Activation radius 20. Clue weight 3.
-- Structure set: spacing 34, separation 12, salt 466102735, village exclusion 8 chunks.
+- Reset after 7 days. The rearm hook sets cooled and mined ore back to hot ore. Activation radius 20. Clue weight 3. Leads to the Deep Forge.
+- Weight 3 in the shared structure set.
 
 ### The plan
 
@@ -600,3 +720,55 @@ the core in 3D, or when a player mines the first ore. A fight on the rim does no
   armor art comes from `tools/specs/meteor_crater.json` and `tools/ruin_textures.py`.
 - Tests: `CraterPlanGameTest`, `CraterSiteGameTest`, `CoolingObjectiveGameTest`, `CraterMobsGameTest`,
   `CraterRewardsGameTest`, all listed in the gametest `fabric.mod.json`.
+
+## Deep Forge
+
+Site id `deep_forge`, package `com.stella.ruins.site.deepforge`. A large cave site: a dwarven forge sunk into the
+deepslate. Three Forge Cores, three levers and a guardian light it for good. A lit forge is the only place that
+smelts Deepsteel.
+
+- Box 64 x 40 x 64. `Placement.cave(-40, 0, 12)`. `Claim.once()`. Activation radius 40. Weight 1 in the shared set.
+  No chest clue points here. The Miners camp and the crater lead to it, and so does the Miner's Compass.
+- **The trial.** Three steps in order: set three Forge Cores on the core, pull three levers, and defeat the Forge
+  Guardian. A Forge Keeper stands at each core holder. Every lava vent releases a Cinder Imp now and then (every 400
+  ticks, at most 4 alive) while the trial runs.
+- **Mobs.** Forge Keeper (no ability), Cinder Imp (a hit ignites), Deep Golem (hunts the nearest player), Forge Guardian
+  (boss: a slam, and it hunts). The golem and the guardian carry the hostile tag.
+- **Rewards.** `forge_core`, `deepsteel_ore_chunk`, `deepsteel_ingot`, `cinder_dust` and `forgeheart_shard`. Deepsteel
+  armor and tools sit between diamond and netherite. Cinder Dust and Forgeheart Shards feed the Cinderbrand and
+  Deepdelver affixes. The unique is the Forgeheart Hammer: every third hit on one target within 80 ticks bursts fire on
+  the hostile mobs round the target.
+- **Art.** `tools/specs/deep_forge.json`.
+
+## Lost Miners Camp
+
+Site id `lost_miners_camp`, package `com.stella.ruins.site.lostminerscamp`. A small cave site: a tunnel with rails,
+bends and a ramp, and a camp at its dead end with a tent, a fire, barrels and a lectern that holds the journal.
+
+- Box 40 x 12 x 40. `Placement.cave(-40, 40, 8)`. Reset after 7 days. Activation radius 16. Clue weight 3.
+  Weight 4 in the shared set. Leads to the Deep Forge.
+- **The rite.** The camp holds 5 Restless Miners and 6 Tunnel Rats, and three dark lanterns (unlit campfires). The
+  lectern journal counts only when the roster is dead and all three lanterns burn. A player lights a lantern with a
+  torch, a fire charge or flint and steel. While a lantern is dark, the camp calls one more rat or miner every 400 ticks,
+  up to 16 mobs alive. Those helpers carry the summoned tag. The read gives the Miner's Compass and opens the cache.
+- **Mobs.** Restless Miner (zombie; a hit gives Mining Fatigue for 100 ticks) and Tunnel Rat (silverfish).
+- **Rewards.** `gleaming_ore_chunk`, `rat_tail` and `miners_journal_page` craft the Prospector's Pick (Haste I while
+  held). The Miner's Compass points at the nearest large ruin. The unique is the Lucky Headlamp: Night Vision below
+  Y 40, and one ore drop in ten comes twice. The headlamp has no recipe, so only the trophy and the drop give it.
+- **Art.** `tools/specs/lost_miners_camp.json`.
+
+## Ruined Keep
+
+Site id `ruined_keep`, package `com.stella.ruins.site.ruinedkeep`. A large surface castle keep up to 48 blocks tall.
+
+- Box 48 x 48 x 48. `Placement.surface(6)`. `Claim.once()`. Activation radius 32. Weight 1 in the shared set.
+  No chest clue points here. The ambush camp and the watchtower lead to it.
+- **The climb.** Floor 1 spawns when the core wakes. Each higher floor spawns when a player first stands on it. Each
+  floor has a Floor Warden that drops a key fragment. Three fragments used on the core open the throne door and spawn
+  the Castellan. The Castellan's death completes the run.
+- **Mobs.** Spectral Knight (a hit weakens), Floor Warden (charges), Keep Sentinel, and the Castellan (cleaves players
+  within reach, and above half health summons 2 sentinels every 300 ticks, at most 8 alive). The sentinels carry the
+  summoned tag.
+- **Rewards.** `key_fragment`, `tarnished_crest` and `spectral_thread`. The vault holds Castellan's Oath, a netherite
+  sword whose hit on a target below 30% health strikes again for 25% more, and the Keep Sigil affix (armor +2, toughness +1). The unique is the
+  Banner of the Keep, an off-hand item: while a foe is within 12 blocks, players within 6 blocks gain Resistance I.

@@ -1,7 +1,11 @@
 package com.stella.ruins.world;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootTable;
 import org.jspecify.annotations.Nullable;
@@ -31,6 +35,9 @@ public final class RuinSite {
 	private final ResourceKey<LootTable> vaultLoot;
 	private final @Nullable Supplier<ItemStack> unique;
 	private final int clueWeight;
+	private final List<String> leads;
+	private final @Nullable RearmHook rearmHook;
+	private final boolean omens;
 
 	private RuinSite(final Builder b) {
 		this.id = b.id;
@@ -47,6 +54,9 @@ public final class RuinSite {
 		this.vaultLoot = b.vaultLoot;
 		this.unique = b.unique;
 		this.clueWeight = b.clueWeight;
+		this.leads = List.copyOf(b.leads);
+		this.rearmHook = b.rearmHook;
+		this.omens = b.omens;
 	}
 
 	public static Builder builder(final String id) {
@@ -115,6 +125,26 @@ public final class RuinSite {
 		return this.clueWeight;
 	}
 
+	/** What a site does when its core rearms, such as growing back what a clear spent. */
+	@FunctionalInterface
+	public interface RearmHook {
+		void onRearm(ServerLevel level, BlockPos core, Map<String, List<BlockPos>> markers);
+	}
+
+	public @Nullable RearmHook rearmHook() {
+		return this.rearmHook;
+	}
+
+	/** True when a run of this site can carry omens. */
+	public boolean omens() {
+		return this.omens;
+	}
+
+	/** The sites a clear of this site can point to, as clues in the vault. */
+	public List<String> leads() {
+		return this.leads;
+	}
+
 	public static final class Builder {
 		private final String id;
 		private SiteSize size = SiteSize.SMALL;
@@ -130,6 +160,9 @@ public final class RuinSite {
 		private @Nullable ResourceKey<LootTable> vaultLoot;
 		private @Nullable Supplier<ItemStack> unique;
 		private int clueWeight;
+		private List<String> leads = List.of();
+		private @Nullable RearmHook rearmHook;
+		private boolean omens = true;
 
 		private Builder(final String id) {
 			if (id == null || id.isEmpty() || !id.matches("[a-z0-9_/.-]+")) {
@@ -203,6 +236,23 @@ public final class RuinSite {
 				throw new IllegalArgumentException("the clue weight is negative");
 			}
 			this.clueWeight = weight;
+			return this;
+		}
+
+		public Builder onRearm(final RearmHook hook) {
+			this.rearmHook = hook;
+			return this;
+		}
+
+		/** A site whose core never completes, such as an arena, carries no omens. */
+		public Builder noOmens() {
+			this.omens = false;
+			return this;
+		}
+
+		/** The sites a clear may pay a clue to. A clue to an unknown site is a data error, so register() checks nothing about them. */
+		public Builder leads(final String... sites) {
+			this.leads = List.of(sites);
 			return this;
 		}
 

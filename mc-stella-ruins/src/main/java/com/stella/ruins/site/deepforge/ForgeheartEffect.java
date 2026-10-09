@@ -2,6 +2,7 @@ package com.stella.ruins.site.deepforge;
 
 import com.stella.ruins.reward.EffectHook;
 import com.stella.ruins.world.RuinClock;
+import com.stella.ruins.world.RuinMobs;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -9,7 +10,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -52,7 +52,7 @@ public final class ForgeheartEffect implements EffectHook {
 	/** Hits the hostile mobs round the target. The target itself counts when it is hostile. */
 	static void burst(final ServerLevel level, final LivingEntity user, final LivingEntity target) {
 		AABB area = target.getBoundingBox().inflate(BURST_RADIUS);
-		for (LivingEntity near : level.getEntitiesOfClass(LivingEntity.class, area, e -> e instanceof Enemy && e != user && e.isAlive())) {
+		for (LivingEntity near : level.getEntitiesOfClass(LivingEntity.class, area, e -> RuinMobs.isFoe(e) && e != user && e.isAlive())) {
 			if (near.position().distanceTo(target.position()) <= BURST_RADIUS) {
 				// The burst comes straight after the blow, so the target's own invulnerability must not eat it.
 				near.damageCooldownTime = 0;

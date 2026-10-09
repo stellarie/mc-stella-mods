@@ -14,7 +14,6 @@ import net.minecraft.world.item.ItemStack;
 public final class SealedVaultSite {
 	public static final String ID = "sealed_vault";
 	public static final int ACTIVATION_RADIUS = 28;
-	public static final int CLUE_WEIGHT = 1;
 	/** The lowest world Y of the vault floor, and the highest world Y of the vault top. */
 	public static final int MIN_Y = -58;
 	public static final int MAX_Y = -16;
@@ -40,7 +39,6 @@ public final class SealedVaultSite {
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(VaultMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(VaultItems.ABYSSAL_EDGE))
-			.clueWeight(CLUE_WEIGHT)
 			.register();
 	}
 }

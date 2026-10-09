@@ -12,5 +12,6 @@
 	"mob.mod-stella-ruins.watch_captain": "Watch Captain",
 	"set.mod-stella-ruins.hawkeye": "Hawkeye set: +10% movement speed with 2 pieces, arrows hit 20% harder with 4",
 	"effect.mod-stella-ruins.hawkeye": "Hawkeye: every fifth arrow pierces 2 targets and makes them glow",
-	"clue.mod-stella-ruins.fallen_watchtower": "Where the Watch fell, the stair still climbs. Count the floors by the arrows."
+	"clue.mod-stella-ruins.fallen_watchtower": "Where the Watch fell, the stair still climbs. Count the floors by the arrows.",
+	"message.mod-stella-ruins.watchtower.signal": "A fire flares on the roof. A squad rides for the gate."
 }

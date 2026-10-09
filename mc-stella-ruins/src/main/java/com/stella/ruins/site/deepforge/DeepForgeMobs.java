@@ -103,6 +103,7 @@ public final class DeepForgeMobs {
 					hunt(mob, level);
 				}
 			})
+			.hostile()
 			.drops(GOLEM_DROPS)
 			.register();
 		guardian = RuinMobKind.builder("forge_guardian")
@@ -119,6 +120,7 @@ public final class DeepForgeMobs {
 					}
 				}
 			})
+			.hostile()
 			.drops(GUARDIAN_DROPS)
 			.register();
 	}

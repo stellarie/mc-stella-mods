@@ -37,6 +37,7 @@ public final class RuinSets {
 
 	private static final Map<String, SetDefinition> SETS = new LinkedHashMap<>();
 	private static final Map<Item, Piece> MEMBERS = new HashMap<>();
+	private static final Map<String, HybridBonus> HYBRIDS = new LinkedHashMap<>();
 
 	private RuinSets() {
 	}
@@ -87,6 +88,70 @@ public final class RuinSets {
 		return definition;
 	}
 
+	/**
+	 * Registers four pieces that already exist as a set with no bonus of its own, so a hybrid can count them. The
+	 * items keep their ids, art and recipes.
+	 */
+	public static SetDefinition adopt(final String setId, final GearSpec gear, final Map<EquipmentSlot, Item> pieces) {
+		if (SETS.containsKey(setId)) {
+			throw new IllegalStateException("Set already defined: " + setId);
+		}
+		SetSpec spec = SetSpec.builder()
+			.durabilityFactor(gear.armorDurabilityFactor())
+			.defense(gear.helmet(), gear.chestplate(), gear.leggings(), gear.boots())
+			.toughness(gear.toughness())
+			.knockbackResistance(gear.knockbackResistance())
+			.enchantValue(gear.enchantValue())
+			.repair(gear.repair())
+			.equipmentAsset(gear.equipmentAsset())
+			.build();
+		Map<EquipmentSlot, Item> copy = new EnumMap<>(pieces);
+		copy.forEach((slot, item) -> MEMBERS.put(item, new Piece(setId, slot)));
+		SetDefinition definition = new SetDefinition(setId, spec, Collections.unmodifiableMap(copy));
+		SETS.put(setId, definition);
+		return definition;
+	}
+
+	/** Registers a bonus across sets. Every set it names must be defined already. */
+	public static HybridBonus defineHybrid(final HybridBonus hybrid) {
+		if (!Identifier.isValidPath(hybrid.id()) || hybrid.id().contains("/")) {
+			throw new IllegalArgumentException("Bad hybrid id: " + hybrid.id());
+		}
+		if (HYBRIDS.containsKey(hybrid.id())) {
+			throw new IllegalStateException("Hybrid already defined: " + hybrid.id());
+		}
+		for (String setId : hybrid.requires().keySet()) {
+			if (!SETS.containsKey(setId)) {
+				throw new IllegalStateException("Hybrid " + hybrid.id() + " names the undefined set " + setId);
+			}
+		}
+		HYBRIDS.put(hybrid.id(), hybrid);
+		return hybrid;
+	}
+
+	/** The set an item belongs to, if any. */
+	public static Optional<String> setOf(final Item item) {
+		return Optional.ofNullable(MEMBERS.get(item)).map(Piece::setId);
+	}
+
+	public static Collection<HybridBonus> hybrids() {
+		return List.copyOf(HYBRIDS.values());
+	}
+
+	public static Identifier hybridModifierId(final String hybridId) {
+		return StellaRuins.id("hybrid/" + hybridId);
+	}
+
+	/** True when the entity wears enough pieces of every set the hybrid names. */
+	public static boolean hybridHolds(final LivingEntity entity, final HybridBonus hybrid) {
+		for (Map.Entry<String, Integer> need : hybrid.requires().entrySet()) {
+			if (wornPieces(entity, need.getKey()) < need.getValue()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public static Optional<SetDefinition> get(final String setId) {
 		return Optional.ofNullable(SETS.get(setId));
 	}
@@ -117,6 +182,7 @@ public final class RuinSets {
 
 	/** Brings the set modifiers of the entity in step with the pieces it wears. */
 	static void refresh(final LivingEntity entity) {
+		refreshHybrids(entity);
 		for (SetDefinition set : SETS.values()) {
 			int worn = wornPieces(entity, set.id());
 			for (SetBonus bonus : set.spec().bonuses()) {
@@ -136,7 +202,30 @@ public final class RuinSets {
 		}
 	}
 
+	private static void refreshHybrids(final LivingEntity entity) {
+		for (HybridBonus hybrid : HYBRIDS.values()) {
+			boolean holds = hybridHolds(entity, hybrid);
+			Identifier id = hybridModifierId(hybrid.id());
+			for (AttributeBonus attribute : hybrid.attributes()) {
+				AttributeInstance instance = entity.getAttribute(attribute.attribute());
+				if (instance == null) {
+					continue;
+				}
+				if (holds) {
+					instance.addOrUpdateTransientModifier(new AttributeModifier(id, attribute.amount(), attribute.operation()));
+				} else {
+					instance.removeModifier(id);
+				}
+			}
+		}
+	}
+
 	private static void applyPeriodicEffects(final ServerPlayer player) {
+		for (HybridBonus hybrid : HYBRIDS.values()) {
+			if (hybrid.every20Ticks() != null && hybridHolds(player, hybrid)) {
+				player.addEffect(hybrid.every20Ticks().instance());
+			}
+		}
 		for (SetDefinition set : SETS.values()) {
 			int worn = wornPieces(player, set.id());
 			for (SetBonus bonus : set.spec().bonuses()) {

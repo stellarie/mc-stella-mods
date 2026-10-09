@@ -26,5 +26,9 @@
 	"message.mod-stella-ruins.forge.no_fuel": "The forge needs coal or charcoal.",
 	"message.mod-stella-ruins.forge.levers_free": "The forge shudders. The levers move at last.",
 	"message.mod-stella-ruins.forge.guardian": "The Forge Guardian wakes.",
-	"message.mod-stella-ruins.forge.lit_for_good": "The forge burns. The vault gate rises."
+	"message.mod-stella-ruins.forge.lit_for_good": "The forge burns. The vault gate rises.",
+	"item.mod-stella-ruins.cinderbrand_affix": "Cinderbrand Affix",
+	"item.mod-stella-ruins.deepdelver_affix": "Deepdelver Affix",
+	"affix.mod-stella-ruins.cinderbrand": "Cinderbrand: a hit sets the target afire",
+	"affix.mod-stella-ruins.deepdelver": "Deepdelver: +2 mining efficiency"
 }

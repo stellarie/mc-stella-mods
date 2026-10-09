@@ -1,4 +1,11 @@
 {
 	"ruins.reward.set.bonus": "(%1$s) %2$s",
-	"ruins.reward.set.effect": "%s, renewed every second"
+	"ruins.reward.set.effect": "%s, renewed every second",
+	"ruins.reward.set.hybrid": "Hybrid, 2 + 2 with %1$s: %2$s",
+	"set_name.mod-stella-ruins.pilgrim": "Pilgrim",
+	"set_name.mod-stella-ruins.champion": "Champion",
+	"set_name.mod-stella-ruins.hawkeye": "Hawkeye",
+	"set_name.mod-stella-ruins.starweave": "Starweave",
+	"set_name.mod-stella-ruins.silkweave": "Silkweave",
+	"set_name.mod-stella-ruins.deepsteel": "Deepsteel"
 }

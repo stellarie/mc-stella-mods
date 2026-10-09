@@ -132,10 +132,25 @@ python tools/ruin_textures.py --self-test
 - `--self-test` also draws twice and compares the bytes.
 - `--preview` writes 12x copies to `<out>/preview`. Delete that folder before a commit.
 
+## Hybrid bonuses
+
+`RuinSets.defineHybrid(new HybridBonus(id, requires, attributes, periodic))` registers a bonus that needs pieces of
+two or more sets, such as `Map.of("pilgrim", 2, "champion", 2)`. The counts add up to at most 4. Every set named must
+be defined first. The refresh pass that keeps set modifiers in step also keeps hybrid modifiers, with the id
+`mod-stella-ruins:hybrid/<id>`. A hybrid holds while every count holds and drops when a piece leaves.
+
+`RuinSets.adopt(setId, gearSpec, pieces)` registers four existing items as a set with no bonus, so a hybrid can count
+them. The items keep their ids, art and recipes. `HybridBonus` does not touch a tooltip. The site package
+`com.stella.ruins.site.Hybrids` adds the hybrid lines to the piece defaults through `DefaultItemComponentEvents`,
+after it has defined the hybrids.
+
+`RuinGear.isMeleeWeapon` and `RuinGear.isPickaxeOrAxe` test an item by its components. Item tags list vanilla items
+only, so an affix `accepts` filter for modded gear uses these.
+
 ## Tests
 
 `RewardTestInit` (gametest source set) registers test-only content with ids that start with `test_`. The jar of
 the mod carries none of it. The gametest classes `RuinSetsGameTest`, `RuinAffixesGameTest`,
-`RuinUniquesGameTest`, and `RuinGearGameTest` are listed in `src/gametest/resources/fabric.mod.json`.
+`RuinUniquesGameTest`, `RuinGearGameTest`, `RuinHybridsGameTest` and `RuinSinkAffixesGameTest` are listed in `src/gametest/resources/fabric.mod.json`.
 
 A test player has no packet listener, so nothing ticks it. `RewardTestSupport.join` ticks it each tick.

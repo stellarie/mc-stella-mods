@@ -24,14 +24,16 @@ import org.jspecify.annotations.Nullable;
  */
 public final class RuinData extends SavedData {
 	/** One core, as saved. */
-	private record Saved(BlockPos pos, String site, String phase, List<UUID> roster, CompoundTag objective, long claimTime) {
+	private record Saved(BlockPos pos, String site, String phase, List<UUID> roster, CompoundTag objective, long claimTime, int tier, List<String> omens) {
 		private static final Codec<Saved> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			BlockPos.CODEC.fieldOf("pos").forGetter(Saved::pos),
 			Codec.STRING.fieldOf("site").forGetter(Saved::site),
 			Codec.STRING.fieldOf("phase").forGetter(Saved::phase),
 			UUIDUtil.CODEC.listOf().optionalFieldOf("roster", List.of()).forGetter(Saved::roster),
 			CompoundTag.CODEC.optionalFieldOf("objective", new CompoundTag()).forGetter(Saved::objective),
-			Codec.LONG.optionalFieldOf("claim_time", -1L).forGetter(Saved::claimTime)
+			Codec.LONG.optionalFieldOf("claim_time", -1L).forGetter(Saved::claimTime),
+			Codec.INT.optionalFieldOf("tier", 0).forGetter(Saved::tier),
+			Codec.STRING.listOf().optionalFieldOf("omens", List.of()).forGetter(Saved::omens)
 		).apply(instance, Saved::new));
 	}
 
@@ -46,6 +48,8 @@ public final class RuinData extends SavedData {
 		private final List<UUID> roster = new ArrayList<>();
 		private CompoundTag objective = new CompoundTag();
 		private long claimTime = -1L;
+		private int tier;
+		private List<String> omens = new ArrayList<>();
 
 		private Entry(final BlockPos pos, final String site) {
 			this.pos = pos;
@@ -76,6 +80,26 @@ public final class RuinData extends SavedData {
 		/** The tick the core completed at, or -1 before that. */
 		public long claimTime() {
 			return this.claimTime;
+		}
+
+		/** How many times this reset site has rearmed, up to the configured cap. Zero for a once site. */
+		public int tier() {
+			return this.tier;
+		}
+
+		/** The ids of the omens of the run now under way, or of the last run. */
+		public List<String> omens() {
+			return List.copyOf(this.omens);
+		}
+
+		public void setTier(final int value) {
+			this.tier = Math.max(0, value);
+			setDirty();
+		}
+
+		public void setOmens(final List<String> value) {
+			this.omens = new ArrayList<>(value);
+			setDirty();
 		}
 
 		public void setPhase(final RuinPhase value) {
@@ -122,6 +146,8 @@ public final class RuinData extends SavedData {
 			entry.roster.addAll(s.roster());
 			entry.objective = s.objective().copy();
 			entry.claimTime = s.claimTime();
+			entry.tier = Math.max(0, s.tier());
+			entry.omens = new ArrayList<>(s.omens());
 			this.entries.put(s.pos(), entry);
 			s.roster().forEach(mob -> this.mobIndex.put(mob, s.pos()));
 		}
@@ -130,7 +156,7 @@ public final class RuinData extends SavedData {
 	private List<Saved> snapshot() {
 		List<Saved> list = new ArrayList<>();
 		for (Entry e : this.entries.values()) {
-			list.add(new Saved(e.pos, e.site, e.phase.id(), List.copyOf(e.roster), e.objective.copy(), e.claimTime));
+			list.add(new Saved(e.pos, e.site, e.phase.id(), List.copyOf(e.roster), e.objective.copy(), e.claimTime, e.tier, List.copyOf(e.omens)));
 		}
 		return list;
 	}
@@ -158,6 +184,21 @@ public final class RuinData extends SavedData {
 			setDirty();
 		}
 		return entry;
+	}
+
+	/** True when a core of this site within the radius, flat, has completed. Callers use it for once sites only. */
+	public boolean completedNear(final String site, final BlockPos pos, final int radius) {
+		long limit = (long) radius * radius;
+		for (Entry entry : this.entries.values()) {
+			if (entry.phase == RuinPhase.COMPLETE && entry.site.equals(site)) {
+				long dx = entry.pos.getX() - pos.getX();
+				long dz = entry.pos.getZ() - pos.getZ();
+				if (dx * dx + dz * dz <= limit) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** Drops a core's record and its roster index. */

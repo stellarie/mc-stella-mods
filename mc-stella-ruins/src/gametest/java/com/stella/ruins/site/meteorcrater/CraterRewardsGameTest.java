@@ -240,6 +240,7 @@ public class CraterRewardsGameTest {
 			int fragments = 0;
 			int gold = 0;
 			int emeralds = 0;
+			int templates = 0;
 			for (ItemStack stack : chest(level, master.nextLong())) {
 				if (stack.is(CraterItems.STARMETAL_INGOT)) {
 					ingots += stack.getCount();
@@ -249,6 +250,8 @@ public class CraterRewardsGameTest {
 					gold += stack.getCount();
 				} else if (stack.is(Items.EMERALD)) {
 					emeralds += stack.getCount();
+				} else if (stack.is(CraterItems.EMBERWARD.template()) && stack.getCount() == 1) {
+					templates++;
 				} else {
 					helper.fail("the vault table gave " + stack);
 				}
@@ -256,6 +259,7 @@ public class CraterRewardsGameTest {
 			helper.assertTrue(ingots >= 2 && ingots <= 4, "roll " + i + " gave " + ingots + " ingots");
 			helper.assertTrue(fragments >= 2 && fragments <= 4, "roll " + i + " gave " + fragments + " fragments");
 			helper.assertTrue(gold >= 3 && gold <= 6 && emeralds >= 1 && emeralds <= 3, "roll " + i + " gold " + gold + " emeralds " + emeralds);
+			helper.assertTrue(templates <= 1, "roll " + i + " gave " + templates + " emberward templates");
 			seenIngots[ingots] = true;
 		}
 		helper.assertTrue(seenIngots[2] && seenIngots[3] && seenIngots[4], "the ingot counts did not cover 2, 3 and 4");

@@ -33,7 +33,7 @@ public class VaultSiteGameTest {
 	@GameTest
 	public void theSiteRegistersLargeWithItsRadiusClaimAndClue(final GameTestHelper helper) {
 		RuinSite site = VaultTestSupport.site();
-		helper.assertTrue(site.size() == SiteSize.LARGE && site.activationRadius() == 28 && site.clueWeight() == 1, "size " + site.size() + " radius " + site.activationRadius() + " clue " + site.clueWeight());
+		helper.assertTrue(site.size() == SiteSize.LARGE && site.activationRadius() == 28 && site.clueWeight() == 0, "size " + site.size() + " radius " + site.activationRadius() + " clue " + site.clueWeight());
 		helper.assertTrue(site.sizeX() == 56 && site.sizeY() == 24 && site.sizeZ() == 64, "bounds " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.claim().isOnce() && site.hasUnique() && site.roster().isEmpty() && site.vaultLoot().equals(VaultMobs.VAULT_LOOT), "the claim, unique, roster or table is wrong");
 		helper.assertTrue(site.newObjective() instanceof VaultObjective, "the objective is not the vault objective");

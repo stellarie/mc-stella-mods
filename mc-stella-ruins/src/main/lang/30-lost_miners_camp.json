@@ -18,5 +18,6 @@
 	"message.mod-stella-ruins.camp.ruin.deep_forge": "the forge below",
 	"message.mod-stella-ruins.camp.ruin.ruined_keep": "the keep on the hill",
 	"message.mod-stella-ruins.camp.ruin.sealed_vault": "the vault at the bottom of the world",
-	"message.mod-stella-ruins.camp.ruin.proving_grounds": "the proving grounds"
+	"message.mod-stella-ruins.camp.ruin.proving_grounds": "the proving grounds",
+	"message.mod-stella-ruins.camp.journal_dark": "The camp is dark. Light the three lanterns first."
 }

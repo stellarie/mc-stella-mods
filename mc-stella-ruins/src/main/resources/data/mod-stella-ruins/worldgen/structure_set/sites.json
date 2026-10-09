@@ -12,11 +12,11 @@
 	"structures": [
 		{
 			"structure": "mod-stella-ruins:ambush_camp",
-			"weight": 1
+			"weight": 5
 		},
 		{
 			"structure": "mod-stella-ruins:crystal_grotto",
-			"weight": 1
+			"weight": 4
 		},
 		{
 			"structure": "mod-stella-ruins:deep_forge",
@@ -24,19 +24,19 @@
 		},
 		{
 			"structure": "mod-stella-ruins:fallen_watchtower",
-			"weight": 1
+			"weight": 5
 		},
 		{
 			"structure": "mod-stella-ruins:lost_miners_camp",
-			"weight": 1
+			"weight": 4
 		},
 		{
 			"structure": "mod-stella-ruins:meteor_crater",
-			"weight": 1
+			"weight": 3
 		},
 		{
 			"structure": "mod-stella-ruins:proving_grounds",
-			"weight": 1
+			"weight": 2
 		},
 		{
 			"structure": "mod-stella-ruins:ruined_keep",
@@ -48,11 +48,11 @@
 		},
 		{
 			"structure": "mod-stella-ruins:spider_nest",
-			"weight": 1
+			"weight": 4
 		},
 		{
 			"structure": "mod-stella-ruins:wayshrine",
-			"weight": 1
+			"weight": 6
 		}
 	]
 }

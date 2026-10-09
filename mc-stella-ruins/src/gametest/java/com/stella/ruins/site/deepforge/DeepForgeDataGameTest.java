@@ -30,7 +30,7 @@ public class DeepForgeDataGameTest {
 		helper.assertTrue(site.size() == SiteSize.LARGE, "the site is not large");
 		helper.assertTrue(site.sizeX() == 64 && site.sizeY() == 40 && site.sizeZ() == 64, "the bounds are " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.activationRadius() == 40, "the activation radius is " + site.activationRadius());
-		helper.assertTrue(site.clueWeight() == 2, "the clue weight is " + site.clueWeight());
+		helper.assertTrue(site.clueWeight() == 0, "the clue weight is " + site.clueWeight());
 		helper.assertTrue(site.hasUnique() && site.newUnique().is(DeepForgeItems.HAMMER), "the unique is not the hammer");
 		helper.assertTrue(site.claim().resetTicks(site.id()) < 0, "the claim is not once");
 		helper.assertTrue(site.placement() instanceof Placement.Cave cave && cave.minY() == -40 && cave.maxY() == 0 && cave.minCover() == 12, "the placement is " + site.placement());

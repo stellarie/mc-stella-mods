@@ -83,6 +83,7 @@ public final class SiteRun {
 			mob.addTag(RuinMobs.coreTag(this.core.getX(), this.core.getY(), this.core.getZ()));
 			RuinData.Entry entry = this.data.entry(this.core);
 			if (entry != null) {
+				RuinTiers.apply(mob, entry.tier(), Omens.of(entry.omens()));
 				entry.addMob(mob.getUUID());
 			}
 		}
@@ -95,8 +96,16 @@ public final class SiteRun {
 		List<BlockPos> spots = markers(RuinMarkers.SPAWN);
 		RandomSource random = random();
 		int index = spots.isEmpty() ? 0 : random.nextInt(spots.size());
+		RuinData.Entry record = this.data.entry(this.core);
+		boolean swarm = record != null && Omens.of(record.omens()).contains(Omen.SWARMING);
+		boolean first = true;
 		for (Roster.Entry entry : roster.entries()) {
-			for (int i = 0; i < entry.count(); i++) {
+			int count = entry.count();
+			if (swarm && first) {
+				count += (int) Math.ceil(count * Omen.SWARM_SHARE);
+			}
+			first = false;
+			for (int i = 0; i < count; i++) {
 				Vec3 at;
 				if (spots.isEmpty()) {
 					double angle = random.nextDouble() * Math.PI * 2.0;

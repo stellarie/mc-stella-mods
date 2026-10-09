@@ -190,7 +190,6 @@ public final class SacObjective implements Objective {
 
 	private void finish(final ServerLevel level, final BlockPos core) {
 		NestHeartbeat.clear(level, core);
-		NestRegrowth.remember(level, core);
 		if (this.hatched) {
 			NestVaults.queue(level, core);
 		}

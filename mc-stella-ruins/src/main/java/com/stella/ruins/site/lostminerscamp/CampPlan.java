@@ -57,6 +57,7 @@ public final class CampPlan {
 	private final List<Spot> centre = new ArrayList<>();
 	private final List<Spot> miners = new ArrayList<>();
 	private final List<Spot> rats = new ArrayList<>();
+	private final List<Spot> lanterns = new ArrayList<>();
 	private final Map<Integer, BlockState> blocks = new HashMap<>();
 	private int bends;
 	private int dropDepth;
@@ -232,6 +233,11 @@ public final class CampPlan {
 		for (int[] seat : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
 			set(cx + seat[0] * 2, y, cz - 2 + seat[1] * 2, Blocks.OAK_LOG.defaultBlockState());
 		}
+		// Three dark lanterns stand clear of the seats, the barrels and the tent.
+		for (int[] at : new int[][] {{cx - 4, cz - 4}, {cx + 2, cz - 5}, {cx + 1, cz + 4}}) {
+			this.lanterns.add(new Spot(at[0], y, at[1]));
+			set(at[0], y, at[1], Blocks.CAMPFIRE.defaultBlockState().setValue(net.minecraft.world.level.block.CampfireBlock.LIT, false));
+		}
 		this.vault = new Spot(cx - 4, y + 1, cz + 2);
 		set(cx - 5, y, cz + 1, Blocks.BARREL.defaultBlockState());
 		set(cx - 4, y, cz + 1, Blocks.BARREL.defaultBlockState());
@@ -317,6 +323,11 @@ public final class CampPlan {
 
 	public List<Spot> rats() {
 		return this.rats;
+	}
+
+	/** The three lanterns the player lights. */
+	public List<Spot> lanterns() {
+		return this.lanterns;
 	}
 
 	public Spot core() {

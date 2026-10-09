@@ -65,6 +65,11 @@ public final class ShrineRite implements Objective {
 		return this.inner.onUse(run, player, held);
 	}
 
+	@Override
+	public int extraRolls() {
+		return this.inner.extraRolls();
+	}
+
 	private static boolean watched(final SiteRun run) {
 		Vec3 core = Vec3.atCenterOf(run.core());
 		double limit = (double) WATCH_RADIUS * WATCH_RADIUS;

@@ -182,7 +182,8 @@ public class RuinSetsGameTest {
 		ItemLore lore = helmet.get(DataComponents.LORE);
 		helper.assertTrue(lore != null, "the piece has no lore");
 		List<Component> lines = lore.lines();
-		helper.assertTrue(lines.size() == 1 + RewardTestInit.alpha.spec().bonuses().size(), "lore has " + lines.size() + " lines");
+		int hybrids = com.stella.ruins.site.Hybrids.hybridLines("test_alpha").size();
+		helper.assertTrue(hybrids == 1 && lines.size() == 1 + RewardTestInit.alpha.spec().bonuses().size() + hybrids, "lore has " + lines.size() + " lines");
 		for (int i = 0; i < RewardTestInit.alpha.spec().bonuses().size(); i++) {
 			SetBonus bonus = RewardTestInit.alpha.spec().bonuses().get(i);
 			TranslatableContents line = (TranslatableContents) lines.get(i + 1).getContents();
@@ -239,5 +240,46 @@ public class RuinSetsGameTest {
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aHybridBonusHoldsAtTwoPlusTwoAndDropsWhenAPieceLeaves(final GameTestHelper helper) {
+		ServerPlayer player = RewardTestSupport.join(helper);
+		net.minecraft.resources.Identifier id = RuinSets.hybridModifierId("test_alpha_beta");
+		double base = player.getAttributeValue(Attributes.SAFE_FALL_DISTANCE);
+		wear(player, RewardTestInit.alpha, EquipmentSlot.HEAD, EquipmentSlot.CHEST);
+		wear(player, RewardTestInit.beta, EquipmentSlot.LEGS);
+		RuinSets.refresh(player);
+		helper.assertTrue(player.getAttribute(Attributes.SAFE_FALL_DISTANCE).getModifier(id) == null, "two of one set and one of the other already gave the hybrid");
+		wear(player, RewardTestInit.beta, EquipmentSlot.FEET);
+		RuinSets.refresh(player);
+		double with = player.getAttributeValue(Attributes.SAFE_FALL_DISTANCE);
+		helper.assertTrue(player.getAttribute(Attributes.SAFE_FALL_DISTANCE).getModifier(id) != null && with == base + 5.0, "two plus two gave a fall distance of " + with + ", want " + (base + 5.0));
+		player.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
+		RuinSets.refresh(player);
+		double without = player.getAttributeValue(Attributes.SAFE_FALL_DISTANCE);
+		RewardTestSupport.result("hybridBonus", "base=" + base + " with=" + with + " withoutAPiece=" + without);
+		helper.assertTrue(player.getAttribute(Attributes.SAFE_FALL_DISTANCE).getModifier(id) == null && without == base, "the hybrid stayed after a piece left: " + without);
+		RewardTestSupport.leave(helper, player);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aHybridThatNamesAnUndefinedSetOrTooManyPiecesIsRejected(final GameTestHelper helper) {
+		boolean unknown = false;
+		try {
+			RuinSets.defineHybrid(new HybridBonus("test_bad_set", java.util.Map.of("test_alpha", 2, "no_such_set", 2), List.of(), null));
+		} catch (IllegalStateException e) {
+			unknown = true;
+		}
+		boolean tooMany = false;
+		try {
+			new HybridBonus("test_too_many", java.util.Map.of("test_alpha", 3, "test_beta", 2), List.of(), null);
+		} catch (IllegalArgumentException e) {
+			tooMany = true;
+		}
+		helper.assertTrue(unknown, "a hybrid named a set no one defined");
+		helper.assertTrue(tooMany, "a hybrid asked for five pieces");
+		helper.succeed();
 	}
 }

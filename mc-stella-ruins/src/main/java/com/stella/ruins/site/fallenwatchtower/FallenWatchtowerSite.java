@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * The fallen_watchtower site: a tall, half-collapsed stone tower, 24 to 40 blocks high. Archers and crossbowmen hold
- * its floors and the Watch Captain holds the roof. Clearing the garrison opens the vault once.
+ * its floors and the Watch Captain holds the roof. Clearing the garrison opens the vault, and again every seven days.
  */
 public final class FallenWatchtowerSite {
 	public static final String ID = "fallen_watchtower";
@@ -19,6 +19,7 @@ public final class FallenWatchtowerSite {
 	 */
 	public static final int ACTIVATION_RADIUS = 43;
 	public static final int CLUE_WEIGHT = 3;
+	public static final int RESET_DAYS = 7;
 	public static final int SLOPE = 4;
 
 	private FallenWatchtowerSite() {
@@ -32,13 +33,14 @@ public final class FallenWatchtowerSite {
 			.placement(Placement.surface(SLOPE))
 			.bounds(WatchtowerPlan.SIZE_X, WatchtowerPlan.SIZE_Y, WatchtowerPlan.SIZE_Z)
 			.layout(WatchtowerLayout::draw)
-			.claim(Claim.once())
+			.claim(Claim.resetAfterDays(RESET_DAYS))
 			.objective(GarrisonObjective::new)
 			.roster(Roster.empty())
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(WatchtowerMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(WatchtowerItems.LONGBOW))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("ruined_keep")
 			.register();
 	}
 }

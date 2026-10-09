@@ -1,0 +1,12 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:forge_core",
+		"mod-stella-ruins:cinder_dust",
+		"mod-stella-ruins:cinder_dust",
+		"mod-stella-ruins:cinder_dust",
+		"mod-stella-ruins:cinder_dust"
+	],
+	"result": { "id": "mod-stella-ruins:cinderbrand_affix" }
+}

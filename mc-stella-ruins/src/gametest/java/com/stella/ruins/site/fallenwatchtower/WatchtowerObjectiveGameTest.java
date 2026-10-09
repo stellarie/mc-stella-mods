@@ -125,7 +125,7 @@ public class WatchtowerObjectiveGameTest {
 	}
 
 	@GameTest(maxTicks = TICKS)
-	public void theCoreStaysCompleteAfterThirtyDays(final GameTestHelper helper) {
+	public void theCoreRearmsAfterSevenDaysAndTheGarrisonReturns(final GameTestHelper helper) {
 		TowerTestSupport.inArena(helper, SEED + 4, arena -> {
 			AtomicLong clock = new AtomicLong(9_000_000L);
 			RuinClock.Source old = RuinClock.replace(level -> clock.get());
@@ -136,14 +136,16 @@ public class WatchtowerObjectiveGameTest {
 				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE, "the core did not complete: " + arena.phase());
 				long claimed = arena.entry().claimTime();
 				arena.leave(player);
-				clock.addAndGet(30 * Claim.DAY_TICKS);
+				clock.addAndGet(7 * Claim.DAY_TICKS - 1);
 				arena.core().pulse(arena.level());
-				TowerTestSupport.result("onceStaysComplete", "claimTime=" + claimed + " days=30 phase=" + arena.phase() + " sealed=" + arena.vault().sealed() + " once=" + TowerTestSupport.site().claim().isOnce());
-				helper.assertTrue(TowerTestSupport.site().claim().isOnce(), "the tower's claim is not once");
-				helper.assertTrue(claimed == 9_000_000L, "the claim time is " + claimed);
-				helper.assertTrue(arena.phase() == RuinPhase.COMPLETE && !arena.vault().sealed(), "the core left COMPLETE or the vault sealed after 30 days: " + arena.phase());
+				helper.assertTrue(claimed == 9_000_000L && arena.phase() == RuinPhase.COMPLETE && !arena.vault().sealed(), "the tower reset one tick early: " + arena.phase());
+				clock.addAndGet(1);
 				arena.core().pulse(arena.level());
-				helper.assertTrue(arena.roster().isEmpty(), "a complete tower spawned mobs again");
+				TowerTestSupport.result("sevenDays", "claimTime=" + claimed + " phase=" + arena.phase() + " sealed=" + arena.vault().sealed());
+				helper.assertTrue(arena.phase() == RuinPhase.DORMANT && arena.vault().sealed(), "after seven days the tower is " + arena.phase() + ", vault sealed " + arena.vault().sealed());
+				ServerPlayer again = arena.wake();
+				helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && !arena.roster().isEmpty(), "the garrison did not return: " + arena.phase() + " " + arena.roster().size());
+				arena.leave(again);
 			} finally {
 				RuinClock.replace(old);
 			}

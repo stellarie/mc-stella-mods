@@ -31,7 +31,7 @@ public class MinerSiteGameTest {
 			"bounds " + site.sizeX() + "x" + site.sizeY() + "x" + site.sizeZ());
 		helper.assertTrue(site.placement() instanceof Placement.Cave cave && cave.minY() == -40 && cave.maxY() == 40 && cave.minCover() == LostMinersCampSite.COVER,
 			"placement " + site.placement());
-		helper.assertTrue(site.claim().isOnce() && site.claim().resetTicks(site.id()) == -1L, "the camp pays out more than once");
+		helper.assertTrue(!site.claim().isOnce() && site.claim().days() == 7 && site.claim().resetTicks(site.id()) == 7L * Claim.DAY_TICKS, "the camp does not reset after seven days");
 		helper.assertTrue(site.activationRadius() == LostMinersCampSite.ACTIVATION_RADIUS, "radius " + site.activationRadius());
 		helper.assertTrue(site.clueWeight() == LostMinersCampSite.CLUE_WEIGHT, "clue weight " + site.clueWeight());
 		helper.assertTrue(site.vaultLoot().equals(CampMobs.VAULT_LOOT), "the vault table is " + site.vaultLoot());

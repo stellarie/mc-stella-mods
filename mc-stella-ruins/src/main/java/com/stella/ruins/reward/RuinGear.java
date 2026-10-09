@@ -1,6 +1,12 @@
 package com.stella.ruins.reward;
 
 import java.util.Map;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.Tool;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
@@ -61,5 +67,29 @@ public final class RuinGear {
 
 	public static Item armorPiece(final String id, final GearSpec spec, final ArmorType type) {
 		return RuinItems.register(id, Item::new, new Item.Properties().humanoidArmor(armorMaterial(spec), type));
+	}
+
+	/**
+	 * True for an item with a melee attack damage of its own. Item tags only list vanilla items, so a modded sword or
+	 * axe is found by its component.
+	 */
+	public static boolean isMeleeWeapon(final ItemStack stack) {
+		return stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
+			.anyMatch(entry -> entry.modifier().is(Item.BASE_ATTACK_DAMAGE_ID));
+	}
+
+	/** True for an item that mines stone or wood well: a pickaxe or an axe, vanilla or modded. */
+	public static boolean isPickaxeOrAxe(final ItemStack stack) {
+		Tool tool = stack.get(DataComponents.TOOL);
+		if (tool == null) {
+			return false;
+		}
+		for (Tool.Rule rule : tool.rules()) {
+			if (rule.blocks() instanceof HolderSet.Named<?> named
+				&& (named.key().equals(BlockTags.MINEABLE_WITH_PICKAXE) || named.key().equals(BlockTags.MINEABLE_WITH_AXE))) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

@@ -109,6 +109,7 @@ public final class GroundsMobs {
 			.base(EntityTypes.WOLF)
 			.health(HOUND_HEALTH)
 			.ability(new HoundAbility())
+			.hostile()
 			.drops(HOUND_DROPS)
 			.register();
 		beast = RuinMobKind.builder(PIT_BEAST)

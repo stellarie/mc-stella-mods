@@ -61,6 +61,12 @@ public final class WorldTestInit implements ModInitializer {
 	static RuinSite large;
 	static RuinSite cave;
 	static RuinSite findable;
+	static RuinSite trophy;
+	static RuinSite leader;
+	static RuinSite hooked;
+	static RuinSite chooser;
+	/** Rearms the hooked site saw, by core. */
+	static final java.util.Map<net.minecraft.core.BlockPos, AtomicInteger> REARMS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	static ResourceKey<LootTable> table(final String path) {
 		return ResourceKey.create(Registries.LOOT_TABLE, Identifier.fromNamespaceAndPath(NAMESPACE, path));
@@ -76,6 +82,10 @@ public final class WorldTestInit implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
 			server.getPlayerList().setSimulationDistance(SIMULATION_DISTANCE);
 			server.getPlayerList().setViewDistance(SIMULATION_DISTANCE);
+			// Trophies and leads add stacks to a vault, so the suite pins them off and a test that needs one turns it on.
+			RuinConfig.replace(RuinConfig.get().withTrophy(0.0, 0.0).withLeadChance(0.0));
+			// An omen changes a roster and a vault, so the suite rolls none and a test that needs one sets it.
+			Omens.replaceRoller((random, tier) -> java.util.List.of());
 		});
 		ResourceKey<Item> relicKey = ResourceKey.create(Registries.ITEM, StellaRuins.id("test_relic"));
 		relic = Registry.register(BuiltInRegistries.ITEM, relicKey, new Item(new Item.Properties().setId(relicKey)));
@@ -124,6 +134,15 @@ public final class WorldTestInit implements ModInitializer {
 			.layout(TestLayouts.yard(64, 48, 64, CHEST_LOOT, true)).objective(Objectives::clear).vaultLoot(VAULT_LOOT).register();
 		cave = RuinSite.builder("test_cave").placement(Placement.cave(-40, 20, 8)).bounds(20, 12, 20)
 			.layout(TestLayouts.yard(20, 12, 20, CHEST_LOOT, false)).objective(Objectives::clear).vaultLoot(VAULT_LOOT).clueWeight(1).register();
+		trophy = base("test_trophy", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
+			.objective(Objectives::clear).unique(() -> new ItemStack(Items.NETHER_STAR)).register();
+		leader = base("test_leader", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
+			.objective(Objectives::clear).leads("test_findable").register();
+		hooked = base("test_hooked", yard).placement(Placement.surface(3)).roster(one).claim(Claim.resetAfterDays(1))
+			.objective(Objectives::clear).onRearm((level, core, markers) -> REARMS.computeIfAbsent(core, key -> new AtomicInteger()).incrementAndGet()).register();
+		chooser = base("test_chooser", yard).placement(Placement.surface(3)).objective(() -> Objectives.choose(
+			new Objectives.Choice(stack -> stack.is(Items.DIAMOND), Objectives.waves(WavePlan.of(one))),
+			new Objectives.Choice(stack -> stack.is(Items.GOLD_INGOT), Objectives.waves(WavePlan.of(two)), 2))).register();
 		findable = base("test_findable", yard).placement(Placement.surface(3)).roster(one).objective(Objectives::clear).register();
 	}
 

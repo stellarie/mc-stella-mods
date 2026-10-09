@@ -41,6 +41,7 @@ public final class AmbushCampSite {
 			.vaultLoot(CampMobs.VAULT_LOOT)
 			.unique(() -> new ItemStack(CampItems.CUTTHROATS_CLOAK))
 			.clueWeight(CLUE_WEIGHT)
+			.leads("ruined_keep")
 			.register();
 	}
 }

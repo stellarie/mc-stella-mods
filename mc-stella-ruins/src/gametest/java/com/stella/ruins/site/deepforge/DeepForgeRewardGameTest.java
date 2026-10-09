@@ -213,6 +213,23 @@ public class DeepForgeRewardGameTest {
 	}
 
 	@GameTest(maxTicks = TICKS)
+	public void theForgeheartBurstAlsoHurtsADeepGolemBecauseItIsAFoe(final GameTestHelper helper) {
+		ForgeTestSupport.inArena(helper, SEED + 20, arena -> {
+			ServerLevel level = arena.level();
+			ServerPlayer player = arena.join(DeepForgeMobGameTest.spot(arena, -6));
+			Husk target = husk(level, DeepForgeMobGameTest.spot(arena, 0));
+			net.minecraft.world.entity.Mob golem = com.stella.ruins.world.RuinMobKind.get("deep_golem").spawn(level, DeepForgeMobGameTest.spot(arena, 2));
+			golem.setNoAi(true);
+			float before = golem.getHealth();
+			ForgeheartEffect.burst(level, player, target);
+			ForgeTestSupport.result("burstGolem", "before=" + before + " after=" + golem.getHealth() + " fire=" + golem.isOnFire());
+			helper.assertTrue(golem.getHealth() < before && golem.isOnFire(), "the burst left a deep golem at " + golem.getHealth() + " of " + before + ", on fire " + golem.isOnFire());
+			target.discard();
+			golem.discard();
+		});
+	}
+
+	@GameTest(maxTicks = TICKS)
 	public void theHammerDoesNothingInAnotherHandThanTheWielders(final GameTestHelper helper) {
 		ForgeTestSupport.inArena(helper, SEED + 2, arena -> {
 			ServerLevel level = arena.level();

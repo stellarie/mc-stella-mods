@@ -4,11 +4,14 @@ import com.stella.ruins.StellaRuins;
 import com.stella.ruins.reward.GearSpec;
 import com.stella.ruins.reward.RuinGear;
 import com.stella.ruins.reward.RuinItems;
+import com.stella.ruins.reward.RuinSets;
 import com.stella.ruins.reward.RuinUniques;
 import com.stella.ruins.reward.UniqueEffects;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import java.util.Map;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -53,6 +56,8 @@ public final class NestItems {
 		SILKWEAVE_CHESTPLATE = armor("silkweave_chestplate", ArmorType.CHESTPLATE);
 		SILKWEAVE_LEGGINGS = armor("silkweave_leggings", ArmorType.LEGGINGS);
 		SILKWEAVE_BOOTS = armor("silkweave_boots", ArmorType.BOOTS);
+		RuinSets.adopt("silkweave", SILKWEAVE, Map.of(
+			EquipmentSlot.HEAD, SILKWEAVE_HELMET, EquipmentSlot.CHEST, SILKWEAVE_CHESTPLATE, EquipmentSlot.LEGS, SILKWEAVE_LEGGINGS, EquipmentSlot.FEET, SILKWEAVE_BOOTS));
 		SILKSTRING_BOW = RuinItems.register("silkstring_bow", SilkstringBow::new, new Item.Properties().durability(480).enchantable(1));
 		UniqueEffects.define(WidowEffect.ID, new WidowEffect());
 		WIDOWS_FANG = RuinUniques.register("widows_fang", Item::new,

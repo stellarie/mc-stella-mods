@@ -7,6 +7,7 @@ import com.stella.ruins.reward.RuinAffixes;
 import com.stella.ruins.reward.RuinItems;
 import com.stella.ruins.reward.RuinUniques;
 import com.stella.ruins.reward.UniqueEffects;
+import com.stella.ruins.world.RuinMobs;
 import java.util.List;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
@@ -17,7 +18,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -72,7 +72,7 @@ public final class KeepRewards {
 				if (!RALLY_EFFECT.equals(RuinUniques.effectOf(user.getItemBySlot(EquipmentSlot.OFFHAND))) || !(user.level() instanceof ServerLevel level)) {
 					return;
 				}
-				boolean hostile = !level.getEntitiesOfClass(Mob.class, user.getBoundingBox().inflate(RALLY_RANGE_HOSTILES), m -> m instanceof Enemy && m.isAlive()).isEmpty();
+				boolean hostile = !level.getEntitiesOfClass(Mob.class, user.getBoundingBox().inflate(RALLY_RANGE_HOSTILES), m -> RuinMobs.isFoe(m) && m.isAlive()).isEmpty();
 				if (!hostile) {
 					return;
 				}

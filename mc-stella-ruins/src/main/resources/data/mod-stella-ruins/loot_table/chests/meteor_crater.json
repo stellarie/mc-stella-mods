@@ -76,6 +76,16 @@
 					]
 				}
 			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:emberward_affix",
+					"conditions": [{"condition": "minecraft:random_chance", "chance": 0.25}]
+				}
+			]
 		}
 	]
 }

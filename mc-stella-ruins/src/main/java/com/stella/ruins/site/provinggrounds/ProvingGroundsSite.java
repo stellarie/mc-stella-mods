@@ -91,6 +91,7 @@ public final class ProvingGroundsSite {
 			.bounds(ArenaPlan.SIZE, HEIGHT, ArenaPlan.SIZE)
 			.layout(ArenaLayout::draw)
 			.claim(Claim.resetAfterDays(RESET_DAYS))
+			.noOmens()
 			.objective(TierObjective::new)
 			.activationRadius(ACTIVATION_RADIUS)
 			.vaultLoot(vaultTable(1))
