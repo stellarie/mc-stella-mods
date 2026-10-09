@@ -68,7 +68,8 @@
 			"com.stella.equips.UniqueHelpersGameTest",
 			"com.stella.equips.BonewhisperBowGameTest",
 			"com.stella.equips.UniquesArcherFighterGameTest",
-			"com.stella.equips.UniquesMagePriestGameTest"
+			"com.stella.equips.UniquesMagePriestGameTest",
+			"com.stella.equips.CraftedBowsGameTest"
 		]
 	}
 }

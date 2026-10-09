@@ -1,0 +1,10 @@
+{
+	"type": "minecraft:smithing_transform",
+	"template": "minecraft:netherite_upgrade_smithing_template",
+	"base": "mod-stella-equips-enchants:ballista",
+	"addition": "minecraft:netherite_ingot",
+	"result": {
+		"id": "mod-stella-equips-enchants:siege_arbalest",
+		"count": 1
+	}
+}

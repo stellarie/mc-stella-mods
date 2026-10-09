@@ -1,0 +1,19 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"pattern": [
+		" R ",
+		"LBL",
+		" S "
+	],
+	"key": {
+		"R": "minecraft:rabbit_hide",
+		"L": "minecraft:leather",
+		"S": "minecraft:string",
+		"B": "minecraft:bow"
+	},
+	"result": {
+		"id": "mod-stella-equips-enchants:hunter_bow",
+		"count": 1
+	}
+}

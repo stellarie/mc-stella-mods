@@ -1,0 +1,9 @@
+{
+	"required": true,
+	"package": "com.stella.equips.bows.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": ["CraftedCrossbowMixin"],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
