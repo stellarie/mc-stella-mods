@@ -3,10 +3,12 @@ package com.stella.equips.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.stella.equips.anvil.AnvilCost;
 import com.stella.equips.anvil.EmeraldPurse;
+import com.stella.equips.imbue.NetherImbue;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -39,6 +41,23 @@ public abstract class AnvilMenuMixin {
 		}
 		((AnvilMenu) (Object) this).getSlot(AnvilMenu.RESULT_SLOT).set(result);
 		this.stellaEquips$costSlot().set(0);
+		this.stellaEquips$setRepairCount(1);
+		((AnvilMenu) (Object) this).broadcastChanges();
+		ci.cancel();
+	}
+
+	/** A weapon or armor piece and a nether star make the piece with one more imbue, for emeralds, using one star. */
+	@Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
+	private void stellaEquips$imbueStar(final CallbackInfo ci) {
+		if (!this.stellaEquips$addition().is(Items.NETHER_STAR)) {
+			return;
+		}
+		ItemStack input = this.stellaEquips$input();
+		boolean imbuable = NetherImbue.eligible(input);
+		ItemStack result = imbuable ? NetherImbue.imbued(input) : ItemStack.EMPTY;
+		((AnvilMenu) (Object) this).getSlot(AnvilMenu.RESULT_SLOT).set(result);
+		// The cancel skips the RETURN price writer, so this branch writes the emerald price itself.
+		this.stellaEquips$costSlot().set(imbuable ? NetherImbue.price(NetherImbue.count(input)) : 0);
 		this.stellaEquips$setRepairCount(1);
 		((AnvilMenu) (Object) this).broadcastChanges();
 		ci.cancel();
