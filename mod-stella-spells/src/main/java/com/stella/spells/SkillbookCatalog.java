@@ -18,6 +18,7 @@ public final class SkillbookCatalog {
 		definition("counter_stance", Items.TRIPWIRE_HOOK, 200, 15_102_646, TargetMode.SELF, FighterSkills::applyCounterStance),
 		definition("iron_skin", Items.RAW_IRON, 600, 9_530_554, TargetMode.SELF, FighterSkills::applyIronSkin),
 		definition("earthsplitter", Items.TUFF, 240, 9_137_998, TargetMode.SELF, FighterSkills::applyEarthsplitter),
+		definition("arrow_crafting", Items.STICK, 100, 13_343_252, TargetMode.SELF, ArcherSkills::applyArrowCrafting, School.ARCHER),
 		definition("multishot", Items.ARROW, 100, 12_073_291, TargetMode.SELF, ArcherSkills::applyGrapple, School.ARCHER),
 		definition("piercing_shot", Items.SPECTRAL_ARROW, 160, 7_148_392, TargetMode.SELF, ArcherSkills::applyPiercingShot, School.ARCHER),
 		definition("arrow_rain", Items.DISPENSER, 300, 3_986_402, TargetMode.BLOCK, ArcherSkills::applyArrowRain, School.ARCHER),

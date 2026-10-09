@@ -1,0 +1,13 @@
+{
+	"replace": false,
+	"values": [
+		"mod-stella-spells:flint_arrow",
+		"mod-stella-spells:iron_arrow",
+		"mod-stella-spells:diamond_arrow",
+		"mod-stella-spells:keen_arrow",
+		"mod-stella-spells:fire_arrow",
+		"mod-stella-spells:frost_arrow",
+		"mod-stella-spells:venom_arrow",
+		"mod-stella-spells:blast_arrow"
+	]
+}

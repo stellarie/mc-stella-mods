@@ -135,6 +135,7 @@ public final class SpellVisuals {
 		visual("counter_stance", ParticleTypes.WAX_ON, ParticleTypes.ENCHANT, 0.0),
 		visual("iron_skin", ParticleTypes.ASH, ParticleTypes.POOF, 0.0),
 		areaVisual("earthsplitter", ParticleTypes.SPORE_BLOSSOM_AIR, ParticleTypes.MYCELIUM, SpellNumbers.EARTHSPLITTER.radius(), 0xB33A3A),
+		visual("arrow_crafting", ParticleTypes.WAX_OFF, ParticleTypes.CRIT, 0.0),
 		visual("multishot", ParticleTypes.GUST_EMITTER_LARGE, ParticleTypes.ENCHANTED_HIT, 0.0),
 		// The piercing shot draws its own line, not an area ring, and owns the bursting arrow's spark.
 		visual("piercing_shot", ParticleTypes.FIREWORK, ParticleTypes.CRIT, 0.0),
@@ -211,6 +212,7 @@ public final class SpellVisuals {
 		heldColor("guardian_angel", 0xFFF4C2),
 		heldColor("unbroken_vow", 0xC8D2DE),
 		heldColor("steadfast_prayer", 0xF0E6B8),
+		heldColor("arrow_crafting", 0xCB9A14),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
 		heldColor("ankle_snare", 0x3E8E41),
@@ -658,7 +660,7 @@ public final class SpellVisuals {
 			case "war_cry" -> Motif.SIGIL;
 			case "counter_stance" -> Motif.SHIELD;
 			case "iron_skin" -> Motif.WARD;
-			case "multishot" -> Motif.DART;
+			case "multishot", "arrow_crafting" -> Motif.DART;
 			case "piercing_shot" -> Motif.LANCE;
 			case "rapid_fire" -> Motif.VOLLEY;
 			case "ankle_snare" -> Motif.CAGE;

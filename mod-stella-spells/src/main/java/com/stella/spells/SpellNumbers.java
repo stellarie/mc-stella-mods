@@ -127,6 +127,7 @@ public record SpellNumbers(
 	// ---- archer books: a ray reads its reach from the radius, and its damage once. ----
 	/** The amplifier that stops a body where it stands, shared by every root the mod applies. */
 	public static final int SLOWNESS_ROOT_AMPLIFIER = 6;
+	public static final SpellNumbers ARROW_CRAFTING = builder("arrow_crafting").build();
 	/** Grappling Hook's radius is how far its arrow may fly; Multishot's old fan number is gone with the fan. */
 	public static final SpellNumbers MULTISHOT = builder("multishot").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	public static final SpellNumbers PIERCING_SHOT = builder("piercing_shot").damage(4.0f).radius(32.0).build();

@@ -266,6 +266,10 @@ public class ArcherRagnarokGameTest {
 		caster.removeAllEffects();
 		List<String> cast = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
+			// Arrow Crafting makes arrows and needs no bow; its own case proves that.
+			if (path.equals("arrow_crafting")) {
+				continue;
+			}
 			if (SkillSchoolGameTest.cast(caster, path, foe, false)) {
 				cast.add(path);
 			}
@@ -275,7 +279,7 @@ public class ArcherRagnarokGameTest {
 		boolean offHandCast = SkillSchoolGameTest.cast(caster, "snare_trap", null, false);
 		LOG.info("[BEHAVIOR] test=everyArcherBookRefusesWithoutABowInEitherHand RESULT books={} castWithBareHands={} offHandCrossbowCast={}",
 			SkillSchoolGameTest.ARCHER_IDS.size(), cast, offHandCast);
-		helper.assertTrue(SkillSchoolGameTest.ARCHER_IDS.size() == 14, "the school holds " + SkillSchoolGameTest.ARCHER_IDS.size() + " books, not 14");
+		helper.assertTrue(SkillSchoolGameTest.ARCHER_IDS.size() == 15, "the school holds " + SkillSchoolGameTest.ARCHER_IDS.size() + " books, not 15");
 		helper.assertTrue(cast.isEmpty(), "these books cast with no bow or crossbow: " + cast);
 		helper.assertTrue(offHandCast, "a crossbow in the off hand did not open the gate");
 		foe.discard();
@@ -298,7 +302,7 @@ public class ArcherRagnarokGameTest {
 		}
 		List<String> refused = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			if (arrowBooks.contains(path)) {
+			if (arrowBooks.contains(path) || path.equals("arrow_crafting")) {
 				continue;
 			}
 			if (!SkillSchoolGameTest.cast(caster, path, foe, false)) {
@@ -367,7 +371,7 @@ public class ArcherRagnarokGameTest {
 			}
 		}
 		LOG.info("[BEHAVIOR] test=selfBuffAndNextShotBooksAreRefusedOnABow RESULT checked={} bowTook={}", checked, took);
-		helper.assertTrue(checked.size() == 7, "the refused archer books number " + checked.size() + ", not 7");
+		helper.assertTrue(checked.size() == 8, "the refused archer books number " + checked.size() + ", not 8");
 		helper.assertTrue(took.isEmpty(), "a bow took: " + took);
 		helper.succeed();
 	}

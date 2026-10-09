@@ -22,6 +22,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -40,6 +41,9 @@ import org.jspecify.annotations.Nullable;
  * imbued on a bow casts from an arrow hit and needs neither.
  */
 public final class ArcherSkills {
+	/** How many arrows one Arrow Crafting cast makes, and how many an awakened one makes. */
+	static final int ARROW_CRAFTING_ARROWS = 8;
+	static final int AWAKENED_ARROW_CRAFTING_ARROWS = 12;
 	/** How many arrows a triangle shot looses, and how often it looses them. */
 	static final int TRIANGLE_SHOT_ARROWS = 3;
 	static final double TRIANGLE_SHOT_CHANCE = 0.30;
@@ -194,6 +198,46 @@ public final class ArcherSkills {
 	}
 
 	// ---- the fourteen books ----
+
+	/** Arrow Crafting: one material becomes arrows of its kind. It needs no bow. */
+	static boolean applyArrowCrafting(
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+	) {
+		ItemStack material = ItemStack.EMPTY;
+		ArrowItems.Craft craft = null;
+		for (ArrowItems.Craft candidate : ArrowItems.CRAFTS) {
+			if (caster.getOffhandItem().is(candidate.material())) {
+				material = caster.getOffhandItem();
+				craft = candidate;
+				break;
+			}
+		}
+		for (ArrowItems.Craft candidate : ArrowItems.CRAFTS) {
+			if (craft != null) {
+				break;
+			}
+			for (int slot = 0; slot < Inventory.INVENTORY_SIZE && craft == null; slot++) {
+				ItemStack stack = caster.getInventory().getItem(slot);
+				if (stack.is(candidate.material())) {
+					material = stack;
+					craft = candidate;
+				}
+			}
+		}
+		if (craft == null) {
+			return false;
+		}
+		material.shrink(1);
+		int count = modifiers.awakened() ? AWAKENED_ARROW_CRAFTING_ARROWS : ARROW_CRAFTING_ARROWS;
+		ItemStack arrows = new ItemStack(craft.arrow(), count);
+		caster.getInventory().add(arrows);
+		if (!arrows.isEmpty()) {
+			caster.spawnAtLocation((ServerLevel) caster.level(), arrows);
+		}
+		Spellbooks.LOGGER.info("[SPELL] event=ARROW_CRAFTING caster={} arrow={} count={}",
+			caster.getUUID(), BuiltInRegistries.ITEM.getKey(craft.arrow()), count);
+		return true;
+	}
 
 	/**
 	 * Grappling Hook: the arrow flies its arc to the first ground under the caster's look, and the caster

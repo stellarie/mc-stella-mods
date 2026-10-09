@@ -103,6 +103,7 @@ BOOKS = (
 # The skill books: sixteen-pixel art from skillbook-icons.py, and every mage-only table stays out of here,
 # so a generator pass can never overwrite a drawn skill texture with a seven-pixel plate.
 SKILL_BOOKS = (
+    Book("arrow_crafting", "Arrow Crafting", "archery", "#cb9a14", glyph("...#...", "..###..", ".#.#.#.", "...#...", "...#...", "..###..", "...#..."), 63),
     Book("multishot", "Multishot", "archery", "#3e8e41", glyph("...#...", "...##..", "..###..", ".####..", "..###..", "...##..", "...#..."), 43),
     Book("piercing_shot", "Piercing Shot", "archery", "#3e8e41", glyph("#......", ".#.....", "..#####", "...#...", "..#....", ".#.....", "#......"), 44),
     Book("arrow_rain", "Arrow Rain", "archery", "#3e8e41", glyph(".#####.", "#.....#", ".#####.", "..#.#..", ".#...#.", "..#.#..", ".#...#."), 45),

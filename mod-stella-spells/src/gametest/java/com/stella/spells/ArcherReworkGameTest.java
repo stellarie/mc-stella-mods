@@ -277,7 +277,7 @@ public class ArcherReworkGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void archerStarterGrantGivesArrowRainAndOneOtherArcherBook(final GameTestHelper helper) {
+	public void archerStarterGrantGivesArrowRainArrowCraftingAndOneOtherArcherBook(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		caster.getInventory().clearContent();
 		List<Identifier> granted = new ArrayList<>();
@@ -290,15 +290,16 @@ public class ArcherReworkGameTest {
 			carried += caster.getInventory().countItem(BuiltInRegistries.ITEM.get(id)
 				.map(net.minecraft.core.Holder.Reference::value).orElse(Items.AIR));
 		}
-		LOG.info("[BEHAVIOR] test=archerStarterGrantGivesArrowRainAndOneOtherArcherBook RESULT count={} granted={} carried={} arrowRain={} archBooks={}",
+		LOG.info("[BEHAVIOR] test=archerStarterGrantGivesArrowRainArrowCraftingAndOneOtherArcherBook RESULT count={} granted={} carried={} arrowRain={} archBooks={}",
 			count, granted, carried, ArcherStarter.STARTER_ID, archerTag.size());
 		helper.assertTrue(count == ArcherStarter.STARTER_BOOKS, "the starter grant gave " + count + " books, not " + ArcherStarter.STARTER_BOOKS);
 		helper.assertTrue(given.contains(ArcherStarter.STARTER_ID), "the starter grant skipped arrow rain");
 		helper.assertTrue(archerTag.containsAll(given), "the starter grant gave a book outside the archer school: " + granted);
 		helper.assertTrue(given.size() == ArcherStarter.STARTER_BOOKS,
 			"the starter grant drew " + granted + " with a repeat");
-		helper.assertTrue(given.stream().filter(id -> !id.equals(ArcherStarter.STARTER_ID)).count() == 1,
-			"the starter grant gave " + given + ", not arrow rain plus one other book");
+		helper.assertTrue(given.contains(ArcherStarter.CRAFTING_ID), "the starter grant skipped arrow crafting");
+		helper.assertTrue(given.stream().filter(id -> !id.equals(ArcherStarter.STARTER_ID) && !id.equals(ArcherStarter.CRAFTING_ID)).count() == 1,
+			"the starter grant gave " + given + ", not arrow rain, arrow crafting and one other book");
 		helper.assertTrue(carried == count, "the grant returned " + count + " but the pack holds " + carried);
 		helper.succeed();
 	}
@@ -307,7 +308,7 @@ public class ArcherReworkGameTest {
 	public void archerStarterGrantRefusesAFullPackRatherThanDroppingBooks(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		caster.getInventory().clearContent();
-		// Room for exactly one of the two books: the grant is all or nothing, so it hands out none.
+		// Room for exactly one of the three books: the grant is all or nothing, so it hands out none.
 		for (int slot = 0; slot < caster.getInventory().getContainerSize() - 1; slot++) {
 			caster.getInventory().setItem(slot, new ItemStack(Items.STONE, 64));
 		}

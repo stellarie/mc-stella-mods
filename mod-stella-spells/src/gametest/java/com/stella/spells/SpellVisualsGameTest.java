@@ -123,6 +123,8 @@ public class SpellVisualsGameTest {
 		ahead.setHealth(1000.0F);
 		player.getInventory().setItem(35, new ItemStack(Items.BOW));
 		player.getInventory().setItem(20, new ItemStack(Items.ARROW, 64));
+		// Arrow Crafting casts only with a material to turn into arrows.
+		player.getInventory().setItem(21, new ItemStack(Items.BONE, 64));
 		List<SpellbookItem> books = books(TargetMode.SELF);
 		books.sort(movesLast());
 		for (SpellbookItem book : books) {
