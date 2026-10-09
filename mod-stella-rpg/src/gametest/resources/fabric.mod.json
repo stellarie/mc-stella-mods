@@ -80,7 +80,9 @@
 			"com.stella.rpg.DurabilityAffixGameTest",
 			"com.stella.rpg.GearTagGameTest",
 			"com.stella.rpg.BonusTooltipGameTest",
-			"com.stella.rpg.SiblingGearTagGameTest"
+			"com.stella.rpg.SiblingGearTagGameTest",
+			"com.stella.rpg.MobStatSetGameTest",
+			"com.stella.rpg.WitherFlagGameTest"
 		]
 	},
 	"depends": {
