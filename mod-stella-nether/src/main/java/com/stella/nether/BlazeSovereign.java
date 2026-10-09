@@ -53,6 +53,9 @@ public final class BlazeSovereign {
 	/** Air a spot needs above its floor to hold a Sovereign. */
 	static final int HEADROOM = 7;
 
+	/** The run value of a Sovereign built outside a raid; real runs count up from 1. */
+	public static final int FREE_RUN = -1;
+
 	/** The run a blaze is Sovereign of. */
 	public static final AttachmentType<Integer> SOVEREIGN = AttachmentRegistry.create(StellaNether.id("sovereign"), builder -> builder
 		.persistent(Codec.INT).syncWith(net.minecraft.network.codec.ByteBufCodecs.VAR_INT, net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate.all()));
@@ -170,25 +173,30 @@ public final class BlazeSovereign {
 			}
 			return;
 		}
+		tickSovereign(raid, blaze, bar, server.getTickCount());
+	}
+
+	/** One tick of a Sovereign's own behaviour; shared by the raid's Sovereign and a free one. */
+	static void tickSovereign(final ServerLevel level, final Blaze blaze, final @Nullable ServerBossEvent bossBar, final int serverTick) {
 		// Again each tick: a Sovereign loaded from disk, or given the mobs mod's attack on load, gets its burst back.
 		SovereignBurst.install(blaze);
 		// A charge at a player keeping away holds everything else while it runs; so does its shield.
-		if (!SovereignCharge.tick(raid, blaze)) {
-			SovereignSpecials.tick(raid, blaze);
+		if (!SovereignCharge.tick(level, blaze)) {
+			SovereignSpecials.tick(level, blaze);
 		}
 		if (!SovereignSpecials.airborne(blaze) && !SovereignCharge.charging(blaze) && !SovereignSpecials.shielded(blaze)) {
-			keepNearGround(raid, blaze);
+			keepNearGround(level, blaze);
 		}
-		if (bar != null && server.getTickCount() % 10 == 0) {
-			bar.setProgress((float) (blaze.getHealth() / blaze.getMaxHealth()));
-			for (ServerPlayer player : List.copyOf(bar.getPlayers())) {
-				if (player.level() != raid || player.distanceTo(blaze) > BAR_RANGE) {
-					bar.removePlayer(player);
+		if (bossBar != null && serverTick % 10 == 0) {
+			bossBar.setProgress((float) (blaze.getHealth() / blaze.getMaxHealth()));
+			for (ServerPlayer player : List.copyOf(bossBar.getPlayers())) {
+				if (player.level() != level || player.distanceTo(blaze) > BAR_RANGE) {
+					bossBar.removePlayer(player);
 				}
 			}
-			for (ServerPlayer player : raid.players()) {
+			for (ServerPlayer player : level.players()) {
 				if (player.distanceTo(blaze) <= BAR_RANGE) {
-					bar.addPlayer(player);
+					bossBar.addPlayer(player);
 				}
 			}
 		}
@@ -228,18 +236,14 @@ public final class BlazeSovereign {
 		return cap / healthScale();
 	}
 
-	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
-	public static Blaze rise(final ServerLevel raid, final Vec3 at) {
-		MinecraftServer server = raid.getServer();
-		RaidState state = RaidInstance.state(server);
-		Blaze blaze = EntityTypes.BLAZE.create(raid, EntitySpawnReason.EVENT);
+	/** A Sovereign of a run, not yet placed or added: its tags, level, health, size and name. */
+	static Blaze create(final ServerLevel level, final int run, final int threat) {
+		Blaze blaze = EntityTypes.BLAZE.create(level, EntitySpawnReason.EVENT);
 		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		blaze.addTag(StellaMobs.SELF_SCALED_TAG);
-		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
-		blaze.setAttached(SOVEREIGN, state.run());
-		int level = threatLevel(raid);
-		blaze.setAttached(ThreatState.TYPE, new ThreatState(level, 0));
-		double total = BASE_HEALTH * SpawnScaling.healthMultiplier(level);
+		blaze.setAttached(SOVEREIGN, run);
+		blaze.setAttached(ThreatState.TYPE, new ThreatState(threat, 0));
+		double total = BASE_HEALTH * SpawnScaling.healthMultiplier(threat);
 		double attribute = Math.min(total, healthCap());
 		blaze.getAttribute(Attributes.MAX_HEALTH).setBaseValue(attribute);
 		blaze.setAttached(DIVISOR, total / attribute);
@@ -248,6 +252,16 @@ public final class BlazeSovereign {
 		blaze.refreshDimensions();
 		blaze.setPersistenceRequired();
 		blaze.setCustomName(Component.translatable("entity.mod-stella-nether.blaze_sovereign").withStyle(ChatFormatting.AQUA));
+		return blaze;
+	}
+
+	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
+	public static Blaze rise(final ServerLevel raid, final Vec3 at) {
+		MinecraftServer server = raid.getServer();
+		RaidState state = RaidInstance.state(server);
+		int level = threatLevel(raid);
+		Blaze blaze = create(raid, state.run(), level);
+		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		raid.addFreshEntity(blaze);
 		SovereignBurst.install(blaze);
 		current = blaze.getUUID();
@@ -255,7 +269,7 @@ public final class BlazeSovereign {
 		RaidInstance.set(server, state.withSovereignRisen());
 		closeBar(server);
 		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		BehaviorLog.info("[NETHER] sovereign risen run={} at={} level={} health={}", state.run(), blaze.blockPosition(), level, total);
+		BehaviorLog.info("[NETHER] sovereign risen run={} at={} level={} health={}", state.run(), blaze.blockPosition(), level, BASE_HEALTH * SpawnScaling.healthMultiplier(level));
 		return blaze;
 	}
 
@@ -365,10 +379,13 @@ public final class BlazeSovereign {
 
 	/** Forgets the risen Sovereign; the next run's rises afresh. Test hook and reset. */
 	static void forget() {
+		// The raid's Sovereign only: a free one keeps its state across a raid reset.
+		if (current != null) {
+			SovereignSpecials.forget(current);
+			SovereignCharge.forget(current);
+		}
 		current = null;
 		held = null;
-		SovereignSpecials.forget();
-		SovereignCharge.forget();
 	}
 
 	static boolean burns(final DamageSource source) {
