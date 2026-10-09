@@ -278,9 +278,15 @@ public final class TowerElites {
 	/** Raises the floor's elite or boss in front of its portal, kept near it. */
 	public static @Nullable Mob rise(final ServerLevel tower, final int floor, final TowerRank rank) {
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = guardianPool(floor);
-		EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
-		Mob mob = kind.create(tower, EntitySpawnReason.EVENT);
+		TowerBosses.Raised sovereign = rank == TowerRank.BOSS && TowerBosses.sovereignFloor(floor) ? TowerBosses.create(tower, floor) : null;
+		Mob mob;
+		if (sovereign != null) {
+			mob = sovereign.mob();
+		} else {
+			List<EntityType<? extends Mob>> pool = guardianPool(floor);
+			EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
+			mob = kind.create(tower, EntitySpawnReason.EVENT);
+		}
 		if (mob == null) {
 			return null;
 		}
@@ -294,7 +300,12 @@ public final class TowerElites {
 			if (!tower.isLoaded(feet) || !TowerMobs.standsFree(tower, mob, feet)) {
 				continue;
 			}
-			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)], rank);
+			TowerElement element = TowerElement.values()[random.nextInt(TowerElement.values().length)];
+			if (sovereign != null) {
+				TowerBosses.settle(sovereign, floor, element);
+			} else {
+				TowerMobs.makeTowerMob(mob, floor, element, rank);
+			}
 			if (!tower.addFreshEntity(mob)) {
 				return null;
 			}

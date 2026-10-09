@@ -51,6 +51,7 @@
 			"com.stella.tower.TowerWeatherGameTest",
 			"com.stella.tower.TowerGreatHallGameTest",
 			"com.stella.tower.TowerPropsGameTest",
+			"com.stella.tower.TowerBossBridgeGameTest",
 			"com.stella.tower.TowerLostCastleVariantGameTest",
 			"com.stella.tower.TowerArchetypeSpawnGameTest",
 			"com.stella.tower.TowerPreviewGameTest",

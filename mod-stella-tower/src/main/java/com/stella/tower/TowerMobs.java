@@ -145,6 +145,17 @@ public final class TowerMobs {
 		return cap / k;
 	}
 
+	/**
+	 * Makes a mob that is not the tower's own a tower mob of this floor, as it is: its floor, element and rank, and the
+	 * marks that keep the mobs mod's rolls off it. Its health, attributes and hits are its maker's, and are not touched.
+	 */
+	public static void adopt(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
+		mob.setAttached(STATE, new State(floor, element, 1.0, rank));
+		mob.addTag(TAG);
+		mob.addTag(NO_SPAWN_ROLL_TAG);
+		mob.setPersistenceRequired();
+	}
+
 	/** Makes a mob a tower mob of this floor, in this element, at full health. */
 	public static void makeTowerMob(final Mob mob, final int floor, final TowerElement element) {
 		makeTowerMob(mob, floor, element, TowerRank.MOB);
