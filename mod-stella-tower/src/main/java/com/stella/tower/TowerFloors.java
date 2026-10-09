@@ -565,6 +565,8 @@ public final class TowerFloors {
 			case TowerVolume.CHAIN -> Blocks.IRON_CHAIN.defaultBlockState();
 			case TowerVolume.CLUSTER -> Blocks.AMETHYST_CLUSTER.defaultBlockState().setValue(AmethystClusterBlock.FACING, Direction.DOWN);
 			case TowerVolume.FRAME -> TowerBlocks.TOWER_FRAME.defaultBlockState();
+			case TowerVolume.DAIS_STAIR_EAST -> TowerBlocks.TOWER_STAIR.skinned(plan.biome().biome().daisSkin()).setValue(StairBlock.FACING, Direction.EAST);
+			case TowerVolume.DAIS_STAIR_WEST -> TowerBlocks.TOWER_STAIR.skinned(plan.biome().biome().daisSkin()).setValue(StairBlock.FACING, Direction.WEST);
 			case TowerVolume.BIOME_BLOCK -> BiomeBlocks.state(volume.code(x, y, z));
 			case TowerVolume.PORTAL_FILL -> TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.Z);
 			default -> Blocks.AIR.defaultBlockState();

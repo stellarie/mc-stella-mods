@@ -32,7 +32,8 @@ public enum TowerSkin implements StringRepresentable {
 	PURPUR_BLOCK,
 	PRISMARINE_BRICKS,
 	DARK_PRISMARINE,
-	MUD_BRICKS;
+	MUD_BRICKS,
+	COBBLESTONE;
 
 	private final String name = this.name().toLowerCase(Locale.ROOT);
 

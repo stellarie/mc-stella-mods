@@ -2,6 +2,7 @@ package com.stella.tower;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -39,7 +40,11 @@ public final class BiomeBlocks {
 	public static final byte OAK_LOG_X = 22;
 	public static final byte OAK_LOG_Z = 23;
 	public static final byte STONE_BRICKS = 24;
-	public static final byte COUNT = 25;
+	public static final byte CHAIN = 25;
+	public static final byte HANGING_LANTERN = 26;
+	public static final byte SOUL_CAMPFIRE = 27;
+	public static final byte SKULL = 28;
+	public static final byte COUNT = 29;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -69,6 +74,10 @@ public final class BiomeBlocks {
 		define(OAK_LOG_X, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X), TowerWalk.SOLID);
 		define(OAK_LOG_Z, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z), TowerWalk.SOLID);
 		define(STONE_BRICKS, Blocks.CRACKED_STONE_BRICKS.defaultBlockState(), TowerWalk.SOLID);
+		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
+		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
+		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
+		define(SKULL, Blocks.SKELETON_SKULL.defaultBlockState(), TowerWalk.SOLID);
 	}
 
 	private BiomeBlocks() {
@@ -96,6 +105,6 @@ public final class BiomeBlocks {
 
 	/** Whether the entry gives light. */
 	public static boolean lights(final byte code) {
-		return code == LANTERN;
+		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE;
 	}
 }

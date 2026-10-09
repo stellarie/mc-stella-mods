@@ -71,6 +71,9 @@
     },
     "skin=mud_bricks": {
       "model": "minecraft:block/mud_bricks"
+    },
+    "skin=cobblestone": {
+      "model": "minecraft:block/cobblestone"
     }
   }
 }

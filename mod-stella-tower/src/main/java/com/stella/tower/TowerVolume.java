@@ -56,6 +56,9 @@ public final class TowerVolume implements TowerWalk.Space {
 	public static final byte PORTAL_FILL = 26;
 	/** A biome floor's block: the palette entry is in {@link #code}. */
 	public static final byte BIOME_BLOCK = 27;
+	/** A step of the portal's stair, in the biome's stone, climbing east or west. */
+	public static final byte DAIS_STAIR_EAST = 28;
+	public static final byte DAIS_STAIR_WEST = 29;
 
 	/** How high above a story a ceiling may be and still take a lamp; a higher one has a lantern hung from it. */
 	public static final int CEILING_REACH = 9;
@@ -416,6 +419,15 @@ public final class TowerVolume implements TowerWalk.Space {
 		}
 		for (BlockPos pos : plan.portalFrame()) {
 			set(pos.getX() - origin.getX(), pos.getY() - TowerLayout.BASE_Y, pos.getZ() - origin.getZ(), FRAME);
+		}
+		if (plan.isBiome()) {
+			for (BiomeDraft.Piece piece : plan.biome().decor(plan)) {
+				if (piece.kind() == BIOME_BLOCK) {
+					block(piece.x(), piece.y(), piece.z(), piece.code());
+				} else {
+					set(piece.x(), piece.y(), piece.z(), piece.kind());
+				}
+			}
 		}
 		for (BlockPos pos : plan.portalInside()) {
 			int x = pos.getX() - origin.getX();

@@ -76,6 +76,15 @@ public final class TowerBlocks {
 		.sound(SoundType.WOOD)
 		.pushReaction(PushReaction.IMMOVEABLE));
 
+	/** The stair up to a floor's portal. It cannot be mined, blown up, pushed, or broken by a wither or the dragon. */
+	public static final TowerStairBlock TOWER_STAIR = register("tower_stair", properties -> new TowerStairBlock(TOWER_WALL.defaultBlockState(), properties),
+		BlockBehaviour.Properties.of()
+			.mapColor(MapColor.COLOR_BLACK)
+			.strength(-1.0F, 3_600_000.0F)
+			.noLootTable()
+			.sound(SoundType.POLISHED_DEEPSLATE)
+			.pushReaction(PushReaction.IMMOVEABLE));
+
 	/** The traps, one block for each theme that is laid. */
 	public static final java.util.Map<TrapTheme, TowerTrapBlock> TRAPS = registerTraps();
 

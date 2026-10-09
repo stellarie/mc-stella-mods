@@ -66,6 +66,59 @@ public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boo
 		return columns;
 	}
 
+	/** One block of the dais's dressing: a kind of the volume, or a palette entry when the kind is a biome block. */
+	record Piece(int x, int y, int z, byte kind, byte code) {
+	}
+
+	/**
+	 * The portal's dressing, by room offsets: the stair's steps in the biome's stone, a pillar at each corner of the
+	 * platform topped by a lamp, a gate of two pillars and a lintel round the frame with a lantern hung at each side,
+	 * a brazier at each front corner, and a skull on a post at each end of the apron.
+	 */
+	List<Piece> decor(final TowerPlan plan) {
+		int f = plan.portalFacing();
+		int px = plan.portalX();
+		int pz = plan.portalZ();
+		int s = this.steps;
+		List<Piece> pieces = new ArrayList<>();
+		byte climbs = f == 1 ? TowerVolume.DAIS_STAIR_WEST : TowerVolume.DAIS_STAIR_EAST;
+		for (int k = 1; k < s; k++) {
+			for (int z = pz - 3 - k; z <= pz + 4 + k; z++) {
+				pieces.add(new Piece(px + f * (2 + k), s - k - 1, z, climbs, (byte) 0));
+			}
+		}
+		for (int sx : new int[] {-2, 2}) {
+			for (int z : new int[] {pz - 3, pz + 4}) {
+				pillar(pieces, px + sx, z, s, s + 6);
+			}
+		}
+		for (int z : new int[] {pz - 2, pz + 3}) {
+			pillar(pieces, px, z, s, s + 6);
+		}
+		for (int z = pz - 1; z <= pz + 2; z++) {
+			pieces.add(new Piece(px, s + 6, z, TowerVolume.PLINTH, (byte) 0));
+		}
+		for (int z : new int[] {pz - 1, pz + 2}) {
+			pieces.add(new Piece(px, s + 5, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.CHAIN));
+			pieces.add(new Piece(px, s + 4, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.HANGING_LANTERN));
+		}
+		for (int z : new int[] {pz - 2, pz + 3}) {
+			pieces.add(new Piece(px + f * 2, s, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.SOUL_CAMPFIRE));
+		}
+		for (int z : new int[] {pz - 3 - s, pz + 4 + s}) {
+			pieces.add(new Piece(px + f * (2 + s), 0, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.FENCE));
+			pieces.add(new Piece(px + f * (2 + s), 1, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.SKULL));
+		}
+		return pieces;
+	}
+
+	private static void pillar(final List<Piece> pieces, final int x, final int z, final int from, final int to) {
+		for (int y = from; y <= to; y++) {
+			pieces.add(new Piece(x, y, z, TowerVolume.PLINTH, (byte) 0));
+		}
+		pieces.add(new Piece(x, to + 1, z, TowerVolume.LAMP, (byte) 0));
+	}
+
 	/** The dais as absolute positions, each column filled from the ground's top block up. */
 	List<BlockPos> plinth(final TowerPlan plan) {
 		BlockPos origin = plan.origin();
