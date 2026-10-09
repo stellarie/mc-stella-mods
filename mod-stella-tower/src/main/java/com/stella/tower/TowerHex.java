@@ -30,6 +30,28 @@ public final class TowerHex {
 	public record Cell(int cx, int cz, BlockPos middle) {
 	}
 
+	/**
+	 * One 2 x 2 corner of a way, where its floor is not the crossing. {@code x0}, {@code z0} is its low
+	 * corner, {@code tuckX}, {@code tuckZ} the column that touches both walls of the corner, and
+	 * {@code dx}, {@code dz} the steps from that column into the room. A usable nook has four columns of the
+	 * hexagon and wall, not outside, behind both of its sides. A hub nook is one of the middle way's.
+	 */
+	public record Nook(int cx, int cz, int x0, int z0, int tuckX, int tuckZ, int dx, int dz, boolean usable, boolean hub) {
+		/** The nook's four columns, the tuck column first. */
+		public List<int[]> columns() {
+			List<int[]> columns = new ArrayList<>();
+			columns.add(new int[] {this.tuckX, this.tuckZ});
+			columns.add(new int[] {this.tuckX + this.dx, this.tuckZ});
+			columns.add(new int[] {this.tuckX, this.tuckZ + this.dz});
+			columns.add(new int[] {this.tuckX + this.dx, this.tuckZ + this.dz});
+			return columns;
+		}
+
+		public boolean holds(final int x, final int z) {
+			return x >= this.x0 && x < this.x0 + 2 && z >= this.z0 && z < this.z0 + 2;
+		}
+	}
+
 	/** What the footprint holds at a spot. */
 	public enum Part {
 		/** Outside the hexagon: no block of a storey stands here. */
@@ -117,6 +139,12 @@ public final class TowerHex {
 
 	/** The ways of one storey: every lattice cell whose middle the hexagon holds. */
 	public static List<Cell> cells() {
+		return CELLS;
+	}
+
+	private static final List<Cell> CELLS = held();
+
+	private static List<Cell> held() {
 		List<Cell> cells = new ArrayList<>();
 		for (int cz = 0; cz < COLS; cz++) {
 			for (int cx = 0; cx < COLS; cx++) {
@@ -126,7 +154,60 @@ public final class TowerHex {
 				}
 			}
 		}
-		return cells;
+		return List.copyOf(cells);
+	}
+
+	/** The way a column belongs to, or null for a column no held way owns. */
+	public static Cell cellOf(final int x, final int z) {
+		for (Cell cell : cells()) {
+			if (inCell(x, z, cell.cx(), cell.cz())) {
+				return cell;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Whether a column is a pocket: a fragment of a lattice cell that the hexagon cuts through but no held
+	 * way owns. A pocket is sealed with wall, so nothing can stand in it.
+	 */
+	public static boolean isPocket(final int x, final int z) {
+		return kind(x, z) == Part.WAY && cellOf(x, z) == null;
+	}
+
+	/** Whether a column is stone through every storey: the walls, and the pockets sealed into them. */
+	public static boolean solid(final int x, final int z) {
+		Part part = kind(x, z);
+		return part == Part.WALL || part == Part.WAY && cellOf(x, z) == null;
+	}
+
+	/** The 2 x 2 corners of every held way, cell by cell, four corners to a cell. */
+	public static List<Nook> nooks() {
+		List<Nook> nooks = new ArrayList<>();
+		List<Cell> cells = cells();
+		int edge = TowerMaze.PATH - 2;
+		for (Cell cell : cells) {
+			boolean hub = cell.cx() == COLS / 2 && cell.cz() == COLS / 2;
+			for (int iz = 0; iz < 2; iz++) {
+				for (int ix = 0; ix < 2; ix++) {
+					int x0 = cellX(cell.cx()) + (ix == 0 ? 0 : edge);
+					int z0 = cellZ(cell.cz()) + (iz == 0 ? 0 : edge);
+					int tuckX = ix == 0 ? x0 : x0 + 1;
+					int tuckZ = iz == 0 ? z0 : z0 + 1;
+					int dx = ix == 0 ? 1 : -1;
+					int dz = iz == 0 ? 1 : -1;
+					int wallX = ix == 0 ? cellX(cell.cx()) - TowerMaze.WALL : cellX(cell.cx()) + TowerMaze.PATH;
+					int wallZ = iz == 0 ? cellZ(cell.cz()) - TowerMaze.WALL : cellZ(cell.cz()) + TowerMaze.PATH;
+					boolean usable = true;
+					for (int a = 0; a < 2; a++) {
+						usable &= kind(x0 + a, z0) == Part.WAY && kind(x0 + a, z0 + 1) == Part.WAY;
+						usable &= kind(wallX, z0 + a) == Part.WALL && kind(x0 + a, wallZ) == Part.WALL;
+					}
+					nooks.add(new Nook(cell.cx(), cell.cz(), x0, z0, tuckX, tuckZ, dx, dz, usable, hub));
+				}
+			}
+		}
+		return nooks;
 	}
 
 	/** A storey's floor, as a height from the piece's own floor. */

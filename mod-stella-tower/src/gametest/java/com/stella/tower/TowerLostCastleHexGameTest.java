@@ -21,7 +21,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
  * Every castle is the same hexagonal maze: a six-sided footprint, {@link TowerHex#STOREYS} storeys of ways
- * {@link TowerMaze#PATH} blocks wide, at least {@link LostCastleHex#CHESTS_PER_STOREY} stocked chests on each of
+ * {@link TowerMaze#PATH} blocks wide, exactly {@link LostCastleHex#chestBlocksAt} stocked chest blocks on each of
  * them, a breached south wall for its way in, the lost room's portal on the top storey, and no lava anywhere.
  * Every bound is read from the constant the castle ships with, so moving a constant moves its guard.
  */
@@ -109,7 +109,7 @@ public class TowerLostCastleHexGameTest {
 					outsideHeld += held ? 1 : 0;
 				} else if (part == TowerHex.Part.WAY) {
 					open += held ? 0 : 1;
-					if (held && TowerHex.onCrossing(x, z)) {
+					if (held && TowerHex.onCrossing(x, z) && !TowerHex.isPocket(x, z)) {
 						blocked.add(x + "," + z);
 					}
 				} else {
@@ -389,7 +389,7 @@ public class TowerLostCastleHexGameTest {
 		return true;
 	}
 
-	/** Whether every storey holds at least {@link LostCastleHex#CHESTS_PER_STOREY} chests, each with loot in it. */
+	/** Whether every storey holds exactly {@link LostCastleHex#chestBlocksAt} chest blocks, each with loot in it. */
 	static String chests(final TowerLostRoomGameTest.Arena arena) {
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
@@ -404,8 +404,8 @@ public class TowerLostCastleHexGameTest {
 					}
 				}
 			}
-			if (stocked < LostCastleHex.CHESTS_PER_STOREY) {
-				return "storey " + storey + " holds " + stocked + " stocked chests, not " + LostCastleHex.CHESTS_PER_STOREY;
+			if (stocked != LostCastleHex.chestBlocksAt(storey)) {
+				return "storey " + storey + " holds " + stocked + " stocked chests, not " + LostCastleHex.chestBlocksAt(storey);
 			}
 		}
 		return "";

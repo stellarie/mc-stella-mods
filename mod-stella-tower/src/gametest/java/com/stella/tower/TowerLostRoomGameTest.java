@@ -238,8 +238,8 @@ public class TowerLostRoomGameTest {
 		helper.assertTrue(portalOk && onTop, "the lost room's portal is not lit on the top storey at " + portal);
 		helper.assertTrue(open == LostCastleHex.BREACH * (LostCastleHex.BREACH_HEIGHT - 1) && walled && lit,
 			"the breach in the south wall is not open, walled at its sides and lit: open=" + open + " walled=" + walled + " lit=" + lit);
-		helper.assertTrue(chests >= TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY,
-			"the castle has " + chests + " stocked chests, not " + TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY);
+		helper.assertTrue(chests == LostCastleHex.castleChestBlocks(),
+			"the castle has " + chests + " stocked chests, not " + LostCastleHex.castleChestBlocks());
 		helper.assertTrue(cobwebs > 0 && rubble > 0 && bones > 0 && candles > 0 && chains > 0, "the castle is not ruined");
 		helper.succeed();
 	}

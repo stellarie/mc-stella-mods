@@ -18,10 +18,17 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * then ruins it: cracked and missing floor, rubble, cobwebs, candles, skulls and chains.
  */
 public final class LostCastleHex {
-	/** At least this many chests stand on every storey: oniichan asked for six a floor. */
-	public static final int CHESTS_PER_STOREY = 6;
-	/** The tries a ruin block or a chest takes to find a spot that keeps a way crossable. */
-	private static final int SPOT_TRIES = 12;
+	/** The chest blocks of the ground, a middle and the top storey: a double chest is two blocks, and the top storey keeps its workstation chest. */
+	public static final int CHEST_BLOCKS_GROUND = 2;
+	public static final int CHEST_BLOCKS_MIDDLE = 3;
+	public static final int CHEST_BLOCKS_TOP = 3;
+	/** No castle holds fewer double chests than this. */
+	public static final int MIN_DOUBLES = 2;
+	/** Every chest block is stocked with this many loot rolls. */
+	public static final int CHEST_ROLLS = 15;
+	private static final long DECAY_SALT = 0x4445434159L;
+	private static final long MAZE_SALT = 0x4D415A45L;
+	private static final long GATE_SALT = 0x47415445L;
 	/** How many candles, skulls, chains, floor gaps, rubble blocks, cobwebs and growths every storey is given. */
 	public static final int CANDLES = 4;
 	public static final int SKULLS = 4;
@@ -42,6 +49,31 @@ public final class LostCastleHex {
 	private static final int PORTAL_STEP = 2;
 
 	private LostCastleHex() {
+	}
+
+	/** The chest blocks a storey holds, by its place in the castle. */
+	public static int chestBlocksAt(final int storey) {
+		return storey == 0 ? CHEST_BLOCKS_GROUND : storey == TowerHex.STOREYS - 1 ? CHEST_BLOCKS_TOP : CHEST_BLOCKS_MIDDLE;
+	}
+
+	/** The chest blocks a whole castle holds. */
+	public static int castleChestBlocks() {
+		int sum = 0;
+		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
+			sum += chestBlocksAt(storey);
+		}
+		return sum;
+	}
+
+	/** A number from a seed and a spot alone, so no chunk of a castle can draw it differently from another. */
+	static int hash(final long seed, final int x, final int y, final int z) {
+		long h = seed ^ (x * 0x9E3779B97F4A7C15L) ^ (y * 0xC2B2AE3D27D4EB4FL) ^ (z * 0x165667B19E3779F9L);
+		h ^= h >>> 33;
+		h *= 0xFF51AFD7ED558CCDL;
+		h ^= h >>> 33;
+		h *= 0xC4CEB9FE1A85EC53L;
+		h ^= h >>> 33;
+		return (int) (h >>> 32);
 	}
 
 	/** The first block of the breach in the ground storey's south wall, and its middle. */
@@ -78,12 +110,15 @@ public final class LostCastleHex {
 		return inBreach(x, y, z) && y == 1 && (x == entranceLow() || x == entranceHigh());
 	}
 
-	/** Lays the castle: its storeys, their ways, the portal on the top one, and the ruin over all of it. */
-	static void build(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource seed,
-		final LostCastlePalette palette) {
+	/**
+	 * Lays the castle: its storeys, their ways, the portal on the top one, and the ruin over all of it. Every
+	 * choice comes from the seed and the plan, and none from a block already laid, so a castle built one
+	 * chunk at a time is the castle built whole.
+	 */
+	static void build(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final long ruinSeed,
+		final LostCastlePalette palette, final LostCastlePlan plan) {
 		BlockState wall = palette.wall().defaultBlockState();
 		BlockState air = Blocks.AIR.defaultBlockState();
-		RandomSource draw = RandomSource.create(seed.nextLong() ^ 0x4845584CL);
 		List<TowerHex.Cell> cells = TowerHex.cells();
 		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
 			int feet = TowerHex.floorAt(storey) + 1;
@@ -91,21 +126,19 @@ public final class LostCastleHex {
 			int floor = TowerHex.floorAt(storey);
 			for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 				for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-					TowerHex.Part part = TowerHex.kind(x, z);
-					if (part == TowerHex.Part.OUT) {
+					if (TowerHex.kind(x, z) == TowerHex.Part.OUT) {
 						continue;
 					}
-					// A way is a lattice cell the hexagon holds, which is the one test TowerHex.cells() reads:
-					// the lattice alone would open the two corner cells as shafts through the outer wall.
-					boolean open = part == TowerHex.Part.WAY;
+					// A way is a cell the hexagon holds: the cut fragments of the corner cells are sealed.
+					boolean open = TowerHex.cellOf(x, z) != null;
 					for (int y = floor; y <= ceiling; y++) {
 						piece.set(level, bb, open && y >= feet && y < ceiling ? air : wall, x, y, z);
 					}
 				}
 			}
 			// The stone decays before this storey's ways are cut, so no door and no stair is closed again.
-			decay(piece, level, bb, draw, storey);
-			carve(piece, level, bb, cells, draw, feet, ceiling - 1);
+			decay(piece, level, bb, ruinSeed, storey);
+			carve(piece, level, bb, cells, RandomSource.create(ruinSeed ^ MAZE_SALT ^ (storey * 0x9E3779B1L)), feet, ceiling - 1);
 			if (storey + 1 < TowerHex.STOREYS) {
 				stair(piece, level, bb, cells, storey);
 			}
@@ -114,8 +147,8 @@ public final class LostCastleHex {
 		for (int storey = 0; storey + 1 < TowerHex.STOREYS; storey++) {
 			stairFill(piece, level, bb, cells, storey);
 		}
-		entrance(piece, level, bb, draw, palette);
-		furnish(piece, level, bb, draw);
+		entrance(piece, level, bb, RandomSource.create(ruinSeed ^ GATE_SALT), palette);
+		dress(piece, level, bb, plan);
 	}
 
 	/** Opens the ways between the storey's cells: a maze over all of them, then a few doors more. */
@@ -264,98 +297,50 @@ public final class LostCastleHex {
 		piece.set(level, bb, TowerBlocks.TOWER_LAMP.defaultBlockState(), insideHigh, BREACH_HEIGHT + 1, row);
 	}
 
-	/** One storey's decay pass: the air in its walls closed up again, and its stone gone cracked and green. */
-	private static void decay(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw, final int storey) {
+	/** One storey's decay pass: its stone gone cracked and green, each block by its own spot and the seed. */
+	private static void decay(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final long ruinSeed, final int storey) {
 		int ceiling = TowerHex.ceilingAt(storey);
 		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				if (TowerHex.kind(x, z) != TowerHex.Part.WALL) {
+				if (!TowerHex.solid(x, z)) {
 					continue;
 				}
 				for (int y = TowerHex.floorAt(storey); y <= ceiling; y++) {
-					if (piece.get(level, bb, x, y, z).isAir()) {
-						piece.set(level, bb, Blocks.COBBLESTONE.defaultBlockState(), x, y, z);
-					} else if (draw.nextInt(DECAY) == 0) {
-						piece.set(level, bb, draw.nextBoolean() ? Blocks.CRACKED_STONE_BRICKS.defaultBlockState() : Blocks.MOSSY_STONE_BRICKS.defaultBlockState(), x, y, z);
+					int h = hash(ruinSeed ^ DECAY_SALT, x, y, z);
+					if (Math.floorMod(h, DECAY) == 0) {
+						piece.set(level, bb, (h >>> 8 & 1) == 0 ? Blocks.CRACKED_STONE_BRICKS.defaultBlockState() : Blocks.MOSSY_STONE_BRICKS.defaultBlockState(), x, y, z);
 					}
 				}
 			}
 		}
 	}
 
-	/** The furniture of every storey: chests, candles, skulls, chains, lamps, gaps and the lost room's portal. */
-	private static void furnish(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw) {
+	/** The furniture of every storey as the plan lays it: chests, ruin and lamps, then the lost room's portal. */
+	private static void dress(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan plan) {
 		List<TowerHex.Cell> cells = TowerHex.cells();
-		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
-			int feet = TowerHex.floorAt(storey) + 1;
-			int ceiling = TowerHex.ceilingAt(storey);
-			for (int i = 0; i < CHESTS_PER_STOREY; i++) {
-				chest(piece, level, bb, draw, cells, feet);
+		for (LostCastlePlan.FloorPlan floor : plan.floors()) {
+			int feet = TowerHex.floorAt(floor.storey()) + 1;
+			int ceiling = TowerHex.ceilingAt(floor.storey());
+			for (LostCastlePlan.Chest chest : floor.chests()) {
+				piece.chestSite(level, bb, feet, chest);
 			}
-			for (int i = 0; i < CANDLES; i++) {
-				place(piece, level, bb, draw, cells, feet,
-					candle(draw), 2);
-			}
-			for (int i = 0; i < SKULLS; i++) {
-				place(piece, level, bb, draw, cells, feet, Blocks.SKELETON_SKULL.defaultBlockState(), 3);
-			}
-			for (int i = 0; i < RUBBLE; i++) {
-				place(piece, level, bb, draw, cells, feet, Blocks.COBBLESTONE.defaultBlockState(), 3);
-			}
-			for (int i = 0; i < GROWTH; i++) {
-				place(piece, level, bb, draw, cells, feet,
-					draw.nextBoolean() ? Blocks.BROWN_MUSHROOM.defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState(), 3);
-			}
-			for (int i = 0; i < COBWEBS; i++) {
-				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
-					TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-					int x = spread(cell, 3, draw, 0);
-					int z = spread(cell, 3, draw, 1);
-					if (roomForRuin(x, feet, z) && piece.get(level, bb, x, feet, z).isAir()) {
-						piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, feet, z);
-						break;
+			for (LostCastlePlan.Scatter item : floor.scatter()) {
+				switch (item.kind()) {
+					case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, item.arg()), item.x(), feet, item.z());
+					case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState(), item.x(), feet, item.z());
+					case RUBBLE -> piece.set(level, bb, Blocks.COBBLESTONE.defaultBlockState(), item.x(), feet, item.z());
+					case GROWTH -> piece.set(level, bb, item.arg() == 0 ? Blocks.BROWN_MUSHROOM.defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState(), item.x(), feet, item.z());
+					case COBWEB -> piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), item.x(), feet, item.z());
+					case CHAIN -> {
+						for (int drop = 1; drop <= item.arg(); drop++) {
+							piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), item.x(), ceiling - drop, item.z());
+						}
 					}
-				}
-			}
-			for (int i = 0; i < CHAINS; i++) {
-				for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
-					TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-					int x = spread(cell, 3, draw, 0);
-					int z = spread(cell, 3, draw, 1);
-					// A chain hangs into the room a walker needs, so it keeps off the crossing, the stair and the portal.
-					if (!roomForRuin(x, feet, z)) {
-						continue;
-					}
-					// A chain hangs from the ceiling onto open air, so no block is left holding nothing.
-					if (!piece.get(level, bb, x, ceiling - 1, z).isAir()) {
-						continue;
-					}
-					for (int drop = 1; drop <= 1 + draw.nextInt(2); drop++) {
-						piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, ceiling - drop, z);
-					}
-					break;
-				}
-			}
-			for (int i = 0; i < FLOOR_GAPS; i++) {
-				TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-				int x = spread(cell, 3, draw, 0);
-				int z = spread(cell, 3, draw, 1);
-				// A gap under the crossing would take the floor out from under the walker who uses it.
-				if (TowerHex.onCrossing(x, z)) {
-					continue;
-				}
-				// A gap in the corner a stair climbs through would leave its steps and their approach with
-				// no floor, so the walker drops past the storey instead of reaching it.
-				if (inStairLane(x, z)) {
-					continue;
-				}
-				if (!standsOn(piece, level, bb, x, feet - 1, z)) {
-					continue;
-				}
-				if (storey > 0 && draw.nextInt(2) == 0) {
-					piece.set(level, bb, Blocks.AIR.defaultBlockState(), x, feet - 1, z);
-				} else {
-					piece.set(level, bb, draw.nextBoolean() ? Blocks.CRACKED_STONE_BRICKS.defaultBlockState() : Blocks.MOSSY_STONE_BRICKS.defaultBlockState(), x, feet - 1, z);
+					case GAP -> piece.set(level, bb, switch (item.arg()) {
+						case 0 -> Blocks.AIR.defaultBlockState();
+						case 1 -> Blocks.CRACKED_STONE_BRICKS.defaultBlockState();
+						default -> Blocks.MOSSY_STONE_BRICKS.defaultBlockState();
+					}, item.x(), feet - 1, item.z());
 				}
 			}
 			for (TowerHex.Cell cell : cells) {
@@ -387,32 +372,8 @@ public final class LostCastleHex {
 		return cells.get(0);
 	}
 
-	/** Puts one ruin block on open floor of a drawn cell, where the floor under it holds it up and the way stays crossable. */
-	private static void place(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw,
-		final List<TowerHex.Cell> cells, final int feet, final BlockState state, final int reach) {
-		for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
-			TowerHex.Cell cell = cells.get(draw.nextInt(cells.size()));
-			int x = spread(cell, reach, draw, 0);
-			int z = spread(cell, reach, draw, 1);
-			// The middle pair of a cell is the crossing every walker uses, and the ruin keeps to the way.
-			if (!roomForRuin(x, feet, z)) {
-				continue;
-			}
-			if (piece.get(level, bb, x, feet, z).isAir() && standsOn(piece, level, bb, x, feet - 1, z)) {
-				piece.set(level, bb, state, x, feet, z);
-				return;
-			}
-		}
-	}
-
-	/** A spot a ruin block may stand on: inside a way, off its crossing, and clear of the stair and the portal. */
-	private static boolean roomForRuin(final int x, final int feet, final int z) {
-		return TowerHex.kind(x, z) == TowerHex.Part.WAY && !TowerHex.onCrossing(x, z) && !inStairLane(x, z)
-			&& !inPortalHall(x, feet, z);
-	}
-
 	/** Whether a spot lies in the corner of the back cell a stair climbs through, which the ruin keeps off. */
-	private static boolean inStairLane(final int x, final int z) {
+	static boolean inStairLane(final int x, final int z) {
 		for (TowerHex.Cell cell : TowerHex.cells()) {
 			if (cell.cz() != TowerHex.COLS - 1) {
 				continue;
@@ -426,61 +387,10 @@ public final class LostCastleHex {
 		return false;
 	}
 
-	/** Stocks one chest on a storey: a drawn spot of a way, or the first open one, so the count holds. */
-	private static void chest(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw,
-		final List<TowerHex.Cell> cells, final int feet) {
-		int first = draw.nextInt(cells.size());
-		for (int cell = 0; cell < cells.size(); cell++) {
-			TowerHex.Cell at = cells.get((first + cell) % cells.size());
-			for (int attempt = 0; attempt < SPOT_TRIES; attempt++) {
-				int x = spread(at, 2, draw, 0);
-				int z = spread(at, 2, draw, 1);
-				if (chestAt(piece, level, bb, draw, x, feet, z)) {
-					return;
-				}
-			}
-		}
-		for (TowerHex.Cell at : cells) {
-			for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-				for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-					if (chestAt(piece, level, bb, draw, x, feet, z)) {
-						return;
-					}
-				}
-			}
-		}
-	}
-
-	/** Puts a stocked chest at a spot when the spot is open floor of a way, off its crossing and out of the hall. */
-	private static boolean chestAt(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final RandomSource draw,
-		final int x, final int feet, final int z) {
-		if (!roomForRuin(x, feet, z) || !piece.get(level, bb, x, feet, z).isAir() || !standsOn(piece, level, bb, x, feet - 1, z)) {
-			return false;
-		}
-		piece.chest(level, bb, x, feet, z, Direction.Plane.HORIZONTAL.getRandomDirection(draw));
-		return true;
-	}
-
 	/** Whether a spot is one the portal or its workstations take, so no chest is counted there and lost. */
-	private static boolean inPortalHall(final int x, final int y, final int z) {
+	static boolean inPortalHall(final int x, final int y, final int z) {
 		BlockPos spot = portalSpot();
 		return y == spot.getY() && Math.abs(x - spot.getX()) <= PORTAL_STEP
 			&& z >= spot.getZ() - 1 && z <= spot.getZ() + PORTAL_STEP + 1;
-	}
-
-	/** Whether the block at a spot holds a block up: a full block, and for the ruin's own kind, any sturdy face. */
-	private static boolean standsOn(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final int x, final int y, final int z) {
-		BlockState under = piece.get(level, bb, x, y, z);
-		return under.isFaceSturdy(level, piece.worldPos(x, y, z), Direction.UP);
-	}
-
-	private static BlockState candle(final RandomSource draw) {
-		return Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, 1 + draw.nextInt(4));
-	}
-
-	/** A spot of a cell's middle, spread within {@code reach} blocks of it along one side. */
-	private static int spread(final TowerHex.Cell cell, final int reach, final RandomSource draw, final int side) {
-		int middle = side == 0 ? cell.middle().getX() : cell.middle().getZ();
-		return middle + draw.nextInt(2 * reach + 1) - reach;
 	}
 }

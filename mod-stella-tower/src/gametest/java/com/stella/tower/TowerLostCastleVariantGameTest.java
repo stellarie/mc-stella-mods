@@ -175,7 +175,7 @@ public class TowerLostCastleVariantGameTest {
 		if (!stations) {
 			fault.append(" noStations");
 		}
-		if (stocked < TowerHex.STOREYS * LostCastleHex.CHESTS_PER_STOREY) {
+		if (stocked != LostCastleHex.castleChestBlocks()) {
 			fault.append(" chests=").append(stocked);
 		}
 		BlockPos gate = piece.gateInside();

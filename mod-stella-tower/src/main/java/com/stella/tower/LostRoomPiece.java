@@ -11,6 +11,7 @@ import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.AnvilBlock;
 import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.ChestBlock;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.VineBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.SlabType;
@@ -59,6 +61,8 @@ public class LostRoomPiece extends StructurePiece {
 	private final LostCastleVariant.Layout layout;
 	/** The surface this castle is built from: its variant's tower environment. */
 	private final LostCastlePalette palette;
+	/** What the castle holds, drawn from the seed alone on first use. */
+	private LostCastlePlan plan;
 
 	public LostRoomPiece(final RandomSource random, final int west, final int floor, final int north) {
 		this(west, floor, north, Direction.Plane.HORIZONTAL.getRandomDirection(random));
@@ -94,6 +98,14 @@ public class LostRoomPiece extends StructurePiece {
 
 	public LostCastleVariant variant() {
 		return this.variant;
+	}
+
+	/** What the castle holds: the same for every chunk of one castle. */
+	public LostCastlePlan plan() {
+		if (this.plan == null) {
+			this.plan = LostCastlePlan.of(this.ruinSeed, this.variant);
+		}
+		return this.plan;
 	}
 
 	/** The surface this castle is built from. */
@@ -171,7 +183,7 @@ public class LostRoomPiece extends StructurePiece {
 				this.fillColumnDown(level, wall, x, -1, z, chunkBB);
 			}
 		}
-		LostCastleHex.build(this, level, chunkBB, RandomSource.create(this.ruinSeed), this.palette);
+		LostCastleHex.build(this, level, chunkBB, this.ruinSeed, this.palette, plan());
 	}
 
 	void placeRubble(final WorldGenLevel level, final BoundingBox chunkBB, final RandomSource ruin, final int x, final int y, final int z) {
@@ -199,17 +211,56 @@ public class LostRoomPiece extends StructurePiece {
 
 	void chest(final WorldGenLevel level, final BoundingBox chunkBB, final int x, final int y, final int z, final Direction facing) {
 		this.placeBlock(level, Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing), x, y, z, chunkBB);
-		BlockPos at = worldPos(x, y, z);
+		stock(level, chunkBB, worldPos(x, y, z), x, y, z);
+	}
+
+	/** Stocks the chest block at a spot, when the spot lies in the chunk: {@link LostCastleHex#CHEST_ROLLS} rolls of tower loot. */
+	private void stock(final WorldGenLevel level, final BoundingBox chunkBB, final BlockPos at, final int x, final int y, final int z) {
 		if (!chunkBB.isInside(at) || !(level.getBlockEntity(at) instanceof ChestBlockEntity chest)) {
 			return;
 		}
 		RandomSource random = RandomSource.create(this.ruinSeed ^ 0x4C4F4F54L ^ (x * 31L + z) ^ (y == 1 ? 0L : y * 961L));
 		int floor = 1 + random.nextInt(LOOT_FLOORS);
-		for (int i = 0; i < TowerChests.ROLLS; i++) {
+		for (int i = 0; i < LostCastleHex.CHEST_ROLLS; i++) {
 			ItemStack stack = TowerChests.roll(level.getLevel(), floor, random).stack();
 			if (!stack.isEmpty()) {
 				chest.setItem(i, stack);
 			}
+		}
+	}
+
+	/**
+	 * A chest site of the plan. A double is written from the world's own view of its two halves, so a turned
+	 * or mirrored piece still joins them: the left half is the one whose partner lies clockwise of its facing.
+	 * Each half is written only inside the chunk, and both stay inside the piece.
+	 */
+	void chestSite(final WorldGenLevel level, final BoundingBox chunkBB, final int y, final LostCastlePlan.Chest site) {
+		if (!site.isDouble()) {
+			chest(level, chunkBB, site.x(), y, site.z(), site.facing());
+			return;
+		}
+		int fx = site.facing().getStepX();
+		int fz = -site.facing().getStepZ();
+		BlockPos a = worldPos(site.x(), y, site.z());
+		BlockPos b = worldPos(site.x2(), y, site.z2());
+		BlockPos ahead = worldPos(site.x() + fx, y, site.z() + fz);
+		Direction facing = Direction.NORTH;
+		for (Direction candidate : Direction.Plane.HORIZONTAL) {
+			if (a.relative(candidate).equals(ahead)) {
+				facing = candidate;
+			}
+		}
+		boolean aLeft = a.relative(facing.getClockWise()).equals(b);
+		BlockState base = Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, facing);
+		BlockState left = base.setValue(ChestBlock.TYPE, ChestType.LEFT);
+		BlockState right = base.setValue(ChestBlock.TYPE, ChestType.RIGHT);
+		if (chunkBB.isInside(a)) {
+			level.setBlock(a, aLeft ? left : right, Block.UPDATE_CLIENTS);
+			stock(level, chunkBB, a, site.x(), y, site.z());
+		}
+		if (chunkBB.isInside(b)) {
+			level.setBlock(b, aLeft ? right : left, Block.UPDATE_CLIENTS);
+			stock(level, chunkBB, b, site.x2(), y, site.z2());
 		}
 	}
 
