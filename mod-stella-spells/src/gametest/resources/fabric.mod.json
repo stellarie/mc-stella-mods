@@ -55,6 +55,7 @@
 			"com.stella.spells.ArcherBooksGameTest",
 			"com.stella.spells.ArcherReworkGameTest",
 			"com.stella.spells.ArcherRagnarokGameTest",
+			"com.stella.spells.SpectralQuiverDrawGameTest",
 			"com.stella.spells.ConcentrateSeamGameTest",
 			"com.stella.spells.PriestBooksGameTest",
 			"com.stella.spells.UnbrokenVowGameTest",

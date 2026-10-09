@@ -22,6 +22,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -740,11 +741,11 @@ public final class ArcherSkills {
 	}
 
 	/** True when this weapon fires with an empty quiver under the caster's Spectral Quiver. */
-	public static boolean ammoFree(final ServerPlayer caster, final ItemStack weapon) {
+	public static boolean ammoFree(final Player caster, final ItemStack weapon) {
 		return ranged(weapon) && hasSpectralQuiver(caster);
 	}
 
-	private static boolean hasSpectralQuiver(final ServerPlayer caster) {
+	private static boolean hasSpectralQuiver(final Player caster) {
 		return caster.hasEffect(SpellStatus.SPECTRAL_QUIVER);
 	}
 
