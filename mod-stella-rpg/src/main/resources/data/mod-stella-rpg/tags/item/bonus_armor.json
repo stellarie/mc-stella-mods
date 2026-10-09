@@ -1,4 +1,29 @@
 {
 	"replace": false,
-	"values": []
+	"values": [
+		{ "id": "mod-stella-ruins:champion_helmet", "required": false },
+		{ "id": "mod-stella-ruins:champion_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:champion_leggings", "required": false },
+		{ "id": "mod-stella-ruins:champion_boots", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_helmet", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_leggings", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_boots", "required": false },
+		{ "id": "mod-stella-ruins:hawkeye_helmet", "required": false },
+		{ "id": "mod-stella-ruins:hawkeye_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:hawkeye_leggings", "required": false },
+		{ "id": "mod-stella-ruins:hawkeye_boots", "required": false },
+		{ "id": "mod-stella-ruins:pilgrim_helmet", "required": false },
+		{ "id": "mod-stella-ruins:pilgrim_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:pilgrim_leggings", "required": false },
+		{ "id": "mod-stella-ruins:pilgrim_boots", "required": false },
+		{ "id": "mod-stella-ruins:silkweave_helmet", "required": false },
+		{ "id": "mod-stella-ruins:silkweave_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:silkweave_leggings", "required": false },
+		{ "id": "mod-stella-ruins:silkweave_boots", "required": false },
+		{ "id": "mod-stella-ruins:starweave_helmet", "required": false },
+		{ "id": "mod-stella-ruins:starweave_chestplate", "required": false },
+		{ "id": "mod-stella-ruins:starweave_leggings", "required": false },
+		{ "id": "mod-stella-ruins:starweave_boots", "required": false }
+	]
 }

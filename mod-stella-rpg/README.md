@@ -591,6 +591,9 @@ Listed gear carries stat and affix bonuses, the craft sum feeds it, `grant-bonus
 It counts like a weapon (main hand) or like armor (worn slot, and a shield in the offhand).
 It never rolls at random, because it has no tier. Both tags are empty by default. A pack or a mod adds ids with `"required": false` for a mod that may be absent.
 Pickaxes, shovels, and hoes carry nothing unless a pack lists them.
+This mod lists the gear of its siblings itself, each id with `"required": false`, so a pack without that sibling still loads:
+the nine crafted bows of `mod-stella-equips-enchants`, and the swords, axes, hammer, bows, and six armor sets of `mod-stella-ruins`.
+A new sibling item needs one line here. No sibling mod changes.
 
 ## Mined material profiles
 
