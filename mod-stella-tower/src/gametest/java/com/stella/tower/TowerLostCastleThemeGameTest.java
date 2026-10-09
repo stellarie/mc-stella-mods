@@ -51,7 +51,7 @@ public class TowerLostCastleThemeGameTest {
 						for (int y = feet; y < ceiling; y++) {
 							BlockState state = level.getBlockState(piece.worldPos(x, y, z));
 							for (LostRoomTheme.Prop prop : room.theme().recipe()) {
-								if (prop.matches(state)) {
+								if (prop.matches(state, floor.storey() == TowerHex.STOREYS - 1)) {
 									found.merge(prop, 1, Integer::sum);
 								}
 							}

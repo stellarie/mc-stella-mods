@@ -6,10 +6,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -39,6 +41,9 @@ public final class LostCastleHex {
 	public static final int RUBBLE = 2;
 	public static final int COBWEBS = 2;
 	public static final int GROWTH = 1;
+	/** Every room but the yard and the portal room holds this many pieces of clutter at least, and none holds more than the top. */
+	public static final int CLUTTER_MIN = 4;
+	public static final int CLUTTER_MAX = 10;
 	/** One wall block in this many comes down as a crack or a mossy stone. */
 	public static final int DECAY = 14;
 	/** The breach in the ground storey's south wall: how wide, how high, and how many blocks of it still stand. */
@@ -313,6 +318,10 @@ public final class LostCastleHex {
 		}
 	}
 
+	private static BlockState litCandle(final int count) {
+		return Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, count);
+	}
+
 	/** A block turned to face a direction, for every block that has a facing. */
 	private static BlockState facing(final BlockState state, final Direction facing) {
 		if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
@@ -326,7 +335,7 @@ public final class LostCastleHex {
 
 	/** Paints one prop of a room. A prop is one block, or two for a bed, or a stack for an altar or a hanging rack. */
 	private static void furnish(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan.Furnishing prop,
-		final int feet, final int ceiling) {
+		final int feet, final int ceiling, final boolean top) {
 		int x = prop.x();
 		int z = prop.z();
 		Direction face = prop.facing();
@@ -350,7 +359,7 @@ public final class LostCastleHex {
 			case HAY -> piece.set(level, bb, Blocks.HAY_BLOCK.defaultBlockState(), x, feet, z);
 			case BOOKSHELF -> piece.set(level, bb, Blocks.BOOKSHELF.defaultBlockState(), x, feet, z);
 			case LECTERN -> piece.set(level, bb, facing(Blocks.LECTERN.defaultBlockState(), face), x, feet, z);
-			case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, 1 + prop.arg() % 3), x, feet, z);
+			case CANDLE -> piece.set(level, bb, litCandle(1 + prop.arg() % 3), x, feet, z);
 			case CRATE -> piece.set(level, bb, Blocks.SPRUCE_PLANKS.defaultBlockState(), x, feet, z);
 			case PEW -> piece.set(level, bb, Blocks.OAK_SLAB.defaultBlockState(), x, feet, z);
 			case ALTAR -> {
@@ -359,8 +368,54 @@ public final class LostCastleHex {
 			}
 			case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, prop.arg()), x, feet, z);
 			case GRAVE -> piece.set(level, bb, Blocks.STONE_BRICK_SLAB.defaultBlockState(), x, feet, z);
-			case SOUL_LANTERN -> piece.set(level, bb, Blocks.SOUL_LANTERN.defaultBlockState(), x, feet, z);
+			// The top storey is lit by candles alone.
+			case SOUL_LANTERN -> piece.set(level, bb, top ? litCandle(1 + prop.arg() % 3) : Blocks.SOUL_LANTERN.defaultBlockState(), x, feet, z);
 		}
+	}
+
+	/** Paints one piece of clutter. Each block is one whose state does not depend on its neighbours. */
+	private static void litter(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePlan.Clutter item,
+		final int feet, final int ceiling) {
+		int x = item.x();
+		int z = item.z();
+		int arg = item.arg();
+		switch (item.kind()) {
+			case FLOOR_SLAB -> piece.set(level, bb, slab(arg).defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.BOTTOM), x, feet, z);
+			case CEILING_SLAB -> piece.set(level, bb, slab(arg).defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.TOP), x, ceiling - 1, z);
+			case CARPET -> piece.set(level, bb, carpet(arg).defaultBlockState(), x, feet, z);
+			case TRAPDOOR -> {
+				Direction[] turns = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+				BlockState door = (arg >> 3 & 1) == 0 ? Blocks.OAK_TRAPDOOR.defaultBlockState() : Blocks.SPRUCE_TRAPDOOR.defaultBlockState();
+				piece.set(level, bb, facing(door, turns[arg >> 1 & 3]).setValue(BlockStateProperties.OPEN, (arg & 1) == 1), x, feet, z);
+			}
+			case FLOWER_POT -> piece.set(level, bb, Blocks.FLOWER_POT.defaultBlockState(), x, feet, z);
+			case BONE_BLOCK -> piece.set(level, bb, Blocks.BONE_BLOCK.defaultBlockState(), x, feet, z);
+			case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, arg), x, feet, z);
+			case CANDLE -> piece.set(level, bb, litCandle(arg), x, feet, z);
+			case PROP_CANDLE -> piece.set(level, bb, litCandle(arg), x, feet + 1, z);
+			case COBWEB -> piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, ceiling - 1, z);
+		}
+	}
+
+	/** The carpet a clutter piece draws: four worn colours. */
+	private static Block carpet(final int arg) {
+		return switch (arg % LostCastlePlan.CARPET_COLOURS) {
+			case 0 -> Blocks.CARPET.gray();
+			case 1 -> Blocks.CARPET.lightGray();
+			case 2 -> Blocks.CARPET.brown();
+			default -> Blocks.CARPET.black();
+		};
+	}
+
+	/** The slab a clutter piece draws: three stones and two woods. */
+	private static Block slab(final int arg) {
+		return switch (arg % LostCastlePlan.SLAB_KINDS) {
+			case 0 -> Blocks.STONE_BRICK_SLAB;
+			case 1 -> Blocks.COBBLESTONE_SLAB;
+			case 2 -> Blocks.MOSSY_STONE_BRICK_SLAB;
+			case 3 -> Blocks.OAK_SLAB;
+			default -> Blocks.SPRUCE_SLAB;
+		};
 	}
 
 	/**
@@ -390,6 +445,7 @@ public final class LostCastleHex {
 		for (LostCastlePlan.FloorPlan floor : plan.floors()) {
 			int feet = TowerHex.floorAt(floor.storey()) + 1;
 			int ceiling = TowerHex.ceilingAt(floor.storey());
+			boolean top = floor.storey() == TowerHex.STOREYS - 1;
 			for (LostCastlePlan.Turret turret : floor.turrets()) {
 				turret(piece, level, bb, floor, turret, feet, ceiling);
 			}
@@ -398,15 +454,15 @@ public final class LostCastleHex {
 			}
 			for (LostCastlePlan.Room room : floor.rooms()) {
 				for (LostCastlePlan.Furnishing prop : room.props()) {
-					furnish(piece, level, bb, prop, feet, ceiling);
+					furnish(piece, level, bb, prop, feet, ceiling, top);
 				}
 			}
 			for (LostCastlePlan.Scatter item : floor.scatter()) {
 				switch (item.kind()) {
-					case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, item.arg()), item.x(), feet, item.z());
+					case CANDLE -> piece.set(level, bb, litCandle(item.arg()), item.x(), feet, item.z());
 					case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState(), item.x(), feet, item.z());
 					case RUBBLE -> piece.set(level, bb, Blocks.COBBLESTONE.defaultBlockState(), item.x(), feet, item.z());
-					case GROWTH -> piece.set(level, bb, item.arg() == 0 ? Blocks.BROWN_MUSHROOM.defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState(), item.x(), feet, item.z());
+					case GROWTH -> piece.set(level, bb, item.arg() == 0 && !top ? Blocks.BROWN_MUSHROOM.defaultBlockState() : Blocks.MOSS_CARPET.defaultBlockState(), item.x(), feet, item.z());
 					case COBWEB -> piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), item.x(), feet, item.z());
 					case CHAIN -> {
 						for (int drop = 1; drop <= item.arg(); drop++) {
@@ -420,7 +476,11 @@ public final class LostCastleHex {
 					}, item.x(), feet - 1, item.z());
 				}
 			}
-			for (TowerHex.Cell cell : cells) {
+			for (LostCastlePlan.Clutter item : floor.clutter()) {
+				litter(piece, level, bb, item, feet, ceiling);
+			}
+			// The top storey has no lamp: its light is candles.
+			for (TowerHex.Cell cell : top ? List.<TowerHex.Cell>of() : cells) {
 				piece.set(level, bb, TowerBlocks.TOWER_LAMP.defaultBlockState(), cell.middle().getX(), ceiling - 1, cell.middle().getZ());
 			}
 		}

@@ -486,6 +486,19 @@ Every planned floor is built with a double tower chest at each chest spot of its
   every room and every doorway stay clear. A few candles, skulls, chains, cobwebs, mossy and cracked stone,
   and gaps in the floor above the first storey are strewn over what is left. Stone decays at random. No
   lava, fire, magma, cactus, berry bush, powder snow, wither rose or TNT stands in a castle.
+- Clutter is laid over the rest (`LostCastlePlan.clutter`). Every room holds 4 to 10 pieces
+  (`LostCastleHex.CLUTTER_MIN`, `CLUTTER_MAX`), except the yard room on the ground storey and the portal room
+  on the top storey, which hold at most 10. Pieces on the floor are bottom slabs (stone brick, cobblestone,
+  mossy stone brick, oak, spruce), worn carpets, open and closed trapdoors, flower pots, bone blocks, skulls
+  and candles. Pieces under the ceiling are top slabs and cobwebs, which favour the corner columns. Every
+  storey holds at least one floor slab and one ceiling slab. Clutter only uses blocks whose state does not
+  depend on their neighbours. It never stands on a crossing, in a doorway, in the stair lane, in the portal
+  hall, on the yard path, in a turret or chest corner, or before a turret's open face. A ceiling slab never
+  hangs where a chain hangs or where the floor above has a gap.
+- The top storey is lit by candles alone. It has no tower lamps, its soul lanterns are candles, and its
+  growth is moss and not mushrooms. Each room but the portal room holds a lit candle, on the floor or, when
+  the room has no floor left, on a crafting table, a barrel or another prop with a flat top. The portal and its
+  frame keep their own glow. A dark top storey can spawn natural mobs.
 - The blue portal, 1 wide and 2 high and lined with tower frame, stands in the middle room of the top
   storey, with the workstations beside it: a crafting table with a lit candle, an anvil, a furnace and a
   chest of tower loot.
@@ -496,14 +509,14 @@ Every planned floor is built with a double tower chest at each chest spot of its
   from its seed alone, and nothing is chosen by reading blocks already laid.
 - Each storey hides spawners in turrets: a 2 by 2 pillar of wall in a room's corner, with a vanilla spawner
   set one block over the floor, and no air against it. A turret is covered by iron bars on one side, or by
-  stone alone with one accent block at its outer corner. The first and second storeys have one turret each.
-  The top storey has one in every room but the portal room, 8 in all. A spawner wakes when a player is
-  within 10 blocks, spawns up to 2 mobs within 3 blocks of it every 20 to 50 seconds, and lists mobs by its
-  storey's kind and the castle's environment. It never lists a creeper. Its light rule spans every level,
-  because the castle is lit.
+  stone alone with one accent block at its outer corner. The first and second storeys have two turrets
+  each, in two different rooms. The top storey has one in every room but the portal room, 8 in all. A
+  spawner wakes when a player is within 10 blocks, spawns up to 2 mobs within 3 blocks of it every 20 to 50
+  seconds, and lists mobs by its storey's kind and the castle's environment. It never lists a creeper. Its
+  light rule spans every level, because the castle is lit.
 - A mob a spawner raises in a castle is a tower mob of the players' average level less 5 to 15 more, as the
-  courtyard mobs are. It never rolls an elite or a boss. A storey holds at most 6 live spawner mobs, and the
-  top storey 10. A player can break a turret to reach its spawner and stop it.
+  courtyard mobs are. It never rolls an elite or a boss. A ground or middle storey holds at most 8 live spawner
+  mobs, and the top storey 10. A player can break a turret to reach its spawner and stop it.
 - The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its courtyard,
   each at the online players' average level less 5 to 15 more. They never rise again.
 - The castle's portal leads to its own room, an instance in the tower dimension west of the floors.
@@ -541,7 +554,8 @@ show seams where its chunks differ.
 
 - Find a castle in a new world: it stands on the ground, not in it. Approach it and meet its courtyard
   mobs. Walk all three storeys and check that the rooms read as different places and that the doorways and
-  floors stay clear. Find a turret, see the bars or the accent block, and wait near it for mobs.
+  floors stay clear. Check that the rooms feel cluttered, with slabs here and there, and that the top storey
+  is lit by candles only. Find a turret, see the bars or the accent block, and wait near it for mobs.
 - Enter the castle's portal, see the level message, clear the room, and return through the room's portal.
 
 ## Runes

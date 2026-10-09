@@ -54,7 +54,8 @@
 			"com.stella.tower.TowerLostCastleChestGameTest",
 			"com.stella.tower.TowerLostCastleSpawnerGameTest",
 			"com.stella.tower.TowerLostCastleOctagonGameTest",
-			"com.stella.tower.TowerLostCastleThemeGameTest"
+			"com.stella.tower.TowerLostCastleThemeGameTest",
+			"com.stella.tower.TowerLostCastleClutterGameTest"
 		]
 	},
 	"mixins": [

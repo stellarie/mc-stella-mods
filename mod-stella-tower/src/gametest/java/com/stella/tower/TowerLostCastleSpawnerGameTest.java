@@ -28,7 +28,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** The spawner in every storey's turret: where it stands, how it is set, and the tower mobs it raises. */
+/** The spawners in every storey's turrets: where it stands, how it is set, and the tower mobs it raises. */
 public class TowerLostCastleSpawnerGameTest {
 	/** The ticks the light engine takes to settle after a build, before any spawner is ticked. */
 	private static final int SETTLE_TICKS = 30;
@@ -93,7 +93,7 @@ public class TowerLostCastleSpawnerGameTest {
 		LostRoomPiece piece = arena.piece();
 		for (LostCastlePlan.FloorPlan floor : piece.plan().floors()) {
 			int count = spawners(level, piece, floor.storey());
-			int wanted = floor.storey() == TowerHex.STOREYS - 1 ? TowerHex.cells().size() - 1 : 1;
+			int wanted = floor.storey() == TowerHex.STOREYS - 1 ? 8 : 2;
 			if (count != floor.turrets().size() || count != wanted) {
 				return "storey " + floor.storey() + " holds " + count + " spawners for " + floor.turrets().size() + " turrets";
 			}
@@ -287,7 +287,7 @@ public class TowerLostCastleSpawnerGameTest {
 				}
 			}
 			TowerTestSupport.result("castleSpawnerRaises", "turrets=" + turrets + report);
-			helper.assertTrue(turrets == 1 + 1 + TowerHex.cells().size() - 1, "the castle holds " + turrets + " turrets");
+			helper.assertTrue(turrets == 2 + 2 + 8, "the castle holds " + turrets + " turrets");
 			players.forEach(player -> TowerTestSupport.leave(helper, player));
 			helper.succeed();
 		});
@@ -352,7 +352,7 @@ public class TowerLostCastleSpawnerGameTest {
 		all.forEach(Mob::discard);
 		helper.assertTrue(ground == LostCastles.storeyCap(0), "the ground storey holds " + ground + " spawner mobs, not the cap " + LostCastles.storeyCap(0));
 		helper.assertTrue(top == LostCastles.storeyCap(TowerHex.STOREYS - 1), "the top storey holds " + top + " spawner mobs, not the cap " + LostCastles.storeyCap(TowerHex.STOREYS - 1));
-		helper.assertTrue(LostCastles.storeyCap(0) == 6 && LostCastles.storeyCap(1) == 6 && LostCastles.storeyCap(TowerHex.STOREYS - 1) == 10, "the shipped caps are not 6, 6 and 10");
+		helper.assertTrue(LostCastles.storeyCap(0) == 8 && LostCastles.storeyCap(1) == 8 && LostCastles.storeyCap(TowerHex.STOREYS - 1) == 10, "the shipped caps are not 8, 8 and 10");
 		helper.assertTrue(upper == 3, "the next storey's three mobs were cut to " + upper + ": the cap is per storey");
 		helper.assertTrue(eventUntouched, "a mob that no spawner raised was changed");
 		helper.assertTrue(awayUntouched, "a spawner mob outside every castle was changed");

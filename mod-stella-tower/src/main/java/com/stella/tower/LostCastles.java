@@ -43,7 +43,7 @@ public final class LostCastles {
 	/** What a mob of a storey spawner carries, so the storey cap can count its own mobs. */
 	public static final String SPAWN_TAG = "mod-stella-tower.lost_castle_spawn";
 	/** The most spawner mobs alive on a ground or a middle storey of a castle, and on the top storey, which holds more turrets. */
-	public static final int STOREY_CAP = 6;
+	public static final int STOREY_CAP = 8;
 	public static final int TOP_STOREY_CAP = 10;
 	private static final Queue<LostRoomData.Castle> FOUND = new ConcurrentLinkedQueue<>();
 
