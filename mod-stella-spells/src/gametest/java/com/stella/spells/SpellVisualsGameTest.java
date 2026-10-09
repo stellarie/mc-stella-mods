@@ -44,7 +44,7 @@ public class SpellVisualsGameTest {
 	 */
 	private static final Set<String> MOVES_THE_CASTER = Set.of("gale_step", "charge", "leap_slam");
 	/** The self spells that read a foe on the look ray, so their cast needs one standing on that line. */
-	private static final Set<String> TARGET_READING_BOOKS = Set.of("piercing_shot", "rapid_fire", "hunters_mark", "arrow_repel");
+	private static final Set<String> TARGET_READING_BOOKS = Set.of("piercing_shot", "rapid_fire", "arrow_repel");
 
 	private static Comparator<SpellbookItem> movesLast() {
 		return Comparator.comparing((SpellbookItem book) -> MOVES_THE_CASTER.contains(book.definition().id().getPath()));
@@ -123,6 +123,8 @@ public class SpellVisualsGameTest {
 		ahead.setHealth(1000.0F);
 		player.getInventory().setItem(35, new ItemStack(Items.BOW));
 		player.getInventory().setItem(20, new ItemStack(Items.ARROW, 64));
+		// Arrow Crafting casts only with a material to turn into arrows.
+		player.getInventory().setItem(21, new ItemStack(Items.BONE, 64));
 		List<SpellbookItem> books = books(TargetMode.SELF);
 		books.sort(movesLast());
 		for (SpellbookItem book : books) {

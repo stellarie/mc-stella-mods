@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"F F",
+		" B ",
+		"F F"
+	],
+	"key": {
+		"F": "minecraft:stick",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:arrow_crafting",
+		"count": 1
+	}
+}

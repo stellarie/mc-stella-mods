@@ -22,6 +22,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -36,10 +37,14 @@ import org.jspecify.annotations.Nullable;
  * damage through {@link RpgBridge#skillDamage} with {@link School#ARCHER} exactly once, so no shot takes the
  * ranged dice a second time. Two books instead arm the next real arrow, and {@link SpellStatus#onHurt}
  * hands that arrow its blast through {@link #projectileDamage}.
- * Every book needs a bow or a crossbow. Only {@link #AMMO_BOOKS} also need an arrow or a bolt. A book
- * imbued on a bow casts from an arrow hit and needs neither.
+ * Every book needs a bow or a crossbow and no arrow. A quiver in the off hand lends its arrows to the skills
+ * that name them: each spent arrow adds its kind damage and effect to the hits it feeds. A book imbued on a
+ * bow casts from an arrow hit, needs neither, and spends nothing.
  */
 public final class ArcherSkills {
+	/** How many arrows one Arrow Crafting cast makes, and how many an awakened one makes. */
+	static final int ARROW_CRAFTING_ARROWS = 8;
+	static final int AWAKENED_ARROW_CRAFTING_ARROWS = 12;
 	/** How many arrows a triangle shot looses, and how often it looses them. */
 	static final int TRIANGLE_SHOT_ARROWS = 3;
 	static final double TRIANGLE_SHOT_CHANCE = 0.30;
@@ -83,10 +88,15 @@ public final class ArcherSkills {
 	/** Double Strafe's hits on its target, and the reach of its shot. */
 	static final int DOUBLE_STRAFE_HITS = 2;
 	static final double RAPID_FIRE_RANGE = 24.0;
-	/** Blitz Beat: how many strikes the falcon makes, and how many ticks apart. An awakened falcon strikes twice as often. */
-	static final int BLITZ_BEAT_STRIKES = 5;
-	static final int AWAKENED_BLITZ_BEAT_STRIKES = 10;
+	/** Blitz Beat: half an hour of a chance to call the falcon, which strikes this often, this many ticks apart. */
+	static final int BLITZ_BEAT_TICKS = 36_000;
+	static final double BLITZ_BEAT_CHANCE = 0.25;
+	static final double BLITZ_BEAT_BOW_CHANCE = 0.35;
+	static final int BLITZ_BEAT_STRIKES = 3;
+	static final int BLITZ_BEAT_BOW_STRIKES = 6;
 	static final int BLITZ_BEAT_INTERVAL_TICKS = 6;
+	/** An awakened falcon strikes this many times as often. */
+	static final int AWAKENED_BLITZ_BEAT_FACTOR = 2;
 	/** The critical chance Sharp Shooting adds to its own hits, and True Sight adds while it lasts. */
 	static final double SHARP_SHOOTING_CRIT_CHANCE = 0.30;
 	static final double TRUE_SIGHT_CRIT_CHANCE = 0.15;
@@ -103,8 +113,8 @@ public final class ArcherSkills {
 	static final double ARROW_REPEL_STRENGTH = 2.4;
 	static final double ARROW_REPEL_LIFT = 0.3;
 	static final double ARROW_REPEL_MIN_BLOCKS = 3.0;
-	/** The books that fire or spend a physical arrow, so they also need ammunition. */
-	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of("multishot", "explosive_arrow", "aimed_bolt", "triangle_shot");
+	/** The books that need ammunition. None does: a bow is enough, and a quiver adds its arrows to the skills. */
+	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of();
 	/** Explosive Arrow's splash, and the three bomblets an awakened one scatters. */
 	static final double EXPLOSIVE_SPLASH_RADIUS = 3.0;
 	static final int EXPLOSIVE_BOMBLETS = 3;
@@ -142,6 +152,7 @@ public final class ArcherSkills {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> clear());
 		// An aimed bolt and an explosive arrow are paid on the arrow that lands, not on the cast that armed it.
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterArrowDamage);
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterOwnBlow);
 	}
 
 	/** No shot, job or mark outlives the server it was put on, and none keeps a due tick from another server. */
@@ -151,6 +162,7 @@ public final class ArcherSkills {
 		JOBS.clear();
 		SNARES.clear();
 		PULSES_RUN.clear();
+		ArcherVisuals.clear();
 		clock = 0;
 	}
 
@@ -164,6 +176,7 @@ public final class ArcherSkills {
 		JOBS.remove(caster.getUUID());
 		SNARES.remove(caster.getUUID());
 		PULSES_RUN.remove(caster.getUUID());
+		ArcherVisuals.forget(caster);
 	}
 
 	/** The tick a job scheduled now would be due on, plus this many ticks. */
@@ -188,12 +201,59 @@ public final class ArcherSkills {
 		return PULSES_RUN.getOrDefault(caster.getUUID(), 0);
 	}
 
+	/** The test seam for the falcon roll: null rolls on the caster own source. */
+	private static volatile @Nullable RandomSource blitzRandom;
+
+	static void setBlitzRandom(final @Nullable RandomSource random) {
+		blitzRandom = random;
+	}
+
 	/** True while this caster's next arrow still owes a book; the test seam for the next-shot books. */
 	static boolean shotOwed(final ServerPlayer caster) {
 		return SHOTS.containsKey(caster.getUUID());
 	}
 
 	// ---- the fourteen books ----
+
+	/** Arrow Crafting: one material becomes arrows of its kind. It needs no bow. */
+	static boolean applyArrowCrafting(
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+	) {
+		ItemStack material = ItemStack.EMPTY;
+		ArrowItems.Craft craft = null;
+		for (ArrowItems.Craft candidate : ArrowItems.CRAFTS) {
+			if (caster.getOffhandItem().is(candidate.material())) {
+				material = caster.getOffhandItem();
+				craft = candidate;
+				break;
+			}
+		}
+		for (ArrowItems.Craft candidate : ArrowItems.CRAFTS) {
+			if (craft != null) {
+				break;
+			}
+			for (int slot = 0; slot < Inventory.INVENTORY_SIZE && craft == null; slot++) {
+				ItemStack stack = caster.getInventory().getItem(slot);
+				if (stack.is(candidate.material())) {
+					material = stack;
+					craft = candidate;
+				}
+			}
+		}
+		if (craft == null) {
+			return false;
+		}
+		material.shrink(1);
+		int count = modifiers.awakened() ? AWAKENED_ARROW_CRAFTING_ARROWS : ARROW_CRAFTING_ARROWS;
+		ItemStack arrows = new ItemStack(craft.arrow(), count);
+		caster.getInventory().add(arrows);
+		if (!arrows.isEmpty()) {
+			caster.spawnAtLocation((ServerLevel) caster.level(), arrows);
+		}
+		Spellbooks.LOGGER.info("[SPELL] event=ARROW_CRAFTING caster={} arrow={} count={}",
+			caster.getUUID(), BuiltInRegistries.ITEM.getKey(craft.arrow()), count);
+		return true;
+	}
 
 	/**
 	 * Grappling Hook: the arrow flies its arc to the first ground under the caster's look, and the caster
@@ -209,13 +269,14 @@ public final class ArcherSkills {
 		if (landing == null) {
 			return false;
 		}
-		spendOneArrow(caster);
+		ItemStack arrow = takeSkillArrow(caster);
+		ArcherVisuals.note(caster, arrow);
 		ServerLevel level = (ServerLevel) caster.level();
 		Vec3 from = caster.position();
+		Vec3 eye = caster.getEyePosition();
 		caster.teleportTo(landing.x, landing.y, landing.z);
 		caster.resetFallDistance();
-		line(level, caster.getEyePosition(), landing);
-		level.playSound(null, landing.x, landing.y, landing.z, SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.7F, 0.8F);
+		ArcherVisuals.trail(level, caster, book("multishot"), eye, landing, ArcherVisuals.colorOf(arrow));
 		Spellbooks.LOGGER.info("[SPELL] event=GRAPPLE caster={} from={} landing={} reach={}",
 			caster.getUUID(), from, landing, from.distanceTo(landing));
 		return true;
@@ -460,12 +521,15 @@ public final class ArcherSkills {
 		Vec3 direction = struck == null ? caster.getLookAngle()
 			: struck.getBoundingBox().getCenter().subtract(caster.getEyePosition()).normalize();
 		List<Mob> crossed = SkillTargeting.rayFoes(caster, direction, numbers.radius(modifiers));
-		trail(caster, direction, numbers.radius(modifiers), crossed.isEmpty() ? null : crossed.get(crossed.size() - 1));
+		ItemStack arrow = crossed.isEmpty() ? ItemStack.EMPTY : takeSkillArrow(caster);
+		ArcherVisuals.note(caster, arrow);
+		trail(caster, "piercing_shot", direction, numbers.radius(modifiers),
+			crossed.isEmpty() ? null : crossed.get(crossed.size() - 1), ArcherVisuals.colorOf(arrow));
 		float factor = 1.0F;
 		SHARP_SHOOTING.set(Boolean.TRUE);
 		try {
 			for (Mob foe : crossed) {
-				hit(caster, foe, numbers.damage() * factor, modifiers);
+				hit(caster, foe, numbers.damage() * factor, modifiers, arrow);
 				if (modifiers.awakened()) {
 					factor += PIERCING_STEP;
 				}
@@ -485,7 +549,7 @@ public final class ArcherSkills {
 		}
 		int pulses = modifiers.awakened() ? AWAKENED_ARROW_RAIN_PULSES : ARROW_RAIN_PULSES;
 
-		rain(caster, point, modifiers);
+		ArcherVisuals.note(caster, rain(caster, point, modifiers));
 		for (int pulse = 1; pulse < pulses; pulse++) {
 			owe(caster, new Job(point, null, dueIn(pulse * RAIN_INTERVAL_TICKS), JobKind.RAIN, modifiers));
 		}
@@ -499,26 +563,81 @@ public final class ArcherSkills {
 		if (!bowReady(caster) || target == null) {
 			return false;
 		}
-		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
+		ItemStack[] arrows = new ItemStack[DOUBLE_STRAFE_HITS];
 		for (int shot = 0; shot < DOUBLE_STRAFE_HITS; shot++) {
-			hit(caster, target, SpellNumbers.RAPID_FIRE.damage(), modifiers);
+			arrows[shot] = takeSkillArrow(caster);
+		}
+		ArcherVisuals.note(caster, arrows[0]);
+		trail(caster, "rapid_fire", towards(caster, target), RAPID_FIRE_RANGE, target, ArcherVisuals.colorOf(arrows[0]));
+		for (int shot = 0; shot < DOUBLE_STRAFE_HITS; shot++) {
+			hit(caster, target, SpellNumbers.RAPID_FIRE.damage(), modifiers, arrows[shot]);
 		}
 		return true;
 	}
 
-	/** Blitz Beat: a spectral falcon strikes the target several times, and each strike is one archer hit. */
+	/** Blitz Beat: half an hour in which a hit may call a spectral falcon. It needs no bow and no target. */
 	static boolean applyBlitzBeat(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!bowReady(caster) || target == null) {
-			return false;
-		}
-		int strikes = modifiers.awakened() ? AWAKENED_BLITZ_BEAT_STRIKES : BLITZ_BEAT_STRIKES;
-		strike(caster, target, modifiers);
-		for (int strike = 1; strike < strikes; strike++) {
-			owe(caster, new Job(null, target.getUUID(), dueIn(strike * BLITZ_BEAT_INTERVAL_TICKS), JobKind.BLITZ, modifiers));
-		}
+		caster.addEffect(new MobEffectInstance(SpellStatus.BLITZ_BEAT, BLITZ_BEAT_TICKS, modifiers.awakened() ? 1 : 0), caster);
+		caster.level().sendParticles(ParticleTypes.DUST_PLUME, caster.getX(), caster.getY(1.0), caster.getZ(), 14, 0.4, 0.4, 0.4, 0.02);
+		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT caster={} ticks={} chance={} bowChance={} awakened={}",
+			caster.getUUID(), BLITZ_BEAT_TICKS, BLITZ_BEAT_CHANCE, BLITZ_BEAT_BOW_CHANCE, modifiers.awakened());
 		return true;
+	}
+
+	/** How many falcon strikes this caster hit calls: 0 for none. The roll is the caller, so a seeded source drives it. */
+	static int blitzStrikes(final ServerPlayer caster, final RandomSource random) {
+		MobEffectInstance buff = caster.getEffect(SpellStatus.BLITZ_BEAT);
+		if (buff == null) {
+			return 0;
+		}
+		boolean bow = bowInHand(caster);
+		if (random.nextDouble() >= (bow ? BLITZ_BEAT_BOW_CHANCE : BLITZ_BEAT_CHANCE)) {
+			return 0;
+		}
+		int strikes = bow ? BLITZ_BEAT_BOW_STRIKES : BLITZ_BEAT_STRIKES;
+		return buff.getAmplifier() >= 1 ? strikes * AWAKENED_BLITZ_BEAT_FACTOR : strikes;
+	}
+
+	// Only a hand counts here: a bow in the RPG weapon slot or the pack does not make the caster an archer at the blow.
+	private static boolean bowInHand(final ServerPlayer caster) {
+		return ranged(caster.getMainHandItem()) || ranged(caster.getOffhandItem());
+	}
+
+	// A blow of the caster own, melee or arrow: the hit that may call the falcon. Skill damage and an imbued cast never do.
+	private static void afterOwnBlow(
+		final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source,
+		final float baseDamage, final float damage, final boolean blocked
+	) {
+		if (blocked || damage <= 0.0F || !(victim instanceof Mob foe) || !foe.isAlive() || CastContext.imbuedVictim() != null
+			|| RpgBridge.isSkillSource(source)) {
+			return;
+		}
+		ServerPlayer owner = null;
+		if (source.getDirectEntity() instanceof ServerPlayer player && source.getEntity() == player && SpellStatus.isMelee(source)) {
+			owner = player;
+		} else if (source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.arrow.AbstractArrow arrow
+			&& arrow.getOwner() instanceof ServerPlayer shooter) {
+			owner = shooter;
+		}
+		if (owner == null) {
+			return;
+		}
+		RandomSource override = blitzRandom;
+		int strikes = blitzStrikes(owner, override != null ? override : owner.getRandom());
+		if (strikes <= 0) {
+			return;
+		}
+		boolean ranged = bowInHand(owner);
+		float amount = strikeDamage(owner, ranged);
+		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
+		for (int strike = 0; strike < strikes; strike++) {
+			owe(owner, new Job(null, foe.getUUID(), dueIn(1 + strike * BLITZ_BEAT_INTERVAL_TICKS), JobKind.BLITZ, plain, amount));
+		}
+		((ServerLevel) owner.level()).playSound(null, owner.getX(), owner.getY(), owner.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.6F);
+		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT_CALL caster={} foe={} strikes={} ranged={}",
+			owner.getUUID(), foe.getUUID(), strikes, ranged);
 	}
 
 	/**
@@ -557,8 +676,10 @@ public final class ArcherSkills {
 			return false;
 		}
 		Vec3 away = target.position().subtract(caster.position());
-		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
-		hit(caster, target, SpellNumbers.ARROW_REPEL.damage(), modifiers);
+		ItemStack arrow = takeSkillArrow(caster);
+		ArcherVisuals.note(caster, arrow);
+		trail(caster, "arrow_repel", towards(caster, target), RAPID_FIRE_RANGE, target, ArcherVisuals.colorOf(arrow));
+		hit(caster, target, SpellNumbers.ARROW_REPEL.damage(), modifiers, arrow);
 		shove(target, away, ARROW_REPEL_STRENGTH, ARROW_REPEL_LIFT);
 		Spellbooks.LOGGER.info("[SPELL] event=ARROW_REPEL caster={} target={} strength={}",
 			caster.getUUID(), target.getUUID(), ARROW_REPEL_STRENGTH);
@@ -582,12 +703,27 @@ public final class ArcherSkills {
 		foe.needsSync = true;
 	}
 
-	// One falcon strike: a flash on the foe, and one archer hit.
-	private static void strike(final ServerPlayer caster, final Mob foe, final SpellModifiers.CastModifiers modifiers) {
+	/** What one falcon strike deals: the caster floor ATK, else the book own number when the RPG mod gives none. */
+	static float strikeDamage(final ServerPlayer caster, final boolean ranged) {
+		double floor = RpgBridge.floorAtk(caster, ranged);
+		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+	}
+
+	// One falcon strike: a coloured burst and layered sounds on the foe, then the amount fixed when it was called.
+	// A fixed number never rolls a crit.
+	private static void strike(final ServerPlayer caster, final Mob foe, final float amount) {
 		ServerLevel level = (ServerLevel) caster.level();
-		level.sendParticles(ParticleTypes.CRIT, foe.getX(), foe.getY(1.0), foe.getZ(), 8, 0.3, 0.4, 0.3, 0.1);
-		level.playSound(null, foe.getX(), foe.getY(), foe.getZ(), SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.6F, 1.6F);
-		hit(caster, foe, SpellNumbers.HUNTERS_MARK.damage(), modifiers);
+		Identifier spell = book("hunters_mark");
+		Vec3 at = foe.getBoundingBox().getCenter();
+		SpellVisuals.particle(level, caster, spell, ParticleTypes.CRIT, at, 8, 0.3, 0.1);
+		SpellVisuals.particle(level, caster, spell, ParticleTypes.ENCHANTED_HIT, at, 6, 0.3, 0.05);
+		ArcherVisuals.ring(level, caster, spell, at, 0.6, ArcherVisuals.FALCON_COLOR, 10);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.ARROW_HIT, at, 0.6F, 1.6F);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.PHANTOM_BITE, at, 0.4F, 1.8F);
+		if (foe.damageCooldownTime > 0) {
+			foe.damageCooldownTime = 0;
+		}
+		foe.hurtServer(level, RpgBridge.skillSource(caster), amount);
 	}
 
 	// A snare springs on the nearest foe within its reach; true when it did.
@@ -616,6 +752,9 @@ public final class ArcherSkills {
 		nearest.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, root, numbers.amplifier()), caster);
 		level.sendParticles(ParticleTypes.ITEM_COBWEB, nearest.getX(), nearest.getY(0.2), nearest.getZ(), 16, 0.3, 0.1, 0.3, 0.02);
 		level.playSound(null, snare.at().x, snare.at().y, snare.at().z, SoundEvents.TRIPWIRE_CLICK_ON, SoundSource.PLAYERS, 0.8F, 0.8F);
+		if (caster != null) {
+			ArcherVisuals.impact(level, caster, book("ankle_snare"), snare.at().add(0.0, 0.2, 0.0), ArcherVisuals.PLAIN_COLOR);
+		}
 		Spellbooks.LOGGER.info("[SPELL] event=ANKLE_SNARE_SPRUNG owner={} foe={} root={}", owner, nearest.getUUID(), root);
 		return true;
 	}
@@ -735,9 +874,9 @@ public final class ArcherSkills {
 		return imbuedCast() || hasBowOrCrossbow(caster);
 	}
 
-	/** The gate for the four {@link #AMMO_BOOKS}: a bow or a crossbow, and something to loose. */
+	/** The gate of the books that once needed ammunition; a bow or a crossbow is all they need now. */
 	static boolean armed(final ServerPlayer caster) {
-		return bowReady(caster) && (imbuedCast() || hasAmmo(caster));
+		return bowReady(caster);
 	}
 
 	/** True when this weapon fires with an empty quiver under the caster's Spectral Quiver. */
@@ -753,53 +892,47 @@ public final class ArcherSkills {
 		return stack.getItem() instanceof ProjectileWeaponItem;
 	}
 
-	// One arrow of the first stack in the pack pays for a grappling hook.
-	private static void spendOneArrow(final ServerPlayer caster) {
-		ItemStack arrows = firstAmmo(caster);
-		if (arrows != null) {
-			arrows.shrink(1);
-		}
-	}
-
-	// A line of arrow motes from the launch to the landing, so the hook's flight can be seen.
-	private static void line(final ServerLevel level, final Vec3 from, final Vec3 to) {
-		double reach = from.distanceTo(to);
-		if (reach < 1.0E-6) {
-			return;
-		}
-		Vec3 step = to.subtract(from).scale(1.0 / reach);
-		for (double flown = 0.5; flown <= reach; flown += 0.5) {
-			Vec3 at = from.add(step.scale(flown));
-			level.sendParticles(ParticleTypes.CRIT, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
-		}
+	// The arrow a skill spends from the off-hand quiver; an imbued cast spends none, and no quiver gives none.
+	private static ItemStack takeSkillArrow(final ServerPlayer caster) {
+		return imbuedCast() ? ItemStack.EMPTY : Quiver.takeArrow(caster);
 	}
 
 	// ---- the shared ray helpers ----
 
 	/** A hit: the school's own dice once, then the caster's own buffs, and nothing else. */
 	static void hit(final ServerPlayer caster, final Mob target, final float flat, final SpellModifiers.CastModifiers modifiers) {
+		hit(caster, target, flat, modifiers, ItemStack.EMPTY);
+	}
+
+	/** The same hit, carrying the damage and the effect of the arrow it spent from the quiver. */
+	static void hit(
+		final ServerPlayer caster, final Mob target, final float flat, final SpellModifiers.CastModifiers modifiers, final ItemStack arrow
+	) {
 		float amount = (float) (RpgBridge.skillDamage(caster, School.ARCHER, flat, modifiers.powerMultiplier())
-			* eagleEyeFactor(caster) * quiverDamageFactor(caster));
+			* eagleEyeFactor(caster) * quiverDamageFactor(caster) * ArrowHits.skillFactor(arrow));
 		if (target.damageCooldownTime > 0) {
 			target.damageCooldownTime = 0;
 		}
 		target.hurtServer((ServerLevel) caster.level(), RpgBridge.skillSource(caster), amount);
+		ArrowHits.skillEffect(caster, target, arrow);
 	}
 
-	/** The arrow trail of a skill shot: motes along the path, and the arrow's own sound where it stops. */
-	static void trail(final ServerPlayer caster, final Vec3 direction, final double range, final @Nullable Mob hitFoe) {
+	/** The trail of a skill shot: a coloured line with glints, and a burst and layered sounds where it stops. */
+	static void trail(
+		final ServerPlayer caster, final String book, final Vec3 direction, final double range, final @Nullable Mob hitFoe, final int color
+	) {
 		ServerLevel level = (ServerLevel) caster.level();
 		Vec3 start = caster.getEyePosition();
 		double reach = hitFoe == null
 			? SkillTargeting.blockedReach(level, caster, start, direction, range)
 			: Math.min(range, start.distanceTo(hitFoe.getBoundingBox().getCenter()));
 		Vec3 end = start.add(direction.scale(reach));
-		for (double step = 0.5; step <= reach; step += 0.5) {
-			Vec3 at = start.add(direction.scale(step));
-			level.sendParticles(ParticleTypes.CRIT, at.x, at.y, at.z, 1, 0.0, 0.0, 0.0, 0.0);
-		}
-		level.playSound(null, end.x, end.y, end.z,
-			hitFoe == null ? SoundEvents.ARROW_SHOOT : SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.7F, 1.4F);
+		ArcherVisuals.trail(level, caster, book(book), start, end, color);
+		ArcherVisuals.impact(level, caster, book(book), end, color);
+	}
+
+	private static Identifier book(final String path) {
+		return Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path);
 	}
 
 	/** The nearest foe to a point, within this reach, or null. The nearest-to-the-point body wins. */
@@ -859,7 +992,12 @@ public final class ArcherSkills {
 	private record Shot(ShotKind kind, SpellModifiers.CastModifiers modifiers, int expiresAt) {
 	}
 
-	private record Job(@Nullable Vec3 at, @Nullable UUID foe, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers) {
+	private record Job(
+		@Nullable Vec3 at, @Nullable UUID foe, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers, float amount
+	) {
+		Job(final @Nullable Vec3 at, final @Nullable UUID foe, final int dueTick, final JobKind kind, final SpellModifiers.CastModifiers modifiers) {
+			this(at, foe, dueTick, kind, modifiers, 0.0F);
+		}
 	}
 
 	private record Snare(Vec3 at, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, int expiresAt,
@@ -923,7 +1061,7 @@ public final class ArcherSkills {
 			case RAIN -> rain(caster, job.at(), job.modifiers());
 			case BLITZ -> {
 				if (job.foe() != null && ((ServerLevel) caster.level()).getEntity(job.foe()) instanceof Mob foe && foe.isAlive()) {
-					strike(caster, foe, job.modifiers());
+					strike(caster, foe, job.amount());
 				}
 			}
 			case BOMBLET -> {
@@ -938,9 +1076,9 @@ public final class ArcherSkills {
 	}
 
 	// One Arrow Rain pulse: a handful of falling arrows over the point, and a hit on everything there.
-	private static void rain(final ServerPlayer caster, final @Nullable Vec3 point, final SpellModifiers.CastModifiers modifiers) {
+	private static ItemStack rain(final ServerPlayer caster, final @Nullable Vec3 point, final SpellModifiers.CastModifiers modifiers) {
 		if (point == null) {
-			return;
+			return ItemStack.EMPTY;
 		}
 		ServerLevel level = (ServerLevel) caster.level();
 		double radius = SpellNumbers.ARROW_RAIN.radius(modifiers);
@@ -950,13 +1088,20 @@ public final class ArcherSkills {
 			double z = point.z + Math.sin(angle) * radius * 0.7;
 			level.sendParticles(ParticleTypes.FALLING_OBSIDIAN_TEAR, x, point.y + 4.0, z, 2, 0.0, 0.0, 0.0, 0.0);
 		}
-		level.playSound(null, point.x, point.y, point.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.6F, 0.9F);
+		ItemStack arrow = takeSkillArrow(caster);
+		int color = ArcherVisuals.colorOf(arrow);
+		Identifier spell = book("arrow_rain");
+		ArcherVisuals.ring(level, caster, spell, point.add(0.0, 0.1, 0.0), radius, color, 20);
+		SpellVisuals.particle(level, caster, spell, ParticleTypes.CRIT, point.add(0.0, 2.0, 0.0), 10, radius / 2.0, 0.2);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.ARROW_SHOOT, point, 0.6F, 0.9F);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.AMETHYST_BLOCK_CHIME, point, 0.4F, 1.7F);
 		for (Mob foe : foesAroundPoint(caster, point, radius)) {
-			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers);
+			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers, arrow);
 			Vec3 away = foe.position().subtract(point);
 			shove(foe, away.multiply(1.0, 0.0, 1.0).lengthSqr() < 1.0E-6 ? foe.position().subtract(caster.position()) : away,
 				ARROW_SHOWER_PUSH, ARROW_SHOWER_LIFT);
 		}
+		return arrow;
 	}
 
 	/**
@@ -978,6 +1123,9 @@ public final class ArcherSkills {
 					at.x + Math.cos(angle) * step, at.y + 0.4, at.z + Math.sin(angle) * step, 1, 0.0, 0.0, 0.0, 0.0);
 			}
 		}
-		level.playSound(null, at.x, at.y, at.z, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 0.7F, 1.3F);
+		Identifier spell = book("explosive_arrow");
+		ArcherVisuals.ring(level, caster, spell, at.add(0.0, 0.2, 0.0), radius, ArcherVisuals.BLAST_COLOR, 24);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.GENERIC_EXPLODE.value(), at, 0.7F, 1.3F);
+		SpellVisuals.sound(level, caster, spell, SoundEvents.FIREWORK_ROCKET_BLAST, at, 0.6F, 1.0F);
 	}
 }

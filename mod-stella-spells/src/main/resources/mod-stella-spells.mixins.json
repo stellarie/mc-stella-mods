@@ -23,7 +23,10 @@
 		"LivingEntitySteadfastMixin",
 		"ArcherWeaponMixin",
 		"SpectralQuiverMixin",
-		"AimedBoltDrawMixin"
+		"AimedBoltDrawMixin",
+		"AbstractArrowAccessor",
+		"AbstractArrowHitMixin",
+		"QuiverAmmoMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

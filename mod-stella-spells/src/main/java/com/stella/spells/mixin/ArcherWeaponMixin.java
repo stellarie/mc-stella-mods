@@ -2,6 +2,7 @@ package com.stella.spells.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.stella.spells.ArcherSkills;
+import com.stella.spells.Quiver;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,6 +11,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ProjectileWeaponItem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** The triangle shot: one shot may loose a barrage instead, and the game charges one arrow for each. */
 @Mixin(ProjectileWeaponItem.class)
@@ -31,5 +34,15 @@ public abstract class ArcherWeaponMixin {
 			barrage.add(each.copy());
 		}
 		return barrage;
+	}
+
+	// The draw shrank the copy the quiver handed out; the quiver itself changes only here.
+	@Inject(method = "draw", at = @At("RETURN"))
+	private static void stellaSpells$quiverSpent(
+		final ItemStack weapon, final ItemStack ammo, final LivingEntity shooter, final CallbackInfoReturnable<List<ItemStack>> cir
+	) {
+		if (shooter instanceof ServerPlayer player) {
+			Quiver.commit(player, ammo);
+		}
 	}
 }

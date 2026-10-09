@@ -114,6 +114,24 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("dot", 12, 9, 1, "s"),
     )),
     # ---- archer: Ragnarok archer line, hand-placed pixels on a forest tile ----
+    ("arrow_crafting", "Arrow Crafting", "archer", 0x4FA65C, (
+        ("pixels", 1, 1, (
+            "..............",
+            "..............",
+            ".........m.y..",
+            "........mM.y..",
+            ".......mM.....",
+            "......mM..w...",
+            ".....bM.......",
+            "....bn..m.....",
+            "...bn..mM.....",
+            "..gb...M......",
+            "..gg.nn.......",
+            ".....nN.......",
+            "..............",
+            "..............",
+        ), "a"),
+    )),
     ("multishot", "Grappling Hook", "archer", 0x4FA65C, (
         ("pixels", 1, 1, (
             "......m.......",

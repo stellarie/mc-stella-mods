@@ -73,6 +73,7 @@ SKILLS = (
     Skill("counter_stance", "Counter Stance", "fighter", art("counter_stance")),
     Skill("iron_skin", "Iron Skin", "fighter", art("iron_skin")),
     Skill("earthsplitter", "Earthsplitter", "fighter", art("earthsplitter")),
+    Skill("arrow_crafting", "Arrow Crafting", "archer", art("arrow_crafting")),
     Skill("multishot", "Grappling Hook", "archer", art("multishot")),
     Skill("piercing_shot", "Sharp Shooting", "archer", art("piercing_shot")),
     Skill("arrow_rain", "Arrow Shower", "archer", art("arrow_rain")),

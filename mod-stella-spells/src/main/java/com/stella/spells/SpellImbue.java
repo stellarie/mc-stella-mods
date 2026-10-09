@@ -124,7 +124,7 @@ public final class SpellImbue {
 	 * book has no victim on an arrow hit, so a bow refuses it.
 	 */
 	public static final java.util.Set<Identifier> BOW_IMBUABLE = java.util.Set.of(
-		id("rapid_fire"), id("piercing_shot"), id("arrow_rain"), id("hunters_mark"), id("ankle_snare"),
+		id("rapid_fire"), id("piercing_shot"), id("arrow_rain"), id("ankle_snare"),
 		id("arrow_repel"), id("explosive_arrow")
 	);
 	/** Set while a player's imbued spell lands, so the damage it deals never counts as a fresh blow. */

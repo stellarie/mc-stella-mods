@@ -13,15 +13,17 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * What an archer is handed on joining the school: arrow rain, and one other archer book drawn from the
- * shipped catalogue. The draw is the caller's, so the same seed gives the same book; the grant is all or
+ * What an archer is handed on joining the school: arrow rain, arrow crafting, and one other archer book
+ * drawn from the shipped catalogue. The draw is the caller's, so the same seed gives the same book; the grant is all or
  * nothing, so a pack with no room for both keeps what it has and nothing is dropped on the ground.
  */
 public final class ArcherStarter {
 	/** Every new archer is handed arrow rain. */
 	public static final Identifier STARTER_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "arrow_rain");
-	/** Arrow rain, and one other archer book. */
-	public static final int STARTER_BOOKS = 2;
+	/** Every new archer is handed arrow crafting too. */
+	public static final Identifier CRAFTING_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "arrow_crafting");
+	/** Arrow rain, arrow crafting, and one other archer book. */
+	public static final int STARTER_BOOKS = 3;
 
 	private ArcherStarter() {
 	}
@@ -30,6 +32,7 @@ public final class ArcherStarter {
 	public static int grant(final ServerPlayer player, final RandomSource random, final Consumer<Identifier> onGranted) {
 		List<Identifier> drawn = new ArrayList<>(STARTER_BOOKS);
 		drawn.add(STARTER_ID);
+		drawn.add(CRAFTING_ID);
 		drawn.add(randomArcherBook(random));
 		return give(player, drawn, onGranted);
 	}
@@ -88,7 +91,7 @@ public final class ArcherStarter {
 		List<Identifier> archer = SpellbookCatalog.DEFINITIONS.stream()
 			.filter(definition -> definition.school() == School.ARCHER)
 			.map(SpellDefinition::id)
-			.filter(id -> !id.equals(STARTER_ID))
+			.filter(id -> !id.equals(STARTER_ID) && !id.equals(CRAFTING_ID))
 			.sorted()
 			.toList();
 		if (archer.isEmpty()) {

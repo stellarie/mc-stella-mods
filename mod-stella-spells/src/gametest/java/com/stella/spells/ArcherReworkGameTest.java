@@ -36,12 +36,14 @@ public class ArcherReworkGameTest {
 	@GameTest(maxTicks = 80)
 	public void grapplingHookMovesTheCasterToWhereTheArrowLands(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
-		ItemStack arrows = caster.getInventory().getItem(ArcherReworkGameTest.HELD_QUIVER_SLOT);
-		int arrowsBefore = arrows.getCount();
+		ItemStack quiver = new ItemStack(Quiver.ITEM);
+		Quiver.store(quiver, List.of(new ItemStack(Items.ARROW, 10)));
+		caster.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, quiver);
+		int arrowsBefore = Quiver.count(Quiver.held(caster), Items.ARROW);
 		Vec3 landing = ArcherSkills.arrowLanding(caster);
 		boolean applied = SkillSchoolGameTest.cast(caster, "multishot", null, false);
 		Vec3 stopped = caster.position();
-		int arrowsAfter = caster.getInventory().getItem(ArcherReworkGameTest.HELD_QUIVER_SLOT).getCount();
+		int arrowsAfter = Quiver.count(Quiver.held(caster), Items.ARROW);
 		double travelled = stopped.distanceTo(new Vec3(CASTER_X, stopped.y, CASTER_Z));
 		LOG.info("[BEHAVIOR] test=grapplingHookMovesTheCasterToWhereTheArrowLands RESULT applied={} landing={} stopped={} travelled={} arrowsBefore={} arrowsAfter={} armed={} bow={} ammo={}",
 			applied, landing, stopped, travelled, arrowsBefore, arrowsAfter,
@@ -55,23 +57,23 @@ public class ArcherReworkGameTest {
 		helper.assertTrue(travelled > ArcherSkills.GRAPPLE_MIN_DISTANCE,
 			"the arrow landed on the caster's own feet: " + travelled + " blocks");
 		helper.assertTrue(arrowsAfter == arrowsBefore - 1,
-			"the cast spent " + (arrowsBefore - arrowsAfter) + " arrows, not one");
+			"the cast spent " + (arrowsBefore - arrowsAfter) + " quiver arrows, not one");
 		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 80)
-	public void grapplingHookRefusesWithNoArrowAndLeavesTheCasterWhereItStands(final GameTestHelper helper) {
+	public void grapplingHookNeedsNoArrowAndMovesTheCasterWithABowAlone(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		SkillSchoolGameTest.setAutoKit(false);
 		caster.getInventory().clearContent();
 		caster.getInventory().setItem(ArcherReworkGameTest.WEAPON_SLOT, new ItemStack(Items.BOW));
 		Vec3 before = caster.position();
 		boolean applied = SkillSchoolGameTest.cast(caster, "multishot", null, false);
-		LOG.info("[BEHAVIOR] test=grapplingHookRefusesWithNoArrowAndLeavesTheCasterWhereItStands RESULT applied={} before={} after={} arrows={}",
+		LOG.info("[BEHAVIOR] test=grapplingHookNeedsNoArrowAndMovesTheCasterWithABowAlone RESULT applied={} before={} after={} arrows={}",
 			applied, before, caster.position(), caster.getInventory().countItem(Items.ARROW));
-		helper.assertFalse(applied, "the grappling hook fired with no arrow");
-		helper.assertTrue(caster.position().distanceTo(before) == 0.0,
-			"a refused grapple moved the caster to " + caster.position());
+		helper.assertTrue(applied, "the grappling hook refused a bow and no arrow");
+		helper.assertTrue(caster.position().distanceTo(before) > ArcherSkills.GRAPPLE_MIN_DISTANCE,
+			"the grapple left the caster at " + caster.position());
 		helper.succeed();
 	}
 
@@ -277,7 +279,7 @@ public class ArcherReworkGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void archerStarterGrantGivesArrowRainAndOneOtherArcherBook(final GameTestHelper helper) {
+	public void archerStarterGrantGivesArrowRainArrowCraftingAndOneOtherArcherBook(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		caster.getInventory().clearContent();
 		List<Identifier> granted = new ArrayList<>();
@@ -290,15 +292,16 @@ public class ArcherReworkGameTest {
 			carried += caster.getInventory().countItem(BuiltInRegistries.ITEM.get(id)
 				.map(net.minecraft.core.Holder.Reference::value).orElse(Items.AIR));
 		}
-		LOG.info("[BEHAVIOR] test=archerStarterGrantGivesArrowRainAndOneOtherArcherBook RESULT count={} granted={} carried={} arrowRain={} archBooks={}",
+		LOG.info("[BEHAVIOR] test=archerStarterGrantGivesArrowRainArrowCraftingAndOneOtherArcherBook RESULT count={} granted={} carried={} arrowRain={} archBooks={}",
 			count, granted, carried, ArcherStarter.STARTER_ID, archerTag.size());
 		helper.assertTrue(count == ArcherStarter.STARTER_BOOKS, "the starter grant gave " + count + " books, not " + ArcherStarter.STARTER_BOOKS);
 		helper.assertTrue(given.contains(ArcherStarter.STARTER_ID), "the starter grant skipped arrow rain");
 		helper.assertTrue(archerTag.containsAll(given), "the starter grant gave a book outside the archer school: " + granted);
 		helper.assertTrue(given.size() == ArcherStarter.STARTER_BOOKS,
 			"the starter grant drew " + granted + " with a repeat");
-		helper.assertTrue(given.stream().filter(id -> !id.equals(ArcherStarter.STARTER_ID)).count() == 1,
-			"the starter grant gave " + given + ", not arrow rain plus one other book");
+		helper.assertTrue(given.contains(ArcherStarter.CRAFTING_ID), "the starter grant skipped arrow crafting");
+		helper.assertTrue(given.stream().filter(id -> !id.equals(ArcherStarter.STARTER_ID) && !id.equals(ArcherStarter.CRAFTING_ID)).count() == 1,
+			"the starter grant gave " + given + ", not arrow rain, arrow crafting and one other book");
 		helper.assertTrue(carried == count, "the grant returned " + count + " but the pack holds " + carried);
 		helper.succeed();
 	}
@@ -307,7 +310,7 @@ public class ArcherReworkGameTest {
 	public void archerStarterGrantRefusesAFullPackRatherThanDroppingBooks(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		caster.getInventory().clearContent();
-		// Room for exactly one of the two books: the grant is all or nothing, so it hands out none.
+		// Room for exactly one of the three books: the grant is all or nothing, so it hands out none.
 		for (int slot = 0; slot < caster.getInventory().getContainerSize() - 1; slot++) {
 			caster.getInventory().setItem(slot, new ItemStack(Items.STONE, 64));
 		}
