@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class CastContext {
 	private static final ThreadLocal<LivingEntity> ALLY = new ThreadLocal<>();
+	private static final ThreadLocal<LivingEntity> IMBUED_VICTIM = new ThreadLocal<>();
 
 	private CastContext() {
 	}
@@ -17,6 +18,19 @@ public final class CastContext {
 	/** The ally this cast resolved: the one the caster looks at, else the caster itself. */
 	public static @Nullable LivingEntity ally() {
 		return ALLY.get();
+	}
+
+	/** The victim of an imbued cast running now, or null for a book cast. An imbued cast needs no bow in hand and no ammunition. */
+	public static @Nullable LivingEntity imbuedVictim() {
+		return IMBUED_VICTIM.get();
+	}
+
+	static void setImbuedVictim(final @Nullable LivingEntity victim) {
+		if (victim == null) {
+			IMBUED_VICTIM.remove();
+		} else {
+			IMBUED_VICTIM.set(victim);
+		}
 	}
 
 	static void setAlly(final @Nullable LivingEntity ally) {

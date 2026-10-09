@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The archer books the rework left alone, plain and awakened: what each shot hits, how many times, and what
  * it leaves on the ground. Every shot is a hit-scan ray, so a case reads health rather than an arrow entity.
- * The reworked books have their own cases in {@link ArcherReworkGameTest}.
+ * The reworked books have their own cases in {@link ArcherReworkGameTest} and {@link ArcherRagnarokGameTest}.
  */
 public class ArcherBooksGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.archerbooks");
@@ -137,92 +137,6 @@ public class ArcherBooksGameTest {
 			foe.discard();
 			helper.succeed();
 		});
-	}
-
-	@GameTest(maxTicks = 300)
-	public void rapidFireLoosesTwelveShotsFiveTicksApart(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob foe = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
-		List<Float> samples = new ArrayList<>();
-		boolean applied = ArcherSkills.applyRapidFire(caster, foe, null, SkillSchoolGameTest.modifiers(caster, false));
-		int owed = ArcherSkills.pulsesOwed(caster);
-		helper.onEachTick(() -> samples.add(foe.getHealth()));
-		helper.runAfterDelay((long) ArcherSkills.RAPID_FIRE_SHOTS * ArcherSkills.RAPID_FIRE_INTERVAL_TICKS + 20L, () -> {
-			LOG.info("[BEHAVIOR] test=rapidFireLoosesTwelveShotsFiveTicksApart RESULT applied={} shots={} interval={} owed={} ran={} lost={}",
-				applied, ArcherSkills.RAPID_FIRE_SHOTS, ArcherSkills.RAPID_FIRE_INTERVAL_TICKS, owed,
-				ArcherSkills.pulsesRun(caster), 1000.0 - foe.getHealth());
-			helper.assertTrue(applied, "rapid fire never started");
-			helper.assertTrue(ArcherSkills.RAPID_FIRE_SHOTS == 12, "rapid fire is " + ArcherSkills.RAPID_FIRE_SHOTS + " shots, not 12");
-			helper.assertTrue(ArcherSkills.RAPID_FIRE_INTERVAL_TICKS == 5,
-				"the shot gap is " + ArcherSkills.RAPID_FIRE_INTERVAL_TICKS + " ticks, not 5");
-			helper.assertTrue(owed == ArcherSkills.RAPID_FIRE_SHOTS - 1, "the cast owed " + owed + " further shots");
-			helper.assertTrue(ArcherSkills.pulsesRun(caster) == ArcherSkills.RAPID_FIRE_SHOTS - 1,
-				"rapid fire ran " + ArcherSkills.pulsesRun(caster) + " later shots, not " + (ArcherSkills.RAPID_FIRE_SHOTS - 1));
-			helper.assertTrue(ArcherSkills.pulsesOwed(caster) == 0, "rapid fire left shots owed");
-			foe.discard();
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = 300)
-	public void awakenedRapidFireEndsInAnExplosiveArrow(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob target = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
-		Mob near = FighterBooksGameTest.foe(helper, CASTER_X + 1.5, CASTER_Z + 4.0);
-		float nearBefore = near.getHealth();
-		ArcherSkills.applyRapidFire(caster, target, null, SkillSchoolGameTest.modifiers(caster, true));
-		helper.runAfterDelay((long) ArcherSkills.RAPID_FIRE_SHOTS * ArcherSkills.RAPID_FIRE_INTERVAL_TICKS + 20L, () -> {
-			LOG.info("[BEHAVIOR] test=awakenedRapidFireEndsInAnExplosiveArrow RESULT nearLost={} targetLost={} splash={}",
-				nearBefore - near.getHealth(), 1000.0 - target.getHealth(), ArcherSkills.EXPLOSIVE_SPLASH_RADIUS);
-			helper.assertTrue(nearBefore - near.getHealth() > 0.0F, "the last shot did not burst on the foes beside the target");
-			target.discard();
-			near.discard();
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = 80)
-	public void huntersMarkMarksTheFoeForSixHundredTicks(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob foe = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
-		SkillSchoolGameTest.cast(caster, "hunters_mark", foe, false);
-		MobEffectInstance mark = foe.getEffect(SpellStatus.MARKED);
-		LOG.info("[BEHAVIOR] test=huntersMarkMarksTheFoeForSixHundredTicks RESULT marked={} duration={} expected={} jumpTag={}",
-			mark != null, mark == null ? 0 : mark.getDuration(), SpellNumbers.HUNTERS_MARK.duration().ticks(), ArcherSkills.markOwner(foe));
-		helper.assertTrue(mark != null, "the mark never landed");
-		helper.assertTrue(mark.getDuration() == SpellNumbers.HUNTERS_MARK.duration().ticks(),
-			"the mark lasts " + mark.getDuration() + " ticks, not " + SpellNumbers.HUNTERS_MARK.duration().ticks());
-		helper.assertTrue(SpellNumbers.HUNTERS_MARK.duration().ticks() == 600,
-			"the mark is declared as " + SpellNumbers.HUNTERS_MARK.duration().ticks() + " ticks, not 600");
-		helper.assertTrue(ArcherSkills.markOwner(foe) == null, "a plain mark carries the awakened jump tag");
-		foe.discard();
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 80)
-	public void awakenedHuntersMarkJumpsToTheNearestFoeWhenItsHolderFalls(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob marked = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
-		Mob near = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 7.0);
-		Mob far = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 30.0);
-		SkillSchoolGameTest.cast(caster, "hunters_mark", marked, true);
-		String tagBefore = String.valueOf(ArcherSkills.markOwner(marked));
-		MobEffectInstance onMarked = marked.getEffect(SpellStatus.MARKED);
-		boolean jumped = ArcherSkills.onMarkedDeath(marked);
-		MobEffectInstance onNear = near.getEffect(SpellStatus.MARKED);
-		LOG.info("[BEHAVIOR] test=awakenedHuntersMarkJumpsToTheNearestFoeWhenItsHolderFalls RESULT jumped={} nearMarked={} farMarked={} range={} nearTag={} tagBefore={} markedEffectOnHolder={} nearEffect={}",
-			jumped, near.hasEffect(SpellStatus.MARKED), far.hasEffect(SpellStatus.MARKED), ArcherSkills.MARK_JUMP_RANGE,
-			ArcherSkills.markOwner(near), tagBefore, onMarked != null, onNear != null);
-		helper.assertTrue(jumped, "the awakened mark never jumped");
-		helper.assertTrue(near.hasEffect(SpellStatus.MARKED), "the nearest foe within reach took no mark");
-		helper.assertFalse(far.hasEffect(SpellStatus.MARKED), "the mark reached a foe past its own reach");
-		helper.assertTrue(ArcherSkills.markOwner(near) != null, "the jumped mark lost the caster who may jump it again");
-		helper.assertTrue(ArcherSkills.MARK_JUMP_RANGE == 16.0,
-			"the jump reaches " + ArcherSkills.MARK_JUMP_RANGE + " blocks, not 16");
-		marked.discard();
-		near.discard();
-		far.discard();
-		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 80)

@@ -140,6 +140,8 @@ public final class SpellVisuals {
 		visual("piercing_shot", ParticleTypes.FIREWORK, ParticleTypes.CRIT, 0.0),
 		areaVisual("arrow_rain", ParticleTypes.FALLING_OBSIDIAN_TEAR, ParticleTypes.CRIT, SpellNumbers.ARROW_RAIN.radius(), 0x3E8E41),
 		visual("rapid_fire", ParticleTypes.SCULK_CHARGE_POP, ParticleTypes.SMOKE, 0.0),
+		visual("ankle_snare", ParticleTypes.SPIT, ParticleTypes.ITEM_COBWEB, 0.0),
+		visual("arrow_repel", ParticleTypes.SWEEP_ATTACK, ParticleTypes.CRIT, 0.0),
 		visual("hunters_mark", ParticleTypes.DUST_PLUME, ParticleTypes.GLOW, 0.0),
 		areaVisual("explosive_arrow", ParticleTypes.EXPLOSION, ParticleTypes.FLAME, SpellNumbers.EXPLOSIVE_ARROW.radius(), 0xE0303A),
 		visual("disengage", ParticleTypes.CRIMSON_SPORE, ParticleTypes.CLOUD, 0.0),
@@ -211,6 +213,8 @@ public final class SpellVisuals {
 		heldColor("steadfast_prayer", 0xF0E6B8),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
+		heldColor("ankle_snare", 0x3E8E41),
+		heldColor("arrow_repel", 0x3E8E41),
 		heldColor("snare_trap", 0x3E8E41),
 		heldColor("aimed_bolt", 0x8E6BC8),
 		heldColor("triangle_shot", 0x3E8E41),
@@ -657,6 +661,8 @@ public final class SpellVisuals {
 			case "multishot" -> Motif.DART;
 			case "piercing_shot" -> Motif.LANCE;
 			case "rapid_fire" -> Motif.VOLLEY;
+			case "ankle_snare" -> Motif.CAGE;
+			case "arrow_repel" -> Motif.LANCE;
 			case "explosive_arrow" -> Motif.BLAST;
 			case "eagle_eye" -> Motif.DART;
 			case "hunters_mark" -> Motif.MARK;

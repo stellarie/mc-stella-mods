@@ -130,6 +130,18 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("line", 12, 8, 12, 8, 1, "a"),
         ("dot", 8, 8, 1, "h"),
     )),
+    # The two books the Ragnarok archer tree added: a tripwire hook with its ring, and a bolt that shoves a foe back.
+    ("ankle_snare", "Ankle Snare", "archer", 0xB8E08A, (
+        ("ring", 8, 9, 3, 1, "a"),
+        ("line", 3, 12, 12, 12, 1, "s"),
+        ("dot", 8, 4, 1, "h"),
+        ("line", 8, 5, 8, 6, 1, "h"),
+    )),
+    ("arrow_repel", "Arrow Repel", "archer", 0xF0B060, (
+        ("arrow", 3, 8, 9, 8, 2, "a"),
+        ("chev", 11, 8, 2, "right", "h"),
+        ("line", 12, 4, 12, 12, 1, "s"),
+    )),
     ("explosive_arrow", "Explosive Arrow", "archer", 0xFF9A3C, (
         ("arrow", 3, 11, 8, 6, 1, "a"),
         ("spokes", 9, 5, 1, 4, 6, 1, "h"),
@@ -161,6 +173,18 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("line", 8, 6, 8, 3, 1, "h"),
         ("line", 10, 6, 11, 3, 1, "h"),
         ("line", 6, 8, 10, 8, 1, "s"),
+    )),
+    # The two books the archer rework added: one long bolt under a ring, and three darts from one point.
+    ("aimed_bolt", "Aimed Bolt", "archer", 0xC79BFF, (
+        ("arrow", 3, 11, 12, 4, 2, "a"),
+        ("ring", 8, 8, 5, 1, "s"),
+        ("dot", 11, 4, 1, "h"),
+    )),
+    ("triangle_shot", "Triangle Shot", "archer", 0x9BE8A8, (
+        ("arrow", 5, 11, 5, 4, 1, "a"),
+        ("arrow", 8, 11, 8, 3, 1, "h"),
+        ("arrow", 11, 11, 11, 4, 1, "a"),
+        ("poly", "5,5 11,5 8,8", "s"),
     )),
     # ---- priest: gold and light, an octagon reliquary ----
     ("holy_light", "Holy Light", "priest", 0xFFF3C4, (

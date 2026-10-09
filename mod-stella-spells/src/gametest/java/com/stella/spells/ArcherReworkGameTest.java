@@ -277,62 +277,6 @@ public class ArcherReworkGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void everyArcherBookRefusesWithoutABowAndWithoutAnArrow(final GameTestHelper helper) {
-		ServerPlayer caster = archer(helper);
-		SkillSchoolGameTest.setAutoKit(false);
-		caster.getInventory().clearContent();
-		caster.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-		// The three buffs of the sweep before this one leave a quiver behind, which needs no arrow at all.
-		caster.removeEffect(SpellStatus.SPECTRAL_QUIVER);
-		// With no bow, no crossbow and no arrow, every one of the twelve is refused: the school's gate has no
-		// exception, so the three half-hour buffs refuse a bare hand exactly as the nine shots do.
-		List<String> unarmed = new ArrayList<>();
-		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			if (!SkillSchoolGameTest.cast(caster, path, null, false)) {
-				unarmed.add(path);
-			}
-		}
-		// A bow with an empty quiver still refuses every book, and the gate stays shut for all twelve.
-		List<String> unloaded = new ArrayList<>();
-		List<String> gateOpen = new ArrayList<>();
-		caster.getInventory().clearContent();
-		caster.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
-		caster.removeAllEffects();
-		caster.getInventory().setItem(ArcherReworkGameTest.WEAPON_SLOT, new ItemStack(Items.BOW));
-		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			boolean applied = SkillSchoolGameTest.cast(caster, path, null, false);
-			if (ArcherSkills.armed(caster)) {
-				gateOpen.add(path);
-			}
-			if (applied) {
-				unloaded.add(path);
-			}
-		}
-		// With the bow and a full quiver the gate opens for every one of them, and each book then casts: the
-		// three that also want a foe in front are read on the gate here, because this arena holds none.
-		List<String> refused = new ArrayList<>();
-		List<String> unarmedStill = new ArrayList<>();
-		caster.getInventory().setItem(ArcherReworkGameTest.HELD_QUIVER_SLOT, new ItemStack(Items.ARROW, 64));
-		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			if (!ArcherSkills.armed(caster)) {
-				unarmedStill.add(path);
-			}
-			if (!TARGET_BOOKS.contains(path) && !SkillSchoolGameTest.cast(caster, path, null, false)) {
-				refused.add(path);
-			}
-		}
-		LOG.info("[BEHAVIOR] test=everyArcherBookRefusesWithoutABowAndWithoutAnArrow RESULT books={} refusedWithNothing={} refusedWithBowAndNoArrow={} refusedWithBowAndArrow={} gateOpenWithBowAndNoArrow={} gateShutWithBowAndArrow={}",
-			SkillSchoolGameTest.ARCHER_IDS.size(), unarmed, unloaded, refused, gateOpen, unarmedStill);
-		helper.assertTrue(unarmed.size() == SkillSchoolGameTest.ARCHER_IDS.size(),
-			"these books cast with no bow, no crossbow and no arrow: " + unarmed);
-		helper.assertTrue(unloaded.isEmpty(), "these books cast with a bow and no arrow: " + unloaded);
-		helper.assertTrue(gateOpen.isEmpty(), "the school's gate was open with no arrow: " + gateOpen);
-		helper.assertTrue(refused.isEmpty(), "these books refused a bow with a full quiver: " + refused);
-		helper.assertTrue(unarmedStill.isEmpty(), "the gate stayed shut for: " + unarmedStill);
-		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 80)
 	public void archerStarterGrantGivesArrowRainAndOneOtherArcherBook(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		caster.getInventory().clearContent();
@@ -439,6 +383,4 @@ public class ArcherReworkGameTest {
 	private static final int WEAPON_SLOT = 35;
 	/** The quiver for a case that casts: a cast replaces the hotbar row, so the arrows sit above it. */
 	private static final int HELD_QUIVER_SLOT = 20;
-	/** The three archer books that also need a foe in front of the caster before the shot can land. */
-	private static final List<String> TARGET_BOOKS = List.of("piercing_shot", "rapid_fire", "hunters_mark");
 }

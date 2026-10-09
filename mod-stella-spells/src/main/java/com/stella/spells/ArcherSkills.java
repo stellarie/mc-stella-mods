@@ -33,8 +33,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * The archer books: instant hit-scan rays with an arrow trail, never an arrow entity. A ray deals its
  * damage through {@link RpgBridge#skillDamage} with {@link School#ARCHER} exactly once, so no shot takes the
- * ranged dice a second time. Three books instead arm the next real arrow, and {@link SpellStatus#onHurt}
+ * ranged dice a second time. Two books instead arm the next real arrow, and {@link SpellStatus#onHurt}
  * hands that arrow its blast through {@link #projectileDamage}.
+ * Every book needs a bow or a crossbow. Only {@link #AMMO_BOOKS} also need an arrow or a bolt. A book
+ * imbued on a bow casts from an arrow hit and needs neither.
  */
 public final class ArcherSkills {
 	/** How many arrows a triangle shot looses, and how often it looses them. */
@@ -77,21 +79,37 @@ public final class ArcherSkills {
 	static final int ARROW_RAIN_PULSES = 5;
 	static final int AWAKENED_ARROW_RAIN_PULSES = 10;
 	static final int RAIN_INTERVAL_TICKS = 10;
-	/** Rapid Fire's window and how many ticks apart its shots leave. */
-	static final int RAPID_FIRE_SHOTS = 12;
-	static final int RAPID_FIRE_INTERVAL_TICKS = 5;
+	/** Double Strafe's hits on its target, and the reach of its shot. */
+	static final int DOUBLE_STRAFE_HITS = 2;
 	static final double RAPID_FIRE_RANGE = 24.0;
-	/** How long a mark lasts, and how far an awakened one jumps when its holder falls. */
-	static final int MARK_TICKS = 600;
-	static final double MARK_JUMP_RANGE = 16.0;
-	/** The entity tag an awakened Hunter's Mark leaves on its foe, carrying the caster who may jump it. */
-	static final String MARK_JUMP_TAG = Spellbooks.MOD_ID + ".mark_jumps.";
+	/** Blitz Beat: how many strikes the falcon makes, and how many ticks apart. An awakened falcon strikes twice as often. */
+	static final int BLITZ_BEAT_STRIKES = 5;
+	static final int AWAKENED_BLITZ_BEAT_STRIKES = 10;
+	static final int BLITZ_BEAT_INTERVAL_TICKS = 6;
+	/** The critical chance Sharp Shooting adds to its own hits, and True Sight adds while it lasts. */
+	static final double SHARP_SHOOTING_CRIT_CHANCE = 0.30;
+	static final double TRUE_SIGHT_CRIT_CHANCE = 0.15;
+	static final double TRUE_SIGHT_AWAKENED_CRIT_CHANCE = 0.25;
+	/** How hard an Arrow Shower pulse pushes a foe away from its point. */
+	static final double ARROW_SHOWER_PUSH = 0.6;
+	static final double ARROW_SHOWER_LIFT = 0.1;
+	/** Ankle Snare: how near a foe has to come to spring a trap, and how many traps one archer keeps. */
+	static final double ANKLE_SNARE_RADIUS = 1.5;
+	static final int ANKLE_SNARE_LIFE_TICKS = 600;
+	static final int ANKLE_SNARE_ROOT_TICKS = 60;
+	static final int ANKLE_SNARE_MAX_TRAPS = 3;
+	/** Arrow Repel: the push on its target, and the distance the shipped text promises. */
+	static final double ARROW_REPEL_STRENGTH = 2.4;
+	static final double ARROW_REPEL_LIFT = 0.3;
+	static final double ARROW_REPEL_MIN_BLOCKS = 3.0;
+	/** The books that fire or spend a physical arrow, so they also need ammunition. */
+	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of("multishot", "explosive_arrow", "aimed_bolt", "triangle_shot");
 	/** Explosive Arrow's splash, and the three bomblets an awakened one scatters. */
 	static final double EXPLOSIVE_SPLASH_RADIUS = 3.0;
 	static final int EXPLOSIVE_BOMBLETS = 3;
 	static final double BOMBLET_RADIUS = 2.0;
 	static final int BOMBLET_FLIGHT_TICKS = 6;
-	/** Eagle Eye: half an hour, and the share every archer skill hit gains while it holds. */
+	/** True Sight: half an hour, and the share every archer skill hit gains while it holds. */
 	static final int EAGLE_EYE_TICKS = 36_000;
 	static final double EAGLE_EYE_PLAIN_FACTOR = 1.2;
 	static final double EAGLE_EYE_AWAKENED_FACTOR = 1.4;
@@ -103,6 +121,10 @@ public final class ArcherSkills {
 	private static final Map<UUID, Shot> SHOTS = new ConcurrentHashMap<>();
 	/** The pulses still owed, by caster, oldest first. */
 	private static final Map<UUID, List<Job>> JOBS = new ConcurrentHashMap<>();
+	/** The ankle snares each caster has laid, oldest first. */
+	private static final Map<UUID, List<Snare>> SNARES = new ConcurrentHashMap<>();
+	/** Set while Sharp Shooting rolls its hits, so the critical seam reads its raised chance. */
+	private static final ThreadLocal<Boolean> SHARP_SHOOTING = new ThreadLocal<>();
 	/** How many timed pulses each caster has run, so a case can count a sequence rather than sample it. */
 	private static final Map<UUID, Integer> PULSES_RUN = new ConcurrentHashMap<>();
 	/**
@@ -117,11 +139,6 @@ public final class ArcherSkills {
 	static void register() {
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(ArcherSkills::tick);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> clear());
-		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
-			if (entity instanceof Mob fallen && markOwner(fallen) != null) {
-				onMarkedDeath(fallen);
-			}
-		});
 		// An aimed bolt and an explosive arrow are paid on the arrow that lands, not on the cast that armed it.
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterArrowDamage);
 	}
@@ -131,6 +148,7 @@ public final class ArcherSkills {
 		SHOTS.clear();
 		SPENT.clear();
 		JOBS.clear();
+		SNARES.clear();
 		PULSES_RUN.clear();
 		clock = 0;
 	}
@@ -143,6 +161,7 @@ public final class ArcherSkills {
 		SHOTS.remove(caster.getUUID());
 		SPENT.remove(caster.getUUID());
 		JOBS.remove(caster.getUUID());
+		SNARES.remove(caster.getUUID());
 		PULSES_RUN.remove(caster.getUUID());
 	}
 
@@ -157,6 +176,12 @@ public final class ArcherSkills {
 		return jobs == null ? 0 : jobs.size();
 	}
 
+	/** How many unsprung ankle snares this caster has laid; the test seam for the trap. */
+	static int ankleSnares(final ServerPlayer caster) {
+		List<Snare> snares = SNARES.get(caster.getUUID());
+		return snares == null ? 0 : snares.size();
+	}
+
 	/** How many timed pulses this caster has actually run; the test seam for a sequence that really fired. */
 	static int pulsesRun(final ServerPlayer caster) {
 		return PULSES_RUN.getOrDefault(caster.getUUID(), 0);
@@ -167,7 +192,7 @@ public final class ArcherSkills {
 		return SHOTS.containsKey(caster.getUUID());
 	}
 
-	// ---- the twelve books ----
+	// ---- the fourteen books ----
 
 	/**
 	 * Grappling Hook: the arrow flies its arc to the first ground under the caster's look, and the caster
@@ -247,7 +272,7 @@ public final class ArcherSkills {
 	static boolean applySnareTrap(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster)) {
+		if (!bowReady(caster)) {
 			return false;
 		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.CONCENTRATE, CONCENTRATE_TICKS, SpellNumbers.SNARE_TRAP.amplifier()), caster);
@@ -262,7 +287,7 @@ public final class ArcherSkills {
 	static boolean applyElementalQuiver(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster)) {
+		if (!bowReady(caster)) {
 			return false;
 		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.SPECTRAL_QUIVER, SPECTRAL_QUIVER_TICKS, SpellNumbers.ELEMENTAL_QUIVER.amplifier()), caster);
@@ -281,7 +306,7 @@ public final class ArcherSkills {
 	static boolean applyDisengage(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster)) {
+		if (!bowReady(caster)) {
 			return false;
 		}
 		caster.addEffect(new MobEffectInstance(SpellStatus.WIND_WALK, WIND_WALK_TICKS, modifiers.awakened() ? 1 : 0), caster);
@@ -327,6 +352,11 @@ public final class ArcherSkills {
 	) {
 		if (!armed(caster)) {
 			return false;
+		}
+		LivingEntity struck = CastContext.imbuedVictim();
+		if (struck != null) {
+			detonate(caster, struck, modifiers, true);
+			return true;
 		}
 		queue(caster, ShotKind.EXPLOSIVE_ARROW, modifiers);
 		Spellbooks.LOGGER.info("[SPELL] event=EXPLOSIVE_ARROW caster={} offer={} splash={}",
@@ -407,135 +437,232 @@ public final class ArcherSkills {
 					shooter.getUUID(), victim.getUUID(), damage);
 			}
 			case EXPLOSIVE_ARROW -> {
-				blast(shooter, victim.position(), shot.modifiers());
-				for (Mob near : foesAroundPoint(shooter, victim.position(), EXPLOSIVE_SPLASH_RADIUS)) {
-					if (near != victim) {
-						hit(shooter, near, splash(SpellNumbers.EXPLOSIVE_ARROW, shot.modifiers()), shot.modifiers());
-					}
-				}
-				if (shot.modifiers().awakened()) {
-					for (int bomblet = 0; bomblet < EXPLOSIVE_BOMBLETS; bomblet++) {
-						Vec3 at = victim.position().add(bombletOffset(bomblet));
-						owe(shooter, new Job(at, dueIn(BOMBLET_FLIGHT_TICKS * (bomblet + 1)), JobKind.BOMBLET, shot.modifiers()));
-					}
-				}
+				detonate(shooter, victim, shot.modifiers(), false);
 				Spellbooks.LOGGER.info("[SPELL] event=EXPLOSIVE_ARROW_HIT shooter={} victim={} damage={}",
 					shooter.getUUID(), victim.getUUID(), damage);
 			}
 		}
 	}
 
-	/** Piercing Shot: every foe on a long line, in order. Each later foe takes more when it is awakened. */
+	/**
+	 * Sharp Shooting: every foe on a long line, in order, with a raised critical chance. Each later foe takes
+	 * more when it is awakened. An imbued shot flies from the caster toward the foe the arrow struck.
+	 */
 	static boolean applyPiercingShot(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster)) {
+		if (!bowReady(caster)) {
 			return false;
 		}
 		SpellNumbers numbers = SpellNumbers.PIERCING_SHOT;
-		Vec3 direction = caster.getLookAngle();
-		List<Mob> struck = SkillTargeting.rayFoes(caster, direction, numbers.radius(modifiers));
-		trail(caster, direction, numbers.radius(modifiers), struck.isEmpty() ? null : struck.get(struck.size() - 1));
+		LivingEntity struck = CastContext.imbuedVictim();
+		Vec3 direction = struck == null ? caster.getLookAngle()
+			: struck.getBoundingBox().getCenter().subtract(caster.getEyePosition()).normalize();
+		List<Mob> crossed = SkillTargeting.rayFoes(caster, direction, numbers.radius(modifiers));
+		trail(caster, direction, numbers.radius(modifiers), crossed.isEmpty() ? null : crossed.get(crossed.size() - 1));
 		float factor = 1.0F;
-		for (Mob foe : struck) {
-			hit(caster, foe, numbers.damage() * factor, modifiers);
-			if (modifiers.awakened()) {
-				factor += PIERCING_STEP;
+		SHARP_SHOOTING.set(Boolean.TRUE);
+		try {
+			for (Mob foe : crossed) {
+				hit(caster, foe, numbers.damage() * factor, modifiers);
+				if (modifiers.awakened()) {
+					factor += PIERCING_STEP;
+				}
 			}
+		} finally {
+			SHARP_SHOOTING.remove();
 		}
-		return !struck.isEmpty();
+		return !crossed.isEmpty();
 	}
 
-	/** Arrow Rain: pulses over the point the caster looks at. An awakened rain falls twice as long. */
+	/** Arrow Shower: pulses over the point the caster looks at, each pushing foes away. An awakened shower falls twice as long. */
 	static boolean applyArrowRain(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster) || point == null) {
+		if (!bowReady(caster) || point == null) {
 			return false;
 		}
 		int pulses = modifiers.awakened() ? AWAKENED_ARROW_RAIN_PULSES : ARROW_RAIN_PULSES;
 
 		rain(caster, point, modifiers);
 		for (int pulse = 1; pulse < pulses; pulse++) {
-			owe(caster, new Job(point, dueIn(pulse * RAIN_INTERVAL_TICKS), JobKind.RAIN, modifiers));
+			owe(caster, new Job(point, null, dueIn(pulse * RAIN_INTERVAL_TICKS), JobKind.RAIN, modifiers));
 		}
 		return true;
 	}
 
-	/** Rapid Fire: a shot every five ticks at the foe the caster looks at, retargeted each shot. */
-	static boolean applyRapidFire(
+	/** Double Strafe: two archer hits on the target at once, with no arrow spent. */
+	static boolean applyDoubleStrafe(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster) || target == null) {
+		if (!bowReady(caster) || target == null) {
 			return false;
 		}
-		shoot(caster, modifiers);
-		for (int shot = 1; shot < RAPID_FIRE_SHOTS; shot++) {
-			owe(caster, new Job(null, dueIn(shot * RAPID_FIRE_INTERVAL_TICKS), JobKind.RAPID_FIRE, modifiers));
+		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
+		for (int shot = 0; shot < DOUBLE_STRAFE_HITS; shot++) {
+			hit(caster, target, SpellNumbers.RAPID_FIRE.damage(), modifiers);
 		}
 		return true;
 	}
 
-	/** Hunter's Mark: Marked for half a minute. An awakened mark jumps when its holder falls. */
-	static boolean applyHuntersMark(
+	/** Blitz Beat: a spectral falcon strikes the target several times, and each strike is one archer hit. */
+	static boolean applyBlitzBeat(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster) || target == null) {
+		if (!bowReady(caster) || target == null) {
 			return false;
 		}
-		clearMarkJump(target);
-		SpellStatusApi.mark(target, SpellNumbers.HUNTERS_MARK.durationTicks(modifiers), caster);
+		int strikes = modifiers.awakened() ? AWAKENED_BLITZ_BEAT_STRIKES : BLITZ_BEAT_STRIKES;
+		strike(caster, target, modifiers);
+		for (int strike = 1; strike < strikes; strike++) {
+			owe(caster, new Job(null, target.getUUID(), dueIn(strike * BLITZ_BEAT_INTERVAL_TICKS), JobKind.BLITZ, modifiers));
+		}
+		return true;
+	}
+
+	/**
+	 * Ankle Snare: a trap at the target point. The first foe to come near springs it and is rooted. An
+	 * imbued cast lays it under the foe the arrow struck, so it springs on that foe at once.
+	 */
+	static boolean applyAnkleSnare(
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+	) {
+		if (!bowReady(caster) || point == null) {
+			return false;
+		}
+		int life = SpellNumbers.ANKLE_SNARE.extraTicks(modifiers);
+		Snare snare = new Snare(point, caster.level().dimension(), dueIn(life), modifiers);
+		SNARES.compute(caster.getUUID(), (id, existing) -> {
+			List<Snare> snares = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+			snares.add(snare);
+			while (snares.size() > ANKLE_SNARE_MAX_TRAPS) {
+				snares.remove(0);
+			}
+			return snares;
+		});
+		caster.level().sendParticles(ParticleTypes.ITEM_COBWEB, point.x, point.y + 0.1, point.z, 10, 0.4, 0.05, 0.4, 0.01);
+		if (springSnare(caster.level(), caster.getUUID(), caster, snare)) {
+			dropSnare(caster.getUUID(), snare);
+		}
+		Spellbooks.LOGGER.info("[SPELL] event=ANKLE_SNARE caster={} at={} life={}", caster.getUUID(), point, life);
+		return true;
+	}
+
+	/** Arrow Repel: one heavy shot that drives the target several blocks back, away from the caster. */
+	static boolean applyArrowRepel(
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+	) {
+		if (!bowReady(caster) || target == null) {
+			return false;
+		}
+		Vec3 away = target.position().subtract(caster.position());
+		trail(caster, towards(caster, target), RAPID_FIRE_RANGE, target);
+		hit(caster, target, SpellNumbers.ARROW_REPEL.damage(), modifiers);
+		shove(target, away, ARROW_REPEL_STRENGTH, ARROW_REPEL_LIFT);
+		Spellbooks.LOGGER.info("[SPELL] event=ARROW_REPEL caster={} target={} strength={}",
+			caster.getUUID(), target.getUUID(), ARROW_REPEL_STRENGTH);
+		return true;
+	}
+
+	// The direction from the caster's eyes to the middle of a foe, so a shot aims at what it strikes.
+	private static Vec3 towards(final ServerPlayer caster, final Mob foe) {
+		return foe.getBoundingBox().getCenter().subtract(caster.getEyePosition()).normalize();
+	}
+
+	// A flat push away from a point; a foe with full knockback resistance stays where it stands.
+	private static void shove(final Mob foe, final Vec3 away, final double strength, final double lift) {
+		double give = 1.0 - foe.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.KNOCKBACK_RESISTANCE);
+		Vec3 flat = new Vec3(away.x, 0.0, away.z);
+		if (give <= 0.0 || flat.lengthSqr() < 1.0E-6) {
+			return;
+		}
+		Vec3 push = flat.normalize().scale(strength * give);
+		foe.push(push.x, lift, push.z);
+		foe.needsSync = true;
+	}
+
+	// One falcon strike: a flash on the foe, and one archer hit.
+	private static void strike(final ServerPlayer caster, final Mob foe, final SpellModifiers.CastModifiers modifiers) {
+		ServerLevel level = (ServerLevel) caster.level();
+		level.sendParticles(ParticleTypes.CRIT, foe.getX(), foe.getY(1.0), foe.getZ(), 8, 0.3, 0.4, 0.3, 0.1);
+		level.playSound(null, foe.getX(), foe.getY(), foe.getZ(), SoundEvents.ARROW_HIT, SoundSource.PLAYERS, 0.6F, 1.6F);
+		hit(caster, foe, SpellNumbers.HUNTERS_MARK.damage(), modifiers);
+	}
+
+	// A snare springs on the nearest foe within its reach; true when it did.
+	private static boolean springSnare(
+		final ServerLevel level, final UUID owner, final @Nullable ServerPlayer caster, final Snare snare
+	) {
+		Mob nearest = null;
+		double best = Double.MAX_VALUE;
+		for (Mob foe : level.getEntitiesOfClass(
+			Mob.class, new AABB(snare.at(), snare.at()).inflate(ANKLE_SNARE_RADIUS),
+			candidate -> candidate.isAlive() && Friends.isFoe(candidate)
+				&& candidate.position().distanceToSqr(snare.at()) <= ANKLE_SNARE_RADIUS * ANKLE_SNARE_RADIUS
+		)) {
+			double distance = foe.position().distanceToSqr(snare.at());
+			if (distance < best) {
+				best = distance;
+				nearest = foe;
+			}
+		}
+		if (nearest == null) {
+			return false;
+		}
+		SpellNumbers numbers = SpellNumbers.ANKLE_SNARE;
+		int base = numbers.durationTicks(snare.modifiers()) * (snare.modifiers().awakened() ? 2 : 1);
+		int root = numbers.controlTicks(nearest, base);
+		nearest.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, root, numbers.amplifier()), caster);
+		level.sendParticles(ParticleTypes.ITEM_COBWEB, nearest.getX(), nearest.getY(0.2), nearest.getZ(), 16, 0.3, 0.1, 0.3, 0.02);
+		level.playSound(null, snare.at().x, snare.at().y, snare.at().z, SoundEvents.TRIPWIRE_CLICK_ON, SoundSource.PLAYERS, 0.8F, 0.8F);
+		Spellbooks.LOGGER.info("[SPELL] event=ANKLE_SNARE_SPRUNG owner={} foe={} root={}", owner, nearest.getUUID(), root);
+		return true;
+	}
+
+	private static void dropSnare(final UUID owner, final Snare snare) {
+		SNARES.computeIfPresent(owner, (id, existing) -> {
+			List<Snare> snares = new ArrayList<>(existing);
+			snares.remove(snare);
+			return snares.isEmpty() ? null : snares;
+		});
+	}
+
+	/**
+	 * The critical chance the archer books add on top of the caster's own: Sharp Shooting while its hits roll,
+	 * and True Sight while it lasts with a bow in hand. The RPG mod's critical seam reads this through
+	 * {@link ConcentrateStats}; without that mod the number is still readable here.
+	 */
+	public static double criticalChanceBonus(final LivingEntity caster) {
+		double bonus = SHARP_SHOOTING.get() != null ? SHARP_SHOOTING_CRIT_CHANCE : 0.0;
+		if (caster instanceof ServerPlayer player && hasBowOrCrossbow(player)) {
+			MobEffectInstance sight = player.getEffect(SpellStatus.EAGLE_EYE);
+			if (sight != null) {
+				bonus += sight.getAmplifier() >= (int) EAGLE_EYE_AWAKENED_AMPLIFIER
+					? TRUE_SIGHT_AWAKENED_CRIT_CHANCE : TRUE_SIGHT_CRIT_CHANCE;
+			}
+		}
+		return bonus;
+	}
+
+	// The blast of an Explosive Arrow on the foe it struck. An imbued cast also hits that foe itself.
+	private static void detonate(
+		final ServerPlayer shooter, final LivingEntity victim, final SpellModifiers.CastModifiers modifiers, final boolean hitVictim
+	) {
+		blast(shooter, victim.position(), modifiers);
+		if (hitVictim && victim instanceof Mob mob) {
+			hit(shooter, mob, SpellNumbers.EXPLOSIVE_ARROW.damage(), modifiers);
+		}
+		for (Mob near : foesAroundPoint(shooter, victim.position(), EXPLOSIVE_SPLASH_RADIUS)) {
+			if (near != victim) {
+				hit(shooter, near, splash(SpellNumbers.EXPLOSIVE_ARROW, modifiers), modifiers);
+			}
+		}
 		if (modifiers.awakened()) {
-			target.addTag(markJumpTag(caster));
-		}
-		return true;
-	}
-
-	/** The tag an awakened mark wears, so a death knows which caster may jump it. */
-	static String markJumpTag(final ServerPlayer caster) {
-		return MARK_JUMP_TAG + caster.getUUID();
-	}
-
-	/** The caster an awakened mark belongs to, or null when this foe wears no awakened mark. */
-	static @Nullable UUID markOwner(final Mob marked) {
-		for (String tag : marked.entityTags()) {
-			if (tag.startsWith(MARK_JUMP_TAG)) {
-				try {
-					return UUID.fromString(tag.substring(MARK_JUMP_TAG.length()));
-				} catch (IllegalArgumentException malformed) {
-					return null;
-				}
+			for (int bomblet = 0; bomblet < EXPLOSIVE_BOMBLETS; bomblet++) {
+				Vec3 at = victim.position().add(bombletOffset(bomblet));
+				owe(shooter, new Job(at, null, dueIn(BOMBLET_FLIGHT_TICKS * (bomblet + 1)), JobKind.BOMBLET, modifiers));
 			}
 		}
-		return null;
-	}
-
-	private static void clearMarkJump(final Mob marked) {
-		for (String tag : List.copyOf(marked.entityTags())) {
-			if (tag.startsWith(MARK_JUMP_TAG)) {
-				marked.removeTag(tag);
-			}
-		}
-	}
-
-	/** The death of a marked foe: an awakened mark moves to the nearest foe that is still standing. */
-	static boolean onMarkedDeath(final Mob fallen) {
-		UUID owner = markOwner(fallen);
-		if (owner == null || !(fallen.level() instanceof ServerLevel level)) {
-			return false;
-		}
-		ServerPlayer caster = level.getServer().getPlayerList().getPlayer(owner);
-		clearMarkJump(fallen);
-		if (caster == null) {
-			return false;
-		}
-		Mob next = nearestFoe(fallen, caster, MARK_JUMP_RANGE, fallen);
-		if (next == null) {
-			return false;
-		}
-		SpellStatusApi.mark(next, MARK_TICKS, caster);
-		next.addTag(markJumpTag(caster));
-		return true;
 	}
 
 	// The three bomblets land on a triangle inside the blast, so each one reaches its own ground.
@@ -544,11 +671,11 @@ public final class ArcherSkills {
 		return new Vec3(Math.cos(angle) * (EXPLOSIVE_SPLASH_RADIUS - 1.0), 0.0, Math.sin(angle) * (EXPLOSIVE_SPLASH_RADIUS - 1.0));
 	}
 
-	/** Eagle Eye: half an hour of the archer's own eye, and the amplifier says whether it is awakened. */
+	/** True Sight: half an hour of the archer's own eye, and the amplifier says whether it is awakened. */
 	static boolean applyEagleEye(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
-		if (!armed(caster)) {
+		if (!bowReady(caster)) {
 			return false;
 		}
 		caster.addEffect(new MobEffectInstance(
@@ -567,7 +694,7 @@ public final class ArcherSkills {
 		return eye.getAmplifier() >= (int) EAGLE_EYE_AWAKENED_AMPLIFIER ? EAGLE_EYE_AWAKENED_FACTOR : EAGLE_EYE_PLAIN_FACTOR;
 	}
 
-	// ---- the school's own gate: every archer book needs a bow or a crossbow, and an arrow or a bolt ----
+	// ---- the school's own gate: every archer book needs a bow or a crossbow; four also need an arrow or a bolt ----
 
 	/** True when the caster carries a bow or a crossbow, wherever the mod reads a weapon from. */
 	static boolean hasBowOrCrossbow(final ServerPlayer caster) {
@@ -597,9 +724,19 @@ public final class ArcherSkills {
 		return firstAmmo(caster) != null || hasSpectralQuiver(caster);
 	}
 
-	/** The school's gate: a ranged weapon and something to loose, or the cast never starts. */
+	/** True while an arrow hit casts an imbued bow's book; that cast needs neither a bow in hand nor ammunition. */
+	static boolean imbuedCast() {
+		return CastContext.imbuedVictim() != null;
+	}
+
+	/** The school's gate for every book: a bow or a crossbow in hand, or the cast never starts. */
+	static boolean bowReady(final ServerPlayer caster) {
+		return imbuedCast() || hasBowOrCrossbow(caster);
+	}
+
+	/** The gate for the four {@link #AMMO_BOOKS}: a bow or a crossbow, and something to loose. */
 	static boolean armed(final ServerPlayer caster) {
-		return hasBowOrCrossbow(caster) && hasAmmo(caster);
+		return bowReady(caster) && (imbuedCast() || hasAmmo(caster));
 	}
 
 	/** True when this weapon fires with an empty quiver under the caster's Spectral Quiver. */
@@ -708,7 +845,7 @@ public final class ArcherSkills {
 
 	private enum JobKind {
 		RAIN,
-		RAPID_FIRE,
+		BLITZ,
 		BOMBLET
 	}
 
@@ -721,7 +858,11 @@ public final class ArcherSkills {
 	private record Shot(ShotKind kind, SpellModifiers.CastModifiers modifiers, int expiresAt) {
 	}
 
-	private record Job(@Nullable Vec3 at, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers) {
+	private record Job(@Nullable Vec3 at, @Nullable UUID foe, int dueTick, JobKind kind, SpellModifiers.CastModifiers modifiers) {
+	}
+
+	private record Snare(Vec3 at, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, int expiresAt,
+		SpellModifiers.CastModifiers modifiers) {
 	}
 
 	private static void owe(final ServerPlayer caster, final Job job) {
@@ -738,6 +879,7 @@ public final class ArcherSkills {
 	private static void tick(final MinecraftServer server) {
 		int now = ++clock;
 		SHOTS.entrySet().removeIf(entry -> now >= entry.getValue().expiresAt());
+		tickSnares(server, now);
 		for (Map.Entry<UUID, List<Job>> entry : List.copyOf(JOBS.entrySet())) {
 			ServerPlayer caster = server.getPlayerList().getPlayer(entry.getKey());
 			if (caster == null || !caster.isAlive()) {
@@ -760,12 +902,29 @@ public final class ArcherSkills {
 		}
 	}
 
+	// A snare ends when a foe springs it or its life runs out; the owner need not be online.
+	private static void tickSnares(final MinecraftServer server, final int now) {
+		for (Map.Entry<UUID, List<Snare>> entry : List.copyOf(SNARES.entrySet())) {
+			ServerPlayer owner = server.getPlayerList().getPlayer(entry.getKey());
+			for (Snare snare : List.copyOf(entry.getValue())) {
+				ServerLevel level = server.getLevel(snare.dimension());
+				if (now >= snare.expiresAt() || level == null || springSnare(level, entry.getKey(), owner, snare)) {
+					dropSnare(entry.getKey(), snare);
+				}
+			}
+		}
+	}
+
 	private static void run(final ServerPlayer caster, final Job job) {
 		PULSES_RUN.merge(caster.getUUID(), 1, Integer::sum);
 
 		switch (job.kind()) {
 			case RAIN -> rain(caster, job.at(), job.modifiers());
-			case RAPID_FIRE -> shoot(caster, job.modifiers());
+			case BLITZ -> {
+				if (job.foe() != null && ((ServerLevel) caster.level()).getEntity(job.foe()) instanceof Mob foe && foe.isAlive()) {
+					strike(caster, foe, job.modifiers());
+				}
+			}
 			case BOMBLET -> {
 				if (job.at() != null) {
 					blast(caster, job.at(), job.modifiers());
@@ -793,25 +952,9 @@ public final class ArcherSkills {
 		level.playSound(null, point.x, point.y, point.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.6F, 0.9F);
 		for (Mob foe : foesAroundPoint(caster, point, radius)) {
 			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers);
-		}
-	}
-
-	// One Rapid Fire shot: the foe the caster looks at now, or nothing when the look has moved off.
-	private static void shoot(final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers) {
-		Vec3 direction = caster.getLookAngle();
-		Mob foe = SkillTargeting.rayFoe(caster, direction, RAPID_FIRE_RANGE);
-		if (foe == null) {
-			return;
-		}
-		trail(caster, direction, RAPID_FIRE_RANGE, foe);
-		hit(caster, foe, SpellNumbers.RAPID_FIRE.damage(), modifiers);
-		if (modifiers.awakened()) {
-			blast(caster, foe.position(), modifiers);
-			for (Mob near : foesAroundPoint(caster, foe.position(), EXPLOSIVE_SPLASH_RADIUS)) {
-				if (near != foe) {
-					hit(caster, near, splash(SpellNumbers.EXPLOSIVE_ARROW, modifiers), modifiers);
-				}
-			}
+			Vec3 away = foe.position().subtract(point);
+			shove(foe, away.multiply(1.0, 0.0, 1.0).lengthSqr() < 1.0E-6 ? foe.position().subtract(caster.position()) : away,
+				ARROW_SHOWER_PUSH, ARROW_SHOWER_LIFT);
 		}
 	}
 

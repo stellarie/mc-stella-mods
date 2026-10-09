@@ -111,6 +111,33 @@ Static Lash connects selected chained victims. Purify and the hymns link affecte
 Visual links stop after eight recipients to bound particles; the gameplay effect still reaches every eligible ally.
 A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 
+## Archer books
+
+The archer school follows Ragnarok Online's Archer, Hunter and Sniper line. Every archer book needs a
+bow or a crossbow in the main hand, the off hand or the RPG weapon slot. Only Grappling Hook, Aimed
+Bolt, Explosive Arrow and Triangle Shot also need an arrow or a bolt, and a Spectral Quiver pays that
+need. Every other archer book casts with a bow and an empty quiver.
+
+| Book | Effect |
+| --- | --- |
+| Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one arrow |
+| Double Strafe | Two archer hits on the hostile you look at |
+| Sharp Shooting | One arrow through every hostile on a 32 block line, with a 30 percent better critical chance |
+| Arrow Shower | Five pulses over the ground you look at; each hurts every hostile within 4 blocks and pushes it away from that point, never the caster |
+| Blitz Beat | A spectral falcon strikes the hostile you look at 5 times, 10 when awakened; each strike is one archer hit |
+| Ankle Snare | A trap on the ground you look at, kept 30 s; the first hostile that comes within 1.5 blocks is rooted for 3 s |
+| Arrow Repel | One heavy shot that knocks the hostile back several blocks |
+| True Sight | 30 min: every archer skill hit deals 1.2 times its damage, and the critical chance rises by 15 percent with a bow in hand (25 percent when awakened) |
+| Concentrate | 30 min of steadier aim while a bow is held |
+| Spectral Quiver | 30 min in which the bow needs no arrow, at three quarters the damage |
+| Wind Walk | 30 min at a quarter more walking speed |
+| Aimed Bolt | The next arrow draws half again as slowly, hits 4 times as hard and stops its target for 2 s |
+| Triangle Shot | 30 min in which a shot has a 30 percent chance to loose three arrows |
+| Explosive Arrow | The next arrow bursts for 1.5 times its damage and splashes hostiles within 3 blocks |
+
+The critical chance of True Sight and Sharp Shooting reaches the RPG mod through its critical bonus
+seam, the one Concentrate uses. Without the RPG mod the books still cast and add nothing there.
+
 ## Imbued weapons, arrows and chestplates
 
 Put a weapon, a stack of arrows (any kind) or a chestplate on the left of an anvil and a spellbook on
@@ -129,6 +156,11 @@ Battle Hymn, Skyhook becomes Gravity and Healing Spring becomes Bulwark Hymn, bo
   Right-click a hostile with the weapon to cast every ready spell at the book's full strength instead.
   A sword, axe or mace shows the spell's cooldown in the hotbar.
 - **Arrows:** an imbued arrow casts its spells on whatever it strikes, at half power.
+- **Bow or crossbow:** a bow or a crossbow takes the seven archer books that strike a target: Double
+  Strafe, Sharp Shooting, Arrow Shower, Blitz Beat, Ankle Snare, Arrow Repel and Explosive Arrow. An
+  arrow it looses casts them on the victim at half power. Arrow Shower, Ankle Snare and the
+  Explosive Arrow blast centre on the victim. The cast needs no arrow and spends none, and it waits
+  out the book's own cooldown. A sword refuses these books, and a bow refuses every other archer book.
 - **Chestplate:** when something strikes the wearer, the chestplate casts its spells on the attacker, at
   half power.
 

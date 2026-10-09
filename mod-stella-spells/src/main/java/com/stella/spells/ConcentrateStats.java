@@ -66,7 +66,7 @@ public final class ConcentrateStats {
 
 	// Both halves arrive in one Bonus object, so each read asks the provider once and takes its own accessor.
 	private static double criticalHalf(final LivingEntity caster, final String accessor) {
-		if (CRITICAL_PROVIDER == null || !worth(caster)) {
+		if (CRITICAL_PROVIDER == null || (!worth(caster) && ArcherSkills.criticalChanceBonus(caster) == 0.0)) {
 			return 0.0;
 		}
 		Object bonus = calling(CRIT_BONUSES_CLASS, "Provider", "bonus", CRITICAL_PROVIDER,
@@ -86,13 +86,15 @@ public final class ConcentrateStats {
 		return arguments[0] instanceof LivingEntity caster && worth(caster) ? (int) CONCENTRATE_DEXTERITY : 0;
 	}
 
-	// The critical answer: both halves for a concentrating archer, and an empty bonus otherwise.
+	// The critical answer: both halves for a concentrating archer, plus the archer books' chance; empty otherwise.
 	private static Object answerCritical(final Method method, final Object[] arguments) {
 		if (!method.getName().equals("bonus") || arguments.length != 1) {
 			return null;
 		}
-		boolean worth = arguments[0] instanceof LivingEntity caster && worth(caster);
-		return bonus(worth ? CONCENTRATE_CRITICAL_HALF : 0.0, worth ? CONCENTRATE_CRITICAL_HALF : 0.0);
+		LivingEntity archer = arguments[0] instanceof LivingEntity caster ? caster : null;
+		boolean worth = archer != null && worth(archer);
+		double archerChance = archer == null ? 0.0 : ArcherSkills.criticalChanceBonus(archer);
+		return bonus((worth ? CONCENTRATE_CRITICAL_HALF : 0.0) + archerChance, worth ? CONCENTRATE_CRITICAL_HALF : 0.0);
 	}
 
 	// The RPG mod's own Bonus record, built by its canonical constructor; null when it is not there.

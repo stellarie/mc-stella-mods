@@ -132,8 +132,16 @@ public record SpellNumbers(
 	public static final SpellNumbers PIERCING_SHOT = builder("piercing_shot").damage(4.0f).radius(32.0).build();
 	/** Arrow Rain's radius is its ground; its extra is the splash an Explosive Arrow leaves. */
 	public static final SpellNumbers ARROW_RAIN = builder("arrow_rain").damage(1.5f).radius(ArcherSkills.ARROW_RAIN_RADIUS).build();
-	public static final SpellNumbers RAPID_FIRE = builder("rapid_fire").damage(1.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
-	public static final SpellNumbers HUNTERS_MARK = builder("hunters_mark").duration(ArcherSkills.MARK_TICKS, Scale.OFFENSIVE).build();
+	/** Double Strafe's damage is per hit; it lands twice. */
+	public static final SpellNumbers RAPID_FIRE = builder("rapid_fire").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
+	/** Blitz Beat's damage is per falcon strike. */
+	public static final SpellNumbers HUNTERS_MARK = builder("hunters_mark").damage(1.5f).build();
+	/** Ankle Snare: the duration is the root, the extra is how long the trap waits, and the radius is its reach. */
+	public static final SpellNumbers ANKLE_SNARE = builder("ankle_snare").radius(ArcherSkills.ANKLE_SNARE_RADIUS)
+		.duration(ArcherSkills.ANKLE_SNARE_ROOT_TICKS, Scale.OFFENSIVE).extra(ArcherSkills.ANKLE_SNARE_LIFE_TICKS, Scale.FIXED)
+		.amplifier(SLOWNESS_ROOT_AMPLIFIER).control().build();
+	/** Arrow Repel's damage is its one heavy shot. */
+	public static final SpellNumbers ARROW_REPEL = builder("arrow_repel").damage(3.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	/** The next-shot books: the duration is how long the offer stands, and the extra is what the shot leaves. */
 	public static final SpellNumbers AIMED_BOLT = builder("aimed_bolt").damage(3.0f)
 		.duration(ArcherSkills.SHOT_OFFER_TICKS, Scale.FIXED).extra(40, Scale.FIXED)
