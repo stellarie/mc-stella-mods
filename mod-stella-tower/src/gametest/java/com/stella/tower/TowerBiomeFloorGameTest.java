@@ -262,6 +262,8 @@ public class TowerBiomeFloorGameTest {
 				double end = attributes.get("minecraft:visual/fog_end_distance").getAsDouble();
 				TowerTestSupport.result("biomeFile", biome + " fog=" + start + ".." + end);
 				helper.assertTrue(start >= 0.0 && start < end, biome + " fogs from " + start + " to " + end);
+				// The marsh is the extreme fog: a body sees about six blocks.
+				helper.assertTrue(biome != FloorBiome.MISTBOUND_MARSH || end <= 6.0, "the marsh fogs out to " + end + " blocks");
 			} catch (java.io.IOException | NullPointerException e) {
 				helper.fail("biome file " + path + " could not be read: " + e);
 			}

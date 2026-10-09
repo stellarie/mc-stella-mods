@@ -47,6 +47,12 @@ public class TowerBiomeSetGameTest {
 				off.append(biome).append('=').append(counts.getOrDefault(biome, 0)).append(' ');
 			}
 		}
+		int twoBack = 0;
+		if (FloorBiome.values().length >= 6) {
+			for (int floor = 4; floor < 2 + floors; floor++) {
+				twoBack += FloorBiomes.of(SEED, floor) == FloorBiomes.of(SEED, floor - 2) ? 1 : 0;
+			}
+		}
 		boolean gentle = true;
 		for (long seed = 0; seed < 50; seed++) {
 			gentle &= FloorBiomes.of(seed, 1).gentle();
@@ -54,6 +60,7 @@ public class TowerBiomeSetGameTest {
 		TowerTestSupport.result("biomeShare", "floors=" + floors + " counts=" + counts + " adjacent=" + adjacent + " gentleStart=" + gentle);
 		helper.assertTrue(off.length() == 0, "biomes off by more than 4 sigma: " + off);
 		helper.assertTrue(adjacent == 0, adjacent + " floors share the biome of the floor below");
+		helper.assertTrue(twoBack == 0, twoBack + " floors share the biome of the floor two below");
 		helper.assertTrue(gentle, "floor 1 drew a biome that is not a gentle one");
 		helper.assertTrue(counts.size() == FloorBiome.values().length, "only " + counts.keySet() + " came up");
 		helper.succeed();
@@ -87,6 +94,28 @@ public class TowerBiomeSetGameTest {
 		helper.assertTrue(wrong == 0, wrong + " plans carry another biome than the one asked");
 		helper.assertTrue(stuck == 0, stuck + " plans have no walk to the portal: " + report);
 		helper.assertTrue(fallbacks * 200 <= per * FloorBiome.values().length, fallbacks + " plans fell back to the plain yard: " + report);
+		helper.succeed();
+	}
+
+	/** Catches a marsh whose spine is not a boardwalk: the road from the arrival is planks. */
+	@GameTest(maxTicks = 100)
+	public void theMarshsRoadIsABoardwalk(final GameTestHelper helper) {
+		int planks = 0;
+		int floors = 0;
+		for (int floor : floorsOf(SEED, FloorBiome.MISTBOUND_MARSH, 5)) {
+			TowerPlan plan = BiomeGen.plan(SEED, floor);
+			floors++;
+			byte[][] surface = plan.biome().surface();
+			int own = 0;
+			for (int x = 0; x < TowerLayout.SIZE; x++) {
+				for (int z = 0; z < TowerLayout.SIZE; z++) {
+					own += surface[x][z] == BiomeBlocks.PLANKS ? 1 : 0;
+				}
+			}
+			planks += own >= 100 ? 1 : 0;
+		}
+		TowerTestSupport.result("marshBoardwalk", "floors=" + floors + " withBoardwalk=" + planks);
+		helper.assertTrue(floors > 0 && planks == floors, planks + " of " + floors + " marsh floors have a boardwalk of 100 planks or more");
 		helper.succeed();
 	}
 

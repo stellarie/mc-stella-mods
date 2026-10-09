@@ -83,6 +83,8 @@ final class BiomeGen {
 				case DESTROYED_CASTLE -> w.castle();
 				case ADVENTURERS_GRAVEYARD -> w.graveyard();
 				case SCORCHED_BATTLEFIELD -> w.battlefield();
+				case JUNGLE -> w.jungle();
+				case MISTBOUND_MARSH -> w.marsh();
 			}
 		}
 		w.nooks();
@@ -300,7 +302,8 @@ final class BiomeGen {
 
 		void terrain(final boolean features) {
 			double cell = switch (this.biome) {
-				case RAINY_FOREST -> 16;
+				case RAINY_FOREST, MISTBOUND_MARSH -> 16;
+				case JUNGLE -> 12;
 				case DESTROYED_VILLAGE -> 20;
 				case DESTROYED_CASTLE, SCORCHED_BATTLEFIELD -> 18;
 				case ADVENTURERS_GRAVEYARD -> 17;
@@ -311,11 +314,14 @@ final class BiomeGen {
 				case DESTROYED_CASTLE -> 2.2;
 				case ADVENTURERS_GRAVEYARD -> 3.0;
 				case SCORCHED_BATTLEFIELD -> 2.6;
+				case JUNGLE -> 4.6;
+				case MISTBOUND_MARSH -> 1.9;
 			};
-			byte base = this.biome == FloorBiome.SCORCHED_BATTLEFIELD ? BiomeBlocks.BLACKSTONE : BiomeBlocks.GRASS;
+			byte base = this.biome == FloorBiome.SCORCHED_BATTLEFIELD ? BiomeBlocks.BLACKSTONE : this.biome == FloorBiome.MISTBOUND_MARSH ? BiomeBlocks.MUD : BiomeBlocks.GRASS;
 			byte patch = switch (this.biome) {
 				case DESTROYED_CASTLE -> BiomeBlocks.STONE;
 				case ADVENTURERS_GRAVEYARD, DESTROYED_VILLAGE -> BiomeBlocks.COARSE_DIRT;
+				case MISTBOUND_MARSH, JUNGLE -> BiomeBlocks.MOSS;
 				default -> BiomeBlocks.MUD;
 			};
 			for (int x = 0; x < N; x++) {
@@ -680,6 +686,28 @@ final class BiomeGen {
 			}
 			fallenLogs();
 			ferns();
+			podzol();
+		}
+
+		/** Patches of podzol in the forest floor with a few mushrooms, which grow on it whatever the light. */
+		void podzol() {
+			for (int patch = 0; patch < 5; patch++) {
+				int cx = 4 + this.random.nextInt(N - 8);
+				int cz = 4 + this.random.nextInt(N - 8);
+				if (!free(cx, cz, 2)) {
+					continue;
+				}
+				int mushrooms = 0;
+				for (int[] c : disc(cx, cz, 2)) {
+					if (free(c[0], c[1])) {
+						this.surface[c[0]][c[1]] = BiomeBlocks.PODZOL;
+						if (mushrooms < 4 && this.random.nextInt(3) == 0 && get(c[0], this.h[c[0]][c[1]], c[1]) == 0) {
+							put(c[0], this.h[c[0]][c[1]], c[1], this.random.nextBoolean() ? BiomeBlocks.BROWN_MUSHROOM : BiomeBlocks.RED_MUSHROOM);
+							mushrooms++;
+						}
+					}
+				}
+			}
 		}
 
 		void wet(final int x, final int z) {
@@ -711,8 +739,14 @@ final class BiomeGen {
 
 		/** One tree, its canopy kept three blocks over the highest ground within reach so no body is capped. */
 		boolean tree(final int x, final int z, final boolean big) {
-			int reach = big ? 3 : 2;
-			int size = big ? 2 : 1;
+			int kind = big ? 1 : this.random.nextInt(4) == 0 ? 2 : 0;
+			byte log = kind == 1 ? BiomeBlocks.DARK_OAK_LOG : kind == 2 ? BiomeBlocks.BIRCH_LOG : BiomeBlocks.OAK_LOG;
+			byte leaves = kind == 1 ? BiomeBlocks.DARK_OAK_LEAVES : kind == 2 ? BiomeBlocks.BIRCH_LEAVES : BiomeBlocks.OAK_LEAVES;
+			return grow(x, z, big ? 2 : 1, big ? 3 : 2, 3, log, leaves);
+		}
+
+		/** A trunk {@code size} blocks square under a canopy of {@code reach}, {@code lift} blocks over the highest ground within it. */
+		boolean grow(final int x, final int z, final int size, final int reach, final int lift, final byte log, final byte leaves) {
 			int ground = 0;
 			for (int dx = -reach - 1; dx <= reach + size; dx++) {
 				for (int dz = -reach - 1; dz <= reach + size; dz++) {
@@ -721,13 +755,10 @@ final class BiomeGen {
 					}
 				}
 			}
-			int bottom = ground + 3;
+			int bottom = ground + lift;
 			if (bottom + 3 > TowerLayout.ROOM_HEIGHT - 4) {
 				return false;
 			}
-			int kind = big ? 1 : this.random.nextInt(4) == 0 ? 2 : 0;
-			byte log = kind == 1 ? BiomeBlocks.DARK_OAK_LOG : kind == 2 ? BiomeBlocks.BIRCH_LOG : BiomeBlocks.OAK_LOG;
-			byte leaves = kind == 1 ? BiomeBlocks.DARK_OAK_LEAVES : kind == 2 ? BiomeBlocks.BIRCH_LEAVES : BiomeBlocks.OAK_LEAVES;
 			for (int dx = 0; dx < size; dx++) {
 				for (int dz = 0; dz < size; dz++) {
 					for (int y = this.h[x + dx][z + dz]; y <= bottom + 2; y++) {
@@ -1202,6 +1233,88 @@ final class BiomeGen {
 			fires(14);
 		}
 
+		// ---- the jungle
+
+		void jungle() {
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (in(x, z, 1) && vnoise(this.seed, x, z, 9, 5) < 0.26 && free(x, z, 1)) {
+						this.water[x][z] = true;
+						this.h[x][z] = -1;
+						this.surface[x][z] = BiomeBlocks.MUD;
+					}
+				}
+			}
+			List<int[]> temples = new ArrayList<>();
+			for (int i = 0; i < 3; i++) {
+				int[] spot = pad(7, 7, 60);
+				if (spot != null) {
+					temples.add(spot);
+				}
+			}
+			relax(true);
+			for (int[] t : poisson(24, 8, (x, z) -> free(x, z, 2) && free(x + 1, z + 1, 2) && free(x + 1, z, 2) && free(x, z + 1, 2))) {
+				grow(t[0], t[1], 2, 4, 4 + this.random.nextInt(8), BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES);
+			}
+			for (int i = 0; i < 30; i++) {
+				int bx = 3 + this.random.nextInt(N - 6);
+				int bz = 3 + this.random.nextInt(N - 6);
+				for (int[] c : disc(bx, bz, 1 + this.random.nextInt(2))) {
+					if (free(c[0], c[1], 1)) {
+						stack(c[0], c[1], BiomeBlocks.JUNGLE_LEAVES, 2);
+					}
+				}
+			}
+			byte[] stone = {BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.COBBLE, BiomeBlocks.STONE_BRICKS};
+			for (int[] t : temples) {
+				ruin(t[0], t[1], 7, 7, stone, 2, 5, 0.35, BiomeBlocks.STONE);
+			}
+		}
+
+		// ---- the mistbound marsh
+
+		void marsh() {
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (in(x, z, 1) && vnoise(this.seed, x, z, 10, 4) < 0.34 && free(x, z, 1)) {
+						this.water[x][z] = true;
+						this.h[x][z] = -1;
+						this.surface[x][z] = BiomeBlocks.MUD;
+					}
+				}
+			}
+			List<int[]> huts = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				int[] spot = pad(5, 5, 80);
+				if (spot != null) {
+					huts.add(spot);
+				}
+			}
+			relax(true);
+			for (int[] t : poisson(26, 6, (x, z) -> free(x, z, 1))) {
+				stack(t[0], t[1], BiomeBlocks.OAK_LOG, 5 + this.random.nextInt(5));
+			}
+			for (int[] hut : huts) {
+				ruin(hut[0], hut[1], 5, 5, new byte[] {BiomeBlocks.PLANKS}, 2, 4, 0.3, BiomeBlocks.PLANKS);
+			}
+			for (int i = 0, placed = 0; placed < 8 && i < 400; i++) {
+				int x = 3 + this.random.nextInt(N - 6);
+				int z = 3 + this.random.nextInt(N - 6);
+				if (free(x, z, 1)) {
+					stack(x, z, BiomeBlocks.COBBLE, 2);
+					placed++;
+				}
+			}
+			// The spine is a boardwalk.
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (this.keep[x][z] == 1) {
+						this.surface[x][z] = BiomeBlocks.PLANKS;
+					}
+				}
+			}
+		}
+
 		// ---- chest nooks
 
 		/** The columns a body reaches from the arrival, in steps, by the ground alone: a coarse stand-in for the walk proof. */
@@ -1347,11 +1460,12 @@ final class BiomeGen {
 						for (int dz = -reach; dz <= reach; dz++) {
 							int x = spot[0] + dx;
 							int z = spot[2] + dz;
-							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z] || this.water[x][z] || this.tall[x][z]
+							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z] || this.tall[x][z]
 								|| plan.standY(x, z) != this.h[x][z] || get(x, this.h[x][z], z) != 0) {
 								continue;
 							}
-							int[] lamp = {x, this.h[x][z] + 1, z};
+							// A lamp in the water is a sea lantern at the feet level; on land a lantern on a post.
+							int[] lamp = {x, this.h[x][z] + (this.water[x][z] ? 0 : 1), z};
 							if (squared(lamp, spot) > LIGHT_REACH_SQUARED) {
 								continue;
 							}
@@ -1370,8 +1484,12 @@ final class BiomeGen {
 				if (best == null) {
 					continue;
 				}
-				put(best[0], best[1] - 1, best[2], BiomeBlocks.FENCE);
-				put(best[0], best[1], best[2], BiomeBlocks.LANTERN);
+				if (this.water[best[0]][best[2]]) {
+					put(best[0], best[1], best[2], BiomeBlocks.SEA_LANTERN);
+				} else {
+					put(best[0], best[1] - 1, best[2], BiomeBlocks.FENCE);
+					put(best[0], best[1], best[2], BiomeBlocks.LANTERN);
+				}
 				this.tall[best[0]][best[2]] = true;
 				for (int j = 0; j < stands.size(); j++) {
 					lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
@@ -1402,7 +1520,11 @@ final class BiomeGen {
 			// Grass dies under a block that shuts out the light, and dirt would spread back: bare dirt under any cover.
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
-					if (surface[x][z] == BiomeBlocks.GRASS && BiomeBlocks.opaque(get(x, this.h[x][z], z))) {
+					byte above = get(x, this.h[x][z], z);
+					// A road turns to dirt under anything solid, grass dies under a block that shuts out the light.
+					boolean dies = surface[x][z] == BiomeBlocks.GRASS && BiomeBlocks.opaque(above)
+						|| surface[x][z] == BiomeBlocks.PATH && above != BiomeBlocks.NONE && BiomeBlocks.walk(above) != TowerWalk.OPEN;
+					if (dies) {
 						surface[x][z] = BiomeBlocks.COARSE_DIRT;
 					}
 				}

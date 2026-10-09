@@ -18,7 +18,11 @@ public enum FloorBiome {
 	/** Fenced plots of graves, tombs and a chapel under dead trees. */
 	ADVENTURERS_GRAVEYARD("adventurers_graveyard", true, TowerSkin.DEEPSLATE_TILES, false),
 	/** Craters, trenches, siege wrecks and little fires on scorched ground. */
-	SCORCHED_BATTLEFIELD("scorched_battlefield", true, TowerSkin.POLISHED_BLACKSTONE_BRICKS, false);
+	SCORCHED_BATTLEFIELD("scorched_battlefield", true, TowerSkin.POLISHED_BLACKSTONE_BRICKS, false),
+	/** Giant trees, thickets, ponds and overgrown temples. */
+	JUNGLE("jungle", true, TowerSkin.MOSSY_STONE_BRICKS, false),
+	/** Mud, still water, dead trunks and stilt huts under a fog six blocks deep, crossed by a boardwalk. */
+	MISTBOUND_MARSH("mistbound_marsh", true, TowerSkin.MUD_BRICKS, false);
 
 	private final String id;
 	private final boolean openRoof;

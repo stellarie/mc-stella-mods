@@ -59,7 +59,13 @@ public final class BiomeBlocks {
 	public static final byte MAGMA = 41;
 	public static final byte COBBLE_WALL = 42;
 	public static final byte ANVIL = 43;
-	public static final byte COUNT = 44;
+	public static final byte JUNGLE_LOG = 44;
+	public static final byte JUNGLE_LEAVES = 45;
+	public static final byte PODZOL = 46;
+	public static final byte BROWN_MUSHROOM = 47;
+	public static final byte RED_MUSHROOM = 48;
+	public static final byte SEA_LANTERN = 49;
+	public static final byte COUNT = 50;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -104,6 +110,12 @@ public final class BiomeBlocks {
 		define(MAGMA, Blocks.MAGMA_BLOCK.defaultBlockState(), TowerWalk.SOLID);
 		define(COBBLE_WALL, Blocks.COBBLESTONE_WALL.defaultBlockState(), TowerWalk.TALL);
 		define(ANVIL, Blocks.CHIPPED_ANVIL.defaultBlockState(), TowerWalk.SOLID);
+		define(JUNGLE_LOG, Blocks.JUNGLE_LOG.defaultBlockState(), TowerWalk.SOLID);
+		define(JUNGLE_LEAVES, Blocks.JUNGLE_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true), TowerWalk.SOLID);
+		define(PODZOL, Blocks.PODZOL.defaultBlockState(), TowerWalk.SOLID);
+		define(BROWN_MUSHROOM, Blocks.BROWN_MUSHROOM.defaultBlockState(), TowerWalk.OPEN);
+		define(RED_MUSHROOM, Blocks.RED_MUSHROOM.defaultBlockState(), TowerWalk.OPEN);
+		define(SEA_LANTERN, Blocks.SEA_LANTERN.defaultBlockState(), TowerWalk.SOLID);
 		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
@@ -131,20 +143,20 @@ public final class BiomeBlocks {
 	/** Whether the entry is a ground to trap, to chest and to raise a mob on: bare, level, and full. */
 	public static boolean ground(final byte code) {
 		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS || code == COBBLE
-			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS;
+			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS || code == PODZOL;
 	}
 
 	/** Whether the entry is a block that shuts out the light, so that grass under it would die. */
 	public static boolean opaque(final byte code) {
 		return switch (code) {
 			case NONE, WATER, FERN, FENCE, LANTERN, HANGING_LANTERN, SOUL_CAMPFIRE, SKULL, SOUL_FIRE, CHAIN, COBBLE_WALL, ANVIL, BARRIER,
-				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES -> false;
+				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM -> false;
 			default -> true;
 		};
 	}
 
 	/** Whether the entry gives light. */
 	public static boolean lights(final byte code) {
-		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE;
+		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE || code == SEA_LANTERN;
 	}
 }
