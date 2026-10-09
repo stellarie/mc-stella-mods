@@ -71,6 +71,15 @@
     },
     "skin=mud_bricks": {
       "model": "minecraft:block/mud_bricks"
+    },
+    "skin=cobblestone": {
+      "model": "minecraft:block/cobblestone"
+    },
+    "skin=cut_sandstone": {
+      "model": "minecraft:block/cut_sandstone"
+    },
+    "skin=blue_ice": {
+      "model": "minecraft:block/blue_ice"
     }
   }
 }

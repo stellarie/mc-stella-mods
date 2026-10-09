@@ -55,9 +55,13 @@ final class TowerChestSpots {
 		Random random = new Random(plan.seed() ^ SALT ^ (plan.floor() * 0x9E3779B97F4A7C15L) ^ plan.attempt());
 		List<Candidate> candidates = new ArrayList<>();
 		for (TowerStory story : plan.stories()) {
-			int y = story.y();
 			for (int x = 1; x < SIZE - 1; x++) {
 				for (int z = 1; z < SIZE - 1; z++) {
+					// A biome floor's ground rises and falls: a column's own feet level, and none where nothing stands.
+					int y = plan.isBiome() ? plan.standY(x, z) : story.y();
+					if (y < TowerWalk.LOW) {
+						continue;
+					}
 					for (Direction face : FACES) {
 						ChestSpot spot = new ChestSpot(x, z, face, false, y);
 						if (standsAgainstAWall(volume, spot) && reached(dist, spot) >= 0 && !keepsOut(plan, volume, spot, traps)) {
@@ -71,7 +75,7 @@ final class TowerChestSpots {
 		// The most shut in first: a dead end or a room's corner before the middle of a wide path.
 		candidates.sort((a, b) -> Integer.compare(b.enclosure(), a.enclosure()));
 		// A fifth floor's guaranteed spot is placed first, so the others keep their spacing from it too.
-		ChestSpot guaranteed = plan.floor() % TowerElites.ELITE_EVERY == 0 ? guaranteed(plan) : null;
+		ChestSpot guaranteed = plan.floor() % TowerElites.ELITE_EVERY == 0 ? plan.isBiome() ? nearTheStair(plan, candidates) : guaranteed(plan) : null;
 		if (plan.floor() % TowerElites.ELITE_EVERY == 0 && guaranteed == null) {
 			return null;
 		}
@@ -151,10 +155,17 @@ final class TowerChestSpots {
 			if (plan.inSafeZone(cell.x(), y, cell.z()) || y == 0 && plan.hall() > 0 && inHall(plan, cell.x(), cell.z())) {
 				return true;
 			}
+			if (plan.isBiome() && (plan.biome().inDais(plan, cell.x(), cell.z()) || plan.biome().water()[cell.x()][cell.z()]
+				|| plan.biome().water()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()]
+				// Not on the road, which a chest on it would turn to dirt, nor by a cactus, which a chest beside it would break.
+				|| plan.biome().surface()[cell.x()][cell.z()] == BiomeBlocks.PATH || plan.biome().fragile()[cell.x()][cell.z()]
+				|| plan.biome().fragile()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()])) {
+				return true;
+			}
 			if (volume.isWay(cell.x(), y, cell.z()) || volume.isWay(cell.x() + face.getStepX(), y, cell.z() + face.getStepZ())) {
 				return true;
 			}
-			if (y == plan.portalY() && Math.max(Math.abs(cell.x() - plan.portalX()), Math.abs(cell.z() - plan.portalZ())) <= PORTAL_CLEAR) {
+			if ((plan.isBiome() || y == plan.portalY()) && Math.max(Math.abs(cell.x() - plan.portalX()), Math.abs(cell.z() - plan.portalZ())) <= PORTAL_CLEAR) {
 				return true;
 			}
 			for (TowerTraps.Trap trap : traps) {
@@ -210,6 +221,26 @@ final class TowerChestSpots {
 	}
 
 	// ------------------------------------------------------------------ the guaranteed spot
+
+	/** How far from the stair's foot a biome floor's guaranteed chest stands, nearest and farthest, in blocks. */
+	static final int NEAR_STAIR_MIN = 6;
+	static final int NEAR_STAIR_MAX = 12;
+
+	/**
+	 * An elite floor's guaranteed spot on a biome floor: the most shut in of the candidates a few steps from the foot of
+	 * the portal's stair, where the guard stands; null when none lies there.
+	 */
+	private static ChestSpot nearTheStair(final TowerPlan plan, final List<Candidate> candidates) {
+		int footX = plan.portalX() + plan.portalFacing() * (2 + plan.biome().steps());
+		for (Candidate candidate : candidates) {
+			ChestSpot spot = candidate.spot();
+			int away = Math.max(Math.abs(spot.x() - footX), Math.abs(spot.z() - plan.portalZ()));
+			if (away >= NEAR_STAIR_MIN && away <= NEAR_STAIR_MAX) {
+				return new ChestSpot(spot.x(), spot.z(), spot.facing(), true, spot.y());
+			}
+		}
+		return null;
+	}
 
 	/**
 	 * The one spot a fifth floor is sure to have: the entrance zone's on an elite floor, the walled boss room's on a

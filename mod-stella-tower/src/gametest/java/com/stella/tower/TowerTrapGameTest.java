@@ -317,6 +317,26 @@ public class TowerTrapGameTest {
 		helper.succeed();
 	}
 
+	/** Catches a lost room's ambush that follows the floors' level formula: it keeps the room's own level. */
+	@GameTest(maxTicks = 100)
+	public void aLostRoomsAmbushIsOfTheRoomsLevel(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		ServerPlayer player = TowerLostRoomGameTest.withLevel(helper, 40);
+		LostRoomData.Instance instance = LostRooms.open(tower, TowerLostRoomGameTest.freshHut(), TowerLostRoomGameTest.anywhere(helper), List.of(player));
+		Vec3 at = TowerLayout.arrival(tower, instance.room());
+		player.teleportTo(tower, at.x, at.y, at.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		TowerTestSupport.vulnerable(player);
+		TowerTraps.Sprung sprung = TowerTraps.spring(tower, under(player), player, TrapTheme.SHADOW, LostRooms.equivalentFloor(instance.level()));
+		helper.assertTrue(sprung != null, "the lost room's shadow trap did not spring");
+		List<Integer> levels = sprung.spawned().stream().filter(entity -> entity instanceof Mob)
+			.map(entity -> ((Mob) entity).getAttached(com.stella.mobs.scaling.ThreatState.TYPE).areaLevel()).toList();
+		TowerTestSupport.result("lostRoomAmbush", "room=" + instance.level() + " levels=" + levels);
+		sprung.spawned().forEach(Entity::discard);
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(!levels.isEmpty() && levels.stream().allMatch(level -> level == instance.level()), "the ambush levels " + levels + " are not the room's " + instance.level());
+		helper.succeed();
+	}
+
 	@GameTest
 	public void aShadowTrapBlindsThePlayerAndCallsAnAmbush(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);

@@ -3,6 +3,104 @@
 An endless tower of floors behind a crying obsidian portal. The design is in
 `docs/plans/2026-09-28/ENDLESS-TOWER-RUNES.md`.
 
+## Biome floors
+
+This section supersedes the stories, archetypes and safe rooms described further down for every new floor. A floor
+built to the older generator stays as it is; a lost room keeps it (see below). Old saves do not carry over.
+
+### The floor
+
+- A floor is one volume of 64 x 64 columns, 32 blocks high, from a bedrock at -6 under the base to a roof at 32.
+  `TowerLayout.ROOM_HEIGHT` and `ROOM_LOW` are its bounds; `TowerLayout.HEIGHT` (24) is still the older plans'.
+- `BiomeGen.plan(seed, floor)` draws the plan, `TowerArchetype.BIOME`, and `BiomeDraft` holds it: each column's
+  feet level, surface block and fluid, the blocks above it, a rock ceiling where the biome has one, and the stair.
+  Every plan is proved by a walk from the arrival to the portal over its whole volume. A draw that fails is drawn
+  again, up to 8 times; then the floor is a plain yard of its biome. `TowerPlan.standY(x, z)` is where a body
+  stands in a column.
+- The frame, for every biome: the ends (the portal entered along x, the arrival at the other side), the ground
+  kept to one step between columns, a winding spine three blocks wide that clears whatever stands on it, the
+  biome's features, eight walled nooks for the double chests, a light over every spot a body reaches, and props.
+- Water and lava lie in single basins one block below every other column's feet, held in by the ground beside
+  them. The walk counts lava and powder snow as unwalkable (`TowerWalk.classify`).
+- Only floor 1 has a safe zone (8 x 8 round the arrival), and floor 1 holds the crafting table, furnace and anvil
+  in it. Nothing is raised within 16 blocks of the arrival.
+
+### The biomes
+
+`FloorBiomes.of(seed, floor)` draws in blocks: each block is a shuffle of the twelve biomes, so each comes about as
+often as another, none twice in a row, and none within two floors of itself. Floor 1 draws among the gentle ones.
+Every floor whose number is a multiple of ten is the great hall (`FloorBiome.GREAT_HALL`), drawn among none.
+
+| Biome | Roof | Features |
+|---|---|---|
+| Rainy forest | open | streams, tall trees, a ruined shrine, camps, podzol and mushrooms |
+| Destroyed village | open | roads, ruined houses, wells, farms, burnt trunks, soul fires |
+| Destroyed castle | open | a curtain wall, four towers, a keep, ruined halls, columns |
+| Adventurers' graveyard | open | fenced plots of graves, tombs, a chapel, dead trees |
+| Scorched battlefield | open | craters, trenches, siege wrecks, soul fires |
+| Jungle | open | giant trees, thickets, ponds, overgrown temples |
+| Mistbound marsh | open | water over a third of the ground, dead trunks, stilt huts, a boardwalk; fog 0 to 6 |
+| Basalt deltas | closed | lava lakes (3 blocks from the way), magma, basalt columns |
+| Eternal snowstorm | open | drifts, powder snow, ice, camps; frost in the open |
+| Desert storm | open | dunes, cacti, ruins, an oasis; a gust in the open |
+| Amethyst cave | closed | tuff caves joined by tunnels, geodes, stalagmites, pools |
+| Sunken catacombs | closed | rooms from a partition, halls, flooded rooms, a low roof |
+| Great hall | closed | a vault, pillars, pews, galleries, an 8-step apse stair |
+
+An open roof is a barrier layer at y 32 over the room (the sky shows the fog colour). Each biome has a data biome
+`tower_<id>` for its fog and air, painted over the floor's chunks as it is built (`TowerBiomes`).
+
+### The portal
+
+Every portal is lit when its floor is built (`TowerVolume.PORTAL_FILL`) and has the wall's blast resistance
+(3,600,000), so nothing takes it down. It stands on a platform, up a stair of 5 steps (6 on an elite floor, 8 in the
+hall) of `TOWER_STAIR` in the biome's stone, between two gate pillars and a lintel with hung lanterns, four lamp
+pillars, two soul braziers, candles on the steps and banners on the backdrop wall. The elite or boss stands on level
+ground past the stair's foot.
+
+### Levels, bosses, weather
+
+- A mob's level: `50 + (f - 1) + 10 * (t - q) + 50 * q`, `t = (f - 1) / 10`, `q = (f - 1) / 50` (`TowerMobs.levelOf`).
+  A lost room keeps `LOST_ROOM_FLOOR_OFFSET`.
+- Every 50th floor's boss is the Blaze Sovereign (`TowerBosses`): the tower asks `mod-stella-nether:sovereign-factory`
+  in the object share with a tag holding the final `level`, places the mob it gets and adopts it
+  (`TowerMobs.adopt`) without touching its health. With no factory, or one that returns null or throws, the Ember
+  Tyrant rises: a blaze three times the size whose hits set its target alight.
+- `TowerWeather`: frost builds up to 140 ticks on a body in the open of the snowstorm (never in boots that vanilla's
+  freezing spares); a 3-second gust every 15 seconds slows a body in the desert; both push by at most 0.05.
+- A biome raises its own kinds (`BiomePools`); a hall those of the biome below it.
+
+### Props, lost rooms
+
+- 60 to 110 props on the ground and 40 to 70 on walls and trunks: skulls, empty barrels (at most 30), broken
+  gear, bones, cobwebs (`BiomeProps`). A ground prop is a block high at most; a wall prop hangs two or more
+  blocks up, a skull four or more.
+- A lost room is the plan of floor 100 to 1000 as it was drawn before the biome floors (`LegacyRoomPlan`,
+  `TowerPlan.legacy`). `TowerLostRoomFrozenGameTest` holds a hash of rooms -1 to -10 (ends, zones, chest spots,
+  traps, every block), and fails on any change. Its levels, traps and design are untouched; `TowerProps` adds the
+  same kind of props last, in cells the plan leaves empty.
+
+### Tests
+
+- The older tests keep the older generator on their floors: `TowerPlan.drawLegacyFloors(IntPredicate)`, set in
+  `TowerGameTestInit`, draws every floor below `TowerTestSupport.BIOME_FLOORS_FROM` (41,000,000) the old way. In play
+  the predicate is empty and every floor is a biome floor. The biome tests use `freshBiomeFloor()`.
+- A biome test that kills a boss would pay emeralds by a level of millions: biome tests never kill one.
+- The 400-tick stability test (`TowerBiomeSetGameTest`) found real defects (grass dying under a block, a road turning
+  to dirt, a chest in water, a cactus beside a solid block): keep it in the suite.
+- Cost (T15, `TowerBiomePoolsGameTest`, recorded with the machine): the plan is drawn in about 15 ms, off the server
+  thread, and a chunk is painted in under 5 ms.
+- A full run of the suite needs about 6 minutes and 8 GB of heap. On the author's Windows machine the JVM dies in
+  its own code about one run in three (`EXCEPTION_ACCESS_VIOLATION` in a GC thread or in compiled code). Setting
+  `JAVA_TOOL_OPTIONS=-XX:+UseParallelGC` for the run helped; it is not a repository setting. Rerun a run that died
+  that way. Pass `-Dorg.gradle.daemon.registry.base=<a folder of your own>` with `--no-daemon` so that another
+  session's `gradlew --stop` does not kill the run.
+
+### Manual acceptance
+
+Climb ten floors and judge the variety, the marsh fog, the storms, the open-roof sky, the portal and its stair, the
+particle load, the lights and floor 50's boss. The rain loop sound is not in the rainy forest's biome file yet.
+
 ## Tower remake, stage 1: stories and archetypes
 
 This section supersedes the 8-high room, the plan versions and markers (F1, F2), and the floor variations

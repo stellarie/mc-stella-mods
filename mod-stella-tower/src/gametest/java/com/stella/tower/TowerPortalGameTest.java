@@ -117,7 +117,7 @@ public class TowerPortalGameTest {
 		int floor = TowerTestSupport.freshFloor();
 		TowerFloors.ensure(tower, floor);
 		BlockPos inside = TowerLayout.portalInside(tower, floor).get(0);
-		tower.setBlock(inside, Blocks.FIRE.defaultBlockState(), 3);
+		// The floor's portal is lit when the floor is built: no fire is struck here.
 		int lit = 0;
 		for (BlockPos pos : TowerLayout.portalInside(tower, floor)) {
 			lit += tower.getBlockState(pos).is(TowerBlocks.TOWER_PORTAL) ? 1 : 0;

@@ -15,10 +15,10 @@ import net.minecraft.core.Direction;
  * and frame; the rails where an upper story's edge drops two or more; the stations; the lamps; the decor; the chests.
  */
 public final class TowerVolume implements TowerWalk.Space {
+	/** The lowest and the highest block of a plan drawn before the biome floors; a biome plan holds its own ({@link TowerPlan#low}). */
 	public static final int LOW = -2;
 	public static final int HIGH = TowerLayout.HEIGHT;
 	private static final int SIZE = TowerLayout.SIZE;
-	private static final int SPAN = HIGH - LOW + 1;
 
 	public static final byte AIR = 0;
 	public static final byte BEDROCK = 1;
@@ -52,6 +52,13 @@ public final class TowerVolume implements TowerWalk.Space {
 	public static final byte CHEST = 24;
 	/** A pew or a low wall, one block high on a story's floor, in the theme's stair stone. */
 	public static final byte COVER = 25;
+	/** The lit portal in a floor's frame; a body walks through it as through air. */
+	public static final byte PORTAL_FILL = 26;
+	/** A biome floor's block: the palette entry is in {@link #code}. */
+	public static final byte BIOME_BLOCK = 27;
+	/** A step of the portal's stair, in the biome's stone, climbing east or west. */
+	public static final byte DAIS_STAIR_EAST = 28;
+	public static final byte DAIS_STAIR_WEST = 29;
 
 	/** How high above a story a ceiling may be and still take a lamp; a higher one has a lantern hung from it. */
 	public static final int CEILING_REACH = 9;
@@ -61,20 +68,53 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** In a thousand: how many of a crystal cavern's high rock ceilings grow a cluster. */
 	private static final int CLUSTER_SHARE = 70;
 
-	private final byte[] kinds = new byte[SIZE * SPAN * SIZE];
-	private final boolean[] reserved = new boolean[SIZE * SPAN * SIZE];
+	private final int low;
+	private final int high;
+	private final int span;
+	private final byte[] kinds;
+	private final boolean[] reserved;
+	/** The palette entry of each {@link #BIOME_BLOCK}; null on a plan with none. */
+	private final byte[] codes;
 	/** The lamps and lanterns, by story: offsets (x, y, z). */
 	private final List<List<int[]>> lamps = new ArrayList<>();
 
-	private TowerVolume() {
+	private TowerVolume(final int low, final int high, final boolean palette) {
+		this.low = low;
+		this.high = high;
+		this.span = high - low + 1;
+		this.kinds = new byte[SIZE * this.span * SIZE];
+		this.reserved = new boolean[SIZE * this.span * SIZE];
+		this.codes = palette ? new byte[SIZE * this.span * SIZE] : null;
 	}
 
-	private static int index(final int x, final int y, final int z) {
-		return (x * SPAN + (y - LOW)) * SIZE + z;
+	private int index(final int x, final int y, final int z) {
+		return (x * this.span + (y - this.low)) * SIZE + z;
 	}
 
-	private static boolean inside(final int x, final int y, final int z) {
-		return x >= 0 && z >= 0 && x < SIZE && z < SIZE && y >= LOW && y <= HIGH;
+	private boolean inside(final int x, final int y, final int z) {
+		return x >= 0 && z >= 0 && x < SIZE && z < SIZE && y >= this.low && y <= this.high;
+	}
+
+	/** The lowest block of the room: its bedrock. */
+	public int low() {
+		return this.low;
+	}
+
+	/** The highest block of the room: its roof. */
+	public int high() {
+		return this.high;
+	}
+
+	/** The palette entry of a {@link #BIOME_BLOCK} cell; 0 for any other. */
+	public byte code(final int x, final int y, final int z) {
+		return this.codes != null && inside(x, y, z) ? this.codes[index(x, y, z)] : 0;
+	}
+
+	private void block(final int x, final int y, final int z, final byte code) {
+		if (inside(x, y, z)) {
+			this.kinds[index(x, y, z)] = BIOME_BLOCK;
+			this.codes[index(x, y, z)] = code;
+		}
 	}
 
 	/** The part laid at a cell; outside the room, tower wall. */
@@ -100,13 +140,14 @@ public final class TowerVolume implements TowerWalk.Space {
 
 	@Override
 	public byte at(final int x, final int y, final int z) {
-		return walkClass(kind(x, y, z));
+		byte kind = kind(x, y, z);
+		return kind == BIOME_BLOCK ? BiomeBlocks.walk(code(x, y, z)) : walkClass(kind);
 	}
 
 	/** How a part counts to a walking body, as its block's collision shape counts in the world. */
 	public static byte walkClass(final byte kind) {
 		return switch (kind) {
-			case AIR -> TowerWalk.OPEN;
+			case AIR, PORTAL_FILL -> TowerWalk.OPEN;
 			case RAIL -> TowerWalk.TALL;
 			default -> TowerWalk.SOLID;
 		};
@@ -142,12 +183,18 @@ public final class TowerVolume implements TowerWalk.Space {
 			return false;
 		}
 		byte below = kind(x, y - 1, z);
-		return below == GROUND || below == SAFE || below == RUNNER || below == SLAB;
+		return below == GROUND || below == SAFE || below == RUNNER || below == SLAB || below == BIOME_BLOCK && BiomeBlocks.ground(code(x, y - 1, z));
 	}
 
 	/** The volume of a plan: every part, its chests included. */
 	public static TowerVolume of(final TowerPlan plan) {
-		TowerVolume volume = new TowerVolume();
+		TowerVolume volume = new TowerVolume(plan.low(), plan.roofY(), plan.isBiome());
+		if (plan.isBiome()) {
+			volume.biome(plan);
+			volume.portal(plan);
+			volume.chests(plan);
+			return volume;
+		}
 		volume.base(plan);
 		volume.stories(plan);
 		for (TowerFlight flight : plan.flights()) {
@@ -185,10 +232,10 @@ public final class TowerVolume implements TowerWalk.Space {
 		TowerPlan.Room runner = plan.runner();
 		for (int x = 0; x < SIZE; x++) {
 			for (int z = 0; z < SIZE; z++) {
-				set(x, LOW, z, BEDROCK);
+				set(x, this.low, z, BEDROCK);
 				boolean onRunner = runner != null && x >= runner.x() && x < runner.x() + runner.width() && z >= runner.z() && z < runner.z() + runner.length();
 				set(x, -1, z, plan.inSafeZone(x, 0, z) ? SAFE : onRunner ? RUNNER : GROUND);
-				set(x, HIGH, z, ROOF);
+				set(x, this.high, z, ROOF);
 			}
 		}
 	}
@@ -222,7 +269,7 @@ public final class TowerVolume implements TowerWalk.Space {
 					}
 				}
 			}
-			if (s == stories.size() - 1 && story.top() < HIGH) {
+			if (s == stories.size() - 1 && story.top() < this.high) {
 				for (int x = 0; x < SIZE; x++) {
 					for (int z = 0; z < SIZE; z++) {
 						if (!inHall(plan, x, z, 0)) {
@@ -257,7 +304,7 @@ public final class TowerVolume implements TowerWalk.Space {
 		for (int x = 0; x < SIZE; x++) {
 			for (int z = 0; z < SIZE; z++) {
 				if (inHall(plan, x, z, 1) && !inHall(plan, x, z, 0)) {
-					for (int y = lid; y < HIGH; y++) {
+					for (int y = lid; y < this.high; y++) {
 						set(x, y, z, (y - LEDGE_Y - 2) % 4 == 0 && y > LEDGE_Y && (x + z) % 4 == 0 ? LAMP : LID);
 					}
 				}
@@ -330,6 +377,52 @@ public final class TowerVolume implements TowerWalk.Space {
 		}
 	}
 
+	/**
+	 * A biome floor: bedrock, a filler of stone, each column's surface and water, the blocks standing on it, and the
+	 * roof, a barrier over an open sky and the tower's wall over a closed one.
+	 */
+	private void biome(final TowerPlan plan) {
+		BiomeDraft draft = plan.biome();
+		boolean open = draft.biome().openRoof();
+		for (int x = 0; x < SIZE; x++) {
+			for (int z = 0; z < SIZE; z++) {
+				int feet = draft.feet()[x][z];
+				set(x, this.low, z, BEDROCK);
+				for (int y = this.low + 1; y < feet - 1; y++) {
+					block(x, y, z, BiomeBlocks.STONE);
+				}
+				if (plan.inSafeZone(x, z)) {
+					set(x, feet - 1, z, SAFE);
+				} else {
+					block(x, feet - 1, z, draft.surface()[x][z]);
+				}
+				if (draft.water()[x][z]) {
+					block(x, feet, z, BiomeBlocks.WATER);
+				}
+				if (draft.lava()[x][z]) {
+					block(x, feet, z, BiomeBlocks.LAVA);
+				}
+				if (draft.ceiling() != null) {
+					for (int y = Math.max(feet, draft.ceiling()[x][z]); y < this.high; y++) {
+						block(x, y, z, draft.ceilCode()[x][z]);
+					}
+				}
+				if (open) {
+					block(x, this.high, z, BiomeBlocks.BARRIER);
+				} else {
+					set(x, this.high, z, ROOF);
+				}
+			}
+		}
+		int[] placed = draft.placed();
+		for (int i = 0; i < placed.length; i += 4) {
+			block(placed[i], placed[i + 1], placed[i + 2], (byte) placed[i + 3]);
+		}
+		for (TowerPlan.Station station : plan.stations()) {
+			set(station.x(), 0, station.z(), STATION);
+		}
+	}
+
 	private void portal(final TowerPlan plan) {
 		BlockPos origin = plan.origin();
 		for (BlockPos pos : plan.plinth()) {
@@ -338,11 +431,21 @@ public final class TowerVolume implements TowerWalk.Space {
 		for (BlockPos pos : plan.portalFrame()) {
 			set(pos.getX() - origin.getX(), pos.getY() - TowerLayout.BASE_Y, pos.getZ() - origin.getZ(), FRAME);
 		}
+		if (plan.isBiome()) {
+			for (BiomeDraft.Piece piece : plan.biome().decor(plan)) {
+				if (piece.kind() == BIOME_BLOCK) {
+					block(piece.x(), piece.y(), piece.z(), piece.code());
+				} else {
+					set(piece.x(), piece.y(), piece.z(), piece.kind());
+				}
+			}
+		}
 		for (BlockPos pos : plan.portalInside()) {
 			int x = pos.getX() - origin.getX();
 			int y = pos.getY() - TowerLayout.BASE_Y;
 			int z = pos.getZ() - origin.getZ();
-			set(x, y, z, AIR);
+			// A lost room's portal is lit on entry, to the hut; its design stays frozen.
+			set(x, y, z, plan.floor() > 0 ? PORTAL_FILL : AIR);
 			reserve(x, y, z);
 		}
 	}
@@ -682,7 +785,7 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** A lamp over a spot: set into a ceiling within reach, or a lantern on a short chain from one a little higher. */
 	private boolean ceilingLamp(final List<int[]> lit, final int x, final int y, final int z) {
 		int ceiling = y + 2;
-		while (ceiling < HIGH && kind(x, ceiling, z) == AIR) {
+		while (ceiling < this.high && kind(x, ceiling, z) == AIR) {
 			ceiling++;
 		}
 		byte above = kind(x, ceiling, z);
@@ -717,7 +820,7 @@ public final class TowerVolume implements TowerWalk.Space {
 						continue;
 					}
 					int ceiling = y + 2;
-					while (ceiling < HIGH && kind(x, ceiling, z) == AIR) {
+					while (ceiling < this.high && kind(x, ceiling, z) == AIR) {
 						ceiling++;
 					}
 					if (kind(x, ceiling, z) == WALL && ceiling - y >= HEADROOM + 1 && kind(x, ceiling - 1, z) == AIR && !reservedAt(x, ceiling - 1, z)) {

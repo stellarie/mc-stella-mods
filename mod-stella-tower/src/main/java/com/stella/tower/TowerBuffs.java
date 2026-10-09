@@ -288,6 +288,9 @@ public final class TowerBuffs {
 			}
 		}
 		for (int floor : occupied.keySet()) {
+			TowerBiomes.repair(tower, floor);
+		}
+		for (int floor : occupied.keySet()) {
 			for (Mob mob : tower.getEntitiesOfClass(Mob.class, TowerMobs.room(floor), mob -> mob.isAlive() && TowerMobs.stateOf(mob) != null)) {
 				int own = TowerMobs.stateOf(mob).floor();
 				for (MobBuff buff : mobBuffsOf(mob)) {
