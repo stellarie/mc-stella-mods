@@ -13,10 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Item.class)
 public abstract class RpgCraftRollMixin {
 	// Shift-click calls this before the stack moves.
+	// A recipe the craft sum does not cover gets the rolled mark, not a random roll.
 	@Inject(method = "onCraftedBy", at = @At("HEAD"))
-	private void stellaRpg$rollCrafted(final ItemStack stack, final Player player, final CallbackInfo callback) {
+	private void stellaRpg$markCrafted(final ItemStack stack, final Player player, final CallbackInfo callback) {
 		if (player instanceof ServerPlayer) {
-			WeaponRolls.roll(stack, player.getRandom());
+			WeaponRolls.markRolled(stack);
 		}
 	}
 }

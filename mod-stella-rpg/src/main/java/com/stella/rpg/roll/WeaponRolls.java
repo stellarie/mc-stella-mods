@@ -107,6 +107,15 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		return true;
 	}
 
+	/** Gives unrolled gear an empty stat map. The empty map blocks every later random roll. */
+	public static boolean markRolled(final ItemStack stack) {
+		if (stack.isEmpty() || stack.has(STAT_ROLLS) || kindOf(stack) == null) {
+			return false;
+		}
+		stack.set(STAT_ROLLS, Map.of());
+		return true;
+	}
+
 	private static int rollAffix(final Affix affix, final RpgConfig.AffixRange range, final RandomSource random) {
 		int scale = affix.percent() ? Affix.TENTHS : 1;
 		int low = (int) Math.round(range.min() * scale);

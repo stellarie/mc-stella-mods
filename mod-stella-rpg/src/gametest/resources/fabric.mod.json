@@ -72,7 +72,9 @@
 			"com.stella.rpg.CritSeamGameTest",
 			"com.stella.rpg.ArcherGrantGameTest",
 			"com.stella.rpg.BonusGrantGameTest",
-			"com.stella.rpg.StatBonusReachGameTest"
+			"com.stella.rpg.StatBonusReachGameTest",
+			"com.stella.rpg.CraftSumGameTest",
+			"com.stella.rpg.SmeltBonusGameTest"
 		]
 	},
 	"depends": {
