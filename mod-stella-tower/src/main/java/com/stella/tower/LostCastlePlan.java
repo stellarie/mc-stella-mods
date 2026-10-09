@@ -1,7 +1,9 @@
 package com.stella.tower;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -13,6 +15,15 @@ import net.minecraft.util.RandomSource;
  */
 public record LostCastlePlan(List<FloorPlan> floors) {
 	private static final long SALT = 0x464C4F52L;
+	/** The turrets of the ground storey and of a middle storey, each in a room of its own. */
+	public static final int LOWER_TURRETS = 2;
+	/** Its own stream, so the clutter never moves a prop, a chest or a turret drawn before it. */
+	private static final long CLUTTER_SALT = 0x434C5554L;
+	/** The slab stones and woods, and the carpet colours, that clutter draws on. */
+	public static final int SLAB_KINDS = 5;
+	public static final int CARPET_COLOURS = 4;
+	/** A room hangs this many pieces under its ceiling, and more only to reach the clutter minimum. */
+	private static final int HANGING_SOFT_CAP = 4;
 
 	/** The ruin a plan lays on a storey. */
 	public enum ScatterKind {
@@ -68,8 +79,55 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 	public record Room(int cx, int cz, LostRoomTheme theme, List<Furnishing> props) {
 	}
 
-	/** One storey: its kind, its spawner turrets, its chests, its rooms and its ruin. */
-	public record FloorPlan(int storey, LostFloorKind kind, List<Turret> turrets, List<Chest> chests, List<Room> rooms, List<Scatter> scatter) {
+	/** The loose things a room is littered with. A high kind hangs under the ceiling; the rest lie on the floor. */
+	public enum ClutterKind {
+		FLOOR_SLAB(false),
+		CEILING_SLAB(true),
+		CARPET(false),
+		TRAPDOOR(false),
+		FLOWER_POT(false),
+		BONE_BLOCK(false),
+		SKULL(false),
+		CANDLE(false),
+		/** A lit candle on the full top of a prop, for a room with no free floor left. */
+		PROP_CANDLE(false),
+		COBWEB(true);
+
+		private final boolean high;
+
+		ClutterKind(final boolean high) {
+			this.high = high;
+		}
+
+		/** Whether the block hangs in the top block of the storey and not on the floor. */
+		public boolean high() {
+			return this.high;
+		}
+
+		/** The height of the block in a storey whose first free block is {@code feet} and whose ceiling block is {@code ceiling}. */
+		public int heightAt(final int feet, final int ceiling) {
+			return this.high ? ceiling - 1 : this == PROP_CANDLE ? feet + 1 : feet;
+		}
+	}
+
+	/** Whether a candle stands steady on a prop: the prop's top is one whole face. */
+	public static boolean carriesCandle(final LostRoomTheme.Prop prop) {
+		return switch (prop) {
+			case CRAFTING_TABLE, SMITHING_TABLE, FLETCHING_TABLE, BARREL, HAY, CRATE, FURNACE, SMOKER, BLAST_FURNACE, BOOKSHELF -> true;
+			default -> false;
+		};
+	}
+
+	/**
+	 * One piece of clutter in a column. {@code arg} picks what the kind draws on: the slab stone or wood, the
+	 * carpet colour, the trapdoor wood, facing and open state, a skull's turn, or a candle count.
+	 */
+	public record Clutter(ClutterKind kind, int x, int z, int arg) {
+	}
+
+	/** One storey: its kind, its spawner turrets, its chests, its rooms, its ruin and its clutter. */
+	public record FloorPlan(int storey, LostFloorKind kind, List<Turret> turrets, List<Chest> chests, List<Room> rooms, List<Scatter> scatter,
+		List<Clutter> clutter) {
 		public int chestBlocks() {
 			int blocks = 0;
 			for (Chest chest : this.chests) {
@@ -123,10 +181,17 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 					turrets.add(new Turret(nook, null));
 				}
 			} else {
-				TowerHex.Nook nook = turretSite(free, below, rng);
-				free.remove(nook);
-				reserved.add(nook);
-				turrets.add(new Turret(nook, null));
+				TowerHex.Nook first = turretSite(free, below, rng);
+				free.remove(first);
+				reserved.add(first);
+				turrets.add(new Turret(first, null));
+				// The second turret stands in another room, so one room never holds both spawners.
+				List<TowerHex.Nook> elsewhere = new ArrayList<>(free);
+				elsewhere.removeIf(nook -> nook.cx() == first.cx() && nook.cz() == first.cz());
+				TowerHex.Nook second = turretSite(elsewhere, below, rng);
+				free.remove(second);
+				reserved.add(second);
+				turrets.add(new Turret(second, null));
 			}
 			List<Chest> chests = new ArrayList<>();
 			List<TowerHex.Nook> chestNooks = new ArrayList<>();
@@ -165,15 +230,226 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 			for (Turret turret : turrets) {
 				covered.add(new Turret(turret.nook(), Cover.values()[Math.min(rng.nextInt(4), Cover.SOLID.ordinal())]));
 			}
-			floors.add(new FloorPlan(storey, kind, List.copyOf(covered), List.copyOf(chests), List.copyOf(rooms), List.copyOf(ruin)));
+			floors.add(new FloorPlan(storey, kind, List.copyOf(covered), List.copyOf(chests), List.copyOf(rooms), List.copyOf(ruin), List.of()));
 			below = covered.stream().map(Turret::nook).toList();
 		}
-		return new LostCastlePlan(List.copyOf(floors));
+		return new LostCastlePlan(littered(floors, RandomSource.create(ruinSeed ^ SALT ^ CLUTTER_SALT)));
 	}
 
-	/** How many spawner turrets a storey holds: one, and on the top storey one in every room but the portal room. */
+	/** The floors with their clutter laid out, each storey drawn in turn from one stream. */
+	private static List<FloorPlan> littered(final List<FloorPlan> floors, final RandomSource rng) {
+		List<FloorPlan> done = new ArrayList<>();
+		for (FloorPlan floor : floors) {
+			Set<Long> gapped = new HashSet<>();
+			if (floor.storey() + 1 < floors.size()) {
+				for (Scatter item : floors.get(floor.storey() + 1).scatter()) {
+					if (item.kind() == ScatterKind.GAP) {
+						gapped.add(key(item.x(), item.z()));
+					}
+				}
+			}
+			done.add(new FloorPlan(floor.storey(), floor.kind(), floor.turrets(), floor.chests(), floor.rooms(), floor.scatter(),
+				List.copyOf(clutter(floor, gapped, rng))));
+		}
+		return List.copyOf(done);
+	}
+
+	/** The free columns of one room's corners: where a piece may lie, where one may hang, and the corner tucks among those. */
+	private record Slots(List<int[]> low, List<int[]> high, List<int[]> tucks) {
+	}
+
+	/**
+	 * Draws the clutter of one storey. Every room takes {@link LostCastleHex#CLUTTER_MIN} to
+	 * {@link LostCastleHex#CLUTTER_MAX} pieces, fewer only when its corners run out of columns, and the
+	 * storey is given a floor slab and a ceiling slab first. A floor piece takes a column nothing else
+	 * stands on. A hanging piece takes any corner column that holds no chain and has stone over it. The
+	 * crossing, the stair lane, the portal hall, the yard path and the turret and chest nooks are never used.
+	 */
+	private static List<Clutter> clutter(final FloorPlan floor, final Set<Long> gapped, final RandomSource rng) {
+		int storey = floor.storey();
+		boolean top = storey == TowerHex.STOREYS - 1;
+		Set<Long> reserved = new HashSet<>();
+		for (TowerHex.Nook nook : TowerHex.nooks()) {
+			boolean taken = floor.turrets().stream().anyMatch(turret -> turret.nook().equals(nook))
+				|| floor.chests().stream().anyMatch(chest -> nook.holds(chest.x(), chest.z()));
+			if (taken) {
+				for (int[] column : nook.columns()) {
+					reserved.add(key(column[0], column[1]));
+				}
+			}
+		}
+		for (Turret turret : floor.turrets()) {
+			for (int[] column : turretFront(turret)) {
+				reserved.add(key(column[0], column[1]));
+			}
+		}
+		Set<Long> standing = new HashSet<>();
+		Set<Long> hanging = new HashSet<>();
+		for (Room room : floor.rooms()) {
+			for (Furnishing prop : room.props()) {
+				standing.add(key(prop.x(), prop.z()));
+				standing.add(key(prop.x2(), prop.z2()));
+				if (prop.prop() == LostRoomTheme.Prop.CHAIN_RACK) {
+					hanging.add(key(prop.x(), prop.z()));
+				}
+			}
+		}
+		for (Scatter item : floor.scatter()) {
+			standing.add(key(item.x(), item.z()));
+			if (item.kind() == ScatterKind.CHAIN) {
+				hanging.add(key(item.x(), item.z()));
+			}
+		}
+		int[] court = LostCastleVariant.court();
+		List<TowerHex.Cell> cells = TowerHex.cells();
+		List<TowerHex.Nook> nooks = TowerHex.nooks();
+		List<Slots> slots = new ArrayList<>();
+		for (TowerHex.Cell cell : cells) {
+			Slots room = new Slots(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+			for (TowerHex.Nook nook : nooks) {
+				if (nook.cx() != cell.cx() || nook.cz() != cell.cz()) {
+					continue;
+				}
+				for (int[] column : nook.columns()) {
+					int x = column[0];
+					int z = column[1];
+					long at = key(x, z);
+					boolean yard = storey == 0 && x >= court[0] && x <= court[2] && z >= court[1] && z <= court[3];
+					if (TowerHex.kind(x, z) != TowerHex.Part.WAY || TowerHex.onCrossing(x, z) || LostCastleHex.inStairLane(x, z) || yard
+						|| top && LostCastleHex.inPortalHall(x, LostCastleHex.portalSpot().getY(), z) || reserved.contains(at)) {
+						continue;
+					}
+					if (!standing.contains(at)) {
+						room.low().add(column);
+					}
+					if (!hanging.contains(at) && !gapped.contains(at)) {
+						room.high().add(column);
+						if (x == nook.tuckX() && z == nook.tuckZ()) {
+							room.tucks().add(column);
+						}
+					}
+				}
+			}
+			slots.add(room);
+		}
+		List<List<Clutter>> byRoom = new ArrayList<>();
+		for (int i = 0; i < cells.size(); i++) {
+			byRoom.add(new ArrayList<>());
+		}
+		// The storey's two slabs come first, each in a room that can hold it.
+		place(byRoom, slots, ClutterKind.FLOOR_SLAB, rng);
+		place(byRoom, slots, ClutterKind.CEILING_SLAB, rng);
+		for (int i = 0; i < cells.size(); i++) {
+			int wanted = LostCastleHex.CLUTTER_MIN + rng.nextInt(LostCastleHex.CLUTTER_MAX - LostCastleHex.CLUTTER_MIN + 1);
+			Slots room = slots.get(i);
+			List<Clutter> items = byRoom.get(i);
+			if (top) {
+				// A candle is the only light up here, so every room is given one or two before anything else.
+				for (int candles = 1 + rng.nextInt(2); candles > 0 && !room.low().isEmpty(); candles--) {
+					items.add(draw(ClutterKind.CANDLE, room, rng));
+				}
+				if (items.stream().noneMatch(item -> item.kind() == ClutterKind.CANDLE)) {
+					// No floor left: the candle stands on a prop instead.
+					for (Room themed : floor.rooms()) {
+						if (themed.cx() == cells.get(i).cx() && themed.cz() == cells.get(i).cz()) {
+							for (Furnishing prop : themed.props()) {
+								if (carriesCandle(prop.prop())) {
+									items.add(new Clutter(ClutterKind.PROP_CANDLE, prop.x(), prop.z(), 1 + rng.nextInt(3)));
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+			while (items.size() < wanted && (!room.low().isEmpty() || !room.high().isEmpty())) {
+				// Hanging pieces fill the gap when the floor runs out, but past the minimum they stay few.
+				int hung = (int) items.stream().filter(item -> item.kind().high()).count();
+				boolean mayHang = !room.high().isEmpty() && (hung < HANGING_SOFT_CAP || items.size() < LostCastleHex.CLUTTER_MIN);
+				boolean high = room.low().isEmpty() ? mayHang : mayHang && rng.nextInt(5) < 2;
+				if (room.low().isEmpty() && !mayHang) {
+					break;
+				}
+				items.add(draw(high ? pickHigh(rng) : pickLow(rng), room, rng));
+			}
+		}
+		List<Clutter> all = new ArrayList<>();
+		byRoom.forEach(all::addAll);
+		return all;
+	}
+
+	/** Gives the first room, from a random one, that still has a column for the kind a piece of it. */
+	private static void place(final List<List<Clutter>> byRoom, final List<Slots> slots, final ClutterKind kind, final RandomSource rng) {
+		int start = rng.nextInt(slots.size());
+		for (int i = 0; i < slots.size(); i++) {
+			int index = (start + i) % slots.size();
+			Slots room = slots.get(index);
+			if (!(kind.high() ? room.high() : room.low()).isEmpty()) {
+				byRoom.get(index).add(draw(kind, room, rng));
+				return;
+			}
+		}
+	}
+
+	private static ClutterKind pickLow(final RandomSource rng) {
+		ClutterKind[] bag = {ClutterKind.FLOOR_SLAB, ClutterKind.FLOOR_SLAB, ClutterKind.CARPET, ClutterKind.CARPET, ClutterKind.TRAPDOOR,
+			ClutterKind.FLOWER_POT, ClutterKind.BONE_BLOCK, ClutterKind.SKULL, ClutterKind.CANDLE, ClutterKind.CANDLE};
+		return bag[rng.nextInt(bag.length)];
+	}
+
+	private static ClutterKind pickHigh(final RandomSource rng) {
+		return rng.nextInt(3) < 2 ? ClutterKind.CEILING_SLAB : ClutterKind.COBWEB;
+	}
+
+	/** One piece of a kind in a free column of the room, which the piece then takes. A web favours the corner tucks. */
+	private static Clutter draw(final ClutterKind kind, final Slots room, final RandomSource rng) {
+		List<int[]> from = kind.high() ? room.high() : room.low();
+		if (kind == ClutterKind.COBWEB && !room.tucks().isEmpty()) {
+			from = room.tucks();
+		}
+		int[] column = from.get(rng.nextInt(from.size()));
+		if (kind.high()) {
+			room.high().remove(column);
+			room.tucks().remove(column);
+		} else {
+			room.low().remove(column);
+		}
+		int arg = switch (kind) {
+			case FLOOR_SLAB, CEILING_SLAB -> rng.nextInt(SLAB_KINDS);
+			case CARPET -> rng.nextInt(CARPET_COLOURS);
+			case TRAPDOOR, SKULL -> rng.nextInt(16);
+			case CANDLE, PROP_CANDLE -> 1 + rng.nextInt(3);
+			default -> 0;
+		};
+		return new Clutter(kind, column[0], column[1], arg);
+	}
+
+	/** Whether a room is left out of the clutter minimum: the yard room on the ground storey and the portal room on the top one. */
+	public static boolean clutterExempt(final int storey, final int cx, final int cz) {
+		return storey == 0 && cx == TowerHex.COLS / 2 && cz == 0 || storey == TowerHex.STOREYS - 1 && cx == TowerHex.COLS / 2 && cz == TowerHex.COLS / 2;
+	}
+
+	/**
+	 * The two columns just past a turret's open face, which clutter must leave clear. A solid turret has no
+	 * open face, so both of its outer sides count.
+	 */
+	public static List<int[]> turretFront(final Turret turret) {
+		TowerHex.Nook nook = turret.nook();
+		int[][] alongX = {{nook.tuckX() + 2 * nook.dx(), nook.tuckZ()}, {nook.tuckX() + 2 * nook.dx(), nook.tuckZ() + nook.dz()}};
+		int[][] alongZ = {{nook.tuckX(), nook.tuckZ() + 2 * nook.dz()}, {nook.tuckX() + nook.dx(), nook.tuckZ() + 2 * nook.dz()}};
+		List<int[]> front = new ArrayList<>();
+		if (turret.cover() != Cover.BARRED_ALONG_Z) {
+			front.addAll(List.of(alongX));
+		}
+		if (turret.cover() != Cover.BARRED_ALONG_X) {
+			front.addAll(List.of(alongZ));
+		}
+		return front;
+	}
+
+	/** How many spawner turrets a storey holds: two, and on the top storey one in every room but the portal room. */
 	public static int turretsAt(final int storey) {
-		return storey == TowerHex.STOREYS - 1 ? TowerHex.cells().size() - 1 : 1;
+		return storey == TowerHex.STOREYS - 1 ? TowerHex.cells().size() - 1 : LOWER_TURRETS;
 	}
 
 	/**
@@ -189,6 +465,12 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 		}
 		if (held.isEmpty()) {
 			held.addAll(candidates);
+		}
+		// The stair room keeps its two free corners for clutter, unless it is the only room to choose.
+		List<TowerHex.Nook> beside = new ArrayList<>(held);
+		beside.removeIf(nook -> nook.cx() == TowerHex.stairCell().cx() && nook.cz() == TowerHex.stairCell().cz());
+		if (!beside.isEmpty()) {
+			held = beside;
 		}
 		List<TowerHex.Nook> fresh = new ArrayList<>(held);
 		fresh.removeAll(below);
@@ -299,7 +581,9 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 			themes.set(j, swap);
 		}
 		// The roomiest rooms take the themes that need the most floor, and the order within a size is drawn.
-		themes.sort((left, right) -> Integer.compare(need(right), need(left)));
+		// On the top storey the bare barracks goes to a roomier room, so the smallest room keeps a prop a candle can stand on.
+		themes.sort((left, right) -> need(right) != need(left) ? Integer.compare(need(right), need(left))
+			: Boolean.compare(top && right == LostRoomTheme.BARRACKS, top && left == LostRoomTheme.BARRACKS));
 		List<TowerHex.Cell> cells = new ArrayList<>(TowerHex.cells());
 		List<List<Column>> free = new ArrayList<>();
 		for (TowerHex.Cell cell : cells) {

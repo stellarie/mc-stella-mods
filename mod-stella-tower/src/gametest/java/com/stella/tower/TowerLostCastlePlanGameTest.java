@@ -56,19 +56,19 @@ public class TowerLostCastlePlanGameTest {
 			if (floor.kind().slot() != slot) {
 				return "storey " + storey + " is " + floor.kind() + ", a " + floor.kind().slot() + " kind";
 			}
-			int wantedTurrets = top ? TowerHex.cells().size() - 1 : 1;
+			int wantedTurrets = top ? 8 : 2;
 			if (floor.turrets().size() != wantedTurrets) {
 				return "storey " + storey + " holds " + floor.turrets().size() + " turrets, not " + wantedTurrets;
 			}
-			if (top) {
-				Set<Long> rooms = new HashSet<>();
-				for (LostCastlePlan.Turret turret : floor.turrets()) {
-					rooms.add(key(turret.nook().cx(), turret.nook().cz()));
-				}
-				boolean hubHeld = rooms.contains(key(TowerHex.COLS / 2, TowerHex.COLS / 2));
-				if (rooms.size() != wantedTurrets || hubHeld) {
-					return "the top storey does not hold one turret in every room but the portal room: " + rooms.size() + " rooms, portal room held " + hubHeld;
-				}
+			Set<Long> turretRooms = new HashSet<>();
+			for (LostCastlePlan.Turret turret : floor.turrets()) {
+				turretRooms.add(key(turret.nook().cx(), turret.nook().cz()));
+			}
+			if (turretRooms.size() != wantedTurrets) {
+				return "storey " + storey + " holds " + wantedTurrets + " turrets in " + turretRooms.size() + " rooms";
+			}
+			if (top && turretRooms.contains(key(TowerHex.COLS / 2, TowerHex.COLS / 2))) {
+				return "the top storey holds a turret in the portal room";
 			}
 			if (floor.turrets().size() != LostCastlePlan.turretsAt(storey)) {
 				return "storey " + storey + " holds " + floor.turrets().size() + " turrets, not " + LostCastlePlan.turretsAt(storey);

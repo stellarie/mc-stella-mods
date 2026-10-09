@@ -64,6 +64,11 @@ public enum LostRoomTheme {
 
 		/** Whether a block is this prop's marker. */
 		public boolean matches(final BlockState state) {
+			return matches(state, false);
+		}
+
+		/** Whether a block is this prop's marker on a storey; the top storey shows a soul lantern as a candle. */
+		public boolean matches(final BlockState state, final boolean top) {
 			return switch (this) {
 				case BED -> state.getBlock() instanceof AbstractBedBlock;
 				case CRAFTING_TABLE -> state.is(Blocks.CRAFTING_TABLE);
@@ -87,7 +92,7 @@ public enum LostRoomTheme {
 				case ALTAR -> state.is(Blocks.CHISELED_STONE_BRICKS);
 				case SKULL -> state.is(Blocks.SKELETON_SKULL);
 				case GRAVE -> state.is(Blocks.STONE_BRICK_SLAB);
-				case SOUL_LANTERN -> state.is(Blocks.SOUL_LANTERN);
+				case SOUL_LANTERN -> state.is(top ? Blocks.CANDLE : Blocks.SOUL_LANTERN);
 			};
 		}
 	}
