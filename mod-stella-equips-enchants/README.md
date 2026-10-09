@@ -415,6 +415,49 @@ python tools/uniques/icons.py models ID KIND   # item definition and model files
 A sprite is a palette block of `char=#RRGGBBAA` lines, a blank line, then 16 rows of 16 characters. `.` is transparent.
 The tool needs Python 3 with Pillow 12.
 
+## Crafted bows
+
+Nine bows and crossbows, named after the Ragnarok Online archer line, are crafted from a vanilla bow or crossbow. Each has its
+own draw or charge time, arrow damage, durability and one signature effect. Multipliers are against the vanilla weapon (draw 20
+ticks, charge 25 ticks, arrow damage 1.0).
+
+| Item | Made from | Durability | Draw or charge | Damage | Signature |
+|---|---|---|---|---|---|
+| Hunter Bow | bow, leather, rabbit hide, string | 448 | 0.95 | 1.00 | 20% chance to keep the arrow |
+| Composite Bow | bow, iron ingot, string | 576 | 0.85 | 1.10 | draw time |
+| Gakkung | bow, gold ingot, bone, string | 400 | 0.65 | 0.90 | draw time |
+| Great Bow | bow, diamond, string | 1200 | 1.25 | 1.40 | damage; arrows fly 1.3 times as fast |
+| Rudra Bow | Great Bow, netherite ingot (smithing) | 2400 | 1.15 | 1.55 | a hit heals 5% of the damage dealt |
+| Arbalest | crossbow, iron ingot, tripwire hook | 700 | 1.00 | 1.30 | damage |
+| Repeater | crossbow, copper ingot, redstone | 560 | 0.55 | 0.85 | charge time |
+| Ballista | crossbow, diamond, piston | 1300 | 1.50 | 1.70 | each bolt pierces 2 more foes |
+| Siege Arbalest | Ballista, netherite ingot (smithing) | 2600 | 1.35 | 1.85 | each bolt pierces 3 more foes and knocks back |
+
+The weapon sits in the centre of a shaped recipe. A smithing recipe with the netherite upgrade template makes the last two.
+
+- **Refine.** A crafted bow refines like any bow. It keeps the generic ranged specials and is repaired with its main material, so
+  the material grade scales those specials. Its signature grows at +7, +10, +12 and +15:
+
+| Signature | +7 | +10 | +12 | +15 |
+|---|---|---|---|---|
+| draw or charge time | -5% | -10% | -15% | -20% |
+| damage | +5% | +10% | +15% | +25% |
+| keep the arrow | +5 points | +10 points | +15 points | +20 points |
+| heal on hit | +1 point | +2 points | +3 points | +5 points |
+| pierce | +0 | +1 foe | +1 foe | +2 foes |
+
+- **Damage.** The damage multiplier sets the arrow's damage potential, which is its base damage times its speed. A Great Bow arrow
+  flies faster, so its base damage is lower by the same factor. The hit still deals 1.40 times a vanilla arrow's damage. The game
+  rounds a hit up to a whole number, so a single hit can differ from the ratio by less than one point.
+- **Kept arrow.** A kept arrow is not taken from the quiver and cannot be picked up.
+- **Heal.** Only the arrow the player looses heals. The Volley arrow of a +15 bow does not heal again.
+- **Enchantments.** The items are in the vanilla bow and crossbow enchantment tags, so Infinity, Power, Multishot, Piercing and
+  Unbreaking apply. Piercing adds to the pierce trait.
+- **Crossbow charge.** A mixin on `CrossbowItem.getChargeDuration` scales the charge time. The pull animation follows it.
+- **Code.** `com.stella.equips.bows`. The catalog is `CraftedBows.DEFS`; the milestone table is `CraftedBows.TABLE`.
+- **Models.** Item definitions, models and textures sit under `assets/mod-stella-equips-enchants`. The bow pull animation steps by
+  the unrefined draw time, so a +15 bow reaches its last frame a little after it is fully drawn.
+
 ## Container loot
 
 Every container a player searches, vanilla or from a structure mod (chests, barrels, crates, pots and the like),

@@ -192,5 +192,14 @@
   "tooltip.mod-stella-equips-enchants.compare.reduction_flat": "Damage Reduction",
   "tooltip.mod-stella-equips-enchants.compare.reduction_pct": "Damage Reduction",
   "tooltip.mod-stella-equips-enchants.compare.magic_res_pct": "Magic Resistance",
-  "tooltip.mod-stella-equips-enchants.compare.move_speed_pct": "Movement Speed"
+  "tooltip.mod-stella-equips-enchants.compare.move_speed_pct": "Movement Speed",
+  "item.mod-stella-equips-enchants.hunter_bow": "Hunter Bow",
+  "item.mod-stella-equips-enchants.composite_bow": "Composite Bow",
+  "item.mod-stella-equips-enchants.gakkung": "Gakkung",
+  "item.mod-stella-equips-enchants.great_bow": "Great Bow",
+  "item.mod-stella-equips-enchants.rudra_bow": "Rudra Bow",
+  "item.mod-stella-equips-enchants.arbalest": "Arbalest",
+  "item.mod-stella-equips-enchants.repeater": "Repeater",
+  "item.mod-stella-equips-enchants.ballista": "Ballista",
+  "item.mod-stella-equips-enchants.siege_arbalest": "Siege Arbalest"
 }
