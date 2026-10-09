@@ -129,6 +129,11 @@ public final class RuinSets {
 		return hybrid;
 	}
 
+	/** The set an item belongs to, if any. */
+	public static Optional<String> setOf(final Item item) {
+		return Optional.ofNullable(MEMBERS.get(item)).map(Piece::setId);
+	}
+
 	public static Collection<HybridBonus> hybrids() {
 		return List.copyOf(HYBRIDS.values());
 	}

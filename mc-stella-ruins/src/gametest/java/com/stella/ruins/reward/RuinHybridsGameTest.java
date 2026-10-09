@@ -6,11 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 
 /** The six shipped hybrid bonuses: two pieces of one set and two of another, across sites. */
 public class RuinHybridsGameTest {
@@ -72,6 +76,28 @@ public class RuinHybridsGameTest {
 		helper.assertTrue(shipped.size() == PAIRS.size(), "the shipped hybrids are " + shipped + ", not just " + PAIRS.size() + " pairs");
 		RewardTestSupport.result("shippedHybrids", "checked=" + checked);
 		RewardTestSupport.leave(helper, player);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everySetPieceNamesItsHybridPartnersInItsTooltip(final GameTestHelper helper) {
+		for (String[] pair : PAIRS) {
+			for (int side = 0; side < 2; side++) {
+				String own = pair[side];
+				String partner = pair[1 - side];
+				RuinSets.SetDefinition set = RuinSets.get(own).orElseThrow();
+				for (Item piece : set.pieces().values()) {
+					ItemLore lore = new ItemStack(piece).get(DataComponents.LORE);
+					boolean named = lore != null && lore.lines().stream().anyMatch(line -> line.getContents() instanceof TranslatableContents contents
+						&& contents.getKey().equals("ruins.reward.set.hybrid") && line.toString().contains("set_name.mod-stella-ruins." + partner));
+					helper.assertTrue(named, own + " piece " + piece + " does not name its partner " + partner + " in its tooltip");
+				}
+			}
+		}
+		RuinSets.SetDefinition pilgrim = RuinSets.get("pilgrim").orElseThrow();
+		long lines = new ItemStack(pilgrim.pieces().get(EquipmentSlot.HEAD)).get(DataComponents.LORE).lines().stream()
+			.filter(line -> line.getContents() instanceof TranslatableContents contents && contents.getKey().equals("ruins.reward.set.hybrid")).count();
+		helper.assertTrue(lines == 2, "a pilgrim piece shows " + lines + " hybrid lines, not 2 (champion and hawkeye)");
 		helper.succeed();
 	}
 }

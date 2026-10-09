@@ -182,7 +182,8 @@ public class RuinSetsGameTest {
 		ItemLore lore = helmet.get(DataComponents.LORE);
 		helper.assertTrue(lore != null, "the piece has no lore");
 		List<Component> lines = lore.lines();
-		helper.assertTrue(lines.size() == 1 + RewardTestInit.alpha.spec().bonuses().size(), "lore has " + lines.size() + " lines");
+		int hybrids = com.stella.ruins.site.Hybrids.hybridLines("test_alpha").size();
+		helper.assertTrue(hybrids == 1 && lines.size() == 1 + RewardTestInit.alpha.spec().bonuses().size() + hybrids, "lore has " + lines.size() + " lines");
 		for (int i = 0; i < RewardTestInit.alpha.spec().bonuses().size(); i++) {
 			SetBonus bonus = RewardTestInit.alpha.spec().bonuses().get(i);
 			TranslatableContents line = (TranslatableContents) lines.get(i + 1).getContents();
