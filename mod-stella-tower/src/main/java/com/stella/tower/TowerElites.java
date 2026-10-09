@@ -139,6 +139,13 @@ public final class TowerElites {
 		return pool;
 	}
 
+	/** {@link #guardianPool(int)} for a floor of this tower: its biome's kinds, no creeper. */
+	public static List<EntityType<? extends Mob>> guardianPool(final ServerLevel tower, final int floor) {
+		List<EntityType<? extends Mob>> pool = new ArrayList<>(TowerMobs.poolOf(tower, floor));
+		pool.remove(EntityTypes.CREEPER);
+		return pool;
+	}
+
 	private static List<Mob> of(final ServerLevel tower, final int floor, final TowerRank rank) {
 		return tower.getEntitiesOfClass(Mob.class, TowerMobs.room(floor), mob -> {
 			TowerMobs.State state = TowerMobs.stateOf(mob);
@@ -283,7 +290,7 @@ public final class TowerElites {
 		if (sovereign != null) {
 			mob = sovereign.mob();
 		} else {
-			List<EntityType<? extends Mob>> pool = guardianPool(floor);
+			List<EntityType<? extends Mob>> pool = guardianPool(tower, floor);
 			EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
 			mob = kind.create(tower, EntitySpawnReason.EVENT);
 		}

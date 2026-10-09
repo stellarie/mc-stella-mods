@@ -153,7 +153,8 @@ final class TowerTestSupport {
 	static int freshFloorWhere(final java.util.function.IntPredicate wanted, final int block) {
 		int start = NEXT_FLOOR.getAndAdd(block);
 		for (int floor = start; floor < start + block - 3; floor++) {
-			if (wanted.test(floor)) {
+			// Never a sovereign floor: its boss is the Sovereign or the Ember Tyrant, not the kind a test pins.
+			if (floor % TowerBosses.EVERY != 0 && wanted.test(floor)) {
 				return floor;
 			}
 		}

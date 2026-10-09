@@ -386,7 +386,7 @@ public final class TowerTraps {
 		burst(tower, player, ParticleTypes.SCULK_SOUL, SoundEvents.SCULK_SHRIEKER_SHRIEK);
 		int room = TowerLayout.floorAt(pos);
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = TowerMobs.pool(floor);
+		List<EntityType<? extends Mob>> pool = room > 0 ? TowerMobs.poolOf(tower, floor) : TowerMobs.pool(floor);
 		// A lost room's trap calls mobs of the room's own level, not of the floors' formula.
 		int level = room > 0 ? TowerMobs.levelOf(floor) : floor + TowerMobs.LOST_ROOM_FLOOR_OFFSET - 1;
 		// A kind that finds no room is let go, and another called in its place.

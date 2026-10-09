@@ -127,6 +127,22 @@ public final class TowerMobs {
 		return FIRST_FLOOR_LEVEL + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
 	}
 
+	/**
+	 * The kinds a floor of the tower raises: its biome's, a great hall's those of the biome below it. A floor drawn before
+	 * the biome floors keeps the pool of its number.
+	 */
+	public static List<EntityType<? extends Mob>> poolOf(final ServerLevel tower, final int floor) {
+		if (floor < 1) {
+			return pool(floor);
+		}
+		TowerPlan plan = TowerPlan.atQuiet(tower, floor);
+		if (!plan.isBiome()) {
+			return pool(floor);
+		}
+		FloorBiome biome = plan.biome().biome();
+		return BiomePools.of(biome == FloorBiome.GREAT_HALL ? FloorBiomes.of(plan.seed(), floor - 1) : biome);
+	}
+
 	/** The kinds a floor may hold. */
 	public static List<EntityType<? extends Mob>> pool(final int floor) {
 		if (floor <= OVERWORLD_ONLY_UNTIL) {
@@ -222,7 +238,7 @@ public final class TowerMobs {
 	/** Raises one tower mob on the floor, somewhere clear and away from every player; null if none fit. */
 	public static @Nullable Mob spawnOne(final ServerLevel tower, final int floor) {
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = pool(floor);
+		List<EntityType<? extends Mob>> pool = poolOf(tower, floor);
 		EntityType<? extends Mob> type = pool.get(random.nextInt(pool.size()));
 		Mob mob = type.create(tower, EntitySpawnReason.EVENT);
 		if (mob == null) {
