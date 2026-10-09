@@ -366,6 +366,18 @@ and 4 blocks high. The player stands 20 blocks away, with the back to the stray.
 - A pursued unit that has cover, and took no unseen shot, follows the stance script. It does not hide.
 - A learned HOLD after a shot of `mod-stella-learn` does not stop a hide. A follow-up change makes learn yield.
 
+## Wither boss
+
+A Wither that joins a level fresh (the skull build, `/summon`, a spawn egg) is an encounter Wither. A Wither loaded from
+disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and stays vanilla.
+
+- Level: 100, or 20 above the highest player level near it, whichever is higher. Players count within the scaling
+  floor radius (128 blocks). With none that near, the highest player in the level counts. Spectators never count.
+- The level is fixed at the summon. The spawn scaling then sets health and damage from it. Vanilla caps max health at 1024.
+- `WitherState.hasWitherFlag(Mob)` reads the encounter mark without creating state. `mod-stella-rpg` finds it by name.
+- The numbers live in `config/mod-stella-mobs/wither.json`, grouped by section. A missing key falls back to its default.
+  An unknown key or a bad value is logged and skipped.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.

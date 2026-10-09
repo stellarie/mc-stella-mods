@@ -166,6 +166,11 @@ final class WideArena {
 		return mob;
 	}
 
+	/** Adds a mob the test spawned itself, so `finish` removes it. */
+	void track(final Entity entity) {
+		this.spawned.add(entity);
+	}
+
 	/** A survival player a mob can legally target and hurt. It cannot die in a test, and a blow does not move it. */
 	ServerPlayer survivalPlayer(final double x, final double z) {
 		CommonListenerCookie cookie = CommonListenerCookie.createInitial(

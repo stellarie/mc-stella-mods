@@ -84,6 +84,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.entity.StellaEntities.register();
 		ReactiveState.register();
 		EliteState.register();
+		com.stella.mobs.behavior.WitherState.register();
 		ThreatState.register();
 		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
@@ -133,12 +134,16 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
 		// Before the spawn chunks load, so loaded mobs rescale with the file's numbers.
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> ScalingConfigStore.load());
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+			ScalingConfigStore.load();
+			com.stella.mobs.config.WitherConfigStore.load();
+		});
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
 				GearConfigStore.load();
 				ScalingConfigStore.load();
+				com.stella.mobs.config.WitherConfigStore.load();
 				EnchantRoller.clearCache();
 			}
 		});
@@ -172,6 +177,10 @@ public class StellaMobs implements ModInitializer {
 
 		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.
 		if (!loadedFromDisk && !mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {
+			// Before the spawn scaling below reads the level.
+			if (mob instanceof net.minecraft.world.entity.boss.wither.WitherBoss) {
+				com.stella.mobs.behavior.WitherEncounter.begin(mob, level);
+			}
 			Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
 			Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
 			ReactiveState state = ReactiveState.get(mob);
@@ -238,6 +247,7 @@ public class StellaMobs implements ModInitializer {
 			com.stella.mobs.behavior.DepthMobs.rollAtSpawn(mob, level, entity instanceof EntityLoadData depthData ? depthData.spawnReason() : null);
 
 			SpawnScaling.apply(mob);
+			com.stella.mobs.behavior.WitherEncounter.reportSpawn(mob);
 			BloodMoon.empower(mob, level);
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
