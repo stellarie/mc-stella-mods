@@ -78,6 +78,8 @@ SKILLS = (
     Skill("arrow_rain", "Arrow Rain", "archer", art("arrow_rain")),
     Skill("rapid_fire", "Rapid Fire", "archer", art("rapid_fire")),
     Skill("hunters_mark", "Hunter's Mark", "archer", art("hunters_mark")),
+    Skill("ankle_snare", "Ankle Snare", "archer", art("ankle_snare")),
+    Skill("arrow_repel", "Arrow Repel", "archer", art("arrow_repel")),
     Skill("explosive_arrow", "Explosive Arrow", "archer", art("explosive_arrow")),
     Skill("disengage", "Disengage", "archer", art("disengage")),
     Skill("snare_trap", "Snare Trap", "archer", art("snare_trap")),

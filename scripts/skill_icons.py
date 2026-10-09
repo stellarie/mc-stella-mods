@@ -130,6 +130,18 @@ SKILLS: tuple[tuple[str, str, str, int, tuple[tuple, ...]], ...] = (
         ("line", 12, 8, 12, 8, 1, "a"),
         ("dot", 8, 8, 1, "h"),
     )),
+    # The two books the Ragnarok archer tree added: a tripwire hook with its ring, and a bolt that shoves a foe back.
+    ("ankle_snare", "Ankle Snare", "archer", 0xB8E08A, (
+        ("ring", 8, 9, 3, 1, "a"),
+        ("line", 3, 12, 12, 12, 1, "s"),
+        ("dot", 8, 4, 1, "h"),
+        ("line", 8, 5, 8, 6, 1, "h"),
+    )),
+    ("arrow_repel", "Arrow Repel", "archer", 0xF0B060, (
+        ("arrow", 3, 8, 9, 8, 2, "a"),
+        ("chev", 11, 8, 2, "right", "h"),
+        ("line", 12, 4, 12, 12, 1, "s"),
+    )),
     ("explosive_arrow", "Explosive Arrow", "archer", 0xFF9A3C, (
         ("arrow", 3, 11, 8, 6, 1, "a"),
         ("spokes", 9, 5, 1, 4, 6, 1, "h"),
