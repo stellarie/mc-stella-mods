@@ -61,6 +61,8 @@ public final class RewardTestInit implements ModInitializer {
 			.repair(ItemTags.REPAIRS_IRON_ARMOR).equipmentAsset(StellaRuins.id("test_beta"))
 			.bonus(new SetBonus(2, List.of(AttributeBonus.add(Attributes.LUCK, 2.0))))
 			.build());
+		RuinSets.defineHybrid(new HybridBonus("test_alpha_beta", java.util.Map.of("test_alpha", 2, "test_beta", 2),
+			List.of(AttributeBonus.add(Attributes.SAFE_FALL_DISTANCE, 5.0)), null));
 
 		keen = RuinAffixes.define("test_keen", new AffixSpec(
 			stack -> stack.is(ItemTags.SWORDS), Ingredient.of(Items.AMETHYST_SHARD),

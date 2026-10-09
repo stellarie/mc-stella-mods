@@ -14,5 +14,7 @@
 	"mob.mod-stella-ruins.star_golem": "Star Golem",
 	"mob.mod-stella-ruins.ember_slime": "Ember Slime",
 	"effect.mod-stella-ruins.starfall": "Starfall: 10% chance on a hit to call a small star for 6 magic damage",
-	"clue.mod-stella-ruins.meteor_crater": "Follow the smoke that does not drift. The star that fell there is still burning."
+	"clue.mod-stella-ruins.meteor_crater": "Follow the smoke that does not drift. The star that fell there is still burning.",
+	"item.mod-stella-ruins.emberward_affix": "Emberward Affix",
+	"affix.mod-stella-ruins.emberward": "Emberward: +1 armor toughness, and fire is put out with a short Fire Resistance"
 }

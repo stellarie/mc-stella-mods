@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"mod-stella-ruins:ember_core",
+		"mod-stella-ruins:ember_core",
+		"mod-stella-ruins:ember_core",
+		"mod-stella-ruins:star_fragment"
+	],
+	"result": { "id": "mod-stella-ruins:emberward_affix" }
+}

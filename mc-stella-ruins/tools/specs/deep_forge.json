@@ -13,6 +13,8 @@
 		{"id": "deepsteel_ingot", "template": "ingot", "palette": "steel"},
 		{"id": "cinder_dust", "template": "feather", "palette": "cinder"},
 		{"id": "forgeheart_shard", "template": "shard", "palette": "heart"},
+		{"id": "cinderbrand_affix", "template": "shard", "palette": "ember"},
+		{"id": "deepdelver_affix", "template": "shard", "palette": "heart"},
 		{"id": "deepsteel_sword", "template": "sword", "palette": "steel"},
 		{"id": "deepsteel_axe", "template": "axe", "palette": "steel"},
 		{"id": "deepsteel_pickaxe", "template": "axe", "palette": "cinder"},

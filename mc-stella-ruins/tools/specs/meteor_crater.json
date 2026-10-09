@@ -62,6 +62,11 @@
 			"id": "fallen_star",
 			"template": "gem",
 			"palette": "star"
+		},
+		{
+			"id": "emberward_affix",
+			"template": "shard",
+			"palette": "hot"
 		}
 	],
 	"sets": [
