@@ -3,6 +3,8 @@ package com.stella.rpg;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.entity.Mob;
 
 /**
@@ -30,6 +32,12 @@ public final class MobsBridge {
 		public String role(final Mob mob) {
 			return MobStats.MELEE;
 		}
+	};
+
+	private static final String[][] FLAGS = {
+		{"com.stella.mobs.behavior.EliteState", "hasEliteFlag"},
+		{"com.stella.mobs.behavior.EliteState", "hasBossFlag"},
+		{"com.stella.mobs.behavior.WitherState", "hasWitherFlag"}
 	};
 
 	private static volatile Facts facts;
@@ -68,7 +76,7 @@ public final class MobsBridge {
 			MethodHandles.Lookup lookup = MethodHandles.publicLookup();
 			MethodHandle threat = lookup.findStatic(mobs, "threat", MethodType.methodType(int.class, Mob.class));
 			MethodHandle role = lookup.findStatic(mobs, "role", MethodType.methodType(String.class, Mob.class));
-			MethodHandle[] flags = eliteFlags(lookup);
+			MethodHandle[] flags = eliteFlags(lookup, FLAGS);
 			return new Facts() {
 				@Override
 				public int threat(final Mob mob) {
@@ -90,16 +98,7 @@ public final class MobsBridge {
 
 				@Override
 				public boolean eliteOrBoss(final Mob mob) {
-					try {
-						for (MethodHandle flag : flags) {
-							if ((boolean) flag.invokeExact(mob)) {
-								return true;
-							}
-						}
-					} catch (Throwable e) {
-						return false;
-					}
-					return false;
+					return anyFlag(flags, mob);
 				}
 			};
 		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
@@ -109,15 +108,31 @@ public final class MobsBridge {
 
 	// Read without creating state.
 	// A created state saves into every mob.
-	private static MethodHandle[] eliteFlags(final MethodHandles.Lookup lookup) {
-		try {
-			Class<?> state = Class.forName("com.stella.mobs.behavior.EliteState", true, MobsBridge.class.getClassLoader());
-			MethodType type = MethodType.methodType(boolean.class, Mob.class);
-			return new MethodHandle[] {
-				lookup.findStatic(state, "hasEliteFlag", type), lookup.findStatic(state, "hasBossFlag", type)
-			};
-		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
-			return new MethodHandle[0];
+	// Each flag resolves alone, so an older mobs jar keeps the flags it has.
+	static MethodHandle[] eliteFlags(final MethodHandles.Lookup lookup, final String[][] sources) {
+		MethodType type = MethodType.methodType(boolean.class, Mob.class);
+		List<MethodHandle> found = new ArrayList<>();
+		for (String[] source : sources) {
+			try {
+				Class<?> state = Class.forName(source[0], true, MobsBridge.class.getClassLoader());
+				found.add(lookup.findStatic(state, source[1], type));
+			} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
+				// This flag stays unread; the others still resolve.
+			}
 		}
+		return found.toArray(new MethodHandle[0]);
+	}
+
+	static boolean anyFlag(final MethodHandle[] flags, final Mob mob) {
+		try {
+			for (MethodHandle flag : flags) {
+				if ((boolean) flag.invokeExact(mob)) {
+					return true;
+				}
+			}
+		} catch (Throwable e) {
+			return false;
+		}
+		return false;
 	}
 }

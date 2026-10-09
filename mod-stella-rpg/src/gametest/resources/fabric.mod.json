@@ -76,7 +76,9 @@
 			"com.stella.rpg.CraftSumGameTest",
 			"com.stella.rpg.SmeltBonusGameTest",
 			"com.stella.rpg.MaterialProfilesGameTest",
-			"com.stella.rpg.MiningRollGameTest"
+			"com.stella.rpg.MiningRollGameTest",
+			"com.stella.rpg.MobStatSetGameTest",
+			"com.stella.rpg.WitherFlagGameTest"
 		]
 	},
 	"depends": {
