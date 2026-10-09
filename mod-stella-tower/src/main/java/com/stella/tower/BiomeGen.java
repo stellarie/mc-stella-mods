@@ -100,6 +100,7 @@ final class BiomeGen {
 		}
 		w.nooks();
 		w.clearSpine();
+		w.props();
 		TowerPlan first = w.assemble(attempt, w.draft());
 		TowerVolume volume = TowerVolume.of(first);
 		if (!volume.reaches(first)) {
@@ -158,6 +159,8 @@ final class BiomeGen {
 		final boolean[][] water = new boolean[N][N];
 		final boolean[][] lava = new boolean[N][N];
 		final boolean[][] fragile = new boolean[N][N];
+		/** The columns of rock, where the biome has rock; null otherwise. */
+		boolean[][] rockMask;
 		/** The first block of rock over each column, and its look; null under an open roof. */
 		short[][] ceil;
 		byte[][] ceilCode;
@@ -794,14 +797,15 @@ final class BiomeGen {
 			int kind = big ? 1 : this.random.nextInt(4) == 0 ? 2 : 0;
 			byte log = kind == 1 ? BiomeBlocks.DARK_OAK_LOG : kind == 2 ? BiomeBlocks.BIRCH_LOG : BiomeBlocks.OAK_LOG;
 			byte leaves = kind == 1 ? BiomeBlocks.DARK_OAK_LEAVES : kind == 2 ? BiomeBlocks.BIRCH_LEAVES : BiomeBlocks.OAK_LEAVES;
-			return grow(x, z, big ? 2 : 1, big ? 3 : 2, 3, log, leaves);
+			return grow(x, z, big ? 2 : 1, big ? 3 : 2, 4, log, leaves);
 		}
 
 		/** A trunk {@code size} blocks square under a canopy of {@code reach}, {@code lift} blocks over the highest ground within it. */
 		boolean grow(final int x, final int z, final int size, final int reach, final int lift, final byte log, final byte leaves) {
 			int ground = 0;
-			for (int dx = -reach - 1; dx <= reach + size; dx++) {
-				for (int dz = -reach - 1; dz <= reach + size; dz++) {
+			// Over the highest ground a step away from the canopy's edge, so no wall or step beside it reaches the leaves.
+			for (int dx = -reach - 3; dx <= reach + size + 2; dx++) {
+				for (int dz = -reach - 3; dz <= reach + size + 2; dz++) {
 					if (in(x + dx, z + dz, 0)) {
 						ground = Math.max(ground, this.h[x + dx][z + dz]);
 					}
@@ -1073,7 +1077,7 @@ final class BiomeGen {
 			byte[] stone = {BiomeBlocks.COBBLESTONE, BiomeBlocks.COBBLE, BiomeBlocks.STONE_BRICKS};
 			for (int[] b : buildings) {
 				List<int[]> inside = ruin(b[0], b[1], b[2], b[3], stone, 1, b[4] == 1 ? 6 : 4, 0.38, b[4] == 2 ? BiomeBlocks.STONE_BRICKS : BiomeBlocks.COBBLESTONE);
-				barrels(inside, b[4] == 0 ? 4 : 8);
+				barrels(inside, b[4] == 0 ? 2 : 4);
 			}
 			for (int[] spot : wells) {
 				well(spot);
@@ -1306,7 +1310,7 @@ final class BiomeGen {
 			}
 			relax(true);
 			for (int[] t : poisson(24, 8, (x, z) -> free(x, z, 2) && free(x + 1, z + 1, 2) && free(x + 1, z, 2) && free(x, z + 1, 2))) {
-				grow(t[0], t[1], 2, 4, 4 + this.random.nextInt(8), BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES);
+				grow(t[0], t[1], 2, 4, 5 + this.random.nextInt(8), BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES);
 			}
 			for (int i = 0; i < 30; i++) {
 				int bx = 3 + this.random.nextInt(N - 6);
@@ -1483,7 +1487,7 @@ final class BiomeGen {
 				for (int palm = 0, placed = 0; palm < 40 && placed < 3; palm++) {
 					int[] d = disc(oasis[0], oasis[1], 5).get(this.random.nextInt(disc(oasis[0], oasis[1], 5).size()));
 					if (this.keep[d[0]][d[1]] == 4 && !this.water[d[0]][d[1]] && !this.tall[d[0]][d[1]] && !this.used[d[0]][d[1]]
-						&& grow(d[0], d[1], 1, 2, 3, BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES)) {
+						&& grow(d[0], d[1], 1, 2, 4, BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES)) {
 						placed++;
 					}
 				}
@@ -1589,6 +1593,7 @@ final class BiomeGen {
 		/** Marks every column that is not open, and not part of the frame, as rock to the roof; returns them. */
 		boolean[][] rock(final boolean[][] open) {
 			boolean[][] solid = new boolean[N][N];
+			this.rockMask = solid;
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
 					if (!open[x][z] && this.keep[x][z] == 0 && !this.water[x][z]) {
@@ -1923,6 +1928,62 @@ final class BiomeGen {
 			enclose(solid, (x, z) -> 30 - Math.abs(z - 31) / 5, new byte[] {BiomeBlocks.DEEPSLATE_BRICKS, BiomeBlocks.CRACKED_DEEPSLATE});
 		}
 
+		// ---- the things the dead left
+
+		/** Scatters the floor's props and the walls', clear of the road, the stair, the pad, the nooks and the water. */
+		void props() {
+			byte[] pool = BiomeProps.floor(this.biome);
+			int floors = 60 + this.random.nextInt(51);
+			int barrels = 0;
+			for (byte code : this.over) {
+				barrels += code == BiomeBlocks.BARREL ? 1 : 0;
+			}
+			int placed = 0;
+			for (int tries = 0; placed < floors && tries < floors * 25; tries++) {
+				int x = 2 + this.random.nextInt(N - 4);
+				int z = 2 + this.random.nextInt(N - 4);
+				if (!free(x, z, 1) || get(x, this.h[x][z], z) != 0) {
+					continue;
+				}
+				byte code = pool[this.random.nextInt(pool.length)];
+				if (code == BiomeBlocks.BARREL && barrels++ >= BiomeProps.BARRELS) {
+					continue;
+				}
+				put(x, this.h[x][z], z, code);
+				this.used[x][z] = true;
+				placed++;
+			}
+			int walls = 40 + this.random.nextInt(31);
+			int hung = 0;
+			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			Direction[] faces = {Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH};
+			for (int tries = 0; hung < walls && tries < walls * 150; tries++) {
+				int x = 2 + this.random.nextInt(N - 4);
+				int z = 2 + this.random.nextInt(N - 4);
+				if (this.keep[x][z] != 0 || this.water[x][z] || this.lava[x][z]) {
+					continue;
+				}
+				// Over a body's head, so it never cuts a walk: from the third block above the feet.
+				int y = this.h[x][z] + 2 + this.random.nextInt(5);
+				int way = this.random.nextInt(4);
+				int nx = x + ways[way][0];
+				int nz = z + ways[way][1];
+				if (y > TowerLayout.ROOM_HEIGHT - 4 || !in(nx, nz, 0) || get(x, y, z) != 0) {
+					continue;
+				}
+				byte beside = get(nx, y, nz);
+				boolean wall = BiomeBlocks.walk(beside) == TowerWalk.SOLID && BiomeBlocks.opaque(beside)
+					|| this.rockMask != null && this.rockMask[nx][nz] && y >= this.h[nx][nz];
+				if (!wall || this.ceil != null && y >= this.ceil[x][z]) {
+					continue;
+				}
+				// A skull is a block a body could stand on, so it hangs four blocks over the feet or more; a cobweb is air to a walk.
+				boolean skull = this.random.nextBoolean() && y >= this.h[x][z] + 4;
+				put(x, y, z, skull ? BiomeBlocks.wallSkull(faces[way]) : BiomeBlocks.COBWEB);
+				hung++;
+			}
+		}
+
 		// ---- chest nooks
 
 		/** The columns a body reaches from the arrival, in steps, by the ground alone: a coarse stand-in for the walk proof. */
@@ -2069,7 +2130,7 @@ final class BiomeGen {
 							int x = spot[0] + dx;
 							int z = spot[2] + dz;
 							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z] || this.tall[x][z]
-								|| plan.standY(x, z) != this.h[x][z] || get(x, this.h[x][z], z) != 0) {
+								|| !postable(plan, x, z)) {
 								continue;
 							}
 							// A lamp in the water is a sea lantern at the feet level; on land a lantern on a post.
@@ -2104,6 +2165,12 @@ final class BiomeGen {
 					lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
 				}
 			}
+		}
+
+		/** Whether a post may stand in a column: free ground, or a floor prop it may replace. */
+		private boolean postable(final TowerPlan plan, final int x, final int z) {
+			byte there = get(x, this.h[x][z], z);
+			return there == 0 ? plan.standY(x, z) == this.h[x][z] : BiomeBlocks.isProp(there) && plan.standY(x, z) == this.h[x][z] + 1;
 		}
 
 		private static int squared(final int[] a, final int[] b) {

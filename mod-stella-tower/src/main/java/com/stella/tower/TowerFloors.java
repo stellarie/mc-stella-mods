@@ -610,7 +610,8 @@ public final class TowerFloors {
 	private static void finishRoom(final ServerLevel tower, final int floor, final TowerPlan plan, final int trapFloor, final int lootFloor) {
 		BlockPos origin = TowerLayout.origin(floor);
 		BlockState wall = TowerBlocks.TOWER_WALL.defaultBlockState();
-		for (TowerTraps.Trap trap : TowerTraps.layout(tower.getSeed(), trapFloor, plan)) {
+		List<TowerTraps.Trap> traps = TowerTraps.layout(tower.getSeed(), trapFloor, plan);
+		for (TowerTraps.Trap trap : traps) {
 			tower.setBlock(origin.offset(trap.x(), trap.y() - 1, trap.z()), TowerBlocks.TRAPS.get(trap.theme()).defaultBlockState(), Block.UPDATE_CLIENTS);
 		}
 		if (TowerBuffs.isBossFloor(trapFloor)) {
@@ -618,6 +619,8 @@ public final class TowerFloors {
 		}
 		stations(tower, plan);
 		chests(tower, floor, plan, lootFloor);
+		// Last, so the room's design, traps and chests are all drawn before the things the dead left in it.
+		TowerProps.scatterRoom(tower, floor, plan, traps);
 		tower.setBlock(settledMarker(floor), wall, Block.UPDATE_CLIENTS);
 		tower.setBlock(marker(floor), wall, Block.UPDATE_CLIENTS);
 	}

@@ -6,6 +6,8 @@ import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.AttachFace;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 /**
  * The palette of a biome floor: each entry is a block of the world and the way a walking body counts it.
@@ -87,7 +89,25 @@ public final class BiomeBlocks {
 	public static final byte BUDDING_AMETHYST = 69;
 	public static final byte DRIPSTONE_BLOCK = 70;
 	public static final byte BONE_BLOCK = 71;
-	public static final byte COUNT = 72;
+	public static final byte SKULL_R4 = 72;
+	public static final byte SKULL_R8 = 73;
+	public static final byte SKULL_R12 = 74;
+	public static final byte WITHER_SKULL = 75;
+	public static final byte ZOMBIE_HEAD = 76;
+	public static final byte GRINDSTONE = 77;
+	public static final byte COBWEB = 78;
+	public static final byte CANDLE = 79;
+	public static final byte CAULDRON = 80;
+	public static final byte DECORATED_POT = 81;
+	public static final byte LECTERN = 82;
+	public static final byte FLOWER_POT = 83;
+	public static final byte WALL_SKULL_NORTH = 84;
+	public static final byte WALL_SKULL_EAST = 85;
+	public static final byte WALL_SKULL_SOUTH = 86;
+	public static final byte WALL_SKULL_WEST = 87;
+	public static final byte BANNER_EAST = 88;
+	public static final byte BANNER_WEST = 89;
+	public static final byte COUNT = 90;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -160,6 +180,24 @@ public final class BiomeBlocks {
 		define(BUDDING_AMETHYST, Blocks.BUDDING_AMETHYST.defaultBlockState(), TowerWalk.SOLID);
 		define(DRIPSTONE_BLOCK, Blocks.DRIPSTONE_BLOCK.defaultBlockState(), TowerWalk.SOLID);
 		define(BONE_BLOCK, Blocks.BONE_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(SKULL_R4, Blocks.SKELETON_SKULL.defaultBlockState().setValue(BlockStateProperties.ROTATION_16, 4), TowerWalk.SOLID);
+		define(SKULL_R8, Blocks.SKELETON_SKULL.defaultBlockState().setValue(BlockStateProperties.ROTATION_16, 8), TowerWalk.SOLID);
+		define(SKULL_R12, Blocks.SKELETON_SKULL.defaultBlockState().setValue(BlockStateProperties.ROTATION_16, 12), TowerWalk.SOLID);
+		define(WITHER_SKULL, Blocks.WITHER_SKELETON_SKULL.defaultBlockState().setValue(BlockStateProperties.ROTATION_16, 6), TowerWalk.SOLID);
+		define(ZOMBIE_HEAD, Blocks.ZOMBIE_HEAD.defaultBlockState().setValue(BlockStateProperties.ROTATION_16, 10), TowerWalk.SOLID);
+		define(GRINDSTONE, Blocks.GRINDSTONE.defaultBlockState().setValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR), TowerWalk.SOLID);
+		define(COBWEB, Blocks.COBWEB.defaultBlockState(), TowerWalk.OPEN);
+		define(CANDLE, Blocks.CANDLE.defaultBlockState(), TowerWalk.SOLID);
+		define(CAULDRON, Blocks.CAULDRON.defaultBlockState(), TowerWalk.SOLID);
+		define(DECORATED_POT, Blocks.DECORATED_POT.defaultBlockState(), TowerWalk.SOLID);
+		define(LECTERN, Blocks.LECTERN.defaultBlockState(), TowerWalk.SOLID);
+		define(FLOWER_POT, Blocks.FLOWER_POT.defaultBlockState(), TowerWalk.SOLID);
+		define(WALL_SKULL_NORTH, Blocks.SKELETON_WALL_SKULL.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH), TowerWalk.SOLID);
+		define(WALL_SKULL_EAST, Blocks.SKELETON_WALL_SKULL.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST), TowerWalk.SOLID);
+		define(WALL_SKULL_SOUTH, Blocks.SKELETON_WALL_SKULL.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH), TowerWalk.SOLID);
+		define(WALL_SKULL_WEST, Blocks.SKELETON_WALL_SKULL.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST), TowerWalk.SOLID);
+		define(BANNER_EAST, Blocks.WALL_BANNER.red().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST), TowerWalk.OPEN);
+		define(BANNER_WEST, Blocks.WALL_BANNER.red().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST), TowerWalk.OPEN);
 		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
@@ -198,6 +236,23 @@ public final class BiomeBlocks {
 				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM, LAVA, POWDER_SNOW, CACTUS, NETHER_BRICK_FENCE, SOUL_LANTERN -> false;
 			default -> true;
 		};
+	}
+
+	/** The wall skull that faces a direction. */
+	public static byte wallSkull(final Direction facing) {
+		return switch (facing) {
+			case NORTH -> WALL_SKULL_NORTH;
+			case EAST -> WALL_SKULL_EAST;
+			case SOUTH -> WALL_SKULL_SOUTH;
+			default -> WALL_SKULL_WEST;
+		};
+	}
+
+	/** Whether the entry is one of the abandoned things scattered on a floor or a wall. */
+	public static boolean isProp(final byte code) {
+		return code == SKULL || code == SKULL_R4 || code == SKULL_R8 || code == SKULL_R12 || code == WITHER_SKULL || code == ZOMBIE_HEAD
+			|| code == BARREL || code == ANVIL || code == GRINDSTONE || code == BONE_BLOCK || code == COBWEB || code == CANDLE || code == CAULDRON
+			|| code == DECORATED_POT || code == LECTERN || code == FLOWER_POT || code >= WALL_SKULL_NORTH && code <= WALL_SKULL_WEST;
 	}
 
 	/** Whether the entry gives light. */

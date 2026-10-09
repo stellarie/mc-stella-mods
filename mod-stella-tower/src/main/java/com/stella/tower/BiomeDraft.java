@@ -113,6 +113,15 @@ public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boo
 			pieces.add(new Piece(px + f * (2 + s), 0, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.FENCE));
 			pieces.add(new Piece(px + f * (2 + s), 1, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.SKULL));
 		}
+		// An unlit candle on the outer end of each step, and torn banners on the backdrop.
+		for (int k = 1; k < s; k++) {
+			for (int z : new int[] {pz - 3 - k, pz + 4 + k}) {
+				pieces.add(new Piece(px + f * (2 + k), s - k, z, TowerVolume.BIOME_BLOCK, BiomeBlocks.CANDLE));
+			}
+		}
+		for (int z : new int[] {pz - 1, pz + 2}) {
+			pieces.add(new Piece(px - f * 2, s + 3, z, TowerVolume.BIOME_BLOCK, f == 1 ? BiomeBlocks.BANNER_EAST : BiomeBlocks.BANNER_WEST));
+		}
 		return pieces;
 	}
 

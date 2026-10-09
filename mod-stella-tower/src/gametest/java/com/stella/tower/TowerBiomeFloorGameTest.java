@@ -129,6 +129,9 @@ public class TowerBiomeFloorGameTest {
 							lit |= dx * dx + dy * dy + dz * dz <= BiomeGen.LIGHT_REACH * BiomeGen.LIGHT_REACH;
 						}
 						dark += lit ? 0 : 1;
+						if (!lit) {
+							TowerTestSupport.result("darkSpot", "floor=" + floor + " biome=" + plan.biome().biome() + " at " + x + "," + y + "," + z + " attempt=" + plan.attempt());
+						}
 					}
 				}
 			}
