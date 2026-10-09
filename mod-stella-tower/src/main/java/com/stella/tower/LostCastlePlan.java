@@ -92,18 +92,25 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 			}
 			List<TowerHex.Nook> reserved = new ArrayList<>();
 			List<Turret> turrets = new ArrayList<>();
-			for (int i = 0; i < turretsAt(storey); i++) {
-				List<TowerHex.Nook> sites = new ArrayList<>();
-				for (TowerHex.Nook nook : free) {
-					if (reachHeld(nook) && !below.contains(nook)) {
-						sites.add(nook);
+			if (top) {
+				// One turret in every room but the portal room.
+				for (TowerHex.Cell room : TowerHex.cells()) {
+					if (room.cx() == TowerHex.COLS / 2 && room.cz() == TowerHex.COLS / 2) {
+						continue;
 					}
+					List<TowerHex.Nook> inRoom = new ArrayList<>();
+					for (TowerHex.Nook nook : free) {
+						if (nook.cx() == room.cx() && nook.cz() == room.cz()) {
+							inRoom.add(nook);
+						}
+					}
+					TowerHex.Nook nook = turretSite(inRoom, below, rng);
+					free.remove(nook);
+					reserved.add(nook);
+					turrets.add(new Turret(nook, null));
 				}
-				if (sites.isEmpty()) {
-					sites.addAll(free);
-					sites.removeAll(below);
-				}
-				TowerHex.Nook nook = sites.get(rng.nextInt(sites.size()));
+			} else {
+				TowerHex.Nook nook = turretSite(free, below, rng);
 				free.remove(nook);
 				reserved.add(nook);
 				turrets.add(new Turret(nook, null));
@@ -135,9 +142,29 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 		return new LostCastlePlan(List.copyOf(floors));
 	}
 
-	/** How many spawner turrets a storey holds. */
+	/** How many spawner turrets a storey holds: one, and on the top storey one in every room but the portal room. */
 	public static int turretsAt(final int storey) {
-		return 1;
+		return storey == TowerHex.STOREYS - 1 ? TowerHex.cells().size() - 1 : 1;
+	}
+
+	/**
+	 * A turret site among candidate nooks: one whose spawn range the octagon holds, and not the nook of a
+	 * turret on the storey below unless it is the only one.
+	 */
+	private static TowerHex.Nook turretSite(final List<TowerHex.Nook> candidates, final List<TowerHex.Nook> below, final RandomSource rng) {
+		List<TowerHex.Nook> held = new ArrayList<>();
+		for (TowerHex.Nook nook : candidates) {
+			if (reachHeld(nook)) {
+				held.add(nook);
+			}
+		}
+		if (held.isEmpty()) {
+			held.addAll(candidates);
+		}
+		List<TowerHex.Nook> fresh = new ArrayList<>(held);
+		fresh.removeAll(below);
+		List<TowerHex.Nook> sites = fresh.isEmpty() ? held : fresh;
+		return sites.get(rng.nextInt(sites.size()));
 	}
 
 	/** The kinds of the storeys, ground to top: no kind twice, and the top storey is always the sanctum. */
@@ -161,7 +188,7 @@ public record LostCastlePlan(List<FloorPlan> floors) {
 	}
 
 	/**
-	 * Whether the hexagon holds every column a spawner in the nook can raise a mob in, so no mob appears in
+	 * Whether the octagon holds every column a spawner in the nook can raise a mob in, so no mob appears in
 	 * the air outside the walls and leaves.
 	 */
 	public static boolean reachHeld(final TowerHex.Nook nook) {

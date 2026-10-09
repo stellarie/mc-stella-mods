@@ -125,33 +125,33 @@ public class TowerLostCastleChestGameTest {
 		helper.succeed();
 	}
 
-	/** Whether every sealed pocket column is stone through all of its storeys. */
-	static String pockets(final TowerLostRoomGameTest.Arena arena) {
+	/** Whether every column the corner cut takes from a room's square is stone or open air, never a way, on every storey. */
+	static String cutCorners(final TowerLostRoomGameTest.Arena arena) {
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
-		int pockets = 0;
+		int walls = 0;
 		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				if (!TowerHex.isPocket(x, z)) {
+				if (!TowerHex.isCut(x, z) || TowerHex.kind(x, z) != TowerHex.Part.WALL) {
 					continue;
 				}
-				pockets++;
+				walls++;
 				for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
 					for (int y = TowerHex.floorAt(storey) + 1; y < TowerHex.ceilingAt(storey); y++) {
 						if (level.getBlockState(piece.worldPos(x, y, z)).isAir()) {
-							return "the pocket column " + x + "," + z + " is open at " + y;
+							return "the cut wall column " + x + "," + z + " is open at " + y;
 						}
 					}
 				}
 			}
 		}
-		return pockets == 0 ? "the hexagon holds no pocket columns" : "";
+		return walls == 0 ? "the corners hold no cut wall columns" : "";
 	}
 
 	@GameTest(maxTicks = 400)
-	public void pocketsAreSolid(final GameTestHelper helper) {
-		String fault = overCastles(helper, TowerLostCastleChestGameTest::pockets);
-		TowerTestSupport.result("castlePockets", "fault=" + fault);
+	public void cutCornersAreSolid(final GameTestHelper helper) {
+		String fault = overCastles(helper, TowerLostCastleChestGameTest::cutCorners);
+		TowerTestSupport.result("castleCutCorners", "fault=" + fault);
 		helper.assertTrue(fault.isEmpty(), fault);
 		helper.succeed();
 	}

@@ -55,14 +55,36 @@ public class TowerLostCastlePlanGameTest {
 			if (floor.kind().slot() != slot) {
 				return "storey " + storey + " is " + floor.kind() + ", a " + floor.kind().slot() + " kind";
 			}
+			int wantedTurrets = top ? TowerHex.cells().size() - 1 : 1;
+			if (floor.turrets().size() != wantedTurrets) {
+				return "storey " + storey + " holds " + floor.turrets().size() + " turrets, not " + wantedTurrets;
+			}
+			if (top) {
+				Set<Long> rooms = new HashSet<>();
+				for (LostCastlePlan.Turret turret : floor.turrets()) {
+					rooms.add(key(turret.nook().cx(), turret.nook().cz()));
+				}
+				boolean hubHeld = rooms.contains(key(TowerHex.COLS / 2, TowerHex.COLS / 2));
+				if (rooms.size() != wantedTurrets || hubHeld) {
+					return "the top storey does not hold one turret in every room but the portal room: " + rooms.size() + " rooms, portal room held " + hubHeld;
+				}
+			}
 			if (floor.turrets().size() != LostCastlePlan.turretsAt(storey)) {
 				return "storey " + storey + " holds " + floor.turrets().size() + " turrets, not " + LostCastlePlan.turretsAt(storey);
 			}
 			Set<Long> claimed = new HashSet<>();
 			for (LostCastlePlan.Turret turret : floor.turrets()) {
 				TowerHex.Nook site = turret.nook();
-				if (!site.usable() || below.contains(site) || top && site.hub() || turret.cover() == null) {
-					return "storey " + storey + " turret " + site + " is unusable, stacked or uncovered";
+				if (!site.usable() || top && site.hub() || turret.cover() == null) {
+					return "storey " + storey + " turret " + site + " is unusable, in the portal room or uncovered";
+				}
+				if (below.contains(site)) {
+					for (TowerHex.Nook other : nooks) {
+						if (other.usable() && other.cx() == site.cx() && other.cz() == site.cz() && !other.equals(site) && LostCastlePlan.reachHeld(other)
+							&& !LostCastleHex.inStairLane(other.tuckX(), other.tuckZ()) && !(storey == 0 && other.cz() == 0 && other.cx() == TowerHex.COLS / 2)) {
+							return "storey " + storey + " turret stacks on the storey below although its room has another site";
+						}
+					}
 				}
 				for (int[] column : site.columns()) {
 					if (LostCastleHex.inStairLane(column[0], column[1])) {
@@ -73,7 +95,7 @@ public class TowerLostCastlePlanGameTest {
 					}
 				}
 				if (!LostCastlePlan.reachHeld(site)) {
-					return "storey " + storey + " turret reaches outside the hexagon";
+					return "storey " + storey + " turret reaches outside the octagon";
 				}
 			}
 			int storeyBlocks = top ? 1 : 0;
@@ -169,7 +191,7 @@ public class TowerLostCastlePlanGameTest {
 		helper.succeed();
 	}
 
-	/** Every usable nook is walled on both sides, four columns of the hexagon, and the usable ones are numerous. */
+	/** Every usable nook is walled on both sides, four columns of a way, and the usable ones are numerous. */
 	@GameTest(maxTicks = 20)
 	public void everyUsableNookStandsAgainstTwoWalls(final GameTestHelper helper) {
 		List<TowerHex.Nook> usable = new ArrayList<>();

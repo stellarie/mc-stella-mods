@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * The five surfaces a lost castle is built from, chosen by its seed. Every castle is the same hexagonal
+ * The five surfaces a lost castle is built from, chosen by its seed. Every castle is the same octagonal
  * maze of storeys ({@link TowerHex}); a variant names the tower environment its stone comes from, so one
  * castle reads as the furnace's, the frost's, the void's, the shadow's or the bog's.
  */

@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
- * Every castle is the same hexagonal maze: a six-sided footprint, {@link TowerHex#STOREYS} storeys of ways
+ * Every castle is the same octagonal maze: an eight-sided footprint, {@link TowerHex#STOREYS} storeys of ways
  * {@link TowerMaze#PATH} blocks wide, exactly {@link LostCastleHex#chestBlocksAt} stocked chest blocks on each of
  * them, a breached south wall for its way in, the lost room's portal on the top storey, and no lava anywhere.
  * Every bound is read from the constant the castle ships with, so moving a constant moves its guard.
@@ -30,27 +30,27 @@ public class TowerLostCastleHexGameTest {
 	public static final int SEEDS = 4;
 
 	@GameTest(maxTicks = 40)
-	public void theCastleVariantStandsAsAHexagon(final GameTestHelper helper) {
+	public void theCastleVariantStandsAsAnOctagon(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.CASTLE, "castleHexFootprint");
 	}
 
 	@GameTest(maxTicks = 40)
-	public void theKeepVariantStandsAsAHexagon(final GameTestHelper helper) {
+	public void theKeepVariantStandsAsAnOctagon(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.KEEP, "castleHexFootprint");
 	}
 
 	@GameTest(maxTicks = 40)
-	public void theMazeVariantStandsAsAHexagon(final GameTestHelper helper) {
+	public void theMazeVariantStandsAsAnOctagon(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.MAZE, "castleHexFootprint");
 	}
 
 	@GameTest(maxTicks = 40)
-	public void theFloodedVariantStandsAsAHexagon(final GameTestHelper helper) {
+	public void theFloodedVariantStandsAsAnOctagon(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.FLOODED, "castleHexFootprint");
 	}
 
 	@GameTest(maxTicks = 40)
-	public void theCryptVariantStandsAsAHexagon(final GameTestHelper helper) {
+	public void theCryptVariantStandsAsAnOctagon(final GameTestHelper helper) {
 		check(helper, LostCastleVariant.CRYPT, "castleHexFootprint");
 	}
 
@@ -86,9 +86,9 @@ public class TowerLostCastleHexGameTest {
 	}
 
 	/**
-	 * Whether the castle stands as the hexagon and no other shape. Every column of the piece is read at the
+	 * Whether the castle stands as the octagon and no other shape. Every column of the piece is read at the
 	 * ground storey's feet and compared with {@link TowerHex#kind}: a way's crossing is open and the rest of a
-	 * way may carry the ruin, anything inside the hexagon that is not a way is a block, and anything outside it
+	 * way may carry the ruin, anything inside the octagon that is not a way is a block, and anything outside it
 	 * is open. The rows read back must also be the rows {@link TowerHex#widthAt} draws, and that shape must be
 	 * symmetric about the piece's middle.
 	 */
@@ -109,7 +109,7 @@ public class TowerLostCastleHexGameTest {
 					outsideHeld += held ? 1 : 0;
 				} else if (part == TowerHex.Part.WAY) {
 					open += held ? 0 : 1;
-					if (held && TowerHex.onCrossing(x, z) && !TowerHex.isPocket(x, z)) {
+					if (held && TowerHex.onCrossing(x, z) && !TowerHex.isCut(x, z)) {
 						blocked.add(x + "," + z);
 					}
 				} else {
@@ -118,18 +118,28 @@ public class TowerLostCastleHexGameTest {
 			}
 		}
 		int rows = 0;
+		int wantedRows = 0;
 		int sway = 0;
+		int left = TowerHex.cellX(0) - TowerMaze.WALL;
+		int right = TowerHex.cellX(TowerHex.COLS - 1) + TowerMaze.PATH;
+		int upper = TowerHex.cellZ(0) - TowerMaze.WALL;
+		int lower = TowerHex.cellZ(TowerHex.COLS - 1) + TowerMaze.PATH;
 		for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-			int width = TowerHex.widthAt(z);
-			int low = TowerHex.middleX() - width / 2;
 			int held = 0;
-			for (int x = low; x < low + width; x++) {
-				held += !level.getBlockState(piece.worldPos(x, feet, z)).isAir() ? 1 : 0;
+			for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
+				boolean here = !level.getBlockState(piece.worldPos(x, feet, z)).isAir();
+				boolean roof = !level.getBlockState(piece.worldPos(x, TowerHex.ceilingAt(TowerHex.STOREYS - 1), z)).isAir();
+				held += here ? 1 : 0;
+				int mx = left + right - x;
+				int mz = upper + lower - z;
+				// The roof is bare stone over the whole footprint, so it shows the shape without the ruin on the floor.
+				if (mx >= 0 && mx < LostRoomPiece.LENGTH && mz >= 0 && mz < LostRoomPiece.WIDTH
+					&& roof != !level.getBlockState(piece.worldPos(mx, TowerHex.ceilingAt(TowerHex.STOREYS - 1), mz)).isAir()) {
+					sway++;
+				}
 			}
 			rows += held > 0 ? 1 : 0;
-			if (low != TowerHex.middleX() - TowerHex.widthAt(LostRoomPiece.WIDTH - 1 - z) / 2) {
-				sway++;
-			}
+			wantedRows += TowerHex.widthAt(z) > 0 ? 1 : 0;
 		}
 		int top = TowerHex.ceilingAt(TowerHex.STOREYS - 1);
 		int outside = 0;
@@ -139,21 +149,21 @@ public class TowerLostCastleHexGameTest {
 			}
 		}
 		if (outsideHeld != 0) {
-			faults.add("holds " + outsideHeld + " blocks outside the hexagon");
+			faults.add("holds " + outsideHeld + " blocks outside the octagon");
 		}
 		if (!blocked.isEmpty()) {
 			faults.add("walls off " + blocked.size() + " blocks of a way's crossing at " + blocked);
 		}
-		if (rows != LostRoomPiece.WIDTH) {
-			faults.add("stands nothing on " + (LostRoomPiece.WIDTH - rows) + " rows of the frame");
+		if (rows != wantedRows) {
+			faults.add("stands on " + rows + " rows of the frame, not the " + wantedRows + " the octagon draws");
 		}
 		if (sway != 0) {
-			faults.add("the footprint is not symmetric about its middle: " + sway + " rows");
+			faults.add("the footprint is not symmetric about the lattice middle: " + sway + " columns");
 		}
 		if (outside != 0) {
-			faults.add("stands " + outside + " blocks outside the hexagon on its own roof");
+			faults.add("stands " + outside + " blocks outside the octagon on its own roof");
 		}
-		TowerTestSupport.result("castleHexRows", "rows=" + rows + "/" + LostRoomPiece.WIDTH + " open=" + open + " solid=" + solid + " outside="
+		TowerTestSupport.result("castleHexRows", "rows=" + rows + "/" + wantedRows + " open=" + open + " solid=" + solid + " outside="
 			+ outsideHeld + " roofOutside=" + outside);
 		return faults;
 	}
@@ -216,7 +226,7 @@ public class TowerLostCastleHexGameTest {
 					BlockPos at = piece.worldPos(cell.middle().getX(), 0, cell.middle().getZ()).atY(y);
 					climb.append(" c").append(cell.cx()).append(cell.cz()).append('=').append(fromBelow.contains(at) ? 'y' : 'n');
 				}
-				TowerHex.Cell backStair = TowerHex.cells().get(TowerHex.cells().size() - 1);
+				TowerHex.Cell backStair = TowerHex.stairCell();
 				for (int rise = 0; rise < TowerHex.STOREY; rise++) {
 					int[] step = LostCastleHex.stairStep(backStair, rise);
 					BlockPos spot = piece.worldPos(step[0], 0, step[1]).atY(originY + TowerHex.floorAt(storey - 1) + 2 + rise);
@@ -350,13 +360,11 @@ public class TowerLostCastleHexGameTest {
 				int z = cell.middle().getZ();
 				measured++;
 				narrow += wholeWay(cell.cx(), cell.cz()) ? 0 : 1;
-				// The way stands behind stone on every side the hexagon closes: its inner sides carry doors.
-				int lowX = TowerHex.cellX(cell.cx());
-				int lowZ = TowerHex.cellZ(cell.cz());
-				boolean walled = walledSide(level, piece, lowX - 1, lowX - 2, feet, z, z)
-					&& walledSide(level, piece, lowX + TowerMaze.PATH, lowX + TowerMaze.PATH + 1, feet, z, z)
-					&& walledSide(level, piece, x, x, feet, lowZ - 1, lowZ - 2)
-					&& walledSide(level, piece, x, x, feet, lowZ + TowerMaze.PATH, lowZ + TowerMaze.PATH + 1);
+				// The way stands behind stone on every side the octagon closes: its inner sides carry doors.
+				boolean walled = true;
+				for (int[] side : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+					walled &= walledSide(level, piece, x, z, side[0], side[1], feet);
+				}
 				unwalled += walled ? 0 : 1;
 			}
 		}
@@ -369,24 +377,40 @@ public class TowerLostCastleHexGameTest {
 		return "";
 	}
 
-	/** Whether a way stands behind stone on one side, or the hexagon leaves that side open: the breach, or a door. */
-	static boolean walledSide(final ServerLevel level, final LostRoomPiece piece, final int sideX, final int outX, final int feet, final int sideZ, final int outZ) {
-		if (TowerHex.kind(outX, outZ) != TowerHex.Part.OUT || LostCastleHex.inBreach(sideX, feet, sideZ)) {
+	/**
+	 * Whether a room stands behind stone on one side. From the room's middle the walk goes out along the side
+	 * to the first column that is not a way. That column is wall; it is stone, unless a room lies behind it
+	 * (a door may stand there) or it is the breach.
+	 */
+	static boolean walledSide(final ServerLevel level, final LostRoomPiece piece, final int startX, final int startZ, final int stepX, final int stepZ, final int feet) {
+		int x = startX;
+		int z = startZ;
+		while (TowerHex.kind(x, z) == TowerHex.Part.WAY) {
+			x += stepX;
+			z += stepZ;
+		}
+		if (TowerHex.kind(x, z) == TowerHex.Part.OUT) {
+			return false;
+		}
+		if (TowerHex.kind(x + stepX, z + stepZ) == TowerHex.Part.WAY || LostCastleHex.inBreach(x, feet, z)) {
 			return true;
 		}
-		return !level.getBlockState(piece.worldPos(sideX, feet, sideZ)).isAir();
+		return !level.getBlockState(piece.worldPos(x, feet, z)).isAir();
 	}
 
-	/** Whether a cell's whole path is held by the hexagon: every one of its columns is a way of it. */
+	/**
+	 * Whether a room keeps its path: a side or middle room holds every one of its columns, and a corner room,
+	 * which the cut takes a corner from, still holds {@link TowerHex#MIN_CORNER_COLUMNS} of them.
+	 */
 	static boolean wholeWay(final int cx, final int cz) {
+		int held = 0;
 		for (int dx = 0; dx < TowerMaze.PATH; dx++) {
 			for (int dz = 0; dz < TowerMaze.PATH; dz++) {
-				if (TowerHex.kind(TowerHex.cellX(cx) + dx, TowerHex.cellZ(cz) + dz) != TowerHex.Part.WAY) {
-					return false;
-				}
+				held += TowerHex.kind(TowerHex.cellX(cx) + dx, TowerHex.cellZ(cz) + dz) == TowerHex.Part.WAY ? 1 : 0;
 			}
 		}
-		return true;
+		boolean corner = (cx == 0 || cx == TowerHex.COLS - 1) && (cz == 0 || cz == TowerHex.COLS - 1);
+		return corner ? held >= TowerHex.MIN_CORNER_COLUMNS : held == TowerMaze.PATH * TowerMaze.PATH;
 	}
 
 	/** Whether every storey holds exactly {@link LostCastleHex#chestBlocksAt} chest blocks, each with loot in it. */

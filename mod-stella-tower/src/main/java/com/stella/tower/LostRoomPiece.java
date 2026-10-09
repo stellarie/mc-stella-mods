@@ -37,7 +37,7 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 
 /**
- * The lost castle: a hexagonal maze of three storeys in tower wall, on a platform above the ground, with a
+ * The lost castle: an octagonal maze of three storeys in tower wall, on a platform above the ground, with a
  * breached south wall for its way in. Every way is six blocks wide between walls one block thick
  * ({@link TowerHex}). Each storey holds chests, candles, skulls and chains, its floor is broken with gaps
  * and cracked stone, and the top storey holds the blue portal, one wide and two high in a lining of tower
@@ -52,7 +52,7 @@ import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSeriali
  * is drawn from the piece's own seed, so every chunk the castle crosses draws the same ruin.
  */
 public class LostRoomPiece extends StructurePiece {
-	/** The castle's frame: three storeys of the hexagon fit inside it, the top one's ceiling included. */
+	/** The castle's frame: three storeys of the octagon fit inside it, the top one's ceiling included. */
 	public static final int LENGTH = 31;
 	public static final int WIDTH = 27;
 	public static final int HEIGHT = 25;

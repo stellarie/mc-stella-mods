@@ -86,8 +86,8 @@ public class TowerLostRoomGameTest {
 	}
 
 	/**
-	 * The castle's foundation: one block above the highest ground, and held up under the hexagon it stands on.
-	 * The corners of the frame lie outside the hexagon, so the corners read are the hexagon's own four.
+	 * The castle's foundation: one block above the highest ground, and held up under the octagon it stands on.
+	 * The corners of the frame lie outside the octagon, so the corners read are the octagon's own four.
 	 */
 	@GameTest(maxTicks = 40)
 	public void theCastleStandsAboveTheGroundOnAFoundation(final GameTestHelper helper) {
@@ -130,7 +130,7 @@ public class TowerLostRoomGameTest {
 	}
 
 	/**
-	 * The castle's frame: three hexagonal storeys of six-wide ways, a breach through the ground storey's
+	 * The castle's frame: three octagonal storeys of six-wide ways, a breach through the ground storey's
 	 * south wall for its way in, the lost room's portal on the top storey with the workstations beside it,
 	 * and the ruin over all of it. The old two halls and their oak gate are gone: the castle is a maze now.
 	 */
@@ -156,7 +156,7 @@ public class TowerLostRoomGameTest {
 					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
 						int x = cell.middle().getX() - TowerMaze.PATH / 2 + dx;
 						int z = cell.middle().getZ() - TowerMaze.PATH / 2 + dz;
-						// Only the cell's own blocks carry a lid: the hexagon's cut corner has no room for one.
+						// Only the cell's own blocks carry a lid: the octagon's cut corner has no room for one.
 						if (TowerHex.kind(x, z) != TowerHex.Part.WAY) {
 							continue;
 						}
@@ -196,7 +196,7 @@ public class TowerLostRoomGameTest {
 				open += level.getBlockState(piece.worldPos(x, y, row)).isAir() ? 1 : 0;
 			}
 		}
-		// The wall the breach was cut through still stands over it, on the columns the hexagon holds.
+		// The wall the breach was cut through still stands over it, on the columns the octagon holds.
 		boolean walled = true;
 		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
 			if (TowerHex.kind(x, row) == TowerHex.Part.OUT) {

@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
- * The hexagonal lost castle: {@link TowerHex#STOREYS} storeys of paths {@link TowerMaze#PATH} blocks wide
+ * The octagonal lost castle: {@link TowerHex#STOREYS} storeys of paths {@link TowerMaze#PATH} blocks wide
  * between walls {@link TowerMaze#WALL} block thick, the lost room's portal on the top storey, and a breach
  * in the ground storey's south wall for the way in. {@link TowerHex} holds the shape; this class lays it,
  * then ruins it: cracked and missing floor, rubble, cobwebs, candles, skulls and chains.
@@ -90,12 +90,12 @@ public final class LostCastleHex {
 		return TowerHex.cellZ(0) - 1;
 	}
 
-	/** The breach's first block that the hexagon's own wall holds, where its stone and its lamp stand. */
+	/** The breach's first block that the octagon's own wall holds, where its stone and its lamp stand. */
 	public static int entranceLow() {
 		return Math.max(breachLow(), TowerHex.lowAt(breachRow()));
 	}
 
-	/** The breach's last block that the hexagon's own wall holds. */
+	/** The breach's last block that the octagon's own wall holds. */
 	public static int entranceHigh() {
 		return Math.min(breachLow() + BREACH - 1, TowerHex.lowAt(breachRow()) + TowerHex.widthAt(breachRow()) - 1);
 	}
@@ -126,11 +126,12 @@ public final class LostCastleHex {
 			int floor = TowerHex.floorAt(storey);
 			for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
 				for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-					if (TowerHex.kind(x, z) == TowerHex.Part.OUT) {
+					TowerHex.Part part = TowerHex.kind(x, z);
+					if (part == TowerHex.Part.OUT) {
 						continue;
 					}
-					// A way is a cell the hexagon holds: the cut fragments of the corner cells are sealed.
-					boolean open = TowerHex.cellOf(x, z) != null;
+					// A way is floor of a room; the corner cut leaves wall in the rest of a corner room's square.
+					boolean open = part == TowerHex.Part.WAY;
 					for (int y = floor; y <= ceiling; y++) {
 						piece.set(level, bb, open && y >= feet && y < ceiling ? air : wall, x, y, z);
 					}
@@ -162,7 +163,7 @@ public final class LostCastleHex {
 		while (!trail.isEmpty()) {
 			int[] at = trail.get(trail.size() - 1);
 			List<int[]> ways = new ArrayList<>();
-			// Every neighbour of the cell counts, so the maze reaches every way the hexagon holds.
+			// Every neighbour of the cell counts, so the maze reaches every way the octagon holds.
 			if (at[0] + 1 < TowerHex.COLS && holds(cells, at[0] + 1, at[1]) && !seen[at[0] + 1][at[1]]) {
 				ways.add(new int[] {at[0] + 1, at[1]});
 			}
@@ -264,12 +265,7 @@ public final class LostCastleHex {
 
 	/** The storey's back cell, where its stair stands. */
 	private static TowerHex.Cell backCell(final List<TowerHex.Cell> cells) {
-		for (TowerHex.Cell cell : cells) {
-			if (cell.cz() == TowerHex.COLS - 1) {
-				return cell;
-			}
-		}
-		return null;
+		return TowerHex.stairCell();
 	}
 
 	/**
@@ -281,7 +277,7 @@ public final class LostCastleHex {
 		int row = breachRow();
 		int low = breachLow();
 		int high = low + BREACH - 1;
-		// The doorway is the front cell's whole mouth, and only the columns the hexagon holds take stone.
+		// The doorway is the front cell's whole mouth, and only the columns the octagon holds take stone.
 		int insideLow = entranceLow();
 		int insideHigh = entranceHigh();
 		piece.fill(level, bb, low, 1, row, high, BREACH_HEIGHT, row, Blocks.AIR.defaultBlockState());
@@ -398,17 +394,10 @@ public final class LostCastleHex {
 
 	/** Whether a spot lies in the corner of the back cell a stair climbs through, which the ruin keeps off. */
 	static boolean inStairLane(final int x, final int z) {
-		for (TowerHex.Cell cell : TowerHex.cells()) {
-			if (cell.cz() != TowerHex.COLS - 1) {
-				continue;
-			}
-			int lowX = TowerHex.cellX(cell.cx());
-			int lowZ = TowerHex.cellZ(cell.cz()) + TowerMaze.PATH - TowerHex.DOOR_WIDTH - 2;
-			if (x >= lowX && x < lowX + TowerMaze.PATH && z >= lowZ) {
-				return true;
-			}
-		}
-		return false;
+		TowerHex.Cell cell = TowerHex.stairCell();
+		int lowX = TowerHex.cellX(cell.cx());
+		int lowZ = TowerHex.cellZ(cell.cz()) + TowerMaze.PATH - TowerHex.DOOR_WIDTH - 2;
+		return x >= lowX && x < lowX + TowerMaze.PATH && z >= lowZ;
 	}
 
 	/** Whether a spot is one the portal or its workstations take, so no chest is counted there and lost. */

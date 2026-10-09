@@ -88,7 +88,8 @@ public class TowerLostCastleSpawnerGameTest {
 		LostRoomPiece piece = arena.piece();
 		for (LostCastlePlan.FloorPlan floor : piece.plan().floors()) {
 			int count = spawners(level, piece, floor.storey());
-			if (count != floor.turrets().size() || count != LostCastlePlan.turretsAt(floor.storey())) {
+			int wanted = floor.storey() == TowerHex.STOREYS - 1 ? TowerHex.cells().size() - 1 : 1;
+			if (count != floor.turrets().size() || count != wanted) {
 				return "storey " + floor.storey() + " holds " + count + " spawners for " + floor.turrets().size() + " turrets";
 			}
 			for (LostCastlePlan.Turret turret : floor.turrets()) {
@@ -180,7 +181,7 @@ public class TowerLostCastleSpawnerGameTest {
 
 	/**
 	 * Whether every open column a spawner can raise a mob in belongs to a way of the castle: a cell, or a
-	 * doorway in the lattice wall. A column outside the hexagon or in an unsealed pocket would let a mob out.
+	 * doorway in the lattice wall. A column outside the octagon or in an unsealed corner cut would let a mob out.
 	 */
 	static String reach(final TowerLostRoomGameTest.Arena arena) {
 		ServerLevel level = arena.level();
@@ -222,12 +223,17 @@ public class TowerLostCastleSpawnerGameTest {
 		return level.getEntitiesOfClass(Mob.class, slab(piece, storey), mob -> mob.isAlive() && mob.entityTags().contains(LostCastles.SPAWN_TAG));
 	}
 
-	/** Ticks a spawner until its storey holds a mob it raised, or the budget runs out; the ticks spent. */
-	private static int fire(final ServerLevel level, final LostRoomPiece piece, final LostCastlePlan.FloorPlan floor, final LostCastlePlan.Turret turret) {
-		BlockPos at = spawnerAt(piece, floor, turret);
+	/** The mobs a spawner of the castle has raised near itself. */
+	private static List<Mob> raisedNear(final ServerLevel level, final BlockPos at) {
+		return level.getEntitiesOfClass(Mob.class, new AABB(at).inflate(LostCastleSpawner.SPAWN_RANGE + 2.0, 3.0, LostCastleSpawner.SPAWN_RANGE + 2.0),
+			mob -> mob.isAlive() && mob.entityTags().contains(LostCastles.SPAWN_TAG));
+	}
+
+	/** Ticks a spawner until it has raised a mob near itself, or the budget runs out; the ticks spent. */
+	private static int fire(final ServerLevel level, final BlockPos at) {
 		SpawnerBlockEntity spawner = (SpawnerBlockEntity) level.getBlockEntity(at);
 		int ticks = 0;
-		while (ticks < MAX_SPAWNER_TICKS && (ticks % 20 != 0 || tagged(level, piece, floor.storey()).isEmpty())) {
+		while (ticks < MAX_SPAWNER_TICKS && (ticks % 20 != 0 || raisedNear(level, at).isEmpty())) {
 			SpawnerBlockEntity.serverTick(level, at, level.getBlockState(at), spawner);
 			ticks++;
 		}
@@ -240,34 +246,42 @@ public class TowerLostCastleSpawnerGameTest {
 		register(arena);
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
-		// A player arrives in another dimension on the tick after the move, so each storey gets its own player now.
+		// A player arrives in another dimension on the tick after the move, so each turret gets its own player now.
 		List<ServerPlayer> players = new ArrayList<>();
 		for (LostCastlePlan.FloorPlan floor : piece.plan().floors()) {
-			TowerHex.Nook nook = floor.turrets().get(0).nook();
-			BlockPos stand = piece.worldPos(nook.tuckX() + 2 * nook.dx(), TowerHex.floorAt(floor.storey()) + 1, nook.tuckZ() + 2 * nook.dz());
-			ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
-			player.teleportTo(level, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, Set.of(), 0.0F, 0.0F, true);
-			players.add(player);
+			for (LostCastlePlan.Turret turret : floor.turrets()) {
+				TowerHex.Nook nook = turret.nook();
+				BlockPos stand = piece.worldPos(nook.tuckX() + 2 * nook.dx(), TowerHex.floorAt(floor.storey()) + 1, nook.tuckZ() + 2 * nook.dz());
+				ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+				player.teleportTo(level, stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, Set.of(), 0.0F, 0.0F, true);
+				players.add(player);
+			}
 		}
 		helper.runAfterDelay(SETTLE_TICKS, () -> {
 			StringBuilder report = new StringBuilder();
+			int turrets = 0;
 			for (LostCastlePlan.FloorPlan floor : piece.plan().floors()) {
-				int ticks = fire(level, piece, floor, floor.turrets().get(0));
-				List<Mob> raised = tagged(level, piece, floor.storey());
-				helper.assertTrue(!raised.isEmpty(), "storey " + floor.storey() + " raised no mob in " + ticks + " ticks");
-				Set<String> allowed = LostCastleSpawner.table(floor.kind(), piece.variant()).keySet();
-				for (Mob mob : raised) {
-					TowerMobs.State state = TowerMobs.stateOf(mob);
-					String id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString();
-					helper.assertTrue(state != null && state.rank() == TowerRank.MOB, "a spawner mob is not a tower mob of rank MOB: " + id);
-					helper.assertTrue(mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) && mob.entityTags().contains(LostRooms.TAG), "a spawner mob lacks its tags");
-					helper.assertTrue(allowed.contains(id), id + " is not in the " + floor.kind() + " table " + allowed);
-					helper.assertTrue(piece.getBoundingBox().isInside(mob.blockPosition()), "a spawner mob stands outside the piece box at " + mob.blockPosition());
-					report.append(" [storey ").append(floor.storey()).append(' ').append(id).append(" floor=").append(state.floor()).append(" ticks=").append(ticks).append(']');
-					mob.discard();
+				for (LostCastlePlan.Turret turret : floor.turrets()) {
+					turrets++;
+					BlockPos at = spawnerAt(piece, floor, turret);
+					int ticks = fire(level, at);
+					List<Mob> raised = raisedNear(level, at);
+					helper.assertTrue(!raised.isEmpty(), "storey " + floor.storey() + " turret at " + at + " raised no mob in " + ticks + " ticks");
+					Set<String> allowed = LostCastleSpawner.table(floor.kind(), piece.variant()).keySet();
+					for (Mob mob : raised) {
+						TowerMobs.State state = TowerMobs.stateOf(mob);
+						String id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString();
+						helper.assertTrue(state != null && state.rank() == TowerRank.MOB, "a spawner mob is not a tower mob of rank MOB: " + id);
+						helper.assertTrue(mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) && mob.entityTags().contains(LostRooms.TAG), "a spawner mob lacks its tags");
+						helper.assertTrue(allowed.contains(id), id + " is not in the " + floor.kind() + " table " + allowed);
+						helper.assertTrue(slab(piece, floor.storey()).contains(mob.position()), "a spawner mob stands outside its storey at " + mob.blockPosition());
+						report.append(" [storey ").append(floor.storey()).append(' ').append(id).append(" floor=").append(state.floor()).append(" ticks=").append(ticks).append(']');
+						mob.discard();
+					}
 				}
 			}
-			TowerTestSupport.result("castleSpawnerRaises", report.toString());
+			TowerTestSupport.result("castleSpawnerRaises", "turrets=" + turrets + report);
+			helper.assertTrue(turrets == 1 + 1 + TowerHex.cells().size() - 1, "the castle holds " + turrets + " turrets");
 			players.forEach(player -> TowerTestSupport.leave(helper, player));
 			helper.succeed();
 		});
