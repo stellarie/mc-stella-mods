@@ -28,7 +28,11 @@ public enum FloorBiome {
 	/** Drifts, powder snow, ice and a frost that builds on a body in the open. */
 	ETERNAL_SNOWSTORM("eternal_snowstorm", true, TowerSkin.BLUE_ICE, false, Weather.SNOW),
 	/** Dunes, cacti, ruins and an oasis under a gust that slows a body in the open. */
-	DESERT_STORM("desert_storm", true, TowerSkin.CUT_SANDSTONE, false, Weather.SAND);
+	DESERT_STORM("desert_storm", true, TowerSkin.CUT_SANDSTONE, false, Weather.SAND),
+	/** Caves of tuff under a rock roof, with geodes of amethyst, stalagmites and pools. */
+	AMETHYST_CAVE("amethyst_cave", false, TowerSkin.CALCITE, true),
+	/** Rooms of stone brick cut from rock, joined by halls, some flooded, under a low roof. */
+	SUNKEN_CATACOMBS("sunken_catacombs", false, TowerSkin.STONE_BRICKS, false);
 
 	/** What blows across a floor of this biome, in the open. */
 	public enum Weather {

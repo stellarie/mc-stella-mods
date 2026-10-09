@@ -88,6 +88,8 @@ final class BiomeGen {
 				case BASALT_DELTAS -> w.basalt();
 				case ETERNAL_SNOWSTORM -> w.snow();
 				case DESERT_STORM -> w.desert();
+				case AMETHYST_CAVE -> w.cave();
+				case SUNKEN_CATACOMBS -> w.catacombs();
 			}
 		}
 		w.nooks();
@@ -318,6 +320,8 @@ final class BiomeGen {
 				case ADVENTURERS_GRAVEYARD -> 17;
 				case BASALT_DELTAS -> 13;
 				case DESERT_STORM -> 22;
+				case AMETHYST_CAVE -> 10;
+				case SUNKEN_CATACOMBS -> 16;
 			};
 			double scale = switch (this.biome) {
 				case RAINY_FOREST -> 3.4;
@@ -330,6 +334,8 @@ final class BiomeGen {
 				case BASALT_DELTAS -> 3.4;
 				case ETERNAL_SNOWSTORM -> 4.4;
 				case DESERT_STORM -> 5.4;
+				case AMETHYST_CAVE -> 2.5;
+				case SUNKEN_CATACOMBS -> 0.0;
 			};
 			byte base = switch (this.biome) {
 				case SCORCHED_BATTLEFIELD -> BiomeBlocks.BLACKSTONE;
@@ -337,6 +343,8 @@ final class BiomeGen {
 				case BASALT_DELTAS -> BiomeBlocks.BASALT;
 				case ETERNAL_SNOWSTORM -> BiomeBlocks.SNOW_BLOCK;
 				case DESERT_STORM -> BiomeBlocks.SAND;
+				case AMETHYST_CAVE -> BiomeBlocks.TUFF;
+				case SUNKEN_CATACOMBS -> BiomeBlocks.STONE_BRICKS;
 				default -> BiomeBlocks.GRASS;
 			};
 			byte patch = switch (this.biome) {
@@ -346,6 +354,8 @@ final class BiomeGen {
 				case BASALT_DELTAS -> BiomeBlocks.BLACKSTONE;
 				case ETERNAL_SNOWSTORM -> BiomeBlocks.SNOW_BLOCK;
 				case DESERT_STORM -> BiomeBlocks.RED_SAND;
+				case AMETHYST_CAVE -> BiomeBlocks.CALCITE;
+				case SUNKEN_CATACOMBS -> BiomeBlocks.MOSSY_BRICKS;
 				default -> BiomeBlocks.MUD;
 			};
 			for (int x = 0; x < N; x++) {
@@ -1534,6 +1544,287 @@ final class BiomeGen {
 						markFragile(x, z);
 					}
 				}
+			}
+		}
+
+		// ---- the biomes under rock
+
+		/** Opens the columns of a three wide corridor from a to b, along x and then along z. */
+		void carve(final boolean[][] open, final int ax, final int az, final int bx, final int bz) {
+			int x = ax;
+			int z = az;
+			while (x != bx) {
+				open3(open, x, z);
+				x += Integer.signum(bx - x);
+			}
+			while (z != bz) {
+				open3(open, x, z);
+				z += Integer.signum(bz - z);
+			}
+			open3(open, bx, bz);
+		}
+
+		private void open3(final boolean[][] open, final int x, final int z) {
+			for (int dx = -1; dx <= 1; dx++) {
+				for (int dz = -1; dz <= 1; dz++) {
+					if (in(x + dx, z + dz, 1)) {
+						open[x + dx][z + dz] = true;
+					}
+				}
+			}
+		}
+
+		/** Marks every column that is not open, and not part of the frame, as rock to the roof; returns them. */
+		boolean[][] rock(final boolean[][] open) {
+			boolean[][] solid = new boolean[N][N];
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (!open[x][z] && this.keep[x][z] == 0 && !this.water[x][z]) {
+						solid[x][z] = true;
+						this.tall[x][z] = true;
+						this.used[x][z] = true;
+					}
+				}
+			}
+			return solid;
+		}
+
+		/**
+		 * Closes the room over its air: a rock column is rock from its feet to the roof, and an open column from the height
+		 * {@code air} gives it, in the rock of the biome.
+		 */
+		void enclose(final boolean[][] solid, final java.util.function.BiFunction<Integer, Integer, Integer> air, final byte[] rocks) {
+			this.ceil = new short[N][N];
+			this.ceilCode = new byte[N][N];
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					this.ceil[x][z] = (short) (solid[x][z] ? Math.max(0, this.h[x][z]) : Math.min(TowerLayout.ROOM_HEIGHT - 2, air.apply(x, z)));
+					byte code = rocks[0];
+					if (rocks.length > 1 && vnoise(this.seed, x, z, 5, 8) > 0.78) {
+						code = rocks[1];
+					}
+					if (rocks.length > 2 && this.random.nextDouble() < 0.07) {
+						code = rocks[2];
+					}
+					this.ceilCode[x][z] = code;
+				}
+			}
+		}
+
+		// ---- the amethyst cave
+
+		void cave() {
+			boolean[][] rock = new boolean[N][N];
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					rock[x][z] = !in(x, z, 1) || this.random.nextDouble() < 0.46;
+				}
+			}
+			for (int pass = 0; pass < 4; pass++) {
+				boolean[][] next = new boolean[N][N];
+				for (int x = 0; x < N; x++) {
+					for (int z = 0; z < N; z++) {
+						int count = 0;
+						for (int dx = -1; dx <= 1; dx++) {
+							for (int dz = -1; dz <= 1; dz++) {
+								count += !in(x + dx, z + dz, 0) || rock[x + dx][z + dz] ? 1 : 0;
+							}
+						}
+						next[x][z] = count >= 5;
+					}
+				}
+				rock = next;
+			}
+			boolean[][] open = new boolean[N][N];
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					open[x][z] = (!rock[x][z] && in(x, z, 1)) || this.keep[x][z] != 0;
+				}
+			}
+			joinCaves(open);
+			boolean[][] solid = rock(open);
+			for (int i = 0; i < 6; i++) {
+				int cx = 4 + this.random.nextInt(N - 8);
+				int cz = 4 + this.random.nextInt(N - 8);
+				int[][] cross = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+				for (int[] d : cross) {
+					if (this.random.nextInt(4) > 0) {
+						wet(cx + d[0], cz + d[1]);
+					}
+				}
+			}
+			relax(true);
+			for (int[] c : poisson(4, 14, (x, z) -> free(x, z, 5))) {
+				for (int[] d : disc(c[0], c[1], 4)) {
+					double dist = Math.hypot(d[0] - c[0], d[1] - c[1]);
+					int height = Math.max(1, (int) Math.round(Math.sqrt(Math.max(0.0, 16.0 - dist * dist))));
+					byte code = dist < 1.0 ? BiomeBlocks.BUDDING_AMETHYST : dist < 2.0 ? BiomeBlocks.AMETHYST_BLOCK : dist < 3.0 ? BiomeBlocks.CALCITE : BiomeBlocks.SMOOTH_BASALT;
+					if (free(d[0], d[1])) {
+						stack(d[0], d[1], code, height);
+					}
+				}
+			}
+			for (int[] c : poisson(10, 4, (x, z) -> free(x, z, 1))) {
+				stack(c[0], c[1], BiomeBlocks.DRIPSTONE_BLOCK, 2 + this.random.nextInt(2));
+			}
+			enclose(solid, (x, z) -> this.h[x][z] + 20 + (int) (vnoise(this.seed, x, z, 6, 7) * 8), new byte[] {BiomeBlocks.TUFF, BiomeBlocks.CALCITE, BiomeBlocks.AMETHYST_BLOCK});
+		}
+
+		/** Joins every cave of a size to the one the road runs through by a tunnel, and fills the small pockets. */
+		private void joinCaves(final boolean[][] open) {
+			int[][] label = new int[N][N];
+			for (int[] row : label) {
+				java.util.Arrays.fill(row, -1);
+			}
+			List<List<int[]>> caves = new ArrayList<>();
+			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (!open[x][z] || label[x][z] >= 0) {
+						continue;
+					}
+					List<int[]> cells = new ArrayList<>();
+					ArrayDeque<int[]> queue = new ArrayDeque<>();
+					label[x][z] = caves.size();
+					queue.add(new int[] {x, z});
+					while (!queue.isEmpty()) {
+						int[] at = queue.poll();
+						cells.add(at);
+						for (int[] way : ways) {
+							int nx = at[0] + way[0];
+							int nz = at[1] + way[1];
+							if (in(nx, nz, 0) && open[nx][nz] && label[nx][nz] < 0) {
+								label[nx][nz] = caves.size();
+								queue.add(new int[] {nx, nz});
+							}
+						}
+					}
+					caves.add(cells);
+				}
+			}
+			int main = label[this.ax][this.az];
+			List<int[]> home = caves.get(main);
+			for (int i = 0; i < caves.size(); i++) {
+				if (i == main) {
+					continue;
+				}
+				List<int[]> cave = caves.get(i);
+				if (cave.size() < 30) {
+					for (int[] c : cave) {
+						if (this.keep[c[0]][c[1]] == 0) {
+							open[c[0]][c[1]] = false;
+						}
+					}
+					continue;
+				}
+				int[] from = cave.get(cave.size() / 2);
+				int[] to = home.get(0);
+				int best = Integer.MAX_VALUE;
+				for (int[] c : home) {
+					int d = Math.abs(c[0] - from[0]) + Math.abs(c[1] - from[1]);
+					if (d < best) {
+						best = d;
+						to = c;
+					}
+				}
+				carve(open, from[0], from[1], to[0], to[1]);
+			}
+		}
+
+		// ---- the sunken catacombs
+
+		void catacombs() {
+			boolean[][] open = new boolean[N][N];
+			List<int[]> rooms = new ArrayList<>();
+			split(2, 2, N - 4, N - 4, 3, rooms);
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					open[x][z] = this.keep[x][z] != 0;
+				}
+			}
+			for (int[] room : rooms) {
+				for (int x = room[0] + 1; x < room[0] + room[2] - 1; x++) {
+					for (int z = room[1] + 1; z < room[1] + room[3] - 1; z++) {
+						open[x][z] = true;
+					}
+				}
+			}
+			for (int i = 0; i < rooms.size(); i++) {
+				int[] mid = {rooms.get(i)[0] + rooms.get(i)[2] / 2, rooms.get(i)[1] + rooms.get(i)[3] / 2};
+				int[] to = null;
+				int best = Integer.MAX_VALUE;
+				if (i > 0) {
+					for (int j = 0; j < i; j++) {
+						int[] other = {rooms.get(j)[0] + rooms.get(j)[2] / 2, rooms.get(j)[1] + rooms.get(j)[3] / 2};
+						int d = Math.abs(other[0] - mid[0]) + Math.abs(other[1] - mid[1]);
+						if (d < best) {
+							best = d;
+							to = other;
+						}
+					}
+				} else {
+					for (int[] c : this.spine) {
+						int d = Math.abs(c[0] - mid[0]) + Math.abs(c[1] - mid[1]);
+						if (d < best) {
+							best = d;
+							to = c;
+						}
+					}
+				}
+				carve(open, mid[0], mid[1], to[0], to[1]);
+			}
+			// Every room is joined to the one before it; the first to the road, so all are.
+			boolean[][] solid = rock(open);
+			for (int i = 0; i < rooms.size(); i++) {
+				int[] room = rooms.get(i);
+				if (i % 3 == 1) {
+					for (int x = room[0] + 1; x < room[0] + room[2] - 1; x++) {
+						for (int z = room[1] + 1; z < room[1] + room[3] - 1; z++) {
+							if (this.keep[x][z] == 0 && !this.tall[x][z]) {
+								this.water[x][z] = true;
+								this.h[x][z] = -1;
+								this.surface[x][z] = BiomeBlocks.MUD;
+							}
+						}
+					}
+				} else if (room[2] >= 7 && room[3] >= 7) {
+					int cx = room[0] + room[2] / 2;
+					int cz = room[1] + room[3] / 2;
+					for (int k = -1; k <= 1; k += 2) {
+						if (free(cx + k * 2, cz, 1) && free(cx + k * 2 + 1, cz, 1)) {
+							stack(cx + k * 2, cz, BiomeBlocks.STONE, 1);
+							stack(cx + k * 2 + 1, cz, BiomeBlocks.STONE, 1);
+						}
+					}
+					for (int x = room[0] + 1; x < room[0] + room[2] - 1; x += 2) {
+						if (free(x, room[1] + 1)) {
+							stack(x, room[1] + 1, BiomeBlocks.BONE_BLOCK, 2);
+						}
+					}
+				}
+			}
+			for (int i = 0, placed = 0; placed < 6 && i < 300; i++) {
+				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			}
+			enclose(solid, (x, z) -> 15, new byte[] {BiomeBlocks.STONE_BRICKS, BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.DEEPSLATE_BRICKS});
+		}
+
+		/** Splits a region of the room into rooms: along its longer side, near the middle, down to {@code depth}. */
+		private void split(final int x0, final int z0, final int w, final int l, final int depth, final List<int[]> rooms) {
+			boolean alongX = w >= l;
+			int size = alongX ? w : l;
+			if (depth == 0 || size < 16) {
+				rooms.add(new int[] {x0, z0, w, l});
+				return;
+			}
+			int cut = size * 2 / 5 + this.random.nextInt(size / 5 + 1);
+			cut = Math.max(7, Math.min(size - 7, cut));
+			if (alongX) {
+				split(x0, z0, cut, l, depth - 1, rooms);
+				split(x0 + cut, z0, w - cut, l, depth - 1, rooms);
+			} else {
+				split(x0, z0, w, cut, depth - 1, rooms);
+				split(x0, z0 + cut, w, l - cut, depth - 1, rooms);
 			}
 		}
 

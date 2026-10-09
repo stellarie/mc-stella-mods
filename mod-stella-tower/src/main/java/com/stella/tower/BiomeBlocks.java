@@ -80,7 +80,14 @@ public final class BiomeBlocks {
 	public static final byte BASALT = 62;
 	public static final byte NETHER_BRICK_FENCE = 63;
 	public static final byte SOUL_LANTERN = 64;
-	public static final byte COUNT = 65;
+	public static final byte TUFF = 65;
+	public static final byte CALCITE = 66;
+	public static final byte SMOOTH_BASALT = 67;
+	public static final byte AMETHYST_BLOCK = 68;
+	public static final byte BUDDING_AMETHYST = 69;
+	public static final byte DRIPSTONE_BLOCK = 70;
+	public static final byte BONE_BLOCK = 71;
+	public static final byte COUNT = 72;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -146,6 +153,13 @@ public final class BiomeBlocks {
 		define(BASALT, Blocks.BASALT.defaultBlockState(), TowerWalk.SOLID);
 		define(NETHER_BRICK_FENCE, Blocks.NETHER_BRICK_FENCE.defaultBlockState(), TowerWalk.TALL);
 		define(SOUL_LANTERN, Blocks.SOUL_LANTERN.defaultBlockState(), TowerWalk.SOLID);
+		define(TUFF, Blocks.TUFF.defaultBlockState(), TowerWalk.SOLID);
+		define(CALCITE, Blocks.CALCITE.defaultBlockState(), TowerWalk.SOLID);
+		define(SMOOTH_BASALT, Blocks.SMOOTH_BASALT.defaultBlockState(), TowerWalk.SOLID);
+		define(AMETHYST_BLOCK, Blocks.AMETHYST_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(BUDDING_AMETHYST, Blocks.BUDDING_AMETHYST.defaultBlockState(), TowerWalk.SOLID);
+		define(DRIPSTONE_BLOCK, Blocks.DRIPSTONE_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(BONE_BLOCK, Blocks.BONE_BLOCK.defaultBlockState(), TowerWalk.SOLID);
 		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
@@ -174,7 +188,7 @@ public final class BiomeBlocks {
 	public static boolean ground(final byte code) {
 		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS || code == COBBLE
 			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS || code == PODZOL
-			|| code == SNOW_BLOCK || code == PACKED_ICE || code == SAND || code == RED_SAND || code == SANDSTONE || code == CUT_SANDSTONE || code == BASALT;
+			|| code == SNOW_BLOCK || code == PACKED_ICE || code == SAND || code == RED_SAND || code == SANDSTONE || code == CUT_SANDSTONE || code == BASALT || code == TUFF || code == CALCITE;
 	}
 
 	/** Whether the entry is a block that shuts out the light, so that grass under it would die. */

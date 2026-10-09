@@ -215,7 +215,8 @@ public class TowerBiomeFloorGameTest {
 	@GameTest(maxTicks = 200)
 	public void anOpenRoofIsClosedToTravel(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = TowerTestSupport.freshBiomeFloor();
+		long seed = tower.getSeed();
+		int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f).openRoof());
 		TowerFloors.ensure(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		BlockPos origin = plan.origin();

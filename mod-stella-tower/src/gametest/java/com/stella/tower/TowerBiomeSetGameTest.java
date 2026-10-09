@@ -119,6 +119,60 @@ public class TowerBiomeSetGameTest {
 		helper.succeed();
 	}
 
+	/** Catches a closed biome with headroom under three blocks, a cave of lost pockets, or a roof that is not rock over a body. */
+	@GameTest(maxTicks = 200)
+	public void theBiomesUnderRockAreClosedAndOneConnectedCave(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		long seed = tower.getSeed();
+		StringBuilder report = new StringBuilder();
+		int tight = 0;
+		int lost = 0;
+		int roofs = 0;
+		int enclosed = 0;
+		for (FloorBiome biome : FloorBiome.DRAWN) {
+			if (biome.openRoof()) {
+				continue;
+			}
+			enclosed++;
+			int columns = 0;
+			int reached = 0;
+			for (int floor : floorsOf(SEED, biome, 12)) {
+				TowerPlan plan = BiomeGen.plan(SEED, floor);
+				TowerVolume volume = TowerVolume.of(plan);
+				int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
+				for (int x = 0; x < TowerLayout.SIZE; x++) {
+					for (int z = 0; z < TowerLayout.SIZE; z++) {
+						int y = plan.standY(x, z);
+						if (y < TowerWalk.LOW) {
+							continue;
+						}
+						columns++;
+						boolean reachable = dist[TowerWalk.index(x, y, z)] >= 0;
+						reached += reachable ? 1 : 0;
+						if (reachable) {
+							// Rock over the head, not less than the walk's own two blocks and a lamp's.
+							// A cave and a catacomb are shut by their own rock; a plain yard in their place is no cave.
+							boolean shut = biome != FloorBiome.BASALT_DELTAS;
+							tight += shut && (plan.biome().ceiling() == null || plan.biome().ceiling()[x][z] - y < 4) ? 1 : 0;
+						}
+					}
+				}
+			}
+			// A cave or a catacomb is joined; the basalt's lava lakes leave islands, and its roof is the room's own.
+			lost += FloorBiome.BASALT_DELTAS != biome && reached * 10 < columns * 9 ? 1 : 0;
+			report.append(biome).append(" columns=").append(columns).append(" reached=").append(reached).append("; ");
+			int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f) == biome);
+			TowerFloors.ensure(tower, floor);
+			TowerPlan built = TowerPlan.at(tower, floor);
+			roofs += tower.getBlockState(built.origin().offset(30, built.roofY(), 30)).is(TowerBlocks.TOWER_WALL) ? 1 : 0;
+		}
+		TowerTestSupport.result("rockBiomes", report.toString() + "tight=" + tight + " lost=" + lost + " roofs=" + roofs + "/" + enclosed);
+		helper.assertTrue(enclosed >= 3 && tight == 0, tight + " reachable spots have less than four blocks of rock or air over them: " + report);
+		helper.assertTrue(lost == 0, lost + " rock biomes leave over a tenth of their ground out of reach: " + report);
+		helper.assertTrue(roofs == enclosed, "only " + roofs + " of " + enclosed + " closed biomes have a wall for a roof");
+		helper.succeed();
+	}
+
 	/** Catches a biome with a dark spot: every spot a body reaches has a light within six blocks. */
 	@GameTest(maxTicks = 100)
 	public void everyBiomeIsLit(final GameTestHelper helper) {
