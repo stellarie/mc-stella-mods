@@ -343,6 +343,10 @@ public class TowerRaisedPortalGameTest {
 		TowerFloors.ensure(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		BlockPos first = plan.portalInside().get(0);
+		// The floor stands lit. A creative player may clear the portal, and a fire then lights the frame again.
+		for (BlockPos pos : plan.portalInside()) {
+			tower.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+		}
 		boolean found = TowerPortalShape.find(tower, first).isPresent();
 		tower.setBlock(first, Blocks.FIRE.defaultBlockState(), 3);
 		int lit = 0;

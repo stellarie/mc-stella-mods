@@ -55,11 +55,11 @@ public final class TowerBlocks {
 		.lightLevel(state -> 15)
 		.sound(SoundType.GLASS)
 		.pushReaction(PushReaction.IMMOVEABLE));
-	/** The blue portal a lit crying obsidian frame holds. */
+	/** The blue portal a floor's frame holds. A blast cannot take it, as it cannot take the frame. */
 	public static final TowerPortalBlock TOWER_PORTAL = register("tower_portal", TowerPortalBlock::new, BlockBehaviour.Properties.of()
 		.noCollision()
 		.randomTicks()
-		.strength(-1.0F)
+		.strength(-1.0F, 3_600_000.0F)
 		.sound(SoundType.GLASS)
 		.lightLevel(state -> 11)
 		.noLootTable()

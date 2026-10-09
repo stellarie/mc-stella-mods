@@ -52,6 +52,8 @@ public final class TowerVolume implements TowerWalk.Space {
 	public static final byte CHEST = 24;
 	/** A pew or a low wall, one block high on a story's floor, in the theme's stair stone. */
 	public static final byte COVER = 25;
+	/** The lit portal in a floor's frame; a body walks through it as through air. */
+	public static final byte PORTAL_FILL = 26;
 
 	/** How high above a story a ceiling may be and still take a lamp; a higher one has a lantern hung from it. */
 	public static final int CEILING_REACH = 9;
@@ -106,7 +108,7 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** How a part counts to a walking body, as its block's collision shape counts in the world. */
 	public static byte walkClass(final byte kind) {
 		return switch (kind) {
-			case AIR -> TowerWalk.OPEN;
+			case AIR, PORTAL_FILL -> TowerWalk.OPEN;
 			case RAIL -> TowerWalk.TALL;
 			default -> TowerWalk.SOLID;
 		};
@@ -342,7 +344,8 @@ public final class TowerVolume implements TowerWalk.Space {
 			int x = pos.getX() - origin.getX();
 			int y = pos.getY() - TowerLayout.BASE_Y;
 			int z = pos.getZ() - origin.getZ();
-			set(x, y, z, AIR);
+			// A lost room's portal is lit on entry, to the hut; its design stays frozen.
+			set(x, y, z, plan.floor() > 0 ? PORTAL_FILL : AIR);
 			reserve(x, y, z);
 		}
 	}

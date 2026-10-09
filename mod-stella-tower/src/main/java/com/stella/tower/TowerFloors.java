@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.AmethystClusterBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LanternBlock;
+import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.properties.WallSide;
@@ -550,6 +551,7 @@ public final class TowerFloors {
 			case TowerVolume.CHAIN -> Blocks.IRON_CHAIN.defaultBlockState();
 			case TowerVolume.CLUSTER -> Blocks.AMETHYST_CLUSTER.defaultBlockState().setValue(AmethystClusterBlock.FACING, Direction.DOWN);
 			case TowerVolume.FRAME -> TowerBlocks.TOWER_FRAME.defaultBlockState();
+			case TowerVolume.PORTAL_FILL -> TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.Z);
 			default -> Blocks.AIR.defaultBlockState();
 		};
 	}
