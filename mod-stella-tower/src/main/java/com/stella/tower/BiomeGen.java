@@ -34,8 +34,9 @@ final class BiomeGen {
 	/** Offsets of {@link Work#over}: the lowest block it holds, and how many it holds in a column. */
 	private static final int OLOW = TowerLayout.ROOM_LOW;
 	private static final int OSPAN = TowerLayout.ROOM_HEIGHT - OLOW + 1;
-	/** Steps of the portal's stair on an ordinary floor. */
+	/** Steps of the portal's stair on an ordinary floor, and on an elite or a boss floor. */
 	private static final int STEPS = 5;
+	private static final int GUARDED_STEPS = 6;
 	/** Chest nooks drawn on every floor, how far they lie from the arrival by foot, and apart from each other. */
 	private static final int NOOKS = 8;
 	private static final int NOOK_WALK = 30;
@@ -78,6 +79,10 @@ final class BiomeGen {
 		if (features) {
 			switch (biome) {
 				case RAINY_FOREST -> w.rainyForest();
+				case DESTROYED_VILLAGE -> w.village();
+				case DESTROYED_CASTLE -> w.castle();
+				case ADVENTURERS_GRAVEYARD -> w.graveyard();
+				case SCORCHED_BATTLEFIELD -> w.battlefield();
 			}
 		}
 		w.nooks();
@@ -151,6 +156,7 @@ final class BiomeGen {
 		int ax;
 		int az;
 		int foot;
+		final int steps;
 		int boxX0;
 		int boxX1;
 		int boxZ0;
@@ -163,6 +169,7 @@ final class BiomeGen {
 			this.floor = floor;
 			this.biome = biome;
 			this.random = random;
+			this.steps = floor % TowerElites.ELITE_EVERY == 0 ? GUARDED_STEPS : STEPS;
 		}
 
 		// ---- cells
@@ -209,6 +216,7 @@ final class BiomeGen {
 				put(x, y, z, code);
 			}
 			this.tall[x][z] = height > 1;
+			this.used[x][z] = true;
 		}
 
 		void clearAbove(final int x, final int z, final int from, final int to) {
@@ -280,22 +288,41 @@ final class BiomeGen {
 			}
 			this.pz = 15 + this.random.nextInt(33);
 			this.az = 7 + this.random.nextInt(50);
-			this.foot = this.px + this.facing * (2 + STEPS);
+			this.foot = this.px + this.facing * (2 + this.steps);
 			int a = this.px - this.facing * 3;
 			// The guard's yard: level ground past the stair's foot, where an elite or a boss stands.
-			int b = this.px + this.facing * (2 + STEPS + TowerElites.GUARD_DISTANCE_BIOME + 3);
+			int b = this.px + this.facing * (2 + this.steps + TowerElites.GUARD_DISTANCE_BIOME + 3);
 			this.boxX0 = Math.min(a, b) - 1;
 			this.boxX1 = Math.max(a, b) + 1;
-			this.boxZ0 = this.pz - 4 - STEPS;
-			this.boxZ1 = this.pz + 5 + STEPS;
+			this.boxZ0 = this.pz - 4 - this.steps;
+			this.boxZ1 = this.pz + 5 + this.steps;
 		}
 
 		void terrain(final boolean features) {
+			double cell = switch (this.biome) {
+				case RAINY_FOREST -> 16;
+				case DESTROYED_VILLAGE -> 20;
+				case DESTROYED_CASTLE, SCORCHED_BATTLEFIELD -> 18;
+				case ADVENTURERS_GRAVEYARD -> 17;
+			};
+			double scale = switch (this.biome) {
+				case RAINY_FOREST -> 3.4;
+				case DESTROYED_VILLAGE -> 2.4;
+				case DESTROYED_CASTLE -> 2.2;
+				case ADVENTURERS_GRAVEYARD -> 3.0;
+				case SCORCHED_BATTLEFIELD -> 2.6;
+			};
+			byte base = this.biome == FloorBiome.SCORCHED_BATTLEFIELD ? BiomeBlocks.BLACKSTONE : BiomeBlocks.GRASS;
+			byte patch = switch (this.biome) {
+				case DESTROYED_CASTLE -> BiomeBlocks.STONE;
+				case ADVENTURERS_GRAVEYARD, DESTROYED_VILLAGE -> BiomeBlocks.COARSE_DIRT;
+				default -> BiomeBlocks.MUD;
+			};
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
-					this.h[x][z] = features ? (int) (fbm(this.seed, x, z, 16) * 3.4) : 0;
-					this.surface[x][z] = vnoise(this.seed, x, z, 9, 3) > 0.25 ? BiomeBlocks.GRASS : BiomeBlocks.MUD;
-					if (features && vnoise(this.seed, x, z, 7, 5) > 0.82) {
+					this.h[x][z] = features ? (int) (fbm(this.seed, x, z, cell) * scale) : 0;
+					this.surface[x][z] = vnoise(this.seed, x, z, 9, 3) > 0.3 ? base : patch;
+					if (features && this.biome == FloorBiome.RAINY_FOREST && vnoise(this.seed, x, z, 7, 5) > 0.82) {
 						this.surface[x][z] = BiomeBlocks.MOSS;
 					}
 				}
@@ -347,7 +374,7 @@ final class BiomeGen {
 		/** The stair, the platform and the backdrop keep their ground flat at the base; only they are set aside. */
 		void markDais() {
 			int f = this.facing;
-			int s = STEPS;
+			int s = this.steps;
 			for (int dx = -2; dx <= 2; dx++) {
 				for (int z = this.pz - 3; z <= this.pz + 4; z++) {
 					dais(this.px + dx, z, true);
@@ -637,7 +664,7 @@ final class BiomeGen {
 			relax(true);
 			trees();
 			if (shrine != null) {
-				ruin(shrine[0], shrine[1], 5, 5);
+				shrine(shrine[0], shrine[1], 5, 5);
 			}
 			for (int[] camp : camps) {
 				int y = this.h[camp[0]][camp[1]];
@@ -647,7 +674,7 @@ final class BiomeGen {
 				this.tall[camp[0] + 1][camp[1] + 1] = true;
 				for (int x = camp[0]; x < camp[0] + 3; x++) {
 					for (int z = camp[1]; z < camp[1] + 3; z++) {
-						this.surface[x][z] = BiomeBlocks.DIRT;
+						this.surface[x][z] = BiomeBlocks.COARSE_DIRT;
 					}
 				}
 			}
@@ -735,7 +762,7 @@ final class BiomeGen {
 		}
 
 		/** A broken ring of mossy wall round a floor of stone, a little higher in some places than others. */
-		void ruin(final int x0, final int z0, final int w, final int l) {
+		void shrine(final int x0, final int z0, final int w, final int l) {
 			for (int x = x0; x < x0 + w; x++) {
 				for (int z = z0; z < z0 + l; z++) {
 					boolean edge = x == x0 || x == x0 + w - 1 || z == z0 || z == z0 + l - 1;
@@ -782,6 +809,397 @@ final class BiomeGen {
 					placed++;
 				}
 			}
+		}
+
+		// ---- helpers of the biomes built of walls
+
+		/** The columns of a disc, the middle included, kept off the room's edge. */
+		List<int[]> disc(final int cx, final int cz, final int r) {
+			List<int[]> cells = new ArrayList<>();
+			for (int x = cx - r; x <= cx + r; x++) {
+				for (int z = cz - r; z <= cz + r; z++) {
+					if (in(x, z, 1) && (x - cx) * (x - cx) + (z - cz) * (z - cz) <= r * r + r / 2) {
+						cells.add(new int[] {x, z});
+					}
+				}
+			}
+			return cells;
+		}
+
+		/** Points spread at least {@code minDistance} apart over the room, each one {@code ok}. */
+		List<int[]> poisson(final int count, final int minDistance, final java.util.function.BiPredicate<Integer, Integer> ok) {
+			List<int[]> points = new ArrayList<>();
+			for (int tries = 0; points.size() < count && tries < count * 50; tries++) {
+				int x = 2 + this.random.nextInt(N - 4);
+				int z = 2 + this.random.nextInt(N - 4);
+				boolean far = true;
+				for (int[] p : points) {
+					far &= (x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1]) >= minDistance * minDistance;
+				}
+				if (far && ok.test(x, z)) {
+					points.add(new int[] {x, z});
+				}
+			}
+			return points;
+		}
+
+		/** Sets a level rectangle aside for a building and returns its corner, or null when none fits. */
+		int[] pad(final int w, final int l, final int tries) {
+			int[] spot = rect(w, l, tries, 1);
+			if (spot != null) {
+				flatten(spot[0], spot[1], w, l, (byte) 4);
+				claim(spot[0], spot[1], w, l);
+			}
+			return spot;
+		}
+
+		/**
+		 * A broken ring of wall round a floor, the gaps drawn at random and some of them left as rubble; returns the
+		 * columns inside. The spine, drawn before, always cuts through whatever it meets.
+		 */
+		List<int[]> ruin(final int x0, final int z0, final int w, final int l, final byte[] stone, final int hmin, final int hmax, final double gap,
+			final byte floorCode) {
+			List<int[]> inside = new ArrayList<>();
+			for (int x = x0; x < x0 + w; x++) {
+				for (int z = z0; z < z0 + l; z++) {
+					boolean edge = x == x0 || x == x0 + w - 1 || z == z0 || z == z0 + l - 1;
+					if (!edge) {
+						if (floorCode != 0) {
+							this.surface[x][z] = floorCode;
+						}
+						inside.add(new int[] {x, z});
+					} else if (this.random.nextDouble() < gap) {
+						if (this.random.nextDouble() < 0.4) {
+							put(x, this.h[x][z], z, BiomeBlocks.COBBLE);
+							this.used[x][z] = true;
+						}
+					} else {
+						stack(x, z, stone[this.random.nextInt(stone.length)], hmin + this.random.nextInt(hmax - hmin + 1));
+					}
+				}
+			}
+			return inside;
+		}
+
+		/** A dent one block deep, where no neighbour stands higher than the ground it is cut from and no water lies near. */
+		boolean dent(final int x, final int z) {
+			if (!free(x, z, 1) || this.h[x][z] < 0) {
+				return false;
+			}
+			int[][] near = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+			for (int[] n : near) {
+				if (this.h[x + n[0]][z + n[1]] > this.h[x][z]) {
+					return false;
+				}
+			}
+			if (this.h[x][z] == 0) {
+				for (int dx = -2; dx <= 2; dx++) {
+					for (int dz = -2; dz <= 2; dz++) {
+						if (in(x + dx, z + dz, 0) && this.water[x + dx][z + dz]) {
+							return false;
+						}
+					}
+				}
+			}
+			this.h[x][z]--;
+			this.surface[x][z] = BiomeBlocks.COARSE_DIRT;
+			this.used[x][z] = true;
+			return true;
+		}
+
+		/** A flame that spreads to nothing: soul fire on soul soil. */
+		boolean soulFire(final int x, final int z) {
+			if (!free(x, z, 1)) {
+				return false;
+			}
+			this.surface[x][z] = BiomeBlocks.SOUL_SOIL;
+			put(x, this.h[x][z], z, BiomeBlocks.SOUL_FIRE);
+			this.used[x][z] = true;
+			return true;
+		}
+
+		void fires(final int count) {
+			for (int tries = 0, placed = 0; placed < count && tries < count * 60; tries++) {
+				placed += soulFire(2 + this.random.nextInt(N - 4), 2 + this.random.nextInt(N - 4)) ? 1 : 0;
+			}
+		}
+
+		void barrels(final List<int[]> inside, final int count) {
+			List<int[]> cells = new ArrayList<>(inside);
+			Collections.shuffle(cells, this.random);
+			for (int[] c : cells.subList(0, Math.min(cells.size(), count))) {
+				if (get(c[0], this.h[c[0]][c[1]], c[1]) == 0) {
+					put(c[0], this.h[c[0]][c[1]], c[1], BiomeBlocks.BARREL);
+				}
+			}
+		}
+
+		/** A well: a short ring of stone, and still water in the middle. */
+		void well(final int[] spot) {
+			ruin(spot[0], spot[1], 3, 3, new byte[] {BiomeBlocks.COBBLESTONE, BiomeBlocks.COBBLE}, 1, 2, 0.15, (byte) 0);
+			int cx = spot[0] + 1;
+			int cz = spot[1] + 1;
+			this.water[cx][cz] = true;
+			this.h[cx][cz] = -1;
+			this.surface[cx][cz] = BiomeBlocks.MUD;
+		}
+
+		// ---- the destroyed village
+
+		void village() {
+			int[] mid = this.spine.get(this.spine.size() / 2);
+			for (int[] c : disc(mid[0], mid[1], 6)) {
+				if (free(c[0], c[1])) {
+					this.surface[c[0]][c[1]] = BiomeBlocks.PATH;
+				}
+				this.used[c[0]][c[1]] = true;
+			}
+			for (int i = 0; i < 3; i++) {
+				int lo = this.spine.size() / 5;
+				int[] a = this.spine.get(lo + this.random.nextInt(this.spine.size() * 4 / 5 - lo + 1));
+				int[] end = {Math.max(4, Math.min(59, a[0] + this.random.nextInt(41) - 20)), Math.max(4, Math.min(59, a[1] + this.random.nextInt(41) - 20))};
+				for (int[] c : drunk(a, end)) {
+					if (free(c[0], c[1])) {
+						this.surface[c[0]][c[1]] = BiomeBlocks.PATH;
+					}
+				}
+			}
+			int[][] kinds = {{7, 9, 0}, {5, 7, 0}, {5, 5, 0}, {6, 6, 0}, {9, 11, 1}, {7, 7, 2}, {5, 5, 0}, {6, 8, 0}};
+			List<int[]> buildings = new ArrayList<>();
+			for (int[] kind : kinds) {
+				int[] spot = pad(kind[0], kind[1], 120);
+				if (spot != null) {
+					buildings.add(new int[] {spot[0], spot[1], kind[0], kind[1], kind[2]});
+				}
+			}
+			List<int[]> wells = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				int[] spot = pad(3, 3, 80);
+				if (spot != null) {
+					wells.add(spot);
+				}
+			}
+			List<int[]> farms = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				int[] spot = pad(5, 7, 80);
+				if (spot != null) {
+					farms.add(spot);
+				}
+			}
+			relax(true);
+			byte[] stone = {BiomeBlocks.COBBLESTONE, BiomeBlocks.COBBLE, BiomeBlocks.STONE_BRICKS};
+			for (int[] b : buildings) {
+				List<int[]> inside = ruin(b[0], b[1], b[2], b[3], stone, 1, b[4] == 1 ? 6 : 4, 0.38, b[4] == 2 ? BiomeBlocks.STONE_BRICKS : BiomeBlocks.COBBLESTONE);
+				barrels(inside, b[4] == 0 ? 4 : 8);
+			}
+			for (int[] spot : wells) {
+				well(spot);
+			}
+			for (int[] farm : farms) {
+				for (int x = farm[0]; x < farm[0] + 5; x++) {
+					for (int z = farm[1]; z < farm[1] + 7; z++) {
+						this.surface[x][z] = BiomeBlocks.MUD;
+						if ((x - farm[0]) % 2 == 0 && this.random.nextDouble() < 0.8) {
+							put(x, this.h[x][z], z, BiomeBlocks.HAY);
+						}
+					}
+				}
+			}
+			for (int i = 0; i < 12; i++) {
+				int x = 3 + this.random.nextInt(N - 6);
+				int z = 3 + this.random.nextInt(N - 6);
+				if (free(x, z, 1)) {
+					stack(x, z, this.random.nextBoolean() ? BiomeBlocks.STRIPPED_SPRUCE : BiomeBlocks.COAL_BLOCK, 3 + this.random.nextInt(4));
+				}
+			}
+			for (int i = 0, placed = 0; placed < 6 && i < 200; i++) {
+				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			}
+			fires(6);
+		}
+
+		// ---- the destroyed castle
+
+		void castle() {
+			int ring = 5;
+			int[][] corners = {{ring - 1, ring - 1}, {N - ring - 4, ring - 1}, {ring - 1, N - ring - 4}, {N - ring - 4, N - ring - 4}};
+			int fx = this.facing;
+			int kx0 = fx == -1 ? this.px - 13 : this.px - 4;
+			int kx1 = fx == -1 ? this.px + 4 : this.px + 13;
+			int kz0 = this.pz - 11;
+			int kz1 = this.pz + 12;
+			List<int[]> halls = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				int[] spot = pad(8, 6, 100);
+				if (spot != null) {
+					halls.add(spot);
+				}
+			}
+			int[] well = pad(3, 3, 80);
+			relax(true);
+			byte[] stone = {BiomeBlocks.STONE_BRICKS, BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.DEEPSLATE_BRICKS, BiomeBlocks.CRACKED_DEEPSLATE};
+			for (int x = ring; x < N - ring; x++) {
+				for (int z = ring; z < N - ring; z++) {
+					boolean on = x == ring || x == ring + 1 || x == N - ring - 2 || x == N - ring - 1 || z == ring || z == ring + 1 || z == N - ring - 2 || z == N - ring - 1;
+					if (on && free(x, z)) {
+						if (this.random.nextDouble() < 0.12) {
+							put(x, this.h[x][z], z, BiomeBlocks.COBBLE);
+							this.used[x][z] = true;
+						} else {
+							stack(x, z, stone[this.random.nextInt(stone.length)], 5 + this.random.nextInt(5));
+						}
+					}
+				}
+			}
+			for (int[] c : corners) {
+				for (int x = c[0]; x < c[0] + 5; x++) {
+					for (int z = c[1]; z < c[1] + 5; z++) {
+						if (in(x, z, 1) && free(x, z) && this.random.nextDouble() < 0.9) {
+							stack(x, z, stone[this.random.nextInt(stone.length)], 9 + this.random.nextInt(8));
+						}
+					}
+				}
+			}
+			for (int x = kx0; x <= kx1; x++) {
+				for (int z = kz0; z <= kz1; z++) {
+					boolean edge = Math.min(Math.min(x - kx0, kx1 - x), Math.min(z - kz0, kz1 - z)) < 2;
+					if (edge && in(x, z, 1) && free(x, z) && this.random.nextDouble() > 0.14) {
+						stack(x, z, stone[this.random.nextInt(stone.length)], 7 + this.random.nextInt(7));
+					}
+				}
+			}
+			for (int x = kx0; x <= kx1; x++) {
+				for (int z = kz0; z <= kz1; z++) {
+					if (in(x, z, 0)) {
+						this.used[x][z] = true;
+					}
+				}
+			}
+			for (int[] hall : halls) {
+				ruin(hall[0], hall[1], 8, 6, stone, 1, 4, 0.45, BiomeBlocks.STONE);
+			}
+			if (well != null) {
+				well(well);
+			}
+			for (int[] c : poisson(10, 5, (x, z) -> free(x, z, 1))) {
+				stack(c[0], c[1], BiomeBlocks.POLISHED_ANDESITE, 3 + this.random.nextInt(6));
+			}
+			for (int[] c : poisson(5, 9, (x, z) -> free(x, z, 1) && x > ring + 2 && x < N - ring - 3)) {
+				for (int[] d : disc(c[0], c[1], 1)) {
+					dent(d[0], d[1]);
+				}
+			}
+			fires(4);
+		}
+
+		// ---- the adventurers' graveyard
+
+		void graveyard() {
+			List<int[]> plots = new ArrayList<>();
+			for (int i = 0; i < 4; i++) {
+				int[] spot = pad(14, 10, 80);
+				if (spot != null) {
+					plots.add(spot);
+				}
+			}
+			List<int[]> tombs = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				int[] spot = pad(7, 9, 80);
+				if (spot != null) {
+					tombs.add(spot);
+				}
+			}
+			int[] chapel = pad(9, 13, 80);
+			relax(true);
+			for (int[] plot : plots) {
+				for (int x = plot[0]; x < plot[0] + 14; x++) {
+					for (int z = plot[1]; z < plot[1] + 10; z++) {
+						boolean edge = x == plot[0] || x == plot[0] + 13 || z == plot[1] || z == plot[1] + 9;
+						if (edge && this.random.nextDouble() > 0.12) {
+							stack(x, z, BiomeBlocks.COBBLE_WALL, 1);
+						} else if ((x - plot[0]) % 3 == 1 && (z - plot[1]) % 3 == 1) {
+							if (this.random.nextDouble() < 0.3) {
+								graveDent(x, z);
+							} else {
+								put(x, this.h[x][z], z, BiomeBlocks.COBBLE_WALL);
+							}
+						}
+					}
+				}
+			}
+			byte[] stone = {BiomeBlocks.DEEPSLATE_BRICKS, BiomeBlocks.CRACKED_DEEPSLATE, BiomeBlocks.MOSSY_BRICKS};
+			for (int[] tomb : tombs) {
+				List<int[]> inside = ruin(tomb[0], tomb[1], 7, 9, stone, 3, 5, 0.25, BiomeBlocks.STONE_BRICKS);
+				if (!inside.isEmpty()) {
+					int[] middle = inside.get(inside.size() / 2);
+					graveDent(middle[0], middle[1]);
+				}
+			}
+			if (chapel != null) {
+				ruin(chapel[0], chapel[1], 9, 13, stone, 2, 7, 0.45, BiomeBlocks.STONE_BRICKS);
+			}
+			for (int[] t : poisson(14, 8, (x, z) -> free(x, z, 1))) {
+				stack(t[0], t[1], BiomeBlocks.OAK_LOG, 4 + this.random.nextInt(5));
+			}
+		}
+
+		/** An open grave, one block deep: the plot is level, so the dent is cut without the free-ground test. */
+		private void graveDent(final int x, final int z) {
+			if (this.h[x][z] >= 1) {
+				this.h[x][z]--;
+				this.surface[x][z] = BiomeBlocks.COARSE_DIRT;
+			}
+		}
+
+		// ---- the scorched battlefield
+
+		void battlefield() {
+			for (int[] c : poisson(14, 9, (x, z) -> free(x, z, 3))) {
+				int r = 2 + this.random.nextInt(4);
+				for (int[] d : disc(c[0], c[1], r)) {
+					if (free(d[0], d[1])) {
+						this.h[d[0]][d[1]] = Math.max(0, this.h[d[0]][d[1]] - 1);
+						this.surface[d[0]][d[1]] = BiomeBlocks.COARSE_DIRT;
+					}
+				}
+				if (this.random.nextDouble() < 0.3 && free(c[0], c[1])) {
+					this.surface[c[0]][c[1]] = BiomeBlocks.MAGMA;
+				}
+			}
+			List<int[]> stakes = new ArrayList<>();
+			for (int t = 0; t < 3; t++) {
+				int[] a = {3 + this.random.nextInt(18), 5 + this.random.nextInt(54)};
+				int[] b = {43 + this.random.nextInt(18), 5 + this.random.nextInt(54)};
+				for (int[] c : drunk(a, b)) {
+					if (free(c[0], c[1], 1)) {
+						this.h[c[0]][c[1]] = Math.max(0, this.h[c[0]][c[1]] - 1);
+						this.surface[c[0]][c[1]] = BiomeBlocks.COARSE_DIRT;
+						if (this.random.nextDouble() < 0.18) {
+							stakes.add(new int[] {c[0], c[1] + 2});
+						}
+					}
+				}
+			}
+			List<int[]> wrecks = new ArrayList<>();
+			for (int i = 0; i < 4; i++) {
+				int[] spot = pad(3, 5, 80);
+				if (spot != null) {
+					wrecks.add(spot);
+				}
+			}
+			relax(true);
+			for (int[] s : stakes) {
+				if (free(s[0], s[1])) {
+					stack(s[0], s[1], BiomeBlocks.FENCE, 2);
+				}
+			}
+			for (int[] w : wrecks) {
+				ruin(w[0], w[1], 3, 5, new byte[] {BiomeBlocks.SPRUCE_LOG}, 3, 7, 0.45, (byte) 0);
+				if (get(w[0] + 1, this.h[w[0] + 1][w[1] + 2], w[1] + 2) == 0) {
+					put(w[0] + 1, this.h[w[0] + 1][w[1] + 2], w[1] + 2, BiomeBlocks.ANVIL);
+				}
+			}
+			fires(14);
 		}
 
 		// ---- chest nooks
@@ -923,12 +1341,13 @@ final class BiomeGen {
 				int[] spot = stands.get(i);
 				int[] best = null;
 				int gain = -1;
+				for (int pass = 0; pass < 2 && best == null; pass++) {
 				for (int reach = 2; reach <= 5 && best == null; reach++) {
 					for (int dx = -reach; dx <= reach; dx++) {
 						for (int dz = -reach; dz <= reach; dz++) {
 							int x = spot[0] + dx;
 							int z = spot[2] + dz;
-							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 || this.daisBlock[x][z] || this.water[x][z] || this.tall[x][z]
+							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z] || this.water[x][z] || this.tall[x][z]
 								|| plan.standY(x, z) != this.h[x][z] || get(x, this.h[x][z], z) != 0) {
 								continue;
 							}
@@ -946,6 +1365,7 @@ final class BiomeGen {
 							}
 						}
 					}
+				}
 				}
 				if (best == null) {
 					continue;
@@ -979,6 +1399,14 @@ final class BiomeGen {
 				surface[x] = this.surface[x].clone();
 				water[x] = this.water[x].clone();
 			}
+			// Grass dies under a block that shuts out the light, and dirt would spread back: bare dirt under any cover.
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (surface[x][z] == BiomeBlocks.GRASS && BiomeBlocks.opaque(get(x, this.h[x][z], z))) {
+						surface[x][z] = BiomeBlocks.COARSE_DIRT;
+					}
+				}
+			}
 			int count = 0;
 			for (byte code : this.over) {
 				count += code != 0 ? 1 : 0;
@@ -998,7 +1426,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			return new BiomeDraft(this.biome, feet, surface, water, placed, null, STEPS);
+			return new BiomeDraft(this.biome, feet, surface, water, placed, null, this.steps);
 		}
 
 		TowerPlan assemble(final int attempt, final BiomeDraft draft) {

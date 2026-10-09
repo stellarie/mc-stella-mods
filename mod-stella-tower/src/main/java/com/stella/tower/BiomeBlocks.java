@@ -44,7 +44,22 @@ public final class BiomeBlocks {
 	public static final byte HANGING_LANTERN = 26;
 	public static final byte SOUL_CAMPFIRE = 27;
 	public static final byte SKULL = 28;
-	public static final byte COUNT = 29;
+	public static final byte COBBLESTONE = 29;
+	public static final byte COARSE_DIRT = 30;
+	public static final byte BLACKSTONE = 31;
+	public static final byte COAL_BLOCK = 32;
+	public static final byte DEEPSLATE_BRICKS = 33;
+	public static final byte CRACKED_DEEPSLATE = 34;
+	public static final byte POLISHED_ANDESITE = 35;
+	public static final byte STRIPPED_SPRUCE = 36;
+	public static final byte SPRUCE_LOG = 37;
+	public static final byte HAY = 38;
+	public static final byte SOUL_SOIL = 39;
+	public static final byte SOUL_FIRE = 40;
+	public static final byte MAGMA = 41;
+	public static final byte COBBLE_WALL = 42;
+	public static final byte ANVIL = 43;
+	public static final byte COUNT = 44;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -74,6 +89,21 @@ public final class BiomeBlocks {
 		define(OAK_LOG_X, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X), TowerWalk.SOLID);
 		define(OAK_LOG_Z, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z), TowerWalk.SOLID);
 		define(STONE_BRICKS, Blocks.CRACKED_STONE_BRICKS.defaultBlockState(), TowerWalk.SOLID);
+		define(COBBLESTONE, Blocks.COBBLESTONE.defaultBlockState(), TowerWalk.SOLID);
+		define(COARSE_DIRT, Blocks.COARSE_DIRT.defaultBlockState(), TowerWalk.SOLID);
+		define(BLACKSTONE, Blocks.BLACKSTONE.defaultBlockState(), TowerWalk.SOLID);
+		define(COAL_BLOCK, Blocks.COAL_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(DEEPSLATE_BRICKS, Blocks.DEEPSLATE_BRICKS.defaultBlockState(), TowerWalk.SOLID);
+		define(CRACKED_DEEPSLATE, Blocks.CRACKED_DEEPSLATE_BRICKS.defaultBlockState(), TowerWalk.SOLID);
+		define(POLISHED_ANDESITE, Blocks.POLISHED_ANDESITE.defaultBlockState(), TowerWalk.SOLID);
+		define(STRIPPED_SPRUCE, Blocks.STRIPPED_SPRUCE_LOG.defaultBlockState(), TowerWalk.SOLID);
+		define(SPRUCE_LOG, Blocks.SPRUCE_LOG.defaultBlockState(), TowerWalk.SOLID);
+		define(HAY, Blocks.HAY_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(SOUL_SOIL, Blocks.SOUL_SOIL.defaultBlockState(), TowerWalk.SOLID);
+		define(SOUL_FIRE, Blocks.SOUL_FIRE.defaultBlockState(), TowerWalk.OPEN);
+		define(MAGMA, Blocks.MAGMA_BLOCK.defaultBlockState(), TowerWalk.SOLID);
+		define(COBBLE_WALL, Blocks.COBBLESTONE_WALL.defaultBlockState(), TowerWalk.TALL);
+		define(ANVIL, Blocks.CHIPPED_ANVIL.defaultBlockState(), TowerWalk.SOLID);
 		define(CHAIN, Blocks.IRON_CHAIN.defaultBlockState(), TowerWalk.OPEN);
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
@@ -100,11 +130,21 @@ public final class BiomeBlocks {
 
 	/** Whether the entry is a ground to trap, to chest and to raise a mob on: bare, level, and full. */
 	public static boolean ground(final byte code) {
-		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS;
+		return code == GRASS || code == MUD || code == MOSS || code == PATH || code == DIRT || code == STONE || code == PLANKS || code == COBBLE
+			|| code == COBBLESTONE || code == COARSE_DIRT || code == BLACKSTONE || code == STONE_BRICKS || code == DEEPSLATE_BRICKS;
+	}
+
+	/** Whether the entry is a block that shuts out the light, so that grass under it would die. */
+	public static boolean opaque(final byte code) {
+		return switch (code) {
+			case NONE, WATER, FERN, FENCE, LANTERN, HANGING_LANTERN, SOUL_CAMPFIRE, SKULL, SOUL_FIRE, CHAIN, COBBLE_WALL, ANVIL, BARRIER,
+				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES -> false;
+			default -> true;
+		};
 	}
 
 	/** Whether the entry gives light. */
 	public static boolean lights(final byte code) {
-		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE;
+		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE;
 	}
 }

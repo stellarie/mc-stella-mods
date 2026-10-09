@@ -155,7 +155,8 @@ final class TowerChestSpots {
 			if (plan.inSafeZone(cell.x(), y, cell.z()) || y == 0 && plan.hall() > 0 && inHall(plan, cell.x(), cell.z())) {
 				return true;
 			}
-			if (plan.isBiome() && plan.biome().inDais(plan, cell.x(), cell.z())) {
+			if (plan.isBiome() && (plan.biome().inDais(plan, cell.x(), cell.z()) || plan.biome().water()[cell.x()][cell.z()]
+				|| plan.biome().water()[cell.x() + face.getStepX()][cell.z() + face.getStepZ()])) {
 				return true;
 			}
 			if (volume.isWay(cell.x(), y, cell.z()) || volume.isWay(cell.x() + face.getStepX(), y, cell.z() + face.getStepZ())) {

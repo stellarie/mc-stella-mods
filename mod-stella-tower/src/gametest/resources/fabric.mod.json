@@ -47,6 +47,7 @@
 			"com.stella.tower.TowerPortalHardeningGameTest",
 			"com.stella.tower.TowerBiomeFloorGameTest",
 			"com.stella.tower.TowerDaisGameTest",
+			"com.stella.tower.TowerBiomeSetGameTest",
 			"com.stella.tower.TowerLostCastleVariantGameTest",
 			"com.stella.tower.TowerArchetypeSpawnGameTest",
 			"com.stella.tower.TowerPreviewGameTest",
