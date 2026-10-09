@@ -557,6 +557,23 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
 - Only the main hand adds damage, MATK, magic penetration, and armor penetration affixes. Only the four armor slots add HP, reduction, magic resistance, and movement speed affixes.
 
+## Stat-bonus contract
+
+A sibling mod grants stat or affix bonuses to a weapon or an armor piece through the share `mod-stella-rpg:grant-bonus`.
+The share is a `Function<Object[], Boolean>`. The argument array is `{ItemStack stack, Map<String, Integer> delta}`.
+It uses JDK and vanilla types only, so the caller needs no class from this mod. Read the share from `FabricLoader.getObjectShare()`.
+When this mod is absent, the share is `null`. The caller skips the grant.
+
+- A delta key is a stat key (`str`, `agi`, `vit`, `dex`, `int`, `luk`) or an affix key. An amount is a positive integer in stored units.
+  Percent affixes use tenths of a percent. See the Affixes section.
+- Each amount adds to `stat_rolls` or `affix_rolls` of the stack. Repeated calls stack without limit per item.
+  One key of one item stops at 100000. The stat sheet still caps the total of all sources at 1024 per stat.
+- A key is skipped when it is unknown, not positive, or an affix that the gear kind cannot roll.
+- The share returns `true` when at least one key applied. It returns `false` for a stack that is not gear, an empty delta, or bad input. It never throws.
+- A gear stack with no `stat_rolls` is marked rolled by the grant, with an empty map first. It loses its random roll.
+- Example: the nether star imbue calls the share once per imbue with `+10` on all six stats. Five imbues give `+50` on each stat.
+- The bonus counts while the item is held in the main hand (weapon) or worn (armor). The tooltip and the stats screen show it with no extra code.
+
 ## Stats from enchantments and effects
 
 `EnchantStats` adds stats for each enchantment level on the held item and on the four armor slots. The config key `enchant_stats`
