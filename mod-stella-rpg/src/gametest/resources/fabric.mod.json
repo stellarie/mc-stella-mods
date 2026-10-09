@@ -78,7 +78,8 @@
 			"com.stella.rpg.MaterialProfilesGameTest",
 			"com.stella.rpg.MiningRollGameTest",
 			"com.stella.rpg.DurabilityAffixGameTest",
-			"com.stella.rpg.GearTagGameTest"
+			"com.stella.rpg.GearTagGameTest",
+			"com.stella.rpg.BonusTooltipGameTest"
 		]
 	},
 	"depends": {

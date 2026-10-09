@@ -70,6 +70,8 @@
 	"tooltip.mod-stella-rpg.affix.move_speed_pct": "+%s%% Movement Speed",
 	"tooltip.mod-stella-rpg.affix.armor_pen": "+%s%% Armor Penetration",
 	"tooltip.mod-stella-rpg.affix.durability_pct": "+%s%% Durability",
+	"tooltip.mod-stella-rpg.kind.weapon": " (weapon)",
+	"tooltip.mod-stella-rpg.kind.armor": " (armor)",
 	"tooltip.mod-stella-rpg.stat.str": "STR",
 	"tooltip.mod-stella-rpg.stat.agi": "AGI",
 	"tooltip.mod-stella-rpg.stat.vit": "VIT",
