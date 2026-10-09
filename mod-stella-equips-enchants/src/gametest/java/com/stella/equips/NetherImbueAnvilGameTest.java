@@ -337,4 +337,14 @@ public final class NetherImbueAnvilGameTest {
 		helper.assertTrue(lore.equals(List.of("a foreign line", "Nether Star x2")), "lore " + lore);
 		helper.succeed();
 	}
+
+	/**
+	 * The equips run loads no rpg jar, so the grant is proved against a stand-in share only.
+	 * Oniichan checks the pair by hand: put both jars in one instance, imbue a sword once at an anvil,
+	 * hold it, and read +10 on every stat of the stat screen. A second imbue reads +20.
+	 */
+	@GameTest(required = false)
+	public void realRpgJarGrantNeedsManualCheck(final GameTestHelper helper) {
+		helper.fail("this run loads no rpg jar; imbue a sword with both mods installed and read +10 on all six stats");
+	}
 }
