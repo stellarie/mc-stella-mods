@@ -65,6 +65,10 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	public static void register() {
 		StatBonuses.register(new WeaponRolls());
 		LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> {
+			// Chest gear carries nothing. MiningRolls marks it after every other handler has added its gear.
+			if (MiningRolls.isChestTable(table)) {
+				return;
+			}
 			for (ItemStack stack : drops) {
 				roll(stack, context.getRandom());
 			}
@@ -104,6 +108,15 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		if (!affixRolls.isEmpty()) {
 			stack.set(AFFIX_ROLLS, Map.copyOf(affixRolls));
 		}
+		return true;
+	}
+
+	/** Gives unrolled gear an empty stat map. The empty map blocks every later random roll. */
+	public static boolean markRolled(final ItemStack stack) {
+		if (stack.isEmpty() || stack.has(STAT_ROLLS) || kindOf(stack) == null) {
+			return false;
+		}
+		stack.set(STAT_ROLLS, Map.of());
 		return true;
 	}
 

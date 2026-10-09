@@ -316,7 +316,7 @@ public final class HealthScaleGameTest {
 		RpgConfig before = RpgConfigStore.current();
 		RpgConfig doubled = new RpgConfig(before.curves(), before.critMultiplier(), before.dice(), before.mobStats(),
 			before.mobAmplifier(), before.armorSets(), before.weaponRolls(), 10.0, before.mobDiceShare(), before.tables(),
-			before.xpCurve(), before.magic(), before.scaling(), before.hp());
+			before.xpCurve(), before.magic(), before.scaling(), before.hp(), before.materialRolls());
 		Object published;
 		try {
 			RpgConfigStore.set(doubled);

@@ -401,6 +401,7 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
   - `items`: weapon item ids. `armor_items`: armor item ids. An unknown id logs one error and the parser skips it.
   - `min` and `max`: integers from 1 to 1024, with `min` at most `max`. A bad pair uses the default range.
   - The tier keys are `wood`, `stone`, `copper`, `gold`, `iron`, `diamond`, `netherite`, `ranged`, and `heavy`.
+- `material_rolls` holds the mined material bonuses. See `Mined material profiles`.
 - A bad value logs one error with the key name and uses the default for that key.
 - The parser skips an unknown key.
 
@@ -500,11 +501,13 @@ The component is saved and synced to the client.
   with the `diamond` tier ranges. The tag is empty by default.
 - Weapons no longer roll MATK. An item rolled before this rule keeps its MATK affixes, and they still count when it is held.
 - A stack that already has the component never rolls again.
-- A stack rolls when a player takes it from a crafting result slot, including shift-click.
-  It also rolls when a loot table drops it and when a mob drops its equipment on death.
+- A crafted stack does not roll at random. The craft sum gives it the bonus of its materials. See `Craft sum`.
+  A stack also rolls when a loot table drops it and when a mob drops its equipment on death.
+  A chest, container, or chest minecart table is the exception: its gear gets an empty `stat_rolls` map and carries nothing.
   Every 20 ticks the server also rolls each unrolled rollable stack in a player's inventory, armor, and offhand.
-  That catches trades, smithing, crafters, rewards, and commands. A stack that has `stat_rolls` never rolls again.
+  That catches trades, rewards, and commands. A stack that has `stat_rolls` never rolls again.
 - The mixin `RpgCraftRollMixin` hooks `Item#onCraftedBy`, because shift-click empties the stack before `ResultSlot#onTake`.
+  It gives gear from a recipe that the craft sum does not cover an empty `stat_rolls` map, which blocks the random roll.
 - The bonus applies to the main hand for a weapon and to worn armor slots.
   A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
   A mob that holds or wears a rolled item gets the bonus too.
@@ -556,6 +559,57 @@ A flat affix is in K units. A percent affix is in tenths of a percent, so `45` i
   Flat HP is an `ADD_VALUE` modifier of `flat / K`. HP % is an `ADD_MULTIPLIED_BASE` modifier.
   The modifiers are `mod-stella-rpg:affix_hp_flat` and `mod-stella-rpg:affix_hp_pct`.
 - Only the main hand adds damage, MATK, magic penetration, and armor penetration affixes. Only the four armor slots add HP, reduction, magic resistance, and movement speed affixes.
+
+## Craft sum
+
+A material in `#mod-stella-rpg:bonus_materials` can carry `stat_rolls`, `affix_rolls`, and enchantments.
+The tag lists the ingots, raw ores, nuggets, storage blocks, diamond, ancient debris, and netherite scrap of copper, iron, gold, diamond, and netherite.
+A recipe hands its result the sum of its materials. One item of each slot counts once.
+
+- Gear result: stats add per key. An affix stays only when the gear kind can roll it, so a sword drops `hp_flat`.
+  The result always gets a `stat_rolls` map, empty when the materials carry nothing. It never rolls at random.
+- Material result: each key is the sum divided by the result count, rounded down. Packing nine ingots sums. Unpacking a block divides.
+  A key that falls to zero is dropped, and a result with no bonus has no component, so it stacks with plain items.
+- Any other result carries nothing.
+- Enchantment levels add per enchantment and stop at its maximum. A later enchantment that conflicts with a kept one is skipped.
+  Gear skips an enchantment it cannot take. A material result with a count above 1 is refused when any input is enchanted.
+- One key stops at 100000.
+- Smithing transform: the result keeps the base maps and enchantments, and the addition material adds to them.
+- Furnace, blast furnace, smoker, and campfire: a material result keeps the whole bonus of its material input.
+  Gear smelted into a material carries nothing. A furnace output stacks only with the same bonus set, so a different set waits until the output is taken.
+- Grid repair of two gear pieces keeps the bonus of the piece with the higher stat total. It does not sum and it does not reroll.
+- The ruins affix smithing recipe and recipes that build their own result are not covered.
+
+## Mined material profiles
+
+A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.
+Equal profiles are equal maps, so mined stacks of one profile stack together. A tier has at most `profiles` distinct sets.
+
+| Tier | Mined drop | Stat range | Count weights 1, 2, 3, 4 | Profiles | Enchant chance |
+|---|---|---|---|---|---|
+| `copper` | `raw_copper` | 1 to 2 | 55, 30, 12, 3 | 8 | 0.1% |
+| `iron` | `raw_iron` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.2% |
+| `gold` | `raw_gold` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.4% |
+| `diamond` | `diamond` | 2 to 4 | 30, 32, 24, 14 | 16 | 2.0% |
+| `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 16 | 3.0% |
+
+- A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per profile.
+  The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, and reduction %.
+  An affix value is the range of the gear tier times `affix_scale` (0.25), and at least 1. The gear tier of `debris` is `netherite`.
+- Depth raises the weight of strong profiles. A profile weighs `1 + depth_rank_weight x depth x rank`, and `rank` runs from 0 for the weakest to 1 for the strongest.
+- `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.
+- Each tier key holds `items`, `min`, `max`, `count_weights`, `profiles` (1 to 256), `enchant_chance`, and `explicit`.
+  `explicit` lists exact sets such as `{"str": 5}`. A non-empty list replaces the generated sets. A bad entry logs one error and is skipped.
+- A mined drop rolls when a player breaks a block of `#mod-stella-rpg:bonus_ores` (copper, iron, gold, and diamond ores, and ancient debris)
+  and the drop is the mined item of a tier. All stacks of one item from one break share one profile, so Fortune never splits a roll.
+  Silk Touch drops the ore block, which carries nothing. A piston, an explosion, or a nugget from nether gold ore rolls nothing.
+- Depth is 0 at y 64 and above, and 1 at the bottom of the world. It comes from the break position.
+- Each mined stack is enchanted with the tier chance times `1 + depth_enchant_bonus x depth`.
+  The enchantment comes from `#minecraft:on_random_loot` without curses, at a level from 1 to its maximum.
+  A second, compatible enchantment follows with `second_enchant_chance`.
+- A material from a chest or container carries nothing, because only a player's block break rolls.
+  Chest gear is marked in a late phase of `LootTableEvents.MODIFY_DROPS`, so gear that another mod adds to the same table is marked too.
+- Items already mined keep their maps after a config change. A new set does not merge with an old one.
 
 ## Stat-bonus contract
 
@@ -807,6 +861,11 @@ Game tests run headless on a server. A new test class must be listed in
 
 | Mixin | Target |
 |---|---|
+| `RpgCraftRollMixin` | `Item#onCraftedBy`, at `HEAD`. Marks uncovered gear as rolled |
+| `RpgCraftSumMixin` | `ShapedRecipe#assemble` and `ShapelessRecipe#assemble`, at `RETURN`, cancellable |
+| `RpgRepairSumMixin` | `RepairItemRecipe#assemble`, at `RETURN`, cancellable |
+| `RpgSmithingSumMixin` | `SmithingTransformRecipe#assemble`, at `RETURN`, cancellable |
+| `RpgSmeltSumMixin` | `SingleItemRecipe#assemble`, at `RETURN`, cancellable. Cooking recipes only |
 | `RpgOutgoingDamageMixin` | `LivingEntity#hurtServer`, argument `amount`, at `HEAD` |
 | `RpgAttackChargeMixin` | `Player#attack`, at `HEAD` and `RETURN` |
 | `RpgIncomingDamageMixin` | `LivingEntity#getDamageAfterMagicAbsorb`, at `RETURN` |

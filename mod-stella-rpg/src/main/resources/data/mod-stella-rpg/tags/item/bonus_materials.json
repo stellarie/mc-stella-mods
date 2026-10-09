@@ -1,0 +1,26 @@
+{
+	"replace": false,
+	"values": [
+		"minecraft:raw_copper",
+		"minecraft:raw_iron",
+		"minecraft:raw_gold",
+		"minecraft:diamond",
+		"minecraft:ancient_debris",
+		"minecraft:netherite_scrap",
+		"minecraft:copper_ingot",
+		"minecraft:iron_ingot",
+		"minecraft:gold_ingot",
+		"minecraft:netherite_ingot",
+		"minecraft:copper_nugget",
+		"minecraft:iron_nugget",
+		"minecraft:gold_nugget",
+		"minecraft:raw_copper_block",
+		"minecraft:raw_iron_block",
+		"minecraft:raw_gold_block",
+		"minecraft:copper_block",
+		"minecraft:iron_block",
+		"minecraft:gold_block",
+		"minecraft:diamond_block",
+		"minecraft:netherite_block"
+	]
+}
