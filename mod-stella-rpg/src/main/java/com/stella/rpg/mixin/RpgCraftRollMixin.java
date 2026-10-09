@@ -1,5 +1,6 @@
 package com.stella.rpg.mixin;
 
+import com.stella.rpg.RpgConfigStore;
 import com.stella.rpg.roll.WeaponRolls;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -13,10 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Item.class)
 public abstract class RpgCraftRollMixin {
 	// Shift-click calls this before the stack moves.
+	// A recipe the craft sum does not cover gets the rolled mark, unless craft_random_roll is on.
 	@Inject(method = "onCraftedBy", at = @At("HEAD"))
-	private void stellaRpg$rollCrafted(final ItemStack stack, final Player player, final CallbackInfo callback) {
+	private void stellaRpg$markCrafted(final ItemStack stack, final Player player, final CallbackInfo callback) {
 		if (player instanceof ServerPlayer) {
-			WeaponRolls.roll(stack, player.getRandom());
+			if (RpgConfigStore.current().materialRolls().craftRandomRoll()) {
+				WeaponRolls.roll(stack, player.getRandom());
+			} else {
+				WeaponRolls.markRolled(stack);
+			}
 		}
 	}
 }

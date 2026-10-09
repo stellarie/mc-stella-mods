@@ -119,12 +119,13 @@ public final class WeaponRollGameTest {
 		helper.succeed();
 	}
 
+	/** Crafting no longer rolls at random. Plain materials give the gear an empty, rolled mark. */
 	@GameTest
-	public void craftRolls(final GameTestHelper helper) {
-		RpgTestSupport.withAffixChance(0.0, () -> craftRollsBody(helper));
+	public void craftGivesNoRandomRoll(final GameTestHelper helper) {
+		RpgTestSupport.withAffixChance(0.0, () -> craftGivesNoRandomRollBody(helper));
 	}
 
-	private static void craftRollsBody(final GameTestHelper helper) {
+	private static void craftGivesNoRandomRollBody(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		CraftingMenu menu = menu(helper, player);
 		fill(menu, swordGrid(Items.DIAMOND, 1));
@@ -132,9 +133,8 @@ public final class WeaponRollGameTest {
 		menu.clicked(0, 0, ContainerInput.PICKUP, player);
 		ItemStack taken = menu.getCarried();
 		Map<String, Integer> rolls = taken.get(WeaponRolls.STAT_ROLLS);
-		RpgTestSupport.result("craftRolls", "pickup=" + rolls);
-		helper.assertTrue(taken.is(Items.DIAMOND_SWORD) && rolls != null, "picked up sword has no rolls: " + taken);
-		helper.assertTrue(inRange(rolls, 3, 7), "diamond range " + rolls);
+		RpgTestSupport.result("craftGivesNoRandomRoll", "pickup=" + rolls);
+		helper.assertTrue(taken.is(Items.DIAMOND_SWORD) && rolls != null && rolls.isEmpty(), "picked up sword rolls: " + rolls);
 		menu.setCarried(ItemStack.EMPTY);
 
 		fill(menu, swordGrid(Items.DIAMOND, 3));
@@ -145,10 +145,11 @@ public final class WeaponRollGameTest {
 				swords.add(stack);
 			}
 		}
-		RpgTestSupport.result("craftRolls", "shift swords=" + swords.size());
+		RpgTestSupport.result("craftGivesNoRandomRoll", "shift swords=" + swords.size());
 		helper.assertTrue(swords.size() == 3, "shift-click swords=" + swords.size());
 		for (ItemStack sword : swords) {
-			helper.assertTrue(inRange(sword.get(WeaponRolls.STAT_ROLLS), 3, 7), "shift sword rolls " + sword.get(WeaponRolls.STAT_ROLLS));
+			Map<String, Integer> shift = sword.get(WeaponRolls.STAT_ROLLS);
+			helper.assertTrue(shift != null && shift.isEmpty(), "shift sword rolls " + shift);
 		}
 		helper.succeed();
 	}
@@ -335,25 +336,18 @@ public final class WeaponRollGameTest {
 	}
 
 	private static void armorRollsOneBody(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.realPlayer(helper);
-		CraftingMenu menu = menu(helper, player);
+		// Crafting no longer rolls. The loot and mob drop path rolls the armor piece.
+		RandomSource random = RandomSource.create(20260930L);
 		ItemStack last = ItemStack.EMPTY;
 		int[] perStat = new int[Stat.values().length];
 		for (int i = 0; i < 500; i++) {
-			ItemStack[] grid = empty();
-			for (int slot : new int[] {0, 2, 3, 4, 5, 6, 7, 8}) {
-				grid[slot] = new ItemStack(Items.IRON_INGOT);
-			}
-			fill(menu, grid);
-			menu.clicked(0, 0, ContainerInput.PICKUP, player);
-			ItemStack taken = menu.getCarried();
-			helper.assertTrue(taken.is(Items.IRON_CHESTPLATE), "craft " + i + " gave " + taken);
+			ItemStack taken = new ItemStack(Items.IRON_CHESTPLATE);
+			helper.assertTrue(WeaponRolls.roll(taken, random), "roll " + i + " did not apply");
 			Map<String, Integer> rolls = taken.get(WeaponRolls.STAT_ROLLS);
-			helper.assertTrue(rolls != null && rolls.size() == 1, "craft " + i + " rolls " + rolls);
-			helper.assertTrue(inRange(rolls, 2, 5), "craft " + i + " range " + rolls);
+			helper.assertTrue(rolls != null && rolls.size() == 1, "roll " + i + " rolls " + rolls);
+			helper.assertTrue(inRange(rolls, 2, 5), "roll " + i + " range " + rolls);
 			perStat[Stat.byKey(rolls.keySet().iterator().next()).orElseThrow().ordinal()]++;
 			last = taken;
-			menu.setCarried(ItemStack.EMPTY);
 		}
 		Map.Entry<String, Integer> roll = last.get(WeaponRolls.STAT_ROLLS).entrySet().iterator().next();
 		Stat stat = Stat.byKey(roll.getKey()).orElseThrow();

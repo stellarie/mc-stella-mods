@@ -32,6 +32,7 @@ public final class StellaRpg implements ModInitializer {
 		DamageLog.register();
 		DeathRecap.register();
 		MobGrowth.register();
+		MobStatOverride.register();
 		Bag.register();
 		com.stella.rpg.api.BagShare.publish();
 		RpgNet.register();
@@ -41,6 +42,7 @@ public final class StellaRpg implements ModInitializer {
 		SecondHotbar.register();
 		ArmorSets.register();
 		WeaponRolls.register();
+		com.stella.rpg.roll.MiningRolls.register();
 		RpgScale.register();
 		EnchantStats.register();
 		LevelBonus.register();

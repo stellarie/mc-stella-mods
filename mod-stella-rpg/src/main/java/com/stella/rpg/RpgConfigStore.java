@@ -25,6 +25,7 @@ public final class RpgConfigStore {
 	public static final int MAX_DICE_VALUE = 1000;
 	public static final int MAX_WEIGHT = 1000;
 	public static final double MAX_HEALTH_SCALE = 1000.0;
+	public static final int MAX_PROFILES = 256;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static volatile RpgConfig current = RpgConfig.defaults();
@@ -92,7 +93,8 @@ public final class RpgConfigStore {
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
 			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError),
-			xpCurve(root, onError), magic(root, onError), scaling(root, onError), hp(root, onError));
+			xpCurve(root, onError), magic(root, onError), scaling(root, onError), hp(root, onError),
+			materialRolls(root, onError));
 	}
 
 	private static Map<String, RpgConfig.ArmorSet> armorSets(final JsonObject root, final Consumer<String> onError) {
@@ -181,6 +183,184 @@ public final class RpgConfigStore {
 		return new RpgConfig.WeaponRolls(
 			countWeights(object, defaults.countWeights(), onError), Map.copyOf(tiers), affixChance(object, onError)
 		);
+	}
+
+	private static RpgConfig.MaterialRolls materialRolls(final JsonObject root, final Consumer<String> onError) {
+		JsonElement element = root.get(RpgConfig.MATERIAL_ROLLS_KEY);
+		RpgConfig.MaterialRolls defaults = RpgConfig.DEFAULT_MATERIAL_ROLLS;
+		if (element == null) {
+			return defaults;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key 'material_rolls' must be an object; using the defaults");
+			return defaults;
+		}
+		JsonObject object = element.getAsJsonObject();
+		String path = RpgConfig.MATERIAL_ROLLS_KEY;
+		Map<String, RpgConfig.MaterialTier> tiers = new LinkedHashMap<>();
+		for (Map.Entry<String, RpgConfig.MaterialTier> tier : defaults.tiers().entrySet()) {
+			tiers.put(tier.getKey(), materialTier(object.get(tier.getKey()), path + "." + tier.getKey(), tier.getValue(), onError));
+		}
+		return new RpgConfig.MaterialRolls(
+			materialFlag(object, "craft_random_roll", path, defaults.craftRandomRoll(), onError),
+			materialSeed(object, path, defaults.seed(), onError),
+			materialNumber(object, "affix_share", path, 0.0, 1.0, defaults.affixShare(), onError),
+			materialNumber(object, "affix_scale", path, 0.0, 10.0, defaults.affixScale(), onError),
+			materialNumber(object, "depth_rank_weight", path, 0.0, MAX_LIMIT * 10, defaults.depthRankWeight(), onError),
+			materialNumber(object, "depth_enchant_bonus", path, 0.0, MAX_LIMIT * 10, defaults.depthEnchantBonus(), onError),
+			materialNumber(object, "second_enchant_chance", path, 0.0, 1.0, defaults.secondEnchantChance(), onError),
+			Map.copyOf(tiers)
+		);
+	}
+
+	private static RpgConfig.MaterialTier materialTier(
+		final JsonElement element, final String path, final RpgConfig.MaterialTier fallback, final Consumer<String> onError
+	) {
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonObject()) {
+			onError.accept("stats.json key '" + path + "' must be an object; using the defaults");
+			return fallback;
+		}
+		JsonObject row = element.getAsJsonObject();
+		Integer lowValue = rollValue(row, "min", path, onError);
+		Integer highValue = rollValue(row, "max", path, onError);
+		int low = lowValue != null ? lowValue : fallback.min();
+		int high = highValue != null ? highValue : fallback.max();
+		if (low > high) {
+			onError.accept("stats.json key '" + path + ".min' must not exceed '" + path + ".max'; using the default range");
+			low = fallback.min();
+			high = fallback.max();
+		}
+		int profileCount = fallback.profiles();
+		JsonElement profiles = row.get("profiles");
+		if (profiles != null) {
+			Double value = number(profiles);
+			if (value == null || value < 1.0 || value > MAX_PROFILES || value != Math.rint(value)) {
+				onError.accept("stats.json key '" + path + ".profiles' must be an integer from 1 to " + MAX_PROFILES + "; using the default");
+			} else {
+				profileCount = value.intValue();
+			}
+		}
+		return new RpgConfig.MaterialTier(
+			itemList(row, "items", path, fallback.items(), onError), low, high,
+			materialWeights(row, path, fallback.countWeights(), onError), profileCount,
+			materialNumber(row, "enchant_chance", path, 0.0, 1.0, fallback.enchantChance(), onError),
+			explicitProfiles(row, path, fallback.explicit(), onError)
+		);
+	}
+
+	private static List<Integer> materialWeights(
+		final JsonObject row, final String path, final List<Integer> fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get(RpgConfig.COUNT_WEIGHTS_KEY);
+		if (element == null) {
+			return fallback;
+		}
+		List<Integer> weights = new ArrayList<>();
+		long sum = 0;
+		boolean good = element.isJsonArray() && element.getAsJsonArray().size() == fallback.size();
+		if (good) {
+			for (JsonElement entry : element.getAsJsonArray()) {
+				Double value = number(entry);
+				if (value == null || value < 0.0 || value > MAX_WEIGHT || value != Math.rint(value)) {
+					good = false;
+					break;
+				}
+				weights.add(value.intValue());
+				sum += value.intValue();
+			}
+		}
+		if (!good || sum == 0) {
+			onError.accept("stats.json key '" + path + ".count_weights' must list " + fallback.size()
+				+ " integers from 0 to " + MAX_WEIGHT + " with a sum above 0; using the default");
+			return fallback;
+		}
+		return List.copyOf(weights);
+	}
+
+	private static List<Map<String, Integer>> explicitProfiles(
+		final JsonObject row, final String path, final List<Map<String, Integer>> fallback, final Consumer<String> onError
+	) {
+		JsonElement element = row.get("explicit");
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonArray()) {
+			onError.accept("stats.json key '" + path + ".explicit' must be a list of objects; using the default");
+			return fallback;
+		}
+		List<Map<String, Integer>> profiles = new ArrayList<>();
+		for (JsonElement entry : element.getAsJsonArray()) {
+			Map<String, Integer> profile = explicitProfile(entry);
+			if (profile == null) {
+				onError.accept("stats.json key '" + path + ".explicit' has a bad entry " + entry
+					+ "; it needs 1 to 4 known stat or affix keys with positive integers; skipping it");
+				continue;
+			}
+			profiles.add(profile);
+		}
+		return List.copyOf(profiles);
+	}
+
+	private static Map<String, Integer> explicitProfile(final JsonElement entry) {
+		if (!entry.isJsonObject() || entry.getAsJsonObject().size() < 1 || entry.getAsJsonObject().size() > 4) {
+			return null;
+		}
+		Map<String, Integer> profile = new LinkedHashMap<>();
+		for (Map.Entry<String, JsonElement> field : entry.getAsJsonObject().entrySet()) {
+			Double value = number(field.getValue());
+			boolean known = Stat.byKey(field.getKey()).isPresent() || Affix.byKey(field.getKey()).isPresent();
+			if (!known || value == null || value < 1.0 || value > 100000.0 || value != Math.rint(value)) {
+				return null;
+			}
+			profile.put(field.getKey(), value.intValue());
+		}
+		return Map.copyOf(profile);
+	}
+
+	private static boolean materialFlag(
+		final JsonObject object, final String key, final String path, final boolean fallback, final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isBoolean()) {
+			onError.accept("stats.json key '" + path + "." + key + "' must be true or false; using the default");
+			return fallback;
+		}
+		return element.getAsBoolean();
+	}
+
+	private static long materialSeed(final JsonObject object, final String path, final long fallback, final Consumer<String> onError) {
+		JsonElement element = object.get("seed");
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value != Math.rint(value) || Math.abs(value) > 9.0e15) {
+			onError.accept("stats.json key '" + path + ".seed' must be an integer; using the default");
+			return fallback;
+		}
+		return value.longValue();
+	}
+
+	private static double materialNumber(
+		final JsonObject object, final String key, final String path, final double min, final double max, final double fallback,
+		final Consumer<String> onError
+	) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Double value = number(element);
+		if (value == null || value < min || value > max) {
+			onError.accept("stats.json key '" + path + "." + key + "' must be a number from " + min + " to " + max + "; using the default");
+			return fallback;
+		}
+		return value;
 	}
 
 	private static double affixChance(final JsonObject object, final Consumer<String> onError) {
@@ -704,6 +884,29 @@ public final class RpgConfigStore {
 		return out;
 	}
 
+	private static Map<String, Object> materialRollsJson(final RpgConfig.MaterialRolls rolls) {
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("craft_random_roll", rolls.craftRandomRoll());
+		out.put("seed", rolls.seed());
+		out.put("affix_share", rolls.affixShare());
+		out.put("affix_scale", rolls.affixScale());
+		out.put("depth_rank_weight", rolls.depthRankWeight());
+		out.put("depth_enchant_bonus", rolls.depthEnchantBonus());
+		out.put("second_enchant_chance", rolls.secondEnchantChance());
+		for (Map.Entry<String, RpgConfig.MaterialTier> tier : rolls.tiers().entrySet()) {
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("items", tier.getValue().items().stream().map(Identifier::toString).toList());
+			row.put("min", tier.getValue().min());
+			row.put("max", tier.getValue().max());
+			row.put(RpgConfig.COUNT_WEIGHTS_KEY, tier.getValue().countWeights());
+			row.put("profiles", tier.getValue().profiles());
+			row.put("enchant_chance", tier.getValue().enchantChance());
+			row.put("explicit", tier.getValue().explicit());
+			out.put(tier.getKey(), row);
+		}
+		return out;
+	}
+
 	private static void writeDefaults(final Path path, final Consumer<String> onError) {
 		Map<String, Object> out = new LinkedHashMap<>();
 		for (RpgConfig.Effect effect : RpgConfig.Effect.values()) {
@@ -749,6 +952,7 @@ public final class RpgConfigStore {
 		}
 		out.put(RpgConfig.ARMOR_SETS_KEY, armorSets);
 		out.put(RpgConfig.WEAPON_ROLLS_KEY, weaponRollsJson(RpgConfig.DEFAULT_WEAPON_ROLLS));
+		out.put(RpgConfig.MATERIAL_ROLLS_KEY, materialRollsJson(RpgConfig.DEFAULT_MATERIAL_ROLLS));
 		try {
 			Files.createDirectories(path.getParent());
 			Files.writeString(path, GSON.toJson(out) + System.lineSeparator(), StandardCharsets.UTF_8);

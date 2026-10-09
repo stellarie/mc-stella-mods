@@ -65,6 +65,10 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	public static void register() {
 		StatBonuses.register(new WeaponRolls());
 		LootTableEvents.MODIFY_DROPS.register((table, context, drops) -> {
+			// Chest gear carries nothing. MiningRolls marks it after every other handler has added its gear.
+			if (MiningRolls.isChestTable(table)) {
+				return;
+			}
 			for (ItemStack stack : drops) {
 				roll(stack, context.getRandom());
 			}
@@ -85,6 +89,7 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		int count = single ? 1 : count(config.countWeights(), random);
 		List<Stat> stats = new ArrayList<>(book ? List.of(Stat.INT) : List.of(Stat.values()));
 		List<Affix> affixes = new ArrayList<>(Affix.pool(entry.kind()));
+		affixes.remove(Affix.DURABILITY_PCT);
 		if (!stack.is(ItemTags.FOOT_ARMOR)) {
 			affixes.remove(Affix.MOVE_SPEED_PCT);
 		}
@@ -104,6 +109,15 @@ public final class WeaponRolls implements StatBonuses.Provider {
 		if (!affixRolls.isEmpty()) {
 			stack.set(AFFIX_ROLLS, Map.copyOf(affixRolls));
 		}
+		return true;
+	}
+
+	/** Gives unrolled gear an empty stat map. The empty map blocks every later random roll. */
+	public static boolean markRolled(final ItemStack stack) {
+		if (stack.isEmpty() || stack.has(STAT_ROLLS) || kindOf(stack) == null) {
+			return false;
+		}
+		stack.set(STAT_ROLLS, Map.of());
 		return true;
 	}
 
@@ -133,7 +147,17 @@ public final class WeaponRolls implements StatBonuses.Provider {
 	/** The kind of roll this stack carries, or null when it never rolls. */
 	public static Affix.Kind kindOf(final ItemStack stack) {
 		Entry entry = stack.isEmpty() ? null : entryOf(stack);
-		return entry == null ? null : entry.kind();
+		if (entry != null) {
+			return entry.kind();
+		}
+		// Tagged gear carries and uses bonuses, but entryOf has no tier for it, so it never rolls at random.
+		if (stack.isEmpty()) {
+			return null;
+		}
+		if (stack.is(BonusCarrier.WEAPONS)) {
+			return Affix.Kind.WEAPON;
+		}
+		return stack.is(BonusCarrier.ARMOR) ? Affix.Kind.ARMOR : null;
 	}
 
 	@Override

@@ -258,8 +258,8 @@ public final class SovereignCharge {
 		state.cooldown = COOLDOWN_TICKS;
 	}
 
-	/** Forgets every charge in memory. Test hook and reset. */
-	static void forget() {
-		STATES.clear();
+	/** Forgets one Sovereign's charges. */
+	static void forget(final UUID sovereign) {
+		STATES.remove(sovereign);
 	}
 }
