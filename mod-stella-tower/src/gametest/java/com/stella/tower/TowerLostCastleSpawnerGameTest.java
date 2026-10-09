@@ -64,6 +64,11 @@ public class TowerLostCastleSpawnerGameTest {
 			new BlockPos(box.minX(), box.minY(), box.minZ()), arena.piece().facing(), true, arena.piece().variant().ordinal()));
 	}
 
+	private static AABB castle(final LostRoomPiece piece) {
+		BoundingBox box = piece.getBoundingBox();
+		return new AABB(box.minX(), box.minY(), box.minZ(), box.maxX() + 1, box.maxY() + 1, box.maxZ() + 1);
+	}
+
 	private static AABB slab(final LostRoomPiece piece, final int storey) {
 		BoundingBox box = piece.getBoundingBox();
 		int low = box.minY() + TowerHex.floorAt(storey);
@@ -241,7 +246,7 @@ public class TowerLostCastleSpawnerGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void aStoreySpawnerRaisesTowerMobsOnItsOwnStorey(final GameTestHelper helper) {
+	public void aStoreySpawnerRaisesTowerMobsInsideTheCastle(final GameTestHelper helper) {
 		TowerLostRoomGameTest.Arena arena = TowerLostRoomGameTest.castle(helper, LostCastleVariant.KEEP, Direction.NORTH);
 		register(arena);
 		ServerLevel level = arena.level();
@@ -274,7 +279,8 @@ public class TowerLostCastleSpawnerGameTest {
 						helper.assertTrue(state != null && state.rank() == TowerRank.MOB, "a spawner mob is not a tower mob of rank MOB: " + id);
 						helper.assertTrue(mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG) && mob.entityTags().contains(LostRooms.TAG), "a spawner mob lacks its tags");
 						helper.assertTrue(allowed.contains(id), id + " is not in the " + floor.kind() + " table " + allowed);
-						helper.assertTrue(slab(piece, floor.storey()).contains(mob.position()), "a spawner mob stands outside its storey at " + mob.blockPosition());
+						// A mob may drop through a ruined floor gap, so the bound is the castle, not its storey.
+						helper.assertTrue(castle(piece).contains(mob.position()), "a spawner mob stands outside the castle at " + mob.blockPosition());
 						report.append(" [storey ").append(floor.storey()).append(' ').append(id).append(" floor=").append(state.floor()).append(" ticks=").append(ticks).append(']');
 						mob.discard();
 					}
