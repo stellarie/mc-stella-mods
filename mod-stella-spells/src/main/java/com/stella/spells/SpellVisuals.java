@@ -14,6 +14,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
@@ -78,8 +79,16 @@ public final class SpellVisuals {
 		}
 	}
 
+	/** The sounds a spell plays through {@link #sound}, so a case can count them as it counts particles. */
+	public interface SoundRecorder {
+		void played(UUID caster, Identifier spell, SoundEvent sound, Vec3 at);
+	}
+
 	private static final Recorder SILENT = (caster, spell, particle, at, particles, casterSaw) -> {
 	};
+	private static final SoundRecorder SILENT_SOUND = (caster, spell, sound, at) -> {
+	};
+	private static volatile SoundRecorder soundRecorder = SILENT_SOUND;
 	private static volatile Recorder recorder = SILENT;
 	private static final List<Animation> PENDING_ANIMATIONS = new ArrayList<>();
 	private static final Map<Identifier, Visual> VISUALS = Map.ofEntries(
@@ -235,6 +244,28 @@ public final class SpellVisuals {
 		recorder = newRecorder == null ? SILENT : newRecorder;
 	}
 
+	public static void setSoundRecorder(final SoundRecorder newRecorder) {
+		soundRecorder = newRecorder == null ? SILENT_SOUND : newRecorder;
+	}
+
+	/** Sends a bounded burst of one particle to the players near it, and records it. */
+	static void particle(
+		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final ParticleOptions particle,
+		final Vec3 at, final int count, final double spread, final double speed
+	) {
+		Emitted emitted = emit(level, caster, particle, at, count, spread, speed);
+		recorder.played(caster.getUUID(), spell, particle, at, emitted.particles(), emitted.casterSaw());
+	}
+
+	/** Plays one sound where a spell lands, and records it. */
+	static void sound(
+		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final SoundEvent sound,
+		final Vec3 at, final float volume, final float pitch
+	) {
+		level.playSound(null, at.x, at.y, at.z, sound, SoundSource.PLAYERS, volume, pitch);
+		soundRecorder.played(caster.getUUID(), spell, sound, at);
+	}
+
 	public static Visual visual(final Identifier spell) {
 		return VISUALS.get(spell);
 	}
@@ -312,6 +343,9 @@ public final class SpellVisuals {
 				spiral(level, caster, spell, visual.primary(), point);
 				burst(level, caster, spell, visual.secondary(), point.add(0.0, 1.0, 0.0), 0.6);
 			}
+		}
+		if (definition.school() == School.ARCHER) {
+			ArcherVisuals.cast(level, caster, spell, departure, animationCenter);
 		}
 		accent(level, caster, spell, visual, animationCenter, departure, 0);
 		scheduleAnimations(level, caster, spell, visual, circleColor, animationCenter, radius);

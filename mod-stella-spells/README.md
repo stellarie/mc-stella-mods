@@ -114,13 +114,14 @@ A failed cast draws nothing. The particles are listed in `SpellVisuals`.
 ## Archer books
 
 The archer school follows Ragnarok Online's Archer, Hunter and Sniper line. Every archer book needs a
-bow or a crossbow in the main hand, the off hand or the RPG weapon slot. Only Grappling Hook, Aimed
-Bolt, Explosive Arrow and Triangle Shot also need an arrow or a bolt, and a Spectral Quiver pays that
-need. Every other archer book casts with a bow and an empty quiver.
+bow or a crossbow in the main hand, the off hand or the RPG weapon slot, and no book needs an arrow.
+Arrow Crafting and Blitz Beat need no bow either. A quiver in the off hand lends its arrows to five
+skills, which then add the kind of each arrow they spend (see Crafted arrows and the quiver below).
 
 | Book | Effect |
 | --- | --- |
-| Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one arrow |
+| Arrow Crafting | Turns one material into 8 arrows of its kind, 12 when awakened. It takes the material in your off hand first, else the first one in your pack, and drops the overflow at your feet. It needs no bow, and with no material it refuses and starts no cooldown |
+| Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one quiver arrow |
 | Double Strafe | Two archer hits on the hostile you look at |
 | Sharp Shooting | One arrow through every hostile on a 32 block line, with a 30 percent better critical chance |
 | Arrow Shower | Five pulses over the ground you look at; each hurts every hostile within 4 blocks and pushes it away from that point, never the caster |
@@ -129,7 +130,7 @@ need. Every other archer book casts with a bow and an empty quiver.
 | Arrow Repel | One heavy shot that knocks the hostile back several blocks |
 | True Sight | 30 min: every archer skill hit deals 1.2 times its damage, and the critical chance rises by 15 percent with a bow in hand (25 percent when awakened) |
 | Concentrate | 30 min of steadier aim while a bow is held |
-| Spectral Quiver | 30 min in which the bow needs no arrow, at three quarters the damage |
+| Spectral Quiver | 30 min in which the bow draws an arrow it does not spend when nothing else supplies one, at three quarters the damage |
 | Wind Walk | 30 min at a quarter more walking speed |
 | Aimed Bolt | The next arrow draws half again as slowly, hits 4 times as hard and stops its target for 2 s |
 | Triangle Shot | 30 min in which a shot has a 30 percent chance to loose three arrows |
@@ -137,6 +138,42 @@ need. Every other archer book casts with a bow and an empty quiver.
 
 The critical chance of True Sight and Sharp Shooting reaches the RPG mod through its critical bonus
 seam, the one Concentrate uses. Without the RPG mod the books still cast and add nothing there.
+
+### Crafted arrows and the quiver
+
+One material makes 8 arrows with Arrow Crafting. Each kind is its own item in `#minecraft:arrows`, so a
+bow, a crossbow and a dispenser fire it. The kinds are loosed as the vanilla arrow entity.
+
+| Material | Arrow | On hit |
+| --- | --- | --- |
+| Bone | Arrow | none |
+| Flint | Flint Arrow | 20 percent more damage |
+| Iron ingot | Iron Arrow | 40 percent more damage |
+| Diamond | Diamond Arrow | 75 percent more damage, pierces one extra foe |
+| Amethyst shard | Keen Arrow | 15 percent more damage, always a critical arrow |
+| Blaze powder | Fire Arrow | sets the target on fire for 4 s |
+| Packed ice | Frost Arrow | Slowness II for 3 s |
+| Spider eye | Venom Arrow | Poison I for 4 s (undead are immune, as in vanilla) |
+| Gunpowder | Blast Arrow | 3 damage to every hostile within 2 blocks of the hit; breaks no block |
+| Glowstone dust | Spectral Arrow | vanilla glowing |
+
+The Quiver (leather and string) holds nine stacks of arrows and fireworks. Right-click opens its row above
+the inventory; the contents stay in the item. In the off hand it is the first ammunition a bow or crossbow
+draws, then the vanilla search, then a Spectral Quiver. A bow takes only arrows from it, a crossbow arrows
+and fireworks. A shot spends the quiver stack; creative mode and Infinity keep their vanilla rules.
+
+Five skills spend arrows from the off-hand quiver and add each arrow's damage and effect to the hits it
+feeds: Double Strafe 2 (one per hit), Sharp Shooting 1, Arrow Shower 1 per pulse, Arrow Repel 1 and
+Grappling Hook 1. Every other book spends none. An empty quiver, no quiver, or an imbued cast gives the
+skill its base numbers and spends nothing. Keen and diamond arrows add their damage only; a ray has no
+critical flag or extra pierce to take.
+
+### Skill effects
+
+Every archer skill plays a coloured ring, an impact burst and a layered sound. A trail fed by a quiver
+arrow takes the kind's colour: fire orange, frost cyan, venom green, blast red, diamond white and keen
+violet; an unfed trail is gold. The effects go through `SpellVisuals`, which records every particle and
+sound for the game tests.
 
 ## Imbued weapons, arrows and chestplates
 
@@ -389,6 +426,7 @@ The last command runs the suite with the equips mod loaded; its log must list
 for a release gate, and copy each log before the next run. Six optional tests remain visible:
 the icon and circle review, held-hand rendering, all spell effects, the Ice Lance pierce check,
 the Earthspike lift check, and the client-log check. Spark Shot's boundary and Chainstorm's
-outside-area damage run as required tests.
+outside-area damage run as required tests. The cases that need the RPG jar (the Concentrate seam and
+the Blitz Beat floor ATK and no-crit checks) fail visibly without `-PrpgJar=<path>`; run them by hand.
 
 The jar is `build/libs/mod-stella-spells-0.1.0+26.3.jar`.

@@ -59,6 +59,7 @@
 			"com.stella.spells.ArrowCraftingGameTest",
 			"com.stella.spells.QuiverGameTest",
 			"com.stella.spells.BlitzBeatGameTest",
+			"com.stella.spells.ArcherVisualsGameTest",
 			"com.stella.spells.ConcentrateSeamGameTest",
 			"com.stella.spells.PriestBooksGameTest",
 			"com.stella.spells.UnbrokenVowGameTest",
