@@ -14,6 +14,7 @@
 			"com.stella.mobs.WitherSkullGameTest",
 			"com.stella.mobs.WitherMinionGameTest",
 			"com.stella.mobs.WitherRageGameTest",
+			"com.stella.mobs.WitherRainGameTest",
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
 			"com.stella.mobs.BlazeAttackGameTest",
