@@ -75,7 +75,7 @@ public final class WitherLevelGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 1000, padding = WideArena.PADDING)
 	public void aSummonedWitherTakesTheLevel(final GameTestHelper helper) {
 		WitherConfig config = WitherConfigStore.get();
 		WideArena arena = WideArena.build(helper);

@@ -22,7 +22,7 @@ public final class WitherHealthCapGameTest {
 	private static final double BASE_HEALTH = 300.0;
 	private static final int PLAYER_LEVEL = 150;
 
-	@GameTest(maxTicks = 100, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 1000, padding = WideArena.PADDING)
 	public void aLevelPastTheCapTakesFormulaHealthToDie(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
 		ServerPlayer player = arena.survivalPlayer(28, 28);

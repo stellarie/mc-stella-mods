@@ -12,6 +12,7 @@
 			"com.stella.mobs.WitherMovementGameTest",
 			"com.stella.mobs.WitherHealthCapGameTest",
 			"com.stella.mobs.WitherSkullGameTest",
+			"com.stella.mobs.WitherMinionGameTest",
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
 			"com.stella.mobs.BlazeAttackGameTest",

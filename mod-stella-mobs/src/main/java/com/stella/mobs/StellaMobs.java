@@ -132,6 +132,7 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(IllusionerKit::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(BloodMoon::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(com.stella.mobs.behavior.WitherMinions::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
 		// Before the spawn chunks load, so loaded mobs rescale with the file's numbers.
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
@@ -289,6 +290,10 @@ public class StellaMobs implements ModInitializer {
 
 	/** W10 and B1: a witch drops one of every potion it carries, and a boss leaves the aura sweep. */
 	private static void onEntityDeath(final LivingEntity entity, final DamageSource source) {
+		if (entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss wither) {
+			com.stella.mobs.behavior.WitherEncounter.onDeath(wither);
+		}
+
 		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
 			StellaMobs.LOGGER.info(
 				"[BEHAVIOR] test=bossBarWatch t={} REMOVE uuid={} cause=death source={}",

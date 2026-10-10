@@ -34,7 +34,8 @@
 		"TrueInvisibilityMobMixin",
 		"TrueInvisibilitySightMixin",
 		"WitherBossMixin",
-		"WitherBossInvoker"
+		"WitherBossInvoker",
+		"WitherMinionLootMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

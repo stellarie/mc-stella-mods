@@ -388,11 +388,16 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
   their own.
 - Health: the vanilla attribute caps max health at 1024. The part of the formula health it cannot hold is kept as a
   divisor on every hit, so a level 170 Wither still takes 25,800 damage to die. The bar reads health over max health.
-- Skull: it breaks no block. It hurts every body within \`blast.radius\` (2 blocks) of its impact, except the Wither,
-  its minions, other enemies and spectators. A hit is \`share\` times the level hit (standard hit is 8 times the damage
-  multiplier plus the flat part), adds Wither, and with \`blast.rider_chance\` (40 percent) adds chill or burning, evenly.
-- Volley: one aimed skull at \`aim.share\` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
-  \`aim.interval_min + (aim.interval_max - aim.interval_min) * health\`: 40 ticks at full health, 12 at none.
+- Skull: it breaks no block. It hurts every body within `blast.radius` (2 blocks) of its impact, except the Wither,
+  its minions, other enemies and spectators. A hit is `share` times the level hit (standard hit is 8 times the damage
+  multiplier plus the flat part), adds Wither, and with `blast.rider_chance` (40 percent) adds chill or burning, evenly.
+- Minions: from the activation, and every `minions.wave_interval` ticks (160), the Wither calls skeletons, zombies, husks,
+  strays and wither skeletons (weights 25, 25, 15, 15, 20) between `minions.spawn_min` and `minions.spawn_max` blocks away
+  (10 to 32), on a floor within 8 blocks of its height, at least 6 blocks from every player. A minion is half the Wither's
+  level, carries fire resistance, and drops no loot, no equipment and no experience. The cap is 6 plus 3 per player within 48
+  blocks, at most 18. No wave comes during a rage or in the 100 ticks after it. The Wither's death or removal takes the rest.
+- Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
+  `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 40 ticks at full health, 12 at none.
 
 ## Bosses
 

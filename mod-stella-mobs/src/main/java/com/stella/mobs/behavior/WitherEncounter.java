@@ -107,6 +107,7 @@ public final class WitherEncounter {
 		if (installed) {
 			return;
 		}
+		WitherMinions.watch(wither);
 		wither.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedAttackGoal);
 		wither.getGoalSelector().addGoal(PURSUE_PRIORITY, new WitherPursueGoal(wither));
 		wither.getGoalSelector().addGoal(PURSUE_PRIORITY, new WitherVolleyGoal(wither));
@@ -185,6 +186,14 @@ public final class WitherEncounter {
 		WitherState.set(mob, state.withHealthDivisor(divisor));
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter SPAWN uuid={} level={} health={} formula={} divisor={}",
 			mob.getUUID(), ThreatState.level(mob), mob.getMaxHealth(), formula, divisor);
+	}
+
+	/** The Wither is dead: its minions and its skulls in the air go with it. */
+	public static void onDeath(final WitherBoss wither) {
+		if (isEncounter(wither)) {
+			WitherMinions.discardAll(wither);
+			WitherShots.discardAll(wither);
+		}
 	}
 
 	/** A hit's damage once the health the attribute could not hold is taken off. */

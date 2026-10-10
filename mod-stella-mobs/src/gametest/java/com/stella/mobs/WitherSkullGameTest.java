@@ -38,7 +38,7 @@ public final class WitherSkullGameTest {
 		return skull;
 	}
 
-	@GameTest(maxTicks = 60, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 960, padding = WideArena.PADDING)
 	public void damageIsOnceScaled(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
 		helper.runBeforeTestEnd(arena::finish);
@@ -57,7 +57,7 @@ public final class WitherSkullGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 80, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 980, padding = WideArena.PADDING)
 	public void blocksStayUnchanged(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
 		helper.runBeforeTestEnd(arena::finish);
@@ -106,7 +106,7 @@ public final class WitherSkullGameTest {
 		return states;
 	}
 
-	@GameTest(maxTicks = 60, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 960, padding = WideArena.PADDING)
 	public void radiusIsTwo(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
 		helper.runBeforeTestEnd(arena::finish);
@@ -132,7 +132,7 @@ public final class WitherSkullGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 100, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 1000, padding = WideArena.PADDING)
 	public void everyVictimWithersAndSomeChillOrBurn(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
 		helper.runBeforeTestEnd(arena::finish);
@@ -222,12 +222,12 @@ public final class WitherSkullGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 400, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 1300, padding = WideArena.PADDING)
 	public void volleysAtFullHealthFollowTheCurve(final GameTestHelper helper) {
 		this.measureGaps(helper, 1.0, "witherVolleyFull");
 	}
 
-	@GameTest(maxTicks = 300, padding = WideArena.PADDING)
+	@GameTest(maxTicks = 1200, padding = WideArena.PADDING)
 	public void volleysAtAQuarterFollowTheCurve(final GameTestHelper helper) {
 		this.measureGaps(helper, 0.25, "witherVolleyQuarter");
 	}

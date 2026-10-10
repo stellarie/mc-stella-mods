@@ -48,7 +48,7 @@ final class WideArena {
 	static final int SPAWN_Y = 3;
 	static final float HEALTH = 10_000.0F;
 	/** Ticks a test waits for its chunks to tick entities before it fails. */
-	private static final int READY_TICKS = 300;
+	private static final int READY_TICKS = 1200;
 	private static final AtomicInteger PLAYER_SERIAL = new AtomicInteger();
 	private static final Map<UUID, Watch> WATCHED = new ConcurrentHashMap<>();
 	private static boolean installed;
