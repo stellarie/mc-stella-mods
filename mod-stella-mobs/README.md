@@ -441,6 +441,13 @@ reads it.
 `mod-stella-mobs:container-level`. It returns the level of a spot for container loot: the mob floor there plus the
 altitude levels, never below the dimension minimum. It has no random variation. The equips container loot reads it.
 
+`com.stella.mobs.api.ApplyLevelProvider` puts a `BiConsumer<Mob, Integer>` under `mod-stella-mobs:apply-level`.
+A mod that owns a mob (the mob carries `mod-stella-mobs.no_spawn_roll`) gives it a level. The mob then gets the health
+scaling of a natural spawn at that level, and its melee damage scales unless its hits already follow the level path
+(the `self_scaled` tag). The call rolls no elite, boss or variation, and it fixes the mob's threat level to the value.
+A negative or absurd level (above 100000), a second call, an elite or boss, and a mob without the no-roll tag change
+nothing and do not throw. The ruins mod uses it for its site mobs.
+
 `SpawnScaling.LEVEL_HEALTH_BONUS` stays public: `mod-stella-spells` reads it by name for its summons.
 
 ## Elite bounty

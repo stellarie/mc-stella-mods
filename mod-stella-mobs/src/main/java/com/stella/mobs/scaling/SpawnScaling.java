@@ -2,6 +2,7 @@ package com.stella.mobs.scaling;
 
 import com.stella.mobs.StellaMobs;
 import com.stella.mobs.behavior.Bosses;
+import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.Traits;
 import com.stella.mobs.config.GearConfigStore;
 import com.stella.mobs.config.ScalingConfig;
@@ -151,6 +152,32 @@ public final class SpawnScaling {
 	/** Saved mobs keep their health percentage while old modifiers migrate. */
 	public static void reconcileLoaded(final Mob mob) {
 		apply(mob, true);
+	}
+
+	/** Tags a mob whose level another mod fixed, so it is never fixed twice. */
+	public static final String LEVEL_APPLIED_TAG = "mod-stella-mobs.level_applied";
+	/** The highest level a caller may fix. A larger value is a mistake, not a level. */
+	public static final int MAX_FIXED_LEVEL = 100_000;
+
+	/**
+	 * Fixes the threat level of a mob another mod owns and scales it as a natural spawn of that level is: health, and
+	 * melee damage when its hits do not already follow the level path. It rolls no elite, boss or variation. Returns
+	 * false, and changes nothing, for a bad level, a mob without the no-roll tag, an elite or boss, or a mob already fixed.
+	 */
+	public static boolean applyFixedLevel(final Mob mob, final int level) {
+		if (mob == null || level < 0 || level > MAX_FIXED_LEVEL || !mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)
+			|| mob.entityTags().contains(LEVEL_APPLIED_TAG) || EliteState.hasEliteFlag(mob) || EliteState.hasBossFlag(mob)) {
+			return false;
+		}
+		mob.addTag(LEVEL_APPLIED_TAG);
+		((net.fabricmc.fabric.api.attachment.v1.AttachmentTarget) mob).setAttached(ThreatState.TYPE, new ThreatState(level, 0, 0, 0));
+		applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthMultiplier(level) - 1.0);
+		// A self-scaled mob's hits follow the level in the hurt hook already, so its attribute stays as its owner set it.
+		if (!SelfScaled.owned(mob)) {
+			applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, damageMultiplier(level) - 1.0);
+		}
+		mob.setHealth(mob.getMaxHealth());
+		return true;
 	}
 
 	private static void apply(final Mob mob, final boolean preserveHealth) {
