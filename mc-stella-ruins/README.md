@@ -143,6 +143,33 @@ These rules ride on every reset site, and the trophy and the omens ride on every
 - **Vault capacity.** A vault holds 27 stacks. A reward that has no free slot waits in the vault, is saved with it,
   and drops above the vault when a player opens it.
 
+## Mob levels
+
+With the mobs mod present, a site mob scales like the rest of the pack. `RuinMobKind.spawn` keeps the
+`mod-stella-mobs.no_spawn_roll` tag, so the mod's natural roll (elite, boss, variation) never runs. After the mob is
+added, the ruins mod calls the mobs mod's `mod-stella-mobs:apply-level` share by key and gives the mob its site level:
+
+`site level = area level + large bonus + tier levels x tier + boss bonus`
+
+- **Area level.** The mobs mod's threat level for a fresh mob at the spot: distance from 0,0, biome and altitude. It
+  includes the mod's own variation, so mobs of one site differ by a few levels.
+- **Large bonus.** 10 for a large site, 0 for a small one. The site and its tier come from the nearest core within 64
+  blocks. A mob spawned away from any core (a test, a summon far off) takes no site bonus.
+- **Tier levels.** 5 for each reset tier (0 to 3). The tier's own health and damage steps from "Tiers, omens and
+  trophies" still apply on top.
+- **Boss bonus.** 10 for a kind marked boss.
+- **Kind factors.** The kind's multipliers come on top of the level-scaled base, as before. A boss kind is the
+  exception for health: its factor keeps only `site_boss_health_share` (0.3) of its excess over 1, because the level
+  already multiplies the base. A factor of 8 becomes 3.1.
+- **Damage and armor.** A site mob's hits already follow its level through the mobs mod's hurt path, and armor
+  normalization and piercing read the same level. The share adds only the level and the health.
+- **Without the mobs mod,** or with `site_mob_scaling` false, nothing changes: site mobs keep the kind's old stats.
+
+Health stops at the game's attribute cap of 1024. A fixed iron-sword blow of 7 damage needs, near spawn (area 0,
+large site, tier 0): the test husk (health x2) 35 blows against 18 for a natural mob of its level 10; the Spectral Knight
+18 against 18; the Castellan (boss, level 20) 98 against 32 for a natural mob of that level. At area 40 the knight
+needs 75 and the Castellan 147 (capped; natural 89). At area 150 every mob is at the cap.
+
 ## Themed mobs
 
 ```java
@@ -209,6 +236,11 @@ The file is `config/mod-stella-ruins/ruins.json`. A bad entry logs a warning and
 | `tier_cap` | 3 | The highest tier |
 | `tier_health_step` | 0.25 | Health gain for each tier |
 | `tier_damage_step` | 0.10 | Damage gain for each tier |
+| `site_mob_scaling` | true | Whether site mobs take a level from the mobs mod |
+| `site_level_large_bonus` | 10 | Levels a large site adds |
+| `site_level_per_tier` | 5 | Levels each tier adds |
+| `site_level_boss_bonus` | 10 | Levels a boss kind adds |
+| `site_boss_health_share` | 0.3 | The share of a boss kind's health factor above 1 that is kept |
 
 ## Sets, hybrids and affixes
 

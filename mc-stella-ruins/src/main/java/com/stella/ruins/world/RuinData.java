@@ -201,6 +201,22 @@ public final class RuinData extends SavedData {
 		return false;
 	}
 
+	/** The core nearest to a spot within a flat radius, or null when none stands there. */
+	public @Nullable Entry nearest(final BlockPos pos, final int radius) {
+		Entry best = null;
+		long bestDistance = (long) radius * radius;
+		for (Entry entry : this.entries.values()) {
+			long dx = entry.pos.getX() - pos.getX();
+			long dz = entry.pos.getZ() - pos.getZ();
+			long distance = dx * dx + dz * dz;
+			if (distance <= bestDistance) {
+				bestDistance = distance;
+				best = entry;
+			}
+		}
+		return best;
+	}
+
 	/** Drops a core's record and its roster index. */
 	public void forget(final BlockPos pos) {
 		Entry entry = this.entries.remove(pos);
