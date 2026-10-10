@@ -420,6 +420,27 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
                 errors.append(f"duplicate texture bytes: {path} and {hashes[digest]}")
             hashes[digest] = path
 
+    # Every scroll is paper tinted by its item definition, so a scroll model never names its own texture.
+    spellbooks_source = (root / "mod-stella-spells/src/main/java/com/stella/spells/Spellbooks.java").read_text(encoding="utf-8")
+    book_only_line = re.search(r"BOOK_ONLY = java\.util\.Set\.of\((.*?)\);", spellbooks_source)
+    book_only = set(re.findall(r'"([a-z0-9_]+)"\)', book_only_line.group(1))) if book_only_line else set()
+    for path in catalog:
+        if path in book_only:
+            continue
+        scroll = f"{path}_scroll"
+        scroll_item = root / ITEM_ROOT / f"{scroll}.json"
+        scroll_model = root / MODEL_ROOT / f"{scroll}.json"
+        if not scroll_item.exists():
+            errors.append(f"missing scroll item definition: {scroll_item}")
+        elif "tints" not in json.loads(scroll_item.read_text(encoding="utf-8")).get("model", {}):
+            errors.append(f"scroll item definition has no tint: {scroll_item}")
+        if not scroll_model.exists():
+            errors.append(f"missing scroll model: {scroll_model}")
+        else:
+            layer = json.loads(scroll_model.read_text(encoding="utf-8")).get("textures", {}).get("layer0")
+            if layer != "minecraft:item/paper":
+                errors.append(f"scroll model does not use tinted paper: {scroll_model} -> {layer}")
+
     if jar_path is not None:
         if not jar_path.exists():
             errors.append(f"jar does not exist: {jar_path}")
