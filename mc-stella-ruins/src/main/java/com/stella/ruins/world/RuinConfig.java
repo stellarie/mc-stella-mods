@@ -29,40 +29,53 @@ public final class RuinConfig {
 	public static final double DEFAULT_TIER_HEALTH_STEP = 0.25;
 	public static final double DEFAULT_TIER_DAMAGE_STEP = 0.10;
 
+	/**
+	 * How a site mob's level is built when the mobs mod is present: the area level at the core, plus {@code largeBonus}
+	 * for a large site, plus {@code tierLevels} for each tier, plus {@code bossBonus} for a boss kind. A boss kind's health
+	 * factor keeps only {@code bossHealthShare} of its excess over 1, because the level already multiplies the base.
+	 */
+	public record Scaling(boolean enabled, int largeBonus, int tierLevels, int bossBonus, double bossHealthShare) {
+		public static final Scaling DEFAULTS = new Scaling(true, 10, 5, 10, 0.3);
+	}
+
 	/** One reading of the file. */
 	public record Values(double clueChance, double uniqueDropChance, int vaultLevelsPerRoll, int vaultRollsMax, Map<String, Integer> resetDays,
-		double trophyChance, double pityStep, double leadChance, int tierCap, double tierHealthStep, double tierDamageStep) {
+		double trophyChance, double pityStep, double leadChance, int tierCap, double tierHealthStep, double tierDamageStep, Scaling scaling) {
 		public Values {
 			resetDays = Map.copyOf(resetDays);
 		}
 
 		public static Values defaults() {
 			return new Values(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX, Map.of(),
-				DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE, DEFAULT_TIER_CAP, DEFAULT_TIER_HEALTH_STEP, DEFAULT_TIER_DAMAGE_STEP);
+				DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE, DEFAULT_TIER_CAP, DEFAULT_TIER_HEALTH_STEP, DEFAULT_TIER_DAMAGE_STEP, Scaling.DEFAULTS);
 		}
 
 		public Values withClueChance(final double value) {
-			return new Values(value, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
+			return new Values(value, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep, scaling);
 		}
 
 		public Values withUniqueDropChance(final double value) {
-			return new Values(clueChance, value, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
+			return new Values(clueChance, value, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep, scaling);
 		}
 
 		public Values withResetDays(final Map<String, Integer> value) {
-			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, value, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, value, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep, scaling);
 		}
 
 		public Values withTrophy(final double chance, final double step) {
-			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, chance, step, leadChance, tierCap, tierHealthStep, tierDamageStep);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, chance, step, leadChance, tierCap, tierHealthStep, tierDamageStep, scaling);
 		}
 
 		public Values withLeadChance(final double value) {
-			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, value, tierCap, tierHealthStep, tierDamageStep);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, value, tierCap, tierHealthStep, tierDamageStep, scaling);
 		}
 
 		public Values withTiers(final int cap, final double healthStep, final double damageStep) {
-			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, cap, healthStep, damageStep);
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, cap, healthStep, damageStep, scaling);
+		}
+
+		public Values withScaling(final Scaling value) {
+			return new Values(clueChance, uniqueDropChance, vaultLevelsPerRoll, vaultRollsMax, resetDays, trophyChance, pityStep, leadChance, tierCap, tierHealthStep, tierDamageStep, value);
 		}
 
 		/** How many times a vault rolls its table at this level. */
@@ -144,7 +157,12 @@ public final class RuinConfig {
 		int tierCap = positive(object, "tier_cap", defaults.tierCap());
 		double healthStep = chance(object, "tier_health_step", defaults.tierHealthStep());
 		double damageStep = chance(object, "tier_damage_step", defaults.tierDamageStep());
-		return new Values(clue, unique, perRoll, rollsMax, days, trophy, pity, lead, tierCap, healthStep, damageStep);
+		boolean scale = bool(object, "site_mob_scaling", defaults.scaling().enabled());
+		int large = whole(object, "site_level_large_bonus", defaults.scaling().largeBonus());
+		int perTier = whole(object, "site_level_per_tier", defaults.scaling().tierLevels());
+		int boss = whole(object, "site_level_boss_bonus", defaults.scaling().bossBonus());
+		double bossShare = chance(object, "site_boss_health_share", defaults.scaling().bossHealthShare());
+		return new Values(clue, unique, perRoll, rollsMax, days, trophy, pity, lead, tierCap, healthStep, damageStep, new Scaling(scale, large, perTier, boss, bossShare));
 	}
 
 	private static double chance(final JsonObject object, final String key, final double fallback) {
@@ -161,6 +179,31 @@ public final class RuinConfig {
 			// A string or an object falls through to the warning.
 		}
 		StellaRuins.LOGGER.warn("[RUINS] {} must be a number from 0 to 1, using {}", key, fallback);
+		return fallback;
+	}
+
+	private static boolean bool(final JsonObject object, final String key, final boolean fallback) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean()) {
+			return element.getAsBoolean();
+		}
+		StellaRuins.LOGGER.warn("[RUINS] {} must be true or false, using {}", key, fallback);
+		return fallback;
+	}
+
+	private static int whole(final JsonObject object, final String key, final int fallback) {
+		JsonElement element = object.get(key);
+		if (element == null) {
+			return fallback;
+		}
+		Integer value = integer(element);
+		if (value != null && value >= 0) {
+			return value;
+		}
+		StellaRuins.LOGGER.warn("[RUINS] {} must be a whole number of 0 or more, using {}", key, fallback);
 		return fallback;
 	}
 
@@ -199,7 +242,12 @@ public final class RuinConfig {
 			  "lead_chance": %s,
 			  "tier_cap": %d,
 			  "tier_health_step": %s,
-			  "tier_damage_step": %s
+			  "tier_damage_step": %s,
+			  "site_mob_scaling": true,
+			  "site_level_large_bonus": 10,
+			  "site_level_per_tier": 5,
+			  "site_level_boss_bonus": 10,
+			  "site_boss_health_share": 0.3
 			}
 			""".formatted(DEFAULT_CLUE_CHANCE, DEFAULT_UNIQUE_DROP_CHANCE, DEFAULT_VAULT_LEVELS_PER_ROLL, DEFAULT_VAULT_ROLLS_MAX,
 			DEFAULT_TROPHY_CHANCE, DEFAULT_PITY_STEP, DEFAULT_LEAD_CHANCE, DEFAULT_TIER_CAP, DEFAULT_TIER_HEALTH_STEP, DEFAULT_TIER_DAMAGE_STEP);

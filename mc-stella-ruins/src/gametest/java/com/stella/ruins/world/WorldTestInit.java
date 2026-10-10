@@ -51,6 +51,8 @@ public final class WorldTestInit implements ModInitializer {
 	}
 
 	static RuinMobKind husk;
+	/** A boss kind built on the husk, for the level scaling of bosses. */
+	static RuinMobKind boss;
 	static Item relic;
 	static RuinSite surface;
 	static RuinSite reset;
@@ -86,6 +88,8 @@ public final class WorldTestInit implements ModInitializer {
 			RuinConfig.replace(RuinConfig.get().withTrophy(0.0, 0.0).withLeadChance(0.0));
 			// An omen changes a roster and a vault, so the suite rolls none and a test that needs one sets it.
 			Omens.replaceRoller((random, tier) -> java.util.List.of());
+			// Level scaling of site mobs needs the mobs mod and changes every health number, so a test that needs it turns it on.
+			RuinConfig.replace(RuinConfig.get().withScaling(new RuinConfig.Scaling(false, 10, 5, 10, 0.3)));
 		});
 		ResourceKey<Item> relicKey = ResourceKey.create(Registries.ITEM, StellaRuins.id("test_relic"));
 		relic = Registry.register(BuiltInRegistries.ITEM, relicKey, new Item(new Item.Properties().setId(relicKey)));
@@ -111,6 +115,14 @@ public final class WorldTestInit implements ModInitializer {
 				}
 			})
 			.drops(HUSK_DROPS)
+			.register();
+
+		boss = RuinMobKind.builder("test_boss")
+			.base(EntityTypes.HUSK)
+			.name("mob.mod-stella-ruins-test.husk")
+			.health(8.0)
+			.damage(1.5)
+			.boss(true)
 			.register();
 
 		Roster three = Roster.builder().add(husk, 3).build();

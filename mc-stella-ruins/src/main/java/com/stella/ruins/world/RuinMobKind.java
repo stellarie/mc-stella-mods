@@ -147,7 +147,9 @@ public final class RuinMobKind {
 		mob.setCanPickUpLoot(false);
 		mob.setCustomName(Component.translatable(this.nameKey));
 		mob.setCustomNameVisible(this.boss);
-		applyAttributes(mob);
+		RuinConfig.Scaling scaling = RuinConfig.get().scaling();
+		boolean levelled = scaling.enabled() && RuinLevels.canApply();
+		applyAttributes(mob, levelled && this.boss ? 1.0 + (this.health - 1.0) * scaling.bossHealthShare() : this.health);
 		this.gear.forEach((slot, stack) -> {
 			mob.setItemSlot(slot, stack.get());
 			mob.setDropChance(slot, 0.0F);
@@ -156,17 +158,45 @@ public final class RuinMobKind {
 			mob.addEffect(new MobEffectInstance(effect.effect(), MobEffectInstance.INFINITE_DURATION, effect.amplifier(), false, false));
 		}
 		level.addFreshEntityWithPassengers(mob);
+		scale(level, mob, at);
 		// Reading the level fixes it at this spot, before the first fight.
 		RuinLevels.of(mob);
 		return mob;
 	}
 
-	private void applyAttributes(final Mob mob) {
+	/** How far from a core a spawn still belongs to its site, in blocks. */
+	private static final int CORE_REACH = 64;
+
+	/**
+	 * Gives the mob the level of its site through the mobs mod: the area level at the spot, plus the bonuses of the site
+	 * size, the tier and the boss kind. The no-roll tag stays, so the natural roll never runs on top. Does nothing when
+	 * the mobs mod is absent or the config switches the scaling off.
+	 */
+	private void scale(final ServerLevel level, final Mob mob, final Vec3 at) {
+		RuinConfig.Scaling scaling = RuinConfig.get().scaling();
+		if (!scaling.enabled() || !RuinLevels.canApply()) {
+			return;
+		}
+		RuinData.Entry core = RuinData.get(level).nearest(net.minecraft.core.BlockPos.containing(at), CORE_REACH);
+		RuinSite site = core == null ? null : RuinSites.get(core.site());
+		int area = RuinLevels.fixedArea(level, core == null ? at : Vec3.atCenterOf(core.pos()));
+		if (area < 0) {
+			area = RuinLevels.of(mob);
+		}
+		if (area < 0) {
+			return;
+		}
+		SiteSize size = site == null ? SiteSize.SMALL : site.size();
+		int tier = core == null ? 0 : core.tier();
+		RuinLevels.apply(mob, SiteLevels.level(area, size, tier, this.boss, scaling));
+	}
+
+	private void applyAttributes(final Mob mob, final double healthFactor) {
 		AttributeInstance scaleAttribute = mob.getAttribute(Attributes.SCALE);
 		if (scaleAttribute != null && this.scale != 1.0F) {
 			scaleAttribute.setBaseValue(this.scale);
 		}
-		multiply(mob, Attributes.MAX_HEALTH, HEALTH_ID, this.health);
+		multiply(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthFactor);
 		multiply(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, this.damage);
 		multiply(mob, Attributes.MOVEMENT_SPEED, SPEED_ID, this.speed);
 		mob.setHealth(mob.getMaxHealth());

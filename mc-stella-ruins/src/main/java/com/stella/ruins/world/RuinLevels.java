@@ -1,11 +1,13 @@
 package com.stella.ruins.world;
 
 import com.stella.ruins.StellaRuins;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -50,6 +52,43 @@ public final class RuinLevels {
 		} catch (ClassCastException e) {
 			warnOnce(THREAT_LEVEL_KEY, e);
 			return -1;
+		}
+	}
+
+	public static final String APPLY_LEVEL_KEY = "mod-stella-mobs:apply-level";
+
+	private static volatile BiFunction<ServerLevel, Vec3, Integer> areaSource;
+
+	/** Replaces the area level source and returns the old one, so a test can restore it in a finally block. */
+	public static BiFunction<ServerLevel, Vec3, Integer> replaceAreaSource(final BiFunction<ServerLevel, Vec3, Integer> replacement) {
+		BiFunction<ServerLevel, Vec3, Integer> old = areaSource;
+		areaSource = replacement;
+		return old;
+	}
+
+	/** The area level a test fixed for a spot, or -1 when none is set. */
+	static int fixedArea(final ServerLevel level, final Vec3 at) {
+		BiFunction<ServerLevel, Vec3, Integer> source = areaSource;
+		Integer value = source == null ? null : source.apply(level, at);
+		return value == null ? -1 : value;
+	}
+
+	/** True when the mobs mod publishes the level fix. */
+	public static boolean canApply() {
+		return FabricLoader.getInstance().getObjectShare().get(APPLY_LEVEL_KEY) instanceof BiConsumer<?, ?>;
+	}
+
+	/** Gives a mob the level through the mobs mod. Does nothing when the share is absent or has another type. */
+	@SuppressWarnings("unchecked")
+	public static void apply(final Mob mob, final int level) {
+		Object share = FabricLoader.getInstance().getObjectShare().get(APPLY_LEVEL_KEY);
+		if (!(share instanceof BiConsumer<?, ?>)) {
+			return;
+		}
+		try {
+			((BiConsumer<Mob, Integer>) share).accept(mob, level);
+		} catch (ClassCastException e) {
+			warnOnce(APPLY_LEVEL_KEY, e);
 		}
 	}
 
