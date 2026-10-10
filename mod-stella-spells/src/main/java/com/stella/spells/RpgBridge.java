@@ -35,6 +35,8 @@ public final class RpgBridge {
 	static final String RPG_SPELLS_CLASS = "com.stella.rpg.RpgSpells";
 	static final String RPG_SKILLS_CLASS = "com.stella.rpg.RpgSkills";
 	static final String ATTACK_PREVIEW_CLASS = "com.stella.rpg.AttackPreview";
+	/** The six stat keys the RPG mod knows, summed for a creature that scales with the whole character. */
+	private static final String[] STAT_KEYS = {"str", "agi", "vit", "dex", "int", "luk"};
 
 	/** What the RPG mod gives a spell: the calls its {@code RpgSpells} makes. */
 	public interface Stats {
@@ -92,6 +94,11 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
+		/** The sum of the caster six stats, STR AGI VIT DEX INT LUK; NaN when the RPG mod gives none. */
+		default double statTotal(final LivingEntity caster) {
+			return Double.NaN;
+		}
+
 		/** The lowest MATK roll in K units; NaN when the RPG mod gives none. */
 		default double matkMin(final LivingEntity caster) {
 			return Double.NaN;
@@ -121,6 +128,9 @@ public final class RpgBridge {
 
 		/** The low end of the Atk range, ranged from DEX or melee from STR, in K units; NaN when unknown. */
 		double floorAtk(LivingEntity caster, boolean ranged);
+
+		/** The sum of the six stats; NaN when unknown. */
+		double statTotal(LivingEntity caster);
 	}
 
 	/** A bridge with no skill numbers: every question answers NaN, so each caller keeps its own flat number. */
@@ -162,6 +172,11 @@ public final class RpgBridge {
 
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
+			return Double.NaN;
+		}
+
+		@Override
+		public double statTotal(final LivingEntity caster) {
 			return Double.NaN;
 		}
 	};
@@ -226,6 +241,11 @@ public final class RpgBridge {
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return this.skills.floorAtk(caster, ranged);
+		}
+
+		@Override
+		public double statTotal(final LivingEntity caster) {
+			return this.skills.statTotal(caster);
 		}
 
 		@Override
@@ -299,6 +319,11 @@ public final class RpgBridge {
 		} catch (ReflectiveOperationException | LinkageError | RuntimeException e) {
 			return NONE;
 		}
+	}
+
+	/** The sum of the caster six stats, or NaN when the RPG mod gives none. */
+	static double statTotal(final LivingEntity caster) {
+		return stats().statTotal(caster);
 	}
 
 	/** The caster floor ATK in K units, or NaN when the RPG mod gives none. */
@@ -476,6 +501,22 @@ public final class RpgBridge {
 					return source == null ? null : (DamageSource) source.invokeExact(caster);
 				} catch (Throwable e) {
 					return null;
+				}
+			}
+
+			@Override
+			public double statTotal(final LivingEntity caster) {
+				if (stat == null) {
+					return Double.NaN;
+				}
+				try {
+					double total = 0.0;
+					for (String key : STAT_KEYS) {
+						total += (double) stat.invokeExact(caster, key);
+					}
+					return total;
+				} catch (Throwable e) {
+					return Double.NaN;
 				}
 			}
 

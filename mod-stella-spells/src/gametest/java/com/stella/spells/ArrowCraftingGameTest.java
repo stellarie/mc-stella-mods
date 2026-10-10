@@ -59,7 +59,7 @@ public class ArrowCraftingGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void arrowCraftingTurnsEachMaterialIntoEightArrowsOfItsKindAndSpendsOne(final GameTestHelper helper) {
+	public void arrowCraftingTurnsEachMaterialIntoThirtyTwoArrowsOfItsKindAndSpendsOne(final GameTestHelper helper) {
 		ServerPlayer caster = FighterBooksGameTest.caster(helper);
 		List<String> report = new ArrayList<>();
 		for (ArrowItems.Craft craft : ArrowItems.CRAFTS) {
@@ -76,7 +76,7 @@ public class ArrowCraftingGameTest {
 			helper.assertTrue(allArrows == arrows, "the craft gave arrows of another kind too: " + allArrows);
 			helper.assertTrue(left == 2, BuiltInRegistries.ITEM.getKey(craft.material()) + " left " + left + ", so the cast spent " + (3 - left));
 		}
-		LOG.info("[BEHAVIOR] test=arrowCraftingTurnsEachMaterialIntoEightArrowsOfItsKindAndSpendsOne RESULT kinds={} report={}",
+		LOG.info("[BEHAVIOR] test=arrowCraftingTurnsEachMaterialIntoThirtyTwoArrowsOfItsKindAndSpendsOne RESULT kinds={} report={}",
 			ArrowItems.CRAFTS.size(), report);
 		helper.assertTrue(ArrowItems.CRAFTS.size() == 10, "the catalog has " + ArrowItems.CRAFTS.size() + " materials, not 10");
 		helper.succeed();
@@ -103,17 +103,17 @@ public class ArrowCraftingGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void anAwakenedArrowCraftingGivesTwelve(final GameTestHelper helper) {
+	public void anAwakenedArrowCraftingGivesFortyEight(final GameTestHelper helper) {
 		ServerPlayer caster = FighterBooksGameTest.caster(helper);
 		caster.getInventory().clearContent();
 		caster.getInventory().setItem(12, new ItemStack(Items.IRON_INGOT, 2));
 		boolean applied = ArcherSkills.applyArrowCrafting(caster, null, caster.position(), SkillSchoolGameTest.modifiers(caster, true));
 		int arrows = caster.getInventory().countItem(ArrowItems.BY_KIND.get(ArrowKind.IRON));
-		LOG.info("[BEHAVIOR] test=anAwakenedArrowCraftingGivesTwelve RESULT applied={} arrows={} plain={} awakened={}",
+		LOG.info("[BEHAVIOR] test=anAwakenedArrowCraftingGivesFortyEight RESULT applied={} arrows={} plain={} awakened={}",
 			applied, arrows, ArcherSkills.ARROW_CRAFTING_ARROWS, ArcherSkills.AWAKENED_ARROW_CRAFTING_ARROWS);
 		helper.assertTrue(applied, "the awakened craft never applied");
 		helper.assertTrue(arrows == ArcherSkills.AWAKENED_ARROW_CRAFTING_ARROWS, "the awakened craft gave " + arrows);
-		helper.assertTrue(ArcherSkills.AWAKENED_ARROW_CRAFTING_ARROWS == 12 && ArcherSkills.ARROW_CRAFTING_ARROWS == 8,
+		helper.assertTrue(ArcherSkills.AWAKENED_ARROW_CRAFTING_ARROWS == 48 && ArcherSkills.ARROW_CRAFTING_ARROWS == 32,
 			"the book is declared as " + ArcherSkills.ARROW_CRAFTING_ARROWS + " and " + ArcherSkills.AWAKENED_ARROW_CRAFTING_ARROWS);
 		helper.succeed();
 	}

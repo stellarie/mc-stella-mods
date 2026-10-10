@@ -1,0 +1,16 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"C C",
+		" B ",
+		"C C"
+	],
+	"key": {
+		"C": "minecraft:cooked_beef",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:summon_wolf",
+		"count": 1
+	}
+}

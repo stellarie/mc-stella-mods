@@ -33,6 +33,8 @@ public final class SkillbookCatalog {
 		definition("triangle_shot", Items.FIREWORK_ROCKET, 300, 12_073_293, TargetMode.SELF, ArcherSkills::applyTriangleShot, School.ARCHER),
 		definition("eagle_eye", Items.SPYGLASS, 600, 13_964_170, TargetMode.SELF, ArcherSkills::applyEagleEye, School.ARCHER),
 		definition("elemental_quiver", Items.BOW, 400, 2_935_071, TargetMode.SELF, ArcherSkills::applyElementalQuiver, School.ARCHER),
+		definition("vultures_eye", Items.ENDER_EYE, 600, 10_385_966, TargetMode.SELF, ArcherSkills::applyVulturesEye, School.ARCHER),
+		definition("summon_wolf", Items.COOKED_BEEF, SummonWolf.COOLDOWN_TICKS, 9_074_517, TargetMode.SELF, SummonWolf::apply, School.ARCHER),
 		// The priest books: VIT, healing, and the holy damage this stage doubles against the undead.
 		definition("holy_light", Items.GLOW_BERRIES, 100, 16_711_834, TargetMode.ALLY, PriestSkills::applyHolyLight, School.PRIEST),
 		definition("prayer_of_mending", Items.PINK_PETALS, 200, 16_420_267, TargetMode.ALLY, PriestSkills::applyPrayerOfMending, School.PRIEST),

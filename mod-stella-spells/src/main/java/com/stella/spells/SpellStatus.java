@@ -62,6 +62,7 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> ARCANE_WARD = register("arcane_ward", new Ward());
 	public static final Holder<MobEffect> BLEEDING = register("bleeding", new Bleeding());
 	/** The archer's own eye: a mark that its skill hits are worth more, read by {@link ArcherSkills#hit}. */
+	public static final Holder<MobEffect> VULTURES_EYE = register("vultures_eye", new Status(MobEffectCategory.BENEFICIAL, 0x9F7A2E));
 	public static final Holder<MobEffect> BLITZ_BEAT = register("blitz_beat", new Status(MobEffectCategory.BENEFICIAL, 0xE0303A));
 	public static final Holder<MobEffect> EAGLE_EYE = register("eagle_eye", new Status(MobEffectCategory.BENEFICIAL, 0x6FB34A));
 	/** The reworked archer buffs: a steadied aim, a quiver that needs no arrow, and a faster step. */
@@ -115,7 +116,8 @@ public final class SpellStatus {
 			return amount;
 		}
 		// A shot that owes a book pays for it here, so the whole hit of that arrow is worth the book's number.
-		float result = amount * ArcherSkills.projectileDamage(victim, source) * ArrowHits.damageFactor(source);
+		float result = amount * ArcherSkills.projectileDamage(victim, source) * ArrowHits.damageFactor(source)
+			* ArcherSkills.vultureFactor(victim, source);
 		result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, result) : result;
 		// A Guardian Angel shares the blow with its priest here, in the one path every hit takes, so the
 		// shared part is taken before any other effect scales what is left.

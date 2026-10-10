@@ -76,8 +76,8 @@ public class PriestBooksGameTest {
 		helper.assertTrue(wrong.isEmpty(), "the priest books do not match the school guard: " + wrong);
 		helper.assertTrue(priest == SkillSchoolGameTest.PRIEST_IDS.size(),
 			priest + " books carry School.PRIEST, not the " + SkillSchoolGameTest.PRIEST_IDS.size() + " the stage declares");
-		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 79,
-			"the pack holds " + SpellbookCatalog.DEFINITIONS.size() + " books, not 79");
+		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 81,
+			"the pack holds " + SpellbookCatalog.DEFINITIONS.size() + " books, not 81");
 		helper.succeed();
 	}
 

@@ -10,7 +10,8 @@
 			"com.stella.spells.Spellbooks"
 		],
 		"client": [
-			"com.stella.spells.SpellTooltipClient"
+			"com.stella.spells.SpellTooltipClient",
+			"com.stella.spells.SpellEntitiesClient"
 		]
 	},
 	"mixins": [
