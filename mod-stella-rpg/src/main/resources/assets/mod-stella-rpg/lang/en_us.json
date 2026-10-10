@@ -44,7 +44,7 @@
 	"screen.mod-stella-rpg.tip.melee_dice": "Melee dice %s",
 	"screen.mod-stella-rpg.tip.ranged_dice": "Ranged dice %s",
 	"screen.mod-stella-rpg.tip.attack_speed": "Attack speed +%s%%",
-	"screen.mod-stella-rpg.tip.bow_draw": "Full bow draw in %s ticks",
+	"screen.mod-stella-rpg.tip.bow_draw": "Full bow draw and crossbow charge in %s ticks (AGI + DEX)",
 	"screen.mod-stella-rpg.tip.damage_taken": "Damage taken -%s%%",
 	"screen.mod-stella-rpg.tip.matk": "Matk +%s%%",
 	"screen.mod-stella-rpg.tip.mres": "Magic resistance %s%%",

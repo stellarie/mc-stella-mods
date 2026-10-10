@@ -7,6 +7,7 @@ import com.stella.rpg.DefPreview;
 import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgConfig;
 import com.stella.rpg.RpgConfigStore;
+import com.stella.rpg.DrawSpeed;
 import com.stella.rpg.RpgCurve;
 import com.stella.rpg.RpgDice;
 import com.stella.rpg.RpgSpells;
@@ -370,12 +371,15 @@ public final class StatsScreen extends Screen {
 			case STR -> lines.add(Component.translatable("screen.mod-stella-rpg.tip.melee_dice", RpgDice.of(value).toString()));
 			case AGI -> {
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.attack_speed", percent(RpgCurve.attackSpeedBonus(value))));
-				lines.add(Component.translatable("screen.mod-stella-rpg.tip.bow_draw", RpgCurve.fullDrawTicks(value)));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.bow_draw",
+					DrawSpeed.fullDrawTicks(value, this.effective(data, Stat.DEX))));
 			}
 			case VIT -> lines.add(Component.translatable(
 				"screen.mod-stella-rpg.tip.damage_taken", percent(1.0 - RpgCurve.damageTakenMultiplier(value))));
 			case DEX -> {
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.ranged_dice", RpgDice.of(value).toString()));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.bow_draw",
+					DrawSpeed.fullDrawTicks(this.effective(data, Stat.AGI), value)));
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.cooldown",
 					percent(1.0 - RpgCurve.cooldownMultiplier(value + this.effective(data, Stat.INT)))));
 			}

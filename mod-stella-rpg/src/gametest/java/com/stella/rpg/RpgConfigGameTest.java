@@ -14,16 +14,16 @@ public final class RpgConfigGameTest {
 	public void badEntryFallsBack(final GameTestHelper helper) throws IOException {
 		Path file = Files.createTempFile("rpg-stats", ".json");
 		try {
-			Files.writeString(file, "{\"bow_draw\":{\"max\":-1,\"half\":200},\"attack_speed\":{\"max\":2,\"half\":100}}", StandardCharsets.UTF_8);
+			Files.writeString(file, "{\"crit_chance\":{\"max\":-1,\"half\":200},\"attack_speed\":{\"max\":2,\"half\":100}}", StandardCharsets.UTF_8);
 			List<String> errors = new ArrayList<>();
 			RpgConfig config = RpgConfigStore.load(file, errors::add);
 			RpgConfigStore.set(config);
-			int drawTicks = RpgCurve.fullDrawTicks(100);
+			double crit = RpgCurve.critChance(100);
 			double speed = RpgCurve.attackSpeedBonus(100);
-			RpgTestSupport.result("badEntryFallsBack", "errors=" + errors + " drawTicks=" + drawTicks + " speed=" + speed);
+			RpgTestSupport.result("badEntryFallsBack", "errors=" + errors + " crit=" + crit + " speed=" + speed);
 			helper.assertTrue(errors.size() == 1, "errors=" + errors);
-			helper.assertTrue(errors.get(0).contains("bow_draw"), "error lacks the key: " + errors.get(0));
-			helper.assertTrue(drawTicks == 17, "bow draw fell back to " + drawTicks);
+			helper.assertTrue(errors.get(0).contains("crit_chance"), "error lacks the key: " + errors.get(0));
+			helper.assertTrue(Math.abs(crit - 0.125) < 1e-9, "crit chance fell back to " + crit);
 			helper.assertTrue(Math.abs(speed - 1.0) < 1e-9, "the valid entry was lost: " + speed);
 		} finally {
 			RpgConfigStore.set(null);

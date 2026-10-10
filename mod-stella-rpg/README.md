@@ -223,11 +223,24 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 | Effect | Stat | Config key | `max` | `half` | Used as |
 |---|---|---|---|---|---|
 | Attack speed | AGI | `attack_speed` | 1.00 | 250 | `ADD_MULTIPLIED_BASE` modifier on `ATTACK_SPEED` |
-| Bow draw | AGI | `bow_draw` | 0.50 | 250 | full draw ticks `= round(20 * (1 - value))` |
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
 | Cooldown | INT + DEX | `cooldown_reduction` | 0.50 | 400 | `1 - value`, with `s = INT + DEX`; the spells mod applies it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
 | Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
+
+## Draw speed
+
+AGI and DEX shorten a full bow draw and a full crossbow charge by `0.25% x (AGI + DEX)`, at most 50%. The two stats count equally.
+It applies to every `ProjectileWeaponItem` a player uses, including the crafted bows of `mod-stella-equips-enchants`, on top of their own draw time.
+A mob and another player's pull animation keep the vanilla speed.
+
+- `RpgDrawSpeedMixin` hooks `LivingEntity#updateUsingItem`. While a player draws a projectile weapon, the use countdown runs `1 / (1 - reduction)` ticks of work per tick.
+  The pull animation, the release power, the crossbow charge, and a crafted bow's draw curve all read that countdown, so none needs its own change.
+- Both sides run this tick. The server reads the stat sheet through `StatBonuses.effective`. The client has no stat sheet,
+  so its own player reads the `stats_sync` payload, with base plus bonus as the server builds it (`DrawSpeed.reduction(payload)`).
+  The payload refreshes at most one second after a stat or an item changes, so a fresh bonus reaches the animation a moment late.
+- The old `bow_draw` curve is gone. A `bow_draw` key in an old `stats.json` is skipped.
+- The mechanical bow keeps its own draw factor on top.
 
 ## Dice damage
 
@@ -297,12 +310,11 @@ Damage of type `minecraft:magic`, `minecraft:indirect_magic`, or in the tag `#mo
 `1 - max(0, resistance - penetration)`. See Magic model. The tag is empty by default. The poison tick has its own type and is not reduced.
 
 Damage that bypasses invulnerability (`/kill`, the void) is never reduced.
-The server applies the faster bow draw. The client draw animation keeps the vanilla speed.
+Draw speed is a fixed rule, not a curve. See `Draw speed`.
 
 | Effect | s = 0 | s = 12 | s = 100 | s = 1024 |
 |---|---|---|---|---|
 | Attack speed bonus | 0.0000 | 0.0458 | 0.2857 | 0.8038 |
-| Full draw ticks | 20 | 20 | 17 | 12 |
 | Damage taken | 1.0000 | 0.9769 | 0.8500 | 0.5360 |
 | Cooldown | 1.0000 | 0.9846 | 0.9000 | 0.6906 |
 | Crit chance | 0.0000 | 0.0192 | 0.1250 | 0.3867 |
