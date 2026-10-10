@@ -6,7 +6,6 @@ import com.stella.mobs.gear.GearTier;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
@@ -117,11 +116,6 @@ public final class SnowGolemCold {
 	}
 
 	private static void chill(final LivingEntity target, final SnowGolem golem) {
-		if (target.canFreeze()) {
-			// The vanilla fullness reading: the freeze lasts FREEZE_TICKS past the point of being frozen.
-			target.setTicksFrozen(Math.max(target.getTicksFrozen(), target.getTicksRequiredToFreeze() + FREEZE_TICKS));
-		}
-
-		target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SLOW_TICKS, SLOW_AMPLIFIER), golem);
+		Chill.apply(target, golem, FREEZE_TICKS, SLOW_TICKS, SLOW_AMPLIFIER);
 	}
 }

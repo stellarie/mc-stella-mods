@@ -386,6 +386,13 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
   `move.ground_search` blocks below it, the activation height stands in for the ground.
 - Once active, its body breaks no blocks after a hit, arrows hurt it at any health, and its side heads no longer fire on
   their own.
+- Health: the vanilla attribute caps max health at 1024. The part of the formula health it cannot hold is kept as a
+  divisor on every hit, so a level 170 Wither still takes 25,800 damage to die. The bar reads health over max health.
+- Skull: it breaks no block. It hurts every body within \`blast.radius\` (2 blocks) of its impact, except the Wither,
+  its minions, other enemies and spectators. A hit is \`share\` times the level hit (standard hit is 8 times the damage
+  multiplier plus the flat part), adds Wither, and with \`blast.rider_chance\` (40 percent) adds chill or burning, evenly.
+- Volley: one aimed skull at \`aim.share\` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
+  \`aim.interval_min + (aim.interval_max - aim.interval_min) * health\`: 40 ticks at full health, 12 at none.
 
 ## Bosses
 

@@ -33,7 +33,8 @@
 		"StrayShotBlinkMixin",
 		"TrueInvisibilityMobMixin",
 		"TrueInvisibilitySightMixin",
-		"WitherBossMixin"
+		"WitherBossMixin",
+		"WitherBossInvoker"
 	],
 	"injectors": {
 		"defaultRequire": 1

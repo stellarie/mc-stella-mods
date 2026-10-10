@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -33,6 +34,19 @@ public final class WitherEncounter {
 	public static final int PURSUE_PRIORITY = 2;
 
 	private WitherEncounter() {
+	}
+
+	/** Tags a minion the Wither summoned. */
+	public static final String MINION_TAG = "mod-stella-mobs.wither_minion";
+
+	public static boolean isMinion(final Entity entity) {
+		return entity.entityTags().contains(MINION_TAG);
+	}
+
+	/** True while a rage runs. Volleys and waves wait for it. */
+	public static boolean isRaging(final Mob mob) {
+		WitherState state = WitherState.find(mob);
+		return state != null && state.rageKind() != WitherState.RAGE_NONE;
 	}
 
 	public static boolean isEncounter(final Mob mob) {
@@ -95,6 +109,7 @@ public final class WitherEncounter {
 		}
 		wither.getGoalSelector().removeAllGoals(goal -> goal instanceof RangedAttackGoal);
 		wither.getGoalSelector().addGoal(PURSUE_PRIORITY, new WitherPursueGoal(wither));
+		wither.getGoalSelector().addGoal(PURSUE_PRIORITY, new WitherVolleyGoal(wither));
 		GoalSelector targets = ((MobTargetSelectorAccessor) wither).stellaMobs$targetSelector();
 		targets.removeAllGoals(goal -> goal instanceof NearestAttackableTargetGoal);
 		targets.addGoal(PURSUE_PRIORITY, new NearestAttackableTargetGoal<>(wither, Player.class, false, false));

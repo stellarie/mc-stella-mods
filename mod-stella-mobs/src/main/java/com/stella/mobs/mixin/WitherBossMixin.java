@@ -1,10 +1,14 @@
 package com.stella.mobs.mixin;
 
 import com.stella.mobs.behavior.WitherEncounter;
+import com.stella.mobs.behavior.WitherShots;
 import com.stella.mobs.config.WitherConfig;
 import com.stella.mobs.config.WitherConfigStore;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -84,6 +88,15 @@ public abstract class WitherBossMixin {
 		if (!WitherEncounter.isEncounter(wither)) {
 			this.performRangedAttack(head, target);
 		}
+	}
+
+	@Redirect(
+		method = "performRangedAttack(IDDDZ)V",
+		at = @At(value = "NEW", target = "Lnet/minecraft/world/entity/projectile/hurtingprojectile/WitherSkull;")
+	)
+	private WitherSkull stellaMobs$skull(final Level level, final LivingEntity owner, final Vec3 direction) {
+		// An encounter volley builds its own skull. Any other shot, and any other Wither, stays vanilla.
+		return WitherShots.pending() ? WitherShots.create(level, owner, direction) : new WitherSkull(level, owner, direction);
 	}
 
 	@Redirect(

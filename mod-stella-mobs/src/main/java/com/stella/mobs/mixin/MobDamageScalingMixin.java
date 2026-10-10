@@ -18,6 +18,10 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public abstract class MobDamageScalingMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaMobs$scaleMobDamage(final float amount, final ServerLevel level, final DamageSource source) {
+		// A Wither skull sizes its own hit from the owner's level, so it must not scale twice.
+		if (source.getDirectEntity() instanceof com.stella.mobs.projectile.WitherSkullShot) {
+			return amount;
+		}
 		if (!(source.getEntity() instanceof Mob mob) || !SelfScaled.levelHits(mob)) {
 			return amount;
 		}
