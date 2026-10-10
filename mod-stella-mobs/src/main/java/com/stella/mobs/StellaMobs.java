@@ -88,6 +88,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
 		ThreatLevelProvider.register();
+		com.stella.mobs.api.ApplyLevelProvider.register();
 		MobRankProvider.register();
 		ContainerLevelProvider.register();
 		EscortSquad.register();
