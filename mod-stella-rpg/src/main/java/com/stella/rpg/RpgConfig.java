@@ -35,7 +35,7 @@ public record RpgConfig(
 	public static final String AFFIXES_KEY = "affixes";
 	public static final double DEFAULT_AFFIX_CHANCE = 0.30;
 	public static final String MATERIAL_ROLLS_KEY = "material_rolls";
-	public static final long DEFAULT_MATERIAL_SEED = 20261009L;
+	public static final double DEFAULT_MATERIAL_ROLL_CHANCE = 0.01;
 	public static final double MAX_MOB_BASE = StatSheet.CEILING;
 	private static final Map<Affix, AffixRange> AFFIXES_WOOD = affixes(3, 8, 2, 4, 15, 30, 1, 2, 1, 3, 0.5, 1);
 	private static final Map<Affix, AffixRange> AFFIXES_STONE = affixes(5, 12, 3, 5, 25, 50, 2, 3, 2, 4, 1, 1.5);
@@ -70,22 +70,23 @@ public record RpgConfig(
 	}
 
 	/**
-	 * One mined material tier. {@code items} are the ore drops that roll it. A profile is a fixed set of 1 to 4 bonuses,
-	 * and {@code profiles} is how many sets exist. {@code explicit} lists exact sets, and a non-empty list replaces the generated ones.
+	 * One mined material tier. {@code items} are the ore drops that can roll it. A rolled drop gets 1 to 4 bonuses by
+	 * {@code countWeights}, each stat from {@code min} to {@code max}. {@code enchantChance} applies inside a rolled drop only.
 	 */
 	public record MaterialTier(
-		List<Identifier> items, int min, int max, List<Integer> countWeights, int profiles, double enchantChance,
-		List<Map<String, Integer>> explicit
+		List<Identifier> items, int min, int max, List<Integer> countWeights, double enchantChance
 	) {
 	}
 
 	/**
-	 * The mined material bonuses. {@code craftRandomRoll} keeps the old random roll on crafted gear that has no material bonus.
+	 * The mined material bonuses. Only {@code rollChance} of the mined drops of a tier carry a bonus, so the rest stack.
+	 * {@code craftRandomRoll} keeps the old random roll on crafted gear that has no material bonus.
 	 * Typed affixes make up {@code affixShare} of the picks and use the gear tier range times {@code affixScale}.
-	 * Depth raises the weight of strong profiles by {@code depthRankWeight} and the enchant chance by {@code depthEnchantBonus}.
+	 * Depth lifts the quality of a rolled drop: {@code depthRankWeight} skews its count and values up,
+	 * and {@code depthEnchantBonus} raises its enchant chance. Depth never changes {@code rollChance}.
 	 */
 	public record MaterialRolls(
-		boolean craftRandomRoll, long seed, double affixShare, double affixScale, double depthRankWeight,
+		boolean craftRandomRoll, double rollChance, double affixShare, double affixScale, double depthRankWeight,
 		double depthEnchantBonus, double secondEnchantChance, Map<String, MaterialTier> tiers
 	) {
 	}
@@ -259,18 +260,18 @@ public record RpgConfig(
 
 	private static MaterialRolls defaultMaterialRolls() {
 		Map<String, MaterialTier> tiers = new LinkedHashMap<>();
-		tiers.put("copper", materialTier("raw_copper", 1, 2, List.of(55, 30, 12, 3), 8, 0.001));
-		tiers.put("iron", materialTier("raw_iron", 1, 3, List.of(45, 32, 17, 6), 12, 0.002));
-		tiers.put("gold", materialTier("raw_gold", 1, 3, List.of(45, 32, 17, 6), 12, 0.004));
-		tiers.put("diamond", materialTier("diamond", 2, 4, List.of(30, 32, 24, 14), 16, 0.02));
-		tiers.put("debris", materialTier("ancient_debris", 1, 3, List.of(30, 32, 24, 14), 16, 0.03));
-		return new MaterialRolls(false, DEFAULT_MATERIAL_SEED, 0.25, 0.25, 3.0, 2.0, 0.15, Map.copyOf(tiers));
+		tiers.put("copper", materialTier("raw_copper", 1, 2, List.of(55, 30, 12, 3), 0.02));
+		tiers.put("iron", materialTier("raw_iron", 1, 3, List.of(45, 32, 17, 6), 0.05));
+		tiers.put("gold", materialTier("raw_gold", 1, 3, List.of(45, 32, 17, 6), 0.08));
+		tiers.put("diamond", materialTier("diamond", 2, 4, List.of(30, 32, 24, 14), 0.20));
+		tiers.put("debris", materialTier("ancient_debris", 1, 3, List.of(30, 32, 24, 14), 0.30));
+		return new MaterialRolls(false, DEFAULT_MATERIAL_ROLL_CHANCE, 0.25, 0.25, 3.0, 2.0, 0.15, Map.copyOf(tiers));
 	}
 
 	private static MaterialTier materialTier(
-		final String item, final int min, final int max, final List<Integer> weights, final int profiles, final double enchantChance
+		final String item, final int min, final int max, final List<Integer> weights, final double enchantChance
 	) {
-		return new MaterialTier(vanilla(List.of(item)), min, max, weights, profiles, enchantChance, List.of());
+		return new MaterialTier(vanilla(List.of(item)), min, max, weights, enchantChance);
 	}
 
 	/** Ranges in the order of {@link Affix}: damage, MATK, HP, reduction, each flat then percent. K units. */

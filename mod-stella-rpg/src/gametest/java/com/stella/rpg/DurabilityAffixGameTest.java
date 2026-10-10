@@ -77,12 +77,13 @@ public final class DurabilityAffixGameTest {
 
 	@GameTest
 	public void materialsCanCarryDurability(final GameTestHelper helper) {
-		RpgConfig.MaterialRolls config = RpgConfigStore.parse("{\"material_rolls\":{\"diamond\":{\"profiles\":256}}}", message -> { }).materialRolls();
-		List<MaterialProfiles.Profile> profiles = MaterialProfiles.generate("diamond", config,
-			RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get("diamond").affixes());
-		RpgConfig.AffixRange range = RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get("diamond").affixes().get(Affix.byKey(KEY).orElseThrow());
+		RpgConfig.MaterialRolls config = RpgConfig.DEFAULT_MATERIAL_ROLLS;
+		Map<Affix, RpgConfig.AffixRange> gear = RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get("diamond").affixes();
+		RpgConfig.AffixRange range = gear.get(Affix.byKey(KEY).orElseThrow());
+		RandomSource random = RandomSource.create(77L);
 		int carrying = 0;
-		for (MaterialProfiles.Profile profile : profiles) {
+		for (int i = 0; i < 4000; i++) {
+			MaterialProfiles.Profile profile = MaterialProfiles.roll("diamond", config, gear, 0.0, random);
 			Integer stored = profile.affixes().get(KEY);
 			if (stored != null) {
 				carrying++;
@@ -91,8 +92,8 @@ public final class DurabilityAffixGameTest {
 				helper.assertTrue(stored >= low && stored <= high, "stored " + stored + " outside " + low + ".." + high);
 			}
 		}
-		RpgTestSupport.result("materialsCanCarryDurability", "carrying=" + carrying + " of " + profiles.size());
-		helper.assertTrue(carrying > 0, "no diamond profile carries durability");
+		RpgTestSupport.result("materialsCanCarryDurability", "carrying=" + carrying + " of 4000");
+		helper.assertTrue(carrying > 0, "no diamond roll carries durability");
 		helper.succeed();
 	}
 
