@@ -36,7 +36,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 
-/** A mined ore drop carries one profile of its tier, and chest loot carries nothing. */
+/** Rare rolled drops from mined ore, plain drops that stack, and chest loot that carries nothing. */
 public final class MiningRollGameTest {
 	/** The vanilla block loot tables of the covered ores, with the block that owns each. */
 	private static final Map<String, Block> ORES = ores();
@@ -86,17 +86,6 @@ public final class MiningRollGameTest {
 		return new ItemStack(Items.IRON_PICKAXE);
 	}
 
-	private static MaterialProfiles.Profile matching(final String tier, final ItemStack stack) {
-		Map<String, Integer> stats = stack.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of());
-		Map<String, Integer> affixes = stack.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.of());
-		for (MaterialProfiles.Profile profile : MaterialProfiles.profiles(tier)) {
-			if (profile.stats().equals(stats) && profile.affixes().equals(affixes)) {
-				return profile;
-			}
-		}
-		return null;
-	}
-
 	/** Every item carries an empty enchantment component, so presence says nothing. */
 	private static boolean enchanted(final ItemStack stack) {
 		return !stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY).isEmpty();
@@ -106,160 +95,230 @@ public final class MiningRollGameTest {
 		return !stack.has(WeaponRolls.STAT_ROLLS) && !stack.has(WeaponRolls.AFFIX_ROLLS) && !enchanted(stack);
 	}
 
-	@GameTest
-	public void oreDropCarriesProfile(final GameTestHelper helper) {
+	private static boolean rolled(final ItemStack stack) {
+		return stack.has(WeaponRolls.STAT_ROLLS) || stack.has(WeaponRolls.AFFIX_ROLLS);
+	}
+
+	/** Runs the body with a hand edited material_rolls object, then restores the default config. */
+	private static void withMaterials(final String json, final Runnable body) {
+		try {
+			RpgConfigStore.set(RpgConfigStore.parse("{\"material_rolls\":" + json + "}", message -> { }));
+			body.run();
+		} finally {
+			RpgConfigStore.set(null);
+		}
+	}
+
+	private static final String ALL_ROLL = "{\"roll_chance\":1}";
+
+	/** Counts the tier drops of many breaks, and how many of them rolled. */
+	private static int[] rolledShare(final GameTestHelper helper, final String tier, final double depth, final int breaks, final long seed) {
 		ServerPlayer player = RpgTestSupport.player(helper);
+		String ore = TIER_TABLE.get(tier);
+		int drops = 0;
 		int rolled = 0;
-		for (int i = 0; i < 50; i++) {
-			for (ItemStack stack : mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), player, 100L + i)) {
-				if (stack.is(Items.RAW_IRON)) {
-					helper.assertTrue(matching("iron", stack) != null, "raw iron carries no profile: " + stack.getComponentsPatch());
-					rolled++;
+		for (int i = 0; i < breaks; i++) {
+			for (ItemStack stack : mine(helper, ore, ORES.get(ore), depth, new ItemStack(Items.IRON_PICKAXE), player, seed + i)) {
+				if (stack.is(TIER_DROP.get(tier))) {
+					drops++;
+					rolled += rolled(stack) ? 1 : 0;
 				}
 			}
 		}
-		RpgTestSupport.result("oreDropCarriesProfile", "rolled=" + rolled);
-		helper.assertTrue(rolled == 50, "raw iron stacks " + rolled);
+		return new int[] {drops, rolled};
+	}
+
+	@GameTest
+	public void rolledShareIsOnePercent(final GameTestHelper helper) {
+		int breaks = 20000;
+		for (String tier : TIER_TABLE.keySet()) {
+			int[] share = rolledShare(helper, tier, 0.5, breaks, 100000L);
+			double p = RpgConfig.DEFAULT_MATERIAL_ROLLS.rollChance();
+			double rate = share[1] / (double) share[0];
+			double bound = 3.0 * Math.sqrt(p * (1 - p) / share[0]);
+			RpgTestSupport.result("rolledShareIsOnePercent", tier + " drops=" + share[0] + " rolled=" + share[1] + " rate=" + rate + " bound=" + bound);
+			helper.assertTrue(Math.abs(rate - p) <= bound, tier + " rolled share " + rate + " expected " + p + " +- " + bound);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void depthDoesNotChangeTheRolledShare(final GameTestHelper helper) {
+		int breaks = 20000;
+		double p = RpgConfig.DEFAULT_MATERIAL_ROLLS.rollChance();
+		for (double depth : new double[] {0.0, 1.0}) {
+			int[] share = rolledShare(helper, "diamond", depth, breaks, 200000L);
+			double rate = share[1] / (double) share[0];
+			double bound = 3.0 * Math.sqrt(p * (1 - p) / share[0]);
+			RpgTestSupport.result("depthDoesNotChangeTheRolledShare", "depth=" + depth + " rate=" + rate);
+			helper.assertTrue(Math.abs(rate - p) <= bound, "depth " + depth + " rolled share " + rate + " expected " + p);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void plainDropsStackWithEachOther(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		ItemStack first = null;
+		int plainDrops = 0;
+		int merged = 0;
+		for (int i = 0; i < 400; i++) {
+			for (ItemStack stack : mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), player, 300000L + i)) {
+				if (!stack.is(Items.RAW_IRON) || rolled(stack)) {
+					continue;
+				}
+				plainDrops++;
+				if (first == null) {
+					first = stack.copy();
+				}
+				helper.assertTrue(stack.getComponentsPatch().isEmpty(), "a plain drop carries " + stack.getComponentsPatch());
+				if (ItemStack.isSameItemSameComponents(first, stack)) {
+					merged++;
+				}
+			}
+		}
+		RpgTestSupport.result("plainDropsStackWithEachOther", "plain=" + plainDrops + " merged=" + merged);
+		helper.assertTrue(plainDrops > 300 && merged == plainDrops, "plain drops " + plainDrops + " merged " + merged);
 		helper.succeed();
 	}
 
 	@GameTest
 	public void everyTierRolls(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		for (Map.Entry<String, String> entry : TIER_TABLE.entrySet()) {
-			int rolled = 0;
-			for (int i = 0; i < 30; i++) {
-				for (ItemStack stack : mine(helper, entry.getValue(), ORES.get(entry.getValue()), 0.5, tool(helper), player, 7L + i)) {
-					if (stack.is(TIER_DROP.get(entry.getKey()))) {
-						helper.assertTrue(matching(entry.getKey(), stack) != null, entry.getKey() + " drop without a profile: " + stack.getComponentsPatch());
-						rolled++;
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			for (Map.Entry<String, String> entry : TIER_TABLE.entrySet()) {
+				int rolled = 0;
+				RpgConfig.MaterialTier tier = RpgConfigStore.current().materialRolls().tiers().get(entry.getKey());
+				for (int i = 0; i < 100; i++) {
+					for (ItemStack stack : mine(helper, entry.getValue(), ORES.get(entry.getValue()), 0.5, tool(helper), player, 7L + i)) {
+						if (stack.is(TIER_DROP.get(entry.getKey()))) {
+							helper.assertTrue(rolled(stack), entry.getKey() + " drop did not roll");
+							Map<String, Integer> stats = stack.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of());
+							int keys = stats.size() + stack.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.of()).size();
+							helper.assertTrue(keys >= 1 && keys <= tier.countWeights().size(), entry.getKey() + " keys " + keys);
+							helper.assertTrue(stats.values().stream().allMatch(value -> value >= tier.min() && value <= tier.max()), entry.getKey() + " stats " + stats);
+							rolled++;
+						}
 					}
 				}
+				helper.assertTrue(rolled == 100, entry.getKey() + " rolled " + rolled + " of 100");
 			}
-			helper.assertTrue(rolled == 30, entry.getKey() + " rolled " + rolled + " of 30");
-		}
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void fortuneOneRollPerBreak(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		Holder<Enchantment> fortune = BonusTestSupport.enchantment(helper, Enchantments.FORTUNE);
-		ItemStack pick = BonusTestSupport.enchanted(new ItemStack(Items.DIAMOND_PICKAXE), fortune, 3);
-		int bigStacks = 0;
-		for (int i = 0; i < 200; i++) {
-			List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, pick, player, 500L + i);
-			List<ItemStack> raw = drops.stream().filter(stack -> stack.is(Items.RAW_IRON)).toList();
-			helper.assertTrue(raw.size() == 1, "break " + i + " gave " + raw.size() + " raw iron stacks");
-			helper.assertTrue(matching("iron", raw.get(0)) != null, "break " + i + " has no profile");
-			bigStacks += raw.get(0).getCount() > 1 ? 1 : 0;
-		}
-		RpgTestSupport.result("fortuneOneRollPerBreak", "bigStacks=" + bigStacks);
-		helper.assertTrue(bigStacks > 0, "Fortune never raised the count");
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			Holder<Enchantment> fortune = BonusTestSupport.enchantment(helper, Enchantments.FORTUNE);
+			ItemStack pick = BonusTestSupport.enchanted(new ItemStack(Items.DIAMOND_PICKAXE), fortune, 3);
+			int bigStacks = 0;
+			for (int i = 0; i < 200; i++) {
+				List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, pick, player, 500L + i);
+				List<ItemStack> raw = drops.stream().filter(stack -> stack.is(Items.RAW_IRON)).toList();
+				helper.assertTrue(raw.size() == 1 && rolled(raw.get(0)), "break " + i + " gave " + raw.size() + " raw iron stacks");
+				bigStacks += raw.get(0).getCount() > 1 ? 1 : 0;
+			}
+			RpgTestSupport.result("fortuneOneRollPerBreak", "bigStacks=" + bigStacks);
+			helper.assertTrue(bigStacks > 0, "Fortune never raised the count");
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void silkTouchDropsNothingExtra(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		Holder<Enchantment> silk = BonusTestSupport.enchantment(helper, Enchantments.SILK_TOUCH);
-		ItemStack pick = BonusTestSupport.enchanted(new ItemStack(Items.DIAMOND_PICKAXE), silk, 1);
-		List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, pick, player, 3L);
-		RpgTestSupport.result("silkTouchDropsNothingExtra", "drops=" + drops);
-		helper.assertTrue(drops.size() == 1 && drops.get(0).is(Items.IRON_ORE) && plain(drops.get(0)), "silk drops " + drops);
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			Holder<Enchantment> silk = BonusTestSupport.enchantment(helper, Enchantments.SILK_TOUCH);
+			ItemStack pick = BonusTestSupport.enchanted(new ItemStack(Items.DIAMOND_PICKAXE), silk, 1);
+			List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, pick, player, 3L);
+			helper.assertTrue(drops.size() == 1 && drops.get(0).is(Items.IRON_ORE) && plain(drops.get(0)), "silk drops " + drops);
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void nonPlayerBreakRollsNothing(final GameTestHelper helper) {
-		List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), null, 9L);
-		helper.assertTrue(drops.stream().anyMatch(stack -> stack.is(Items.RAW_IRON)), "no raw iron dropped: " + drops);
-		helper.assertTrue(drops.stream().allMatch(MiningRollGameTest::plain), "a block break without a player rolled: " + drops);
+		withMaterials(ALL_ROLL, () -> {
+			List<ItemStack> drops = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), null, 9L);
+			helper.assertTrue(drops.stream().anyMatch(stack -> stack.is(Items.RAW_IRON)), "no raw iron dropped: " + drops);
+			helper.assertTrue(drops.stream().allMatch(MiningRollGameTest::plain), "a block break without a player rolled: " + drops);
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void otherBlockRollsNothing(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		// The iron ore table with a stone state: the drop is raw iron, the block is not an ore of the tag.
-		List<ItemStack> drops = mine(helper, "iron_ore", Blocks.STONE, 0.5, tool(helper), player, 9L);
-		helper.assertTrue(drops.stream().anyMatch(stack -> stack.is(Items.RAW_IRON)), "no raw iron dropped: " + drops);
-		helper.assertTrue(drops.stream().allMatch(MiningRollGameTest::plain), "a block outside the ore tag rolled: " + drops);
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			// The iron ore table with a stone state: the drop is raw iron, the block is not an ore of the tag.
+			List<ItemStack> drops = mine(helper, "iron_ore", Blocks.STONE, 0.5, tool(helper), player, 9L);
+			helper.assertTrue(drops.stream().anyMatch(stack -> stack.is(Items.RAW_IRON)), "no raw iron dropped: " + drops);
+			helper.assertTrue(drops.stream().allMatch(MiningRollGameTest::plain), "a block outside the ore tag rolled: " + drops);
+		});
 		helper.succeed();
 	}
 
 	@GameTest
 	public void netherGoldNuggetRollsNothing(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		int nuggets = 0;
-		for (int i = 0; i < 30; i++) {
-			for (ItemStack stack : mine(helper, "nether_gold_ore", Blocks.NETHER_GOLD_ORE, 0.5, tool(helper), player, i)) {
-				if (stack.is(Items.GOLD_NUGGET)) {
-					nuggets++;
-					helper.assertTrue(plain(stack), "a nugget rolled: " + stack.getComponentsPatch());
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			int nuggets = 0;
+			for (int i = 0; i < 30; i++) {
+				for (ItemStack stack : mine(helper, "nether_gold_ore", Blocks.NETHER_GOLD_ORE, 0.5, tool(helper), player, i)) {
+					if (stack.is(Items.GOLD_NUGGET)) {
+						nuggets++;
+						helper.assertTrue(plain(stack), "a nugget rolled: " + stack.getComponentsPatch());
+					}
 				}
 			}
-		}
-		helper.assertTrue(nuggets > 0, "no nugget dropped");
+			helper.assertTrue(nuggets > 0, "no nugget dropped");
+		});
 		helper.succeed();
 	}
 
 	@GameTest
-	public void stackVarietyIsBounded(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		for (Map.Entry<String, String> entry : TIER_TABLE.entrySet()) {
-			Set<List<Map<String, Integer>>> distinct = new HashSet<>();
-			for (int i = 0; i < 2000; i++) {
-				for (ItemStack stack : mine(helper, entry.getValue(), ORES.get(entry.getValue()), (i % 10) / 10.0, tool(helper), player, 40000L + i)) {
-					if (stack.is(TIER_DROP.get(entry.getKey())) && !enchanted(stack)) {
-						distinct.add(List.of(stack.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of()), stack.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.of())));
+	public void qualityRisesWithDepth(final GameTestHelper helper) {
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			double[] mean = new double[2];
+			for (int depth = 0; depth < 2; depth++) {
+				double total = 0;
+				int count = 0;
+				for (int i = 0; i < 3000; i++) {
+					for (ItemStack stack : mine(helper, "diamond_ore", Blocks.DIAMOND_ORE, depth, tool(helper), player, 70000L + i)) {
+						if (stack.is(Items.DIAMOND)) {
+							Map<String, Integer> stats = stack.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of());
+							total += stats.values().stream().mapToInt(Integer::intValue).sum();
+							count++;
+						}
 					}
 				}
+				mean[depth] = total / count;
 			}
-			int cap = RpgConfig.DEFAULT_MATERIAL_ROLLS.tiers().get(entry.getKey()).profiles();
-			RpgTestSupport.result("stackVarietyIsBounded", entry.getKey() + " distinct=" + distinct.size() + " cap=" + cap);
-			helper.assertTrue(distinct.size() <= cap, entry.getKey() + " has " + distinct.size() + " distinct sets, cap " + cap);
-			helper.assertTrue(distinct.size() >= 2, entry.getKey() + " rolled one set only");
-		}
+			RpgTestSupport.result("qualityRisesWithDepth", "surface=" + mean[0] + " deep=" + mean[1]);
+			helper.assertTrue(mean[1] > mean[0] * 1.1, "deep stat points " + mean[1] + " surface " + mean[0]);
+		});
 		helper.succeed();
 	}
 
-	@GameTest
-	public void depthSkewsWorth(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		double[] mean = new double[2];
-		for (int depth = 0; depth < 2; depth++) {
-			double total = 0;
-			int count = 0;
-			for (int i = 0; i < 2000; i++) {
-				for (ItemStack stack : mine(helper, "diamond_ore", Blocks.DIAMOND_ORE, depth, tool(helper), player, 70000L + i)) {
-					if (stack.is(Items.DIAMOND) && !enchanted(stack)) {
-						total += matching("diamond", stack).worth();
-						count++;
-					}
-				}
-			}
-			mean[depth] = total / count;
-		}
-		RpgTestSupport.result("depthSkewsWorth", "surface=" + mean[0] + " deep=" + mean[1]);
-		helper.assertTrue(mean[1] > mean[0] * 1.1, "deep mean " + mean[1] + " surface mean " + mean[0]);
-		helper.succeed();
-	}
-
+	/** Enchantment rate among rolled drops. The config rolls every drop so the sample is the rolled drops. */
 	private static double enchantRate(final GameTestHelper helper, final String tier, final double depth, final int breaks, final long seed) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		String ore = TIER_TABLE.get(tier);
-		int enchanted = 0;
-		int total = 0;
-		for (int i = 0; i < breaks; i++) {
-			for (ItemStack stack : mine(helper, ore, ORES.get(ore), depth, new ItemStack(Items.IRON_PICKAXE), player, seed + i)) {
-				if (stack.is(TIER_DROP.get(tier))) {
-					total++;
-					enchanted += enchanted(stack) ? 1 : 0;
+		int[] counts = new int[2];
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			String ore = TIER_TABLE.get(tier);
+			for (int i = 0; i < breaks; i++) {
+				for (ItemStack stack : mine(helper, ore, ORES.get(ore), depth, new ItemStack(Items.IRON_PICKAXE), player, seed + i)) {
+					if (stack.is(TIER_DROP.get(tier))) {
+						counts[0]++;
+						counts[1] += enchanted(stack) ? 1 : 0;
+					}
 				}
 			}
-		}
-		return enchanted / (double) total;
+		});
+		return counts[1] / (double) counts[0];
 	}
 
 	@GameTest
@@ -274,7 +333,8 @@ public final class MiningRollGameTest {
 			RpgTestSupport.result("enchantRateByMaterial", entry.getKey() + " rate=" + rate + " expected=" + expected + " bound=" + bound);
 			helper.assertTrue(Math.abs(rate - expected) <= bound, entry.getKey() + " rate " + rate + " expected " + expected + " +- " + bound);
 		}
-		helper.assertTrue(rates.get("diamond") > rates.get("iron") && rates.get("debris") > rates.get("iron"), "diamond and debris must be the likeliest: " + rates);
+		helper.assertTrue(rates.get("diamond") > rates.get("gold") && rates.get("debris") > rates.get("diamond") && rates.get("gold") > rates.get("iron"),
+			"diamond and debris must be the likeliest: " + rates);
 		helper.succeed();
 	}
 
@@ -282,7 +342,7 @@ public final class MiningRollGameTest {
 	public void depthRaisesEnchantRate(final GameTestHelper helper) {
 		int breaks = 20000;
 		RpgConfig.MaterialRolls config = RpgConfig.DEFAULT_MATERIAL_ROLLS;
-		double expected = config.tiers().get("diamond").enchantChance() * (1 + config.depthEnchantBonus());
+		double expected = Math.min(1.0, config.tiers().get("diamond").enchantChance() * (1 + config.depthEnchantBonus()));
 		double rate = enchantRate(helper, "diamond", 1.0, breaks, 1500000L);
 		double bound = 4.5 * Math.sqrt(expected * (1 - expected) / breaks);
 		RpgTestSupport.result("depthRaisesEnchantRate", "rate=" + rate + " expected=" + expected);
@@ -291,9 +351,35 @@ public final class MiningRollGameTest {
 	}
 
 	@GameTest
+	public void enchantOnlyOnRolledDrops(final GameTestHelper helper) {
+		// Half the drops roll and every rolled drop enchants. A plain drop must never carry an enchantment.
+		withMaterials("{\"roll_chance\":0.5,\"diamond\":{\"enchant_chance\":1}}", () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			int rolledDrops = 0;
+			int plainDrops = 0;
+			for (int i = 0; i < 4000; i++) {
+				for (ItemStack stack : mine(helper, "diamond_ore", Blocks.DIAMOND_ORE, 0.0, tool(helper), player, 4000000L + i)) {
+					if (!stack.is(Items.DIAMOND)) {
+						continue;
+					}
+					if (rolled(stack)) {
+						rolledDrops++;
+						helper.assertTrue(enchanted(stack), "a rolled drop with enchant chance 1 is not enchanted");
+					} else {
+						plainDrops++;
+						helper.assertTrue(!enchanted(stack), "a plain drop carries an enchantment: " + stack.get(DataComponents.ENCHANTMENTS));
+					}
+				}
+			}
+			RpgTestSupport.result("enchantOnlyOnRolledDrops", "rolled=" + rolledDrops + " plain=" + plainDrops);
+			helper.assertTrue(rolledDrops > 1500 && plainDrops > 1500, "rolled " + rolledDrops + " plain " + plainDrops);
+		});
+		helper.succeed();
+	}
+
+	@GameTest
 	public void enchantedDropsAreValid(final GameTestHelper helper) {
-		try {
-			RpgConfigStore.set(RpgConfigStore.parse("{\"material_rolls\":{\"diamond\":{\"enchant_chance\":1}}}", message -> { }));
+		withMaterials("{\"roll_chance\":1,\"diamond\":{\"enchant_chance\":1}}", () -> {
 			ServerPlayer player = RpgTestSupport.player(helper);
 			int two = 0;
 			int drops = 0;
@@ -321,9 +407,7 @@ public final class MiningRollGameTest {
 			double share = two / (double) drops;
 			RpgTestSupport.result("enchantedDropsAreValid", "drops=" + drops + " second=" + share);
 			helper.assertTrue(share > 0.08 && share < 0.22, "second enchantment share " + share + " expected 0.15");
-		} finally {
-			RpgConfigStore.set(null);
-		}
+		});
 		helper.succeed();
 	}
 
@@ -417,35 +501,36 @@ public final class MiningRollGameTest {
 
 	@GameTest
 	public void minedOreMakesASwordWithBonuses(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		List<ItemStack> ingots = new ArrayList<>();
-		Map<String, Integer> expectedStats = new LinkedHashMap<>();
-		Map<String, Integer> expectedAffixes = new LinkedHashMap<>();
-		for (int i = 0; i < 2; i++) {
-			ItemStack raw = ItemStack.EMPTY;
-			// Scan seeds for an ore that carries a stat, so the sword has something to show.
-			for (long seed = 11L + i * 1000L; (raw.isEmpty() || !raw.has(WeaponRolls.STAT_ROLLS)) && seed < 11L + i * 1000L + 500L; seed++) {
-				raw = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), player, seed).stream()
-					.filter(stack -> stack.is(Items.RAW_IRON)).findFirst().orElseThrow();
-			}
-			ItemStack ingot = BonusTestSupport.smelt(helper, raw.copyWithCount(1));
-			helper.assertTrue(ingot.is(Items.IRON_INGOT) && ingot.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of()).equals(raw.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of())),
-				"the smelted ingot lost the bonus: " + ingot.getComponentsPatch());
-			helper.assertTrue(raw.has(WeaponRolls.STAT_ROLLS), "no mined raw iron carried a stat in 500 seeds");
-			final ItemStack mined = raw;
-			mined.getOrDefault(WeaponRolls.STAT_ROLLS, Map.<String, Integer>of()).forEach((key, value) -> expectedStats.merge(key, value, Integer::sum));
-			mined.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.<String, Integer>of()).forEach((key, value) -> {
-				if (Set.of("damage_flat", "damage_pct", "armor_pen").contains(key)) {
-					expectedAffixes.merge(key, value, Integer::sum);
+		withMaterials(ALL_ROLL, () -> {
+			ServerPlayer player = RpgTestSupport.player(helper);
+			List<ItemStack> ingots = new ArrayList<>();
+			Map<String, Integer> expectedStats = new LinkedHashMap<>();
+			Map<String, Integer> expectedAffixes = new LinkedHashMap<>();
+			for (int i = 0; i < 2; i++) {
+				ItemStack raw = ItemStack.EMPTY;
+				// Scan seeds for an ore that carries a stat, so the sword has something to show.
+				for (long seed = 11L + i * 1000L; (raw.isEmpty() || !raw.has(WeaponRolls.STAT_ROLLS)) && seed < 11L + i * 1000L + 500L; seed++) {
+					raw = mine(helper, "iron_ore", Blocks.IRON_ORE, 0.5, tool(helper), player, seed).stream()
+						.filter(stack -> stack.is(Items.RAW_IRON)).findFirst().orElseThrow();
 				}
-			});
-			ingots.add(ingot);
-		}
-		ItemStack sword = BonusTestSupport.craft(helper, 1, 3, ingots.get(0), ingots.get(1), new ItemStack(Items.STICK));
-		RpgTestSupport.result("minedOreMakesASwordWithBonuses", "stats=" + BonusTestSupport.stats(sword) + " affixes=" + sword.get(WeaponRolls.AFFIX_ROLLS));
-		helper.assertTrue(sword.is(Items.IRON_SWORD) && expectedStats.equals(BonusTestSupport.stats(sword)), "sword stats " + BonusTestSupport.stats(sword) + " expected " + expectedStats);
-		helper.assertTrue(expectedAffixes.equals(sword.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.of())), "sword affixes " + sword.get(WeaponRolls.AFFIX_ROLLS) + " expected " + expectedAffixes);
-		helper.assertTrue(!expectedStats.isEmpty() || !expectedAffixes.isEmpty(), "the mined ore carried nothing a sword can use");
+				helper.assertTrue(raw.has(WeaponRolls.STAT_ROLLS), "no mined raw iron carried a stat in 500 seeds");
+				final ItemStack mined = raw;
+				mined.getOrDefault(WeaponRolls.STAT_ROLLS, Map.<String, Integer>of()).forEach((key, value) -> expectedStats.merge(key, value, Integer::sum));
+				mined.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.<String, Integer>of()).forEach((key, value) -> {
+					if (Set.of("damage_flat", "damage_pct", "armor_pen", "durability_pct").contains(key)) {
+						expectedAffixes.merge(key, value, Integer::sum);
+					}
+				});
+				ItemStack ingot = BonusTestSupport.smelt(helper, raw.copyWithCount(1));
+				helper.assertTrue(ingot.is(Items.IRON_INGOT) && ingot.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of()).equals(raw.getOrDefault(WeaponRolls.STAT_ROLLS, Map.of())),
+					"the smelted ingot lost the bonus: " + ingot.getComponentsPatch());
+				ingots.add(ingot);
+			}
+			ItemStack sword = BonusTestSupport.craft(helper, 1, 3, ingots.get(0), ingots.get(1), new ItemStack(Items.STICK));
+			RpgTestSupport.result("minedOreMakesASwordWithBonuses", "stats=" + BonusTestSupport.stats(sword) + " affixes=" + sword.get(WeaponRolls.AFFIX_ROLLS));
+			helper.assertTrue(sword.is(Items.IRON_SWORD) && expectedStats.equals(BonusTestSupport.stats(sword)), "sword stats " + BonusTestSupport.stats(sword) + " expected " + expectedStats);
+			helper.assertTrue(expectedAffixes.equals(sword.getOrDefault(WeaponRolls.AFFIX_ROLLS, Map.of())), "sword affixes " + sword.get(WeaponRolls.AFFIX_ROLLS) + " expected " + expectedAffixes);
+		});
 		helper.succeed();
 	}
 }

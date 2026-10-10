@@ -4,7 +4,6 @@ import com.stella.rpg.RpgConfig;
 import com.stella.rpg.RpgConfigStore;
 import com.stella.rpg.StellaRpg;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.event.Event;
@@ -19,7 +18,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -79,19 +77,21 @@ public final class MiningRolls {
 		double depth = origin == null ? 0.0 : depth(origin.y, level.getMinY());
 		RpgConfig.MaterialRolls config = RpgConfigStore.current().materialRolls();
 		RandomSource random = context.getRandom();
-		Map<Item, MaterialProfiles.Profile> chosen = new HashMap<>();
 		for (ItemStack stack : drops) {
 			String tier = MaterialProfiles.tierOf(stack);
 			if (tier == null || stack.has(WeaponRolls.STAT_ROLLS) || stack.has(WeaponRolls.AFFIX_ROLLS)) {
 				continue;
 			}
-			// One break gives one profile per item, so a Fortune stack is never split.
-			MaterialProfiles.Profile profile = chosen.computeIfAbsent(stack.getItem(),
-				item -> MaterialProfiles.pick(MaterialProfiles.profiles(tier), depth, config.depthRankWeight(), random));
-			if (profile != null) {
-				apply(stack, profile);
+			// Most drops stay plain so they stack. Depth lifts the quality of a rolled drop, never the chance.
+			if (random.nextDouble() >= config.rollChance()) {
+				continue;
 			}
-			double chance = config.tiers().get(tier).enchantChance() * (1.0 + config.depthEnchantBonus() * depth);
+			MaterialProfiles.Profile profile = MaterialProfiles.roll(tier, config, MaterialProfiles.gearAffixes(tier), depth, random);
+			if (profile == null) {
+				continue;
+			}
+			apply(stack, profile);
+			double chance = Math.min(1.0, config.tiers().get(tier).enchantChance() * (1.0 + config.depthEnchantBonus() * depth));
 			if (random.nextDouble() < chance) {
 				enchant(stack, level, config.secondEnchantChance(), random);
 			}

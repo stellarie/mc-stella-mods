@@ -3,7 +3,6 @@ package com.stella.rpg;
 import com.stella.rpg.roll.Affix;
 import com.stella.rpg.roll.MaterialProfiles;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,26 +12,37 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-/** The fixed bonus sets a mined material can roll. */
+/** The free roll of a rare mined drop: its count, its stat range, its typed affixes, and what depth does to them. */
 public final class MaterialProfilesGameTest {
 	/** The typed affixes a material can carry. */
 	private static final Set<String> TYPED = Set.of("damage_flat", "damage_pct", "armor_pen", "hp_flat", "hp_pct", "reduction_flat", "reduction_pct", "durability_pct");
+	private static final int ROLLS = 20000;
 
 	private static RpgConfig.MaterialRolls parse(final String json, final List<String> errors) {
 		return RpgConfigStore.parse(json, errors::add).materialRolls();
+	}
+
+	private static MaterialProfiles.Profile roll(final String tier, final double depth, final RandomSource random) {
+		RpgConfig.MaterialRolls config = RpgConfig.DEFAULT_MATERIAL_ROLLS;
+		return MaterialProfiles.roll(tier, config, RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get(MaterialProfiles.AFFIX_TIER.get(tier)).affixes(), depth, random);
+	}
+
+	private static int points(final MaterialProfiles.Profile profile) {
+		return profile.stats().values().stream().mapToInt(Integer::intValue).sum();
 	}
 
 	@GameTest
 	public void shapeAndRange(final GameTestHelper helper) {
 		RpgConfig.MaterialRolls config = RpgConfig.DEFAULT_MATERIAL_ROLLS;
 		RpgConfig.WeaponRolls gear = RpgConfig.DEFAULT_WEAPON_ROLLS;
+		RandomSource random = RandomSource.create(20261010L);
 		int checked = 0;
 		for (Map.Entry<String, RpgConfig.MaterialTier> entry : config.tiers().entrySet()) {
 			RpgConfig.MaterialTier tier = entry.getValue();
-			List<MaterialProfiles.Profile> profiles = MaterialProfiles.profiles(entry.getKey());
-			helper.assertTrue(profiles.size() == tier.profiles(), entry.getKey() + " has " + profiles.size() + " profiles");
 			Map<Affix, RpgConfig.AffixRange> ranges = gear.tiers().get(MaterialProfiles.AFFIX_TIER.get(entry.getKey())).affixes();
-			for (MaterialProfiles.Profile profile : profiles) {
+			for (int i = 0; i < 3000; i++) {
+				MaterialProfiles.Profile profile = roll(entry.getKey(), (i % 3) / 2.0, random);
+				helper.assertTrue(profile != null, entry.getKey() + " rolled nothing");
 				int keys = profile.stats().size() + profile.affixes().size();
 				helper.assertTrue(keys >= 1 && keys <= tier.countWeights().size(), entry.getKey() + " profile keys " + profile);
 				for (Map.Entry<String, Integer> stat : profile.stats().entrySet()) {
@@ -45,68 +55,79 @@ public final class MaterialProfilesGameTest {
 					double scale = key.percent() ? Affix.TENTHS : 1;
 					double low = Math.max(1, Math.round(ranges.get(key).min() * scale * config.affixScale()));
 					double high = Math.max(low, Math.round(ranges.get(key).max() * scale * config.affixScale()));
-					helper.assertTrue(affix.getValue() >= low && affix.getValue() <= high,
-						entry.getKey() + " affix " + affix + " outside " + low + ".." + high);
+					helper.assertTrue(affix.getValue() >= low && affix.getValue() <= high, entry.getKey() + " affix " + affix + " outside " + low + ".." + high);
 				}
 				checked++;
 			}
 		}
-		RpgTestSupport.result("shapeAndRange", "profiles=" + checked);
-		helper.assertTrue(checked > 0, "no profile was checked");
+		RpgTestSupport.result("shapeAndRange", "rolls=" + checked);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyStatValueAppears(final GameTestHelper helper) {
+		// Fixed profiles hid most of the range. A free roll reaches both ends of it.
+		RandomSource random = RandomSource.create(5L);
+		RpgConfig.MaterialTier tier = RpgConfig.DEFAULT_MATERIAL_ROLLS.tiers().get("diamond");
+		java.util.Set<Integer> seen = new java.util.HashSet<>();
+		java.util.Set<List<Map<String, Integer>>> distinct = new java.util.HashSet<>();
+		for (int i = 0; i < 4000; i++) {
+			MaterialProfiles.Profile profile = roll("diamond", 0.0, random);
+			seen.addAll(profile.stats().values());
+			distinct.add(List.of(profile.stats(), profile.affixes()));
+		}
+		RpgTestSupport.result("everyStatValueAppears", "values=" + seen + " distinct=" + distinct.size());
+		for (int value = tier.min(); value <= tier.max(); value++) {
+			helper.assertTrue(seen.contains(value), "the value " + value + " never rolled");
+		}
+		helper.assertTrue(distinct.size() > 100, "only " + distinct.size() + " distinct rolls, which looks like a fixed list");
 		helper.succeed();
 	}
 
 	@GameTest
 	public void countFollowsWeights(final GameTestHelper helper) {
-		RpgConfig.MaterialRolls config = parse("{\"material_rolls\":{\"iron\":{\"profiles\":256}}}", new ArrayList<>());
-		RpgConfig.MaterialTier tier = config.tiers().get("iron");
-		List<MaterialProfiles.Profile> profiles = MaterialProfiles.generate("iron", config,
-			RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get(MaterialProfiles.AFFIX_TIER.get("iron")).affixes());
+		RpgConfig.MaterialTier tier = RpgConfig.DEFAULT_MATERIAL_ROLLS.tiers().get("iron");
+		RandomSource random = RandomSource.create(7L);
 		int[] counts = new int[tier.countWeights().size()];
-		for (MaterialProfiles.Profile profile : profiles) {
+		for (int i = 0; i < ROLLS; i++) {
+			MaterialProfiles.Profile profile = roll("iron", 0.0, random);
 			counts[profile.stats().size() + profile.affixes().size() - 1]++;
 		}
 		int total = tier.countWeights().stream().mapToInt(Integer::intValue).sum();
 		for (int i = 0; i < counts.length; i++) {
 			double expected = tier.countWeights().get(i) / (double) total;
-			double actual = counts[i] / (double) profiles.size();
+			double actual = counts[i] / (double) ROLLS;
+			double bound = 4.5 * Math.sqrt(expected * (1 - expected) / ROLLS);
 			RpgTestSupport.result("countFollowsWeights", "count=" + (i + 1) + " expected=" + expected + " actual=" + actual);
-			helper.assertTrue(profiles.size() == 256 && Math.abs(expected - actual) < 0.12, "count " + (i + 1) + " share " + actual + " expected " + expected);
+			helper.assertTrue(Math.abs(expected - actual) <= bound, "count " + (i + 1) + " share " + actual + " expected " + expected + " +- " + bound);
 		}
 		helper.succeed();
 	}
 
 	@GameTest
-	public void deterministic(final GameTestHelper helper) {
-		RpgConfig.MaterialRolls config = RpgConfig.DEFAULT_MATERIAL_ROLLS;
-		Map<Affix, RpgConfig.AffixRange> ranges = RpgConfig.DEFAULT_WEAPON_ROLLS.tiers().get("diamond").affixes();
-		List<MaterialProfiles.Profile> first = MaterialProfiles.generate("diamond", config, ranges);
-		List<MaterialProfiles.Profile> second = MaterialProfiles.generate("diamond", config, ranges);
-		RpgConfig.MaterialRolls reseeded = parse("{\"material_rolls\":{\"seed\":7}}", new ArrayList<>());
-		List<MaterialProfiles.Profile> other = MaterialProfiles.generate("diamond", reseeded, ranges);
-		helper.assertTrue(!first.isEmpty() && first.equals(second), "the same seed gave different profiles");
-		helper.assertTrue(!first.equals(other), "another seed gave the same profiles");
+	public void depthRaisesQuality(final GameTestHelper helper) {
+		double[] stat = new double[2];
+		double[] size = new double[2];
+		for (int depth = 0; depth < 2; depth++) {
+			RandomSource random = RandomSource.create(11L);
+			for (int i = 0; i < ROLLS; i++) {
+				MaterialProfiles.Profile profile = roll("diamond", depth, random);
+				stat[depth] += points(profile) / (double) Math.max(1, profile.stats().size());
+				size[depth] += profile.stats().size() + profile.affixes().size();
+			}
+		}
+		RpgTestSupport.result("depthRaisesQuality", "valueSurface=" + stat[0] / ROLLS + " valueDeep=" + stat[1] / ROLLS
+			+ " keysSurface=" + size[0] / ROLLS + " keysDeep=" + size[1] / ROLLS);
+		helper.assertTrue(stat[1] > stat[0] * 1.03, "a deep roll has no better values: " + stat[1] / ROLLS + " vs " + stat[0] / ROLLS);
+		helper.assertTrue(size[1] > size[0] * 1.1, "a deep roll has no more bonuses: " + size[1] / ROLLS + " vs " + size[0] / ROLLS);
 		helper.succeed();
 	}
 
 	@GameTest
-	public void explicitEntriesWin(final GameTestHelper helper) {
-		List<String> errors = new ArrayList<>();
-		RpgConfig.MaterialRolls config = parse(
-			"{\"material_rolls\":{\"iron\":{\"explicit\":[{\"str\":5},{\"dex\":2,\"damage_flat\":30},{\"nonsense\":1},{\"vit\":0}]}}}", errors);
-		try {
-			RpgConfigStore.set(RpgConfigStore.parse(
-				"{\"material_rolls\":{\"iron\":{\"explicit\":[{\"str\":5},{\"dex\":2,\"damage_flat\":30},{\"nonsense\":1},{\"vit\":0}]}}}", message -> { }));
-			List<MaterialProfiles.Profile> profiles = MaterialProfiles.profiles("iron");
-			RpgTestSupport.result("explicitEntriesWin", "profiles=" + profiles + " errors=" + errors.size());
-			helper.assertTrue(profiles.size() == 2, "profiles " + profiles);
-			helper.assertTrue(profiles.get(0).stats().equals(Map.of("str", 5)) && profiles.get(0).affixes().isEmpty(), "first " + profiles.get(0));
-			helper.assertTrue(profiles.get(1).stats().equals(Map.of("dex", 2)) && profiles.get(1).affixes().equals(Map.of("damage_flat", 30)), "second " + profiles.get(1));
-			helper.assertTrue(errors.size() == 2, "bad entries logged " + errors.size());
-			helper.assertTrue(config.tiers().get("iron").explicit().size() == 2, "parsed " + config.tiers().get("iron").explicit());
-		} finally {
-			RpgConfigStore.set(null);
-		}
+	public void sameRandomGivesTheSameRoll(final GameTestHelper helper) {
+		MaterialProfiles.Profile first = roll("gold", 0.4, RandomSource.create(99L));
+		MaterialProfiles.Profile second = roll("gold", 0.4, RandomSource.create(99L));
+		helper.assertTrue(first != null && first.equals(second), "the same random gave " + first + " and " + second);
 		helper.succeed();
 	}
 
@@ -114,10 +135,13 @@ public final class MaterialProfilesGameTest {
 	public void configDefaultsAndGuards(final GameTestHelper helper) {
 		List<String> errors = new ArrayList<>();
 		helper.assertTrue(parse("{}", errors).equals(RpgConfig.DEFAULT_MATERIAL_ROLLS) && errors.isEmpty(), "empty config is not the default");
+		helper.assertTrue(RpgConfig.DEFAULT_MATERIAL_ROLLS.rollChance() == 0.01, "roll_chance must default to 0.01");
 		helper.assertTrue(!RpgConfig.DEFAULT_MATERIAL_ROLLS.craftRandomRoll(), "craft_random_roll must default to false");
-		RpgConfig.MaterialRolls on = parse("{\"material_rolls\":{\"craft_random_roll\":true}}", errors);
-		helper.assertTrue(on.craftRandomRoll() && errors.isEmpty(), "craft_random_roll true was not read");
-		RpgConfig.MaterialRolls bad = parse("{\"material_rolls\":{\"craft_random_roll\":\"yes\",\"affix_share\":3,\"iron\":{\"min\":9,\"max\":2,\"profiles\":0}}}", errors);
+		RpgConfig.MaterialRolls on = parse("{\"material_rolls\":{\"craft_random_roll\":true,\"roll_chance\":0.5}}", errors);
+		helper.assertTrue(on.craftRandomRoll() && on.rollChance() == 0.5 && errors.isEmpty(), "hand edited values were not read");
+		parse("{\"material_rolls\":{\"seed\":5,\"iron\":{\"profiles\":12,\"explicit\":[{\"str\":5}]}}}", errors);
+		helper.assertTrue(errors.isEmpty(), "the retired keys must be skipped without an error: " + errors);
+		RpgConfig.MaterialRolls bad = parse("{\"material_rolls\":{\"craft_random_roll\":\"yes\",\"roll_chance\":2,\"affix_share\":3,\"iron\":{\"min\":9,\"max\":2}}}", errors);
 		RpgTestSupport.result("configDefaultsAndGuards", "errors=" + errors);
 		helper.assertTrue(errors.size() == 4, "errors " + errors);
 		helper.assertTrue(bad.equals(RpgConfig.DEFAULT_MATERIAL_ROLLS), "a bad value did not fall back to the default");
@@ -134,28 +158,6 @@ public final class MaterialProfilesGameTest {
 		helper.assertTrue(MaterialProfiles.tierOf(new ItemStack(Items.IRON_INGOT)) == null, "an ingot is not mined");
 		helper.assertTrue(MaterialProfiles.tierOf(new ItemStack(Items.IRON_NUGGET)) == null, "a nugget is not mined");
 		helper.assertTrue(MaterialProfiles.tierOf(new ItemStack(Items.COAL)) == null, "coal");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void depthSkewsWorth(final GameTestHelper helper) {
-		List<MaterialProfiles.Profile> profiles = MaterialProfiles.profiles("diamond");
-		RandomSource random = RandomSource.create(11L);
-		double weight = RpgConfig.DEFAULT_MATERIAL_ROLLS.depthRankWeight();
-		double shallow = 0;
-		double deep = 0;
-		Set<MaterialProfiles.Profile> seen = new HashSet<>();
-		for (int i = 0; i < 4000; i++) {
-			shallow += MaterialProfiles.pick(profiles, 0.0, weight, random).worth();
-			MaterialProfiles.Profile picked = MaterialProfiles.pick(profiles, 1.0, weight, random);
-			deep += picked.worth();
-			seen.add(picked);
-		}
-		double mean = profiles.stream().mapToDouble(MaterialProfiles.Profile::worth).average().orElse(0);
-		RpgTestSupport.result("depthSkewsWorth", "mean=" + mean + " shallow=" + shallow / 4000 + " deep=" + deep / 4000 + " seen=" + seen.size());
-		helper.assertTrue(Math.abs(shallow / 4000 - mean) < mean * 0.08, "depth 0 should be uniform: " + shallow / 4000 + " vs " + mean);
-		helper.assertTrue(deep / 4000 > shallow / 4000 * 1.1, "depth 1 mean " + deep / 4000 + " vs depth 0 " + shallow / 4000);
-		helper.assertTrue(seen.size() > 1, "depth 1 picked one profile only");
 		helper.succeed();
 	}
 }

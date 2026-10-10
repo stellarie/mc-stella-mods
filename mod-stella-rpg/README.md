@@ -611,7 +611,7 @@ A new sibling item needs one line here. No sibling mod changes.
 
 Deep mining feeds crafted gear. The path has four steps, and each has its own section below.
 
-1. A player mines copper, iron, gold, or diamond ore, or ancient debris. The drop carries one profile of 1 to 4 bonuses, and rarely an enchantment. See `Mined material profiles`.
+1. A player mines copper, iron, gold, or diamond ore, or ancient debris. Rarely (1% of the drops), a drop carries 1 to 4 bonuses, and a rolled drop may be enchanted. The other drops are plain and stack. See `Mined material profiles`.
 2. A furnace keeps the bonus on the smelted result. See `Stacking and smelting`.
 3. A recipe sums the bonuses and the enchantments of its materials into the result. See `Craft sum`.
 4. The gear gives the stats while it is held or worn. The stats screen, the tooltip, and `Stat-bonus contract` use the same two maps.
@@ -621,45 +621,46 @@ Pickaxes, shovels, and hoes carry nothing, and the bonus of a material used in t
 
 ## Stacking and smelting
 
-Two mined stacks merge only when their item and bonus maps are equal. A tier has 8 to 16 fixed profiles, so mined stacks of one profile merge and a deep mine fills at most 8 to 16 stacks of raw ore per tier, plus rare enchanted ones.
+Two stacks merge only when their item and bonus maps are equal. 99% of the mined drops are plain, so they stack with each other and with plain ore from any source.
+A rolled drop is rare and free (its stats are not drawn from a fixed list), so two rolled drops almost never merge. Rolled drops are meant to be kept, not stacked.
 
-- A furnace smelts one profile at a time. It refuses a stack of another profile in the output slot until the player takes the output. This is the vanilla furnace rule.
-- A hopper into a furnace waits while the input holds a different profile. A hopper out of the output slot empties it, so a line keeps running. Test this in play.
-- A chest sorter with one furnace per profile removes the manual work.
+- A furnace keeps the bonus of a rolled raw ore on the ingot. A rolled stack and a plain stack in the same furnace wait for each other: the output slot refuses a different bonus set until the player takes the output. This is the vanilla furnace rule.
+- A hopper into a furnace waits while the input holds a different bonus set. A hopper out of the output slot empties it, so a line keeps running. Test this in play.
+- Take the rare rolled ore by hand, and let a hopper line smelt the plain ore.
 - Unpacking a storage block divides the bonus by the result count and rounds down, and an enchanted block cannot unpack. Packing and unpacking never raises the total.
 - An outside smelter that builds its result without `Recipe#assemble` loses the bonus.
 - Ore Regeneration and a placed ore each give one normal roll per break. Silk Touch gives the ore block, which carries nothing.
 
 ## Mined material profiles
 
-A mined material carries one profile: a fixed set of 1 to 4 bonuses. `MaterialProfiles` builds the profiles of each tier from the `material_rolls` seed, so the sets are the same on every start.
-Equal profiles are equal maps, so mined stacks of one profile stack together. A tier has at most `profiles` distinct sets.
+`material_rolls.roll_chance` (default 0.01) is the share of mined tier drops that carry a bonus. The rest are plain and stack. Depth never changes this share.
+A rolled drop draws its bonuses freely. The count follows the tier weights, each stat falls in the tier range, and no fixed list limits the sets.
 
-| Tier | Mined drop | Stat range | Count weights 1, 2, 3, 4 | Profiles | Enchant chance |
-|---|---|---|---|---|---|
-| `copper` | `raw_copper` | 1 to 2 | 55, 30, 12, 3 | 8 | 0.1% |
-| `iron` | `raw_iron` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.2% |
-| `gold` | `raw_gold` | 1 to 3 | 45, 32, 17, 6 | 12 | 0.4% |
-| `diamond` | `diamond` | 2 to 4 | 30, 32, 24, 14 | 16 | 2.0% |
-| `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 16 | 3.0% |
+| Tier | Mined drop | Stat range | Count weights 1, 2, 3, 4 | Enchant chance in a rolled drop |
+|---|---|---|---|---|
+| `copper` | `raw_copper` | 1 to 2 | 55, 30, 12, 3 | 2% |
+| `iron` | `raw_iron` | 1 to 3 | 45, 32, 17, 6 | 5% |
+| `gold` | `raw_gold` | 1 to 3 | 45, 32, 17, 6 | 8% |
+| `diamond` | `diamond` | 2 to 4 | 30, 32, 24, 14 | 20% |
+| `debris` | `ancient_debris` | 1 to 3 | 30, 32, 24, 14 | 30% |
 
-- A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per profile.
+- A pick is a typed affix with the chance `affix_share` (0.25), and a stat otherwise. A stat appears once per roll.
   The typed affixes are damage, damage %, armor penetration, HP, HP %, reduction, reduction %, and durability %.
   An affix value is the range of the gear tier times `affix_scale` (0.25), and at least 1. The gear tier of `debris` is `netherite`.
-- Depth raises the weight of strong profiles. A profile weighs `1 + depth_rank_weight x depth x rank`, and `rank` runs from 0 for the weakest to 1 for the strongest.
+- Depth lifts the quality of a rolled drop. With `lift = depth_rank_weight x depth`, a count of rank `r` (0 for 1 bonus, 1 for the largest) weighs `1 + lift x r` times its weight,
+  and each value is drawn with `u ^ (1 / (1 + lift))` so it moves toward the top of its range. At depth 0 both are plain.
 - `craft_random_roll` is false by default. When true, gear crafted from materials that carry no bonus keeps the old random roll. A material sum still wins.
-- Each tier key holds `items`, `min`, `max`, `count_weights`, `profiles` (1 to 256), `enchant_chance`, and `explicit`.
-  `explicit` lists exact sets such as `{"str": 5}`. A non-empty list replaces the generated sets. A bad entry logs one error and is skipped.
+- Each tier key holds `items`, `min`, `max`, `count_weights`, and `enchant_chance`. The old keys `seed`, `profiles`, and `explicit` are skipped.
 - A mined drop rolls when a player breaks a block of `#mod-stella-rpg:bonus_ores` (copper, iron, gold, and diamond ores, and ancient debris)
-  and the drop is the mined item of a tier. All stacks of one item from one break share one profile, so Fortune never splits a roll.
+  and the drop is the mined item of a tier. Each drop stack rolls once with `roll_chance`, so a Fortune stack is never split.
   Silk Touch drops the ore block, which carries nothing. A piston, an explosion, or a nugget from nether gold ore rolls nothing.
 - Depth is 0 at y 64 and above, and 1 at the bottom of the world. It comes from the break position.
-- Each mined stack is enchanted with the tier chance times `1 + depth_enchant_bonus x depth`.
+- Only a rolled drop can be enchanted. The tier chance times `1 + depth_enchant_bonus x depth` (at most 1) applies inside it.
   The enchantment comes from `#minecraft:on_random_loot` without curses, at a level from 1 to its maximum.
   A second, compatible enchantment follows with `second_enchant_chance`.
 - A material from a chest or container carries nothing, because only a player's block break rolls.
   Chest gear is marked in a late phase of `LootTableEvents.MODIFY_DROPS`, so gear that another mod adds to the same table is marked too.
-- Items already mined keep their maps after a config change. A new set does not merge with an old one.
+- Items already mined keep their maps after a config change.
 
 ## Stat-bonus contract
 
