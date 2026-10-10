@@ -47,6 +47,10 @@ public class WitherSkullShot extends WitherSkull {
 		this.origin = start;
 	}
 
+	public Vec3 origin() {
+		return this.origin;
+	}
+
 	public Spec spec() {
 		return this.spec;
 	}

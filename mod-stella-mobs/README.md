@@ -396,6 +396,12 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
   (10 to 32), on a floor within 8 blocks of its height, at least 6 blocks from every player. A minion is half the Wither's
   level, carries fire resistance, and drops no loot, no equipment and no experience. The cap is 6 plus 3 per player within 48
   blocks, at most 18. No wave comes during a rage or in the 100 ticks after it. The Wither's death or removal takes the rest.
+- Rage at half health: for `rage.ticks` (600, thirty seconds) it sends rings of `rage_a.ring_size` skulls (6) every 24 ticks
+  and one skull in a random direction every 6, none past `rage_a.range` (16 blocks). They are blue, hit for 0.12 of the
+  standard hit, and add Wither I. At most `skull.live_cap` (40) of its skulls fly at once. Volleys and new minions wait.
+- Rage at a quarter health: it replaces the first for another 600 ticks. Every 3 ticks one skull falls from 14 blocks above
+  the Wither, within 24 blocks of it. Half of them land within 6 blocks of a random player. They hit for 0.20 of the
+  standard hit. A hit that crosses both thresholds starts this rage only. Each rage starts once.
 - Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
   `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 40 ticks at full health, 12 at none.
 

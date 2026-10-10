@@ -81,6 +81,17 @@ public final class WitherMinions {
 		WATCHED.add(wither);
 	}
 
+	/** The watched Withers that stand in this level. */
+	public static List<WitherBoss> watched(final ServerLevel level) {
+		List<WitherBoss> found = new ArrayList<>();
+		for (WitherBoss wither : List.copyOf(WATCHED)) {
+			if (wither.level() == level && !wither.isRemoved()) {
+				found.add(wither);
+			}
+		}
+		return found;
+	}
+
 	public static void tick(final ServerLevel level) {
 		if (WATCHED.isEmpty()) {
 			return;

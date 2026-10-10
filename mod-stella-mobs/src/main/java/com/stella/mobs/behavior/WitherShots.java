@@ -62,6 +62,12 @@ public final class WitherShots {
 		return skulls.size();
 	}
 
+	/** A copy of the Wither's skulls in the air, for a test to watch. */
+	public static List<WitherSkullShot> snapshot(final WitherBoss wither) {
+		List<WitherSkullShot> skulls = LIVE.get(wither.getUUID());
+		return skulls == null ? List.of() : List.copyOf(skulls);
+	}
+
 	public static void discardAll(final WitherBoss wither) {
 		List<WitherSkullShot> skulls = LIVE.remove(wither.getUUID());
 		if (skulls != null) {
