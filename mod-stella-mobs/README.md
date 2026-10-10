@@ -366,6 +366,53 @@ and 4 blocks high. The player stands 20 blocks away, with the back to the stray.
 - A pursued unit that has cover, and took no unseen shot, follows the stance script. It does not hide.
 - A learned HOLD after a shot of `mod-stella-learn` does not stop a hide. A follow-up change makes learn yield.
 
+## Wither boss
+
+A Wither that joins a level fresh (the skull build, `/summon`, a spawn egg) is an encounter Wither. A Wither loaded from
+disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and stays vanilla.
+
+- Level: 100, or 20 above the highest player level near it, whichever is higher. Players count within the scaling
+  floor radius (128 blocks). With none that near, the highest player in the level counts. Spectators never count.
+- The level is fixed at the summon. The spawn scaling then sets health and damage from it. Vanilla caps max health at 1024.
+- `WitherState.hasWitherFlag(Mob)` reads the encounter mark without creating state. `mod-stella-rpg` finds it by name.
+- The numbers live in `config/mod-stella-mobs/wither.json`, grouped by section. A missing key falls back to its default.
+  An unknown key or a bad value is logged and skipped.
+
+- Charge-up: the vanilla 220 ticks and the power-7 blast stay. Every new system is inert until the charge-up ends. The
+  first tick after it marks the Wither active and records the height it stood at.
+- Movement: it flies at the nearest player (creative and spectator players are skipped) and holds at
+  `move.stop_distance` (9 blocks) once it sees the player. It never flies more than `move.ceiling_above_ground`
+  (3 blocks) above the ground under it, so it follows a player up a hill but not into the sky. With no ground within
+  `move.ground_search` blocks below it, the activation height stands in for the ground.
+- Once active, its body breaks no blocks after a hit, arrows hurt it at any health, and its side heads no longer fire on
+  their own.
+- Health: the vanilla attribute caps max health at 1024. The part of the formula health it cannot hold is kept as a
+  divisor on every hit, so a level 170 Wither still takes 25,800 damage to die. The bar reads health over max health.
+- Skull: it breaks no block. It hurts every body within `blast.radius` (2 blocks) of its impact, except the Wither,
+  its minions, other enemies and spectators. A hit is `share` times the level hit (standard hit is 8 times the damage
+  multiplier plus the flat part), adds Wither, and with `blast.rider_chance` (40 percent) adds chill or burning, evenly.
+- Minions: from the activation, and every `minions.wave_interval` ticks (160), the Wither calls skeletons, zombies, husks,
+  strays and wither skeletons (weights 25, 25, 15, 15, 20) between `minions.spawn_min` and `minions.spawn_max` blocks away
+  (10 to 32), on a floor within 8 blocks of its height, at least 6 blocks from every player. A minion is half the Wither's
+  level, carries fire resistance, and drops no loot, no equipment and no experience. The cap is 6 plus 3 per player within 48
+  blocks, at most 18. No wave comes during a rage or in the 100 ticks after it. The Wither's death or removal takes the rest.
+- Rage at half health: for `rage.ticks` (600, thirty seconds) it sends rings of `rage_a.ring_size` skulls (6) every 24 ticks
+  and one skull in a random direction every 6, none past `rage_a.range` (16 blocks). They are blue, hit for 0.12 of the
+  standard hit, and add Wither I. At most `skull.live_cap` (40) of its skulls fly at once. Volleys and new minions wait.
+- Rage at a quarter health: it replaces the first for another 600 ticks. Every 3 ticks one skull falls from 14 blocks above
+  the Wither, within 24 blocks of it. Half of them land within 6 blocks of a random player. They hit for 0.20 of the
+  standard hit. A hit that crosses both thresholds starts this rage only. Each rage starts once.
+- Stats: vitality 200 and the other five stats at random from 50 to 150 (`stats.*`), given once at the summon through the
+  object share `mod-stella-rpg:mob-stat-set`. Without that share the Wither keeps its role stats.
+- Rpg flag: `mod-stella-rpg` finds `WitherState#hasWitherFlag` by name, so percent-of-max-health effects use the elite
+  share on an encounter Wither.
+- Drops: vanilla drops one nether star. The Wither adds `floor(mu)` more, plus one with the chance of the rest, where
+  `mu = min(7, 0.25 + 0.0125 * (level - 100))` (`stars.*`). It also drops `books.count` (5) enchanted books with 2 or 3
+  enchantments each. The books come from the share `mod-stella-equips-enchants:enchanted-book`. Without it the Wither
+  builds each book from every registry enchantment that is not a curse. Neither needs a player kill.
+- Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
+  `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 40 ticks at full health, 12 at none.
+
 ## Bosses
 
 - A boss has no boss bar. Instead, soul and small flame particles drift around it every few ticks.

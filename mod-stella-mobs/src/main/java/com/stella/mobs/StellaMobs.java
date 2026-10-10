@@ -84,6 +84,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.entity.StellaEntities.register();
 		ReactiveState.register();
 		EliteState.register();
+		com.stella.mobs.behavior.WitherState.register();
 		ThreatState.register();
 		com.stella.mobs.scaling.WorldThreatPeak.register();
 		ReadoutRankProvider.register();
@@ -131,14 +132,21 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(IllusionerKit::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(BloodMoon::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
+		ServerTickEvents.END_LEVEL_TICK.register(com.stella.mobs.behavior.WitherRage::tickAll);
+		ServerTickEvents.END_LEVEL_TICK.register(com.stella.mobs.behavior.WitherMinions::tick);
+		ServerLivingEntityEvents.AFTER_DAMAGE.register(com.stella.mobs.behavior.WitherRage::afterDamage);
 		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
 		// Before the spawn chunks load, so loaded mobs rescale with the file's numbers.
-		ServerLifecycleEvents.SERVER_STARTING.register(server -> ScalingConfigStore.load());
+		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+			ScalingConfigStore.load();
+			com.stella.mobs.config.WitherConfigStore.load();
+		});
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
 				GearConfigStore.load();
 				ScalingConfigStore.load();
+				com.stella.mobs.config.WitherConfigStore.load();
 				EnchantRoller.clearCache();
 			}
 		});
@@ -172,6 +180,10 @@ public class StellaMobs implements ModInitializer {
 
 		// V4: a tagged mob belongs to another mod's kit, so it skips gear, boss, elite, rider, scaling and trait rolls.
 		if (!loadedFromDisk && !mob.entityTags().contains(NO_SPAWN_ROLL_TAG)) {
+			// Before the spawn scaling below reads the level.
+			if (mob instanceof net.minecraft.world.entity.boss.wither.WitherBoss) {
+				com.stella.mobs.behavior.WitherEncounter.begin(mob, level);
+			}
 			Identifier entityType = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
 			Loadout loadout = GearConfigStore.get().loadoutFor(entityType);
 			ReactiveState state = ReactiveState.get(mob);
@@ -238,6 +250,7 @@ public class StellaMobs implements ModInitializer {
 			com.stella.mobs.behavior.DepthMobs.rollAtSpawn(mob, level, entity instanceof EntityLoadData depthData ? depthData.spawnReason() : null);
 
 			SpawnScaling.apply(mob);
+			com.stella.mobs.behavior.WitherEncounter.afterScaling(mob);
 			BloodMoon.empower(mob, level);
 			// T03 to T06: the location traits are taken here, once, from where the mob appeared.
 			Traits.apply(mob);
@@ -255,6 +268,7 @@ public class StellaMobs implements ModInitializer {
 			Bosses.watch(mob);
 		}
 
+		com.stella.mobs.behavior.WitherEncounter.install(mob);
 		BehaviorInstaller.install(mob);
 		// R24: a ghast is not a Monster, so the installer returns before this and the ghast path is its own.
 		BehaviorInstaller.installGhastFireball(mob);
@@ -278,6 +292,10 @@ public class StellaMobs implements ModInitializer {
 
 	/** W10 and B1: a witch drops one of every potion it carries, and a boss leaves the aura sweep. */
 	private static void onEntityDeath(final LivingEntity entity, final DamageSource source) {
+		if (entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss wither) {
+			com.stella.mobs.behavior.WitherEncounter.onDeath(wither);
+		}
+
 		if (entity instanceof Mob mob && EliteState.hasBossFlag(mob)) {
 			StellaMobs.LOGGER.info(
 				"[BEHAVIOR] test=bossBarWatch t={} REMOVE uuid={} cause=death source={}",
