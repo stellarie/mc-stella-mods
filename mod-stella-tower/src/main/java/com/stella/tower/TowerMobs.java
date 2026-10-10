@@ -49,13 +49,17 @@ public final class TowerMobs {
 	public static final String TAG = "mod-stella-tower.mob";
 	/** Mobs from the mobs mod roll no elites of their own in the tower; the tower decides that. */
 	public static final String NO_SPAWN_ROLL_TAG = StellaMobs.NO_SPAWN_ROLL_TAG;
-	/** The first floor is a level 20 mob, and each floor adds one level. */
-	public static final int FIRST_FLOOR_LEVEL = 20;
+	/** The first floor is a level 50 mob. */
+	public static final int FIRST_FLOOR_LEVEL = 50;
+	/** A lost room's level is its floor plus this, less one. The room keeps this rule apart from the floors'. */
+	public static final int LOST_ROOM_FLOOR_OFFSET = 20;
 	public static final int FLOOR_CAP = 72;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
 	public static final int SPAWN_BATCH = 8;
 	public static final int SPAWN_TRIES = 24;
 	public static final double MIN_PLAYER_DISTANCE = 12.0;
+	/** On a biome floor, which has no safe zone past floor 1, no mob is raised this near the arrival. */
+	public static final double BIOME_ARRIVAL_CLEAR = 16.0;
 	public static final int OVERWORLD_ONLY_UNTIL = 20;
 	public static final Identifier HEALTH_ID = StellaTower.id("floor_health");
 	public static final Identifier ARMOR_ID = StellaTower.id("floor_armor");
@@ -113,9 +117,30 @@ public final class TowerMobs {
 		return entity.getAttached(STATE);
 	}
 
-	/** The mob level of a floor. */
+	/**
+	 * The mob level of a floor: 50 on floor 1, one more per floor, ten more at each tenth floor, and fifty
+	 * instead of ten at each fiftieth.
+	 */
 	public static int levelOf(final int floor) {
-		return floor + FIRST_FLOOR_LEVEL - 1;
+		int tens = (floor - 1) / 10;
+		int fifties = (floor - 1) / 50;
+		return FIRST_FLOOR_LEVEL + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
+	}
+
+	/**
+	 * The kinds a floor of the tower raises: its biome's, a great hall's those of the biome below it. A floor drawn before
+	 * the biome floors keeps the pool of its number.
+	 */
+	public static List<EntityType<? extends Mob>> poolOf(final ServerLevel tower, final int floor) {
+		if (floor < 1) {
+			return pool(floor);
+		}
+		TowerPlan plan = TowerPlan.atQuiet(tower, floor);
+		if (!plan.isBiome()) {
+			return pool(floor);
+		}
+		FloorBiome biome = plan.biome().biome();
+		return BiomePools.of(biome == FloorBiome.GREAT_HALL ? FloorBiomes.of(plan.seed(), floor - 1) : biome);
 	}
 
 	/** The kinds a floor may hold. */
@@ -134,6 +159,17 @@ public final class TowerMobs {
 		Object scale = net.fabricmc.loader.api.FabricLoader.getInstance().getObjectShare().get("mod-stella-rpg:health-scale");
 		double k = scale instanceof Double value && value > 0.0 ? value : 1.0;
 		return cap / k;
+	}
+
+	/**
+	 * Makes a mob that is not the tower's own a tower mob of this floor, as it is: its floor, element and rank, and the
+	 * marks that keep the mobs mod's rolls off it. Its health, attributes and hits are its maker's, and are not touched.
+	 */
+	public static void adopt(final Mob mob, final int floor, final TowerElement element, final TowerRank rank) {
+		mob.setAttached(STATE, new State(floor, element, 1.0, rank));
+		mob.addTag(TAG);
+		mob.addTag(NO_SPAWN_ROLL_TAG);
+		mob.setPersistenceRequired();
 	}
 
 	/** Makes a mob a tower mob of this floor, in this element, at full health. */
@@ -202,7 +238,7 @@ public final class TowerMobs {
 	/** Raises one tower mob on the floor, somewhere clear and away from every player; null if none fit. */
 	public static @Nullable Mob spawnOne(final ServerLevel tower, final int floor) {
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = pool(floor);
+		List<EntityType<? extends Mob>> pool = poolOf(tower, floor);
 		EntityType<? extends Mob> type = pool.get(random.nextInt(pool.size()));
 		Mob mob = type.create(tower, EntitySpawnReason.EVENT);
 		if (mob == null) {
@@ -232,9 +268,14 @@ public final class TowerMobs {
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
-			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y + stories.get(random.nextInt(stories.size())).y(), z);
+			int sy = plan.isBiome() ? plan.standY(x - origin.getX(), z - origin.getZ()) : stories.get(random.nextInt(stories.size())).y();
+			if (sy < TowerWalk.LOW || plan.isBiome() && plan.biome().inDais(plan, x - origin.getX(), z - origin.getZ())) {
+				continue;
+			}
+			BlockPos feet = new BlockPos(x, TowerLayout.BASE_Y + sy, z);
 			Vec3 spot = spotFor(mob, feet);
-			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < MIN_PLAYER_DISTANCE || tooClose(players, spot)
+			double clear = plan.isBiome() ? BIOME_ARRIVAL_CLEAR : MIN_PLAYER_DISTANCE;
+			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < clear || tooClose(players, spot)
 				|| inSafeZone(plan, mob, spot)) {
 				continue;
 			}
@@ -303,7 +344,7 @@ public final class TowerMobs {
 
 	static AABB room(final int floor) {
 		BlockPos o = TowerLayout.origin(floor);
-		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.HEIGHT, o.getZ() + TowerLayout.SIZE);
+		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.ROOM_HEIGHT, o.getZ() + TowerLayout.SIZE);
 	}
 
 	/** Tower mobs standing on the floor now; its own record, not a kind, says which floor a mob is of. */

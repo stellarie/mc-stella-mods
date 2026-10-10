@@ -40,6 +40,8 @@ public final class TowerElites {
 	public static final int RESPAWN_TICKS = 6000;
 	/** Where they stand: this far in front of the portal, and how far they stray from it before walking back. */
 	public static final int GUARD_DISTANCE = 5;
+	/** On a biome floor the guard stands this far past the foot of the portal's stair. */
+	public static final int GUARD_DISTANCE_BIOME = 3;
 	public static final int GUARD_RADIUS = 8;
 	public static final int CHECK_TICKS = 20;
 	public static final int PLACE_TRIES = 40;
@@ -115,6 +117,10 @@ public final class TowerElites {
 	public static BlockPos post(final TowerPlan plan) {
 		// On the floor of the portal's story, however high the portal stands.
 		BlockPos inside = plan.portalInside().get(0);
+		if (plan.isBiome()) {
+			// Past the foot of the stair, on the ground.
+			return inside.offset(plan.portalFacing() * (2 + plan.biome().steps() + GUARD_DISTANCE_BIOME), TowerLayout.BASE_Y - inside.getY(), 0);
+		}
 		return inside.offset(plan.portalFacing() * GUARD_DISTANCE, TowerLayout.BASE_Y + plan.portalY() - inside.getY(), 0);
 	}
 
@@ -129,6 +135,13 @@ public final class TowerElites {
 	/** The kinds that may hold a post: the floor's own, but no creeper, whose blast ends it without a death. */
 	public static List<EntityType<? extends Mob>> guardianPool(final int floor) {
 		List<EntityType<? extends Mob>> pool = new ArrayList<>(TowerMobs.pool(floor));
+		pool.remove(EntityTypes.CREEPER);
+		return pool;
+	}
+
+	/** {@link #guardianPool(int)} for a floor of this tower: its biome's kinds, no creeper. */
+	public static List<EntityType<? extends Mob>> guardianPool(final ServerLevel tower, final int floor) {
+		List<EntityType<? extends Mob>> pool = new ArrayList<>(TowerMobs.poolOf(tower, floor));
 		pool.remove(EntityTypes.CREEPER);
 		return pool;
 	}
@@ -272,9 +285,15 @@ public final class TowerElites {
 	/** Raises the floor's elite or boss in front of its portal, kept near it. */
 	public static @Nullable Mob rise(final ServerLevel tower, final int floor, final TowerRank rank) {
 		RandomSource random = tower.getRandom();
-		List<EntityType<? extends Mob>> pool = guardianPool(floor);
-		EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
-		Mob mob = kind.create(tower, EntitySpawnReason.EVENT);
+		TowerBosses.Raised sovereign = rank == TowerRank.BOSS && TowerBosses.sovereignFloor(floor) ? TowerBosses.create(tower, floor) : null;
+		Mob mob;
+		if (sovereign != null) {
+			mob = sovereign.mob();
+		} else {
+			List<EntityType<? extends Mob>> pool = guardianPool(tower, floor);
+			EntityType<? extends Mob> kind = PINNED_KIND.getOrDefault(floor, pool.get(random.nextInt(pool.size())));
+			mob = kind.create(tower, EntitySpawnReason.EVENT);
+		}
 		if (mob == null) {
 			return null;
 		}
@@ -288,7 +307,12 @@ public final class TowerElites {
 			if (!tower.isLoaded(feet) || !TowerMobs.standsFree(tower, mob, feet)) {
 				continue;
 			}
-			TowerMobs.makeTowerMob(mob, floor, TowerElement.values()[random.nextInt(TowerElement.values().length)], rank);
+			TowerElement element = TowerElement.values()[random.nextInt(TowerElement.values().length)];
+			if (sovereign != null) {
+				TowerBosses.settle(sovereign, floor, element);
+			} else {
+				TowerMobs.makeTowerMob(mob, floor, element, rank);
+			}
 			if (!tower.addFreshEntity(mob)) {
 				return null;
 			}

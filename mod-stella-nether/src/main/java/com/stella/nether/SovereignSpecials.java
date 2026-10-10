@@ -424,8 +424,8 @@ public final class SovereignSpecials {
 		return control != null && control.active != null && control.active.special == Special.DIVE && !control.active.done;
 	}
 
-	static void forget() {
-		CONTROLS.clear();
+	static void forget(final UUID sovereign) {
+		CONTROLS.remove(sovereign);
 	}
 
 	/** Starts a special at once against a target. */

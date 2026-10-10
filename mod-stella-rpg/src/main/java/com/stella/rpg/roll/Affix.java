@@ -17,7 +17,9 @@ public enum Affix {
 	REDUCTION_PCT("reduction_pct", true, Kind.ARMOR),
 	MAGIC_RES_PCT("magic_res_pct", true, Kind.ARMOR),
 	/** Rolls only on boots. The pool check lives in {@code WeaponRolls}. */
-	MOVE_SPEED_PCT("move_speed_pct", true, Kind.ARMOR);
+	MOVE_SPEED_PCT("move_speed_pct", true, Kind.ARMOR),
+	/** Skips use damage. Materials and grants carry it, and the random gear roll never picks it. */
+	DURABILITY_PCT("durability_pct", true, Kind.WEAPON, Kind.ARMOR);
 
 	public static final int TENTHS = 10;
 

@@ -55,11 +55,11 @@ public final class TowerBlocks {
 		.lightLevel(state -> 15)
 		.sound(SoundType.GLASS)
 		.pushReaction(PushReaction.IMMOVEABLE));
-	/** The blue portal a lit crying obsidian frame holds. */
+	/** The blue portal a floor's frame holds. A blast cannot take it, as it cannot take the frame. */
 	public static final TowerPortalBlock TOWER_PORTAL = register("tower_portal", TowerPortalBlock::new, BlockBehaviour.Properties.of()
 		.noCollision()
 		.randomTicks()
-		.strength(-1.0F)
+		.strength(-1.0F, 3_600_000.0F)
 		.sound(SoundType.GLASS)
 		.lightLevel(state -> 11)
 		.noLootTable()
@@ -75,6 +75,15 @@ public final class TowerBlocks {
 		.noLootTable()
 		.sound(SoundType.WOOD)
 		.pushReaction(PushReaction.IMMOVEABLE));
+
+	/** The stair up to a floor's portal. It cannot be mined, blown up, pushed, or broken by a wither or the dragon. */
+	public static final TowerStairBlock TOWER_STAIR = register("tower_stair", properties -> new TowerStairBlock(TOWER_WALL.defaultBlockState(), properties),
+		BlockBehaviour.Properties.of()
+			.mapColor(MapColor.COLOR_BLACK)
+			.strength(-1.0F, 3_600_000.0F)
+			.noLootTable()
+			.sound(SoundType.POLISHED_DEEPSLATE)
+			.pushReaction(PushReaction.IMMOVEABLE));
 
 	/** The traps, one block for each theme that is laid. */
 	public static final java.util.Map<TrapTheme, TowerTrapBlock> TRAPS = registerTraps();

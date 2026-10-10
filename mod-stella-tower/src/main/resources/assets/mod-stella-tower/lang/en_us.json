@@ -11,6 +11,8 @@
   "block.mod-stella-tower.tower_trap_spikes": "Spike Plate",
   "block.mod-stella-tower.tower_lamp": "Tower Lamp",
   "block.mod-stella-tower.tower_frame": "Tower Frame",
+  "block.mod-stella-tower.tower_stair": "Tower Stair",
+  "entity.mod-stella-tower.ember_tyrant": "Ember Tyrant",
   "block.mod-stella-tower.tower_portal": "Tower Portal",
   "block.mod-stella-tower.tower_chest": "Tower Chest",
   "item.mod-stella-tower.void_key": "Void Key",

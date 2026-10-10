@@ -86,12 +86,12 @@ public final class LostRooms {
 	}
 
 	public static TowerPlan plan(final long seed, final int room) {
-		return TowerPlan.of(seed, looksFloor(room)).relocated(room);
+		return LegacyRoomPlan.of(seed, room);
 	}
 
 	/** The tower floor a mob level matches: its rewards, gear and pool. */
 	public static int equivalentFloor(final int level) {
-		return Math.max(1, level - TowerMobs.FIRST_FLOOR_LEVEL + 1);
+		return Math.max(1, level - TowerMobs.LOST_ROOM_FLOOR_OFFSET + 1);
 	}
 
 	/** The floor a trap in a lost room springs as: its room's level; 1 anywhere else. */

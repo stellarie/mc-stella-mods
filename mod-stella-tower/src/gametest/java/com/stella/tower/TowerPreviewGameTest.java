@@ -25,6 +25,10 @@ public class TowerPreviewGameTest {
 		try {
 			Files.createDirectories(dir);
 			for (TowerArchetype archetype : TowerArchetype.values()) {
+				// The older archetypes only: a biome floor is no archetype of the older generator's.
+				if (archetype == TowerArchetype.BIOME) {
+					continue;
+				}
 				for (long seed : SEEDS) {
 					int floor = seed == SEEDS[0] ? TRAP_BAND : archetype == TowerArchetype.HALL && seed == SEEDS[2] ? TowerElites.BOSS_EVERY : 1;
 					while (TowerArchetypes.of(seed, floor) != archetype && floor < 400) {

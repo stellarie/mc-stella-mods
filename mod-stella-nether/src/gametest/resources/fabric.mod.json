@@ -34,7 +34,8 @@
 			"com.stella.nether.RaidSpawnsGameTest",
 			"com.stella.nether.RaidCastersGameTest",
 			"com.stella.nether.SovereignScaleGameTest",
-			"com.stella.nether.RaidLevelGameTest"
+			"com.stella.nether.RaidLevelGameTest",
+			"com.stella.nether.SovereignFactoryGameTest"
 		],
 		"main": [
 			"com.stella.nether.NetherGameTestInit"

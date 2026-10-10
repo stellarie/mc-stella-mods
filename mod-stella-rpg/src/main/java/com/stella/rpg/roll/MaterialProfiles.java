@@ -29,7 +29,8 @@ public final class MaterialProfiles {
 	);
 	/** The typed affixes a material can carry. */
 	private static final List<Affix> AFFIX_POOL = List.of(
-		Affix.DAMAGE_FLAT, Affix.DAMAGE_PCT, Affix.ARMOR_PEN, Affix.HP_FLAT, Affix.HP_PCT, Affix.REDUCTION_FLAT, Affix.REDUCTION_PCT
+		Affix.DAMAGE_FLAT, Affix.DAMAGE_PCT, Affix.ARMOR_PEN, Affix.HP_FLAT, Affix.HP_PCT, Affix.REDUCTION_FLAT, Affix.REDUCTION_PCT,
+		Affix.DURABILITY_PCT
 	);
 	/** A flat affix at the top of its gear range counts as this many stat points. */
 	private static final double AFFIX_WORTH = 3.0;

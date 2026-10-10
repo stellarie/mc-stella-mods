@@ -1,0 +1,21 @@
+{
+	"replace": false,
+	"values": [
+		{ "id": "mod-stella-equips-enchants:hunter_bow", "required": false },
+		{ "id": "mod-stella-equips-enchants:composite_bow", "required": false },
+		{ "id": "mod-stella-equips-enchants:gakkung", "required": false },
+		{ "id": "mod-stella-equips-enchants:great_bow", "required": false },
+		{ "id": "mod-stella-equips-enchants:rudra_bow", "required": false },
+		{ "id": "mod-stella-equips-enchants:arbalest", "required": false },
+		{ "id": "mod-stella-equips-enchants:repeater", "required": false },
+		{ "id": "mod-stella-equips-enchants:ballista", "required": false },
+		{ "id": "mod-stella-equips-enchants:siege_arbalest", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_sword", "required": false },
+		{ "id": "mod-stella-ruins:deepsteel_axe", "required": false },
+		{ "id": "mod-stella-ruins:abyssal_edge", "required": false },
+		{ "id": "mod-stella-ruins:gladius_of_the_crowd", "required": false },
+		{ "id": "mod-stella-ruins:forgeheart_hammer", "required": false },
+		{ "id": "mod-stella-ruins:hawkeye_longbow", "required": false },
+		{ "id": "mod-stella-ruins:silkstring_bow", "required": false }
+	]
+}

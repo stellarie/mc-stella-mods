@@ -1,6 +1,7 @@
 package com.stella.tower.mixin;
 
 import com.stella.tower.TowerLayout;
+import com.stella.tower.TowerPlan;
 import com.stella.tower.TowerTravel;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -28,8 +29,8 @@ public abstract class TowerRandomTeleportMixin {
 		}
 		int floor = TowerLayout.floorAt(self.blockPosition());
 		BlockPos target = BlockPos.containing(x, y, z);
-		boolean inRoom = floor > 0 && TowerLayout.floorAt(target) == floor
-			&& target.getY() >= TowerLayout.BASE_Y && target.getY() < TowerLayout.BASE_Y + TowerLayout.HEIGHT;
+		boolean inRoom = floor > 0 && TowerLayout.floorAt(target) == floor && target.getY() >= TowerLayout.BASE_Y
+			&& target.getY() < TowerLayout.BASE_Y + TowerPlan.atQuiet((net.minecraft.server.level.ServerLevel) self.level(), floor).roofY();
 		if (!inRoom) {
 			cir.setReturnValue(false);
 		}

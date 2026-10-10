@@ -25,9 +25,9 @@ public final class TowerWalk {
 	public static final byte OPEN = 0;
 	public static final byte SOLID = 1;
 	public static final byte TALL = 2;
-	/** The feet heights a walk covers: the ground story's floor to just under the roof. */
-	public static final int LOW = 0;
-	public static final int HIGH = TowerLayout.HEIGHT - 1;
+	/** The feet heights a walk covers: a biome floor's wading level to just under its roof. */
+	public static final int LOW = -1;
+	public static final int HIGH = TowerLayout.ROOM_HEIGHT - 1;
 	private static final int SIZE = TowerLayout.SIZE;
 	private static final int SPAN = HIGH - LOW + 1;
 	private static final int[][] WAYS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -161,6 +161,10 @@ public final class TowerWalk {
 	/** How a block counts to a walking body: by its collision shape. */
 	public static byte classify(final ServerLevel level, final BlockPos pos) {
 		BlockState state = level.getBlockState(pos);
+		// Lava and powder snow have no collision, yet nobody walks into them: they count as higher than a block.
+		if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.LAVA) || state.is(net.minecraft.world.level.block.Blocks.POWDER_SNOW)) {
+			return TALL;
+		}
 		VoxelShape shape = state.getCollisionShape(level, pos);
 		if (shape.isEmpty()) {
 			return OPEN;
@@ -172,7 +176,7 @@ public final class TowerWalk {
 	public static Space world(final ServerLevel level, final int floor) {
 		BlockPos origin = TowerLayout.origin(floor);
 		return (x, y, z) -> {
-			if (x < 0 || z < 0 || x >= SIZE || z >= SIZE || y >= TowerLayout.HEIGHT || y < -1) {
+			if (x < 0 || z < 0 || x >= SIZE || z >= SIZE || y >= TowerLayout.ROOM_HEIGHT || y < -2) {
 				return SOLID;
 			}
 			return classify(level, origin.offset(x, y, z));

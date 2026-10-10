@@ -16,7 +16,7 @@ import net.minecraft.world.item.Items;
 /** The fixed bonus sets a mined material can roll. */
 public final class MaterialProfilesGameTest {
 	/** The typed affixes a material can carry. */
-	private static final Set<String> TYPED = Set.of("damage_flat", "damage_pct", "armor_pen", "hp_flat", "hp_pct", "reduction_flat", "reduction_pct");
+	private static final Set<String> TYPED = Set.of("damage_flat", "damage_pct", "armor_pen", "hp_flat", "hp_pct", "reduction_flat", "reduction_pct", "durability_pct");
 
 	private static RpgConfig.MaterialRolls parse(final String json, final List<String> errors) {
 		return RpgConfigStore.parse(json, errors::add).materialRolls();

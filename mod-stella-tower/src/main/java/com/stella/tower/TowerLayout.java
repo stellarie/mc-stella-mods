@@ -13,8 +13,12 @@ import net.minecraft.world.phys.Vec3;
 public final class TowerLayout {
 	/** The room's inside width and length. */
 	public static final int SIZE = 64;
-	/** The room's inside height. */
+	/** The room's inside height of the plans drawn before the biome floors, and of a lost room. */
 	public static final int HEIGHT = 24;
+	/** The room's inside height of a biome floor, and so the most any floor reaches. */
+	public static final int ROOM_HEIGHT = 32;
+	/** The lowest block of a biome floor, below the base: its bedrock. */
+	public static final int ROOM_LOW = -6;
 	/** One grid cell: the room, its walls, and a gap, so two floors never share a chunk. */
 	public static final int CELL = 128;
 	/** Floors per grid row. */
@@ -55,7 +59,7 @@ public final class TowerLayout {
 		BlockPos origin = origin(floor);
 		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + SIZE
 			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
-			&& pos.getY() >= BASE_Y - 2 && pos.getY() <= BASE_Y + HEIGHT;
+			&& pos.getY() >= BASE_Y + ROOM_LOW && pos.getY() <= BASE_Y + ROOM_HEIGHT;
 		return inside ? floor : 0;
 	}
 
@@ -74,7 +78,7 @@ public final class TowerLayout {
 		BlockPos origin = origin(id);
 		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + SIZE
 			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
-			&& pos.getY() >= BASE_Y - 2 && pos.getY() <= BASE_Y + HEIGHT;
+			&& pos.getY() >= BASE_Y + ROOM_LOW && pos.getY() <= BASE_Y + ROOM_HEIGHT;
 		return inside ? id : 0;
 	}
 

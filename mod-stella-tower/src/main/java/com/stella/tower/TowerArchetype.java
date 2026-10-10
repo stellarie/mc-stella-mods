@@ -10,13 +10,15 @@ import java.util.List;
  * <li>LABYRINTH: two mazes of paths six wide, one above the other, joined by a stair.</li>
  * <li>GREAT_HALL: a nave open to the roof, aisles under a gallery story with railed balconies, the portal in the gallery's apse.</li>
  * <li>CRYSTAL_CAVERN: two or three cave stories, one above another, joined by ramps.</li>
+ * <li>BIOME: one open volume of ground, water and growth, drawn by {@link BiomeGen}; the floors of the tower now.</li>
  * </ul>
  */
 public enum TowerArchetype {
 	HALL,
 	LABYRINTH,
 	GREAT_HALL,
-	CRYSTAL_CAVERN;
+	CRYSTAL_CAVERN,
+	BIOME;
 
 	/** The archetypes an ordinary floor draws among. */
 	public static final List<TowerArchetype> ORDINARY = List.of(LABYRINTH, GREAT_HALL, CRYSTAL_CAVERN);

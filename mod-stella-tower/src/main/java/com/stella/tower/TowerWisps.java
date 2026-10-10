@@ -177,7 +177,7 @@ public final class TowerWisps {
 	private static void enrage(final ServerLevel tower, final Trail trail) {
 		BlockPos origin = TowerLayout.origin(trail.floor());
 		AABB room = new AABB(origin.getX(), TowerLayout.BASE_Y, origin.getZ(),
-			origin.getX() + TowerLayout.SIZE, TowerLayout.BASE_Y + TowerLayout.HEIGHT, origin.getZ() + TowerLayout.SIZE);
+			origin.getX() + TowerLayout.SIZE, TowerLayout.BASE_Y + TowerLayout.ROOM_HEIGHT, origin.getZ() + TowerLayout.SIZE);
 		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> Hostiles.isHostile(mob) && !(mob instanceof TowerGhost) && mob.isAlive())) {
 			if (trail.reaches(mob.blockPosition())) {
 				mob.addEffect(new MobEffectInstance(MobEffects.SPEED, RAGE_TICKS, RAGE_SPEED));
