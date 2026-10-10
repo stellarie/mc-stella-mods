@@ -44,6 +44,11 @@ public record WitherConfig(Map<String, Double> values) {
 	public static final String MINIONS_SPAWN_MAX = "minions.spawn_max";
 	public static final String MINIONS_PLAYER_CLEARANCE = "minions.player_clearance";
 	public static final String MINIONS_RAGE_PAUSE = "minions.rage_pause";
+	public static final String STARS_BASE = "stars.base";
+	public static final String STARS_PER_LEVEL = "stars.per_level";
+	public static final String STARS_MAX = "stars.max_extra";
+	public static final String BOOKS_COUNT = "books.count";
+	public static final String BOOKS_THREE_CHANCE = "books.three_chance";
 	public static final String RAGE_TICKS = "rage.ticks";
 	public static final String RAGE_A_THRESHOLD = "rage_a.threshold";
 	public static final String RAGE_A_RING_SIZE = "rage_a.ring_size";
@@ -124,6 +129,11 @@ public record WitherConfig(Map<String, Double> values) {
 		map.put(MINIONS_SPAWN_MAX, 32.0);
 		map.put(MINIONS_PLAYER_CLEARANCE, 6.0);
 		map.put(MINIONS_RAGE_PAUSE, 100.0);
+		map.put(STARS_BASE, 0.25);
+		map.put(STARS_PER_LEVEL, 0.0125);
+		map.put(STARS_MAX, 7.0);
+		map.put(BOOKS_COUNT, 5.0);
+		map.put(BOOKS_THREE_CHANCE, 0.5);
 		map.put(RAGE_TICKS, 600.0);
 		map.put(RAGE_A_THRESHOLD, 0.50);
 		map.put(RAGE_A_RING_SIZE, 6.0);

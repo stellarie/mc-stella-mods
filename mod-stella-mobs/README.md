@@ -402,6 +402,14 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
 - Rage at a quarter health: it replaces the first for another 600 ticks. Every 3 ticks one skull falls from 14 blocks above
   the Wither, within 24 blocks of it. Half of them land within 6 blocks of a random player. They hit for 0.20 of the
   standard hit. A hit that crosses both thresholds starts this rage only. Each rage starts once.
+- Stats: vitality 200 and the other five stats at random from 50 to 150 (`stats.*`), given once at the summon through the
+  object share `mod-stella-rpg:mob-stat-set`. Without that share the Wither keeps its role stats.
+- Rpg flag: `mod-stella-rpg` finds `WitherState#hasWitherFlag` by name, so percent-of-max-health effects use the elite
+  share on an encounter Wither.
+- Drops: vanilla drops one nether star. The Wither adds `floor(mu)` more, plus one with the chance of the rest, where
+  `mu = min(7, 0.25 + 0.0125 * (level - 100))` (`stars.*`). It also drops `books.count` (5) enchanted books with 2 or 3
+  enchantments each. The books come from the share `mod-stella-equips-enchants:enchanted-book`. Without it the Wither
+  builds each book from every registry enchantment that is not a curse. Neither needs a player kill.
 - Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
   `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 40 ticks at full health, 12 at none.
 

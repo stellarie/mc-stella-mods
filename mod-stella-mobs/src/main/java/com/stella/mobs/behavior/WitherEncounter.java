@@ -91,6 +91,7 @@ public final class WitherEncounter {
 		int summonLevel = levelFor(level.players(), wither.position(), ScalingConfigStore.get(), WitherConfigStore.get());
 		((AttachmentTarget) wither).setAttached(ThreatState.TYPE, new ThreatState(summonLevel, 0, 0, 0));
 		WitherState.set(wither, WitherState.fresh());
+		WitherStats.apply(wither);
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherEncounter BEGIN uuid={} level={}", wither.getUUID(), summonLevel);
 	}
 
@@ -193,6 +194,9 @@ public final class WitherEncounter {
 		if (isEncounter(wither)) {
 			WitherMinions.discardAll(wither);
 			WitherShots.discardAll(wither);
+			if (wither.level() instanceof ServerLevel level) {
+				WitherLoot.drop(level, wither, wither.getRandom());
+			}
 		}
 	}
 
