@@ -46,7 +46,7 @@ public class SkillSchoolGameTest {
 	static final Set<String> ARCHER_IDS = Set.of(
 		"multishot", "piercing_shot", "arrow_rain", "rapid_fire", "hunters_mark", "explosive_arrow",
 		"disengage", "snare_trap", "aimed_bolt", "triangle_shot", "eagle_eye", "elemental_quiver",
-		"ankle_snare", "arrow_repel", "arrow_crafting"
+		"ankle_snare", "arrow_repel", "arrow_crafting", "vultures_eye", "summon_wolf"
 	);
 	/** The priest books: VIT, healing and holy damage. */
 	static final Set<String> PRIEST_IDS = Set.of(

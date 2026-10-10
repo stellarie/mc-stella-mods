@@ -104,6 +104,8 @@ BOOKS = (
 # so a generator pass can never overwrite a drawn skill texture with a seven-pixel plate.
 SKILL_BOOKS = (
     Book("arrow_crafting", "Arrow Crafting", "archery", "#cb9a14", glyph("...#...", "..###..", ".#.#.#.", "...#...", "...#...", "..###..", "...#..."), 63),
+    Book("vultures_eye", "Vulture's Eye", "archery", "#9f7a2e", glyph(".#####.", "#.###.#", "##.#.##", "#.###.#", ".#####.", ".......", "#######"), 64),
+    Book("summon_wolf", "Summon Wolf", "archery", "#8a6a55", glyph("#.....#", "##...##", "#######", "#.###.#", "..###..", "...#...", "......."), 65),
     Book("multishot", "Multishot", "archery", "#3e8e41", glyph("...#...", "...##..", "..###..", ".####..", "..###..", "...##..", "...#..."), 43),
     Book("piercing_shot", "Piercing Shot", "archery", "#3e8e41", glyph("#......", ".#.....", "..#####", "...#...", "..#....", ".#.....", "#......"), 44),
     Book("arrow_rain", "Arrow Rain", "archery", "#3e8e41", glyph(".#####.", "#.....#", ".#####.", "..#.#..", ".#...#.", "..#.#..", ".#...#."), 45),

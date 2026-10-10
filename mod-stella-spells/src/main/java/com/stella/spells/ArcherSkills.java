@@ -43,8 +43,8 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ArcherSkills {
 	/** How many arrows one Arrow Crafting cast makes, and how many an awakened one makes. */
-	static final int ARROW_CRAFTING_ARROWS = 8;
-	static final int AWAKENED_ARROW_CRAFTING_ARROWS = 12;
+	static final int ARROW_CRAFTING_ARROWS = 32;
+	static final int AWAKENED_ARROW_CRAFTING_ARROWS = 48;
 	/** How many arrows a triangle shot looses, and how often it looses them. */
 	static final int TRIANGLE_SHOT_ARROWS = 3;
 	static final double TRIANGLE_SHOT_CHANCE = 0.30;
@@ -88,6 +88,12 @@ public final class ArcherSkills {
 	/** Double Strafe's hits on its target, and the reach of its shot. */
 	static final int DOUBLE_STRAFE_HITS = 2;
 	static final double RAPID_FIRE_RANGE = 24.0;
+	/** Vultures Eye: half an hour in which a far hit gains this much per block beyond the near range, up to a cap. */
+	static final int VULTURES_EYE_TICKS = 36_000;
+	static final double VULTURE_NEAR_BLOCKS = 8.0;
+	static final double VULTURE_PER_BLOCK = 0.02;
+	static final double VULTURE_CAP = 0.40;
+	static final double VULTURE_AWAKENED_CAP = 0.60;
 	/** Blitz Beat: half an hour of a chance to call the falcon, which strikes this often, this many ticks apart. */
 	static final int BLITZ_BEAT_TICKS = 36_000;
 	static final double BLITZ_BEAT_CHANCE = 0.25;
@@ -575,11 +581,52 @@ public final class ArcherSkills {
 		return true;
 	}
 
+	/** Vultures Eye: half an hour in which a far hit hits harder. It needs a bow. */
+	static boolean applyVulturesEye(
+		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
+	) {
+		if (!bowReady(caster)) {
+			return false;
+		}
+		caster.addEffect(new MobEffectInstance(SpellStatus.VULTURES_EYE, VULTURES_EYE_TICKS, modifiers.awakened() ? 1 : 0), caster);
+		caster.level().sendParticles(ParticleTypes.END_ROD, caster.getX(), caster.getEyeY(), caster.getZ(), 12, 0.3, 0.2, 0.3, 0.02);
+		Spellbooks.LOGGER.info("[SPELL] event=VULTURES_EYE caster={} ticks={} near={} perBlock={} cap={}",
+			caster.getUUID(), VULTURES_EYE_TICKS, VULTURE_NEAR_BLOCKS, VULTURE_PER_BLOCK,
+			modifiers.awakened() ? VULTURE_AWAKENED_CAP : VULTURE_CAP);
+		return true;
+	}
+
+	/** The extra share a far hit of this shooter gains: 0 without the buff or inside the near range. */
+	static double vultureBonus(final ServerPlayer shooter, final Entity victim) {
+		MobEffectInstance eye = shooter.getEffect(SpellStatus.VULTURES_EYE);
+		if (eye == null) {
+			return 0.0;
+		}
+		double beyond = shooter.position().distanceTo(victim.position()) - VULTURE_NEAR_BLOCKS;
+		if (beyond <= 0.0) {
+			return 0.0;
+		}
+		return Math.min(eye.getAmplifier() >= 1 ? VULTURE_AWAKENED_CAP : VULTURE_CAP, VULTURE_PER_BLOCK * beyond);
+	}
+
+	/** The share a hit of this shooter keeps for Vultures Eye: only an own arrow or a skill hit gains by distance. */
+	static float vultureFactor(final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source) {
+		if (!(source.getEntity() instanceof ServerPlayer shooter)) {
+			return 1.0F;
+		}
+		boolean arrow = source.getDirectEntity() instanceof net.minecraft.world.entity.projectile.arrow.AbstractArrow shot && shot.getOwner() == shooter;
+		if (!arrow && !RpgBridge.isSkillSource(source)) {
+			return 1.0F;
+		}
+		return 1.0F + (float) vultureBonus(shooter, victim);
+	}
+
 	/** Blitz Beat: half an hour in which a hit may call a spectral falcon. It needs no bow and no target. */
 	static boolean applyBlitzBeat(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
 		caster.addEffect(new MobEffectInstance(SpellStatus.BLITZ_BEAT, BLITZ_BEAT_TICKS, modifiers.awakened() ? 1 : 0), caster);
+		Falcons.ensure(caster);
 		caster.level().sendParticles(ParticleTypes.DUST_PLUME, caster.getX(), caster.getY(1.0), caster.getZ(), 14, 0.4, 0.4, 0.4, 0.02);
 		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT caster={} ticks={} chance={} bowChance={} awakened={}",
 			caster.getUUID(), BLITZ_BEAT_TICKS, BLITZ_BEAT_CHANCE, BLITZ_BEAT_BOW_CHANCE, modifiers.awakened());
@@ -723,6 +770,7 @@ public final class ArcherSkills {
 		if (foe.damageCooldownTime > 0) {
 			foe.damageCooldownTime = 0;
 		}
+		Falcons.swoop(caster, foe);
 		foe.hurtServer(level, RpgBridge.skillSource(caster), amount);
 	}
 

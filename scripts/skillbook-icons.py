@@ -74,6 +74,8 @@ SKILLS = (
     Skill("iron_skin", "Iron Skin", "fighter", art("iron_skin")),
     Skill("earthsplitter", "Earthsplitter", "fighter", art("earthsplitter")),
     Skill("arrow_crafting", "Arrow Crafting", "archer", art("arrow_crafting")),
+    Skill("vultures_eye", "Vulture's Eye", "archer", art("vultures_eye")),
+    Skill("summon_wolf", "Summon Wolf", "archer", art("summon_wolf")),
     Skill("multishot", "Grappling Hook", "archer", art("multishot")),
     Skill("piercing_shot", "Sharp Shooting", "archer", art("piercing_shot")),
     Skill("arrow_rain", "Arrow Shower", "archer", art("arrow_rain")),

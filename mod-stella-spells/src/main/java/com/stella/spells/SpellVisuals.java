@@ -160,6 +160,8 @@ public final class SpellVisuals {
 		visual("triangle_shot", ParticleTypes.INFESTED, ParticleTypes.CRIT, 0.0),
 		visual("eagle_eye", ParticleTypes.GLOW, ParticleTypes.END_ROD, 0.0),
 		visual("elemental_quiver", ParticleTypes.OMINOUS_SPAWNING, ParticleTypes.CRIT, 0.0),
+		visual("vultures_eye", ParticleTypes.TRIAL_SPAWNER_DETECTED_PLAYER, ParticleTypes.END_ROD, 0.0),
+		visual("summon_wolf", ParticleTypes.EGG_CRACK, ParticleTypes.HAPPY_VILLAGER, 0.0),
 		// The priest books draw in the school's own gold: a heal rises, a ward closes, the ground glows. Each
 		// owns a particle no other book uses, because a shared primary is a shared shape on screen.
 		visual("holy_light", ParticleTypes.TRIAL_OMEN, ParticleTypes.GLOW, 0.0),
@@ -222,6 +224,8 @@ public final class SpellVisuals {
 		heldColor("unbroken_vow", 0xC8D2DE),
 		heldColor("steadfast_prayer", 0xF0E6B8),
 		heldColor("arrow_crafting", 0xCB9A14),
+		heldColor("vultures_eye", 0x9F7A2E),
+		heldColor("summon_wolf", 0x8A6A55),
 		heldColor("piercing_shot", 0x3E8E41),
 		heldColor("rapid_fire", 0x3E8E41),
 		heldColor("ankle_snare", 0x3E8E41),
@@ -701,6 +705,8 @@ public final class SpellVisuals {
 			case "arrow_repel" -> Motif.LANCE;
 			case "explosive_arrow" -> Motif.BLAST;
 			case "eagle_eye" -> Motif.DART;
+			case "vultures_eye" -> Motif.EYE;
+			case "summon_wolf" -> Motif.SUMMON;
 			case "hunters_mark" -> Motif.MARK;
 			case "snare_trap" -> Motif.DART;
 			case "aimed_bolt" -> Motif.LANCE;

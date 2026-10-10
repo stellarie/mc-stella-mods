@@ -120,12 +120,14 @@ skills, which then add the kind of each arrow they spend (see Crafted arrows and
 
 | Book | Effect |
 | --- | --- |
-| Arrow Crafting | Turns one material into 8 arrows of its kind, 12 when awakened. It takes the material in your off hand first, else the first one in your pack, and drops the overflow at your feet. It needs no bow, and with no material it refuses and starts no cooldown |
+| Arrow Crafting | Turns one material into 32 arrows of its kind, 48 when awakened. It takes the material in your off hand first, else the first one in your pack, and drops the overflow at your feet. It needs no bow, and with no material it refuses and starts no cooldown |
 | Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one quiver arrow |
 | Double Strafe | Two archer hits on the hostile you look at |
 | Sharp Shooting | One arrow through every hostile on a 32 block line, with a 30 percent better critical chance |
 | Arrow Shower | Five pulses over the ground you look at; each hurts every hostile within 4 blocks and pushes it away from that point, never the caster |
-| Blitz Beat | 30 min, no bow needed: each melee blow or arrow of yours has a 25 percent chance (35 percent with a bow or crossbow in either hand) to call a spectral falcon that strikes the target 3 times (6 with a bow, doubled when awakened). A strike deals your floor ATK, the low end of the Atk range, and base damage without the RPG mod. It never crits, and skill damage, imbued casts and falcon strikes never call it |
+| Vulture's Eye | 30 min, needs a bow: each arrow or archer skill hit you land gains 2 percent damage for every block of distance beyond 8, up to 40 percent (60 percent when awakened) |
+| Summon Wolf | Tames a wolf to you, no scroll. It guards you against hostiles within 6 blocks of you, follows you, and carries the tamed elite wolf aura (Speed and Strength for you and your allies, Slowness and Weakness for hostiles within 8 blocks). Right-click it with an empty hand to ride it: you steer, and it bites hostiles in front of you. It never attacks a sheep, cow, pig or chicken. Its health is 40 without the RPG mod, plus half a point per point of your six stats with it. Casting again calls it to your side |
+| Blitz Beat | 30 min, no bow needed: each melee blow or arrow of yours has a 25 percent chance (35 percent with a bow or crossbow in either hand) to call a spectral falcon (a larger brown parrot that perches on your shoulder, swoops at the struck target on each strike, cannot be hurt, and flies off when the buff ends or you leave) that strikes the target 3 times (6 with a bow, doubled when awakened). A strike deals your floor ATK, the low end of the Atk range, and base damage without the RPG mod. It never crits, and skill damage, imbued casts and falcon strikes never call it |
 | Ankle Snare | A trap on the ground you look at, kept 30 s; the first hostile that comes within 1.5 blocks is rooted for 3 s |
 | Arrow Repel | One heavy shot that knocks the hostile back several blocks |
 | True Sight | 30 min: every archer skill hit deals 1.2 times its damage, and the critical chance rises by 15 percent with a bow in hand (25 percent when awakened) |
@@ -141,7 +143,7 @@ seam, the one Concentrate uses. Without the RPG mod the books still cast and add
 
 ### Crafted arrows and the quiver
 
-One material makes 8 arrows with Arrow Crafting. Each kind is its own item in `#minecraft:arrows`, so a
+One material makes 32 arrows with Arrow Crafting. Each kind is its own item in `#minecraft:arrows`, so a
 bow, a crossbow and a dispenser fire it. The kinds are loosed as the vanilla arrow entity.
 
 | Material | Arrow | On hit |
@@ -174,6 +176,9 @@ Every archer skill plays a coloured ring, an impact burst and a layered sound. A
 arrow takes the kind's colour: fire orange, frost cyan, venom green, blast red, diamond white and keen
 violet; an unfed trail is gold. The effects go through `SpellVisuals`, which records every particle and
 sound for the game tests.
+
+The Blitz Beat falcon and the summoned wolf are entity types this mod registers, with client renderers in
+`src/client`. A client without this mod cannot join a server that has it, so the pack ships the mod to every player.
 
 ## Imbued weapons, arrows and chestplates
 
@@ -269,7 +274,7 @@ The Scroll Book holds 9 different scrolls, one type per slot, each up to a full 
 
 ## Spell scrolls
 
-Every spell but Summon Skeleton also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
+Every spell but Summon Skeleton and Summon Wolf also comes as a single-use scroll. A scroll casts exactly like its book, and it crumbles
 only when the spell lands, so a miss keeps it. It has its own 1-second cooldown, separate from the
 book's. Head and chest spell enchantments still apply.
 
@@ -363,7 +368,7 @@ patrol, the village witch or a summoned skeleton as a foe.
 ## Getting spellbooks
 
 - **Crafting:** one book in the centre and the book's material in the four corners.
-- **From scrolls:** eight scrolls of one spell around a book make that spellbook. Summon Skeleton has no scroll.
+- **From scrolls:** eight scrolls of one spell around a book make that spellbook. Summon Skeleton and Summon Wolf have no scroll.
 - **Container loot:** each searchable container has a 10% chance to hold one random spellbook.
 - **Witches:** each Witch death has a 50% chance to drop one random spellbook.
 

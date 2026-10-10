@@ -117,7 +117,7 @@ public final class SpellImbue {
 		SpellbookCatalog.DEFINITIONS.stream()
 			.filter(definition -> definition.school() == School.ARCHER)
 			.map(SpellDefinition::id),
-		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"))
+		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"), id("summon_wolf"))
 	).collect(java.util.stream.Collectors.toUnmodifiableSet());
 	/**
 	 * The archer books a bow or a crossbow takes: the ones that strike a target. A self buff or a next-shot

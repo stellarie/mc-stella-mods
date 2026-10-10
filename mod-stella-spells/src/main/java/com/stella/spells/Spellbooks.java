@@ -22,7 +22,7 @@ public final class Spellbooks implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Identifier SPARK_SHOT_ID = Identifier.fromNamespaceAndPath(MOD_ID, "spark_shot");
 	/** Spells only a book casts: no scroll copies them. Declared before the scrolls register. */
-	public static final java.util.Set<Identifier> BOOK_ONLY = java.util.Set.of(Identifier.fromNamespaceAndPath(MOD_ID, "summon_skeleton"), Identifier.fromNamespaceAndPath(MOD_ID, "elemental_quiver"));
+	public static final java.util.Set<Identifier> BOOK_ONLY = java.util.Set.of(Identifier.fromNamespaceAndPath(MOD_ID, "summon_skeleton"), Identifier.fromNamespaceAndPath(MOD_ID, "elemental_quiver"), Identifier.fromNamespaceAndPath(MOD_ID, "summon_wolf"));
 	public static final List<SpellbookItem> CATALOG = registerCatalog();
 	public static final SpellbookItem SPARK_SHOT = CATALOG.get(0);
 	public static final List<SpellScrollItem> SCROLLS = registerScrolls();
@@ -74,6 +74,9 @@ public final class Spellbooks implements ModInitializer {
 		FighterSkills.register();
 		ArcherSkills.register();
 		ArrowItems.register();
+		SpellEntities.register();
+		Falcons.register();
+		SummonWolf.register();
 		Quiver.register();
 		ArrowHits.register();
 		ConcentrateStats.register();

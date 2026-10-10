@@ -158,6 +158,10 @@ public record SpellNumbers(
 	/** Snare Trap's own number is the half hour of aim it grants, and its amplifier the awakened mark. */
 	public static final SpellNumbers SNARE_TRAP = builder("snare_trap")
 		.duration(ArcherSkills.CONCENTRATE_TICKS, Scale.FIXED).amplifier(0).build();
+	/** Vultures Eye: the half hour of the buff; the bonus per block and its caps are {@link ArcherSkills} constants. */
+	public static final SpellNumbers VULTURES_EYE = builder("vultures_eye").duration(ArcherSkills.VULTURES_EYE_TICKS, Scale.FIXED).build();
+	/** Summon Wolf has no flat number: the wolf takes its health from the caster stats. */
+	public static final SpellNumbers SUMMON_WOLF = builder("summon_wolf").build();
 	public static final SpellNumbers EAGLE_EYE = builder("eagle_eye").duration(ArcherSkills.EAGLE_EYE_TICKS, Scale.FIXED).build();
 	/** Elemental Quiver's own number is the half hour it lasts, and its amplifier the awakened mark. */
 	public static final SpellNumbers ELEMENTAL_QUIVER = builder("elemental_quiver")
