@@ -187,7 +187,6 @@ public record RpgConfig(
 
 	public enum Effect {
 		ATTACK_SPEED("attack_speed", 1.00, 250),
-		BOW_DRAW("bow_draw", 0.50, 250),
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
 		COOLDOWN_REDUCTION("cooldown_reduction", 0.50, 400),
 		CRIT_CHANCE("crit_chance", 0.50, 300),

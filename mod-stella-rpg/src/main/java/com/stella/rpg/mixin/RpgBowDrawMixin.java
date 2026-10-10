@@ -1,8 +1,5 @@
 package com.stella.rpg.mixin;
 
-import com.stella.rpg.RpgCurve;
-import com.stella.rpg.Stat;
-import com.stella.rpg.StatBonuses;
 import com.stella.rpg.job.JobItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -24,10 +21,10 @@ public abstract class RpgBowDrawMixin {
 		final LivingEntity user,
 		final int remaining
 	) {
-		if (!(user instanceof ServerPlayer player)) {
+		// AGI and DEX speed the use countdown itself (RpgDrawSpeedMixin), so only the mechanical bow factor stays here.
+		if (!(user instanceof ServerPlayer)) {
 			return held;
 		}
-		int full = RpgCurve.fullDrawTicks(StatBonuses.effective(player, Stat.AGI));
-		return (int) Math.floor(held * 20.0 / full * JobItems.drawFactor(stack));
+		return (int) Math.floor(held * JobItems.drawFactor(stack));
 	}
 }

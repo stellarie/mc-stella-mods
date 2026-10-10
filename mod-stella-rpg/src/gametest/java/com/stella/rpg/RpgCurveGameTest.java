@@ -12,12 +12,7 @@ public final class RpgCurveGameTest {
 		check(helper, "damageTaken", RpgCurve::damageTakenMultiplier, 1.0000, 0.9769, 0.8500, 0.5360);
 		check(helper, "cooldown", RpgCurve::cooldownMultiplier, 1.0000, 0.9854, 0.9000, 0.6404);
 		check(helper, "critChance", RpgCurve::critChance, 0.0000, 0.0192, 0.1250, 0.3867);
-		int[] ticks = {20, 20, 17, 12};
-		for (int i = 0; i < STATS.length; i++) {
-			int actual = RpgCurve.fullDrawTicks(STATS[i]);
-			helper.assertTrue(actual == ticks[i], "fullDrawTicks(" + STATS[i] + ")=" + actual);
-		}
-		RpgTestSupport.result("curveTable", "rows=5");
+		RpgTestSupport.result("curveTable", "rows=4");
 		helper.succeed();
 	}
 

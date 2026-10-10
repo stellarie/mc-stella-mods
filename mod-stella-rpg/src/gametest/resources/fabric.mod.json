@@ -82,7 +82,9 @@
 			"com.stella.rpg.BonusTooltipGameTest",
 			"com.stella.rpg.SiblingGearTagGameTest",
 			"com.stella.rpg.MobStatSetGameTest",
-			"com.stella.rpg.WitherFlagGameTest"
+			"com.stella.rpg.WitherFlagGameTest",
+			"com.stella.rpg.DrawSpeedGameTest",
+			"com.stella.rpg.ArrowDiceGameTest"
 		]
 	},
 	"depends": {

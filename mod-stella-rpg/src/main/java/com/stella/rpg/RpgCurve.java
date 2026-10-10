@@ -4,8 +4,6 @@ import com.stella.rpg.RpgConfig.Curve;
 import com.stella.rpg.RpgConfig.Effect;
 
 public final class RpgCurve {
-	private static final int VANILLA_DRAW_TICKS = 20;
-
 	private RpgCurve() {
 	}
 
@@ -24,11 +22,6 @@ public final class RpgCurve {
 
 	public static double attackSpeedBonus(final int agi) {
 		return value(Effect.ATTACK_SPEED, agi);
-	}
-
-	public static int fullDrawTicks(final int agi) {
-		long ticks = Math.round(VANILLA_DRAW_TICKS * (1.0 - value(Effect.BOW_DRAW, agi)));
-		return (int) Math.max(1, Math.min(VANILLA_DRAW_TICKS, ticks));
 	}
 
 	public static double critChance(final int luk) {
