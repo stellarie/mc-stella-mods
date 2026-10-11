@@ -223,7 +223,8 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 
 - Armor is any piece in the vanilla armor tags, or any piece that equips to an armor slot and gives armor.
 - A **shield** is any item that blocks attacks and is neither armor nor a weapon, such as the vanilla shield.
-  It refines with iron ingots, whatever it is mended with, at the armour odds and cost.
+  It refines with iron ingots, whatever it is mended with, at the armour odds and cost. The Bone Shield refines with
+  netherite ingots instead.
 - Put the piece in the first slot. The tab shows its level, the next level, the chance, and the cost with the
   material you carry. Press Refine to pay and roll.
 - The material is the piece's own repair item (iron for iron gear, diamonds for diamond gear, planks
@@ -435,6 +436,22 @@ python tools/uniques/icons.py models ID KIND   # item definition and model files
 A sprite is a palette block of `char=#RRGGBBAA` lines, a blank line, then 16 rows of 16 characters. `.` is transparent.
 The tool needs Python 3 with Pillow 12.
 
+## Guardian gear
+
+Two items for the Tower Guardians of `mod-stella-tower`. The tower mod drops them by id, so they have no drop
+source here and are not uniques.
+
+- `mod-stella-equips-enchants:bone_shield`: a shield with durability 2000. Each blow it blocks adds a stack of
+  +5% damage, up to 12. The next melee blow of the holder deals the bonus, spends every stack and shoves the
+  hostile mobs within 4 blocks and 60 degrees in front. The shield can be in either hand. It refines with
+  netherite ingots, and every other shield keeps iron.
+- `mod-stella-equips-enchants:skeleton_crown`: a helmet with netherite durability and armor, and its own worn
+  model. The arrows of the wearer deal +25% damage, and 10% more at each of +7, +10, +12 and +15, so +65% at +15.
+  It refines with netherite ingots.
+
+The icons are `tools/uniques/sprites/bone_shield.txt` and `skeleton_crown.txt`. The worn texture of the crown comes
+from `tools/uniques/crown_worn.py`. The models command of `icons.py` has a `shield` kind for the shield.
+
 ## Crafted bows
 
 Nine bows and crossbows, named after the Ragnarok Online archer line, are crafted from a vanilla bow or crossbow. Each has its
@@ -527,6 +544,8 @@ the cap, the smith, the bonuses, the tooltip, each special effect at its level a
 the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spellbook refining, and the recipe.
 Shield tests check the refine, held armor, Parry at each level and against arrows, and the one-point cost
 of a block.
+Guardian gear tests block real hits with the Bone Shield, land the blow that spends the stacks, land real arrow
+hits at each crown tier, and refine both items with netherite.
 Nether star tests check the anvil recipe and price, the stat grant call with the rpg share present and absent, the weapon and armor effects, and the enchanted-book share.
 Unique tests check the drop chance and rank, the roll and its drop, the registry (items, tags, models and
 textures), the refine and tooltip rules, the hook dispatch, the shared helpers, and the Bonewhisper Bow.

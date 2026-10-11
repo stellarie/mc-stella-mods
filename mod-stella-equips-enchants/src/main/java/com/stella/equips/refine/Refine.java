@@ -170,7 +170,7 @@ public final class Refine {
 			return SPELLBOOK_MATERIAL;
 		}
 		if (isShield(stack)) {
-			return SHIELD_MATERIAL;
+			return shieldMaterial(stack);
 		}
 		Repairable repairable = stack.get(DataComponents.REPAIRABLE);
 		if (repairable != null) {
@@ -181,13 +181,18 @@ public final class Refine {
 		return Items.IRON_INGOT;
 	}
 
+	/** A shield refines with iron. The Bone Shield refines with netherite. */
+	private static Item shieldMaterial(final ItemStack shield) {
+		return com.stella.equips.guardian.BoneShield.is(shield) ? Items.NETHERITE_INGOT : SHIELD_MATERIAL;
+	}
+
 	/** Whether a stack counts as the piece's material: any item its repair set holds. */
 	public static boolean isMaterial(final ItemStack piece, final ItemStack candidate) {
 		if (isSpellbook(piece)) {
 			return candidate.is(SPELLBOOK_MATERIAL);
 		}
 		if (isShield(piece)) {
-			return candidate.is(SHIELD_MATERIAL);
+			return candidate.is(shieldMaterial(piece));
 		}
 		Repairable repairable = piece.get(DataComponents.REPAIRABLE);
 		return repairable != null ? repairable.isValidRepairItem(candidate) : candidate.is(Items.IRON_INGOT);
