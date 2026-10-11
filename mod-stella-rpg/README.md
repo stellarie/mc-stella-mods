@@ -967,6 +967,8 @@ Game tests run headless on a server. A new test class must be listed in
 
 ## Second Wind
 
-Once per 300 seconds, a hit that would kill a player leaves the player at 1 health with Resistance V for 2 seconds,
-a sound, and an action-bar message. A held totem of undying fires instead. Damage that bypasses invulnerability, such as
+Once per 300 seconds, a hit that would kill a player who wears or holds a piece with the equips mod's Second Wind
+enchantment (`mod-stella-equips-enchants:armor/second_wind`) restores the player to full health, clears every harmful
+effect and fire, and grants Resistance V for 2 seconds, a sound, and an action-bar message. Without the enchantment
+nothing is caught. A held totem of undying fires instead. Damage that bypasses invulnerability, such as
 the void or `/kill`, is never caught. The cooldown is saved with the player.

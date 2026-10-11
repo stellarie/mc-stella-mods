@@ -6,7 +6,7 @@
 	"key.category.mod-stella-rpg.weapon_slot": "Weapon Slot",
 	"key.mod-stella-rpg.ready_weapon": "Ready Weapon",
 	"screen.mod-stella-rpg.auto_pickup": "Auto-pickup",
-	"screen.mod-stella-rpg.second_hotbar": "2nd",
+	"screen.mod-stella-rpg.second_hotbar": "↕",
 	"screen.mod-stella-rpg.second_hotbar.tooltip": "Swap in the second hotbar row",
 	"screen.mod-stella-rpg.mode.quickbar": "Mode: Quick bar",
 	"screen.mod-stella-rpg.mode.vanilla": "Mode: Vanilla",
@@ -90,5 +90,5 @@
 	"item.mod-stella-rpg.priest_garbs": "Priest's Garbs",
 	"item.mod-stella-rpg.priest_garbs.lore1": "20% less damage from undead",
 	"item.mod-stella-rpg.priest_garbs.lore2": "+50% healing done",
-	"message.mod-stella-rpg.second_wind": "Second Wind! You cling to life. (ready again in 5 minutes)"
+	"message.mod-stella-rpg.second_wind": "Second Wind! You are restored. (ready again in 5 minutes)"
 }

@@ -1,6 +1,15 @@
 package com.stella.rpg;
 
 import com.mojang.serialization.Codec;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.core.Holder;
+import java.util.function.Predicate;
+import java.util.List;
+import java.util.ArrayList;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -17,9 +26,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Items;
 
 /**
- * Once per cooldown, a hit that would kill a player leaves the player at 1 health with a short Resistance V. A held
- * totem of undying keeps its own job, and damage that bypasses invulnerability, such as the void or a kill command,
- * is never caught.
+ * Once per cooldown, a hit that would kill a player who wears or holds a piece with the equips mod's Second Wind
+ * enchantment restores the player to full health, clears every harmful effect, and grants a short Resistance V.
+ * Without that enchantment nothing is caught. A held totem of undying keeps its own job, and damage that bypasses
+ * invulnerability, such as the void or a kill command, is never caught.
  */
 public final class SecondWind {
 	public static final AttachmentType<Long> READY_AT = AttachmentRegistry.create(
@@ -29,6 +39,9 @@ public final class SecondWind {
 	public static final long COOLDOWN_TICKS = 300L * 20L;
 	public static final int RESIST_TICKS = 40;
 	public static final int RESIST_AMPLIFIER = 4;
+	/** The equips mod's enchantment, read by id so this mod loads without it. */
+	public static final String ENCHANTMENT_ID = "mod-stella-equips-enchants:armor/second_wind";
+	private static volatile Predicate<ServerPlayer> enchanted = SecondWind::wearsEnchantment;
 
 	private SecondWind() {
 	}
@@ -38,7 +51,8 @@ public final class SecondWind {
 	}
 
 	private static boolean allowDeath(final LivingEntity entity, final DamageSource source, final float amount) {
-		if (!(entity instanceof ServerPlayer player) || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || holdsTotem(player)) {
+		if (!(entity instanceof ServerPlayer player) || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || holdsTotem(player)
+			|| !enchanted.test(player)) {
 			return true;
 		}
 		long now = player.level().getGameTime();
@@ -47,11 +61,36 @@ public final class SecondWind {
 			return true;
 		}
 		player.setAttached(READY_AT, now + COOLDOWN_TICKS);
-		player.setHealth(1.0F);
+		player.setHealth(player.getMaxHealth());
+		List<Holder<MobEffect>> harmful = new ArrayList<>();
+		for (MobEffectInstance effect : player.getActiveEffects()) {
+			if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
+				harmful.add(effect.getEffect());
+			}
+		}
+		harmful.forEach(player::removeEffect);
+		player.clearFire();
 		player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, RESIST_TICKS, RESIST_AMPLIFIER));
 		player.level().playSound(null, player.blockPosition(), SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 0.6F, 1.6F);
 		player.sendSystemMessage(Component.translatable("message.mod-stella-rpg.second_wind").withStyle(ChatFormatting.GOLD), true);
 		return false;
+	}
+
+	/** True when any worn or held piece carries the Second Wind enchantment. */
+	private static boolean wearsEnchantment(final ServerPlayer player) {
+		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			for (Holder<Enchantment> enchantment : EnchantmentHelper.getEnchantmentsForCrafting(player.getItemBySlot(slot)).keySet()) {
+				if (enchantment.unwrapKey().map(key -> key.identifier().toString().equals(ENCHANTMENT_ID)).orElse(false)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Test seam: who counts as enchanted. A null check returns to the worn-gear rule. */
+	static void setEnchantCheck(final Predicate<ServerPlayer> check) {
+		enchanted = check == null ? SecondWind::wearsEnchantment : check;
 	}
 
 	private static boolean holdsTotem(final ServerPlayer player) {
