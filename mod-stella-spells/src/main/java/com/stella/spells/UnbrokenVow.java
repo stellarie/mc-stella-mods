@@ -64,7 +64,8 @@ public final class UnbrokenVow {
 		}
 	}
 
-	private static double rpgStat(final LivingEntity holder, final String key) {
+	/** One stat of an entity from the RPG mod; 0 when the mod is absent. */
+	static double rpgStat(final LivingEntity holder, final String key) {
 		Method method = statMethod();
 		if (method == null) {
 			return 0.0;

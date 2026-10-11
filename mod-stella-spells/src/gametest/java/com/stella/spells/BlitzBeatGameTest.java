@@ -66,6 +66,28 @@ public class BlitzBeatGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
+	public void luckRaisesTheFalconRateByOnePercentPerFivePoints(final GameTestHelper helper) {
+		ServerPlayer caster = buffed(helper, false);
+		UUIDHolder.LUCKY = caster.getUUID();
+		ArcherSkills.setBlitzStats((holder, key) -> holder.getUUID().equals(UUIDHolder.LUCKY) && key.equals("luk") ? 100.0 : 0.0);
+		try {
+			double expected = ArcherSkills.BLITZ_BEAT_CHANCE + 0.20;
+			double share = rate(caster, ArcherSkills.BLITZ_BEAT_STRIKES);
+			double sigma = Math.sqrt(expected * (1.0 - expected) / SAMPLES);
+			LOG.info("[BEHAVIOR] test=luckRaisesTheFalconRate RESULT luk=100 share={} expected={} sigma={}", share, expected, sigma);
+			helper.assertTrue(Math.abs(share - expected) <= 3.0 * sigma, "with 100 LUK the falcon came on " + share + ", not near " + expected);
+		} finally {
+			ArcherSkills.setBlitzStats(null);
+		}
+		helper.succeed();
+	}
+
+	/** The caster the LUK stand-in answers for, so a parallel case reads 0. */
+	private static final class UUIDHolder {
+		static volatile java.util.UUID LUCKY = new java.util.UUID(0L, 0L);
+	}
+
+	@GameTest(maxTicks = 40)
 	public void theFalconProcRateIsAQuarterWithoutABowAndThreeStrikes(final GameTestHelper helper) {
 		ServerPlayer caster = buffed(helper, false);
 		double share = rate(caster, ArcherSkills.BLITZ_BEAT_STRIKES);

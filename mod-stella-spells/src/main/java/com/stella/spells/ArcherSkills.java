@@ -98,6 +98,9 @@ public final class ArcherSkills {
 	static final int BLITZ_BEAT_TICKS = 36_000;
 	static final double BLITZ_BEAT_CHANCE = 0.25;
 	static final double BLITZ_BEAT_BOW_CHANCE = 0.35;
+	/** Each point of LUK adds this much to the falcon's chance: 5 LUK for 1 percent. */
+	static final double BLITZ_BEAT_CHANCE_PER_LUK = 0.002;
+	private static volatile UnbrokenVow.StatSource blitzStats = UnbrokenVow::rpgStat;
 	static final int BLITZ_BEAT_STRIKES = 3;
 	static final int BLITZ_BEAT_BOW_STRIKES = 6;
 	static final int BLITZ_BEAT_INTERVAL_TICKS = 6;
@@ -633,6 +636,17 @@ public final class ArcherSkills {
 		return true;
 	}
 
+	/** The falcon's chance on a hit: the base for the hand, plus 1 percent per 5 LUK, at most 1. */
+	static double blitzChance(final LivingEntity caster, final boolean bow) {
+		double luk = Math.max(0.0, blitzStats.stat(caster, "luk"));
+		return Math.min(1.0, (bow ? BLITZ_BEAT_BOW_CHANCE : BLITZ_BEAT_CHANCE) + luk * BLITZ_BEAT_CHANCE_PER_LUK);
+	}
+
+	/** Pins the LUK reader for a harness. A null source returns to the RPG mod's own stats. */
+	static void setBlitzStats(final UnbrokenVow.StatSource source) {
+		blitzStats = source == null ? UnbrokenVow::rpgStat : source;
+	}
+
 	/** How many falcon strikes this caster hit calls: 0 for none. The roll is the caller, so a seeded source drives it. */
 	static int blitzStrikes(final ServerPlayer caster, final RandomSource random) {
 		MobEffectInstance buff = caster.getEffect(SpellStatus.BLITZ_BEAT);
@@ -640,7 +654,7 @@ public final class ArcherSkills {
 			return 0;
 		}
 		boolean bow = bowInHand(caster);
-		if (random.nextDouble() >= (bow ? BLITZ_BEAT_BOW_CHANCE : BLITZ_BEAT_CHANCE)) {
+		if (random.nextDouble() >= blitzChance(caster, bow)) {
 			return 0;
 		}
 		int strikes = bow ? BLITZ_BEAT_BOW_STRIKES : BLITZ_BEAT_STRIKES;
