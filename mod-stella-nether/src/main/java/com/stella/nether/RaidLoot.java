@@ -25,7 +25,12 @@ public final class RaidLoot {
 			if (!level.dimension().equals(RaidTravel.RAID)) {
 				return;
 			}
-			RaidState state = RaidInstance.state(level.getServer());
+			// The loot belongs to the raid where it fell.
+			net.minecraft.world.phys.Vec3 origin = context.getOptional(net.minecraft.world.level.storage.loot.parameters.LootContextParams.ORIGIN);
+			if (origin == null) {
+				return;
+			}
+			RaidState state = RaidInstance.stateAt(level, net.minecraft.core.BlockPos.containing(origin));
 			if (!state.active()) {
 				return;
 			}

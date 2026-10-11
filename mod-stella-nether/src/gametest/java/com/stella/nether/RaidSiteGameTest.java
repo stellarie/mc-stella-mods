@@ -48,11 +48,11 @@ public class RaidSiteGameTest {
 		StringBuilder runs = new StringBuilder();
 		for (int i = 0; i < RUNS; i++) {
 			NetherTestSupport.fresh(helper);
-			BlockPos arrival = RaidInstance.arrival(server);
-			BlockPos fortressStart = RaidInstance.site(server).fortress();
+			BlockPos arrival = RaidInstance.arrival(server, RaidMode.NORMAL);
+			BlockPos fortressStart = RaidInstance.site(server, RaidMode.NORMAL).fortress();
 			double toSite = RaidSites.gap(arrival, fortressStart);
 			double toNearest = nearestStart(raid, BuiltinStructures.FORTRESS, arrival);
-			runs.append(String.format(" run%d=%.0f/%.0f", RaidInstance.state(server).run(), toSite, toNearest));
+			runs.append(String.format(" run%d=%.0f/%.0f", RaidInstance.state(server, RaidMode.NORMAL).run(), toSite, toNearest));
 			if (toSite <= RaidInstance.FORTRESS_REACH && toNearest <= RaidInstance.FORTRESS_REACH) {
 				within++;
 			}

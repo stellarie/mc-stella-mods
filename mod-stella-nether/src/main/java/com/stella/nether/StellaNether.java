@@ -6,7 +6,7 @@ import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** The instanced nether raid. Gameplay is server side; the rest of the modpack is a hard dependency. */
+/** The instanced nether raids and the Blaze Guardians that lead to them. Gameplay is server side; the rest of the modpack is a hard dependency. */
 public final class StellaNether implements ModInitializer {
 	public static final String MOD_ID = "mod-stella-nether";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
@@ -20,7 +20,8 @@ public final class StellaNether implements ModInitializer {
 		NetherBlocks.register();
 		NetherItems.register();
 		RaidTravel.register();
-		PortalWindow.register();
+		GuardianWindow.register();
+		GuardianHub.register();
 		RaidInstance.register();
 		RaidLoot.register();
 		RaidDrops.register();

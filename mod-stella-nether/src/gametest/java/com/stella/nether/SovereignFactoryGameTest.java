@@ -76,8 +76,8 @@ public class SovereignFactoryGameTest {
 		helper.succeedWhen(() -> {
 			ServerBossEvent bar = SovereignFactory.barOf(blaze);
 			boolean shown = bar != null && bar.getPlayers().contains(player);
-			helper.assertTrue(shown && bar != BlazeSovereign.bar(), "the player does not see the factory Sovereign's own bar");
-			NetherTestSupport.result("factoryBar", "own=" + (bar != null) + " shown=" + shown + " raidBar=" + BlazeSovereign.bar());
+			helper.assertTrue(shown && bar != BlazeSovereign.bar(RaidMode.NORMAL), "the player does not see the factory Sovereign's own bar");
+			NetherTestSupport.result("factoryBar", "own=" + (bar != null) + " shown=" + shown + " raidBar=" + BlazeSovereign.bar(RaidMode.NORMAL));
 			blaze.discard();
 			NetherTestSupport.leave(helper, player);
 		});
@@ -139,14 +139,14 @@ public class SovereignFactoryGameTest {
 	public void aFactorySovereignChangesNoRaidStateRequiresManualTest(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
 		MinecraftServer server = helper.getLevel().getServer();
-		RaidState before = RaidInstance.state(server);
+		RaidState before = RaidInstance.state(server, RaidMode.NORMAL);
 		Blaze blaze = place(helper, new Vec3(2.0, 1.0, 2.0), LEVEL);
 		ServerPlayer foe = foe(helper, new Vec3(6.0, 1.0, 6.0));
 		blaze.setTarget(foe);
 		helper.runAfterDelay(150, () -> {
-			RaidState after = RaidInstance.state(server);
+			RaidState after = RaidInstance.state(server, RaidMode.NORMAL);
 			boolean quiet = after.equals(before) && !after.active() && !after.sovereignRisen()
-				&& BlazeSovereign.find(server) == null && BlazeSovereign.bar() == null;
+				&& BlazeSovereign.find(server, RaidMode.NORMAL) == null && BlazeSovereign.bar(RaidMode.NORMAL) == null;
 			List<SovereignSpecials.Special> cast = SovereignSpecials.history(blaze);
 			String detail = "before=" + before + " after=" + after + " cast=" + cast;
 			NetherTestSupport.result("factoryRaidState", detail);

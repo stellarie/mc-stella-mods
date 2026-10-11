@@ -3,7 +3,7 @@
 	"id": "mod-stella-nether",
 	"version": "${version}",
 	"name": "Stella Nether Raid",
-	"description": "An instanced nether raid with a host, a mode, a timer and the Blaze Sovereign.",
+	"description": "Instanced nether raids, one a mode, entered through the Blaze Guardian beside a nether portal, with a host, a timer and the Blaze Sovereign.",
 	"environment": "*",
 	"entrypoints": {
 		"main": [

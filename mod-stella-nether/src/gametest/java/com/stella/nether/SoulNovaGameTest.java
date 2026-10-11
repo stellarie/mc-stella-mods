@@ -24,7 +24,7 @@ public class SoulNovaGameTest {
 		ServerPlayer player = BlazeSovereignGameTest.enter(helper);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
-		BlockPos centre = RaidInstance.arrival(server).offset(16 + HALF, 0, 0);
+		BlockPos centre = RaidInstance.arrival(server, RaidMode.NORMAL).offset(16 + HALF, 0, 0);
 		for (int x = -HALF; x <= HALF; x += 16) {
 			for (int z = -HALF; z <= HALF; z += 16) {
 				BlazeSovereignGameTest.hold(raid, centre.offset(x, 0, z));

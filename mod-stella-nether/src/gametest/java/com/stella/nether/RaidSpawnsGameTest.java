@@ -35,7 +35,7 @@ public class RaidSpawnsGameTest {
 	public void aBlazeRisesOutOfLavaAndNotOutOfStone(final GameTestHelper helper) {
 		ServerPlayer player = BlazeSovereignGameTest.enter(helper);
 		ServerLevel raid = (ServerLevel) player.level();
-		BlockPos centre = room(raid, RaidInstance.arrival(raid.getServer()).offset(-40, 0, 0), 6);
+		BlockPos centre = room(raid, RaidInstance.arrival(raid.getServer(), RaidMode.NORMAL).offset(-40, 0, 0), 6);
 		raid.setBlock(centre.below(), Blocks.LAVA.defaultBlockState(), Block.UPDATE_CLIENTS);
 		// Searched only through the room, so the run's own lava below cannot answer for the pool.
 		Mob fromLava = RaidSpawns.blazeAt(raid, centre.above(2), 0, 3);
@@ -57,8 +57,8 @@ public class RaidSpawnsGameTest {
 	public void aWitherSkeletonStandsAnywhereWithRoomAndNotInAGap(final GameTestHelper helper) {
 		ServerPlayer player = BlazeSovereignGameTest.enter(helper);
 		ServerLevel raid = (ServerLevel) player.level();
-		BlockPos roomy = room(raid, RaidInstance.arrival(raid.getServer()).offset(-40, 0, 20), 6);
-		BlockPos low = room(raid, RaidInstance.arrival(raid.getServer()).offset(-40, 0, 40), 2);
+		BlockPos roomy = room(raid, RaidInstance.arrival(raid.getServer(), RaidMode.NORMAL).offset(-40, 0, 20), 6);
+		BlockPos low = room(raid, RaidInstance.arrival(raid.getServer(), RaidMode.NORMAL).offset(-40, 0, 40), 2);
 		// Each searched only through its own room.
 		Mob inRoom = RaidSpawns.witherAt(raid, roomy.above(2), 0, 4);
 		Mob inGap = RaidSpawns.witherAt(raid, low.above(1), 0, 3);
@@ -78,9 +78,9 @@ public class RaidSpawnsGameTest {
 	/** The rate in play: attempts around the arrival on the run's own terrain, as the server tick makes them. */
 	static void measure(final GameTestHelper helper, final RaidMode mode, final String name) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, mode);
+		ServerPlayer player = RaidModeGameTest.enter(helper, mode);
 		ServerLevel raid = (ServerLevel) player.level();
-		BlockPos around = RaidInstance.arrival(raid.getServer());
+		BlockPos around = RaidInstance.arrival(raid.getServer(), mode);
 		for (int x = -RaidSpawns.MAX_DISTANCE; x <= RaidSpawns.MAX_DISTANCE; x += 16) {
 			for (int z = -RaidSpawns.MAX_DISTANCE; z <= RaidSpawns.MAX_DISTANCE; z += 16) {
 				BlazeSovereignGameTest.hold(raid, around.offset(x, 0, z));

@@ -61,7 +61,7 @@ public final class RaidDrops {
 
 	/** The Sovereign's scrolls, one a player in the raid and two more. */
 	static @Nullable ItemEntity sovereignScrolls(final ServerLevel level, final Mob sovereign) {
-		int count = level.players().size() + SOVEREIGN_EXTRA_SCROLLS;
+		int count = RaidInstance.playersOf(level, RaidInstance.modeAt(sovereign.blockPosition())).size() + SOVEREIGN_EXTRA_SCROLLS;
 		return sovereign.spawnAtLocation(level, new ItemStack(scroll(), count));
 	}
 }

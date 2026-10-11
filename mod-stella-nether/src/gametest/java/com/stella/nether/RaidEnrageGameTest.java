@@ -20,7 +20,7 @@ public class RaidEnrageGameTest {
 	}
 
 	static void setElapsed(final MinecraftServer server, final long elapsed) {
-		RaidState state = RaidInstance.state(server);
+		RaidState state = RaidInstance.state(server, RaidMode.NORMAL);
 		RaidInstance.set(server, state.withElapsed(elapsed));
 	}
 
@@ -28,12 +28,12 @@ public class RaidEnrageGameTest {
 	public void atThirtyMinutesRaidMobsTurnFastAndStrong(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(3.0, 0.0, 0.0));
 		setElapsed(server, RaidInstance.ENRAGE_TICKS - 2);
 		helper.succeedWhen(() -> {
 			helper.assertTrue(enraged(mob), "the mob is not enraged yet");
-			NetherTestSupport.result("enrageAtThirty", "elapsed=" + RaidInstance.state(server).elapsed() + " speed=" + mob.getEffect(MobEffects.SPEED));
+			NetherTestSupport.result("enrageAtThirty", "elapsed=" + RaidInstance.state(server, RaidMode.NORMAL).elapsed() + " speed=" + mob.getEffect(MobEffects.SPEED));
 			mob.discard();
 			NetherTestSupport.leave(helper, player);
 		});
@@ -43,7 +43,7 @@ public class RaidEnrageGameTest {
 	public void beforeThirtyMinutesRaidMobsStayCalm(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(3.0, 0.0, 0.0));
 		setElapsed(server, RaidInstance.ENRAGE_TICKS - 1000);
 		// Once loaded, the mob is watched through several enrage checks before its calm is read.
@@ -52,7 +52,7 @@ public class RaidEnrageGameTest {
 			.thenIdle(3 * RaidInstance.CHASE_EVERY_TICKS)
 			.thenExecute(() -> {
 				boolean enraged = enraged(mob);
-				NetherTestSupport.result("calmBefore", "loaded=true enraged=" + enraged + " elapsed=" + RaidInstance.state(server).elapsed());
+				NetherTestSupport.result("calmBefore", "loaded=true enraged=" + enraged + " elapsed=" + RaidInstance.state(server, RaidMode.NORMAL).elapsed());
 				mob.discard();
 				NetherTestSupport.leave(helper, player);
 				helper.assertTrue(!enraged, "before thirty minutes the mob is enraged");
@@ -64,7 +64,7 @@ public class RaidEnrageGameTest {
 	public void aMobThatLoadsAfterTheEnrageIsEnraged(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		setElapsed(server, RaidInstance.ENRAGE_TICKS + 100);
 		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(3.0, 0.0, 0.0));
 		helper.succeedWhen(() -> {
@@ -80,7 +80,7 @@ public class RaidEnrageGameTest {
 	public void anEnragedZombifiedPiglinHuntsThePlayer(final GameTestHelper helper) {
 		MinecraftServer server = helper.getLevel().getServer();
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		NetherTestSupport.vulnerable(player);
 		ZombifiedPiglin mob = RaidModeGameTest.spawnInRaid((ServerLevel) player.level(), player.position().add(3.0, 0.0, 0.0));
 		setElapsed(server, RaidInstance.ENRAGE_TICKS + 100);

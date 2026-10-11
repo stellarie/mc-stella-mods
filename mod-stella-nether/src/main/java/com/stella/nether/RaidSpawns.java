@@ -45,13 +45,14 @@ public final class RaidSpawns {
 		if (server.getTickCount() % SPAWN_EVERY_TICKS != 0) {
 			return;
 		}
-		RaidState state = RaidInstance.state(server);
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
-		if (raid == null || !state.active()) {
+		if (raid == null) {
 			return;
 		}
 		for (ServerPlayer player : List.copyOf(raid.players())) {
-			if (!player.isSpectator()) {
+			// Each player's spawns follow the raid they stand in.
+			RaidState state = RaidInstance.stateAt(raid, player.blockPosition());
+			if (state.active() && !player.isSpectator()) {
 				attempt(raid, player.blockPosition(), state.mode(), raid.getRandom());
 			}
 		}

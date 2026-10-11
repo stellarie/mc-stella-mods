@@ -31,7 +31,7 @@ public class RaidLevelGameTest {
 
 	static Raid open(final GameTestHelper helper, final RaidMode mode, final int playerLevel) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, mode);
+		ServerPlayer player = RaidModeGameTest.enter(helper, mode);
 		player.experienceLevel = playerLevel;
 		ServerLevel raid = (ServerLevel) player.level();
 		List<ZombifiedPiglin> mobs = new ArrayList<>();

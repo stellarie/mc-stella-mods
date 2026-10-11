@@ -28,8 +28,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Blaze Sovereign: one per run, risen on open ground at the run's fortress the first time a player comes
- * near, and never again in that run. It stands three times a blaze's size and keeps near the ground; its
+ * The Blaze Sovereign: one per run of each raid, risen on open ground at the run's fortress the first time a
+ * player comes near, and never again in that run. It stands three times a blaze's size and keeps near the ground; its
  * health follows the raid's best player: {@link #BASE_HEALTH} times the mobs mod's health curve at its threat level,
  * and every hit it lands sets its target alight.
  */
@@ -62,10 +62,11 @@ public final class BlazeSovereign {
 	/** The share of the Sovereign's health beyond the attribute's ceiling, as a divisor on hits taken. */
 	public static final AttachmentType<Double> DIVISOR = AttachmentRegistry.createPersistent(StellaNether.id("sovereign_divisor"), Codec.DOUBLE);
 
-	private static @Nullable ServerBossEvent bar;
-	private static @Nullable UUID current;
+	/** Each raid's Sovereign bar, identity and object, by mode. */
+	private static final @Nullable ServerBossEvent[] BARS = new ServerBossEvent[RaidMode.values().length];
+	private static final @Nullable UUID[] CURRENT = new UUID[RaidMode.values().length];
 	/** The risen Sovereign's object while it stays loaded; the level's lookup sees only tracked entities. */
-	private static @Nullable Blaze held;
+	private static final @Nullable Blaze[] HELD = new Blaze[RaidMode.values().length];
 
 	private BlazeSovereign() {
 	}
@@ -109,17 +110,20 @@ public final class BlazeSovereign {
 		return divisor == null || divisor <= 1.0 ? amount : (float) (amount / divisor);
 	}
 
-	/** The run's living Sovereign, if one stands loaded. */
-	public static @Nullable Blaze find(final MinecraftServer server) {
+	/** A mode's run's living Sovereign, if one stands loaded. */
+	public static @Nullable Blaze find(final MinecraftServer server, final RaidMode mode) {
 		ServerLevel raid = server.getLevel(RaidTravel.RAID);
-		if (raid == null || current == null) {
+		int at = mode.ordinal();
+		if (raid == null || CURRENT[at] == null) {
 			return null;
 		}
+		Blaze held = HELD[at];
 		if (held != null && !held.isRemoved()) {
 			return held.isAlive() ? held : null;
 		}
 		// Unloaded and loaded again: a new object stands for it.
-		held = raid.getEntity(current) instanceof Blaze blaze ? blaze : null;
+		held = raid.getEntity(CURRENT[at]) instanceof Blaze blaze ? blaze : null;
+		HELD[at] = held;
 		return held != null && held.isAlive() ? held : null;
 	}
 
@@ -151,9 +155,10 @@ public final class BlazeSovereign {
 		if (raid == null) {
 			return;
 		}
+		RaidMode mode = state.mode();
 		if (!state.sovereignRisen()) {
-			BlockPos fortress = RaidInstance.site(server).fortress();
-			for (ServerPlayer player : raid.players()) {
+			BlockPos fortress = RaidInstance.site(server, mode).fortress();
+			for (ServerPlayer player : RaidInstance.playersOf(raid, mode)) {
 				double dx = player.getX() - fortress.getX();
 				double dz = player.getZ() - fortress.getZ();
 				if (dx * dx + dz * dz <= WAKE_RANGE * WAKE_RANGE && raid.isLoaded(fortress)) {
@@ -166,7 +171,8 @@ public final class BlazeSovereign {
 			}
 			return;
 		}
-		Blaze blaze = find(server);
+		Blaze blaze = find(server, mode);
+		ServerBossEvent bar = BARS[mode.ordinal()];
 		if (blaze == null) {
 			if (bar != null) {
 				bar.removeAllPlayers();
@@ -214,9 +220,9 @@ public final class BlazeSovereign {
 		return 1;
 	}
 
-	/** The Sovereign's level in a raid: the raid mob level of the run's mode and best player, plus the bonus. */
-	public static int threatLevel(final ServerLevel raid) {
-		return threatLevel(raid.players(), RaidInstance.state(raid.getServer()).mode());
+	/** The Sovereign's level in a raid: the raid mob level of the mode and its best player, plus the bonus. */
+	public static int threatLevel(final ServerLevel raid, final RaidMode mode) {
+		return threatLevel(RaidInstance.playersOf(raid, mode), mode);
 	}
 
 	/** The Sovereign's level: the raid mob level of its mode, plus the bonus. */
@@ -255,32 +261,34 @@ public final class BlazeSovereign {
 		return blaze;
 	}
 
-	/** Raises the run's Sovereign at a spot, and marks the run so none rises again in it. */
+	/** Raises the Sovereign of the raid a spot lies in, and marks the run so none rises again in it. */
 	public static Blaze rise(final ServerLevel raid, final Vec3 at) {
 		MinecraftServer server = raid.getServer();
-		RaidState state = RaidInstance.state(server);
-		int level = threatLevel(raid);
+		RaidMode mode = RaidInstance.modeAt(BlockPos.containing(at));
+		RaidState state = RaidInstance.state(server, mode);
+		int level = threatLevel(raid, mode);
 		Blaze blaze = create(raid, state.run(), level);
 		blaze.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
 		raid.addFreshEntity(blaze);
 		SovereignBurst.install(blaze);
-		current = blaze.getUUID();
-		held = blaze;
+		CURRENT[mode.ordinal()] = blaze.getUUID();
+		HELD[mode.ordinal()] = blaze;
 		RaidInstance.set(server, state.withSovereignRisen());
-		closeBar(server);
-		bar = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
-		BehaviorLog.info("[NETHER] sovereign risen run={} at={} level={} health={}", state.run(), blaze.blockPosition(), level, BASE_HEALTH * SpawnScaling.healthMultiplier(level));
+		closeBar(mode);
+		BARS[mode.ordinal()] = new ServerBossEvent(blaze.getUUID(), blaze.getDisplayName(), BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.NOTCHED_10);
+		BehaviorLog.info("[NETHER] sovereign risen mode={} run={} at={} level={} health={}", mode, state.run(), blaze.blockPosition(), level, BASE_HEALTH * SpawnScaling.healthMultiplier(level));
 		return blaze;
 	}
 
-	public static @Nullable ServerBossEvent bar() {
-		return bar;
+	public static @Nullable ServerBossEvent bar(final RaidMode mode) {
+		return BARS[mode.ordinal()];
 	}
 
-	static void closeBar(final MinecraftServer server) {
+	static void closeBar(final RaidMode mode) {
+		ServerBossEvent bar = BARS[mode.ordinal()];
 		if (bar != null) {
 			bar.removeAllPlayers();
-			bar = null;
+			BARS[mode.ordinal()] = null;
 		}
 	}
 
@@ -377,15 +385,16 @@ public final class BlazeSovereign {
 		return SPOILS.getOrDefault(entity.getUUID(), List.of());
 	}
 
-	/** Forgets the risen Sovereign; the next run's rises afresh. Test hook and reset. */
-	static void forget() {
+	/** Forgets a mode's risen Sovereign; the next run's rises afresh. Test hook and reset. */
+	static void forget(final RaidMode mode) {
 		// The raid's Sovereign only: a free one keeps its state across a raid reset.
+		UUID current = CURRENT[mode.ordinal()];
 		if (current != null) {
 			SovereignSpecials.forget(current);
 			SovereignCharge.forget(current);
 		}
-		current = null;
-		held = null;
+		CURRENT[mode.ordinal()] = null;
+		HELD[mode.ordinal()] = null;
 	}
 
 	static boolean burns(final DamageSource source) {

@@ -68,17 +68,17 @@ public class SovereignScaleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sovereign_scale_level", maxTicks = 100)
 	public void levelFollowsTheRaidsBestPlayer(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer low = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
-		ServerPlayer high = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer low = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
+		ServerPlayer high = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) low.level();
 		low.experienceLevel = 20;
 		high.experienceLevel = 80;
-		int best = BlazeSovereign.threatLevel(raid);
+		int best = BlazeSovereign.threatLevel(raid, RaidMode.NORMAL);
 		Blaze blaze = BlazeSovereign.rise(raid, BlazeSovereignGameTest.arena(raid, server, 8));
 		int risen = ThreatState.level(blaze);
 		high.experienceLevel = 10;
-		int floored = BlazeSovereign.threatLevel(raid);
+		int floored = BlazeSovereign.threatLevel(raid, RaidMode.NORMAL);
 		int empty = BlazeSovereign.threatLevel(List.of(), RaidMode.NORMAL);
 		int emptyHard = BlazeSovereign.threatLevel(List.of(), RaidMode.HARD);
 		NetherTestSupport.result("sovereignLevel", "best=" + best + " risen=" + risen + " floored=" + floored + " empty=" + empty + " emptyHard=" + emptyHard);
@@ -93,7 +93,7 @@ public class SovereignScaleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sovereign_scale_health", maxTicks = 100)
 	public void healthFollowsTheLevel(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
 		player.experienceLevel = 80;
@@ -179,13 +179,13 @@ public class SovereignScaleGameTest {
 	@GameTest(environment = "mod-stella-nether-test:sovereign_scale_hard", maxTicks = 100)
 	public void levelFollowsTheHardMinimum(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.HARD);
+		ServerPlayer player = RaidModeGameTest.enter(helper, RaidMode.HARD);
 		MinecraftServer server = helper.getLevel().getServer();
 		ServerLevel raid = (ServerLevel) player.level();
-		Blaze blaze = BlazeSovereign.rise(raid, BlazeSovereignGameTest.arena(raid, server, 8));
+		Blaze blaze = BlazeSovereign.rise(raid, BlazeSovereignGameTest.arena(raid, server, RaidMode.HARD, 8));
 		int risen = ThreatState.level(blaze);
 		player.experienceLevel = 70;
-		int better = BlazeSovereign.threatLevel(raid);
+		int better = BlazeSovereign.threatLevel(raid, RaidMode.HARD);
 		NetherTestSupport.result("sovereignHardLevel", "risen=" + risen + " better=" + better);
 		blaze.discard();
 		NetherTestSupport.leave(helper, player);
