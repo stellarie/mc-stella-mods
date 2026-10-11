@@ -9,8 +9,11 @@ import java.util.Optional;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -27,6 +30,10 @@ public final class ItemTiers {
 	public static final String RANGED = "ranged";
 	public static final String HEAVY = "heavy";
 	public static final String IRON = "iron";
+	public static final String NETHERITE = "netherite";
+	/** Bows and crossbows of the equips mod that roll the netherite ranged die. Read by tag name, so no sibling class is needed. */
+	public static final TagKey<Item> NETHERITE_RANGED = TagKey.create(Registries.ITEM,
+		Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", "netherite_ranged"));
 
 	/** What the item is. It picks the weapon die. */
 	public enum Type {
@@ -185,6 +192,9 @@ public final class ItemTiers {
 		if (voidGear != null) {
 			return voidGear;
 		}
+		if ((type == Type.BOW || type == Type.CROSSBOW) && stack.is(NETHERITE_RANGED)) {
+			return new Info(Affix.Kind.WEAPON, NETHERITE, NETHERITE, type);
+		}
 		if (type == Type.BOW || type == Type.CROSSBOW) {
 			return new Info(Affix.Kind.WEAPON, RANGED, IRON, type);
 		}
@@ -219,6 +229,9 @@ public final class ItemTiers {
 		}
 		if (stack.is(Items.TRIDENT)) {
 			return Type.TRIDENT;
+		}
+		if (stack.is(NETHERITE_RANGED)) {
+			return stack.getItem() instanceof CrossbowItem ? Type.CROSSBOW : Type.BOW;
 		}
 		if (stack.is(Items.BOW) || stack.getItem() instanceof com.stella.rpg.job.MechanicalBow) {
 			return Type.BOW;

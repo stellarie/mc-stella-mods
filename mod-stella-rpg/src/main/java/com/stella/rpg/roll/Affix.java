@@ -51,9 +51,9 @@ public enum Affix {
 		return this.kinds.contains(kind);
 	}
 
-	/** Old weapons rolled MATK before only books did. Their rolls still count. */
+	/** Old weapons rolled MATK before only books did. Their rolls still count, and so do the rolls of a staff. */
 	public boolean readsOn(final Kind kind) {
-		return this.rollsOn(kind) || (kind == Kind.WEAPON && (this == MATK_FLAT || this == MATK_PCT));
+		return this.rollsOn(kind) || (kind == Kind.WEAPON && (this == MATK_FLAT || this == MATK_PCT || this == MAGIC_PEN));
 	}
 
 	public static List<Affix> pool(final Kind kind) {

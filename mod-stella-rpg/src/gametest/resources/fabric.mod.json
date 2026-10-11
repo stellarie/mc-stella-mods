@@ -84,7 +84,8 @@
 			"com.stella.rpg.MobStatSetGameTest",
 			"com.stella.rpg.WitherFlagGameTest",
 			"com.stella.rpg.DrawSpeedGameTest",
-			"com.stella.rpg.ArrowDiceGameTest"
+			"com.stella.rpg.ArrowDiceGameTest",
+			"com.stella.rpg.MerchantRangedDieGameTest"
 		]
 	},
 	"depends": {
