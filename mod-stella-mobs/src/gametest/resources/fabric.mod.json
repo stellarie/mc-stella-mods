@@ -99,7 +99,8 @@
 			"com.stella.mobs.ArcherMovementGameTest",
 			"com.stella.mobs.ArcherCoverPathingGameTest",
 			"com.stella.mobs.ShieldGeneratorGameTest",
-			"com.stella.mobs.StatusFlashGameTest"
+			"com.stella.mobs.StatusFlashGameTest",
+			"com.stella.mobs.VexSolidGameTest"
 		]
 	}
 }
