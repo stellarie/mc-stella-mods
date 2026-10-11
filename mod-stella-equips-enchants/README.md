@@ -24,9 +24,11 @@ it on a client only to cap the drawn heart rows for high-health players.
 
 Enchanting costs emeralds and spends no experience, at either container.
 
-- **Anvil.** The price is the number of enchantments the operation applies, at
-  one emerald each. One enchantment costs 1, a combine that applies two costs 2,
-  and a repair that applies none is free.
+- **Anvil.** Each enchantment the operation applies costs `2^n` emeralds, where
+  n counts the enchantments the item already holds. The first costs 1, the
+  second 2, the third 4. A book that applies two to an item with one costs
+  2 + 4 = 6. Spell enchantments and runes do not count in n. A repair that
+  applies none is free.
 - **Table.** The price is the offered enchantment's level. A level 1 offer costs
   1 emerald and a level 5 offer costs 5. `min_cost` and `max_cost` still decide
   which offers appear; they are no longer a price.
