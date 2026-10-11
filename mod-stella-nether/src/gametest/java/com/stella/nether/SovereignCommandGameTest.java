@@ -24,7 +24,7 @@ public class SovereignCommandGameTest {
 		ServerLevel raid = (ServerLevel) player.level();
 		Vec3 floor = BlazeSovereignGameTest.arena(raid, server, 10);
 		server.getCommands().performPrefixedCommand(at(server, raid, floor), SUMMON);
-		Blaze risen = BlazeSovereign.find(server);
+		Blaze risen = BlazeSovereign.find(server, RaidMode.NORMAL);
 		boolean here = risen != null && risen.position().distanceTo(floor) < 0.01;
 		NetherTestSupport.result("summonCommand", "risen=" + (risen != null) + " here=" + here + " sovereign=" + BlazeSovereign.isSovereign(risen));
 		if (risen != null) {
@@ -39,14 +39,14 @@ public class SovereignCommandGameTest {
 	public void theSummonCommandRaisesNothingOutsideTheRaid(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
 		MinecraftServer server = helper.getLevel().getServer();
-		Blaze before = BlazeSovereign.find(server);
+		Blaze before = BlazeSovereign.find(server, RaidMode.NORMAL);
 		int result;
 		try {
 			result = server.getCommands().getDispatcher().execute(SUMMON, at(server, helper.getLevel(), helper.absoluteVec(new Vec3(1.5, 1.0, 1.5))));
 		} catch (com.mojang.brigadier.exceptions.CommandSyntaxException refused) {
 			result = 0;
 		}
-		Blaze after = BlazeSovereign.find(server);
+		Blaze after = BlazeSovereign.find(server, RaidMode.NORMAL);
 		NetherTestSupport.result("summonRefused", "result=" + result + " same=" + (before == after));
 		helper.assertTrue(result == 0 && before == after, "outside the raid the command returned " + result + " and the Sovereign changed=" + (before != after));
 		helper.succeed();

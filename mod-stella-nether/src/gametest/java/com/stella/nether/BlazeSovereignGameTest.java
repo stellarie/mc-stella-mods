@@ -19,7 +19,12 @@ import net.minecraft.world.phys.Vec3;
 public class BlazeSovereignGameTest {
 	/** A cleared room beside the arrival hall, floored in obsidian, for a Sovereign to stand in. */
 	static Vec3 arena(final ServerLevel raid, final MinecraftServer server, final int height) {
-		BlockPos centre = RaidInstance.arrival(server).offset(16, 0, 0);
+		return arena(raid, server, RaidMode.NORMAL, height);
+	}
+
+	/** The same room beside a mode's arrival hall, so a Sovereign risen in it belongs to that mode's raid. */
+	static Vec3 arena(final ServerLevel raid, final MinecraftServer server, final RaidMode mode, final int height) {
+		BlockPos centre = RaidInstance.arrival(server, mode).offset(16, 0, 0);
 		hold(raid, centre);
 		for (int x = -7; x <= 7; x++) {
 			for (int z = -7; z <= 7; z++) {
@@ -60,17 +65,17 @@ public class BlazeSovereignGameTest {
 
 	static ServerPlayer enter(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
-		return RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		return RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:sov_rise", maxTicks = 600)
 	public void theSovereignRisesAtTheFortressWhenAPlayerComesNear(final GameTestHelper helper) {
 		ServerPlayer player = enter(helper);
 		MinecraftServer server = helper.getLevel().getServer();
-		BlockPos fortress = RaidInstance.site(server).fortress();
+		BlockPos fortress = RaidInstance.site(server, RaidMode.NORMAL).fortress();
 		moveTo(player, fortress.getX() + 0.5, 80.0, fortress.getZ() + 0.5);
 		helper.succeedWhen(() -> {
-			Blaze blaze = BlazeSovereign.find(server);
+			Blaze blaze = BlazeSovereign.find(server, RaidMode.NORMAL);
 			helper.assertTrue(blaze != null, "no Sovereign has risen");
 			double dx = blaze.getX() - fortress.getX();
 			double dz = blaze.getZ() - fortress.getZ();
@@ -195,7 +200,7 @@ public class BlazeSovereignGameTest {
 		// Held from its charges, whose rush and volley would fall on the player the bar is shown to.
 		SovereignSpecials.pause(blaze);
 		helper.succeedWhen(() -> {
-			boolean shown = BlazeSovereign.bar() != null && BlazeSovereign.bar().getPlayers().contains(player);
+			boolean shown = BlazeSovereign.bar(RaidMode.NORMAL) != null && BlazeSovereign.bar(RaidMode.NORMAL).getPlayers().contains(player);
 			helper.assertTrue(shown, "the player does not see the Sovereign's bar");
 			NetherTestSupport.result("sovereignBar", "shown=" + shown + " distance=" + (int) player.distanceTo(blaze));
 			blaze.discard();
@@ -210,15 +215,15 @@ public class BlazeSovereignGameTest {
 		ServerLevel raid = (ServerLevel) player.level();
 		Blaze first = BlazeSovereign.rise(raid, arena(raid, server, 8));
 		first.kill(raid);
-		BlockPos fortress = RaidInstance.site(server).fortress();
+		BlockPos fortress = RaidInstance.site(server, RaidMode.NORMAL).fortress();
 		moveTo(player, fortress.getX() + 0.5, 80.0, fortress.getZ() + 0.5);
 		helper.runAfterDelay(300, () -> {
 			// This run's Sovereigns only: an earlier failing test can leave its own standing elsewhere in the level.
-			int run = RaidInstance.state(server).run();
+			int run = RaidInstance.state(server, RaidMode.NORMAL).run();
 			long risen = raid.getEntities(EntityTypes.BLAZE, blaze -> BlazeSovereign.isSovereign(blaze) && blaze.isAlive()
 				&& Integer.valueOf(run).equals(blaze.getAttached(BlazeSovereign.SOVEREIGN))).size();
 			boolean loaded = raid.isLoaded(fortress);
-			NetherTestSupport.result("sovereignOnce", "alive=" + risen + " fortressLoaded=" + loaded + " risen=" + RaidInstance.state(server).sovereignRisen());
+			NetherTestSupport.result("sovereignOnce", "alive=" + risen + " fortressLoaded=" + loaded + " risen=" + RaidInstance.state(server, RaidMode.NORMAL).sovereignRisen());
 			NetherTestSupport.leave(helper, player);
 			helper.assertTrue(loaded && risen == 0, "after the Sovereign fell, " + risen + " stand again (fortress loaded=" + loaded + ")");
 			helper.succeed();

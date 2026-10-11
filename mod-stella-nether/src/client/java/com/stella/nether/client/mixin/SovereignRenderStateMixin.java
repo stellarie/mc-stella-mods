@@ -5,19 +5,19 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-/** Carries the Sovereign's mark from the entity to its render. */
+/** Carries the nether raid's tint from the entity to its render. */
 @Mixin(LivingEntityRenderState.class)
 public abstract class SovereignRenderStateMixin implements SovereignTint {
 	@Unique
-	private boolean stellaNether$sovereign;
+	private int stellaNether$tint;
 
 	@Override
-	public boolean stellaNether$sovereign() {
-		return this.stellaNether$sovereign;
+	public int stellaNether$tint() {
+		return this.stellaNether$tint;
 	}
 
 	@Override
-	public void stellaNether$setSovereign(final boolean sovereign) {
-		this.stellaNether$sovereign = sovereign;
+	public void stellaNether$setTint(final int tint) {
+		this.stellaNether$tint = tint;
 	}
 }

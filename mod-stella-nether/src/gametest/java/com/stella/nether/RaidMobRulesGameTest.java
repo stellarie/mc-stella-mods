@@ -111,7 +111,7 @@ public class RaidMobRulesGameTest {
 	@GameTest(environment = "mod-stella-nether-test:scroll_sovereign", maxTicks = 100)
 	public void theSovereignLeavesAScrollForEachPlayerAndTwoMore(final GameTestHelper helper) {
 		ServerPlayer first = BlazeSovereignGameTest.enter(helper);
-		ServerPlayer second = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, RaidMode.NORMAL);
+		ServerPlayer second = RaidModeGameTest.enter(helper, RaidMode.NORMAL);
 		ServerLevel raid = (ServerLevel) first.level();
 		Blaze sovereign = BlazeSovereign.rise(raid, BlazeSovereignGameTest.arena(raid, helper.getLevel().getServer(), 8));
 		int players = raid.players().size();

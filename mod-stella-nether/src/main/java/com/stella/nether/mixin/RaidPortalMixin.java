@@ -11,14 +11,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** A nether portal asks a player which nether to enter, and inside the raid nether it leads back out. */
+/** Inside the raid nether, every nether portal leads back to the guardian a player used. Everywhere else it is vanilla's. */
 @Mixin(NetherPortalBlock.class)
 public abstract class RaidPortalMixin {
 	@Inject(method = "getPortalDestination", at = @At("HEAD"), cancellable = true)
-	private void stellaNether$route(final ServerLevel level, final Entity entity, final BlockPos portal, final CallbackInfoReturnable<TeleportTransition> cir) {
-		RaidTravel.Route route = RaidTravel.route(level, entity, portal);
-		if (route.decided()) {
-			cir.setReturnValue(route.transition());
+	private void stellaNether$leaveRaid(final ServerLevel level, final Entity entity, final BlockPos portal, final CallbackInfoReturnable<TeleportTransition> cir) {
+		if (level.dimension().equals(RaidTravel.RAID)) {
+			cir.setReturnValue(RaidTravel.leaveRaid(level, entity));
 		}
 	}
 }

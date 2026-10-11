@@ -35,7 +35,7 @@ public class RaidLootGameTest {
 
 	static void inRaid(final GameTestHelper helper, final RaidMode mode, final double multiplier, final String name) {
 		NetherTestSupport.fresh(helper);
-		ServerPlayer player = RaidModeGameTest.enter(helper, RaidTravel.Choice.RAID, mode);
+		ServerPlayer player = RaidModeGameTest.enter(helper, mode);
 		double mean = meanQuartz((ServerLevel) player.level(), player.blockPosition());
 		NetherTestSupport.result(name, "mean=" + mean + " multiplier=" + multiplier + " rolls=" + ROLLS);
 		NetherTestSupport.leave(helper, player);

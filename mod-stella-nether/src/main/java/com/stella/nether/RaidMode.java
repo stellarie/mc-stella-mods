@@ -1,7 +1,11 @@
 package com.stella.nether;
 
-/** The host's pick: in both, every player inside holds a boon; in hard, every raid mob holds two. */
+import com.mojang.serialization.Codec;
+
+/** A raid's difficulty. One raid of each mode can run at the same time. */
 public enum RaidMode {
 	NORMAL,
-	HARD
+	HARD;
+
+	public static final Codec<RaidMode> CODEC = Codec.STRING.xmap(RaidMode::valueOf, RaidMode::name);
 }
