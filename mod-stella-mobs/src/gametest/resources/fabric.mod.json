@@ -97,7 +97,8 @@
 			"com.stella.mobs.BloodScentGameTest",
 			"com.stella.mobs.AmbushGameTest",
 			"com.stella.mobs.ArcherMovementGameTest",
-			"com.stella.mobs.ArcherCoverPathingGameTest"
+			"com.stella.mobs.ArcherCoverPathingGameTest",
+			"com.stella.mobs.ShieldGeneratorGameTest"
 		]
 	}
 }

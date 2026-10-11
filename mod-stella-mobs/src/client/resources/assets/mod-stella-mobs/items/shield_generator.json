@@ -1,0 +1,6 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "mod-stella-mobs:block/shield_generator"
+	}
+}

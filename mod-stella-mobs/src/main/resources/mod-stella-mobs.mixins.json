@@ -35,7 +35,9 @@
 		"TrueInvisibilitySightMixin",
 		"WitherBossMixin",
 		"WitherBossInvoker",
-		"WitherMinionLootMixin"
+		"WitherMinionLootMixin",
+		"ShieldSpawnMixin",
+		"ShieldAggroMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

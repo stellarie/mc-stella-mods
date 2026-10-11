@@ -502,3 +502,23 @@ nothing and do not throw. The ruins mod uses it for its site mobs.
 
 An elite that a player kills drops `min(32, 2 + level / 10)` emeralds. A boss drops four times that. A kill by
 another mob, the void, or a command pays nothing. A summoned elite, such as a quest Nemesis, pays no bounty.
+
+## Shield Generator (`ShieldBlocks`, `ShieldZones`)
+
+A placed Shield Generator guards a 33 by 33 by 33 box centered on it, in any dimension. The box edge sits 16 blocks from the block, edge included.
+
+- No hostile mob enters the box. A hostile mob is a mob that implements `Enemy`, bosses and elites included.
+  `ShieldSpawnMixin` refuses it at `ServerLevel.addEntity`, which sits under every add path: natural spawn, spawner block, summon, promotion and any other mod's spawn.
+- A mob already inside when the generator is placed stays. It is not read back through the add path.
+- No mob targets a player who stands in the box. A hostile mob inside the box holds no target at all.
+  `ShieldAggroMixin` gates `setTarget` and `canAttack`, and drops a held target on the next AI step. A skeleton outside the box does not shoot a player inside.
+- Green sparkles mark the 12 edges, to every player within 48 blocks.
+- Any killed mob drops one generator with chance 0.0001 (0.01 percent). A Wither minion, a small Wither and a summoned mob drop none.
+  The chance is `drop_chance` in `config/mod-stella-mobs/shield_generator.json`. The file is written with the default.
+- The block drops itself when mined. Creative players find it in the functional blocks tab.
+
+Limits:
+
+- A mob that keeps its own target and never asks `setTarget` is not gated. The Sovereign charge in `mod-stella-nether` is one.
+- A projectile already in flight and an explosion are not stopped. Another player is not stopped either.
+- A mob that is not hostile, such as an iron golem or a wolf, still fights other mobs inside the box.
