@@ -73,7 +73,10 @@
 			"com.stella.tower.TowerLostCastleThemeGameTest",
 			"com.stella.tower.TowerLostCastleClutterGameTest",
 			"com.stella.tower.ColosseumGameTest",
-			"com.stella.tower.TowerGuardianGameTest"
+			"com.stella.tower.TowerGuardianGameTest",
+			"com.stella.tower.TowerGhostSquadGameTest",
+			"com.stella.tower.TowerMerchantGameTest",
+			"com.stella.tower.MerchantGoodsGameTest"
 		]
 	},
 	"mixins": [

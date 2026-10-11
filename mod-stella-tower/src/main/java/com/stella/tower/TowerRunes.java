@@ -54,7 +54,7 @@ public final class TowerRunes {
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
 			// A ghost leaves its own rune, not one of the eight.
-			if (state == null || entity instanceof TowerGhost || !(entity.level() instanceof ServerLevel level)
+			if (state == null || entity instanceof Ghostly || !(entity.level() instanceof ServerLevel level)
 				|| entity.getLastHurtByPlayer() == null || !level.getGameRules().get(GameRules.MOB_DROPS)) {
 				return;
 			}

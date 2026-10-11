@@ -12,6 +12,6 @@ public final class Hostiles {
 	}
 
 	public static boolean isHostile(final Entity entity) {
-		return entity instanceof Enemy && !entity.entityTags().contains(HARMLESS_TAG);
+		return entity instanceof Enemy && !entity.entityTags().contains(HARMLESS_TAG) && !(entity instanceof Ghostly);
 	}
 }

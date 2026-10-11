@@ -236,7 +236,7 @@ public final class TowerBuffs {
 		TowerMobs.State state = TowerMobs.stateOf(mob);
 		// The buffs hold while in the tower; a mob of the floor loose in the world carries none.
 		// A ghost is on the players' side: a boss floor's buffs, thorns among them, are for its foes.
-		if (state == null || mob instanceof TowerGhost || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)
+		if (state == null || mob instanceof Ghostly || !isBossFloor(state.floor()) || !(mob.level() instanceof ServerLevel level)
 			|| !level.dimension().equals(TowerTravel.TOWER)) {
 			return List.of();
 		}

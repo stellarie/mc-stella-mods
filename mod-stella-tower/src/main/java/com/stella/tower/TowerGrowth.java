@@ -68,7 +68,7 @@ public final class TowerGrowth {
 		// A tower mob's death is a kill for what its slayer holds and wears.
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
-			if (state != null && entity.getLastHurtByPlayer() instanceof ServerPlayer player) {
+			if (state != null && !(entity instanceof Ghostly) && entity.getLastHurtByPlayer() instanceof ServerPlayer player) {
 				credit(player, state.floor());
 			}
 		});

@@ -43,6 +43,9 @@ public final class TowerGameTestInit implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		TowerWanderers.setScanFilter(player -> false);
+		// No ghost squad rises and no merchant appears on a floor by chance: a case that wants one asks for it by floor.
+		GhostSquads.pinDefaultRiseChance(0.0);
+		TowerMerchants.pinDefaultChance(0.0);
 		TowerPlan.drawLegacyFloors(floor -> floor < TowerTestSupport.BIOME_FLOORS_FROM);
 		standIn(BONE_SHIELD, false);
 		standIn(SKELETON_CROWN, false);
