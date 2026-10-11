@@ -43,6 +43,16 @@ public final class Spellbooks implements ModInitializer {
 				line(Component.translatable("item." + MOD_ID + ".scroll_book.effect"), ChatFormatting.AQUA)
 			))))
 	);
+	public static final Identifier COMPENDIUM_ID = Identifier.fromNamespaceAndPath(MOD_ID, "compendium");
+	public static final CompendiumItem COMPENDIUM = Registry.register(
+		BuiltInRegistries.ITEM, COMPENDIUM_ID, new CompendiumItem(new Item.Properties()
+			.setId(ResourceKey.create(Registries.ITEM, COMPENDIUM_ID)).stacksTo(1)
+			.component(DataComponents.LORE, new ItemLore(List.of(
+				line(Component.translatable("item." + MOD_ID + ".compendium.effect"), ChatFormatting.AQUA),
+				line(Component.translatable("item." + MOD_ID + ".compendium.fill"), ChatFormatting.GRAY),
+				line(Component.translatable("spellbook." + MOD_ID + ".cooldown", CompendiumItem.COOLDOWN_TICKS / 20), ChatFormatting.DARK_GRAY)
+			))))
+	);
 	/** Scrolls whose paper-and-material pair is already a vanilla recipe take one more of the material. */
 	public static final java.util.Set<Identifier> SCROLLS_WITH_DOUBLE_MATERIAL = java.util.Set.of(
 		Identifier.fromNamespaceAndPath(MOD_ID, "briar_snare")
