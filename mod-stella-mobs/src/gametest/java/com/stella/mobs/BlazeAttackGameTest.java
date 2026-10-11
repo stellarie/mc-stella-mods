@@ -4,7 +4,12 @@ import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.BlazeAttackGoal;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.EliteState;
+import com.stella.mobs.behavior.HoldStandoffGoal;
+import com.stella.mobs.behavior.KeepDistanceGoal;
+import com.stella.mobs.behavior.RetreatGoal;
+import com.stella.mobs.behavior.ShieldUseGoal;
 import com.stella.mobs.gear.GearTier;
+import com.stella.mobs.projectile.StellaSmallFireball;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,9 +29,10 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Every blaze fires one fireball on a steady beat, every two seconds, or every one and a half for an
- * elite, and each ball bursts in an explosion that harms bodies and never the ground. A boss blaze
- * calls an ordinary blaze on one attack in ten, up to its cap.
+ * Every blaze fires one fireball on a steady beat, every second, or every three quarters of a second for
+ * an elite. The ball splits in three at the middle of its flight when the target is far enough, and each
+ * ball bursts in an explosion that harms bodies and never the ground. A boss blaze calls an ordinary
+ * blaze on one attack in ten, up to its cap.
  */
 public class BlazeAttackGameTest {
 	private static final String TEST = "blazeAttack";
@@ -35,12 +41,22 @@ public class BlazeAttackGameTest {
 	private static final Map<UUID, List<Blaze>> CALLED = new ConcurrentHashMap<>();
 	/** Explosion hits a blaze's ball dealt, keyed by the victim. */
 	private static final Map<UUID, List<UUID>> BLASTED = new ConcurrentHashMap<>();
+	/** The balls each blaze launched, with the flight length the goal aimed them over. */
+	private static final Map<UUID, List<Launch>> LAUNCHED = new ConcurrentHashMap<>();
+
+	private record Launch(StellaSmallFireball ball, double flightLength) {
+	}
 
 	static {
 		BlazeAttackGoal.setRecorder(new BlazeAttackGoal.Recorder() {
 			@Override
 			public void fired(final Blaze blaze, final int serverTick) {
 				FIRED.computeIfAbsent(blaze.getUUID(), key -> new CopyOnWriteArrayList<>()).add(serverTick);
+			}
+
+			@Override
+			public void launched(final Blaze blaze, final StellaSmallFireball ball, final double flightLength) {
+				LAUNCHED.computeIfAbsent(blaze.getUUID(), key -> new CopyOnWriteArrayList<>()).add(new Launch(ball, flightLength));
 			}
 
 			@Override
@@ -55,14 +71,49 @@ public class BlazeAttackGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 300)
-	public void anOrdinaryBlazeFiresEveryTwoSeconds(final GameTestHelper helper) {
-		assertBeat(helper, "anOrdinaryBlazeFiresEveryTwoSeconds", false, BlazeAttackGoal.ORDINARY_INTERVAL_TICKS);
+	@GameTest
+	public void theBlazeIntervalsAreTheAcceptedOnes(final GameTestHelper helper) {
+		helper.assertTrue(BlazeAttackGoal.ORDINARY_INTERVAL_TICKS == 20, "an ordinary blaze fires every " + BlazeAttackGoal.ORDINARY_INTERVAL_TICKS + " ticks, not 20");
+		helper.assertTrue(BlazeAttackGoal.ELITE_INTERVAL_TICKS == 15, "an elite blaze fires every " + BlazeAttackGoal.ELITE_INTERVAL_TICKS + " ticks, not 15");
+		helper.succeed();
 	}
 
 	@GameTest(maxTicks = 300)
-	public void anEliteBlazeFiresEveryOneAndAHalfSeconds(final GameTestHelper helper) {
-		assertBeat(helper, "anEliteBlazeFiresEveryOneAndAHalfSeconds", true, BlazeAttackGoal.ELITE_INTERVAL_TICKS);
+	public void anOrdinaryBlazeFiresEveryTwentyTicks(final GameTestHelper helper) {
+		assertBeat(helper, "anOrdinaryBlazeFiresEveryTwentyTicks", false, BlazeAttackGoal.ORDINARY_INTERVAL_TICKS);
+	}
+
+	@GameTest(maxTicks = 300)
+	public void anEliteBlazeFiresEveryFifteenTicks(final GameTestHelper helper) {
+		assertBeat(helper, "anEliteBlazeFiresEveryFifteenTicks", true, BlazeAttackGoal.ELITE_INTERVAL_TICKS);
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aBlazeFiresItsBallToSplitAtHalfTheFlight(final GameTestHelper helper) {
+		Blaze blaze = blaze(helper, false, false);
+		target(helper, blaze);
+		helper.succeedWhen(() -> {
+			// A blaze drifts, so the test reads the first ball it fired from far enough off.
+			Launch first = LAUNCHED.getOrDefault(blaze.getUUID(), List.of()).stream().filter(launch -> launch.flightLength() >= BlazeAttackGoal.MIN_SPLIT_RANGE).findFirst().orElse(null);
+			helper.assertTrue(first != null, "the blaze has fired no ball from " + BlazeAttackGoal.MIN_SPLIT_RANGE + " blocks off or more yet");
+			double expected = first.flightLength() * BlazeAttackGoal.SPLIT_AT_FRACTION;
+			helper.assertTrue(Math.abs(first.ball().getSplitDistance() - expected) < 1.0E-6, "the ball splits after " + first.ball().getSplitDistance() + " blocks, not at " + expected);
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aBlazeFiresItsBallToSplitAtHalfTheFlight flight={} splitDistance={}", TEST, first.flightLength(), first.ball().getSplitDistance());
+			blaze.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 100)
+	public void aBlazeNearItsTargetFiresAnUnsplitBall(final GameTestHelper helper) {
+		Blaze blaze = blaze(helper, false, false);
+		target(helper, blaze, 2, 1, 3);
+		helper.succeedWhen(() -> {
+			Launch first = LAUNCHED.getOrDefault(blaze.getUUID(), List.of()).stream().filter(launch -> launch.flightLength() < BlazeAttackGoal.MIN_SPLIT_RANGE).findFirst().orElse(null);
+			helper.assertTrue(first != null, "the blaze has fired no ball from under " + BlazeAttackGoal.MIN_SPLIT_RANGE + " blocks off yet");
+			helper.assertTrue(first.ball().getSplitDistance() == 0.0, "a ball fired at a near target splits after " + first.ball().getSplitDistance() + " blocks");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aBlazeNearItsTargetFiresAnUnsplitBall flight={} splitDistance={}", TEST, first.flightLength(), first.ball().getSplitDistance());
+			blaze.discard();
+		});
 	}
 
 	@GameTest(maxTicks = 300)
@@ -281,12 +332,21 @@ public class BlazeAttackGameTest {
 			EliteState.setBoss(blaze, true);
 		}
 		BehaviorInstaller.installBlazeAttack(blaze);
+		// The mod's distance goals sit above the attack goal and walk the blaze off its target, so the rig strips them.
+		blaze.getGoalSelector().removeAllGoals(goal -> goal instanceof KeepDistanceGoal
+			|| goal instanceof RetreatGoal
+			|| goal instanceof HoldStandoffGoal
+			|| goal instanceof ShieldUseGoal);
 		return blaze;
 	}
 
 	// A durable target the blaze must keep firing at: a dead one would stop the beat and read as a slow one.
 	private static Zombie target(final GameTestHelper helper, final Blaze blaze) {
-		Zombie target = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 7).withNoFreeWill().spawn();
+		return target(helper, blaze, 2, 1, 7);
+	}
+
+	private static Zombie target(final GameTestHelper helper, final Blaze blaze, final int x, final int y, final int z) {
+		Zombie target = helper.spawnMob(EntityTypes.ZOMBIE, x, y, z).withNoFreeWill().spawn();
 		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		target.setHealth(1000.0F);
 		helper.onEachTick(() -> {

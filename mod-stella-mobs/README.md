@@ -135,6 +135,43 @@ Ranged units shoot from up to 24 blocks away, and their shots lead a moving targ
 - **Limits:** a mob saved before this change keeps the band that `mod-stella-learn` stored for it. Friendly fire
   grows with range. A spell caster from `mod-stella-spells` keeps its own range of 16 blocks.
 
+## Blaze and ghast volleys
+
+A blaze splits its fireball in flight. A ghast fires a triangle of slow shots. No blast breaks a block.
+
+### Blaze (`BlazeAttackGoal`, `StellaSmallFireball`)
+
+- **Rate:** an ordinary blaze fires every 20 ticks. An elite blaze fires every 15 ticks.
+- **Split:** a ball aimed at a target 4 or more blocks away splits after it has flown half the way to its aim point.
+  Three children replace it and fan out around its heading: one straight on, one 12 degrees to each side.
+- **Children:** a child keeps the owner and the explosion of its ball: radius 1.5, bodies only, no block damage.
+  A child never splits again. It never hits its owner or a sibling.
+- **No split:** a ball that hits something before the middle explodes there as before. A target closer than 4 blocks
+  gets an unsplit ball.
+- **Boss:** the boss blaze summon chance and cap do not change.
+- **Blaze Sovereign:** `mod-stella-nether` removes this goal from the Sovereign and fires vanilla `SmallFireball`,
+  so this change does not reach it.
+
+### Ghast (`GhastFireballGoal`, `GhastWitherShot`)
+
+- **Volley:** every 7 ticks, while the target is in sight within 64 blocks, a ghast fires 3 shots.
+  The three aim points lie on a horizontal circle of radius 2.5 round the target's feet, at 120 degree steps, from a
+  random start angle. The centre leads a moving target. Over flat ground the shots land on the three points.
+- **Shot:** 0.4 blocks per tick, held constant, also after a player turns it back. A shot burns out after 200 ticks,
+  enough to cross 64 blocks.
+- **Landing:** the blast has power 1.0 and breaks no block. A player whose body is within 3 blocks takes 4 damage
+  from the ghast as a `fireball` hit, so level scaling applies. A cloud of radius 3 lingers 100 ticks and gives
+  Wither and Slowness (Wither II from an elite). It gives no Poison. The triangle is smaller than the cloud, so a
+  target at the centre stands inside all three clouds.
+- **Fire:** 1 to 3 fires light at random spots within 3 blocks on air above solid ground, only when `mobGriefing`
+  is true. Each fire burns out after 100 ticks, with the cloud, if it still burns, so netherrack does not feed it for
+  ever. Fire spreads to what burns while it lasts. A fire lit when the server stops stays, because the list of
+  fires to clear is not saved.
+- **Load:** one ghast fires about 8.6 shots per second. The game test arena measured 28 volleys in 10 seconds,
+  with a peak of 6 shots and 45 clouds in the world at once. At the full 64 block range the same rate holds up to
+  72 shots in flight.
+- **Manual check:** the pressure and the frame rate in a nether fight are for a player to judge.
+
 ## Red slime
 
 The red slime is a beginner mob.

@@ -24,12 +24,17 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Every blaze fires one fireball on a steady beat, and each ball bursts in an explosion that harms
- * bodies and never the ground. An elite fires faster. A boss blaze calls an ordinary blaze on some of
- * its attacks, up to a cap of living ones. Replaces the vanilla attack goal, a private nested class.
+ * bodies and never the ground. An elite fires faster. A ball fired at a target far enough off splits in
+ * three at the middle of its flight. A boss blaze calls an ordinary blaze on some of its attacks, up to a
+ * cap of living ones. Replaces the vanilla attack goal, a private nested class.
  */
 public class BlazeAttackGoal extends Goal {
-	public static final int ORDINARY_INTERVAL_TICKS = 40;
-	public static final int ELITE_INTERVAL_TICKS = 30;
+	public static final int ORDINARY_INTERVAL_TICKS = 20;
+	public static final int ELITE_INTERVAL_TICKS = 15;
+	/** A target nearer than this gets an unsplit ball: the children would have no room to fan out. */
+	public static final double MIN_SPLIT_RANGE = 4.0;
+	/** The share of the flight to the aim point after which the ball splits. */
+	public static final double SPLIT_AT_FRACTION = 0.5;
 	public static final double BOSS_SUMMON_CHANCE = 0.10;
 	/** Living called blazes a boss may have at once, so a long fight cannot fill the sky. */
 	public static final int BOSS_SUMMON_CAP = 3;
@@ -37,6 +42,10 @@ public class BlazeAttackGoal extends Goal {
 
 	public interface Recorder {
 		default void fired(final Blaze blaze, final int serverTick) {
+		}
+
+		/** The ball a blaze launched, and the length of the flight it was aimed over. */
+		default void launched(final Blaze blaze, final StellaSmallFireball ball, final double flightLength) {
 		}
 
 		default void summoned(final Blaze boss, final Blaze called) {
@@ -159,7 +168,13 @@ public class BlazeAttackGoal extends Goal {
 
 		StellaSmallFireball ball = new StellaSmallFireball(level, this.blaze.getX(), this.blaze.getY(0.5), this.blaze.getZ(), aim.normalize());
 		ball.setOwner(this.blaze);
+		double flight = aim.length();
+		if (flight >= MIN_SPLIT_RANGE) {
+			ball.setSplitDistance(flight * SPLIT_AT_FRACTION);
+		}
+
 		level.addFreshEntity(ball);
+		recorder.launched(this.blaze, ball, flight);
 		recorder.fired(this.blaze, level.getServer().getTickCount());
 
 		if (EliteState.isBoss(this.blaze) && (FORCED_SUMMONS.contains(this.blaze.getUUID()) || summons(this.blaze.getRandom()))) {

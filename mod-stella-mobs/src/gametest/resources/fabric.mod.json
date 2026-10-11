@@ -20,6 +20,7 @@
 			"com.stella.mobs.BehaviorGameTest",
 			"com.stella.mobs.BehaviorRigGameTest",
 			"com.stella.mobs.BlazeAttackGameTest",
+			"com.stella.mobs.BlazeSplitGameTest",
 			"com.stella.mobs.BossAbilityGameTest",
 			"com.stella.mobs.BossBehaviourGameTest",
 			"com.stella.mobs.BossGameTest",
