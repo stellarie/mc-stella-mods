@@ -22,7 +22,7 @@ cannot be in the palette. A name is the file name without '.txt'. Sprites of one
     crossbow  the bow frames, then {id}_arrow and {id}_firework
     others    {id}
 
-KIND of the models command is one of: bow, crossbow, sword, axe, mace, spear, helmet, chestplate, leggings, boots.
+KIND of the models command is one of: bow, crossbow, sword, axe, mace, spear, helmet, chestplate, leggings, boots, shield.
 """
 import json
 import os
@@ -64,6 +64,7 @@ MODELS = {
     "chestplate": ("single.item.json", [("generated.model.json", "", {})]),
     "leggings": ("single.item.json", [("generated.model.json", "", {})]),
     "boots": ("single.item.json", [("generated.model.json", "", {})]),
+    "shield": ("single.item.json", [("generated.model.json", "", {})]),
 }
 
 

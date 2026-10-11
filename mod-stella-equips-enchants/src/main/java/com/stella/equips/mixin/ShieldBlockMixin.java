@@ -2,6 +2,7 @@ package com.stella.equips.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.stella.equips.guardian.BoneShield;
 import com.stella.equips.shield.Parry;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -10,7 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Parry hooks the call that works out how much damage a raised shield blocks. The shield is still whole there,
+ * Parry and the Bone Shield hook the call that works out how much damage a raised shield blocks. The shield is still whole there,
  * so a blow that breaks it is parried too. The wrap returns the blocked amount unchanged, so it chains with the
  * hooks of other mods on the same call.
  */
@@ -23,6 +24,7 @@ public abstract class ShieldBlockMixin {
 	private float stellaEquips$parry(final BlocksAttacks blocks, final DamageSource source, final float damage, final double angle, final Operation<Float> original) {
 		float blocked = original.call(blocks, source, damage, angle);
 		Parry.answer((LivingEntity) (Object) this, source, blocked);
+		BoneShield.onBlock((LivingEntity) (Object) this, source, blocked);
 		return blocked;
 	}
 }
