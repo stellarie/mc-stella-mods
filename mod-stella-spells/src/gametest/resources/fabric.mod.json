@@ -33,6 +33,7 @@
 			"com.stella.spells.ImbueExpansionGameTest",
 			"com.stella.spells.QuickSlotsDrainGameTest",
 			"com.stella.spells.RpgBridgeGameTest",
+			"com.stella.spells.StaffPowerGameTest",
 			"com.stella.spells.SpellMatkGameTest",
 			"com.stella.spells.SummonScalingGameTest",
 			"com.stella.spells.SpellTooltipGameTest",
