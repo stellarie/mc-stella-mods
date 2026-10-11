@@ -8,14 +8,16 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The falcon of every player who holds Blitz Beat: one each, raised when the buff is cast, brought back when
- * the owner changes level or logs in with the buff still running, and gone with the buff. The falcon removes
- * itself when its owner stops qualifying, so this class only has to raise it.
+ * The falcon of every player or mob who holds Blitz Beat: one each, raised when the buff is cast, brought back
+ * when the owner changes level or logs in with the buff still running, and gone with the buff. The falcon
+ * removes itself when its owner stops qualifying, so this class only has to raise it. A mob owner is
+ * kept up by {@link MobBlitz}, which knows which mobs carry the buff for good.
  */
 final class Falcons {
 	private static final int CHECK_INTERVAL_TICKS = 10;
@@ -39,11 +41,11 @@ final class Falcons {
 				ensure(player);
 			}
 		}
-		BY_OWNER.entrySet().removeIf(entry -> server.getPlayerList().getPlayer(entry.getKey()) == null);
+		BY_OWNER.entrySet().removeIf(entry -> server.getPlayerList().getPlayer(entry.getKey()) == null && !MobBlitz.tracks(entry.getKey()));
 	}
 
-	/** The falcon this player holds, or null when it has none in the world. */
-	static @Nullable FalconEntity of(final ServerPlayer owner) {
+	/** The falcon this owner holds, or null when it has none in the world. */
+	static @Nullable FalconEntity of(final LivingEntity owner) {
 		UUID id = BY_OWNER.get(owner.getUUID());
 		if (id == null || !(owner.level() instanceof ServerLevel level)) {
 			return null;
@@ -51,8 +53,13 @@ final class Falcons {
 		return level.getEntity(id) instanceof FalconEntity falcon && falcon.isAlive() ? falcon : null;
 	}
 
-	/** Raises the falcon of a buffed player if it has none in its level. */
-	static @Nullable FalconEntity ensure(final ServerPlayer owner) {
+	/** Drops the record of a mob owner that is gone. */
+	static void forget(final UUID owner) {
+		BY_OWNER.remove(owner);
+	}
+
+	/** Raises the falcon of a buffed owner if it has none in its level. */
+	static @Nullable FalconEntity ensure(final LivingEntity owner) {
 		FalconEntity held = of(owner);
 		if (held != null) {
 			return held;
@@ -76,7 +83,7 @@ final class Falcons {
 	}
 
 	/** Sends the owner falcon at a foe a strike hit; raises the falcon first when it is missing. */
-	static void swoop(final ServerPlayer owner, final Mob foe) {
+	static void swoop(final LivingEntity owner, final Entity foe) {
 		FalconEntity falcon = ensure(owner);
 		if (falcon != null) {
 			falcon.swoopAt(foe);

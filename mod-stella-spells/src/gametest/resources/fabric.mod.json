@@ -62,6 +62,7 @@
 			"com.stella.spells.ArcherVisualsGameTest",
 			"com.stella.spells.VulturesEyeGameTest",
 			"com.stella.spells.FalconGameTest",
+			"com.stella.spells.MobBlitzGameTest",
 			"com.stella.spells.SummonWolfGameTest",
 			"com.stella.spells.ConcentrateSeamGameTest",
 			"com.stella.spells.PriestBooksGameTest",
