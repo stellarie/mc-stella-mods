@@ -108,8 +108,8 @@ public class TowerBiomeSetGameTest {
 			floors++;
 			byte[][] surface = plan.biome().surface();
 			int own = 0;
-			for (int x = 0; x < TowerLayout.SIZE; x++) {
-				for (int z = 0; z < TowerLayout.SIZE; z++) {
+			for (int x = 0; x < plan.width(); x++) {
+				for (int z = 0; z < plan.depth(); z++) {
 					own += surface[x][z] == BiomeBlocks.PLANKS ? 1 : 0;
 				}
 			}
@@ -141,8 +141,8 @@ public class TowerBiomeSetGameTest {
 				TowerPlan plan = BiomeGen.plan(SEED, floor);
 				TowerVolume volume = TowerVolume.of(plan);
 				int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
-				for (int x = 0; x < TowerLayout.SIZE; x++) {
-					for (int z = 0; z < TowerLayout.SIZE; z++) {
+				for (int x = 0; x < plan.width(); x++) {
+					for (int z = 0; z < plan.depth(); z++) {
 						int y = plan.standY(x, z);
 						if (y < TowerWalk.LOW) {
 							continue;
@@ -185,8 +185,8 @@ public class TowerBiomeSetGameTest {
 				TowerPlan plan = BiomeGen.plan(SEED, floor);
 				TowerVolume volume = TowerVolume.of(plan);
 				List<int[]> lamps = new ArrayList<>();
-				for (int x = 0; x < TowerLayout.SIZE; x++) {
-					for (int z = 0; z < TowerLayout.SIZE; z++) {
+				for (int x = 0; x < plan.width(); x++) {
+					for (int z = 0; z < plan.depth(); z++) {
 						for (int y = plan.low(); y < plan.roofY(); y++) {
 							if (volume.kind(x, y, z) == TowerVolume.BIOME_BLOCK && BiomeBlocks.lights(volume.code(x, y, z))) {
 								lamps.add(new int[] {x, y, z});
@@ -195,8 +195,8 @@ public class TowerBiomeSetGameTest {
 					}
 				}
 				int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
-				for (int x = 0; x < TowerLayout.SIZE; x++) {
-					for (int z = 0; z < TowerLayout.SIZE; z++) {
+				for (int x = 0; x < plan.width(); x++) {
+					for (int z = 0; z < plan.depth(); z++) {
 						for (int y = TowerWalk.LOW; y <= TowerWalk.HIGH; y++) {
 							if (dist[TowerWalk.index(x, y, z)] < 0) {
 								continue;
@@ -281,8 +281,8 @@ public class TowerBiomeSetGameTest {
 			TowerFloors.ensure(tower, floor);
 			TowerPlan plan = TowerPlan.at(tower, floor);
 			BlockPos origin = plan.origin();
-			for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
-				for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+			for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + plan.width()) >> 4; cx++) {
+				for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + plan.depth()) >> 4; cz++) {
 					tower.setChunkForced(cx, cz, true);
 					forced.add(new ChunkPos(cx, cz));
 				}
@@ -319,10 +319,10 @@ public class TowerBiomeSetGameTest {
 					if (now[k] != then[k]) {
 						if (own == 0) {
 							int y = k % span + plan.low();
-							int z = k / span % TowerLayout.SIZE;
-							int x = k / span / TowerLayout.SIZE;
+							int z = k / span % plan.depth();
+							int x = k / span / plan.depth();
 							first = then[k] + " -> " + now[k] + " at " + x + "," + y + "," + z + " above " + (k + 1 < now.length ? then[k + 1] : "-")
-								+ " beside " + around(then, k, span);
+								+ " beside " + around(then, k, span, plan.depth());
 						}
 						own++;
 					}
@@ -340,9 +340,9 @@ public class TowerBiomeSetGameTest {
 	}
 
 	/** The four neighbours of a cell of a snapshot, for a report. */
-	private static String around(final BlockState[] states, final int k, final int span) {
+	private static String around(final BlockState[] states, final int k, final int span, final int depth) {
 		StringBuilder text = new StringBuilder();
-		int[] steps = {span, -span, span * TowerLayout.SIZE, -span * TowerLayout.SIZE};
+		int[] steps = {span, -span, span * depth, -span * depth};
 		for (int step : steps) {
 			text.append(k + step >= 0 && k + step < states.length ? states[k + step].getBlock().toString() : "-").append(' ');
 		}
@@ -351,11 +351,11 @@ public class TowerBiomeSetGameTest {
 
 	private static BlockState[] snapshot(final ServerLevel tower, final TowerPlan plan) {
 		int span = plan.roofY() - plan.low() + 1;
-		BlockState[] states = new BlockState[TowerLayout.SIZE * TowerLayout.SIZE * span];
+		BlockState[] states = new BlockState[plan.area() * span];
 		BlockPos origin = plan.origin();
 		int k = 0;
-		for (int x = 0; x < TowerLayout.SIZE; x++) {
-			for (int z = 0; z < TowerLayout.SIZE; z++) {
+		for (int x = 0; x < plan.width(); x++) {
+			for (int z = 0; z < plan.depth(); z++) {
 				for (int y = plan.low(); y <= plan.roofY(); y++) {
 					BlockState state = tower.getBlockState(origin.offset(x, y, z));
 					// A cactus ages in place; its age is no block moving.

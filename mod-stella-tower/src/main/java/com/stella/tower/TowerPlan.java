@@ -90,7 +90,9 @@ public record TowerPlan(
 	public static final int HALL_TOP = STORY - 1;
 	private static final long SALT = 0x504C414EL;
 	private static final long FALLBACK_SALT = 0x46414C4CL;
-	private static final int CACHE = 512;
+	/** A biome plan of the largest floor holds several 128 by 128 tables, so the plans kept are fewer than the legacy ones. */
+	private static final int CACHE = 128;
+	private static final int LEGACY_CACHE = 512;
 	private static final Map<Key, TowerPlan> CACHE_MAP = new LinkedHashMap<>(64, 0.75F, true) {
 		@Override
 		protected boolean removeEldestEntry(final Map.Entry<Key, TowerPlan> eldest) {
@@ -101,7 +103,7 @@ public record TowerPlan(
 	private static final Map<Key, TowerPlan> LEGACY_MAP = new LinkedHashMap<>(16, 0.75F, true) {
 		@Override
 		protected boolean removeEldestEntry(final Map.Entry<Key, TowerPlan> eldest) {
-			return this.size() > CACHE;
+			return this.size() > LEGACY_CACHE;
 		}
 	};
 
@@ -239,6 +241,11 @@ public record TowerPlan(
 	}
 
 	private record Key(long seed, int floor) {
+	}
+
+	/** Whether the floor is drawn by the generator of the plans before the biome floors, as the game tests draw some. */
+	static boolean drawnByTheOlderGenerator(final int floor) {
+		return LEGACY_FLOORS.test(floor);
 	}
 
 	/** The plan of a floor in a tower of this seed. Pure and cached. */
@@ -401,13 +408,14 @@ public record TowerPlan(
 	 * flat grids and the ground's walls. A column is a wall where nothing stands in it.
 	 */
 	private TowerPlan withBiomeStands(final TowerVolume volume) {
-		int size = TowerLayout.SIZE;
-		short[][] stand = new short[size][size];
-		boolean[][] stands = new boolean[size][size];
-		boolean[][] flat = new boolean[size][size];
-		boolean[][] ground = new boolean[size][size];
-		for (int x = 0; x < size; x++) {
-			for (int z = 0; z < size; z++) {
+		int sx = width();
+		int sz = depth();
+		short[][] stand = new short[sx][sz];
+		boolean[][] stands = new boolean[sx][sz];
+		boolean[][] flat = new boolean[sx][sz];
+		boolean[][] ground = new boolean[sx][sz];
+		for (int x = 0; x < sx; x++) {
+			for (int z = 0; z < sz; z++) {
 				stand[x][z] = BiomeDraft.NONE;
 				for (int y = TowerWalk.LOW; y < roofY() - 2; y++) {
 					if (volume.stands(x, y, z)) {
@@ -609,6 +617,26 @@ public record TowerPlan(
 		return this.biome != null;
 	}
 
+	/** The room's width along x: the base size on a floor drawn before the biome floors, the floor's own on a biome floor. */
+	public int width() {
+		return this.biome != null ? this.biome.width() : TowerLayout.SIZE;
+	}
+
+	/** The room's depth along z. */
+	public int depth() {
+		return this.biome != null ? this.biome.depth() : TowerLayout.SIZE;
+	}
+
+	/** The room's area, in columns. */
+	public int area() {
+		return width() * depth();
+	}
+
+	/** The room's area against the base room's: what the count of mobs, chests and props is multiplied by. */
+	public double areaFactor() {
+		return area() / (double) (TowerLayout.SIZE * TowerLayout.SIZE);
+	}
+
 	/** The lowest block of the room: its bedrock. */
 	public int low() {
 		return this.biome != null ? TowerLayout.ROOM_LOW : TowerVolume.LOW;
@@ -624,7 +652,7 @@ public record TowerPlan(
 	 * ground story's when it stands there. {@link BiomeDraft#NONE} where none does, or before the plan is read.
 	 */
 	public int standY(final int x, final int z) {
-		if (x < 0 || z < 0 || x >= TowerLayout.SIZE || z >= TowerLayout.SIZE) {
+		if (x < 0 || z < 0 || x >= width() || z >= depth()) {
 			return BiomeDraft.NONE;
 		}
 		if (this.biome != null) {

@@ -45,8 +45,9 @@ public class TowerEnclosedGameTest {
 	}
 
 	private static void hold(final ServerLevel tower, final int floor) {
-		BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
-		tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		BlockPos middle = plan.origin().offset(plan.width() / 2, 0, plan.depth() / 2);
+		tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.chunkRadius(plan));
 	}
 
 	private static boolean seen(final ServerLevel tower, final net.minecraft.world.entity.Entity looker, final Vec3 from, final Vec3 to) {
@@ -58,6 +59,7 @@ public class TowerEnclosedGameTest {
 	public void everyColumnOfEveryBiomeFloorHasASolidRoof(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int columns = 0;
+		int expected = 0;
 		int bad = 0;
 		StringBuilder report = new StringBuilder();
 		Map<String, Integer> blocks = new HashMap<>();
@@ -66,9 +68,10 @@ public class TowerEnclosedGameTest {
 			TowerFloors.ensure(tower, floor);
 			TowerPlan plan = TowerPlan.at(tower, floor);
 			BlockPos origin = plan.origin();
+			expected += plan.area();
 			int gaps = 0;
-			for (int x = 0; x < TowerLayout.SIZE; x++) {
-				for (int z = 0; z < TowerLayout.SIZE; z++) {
+			for (int x = 0; x < plan.width(); x++) {
+				for (int z = 0; z < plan.depth(); z++) {
 					BlockState roof = tower.getBlockState(origin.offset(x, plan.roofY(), z));
 					columns++;
 					boolean solid = roof.isSolidRender() && !roof.is(Blocks.BARRIER) && roof.getLightDampening() >= 15;
@@ -80,7 +83,7 @@ public class TowerEnclosedGameTest {
 			report.append(biome.id()).append(" floor=").append(floor).append(" gaps=").append(gaps).append("; ");
 		}
 		TowerTestSupport.result("roofs", "columns=" + columns + " gaps=" + bad + " " + report);
-		helper.assertTrue(columns == FloorBiome.values().length * TowerLayout.SIZE * TowerLayout.SIZE, "the roofs sampled " + columns + " columns");
+		helper.assertTrue(columns == expected, "the roofs sampled " + columns + " columns, not " + expected);
 		helper.assertTrue(bad == 0, bad + " roof columns are not a solid, opaque block: " + report);
 		helper.succeed();
 	}
@@ -117,8 +120,8 @@ public class TowerEnclosedGameTest {
 				}
 				int low = Integer.MAX_VALUE;
 				int high = Integer.MIN_VALUE;
-				for (int x = 0; x < TowerLayout.SIZE; x++) {
-					for (int z = 0; z < TowerLayout.SIZE; z++) {
+				for (int x = 0; x < plan.width(); x++) {
+					for (int z = 0; z < plan.depth(); z++) {
 						if (!draft.water()[x][z] && !draft.lava()[x][z]) {
 							low = Math.min(low, draft.feet()[x][z]);
 							high = Math.max(high, draft.feet()[x][z]);
@@ -161,8 +164,8 @@ public class TowerEnclosedGameTest {
 				int ground = 0;
 				int open = 0;
 				for (int tries = 0; tries < 4000 && ground < 150; tries++) {
-					int x = 1 + random.nextInt(TowerLayout.SIZE - 2);
-					int z = 1 + random.nextInt(TowerLayout.SIZE - 2);
+					int x = 1 + random.nextInt(plan.width() - 2);
+					int z = 1 + random.nextInt(plan.depth() - 2);
 					int y = plan.standY(x, z);
 					Vec3 spot = new Vec3(origin.getX() + x + 0.5, TowerLayout.BASE_Y + y, origin.getZ() + z + 0.5);
 					if (y >= TowerWalk.LOW && !draft.inDais(plan, x, z) && spot.distanceTo(plan.arrivalPos()) >= TowerMobs.BIOME_ARRIVAL_CLEAR) {
@@ -221,8 +224,8 @@ public class TowerEnclosedGameTest {
 				thin += draft.cover().length < BiomeCover.LEAST ? 1 : 0;
 				int low = Integer.MAX_VALUE;
 				int high = Integer.MIN_VALUE;
-				for (int x = 0; x < TowerLayout.SIZE; x++) {
-					for (int z = 0; z < TowerLayout.SIZE; z++) {
+				for (int x = 0; x < plan.width(); x++) {
+					for (int z = 0; z < plan.depth(); z++) {
 						if (!draft.water()[x][z] && !draft.lava()[x][z]) {
 							low = Math.min(low, draft.feet()[x][z]);
 							high = Math.max(high, draft.feet()[x][z]);
@@ -249,17 +252,33 @@ public class TowerEnclosedGameTest {
 		helper.succeed();
 	}
 
-	/** Catches a pool without breezes or shulkers, or one that still raises endermites, over a large sample of rolls. */
+	/**
+	 * Catches a pool without breezes or shulkers, or one that holds or raises an endermite or a silverfish, over a large
+	 * sample of rolls and in every pool the tower draws from: each biome's, the older floors' (which the lost rooms, the
+	 * wanderers, the traps' ambushes and the guardians draw from as well) and the sampled floors' own.
+	 */
 	@GameTest(maxTicks = 2400)
-	public void towerFloorsRaiseBreezesAndShulkersAndNoEndermites(final GameTestHelper helper) {
+	public void towerFloorsRaiseBreezesAndShulkersAndNoEndermitesOrSilverfish(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		Map<EntityType<?>, Integer> raised = new HashMap<>();
 		int rolls = 0;
 		int stuck = 0;
+		int banned = 0;
+		for (FloorBiome biome : FloorBiome.values()) {
+			banned += BiomePools.of(biome).contains(EntityTypes.SILVERFISH) || BiomePools.of(biome).contains(EntityTypes.ENDERMITE) ? 1 : 0;
+		}
+		for (int floor = 1; floor <= 120; floor++) {
+			for (List<EntityType<? extends Mob>> pool : List.of(TowerMobs.pool(floor), TowerElites.guardianPool(floor))) {
+				banned += pool.contains(EntityTypes.SILVERFISH) || pool.contains(EntityTypes.ENDERMITE) ? 1 : 0;
+			}
+		}
 		for (FloorBiome biome : FloorBiome.DRAWN) {
 			int floor = floorOf(tower, biome);
 			TowerFloors.ensure(tower, floor);
 			hold(tower, floor);
+			for (List<EntityType<? extends Mob>> pool : List.of(TowerMobs.poolOf(tower, floor), TowerElites.guardianPool(tower, floor))) {
+				banned += pool.contains(EntityTypes.SILVERFISH) || pool.contains(EntityTypes.ENDERMITE) ? 1 : 0;
+			}
 			for (int i = 0; i < 160; i++) {
 				Mob mob = TowerMobs.spawnOne(tower, floor);
 				if (mob != null) {
@@ -272,12 +291,15 @@ public class TowerEnclosedGameTest {
 		}
 		List<EntityType<? extends Mob>> later = TowerMobs.pool(TowerMobs.OVERWORLD_ONLY_UNTIL + 1);
 		TowerTestSupport.result("pool", "rolls=" + rolls + " breezes=" + raised.getOrDefault(EntityTypes.BREEZE, 0) + " shulkers="
-			+ raised.getOrDefault(EntityTypes.SHULKER, 0) + " endermites=" + raised.getOrDefault(EntityTypes.ENDERMITE, 0) + " stuck=" + stuck);
+			+ raised.getOrDefault(EntityTypes.SHULKER, 0) + " endermites=" + raised.getOrDefault(EntityTypes.ENDERMITE, 0) + " silverfish="
+			+ raised.getOrDefault(EntityTypes.SILVERFISH, 0) + " poolsHoldingEither=" + banned + " stuck=" + stuck);
 		helper.assertTrue(rolls >= 1000, "only " + rolls + " rolls placed a mob");
 		helper.assertTrue(raised.getOrDefault(EntityTypes.BREEZE, 0) > 0, "no breeze rose in " + rolls + " rolls");
 		helper.assertTrue(raised.getOrDefault(EntityTypes.SHULKER, 0) > 0, "no shulker rose in " + rolls + " rolls");
 		helper.assertTrue(raised.getOrDefault(EntityTypes.ENDERMITE, 0) == 0, raised.get(EntityTypes.ENDERMITE) + " endermites rose");
-		helper.assertTrue(!later.contains(EntityTypes.ENDERMITE) && later.contains(EntityTypes.BREEZE) && later.contains(EntityTypes.SHULKER),
+		helper.assertTrue(raised.getOrDefault(EntityTypes.SILVERFISH, 0) == 0, raised.get(EntityTypes.SILVERFISH) + " silverfish rose");
+		helper.assertTrue(banned == 0, banned + " pools hold an endermite or a silverfish");
+		helper.assertTrue(!later.contains(EntityTypes.ENDERMITE) && !later.contains(EntityTypes.SILVERFISH) && later.contains(EntityTypes.BREEZE) && later.contains(EntityTypes.SHULKER),
 			"the older floors' pool is " + later);
 		helper.assertTrue(stuck == 0, stuck + " raised mobs started inside a block");
 		helper.succeed();
@@ -298,7 +320,9 @@ public class TowerEnclosedGameTest {
 		BlockPos origin = plan.origin();
 		Method teleport = Shulker.class.getDeclaredMethod("teleportSomewhere");
 		teleport.setAccessible(true);
-		int[][] starts = {{32, plan.roofY() - 4, 32}, {1, 12, 32}, {62, 12, 32}, {32, 12, 1}, {32, 12, 62}};
+		int midX = plan.width() / 2;
+		int midZ = plan.depth() / 2;
+		int[][] starts = {{midX, plan.roofY() - 4, midZ}, {1, 12, midZ}, {plan.width() - 2, 12, midZ}, {midX, 12, 1}, {midX, 12, plan.depth() - 2}};
 		int teleports = 0;
 		int outside = 0;
 		StringBuilder report = new StringBuilder();
@@ -315,8 +339,8 @@ public class TowerEnclosedGameTest {
 				if ((boolean) teleport.invoke(shulker)) {
 					moved++;
 					BlockPos at = shulker.blockPosition();
-					boolean inside = at.getX() >= origin.getX() && at.getX() < origin.getX() + TowerLayout.SIZE
-						&& at.getZ() >= origin.getZ() && at.getZ() < origin.getZ() + TowerLayout.SIZE
+					boolean inside = at.getX() >= origin.getX() && at.getX() < origin.getX() + plan.width()
+						&& at.getZ() >= origin.getZ() && at.getZ() < origin.getZ() + plan.depth()
 						&& at.getY() >= TowerLayout.BASE_Y + plan.low() && at.getY() < TowerLayout.BASE_Y + plan.roofY();
 					left += inside ? 0 : 1;
 					if (!inside) {

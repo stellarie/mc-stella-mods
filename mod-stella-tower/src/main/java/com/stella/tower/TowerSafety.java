@@ -187,9 +187,9 @@ public final class TowerSafety {
 		Vec3 best = null;
 		double nearest = Double.MAX_VALUE;
 		int lowX = Math.max(origin.getX() + 1, (int) Math.floor(from.x) - SEARCH);
-		int highX = Math.min(origin.getX() + TowerLayout.SIZE - 2, (int) Math.floor(from.x) + SEARCH);
+		int highX = Math.min(origin.getX() + plan.width() - 2, (int) Math.floor(from.x) + SEARCH);
 		int lowZ = Math.max(origin.getZ() + 1, (int) Math.floor(from.z) - SEARCH);
-		int highZ = Math.min(origin.getZ() + TowerLayout.SIZE - 2, (int) Math.floor(from.z) + SEARCH);
+		int highZ = Math.min(origin.getZ() + plan.depth() - 2, (int) Math.floor(from.z) + SEARCH);
 		for (int x = lowX; x <= highX; x++) {
 			for (int z = lowZ; z <= highZ; z++) {
 				Vec3 spot = TowerMobs.spotFor(mob, new BlockPos(x, y, z));

@@ -11,7 +11,8 @@ import net.minecraft.core.Direction;
  * Where a floor's double chests go, decided in the plan and placed by a later slice. Pure: the same plan gives the
  * same spots.
  * <p>
- * A floor has at least {@link #MIN_SPOTS} spots, on any of its stories. Each is a double chest's two blocks side by
+ * A floor has at least {@link #MIN_SPOTS} spots on the base size, and more on a larger floor in step with its area
+ * ({@link #wanted}), on any of its stories. Each is a double chest's two blocks side by
  * side, standing against a wall on its story's floor with its front clear: where walls close in (a dead end, a room's
  * corner), far from the arrival by the walk on foot, clear of the traps, the safe zones, the hall (which holds the
  * boss's pyramid), the stairs and the way up to the portal. Where the floor has room for it they are also spread apart. On every fifth floor there is one
@@ -33,8 +34,12 @@ final class TowerChestSpots {
 	static final int[][] STAGES = {{30}, {20}, {12}, {8}, {4}, {1}};
 	/** How far apart any two chests stand across the room, in blocks, whatever their stories. */
 	static final int MIN_APART = 12;
-	/** The most chests a quarter of the room holds. */
+	/** The most chests a quarter of the base room holds. */
 	static final int PER_QUADRANT = 2;
+	/** A larger room is cut into tiles of the quarter's size, each holding {@link #PER_QUADRANT} at most. */
+	static final int TILE = TowerLayout.SIZE / 2;
+	/** The tiles in a row of the largest room. */
+	private static final int TILES_PER_ROW = TowerLayout.MAX_SIZE / TILE;
 	private static final int SIZE = TowerLayout.SIZE;
 	private static final long SALT = 0x43484553L;
 	private static final int[][] WAYS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
@@ -51,12 +56,13 @@ final class TowerChestSpots {
 	/** The plan's chest spots over its volume, drawn before the chests, or null when it leaves room for fewer than {@link #MIN_SPOTS}. */
 	static List<ChestSpot> place(final TowerPlan plan, final TowerVolume volume) {
 		int[] dist = walk(plan, volume);
+		int minimum = minSpots(plan);
 		List<TowerTraps.Trap> traps = TowerTraps.layout(plan.seed(), plan.floor(), plan);
 		Random random = new Random(plan.seed() ^ SALT ^ (plan.floor() * 0x9E3779B97F4A7C15L) ^ plan.attempt());
 		List<Candidate> candidates = new ArrayList<>();
 		for (TowerStory story : plan.stories()) {
-			for (int x = 1; x < SIZE - 1; x++) {
-				for (int z = 1; z < SIZE - 1; z++) {
+			for (int x = 1; x < plan.width() - 1; x++) {
+				for (int z = 1; z < plan.depth() - 1; z++) {
 					// A biome floor's ground rises and falls: a column's own feet level, and none where nothing stands.
 					int y = plan.isBiome() ? plan.standY(x, z) : story.y();
 					if (y < TowerWalk.LOW) {
@@ -85,20 +91,20 @@ final class TowerChestSpots {
 			if (guaranteed != null) {
 				spots.add(guaranteed);
 			}
-			int wanted = WANTED + spots.size();
+			int wanted = wanted(plan) + spots.size();
 			for (Candidate candidate : candidates) {
 				if (spots.size() >= wanted) {
 					break;
 				}
-				if (candidate.walk() >= stage[0] && apart(spots, candidate.spot(), MIN_APART) && quadrantHasRoom(spots, candidate.spot())) {
+				if (candidate.walk() >= stage[0] && apart(spots, candidate.spot(), MIN_APART) && tileHasRoom(spots, candidate.spot())) {
 					spots.add(candidate.spot());
 				}
 			}
-			if (spots.size() - (guaranteed != null ? 1 : 0) >= MIN_SPOTS) {
+			if (spots.size() - (guaranteed != null ? 1 : 0) >= minimum) {
 				break;
 			}
 		}
-		if (spots.size() - (guaranteed != null ? 1 : 0) < MIN_SPOTS) {
+		if (spots.size() - (guaranteed != null ? 1 : 0) < minimum) {
 			return null;
 		}
 		if (guaranteed != null) {
@@ -109,6 +115,16 @@ final class TowerChestSpots {
 	}
 
 	private record Candidate(ChestSpot spot, int walk, int enclosure) {
+	}
+
+	/** How many regular spots a floor is given when it has room: {@link #WANTED} times its area against the base floor's. */
+	static int wanted(final TowerPlan plan) {
+		return TowerMobs.scaled(WANTED, plan);
+	}
+
+	/** The fewest regular spots a floor has: {@link #MIN_SPOTS} times its area against the base floor's. */
+	static int minSpots(final TowerPlan plan) {
+		return TowerMobs.scaled(MIN_SPOTS, plan);
 	}
 
 	private static boolean open(final TowerPlan plan, final int x, final int z) {
@@ -212,10 +228,15 @@ final class TowerChestSpots {
 		return (spot.x() < SIZE / 2 ? 0 : 1) + (spot.z() < SIZE / 2 ? 0 : 2);
 	}
 
-	private static boolean quadrantHasRoom(final List<ChestSpot> spots, final ChestSpot spot) {
+	/** The tile of the room a spot lies in: the quarters of a base room, and as many tiles as fit a larger one. */
+	static int tile(final ChestSpot spot) {
+		return spot.x() / TILE + spot.z() / TILE * TILES_PER_ROW;
+	}
+
+	private static boolean tileHasRoom(final List<ChestSpot> spots, final ChestSpot spot) {
 		int in = 0;
 		for (ChestSpot other : spots) {
-			in += quadrant(other) == quadrant(spot) ? 1 : 0;
+			in += tile(other) == tile(spot) ? 1 : 0;
 		}
 		return in < PER_QUADRANT;
 	}

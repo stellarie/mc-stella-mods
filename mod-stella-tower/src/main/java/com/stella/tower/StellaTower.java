@@ -32,6 +32,7 @@ public final class StellaTower implements ModInitializer {
 		TowerTraps.register();
 		TowerRewards.register();
 		TowerGhosts.register();
+		TowerPhantoms.register();
 		TowerRunes.register();
 		RuneEffects.register();
 		RuneGuards.register();
@@ -46,6 +47,7 @@ public final class StellaTower implements ModInitializer {
 		LostRooms.register();
 		LostCastles.register();
 		com.stella.tower.colosseum.Colosseum.register();
-		LOGGER.info("Endless Tower ready: floors of {} by {} blocks, {} high", TowerLayout.SIZE, TowerLayout.SIZE, TowerLayout.HEIGHT);
+		LOGGER.info("Endless Tower ready: floors from {} by {} to {} by {} blocks, {} high", TowerLayout.SIZE, TowerLayout.SIZE,
+			TowerLayout.MAX_SIZE, TowerLayout.MAX_SIZE, TowerLayout.ROOM_HEIGHT);
 	}
 }

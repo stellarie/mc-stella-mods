@@ -178,8 +178,9 @@ public final class TowerElites {
 	/** Whether every chunk of the room has its entities loaded. */
 	public static boolean roomLoaded(final ServerLevel tower, final int floor) {
 		BlockPos origin = TowerLayout.origin(floor);
-		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
-			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + plan.width()) >> 4; cx++) {
+			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + plan.depth()) >> 4; cz++) {
 				if (!tower.areEntitiesLoaded(ChunkPos.pack(cx, cz))) {
 					return false;
 				}

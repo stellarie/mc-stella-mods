@@ -109,8 +109,8 @@ public class TowerBiomePoolsGameTest {
 		double cellsPerSecond = TowerFloors.cellsOf(plan) / (buildMillis / 1000.0);
 		List<Double> paints = new ArrayList<>();
 		net.minecraft.core.BlockPos origin = plan.origin();
-		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
-			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + plan.width()) >> 4; cx++) {
+			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + plan.depth()) >> 4; cz++) {
 				long painted = System.nanoTime();
 				TowerBiomes.paintChunk(tower, cx, cz, FloorBiome.RAINY_FOREST);
 				paints.add((System.nanoTime() - painted) / 1.0E6);
