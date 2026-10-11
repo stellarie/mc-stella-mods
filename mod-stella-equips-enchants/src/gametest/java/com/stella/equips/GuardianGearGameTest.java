@@ -1,18 +1,29 @@
 package com.stella.equips;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.stella.equips.guardian.BoneShield;
 import com.stella.equips.guardian.SkeletonCrown;
 import com.stella.equips.refine.Refine;
 import com.stella.equips.refine.RefineStation;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
@@ -28,8 +39,11 @@ import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.GameType;
@@ -166,7 +180,135 @@ public class GuardianGearGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void boneShieldBlocksARealZombieHitWithNoDamage(final GameTestHelper helper) {
+		ServerPlayer holder = survivor(helper, 2.5, 2.5, 0.0F);
+		try {
+			Mob zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(2.5, 2.0, 3.5));
+			float[] loss = new float[1];
+			int[] stacks = new int[1];
+			boolean[] swung = new boolean[1];
+			float[] open = new float[1];
+			onNormal(helper, () -> {
+				float unshielded = holder.getHealth();
+				zombie.doHurtTarget(helper.getLevel(), holder);
+				open[0] = unshielded - holder.getHealth();
+				raise(holder, new ItemStack(BoneShield.item()));
+				float health = holder.getHealth();
+				holder.damageCooldownTime = 0;
+				swung[0] = zombie.doHurtTarget(helper.getLevel(), holder);
+				loss[0] = health - holder.getHealth();
+				stacks[0] = BoneShield.stacks(holder);
+			});
+			LOG.info("[BEHAVIOR] test=guardian.boneShieldZombie RESULT swung={} unshieldedLoss={} wearerLoss={} stacks={}", swung[0], open[0], loss[0], stacks[0]);
+			helper.assertTrue(open[0] > 0.0F, "the zombie hurt nobody without a shield, so the block proves nothing");
+			helper.assertTrue(loss[0] == 0.0F, "the zombie hit got through the Bone Shield, the wearer lost " + loss[0]);
+			helper.assertTrue(stacks[0] == 1, "the blocked zombie hit gave " + stacks[0] + " stacks, not 1");
+			helper.succeed();
+		} finally {
+			leave(helper, holder);
+		}
+	}
+
+	@GameTest
+	public void boneShieldItemModelSwitchesToTheShieldModelWhileRaised(final GameTestHelper helper) {
+		JsonObject root = resourceJson("/assets/mod-stella-equips-enchants/items/bone_shield.json").getAsJsonObject("model");
+		helper.assertTrue("minecraft:condition".equals(root.get("type").getAsString()) && "minecraft:using_item".equals(root.get("property").getAsString()),
+			"the Bone Shield model does not switch on using the item: " + root);
+		for (String branch : new String[] {"on_true", "on_false"}) {
+			JsonObject special = root.getAsJsonObject(branch);
+			helper.assertTrue("minecraft:special".equals(special.get("type").getAsString())
+					&& "minecraft:shield".equals(special.getAsJsonObject("model").get("type").getAsString()),
+				"the " + branch + " model of the Bone Shield is not the shield model: " + special);
+		}
+		ItemStack shield = new ItemStack(BoneShield.item());
+		helper.assertTrue(shield.has(DataComponents.BLOCKS_ATTACKS) && shield.getUseAnimation() == ItemUseAnimation.BLOCK,
+			"the Bone Shield does not raise with the block animation");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void bothGuardianItemsHaveTheirNamesInTheLangFile(final GameTestHelper helper) {
+		JsonObject lang = resourceJson("/assets/mod-stella-equips-enchants/lang/en_us.json");
+		String[][] names = {{"bone_shield", "Bone Shield"}, {"skeleton_crown", "Skeleton Crown"}};
+		ItemStack[] stacks = {new ItemStack(BoneShield.item()), new ItemStack(SkeletonCrown.item())};
+		for (int i = 0; i < names.length; i++) {
+			Component name = stacks[i].getHoverName();
+			String key = name.getContents() instanceof TranslatableContents translatable ? translatable.getKey() : "<literal " + name.getString() + ">";
+			helper.assertTrue(key.equals("item.mod-stella-equips-enchants." + names[i][0]), "the name of " + names[i][0] + " uses the key " + key);
+			helper.assertTrue(lang.has(key) && lang.get(key).getAsString().equals(names[i][1]),
+				"en_us.json has " + (lang.has(key) ? lang.get(key).getAsString() : "no entry") + " for " + key + ", not " + names[i][1]);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void boneShieldTooltipStatesItsEffectsAndItsRefineBonus(final GameTestHelper helper) {
+		List<Component> plain = tooltip(helper, new ItemStack(BoneShield.item()));
+		String text = joined(plain);
+		LOG.info("[BEHAVIOR] test=guardian.boneShieldTooltip RESULT lines={}", plain.stream().map(Component::getString).toList());
+		String stack = "+" + Math.round(BoneShield.BONUS_PER_STACK * 100) + "%";
+		helper.assertTrue(text.contains(stack) && text.contains("up to " + BoneShield.MAX_STACKS), "the tooltip does not state the stacks (" + stack + ", up to 12): " + text);
+		helper.assertTrue(text.toLowerCase().contains("shove"), "the tooltip does not state the shove: " + text);
+		Component parry = lineWith(plain, "Parry");
+		helper.assertTrue(parry != null && parry.getString().contains("+10") && legacy(ChatFormatting.DARK_GRAY).equals(colorOf(parry)),
+			"the unrefined tooltip has no gray +10 Parry line: " + text);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void skeletonCrownTooltipStatesItsEffectAndEveryRefineTier(final GameTestHelper helper) {
+		ItemStack crown = new ItemStack(SkeletonCrown.item());
+		List<Component> plain = tooltip(helper, crown);
+		String text = joined(plain);
+		LOG.info("[BEHAVIOR] test=guardian.skeletonCrownTooltip RESULT lines={}", plain.stream().map(Component::getString).toList());
+		helper.assertTrue(text.contains("+" + Math.round(SkeletonCrown.BASE_BONUS * 100) + "%"), "the tooltip does not state the base arrow bonus: " + text);
+		for (int tier : SkeletonCrown.TIERS) {
+			String share = "+" + Math.round(SkeletonCrown.bonusAt(tier) * 100) + "%";
+			Component line = lineWith(plain, "+" + tier + ":");
+			helper.assertTrue(line != null && line.getString().contains(share), "no +" + tier + " line stating " + share + ": " + text);
+			helper.assertTrue(legacy(ChatFormatting.DARK_GRAY).equals(colorOf(line)), "the +" + tier + " line is lit on an unrefined crown");
+		}
+		Refine.setLevel(crown, 10);
+		List<Component> refined = tooltip(helper, crown);
+		helper.assertTrue(legacy(ChatFormatting.GOLD).equals(colorOf(lineWith(refined, "+10:"))) && legacy(ChatFormatting.DARK_GRAY).equals(colorOf(lineWith(refined, "+12:"))),
+			"at +10 the +10 line is not lit or the +12 line is: " + joined(refined));
+		helper.succeed();
+	}
+
 	// ---- fixtures ----
+
+	private static List<Component> tooltip(final GameTestHelper helper, final ItemStack stack) {
+		return stack.getTooltipLines(Item.TooltipContext.of(helper.getLevel().registryAccess()), null, TooltipFlag.NORMAL);
+	}
+
+	private static String joined(final List<Component> lines) {
+		return String.join(" | ", lines.stream().map(Component::getString).toList());
+	}
+
+	private static Component lineWith(final List<Component> lines, final String part) {
+		return lines.stream().filter(line -> line.getString().contains(part)).findFirst().orElse(null);
+	}
+
+	private static Integer legacy(final ChatFormatting format) {
+		return TextColor.fromLegacyFormat(format).getValue();
+	}
+
+	private static Integer colorOf(final Component line) {
+		TextColor color = line == null ? null : line.getStyle().getColor();
+		return color == null ? null : color.getValue();
+	}
+
+	private static JsonObject resourceJson(final String path) {
+		try (InputStream stream = GuardianGearGameTest.class.getResourceAsStream(path)) {
+			if (stream == null) {
+				throw new IllegalStateException("missing resource " + path);
+			}
+			return JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+		} catch (IOException failure) {
+			throw new IllegalStateException(failure);
+		}
+	}
 
 	private static double armorOf(final ItemStack stack) {
 		return stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
@@ -224,7 +366,7 @@ public class GuardianGearGameTest {
 	}
 
 	/** A joined survival player that can be hurt. */
-	private static ServerPlayer survivor(final GameTestHelper helper, final double x, final double z, final float yaw) {
+	static ServerPlayer survivor(final GameTestHelper helper, final double x, final double z, final float yaw) {
 		CommonListenerCookie cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "guardian-player"), false);
 		ServerPlayer player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(), cookie.gameProfile(), cookie.clientInformation());
 		Connection connection = new Connection(PacketFlow.SERVERBOUND);
@@ -240,7 +382,7 @@ public class GuardianGearGameTest {
 		return player;
 	}
 
-	private static void leave(final GameTestHelper helper, final ServerPlayer player) {
+	static void leave(final GameTestHelper helper, final ServerPlayer player) {
 		helper.getLevel().getServer().getPlayerList().remove(player);
 	}
 

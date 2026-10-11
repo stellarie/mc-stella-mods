@@ -18,7 +18,8 @@
 		"ShieldBlockMixin",
 		"LivingEntityUniqueMixin",
 		"PlayerAttackMixin",
-		"LivingEntityImbueMixin"
+		"LivingEntityImbueMixin",
+		"ItemStackDurabilityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

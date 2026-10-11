@@ -21,6 +21,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -55,6 +56,8 @@ public final class BoneShield {
 			.rarity(Rarity.EPIC)
 			.repairable(Items.BONE_BLOCK)
 			.equippableUnswappable(EquipmentSlot.OFFHAND)
+			// The vanilla shield model draws this as a bone-white shield.
+			.component(DataComponents.BASE_COLOR, DyeColor.WHITE)
 			.component(DataComponents.ITEM_NAME, Component.translatableWithFallback("item." + StellaEquips.MOD_ID + "." + ID, "Bone Shield"))
 			.component(DataComponents.BREAK_SOUND, SoundEvents.SHIELD_BREAK)
 			.delayedComponent(DataComponents.BLOCKS_ATTACKS, lookup -> new BlocksAttacks(0.25F, 1.0F,

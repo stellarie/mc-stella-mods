@@ -335,6 +335,22 @@ health and base speed. Blessed uses max health in vanilla units, divided by the 
 mod-stella-rpg when that mod is present. Keen, Evasion and Riposte roll on the wearer's own random
 source, through a `Roller` that a test can force.
 
+## Wear by material
+
+A point of wear on a vanilla tool, weapon or armor piece is charged with a chance set by its material. The roll comes
+first. Unbreaking rolls after it, on the points that were charged. A shield, a bow and every mod item keep the full chance.
+
+| Material | Chance of a point |
+|---|---|
+| Leather, wood | 100% |
+| Gold | 80% |
+| Stone, chainmail | 60% |
+| Iron | 40% |
+| Diamond | 20% |
+| Netherite, Skeleton Crown | 10% |
+
+Copper has no row and keeps the full chance. The mod-stella-rpg durability affix rolls after both.
+
 ## Shakedown and Scholar
 
 - **Shakedown** (I to III, any weapon, bow or crossbow): a hostile mob you kill with it drops 0 to 2 emeralds per level,
@@ -444,13 +460,18 @@ source here and are not uniques.
 - `mod-stella-equips-enchants:bone_shield`: a shield with durability 2000. Each blow it blocks adds a stack of
   +5% damage, up to 12. The next melee blow of the holder deals the bonus, spends every stack and shoves the
   hostile mobs within 4 blocks and 60 degrees in front. The shield can be in either hand. It refines with
-  netherite ingots, and every other shield keeps iron.
+  netherite ingots, and every other shield keeps iron. It uses the vanilla shield model, in a white base color,
+  and raises like a vanilla shield.
 - `mod-stella-equips-enchants:skeleton_crown`: a helmet with netherite durability and armor, and its own worn
   model. The arrows of the wearer deal +25% damage, and 10% more at each of +7, +10, +12 and +15, so +65% at +15.
   It refines with netherite ingots.
 
-The icons are `tools/uniques/sprites/bone_shield.txt` and `skeleton_crown.txt`. The worn texture of the crown comes
-from `tools/uniques/crown_worn.py`. The models command of `icons.py` has a `shield` kind for the shield.
+Both items carry their names in `en_us.json`. The tooltip of each states its effect. The crown lists its four
+refine tiers, gold once the piece reaches the tier and dark gray before. The shield lists its +10 Parry line until
+the shield reaches +10, and the refine lore carries the real Parry share from then on.
+
+The icon of the crown is `tools/uniques/sprites/skeleton_crown.txt`. The shield sprite is no longer used by a model.
+The worn texture of the crown comes from `tools/uniques/crown_worn.py`.
 
 ## Crafted bows
 
@@ -545,7 +566,8 @@ the percent procs of the auras, Aftershock, Thorned, Lifesteal and Blessed, spel
 Shield tests check the refine, held armor, Parry at each level and against arrows, and the one-point cost
 of a block.
 Guardian gear tests block real hits with the Bone Shield, land the blow that spends the stacks, land real arrow
-hits at each crown tier, and refine both items with netherite.
+hits at each crown tier, check the names, the tooltips and the shield model, and refine both items with netherite.
+Wear tests charge real stacks through the game's durability path, with and without Unbreaking, and strike a mob with a survival sword.
 Nether star tests check the anvil recipe and price, the stat grant call with the rpg share present and absent, the weapon and armor effects, and the enchanted-book share.
 Unique tests check the drop chance and rank, the roll and its drop, the registry (items, tags, models and
 textures), the refine and tooltip rules, the hook dispatch, the shared helpers, and the Bonewhisper Bow.
