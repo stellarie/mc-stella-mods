@@ -612,6 +612,12 @@ public final class RpgBridge {
 	static SpellModifiers.CastModifiers grow(
 		final Player caster, final String spellId, final SpellModifiers.CastModifiers base, final School school
 	) {
+		return StaffPower.grow(caster, spellId, growStats(caster, spellId, base, school));
+	}
+
+	private static SpellModifiers.CastModifiers growStats(
+		final Player caster, final String spellId, final SpellModifiers.CastModifiers base, final School school
+	) {
 		Stats rpg = stats();
 		double power = rpg.power(caster);
 		// Fixed-cooldown spells keep their base cooldown.
