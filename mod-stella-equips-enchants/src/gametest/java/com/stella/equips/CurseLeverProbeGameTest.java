@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * W001. Measures the two durability levers and the regeneration lever on real items,
  * so a curse cost is proven instead of assumed.
+ * The gear is wood or leather, which keep the full wear chance of a point, so only the lever is measured.
  */
 public class CurseLeverProbeGameTest {
 	private static final String PROBE_ID = "mod-stella-equips-enchants-test-mod-stella-equips-enchants";
@@ -43,13 +44,13 @@ public class CurseLeverProbeGameTest {
 	@net.fabricmc.fabric.api.gametest.v1.GameTest(maxTicks = 200)
 	public void itemDamageMultipliesTheWearOfAHeldWeapon(final GameTestHelper helper) {
 		Mob plainVictim = victim(helper, new BlockPos(2, 2, 2));
-		ServerPlayer plainHitter = hitter(helper, plainVictim, new ItemStack(Items.DIAMOND_SWORD));
+		ServerPlayer plainHitter = hitter(helper, plainVictim, new ItemStack(Items.WOODEN_SWORD));
 		plainHitter.attack(plainVictim);
 		int plainWear = wear(plainHitter.getMainHandItem());
 
 		Mob cursedVictim = victim(helper, new BlockPos(6, 2, 6));
 		ServerPlayer cursedHitter = hitter(
-			helper, cursedVictim, probe(helper, Items.DIAMOND_SWORD, "probe/item_wear_two")
+			helper, cursedVictim, probe(helper, Items.WOODEN_SWORD, "probe/item_wear_two")
 		);
 		cursedHitter.attack(cursedVictim);
 		int cursedWear = wear(cursedHitter.getMainHandItem());
@@ -68,13 +69,13 @@ public class CurseLeverProbeGameTest {
 
 	@net.fabricmc.fabric.api.gametest.v1.GameTest(maxTicks = 200)
 	public void itemDamageMultipliesTheWearOfWornArmour(final GameTestHelper helper) {
-		ServerPlayer plainWearer = wearer(helper, new ItemStack(Items.DIAMOND_CHESTPLATE), 0.0);
+		ServerPlayer plainWearer = wearer(helper, new ItemStack(Items.LEATHER_CHESTPLATE), 0.0);
 		ServerPlayer plainHitter = hitter(helper, plainWearer, new ItemStack(Items.IRON_SWORD));
 		plainHitter.attack(plainWearer);
 		int plainWear = wear(plainWearer.getItemBySlot(EquipmentSlot.CHEST));
 
 		ServerPlayer cursedWearer = wearer(
-			helper, probe(helper, Items.DIAMOND_CHESTPLATE, "probe/item_wear_two"), 2.0
+			helper, probe(helper, Items.LEATHER_CHESTPLATE, "probe/item_wear_two"), 2.0
 		);
 		ServerPlayer cursedHitter = hitter(helper, cursedWearer, new ItemStack(Items.IRON_SWORD));
 		cursedHitter.attack(cursedWearer);
@@ -130,12 +131,12 @@ public class CurseLeverProbeGameTest {
 	public void changeItemDamageWearsAHeldToolOnABlockBreak(final GameTestHelper helper) {
 		ServerPlayer plainMiner = mockPlayerInLevel(helper);
 		plainMiner.setGameMode(GameType.SURVIVAL);
-		ItemStack plainPick = new ItemStack(Items.DIAMOND_PICKAXE);
+		ItemStack plainPick = new ItemStack(Items.WOODEN_PICKAXE);
 		BlockPos plainBlock = startBreak(helper, plainMiner, plainPick, 3);
 
 		ServerPlayer cursedMiner = mockPlayerInLevel(helper);
 		cursedMiner.setGameMode(GameType.SURVIVAL);
-		ItemStack cursedPick = probe(helper, Items.DIAMOND_PICKAXE, "probe/change_wear_break");
+		ItemStack cursedPick = probe(helper, Items.WOODEN_PICKAXE, "probe/change_wear_break");
 		BlockPos cursedBlock = startBreak(helper, cursedMiner, cursedPick, 8);
 
 		helper.runAfterDelay(BREAK_WAIT_TICKS, () -> {
@@ -161,12 +162,12 @@ public class CurseLeverProbeGameTest {
 	public void theTwoWearLeversComposeOnOneBreak(final GameTestHelper helper) {
 		ServerPlayer plainMiner = mockPlayerInLevel(helper);
 		plainMiner.setGameMode(GameType.SURVIVAL);
-		ItemStack plainPick = new ItemStack(Items.DIAMOND_PICKAXE);
+		ItemStack plainPick = new ItemStack(Items.WOODEN_PICKAXE);
 		startBreak(helper, plainMiner, plainPick, 3);
 
 		ServerPlayer bothMiner = mockPlayerInLevel(helper);
 		bothMiner.setGameMode(GameType.SURVIVAL);
-		ItemStack bothPick = probe(helper, Items.DIAMOND_PICKAXE, "probe/both_wear");
+		ItemStack bothPick = probe(helper, Items.WOODEN_PICKAXE, "probe/both_wear");
 		startBreak(helper, bothMiner, bothPick, 8);
 
 		helper.runAfterDelay(BREAK_WAIT_TICKS, () -> {

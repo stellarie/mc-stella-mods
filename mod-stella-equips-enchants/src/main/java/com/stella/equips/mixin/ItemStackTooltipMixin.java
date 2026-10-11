@@ -1,5 +1,6 @@
 package com.stella.equips.mixin;
 
+import com.stella.equips.guardian.GuardianTooltip;
 import com.stella.equips.tooltip.EnchantmentDescriptions;
 import com.stella.equips.unique.UniqueTooltip;
 import java.util.function.Consumer;
@@ -14,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Appends the catalogue descriptions and the lines of a unique once vanilla has filled the tooltip. */
+/** Appends the catalogue descriptions and the lines of a unique or guardian item once vanilla has filled the tooltip. */
 @Mixin(ItemStack.class)
 public abstract class ItemStackTooltipMixin {
 	@Inject(method = "addDetailsToTooltip", at = @At("RETURN"))
@@ -28,5 +29,6 @@ public abstract class ItemStackTooltipMixin {
 	) {
 		EnchantmentDescriptions.append((ItemStack) (Object) this, context.registries(), builder);
 		UniqueTooltip.append((ItemStack) (Object) this, builder);
+		GuardianTooltip.append((ItemStack) (Object) this, builder);
 	}
 }
