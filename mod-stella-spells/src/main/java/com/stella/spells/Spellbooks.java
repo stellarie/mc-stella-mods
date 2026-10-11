@@ -86,6 +86,7 @@ public final class Spellbooks implements ModInitializer {
 		ArrowItems.register();
 		SpellEntities.register();
 		Falcons.register();
+		MobBlitz.register();
 		SummonWolf.register();
 		Quiver.register();
 		ArrowHits.register();

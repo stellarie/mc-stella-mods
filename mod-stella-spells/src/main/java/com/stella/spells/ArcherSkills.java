@@ -667,12 +667,19 @@ public final class ArcherSkills {
 	}
 
 	// A blow of the caster own, melee or arrow: the hit that may call the falcon. Skill damage and an imbued cast never do.
+	// A mob that holds the buff for good takes the same road through MobBlitz.
 	private static void afterOwnBlow(
 		final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source,
 		final float baseDamage, final float damage, final boolean blocked
 	) {
-		if (blocked || damage <= 0.0F || !(victim instanceof Mob foe) || !foe.isAlive() || CastContext.imbuedVictim() != null
-			|| RpgBridge.isSkillSource(source)) {
+		if (blocked || damage <= 0.0F || CastContext.imbuedVictim() != null || RpgBridge.isSkillSource(source)) {
+			return;
+		}
+		if (source.getEntity() instanceof Mob attacker) {
+			MobBlitz.afterBlow(attacker, victim, source);
+			return;
+		}
+		if (!(victim instanceof Mob foe) || !foe.isAlive()) {
 			return;
 		}
 		ServerPlayer owner = null;

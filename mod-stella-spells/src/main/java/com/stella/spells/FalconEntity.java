@@ -2,12 +2,12 @@ package com.stella.spells;
 
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Blitz Beat falcon. It is a parrot with no mind of its own: the server places it every tick, on the
- * owner shoulder, or on the way to the foe a strike hit and back. It cannot be hurt, pushed, hit or saved,
+ * owner shoulder (a player's, or a mob's that holds the buff), or on the way to the foe a strike hit and back. It cannot be hurt, pushed, hit or saved,
  * and it leaves the moment the buff ends or the owner is gone. The client draws it larger and brown.
  */
 public final class FalconEntity extends Parrot {
@@ -24,8 +24,10 @@ public final class FalconEntity extends Parrot {
 	public static final int SWOOP_TICKS = 8;
 	private static final double PERCH_SIDE = 0.45;
 	private static final double PERCH_HEIGHT = 1.45;
+	private static final double MOB_PERCH_SHARE = 0.8;
 
 	private @Nullable UUID ownerId;
+	private boolean ownerIsPlayer;
 	private @Nullable UUID swoopTarget;
 	private int swoopLeft;
 
@@ -36,8 +38,9 @@ public final class FalconEntity extends Parrot {
 		this.setInSittingPose(true);
 	}
 
-	void bind(final ServerPlayer owner) {
+	void bind(final LivingEntity owner) {
 		this.ownerId = owner.getUUID();
+		this.ownerIsPlayer = owner instanceof Player;
 	}
 
 	public @Nullable UUID falconOwner() {
@@ -56,11 +59,24 @@ public final class FalconEntity extends Parrot {
 		this.setInSittingPose(false);
 	}
 
-	/** Where the falcon sits when it is perched on this player. */
-	static Vec3 perch(final Player owner) {
+	/** Where the falcon sits when it is perched on this owner: a player at shoulder height, a mob by its size. */
+	static Vec3 perch(final LivingEntity owner) {
 		double yaw = Math.toRadians(owner.getYRot());
 		Vec3 right = new Vec3(-Math.cos(yaw), 0.0, -Math.sin(yaw));
-		return owner.position().add(right.scale(PERCH_SIDE)).add(0.0, PERCH_HEIGHT, 0.0);
+		double side = owner instanceof Player ? PERCH_SIDE : Math.max(PERCH_SIDE, owner.getBbWidth() * 0.75);
+		double height = owner instanceof Player ? PERCH_HEIGHT : owner.getBbHeight() * MOB_PERCH_SHARE;
+		return owner.position().add(right.scale(side)).add(0.0, height, 0.0);
+	}
+
+	// A player owner is found on the player list, so a player who left frees the falcon at once.
+	private @Nullable LivingEntity owner(final ServerLevel level) {
+		if (this.ownerId == null) {
+			return null;
+		}
+		if (this.ownerIsPlayer) {
+			return level.getServer().getPlayerList().getPlayer(this.ownerId);
+		}
+		return level.getEntity(this.ownerId) instanceof LivingEntity found ? found : null;
 	}
 
 	@Override
@@ -69,7 +85,7 @@ public final class FalconEntity extends Parrot {
 		if (!(this.level() instanceof ServerLevel level)) {
 			return;
 		}
-		ServerPlayer owner = this.ownerId == null ? null : level.getServer().getPlayerList().getPlayer(this.ownerId);
+		LivingEntity owner = this.owner(level);
 		if (owner == null || !owner.isAlive() || owner.isSpectator() || owner.level() != level || !owner.hasEffect(SpellStatus.BLITZ_BEAT)) {
 			this.discard();
 			return;
