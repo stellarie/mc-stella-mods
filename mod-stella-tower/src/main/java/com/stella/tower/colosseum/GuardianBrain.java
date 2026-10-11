@@ -46,6 +46,7 @@ import org.jspecify.annotations.Nullable;
 public final class GuardianBrain {
 	public static final int RETALIATE_TICKS = 200;
 	public static final double AURA_RADIUS = 12.0;
+	private static final int EMBER_TICKS = 3;
 	public static final int AURA_TICKS = 20;
 	public static final int AURA_DURATION = 60;
 	/** The nearest player a guardian takes notice of. */
@@ -222,6 +223,9 @@ public final class GuardianBrain {
 	private void tick(final ServerLevel level) {
 		this.ticks++;
 		upkeep();
+		if (this.ticks % EMBER_TICKS == 0) {
+			embers(level);
+		}
 		if (this.ticks % AURA_TICKS == 0) {
 			aura(level);
 		}
@@ -258,7 +262,7 @@ public final class GuardianBrain {
 		}
 	}
 
-	/** The marks that keep a guardian what it is: no vanilla goal, no real fire, the visual fire kept. */
+	/** The marks that keep a guardian what it is: no vanilla goal and no real fire. */
 	private void upkeep() {
 		Mob horse = mount();
 		if (this.ticks % 20 == 0) {
@@ -278,6 +282,17 @@ public final class GuardianBrain {
 	}
 
 	// ---------------------------------------------------------------- aura and bar
+
+	/** A boss's wreath: flame and soul fire rise off rider and horse, so it reads as a boss, not as a mob on fire. */
+	private void embers(final ServerLevel level) {
+		Mob horse = mount();
+		for (Mob part : horse == null ? new Mob[] {this.rider} : new Mob[] {this.rider, horse}) {
+			double w = part.getBbWidth() * 0.45;
+			double h = part.getBbHeight();
+			level.sendParticles(ParticleTypes.FLAME, part.getX(), part.getY() + h * 0.5, part.getZ(), 2, w, h * 0.35, w, 0.01);
+			level.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, part.getX(), part.getY() + h * 0.5, part.getZ(), 2, w, h * 0.35, w, 0.01);
+		}
+	}
 
 	private void aura(final ServerLevel level) {
 		Vec3 at = this.rider.position();

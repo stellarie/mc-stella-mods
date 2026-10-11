@@ -741,7 +741,7 @@ A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks 
   columns; six tiers of stair seats; a ring wall 32 blocks out, cracked and mossy, worn down in sectors (two stretches are
   always gone, one is always whole), with four gates. All wear comes from the world seed.
 - Guardians (`Guardians`, `GuardianBrain`, `GuardianMoves`): a skeleton on a skeleton horse, twice the size, level 50, with
-  fire drawn on them (the visual-fire flag, `EntityVisualFireAccessor`) but never lit, so neither burns in the sun. The
+  a boss wreath of flame and soul-fire particles on rider and horse. Neither is ever lit, so neither burns in the sun. The
   melee one wields a netherite sword and slows players within 12 blocks; the archer holds the Rudra Bow, keeps a permanent
   Blitz Beat and weakens players within 12 blocks. Gear never drops. Both are driven by one brain each, not by vanilla goals.
 - Leash: a guardian takes only players inside the arena (radius 32). Whoever hurts it, wherever they stand, is its target

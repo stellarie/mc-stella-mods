@@ -4,7 +4,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.stella.mobs.StellaMobs;
 import com.stella.tower.StellaTower;
-import com.stella.tower.mixin.EntityVisualFireAccessor;
 import com.stella.tower.mixin.MobSelectorAccessor;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -51,7 +50,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Tower Guardians: a skeleton on a skeleton horse, twice the size, level 50, burning to look at and never to touch.
+ * The Tower Guardians: a skeleton on a skeleton horse, twice the size, level 50, wreathed in flame and soul fire, and never burnt.
  * One fights with a netherite sword, one with the Rudra Bow. They are driven by {@link GuardianBrain}, not by goals, so
  * no vanilla goal pulls them out of the arena or sets them on each other.
  * <p>
@@ -151,8 +150,6 @@ public final class Guardians {
 			part.setAttached(HOME, home);
 			part.setPersistenceRequired();
 			part.getAttribute(Attributes.SCALE).setBaseValue(SCALE);
-			((EntityVisualFireAccessor) part).stellaTower$setHasVisualFire(true);
-			part.setSharedFlagOnFire(true);
 		}
 		horse.addTag(TAG_HORSE);
 		horse.setTamed(true);
@@ -360,8 +357,6 @@ public final class Guardians {
 		horse.removeTag(TAG_HORSE);
 		horse.removeTag(TAG_FREED);
 		horse.removeTag(StellaMobs.NO_BEHAVIOR_TAG);
-		((EntityVisualFireAccessor) horse).stellaTower$setHasVisualFire(false);
-		horse.setSharedFlagOnFire(false);
 		StellaTower.LOGGER.info("[COLOSSEUM] a guardian's horse was tamed");
 	}
 }

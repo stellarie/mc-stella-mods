@@ -70,7 +70,7 @@ public class TowerGuardianGameTest {
 
 	/** Catches a missing level, stat, size, piece of kit, mark of fire, or Blitz Beat, and a guardian that does not stand where it belongs. */
 	@GameTest(maxTicks = 700)
-	public void theGuardiansStandAtLevelFiftyInNetheriteAtTwiceTheSizeWithFire(final GameTestHelper helper) {
+	public void theGuardiansStandAtLevelFiftyInNetheriteAtTwiceTheSizeWithoutFire(final GameTestHelper helper) {
 		GuardianRig rig = GuardianRig.build(helper, 0);
 		Guardians.Spawned[] pair = new Guardians.Spawned[2];
 		rig.ready(() -> {
@@ -87,7 +87,7 @@ public class TowerGuardianGameTest {
 			for (Mob mob : all) {
 				wrongLevel += ThreatState.level(mob) == SPEC_LEVEL ? 0 : 1;
 				wrongScale += Math.abs(mob.getAttributeBaseValue(Attributes.SCALE) - SPEC_SCALE) < 1.0E-9 ? 0 : 1;
-				noFire += ((EntityVisualFireAccessor) mob).stellaTower$hasVisualFire() ? 0 : 1;
+				noFire += !((EntityVisualFireAccessor) mob).stellaTower$hasVisualFire() && !mob.isOnFire() ? 0 : 1;
 			}
 			Map<String, Integer> meleeStats = TowerGameTestInit.STATS.get(melee.rider().getUUID());
 			Map<String, Integer> archerStats = TowerGameTestInit.STATS.get(archer.rider().getUUID());
@@ -111,7 +111,7 @@ public class TowerGuardianGameTest {
 				+ " blitz=" + TowerGameTestInit.BLITZED.contains(archer.rider().getUUID()) + " ticked=" + melee.rider().tickCount);
 			helper.assertTrue(wrongLevel == 0, wrongLevel + " of the four are not level " + SPEC_LEVEL);
 			helper.assertTrue(wrongScale == 0, wrongScale + " of the four are not " + SPEC_SCALE + " times the size");
-			helper.assertTrue(noFire == 0, noFire + " of the four do not show fire");
+			helper.assertTrue(noFire == 0, noFire + " of the four look on fire; the wreath is particles only");
 			helper.assertTrue(meleeStats.get("vit") == SPEC_RIDER_VIT && archerStats.get("vit") == SPEC_RIDER_VIT, "the riders' vitality is not " + SPEC_RIDER_VIT);
 			helper.assertTrue(meleeSpread == SPEC_LEVEL, "the melee guardian's other stats add to " + meleeSpread + ", not the level");
 			helper.assertTrue(archerStats.get("dex") >= SPEC_ARCHER_MIN_DEX, "the archer's dexterity is " + archerStats.get("dex"));
