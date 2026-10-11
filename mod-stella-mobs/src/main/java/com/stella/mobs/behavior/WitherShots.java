@@ -1,5 +1,7 @@
 package com.stella.mobs.behavior;
 
+import com.stella.mobs.config.WitherConfig;
+import com.stella.mobs.config.WitherConfigStore;
 import com.stella.mobs.mixin.WitherBossInvoker;
 import com.stella.mobs.projectile.WitherSkullShot;
 import java.util.ArrayList;
@@ -7,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.level.Level;
@@ -15,6 +18,8 @@ import org.jspecify.annotations.Nullable;
 
 /** Looses the skulls of an encounter Wither and keeps the identities of the ones still in the air. */
 public final class WitherShots {
+	/** How far along a direction the aim point lies. The vanilla shot needs a point, not a direction. */
+	private static final double FAR = 50.0;
 	private static final ThreadLocal<WitherSkullShot.Spec> PENDING = new ThreadLocal<>();
 	private static final ThreadLocal<WitherSkullShot> LAST = new ThreadLocal<>();
 	private static final Map<UUID, List<WitherSkullShot>> LIVE = new HashMap<>();
@@ -45,6 +50,22 @@ public final class WitherShots {
 			PENDING.remove();
 			LAST.remove();
 		}
+	}
+
+	/** The shot along a direction. Returns null, and looses nothing, when the Wither already has its cap in the air. */
+	public static @Nullable WitherSkullShot fireAlong(final WitherBoss wither, final int head, final Vec3 direction, final WitherSkullShot.Spec spec) {
+		if (live(wither) >= WitherConfigStore.get().getInt(WitherConfig.SKULL_LIVE_CAP)) {
+			return null;
+		}
+		return fire(wither, head, wither.getEyePosition().add(direction.normalize().scale(FAR)), spec);
+	}
+
+	/** A unit direction drawn evenly from the whole sphere. */
+	public static Vec3 randomDirection(final RandomSource random) {
+		double height = random.nextDouble() * 2.0 - 1.0;
+		double angle = random.nextDouble() * Math.PI * 2.0;
+		double ring = Math.sqrt(1.0 - height * height);
+		return new Vec3(Math.cos(angle) * ring, height, Math.sin(angle) * ring);
 	}
 
 	/** True while a shot is pending, which is when the redirect builds an encounter skull. */

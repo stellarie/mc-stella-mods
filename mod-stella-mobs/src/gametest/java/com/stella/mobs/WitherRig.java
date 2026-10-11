@@ -1,6 +1,12 @@
 package com.stella.mobs;
 
+import com.stella.mobs.behavior.WitherState;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -38,5 +44,26 @@ final class WitherRig {
 		helper.getLevel().addFreshEntity(cow);
 		arena.track(cow);
 		return cow;
+	}
+
+	/** Every small wither in the level that names this Wither as its parent, found by the link and not by the record. */
+	static List<WitherBoss> smallWithersOf(final ServerLevel level, final UUID parent) {
+		List<WitherBoss> found = new ArrayList<>();
+		level.getEntities(EntityTypeTest.forClass(WitherBoss.class), other -> {
+			WitherState state = WitherState.find(other);
+			return state != null && state.parent().filter(parent::equals).isPresent();
+		}).forEach(found::add);
+		return found;
+	}
+
+	/** The small withers in the parent's own record that still stand in the level. */
+	static List<WitherBoss> recordedSmallWithers(final ServerLevel level, final WitherBoss parent) {
+		List<WitherBoss> found = new ArrayList<>();
+		for (UUID id : WitherState.find(parent).spawnlings()) {
+			if (level.getEntity(id) instanceof WitherBoss small) {
+				found.add(small);
+			}
+		}
+		return found;
 	}
 }

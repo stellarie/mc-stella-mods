@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.stella.mobs.StellaMobs;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -15,9 +16,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The durable half of an encounter Wither: whether its charge-up is over, the height it stood at then, the health its
- * attribute could not hold, which rages it has spent, the rage it is in, and the minions it summoned.
- * A Wither with no state is a legacy one and stays vanilla. Every field is optional in the codec, so a save written
- * before a later field existed still decodes.
+ * attribute could not hold, whether its sphere has started and its small withers have come, the ticks to its next
+ * sphere burst, the minions it summoned, and the small withers it summoned.
+ * A small wither also names its parent. A Wither with no state is a legacy one and stays vanilla.
+ * Every field is optional in the codec, so a save written before a later field existed still decodes.
  */
 public record WitherState(
 	boolean activated,
@@ -25,22 +27,21 @@ public record WitherState(
 	double healthDivisor,
 	boolean rageAUsed,
 	boolean rageBUsed,
-	int rageKind,
-	int rageTicksLeft,
-	List<UUID> minions
+	int sphereTicks,
+	List<UUID> minions,
+	List<UUID> spawnlings,
+	Optional<UUID> parent
 ) {
-	public static final int RAGE_NONE = 0;
-	public static final int RAGE_BARRAGE = 1;
-	public static final int RAGE_RAIN = 2;
 	public static final Codec<WitherState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 		Codec.BOOL.optionalFieldOf("activated", false).forGetter(WitherState::activated),
 		Codec.DOUBLE.optionalFieldOf("anchor_y", 0.0).forGetter(WitherState::anchorY),
 		Codec.DOUBLE.optionalFieldOf("health_divisor", 1.0).forGetter(WitherState::healthDivisor),
 		Codec.BOOL.optionalFieldOf("rage_a_used", false).forGetter(WitherState::rageAUsed),
 		Codec.BOOL.optionalFieldOf("rage_b_used", false).forGetter(WitherState::rageBUsed),
-		Codec.INT.optionalFieldOf("rage_kind", RAGE_NONE).forGetter(WitherState::rageKind),
-		Codec.INT.optionalFieldOf("rage_ticks_left", 0).forGetter(WitherState::rageTicksLeft),
-		UUIDUtil.CODEC.listOf().optionalFieldOf("minions", List.of()).forGetter(WitherState::minions)
+		Codec.INT.optionalFieldOf("sphere_ticks", 0).forGetter(WitherState::sphereTicks),
+		UUIDUtil.CODEC.listOf().optionalFieldOf("minions", List.of()).forGetter(WitherState::minions),
+		UUIDUtil.CODEC.listOf().optionalFieldOf("spawnlings", List.of()).forGetter(WitherState::spawnlings),
+		UUIDUtil.CODEC.optionalFieldOf("parent").forGetter(WitherState::parent)
 	).apply(instance, WitherState::new));
 	public static final AttachmentType<WitherState> TYPE = AttachmentRegistry.createPersistent(
 		Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "wither_state"), CODEC
@@ -48,26 +49,41 @@ public record WitherState(
 
 	public WitherState {
 		minions = List.copyOf(minions);
+		spawnlings = List.copyOf(spawnlings);
 	}
 
 	public static WitherState fresh() {
-		return new WitherState(false, 0.0, 1.0, false, false, RAGE_NONE, 0, List.of());
+		return new WitherState(false, 0.0, 1.0, false, false, 0, List.of(), List.of(), Optional.empty());
+	}
+
+	/** A small wither: active at once, with its parent's divisor, and with both triggers spent. */
+	public static WitherState small(final double anchor, final double divisor, final UUID parent) {
+		return new WitherState(true, anchor, divisor, true, true, 0, List.of(), List.of(), Optional.of(parent));
+	}
+
+	/** True for a small wither, which is the only kind that names a parent. */
+	public boolean small() {
+		return this.parent.isPresent();
 	}
 
 	public WitherState withActivated(final double anchor) {
-		return new WitherState(true, anchor, this.healthDivisor, this.rageAUsed, this.rageBUsed, this.rageKind, this.rageTicksLeft, this.minions);
+		return new WitherState(true, anchor, this.healthDivisor, this.rageAUsed, this.rageBUsed, this.sphereTicks, this.minions, this.spawnlings, this.parent);
 	}
 
 	public WitherState withHealthDivisor(final double divisor) {
-		return new WitherState(this.activated, this.anchorY, divisor, this.rageAUsed, this.rageBUsed, this.rageKind, this.rageTicksLeft, this.minions);
+		return new WitherState(this.activated, this.anchorY, divisor, this.rageAUsed, this.rageBUsed, this.sphereTicks, this.minions, this.spawnlings, this.parent);
 	}
 
-	public WitherState withRage(final boolean aUsed, final boolean bUsed, final int kind, final int ticksLeft) {
-		return new WitherState(this.activated, this.anchorY, this.healthDivisor, aUsed, bUsed, kind, ticksLeft, this.minions);
+	public WitherState withSphere(final boolean started, final int ticksToNext) {
+		return new WitherState(this.activated, this.anchorY, this.healthDivisor, started, this.rageBUsed, ticksToNext, this.minions, this.spawnlings, this.parent);
+	}
+
+	public WitherState withSpawnlings(final List<UUID> recorded) {
+		return new WitherState(this.activated, this.anchorY, this.healthDivisor, this.rageAUsed, true, this.sphereTicks, this.minions, recorded, this.parent);
 	}
 
 	public WitherState withMinions(final List<UUID> recorded) {
-		return new WitherState(this.activated, this.anchorY, this.healthDivisor, this.rageAUsed, this.rageBUsed, this.rageKind, this.rageTicksLeft, recorded);
+		return new WitherState(this.activated, this.anchorY, this.healthDivisor, this.rageAUsed, this.rageBUsed, this.sphereTicks, recorded, this.spawnlings, this.parent);
 	}
 
 	public static void register() {

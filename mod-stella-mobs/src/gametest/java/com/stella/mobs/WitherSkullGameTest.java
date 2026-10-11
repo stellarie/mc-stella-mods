@@ -29,6 +29,7 @@ public final class WitherSkullGameTest {
 	private static final long SEED = 20260710L;
 	private static final int RIDER_DRAWS = 400;
 	private static final double TOLERANCE = 0.05;
+	private static final double FLAT = 0.2;
 
 	private static WitherSkullShot loose(final WitherBoss wither, final Vec3 at) {
 		WitherSkullShot skull = WitherShots.fire(wither, 0, at, WitherVolleyGoal.aimedSpec(WitherConfigStore.get()));
@@ -174,41 +175,67 @@ public final class WitherSkullGameTest {
 	public void theSpeedCurve(final GameTestHelper helper) {
 		WitherConfig config = WitherConfigStore.get();
 		double[] health = {1.0, 0.75, 0.5, 0.25, 0.10, 0.0};
-		int[] expected = {40, 33, 26, 19, 15, 12};
+		int[] expected = {24, 20, 16, 12, 10, 8};
 		StringBuilder log = new StringBuilder();
 		for (int i = 0; i < health.length; i++) {
 			int actual = WitherVolleyGoal.interval(health[i], config);
 			log.append(health[i]).append("->").append(actual).append(' ');
 			helper.assertTrue(actual == expected[i], "at health " + health[i] + " the gap is " + actual + ", want " + expected[i]);
 		}
-		helper.assertTrue(WitherVolleyGoal.interval(2.0, config) == 40 && WitherVolleyGoal.interval(-1.0, config) == 12, "the fraction is not clamped");
+		helper.assertTrue(WitherVolleyGoal.interval(2.0, config) == 24 && WitherVolleyGoal.interval(-1.0, config) == 8, "the fraction is not clamped");
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherSpeedCurve RESULT {}", log);
 		helper.succeed();
 	}
 
-	private void measureGaps(final GameTestHelper helper, final double health, final String name) {
+	/** The old curve was round(12 + 28 x health). The new one must be shorter at every health, not only at the ends. */
+	@GameTest
+	public void theNewCurveBeatsTheOldAtEveryHealth(final GameTestHelper helper) {
+		WitherConfig config = WitherConfigStore.get();
+		for (int step = 0; step <= 100; step++) {
+			double health = step / 100.0;
+			int old = (int) Math.round(12 + 28 * health);
+			int actual = WitherVolleyGoal.interval(health, config);
+			helper.assertTrue(actual < old, "at health " + health + " the gap is " + actual + ", not under the old " + old);
+		}
+		helper.succeed();
+	}
+
+	private void measureGaps(final GameTestHelper helper, final double health, final String name, final boolean checkDirections) {
 		WideArena arena = WideArena.build(helper);
 		helper.runBeforeTestEnd(arena::finish);
 		ServerPlayer[] player = new ServerPlayer[1];
 		WitherBoss[] wither = new WitherBoss[1];
 		boolean[] done = new boolean[1];
 		int expected = WitherVolleyGoal.interval(health, WitherConfigStore.get());
-		int shotsWanted = 6;
+		int volleysWanted = checkDirections ? 12 : 6;
+		int perVolley = 1 + WitherConfigStore.get().getInt(WitherConfig.AIM_RANDOM_SKULLS);
 		helper.onEachTick(() -> {
 			if (wither[0] == null || done[0]) {
 				return;
 			}
 			WideArena.keepValid(player[0]);
-			List<WideArena.Shot> shots = WideArena.shots(wither[0]);
-			if (shots.size() >= shotsWanted) {
+			List<List<WideArena.Shot>> volleys = volleys(WideArena.shots(wither[0]));
+			// The newest volley may still be filling, so the last group waits for the next tick.
+			if (volleys.size() > volleysWanted) {
 				done[0] = true;
+				volleys = volleys.subList(0, volleysWanted);
 				List<Integer> gaps = new ArrayList<>();
-				for (int i = 1; i < shots.size(); i++) {
-					gaps.add(shots.get(i).ownerTick() - shots.get(i - 1).ownerTick());
+				List<Integer> sizes = new ArrayList<>();
+				for (int i = 0; i < volleys.size(); i++) {
+					sizes.add(volleys.get(i).size());
+					if (i > 0) {
+						gaps.add(volleys.get(i).get(0).ownerTick() - volleys.get(i - 1).get(0).ownerTick());
+					}
 				}
-				StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT health={} expected={} gaps={}", name, health, expected, gaps);
+				StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT health={} expected={} gaps={} sizes={}", name, health, expected, gaps, sizes);
 				for (int gap : gaps) {
 					helper.assertTrue(Math.abs(gap - expected) <= 1, "a gap of " + gap + " ticks, want " + expected + " in " + gaps);
+				}
+				for (int size : sizes) {
+					helper.assertTrue(size == perVolley, "a volley held " + size + " skulls, want " + perVolley + " in " + sizes);
+				}
+				if (checkDirections) {
+					checkRandomDirections(helper, volleys);
 				}
 				helper.succeed();
 			}
@@ -222,13 +249,52 @@ public final class WitherSkullGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 1300, padding = WideArena.PADDING)
-	public void volleysAtFullHealthFollowTheCurve(final GameTestHelper helper) {
-		this.measureGaps(helper, 1.0, "witherVolleyFull");
+	/** Shots grouped by the tick the Wither loosed them. The aimed skull is first, the random ones follow. */
+	private static List<List<WideArena.Shot>> volleys(final List<WideArena.Shot> shots) {
+		List<List<WideArena.Shot>> found = new ArrayList<>();
+		int tick = -1;
+		for (WideArena.Shot shot : shots) {
+			if (found.isEmpty() || shot.ownerTick() != tick) {
+				tick = shot.ownerTick();
+				found.add(new ArrayList<>());
+			}
+			found.get(found.size() - 1).add(shot);
+		}
+		return found;
+	}
+
+	private static void checkRandomDirections(final GameTestHelper helper, final List<List<WideArena.Shot>> volleys) {
+		List<Vec3> random = new ArrayList<>();
+		for (List<WideArena.Shot> volley : volleys) {
+			for (WideArena.Shot shot : volley.subList(1, volley.size())) {
+				helper.assertTrue(shot.velocity().lengthSqr() > 0.0, "a random skull began with no motion");
+				random.add(shot.velocity().normalize());
+			}
+		}
+		boolean up = random.stream().anyMatch(direction -> direction.y > FLAT);
+		boolean down = random.stream().anyMatch(direction -> direction.y < -FLAT);
+		boolean east = random.stream().anyMatch(direction -> direction.x > FLAT);
+		boolean west = random.stream().anyMatch(direction -> direction.x < -FLAT);
+		boolean south = random.stream().anyMatch(direction -> direction.z > FLAT);
+		boolean north = random.stream().anyMatch(direction -> direction.z < -FLAT);
+		long distinct = random.stream().map(direction -> Math.round(direction.x * 1000) + "/" + Math.round(direction.y * 1000) + "/" + Math.round(direction.z * 1000)).distinct().count();
+		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherRandomSkulls RESULT count={} distinct={} up={} down={} east={} west={} south={} north={}",
+			random.size(), distinct, up, down, east, west, south, north);
+		helper.assertTrue(distinct == random.size(), "the random skulls repeat a direction: " + distinct + " of " + random.size());
+		helper.assertTrue(up && down && east && west && south && north, "the random skulls leave a side of the sphere empty");
+		for (List<WideArena.Shot> volley : volleys) {
+			helper.assertTrue(volley.get(0).projectile() instanceof WitherSkullShot, "a volley without a skull first");
+		}
+	}
+
+	@GameTest(maxTicks = 1500, padding = WideArena.PADDING)
+	public void volleysAtFullHealthFollowTheCurveAndAddTwoRandomSkulls(final GameTestHelper helper) {
+		this.measureGaps(helper, 1.0, "witherVolleyFull", true);
 	}
 
 	@GameTest(maxTicks = 1200, padding = WideArena.PADDING)
-	public void volleysAtAQuarterFollowTheCurve(final GameTestHelper helper) {
-		this.measureGaps(helper, 0.25, "witherVolleyQuarter");
+	public void volleysAtSixtyPercentFollowTheCurve(final GameTestHelper helper) {
+		// Above half health, so no sphere burst shares a tick with a volley.
+		this.measureGaps(helper, 0.60, "witherVolleySixty", false);
 	}
 }

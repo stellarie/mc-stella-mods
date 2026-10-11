@@ -394,14 +394,20 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
 - Minions: from the activation, and every `minions.wave_interval` ticks (160), the Wither calls skeletons, zombies, husks,
   strays and wither skeletons (weights 25, 25, 15, 15, 20) between `minions.spawn_min` and `minions.spawn_max` blocks away
   (10 to 32), on a floor within 8 blocks of its height, at least 6 blocks from every player. A minion is half the Wither's
-  level, carries fire resistance, and drops no loot, no equipment and no experience. The cap is 6 plus 3 per player within 48
-  blocks, at most 18. No wave comes during a rage or in the 100 ticks after it. The Wither's death or removal takes the rest.
-- Rage at half health: for `rage.ticks` (600, thirty seconds) it sends rings of `rage_a.ring_size` skulls (6) every 24 ticks
-  and one skull in a random direction every 6, none past `rage_a.range` (16 blocks). They are blue, hit for 0.12 of the
-  standard hit, and add Wither I. At most `skull.live_cap` (40) of its skulls fly at once. Volleys and new minions wait.
-- Rage at a quarter health: it replaces the first for another 600 ticks. Every 3 ticks one skull falls from 14 blocks above
-  the Wither, within 24 blocks of it. Half of them land within 6 blocks of a random player. They hit for 0.20 of the
-  standard hit. A hit that crosses both thresholds starts this rage only. Each rage starts once.
+  level, carries fire resistance and Speed II with no end, and drops no loot, no equipment and no experience. The cap is 6
+  plus 3 per player within 48 blocks, at most 18. The Wither's death or removal takes the rest.
+- Sphere at half health: while its health is at or under `sphere.threshold` (0.50), every `sphere.interval` ticks (100) it
+  looses `sphere.count` skulls (26) spread evenly over a full sphere, none past `sphere.range` (16 blocks). They hit for
+  0.12 of the standard hit and add Wither I. Volleys go on. At most `skull.live_cap` (40) of its skulls fly at once, and a
+  burst skips the skulls past the cap.
+- Small withers at a quarter health: the first time its health is at or under `small.threshold` (0.25) it summons
+  `small.count` small withers (4), once, in a ring `small.distance` blocks (4) around it. A small wither has
+  `small.health_share` (0.25) of the original's max health, scale `small.scale` (0.6), the original's level and health
+  divisor, and no charge-up. It flies `small.speed_bonus` (0.40) faster, which is Speed II: a Wither takes no potion effect,
+  so the bonus is an attribute modifier. It runs the volley, including the random skulls, at `small.damage_factor` (0.5) of
+  the damage. It fires no sphere, summons nothing, calls no minions, shows no boss bar, and drops no loot, no star and no
+  experience. It dies with the original. When its parent has been missing for `small.orphan_ticks` (40) it removes itself,
+  which covers an unload.
 - Stats: vitality 200 and the other five stats at random from 50 to 150 (`stats.*`), given once at the summon through the
   object share `mod-stella-rpg:mob-stat-set`. Without that share the Wither keeps its role stats.
 - Rpg flag: `mod-stella-rpg` finds `WitherState#hasWitherFlag` by name, so percent-of-max-health effects use the elite
@@ -410,8 +416,13 @@ disk without the `mod-stella-mobs:wither_state` attachment is a legacy one and s
   `mu = min(7, 0.25 + 0.0125 * (level - 100))` (`stars.*`). It also drops `books.count` (5) enchanted books with 2 or 3
   enchantments each. The books come from the share `mod-stella-equips-enchants:enchanted-book`. Without it the Wither
   builds each book from every registry enchantment that is not a curse. Neither needs a player kill.
-- Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks. The gap is
-  `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 40 ticks at full health, 12 at none.
+- Volley: one aimed skull at `aim.share` (0.60 of the standard hit), Wither II for 100 ticks, and `aim.random_skulls` (2)
+  skulls in random directions, drawn evenly over the sphere. A random skull hits like the aimed one and burns out after
+  `aim.random_range` blocks (24), so a miss does not hold a place under the skull cap. The gap is
+  `aim.interval_min + (aim.interval_max - aim.interval_min) * health`: 24 ticks at full health, 8 at none.
+- An existing `wither.json` keeps its old numbers over the new defaults. Delete `aim.interval_min` and `aim.interval_max`
+  from it, or the file, to get the faster volley. The removed `rage*` keys and `minions.rage_pause` are reported as unknown
+  and ignored.
 
 ## Bosses
 

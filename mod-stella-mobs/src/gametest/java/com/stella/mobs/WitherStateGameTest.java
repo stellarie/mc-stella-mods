@@ -21,13 +21,28 @@ import net.minecraft.world.phys.Vec3;
 public final class WitherStateGameTest {
 	@GameTest
 	public void codecRoundTrips(final GameTestHelper helper) {
-		WitherState state = new WitherState(true, 71.5, 25.2, true, false, WitherState.RAGE_BARRAGE, 431, List.of(UUID.randomUUID(), UUID.randomUUID()));
+		WitherState state = new WitherState(true, 71.5, 25.2, true, false, 37, List.of(UUID.randomUUID(), UUID.randomUUID()), List.of(UUID.randomUUID()), java.util.Optional.of(UUID.randomUUID()));
 		Tag encoded = WitherState.CODEC.encodeStart(NbtOps.INSTANCE, state).getOrThrow();
 		WitherState decoded = WitherState.CODEC.parse(NbtOps.INSTANCE, encoded).getOrThrow();
 		WitherState empty = WitherState.CODEC.parse(NbtOps.INSTANCE, new CompoundTag()).getOrThrow();
 		StellaMobs.LOGGER.info("[BEHAVIOR] test=witherStateCodec RESULT decoded={} empty={}", decoded, empty);
 		helper.assertTrue(decoded.equals(state), "the state changed in a round trip: " + decoded);
 		helper.assertTrue(empty.equals(WitherState.fresh()), "an empty save did not give the defaults: " + empty);
+		helper.succeed();
+	}
+
+	/** A save from before the rework holds rage fields. They are ignored, and the fields that remain still read. */
+	@GameTest
+	public void anOldSaveWithRageFieldsStillReads(final GameTestHelper helper) {
+		CompoundTag old = new CompoundTag();
+		old.putBoolean("activated", true);
+		old.putDouble("anchor_y", 64.0);
+		old.putBoolean("rage_a_used", true);
+		old.putInt("rage_kind", 2);
+		old.putInt("rage_ticks_left", 300);
+		WitherState decoded = WitherState.CODEC.parse(NbtOps.INSTANCE, old).getOrThrow();
+		helper.assertTrue(decoded.activated() && decoded.anchorY() == 64.0 && decoded.rageAUsed() && !decoded.rageBUsed(), "an old save lost a field: " + decoded);
+		helper.assertTrue(!decoded.small() && decoded.spawnlings().isEmpty() && decoded.sphereTicks() == 0, "an old save gained a small wither field: " + decoded);
 		helper.succeed();
 	}
 
