@@ -328,4 +328,26 @@ public class MerchantGoodsGameTest {
 	public void theWhetstoneGuardsARealRefineAtAnAnvilRequiresManualTest(final GameTestHelper helper) {
 		helper.fail("with the equips mod installed: put a +9 piece in an anvil's Refine tab with a whetstone in the inventory, refine until a roll would fail, and the piece rises and the whetstone is spent");
 	}
+
+	/** The six merchant weapons are on the list at ten stacks each, and in stock exactly when the equips mod has them. */
+	@GameTest
+	public void theSixMerchantWeaponsSellForTenStacks(final GameTestHelper helper) {
+		int listed = 0;
+		int rightPrice = 0;
+		int stockMatches = 0;
+		for (String weapon : MerchantGoods.WEAPONS) {
+			MerchantGoods.Good good = MerchantGoods.byId(StellaTower.id(weapon));
+			if (good == null) {
+				continue;
+			}
+			listed++;
+			rightPrice += good.price() == 640 ? 1 : 0;
+			boolean present = net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(
+				net.minecraft.resources.Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", weapon));
+			stockMatches += good.stocked().getAsBoolean() == present ? 1 : 0;
+		}
+		TowerTestSupport.result("merchantWeapons", "listed=" + listed + " rightPrice=" + rightPrice + " stockMatches=" + stockMatches);
+		helper.assertTrue(listed == 6 && rightPrice == 6 && stockMatches == 6, "weapons listed=" + listed + " price640=" + rightPrice + " stockMatches=" + stockMatches);
+		helper.succeed();
+	}
 }

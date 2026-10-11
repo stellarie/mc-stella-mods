@@ -62,6 +62,15 @@ public final class MerchantGoods {
 	public static final Good TOWER_WHETSTONE = register(Good.fixed(StellaTower.id("tower_whetstone"), 192, () -> new ItemStack(MerchantItems.TOWER_WHETSTONE)));
 	/** The mobs mod's block, by id: a merchant offers it only where that mod is present. */
 	public static final Good SHIELD_GENERATOR = register(ofItem(StellaTower.id("shield_generator"), SHIELD_GENERATOR_ID, 192));
+	/** The equips mod's six merchant weapons, ten stacks of emeralds each; absent without that mod. */
+	public static final int WEAPON_PRICE = 640;
+	public static final List<String> WEAPONS = List.of("soulreaver", "gravecleaver", "wraithstring", "hexbolt", "wraithpike", "archmage_staff");
+
+	static {
+		for (String weapon : WEAPONS) {
+			register(ofItem(StellaTower.id(weapon), Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", weapon), WEAPON_PRICE));
+		}
+	}
 
 	private MerchantGoods() {
 	}
