@@ -910,6 +910,7 @@ it over. `MerchantGoods.ofItem` makes a good of another mod item by id. A price 
 | Ectoplasm Charm | 128 | `EctoplasmCharm`: cheats death once, 10 minutes to recover |
 | Tower Whetstone | 192 | `RefineWard`: the next refine cannot fail |
 | Shield Generator | 192 | `mod-stella-mobs:shield_generator`, by id |
+- The equips mod's six merchant weapons (Soulreaver, Gravecleaver, Wraithstring, Hexbolt, Wraithpike, Archmage's Staff), 640 emeralds each, in stock only with that mod.
 
 - The best floor of a player (`TowerMerchants.bestFloor`) is the highest of the floors they have stood on in the tower
   (`BEST_FLOOR`, kept by the merchant watch), the floor they last stood on, any floor key they hold, and the floor they
