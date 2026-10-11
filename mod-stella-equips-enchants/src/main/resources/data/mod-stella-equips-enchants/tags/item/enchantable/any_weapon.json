@@ -2,6 +2,7 @@
 	"values": [
 		"#minecraft:enchantable/weapon",
 		"#minecraft:spears",
-		"#minecraft:enchantable/trident"
+		"#minecraft:enchantable/trident",
+		"mod-stella-equips-enchants:archmage_staff"
 	]
 }

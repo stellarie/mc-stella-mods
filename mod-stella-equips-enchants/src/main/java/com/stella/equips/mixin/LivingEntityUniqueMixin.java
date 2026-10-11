@@ -2,6 +2,7 @@ package com.stella.equips.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.stella.equips.guardian.GuardianGear;
+import com.stella.equips.merchant.MerchantWeapons;
 import com.stella.equips.unique.UniqueDispatch;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
@@ -19,7 +20,7 @@ public abstract class LivingEntityUniqueMixin {
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaEquips$uniqueOutgoing(final float amount, final ServerLevel level, final DamageSource source) {
 		LivingEntity self = (LivingEntity) (Object) this;
-		return GuardianGear.outgoing(self, source, UniqueDispatch.outgoing(self, source, amount));
+		return MerchantWeapons.outgoing(self, source, GuardianGear.outgoing(self, source, UniqueDispatch.outgoing(self, source, amount)));
 	}
 
 	// Return hooks chain with the other mods; a cancelling inject would skip them.

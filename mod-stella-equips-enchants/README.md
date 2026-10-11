@@ -516,6 +516,40 @@ The weapon sits in the centre of a shaped recipe. A smithing recipe with the net
 - **Models.** Item definitions, models and textures sit under `assets/mod-stella-equips-enchants`. The bow pull animation steps by
   the unrefined draw time, so a +15 bow reaches its last frame a little after it is fully drawn.
 
+## Merchant weapons
+
+Six netherite-tier weapons are meant for the wandering ghost merchant. The merchant listing lives in the tower mod, by item id.
+Each weapon has the durability of netherite (2031), rarity epic, and fixed rolls from creation: three stats at 10 and its affixes at
+the top of the netherite range. The fixed rolls are default components under the component types of `mod-stella-rpg`, looked up by
+id when the components bind, so the stack never rolls again and the mod loads without the RPG mod. Percent affixes are in tenths.
+
+| Item | Kind | Stats | Affixes | Effect | Each of +7, +10, +12, +15 |
+|---|---|---|---|---|---|
+| Soulreaver | sword | STR AGI LUK | damage_flat 40, damage_pct 12, armor_pen 12 | 15% on hit: a soul-fire slash for +50% of the hit | +5% damage, +2% lifesteal |
+| Gravecleaver | axe | STR VIT DEX | damage_flat 40, damage_pct 12 | a hit deals 50% to foes within 3 blocks of the target | +10% cleave |
+| Wraithstring | bow | DEX AGI LUK | damage_pct 12, armor_pen 12 | draw 25% faster, arrows +20% damage, pierce 2 | +5% damage, +1 pierce at +15 |
+| Hexbolt | crossbow | DEX STR LUK | damage_pct 12, armor_pen 12 | 3 bolts a shot, each bursts on impact in 1.5 blocks | +5% damage, +0.5 radius at +12 and +15 |
+| Wraithpike | spear | STR AGI VIT | damage_flat 40, armor_pen 12 | reach +1 block, a charge hit gives Wither II for 60 ticks | +5% damage, +0.25 reach |
+| Archmage's Staff | staff | INT DEX LUK | matk_flat 40, matk_pct 12, magic_pen 12 | while held, spells +25% damage and -20% cooldown | +10% spell damage, -5% cooldown |
+
+- **Refine.** Every weapon refines with netherite ingots (grade 4) to +15 and keeps the generic refine specials. The refine effects
+  do not chain off the slash or the cleave.
+- **Soulreaver.** The slash ignores armor. Lifesteal heals the wielder by its share of the damage dealt.
+- **Gravecleaver.** The cleave is armor-reduced damage to every foe within 3 blocks of the target. It also fires on a killing blow.
+- **Wraithstring.** The release is rebuilt on a 15-tick draw. The arrow damage is 1.2 plus 0.05 per milestone.
+- **Hexbolt.** A loaded arrow becomes three bolts in a fan of 10 degrees. The extra two are intangible, so a shot costs one arrow.
+  A burst hurts foes in its radius except the one the bolt struck, with half of the bolt's damage potential. It never breaks a block.
+- **Wraithpike.** The numbers are those of the vanilla netherite spear with the reach raised in `ATTACK_RANGE`. A charge hit is a
+  spear hit while the wielder is using the item. The model is a bare shaft wrapped in soul fire, with no head.
+- **Staff.** The item is a weapon for refine and imbue, with a small attack. `mod-stella-spells` reads the main-hand staff by the
+  item tag `mod-stella-equips-enchants:mage_staffs` and the refine level from `stella_refine`. The staff is listed in the spell focus
+  and weapon enchantment tags.
+- **Tags.** The sword, axe and spear join the vanilla tags, so the RPG mod gives them the netherite dice. The bow and the crossbow join
+  `mod-stella-equips-enchants:netherite_ranged`, which gives them the netherite ranged die.
+- **Icons.** `tools/merchant_icons.py` draws the sword, axe, spear and staff. The bow and the crossbow take the frames of the Rudra Bow
+  and the Siege Arbalest with a new palette.
+- **Code.** `com.stella.equips.merchant`. The catalog is `MerchantWeapons.DEFS`; every number of an effect is a constant there.
+
 ## Container loot
 
 Every container a player searches, vanilla or from a structure mod (chests, barrels, crates, pots and the like),

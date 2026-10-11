@@ -2,6 +2,7 @@
 	"values": [
 		"#mod-stella-equips-enchants:uniques_af/bows",
 		"#mod-stella-equips-enchants:uniques_mp/bows",
-		"#mod-stella-equips-enchants:crafted_bows/bows"
+		"#mod-stella-equips-enchants:crafted_bows/bows",
+		"mod-stella-equips-enchants:wraithstring"
 	]
 }
