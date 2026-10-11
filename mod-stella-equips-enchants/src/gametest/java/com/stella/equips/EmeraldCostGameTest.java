@@ -26,7 +26,6 @@ public class EmeraldCostGameTest {
 	private static final int EMERALDS = 16;
 	private static final int LEVELS = 10;
 	private static final int ONE_ENCHANTMENT = 1;
-	private static final int TWO_ENCHANTMENTS = 2;
 	private static final int NO_EMERALDS = 0;
 
 	@GameTest
@@ -43,23 +42,6 @@ public class EmeraldCostGameTest {
 			"one enchantment: price=" + price + " emeraldsLeft=" + left + " level=" + player.experienceLevel
 		);
 		log("anvilOneEnchantment", price, left, player.experienceLevel);
-		helper.succeed();
-	}
-
-	@GameTest
-	public void anvilChargesTwoEmeraldsForTwoEnchantments(final GameTestHelper helper) {
-		Player player = survival(helper);
-		AnvilMenu menu = anvilWith(helper, player, book(helper, TEST_MARKER, SHARPNESS));
-		int price = menu.getCost();
-		player.getInventory().add(new ItemStack(Items.EMERALD, EMERALDS));
-		player.experienceLevel = LEVELS;
-		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, ItemStack.EMPTY);
-		int left = countEmeralds(player);
-		helper.assertTrue(
-			price == TWO_ENCHANTMENTS && left == EMERALDS - TWO_ENCHANTMENTS && player.experienceLevel == LEVELS,
-			"two enchantments: price=" + price + " emeraldsLeft=" + left + " level=" + player.experienceLevel
-		);
-		log("anvilTwoEnchantments", price, left, player.experienceLevel);
 		helper.succeed();
 	}
 

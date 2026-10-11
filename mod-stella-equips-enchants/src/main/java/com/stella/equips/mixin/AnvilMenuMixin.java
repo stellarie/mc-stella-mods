@@ -69,14 +69,14 @@ public abstract class AnvilMenuMixin {
 		at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/DataSlot;get()I", ordinal = 1)
 	)
 	private int stellaEquips$priceAtTheGate(final int original) {
-		return AnvilCost.price(EmeraldPurse.offeredEnchantments(this.stellaEquips$input(), this.stellaEquips$addition()));
+		return AnvilCost.price(this.stellaEquips$input(), EmeraldPurse.offeredEnchantments(this.stellaEquips$input(), this.stellaEquips$addition()));
 	}
 
 	/** One field, and the display, the pickup check and the charge all read it. */
 	@Inject(method = "createResult", at = @At("RETURN"))
 	private void stellaEquips$writeThePrice(final CallbackInfo ci) {
 		this.stellaEquips$costSlot().set(
-			AnvilCost.price(EmeraldPurse.appliedEnchantments(this.stellaEquips$input(), this.stellaEquips$result()))
+			AnvilCost.price(this.stellaEquips$input(), EmeraldPurse.appliedEnchantments(this.stellaEquips$input(), this.stellaEquips$result()))
 		);
 	}
 

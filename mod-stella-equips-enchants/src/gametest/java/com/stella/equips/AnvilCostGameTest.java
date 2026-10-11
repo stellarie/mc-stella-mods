@@ -1,12 +1,12 @@
 package com.stella.equips;
 
-import com.stella.equips.anvil.AnvilCost;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AnvilMenu;
@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.GameType;
 
@@ -70,15 +71,44 @@ public class AnvilCostGameTest {
 	}
 
 	@GameTest
-	public void priceIsOneEmeraldPerAppliedEnchantment(final GameTestHelper helper) {
-		helper.assertTrue(AnvilCost.price(0) == 0, "price(0) is " + AnvilCost.price(0));
-		helper.assertTrue(AnvilCost.price(1) == 1, "price(1) is " + AnvilCost.price(1));
-		helper.assertTrue(AnvilCost.price(3) == 3, "price(3) is " + AnvilCost.price(3));
-		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=pricePerAppliedEnchantment RESULT price0={} price1={} price3={}",
-			AnvilCost.price(0), AnvilCost.price(1), AnvilCost.price(3)
-		);
+	public void eachEnchantmentDoublesThePriceOfTheNext(final GameTestHelper helper) {
+		Registry<Enchantment> registry = enchantments(helper);
+		// Two held, one new: 2^2.
+		ItemStack sword = enchanted(registry, new ItemStack(Items.DIAMOND_SWORD), Enchantments.SHARPNESS, Enchantments.UNBREAKING);
+		int[] one = takeWith(helper, sword, enchanted(registry, new ItemStack(Items.ENCHANTED_BOOK), Enchantments.FIRE_ASPECT), 4);
+		// One held, two new: 2^1 + 2^2.
+		ItemStack axe = enchanted(registry, new ItemStack(Items.DIAMOND_SWORD), Enchantments.SHARPNESS);
+		int[] two = takeWith(helper, axe, enchanted(registry, new ItemStack(Items.ENCHANTED_BOOK), Enchantments.FIRE_ASPECT, Enchantments.KNOCKBACK), 6);
+		// None held: the first costs 1.
+		int[] first = takeWith(helper, new ItemStack(Items.DIAMOND_SWORD), enchanted(registry, new ItemStack(Items.ENCHANTED_BOOK), Enchantments.FIRE_ASPECT), 1);
+		helper.assertTrue(one[0] == 4 && one[1] == 0 && two[0] == 6 && two[1] == 0 && first[0] == 1 && first[1] == 0,
+			"price/left: held2+1=" + one[0] + "/" + one[1] + " held1+2=" + two[0] + "/" + two[1] + " held0+1=" + first[0] + "/" + first[1]);
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=pow2Price RESULT held2add1={} held1add2={} held0add1={}", one[0], two[0], first[0]);
 		helper.succeed();
+	}
+
+	/** Puts both items in a real anvil, pays with exactly `emeralds`, and returns the price and the emeralds left. */
+	private static int[] takeWith(final GameTestHelper helper, final ItemStack input, final ItemStack addition, final int emeralds) {
+		Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
+		AnvilMenu menu = new AnvilMenu(1, player.getInventory(), ContainerLevelAccess.NULL);
+		menu.getSlot(AnvilMenu.INPUT_SLOT).set(input);
+		menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).set(addition);
+		menu.createResult();
+		player.getInventory().add(new ItemStack(Items.EMERALD, emeralds));
+		int price = menu.getCost();
+		helper.assertTrue(menu.getSlot(AnvilMenu.RESULT_SLOT).mayPickup(player), "not takeable at price " + price + " with " + emeralds);
+		menu.getSlot(AnvilMenu.RESULT_SLOT).onTake(player, menu.getSlot(AnvilMenu.RESULT_SLOT).getItem());
+		return new int[] {price, countEmeralds(player)};
+	}
+
+	@SafeVarargs
+	private static ItemStack enchanted(final Registry<Enchantment> registry, final ItemStack stack, final ResourceKey<Enchantment>... keys) {
+		ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+		for (ResourceKey<Enchantment> key : keys) {
+			mutable.set(registry.getOrThrow(key), 1);
+		}
+		EnchantmentHelper.setEnchantments(stack, mutable.toImmutable());
+		return stack;
 	}
 
 	@GameTest
