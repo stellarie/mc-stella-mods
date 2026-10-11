@@ -17,7 +17,9 @@
 		"TowerTargetMixin",
 		"TowerSensorMixin",
 		"TowerPeaceMixin",
-		"TowerShulkerMixin"
+		"TowerShulkerMixin",
+		"EntityVisualFireAccessor",
+		"MobSelectorAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

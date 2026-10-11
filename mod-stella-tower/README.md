@@ -727,3 +727,46 @@ show seams where its chunks differ.
   and in the biome's stone, and whether most mobs stay out of sight until you come near.
 - Watch a ghost pack: three drift slowly together, none comes to you, they hurt the mobs and not you.
 - See a breeze and a shulker. Let a shulker teleport: it stays on its floor.
+
+## The ruined colosseum and the Tower Guardians (`com.stella.tower.colosseum`)
+
+A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks from its spawn. Its saved claim
+(`ColosseumData`, with the spawn the site was drawn from) keeps a later start from building a second.
+
+- Site (`ColosseumSite`): read from the terrain noise alone, so no chunk is generated to look. Dry ground within 5 blocks of
+  level is taken at once; if none turns up in 96 tries, the least bad spot is levelled (`ColosseumBuilder` clears everything
+  over the floor layer and fills every hollow under it).
+- Build (`ColosseumBuilder`): a sand arena; a platform four blocks high with a flight of stairs on each side; a lit crying
+  obsidian portal on it, which leads to the tower as a player-built one does; the offering chest beside the portal; 14 broken
+  columns; six tiers of stair seats; a ring wall 32 blocks out, cracked and mossy, worn down in sectors (two stretches are
+  always gone, one is always whole), with four gates. All wear comes from the world seed.
+- Guardians (`Guardians`, `GuardianBrain`, `GuardianMoves`): a skeleton on a skeleton horse, twice the size, level 50, with
+  fire drawn on them (the visual-fire flag, `EntityVisualFireAccessor`) but never lit, so neither burns in the sun. The
+  melee one wields a netherite sword and slows players within 12 blocks; the archer holds the Rudra Bow, keeps a permanent
+  Blitz Beat and weakens players within 12 blocks. Gear never drops. Both are driven by one brain each, not by vanilla goals.
+- Leash: a guardian takes only players inside the arena (radius 32). Whoever hurts it, wherever they stand, is its target
+  for 200 ticks; after that it drops them and walks back to its post. A guardian and its horse never hurt or hunt another
+  guardian.
+- Moves (each shows its start first: a sound, particles, a raised bow): blink behind a player 8 blocks or more away and hit;
+  a 60 degree fire cone, 6 blocks long; a ground slam, a strip 4 wide and 16 long, with knockback and Nausea for 40 ticks;
+  two seconds of invisibility for archer and horse, then a hard shot; an 8-arrow volley, one arrow every 3 ticks; 8 burning
+  arrows lobbed round the target, each bursting where it lands (bodies only, no block broken) and setting the ground alight.
+- Drops and horses: the melee guardian drops `mod-stella-equips-enchants:bone_shield` and the archer
+  `mod-stella-equips-enchants:skeleton_crown`, once each, looked up by id and skipped when absent. A fallen rider's horse
+  stays 2 times the size and burning until tamed; a player can mount it and tame it as any wild horse, and it keeps its
+  speed (0.45) and jump (1.2), both above a vanilla horse's best, and loses its size and its guardian mark.
+- Offering chest: a tower chest (it cannot be mined or blown up) that holds a book. Put 128 bones in it while no guardian
+  lives and they are taken and both guardians rise again at their posts.
+- Other mods are reached by share or by id and skipped when absent: `mod-stella-mobs:apply-level` (level 50),
+  `mod-stella-rpg:mob-stat-set` (vitality 100, the level's points dealt out at random over the other stats, a tenth more
+  for the archer with dexterity at least 50, horses vitality 150), `mod-stella-spells:mob-blitz-beat`.
+
+### Manual acceptance (colosseum)
+
+- Find the colosseum on a new world. Judge whether it reads as a ruin: seats, columns, gaps, stairs, the platform.
+- Step into the portal and arrive on floor 1. Fight both guardians; watch each move's warning before it lands. Step out of
+  the arena and check that they stay in; hit one from outside and check that it comes for you, then goes home.
+- Kill both, tame and ride a horse, check the Bone Shield and Skeleton Crown drops, put 128 bones in the chest and watch
+  them rise. With the spells mod present, check that the archer's hits call a falcon (the share is tested in the spells
+  mod; this mod only hands it the rider).
+- A peaceful world removes hostile mobs, guardians included; the offering chest raises them again.
