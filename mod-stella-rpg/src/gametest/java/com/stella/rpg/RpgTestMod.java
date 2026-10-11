@@ -19,6 +19,9 @@ public final class RpgTestMod implements ModInitializer {
 	public static final Identifier TEST_BOOK_ID = Identifier.fromNamespaceAndPath("mod-stella-rpg-test-mod-stella-rpg", "test_spellbook");
 	public static final int TEST_BOOK_COOLDOWN = 40;
 	public static Item testBook;
+	/** Stand-ins for the equips mod's netherite bow and crossbow, listed in the netherite_ranged tag of the test pack. */
+	public static Item netheriteBow;
+	public static Item netheriteCrossbow;
 
 	/** A spellbook stand-in with a cooldown. */
 	private static final class TestBook extends Item {
@@ -51,5 +54,12 @@ public final class RpgTestMod implements ModInitializer {
 		}
 		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, TEST_BOOK_ID);
 		testBook = Registry.register(BuiltInRegistries.ITEM, key, new TestBook(new Item.Properties().setId(key)));
+		netheriteBow = register("netherite_test_bow", props -> new net.minecraft.world.item.BowItem(props.durability(2031)));
+		netheriteCrossbow = register("netherite_test_crossbow", props -> new net.minecraft.world.item.CrossbowItem(props.durability(2031)));
+	}
+
+	private static Item register(final String path, final java.util.function.Function<Item.Properties, Item> factory) {
+		ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("mod-stella-rpg-test-mod-stella-rpg", path));
+		return Registry.register(BuiltInRegistries.ITEM, key, factory.apply(new Item.Properties().setId(key).stacksTo(1)));
 	}
 }

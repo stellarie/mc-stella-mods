@@ -22,7 +22,7 @@ import net.minecraft.world.item.Items;
  */
 public final class SiblingGearTagGameTest {
 	private static final Set<String> BOWS = Set.of("hunter_bow", "composite_bow", "gakkung", "great_bow", "rudra_bow", "arbalest",
-		"repeater", "ballista", "siege_arbalest");
+		"repeater", "ballista", "siege_arbalest", "archmage_staff");
 	private static final Set<String> RUIN_WEAPONS = Set.of("deepsteel_sword", "deepsteel_axe", "abyssal_edge", "gladius_of_the_crowd",
 		"forgeheart_hammer", "hawkeye_longbow", "silkstring_bow");
 

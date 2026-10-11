@@ -618,6 +618,10 @@ Pickaxes, shovels, and hoes carry nothing unless a pack lists them.
 This mod lists the gear of its siblings itself, each id with `"required": false`, so a pack without that sibling still loads:
 the nine crafted bows of `mod-stella-equips-enchants`, and the swords, axes, hammer, bows, and six armor sets of `mod-stella-ruins`.
 A new sibling item needs one line here. No sibling mod changes.
+The Archmage's Staff of `mod-stella-equips-enchants` is listed as a weapon, and a weapon reads `matk_flat`, `matk_pct` and `magic_pen`
+(the legacy weapon read of MATK now includes magic penetration).
+A bow or crossbow in `#mod-stella-equips-enchants:netherite_ranged` takes the bow or crossbow die at the netherite material
+(multiplier 1.6) instead of the iron one.
 
 ## Mined material bonuses
 
