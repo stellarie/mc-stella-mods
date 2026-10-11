@@ -65,5 +65,8 @@
   "item.mod-stella-tower.rune.how": "Set at an anvil for %s emeralds",
   "item.mod-stella-tower.runed": "%s Rune (floor %s)",
   "death.attack.stella_rune_burst": "%1$s burst into flame from within",
+  "entity.mod-stella-tower.tower_guardian": "Tower Guardian",
+  "entity.mod-stella-tower.tower_guardian_archer": "Tower Guardian Archer",
+  "message.mod-stella-tower.guardians_rise": "The bones sink into the sand. The Tower Guardians rise again.",
   "message.mod-stella-tower.lost_room": "Lost Tower Room - Level %s"
 }

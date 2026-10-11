@@ -71,7 +71,9 @@
 			"com.stella.tower.TowerLostCastleSpawnerGameTest",
 			"com.stella.tower.TowerLostCastleOctagonGameTest",
 			"com.stella.tower.TowerLostCastleThemeGameTest",
-			"com.stella.tower.TowerLostCastleClutterGameTest"
+			"com.stella.tower.TowerLostCastleClutterGameTest",
+			"com.stella.tower.ColosseumGameTest",
+			"com.stella.tower.TowerGuardianGameTest"
 		]
 	},
 	"mixins": [
