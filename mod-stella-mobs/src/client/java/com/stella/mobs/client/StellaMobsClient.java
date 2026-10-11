@@ -18,6 +18,7 @@ public final class StellaMobsClient implements ClientModInitializer {
 		EntityRendererRegistry.register(StellaEntities.RED_SLIME, context -> new SlimeVariantRenderer(context, slimeTexture("red_slime")));
 		EntityRendererRegistry.register(StellaEntities.SKELETON_WORKER, SkeletonRenderer::new);
 		EntityRendererRegistry.register(StellaEntities.GHOST, GhostRenderer::new);
+		StatusFlashClient.register();
 	}
 
 	private static Identifier slimeTexture(final String name) {

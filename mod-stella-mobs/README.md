@@ -479,6 +479,20 @@ from mobs without level scaling use vanilla armor.
 Speed, Slowness, gear speed, and stat speed do not change the field of view. The view reads the walking speed as if only
 a sprint changed it, so a sprint still widens it as in vanilla.
 
+## Status screen flashes (`StatusFlash`)
+
+The client does not draw the first person fire overlay or the powder snow frost overlay. A soft edge ring replaces each.
+The ring fades toward the screen centre.
+
+- Burning shows an orange ring that pulses between 0.25 and 0.55 alpha every 16 ticks.
+- Any freeze (`ticksFrozen` above 0) shows a bluish-white ring. Its alpha scales with the percent frozen, up to 0.6.
+  Chill, powder snow, and the stray and illusioner freezes all show it.
+- A spectator sees neither ring.
+
+Both states already sync from vanilla, so the server sends nothing new. A game test checks the strength math. The two
+overlay mixins (`FireOverlayMixin`, `FrostOverlayMixin`) run only on a client, so check them by hand: stand in fire
+and in powder snow.
+
 ## Threat level share
 
 `com.stella.mobs.api.ThreatLevelProvider` puts a `Function<Entity, Integer>` in the Fabric object share under
