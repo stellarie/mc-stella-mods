@@ -9,7 +9,6 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -19,8 +18,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A ghost of the tower: it drifts beside the players, never turns on one, and casts at what hunts them,
- * mending and strengthening the players near it. Kill one, and its curse blinds its killer.
+ * A ghost of the tower: it drifts slowly with its pack, keeps within a few blocks of the pack's leader, and casts at the
+ * tower's mobs. It never follows a player and never turns on one; it mends and strengthens the players it drifts past.
+ * Killing one costs nothing.
  */
 public class TowerGhost extends PathfinderMob {
 	/** The ticks of its own life at which it next casts, mends and strengthens. */
@@ -37,8 +37,8 @@ public class TowerGhost extends PathfinderMob {
 	public static AttributeSupplier.Builder createAttributes() {
 		return Mob.createMobAttributes()
 			.add(Attributes.MAX_HEALTH, 20.0)
-			.add(Attributes.FLYING_SPEED, 0.5)
-			.add(Attributes.MOVEMENT_SPEED, 0.3)
+			.add(Attributes.FLYING_SPEED, TowerGhosts.FLYING_SPEED)
+			.add(Attributes.MOVEMENT_SPEED, TowerGhosts.MOVEMENT_SPEED)
 			.add(Attributes.FOLLOW_RANGE, 24.0);
 	}
 
@@ -53,9 +53,9 @@ public class TowerGhost extends PathfinderMob {
 	@Override
 	protected void registerGoals() {
 		this.goalSelector.addGoal(0, new FloatGoal(this));
-		this.goalSelector.addGoal(4, new TowerGhosts.StayNearPlayerGoal(this));
-		this.goalSelector.addGoal(5, new WaterAvoidingRandomFlyingGoal(this, 1.0));
-		// Only what its bolt can reach: a quarry further off would draw it away from the players it keeps.
+		this.goalSelector.addGoal(4, new TowerGhosts.KeepWithPackGoal(this));
+		this.goalSelector.addGoal(5, new TowerGhosts.PackWanderGoal(this, 1.0));
+		// Only what its bolt can reach: a quarry further off would draw the pack away from its leader.
 		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Mob.class, 5, true, false,
 			(target, level) -> Hostiles.isHostile(target) && !(target instanceof TowerGhost) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
 	}
@@ -67,6 +67,11 @@ public class TowerGhost extends PathfinderMob {
 			return;
 		}
 		super.setTarget(target);
+	}
+
+	@Override
+	public boolean canAttack(final LivingEntity target) {
+		return !(target instanceof Player || target instanceof TowerGhost) && super.canAttack(target);
 	}
 
 	@Override

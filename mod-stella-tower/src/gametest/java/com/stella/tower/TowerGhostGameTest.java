@@ -5,8 +5,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -15,7 +13,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** The tower's ghosts: on the players' side, generous to them, and a curse to whoever kills one. */
+/** The tower's ghosts: on the players' side, generous to them, and no cost to whoever kills one. Packs: {@link TowerGhostPackGameTest}. */
 public class TowerGhostGameTest {
 	/** A low floor for what a ghost's spell deals, so a zombie outlives it. */
 	private static final int LOW = 5;
@@ -103,6 +101,12 @@ public class TowerGhostGameTest {
 		tower.addFreshEntity(zombie);
 		TowerGhost ghost = TowerGhosts.summon(tower, LOW, spots.mob().add(0.0, 1.0, 0.0));
 		helper.assertTrue(ghost != null && ghost.hasLineOfSight(zombie), "the casting fixture has no visible ghost and zombie");
+		// A ghost drifts on its own now: one that wanders out of the zombie's sight is stood back where the case put it.
+		helper.onEachTick(() -> {
+			if (helper.getTick() % 20 == 0 && !ghost.hasLineOfSight(zombie)) {
+				ghost.snapTo(spots.mob().x, spots.mob().y + 1.0, spots.mob().z);
+			}
+		});
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth() && zombie.getLastHurtByMob() == ghost, "the ghost never cast at the zombie");
@@ -123,6 +127,7 @@ public class TowerGhostGameTest {
 		ServerPlayer player = climber(helper, tower, floor);
 		player.setHealth(10.0F);
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
+		keepBeside(helper, ghost, player);
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			helper.assertTrue(player.getHealth() > 10.0F, "the ghost never mended the hurt player");
@@ -141,6 +146,7 @@ public class TowerGhostGameTest {
 		int floor = floor(tower);
 		ServerPlayer player = climber(helper, tower, floor);
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
+		keepBeside(helper, ghost, player);
 		boolean[] done = {false};
 		helper.succeedWhen(() -> {
 			// The ghost's own gift, not a floor buff: a floor buff is ambient.
@@ -156,18 +162,30 @@ public class TowerGhostGameTest {
 		});
 	}
 
+	/** A ghost drifts on its own and no longer follows a player: a case that needs it beside one stands it back. */
+	private static void keepBeside(final GameTestHelper helper, final TowerGhost ghost, final ServerPlayer player) {
+		Vec3 over = player.position().add(0.0, 2.5, 0.0);
+		helper.onEachTick(() -> {
+			if (ghost.isAlive() && ghost.distanceTo(player) > 6.0) {
+				ghost.snapTo(over.x, over.y, over.z);
+			}
+		});
+	}
+
+	/** Catches a price on a ghost's death: the player who strikes it down is left with no effect at all. */
 	@GameTest
-	public void killingAGhostBlindsTheKiller(final GameTestHelper helper) {
+	public void killingAGhostCostsTheKillerNothing(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = floor(tower);
 		ServerPlayer player = climber(helper, tower, floor);
 		TowerGhost ghost = ghostBeside(helper, tower, floor, player);
 		ghost.hurtServer(tower, player.damageSources().playerAttack(player), 1.0E30F);
-		MobEffectInstance blind = player.getEffect(MobEffects.BLINDNESS);
-		TowerTestSupport.result("ghostCurse", "dead=" + !ghost.isAlive() + " blind=" + blind);
+		var effects = List.copyOf(player.getActiveEffects());
+		float health = player.getHealth();
+		TowerTestSupport.result("ghostKill", "dead=" + !ghost.isAlive() + " effects=" + effects + " health=" + health);
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(!ghost.isAlive(), "the ghost did not die, so the case proves nothing");
-		helper.assertTrue(blind != null && blind.getDuration() >= TowerGhosts.CURSE_TICKS - 1, "the ghost's killer is blind for " + blind);
+		helper.assertTrue(effects.isEmpty() && health == player.getMaxHealth(), "the ghost's killer was left with " + effects + " at " + health + " health");
 		helper.succeed();
 	}
 
@@ -248,9 +266,9 @@ public class TowerGhostGameTest {
 		helper.succeed();
 	}
 
-	/** A shot fired past a ghost does not hit it, and one that kills it anyway lays no curse: only a blow struck in hand does. */
+	/** A shot fired past a ghost does not hit it, and one that kills it anyway costs the shooter nothing. */
 	@GameTest
-	public void onlyAHandStruckKillCursesTheKiller(final GameTestHelper helper) {
+	public void aShotThatKillsAGhostCostsTheShooterNothing(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = floor(tower);
 		ServerPlayer player = climber(helper, tower, floor);
@@ -260,13 +278,13 @@ public class TowerGhostGameTest {
 		arrow.setOwner(player);
 		arrow.snapTo(player.position());
 		ghost.hurtServer(tower, tower.damageSources().arrow(arrow, player), 1.0E30F);
-		boolean blind = player.hasEffect(MobEffects.BLINDNESS);
-		TowerTestSupport.result("ghostArrow", "shootable=" + shootable + " dead=" + !ghost.isAlive() + " blind=" + blind);
+		var effects = List.copyOf(player.getActiveEffects());
+		TowerTestSupport.result("ghostArrow", "shootable=" + shootable + " dead=" + !ghost.isAlive() + " effects=" + effects);
 		arrow.discard();
 		ghost.discard();
 		TowerTestSupport.leave(helper, player);
 		helper.assertTrue(!ghost.isAlive(), "the arrow did not kill the ghost, so the case proves nothing");
-		helper.assertFalse(shootable || blind, "a ghost can be shot=" + shootable + ", and a shot kill blinded the player=" + blind);
+		helper.assertFalse(shootable || !effects.isEmpty(), "a ghost can be shot=" + shootable + ", and a shot kill left the player with " + effects);
 		helper.succeed();
 	}
 
@@ -335,16 +353,21 @@ public class TowerGhostGameTest {
 		helper.assertTrue(ghost != null, "no ghost could be raised");
 		Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
 		zombie.setNoAi(true);
-		// Within the hall and the ghost's sense of the room, and beyond its bolt wherever near the player it
-		// drifts: halfway between its bolt's reach and its sense, less and more its drift.
-		double apart = (TowerGhosts.CAST_RANGE + TowerGhosts.FOLLOW_RANGE) / 2.0 / Math.sqrt(2.0);
+		// Within the hall, and half as far again as the ghost's bolt reaches. The ghost drifts on its own, so it is stood
+		// back at its post whenever it strays: the case is whether a monster beyond the bolt draws it, not where it wanders.
+		double apart = TowerGhosts.CAST_RANGE * 1.5 / Math.sqrt(2.0);
 		zombie.snapTo(middle.add(apart, 0.0, -apart));
 		tower.addFreshEntity(zombie);
+		Vec3 post = ghost.position();
+		helper.onEachTick(() -> {
+			if (ghost.position().distanceTo(post) > 2.0) {
+				ghost.snapTo(post.x, post.y, post.z);
+			}
+		});
 		helper.runAfterDelay(200L, () -> {
 			boolean drawn = ghost.getTarget() == zombie;
-			double fromPlayer = ghost.distanceTo(player);
 			double zombieFrom = zombie.distanceTo(ghost);
-			TowerTestSupport.result("ghostFarMonster", "drawn=" + drawn + " fromPlayer=" + (int) fromPlayer + " zombieFrom=" + (int) zombieFrom);
+			TowerTestSupport.result("ghostFarMonster", "drawn=" + drawn + " zombieFrom=" + (int) zombieFrom);
 			TowerElites.pinGuardianKind(floor, null);
 			TowerMobs.pinFloorCap(floor, null);
 			TowerGhosts.pinRiseChance(floor, null);
@@ -352,7 +375,6 @@ public class TowerGhostGameTest {
 			ghost.discard();
 			TowerTestSupport.leave(helper, player);
 			helper.assertFalse(drawn, "the ghost took a monster " + (int) zombieFrom + " blocks off, beyond its bolt, for its quarry");
-			helper.assertTrue(fromPlayer <= TowerGhosts.TEND_RANGE, "the ghost drifted " + (int) fromPlayer + " blocks from the player");
 			helper.succeed();
 		});
 	}

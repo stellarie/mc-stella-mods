@@ -83,7 +83,7 @@ public final class TowerWeather {
 		}
 	}
 
-	/** Whether no block stands over the player's head up to the floor's roof, the barrier of an open roof apart. */
+	/** Whether no block stands over the player's head up to the floor's roof, the roof itself apart: a house's beams shelter a body. */
 	static boolean inTheOpen(final ServerPlayer player, final TowerPlan plan) {
 		ServerLevel tower = (ServerLevel) player.level();
 		BlockPos head = player.blockPosition().above(2);

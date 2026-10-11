@@ -15,7 +15,9 @@
 		"GhostPhaseMixin",
 		"GhostBlowMixin",
 		"TowerTargetMixin",
-		"TowerSensorMixin"
+		"TowerSensorMixin",
+		"TowerPeaceMixin",
+		"TowerShulkerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

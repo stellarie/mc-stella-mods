@@ -37,10 +37,29 @@ public class TowerAuraGameTest {
 		return new Vec3(origin.getX() + AT_X + dx, TowerLayout.BASE_Y + 1.0, origin.getZ() + AT_Z + dz);
 	}
 
+	/**
+	 * A built floor whose safe zones keep clear of the spots these cases use. A zone sits by the arrival, which is drawn
+	 * anywhere, and a player in one is neither chilled nor hunted: on a floor that put one at the spot, a case failed
+	 * about one run in twenty with nothing wrong in the aura.
+	 */
 	private static int freshBuilt(final ServerLevel tower) {
-		int floor = TowerTestSupport.freshFloor();
-		TowerFloors.ensure(tower, floor);
-		return floor;
+		for (int tries = 0; tries < 40; tries++) {
+			int floor = TowerTestSupport.freshFloor();
+			TowerFloors.ensure(tower, floor);
+			TowerPlan plan = TowerPlan.at(tower, floor);
+			boolean clear = true;
+			for (int x = (int) AT_X - 4; x <= (int) AT_X + 12; x++) {
+				for (int z = (int) AT_Z - 12; z <= (int) AT_Z + 12; z++) {
+					for (int y = 0; y <= 3; y++) {
+						clear &= !plan.inSafeZone(x, y, z);
+					}
+				}
+			}
+			if (clear) {
+				return floor;
+			}
+		}
+		throw new IllegalStateException("no built floor keeps its safe zones off the aura cases' spots");
 	}
 
 	private static <T extends Mob> T place(final ServerLevel tower, final EntityType<T> type, final Vec3 at) {
@@ -50,6 +69,11 @@ public class TowerAuraGameTest {
 		mob.setNoGravity(true);
 		tower.addFreshEntity(mob);
 		return mob;
+	}
+
+	/** A zombie that is not the tower's: the tower's mobs spare each other, so what hits or is hunted by a tower mob here is a stranger. */
+	private static Zombie stranger(final ServerLevel tower, final Vec3 at) {
+		return place(tower, EntityTypes.ZOMBIE, at);
 	}
 
 	private static Zombie towerMob(final ServerLevel tower, final TowerElement element, final Vec3 at) {
@@ -96,7 +120,7 @@ public class TowerAuraGameTest {
 		pulse(tower, floor);
 		TowerTestSupport.result("iceSlowsPlayerInRadius", "near=" + slow(near) + " radius=" + TowerAuras.ICE_RADIUS);
 		boolean ok = slowed(near);
-		String seen = slow(near);
+		String seen = slow(near) + " sheltered=" + TowerSafety.sheltered(near) + " zones=" + TowerPlan.at(tower, floor).safeZones();
 		ice.discard();
 		TowerTestSupport.leave(helper, near);
 		helper.assertTrue(ok, "a player inside the mist was not slowed: " + seen);
@@ -294,7 +318,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.WIND, spot(floor, 1, 0));
+		Zombie foe = stranger(tower, spot(floor, 1, 0));
 		double base = armor(dark);
 		int hits = 3;
 		for (int i = 0; i < hits; i++) {
@@ -313,7 +337,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.WIND, spot(floor, 1, 0));
+		Zombie foe = stranger(tower, spot(floor, 1, 0));
 		double base = armor(dark);
 		for (int i = 0; i < TowerAuras.DARK_STACK_CAP + 5; i++) {
 			hit(tower, dark, foe, 1.0F);
@@ -331,7 +355,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie wind = towerMob(tower, TowerElement.WIND, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.LIGHTNING, spot(floor, 1, 0));
+		Zombie foe = stranger(tower, spot(floor, 1, 0));
 		double base = armor(wind);
 		for (int i = 0; i < 3; i++) {
 			hit(tower, wind, foe, 1.0F);
@@ -350,7 +374,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.WIND, spot(floor, 1, 0));
+		Zombie foe = stranger(tower, spot(floor, 1, 0));
 		double base = armor(dark);
 		for (int i = 0; i < TowerAuras.DARK_STACK_CAP; i++) {
 			hit(tower, dark, foe, 1.0F);
@@ -390,7 +414,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.WIND, spot(floor, 1, 0));
+		Zombie foe = stranger(tower, spot(floor, 1, 0));
 		for (int i = 0; i < 4; i++) {
 			hit(tower, dark, foe, 1.0F);
 		}
@@ -604,7 +628,7 @@ public class TowerAuraGameTest {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie bolt = towerMob(tower, TowerElement.LIGHTNING, spot(floor, 0, 0));
-		Zombie foe = towerMob(tower, TowerElement.WIND, spot(floor, 3, 0));
+		Zombie foe = stranger(tower, spot(floor, 3, 0));
 		double base = bolt.getAttributeValue(Attributes.MOVEMENT_SPEED);
 		bolt.setTarget(foe);
 		pulse(tower, floor);
@@ -670,18 +694,20 @@ public class TowerAuraGameTest {
 		for (TowerElement element : TowerElement.values()) {
 			Zombie mob = towerMob(tower, element, spot(floor, 0, 0));
 			Zombie other = towerMob(tower, TowerElement.HOLY == element ? TowerElement.FIRE : TowerElement.WIND, spot(floor, 1, 0));
+			Zombie stranger = stranger(tower, spot(floor, 2, 0));
 			Pig target = victim(tower, floor, 1.5);
 			Zombie hurtKin = hurt(other);
 			hurt(mob);
-			mob.setTarget(other);
+			mob.setTarget(stranger);
 			List<ParticleOptions> seen = recordFrom(java.util.Set.of(mob, target), () -> {
 				// A pulse for the ambient elements, a hit for the on-hit ones and Dark.
 				TowerAuras.pulse(tower, floor, TowerAuras.HOLY_INTERVAL_TICKS * 3);
 				hit(tower, target, mob, 1.0F);
-				hit(tower, mob, other, 1.0F);
+				hit(tower, mob, stranger, 1.0F);
 			});
 			mob.discard();
 			other.discard();
+			stranger.discard();
 			target.discard();
 			for (ParticleOptions particle : want.get(element)) {
 				if (!seen.contains(particle)) {

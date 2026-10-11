@@ -118,7 +118,8 @@ public class TowerDaisGameTest {
 		helper.assertTrue(complete && jumps == 0, "the walk skips a height: " + heights);
 		List<BlockPos> wisp = TowerWisps.path(tower, floor, BlockPos.containing(plan.arrivalPos()));
 		int top = wisp.stream().mapToInt(step -> step.getY() - TowerLayout.BASE_Y).max().orElse(-1);
-		helper.assertTrue(!wisp.isEmpty() && top == s, "the wisp's way from the arrival peaks at " + top + ", not " + s);
+		// The ground rises in hills now, so the way from the arrival may cross higher ground than the stair: it climbs at least the stair.
+		helper.assertTrue(!wisp.isEmpty() && top >= s, "the wisp's way from the arrival peaks at " + top + ", under the stair's " + s);
 		helper.succeed();
 	}
 

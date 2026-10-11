@@ -47,8 +47,32 @@ Every floor whose number is a multiple of ten is the great hall (`FloorBiome.GRE
 | Sunken catacombs | closed | rooms from a partition, halls, flooded rooms, a low roof |
 | Great hall | closed | a vault, pillars, pews, galleries, an 8-step apse stair |
 
-An open roof is a barrier layer at y 32 over the room (the sky shows the fog colour). Each biome has a data biome
-`tower_<id>` for its fog and air, painted over the floor's chunks as it is built (`TowerBiomes`).
+No floor shows a sky. An open biome has open ground under a solid stone roof at y 32, over every column of the room;
+each biome roofs in its own stone, two or three kinds in patches three blocks across (`BiomeRoof`: deepslate, tuff and
+moss over the forest; packed mud over the marsh; packed ice and snow over the snowstorm; sandstone over the desert; and
+so on). A closed biome keeps the tower's wall for a roof. Each biome has a data biome `tower_<id>` for its fog and air,
+painted over the floor's chunks as it is built (`TowerBiomes`).
+
+### Hills and cover
+
+An open floor is not flat and not bare. The mobs rise on it from the first tick, so a player who lands must not stand in
+every mob's sight.
+
+- Hills: three to five per floor, two to six blocks high, eight to fourteen across, on a smooth curve
+  (`BiomeGen.Work.hills`). The first is the tallest. They keep off the arrival and the portal, whose ground is flat. Water
+  and lava keep off them. A draw whose ground rises under four blocks is drawn again.
+- Cover (`BiomeCover`): six to twelve pieces, eleven blocks apart at least and ten from the arrival, on level ground clear
+  of the road and the stair, in the biome's own stone. Broken towers stand nine to twenty blocks high, hollow, with a
+  door, windows, rubble and the stump of a floor. Ruined houses are timber on a course of stone, three or four blocks high,
+  with a doorway, windows, a chimney and roof beams over the part that still has walls. Broken walls run eight to sixteen
+  blocks, torn through in one or two places. A draw with fewer than six pieces is drawn again.
+- Placement: on a biome floor `TowerMobs.placeInRoom` passes over a spot in sight of a player in its first
+  `HIDDEN_TRIES` tries, and takes any spot after, so a floor with no hiding place is still stocked.
+- Light: every spot a body reaches still has a light within six blocks. Bare ground gets a lantern on a fence post. Over
+  cover, a wall's top or a beam, the top block is made a light of its own height (shroomlight, sea lantern or glowstone,
+  `BiomeGen.Work.glow`): a post there would be a step and open ground that was out of reach. Lights are laid on the floor
+  with its chests in, since a chest is a step too, and again for ground the first round opened; a spot no light reaches
+  has the block under it made a light.
 
 ### The portal
 
@@ -98,7 +122,7 @@ ground past the stair's foot.
 
 ### Manual acceptance
 
-Climb ten floors and judge the variety, the marsh fog, the storms, the open-roof sky, the portal and its stair, the
+Climb ten floors and judge the variety, the marsh fog, the storms, the roofs, the hills and the cover, the portal and its stair, the
 particle load, the lights and floor 50's boss. The rain loop sound is not in the rainy forest's biome file yet.
 
 ## Tower remake, stage 1: stories and archetypes
@@ -164,7 +188,8 @@ Measured in the 2026-10-05 GameTest run (`reachesOver500Plans`, `built*`, `build
 - Floors are built ahead of the climb in the background, a little each tick, after their chunks load:
   lighting a portal outside starts floor 1, and arriving on a floor starts the one above. A floor needed
   before it is done is finished on the spot.
-- Chorus fruit, endermen and shulkers cannot teleport out of the room they are in.
+- Chorus fruit and endermen cannot teleport out of the room they are in. A shulker teleports only inside its floor's room
+  and no higher than 14 blocks over the base (`TowerShulkerMixin`).
 - Entering the tower by any road, portal, mount or ender pearl, records the way back and gives a Void
   Key, unless one is held or kept in the ender chest. Used inside the tower, the key returns the player
   beside the portal they entered by, or where they threw the pearl.
@@ -182,8 +207,8 @@ Measured in the 2026-10-05 GameTest run (`reachesOver500Plans`, `built*`, `build
 - Mobs start at least 12 blocks from every player and from the arrival spot.
 - Floors 1 to 20 hold overworld hostiles only, no witches: zombie, skeleton, spider, creeper, husk,
   stray, cave spider, pillager, vindicator. From floor 21 witches, blazes, wither skeletons, piglin brutes,
-  magma cubes, hoglins, endermen and endermites join. Ghasts do not fit an eight-block room, and shulkers
-  teleport by a road no room can close.
+  magma cubes, hoglins, endermen, breezes and shulkers join. Ghasts do not fit an eight-block room. No floor
+  raises endermites.
 - Tower mobs never take a floor's portal; only players, and what they ride, climb.
 - Piglins and hoglins never zombify in the tower. A tower mob that becomes another (a split magma cube)
   stays a tower mob of its floor, at its floor's strength.
@@ -377,7 +402,7 @@ through the far door (+8, the maze). Measured with that rule put back: the case 
 
 - A void shaman never takes a sheltered player as its quarry: `TowerShamans.think` picks the nearest player who is not
   a spectator, not in creative and not `TowerSafety.sheltered`, and drops a held target that is sheltered. The other
-  direct player picks (ghost healing and following, elite bars, wisps, traps, growth) do not attack a player through a
+  direct player picks (ghost healing, elite bars, wisps, traps, growth) do not attack a player through a
   mob and were left alone.
 - `TowerSafety.sheltered` never loads a chunk: it asks `TowerPlan.atQuiet`, which with the markers' chunk not loaded
   serves the remembered built version (or the current plan). Its answer is kept per player, per server tick and per
@@ -678,3 +703,27 @@ show seams where its chunks differ.
 | Void | Hits shred 2% of target armor, up to INT / 5%. | INT / 20% magic resistance (cap 30). |
 | Holy | Heal VIT / 10% of damage dealt, double against undead. | VIT / 5% less damage from undead (cap 60). |
 | Dark | +STR / 5% damage to targets below 30% health. | Attackers get Weakness I for LUK / 20 s (min 1 s). |
+
+## Enclosed floors, packs of ghosts, and the tower's peace
+
+- Roofs, hills and cover: see "Hills and cover" above. Every column of every floor has a solid, opaque block at y 32.
+- Pools: endermites are out; breezes and shulkers are in. A biome raises them where they fit: breezes over wind and
+  ruin (forest, village, castle, graveyard, battlefield, snowstorm, desert, cave, catacombs), shulkers in stone
+  (village, castle, graveyard, battlefield, desert, cave, catacombs).
+- Ghosts rise as a pack of 3 (`TowerGhosts.raisePack`), one pack for a floor with a player on it. The pack's id is
+  an entity tag (`mod-stella-tower.ghost_pack:<id>`); its leader is its living ghost with the lowest UUID
+  (`TowerGhosts.leaderOf`), so the next takes over when one falls. The leader wanders (`PackWanderGoal`); the rest keep
+  within 3 blocks of it, and never stray beyond 6 (`KeepWithPackGoal`). A ghost flies at 0.6 of the pace a lone ghost
+  had. No ghost follows a player. A ghost never takes a player for its quarry and never hurts one. It casts at the
+  tower's mobs, mends and strengthens the players it drifts past, and costs its killer nothing. A hand-struck kill may
+  still leave a ghost rune.
+- Peace (`TowerPeace`, `TowerPeaceMixin`, `TowerTargetMixin`, `TowerSensorMixin`): a tower mob never takes another for
+  its target and no hit of one lands on another, whether it is a swing, an arrow, a wind charge or a creeper's blast. A
+  ghost is a tower mob by record but not by side: it hurts the tower's mobs and they may hit back.
+
+### Manual acceptance (enclosed floors)
+
+- Land on a few floors of different biomes. Judge the roofs (no sky, no gap), the hills, whether the cover is believable
+  and in the biome's stone, and whether most mobs stay out of sight until you come near.
+- Watch a ghost pack: three drift slowly together, none comes to you, they hurt the mobs and not you.
+- See a breeze and a shulker. Let a shulker teleport: it stays on its floor.

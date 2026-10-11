@@ -52,14 +52,6 @@ public class TowerMobRulesGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
-	public void noShulkerJoinsTheTower(final GameTestHelper helper) {
-		boolean shulker = TowerMobs.pool(TowerMobs.OVERWORLD_ONLY_UNTIL + 1).contains(EntityTypes.SHULKER);
-		TowerTestSupport.result("noShulker", "shulker=" + shulker);
-		helper.assertFalse(shulker, "shulkers, which teleport out of a room, are in the tower's pool");
-		helper.succeed();
-	}
-
 	/**
 	 * A tower hoglin that stays one, watched for the zombify timer a hoglin carries.
 	 * <p>
