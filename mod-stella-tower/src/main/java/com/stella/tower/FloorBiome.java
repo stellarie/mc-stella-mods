@@ -9,7 +9,7 @@ import net.minecraft.world.level.biome.Biome;
  * ({@link FloorBiomes}). Each has a data biome of the same name, which holds its fog and its air.
  */
 public enum FloorBiome {
-	/** Open to a barrier roof: grass and mud, streams, tall trees, a ruined shrine, camps. */
+	/** Open ground under a stone roof: grass and mud, streams, tall trees, a ruined shrine, camps. */
 	RAINY_FOREST("rainy_forest", true, TowerSkin.MOSSY_STONE_BRICKS, true),
 	/** Roads and ruined houses, wells, farms and burnt trunks. */
 	DESTROYED_VILLAGE("destroyed_village", true, TowerSkin.COBBLESTONE, true),
@@ -70,7 +70,7 @@ public enum FloorBiome {
 		return this.id;
 	}
 
-	/** Whether the room's roof is a barrier, so the sky shows through, rather than a wall. */
+	/** Whether the floor is open ground under a roof of the biome's own stone ({@link BiomeRoof}), with hills and cover, rather than rock all through under the tower's wall. */
 	public boolean openRoof() {
 		return this.openRoof;
 	}

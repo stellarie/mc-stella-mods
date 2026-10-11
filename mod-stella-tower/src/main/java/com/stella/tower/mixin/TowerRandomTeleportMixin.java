@@ -1,8 +1,6 @@
 package com.stella.tower.mixin;
 
-import com.stella.tower.TowerLayout;
-import com.stella.tower.TowerPlan;
-import com.stella.tower.TowerTravel;
+import com.stella.tower.TowerMobs;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
@@ -13,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Chorus fruit, endermen and shulkers teleport at random; in the tower a random teleport may only land in
- * the room it starts from, never on its roof or in another floor.
+ * Chorus fruit and endermen teleport at random; in the tower a random teleport may only land in the room it starts
+ * from, never on its roof or in another floor. A shulker teleports by its own road: see {@link TowerShulkerMixin}.
  */
 @Mixin(LivingEntity.class)
 public abstract class TowerRandomTeleportMixin {
@@ -23,15 +21,7 @@ public abstract class TowerRandomTeleportMixin {
 		final double x, final double y, final double z, final boolean particles, final Predicate<BlockState> avoid,
 		final CallbackInfoReturnable<Boolean> cir
 	) {
-		LivingEntity self = (LivingEntity) (Object) this;
-		if (!self.level().dimension().equals(TowerTravel.TOWER)) {
-			return;
-		}
-		int floor = TowerLayout.floorAt(self.blockPosition());
-		BlockPos target = BlockPos.containing(x, y, z);
-		boolean inRoom = floor > 0 && TowerLayout.floorAt(target) == floor && target.getY() >= TowerLayout.BASE_Y
-			&& target.getY() < TowerLayout.BASE_Y + TowerPlan.atQuiet((net.minecraft.server.level.ServerLevel) self.level(), floor).roofY();
-		if (!inRoom) {
+		if (!TowerMobs.mayLandAt((LivingEntity) (Object) this, BlockPos.containing(x, y, z), Integer.MAX_VALUE)) {
 			cir.setReturnValue(false);
 		}
 	}

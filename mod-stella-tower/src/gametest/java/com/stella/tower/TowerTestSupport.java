@@ -224,6 +224,30 @@ final class TowerTestSupport {
 		}
 	}
 
+	/** The arena's platform stands this high over the base, clear of the hills and the cover. */
+	private static final int ARENA_HEIGHT = 8;
+
+	/**
+	 * A level stone platform {@code 2 * half + 1} blocks square in a floor's room, eight blocks up and clear of the
+	 * ground's cover, with open air over it. Returns the spot at its middle where a body stands, so a case that sets
+	 * mobs against each other builds its own arena. A floor with a safe zone is the wrong floor: its sweep sends a tower
+	 * mob that stands in the zone out of it.
+	 */
+	static Vec3 arena(final ServerLevel tower, final int floor, final int half) {
+		BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, ARENA_HEIGHT, TowerLayout.SIZE / 2);
+		// Held as the spawner holds a floor, so the mobs in the arena are ticked and a shot flies.
+		tower.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL, net.minecraft.world.level.ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
+		for (int dx = -half; dx <= half; dx++) {
+			for (int dz = -half; dz <= half; dz++) {
+				tower.setBlock(middle.offset(dx, 0, dz), Blocks.STONE.defaultBlockState(), 2);
+				for (int dy = 1; dy <= 7; dy++) {
+					tower.setBlock(middle.offset(dx, dy, dz), Blocks.AIR.defaultBlockState(), 2);
+				}
+			}
+		}
+		return Vec3.atBottomCenterOf(middle.above());
+	}
+
 	/** Holds the chunks around a spot loaded, so what spawns there is seen. A portal ticket lapses after 300 ticks. */
 	static void holdRoom(final ServerLevel tower, final Vec3 at) {
 		tower.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.PORTAL,

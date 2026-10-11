@@ -14,10 +14,13 @@ import net.minecraft.core.Direction;
  * adds its own features to it.
  * <ol>
  * <li>The ends: the portal on one side, entered along x, and the arrival on the other.</li>
- * <li>The ground: the biome's heights, kept to one step between columns, with the portal's stair stamped flat.</li>
+ * <li>The ground: the biome's heights, and on an open floor three to five hills ({@link Work#hills}), kept to one step
+ * between columns, with the portal's stair stamped flat.</li>
  * <li>The spine: a winding road, three blocks wide, from the arrival to the stair's foot. It clears whatever stands
  * on it, so a body can always walk it.</li>
- * <li>The features: the biome's own set pieces, each keeping off the spine, the stair and the arrival.</li>
+ * <li>The cover, on an open floor: broken towers, ruined houses and broken walls ({@link BiomeCover}), set down first so
+ * the features grow round them.</li>
+ * <li>The features: the biome's own set pieces, each keeping off the spine, the stair, the arrival and the cover.</li>
  * <li>The finish: chest nooks, a light over every spot a body reaches, and the spine drawn clear again.</li>
  * </ol>
  * A draw is proved by a walk from the arrival to the portal over the whole volume ({@link TowerPlan#finish}); a draw
@@ -46,6 +49,11 @@ final class BiomeGen {
 	private static final int LIGHT_REACH_SQUARED = 30;
 	/** The reach the lamp rule asks of the floor's lights, in blocks. */
 	static final int LIGHT_REACH = 6;
+	/** The least an open floor's ground rises, its highest dry column over its lowest, and the most a hill lifts it. */
+	static final int MIN_RISE = 4;
+	/** The most times the floor's lights are laid: the posts, then the blocks made lights for the ground the posts opened. */
+	private static final int LIGHT_ROUNDS = 3;
+	private static final int HILL_CAP = 8;
 
 	private BiomeGen() {
 	}
@@ -82,6 +90,13 @@ final class BiomeGen {
 		w.terrain(features);
 		w.prepare();
 		if (features) {
+			if (biome.openRoof()) {
+				// The cover is set down first, so the biome's own features grow round it. A draw too crowded for it is drawn again.
+				BiomeCover.place(w);
+				if (w.cover.size() < BiomeCover.LEAST) {
+					return null;
+				}
+			}
 			switch (biome) {
 				case RAINY_FOREST -> w.rainyForest();
 				case DESTROYED_VILLAGE -> w.village();
@@ -97,6 +112,10 @@ final class BiomeGen {
 				case SUNKEN_CATACOMBS -> w.catacombs();
 				case GREAT_HALL -> w.hall();
 			}
+			if (biome.openRoof() && w.rise() < MIN_RISE) {
+				// A draw with no hill left to climb is drawn again.
+				return null;
+			}
 		}
 		w.nooks();
 		w.clearSpine();
@@ -106,9 +125,24 @@ final class BiomeGen {
 		if (!volume.reaches(first)) {
 			return null;
 		}
-		w.lights(first.withStands(volume), volume);
+		// The lights are laid on the floor as it will stand, chests in: a chest is a step, and opens ground that was out of reach.
+		// A post can do the same, so the later rounds make blocks lights and set no post; they open nothing, and two rounds are enough.
+		first = withChests(first, volume);
+		volume = TowerVolume.of(first);
+		for (int round = 0; round < LIGHT_ROUNDS && w.lights(first.withStands(volume), volume, round > 0); round++) {
+			TowerPlan bare = w.assemble(attempt, w.draft());
+			first = withChests(bare, TowerVolume.of(bare));
+			volume = TowerVolume.of(first);
+		}
 		w.trimCacti();
 		return w.assemble(attempt, w.draft());
+	}
+
+	/** The plan with the chests that {@link TowerPlan#finish} will give it, as it will place them; the plan itself if none fit. */
+	private static TowerPlan withChests(final TowerPlan plan, final TowerVolume volume) {
+		TowerPlan read = plan.withStands(volume);
+		java.util.List<TowerPlan.ChestSpot> spots = TowerChestSpots.place(read, volume);
+		return spots == null ? plan : read.withChestSpots(spots);
 	}
 
 	// ------------------------------------------------------------------ noise
@@ -149,7 +183,7 @@ final class BiomeGen {
 
 	// ------------------------------------------------------------------ the working floor
 
-	private static final class Work {
+	static final class Work {
 		final long seed;
 		final int floor;
 		final FloorBiome biome;
@@ -185,6 +219,8 @@ final class BiomeGen {
 		int boxZ1;
 		List<int[]> spine = new ArrayList<>();
 		final List<int[]> nooks = new ArrayList<>();
+		/** The floor's cover, one row each as {@link BiomeDraft#cover()} holds it. */
+		final List<int[]> cover = new ArrayList<>();
 
 		Work(final long seed, final int floor, final FloorBiome biome, final Random random) {
 			this.seed = seed;
@@ -384,6 +420,57 @@ final class BiomeGen {
 					}
 				}
 			}
+			if (features && this.biome.openRoof()) {
+				hills();
+			}
+		}
+
+		/**
+		 * Raises three to five hills on an open floor, two to six blocks high, eight to fourteen across, their flanks
+		 * a smooth curve. The first is the tallest. Each keeps off the arrival and the portal, whose ground is levelled
+		 * after, so the way in and the way out stay flat and a hill's foot meets them in steps.
+		 */
+		void hills() {
+			int count = 3 + this.random.nextInt(3);
+			for (int i = 0; i < count; i++) {
+				int cx = 0;
+				int cz = 0;
+				for (int tries = 0; tries < 30; tries++) {
+					cx = 8 + this.random.nextInt(N - 16);
+					cz = 8 + this.random.nextInt(N - 16);
+					if (Math.hypot(cx - this.ax, cz - this.az) >= 16.0 && Math.hypot(cx - this.px, cz - this.pz) >= 16.0) {
+						break;
+					}
+				}
+				double rx = 8 + this.random.nextInt(7);
+				double rz = 8 + this.random.nextInt(7);
+				double top = i == 0 ? 5 + this.random.nextInt(2) : 2 + this.random.nextInt(5);
+				for (int x = Math.max(0, (int) (cx - rx)); x <= Math.min(N - 1, (int) (cx + rx)); x++) {
+					for (int z = Math.max(0, (int) (cz - rz)); z <= Math.min(N - 1, (int) (cz + rz)); z++) {
+						double dx = (x - cx) / rx;
+						double dz = (z - cz) / rz;
+						double edge = 1.0 - (dx * dx + dz * dz);
+						if (edge > 0.0) {
+							this.h[x][z] = Math.min(HILL_CAP, this.h[x][z] + (int) Math.round(top * edge * edge * (3.0 - 2.0 * edge)));
+						}
+					}
+				}
+			}
+		}
+
+		/** The ground's rise: its highest dry column less its lowest. */
+		int rise() {
+			int low = Integer.MAX_VALUE;
+			int high = Integer.MIN_VALUE;
+			for (int x = 0; x < N; x++) {
+				for (int z = 0; z < N; z++) {
+					if (!this.water[x][z] && !this.lava[x][z]) {
+						low = Math.min(low, this.h[x][z]);
+						high = Math.max(high, this.h[x][z]);
+					}
+				}
+			}
+			return high - low;
 		}
 
 		/** The zone the arrival sits in on floor 1: eight blocks square, kept inside the room. */
@@ -766,7 +853,7 @@ final class BiomeGen {
 		}
 
 		void wet(final int x, final int z) {
-			if (free(x, z)) {
+			if (free(x, z) && this.h[x][z] <= 1) {
 				this.water[x][z] = true;
 				this.h[x][z] = -1;
 				this.surface[x][z] = BiomeBlocks.MUD;
@@ -1294,7 +1381,7 @@ final class BiomeGen {
 		void jungle() {
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
-					if (in(x, z, 1) && vnoise(this.seed, x, z, 9, 5) < 0.26 && free(x, z, 1)) {
+					if (in(x, z, 1) && vnoise(this.seed, x, z, 9, 5) < 0.26 && this.h[x][z] <= 1 && free(x, z, 1)) {
 						this.water[x][z] = true;
 						this.h[x][z] = -1;
 						this.surface[x][z] = BiomeBlocks.MUD;
@@ -1332,7 +1419,7 @@ final class BiomeGen {
 		void marsh() {
 			for (int x = 0; x < N; x++) {
 				for (int z = 0; z < N; z++) {
-					if (in(x, z, 1) && vnoise(this.seed, x, z, 10, 4) < 0.34 && free(x, z, 1)) {
+					if (in(x, z, 1) && vnoise(this.seed, x, z, 10, 4) < 0.34 && this.h[x][z] <= 1 && free(x, z, 1)) {
 						this.water[x][z] = true;
 						this.h[x][z] = -1;
 						this.surface[x][z] = BiomeBlocks.MUD;
@@ -2100,10 +2187,12 @@ final class BiomeGen {
 		// ---- light
 
 		/**
-		 * Sets a lantern on a fence post wherever a spot a body reaches has none within reach, greedily, the post
-		 * standing at the spot nearby that lights the most. The posts change no ground, and the walk is proved again after.
+		 * Lights every spot a body reaches that has no light within reach, greedily, from the spot nearby that lights the most:
+		 * a lantern on a fence post on bare ground, or the top block of built stone made a light of the same height. A spot
+		 * neither can light has the block under it made a light. Returns whether it set any light. A post is a step, and may
+		 * open ground that was out of reach, so a later round ({@code again}) sets no post and counts the lights already there.
 		 */
-		void lights(final TowerPlan plan, final TowerVolume volume) {
+		boolean lights(final TowerPlan plan, final TowerVolume volume, final boolean again) {
 			int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
 			List<int[]> stands = new ArrayList<>();
 			for (int x = 0; x < N; x++) {
@@ -2116,6 +2205,25 @@ final class BiomeGen {
 				}
 			}
 			boolean[] lit = new boolean[stands.size()];
+			boolean placed = false;
+			if (again) {
+				// A later round counts the lights the floor already holds, so it lights only what an earlier round left dark.
+				List<int[]> lamps = new ArrayList<>();
+				for (int x = 0; x < N; x++) {
+					for (int z = 0; z < N; z++) {
+						for (int y = TowerLayout.ROOM_LOW; y < TowerLayout.ROOM_HEIGHT; y++) {
+							if (volume.kind(x, y, z) == TowerVolume.BIOME_BLOCK && BiomeBlocks.lights(volume.code(x, y, z))) {
+								lamps.add(new int[] {x, y, z});
+							}
+						}
+					}
+				}
+				for (int i = 0; i < stands.size(); i++) {
+					for (int[] lamp : lamps) {
+						lit[i] |= squared(lamp, stands.get(i)) <= LIGHT_REACH_SQUARED;
+					}
+				}
+			}
 			for (int i = 0; i < stands.size(); i++) {
 				if (lit[i]) {
 					continue;
@@ -2129,42 +2237,118 @@ final class BiomeGen {
 						for (int dz = -reach; dz <= reach; dz++) {
 							int x = spot[0] + dx;
 							int z = spot[2] + dz;
-							if (!in(x, z, 2) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z] || this.tall[x][z]
-								|| !postable(plan, x, z)) {
+							if (!in(x, z, pass == 0 ? 2 : 1) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z]) {
 								continue;
 							}
-							// A lamp in the water is a sea lantern at the feet level; on land a lantern on a post.
-							int[] lamp = {x, this.h[x][z] + (this.water[x][z] ? 0 : 1), z};
-							if (squared(lamp, spot) > LIGHT_REACH_SQUARED) {
-								continue;
+							// A lamp in the water is a sea lantern at the feet level; on bare land a lantern on a post. Over stone built on the
+							// ground, a wall's top or a beam, the top block is made a light of the same height, which is no step: a lantern on
+							// the top would be one, and would open ground that was out of reach. A column may give both.
+							int top = highest(x, z);
+							List<int[]> options = new ArrayList<>(2);
+							if (!again && !this.tall[x][z] && postable(plan, x, z)) {
+								options.add(new int[] {x, this.h[x][z] + (this.water[x][z] ? 0 : 1), z, 0});
 							}
-							int covers = 0;
-							for (int j = 0; j < stands.size(); j++) {
-								covers += !lit[j] && squared(lamp, stands.get(j)) <= LIGHT_REACH_SQUARED ? 1 : 0;
+							if (top >= 0 && !onTheGround(x, z, top) && restsOn(get(x, top, z))) {
+								options.add(new int[] {x, top, z, 1});
 							}
-							if (covers > gain) {
-								gain = covers;
-								best = lamp;
+							for (int[] lamp : options) {
+								if (squared(lamp, spot) > LIGHT_REACH_SQUARED) {
+									continue;
+								}
+								int covers = 0;
+								for (int j = 0; j < stands.size(); j++) {
+									covers += !lit[j] && squared(lamp, stands.get(j)) <= LIGHT_REACH_SQUARED ? 1 : 0;
+								}
+								if (covers > gain) {
+									gain = covers;
+									best = lamp;
+								}
 							}
 						}
 					}
 				}
 				}
 				if (best == null) {
+					// No post or top to light it from: the block it stands on is made a light, which is no step.
+					best = lightBeneath(plan, spot);
+					if (best == null) {
+						continue;
+					}
+					placed = true;
+					for (int j = 0; j < stands.size(); j++) {
+						lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
+					}
 					continue;
 				}
-				if (this.water[best[0]][best[2]]) {
+				if (best[3] == 1) {
+					put(best[0], best[1], best[2], glow());
+				} else if (this.water[best[0]][best[2]]) {
 					put(best[0], best[1], best[2], BiomeBlocks.SEA_LANTERN);
 				} else {
 					// Nether brick does not burn beside lava; a soul lantern does not melt the snow.
 					put(best[0], best[1] - 1, best[2], this.biome == FloorBiome.BASALT_DELTAS ? BiomeBlocks.NETHER_BRICK_FENCE : BiomeBlocks.FENCE);
 					put(best[0], best[1], best[2], this.biome == FloorBiome.ETERNAL_SNOWSTORM ? BiomeBlocks.SOUL_LANTERN : BiomeBlocks.LANTERN);
 				}
-				this.tall[best[0]][best[2]] = true;
+				if (best[3] == 0) {
+					this.tall[best[0]][best[2]] = true;
+				}
+				placed = true;
 				for (int j = 0; j < stands.size(); j++) {
 					lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
 				}
 			}
+			return placed;
+		}
+
+		/**
+		 * Makes the block under a spot a light of its own height: an overlay block, or the ground's surface. Returns the light's
+		 * place, or null where the block cannot be changed (a safe zone, the stair, water or lava).
+		 */
+		private int[] lightBeneath(final TowerPlan plan, final int[] spot) {
+			int x = spot[0];
+			int y = spot[1];
+			int z = spot[2];
+			if (plan.inSafeZone(x, y, z) || this.daisBlock[x][z] || this.keep[x][z] == 2 || this.water[x][z] || this.lava[x][z]) {
+				return null;
+			}
+			if (y - 1 >= this.h[x][z] && get(x, y - 1, z) != 0) {
+				put(x, y - 1, z, glow());
+				return new int[] {x, y - 1, z, 1};
+			}
+			if (y - 1 == this.h[x][z] - 1) {
+				this.surface[x][z] = glow();
+				return new int[] {x, y - 1, z, 1};
+			}
+			return null;
+		}
+
+		/** The block a wall's top is made when it is lit: shroomlight where things grow, sea lantern in the ice, glowstone elsewhere. */
+		private byte glow() {
+			return switch (this.biome) {
+				case RAINY_FOREST, JUNGLE, MISTBOUND_MARSH -> BiomeBlocks.SHROOMLIGHT;
+				case ETERNAL_SNOWSTORM -> BiomeBlocks.SEA_LANTERN;
+				default -> BiomeBlocks.GLOWSTONE;
+			};
+		}
+
+		/** The height of the highest block built in a column over its ground, or -1 when the column holds none. */
+		private int highest(final int x, final int z) {
+			for (int y = TowerLayout.ROOM_HEIGHT - 2; y >= this.h[x][z]; y--) {
+				if (get(x, y, z) != 0) {
+					return y;
+				}
+			}
+			return -1;
+		}
+
+		/** Whether a column stands bare for a post: nothing built in it, or only a floor prop the post may replace. */
+		private boolean onTheGround(final int x, final int z, final int top) {
+			return top < 0 || top == this.h[x][z] && BiomeBlocks.isProp(get(x, top, z));
+		}
+
+		/** Whether a post may stand on a block: one a body stands on, a wall or a leaf, and no prop, light or cactus. */
+		private static boolean restsOn(final byte code) {
+			return BiomeBlocks.walk(code) == TowerWalk.SOLID && !BiomeBlocks.isProp(code) && !BiomeBlocks.lights(code) && code != BiomeBlocks.CACTUS;
 		}
 
 		/** Whether a post may stand in a column: free ground, or a floor prop it may replace. */
@@ -2234,7 +2418,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			return new BiomeDraft(this.biome, feet, surface, water, lava, fragile, this.ceil == null ? null : ceiling, this.ceil == null ? null : ceilCodes, placed, null, this.steps);
+			return new BiomeDraft(this.biome, feet, surface, water, lava, fragile, this.ceil == null ? null : ceiling, this.ceil == null ? null : ceilCodes, placed, null, this.steps, this.cover.toArray(new int[0][]));
 		}
 
 		TowerPlan assemble(final int attempt, final BiomeDraft draft) {

@@ -12,15 +12,15 @@ import net.minecraft.world.entity.Mob;
  */
 public final class BiomePools {
 	private static final List<EntityType<? extends Mob>> RAINY_FOREST = List.of(EntityTypes.ZOMBIE, EntityTypes.SKELETON, EntityTypes.SPIDER,
-		EntityTypes.CREEPER, EntityTypes.WITCH, EntityTypes.VINDICATOR, EntityTypes.BOGGED);
+		EntityTypes.CREEPER, EntityTypes.WITCH, EntityTypes.VINDICATOR, EntityTypes.BOGGED, EntityTypes.BREEZE);
 	private static final List<EntityType<? extends Mob>> DESTROYED_VILLAGE = List.of(EntityTypes.ZOMBIE, EntityTypes.ZOMBIE_VILLAGER,
-		EntityTypes.HUSK, EntityTypes.SKELETON, EntityTypes.PILLAGER, EntityTypes.VINDICATOR, EntityTypes.WITCH);
+		EntityTypes.HUSK, EntityTypes.SKELETON, EntityTypes.PILLAGER, EntityTypes.VINDICATOR, EntityTypes.WITCH, EntityTypes.BREEZE, EntityTypes.SHULKER);
 	private static final List<EntityType<? extends Mob>> DESTROYED_CASTLE = List.of(EntityTypes.SKELETON, EntityTypes.WITHER_SKELETON,
-		EntityTypes.VINDICATOR, EntityTypes.PILLAGER, EntityTypes.ZOMBIE, EntityTypes.WITCH);
+		EntityTypes.VINDICATOR, EntityTypes.PILLAGER, EntityTypes.ZOMBIE, EntityTypes.WITCH, EntityTypes.BREEZE, EntityTypes.SHULKER);
 	private static final List<EntityType<? extends Mob>> ADVENTURERS_GRAVEYARD = List.of(EntityTypes.SKELETON, EntityTypes.WITHER_SKELETON,
-		EntityTypes.ZOMBIE, EntityTypes.STRAY, EntityTypes.VINDICATOR, EntityTypes.WITCH);
+		EntityTypes.ZOMBIE, EntityTypes.STRAY, EntityTypes.VINDICATOR, EntityTypes.WITCH, EntityTypes.BREEZE, EntityTypes.SHULKER);
 	private static final List<EntityType<? extends Mob>> SCORCHED_BATTLEFIELD = List.of(EntityTypes.SKELETON, EntityTypes.WITHER_SKELETON,
-		EntityTypes.ZOMBIE, EntityTypes.VINDICATOR, EntityTypes.BLAZE, EntityTypes.PIGLIN_BRUTE, EntityTypes.PILLAGER);
+		EntityTypes.ZOMBIE, EntityTypes.VINDICATOR, EntityTypes.BLAZE, EntityTypes.PIGLIN_BRUTE, EntityTypes.PILLAGER, EntityTypes.BREEZE, EntityTypes.SHULKER);
 	private static final List<EntityType<? extends Mob>> JUNGLE = List.of(EntityTypes.SPIDER, EntityTypes.CAVE_SPIDER, EntityTypes.CREEPER,
 		EntityTypes.VINDICATOR, EntityTypes.PILLAGER, EntityTypes.BOGGED, EntityTypes.ZOMBIE);
 	private static final List<EntityType<? extends Mob>> MISTBOUND_MARSH = List.of(EntityTypes.BOGGED, EntityTypes.DROWNED, EntityTypes.ZOMBIE,
@@ -28,13 +28,13 @@ public final class BiomePools {
 	private static final List<EntityType<? extends Mob>> BASALT_DELTAS = List.of(EntityTypes.BLAZE, EntityTypes.MAGMA_CUBE,
 		EntityTypes.WITHER_SKELETON, EntityTypes.PIGLIN_BRUTE, EntityTypes.HOGLIN, EntityTypes.SKELETON);
 	private static final List<EntityType<? extends Mob>> ETERNAL_SNOWSTORM = List.of(EntityTypes.STRAY, EntityTypes.SKELETON, EntityTypes.ZOMBIE,
-		EntityTypes.VINDICATOR, EntityTypes.CREEPER, EntityTypes.SPIDER);
+		EntityTypes.VINDICATOR, EntityTypes.CREEPER, EntityTypes.SPIDER, EntityTypes.BREEZE);
 	private static final List<EntityType<? extends Mob>> DESERT_STORM = List.of(EntityTypes.HUSK, EntityTypes.SKELETON, EntityTypes.SPIDER,
-		EntityTypes.CREEPER, EntityTypes.PILLAGER, EntityTypes.VINDICATOR);
+		EntityTypes.CREEPER, EntityTypes.PILLAGER, EntityTypes.VINDICATOR, EntityTypes.BREEZE, EntityTypes.SHULKER);
 	private static final List<EntityType<? extends Mob>> AMETHYST_CAVE = List.of(EntityTypes.CAVE_SPIDER, EntityTypes.SPIDER, EntityTypes.SKELETON,
-		EntityTypes.ENDERMITE, EntityTypes.CREEPER, EntityTypes.ZOMBIE);
+		EntityTypes.BREEZE, EntityTypes.SHULKER, EntityTypes.CREEPER, EntityTypes.ZOMBIE);
 	private static final List<EntityType<? extends Mob>> SUNKEN_CATACOMBS = List.of(EntityTypes.SKELETON, EntityTypes.ZOMBIE, EntityTypes.DROWNED,
-		EntityTypes.CAVE_SPIDER, EntityTypes.STRAY, EntityTypes.ENDERMITE);
+		EntityTypes.CAVE_SPIDER, EntityTypes.STRAY, EntityTypes.BREEZE, EntityTypes.SHULKER);
 
 	private BiomePools() {
 	}

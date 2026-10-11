@@ -107,7 +107,11 @@ public final class BiomeBlocks {
 	public static final byte WALL_SKULL_WEST = 87;
 	public static final byte BANNER_EAST = 88;
 	public static final byte BANNER_WEST = 89;
-	public static final byte COUNT = 90;
+	public static final byte DEEPSLATE = 90;
+	public static final byte PACKED_MUD = 91;
+	public static final byte GLOWSTONE = 92;
+	public static final byte SHROOMLIGHT = 93;
+	public static final byte COUNT = 94;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -202,6 +206,10 @@ public final class BiomeBlocks {
 		define(HANGING_LANTERN, Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, true), TowerWalk.SOLID);
 		define(SOUL_CAMPFIRE, Blocks.SOUL_CAMPFIRE.defaultBlockState(), TowerWalk.SOLID);
 		define(SKULL, Blocks.SKELETON_SKULL.defaultBlockState(), TowerWalk.SOLID);
+		define(DEEPSLATE, Blocks.DEEPSLATE.defaultBlockState(), TowerWalk.SOLID);
+		define(PACKED_MUD, Blocks.PACKED_MUD.defaultBlockState(), TowerWalk.SOLID);
+		define(GLOWSTONE, Blocks.GLOWSTONE.defaultBlockState(), TowerWalk.SOLID);
+		define(SHROOMLIGHT, Blocks.SHROOMLIGHT.defaultBlockState(), TowerWalk.SOLID);
 	}
 
 	private BiomeBlocks() {
@@ -257,6 +265,7 @@ public final class BiomeBlocks {
 
 	/** Whether the entry gives light. */
 	public static boolean lights(final byte code) {
-		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE || code == SEA_LANTERN || code == LAVA || code == SOUL_LANTERN;
+		return code == LANTERN || code == HANGING_LANTERN || code == SOUL_CAMPFIRE || code == SOUL_FIRE || code == SEA_LANTERN || code == LAVA || code == SOUL_LANTERN
+			|| code == GLOWSTONE || code == SHROOMLIGHT;
 	}
 }

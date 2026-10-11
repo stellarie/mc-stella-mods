@@ -20,15 +20,27 @@ import org.jspecify.annotations.Nullable;
  * @param placed blocks above the surface, as runs of x, y, z and a palette entry
  * @param stand where a body stands in each column at the lowest, or {@link #NONE}; null until the plan is read
  * @param steps how many steps the portal's platform stands above the ground
+ * @param cover the floor's cover, one row each: kind, x, z, width, length and height (see the {@code COVER_} indexes)
  */
-public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, boolean[][] lava, boolean[][] fragile, short @Nullable [][] ceiling, byte @Nullable [][] ceilCode, int[] placed, short @Nullable [][] stand, int steps) {
+public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, boolean[][] lava, boolean[][] fragile, short @Nullable [][] ceiling, byte @Nullable [][] ceilCode, int[] placed, short @Nullable [][] stand, int steps, int[][] cover) {
 	/** A column where no body stands. */
 	public static final short NONE = -99;
+	/** The columns of a {@link #cover()} row. */
+	public static final int COVER_KIND = 0;
+	public static final int COVER_X = 1;
+	public static final int COVER_Z = 2;
+	public static final int COVER_W = 3;
+	public static final int COVER_L = 4;
+	public static final int COVER_HEIGHT = 5;
+	/** The kinds of cover. */
+	public static final int COVER_TOWER = 0;
+	public static final int COVER_HOUSE = 1;
+	public static final int COVER_WALL = 2;
 	/** How far above the feet the portal's backdrop wall rises, in blocks. */
 	public static final int BACKDROP = 8;
 
 	BiomeDraft withStand(final short[][] read) {
-		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.lava, this.fragile, this.ceiling, this.ceilCode, this.placed, read, this.steps);
+		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.lava, this.fragile, this.ceiling, this.ceilCode, this.placed, read, this.steps, this.cover);
 	}
 
 	/** Whether the column is one the portal's stair, platform or backdrop covers, or the apron at its foot. */

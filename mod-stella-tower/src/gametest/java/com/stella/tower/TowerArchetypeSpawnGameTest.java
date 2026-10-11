@@ -44,24 +44,29 @@ public class TowerArchetypeSpawnGameTest {
 			List<Mob> mobs = tower.getEntitiesOfClass(Mob.class, room(floor), mob -> mob.entityTags().contains(TowerMobs.TAG) && !(mob instanceof TowerGhost));
 			TowerPlan plan = TowerPlan.at(tower, floor);
 			int inBlock = 0;
+			List<String> stuckKinds = new ArrayList<>();
 			int inZone = 0;
 			java.util.Map<Integer, Integer> byHeight = new java.util.TreeMap<>();
 			for (Mob mob : mobs) {
 				BlockPos at = mob.blockPosition().subtract(plan.origin());
 				// A spider may cling to a wall or a pillar: only a body that overlaps a block is in one.
-				inBlock += tower.noCollision(mob, mob.getBoundingBox().deflate(0.05)) ? 0 : 1;
+				boolean stuck = !tower.noCollision(mob, mob.getBoundingBox().deflate(0.05));
+				inBlock += stuck ? 1 : 0;
+				if (stuck) {
+					stuckKinds.add(mob.getType().toShortString() + "@" + mob.blockPosition().toShortString());
+				}
 				inZone += plan.inSafeZone(at.getX(), at.getY(), at.getZ()) ? 1 : 0;
 				byHeight.merge(at.getY(), 1, Integer::sum);
 			}
 			TowerTestSupport.result("fills" + archetype, "floor=" + floor + " stories=" + plan.stories().size() + " filledAtTick=" + filledAt[0]
-				+ " most=" + most[0] + " cap=" + TowerMobs.FLOOR_CAP + " mobs=" + mobs.size() + " inBlock=" + inBlock + " inZone=" + inZone
+				+ " most=" + most[0] + " cap=" + TowerMobs.FLOOR_CAP + " mobs=" + mobs.size() + " inBlock=" + inBlock + stuckKinds + " inZone=" + inZone
 				+ " byHeight=" + byHeight);
 			for (Mob mob : new ArrayList<>(mobs)) {
 				mob.discard();
 			}
 			TowerTestSupport.leave(helper, player);
 			helper.assertTrue(filledAt[0] >= 0, "the " + archetype + " floor never filled: at most " + most[0] + " of " + TowerMobs.FLOOR_CAP);
-			helper.assertTrue(inBlock == 0, inBlock + " mobs stand in a block");
+			helper.assertTrue(inBlock == 0, inBlock + " mobs stand in a block: " + stuckKinds);
 			helper.assertTrue(inZone == 0, inZone + " mobs remain in a safe zone after its sweep");
 			helper.succeed();
 		});

@@ -23,6 +23,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -34,6 +35,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -71,13 +73,22 @@ public final class TowerMobs {
 		EntityTypes.HUSK, EntityTypes.STRAY, EntityTypes.CAVE_SPIDER, EntityTypes.PILLAGER, EntityTypes.VINDICATOR
 	);
 	/**
-	 * Joins from the twenty-first floor. Ghasts are too big for an eight-block room, and shulkers teleport
-	 * by a road no room can close.
+	 * Joins from the twenty-first floor. Ghasts are too big for an eight-block room. A shulker's teleports are held
+	 * to its floor's room by {@code TowerShulkerMixin}.
 	 */
 	public static final List<EntityType<? extends Mob>> LATER = List.of(
 		EntityTypes.WITCH, EntityTypes.BLAZE, EntityTypes.WITHER_SKELETON, EntityTypes.PIGLIN_BRUTE,
-		EntityTypes.MAGMA_CUBE, EntityTypes.HOGLIN, EntityTypes.ENDERMAN, EntityTypes.ENDERMITE
+		EntityTypes.MAGMA_CUBE, EntityTypes.HOGLIN, EntityTypes.ENDERMAN, EntityTypes.BREEZE, EntityTypes.SHULKER
 	);
+	/** A shulker teleports to rest no higher than this over the base: past it no player could reach it. */
+	public static final int SHULKER_CEILING = 14;
+	/**
+	 * On a biome floor the first tries at a spot pass over one that a player on the floor sees from where they stand: a
+	 * mob is raised out of sight, and the last tries take any spot so a floor with no hiding place is still stocked.
+	 */
+	public static final int HIDDEN_TRIES = 16;
+	/** The height of a player's eyes over their feet, for the sight lines of the mob's placement. */
+	private static final double EYE_HEIGHT = 1.62;
 
 	/** What a tower mob carries: its floor, its element, and the health its attribute could not hold. */
 	public record State(int floor, TowerElement element, double healthDivisor, TowerRank rank) {
@@ -265,6 +276,13 @@ public final class TowerMobs {
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		Vec3 arrival = plan.arrivalPos();
 		List<TowerStory> stories = plan.stories();
+		List<Vec3> eyes = new ArrayList<>();
+		for (ServerPlayer player : players) {
+			eyes.add(player.getEyePosition());
+		}
+		if (eyes.isEmpty()) {
+			eyes.add(arrival.add(0.0, EYE_HEIGHT, 0.0));
+		}
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
 			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
 			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
@@ -281,10 +299,43 @@ public final class TowerMobs {
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
 			if (standsFree(tower, mob, feet)) {
+				if (plan.isBiome() && attempt < HIDDEN_TRIES && seenFrom(tower, mob, eyes)) {
+					continue;
+				}
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/** Whether any of the eyes has a clear line to the mob's eyes. */
+	private static boolean seenFrom(final ServerLevel tower, final Mob mob, final List<Vec3> eyes) {
+		Vec3 to = mob.getEyePosition();
+		for (Vec3 eye : eyes) {
+			if (tower.clip(new ClipContext(eye, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mob)).getType() == HitResult.Type.MISS) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether a body in the tower may land at a spot by a teleport of its own: in the room of the floor it stands in, from
+	 * the base up to {@code ceiling} blocks over it and under the floor's roof. Outside the tower there is no rule.
+	 */
+	public static boolean mayLandAt(final LivingEntity self, final BlockPos target, final int ceiling) {
+		if (!(self.level() instanceof ServerLevel tower) || !tower.dimension().equals(TowerTravel.TOWER)) {
+			return true;
+		}
+		int floor = TowerLayout.floorAt(self.blockPosition());
+		if (floor <= 0) {
+			return false;
+		}
+		BlockPos origin = TowerLayout.origin(floor);
+		int top = TowerLayout.BASE_Y + Math.min(ceiling, TowerPlan.atQuiet(tower, floor).roofY());
+		return target.getX() >= origin.getX() && target.getX() < origin.getX() + TowerLayout.SIZE
+			&& target.getZ() >= origin.getZ() && target.getZ() < origin.getZ() + TowerLayout.SIZE
+			&& target.getY() >= TowerLayout.BASE_Y && target.getY() < top;
 	}
 
 	/** Whether any part of a mob standing here would be inside one of the floor's safe zones. */

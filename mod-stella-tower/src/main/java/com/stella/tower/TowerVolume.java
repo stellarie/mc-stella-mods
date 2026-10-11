@@ -379,7 +379,8 @@ public final class TowerVolume implements TowerWalk.Space {
 
 	/**
 	 * A biome floor: bedrock, a filler of stone, each column's surface and water, the blocks standing on it, and the
-	 * roof, a barrier over an open sky and the tower's wall over a closed one.
+	 * roof, stone of the biome's own kind over an open floor ({@link BiomeRoof}) and the tower's wall over a closed one.
+	 * No column is left without a roof, so the sky is never seen.
 	 */
 	private void biome(final TowerPlan plan) {
 		BiomeDraft draft = plan.biome();
@@ -408,7 +409,7 @@ public final class TowerVolume implements TowerWalk.Space {
 					}
 				}
 				if (open) {
-					block(x, this.high, z, BiomeBlocks.BARRIER);
+					block(x, this.high, z, BiomeRoof.at(draft.biome(), plan.seed(), plan.floor(), x, z));
 				} else {
 					set(x, this.high, z, ROOF);
 				}

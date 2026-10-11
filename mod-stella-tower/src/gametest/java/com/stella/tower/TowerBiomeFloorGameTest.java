@@ -214,30 +214,21 @@ public class TowerBiomeFloorGameTest {
 		helper.succeed();
 	}
 
-	/** Catches an open roof that lets a body out: the barrier lies over the whole room, and no teleport lands above. */
+	/** Catches a roof that lets a body out: no random teleport lands above the room's solid roof. The roof itself: {@link TowerEnclosedGameTest}. */
 	@GameTest(maxTicks = 200)
-	public void anOpenRoofIsClosedToTravel(final GameTestHelper helper) {
+	public void aRoofIsClosedToTravel(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		long seed = tower.getSeed();
 		int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f).openRoof());
 		TowerFloors.ensure(tower, floor);
 		TowerPlan plan = TowerPlan.at(tower, floor);
-		BlockPos origin = plan.origin();
-		int barriers = 0;
-		for (int x = 0; x < TowerLayout.SIZE; x += 7) {
-			for (int z = 0; z < TowerLayout.SIZE; z += 7) {
-				barriers += tower.getBlockState(origin.offset(x, plan.roofY(), z)).is(Blocks.BARRIER) ? 1 : 0;
-			}
-		}
 		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		Pig pig = EntityTypes.PIG.create(tower, EntitySpawnReason.COMMAND);
 		pig.snapTo(arrival);
 		tower.addFreshEntity(pig);
 		boolean above = pig.randomTeleport(arrival.x + 1.0, TowerLayout.BASE_Y + plan.roofY() + 1.0, arrival.z, false, BlockTags.CONSUMABLE_DOES_NOT_TELEPORT_TO);
 		pig.discard();
-		int samples = (TowerLayout.SIZE + 6) / 7 * ((TowerLayout.SIZE + 6) / 7);
-		TowerTestSupport.result("openRoof", "floor=" + floor + " barriers=" + barriers + "/" + samples + " teleportedAbove=" + above);
-		helper.assertTrue(barriers == samples, "the barrier roof holds " + barriers + " of " + samples + " sampled columns");
+		TowerTestSupport.result("roofTravel", "floor=" + floor + " teleportedAbove=" + above);
 		helper.assertFalse(above, "a random teleport landed above the room");
 		helper.succeed();
 	}

@@ -122,7 +122,7 @@ public class TowerThreatGameTest {
 	@GameTest
 	public void theFirstTwentyFloorsHoldOnlyOverworldMobsAndNoWitch(final GameTestHelper helper) {
 		Set<EntityType<?>> notOverworld = Set.of(EntityTypes.WITCH, EntityTypes.BLAZE, EntityTypes.WITHER_SKELETON,
-			EntityTypes.PIGLIN_BRUTE, EntityTypes.MAGMA_CUBE, EntityTypes.ENDERMAN, EntityTypes.ENDERMITE, EntityTypes.SHULKER, EntityTypes.HOGLIN);
+			EntityTypes.PIGLIN_BRUTE, EntityTypes.MAGMA_CUBE, EntityTypes.ENDERMAN, EntityTypes.BREEZE, EntityTypes.SHULKER, EntityTypes.HOGLIN);
 		int leaks = 0;
 		for (int floor = 1; floor <= TowerMobs.OVERWORLD_ONLY_UNTIL; floor++) {
 			for (EntityType<? extends Mob> type : TowerMobs.pool(floor)) {
