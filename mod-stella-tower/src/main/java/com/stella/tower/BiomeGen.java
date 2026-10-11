@@ -31,7 +31,6 @@ import net.minecraft.core.Direction;
  * surface and never needs a wall.
  */
 final class BiomeGen {
-	private static final int N = TowerLayout.SIZE;
 	private static final long SALT = 0x42494F4DL;
 	private static final long FALLBACK_SALT = 0x504C4149L;
 	/** Offsets of {@link Work#over}: the lowest block it holds, and how many it holds in a column. */
@@ -61,9 +60,10 @@ final class BiomeGen {
 	/** The plan of a biome floor: drawn and proved by a walk, or the plain yard. */
 	static TowerPlan plan(final long seed, final int floor) {
 		FloorBiome biome = floor % TowerElites.BOSS_EVERY == 0 ? FloorBiome.GREAT_HALL : FloorBiomes.of(seed, floor);
+		TowerSizes.Size size = TowerSizes.of(seed, floor);
 		for (int attempt = 0; attempt < TowerPlan.ATTEMPTS; attempt++) {
 			Random random = new Random(TowerPlan.mix(seed ^ SALT ^ (floor * 0x9E3779B97F4A7C15L) ^ (attempt * 0xC2B2AE3D27D4EB4FL)));
-			TowerPlan drawn = draw(seed, floor, biome, attempt, random, true);
+			TowerPlan drawn = draw(seed, floor, biome, size, attempt, random, true);
 			if (drawn != null) {
 				TowerPlan done = TowerPlan.finish(drawn, plan -> false);
 				if (done != null) {
@@ -72,7 +72,7 @@ final class BiomeGen {
 			}
 		}
 		Random random = new Random(TowerPlan.mix(seed ^ FALLBACK_SALT ^ (floor * 0x9E3779B97F4A7C15L)));
-		TowerPlan fallback = draw(seed, floor, biome, TowerPlan.FALLBACK, random, false);
+		TowerPlan fallback = draw(seed, floor, biome, size, TowerPlan.FALLBACK, random, false);
 		if (fallback == null) {
 			throw new IllegalStateException("tower floor " + floor + ": not even the plain yard could be drawn");
 		}
@@ -80,8 +80,9 @@ final class BiomeGen {
 		return done != null ? done : fallback.withStands(TowerVolume.of(fallback));
 	}
 
-	private static TowerPlan draw(final long seed, final int floor, final FloorBiome biome, final int attempt, final Random random, final boolean features) {
-		Work w = new Work(seed, floor, biome, random);
+	private static TowerPlan draw(final long seed, final int floor, final FloorBiome biome, final TowerSizes.Size size, final int attempt, final Random random,
+		final boolean features) {
+		Work w = new Work(seed, floor, biome, random, size);
 		if (biome == FloorBiome.GREAT_HALL) {
 			w.hallEnds();
 		} else {
@@ -91,9 +92,14 @@ final class BiomeGen {
 		w.prepare();
 		if (features) {
 			if (biome.openRoof()) {
-				// The cover is set down first, so the biome's own features grow round it. A draw too crowded for it is drawn again.
+				// A larger floor may take a layout; it is laid first, then the cover, then the biome's own features grow round both.
+				w.layout = BiomeLayout.of(seed, floor, biome, size);
+				if (w.layout != BiomeLayout.STANDARD && !BiomeLayouts.place(w)) {
+					return null;
+				}
+				// The cover is set down before the features, so they grow round it. A draw too crowded for it is drawn again.
 				BiomeCover.place(w);
-				if (w.cover.size() < BiomeCover.LEAST) {
+				if (w.cover.size() < w.n(BiomeCover.LEAST)) {
 					return null;
 				}
 			}
@@ -188,24 +194,28 @@ final class BiomeGen {
 		final int floor;
 		final FloorBiome biome;
 		final Random random;
-		final int[][] h = new int[N][N];
-		final byte[][] surface = new byte[N][N];
-		final boolean[][] water = new boolean[N][N];
-		final boolean[][] lava = new boolean[N][N];
-		final boolean[][] fragile = new boolean[N][N];
+		/** The room's width along x and depth along z, and its area against the base room's. */
+		final int sx;
+		final int sz;
+		final double k;
+		final int[][] h;
+		final byte[][] surface;
+		final boolean[][] water;
+		final boolean[][] lava;
+		final boolean[][] fragile;
 		/** The columns of rock, where the biome has rock; null otherwise. */
 		boolean[][] rockMask;
 		/** The first block of rock over each column, and its look; null under an open roof. */
 		short[][] ceil;
 		byte[][] ceilCode;
 		/** 1 the spine, 2 the stair, 3 the arrival's pad, 4 a feature's flat ground. */
-		final byte[][] keep = new byte[N][N];
-		final boolean[][] used = new boolean[N][N];
+		final byte[][] keep;
+		final boolean[][] used;
 		/** A column something tall stands in. */
-		final boolean[][] tall = new boolean[N][N];
+		final boolean[][] tall;
 		/** The blocks above the surface, by column and height; 0 for none. */
-		final byte[] over = new byte[N * OSPAN * N];
-		final boolean[][] daisBlock = new boolean[N][N];
+		final byte[] over;
+		final boolean[][] daisBlock;
 		int facing;
 		int px;
 		int pz;
@@ -221,23 +231,49 @@ final class BiomeGen {
 		final List<int[]> nooks = new ArrayList<>();
 		/** The floor's cover, one row each as {@link BiomeDraft#cover()} holds it. */
 		final List<int[]> cover = new ArrayList<>();
+		/** How the floor is laid out, and the parts of a layout other than the standard, as {@link BiomeDraft#marks()} holds them. */
+		BiomeLayout layout = BiomeLayout.STANDARD;
+		final List<int[]> marks = new ArrayList<>();
 
-		Work(final long seed, final int floor, final FloorBiome biome, final Random random) {
+		Work(final long seed, final int floor, final FloorBiome biome, final Random random, final TowerSizes.Size size) {
 			this.seed = seed;
 			this.floor = floor;
 			this.biome = biome;
 			this.random = random;
+			this.sx = size.width();
+			this.sz = size.depth();
+			this.k = size.factor();
+			this.h = new int[this.sx][this.sz];
+			this.surface = new byte[this.sx][this.sz];
+			this.water = new boolean[this.sx][this.sz];
+			this.lava = new boolean[this.sx][this.sz];
+			this.fragile = new boolean[this.sx][this.sz];
+			this.keep = new byte[this.sx][this.sz];
+			this.used = new boolean[this.sx][this.sz];
+			this.tall = new boolean[this.sx][this.sz];
+			this.over = new byte[this.sx * OSPAN * this.sz];
+			this.daisBlock = new boolean[this.sx][this.sz];
 			this.steps = biome == FloorBiome.GREAT_HALL ? HALL_STEPS : floor % TowerElites.ELITE_EVERY == 0 ? GUARDED_STEPS : STEPS;
 		}
 
 		// ---- cells
 
 		boolean in(final int x, final int z, final int margin) {
-			return x >= margin && z >= margin && x < N - margin && z < N - margin;
+			return x >= margin && z >= margin && x < this.sx - margin && z < this.sz - margin;
 		}
 
 		boolean free(final int x, final int z) {
 			return free(x, z, 0);
+		}
+
+		/** A count made for the base floor, made for this floor: times its area against the base floor's, never none if the base is not. */
+		int n(final int base) {
+			return base <= 0 ? 0 : Math.max(1, (int) Math.round(base * this.k));
+		}
+
+		/** A count of long things, a road or a stream: times the floor's perimeter against the base floor's. */
+		int along(final int base) {
+			return Math.max(1, (int) Math.round(base * (this.sx + this.sz) / (2.0 * TowerLayout.SIZE)));
 		}
 
 		/** Whether the column and the margin round it are open ground that no part of the frame or a feature holds. */
@@ -255,7 +291,7 @@ final class BiomeGen {
 		}
 
 		private int overIndex(final int x, final int y, final int z) {
-			return (x * OSPAN + (y - OLOW)) * N + z;
+			return (x * OSPAN + (y - OLOW)) * this.sz + z;
 		}
 
 		void put(final int x, final int y, final int z, final byte code) {
@@ -302,8 +338,8 @@ final class BiomeGen {
 
 		int[] rect(final int w, final int l, final int tries, final int margin) {
 			for (int i = 0; i < tries; i++) {
-				int x0 = 2 + this.random.nextInt(N - w - 4);
-				int z0 = 2 + this.random.nextInt(N - l - 4);
+				int x0 = 2 + this.random.nextInt(this.sx - w - 4);
+				int z0 = 2 + this.random.nextInt(this.sz - l - 4);
 				if (rectFree(x0, z0, w, l, margin)) {
 					return new int[] {x0, z0};
 				}
@@ -312,7 +348,7 @@ final class BiomeGen {
 		}
 
 		boolean rectFree(final int x0, final int z0, final int w, final int l, final int margin) {
-			if (x0 - margin < 1 || z0 - margin < 1 || x0 + w + margin > N - 1 || z0 + l + margin > N - 1) {
+			if (x0 - margin < 1 || z0 - margin < 1 || x0 + w + margin > this.sx - 1 || z0 + l + margin > this.sz - 1) {
 				return false;
 			}
 			for (int x = x0 - margin; x < x0 + w + margin; x++) {
@@ -338,14 +374,14 @@ final class BiomeGen {
 		void ends() {
 			this.facing = this.random.nextBoolean() ? -1 : 1;
 			if (this.facing == -1) {
-				this.px = 52 + this.random.nextInt(4);
+				this.px = this.sx - 12 + this.random.nextInt(4);
 				this.ax = 3 + this.random.nextInt(6);
 			} else {
 				this.px = 8 + this.random.nextInt(4);
-				this.ax = 55 + this.random.nextInt(6);
+				this.ax = this.sx - 9 + this.random.nextInt(6);
 			}
-			this.pz = 15 + this.random.nextInt(33);
-			this.az = 7 + this.random.nextInt(50);
+			this.pz = 15 + this.random.nextInt(this.sz - 31);
+			this.az = 7 + this.random.nextInt(this.sz - 14);
 			this.foot = this.px + this.facing * (2 + this.steps);
 			int a = this.px - this.facing * 3;
 			// The guard's yard: level ground past the stair's foot, where an elite or a boss stands.
@@ -405,8 +441,8 @@ final class BiomeGen {
 				case GREAT_HALL -> BiomeBlocks.CRACKED_DEEPSLATE;
 				default -> BiomeBlocks.MUD;
 			};
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					double n = switch (this.biome) {
 						// Drifts stretched along z, and dunes in ridges.
 						case ETERNAL_SNOWSTORM -> fbm(this.seed, x, z / 3, cell);
@@ -431,13 +467,13 @@ final class BiomeGen {
 		 * after, so the way in and the way out stay flat and a hill's foot meets them in steps.
 		 */
 		void hills() {
-			int count = 3 + this.random.nextInt(3);
+			int count = n(3 + this.random.nextInt(3));
 			for (int i = 0; i < count; i++) {
 				int cx = 0;
 				int cz = 0;
 				for (int tries = 0; tries < 30; tries++) {
-					cx = 8 + this.random.nextInt(N - 16);
-					cz = 8 + this.random.nextInt(N - 16);
+					cx = 8 + this.random.nextInt(this.sx - 16);
+					cz = 8 + this.random.nextInt(this.sz - 16);
 					if (Math.hypot(cx - this.ax, cz - this.az) >= 16.0 && Math.hypot(cx - this.px, cz - this.pz) >= 16.0) {
 						break;
 					}
@@ -445,8 +481,8 @@ final class BiomeGen {
 				double rx = 8 + this.random.nextInt(7);
 				double rz = 8 + this.random.nextInt(7);
 				double top = i == 0 ? 5 + this.random.nextInt(2) : 2 + this.random.nextInt(5);
-				for (int x = Math.max(0, (int) (cx - rx)); x <= Math.min(N - 1, (int) (cx + rx)); x++) {
-					for (int z = Math.max(0, (int) (cz - rz)); z <= Math.min(N - 1, (int) (cz + rz)); z++) {
+				for (int x = Math.max(0, (int) (cx - rx)); x <= Math.min(this.sx - 1, (int) (cx + rx)); x++) {
+					for (int z = Math.max(0, (int) (cz - rz)); z <= Math.min(this.sz - 1, (int) (cz + rz)); z++) {
 						double dx = (x - cx) / rx;
 						double dz = (z - cz) / rz;
 						double edge = 1.0 - (dx * dx + dz * dz);
@@ -462,8 +498,8 @@ final class BiomeGen {
 		int rise() {
 			int low = Integer.MAX_VALUE;
 			int high = Integer.MIN_VALUE;
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (!this.water[x][z] && !this.lava[x][z]) {
 						low = Math.min(low, this.h[x][z]);
 						high = Math.max(high, this.h[x][z]);
@@ -475,16 +511,16 @@ final class BiomeGen {
 
 		/** The zone the arrival sits in on floor 1: eight blocks square, kept inside the room. */
 		int zoneX() {
-			return Math.max(0, Math.min(N - 8, this.ax - 4));
+			return Math.max(0, Math.min(this.sx - 8, this.ax - 4));
 		}
 
 		int zoneZ() {
-			return Math.max(0, Math.min(N - 8, this.az - 4));
+			return Math.max(0, Math.min(this.sz - 8, this.az - 4));
 		}
 
 		void prepare() {
-			for (int x = Math.max(0, this.boxX0); x <= Math.min(N - 1, this.boxX1); x++) {
-				for (int z = Math.max(0, this.boxZ0); z <= Math.min(N - 1, this.boxZ1); z++) {
+			for (int x = Math.max(0, this.boxX0); x <= Math.min(this.sx - 1, this.boxX1); x++) {
+				for (int z = Math.max(0, this.boxZ0); z <= Math.min(this.sz - 1, this.boxZ1); z++) {
 					this.h[x][z] = 0;
 				}
 			}
@@ -497,8 +533,8 @@ final class BiomeGen {
 				}
 			}
 			relax(false);
-			for (int x = Math.max(0, this.boxX0); x <= Math.min(N - 1, this.boxX1); x++) {
-				for (int z = Math.max(0, this.boxZ0); z <= Math.min(N - 1, this.boxZ1); z++) {
+			for (int x = Math.max(0, this.boxX0); x <= Math.min(this.sx - 1, this.boxX1); x++) {
+				for (int z = Math.max(0, this.boxZ0); z <= Math.min(this.sz - 1, this.boxZ1); z++) {
 					this.keep[x][z] = 4;
 				}
 			}
@@ -533,7 +569,7 @@ final class BiomeGen {
 				dais(this.px + f * (2 + s), z, false);
 			}
 			int from = f == -1 ? this.px + 3 : 0;
-			int to = f == -1 ? N - 1 : this.px - 3;
+			int to = f == -1 ? this.sx - 1 : this.px - 3;
 			for (int z = this.pz - 4; z <= this.pz + 5; z++) {
 				for (int x = from; x <= to; x++) {
 					dais(x, z, true);
@@ -556,19 +592,19 @@ final class BiomeGen {
 		void relax(final boolean freeOnly) {
 			for (int pass = 0; pass < 60; pass++) {
 				boolean changed = false;
-				for (int x = 0; x < N; x++) {
-					for (int z = 0; z < N; z++) {
+				for (int x = 0; x < this.sx; x++) {
+					for (int z = 0; z < this.sz; z++) {
 						if (freeOnly && (this.keep[x][z] != 0 || this.water[x][z])) {
 							continue;
 						}
 						int low = Integer.MAX_VALUE;
-						if (x + 1 < N) {
+						if (x + 1 < this.sx) {
 							low = Math.min(low, this.h[x + 1][z]);
 						}
 						if (x > 0) {
 							low = Math.min(low, this.h[x - 1][z]);
 						}
-						if (z + 1 < N) {
+						if (z + 1 < this.sz) {
 							low = Math.min(low, this.h[x][z + 1]);
 						}
 						if (z > 0) {
@@ -595,7 +631,7 @@ final class BiomeGen {
 			}
 			int[] from = {this.ax, this.az};
 			int[] to = {this.foot, this.pz};
-			int k = 3 + this.random.nextInt(3);
+			int k = along(3 + this.random.nextInt(3));
 			List<int[]> points = new ArrayList<>();
 			points.add(from);
 			int lastZ = this.az;
@@ -605,8 +641,8 @@ final class BiomeGen {
 				int z = 0;
 				for (int tries = 0; tries < 20; tries++) {
 					x = (int) (from[0] + (to[0] - from[0]) * t + this.random.nextInt(11) - 5);
-					z = 7 + this.random.nextInt(50);
-					x = Math.max(4, Math.min(59, x));
+					z = 7 + this.random.nextInt(this.sz - 14);
+					x = Math.max(4, Math.min(this.sx - 5, x));
 					boolean inBox = x >= this.boxX0 - 2 && x <= this.boxX1 + 2 && z >= this.boxZ0 - 2 && z <= this.boxZ1 + 2;
 					if (Math.abs(z - lastZ) >= 16 && !inBox) {
 						break;
@@ -631,7 +667,7 @@ final class BiomeGen {
 			int z = a[1];
 			List<int[]> out = new ArrayList<>();
 			out.add(new int[] {x, z});
-			for (int i = 0; i < 900 && !(x == b[0] && z == b[1]); i++) {
+			for (int i = 0; i < 900 + 6 * (this.sx + this.sz) && !(x == b[0] && z == b[1]); i++) {
 				int dx = Integer.signum(b[0] - x);
 				int dz = Integer.signum(b[1] - z);
 				boolean longX = Math.abs(b[0] - x) >= Math.abs(b[1] - z);
@@ -662,7 +698,7 @@ final class BiomeGen {
 				for (int[] m : order) {
 					int nx = x + m[0];
 					int nz = z + m[1];
-					if (nx >= 2 && nx <= 61 && nz >= 2 && nz <= 61 && !this.daisBlock[nx][nz]) {
+					if (nx >= 2 && nx <= this.sx - 3 && nz >= 2 && nz <= this.sz - 3 && !this.daisBlock[nx][nz]) {
 						x = nx;
 						z = nz;
 						moved = true;
@@ -671,8 +707,8 @@ final class BiomeGen {
 				}
 				if (!moved) {
 					int[] m = toward.get(0);
-					x = Math.max(2, Math.min(61, x + m[0]));
-					z = Math.max(2, Math.min(61, z + m[1]));
+					x = Math.max(2, Math.min(this.sx - 3, x + m[0]));
+					z = Math.max(2, Math.min(this.sz - 3, z + m[1]));
 				}
 				out.add(new int[] {x, z});
 			}
@@ -720,7 +756,7 @@ final class BiomeGen {
 						int a = this.spine.get(i)[0] + dx;
 						int b = this.spine.get(i)[1] + dz;
 						if (in(a, b, 1) && this.keep[a][b] != 2) {
-							cell.merge(a * N + b, hs[i], Math::min);
+							cell.merge(a * this.sz + b, hs[i], Math::min);
 						}
 					}
 				}
@@ -728,12 +764,12 @@ final class BiomeGen {
 			for (int pass = 0; pass < 40; pass++) {
 				boolean moved = false;
 				for (Map.Entry<Integer, Integer> e : cell.entrySet()) {
-					int x = e.getKey() / N;
-					int z = e.getKey() % N;
+					int x = e.getKey() / this.sz;
+					int z = e.getKey() % this.sz;
 					int lim = 99;
 					int[][] near = {{x + 1, z}, {x - 1, z}, {x, z + 1}, {x, z - 1}};
 					for (int[] c : near) {
-						Integer v = cell.get(c[0] * N + c[1]);
+						Integer v = cell.get(c[0] * this.sz + c[1]);
 						if (v != null) {
 							lim = Math.min(lim, v);
 						}
@@ -748,8 +784,8 @@ final class BiomeGen {
 				}
 			}
 			for (Map.Entry<Integer, Integer> e : cell.entrySet()) {
-				int x = e.getKey() / N;
-				int z = e.getKey() % N;
+				int x = e.getKey() / this.sz;
+				int z = e.getKey() % this.sz;
 				this.keep[x][z] = 1;
 				this.h[x][z] = Math.max(0, e.getValue());
 				this.surface[x][z] = BiomeBlocks.PATH;
@@ -762,8 +798,8 @@ final class BiomeGen {
 
 		/** Draws the road and the pad clear again, a head and an arm's reach up: nothing a feature set down stays on them. */
 		void clearSpine() {
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (this.keep[x][z] == 1 || this.keep[x][z] == 3) {
 						clearAbove(x, z, this.h[x][z], this.h[x][z] + 3);
 						this.tall[x][z] = false;
@@ -776,10 +812,10 @@ final class BiomeGen {
 		// ---- the rainy forest
 
 		void rainyForest() {
-			for (int stream = 0; stream < 2; stream++) {
+			for (int stream = 0; stream < along(2); stream++) {
 				boolean alongX = this.random.nextBoolean();
-				int[] a = alongX ? new int[] {0, 12 + this.random.nextInt(40)} : new int[] {12 + this.random.nextInt(40), 0};
-				int[] b = alongX ? new int[] {N - 1, 12 + this.random.nextInt(40)} : new int[] {12 + this.random.nextInt(40), N - 1};
+				int[] a = alongX ? new int[] {0, 12 + this.random.nextInt(this.sz - 24)} : new int[] {12 + this.random.nextInt(this.sx - 24), 0};
+				int[] b = alongX ? new int[] {this.sx - 1, 12 + this.random.nextInt(this.sz - 24)} : new int[] {12 + this.random.nextInt(this.sx - 24), this.sz - 1};
 				for (int[] at : drunk(a, b)) {
 					int[][] cells = {{0, 0}, {1, 0}, {0, 1}};
 					for (int[] d : cells) {
@@ -787,21 +823,30 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int i = 0; i < 14; i++) {
-				int cx = 3 + this.random.nextInt(N - 6);
-				int cz = 3 + this.random.nextInt(N - 6);
+			for (int i = 0; i < n(14); i++) {
+				int cx = 3 + this.random.nextInt(this.sx - 6);
+				int cz = 3 + this.random.nextInt(this.sz - 6);
 				int[][] cross = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 				for (int[] d : cross) {
 					wet(cx + d[0], cz + d[1]);
 				}
 			}
 			int[] shrine = rect(5, 5, 80, 1);
+			List<int[]> shrines = new ArrayList<>();
+			for (int extra = 1; extra < n(1); extra++) {
+				int[] more = rect(5, 5, 80, 1);
+				if (more != null) {
+					flatten(more[0], more[1], 5, 5, (byte) 4);
+					claim(more[0], more[1], 5, 5);
+					shrines.add(more);
+				}
+			}
 			if (shrine != null) {
 				flatten(shrine[0], shrine[1], 5, 5, (byte) 4);
 				claim(shrine[0], shrine[1], 5, 5);
 			}
 			List<int[]> camps = new ArrayList<>();
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < n(3); i++) {
 				int[] camp = rect(3, 3, 60, 1);
 				if (camp != null) {
 					flatten(camp[0], camp[1], 3, 3, (byte) 4);
@@ -813,6 +858,9 @@ final class BiomeGen {
 			trees();
 			if (shrine != null) {
 				shrine(shrine[0], shrine[1], 5, 5);
+			}
+			for (int[] more : shrines) {
+				shrine(more[0], more[1], 5, 5);
 			}
 			for (int[] camp : camps) {
 				int y = this.h[camp[0]][camp[1]];
@@ -833,9 +881,9 @@ final class BiomeGen {
 
 		/** Patches of podzol in the forest floor with a few mushrooms, which grow on it whatever the light. */
 		void podzol() {
-			for (int patch = 0; patch < 5; patch++) {
-				int cx = 4 + this.random.nextInt(N - 8);
-				int cz = 4 + this.random.nextInt(N - 8);
+			for (int patch = 0; patch < n(5); patch++) {
+				int cx = 4 + this.random.nextInt(this.sx - 8);
+				int cz = 4 + this.random.nextInt(this.sz - 8);
 				if (!free(cx, cz, 2)) {
 					continue;
 				}
@@ -862,9 +910,9 @@ final class BiomeGen {
 
 		void trees() {
 			List<int[]> placed = new ArrayList<>();
-			for (int tries = 0; placed.size() < 70 && tries < 70 * 50; tries++) {
-				int x = 2 + this.random.nextInt(N - 4);
-				int z = 2 + this.random.nextInt(N - 4);
+			for (int tries = 0; placed.size() < n(70) && tries < n(70) * 50; tries++) {
+				int x = 2 + this.random.nextInt(this.sx - 4);
+				int z = 2 + this.random.nextInt(this.sz - 4);
 				boolean far = true;
 				for (int[] p : placed) {
 					far &= (x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1]) >= 25;
@@ -872,7 +920,7 @@ final class BiomeGen {
 				if (!far || !free(x, z, 1)) {
 					continue;
 				}
-				boolean big = this.random.nextDouble() < 0.3 && x + 1 < N - 2 && z + 1 < N - 2 && free(x + 1, z, 1) && free(x, z + 1, 1) && free(x + 1, z + 1, 1);
+				boolean big = this.random.nextDouble() < 0.3 && x + 1 < this.sx - 2 && z + 1 < this.sz - 2 && free(x + 1, z, 1) && free(x, z + 1, 1) && free(x + 1, z + 1, 1);
 				if (tree(x, z, big)) {
 					placed.add(new int[] {x, z});
 				}
@@ -950,10 +998,10 @@ final class BiomeGen {
 		}
 
 		void fallenLogs() {
-			for (int i = 0, placed = 0; placed < 8 && i < 400; i++) {
+			for (int i = 0, placed = 0; placed < n(8) && i < n(400); i++) {
 				boolean alongX = this.random.nextBoolean();
-				int x = 3 + this.random.nextInt(N - 8);
-				int z = 3 + this.random.nextInt(N - 8);
+				int x = 3 + this.random.nextInt(this.sx - 8);
+				int z = 3 + this.random.nextInt(this.sz - 8);
 				int base = this.h[x][z];
 				boolean fits = true;
 				for (int k = 0; k < 3 && fits; k++) {
@@ -975,9 +1023,9 @@ final class BiomeGen {
 		}
 
 		void ferns() {
-			for (int i = 0, placed = 0; placed < 50 && i < 600; i++) {
-				int x = 2 + this.random.nextInt(N - 4);
-				int z = 2 + this.random.nextInt(N - 4);
+			for (int i = 0, placed = 0; placed < n(50) && i < n(600); i++) {
+				int x = 2 + this.random.nextInt(this.sx - 4);
+				int z = 2 + this.random.nextInt(this.sz - 4);
 				if (free(x, z) && this.surface[x][z] == BiomeBlocks.GRASS && get(x, this.h[x][z], z) == 0) {
 					put(x, this.h[x][z], z, BiomeBlocks.FERN);
 					placed++;
@@ -1004,8 +1052,8 @@ final class BiomeGen {
 		List<int[]> poisson(final int count, final int minDistance, final java.util.function.BiPredicate<Integer, Integer> ok) {
 			List<int[]> points = new ArrayList<>();
 			for (int tries = 0; points.size() < count && tries < count * 50; tries++) {
-				int x = 2 + this.random.nextInt(N - 4);
-				int z = 2 + this.random.nextInt(N - 4);
+				int x = 2 + this.random.nextInt(this.sx - 4);
+				int z = 2 + this.random.nextInt(this.sz - 4);
 				boolean far = true;
 				for (int[] p : points) {
 					far &= (x - p[0]) * (x - p[0]) + (z - p[1]) * (z - p[1]) >= minDistance * minDistance;
@@ -1094,7 +1142,7 @@ final class BiomeGen {
 
 		void fires(final int count) {
 			for (int tries = 0, placed = 0; placed < count && tries < count * 60; tries++) {
-				placed += soulFire(2 + this.random.nextInt(N - 4), 2 + this.random.nextInt(N - 4)) ? 1 : 0;
+				placed += soulFire(2 + this.random.nextInt(this.sx - 4), 2 + this.random.nextInt(this.sz - 4)) ? 1 : 0;
 			}
 		}
 
@@ -1128,10 +1176,10 @@ final class BiomeGen {
 				}
 				this.used[c[0]][c[1]] = true;
 			}
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < along(3); i++) {
 				int lo = this.spine.size() / 5;
 				int[] a = this.spine.get(lo + this.random.nextInt(this.spine.size() * 4 / 5 - lo + 1));
-				int[] end = {Math.max(4, Math.min(59, a[0] + this.random.nextInt(41) - 20)), Math.max(4, Math.min(59, a[1] + this.random.nextInt(41) - 20))};
+				int[] end = {Math.max(4, Math.min(this.sx - 5, a[0] + this.random.nextInt(41) - 20)), Math.max(4, Math.min(this.sz - 5, a[1] + this.random.nextInt(41) - 20))};
 				for (int[] c : drunk(a, end)) {
 					if (free(c[0], c[1])) {
 						this.surface[c[0]][c[1]] = BiomeBlocks.PATH;
@@ -1140,21 +1188,22 @@ final class BiomeGen {
 			}
 			int[][] kinds = {{7, 9, 0}, {5, 7, 0}, {5, 5, 0}, {6, 6, 0}, {9, 11, 1}, {7, 7, 2}, {5, 5, 0}, {6, 8, 0}};
 			List<int[]> buildings = new ArrayList<>();
-			for (int[] kind : kinds) {
+			for (int built = 0; built < n(kinds.length); built++) {
+				int[] kind = kinds[built % kinds.length];
 				int[] spot = pad(kind[0], kind[1], 120);
 				if (spot != null) {
 					buildings.add(new int[] {spot[0], spot[1], kind[0], kind[1], kind[2]});
 				}
 			}
 			List<int[]> wells = new ArrayList<>();
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < n(2); i++) {
 				int[] spot = pad(3, 3, 80);
 				if (spot != null) {
 					wells.add(spot);
 				}
 			}
 			List<int[]> farms = new ArrayList<>();
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < n(2); i++) {
 				int[] spot = pad(5, 7, 80);
 				if (spot != null) {
 					farms.add(spot);
@@ -1179,24 +1228,24 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int i = 0; i < 12; i++) {
-				int x = 3 + this.random.nextInt(N - 6);
-				int z = 3 + this.random.nextInt(N - 6);
+			for (int i = 0; i < n(12); i++) {
+				int x = 3 + this.random.nextInt(this.sx - 6);
+				int z = 3 + this.random.nextInt(this.sz - 6);
 				if (free(x, z, 1)) {
 					stack(x, z, this.random.nextBoolean() ? BiomeBlocks.STRIPPED_SPRUCE : BiomeBlocks.COAL_BLOCK, 3 + this.random.nextInt(4));
 				}
 			}
-			for (int i = 0, placed = 0; placed < 6 && i < 200; i++) {
-				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			for (int i = 0, placed = 0; placed < n(6) && i < n(200); i++) {
+				placed += dent(3 + this.random.nextInt(this.sx - 6), 3 + this.random.nextInt(this.sz - 6)) ? 1 : 0;
 			}
-			fires(6);
+			fires(n(6));
 		}
 
 		// ---- the destroyed castle
 
 		void castle() {
 			int ring = 5;
-			int[][] corners = {{ring - 1, ring - 1}, {N - ring - 4, ring - 1}, {ring - 1, N - ring - 4}, {N - ring - 4, N - ring - 4}};
+			int[][] corners = {{ring - 1, ring - 1}, {this.sx - ring - 4, ring - 1}, {ring - 1, this.sz - ring - 4}, {this.sx - ring - 4, this.sz - ring - 4}};
 			int fx = this.facing;
 			int kx0 = fx == -1 ? this.px - 13 : this.px - 4;
 			int kx1 = fx == -1 ? this.px + 4 : this.px + 13;
@@ -1212,9 +1261,9 @@ final class BiomeGen {
 			int[] well = pad(3, 3, 80);
 			relax(true);
 			byte[] stone = {BiomeBlocks.STONE_BRICKS, BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.DEEPSLATE_BRICKS, BiomeBlocks.CRACKED_DEEPSLATE};
-			for (int x = ring; x < N - ring; x++) {
-				for (int z = ring; z < N - ring; z++) {
-					boolean on = x == ring || x == ring + 1 || x == N - ring - 2 || x == N - ring - 1 || z == ring || z == ring + 1 || z == N - ring - 2 || z == N - ring - 1;
+			for (int x = ring; x < this.sx - ring; x++) {
+				for (int z = ring; z < this.sz - ring; z++) {
+					boolean on = x == ring || x == ring + 1 || x == this.sx - ring - 2 || x == this.sx - ring - 1 || z == ring || z == ring + 1 || z == this.sz - ring - 2 || z == this.sz - ring - 1;
 					if (on && free(x, z)) {
 						if (this.random.nextDouble() < 0.12) {
 							put(x, this.h[x][z], z, BiomeBlocks.COBBLE);
@@ -1255,35 +1304,41 @@ final class BiomeGen {
 			if (well != null) {
 				well(well);
 			}
-			for (int[] c : poisson(10, 5, (x, z) -> free(x, z, 1))) {
+			for (int[] c : poisson(n(10), 5, (x, z) -> free(x, z, 1))) {
 				stack(c[0], c[1], BiomeBlocks.POLISHED_ANDESITE, 3 + this.random.nextInt(6));
 			}
-			for (int[] c : poisson(5, 9, (x, z) -> free(x, z, 1) && x > ring + 2 && x < N - ring - 3)) {
+			for (int[] c : poisson(n(5), 9, (x, z) -> free(x, z, 1) && x > ring + 2 && x < this.sx - ring - 3)) {
 				for (int[] d : disc(c[0], c[1], 1)) {
 					dent(d[0], d[1]);
 				}
 			}
-			fires(4);
+			fires(n(4));
 		}
 
 		// ---- the adventurers' graveyard
 
 		void graveyard() {
 			List<int[]> plots = new ArrayList<>();
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < n(4); i++) {
 				int[] spot = pad(14, 10, 80);
 				if (spot != null) {
 					plots.add(spot);
 				}
 			}
 			List<int[]> tombs = new ArrayList<>();
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < n(2); i++) {
 				int[] spot = pad(7, 9, 80);
 				if (spot != null) {
 					tombs.add(spot);
 				}
 			}
-			int[] chapel = pad(9, 13, 80);
+			List<int[]> chapels = new ArrayList<>();
+			for (int i = 0; i < n(1); i++) {
+				int[] spot = pad(9, 13, 80);
+				if (spot != null) {
+					chapels.add(spot);
+				}
+			}
 			relax(true);
 			for (int[] plot : plots) {
 				for (int x = plot[0]; x < plot[0] + 14; x++) {
@@ -1309,10 +1364,10 @@ final class BiomeGen {
 					graveDent(middle[0], middle[1]);
 				}
 			}
-			if (chapel != null) {
+			for (int[] chapel : chapels) {
 				ruin(chapel[0], chapel[1], 9, 13, stone, 2, 7, 0.45, BiomeBlocks.STONE_BRICKS);
 			}
-			for (int[] t : poisson(14, 8, (x, z) -> free(x, z, 1))) {
+			for (int[] t : poisson(n(14), 8, (x, z) -> free(x, z, 1))) {
 				stack(t[0], t[1], BiomeBlocks.OAK_LOG, 4 + this.random.nextInt(5));
 			}
 		}
@@ -1328,7 +1383,7 @@ final class BiomeGen {
 		// ---- the scorched battlefield
 
 		void battlefield() {
-			for (int[] c : poisson(14, 9, (x, z) -> free(x, z, 3))) {
+			for (int[] c : poisson(n(14), 9, (x, z) -> free(x, z, 3))) {
 				int r = 2 + this.random.nextInt(4);
 				for (int[] d : disc(c[0], c[1], r)) {
 					if (free(d[0], d[1])) {
@@ -1341,9 +1396,9 @@ final class BiomeGen {
 				}
 			}
 			List<int[]> stakes = new ArrayList<>();
-			for (int t = 0; t < 3; t++) {
-				int[] a = {3 + this.random.nextInt(18), 5 + this.random.nextInt(54)};
-				int[] b = {43 + this.random.nextInt(18), 5 + this.random.nextInt(54)};
+			for (int t = 0; t < along(3); t++) {
+				int[] a = {3 + this.random.nextInt(18), 5 + this.random.nextInt(this.sz - 10)};
+				int[] b = {this.sx - 21 + this.random.nextInt(18), 5 + this.random.nextInt(this.sz - 10)};
 				for (int[] c : drunk(a, b)) {
 					if (free(c[0], c[1], 1)) {
 						this.h[c[0]][c[1]] = Math.max(0, this.h[c[0]][c[1]] - 1);
@@ -1355,7 +1410,7 @@ final class BiomeGen {
 				}
 			}
 			List<int[]> wrecks = new ArrayList<>();
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < n(4); i++) {
 				int[] spot = pad(3, 5, 80);
 				if (spot != null) {
 					wrecks.add(spot);
@@ -1373,14 +1428,14 @@ final class BiomeGen {
 					put(w[0] + 1, this.h[w[0] + 1][w[1] + 2], w[1] + 2, BiomeBlocks.ANVIL);
 				}
 			}
-			fires(14);
+			fires(n(14));
 		}
 
 		// ---- the jungle
 
 		void jungle() {
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (in(x, z, 1) && vnoise(this.seed, x, z, 9, 5) < 0.26 && this.h[x][z] <= 1 && free(x, z, 1)) {
 						this.water[x][z] = true;
 						this.h[x][z] = -1;
@@ -1389,19 +1444,19 @@ final class BiomeGen {
 				}
 			}
 			List<int[]> temples = new ArrayList<>();
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < n(3); i++) {
 				int[] spot = pad(7, 7, 60);
 				if (spot != null) {
 					temples.add(spot);
 				}
 			}
 			relax(true);
-			for (int[] t : poisson(24, 8, (x, z) -> free(x, z, 2) && free(x + 1, z + 1, 2) && free(x + 1, z, 2) && free(x, z + 1, 2))) {
+			for (int[] t : poisson(n(24), 8, (x, z) -> free(x, z, 2) && free(x + 1, z + 1, 2) && free(x + 1, z, 2) && free(x, z + 1, 2))) {
 				grow(t[0], t[1], 2, 4, 5 + this.random.nextInt(8), BiomeBlocks.JUNGLE_LOG, BiomeBlocks.JUNGLE_LEAVES);
 			}
-			for (int i = 0; i < 30; i++) {
-				int bx = 3 + this.random.nextInt(N - 6);
-				int bz = 3 + this.random.nextInt(N - 6);
+			for (int i = 0; i < n(30); i++) {
+				int bx = 3 + this.random.nextInt(this.sx - 6);
+				int bz = 3 + this.random.nextInt(this.sz - 6);
 				for (int[] c : disc(bx, bz, 1 + this.random.nextInt(2))) {
 					if (free(c[0], c[1], 1)) {
 						stack(c[0], c[1], BiomeBlocks.JUNGLE_LEAVES, 2);
@@ -1417,8 +1472,8 @@ final class BiomeGen {
 		// ---- the mistbound marsh
 
 		void marsh() {
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (in(x, z, 1) && vnoise(this.seed, x, z, 10, 4) < 0.34 && this.h[x][z] <= 1 && free(x, z, 1)) {
 						this.water[x][z] = true;
 						this.h[x][z] = -1;
@@ -1427,30 +1482,30 @@ final class BiomeGen {
 				}
 			}
 			List<int[]> huts = new ArrayList<>();
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < n(2); i++) {
 				int[] spot = pad(5, 5, 80);
 				if (spot != null) {
 					huts.add(spot);
 				}
 			}
 			relax(true);
-			for (int[] t : poisson(26, 6, (x, z) -> free(x, z, 1))) {
+			for (int[] t : poisson(n(26), 6, (x, z) -> free(x, z, 1))) {
 				stack(t[0], t[1], BiomeBlocks.OAK_LOG, 5 + this.random.nextInt(5));
 			}
 			for (int[] hut : huts) {
 				ruin(hut[0], hut[1], 5, 5, new byte[] {BiomeBlocks.PLANKS}, 2, 4, 0.3, BiomeBlocks.PLANKS);
 			}
 			for (int i = 0, placed = 0; placed < 8 && i < 400; i++) {
-				int x = 3 + this.random.nextInt(N - 6);
-				int z = 3 + this.random.nextInt(N - 6);
+				int x = 3 + this.random.nextInt(this.sx - 6);
+				int z = 3 + this.random.nextInt(this.sz - 6);
 				if (free(x, z, 1)) {
 					stack(x, z, BiomeBlocks.COBBLE, 2);
 					placed++;
 				}
 			}
 			// The spine is a boardwalk.
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (this.keep[x][z] == 1) {
 						this.surface[x][z] = BiomeBlocks.PLANKS;
 					}
@@ -1461,8 +1516,8 @@ final class BiomeGen {
 		// ---- the basalt deltas
 
 		void basalt() {
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					// A lava lake keeps three blocks from the road, the stair, the guard's yard and the arrival.
 					if (in(x, z, 1) && vnoise(this.seed, x, z, 11, 6) < 0.30 && free(x, z, 3)) {
 						this.lava[x][z] = true;
@@ -1472,8 +1527,8 @@ final class BiomeGen {
 				}
 			}
 			relax(true);
-			for (int x = 1; x < N - 1; x++) {
-				for (int z = 1; z < N - 1; z++) {
+			for (int x = 1; x < this.sx - 1; x++) {
+				for (int z = 1; z < this.sz - 1; z++) {
 					if (this.keep[x][z] != 0 || this.lava[x][z] || this.used[x][z]) {
 						continue;
 					}
@@ -1483,7 +1538,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int[] c : poisson(30, 5, (x, z) -> free(x, z, 2))) {
+			for (int[] c : poisson(n(30), 5, (x, z) -> free(x, z, 2))) {
 				int r = this.random.nextDouble() < 0.25 ? 2 : 1;
 				int height = 3 + this.random.nextInt(7);
 				for (int[] d : disc(c[0], c[1], r)) {
@@ -1492,13 +1547,13 @@ final class BiomeGen {
 					}
 				}
 			}
-			fires(8);
+			fires(n(8));
 		}
 
 		// ---- the eternal snowstorm
 
 		void snow() {
-			for (int[] c : poisson(16, 5, (x, z) -> free(x, z, 1))) {
+			for (int[] c : poisson(n(16), 5, (x, z) -> free(x, z, 1))) {
 				for (int[] d : disc(c[0], c[1], 1 + this.random.nextInt(2))) {
 					if (free(d[0], d[1])) {
 						this.surface[d[0]][d[1]] = BiomeBlocks.POWDER_SNOW;
@@ -1506,9 +1561,9 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int i = 0; i < 3; i++) {
-				int cx = 8 + this.random.nextInt(N - 16);
-				int cz = 8 + this.random.nextInt(N - 16);
+			for (int i = 0; i < n(3); i++) {
+				int cx = 8 + this.random.nextInt(this.sx - 16);
+				int cz = 8 + this.random.nextInt(this.sz - 16);
 				for (int[] d : disc(cx, cz, 3 + this.random.nextInt(3))) {
 					if (free(d[0], d[1], 1)) {
 						this.surface[d[0]][d[1]] = BiomeBlocks.PACKED_ICE;
@@ -1516,14 +1571,14 @@ final class BiomeGen {
 				}
 			}
 			List<int[]> camps = new ArrayList<>();
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < n(3); i++) {
 				int[] spot = pad(5, 5, 60);
 				if (spot != null) {
 					camps.add(spot);
 				}
 			}
 			relax(true);
-			for (int[] c : poisson(14, 7, (x, z) -> free(x, z, 1))) {
+			for (int[] c : poisson(n(14), 7, (x, z) -> free(x, z, 1))) {
 				stack(c[0], c[1], BiomeBlocks.BLUE_ICE, 5 + this.random.nextInt(8));
 			}
 			for (int[] camp : camps) {
@@ -1539,14 +1594,14 @@ final class BiomeGen {
 		void desert() {
 			int[] oasis = null;
 			for (int tries = 0; tries < 60 && oasis == null; tries++) {
-				int cx = 10 + this.random.nextInt(N - 20);
-				int cz = 10 + this.random.nextInt(N - 20);
+				int cx = 10 + this.random.nextInt(this.sx - 20);
+				int cz = 10 + this.random.nextInt(this.sz - 20);
 				if (free(cx, cz, 6)) {
 					oasis = new int[] {cx, cz};
 				}
 			}
 			List<int[]> ruins = new ArrayList<>();
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < n(4); i++) {
 				int size = 6 + this.random.nextInt(4);
 				int[] spot = pad(size, size, 60);
 				if (spot != null) {
@@ -1583,22 +1638,22 @@ final class BiomeGen {
 			for (int[] r : ruins) {
 				ruin(r[0], r[1], r[2], r[2], stone, 1, 5, 0.4, BiomeBlocks.CUT_SANDSTONE);
 			}
-			for (int[] c : poisson(3, 10, (x, z) -> free(x, z, 2))) {
+			for (int[] c : poisson(n(3), 10, (x, z) -> free(x, z, 2))) {
 				stack(c[0], c[1], BiomeBlocks.CUT_SANDSTONE, 8 + this.random.nextInt(5));
 			}
-			for (int i = 0, placed = 0; placed < 3 && i < 200; i++) {
-				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			for (int i = 0, placed = 0; placed < n(3) && i < n(200); i++) {
+				placed += dent(3 + this.random.nextInt(this.sx - 6), 3 + this.random.nextInt(this.sz - 6)) ? 1 : 0;
 			}
-			for (int i = 0; i < 5; i++) {
-				int cx = 4 + this.random.nextInt(N - 8);
-				int cz = 4 + this.random.nextInt(N - 8);
+			for (int i = 0; i < n(5); i++) {
+				int cx = 4 + this.random.nextInt(this.sx - 8);
+				int cz = 4 + this.random.nextInt(this.sz - 8);
 				for (int[] d : disc(cx, cz, 1)) {
 					if (free(d[0], d[1], 1)) {
 						this.surface[d[0]][d[1]] = BiomeBlocks.SOUL_SAND;
 					}
 				}
 			}
-			for (int[] c : poisson(34, 4, (x, z) -> free(x, z, 1) && (this.surface[x][z] == BiomeBlocks.SAND || this.surface[x][z] == BiomeBlocks.RED_SAND))) {
+			for (int[] c : poisson(n(34), 4, (x, z) -> free(x, z, 1) && (this.surface[x][z] == BiomeBlocks.SAND || this.surface[x][z] == BiomeBlocks.RED_SAND))) {
 				// Three high or more: a cactus that tall neither grows nor ages.
 				stack(c[0], c[1], BiomeBlocks.CACTUS, 3 + this.random.nextInt(2));
 				markFragile(c[0], c[1]);
@@ -1618,13 +1673,13 @@ final class BiomeGen {
 		/** Takes down every cactus that something set beside it, and marks the columns of the rest. */
 		void trimCacti() {
 			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					this.fragile[x][z] = false;
 				}
 			}
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (get(x, this.h[x][z], z) != BiomeBlocks.CACTUS) {
 						continue;
 					}
@@ -1641,8 +1696,8 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (get(x, this.h[x][z], z) == BiomeBlocks.CACTUS) {
 						markFragile(x, z);
 					}
@@ -1679,10 +1734,10 @@ final class BiomeGen {
 
 		/** Marks every column that is not open, and not part of the frame, as rock to the roof; returns them. */
 		boolean[][] rock(final boolean[][] open) {
-			boolean[][] solid = new boolean[N][N];
+			boolean[][] solid = new boolean[this.sx][this.sz];
 			this.rockMask = solid;
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (!open[x][z] && this.keep[x][z] == 0 && !this.water[x][z]) {
 						solid[x][z] = true;
 						this.tall[x][z] = true;
@@ -1698,10 +1753,10 @@ final class BiomeGen {
 		 * {@code air} gives it, in the rock of the biome.
 		 */
 		void enclose(final boolean[][] solid, final java.util.function.BiFunction<Integer, Integer, Integer> air, final byte[] rocks) {
-			this.ceil = new short[N][N];
-			this.ceilCode = new byte[N][N];
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			this.ceil = new short[this.sx][this.sz];
+			this.ceilCode = new byte[this.sx][this.sz];
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					this.ceil[x][z] = (short) (solid[x][z] ? Math.max(0, this.h[x][z]) : Math.min(TowerLayout.ROOM_HEIGHT - 2, air.apply(x, z)));
 					byte code = rocks[0];
 					if (rocks.length > 1 && vnoise(this.seed, x, z, 5, 8) > 0.78) {
@@ -1718,16 +1773,16 @@ final class BiomeGen {
 		// ---- the amethyst cave
 
 		void cave() {
-			boolean[][] rock = new boolean[N][N];
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			boolean[][] rock = new boolean[this.sx][this.sz];
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					rock[x][z] = !in(x, z, 1) || this.random.nextDouble() < 0.46;
 				}
 			}
 			for (int pass = 0; pass < 4; pass++) {
-				boolean[][] next = new boolean[N][N];
-				for (int x = 0; x < N; x++) {
-					for (int z = 0; z < N; z++) {
+				boolean[][] next = new boolean[this.sx][this.sz];
+				for (int x = 0; x < this.sx; x++) {
+					for (int z = 0; z < this.sz; z++) {
 						int count = 0;
 						for (int dx = -1; dx <= 1; dx++) {
 							for (int dz = -1; dz <= 1; dz++) {
@@ -1739,17 +1794,17 @@ final class BiomeGen {
 				}
 				rock = next;
 			}
-			boolean[][] open = new boolean[N][N];
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			boolean[][] open = new boolean[this.sx][this.sz];
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					open[x][z] = (!rock[x][z] && in(x, z, 1)) || this.keep[x][z] != 0;
 				}
 			}
 			joinCaves(open);
 			boolean[][] solid = rock(open);
-			for (int i = 0; i < 6; i++) {
-				int cx = 4 + this.random.nextInt(N - 8);
-				int cz = 4 + this.random.nextInt(N - 8);
+			for (int i = 0; i < n(6); i++) {
+				int cx = 4 + this.random.nextInt(this.sx - 8);
+				int cz = 4 + this.random.nextInt(this.sz - 8);
 				int[][] cross = {{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 				for (int[] d : cross) {
 					if (this.random.nextInt(4) > 0) {
@@ -1758,7 +1813,7 @@ final class BiomeGen {
 				}
 			}
 			relax(true);
-			for (int[] c : poisson(4, 14, (x, z) -> free(x, z, 5))) {
+			for (int[] c : poisson(n(4), 14, (x, z) -> free(x, z, 5))) {
 				for (int[] d : disc(c[0], c[1], 4)) {
 					double dist = Math.hypot(d[0] - c[0], d[1] - c[1]);
 					int height = Math.max(1, (int) Math.round(Math.sqrt(Math.max(0.0, 16.0 - dist * dist))));
@@ -1768,7 +1823,7 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int[] c : poisson(10, 4, (x, z) -> free(x, z, 1))) {
+			for (int[] c : poisson(n(10), 4, (x, z) -> free(x, z, 1))) {
 				stack(c[0], c[1], BiomeBlocks.DRIPSTONE_BLOCK, 2 + this.random.nextInt(2));
 			}
 			enclose(solid, (x, z) -> this.h[x][z] + 20 + (int) (vnoise(this.seed, x, z, 6, 7) * 8), new byte[] {BiomeBlocks.TUFF, BiomeBlocks.CALCITE, BiomeBlocks.AMETHYST_BLOCK});
@@ -1776,14 +1831,14 @@ final class BiomeGen {
 
 		/** Joins every cave of a size to the one the road runs through by a tunnel, and fills the small pockets. */
 		private void joinCaves(final boolean[][] open) {
-			int[][] label = new int[N][N];
+			int[][] label = new int[this.sx][this.sz];
 			for (int[] row : label) {
 				java.util.Arrays.fill(row, -1);
 			}
 			List<List<int[]>> caves = new ArrayList<>();
 			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					if (!open[x][z] || label[x][z] >= 0) {
 						continue;
 					}
@@ -1838,11 +1893,11 @@ final class BiomeGen {
 		// ---- the sunken catacombs
 
 		void catacombs() {
-			boolean[][] open = new boolean[N][N];
+			boolean[][] open = new boolean[this.sx][this.sz];
 			List<int[]> rooms = new ArrayList<>();
-			split(2, 2, N - 4, N - 4, 3, rooms);
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			split(2, 2, this.sx - 4, this.sz - 4, 3 + (int) Math.round(Math.log(this.k) / Math.log(2.0)), rooms);
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					open[x][z] = this.keep[x][z] != 0;
 				}
 			}
@@ -1907,8 +1962,8 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int i = 0, placed = 0; placed < 6 && i < 300; i++) {
-				placed += dent(3 + this.random.nextInt(N - 6), 3 + this.random.nextInt(N - 6)) ? 1 : 0;
+			for (int i = 0, placed = 0; placed < n(6) && i < n(300); i++) {
+				placed += dent(3 + this.random.nextInt(this.sx - 6), 3 + this.random.nextInt(this.sz - 6)) ? 1 : 0;
 			}
 			enclose(solid, (x, z) -> 15, new byte[] {BiomeBlocks.STONE_BRICKS, BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.DEEPSLATE_BRICKS});
 		}
@@ -1965,9 +2020,9 @@ final class BiomeGen {
 		 * carpet, and a gallery over each aisle, on pillars with a railing. The boss walks the nave; there is no safe room.
 		 */
 		void hall() {
-			boolean[][] open = new boolean[N][N];
-			for (int x = 3; x < N - 3; x++) {
-				for (int z = 3; z < N - 3; z++) {
+			boolean[][] open = new boolean[this.sx][this.sz];
+			for (int x = 3; x < this.sx - 3; x++) {
+				for (int z = 3; z < this.sz - 3; z++) {
 					open[x][z] = true;
 				}
 			}
@@ -1994,18 +2049,18 @@ final class BiomeGen {
 					}
 				}
 			}
-			for (int x = 3; x < N - 3; x++) {
-				for (int z = 3; z < N - 3; z++) {
+			for (int x = 3; x < this.sx - 3; x++) {
+				for (int z = 3; z < this.sz - 3; z++) {
 					boolean aisle = z <= 18 || z >= 45;
 					if (aisle) {
 						put(x, 6, z, BiomeBlocks.STONE_BRICKS);
 					}
-					if ((z == 18 || z == 45) && x >= 4 && x < N - 4) {
+					if ((z == 18 || z == 45) && x >= 4 && x < this.sx - 4) {
 						put(x, 7, z, BiomeBlocks.COBBLE_WALL);
 					}
 				}
 			}
-			for (int x = 6; x < N - 3; x += 6) {
+			for (int x = 6; x < this.sx - 3; x += 6) {
 				for (int z : new int[] {18, 45}) {
 					if (free(x, z)) {
 						stack(x, z, BiomeBlocks.DEEPSLATE_BRICKS, 6);
@@ -2020,33 +2075,33 @@ final class BiomeGen {
 		/** Scatters the floor's props and the walls', clear of the road, the stair, the pad, the nooks and the water. */
 		void props() {
 			byte[] pool = BiomeProps.floor(this.biome);
-			int floors = 60 + this.random.nextInt(51);
+			int floors = n(60 + this.random.nextInt(51));
 			int barrels = 0;
 			for (byte code : this.over) {
 				barrels += code == BiomeBlocks.BARREL ? 1 : 0;
 			}
 			int placed = 0;
 			for (int tries = 0; placed < floors && tries < floors * 25; tries++) {
-				int x = 2 + this.random.nextInt(N - 4);
-				int z = 2 + this.random.nextInt(N - 4);
+				int x = 2 + this.random.nextInt(this.sx - 4);
+				int z = 2 + this.random.nextInt(this.sz - 4);
 				if (!free(x, z, 1) || get(x, this.h[x][z], z) != 0) {
 					continue;
 				}
 				byte code = pool[this.random.nextInt(pool.length)];
-				if (code == BiomeBlocks.BARREL && barrels++ >= BiomeProps.BARRELS) {
+				if (code == BiomeBlocks.BARREL && barrels++ >= n(BiomeProps.BARRELS)) {
 					continue;
 				}
 				put(x, this.h[x][z], z, code);
 				this.used[x][z] = true;
 				placed++;
 			}
-			int walls = 40 + this.random.nextInt(31);
+			int walls = n(40 + this.random.nextInt(31));
 			int hung = 0;
 			int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 			Direction[] faces = {Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH};
 			for (int tries = 0; hung < walls && tries < walls * 150; tries++) {
-				int x = 2 + this.random.nextInt(N - 4);
-				int z = 2 + this.random.nextInt(N - 4);
+				int x = 2 + this.random.nextInt(this.sx - 4);
+				int z = 2 + this.random.nextInt(this.sz - 4);
 				if (this.keep[x][z] != 0 || this.water[x][z] || this.lava[x][z]) {
 					continue;
 				}
@@ -2075,7 +2130,7 @@ final class BiomeGen {
 
 		/** The columns a body reaches from the arrival, in steps, by the ground alone: a coarse stand-in for the walk proof. */
 		int[][] steps() {
-			int[][] dist = new int[N][N];
+			int[][] dist = new int[this.sx][this.sz];
 			for (int[] row : dist) {
 				java.util.Arrays.fill(row, -1);
 			}
@@ -2105,8 +2160,8 @@ final class BiomeGen {
 			int[][] dist = steps();
 			Direction[] faces = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 			List<int[]> candidates = new ArrayList<>();
-			for (int x = 2; x < N - 3; x++) {
-				for (int z = 2; z < N - 3; z++) {
+			for (int x = 2; x < this.sx - 3; x++) {
+				for (int z = 2; z < this.sz - 3; z++) {
 					for (int f = 0; f < 4; f++) {
 						candidates.add(new int[] {x, z, f});
 					}
@@ -2124,7 +2179,7 @@ final class BiomeGen {
 			}
 			int made = 0;
 			for (int[] c : candidates) {
-				if (made >= NOOKS) {
+				if (made >= n(NOOKS)) {
 					break;
 				}
 				Direction face = faces[c[2]];
@@ -2195,8 +2250,8 @@ final class BiomeGen {
 		boolean lights(final TowerPlan plan, final TowerVolume volume, final boolean again) {
 			int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
 			List<int[]> stands = new ArrayList<>();
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					for (int y = TowerWalk.LOW; y <= TowerWalk.HIGH; y++) {
 						if (dist[TowerWalk.index(x, y, z)] >= 0) {
 							stands.add(new int[] {x, y, z});
@@ -2205,12 +2260,20 @@ final class BiomeGen {
 				}
 			}
 			boolean[] lit = new boolean[stands.size()];
+			// The stands are listed column by column, so the ones near a light are found by its columns, not by the whole list.
+			int[] first = new int[this.sx * this.sz + 1];
+			for (int[] stand : stands) {
+				first[stand[0] * this.sz + stand[2] + 1]++;
+			}
+			for (int c = 0; c < this.sx * this.sz; c++) {
+				first[c + 1] += first[c];
+			}
 			boolean placed = false;
 			if (again) {
 				// A later round counts the lights the floor already holds, so it lights only what an earlier round left dark.
 				List<int[]> lamps = new ArrayList<>();
-				for (int x = 0; x < N; x++) {
-					for (int z = 0; z < N; z++) {
+				for (int x = 0; x < this.sx; x++) {
+					for (int z = 0; z < this.sz; z++) {
 						for (int y = TowerLayout.ROOM_LOW; y < TowerLayout.ROOM_HEIGHT; y++) {
 							if (volume.kind(x, y, z) == TowerVolume.BIOME_BLOCK && BiomeBlocks.lights(volume.code(x, y, z))) {
 								lamps.add(new int[] {x, y, z});
@@ -2218,10 +2281,8 @@ final class BiomeGen {
 						}
 					}
 				}
-				for (int i = 0; i < stands.size(); i++) {
-					for (int[] lamp : lamps) {
-						lit[i] |= squared(lamp, stands.get(i)) <= LIGHT_REACH_SQUARED;
-					}
+				for (int[] lamp : lamps) {
+					cover(lamp, stands, first, lit, true);
 				}
 			}
 			for (int i = 0; i < stands.size(); i++) {
@@ -2255,10 +2316,7 @@ final class BiomeGen {
 								if (squared(lamp, spot) > LIGHT_REACH_SQUARED) {
 									continue;
 								}
-								int covers = 0;
-								for (int j = 0; j < stands.size(); j++) {
-									covers += !lit[j] && squared(lamp, stands.get(j)) <= LIGHT_REACH_SQUARED ? 1 : 0;
-								}
+								int covers = cover(lamp, stands, first, lit, false);
 								if (covers > gain) {
 									gain = covers;
 									best = lamp;
@@ -2275,9 +2333,7 @@ final class BiomeGen {
 						continue;
 					}
 					placed = true;
-					for (int j = 0; j < stands.size(); j++) {
-						lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
-					}
+					cover(best, stands, first, lit, true);
 					continue;
 				}
 				if (best[3] == 1) {
@@ -2293,11 +2349,30 @@ final class BiomeGen {
 					this.tall[best[0]][best[2]] = true;
 				}
 				placed = true;
-				for (int j = 0; j < stands.size(); j++) {
-					lit[j] |= squared(best, stands.get(j)) <= LIGHT_REACH_SQUARED;
-				}
+				cover(best, stands, first, lit, true);
 			}
 			return placed;
+		}
+
+		/**
+		 * The stands a light would reach that are not lit yet, from the columns round it; with {@code mark} set, it lights them.
+		 * {@code first} holds where each column's stands begin in the list.
+		 */
+		private int cover(final int[] lamp, final List<int[]> stands, final int[] first, final boolean[] lit, final boolean mark) {
+			int covers = 0;
+			int x0 = Math.max(0, lamp[0] - LIGHT_REACH);
+			int x1 = Math.min(this.sx - 1, lamp[0] + LIGHT_REACH);
+			int z0 = Math.max(0, lamp[2] - LIGHT_REACH);
+			int z1 = Math.min(this.sz - 1, lamp[2] + LIGHT_REACH);
+			for (int x = x0; x <= x1; x++) {
+				for (int j = first[x * this.sz + z0]; j < first[x * this.sz + z1 + 1]; j++) {
+					if (!lit[j] && squared(lamp, stands.get(j)) <= LIGHT_REACH_SQUARED) {
+						covers++;
+						lit[j] |= mark;
+					}
+				}
+			}
+			return covers;
 		}
 
 		/**
@@ -2367,15 +2442,15 @@ final class BiomeGen {
 		// ---- the plan
 
 		BiomeDraft draft() {
-			short[][] feet = new short[N][N];
-			byte[][] surface = new byte[N][N];
-			boolean[][] water = new boolean[N][N];
-			boolean[][] lava = new boolean[N][N];
-			boolean[][] fragile = new boolean[N][N];
-			short[][] ceiling = new short[N][N];
-			byte[][] ceilCodes = new byte[N][N];
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			short[][] feet = new short[this.sx][this.sz];
+			byte[][] surface = new byte[this.sx][this.sz];
+			boolean[][] water = new boolean[this.sx][this.sz];
+			boolean[][] lava = new boolean[this.sx][this.sz];
+			boolean[][] fragile = new boolean[this.sx][this.sz];
+			short[][] ceiling = new short[this.sx][this.sz];
+			byte[][] ceilCodes = new byte[this.sx][this.sz];
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					feet[x][z] = (short) this.h[x][z];
 				}
 				surface[x] = this.surface[x].clone();
@@ -2388,8 +2463,8 @@ final class BiomeGen {
 				}
 			}
 			// Grass dies under a block that shuts out the light, and dirt would spread back: bare dirt under any cover.
-			for (int x = 0; x < N; x++) {
-				for (int z = 0; z < N; z++) {
+			for (int x = 0; x < this.sx; x++) {
+				for (int z = 0; z < this.sz; z++) {
 					byte above = get(x, this.h[x][z], z);
 					// A road turns to dirt under anything solid, grass dies under a block that shuts out the light.
 					boolean dies = surface[x][z] == BiomeBlocks.GRASS && BiomeBlocks.opaque(above)
@@ -2399,15 +2474,21 @@ final class BiomeGen {
 					}
 				}
 			}
+			// The dais sets a post at each end of the apron after the work is done, so a road that runs under one is dirt as well.
+			for (int z : new int[] {this.pz - 3 - this.steps, this.pz + 4 + this.steps}) {
+				if (this.facing != 0 && this.foot >= 0 && this.foot < this.sx && z >= 0 && z < this.sz && surface[this.foot][z] == BiomeBlocks.PATH) {
+					surface[this.foot][z] = BiomeBlocks.COARSE_DIRT;
+				}
+			}
 			int count = 0;
 			for (byte code : this.over) {
 				count += code != 0 ? 1 : 0;
 			}
 			int[] placed = new int[count * 4];
 			int i = 0;
-			for (int x = 0; x < N; x++) {
+			for (int x = 0; x < this.sx; x++) {
 				for (int y = OLOW; y < TowerLayout.ROOM_HEIGHT; y++) {
-					for (int z = 0; z < N; z++) {
+					for (int z = 0; z < this.sz; z++) {
 						byte code = this.over[overIndex(x, y, z)];
 						if (code != 0) {
 							placed[i++] = x;
@@ -2418,16 +2499,17 @@ final class BiomeGen {
 					}
 				}
 			}
-			return new BiomeDraft(this.biome, feet, surface, water, lava, fragile, this.ceil == null ? null : ceiling, this.ceil == null ? null : ceilCodes, placed, null, this.steps, this.cover.toArray(new int[0][]));
+			return new BiomeDraft(this.biome, feet, surface, water, lava, fragile, this.ceil == null ? null : ceiling, this.ceil == null ? null : ceilCodes, placed, null, this.steps,
+				this.cover.toArray(new int[0][]), this.sx, this.sz, this.layout, this.marks.toArray(new int[0][]));
 		}
 
 		TowerPlan assemble(final int attempt, final BiomeDraft draft) {
 			float yaw = (float) Math.toDegrees(Math.atan2(-(this.px - this.ax), this.pz - this.az));
-			TowerStory story = TowerStory.of(0, TowerLayout.ROOM_HEIGHT, TowerStory.full(), new boolean[N][N]);
+			TowerStory story = TowerStory.of(0, TowerLayout.ROOM_HEIGHT, TowerStory.full(this.sx, this.sz), new boolean[this.sx][this.sz]);
 			List<TowerMaze.Zone> zones = this.floor == 1
 				? List.of(new TowerMaze.Zone(zoneX(), zoneZ(), 0, TowerLayout.ROOM_HEIGHT)) : List.of();
 			return new TowerPlan(this.seed, this.floor, TowerArchetype.BIOME, TowerPlan.Variation.MAZE, 0, attempt, this.ax, this.az, yaw,
-				this.px, this.pz, this.facing, 0, new boolean[N][N], List.of(story), List.of(), zones, 0, List.of(), List.of(), null, this.floor, draft);
+				this.px, this.pz, this.facing, 0, new boolean[this.sx][this.sz], List.of(story), List.of(), zones, 0, List.of(), List.of(), null, this.floor, draft);
 		}
 	}
 }

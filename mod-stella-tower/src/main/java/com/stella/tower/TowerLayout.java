@@ -11,18 +11,20 @@ import net.minecraft.world.phys.Vec3;
  * {@link #HEIGHT} blocks high, whose inner corner is {@link #origin(int)}.
  */
 public final class TowerLayout {
-	/** The room's inside width and length. */
+	/** The base room's inside width and length: the size of a boss floor, a lost room and every floor of the older generators. */
 	public static final int SIZE = 64;
+	/** The most a biome floor's room is wide or deep inside its walls ({@link TowerSizes}). */
+	public static final int MAX_SIZE = 128;
 	/** The room's inside height of the plans drawn before the biome floors, and of a lost room. */
 	public static final int HEIGHT = 24;
 	/** The room's inside height of a biome floor, and so the most any floor reaches. */
 	public static final int ROOM_HEIGHT = 32;
 	/** The lowest block of a biome floor, below the base: its bedrock. */
 	public static final int ROOM_LOW = -6;
-	/** One grid cell: the room, its walls, and a gap, so two floors never share a chunk. */
-	public static final int CELL = 128;
-	/** Floors per grid row. */
-	public static final int COLUMNS = 256;
+	/** One grid cell: the largest room, its walls, and a gap of a chunk and more, so two floors never share a chunk. */
+	public static final int CELL = 192;
+	/** Floors per grid row: floor numbers in the tens of millions still lie inside the world's limit of thirty million blocks. */
+	public static final int COLUMNS = 384;
 	/** The y of the lowest air block in every room. */
 	public static final int BASE_Y = 64;
 	/** The portal frame: two blocks wide and three high inside, standing on the floor layer. */
@@ -45,7 +47,10 @@ public final class TowerLayout {
 		return new BlockPos((index % COLUMNS) * CELL, BASE_Y, (index / COLUMNS) * CELL);
 	}
 
-	/** The floor whose room or walls hold this spot, or 0 for none. */
+	/**
+	 * The floor whose room or walls hold this spot, or 0 for none. A spot is in a floor's cell up to the most a room is
+	 * wide ({@link #MAX_SIZE}), whatever the floor's own size: a smaller room has only void past its walls.
+	 */
 	public static int floorAt(final BlockPos pos) {
 		if (pos.getX() < -1 || pos.getZ() < -1) {
 			return 0;
@@ -57,8 +62,8 @@ public final class TowerLayout {
 		}
 		int floor = row * COLUMNS + column + 1;
 		BlockPos origin = origin(floor);
-		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + SIZE
-			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
+		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + MAX_SIZE
+			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + MAX_SIZE
 			&& pos.getY() >= BASE_Y + ROOM_LOW && pos.getY() <= BASE_Y + ROOM_HEIGHT;
 		return inside ? floor : 0;
 	}
@@ -76,8 +81,8 @@ public final class TowerLayout {
 		}
 		int id = -(row * COLUMNS + column + 1);
 		BlockPos origin = origin(id);
-		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + SIZE
-			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + SIZE
+		boolean inside = pos.getX() >= origin.getX() - 1 && pos.getX() <= origin.getX() + MAX_SIZE
+			&& pos.getZ() >= origin.getZ() - 1 && pos.getZ() <= origin.getZ() + MAX_SIZE
 			&& pos.getY() >= BASE_Y + ROOM_LOW && pos.getY() <= BASE_Y + ROOM_HEIGHT;
 		return inside ? id : 0;
 	}

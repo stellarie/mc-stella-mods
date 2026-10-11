@@ -50,8 +50,8 @@ public class TowerWeatherGameTest {
 			boolean[][] lava = plan.biome().lava();
 			byte[][] surface = plan.biome().surface();
 			List<int[]> path = TowerWalk.path(volume, new int[] {plan.arrivalX(), 0, plan.arrivalZ()}, TowerVolume.portalGoals(plan));
-			for (int x = 0; x < TowerLayout.SIZE; x++) {
-				for (int z = 0; z < TowerLayout.SIZE; z++) {
+			for (int x = 0; x < plan.width(); x++) {
+				for (int z = 0; z < plan.depth(); z++) {
 					if (!lava[x][z]) {
 						continue;
 					}
@@ -64,7 +64,7 @@ public class TowerWeatherGameTest {
 						for (int dz = -2; dz <= 2; dz++) {
 							int a = x + dx;
 							int b = z + dz;
-							if (a >= 0 && b >= 0 && a < TowerLayout.SIZE && b < TowerLayout.SIZE && surface[a][b] == BiomeBlocks.PATH) {
+							if (a >= 0 && b >= 0 && a < plan.width() && b < plan.depth() && surface[a][b] == BiomeBlocks.PATH) {
 								nearTheRoad++;
 							}
 						}
@@ -100,8 +100,8 @@ public class TowerWeatherGameTest {
 			inLava += tower.getFluidState(origin.offset(step[0], step[1], step[2])).is(net.minecraft.tags.FluidTags.LAVA) ? 1 : 0;
 		}
 		int lavaBlocks = 0;
-		for (int x = 0; x < TowerLayout.SIZE; x++) {
-			for (int z = 0; z < TowerLayout.SIZE; z++) {
+		for (int x = 0; x < plan.width(); x++) {
+			for (int z = 0; z < plan.depth(); z++) {
 				lavaBlocks += plan.biome().lava()[x][z] && tower.getBlockState(origin.offset(x, -1, z)).is(Blocks.LAVA) ? 1 : 0;
 			}
 		}

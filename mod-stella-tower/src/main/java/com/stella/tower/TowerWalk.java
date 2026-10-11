@@ -20,6 +20,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * block, which no body stands on or steps over). A body stands at a cell with solid under it and open air at it and
  * above it. From there it walks to a neighbour across x or z: level; one up, with air above its head to jump; or one
  * down. It never drops further, and never climbs.
+ * <p>
+ * A room's {@link Space} answers solid for every cell outside the room, so a walk needs no bounds of its own; its tables
+ * are as large as the largest room, and a spot's index does not depend on the room's size.
  */
 public final class TowerWalk {
 	public static final byte OPEN = 0;
@@ -28,7 +31,8 @@ public final class TowerWalk {
 	/** The feet heights a walk covers: a biome floor's wading level to just under its roof. */
 	public static final int LOW = -1;
 	public static final int HIGH = TowerLayout.ROOM_HEIGHT - 1;
-	private static final int SIZE = TowerLayout.SIZE;
+	/** The span of x and of z a walk's tables hold: the largest room. A smaller room's space is solid past its walls. */
+	private static final int SIZE = TowerLayout.MAX_SIZE;
 	private static final int SPAN = HIGH - LOW + 1;
 	private static final int[][] WAYS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
@@ -175,8 +179,11 @@ public final class TowerWalk {
 	/** A built floor's room as it stands, read from the world. */
 	public static Space world(final ServerLevel level, final int floor) {
 		BlockPos origin = TowerLayout.origin(floor);
+		TowerPlan plan = TowerPlan.at(level, floor);
+		int width = plan.width();
+		int depth = plan.depth();
 		return (x, y, z) -> {
-			if (x < 0 || z < 0 || x >= SIZE || z >= SIZE || y >= TowerLayout.ROOM_HEIGHT || y < -2) {
+			if (x < 0 || z < 0 || x >= width || z >= depth || y >= TowerLayout.ROOM_HEIGHT || y < -2) {
 				return SOLID;
 			}
 			return classify(level, origin.offset(x, y, z));

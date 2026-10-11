@@ -283,10 +283,20 @@ public final class TowerFloors {
 	}
 
 	/**
-	 * How far round a floor's middle chunks are asked for. The room and walls reach three chunks out, and a
+	 * How far round a base floor's middle chunks are asked for. The room and walls reach three chunks out, and a
 	 * ticket loads its outermost ring only partly, so it reaches one further.
 	 */
 	public static final int CHUNK_RADIUS = 4;
+
+	/** How far round the middle chunks a room of this width and depth is asked for: two chunks more than half its longer side. */
+	public static int chunkRadius(final int width, final int depth) {
+		return Math.max(width, depth) / 32 + 2;
+	}
+
+	/** {@link #chunkRadius(int, int)} for a plan's room. */
+	public static int chunkRadius(final TowerPlan plan) {
+		return chunkRadius(plan.width(), plan.depth());
+	}
 	/** A portal ticket lapses after 300 ticks; a floor still waiting asks again well before. */
 	public static final int REASK_TICKS = 200;
 
@@ -294,13 +304,12 @@ public final class TowerFloors {
 	public static final long STEP_WORK_NANOS = TICK_BUDGET_NANOS / 3;
 	/** How many blocks a step sets between looks at the clock. */
 	private static final int CLOCK_EVERY = 1;
-	private static final int SPAN_XZ = TowerLayout.SIZE + 2;
-	/** Every block the building of the tallest floor sets before its finish: the room and its walls, bedrock to roof. */
-	public static final int CELLS = SPAN_XZ * (TowerLayout.ROOM_HEIGHT - TowerLayout.ROOM_LOW + 1) * SPAN_XZ;
+	/** Every block the building of the tallest base-size floor sets before its finish: the room and its walls, bedrock to roof. */
+	public static final int CELLS = (TowerLayout.SIZE + 2) * (TowerLayout.ROOM_HEIGHT - TowerLayout.ROOM_LOW + 1) * (TowerLayout.SIZE + 2);
 
 	/** Every block a plan's building sets before its finish: the room and its walls, bedrock to roof. */
 	static int cellsOf(final TowerPlan plan) {
-		return SPAN_XZ * (plan.roofY() - plan.low() + 1) * SPAN_XZ;
+		return (plan.width() + 2) * (plan.roofY() - plan.low() + 1) * (plan.depth() + 2);
 	}
 
 	/** One floor's building, block by block in a fixed order, a short stretch a step, then the traps, the chests, and the marker. */
@@ -309,6 +318,9 @@ public final class TowerFloors {
 		private final int floor;
 		private final long seed;
 		private final ChunkPos middle;
+		/** The room's size, known from the seed before the plan is drawn. */
+		private final int width;
+		private final int depth;
 		private @Nullable TowerPlan plan;
 		private @Nullable TowerVolume volume;
 		private @Nullable Future<Planned> prepared;
@@ -332,7 +344,9 @@ public final class TowerFloors {
 			this.plan = plan;
 			this.volume = TowerVolume.of(plan);
 			BlockPos origin = TowerLayout.origin(floor);
-			this.middle = ChunkPos.containing(origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2));
+			this.width = plan.width();
+			this.depth = plan.depth();
+			this.middle = ChunkPos.containing(origin.offset(this.width / 2, 0, this.depth / 2));
 		}
 
 		private Build(final ServerLevel tower, final int floor, final long seed) {
@@ -340,7 +354,10 @@ public final class TowerFloors {
 			this.floor = floor;
 			this.seed = seed;
 			BlockPos origin = TowerLayout.origin(floor);
-			this.middle = ChunkPos.containing(origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2));
+			TowerSizes.Size size = TowerSizes.of(seed, floor);
+			this.width = size.width();
+			this.depth = size.depth();
+			this.middle = ChunkPos.containing(origin.offset(this.width / 2, 0, this.depth / 2));
 		}
 
 		private void cancel() {
@@ -404,7 +421,7 @@ public final class TowerFloors {
 			if (mayWait) {
 				int now = this.tower.getServer().getTickCount();
 				if (this.askedAt < 0 || now - this.askedAt >= REASK_TICKS) {
-					this.tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, this.middle, CHUNK_RADIUS);
+					this.tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, this.middle, chunkRadius(this.width, this.depth));
 					this.askedAt = now;
 				}
 				if (!loaded()) {
@@ -449,8 +466,8 @@ public final class TowerFloors {
 			}
 			int lowX = (origin.getX() - 1) >> 4;
 			int lowZ = (origin.getZ() - 1) >> 4;
-			int chunksX = ((origin.getX() + TowerLayout.SIZE) >> 4) - lowX + 1;
-			int chunksZ = ((origin.getZ() + TowerLayout.SIZE) >> 4) - lowZ + 1;
+			int chunksX = ((origin.getX() + plan.width()) >> 4) - lowX + 1;
+			int chunksZ = ((origin.getZ() + plan.depth()) >> 4) - lowZ + 1;
 			if (plan.isBiome() && !TowerBuffs.isBossFloor(this.floor) && this.paintIndex < chunksX * chunksZ) {
 				int cx = lowX + this.paintIndex / chunksZ;
 				int cz = lowZ + this.paintIndex % chunksZ;
@@ -492,9 +509,9 @@ public final class TowerFloors {
 		private boolean loaded() {
 			BlockPos origin = TowerLayout.origin(this.floor);
 			int low = (origin.getX() - 1) >> 4;
-			int high = (origin.getX() + TowerLayout.SIZE) >> 4;
+			int high = (origin.getX() + this.width) >> 4;
 			int lowZ = (origin.getZ() - 1) >> 4;
-			int highZ = (origin.getZ() + TowerLayout.SIZE) >> 4;
+			int highZ = (origin.getZ() + this.depth) >> 4;
 			for (int cx = low; cx <= high; cx++) {
 				for (int cz = lowZ; cz <= highZ; cz++) {
 					if (this.tower.getChunkSource().getChunkNow(cx, cz) == null) {
@@ -521,13 +538,15 @@ public final class TowerFloors {
 	private static void buildCell(final ServerLevel tower, final int floor, final int index, final TowerPlan plan, final TowerTheme theme,
 		final TowerVolume volume) {
 		int spanY = plan.roofY() - plan.low() + 1;
-		int lx = index / (spanY * SPAN_XZ) - 1;
-		int y = (index / SPAN_XZ) % spanY + plan.low();
-		int lz = index % SPAN_XZ - 1;
+		int width = plan.width();
+		int depth = plan.depth();
+		int spanZ = depth + 2;
+		int lx = index / (spanY * spanZ) - 1;
+		int y = (index / spanZ) % spanY + plan.low();
+		int lz = index % spanZ - 1;
 		BlockPos origin = TowerLayout.origin(floor);
-		int size = TowerLayout.SIZE;
 		BlockPos pos = origin.offset(lx, y, lz);
-		boolean edge = lx == -1 || lx == size || lz == -1 || lz == size;
+		boolean edge = lx == -1 || lx == width || lz == -1 || lz == depth;
 		if (edge) {
 			// The corner that marks the floor as built goes down last, in the finish.
 			if (!(lx == -1 && lz == -1 && y == -1)) {

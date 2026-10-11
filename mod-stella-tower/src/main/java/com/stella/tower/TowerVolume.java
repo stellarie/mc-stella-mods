@@ -18,7 +18,6 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** The lowest and the highest block of a plan drawn before the biome floors; a biome plan holds its own ({@link TowerPlan#low}). */
 	public static final int LOW = -2;
 	public static final int HIGH = TowerLayout.HEIGHT;
-	private static final int SIZE = TowerLayout.SIZE;
 
 	public static final byte AIR = 0;
 	public static final byte BEDROCK = 1;
@@ -71,6 +70,9 @@ public final class TowerVolume implements TowerWalk.Space {
 	private final int low;
 	private final int high;
 	private final int span;
+	/** The room's width along x and depth along z. */
+	private final int width;
+	private final int depth;
 	private final byte[] kinds;
 	private final boolean[] reserved;
 	/** The palette entry of each {@link #BIOME_BLOCK}; null on a plan with none. */
@@ -78,21 +80,34 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** The lamps and lanterns, by story: offsets (x, y, z). */
 	private final List<List<int[]>> lamps = new ArrayList<>();
 
-	private TowerVolume(final int low, final int high, final boolean palette) {
+	private TowerVolume(final int low, final int high, final boolean palette, final int width, final int depth) {
 		this.low = low;
 		this.high = high;
 		this.span = high - low + 1;
-		this.kinds = new byte[SIZE * this.span * SIZE];
-		this.reserved = new boolean[SIZE * this.span * SIZE];
-		this.codes = palette ? new byte[SIZE * this.span * SIZE] : null;
+		this.width = width;
+		this.depth = depth;
+		this.kinds = new byte[width * this.span * depth];
+		this.reserved = new boolean[width * this.span * depth];
+		this.codes = palette ? new byte[width * this.span * depth] : null;
 	}
 
+	/** The room's width along x, in blocks. */
+	public int width() {
+		return this.width;
+	}
+
+	/** The room's depth along z, in blocks. */
+	public int depth() {
+		return this.depth;
+	}
+
+
 	private int index(final int x, final int y, final int z) {
-		return (x * this.span + (y - this.low)) * SIZE + z;
+		return (x * this.span + (y - this.low)) * this.depth + z;
 	}
 
 	private boolean inside(final int x, final int y, final int z) {
-		return x >= 0 && z >= 0 && x < SIZE && z < SIZE && y >= this.low && y <= this.high;
+		return x >= 0 && z >= 0 && x < this.width && z < this.depth && y >= this.low && y <= this.high;
 	}
 
 	/** The lowest block of the room: its bedrock. */
@@ -188,7 +203,7 @@ public final class TowerVolume implements TowerWalk.Space {
 
 	/** The volume of a plan: every part, its chests included. */
 	public static TowerVolume of(final TowerPlan plan) {
-		TowerVolume volume = new TowerVolume(plan.low(), plan.roofY(), plan.isBiome());
+		TowerVolume volume = new TowerVolume(plan.low(), plan.roofY(), plan.isBiome(), plan.width(), plan.depth());
 		if (plan.isBiome()) {
 			volume.biome(plan);
 			volume.portal(plan);
@@ -230,8 +245,8 @@ public final class TowerVolume implements TowerWalk.Space {
 
 	private void base(final TowerPlan plan) {
 		TowerPlan.Room runner = plan.runner();
-		for (int x = 0; x < SIZE; x++) {
-			for (int z = 0; z < SIZE; z++) {
+		for (int x = 0; x < this.width; x++) {
+			for (int z = 0; z < this.depth; z++) {
 				set(x, this.low, z, BEDROCK);
 				boolean onRunner = runner != null && x >= runner.x() && x < runner.x() + runner.width() && z >= runner.z() && z < runner.z() + runner.length();
 				set(x, -1, z, plan.inSafeZone(x, 0, z) ? SAFE : onRunner ? RUNNER : GROUND);
@@ -245,8 +260,8 @@ public final class TowerVolume implements TowerWalk.Space {
 		for (int s = 0; s < stories.size(); s++) {
 			TowerStory story = stories.get(s);
 			TowerStory below = s > 0 ? stories.get(s - 1) : null;
-			for (int x = 0; x < SIZE; x++) {
-				for (int z = 0; z < SIZE; z++) {
+			for (int x = 0; x < this.width; x++) {
+				for (int z = 0; z < this.depth; z++) {
 					boolean wall = story.wall()[x][z];
 					boolean pillar = story.isPillar(x, z);
 					if (below != null && (story.floor()[x][z] || wall)) {
@@ -270,8 +285,8 @@ public final class TowerVolume implements TowerWalk.Space {
 				}
 			}
 			if (s == stories.size() - 1 && story.top() < this.high) {
-				for (int x = 0; x < SIZE; x++) {
-					for (int z = 0; z < SIZE; z++) {
+				for (int x = 0; x < this.width; x++) {
+					for (int z = 0; z < this.depth; z++) {
 						if (!inHall(plan, x, z, 0)) {
 							set(x, story.top(), z, LID);
 						}
@@ -301,8 +316,8 @@ public final class TowerVolume implements TowerWalk.Space {
 	 */
 	private void hallShaft(final TowerPlan plan) {
 		int lid = plan.stories().get(0).top();
-		for (int x = 0; x < SIZE; x++) {
-			for (int z = 0; z < SIZE; z++) {
+		for (int x = 0; x < this.width; x++) {
+			for (int z = 0; z < this.depth; z++) {
 				if (inHall(plan, x, z, 1) && !inHall(plan, x, z, 0)) {
 					for (int y = lid; y < this.high; y++) {
 						set(x, y, z, (y - LEDGE_Y - 2) % 4 == 0 && y > LEDGE_Y && (x + z) % 4 == 0 ? LAMP : LID);
@@ -385,8 +400,8 @@ public final class TowerVolume implements TowerWalk.Space {
 	private void biome(final TowerPlan plan) {
 		BiomeDraft draft = plan.biome();
 		boolean open = draft.biome().openRoof();
-		for (int x = 0; x < SIZE; x++) {
-			for (int z = 0; z < SIZE; z++) {
+		for (int x = 0; x < this.width; x++) {
+			for (int z = 0; z < this.depth; z++) {
 				int feet = draft.feet()[x][z];
 				set(x, this.low, z, BEDROCK);
 				for (int y = this.low + 1; y < feet - 1; y++) {
@@ -472,8 +487,8 @@ public final class TowerVolume implements TowerWalk.Space {
 			TowerStory story = stories.get(s);
 			int y = story.y();
 			int top = story.top();
-			for (int x = 1; x < SIZE - 1; x++) {
-				for (int z = 1; z < SIZE - 1; z++) {
+			for (int x = 1; x < this.width - 1; x++) {
+				for (int z = 1; z < this.depth - 1; z++) {
 					if (!openFloor(x, y, z) || columnReserved(x, y - 1, top, z) || s == plan.portalStory()
 						&& Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) <= 4) {
 						continue;
@@ -493,8 +508,8 @@ public final class TowerVolume implements TowerWalk.Space {
 					}
 				}
 			}
-			for (int x = 2; x < SIZE - 2; x++) {
-				for (int z = 2; z < SIZE - 2; z++) {
+			for (int x = 2; x < this.width - 2; x++) {
+				for (int z = 2; z < this.depth - 2; z++) {
 					int roll = Math.floorMod(TowerFloors.hash(plan.seed(), plan.look() + 7, x, y, z), 1000);
 					if (roll >= STALAGMITES || plan.inSafeZone(x, y, z) || !openRing(x, y, z) || nearWay(x, y, z)) {
 						continue;
@@ -574,15 +589,15 @@ public final class TowerVolume implements TowerWalk.Space {
 		List<TowerStory> stories = plan.stories();
 		for (int s = 1; s < stories.size(); s++) {
 			int y = stories.get(s).y();
-			for (int x = 0; x < SIZE; x++) {
-				for (int z = 0; z < SIZE; z++) {
+			for (int x = 0; x < this.width; x++) {
+				for (int z = 0; z < this.depth; z++) {
 					if (!stands(x, y, z)) {
 						continue;
 					}
 					for (Direction side : Direction.Plane.HORIZONTAL) {
 						int nx = x + side.getStepX();
 						int nz = z + side.getStepZ();
-						if (nx < 0 || nz < 0 || nx >= SIZE || nz >= SIZE || stands(nx, y, nz) || stands(nx, y - 1, nz) || stands(nx, y + 1, nz)
+						if (nx < 0 || nz < 0 || nx >= this.width || nz >= this.depth || stands(nx, y, nz) || stands(nx, y - 1, nz) || stands(nx, y + 1, nz)
 							|| at(nx, y, nz) != TowerWalk.OPEN || at(nx, y + 1, nz) != TowerWalk.OPEN) {
 							continue;
 						}
@@ -625,16 +640,16 @@ public final class TowerVolume implements TowerWalk.Space {
 				gridLamps(lit, y);
 			}
 			if (archetype == TowerArchetype.GREAT_HALL) {
-				for (int x = 0; x < SIZE; x++) {
-					for (int z = 0; z < SIZE; z++) {
+				for (int x = 0; x < this.width; x++) {
+					for (int z = 0; z < this.depth; z++) {
 						if (story.isPillar(x, z) && kind(x, y + SCONCE_HEIGHT, z) == PILLAR && facesOpen(x, y + SCONCE_HEIGHT, z)) {
 							set(x, y + SCONCE_HEIGHT, z, LAMP);
 						}
 					}
 				}
 			}
-			for (int x = 0; x < SIZE; x++) {
-				for (int z = 0; z < SIZE; z++) {
+			for (int x = 0; x < this.width; x++) {
+				for (int z = 0; z < this.depth; z++) {
 					for (int at = y; at <= story.top(); at++) {
 						if (kind(x, at, z) == LAMP) {
 							lit.add(new int[] {x, at, z});
@@ -647,8 +662,8 @@ public final class TowerVolume implements TowerWalk.Space {
 			TowerStory story = stories.get(s);
 			List<int[]> lit = this.lamps.get(s);
 			for (int y = story.y(); y <= story.top() - HEADROOM; y++) {
-				for (int x = 0; x < SIZE; x++) {
-					for (int z = 0; z < SIZE; z++) {
+				for (int x = 0; x < this.width; x++) {
+					for (int z = 0; z < this.depth; z++) {
 						if (stands(x, y, z) && !litFrom(lit, x, z)) {
 							cover(lit, archetype, x, y, z);
 						}
@@ -662,7 +677,7 @@ public final class TowerVolume implements TowerWalk.Space {
 	public static final int SCONCE_HEIGHT = 3;
 
 	private void gridLamps(final List<int[]> lit, final int y) {
-		int cells = (SIZE - 1) / LAMP_PITCH;
+		int cells = (TowerLayout.SIZE - 1) / LAMP_PITCH;
 		for (int gx = 0; gx < cells; gx++) {
 			for (int gz = 0; gz < cells; gz++) {
 				int cx = 1 + gx * LAMP_PITCH + TowerFloors.LAMP_AT;
@@ -815,8 +830,8 @@ public final class TowerVolume implements TowerWalk.Space {
 		}
 		for (TowerStory story : plan.stories()) {
 			int y = story.y();
-			for (int x = 1; x < SIZE - 1; x++) {
-				for (int z = 1; z < SIZE - 1; z++) {
+			for (int x = 1; x < this.width - 1; x++) {
+				for (int z = 1; z < this.depth - 1; z++) {
 					if (!stands(x, y, z) || Math.floorMod(TowerFloors.hash(plan.seed(), plan.look(), x, y, z), 1000) >= CLUSTER_SHARE) {
 						continue;
 					}

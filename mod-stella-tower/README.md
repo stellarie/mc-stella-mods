@@ -10,7 +10,7 @@ built to the older generator stays as it is; a lost room keeps it (see below). O
 
 ### The floor
 
-- A floor is one volume of 64 x 64 columns, 32 blocks high, from a bedrock at -6 under the base to a roof at 32.
+- A floor is one volume of 64 x 64 columns (larger shapes: see "Floor sizes" below), 32 blocks high, from a bedrock at -6 under the base to a roof at 32.
   `TowerLayout.ROOM_HEIGHT` and `ROOM_LOW` are its bounds; `TowerLayout.HEIGHT` (24) is still the older plans'.
 - `BiomeGen.plan(seed, floor)` draws the plan, `TowerArchetype.BIOME`, and `BiomeDraft` holds it: each column's
   feet level, surface block and fluid, the blocks above it, a rock ceiling where the biome has one, and the stair.
@@ -727,3 +727,53 @@ show seams where its chunks differ.
   and in the biome's stone, and whether most mobs stay out of sight until you come near.
 - Watch a ghost pack: three drift slowly together, none comes to you, they hurt the mobs and not you.
 - See a breeze and a shulker. Let a shulker teleport: it stays on its floor.
+
+## Floor sizes, large-floor layouts, and the tower phantom
+
+### Floor sizes
+
+- A biome floor has one of five shapes: 64 x 64, 64 x 96, 96 x 96, 96 x 128 and 128 x 128. A long shape lies along x
+  or along z. The height is the same on all of them.
+- `TowerSizes.of(seed, floor)` draws the shape from the seed and the floor number alone. Floors 1 to 4 are 64 x 64.
+  From floor 5 the share of larger shapes grows by 2 in 100 for each floor, to 65 in 100.
+- Boss floors, the great hall and the destroyed castle keep 64 x 64. Floors drawn by the older generator keep it too.
+- `TowerPlan.width()`, `depth()` and `area()` give a plan's size. `TowerLayout.MAX_SIZE` (128) is the largest side.
+  A floor takes a cell of 192 x 192 blocks (`TowerLayout.CELL`), so the cells of old saves do not match: old saves do not
+  carry over.
+- Mobs, double chests, props, traps, cover, hills and lights scale with `area / 4096`
+  (`TowerMobs.scaled`, `TowerPlan.areaFactor`). A 128 x 128 floor holds about 4 times the mobs and chests of a 64 x 64 floor.
+- `TowerFloors` builds a floor cell by cell from the plan and loads the chunks of its own size only.
+
+### Layouts of the large floors
+
+- `BiomeLayout.of(seed, floor, biome, size)` gives a larger open-roof floor, in about 6 draws in 10, one of three
+  set pieces, laid by `BiomeLayouts` before the cover. The parts of a layout are in `BiomeDraft.marks`.
+  - Walled town: a levelled town inside a wall with gates, streets, a plaza with a well, houses and four corner towers.
+  - Canyon: cliffs on both sides of the road, broken by gaps, with buttes of rock on the plains.
+  - Fortress yard: a thick ruined wall with gates and breaches, four tall corner towers and a keep.
+- A layout levels its ground and blends the slope away, keeps its walls off the road (the road is the gate), and leaves
+  the road clear. A tower or a keep that the road crosses stands on as an arch.
+- Every larger floor has the cover, the hills and the lights of the base floors, and the walk from the arrival to the portal.
+
+### The tower phantom
+
+- `TowerPhantom` is a phantom of its own type with a skeleton archer riding it. 15 in 100 of the open floors with 16
+  blocks of sky over their highest ground, from floor 5, draw one or two (`TowerPhantoms.drawn`). The spawner raises them.
+- It never dives. `TowerPhantom.HoldAboveGoal` holds it 10 to 14 blocks over the nearest player and circles at a radius of 3 to
+  4.5 blocks. A hit that pushes it under its height lifts it and never lowers it. The archer shoots the player.
+- The archer never steers it (`getControllingPassenger` returns null): a mob that rides a mob would take over its goals.
+
+### Tests
+
+- `TowerFloorSizesGameTest`: all five shapes come in both turns, the first floors stay small, and every shape is built with
+  walls, roof, bedrock and portal that match its size, with a walk to the portal.
+- `TowerLargeFloorGameTest`: mobs and chests scale with the area, three layouts come with their parts built and the cover and hills,
+  and larger floors are walkable and lit everywhere.
+- `TowerPhantomGameTest`: the draw, the spawner, and the flight (height, circle, no dive, arrows that hit).
+- `TowerEnclosedGameTest`: no pool holds, and no roll raises, an endermite or a silverfish.
+
+### Manual acceptance (floor sizes)
+
+- Climb past floor 20 and look at the large floors: walled town, canyon and fortress yard. Judge the layouts and whether the
+  ground is lit and the road is easy to follow.
+- Meet a tower phantom on an open floor. It circles high over you and never dives. Its archer shoots you.

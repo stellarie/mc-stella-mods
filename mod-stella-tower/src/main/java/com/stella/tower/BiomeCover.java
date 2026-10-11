@@ -14,7 +14,7 @@ final class BiomeCover {
 	static final int LEAST = 6;
 	static final int MOST = 12;
 	static final int TOWER_MAX = 20;
-	private static final int N = TowerLayout.SIZE;
+
 	private static final int APART = 11;
 	private static final int FROM_ARRIVAL = 10;
 	private static final int TOWER_MIN = 9;
@@ -24,13 +24,13 @@ final class BiomeCover {
 	private static final int WALL = BiomeDraft.COVER_WALL;
 
 	/** What a biome's ruins are built of: stone for towers and walls, timber for houses, and the dressing. */
-	private record Palette(byte[] stone, byte[] timber, byte floor, byte beam, byte growth) {
+	record Palette(byte[] stone, byte[] timber, byte floor, byte beam, byte growth) {
 	}
 
 	private BiomeCover() {
 	}
 
-	private static Palette palette(final FloorBiome biome) {
+	static Palette palette(final FloorBiome biome) {
 		return switch (biome) {
 			case RAINY_FOREST -> new Palette(new byte[] {BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.COBBLE, BiomeBlocks.STONE_BRICKS, BiomeBlocks.MOSSY_BRICKS},
 				new byte[] {BiomeBlocks.PLANKS, BiomeBlocks.MOSSY_BRICKS, BiomeBlocks.PLANKS}, BiomeBlocks.COBBLE, BiomeBlocks.OAK_LOG, BiomeBlocks.OAK_LEAVES);
@@ -57,11 +57,12 @@ final class BiomeCover {
 
 	/**
 	 * Sets the floor's cover down: finds a level site for each piece, flattens it, and builds the piece. The pieces are
-	 * recorded in the work's cover list. Fewer than {@value #LEAST} sited is a draw the caller throws away.
+	 * recorded in the work's cover list. Fewer than {@value #LEAST} sited, times the floor's area against the base floor's,
+	 * is a draw the caller throws away.
 	 */
 	static void place(final BiomeGen.Work w) {
 		Palette p = palette(w.biome);
-		int target = LEAST + w.random.nextInt(MOST - LEAST + 1);
+		int target = w.n(LEAST) + w.random.nextInt(w.n(MOST) - w.n(LEAST) + 1);
 		int[] kinds = new int[target];
 		for (int i = 0; i < target; i++) {
 			kinds[i] = i < 6 ? i % 3 : w.random.nextInt(3);
@@ -72,7 +73,7 @@ final class BiomeCover {
 			site(w, sites, kind);
 		}
 		// A crowded floor falls back on walls, the least to fit.
-		for (int tries = 0; sites.size() < LEAST && tries < 30; tries++) {
+		for (int tries = 0; sites.size() < w.n(LEAST) && tries < 30 + 3 * w.n(LEAST); tries++) {
 			site(w, sites, WALL);
 		}
 		w.relax(true);
@@ -96,8 +97,8 @@ final class BiomeCover {
 			case TOWER -> {
 				fw = 5 + r.nextInt(3);
 				fl = fw;
-				// The first tower is the tall one.
-				aux = sites.stream().noneMatch(s -> s[0] == TOWER) ? TOWER_MAX - r.nextInt(3) : TOWER_MIN + r.nextInt(TOWER_MAX - TOWER_MIN - 2);
+				// The first tower of each base-size share of the floor is a tall one.
+				aux = sites.stream().filter(s -> s[0] == TOWER).count() < w.n(1) ? TOWER_MAX - r.nextInt(3) : TOWER_MIN + r.nextInt(TOWER_MAX - TOWER_MIN - 2);
 			}
 			case HOUSE -> {
 				fw = 5 + r.nextInt(3);
@@ -123,8 +124,8 @@ final class BiomeCover {
 	private static int[] find(final BiomeGen.Work w, final List<int[]> sites, final int fw, final int fl) {
 		int[] gentle = null;
 		for (int i = 0; i < 200; i++) {
-			int x0 = 3 + w.random.nextInt(N - fw - 6);
-			int z0 = 3 + w.random.nextInt(N - fl - 6);
+			int x0 = 3 + w.random.nextInt(w.sx - fw - 6);
+			int z0 = 3 + w.random.nextInt(w.sz - fl - 6);
 			if (!w.rectFree(x0, z0, fw, fl, 2)) {
 				continue;
 			}
@@ -196,7 +197,7 @@ final class BiomeCover {
 	 * opposite one lower; the wall falls away from them in a ragged edge. It has a door, some windows, rubble inside and out,
 	 * and in a tall one the stump of a floor.
 	 */
-	private static int tower(final BiomeGen.Work w, final Palette p, final int[] site) {
+	static int tower(final BiomeGen.Work w, final Palette p, final int[] site) {
 		Random r = w.random;
 		int x0 = site[1];
 		int z0 = site[2];
@@ -261,7 +262,7 @@ final class BiomeCover {
 	 * A house of timber on a course of stone, its walls three or four blocks high and torn in places, a doorway, windows,
 	 * a chimney, and the beams of a roof over the part that still has walls to rest on.
 	 */
-	private static int house(final BiomeGen.Work w, final Palette p, final int[] site) {
+	static int house(final BiomeGen.Work w, final Palette p, final int[] site) {
 		Random r = w.random;
 		int x0 = site[1];
 		int z0 = site[2];

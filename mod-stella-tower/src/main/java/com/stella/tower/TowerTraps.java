@@ -163,8 +163,8 @@ public final class TowerTraps {
 	private static List<Trap> biomeLayout(final Random random, final TrapTheme theme, final TowerPlan plan) {
 		TowerStory story = plan.stories().get(0);
 		List<int[]> spots = new ArrayList<>();
-		for (int x = 1; x < TowerLayout.SIZE - 1; x++) {
-			for (int z = 1; z < TowerLayout.SIZE - 1; z++) {
+		for (int x = 1; x < plan.width() - 1; x++) {
+			for (int z = 1; z < plan.depth() - 1; z++) {
 				boolean far = Math.max(Math.abs(x - plan.portalX()), Math.abs(z - plan.portalZ())) > BIOME_PORTAL_CLEAR
 					&& Math.max(Math.abs(x - plan.arrivalX()), Math.abs(z - plan.arrivalZ())) > BIOME_ARRIVAL_CLEAR;
 				int y = plan.standY(x, z);
@@ -182,7 +182,7 @@ public final class TowerTraps {
 		}
 		List<Trap> traps = new ArrayList<>();
 		for (int[] spot : spots) {
-			if (traps.size() >= TRAPS_PER_FLOOR) {
+			if (traps.size() >= TowerMobs.scaled(TRAPS_PER_FLOOR, plan)) {
 				break;
 			}
 			boolean apart = true;
@@ -362,8 +362,8 @@ public final class TowerTraps {
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		List<TowerStory> stories = plan.stories();
 		for (int attempt = 0; attempt < PLACE_TRIES; attempt++) {
-			int x = random.nextInt(TowerLayout.SIZE);
-			int z = random.nextInt(TowerLayout.SIZE);
+			int x = random.nextInt(plan.width());
+			int z = random.nextInt(plan.depth());
 			int y = plan.isBiome() ? plan.standY(x, z) : stories.get(random.nextInt(stories.size())).y();
 			if (y < TowerWalk.LOW) {
 				continue;
