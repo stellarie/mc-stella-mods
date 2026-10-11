@@ -52,6 +52,8 @@ def glyph(*rows: str) -> tuple[str, ...]:
     return tuple(rows)
 
 
+# Items outside the spell catalogue that still carry spell-style art: one model, texture and item definition each.
+EXTRA_ITEMS = ("compendium",)
 SKILL_ROW = re.compile(r'Skill\("([a-z0-9_]+)"')
 
 
@@ -420,6 +422,22 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
                 errors.append(f"duplicate texture bytes: {path} and {hashes[digest]}")
             hashes[digest] = path
 
+    for path in EXTRA_ITEMS:
+        for needed in (root / MODEL_ROOT / f"{path}.json", root / ITEM_ROOT / f"{path}.json"):
+            if not needed.exists():
+                errors.append(f"missing {path} file: {needed}")
+        extra_texture = root / TEXTURE_ROOT / f"{path}.png"
+        if not extra_texture.exists():
+            errors.append(f"missing {path} texture: {extra_texture}")
+            continue
+        with Image.open(extra_texture) as image:
+            if image.size != (16, 16) or image.mode != "RGBA":
+                errors.append(f"{path} texture is {image.size} {image.mode}: {extra_texture}")
+        digest = hashlib.sha256(extra_texture.read_bytes()).hexdigest()
+        if digest in hashes:
+            errors.append(f"duplicate texture bytes: {path} and {hashes[digest]}")
+        hashes[digest] = path
+
     # Every scroll is paper tinted by its item definition, so a scroll model never names its own texture.
     spellbooks_source = (root / "mod-stella-spells/src/main/java/com/stella/spells/Spellbooks.java").read_text(encoding="utf-8")
     book_only_line = re.search(r"BOOK_ONLY = java\.util\.Set\.of\((.*?)\);", spellbooks_source)
@@ -450,6 +468,11 @@ def audit(root: Path, jar_path: Path | None, strict_tints: bool) -> list[str]:
                 for book in ALL_BOOKS:
                     for kind in ("items", "models/item", "textures/item"):
                         entry = expected_jar_entry(book, kind)
+                        if entry not in entries:
+                            errors.append(f"missing jar entry: {entry}")
+                for path in EXTRA_ITEMS:
+                    for kind, extension in (("items", "json"), ("models/item", "json"), ("textures/item", "png")):
+                        entry = f"assets/{MOD_ID}/{kind}/{path}.{extension}"
                         if entry not in entries:
                             errors.append(f"missing jar entry: {entry}")
 

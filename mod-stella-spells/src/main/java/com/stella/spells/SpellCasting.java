@@ -159,8 +159,22 @@ public final class SpellCasting {
 		return result;
 	}
 
+	/**
+	 * One entry of a Compendium: cast like a scroll's spell, true when it landed. Neither the entry's cooldown
+	 * nor the held stack's gates it, and none starts; the Compendium sets its own after every entry has cast.
+	 */
+	static boolean castStored(final ServerPlayer caster, final SpellDefinition definition, final ItemStack compendium) {
+		return cast(caster, definition, compendium, true, true) == CastResult.CAST;
+	}
+
 	private static CastResult cast(
 		final ServerPlayer caster, final SpellDefinition definition, final ItemStack stack, final boolean scroll
+	) {
+		return cast(caster, definition, stack, scroll, false);
+	}
+
+	private static CastResult cast(
+		final ServerPlayer caster, final SpellDefinition definition, final ItemStack stack, final boolean scroll, final boolean free
 	) {
 		SpellModifiers.CastModifiers modifiers = SpellModifiers.resolve(
 			stack, caster.getItemBySlot(EquipmentSlot.HEAD), caster.getItemBySlot(EquipmentSlot.CHEST)
@@ -180,7 +194,7 @@ public final class SpellCasting {
 
 		// The cooldown applies to every cast of a spell, a summon's recall included, so a recast cannot heal or
 		// move a living servant for free.
-		if (caster.getCooldowns().isOnCooldown(stack)) {
+		if (!free && caster.getCooldowns().isOnCooldown(stack)) {
 			log(caster, definition, CastResult.COOLDOWN, target, modifiers, stack);
 			return CastResult.COOLDOWN;
 		}
@@ -191,7 +205,9 @@ public final class SpellCasting {
 		}
 
 		if (caster.hasEffect(MobEffects.NAUSEA) && fizzleRoll.fizzles(caster)) {
-			caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
+			if (!free) {
+				caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
+			}
 			caster.level().playSound(null, caster.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.6F, 1.4F);
 			caster.sendSystemMessage(Component.translatable("spellbook." + Spellbooks.MOD_ID + ".fizzle"), true);
 			log(caster, definition, CastResult.FIZZLE, target, modifiers, stack);
@@ -214,7 +230,7 @@ public final class SpellCasting {
 			boolean skip = SKIP_COOLDOWN.get() != null;
 			SKIP_COOLDOWN.remove();
 			SpellVisuals.play(caster, definition, target, point, departure, modifiers);
-			if (!skip) {
+			if (!skip && !free) {
 				caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
 			}
 			log(caster, definition, CastResult.CAST, target, modifiers, stack);

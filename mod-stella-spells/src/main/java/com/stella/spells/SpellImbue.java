@@ -194,6 +194,11 @@ public final class SpellImbue {
 		return imbued == null ? List.of() : imbued.spells();
 	}
 
+	/** The anvil's left slot takes a piece to imbue, or a Compendium to fill. */
+	public static boolean canHold(final ItemStack stack) {
+		return stack.getItem() instanceof CompendiumItem || canImbue(stack);
+	}
+
 	// A weapon is anything whose own attack damage the game adds to the hand holding it; arrows of every kind
 	// and chestplates take spells too.
 	public static boolean canImbue(final ItemStack stack) {
@@ -227,9 +232,11 @@ public final class SpellImbue {
 	public static ItemStack imbue(final ItemStack weapon, final ItemStack book) {
 		SpellDefinition spell = ((SpellbookItem) book.getItem()).definition();
 		List<Identifier> current = spellsOf(weapon);
-		boolean awakened = Awakening.isAwakened(book) && !weapon.is(ItemTags.ARROWS);
-		boolean barred = weapon.getItem() instanceof ProjectileWeaponItem
-			? !BOW_IMBUABLE.contains(spell.id()) : NOT_IMBUABLE.contains(spell.id());
+		boolean compendium = weapon.getItem() instanceof CompendiumItem;
+		boolean awakened = Awakening.isAwakened(book) && !weapon.is(ItemTags.ARROWS) && !compendium;
+		// A bow takes what a sword takes, and the archer books that strike a target besides.
+		boolean barred = !compendium && NOT_IMBUABLE.contains(spell.id())
+			&& !(weapon.getItem() instanceof ProjectileWeaponItem && BOW_IMBUABLE.contains(spell.id()));
 		if (barred || (awakened && weapon.has(Awakening.AWAKENED_IMBUE))) {
 			return ItemStack.EMPTY;
 		}
@@ -303,16 +310,14 @@ public final class SpellImbue {
 		}
 	}
 
-	// The bow or crossbow that loosed the arrow casts its imbued archer books on the victim.
+	// The bow or crossbow that loosed the arrow casts its imbued books on the victim.
 	private static void castFromBow(final ServerPlayer player, final AbstractArrow arrow, final LivingEntity victim) {
 		ItemStack bow = arrow.getWeaponItem();
 		if (bow == null || !(bow.getItem() instanceof ProjectileWeaponItem)) {
 			return;
 		}
 		for (Identifier spell : spellsOf(bow)) {
-			if (BOW_IMBUABLE.contains(spell)) {
-				cast(player, spell, victim, bow, false);
-			}
+			cast(player, spell, victim, bow, false);
 		}
 	}
 

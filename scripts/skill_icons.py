@@ -37,6 +37,8 @@ TILES = {
     "fighter": ((0x24, 0x08, 0x08), (0x6E, 0x22, 0x22), (0x46, 0x16, 0x16), (0x56, 0x1E, 0x1C)),
     "archer": ((0x0A, 0x1C, 0x12), (0x2A, 0x5A, 0x38), (0x17, 0x3A, 0x24), (0x1F, 0x4A, 0x2E)),
     "priest": ((0x26, 0x1E, 0x08), (0x8A, 0x73, 0x2E), (0x4A, 0x3C, 0x16), (0x5C, 0x4A, 0x1C)),
+    # The Compendium belongs to no school: amethyst violet.
+    "compendium": ((0x1A, 0x0E, 0x2C), (0x5A, 0x3A, 0x8C), (0x33, 0x1E, 0x5A), (0x40, 0x28, 0x70)),
 }
 # Colours a "pixels" op may name, one letter each.
 PIXELS = {
@@ -738,4 +740,29 @@ def shapes(path: str) -> tuple[tuple, ...]:
 
 def draw(path: str) -> Image.Image:
     _, school, accent, ops = (*BY_PATH[path], shapes(path))
+    return render(path, school, accent, ops)
+
+# The Compendium is no skill book, so it sits outside SKILLS and the thirty-icon audit.
+COMPENDIUM = ("compendium", "Compendium", "compendium", 0xC79BFF, (
+    ("pixels", 1, 1, (
+        "..............",
+        "..PPPPPPPPPP..",
+        "..PppppppppPf.",
+        "..PpppyypppPf.",
+        "..PppyYYYypPf.",
+        "..PpyYwwYypPf.",
+        "..PpyYwwYypPf.",
+        "..PppyYYYypPf.",
+        "..PpppyypppPf.",
+        "..PppppppppPf.",
+        "..PPPPPPPPPPfn",
+        "...ffffffffnn.",
+        "..............",
+        "..............",
+    ), "a"),
+))
+
+
+def draw_compendium() -> Image.Image:
+    path, _, school, accent, ops = COMPENDIUM
     return render(path, school, accent, ops)

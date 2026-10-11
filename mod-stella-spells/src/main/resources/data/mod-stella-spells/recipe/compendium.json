@@ -1,0 +1,17 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": [
+		"LAL",
+		"ABA",
+		"LAL"
+	],
+	"key": {
+		"L": "minecraft:lapis_lazuli",
+		"A": "minecraft:amethyst_shard",
+		"B": "minecraft:book"
+	},
+	"result": {
+		"id": "mod-stella-spells:compendium",
+		"count": 1
+	}
+}

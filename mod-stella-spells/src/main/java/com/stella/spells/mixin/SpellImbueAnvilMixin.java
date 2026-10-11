@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** A weapon on the left and a spellbook on the right make the imbued weapon; the book is used up whole. */
+/** A weapon or a Compendium on the left and a spellbook on the right make the imbued piece; the book is used up whole. */
 @Mixin(AnvilMenu.class)
 public abstract class SpellImbueAnvilMixin {
 	@Accessor("cost")
@@ -25,7 +25,7 @@ public abstract class SpellImbueAnvilMixin {
 		AnvilMenu menu = (AnvilMenu) (Object) this;
 		ItemStack weapon = menu.getSlot(AnvilMenu.INPUT_SLOT).getItem();
 		ItemStack book = menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem();
-		if (!(book.getItem() instanceof SpellbookItem) || !SpellImbue.canImbue(weapon)) {
+		if (!(book.getItem() instanceof SpellbookItem) || !SpellImbue.canHold(weapon)) {
 			return;
 		}
 

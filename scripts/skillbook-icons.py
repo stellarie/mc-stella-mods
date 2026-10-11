@@ -114,7 +114,8 @@ def write_icons(root: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
     for skill in SKILLS:
         render(skill).save(target / f"{skill.path}.png", format="PNG", optimize=False, compress_level=9)
-    print(f"wrote {len(SKILLS)} skill icons to {target}")
+    skill_icons.draw_compendium().save(target / "compendium.png", format="PNG", optimize=False, compress_level=9)
+    print(f"wrote {len(SKILLS)} skill icons and the Compendium icon to {target}")
 
 
 def check(root: Path) -> int:
@@ -134,6 +135,13 @@ def check(root: Path) -> int:
                 problems.append(f"{skill.path}: icon is {image.size}, want {(SIZE, SIZE)}")
             elif image.mode != "RGBA":
                 problems.append(f"{skill.path}: icon mode is {image.mode}")
+    compendium = root / TEXTURE_ROOT / "compendium.png"
+    if not compendium.exists():
+        problems.append(f"missing icon: {compendium}")
+    else:
+        with Image.open(compendium) as image:
+            if image.size != (SIZE, SIZE) or image.mode != "RGBA":
+                problems.append(f"compendium: icon is {image.size} {image.mode}")
     for problem in problems:
         print(f"FAIL {problem}", file=sys.stderr)
     if not problems:
