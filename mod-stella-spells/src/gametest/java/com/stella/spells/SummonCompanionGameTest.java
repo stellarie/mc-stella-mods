@@ -489,7 +489,7 @@ public class SummonCompanionGameTest {
 
 	private static int statModifiers(final Skeleton servant) {
 		int total = 0;
-		for (var attribute : List.of(Attributes.MAX_HEALTH, Attributes.MOVEMENT_SPEED, Attributes.KNOCKBACK_RESISTANCE)) {
+		for (var attribute : List.of(Attributes.MAX_HEALTH, Attributes.ARMOR, Attributes.KNOCKBACK_RESISTANCE)) {
 			AttributeInstance instance = servant.getAttribute(attribute);
 			if (instance == null) {
 				continue;

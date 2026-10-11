@@ -83,6 +83,12 @@ public final class SummonSkeleton {
 	/** The distance at which the servant looses an arrow; vanilla's bow gives up at fifteen. */
 	public static final double RANGED_ATTACK_RANGE = GUARD_RADIUS;
 	public static final double FOLLOW_DISTANCE = 6.0;
+	/** The factor the follow goal walks at. */
+	static final double FOLLOW_SPEED = 1.1;
+	/** A player's forward input. */
+	static final double PLAYER_INPUT = 0.98;
+	/** The vanilla sprint boost on a living body's move speed. */
+	static final double SPRINT_BOOST = 1.3;
 	public static final double TELEPORT_DISTANCE = 24.0;
 	public static final double LOOT_REACH = 1.5;
 	public static final int PACK_SIZE = 18;
@@ -99,7 +105,7 @@ public final class SummonSkeleton {
 	public static final String HORSE_TAG = "mod-stella-spells.summon_horse";
 	public static final int STAT_COUNT = 3;
 	public static final double STAT_HEALTH = 2.0;
-	public static final double STAT_SPEED = 0.02;
+	public static final double STAT_ARMOR = 0.5;
 	public static final double STAT_KNOCKBACK = 0.1;
 	/** The share of its master's maximum health a servant adds to its own, when the RPG mod scales spells. */
 	public static final double MASTER_HEALTH_SHARE = 0.1;
@@ -108,7 +114,7 @@ public final class SummonSkeleton {
 	public static final String HEALTH_SCALE_SHARE = RpgBridge.HEALTH_SCALE_SHARE;
 	public static final Identifier THREAT_HEALTH_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_threat_health");
 	public static final Identifier STAT_HEALTH_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_stat_health");
-	public static final Identifier STAT_SPEED_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_stat_speed");
+	public static final Identifier STAT_ARMOR_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_stat_armor");
 	public static final Identifier STAT_KNOCKBACK_ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "summon_stat_knockback");
 	private static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
 	public static final AttachmentType<List<ItemStack>> PACK = AttachmentRegistry.createPersistent(
@@ -176,6 +182,13 @@ public final class SummonSkeleton {
 			}
 		});
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			for (UUID ownerId : SUMMONED.keySet()) {
+				Skeleton skeleton = find(server, ownerId);
+				ServerPlayer master = server.getPlayerList().getPlayer(ownerId);
+				if (skeleton != null && master != null) {
+					pace(skeleton, master);
+				}
+			}
 			if (server.getTickCount() % 20 == 0) {
 				for (UUID ownerId : List.copyOf(SUMMONED.keySet())) {
 					Skeleton skeleton = find(server, ownerId);
@@ -635,12 +648,25 @@ public final class SummonSkeleton {
 			servant.getUUID(), amount, shared, level, xp);
 	}
 
+	/**
+	 * Keeps the servant at its master's pace: it walks as fast as the master walks and sprints when the master sprints.
+	 * A mob's ground speed grows with the square of its move speed, a player's with the speed alone, so the servant's
+	 * speed is the root of the master's, over the follow goal's own factor.
+	 */
+	static void pace(final Skeleton servant, final ServerPlayer master) {
+		double playerSpeed = master.getAttributeValue(Attributes.MOVEMENT_SPEED);
+		servant.setSprinting(master.isSprinting());
+		// The servant's own sprint adds its vanilla boost, so the base leaves room for it.
+		double own = master.isSprinting() ? SPRINT_BOOST : 1.0;
+		servant.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(Math.sqrt(playerSpeed * PLAYER_INPUT) / FOLLOW_SPEED / own);
+	}
+
 	// Stats never wear off, so each rolled point becomes a permanent modifier.
 	private static void applyStats(final Skeleton servant, final List<Integer> rolled) {
 		setModifier(servant, Attributes.MAX_HEALTH, STAT_HEALTH_ID,
 			stat(rolled, 0) * STAT_HEALTH, AttributeModifier.Operation.ADD_VALUE);
-		setModifier(servant, Attributes.MOVEMENT_SPEED, STAT_SPEED_ID,
-			stat(rolled, 1) * STAT_SPEED, AttributeModifier.Operation.ADD_VALUE);
+		setModifier(servant, Attributes.ARMOR, STAT_ARMOR_ID,
+			stat(rolled, 1) * STAT_ARMOR, AttributeModifier.Operation.ADD_VALUE);
 		setModifier(servant, Attributes.KNOCKBACK_RESISTANCE, STAT_KNOCKBACK_ID,
 			stat(rolled, 2) * STAT_KNOCKBACK, AttributeModifier.Operation.ADD_VALUE);
 	}
@@ -994,7 +1020,7 @@ public final class SummonSkeleton {
 				this.skeleton.teleportTo(at.x, at.y, at.z);
 				this.skeleton.getNavigation().stop();
 			} else if (this.skeleton.tickCount % 10 == 0) {
-				this.skeleton.getNavigation().moveTo(master, 1.1);
+				this.skeleton.getNavigation().moveTo(master, FOLLOW_SPEED);
 			}
 		}
 	}
@@ -1027,7 +1053,7 @@ public final class SummonSkeleton {
 			if (master == null) {
 				return;
 			}
-			this.skeleton.getNavigation().moveTo(master, 1.1);
+			this.skeleton.getNavigation().moveTo(master, FOLLOW_SPEED);
 		}
 	}
 

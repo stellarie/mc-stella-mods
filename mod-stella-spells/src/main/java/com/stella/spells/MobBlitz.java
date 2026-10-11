@@ -35,6 +35,8 @@ import org.jspecify.annotations.Nullable;
  */
 final class MobBlitz {
 	static final String SHARE_KEY = "mod-stella-spells:mob-blitz-beat";
+	/** A projectile with this tag never calls the falcon, so a mob's volley can stay out of the roll. */
+	public static final String NO_BLITZ_TAG = "mod-stella-spells.no_blitz";
 	private static final int CHECK_INTERVAL_TICKS = 10;
 
 	/** Mobs that hold the buff for good, by id; the mob itself is the truth, this only finds it. */
@@ -144,6 +146,9 @@ final class MobBlitz {
 	 */
 	static void afterBlow(final Mob owner, final LivingEntity victim, final DamageSource source) {
 		if (STRIKING.get() != null || MobImbue.casting() || !owner.isAlive() || !victim.isAlive() || !owner.hasEffect(SpellStatus.BLITZ_BEAT)) {
+			return;
+		}
+		if (source.getDirectEntity() != null && source.getDirectEntity().entityTags().contains(NO_BLITZ_TAG)) {
 			return;
 		}
 		boolean arrow = source.getDirectEntity() instanceof AbstractArrow shot && shot.getOwner() == owner;
