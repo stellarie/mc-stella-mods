@@ -27,6 +27,7 @@
 			"com.stella.spells.SupportSpellsGameTest",
 			"com.stella.spells.MobSpellsGameTest",
 			"com.stella.spells.SummonSkeletonGameTest",
+			"com.stella.spells.SummonPaceGameTest",
 			"com.stella.spells.DoublecastGameTest",
 			"com.stella.spells.TowerBridgeGameTest",
 			"com.stella.spells.ClueBooksGameTest",
