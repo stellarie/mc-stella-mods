@@ -1,0 +1,8 @@
+{
+	"parent": "minecraft:block/cube_bottom_top",
+	"textures": {
+		"top": "mod-stella-mobs:block/shield_generator_top",
+		"side": "mod-stella-mobs:block/shield_generator_side",
+		"bottom": "mod-stella-mobs:block/shield_generator_bottom"
+	}
+}

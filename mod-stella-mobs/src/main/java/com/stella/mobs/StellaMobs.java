@@ -82,6 +82,7 @@ public class StellaMobs implements ModInitializer {
 	public void onInitialize() {
 		// First, so the entity types register before any listener can name them.
 		com.stella.mobs.entity.StellaEntities.register();
+		com.stella.mobs.shield.ShieldBlocks.register();
 		ReactiveState.register();
 		EliteState.register();
 		com.stella.mobs.behavior.WitherState.register();
@@ -140,6 +141,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
 			ScalingConfigStore.load();
 			com.stella.mobs.config.WitherConfigStore.load();
+			com.stella.mobs.shield.ShieldConfig.load();
 		});
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> GearConfigStore.load());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {

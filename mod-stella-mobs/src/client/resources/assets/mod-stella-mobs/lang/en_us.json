@@ -4,5 +4,6 @@
 	"entity.mod-stella-mobs.black_slime": "Black Slime",
 	"entity.mod-stella-mobs.red_slime": "Red Slime",
 	"entity.mod-stella-mobs.skeleton_worker": "Skeleton Worker",
-	"entity.mod-stella-mobs.ghost": "Ghost"
+	"entity.mod-stella-mobs.ghost": "Ghost",
+	"block.mod-stella-mobs.shield_generator": "Shield Generator"
 }
