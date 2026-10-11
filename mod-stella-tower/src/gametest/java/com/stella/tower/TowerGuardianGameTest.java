@@ -49,7 +49,7 @@ public class TowerGuardianGameTest {
 	private static final int SPEC_NAUSEA_TICKS = 40;
 	private static final int SPEC_VOLLEY_ARROWS = 8;
 	private static final int SPEC_VOLLEY_GAP = 3;
-	private static final int SPEC_LOB_ARROWS = 8;
+	private static final int SPEC_LOB_ARROWS = 24;
 	private static final int SPEC_INVISIBLE_TICKS = 40;
 	private static final double SPEC_BLINK_DISTANCE = 8.0;
 	private static final double SPEC_VANILLA_HORSE_SPEED = 0.3375;
@@ -562,9 +562,12 @@ public class TowerGuardianGameTest {
 
 	// ---------------------------------------------------------------- deaths
 
-	/** Catches a missing drop, a drop twice, a drop from the wrong guardian, and gear that falls with them. */
+	/**
+	 * Catches loot that drops beside a player killer instead of going to the inventory, a dropped piece that can burn,
+	 * a drop twice, a drop from the wrong guardian, and gear that falls with them.
+	 */
 	@GameTest(maxTicks = 700)
-	public void eachGuardianDropsItsOwnItemOnceAndNeverItsGear(final GameTestHelper helper) {
+	public void lootGoesToThePlayerKillerOrDropsFireproofAndNeverItsGear(final GameTestHelper helper) {
 		GuardianRig rig = GuardianRig.build(helper, 12);
 		Item shield = item(TowerGameTestInit.BONE_SHIELD);
 		Item crown = item(TowerGameTestInit.SKELETON_CROWN);
@@ -581,22 +584,25 @@ public class TowerGuardianGameTest {
 		});
 		rig.after(4L, () -> {
 			afterMelee[0] = count(rig, around, shield);
-			afterMelee[1] = count(rig, around, crown);
-			pair[1].rider().setLastHurtByPlayer(killer[0], 100);
+			afterMelee[1] = killer[0].getInventory().countItem(shield);
+			// No player hurt the archer, so its loot drops.
 			pair[1].rider().kill(rig.level);
 		});
 		rig.after(8L, () -> {
-			int shields = count(rig, around, shield);
 			int crowns = count(rig, around, crown);
+			boolean fireproof = false;
 			int gear = 0;
 			for (ItemEntity entity : rig.level.getEntitiesOfClass(ItemEntity.class, around)) {
+				if (entity.getItem().is(crown)) {
+					fireproof = !entity.getItem().canBeHurtBy(rig.level.damageSources().lava()) && !entity.getItem().canBeHurtBy(rig.level.damageSources().inFire());
+				}
 				String path = BuiltInRegistries.ITEM.getKey(entity.getItem().getItem()).getPath();
 				gear += path.startsWith("netherite_") || entity.getItem().is(Items.BOW) || path.equals("rudra_bow") ? 1 : 0;
 			}
-			TowerTestSupport.result("guardianDrops", "shieldAfterMelee=" + afterMelee[0] + " crownAfterMelee=" + afterMelee[1] + " shields=" + shields
-				+ " crowns=" + crowns + " gear=" + gear);
-			helper.assertTrue(afterMelee[0] == 1 && afterMelee[1] == 0, "the melee guardian dropped " + afterMelee[0] + " Bone Shields and " + afterMelee[1] + " crowns");
-			helper.assertTrue(shields == 1 && crowns == 1, "the pair dropped " + shields + " Bone Shields and " + crowns + " Skeleton Crowns, not one of each");
+			TowerTestSupport.result("guardianDrops", "shieldOnGround=" + afterMelee[0] + " shieldInInventory=" + afterMelee[1]
+				+ " crownsOnGround=" + crowns + " crownFireproof=" + fireproof + " gear=" + gear);
+			helper.assertTrue(afterMelee[0] == 0 && afterMelee[1] == 1, "the player killer got " + afterMelee[1] + " Bone Shields and " + afterMelee[0] + " fell");
+			helper.assertTrue(crowns == 1 && fireproof, "with no player killer, " + crowns + " crowns fell, fireproof=" + fireproof);
 			helper.assertTrue(gear == 0, gear + " pieces of their gear fell");
 			helper.succeed();
 		});

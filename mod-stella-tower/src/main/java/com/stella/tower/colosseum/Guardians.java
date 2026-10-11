@@ -31,6 +31,9 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.Unit;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.component.DamageResistant;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -308,13 +311,29 @@ public final class Guardians {
 		GuardianBrain.detach(rider);
 		MinecraftServer server = level.getServer();
 		ColosseumData.get(server.overworld()).fallen(rider.getUUID());
-		BuiltInRegistries.ITEM.getOptional(kind.drop()).ifPresent(item -> rider.spawnAtLocation(level, new ItemStack(item)));
+		BuiltInRegistries.ITEM.getOptional(kind.drop()).ifPresent(item -> giveLoot(level, rider, source, new ItemStack(item)));
 		if (rider.getVehicle() instanceof Mob horse && horse.entityTags().contains(TAG_HORSE) && horse.isAlive()) {
 			free(horse);
 			// The fallen rider drops off, so the horse has room for whoever tames it.
 			rider.stopRiding();
 		}
 		StellaTower.LOGGER.info("[COLOSSEUM] {} fell", kind);
+	}
+
+	/**
+	 * The loot goes straight into the killer's inventory. With no player killer, or no room, it drops; a dropped piece
+	 * never burns in fire or lava.
+	 */
+	static void giveLoot(final ServerLevel level, final Mob rider, final DamageSource source, final ItemStack loot) {
+		loot.set(DataComponents.DAMAGE_RESISTANT, new DamageResistant(level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DamageTypeTags.IS_FIRE)));
+		ServerPlayer killer = source.getEntity() instanceof ServerPlayer player ? player
+			: rider.getLastHurtByPlayer() instanceof ServerPlayer player ? player : null;
+		if (killer != null && killer.getInventory().add(loot) && loot.isEmpty()) {
+			return;
+		}
+		if (!loot.isEmpty()) {
+			rider.spawnAtLocation(level, loot);
+		}
 	}
 
 	/** The horse of a fallen rider can be tamed: it bucks a rider like any wild horse, and keeps its speed and jump once tamed. */
