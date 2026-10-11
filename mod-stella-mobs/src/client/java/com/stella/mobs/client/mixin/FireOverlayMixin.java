@@ -8,8 +8,10 @@ import org.spongepowered.asm.mixin.injection.At;
 /** The first person fire overlay no longer draws. The orange edge flash replaces it. */
 @Mixin(ScreenEffectRenderer.class)
 public abstract class FireOverlayMixin {
+	// A missed target must not stop the client from starting.
 	@ModifyExpressionValue(
 		method = "submit",
+		require = 0,
 		at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/state/level/PlayerRenderState;isOnFire:Z")
 	)
 	private boolean stellaMobs$noFireOverlay(final boolean onFire) {
