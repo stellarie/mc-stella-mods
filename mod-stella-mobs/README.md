@@ -155,15 +155,18 @@ A blaze splits its fireball in flight. A ghast fires a triangle of slow shots. N
 ### Ghast (`GhastFireballGoal`, `GhastWitherShot`)
 
 - **Volley:** every 7 ticks, while the target is in sight within 64 blocks, a ghast fires 3 shots.
-  The three aim points lie on a horizontal circle of radius 3 round the target's feet, at 120 degree steps, from a
+  The three aim points lie on a horizontal circle of radius 2.5 round the target's feet, at 120 degree steps, from a
   random start angle. The centre leads a moving target. Over flat ground the shots land on the three points.
 - **Shot:** 0.4 blocks per tick, held constant, also after a player turns it back. A shot burns out after 200 ticks,
   enough to cross 64 blocks.
 - **Landing:** the blast has power 1.0 and breaks no block. A player whose body is within 3 blocks takes 4 damage
   from the ghast as a `fireball` hit, so level scaling applies. A cloud of radius 3 lingers 100 ticks and gives
-  Wither and Slowness (Wither II from an elite). It gives no Poison.
+  Wither and Slowness (Wither II from an elite). It gives no Poison. The triangle is smaller than the cloud, so a
+  target at the centre stands inside all three clouds.
 - **Fire:** 1 to 3 fires light at random spots within 3 blocks on air above solid ground, only when `mobGriefing`
-  is true. Fire spreads to what burns, as it does anywhere.
+  is true. Each fire burns out after 100 ticks, with the cloud, if it still burns, so netherrack does not feed it for
+  ever. Fire spreads to what burns while it lasts. A fire lit when the server stops stays, because the list of
+  fires to clear is not saved.
 - **Load:** one ghast fires about 8.6 shots per second. The game test arena measured 28 volleys in 10 seconds,
   with a peak of 6 shots and 45 clouds in the world at once. At the full 64 block range the same rate holds up to
   72 shots in flight.

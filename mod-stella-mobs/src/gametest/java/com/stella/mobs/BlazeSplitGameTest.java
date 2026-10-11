@@ -21,7 +21,7 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Blaze;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -219,7 +219,6 @@ public class BlazeSplitGameTest {
 	@GameTest(maxTicks = 200)
 	public void aBlazeBallSplitsAndTheChildrenBlastTheTargetForTheBlaze(final GameTestHelper helper) {
 		Arena.buildFloor(helper);
-		helper.setTime(Arena.NIGHT_TIME);
 		Blaze blaze = EntityTypes.BLAZE.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
 		blaze.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
 		blaze.snapTo(helper.absoluteVec(new Vec3(1.5, 3.0, 0.5)), 0.0F, 0.0F);
@@ -231,7 +230,8 @@ public class BlazeSplitGameTest {
 			|| goal instanceof RetreatGoal
 			|| goal instanceof HoldStandoffGoal
 			|| goal instanceof ShieldUseGoal);
-		Zombie target = helper.spawnMob(EntityTypes.ZOMBIE, 6, 1, 7).withNoFreeWill().spawn();
+		// A cow, not a zombie: a zombie burns by day, and the level clock is shared with tests that need the day.
+		Cow target = helper.spawnMob(EntityTypes.COW, 6, 1, 7).withNoFreeWill().spawn();
 		target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
 		target.setHealth(1000.0F);
 		helper.onEachTick(() -> {

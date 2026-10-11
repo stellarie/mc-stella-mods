@@ -1,6 +1,7 @@
 package com.stella.mobs.projectile;
 
 import com.stella.mobs.behavior.GhastFireballGoal;
+import com.stella.mobs.behavior.TemporaryBlocks;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -29,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A ghast's shot: a slow fireball that bursts in a blast that hurts and throws bodies but breaks no block.
  * Where it lands it hurts a player in reach, lights one to three fires at random spots when mobs may grief,
- * and leaves a cloud of Wither and Slowness that lingers five seconds.
+ * and leaves a cloud of Wither and Slowness that lingers five seconds. The fires burn out with the cloud.
  */
 public class GhastWitherShot extends LargeFireball {
 	/** How far below a hit the cloud looks for ground. */
@@ -160,8 +161,8 @@ public class GhastWitherShot extends LargeFireball {
 			}
 
 			BlockState fire = BaseFireBlock.getState(level, spot);
-			if (fire.canSurvive(level, spot)) {
-				level.setBlockAndUpdate(spot, fire);
+			// A placed fire is cleared when its time is up, only if it still burns, so netherrack never feeds it for ever.
+			if (fire.canSurvive(level, spot) && TemporaryBlocks.place(level, spot, fire, GhastFireballGoal.FIRE_LIFETIME_TICKS)) {
 				lit.add(spot);
 			}
 		}

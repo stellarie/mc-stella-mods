@@ -26,8 +26,8 @@ public class GhastFireballGoal extends Goal {
 	/** From the first shot of one volley to the first shot of the next. */
 	public static final int ATTACK_INTERVAL_TICKS = 7;
 	public static final int SHOTS_PER_ATTACK = 3;
-	/** The radius of the horizontal circle the three aim points lie on. */
-	public static final double TRIANGLE_RADIUS = 3.0;
+	/** The radius of the horizontal circle the three aim points lie on. Under {@link #CLOUD_RADIUS}, so a target at the centre is inside all three clouds. */
+	public static final double TRIANGLE_RADIUS = 2.5;
 	/** Blocks per tick. A shot flies at this speed from the start and never gains on it. */
 	public static final double SHOT_SPEED = 0.4;
 	/** Long enough to cross {@link #MAX_RANGE} at {@link #SHOT_SPEED}, with a margin. */
@@ -38,6 +38,8 @@ public class GhastFireballGoal extends Goal {
 	public static final double MAX_RANGE = 64.0;
 	public static final float CLOUD_RADIUS = 3.0F;
 	public static final int CLOUD_DURATION_TICKS = 100;
+	/** A fire a landing lights burns out when the cloud does. */
+	public static final int FIRE_LIFETIME_TICKS = CLOUD_DURATION_TICKS;
 	public static final int WITHER_TICKS = 100;
 	public static final int SLOWNESS_TICKS = 100;
 	public static final int SLOWNESS_AMPLIFIER = 0;

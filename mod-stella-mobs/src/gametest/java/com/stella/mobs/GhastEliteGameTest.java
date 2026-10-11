@@ -50,6 +50,8 @@ public class GhastEliteGameTest {
 	private static final int VICTIM_HEALTH = 400;
 	private static final double EPSILON = 1.0E-6;
 	private static final double LANDING_TOLERANCE = 0.5;
+	/** How far inside a cloud's rim a target at the center must stand. */
+	private static final double CENTER_MARGIN = 0.25;
 	private static final double MAX_ACCEPTED_SPEED = 0.5;
 	private static final int FLOOD_WINDOW_TICKS = 200;
 
@@ -117,7 +119,7 @@ public class GhastEliteGameTest {
 	public void theGhastVolleyIsTheAcceptedOne(final GameTestHelper helper) {
 		helper.assertTrue(GhastFireballGoal.ATTACK_INTERVAL_TICKS == 7, "a ghast attacks every " + GhastFireballGoal.ATTACK_INTERVAL_TICKS + " ticks, not 7");
 		helper.assertTrue(GhastFireballGoal.SHOTS_PER_ATTACK == 3, "a ghast fires " + GhastFireballGoal.SHOTS_PER_ATTACK + " shots per attack, not 3");
-		helper.assertTrue(GhastFireballGoal.TRIANGLE_RADIUS == 3.0, "the triangle radius is " + GhastFireballGoal.TRIANGLE_RADIUS + ", not 3");
+		helper.assertTrue(GhastFireballGoal.TRIANGLE_RADIUS == 2.5, "the triangle radius is " + GhastFireballGoal.TRIANGLE_RADIUS + ", not 2.5");
 		helper.assertTrue(GhastFireballGoal.CLOUD_RADIUS == 3.0F, "the cloud radius is " + GhastFireballGoal.CLOUD_RADIUS + ", not 3");
 		helper.assertTrue(GhastFireballGoal.CLOUD_DURATION_TICKS == 100, "the cloud lingers " + GhastFireballGoal.CLOUD_DURATION_TICKS + " ticks, not 100");
 		helper.succeed();
@@ -305,6 +307,65 @@ public class GhastEliteGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
+	public void aTargetAtTheCenterLiesInsideAllThreeClouds(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		Mob victim = spawnSubject(helper, 4, 1, 4);
+		aim(helper, ghast, victim);
+		helper.succeedWhen(() -> {
+			List<Volley> volleys = VOLLEYS.getOrDefault(ghast.getUUID(), List.of());
+			List<Landing> landings = LANDINGS.getOrDefault(ghast.getUUID(), List.of());
+			helper.assertTrue(!volleys.isEmpty() && landings.size() >= GhastFireballGoal.SHOTS_PER_ATTACK, "only " + landings.size() + " shots have landed");
+			for (Vec3 point : volleys.get(0).points()) {
+				Landing nearest = landings.stream().min(java.util.Comparator.comparingDouble(landing -> Math.hypot(landing.at().x - point.x, landing.at().z - point.z))).orElseThrow();
+				double reach = Math.hypot(nearest.at().x - victim.getX(), nearest.at().z - victim.getZ());
+				helper.assertTrue(reach <= GhastFireballGoal.CLOUD_RADIUS - CENTER_MARGIN, "a landing lies " + reach + " blocks from the target, too near the rim of a cloud of radius " + GhastFireballGoal.CLOUD_RADIUS);
+			}
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aTargetAtTheCenterLiesInsideAllThreeClouds cloudRadius={} triangleRadius={}", TEST, GhastFireballGoal.CLOUD_RADIUS, GhastFireballGoal.TRIANGLE_RADIUS);
+			ghast.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aVolleyWithersAndSlowsATargetAtItsCenter(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		Mob victim = spawnSubject(helper, 4, 1, 4);
+		aim(helper, ghast, victim);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(victim.hasEffect(MobEffects.WITHER) && victim.hasEffect(MobEffects.SLOWNESS), "the target at the center carries no Wither and Slowness yet");
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aVolleyWithersAndSlowsATargetAtItsCenter wither=true slowness=true", TEST);
+			ghast.discard();
+		});
+	}
+
+	@GameTest(maxTicks = 170)
+	public void aLandingsFiresBurnOutWhenItsCloudDoes(final GameTestHelper helper) {
+		Ghast ghast = spawnGhast(helper, false);
+		// Netherrack feeds a fire for ever, so only the landing's own clearing can end these. The patch keeps off the
+		// last two rows, where the floor of the next test in the row overlaps this one.
+		for (int x = 0; x < 6; x++) {
+			for (int z = 0; z < 6; z++) {
+				helper.setBlock(x, 0, z, Blocks.NETHERRACK);
+			}
+		}
+		dropShot(helper, ghast, 2.0, 2.5);
+		helper.runAfterDelay(GhastFireballGoal.CLOUD_DURATION_TICKS - 15L, () -> {
+			List<Landing> landings = LANDINGS.getOrDefault(ghast.getUUID(), List.of());
+			helper.assertTrue(!landings.isEmpty() && !landings.get(0).fires().isEmpty(), "the landing lit no fire, so the case proves nothing");
+			helper.assertTrue(landings.get(0).fires().stream().allMatch(pos -> helper.getLevel().getBlockState(pos.below()).is(Blocks.NETHERRACK)), "a fire stands off the netherrack, so it could go out on its own");
+			long burning = landings.get(0).fires().stream().filter(pos -> helper.getLevel().getBlockState(pos).is(Blocks.FIRE)).count();
+			helper.assertTrue(burning == landings.get(0).fires().size(), "only " + burning + " of " + landings.get(0).fires().size() + " fires still burn before the cloud is gone");
+		});
+		helper.runAfterDelay(GhastFireballGoal.CLOUD_DURATION_TICKS + 30L, () -> {
+			List<BlockPos> fires = LANDINGS.get(ghast.getUUID()).get(0).fires();
+			long burning = fires.stream().filter(pos -> helper.getLevel().getBlockState(pos).is(Blocks.FIRE)).count();
+			StellaMobs.LOGGER.info("[BEHAVIOR] test={} RESULT test=aLandingsFiresBurnOutWhenItsCloudDoes fires={} stillBurning={}", TEST, fires.size(), burning);
+			ghast.discard();
+			helper.assertTrue(burning == 0, burning + " of " + fires.size() + " fires still burn after the cloud is gone");
+			helper.succeed();
+		});
+	}
+
+	@GameTest(maxTicks = 200)
 	public void anEliteGhastsCloudWithersHarder(final GameTestHelper helper) {
 		Ghast ghast = spawnGhast(helper, true);
 		aim(helper, ghast, spawnSubject(helper, 4, 1, 4));
@@ -343,7 +404,7 @@ public class GhastEliteGameTest {
 			ServerLevel level = helper.getLevel();
 			for (BlockPos pos : landing.fires()) {
 				helper.assertTrue(level.getBlockState(pos).is(Blocks.FIRE), "no fire burns at " + pos);
-				helper.assertTrue(level.getBlockState(pos.below()).is(Blocks.STONE), "the fire at " + pos + " does not stand on the ground");
+				helper.assertTrue(level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP), "the fire at " + pos + " does not stand on the ground: " + level.getBlockState(pos.below()));
 				double reach = Math.hypot(pos.getX() + 0.5 - landing.at().x, pos.getZ() + 0.5 - landing.at().z);
 				helper.assertTrue(reach <= GhastFireballGoal.CLOUD_RADIUS + EPSILON, "the fire at " + pos + " lies " + reach + " blocks from the landing");
 			}
@@ -582,7 +643,7 @@ public class GhastEliteGameTest {
 	/** Marked and installed by hand, per the fixture rule: no config write, no chance pin. */
 	private static Ghast spawnGhast(final GameTestHelper helper, final boolean elite) {
 		Arena.buildFloor(helper);
-		helper.setTime(Arena.NIGHT_TIME);
+		// No setTime here: a ghast does not burn, and the level clock is shared with tests that need the day.
 		// The fixture takes none of the natural spawn rolls, so an ordinary ghast can never roll elite or boss.
 		Ghast ghast = EntityTypes.GHAST.create(helper.getLevel(), net.minecraft.world.entity.EntitySpawnReason.EVENT);
 		ghast.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
