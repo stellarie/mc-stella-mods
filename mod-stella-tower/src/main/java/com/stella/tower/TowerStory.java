@@ -42,12 +42,12 @@ public record TowerStory(
 
 	/** Whether a body stands on this story at the spot, as drawn; false outside the room. */
 	public boolean stands(final int x, final int z) {
-		return this.stand != null && x >= 0 && z >= 0 && x < TowerLayout.SIZE && z < TowerLayout.SIZE && this.stand[x][z];
+		return this.stand != null && x >= 0 && z >= 0 && x < this.stand.length && z < this.stand[x].length && this.stand[x][z];
 	}
 
 	/** Whether the spot is this story's own floor to stand on: a trap's or a chest's ground. */
 	public boolean flatAt(final int x, final int z) {
-		return this.flat != null && x >= 0 && z >= 0 && x < TowerLayout.SIZE && z < TowerLayout.SIZE && this.flat[x][z];
+		return this.flat != null && x >= 0 && z >= 0 && x < this.flat.length && z < this.flat[x].length && this.flat[x][z];
 	}
 
 	public byte coverAt(final int x, final int z) {
@@ -58,9 +58,14 @@ public record TowerStory(
 		return this.pillar != null && this.pillar[x][z];
 	}
 
-	/** A grid of the room, every cell set. */
+	/** A grid of the base room, every cell set. */
 	static boolean[][] full() {
-		boolean[][] grid = new boolean[TowerLayout.SIZE][TowerLayout.SIZE];
+		return full(TowerLayout.SIZE, TowerLayout.SIZE);
+	}
+
+	/** A grid of a room of this width and depth, every cell set. */
+	static boolean[][] full(final int width, final int depth) {
+		boolean[][] grid = new boolean[width][depth];
 		for (boolean[] row : grid) {
 			java.util.Arrays.fill(row, true);
 		}

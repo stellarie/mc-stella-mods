@@ -42,7 +42,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The tower's own mobs: who they are, how strong their floor makes them, and how many a floor holds.
  * <p>
- * A floor with a player on it is kept stocked, a few at a time, up to {@link #FLOOR_CAP}. A tower mob is a
+ * A floor with a player on it is kept stocked, a few at a time, up to {@link #floorCap its cap}: {@link #FLOOR_CAP} on a
+ * base-size floor and more on a larger one, in step with its area. A tower mob is a
  * mob of {@link #levelOf its floor's level}: the mobs mod's curves set its health and what it deals. Its
  * health is raised on its attribute as far as the game allows; the rest of its size is kept as a divisor
  * on every hit it takes. The tower adds only the rank's damage factor to what the mobs mod deals.
@@ -55,8 +56,10 @@ public final class TowerMobs {
 	public static final int FIRST_FLOOR_LEVEL = 50;
 	/** A lost room's level is its floor plus this, less one. The room keeps this rule apart from the floors'. */
 	public static final int LOST_ROOM_FLOOR_OFFSET = 20;
+	/** The mobs a base-size floor holds; a larger floor holds this many times its area against the base floor's. */
 	public static final int FLOOR_CAP = 72;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
+	/** The mobs a base-size floor gains in a round of spawning; a larger floor gains more, so it fills in the same time. */
 	public static final int SPAWN_BATCH = 8;
 	public static final int SPAWN_TRIES = 24;
 	public static final double MIN_PLAYER_DISTANCE = 12.0;
@@ -248,6 +251,7 @@ public final class TowerMobs {
 
 	/** Raises one tower mob on the floor, somewhere clear and away from every player; null if none fit. */
 	public static @Nullable Mob spawnOne(final ServerLevel tower, final int floor) {
+		TowerPlan plan = TowerPlan.at(tower, floor);
 		RandomSource random = tower.getRandom();
 		List<EntityType<? extends Mob>> pool = poolOf(tower, floor);
 		EntityType<? extends Mob> type = pool.get(random.nextInt(pool.size()));
@@ -257,7 +261,7 @@ public final class TowerMobs {
 		}
 		BlockPos origin = TowerLayout.origin(floor);
 		// Finalized first: a magma cube's size, and so the room it needs, is only drawn here.
-		BlockPos middle = origin.offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
+		BlockPos middle = origin.offset(plan.width() / 2, 0, plan.depth() / 2);
 		mob.snapTo(Vec3.atBottomCenterOf(middle));
 		mob.finalizeSpawn(tower, tower.getCurrentDifficultyAt(middle), EntitySpawnReason.EVENT, null);
 		settle(mob);
@@ -284,8 +288,8 @@ public final class TowerMobs {
 			eyes.add(arrival.add(0.0, EYE_HEIGHT, 0.0));
 		}
 		for (int attempt = 0; attempt < SPAWN_TRIES; attempt++) {
-			int x = origin.getX() + 1 + random.nextInt(TowerLayout.SIZE - 2);
-			int z = origin.getZ() + 1 + random.nextInt(TowerLayout.SIZE - 2);
+			int x = origin.getX() + 1 + random.nextInt(plan.width() - 2);
+			int z = origin.getZ() + 1 + random.nextInt(plan.depth() - 2);
 			int sy = plan.isBiome() ? plan.standY(x - origin.getX(), z - origin.getZ()) : stories.get(random.nextInt(stories.size())).y();
 			if (sy < TowerWalk.LOW || plan.isBiome() && plan.biome().inDais(plan, x - origin.getX(), z - origin.getZ())) {
 				continue;
@@ -332,9 +336,10 @@ public final class TowerMobs {
 			return false;
 		}
 		BlockPos origin = TowerLayout.origin(floor);
-		int top = TowerLayout.BASE_Y + Math.min(ceiling, TowerPlan.atQuiet(tower, floor).roofY());
-		return target.getX() >= origin.getX() && target.getX() < origin.getX() + TowerLayout.SIZE
-			&& target.getZ() >= origin.getZ() && target.getZ() < origin.getZ() + TowerLayout.SIZE
+		TowerPlan plan = TowerPlan.atQuiet(tower, floor);
+		int top = TowerLayout.BASE_Y + Math.min(ceiling, plan.roofY());
+		return target.getX() >= origin.getX() && target.getX() < origin.getX() + plan.width()
+			&& target.getZ() >= origin.getZ() && target.getZ() < origin.getZ() + plan.depth()
 			&& target.getY() >= TowerLayout.BASE_Y && target.getY() < top;
 	}
 
@@ -393,9 +398,29 @@ public final class TowerMobs {
 		return on;
 	}
 
+	/**
+	 * The box a floor's mobs are searched in: the largest room, whatever the floor's own size. A smaller room has only void
+	 * past its walls, and the next floor's cell lies beyond the box.
+	 */
 	static AABB room(final int floor) {
 		BlockPos o = TowerLayout.origin(floor);
-		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.SIZE, o.getY() + TowerLayout.ROOM_HEIGHT, o.getZ() + TowerLayout.SIZE);
+		return new AABB(o.getX(), o.getY() - 1, o.getZ(), o.getX() + TowerLayout.MAX_SIZE, o.getY() + TowerLayout.ROOM_HEIGHT, o.getZ() + TowerLayout.MAX_SIZE);
+	}
+
+	/** The most tower mobs a floor holds: the base cap times the floor's area against the base floor's, unless a test pinned it. */
+	public static int floorCap(final ServerLevel tower, final int floor) {
+		Integer pinned = PINNED_CAP.get(floor);
+		return pinned != null ? pinned : scaled(FLOOR_CAP, TowerPlan.at(tower, floor));
+	}
+
+	/** The mobs a round of spawning adds to a floor at most: the base batch times the area factor. */
+	public static int spawnBatch(final ServerLevel tower, final int floor) {
+		return scaled(SPAWN_BATCH, TowerPlan.at(tower, floor));
+	}
+
+	/** A count made for the base floor, made for the plan's floor: times its area against the base floor's, to the nearest whole. */
+	public static int scaled(final int base, final TowerPlan plan) {
+		return (int) Math.round(base * plan.areaFactor());
 	}
 
 	/** Tower mobs standing on the floor now; its own record, not a kind, says which floor a mob is of. */
@@ -435,12 +460,14 @@ public final class TowerMobs {
 		}
 		for (int floor : occupied.keySet()) {
 			// The whole room is held loaded while it is occupied, so no mob in it goes uncounted.
-			BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
-			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.CHUNK_RADIUS);
+			TowerPlan plan = TowerPlan.at(tower, floor);
+			BlockPos middle = TowerLayout.origin(floor).offset(plan.width() / 2, 0, plan.depth() / 2);
+			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.chunkRadius(plan));
 			TowerGhosts.haunt(tower, floor);
+			TowerPhantoms.haunt(tower, floor);
 			TowerShamans.haunt(tower, floor);
-			int room = PINNED_CAP.getOrDefault(floor, FLOOR_CAP) - count(tower, floor);
-			for (int i = 0; i < Math.min(room, SPAWN_BATCH); i++) {
+			int room = floorCap(tower, floor) - count(tower, floor);
+			for (int i = 0; i < Math.min(room, spawnBatch(tower, floor)); i++) {
 				spawnOne(tower, floor);
 			}
 		}

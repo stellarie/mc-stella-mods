@@ -21,8 +21,13 @@ import org.jspecify.annotations.Nullable;
  * @param stand where a body stands in each column at the lowest, or {@link #NONE}; null until the plan is read
  * @param steps how many steps the portal's platform stands above the ground
  * @param cover the floor's cover, one row each: kind, x, z, width, length and height (see the {@code COVER_} indexes)
+ * @param width the room's width along x, in blocks
+ * @param depth the room's depth along z, in blocks
+ * @param layout how the floor is laid out ({@link BiomeLayout})
+ * @param marks the parts of a layout other than the standard, one row each like a cover row; empty for the standard layout
  */
-public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, boolean[][] lava, boolean[][] fragile, short @Nullable [][] ceiling, byte @Nullable [][] ceilCode, int[] placed, short @Nullable [][] stand, int steps, int[][] cover) {
+public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boolean[][] water, boolean[][] lava, boolean[][] fragile, short @Nullable [][] ceiling, byte @Nullable [][] ceilCode, int[] placed, short @Nullable [][] stand, int steps, int[][] cover,
+	int width, int depth, BiomeLayout layout, int[][] marks) {
 	/** A column where no body stands. */
 	public static final short NONE = -99;
 	/** The columns of a {@link #cover()} row. */
@@ -36,11 +41,29 @@ public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boo
 	public static final int COVER_TOWER = 0;
 	public static final int COVER_HOUSE = 1;
 	public static final int COVER_WALL = 2;
+	/**
+	 * The columns of a {@link #marks()} row, which are those of a cover row, and the kinds of mark. A wall is a ring along the
+	 * outline of its rectangle, a tower a block of the biome's stone with its footprint hollow, a plaza flat paved ground, a
+	 * cliff a strip of rock stacked along a canyon, a butte a lone stack of rock, and a keep a walled building of a fortress.
+	 */
+	public static final int MARK_KIND = 0;
+	public static final int MARK_X = 1;
+	public static final int MARK_Z = 2;
+	public static final int MARK_W = 3;
+	public static final int MARK_L = 4;
+	public static final int MARK_HEIGHT = 5;
+	public static final int MARK_WALL = 0;
+	public static final int MARK_TOWER = 1;
+	public static final int MARK_PLAZA = 2;
+	public static final int MARK_CLIFF = 3;
+	public static final int MARK_BUTTE = 4;
+	public static final int MARK_KEEP = 5;
 	/** How far above the feet the portal's backdrop wall rises, in blocks. */
 	public static final int BACKDROP = 8;
 
 	BiomeDraft withStand(final short[][] read) {
-		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.lava, this.fragile, this.ceiling, this.ceilCode, this.placed, read, this.steps, this.cover);
+		return new BiomeDraft(this.biome, this.feet, this.surface, this.water, this.lava, this.fragile, this.ceiling, this.ceilCode, this.placed, read, this.steps, this.cover,
+			this.width, this.depth, this.layout, this.marks);
 	}
 
 	/** Whether the column is one the portal's stair, platform or backdrop covers, or the apron at its foot. */
@@ -73,7 +96,7 @@ public record BiomeDraft(FloorBiome biome, short[][] feet, byte[][] surface, boo
 			}
 		}
 		int from = f == -1 ? px + 3 : 0;
-		int to = f == -1 ? TowerLayout.SIZE - 1 : px - 3;
+		int to = f == -1 ? this.width - 1 : px - 3;
 		for (int z = pz - 4; z <= pz + 5; z++) {
 			for (int x = from; x <= to; x++) {
 				columns.add(new int[] {x, z, s + BACKDROP - 1});

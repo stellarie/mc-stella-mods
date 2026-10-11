@@ -32,10 +32,11 @@ public final class TowerBiomes {
 	/** Paints every chunk of the floor's room and walls. */
 	public static void paint(final ServerLevel tower, final int floor, final FloorBiome biome) {
 		BlockPos origin = TowerLayout.origin(floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
 		Holder<Biome> holder = tower.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(biome.key());
 		List<ChunkAccess> chunks = new ArrayList<>();
-		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + TowerLayout.SIZE) >> 4; cx++) {
-			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + TowerLayout.SIZE) >> 4; cz++) {
+		for (int cx = (origin.getX() - 1) >> 4; cx <= (origin.getX() + plan.width()) >> 4; cx++) {
+			for (int cz = (origin.getZ() - 1) >> 4; cz <= (origin.getZ() + plan.depth()) >> 4; cz++) {
 				ChunkAccess chunk = tower.getChunk(cx, cz);
 				chunk.fillBiomesFromNoise((x, y, z) -> holder);
 				chunk.markUnsaved();

@@ -104,8 +104,8 @@ public class TowerBiomeFloorGameTest {
 			TowerPlan plan = drawn(SEED + floor, floor);
 			TowerVolume volume = TowerVolume.of(plan);
 			List<int[]> lamps = new ArrayList<>();
-			for (int x = 0; x < TowerLayout.SIZE; x++) {
-				for (int z = 0; z < TowerLayout.SIZE; z++) {
+			for (int x = 0; x < plan.width(); x++) {
+				for (int z = 0; z < plan.depth(); z++) {
 					for (int y = plan.low(); y < plan.roofY(); y++) {
 						if (volume.kind(x, y, z) == TowerVolume.BIOME_BLOCK && BiomeBlocks.lights(volume.code(x, y, z))) {
 							lamps.add(new int[] {x, y, z});
@@ -114,8 +114,8 @@ public class TowerBiomeFloorGameTest {
 				}
 			}
 			int[] dist = TowerWalk.distances(volume, plan.arrivalX(), 0, plan.arrivalZ());
-			for (int x = 0; x < TowerLayout.SIZE; x++) {
-				for (int z = 0; z < TowerLayout.SIZE; z++) {
+			for (int x = 0; x < plan.width(); x++) {
+				for (int z = 0; z < plan.depth(); z++) {
 					for (int y = TowerWalk.LOW; y <= TowerWalk.HIGH; y++) {
 						if (dist[TowerWalk.index(x, y, z)] < 0) {
 							continue;
@@ -149,15 +149,16 @@ public class TowerBiomeFloorGameTest {
 		TowerPlan plan = TowerPlan.at(tower, floor);
 		BlockPos origin = plan.origin();
 		List<BlockPos> sentinels = new ArrayList<>();
-		int size = TowerLayout.SIZE;
-		int[][] sides = {{-2, 10}, {size + 1, 20}, {30, -2}, {40, size + 1}, {-2, -2}, {size + 1, size + 1}};
+		int width = plan.width();
+		int depth = plan.depth();
+		int[][] sides = {{-2, 10}, {width + 1, 20}, {30, -2}, {40, depth + 1}, {-2, -2}, {width + 1, depth + 1}};
 		for (int[] side : sides) {
 			for (int y : new int[] {plan.low() - 1, 0, plan.roofY() / 2, plan.roofY() + 1}) {
 				sentinels.add(origin.offset(side[0], y, side[1]));
 			}
 		}
-		for (int x : new int[] {5, 30, 60}) {
-			for (int z : new int[] {5, 30, 60}) {
+		for (int x : new int[] {5, width / 2, width - 5}) {
+			for (int z : new int[] {5, depth / 2, depth - 5}) {
 				sentinels.add(origin.offset(x, plan.low() - 1, z));
 				sentinels.add(origin.offset(x, plan.roofY() + 1, z));
 			}

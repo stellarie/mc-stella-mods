@@ -175,7 +175,8 @@ public final class TowerShamans {
 		if (shaman == null) {
 			return null;
 		}
-		net.minecraft.core.BlockPos middle = TowerLayout.origin(floor).offset(TowerLayout.SIZE / 2, 0, TowerLayout.SIZE / 2);
+		TowerPlan room = TowerPlan.at(tower, floor);
+		net.minecraft.core.BlockPos middle = TowerLayout.origin(floor).offset(room.width() / 2, 0, room.depth() / 2);
 		shaman.snapTo(Vec3.atBottomCenterOf(middle));
 		shaman.finalizeSpawn(tower, tower.getCurrentDifficultyAt(middle), EntitySpawnReason.EVENT, null);
 		TowerMobs.settle(shaman);
