@@ -1,212 +1,152 @@
 package com.stella.mobs;
 
-import com.stella.mobs.behavior.WitherMinions;
 import com.stella.mobs.behavior.WitherShots;
 import com.stella.mobs.behavior.WitherState;
 import com.stella.mobs.config.WitherConfig;
 import com.stella.mobs.config.WitherConfigStore;
 import com.stella.mobs.projectile.WitherSkullShot;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * At half health the Wither rages for thirty seconds: a barrage of skulls in every direction, none past sixteen blocks.
- * At a quarter health a second rage replaces it. Each rage starts once. A rage holds volleys and new minions back. One
- * scene runs the phases in order, because each arena costs the server a large chunk load.
+ * Below half health the Wither adds a sphere burst of skulls to its volleys. The old barrage and rain rages are gone.
+ * One scene runs the phases in order, because each arena costs the server a large chunk load.
  */
 public final class WitherRageGameTest {
-	private static final int SHIPPED_RAGE_TICKS = 600;
-	private static final double HALF = 0.5;
-	private static final double QUARTER = 0.25;
-	private static final double ABOVE_HALF = 0.52;
-	private static final int GAP = 25;
-	private static final int BARRAGE_WATCH = 100;
-	private static final int FLOOD_RING = 30;
-	private static final int FLOOD_INTERVAL = 2;
-	private static final int MINION_WAVE = 20;
-	private static final int MINION_BATCH = 4;
-	private static final int SHIPPED_RANGE = 16;
+	private static final double ABOVE_HALF = 0.55;
+	private static final double BELOW_HALF = 0.45;
+	private static final int QUIET_TICKS = 60;
+	private static final int SHIPPED_COUNT = 26;
+	private static final int SHIPPED_INTERVAL = 100;
 	private static final int SHIPPED_CAP = 40;
-	private static final double STEP_SLACK = 2.0;
+	private static final double RAY_SLACK = 2.0;
+	private static final double FLAT = 0.2;
+	private static final double OFF_AXIS = 0.15;
+	private static final int LEAST_PER_QUADRANT = 3;
+	private static final int INTERVAL_SLACK = 2;
+	private static final int BURSTS_WANTED = 2;
 
-	private static void hit(final ServerLevel level, final WitherBoss wither, final double healthLoss) {
-		double divisor = WitherState.find(wither).healthDivisor();
-		wither.setInvulnerableTime(0);
-		wither.hurtServer(level, level.damageSources().genericKill(), (float) (divisor * healthLoss));
+	/** The skulls of one tick, in the order they were loosed. */
+	private record Burst(int ownerTick, List<WideArena.Shot> shots) {
+	}
+
+	private static List<Burst> bursts(final List<WideArena.Shot> shots, final double share) {
+		List<Burst> found = new ArrayList<>();
+		for (WideArena.Shot shot : shots) {
+			if (!(shot.projectile() instanceof WitherSkullShot skull) || skull.spec().share() != share) {
+				continue;
+			}
+			if (found.isEmpty() || found.get(found.size() - 1).ownerTick() != shot.ownerTick()) {
+				found.add(new Burst(shot.ownerTick(), new ArrayList<>()));
+			}
+			found.get(found.size() - 1).shots().add(shot);
+		}
+		return found;
 	}
 
 	@GameTest
-	public void theShippedRageLastsThirtySeconds(final GameTestHelper helper) {
+	public void theShippedPhasesAreHalfAndAQuarter(final GameTestHelper helper) {
 		WitherConfig config = WitherConfigStore.get();
-		helper.assertTrue(config.getInt(WitherConfig.RAGE_TICKS) == SHIPPED_RAGE_TICKS, "a rage lasts " + config.getInt(WitherConfig.RAGE_TICKS) + " ticks, want 30 s");
-		helper.assertTrue(config.get(WitherConfig.RAGE_A_THRESHOLD) == HALF && config.get(WitherConfig.RAGE_B_THRESHOLD) == QUARTER, "the thresholds are not 50 and 25 percent");
-		helper.assertTrue(config.getInt(WitherConfig.RAGE_A_RANGE) == SHIPPED_RANGE && config.getInt(WitherConfig.SKULL_LIVE_CAP) == SHIPPED_CAP, "the barrage range or the skull cap moved");
+		helper.assertTrue(config.get(WitherConfig.SPHERE_THRESHOLD) == 0.5, "the sphere starts at " + config.get(WitherConfig.SPHERE_THRESHOLD) + ", want half health");
+		helper.assertTrue(config.get(WitherConfig.SMALL_THRESHOLD) == 0.25, "the small withers come at " + config.get(WitherConfig.SMALL_THRESHOLD) + ", want a quarter");
+		helper.assertTrue(config.getInt(WitherConfig.SPHERE_COUNT) == SHIPPED_COUNT && config.getInt(WitherConfig.SPHERE_INTERVAL) == SHIPPED_INTERVAL,
+			"the sphere is " + config.getInt(WitherConfig.SPHERE_COUNT) + " skulls every " + config.getInt(WitherConfig.SPHERE_INTERVAL) + " ticks");
+		helper.assertTrue(config.getInt(WitherConfig.SKULL_LIVE_CAP) == SHIPPED_CAP, "the skull cap moved to " + config.getInt(WitherConfig.SKULL_LIVE_CAP));
+		helper.assertTrue(config.getInt(WitherConfig.SMALL_COUNT) == 4 && config.get(WitherConfig.SMALL_SCALE) == 0.6
+			&& config.get(WitherConfig.SMALL_DAMAGE_FACTOR) == 0.5 && config.get(WitherConfig.SMALL_HEALTH_SHARE) == 0.25, "a small wither number moved");
+		helper.assertTrue(config.getInt(WitherConfig.AIM_RANDOM_SKULLS) == 2, "a volley adds " + config.getInt(WitherConfig.AIM_RANDOM_SKULLS) + " random skulls, want 2");
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 2400, padding = WideArena.PADDING)
-	public void theRagesStartOnceHoldBackHelpAndOneReplacesTheOther(final GameTestHelper helper) {
+	@GameTest(maxTicks = 900, padding = WideArena.PADDING)
+	public void theSphereComesBelowHalfAndVolleysContinue(final GameTestHelper helper) {
 		WideArena arena = WideArena.build(helper);
+		helper.runBeforeTestEnd(arena::finish);
 		WitherBoss[] wither = new WitherBoss[1];
 		ServerPlayer[] player = new ServerPlayer[1];
-		List<Mob> spawned = new CopyOnWriteArrayList<>();
-		WitherConfig previous = WitherConfigStore.get();
-		// Frequent waves from the start, so a wave is due inside the rage and its hold shows.
-		WitherConfigStore.set(previous.with(WitherConfig.MINIONS_WAVE_INTERVAL, MINION_WAVE).with(WitherConfig.MINIONS_WAVE_SIZE, MINION_BATCH));
-		WitherMinions.Recorder recorder = (owner, minion, distance) -> {
-			if (owner == wither[0]) {
-				spawned.add(minion);
-			}
-		};
-		WitherMinions.addRecorder(recorder);
-		helper.runBeforeTestEnd(() -> {
-			WitherConfigStore.set(previous);
-			WitherMinions.removeRecorder(recorder);
-			arena.finish();
-		});
-		int[] phase = {0};
 		long[] phaseStart = {0};
-		int[] spawnedAtStart = {0};
+		int[] phase = {0};
 		int[] peakLive = {0};
-		int[] aimedSeen = {0};
 		Map<WitherSkullShot, Double> farthest = new IdentityHashMap<>();
-		Set<WitherSkullShot> beforeRage = Collections.newSetFromMap(new IdentityHashMap<>());
 		helper.onEachTick(() -> {
 			if (wither[0] == null) {
 				return;
 			}
 			WideArena.keepValid(player[0]);
-			ServerLevel level = helper.getLevel();
 			WitherBoss boss = wither[0];
 			WitherConfig config = WitherConfigStore.get();
-			long elapsed = helper.getTick() - phaseStart[0];
 			for (WitherSkullShot skull : WitherShots.snapshot(boss)) {
-				farthest.merge(skull, skull.position().distanceTo(skull.origin()), Math::max);
-				if (skull.spec().share() == config.get(WitherConfig.AIM_SHARE) && !beforeRage.contains(skull) && WitherState.find(boss).rageKind() != WitherState.RAGE_NONE) {
-					aimedSeen[0]++;
+				if (skull.spec().share() == config.get(WitherConfig.SPHERE_SHARE)) {
+					farthest.merge(skull, skull.position().distanceTo(skull.origin()), Math::max);
 				}
 			}
 			peakLive[0] = Math.max(peakLive[0], WitherShots.live(boss));
-			WitherState state = WitherState.find(boss);
-			switch (phase[0]) {
-				case 0 -> {
-					if (elapsed >= GAP) {
-						boss.setHealth((float) (boss.getMaxHealth() * ABOVE_HALF));
-						hit(level, boss, 1.0);
-						helper.assertTrue(WitherState.find(boss).rageKind() == WitherState.RAGE_NONE && !WitherState.find(boss).rageAUsed(),
-							"a rage began at " + boss.getHealth() / boss.getMaxHealth() + " of max health");
-						next(phase, phaseStart, helper);
-					}
+			long elapsed = helper.getTick() - phaseStart[0];
+			List<Burst> spheres = bursts(WideArena.shots(boss), config.get(WitherConfig.SPHERE_SHARE));
+			if (phase[0] == 0) {
+				if (elapsed < QUIET_TICKS) {
+					return;
 				}
-				case 1 -> {
-					if (elapsed >= GAP) {
-						boss.setHealth((float) (boss.getMaxHealth() * HALF + 0.5));
-						WitherConfigStore.set(WitherConfigStore.get().with(WitherConfig.RAGE_A_RING_SIZE, FLOOD_RING).with(WitherConfig.RAGE_A_RING_INTERVAL, FLOOD_INTERVAL));
-						hit(level, boss, 2.0);
-						WitherState after = WitherState.find(boss);
-						StellaMobs.LOGGER.info("[BEHAVIOR] test=witherRageHalf RESULT kind={} ticksLeft={} aUsed={} bUsed={} fraction={}",
-							after.rageKind(), after.rageTicksLeft(), after.rageAUsed(), after.rageBUsed(), boss.getHealth() / boss.getMaxHealth());
-						helper.assertTrue(after.rageKind() == WitherState.RAGE_BARRAGE, "no barrage at half health: kind " + after.rageKind());
-						helper.assertTrue(after.rageTicksLeft() == SHIPPED_RAGE_TICKS, "the barrage lasts " + after.rageTicksLeft() + " ticks, want " + SHIPPED_RAGE_TICKS);
-						helper.assertTrue(after.rageAUsed() && !after.rageBUsed(), "the used flags are wrong after the first rage");
-						beforeRage.addAll(WitherShots.snapshot(boss));
-						// Room for new minions, so a held-back wave shows.
-						for (Mob minion : WitherMinions.alive(level, boss)) {
-							minion.hurtServer(level, level.damageSources().genericKill(), 1.0E6F);
-						}
-						spawnedAtStart[0] = spawned.size();
-						next(phase, phaseStart, helper);
-					}
+				helper.assertTrue(spheres.isEmpty(), "a sphere burst came at " + boss.getHealth() / boss.getMaxHealth() + " of max health");
+				helper.assertTrue(!WitherState.find(boss).rageAUsed(), "the sphere is marked started above half health");
+				boss.setHealth((float) (boss.getMaxHealth() * BELOW_HALF));
+				phase[0] = 1;
+				phaseStart[0] = helper.getTick();
+				return;
+			}
+			if (spheres.size() < BURSTS_WANTED) {
+				if (elapsed > 3L * SHIPPED_INTERVAL) {
+					helper.fail("only " + spheres.size() + " sphere bursts came in " + elapsed + " ticks below half health");
 				}
-				case 2 -> {
-					if (elapsed >= BARRAGE_WATCH) {
-						double widest = farthest.values().stream().mapToDouble(Double::doubleValue).max().orElse(-1.0);
-						StellaMobs.LOGGER.info("[BEHAVIOR] test=witherBarrage RESULT ticksLeft={} peakLive={} widest={} skulls={} aimedDuringRage={} minionsAdded={}",
-							state.rageTicksLeft(), peakLive[0], widest, farthest.size(), aimedSeen[0], spawned.size() - spawnedAtStart[0]);
-						helper.assertTrue(Math.abs(state.rageTicksLeft() - (SHIPPED_RAGE_TICKS - BARRAGE_WATCH)) <= 3, "the rage has " + state.rageTicksLeft() + " ticks left after " + BARRAGE_WATCH);
-						helper.assertTrue(peakLive[0] == SHIPPED_CAP, "the live skulls peaked at " + peakLive[0] + ", cap " + SHIPPED_CAP);
-						helper.assertTrue(farthest.size() > SHIPPED_CAP, "only " + farthest.size() + " skulls flew");
-						helper.assertTrue(widest <= SHIPPED_RANGE + STEP_SLACK, "a skull flew " + widest + " blocks from where it began, range " + SHIPPED_RANGE);
-						helper.assertTrue(aimedSeen[0] == 0, "an aimed volley came during the rage");
-						helper.assertTrue(spawned.size() == spawnedAtStart[0], (spawned.size() - spawnedAtStart[0]) + " minions came during the rage");
-						next(phase, phaseStart, helper);
-					}
-				}
-				case 3 -> {
-					if (elapsed >= GAP) {
-						boss.setHealth((float) (boss.getMaxHealth() * QUARTER + 0.5));
-						hit(level, boss, 2.0);
-						WitherState after = WitherState.find(boss);
-						StellaMobs.LOGGER.info("[BEHAVIOR] test=witherRageQuarter RESULT kind={} ticksLeft={} aUsed={} bUsed={}", after.rageKind(), after.rageTicksLeft(), after.rageAUsed(), after.rageBUsed());
-						helper.assertTrue(after.rageKind() == WitherState.RAGE_RAIN, "the second rage did not replace the first: kind " + after.rageKind());
-						helper.assertTrue(after.rageTicksLeft() == SHIPPED_RAGE_TICKS, "the second rage lasts " + after.rageTicksLeft() + " ticks");
-						helper.assertTrue(after.rageAUsed() && after.rageBUsed(), "the used flags are wrong after the second rage");
-						// The rage runs thirty seconds. Cut it short so the test reaches its end.
-						WitherState.set(boss, after.withRage(true, true, WitherState.RAGE_RAIN, GAP));
-						next(phase, phaseStart, helper);
-					}
-				}
-				case 4 -> {
-					if (state.rageKind() == WitherState.RAGE_NONE) {
-						helper.assertTrue(state.rageTicksLeft() == 0, "an ended rage keeps " + state.rageTicksLeft() + " ticks");
-						spawnedAtStart[0] = spawned.size();
-						next(phase, phaseStart, helper);
-					} else if (elapsed > 3L * GAP) {
-						helper.fail("the second rage never ended: " + state);
-					}
-				}
-				case 5 -> {
-					// No wave in the pause that follows a rage, and waves again after it.
-					if (elapsed == 90) {
-						helper.assertTrue(spawned.size() == spawnedAtStart[0], (spawned.size() - spawnedAtStart[0]) + " minions came in the pause after the rage");
-					}
-					if (elapsed > 90 && spawned.size() > spawnedAtStart[0]) {
-						StellaMobs.LOGGER.info("[BEHAVIOR] test=witherRagePause RESULT resumedAfter={}", elapsed);
-						next(phase, phaseStart, helper);
-					} else if (elapsed > 400) {
-						helper.fail("no minion came after the pause");
-					}
-				}
-				case 6 -> {
-					if (elapsed >= GAP) {
-						boss.setHealth((float) (boss.getMaxHealth() * HALF + 0.5));
-						hit(level, boss, 2.0);
-						helper.assertTrue(WitherState.find(boss).rageKind() == WitherState.RAGE_NONE, "the first rage began a second time");
-						next(phase, phaseStart, helper);
-					}
-				}
-				case 7 -> {
-					if (elapsed >= GAP) {
-						boss.setHealth((float) (boss.getMaxHealth() * QUARTER + 0.5));
-						hit(level, boss, 2.0);
-						helper.assertTrue(WitherState.find(boss).rageKind() == WitherState.RAGE_NONE, "the second rage began a second time");
-						helper.succeed();
-					}
-				}
-				default -> {
+				return;
+			}
+			Burst first = spheres.get(0);
+			Burst second = spheres.get(1);
+			int upper = 0;
+			int lower = 0;
+			int[] quadrants = new int[4];
+			for (WideArena.Shot shot : first.shots()) {
+				Vec3 direction = shot.velocity().normalize();
+				upper += direction.y > FLAT ? 1 : 0;
+				lower += direction.y < -FLAT ? 1 : 0;
+				if (Math.abs(direction.x) > OFF_AXIS && Math.abs(direction.z) > OFF_AXIS) {
+					quadrants[(direction.x > 0 ? 1 : 0) + (direction.z > 0 ? 2 : 0)]++;
 				}
 			}
+			int aimedBetween = (int) bursts(WideArena.shots(boss), config.get(WitherConfig.AIM_SHARE)).stream()
+				.filter(burst -> burst.ownerTick() > first.ownerTick() && burst.ownerTick() < second.ownerTick()).count();
+			double widest = farthest.values().stream().mapToDouble(Double::doubleValue).max().orElse(-1.0);
+			StellaMobs.LOGGER.info("[BEHAVIOR] test=witherSphere RESULT sizes={}/{} gap={} upper={} lower={} quadrants={} aimedBetween={} peakLive={} widest={}",
+				first.shots().size(), second.shots().size(), second.ownerTick() - first.ownerTick(), upper, lower, List.of(quadrants[0], quadrants[1], quadrants[2], quadrants[3]),
+				aimedBetween, peakLive[0], widest);
+			// Every sphere-share skull of the scene belongs to a full burst. A trickle of single skulls would be the old barrage.
+			helper.assertTrue(spheres.stream().allMatch(burst -> burst.shots().size() == config.getInt(WitherConfig.SPHERE_COUNT)),
+				"the bursts held " + spheres.stream().map(burst -> burst.shots().size()).toList() + " skulls, want " + config.getInt(WitherConfig.SPHERE_COUNT) + " each");
+			helper.assertTrue(Math.abs(second.ownerTick() - first.ownerTick() - config.getInt(WitherConfig.SPHERE_INTERVAL)) <= INTERVAL_SLACK,
+				"the bursts came " + (second.ownerTick() - first.ownerTick()) + " ticks apart, want " + config.getInt(WitherConfig.SPHERE_INTERVAL));
+			helper.assertTrue(upper >= SHIPPED_COUNT / 4 && lower >= SHIPPED_COUNT / 4, "the burst is not a sphere: " + upper + " skulls rise and " + lower + " fall");
+			for (int quadrant : quadrants) {
+				helper.assertTrue(quadrant >= LEAST_PER_QUADRANT, "a horizontal quadrant holds " + quadrant + " skulls: " + List.of(quadrants[0], quadrants[1], quadrants[2], quadrants[3]));
+			}
+			helper.assertTrue(aimedBetween >= 3, "only " + aimedBetween + " aimed volleys came between two bursts");
+			helper.assertTrue(peakLive[0] >= config.getInt(WitherConfig.SPHERE_COUNT) && peakLive[0] <= config.getInt(WitherConfig.SKULL_LIVE_CAP),
+				"the live skulls peaked at " + peakLive[0] + ", cap " + config.getInt(WitherConfig.SKULL_LIVE_CAP));
+			helper.assertTrue(widest <= config.get(WitherConfig.SPHERE_RANGE) + RAY_SLACK, "a sphere skull flew " + widest + " blocks from where it began");
+			helper.succeed();
 		});
 		arena.whenReady(List.of(new Vec3(28, 3, 28), new Vec3(28, 3, 44)), () -> {
 			player[0] = arena.survivalPlayer(28.5, 44.5);
 			wither[0] = WitherRig.wither(helper, arena, 28, WideArena.SPAWN_Y, 28, 0);
+			wither[0].setHealth((float) (wither[0].getMaxHealth() * ABOVE_HALF));
+			WideArena.watch(wither[0], () -> player[0]);
 			phaseStart[0] = helper.getTick();
 		});
-	}
-
-	private static void next(final int[] phase, final long[] phaseStart, final GameTestHelper helper) {
-		phase[0]++;
-		phaseStart[0] = helper.getTick();
 	}
 }

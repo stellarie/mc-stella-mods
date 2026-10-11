@@ -2,8 +2,10 @@ package com.stella.mobs.mixin;
 
 import com.stella.mobs.behavior.WitherEncounter;
 import com.stella.mobs.behavior.WitherShots;
+import com.stella.mobs.behavior.WitherSpawnlings;
 import com.stella.mobs.config.WitherConfig;
 import com.stella.mobs.config.WitherConfigStore;
+import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull;
@@ -11,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
@@ -25,6 +28,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class WitherBossMixin {
 	@Shadow
 	private int destroyBlocksTick;
+
+	@Shadow
+	@Final
+	private ServerBossEvent bossEvent;
 
 	@ModifyVariable(method = "hurtServer", at = @At("HEAD"), argsOnly = true)
 	private float stellaMobs$healthDivisor(final float amount) {
@@ -41,7 +48,12 @@ public abstract class WitherBossMixin {
 
 	@Inject(method = "customServerAiStep", at = @At("TAIL"))
 	private void stellaMobs$tick(final ServerLevel level, final CallbackInfo callbackInfo) {
-		WitherEncounter.tick((WitherBoss) (Object) this);
+		WitherBoss wither = (WitherBoss) (Object) this;
+		WitherEncounter.tick(wither);
+		// Four extra bars would bury the original's. A small wither shows none.
+		if (WitherSpawnlings.isSmall(wither)) {
+			this.bossEvent.setVisible(false);
+		}
 	}
 
 	@Inject(method = "aiStep", at = @At("TAIL"))

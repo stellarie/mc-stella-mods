@@ -135,7 +135,6 @@ public class StellaMobs implements ModInitializer {
 		ServerTickEvents.END_LEVEL_TICK.register(Bosses::tick);
 		ServerTickEvents.END_LEVEL_TICK.register(com.stella.mobs.behavior.WitherRage::tickAll);
 		ServerTickEvents.END_LEVEL_TICK.register(com.stella.mobs.behavior.WitherMinions::tick);
-		ServerLivingEntityEvents.AFTER_DAMAGE.register(com.stella.mobs.behavior.WitherRage::afterDamage);
 		ServerTickEvents.END_LEVEL_TICK.register(ChunkEncounters::tick);
 		// Before the spawn chunks load, so loaded mobs rescale with the file's numbers.
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {

@@ -18,6 +18,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -106,12 +107,17 @@ public final class WitherMinionGameTest {
 		ServerPlayer[] player = new ServerPlayer[1];
 		List<Mob> spawned = new CopyOnWriteArrayList<>();
 		List<Double> distances = new CopyOnWriteArrayList<>();
+		List<String> speedFaults = new CopyOnWriteArrayList<>();
 		WitherConfig previous = WitherConfigStore.get();
 		WitherConfigStore.set(previous.with(WitherConfig.MINIONS_WAVE_INTERVAL, WAVE_INTERVAL).with(WitherConfig.MINIONS_WAVE_SIZE, WAVE_SIZE));
 		WitherMinions.Recorder recorder = (owner, minion, distance) -> {
 			if (owner == wither[0]) {
 				spawned.add(minion);
 				distances.add(distance);
+				MobEffectInstance speed = minion.getEffect(MobEffects.SPEED);
+				if (speed == null || speed.getAmplifier() != 1 || !speed.isInfiniteDuration()) {
+					speedFaults.add(minion.getType() + ":" + speed);
+				}
 			}
 		};
 		WitherMinions.addRecorder(recorder);
@@ -150,6 +156,7 @@ public final class WitherMinionGameTest {
 					spawned.size(), maxAlive[0], cap, farthest, halfLevel, state.minions().size());
 				helper.assertTrue(spawned.size() >= cap, "only " + spawned.size() + " minions came, cap " + cap);
 				helper.assertTrue(maxAlive[0] == cap, "at most " + maxAlive[0] + " minions lived at once, cap " + cap);
+				helper.assertTrue(speedFaults.isEmpty() && !spawned.isEmpty(), "minions without endless Speed II at the moment they came: " + speedFaults);
 				helper.assertTrue(farthest <= reach + 0.5, "a minion came " + farthest + " blocks away, reach " + reach);
 				helper.assertTrue(mine.containsAll(state.minions()) && !state.minions().isEmpty(), "the record holds a mob the Wither did not add");
 				for (Mob minion : spawned) {
@@ -158,6 +165,8 @@ public final class WitherMinionGameTest {
 					helper.assertTrue(ThreatState.level(minion) == halfLevel, "a minion at level " + ThreatState.level(minion) + ", want " + halfLevel);
 					if (minion.isAlive()) {
 						helper.assertTrue(minion.hasEffect(MobEffects.FIRE_RESISTANCE), "a minion without fire resistance");
+						MobEffectInstance speed = minion.getEffect(MobEffects.SPEED);
+						helper.assertTrue(speed != null && speed.getAmplifier() == 1 && speed.isInfiniteDuration(), "a living minion lost its endless Speed II: " + speed);
 						float before = minion.getHealth();
 						minion.hurtServer(level, level.damageSources().inFire(), 5.0F);
 						helper.assertTrue(minion.getHealth() >= before, "fire hurt a minion");

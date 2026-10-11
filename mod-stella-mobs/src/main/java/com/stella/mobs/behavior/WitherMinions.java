@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * An active encounter Wither calls skeletons, zombies, husks, strays and wither skeletons to its side. They come
  * within 32 blocks at half its level, never above a cap that grows with the players near it, and drop nothing.
- * A new wave waits out a rage and a pause after it. The Wither's death, or its removal from the world, takes them.
+ * Each carries Speed II with no end. The Wither's death, or its removal from the world, takes them.
+ * A small wither calls none.
  */
 public final class WitherMinions {
 	private static final int SPOT_ATTEMPTS = 10;
@@ -48,11 +49,10 @@ public final class WitherMinions {
 	private record Kind(EntityType<? extends Mob> type, String weightKey) {
 	}
 
-	/** Timers that restart with the server: when the next wave is due, and how long a rage's pause still holds. */
+	/** Timers that restart with the server: whether the first wave came, and when the next is due. */
 	private static final class Timers {
 		boolean firstDone;
 		int untilWave;
-		int pause;
 	}
 
 	/** Test seam: each minion at the moment it was added, with its distance from the Wither. */
@@ -106,6 +106,7 @@ public final class WitherMinions {
 				// An unloaded Wither leaves its minions to unload with their chunk.
 				if (wither.getRemovalReason() != null && wither.getRemovalReason().shouldDestroy()) {
 					discardAll(wither);
+					WitherSpawnlings.discardAll(wither);
 				}
 				continue;
 			}
@@ -115,19 +116,11 @@ public final class WitherMinions {
 
 	private static void tickOne(final ServerLevel level, final WitherBoss wither) {
 		// A dying Wither calls no more help; its death hook takes the ones it has.
-		if (!wither.isAlive() || !WitherEncounter.isActive(wither)) {
+		if (!wither.isAlive() || !WitherEncounter.isActive(wither) || WitherSpawnlings.isSmall(wither)) {
 			return;
 		}
 		WitherConfig config = WitherConfigStore.get();
 		Timers timers = TIMERS.computeIfAbsent(wither, key -> new Timers());
-		if (WitherEncounter.isRaging(wither)) {
-			timers.pause = config.getInt(WitherConfig.MINIONS_RAGE_PAUSE);
-			return;
-		}
-		if (timers.pause > 0) {
-			timers.pause--;
-			return;
-		}
 		if (!timers.firstDone) {
 			timers.firstDone = true;
 			timers.untilWave = config.getInt(WitherConfig.MINIONS_WAVE_INTERVAL);
@@ -243,6 +236,7 @@ public final class WitherMinions {
 		minion.setPersistenceRequired();
 		// Fire resistance keeps a zombie or skeleton from burning off in daylight.
 		minion.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, MobEffectInstance.INFINITE_DURATION, 0, false, false));
+		minion.addEffect(new MobEffectInstance(MobEffects.SPEED, MobEffectInstance.INFINITE_DURATION, 1, false, false));
 		return minion;
 	}
 

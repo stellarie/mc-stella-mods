@@ -43,12 +43,6 @@ public final class WitherEncounter {
 		return entity.entityTags().contains(MINION_TAG);
 	}
 
-	/** True while a rage runs. Volleys and waves wait for it. */
-	public static boolean isRaging(final Mob mob) {
-		WitherState state = WitherState.find(mob);
-		return state != null && state.rageKind() != WitherState.RAGE_NONE;
-	}
-
 	public static boolean isEncounter(final Mob mob) {
 		return WitherState.hasWitherFlag(mob);
 	}
@@ -174,7 +168,7 @@ public final class WitherEncounter {
 
 	/**
 	 * Runs after the spawn scaling. The vanilla attribute caps max health, so the part it cannot hold is kept as a divisor
-	 * on every hit the Wither takes. The health bar and the rage thresholds still read health over max health.
+	 * on every hit the Wither takes. The health bar and the phase thresholds still read health over max health.
 	 */
 	public static void afterScaling(final Mob mob) {
 		WitherState state = WitherState.find(mob);
@@ -189,12 +183,13 @@ public final class WitherEncounter {
 			mob.getUUID(), ThreatState.level(mob), mob.getMaxHealth(), formula, divisor);
 	}
 
-	/** The Wither is dead: its minions and its skulls in the air go with it. */
+	/** The Wither is dead: its minions, its small withers and its skulls in the air go with it. A small wither drops nothing. */
 	public static void onDeath(final WitherBoss wither) {
 		if (isEncounter(wither)) {
 			WitherMinions.discardAll(wither);
+			WitherSpawnlings.discardAll(wither);
 			WitherShots.discardAll(wither);
-			if (wither.level() instanceof ServerLevel level) {
+			if (wither.level() instanceof ServerLevel level && !WitherSpawnlings.isSmall(wither)) {
 				WitherLoot.drop(level, wither, wither.getRandom());
 			}
 		}
