@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 
-/** The Sovereign moves through no block without breaking it, bursts out when shut in, and its spiral flies 32 blocks. */
+/** The Sovereign bursts out when shut in, its dive breaks no block of its own, and its spiral flies 32 blocks. */
 public class SovereignBodyGameTest {
 	/** Every block in a box set to stone. */
 	static List<BlockPos> fill(final SovereignSpecialsGameTest.Scene scene, final AABB box) {
@@ -22,28 +22,37 @@ public class SovereignBodyGameTest {
 		return placed;
 	}
 
+	/** The dive breaks nothing of its own: a roof in its way opens only because the Sovereign shut in it bursts out. */
 	@GameTest(environment = "mod-stella-nether-test:body_dive", maxTicks = 1200)
-	public void theDiveBreaksTheCeilingItRisesThrough(final GameTestHelper helper) {
+	public void aDiveIntoARoofIsOpenedByTheObstructionBurstAlone(final GameTestHelper helper) {
 		SovereignSpecialsGameTest.Scene scene = SovereignSpecialsGameTest.scene(helper, 16);
 		// A stone ceiling four blocks over its head, well within the dive's rise.
 		double top = scene.sovereign().getBoundingBox().maxY;
 		BlockPos over = BlockPos.containing(scene.sovereign().getX(), top + 2.0, scene.sovereign().getZ());
 		fill(scene, new AABB(net.minecraft.world.phys.Vec3.atCenterOf(over.offset(-3, 0, -3)), net.minecraft.world.phys.Vec3.atCenterOf(over.offset(3, 0, 3))));
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
+		int[] bursts = new int[1];
 		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene), "the Sovereign is not loaded"))
-			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.DIVE, scene.player()))
+			.thenWaitUntil(() -> {
+				helper.assertTrue(SovereignSpecialsGameTest.ready(scene), "the Sovereign is not loaded");
+				// Only a ticking creature suffocates, and the dive crosses a one-block roof in a few ticks.
+				helper.assertTrue(scene.raid().isPositionEntityTicking(scene.sovereign().blockPosition()), "the Sovereign is not ticking yet");
+			})
+			.thenExecute(() -> {
+				bursts[0] = SovereignBody.burstsOf(scene.sovereign());
+				cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.DIVE, scene.player());
+			})
 			.thenWaitUntil(() -> {
 				SovereignSpecialsGameTest.ready(scene);
 				helper.assertTrue(cast[0].age() >= SovereignSpecials.DIVE_RISE_TICKS, "the dive has not risen yet");
 			})
 			.thenExecute(() -> {
-				SovereignSpecials.Cast dive = cast[0];
 				boolean opened = scene.raid().getBlockState(over).isAir();
 				boolean inside = !scene.raid().getBlockCollisions(scene.sovereign(), scene.sovereign().getBoundingBox()).iterator().hasNext();
-				NetherTestSupport.result("bodyDive", "broken=" + dive.broken().size() + " ceilingOpened=" + opened + " clear=" + inside);
+				int burst = SovereignBody.burstsOf(scene.sovereign()) - bursts[0];
+				NetherTestSupport.result("bodyDive", "bursts=" + burst + " ceilingOpened=" + opened + " clear=" + inside);
 				SovereignSpecialsGameTest.end(helper, scene);
-				helper.assertTrue(!dive.broken().isEmpty() && opened && inside, "the dive broke " + dive.broken().size() + " blocks, ceiling open=" + opened + ", body clear=" + inside);
+				helper.assertTrue(burst > 0 && opened && inside, "the dive opened the roof with " + burst + " bursts, ceiling open=" + opened + ", body clear=" + inside);
 			})
 			.thenSucceed();
 	}

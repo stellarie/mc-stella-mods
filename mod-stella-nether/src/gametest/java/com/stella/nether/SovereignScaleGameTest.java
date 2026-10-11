@@ -50,6 +50,21 @@ public class SovereignScaleGameTest {
 		return zombie;
 	}
 
+	/**
+	 * A sponge as a probe needs it, put right at the moment of the probe: no effect, no absorption, full health, no hit
+	 * cooldown. A raid creature can carry effects its load handlers gave it, and one that does (a health boost, say) makes
+	 * the health it lost read wrong.
+	 */
+	static void settle(final Zombie zombie, final boolean fireProof) {
+		zombie.removeAllEffects();
+		zombie.setAbsorptionAmount(0.0F);
+		if (fireProof) {
+			zombie.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, -1, 0));
+		}
+		zombie.setHealth(zombie.getMaxHealth());
+		zombie.damageCooldownTime = 0;
+	}
+
 	@GameTest(environment = "mod-stella-nether-test:sovereign_scale_level", maxTicks = 100)
 	public void levelFollowsTheRaidsBestPlayer(final GameTestHelper helper) {
 		NetherTestSupport.fresh(helper);
@@ -102,15 +117,19 @@ public class SovereignScaleGameTest {
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene, target), "the arena's entities are not loaded"))
-			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.DIVE, target))
+			.thenExecute(() -> {
+				settle(target, true);
+				cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.DIVE, target);
+			})
 			.thenWaitUntil(() -> helper.assertTrue(cast[0].done(), "the dive has not landed"))
 			.thenExecute(() -> {
 				double lost = target.getMaxHealth() - target.getHealth();
-				double expected = SovereignSpecials.DIVE_DAMAGE * SelfScaled.factor(LEVEL);
+				// Fire Resistance refuses the fire half, so the physical half is all this target takes.
+				double expected = SovereignSpecials.DIVE_DAMAGE * SelfScaled.factor(LEVEL) / 2.0;
 				int live = ThreatState.level(scene.sovereign());
 				NetherTestSupport.result("scaledDive", "lost=" + lost + " expected=" + expected + " hit=" + cast[0].hits().contains(target.getUUID()) + " level=" + live);
 				SovereignSpecialsGameTest.end(helper, scene, target);
-				helper.assertTrue(Math.abs(lost - expected) < TOLERANCE && live == LEVEL, "the dive took " + lost + " of " + expected + " at level " + live);
+				helper.assertTrue(Math.abs(lost - expected) < TOLERANCE && live == LEVEL, "the dive took " + lost + " of " + expected + " at level " + live + ", effects " + target.getActiveEffects());
 			})
 			.thenSucceed();
 	}
@@ -122,7 +141,10 @@ public class SovereignScaleGameTest {
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene, target), "the arena's entities are not loaded"))
-			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.CHARGED_WAVE, target))
+			.thenExecute(() -> {
+				settle(target, false);
+				cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.CHARGED_WAVE, target);
+			})
 			.thenWaitUntil(() -> helper.assertTrue(cast[0].done(), "the wave has not finished"))
 			.thenExecute(() -> {
 				double lost = target.getMaxHealth() - target.getHealth();
@@ -130,7 +152,7 @@ public class SovereignScaleGameTest {
 				int live = ThreatState.level(scene.sovereign());
 				NetherTestSupport.result("scaledWave", "lost=" + lost + " expected=" + expected + " hit=" + cast[0].hits().contains(target.getUUID()) + " level=" + live);
 				SovereignSpecialsGameTest.end(helper, scene, target);
-				helper.assertTrue(Math.abs(lost - expected) < TOLERANCE && live == LEVEL, "the wave took " + lost + " of " + expected + " at level " + live);
+				helper.assertTrue(Math.abs(lost - expected) < TOLERANCE && live == LEVEL, "the wave took " + lost + " of " + expected + " at level " + live + ", effects " + target.getActiveEffects());
 			})
 			.thenSucceed();
 	}
@@ -142,6 +164,7 @@ public class SovereignScaleGameTest {
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene, target), "the arena's entities are not loaded"))
 			.thenExecute(() -> {
+				settle(target, false);
 				new Striker(scene.raid(), scene.sovereign()).strike(target);
 				double lost = target.getMaxHealth() - target.getHealth();
 				double expected = VANILLA_FIREBALL * 0.5 * SelfScaled.factor(LEVEL);

@@ -76,7 +76,8 @@ public final class BlazeEnchantments {
 				CHAINS.put(attacker.getUUID(), new Chain(victim.getUUID(), stacks));
 				attacker.addEffect(new MobEffectInstance(OVERCLOCK_EFFECT, MobEffectInstance.INFINITE_DURATION, stacks - 1, false, false, true));
 			}
-			if (magmaWorn(level, victim)) {
+			// A Sovereign's hit is two halves; the fire half is no hit of its own, so one hit hardens the armor once.
+			if (magmaWorn(level, victim) && !source.is(SovereignHits.FLAME)) {
 				Magma magma = MAGMA.get(victim.getUUID());
 				double reduction = Math.min(MAGMA_CAP, (magma == null ? 0.0 : magma.reduction()) + MAGMA_PER_HIT);
 				MAGMA.put(victim.getUUID(), new Magma(reduction, level.getServer().getTickCount()));

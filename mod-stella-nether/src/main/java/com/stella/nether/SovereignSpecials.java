@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,7 +23,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -32,7 +30,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Blaze Sovereign's six specials, cast in turn while it has a player to fight: a spiral of fireballs,
  * a brood of blazes, a burning dive, the vortex and its shield, a charged wave, and the soul nova. Each cast records what it spawned,
- * whom it hit and where it struck, so its effect can be judged from the record.
+ * whom it hit and where it struck, so its effect can be judged from the record. None of them breaks a block: only the
+ * Sovereign's charge and its burst out of a wall do, in {@link SovereignBody}.
  */
 public final class SovereignSpecials {
 	public enum Special {
@@ -73,12 +72,11 @@ public final class SovereignSpecials {
 	public static final double DIVE_HALF_WIDTH = 6.0;
 	public static final float DIVE_DAMAGE = 6.0F;
 	public static final int DIVE_BURN_SECONDS = 8;
-	public static final double DIVE_FIRE_CHANCE = 0.35;
 
 	/**
 	 * The vortex: for thirty seconds the Sovereign channels behind a shield, slowing every player near it, while
 	 * flames fly in to it from a sphere all around. Broken in time, the shield leaves it staggered; held to the end,
-	 * it bursts in a sphere that breaks the ground and throws everyone back.
+	 * it bursts in a sphere that hurts and throws everyone back, and breaks no block.
 	 */
 	public static final int VORTEX_TICKS = 30 * 20;
 	/** The sphere the flames set out from, the reach of its slowing, and the reach of its burst. */
@@ -146,8 +144,6 @@ public final class SovereignSpecials {
 		private final Map<UUID, Double> spent = new ConcurrentHashMap<>();
 		/** Who a burst threw back, and the push it gave. */
 		private final java.util.Map<UUID, Vec3> pushes = new java.util.HashMap<>();
-		/** The blocks it broke moving itself through them. */
-		private final List<BlockPos> broken = new ArrayList<>();
 		/** The soul flames a nova set. */
 		private final List<BlockPos> flames = new ArrayList<>();
 		/** Where a nova's flames set out from. */
@@ -158,14 +154,12 @@ public final class SovereignSpecials {
 		private Vec3 vortexCentre = Vec3.ZERO;
 		private int staggeredAt = -1;
 		private boolean blasted;
-		private int blastBroken;
 		/** Every player the vortex slowed. */
 		private final Set<UUID> slowed = new HashSet<>();
 		/** Every flame the vortex has sent in. */
 		private final List<Bullet> bullets = new ArrayList<>();
 		private int age;
 		private int lastActionAge = -1;
-		private int firesPlaced;
 		private boolean done;
 		/** Per step, how many a wave's query saw; kept for a failing test to report. */
 		private final List<String> seen = new ArrayList<>();
@@ -206,10 +200,6 @@ public final class SovereignSpecials {
 			return this.impacts;
 		}
 
-		public int firesPlaced() {
-			return this.firesPlaced;
-		}
-
 		public int lastActionAge() {
 			return this.lastActionAge;
 		}
@@ -242,10 +232,6 @@ public final class SovereignSpecials {
 			return this.blasted;
 		}
 
-		public int blastBroken() {
-			return this.blastBroken;
-		}
-
 		public Set<UUID> slowed() {
 			return this.slowed;
 		}
@@ -268,10 +254,6 @@ public final class SovereignSpecials {
 
 		public java.util.Map<UUID, Vec3> pushes() {
 			return this.pushes;
-		}
-
-		public List<BlockPos> broken() {
-			return this.broken;
 		}
 
 		public List<BlockPos> flames() {
@@ -529,8 +511,9 @@ public final class SovereignSpecials {
 	private static void dive(final ServerLevel raid, final Cast cast) {
 		Blaze blaze = cast.blaze;
 		blaze.setDeltaMovement(Vec3.ZERO);
+		// The dive breaks nothing. A roof or wall in its way shuts the Sovereign in, and it bursts out as it does anywhere.
 		if (cast.age < DIVE_RISE_TICKS) {
-			cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, blaze.getX(), cast.home.y + DIVE_RISE * (cast.age + 1) / DIVE_RISE_TICKS, blaze.getZ()));
+			blaze.setPos(blaze.getX(), cast.home.y + DIVE_RISE * (cast.age + 1) / DIVE_RISE_TICKS, blaze.getZ());
 			return;
 		}
 		if (cast.age < DIVE_RISE_TICKS + DIVE_HOVER_TICKS) {
@@ -540,10 +523,10 @@ public final class SovereignSpecials {
 		Vec3 to = cast.centre.subtract(blaze.position());
 		if (to.length() > DIVE_SPEED && cast.age < DIVE_MAX_TICKS) {
 			Vec3 step = to.normalize().scale(DIVE_SPEED);
-			cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, blaze.getX() + step.x, blaze.getY() + step.y, blaze.getZ() + step.z));
+			blaze.setPos(blaze.getX() + step.x, blaze.getY() + step.y, blaze.getZ() + step.z);
 			return;
 		}
-		cast.broken.addAll(SovereignBody.moveThrough(raid, blaze, cast.centre.x, cast.centre.y, cast.centre.z));
+		blaze.setPos(cast.centre.x, cast.centre.y, cast.centre.z);
 		AABB area = new AABB(cast.centre.x - DIVE_HALF_WIDTH, cast.centre.y - 4.0, cast.centre.z - DIVE_HALF_WIDTH,
 			cast.centre.x + DIVE_HALF_WIDTH, cast.centre.y + 4.0, cast.centre.z + DIVE_HALF_WIDTH);
 		for (LivingEntity victim : raid.getEntitiesOfClass(LivingEntity.class, area, entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze))) {
@@ -551,23 +534,8 @@ public final class SovereignSpecials {
 			victim.igniteForSeconds(DIVE_BURN_SECONDS);
 			cast.hits.add(victim.getUUID());
 		}
-		RandomSource random = blaze.getRandom();
-		BlockPos base = BlockPos.containing(cast.centre);
-		for (int dx = (int) -DIVE_HALF_WIDTH; dx <= DIVE_HALF_WIDTH; dx++) {
-			for (int dz = (int) -DIVE_HALF_WIDTH; dz <= DIVE_HALF_WIDTH; dz++) {
-				if (random.nextDouble() >= DIVE_FIRE_CHANCE) {
-					continue;
-				}
-				for (int dy = 2; dy >= -2; dy--) {
-					BlockPos at = base.offset(dx, dy, dz);
-					if (raid.getBlockState(at).isAir() && raid.getBlockState(at.below()).isFaceSturdy(raid, at.below(), Direction.UP)) {
-						raid.setBlock(at, Blocks.FIRE.defaultBlockState(), Block.UPDATE_ALL);
-						cast.firesPlaced++;
-						break;
-					}
-				}
-			}
-		}
+		// The flames over the ground are drawn, not set: the ground burns nothing.
+		raid.sendParticles(ParticleTypes.FLAME, cast.centre.x, cast.centre.y + 0.3, cast.centre.z, 160, DIVE_HALF_WIDTH / 2, 0.3, DIVE_HALF_WIDTH / 2, 0.04);
 		raid.sendParticles(ParticleTypes.EXPLOSION_EMITTER, cast.centre.x, cast.centre.y + 1.0, cast.centre.z, 1, 0.0, 0.0, 0.0, 0.0);
 		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, cast.centre.x, cast.centre.y + 0.5, cast.centre.z, 120, DIVE_HALF_WIDTH / 2, 0.5, DIVE_HALF_WIDTH / 2, 0.05);
 		raid.playSound(null, BlockPos.containing(cast.centre), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 4.0F, 0.8F);
@@ -745,30 +713,10 @@ public final class SovereignSpecials {
 		}
 	}
 
-	/** Held to the end: a sphere of {@link #VORTEX_RADIUS} breaks every breakable block and throws everyone back, hard. */
+	/** Held to the end: a sphere of {@link #VORTEX_RADIUS} hurts everyone in it and throws them back, hard. It breaks no block. */
 	private static void vortexBlast(final ServerLevel raid, final Cast cast) {
 		Blaze blaze = cast.blaze;
 		Vec3 centre = cast.vortexCentre;
-		int reach = (int) Math.ceil(VORTEX_RADIUS);
-		BlockPos base = BlockPos.containing(centre);
-		BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
-		for (int dx = -reach; dx <= reach; dx++) {
-			for (int dy = -reach; dy <= reach; dy++) {
-				for (int dz = -reach; dz <= reach; dz++) {
-					at.set(base.getX() + dx, base.getY() + dy, base.getZ() + dz);
-					if (Vec3.atCenterOf(at).distanceToSqr(centre) > VORTEX_RADIUS * VORTEX_RADIUS) {
-						continue;
-					}
-					net.minecraft.world.level.block.state.BlockState state = raid.getBlockState(at);
-					// Liquids are left, and so is anything that cannot be broken.
-					if (state.isAir() || !state.getFluidState().isEmpty() || state.getDestroySpeed(raid, at) < 0.0F) {
-						continue;
-					}
-					raid.setBlock(at, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-					cast.blastBroken++;
-				}
-			}
-		}
 		for (LivingEntity victim : raid.getEntitiesOfClass(LivingEntity.class, new AABB(centre, centre).inflate(VORTEX_RADIUS),
 			entity -> entity != blaze && entity.isAlive() && !(entity instanceof Blaze))) {
 			Vec3 middle = victim.getBoundingBox().getCenter();
@@ -790,7 +738,7 @@ public final class SovereignSpecials {
 		raid.sendParticles(ParticleTypes.EXPLOSION_EMITTER, centre.x, centre.y, centre.z, 6, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, VORTEX_RADIUS / 3.0, 0.0);
 		raid.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, centre.x, centre.y, centre.z, 400, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, VORTEX_RADIUS / 2.0, 0.3);
 		raid.playSound(null, BlockPos.containing(centre), SoundEvents.GENERIC_EXPLODE.value(), SoundSource.HOSTILE, 10.0F, 0.5F);
-		BehaviorLog.info("[NETHER] sovereign vortex burst broken={} hit={}", cast.blastBroken, cast.hits.size());
+		BehaviorLog.info("[NETHER] sovereign vortex burst hit={}", cast.hits.size());
 	}
 
 	private static void nova(final ServerLevel raid, final Cast cast) {

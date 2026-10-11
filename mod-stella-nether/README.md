@@ -115,10 +115,10 @@ facing one, then another 8 seconds after each ends, in this turn (slices 12f and
 1. **Flame Spiral**: for 5 seconds, a ring of eight fireballs every quarter second, turning as it goes:
    160 fireballs covering every direction, each flying 32 blocks at most.
 2. **Brood**: five ordinary blazes rise in a ring around it and take its target.
-3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood,
-   breaking every block it moves into.
-   Everything alive in the 12 by 12 area takes 6 base damage (slice 16) and burns for 8 seconds, and about a third of
-   the ground in the area catches fire. Blazes are spared.
+3. **Dive**: it rises 8 blocks over 1 second, hangs half a second, then dives onto where its target stood.
+   It breaks no block and sets no fire on the ground (slice 18; before, it broke every block it moved into and
+   about a third of the ground in the area caught fire).
+   Everything alive in the 12 by 12 area takes 6 base damage (slice 16) and burns for 8 seconds. Blazes are spared.
 4. **Vortex** (replaced the Meteor Storm in slice 14; see there).
 5. **Charged Wave**: a ring spreads from it at a block a tick out to 16 blocks, striking each creature it
    passes once: 1.5 base damage (slice 16), a push of 2.5 away, and a stun.
@@ -261,9 +261,10 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 
 ## Slice 14: the Sovereign reworked
 
-- **No clipping.** Whatever the Sovereign moves itself into, in a dive or a charge, it breaks as it goes,
-  dropping nothing; only unbreakable blocks stand. Shut in and suffocating, it bursts out: an explosion
-  (power 4) that breaks the blocks around it, and whatever that leaves around its body is broken too.
+- **No clipping.** Whatever the Sovereign moves itself into in a charge, it breaks as it goes,
+  dropping nothing; only unbreakable blocks stand (the dive no longer does; slice 18). Shut in and suffocating, it
+  bursts out: an explosion (power 4) that breaks the blocks around it, and whatever that leaves around its body is
+  broken too.
 - **The charge** replaces the opening. Any player within 96 blocks but farther than 20 is charged at 8
   blocks a second, through walls, until the Sovereign is within 10 blocks and sees them. Then comes a
   volley of nine blue fireballs over 3 seconds. It charges again 10 seconds after each volley, as often as
@@ -279,14 +280,15 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
     nova; yellow ones burn (1.5 base damage, 4 seconds alight).
   - Break the shield before the channel ends, and the Sovereign is staggered for 8 seconds: it can neither
     move nor attack.
-  - Leave it whole for the full 15 seconds, and it bursts: every breakable block within 16 blocks is
-    broken (liquids stay), and everyone within 16 takes the blast (10 base damage, slice 16) and is thrown back hard.
+  - Leave it whole for the full 15 seconds, and it bursts: everyone within 16 blocks takes the blast
+    (10 base damage, slice 16) and is thrown back hard. The blast breaks no block (slice 18; before, it broke
+    every breakable block within 16, liquids excepted).
 - **A debug command**, for game masters: `/stellanether sovereign summon` raises a Blaze Sovereign where it
   is run, in the raid nether only.
 - Measured:
   - Charge: 0.400 blocks a tick through a wall (18 blocks broken), ending 10.00 away and in sight. The
     volley was nine shots over ticks 1 to 54, all blue. A player who moved away again was charged again.
-  - Dive: it broke the 9 ceiling blocks it rose into. Shut in stone, it burst out once, its body clear.
+  - Dive: it broke the 9 ceiling blocks it rose into (slice 18 leaves that to the burst). Shut in stone, it burst out once, its body clear.
   - Spiral: fireballs down three tunnels were spent at 33.22 blocks (the tick they passed 32).
   - Vortex: see the reworked measurements below.
 
@@ -296,8 +298,8 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
   - Half way through there were 114 flames, all from the sphere, 20 to 31 from above and 29 to 33 from
     below. A blue flame burst on the player it hit.
   - Broken at tick 20, the Sovereign reeled for exactly 160 ticks, moved 0.000 and fired nothing.
-  - Left whole, it burst at tick 300: 780 to 7,486 blocks broken (the sphere's contents vary by site). A
-    stone inside was gone, one 18 blocks out stood, and a stand-in 8 out was hit and pushed (3.0, 0.8, 0).
+  - Left whole, it burst at tick 300: 780 to 7,486 blocks broken (the sphere's contents vary by site; slice 18
+    breaks none). A stone inside was gone, one 18 blocks out stood, and a stand-in 8 out was hit and pushed (3.0, 0.8, 0).
 
 ## Slice 15: blazes keep their distance
 
@@ -362,6 +364,46 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Measured: see the log lines `raidLevelNormal`, `raidLevelHard`, `raidLevelBestPlayerNormal`,
   `raidLevelBestPlayerHard`, `raidLevelBrood`, `sovereignHardLevel`, `arrivalNearFortress` and `windowDrifted`.
 
+## Slice 18: a tame Sovereign
+
+- **Blocks.** The Sovereign changes blocks in two ways only: its charge, and its burst out of a wall when it is
+  shut in and suffocating (both slice 14). The dive moves without breaking what it meets and sets no fire on the
+  ground; it still hurts and ignites. A dive that ends inside a roof leaves the Sovereign suffocating, and the
+  burst opens the roof. The vortex blast hurts and throws back as before and breaks no block. The soul flames of the
+  nova and the blue vortex flames stay: they fill only air and go out after 10 seconds.
+- **Hits in halves.** Every hit the Sovereign lands (the dive, the vortex's flames and blast, the nova, the wave,
+  every fireball, the burst's explosion, its touch) is struck as two halves of one size. The physical half goes
+  first: the hit's own source, or a mob attack when that source was fire (a fireball). The fire half follows, of a
+  new damage type, `mod-stella-nether:sovereign_flame`, tagged `minecraft:is_fire` and `minecraft:no_knockback`.
+  Fire Resistance, Fire Protection, Ember Skin and the Flame Mantle meet the fire half only. A player with Fire
+  Resistance now takes the physical half, where before they took nothing from a fireball and all of a dive.
+- **The total is the hit it was.** The wrap (`SovereignHitMixin`) sits outside every other mod's change to the
+  amount and calls the vanilla hit once per half. So the fireball's half share applies once to the whole hit, the
+  mobs mod's level factor and a victim's health divisor apply once to the total, and no half is split again or
+  scaled twice. Difficulty scaling is not applied a second time either.
+- **As before.**
+  - One push per hit: the fire half does not push.
+  - A shield blocks both halves. The physical half goes first, so a totem's Fire Resistance meets the fire half.
+  - When a hit finds the victim outside its 10-tick hit cooldown, both halves land and the cooldown stays at 20.
+  - A fire-immune creature, such as one of the brood, takes the hit whole, so a fireball still spares it.
+  - Magma Armor hardens once per Sovereign hit.
+- **Residual.**
+  - A hit that falls inside the victim's 10-tick cooldown lands only if a half is larger than the last hit; before,
+    if the whole was. Equal hits repeated, such as a burst's fireballs, are refused as before.
+  - Armor and Protection judge each half on its own. Armor takes a little more from two small hits than from one
+    big one, so the total taken after armor is slightly lower than before.
+  - With Magma Armor, the physical half hardens the armor one step before the fire half is scaled: the whole hit
+    is 0.5 percent lower (67.66 of 68.0 measured).
+  - The rpg mod, which scales damage by the kind of its source, is not part of this mod's build. How it reads the
+    two halves is unverified.
+- Measured (level 45, a bare 5,000 health target, `SelfScaled.factor` 8.5): a mob attack of 8 base took 68.0 in two
+  parts; a fireball took 21.25 (5 x 0.5 x 8.5) in two; a fire-resistant target took 34.0 of the 68.0 and 10.625 of
+  the 21.25; with a divisor of 4 they took 17.0 and 5.3125. A dive over a 15 by 15 room changed 0 blocks (before: 48
+  fires). A vortex burst over a sphere of 17,140 blocks, stone but a hollow round the Sovereign, changed 0
+  (before: 16,690 broken). A dive into a roof set off 1 burst, and the roof opened. The charge still broke 18 blocks.
+  See the log lines `tameSplit`, `tameFireball`, `tameFireproof`, `tameDivisor`, `tameImmune`, `tamePush`,
+  `tameShield`, `tameBurst`, `tameMagma`, `tameFlameHit`, `tameDive`, `tameVortexSphere` and `bodyDive`.
+
 ## Logging
 
 - The mod's behaviour lines (a Sovereign rising, a special cast, a raid reset, a portal choice) go through
@@ -401,6 +443,9 @@ core and 10 levels. Neither comes from the enchanting table or from loot.
 - Fight the Sovereign through all six specials. Each reads clearly: the spiral's rings, the brood, the
   dive's rise and crash, the vortex, the wave's ring, and the nova. A pushed player flies back on their own
   client (the headless test sees only the velocity it is given).
+- Fight the Sovereign in an arena you built (slice 18): only its charge, and a Sovereign stuck in a wall, break
+  blocks. Its dive and the vortex's burst leave the arena standing. With Fire Resistance it still hurts, for
+  about half a hit; the hurt sound and the fire half's burning look read as one hit, not two.
 - Slay the Sovereign: a Blaze Core drops. Wear a Flame Mantle and stand in fire; strike a mob and watch
   it burn back.
 - Combine a sword and a Blaze Core at an anvil (Overclock), then a chestplate and a core (Magma Armor);
