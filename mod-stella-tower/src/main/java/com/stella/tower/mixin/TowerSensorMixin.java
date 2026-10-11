@@ -1,5 +1,7 @@
 package com.stella.tower.mixin;
 
+import com.stella.tower.PerfectVeil;
+import com.stella.tower.TowerMerchants;
 import com.stella.tower.TowerPeace;
 import com.stella.tower.TowerSafety;
 import net.minecraft.server.level.ServerLevel;
@@ -12,14 +14,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * A mob with a brain, a piglin brute, a hoglin or a breeze, never senses a player in a safe zone as something to attack,
- * and a tower mob among them never senses a fellow of the tower as one.
+ * and a tower mob among them never senses a fellow of the tower as one. Nor does any of them sense the ghost merchant, a
+ * player in its peace, or a player under the perfect veil.
  */
 @Mixin(Sensor.class)
 public abstract class TowerSensorMixin {
 	@Inject(method = "isEntityAttackable", at = @At("HEAD"), cancellable = true)
 	private static void stellaTower$noSenseInASafeZone(final ServerLevel level, final LivingEntity attacker, final LivingEntity target,
 		final CallbackInfoReturnable<Boolean> cir) {
-		if (TowerSafety.sheltered(target) || TowerPeace.fellows(attacker, target)) {
+		if (TowerSafety.sheltered(target) || TowerPeace.fellows(attacker, target) || TowerMerchants.shelters(attacker, target)
+			|| PerfectVeil.hides(target, attacker)) {
 			cir.setReturnValue(false);
 		}
 	}
@@ -27,7 +31,8 @@ public abstract class TowerSensorMixin {
 	@Inject(method = "isEntityAttackableIgnoringLineOfSight", at = @At("HEAD"), cancellable = true)
 	private static void stellaTower$noSenseInASafeZoneThroughWalls(final ServerLevel level, final LivingEntity attacker, final LivingEntity target,
 		final CallbackInfoReturnable<Boolean> cir) {
-		if (TowerSafety.sheltered(target) || TowerPeace.fellows(attacker, target)) {
+		if (TowerSafety.sheltered(target) || TowerPeace.fellows(attacker, target) || TowerMerchants.shelters(attacker, target)
+			|| PerfectVeil.hides(target, attacker)) {
 			cir.setReturnValue(false);
 		}
 	}

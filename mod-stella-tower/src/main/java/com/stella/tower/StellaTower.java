@@ -32,6 +32,9 @@ public final class StellaTower implements ModInitializer {
 		TowerTraps.register();
 		TowerRewards.register();
 		TowerGhosts.register();
+		GhostSquads.register();
+		MerchantItems.register();
+		TowerMerchants.register();
 		TowerPhantoms.register();
 		TowerRunes.register();
 		RuneEffects.register();

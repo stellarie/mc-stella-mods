@@ -106,7 +106,7 @@ public final class TowerAuras {
 
 	public static @Nullable TowerElement elementOf(final LivingEntity entity) {
 		TowerMobs.State state = TowerMobs.stateOf(entity);
-		return state == null || entity instanceof TowerGhost ? null : state.element();
+		return state == null || entity instanceof Ghostly ? null : state.element();
 	}
 
 	// ---- the hit ----
@@ -204,7 +204,7 @@ public final class TowerAuras {
 		if (!entity.isAlive()) {
 			return false;
 		}
-		if (entity instanceof TowerGhost) {
+		if (entity instanceof Ghostly) {
 			return true;
 		}
 		if (entity instanceof Player player) {
@@ -274,7 +274,7 @@ public final class TowerAuras {
 		AABB box = healer.getBoundingBox().inflate(HOLY_RADIUS);
 		List<LivingEntity> hurt = new ArrayList<>(tower.getEntitiesOfClass(LivingEntity.class, box,
 			entity -> entity.isAlive() && entity.getHealth() < entity.getMaxHealth() && entity.distanceToSqr(healer) <= HOLY_RADIUS * HOLY_RADIUS
-				&& TowerMobs.stateOf(entity) != null && !(entity instanceof TowerGhost)));
+				&& TowerMobs.stateOf(entity) != null && !(entity instanceof Ghostly)));
 		for (LivingEntity target : hurt) {
 			target.heal((float) (target.getMaxHealth() * HOLY_HEAL_SHARE));
 			particles(tower, ParticleTypes.END_ROD, target, 3);

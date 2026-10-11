@@ -17,7 +17,7 @@ public final class TowerPeace {
 
 	/** Whether the entity is a mob of the tower's side: a tower mob that is no ghost. */
 	public static boolean ofTheTower(final @Nullable Entity entity) {
-		return entity instanceof LivingEntity living && !(entity instanceof TowerGhost) && TowerMobs.stateOf(living) != null;
+		return entity instanceof LivingEntity living && !(entity instanceof Ghostly) && TowerMobs.stateOf(living) != null;
 	}
 
 	/** Whether two entities are different mobs of the tower's side, and so spare each other. */
@@ -27,10 +27,10 @@ public final class TowerPeace {
 
 	/**
 	 * Whether a hit on the victim is turned away: the mob that caused it, the shooter of a shot or the maker of a blast,
-	 * is a fellow of the victim; or a ghost is the cause and the victim is a player.
+	 * is a fellow of the victim; or a ghost is the cause and the victim is a player or a fellow ghost.
 	 */
 	public static boolean spares(final LivingEntity victim, final DamageSource source) {
 		Entity cause = source.getEntity();
-		return fellows(victim, cause) || victim instanceof Player && cause instanceof TowerGhost;
+		return fellows(victim, cause) || (victim instanceof Player || victim instanceof Ghostly) && cause instanceof Ghostly;
 	}
 }

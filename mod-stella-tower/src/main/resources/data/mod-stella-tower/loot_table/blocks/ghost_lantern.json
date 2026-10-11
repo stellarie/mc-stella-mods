@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "bonus_rolls": 0,
+      "entries": [ { "type": "minecraft:item", "name": "mod-stella-tower:ghost_lantern" } ],
+      "conditions": [ { "condition": "minecraft:survives_explosion" } ]
+    }
+  ],
+  "random_sequence": "mod-stella-tower:blocks/ghost_lantern"
+}
