@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 
@@ -32,6 +33,7 @@ final class GuardianRig {
 	static final int FLOOR_Y = 200;
 	/** Entity ticking reaches one chunk less than the ticket's radius less two: 3 ticks the middle chunk and its eight neighbours. */
 	private static final int RADIUS = 3;
+	private static final double STURDY_HEALTH = 2000.0;
 	private static final int HEADROOM = 14;
 	private static final int HOLD_EVERY = 100;
 	private static final long WAIT_FOR_TICKING = 300L;
@@ -188,6 +190,17 @@ final class GuardianRig {
 		ServerPlayer player = TowerTestSupport.join(this.helper, 1.5, 1.5);
 		player.teleportTo(this.level, this.center.getX() + dx + 0.5, this.center.getY() + 1.0, this.center.getZ() + dz + 0.5, Set.of(), yaw, 0.0F, true);
 		this.players.add(player);
+		return player;
+	}
+
+	/**
+	 * A player who outlasts what the case throws at them: a guardian's blows differ from run to run, and a player who dies
+	 * mid-case reads as one who was never hit or never burned.
+	 */
+	ServerPlayer sturdy(final ServerPlayer player) {
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(STURDY_HEALTH);
+		player.setHealth((float) STURDY_HEALTH);
+		TowerTestSupport.vulnerable(player);
 		return player;
 	}
 

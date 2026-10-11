@@ -39,6 +39,8 @@ import net.minecraft.world.phys.Vec3;
  * Every case hands its scenario to {@link GuardianRig#ready}: the rig's chunks must tick before anything is spawned in them.
  */
 public class TowerGuardianGameTest {
+	/** The environment for the case that needs the sun: the overworld clock pinned to noon. */
+	private static final String NOON = "mod-stella-tower-test:noon";
 	private static final int SPEC_LEVEL = 50;
 	private static final int SPEC_RIDER_VIT = 100;
 	private static final int SPEC_HORSE_VIT = 150;
@@ -126,13 +128,14 @@ public class TowerGuardianGameTest {
 		});
 	}
 
-	/** Catches a guardian or a horse that burns, or loses a helmet, in full daylight; the control skeleton proves there is a sun. */
-	@GameTest(maxTicks = 1000)
+	/**
+	 * Catches a guardian or a horse that burns, or loses a helmet, in full daylight; the control skeleton proves there is a sun.
+	 * The case runs in an environment that pins the clock to noon, in a batch of its own, so no other case sees the time move.
+	 */
+	@GameTest(environment = NOON, maxTicks = 1000)
 	public void neitherRiderNorHorseBurnsInSunlight(final GameTestHelper helper) {
 		GuardianRig rig = GuardianRig.build(helper, 1);
-		if (!burns(rig, new Vec3(0.5, GuardianRig.FLOOR_Y + 1.0, 0.5))) {
-			helper.setTime(6000L);
-		}
+		helper.assertTrue(burns(rig, new Vec3(0.5, GuardianRig.FLOOR_Y + 1.0, 0.5)), "the noon environment did not give the rig a sun");
 		Guardians.Spawned[] pair = new Guardians.Spawned[2];
 		Skeleton[] control = new Skeleton[1];
 		boolean[] controlBurned = {false};
@@ -224,11 +227,8 @@ public class TowerGuardianGameTest {
 		double[] nearest = {Double.MAX_VALUE};
 		rig.ready(() -> {
 			melee[0] = rig.spawn(GuardianKind.MELEE, -11, 0);
-			outsider[0] = rig.player(-20, 0, 270.0F);
 			// The guardian strikes whoever hit it, so the player must outlast the hunt.
-			outsider[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(5000.0);
-			outsider[0].setHealth(5000.0F);
-			TowerTestSupport.vulnerable(outsider[0]);
+			outsider[0] = rig.sturdy(rig.player(-20, 0, 270.0F));
 		});
 		rig.each(() -> {
 			long tick = rig.elapsed();
@@ -301,8 +301,7 @@ public class TowerGuardianGameTest {
 		Vec3[] landed = {null};
 		rig.ready(() -> {
 			melee[0] = rig.spawn(GuardianKind.MELEE, -11, 0);
-			player[0] = rig.player(1, 0, 90.0F);
-			TowerTestSupport.vulnerable(player[0]);
+			player[0] = rig.sturdy(rig.player(1, 0, 90.0F));
 			before[0] = flat(melee[0].rider().position(), player[0].position());
 			last[0] = before[0];
 			helper.assertTrue(before[0] >= SPEC_BLINK_DISTANCE, "the case starts " + before[0] + " blocks away, under the blink distance");
@@ -336,10 +335,8 @@ public class TowerGuardianGameTest {
 		GuardianBrain[] brain = new GuardianBrain[1];
 		rig.ready(() -> {
 			melee[0] = rig.spawn(GuardianKind.MELEE, -11, 0);
-			players[0] = rig.player(-6, 0, 0.0F);
-			players[1] = rig.player(-11, 5, 0.0F);
-			TowerTestSupport.vulnerable(players[0]);
-			TowerTestSupport.vulnerable(players[1]);
+			players[0] = rig.sturdy(rig.player(-6, 0, 0.0F));
+			players[1] = rig.sturdy(rig.player(-11, 5, 0.0F));
 			brain[0] = GuardianBrain.of(melee[0].rider());
 			helper.assertTrue(brain[0].begin(MoveKind.FIRE_CONE, players[0]), "the guardian would not begin the cone");
 		});
@@ -363,12 +360,9 @@ public class TowerGuardianGameTest {
 		GuardianBrain[] brain = new GuardianBrain[1];
 		rig.ready(() -> {
 			Guardians.Spawned melee = rig.spawn(GuardianKind.MELEE, -11, 0);
-			players[0] = rig.player(-1, 0, 0.0F);
-			players[1] = rig.player(-6, 4, 0.0F);
-			players[2] = rig.player(9, 0, 0.0F);
-			for (ServerPlayer each : players) {
-				TowerTestSupport.vulnerable(each);
-			}
+			players[0] = rig.sturdy(rig.player(-1, 0, 0.0F));
+			players[1] = rig.sturdy(rig.player(-6, 4, 0.0F));
+			players[2] = rig.sturdy(rig.player(9, 0, 0.0F));
 			brain[0] = GuardianBrain.of(melee.rider());
 			helper.assertTrue(brain[0].begin(MoveKind.SLAM, players[0]), "the guardian would not begin the slam");
 		});
@@ -482,8 +476,7 @@ public class TowerGuardianGameTest {
 		int[] fires = {0};
 		rig.ready(() -> {
 			Guardians.Spawned archer = rig.spawn(GuardianKind.RANGED, 11, 0);
-			player[0] = rig.player(-2, 0, 0.0F);
-			TowerTestSupport.vulnerable(player[0]);
+			player[0] = rig.sturdy(rig.player(-2, 0, 0.0F));
 			spot[0] = player[0].blockPosition();
 			brain[0] = GuardianBrain.of(archer.rider());
 			helper.assertTrue(brain[0].begin(MoveKind.LOB, player[0]), "the archer would not begin to lob");
@@ -539,11 +532,8 @@ public class TowerGuardianGameTest {
 		rig.ready(() -> {
 			pair[0] = rig.spawn(GuardianKind.MELEE, -3, 0);
 			pair[1] = rig.spawn(GuardianKind.RANGED, 12, 0);
-			bait[0] = rig.player(-4, 1, 0.0F);
 			// The melee guardian strikes the bait all the while, so the bait must outlast the bursts.
-			bait[0].getAttribute(Attributes.MAX_HEALTH).setBaseValue(2000.0);
-			bait[0].setHealth(2000.0F);
-			TowerTestSupport.vulnerable(bait[0]);
+			bait[0] = rig.sturdy(rig.player(-4, 1, 0.0F));
 			brains[0] = GuardianBrain.of(pair[0].rider());
 			brains[1] = GuardianBrain.of(pair[1].rider());
 			healths[0] = pair[0].rider().getHealth();
