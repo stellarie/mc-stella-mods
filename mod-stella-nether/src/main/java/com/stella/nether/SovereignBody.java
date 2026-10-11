@@ -15,9 +15,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * The Sovereign never passes through blocks. Whatever it moves itself into, in a dive or a charge, it breaks
- * as it goes, dropping nothing; only unbreakable blocks stand. If it is ever shut in and suffocating, it
- * bursts: an explosion that breaks the blocks around it, and whatever the explosion leaves is broken too.
+ * The Sovereign changes blocks in two ways only. In a charge it breaks whatever it moves itself into as it goes,
+ * dropping nothing; only unbreakable blocks stand. If it is ever shut in and suffocating, as a dive into a roof can
+ * leave it, it bursts: an explosion that breaks the blocks around it, and whatever the explosion leaves is broken too.
  */
 public final class SovereignBody {
 	public static final float SUFFOCATION_BLAST = 4.0F;
@@ -53,7 +53,7 @@ public final class SovereignBody {
 		return broken;
 	}
 
-	/** Moves the Sovereign by a step, breaking what stands where it is going first. */
+	/** Moves the Sovereign by a step of its charge, breaking what stands where it is going first. */
 	public static List<BlockPos> moveThrough(final ServerLevel level, final Blaze blaze, final double x, final double y, final double z) {
 		AABB next = blaze.getBoundingBox().move(x - blaze.getX(), y - blaze.getY(), z - blaze.getZ());
 		List<BlockPos> broken = carve(level, blaze, next);

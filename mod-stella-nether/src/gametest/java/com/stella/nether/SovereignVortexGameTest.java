@@ -204,7 +204,7 @@ public class SovereignVortexGameTest {
 	}
 
 	@GameTest(environment = "mod-stella-nether-test:vortex_blast", maxTicks = 1200)
-	public void anUnbrokenShieldBurstsInASixteenBlockSphere(final GameTestHelper helper) {
+	public void anUnbrokenShieldBurstsInASixteenBlockSphereAndBreaksNoBlock(final GameTestHelper helper) {
 		SovereignSpecialsGameTest.Scene scene = SoulNovaGameTest.wideScene(helper);
 		Zombie caught = SovereignSpecialsGameTest.standIn(helper, scene, scene.floor().add(8.0, 0.0, 0.0));
 		// The channel is twice as long now, so the stand-in needs a pool the drawn flames cannot empty.
@@ -215,10 +215,14 @@ public class SovereignVortexGameTest {
 		BlockPos outside = BlockPos.containing(scene.floor()).offset(0, 2, -(SoulNovaGameTest.HALF - 1));
 		scene.raid().setBlock(inside, Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
 		scene.raid().setBlock(outside, Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+		HitLog.watch(caught);
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene, caught), "the arena's entities are not loaded"))
-			.thenExecute(() -> cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.VORTEX, scene.player()))
+			.thenExecute(() -> {
+				SovereignScaleGameTest.settle(caught, false);
+				cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.VORTEX, scene.player());
+			})
 			.thenWaitUntil(() -> {
 				SovereignSpecialsGameTest.ready(scene, caught);
 				helper.assertTrue(cast[0].done(), "the channel is not over");
@@ -226,18 +230,20 @@ public class SovereignVortexGameTest {
 			.thenExecute(() -> {
 				SovereignSpecials.Cast vortex = cast[0];
 				double outsideDistance = Vec3.atCenterOf(outside).distanceTo(vortex.vortexCentre());
-				boolean insideBroken = scene.raid().getBlockState(inside).isAir();
+				boolean insideStands = scene.raid().getBlockState(inside).is(Blocks.STONE);
 				boolean outsideStands = scene.raid().getBlockState(outside).is(Blocks.STONE);
 				Vec3 push = vortex.pushes().get(caught.getUUID());
 				boolean hit = vortex.hits().contains(caught.getUUID());
-				NetherTestSupport.result("vortexBlast", "blasted=" + vortex.blasted() + " at=" + vortex.lastActionAge() + " broken=" + vortex.blastBroken()
-					+ " insideBroken=" + insideBroken + " outsideStands=" + outsideStands + " outsideAt=" + String.format("%.1f", outsideDistance)
-					+ " hit=" + hit + " push=" + push);
+				String split = SovereignTameGameTest.splitProblem(HitLog.from(caught, scene.sovereign()), SovereignTameGameTest.scaled(SovereignSpecials.VORTEX_BLAST_DAMAGE));
+				NetherTestSupport.result("vortexBlast", "blasted=" + vortex.blasted() + " at=" + vortex.lastActionAge()
+					+ " insideStands=" + insideStands + " outsideStands=" + outsideStands + " outsideAt=" + String.format("%.1f", outsideDistance)
+					+ " hit=" + hit + " push=" + push + " split=" + split);
+				HitLog.forget(caught);
 				SovereignSpecialsGameTest.end(helper, scene, caught);
-				helper.assertTrue(vortex.blasted() && vortex.lastActionAge() == SovereignSpecials.VORTEX_TICKS && insideBroken
-						&& outsideStands && outsideDistance > SovereignSpecials.VORTEX_RADIUS && hit && push != null && push.x > 0.0,
-					"burst=" + vortex.blasted() + " at " + vortex.lastActionAge() + ", inside broken=" + insideBroken + ", outside stands=" + outsideStands
-						+ " (" + outsideDistance + " out), hit=" + hit + " push=" + push);
+				helper.assertTrue(vortex.blasted() && vortex.lastActionAge() == SovereignSpecials.VORTEX_TICKS && insideStands
+						&& outsideStands && outsideDistance > SovereignSpecials.VORTEX_RADIUS && hit && push != null && push.x > 0.0 && split == null,
+					"burst=" + vortex.blasted() + " at " + vortex.lastActionAge() + ", inside stands=" + insideStands + ", outside stands=" + outsideStands
+						+ " (" + outsideDistance + " out), hit=" + hit + " push=" + push + ", split=" + split);
 			})
 			.thenSucceed();
 	}

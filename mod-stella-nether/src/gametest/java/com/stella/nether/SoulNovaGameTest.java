@@ -57,11 +57,16 @@ public class SoulNovaGameTest {
 		SovereignSpecialsGameTest.Scene scene = wideScene(helper);
 		Vec3 burst = eastBurst(scene);
 		Zombie struck = SovereignSpecialsGameTest.standIn(helper, scene, new Vec3(burst.x + 1.0, scene.floor().y, burst.z));
+		// A burst would kill a plain zombie, and a creature that dies is not recorded as taking the hit's halves.
+		struck.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(5000.0);
+		struck.setHealth(5000.0F);
+		HitLog.watch(struck);
 		SovereignSpecials.Cast[] cast = new SovereignSpecials.Cast[1];
 		float[] before = new float[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(SovereignSpecialsGameTest.ready(scene, struck), "the arena's entities are not loaded"))
 			.thenExecute(() -> {
+				SovereignScaleGameTest.settle(struck, false);
 				before[0] = struck.getHealth();
 				cast[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.SOUL_NOVA, struck);
 			})
@@ -77,14 +82,16 @@ public class SoulNovaGameTest {
 				int expectedAge = (int) Math.ceil(SovereignSpecials.NOVA_REACH / SovereignSpecials.NOVA_SPEED) - 1;
 				Vec3 push = nova.pushes().get(struck.getUUID());
 				boolean hurt = struck.getHealth() < before[0];
+				String split = SovereignTameGameTest.splitProblem(HitLog.from(struck, scene.sovereign()), SovereignTameGameTest.scaled(SovereignSpecials.NOVA_DAMAGE));
 				NetherTestSupport.result("soulNova", "flames=" + nova.orbs().size() + " octants=" + octants.size() + " burstAt=" + burstAge + " expectedAt=" + expectedAge
-					+ " drift=" + String.format("%.2f", drift) + " push=" + push + " hurt=" + hurt + " bursts=" + nova.impacts().size());
+					+ " drift=" + String.format("%.2f", drift) + " push=" + push + " hurt=" + hurt + " bursts=" + nova.impacts().size() + " split=" + split);
+				HitLog.forget(struck);
 				SovereignSpecialsGameTest.end(helper, scene, struck);
 				helper.assertTrue(nova.orbs().size() == SovereignSpecials.NOVA_RING + SovereignSpecials.NOVA_UPPER && octants.size() == 8
 						&& burstAge == expectedAge && burstAge < SovereignSpecials.NOVA_LIFE_TICKS
 						&& drift >= SovereignSpecials.NOVA_REACH && drift < SovereignSpecials.NOVA_REACH + SovereignSpecials.NOVA_SPEED + 1.0E-6
-						&& push != null && push.x > 0.0 && hurt,
-					"the nova: " + nova.orbs().size() + " flames over " + octants.size() + " octants, the first burst at " + burstAge + " of " + expectedAge + " after drifting "
+						&& push != null && push.x > 0.0 && hurt && split == null,
+					"the nova (split " + split + "): " + nova.orbs().size() + " flames over " + octants.size() + " octants, the first burst at " + burstAge + " of " + expectedAge + " after drifting "
 						+ drift + "; the one standing there pushed " + push + " hurt " + hurt);
 			})
 			.thenSucceed();

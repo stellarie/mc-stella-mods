@@ -7,6 +7,7 @@
 		"PortalStepMixin",
 		"BlazeSkirmishMixin",
 		"SovereignDamageMixin",
+		"SovereignHitMixin",
 		"EnderEyeSealMixin",
 		"StrongholdChestMixin",
 		"StructurePieceInvoker",

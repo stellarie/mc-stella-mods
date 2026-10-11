@@ -14,6 +14,7 @@
   "message.mod-stella-nether.join.hard.hover": "Join the running raid nether. Its mobs hold two boons each.",
   "message.mod-stella-nether.enraged": "Thirty minutes have passed. The nether turns on you: run for the portal!",
   "entity.mod-stella-nether.blaze_sovereign": "Blaze Sovereign",
+  "death.attack.sovereign_flame": "%1$s was scorched by %2$s",
   "item.mod-stella-nether.blaze_core": "Blaze Core",
   "item.mod-stella-nether.flame_mantle": "Flame Mantle",
   "message.mod-stella-nether.portal_sealed": "The portal stays shut. The sealed chest in this room wants a Blaze Core.",

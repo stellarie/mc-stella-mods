@@ -22,6 +22,7 @@ public final class NetherGameTestInit implements ModInitializer {
 	public void onInitialize() {
 		// The shipped jar logs no behaviour; under test every line goes to the mod's logger at INFO.
 		shippedSink = BehaviorLog.set(TEST_SINK);
+		HitLog.install();
 		ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
 			if (level.dimension().equals(RaidTravel.RAID)) {
 				LOADED_IN_RAID.add(entity.getUUID());

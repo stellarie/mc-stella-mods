@@ -146,9 +146,9 @@ public class SovereignSpecialsGameTest {
 			boolean spare = !done.hits().contains(spared.getUUID());
 			float lost = before[0] - struck.getHealth();
 			boolean burning = struck.getRemainingFireTicks() > 0;
-			NetherTestSupport.result("dive", "hit=" + hit + " spared=" + spare + " lost=" + lost + " burning=" + burning + " fires=" + done.firesPlaced());
-			helper.assertTrue(hit && spare && lost > 0.0F && burning && done.firesPlaced() > 0,
-				"dive hit=" + hit + " spared=" + spare + " lost=" + lost + " burning=" + burning + " fires=" + done.firesPlaced());
+			NetherTestSupport.result("dive", "hit=" + hit + " spared=" + spare + " lost=" + lost + " burning=" + burning);
+			helper.assertTrue(hit && spare && lost > 0.0F && burning,
+				"dive hit=" + hit + " spared=" + spare + " lost=" + lost + " burning=" + burning);
 			end(helper, scene, struck, spared);
 			})
 			.thenSucceed();
@@ -172,11 +172,15 @@ public class SovereignSpecialsGameTest {
 	public void theChargedWaveThrowsBackAndStunsEveryoneItReaches(final GameTestHelper helper) {
 		Scene scene = scene(helper, 10);
 		Zombie caught = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS / 2.0, 0.0, 0.0));
+		HitLog.watch(caught);
 		Zombie beyond = standIn(helper, scene, scene.floor().add(SovereignSpecials.WAVE_RADIUS + 4.0, 0.0, 0.0));
 		SovereignSpecials.Cast[] casts = new SovereignSpecials.Cast[1];
 		helper.startSequence()
 			.thenWaitUntil(() -> helper.assertTrue(ready(scene, caught, beyond), "the arena's entities are not loaded"))
-			.thenExecute(() -> casts[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.CHARGED_WAVE, caught))
+			.thenExecute(() -> {
+				SovereignScaleGameTest.settle(caught, false);
+				casts[0] = SovereignSpecials.cast(scene.sovereign(), SovereignSpecials.Special.CHARGED_WAVE, caught);
+			})
 			.thenWaitUntil(() -> helper.assertTrue(casts[0].done(), "the wave has not finished"))
 			.thenExecute(() -> {
 			SovereignSpecials.Cast cast = casts[0];
@@ -185,9 +189,12 @@ public class SovereignSpecialsGameTest {
 			Vec3 away = caught.position().subtract(scene.sovereign().position()).multiply(1.0, 0.0, 1.0).normalize();
 			double push = caught.getDeltaMovement().multiply(1.0, 0.0, 1.0).dot(away);
 			boolean stun = stunned(caught);
+			String split = SovereignTameGameTest.splitProblem(HitLog.from(caught, scene.sovereign()), SovereignTameGameTest.scaled(SovereignSpecials.WAVE_DAMAGE));
 			NetherTestSupport.result("chargedWave", "hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun
-				+ " home=" + cast.home() + " caughtAt=" + caught.position() + " seen=" + cast.seen());
-			helper.assertTrue(hit && missed && push > 0.5 && stun, "wave hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun);
+				+ " home=" + cast.home() + " caughtAt=" + caught.position() + " seen=" + cast.seen() + " split=" + split);
+			HitLog.forget(caught);
+			helper.assertTrue(hit && missed && push > 0.5 && stun && split == null,
+				"wave hit=" + hit + " beyondMissed=" + missed + " push=" + push + " stunned=" + stun + " split=" + split);
 			end(helper, scene, caught, beyond);
 			})
 			.thenSucceed();
