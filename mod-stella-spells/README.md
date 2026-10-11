@@ -417,6 +417,18 @@ The bridge finds `com.stella.rpg.RpgSpells` by name. Without `mod-stella-rpg`, o
 `spellDamage` or `spellHeal`, every spell keeps its flat numbers from the table above and the servant keeps
 30 health and its own arrows. Mob spells do not scale here.
 
+## Mage staff
+
+A staff in the item tag `mod-stella-equips-enchants:mage_staffs`, held in the main hand, changes every spell cast through the book,
+imbue and tooltip path. The staff comes from `mod-stella-equips-enchants`; this mod reads only the tag and the `stella_refine` level in
+the custom data, so neither mod needs the other.
+
+- **Damage.** The cast power multiplier is 1.25 at +0, and 0.10 more for each of the refine levels +7, +10, +12 and +15 (1.65 at +15).
+- **Cooldown.** The cooldown is 20% shorter, and 5% shorter again for each milestone (40% at +15). It never drops below 20 ticks, and a
+  spell with a fixed cooldown keeps it.
+- **Slot.** Only the main hand counts. A book cast from the off hand takes the bonus while the staff is in the main hand.
+- **Code.** `StaffPower`, called from `RpgBridge.grow` after the stat growth.
+
 ## Build and test
 
 ```powershell
