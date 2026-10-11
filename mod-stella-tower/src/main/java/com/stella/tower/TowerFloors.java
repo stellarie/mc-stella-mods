@@ -87,6 +87,7 @@ public final class TowerFloors {
 	/** Forgets every plan, as a stopped server does. */
 	static void clearCaches() {
 		TowerPlan.clearCache();
+		TowerBackPortals.clearCaches();
 		longestImmediateBuildNanos = 0L;
 		longestSynchronousPlanNanos = 0L;
 	}
@@ -259,6 +260,7 @@ public final class TowerFloors {
 					}
 				}
 				settle(tower, floor);
+				TowerBackPortals.place(tower, floor);
 				return false;
 			}
 			Build job;
@@ -588,6 +590,9 @@ public final class TowerFloors {
 			case TowerVolume.DAIS_STAIR_WEST -> TowerBlocks.TOWER_STAIR.skinned(plan.biome().biome().daisSkin()).setValue(StairBlock.FACING, Direction.WEST);
 			case TowerVolume.BIOME_BLOCK -> BiomeBlocks.state(volume.code(x, y, z));
 			case TowerVolume.PORTAL_FILL -> TowerBlocks.TOWER_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.Z);
+			case TowerVolume.BACK_FILL -> TowerBlocks.TOWER_BACK_PORTAL.defaultBlockState().setValue(NetherPortalBlock.AXIS, Direction.Axis.Z);
+			case TowerVolume.SOUL_SOIL -> Blocks.SOUL_SOIL.defaultBlockState();
+			case TowerVolume.SOUL_FIRE -> Blocks.SOUL_FIRE.defaultBlockState();
 			default -> Blocks.AIR.defaultBlockState();
 		};
 	}

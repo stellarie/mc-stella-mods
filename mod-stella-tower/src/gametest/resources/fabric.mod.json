@@ -13,6 +13,7 @@
 			"com.stella.tower.TowerHealthCapGameTest",
 			"com.stella.tower.TowerFloorGameTest",
 			"com.stella.tower.VoidKeyGameTest",
+			"com.stella.tower.TowerTravelRewardsGameTest",
 			"com.stella.tower.TowerEscapeGameTest",
 			"com.stella.tower.TowerThreatGameTest",
 			"com.stella.tower.TowerLevelGameTest",

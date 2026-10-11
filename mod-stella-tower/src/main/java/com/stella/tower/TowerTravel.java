@@ -28,7 +28,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Where the tower's portals lead. From outside, a portal leads to the first floor and remembers where the
- * player stood; inside, a floor's portal leads to the floor above.
+ * player stood; inside, a floor's portal leads to the floor above, and its back portal to the floor below.
+ * A floor key leads to its floor from anywhere.
  * <p>
  * However a player comes in, by the portal, riding through it, or carried by an ender pearl, the way back
  * is recorded and a Void Key given: the portal writes the exact spot beside itself, and any other arrival
@@ -52,7 +53,7 @@ public final class TowerTravel {
 		StellaTower.id("tower_entry"), builder -> builder.persistent(Entry.CODEC).copyOnDeath()
 	);
 
-	/** The floor a player last stood on in the tower; absent until their first visit. */
+	/** The highest floor a player has stood on in the tower; absent until their first visit. Walking down never lowers it. */
 	public static final AttachmentType<Integer> LAST_FLOOR = AttachmentRegistry.create(
 		StellaTower.id("last_floor"), builder -> builder.persistent(Codec.INT).copyOnDeath()
 	);
@@ -90,8 +91,9 @@ public final class TowerTravel {
 	}
 
 	private static void remember(final ServerPlayer player, final int floor) {
-		if (lastFloor(player) != floor) {
+		if (floor > lastFloor(player)) {
 			player.setAttached(LAST_FLOOR, floor);
+			TowerFloorRewards.reached(player, floor);
 		}
 	}
 
@@ -141,6 +143,44 @@ public final class TowerTravel {
 			}
 		}
 		return floor;
+	}
+
+	/**
+	 * Takes a player to a floor from anywhere, as a floor key does: from outside the tower the way back is
+	 * recorded and a Void Key given, as at its portal.
+	 */
+	public static boolean jumpTo(final ServerPlayer player, final int floor) {
+		ServerLevel tower = player.level().getServer().getLevel(TOWER);
+		if (tower == null || floor < 1) {
+			return false;
+		}
+		TowerFloors.ensure(tower, floor);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		player.teleport(new TeleportTransition(
+			tower, plan.arrivalPos(), Vec3.ZERO, plan.arrivalYaw(), 0.0F,
+			TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET).then(moved -> arrive(moved, floor))
+		));
+		StellaTower.LOGGER.debug("[TOWER] player={} JUMPED to floor={}", player.getScoreboardName(), floor);
+		return true;
+	}
+
+	/** Where a floor's back portal leads: the floor below, at the foot of its exit stair. Only players go down. */
+	public static @Nullable TeleportTransition backDestination(final ServerLevel from, final Entity entity, final BlockPos portal) {
+		if (!from.dimension().equals(TOWER)) {
+			return null;
+		}
+		int here = TowerLayout.floorAt(portal);
+		boolean carriesPlayer = entity instanceof ServerPlayer || entity.hasPassenger(rider -> rider instanceof ServerPlayer);
+		if (here < 2 || !carriesPlayer) {
+			return null;
+		}
+		int floor = here - 1;
+		TowerFloors.ensure(from, floor);
+		TowerBackPortals.Landing landing = TowerBackPortals.landing(from, floor);
+		return new TeleportTransition(
+			from, landing.position(), Vec3.ZERO, landing.yaw(), 0.0F,
+			TeleportTransition.PLAY_PORTAL_SOUND.then(TeleportTransition.PLACE_PORTAL_TICKET).then(moved -> arrive(moved, floor))
+		);
 	}
 
 	public static @Nullable TeleportTransition destination(final ServerLevel from, final Entity entity, final BlockPos portal) {

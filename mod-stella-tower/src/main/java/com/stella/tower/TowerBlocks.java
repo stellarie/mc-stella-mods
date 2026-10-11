@@ -65,6 +65,16 @@ public final class TowerBlocks {
 		.noLootTable()
 		.pushReaction(PushReaction.IMMOVEABLE));
 
+	/** The portal on each floor above the first, back down to the floor below; a blast cannot take it either. */
+	public static final TowerBackPortalBlock TOWER_BACK_PORTAL = register("tower_back_portal", TowerBackPortalBlock::new, BlockBehaviour.Properties.of()
+		.noCollision()
+		.randomTicks()
+		.strength(-1.0F, 3_600_000.0F)
+		.sound(SoundType.GLASS)
+		.lightLevel(state -> 11)
+		.noLootTable()
+		.pushReaction(PushReaction.IMMOVEABLE));
+
 	/**
 	 * A chest that stays: it cannot be mined, blown up, pushed, or broken by a wither or the dragon. It has no
 	 * item, so no player carries one out; the tower places it (see {@link TowerChests}).

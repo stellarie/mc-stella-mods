@@ -17,8 +17,8 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Given on entering the tower: used inside it, it returns the player beside the portal they came in by.
- * It is kept, not spent.
+ * Given on entering the tower: used anywhere, it returns the player to where they came in by. Used in the
+ * tower that is the spot beside the portal they entered; used outside it, that spot again. It is kept, not spent.
  */
 public class VoidKeyItem extends Item {
 	public static final int COOLDOWN_TICKS = 20;
@@ -31,10 +31,6 @@ public class VoidKeyItem extends Item {
 	public InteractionResult use(final Level level, final Player player, final InteractionHand hand) {
 		if (!(player instanceof ServerPlayer traveller)) {
 			return InteractionResult.SUCCESS;
-		}
-		if (!level.dimension().equals(TowerTravel.TOWER)) {
-			traveller.sendOverlayMessage(Component.translatable("message.mod-stella-tower.void_key.outside"));
-			return InteractionResult.FAIL;
 		}
 		return returnHome(traveller) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
 	}

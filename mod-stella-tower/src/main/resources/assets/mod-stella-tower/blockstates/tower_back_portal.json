@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "axis=x": { "model": "mod-stella-tower:block/tower_portal_ns" },
+    "axis=z": { "model": "mod-stella-tower:block/tower_portal_ew" }
+  }
+}
