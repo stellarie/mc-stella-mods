@@ -191,8 +191,8 @@ Measured in the 2026-10-05 GameTest run (`reachesOver500Plans`, `built*`, `build
 - Chorus fruit and endermen cannot teleport out of the room they are in. A shulker teleports only inside its floor's room
   and no higher than 14 blocks over the base (`TowerShulkerMixin`).
 - Entering the tower by any road, portal, mount or ender pearl, records the way back and gives a Void
-  Key, unless one is held or kept in the ender chest. Used inside the tower, the key returns the player
-  beside the portal they entered by, or where they threw the pearl.
+  Key, unless one is held or kept in the ender chest. Used anywhere, the key returns the player
+  beside the portal they entered by, or where they threw the pearl (see "Travel and rewards").
 
 ## Manual acceptance
 
@@ -225,8 +225,8 @@ Measured in the 2026-10-05 GameTest run (`reachesOver500Plans`, `built*`, `build
   damage of traps and runes. Mobs no longer follow its health or damage curves.
 - Health past the attribute's cap of 1024 is kept as a divisor on every hit the mob takes. Thorns that a
   mob returns do not take the level factor again.
-- A portal from outside leads a player to the highest of: the floor keys they hold, and the floor they
-  last stood on in the tower (saved with the player; floor 1 for a new player). Void keys are unchanged.
+- A portal from outside leads a player to the highest of: the floor keys they hold, and the highest floor they
+  have stood on in the tower (saved with the player; floor 1 for a new player). Walking down never lowers it.
 - `mod-stella-mobs` is a required dependency of this mod. Build it from source beside this mod
   (`settings.gradle` includes `../mod-stella-mobs`).
 
@@ -680,6 +680,38 @@ show seams where its chunks differ.
   floors stay clear. Check that the rooms feel cluttered, with slabs here and there, and that the top storey
   is lit by candles only. Find a turret, see the bars or the accent block, and wait near it for mobs.
 - Enter the castle's portal, see the level message, clear the room, and return through the room's portal.
+
+## Travel and rewards (`TowerBackPortals`, `TowerFloorRewards`)
+
+- Every biome floor above the first holds a back portal on the arrival's pad, behind the player. Its frame is
+  `tower_frame` like the exit's, but a soul soil pillar with soul fire stands on each upper corner, and its portal
+  (`tower_back_portal`) drifts cyan motes. It is set into a floor when the floor is built, and into an older floor the next
+  time anyone arrives (`TowerFloors.ensure`). If the pad has no room for the frame, the floor has no back portal.
+- The back portal leads to the floor below, at the foot of that floor's exit stair, not its arrival. Only players use it.
+- The saved floor (`TowerTravel.LAST_FLOOR`) is the highest floor a player has stood on. Going down never lowers it.
+- The Void Key works anywhere: it returns the player to the entry recorded when they last came in, or to the world spawn.
+- A Floor Key works anywhere: using it takes the player to its floor. From outside it records the way back and gives a Void
+  Key, as the portal does. Carried into the portal outside, the highest key still decides the floor.
+- Floor clear: when the last hostile tower mob of a floor dies while a player stands on it, a chime plays and one bonus
+  chest appears on the nearest free ground to the exit stair's foot. The chest rolls the floor's chest loot
+  `TowerChests.ROLLS + 8 + floor / 10` times (the last term capped at 6). Once per visit: a floor leaves the visit when
+  no player stands on it, and a later clearing pays again.
+- Milestone: the first time a player stands on a floor that is a multiple of 10 (higher than any floor before), fireworks
+  burst over them and a chest appears beside the arrival, with a rune of a random element at that floor, a floor key for
+  it, and the bonus rolls. Standing on that floor again does nothing.
+
+### Tests (travel and rewards)
+
+- `TowerTravelRewardsGameTest`: every sampled floor holds a back portal with two soul fires, the way down lands on the
+  lower floor and keeps the saved floor, a mob gets no way down, both keys work from outside, the clear chest comes once and
+  only after the last hostile mob, a second visit pays again, and the milestone fires and sets its chest once.
+
+### Manual acceptance (travel and rewards)
+
+- Walk down through a back portal and see its soul fire frame set it apart from the exit.
+- Use a Void Key and a Floor Key in the overworld.
+- Clear a floor and hear the chime and see the sparkles at the bonus chest. A game test cannot observe sound or particles.
+- Reach floor 10 for the first time and see the fireworks.
 
 ## Runes
 

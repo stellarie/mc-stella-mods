@@ -58,6 +58,10 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** A step of the portal's stair, in the biome's stone, climbing east or west. */
 	public static final byte DAIS_STAIR_EAST = 28;
 	public static final byte DAIS_STAIR_WEST = 29;
+	/** The back portal's fill, and the soul soil and soul fire that crown its frame's posts. */
+	public static final byte BACK_FILL = 30;
+	public static final byte SOUL_SOIL = 31;
+	public static final byte SOUL_FIRE = 32;
 
 	/** How high above a story a ceiling may be and still take a lamp; a higher one has a lantern hung from it. */
 	public static final int CEILING_REACH = 9;
@@ -79,6 +83,8 @@ public final class TowerVolume implements TowerWalk.Space {
 	private final byte[] codes;
 	/** The lamps and lanterns, by story: offsets (x, y, z). */
 	private final List<List<int[]>> lamps = new ArrayList<>();
+	/** Where the back portal's frame stands in this volume, or null when it has none. */
+	private TowerBackPortals.@org.jspecify.annotations.Nullable Spot backSpot;
 
 	private TowerVolume(final int low, final int high, final boolean palette, final int width, final int depth) {
 		this.low = low;
@@ -162,7 +168,7 @@ public final class TowerVolume implements TowerWalk.Space {
 	/** How a part counts to a walking body, as its block's collision shape counts in the world. */
 	public static byte walkClass(final byte kind) {
 		return switch (kind) {
-			case AIR, PORTAL_FILL -> TowerWalk.OPEN;
+			case AIR, PORTAL_FILL, BACK_FILL, SOUL_FIRE -> TowerWalk.OPEN;
 			case RAIL -> TowerWalk.TALL;
 			default -> TowerWalk.SOLID;
 		};
@@ -208,6 +214,7 @@ public final class TowerVolume implements TowerWalk.Space {
 			volume.biome(plan);
 			volume.portal(plan);
 			volume.chests(plan);
+			volume.backPortal(plan);
 			return volume;
 		}
 		volume.base(plan);
@@ -436,6 +443,39 @@ public final class TowerVolume implements TowerWalk.Space {
 		}
 		for (TowerPlan.Station station : plan.stations()) {
 			set(station.x(), 0, station.z(), STATION);
+		}
+	}
+
+	/** Where the back portal's frame stands in this volume, or null when it has none. */
+	TowerBackPortals.@org.jspecify.annotations.Nullable Spot backPortalSpot() {
+		return this.backSpot;
+	}
+
+	/** Lays the back portal on the arrival's pad, last, on whatever the pad was left with. */
+	private void backPortal(final TowerPlan plan) {
+		if (!plan.isBiome() || plan.floor() < 2) {
+			return;
+		}
+		TowerBackPortals.Spot spot = TowerBackPortals.choose(plan, this);
+		this.backSpot = spot;
+		if (spot == null) {
+			return;
+		}
+		int width = TowerBackPortals.FRAME_WIDTH;
+		int height = TowerBackPortals.FRAME_HEIGHT;
+		for (int across = 0; across < width; across++) {
+			boolean post = across == 0 || across == width - 1;
+			for (int up = 0; up < height; up++) {
+				boolean edge = post || up == 0 || up == height - 1;
+				set(spot.x(), up - 1, spot.z() + across, edge ? FRAME : BACK_FILL);
+				if (!edge) {
+					reserve(spot.x(), up - 1, spot.z() + across);
+				}
+			}
+			if (post) {
+				set(spot.x(), height - 1, spot.z() + across, SOUL_SOIL);
+				set(spot.x(), height, spot.z() + across, SOUL_FIRE);
+			}
 		}
 	}
 

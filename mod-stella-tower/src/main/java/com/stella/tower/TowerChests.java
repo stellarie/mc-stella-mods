@@ -180,6 +180,17 @@ public final class TowerChests {
 	 * Returns the stacks put in; a chest with no room for one drops it.
 	 */
 	public static List<ItemStack> fill(final ServerLevel level, final BlockPos pos, final int floor, final boolean guaranteed, final RandomSource random) {
+		return fill(level, pos, floor, guaranteed, ROLLS, List.of(), random);
+	}
+
+	/**
+	 * {@link #fill(ServerLevel, BlockPos, int, boolean, RandomSource)} with its own number of rolls, and with stacks put
+	 * in before any roll, so a full chest never loses them.
+	 */
+	public static List<ItemStack> fill(
+		final ServerLevel level, final BlockPos pos, final int floor, final boolean guaranteed, final int rolls, final List<ItemStack> given,
+		final RandomSource random
+	) {
 		BlockState state = level.getBlockState(pos);
 		if (!(state.getBlock() instanceof ChestBlock chest)) {
 			return List.of();
@@ -191,6 +202,9 @@ public final class TowerChests {
 		container.clearContent();
 		// The guaranteed items go in first, so a full chest never loses them.
 		List<ItemStack> loot = new ArrayList<>();
+		for (ItemStack stack : given) {
+			loot.add(stack.copy());
+		}
 		if (guaranteed) {
 			loot.add(stackFor(level, Category.ENCHANTED_BOOK, floor, random));
 			ItemStack scroll = stackFor(level, Category.RETURN_SCROLL, floor, random);
@@ -198,7 +212,7 @@ public final class TowerChests {
 				loot.add(scroll);
 			}
 		}
-		for (int i = 0; i < ROLLS; i++) {
+		for (int i = 0; i < rolls; i++) {
 			ItemStack stack = roll(level, floor, random).stack();
 			if (!stack.isEmpty()) {
 				loot.add(stack);

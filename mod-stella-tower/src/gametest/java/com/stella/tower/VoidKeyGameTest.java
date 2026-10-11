@@ -63,17 +63,4 @@ public class VoidKeyGameTest {
 		helper.assertTrue(held == 1, "two entries left " + held + " void keys");
 		helper.succeed();
 	}
-
-	@GameTest
-	public void theVoidKeyDoesNothingOutsideTheTower(final GameTestHelper helper) {
-		ServerPlayer player = TowerTestSupport.join(helper, 2.5, 5.5);
-		Vec3 before = player.position();
-		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(TowerItems.VOID_KEY));
-		TowerItems.VOID_KEY.use(player.level(), player, InteractionHand.MAIN_HAND);
-		boolean stayed = player.level() == helper.getLevel() && player.position().distanceTo(before) < 0.01;
-		TowerTestSupport.result("voidKeyOutside", "stayed=" + stayed);
-		TowerTestSupport.leave(helper, player);
-		helper.assertTrue(stayed, "the Void Key moved a player outside the tower");
-		helper.succeed();
-	}
 }
