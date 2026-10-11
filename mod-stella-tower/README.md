@@ -749,9 +749,9 @@ A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks 
   guardian.
 - Moves (each shows its start first: a sound, particles, a raised bow): blink behind a player 8 blocks or more away and hit;
   a 60 degree fire cone, 6 blocks long; a ground slam, a strip 4 wide and 16 long, with knockback and Nausea for 40 ticks;
-  two seconds of invisibility for archer and horse, then a hard shot; an 8-arrow volley, one arrow every 3 ticks; 8 burning
-  arrows lobbed round the target, each bursting where it lands (bodies only, no block broken) and setting the ground alight.
-- Drops and horses: the melee guardian drops `mod-stella-equips-enchants:bone_shield` and the archer
+  two seconds of invisibility for archer and horse, then a hard shot; an 8-arrow volley, one arrow every 3 ticks, that never calls
+  the Blitz Beat falcon; 24 burning arrows lobbed over a wide ring 2 to 12 blocks round the target, each bursting where it lands (bodies only, no block broken) and setting the ground alight.
+- Drops and horses: the loot goes into the killer's inventory, or drops fireproof with no player killer or no room. The melee guardian drops `mod-stella-equips-enchants:bone_shield` and the archer
   `mod-stella-equips-enchants:skeleton_crown`, once each, looked up by id and skipped when absent. A fallen rider's horse
   stays 2 times the size and burning until tamed; a player can mount it and tame it as any wild horse, and it keeps its
   speed (0.45) and jump (1.2), both above a vanilla horse's best, and loses its size and its guardian mark.

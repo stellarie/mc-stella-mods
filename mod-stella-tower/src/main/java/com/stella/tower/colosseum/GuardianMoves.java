@@ -54,8 +54,13 @@ final class GuardianMoves {
 	static final float VOLLEY_SPEED = 2.0F;
 	static final float VOLLEY_SPREAD = 4.0F;
 	static final int LOB_WINDUP = 16;
-	static final int LOB_ARROWS = 8;
-	static final int LOB_GAP = 2;
+	static final int LOB_ARROWS = 24;
+	static final int LOB_GAP = 1;
+	/** The lobbed arrows ring the target between these reaches. */
+	static final double LOB_NEAR = 2.0;
+	static final double LOB_FAR = 12.0;
+	/** An arrow with this tag never calls the Blitz Beat falcon; the spells mod reads it. */
+	static final String NO_BLITZ_TAG = "mod-stella-spells.no_blitz";
 	static final float BURST_POWER = 1.7F;
 	static final double BURST_FIRE_RADIUS = 2.2;
 	static final int BURST_BURN_SECONDS = 5;
@@ -351,7 +356,10 @@ final class GuardianMoves {
 			int shot = t - VOLLEY_WINDUP;
 			if (shot % VOLLEY_GAP == 0 && shot / VOLLEY_GAP < VOLLEY_ARROWS) {
 				brain.face(target);
-				brain.shoot(target.getBoundingBox().getCenter(), VOLLEY_SPEED, VOLLEY_SPREAD, false);
+				net.minecraft.world.entity.projectile.arrow.Arrow arrow = brain.shoot(target.getBoundingBox().getCenter(), VOLLEY_SPEED, VOLLEY_SPREAD, false);
+				if (arrow != null) {
+					arrow.addTag(NO_BLITZ_TAG);
+				}
 			}
 			return shot >= VOLLEY_GAP * (VOLLEY_ARROWS - 1) + 2;
 		}
@@ -362,7 +370,7 @@ final class GuardianMoves {
 		}
 	}
 
-	/** Eight burning arrows are lobbed to land round the target; the spots glow first, and each arrow bursts where it falls. */
+	/** Twenty-four burning arrows are lobbed to land over a wide ring round the target; the spots glow first, and each arrow bursts where it falls. */
 	static final class Lob implements Move {
 		private Vec3[] points = new Vec3[LOB_ARROWS];
 
@@ -398,7 +406,7 @@ final class GuardianMoves {
 			brain.rider().stopUsingItem();
 		}
 
-		/** The first falls on the target; the rest ring it between two and five and a half blocks out. */
+		/** The first falls on the target; the rest spread over a wide ring between the near and far reach. */
 		private static Vec3[] spots(final LivingEntity target, final ServerLevel level) {
 			Vec3[] points = new Vec3[LOB_ARROWS];
 			Vec3 centre = target.position();
@@ -406,7 +414,7 @@ final class GuardianMoves {
 			double turn = level.getRandom().nextDouble() * Math.PI * 2.0;
 			for (int i = 1; i < LOB_ARROWS; i++) {
 				double angle = turn + Math.PI * 2.0 * i / (LOB_ARROWS - 1);
-				double radius = 2.0 + level.getRandom().nextDouble() * 3.5;
+				double radius = LOB_NEAR + Math.sqrt(level.getRandom().nextDouble()) * (LOB_FAR - LOB_NEAR);
 				points[i] = centre.add(Math.cos(angle) * radius, 0.0, Math.sin(angle) * radius);
 			}
 			return points;
