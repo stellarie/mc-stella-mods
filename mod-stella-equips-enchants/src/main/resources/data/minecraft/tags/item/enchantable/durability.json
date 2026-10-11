@@ -7,6 +7,9 @@
 		"#mod-stella-equips-enchants:uniques_af/maces",
 		"#mod-stella-equips-enchants:uniques_mp/maces",
 		"#mod-stella-equips-enchants:crafted_bows/bows",
-		"#mod-stella-equips-enchants:crafted_bows/crossbows"
+		"#mod-stella-equips-enchants:crafted_bows/crossbows",
+		"mod-stella-equips-enchants:wraithstring",
+		"mod-stella-equips-enchants:hexbolt",
+		"mod-stella-equips-enchants:archmage_staff"
 	]
 }

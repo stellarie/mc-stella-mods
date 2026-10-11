@@ -141,7 +141,7 @@ public final class UniqueDispatch {
 	}
 
 	/** The damage a victim took after armor and protection, when the last hit on it passed the incoming hook. */
-	private static float taken(final LivingEntity victim, final float reported) {
+	public static float taken(final LivingEntity victim, final float reported) {
 		return mitigatedVictim == victim ? mitigated : reported;
 	}
 

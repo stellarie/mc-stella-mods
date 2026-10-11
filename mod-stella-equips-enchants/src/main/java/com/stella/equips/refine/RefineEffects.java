@@ -132,6 +132,19 @@ public final class RefineEffects {
 		roller = newRoller == null ? FAIR : newRoller;
 	}
 
+	/** Runs extra damage that a weapon deals as a side effect of its own hit, so the refine procs of the weapon do not chain off it. */
+	public static void withoutProcs(final Runnable action) {
+		Boolean outer = SHOCKING.get();
+		SHOCKING.set(Boolean.TRUE);
+		try {
+			action.run();
+		} finally {
+			if (outer == null) {
+				SHOCKING.remove();
+			}
+		}
+	}
+
 	public static double parryShare(final int level) {
 		if (level >= Refine.ASCENDED_LEVEL) {
 			return PARRY_SHARE_THIRD;

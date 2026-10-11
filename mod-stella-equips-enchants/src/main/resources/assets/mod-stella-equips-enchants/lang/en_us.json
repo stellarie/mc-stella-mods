@@ -203,5 +203,11 @@
   "item.mod-stella-equips-enchants.ballista": "Ballista",
   "item.mod-stella-equips-enchants.siege_arbalest": "Siege Arbalest",
   "item.mod-stella-equips-enchants.bone_shield": "Bone Shield",
-  "item.mod-stella-equips-enchants.skeleton_crown": "Skeleton Crown"
+  "item.mod-stella-equips-enchants.skeleton_crown": "Skeleton Crown",
+  "item.mod-stella-equips-enchants.soulreaver": "Soulreaver",
+  "item.mod-stella-equips-enchants.gravecleaver": "Gravecleaver",
+  "item.mod-stella-equips-enchants.wraithstring": "Wraithstring",
+  "item.mod-stella-equips-enchants.hexbolt": "Hexbolt",
+  "item.mod-stella-equips-enchants.wraithpike": "Wraithpike",
+  "item.mod-stella-equips-enchants.archmage_staff": "Archmage's Staff"
 }

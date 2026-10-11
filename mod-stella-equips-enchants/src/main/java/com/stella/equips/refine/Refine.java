@@ -222,6 +222,7 @@ public final class Refine {
 			stack.set(DataComponents.ATTRIBUTE_MODIFIERS, withBonuses(stack, level));
 		}
 		stack.set(DataComponents.LORE, withRefineLines(stack, level));
+		com.stella.equips.merchant.MerchantWeapons.refined(stack, level);
 		if (level > 0) {
 			stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
 		} else {

@@ -18,6 +18,7 @@
 		"mod-stella-equips-enchants.uniques-af.mixins.json",
 		"mod-stella-equips-enchants.uniques-mp.mixins.json",
 		"mod-stella-equips-enchants.bows.mixins.json",
+		"mod-stella-equips-enchants.merchant.mixins.json",
 		{
 			"config": "mod-stella-equips-enchants.client.mixins.json",
 			"environment": "client"
