@@ -852,3 +852,97 @@ A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks 
 - Climb past floor 20 and look at the large floors: walled town, canyon and fortress yard. Judge the layouts and whether the
   ground is lit and the road is easy to follow.
 - Meet a tower phantom on an open floor. It circles high over you and never dives. Its archer shoots you.
+
+## Ghost squads, the wandering ghost merchant, and its goods
+
+### Ghost squads (`GhostSquads`)
+
+- A floor with a player on it may raise a squad of 3 to 5 ghosts (`GhostSquads.haunt`, chance `RISE_CHANCE` a round, one
+  squad at a time). A member is a ghost vindicator, pillager or evoker, and now and then (`WITCH_SHARE`) a ghost witch. A
+  ghost evoker summons ghost vexes (`GhostEvoker`, `GhostSquads.summonVex`).
+- Each kind is a subclass of the vanilla mob (`GhostVindicator`, `GhostPillager`, `GhostEvoker`, `GhostWitch`,
+  `GhostVex`), so the vanilla model, animation and spell code are kept. All carry `Ghostly`, like the older `TowerGhost`.
+- A ghost is on the players' side. It never takes a player, another ghost or the merchant for its target, and a hit on a
+  player from a ghost's blow, shot, fangs or splash is turned away (`TowerPeace.spares`). It hunts the tower's hostile mobs.
+  Every tower mob also hunts ghosts (`GhostSquads.drawAggro`, added as each tower mob joins the tower level).
+- A ghost moves at 0.75 of the speed of its kind (`GhostKit.PACE`). A vex's flight is set by its move control, so
+  `GhostVex` has a move control of its own. A ghost drops no loot, gear or experience (`dropAllDeathLoot` and
+  `spawnAtLocation` are empty), and the potions that the mobs mod gives a dying witch are lost with them.
+- A ghost witch throws a strong potion of harming, or of healing at the undead, whom healing harms. A splash that reaches
+  a player harms no one.
+- Soul fire: every few ticks a ghost sends flame and soul fire particles off its body (`GhostKit.wreathe`), as a Tower
+  Guardian does. The client draws each kind as its vanilla self, translucent (`client/Ghost*Renderer`).
+- The squad id is an entity tag (`mod-stella-tower.ghost_squad:<id>`). Its leader is its living member with the lowest
+  UUID and strolls; the rest keep within 4 blocks of it (`KeepWithSquadGoal`).
+- The ghosts are outside the floor mob cap, are not sent out of safe zones, and are not hostile to the tower
+  (`Hostiles.isHostile`, `TowerMobs.count`).
+
+### The merchant (`TowerMerchants`, `GhostMerchant`)
+
+- When a player comes onto a floor, the floor greets them with `TowerMerchants.CHANCE` (0.10): if the floor has no
+  merchant yet, one appears 2 blocks from the entrance. A player is greeted once for each floor they come onto, and again
+  after leaving the tower. The merchant stays on its floor and near its post.
+- It takes no damage of any kind and cannot be killed.
+- Within 8 blocks of it (`AURA`) no mob targets a player, whether the player or the mob is the one inside, and no mob is
+  raised: `TowerMobs.placeInRoom` skips the spot and `TowerSpawnMixin` refuses the kind to a spawner block and to nature.
+  Mobs created some other way, a summon or an escort, are not stopped.
+- It sells only in the tower. Outside it, speaking to it prints a line and opens nothing, and a direct purchase is refused.
+- The shop is a chest menu (`MerchantShopMenu`), as the village witch shop is, and not a trade screen: a trade screen holds
+  two stacks, and a price of 192 or 640 emeralds does not fit them. Emeralds are paid through the equips mod purse
+  (`mod-stella-equips-enchants:emerald-count` and `:emerald-spend`, so emerald bags count), and with loose emeralds where
+  that mod is absent.
+
+### Goods (`MerchantGoods`)
+
+`MerchantGoods` is the one list. A merchant offers 5 or 6 different goods of the list that are in stock. To add a good, call
+`MerchantGoods.register(new Good(id, price, shown, make, stocked))` from the mod initializer: `shown` is the shelf item,
+`make` builds what the buyer gets, from the sale (level, buyer, random), and `stocked` says whether this install can hand
+it over. `MerchantGoods.ofItem` makes a good of another mod item by id. A price may be any number of emeralds.
+
+| Good | Price | What it is |
+|---|---|---|
+| Perfect Invisibility Potion | 32 | `PerfectVeil.potion`: vanilla invisibility and the perfect veil for a minute |
+| Soul Tonic | 24 | `SoulTonicItem`: full heal and Regeneration III for 30 s |
+| Phantom Arrows x32 | 16 | `PhantomArrowItem`: a spectral arrow that pierces 2 (`minecraft:arrows` tag) |
+| Ghost Lantern | 64 | `GhostLanternBlock`: full light, and invisible mobs within 16 blocks glow, set down or held |
+| Tower Rune | 64 | a rune of a random element, of the buyer best floor |
+| Floor Key | 48 | a key to a floor 1 to 5 above the buyer best floor |
+| Ectoplasm Charm | 128 | `EctoplasmCharm`: cheats death once, 10 minutes to recover |
+| Tower Whetstone | 192 | `RefineWard`: the next refine cannot fail |
+| Shield Generator | 192 | `mod-stella-mobs:shield_generator`, by id |
+
+- The best floor of a player (`TowerMerchants.bestFloor`) is the highest of the floors they have stood on in the tower
+  (`BEST_FLOOR`, kept by the merchant watch), the floor they last stood on, any floor key they hold, and the floor they
+  stand on.
+- The perfect veil (`PerfectVeil`): the mobs mod hides an invisible player from every mob that is not undead, and an attack
+  lifts it for 10 s (`TrueInvisibility`). The veil carries the same hiding to the undead, through the tower target mixins,
+  and reads the mobs mod reveal. The mobs mod needs no change.
+- The whetstone: the equips mod owns refining and the tower does not depend on it. `RefineWard` puts the share
+  `mod-stella-tower:refine-ward` (a `Predicate<Player>`: spends one whetstone, says whether it did) on the object share, and,
+  when the equips mod is present, wraps the roller of its refine station by name so that a failed roll spends a whetstone
+  and succeeds. The wrapper uses `RefineStation.setRoller`, which that mod calls a test seam; the equips mod can call the
+  share itself instead and drop the wrapper.
+
+### Tests
+
+- `TowerGhostSquadGameTest`: a squad rises with 3 to 5 members of one squad; ghosts hunt beside a player who struck them
+  without turning on them; tower mobs take ghosts for quarry (and a mob with no tower state does not); each kind hurts a
+  tower mob; the evoker vexes are ghost vexes; the pace; nothing is dropped.
+- `TowerMerchantGameTest`: the merchant appears at the entrance (and not on a floor with no chance); it appears about one
+  time in ten; it takes no damage; no mob is raised, and none targets a player, within its peace (each with a control that
+  shows the same scene fails without the merchant); the Perfect Invisibility Potion is bought in the tower for 32 and
+  refused outside; a shelf holds 5 or 6 goods and every good is offered.
+- `MerchantGoodsGameTest`: the potion hides a player from a skeleton until they strike; the tonic, the arrows (a line of
+  four zombies), the lantern, the charm, the key and the rune, the shield generator, and the whetstone work in the overworld.
+  The whetstone case runs against a stand-in of the equips mod refine station in `src/gametest`.
+- The tests that need the merchant chance or the squads switch both off by default in `TowerGameTestInit` and ask for them by
+  floor.
+
+### Manual acceptance (ghosts and merchant)
+
+- Look at the ghost illagers, witches and vexes and at the merchant. They are the vanilla look, seen through, wreathed in
+  flame and soul fire. The held weapon of an illager is drawn solid.
+- Meet a squad on a floor. It drifts together, hunts the mobs, and the mobs hunt it. Hit one: it does not turn on you.
+- Find a merchant (about one floor in ten) and buy from it with emeralds in your pack and in an emerald bag.
+- With the equips mod installed, refine at an anvil with a whetstone in the pack until a roll would fail: it succeeds and the
+  whetstone is spent.

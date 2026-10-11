@@ -146,7 +146,7 @@ public final class TowerSafety {
 
 	/** The tower mobs the zones keep out: every one but a ghost, which is on the players' side. */
 	private static boolean keptOut(final Mob mob) {
-		return TowerMobs.stateOf(mob) != null && !(mob instanceof TowerGhost);
+		return TowerMobs.stateOf(mob) != null && !(mob instanceof Ghostly);
 	}
 
 	/** A zone's whole band of air, from its story's floor to its top, as the box a mob's body is tested against. */

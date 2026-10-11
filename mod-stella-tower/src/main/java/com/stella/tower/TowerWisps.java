@@ -179,7 +179,7 @@ public final class TowerWisps {
 		TowerPlan plan = TowerPlan.at(tower, trail.floor());
 		AABB room = new AABB(origin.getX(), TowerLayout.BASE_Y, origin.getZ(),
 			origin.getX() + plan.width(), TowerLayout.BASE_Y + TowerLayout.ROOM_HEIGHT, origin.getZ() + plan.depth());
-		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> Hostiles.isHostile(mob) && !(mob instanceof TowerGhost) && mob.isAlive())) {
+		for (Mob mob : tower.getEntitiesOfClass(Mob.class, room, mob -> Hostiles.isHostile(mob) && mob.isAlive())) {
 			if (trail.reaches(mob.blockPosition())) {
 				mob.addEffect(new MobEffectInstance(MobEffects.SPEED, RAGE_TICKS, RAGE_SPEED));
 				mob.addEffect(new MobEffectInstance(MobEffects.STRENGTH, RAGE_TICKS, RAGE_STRENGTH));

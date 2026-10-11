@@ -12,7 +12,6 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -22,7 +21,7 @@ import org.jspecify.annotations.Nullable;
  * tower's mobs. It never follows a player and never turns on one; it mends and strengthens the players it drifts past.
  * Killing one costs nothing.
  */
-public class TowerGhost extends PathfinderMob {
+public class TowerGhost extends PathfinderMob implements Ghostly {
 	/** The ticks of its own life at which it next casts, mends and strengthens. */
 	int nextCast = TowerGhosts.CAST_TICKS;
 	int nextMend = TowerGhosts.HEAL_TICKS;
@@ -57,13 +56,13 @@ public class TowerGhost extends PathfinderMob {
 		this.goalSelector.addGoal(5, new TowerGhosts.PackWanderGoal(this, 1.0));
 		// Only what its bolt can reach: a quarry further off would draw the pack away from its leader.
 		this.targetSelector.addGoal(1, new NearestAttackableTargetGoal<>(this, Mob.class, 5, true, false,
-			(target, level) -> Hostiles.isHostile(target) && !(target instanceof TowerGhost) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
+			(target, level) -> Hostiles.isHostile(target) && target.distanceTo(this) <= TowerGhosts.CAST_RANGE));
 	}
 
 	/** A ghost never takes a player, or another ghost, for its quarry. */
 	@Override
 	public void setTarget(final @Nullable LivingEntity target) {
-		if (target instanceof Player || target instanceof TowerGhost) {
+		if (GhostKit.refuses(target)) {
 			return;
 		}
 		super.setTarget(target);
@@ -71,13 +70,14 @@ public class TowerGhost extends PathfinderMob {
 
 	@Override
 	public boolean canAttack(final LivingEntity target) {
-		return !(target instanceof Player || target instanceof TowerGhost) && super.canAttack(target);
+		return !GhostKit.refuses(target) && super.canAttack(target);
 	}
 
 	@Override
 	protected void customServerAiStep(final ServerLevel level) {
 		super.customServerAiStep(level);
 		TowerGhosts.tend(level, this);
+		GhostKit.wreathe(level, this);
 	}
 
 	@Override

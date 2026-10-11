@@ -1,5 +1,7 @@
 package com.stella.tower.mixin;
 
+import com.stella.tower.PerfectVeil;
+import com.stella.tower.TowerMerchants;
 import com.stella.tower.TowerPeace;
 import com.stella.tower.TowerSafety;
 import net.minecraft.world.entity.LivingEntity;
@@ -14,19 +16,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * {@code setTarget} and {@code getTarget} go through {@code asValidTarget}, so a target already held reads as none the
  * moment its player steps in, before the sweep lets go of it, and no goal, whatever its kind, can take one up.
  * {@code canAttack} is where the targeting goals ask first, so a goal never so much as picks a fellow.
+ * The same two gates keep every mob from a ghost merchant and from a player in the merchant peace, and from a player under the
+ * perfect veil, whom even the undead cannot see.
  */
 @Mixin(Mob.class)
 public abstract class TowerTargetMixin {
 	@Inject(method = "asValidTarget", at = @At("HEAD"), cancellable = true)
 	private void stellaTower$noAggroInASafeZone(final LivingEntity target, final CallbackInfoReturnable<LivingEntity> cir) {
-		if (TowerSafety.sheltered(target) || TowerPeace.fellows((Mob) (Object) this, target)) {
+		if (TowerSafety.sheltered(target) || TowerPeace.fellows((Mob) (Object) this, target)
+			|| TowerMerchants.shelters((Mob) (Object) this, target) || PerfectVeil.hides(target, (Mob) (Object) this)) {
 			cir.setReturnValue(null);
 		}
 	}
 
 	@Inject(method = "canAttack", at = @At("HEAD"), cancellable = true)
 	private void stellaTower$noQuarrelWithAFellow(final LivingEntity target, final CallbackInfoReturnable<Boolean> cir) {
-		if (TowerPeace.fellows((Mob) (Object) this, target)) {
+		if (TowerPeace.fellows((Mob) (Object) this, target) || TowerMerchants.shelters((Mob) (Object) this, target)
+			|| PerfectVeil.hides(target, (Mob) (Object) this)) {
 			cir.setReturnValue(false);
 		}
 	}

@@ -298,7 +298,7 @@ public final class TowerMobs {
 			Vec3 spot = spotFor(mob, feet);
 			double clear = plan.isBiome() ? BIOME_ARRIVAL_CLEAR : MIN_PLAYER_DISTANCE;
 			if (!tower.isLoaded(feet) || spot.distanceTo(arrival) < clear || tooClose(players, spot)
-				|| inSafeZone(plan, mob, spot)) {
+				|| inSafeZone(plan, mob, spot) || TowerMerchants.forbids(tower, spot)) {
 				continue;
 			}
 			mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
@@ -428,7 +428,7 @@ public final class TowerMobs {
 		return tower.getEntitiesOfClass(Mob.class, room(floor), mob -> {
 			State state = stateOf(mob);
 			// A ghost stands on the players' side, outside the floor's cap.
-			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB && !(mob instanceof TowerGhost);
+			return mob.isAlive() && state != null && state.floor() == floor && state.rank() == TowerRank.MOB && !(mob instanceof Ghostly);
 		}).size();
 	}
 
@@ -464,6 +464,7 @@ public final class TowerMobs {
 			BlockPos middle = TowerLayout.origin(floor).offset(plan.width() / 2, 0, plan.depth() / 2);
 			tower.getChunkSource().addTicketWithRadius(TicketType.PORTAL, ChunkPos.containing(middle), TowerFloors.chunkRadius(plan));
 			TowerGhosts.haunt(tower, floor);
+			GhostSquads.haunt(tower, floor);
 			TowerPhantoms.haunt(tower, floor);
 			TowerShamans.haunt(tower, floor);
 			int room = floorCap(tower, floor) - count(tower, floor);
