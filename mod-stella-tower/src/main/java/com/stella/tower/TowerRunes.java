@@ -49,7 +49,7 @@ public final class TowerRunes {
 	public static void register() {
 		// Runed gear names its rune.
 		net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry.addLast(TowerItems.RUNED, rune -> (context, lines, flag, components) ->
-			lines.accept(Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
+			DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
 				.withStyle(ChatFormatting.BLUE)));
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
@@ -214,10 +214,13 @@ public final class TowerRunes {
 	public static void describe(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats, final Consumer<Component> lines) {
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.floor", rune.floor()).withStyle(ChatFormatting.GRAY));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon", String.format(java.util.Locale.ROOT, "%.1f", weaponMultiplier(rune.floor())),
-			Component.literal(rune.element().opposite().label()).withStyle(rune.element().opposite().color())).withStyle(ChatFormatting.BLUE));
+			String.format(java.util.Locale.ROOT, "%.1f", OPPOSED),
+			Component.literal(rune.element().opposite().label()).withStyle(rune.element().opposite().color()),
+			String.format(java.util.Locale.ROOT, "%.1f", SAME)).withStyle(ChatFormatting.BLUE));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon." + rune.element().getSerializedName(), weaponNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor", String.format(java.util.Locale.ROOT, "%.2f", armorDivisor(rune.floor())),
-			String.format(java.util.Locale.ROOT, "%.0f", (OWN_ELEMENT_BASE + power(rune.floor()) / 1000.0) * 100.0)).withStyle(ChatFormatting.BLUE));
+			String.format(java.util.Locale.ROOT, "%.0f", (OWN_ELEMENT_BASE + power(rune.floor()) / 1000.0) * 100.0),
+			String.format(java.util.Locale.ROOT, "%.0f", OWN_ELEMENT_CAP * 100.0)).withStyle(ChatFormatting.BLUE));
 		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor." + rune.element().getSerializedName(), armorNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
 	}
 

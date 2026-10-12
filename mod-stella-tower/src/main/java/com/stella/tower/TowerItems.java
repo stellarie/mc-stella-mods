@@ -29,7 +29,7 @@ public final class TowerItems {
 	public static final Identifier GHOST_RUNE_ID = StellaTower.id("ghost_rune");
 	public static final Item GHOST_RUNE = Registry.register(BuiltInRegistries.ITEM, GHOST_RUNE_ID, new Item(
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, GHOST_RUNE_ID)).rarity(Rarity.RARE)
-			.component(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+			.component(ItemDescription.TYPE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.ghost_rune.desc", TowerRunes.EMERALDS)
 					.withStyle(net.minecraft.ChatFormatting.GRAY))))
 	));
@@ -46,7 +46,7 @@ public final class TowerItems {
 	public static final WispItem WISP = Registry.register(BuiltInRegistries.ITEM, WISP_ID, new WispItem(
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, WISP_ID)).rarity(Rarity.RARE).stacksTo(1)
 			.component(WISP_USES, TowerWisps.USES)
-			.component(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+			.component(ItemDescription.TYPE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.desc").withStyle(net.minecraft.ChatFormatting.GRAY),
 				net.minecraft.network.chat.Component.translatable("item.mod-stella-tower.wisp.rage").withStyle(net.minecraft.ChatFormatting.RED))))
 	));
@@ -86,6 +86,7 @@ public final class TowerItems {
 	}
 
 	public static void register() {
+		ItemDescription.register();
 		StellaTower.LOGGER.debug("Registered {}", VOID_KEY_ID);
 	}
 }

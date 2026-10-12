@@ -60,6 +60,6 @@ public class FloorKeyItem extends Item {
 	public void appendHoverText(
 		final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> lines, final TooltipFlag flag
 	) {
-		lines.accept(Component.translatable("item.mod-stella-tower.floor_key.desc").withStyle(ChatFormatting.GRAY));
+		DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.floor_key.desc").withStyle(ChatFormatting.GRAY));
 	}
 }
