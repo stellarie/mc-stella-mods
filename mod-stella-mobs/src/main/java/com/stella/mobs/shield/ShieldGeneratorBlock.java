@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
-/** A block that keeps hostile mobs out of the box around it and keeps them from aggro inside it. */
+/** A block that keeps hostile mobs out of the box around it and refuses aggro across its edge. */
 public final class ShieldGeneratorBlock extends BaseEntityBlock {
 	public ShieldGeneratorBlock(final Properties properties) {
 		super(properties);

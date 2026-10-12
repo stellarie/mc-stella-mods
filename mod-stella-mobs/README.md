@@ -524,7 +524,8 @@ A placed Shield Generator guards a 33 by 33 by 33 box centered on it, in any dim
 - No hostile mob enters the box. A hostile mob is a mob that implements `Enemy`, bosses and elites included.
   `ShieldSpawnMixin` refuses it at `ServerLevel.addEntity`, which sits under every add path: natural spawn, spawner block, summon, promotion and any other mod's spawn.
 - A mob already inside when the generator is placed stays. It is not read back through the add path.
-- No mob targets a player who stands in the box. A hostile mob inside the box holds no target at all.
+- Aggro across the box edge is refused. A mob outside never targets a player inside.
+  A hostile mob inside never targets anything outside. A mob and a target both inside keep normal aggro.
   `ShieldAggroMixin` gates `setTarget` and `canAttack`, and drops a held target on the next AI step. A skeleton outside the box does not shoot a player inside.
 - Green sparkles mark the 12 edges, to every player within 48 blocks.
 - Any killed mob drops one generator with chance 0.0001 (0.01 percent). A Wither minion, a small Wither and a summoned mob drop none.
