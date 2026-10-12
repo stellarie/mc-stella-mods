@@ -75,7 +75,7 @@ public final class SpellImbue {
 		@Override
 		public void addToTooltip(final Item.TooltipContext context, final Consumer<Component> lines, final TooltipFlag flag, final DataComponentGetter components) {
 			for (Identifier spell : this.spells) {
-				lines.accept(Component.translatable(
+				DescriptionLines.add(lines, Component.translatable(
 					"spellbook." + Spellbooks.MOD_ID + ".imbued",
 					Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
 				).withStyle(ChatFormatting.LIGHT_PURPLE));

@@ -180,7 +180,8 @@ public record SpellNumbers(
 	public static final SpellNumbers HOLY_ARMS = builder("holy_arms").damage(PriestSkills.HOLY_ARMS_BONUS)
 		.duration(PriestSkills.HOLY_ARMS_TICKS, Scale.FIXED).radius(PriestSkills.HOLY_ARMS_RADIUS).build();
 	public static final SpellNumbers BLESSING_OF_FORTITUDE = builder("blessing_of_fortitude")
-		.duration(PriestSkills.FORTITUDE_TICKS, Scale.FIXED).radius(PriestSkills.FORTITUDE_RADIUS).build();
+		.duration(PriestSkills.FORTITUDE_TICKS, Scale.FIXED).amplifier(PriestSkills.FORTITUDE_AMPLIFIER)
+		.radius(PriestSkills.FORTITUDE_RADIUS).build();
 	public static final SpellNumbers SMITE = builder("smite").damage(PriestSkills.SMITE_DAMAGE)
 		.radius(PriestSkills.SMITE_CHAIN_RADIUS).targets(PriestSkills.SMITE_CHAIN_TARGETS).build();
 	public static final SpellNumbers RESURRECTION_WARD = builder("resurrection_ward")

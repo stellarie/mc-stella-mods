@@ -162,7 +162,8 @@ public final class Spellbooks implements ModInitializer {
 		return Component.translatable("item." + id.getNamespace() + "." + id.getPath());
 	}
 
+	/** A tooltip line in the color, marked so the client splits it at 24 characters. */
 	static Component line(final MutableComponent text, final ChatFormatting color) {
-		return text.withStyle(style -> style.withColor(color).withItalic(false));
+		return DescriptionLines.marked(text.withStyle(style -> style.withColor(color).withItalic(false)));
 	}
 }

@@ -8,10 +8,6 @@ import net.minecraft.client.Minecraft;
 public final class SpellTooltipClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
-		ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
-			SpellTooltip.apply(Minecraft.getInstance().player, stack, lines);
-			lines.addAll(SpellTooltip.refineLines(stack));
-			lines.addAll(SpellTooltip.awakeningLines(stack));
-		});
+		ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> SpellTooltip.decorate(Minecraft.getInstance().player, stack, lines));
 	}
 }
