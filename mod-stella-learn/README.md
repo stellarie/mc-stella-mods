@@ -1,8 +1,7 @@
 # mod-stella-learn
 
 A server-side Fabric mod. Mobs learn what each player does in a fight, counter it, and call to each other. It
-needs `mod-stella-mobs` and suggests `mod-stella-spells`. The plan is `docs/plans/2026-09-29/LEARNING-MOBS.md`, and the
-integration branch is `main-learn`.
+needs `mod-stella-mobs` and suggests `mod-stella-spells`. The plan is `docs/plans/2026-09-29/LEARNING-MOBS.md`.
 
 ## What it does
 
