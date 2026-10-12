@@ -536,6 +536,7 @@ The component is saved and synced to the client.
   A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
   A mob that holds or wears a rolled item gets the bonus too.
 - The client shows one green line per stat, such as `+3 STR`, and one per affix, such as `+12 Damage` or `+5% Damage`, in the item tooltip.
+  `BonusTooltip.lines` builds the lines. `DescriptionLines` wraps each line at 24 characters, so a long affix line splits at a space.
 - A weapon adds its own dice. See `Dice damage`.
 
 The tier comes from the repair material of the item (`ItemTiers`), so a spear, copper armor, or a modded piece in the vanilla tags needs no list.
@@ -897,7 +898,7 @@ A player chooses one job from level 10. The job is permanent and survives death 
 
 ### Job items
 
-`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and lore. Perks read the refine level `stella_refine` of the held or worn item.
+`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds the lines, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
 
 | Item | Slot | Base | +7 | +10 | +12 | +15 |
 |---|---|---|---|---|---|---|

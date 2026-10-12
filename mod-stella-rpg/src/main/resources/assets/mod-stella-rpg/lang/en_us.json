@@ -80,7 +80,7 @@
 	"tooltip.mod-stella-rpg.stat.luk": "LUK",
 	"screen.mod-stella-rpg.result.invalid_stat": "Unknown stat.",
 	"item.mod-stella-rpg.mechanical_bow": "Mechanical Bow",
-	"item.mod-stella-rpg.mechanical_bow.lore1": "Draws fully in 10 ticks",
+	"item.mod-stella-rpg.mechanical_bow.lore1": "Draws fully in 10 ticks, less with AGI and DEX",
 	"item.mod-stella-rpg.mechanical_bow.lore2": "25% chance to fire a free arrow",
 	"item.mod-stella-rpg.knight_sword": "Knight Sword",
 	"item.mod-stella-rpg.knight_sword.lore1": "Ignores 10% more armor",
