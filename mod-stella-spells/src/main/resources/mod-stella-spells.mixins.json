@@ -26,7 +26,8 @@
 		"AimedBoltDrawMixin",
 		"AbstractArrowAccessor",
 		"AbstractArrowHitMixin",
-		"QuiverAmmoMixin"
+		"QuiverAmmoMixin",
+		"LivingEntityDrawMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -42,7 +42,7 @@ public class SkillSchoolGameTest {
 		"cleave", "leap_slam", "whirlwind", "shield_bash", "charge", "execute", "war_cry", "counter_stance",
 		"iron_skin", "earthsplitter"
 	);
-	/** The archer books: DEX, a ray, and never an arrow entity. */
+	/** The archer books: DEX, a ray, and for Arrow Shower real arrow entities. */
 	static final Set<String> ARCHER_IDS = Set.of(
 		"multishot", "piercing_shot", "arrow_rain", "rapid_fire", "hunters_mark", "explosive_arrow",
 		"disengage", "snare_trap", "aimed_bolt", "triangle_shot", "eagle_eye", "elemental_quiver",

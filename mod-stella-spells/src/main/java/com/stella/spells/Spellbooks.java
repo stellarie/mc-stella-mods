@@ -83,6 +83,7 @@ public final class Spellbooks implements ModInitializer {
 		SummonSkeleton.register();
 		FighterSkills.register();
 		ArcherSkills.register();
+		ArcherDraw.register();
 		ArrowItems.register();
 		SpellEntities.register();
 		Falcons.register();
@@ -95,6 +96,7 @@ public final class Spellbooks implements ModInitializer {
 		SpellbookLoot.register();
 		SpellStorms.register();
 		SpellVisuals.register();
+		DragonCharge.register();
 		SpellImbue.register();
 		SpellTimers.register();
 		LOGGER.info("{} initialized", MOD_ID);
@@ -131,9 +133,11 @@ public final class Spellbooks implements ModInitializer {
 	// Four tooltip lines: what it targets, how to cast it, what it does, and its base cooldown; a combo book adds its combo.
 	static ItemLore description(final SpellDefinition definition) {
 		String mode = definition.targetMode().name().toLowerCase(Locale.ROOT);
+		// An archer skill that aims reaches further than a spell, so its target line carries its own reach.
+		String target = definition.school() == School.ARCHER && (mode.equals("hostile") || mode.equals("block")) ? mode + ".archer" : mode;
 		String effectKey = "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect";
 		List<Component> lines = new java.util.ArrayList<>(List.of(
-			line(Component.translatable("spellbook." + MOD_ID + ".target." + mode), ChatFormatting.GRAY),
+			line(Component.translatable("spellbook." + MOD_ID + ".target." + target), ChatFormatting.GRAY),
 			line(Component.translatable("spellbook." + MOD_ID + ".use." + mode), ChatFormatting.GRAY),
 			line(Component.translatable(effectKey), ChatFormatting.AQUA),
 			line(Component.translatable("spellbook." + MOD_ID + ".cooldown", definition.baseCooldownTicks() / 20), ChatFormatting.DARK_GRAY)

@@ -5,7 +5,8 @@
 	"client": [
 		"FirstPersonHandsMixin",
 		"PlayerItemInHandLayerMixin",
-		"SkeletonSlotLabelMixin"
+		"SkeletonSlotLabelMixin",
+		"MultiPlayerGameModeDrawMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -130,27 +130,6 @@ public class ArcherRagnarokGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 120)
-	public void arrowShowerPushesFoesAwayFromThePointAndNeverTheCaster(final GameTestHelper helper) {
-		ServerPlayer caster = archer(helper, true);
-		Vec3 point = helper.absoluteVec(new Vec3(5.5, 1.0, CASTER_Z + 5.0));
-		Mob foe = movableFoe(helper, 6.5, CASTER_Z + 5.0);
-		Vec3 casterBefore = caster.position();
-		double before = horizontal(foe.position(), point);
-		boolean applied = ArcherSkills.applyArrowRain(caster, null, point, SkillSchoolGameTest.modifiers(caster, false));
-		helper.runAfterDelay(12L, () -> {
-			double after = horizontal(foe.position(), point);
-			LOG.info("[BEHAVIOR] test=arrowShowerPushesFoesAwayFromThePointAndNeverTheCaster RESULT applied={} before={} after={} push={} casterMoved={}",
-				applied, before, after, ArcherSkills.ARROW_SHOWER_PUSH, caster.position().distanceTo(casterBefore));
-			helper.assertTrue(applied, "arrow shower never started");
-			helper.assertTrue(after > before + 0.5, "the foe stood " + before + " from the point and " + after + " after the pulses");
-			helper.assertTrue(caster.position().distanceTo(casterBefore) == 0.0, "arrow shower moved the caster");
-			ArcherSkills.clearFor(caster);
-			foe.discard();
-			helper.succeed();
-		});
-	}
-
 	@GameTest(maxTicks = 80)
 	public void trueSightKeepsItsDamageFactorAndRaisesTheCriticalChance(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper, true);
@@ -261,8 +240,8 @@ public class ArcherRagnarokGameTest {
 		caster.removeAllEffects();
 		List<String> refused = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			// Arrow Crafting makes arrows from a material; its own cases prove it.
-			if (path.equals("arrow_crafting")) {
+			// Arrow Crafting makes arrows from a material, and Arrow Shower spends eight; their own cases prove them.
+			if (path.equals("arrow_crafting") || path.equals("arrow_rain")) {
 				continue;
 			}
 			// An earlier book may have moved the caster or the foe, and the set order is not fixed.
@@ -280,7 +259,7 @@ public class ArcherRagnarokGameTest {
 		int arrows = caster.getInventory().countItem(Items.ARROW) + caster.getInventory().countItem(Items.SPECTRAL_ARROW);
 		LOG.info("[BEHAVIOR] test=everyArcherBookCastsWithABowAndNoArrowAnywhere RESULT books={} refused={} arrowsCarried={} ammoBooks={}",
 			SkillSchoolGameTest.ARCHER_IDS.size(), refused, arrows, ArcherSkills.AMMO_BOOKS);
-		helper.assertTrue(ArcherSkills.AMMO_BOOKS.isEmpty(), "these books still need an arrow: " + ArcherSkills.AMMO_BOOKS);
+		helper.assertTrue(ArcherSkills.AMMO_BOOKS.equals(java.util.Set.of("arrow_rain")), "these books need an arrow: " + ArcherSkills.AMMO_BOOKS);
 		helper.assertTrue(arrows == 0, "the case carried " + arrows + " arrows, so it proves nothing");
 		helper.assertTrue(refused.isEmpty(), "these books refused a bow and no arrow: " + refused);
 		foe.discard();

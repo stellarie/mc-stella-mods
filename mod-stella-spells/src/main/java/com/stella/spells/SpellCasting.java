@@ -184,10 +184,12 @@ public final class SpellCasting {
 		Mob target = null;
 		Vec3 point = null;
 		LivingEntity ally = null;
+		// An archer skill reaches a fixed distance, whatever sharpens a mage's sight.
+		int reach = definition.school() == School.ARCHER ? ArcherSkills.SKILL_RANGE_BLOCKS : modifiers.targetRangeBlocks();
 		switch (definition.targetMode()) {
 			case SELF -> point = caster.position();
-			case HOSTILE -> target = findTarget(caster, modifiers.targetRangeBlocks());
-			case BLOCK -> point = findBlockTarget(caster, modifiers.targetRangeBlocks());
+			case HOSTILE -> target = findTarget(caster, reach);
+			case BLOCK -> point = findBlockTarget(caster, reach);
 			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
 			case ALLY -> ally = findAlly(caster, modifiers.targetRangeBlocks());
 		}
@@ -230,6 +232,9 @@ public final class SpellCasting {
 			boolean skip = SKIP_COOLDOWN.get() != null;
 			SKIP_COOLDOWN.remove();
 			SpellVisuals.play(caster, definition, target, point, departure, modifiers);
+			if (definition.school() == School.ARCHER) {
+				ArcherDraw.play(caster);
+			}
 			if (!skip && !free) {
 				caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
 			}

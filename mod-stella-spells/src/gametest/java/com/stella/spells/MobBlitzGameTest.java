@@ -40,7 +40,8 @@ public class MobBlitzGameTest {
 	private static final double OWNER_Z = 1.5;
 	private static final double ATTACK = 7.0;
 	private static final double TARGET_HEALTH = 1000.0;
-	private static final double PERCH_REACH = 2.5;
+	/** The most the falcon may sit from its owner: the circle, plus the climb above the head. */
+	private static final double HOME_REACH = FalconEntity.HOVER_RADIUS + FalconEntity.HOVER_CLEARANCE + FalconEntity.HOVER_BOB + 2.0;
 	private static final double STRIKE_REACH = 1.8;
 	/** The arrow needs a few ticks to land before the strikes are owed. */
 	private static final long FLIGHT_TICKS = 30L;
@@ -70,7 +71,7 @@ public class MobBlitzGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void theShareGivesAMobAPermanentBlitzBeatAndAFalconOnItsShoulder(final GameTestHelper helper) {
+	public void theShareGivesAMobAPermanentBlitzBeatAndAFalconOverIt(final GameTestHelper helper) {
 		ready(helper);
 		Mob skeleton = mob(helper, EntityTypes.SKELETON, OWNER_X, OWNER_Z);
 		share().accept(skeleton);
@@ -78,11 +79,11 @@ public class MobBlitzGameTest {
 		helper.runAfterDelay(30L, () -> {
 			FalconEntity falcon = falconOf(helper, skeleton);
 			double away = falcon == null ? -1.0 : falcon.position().distanceTo(skeleton.position());
-			LOG.info("[BEHAVIOR] test=theShareGivesAMobAPermanentBlitzBeatAndAFalconOnItsShoulder RESULT held={} infinite={} falcon={} away={}",
+			LOG.info("[BEHAVIOR] test=theShareGivesAMobAPermanentBlitzBeatAndAFalconOverIt RESULT held={} infinite={} falcon={} away={}",
 				held != null, held != null && held.isInfiniteDuration(), falcon != null, away);
 			helper.assertTrue(held != null && held.isInfiniteDuration(), "the share left no permanent buff");
 			helper.assertTrue(falcon != null, "the buffed mob got no falcon");
-			helper.assertTrue(away >= 0.0 && away <= PERCH_REACH, "the falcon perched " + away + " blocks from the mob");
+			helper.assertTrue(away >= 0.0 && away <= HOME_REACH, "the falcon flew " + away + " blocks from the mob");
 			discard(skeleton, falcon);
 			helper.succeed();
 		});
