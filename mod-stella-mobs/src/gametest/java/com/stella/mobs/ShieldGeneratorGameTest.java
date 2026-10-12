@@ -356,18 +356,15 @@ public class ShieldGeneratorGameTest {
 		return found.size();
 	}
 
-	/** A hostile mob beside a player in the box drops the target it held, takes none, and never hurts the player. */
-	@GameTest(maxTicks = READY_TICKS + SHIELD_WATCH_TICKS + 100, padding = WideArena.PADDING)
-	public void aZombieInsideTheBoxIgnoresThePlayerBesideIt(final GameTestHelper helper) {
+	/** A hostile mob and a player both inside the box keep normal aggro: the zombie takes the player. */
+	@GameTest(maxTicks = READY_TICKS + ACQUIRE_TICKS + 100, padding = WideArena.PADDING)
+	public void aZombieInsideTheBoxTakesThePlayerBesideIt(final GameTestHelper helper) {
 		Scene scene = new Scene(helper);
 		ServerPlayer[] player = new ServerPlayer[1];
 		Zombie[] zombie = new Zombie[1];
-		int[] held = new int[1];
-		float[] startHealth = new float[1];
 		scene.whenReady(List.of(spot(INSIDE_X)), () -> {
 			player[0] = scene.arena.survivalPlayer(INSIDE_X, GEN_Z + 2);
 			zombie[0] = scene.arena.spawn(EntityTypes.ZOMBIE, INSIDE_X, GEN_Z, mob -> { });
-			zombie[0].setTarget(player[0]);
 			scene.place();
 		});
 		helper.onEachTick(() -> {
@@ -375,17 +372,11 @@ public class ShieldGeneratorGameTest {
 				return;
 			}
 			WideArena.keepValid(player[0]);
-			if (scene.ticks == 1) {
-				startHealth[0] = player[0].getHealth();
-			}
 			if (zombie[0].getTarget() == player[0]) {
-				held[0]++;
-			}
-			if (scene.ticks == SHIELD_WATCH_TICKS) {
-				result("zombieInside", "heldTicks=" + held[0] + " health=" + player[0].getHealth() + " start=" + startHealth[0]);
-				helper.assertTrue(held[0] == 0, "the zombie held the player for " + held[0] + " ticks");
-				helper.assertTrue(player[0].getHealth() == startHealth[0], "the player lost health: " + startHealth[0] + " to " + player[0].getHealth());
+				result("zombieInside", "acquiredAfter=" + scene.ticks);
 				helper.succeed();
+			} else if (scene.ticks > ACQUIRE_TICKS) {
+				helper.fail("the zombie never took the player inside the box, target=" + zombie[0].getTargetUnchecked());
 			}
 		});
 	}
@@ -399,9 +390,9 @@ public class ShieldGeneratorGameTest {
 		Zombie[] later = new Zombie[1];
 		int[] held = new int[1];
 		int breakTick = SHIELD_WATCH_TICKS / 2;
-		scene.whenReady(List.of(spot(INSIDE_X)), () -> {
-			player[0] = scene.arena.survivalPlayer(INSIDE_X, GEN_Z + 2);
-			zombie[0] = scene.arena.spawn(EntityTypes.ZOMBIE, INSIDE_X, GEN_Z, mob -> { });
+		scene.whenReady(List.of(spot(INSIDE_X), spot(LAST_INSIDE_X - 1), spot(FIRST_OUTSIDE_X + 1)), () -> {
+			player[0] = scene.arena.survivalPlayer(FIRST_OUTSIDE_X + 1, GEN_Z);
+			zombie[0] = scene.arena.spawn(EntityTypes.ZOMBIE, LAST_INSIDE_X - 1, GEN_Z, mob -> { });
 			scene.place();
 		});
 		helper.onEachTick(() -> {
@@ -428,16 +419,16 @@ public class ShieldGeneratorGameTest {
 		});
 	}
 
-	/** A mob with a brain keeps its target in a memory. A brute beside a player in the box never fills it, and does once the generator breaks. */
+	/** A mob with a brain keeps its target in a memory. A brute inside never fills it for a player outside, and does once the generator breaks. */
 	@GameTest(maxTicks = READY_TICKS + SHIELD_WATCH_TICKS + ACQUIRE_TICKS + 100, padding = WideArena.PADDING)
 	public void aPiglinBruteInsideTheBoxHoldsNoAttackTarget(final GameTestHelper helper) {
 		Scene scene = new Scene(helper);
 		ServerPlayer[] player = new ServerPlayer[1];
 		Mob[] brute = new Mob[1];
 		int[] held = new int[1];
-		scene.whenReady(List.of(spot(INSIDE_X)), () -> {
-			player[0] = scene.arena.survivalPlayer(INSIDE_X, GEN_Z + 2);
-			brute[0] = scene.arena.spawn(EntityTypes.PIGLIN_BRUTE, INSIDE_X, GEN_Z, mob -> { });
+		scene.whenReady(List.of(spot(LAST_INSIDE_X - 1), spot(FIRST_OUTSIDE_X + 1)), () -> {
+			player[0] = scene.arena.survivalPlayer(FIRST_OUTSIDE_X + 1, GEN_Z);
+			brute[0] = scene.arena.spawn(EntityTypes.PIGLIN_BRUTE, LAST_INSIDE_X - 1, GEN_Z, mob -> { });
 			scene.place();
 		});
 		helper.onEachTick(() -> {
@@ -446,7 +437,8 @@ public class ShieldGeneratorGameTest {
 			}
 			WideArena.keepValid(player[0]);
 			boolean holds = brute[0].getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent() || brute[0].getTarget() == player[0];
-			if (holds) {
+			boolean split = ShieldZones.covers(brute[0]) != ShieldZones.covers(player[0]);
+			if (holds && (split || scene.ticks > SHIELD_WATCH_TICKS)) {
 				held[0]++;
 			}
 			if (scene.ticks == SHIELD_WATCH_TICKS) {
@@ -483,7 +475,8 @@ public class ShieldGeneratorGameTest {
 				return;
 			}
 			WideArena.keepValid(player[0]);
-			if (skeleton[0].getTarget() == player[0]) {
+			boolean split = ShieldZones.covers(skeleton[0]) != ShieldZones.covers(player[0]);
+			if (skeleton[0].getTarget() == player[0] && (split || scene.ticks > SHIELD_WATCH_TICKS)) {
 				held[0]++;
 			}
 			if (scene.ticks == SHIELD_WATCH_TICKS) {
