@@ -92,7 +92,8 @@ ground past the stair's foot.
   Tyrant rises: a blaze three times the size whose hits set its target alight.
 - `TowerWeather`: frost builds up to 140 ticks on a body in the open of the snowstorm (never in boots that vanilla's
   freezing spares); a 3-second gust every 15 seconds slows a body in the desert; both push by at most 0.05.
-- A biome raises its own kinds (`BiomePools`); a hall those of the biome below it.
+- A biome raises its own kinds and the mobs mod's red, white and black slimes (`BiomePools`); a hall those of the biome below it.
+  A white slime keeps five blue escorts, which leave with it when it dies (`TowerSlimes`).
 
 ### Props, lost rooms
 

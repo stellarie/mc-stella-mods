@@ -1,6 +1,10 @@
 package com.stella.tower;
 
+import com.stella.mobs.entity.StellaEntities;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Mob;
@@ -36,11 +40,23 @@ public final class BiomePools {
 	private static final List<EntityType<? extends Mob>> SUNKEN_CATACOMBS = List.of(EntityTypes.SKELETON, EntityTypes.ZOMBIE, EntityTypes.DROWNED,
 		EntityTypes.CAVE_SPIDER, EntityTypes.STRAY, EntityTypes.BREEZE, EntityTypes.SHULKER);
 
+	/** The mobs mod's coloured slimes, which every biome raises beside its own kinds. */
+	private static final List<EntityType<? extends Mob>> SLIMES = List.of(StellaEntities.RED_SLIME, StellaEntities.WHITE_SLIME, StellaEntities.BLACK_SLIME);
+	private static final Map<FloorBiome, List<EntityType<? extends Mob>>> POOLS = new EnumMap<>(FloorBiome.class);
+
 	private BiomePools() {
 	}
 
-	/** The kinds a biome raises. A great hall has none of its own: see {@link TowerMobs#poolOf}. */
-	public static List<EntityType<? extends Mob>> of(final FloorBiome biome) {
+	/** The kinds a biome raises: its own and the red, white and black slimes. A great hall has none of its own: see {@link TowerMobs#poolOf}. */
+	public static synchronized List<EntityType<? extends Mob>> of(final FloorBiome biome) {
+		return POOLS.computeIfAbsent(biome, key -> {
+			List<EntityType<? extends Mob>> kinds = new ArrayList<>(own(key));
+			kinds.addAll(SLIMES);
+			return List.copyOf(kinds);
+		});
+	}
+
+	private static List<EntityType<? extends Mob>> own(final FloorBiome biome) {
 		return switch (biome) {
 			case RAINY_FOREST -> RAINY_FOREST;
 			case DESTROYED_VILLAGE -> DESTROYED_VILLAGE;
