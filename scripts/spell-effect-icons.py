@@ -47,6 +47,12 @@ COLORS = {
     "guardian_angel": 0xFFF4C2,
     "unbroken_vow": 0xC8D2DE,
     "steadfast_prayer": 0xF0E6B8,
+    "vultures_eye": 0x9F7A2E,
+    "blitz_beat": 0xE0303A,
+    "concentrate": 0xD8B44A,
+    "spectral_quiver": 0xA8E4F0,
+    "wind_walk": 0xC8F0B4,
+    "triangle_shot": 0x9BE8A8,
 }
 
 
@@ -215,6 +221,68 @@ def standing_stone(d: ImageDraw.ImageDraw, c) -> None:
     d.point((8, 3), fill=hi)
 
 
+def far_eye(d: ImageDraw.ImageDraw, c) -> None:
+    # An eye down a long arrow: sight that grows with distance.
+    d.line([(1, 12), (14, 3)], fill=shade(c), width=1)
+    d.polygon([(14, 3), (10, 3), (13, 6)], fill=light(c))
+    d.polygon([(1, 12), (3, 14), (0, 15)], fill=c)
+    d.polygon([(6, 5), (10, 7), (6, 10), (2, 7)], fill=c)
+    d.ellipse([4, 6, 7, 9], fill=(0x1A, 0x14, 0x0E, 255))
+    d.point((5, 7), fill=(255, 255, 255, 255))
+
+
+def falcon(d: ImageDraw.ImageDraw, c) -> None:
+    # A diving falcon: spread wings, a hooked head, a forked tail.
+    d.polygon([(8, 5), (1, 2), (3, 6), (0, 8), (6, 8)], fill=shade(c))
+    d.polygon([(8, 5), (15, 2), (13, 6), (15, 8), (10, 8)], fill=shade(c))
+    d.ellipse([6, 4, 10, 11], fill=c)
+    d.ellipse([7, 1, 10, 5], fill=c)
+    d.point((10, 3), fill=(0xFF, 0xD0, 0x40, 255))
+    d.polygon([(7, 11), (6, 15), (8, 13), (10, 15), (9, 11)], fill=c)
+    d.line([(2, 3), (6, 6)], fill=light(c))
+    d.line([(14, 3), (10, 6)], fill=light(c))
+
+
+def focus(d: ImageDraw.ImageDraw, c) -> None:
+    # Four brackets closing on a point: the aim gathers.
+    hi = light(c)
+    for x0, y0, dx, dy in [(1, 1, 1, 1), (14, 1, -1, 1), (1, 14, 1, -1), (14, 14, -1, -1)]:
+        d.line([(x0, y0), (x0 + 3 * dx, y0)], fill=c, width=1)
+        d.line([(x0, y0), (x0, y0 + 3 * dy)], fill=c, width=1)
+    d.ellipse([5, 5, 10, 10], outline=c)
+    d.rectangle([7, 7, 8, 8], fill=hi)
+
+
+def quiver(d: ImageDraw.ImageDraw, c) -> None:
+    # A quiver of glowing ghost arrows.
+    d.polygon([(4, 6), (10, 4), (13, 13), (7, 15)], fill=shade(c))
+    d.line([(4, 6), (7, 15)], fill=c)
+    for x in (5, 8, 11):
+        d.line([(x, 6), (x - 2, 0)], fill=light(c))
+        d.point((x - 2, 0), fill=(255, 255, 255, 255))
+    d.line([(5, 9), (11, 7)], fill=c)
+
+
+def wind(d: ImageDraw.ImageDraw, c) -> None:
+    # Three swept gusts.
+    hi = light(c)
+    d.arc([1, 1, 12, 8], 200, 360, fill=c, width=2)
+    d.line([(1, 5), (6, 5)], fill=c)
+    d.arc([4, 6, 15, 13], 200, 360, fill=hi, width=2)
+    d.line([(4, 10), (9, 10)], fill=hi)
+    d.line([(0, 14), (8, 14)], fill=c)
+
+
+def three_arrows(d: ImageDraw.ImageDraw, c) -> None:
+    # Three arrows fanned from one point.
+    hi = light(c)
+    for tip in [(8, 0), (15, 9), (1, 9)]:
+        d.line([(8, 14), tip], fill=c)
+        d.rectangle([tip[0] - 1, tip[1], tip[0] + 1, tip[1] + 1], fill=hi)
+    d.line([(6, 15), (10, 15)], fill=shade(c))
+    d.point((8, 14), fill=hi)
+
+
 PAINTERS = {
     "chilled": snowflake,
     "frozen": ice_cube,
@@ -231,6 +299,12 @@ PAINTERS = {
     "guardian_angel": wings,
     "unbroken_vow": anvil,
     "steadfast_prayer": standing_stone,
+    "vultures_eye": far_eye,
+    "blitz_beat": falcon,
+    "concentrate": focus,
+    "spectral_quiver": quiver,
+    "wind_walk": wind,
+    "triangle_shot": three_arrows,
 }
 
 
