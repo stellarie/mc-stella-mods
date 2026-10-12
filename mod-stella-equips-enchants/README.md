@@ -213,10 +213,10 @@ lines when the tooltip builds. A book description states its numbers and how the
 
 ## Damage numbers
 
-Each hit an entity takes shows a small white number over it, and each heal a green one with a plus
+Each hit an entity takes shows a small bold white number over it, and each heal a bold green one with a plus
 sign: the health it actually lost or gained, so a hit that Resistance soaks up shows nothing, and a
-hit on golden hearts still counts. The number drifts up by a block and fades over three seconds, then
-goes. It is sent to the players within 32 blocks as a display that never joins the world, so it is
+hit on golden hearts still counts. The number drifts up by a block and fades over five seconds, then
+goes. A critical hit shows its number in yellow, 1.3 times larger. The vanilla critical hit of a player counts, and so does an RPG critical hit when `mod-stella-rpg` is present (it publishes `mod-stella-rpg:is-crit`). It is sent to the players within 32 blocks as a display that never joins the world, so it is
 never saved. A player never sees the numbers over their own head. An invisible entity shows no
 number, so a hit never gives its place away, and each entity shows at most one damage number and
 one heal number every 4 ticks, so a mob farm does not flood its viewers.

@@ -490,6 +490,10 @@ does not tilt.
 `com.stella.rpg.api.HealthScaleShare` puts the `Double` K in the object share `mod-stella-rpg:health-scale`.
 It republishes the value after each config reload.
 
+`com.stella.rpg.api.CritShare` puts a `Function<Object[], Boolean>` in the object share `mod-stella-rpg:is-crit`.
+It takes `{LivingEntity victim, DamageSource source}` and answers `RpgCombat.isCrit`: true while an RPG critical hit
+on the victim is in progress. The damage numbers of `mod-stella-equips-enchants` read it to colour a critical number.
+
 ## Armor sets
 
 `ArmorSets` registers a `StatBonuses.Provider` and a `DefenseBonuses.Provider`.
