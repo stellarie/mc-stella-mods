@@ -207,6 +207,9 @@ public class ArrowShowerGameTest {
 	}
 
 	private static void showerCase(final GameTestHelper helper, final boolean awakened, final int want, final String test) {
+		helper.assertTrue(ArcherSkills.ARROW_SHOWER_ARROWS == 32 && ArcherSkills.AWAKENED_ARROW_SHOWER_ARROWS == 64
+			&& ArcherSkills.ARROW_SHOWER_TICKS == 80 && ArcherSkills.ARROW_SHOWER_COST == 8,
+			"the shower numbers drifted from 32 (64 awakened) arrows in 80 ticks for 8 arrows");
 		ServerPlayer caster = archer(helper, new ItemStack(Items.ARROW, 20));
 		boolean applied = ArcherSkills.applyArrowRain(caster, null, ground(helper), SkillSchoolGameTest.modifiers(caster, awakened));
 		List<Integer> sizes = new ArrayList<>();

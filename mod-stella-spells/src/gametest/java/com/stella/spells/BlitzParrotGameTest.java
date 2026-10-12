@@ -27,8 +27,8 @@ public class BlitzParrotGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.blitzparrot");
 	private static final double OWNER_X = 1.5;
 	private static final double OWNER_Z = 1.5;
-	/** The far corner of the 8 by 8 arena: past the falcon's reach, and clear of the casters beside this cell. */
-	private static final double FAR_CORNER = 7.5;
+	/** How far above the owner the out-of-reach foe floats. */
+	private static final double FAR_ABOVE = 10.0;
 	private static final float BLOW = 3.0F;
 	private static final double HEIGHT_SLACK = 0.1;
 
@@ -81,9 +81,14 @@ public class BlitzParrotGameTest {
 
 	@GameTest(maxTicks = 260)
 	public void anIdleOwnerGetsThreeParrotHitsEveryThirtyTicksOnAFoeWithinEightBlocksOnly(final GameTestHelper helper) {
+		helper.assertTrue(ArcherSkills.PARROT_RANGE == 8.0 && ArcherSkills.PARROT_IDLE_TICKS == 40 && ArcherSkills.PARROT_INTERVAL_TICKS == 30
+			&& ArcherSkills.PARROT_HITS == 3 && ArcherSkills.PARROT_GLOW_TICKS == 60 && ArcherSkills.PARROT_XP_SHARE == 0.35,
+			"the falcon numbers drifted from 8 blocks, 2 s idle, 3 hits every 1.5 s, 3 s of glow and 35 percent");
 		ServerPlayer owner = buffed(helper);
 		Mob near = foe(helper, OWNER_X + 3.0, OWNER_Z + 4.0);
-		Mob far = foe(helper, FAR_CORNER, FAR_CORNER);
+		// Ten blocks straight up: past the falcon's reach, and clear of every other cell's casters and mobs.
+		Mob far = foe(helper, OWNER_X, OWNER_Z);
+		far.snapTo(far.getX(), far.getY() + FAR_ABOVE, far.getZ());
 		double reach = near.position().distanceTo(owner.position());
 		double beyond = far.position().distanceTo(owner.position());
 		List<Long> hits = new ArrayList<>();
