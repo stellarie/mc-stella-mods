@@ -48,7 +48,7 @@ import net.minecraft.world.phys.Vec3;
 public class EnchantmentDescriptionGameTest {
 	private static final String MOD_ID = StellaEquips.MOD_ID;
 	private static final String LANG_PATH = "/assets/" + MOD_ID + "/lang/en_us.json";
-	private static final int MAX_DESCRIPTION_LENGTH = 72;
+	private static final int MAX_DESCRIPTION_LENGTH = 160;
 	private static final int GREY = 0xAAAAAA;
 	private static final int FLOOR_Y = 2;
 	private static final int SPAWN_Y = 3;
@@ -86,8 +86,11 @@ public class EnchantmentDescriptionGameTest {
 		helper.succeed();
 	}
 
+	/** The header of a book tooltip is the book name and one name line for each enchantment. */
+	private static final int BOOK_HEADER_LINES = 3;
+
 	@GameTest
-	public void theBookTooltipShowsOneLinePerEnchantment(final GameTestHelper helper) {
+	public void theBookTooltipShowsTheWrappedDescriptionOfEachEnchantment(final GameTestHelper helper) {
 		Map<String, String> shipped = shippedDescriptions();
 		Holder<Enchantment> first = holder(helper, "bow/marksman");
 		Holder<Enchantment> second = holder(helper, "tool/blockfeast");
@@ -98,34 +101,27 @@ public class EnchantmentDescriptionGameTest {
 		EnchantmentHelper.setEnchantments(book, stored.toImmutable());
 
 		List<Component> lines = tooltipWithDescriptions(helper, book, shipped);
-		List<String> shown = new ArrayList<>();
+		List<Component> description = lines.subList(BOOK_HEADER_LINES, lines.size());
 		boolean greyUpright = true;
-		for (Component line : lines) {
-			String text = line.getString();
-			if (!shipped.containsValue(text)) {
-				continue;
-			}
-
-			shown.add(text);
+		for (Component line : description) {
 			Style style = line.getStyle();
-			TextColor colour = style.getColor();
-			if (colour == null || colour.getValue() != GREY || style.isItalic()) {
+			TextColor colour = line.getSiblings().isEmpty() ? style.getColor() : line.getSiblings().getFirst().getStyle().getColor();
+			boolean italic = line.getSiblings().isEmpty() ? style.isItalic() : line.getSiblings().getFirst().getStyle().isItalic();
+			if (colour == null || colour.getValue() != GREY || italic) {
 				greyUpright = false;
 			}
 		}
 
+		String joined = String.join(" ", description.stream().map(Component::getString).toList());
 		String firstExpected = shipped.get(EnchantmentDescriptions.keyFor(identifier("bow/marksman")));
 		String secondExpected = shipped.get(EnchantmentDescriptions.keyFor(identifier("tool/blockfeast")));
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=bookTooltipDescriptions RESULT enchantments=2 descriptionLines={} greyUpright={} first={} second={}",
-			shown.size(), greyUpright, shown.contains(firstExpected), shown.contains(secondExpected)
+			description.size(), greyUpright, joined.contains(firstExpected), joined.contains(secondExpected)
 		);
-		helper.assertTrue(
-			shown.size() == 2,
-			"a two enchantment book showed " + shown.size() + " description lines: " + shown
-		);
-		helper.assertTrue(shown.contains(firstExpected), "the marksman description is missing from the book tooltip");
-		helper.assertTrue(shown.contains(secondExpected), "the blockfeast description is missing from the book tooltip");
+		helper.assertTrue(joined.contains(firstExpected), "the marksman description is missing from the book tooltip: " + joined);
+		helper.assertTrue(joined.contains(secondExpected), "the blockfeast description is missing from the book tooltip: " + joined);
+		helper.assertTrue(description.size() > 2, "a long description stayed on one line: " + joined);
 		helper.assertTrue(greyUpright, "a description line was not grey and unitalicised");
 		helper.succeed();
 	}
@@ -140,18 +136,13 @@ public class EnchantmentDescriptionGameTest {
 		EnchantmentHelper.setEnchantments(book, stored.toImmutable());
 
 		List<Component> lines = tooltipWithDescriptions(helper, book, shipped);
-		int shown = 0;
-		for (Component line : lines) {
-			if (shipped.containsValue(line.getString())) {
-				shown++;
-			}
-		}
+		String joined = String.join(" ", lines.subList(BOOK_HEADER_LINES, lines.size()).stream().map(Component::getString).toList());
+		String expected = shipped.get(EnchantmentDescriptions.keyFor(identifier("bow/marksman")));
 
 		StellaEquips.LOGGER.info(
-			"[BEHAVIOR] test=bookTooltipMissingDescription RESULT enchantments=2 described=1 descriptionLines={}",
-			shown
+			"[BEHAVIOR] test=bookTooltipMissingDescription RESULT enchantments=2 described=1 descriptionText={}", joined
 		);
-		helper.assertTrue(shown == 1, "a book with one undescribed enchantment showed " + shown + " description lines");
+		helper.assertTrue(expected.equals(joined), "a book with one undescribed enchantment showed: " + joined);
 		helper.succeed();
 	}
 

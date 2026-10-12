@@ -56,7 +56,7 @@ public final class PerfectVeil {
 			new MobEffectInstance(MobEffects.INVISIBILITY, TICKS, 0, false, false, true),
 			new MobEffectInstance(VEIL, TICKS, 0, false, false, false)), Optional.empty()));
 		potion.set(DataComponents.ITEM_NAME, Component.translatable("item.mod-stella-tower.perfect_invisibility").withStyle(ChatFormatting.AQUA));
-		potion.set(DataComponents.LORE, new ItemLore(List.of(
+		potion.set(ItemDescription.TYPE, new ItemLore(List.of(
 			Component.translatable("item.mod-stella-tower.perfect_invisibility.desc").withStyle(ChatFormatting.GRAY))));
 		return potion;
 	}

@@ -2,6 +2,7 @@ package com.stella.equips.mixin;
 
 import com.stella.equips.guardian.GuardianTooltip;
 import com.stella.equips.tooltip.EnchantmentDescriptions;
+import com.stella.equips.tooltip.ItemExtras;
 import com.stella.equips.unique.UniqueTooltip;
 import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
@@ -30,5 +31,6 @@ public abstract class ItemStackTooltipMixin {
 		EnchantmentDescriptions.append((ItemStack) (Object) this, context.registries(), builder);
 		UniqueTooltip.append((ItemStack) (Object) this, builder);
 		GuardianTooltip.append((ItemStack) (Object) this, builder);
+		ItemExtras.append((ItemStack) (Object) this, builder);
 	}
 }

@@ -60,6 +60,6 @@ public class VoidKeyItem extends Item {
 	public void appendHoverText(
 		final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> lines, final TooltipFlag flag
 	) {
-		lines.accept(Component.translatable("item.mod-stella-tower.void_key.desc").withStyle(ChatFormatting.GRAY));
+		DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.void_key.desc").withStyle(ChatFormatting.GRAY));
 	}
 }

@@ -65,7 +65,7 @@ public final class EnchantmentDescriptions {
 			return;
 		}
 
-		lines.accept(Component.translatable(key).withStyle(STYLE));
+		DescriptionLines.add(lines, Component.translatable(key).withStyle(STYLE));
 	}
 
 	private static HolderSet<Enchantment> tooltipOrder(final HolderLookup.Provider registries) {

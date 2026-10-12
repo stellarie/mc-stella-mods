@@ -1,5 +1,6 @@
 package com.stella.equips.bows;
 
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.core.component.DataComponents;
@@ -81,6 +82,6 @@ public class CraftedBowItem extends BowItem implements CraftedWeapon {
 	public void appendHoverText(final ItemStack stack, final Item.TooltipContext context, final TooltipDisplay display, final Consumer<Component> builder,
 		final TooltipFlag flag) {
 		super.appendHoverText(stack, context, display, builder, flag);
-		builder.accept(CraftedBows.effectText(stack));
+		DescriptionLines.add(builder, CraftedBows.effectText(stack));
 	}
 }
