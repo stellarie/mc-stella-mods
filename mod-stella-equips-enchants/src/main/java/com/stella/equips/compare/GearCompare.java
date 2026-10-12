@@ -1,14 +1,17 @@
 package com.stella.equips.compare;
 
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -23,6 +26,7 @@ public final class GearCompare {
 	private static final Identifier AFFIX_ROLLS = Identifier.fromNamespaceAndPath("mod-stella-rpg", "affix_rolls");
 	/** A percent affix stores tenths of a percent. */
 	private static final int TENTHS = 10;
+	private static final String KEY = "tooltip.mod-stella-equips-enchants.compare.";
 
 	/** Stat key to value, and affix key to stored value. */
 	public record Rolls(Map<String, Integer> stats, Map<String, Integer> affixes) {
@@ -95,6 +99,29 @@ public final class GearCompare {
 			? Integer.toString(size / TENTHS)
 			: String.format(Locale.ROOT, "%.1f", size / (double) TENTHS);
 		return sign + number + "%";
+	}
+
+	/** The tooltip lines for a diff: a hint without Shift, else the header and one colored line for each changed roll. */
+	public static List<Component> tooltipLines(final List<Line> diff, final boolean shift) {
+		List<Component> lines = new ArrayList<>();
+
+		if (diff.isEmpty()) {
+			return lines;
+		}
+
+		if (!shift) {
+			DescriptionLines.add(lines, Component.translatable(KEY + "hint").withStyle(ChatFormatting.DARK_GRAY));
+			return lines;
+		}
+
+		DescriptionLines.add(lines, Component.translatable(KEY + "header").withStyle(ChatFormatting.GRAY));
+
+		for (Line line : diff) {
+			ChatFormatting color = line.delta() > 0 ? ChatFormatting.GREEN : ChatFormatting.RED;
+			DescriptionLines.add(lines, Component.translatable(KEY + "line", amount(line), Component.translatable(KEY + line.key())).withStyle(color));
+		}
+
+		return lines;
 	}
 
 	private static void collect(

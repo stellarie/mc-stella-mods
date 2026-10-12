@@ -1,6 +1,7 @@
 package com.stella.equips.refine;
 
 import com.stella.equips.StellaEquips;
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -350,9 +351,9 @@ public final class Refine {
 		}
 		List<Component> lines = new ArrayList<>();
 		if (level > 0) {
-			lines.add(Component.literal(LORE_PREFIX + level).withStyle(style -> style.withColor(ChatFormatting.AQUA).withItalic(false)));
+			lines.add(DescriptionLines.marked(Component.literal(LORE_PREFIX + level).withStyle(style -> style.withColor(ChatFormatting.AQUA).withItalic(false))));
 			for (String effect : effects(stack, level)) {
-				lines.add(Component.literal(effect).withStyle(style -> style.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false)));
+				lines.add(DescriptionLines.marked(Component.literal(effect).withStyle(style -> style.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false))));
 			}
 		}
 		lines.addAll(kept);

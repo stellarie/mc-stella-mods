@@ -684,7 +684,7 @@ public class MerchantWeaponsGameTest {
 			List<Component> lines = new ArrayList<>();
 			stack.getItem().appendHoverText(stack, Item.TooltipContext.EMPTY, TooltipDisplay.DEFAULT, lines::add, TooltipFlag.NORMAL);
 			StringBuilder text = new StringBuilder();
-			lines.forEach(line -> text.append(line.getString()).append('\n'));
+			lines.forEach(line -> text.append(line.getString()).append(' '));
 			for (String phrase : expected.get(row.id())) {
 				helper.assertTrue(text.toString().contains(phrase), row.id() + " tooltip lacks '" + phrase + "': " + text);
 			}

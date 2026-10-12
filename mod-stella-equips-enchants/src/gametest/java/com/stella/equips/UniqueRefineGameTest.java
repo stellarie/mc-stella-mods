@@ -103,7 +103,8 @@ public class UniqueRefineGameTest {
 		UniqueDef def = UniqueTestKit.bonewhisper(helper);
 		ItemStack stack = UniqueTestKit.stack(def, Uniques.PLUS_10);
 		List<String> lines = stack.getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL).stream().map(Component::getString).toList();
-		List<String> expected = UniqueTooltip.lines(stack).stream().map(Component::getString).toList();
+		List<String> expected = UniqueTooltip.lines(stack).stream()
+			.flatMap(line -> com.stella.equips.tooltip.DescriptionLines.wrap(line).stream()).map(Component::getString).toList();
 		int first = lines.indexOf(expected.get(0));
 		helper.assertTrue(first >= 0, "the job line is not in the item tooltip: " + lines);
 		helper.assertTrue(lines.subList(first, Math.min(lines.size(), first + expected.size())).equals(expected), "the unique lines are not in order: " + lines);

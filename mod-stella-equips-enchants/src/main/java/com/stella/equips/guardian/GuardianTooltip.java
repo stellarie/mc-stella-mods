@@ -1,6 +1,7 @@
 package com.stella.equips.guardian;
 
 import com.stella.equips.refine.Refine;
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -32,7 +33,7 @@ public final class GuardianTooltip {
 
 	public static void append(final ItemStack stack, final Consumer<Component> builder) {
 		for (Component line : lines(stack)) {
-			builder.accept(line);
+			DescriptionLines.add(builder, line);
 		}
 	}
 

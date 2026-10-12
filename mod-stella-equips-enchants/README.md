@@ -205,6 +205,12 @@ components by id, so this mod needs no link to the rpg mod. Without it, no toolt
 changes. Percent affixes are stored in tenths and show as percent. The rules live in
 `GearCompare`.
 
+**Tooltip width.** Every description line of this mod holds at most 24 characters. `DescriptionLines`
+splits a longer line at a space, for book descriptions, uniques, guardian gear, crafted and merchant
+weapons, the compare lines and the slime heart. Refine, mastery and imbue lines stay whole in the
+lore component, with the style insertion `stella:wrap` on them. `ItemLoreMixin` splits only those
+lines when the tooltip builds. A book description states its numbers and how they rise with level.
+
 ## Damage numbers
 
 Each hit an entity takes shows a small white number over it, and each heal a green one with a plus
