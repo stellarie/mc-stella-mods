@@ -72,7 +72,7 @@ final class Falcons {
 			return null;
 		}
 		falcon.bind(owner);
-		var at = FalconEntity.perch(owner);
+		var at = FalconEntity.hover(owner, 0);
 		falcon.snapTo(at.x, at.y, at.z, owner.getYRot(), 0.0F);
 		if (!level.addFreshEntity(falcon)) {
 			return null;

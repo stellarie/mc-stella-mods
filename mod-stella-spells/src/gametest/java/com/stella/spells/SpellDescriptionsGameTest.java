@@ -43,21 +43,33 @@ public class SpellDescriptionsGameTest {
 	@GameTest
 	public void targetAndUseLinesFollowTheTargetMode(final GameTestHelper helper) {
 		SpellTestLog.track(helper, "targetAndUseLinesFollowTheTargetMode");
-		Map<TargetMode, String> targetByMode = new HashMap<>();
-		Map<TargetMode, String> useByMode = new HashMap<>();
+		Map<String, String> targetByKey = new HashMap<>();
+		Map<String, String> useByKey = new HashMap<>();
 		for (SpellbookItem book : Spellbooks.CATALOG) {
-			TargetMode mode = book.definition().targetMode();
+			String key = lineKey(book);
 			List<Component> lines = lines(book);
-			String target = targetByMode.computeIfAbsent(mode, key -> lines.get(TARGET_LINE).getString());
-			String use = useByMode.computeIfAbsent(mode, key -> lines.get(USE_LINE).getString());
+			String target = targetByKey.computeIfAbsent(key, ignored -> lines.get(TARGET_LINE).getString());
+			String use = useByKey.computeIfAbsent(key, ignored -> lines.get(USE_LINE).getString());
 			helper.assertTrue(target.equals(lines.get(TARGET_LINE).getString()), book.definition().id() + " target line differs from its mode");
 			helper.assertTrue(use.equals(lines.get(USE_LINE).getString()), book.definition().id() + " use line differs from its mode");
 		}
-		helper.assertTrue(targetByMode.size() == TargetMode.values().length, "not every target mode has a book: " + targetByMode.keySet());
-		helper.assertTrue(new HashSet<>(targetByMode.values()).size() == TargetMode.values().length, "two target modes share a target line");
-		helper.assertTrue(new HashSet<>(useByMode.values()).size() == TargetMode.values().length, "two target modes share a use line");
-		LOG.info("[SPELLTEST] test=targetAndUseLinesFollowTheTargetMode RESULT modes={}", targetByMode.size());
+		// An archer skill that aims reaches further than a spell, so its target line is its own.
+		int modes = TargetMode.values().length + 2;
+		helper.assertTrue(targetByKey.size() == modes, "not every target mode has a book: " + targetByKey.keySet());
+		helper.assertTrue(new HashSet<>(targetByKey.values()).size() == modes, "two target modes share a target line");
+		helper.assertTrue(new HashSet<>(useByKey.values()).size() == TargetMode.values().length, "two target modes share a use line");
+		for (String archer : List.of(TargetMode.HOSTILE + ".archer", TargetMode.BLOCK + ".archer")) {
+			helper.assertTrue(targetByKey.get(archer).contains(Integer.toString(ArcherSkills.SKILL_RANGE_BLOCKS)),
+				archer + " does not state the " + ArcherSkills.SKILL_RANGE_BLOCKS + " block reach: " + targetByKey.get(archer));
+		}
+		LOG.info("[SPELLTEST] test=targetAndUseLinesFollowTheTargetMode RESULT keys={}", targetByKey.size());
 		helper.succeed();
+	}
+
+	private static String lineKey(final SpellbookItem book) {
+		TargetMode mode = book.definition().targetMode();
+		boolean archerReach = book.definition().school() == School.ARCHER && (mode == TargetMode.HOSTILE || mode == TargetMode.BLOCK);
+		return mode + (archerReach ? ".archer" : "");
 	}
 
 	@GameTest

@@ -130,9 +130,9 @@ public record SpellNumbers(
 	public static final SpellNumbers ARROW_CRAFTING = builder("arrow_crafting").build();
 	/** Grappling Hook's radius is how far its arrow may fly; Multishot's old fan number is gone with the fan. */
 	public static final SpellNumbers MULTISHOT = builder("multishot").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
-	public static final SpellNumbers PIERCING_SHOT = builder("piercing_shot").damage(4.0f).radius(32.0).build();
-	/** Arrow Rain's radius is its ground; its extra is the splash an Explosive Arrow leaves. */
-	public static final SpellNumbers ARROW_RAIN = builder("arrow_rain").damage(1.5f).radius(ArcherSkills.ARROW_RAIN_RADIUS).build();
+	public static final SpellNumbers PIERCING_SHOT = builder("piercing_shot").damage(4.0f).radius(ArcherSkills.SKILL_RANGE_BLOCKS).build();
+	/** Arrow Shower's radius is the disc its arrows come down on; its arrows carry their own damage. */
+	public static final SpellNumbers ARROW_RAIN = builder("arrow_rain").radius(ArcherSkills.ARROW_SHOWER_RADIUS).build();
 	/** Double Strafe's damage is per hit; it lands twice. */
 	public static final SpellNumbers RAPID_FIRE = builder("rapid_fire").damage(2.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	/** Blitz Beat: the damage is a strike without the RPG mod, and the duration is the half hour of the buff. */

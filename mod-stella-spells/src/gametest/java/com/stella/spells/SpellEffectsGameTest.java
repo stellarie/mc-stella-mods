@@ -703,6 +703,8 @@ public class SpellEffectsGameTest {
 		ItemStack stack = book.getDefaultInstance();
 		player.setItemInHand(InteractionHand.MAIN_HAND, stack);
 		book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+		// The hit lands with the fire charge; the case lands the charge now.
+		DragonCharge.landNow(player);
 		helper.assertTrue(
 			nearby.getHealth() == 10.0f && distant.getHealth() == 20.0f
 				&& player.getCooldowns().isOnCooldown(stack),
