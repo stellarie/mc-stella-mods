@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 import zipfile
@@ -99,6 +100,39 @@ class BundleTests(unittest.TestCase):
             release.build_one(self.root, self.root / "output", mod.name)
         self.assertEqual(run.call_count, 1)
         self.assertTrue(all("--max-workers=1" in call.args[0] for call in run.call_args_list))
+
+
+class PackJarTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.jars = self.root / "jars"
+        for mod in ("mod-one", "mod-two"):
+            (self.jars / mod).mkdir(parents=True)
+            (self.jars / mod / f"{mod}-0.1.0.jar").write_bytes(mod.encode())
+
+    def test_pack_jar_nests_every_mod_and_declares_it(self):
+        target = release.pack_jar(self.jars, ["mod-one", "mod-two"], self.root / "out", "v1.2.3")
+        self.assertEqual(target.name, "mc-stella-mods-1.2.3.jar")
+        with zipfile.ZipFile(target) as archive:
+            meta = json.loads(archive.read("fabric.mod.json"))
+            self.assertEqual(meta["id"], "mc-stella-mods")
+            self.assertEqual(meta["version"], "1.2.3")
+            self.assertEqual(
+                [entry["file"] for entry in meta["jars"]],
+                ["META-INF/jars/mod-one-0.1.0.jar", "META-INF/jars/mod-two-0.1.0.jar"],
+            )
+            self.assertEqual(archive.read("META-INF/jars/mod-two-0.1.0.jar"), b"mod-two")
+
+    def test_pack_jar_rejects_missing_mod_artifact(self):
+        with self.assertRaises(RuntimeError):
+            release.pack_jar(self.jars, ["mod-one", "mod-two", "mod-three"], self.root / "out", "v1.0.0")
+        self.assertFalse((self.root / "out" / "mc-stella-mods-1.0.0.jar").exists())
+
+    def test_pack_jar_rejects_a_malformed_version(self):
+        with self.assertRaises(RuntimeError):
+            release.pack_jar(self.jars, ["mod-one", "mod-two"], self.root / "out", "1.0")
 
 
 class NextVersionTests(unittest.TestCase):

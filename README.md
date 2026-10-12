@@ -8,7 +8,13 @@ The GitHub workflow detects every top-level Gradle mod with a wrapper. Each
 mod assembles on its own CI runner. CI never runs a test.
 All mod jobs must pass before CI combines their production jars into
 `mc-stella-mods.zip`. Every push to `main`, which includes a merge, then
-creates a GitHub release with that ZIP as its asset. Pull requests do not
+creates a GitHub release. The release carries two assets:
+
+- `mc-stella-mods.zip` holds the separate mod jars.
+- `mc-stella-mods-<version>.jar` is one Fabric mod that nests every mod jar.
+  Put it in `mods/` and Fabric loads all of them. Fabric API stays separate.
+
+CI builds the one jar only when it publishes a release. Pull requests do not
 start the workflow.
 
 The release version is a git tag. The first release is `v1.0.0`. Each later
@@ -25,6 +31,7 @@ python scripts/build-release.py
 The ZIP appears under `release-output/`.
 Use `python scripts/build-release.py --list` to inspect the detected mods.
 Use `python scripts/build-release.py --next-version` to print the next tag.
+Use `--pack-jar --mods-json '[...]' --version v1.0.0` to build the one jar from staged jars.
 Run `python scripts/test-build-release.py` to check the release script.
 
 ## Mods
