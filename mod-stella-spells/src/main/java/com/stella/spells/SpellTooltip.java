@@ -48,6 +48,15 @@ public final class SpellTooltip {
 		return List.copyOf(live(viewer, stack).values());
 	}
 
+	/** A refined book's lines: its level, its bonus and each unlocked milestone. An unrefined book or a scroll shows none. */
+	public static List<Component> refineLines(final ItemStack stack) {
+		List<Component> lines = new java.util.ArrayList<>();
+		for (Component line : BookRefine.tooltip(stack)) {
+			DescriptionLines.add(lines, line);
+		}
+		return lines;
+	}
+
 	/** A book's awakening lines: its cast count and what is left, or Awakened. A scroll shows none. */
 	public static List<Component> awakeningLines(final ItemStack stack) {
 		if (!(stack.getItem() instanceof SpellbookItem)) {
@@ -68,6 +77,10 @@ public final class SpellTooltip {
 
 	/** Swaps the static effect and cooldown lines in a tooltip for the live ones; touches nothing else. */
 	public static void apply(final @Nullable Player viewer, final ItemStack stack, final List<Component> tooltip) {
+		// The equips station once wrote a Refine line into a book lore; the refine lines replace it.
+		if (stack.getItem() instanceof SpellbookItem) {
+			tooltip.removeIf(BookRefine::isOldRefineLine);
+		}
 		Map<String, Component> live = live(viewer, stack);
 		if (live.isEmpty()) {
 			return;

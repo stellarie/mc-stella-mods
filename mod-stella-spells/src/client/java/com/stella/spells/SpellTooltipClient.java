@@ -10,6 +10,7 @@ public final class SpellTooltipClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
 			SpellTooltip.apply(Minecraft.getInstance().player, stack, lines);
+			lines.addAll(SpellTooltip.refineLines(stack));
 			lines.addAll(SpellTooltip.awakeningLines(stack));
 		});
 	}

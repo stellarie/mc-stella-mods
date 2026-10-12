@@ -135,8 +135,9 @@ public final class Refine {
 		return !stack.isEmpty() && stack.has(DataComponents.BLOCKS_ATTACKS) && !isArmor(stack) && !isWeapon(stack);
 	}
 
+	/** A weapon, armour or shield that can wear down. A spellbook is not here: it refines in the anvil, by an identical book. */
 	public static boolean canRefine(final ItemStack stack) {
-		return !stack.isEmpty() && (isSpellbook(stack) || stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack) || isShield(stack)));
+		return !stack.isEmpty() && stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack) || isShield(stack));
 	}
 
 	public static int level(final ItemStack stack) {

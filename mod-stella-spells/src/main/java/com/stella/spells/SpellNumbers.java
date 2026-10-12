@@ -48,6 +48,8 @@ public record SpellNumbers(
 	}
 
 	private static final Map<String, SpellNumbers> BY_PATH = new LinkedHashMap<>();
+	/** A shot that hits this many times as hard as an arrow, in the flat units of a skill hit: 1 flat is 50 percent. */
+	private static final float FLAT_PER_MULTIPLIER = (float) (100.0 / RpgBridge.SKILL_PERCENT_PER_FLAT);
 	private static final Timing NO_TIMING = Timing.NONE;
 	/** A self buff or a party hymn lasts half an hour, and no multiplier stretches it. */
 	private static final int BUFF_TICKS = 36_000;
@@ -89,7 +91,7 @@ public record SpellNumbers(
 	/** Shadow Veil's extra timing is how long its breaking blow stops the victim; the cast does not scale it. */
 	public static final SpellNumbers SHADOW_VEIL = builder("shadow_veil").duration(BUFF_TICKS, Scale.FIXED).extra(40, Scale.FIXED)
 		.extraAmplifier(6).build();
-	public static final SpellNumbers SANCTUARY = builder("sanctuary").damage(3.0f).radius(6.0).duration(600, Scale.DEFENSIVE).build();
+	public static final SpellNumbers SANCTUARY = builder("sanctuary").damage(3.0f).heal(6.0f).allyHeal(4.0f).radius(6.0).duration(600, Scale.DEFENSIVE).build();
 	public static final SpellNumbers PURIFY = builder("purify").radius(6.0).build();
 	public static final SpellNumbers FROST_NOVA = builder("frost_nova").damage(3.0f).radius(5.0).duration(120, Scale.OFFENSIVE).amplifier(3).control().build();
 	public static final SpellNumbers EARTHSPIKE = builder("earthspike").damage(4.0f).radius(3.0).build();
@@ -144,13 +146,13 @@ public record SpellNumbers(
 	/** Arrow Repel's damage is its one heavy shot. */
 	public static final SpellNumbers ARROW_REPEL = builder("arrow_repel").damage(3.0f).radius(ArcherSkills.RAPID_FIRE_RANGE).build();
 	/** The next-shot books: the duration is how long the offer stands, and the extra is what the shot leaves. */
-	public static final SpellNumbers AIMED_BOLT = builder("aimed_bolt").damage(3.0f)
+	public static final SpellNumbers AIMED_BOLT = builder("aimed_bolt").damage(ArcherSkills.AIMED_BOLT_DAMAGE * FLAT_PER_MULTIPLIER)
 		.duration(ArcherSkills.SHOT_OFFER_TICKS, Scale.FIXED).extra(40, Scale.FIXED)
 		.extraAmplifier(SLOWNESS_ROOT_AMPLIFIER).build();
 	public static final SpellNumbers TRIANGLE_SHOT = builder("triangle_shot")
 		.duration(ArcherSkills.TRIANGLE_SHOT_OFFER_TICKS, Scale.FIXED).build();
 	/** Explosive Arrow's extra timing carries its splash damage, the one number left after damage and radius. */
-	public static final SpellNumbers EXPLOSIVE_ARROW = builder("explosive_arrow").damage(3.0f)
+	public static final SpellNumbers EXPLOSIVE_ARROW = builder("explosive_arrow").damage(ArcherSkills.EXPLOSIVE_ARROW_DAMAGE * FLAT_PER_MULTIPLIER)
 		.radius(ArcherSkills.EXPLOSIVE_SPLASH_RADIUS).extra(2, Scale.FIXED)
 		.duration(ArcherSkills.SHOT_OFFER_TICKS, Scale.FIXED).build();
 	/** Disengage's extra is how long its slow lasts; the radius is the ground it leaves behind. */

@@ -731,6 +731,7 @@ The class name and every public method below are a contract.
 - `RpgSpells.cooldown(player)` returns the spell cooldown multiplier `1 - 0.5 * X / (X + 400)`, with `X` = effective INT + DEX.
   At INT 100 and DEX 100 it is 0.8333. The 20 tick floor belongs to the spells mod.
 - `RpgSpells.spellDamage(caster, skillPercent)` returns, in vanilla units, `base(level) * skillPercent / 100 * (1 + MATK%) + flatMATK / K`.
+  `MATK%` includes the book MATK buff.
   It multiplies the result by `crit_multiplier` when the LUK crit chance rolls. `RpgSpells.spellHit` is the same without the crit.
   `skillPercent` 150 means 150%. The health scale multiplies the result once.
 - `RpgSpells.matkMin(entity)` and `matkMax(entity)` stay as compatibility helpers. Both return `spellHit(entity, 100) * K`.
@@ -769,7 +770,10 @@ A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. 
 ## Magic model
 
 - `base(level) = 12 * (1 + 0.05 * (level - 1))`, in vanilla units. A mob uses its threat as level. The level is at least 1.
-- `MATK% = INT / 100 + the MATK_PCT affixes`. `flatMATK` is the `MATK_FLAT` affixes plus 12 per refine level of a held spellbook, in K units.
+- `MATK% = INT / 100 + the MATK_PCT affixes + the book MATK buff`. `flatMATK` is the `MATK_FLAT` affixes, in K units.
+  A refined spell book adds nothing to `flatMATK`. The spells mod scales the book instead. A cast of a refined utility book leaves
+  a short MATK buff, which the spells mod publishes under the ObjectShare key `mod-stella-spells:matk-bonus`. The key holds a
+  `ToDoubleFunction<Object>` of the entity, and its value is a fraction. Without that mod the buff is 0.
 - Magic resistance is `min(0.90, 0.25 + 0.50 * T(INT) + the MAGIC_RES_PCT affixes)`.
   `T` is a logistic with midpoint 400 and width 120, scaled so `T(0) = 0` and `T(1024) = 1`.
 - A magic hit keeps `1 - max(0, resistance - penetration)` of its value. Penetration is the `MAGIC_PEN` affix of the attacker's held spellbook.

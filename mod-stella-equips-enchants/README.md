@@ -251,11 +251,10 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 - The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.
   It is not an enchantment, so it takes no enchantment's place and leaves the enchantments unchanged.
   The tooltip lists each special effect the piece has, by name.
-- A **spellbook** of mod-stella-spells refines too. The equips mod finds it by the class name
-  `com.stella.spells.SpellbookItem` and a maximum stack size of 1, so scrolls do not count and
-  there is no dependency on the spells mod. A book refines with amethyst shards at the odds of a
-  grade 3 weapon. It gets no attribute modifier: the level sits in the `stella_refine` custom data
-  for mod-stella-rpg to read. It has no special effects.
+- A **spellbook** of mod-stella-spells does not refine here. The station refuses it. The equips mod finds a
+  book by the class name `com.stella.spells.SpellbookItem` and a maximum stack size of 1, so scrolls do not
+  count and there is no dependency on the spells mod. The spells mod refines its own books in the anvil,
+  with an identical book, and keeps the level in the same `stella_refine` custom data.
 
 Each special effect starts at its level and keeps working at the higher levels, so a +15 piece has the
 effects of +7, +10, +12 and +15. Effects of several armour pieces add up.

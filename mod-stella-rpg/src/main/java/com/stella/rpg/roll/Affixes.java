@@ -18,7 +18,6 @@ public final class Affixes {
 	public static final Identifier HP_PCT_ID = StellaRpg.id("affix_hp_pct");
 	public static final Identifier MOVE_SPEED_ID = StellaRpg.id("affix_move_speed");
 	public static final String REFINE_KEY = "stella_refine";
-	public static final double MATK_PER_REFINE = 12.0;
 
 	private static final EquipmentSlot[] ARMOR_SLOTS = {
 		EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
@@ -41,11 +40,9 @@ public final class Affixes {
 		return kind != null && affix.readsOn(kind) ? stored(held, affix, kind) : 0.0;
 	}
 
-	/** Flat MATK from affixes and from the refine level of the main-hand spellbook. K units. */
+	/** Flat MATK from affixes. K units. A book's refine level adds nothing here: the spells mod scales the book itself. */
 	public static double matkFlat(final LivingEntity entity) {
-		ItemStack held = entity.getItemBySlot(EquipmentSlot.MAINHAND);
-		double refine = WeaponRolls.kindOf(held) == Affix.Kind.BOOK ? MATK_PER_REFINE * refineLevel(held) : 0.0;
-		return total(entity, Affix.MATK_FLAT) + refine;
+		return total(entity, Affix.MATK_FLAT);
 	}
 
 	public static int refineLevel(final ItemStack stack) {

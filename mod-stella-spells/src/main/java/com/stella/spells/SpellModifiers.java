@@ -38,15 +38,19 @@ public final class SpellModifiers {
 		int clearMind = level(head, CLEAR_MIND);
 		int arcaneWeave = level(chest, ARCANE_WEAVE);
 		int spellguard = level(chest, SPELLGUARD);
+		// Only a spellbook carries a refine level; a weapon or an arrow used as a focus never does.
+		SpellDefinition refined = book.getItem() instanceof SpellbookItem spellbook ? spellbook.definition() : null;
+		int refine = BookRefine.level(book);
 
 		return new CastModifiers(
-			1.0 + 0.10 * potency,
+			(1.0 + 0.10 * potency) * BookRefine.powerFactor(refined, refine),
 			1.0 + 0.10 * precision,
 			multiplier(arcaneWeave),
 			multiplier(spellguard),
 			BASE_TARGET_RANGE_BLOCKS + 2 * arcaneSight,
-			cooldownTicks(baseCooldown, quickening, clearMind),
-			Awakening.isAwakened(book)
+			BookRefine.cooldown(cooldownTicks(baseCooldown, quickening, clearMind), refined, refine),
+			Awakening.isAwakened(book),
+			refine
 		);
 	}
 
@@ -99,13 +103,22 @@ public final class SpellModifiers {
 		double defensiveDurationMultiplier,
 		int targetRangeBlocks,
 		int cooldownTicks,
-		boolean awakened
+		boolean awakened,
+		int refineLevel
 	) {
+		/** A cast of anything but a refined book. */
+		public CastModifiers(
+			final double powerMultiplier, final double radiusMultiplier, final double durationMultiplier,
+			final double defensiveDurationMultiplier, final int targetRangeBlocks, final int cooldownTicks, final boolean awakened
+		) {
+			this(powerMultiplier, radiusMultiplier, durationMultiplier, defensiveDurationMultiplier, targetRangeBlocks, cooldownTicks, awakened, 0);
+		}
+
 		/** The same cast with the awakened flag set; nothing else changes. */
 		CastModifiers withAwakened(final boolean awakened) {
 			return new CastModifiers(
 				this.powerMultiplier, this.radiusMultiplier, this.durationMultiplier, this.defensiveDurationMultiplier,
-				this.targetRangeBlocks, this.cooldownTicks, awakened
+				this.targetRangeBlocks, this.cooldownTicks, awakened, this.refineLevel
 			);
 		}
 
