@@ -3,9 +3,11 @@ package com.stella.spells;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
@@ -21,6 +23,7 @@ import net.minecraft.world.item.ArrowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -44,6 +47,13 @@ public class ArrowShowerGameTest {
 	/** The last arrow leaves at tick 80 and a lob takes about 72 ticks to come down. */
 	private static final long LANDED_TICKS = ArcherSkills.ARROW_SHOWER_TICKS + 100L;
 	private static final long SEED = 4242L;
+	/** The speed of an arrow from a fully drawn bow, the crawl of a very slow lob, and the Power level of the case. */
+	private static final double FULL_DRAW_SPEED = 3.0;
+	private static final double SLOW_LOB = 1.0;
+	private static final int POWER_LEVEL = 3;
+	/** What a full-draw arrow deals with no Power: speed 3.0 times a base damage of 2.0. */
+	private static final double FULL_DRAW_PLAIN_DAMAGE = 6.0;
+	private static final double RATIO_SLACK = 0.02;
 	private static final double ROOF_HEIGHT = 4.0;
 	private static final int ROOF_REACH = 2;
 
@@ -115,35 +125,45 @@ public class ArrowShowerGameTest {
 		roofCase(helper, true, "aSolidRoofOverAFoeStopsTheArrows");
 	}
 
-	@GameTest(maxTicks = 60)
-	public void oneShowerArrowDealsAQuarterOfAnArrowFromTheSameBow(final GameTestHelper helper) {
+	// A shower arrow lands slower than a drawn shot, so the case lands one at the shower's own speed and one at a
+	// crawl. Each is worth a quarter of a full-draw arrow from the same bow, and the bow's Power counts in both.
+	@GameTest(maxTicks = 80)
+	public void oneShowerArrowDealsAQuarterOfAFullDrawArrowFromTheSameBow(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper);
 		ItemStack bow = new ItemStack(Items.BOW);
+		bow.enchant(helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.POWER), POWER_LEVEL);
 		caster.setItemInHand(InteractionHand.MAIN_HAND, bow);
-		Mob normalFoe = FighterBooksGameTest.foe(helper, 2.5, 5.5);
-		Mob showerFoe = FighterBooksGameTest.foe(helper, 5.5, 5.5);
-		float speed = (float) ArcherSkills.ARROW_SHOWER_SPEED;
-		Vec3 normalFrom = helper.absoluteVec(new Vec3(2.5, 2.0, 3.0));
-		Vec3 showerFrom = helper.absoluteVec(new Vec3(5.5, 2.0, 3.0));
-		ArrowItem plain = (ArrowItem) Items.ARROW;
-		AbstractArrow normal = plain.createArrow(helper.getLevel(), new ItemStack(Items.ARROW), caster, bow);
-		normal.setPos(normalFrom.x, normalFrom.y, normalFrom.z);
-		Projectile.spawnProjectileUsingShoot(normal, helper.getLevel(), bow, 0.0, 0.0, 1.0, speed, 0.0F);
-		AbstractArrow shower = ArcherSkills.spawnShowerArrow(caster, new ItemStack(Items.ARROW), bow, showerFrom, new Vec3(0.0, 0.0, speed));
-		helper.runAfterDelay(8L, () -> {
-			double normalLost = 1000.0 - normalFoe.getHealth();
+		Mob drawnFoe = FighterBooksGameTest.foe(helper, 1.5, 5.5);
+		Mob showerFoe = FighterBooksGameTest.foe(helper, 3.5, 5.5);
+		Mob slowFoe = FighterBooksGameTest.foe(helper, 5.5, 5.5);
+		Mob plainFoe = FighterBooksGameTest.foe(helper, 7.5, 5.5);
+		float drawn = (float) FULL_DRAW_SPEED;
+		float lob = (float) ArcherSkills.ARROW_SHOWER_SPEED;
+		AbstractArrow full = ((ArrowItem) Items.ARROW).createArrow(helper.getLevel(), new ItemStack(Items.ARROW), caster, bow);
+		full.setPos(helper.absoluteVec(new Vec3(1.5, 2.0, 3.0)));
+		Projectile.spawnProjectileUsingShoot(full, helper.getLevel(), bow, 0.0, 0.0, 1.0, drawn, 0.0F);
+		AbstractArrow shower = ArcherSkills.spawnShowerArrow(caster, new ItemStack(Items.ARROW), bow, helper.absoluteVec(new Vec3(3.5, 2.0, 3.0)), new Vec3(0.0, 0.0, lob));
+		AbstractArrow slow = ArcherSkills.spawnShowerArrow(caster, new ItemStack(Items.ARROW), bow, helper.absoluteVec(new Vec3(5.5, 2.0, 3.0)), new Vec3(0.0, 0.0, SLOW_LOB));
+		// The same shower arrow from an unenchanted bow shows the Power in the others was not lost to the share.
+		AbstractArrow bare = ArcherSkills.spawnShowerArrow(caster, new ItemStack(Items.ARROW), new ItemStack(Items.BOW), helper.absoluteVec(new Vec3(7.5, 2.0, 3.0)), new Vec3(0.0, 0.0, lob));
+		helper.runAfterDelay(14L, () -> {
+			double fullLost = 1000.0 - drawnFoe.getHealth();
 			double showerLost = 1000.0 - showerFoe.getHealth();
-			LOG.info("[BEHAVIOR] test=oneShowerArrowDealsAQuarterOfAnArrowFromTheSameBow RESULT normal={} shower={} share={} ratio={}",
-				normalLost, showerLost, ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE, normalLost > 0.0 ? showerLost / normalLost : -1.0);
-			helper.assertTrue(normalLost > 0.0, "the reference arrow hit nothing, so the ratio proves nothing");
-			helper.assertTrue(showerLost > 0.0, "the shower arrow hit nothing");
-			helper.assertTrue(Math.abs(showerLost / normalLost - ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE) < 0.02,
-				"the shower arrow took " + showerLost + " against " + normalLost + " for a normal one");
+			double slowLost = 1000.0 - slowFoe.getHealth();
+			double bareLost = 1000.0 - plainFoe.getHealth();
+			LOG.info("[BEHAVIOR] test=oneShowerArrowDealsAQuarterOfAFullDrawArrowFromTheSameBow RESULT fullDraw={} shower={} slow={} unpowered={} share={}",
+				fullLost, showerLost, slowLost, bareLost, ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE);
+			helper.assertTrue(fullLost > 0.0, "the full-draw arrow hit nothing, so the ratio proves nothing");
+			helper.assertTrue(showerLost > 0.0 && slowLost > 0.0, "a shower arrow hit nothing");
+			helper.assertTrue(Math.abs(showerLost / fullLost - ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE) < RATIO_SLACK,
+				"a shower arrow took " + showerLost + " against " + fullLost + " for a full draw");
+			helper.assertTrue(Math.abs(slowLost / fullLost - ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE) < RATIO_SLACK,
+				"a slow shower arrow took " + slowLost + " against " + fullLost + " for a full draw");
+			helper.assertTrue(fullLost > FULL_DRAW_PLAIN_DAMAGE, "Power added nothing to the full-draw arrow: " + fullLost);
+			helper.assertTrue(bareLost > 0.0 && showerLost > bareLost, "Power added nothing to a shower arrow: " + showerLost + " against " + bareLost);
 			helper.assertTrue(ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE == 0.25F, "the share is " + ArcherSkills.ARROW_SHOWER_DAMAGE_SHARE + ", not a quarter");
-			normal.discard();
-			shower.discard();
-			normalFoe.discard();
-			showerFoe.discard();
+			Stream.of(full, shower, slow, bare).forEach(Entity::discard);
+			Stream.of(drawnFoe, showerFoe, slowFoe, plainFoe).forEach(Entity::discard);
 			helper.succeed();
 		});
 	}

@@ -27,6 +27,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ArrowItem;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
@@ -90,11 +91,14 @@ public final class ArcherSkills {
 	static final int AWAKENED_ARROW_SHOWER_ARROWS = 64;
 	static final int ARROW_SHOWER_TICKS = 80;
 	static final int ARROW_SHOWER_COST = 8;
-	/** Each shower arrow is worth this share of the same arrow shot normally. */
+	/** Each shower arrow is worth this share of a full-draw arrow from the same weapon. */
 	static final float ARROW_SHOWER_DAMAGE_SHARE = 0.25F;
 	/** The disc around the aimed point that the arrows come down on, and the speed they are loosed at. */
 	static final double ARROW_SHOWER_RADIUS = 6.0;
 	static final double ARROW_SHOWER_SPEED = 2.0;
+	/** The speed of an arrow from a fully drawn bow, and from a loaded crossbow: what a shower arrow is worth. */
+	private static final double FULL_DRAW_SPEED = 3.0;
+	private static final double CROSSBOW_ARROW_SPEED = 3.15;
 	/** Marks an arrow the shower loosed, so the damage seam and the friendly-fire rule can find it. */
 	static final String SHOWER_TAG = Spellbooks.MOD_ID + ".arrow_shower";
 	/** How far above the eye an arrow leaves, so it clears the caster's own head. */
@@ -818,6 +822,19 @@ public final class ArcherSkills {
 				}
 			}
 		}
+	}
+
+	/**
+	 * The speed an arrow's damage is made from. A shower arrow lands at the end of a lob, much slower than a shot
+	 * from a drawn weapon, so its damage reads as a full draw of the weapon it was loosed from; the share is taken
+	 * after that, which keeps every arrow bonus and effect as a full-draw arrow would have them.
+	 */
+	public static double damageSpeed(final AbstractArrow arrow, final double speed) {
+		if (!arrow.entityTags().contains(SHOWER_TAG)) {
+			return speed;
+		}
+		ItemStack weapon = arrow.getWeaponItem();
+		return weapon != null && weapon.getItem() instanceof CrossbowItem ? CROSSBOW_ARROW_SPEED : FULL_DRAW_SPEED;
 	}
 
 	/** The share of damage a hit keeps for the arrow that dealt it: a quarter for a shower arrow, all otherwise. */

@@ -351,9 +351,6 @@ public final class SpellVisuals {
 		if (definition.school() == School.ARCHER) {
 			ArcherVisuals.cast(level, caster, spell, departure, animationCenter);
 		}
-		if (point != null && spell.getPath().equals("dragonfall")) {
-			DragonCharge.fall(level, point);
-		}
 		accent(level, caster, spell, visual, animationCenter, departure, 0);
 		scheduleAnimations(level, caster, spell, visual, circleColor, animationCenter, radius);
 	}

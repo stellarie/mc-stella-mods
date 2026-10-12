@@ -393,6 +393,8 @@ public class SpellMatkGameTest {
 		caster.setItemInHand(InteractionHand.MAIN_HAND, stack);
 		SpellCasting.CastResult result = SpellCasting.cast(caster, book, InteractionHand.MAIN_HAND);
 		helper.assertTrue(result == SpellCasting.CastResult.CAST, spell + " did not cast: " + result);
+		// Dragonfall and the Frozen Meteor hit when the charge lands; the case reads the hit now.
+		DragonCharge.landNow(caster);
 	}
 
 	private static ItemStack marked(final String spell, final double flat) {

@@ -502,6 +502,10 @@ public final class SpellCasting {
 		return true;
 	}
 
+	/**
+	 * Dragonfall: a fire charge falls on the spot, and its one hit lands on the tick it does. The hostiles it
+	 * reaches are the ones standing in the radius when the charge lands.
+	 */
 	static boolean applyDragonfall(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
@@ -509,16 +513,26 @@ public final class SpellCasting {
 			return false;
 		}
 
+		ServerLevel level = caster.level();
 		double radius = SpellNumbers.DRAGONFALL.radius(modifiers);
-		for (Mob hostile : caster.level().getEntitiesOfClass(
-			Mob.class,
-			new AABB(point, point).inflate(radius),
-			candidate -> candidate.isAlive()
-				&& Friends.isFoe(candidate)
-				&& candidate.position().distanceToSqr(point) <= radius * radius
-		)) {
-			hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
-		}
+		// The hit lands after the cast ends, so the book's awakening credit is claimed now and paid on the hit.
+		CastHits.PendingCredit credit = CastHits.deferred(caster);
+		DragonCharge.fall(level, caster, point, () -> {
+			boolean struck = false;
+			for (Mob hostile : level.getEntitiesOfClass(
+				Mob.class,
+				new AABB(point, point).inflate(radius),
+				candidate -> candidate.isAlive()
+					&& Friends.isFoe(candidate)
+					&& candidate.position().distanceToSqr(point) <= radius * radius
+			)) {
+				hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
+				struck = true;
+			}
+			if (struck && credit != null) {
+				credit.fire(level.getServer());
+			}
+		});
 		return true;
 	}
 

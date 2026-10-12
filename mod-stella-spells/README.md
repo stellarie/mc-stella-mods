@@ -44,7 +44,7 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 | Aegis of the Deep | Turtle Scute | 20 s | Self | Absorption II and Resistance I, 30 min |
 | Wither Seal | Wither Rose | 18 s | Hostile | Wither II, 15 s |
 | Time Lock | Clock | 20 s | Block | Slowness II, 10 s, on hostiles within 5 blocks of the point |
-| Dragonfall | Dragon's Breath | 25 s | Block | 10 damage to hostiles within 3 blocks of the point, as a huge burning fire charge, twice the size of its model, falls on the point |
+| Dragonfall | Dragon's Breath | 25 s | Block | A huge burning fire charge, twice the size of its model, falls on the point for 0.6 s; when it lands it deals 10 damage to hostiles within 3 blocks of the point |
 | Ice Lance | Packed Ice | 5 s | Hostile | Hurls a lance through the mob and 16 blocks on: every hostile on its line takes 5 damage and freezes solid for 14 seconds, and the lance leaves a trail of snow mist |
 | Soul Siphon | Soul Soil | 9 s | Hostile | Drains 4 health from the mob and gives it to you |
 | Venom Dart | Spider Eye | 5 s | Hostile | Stings the mob for 2 damage and poisons it with Poison II for 15 seconds |
@@ -127,7 +127,7 @@ they spend (see Crafted arrows and the quiver below).
 | Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one quiver arrow |
 | Double Strafe | Two archer hits on the hostile you look at |
 | Sharp Shooting | One arrow through every hostile on a 24 block line, with a 30 percent better critical chance |
-| Arrow Shower | Costs 8 arrows, from the quiver first and then the pack, and none under a Spectral Quiver or an imbued cast. Lobs 32 real arrows into the sky over 4 seconds, one after another, 64 when awakened. They come down over a 6 block disc around the ground you look at, and a block in their way stops them. Each arrow deals a quarter of the damage the same arrow would, keeps its kind and its bow enchantments, cannot be picked up, and never hurts you or an ally |
+| Arrow Shower | Costs 8 arrows, from the quiver first and then the pack, and none under a Spectral Quiver or an imbued cast. Lobs 32 real arrows into the sky over 4 seconds, one after another, 64 when awakened. They come down over a 6 block disc around the ground you look at, and a block in their way stops them. Each arrow deals a quarter of the damage a full-draw arrow of its kind from your bow would, whatever the speed of the lob, keeps its kind and its bow enchantments, cannot be picked up, and never hurts you or an ally |
 | Vulture's Eye | 30 min, needs a bow: each arrow or archer skill hit you land gains 2 percent damage for every block of distance beyond 8, up to 40 percent (60 percent when awakened) |
 | Summon Wolf | Tames a wolf to you, no scroll. It guards you against hostiles within 6 blocks of you, follows you, and carries the tamed elite wolf aura (Speed and Strength for you and your allies, Slowness and Weakness for hostiles within 8 blocks). Right-click it with an empty hand to ride it: you steer, and it bites hostiles in front of you. It never attacks a sheep, cow, pig or chicken. Its health is 40 without the RPG mod, plus half a point per point of your six stats with it. Casting again calls it to your side |
 | Blitz Beat | 30 min, no bow needed: each melee blow or arrow of yours has a 25 percent chance (35 percent with a bow or crossbow in either hand), plus 1 percent per 5 LUK, to call a spectral falcon (a larger brown parrot that circles above your head and never perches, swoops at the struck target on each strike, cannot be hurt, and flies off when the buff ends or you leave) that strikes the target 3 times (6 with a bow, doubled when awakened). When you have not struck a blow for 2 seconds, it also attacks the nearest hostile within 8 blocks on its own: 3 hits, then a rest of 1.5 seconds. A strike deals your floor ATK, the low end of the Atk range, and base damage without the RPG mod. It never crits, and every hit marks the target Glowing for 3 seconds. A foe killed by one of its own attacks drops no experience orbs and gives you 35 percent of its experience at once. Skill damage, imbued casts and falcon strikes never call it |
@@ -180,7 +180,7 @@ arrow takes the kind's colour: fire orange, frost cyan, venom green, blast red, 
 violet; an unfed trail is gold. The effects go through `SpellVisuals`, which records every particle and
 sound for the game tests.
 
-The Dragonfall fire charge is a vanilla item display, so any client draws it.
+The Dragonfall fire charge is a vanilla item display, so any client draws it. The spell's one hit, and Frozen Meteor's bonus after it, land on the tick the charge does.
 
 The Blitz Beat falcon and the summoned wolf are entity types this mod registers, with client renderers in
 `src/client`. A client without this mod cannot join a server that has it, so the pack ships the mod to every player.
