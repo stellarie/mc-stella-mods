@@ -1,6 +1,6 @@
 # mod-stella-spells
 
-Forty-two spellbooks with distinct icons, each casting one fixed spell, and eight enchantments that change how
+Forty-two mage spellbooks and 39 fighter, archer and priest skill books with distinct icons, each casting one fixed spell, and eight enchantments that change how
 spells behave. Witches, strays, and spellcasting illagers cast spells of their own. Install the same jar on the
 server and every client. The server runs spell logic; clients render icons, empty hands, and visual effects.
 

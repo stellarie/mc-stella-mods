@@ -1,6 +1,6 @@
 # mod-stella-mobs
 
-A server-side Fabric mod for Minecraft 26.3. This file covers only the RPG bridge.
+A server-side Fabric mod for Minecraft 26.3. This file covers mob levels, combat behavior, bosses, and the bridges to other mods.
 
 ## RPG bridge
 

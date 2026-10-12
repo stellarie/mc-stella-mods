@@ -429,7 +429,7 @@ Mob stats add to the `SpawnScaling` health and damage modifiers. They do not rep
 | `ranged` | 4 | 10 | 5 | 12 | 2 | 10 |
 | `magic` | 2 | 4 | 6 | 6 | 14 | 4 |
 
-At threat 10 the stats double. At threat 50 they are six times the base.
+With the default amplifier, threat 10 gives 1.3 times the base and threat 50 gives 2.5 times.
 
 - `StatBonuses.effective` returns the mob stat plus the registered bonus for a `Mob`.
 - Mob AGI has no effect. Mobs keep their goal cooldowns.
