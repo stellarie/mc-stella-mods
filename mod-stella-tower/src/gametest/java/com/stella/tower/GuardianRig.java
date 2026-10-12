@@ -193,6 +193,11 @@ final class GuardianRig {
 		return player;
 	}
 
+	/** Moves a player to an offset from the middle, on the floor. */
+	void move(final ServerPlayer player, final int dx, final int dz) {
+		player.teleportTo(this.level, this.center.getX() + dx + 0.5, this.center.getY() + 1.0, this.center.getZ() + dz + 0.5, Set.of(), 0.0F, 0.0F, true);
+	}
+
 	/**
 	 * A player who outlasts what the case throws at them: a guardian's blows differ from run to run, and a player who dies
 	 * mid-case reads as one who was never hit or never burned.
