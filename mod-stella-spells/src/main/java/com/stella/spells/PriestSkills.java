@@ -92,6 +92,8 @@ public final class PriestSkills {
 	public static final float CONSECRATE_DAMAGE = 2.0F;
 	/** Guardian Angel: the share of a blow the priest takes, and how long the link holds. */
 	public static final float GUARDIAN_SHARE = 0.30F;
+	/** The most of a blow a refined Guardian Angel hands to its priest. */
+	static final double GUARDIAN_MAX_SHARE = 0.60;
 	public static final int GUARDIAN_ANGEL_TICKS = 600;
 
 	/** A holder's holy bonus, and the tick it lapses. Keyed by holder, cleared on death and on server stop. */
@@ -333,7 +335,8 @@ public final class PriestSkills {
 		}
 		int now = caster.level().getServer().getTickCount();
 		ally.addEffect(new MobEffectInstance(SpellStatus.GUARDIAN_ANGEL, GUARDIAN_ANGEL_TICKS, 0), caster);
-		GUARDIANS.put(ally.getUUID(), new GuardianLink(caster.getUUID(), GUARDIAN_SHARE, now + GUARDIAN_ANGEL_TICKS));
+		float share = (float) Math.min(GUARDIAN_MAX_SHARE, GUARDIAN_SHARE * BookRefine.statFactor(modifiers.refineLevel()));
+		GUARDIANS.put(ally.getUUID(), new GuardianLink(caster.getUUID(), share, now + GUARDIAN_ANGEL_TICKS));
 		if (modifiers.awakened()) {
 			MENDING_LINKS.add(ally.getUUID());
 		} else {

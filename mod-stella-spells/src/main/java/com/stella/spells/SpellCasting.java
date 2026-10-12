@@ -220,6 +220,7 @@ public final class SpellCasting {
 		SKIP_COOLDOWN.remove();
 		Awakening.report(definition.id(), modifiers.awakened());
 		boolean completed = false;
+		BookRefine.Pending refine = BookRefine.begin(caster, definition, stack);
 		CastHits.begin(caster, definition.id(), !scroll && !Awakening.isAwakened(stack));
 		CastContext.setAlly(ally);
 		try {
@@ -240,6 +241,7 @@ public final class SpellCasting {
 			}
 			log(caster, definition, CastResult.CAST, target, modifiers, stack);
 			SpellCombos.afterCast(caster, definition, target, point, modifiers);
+			BookRefine.finish(refine, new RefineCast(caster, definition, target, point, ally, CastHits.victims(), departure, modifiers));
 			// Both landings share one cast credit.
 			if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
 				&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)

@@ -56,8 +56,8 @@ public final class MoreSpells {
 	public static final int VEIL_BREAK_SLOW_AMPLIFIER = SpellNumbers.SHADOW_VEIL.extraAmplifier();
 	public static final double PURIFY_RADIUS = SpellNumbers.PURIFY.radius();
 	/** The instant heals of a mob's Sanctuary; the player's Sanctuary is a zone. */
-	public static final float SANCTUARY_SELF_HEAL = 6.0F;
-	public static final float SANCTUARY_ALLY_HEAL = 4.0F;
+	public static final float SANCTUARY_SELF_HEAL = SpellNumbers.SANCTUARY.heal();
+	public static final float SANCTUARY_ALLY_HEAL = SpellNumbers.SANCTUARY.allyHeal();
 	public static final double SANCTUARY_RADIUS = SpellNumbers.SANCTUARY.radius();
 	public static final float SANCTUARY_UNDEAD_DAMAGE = SpellNumbers.SANCTUARY.damage();
 	public static final int SANCTUARY_PULSE_TICKS = 20;

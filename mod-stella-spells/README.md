@@ -249,6 +249,135 @@ Each spellbook counts its own casts that hit something. At 120 such casts it awa
 The book art for the awakened state comes from `scripts/spellbook-icon-check.py --write-awakened`, and
 `--check-awakened` fails when a book lacks the texture, the model, or the item definition's condition case.
 
+## Refining a book
+
+Two identical spell books or skill books refine in the anvil. Put the book in the first slot and an identical one in the second.
+The result is the first book one level higher, and the second book is used up. The cost is the level the book reaches,
+paid in experience levels, or in emeralds when `mod-stella-equips-enchants` is loaded, as for an imbue. A different
+book gives no result. A book stops at +15. Enchantments, the awakening and the rest of the first book stay.
+The level lives in the `stella_refine` custom data. The equips Refine station refuses these books.
+
+- **Main stat.** Each level adds 2 percent to the first number the book has: its damage, else its heal,
+  else its resistance. A book with none of these gives the caster 2 percent MATK for 10 seconds after each cast.
+  Resistance means the four books that grant vanilla Resistance: Stoneguard, Aegis of the Deep, War Cry and Iron Skin.
+  While their buff lasts, they also cut the damage the caster takes by 2 percent for each level.
+  Grappling Hook deals no damage, so it counts as a MATK book.
+- **+7.** The cooldown is 10 percent shorter.
+- **+10.** A damage book sets the foes it struck on fire (mage and priest) or slows them (fighter and archer). A cast that struck
+  nothing yet leaves this on the next foe the caster hurts within 30 seconds. A heal book clears one harmful effect from the one it healed.
+  A resistance or utility book makes every effect it applied last 25 percent longer, the MATK buff included.
+- **+12.** The cost is 15 percent lower. Arrow Shower spends 7 arrows instead of 8. No other book spends anything, so they take the
+  cut as a 15 percent shorter cooldown.
+- **+15.** Each book has a signature effect that fires on every cast. They are listed below.
+- **Tooltip.** The tooltip shows the level, the bonus, and each milestone the book has reached. A refine line the equips
+  station wrote on an old book is hidden. An old book keeps its level and follows the new rule.
+- **MATK buff.** `mod-stella-spells:matk-bonus` is an ObjectShare key that holds a `ToDoubleFunction<Object>` of the entity.
+  Its value is a fraction. `mod-stella-rpg` adds it to the MATK percent and does nothing when the key is missing.
+- **Only books.** A scroll, a Compendium entry and an imbued weapon never carry a refine level.
+
+### The +15 signatures
+
+**Mage**
+
+| Book | Signature | Effect |
+|---|---|---|
+| Spark Shot | Chain Spark | Arcs to 2 foes within 5 blocks of the target. Each takes half the hit and burns 4 seconds. |
+| Frostbind | Deep Freeze | Freezes the target solid for 2 seconds. Foes within 4 blocks gain a Chill. |
+| Gale Step | Wind Wake | Gives Speed II for 5 seconds. Foes within 4 blocks of your start are thrown back. |
+| Mending Word | Echoing Word | Heals you again for half the amount 2 seconds later. |
+| Stoneguard | Granite Shell | Gives Fire Resistance for 30 seconds and a 4 point ward for 20 seconds. |
+| Static Lash | Static Stun | Staggers the target for 2 seconds. Foes within 4 blocks stagger for 1 second. |
+| Briar Snare | Thorn Bloom | Roots foes within 3 blocks of the target for 3 seconds. The target bleeds. |
+| Tidal Push | Riptide | Foes within 4 blocks of the target are soaked and pushed away from you. |
+| Owl's Gaze | Hunter's Sight | Foes within 20 blocks glow for 10 seconds. |
+| Slimebound | Slime Burst | Foes within 4 blocks are launched upward. You gain Resistance I for 10 seconds. |
+| Chainstorm | Eye of the Storm | Foes within 5 blocks of the spot are soaked and take half a strike. |
+| Riftwalk | Afterimage | Gives Speed II for 3 seconds. Foes within 4 blocks of your start are slowed 3 seconds. |
+| Phoenix Mantle | Ash Burst | Foes within 4 blocks burn for 5 seconds. You gain a 6 point ward for 20 seconds. |
+| Life Bloom | Bloom | Allies within 6 blocks gain Regeneration I for 10 seconds. |
+| Void Well | Event Horizon | Foes in the well are weakened for 8 seconds and lifted for 1 second. |
+| Warden's Roar | Sonic Boom | Foes in range gain Darkness and Weakness for 6 seconds. |
+| Aegis of the Deep | Tidal Barrier | Allies within 6 blocks gain Absorption I for 20 seconds. |
+| Wither Seal | Wither Bloom | Wither spreads to foes within 4 blocks of the target for 6 seconds. |
+| Time Lock | Frozen Moment | Foes in the field freeze solid for 1 second. |
+| Dragonfall | Dragon's Wake | Foes within 5 blocks of the spot are thrown up and burn for 6 seconds. |
+| Ice Lance | Shatter | Every struck foe becomes Brittle for 6 seconds. |
+| Soul Siphon | Soul Harvest | Gives a 4 point ward for 10 seconds and Regeneration I for 5 seconds. |
+| Venom Dart | Toxic Burst | Poison II spreads to foes within 4 blocks of the target for 6 seconds. |
+| Sapping Hex | Hex Siphon | Heals you 1 for each hexed foe. Gives Regeneration I for 5 seconds. |
+| Blinding Flash | Searing Light | Foes within 5 blocks of the target are blinded for 4 seconds. |
+| Ember Brand | Brand Burst | Foes within 3 blocks of the target take half the hit and are Scorched 5 seconds. |
+| Quicksilver | Mercury Rush | Gives Speed III for 5 seconds. |
+| Tide Lungs | Tidal Surge | Gives Conduit Power for 60 seconds. |
+| Berserk | Bloodlust | Gives Strength III for 8 seconds. |
+| Haste Rune | Rune Surge | Gives Haste IV and Speed I for 10 seconds. |
+| Shadow Veil | Smoke Bomb | Foes within 5 blocks are blinded for 3 seconds as you vanish. |
+| Sanctuary | Radiant Pulse | Undead in the zone are staggered for 2 seconds and burn for 4. |
+| Purify | Blessed Water | You and allies within 6 blocks gain Regeneration II for 5 seconds. |
+| Frost Nova | Absolute Zero | Foes in the nova freeze solid for 1.5 seconds. |
+| Earthspike | Stone Cage | Foes at the spot are rooted for 3 seconds. |
+| Plague Cloud | Pestilence | Foes in the cloud are weakened for 8 seconds. |
+| Flame Ring | Fire Nova | The ring flares at once: foes in range take a full hit and are thrown back. |
+| Gravity | Crushing Weight | Foes in range take a hit of 2 damage and are slowed 4 seconds more. |
+| Bulwark Hymn | Shield Wall | You and allies within 8 blocks gain Resistance I for 10 seconds. |
+| Tailwind | Gale Force | You and allies within 8 blocks gain Jump Boost II and Slow Falling for 20 seconds. |
+| Battle Hymn | War Song | You and allies within 8 blocks gain Regeneration I for 8 seconds and Haste I for 20. |
+| Summon Skeleton | Bone Guard | Your skeleton gains Resistance II and Strength I for 20 seconds. |
+
+**Fighter**
+
+| Book | Signature | Effect |
+|---|---|---|
+| Cleave | Rending Cleave | Every foe the cleave hits is Marked for 6 seconds. |
+| Leap Slam | Seismic Landing | Foes within 5 blocks of the landing are staggered for 1.5 seconds. |
+| Whirlwind | Cyclone | Foes within 6 blocks are pulled toward you and slowed for 3 seconds. |
+| Shield Bash | Concussion | The target is weakened for 6 seconds and bleeds. |
+| Charge | Trample | Gives Speed II for 4 seconds. Foes within 4 blocks of the landing are slowed 3 seconds. |
+| Execute | Coup de Grace | A target left under 30 percent health takes a second hit worth three times the base. |
+| War Cry | Rally | You and allies within 8 blocks gain Strength I and Absorption I for 10 seconds. |
+| Counter Stance | Riposte | Gives Strength II and Speed I for 5 seconds. |
+| Iron Skin | Unyielding | Gives Absorption III for 20 seconds. |
+| Earthsplitter | Fault Line | Foes hit are thrown higher and slowed for 3 seconds. |
+
+**Archer**
+
+| Book | Signature | Effect |
+|---|---|---|
+| Arrow Crafting | Spare Quiver | Makes 8 more plain arrows. |
+| Grappling Hook | Grapple Burst | Foes within 4 blocks of your landing are staggered for 1.5 seconds. |
+| Sharp Shooting | Marking Shot | Every pierced foe is Marked for 6 seconds. |
+| Arrow Shower | Storm Cloud | Foes within 6 blocks of the spot are slowed for 4 seconds. |
+| Double Strafe | Double Tap | The target takes a third hit of the same damage. |
+| Blitz Beat | Falcon Dive | Gives Speed II for 5 seconds. The nearest foe within 12 blocks is Marked and glows 10 seconds. |
+| Ankle Snare | Bear Trap | Foes within 4 blocks of the trap are rooted for 2 seconds and bleed. |
+| Arrow Repel | Gale Volley | Foes within 5 blocks of the target are pushed back and slowed for 3 seconds. |
+| Explosive Arrow | Cluster Charge | The armed arrow scatters three bomblets after its blast. |
+| Wind Walk | Smoke Step | Foes within 5 blocks are blinded for 2 seconds. You turn invisible for 3 seconds. |
+| Concentrate | Hawk Focus | Gives a 4 point ward for 10 seconds. |
+| Aimed Bolt | Deadeye | Steadies your aim for 20 seconds. |
+| Triangle Shot | Barrage | Your chance of three arrows rises from 30 to 50 percent. |
+| True Sight | Raptor Sight | Foes within 24 blocks glow for 6 seconds. |
+| Spectral Quiver | Elemental Edge | Quiver hits deal 90 percent damage, up from 75. |
+| Vulture's Eye | Far Sight | The far hit bonus cap rises from 40 to 60 percent. |
+| Summon Wolf | Pack Howl | Your wolf gains Strength I and Speed I for 20 seconds. |
+
+**Priest**
+
+| Book | Signature | Effect |
+|---|---|---|
+| Holy Light | Radiant Overflow | Allies within 5 blocks of the target heal for a third of the amount. |
+| Prayer of Mending | Faith's Echo | You heal for half the amount at once. |
+| Renew | Lasting Bloom | The target gains Regeneration II for 6 seconds. |
+| Divine Shield | Aegis Burst | Allies within 5 blocks gain a 4 point ward for 15 seconds. |
+| Holy Arms | Holy Fervor | Foes within 8 blocks are Marked for 6 seconds. |
+| Blessing of Fortitude | Hearty Blessing | You and allies within 8 blocks gain Regeneration I for 10 seconds. |
+| Smite | Judgment | The target takes a second holy hit of half damage and burns for 4 seconds. |
+| Resurrection Ward | Second Chance | The warded ally also gains Absorption III for 20 seconds. |
+| Consecrate | Hallowed Ground | You and allies within 4 blocks of the ground gain Resistance I for 10 seconds. |
+| Guardian Angel | Guardian Light | The ally and you gain Resistance I for 10 seconds. |
+| Unbroken Vow | Vow of Valor | Gives Health Boost II for 30 seconds. |
+| Steadfast Prayer | Serene Mind | Clears your harmful effects and gives Regeneration I for 8 seconds. |
+
 ## Scroll of Return
 
 One paper, one ender pearl and one feather make 16 Scrolls of Return. Read one and it carries you to
@@ -416,7 +545,7 @@ retired: the caster's MATK sets what a damage spell or a heal is worth.
   RPG mod's health scale (`mod-stella-rpg:health-scale`, 1 when absent). Its arrows and blows deal
   `spellDamage(master, 100)`.
 - **Spellbook tag.** `data/mod-stella-rpg/tags/item/spellbooks.json` lists every spellbook, so the RPG mod
-  rolls MATK affixes on them and refines their MATK. Scrolls and the Scroll of Return stay out.
+  rolls MATK affixes on them. A refined book scales itself (see Refining a book). Scrolls and the Scroll of Return stay out.
 
 The bridge finds `com.stella.rpg.RpgSpells` by name. Without `mod-stella-rpg`, or with a version that lacks
 `spellDamage` or `spellHeal`, every spell keeps its flat numbers from the table above and the servant keeps
@@ -449,6 +578,8 @@ for a release gate, and copy each log before the next run. Six optional tests re
 the icon and circle review, held-hand rendering, all spell effects, the Ice Lance pierce check,
 the Earthspike lift check, and the client-log check. Spark Shot's boundary and Chainstorm's
 outside-area damage run as required tests. The cases that need the RPG jar (the Concentrate seam and
-the Blitz Beat floor ATK and no-crit checks) fail visibly without `-PrpgJar=<path>`; run them by hand.
+the Blitz Beat floor ATK and no-crit checks, and the refined utility book's real MATK percent) fail visibly without
+`-PrpgJar=<path>`; run them by hand. The other cases of `BookRefineGameTest` and `BookSignatureGameTest` measure
+health in vanilla units, so run them without the RPG jar.
 
 The jar is `build/libs/mod-stella-spells-0.1.0+26.3.jar`.

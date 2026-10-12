@@ -149,7 +149,7 @@ public final class FighterSkills {
 	}
 
 	private static void answerBack(final ServerPlayer player, final LivingEntity attacker) {
-		hitFor(player, attacker, SpellNumbers.COUNTER_STANCE.damage(), 1.0);
+		hitFor(player, attacker, SpellNumbers.COUNTER_STANCE.damage(), BookRefine.statFactor(BookRefine.castLevel(player.getUUID(), "counter_stance")));
 		SpellStatusApi.stagger(attacker, SpellNumbers.COUNTER_STANCE.extra().ticks(), player);
 		player.level().playSound(null, player.blockPosition(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.8F, 1.6F);
 	}

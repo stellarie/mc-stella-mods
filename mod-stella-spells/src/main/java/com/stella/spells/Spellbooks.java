@@ -99,6 +99,7 @@ public final class Spellbooks implements ModInitializer {
 		DragonCharge.register();
 		SpellImbue.register();
 		SpellTimers.register();
+		BookRefine.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 

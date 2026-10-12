@@ -630,7 +630,7 @@ public final class RpgBridge {
 		return new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * power, base.radiusMultiplier(), base.durationMultiplier() * duration,
 			base.defensiveDurationMultiplier() * duration, base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown)),
-			base.awakened()
+			base.awakened(), base.refineLevel()
 		);
 	}
 

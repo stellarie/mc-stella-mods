@@ -74,7 +74,9 @@
 			"com.stella.spells.ArcherReachGameTest",
 			"com.stella.spells.ArrowShowerGameTest",
 			"com.stella.spells.BlitzParrotGameTest",
-			"com.stella.spells.DragonfallChargeGameTest"
+			"com.stella.spells.DragonfallChargeGameTest",
+			"com.stella.spells.BookRefineGameTest",
+			"com.stella.spells.BookSignatureGameTest"
 		]
 	},
 	"depends": {

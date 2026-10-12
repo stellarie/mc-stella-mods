@@ -69,6 +69,10 @@ public final class ArcherSkills {
 	/** Spectral Quiver: half an hour of arrows the bow does not need, at three quarters the damage. */
 	static final int SPECTRAL_QUIVER_TICKS = 36_000;
 	static final double QUIVER_DAMAGE_FACTOR = 0.75;
+	/** What a +15 Elemental Quiver keeps: its Elemental Edge signature. */
+	static final double EDGED_QUIVER_DAMAGE_FACTOR = 0.90;
+	/** What a +15 Triangle Shot rolls: its Barrage signature. */
+	static final double BARRAGE_CHANCE = 0.50;
 	/** Wind Walk: half an hour at a quarter more walking speed. */
 	static final int WIND_WALK_TICKS = 36_000;
 	static final double WIND_WALK_SPEED = SpellStatus.WIND_WALK_SPEED;
@@ -288,6 +292,18 @@ public final class ArcherSkills {
 		return SHOTS.containsKey(caster.getUUID());
 	}
 
+	/** Arms the shot this caster owes as an awakened one: the +15 Cluster Charge. False when no shot is owed. */
+	static boolean upgradeShot(final ServerPlayer caster) {
+		return SHOTS.computeIfPresent(caster.getUUID(),
+			(id, shot) -> new Shot(shot.kind(), shot.modifiers().withAwakened(true), shot.expiresAt())) != null;
+	}
+
+	/** True while the arrow this caster owes was armed awakened; the test seam for the next-shot books. */
+	static boolean owedShotAwakened(final ServerPlayer caster) {
+		Shot shot = SHOTS.get(caster.getUUID());
+		return shot != null && shot.modifiers().awakened();
+	}
+
 	// ---- the fourteen books ----
 
 	/** Arrow Crafting: one material becomes arrows of its kind. It needs no bow. */
@@ -436,7 +452,8 @@ public final class ArcherSkills {
 
 	/** The share an archer skill hit keeps while the caster's quiver is spectral; 1.0 without it. */
 	static double quiverDamageFactor(final ServerPlayer caster) {
-		return caster.hasEffect(SpellStatus.SPECTRAL_QUIVER) ? QUIVER_DAMAGE_FACTOR : 1.0;
+		MobEffectInstance quiver = caster.getEffect(SpellStatus.SPECTRAL_QUIVER);
+		return quiver == null ? 1.0 : quiver.getAmplifier() >= 1 ? EDGED_QUIVER_DAMAGE_FACTOR : QUIVER_DAMAGE_FACTOR;
 	}
 
 	/** Wind Walk: half an hour at a quarter more walking speed, the modifier itself on the effect. */
@@ -511,10 +528,11 @@ public final class ArcherSkills {
 	 * one arrow otherwise. The roll is the caller's, so a seeded source drives it from a case.
 	 */
 	public static int barrage(final @Nullable ServerPlayer caster, final RandomSource random) {
-		if (caster == null || !caster.hasEffect(SpellStatus.TRIANGLE_SHOT)) {
+		MobEffectInstance triangle = caster == null ? null : caster.getEffect(SpellStatus.TRIANGLE_SHOT);
+		if (triangle == null) {
 			return 1;
 		}
-		return random.nextDouble() < TRIANGLE_SHOT_CHANCE ? TRIANGLE_SHOT_ARROWS : 1;
+		return random.nextDouble() < (triangle.getAmplifier() >= 1 ? BARRAGE_CHANCE : TRIANGLE_SHOT_CHANCE) ? TRIANGLE_SHOT_ARROWS : 1;
 	}
 
 	/** How much longer an aimed bolt stretches the draw of one bow or crossbow shot. */
@@ -544,9 +562,10 @@ public final class ArcherSkills {
 		}
 		// The hit that this arrow deals runs after the damage is scaled, so the spent shot waits for it.
 		SPENT.put(shooter.getUUID(), shot);
+		float refined = (float) BookRefine.statFactor(shot.modifiers().refineLevel());
 		return switch (shot.kind()) {
-			case AIMED_BOLT -> AIMED_BOLT_DAMAGE;
-			case EXPLOSIVE_ARROW -> EXPLOSIVE_ARROW_DAMAGE;
+			case AIMED_BOLT -> AIMED_BOLT_DAMAGE * refined;
+			case EXPLOSIVE_ARROW -> EXPLOSIVE_ARROW_DAMAGE * refined;
 		};
 	}
 
@@ -627,7 +646,7 @@ public final class ArcherSkills {
 		if (!bowReady(caster) || point == null) {
 			return false;
 		}
-		List<ItemStack> ammo = showerAmmo(caster);
+		List<ItemStack> ammo = showerAmmo(caster, modifiers);
 		if (ammo == null) {
 			return false;
 		}
@@ -647,15 +666,16 @@ public final class ArcherSkills {
 	 * The arrows a cast spends, one single-arrow stack each, or null when the caster has too few. Nothing is
 	 * taken unless all of it can be: the check comes first.
 	 */
-	private static @Nullable List<ItemStack> showerAmmo(final ServerPlayer caster) {
+	private static @Nullable List<ItemStack> showerAmmo(final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers) {
 		if (imbuedCast() || hasSpectralQuiver(caster)) {
 			return List.of(new ItemStack(Items.ARROW));
 		}
-		if (arrowsOwned(caster) < ARROW_SHOWER_COST) {
+		int cost = BookRefine.arrowCost(ARROW_SHOWER_COST, modifiers.refineLevel());
+		if (arrowsOwned(caster) < cost) {
 			return null;
 		}
 		List<ItemStack> spent = new ArrayList<>();
-		for (int arrow = 0; arrow < ARROW_SHOWER_COST; arrow++) {
+		for (int arrow = 0; arrow < cost; arrow++) {
 			ItemStack taken = Quiver.takeArrow(caster);
 			spent.add(taken.isEmpty() ? takePackArrow(caster) : taken);
 		}
@@ -1054,7 +1074,8 @@ public final class ArcherSkills {
 	/** What one falcon strike deals: the caster floor ATK, else the book own number when the RPG mod gives none. */
 	static float strikeDamage(final ServerPlayer caster, final boolean ranged) {
 		double floor = RpgBridge.floorAtk(caster, ranged);
-		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+		float base = Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+		return base * (float) BookRefine.statFactor(BookRefine.castLevel(caster.getUUID(), "hunters_mark"));
 	}
 
 	// One falcon strike: a coloured burst and layered sounds on the foe, then the amount fixed when it was called.
