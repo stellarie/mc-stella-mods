@@ -782,11 +782,11 @@ public record TowerPlan(
 	}
 
 	/**
-	 * Floor 1's crafting table, furnace and anvil, in its safe zone, on the row of the zone farthest from the arrival's
-	 * row. A biome floor has no other safe zone, so no other floor has stations.
+	 * The crafting table, furnace and anvil of a floor's hub, in its safe zone, on the row of the zone farthest from the
+	 * arrival's row. A great hall has no hub, so it has no stations.
 	 */
 	private List<Station> biomeStations() {
-		if (this.floor != 1 || this.safeZones.isEmpty()) {
+		if (this.safeZones.isEmpty()) {
 			return List.of();
 		}
 		TowerMaze.Zone zone = this.safeZones.get(0);

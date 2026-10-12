@@ -52,12 +52,15 @@ public final class TowerMobs {
 	public static final String TAG = "mod-stella-tower.mob";
 	/** Mobs from the mobs mod roll no elites of their own in the tower; the tower decides that. */
 	public static final String NO_SPAWN_ROLL_TAG = StellaMobs.NO_SPAWN_ROLL_TAG;
-	/** The first floor is a level 50 mob. */
-	public static final int FIRST_FLOOR_LEVEL = 50;
+	/** The first floor is a level 30 mob. */
+	public static final int FIRST_FLOOR_LEVEL = 30;
 	/** A lost room's level is its floor plus this, less one. The room keeps this rule apart from the floors'. */
 	public static final int LOST_ROOM_FLOOR_OFFSET = 20;
-	/** The mobs a base-size floor holds; a larger floor holds this many times its area against the base floor's. */
+	/** The most mobs a base-size floor holds; a larger floor holds this many times its area against the base floor's. */
 	public static final int FLOOR_CAP = 72;
+	/** The mobs a base-size first floor holds, and how many more each floor adds, up to {@link #FLOOR_CAP}. */
+	public static final int FIRST_FLOOR_CAP = 24;
+	public static final int CAP_PER_FLOOR = 2;
 	public static final int SPAWN_INTERVAL_TICKS = 20;
 	/** The mobs a base-size floor gains in a round of spawning; a larger floor gains more, so it fills in the same time. */
 	public static final int SPAWN_BATCH = 8;
@@ -132,7 +135,7 @@ public final class TowerMobs {
 	}
 
 	/**
-	 * The mob level of a floor: 50 on floor 1, one more per floor, ten more at each tenth floor, and fifty
+	 * The mob level of a floor: 30 on floor 1, one more per floor, ten more at each tenth floor, and fifty
 	 * instead of ten at each fiftieth.
 	 */
 	public static int levelOf(final int floor) {
@@ -154,7 +157,18 @@ public final class TowerMobs {
 			return pool(floor);
 		}
 		FloorBiome biome = plan.biome().biome();
-		return BiomePools.of(biome == FloorBiome.GREAT_HALL ? FloorBiomes.of(plan.seed(), floor - 1) : biome);
+		List<EntityType<? extends Mob>> kinds = BiomePools.of(biome == FloorBiome.GREAT_HALL ? FloorBiomes.of(plan.seed(), floor - 1) : biome);
+		return forFloor(kinds, floor);
+	}
+
+	/** A biome's pool as a floor may raise it: the breeze first rises past {@link #OVERWORLD_ONLY_UNTIL}. */
+	static List<EntityType<? extends Mob>> forFloor(final List<EntityType<? extends Mob>> kinds, final int floor) {
+		if (floor > OVERWORLD_ONLY_UNTIL) {
+			return kinds;
+		}
+		List<EntityType<? extends Mob>> kept = new ArrayList<>(kinds);
+		kept.remove(EntityTypes.BREEZE);
+		return kept;
 	}
 
 	/** The kinds a floor may hold. */
@@ -410,7 +424,12 @@ public final class TowerMobs {
 	/** The most tower mobs a floor holds: the base cap times the floor's area against the base floor's, unless a test pinned it. */
 	public static int floorCap(final ServerLevel tower, final int floor) {
 		Integer pinned = PINNED_CAP.get(floor);
-		return pinned != null ? pinned : scaled(FLOOR_CAP, TowerPlan.at(tower, floor));
+		return pinned != null ? pinned : scaled(capOf(floor), TowerPlan.at(tower, floor));
+	}
+
+	/** The most mobs a base-size floor holds: {@link #FIRST_FLOOR_CAP} on floor 1, then {@link #CAP_PER_FLOOR} more a floor, to {@link #FLOOR_CAP}. */
+	public static int capOf(final int floor) {
+		return Math.min(FLOOR_CAP, FIRST_FLOOR_CAP + Math.max(0, floor - 1) * CAP_PER_FLOOR);
 	}
 
 	/** The mobs a round of spawning adds to a floor at most: the base batch times the area factor. */

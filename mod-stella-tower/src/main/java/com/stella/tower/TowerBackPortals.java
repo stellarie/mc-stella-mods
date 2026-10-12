@@ -85,7 +85,7 @@ public final class TowerBackPortals {
 			boolean fits = true;
 			for (int across = 0; across < FRAME_WIDTH && fits; across++) {
 				byte below = volume.kind(spot.x(), -1, spot.z() + across);
-				fits = below == TowerVolume.GROUND || below == TowerVolume.BIOME_BLOCK && BiomeBlocks.ground(volume.code(spot.x(), -1, spot.z() + across));
+				fits = below == TowerVolume.GROUND || below == TowerVolume.SAFE || below == TowerVolume.BIOME_BLOCK && BiomeBlocks.ground(volume.code(spot.x(), -1, spot.z() + across));
 				boolean post = across == 0 || across == FRAME_WIDTH - 1;
 				for (int up = 1; up < (post ? FRAME_HEIGHT + 2 : FRAME_HEIGHT) && fits; up++) {
 					fits = volume.kind(spot.x(), up - 1, spot.z() + across) == TowerVolume.AIR;

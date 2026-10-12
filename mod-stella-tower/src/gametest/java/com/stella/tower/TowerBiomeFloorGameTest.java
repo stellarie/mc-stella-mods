@@ -60,30 +60,28 @@ public class TowerBiomeFloorGameTest {
 		helper.succeed();
 	}
 
-	/** Catches a floor with a safe zone above floor 1, or on an elite or a boss floor, or a floor 1 without its one. */
+	/** Catches a floor with no hub zone, or a great hall with one, or an arrival outside its hub. */
 	@GameTest(maxTicks = 100)
-	public void onlyFloorOneHoldsASafeZone(final GameTestHelper helper) {
+	public void everyFloorButAGreatHallHoldsOneSafeZoneRoundItsArrival(final GameTestHelper helper) {
 		int withZone = 0;
 		List<Integer> wrong = new ArrayList<>();
 		for (int floor = 1; floor <= 60; floor++) {
 			TowerPlan plan = drawn(SEED, floor);
 			int zones = plan.safeZones().size();
 			withZone += zones > 0 ? 1 : 0;
-			if (zones != (floor == 1 ? 1 : 0)) {
+			boolean hall = floor % TowerElites.BOSS_EVERY == 0;
+			if (zones != (hall ? 0 : 1) || !hall && !plan.inSafeZone(plan.arrivalX(), 0, plan.arrivalZ())) {
 				wrong.add(floor);
 			}
 		}
-		TowerPlan first = drawn(SEED, 1);
-		boolean arrivalIn = first.inSafeZone(first.arrivalX(), 0, first.arrivalZ());
-		TowerTestSupport.result("safeZones", "withZone=" + withZone + " wrong=" + wrong + " arrivalInFloor1Zone=" + arrivalIn);
-		helper.assertTrue(wrong.isEmpty(), "floors with a wrong number of safe zones: " + wrong);
-		helper.assertTrue(arrivalIn, "floor 1's arrival is outside its safe zone");
+		TowerTestSupport.result("safeZones", "withZone=" + withZone + " wrong=" + wrong);
+		helper.assertTrue(wrong.isEmpty(), "floors with a wrong safe zone: " + wrong);
 		helper.succeed();
 	}
 
-	/** Catches a mob raised, or a player sheltered, on the arrival of a floor above the first. */
+	/** Catches a player left unsheltered at the arrival of a floor above the first: it is in the hub. */
 	@GameTest(maxTicks = 100)
-	public void aPlayerAtTheArrivalOfALaterFloorIsNotSheltered(final GameTestHelper helper) {
+	public void aPlayerAtTheArrivalOfALaterFloorIsSheltered(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = TowerTestSupport.freshBiomeFloor();
 		TowerFloors.ensure(tower, floor);
@@ -91,7 +89,7 @@ public class TowerBiomeFloorGameTest {
 		boolean sheltered = TowerSafety.sheltered(player);
 		TowerTestSupport.leave(helper, player);
 		TowerTestSupport.result("laterArrival", "floor=" + floor + " sheltered=" + sheltered);
-		helper.assertFalse(sheltered, "a player at floor " + floor + "'s arrival is sheltered");
+		helper.assertTrue(sheltered, "a player at floor " + floor + "'s arrival is not sheltered");
 		helper.succeed();
 	}
 
