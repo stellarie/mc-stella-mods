@@ -250,6 +250,48 @@ public class VaultRewardsGameTest {
 	}
 
 	@GameTest
+	public void theTreasureTableIsRicherThanTheVaultTable(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		LootTable table = level.getServer().reloadableRegistries().getLootTable(VaultMobs.TREASURE_LOOT);
+		RandomSource master = RandomSource.create(7_000_031L);
+		int scrap = 0;
+		int totem = 0;
+		int apple = 0;
+		int ingot = 0;
+		int diamondsLeast = Integer.MAX_VALUE;
+		int diamondsMost = 0;
+		for (int i = 0; i < ROLLS; i++) {
+			int diamonds = 0;
+			for (ItemStack stack : table.getRandomItems(new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, Vec3.ZERO).create(LootContextParamSets.CHEST), master.nextLong())) {
+				if (stack.is(Items.DIAMOND)) {
+					diamonds += stack.getCount();
+				} else if (stack.is(Items.NETHERITE_SCRAP)) {
+					scrap++;
+				} else if (stack.is(Items.NETHERITE_INGOT)) {
+					ingot++;
+				} else if (stack.is(Items.TOTEM_OF_UNDYING)) {
+					totem++;
+				} else if (stack.is(Items.ENCHANTED_GOLDEN_APPLE)) {
+					apple++;
+				}
+			}
+			diamondsLeast = Math.min(diamondsLeast, diamonds);
+			diamondsMost = Math.max(diamondsMost, diamonds);
+		}
+		double scrapRate = scrap / (double) ROLLS;
+		double totemRate = totem / (double) ROLLS;
+		double appleRate = apple / (double) ROLLS;
+		double ingotRate = ingot / (double) ROLLS;
+		VaultTestSupport.result("treasureTable", "rolls=" + ROLLS + " scrap=" + scrapRate + " ingot=" + ingotRate + " totem=" + totemRate + " apple=" + appleRate + " diamonds=" + diamondsLeast + ".." + diamondsMost);
+		helper.assertTrue(diamondsLeast >= 6 && diamondsMost <= 12, "diamonds " + diamondsLeast + ".." + diamondsMost);
+		helper.assertTrue(Math.abs(scrapRate - 0.8) <= 0.8 * 0.05, "scrap rate " + scrapRate);
+		helper.assertTrue(Math.abs(ingotRate - 0.35) <= 0.35 * 0.10, "ingot rate " + ingotRate);
+		helper.assertTrue(Math.abs(totemRate - 0.3) <= 0.3 * 0.10, "totem rate " + totemRate);
+		helper.assertTrue(Math.abs(appleRate - 0.5) <= 0.5 * 0.08, "apple rate " + appleRate);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void everyVaultItemIsExclusiveAndTheUniqueIsTheAbyssalEdge(final GameTestHelper helper) {
 		for (Item item : new Item[] {VaultItems.VAULT_SEAL, VaultItems.VOID_ESSENCE, VaultItems.VAULT_DUST, VaultItems.VOID_TOUCHED.template(), VaultItems.ABYSSAL_EDGE}) {
 			helper.assertTrue(Exclusives.isExclusive(item), BuiltInRegistries.ITEM.getKey(item) + " is not exclusive");
