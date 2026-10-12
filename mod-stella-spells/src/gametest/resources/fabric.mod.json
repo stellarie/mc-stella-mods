@@ -76,7 +76,9 @@
 			"com.stella.spells.BlitzParrotGameTest",
 			"com.stella.spells.DragonfallChargeGameTest",
 			"com.stella.spells.BookRefineGameTest",
-			"com.stella.spells.BookSignatureGameTest"
+			"com.stella.spells.BookSignatureGameTest",
+			"com.stella.spells.DescriptionWidthGameTest",
+			"com.stella.spells.SchoolTooltipGameTest"
 		]
 	},
 	"depends": {

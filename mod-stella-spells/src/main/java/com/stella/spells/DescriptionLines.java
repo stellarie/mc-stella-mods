@@ -3,6 +3,7 @@ package com.stella.spells;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -14,6 +15,11 @@ import net.minecraft.network.chat.Style;
  */
 public final class DescriptionLines {
 	public static final int MAX_CHARS = 24;
+	/**
+	 * A tooltip line that carries this style insertion is split by {@link #wrapMarked}.
+	 * Book lore keeps one entry for each logical line, so the code that swaps a line by its key still works.
+	 */
+	public static final String WRAP_MARK = "stella:wrap";
 
 	private DescriptionLines() {
 	}
@@ -21,6 +27,34 @@ public final class DescriptionLines {
 	/** Adds the wrapped lines of the text to the list. */
 	public static void add(final List<Component> out, final Component text) {
 		out.addAll(wrap(text));
+	}
+
+	/** Emits the wrapped lines of the text, one call to the consumer per line. */
+	public static void add(final Consumer<Component> out, final Component text) {
+		wrap(text).forEach(out);
+	}
+
+	/** The line, marked so {@link #wrapMarked} splits it. */
+	public static MutableComponent marked(final MutableComponent line) {
+		return line.withStyle(style -> style.withInsertion(WRAP_MARK));
+	}
+
+	public static boolean isMarked(final Component line) {
+		return WRAP_MARK.equals(line.getStyle().getInsertion());
+	}
+
+	/** Replaces each marked line of a tooltip with its wrapped lines. A line without the mark stays as it is. */
+	public static void wrapMarked(final List<Component> tooltip) {
+		List<Component> wrapped = new ArrayList<>(tooltip.size());
+		for (Component line : tooltip) {
+			if (isMarked(line)) {
+				wrapped.addAll(wrap(line));
+			} else {
+				wrapped.add(line);
+			}
+		}
+		tooltip.clear();
+		tooltip.addAll(wrapped);
 	}
 
 	public static List<Component> wrap(final Component text) {

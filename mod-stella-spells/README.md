@@ -75,6 +75,8 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 
 - Damage shows a range, the lowest to the highest hit, in the health units your hearts use. It follows your RPG
   MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.
+- A skill book reads the stat of its own school. A fighter book shows your Strength roll and an archer book shows your
+  Dexterity roll. A priest book shows heals and holy hits from your Vitality. Only mage books read MATK.
 - Durations show seconds and radii show blocks, after the book's enchantments and your armor's.
 - With `mod-stella-rpg`, your Intelligence also stretches the duration of offensive effects, debuffs, zones and heals through `RpgSpells.durationMultiplier`. The 30-minute self buffs and hymns do not stretch. Cooldowns are not stretched. Without it the multiplier is 1.
 - Spell lengths follow three rules. Self buffs and party hymns last 30 minutes. Hard crowd control (Frostbind, Briar Snare, Void Well, Time Lock, Gravity, Frost Nova, Ice Lance) lasts twice as long as before, and half as long on an elite or a boss. Debuffs and damage over time last three times as long.
@@ -87,6 +89,9 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 - A scroll shows the same effect line as its book.
 - Without the RPG mod the line shows the flat numbers times the cast power.
 - A tooltip built with no player, such as on a server, keeps the base numbers.
+- Every description line is at most 24 characters wide. A line built with `Spellbooks.line` is marked, and
+  `SpellTooltip.decorate` wraps the marked lines last, through `DescriptionLines`, on the client.
+  The stored item lore stays whole so that the text follows the player's language.
 
 Every spell keeps its numbers in one place, `SpellNumbers`. The spell effect and the tooltip read that record, so the
 text on a book cannot drift from the cast. A new spell declares its numbers there.
