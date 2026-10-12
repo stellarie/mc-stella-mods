@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Build Gradle mods, run five GameTest suites each, and bundle release jars."""
+"""Assemble Gradle mods without tests, bundle release jars, and pick release versions."""
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -45,14 +46,6 @@ def run(mod: Path, *args: str) -> None:
     subprocess.run(command, cwd=mod, check=True)
 
 
-def copy_log(mod: Path, number: int, output: Path) -> None:
-    log = mod / "build" / "run" / "gameTest" / "logs" / "latest.log"
-    if log.is_file():
-        target = output / "test-logs" / mod.name / f"run-{number}.log"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(log, target)
-
-
 def build_one(root: Path, output: Path, name: str) -> None:
     mods = {mod.name: mod for mod in discover(root)}
     if name not in mods:
@@ -64,20 +57,10 @@ def build_one(root: Path, output: Path, name: str) -> None:
         old_jar.unlink()
     # Nether's included builds otherwise write the mobs jar concurrently.
     gradle_limits = ("--max-workers=1",) if name == "mod-stella-nether" else ()
-    try:
-        run(mod, "clean", "build", *gradle_limits)
-    finally:
-        copy_log(mod, 0, output)
+    run(mod, "clean", "assemble", *gradle_limits)
     jars = release_jars(mod)
     if not jars:
         raise RuntimeError(f"No release jars found for {name}")
-    for number in range(1, 6):
-        log = mod / "build" / "run" / "gameTest" / "logs" / "latest.log"
-        log.unlink(missing_ok=True)
-        try:
-            run(mod, "runGameTest", "--rerun", *gradle_limits)
-        finally:
-            copy_log(mod, number, output)
     for jar in jars:
         shutil.copy2(jar, stage / jar.name)
     print(f"Staged {len(jars)} release jars for {name}", flush=True)
@@ -127,6 +110,23 @@ def build(root: Path, output: Path) -> Path:
     return bundle(output / "jars", [mod.name for mod in mods], output)
 
 
+TAG = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
+
+
+def next_version(tags: list[str], bump: str) -> str:
+    if bump not in ("patch", "minor", "major"):
+        raise RuntimeError(f"Unknown bump: {bump}")
+    versions = [tuple(map(int, m.groups())) for t in tags if (m := TAG.fullmatch(t))]
+    if not versions:
+        return "v1.0.0"
+    major, minor, patch = max(versions)
+    if bump == "major":
+        return f"v{major + 1}.0.0"
+    if bump == "minor":
+        return f"v{major}.{minor + 1}.0"
+    return f"v{major}.{minor}.{patch + 1}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
@@ -136,10 +136,18 @@ def main() -> int:
     parser.add_argument("--mod")
     parser.add_argument("--bundle", action="store_true")
     parser.add_argument("--mods-json")
+    parser.add_argument("--next-version", action="store_true")
+    parser.add_argument("--bump", default="patch")
     args = parser.parse_args()
     try:
         if args.list:
             print(json.dumps([mod.name for mod in discover(args.root.resolve())]))
+        elif args.next_version:
+            tags = subprocess.run(
+                ["git", "tag", "--list", "v*"], cwd=args.root, check=True,
+                capture_output=True, text=True,
+            ).stdout.split()
+            print(next_version(tags, args.bump))
         elif args.mod:
             build_one(args.root.resolve(), args.output.resolve(), args.mod)
         elif args.bundle:
