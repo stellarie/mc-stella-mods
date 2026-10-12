@@ -5,22 +5,27 @@ Minecraft mods for a private Fabric server.
 ## CI release bundle
 
 The GitHub workflow detects every top-level Gradle mod with a wrapper. Each
-mod builds, then runs its headless GameTest suite five times, on its own CI
-runner.
+mod assembles on its own CI runner. CI never runs a test.
 All mod jobs must pass before CI combines their production jars into
-`mc-stella-mods.zip`. The workflow runs only on pushes to `main`, which
-includes a merge, and uploads that ZIP. Pull requests do not start it.
-Start a run by hand from the Actions tab (`workflow_dispatch`).
-A `v*` tag also creates a GitHub release with that ZIP as its asset.
+`mc-stella-mods.zip`. Every push to `main`, which includes a merge, then
+creates a GitHub release with that ZIP as its asset. Pull requests do not
+start the workflow.
 
-Run the same gate locally with Java 25 and Python 3:
+The release version is a git tag. The first release is `v1.0.0`. Each later
+release raises the patch part of the highest `v*.*.*` tag.
+Start a run by hand from the Actions tab (`workflow_dispatch`) to raise the
+minor or major part instead. The `bump` input picks the part.
+
+Build the same ZIP locally with Java 25 and Python 3:
 
 ```text
 python scripts/build-release.py
 ```
 
-The ZIP and individual GameTest logs appear under `release-output/`.
+The ZIP appears under `release-output/`.
 Use `python scripts/build-release.py --list` to inspect the detected mods.
+Use `python scripts/build-release.py --next-version` to print the next tag.
+Run `python scripts/test-build-release.py` to check the release script.
 
 ## Mods
 
