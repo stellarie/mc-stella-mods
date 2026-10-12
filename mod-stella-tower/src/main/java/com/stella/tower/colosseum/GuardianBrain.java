@@ -305,17 +305,25 @@ public final class GuardianBrain {
 			at.x, at.y + 0.4, at.z, 16, AURA_RADIUS / 3.0, 0.2, AURA_RADIUS / 3.0, 0.01);
 	}
 
+	/** The bar shows to the players inside the guardian's arena, and to nobody who has left it. */
 	private void updateBar(final ServerLevel level) {
 		float max = Math.max(1.0F, this.rider.getMaxHealth());
 		this.bar.setProgress(Math.max(0.0F, Math.min(1.0F, this.rider.getHealth() / max)));
-		for (ServerPlayer player : level.players()) {
-			boolean near = player.distanceToSqr(this.rider.position()) <= BAR_RADIUS * BAR_RADIUS;
-			if (near && !this.bar.getPlayers().contains(player)) {
-				this.bar.addPlayer(player);
-			} else if (!near && this.bar.getPlayers().contains(player)) {
+		for (ServerPlayer player : List.copyOf(this.bar.getPlayers())) {
+			if (player.level() != level || !barSees(player)) {
 				this.bar.removePlayer(player);
 			}
 		}
+		for (ServerPlayer player : level.players()) {
+			if (barSees(player) && !this.bar.getPlayers().contains(player)) {
+				this.bar.addPlayer(player);
+			}
+		}
+	}
+
+	/** Whether a player is where the bar is shown: inside the arena, or near the guardian when it keeps no arena. */
+	private boolean barSees(final ServerPlayer player) {
+		return home() == null ? player.distanceToSqr(this.rider.position()) <= BAR_RADIUS * BAR_RADIUS : insideArena(player.position());
 	}
 
 	// ---------------------------------------------------------------- targets
