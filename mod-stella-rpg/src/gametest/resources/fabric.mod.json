@@ -43,6 +43,7 @@
 			"com.stella.rpg.DeathRecapGameTest",
 			"com.stella.rpg.BagShareGameTest",
 			"com.stella.rpg.MatkGameTest",
+			"com.stella.rpg.BookBuffGameTest",
 			"com.stella.rpg.StrengthPercentGameTest",
 			"com.stella.rpg.StarterSwordGameTest",
 			"com.stella.rpg.NoHeartsGameTest",
