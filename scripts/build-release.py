@@ -66,9 +66,7 @@ def build_one(root: Path, output: Path, name: str) -> None:
     print(f"Staged {len(jars)} release jars for {name}", flush=True)
 
 
-def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
-    target = output / "mc-stella-mods.zip"
-    target.unlink(missing_ok=True)
+def collect_jars(jars_dir: Path, expected_mods: list[str]) -> list[Path]:
     if not expected_mods or len(set(expected_mods)) != len(expected_mods):
         raise RuntimeError("Expected mod list is empty or contains duplicates")
     if not jars_dir.is_dir():
@@ -87,17 +85,56 @@ def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
         if jar.name in names:
             raise RuntimeError(f"Duplicate jar name: {jar.name}")
         names.add(jar.name)
-    output.mkdir(parents=True, exist_ok=True)
-    temporary = output / "mc-stella-mods.zip.tmp"
+    return jars
+
+
+def write_archive(target: Path, entries: list[tuple[str, Path | bytes]]) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(target.name + ".tmp")
     temporary.unlink(missing_ok=True)
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for jar in jars:
-                archive.write(jar, jar.name)
+            for name, content in entries:
+                if isinstance(content, bytes):
+                    archive.writestr(name, content)
+                else:
+                    archive.write(content, name)
         temporary.replace(target)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def bundle(jars_dir: Path, expected_mods: list[str], output: Path) -> Path:
+    target = output / "mc-stella-mods.zip"
+    target.unlink(missing_ok=True)
+    jars = collect_jars(jars_dir, expected_mods)
+    write_archive(target, [(jar.name, jar) for jar in jars])
     print(f"Release bundle: {target} ({len(jars)} jars)", flush=True)
+    return target
+
+
+def pack_jar(jars_dir: Path, expected_mods: list[str], output: Path, version: str) -> Path:
+    if not TAG.fullmatch(version):
+        raise RuntimeError(f"Version must look like v1.2.3: {version}")
+    plain = version.removeprefix("v")
+    target = output / f"mc-stella-mods-{plain}.jar"
+    target.unlink(missing_ok=True)
+    jars = collect_jars(jars_dir, expected_mods)
+    metadata = {
+        "schemaVersion": 1,
+        "id": "mc-stella-mods",
+        "version": plain,
+        "name": "Stella Mods",
+        "description": "Every Stella mod in one jar. Fabric loads the nested mods.",
+        "environment": "*",
+        "jars": [{"file": f"META-INF/jars/{jar.name}"} for jar in jars],
+    }
+    entries: list[tuple[str, Path | bytes]] = [
+        ("fabric.mod.json", json.dumps(metadata, indent=2).encode()),
+    ]
+    entries.extend((f"META-INF/jars/{jar.name}", jar) for jar in jars)
+    write_archive(target, entries)
+    print(f"Modpack jar: {target} ({len(jars)} nested jars)", flush=True)
     return target
 
 
@@ -136,12 +173,20 @@ def main() -> int:
     parser.add_argument("--mod")
     parser.add_argument("--bundle", action="store_true")
     parser.add_argument("--mods-json")
+    parser.add_argument("--pack-jar", action="store_true")
+    parser.add_argument("--version")
     parser.add_argument("--next-version", action="store_true")
     parser.add_argument("--bump", default="patch")
     args = parser.parse_args()
     try:
         if args.list:
             print(json.dumps([mod.name for mod in discover(args.root.resolve())]))
+        elif args.pack_jar:
+            if not args.mods_json or not args.version:
+                raise RuntimeError("--pack-jar requires --mods-json and --version")
+            names = json.loads(args.mods_json)
+            jars_dir = args.input or args.output / "jars"
+            pack_jar(jars_dir.resolve(), names, args.output.resolve(), args.version)
         elif args.next_version:
             tags = subprocess.run(
                 ["git", "tag", "--list", "v*"], cwd=args.root, check=True,

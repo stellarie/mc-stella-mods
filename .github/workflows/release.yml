@@ -85,7 +85,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUMP: ${{ inputs.bump || 'patch' }}
+          DETECTED_MODS: ${{ needs.discover.outputs.mods }}
         run: |
           version=$(python3 scripts/build-release.py --next-version --bump "$BUMP")
-          gh release create "$version" release-output/mc-stella-mods.zip \
+          python3 scripts/build-release.py --pack-jar --mods-json "$DETECTED_MODS" --version "$version"
+          gh release create "$version" \
+            release-output/mc-stella-mods.zip \
+            "release-output/mc-stella-mods-${version#v}.jar" \
             --target "$GITHUB_SHA" --title "$version" --generate-notes
