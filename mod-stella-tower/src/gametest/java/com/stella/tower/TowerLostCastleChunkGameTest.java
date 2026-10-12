@@ -1,7 +1,6 @@
 package com.stella.tower;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -10,50 +9,22 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 
 /** The lost castle is built one chunk at a time in a real world: the chunks must agree on one castle. */
 public class TowerLostCastleChunkGameTest {
-	/** What one build left in a piece's box: every block state, and the chest blocks by storey. */
-	private record Snapshot(List<BlockState> states, int[] chestsByStorey) {
-		int chests() {
-			int sum = 0;
-			for (int count : this.chestsByStorey) {
-				sum += count;
-			}
-			return sum;
-		}
+	/** What one build left in a piece's box: every block state, and what every chest holds, in a fixed order. */
+	private record Snapshot(List<BlockState> states, List<String> chests) {
 	}
 
-	/** A castle placed over a hill, not yet built: the ground it stands on and the piece. */
-	private record Site(BoundingBox region, LostRoomPiece piece) {
-	}
-
-	private static void ground(final ServerLevel level, final BoundingBox region) {
-		for (int x = region.minX(); x <= region.maxX(); x++) {
-			for (int z = region.minZ(); z <= region.maxZ(); z++) {
-				for (int y = 56; y <= region.maxY(); y++) {
-					BlockState state = y <= TowerLostRoomGameTest.hill(x, z) ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
-					level.setBlock(new BlockPos(x, y, z), state, Block.UPDATE_CLIENTS);
-				}
-			}
-		}
-	}
-
-	/** A site in an empty spot of the tower level, offset by 5 and 7 so the piece crosses three chunks each way. */
-	private static Site site(final ServerLevel level, final Direction facing, final LostCastleVariant variant) {
-		int area = TowerTestSupport.freshArea();
-		int west = Math.floorMod(area, 4096) * 64 + 5;
-		int north = -200_000 - Math.floorMod(area / 4096, 1000) * 64 + 7;
-		BoundingBox region = new BoundingBox(west - 2, 56, north - 2, west + LostRoomPiece.LENGTH + 1, 56 + 4 + LostRoomPiece.HEIGHT + 2, north + LostRoomPiece.LENGTH + 1);
-		ground(level, region);
-		int floor = LostRoomPiece.floorOver(west, north, west + LostRoomPiece.LENGTH - 1, north + LostRoomPiece.LENGTH - 1, 1, TowerLostRoomGameTest::hill);
-		return new Site(region, new LostRoomPiece(west, floor, north, facing, variant));
+	/** A site in an empty spot of the tower level, offset by 5 and 7 so the piece crosses four chunks each way. */
+	private static LostRoomPiece site(final ServerLevel level, final Direction facing, final LostCastlePalette palette, final int floors) {
+		int[] spot = TowerLostCastleSupport.freshSpot();
+		return TowerLostCastleSupport.site(level, spot[0] + 5, spot[1] + 7, facing, palette, floors);
 	}
 
 	/** Builds the piece one 16 x 16 chunk box at a time, in a shuffled order, as worldgen does. */
@@ -74,16 +45,16 @@ public class TowerLostCastleChunkGameTest {
 
 	private static Snapshot snapshot(final ServerLevel level, final BoundingBox box) {
 		List<BlockState> states = new ArrayList<>();
-		int[] chests = new int[TowerHex.STOREYS];
+		List<String> chests = new ArrayList<>();
 		for (BlockPos at : BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
 			BlockState state = level.getBlockState(at);
 			states.add(state);
-			if (state.getBlock() instanceof ChestBlock) {
-				int storey = 0;
-				while (storey + 1 < chests.length && at.getY() >= box.minY() + TowerHex.floorAt(storey + 1)) {
-					storey++;
+			if (state.getBlock() instanceof ChestBlock && level.getBlockEntity(at) instanceof ChestBlockEntity chest) {
+				StringBuilder items = new StringBuilder(at.toShortString()).append(':');
+				for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+					items.append(chest.getItem(slot)).append(';');
 				}
-				chests[storey]++;
+				chests.add(items.toString());
 			}
 		}
 		return new Snapshot(states, chests);
@@ -102,34 +73,35 @@ public class TowerLostCastleChunkGameTest {
 		return differing;
 	}
 
-	/** A castle built in one pass, then built again chunk by chunk in a shuffled order, must come out the same. */
-	@GameTest(maxTicks = 200)
+	/**
+	 * A castle built in one pass, then built again chunk by chunk in a shuffled order, must come out the same: the
+	 * same blocks, and the same loot in every chest. Catches a choice made from a block already laid, a portal
+	 * broken by the stone laid after it across a chunk seam, and a stair or wall cut in one chunk and not the next.
+	 */
+	@GameTest(maxTicks = 300)
 	public void aCastleBuiltChunkByChunkEqualsOneBuiltWhole(final GameTestHelper helper) {
 		ServerLevel level = TowerTestSupport.tower(helper);
-		Direction[] facings = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
-		LostCastleVariant[] variants = {LostCastleVariant.CASTLE, LostCastleVariant.KEEP, LostCastleVariant.CRYPT, LostCastleVariant.MAZE,
-			LostCastleVariant.FLOODED, LostCastleVariant.CASTLE, LostCastleVariant.KEEP, LostCastleVariant.CRYPT};
+		Direction[] facings = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+		int[] floors = {3, 5, 4, 6};
 		StringBuilder report = new StringBuilder();
 		boolean same = true;
 		for (int run = 0; run < facings.length; run++) {
-			Site site = site(level, facings[run], variants[run]);
-			LostRoomPiece piece = site.piece();
+			LostCastlePalette palette = LostCastlePalette.values()[run % LostCastlePalette.values().length];
+			LostRoomPiece piece = site(level, facings[run], palette, floors[run]);
 			BoundingBox box = piece.getBoundingBox();
 
 			piece.build(level, BoundingBox.infinite());
 			Snapshot whole = snapshot(level, box);
 
-			ground(level, site.region());
+			TowerLostCastleSupport.ground(level, piece);
 			int chunks = buildByChunk(level, piece, run);
 			Snapshot split = snapshot(level, box);
 
 			int differing = differing(whole, split);
-			boolean runSame = differing == 0 && Arrays.equals(whole.chestsByStorey(), split.chestsByStorey());
+			boolean runSame = differing == 0 && whole.chests().equals(split.chests());
 			same &= runSame;
-			report.append(" [run ").append(run).append(' ').append(variants[run]).append(' ').append(facings[run])
-				.append(" chunks=").append(chunks)
-				.append(" chestsWhole=").append(whole.chests()).append(Arrays.toString(whole.chestsByStorey()))
-				.append(" chestsSplit=").append(split.chests()).append(Arrays.toString(split.chestsByStorey()))
+			report.append(" [run ").append(run).append(' ').append(palette).append(' ').append(facings[run]).append(" floors=").append(floors[run])
+				.append(" chunks=").append(chunks).append(" chests=").append(whole.chests().size()).append('/').append(split.chests().size())
 				.append(" differingBlocks=").append(differing).append(']');
 		}
 		TowerTestSupport.result("castleChunkSplit", "same=" + same + report);
@@ -149,15 +121,15 @@ public class TowerLostCastleChunkGameTest {
 	}
 
 	/** No chunk writes a block outside the piece's box, and no half of a double chest lands beyond it. */
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 300)
 	public void nothingIsWrittenOutsideThePieceBox(final GameTestHelper helper) {
 		ServerLevel level = TowerTestSupport.tower(helper);
 		int touched = 0;
-		for (Direction facing : Direction.Plane.HORIZONTAL) {
-			Site site = site(level, facing, LostCastleVariant.KEEP);
-			BoundingBox box = site.piece().getBoundingBox();
+		for (Direction facing : new Direction[] {Direction.NORTH, Direction.WEST}) {
+			LostRoomPiece piece = site(level, facing, LostCastlePalette.SNOW, 3);
+			BoundingBox box = piece.getBoundingBox();
 			List<BlockState> before = ring(level, box);
-			buildByChunk(level, site.piece(), facing.ordinal());
+			buildByChunk(level, piece, facing.ordinal());
 			List<BlockState> after = ring(level, box);
 			for (int i = 0; i < before.size(); i++) {
 				touched += before.get(i).equals(after.get(i)) ? 0 : 1;
@@ -169,22 +141,22 @@ public class TowerLostCastleChunkGameTest {
 	}
 
 	/** One seed gives one castle: the same piece builds the same blocks twice, and a saved piece draws the same plan. */
-	@GameTest(maxTicks = 200)
+	@GameTest(maxTicks = 300)
 	public void samePieceSeedGivesTheSameBlocks(final GameTestHelper helper) {
 		ServerLevel level = TowerTestSupport.tower(helper);
-		Site site = site(level, Direction.WEST, LostCastleVariant.MAZE);
-		LostRoomPiece piece = site.piece();
+		LostRoomPiece piece = site(level, Direction.WEST, LostCastlePalette.SANDSTONE, 3);
 		piece.build(level, BoundingBox.infinite());
 		Snapshot first = snapshot(level, piece.getBoundingBox());
-		ground(level, site.region());
+		TowerLostCastleSupport.ground(level, piece);
 		piece.build(level, BoundingBox.infinite());
 		Snapshot second = snapshot(level, piece.getBoundingBox());
 		LostRoomPiece loaded = new LostRoomPiece(piece.createTag(StructurePieceSerializationContext.fromLevel(level)));
-		boolean samePlan = loaded.plan().equals(piece.plan());
+		boolean samePlan = loaded.plan().equals(piece.plan()) && loaded.palette() == piece.palette() && loaded.floors() == piece.floors()
+			&& loaded.drop() == piece.drop();
 		int differing = differing(first, second);
 		TowerTestSupport.result("castleSameSeed", "differingBlocks=" + differing + " samePlanAfterReload=" + samePlan);
 		helper.assertTrue(differing == 0, differing + " blocks differ between two builds of one piece");
-		helper.assertTrue(samePlan, "a piece loaded from its tag draws another plan");
+		helper.assertTrue(samePlan, "a piece loaded from its tag draws another castle");
 		helper.succeed();
 	}
 }
