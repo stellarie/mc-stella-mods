@@ -34,7 +34,9 @@ import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -101,7 +103,7 @@ public final class ArcherSkills {
 	/** The side, in blocks, of the square around the aimed point that the arrows come down on, and their loosing speed. */
 	static final double ARROW_SHOWER_SIDE = 3.0;
 	static final double ARROW_SHOWER_SPEED = 2.0;
-	/** The damage a shower arrow carries when the RPG mod gives no minimum roll: it deals the plain arrow damage. */
+	/** The damage a shower arrow carries when the RPG mod gives no average roll: it deals the plain arrow damage. */
 	static final float NO_FIXED_DAMAGE = Float.NaN;
 	/** The tag the RPG mod reads: an arrow that carries it is not scaled by the dice, the status ATK or a crit roll. */
 	static final String RPG_FIXED_HIT_TAG = "mod-stella-rpg.fixed_hit";
@@ -112,14 +114,21 @@ public final class ArcherSkills {
 	private static final double CROSSBOW_ARROW_SPEED = 3.15;
 	/** Marks an arrow the shower loosed, so the damage seam and the friendly-fire rule can find it. */
 	static final String SHOWER_TAG = Spellbooks.MOD_ID + ".arrow_shower";
-	/** How far above the eye an arrow leaves, so it clears the caster's own head. */
-	private static final double SHOWER_LAUNCH_LIFT = 0.4;
+	/** Where an arrow leaves: behind the caster, to one side, at shoulder height. All in blocks. */
+	static final double SHOWER_BEHIND_MIN = 1.0;
+	static final double SHOWER_BEHIND_MAX = 2.0;
+	static final double SHOWER_SIDE_MIN = 1.0;
+	static final double SHOWER_SIDE_MAX = 1.5;
+	static final double SHOWER_SHOULDER = 1.4;
+	/** A hit slows the foe this hard for this long: Slowness VII. */
+	static final int SHOWER_SLOW_AMPLIFIER = 6;
+	static final int SHOWER_SLOW_TICKS = 5;
 	/** The steps of the low-discrepancy sequence that places the spots: 1 / 1.3247 and 1 / 1.3247 squared. */
 	private static final double SPOT_STEP_X = 0.7548776662466927;
 	private static final double SPOT_STEP_Z = 0.5698402909980532;
-	/** The flattest and the steepest lob the shower solves for, in degrees. */
-	private static final double SHOWER_MIN_ELEVATION = 45.0;
-	private static final double SHOWER_MAX_ELEVATION = 89.5;
+	/** The lowest and the highest launch angle the shower solves for, in degrees. */
+	private static final double SHOWER_MIN_ELEVATION = -60.0;
+	private static final double SHOWER_MAX_ELEVATION = 45.0;
 	/** An arrow's own drag and gravity per tick, used to find where a lob comes down. */
 	private static final double ARROW_DRAG = 0.99;
 	private static final double ARROW_GRAVITY = 0.05;
@@ -192,6 +201,8 @@ public final class ArcherSkills {
 	private static final Map<UUID, Shower> SHOWERS = new ConcurrentHashMap<>();
 	/** The arrows each caster's last shower loosed, by identity. */
 	private static final Map<UUID, List<UUID>> SHOWER_ARROWS = new ConcurrentHashMap<>();
+	/** Where those arrows left, in the same order. The test seam for the volley's shape. */
+	private static final Map<UUID, List<Vec3>> SHOWER_ORIGINS = new ConcurrentHashMap<>();
 	/** The server tick a player last struck a blow of their own, which holds the idle falcon back. */
 	private static final Map<UUID, Integer> LAST_BLOW = new ConcurrentHashMap<>();
 	/** The server tick the idle falcon may next attack a player's foe. */
@@ -231,6 +242,7 @@ public final class ArcherSkills {
 		SNARES.clear();
 		SHOWERS.clear();
 		SHOWER_ARROWS.clear();
+		SHOWER_ORIGINS.clear();
 		LAST_BLOW.clear();
 		PARROT_READY.clear();
 		PULSES_RUN.clear();
@@ -250,6 +262,7 @@ public final class ArcherSkills {
 		SNARES.remove(caster.getUUID());
 		SHOWERS.remove(caster.getUUID());
 		SHOWER_ARROWS.remove(caster.getUUID());
+		SHOWER_ORIGINS.remove(caster.getUUID());
 		LAST_BLOW.remove(caster.getUUID());
 		PARROT_READY.remove(caster.getUUID());
 		PULSES_RUN.remove(caster.getUUID());
@@ -289,6 +302,12 @@ public final class ArcherSkills {
 	static List<UUID> showerArrows(final ServerPlayer caster) {
 		List<UUID> loosed = SHOWER_ARROWS.get(caster.getUUID());
 		return loosed == null ? List.of() : List.copyOf(loosed);
+	}
+
+	/** Where the arrows of the caster's last Arrow Shower left, in loosing order; the test seam for the volley. */
+	static List<Vec3> showerOrigins(final ServerPlayer caster) {
+		List<Vec3> origins = SHOWER_ORIGINS.get(caster.getUUID());
+		return origins == null ? List.of() : List.copyOf(origins);
 	}
 
 	/** The test seam for the shower's landing spots: null rolls on the caster own source. */
@@ -589,6 +608,9 @@ public final class ArcherSkills {
 			|| !(projectile.getOwner() instanceof ServerPlayer shooter) || !(victim.level() instanceof ServerLevel level)) {
 			return;
 		}
+		if (projectile.entityTags().contains(SHOWER_TAG)) {
+			victim.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, SHOWER_SLOW_TICKS, SHOWER_SLOW_AMPLIFIER), shooter);
+		}
 		Shot shot = SPENT.remove(shooter.getUUID());
 		if (shot == null) {
 			return;
@@ -646,11 +668,11 @@ public final class ArcherSkills {
 	}
 
 	/**
-	 * Arrow Shower: the caster lobs real arrows into the sky, one after another, and they come down over a square
-	 * {@link #ARROW_SHOWER_SIDE} blocks wide around the ground it looks at. The cast costs {@link #ARROW_SHOWER_COST}
+	 * Arrow Shower: real arrows leave from behind the caster, left and right in turn, and fly a low arc past it onto
+	 * a square {@link #ARROW_SHOWER_SIDE} blocks wide around the ground it looks at. The cast costs {@link #ARROW_SHOWER_COST}
 	 * arrows, from the quiver first and then the pack, and each spent arrow lends its kind to its share of the
 	 * shower. An imbued cast and a Spectral Quiver pay nothing. A caster who cannot pay casts nothing. Each arrow
-	 * deals the caster's minimum ranged roll when the RPG mod gives one.
+	 * deals the caster's average ranged roll when the RPG mod gives one, and slows the foe it hits.
 	 */
 	static boolean applyArrowRain(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
@@ -664,9 +686,10 @@ public final class ArcherSkills {
 		}
 		int count = modifiers.awakened() ? AWAKENED_ARROW_SHOWER_ARROWS : ARROW_SHOWER_ARROWS;
 		RandomSource random = showerRandom != null ? showerRandom : caster.getRandom();
-		Shower shower = new Shower(showerSpots(point, count, random), ammo, weaponOf(caster), clock, minimumRoll(caster));
+		Shower shower = new Shower(showerSpots(point, count, random), ammo, weaponOf(caster), clock, averageRoll(caster), random);
 		SHOWERS.put(caster.getUUID(), shower);
 		SHOWER_ARROWS.put(caster.getUUID(), new ArrayList<>());
+		SHOWER_ORIGINS.put(caster.getUUID(), new ArrayList<>());
 		ArcherVisuals.note(caster, ammo.get(0));
 		loosenDue(caster, shower, clock);
 		Spellbooks.LOGGER.info("[SPELL] event=ARROW_SHOWER caster={} arrows={} ticks={} cost={} damage={} at={} awakened={}",
@@ -674,10 +697,10 @@ public final class ArcherSkills {
 		return true;
 	}
 
-	// The low end of the caster's ranged ATK, in health points; none when the RPG mod gives no number.
-	private static float minimumRoll(final ServerPlayer caster) {
-		double floor = RpgBridge.floorAtk(caster, true);
-		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : NO_FIXED_DAMAGE;
+	// The middle of the caster's ranged ATK, in health points; none when the RPG mod gives no number.
+	private static float averageRoll(final ServerPlayer caster) {
+		double average = RpgBridge.averageAtk(caster, true);
+		return Double.isFinite(average) && average >= 0.0 ? RpgBridge.vanilla((float) average) : NO_FIXED_DAMAGE;
 	}
 
 	/**
@@ -746,26 +769,23 @@ public final class ArcherSkills {
 	}
 
 	/**
-	 * The velocity that lobs an arrow from one point down onto another. The elevation is the steep one of the two
-	 * that reach, found by walking the arrow's own flight, so the arrow rises into the sky and falls back onto the
-	 * spot. A spot too far for the flattest lob gets that lob and falls short.
+	 * The velocity that flies an arrow from one point onto another on the lowest arc that reaches. The angle is found
+	 * by walking the arrow's own flight. A spot too far for the highest angle gets that angle and falls short.
 	 */
 	static Vec3 showerVelocity(final Vec3 from, final Vec3 to) {
 		double across = Math.hypot(to.x - from.x, to.z - from.z);
 		double rise = to.y - from.y;
-		double flat = Math.toRadians(SHOWER_MIN_ELEVATION);
-		double steep = Math.toRadians(SHOWER_MAX_ELEVATION);
+		double low = Math.toRadians(SHOWER_MIN_ELEVATION);
+		double high = Math.toRadians(SHOWER_MAX_ELEVATION);
 		double elevation;
-		if (lobRange(flat, rise) <= across) {
-			elevation = flat;
-		} else if (lobRange(steep, rise) >= across) {
-			elevation = steep;
+		if (lobRange(high, rise) <= across) {
+			elevation = high;
+		} else if (lobRange(low, rise) >= across) {
+			elevation = low;
 		} else {
-			double low = flat;
-			double high = steep;
 			for (int step = 0; step < 48; step++) {
 				double middle = (low + high) / 2.0;
-				if (lobRange(middle, rise) > across) {
+				if (lobRange(middle, rise) < across) {
 					low = middle;
 				} else {
 					high = middle;
@@ -777,6 +797,23 @@ public final class ArcherSkills {
 		double dz = across > 1.0E-6 ? (to.z - from.z) / across : 1.0;
 		double flatSpeed = ARROW_SHOWER_SPEED * Math.cos(elevation);
 		return new Vec3(dx * flatSpeed, ARROW_SHOWER_SPEED * Math.sin(elevation), dz * flatSpeed);
+	}
+
+	// Behind the caster, left and right in turn, at shoulder height; the eye when a wall is in the way.
+	private static Vec3 showerOrigin(final ServerPlayer caster, final int index, final RandomSource random) {
+		double yaw = Math.toRadians(caster.getYRot());
+		double forwardX = -Math.sin(yaw);
+		double forwardZ = Math.cos(yaw);
+		double behind = SHOWER_BEHIND_MIN + random.nextDouble() * (SHOWER_BEHIND_MAX - SHOWER_BEHIND_MIN);
+		double aside = (SHOWER_SIDE_MIN + random.nextDouble() * (SHOWER_SIDE_MAX - SHOWER_SIDE_MIN)) * (index % 2 == 0 ? 1.0 : -1.0);
+		Vec3 origin = new Vec3(
+			caster.getX() - forwardX * behind - forwardZ * aside,
+			caster.getY() + SHOWER_SHOULDER,
+			caster.getZ() - forwardZ * behind + forwardX * aside
+		);
+		Vec3 eye = caster.getEyePosition();
+		ClipContext clip = new ClipContext(eye, origin, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, caster);
+		return caster.level().clip(clip).getType() == HitResult.Type.MISS ? origin : eye;
 	}
 
 	// How far across an arrow loosed at this elevation has flown when it comes back down through the rise.
@@ -793,7 +830,7 @@ public final class ArcherSkills {
 			flat *= ARROW_DRAG;
 			lift = lift * ARROW_DRAG - ARROW_GRAVITY;
 			if (lift < 0.0 && height <= rise) {
-				double share = (lastHeight - rise) / (lastHeight - height);
+				double share = Math.clamp((lastHeight - rise) / (lastHeight - height), 0.0, 1.0);
 				return lastAcross + (across - lastAcross) * share;
 			}
 		}
@@ -827,10 +864,11 @@ public final class ArcherSkills {
 		int size = shower.spots.size();
 		while (shower.loosed < size && now - shower.startedAt >= (long) shower.loosed * ARROW_SHOWER_TICKS / size) {
 			Vec3 spot = shower.spots.get(shower.loosed);
-			Vec3 from = caster.getEyePosition().add(0.0, SHOWER_LAUNCH_LIFT, 0.0);
+			Vec3 from = showerOrigin(caster, shower.loosed, shower.random);
 			ItemStack ammo = shower.ammo.get(shower.loosed % shower.ammo.size());
 			AbstractArrow arrow = spawnShowerArrow(caster, ammo, shower.weapon, from, showerVelocity(from, spot), shower.damage);
 			SHOWER_ARROWS.computeIfAbsent(caster.getUUID(), id -> new ArrayList<>()).add(arrow.getUUID());
+			SHOWER_ORIGINS.computeIfAbsent(caster.getUUID(), id -> new ArrayList<>()).add(from);
 			((ServerLevel) caster.level()).playSound(null, from.x, from.y, from.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.5F,
 				0.8F + caster.getRandom().nextFloat() * 0.5F);
 			shower.loosed++;
@@ -866,9 +904,9 @@ public final class ArcherSkills {
 	}
 
 	/**
-	 * The speed an arrow's damage is made from. A shower arrow lands at the end of a lob, much slower than a shot
-	 * from a drawn weapon, so its plain damage reads as a full draw of the weapon it was loosed from. This is the
-	 * damage of a shower arrow when the RPG mod gives no minimum roll.
+	 * The speed an arrow's damage is made from. A shower arrow lands slower than a shot from a drawn weapon, so
+	 * its plain damage reads as a full draw of the weapon it was loosed from. This is the
+	 * damage of a shower arrow when the RPG mod gives no average roll.
 	 */
 	public static double damageSpeed(final AbstractArrow arrow, final double speed) {
 		if (!arrow.entityTags().contains(SHOWER_TAG)) {
@@ -878,7 +916,7 @@ public final class ArcherSkills {
 		return weapon != null && weapon.getItem() instanceof CrossbowItem ? CROSSBOW_ARROW_SPEED : FULL_DRAW_SPEED;
 	}
 
-	/** The damage of a hit: the minimum roll a shower arrow carries, else the amount the hit would deal. */
+	/** The damage of a hit: the average roll a shower arrow carries, else the amount the hit would deal. */
 	static float showerDamage(final net.minecraft.world.damagesource.DamageSource source, final float amount) {
 		if (source.getDirectEntity() instanceof AbstractArrow arrow) {
 			Float fixed = ((AttachmentTarget) arrow).getAttached(SHOWER_DAMAGE);
@@ -1537,9 +1575,14 @@ public final class ArcherSkills {
 		final ItemStack weapon;
 		final int startedAt;
 		final float damage;
+		final RandomSource random;
 		int loosed;
 
-		Shower(final List<Vec3> spots, final List<ItemStack> ammo, final ItemStack weapon, final int startedAt, final float damage) {
+		Shower(
+			final List<Vec3> spots, final List<ItemStack> ammo, final ItemStack weapon, final int startedAt, final float damage,
+			final RandomSource random
+		) {
+			this.random = random;
 			this.spots = spots;
 			this.ammo = ammo;
 			this.weapon = weapon;

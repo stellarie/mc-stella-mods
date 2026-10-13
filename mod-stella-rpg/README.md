@@ -774,7 +774,7 @@ A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. 
   Def and armor apply to it. `RpgCombat.scaleOutgoing` returns its amount unchanged, because the type is not melee, projectile, or magic.
   The dice are therefore never added twice.
 - A projectile with the entity tag `mod-stella-rpg.fixed_hit` is also returned unchanged: no dice, no status ATK, no crit roll.
-  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the minimum ranged roll of the caster.
+  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the average ranged roll of the caster.
 
 ## Magic model
 
