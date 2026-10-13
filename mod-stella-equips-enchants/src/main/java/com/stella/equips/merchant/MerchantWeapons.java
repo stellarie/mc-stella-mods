@@ -5,6 +5,7 @@ import com.stella.equips.mixin.AbstractArrowAccessor;
 import com.stella.equips.refine.Refine;
 import com.stella.equips.refine.RefineEffects;
 import com.stella.equips.refine.RefineStation;
+import com.stella.equips.tooltip.DescriptionLines;
 import com.stella.equips.unique.UniqueDamage;
 import com.stella.equips.unique.UniqueDispatch;
 import com.stella.equips.unique.UniqueTargets;
@@ -509,16 +510,15 @@ public final class MerchantWeapons {
 
 	// ---- tooltip ----
 
-	/** The tooltip lines of a stack: the effect, the milestone bonuses, and what the refine level gives now. */
+	/** The tooltip lines of a stack: the Requires and Desc block, the milestone bonuses, and what the refine level gives now. */
 	public static List<Component> tooltip(final ItemStack stack) {
 		MerchantDef def = def(stack);
 		if (def == null) {
 			return List.of();
 		}
 		List<Component> lines = new ArrayList<>();
-		for (String line : def.effect()) {
-			lines.add(styled(line, ChatFormatting.GOLD));
-		}
+		lines.add(DescriptionLines.requires(styled(def.kind().requirement(), ChatFormatting.WHITE)));
+		lines.add(DescriptionLines.desc(styled(String.join(". ", def.effect()) + ".", ChatFormatting.GOLD)));
 		lines.add(styled(def.milestones(), ChatFormatting.GRAY));
 		int reached = milestones(stack);
 		if (reached > 0) {

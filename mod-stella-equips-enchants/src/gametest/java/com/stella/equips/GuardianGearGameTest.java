@@ -248,7 +248,9 @@ public class GuardianGearGameTest {
 		String text = joined(plain);
 		LOG.info("[BEHAVIOR] test=guardian.boneShieldTooltip RESULT lines={}", plain.stream().map(Component::getString).toList());
 		String stack = "+" + Math.round(BoneShield.BONUS_PER_STACK * 100) + "%";
-		helper.assertTrue(text.contains(stack) && text.contains("up to " + BoneShield.MAX_STACKS), "the tooltip does not state the stacks (" + stack + ", up to 12): " + text);
+		// The wrap may split the phrase over two lines, so the check reads the words in one run.
+		String words = text.replace(" | ", " ");
+		helper.assertTrue(words.contains(stack) && words.contains("up to " + BoneShield.MAX_STACKS), "the tooltip does not state the stacks (" + stack + ", up to 12): " + text);
 		helper.assertTrue(text.toLowerCase().contains("shove"), "the tooltip does not state the shove: " + text);
 		Component parry = lineWith(plain, "Parry");
 		helper.assertTrue(parry != null && parry.getString().contains("+10") && legacy(ChatFormatting.DARK_GRAY).equals(colorOf(parry)),

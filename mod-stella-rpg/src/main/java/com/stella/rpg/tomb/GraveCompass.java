@@ -77,7 +77,8 @@ public final class GraveCompass {
 		compass.set(DataComponents.LODESTONE_TRACKER, new LodestoneTracker(Optional.of(tomb), false));
 		BlockPos pos = tomb.pos();
 		List<Component> lore = new ArrayList<>();
-		DescriptionLines.add(lore, Component.literal("Points to your tombstone").withStyle(ChatFormatting.GRAY));
+		DescriptionLines.addBlock(lore, Component.literal("none").withStyle(ChatFormatting.WHITE),
+			Component.literal("Points to your tombstone.").withStyle(ChatFormatting.GRAY));
 		DescriptionLines.add(lore, Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + " in " + tomb.dimension().identifier().getPath())
 			.withStyle(ChatFormatting.GRAY));
 		compass.set(DataComponents.LORE, new ItemLore(lore));

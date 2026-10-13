@@ -70,8 +70,10 @@ cooldown. A successful cast starts that book's cooldown and does not consume the
 Offensive area and chain spells affect only mobs that are hostile by nature (`Enemy`); they do not
 hit players, pets, or villagers. Support area spells affect the caster or nearby allies as described above.
 
-Each book's tooltip lists its target, how to cast it, what it does, and its cooldown. The numbers in the table above are
-base numbers. In game, the effect line and the cooldown line show what a cast by you would do now:
+Each book's tooltip opens with a `Requires:` line and a `Desc:` line, at most 8 lines in all, then its cooldown. The
+`Requires:` line names what the cast needs: a bow or crossbow for an archer book, arrows for Arrow Shower, a shield for
+Shield Bash, `none` for the rest. The `Desc:` line says whom or where the book hits. The numbers in the table above are
+base numbers. In game, the `Desc:` line and the cooldown line show what a cast by you would do now:
 
 - Damage shows a range, the lowest to the highest hit, in the health units your hearts use. It follows your RPG
   MATK, the spell's skill percent, the book's Potency, and the health scale. Heals show their value the same way.

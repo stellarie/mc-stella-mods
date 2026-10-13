@@ -28,9 +28,12 @@ public class RuneItem extends Item {
 		final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> lines, final TooltipFlag flag
 	) {
 		RuneData rune = stack.get(TowerItems.RUNE_DATA);
-		if (rune != null) {
-			TowerRunes.describe(rune, RuneStats::local, line -> DescriptionLines.add(lines, line));
+		Component requires = Component.translatable("item.mod-stella-tower.rune.requires", TowerRunes.EMERALDS).withStyle(ChatFormatting.WHITE);
+		if (rune == null) {
+			DescriptionLines.addBlock(lines, requires, Component.translatable("item.mod-stella-tower.rune.desc").withStyle(ChatFormatting.GRAY));
+			return;
 		}
-		DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.rune.how", TowerRunes.EMERALDS).withStyle(ChatFormatting.DARK_GRAY));
+		DescriptionLines.addBlock(lines, requires, TowerRunes.effects(rune, RuneStats::local));
+		TowerRunes.numbers(rune, line -> DescriptionLines.add(lines, line));
 	}
 }

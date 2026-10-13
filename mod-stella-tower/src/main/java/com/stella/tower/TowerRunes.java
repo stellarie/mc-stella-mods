@@ -212,16 +212,48 @@ public final class TowerRunes {
 
 	/** The rune's tier and each effect with its number for the stats, as the full armor set carries it. */
 	public static void describe(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats, final Consumer<Component> lines) {
-		lines.accept(Component.translatable("item.mod-stella-tower.rune.floor", rune.floor()).withStyle(ChatFormatting.GRAY));
-		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon", String.format(java.util.Locale.ROOT, "%.1f", weaponMultiplier(rune.floor())),
+		lines.accept(floorLine(rune));
+		lines.accept(weaponLine(rune));
+		lines.accept(weaponEffect(rune, stats));
+		lines.accept(armorLine(rune));
+		lines.accept(armorEffect(rune, stats));
+	}
+
+	/** The body of a rune's Desc line: its weapon effect, then its armor effect, with the numbers for the stats. */
+	public static Component effects(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats) {
+		return weaponEffect(rune, stats).append(" ").append(armorEffect(rune, stats));
+	}
+
+	/** The lines that follow a rune's Desc line: its floor, and what it multiplies on a weapon and on armor. */
+	public static void numbers(final RuneData rune, final Consumer<Component> lines) {
+		lines.accept(floorLine(rune));
+		lines.accept(weaponLine(rune));
+		lines.accept(armorLine(rune));
+	}
+
+	private static net.minecraft.network.chat.MutableComponent floorLine(final RuneData rune) {
+		return Component.translatable("item.mod-stella-tower.rune.floor", rune.floor()).withStyle(ChatFormatting.GRAY);
+	}
+
+	private static net.minecraft.network.chat.MutableComponent weaponLine(final RuneData rune) {
+		return Component.translatable("item.mod-stella-tower.rune.weapon", String.format(java.util.Locale.ROOT, "%.1f", weaponMultiplier(rune.floor())),
 			String.format(java.util.Locale.ROOT, "%.1f", OPPOSED),
 			Component.literal(rune.element().opposite().label()).withStyle(rune.element().opposite().color()),
-			String.format(java.util.Locale.ROOT, "%.1f", SAME)).withStyle(ChatFormatting.BLUE));
-		lines.accept(Component.translatable("item.mod-stella-tower.rune.weapon." + rune.element().getSerializedName(), weaponNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
-		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor", String.format(java.util.Locale.ROOT, "%.2f", armorDivisor(rune.floor())),
+			String.format(java.util.Locale.ROOT, "%.1f", SAME)).withStyle(ChatFormatting.BLUE);
+	}
+
+	private static net.minecraft.network.chat.MutableComponent weaponEffect(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats) {
+		return Component.translatable("item.mod-stella-tower.rune.weapon." + rune.element().getSerializedName(), weaponNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA);
+	}
+
+	private static net.minecraft.network.chat.MutableComponent armorLine(final RuneData rune) {
+		return Component.translatable("item.mod-stella-tower.rune.armor", String.format(java.util.Locale.ROOT, "%.2f", armorDivisor(rune.floor())),
 			String.format(java.util.Locale.ROOT, "%.0f", (OWN_ELEMENT_BASE + power(rune.floor()) / 1000.0) * 100.0),
-			String.format(java.util.Locale.ROOT, "%.0f", OWN_ELEMENT_CAP * 100.0)).withStyle(ChatFormatting.BLUE));
-		lines.accept(Component.translatable("item.mod-stella-tower.rune.armor." + rune.element().getSerializedName(), armorNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA));
+			String.format(java.util.Locale.ROOT, "%.0f", OWN_ELEMENT_CAP * 100.0)).withStyle(ChatFormatting.BLUE);
+	}
+
+	private static net.minecraft.network.chat.MutableComponent armorEffect(final RuneData rune, final java.util.function.ToIntFunction<RuneStats.Stat> stats) {
+		return Component.translatable("item.mod-stella-tower.rune.armor." + rune.element().getSerializedName(), armorNumber(rune.element(), stats)).withStyle(ChatFormatting.AQUA);
 	}
 
 	/** The number a weapon effect shows, in percent. */

@@ -124,6 +124,24 @@ public final class ApprenticeChestplateGameTest {
 		return zombie;
 	}
 
+	/** The tooltip opens with Requires and Desc, in lines of at most 24 characters, and states the rule the constants set. */
+	@GameTest(maxTicks = 20)
+	public void theLoreStatesTheRuleInARequiresAndDescBlock(final GameTestHelper helper) {
+		List<net.minecraft.network.chat.Component> lore = new ItemStack(ApprenticeChestplate.ITEM).get(DataComponents.LORE).lines();
+		List<String> lines = lore.stream().map(net.minecraft.network.chat.Component::getString).toList();
+		PatrolTestSupport.result("apprenticeChestplateLore", "lines=" + lines);
+		helper.assertTrue(lines.getFirst().equals("Requires: worn on chest") && lines.get(1).startsWith("Desc: "), "the lore opens with " + lines);
+		helper.assertTrue(lore.stream().allMatch(DescriptionLines::isBlockLine), "a lore line is outside the block: " + lines);
+		helper.assertTrue(lines.size() <= DescriptionLines.MAX_BLOCK_LINES, "the block takes " + lines.size() + " lines");
+		for (String line : lines) {
+			helper.assertTrue(line.length() <= DescriptionLines.MAX_CHARS, "a lore line has " + line.length() + " characters: " + line);
+		}
+		String text = String.join(" ", lines);
+		helper.assertTrue(text.contains("1.5% damage reduction for each light level below " + ApprenticeChestplate.FULL_LIGHT),
+			"the lore does not state the rule: " + text);
+		helper.succeed();
+	}
+
 	/** In the Overworld the enraged slime is exactly level 20, with infinite Speed II and Strength II. */
 	@GameTest
 	public void slayerSlimeIsLevelTwenty(final GameTestHelper helper) {

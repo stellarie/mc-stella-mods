@@ -700,8 +700,11 @@ Every planned floor is built with a double tower chest at each chest spot of its
   by it. The signature effects below read the wearer's effective stats, not the floor.
 - Stats come from `mod-stella-rpg` by reflection on `com.stella.rpg.StatBonuses.effective`. Without that
   mod every stat is 0 and each effect stays at its floor. The tooltip reads the stats the server last sent.
-- The tooltip of a rune names the stat each effect scales with. `DescriptionLines` wraps every tooltip line of this mod at
-  24 characters, at a space. Fixed item text sits in the `description` component, which wraps when the tooltip builds.
+- The tooltip of a rune names the stat each effect scales with. A description opens with a `Requires:` line and a `Desc:`
+  line of at most 8 lines in all. For a rune the `Requires:` line is the anvil and the 64 emeralds, and the `Desc:` line holds
+  the weapon effect and the armor effect. The floor and the multipliers follow as stat lines.
+  `DescriptionLines` wraps every tooltip line of this mod at 24 characters, at a space. Fixed item text sits in the
+  `description` component, which wraps when the tooltip builds.
 - Every effect works on any mob in any dimension. Damage a rune deals itself (a combustion, a chain, a
   thorn) triggers no rune effect.
 - Each worn armor piece of an element adds a quarter of the full set value. The caps apply to the sum.

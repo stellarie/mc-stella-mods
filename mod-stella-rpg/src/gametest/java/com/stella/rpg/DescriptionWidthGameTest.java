@@ -102,4 +102,45 @@ public final class DescriptionWidthGameTest {
 		helper.assertTrue(joined.contains("-1234, 64, 5678 in "), "the compass lost its coordinates: " + lines);
 		helper.succeed();
 	}
+
+	// An item whose lines all state a roll or a count has no description to put in a block.
+	private static final java.util.Set<String> STAT_ONLY = java.util.Set.of();
+
+	@GameTest
+	public void everyDescribedItemShowsARequiresAndDescBlock(final GameTestHelper helper) {
+		List<String> problems = new ArrayList<>();
+		int blocks = 0;
+		for (Identifier id : BuiltInRegistries.ITEM.keySet()) {
+			if (!MOD_ID.equals(id.getNamespace()) || STAT_ONLY.contains(id.getPath())) {
+				continue;
+			}
+			List<Component> lines = DescriptionSupport.lines(helper, new ItemStack(BuiltInRegistries.ITEM.getValue(id)));
+			if (lines.isEmpty()) {
+				continue;
+			}
+			blocks++;
+			problems.addAll(DescriptionSupport.blockProblems(id.getPath(), lines));
+			if (!DescriptionSupport.hasBlock(lines)) {
+				problems.add(id.getPath() + " has no Requires and Desc block: " + DescriptionSupport.text(lines));
+			}
+		}
+		ServerPlayer player = RpgTestSupport.player(helper);
+		player.setAttached(GraveCompass.LAST_TOMB, GlobalPos.of(helper.getLevel().dimension(), new BlockPos(-1234, 64, 5678)));
+		GraveCompass.give(player, player);
+		for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+			ItemStack stack = player.getInventory().getItem(slot);
+			if (GraveCompass.isGraveCompass(stack)) {
+				blocks++;
+				List<Component> lines = DescriptionSupport.lines(helper, stack);
+				problems.addAll(DescriptionSupport.blockProblems("grave compass", lines));
+				if (!DescriptionSupport.hasBlock(lines)) {
+					problems.add("the grave compass has no Requires and Desc block: " + DescriptionSupport.text(lines));
+				}
+			}
+		}
+		RpgTestSupport.result("descriptionBlocks", "blocks=" + blocks + " problems=" + problems.size());
+		helper.assertTrue(blocks >= 5, "only " + blocks + " described items were checked");
+		helper.assertTrue(problems.isEmpty(), "description blocks out of format: " + problems);
+		helper.succeed();
+	}
 }
