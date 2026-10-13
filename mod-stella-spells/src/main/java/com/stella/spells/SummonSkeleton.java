@@ -47,6 +47,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -857,14 +858,95 @@ public final class SummonSkeleton {
 		skeleton.getGoalSelector().addGoal(1, new PackCasterGoal(skeleton));
 	}
 
-	/** Swaps vanilla's fifteen-block bow goal for one that looses at the servant's own reach. */
+	/**
+	 * Swaps vanilla's bow goal for one that looses at the servant's own reach.
+	 * Vanilla knows only the plain bow, so a modded bow or a crossbow fell back to melee.
+	 */
 	private static void widenBowRange(final Skeleton skeleton) {
 		for (var wrapped : List.copyOf(skeleton.getGoalSelector().getAvailableGoals())) {
 			if (wrapped.getGoal() instanceof RangedBowAttackGoal<?>) {
 				skeleton.getGoalSelector().removeGoal(wrapped.getGoal());
 			}
 		}
-		skeleton.getGoalSelector().addGoal(2, new RangedBowAttackGoal<>(skeleton, 1.0, 20, (float) RANGED_ATTACK_RANGE));
+		skeleton.getGoalSelector().addGoal(2, new ShootGoal(skeleton));
+	}
+
+	/**
+	 * Vanilla's skeleton shot looks for a plain bow only, and fails on an empty weapon otherwise.
+	 * This shot uses the held weapon, so its enchantments still apply.
+	 */
+	static void shoot(final Skeleton skeleton, final LivingEntity target) {
+		ItemStack weapon = skeleton.getMainHandItem();
+		ItemStack ammo = skeleton.getProjectile(weapon);
+		var arrow = net.minecraft.world.entity.projectile.ProjectileUtil.getMobArrow(skeleton, ammo, 1.0F, weapon);
+		double dx = target.getX() - skeleton.getX();
+		double dy = target.getY(1.0 / 3.0) - arrow.getY();
+		double dz = target.getZ() - skeleton.getZ();
+		double flat = Math.sqrt(dx * dx + dz * dz);
+		float spread = 14 - skeleton.level().getDifficulty().getId() * 4;
+		arrow.shoot(dx, dy + flat * 0.2, dz, 1.6F, spread);
+		skeleton.playSound(net.minecraft.sounds.SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F / (skeleton.getRandom().nextFloat() * 0.4F + 0.8F));
+		skeleton.level().addFreshEntity(arrow);
+	}
+
+	/** True when the servant holds any bow or crossbow in its main hand. */
+	static boolean holdsRangedWeapon(final Skeleton skeleton) {
+		return skeleton.getMainHandItem().getItem() instanceof ProjectileWeaponItem;
+	}
+
+	/** Shoots with any held bow or crossbow, and keeps the servant out of melee while it does. */
+	static final class ShootGoal extends Goal {
+		static final int SHOT_INTERVAL_TICKS = 20;
+		private final Skeleton skeleton;
+		private int cooldown;
+		private int seen;
+
+		ShootGoal(final Skeleton skeleton) {
+			this.skeleton = skeleton;
+			this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+		}
+
+		@Override
+		public boolean canUse() {
+			LivingEntity target = this.skeleton.getTarget();
+			return target != null && target.isAlive() && holdsRangedWeapon(this.skeleton);
+		}
+
+		@Override
+		public void stop() {
+			this.skeleton.stopUsingItem();
+			this.seen = 0;
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			LivingEntity target = this.skeleton.getTarget();
+			if (target == null) {
+				return;
+			}
+			this.skeleton.getLookControl().setLookAt(target, 30.0F, 30.0F);
+			boolean sees = this.skeleton.getSensing().hasLineOfSight(target);
+			this.seen = sees ? this.seen + 1 : 0;
+			double reach = RANGED_ATTACK_RANGE * RANGED_ATTACK_RANGE;
+			if (this.skeleton.distanceToSqr(target) > reach || !sees) {
+				this.skeleton.getNavigation().moveTo(target, 1.0);
+			} else {
+				this.skeleton.getNavigation().stop();
+			}
+			if (this.cooldown > 0) {
+				this.cooldown--;
+				return;
+			}
+			if (sees && this.seen >= 5 && this.skeleton.distanceToSqr(target) <= reach) {
+				shoot(this.skeleton, target);
+				this.cooldown = SHOT_INTERVAL_TICKS;
+			}
+		}
 	}
 
 	/** Casts combat and support books from the servant's pack without consuming them. */
