@@ -96,7 +96,7 @@ public final class RpgCombat {
 	}
 
 	public static float scaleOutgoing(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (PercentEffects.inFixedHit() || !(source.getEntity() instanceof LivingEntity attacker)
+		if (PercentEffects.inFixedHit() || isFixedHit(source) || !(source.getEntity() instanceof LivingEntity attacker)
 			|| !(attacker instanceof ServerPlayer || attacker instanceof Mob)) {
 			return amount;
 		}
@@ -147,6 +147,14 @@ public final class RpgCombat {
 			CRIT_VICTIM.set(victim);
 		}
 		return (float) scaled;
+	}
+
+	/** A projectile with this tag deals the amount another mod set: the dice, the status ATK and the crit roll skip it. */
+	public static final String FIXED_HIT_TAG = "mod-stella-rpg.fixed_hit";
+
+	private static boolean isFixedHit(final DamageSource source) {
+		Entity direct = source.getDirectEntity();
+		return direct != null && direct.entityTags().contains(FIXED_HIT_TAG);
 	}
 
 	/** Rolls the dice with the active dice roller, so a test roller applies. */

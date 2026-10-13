@@ -111,6 +111,40 @@ public final class ArrowDiceGameTest {
 		});
 	}
 
+	/** An arrow another mod tags as a fixed hit deals the amount that mod set: no dice, no status ATK, and no crit roll. */
+	@GameTest
+	public void aFixedHitArrowIsNotScaled(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer player = RpgTestSupport.player(helper);
+		Zombie victim = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, 1, 2, 1);
+		RpgTestSupport.setStat(player, Stat.DEX, 100);
+		player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
+		DamageSource plain = arrowFrom(level, player);
+		DamageSource fixed = arrowFrom(level, player);
+		fixed.getDirectEntity().addTag("mod-stella-rpg.fixed_hit");
+		float amount = 4.0F;
+		float scaledPlain;
+		float scaledFixed;
+		boolean critPlain;
+		boolean critFixed;
+		try {
+			RpgCombat.setRoller((attacker, random, chance) -> true);
+			scaledPlain = RpgCombat.scaleOutgoing(victim, plain, amount);
+			critPlain = RpgCombat.critPending(victim);
+			RpgCombat.endHurt(victim);
+			scaledFixed = RpgCombat.scaleOutgoing(victim, fixed, amount);
+			critFixed = RpgCombat.critPending(victim);
+		} finally {
+			RpgCombat.setRoller(null);
+			RpgCombat.endHurt(victim);
+		}
+		RpgTestSupport.result("aFixedHitArrowIsNotScaled", "plain=" + scaledPlain + " crit=" + critPlain + " fixed=" + scaledFixed + " crit=" + critFixed);
+		helper.assertTrue(scaledPlain > amount && critPlain, "a plain arrow was not scaled: " + scaledPlain + " crit " + critPlain);
+		helper.assertTrue(scaledFixed == amount, "a fixed-hit arrow was scaled from " + amount + " to " + scaledFixed);
+		helper.assertFalse(critFixed, "a fixed-hit arrow rolled a crit");
+		helper.succeed();
+	}
+
 	private static Husk bigHusk(final GameTestHelper helper, final int x) {
 		Husk zombie = helper.spawnWithNoFreeWill(EntityTypes.HUSK, x, 1, 6);
 		RpgTestSupport.bare(zombie);

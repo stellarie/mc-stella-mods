@@ -79,13 +79,6 @@ public final class RpgSkills {
 		return (level(caster) + HEAL_PER_VIT * vit) * coefficient / RpgScale.k() * JobItems.healingFactor(caster);
 	}
 
-	/** The cooldown multiplier. VIT books pair with INT, the others with AGI. */
-	public static double cooldown(final Player player, final String key) {
-		Stat partner = Stat.byKey(key).filter(stat -> stat == Stat.VIT).isPresent() ? Stat.INT : Stat.AGI;
-		int total = (int) stat(player, key) + StatBonuses.effective(player, partner);
-		return RpgCurve.cooldownMultiplier(total) * JobItems.cooldownFactor(player);
-	}
-
 	/** The effect duration multiplier. It has the cap of the INT one. */
 	public static double durationMultiplier(final LivingEntity caster, final String key) {
 		return HpModel.durationMultiplier((int) stat(caster, key));

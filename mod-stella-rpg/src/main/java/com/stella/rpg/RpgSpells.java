@@ -24,7 +24,7 @@ public final class RpgSpells {
 		return 1.0;
 	}
 
-	/** The cooldown multiplier. INT and DEX both cut it. */
+	/** The cooldown multiplier of every skill and spell. INT and DEX both cut it. */
 	public static double cooldown(final Player player) {
 		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT) + StatBonuses.effective(player, Stat.DEX))
 			* JobItems.cooldownFactor(player);

@@ -92,7 +92,8 @@
 			"com.stella.rpg.JobInnateGameTest",
 			"com.stella.rpg.DoubleStrikeGameTest",
 			"com.stella.rpg.ArcaneWardGameTest",
-			"com.stella.rpg.SanctuaryGameTest"
+			"com.stella.rpg.SanctuaryGameTest",
+			"com.stella.rpg.CooldownReductionGameTest"
 		]
 	},
 	"depends": {

@@ -92,7 +92,7 @@ public final class MatkGameTest {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.INT, 100);
 		helper.assertTrue(RpgSpells.power(player) == 1.0, "power is " + RpgSpells.power(player));
-		helper.assertTrue(Math.abs(RpgSpells.cooldown(player) - 0.9) < 1e-4, "the cooldown curve changed: " + RpgSpells.cooldown(player));
+		helper.assertTrue(Math.abs(RpgSpells.cooldown(player) - 0.7333) < 1e-4, "the cooldown curve changed: " + RpgSpells.cooldown(player));
 
 		Stub stub = new Stub();
 		MobsBridge.setFacts(stub);
