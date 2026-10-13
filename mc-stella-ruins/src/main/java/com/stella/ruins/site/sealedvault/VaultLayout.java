@@ -61,9 +61,11 @@ public final class VaultLayout {
 			}
 		}
 		carveRoom(ctx, plan, 0, VaultPlan.CENTER_CELL);
+		carveCenterDoor(ctx, plan);
 		carveDome(ctx);
 		dressCandidates(ctx, plan);
 		dressLanterns(ctx, plan);
+		dressTreasures(ctx, plan);
 		for (int stair : plan.stairs()) {
 			buildSwitchback(ctx, stair);
 		}
@@ -89,6 +91,22 @@ public final class VaultLayout {
 		}
 		if (cell / VaultPlan.GRID < VaultPlan.GRID - 1 && plan.hasLink(level, cell, 1) && plan.isOpen(level, cell + VaultPlan.GRID)) {
 			ctx.fill(ax + 2, y, az + 6, ax + 4, y + DOOR_HEIGHT - 1, az + 6, AIR);
+		}
+	}
+
+	/**
+	 * The doorway from the inner vault to its neighbour on level 0, three wide and five high like every other, so the
+	 * bottom floor is reached by a walk along its own level as well as by the spiral.
+	 */
+	private static void carveCenterDoor(final Grid ctx, final VaultPlan plan) {
+		int ax = VaultPlan.cellMinX(VaultPlan.CENTER_CELL % VaultPlan.GRID);
+		int az = VaultPlan.cellMinZ(VaultPlan.CENTER_CELL / VaultPlan.GRID);
+		int y = VaultPlan.stand(0);
+		switch (plan.centerDoor()) {
+			case 0 -> ctx.fill(ax + 6, y, az + 2, ax + 6, y + DOOR_HEIGHT - 1, az + 4, AIR);
+			case 1 -> ctx.fill(ax + 2, y, az + 6, ax + 4, y + DOOR_HEIGHT - 1, az + 6, AIR);
+			case 2 -> ctx.fill(ax - 1, y, az + 2, ax - 1, y + DOOR_HEIGHT - 1, az + 4, AIR);
+			default -> ctx.fill(ax + 2, y, az - 1, ax + 4, y + DOOR_HEIGHT - 1, az - 1, AIR);
 		}
 	}
 
@@ -132,6 +150,13 @@ public final class VaultLayout {
 				ctx.set(ax + 2, y, az + 2, CRACKED);
 			}
 			k++;
+		}
+	}
+
+	/** A chest of the treasure table in a corner of each treasure room, facing the room. */
+	private static void dressTreasures(final Grid ctx, final VaultPlan plan) {
+		for (Cell cell : plan.treasures()) {
+			ctx.placeChest(VaultPlan.cellMinX(cell.i()) + 4, VaultPlan.stand(cell.level()), VaultPlan.cellMinZ(cell.j()) + 1, Direction.NORTH, VaultMobs.TREASURE_LOOT);
 		}
 	}
 
@@ -297,9 +322,11 @@ public final class VaultLayout {
 		int cz = VaultPlan.cellMinZ(3);
 		ctx.marker(VaultMarkers.GUARDIAN, cx, 9, cz + 4);
 		ctx.marker(VaultMarkers.GUARDIAN, cx + 5, 9, cz + 4);
-		for (Cell wraith : plan.wraiths()) {
-			ctx.marker(VaultMarkers.WRAITH, VaultPlan.cellMinX(wraith.i()) + 3, VaultPlan.stand(wraith.level()) + 2, VaultPlan.cellMinZ(wraith.j()) + 3);
+		for (Cell guardian : plan.guardians()) {
+			ctx.marker(VaultMarkers.GUARDIAN, VaultPlan.cellMinX(guardian.i()) + 3, VaultPlan.stand(guardian.level()), VaultPlan.cellMinZ(guardian.j()) + 3);
 		}
+		Cell archer = plan.archer();
+		ctx.marker(VaultMarkers.ARCHER, VaultPlan.cellMinX(archer.i()) + 3, VaultPlan.stand(archer.level()), VaultPlan.cellMinZ(archer.j()) + 3);
 		ctx.marker(VaultMarkers.WARDEN, VaultPlan.cellMinX(plan.lair() % VaultPlan.GRID) + 3, 2, VaultPlan.cellMinZ(plan.lair() / VaultPlan.GRID) + 3);
 	}
 
@@ -316,6 +343,11 @@ public final class VaultLayout {
 		private final LayoutContext real;
 		private final BlockState[] cells = new BlockState[SX * SY * SZ];
 		private final java.util.List<int[]> core = new java.util.ArrayList<>();
+		private final java.util.List<Chest> chests = new java.util.ArrayList<>();
+
+		/** A chest to place when the grid is written. */
+		private record Chest(int x, int y, int z, Direction facing, net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> table) {
+		}
 
 		Grid(final LayoutContext real) {
 			this.real = real;
@@ -353,6 +385,10 @@ public final class VaultLayout {
 			this.core.add(new int[] {1, x, y, z});
 		}
 
+		void placeChest(final int x, final int y, final int z, final Direction facing, final net.minecraft.resources.ResourceKey<net.minecraft.world.level.storage.loot.LootTable> table) {
+			this.chests.add(new Chest(x, y, z, facing, table));
+		}
+
 		private boolean mass(final int x, final int y, final int z) {
 			if (x < 0 || x >= SX || y < 0 || y >= SY || z < 0 || z >= SZ) {
 				return true;
@@ -386,6 +422,9 @@ public final class VaultLayout {
 				} else {
 					this.real.placeVault(placed[1], placed[2], placed[3]);
 				}
+			}
+			for (Chest chest : this.chests) {
+				this.real.placeChest(chest.x(), chest.y(), chest.z(), chest.facing(), chest.table());
 			}
 		}
 	}

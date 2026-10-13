@@ -142,22 +142,23 @@ public class VaultPlanGameTest {
 	}
 
 	@GameTest
-	public void sixWraithsStandInFreeCellsAndTheLairIsFarthestFromTheStairs(final GameTestHelper helper) {
+	public void sixteenGuardiansStandInFreeCellsAndTheLairIsFarthestFromTheStairs(final GameTestHelper helper) {
 		for (int n = 0; n < VARIETY_SEEDS; n++) {
 			VaultPlan plan = VaultTestSupport.plan(seedOf(n));
-			List<Cell> wraiths = plan.wraiths();
-			helper.assertTrue(wraiths.size() == VaultPlan.WRAITHS && new HashSet<>(wraiths).size() == VaultPlan.WRAITHS, "seed " + n + " has " + wraiths.size() + " wraith cells");
+			List<Cell> guardians = plan.guardians();
+			helper.assertTrue(guardians.size() == VaultPlan.GUARDIAN_ROOMS && new HashSet<>(guardians).size() == VaultPlan.GUARDIAN_ROOMS, "seed " + n + " has " + guardians.size() + " guardian cells");
 			Set<Cell> blocked = new HashSet<>(plan.candidates());
+			blocked.add(plan.archer());
 			for (Trap trap : plan.traps()) {
 				blocked.add(trap.at());
 				if (trap.kind() == TrapKind.DROP) {
 					blocked.add(new Cell(0, trap.cell()));
 				}
 			}
-			for (Cell wraith : wraiths) {
-				helper.assertTrue(plan.isOpen(wraith.level(), wraith.cell()) && !blocked.contains(wraith) && !plan.isStair(wraith.cell())
-					&& wraith.cell() != VaultPlan.CENTER_CELL && !(wraith.level() == 0 && wraith.cell() == plan.lair()) && !(wraith.level() == 1 && wraith.cell() == plan.entrance()),
-					"seed " + n + " has a wraith in " + wraith);
+			for (Cell guardian : guardians) {
+				helper.assertTrue(plan.isOpen(guardian.level(), guardian.cell()) && !blocked.contains(guardian) && !plan.isStair(guardian.cell())
+					&& guardian.cell() != VaultPlan.CENTER_CELL && !(guardian.level() == 0 && guardian.cell() == plan.lair()) && !(guardian.level() == 1 && guardian.cell() == plan.entrance()),
+					"seed " + n + " has a guardian in " + guardian);
 			}
 			int[] reach0 = plan.distancesFromStairs(0);
 			int best = 0;
@@ -167,6 +168,30 @@ public class VaultPlanGameTest {
 				}
 			}
 			helper.assertTrue(reach0[plan.lair()] >= best - 1, "seed " + n + " lair is " + reach0[plan.lair()] + " from the stairs, the farthest is " + best);
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theArcherTheTreasureRoomsAndTheInnerVaultDoorFollowThePlan(final GameTestHelper helper) {
+		for (int n = 0; n < VARIETY_SEEDS; n++) {
+			VaultPlan plan = VaultTestSupport.plan(seedOf(n));
+			Cell archer = plan.archer();
+			helper.assertTrue(archer.level() == 1 && plan.isOpen(1, archer.cell()) && !plan.isStair(archer.cell()) && archer.cell() != VaultPlan.CENTER_CELL && archer.cell() != plan.entrance()
+				&& !plan.candidates().contains(archer) && plan.traps().stream().noneMatch(trap -> trap.at().equals(archer)), "seed " + n + " archer room " + archer);
+			List<Cell> treasures = plan.treasures();
+			helper.assertTrue(new HashSet<>(treasures).size() == treasures.size(), "seed " + n + " has a treasure room twice");
+			helper.assertTrue(treasures.size() >= 5 && treasures.size() <= 5 + VaultPlan.TREASURE_DEAD_ENDS, "seed " + n + " has " + treasures.size() + " treasure rooms");
+			helper.assertTrue(treasures.contains(archer) && treasures.contains(new Cell(0, plan.lair())), "seed " + n + " has no treasure in the lair or the archer's room");
+			for (int k = 0; k < plan.candidates().size(); k++) {
+				helper.assertTrue(plan.holdsSeal(k) != treasures.contains(plan.candidates().get(k)), "seed " + n + " candidate " + k + " holds both or neither of a seal and a treasure");
+			}
+			for (Trap trap : plan.traps()) {
+				helper.assertTrue(!treasures.contains(trap.at()) && !(trap.kind() == TrapKind.DROP && treasures.contains(new Cell(0, trap.cell()))), "seed " + n + " has a treasure in a trap room");
+			}
+			int door = plan.centerDoorCell();
+			helper.assertTrue(plan.isOpen(0, door) && door != VaultPlan.CENTER_CELL && plan.centerDoor() >= 0 && plan.centerDoor() < 4, "seed " + n + " inner vault door leads to " + door);
+			helper.assertTrue(plan.neighbors(new Cell(0, VaultPlan.CENTER_CELL)).contains(new Cell(0, door)) && plan.neighbors(new Cell(0, door)).contains(new Cell(0, VaultPlan.CENTER_CELL)), "seed " + n + " the door is not a step of the plan");
 		}
 		helper.succeed();
 	}

@@ -28,6 +28,8 @@ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement
 
 /** Items 7 and 9 and the site as the game sees it: its registration, its worldgen files, and its objective. */
 public class VaultSiteGameTest {
+	/** The guardians of the candidate rooms, the core room and the plan, then the archer and the Warden. */
+	static final int WOKEN = VaultPlan.CANDIDATES_PER_LEVEL * 2 + 2 + VaultPlan.GUARDIAN_ROOMS + 2;
 	static final long SEED = 0x51DE5L;
 
 	@GameTest
@@ -63,7 +65,7 @@ public class VaultSiteGameTest {
 	public void threeSealsUsedOnTheCoreCompleteTheVaultAndOpenTheInnerVault(final GameTestHelper helper) {
 		VaultTestSupport.inArena(helper, SEED, arena -> {
 			ServerPlayer player = arena.wake();
-			helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && arena.entry().roster().size() == 15, "the vault did not wake with 15 mobs: " + arena.entry().roster().size());
+			helper.assertTrue(arena.phase() == RuinPhase.ACTIVE && arena.entry().roster().size() == WOKEN, "the vault did not wake with " + WOKEN + " mobs: " + arena.entry().roster().size());
 			arena.freeze();
 			helper.assertTrue(arena.vault().sealed(), "the vault was open before the seals");
 			arena.useCore(player, new ItemStack(Items.DIAMOND));

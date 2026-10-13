@@ -1,0 +1,157 @@
+{
+	"type": "minecraft:chest",
+	"pools": [
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:diamond",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 6,
+								"max": 12
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.8
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:netherite_scrap",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 2,
+								"max": 4
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.35
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:netherite_ingot",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 1,
+								"max": 2
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:emerald",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 16,
+								"max": 40
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:void_essence",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 3,
+								"max": 6
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.4
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "mod-stella-ruins:void_touched_affix"
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.5
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:enchanted_golden_apple",
+					"modifier": [
+						{
+							"type": "minecraft:set_count",
+							"count": {
+								"type": "minecraft:uniform",
+								"min": 1,
+								"max": 2
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"rolls": 1,
+			"condition": {
+				"type": "minecraft:random_chance",
+				"chance": 0.3
+			},
+			"entries": [
+				{
+					"type": "minecraft:item",
+					"name": "minecraft:totem_of_undying"
+				}
+			]
+		}
+	]
+}
