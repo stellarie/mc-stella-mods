@@ -25,8 +25,9 @@ final class JobInfo {
 
 	private static final Map<String, Info> JOBS = Map.of(
 		"archer", new Info("an Archer", "Strikes from afar with a bow.", "DEX", "AGI", "1.0", "Falcon Guard",
-			"A black falcon circles above you. Every 2 seconds it has a 35% chance to strike a nearby mob 3 times,"
-				+ " each hit your average bow roll. A kill gives you 25% of the mob's experience."),
+			"A black falcon circles above you. Each attack has a 35% chance (plus 1% per 5 LUK) to make it strike"
+				+ " that mob 3 times. After 5 seconds without attacking, it strikes the nearest mob 3 times every 2 seconds."
+				+ " Each hit is your average bow roll. A kill gives you 25% of the mob's experience."),
 		"fighter", new Info("a Fighter", "Wins in close combat. Tough.", "STR", "VIT", "1.3", "Double Strike",
 			"Each attack has a 25% chance to hit twice. Both hits can crit."
 				+ " The second hit gives Nausea for 0.5 seconds."),
