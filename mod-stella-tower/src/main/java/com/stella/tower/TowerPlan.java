@@ -608,6 +608,19 @@ public record TowerPlan(
 		return false;
 	}
 
+	/** Whether the spot lies in a biome floor's hub: its room and the wall round it. */
+	public boolean inHub(final int x, final int z) {
+		if (this.biome == null) {
+			return false;
+		}
+		for (TowerMaze.Zone zone : this.safeZones) {
+			if (x >= zone.x() - 1 && x <= zone.x() + TowerMaze.SAFE && z >= zone.z() - 1 && z <= zone.z() + TowerMaze.SAFE) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public int hallLow() {
 		return TowerLayout.SIZE / 2 - this.hall / 2;
 	}

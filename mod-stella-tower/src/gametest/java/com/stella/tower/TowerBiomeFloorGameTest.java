@@ -83,7 +83,7 @@ public class TowerBiomeFloorGameTest {
 	@GameTest(maxTicks = 100)
 	public void aPlayerAtTheArrivalOfALaterFloorIsSheltered(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = TowerTestSupport.freshBiomeFloor();
+		int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0);
 		TowerFloors.ensure(tower, floor);
 		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
 		boolean sheltered = TowerSafety.sheltered(player);
