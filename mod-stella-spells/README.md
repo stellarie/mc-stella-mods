@@ -187,8 +187,19 @@ sound for the game tests.
 
 The Dragonfall fire charge is a vanilla item display, so any client draws it. The spell's one hit, and Frozen Meteor's bonus after it, land on the tick the charge does.
 
-The Blitz Beat falcon and the summoned wolf are entity types this mod registers, with client renderers in
-`src/client`. A client without this mod cannot join a server that has it, so the pack ships the mod to every player.
+The Blitz Beat falcon, the Falcon Guard falcon and the summoned wolf are entity types this mod registers, with client
+renderers in `src/client`. A client without this mod cannot join a server that has it, so the pack ships the mod to every player.
+
+### Falcon Guard
+
+Falcon Guard is the innate skill of the Archer job of `mod-stella-rpg`. This mod reaches the job through the object share
+`mod-stella-rpg:jobs` and its function `innate`, and does nothing without the share. A black falcon (the entity type
+`mod-stella-spells:guard_falcon`) circles above an archer for good, on the far side of the circle from the brown Blitz Beat
+falcon, and stays while the job grants the innate. Every 2 seconds the archer has a 35% chance for the falcon to strike the
+nearest hostile within 8 blocks 3 times, 6 ticks apart. Each hit deals the average of the lowest and highest ranged roll in the
+Atk range (`RpgBridge.averageAtk`), or the Hunter's Mark base damage without the RPG mod. A mob the falcon kills drops no orbs
+and gives the archer 25% of its experience at once. The strikes do not count as a blow of the archer, so they neither pause
+nor call Blitz Beat, and the two falcons work side by side.
 
 ## Imbued weapons, arrows and chestplates
 

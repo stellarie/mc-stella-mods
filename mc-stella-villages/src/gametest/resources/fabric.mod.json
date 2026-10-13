@@ -35,6 +35,7 @@
 			"com.stella.villages.DummyDpsGameTest",
 			"com.stella.villages.SlayerContractGameTest",
 			"com.stella.villages.TrainerGameTest",
+			"com.stella.villages.TrainerScreenGameTest",
 			"com.stella.villages.PatrolSummonFriendGameTest"
 		]
 	},

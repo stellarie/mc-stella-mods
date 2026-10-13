@@ -13,8 +13,9 @@ import net.minecraft.world.entity.animal.parrot.Parrot;
 import net.minecraft.world.entity.animal.wolf.Wolf;
 
 /**
- * The entity types this mod adds: the Blitz Beat falcon and the summoned wolf. Both are new registry entries
- * drawn with vanilla models, so a client needs this mod to join a server that has it.
+ * The entity types this mod adds: the Blitz Beat falcon, the black Falcon Guard falcon of the Archer innate, and the
+ * summoned wolf. All are new registry entries drawn with vanilla models, so a client needs this mod to join a server
+ * that has it.
  */
 public final class SpellEntities {
 	private static final int FALCON_TRACKING_RANGE = 10;
@@ -22,6 +23,9 @@ public final class SpellEntities {
 
 	/** MISC keeps the falcon out of the mob cap. It is never saved: the buff and the owner bring it back. */
 	public static final EntityType<FalconEntity> FALCON = register("falcon", EntityType.Builder
+		.of(FalconEntity::new, MobCategory.MISC).sized(0.5F, 0.9F).eyeHeight(0.6F).clientTrackingRange(FALCON_TRACKING_RANGE).noSave());
+	/** The Falcon Guard falcon: the same body as the Blitz Beat falcon, drawn black, so a client tells the two apart. */
+	public static final EntityType<FalconEntity> GUARD_FALCON = register("guard_falcon", EntityType.Builder
 		.of(FalconEntity::new, MobCategory.MISC).sized(0.5F, 0.9F).eyeHeight(0.6F).clientTrackingRange(FALCON_TRACKING_RANGE).noSave());
 	/** MISC as well: a summon must not crowd the mob cap of the player who raised it. */
 	public static final EntityType<SummonedWolf> SUMMONED_WOLF = register("summoned_wolf", EntityType.Builder
@@ -33,6 +37,7 @@ public final class SpellEntities {
 
 	static void register() {
 		FabricDefaultAttributeRegistry.register(FALCON, Parrot.createAttributes());
+		FabricDefaultAttributeRegistry.register(GUARD_FALCON, Parrot.createAttributes());
 		FabricDefaultAttributeRegistry.register(SUMMONED_WOLF, Wolf.createAttributes());
 	}
 

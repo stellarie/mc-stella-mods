@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "mod-stella-rpg:poison"
+    "mod-stella-rpg:poison",
+    "mod-stella-rpg:innate"
   ]
 }

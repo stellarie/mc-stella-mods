@@ -1,6 +1,7 @@
 package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
+import com.stella.rpg.job.DoubleStrike;
 import com.stella.rpg.job.JobItems;
 import com.stella.rpg.roll.Affixes;
 import java.util.Map;
@@ -109,6 +110,9 @@ public final class RpgCombat {
 		Entity direct = source.getDirectEntity();
 		if (isMelee(source)) {
 			double charge = attacker instanceof Player player && swinger == player ? chargeFactor(swingStrength) : 1.0;
+			if (attacker instanceof ServerPlayer fighter && source.is(DamageTypes.PLAYER_ATTACK)) {
+				DoubleStrike.note(fighter, victim, amount, swinger == fighter ? swingStrength : 1.0F);
+			}
 			scaled += dice(attacker, attacker.getMainHandItem(), Stat.STR, false) * charge
 				+ statusAtk(StatBonuses.effective(attacker, Stat.STR));
 		} else if (source.is(DamageTypeTags.IS_PROJECTILE) && direct instanceof Projectile projectile
@@ -264,7 +268,7 @@ public final class RpgCombat {
 
 	public static float scaleIncoming(final LivingEntity entity, final DamageSource source, final float damage) {
 		if (!(entity instanceof ServerPlayer || entity instanceof Mob)
-			|| source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+			|| source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.is(RpgDamageTypes.INNATE)) {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));

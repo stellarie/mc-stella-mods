@@ -18,18 +18,25 @@ import org.jspecify.annotations.Nullable;
  * when the owner changes level or logs in with the buff still running, and gone with the buff. The falcon
  * removes itself when its owner stops qualifying, so this class only has to raise it. A mob owner is
  * kept up by {@link MobBlitz}, which knows which mobs carry the buff for good.
+ * A player who holds the {@link FalconGuard} innate also has a black falcon of the other type, raised the same way.
+ * It is a second falcon, so it never replaces the Blitz Beat falcon of the same player.
  */
 final class Falcons {
 	private static final int CHECK_INTERVAL_TICKS = 10;
 	/** The falcon each owner holds, by owner id. */
 	private static final Map<UUID, UUID> BY_OWNER = new ConcurrentHashMap<>();
+	/** The Falcon Guard falcon each player holds, by owner id. */
+	private static final Map<UUID, UUID> GUARDS = new ConcurrentHashMap<>();
 
 	private Falcons() {
 	}
 
 	static void register() {
 		ServerTickEvents.END_SERVER_TICK.register(Falcons::tick);
-		ServerLifecycleEvents.SERVER_STOPPING.register(server -> BY_OWNER.clear());
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			BY_OWNER.clear();
+			GUARDS.clear();
+		});
 	}
 
 	private static void tick(final MinecraftServer server) {
@@ -40,8 +47,12 @@ final class Falcons {
 			if (player.isAlive() && !player.isSpectator() && player.hasEffect(SpellStatus.BLITZ_BEAT)) {
 				ensure(player);
 			}
+			if (player.isAlive() && !player.isSpectator() && FalconGuard.holds(player)) {
+				ensureGuard(player);
+			}
 		}
 		BY_OWNER.entrySet().removeIf(entry -> server.getPlayerList().getPlayer(entry.getKey()) == null && !MobBlitz.tracks(entry.getKey()));
+		GUARDS.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
 	}
 
 	/** The falcon this owner holds, or null when it has none in the world. */
@@ -51,6 +62,45 @@ final class Falcons {
 			return null;
 		}
 		return level.getEntity(id) instanceof FalconEntity falcon && falcon.isAlive() ? falcon : null;
+	}
+
+	/** The Falcon Guard falcon this player holds, or null when it has none in the world. */
+	static @Nullable FalconEntity guardOf(final ServerPlayer owner) {
+		UUID id = GUARDS.get(owner.getUUID());
+		if (id == null) {
+			return null;
+		}
+		return owner.level().getEntity(id) instanceof FalconEntity falcon && falcon.isAlive() ? falcon : null;
+	}
+
+	/** Raises the Falcon Guard falcon of an archer if it has none in its level. */
+	static @Nullable FalconEntity ensureGuard(final ServerPlayer owner) {
+		FalconEntity held = guardOf(owner);
+		if (held != null) {
+			return held;
+		}
+		ServerLevel level = owner.level();
+		FalconEntity falcon = SpellEntities.GUARD_FALCON.create(level, EntitySpawnReason.MOB_SUMMONED);
+		if (falcon == null) {
+			return null;
+		}
+		falcon.bind(owner);
+		var at = FalconEntity.guardHover(owner, 0);
+		falcon.snapTo(at.x, at.y, at.z, owner.getYRot(), 0.0F);
+		if (!level.addFreshEntity(falcon)) {
+			return null;
+		}
+		GUARDS.put(owner.getUUID(), falcon.getUUID());
+		Spellbooks.LOGGER.info("[SPELL] event=FALCON_GUARD_RAISED owner={} falcon={}", owner.getUUID(), falcon.getUUID());
+		return falcon;
+	}
+
+	/** Sends the Falcon Guard falcon of an archer at a foe it struck. */
+	static void swoopGuard(final ServerPlayer owner, final Entity foe) {
+		FalconEntity falcon = ensureGuard(owner);
+		if (falcon != null) {
+			falcon.swoopAt(foe);
+		}
 	}
 
 	/** Drops the record of a mob owner that is gone. */

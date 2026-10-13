@@ -176,6 +176,10 @@ Right-click the trainer within 8 blocks to open the Job Trainer, a three-row che
   Without the share the trainer says jobs are unavailable and opens no menu.
 - At level 10 or higher, with no job, the menu shows the archer, fighter, mage, and priest. A choice is permanent. It calls
   the share's `choose` and `grantItems`. Below level 10, or with a job already, the menu states the reason and changes nothing.
+- The tooltip of each job describes the job, its stat bonuses (the main and second stat for each level, the health factor, and
+  the boss trial reward) and its innate skill: Falcon Guard, Double Strike, Arcane Ward, or Sanctuary. The text is in `JobInfo`
+  and repeats the rules of the rpg and spells mods, which this mod cannot read. Every line of the menu has at most 24
+  characters (`DescriptionLines`).
 - A mage also receives a Spark Shot spellbook and one random spellbook that is not Summon Skeleton. A priest also receives
   the Mending Word heal book and the Stoneguard buff book. Every book carries the Doublecast enchantment.
   The books come from `mod-stella-spells` by item id. Without that mod a job gets its own item only.

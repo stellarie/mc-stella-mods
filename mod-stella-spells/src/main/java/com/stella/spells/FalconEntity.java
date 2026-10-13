@@ -2,6 +2,7 @@ package com.stella.spells;
 
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -20,6 +21,8 @@ import org.jspecify.annotations.Nullable;
  * above the head of its owner (a player, or a mob that holds the buff), or on the way to the foe a strike hit and
  * back. It flies and never sits. It cannot be hurt, pushed, hit or saved, and it leaves the moment the buff ends
  * or the owner is gone. The client draws it larger and brown.
+ * The Falcon Guard falcon of the Archer innate is the same body of the type {@link SpellEntities#GUARD_FALCON}. It
+ * circles on the far side of the same circle, stays while the owner holds the innate, and the client draws it black.
  */
 public final class FalconEntity extends Parrot {
 	/** How many ticks one swoop takes, out and back. */
@@ -33,6 +36,8 @@ public final class FalconEntity extends Parrot {
 	private static final int BOB_TICKS = 26;
 	/** A mob's falcon flies wider than a player's when the mob is wide. */
 	private static final double MOB_ORBIT_SHARE = 0.75;
+
+	private static final int GUARD_PHASE_TICKS = ORBIT_TICKS / 2;
 
 	private @Nullable UUID ownerId;
 	private boolean ownerIsPlayer;
@@ -65,6 +70,16 @@ public final class FalconEntity extends Parrot {
 		this.swoopLeft = SWOOP_TICKS;
 	}
 
+	/** True for the black falcon of the Falcon Guard. */
+	public boolean isGuard() {
+		return this.getType() == SpellEntities.GUARD_FALCON;
+	}
+
+	/** Where a guard falcon flies when it is at home: on the far side of the circle from a Blitz Beat falcon of the same age. */
+	static Vec3 guardHover(final LivingEntity owner, final int age) {
+		return hover(owner, age + GUARD_PHASE_TICKS);
+	}
+
 	/** Where the falcon flies when it is at home above this owner, this many ticks into its life. */
 	static Vec3 hover(final LivingEntity owner, final int age) {
 		double angle = age * 2.0 * Math.PI / ORBIT_TICKS;
@@ -91,13 +106,16 @@ public final class FalconEntity extends Parrot {
 			return;
 		}
 		LivingEntity owner = this.owner(level);
-		if (owner == null || !owner.isAlive() || owner.isSpectator() || owner.level() != level || !owner.hasEffect(SpellStatus.BLITZ_BEAT)) {
+		boolean guard = this.isGuard();
+		boolean kept = guard ? owner instanceof ServerPlayer player && FalconGuard.holds(player)
+			: owner != null && owner.hasEffect(SpellStatus.BLITZ_BEAT);
+		if (owner == null || !owner.isAlive() || owner.isSpectator() || owner.level() != level || !kept) {
 			this.discard();
 			return;
 		}
-		Vec3 home = hover(owner, this.tickCount);
+		Vec3 home = guard ? guardHover(owner, this.tickCount) : hover(owner, this.tickCount);
 		Vec3 at = home;
-		Vec3 facing = hover(owner, this.tickCount + 1).subtract(home);
+		Vec3 facing = (guard ? guardHover(owner, this.tickCount + 1) : hover(owner, this.tickCount + 1)).subtract(home);
 		if (this.swoopLeft > 0) {
 			Entity foe = this.swoopTarget == null ? null : level.getEntity(this.swoopTarget);
 			double progress = 1.0 - (double) this.swoopLeft / SWOOP_TICKS;
