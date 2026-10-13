@@ -37,7 +37,7 @@ public final class TrainerScreenGameTest {
 	private static final List<Expected> JOBS = List.of(
 		new Expected("archer", "DEX", "AGI", "1.0", "Falcon Guard", List.of("black falcon", "2 seconds", "35%", "3 times", "average bow roll", "25%")),
 		new Expected("fighter", "STR", "VIT", "1.3", "Double Strike", List.of("25%", "hit twice", "crit", "Nausea", "0.5 seconds")),
-		new Expected("mage", "INT", "DEX", "0.85", "Arcane Ward", List.of("MATK/100", "10%", "15 seconds", "breaks", "3 blocks", "5%")),
+		new Expected("mage", "INT", "DEX", "0.85", "Arcane Ward", List.of("MATK/100 x 10% of your max health", "15 seconds", "breaks", "3 blocks", "MATK/100 x 5% of your max health")),
 		new Expected("priest", "VIT", "INT", "1.1", "Sanctuary", List.of("3 blocks", "1.5%", "per second", "hostile"))
 	);
 

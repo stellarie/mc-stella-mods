@@ -32,7 +32,7 @@ final class JobInfo {
 				+ " The second hit gives Nausea for 0.5 seconds."),
 		"mage", new Info("a Mage", "Casts spells from books. Frail.", "INT", "DEX", "0.85", "Arcane Ward",
 			"A shield of MATK/100 x 10% of your max health. It refills after 15 seconds without a hit."
-				+ " When it breaks, mobs within 3 blocks take MATK/100 x 5% of their max health."),
+				+ " When it breaks, mobs within 3 blocks take MATK/100 x 5% of your max health."),
 		"priest", new Info("a Priest", "Heals allies and fights the undead.", "VIT", "INT", "1.1", "Sanctuary",
 			"Within 3 blocks, you and your allies heal 1.5% of max health per second,"
 				+ " and hostile mobs lose 1.5% of theirs.")
