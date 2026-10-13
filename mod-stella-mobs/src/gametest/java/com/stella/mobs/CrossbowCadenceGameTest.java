@@ -63,14 +63,14 @@ public class CrossbowCadenceGameTest {
 		}""";
 
 	/**
-	 * The exemption, from the side that can fail: a mob holding a crossbow resolves the ranged role and
-	 * still receives no distance goal, no standoff goal, and no vanilla crossbow goal. The control is a
-	 * ranged mob of another kind that keeps its band, so a zero above is the exemption rather than a mob
-	 * the installer never reached.
+	 * The crossbow fixture, from the side that can fail: a mob holding a crossbow resolves the ranged role and
+	 * receives one distance goal so it kites, but no standoff goal and no vanilla crossbow goal. The control is a
+	 * ranged mob of another kind that keeps its band, so a zero is the exemption rather than a mob the installer
+	 * never reached.
 	 */
 	@GameTest(maxTicks = 200)
 	@SuppressWarnings("removal")
-	public void crossbowMobReceivesNoDistanceGoal(final GameTestHelper helper) {
+	public void crossbowMobKeepsDistanceWithoutStandoff(final GameTestHelper helper) {
 		prepare(helper);
 		Mob pillager = elitePillager(helper, 3);
 		Mob stray = eliteSkeleton(helper, 6, EntityTypes.STRAY);
@@ -91,7 +91,7 @@ public class CrossbowCadenceGameTest {
 			ReactiveState.get(pillager).getRole(), CombatRole.RANGED, "the crossbow mob's resolved role"
 		);
 		helper.assertTrue(CrossbowCadenceGoal.holdsCrossbow(pillager), "the fixture's mob holds no crossbow");
-		helper.assertValueEqual(Integer.valueOf(band), Integer.valueOf(0), "distance goals on the crossbow mob");
+		helper.assertValueEqual(Integer.valueOf(band), Integer.valueOf(1), "distance goals on the crossbow mob");
 		helper.assertValueEqual(Integer.valueOf(standoff), Integer.valueOf(0), "standoff goals on the crossbow mob");
 		helper.assertValueEqual(
 			Integer.valueOf(vanillaCrossbow), Integer.valueOf(0), "vanilla crossbow goals on the crossbow mob"
