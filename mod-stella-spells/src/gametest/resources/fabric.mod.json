@@ -79,7 +79,8 @@
 			"com.stella.spells.BookSignatureGameTest",
 			"com.stella.spells.DescriptionWidthGameTest",
 			"com.stella.spells.SchoolTooltipGameTest",
-			"com.stella.spells.FalconGuardGameTest"
+			"com.stella.spells.FalconGuardGameTest",
+			"com.stella.spells.CooldownReductionGameTest"
 		]
 	},
 	"depends": {

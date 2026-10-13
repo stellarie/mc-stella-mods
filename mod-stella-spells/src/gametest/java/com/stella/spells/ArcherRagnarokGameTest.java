@@ -240,7 +240,7 @@ public class ArcherRagnarokGameTest {
 		caster.removeAllEffects();
 		List<String> refused = new ArrayList<>();
 		for (String path : SkillSchoolGameTest.ARCHER_IDS) {
-			// Arrow Crafting makes arrows from a material, and Arrow Shower spends eight; their own cases prove them.
+			// Arrow Crafting makes arrows from a material, and Arrow Shower spends four; their own cases prove them.
 			if (path.equals("arrow_crafting") || path.equals("arrow_rain")) {
 				continue;
 			}

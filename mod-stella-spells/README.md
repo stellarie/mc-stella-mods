@@ -82,7 +82,7 @@ base numbers. In game, the effect line and the cooldown line show what a cast by
 - Spell lengths follow three rules. Self buffs and party hymns last 30 minutes. Hard crowd control (Frostbind, Briar Snare, Void Well, Time Lock, Gravity, Frost Nova, Ice Lance) lasts twice as long as before, and half as long on an elite or a boss. Debuffs and damage over time last three times as long.
 - Mob casts and mob imbues use the same durations and radii as player casts.
 - Sanctuary raises a zone of 6 blocks at the cast spot, for 30 seconds times the duration multiplier. It does not follow you. Every second, players in it get Regeneration I, and undead in it take your spell hit.
-- The cooldown line shows your real cooldown after Intelligence and Quickening.
+- The cooldown line shows your real cooldown after Quickening, the refine cut, and your Intelligence and Dexterity.
 - Riftwalk, Gale Step, and the Scroll of Return keep a fixed cooldown. Intelligence and Dexterity do not shorten it.
 - A spell that hurts a foe names you as the attacker, as a sword hit does. A struck mob turns on you, and the RPG mod
   reads your magic penetration and spell crit from that hit.
@@ -132,7 +132,7 @@ they spend (see Crafted arrows and the quiver below).
 | Grappling Hook | One arrow flies its arc and carries the caster to where it lands; spends one quiver arrow |
 | Double Strafe | Two archer hits on the hostile you look at |
 | Sharp Shooting | One arrow through every hostile on a 24 block line, with a 30 percent better critical chance |
-| Arrow Shower | Costs 8 arrows, from the quiver first and then the pack, and none under a Spectral Quiver or an imbued cast. Lobs 32 real arrows into the sky over 4 seconds, one after another, 64 when awakened. They come down over a 6 block disc around the ground you look at, and a block in their way stops them. Each arrow deals a quarter of the damage a full-draw arrow of its kind from your bow would, whatever the speed of the lob, keeps its kind and its bow enchantments, cannot be picked up, and never hurts you or an ally |
+| Arrow Shower | Costs 4 arrows, from the quiver first and then the pack, and none under a Spectral Quiver or an imbued cast. Lobs 64 real arrows into the sky over 4 seconds, one after another, 128 when awakened. They come down over a 3 by 3 block area around the ground you look at, and a block in their way stops them. Each arrow deals your lowest ranged damage roll from `mod-stella-rpg` (the damage of a full-draw arrow of its kind without it), whatever the speed of the lob. It keeps its kind and its effects, such as a tipped arrow's potion, and your bow's enchantments, such as Flame. It cannot be picked up and never hurts you or an ally |
 | Vulture's Eye | 30 min, needs a bow: each arrow or archer skill hit you land gains 2 percent damage for every block of distance beyond 8, up to 40 percent (60 percent when awakened) |
 | Summon Wolf | Tames a wolf to you, no scroll. It guards you against hostiles within 6 blocks of you, follows you, and carries the tamed elite wolf aura (Speed and Strength for you and your allies, Slowness and Weakness for hostiles within 8 blocks). Right-click it with an empty hand to ride it: you steer, and it bites hostiles in front of you. It never attacks a sheep, cow, pig or chicken. Its health is 40 without the RPG mod, plus half a point per point of your six stats with it. Casting again calls it to your side |
 | Blitz Beat | 30 min, no bow needed: each melee blow or arrow of yours has a 25 percent chance (35 percent with a bow or crossbow in either hand), plus 1 percent per 5 LUK, to call a spectral falcon (a larger brown parrot that circles above your head and never perches, swoops at the struck target on each strike, cannot be hurt, and flies off when the buff ends or you leave) that strikes the target 3 times (6 with a bow, doubled when awakened). When you have not struck a blow for 2 seconds, it also attacks the nearest hostile within 8 blocks on its own: 3 hits, then a rest of 1.5 seconds. A strike deals your floor ATK, the low end of the Atk range, and base damage without the RPG mod. It never crits, and every hit marks the target Glowing for 3 seconds. A foe killed by one of its own attacks drops no experience orbs and gives you 35 percent of its experience at once. Skill damage, imbued casts and falcon strikes never call it |
@@ -174,7 +174,7 @@ and fireworks. A shot spends the quiver stack; creative mode and Infinity keep t
 
 Five skills spend arrows from the off-hand quiver and add each arrow's damage and effect to the hits it
 feeds: Double Strafe 2 (one per hit), Sharp Shooting 1, Arrow Repel 1 and Grappling Hook 1, and Arrow
-Shower 8, which looses them as real arrows of those kinds. Every other book spends none. An empty quiver, no quiver, or an imbued cast gives the
+Shower 4, which looses them as real arrows of those kinds. Every other book spends none. An empty quiver, no quiver, or an imbued cast gives the
 skill its base numbers and spends nothing. Keen and diamond arrows add their damage only; a ray has no
 critical flag or extra pierce to take.
 
@@ -288,7 +288,7 @@ The level lives in the `stella_refine` custom data. The equips Refine station re
 - **+10.** A damage book sets the foes it struck on fire (mage and priest) or slows them (fighter and archer). A cast that struck
   nothing yet leaves this on the next foe the caster hurts within 30 seconds. A heal book clears one harmful effect from the one it healed.
   A resistance or utility book makes every effect it applied last 25 percent longer, the MATK buff included.
-- **+12.** The cost is 15 percent lower. Arrow Shower spends 7 arrows instead of 8. No other book spends anything, so they take the
+- **+12.** The cost is 15 percent lower. Arrow Shower spends 3 arrows instead of 4. No other book spends anything, so they take the
   cut as a 15 percent shorter cooldown.
 - **+15.** Each book has a signature effect that fires on every cast. They are listed below.
 - **Tooltip.** The tooltip shows the level, the bonus, and each milestone the book has reached. A refine line the equips
@@ -549,9 +549,12 @@ Quickening and Clear Mind stack, but a cooldown never drops below half its base 
 
 ## Intelligence and MATK from mod-stella-rpg
 
-When `mod-stella-rpg` is installed, the caster's INT shortens the cooldown of a spellbook cast and of an
-imbued weapon, arrow or chestplate cast. A cooldown never drops below 1 second. The INT spell power curve is
-retired: the caster's MATK sets what a damage spell or a heal is worth.
+When `mod-stella-rpg` is installed, the caster's INT and DEX shorten the cooldown of every book cast, skills and
+spells alike, and of an imbued weapon, arrow or chestplate cast. The cut is `0.8 * s / (s + 200)` with `s` = INT + DEX:
+0 at `s` = 0, 40% at 200, about 67% at 1000, and never more than 80%. It comes after the book refine cooldown cuts,
+and the cooldown after it never drops below 1 second. A fixed cooldown keeps its base. Without `mod-stella-rpg`
+cooldowns are unchanged. The INT spell power curve is retired: the caster's MATK sets what a damage spell or a
+heal is worth.
 
 - **Damage.** A damage spell deals `RpgSpells.spellDamage(caster, percent)`. The percent is the spell's
   vanilla damage times 50, so Spark Shot (3) is 150% and Dragonfall (10) is 500%. A combo bonus is its

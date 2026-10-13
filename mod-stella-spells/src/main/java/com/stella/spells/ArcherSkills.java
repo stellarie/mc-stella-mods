@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -91,22 +94,29 @@ public final class ArcherSkills {
 	/** Every archer skill reaches this far, in blocks, and no further. */
 	static final int SKILL_RANGE_BLOCKS = 24;
 	/** Arrow Shower: how many arrows it looses, over how many ticks, and what the cast costs in arrows. */
-	static final int ARROW_SHOWER_ARROWS = 32;
-	static final int AWAKENED_ARROW_SHOWER_ARROWS = 64;
+	static final int ARROW_SHOWER_ARROWS = 64;
+	static final int AWAKENED_ARROW_SHOWER_ARROWS = 128;
 	static final int ARROW_SHOWER_TICKS = 80;
-	static final int ARROW_SHOWER_COST = 8;
-	/** Each shower arrow is worth this share of a full-draw arrow from the same weapon. */
-	static final float ARROW_SHOWER_DAMAGE_SHARE = 0.25F;
-	/** The disc around the aimed point that the arrows come down on, and the speed they are loosed at. */
-	static final double ARROW_SHOWER_RADIUS = 6.0;
+	static final int ARROW_SHOWER_COST = 4;
+	/** The side, in blocks, of the square around the aimed point that the arrows come down on, and their loosing speed. */
+	static final double ARROW_SHOWER_SIDE = 3.0;
 	static final double ARROW_SHOWER_SPEED = 2.0;
-	/** The speed of an arrow from a fully drawn bow, and from a loaded crossbow: what a shower arrow is worth. */
+	/** The damage a shower arrow carries when the RPG mod gives no minimum roll: it deals the plain arrow damage. */
+	static final float NO_FIXED_DAMAGE = Float.NaN;
+	/** The tag the RPG mod reads: an arrow that carries it is not scaled by the dice, the status ATK or a crit roll. */
+	static final String RPG_FIXED_HIT_TAG = "mod-stella-rpg.fixed_hit";
+	/** The damage a shower arrow deals, in health points. It replaces the damage the arrow itself would deal. */
+	private static final AttachmentType<Float> SHOWER_DAMAGE = AttachmentRegistry.create(SpellStatus.id("arrow_shower_damage"));
+	/** The speed of an arrow from a fully drawn bow, and from a loaded crossbow: the plain damage of a shower arrow. */
 	private static final double FULL_DRAW_SPEED = 3.0;
 	private static final double CROSSBOW_ARROW_SPEED = 3.15;
 	/** Marks an arrow the shower loosed, so the damage seam and the friendly-fire rule can find it. */
 	static final String SHOWER_TAG = Spellbooks.MOD_ID + ".arrow_shower";
 	/** How far above the eye an arrow leaves, so it clears the caster's own head. */
 	private static final double SHOWER_LAUNCH_LIFT = 0.4;
+	/** The steps of the low-discrepancy sequence that places the spots: 1 / 1.3247 and 1 / 1.3247 squared. */
+	private static final double SPOT_STEP_X = 0.7548776662466927;
+	private static final double SPOT_STEP_Z = 0.5698402909980532;
 	/** The flattest and the steepest lob the shower solves for, in degrees. */
 	private static final double SHOWER_MIN_ELEVATION = 45.0;
 	private static final double SHOWER_MAX_ELEVATION = 89.5;
@@ -636,10 +646,11 @@ public final class ArcherSkills {
 	}
 
 	/**
-	 * Arrow Shower: the caster lobs real arrows into the sky, one after another, and they come down over a disc
-	 * around the ground it looks at. The cast costs {@link #ARROW_SHOWER_COST} arrows, from the quiver first and
-	 * then the pack, and each spent arrow lends its kind to its share of the shower. An imbued cast and a Spectral
-	 * Quiver pay nothing. A caster who cannot pay casts nothing.
+	 * Arrow Shower: the caster lobs real arrows into the sky, one after another, and they come down over a square
+	 * {@link #ARROW_SHOWER_SIDE} blocks wide around the ground it looks at. The cast costs {@link #ARROW_SHOWER_COST}
+	 * arrows, from the quiver first and then the pack, and each spent arrow lends its kind to its share of the
+	 * shower. An imbued cast and a Spectral Quiver pay nothing. A caster who cannot pay casts nothing. Each arrow
+	 * deals the caster's minimum ranged roll when the RPG mod gives one.
 	 */
 	static boolean applyArrowRain(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
@@ -653,14 +664,20 @@ public final class ArcherSkills {
 		}
 		int count = modifiers.awakened() ? AWAKENED_ARROW_SHOWER_ARROWS : ARROW_SHOWER_ARROWS;
 		RandomSource random = showerRandom != null ? showerRandom : caster.getRandom();
-		Shower shower = new Shower(showerSpots(point, count, random), ammo, weaponOf(caster), clock);
+		Shower shower = new Shower(showerSpots(point, count, random), ammo, weaponOf(caster), clock, minimumRoll(caster));
 		SHOWERS.put(caster.getUUID(), shower);
 		SHOWER_ARROWS.put(caster.getUUID(), new ArrayList<>());
 		ArcherVisuals.note(caster, ammo.get(0));
 		loosenDue(caster, shower, clock);
-		Spellbooks.LOGGER.info("[SPELL] event=ARROW_SHOWER caster={} arrows={} ticks={} cost={} at={} awakened={}",
-			caster.getUUID(), count, ARROW_SHOWER_TICKS, ammo.size(), point, modifiers.awakened());
+		Spellbooks.LOGGER.info("[SPELL] event=ARROW_SHOWER caster={} arrows={} ticks={} cost={} damage={} at={} awakened={}",
+			caster.getUUID(), count, ARROW_SHOWER_TICKS, ammo.size(), shower.damage, point, modifiers.awakened());
 		return true;
+	}
+
+	// The low end of the caster's ranged ATK, in health points; none when the RPG mod gives no number.
+	private static float minimumRoll(final ServerPlayer caster) {
+		double floor = RpgBridge.floorAtk(caster, true);
+		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : NO_FIXED_DAMAGE;
 	}
 
 	/**
@@ -712,20 +729,18 @@ public final class ArcherSkills {
 	}
 
 	/**
-	 * The ground spots a shower of this many arrows aims at, in loosing order. They fill the disc evenly, so a
-	 * wide area is covered whatever the roll, and the roll turns and shuffles them.
+	 * The ground spots a shower of this many arrows aims at, in loosing order. They fill the square around the
+	 * centre evenly, and any first few of them already spread over it, so the area is covered whatever the roll.
+	 * The roll shifts the whole pattern.
 	 */
 	static List<Vec3> showerSpots(final Vec3 centre, final int count, final RandomSource random) {
-		double turn = random.nextDouble() * Math.PI * 2.0;
-		double golden = Math.PI * (3.0 - Math.sqrt(5.0));
+		double alongX = random.nextDouble();
+		double alongZ = random.nextDouble();
 		List<Vec3> spots = new ArrayList<>(count);
 		for (int index = 0; index < count; index++) {
-			double radius = ARROW_SHOWER_RADIUS * Math.sqrt((index + 0.5) / count);
-			double angle = turn + index * golden;
-			spots.add(new Vec3(centre.x + Math.cos(angle) * radius, centre.y, centre.z + Math.sin(angle) * radius));
-		}
-		for (int index = count - 1; index > 0; index--) {
-			java.util.Collections.swap(spots, index, random.nextInt(index + 1));
+			double x = (alongX + index * SPOT_STEP_X) % 1.0 - 0.5;
+			double z = (alongZ + index * SPOT_STEP_Z) % 1.0 - 0.5;
+			spots.add(new Vec3(centre.x + x * ARROW_SHOWER_SIDE, centre.y, centre.z + z * ARROW_SHOWER_SIDE));
 		}
 		return spots;
 	}
@@ -788,9 +803,10 @@ public final class ArcherSkills {
 	/**
 	 * Looses one shower arrow of this ammunition from a point at a velocity. It is a real arrow of the caster, fired
 	 * from the caster's weapon so that bow enchantments and the arrow's own effects apply, and it cannot be picked up.
+	 * Its hit deals the damage given, in health points, in place of the arrow's own; a NaN keeps the arrow's own.
 	 */
 	static AbstractArrow spawnShowerArrow(
-		final ServerPlayer caster, final ItemStack ammo, final ItemStack weapon, final Vec3 from, final Vec3 velocity
+		final ServerPlayer caster, final ItemStack ammo, final ItemStack weapon, final Vec3 from, final Vec3 velocity, final float damage
 	) {
 		ServerLevel level = (ServerLevel) caster.level();
 		ArrowItem item = ammo.getItem() instanceof ArrowItem arrowItem ? arrowItem : (ArrowItem) Items.ARROW;
@@ -798,6 +814,10 @@ public final class ArcherSkills {
 		arrow.setPos(from.x, from.y, from.z);
 		arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
 		arrow.addTag(SHOWER_TAG);
+		if (!Float.isNaN(damage)) {
+			((AttachmentTarget) arrow).setAttached(SHOWER_DAMAGE, damage);
+			arrow.addTag(RPG_FIXED_HIT_TAG);
+		}
 		Projectile.spawnProjectileUsingShoot(arrow, level, weapon, velocity.x, velocity.y, velocity.z, (float) velocity.length(), 0.0F);
 		return arrow;
 	}
@@ -809,7 +829,7 @@ public final class ArcherSkills {
 			Vec3 spot = shower.spots.get(shower.loosed);
 			Vec3 from = caster.getEyePosition().add(0.0, SHOWER_LAUNCH_LIFT, 0.0);
 			ItemStack ammo = shower.ammo.get(shower.loosed % shower.ammo.size());
-			AbstractArrow arrow = spawnShowerArrow(caster, ammo, shower.weapon, from, showerVelocity(from, spot));
+			AbstractArrow arrow = spawnShowerArrow(caster, ammo, shower.weapon, from, showerVelocity(from, spot), shower.damage);
 			SHOWER_ARROWS.computeIfAbsent(caster.getUUID(), id -> new ArrayList<>()).add(arrow.getUUID());
 			((ServerLevel) caster.level()).playSound(null, from.x, from.y, from.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.5F,
 				0.8F + caster.getRandom().nextFloat() * 0.5F);
@@ -847,8 +867,8 @@ public final class ArcherSkills {
 
 	/**
 	 * The speed an arrow's damage is made from. A shower arrow lands at the end of a lob, much slower than a shot
-	 * from a drawn weapon, so its damage reads as a full draw of the weapon it was loosed from; the share is taken
-	 * after that, which keeps every arrow bonus and effect as a full-draw arrow would have them.
+	 * from a drawn weapon, so its plain damage reads as a full draw of the weapon it was loosed from. This is the
+	 * damage of a shower arrow when the RPG mod gives no minimum roll.
 	 */
 	public static double damageSpeed(final AbstractArrow arrow, final double speed) {
 		if (!arrow.entityTags().contains(SHOWER_TAG)) {
@@ -858,10 +878,15 @@ public final class ArcherSkills {
 		return weapon != null && weapon.getItem() instanceof CrossbowItem ? CROSSBOW_ARROW_SPEED : FULL_DRAW_SPEED;
 	}
 
-	/** The share of damage a hit keeps for the arrow that dealt it: a quarter for a shower arrow, all otherwise. */
-	static float showerFactor(final net.minecraft.world.damagesource.DamageSource source) {
-		return source.getDirectEntity() instanceof AbstractArrow arrow && arrow.entityTags().contains(SHOWER_TAG)
-			? ARROW_SHOWER_DAMAGE_SHARE : 1.0F;
+	/** The damage of a hit: the minimum roll a shower arrow carries, else the amount the hit would deal. */
+	static float showerDamage(final net.minecraft.world.damagesource.DamageSource source, final float amount) {
+		if (source.getDirectEntity() instanceof AbstractArrow arrow) {
+			Float fixed = ((AttachmentTarget) arrow).getAttached(SHOWER_DAMAGE);
+			if (fixed != null) {
+				return fixed;
+			}
+		}
+		return amount;
 	}
 
 	/** Double Strafe: two archer hits on the target at once, with no arrow spent. */
@@ -1511,13 +1536,15 @@ public final class ArcherSkills {
 		final List<ItemStack> ammo;
 		final ItemStack weapon;
 		final int startedAt;
+		final float damage;
 		int loosed;
 
-		Shower(final List<Vec3> spots, final List<ItemStack> ammo, final ItemStack weapon, final int startedAt) {
+		Shower(final List<Vec3> spots, final List<ItemStack> ammo, final ItemStack weapon, final int startedAt, final float damage) {
 			this.spots = spots;
 			this.ammo = ammo;
 			this.weapon = weapon;
 			this.startedAt = startedAt;
+			this.damage = damage;
 		}
 	}
 

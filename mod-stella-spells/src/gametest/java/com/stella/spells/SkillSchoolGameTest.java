@@ -158,85 +158,12 @@ public class SkillSchoolGameTest {
 					: skillPercent * INTELLIGENCE_COEFFICIENT;
 				return stat + weaponAttack;
 			}
-
-			@Override
-			public double skillCooldown(final net.minecraft.world.entity.player.Player player, final String statKey) {
-				return statKey.equals(School.FIGHTER.statKey()) ? 0.5 : 1.0;
-			}
 		});
 		try {
 			work.run();
 		} finally {
 			RpgBridge.setStats(null);
 		}
-	}
-
-	/** A fighter book's rest falls with Strength and a mage book's only with Intelligence. */
-	@GameTest
-	public void aFighterBookCooldownFallsWithStrengthAndNotWithIntelligence(final GameTestHelper helper) {
-		ServerPlayer caster = helper.makeMockServerPlayerInLevel();
-		int fighterBase = SpellbookCatalog.get(id("cleave")).baseCooldownTicks();
-		int mageBase = SpellbookCatalog.get(Spellbooks.SPARK_SHOT_ID).baseCooldownTicks();
-		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(new ItemStack(Items.AIR), ItemStack.EMPTY, ItemStack.EMPTY);
-		int fighterValue;
-		int fighterIntelligence;
-		int mageStrength;
-		try {
-			RpgBridge.setStats(new RpgBridge.Stats() {
-				@Override
-				public double power(final net.minecraft.world.entity.player.Player player) {
-					return 1.0;
-				}
-
-				@Override
-				public double cooldown(final net.minecraft.world.entity.player.Player player) {
-					return 1.0;
-				}
-
-				@Override
-				public double skillCooldown(final net.minecraft.world.entity.player.Player player, final String statKey) {
-					return statKey.equals(School.FIGHTER.statKey()) ? 0.5 : 1.0;
-				}
-			});
-			fighterValue = RpgBridge.grow(caster, "cleave", withCooldown(plain, fighterBase), School.FIGHTER).cooldownTicks();
-			mageStrength = RpgBridge.grow(caster, "spark_shot", withCooldown(plain, mageBase), School.MAGE).cooldownTicks();
-		} finally {
-			RpgBridge.setStats(null);
-		}
-		try {
-			RpgBridge.setStats(new RpgBridge.Stats() {
-				@Override
-				public double power(final net.minecraft.world.entity.player.Player player) {
-					return 1.0;
-				}
-
-				@Override
-				public double cooldown(final net.minecraft.world.entity.player.Player player) {
-					return 0.5;
-				}
-
-				@Override
-				public double skillCooldown(final net.minecraft.world.entity.player.Player player, final String statKey) {
-					return 1.0;
-				}
-			});
-			fighterIntelligence = RpgBridge.grow(caster, "cleave", withCooldown(plain, fighterBase), School.FIGHTER).cooldownTicks();
-		} finally {
-			RpgBridge.setStats(null);
-		}
-		LOG.info("[BEHAVIOR] test=aFighterBookCooldownFallsWithStrengthAndNotWithIntelligence RESULT base={} withStrength={} withIntelligence={} mageWithStrength={}",
-			fighterBase, fighterValue, fighterIntelligence, mageStrength);
-		helper.assertTrue(fighterValue < fighterBase, "Strength left the fighter rest at " + fighterValue);
-		helper.assertTrue(fighterIntelligence == fighterBase, "Intelligence moved the fighter rest to " + fighterIntelligence);
-		helper.assertTrue(mageStrength == mageBase, "Strength moved the mage rest to " + mageStrength);
-		helper.succeed();
-	}
-
-	private static SpellModifiers.CastModifiers withCooldown(final SpellModifiers.CastModifiers base, final int ticks) {
-		return new SpellModifiers.CastModifiers(
-			base.powerMultiplier(), base.radiusMultiplier(), base.durationMultiplier(),
-			base.defensiveDurationMultiplier(), base.targetRangeBlocks(), ticks, base.awakened()
-		);
 	}
 
 	@GameTest
