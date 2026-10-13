@@ -53,6 +53,13 @@ final class BiomeGen {
 	/** The most times the floor's lights are laid: the posts, then the blocks made lights for the ground the posts opened. */
 	private static final int LIGHT_ROUNDS = 3;
 	private static final int HILL_CAP = 8;
+	/** The hub at the arrival of every floor but a great hall: a closed room this wide, this deep and this high inside, walled round. */
+	static final int HUB = 8;
+	static final int HUB_HEIGHT = 6;
+	/** The height of the wall lamps, over the feet. */
+	private static final int HUB_LAMP_Y = 2;
+	/** A column of the hub, its wall included: nothing a feature sets down stands in it, and the road does not cross it. */
+	private static final byte HUB_KEEP = 5;
 
 	private BiomeGen() {
 	}
@@ -123,6 +130,7 @@ final class BiomeGen {
 				return null;
 			}
 		}
+		w.finishHub();
 		w.nooks();
 		w.clearSpine();
 		w.props();
@@ -222,6 +230,11 @@ final class BiomeGen {
 		int ax;
 		int az;
 		int foot;
+		/** Whether the floor has a hub, its inner corner, and the way along x from its back wall toward its door. */
+		final boolean hubbed;
+		int hubX;
+		int hubZ;
+		int toward;
 		final int steps;
 		int boxX0;
 		int boxX1;
@@ -254,6 +267,7 @@ final class BiomeGen {
 			this.over = new byte[this.sx * OSPAN * this.sz];
 			this.daisBlock = new boolean[this.sx][this.sz];
 			this.steps = biome == FloorBiome.GREAT_HALL ? HALL_STEPS : floor % TowerElites.ELITE_EVERY == 0 ? GUARDED_STEPS : STEPS;
+			this.hubbed = biome != FloorBiome.GREAT_HALL;
 		}
 
 		// ---- cells
@@ -373,15 +387,19 @@ final class BiomeGen {
 
 		void ends() {
 			this.facing = this.random.nextBoolean() ? -1 : 1;
+			this.toward = -this.facing;
 			if (this.facing == -1) {
 				this.px = this.sx - 12 + this.random.nextInt(4);
-				this.ax = 3 + this.random.nextInt(6);
+				this.hubX = 2 + this.random.nextInt(6);
 			} else {
 				this.px = 8 + this.random.nextInt(4);
-				this.ax = this.sx - 9 + this.random.nextInt(6);
+				this.hubX = this.sx - 17 + this.random.nextInt(8);
 			}
 			this.pz = 15 + this.random.nextInt(this.sz - 31);
-			this.az = 7 + this.random.nextInt(this.sz - 14);
+			this.hubZ = 3 + this.random.nextInt(this.sz - 13);
+			// The arrival stands three blocks from the hub's back wall, on the line of its door.
+			this.ax = this.toward == 1 ? this.hubX + 3 : this.hubX + 4;
+			this.az = this.hubZ + HUB / 2;
 			this.foot = this.px + this.facing * (2 + this.steps);
 			int a = this.px - this.facing * 3;
 			// The guard's yard: level ground past the stair's foot, where an elite or a boss stands.
@@ -509,13 +527,9 @@ final class BiomeGen {
 			return high - low;
 		}
 
-		/** The zone the arrival sits in on floor 1: eight blocks square, kept inside the room. */
-		int zoneX() {
-			return Math.max(0, Math.min(this.sx - 8, this.ax - 4));
-		}
-
-		int zoneZ() {
-			return Math.max(0, Math.min(this.sz - 8, this.az - 4));
+		/** The column of the hub's door, in its wall toward the portal. */
+		int doorX() {
+			return this.toward == 1 ? this.hubX + HUB : this.hubX - 1;
 		}
 
 		void prepare() {
@@ -524,9 +538,9 @@ final class BiomeGen {
 					this.h[x][z] = 0;
 				}
 			}
-			int padX = this.floor == 1 ? zoneX() : this.ax - 2;
-			int padZ = this.floor == 1 ? zoneZ() : this.az - 2;
-			int pad = this.floor == 1 ? 8 : 5;
+			int padX = this.hubbed ? this.hubX - 1 : this.ax - 2;
+			int padZ = this.hubbed ? this.hubZ - 1 : this.az - 2;
+			int pad = this.hubbed ? HUB + 2 : 5;
 			for (int x = padX; x < padX + pad; x++) {
 				for (int z = padZ; z < padZ + pad; z++) {
 					this.h[x][z] = 0;
@@ -544,7 +558,7 @@ final class BiomeGen {
 			for (int x = padX; x < padX + pad; x++) {
 				for (int z = padZ; z < padZ + pad; z++) {
 					this.h[x][z] = 0;
-					this.keep[x][z] = 3;
+					this.keep[x][z] = this.hubbed ? HUB_KEEP : 3;
 					this.water[x][z] = false;
 					clearAbove(x, z, 0, TowerLayout.ROOM_HEIGHT);
 				}
@@ -622,6 +636,55 @@ final class BiomeGen {
 			}
 		}
 
+		// ---- the hub
+
+		/**
+		 * Walls the arrival in: a closed room of {@value #HUB} by {@value #HUB} blocks and {@value #HUB_HEIGHT} high, lit by lamps
+		 * set in its wall, with one dark oak door in the wall toward the portal. It is drawn after the biome's features, so
+		 * none of them stands in it, and a closed biome's rock roof is lifted over it.
+		 */
+		void finishHub() {
+			if (!this.hubbed) {
+				return;
+			}
+			int x0 = this.hubX - 1;
+			int z0 = this.hubZ - 1;
+			int x1 = this.hubX + HUB;
+			int z1 = this.hubZ + HUB;
+			for (int x = x0; x <= x1; x++) {
+				for (int z = z0; z <= z1; z++) {
+					clearAbove(x, z, 0, TowerLayout.ROOM_HEIGHT);
+					this.h[x][z] = 0;
+					this.water[x][z] = false;
+					this.lava[x][z] = false;
+					boolean ring = x == x0 || x == x1 || z == z0 || z == z1;
+					for (int y = 0; ring && y < HUB_HEIGHT; y++) {
+						put(x, y, z, BiomeBlocks.DEEPSLATE_BRICKS);
+					}
+					put(x, HUB_HEIGHT, z, BiomeBlocks.DEEPSLATE_BRICKS);
+					this.tall[x][z] = ring;
+					this.used[x][z] = true;
+					if (this.ceil != null) {
+						this.ceil[x][z] = (short) Math.max(this.ceil[x][z], HUB_HEIGHT + 1);
+						if (this.rockMask != null) {
+							this.rockMask[x][z] = false;
+						}
+					}
+				}
+			}
+			// Lamps in the wall, every second block along each side but the door's: every spot inside has one within reach.
+			for (int along : new int[] {1, 3, 5, 7}) {
+				put(this.hubX + along, HUB_LAMP_Y, z0, BiomeBlocks.SEA_LANTERN);
+				put(this.hubX + along, HUB_LAMP_Y, z1, BiomeBlocks.SEA_LANTERN);
+				put(x0, HUB_LAMP_Y, this.hubZ + along, BiomeBlocks.SEA_LANTERN);
+				put(x1, HUB_LAMP_Y, this.hubZ + along, BiomeBlocks.SEA_LANTERN);
+			}
+			Direction face = this.toward == 1 ? Direction.EAST : Direction.WEST;
+			put(doorX(), 0, this.az, BiomeBlocks.doorLower(face));
+			put(doorX(), 1, this.az, BiomeBlocks.doorUpper(face));
+			this.tall[doorX()][this.az] = false;
+		}
+
 		// ---- the spine
 
 		void route() {
@@ -629,7 +692,8 @@ final class BiomeGen {
 				this.spine = nave();
 				return;
 			}
-			int[] from = {this.ax, this.az};
+			// The road leaves the hub by its door; it starts two blocks out, so its three blocks of width leave the wall be.
+			int[] from = this.hubbed ? new int[] {doorX() + this.toward * 2, this.az} : new int[] {this.ax, this.az};
 			int[] to = {this.foot, this.pz};
 			int k = along(3 + this.random.nextInt(3));
 			List<int[]> points = new ArrayList<>();
@@ -2298,7 +2362,7 @@ final class BiomeGen {
 						for (int dz = -reach; dz <= reach; dz++) {
 							int x = spot[0] + dx;
 							int z = spot[2] + dz;
-							if (!in(x, z, pass == 0 ? 2 : 1) || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z]) {
+							if (!in(x, z, pass == 0 ? 2 : 1) || this.keep[x][z] == HUB_KEEP || this.keep[x][z] != 0 && this.keep[x][z] != 4 && (pass == 0 || this.keep[x][z] == 2) || this.daisBlock[x][z]) {
 								continue;
 							}
 							// A lamp in the water is a sea lantern at the feet level; on bare land a lantern on a post. Over stone built on the
@@ -2506,8 +2570,8 @@ final class BiomeGen {
 		TowerPlan assemble(final int attempt, final BiomeDraft draft) {
 			float yaw = (float) Math.toDegrees(Math.atan2(-(this.px - this.ax), this.pz - this.az));
 			TowerStory story = TowerStory.of(0, TowerLayout.ROOM_HEIGHT, TowerStory.full(this.sx, this.sz), new boolean[this.sx][this.sz]);
-			List<TowerMaze.Zone> zones = this.floor == 1
-				? List.of(new TowerMaze.Zone(zoneX(), zoneZ(), 0, TowerLayout.ROOM_HEIGHT)) : List.of();
+			List<TowerMaze.Zone> zones = this.hubbed
+				? List.of(new TowerMaze.Zone(this.hubX, this.hubZ, 0, TowerLayout.ROOM_HEIGHT)) : List.of();
 			return new TowerPlan(this.seed, this.floor, TowerArchetype.BIOME, TowerPlan.Variation.MAZE, 0, attempt, this.ax, this.az, yaw,
 				this.px, this.pz, this.facing, 0, new boolean[this.sx][this.sz], List.of(story), List.of(), zones, 0, List.of(), List.of(), null, this.floor, draft);
 		}
