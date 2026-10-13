@@ -33,18 +33,18 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The three themed mobs of the vault, and the loot tables the vault owns. The Vault Warden is the center of the
- * site: it hunts the nearest player through the whole maze, heals while nobody is near, and lets a player feel it
- * coming through the walls.
+ * The themed mobs of the vault, and the loot tables the vault owns. The Vault Warden is the center of the site: it
+ * hunts the nearest player through the whole maze, heals while nobody is near, and lets a player feel it coming
+ * through the walls. The Archer Warden hunts the same way but keeps its distance and shoots.
  */
 public final class VaultMobs {
 	public static final ResourceKey<LootTable> VAULT_LOOT = table("chests/sealed_vault");
-	public static final ResourceKey<LootTable> WRAITH_DROPS = table("entities/void_wraith");
 	public static final ResourceKey<LootTable> GUARDIAN_DROPS = table("entities/vault_guardian");
 	public static final ResourceKey<LootTable> WARDEN_DROPS = table("entities/vault_warden");
+	public static final ResourceKey<LootTable> ARCHER_DROPS = table("entities/vault_warden_archer");
+	/** The chests that stand in the treasure rooms. */
+	public static final ResourceKey<LootTable> TREASURE_LOOT = table("chests/sealed_vault_treasure");
 
-	/** The Darkness a wraith's hit gives, in ticks. */
-	public static final int WRAITH_DARKNESS_TICKS = 60;
 	/** The Warden heals this much each second while no player is within {@link #REGEN_QUIET_RANGE}. */
 	public static final float WARDEN_REGEN_PER_SECOND = 2.0F;
 	public static final double REGEN_QUIET_RANGE = 16.0;
@@ -54,13 +54,15 @@ public final class VaultMobs {
 	public static final int DARKNESS_TICKS = 40;
 	/** The Warden path search must cover the whole maze, so its follow range is wide. */
 	public static final double WARDEN_FOLLOW_RANGE = 128.0;
+	/** The Archer Warden walks toward its target only while the target is farther than this, or out of its sight. */
+	public static final double ARCHER_STAND_OFF = 18.0;
 
 	/** Plays the heartbeat to one player. Tests replace it with a counter. */
 	private static BiConsumer<ServerPlayer, Double> heartbeat = VaultMobs::playHeartbeat;
 
-	public static RuinMobKind VOID_WRAITH;
 	public static RuinMobKind VAULT_GUARDIAN;
 	public static RuinMobKind VAULT_WARDEN;
+	public static RuinMobKind VAULT_WARDEN_ARCHER;
 
 	private VaultMobs() {
 	}
@@ -70,22 +72,6 @@ public final class VaultMobs {
 	}
 
 	public static void register() {
-		VOID_WRAITH = RuinMobKind.builder("void_wraith")
-			.base(EntityTypes.VEX)
-			.health(3.0)
-			.ability(new MobAbility() {
-				@Override
-				public void tick(final Mob mob, final ServerLevel level) {
-					keepInside(mob, level);
-				}
-
-				@Override
-				public void onHurtTarget(final Mob mob, final LivingEntity target) {
-					target.addEffect(new MobEffectInstance(MobEffects.DARKNESS, WRAITH_DARKNESS_TICKS, 0));
-				}
-			})
-			.drops(WRAITH_DROPS)
-			.register();
 		VAULT_GUARDIAN = RuinMobKind.builder("vault_guardian")
 			.base(EntityTypes.HUSK)
 			.scale(1.2F)
@@ -105,6 +91,21 @@ public final class VaultMobs {
 				}
 			})
 			.drops(WARDEN_DROPS)
+			.boss(true)
+			.register();
+		VAULT_WARDEN_ARCHER = RuinMobKind.builder("vault_warden_archer")
+			.base(EntityTypes.WITHER_SKELETON)
+			.scale(1.6F)
+			.health(8.0)
+			.gear(EquipmentSlot.MAINHAND, () -> new ItemStack(Items.BOW))
+			.gear(EquipmentSlot.HEAD, () -> new ItemStack(Items.NETHERITE_HELMET))
+			.ability(new MobAbility() {
+				@Override
+				public void tick(final Mob mob, final ServerLevel level) {
+					shoot(mob, level);
+				}
+			})
+			.drops(ARCHER_DROPS)
 			.boss(true)
 			.register();
 	}
@@ -173,6 +174,36 @@ public final class VaultMobs {
 		}
 		feel(warden, level);
 		level.sendParticles(ParticleTypes.SOUL, warden.getX(), warden.getY() + warden.getBbHeight() * 0.5, warden.getZ(), 2, 0.5, warden.getBbHeight() * 0.35, 0.5, 0.01);
+	}
+
+	/**
+	 * One ability tick of the Archer Warden: stay inside, track the nearest player, and walk the maze toward them only
+	 * while they are far or out of sight. Near and in sight it stands still, and the bow goal does the rest.
+	 */
+	static void shoot(final Mob archer, final ServerLevel level) {
+		keepInside(archer, level);
+		AttributeInstance follow = archer.getAttribute(Attributes.FOLLOW_RANGE);
+		if (follow != null && follow.getBaseValue() < WARDEN_FOLLOW_RANGE) {
+			follow.setBaseValue(WARDEN_FOLLOW_RANGE);
+		}
+		ServerPlayer nearest = nearestPlayer(level, boundsOf(archer, level), archer.position());
+		if (nearest == null) {
+			archer.setTarget(null);
+			archer.getNavigation().stop();
+			return;
+		}
+		if (archer.getTarget() != nearest) {
+			archer.setTarget(nearest);
+		}
+		if (archer.isNoAi()) {
+			return;
+		}
+		boolean near = archer.position().distanceTo(nearest.position()) <= ARCHER_STAND_OFF && archer.hasLineOfSight(nearest);
+		if (near) {
+			archer.getNavigation().stop();
+		} else {
+			walkToward(archer, level, nearest);
+		}
 	}
 
 	/** Walks the next leg of the route through the maze, or straight at the player when no leg is needed. */

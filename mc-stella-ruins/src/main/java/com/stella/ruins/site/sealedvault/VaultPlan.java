@@ -8,7 +8,8 @@ import net.minecraft.util.RandomSource;
 
 /**
  * The plan of the Sealed Vault: two levels of a 7 x 7 maze, the core room above the inner vault, six candidate seal
- * rooms of which three hold a seal, trap corridors, two stairs, the Warden's lair, and the cells of the wraiths.
+ * rooms of which three hold a seal, trap corridors, two stairs, the Warden's lair, the archer's room, the cells of
+ * the guardians, the treasure rooms, and a door from the inner vault to the maze on its own level.
  * <p>
  * The plan is a pure function of one random source, so every chunk draws the same vault. It holds cell numbers only.
  * {@link VaultLayout} turns it into blocks.
@@ -34,7 +35,10 @@ public final class VaultPlan {
 	/** Candidate seal rooms on each level. */
 	public static final int CANDIDATES_PER_LEVEL = 3;
 	public static final int SEALS = 3;
-	public static final int WRAITHS = 6;
+	/** Rooms that hold one guardian beside the candidate rooms and the core room. */
+	public static final int GUARDIAN_ROOMS = 16;
+	/** Dead-end rooms that hold a treasure chest beside the unsealed candidates, the lair and the archer's room. */
+	public static final int TREASURE_DEAD_ENDS = 3;
 	public static final int STAIRS = 2;
 	public static final int MIN_TRAPS = 2;
 	public static final int MAX_TRAPS = 4;
@@ -81,7 +85,11 @@ public final class VaultPlan {
 	private final List<Cell> candidates = new ArrayList<>();
 	private final int[] chosen = new int[SEALS];
 	private final List<Trap> traps = new ArrayList<>();
-	private final List<Cell> wraiths = new ArrayList<>();
+	private final List<Cell> guardians = new ArrayList<>();
+	private final List<Cell> treasures = new ArrayList<>();
+	private Cell archer;
+	private int centerDoor;
+	private int centerDoorCell;
 	private final int[] loops = new int[LEVELS];
 
 	private VaultPlan() {
@@ -137,7 +145,10 @@ public final class VaultPlan {
 		second.forEach(c -> plan.candidates.add(new Cell(0, c)));
 		plan.chooseSeals(random);
 		plan.placeTraps(reach0, random);
-		plan.placeWraiths(random);
+		plan.placeArcher(reach1);
+		plan.placeGuardians(random);
+		plan.placeTreasures();
+		plan.placeCenterDoor();
 		return plan;
 	}
 
@@ -405,17 +416,75 @@ public final class VaultPlan {
 		return entry[0] == 1 && dropFits(entry[1], entry[2] == 1, reach0);
 	}
 
-	private void placeWraiths(final RandomSource random) {
+	/** The level 1 room farthest from the entrance that nothing else claims. */
+	private void placeArcher(final int[] reach1) {
+		int best = -1;
+		for (int c = 0; c < CELLS; c++) {
+			if (this.open[1][c] && !reserved(1, c) && !trapAt(1, c) && reach1[c] >= 0 && (best < 0 || reach1[c] > reach1[best])) {
+				best = c;
+			}
+		}
+		this.archer = new Cell(1, best);
+	}
+
+	/** Cells that hold a mob or a chest beyond the rooms the plan reserved: free of traps, drops and the archer's room. */
+	private boolean spare(final int level, final int cell) {
+		return this.open[level][cell] && !reserved(level, cell) && !trapAt(level, cell) && !(level == 0 && droppedOn(cell))
+			&& !(this.archer.level() == level && this.archer.cell() == cell);
+	}
+
+	private void placeGuardians(final RandomSource random) {
 		List<Cell> free = new ArrayList<>();
 		for (int level = 0; level < LEVELS; level++) {
 			for (int c = 0; c < CELLS; c++) {
-				if (this.open[level][c] && !reserved(level, c) && !trapAt(level, c) && !(level == 0 && droppedOn(c))) {
+				if (spare(level, c)) {
 					free.add(new Cell(level, c));
 				}
 			}
 		}
 		shuffle(free, random);
-		this.wraiths.addAll(free.subList(0, WRAITHS));
+		this.guardians.addAll(free.subList(0, GUARDIAN_ROOMS));
+	}
+
+	/** The candidate rooms that hold no seal, the lair, the archer's room, and a few dead ends. */
+	private void placeTreasures() {
+		for (int k = 0; k < this.candidates.size(); k++) {
+			if (!holdsSeal(k)) {
+				this.treasures.add(this.candidates.get(k));
+			}
+		}
+		this.treasures.add(new Cell(0, this.lair));
+		this.treasures.add(this.archer);
+		int dead = 0;
+		for (int level = 0; level < LEVELS && dead < TREASURE_DEAD_ENDS; level++) {
+			for (int c = 0; c < CELLS && dead < TREASURE_DEAD_ENDS; c++) {
+				if (spare(level, c) && degree(level, c) == 1) {
+					this.treasures.add(new Cell(level, c));
+					dead++;
+				}
+			}
+		}
+	}
+
+	/** The door from the inner vault to its neighbour on level 0: east first, and never a stair, the lair or a trap. */
+	private void placeCenterDoor() {
+		int fallback = -1;
+		for (int dir = 0; dir < 4; dir++) {
+			int to = neighbor(CENTER_CELL, dir);
+			if (to < 0 || !this.open[0][to]) {
+				continue;
+			}
+			if (fallback < 0) {
+				fallback = dir;
+			}
+			if (!isStair(to) && to != this.lair && !trapAt(0, to)) {
+				this.centerDoor = dir;
+				this.centerDoorCell = to;
+				return;
+			}
+		}
+		this.centerDoor = fallback;
+		this.centerDoorCell = neighbor(CENTER_CELL, fallback);
 	}
 
 	private boolean trapAt(final int level, final int cell) {
@@ -510,8 +579,29 @@ public final class VaultPlan {
 		return List.copyOf(this.traps);
 	}
 
-	public List<Cell> wraiths() {
-		return List.copyOf(this.wraiths);
+	/** The rooms that hold a guardian beside the candidate rooms and the core room. */
+	public List<Cell> guardians() {
+		return List.copyOf(this.guardians);
+	}
+
+	/** The room of the archer Warden, on level 1. */
+	public Cell archer() {
+		return this.archer;
+	}
+
+	/** The rooms that hold a treasure chest. */
+	public List<Cell> treasures() {
+		return List.copyOf(this.treasures);
+	}
+
+	/** The side of the inner vault that opens on its neighbour: 0 east, 1 north (+z), 2 west, 3 south. */
+	public int centerDoor() {
+		return this.centerDoor;
+	}
+
+	/** The level 0 room beside the inner vault that its door leads to. */
+	public int centerDoorCell() {
+		return this.centerDoorCell;
 	}
 
 	/** Steps through one level's maze from the stairs. */
@@ -533,6 +623,12 @@ public final class VaultPlan {
 		}
 		if (from.cell() == CENTER_CELL) {
 			out.add(new Cell(1 - from.level(), CENTER_CELL));
+		}
+		if (from.level() == 0 && from.cell() == CENTER_CELL) {
+			out.add(new Cell(0, this.centerDoorCell));
+		}
+		if (from.level() == 0 && from.cell() == this.centerDoorCell) {
+			out.add(new Cell(0, CENTER_CELL));
 		}
 		return out;
 	}

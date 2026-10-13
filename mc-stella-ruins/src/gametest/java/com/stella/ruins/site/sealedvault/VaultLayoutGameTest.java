@@ -86,6 +86,24 @@ public class VaultLayoutGameTest {
 		helper.succeed();
 	}
 
+	@GameTest(maxTicks = 1200)
+	public void aBodyOnRealStairShapesWalksFromTheEntranceDownToTheInnerVault(final GameTestHelper helper) {
+		for (int n = 0; n < SEEDS; n++) {
+			long seed = VaultPlanGameTest.seedOf(n);
+			Rotation rotation = Rotation.values()[n % 4];
+			Capture capture = VaultTestSupport.capture(seed, rotation);
+			StairWalker walker = new StairWalker(capture);
+			StairWalker.Spot start = walker.spotAt(capture.markers().get(VaultMarkers.ENTRANCE).get(0));
+			String where = "seed " + seed + " " + rotation;
+			helper.assertTrue(start != null, where + ": nobody can stand at the entrance");
+			Set<StairWalker.Spot> reach = walker.reach(start);
+			helper.assertTrue(walker.reachesRoom(reach, 1, VaultPlan.CENTER_CELL), where + ": the core room cannot be walked to");
+			helper.assertTrue(walker.reachesRoom(reach, 0, VaultPlan.CENTER_CELL), where + ": the inner vault cannot be walked to on real stair shapes");
+			VaultTestSupport.result("innerVaultWalk", where + " spots=" + reach.size());
+		}
+		helper.succeed();
+	}
+
 	@GameTest
 	public void theCavePlacementKeepsTheBottomAboveMinusSixtyAndTheTopUnderMinusSixteen(final GameTestHelper helper) {
 		Placement placement = VaultTestSupport.site().placement();
@@ -242,15 +260,56 @@ public class VaultLayoutGameTest {
 		for (int n = 0; n < 40; n++) {
 			long seed = VaultPlanGameTest.seedOf(n);
 			Capture capture = VaultTestSupport.capture(seed, Rotation.values()[n % 4]);
-			helper.assertTrue(capture.markers().get(VaultMarkers.WRAITH).size() == VaultPlan.WRAITHS, "seed " + seed + " wraith markers");
-			helper.assertTrue(capture.markers().get(VaultMarkers.GUARDIAN).size() == 8, "seed " + seed + " guardian markers " + capture.markers().get(VaultMarkers.GUARDIAN).size());
+			int guardians = VaultPlan.CANDIDATES_PER_LEVEL * 2 + 2 + VaultPlan.GUARDIAN_ROOMS;
+			helper.assertTrue(capture.markers().get(VaultMarkers.GUARDIAN).size() == guardians, "seed " + seed + " guardian markers " + capture.markers().get(VaultMarkers.GUARDIAN).size());
 			helper.assertTrue(capture.markers().get(VaultMarkers.WARDEN).size() == 1, "seed " + seed + " warden markers");
+			helper.assertTrue(capture.markers().get(VaultMarkers.ARCHER).size() == 1, "seed " + seed + " archer markers");
 			for (BlockPos spot : capture.markers().get(VaultMarkers.GUARDIAN)) {
 				helper.assertTrue(capture.at(spot).isAir() && capture.at(spot.above()).isAir() && !capture.at(spot.below()).isAir(), "seed " + seed + " guardian marker " + spot + " is not a standing spot");
 			}
-			for (BlockPos spot : capture.markers().get(VaultMarkers.WRAITH)) {
-				helper.assertTrue(capture.at(spot).isAir() && capture.at(spot.above()).isAir(), "seed " + seed + " wraith marker " + spot + " is inside a block");
+			BlockPos archer = capture.markers().get(VaultMarkers.ARCHER).get(0);
+			helper.assertTrue(capture.at(archer).isAir() && capture.at(archer.above()).isAir() && !capture.at(archer.below()).isAir(), "seed " + seed + " the archer marker is not a standing spot");
+		}
+		helper.succeed();
+	}
+
+	@GameTest
+	public void everyTreasureRoomHoldsAChestWithAClearTop(final GameTestHelper helper) {
+		for (int n = 0; n < 40; n++) {
+			long seed = VaultPlanGameTest.seedOf(n);
+			Capture capture = VaultTestSupport.capture(seed, Rotation.values()[n % 4]);
+			VaultPlan plan = VaultTestSupport.plan(seed);
+			int chests = 0;
+			for (Cell cell : plan.treasures()) {
+				BlockPos at = capture.world(VaultPlan.cellMinX(cell.i()) + 4, VaultPlan.stand(cell.level()), VaultPlan.cellMinZ(cell.j()) + 1);
+				helper.assertTrue(capture.at(at).is(Blocks.CHEST), "seed " + seed + " has no chest in " + cell + ", it holds " + capture.at(at));
+				helper.assertTrue(capture.at(at.above()).isAir(), "seed " + seed + " the chest in " + cell + " has a block over it");
+				chests++;
 			}
+			VaultTestSupport.result("treasureChests", "seed=" + seed + " chests=" + chests);
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 1200)
+	public void theInnerVaultIsReachedFromItsNeighbourOnTheLowerLevelWithoutAStair(final GameTestHelper helper) {
+		for (int n = 0; n < SEEDS; n++) {
+			long seed = VaultPlanGameTest.seedOf(n);
+			Rotation rotation = Rotation.values()[n % 4];
+			Capture capture = VaultTestSupport.capture(seed, rotation);
+			VaultPlan plan = VaultTestSupport.plan(seed);
+			String where = "seed " + seed + " " + rotation;
+			StairWalker walker = new StairWalker(capture, capture.world(0, VaultLayout.SLAB, 0).getY());
+			int ax = VaultPlan.cellMinX(plan.centerDoorCell() % VaultPlan.GRID);
+			int az = VaultPlan.cellMinZ(plan.centerDoorCell() / VaultPlan.GRID);
+			StairWalker.Spot start = null;
+			for (int u = 0; u <= 5 && start == null; u++) {
+				for (int v = 0; v <= 5 && start == null; v++) {
+					start = walker.spotAt(capture.world(ax + u, VaultPlan.stand(0), az + v));
+				}
+			}
+			helper.assertTrue(start != null, where + ": nobody can stand in the room beside the inner vault");
+			helper.assertTrue(walker.reachesRoom(walker.reach(start), 0, VaultPlan.CENTER_CELL), where + ": the inner vault cannot be walked to from room " + plan.centerDoorCell() + " on its own level");
 		}
 		helper.succeed();
 	}

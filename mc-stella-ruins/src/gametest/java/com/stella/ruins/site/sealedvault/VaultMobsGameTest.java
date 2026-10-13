@@ -44,53 +44,56 @@ public class VaultMobsGameTest {
 	}
 
 	@GameTest(maxTicks = 6000)
-	public void theThreeKindsHaveTheirBaseScaleHealthAndGear(final GameTestHelper helper) {
+	public void theKindsHaveTheirBaseScaleHealthAndGear(final GameTestHelper helper) {
 		VaultTestSupport.inArena(helper, SEED, arena -> {
-			Mob wraith = VaultMobs.VOID_WRAITH.spawn(arena.level(), spot(arena.markers(VaultMarkers.WRAITH).get(0)));
+			Mob archer = VaultMobs.VAULT_WARDEN_ARCHER.spawn(arena.level(), spot(arena.markers(VaultMarkers.ARCHER).get(0)));
 			Mob guardian = VaultMobs.VAULT_GUARDIAN.spawn(arena.level(), spot(arena.markers(VaultMarkers.GUARDIAN).get(0)));
 			Mob warden = VaultMobs.VAULT_WARDEN.spawn(arena.level(), spot(arena.markers(VaultMarkers.WARDEN).get(0)));
-			for (Mob mob : new Mob[] {wraith, guardian, warden}) {
+			for (Mob mob : new Mob[] {archer, guardian, warden}) {
 				mob.setNoAi(true);
 			}
-			helper.assertTrue(wraith.getType() == EntityTypes.VEX && guardian.getType() == EntityTypes.HUSK && warden.getType() == EntityTypes.WITHER_SKELETON, "a base type is wrong");
-			double vex = EntityTypes.VEX.create(arena.level(), EntitySpawnReason.COMMAND).getMaxHealth();
+			helper.assertTrue(archer.getType() == EntityTypes.WITHER_SKELETON && guardian.getType() == EntityTypes.HUSK && warden.getType() == EntityTypes.WITHER_SKELETON, "a base type is wrong");
 			double husk = EntityTypes.HUSK.create(arena.level(), EntitySpawnReason.COMMAND).getMaxHealth();
 			double skeleton = EntityTypes.WITHER_SKELETON.create(arena.level(), EntitySpawnReason.COMMAND).getMaxHealth();
-			helper.assertTrue(Math.abs(wraith.getMaxHealth() - vex * 3.0) < 1.0E-6, "wraith health " + wraith.getMaxHealth());
+			helper.assertTrue(Math.abs(archer.getMaxHealth() - skeleton * 8.0) < 1.0E-6, "archer health " + archer.getMaxHealth());
 			helper.assertTrue(Math.abs(guardian.getMaxHealth() - husk * 3.0) < 1.0E-6, "guardian health " + guardian.getMaxHealth());
 			helper.assertTrue(Math.abs(warden.getMaxHealth() - skeleton * 10.0) < 1.0E-6, "warden health " + warden.getMaxHealth());
-			helper.assertTrue(Math.abs(guardian.getAttributeValue(Attributes.SCALE) - 1.2) < 1.0E-6 && Math.abs(warden.getAttributeValue(Attributes.SCALE) - 1.8) < 1.0E-6, "a scale is wrong");
+			helper.assertTrue(Math.abs(guardian.getAttributeValue(Attributes.SCALE) - 1.2) < 1.0E-6 && Math.abs(warden.getAttributeValue(Attributes.SCALE) - 1.8) < 1.0E-6
+				&& Math.abs(archer.getAttributeValue(Attributes.SCALE) - 1.6) < 1.0E-6, "a scale is wrong");
 			helper.assertTrue(guardian.getItemBySlot(EquipmentSlot.HEAD).is(Items.NETHERITE_HELMET), "the guardian has no netherite helmet");
-			helper.assertTrue(VaultMobs.VAULT_WARDEN.boss() && !VaultMobs.VOID_WRAITH.boss() && !VaultMobs.VAULT_GUARDIAN.boss(), "the boss flag is wrong");
+			helper.assertTrue(archer.getItemBySlot(EquipmentSlot.MAINHAND).is(Items.BOW), "the archer holds no bow");
+			helper.assertTrue(VaultMobs.VAULT_WARDEN.boss() && VaultMobs.VAULT_WARDEN_ARCHER.boss() && !VaultMobs.VAULT_GUARDIAN.boss(), "the boss flag is wrong");
 			helper.assertTrue(RuinMobs.kindOf(warden) == VaultMobs.VAULT_WARDEN && warden.entityTags().contains(RuinMobKind.TAG_MOB), "the warden is not a tagged ruin mob");
-			VaultTestSupport.result("mobKits", "wraith=" + wraith.getMaxHealth() + " guardian=" + guardian.getMaxHealth() + " warden=" + warden.getMaxHealth() + " wardenScale=" + warden.getAttributeValue(Attributes.SCALE));
-			wraith.discard();
+			helper.assertTrue(RuinMobs.kindOf(archer) == VaultMobs.VAULT_WARDEN_ARCHER && archer.entityTags().contains(RuinMobKind.TAG_MOB), "the archer is not a tagged ruin mob");
+			VaultTestSupport.result("mobKits", "archer=" + archer.getMaxHealth() + " guardian=" + guardian.getMaxHealth() + " warden=" + warden.getMaxHealth() + " wardenScale=" + warden.getAttributeValue(Attributes.SCALE));
+			archer.discard();
 			guardian.discard();
 			warden.discard();
 		});
 	}
 
 	@GameTest(maxTicks = 6000)
-	public void wakingTheVaultSpawnsSixWraithsEightGuardiansAndTheWardenAtTheirMarkers(final GameTestHelper helper) {
+	public void wakingTheVaultSpawnsTwentyFourGuardiansTheArcherAndTheWardenAtTheirMarkers(final GameTestHelper helper) {
 		VaultTestSupport.inArena(helper, SEED, arena -> {
 			arena.wake();
 			arena.freeze();
-			helper.assertTrue(arena.roster("void_wraith").size() == 6, "wraiths " + arena.roster("void_wraith").size());
-			helper.assertTrue(arena.roster("vault_guardian").size() == 8, "guardians " + arena.roster("vault_guardian").size());
+			int guardians = VaultPlan.CANDIDATES_PER_LEVEL * 2 + 2 + VaultPlan.GUARDIAN_ROOMS;
+			helper.assertTrue(arena.roster("vault_guardian").size() == guardians, "guardians " + arena.roster("vault_guardian").size());
 			helper.assertTrue(arena.roster("vault_warden").size() == 1, "wardens " + arena.roster("vault_warden").size());
-			helper.assertTrue(arena.entry().roster().size() == 15, "the roster holds " + arena.entry().roster().size());
+			helper.assertTrue(arena.roster("vault_warden_archer").size() == 1, "archers " + arena.roster("vault_warden_archer").size());
+			helper.assertTrue(arena.roster("void_wraith").isEmpty(), "a wraith woke");
+			helper.assertTrue(arena.entry().roster().size() == guardians + 2, "the roster holds " + arena.entry().roster().size());
 			Mob warden = arena.warden();
 			BlockPos lair = arena.markers(VaultMarkers.WARDEN).get(0);
 			helper.assertTrue(warden.blockPosition().distManhattan(lair) <= 1, "the warden stands at " + warden.blockPosition() + ", not at the lair " + lair);
+			Mob archer = arena.roster("vault_warden_archer").get(0);
+			BlockPos post = arena.markers(VaultMarkers.ARCHER).get(0);
+			helper.assertTrue(archer.blockPosition().distManhattan(post) <= 1, "the archer stands at " + archer.blockPosition() + ", not at its post " + post);
 			for (Mob guardian : arena.roster("vault_guardian")) {
 				boolean atMarker = arena.markers(VaultMarkers.GUARDIAN).stream().anyMatch(marker -> guardian.blockPosition().distManhattan(marker) <= 1);
 				helper.assertTrue(atMarker, "a guardian stands away from every guardian marker at " + guardian.blockPosition());
 			}
-			for (Mob wraith : arena.roster("void_wraith")) {
-				boolean atMarker = arena.markers(VaultMarkers.WRAITH).stream().anyMatch(marker -> wraith.blockPosition().distManhattan(marker) <= 1);
-				helper.assertTrue(atMarker, "a wraith stands away from every wraith marker at " + wraith.blockPosition());
-			}
-			VaultTestSupport.result("roster", "wraiths=6 guardians=8 warden=1 lair=" + lair.toShortString() + " wardenAt=" + warden.blockPosition().toShortString());
+			VaultTestSupport.result("roster", "guardians=" + guardians + " archer=1 warden=1 lair=" + lair.toShortString() + " wardenAt=" + warden.blockPosition().toShortString());
 		});
 	}
 
@@ -200,23 +203,22 @@ public class VaultMobsGameTest {
 	}
 
 	@GameTest(maxTicks = 6000)
-	public void theWardenAndTheWraithsCannotLeaveTheBounds(final GameTestHelper helper) {
+	public void theWardenAndTheArcherCannotLeaveTheBounds(final GameTestHelper helper) {
 		VaultTestSupport.inArena(helper, SEED, arena -> {
 			arena.wake();
 			arena.freeze();
 			Mob warden = arena.warden();
-			Mob wraith = arena.roster("void_wraith").get(0);
+			Mob archer = arena.roster("vault_warden_archer").get(0);
 			BoundingBox box = arena.frame().box();
-			for (Mob mob : new Mob[] {warden, wraith}) {
+			for (Mob mob : new Mob[] {warden, archer}) {
 				mob.snapTo(box.minX() - 40.5, box.maxY() + 12.0, box.maxZ() + 40.5, 0.0F, 0.0F);
 				helper.assertTrue(!box.isInside(mob.blockPosition()), "the test did not put the mob outside");
 			}
 			tick(warden, arena.level());
-			RuinMobKind kind = RuinMobs.kindOf(wraith);
-			kind.ability().tick(wraith, arena.level());
-			VaultTestSupport.result("bounds", "warden=" + warden.blockPosition().toShortString() + " wraith=" + wraith.blockPosition().toShortString() + " box=" + box);
+			RuinMobs.kindOf(archer).ability().tick(archer, arena.level());
+			VaultTestSupport.result("bounds", "warden=" + warden.blockPosition().toShortString() + " archer=" + archer.blockPosition().toShortString() + " box=" + box);
 			helper.assertTrue(box.isInside(warden.blockPosition()), "the warden is outside the bounds at " + warden.blockPosition());
-			helper.assertTrue(box.isInside(wraith.blockPosition()), "the wraith is outside the bounds at " + wraith.blockPosition());
+			helper.assertTrue(box.isInside(archer.blockPosition()), "the archer is outside the bounds at " + archer.blockPosition());
 		});
 	}
 
@@ -275,24 +277,47 @@ public class VaultMobsGameTest {
 		});
 	}
 
-	@GameTest
-	public void aWraithsHitGivesDarknessForSixtyTicks(final GameTestHelper helper) {
-		ServerLevel level = helper.getLevel();
-		Cow cow = VaultTestSupport.cow(helper, 3.5, 3.5, 1_000_000.0F);
-		Mob wraith = VaultMobs.VOID_WRAITH.spawn(level, helper.absoluteVec(new Vec3(5.5, 2.0, 5.5)));
-		wraith.setNoAi(true);
-		helper.assertTrue(cow.getEffect(MobEffects.DARKNESS) == null, "the cow had Darkness before the hit");
-		if (FabricLoader.getInstance().isModLoaded("mod-stella-mobs")) {
-			VaultMobs.VOID_WRAITH.ability().onHurtTarget(wraith, cow);
-		} else {
-			cow.hurtServer(level, level.damageSources().mobAttack(wraith), 1.0F);
+	@GameTest(maxTicks = 6000)
+	public void theArcherTargetsTheNearestPlayerInsideAndLetsGoOfOneWhoLeaves(final GameTestHelper helper) {
+		VaultTestSupport.inArena(helper, SEED, arena -> {
+			ServerPlayer player = arena.wake();
+			arena.freeze();
+			Mob archer = arena.roster("vault_warden_archer").get(0);
+			VaultMobs.VAULT_WARDEN_ARCHER.ability().tick(archer, arena.level());
+			helper.assertTrue(archer.getTarget() == player, "the archer targets " + archer.getTarget() + ", not the player inside");
+			BlockPos corner = arena.frame().min();
+			player.teleportTo(arena.level(), corner.getX() - 30.5, corner.getY() + 9, corner.getZ() - 30.5, java.util.Set.of(), 0.0F, 0.0F, true);
+			VaultMobs.VAULT_WARDEN_ARCHER.ability().tick(archer, arena.level());
+			VaultTestSupport.result("archerTrack", "released=" + (archer.getTarget() == null));
+			helper.assertTrue(archer.getTarget() == null, "the archer kept a target outside the vault");
+		});
+	}
+
+	@GameTest(maxTicks = 6000)
+	public void theArcherHoldsABowGoalAndItsShotIsItsOwnArrow(final GameTestHelper helper) {
+		VaultTestSupport.inArena(helper, SEED, arena -> {
+			ServerPlayer player = arena.wake();
+			arena.freeze();
+			Mob archer = arena.roster("vault_warden_archer").get(0);
+			helper.assertTrue(hasBowGoal(archer), "the archer has no bow attack goal");
+			helper.assertTrue(archer instanceof net.minecraft.world.entity.monster.RangedAttackMob, "the archer is not a ranged attacker");
+			((net.minecraft.world.entity.monster.RangedAttackMob) archer).performRangedAttack(player, 1.0F);
+			long shot = arena.level().getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class, archer.getBoundingBox().inflate(8.0),
+				found -> found.getOwner() == archer).size();
+			VaultTestSupport.result("archerShoots", "projectiles=" + shot);
+			helper.assertTrue(shot >= 1, "the archer's shot made no projectile of its own");
+		});
+	}
+
+	private static boolean hasBowGoal(final Mob mob) {
+		try {
+			java.lang.reflect.Field field = Mob.class.getDeclaredField("goalSelector");
+			field.setAccessible(true);
+			net.minecraft.world.entity.ai.goal.GoalSelector goals = (net.minecraft.world.entity.ai.goal.GoalSelector) field.get(mob);
+			return goals.getAvailableGoals().stream().anyMatch(wrapped -> wrapped.getGoal() instanceof net.minecraft.world.entity.ai.goal.RangedBowAttackGoal<?>);
+		} catch (ReflectiveOperationException e) {
+			return false;
 		}
-		MobEffectInstance darkness = cow.getEffect(MobEffects.DARKNESS);
-		VaultTestSupport.result("wraithDarkness", "effect=" + (darkness == null ? "none" : darkness.getDuration() + "/" + darkness.getAmplifier()));
-		helper.assertTrue(darkness != null && darkness.getAmplifier() == 0 && darkness.getDuration() > 0 && darkness.getDuration() <= VaultMobs.WRAITH_DARKNESS_TICKS, "darkness is " + darkness);
-		wraith.discard();
-		cow.discard();
-		helper.succeed();
 	}
 
 	private static List<ItemStack> roll(final ServerLevel level, final net.minecraft.resources.ResourceKey<LootTable> key, final long seed) {
@@ -308,16 +333,13 @@ public class VaultMobsGameTest {
 	public void eachMobKindDropsItsExclusiveItemAtItsTableRate(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		RandomSource master = RandomSource.create(20261005L);
-		int wraith = 0;
 		int guardian = 0;
 		boolean one = false;
 		boolean two = false;
 		int[] wardenCounts = new int[6];
 		for (int i = 0; i < ROLLS; i++) {
-			for (ItemStack stack : roll(level, VaultMobs.WRAITH_DROPS, master.nextLong())) {
-				helper.assertTrue(stack.is(VaultItems.VOID_ESSENCE) && stack.getCount() == 1, "the wraith dropped " + stack);
-				wraith++;
-			}
+			List<ItemStack> shot = roll(level, VaultMobs.ARCHER_DROPS, master.nextLong());
+			helper.assertTrue(shot.size() == 1 && shot.get(0).is(VaultItems.VOID_ESSENCE) && shot.get(0).getCount() >= 2 && shot.get(0).getCount() <= 4, "the archer dropped " + shot);
 			for (ItemStack stack : roll(level, VaultMobs.GUARDIAN_DROPS, master.nextLong())) {
 				helper.assertTrue(stack.is(VaultItems.VAULT_DUST) && stack.getCount() >= 1 && stack.getCount() <= 2, "the guardian dropped " + stack);
 				guardian++;
@@ -328,10 +350,8 @@ public class VaultMobsGameTest {
 			helper.assertTrue(boss.size() == 1 && boss.get(0).is(VaultItems.VOID_ESSENCE) && boss.get(0).getCount() >= 3 && boss.get(0).getCount() <= 5, "the warden dropped " + boss);
 			wardenCounts[boss.get(0).getCount()]++;
 		}
-		double wraithRate = wraith / (double) ROLLS;
 		double guardianRate = guardian / (double) ROLLS;
-		VaultTestSupport.result("mobDrops", "rolls=" + ROLLS + " wraithRate=" + wraithRate + " guardianRate=" + guardianRate + " wardenCounts=" + java.util.Arrays.toString(wardenCounts));
-		helper.assertTrue(Math.abs(wraithRate - 0.40) <= 0.40 * 0.08, "wraith rate " + wraithRate);
+		VaultTestSupport.result("mobDrops", "rolls=" + ROLLS + " guardianRate=" + guardianRate + " wardenCounts=" + java.util.Arrays.toString(wardenCounts));
 		helper.assertTrue(Math.abs(guardianRate - 0.60) <= 0.60 * 0.08, "guardian rate " + guardianRate);
 		helper.assertTrue(one && two && wardenCounts[3] > 0 && wardenCounts[4] > 0 && wardenCounts[5] > 0, "the drop counts did not cover their ranges");
 		helper.succeed();

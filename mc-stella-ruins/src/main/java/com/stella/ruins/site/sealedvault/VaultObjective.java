@@ -32,7 +32,7 @@ public final class VaultObjective implements Objective {
 			VaultRegistry.get(run.level()).add(run.core(), frame.box());
 		}
 		spawnAll(run, VaultMobs.VAULT_GUARDIAN, VaultMarkers.GUARDIAN, 0.0);
-		spawnAll(run, VaultMobs.VOID_WRAITH, VaultMarkers.WRAITH, 0.0);
+		spawnAll(run, VaultMobs.VAULT_WARDEN_ARCHER, VaultMarkers.ARCHER, 0.0);
 		spawnAll(run, VaultMobs.VAULT_WARDEN, VaultMarkers.WARDEN, 0.0);
 		StellaRuins.LOGGER.debug("[RUINS] sealed vault at {} woke roster={}", run.core().toShortString(), run.alive());
 	}

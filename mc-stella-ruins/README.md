@@ -380,7 +380,7 @@ the core open the inner vault, which pays out once.
 
 `VaultPlan.derive(RandomSource)` draws everything random and holds no block. The layout, the Warden's guide, and the tests
 all read it. The draw order is fixed: entrance, level 1 maze, level 0 maze, loops, stairs, lair, candidates, seals,
-traps, wraith cells.
+traps, the archer's room, guardian cells, treasure rooms, the inner vault's door.
 
 - Mazes: recursive backtracker on 49 cells (level 1, starts at the entrance) and 48 cells (level 0, the centre cell is the
   inner vault). 10% of the remaining walls open as loops: 4 on level 1 and 3 on level 0.
@@ -390,7 +390,12 @@ traps, wraith cells.
   (level 0). Three of the six hold a seal, with at least one on each level (18 combinations).
 - 2 to 4 trap corridors, each a straight corridor cell. A corridor on level 1 over a level 0 dead end that opens along the same
   axis, within 8 cells of a stair, is a void drop when one is free. Every other trap is an arrow trap.
-- 6 wraith cells from the free cells.
+- The archer's room is the level 1 room farthest from the entrance that nothing else claims.
+- 16 guardian cells from the free cells, on top of the guardians of the six candidate rooms and the core room.
+- Treasure rooms: the three candidate rooms that hold no seal, the Warden's lair, the archer's room, and up to 3 dead ends.
+  A treasure room holds one chest of the treasure table at room offset (4, 1).
+- The inner vault has a door on level 0 to a neighbouring room (east first; never a stair, the lair or a trap room), 3 wide
+  and 5 high like every passage. The bottom floor is reached by a walk along its own level as well as by the spiral.
 
 ### Walls, seals, traps
 
@@ -410,25 +415,30 @@ traps, wraith cells.
 ### The objective and the hunt
 
 `VaultObjective` wraps `Objectives.keys(vault_seal, 3)`. At activation it lists the vault and spawns the whole roster at
-the markers of each kind: 8 guardians, 6 wraiths, 1 Warden. The site roster is empty.
+the markers of each kind: 24 guardians, 1 Archer Warden, 1 Warden. The site roster is empty.
 
 - The Warden (wither skeleton, scale 1.8, health x10, boss) hunts the nearest player inside the bounds, through walls.
   It reads the plan of its own vault (`VaultGuide`), finds the route from cell to cell through the stairs, and walks one leg
   at a time. It heals 2 health a second while no player is within 16 blocks. It cannot leave the bounds.
 - Within 16 blocks of the Warden a player hears a heartbeat every 40 ticks. Within 8 blocks the player has Darkness.
-- Void Wraiths (vex, health x3) give Darkness for 60 ticks with a hit, and cannot leave the bounds.
+- The Archer Warden (wither skeleton, scale 1.6, health x8, bow, netherite helmet, boss) hunts the nearest player inside the
+  bounds like the Warden, but walks the maze only while the player is farther than 18 blocks or out of sight. Near and in sight it
+  stands still and shoots. It cannot leave the bounds.
   Vault Guardians (husk, scale 1.2, health x3, netherite helmet) have no ability.
 
 ### Mobs and rewards
 
 | Kind | Drop |
 |---|---|
-| `void_wraith` | `void_essence` at 40% |
+| `vault_warden_archer` | `void_essence` 2 to 4 |
 | `vault_guardian` | `vault_dust` 1 to 2 at 60% |
 | `vault_warden` | `void_essence` 3 to 5 |
 
 - Vault table `chests/sealed_vault`: 1 `void_touched_affix`, 4 to 8 `void_essence`, 2 to 5 diamonds, 1 to 3 netherite scrap
   at 60%, 4 to 10 emeralds.
+- Treasure table `chests/sealed_vault_treasure`: 6 to 12 diamonds, 2 to 4 netherite scrap at 80%, 1 to 2 netherite ingots at 35%,
+  16 to 40 emeralds, 3 to 6 `void_essence`, 1 `void_touched_affix` at 40%, 1 to 2 enchanted golden apples at 50%, a totem of
+  undying at 30%.
 - Affix `void_touched` (addition: `void_essence`; swords, axes, maces, tridents, bows, crossbows): a hit adds 15% of its damage
   as magic damage that armor does not reduce, and heals the holder by 5% of its damage.
 - Unique `abyssal_edge` (netherite sword): a kill opens a void rift for 60 ticks that pulls hostile mobs within 4 blocks.
