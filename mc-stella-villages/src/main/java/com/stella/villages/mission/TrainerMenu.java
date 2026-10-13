@@ -114,13 +114,13 @@ public final class TrainerMenu extends ChestMenu {
 		return icon;
 	}
 
-	private static ItemStack trialIcon(final int level) {
+	/** The trial button for a level. Public for the tooltip test. */
+	public static ItemStack trialIcon(final int level) {
 		ItemStack icon = new ItemStack(Items.SKELETON_SKULL);
 		icon.set(DataComponents.ITEM_NAME, Component.literal("Boss Trial: level " + level));
 		List<Component> lore = new java.util.ArrayList<>();
-		lore.addAll(DescriptionLines.lines("Hunt a level " + level + " boss"));
-		lore.addAll(DescriptionLines.lines("Somewhere " + JobTrials.MIN_DISTANCE + " to " + JobTrials.MAX_DISTANCE + " blocks from the village"));
-		lore.addAll(DescriptionLines.lines("Reward: +5 to your main stat, +1 to the others"));
+		lore.addAll(DescriptionLines.block("job, level " + level, "Hunt a level " + level + " boss "
+			+ JobTrials.MIN_DISTANCE + " to " + JobTrials.MAX_DISTANCE + " blocks from the village. Reward: +5 to your main stat, +1 to the others."));
 		lore.addAll(DescriptionLines.lines("Click to accept"));
 		icon.set(DataComponents.LORE, new ItemLore(lore));
 		return icon;

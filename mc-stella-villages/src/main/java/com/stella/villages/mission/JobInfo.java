@@ -25,17 +25,15 @@ final class JobInfo {
 
 	private static final Map<String, Info> JOBS = Map.of(
 		"archer", new Info("an Archer", "Strikes from afar with a bow.", "DEX", "AGI", "1.0", "Falcon Guard",
-			"A black falcon circles above you. Each attack has a 35% chance (plus 1% per 5 LUK) to make it strike"
-				+ " that mob 3 times. After 5 seconds without attacking, it strikes the nearest mob 3 times every 2 seconds."
-				+ " Each hit is your average bow roll. A kill gives you 25% of the mob's experience."),
+			"your falcon hits a mob 3 times: 35% on attack (+1% per 5 LUK), and every 2 s once idle 5 s."
+				+ " Average bow roll. Kills give you 25% XP."),
 		"fighter", new Info("a Fighter", "Wins in close combat. Tough.", "STR", "VIT", "1.3", "Double Strike",
-			"Each attack has a 25% chance to hit twice. Both hits can crit."
-				+ " The second hit gives Nausea for 0.5 seconds."),
+			"25% chance to hit twice. Both hits can crit. The second hit gives Nausea for 0.5 seconds."),
 		"mage", new Info("a Mage", "Casts spells from books. Frail.", "INT", "DEX", "0.85", "Arcane Ward",
-			"A shield of MATK/100 x 10% of your max health. It refills after 15 seconds without a hit."
-				+ " When it breaks, mobs within 3 blocks take MATK/100 x 5% of your max health."),
+			"shield of MATK/100 x 10% max health, refilled after 15 s unhit."
+				+ " On break, mobs within 3 blocks take MATK/100 x 5% max health."),
 		"priest", new Info("a Priest", "Heals allies and fights the undead.", "VIT", "INT", "1.1", "Sanctuary",
-			"Within 3 blocks, you and your allies heal 1.5% of max health per second,"
+			"within 3 blocks, you and allies heal 1.5% of max health per second,"
 				+ " and hostile mobs lose 1.5% of theirs.")
 	);
 
@@ -48,12 +46,15 @@ final class JobInfo {
 		return "Become " + (info == null ? "a " + job : info.title());
 	}
 
-	/** The tooltip of the menu button: the job, its bonuses, its innate, and what a choice does. */
+	/**
+	 * The tooltip of the menu button: a Requires and Desc block for the job, its bonuses, a second block for its innate,
+	 * and what a choice does. The innate needs the job, so its block reads {@code Requires: Archer job}.
+	 */
 	static List<Component> lore(final String job) {
 		List<Component> lore = new ArrayList<>();
 		Info info = JOBS.get(job);
 		if (info != null) {
-			lore.addAll(DescriptionLines.lines(info.description(), ChatFormatting.GRAY));
+			lore.addAll(DescriptionLines.block("level " + RpgJobs.MIN_LEVEL, info.description()));
 			lore.add(Component.empty());
 			lore.addAll(DescriptionLines.lines("Bonuses", ChatFormatting.YELLOW));
 			lore.addAll(DescriptionLines.lines("+" + MAIN_PER_LEVEL + " " + info.main() + ", +" + SECOND_PER_LEVEL + " " + info.second() + " per level",
@@ -61,8 +62,7 @@ final class JobInfo {
 			lore.addAll(DescriptionLines.lines("Max health x" + info.health(), ChatFormatting.GREEN));
 			lore.addAll(DescriptionLines.lines("Trial: +" + TRIAL_MAIN + " " + info.main() + ", +" + TRIAL_OTHER + " others", ChatFormatting.GREEN));
 			lore.add(Component.empty());
-			lore.addAll(DescriptionLines.lines("Innate: " + info.innate(), ChatFormatting.GOLD));
-			lore.addAll(DescriptionLines.lines(info.innateText(), ChatFormatting.GRAY));
+			lore.addAll(DescriptionLines.block(Character.toUpperCase(job.charAt(0)) + job.substring(1) + " job", info.innate() + ": " + info.innateText()));
 			lore.add(Component.empty());
 		}
 		lore.addAll(DescriptionLines.lines("You also get its item", ChatFormatting.DARK_GRAY));
