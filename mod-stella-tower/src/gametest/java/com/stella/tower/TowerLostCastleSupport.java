@@ -2,6 +2,7 @@ package com.stella.tower;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,10 +22,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * its top ceiling lies {@link LostCastleGrid#COVER} blocks under the lowest ground of its footprint.
  */
 final class TowerLostCastleSupport {
-	/** The ground of an arena: a hill {@code 0} to {@code 4} blocks over {@link #BASE}. */
+	/** The ground of an arena: a hill {@code 0} to {@link LostCastleGrid#MAX_SLOPE} blocks over {@link #BASE}. */
 	static final int BASE = 200;
 	static final int LOWEST = BASE;
-	static final int HIGHEST = BASE + 4;
+	static final int HIGHEST = BASE + LostCastleGrid.MAX_SLOPE;
 	/** The farthest a walker drops in one step. */
 	static final int DROP = 3;
 
@@ -33,7 +34,7 @@ final class TowerLostCastleSupport {
 
 	/** The top solid block of the hill over a column. */
 	static int hill(final int x, final int z) {
-		return BASE + Math.floorMod(x * 7 + z * 3, 5);
+		return BASE + Math.floorMod(x * 7 + z * 3, LostCastleGrid.MAX_SLOPE + 1);
 	}
 
 	/** A castle over a hill, built whole. */
@@ -54,6 +55,18 @@ final class TowerLostCastleSupport {
 
 		BlockState at(final int x, final int y, final int z) {
 			return this.level.getBlockState(this.piece.worldPos(x, y, z));
+		}
+
+		/** The plan's floor, from the top, 0. */
+		LostCastlePlan.Level level(final int floor) {
+			return this.piece.plan().levels().get(floor);
+		}
+
+		/** The nth column of a floor that a body must reach, at the floor's feet, in the world. */
+		BlockPos key(final int floor, final int n) {
+			List<LostCastlePlan.Cell> keys = level(floor).keys();
+			LostCastlePlan.Cell cell = keys.get(n % keys.size());
+			return spot(floor, cell.x(), cell.z());
 		}
 
 		/** A spot of the piece's frame at a floor's feet, in the world. */

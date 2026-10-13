@@ -6,9 +6,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
 /**
- * The spawner set in a floor's wall: its numbers, and the mobs it raises by the floor's kind and the
+ * The spawner hidden in a floor's solid block: its numbers, and the mobs it raises by the floor's kind and the
  * castle's palette. Each entity is only its id, so vanilla finishes it with gear on its own. The light
- * rule spans every level because the castle's rooms are lamp lit, and a vanilla monster rule rejects light.
+ * rule spans every level because the castle's floors are candle lit, and a vanilla monster rule rejects light.
  * No creeper is ever listed: its blast would open the wall.
  */
 public final class LostCastleSpawner {

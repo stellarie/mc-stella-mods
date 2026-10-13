@@ -1,12 +1,11 @@
 package com.stella.tower;
 
 import com.stella.tower.LostCastleGrid.Side;
-import com.stella.tower.LostCastlePlan.Alcove;
-import com.stella.tower.LostCastlePlan.Door;
-import com.stella.tower.LostCastlePlan.Fragment;
+import com.stella.tower.LostCastleLayout.Layout;
+import com.stella.tower.LostCastlePlan.Cell;
+import com.stella.tower.LostCastlePlan.Chest;
 import com.stella.tower.LostCastlePlan.Level;
-import com.stella.tower.LostCastlePlan.Pillar;
-import com.stella.tower.LostCastlePlan.Scatter;
+import com.stella.tower.LostCastlePlan.Prop;
 import com.stella.tower.LostCastlePlan.Spawner;
 import com.stella.tower.LostCastlePlan.Stair;
 import com.stella.tower.LostCastlePlan.Vault;
@@ -18,17 +17,17 @@ import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.FurnaceBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.NetherPortalBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
- * Lays a lost castle to its plan: the slab and walls of every floor, its rooms, doorways, pillars, broken
- * walls, alcoves, chests and spawners, the stairs between floors, the portal and the vault on the bottom
- * floor, the ring of ruins on the surface, and the stair down from the ring. Every choice comes from the
- * seed and the plan, and none from a block already laid, so a castle built one chunk at a time is the
- * castle built whole.
+ * Lays a lost castle to its plan: the slab and walls of every floor, its layout, chests and spawners, its
+ * candles and props, the stairs between floors, the portal and the vault on the bottom floor, the ring of ruins
+ * on the surface, and the stair down from the ring. Every choice comes from the seed and the plan, and none from
+ * a block already laid, so a castle built one chunk at a time is the castle built whole.
  */
 public final class LostCastleBuilder {
 	/** Where the portal stands on the bottom floor: the lower of its two columns, and its row. */
@@ -38,7 +37,6 @@ public final class LostCastleBuilder {
 	public static final int DECAY = 14;
 	private static final long DECAY_SALT = 0x4445434159L;
 	private static final long RING_SALT = 0x52494E47L;
-	private static final long FRAGMENT_SALT = 0x46524147L;
 
 	private LostCastleBuilder() {
 	}
@@ -61,14 +59,11 @@ public final class LostCastleBuilder {
 		BlockState air = Blocks.AIR.defaultBlockState();
 		piece.fill(level, bb, 0, 0, 0, LostCastleGrid.SIZE - 1, LostCastleGrid.topY(floors), LostCastleGrid.SIZE - 1, wall);
 		for (Level floor : plan.levels()) {
-			rooms(piece, level, bb, floors, floor, air);
+			carve(piece, level, bb, palette, floors, floor, air);
 			decay(piece, level, bb, seed, palette, floors, floor);
-			lamps(piece, level, bb, floors, floor);
-			doors(piece, level, bb, floors, floor, air);
-			hiding(piece, level, bb, seed, palette, floors, floor);
 			alcoves(piece, level, bb, floors, floor, air);
 			spawners(piece, level, bb, palette, floors, floor);
-			scatter(piece, level, bb, palette, floors, floor);
+			props(piece, level, bb, palette, floors, floor);
 		}
 		for (Level floor : plan.levels()) {
 			if (floor.exit() != null) {
@@ -83,134 +78,74 @@ public final class LostCastleBuilder {
 
 	// ---------------------------------------------------------------- floors
 
-	private static void rooms(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final int floors, final Level floor,
-		final BlockState air) {
+	/** Opens a floor's air column by column to its layout, and lays its earth over the slab. */
+	private static void carve(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePalette palette, final int floors,
+		final Level floor, final BlockState air) {
 		int feet = LostCastleGrid.feet(floors, floor.index());
 		int head = LostCastleGrid.head(floors, floor.index());
-		for (int cz = 0; cz < LostCastleGrid.COLS; cz++) {
-			for (int cx = 0; cx < LostCastleGrid.COLS; cx++) {
-				piece.fill(level, bb, LostCastleGrid.cellLow(cx), feet, LostCastleGrid.cellLow(cz), LostCastleGrid.cellHigh(cx), head,
-					LostCastleGrid.cellHigh(cz), air);
+		BlockState ground = palette.ground().defaultBlockState();
+		Layout layout = floor.layout();
+		for (int x = LostCastleGrid.IN_LOW; x <= LostCastleGrid.IN_HIGH; x++) {
+			for (int z = LostCastleGrid.IN_LOW; z <= LostCastleGrid.IN_HIGH; z++) {
+				int fill = layout.fill(x, z);
+				if (fill >= LostCastleGrid.CLEAR) {
+					continue;
+				}
+				piece.fill(level, bb, x, feet + fill, z, x, head - layout.hang(x, z), z, air);
+				if (fill > 0 && layout.earth(x, z)) {
+					piece.fill(level, bb, x, feet, z, x, feet + fill - 1, z, ground);
+				}
 			}
 		}
 	}
 
-	/** The stone of a floor gone worn: each block of a room's walls, floor and ceiling by its own spot and the seed. */
+	/** The stone of a floor gone worn: each exposed block of its walls, floor and ceiling by its own spot and the seed. */
 	private static void decay(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final long seed, final LostCastlePalette palette,
 		final int floors, final Level floor) {
 		BlockState worn = palette.worn().defaultBlockState();
 		int feet = LostCastleGrid.feet(floors, floor.index());
-		int head = LostCastleGrid.head(floors, floor.index());
-		for (int cz = 0; cz < LostCastleGrid.COLS; cz++) {
-			for (int cx = 0; cx < LostCastleGrid.COLS; cx++) {
-				int x0 = LostCastleGrid.cellLow(cx) - 1;
-				int x1 = LostCastleGrid.cellHigh(cx) + 1;
-				int z0 = LostCastleGrid.cellLow(cz) - 1;
-				int z1 = LostCastleGrid.cellHigh(cz) + 1;
-				for (int x = x0; x <= x1; x++) {
-					for (int z = z0; z <= z1; z++) {
-						boolean edge = x == x0 || x == x1 || z == z0 || z == z1;
-						if (edge) {
-							for (int y = feet; y <= head; y++) {
-								wear(piece, level, bb, seed, worn, x, y, z);
-							}
-						} else {
-							wear(piece, level, bb, seed, worn, x, feet - 1, z);
-							wear(piece, level, bb, seed, worn, x, head + 1, z);
-						}
+		Layout layout = floor.layout();
+		int clear = LostCastleGrid.CLEAR;
+		for (int x = LostCastleGrid.IN_LOW - 1; x <= LostCastleGrid.IN_HIGH + 1; x++) {
+			for (int z = LostCastleGrid.IN_LOW - 1; z <= LostCastleGrid.IN_HIGH + 1; z++) {
+				for (int y = -1; y <= clear; y++) {
+					boolean slab = y < 0 || y >= clear;
+					if (!slab && (!layout.solid(x, y, z) || layout.earth(x, z) && y < layout.fill(x, z))) {
+						continue;
+					}
+					if (exposed(layout, x, y, z, clear) && Math.floorMod(hash(seed ^ DECAY_SALT, x, feet + y, z), DECAY) == 0) {
+						piece.set(level, bb, worn, x, feet + y, z);
 					}
 				}
 			}
 		}
 	}
 
-	private static void wear(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final long seed, final BlockState worn,
-		final int x, final int y, final int z) {
-		if (Math.floorMod(hash(seed ^ DECAY_SALT, x, y, z), DECAY) == 0) {
-			piece.set(level, bb, worn, x, y, z);
+	/** Whether a block of stone touches air: on a side, over it or under it. */
+	private static boolean exposed(final Layout layout, final int x, final int y, final int z, final int clear) {
+		if (y < 0) {
+			return !layout.solid(x, 0, z);
 		}
+		if (y >= clear) {
+			return !layout.solid(x, clear - 1, z);
+		}
+		return y + 1 < clear && !layout.solid(x, y + 1, z) || y > 0 && !layout.solid(x, y - 1, z)
+			|| !layout.solid(x + 1, y, z) || !layout.solid(x - 1, y, z) || !layout.solid(x, y, z + 1) || !layout.solid(x, y, z - 1);
 	}
 
-	/** Tower lamps in the ceiling above each room's lanes. */
-	private static void lamps(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final int floors, final Level floor) {
-		int head = LostCastleGrid.head(floors, floor.index());
-		int[][] spots = {{6, 6}, {6, 2}, {7, 11}, {2, 7}, {11, 6}};
-		BlockState lamp = TowerBlocks.TOWER_LAMP.defaultBlockState();
-		for (int cz = 0; cz < LostCastleGrid.COLS; cz++) {
-			for (int cx = 0; cx < LostCastleGrid.COLS; cx++) {
-				for (int[] spot : spots) {
-					piece.set(level, bb, lamp, LostCastleGrid.cellLow(cx) + spot[0], head, LostCastleGrid.cellLow(cz) + spot[1]);
-				}
-			}
-		}
-	}
-
-	private static void doors(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final int floors, final Level floor,
-		final BlockState air) {
-		int feet = LostCastleGrid.feet(floors, floor.index());
-		int top = feet + LostCastleGrid.DOOR_HEIGHT - 1;
-		for (Door door : floor.doors()) {
-			int from = LostCastleGrid.DOOR_FROM;
-			int to = from + LostCastleGrid.DOOR_WIDTH - 1;
-			if (door.alongX()) {
-				int x = LostCastleGrid.cellHigh(door.cx()) + 1;
-				piece.fill(level, bb, x, feet, LostCastleGrid.cellLow(door.cz()) + from, x + LostCastleGrid.WALL - 1, top,
-					LostCastleGrid.cellLow(door.cz()) + to, air);
-			} else {
-				int z = LostCastleGrid.cellHigh(door.cz()) + 1;
-				piece.fill(level, bb, LostCastleGrid.cellLow(door.cx()) + from, feet, z, LostCastleGrid.cellLow(door.cx()) + to, top,
-					z + LostCastleGrid.WALL - 1, air);
-			}
-		}
-	}
-
-	/** Pillars, whole or broken off, and wall segments with a ragged top. */
-	private static void hiding(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final long seed, final LostCastlePalette palette,
-		final int floors, final Level floor) {
-		int feet = LostCastleGrid.feet(floors, floor.index());
-		BlockState wall = palette.wall().defaultBlockState();
-		BlockState worn = palette.worn().defaultBlockState();
-		for (Pillar pillar : floor.pillars()) {
-			piece.fill(level, bb, pillar.x(), feet, pillar.z(), pillar.x() + 1, feet + pillar.height() - 1, pillar.z() + 1, wall);
-			if (pillar.height() < LostCastleGrid.CLEAR) {
-				piece.fill(level, bb, pillar.x(), feet + pillar.height() - 1, pillar.z(), pillar.x() + 1, feet + pillar.height() - 1, pillar.z() + 1, worn);
-			}
-		}
-		for (Fragment fragment : floor.fragments()) {
-			for (int i = 0; i < fragment.length(); i++) {
-				int x = fragment.alongX() ? fragment.x() + i : fragment.x();
-				int z = fragment.alongX() ? fragment.z() : fragment.z() + i;
-				int height = 1 + Math.floorMod(hash(seed ^ FRAGMENT_SALT, x, floor.index(), z), fragment.height());
-				piece.fill(level, bb, x, feet, z, x, feet + height - 1, z, wall);
-				piece.set(level, bb, worn, x, feet + height - 1, z);
-			}
-		}
-	}
-
-	/** Recesses in the outer wall; a chest alcove holds a double chest, a niche an old skull. */
+	/** Recesses in the outer wall, each holding a double chest. */
 	private static void alcoves(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final int floors, final Level floor,
 		final BlockState air) {
 		int feet = LostCastleGrid.feet(floors, floor.index());
-		for (Alcove alcove : floor.alcoves()) {
-			Side side = alcove.side();
-			int[] first = null;
-			int[] second = null;
+		for (Chest chest : floor.chests()) {
 			for (int w = 0; w < LostCastlePlan.ALCOVE_WIDTH; w++) {
-				int x = LostCastlePlan.faceX(alcove.cx(), side, alcove.first() + w);
-				int z = LostCastlePlan.faceZ(alcove.cz(), side, alcove.first() + w);
-				piece.fill(level, bb, x, feet, z, x, feet + LostCastlePlan.ALCOVE_HEIGHT - 1, z, air);
-				if (w == 0) {
-					first = new int[] {x, z};
-				} else if (w == 1) {
-					second = new int[] {x, z};
-				}
+				Cell cell = chest.cell(w);
+				piece.fill(level, bb, cell.x(), feet, cell.z(), cell.x(), feet + LostCastlePlan.ALCOVE_HEIGHT - 1, cell.z(), air);
 			}
-			if (alcove.chest()) {
-				piece.doubleChest(level, bb, feet, first[0], first[1], second[0], second[1], LostCastleGrid.label(side.inX(), side.inZ()));
-			} else {
-				piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, Math.floorMod(first[0] + first[1], 16)),
-					second[0], feet, second[1]);
-			}
+			Cell first = chest.cell(0);
+			Cell second = chest.cell(1);
+			Side side = chest.side();
+			piece.doubleChest(level, bb, feet, first.x(), first.z(), second.x(), second.z(), LostCastleGrid.label(side.inX(), side.inZ()));
 		}
 	}
 
@@ -222,27 +157,36 @@ public final class LostCastleBuilder {
 		}
 	}
 
-	private static void scatter(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePalette palette, final int floors,
+	/** Candles, and the tower's props on the floor, the walls and the ceiling. */
+	private static void props(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePalette palette, final int floors,
 		final Level floor) {
 		int feet = LostCastleGrid.feet(floors, floor.index());
-		int head = LostCastleGrid.head(floors, floor.index());
-		for (Scatter item : floor.scatter()) {
-			int x = item.x();
-			int z = item.z();
-			switch (item.kind()) {
-				case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, item.arg()),
-					x, feet, z);
-				case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, item.arg()), x, feet, z);
-				case RUBBLE -> piece.set(level, bb, palette.worn().defaultBlockState(), x, feet, z);
+		BlockState cobweb = Blocks.COBWEB.defaultBlockState();
+		BlockState chain = Blocks.IRON_CHAIN.defaultBlockState();
+		for (Prop prop : floor.props()) {
+			int x = prop.x();
+			int z = prop.z();
+			int y = feet + prop.y();
+			Side side = prop.kind().onWall() ? Side.values()[prop.arg()] : null;
+			switch (prop.kind()) {
+				case CANDLE -> piece.set(level, bb, Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, prop.arg()), x, y, z);
+				case SKULL -> piece.set(level, bb, Blocks.SKELETON_SKULL.defaultBlockState().setValue(SkullBlock.ROTATION, prop.arg()), x, y, z);
+				case BARREL -> piece.set(level, bb, BiomeBlocks.state(BiomeBlocks.BARREL), x, y, z);
+				case ANVIL -> piece.set(level, bb, BiomeBlocks.state(BiomeBlocks.ANVIL), x, y, z);
+				case GRINDSTONE -> piece.set(level, bb, BiomeBlocks.state(BiomeBlocks.GRINDSTONE), x, y, z);
+				case BONE -> piece.set(level, bb, BiomeBlocks.state(BiomeBlocks.BONE_BLOCK), x, y, z);
+				case FLOOR_COBWEB, WALL_COBWEB, CEILING_COBWEB -> piece.set(level, bb, cobweb, x, y, z);
+				case RUBBLE -> piece.set(level, bb, palette.worn().defaultBlockState(), x, y, z);
 				case MOSS -> piece.set(level, bb, switch (palette) {
 					case GREEN -> Blocks.MOSS_CARPET.defaultBlockState();
 					case SNOW -> Blocks.SNOW.defaultBlockState();
 					case SANDSTONE -> Blocks.DEAD_BUSH.defaultBlockState();
-				}, x, feet, z);
-				case COBWEB -> piece.set(level, bb, Blocks.COBWEB.defaultBlockState(), x, head, z);
-				case CHAIN -> {
-					for (int drop = 0; drop < item.arg(); drop++) {
-						piece.set(level, bb, Blocks.IRON_CHAIN.defaultBlockState(), x, head - drop, z);
+				}, x, y, z);
+				case WALL_SKULL -> piece.set(level, bb, BiomeBlocks.state(BiomeBlocks.wallSkull(LostCastleGrid.label(side.inX(), side.inZ()))), x, y, z);
+				case WALL_CHAIN -> piece.set(level, bb, chain.setValue(RotatedPillarBlock.AXIS, side.inX() != 0 ? Direction.Axis.X : Direction.Axis.Z), x, y, z);
+				case CEILING_CHAIN -> {
+					for (int drop = 0; drop < prop.arg(); drop++) {
+						piece.set(level, bb, chain, x, y - drop, z);
 					}
 				}
 			}
@@ -252,7 +196,7 @@ public final class LostCastleBuilder {
 	// ---------------------------------------------------------------- stairs
 
 	/**
-	 * The stair from floor {@code index} to the floor below: twelve steps along an outer wall, each one lower than
+	 * The stair from floor {@code index} to the floor below: sixteen steps along an outer wall, each one lower than
 	 * the last. The first step is level with the upper floor, so the way down starts half a block at a time. The
 	 * slab over each step but the first is open, the lower floor holds the stone under each step, and a low
 	 * wall guards the opening on the upper floor.
@@ -286,7 +230,11 @@ public final class LostCastleBuilder {
 
 	// ---------------------------------------------------------------- the bottom floor
 
-	/** The portal, a smaller kin of the tower's: a plinth and steps, a gate of tower frame, lamp pillars and soul braziers. */
+	private static BlockState candle(final int count) {
+		return Blocks.CANDLE.defaultBlockState().setValue(CandleBlock.LIT, true).setValue(CandleBlock.CANDLES, count);
+	}
+
+	/** The portal, a smaller kin of the tower's: a plinth and steps, a gate of tower frame, candle pillars and candle braziers. */
 	private static void portal(final LostRoomPiece piece, final WorldGenLevel level, final BoundingBox bb, final LostCastlePalette palette, final int floors) {
 		int feet = LostCastleGrid.feet(floors, floors - 1);
 		BlockState wall = palette.wall().defaultBlockState();
@@ -305,10 +253,10 @@ public final class LostCastleBuilder {
 		piece.fill(level, bb, PORTAL_X + 2, feet + 1, PORTAL_Z, PORTAL_X + 2, feet + 3, PORTAL_Z, frame);
 		piece.fill(level, bb, PORTAL_X, feet + 3, PORTAL_Z, PORTAL_X + 1, feet + 3, PORTAL_Z, frame);
 		for (int x : new int[] {x0, x1}) {
-			piece.fill(level, bb, x, feet + 1, z0, x, feet + 2, z0, wall);
-			piece.set(level, bb, TowerBlocks.TOWER_LAMP.defaultBlockState(), x, feet + 3, z0);
+			piece.fill(level, bb, x, feet + 1, z0, x, feet + 3, z0, wall);
+			piece.set(level, bb, candle(3), x, feet + 4, z0);
 			piece.set(level, bb, Blocks.SOUL_SOIL.defaultBlockState(), x, feet, z1);
-			piece.set(level, bb, Blocks.SOUL_FIRE.defaultBlockState(), x, feet + 1, z1);
+			piece.set(level, bb, candle(4), x, feet + 1, z1);
 		}
 		for (int x : new int[] {PORTAL_X - 1, PORTAL_X + 2}) {
 			piece.set(level, bb, Blocks.SOUL_LANTERN.defaultBlockState(), x, feet + 4, PORTAL_Z);
@@ -350,7 +298,7 @@ public final class LostCastleBuilder {
 			? LostCastleGrid.label(vault.lowX() ? 1 : -1, 0)
 			: LostCastleGrid.label(0, vault.lowZ() ? 1 : -1);
 		piece.vaultChest(level, bb, vault.chestX(), feet, vault.chestZ(), toward);
-		piece.set(level, bb, TowerBlocks.TOWER_LAMP.defaultBlockState(), vault.chestX(), feet + Vault.INSIDE, vault.chestZ());
+		piece.set(level, bb, candle(2), vault.lowX() ? vault.x1() : vault.x0(), feet, vault.lowZ() ? vault.z1() : vault.z0());
 	}
 
 	// ---------------------------------------------------------------- the surface
@@ -487,8 +435,7 @@ public final class LostCastleBuilder {
 				piece.set(level, bb, step, x, tread, z);
 				boolean roofed = tread + 4 >= roof && tread + 4 <= surface - 1;
 				if (roofed) {
-					boolean lamp = j % 4 == 0 && x == LostCastleGrid.MID;
-					piece.set(level, bb, lamp ? TowerBlocks.TOWER_LAMP.defaultBlockState() : wall, x, tread + 4, z);
+					piece.set(level, bb, wall, x, tread + 4, z);
 				}
 			}
 			if (tread + 4 >= roof) {

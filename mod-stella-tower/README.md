@@ -612,41 +612,52 @@ Every planned floor is built with a double tower chest at each chest spot of its
 - A lost castle, `mod-stella-tower:lost_room`, generates in the overworld. The structure set
   `mod-stella-tower:lost_rooms` spreads castles 36 chunks apart, at least 8, and keeps them 8 chunks
   (128 blocks: 64 and the 50-block footprint) from `minecraft:villages`. A start on water, or on ground that
-  rises more than 6 blocks across its 50 by 50 footprint (`LostCastleGrid.MAX_SLOPE`), is skipped, and so is a start
+  rises more than 3 blocks across its 50 by 50 footprint (`LostCastleGrid.MAX_SLOPE`), is skipped, and so is a start
   with no room for 3 floors above the world's floor.
 - The castle goes down into the ground (`LostCastleGrid`, `LostCastlePlan`, `LostCastleBuilder`). It has 3 to 6
-  floors, drawn from its seed, and each floor is 12 blocks from the one above: a slab and 11 open blocks. The top
+  floors, drawn from its seed, and each floor is 16 blocks from the one above: a slab and 15 open blocks. The top
   floor's ceiling lies 2 blocks under the lowest ground of the footprint, so only the ring shows on the surface.
 - Surface: a small ring of ruins, like a small colosseum, 20 blocks across: a yard, a worn bench and a broken
   wall with four gates (`LostCastleBuilder.ring`). The biome at the ring's middle picks the palette
   (`LostCastlePalette.of`): snowy and icy biomes give polished diorite with snow, sandy and desert biomes give
   sandstone on sand, and any other biome gives mossy stone brick with grass, flowers and leaves.
 - Entrance: a stair 2 wide goes down from the ring's middle. Its first steps lie in an open trench between low walls
-  with a soul torch on each side, and past the ring it is a roofed tunnel. It lands on the top floor's south side, 14 to 20
+  with a soul torch on each side, and past the ring it is a roofed tunnel. It lands on the top floor's south side, 18 to 21
   blocks lower (`LostRoomPiece.drop`).
-- Each floor is a 3 by 3 lattice of rooms, each 14 blocks wide, between walls 2 blocks thick. A doorway 4 wide and 5
-  high joins two rooms: a walk through all nine, with two doorways more. Every room has a lane across it that
-  doorways open onto, and hiding spots in its four corners: 2 by 2 pillars, whole or broken off, and broken wall
-  segments 4 blocks long and up to 6 high. The outer wall holds recesses: 1 or 2 chest alcoves and 3 empty niches on a floor.
-  Moss, cobwebs, chains, candles, skulls and rubble are strewn over what is left, and a wall block in 14 has worn.
-- Stairs between floors: 2 wide, 12 steps, along an outer wall (`LostCastlePlan.Stair`), with a low wall round the
-  opening. The entrance lands on the south side, so the stair of floor 0 is on the north side, and each floor's stair
-  is on the side opposite the stair above it.
+- Each floor is a small tower floor, 50 by 50 inside a wall 2 blocks thick, 15 blocks high (`LostCastleLayout`).
+  Every floor above the bottom one rolls one layout of the tower's own families, scaled down: a maze (paths 4 wide
+  between walls 2 thick, as `TowerMaze`), a cavern (a cellular automaton with stalactites and stalagmites, as
+  `TowerCavern`), or a biome field (hills and broken towers, ruined houses and wall runs, as `BiomeCover`). Each
+  layout raises stone to the ceiling somewhere. A wall block in 14 has worn.
+- The bottom floor is the great hall (as `TowerGreatHall`): a ring of 2 by 2 pillars to the ceiling, a gallery
+  round it with 2 to 4 chapels along the long walls, low pews across the nave and the portal in the middle.
+  Its raised gallery of the tower is not built: the castle floor keeps one level.
+- Light: lit candles only, one cluster of 1 to 4 in about every 6 by 6 blocks of a floor. The portal's two soul
+  lanterns, its tower frame and the entrance stair's soul torches stay as landmarks. No lamp, torch or fire stands
+  below the ring.
+- Props of the tower's sets (`TowerProps`, `BiomeProps`), kept off the stairs, the chests, the spawners' fronts, the
+  portal's approach and the walk between a floor's key spots: on the floor, skulls, barrels, anvils, grindstones, bone
+  blocks, cobwebs, rubble and moss; on the walls, wall skulls, high cobwebs and chains; under the ceiling, hanging
+  chains and corner cobwebs. `LostCastleDress` draws them from the castle seed.
+- Stairs between floors: 2 wide, 16 steps, one block lower each, along an outer wall (`LostCastlePlan.Stair`), with a
+  low wall round the opening. The entrance lands on the south side, so the stair of floor 0 is on the north side, and
+  each floor's stair is on the side opposite the stair above it.
 - Chests: each floor holds 1 or 2 double chests, in outer wall alcoves. Each chest block holds 15 rolls of tower loot
   from a random floor up to 100.
-- Spawners: each floor, the bottom floor included, hides 2 spawners in its walls: a vanilla spawner in the wall layer
-  next to a room, flush with the wall face, with wall on its other five sides. A spawner wakes when a player is within
-  10 blocks, spawns up to 2 mobs within 3 blocks every 20 to 50 seconds, and lists mobs by its floor's kind and the
-  palette's mob (zombie, stray or husk). It never lists a creeper.
+- Spawners: each floor is split into 9 zones, 3 by 3, and each zone hides one vanilla spawner in a solid block with
+  stone on its other five sides (a wall, or a 3 by 3 pillar when the zone has none). The bottom floor holds 8: the
+  portal's zone has none. A spawner wakes when a player is within 10 blocks, spawns up to 2 mobs within 3 blocks every
+  20 to 50 seconds, and lists mobs by its floor's kind and the palette's mob (zombie, stray or husk). It never lists a
+  creeper.
 - A mob a spawner raises in a castle is a tower mob of the players' average level less 5 to 15 more. It never rolls an
   elite or a boss. A floor holds at most 8 live spawner mobs (`LostCastles.FLOOR_CAP`).
-- The lost room's portal stands on the bottom floor, in the middle room, on a plinth with steps, between a gate of tower
-  frame, two lamp pillars and two soul braziers: the tower portal's look, smaller. Its opening is 2 wide and 2 high; the
+- The lost room's portal stands on the bottom floor, in the middle of the hall, on a plinth with steps, between a gate of tower
+  frame, two candle pillars and two candle braziers, with two soul lanterns over the gate: the tower portal's look, smaller. Its opening is 2 wide and 2 high; the
   tower's is 2 by 3. A crafting table, a furnace and an anvil stand beside it. No mob spawns of itself (spawner, the
   dark, a chunk's making) inside the 4 by 4 by 3 volume round the frame (`LostRoomPiece.portalFrame`).
-- The bottom floor hides a vault in a corner room: a chamber 4 by 4 behind a partition of cracked stone bricks, with one
+- The bottom floor hides a vault in a corner: a chamber 4 by 4 behind a partition of cracked stone bricks, with one
   chest, stocked with 27 rolls of the deepest floor's loot.
-- A castle is the same castle however it is cut into chunks: its floors, rooms, chests and ruin come from its seed
+- A castle is the same castle however it is cut into chunks: its floors, layouts, chests, props and ruin come from its seed
   alone, and nothing is chosen by reading blocks already laid.
 - The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its ring, each at the online
   players' average level less 5 to 15 more. They never rise again.
@@ -673,9 +684,10 @@ Every planned floor is built with a double tower chest at each chest spot of its
 
 - Find a castle in a new world: a small ring of ruins on the ground, with a stair down at its middle and a soul torch on
   each side. Find one in a snowy biome and one in a desert and check the stone. Approach it and meet the mobs in the ring.
-- Walk down: the rooms are wide and have pillars, broken walls and alcoves to hide in. Check
+- Walk down: the floors are mazes, caves and fields of hills and ruins, lit by candles alone and strewn with skulls,
+  barrels, cobwebs and chains. Check
   that the stair to the next floor is on the opposite side to the one you came down by, and that each floor has one or
-  two double chests and two spawners that show one face of a cage in the wall. Find the cracked stone brick wall on the
+  two double chests and nine spawners (eight on the bottom floor) that show one face of a cage in a wall or a pillar. Find the cracked stone brick wall on the
   bottom floor, break it, and open the vault.
 - Enter the castle's portal, see the level message, clear the room, and return through the room's portal.
 - Fight a Tower Guardian from outside its arena and check that you have no boss bar there.
