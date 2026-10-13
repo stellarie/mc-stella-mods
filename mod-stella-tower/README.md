@@ -714,7 +714,7 @@ Every planned floor is built with a double tower chest at each chest spot of its
 
 ## Runes
 
-- Every tower mob, elite, boss and void shaman drops a rune with chance 0.001. A rune holds one of eight
+- Every tower mob, elite, boss and void shaman drops a rune with chance 0.005 (half a percent). A rune holds one of eight
   elements and the floor it dropped on. An anvil sets it into a weapon or one armor piece for 64 emeralds.
 - The floor sets the tier multiplier only: weapon hits multiply by it, and armor divides tower mob blows
   by it. The signature effects below read the wearer's effective stats, not the floor.
