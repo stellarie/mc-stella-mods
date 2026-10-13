@@ -62,8 +62,12 @@ public class EnchantmentDescriptionGameTest {
 		List<Holder.Reference<Enchantment>> catalogue = catalogue(helper);
 		List<String> missing = new ArrayList<>();
 		List<String> tooLong = new ArrayList<>();
+		List<String> noRequirement = new ArrayList<>();
 		int longest = 0;
 		for (Holder.Reference<Enchantment> holder : catalogue) {
+			if (!shipped.containsKey(EnchantmentDescriptions.requiresKey(holder))) {
+				noRequirement.add(EnchantmentDescriptions.requiresKey(holder));
+			}
 			String key = EnchantmentDescriptions.keyFor(holder.key().identifier());
 			String text = shipped.get(key);
 			if (text == null || text.isBlank()) {
@@ -82,6 +86,7 @@ public class EnchantmentDescriptionGameTest {
 			catalogue.size(), shipped.size(), missing.size(), tooLong.size(), longest
 		);
 		helper.assertTrue(missing.isEmpty(), "catalogue entries with no description: " + missing);
+		helper.assertTrue(noRequirement.isEmpty(), "enchantments whose Requires label is not in the lang: " + noRequirement);
 		helper.assertTrue(tooLong.isEmpty(), "descriptions over " + MAX_DESCRIPTION_LENGTH + " chars: " + tooLong);
 		helper.succeed();
 	}
@@ -103,7 +108,14 @@ public class EnchantmentDescriptionGameTest {
 		List<Component> lines = tooltipWithDescriptions(helper, book, shipped);
 		List<Component> description = lines.subList(BOOK_HEADER_LINES, lines.size());
 		boolean greyUpright = true;
+		boolean requiresLine = false;
 		for (Component line : description) {
+			String text = line.getString();
+			// The Requires value is white. Every Desc line is grey.
+			requiresLine = text.startsWith("Requires:") || (requiresLine && !text.startsWith("Desc:"));
+			if (requiresLine) {
+				continue;
+			}
 			Style style = line.getStyle();
 			TextColor colour = line.getSiblings().isEmpty() ? style.getColor() : line.getSiblings().getFirst().getStyle().getColor();
 			boolean italic = line.getSiblings().isEmpty() ? style.isItalic() : line.getSiblings().getFirst().getStyle().isItalic();
@@ -142,7 +154,7 @@ public class EnchantmentDescriptionGameTest {
 		StellaEquips.LOGGER.info(
 			"[BEHAVIOR] test=bookTooltipMissingDescription RESULT enchantments=2 described=1 descriptionText={}", joined
 		);
-		helper.assertTrue(expected.equals(joined), "a book with one undescribed enchantment showed: " + joined);
+		helper.assertTrue(joined.equals("Requires: bow Desc: " + expected), "a book with one undescribed enchantment showed: " + joined);
 		helper.succeed();
 	}
 
@@ -251,7 +263,7 @@ public class EnchantmentDescriptionGameTest {
 				new InputStreamReader(stream, StandardCharsets.UTF_8)
 			).getAsJsonObject();
 			for (Map.Entry<String, JsonElement> entry : entries.entrySet()) {
-				if (entry.getKey().endsWith(EnchantmentDescriptions.KEY_SUFFIX)) {
+				if (entry.getKey().endsWith(EnchantmentDescriptions.KEY_SUFFIX) || entry.getKey().startsWith(EnchantmentDescriptions.REQUIRES_PREFIX)) {
 					all.put(entry.getKey(), entry.getValue().getAsString());
 				}
 			}

@@ -211,6 +211,13 @@ weapons, the compare lines and the slime heart. Refine, mastery and imbue lines 
 lore component, with the style insertion `stella:wrap` on them. `ItemLoreMixin` splits only those
 lines when the tooltip builds. A book description states its numbers and how they rise with level.
 
+**Requires and Desc.** A description opens with a `Requires:` line and a `Desc:` line, at most 8 lines in all. Refine,
+milestone, mastery and imbue lines follow it. For an enchantment the `Requires:` line names the items it applies to.
+It reads the enchantment's own `supported_items` tag, through the lang key
+`description.mod-stella-equips-enchants.requires.<tag>`, so the label cannot drift from the data. For a unique, a
+merchant weapon, a crafted bow and the guardian gear it names the weapon in hand or the slot worn. A unique's job line
+is information only and follows the block.
+
 ## Damage numbers
 
 Each hit an entity takes shows a small bold white number over it, and each heal a bold green one with a plus
@@ -443,7 +450,7 @@ The first unique is the Bonewhisper Bow from the skeleton. Other slices add the 
 Each source given to the `drop-rate` consumer returns an additive bonus, for example 0.25 for +25%.
 
 **Refine.** A unique has no generic refine specials. Durability, the damage or armor per level and the milestone floors
-still apply. The tooltip shows the job, the source mobs, the base effect and one line for each tier. An active tier is gold
+still apply. The tooltip shows the Requires and Desc block for the base effect, the job, the source mobs and one line for each tier. An active tier is gold
 and a locked tier is dark gray.
 
 **Adding a unique.** Call `Uniques.register(new UniqueDef(...))` from a slice class while the mod initializes, add the item to its

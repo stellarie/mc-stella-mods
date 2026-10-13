@@ -11,8 +11,8 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The tooltip lines of the guardian gear. Each item states its effect, then the bonus that refining adds.
- * A refine line is gold at or above its level and dark gray below it.
+ * The tooltip lines of the guardian gear. Each item opens with a Requires line and a Desc line that states its effect,
+ * then the bonus that refining adds. A refine line is gold at or above its level and dark gray below it.
  */
 public final class GuardianTooltip {
 	private static final int PARRY_LEVEL = Refine.MILESTONE_FIRST;
@@ -39,9 +39,9 @@ public final class GuardianTooltip {
 
 	private static List<Component> shield(final int refine) {
 		List<Component> lines = new ArrayList<>();
-		lines.add(line("Each blow it blocks adds a stack of +" + percent(BoneShield.BONUS_PER_STACK) + " melee damage, up to " + BoneShield.MAX_STACKS + ".",
-			ChatFormatting.GRAY));
-		lines.add(line("Your next melee hit spends every stack and shoves the mobs in front of you.", ChatFormatting.GRAY));
+		lines.add(DescriptionLines.requires(line("shield in hand", ChatFormatting.WHITE)));
+		lines.add(DescriptionLines.desc(line("Each blow it blocks adds a stack of +" + percent(BoneShield.BONUS_PER_STACK) + " melee damage, up to "
+			+ BoneShield.MAX_STACKS + ". Your next melee hit spends every stack and shoves the mobs in front of you.", ChatFormatting.GRAY)));
 		// Once refined to the level, the Parry line of the refine lore says the same with the real share.
 		if (refine < PARRY_LEVEL) {
 			lines.add(line("+" + PARRY_LEVEL + ": Parry sends part of a blocked melee hit back at the attacker.", ChatFormatting.DARK_GRAY));
@@ -51,7 +51,8 @@ public final class GuardianTooltip {
 
 	private static List<Component> crown(final int refine) {
 		List<Component> lines = new ArrayList<>();
-		lines.add(line("Arrows you shoot deal +" + percent(SkeletonCrown.BASE_BONUS) + " damage.", ChatFormatting.GRAY));
+		lines.add(DescriptionLines.requires(line("worn on head", ChatFormatting.WHITE)));
+		lines.add(DescriptionLines.desc(line("Arrows you shoot deal +" + percent(SkeletonCrown.BASE_BONUS) + " damage.", ChatFormatting.GRAY)));
 		for (int tier : SkeletonCrown.TIERS) {
 			lines.add(line("+" + tier + ": arrows deal +" + percent(SkeletonCrown.bonusAt(tier)) + " damage.",
 				refine >= tier ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY));

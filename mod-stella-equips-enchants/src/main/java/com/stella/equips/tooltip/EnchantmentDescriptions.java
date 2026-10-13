@@ -12,17 +12,21 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 /**
- * Appends one grey description line per enchantment the stack carries, in the
- * order vanilla renders the names. A missing key adds no line.
+ * Appends a Requires line and a Desc line per enchantment the stack carries, in the
+ * order vanilla renders the names. A missing key adds no lines. The Requires line names the
+ * items the enchantment applies to, which it reads from the enchantment's own supported items.
  */
 public final class EnchantmentDescriptions {
 	public static final String KEY_SUFFIX = ".desc";
+	/** The lang key prefix of the item class an enchantment applies to. The tag id follows, with dots for the colon and slashes. */
+	public static final String REQUIRES_PREFIX = "description.mod-stella-equips-enchants.requires.";
 	private static final Style STYLE = Style.EMPTY.withColor(ChatFormatting.GRAY).withItalic(false);
 
 	private EnchantmentDescriptions() {
@@ -65,7 +69,20 @@ public final class EnchantmentDescriptions {
 			return;
 		}
 
-		DescriptionLines.add(lines, Component.translatable(key).withStyle(STYLE));
+		DescriptionLines.addBlock(lines, requires(enchantment), Component.translatable(key).withStyle(STYLE));
+	}
+
+	/** The key of the item class an enchantment applies to: its supported tag, or {@code any} for a plain list of items. */
+	public static String requiresKey(final Holder<Enchantment> enchantment) {
+		if (enchantment.value().definition().supportedItems() instanceof HolderSet.Named<Item> named) {
+			Identifier tag = named.key().location();
+			return REQUIRES_PREFIX + (tag.getNamespace() + "." + tag.getPath()).replace('/', '.');
+		}
+		return REQUIRES_PREFIX + "any";
+	}
+
+	private static Component requires(final Holder<Enchantment> enchantment) {
+		return Component.translatable(requiresKey(enchantment)).withStyle(ChatFormatting.WHITE);
 	}
 
 	private static HolderSet<Enchantment> tooltipOrder(final HolderLookup.Provider registries) {
