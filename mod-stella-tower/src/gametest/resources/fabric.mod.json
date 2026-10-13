@@ -68,6 +68,7 @@
 			"com.stella.tower.TowerLostCastleContentsGameTest",
 			"com.stella.tower.TowerLostCastleWorldGameTest",
 			"com.stella.tower.TowerLostCastleSpawnerGameTest",
+			"com.stella.tower.TowerLostCastleLayoutGameTest",
 			"com.stella.tower.ColosseumGameTest",
 			"com.stella.tower.TowerGuardianGameTest",
 			"com.stella.tower.TowerGhostSquadGameTest",

@@ -24,11 +24,13 @@ import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** The spawners set in every floor's walls: how each is set, the tower mobs it raises, and the cap on a floor. */
+/** The spawners hidden in every floor's solid blocks, one in each zone: how each is set, the tower mobs it raises, and the cap on a floor. */
 public class TowerLostCastleSpawnerGameTest {
 	/** The ticks the light engine takes to settle after a build, before any spawner is ticked. */
 	private static final int SETTLE_TICKS = 30;
 	private static final int MAX_SPAWNER_TICKS = 30_000;
+	/** The spawners of each floor that are ticked until they raise a mob; the others are only read. */
+	private static final int SAMPLE = 3;
 
 	/** The spawner's spot of a floor, in the world. */
 	private static BlockPos spawnerAt(final LostRoomPiece piece, final LostCastlePlan.Level floor, final LostCastlePlan.Spawner spawner) {
@@ -92,7 +94,7 @@ public class TowerLostCastleSpawnerGameTest {
 			}
 		}
 		TowerTestSupport.result("castleSpawnerSettings", "checked=" + checked + " faults=" + faults);
-		helper.assertTrue(checked == LostCastleGrid.MAX_FLOORS * LostCastlePlan.SPAWNERS, "only " + checked + " spawners were read");
+		helper.assertTrue(checked == LostCastleGrid.MAX_FLOORS * LostCastlePlan.ZONE_SPAWNERS - 1, "only " + checked + " spawners were read");
 		helper.assertTrue(faults.isEmpty(), "spawner settings are wrong: " + faults);
 		helper.succeed();
 	}
@@ -128,7 +130,7 @@ public class TowerLostCastleSpawnerGameTest {
 		// A player arrives in another dimension on the tick after the move, so each spawner gets its own player now.
 		List<ServerPlayer> players = new ArrayList<>();
 		for (LostCastlePlan.Level floor : piece.plan().levels()) {
-			for (LostCastlePlan.Spawner spawner : floor.spawners()) {
+			for (LostCastlePlan.Spawner spawner : floor.spawners().subList(0, SAMPLE)) {
 				BlockPos at = spawnerAt(piece, floor, spawner);
 				BlockPos stand = at.offset(spawner.side().inX() * 2, -2, spawner.side().inZ() * 2);
 				ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
@@ -140,7 +142,7 @@ public class TowerLostCastleSpawnerGameTest {
 			StringBuilder report = new StringBuilder();
 			int spawners = 0;
 			for (LostCastlePlan.Level floor : piece.plan().levels()) {
-				for (LostCastlePlan.Spawner spawner : floor.spawners()) {
+				for (LostCastlePlan.Spawner spawner : floor.spawners().subList(0, SAMPLE)) {
 					spawners++;
 					BlockPos at = spawnerAt(piece, floor, spawner);
 					int ticks = fire(level, at);
@@ -160,7 +162,9 @@ public class TowerLostCastleSpawnerGameTest {
 				}
 			}
 			TowerTestSupport.result("castleSpawnerRaises", "spawners=" + spawners + report);
-			helper.assertTrue(spawners == LostCastleGrid.MIN_FLOORS * LostCastlePlan.SPAWNERS, "the castle holds " + spawners + " spawners");
+			helper.assertTrue(spawners == LostCastleGrid.MIN_FLOORS * SAMPLE, "the castle raised from " + spawners + " spawners, not " + LostCastleGrid.MIN_FLOORS * SAMPLE);
+			helper.assertTrue(piece.plan().levels().stream().mapToInt(floor -> floor.spawners().size()).sum() == LostCastleGrid.MIN_FLOORS * LostCastlePlan.ZONE_SPAWNERS - 1,
+				"the plan holds the wrong number of spawners");
 			players.forEach(player -> TowerTestSupport.leave(helper, player));
 			helper.succeed();
 		});
@@ -172,10 +176,11 @@ public class TowerLostCastleSpawnerGameTest {
 		return mob;
 	}
 
-	/** A room's lane crossing on a floor, in the open, for a mob to stand in. */
-	private static BlockPos middle(final LostRoomPiece piece, final int floor, final int room) {
-		return piece.worldPos(LostCastleGrid.cellLow(room % 3) + LostCastleGrid.DOOR_FROM, LostCastleGrid.feet(piece.floors(), floor),
-			LostCastleGrid.cellLow(room / 3) + LostCastleGrid.DOOR_FROM);
+	/** The nth key spot of a floor, in the open, for a mob to stand in. */
+	private static BlockPos middle(final LostRoomPiece piece, final int floor, final int n) {
+		List<LostCastlePlan.Cell> keys = piece.plan().levels().get(floor).keys();
+		LostCastlePlan.Cell key = keys.get(n % keys.size());
+		return piece.worldPos(key.x(), LostCastleGrid.feet(piece.floors(), floor), key.z());
 	}
 
 	/** Catches a floor that holds more spawner mobs than the cap, a cap that is shared between floors, and a mob changed that no spawner raised. */

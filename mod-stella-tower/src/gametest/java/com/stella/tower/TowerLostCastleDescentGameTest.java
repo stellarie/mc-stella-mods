@@ -15,67 +15,68 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
  * A lost castle goes down: the ring of ruins and the entrance stair on the surface, then three to six floors
- * under the ground, each twelve blocks from the one above, joined by stairs that change sides from floor to
+ * under the ground, each sixteen blocks from the one above, joined by stairs that change sides from floor to
  * floor. Every bound is read from the constant the castle ships with, so moving a constant moves its guard.
  */
 public class TowerLostCastleDescentGameTest {
 	private static final Direction[] FACINGS = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 
-	/** The runs of open blocks, bottom to top, in one column of a castle up to its top ceiling: world y, first and last. */
-	private static List<int[]> runs(final TowerLostCastleSupport.Arena arena, final int x, final int z) {
-		List<int[]> runs = new ArrayList<>();
-		int start = -1;
-		int top = LostCastleGrid.topY(arena.piece().floors());
-		for (int y = 0; y <= top; y++) {
-			boolean open = arena.at(x, y, z).isAir();
-			if (open && start < 0) {
-				start = y;
-			}
-			if (!open && start >= 0) {
-				runs.add(new int[] {arena.box().minY() + start, arena.box().minY() + y - 1});
-				start = -1;
-			}
+	/**
+	 * The open blocks above a floor's feet in the floor's own key column, up to the first block that is not air, and
+	 * the world y where that run starts; the column is one the plan keeps clear of stair stone and shafts.
+	 */
+	private static int[] run(final TowerLostCastleSupport.Arena arena, final int floor) {
+		BlockPos feet = arena.key(floor, 0);
+		int open = 0;
+		while (open <= LostCastleGrid.FLOOR_HEIGHT && arena.level().getBlockState(feet.above(open)).isAir()) {
+			open++;
 		}
-		return runs;
+		return new int[] {feet.getY(), open};
 	}
 
 	/**
 	 * Catches a castle that stands up from the ground, a floor count that is not the one built, a floor that is not
-	 * twelve blocks from the one above it, and a top floor that is not under the entrance.
+	 * sixteen blocks from the one above it or whose layout leaves less than the full height open, and a top floor
+	 * that is not under the entrance.
 	 */
 	@GameTest(maxTicks = 100)
-	public void everyFloorLiesBelowTheEntranceAndTwelveBlocksFromTheOneAbove(final GameTestHelper helper) {
+	public void everyFloorLiesBelowTheEntranceAndSixteenBlocksFromTheOneAbove(final GameTestHelper helper) {
 		List<String> faults = new ArrayList<>();
 		StringBuilder report = new StringBuilder();
+		helper.assertTrue(LostCastleGrid.FLOOR_HEIGHT == 16, "the shipped floor height is " + LostCastleGrid.FLOOR_HEIGHT + ", not 16");
 		for (int floors = LostCastleGrid.MIN_FLOORS; floors <= LostCastleGrid.MAX_FLOORS; floors++) {
 			LostCastlePalette palette = LostCastlePalette.values()[floors % LostCastlePalette.values().length];
 			TowerLostCastleSupport.Arena arena = TowerLostCastleSupport.castle(helper, palette, FACINGS[floors % FACINGS.length], floors);
-			// A lane crossing of a side room, which no pillar, wall or prop stands on.
-			List<int[]> runs = runs(arena, LostCastleGrid.cellLow(0) + LostCastleGrid.DOOR_FROM, LostCastleGrid.cellLow(1) + LostCastleGrid.DOOR_FROM);
 			int entrance = arena.piece().entranceTop().getY();
-			report.append(" [floors=").append(floors).append(" runs=").append(runs.size()).append(" entranceY=").append(entrance).append(']');
-			if (runs.size() != floors) {
-				faults.add(floors + " floors built, " + runs.size() + " found");
+			report.append(" [floors=").append(floors).append(" entranceY=").append(entrance).append(']');
+			if (arena.piece().plan().levels().size() != floors) {
+				faults.add(floors + " floors built, " + arena.piece().plan().levels().size() + " planned");
 				continue;
 			}
-			for (int i = 0; i < runs.size(); i++) {
-				int[] run = runs.get(i);
-				if (run[1] - run[0] + 1 != LostCastleGrid.CLEAR) {
-					faults.add("floor " + i + " of " + floors + " is " + (run[1] - run[0] + 1) + " open blocks high, not " + LostCastleGrid.CLEAR);
+			int[] below = null;
+			for (int i = floors - 1; i >= 0; i--) {
+				int[] run = run(arena, i);
+				BlockPos feet = arena.key(i, 0);
+				if (run[1] != LostCastleGrid.CLEAR) {
+					faults.add("floor " + i + " of " + floors + " is " + run[1] + " open blocks high, not " + LostCastleGrid.CLEAR);
 				}
-				if (i > 0 && run[0] - runs.get(i - 1)[0] != LostCastleGrid.FLOOR_HEIGHT) {
-					faults.add("floor " + i + " of " + floors + " is " + (run[0] - runs.get(i - 1)[0]) + " blocks from the one under it, not " + LostCastleGrid.FLOOR_HEIGHT);
+				if (arena.level().getBlockState(feet.below()).isAir()) {
+					faults.add("floor " + i + " of " + floors + " has no slab under its feet");
 				}
+				if (below != null && run[0] - below[0] != LostCastleGrid.FLOOR_HEIGHT) {
+					faults.add("floor " + i + " of " + floors + " is " + (run[0] - below[0]) + " blocks from the one under it, not " + LostCastleGrid.FLOOR_HEIGHT);
+				}
+				below = run;
 			}
-			// Runs run bottom to top, so the last is the top floor.
-			int topFeet = runs.get(runs.size() - 1)[0];
+			// The last floor measured is the top one.
+			int topFeet = below[0];
 			if (topFeet >= entrance) {
 				faults.add("the top floor's feet at " + topFeet + " are not under the entrance at " + entrance);
 			}
 			if (entrance - topFeet != arena.piece().drop()) {
 				faults.add("the entrance is " + (entrance - topFeet) + " over the top floor, not the drop " + arena.piece().drop());
 			}
-			if (runs.get(0)[0] != arena.box().minY() + 1) {
+			if (run(arena, floors - 1)[0] != arena.box().minY() + 1) {
 				faults.add("the bottom floor does not stand on the castle's base slab");
 			}
 		}
@@ -194,13 +195,14 @@ public class TowerLostCastleDescentGameTest {
 
 	/**
 	 * Catches stairs that are not two wide, that sit on the same side as the stairs above, or that leave a
-	 * floor unreachable: every room of every floor is walked to from the ring, and the ring from the portal.
+	 * floor unreachable: every key spot of every floor (each stair head and foot, and the fronts of the chests,
+	 * spawners, portal and vault) is walked to from the ring, and the ring from the portal.
 	 */
 	@GameTest(maxTicks = 200)
-	public void stairsChangeSideFromFloorToFloorAndEveryRoomIsWalkable(final GameTestHelper helper) {
+	public void stairsChangeSideFromFloorToFloorAndEveryKeySpotIsWalkable(final GameTestHelper helper) {
 		List<String> faults = new ArrayList<>();
 		StringBuilder report = new StringBuilder();
-		for (int floors : new int[] {LostCastleGrid.MAX_FLOORS, LostCastleGrid.MIN_FLOORS}) {
+		for (int floors : new int[] {LostCastleGrid.MAX_FLOORS, LostCastleGrid.MIN_FLOORS, 5, 4}) {
 			TowerLostCastleSupport.Arena arena = TowerLostCastleSupport.castle(helper, LostCastlePalette.GREEN, FACINGS[floors % FACINGS.length], floors);
 			LostRoomPiece piece = arena.piece();
 			int entranceLanding = LostCastleGrid.ENTRY_Z + piece.drop() + 1;
@@ -229,15 +231,11 @@ public class TowerLostCastleDescentGameTest {
 			Set<BlockPos> fromRing = TowerLostCastleSupport.walk(arena.level(), box, piece.entranceTop());
 			int unreached = 0;
 			for (int floor = 0; floor < floors; floor++) {
-				for (int cz = 0; cz < LostCastleGrid.COLS; cz++) {
-					for (int cx = 0; cx < LostCastleGrid.COLS; cx++) {
-						boolean hub = floor == floors - 1 && cx == 1 && cz == 1;
-						int offset = hub ? 1 : LostCastleGrid.DOOR_FROM;
-						BlockPos spot = arena.spot(floor, LostCastleGrid.cellLow(cx) + offset, LostCastleGrid.cellLow(cz) + offset);
-						if (!fromRing.contains(spot)) {
-							unreached++;
-							faults.add(floors + " floors: floor " + floor + " room " + cx + "," + cz + " is not walked to from the ring");
-						}
+				// Every key spot of a floor: each stair's head and foot, the chests' and spawners' fronts, the portal's front and the vault's.
+				for (LostCastlePlan.Cell key : arena.level(floor).keys()) {
+					if (!fromRing.contains(arena.spot(floor, key.x(), key.z()))) {
+						unreached++;
+						faults.add(floors + " floors: floor " + floor + " " + arena.level(floor).family() + " key " + key + " is not walked to from the ring");
 					}
 				}
 			}

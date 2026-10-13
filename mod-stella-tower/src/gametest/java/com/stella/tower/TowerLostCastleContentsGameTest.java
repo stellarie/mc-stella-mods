@@ -19,15 +19,17 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
- * What a built lost castle holds: the stone of its biome, one or two double chests and two spawners hidden in
- * the walls of every floor, a small portal that no mob spawns in, and a vault behind a cracked wall.
+ * What a built lost castle holds: the stone of its biome, one or two double chests and a spawner hidden in
+ * each zone of every floor, lit candles and props, a small portal that no mob spawns in, and a vault behind a cracked wall.
  */
 public class TowerLostCastleContentsGameTest {
 	private static final Direction[] FACINGS = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
@@ -121,10 +123,11 @@ public class TowerLostCastleContentsGameTest {
 
 	/**
 	 * Catches a floor with no double chest or more than two, a half chest with no partner, an empty chest, a floor
-	 * without exactly two spawners, a spawner that shows more than one face, and a spawner that is not set in wall stone.
+	 * without one spawner in each of its nine zones (eight on the bottom floor, none in the portal's zone), a spawner
+	 * that shows more than one face, and a spawner that is not set in wall stone.
 	 */
 	@GameTest(maxTicks = 300)
-	public void everyFloorHoldsOneOrTwoDoubleChestsAndTwoSpawnersSetInTheWalls(final GameTestHelper helper) {
+	public void everyFloorHoldsOneOrTwoDoubleChestsAndOneHiddenSpawnerInEachZone(final GameTestHelper helper) {
 		List<String> faults = new ArrayList<>();
 		StringBuilder report = new StringBuilder();
 		for (int floors = LostCastleGrid.MIN_FLOORS; floors <= LostCastleGrid.MAX_FLOORS; floors++) {
@@ -135,8 +138,8 @@ public class TowerLostCastleContentsGameTest {
 				int feet = LostCastleGrid.feet(floors, floor);
 				int doubles = 0;
 				int singles = 0;
-				int spawners = 0;
 				int empty = 0;
+				int[][] zones = new int[LostCastleGrid.ZONES][LostCastleGrid.ZONES];
 				for (int x = 0; x < LostCastleGrid.SIZE; x++) {
 					for (int z = 0; z < LostCastleGrid.SIZE; z++) {
 						for (int y = feet; y <= LostCastleGrid.head(floors, floor); y++) {
@@ -159,7 +162,7 @@ public class TowerLostCastleContentsGameTest {
 								}
 							}
 							if (state.is(Blocks.SPAWNER)) {
-								spawners++;
+								zones[LostCastleGrid.zoneOf(x)][LostCastleGrid.zoneOf(z)]++;
 								int open = 0;
 								boolean enclosed = true;
 								for (Direction side : Direction.values()) {
@@ -179,11 +182,21 @@ public class TowerLostCastleContentsGameTest {
 					}
 				}
 				boolean bottom = floor == floors - 1;
-				if (doubles < 1 || doubles > 2 || singles != (bottom ? 1 : 0) || spawners != 2 || empty != 0) {
-					faults.add(floors + " floors: floor " + floor + " holds doubles=" + doubles + " singles=" + singles + " spawners=" + spawners + " empty=" + empty);
+				int spawners = 0;
+				for (int zx = 0; zx < LostCastleGrid.ZONES; zx++) {
+					for (int zz = 0; zz < LostCastleGrid.ZONES; zz++) {
+						boolean portalZone = bottom && zx == LostCastlePlan.PORTAL_ZONE && zz == LostCastlePlan.PORTAL_ZONE;
+						spawners += zones[zx][zz];
+						if (zones[zx][zz] != (portalZone ? 0 : 1)) {
+							faults.add(floors + " floors: floor " + floor + " zone " + zx + "," + zz + " holds " + zones[zx][zz] + " spawners");
+						}
+					}
 				}
-				report.append(" [").append(floors).append('.').append(floor).append(" d=").append(doubles).append(" s=").append(singles).append(" sp=")
-					.append(spawners).append(']');
+				if (doubles < LostCastlePlan.MIN_CHESTS || doubles > LostCastlePlan.MAX_CHESTS || singles != (bottom ? 1 : 0) || empty != 0) {
+					faults.add(floors + " floors: floor " + floor + " holds doubles=" + doubles + " singles=" + singles + " empty=" + empty);
+				}
+				report.append(" [").append(floors).append('.').append(floor).append(' ').append(arena.level(floor).family()).append(" d=").append(doubles)
+					.append(" s=").append(singles).append(" sp=").append(spawners).append(']');
 			}
 		}
 		TowerTestSupport.result("castleContents", "faults=" + faults + report);
@@ -191,50 +204,70 @@ public class TowerLostCastleContentsGameTest {
 		helper.succeed();
 	}
 
+	private static boolean propBlock(final BlockState state) {
+		return state.is(Blocks.SKELETON_SKULL) || state.is(Blocks.BARREL) || state.is(Blocks.CHIPPED_ANVIL) || state.is(Blocks.GRINDSTONE)
+			|| state.is(Blocks.BONE_BLOCK);
+	}
+
 	/**
-	 * Catches rooms with nowhere to hide: every floor must hold standing cover inside its rooms (pillars and broken wall
-	 * segments, counted as solid columns over the floor, off the lanes) and recesses cut into its outer wall.
+	 * Catches a floor with no props on its floor, on its walls or under its ceiling, one with no lit candles, and
+	 * a prop that blocks a stair's head or foot, a chest's front or a spawner's front: those stay open floor.
 	 */
-	@GameTest(maxTicks = 200)
-	public void everyFloorHoldsPillarsBrokenWallsAndAlcovesToHideIn(final GameTestHelper helper) {
+	@GameTest(maxTicks = 300)
+	public void everyFloorHoldsFloorWallAndCeilingPropsAndLitCandles(final GameTestHelper helper) {
 		List<String> faults = new ArrayList<>();
 		StringBuilder report = new StringBuilder();
 		for (int floors = LostCastleGrid.MIN_FLOORS; floors <= LostCastleGrid.MAX_FLOORS; floors += 3) {
 			TowerLostCastleSupport.Arena arena = TowerLostCastleSupport.castle(helper, LostCastlePalette.GREEN, FACINGS[floors % FACINGS.length], floors);
 			for (int floor = 0; floor < floors; floor++) {
 				int feet = LostCastleGrid.feet(floors, floor);
-				LostCastlePlan.Level level = arena.piece().plan().levels().get(floor);
-				int cover = 0;
-				int recess = 0;
+				int head = LostCastleGrid.head(floors, floor);
+				int onFloor = 0;
+				int onWall = 0;
+				int underCeiling = 0;
+				int candles = 0;
 				for (int x = 0; x < LostCastleGrid.SIZE; x++) {
 					for (int z = 0; z < LostCastleGrid.SIZE; z++) {
-						int ox = LostCastleGrid.cellOf(x) < 0 ? -1 : x - LostCastleGrid.cellLow(LostCastleGrid.cellOf(x));
-						int oz = LostCastleGrid.cellOf(z) < 0 ? -1 : z - LostCastleGrid.cellLow(LostCastleGrid.cellOf(z));
-						boolean laneColumn = LostCastleGrid.inLane(ox) || LostCastleGrid.inLane(oz);
-						// The stairs' own stone is not cover: it stands along the wall of the two stair rooms, and the entrance's on floor 0.
-						boolean stairStone = floor == 0 && x >= LostCastleGrid.MID - 2 && x <= LostCastleGrid.MID + 3 && z >= LostCastleGrid.ENTRY_Z;
-						for (LostCastlePlan.Stair stair : new LostCastlePlan.Stair[] {level.exit(), level.arrival()}) {
-							stairStone |= stair != null && LostCastleGrid.cellOf(x) == stair.cx() && (stair.north() ? z <= stair.barrierZ() : z >= stair.barrierZ());
-						}
-						// Two blocks up clears the props that stand a block high; a column of wall or stone there is cover.
-						if (ox >= 0 && oz >= 0 && !laneColumn && !stairStone && wall(arena.at(x, feet + 2, z), LostCastlePalette.GREEN)) {
-							cover++;
-						}
-						boolean outerLayer = x == LostCastleGrid.OUTER - 1 || x == LostCastleGrid.SIZE - LostCastleGrid.OUTER || z == LostCastleGrid.OUTER - 1
-							|| z == LostCastleGrid.SIZE - LostCastleGrid.OUTER;
-						if (outerLayer && arena.at(x, feet + 1, z).isAir()) {
-							recess++;
+						for (int y = feet; y <= head; y++) {
+							BlockState state = arena.at(x, y, z);
+							if (state.isAir()) {
+								continue;
+							}
+							if (state.is(Blocks.CANDLE) && state.getValue(CandleBlock.LIT)) {
+								candles++;
+							}
+							boolean skullOrBlock = propBlock(state) || state.is(Blocks.COBWEB) || state.is(Blocks.MOSS_CARPET);
+							if (y <= feet + LostCastleGrid.MAX_RISE && skullOrBlock) {
+								onFloor++;
+							}
+							if (state.is(Blocks.SKELETON_WALL_SKULL) || state.is(Blocks.COBWEB) && y >= feet + 8 && y < head
+								|| state.is(Blocks.IRON_CHAIN) && state.getValue(RotatedPillarBlock.AXIS) != Direction.Axis.Y) {
+								onWall++;
+							}
+							if (y >= head - 2 && (state.is(Blocks.IRON_CHAIN) && state.getValue(RotatedPillarBlock.AXIS) == Direction.Axis.Y
+								|| state.is(Blocks.COBWEB) && y == head)) {
+								underCeiling++;
+							}
 						}
 					}
 				}
-				report.append(" [").append(floors).append('.').append(floor).append(" cover=").append(cover).append(" recess=").append(recess).append(']');
-				if (cover < 30 || recess < (LostCastlePlan.MIN_CHESTS + LostCastlePlan.NICHES) * LostCastlePlan.ALCOVE_WIDTH) {
-					faults.add(floors + " floors: floor " + floor + " has cover " + cover + " and recess " + recess);
+				for (int n = 0; n < arena.level(floor).keys().size(); n++) {
+					BlockPos key = arena.key(floor, n);
+					if (!arena.level().getBlockState(key).isAir() || !arena.level().getBlockState(key.above()).isAir()) {
+						faults.add(floors + " floors: floor " + floor + " " + arena.level(floor).family() + " key " + n + " " + key + " is blocked by "
+							+ arena.level().getBlockState(key) + " / " + arena.level().getBlockState(key.above()));
+					}
+				}
+				report.append(" [").append(floors).append('.').append(floor).append(" floor=").append(onFloor).append(" wall=").append(onWall)
+					.append(" ceiling=").append(underCeiling).append(" candles=").append(candles).append(']');
+				if (onFloor < 20 || onWall < 10 || underCeiling < 5 || candles < 10) {
+					faults.add(floors + " floors: floor " + floor + " " + arena.level(floor).family() + " holds floor=" + onFloor + " wall=" + onWall
+						+ " ceiling=" + underCeiling + " candles=" + candles);
 				}
 			}
 		}
-		TowerTestSupport.result("castleHiding", "faults=" + faults + report);
-		helper.assertTrue(faults.isEmpty(), "rooms with nowhere to hide: " + faults);
+		TowerTestSupport.result("castleProps", "faults=" + faults + report);
+		helper.assertTrue(faults.isEmpty(), "the floors are not dressed: " + faults);
 		helper.succeed();
 	}
 
@@ -292,7 +325,7 @@ public class TowerLostCastleContentsGameTest {
 		level.addFreshEntity(placed);
 		boolean placedStays = !placed.isRemoved();
 		placed.discard();
-		BlockPos away = piece.worldPos(LostCastleGrid.cellLow(1) + 1, feet, LostCastleGrid.cellLow(1) + 1);
+		BlockPos away = piece.worldPos(LostCastleBuilder.PORTAL_X + 8, feet, LostCastleBuilder.PORTAL_Z + 8);
 		Mob outside = TowerTestSupport.unrolled(EntityTypes.ZOMBIE.create(level, EntitySpawnReason.SPAWNER));
 		outside.snapTo(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
 		level.addFreshEntity(outside);
