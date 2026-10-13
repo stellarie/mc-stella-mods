@@ -26,14 +26,27 @@ public final class SpellTooltip {
 	private SpellTooltip() {
 	}
 
-	/** The translation key of a spell's live effect line, which takes the arguments {@link #arguments} builds. */
+	/** The translation key of a spell's live Desc text, which takes the arguments {@link #arguments} builds. */
 	public static String liveEffectKey(final SpellDefinition definition) {
-		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect_live";
+		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".desc_live";
 	}
 
-	/** The translation key of the static effect line that the live one replaces. */
+	/** The translation key of the static Desc text that the live one replaces. */
 	static String staticEffectKey(final SpellDefinition definition) {
-		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect";
+		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".desc";
+	}
+
+	/** The key that names a tooltip line: its own translation key, or the one in its value when a label comes first. */
+	static String lineKey(final Component line) {
+		if (line.getContents() instanceof TranslatableContents contents) {
+			return contents.getKey();
+		}
+		for (Component part : line.getSiblings()) {
+			if (part.getContents() instanceof TranslatableContents contents) {
+				return contents.getKey();
+			}
+		}
+		return "";
 	}
 
 	static String cooldownKey() {
@@ -97,11 +110,9 @@ public final class SpellTooltip {
 			return;
 		}
 		for (int i = 0; i < tooltip.size(); i++) {
-			if (tooltip.get(i).getContents() instanceof TranslatableContents contents) {
-				Component replacement = live.get(contents.getKey());
-				if (replacement != null) {
-					tooltip.set(i, replacement);
-				}
+			Component replacement = live.get(lineKey(tooltip.get(i)));
+			if (replacement != null) {
+				tooltip.set(i, replacement);
 			}
 		}
 	}
@@ -130,8 +141,8 @@ public final class SpellTooltip {
 		Map<String, Component> live = new LinkedHashMap<>();
 		SpellNumbers numbers = SpellNumbers.find(definition.id());
 		if (numbers != null && !numbers.isEmpty()) {
-			live.put(staticEffectKey(definition), Spellbooks.line(
-				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, definition.school(), numbers, modifiers)), ChatFormatting.AQUA
+			live.put(staticEffectKey(definition), DescriptionLines.desc(
+				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, definition.school(), numbers, modifiers)).withStyle(ChatFormatting.AQUA)
 			));
 		}
 		if (book) {

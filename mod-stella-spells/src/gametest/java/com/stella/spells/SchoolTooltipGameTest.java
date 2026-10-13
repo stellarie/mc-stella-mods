@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -162,7 +161,7 @@ public final class SchoolTooltipGameTest {
 	}
 
 	private static String argument(final Component line, final int index) {
-		return (String) ((TranslatableContents) line.getContents()).getArgs()[index];
+		return (String) DescriptionSupport.translatable(line).getArgs()[index];
 	}
 
 	private static double[] range(final String text) {

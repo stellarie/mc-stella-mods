@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -40,7 +41,7 @@ public final class DescriptionLines {
 	}
 
 	public static boolean isMarked(final Component line) {
-		return WRAP_MARK.equals(line.getStyle().getInsertion());
+		return WRAP_MARK.equals(line.getStyle().getInsertion()) || BLOCK_MARK.equals(line.getStyle().getInsertion());
 	}
 
 	/** Replaces each marked line of a tooltip with its wrapped lines. A line without the mark stays as it is. */
@@ -55,6 +56,55 @@ public final class DescriptionLines {
 		}
 		tooltip.clear();
 		tooltip.addAll(wrapped);
+	}
+
+	/** The style insertion on every line of a Requires and Desc block. A reader of the tooltip finds the block by it. */
+	public static final String BLOCK_MARK = "stella:desc";
+	public static final String REQUIRES_LABEL = "Requires: ";
+	public static final String DESC_LABEL = "Desc: ";
+	/** A block shows no more lines than this after the split. */
+	public static final int MAX_BLOCK_LINES = 8;
+
+	/** "Requires: value", one logical line. The label is gray, and the value keeps the style it has. */
+	public static MutableComponent requires(final Component value) {
+		return labeled(REQUIRES_LABEL, value);
+	}
+
+	/** "Desc: value", one logical line. */
+	public static MutableComponent desc(final Component value) {
+		return labeled(DESC_LABEL, value);
+	}
+
+	/** Adds the Requires line and the Desc line, each split at the width. */
+	public static void addBlock(final Consumer<Component> out, final Component requires, final Component desc) {
+		add(out, requires(requires));
+		add(out, desc(desc));
+	}
+
+	/** Adds the Requires line and the Desc line to the list, each split at the width. */
+	public static void addBlock(final List<Component> out, final Component requires, final Component desc) {
+		add(out, requires(requires));
+		add(out, desc(desc));
+	}
+
+	private static MutableComponent labeled(final String label, final Component value) {
+		MutableComponent line = Component.empty().withStyle(style -> style.withInsertion(BLOCK_MARK).withItalic(false));
+		line.append(Component.literal(label).withStyle(ChatFormatting.GRAY));
+		line.append(value);
+		return line;
+	}
+
+	/** True when the first character of the line carries the block mark. It holds for a line after the split too. */
+	public static boolean isBlockLine(final Component line) {
+		String[] found = new String[1];
+		line.visit((style, piece) -> {
+			if (piece.isEmpty()) {
+				return Optional.empty();
+			}
+			found[0] = style.getInsertion();
+			return Optional.of(Boolean.TRUE);
+		}, Style.EMPTY);
+		return BLOCK_MARK.equals(found[0]);
 	}
 
 	public static List<Component> wrap(final Component text) {
