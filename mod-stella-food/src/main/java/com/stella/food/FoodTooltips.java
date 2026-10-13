@@ -35,8 +35,6 @@ public final class FoodTooltips {
 			|| !cake && (stack.get(DataComponents.FOOD) == null || stack.get(DataComponents.CONSUMABLE) == null)) {
 			return;
 		}
-		DescriptionLines.add(lines, Component.translatable("tooltip.mod-stella-food.regeneration", duration(40))
-			.withStyle(ChatFormatting.GRAY));
 		Holder<MobEffect> buff = FoodItems.DISH_EFFECTS.get(stack.getItem());
 		if (buff == null) {
 			buff = stack.is(Items.CAKE) ? FoodEffects.SUGAR_RUSH : FoodCategories.effectFor(stack.getItem());
@@ -46,12 +44,10 @@ public final class FoodTooltips {
 			: FoodBehavior.ORDINARY_TICKS;
 		Identifier id = buff.unwrapKey().orElseThrow().identifier();
 		String description = "effect." + id.getNamespace() + "." + id.getPath() + ".desc";
-		DescriptionLines.add(lines, Component.translatable(
-			"tooltip.mod-stella-food.buff",
-			buff.value().getDisplayName(),
-			duration(ticks),
-			Component.translatable(description)
-		).withStyle(ChatFormatting.GRAY));
+		DescriptionLines.addBlock(lines,
+			Component.translatable("tooltip.mod-stella-food.requires").withStyle(ChatFormatting.WHITE),
+			Component.translatable("tooltip.mod-stella-food.desc", duration(40), buff.value().getDisplayName(), duration(ticks),
+				Component.translatable(description)).withStyle(ChatFormatting.GRAY));
 		if (FoodItems.isDish(stack.getItem())) {
 			PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
 			if (potion != null && requested.shows(DataComponents.POTION_CONTENTS)) {
