@@ -23,7 +23,7 @@ public class TowerWeatherGameTest {
 		long seed = tower.getSeed();
 		int floor = TowerTestSupport.freshBiomeFloorWhere(f -> f % TowerElites.BOSS_EVERY != 0 && FloorBiomes.of(seed, f) == biome);
 		TowerFloors.ensure(tower, floor);
-		ServerPlayer player = TowerTestSupport.onFloor(helper, tower, floor);
+		ServerPlayer player = TowerTestSupport.outsideTheHub(helper, tower, floor);
 		return player;
 	}
 
@@ -128,12 +128,12 @@ public class TowerWeatherGameTest {
 			before = frozen;
 			most = Math.max(most, frozen);
 		}
-		ServerPlayer covered = TowerTestSupport.onFloor(helper, tower, plan.floor());
+		ServerPlayer covered = TowerTestSupport.outsideTheHub(helper, tower, plan.floor());
 		tower.setBlock(covered.blockPosition().above(3), Blocks.STONE.defaultBlockState(), 3);
 		for (int round = 0; round < 60; round++) {
 			TowerWeather.affect(covered, plan, round * TowerWeather.INTERVAL);
 		}
-		ServerPlayer booted = TowerTestSupport.onFloor(helper, tower, plan.floor());
+		ServerPlayer booted = TowerTestSupport.outsideTheHub(helper, tower, plan.floor());
 		booted.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.LEATHER_BOOTS));
 		for (int round = 0; round < 60; round++) {
 			TowerWeather.affect(booted, plan, round * TowerWeather.INTERVAL);

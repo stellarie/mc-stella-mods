@@ -46,9 +46,9 @@ public class TowerGreatHallGameTest {
 		helper.succeed();
 	}
 
-	/** Catches a floor 1 without its workstations in the safe zone, or an ordinary floor with some. */
+	/** Catches a hub without its workstations in the safe zone, or a great hall with some. */
 	@GameTest(maxTicks = 100)
-	public void floorOneHoldsTheCraftingTableTheFurnaceAndTheAnvilInItsSafeZone(final GameTestHelper helper) {
+	public void everyHubHoldsTheCraftingTableTheFurnaceAndTheAnvilInItsSafeZone(final GameTestHelper helper) {
 		int rows = 0;
 		int inZone = 0;
 		int solid = 0;
@@ -70,7 +70,8 @@ public class TowerGreatHallGameTest {
 			boolean furnace = blocks.values().stream().anyMatch(state -> state.is(Blocks.FURNACE));
 			boolean anvil = blocks.values().stream().anyMatch(state -> state.is(Blocks.ANVIL));
 			helper.assertTrue(table && furnace && anvil, "floor 1 of seed " + seed + " lacks one of the three blocks");
-			helper.assertTrue(BiomeGen.plan(seed, 2).stations().isEmpty() && BiomeGen.plan(seed, 7).stations().isEmpty(), "a floor above the first holds stations");
+			helper.assertTrue(BiomeGen.plan(seed, 2).stations().size() == 3 && BiomeGen.plan(seed, 7).stations().size() == 3, "a hub above the first holds no stations");
+			helper.assertTrue(BiomeGen.plan(seed, 10).stations().isEmpty(), "a great hall holds stations");
 		}
 		TowerTestSupport.result("floorOneStations", "rows=" + rows + "/12 inZone=" + inZone + " solid=" + solid + " onTheArrival=" + strays);
 		helper.assertTrue(rows == 12 && inZone == 36 && solid == 36 && strays == 0, "rows=" + rows + " inZone=" + inZone + " solid=" + solid + " onTheArrival=" + strays);
