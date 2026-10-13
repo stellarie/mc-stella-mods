@@ -188,6 +188,9 @@ public final class SummonSkeleton {
 				ServerPlayer master = server.getPlayerList().getPlayer(ownerId);
 				if (skeleton != null && master != null) {
 					pace(skeleton, master);
+					if (skeleton.tickCount % MODE_CHECK_TICKS == 0) {
+						syncMode(skeleton);
+					}
 				}
 			}
 			if (server.getTickCount() % 20 == 0) {
@@ -856,6 +859,46 @@ public final class SummonSkeleton {
 		skeleton.getGoalSelector().addGoal(3, new TrotGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new PackCasterGoal(skeleton));
+		MODE_APPLIED.remove(skeleton);
+		syncMode(skeleton);
+	}
+
+	/**
+	 * The ObjectShare key under which the mobs mod publishes a {@code BiConsumer<Mob, String>} that installs the
+	 * combat goals of a role (MELEE, RANGED or MAGIC) on a mob. This mod needs no class of that mod.
+	 */
+	public static final String ROLE_SHARE = "mod-stella-mobs:servant-role";
+	/** Ticks between two looks at the held weapon. */
+	private static final int MODE_CHECK_TICKS = 10;
+	/** The mode each live servant was last given, so a swap is told from a weapon that did not change. */
+	private static final Map<Skeleton, String> MODE_APPLIED = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+	/** The combat mode the held weapon asks for: a bow or crossbow shoots, a staff or book casts, the rest strikes. */
+	static String modeOf(final ItemStack held) {
+		if (held.getItem() instanceof ProjectileWeaponItem) {
+			return "RANGED";
+		}
+		if (StaffPower.isStaff(held) || held.getItem() instanceof SpellbookItem) {
+			return "MAGIC";
+		}
+		return "MELEE";
+	}
+
+	/**
+	 * Gives the servant the combat goals of its held weapon's mode, when the mobs mod is present.
+	 * It runs from the server tick and never from a goal, because it adds and removes goals.
+	 */
+	@SuppressWarnings("unchecked")
+	static void syncMode(final Skeleton skeleton) {
+		if (!(FabricLoader.getInstance().getObjectShare().get(ROLE_SHARE) instanceof java.util.function.BiConsumer<?, ?> install)) {
+			return;
+		}
+		String mode = modeOf(skeleton.getMainHandItem());
+		if (mode.equals(MODE_APPLIED.get(skeleton))) {
+			return;
+		}
+		((java.util.function.BiConsumer<Mob, String>) install).accept(skeleton, mode);
+		MODE_APPLIED.put(skeleton, mode);
 	}
 
 	/**
@@ -894,12 +937,24 @@ public final class SummonSkeleton {
 		return skeleton.getMainHandItem().getItem() instanceof ProjectileWeaponItem;
 	}
 
+	/** Ticks a bow stays drawn before the arrow leaves, as a vanilla skeleton draws it. */
+	static final int BOW_DRAW_TICKS = 20;
+	/** Ticks the servant may lose its foe from sight with the weapon drawn before it lowers it. */
+	private static final int BLIND_TICKS = 20;
+
+	/** Ticks the held weapon needs before it looses: the fixed bow draw, or the crossbow's own charge. */
+	static int drawTicks(final Skeleton skeleton) {
+		ItemStack weapon = skeleton.getMainHandItem();
+		return weapon.getItem() instanceof net.minecraft.world.item.CrossbowItem
+			? net.minecraft.world.item.CrossbowItem.getChargeDuration(weapon, skeleton)
+			: BOW_DRAW_TICKS;
+	}
+
 	/** Shoots with any held bow or crossbow, and keeps the servant out of melee while it does. */
 	static final class ShootGoal extends Goal {
-		static final int SHOT_INTERVAL_TICKS = 20;
 		private final Skeleton skeleton;
-		private int cooldown;
 		private int seen;
+		private int blind;
 
 		ShootGoal(final Skeleton skeleton) {
 			this.skeleton = skeleton;
@@ -913,9 +968,16 @@ public final class SummonSkeleton {
 		}
 
 		@Override
+		public void start() {
+			this.skeleton.setAggressive(true);
+		}
+
+		@Override
 		public void stop() {
 			this.skeleton.stopUsingItem();
+			this.skeleton.setAggressive(false);
 			this.seen = 0;
+			this.blind = 0;
 		}
 
 		@Override
@@ -938,13 +1000,19 @@ public final class SummonSkeleton {
 			} else {
 				this.skeleton.getNavigation().stop();
 			}
-			if (this.cooldown > 0) {
-				this.cooldown--;
+			if (this.skeleton.isUsingItem()) {
+				this.blind = sees ? 0 : this.blind + 1;
+				if (this.blind > BLIND_TICKS) {
+					this.skeleton.stopUsingItem();
+					this.blind = 0;
+				} else if (sees && this.skeleton.getTicksUsingItem() >= drawTicks(this.skeleton)) {
+					this.skeleton.stopUsingItem();
+					shoot(this.skeleton, target);
+				}
 				return;
 			}
 			if (sees && this.seen >= 5 && this.skeleton.distanceToSqr(target) <= reach) {
-				shoot(this.skeleton, target);
-				this.cooldown = SHOT_INTERVAL_TICKS;
+				this.skeleton.startUsingItem(net.minecraft.world.InteractionHand.MAIN_HAND);
 			}
 		}
 	}
@@ -1024,7 +1092,8 @@ public final class SummonSkeleton {
 			if (striker == null) {
 				return false;
 			}
-			if (striker instanceof Player player && isServant(this.skeleton, player)) {
+			// A player's blow is never answered: the servant fights mobs only.
+			if (striker instanceof Player) {
 				return false;
 			}
 			return !Friends.isFriend(striker);

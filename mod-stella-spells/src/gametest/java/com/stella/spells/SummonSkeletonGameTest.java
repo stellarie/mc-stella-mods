@@ -401,6 +401,79 @@ public class SummonSkeletonGameTest {
 		});
 	}
 
+	/** A servant draws its bow before each shot, and a crossbow charges for its own duration, as a vanilla shooter does. */
+	@GameTest(maxTicks = 200)
+	public void aServantDrawsItsBowBeforeItsFirstArrow(final GameTestHelper helper) {
+		drawsBeforeShooting(helper, Items.BOW, "aServantDrawsItsBowBeforeItsFirstArrow");
+	}
+
+	@GameTest(maxTicks = 200)
+	public void aServantChargesItsCrossbowBeforeItsFirstBolt(final GameTestHelper helper) {
+		drawsBeforeShooting(helper, Items.CROSSBOW, "aServantChargesItsCrossbowBeforeItsFirstBolt");
+	}
+
+	private static void drawsBeforeShooting(final GameTestHelper helper, final net.minecraft.world.item.Item weapon, final String test) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		servant.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapon));
+		int minimum = SummonSkeleton.drawTicks(servant) - 1;
+		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 7, 1, 7).withNoFreeWill().spawn();
+		tough(zombie);
+		zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		final int[] streak = {0};
+		final int[] drawn = {-1};
+		helper.onEachTick(() -> {
+			int before = streak[0];
+			streak[0] = servant.isUsingItem() && servant.isAggressive() ? before + 1 : 0;
+			boolean shot = !helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.arrow.AbstractArrow.class,
+				servant.getBoundingBox().inflate(32.0), arrow -> arrow.getOwner() == servant).isEmpty();
+			if (shot && drawn[0] < 0) {
+				drawn[0] = before;
+			}
+		});
+		helper.succeedWhen(() -> {
+			helper.assertTrue(drawn[0] >= 0, "the servant shot no arrow");
+			LOG.info("[SPELLTEST] test={} RESULT drawnTicks={} minimum={}", test, drawn[0], minimum);
+			helper.assertTrue(drawn[0] >= minimum, "the servant held its " + weapon + " drawn for " + drawn[0] + " ticks, under " + minimum);
+			servant.discard();
+			leave(helper, master);
+		});
+	}
+
+	/** A stranger's blow on the servant in the middle of a fight is never answered with a target on that player. */
+	@GameTest(maxTicks = 100)
+	public void theServantNeverTargetsAPlayerDuringAFight(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		ServerPlayer stranger = master(helper, 2.5, 1.5);
+		Skeleton servant = servant(helper, master, 3, 3);
+		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 6, 1, 6).withNoFreeWill().spawn();
+		tough(zombie);
+		zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		final boolean[] playerTargeted = {false};
+		final boolean[] foeTargeted = {false};
+		helper.onEachTick(() -> {
+			playerTargeted[0] |= servant.getTarget() instanceof net.minecraft.world.entity.player.Player;
+			foeTargeted[0] |= servant.getTarget() == zombie;
+		});
+		helper.runAfterDelay(5L, () -> {
+			servant.hurtServer(helper.getLevel(), stranger.damageSources().playerAttack(stranger), 1.0F);
+			helper.assertTrue(servant.getLastHurtByMob() == stranger, "the stranger's blow did not register, so the case proves nothing");
+		});
+		helper.runAfterDelay(80L, () -> {
+			LOG.info("[SPELLTEST] test=theServantNeverTargetsAPlayerDuringAFight RESULT playerTargeted={} foeTargeted={}", playerTargeted[0], foeTargeted[0]);
+			helper.assertTrue(foeTargeted[0], "the servant never fought the zombie, so the case proves nothing");
+			helper.assertFalse(playerTargeted[0], "the servant targeted a player");
+			servant.discard();
+			leave(helper, master);
+			leave(helper, stranger);
+			helper.succeed();
+		});
+	}
+
 	/**
 	 * A servant left in an unloaded chunk cannot be called back, so a new cast raises another. When the old one loads
 	 * again it is retired without dropping a second copy of its saved inventory.
@@ -534,6 +607,12 @@ public class SummonSkeletonGameTest {
 		LOG.info("[SPELLTEST] test=theSummonBookHasNoScrollAndTakesNoImbue RESULT scroll={} imbuable={}", scroll, imbuable);
 		helper.assertTrue(!scroll && !imbuable, "the summon has a scroll or takes an imbue");
 		helper.succeed();
+	}
+
+	/** A foe the servant's arrows cannot kill. Invulnerable would not do: a mob never targets one. */
+	private static void tough(final Mob foe) {
+		foe.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(100_000.0);
+		foe.setHealth(100_000.0F);
 	}
 
 	private static Skeleton servant(final GameTestHelper helper, final ServerPlayer master, final int x, final int z) {
