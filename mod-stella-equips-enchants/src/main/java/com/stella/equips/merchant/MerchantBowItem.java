@@ -1,5 +1,6 @@
 package com.stella.equips.merchant;
 
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
@@ -65,6 +66,6 @@ public class MerchantBowItem extends BowItem implements MerchantWeapon {
 	public void appendHoverText(final ItemStack stack, final Item.TooltipContext context, final TooltipDisplay display, final Consumer<Component> builder,
 		final TooltipFlag flag) {
 		super.appendHoverText(stack, context, display, builder, flag);
-		MerchantWeapons.tooltip(stack).forEach(builder);
+		MerchantWeapons.tooltip(stack).forEach(line -> DescriptionLines.add(builder, line));
 	}
 }

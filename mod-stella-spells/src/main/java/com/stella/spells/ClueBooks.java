@@ -74,7 +74,7 @@ public final class ClueBooks {
 			.append(material).append(" in each of the four corners.\n\nHow to pen scrolls:\none Paper and ")
 			.append(doubled ? Component.literal("two ").append(material) : Component.literal("one ").append(material))
 			.append(" make two scrolls. A scroll crumbles when it is read."));
-		pages.add(Component.literal("What " + name + " does:\n").append(Component.translatable("item." + id.getNamespace() + "." + id.getPath() + ".effect")));
+		pages.add(Component.literal("What " + name + " does:\n").append(Component.translatable("item." + id.getNamespace() + "." + id.getPath() + ".desc")));
 		pages.add(Component.literal(POSTSCRIPTS.get(random.nextInt(POSTSCRIPTS.size())) + "\n\n- " + author.name()));
 		return book("Notes on " + name, author.name(), pages, id);
 	}
@@ -87,7 +87,7 @@ public final class ClueBooks {
 			.append(", one ").append(Component.translatable(Items.ENDER_PEARL.getDescriptionId()))
 			.append(" and one ").append(Component.translatable(Items.FEATHER.getDescriptionId()))
 			.append(", anywhere in a crafting grid, make two."));
-		pages.add(Component.literal("What it does:\n").append(Component.translatable("item." + Spellbooks.MOD_ID + ".return_scroll.effect")));
+		pages.add(Component.literal("What it does:\n").append(Component.translatable("item." + Spellbooks.MOD_ID + ".return_scroll.desc")));
 		pages.add(Component.literal("P.S. It will not take you home if home is the Nether. Nobody's home is the Nether.\n\n- " + author.name()));
 		return book("Notes on Returning Home", author.name(), pages, Spellbooks.SCROLL_OF_RETURN_ID);
 	}

@@ -61,6 +61,11 @@ public final class UniqueDispatch {
 		CRITICAL.set(critical);
 	}
 
+	/** True while a player attack is in progress and the vanilla check called it a critical hit. */
+	public static boolean isCriticalAttack() {
+		return Boolean.TRUE.equals(CRITICAL.get());
+	}
+
 	public static void endAttack() {
 		CRITICAL.remove();
 	}

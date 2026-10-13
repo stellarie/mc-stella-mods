@@ -42,6 +42,7 @@ public final class BehaviorInstaller {
 	public static final int AMBUSH_PRIORITY = 1;
 	public static final int KEEP_DISTANCE_PRIORITY = 2;
 	public static final int STANDOFF_PRIORITY = 3;
+	public static final int CROSSBOW_KEEP_DISTANCE_PRIORITY = 1;
 	public static final int DEFEND_PRIORITY = 4;
 	/** The vanilla melee and bow slot, which a replacement takes. */
 	public static final int MELEE_PRIORITY = 4;
@@ -204,9 +205,14 @@ public final class BehaviorInstaller {
 
 		mob.getGoalSelector().addGoal(DEFEND_PRIORITY, new DefendAllyGoal<>(monster));
 
-		// T02: a crossbow is its own answer to the ranged role, so the band is not installed and the
-		// cadence goal takes the vanilla crossbow slot instead. The exemption is read from the hand.
+		// T02: the cadence goal takes the vanilla crossbow slot. A crossbow unit gets the distance goal
+		// but no standoff goal, because the cadence goal holds its own stance. Read from the hand.
 		boolean crossbow = CrossbowCadenceGoal.holdsCrossbow(mob);
+
+		if (state.getRole() != CombatRole.MELEE && crossbow && supports(mob, state.getRole())) {
+			// The cadence goal holds rank 2 and a tie never preempts, so the band sits above it.
+			mob.getGoalSelector().addGoal(CROSSBOW_KEEP_DISTANCE_PRIORITY, new KeepDistanceGoal<>(monster));
+		}
 
 		if (state.getRole() != CombatRole.MELEE && !crossbow) {
 			if (supports(mob, state.getRole())) {

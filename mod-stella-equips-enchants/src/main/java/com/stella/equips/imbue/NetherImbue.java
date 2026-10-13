@@ -2,6 +2,7 @@ package com.stella.equips.imbue;
 
 import com.stella.equips.StellaEquips;
 import com.stella.equips.refine.Refine;
+import com.stella.equips.tooltip.DescriptionLines;
 import com.stella.equips.unique.UniqueDamage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -174,7 +175,7 @@ public final class NetherImbue {
 				lines.add(line);
 			}
 		}
-		lines.add(Component.literal(LORE_PREFIX + count).withStyle(style -> style.withColor(ChatFormatting.DARK_PURPLE).withItalic(false)));
+		lines.add(DescriptionLines.marked(Component.literal(LORE_PREFIX + count).withStyle(style -> style.withColor(ChatFormatting.DARK_PURPLE).withItalic(false))));
 		return new ItemLore(lines);
 	}
 }

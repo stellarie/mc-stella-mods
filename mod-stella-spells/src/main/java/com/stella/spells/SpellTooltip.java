@@ -26,14 +26,27 @@ public final class SpellTooltip {
 	private SpellTooltip() {
 	}
 
-	/** The translation key of a spell's live effect line, which takes the arguments {@link #arguments} builds. */
+	/** The translation key of a spell's live Desc text, which takes the arguments {@link #arguments} builds. */
 	public static String liveEffectKey(final SpellDefinition definition) {
-		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect_live";
+		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".desc_live";
 	}
 
-	/** The translation key of the static effect line that the live one replaces. */
+	/** The translation key of the static Desc text that the live one replaces. */
 	static String staticEffectKey(final SpellDefinition definition) {
-		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect";
+		return "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".desc";
+	}
+
+	/** The key that names a tooltip line: its own translation key, or the one in its value when a label comes first. */
+	static String lineKey(final Component line) {
+		if (line.getContents() instanceof TranslatableContents contents) {
+			return contents.getKey();
+		}
+		for (Component part : line.getSiblings()) {
+			if (part.getContents() instanceof TranslatableContents contents) {
+				return contents.getKey();
+			}
+		}
+		return "";
 	}
 
 	static String cooldownKey() {
@@ -46,6 +59,15 @@ public final class SpellTooltip {
 	 */
 	public static List<Component> lines(final @Nullable Player viewer, final ItemStack stack) {
 		return List.copyOf(live(viewer, stack).values());
+	}
+
+	/** A refined book's lines: its level, its bonus and each unlocked milestone. An unrefined book or a scroll shows none. */
+	public static List<Component> refineLines(final ItemStack stack) {
+		List<Component> lines = new java.util.ArrayList<>();
+		for (Component line : BookRefine.tooltip(stack)) {
+			DescriptionLines.add(lines, line);
+		}
+		return lines;
 	}
 
 	/** A book's awakening lines: its cast count and what is left, or Awakened. A scroll shows none. */
@@ -66,18 +88,31 @@ public final class SpellTooltip {
 		);
 	}
 
+	/**
+	 * Everything the client adds to a spell item tooltip, in order: the live lines, the refine lines and the
+	 * awakening lines. The client callback calls this one method, so a server test sees the same tooltip.
+	 */
+	public static void decorate(final @Nullable Player viewer, final ItemStack stack, final List<Component> tooltip) {
+		apply(viewer, stack, tooltip);
+		tooltip.addAll(refineLines(stack));
+		tooltip.addAll(awakeningLines(stack));
+		DescriptionLines.wrapMarked(tooltip);
+	}
+
 	/** Swaps the static effect and cooldown lines in a tooltip for the live ones; touches nothing else. */
 	public static void apply(final @Nullable Player viewer, final ItemStack stack, final List<Component> tooltip) {
+		// The equips station once wrote a Refine line into a book lore; the refine lines replace it.
+		if (stack.getItem() instanceof SpellbookItem) {
+			tooltip.removeIf(BookRefine::isOldRefineLine);
+		}
 		Map<String, Component> live = live(viewer, stack);
 		if (live.isEmpty()) {
 			return;
 		}
 		for (int i = 0; i < tooltip.size(); i++) {
-			if (tooltip.get(i).getContents() instanceof TranslatableContents contents) {
-				Component replacement = live.get(contents.getKey());
-				if (replacement != null) {
-					tooltip.set(i, replacement);
-				}
+			Component replacement = live.get(lineKey(tooltip.get(i)));
+			if (replacement != null) {
+				tooltip.set(i, replacement);
 			}
 		}
 	}
@@ -106,8 +141,8 @@ public final class SpellTooltip {
 		Map<String, Component> live = new LinkedHashMap<>();
 		SpellNumbers numbers = SpellNumbers.find(definition.id());
 		if (numbers != null && !numbers.isEmpty()) {
-			live.put(staticEffectKey(definition), Spellbooks.line(
-				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, numbers, modifiers)), ChatFormatting.AQUA
+			live.put(staticEffectKey(definition), DescriptionLines.desc(
+				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, definition.school(), numbers, modifiers)).withStyle(ChatFormatting.AQUA)
 			));
 		}
 		if (book) {
@@ -123,14 +158,14 @@ public final class SpellTooltip {
 	 * 1 damage, 2 heal, 3 ally heal, 4 duration, 5 extra duration or cap, 6 radius, 7 targets, 8 amplifier,
 	 * 9 extra amplifier. Health and damage are in displayed units, the vanilla number times the health scale.
 	 */
-	static String[] arguments(final Player viewer, final SpellNumbers numbers, final SpellModifiers.CastModifiers modifiers) {
+	static String[] arguments(final Player viewer, final School school, final SpellNumbers numbers, final SpellModifiers.CastModifiers modifiers) {
 		double scale = SummonSkeleton.healthScale();
 		double power = modifiers.powerMultiplier();
 		boolean capped = numbers.capTicks() > 0;
 		return new String[] {
-			damage(viewer, numbers.damage(), power, scale),
-			heal(viewer, numbers.heal(), power, scale),
-			heal(viewer, numbers.allyHeal(), power, scale),
+			damage(viewer, school, numbers.damage(), power, scale),
+			heal(viewer, school, numbers.heal(), power, scale),
+			heal(viewer, school, numbers.allyHeal(), power, scale),
 			numbers.duration().ticks() > 0 ? duration(numbers.durationTicks(modifiers)) : "0",
 			capped ? duration(numbers.duration().scaled(numbers.capTicks(), modifiers))
 				: numbers.extra().ticks() > 0 ? duration(numbers.extraTicks(modifiers)) : "0",
@@ -141,10 +176,20 @@ public final class SpellTooltip {
 		};
 	}
 
-	// A range from the caster's lowest to highest MATK roll; the flat number times the power when MATK gives none.
-	private static String damage(final Player viewer, final float flat, final double power, final double scale) {
+	// A range from the caster's lowest to highest roll; the flat number times the power when the RPG mod gives none.
+	// A mage reads its MATK. A fighter and an archer read their own stat. A priest's holy hit reads the heal formula.
+	private static String damage(final Player viewer, final School school, final float flat, final double power, final double scale) {
 		if (flat <= 0.0f) {
 			return "0";
+		}
+		if (school == School.PRIEST) {
+			return number(RpgBridge.skillHeal(viewer, school, flat, power) * scale);
+		}
+		if (school != School.MAGE) {
+			double[] rolls = RpgBridge.skillDamageRange(viewer, school, flat, power);
+			String lowest = number(rolls[0] * scale);
+			String highest = number(rolls[1] * scale);
+			return lowest.equals(highest) ? lowest : lowest + "-" + highest;
 		}
 		double percent = flat * RpgBridge.SKILL_PERCENT_PER_FLAT;
 		double min = RpgBridge.matkMin(viewer);
@@ -163,8 +208,9 @@ public final class SpellTooltip {
 		return vanilla * scale;
 	}
 
-	private static String heal(final Player viewer, final float flat, final double power, final double scale) {
-		return flat <= 0.0f ? "0" : number(RpgBridge.heal(viewer, flat, power) * scale);
+	// The school's own heal formula: a mage reads Intelligence, the other schools read Vitality.
+	private static String heal(final Player viewer, final School school, final float flat, final double power, final double scale) {
+		return flat <= 0.0f ? "0" : number(RpgBridge.skillHeal(viewer, school, flat, power) * scale);
 	}
 
 	private static String seconds(final int ticks) {

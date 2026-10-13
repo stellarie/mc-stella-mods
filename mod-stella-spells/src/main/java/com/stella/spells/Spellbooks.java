@@ -2,7 +2,6 @@ package com.stella.spells;
 
 import net.fabricmc.api.ModInitializer;
 import java.util.List;
-import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -30,28 +29,21 @@ public final class Spellbooks implements ModInitializer {
 	public static final ReturnScrollItem SCROLL_OF_RETURN = Registry.register(
 		BuiltInRegistries.ITEM, SCROLL_OF_RETURN_ID, new ReturnScrollItem(new Item.Properties()
 			.setId(ResourceKey.create(Registries.ITEM, SCROLL_OF_RETURN_ID)).stacksTo(16)
-			.component(DataComponents.LORE, new ItemLore(List.of(
-				line(Component.translatable("item." + MOD_ID + ".return_scroll.effect"), ChatFormatting.AQUA),
-				line(Component.translatable("spellbook." + MOD_ID + ".scroll"), ChatFormatting.DARK_GRAY)
-			))))
+			.component(DataComponents.LORE, lore(block("return_scroll", ChatFormatting.AQUA),
+				line(Component.translatable("spellbook." + MOD_ID + ".scroll"), ChatFormatting.DARK_GRAY))))
 	);
 	public static final Identifier SCROLL_BOOK_ID = Identifier.fromNamespaceAndPath(MOD_ID, "scroll_book");
 	public static final ScrollBookItem SCROLL_BOOK = Registry.register(
 		BuiltInRegistries.ITEM, SCROLL_BOOK_ID, new ScrollBookItem(new Item.Properties()
 			.setId(ResourceKey.create(Registries.ITEM, SCROLL_BOOK_ID)).stacksTo(1)
-			.component(DataComponents.LORE, new ItemLore(List.of(
-				line(Component.translatable("item." + MOD_ID + ".scroll_book.effect"), ChatFormatting.AQUA)
-			))))
+			.component(DataComponents.LORE, new ItemLore(block("scroll_book", ChatFormatting.AQUA))))
 	);
 	public static final Identifier COMPENDIUM_ID = Identifier.fromNamespaceAndPath(MOD_ID, "compendium");
 	public static final CompendiumItem COMPENDIUM = Registry.register(
 		BuiltInRegistries.ITEM, COMPENDIUM_ID, new CompendiumItem(new Item.Properties()
 			.setId(ResourceKey.create(Registries.ITEM, COMPENDIUM_ID)).stacksTo(1)
-			.component(DataComponents.LORE, new ItemLore(List.of(
-				line(Component.translatable("item." + MOD_ID + ".compendium.effect"), ChatFormatting.AQUA),
-				line(Component.translatable("item." + MOD_ID + ".compendium.fill"), ChatFormatting.GRAY),
-				line(Component.translatable("spellbook." + MOD_ID + ".cooldown", CompendiumItem.COOLDOWN_TICKS / 20), ChatFormatting.DARK_GRAY)
-			))))
+			.component(DataComponents.LORE, lore(block("compendium", ChatFormatting.AQUA),
+				line(Component.translatable("spellbook." + MOD_ID + ".cooldown", CompendiumItem.COOLDOWN_TICKS / 20), ChatFormatting.DARK_GRAY))))
 	);
 	/** Scrolls whose paper-and-material pair is already a vanilla recipe take one more of the material. */
 	public static final java.util.Set<Identifier> SCROLLS_WITH_DOUBLE_MATERIAL = java.util.Set.of(
@@ -83,6 +75,7 @@ public final class Spellbooks implements ModInitializer {
 		SummonSkeleton.register();
 		FighterSkills.register();
 		ArcherSkills.register();
+		ArcherDraw.register();
 		ArrowItems.register();
 		SpellEntities.register();
 		Falcons.register();
@@ -95,8 +88,10 @@ public final class Spellbooks implements ModInitializer {
 		SpellbookLoot.register();
 		SpellStorms.register();
 		SpellVisuals.register();
+		DragonCharge.register();
 		SpellImbue.register();
 		SpellTimers.register();
+		BookRefine.register();
 		LOGGER.info("{} initialized", MOD_ID);
 	}
 
@@ -128,36 +123,49 @@ public final class Spellbooks implements ModInitializer {
 		);
 	}
 
-	// Four tooltip lines: what it targets, how to cast it, what it does, and its base cooldown; a combo book adds its combo.
+	/**
+	 * A Requires line and a Desc line, then the base cooldown; a combo book adds its combo. The Desc line holds the effect,
+	 * and says whom or where it hits. The client swaps it for the live line with the viewer's numbers.
+	 */
 	static ItemLore description(final SpellDefinition definition) {
-		String mode = definition.targetMode().name().toLowerCase(Locale.ROOT);
-		String effectKey = "item." + definition.id().getNamespace() + "." + definition.id().getPath() + ".effect";
-		List<Component> lines = new java.util.ArrayList<>(List.of(
-			line(Component.translatable("spellbook." + MOD_ID + ".target." + mode), ChatFormatting.GRAY),
-			line(Component.translatable("spellbook." + MOD_ID + ".use." + mode), ChatFormatting.GRAY),
-			line(Component.translatable(effectKey), ChatFormatting.AQUA),
-			line(Component.translatable("spellbook." + MOD_ID + ".cooldown", definition.baseCooldownTicks() / 20), ChatFormatting.DARK_GRAY)
-		));
+		List<Component> lines = new java.util.ArrayList<>(block(definition.id().getPath(), ChatFormatting.AQUA));
+		lines.add(line(Component.translatable("spellbook." + MOD_ID + ".cooldown", definition.baseCooldownTicks() / 20), ChatFormatting.DARK_GRAY));
 		SpellCombos.involving(definition.id()).ifPresent(combo -> lines.add(line(Component.translatable(
 			"spellbook." + MOD_ID + ".combo", bookName(combo.first()), bookName(combo.second()), combo.name()
 		), ChatFormatting.LIGHT_PURPLE)));
 		return new ItemLore(lines);
 	}
 
-	// A scroll's tooltip: what it targets, how to cast it, what it does, and that it is used up.
+	// A scroll's tooltip: what it needs, what it does, and that it is used up.
 	static ItemLore scrollDescription(final SpellDefinition definition) {
 		List<Component> book = description(definition).lines();
 		return new ItemLore(List.of(
-			book.get(0), book.get(1), book.get(2),
+			book.get(0), book.get(1),
 			line(Component.translatable("spellbook." + MOD_ID + ".scroll"), ChatFormatting.DARK_GRAY)
 		));
+	}
+
+	/** A lore of a Requires and Desc block with the lines that follow it. */
+	static ItemLore lore(final List<Component> block, final Component... after) {
+		List<Component> lines = new java.util.ArrayList<>(block);
+		lines.addAll(List.of(after));
+		return new ItemLore(lines);
+	}
+
+	/** The Requires line and the Desc line of an item whose lang holds {@code item.<mod>.<name>.requires} and {@code .desc}. */
+	static List<Component> block(final String name, final ChatFormatting color) {
+		return List.of(
+			DescriptionLines.requires(Component.translatable("item." + MOD_ID + "." + name + ".requires").withStyle(ChatFormatting.WHITE)),
+			DescriptionLines.desc(Component.translatable("item." + MOD_ID + "." + name + ".desc").withStyle(color))
+		);
 	}
 
 	private static Component bookName(final Identifier id) {
 		return Component.translatable("item." + id.getNamespace() + "." + id.getPath());
 	}
 
+	/** A tooltip line in the color, marked so the client splits it at 24 characters. */
 	static Component line(final MutableComponent text, final ChatFormatting color) {
-		return text.withStyle(style -> style.withColor(color).withItalic(false));
+		return DescriptionLines.marked(text.withStyle(style -> style.withColor(color).withItalic(false)));
 	}
 }

@@ -21,8 +21,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A spellbook refines, with amethyst shards, as a grade 3 weapon. The equips mod finds it by its class name,
- * so the test mod carries a stand-in of that name. The mod holds no compile dependency on the spells mod.
+ * The Refine station refuses a spellbook: the spells mod refines its own books in the anvil. The equips mod finds
+ * a book by its class name, so the test mod carries a stand-in of that name. The mod holds no compile dependency
+ * on the spells mod.
  */
 public class RefineSpellbookGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-equips-test.refine-spellbook");
@@ -33,13 +34,10 @@ public class RefineSpellbookGameTest {
 	}
 
 	@GameTest
-	public void spellbookRefines(final GameTestHelper helper) {
+	public void theStationRefusesASpellbookAndSpendsNothing(final GameTestHelper helper) {
 		ItemStack book = new ItemStack(TestItems.BOOK);
-		helper.assertTrue(Refine.isSpellbook(book) && Refine.canRefine(book), "a one-stack item of the spellbook class is not refinable");
+		helper.assertTrue(Refine.isSpellbook(book) && !Refine.canRefine(book), "a one-stack item of the spellbook class is refinable at the station");
 		helper.assertTrue(book.getItem().getClass().getName().equals(SPELLBOOK_CLASS), "the stand-in has the wrong class name");
-		helper.assertTrue(Refine.material(book) == Items.AMETHYST_SHARD && Refine.isMaterial(book, new ItemStack(Items.AMETHYST_SHARD)) && !Refine.isMaterial(book, new ItemStack(Items.IRON_INGOT)),
-			"a spellbook's material is " + Refine.material(book));
-		helper.assertTrue(Refine.grade(book) == Refine.Grade.WEAPON_3, "a spellbook's grade is " + Refine.grade(book));
 
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
 		player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
@@ -50,18 +48,12 @@ public class RefineSpellbookGameTest {
 		RefineStation.Result result = RefineStation.refine(player, menu.containerId);
 		ItemStack refined = menu.getSlot(0).getItem();
 		ItemAttributeModifiers modifiers = refined.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
-		LOG.info("[BEHAVIOR] test=spellbookRefines RESULT result={} level={} shards={} modifiers={}", result, Refine.level(refined), player.getInventory().countItem(Items.AMETHYST_SHARD), modifiers.modifiers());
-		helper.assertTrue(result == RefineStation.Result.SUCCESS && Refine.level(refined) == 1, "refining the book gave " + result + " +" + Refine.level(refined));
-		helper.assertTrue(player.getInventory().countItem(Items.AMETHYST_SHARD) == 10 - Refine.cost(0), "the step took " + (10 - player.getInventory().countItem(Items.AMETHYST_SHARD)) + " shards");
-		helper.assertTrue(modifiers.modifiers().isEmpty(), "a refined book carries attribute modifiers: " + modifiers.modifiers());
-		helper.assertTrue(refined.getOrDefault(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY).copyTag().getIntOr(Refine.LEVEL_KEY, -1) == 1,
-			"the level is not in the " + Refine.LEVEL_KEY + " key");
-
-		ItemStack high = new ItemStack(TestItems.BOOK);
-		Refine.setLevel(high, Refine.MAX_LEVEL);
-		helper.assertTrue(Refine.level(high) == Refine.MAX_LEVEL && high.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().isEmpty(),
-			"a +15 book has modifiers");
-		helper.assertTrue(RefineSpecials.of(high, Refine.MAX_LEVEL).isEmpty() && Refine.effects(high, Refine.MAX_LEVEL).isEmpty(), "a +15 book has specials: " + RefineSpecials.of(high, Refine.MAX_LEVEL));
+		LOG.info("[BEHAVIOR] test=theStationRefusesASpellbookAndSpendsNothing RESULT result={} level={} shards={} modifiers={}", result, Refine.level(refined), player.getInventory().countItem(Items.AMETHYST_SHARD), modifiers.modifiers());
+		helper.assertTrue(result == RefineStation.Result.NO_PIECE, "the station answered " + result + " for a spellbook");
+		helper.assertTrue(Refine.level(refined) == 0 && refined.getOrDefault(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.EMPTY)
+			.copyTag().getIntOr(Refine.LEVEL_KEY, -1) == -1, "the refused book carries a level");
+		helper.assertTrue(player.getInventory().countItem(Items.AMETHYST_SHARD) == 10, "the refusal took " + (10 - player.getInventory().countItem(Items.AMETHYST_SHARD)) + " shards");
+		helper.assertTrue(modifiers.modifiers().isEmpty(), "the refused book carries attribute modifiers: " + modifiers.modifiers());
 		helper.succeed();
 	}
 

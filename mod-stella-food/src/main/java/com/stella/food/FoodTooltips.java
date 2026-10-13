@@ -35,8 +35,6 @@ public final class FoodTooltips {
 			|| !cake && (stack.get(DataComponents.FOOD) == null || stack.get(DataComponents.CONSUMABLE) == null)) {
 			return;
 		}
-		lines.accept(Component.translatable("tooltip.mod-stella-food.regeneration", duration(40))
-			.withStyle(ChatFormatting.GRAY));
 		Holder<MobEffect> buff = FoodItems.DISH_EFFECTS.get(stack.getItem());
 		if (buff == null) {
 			buff = stack.is(Items.CAKE) ? FoodEffects.SUGAR_RUSH : FoodCategories.effectFor(stack.getItem());
@@ -46,19 +44,17 @@ public final class FoodTooltips {
 			: FoodBehavior.ORDINARY_TICKS;
 		Identifier id = buff.unwrapKey().orElseThrow().identifier();
 		String description = "effect." + id.getNamespace() + "." + id.getPath() + ".desc";
-		lines.accept(Component.translatable(
-			"tooltip.mod-stella-food.buff",
-			buff.value().getDisplayName(),
-			duration(ticks),
-			Component.translatable(description)
-		).withStyle(ChatFormatting.GRAY));
+		DescriptionLines.addBlock(lines,
+			Component.translatable("tooltip.mod-stella-food.requires").withStyle(ChatFormatting.WHITE),
+			Component.translatable("tooltip.mod-stella-food.desc", duration(40), buff.value().getDisplayName(), duration(ticks),
+				Component.translatable(description)).withStyle(ChatFormatting.GRAY));
 		if (FoodItems.isDish(stack.getItem())) {
 			PotionContents potion = stack.get(DataComponents.POTION_CONTENTS);
 			if (potion != null && requested.shows(DataComponents.POTION_CONTENTS)) {
 				for (MobEffectInstance source : potion.getAllEffects()) {
 					var mild = FoodBehavior.mildFor(source.getEffect());
 					if (mild != null) {
-						lines.accept(Component.translatable("tooltip.mod-stella-food.potion", mild.value().getDisplayName(),
+						DescriptionLines.add(lines, Component.translatable("tooltip.mod-stella-food.potion", mild.value().getDisplayName(),
 							duration(FoodBehavior.MILD_DEBUFF_TICKS)).withStyle(ChatFormatting.GRAY));
 						continue;
 					}
@@ -71,13 +67,13 @@ public final class FoodTooltips {
 					Component when = source.getEffect().value().isInstantaneous()
 						? Component.translatable("tooltip.mod-stella-food.on_eating")
 						: duration(FoodBehavior.INFUSED_TICKS);
-					lines.accept(Component.translatable("tooltip.mod-stella-food.potion", name, when)
+					DescriptionLines.add(lines, Component.translatable("tooltip.mod-stella-food.potion", name, when)
 						.withStyle(ChatFormatting.GRAY));
 				}
 			}
 			Seasoning seasoning = Seasoning.read(stack);
 			if (seasoning != null) {
-				lines.accept(Component.translatable(
+				DescriptionLines.add(lines, Component.translatable(
 					"tooltip.mod-stella-food.seasoned", seasoning.amount(), seasoning.label()
 				).withStyle(ChatFormatting.GOLD));
 			}

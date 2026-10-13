@@ -73,17 +73,20 @@ public final class ShieldZones {
 	}
 
 	/**
-	 * True when {@code mob} may not hold {@code target}. Any mob refuses a player who stands in a box.
-	 * A hostile mob inside a box refuses every target.
+	 * True when {@code mob} may not hold {@code target}. Aggro stays free when both stand inside a box,
+	 * or both stand outside. Across the edge, any mob refuses a player inside,
+	 * and a hostile mob inside refuses every target outside.
 	 */
 	public static boolean refusesTarget(final Mob mob, final LivingEntity target) {
 		if (target == null || GENERATORS.isEmpty()) {
 			return false;
 		}
-		if (target instanceof Player && covers(target)) {
-			return true;
+		boolean mobInside = covers(mob);
+		boolean targetInside = covers(target);
+		if (mobInside == targetInside) {
+			return false;
 		}
-		return mob instanceof Enemy && covers(mob);
+		return targetInside ? target instanceof Player : mob instanceof Enemy;
 	}
 
 	/** The number of live generators, for tests. */

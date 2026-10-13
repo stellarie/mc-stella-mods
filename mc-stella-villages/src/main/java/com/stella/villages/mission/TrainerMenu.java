@@ -1,5 +1,6 @@
 package com.stella.villages.mission;
 
+import com.stella.villages.DescriptionLines;
 import com.stella.villages.patrol.Conversation;
 import java.util.List;
 import java.util.OptionalInt;
@@ -24,6 +25,8 @@ import net.minecraft.world.item.component.ItemLore;
  * The trainer's menu, a three-row chest menu that any client can show without a mod. Slot 4 states what the player
  * can do. Slots 10, 12, 14 and 16 hold the four jobs, and slot 22 the next boss trial. A click asks
  * {@link JobTrainer} or {@link JobTrials}, which stay the only authority, and no item ever leaves the menu.
+ * Each job describes itself, its stat bonuses and its innate skill, and every line of text fits in
+ * {@link DescriptionLines#MAX_CHARS} characters.
  */
 public final class TrainerMenu extends ChestMenu {
 	public static final String TITLE = "Job Trainer";
@@ -92,11 +95,13 @@ public final class TrainerMenu extends ChestMenu {
 		ItemStack icon = new ItemStack(refusal == null ? Items.PAPER : Items.BARRIER);
 		if (refusal == null) {
 			icon.set(DataComponents.ITEM_NAME, Component.literal("Choose your job"));
-			icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("A job is permanent"))));
+			icon.set(DataComponents.LORE, new ItemLore(DescriptionLines.lines("A job is permanent")));
 		} else if (refusal.equals("has_job")) {
 			icon.set(DataComponents.ITEM_NAME, Component.literal("Your job: " + RpgJobs.job(player)));
 		} else {
-			icon.set(DataComponents.ITEM_NAME, Component.literal("No job for you: " + JobTrainer.reasonText(refusal)));
+			icon.set(DataComponents.ITEM_NAME, Component.literal("No job for you"));
+			String reason = JobTrainer.reasonText(refusal);
+			icon.set(DataComponents.LORE, new ItemLore(DescriptionLines.lines(Character.toUpperCase(reason.charAt(0)) + reason.substring(1))));
 		}
 		return icon;
 	}
@@ -104,22 +109,20 @@ public final class TrainerMenu extends ChestMenu {
 	private static ItemStack jobIcon(final int index) {
 		String job = RpgJobs.JOBS.get(index);
 		ItemStack icon = new ItemStack(JOB_ICONS.get(index));
-		icon.set(DataComponents.ITEM_NAME, Component.literal("Become a " + job));
-		icon.set(DataComponents.LORE, new ItemLore(List.of(
-			Component.literal("You get the " + job + "'s item"), Component.literal("Click to choose, for good")
-		)));
+		icon.set(DataComponents.ITEM_NAME, Component.literal(JobInfo.choiceTitle(job)));
+		icon.set(DataComponents.LORE, new ItemLore(JobInfo.lore(job)));
 		return icon;
 	}
 
-	private static ItemStack trialIcon(final int level) {
+	/** The trial button for a level. Public for the tooltip test. */
+	public static ItemStack trialIcon(final int level) {
 		ItemStack icon = new ItemStack(Items.SKELETON_SKULL);
 		icon.set(DataComponents.ITEM_NAME, Component.literal("Boss Trial: level " + level));
-		icon.set(DataComponents.LORE, new ItemLore(List.of(
-			Component.literal("Hunt a level " + level + " boss"),
-			Component.literal("Somewhere " + JobTrials.MIN_DISTANCE + " to " + JobTrials.MAX_DISTANCE + " blocks from the village"),
-			Component.literal("Reward: +5 to your main stat, +1 to the others"),
-			Component.literal("Click to accept")
-		)));
+		List<Component> lore = new java.util.ArrayList<>();
+		lore.addAll(DescriptionLines.block("job, level " + level, "Hunt a level " + level + " boss "
+			+ JobTrials.MIN_DISTANCE + " to " + JobTrials.MAX_DISTANCE + " blocks from the village. Reward: +5 to your main stat, +1 to the others."));
+		lore.addAll(DescriptionLines.lines("Click to accept"));
+		icon.set(DataComponents.LORE, new ItemLore(lore));
 		return icon;
 	}
 

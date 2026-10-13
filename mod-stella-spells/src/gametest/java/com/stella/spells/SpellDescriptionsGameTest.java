@@ -17,15 +17,16 @@ import org.slf4j.LoggerFactory;
 
 public class SpellDescriptionsGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.descriptions");
-	private static final int TARGET_LINE = 0;
-	private static final int USE_LINE = 1;
-	private static final int EFFECT_LINE = 2;
-	private static final int COOLDOWN_LINE = 3;
-	private static final int DESCRIPTION_LINES = 4;
+	private static final int REQUIRES_LINE = 0;
+	private static final int DESC_LINE = 1;
+	private static final int COOLDOWN_LINE = 2;
+	private static final int DESCRIPTION_LINES = 3;
+	/** The books that take no bow even though they belong to the archer school. */
+	private static final Set<String> NO_BOW = Set.of("arrow_crafting", "hunters_mark", "summon_wolf");
 
 	@GameTest
-	public void everySpellbookDescribesItsTargetUseEffectAndCooldown(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "everySpellbookDescribesItsTargetUseEffectAndCooldown");
+	public void everySpellbookDescribesItsRequirementEffectAndCooldown(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "everySpellbookDescribesItsRequirementEffectAndCooldown");
 		int described = 0;
 		for (SpellbookItem book : Spellbooks.CATALOG) {
 			List<Component> lines = lines(book);
@@ -34,29 +35,35 @@ public class SpellDescriptionsGameTest {
 			for (Component line : lines) {
 				helper.assertTrue(translated(line), book.definition().id() + " shows an untranslated line: " + line.getString());
 			}
+			helper.assertTrue(shown(lines.get(REQUIRES_LINE)).startsWith("Requires: ") && shown(lines.get(DESC_LINE)).startsWith("Desc: "),
+				book.definition().id() + " does not open with Requires and Desc: " + shown(lines.get(REQUIRES_LINE)));
 			described++;
 		}
-		LOG.info("[SPELLTEST] test=everySpellbookDescribesItsTargetUseEffectAndCooldown RESULT described={}", described);
+		LOG.info("[SPELLTEST] test=everySpellbookDescribesItsRequirementEffectAndCooldown RESULT described={}", described);
 		helper.succeed();
 	}
 
+	/** An archer book needs a bow or a crossbow, except three; Shield Bash needs a shield; every other book needs nothing. */
 	@GameTest
-	public void targetAndUseLinesFollowTheTargetMode(final GameTestHelper helper) {
-		SpellTestLog.track(helper, "targetAndUseLinesFollowTheTargetMode");
-		Map<TargetMode, String> targetByMode = new HashMap<>();
-		Map<TargetMode, String> useByMode = new HashMap<>();
+	public void theRequiresLineFollowsWhatTheBookNeeds(final GameTestHelper helper) {
+		SpellTestLog.track(helper, "theRequiresLineFollowsWhatTheBookNeeds");
+		Map<String, Integer> kinds = new HashMap<>();
 		for (SpellbookItem book : Spellbooks.CATALOG) {
-			TargetMode mode = book.definition().targetMode();
-			List<Component> lines = lines(book);
-			String target = targetByMode.computeIfAbsent(mode, key -> lines.get(TARGET_LINE).getString());
-			String use = useByMode.computeIfAbsent(mode, key -> lines.get(USE_LINE).getString());
-			helper.assertTrue(target.equals(lines.get(TARGET_LINE).getString()), book.definition().id() + " target line differs from its mode");
-			helper.assertTrue(use.equals(lines.get(USE_LINE).getString()), book.definition().id() + " use line differs from its mode");
+			String path = book.definition().id().getPath();
+			String requires = shown(lines(book).get(REQUIRES_LINE));
+			boolean bow = book.definition().school() == School.ARCHER && !NO_BOW.contains(path);
+			if (bow) {
+				helper.assertTrue(requires.startsWith("Requires: bow or crossbow"), path + " needs a bow or a crossbow: " + requires);
+			} else if (path.equals("shield_bash")) {
+				helper.assertTrue(requires.contains("shield"), "Shield Bash needs a shield: " + requires);
+			} else if (path.equals("arrow_crafting")) {
+				helper.assertTrue(requires.contains("arrow material"), "Arrow Crafting needs a material: " + requires);
+			} else {
+				helper.assertTrue(requires.equals("Requires: none"), path + " needs nothing: " + requires);
+			}
+			kinds.merge(requires, 1, Integer::sum);
 		}
-		helper.assertTrue(targetByMode.size() == TargetMode.values().length, "not every target mode has a book: " + targetByMode.keySet());
-		helper.assertTrue(new HashSet<>(targetByMode.values()).size() == TargetMode.values().length, "two target modes share a target line");
-		helper.assertTrue(new HashSet<>(useByMode.values()).size() == TargetMode.values().length, "two target modes share a use line");
-		LOG.info("[SPELLTEST] test=targetAndUseLinesFollowTheTargetMode RESULT modes={}", targetByMode.size());
+		LOG.info("[SPELLTEST] test=theRequiresLineFollowsWhatTheBookNeeds RESULT kinds={}", kinds);
 		helper.succeed();
 	}
 
@@ -65,7 +72,7 @@ public class SpellDescriptionsGameTest {
 		SpellTestLog.track(helper, "everySpellbookDescribesADifferentEffect");
 		Set<String> effects = new HashSet<>();
 		for (SpellbookItem book : Spellbooks.CATALOG) {
-			helper.assertTrue(effects.add(lines(book).get(EFFECT_LINE).getString()), book.definition().id() + " repeats another book's effect text");
+			helper.assertTrue(effects.add(shown(lines(book).get(DESC_LINE))), book.definition().id() + " repeats another book's effect text");
 		}
 		LOG.info("[SPELLTEST] test=everySpellbookDescribesADifferentEffect RESULT distinct={}", effects.size());
 		helper.succeed();
@@ -100,7 +107,7 @@ public class SpellDescriptionsGameTest {
 				}
 				List<Component> lines = lines(book);
 				Component last = lines.getLast();
-				helper.assertTrue(translated(last) && last.getString().contains(combo.name()), book.definition().id() + " does not name " + combo.name() + ": " + last.getString());
+				helper.assertTrue(translated(last) && shown(last).contains(combo.name()), book.definition().id() + " does not name " + combo.name() + ": " + shown(last));
 				named++;
 			}
 		}
@@ -115,12 +122,20 @@ public class SpellDescriptionsGameTest {
 		return lore == null ? List.of() : lore.lines();
 	}
 
-	// A line is translated when it renders as something other than its own key.
+	/** The text of a line with the shipped English installed. */
+	private static String shown(final Component line) {
+		return DescriptionSupport.text(List.of(line)).get(0);
+	}
+
+	// A line is translated when its translatable text renders as something other than its own key.
 	private static boolean translated(final Component line) {
-		if (!(line.getContents() instanceof TranslatableContents contents)) {
+		TranslatableContents contents;
+		try {
+			contents = DescriptionSupport.translatable(line);
+		} catch (IllegalStateException none) {
 			return false;
 		}
-		String text = line.getString();
-		return !text.isBlank() && !text.equals(contents.getKey());
+		String text = shown(line);
+		return !text.isBlank() && !text.contains(contents.getKey());
 	}
 }

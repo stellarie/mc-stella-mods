@@ -10,16 +10,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The Blitz Beat falcon: it exists while the buff holds, takes no damage, perches on the caster, swoops at the
+ * The Blitz Beat falcon: it exists while the buff holds, takes no damage, hovers over the caster, swoops at the
  * foe each strike hits, and is gone when the buff ends or the caster leaves. What the client draws is a manual item.
  */
 public class FalconGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.falcon");
 	private static final double CASTER_X = 1.5;
 	private static final double CASTER_Z = 1.5;
+	private static final double FAR_CORNER = 7.5;
 	private static final float BLOW = 3.0F;
-	private static final double PERCH_REACH = 2.5;
 	private static final double STRIKE_REACH = 1.8;
+	/** The most the falcon may sit from its owner when it is flying home: the circle, plus the climb above the head. */
+	private static final double HOME_REACH = FalconEntity.HOVER_RADIUS + FalconEntity.HOVER_CLEARANCE + FalconEntity.HOVER_BOB + 1.9;
 
 	/** A source whose every roll comes up on the lucky end. */
 	private static final class Always extends LegacyRandomSource {
@@ -34,7 +36,7 @@ public class FalconGameTest {
 	}
 
 	@GameTest(maxTicks = 80)
-	public void blitzBeatRaisesAFalconThatStaysOnTheCasterWhileTheBuffHolds(final GameTestHelper helper) {
+	public void blitzBeatRaisesAFalconThatStaysWithTheCasterWhileTheBuffHolds(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		boolean applied = ArcherSkills.applyBlitzBeat(caster, null, caster.position(), SkillSchoolGameTest.modifiers(caster, false));
 		FalconEntity falcon = Falcons.of(caster);
@@ -42,11 +44,11 @@ public class FalconGameTest {
 		helper.runAfterDelay(40L, () -> {
 			FalconEntity later = Falcons.of(caster);
 			double away = later == null ? -1.0 : later.position().distanceTo(caster.position());
-			LOG.info("[BEHAVIOR] test=blitzBeatRaisesAFalconThatStaysOnTheCasterWhileTheBuffHolds RESULT same={} away={} type={}",
+			LOG.info("[BEHAVIOR] test=blitzBeatRaisesAFalconThatStaysWithTheCasterWhileTheBuffHolds RESULT same={} away={} type={}",
 				later == falcon, away, later == null ? "none" : later.getType());
 			helper.assertTrue(later == falcon && later.isAlive(), "the falcon was replaced or lost while the buff held");
 			helper.assertTrue(later.getType() == SpellEntities.FALCON, "the falcon is not the falcon type");
-			helper.assertTrue(away >= 0.0 && away <= PERCH_REACH, "the falcon perched " + away + " blocks from the caster");
+			helper.assertTrue(away >= 0.0 && away <= HOME_REACH, "the falcon flew " + away + " blocks from the caster");
 			ArcherSkills.clearFor(caster);
 			caster.removeAllEffects();
 			helper.succeed();
@@ -83,7 +85,8 @@ public class FalconGameTest {
 	@GameTest(maxTicks = 160)
 	public void eachStrikeSendsTheFalconToTheStruckFoeAndBack(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
-		Mob foe = FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 4.0);
+		// The far corner of the arena, past the idle falcon's reach, so only the struck blow sends it.
+		Mob foe = FighterBooksGameTest.foe(helper, FAR_CORNER, FAR_CORNER);
 		ArcherSkills.applyBlitzBeat(caster, null, caster.position(), SkillSchoolGameTest.modifiers(caster, false));
 		FalconEntity falcon = Falcons.of(caster);
 		helper.assertTrue(falcon != null, "the cast raised no falcon");
@@ -106,7 +109,7 @@ public class FalconGameTest {
 			helper.assertTrue(ArcherSkills.pulsesRun(caster) == ArcherSkills.BLITZ_BEAT_STRIKES, "the falcon struck " + ArcherSkills.pulsesRun(caster) + " times");
 			helper.assertTrue(swooped[0], "the falcon never swooped");
 			helper.assertTrue(closest[0] <= STRIKE_REACH, "the falcon came no nearer than " + closest[0] + " blocks to the foe");
-			helper.assertTrue(home <= PERCH_REACH, "the falcon did not come back: " + home + " blocks from the caster");
+			helper.assertTrue(home <= HOME_REACH, "the falcon did not come back: " + home + " blocks from the caster");
 			ArcherSkills.clearFor(caster);
 			caster.removeAllEffects();
 			foe.discard();
@@ -164,7 +167,7 @@ public class FalconGameTest {
 	/** The falcon looks, and the swoop reads, only on a client: this is the manual item. */
 	@GameTest(required = false, maxTicks = 40)
 	public void theFalconLooksLargeAndBrownOnAClientRequiresManualReview(final GameTestHelper helper) {
-		helper.fail("[MANUAL] cast Blitz Beat and look: a larger brown parrot perches on your shoulder, swoops at the struck foe on each strike, and flies off when the buff ends. This harness has no client renderer.");
+		helper.fail("[MANUAL] cast Blitz Beat and look: a larger brown parrot hovers above you, swoops at the struck foe on each strike, and flies off when the buff ends. This harness has no client renderer.");
 	}
 
 	private static ServerPlayer caster(final GameTestHelper helper) {

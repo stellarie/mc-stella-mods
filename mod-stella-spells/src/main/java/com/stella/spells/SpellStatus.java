@@ -77,6 +77,9 @@ public final class SpellStatus {
 	public static final Holder<MobEffect> HOLY_ARMS = register("holy_arms", new Status(MobEffectCategory.BENEFICIAL, 0xFFE08A));
 	public static final Holder<MobEffect> RESURRECTION_WARD = register("resurrection_ward", new Status(MobEffectCategory.BENEFICIAL, 0xF2E2A8));
 	public static final Holder<MobEffect> GUARDIAN_ANGEL = register("guardian_angel", new Status(MobEffectCategory.BENEFICIAL, 0xFFF4C2));
+	/** A refined book's own buffs: the share of damage a resistance book still turns aside, and the MATK a cast leaves. */
+	public static final Holder<MobEffect> REFINED_GUARD = register("refined_guard", new Status(MobEffectCategory.BENEFICIAL, 0x8FB4D9));
+	public static final Holder<MobEffect> REFINED_FOCUS = register("refined_focus", new Status(MobEffectCategory.BENEFICIAL, 0xB88FD9));
 	/** The last two priest skills: the wear the vow carries, and the prayer that refuses harm. */
 	public static final Holder<MobEffect> UNBROKEN_VOW = register("unbroken_vow", new Status(MobEffectCategory.BENEFICIAL, 0xC8D2DE));
 	public static final Holder<MobEffect> STEADFAST_PRAYER = register("steadfast_prayer", new Status(MobEffectCategory.BENEFICIAL, 0xF0E6B8));
@@ -116,12 +119,15 @@ public final class SpellStatus {
 			return amount;
 		}
 		// A shot that owes a book pays for it here, so the whole hit of that arrow is worth the book's number.
-		float result = amount * ArcherSkills.projectileDamage(victim, source) * ArrowHits.damageFactor(source)
-			* ArcherSkills.vultureFactor(victim, source);
+		// A shower arrow replaces the amount with its minimum roll; every factor after that still applies.
+		float result = ArcherSkills.showerDamage(source, amount) * ArcherSkills.projectileDamage(victim, source)
+			* ArrowHits.damageFactor(source) * ArcherSkills.vultureFactor(victim, source);
 		result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, result) : result;
 		// A Guardian Angel shares the blow with its priest here, in the one path every hit takes, so the
 		// shared part is taken before any other effect scales what is left.
 		result = PriestSkills.guardianShare(victim, level, source, result);
+		// A refined resistance book keeps turning a share of every blow aside while its buff lasts.
+		result = BookRefine.guard(victim, source, result);
 		if (result <= 0.0F || source.is(BLEEDING_DAMAGE) || !(source.getEntity() instanceof Player)) {
 			return result;
 		}

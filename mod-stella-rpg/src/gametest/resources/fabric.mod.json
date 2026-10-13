@@ -43,6 +43,7 @@
 			"com.stella.rpg.DeathRecapGameTest",
 			"com.stella.rpg.BagShareGameTest",
 			"com.stella.rpg.MatkGameTest",
+			"com.stella.rpg.BookBuffGameTest",
 			"com.stella.rpg.StrengthPercentGameTest",
 			"com.stella.rpg.StarterSwordGameTest",
 			"com.stella.rpg.NoHeartsGameTest",
@@ -70,6 +71,7 @@
 			"com.stella.rpg.SecondHotbarGameTest",
 			"com.stella.rpg.RangedAtkGameTest",
 			"com.stella.rpg.CritSeamGameTest",
+			"com.stella.rpg.CritShareGameTest",
 			"com.stella.rpg.ArcherGrantGameTest",
 			"com.stella.rpg.BonusGrantGameTest",
 			"com.stella.rpg.StatBonusReachGameTest",
@@ -85,7 +87,13 @@
 			"com.stella.rpg.WitherFlagGameTest",
 			"com.stella.rpg.DrawSpeedGameTest",
 			"com.stella.rpg.ArrowDiceGameTest",
-			"com.stella.rpg.MerchantRangedDieGameTest"
+			"com.stella.rpg.MerchantRangedDieGameTest",
+			"com.stella.rpg.DescriptionWidthGameTest",
+			"com.stella.rpg.JobInnateGameTest",
+			"com.stella.rpg.DoubleStrikeGameTest",
+			"com.stella.rpg.ArcaneWardGameTest",
+			"com.stella.rpg.SanctuaryGameTest",
+			"com.stella.rpg.CooldownReductionGameTest"
 		]
 	},
 	"depends": {

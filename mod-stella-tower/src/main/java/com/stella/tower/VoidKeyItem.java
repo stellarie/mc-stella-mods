@@ -1,7 +1,6 @@
 package com.stella.tower;
 
 import java.util.function.Consumer;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -60,6 +59,8 @@ public class VoidKeyItem extends Item {
 	public void appendHoverText(
 		final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> lines, final TooltipFlag flag
 	) {
-		lines.accept(Component.translatable("item.mod-stella-tower.void_key.desc").withStyle(ChatFormatting.GRAY));
+		for (Component line : ItemDescription.block("void_key").styledLines()) {
+			DescriptionLines.add(lines, line);
+		}
 	}
 }

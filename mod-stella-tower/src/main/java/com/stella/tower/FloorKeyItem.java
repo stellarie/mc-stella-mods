@@ -1,7 +1,6 @@
 package com.stella.tower;
 
 import java.util.function.Consumer;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -60,6 +59,8 @@ public class FloorKeyItem extends Item {
 	public void appendHoverText(
 		final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> lines, final TooltipFlag flag
 	) {
-		lines.accept(Component.translatable("item.mod-stella-tower.floor_key.desc").withStyle(ChatFormatting.GRAY));
+		for (Component line : ItemDescription.block("floor_key").styledLines()) {
+			DescriptionLines.add(lines, line);
+		}
 	}
 }

@@ -16,18 +16,11 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.DoorBlock;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.AABB;
@@ -50,253 +43,17 @@ public class TowerLostRoomGameTest {
 		return player;
 	}
 
-	/** A castle's footprint, in an empty spot of the tower dimension no earlier run has used. */
-	record Arena(ServerLevel level, int minX, int minZ, int maxX, int maxZ, LostRoomPiece piece) {
-	}
-
-	/** The ground's top under a column: the hill each arena is given, 0 to 4 blocks over y 60. */
-	static int hill(final int x, final int z) {
-		return 60 + Math.floorMod(x * 7 + z * 3, 5);
-	}
-
-	/** A castle built over a hill of stone, its floor one block above that hill. */
-	static Arena castle(final GameTestHelper helper) {
-		return castle(helper, LostCastleVariant.CASTLE, Direction.NORTH);
-	}
-
-	/** A castle of one variant, facing one way, built over a hill of stone, its floor one block above that hill. */
-	static Arena castle(final GameTestHelper helper, final LostCastleVariant variant, final Direction facing) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int area = TowerTestSupport.freshArea();
-		int minX = Math.floorMod(area, 4096) * 64;
-		int minZ = -200_000 - Math.floorMod(area / 4096, 1000) * 64;
-		int maxX = minX + LostRoomPiece.LENGTH - 1;
-		int maxZ = minZ + LostRoomPiece.WIDTH - 1;
-		for (int x = minX; x <= maxX; x++) {
-			for (int z = minZ; z <= maxZ; z++) {
-				for (int y = 56; y <= hill(x, z); y++) {
-					tower.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-				}
-			}
-		}
-		int floor = LostRoomPiece.floorOver(minX, minZ, maxX, maxZ, 1, (x, z) -> hill(x, z));
-		LostRoomPiece piece = new LostRoomPiece(minX, floor, minZ, facing, variant);
-		piece.build(tower, BoundingBox.infinite());
-		return new Arena(tower, minX, minZ, maxX, maxZ, piece);
-	}
-
-	/**
-	 * The castle's foundation: one block above the highest ground, and held up under the octagon it stands on.
-	 * The corners of the frame lie outside the octagon, so the corners read are the octagon's own four.
-	 */
-	@GameTest(maxTicks = 40)
-	public void theCastleStandsAboveTheGroundOnAFoundation(final GameTestHelper helper) {
-		Arena arena = castle(helper);
-		ServerLevel level = arena.level();
-		LostRoomPiece piece = arena.piece();
-		int floor = piece.getBoundingBox().minY();
-		int highest = Integer.MIN_VALUE;
-		int gaps = 0;
-		for (int x = arena.minX(); x <= arena.maxX(); x++) {
-			for (int z = arena.minZ(); z <= arena.maxZ(); z++) {
-				highest = Math.max(highest, hill(x, z));
-			}
-		}
-		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				if (TowerHex.kind(x, z) == TowerHex.Part.OUT) {
-					continue;
-				}
-				BlockPos at = piece.worldPos(x, 0, z);
-				for (int y = hill(at.getX(), at.getZ()) + 1; y < floor; y++) {
-					gaps += level.getBlockState(new BlockPos(at.getX(), y, at.getZ())).is(piece.palette().wall()) ? 0 : 1;
-				}
-			}
-		}
-		int beyond = 0;
-		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				if (TowerHex.kind(x, z) != TowerHex.Part.OUT) {
-					continue;
-				}
-				BlockPos at = piece.worldPos(x, floor - 1, z);
-				beyond += level.getBlockState(at).is(piece.palette().wall()) ? 1 : 0;
-			}
-		}
-		TowerTestSupport.result("castleSurface", "floor=" + floor + " highestGround=" + highest + " foundationGaps=" + gaps + " outsideFrame=" + beyond);
-		helper.assertTrue(floor == highest + 1, "the castle's floor is not one block above the highest ground: " + floor + " over " + highest);
-		helper.assertTrue(gaps == 0, "the foundation leaves " + gaps + " gaps down to the ground");
-		helper.succeed();
-	}
-
-	/**
-	 * The castle's frame: three octagonal storeys of six-wide ways, a breach through the ground storey's
-	 * south wall for its way in, the lost room's portal on the top storey with the workstations beside it,
-	 * and the ruin over all of it. The castle is a maze of nine rooms.
-	 */
-	@GameTest(maxTicks = 40)
-	public void theCastleHasItsStoreysItsBreachAndItsPortal(final GameTestHelper helper) {
-		Arena arena = castle(helper);
-		ServerLevel level = arena.level();
-		LostRoomPiece piece = arena.piece();
-		StringBuilder wrong = new StringBuilder();
-		int clearWays = 0;
-		int lids = 0;
-		for (int storey = 0; storey < TowerHex.STOREYS; storey++) {
-			int feet = TowerHex.floorAt(storey) + 1;
-			int ceiling = TowerHex.ceilingAt(storey);
-			for (TowerHex.Cell cell : TowerHex.cells()) {
-				boolean clear = true;
-				boolean lid = true;
-				// A walker needs the two blocks of its own height at the middle, not the whole column to the ceiling.
-				for (int y = feet; y <= feet + 1; y++) {
-					clear &= level.getBlockState(piece.worldPos(cell.middle().getX(), y, cell.middle().getZ())).isAir();
-				}
-				for (int dx = 0; dx < TowerMaze.PATH; dx++) {
-					for (int dz = 0; dz < TowerMaze.PATH; dz++) {
-						int x = cell.middle().getX() - TowerMaze.PATH / 2 + dx;
-						int z = cell.middle().getZ() - TowerMaze.PATH / 2 + dz;
-						// Only the cell's own blocks carry a lid: the octagon's cut corner has no room for one.
-						if (TowerHex.kind(x, z) != TowerHex.Part.WAY) {
-							continue;
-						}
-						// The stair of this storey rises through its own ceiling, so that mouth is open.
-						if (storey + 1 < TowerHex.STOREYS && stairMouth(x, z)) {
-							continue;
-						}
-						BlockState above = level.getBlockState(piece.worldPos(x, ceiling, z));
-						// The top storey's roof has to hold. A lower storey's ceiling is the floor above it, which
-						// the ruin gaps, cracks and greens on purpose, so only the roof is read as a lid.
-						boolean lidded = storey + 1 < TowerHex.STOREYS || !above.isAir();
-						lid &= lidded;
-						if (!lidded) {
-							wrong.append(" lid(").append(x).append(',').append(z).append(")=").append(above.getBlock().getName().getString())
-								.append(" kind=").append(TowerHex.kind(x, z))
-								.append(" palette=").append(piece.palette().wall().getName().getString())
-								.append(" foot=").append(level.getBlockState(piece.worldPos(x, feet, z)).getBlock().getName().getString());
-						}
-					}
-				}
-				clearWays += clear ? 1 : 0;
-				lids += lid ? 1 : 0;
-				if (!clear || !lid) {
-					wrong.append(" storey=").append(storey).append(" cell=").append(cell.cx()).append(',').append(cell.cz())
-						.append(" clear=").append(clear).append(" lid=").append(lid);
-				}
-			}
-		}
-		BlockPos portal = piece.portalPos();
-		boolean portalOk = level.getBlockState(portal).is(TowerBlocks.TOWER_PORTAL) && level.getBlockState(portal.above()).is(TowerBlocks.TOWER_PORTAL)
-			&& level.getBlockState(portal.below()).is(TowerBlocks.TOWER_FRAME) && level.getBlockState(portal.above(2)).is(TowerBlocks.TOWER_FRAME);
-		boolean onTop = portal.getY() - piece.getBoundingBox().minY() - 1 == TowerHex.floorAt(TowerHex.STOREYS - 1);
-		int open = 0;
-		int row = LostCastleHex.breachRow();
-		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
-			for (int y = 2; y <= LostCastleHex.BREACH_HEIGHT; y++) {
-				open += level.getBlockState(piece.worldPos(x, y, row)).isAir() ? 1 : 0;
-			}
-		}
-		// The wall the breach was cut through still stands over it, on the columns the octagon holds.
-		boolean walled = true;
-		for (int x = LostCastleHex.breachLow(); x < LostCastleHex.breachLow() + LostCastleHex.BREACH; x++) {
-			if (TowerHex.kind(x, row) == TowerHex.Part.OUT) {
-				continue;
-			}
-			walled &= !level.getBlockState(piece.worldPos(x, LostCastleHex.BREACH_HEIGHT + 1, row)).isAir();
-		}
-		boolean lit = level.getBlockState(piece.worldPos(LostCastleHex.entranceLow(), LostCastleHex.BREACH_HEIGHT + 1, row)).is(TowerBlocks.TOWER_LAMP)
-			&& level.getBlockState(piece.worldPos(LostCastleHex.entranceHigh(), LostCastleHex.BREACH_HEIGHT + 1, row)).is(TowerBlocks.TOWER_LAMP);
-		dump(helper, arena);
-		int chests = 0;
-		int cobwebs = 0;
-		int rubble = 0;
-		int bones = 0;
-		int candles = 0;
-		int chains = 0;
-		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				for (int y = 1; y < LostRoomPiece.HEIGHT; y++) {
-					BlockPos at = piece.worldPos(x, y, z);
-					BlockState state = level.getBlockState(at);
-					cobwebs += state.is(Blocks.COBWEB) ? 1 : 0;
-					chains += state.is(Blocks.IRON_CHAIN) ? 1 : 0;
-					bones += state.is(Blocks.SKELETON_SKULL) ? 1 : 0;
-					candles += state.is(Blocks.CANDLE) ? 1 : 0;
-					rubble += state.is(Blocks.COBBLESTONE) || state.is(Blocks.CRACKED_STONE_BRICKS) || state.is(Blocks.MOSSY_STONE_BRICKS)
-						|| state.is(Blocks.BROWN_MUSHROOM) || state.is(Blocks.MOSS_CARPET) ? 1 : 0;
-					if (level.getBlockEntity(at) instanceof ChestBlockEntity chest && !chest.isEmpty()) {
-						chests++;
-					}
-				}
-			}
-		}
-		TowerTestSupport.result("castleHex", "storeys=" + TowerHex.STOREYS + " ways=" + TowerHex.cells().size() + " clear=" + clearWays
-			+ " ceiling=" + lids + " wrong=[" + wrong + "] portal=" + portalOk + " topStorey=" + onTop + " breach=" + open + " walled=" + walled
-			+ " lit=" + lit + " stockedChests=" + chests + " cobwebs=" + cobwebs + " rubble=" + rubble + " bones=" + bones + " candles=" + candles
-			+ " chains=" + chains);
-		helper.assertTrue(wrong.isEmpty(), "a storey's way is not a six-wide hall under its ceiling:" + wrong);
-		helper.assertTrue(portalOk && onTop, "the lost room's portal is not lit on the top storey at " + portal);
-		helper.assertTrue(open == LostCastleHex.BREACH * (LostCastleHex.BREACH_HEIGHT - 1) && walled && lit,
-			"the breach in the south wall is not open, walled at its sides and lit: open=" + open + " walled=" + walled + " lit=" + lit);
-		helper.assertTrue(chests == LostCastleHex.castleChestBlocks(),
-			"the castle has " + chests + " stocked chests, not " + LostCastleHex.castleChestBlocks());
-		helper.assertTrue(cobwebs > 0 && rubble > 0 && bones > 0 && candles > 0 && chains > 0, "the castle is not ruined");
-		helper.succeed();
-	}
-
-	/** Whether a column is one a storey's stair climbs, whose ceiling is open over every step. */
-	private static boolean stairMouth(final int x, final int z) {
-		for (TowerHex.Cell cell : TowerHex.cells()) {
-			if (cell.cz() != TowerHex.COLS - 1) {
-				continue;
-			}
-			for (int rise = 0; rise < TowerHex.STOREY; rise++) {
-				int[] at = LostCastleHex.stairStep(cell, rise);
-				if (at[0] == x && at[1] == z) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/** Writes the castle's blocks, foundation included, for the preview render. */
-	static void dump(final GameTestHelper helper, final Arena arena) {
-		dump(helper, arena, "lost_castle_layout.txt");
-	}
-
-	static void dump(final GameTestHelper helper, final Arena arena, final String name) {
-		StringBuilder out = new StringBuilder();
-		int floor = arena.piece().getBoundingBox().minY();
-		for (int x = 0; x < LostRoomPiece.LENGTH; x++) {
-			for (int z = 0; z < LostRoomPiece.WIDTH; z++) {
-				for (int y = Math.min(56 - floor, arena.piece().lowest() - 1); y < LostRoomPiece.HEIGHT; y++) {
-					BlockState state = arena.level().getBlockState(arena.piece().worldPos(x, y, z));
-					if (!state.isAir()) {
-						out.append(x).append(' ').append(y).append(' ').append(z).append(' ')
-							.append(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock())).append('\n');
-					}
-				}
-			}
-		}
-		try {
-			java.nio.file.Files.writeString(helper.getLevel().getServer().getServerDirectory().resolve(name), out.toString());
-		} catch (java.io.IOException e) {
-			TowerTestSupport.LOG.warn("no castle layout written", e);
-		}
-	}
-
 	@GameTest(maxTicks = 40)
 	public void theGroundsWakeOnceWhenAPlayerComesNear(final GameTestHelper helper) {
-		Arena arena = castle(helper);
+		TowerLostCastleSupport.Arena arena = TowerLostCastleSupport.castle(helper, LostCastlePalette.GREEN, Direction.NORTH, LostCastleGrid.MIN_FLOORS);
 		ServerLevel level = arena.level();
 		LostRoomPiece piece = arena.piece();
 		AABB box = AABB.of(piece.getBoundingBox());
 		LostCastles.found(level.dimension(), piece);
 		ServerPlayer player = withLevel(helper, 40);
-		// Out from the gate, in the castle's frame.
-		Vec3 away = Vec3.atBottomCenterOf(piece.worldPos(LostCastleHex.breachMiddle(), 1, -LostCastles.WAKE_DISTANCE - 8));
-		Vec3 near = Vec3.atBottomCenterOf(piece.worldPos(LostCastleHex.breachMiddle(), 1, -LostCastles.WAKE_DISTANCE + 8));
+		// Out from the ring, in the castle's frame, from the edge of its box.
+		Vec3 away = Vec3.atBottomCenterOf(piece.worldPos(LostCastleGrid.MID, piece.surfaceFeet(), -LostCastles.WAKE_DISTANCE - 8));
+		Vec3 near = Vec3.atBottomCenterOf(piece.worldPos(LostCastleGrid.MID, piece.surfaceFeet(), -LostCastles.WAKE_DISTANCE + 8));
 		player.teleportTo(level, away.x, away.y, away.z, Set.of(), 0.0F, 0.0F, true);
 		int far = (int) LostCastles.wake(level.getServer()).stream().filter(mob -> box.contains(mob.position())).count();
 		player.teleportTo(level, near.x, near.y, near.z, Set.of(), 0.0F, 0.0F, true);
@@ -424,7 +181,7 @@ public class TowerLostRoomGameTest {
 		boolean typed = level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getValue(LostRooms.STRUCTURE) instanceof LostRoomStructure;
 		TowerTestSupport.result("lostVillages", "placement=" + placement + " houses=" + houses + " typed=" + typed);
 		helper.assertTrue(zone != null && "minecraft:villages".equals(zone.get("other_set").getAsString())
-			&& zone.get("chunk_count").getAsInt() * 16 >= 64 + Math.max(LostRoomPiece.LENGTH, LostRoomPiece.WIDTH) && houses && typed,
+			&& zone.get("chunk_count").getAsInt() * 16 >= 64 + LostCastleGrid.SIZE && houses && typed,
 			"the castles are not kept 64 blocks and a footprint from villages: " + placement);
 		helper.succeed();
 	}

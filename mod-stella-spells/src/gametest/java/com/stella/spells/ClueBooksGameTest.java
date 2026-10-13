@@ -59,7 +59,7 @@ public class ClueBooksGameTest {
 			Set<String> keys = translationKeys(content.getPages(false));
 			String text = String.join(" ", content.getPages(false).stream().map(Component::getString).toList());
 			boolean names = keys.contains(spell.ingredient().getDescriptionId())
-				&& keys.contains("item." + spell.id().getNamespace() + "." + spell.id().getPath() + ".effect")
+				&& keys.contains("item." + spell.id().getNamespace() + "." + spell.id().getPath() + ".desc")
 				&& text.contains("Book") && text.contains("Paper") && content.title().raw().contains(ClueBooks.displayName(spell.id()));
 			if (!names || !spell.id().equals(ClueBooks.teaches(clue))) {
 				missing.add(spell.id());

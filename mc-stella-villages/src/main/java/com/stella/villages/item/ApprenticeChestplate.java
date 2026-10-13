@@ -1,5 +1,6 @@
 package com.stella.villages.item;
 
+import com.stella.villages.DescriptionLines;
 import com.stella.villages.McStellaVillages;
 import java.util.List;
 import net.minecraft.core.Registry;
@@ -43,10 +44,13 @@ public final class ApprenticeChestplate extends Item {
 			.component(DataComponents.EQUIPPABLE, Equippable.builder(EquipmentSlot.CHEST)
 				.setEquipSound(ArmorMaterials.IRON.equipSound()).setAsset(ArmorMaterials.IRON.assetId()).build())
 			.repairable(ArmorMaterials.IRON.repairIngredient())
-			.component(DataComponents.LORE, new ItemLore(List.of(
-				Component.literal("1.5% damage reduction for each"),
-				Component.literal("light level below 15")
-			)));
+			.component(DataComponents.LORE, new ItemLore(lore()));
+	}
+
+	// A Requires and Desc block, split at the width when the item is built, because the village mod ships no language file.
+	static List<Component> lore() {
+		return DescriptionLines.block("worn on chest", String.format(java.util.Locale.ROOT, "%.1f%% damage reduction for each light level below %d.",
+			REDUCTION_PER_LIGHT * 100.0F, FULL_LIGHT));
 	}
 
 	// Literal, because the village mod ships no language file.

@@ -26,16 +26,21 @@ public final class LostRoomData extends SavedData {
 		).apply(instance, Instance::new));
 	}
 
-	/** One castle on the map: where its box stands, which way it faces, and whether its grounds were stocked. */
+	/**
+	 * One castle on the map: where its box stands, which way it faces, whether its grounds were stocked, its
+	 * palette, how many floors it has, and the drop from its ring to its top floor. A castle recorded before the
+	 * castles went down has no floors, and is left alone.
+	 */
 	public record Castle(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension, net.minecraft.core.BlockPos corner,
-		net.minecraft.core.Direction facing, boolean stocked, int variant) {
+		net.minecraft.core.Direction facing, boolean stocked, int variant, int floors, int drop) {
 		public static final Codec<Castle> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			net.minecraft.world.level.Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(Castle::dimension),
 			net.minecraft.core.BlockPos.CODEC.fieldOf("corner").forGetter(Castle::corner),
 			net.minecraft.core.Direction.CODEC.fieldOf("facing").forGetter(Castle::facing),
 			Codec.BOOL.fieldOf("stocked").forGetter(Castle::stocked),
-			// Recorded before the variants: the castle.
-			Codec.INT.optionalFieldOf("variant", 0).forGetter(Castle::variant)
+			Codec.INT.optionalFieldOf("variant", 0).forGetter(Castle::variant),
+			Codec.INT.optionalFieldOf("floors", 0).forGetter(Castle::floors),
+			Codec.INT.optionalFieldOf("drop", 0).forGetter(Castle::drop)
 		).apply(instance, Castle::new));
 
 		public String key() {
@@ -95,7 +100,7 @@ public final class LostRoomData extends SavedData {
 	}
 
 	public void stocked(final Castle castle) {
-		this.castles.put(castle.key(), new Castle(castle.dimension(), castle.corner(), castle.facing(), true, castle.variant()));
+		this.castles.put(castle.key(), new Castle(castle.dimension(), castle.corner(), castle.facing(), true, castle.variant(), castle.floors(), castle.drop()));
 		setDirty();
 	}
 

@@ -1,6 +1,7 @@
 package com.stella.equips.mastery;
 
 import com.stella.equips.StellaEquips;
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -118,8 +119,8 @@ public final class WeaponMastery {
 		if (perk != null) {
 			name += ": " + perk.title();
 		}
-		lines.add(Component.literal(name + " (" + kills + " kills" + next + ")")
-			.withStyle(style -> style.withColor(tier == 0 ? ChatFormatting.GRAY : ChatFormatting.GOLD).withItalic(false)));
+		lines.add(DescriptionLines.marked(Component.literal(name + " (" + kills + " kills" + next + ")")
+			.withStyle(style -> style.withColor(tier == 0 ? ChatFormatting.GRAY : ChatFormatting.GOLD).withItalic(false))));
 		return new ItemLore(lines);
 	}
 

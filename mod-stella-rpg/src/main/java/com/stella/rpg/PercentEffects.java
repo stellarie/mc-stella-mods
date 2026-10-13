@@ -62,7 +62,8 @@ public final class PercentEffects {
 		return amount(entity, ABSORPTION_FLOOR, ABSORPTION_SHARE) * (1 + amplifier);
 	}
 
-	static double eliteShare(final LivingEntity entity) {
+	/** The share a percent hit keeps on this target: a quarter on an elite or a boss, all of it on any other mob. */
+	public static double eliteShare(final LivingEntity entity) {
 		return entity instanceof Mob mob && MobsBridge.eliteOrBoss(mob) ? ELITE_SHARE : 1.0;
 	}
 

@@ -51,6 +51,7 @@ public final class CastHits {
 		final Identifier spell;
 		final boolean countable;
 		final List<PendingCredit> pending = new ArrayList<>();
+		final List<net.minecraft.world.entity.Mob> victims = new ArrayList<>();
 		boolean touched;
 
 		Context(final UUID caster, final Identifier spell, final boolean countable) {
@@ -61,6 +62,8 @@ public final class CastHits {
 	}
 
 	private static final ThreadLocal<Deque<Context>> OPEN = ThreadLocal.withInitial(ArrayDeque::new);
+	/** While above zero, nothing marks the open cast: a refine milestone's own effects never count as a hit. */
+	private static final ThreadLocal<Integer> PAUSED = ThreadLocal.withInitial(() -> 0);
 	/** Each cloud that waits to credit a book, weakly held so a cloud that never touches leaks nothing. */
 	private static final Map<AreaEffectCloud, PendingCredit> CLOUDS = Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -85,10 +88,28 @@ public final class CastHits {
 
 	/** Marks the open cast as having hit something, when it is this caster's. */
 	static void touch(final ServerPlayer caster) {
+		if (PAUSED.get() > 0) {
+			return;
+		}
 		Context context = OPEN.get().peek();
 		if (context != null && context.caster.equals(caster.getUUID())) {
 			context.touched = true;
 		}
+	}
+
+	/** Stops marking the open cast until {@link #resume}. */
+	static void pause() {
+		PAUSED.set(PAUSED.get() + 1);
+	}
+
+	static void resume() {
+		PAUSED.set(Math.max(0, PAUSED.get() - 1));
+	}
+
+	/** Every mob the open cast's caster has hurt so far, in order. */
+	static List<net.minecraft.world.entity.Mob> victims() {
+		Context context = OPEN.get().peek();
+		return context == null ? List.of() : List.copyOf(context.victims);
 	}
 
 	/** Closes the open cast; true when it hit something. Its pending credits are void when it did. */
@@ -156,6 +177,11 @@ public final class CastHits {
 	) {
 		if (damage > 0.0F && source.getEntity() instanceof ServerPlayer caster) {
 			touch(caster);
+			Context context = OPEN.get().peek();
+			if (PAUSED.get() == 0 && context != null && context.caster.equals(caster.getUUID())
+				&& victim instanceof net.minecraft.world.entity.Mob mob && !context.victims.contains(mob)) {
+				context.victims.add(mob);
+			}
 		}
 	}
 }

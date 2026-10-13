@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -25,6 +28,9 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.item.ArrowItem;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
@@ -33,12 +39,13 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The archer books: instant hit-scan rays with an arrow trail, never an arrow entity. A ray deals its
- * damage through {@link RpgBridge#skillDamage} with {@link School#ARCHER} exactly once, so no shot takes the
- * ranged dice a second time. Two books instead arm the next real arrow, and {@link SpellStatus#onHurt}
- * hands that arrow its blast through {@link #projectileDamage}.
- * Every book needs a bow or a crossbow and no arrow. A quiver in the off hand lends its arrows to the skills
- * that name them: each spent arrow adds its kind damage and effect to the hits it feeds. A book imbued on a
+ * The archer books: instant hit-scan rays with an arrow trail, and one real shower of arrow entities. A ray
+ * deals its damage through {@link RpgBridge#skillDamage} with {@link School#ARCHER} exactly once, so no shot
+ * takes the ranged dice a second time. Two books instead arm the next real arrow, and
+ * {@link SpellStatus#onHurt} hands that arrow its blast through {@link #projectileDamage}. Arrow Shower looses
+ * its arrows as entities, so a block in their way stops them and every arrow bonus applies as it does to a shot.
+ * Every book needs a bow or a crossbow, and Arrow Shower also spends eight arrows. A quiver in the off hand lends
+ * its arrows to the skills that name them: each spent arrow adds its kind damage and effect to the hits it feeds. A book imbued on a
  * bow casts from an arrow hit, needs neither, and spends nothing.
  */
 public final class ArcherSkills {
@@ -65,6 +72,10 @@ public final class ArcherSkills {
 	/** Spectral Quiver: half an hour of arrows the bow does not need, at three quarters the damage. */
 	static final int SPECTRAL_QUIVER_TICKS = 36_000;
 	static final double QUIVER_DAMAGE_FACTOR = 0.75;
+	/** What a +15 Elemental Quiver keeps: its Elemental Edge signature. */
+	static final double EDGED_QUIVER_DAMAGE_FACTOR = 0.90;
+	/** What a +15 Triangle Shot rolls: its Barrage signature. */
+	static final double BARRAGE_CHANCE = 0.50;
 	/** Wind Walk: half an hour at a quarter more walking speed. */
 	static final int WIND_WALK_TICKS = 36_000;
 	static final double WIND_WALK_SPEED = SpellStatus.WIND_WALK_SPEED;
@@ -80,14 +91,51 @@ public final class ArcherSkills {
 	static final float SHOT_PROBE_DAMAGE = 3.0F;
 	/** How much more each later foe on an awakened Piercing Shot line takes. */
 	static final float PIERCING_STEP = 0.25F;
-	/** Arrow Rain's own reach around its point, and how many ticks apart its pulses fall. */
-	static final double ARROW_RAIN_RADIUS = 4.0;
-	static final int ARROW_RAIN_PULSES = 5;
-	static final int AWAKENED_ARROW_RAIN_PULSES = 10;
-	static final int RAIN_INTERVAL_TICKS = 10;
+	/** Every archer skill reaches this far, in blocks, and no further. */
+	static final int SKILL_RANGE_BLOCKS = 24;
+	/** Arrow Shower: how many arrows it looses, over how many ticks, and what the cast costs in arrows. */
+	static final int ARROW_SHOWER_ARROWS = 64;
+	static final int AWAKENED_ARROW_SHOWER_ARROWS = 128;
+	static final int ARROW_SHOWER_TICKS = 80;
+	static final int ARROW_SHOWER_COST = 4;
+	/** The side, in blocks, of the square around the aimed point that the arrows come down on, and their loosing speed. */
+	static final double ARROW_SHOWER_SIDE = 3.0;
+	static final double ARROW_SHOWER_SPEED = 2.0;
+	/** The damage a shower arrow carries when the RPG mod gives no minimum roll: it deals the plain arrow damage. */
+	static final float NO_FIXED_DAMAGE = Float.NaN;
+	/** The tag the RPG mod reads: an arrow that carries it is not scaled by the dice, the status ATK or a crit roll. */
+	static final String RPG_FIXED_HIT_TAG = "mod-stella-rpg.fixed_hit";
+	/** The damage a shower arrow deals, in health points. It replaces the damage the arrow itself would deal. */
+	private static final AttachmentType<Float> SHOWER_DAMAGE = AttachmentRegistry.create(SpellStatus.id("arrow_shower_damage"));
+	/** The speed of an arrow from a fully drawn bow, and from a loaded crossbow: the plain damage of a shower arrow. */
+	private static final double FULL_DRAW_SPEED = 3.0;
+	private static final double CROSSBOW_ARROW_SPEED = 3.15;
+	/** Marks an arrow the shower loosed, so the damage seam and the friendly-fire rule can find it. */
+	static final String SHOWER_TAG = Spellbooks.MOD_ID + ".arrow_shower";
+	/** How far above the eye an arrow leaves, so it clears the caster's own head. */
+	private static final double SHOWER_LAUNCH_LIFT = 0.4;
+	/** The steps of the low-discrepancy sequence that places the spots: 1 / 1.3247 and 1 / 1.3247 squared. */
+	private static final double SPOT_STEP_X = 0.7548776662466927;
+	private static final double SPOT_STEP_Z = 0.5698402909980532;
+	/** The flattest and the steepest lob the shower solves for, in degrees. */
+	private static final double SHOWER_MIN_ELEVATION = 45.0;
+	private static final double SHOWER_MAX_ELEVATION = 89.5;
+	/** An arrow's own drag and gravity per tick, used to find where a lob comes down. */
+	private static final double ARROW_DRAG = 0.99;
+	private static final double ARROW_GRAVITY = 0.05;
+	private static final int LOB_STEPS = 400;
+	/** A shower arrow is taken out of the world once it is this old: the flight, then a few seconds in the ground. */
+	private static final int SHOWER_ARROW_LIFE_TICKS = 160;
+	/** The idle falcon: its reach, how long the owner must rest, its hits and the gap between attacks. */
+	static final double PARROT_RANGE = 8.0;
+	static final int PARROT_IDLE_TICKS = 40;
+	static final int PARROT_INTERVAL_TICKS = 30;
+	static final int PARROT_HITS = 3;
+	static final int PARROT_GLOW_TICKS = 60;
+	static final double PARROT_XP_SHARE = 0.35;
 	/** Double Strafe's hits on its target, and the reach of its shot. */
 	static final int DOUBLE_STRAFE_HITS = 2;
-	static final double RAPID_FIRE_RANGE = 24.0;
+	static final double RAPID_FIRE_RANGE = SKILL_RANGE_BLOCKS;
 	/** Vultures Eye: half an hour in which a far hit gains this much per block beyond the near range, up to a cap. */
 	static final int VULTURES_EYE_TICKS = 36_000;
 	static final double VULTURE_NEAR_BLOCKS = 8.0;
@@ -110,9 +158,6 @@ public final class ArcherSkills {
 	static final double SHARP_SHOOTING_CRIT_CHANCE = 0.30;
 	static final double TRUE_SIGHT_CRIT_CHANCE = 0.15;
 	static final double TRUE_SIGHT_AWAKENED_CRIT_CHANCE = 0.25;
-	/** How hard an Arrow Shower pulse pushes a foe away from its point. */
-	static final double ARROW_SHOWER_PUSH = 0.6;
-	static final double ARROW_SHOWER_LIFT = 0.1;
 	/** Ankle Snare: how near a foe has to come to spring a trap, and how many traps one archer keeps. */
 	static final double ANKLE_SNARE_RADIUS = 1.5;
 	static final int ANKLE_SNARE_LIFE_TICKS = 600;
@@ -122,8 +167,8 @@ public final class ArcherSkills {
 	static final double ARROW_REPEL_STRENGTH = 2.4;
 	static final double ARROW_REPEL_LIFT = 0.3;
 	static final double ARROW_REPEL_MIN_BLOCKS = 3.0;
-	/** The books that need ammunition. None does: a bow is enough, and a quiver adds its arrows to the skills. */
-	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of();
+	/** The books that need ammunition. Only Arrow Shower does; the rest need a bow, and a quiver adds its arrows. */
+	static final java.util.Set<String> AMMO_BOOKS = java.util.Set.of("arrow_rain");
 	/** Explosive Arrow's splash, and the three bomblets an awakened one scatters. */
 	static final double EXPLOSIVE_SPLASH_RADIUS = 3.0;
 	static final int EXPLOSIVE_BOMBLETS = 3;
@@ -143,6 +188,18 @@ public final class ArcherSkills {
 	private static final Map<UUID, List<Job>> JOBS = new ConcurrentHashMap<>();
 	/** The ankle snares each caster has laid, oldest first. */
 	private static final Map<UUID, List<Snare>> SNARES = new ConcurrentHashMap<>();
+	/** The Arrow Showers still loosing arrows, by caster. */
+	private static final Map<UUID, Shower> SHOWERS = new ConcurrentHashMap<>();
+	/** The arrows each caster's last shower loosed, by identity. */
+	private static final Map<UUID, List<UUID>> SHOWER_ARROWS = new ConcurrentHashMap<>();
+	/** The server tick a player last struck a blow of their own, which holds the idle falcon back. */
+	private static final Map<UUID, Integer> LAST_BLOW = new ConcurrentHashMap<>();
+	/** The server tick the idle falcon may next attack a player's foe. */
+	private static final Map<UUID, Integer> PARROT_READY = new ConcurrentHashMap<>();
+	/** Set while the falcon's own strike lands, so it never counts as a blow of the player. */
+	private static final ThreadLocal<Boolean> FALCON_STRIKING = new ThreadLocal<>();
+	/** The idle falcon strike now landing, so the foe it kills pays the player its share of experience. */
+	private static final ThreadLocal<ParrotKill> PARROT_KILL = new ThreadLocal<>();
 	/** Set while Sharp Shooting rolls its hits, so the critical seam reads its raised chance. */
 	private static final ThreadLocal<Boolean> SHARP_SHOOTING = new ThreadLocal<>();
 	/** How many timed pulses each caster has run, so a case can count a sequence rather than sample it. */
@@ -162,6 +219,8 @@ public final class ArcherSkills {
 		// An aimed bolt and an explosive arrow are paid on the arrow that lands, not on the cast that armed it.
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterArrowDamage);
 		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DAMAGE.register(ArcherSkills::afterOwnBlow);
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DAMAGE.register(ArcherSkills::allowDamage);
+		net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.ALLOW_DEATH.register(ArcherSkills::allowDeath);
 	}
 
 	/** No shot, job or mark outlives the server it was put on, and none keeps a due tick from another server. */
@@ -170,8 +229,13 @@ public final class ArcherSkills {
 		SPENT.clear();
 		JOBS.clear();
 		SNARES.clear();
+		SHOWERS.clear();
+		SHOWER_ARROWS.clear();
+		LAST_BLOW.clear();
+		PARROT_READY.clear();
 		PULSES_RUN.clear();
 		ArcherVisuals.clear();
+		FalconGuard.clear();
 		clock = 0;
 	}
 
@@ -184,6 +248,10 @@ public final class ArcherSkills {
 		SPENT.remove(caster.getUUID());
 		JOBS.remove(caster.getUUID());
 		SNARES.remove(caster.getUUID());
+		SHOWERS.remove(caster.getUUID());
+		SHOWER_ARROWS.remove(caster.getUUID());
+		LAST_BLOW.remove(caster.getUUID());
+		PARROT_READY.remove(caster.getUUID());
 		PULSES_RUN.remove(caster.getUUID());
 		ArcherVisuals.forget(caster);
 	}
@@ -217,9 +285,34 @@ public final class ArcherSkills {
 		blitzRandom = random;
 	}
 
+	/** The arrows the caster's last Arrow Shower loosed, by identity; the test seam for the shower. */
+	static List<UUID> showerArrows(final ServerPlayer caster) {
+		List<UUID> loosed = SHOWER_ARROWS.get(caster.getUUID());
+		return loosed == null ? List.of() : List.copyOf(loosed);
+	}
+
+	/** The test seam for the shower's landing spots: null rolls on the caster own source. */
+	private static volatile @Nullable RandomSource showerRandom;
+
+	static void setShowerRandom(final @Nullable RandomSource random) {
+		showerRandom = random;
+	}
+
 	/** True while this caster's next arrow still owes a book; the test seam for the next-shot books. */
 	static boolean shotOwed(final ServerPlayer caster) {
 		return SHOTS.containsKey(caster.getUUID());
+	}
+
+	/** Arms the shot this caster owes as an awakened one: the +15 Cluster Charge. False when no shot is owed. */
+	static boolean upgradeShot(final ServerPlayer caster) {
+		return SHOTS.computeIfPresent(caster.getUUID(),
+			(id, shot) -> new Shot(shot.kind(), shot.modifiers().withAwakened(true), shot.expiresAt())) != null;
+	}
+
+	/** True while the arrow this caster owes was armed awakened; the test seam for the next-shot books. */
+	static boolean owedShotAwakened(final ServerPlayer caster) {
+		Shot shot = SHOTS.get(caster.getUUID());
+		return shot != null && shot.modifiers().awakened();
 	}
 
 	// ---- the fourteen books ----
@@ -370,7 +463,8 @@ public final class ArcherSkills {
 
 	/** The share an archer skill hit keeps while the caster's quiver is spectral; 1.0 without it. */
 	static double quiverDamageFactor(final ServerPlayer caster) {
-		return caster.hasEffect(SpellStatus.SPECTRAL_QUIVER) ? QUIVER_DAMAGE_FACTOR : 1.0;
+		MobEffectInstance quiver = caster.getEffect(SpellStatus.SPECTRAL_QUIVER);
+		return quiver == null ? 1.0 : quiver.getAmplifier() >= 1 ? EDGED_QUIVER_DAMAGE_FACTOR : QUIVER_DAMAGE_FACTOR;
 	}
 
 	/** Wind Walk: half an hour at a quarter more walking speed, the modifier itself on the effect. */
@@ -445,10 +539,11 @@ public final class ArcherSkills {
 	 * one arrow otherwise. The roll is the caller's, so a seeded source drives it from a case.
 	 */
 	public static int barrage(final @Nullable ServerPlayer caster, final RandomSource random) {
-		if (caster == null || !caster.hasEffect(SpellStatus.TRIANGLE_SHOT)) {
+		MobEffectInstance triangle = caster == null ? null : caster.getEffect(SpellStatus.TRIANGLE_SHOT);
+		if (triangle == null) {
 			return 1;
 		}
-		return random.nextDouble() < TRIANGLE_SHOT_CHANCE ? TRIANGLE_SHOT_ARROWS : 1;
+		return random.nextDouble() < (triangle.getAmplifier() >= 1 ? BARRAGE_CHANCE : TRIANGLE_SHOT_CHANCE) ? TRIANGLE_SHOT_ARROWS : 1;
 	}
 
 	/** How much longer an aimed bolt stretches the draw of one bow or crossbow shot. */
@@ -478,9 +573,10 @@ public final class ArcherSkills {
 		}
 		// The hit that this arrow deals runs after the damage is scaled, so the spent shot waits for it.
 		SPENT.put(shooter.getUUID(), shot);
+		float refined = (float) BookRefine.statFactor(shot.modifiers().refineLevel());
 		return switch (shot.kind()) {
-			case AIMED_BOLT -> AIMED_BOLT_DAMAGE;
-			case EXPLOSIVE_ARROW -> EXPLOSIVE_ARROW_DAMAGE;
+			case AIMED_BOLT -> AIMED_BOLT_DAMAGE * refined;
+			case EXPLOSIVE_ARROW -> EXPLOSIVE_ARROW_DAMAGE * refined;
 		};
 	}
 
@@ -549,20 +645,248 @@ public final class ArcherSkills {
 		return !crossed.isEmpty();
 	}
 
-	/** Arrow Shower: pulses over the point the caster looks at, each pushing foes away. An awakened shower falls twice as long. */
+	/**
+	 * Arrow Shower: the caster lobs real arrows into the sky, one after another, and they come down over a square
+	 * {@link #ARROW_SHOWER_SIDE} blocks wide around the ground it looks at. The cast costs {@link #ARROW_SHOWER_COST}
+	 * arrows, from the quiver first and then the pack, and each spent arrow lends its kind to its share of the
+	 * shower. An imbued cast and a Spectral Quiver pay nothing. A caster who cannot pay casts nothing. Each arrow
+	 * deals the caster's minimum ranged roll when the RPG mod gives one.
+	 */
 	static boolean applyArrowRain(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
 		if (!bowReady(caster) || point == null) {
 			return false;
 		}
-		int pulses = modifiers.awakened() ? AWAKENED_ARROW_RAIN_PULSES : ARROW_RAIN_PULSES;
-
-		ArcherVisuals.note(caster, rain(caster, point, modifiers));
-		for (int pulse = 1; pulse < pulses; pulse++) {
-			owe(caster, new Job(point, null, dueIn(pulse * RAIN_INTERVAL_TICKS), JobKind.RAIN, modifiers));
+		List<ItemStack> ammo = showerAmmo(caster, modifiers);
+		if (ammo == null) {
+			return false;
 		}
+		int count = modifiers.awakened() ? AWAKENED_ARROW_SHOWER_ARROWS : ARROW_SHOWER_ARROWS;
+		RandomSource random = showerRandom != null ? showerRandom : caster.getRandom();
+		Shower shower = new Shower(showerSpots(point, count, random), ammo, weaponOf(caster), clock, minimumRoll(caster));
+		SHOWERS.put(caster.getUUID(), shower);
+		SHOWER_ARROWS.put(caster.getUUID(), new ArrayList<>());
+		ArcherVisuals.note(caster, ammo.get(0));
+		loosenDue(caster, shower, clock);
+		Spellbooks.LOGGER.info("[SPELL] event=ARROW_SHOWER caster={} arrows={} ticks={} cost={} damage={} at={} awakened={}",
+			caster.getUUID(), count, ARROW_SHOWER_TICKS, ammo.size(), shower.damage, point, modifiers.awakened());
 		return true;
+	}
+
+	// The low end of the caster's ranged ATK, in health points; none when the RPG mod gives no number.
+	private static float minimumRoll(final ServerPlayer caster) {
+		double floor = RpgBridge.floorAtk(caster, true);
+		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : NO_FIXED_DAMAGE;
+	}
+
+	/**
+	 * The arrows a cast spends, one single-arrow stack each, or null when the caster has too few. Nothing is
+	 * taken unless all of it can be: the check comes first.
+	 */
+	private static @Nullable List<ItemStack> showerAmmo(final ServerPlayer caster, final SpellModifiers.CastModifiers modifiers) {
+		if (imbuedCast() || hasSpectralQuiver(caster)) {
+			return List.of(new ItemStack(Items.ARROW));
+		}
+		int cost = BookRefine.arrowCost(ARROW_SHOWER_COST, modifiers.refineLevel());
+		if (arrowsOwned(caster) < cost) {
+			return null;
+		}
+		List<ItemStack> spent = new ArrayList<>();
+		for (int arrow = 0; arrow < cost; arrow++) {
+			ItemStack taken = Quiver.takeArrow(caster);
+			spent.add(taken.isEmpty() ? takePackArrow(caster) : taken);
+		}
+		return spent;
+	}
+
+	// Every arrow a shower may draw on: the quiver's, then the pack's.
+	private static int arrowsOwned(final ServerPlayer caster) {
+		int owned = 0;
+		for (ItemStack stack : Quiver.contents(Quiver.held(caster))) {
+			owned += stack.is(ItemTags.ARROWS) ? stack.getCount() : 0;
+		}
+		for (int slot = 0; slot < caster.getInventory().getContainerSize(); slot++) {
+			ItemStack stack = caster.getInventory().getItem(slot);
+			owned += ammo(stack) ? stack.getCount() : 0;
+		}
+		return owned;
+	}
+
+	private static ItemStack takePackArrow(final ServerPlayer caster) {
+		ItemStack arrows = firstAmmo(caster);
+		return arrows == null ? ItemStack.EMPTY : arrows.split(1);
+	}
+
+	/** The bow or crossbow a shower is loosed from: the weapon slot, else a hand; empty when there is none. */
+	private static ItemStack weaponOf(final ServerPlayer caster) {
+		ItemStack slot = RpgBridge.skillWeapon(caster);
+		if (ranged(slot)) {
+			return slot;
+		}
+		return ranged(caster.getMainHandItem()) ? caster.getMainHandItem()
+			: ranged(caster.getOffhandItem()) ? caster.getOffhandItem() : ItemStack.EMPTY;
+	}
+
+	/**
+	 * The ground spots a shower of this many arrows aims at, in loosing order. They fill the square around the
+	 * centre evenly, and any first few of them already spread over it, so the area is covered whatever the roll.
+	 * The roll shifts the whole pattern.
+	 */
+	static List<Vec3> showerSpots(final Vec3 centre, final int count, final RandomSource random) {
+		double alongX = random.nextDouble();
+		double alongZ = random.nextDouble();
+		List<Vec3> spots = new ArrayList<>(count);
+		for (int index = 0; index < count; index++) {
+			double x = (alongX + index * SPOT_STEP_X) % 1.0 - 0.5;
+			double z = (alongZ + index * SPOT_STEP_Z) % 1.0 - 0.5;
+			spots.add(new Vec3(centre.x + x * ARROW_SHOWER_SIDE, centre.y, centre.z + z * ARROW_SHOWER_SIDE));
+		}
+		return spots;
+	}
+
+	/**
+	 * The velocity that lobs an arrow from one point down onto another. The elevation is the steep one of the two
+	 * that reach, found by walking the arrow's own flight, so the arrow rises into the sky and falls back onto the
+	 * spot. A spot too far for the flattest lob gets that lob and falls short.
+	 */
+	static Vec3 showerVelocity(final Vec3 from, final Vec3 to) {
+		double across = Math.hypot(to.x - from.x, to.z - from.z);
+		double rise = to.y - from.y;
+		double flat = Math.toRadians(SHOWER_MIN_ELEVATION);
+		double steep = Math.toRadians(SHOWER_MAX_ELEVATION);
+		double elevation;
+		if (lobRange(flat, rise) <= across) {
+			elevation = flat;
+		} else if (lobRange(steep, rise) >= across) {
+			elevation = steep;
+		} else {
+			double low = flat;
+			double high = steep;
+			for (int step = 0; step < 48; step++) {
+				double middle = (low + high) / 2.0;
+				if (lobRange(middle, rise) > across) {
+					low = middle;
+				} else {
+					high = middle;
+				}
+			}
+			elevation = (low + high) / 2.0;
+		}
+		double dx = across > 1.0E-6 ? (to.x - from.x) / across : 0.0;
+		double dz = across > 1.0E-6 ? (to.z - from.z) / across : 1.0;
+		double flatSpeed = ARROW_SHOWER_SPEED * Math.cos(elevation);
+		return new Vec3(dx * flatSpeed, ARROW_SHOWER_SPEED * Math.sin(elevation), dz * flatSpeed);
+	}
+
+	// How far across an arrow loosed at this elevation has flown when it comes back down through the rise.
+	private static double lobRange(final double elevation, final double rise) {
+		double across = 0.0;
+		double height = 0.0;
+		double flat = ARROW_SHOWER_SPEED * Math.cos(elevation);
+		double lift = ARROW_SHOWER_SPEED * Math.sin(elevation);
+		for (int tick = 0; tick < LOB_STEPS; tick++) {
+			double lastAcross = across;
+			double lastHeight = height;
+			across += flat;
+			height += lift;
+			flat *= ARROW_DRAG;
+			lift = lift * ARROW_DRAG - ARROW_GRAVITY;
+			if (lift < 0.0 && height <= rise) {
+				double share = (lastHeight - rise) / (lastHeight - height);
+				return lastAcross + (across - lastAcross) * share;
+			}
+		}
+		return across;
+	}
+
+	/**
+	 * Looses one shower arrow of this ammunition from a point at a velocity. It is a real arrow of the caster, fired
+	 * from the caster's weapon so that bow enchantments and the arrow's own effects apply, and it cannot be picked up.
+	 * Its hit deals the damage given, in health points, in place of the arrow's own; a NaN keeps the arrow's own.
+	 */
+	static AbstractArrow spawnShowerArrow(
+		final ServerPlayer caster, final ItemStack ammo, final ItemStack weapon, final Vec3 from, final Vec3 velocity, final float damage
+	) {
+		ServerLevel level = (ServerLevel) caster.level();
+		ArrowItem item = ammo.getItem() instanceof ArrowItem arrowItem ? arrowItem : (ArrowItem) Items.ARROW;
+		AbstractArrow arrow = item.createArrow(level, ammo.copyWithCount(1), caster, weapon.isEmpty() ? null : weapon);
+		arrow.setPos(from.x, from.y, from.z);
+		arrow.pickup = AbstractArrow.Pickup.DISALLOWED;
+		arrow.addTag(SHOWER_TAG);
+		if (!Float.isNaN(damage)) {
+			((AttachmentTarget) arrow).setAttached(SHOWER_DAMAGE, damage);
+			arrow.addTag(RPG_FIXED_HIT_TAG);
+		}
+		Projectile.spawnProjectileUsingShoot(arrow, level, weapon, velocity.x, velocity.y, velocity.z, (float) velocity.length(), 0.0F);
+		return arrow;
+	}
+
+	// Looses every arrow whose time has come: arrow k leaves at tick k times the shower's length over its size.
+	private static void loosenDue(final ServerPlayer caster, final Shower shower, final int now) {
+		int size = shower.spots.size();
+		while (shower.loosed < size && now - shower.startedAt >= (long) shower.loosed * ARROW_SHOWER_TICKS / size) {
+			Vec3 spot = shower.spots.get(shower.loosed);
+			Vec3 from = caster.getEyePosition().add(0.0, SHOWER_LAUNCH_LIFT, 0.0);
+			ItemStack ammo = shower.ammo.get(shower.loosed % shower.ammo.size());
+			AbstractArrow arrow = spawnShowerArrow(caster, ammo, shower.weapon, from, showerVelocity(from, spot), shower.damage);
+			SHOWER_ARROWS.computeIfAbsent(caster.getUUID(), id -> new ArrayList<>()).add(arrow.getUUID());
+			((ServerLevel) caster.level()).playSound(null, from.x, from.y, from.z, SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS, 0.5F,
+				0.8F + caster.getRandom().nextFloat() * 0.5F);
+			shower.loosed++;
+		}
+	}
+
+	// A shower ends when its last arrow is loosed or its caster is gone; its arrows are taken out of the world when old.
+	private static void tickShowers(final MinecraftServer server, final int now) {
+		for (Map.Entry<UUID, Shower> entry : List.copyOf(SHOWERS.entrySet())) {
+			ServerPlayer caster = server.getPlayerList().getPlayer(entry.getKey());
+			Shower shower = entry.getValue();
+			if (caster == null || !caster.isAlive() || shower.loosed >= shower.spots.size()) {
+				SHOWERS.remove(entry.getKey());
+			} else {
+				loosenDue(caster, shower, now);
+			}
+		}
+		if (now % 10 != 0) {
+			return;
+		}
+		for (Map.Entry<UUID, List<UUID>> entry : SHOWER_ARROWS.entrySet()) {
+			ServerPlayer owner = server.getPlayerList().getPlayer(entry.getKey());
+			if (owner == null) {
+				continue;
+			}
+			for (UUID id : List.copyOf(entry.getValue())) {
+				Entity arrow = ((ServerLevel) owner.level()).getEntity(id);
+				if (arrow != null && arrow.tickCount >= SHOWER_ARROW_LIFE_TICKS) {
+					arrow.discard();
+				}
+			}
+		}
+	}
+
+	/**
+	 * The speed an arrow's damage is made from. A shower arrow lands at the end of a lob, much slower than a shot
+	 * from a drawn weapon, so its plain damage reads as a full draw of the weapon it was loosed from. This is the
+	 * damage of a shower arrow when the RPG mod gives no minimum roll.
+	 */
+	public static double damageSpeed(final AbstractArrow arrow, final double speed) {
+		if (!arrow.entityTags().contains(SHOWER_TAG)) {
+			return speed;
+		}
+		ItemStack weapon = arrow.getWeaponItem();
+		return weapon != null && weapon.getItem() instanceof CrossbowItem ? CROSSBOW_ARROW_SPEED : FULL_DRAW_SPEED;
+	}
+
+	/** The damage of a hit: the minimum roll a shower arrow carries, else the amount the hit would deal. */
+	static float showerDamage(final net.minecraft.world.damagesource.DamageSource source, final float amount) {
+		if (source.getDirectEntity() instanceof AbstractArrow arrow) {
+			Float fixed = ((AttachmentTarget) arrow).getAttached(SHOWER_DAMAGE);
+			if (fixed != null) {
+				return fixed;
+			}
+		}
+		return amount;
 	}
 
 	/** Double Strafe: two archer hits on the target at once, with no arrow spent. */
@@ -629,6 +953,8 @@ public final class ArcherSkills {
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
 		caster.addEffect(new MobEffectInstance(SpellStatus.BLITZ_BEAT, BLITZ_BEAT_TICKS, modifiers.awakened() ? 1 : 0), caster);
+		LAST_BLOW.put(caster.getUUID(), clock);
+		PARROT_READY.remove(caster.getUUID());
 		Falcons.ensure(caster);
 		caster.level().sendParticles(ParticleTypes.DUST_PLUME, caster.getX(), caster.getY(1.0), caster.getZ(), 14, 0.4, 0.4, 0.4, 0.02);
 		Spellbooks.LOGGER.info("[SPELL] event=BLITZ_BEAT caster={} ticks={} chance={} bowChance={} awakened={}",
@@ -692,6 +1018,7 @@ public final class ArcherSkills {
 		if (owner == null) {
 			return;
 		}
+		guardOnBlow(owner, foe);
 		RandomSource override = blitzRandom;
 		int strikes = blitzStrikes(owner, override != null ? override : owner.getRandom());
 		if (strikes <= 0) {
@@ -774,12 +1101,14 @@ public final class ArcherSkills {
 	/** What one falcon strike deals: the caster floor ATK, else the book own number when the RPG mod gives none. */
 	static float strikeDamage(final ServerPlayer caster, final boolean ranged) {
 		double floor = RpgBridge.floorAtk(caster, ranged);
-		return Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+		float base = Double.isFinite(floor) && floor >= 0.0 ? RpgBridge.vanilla((float) floor) : SpellNumbers.HUNTERS_MARK.damage();
+		return base * (float) BookRefine.statFactor(BookRefine.castLevel(caster.getUUID(), "hunters_mark"));
 	}
 
 	// One falcon strike: a coloured burst and layered sounds on the foe, then the amount fixed when it was called.
-	// A fixed number never rolls a crit.
-	private static void strike(final ServerPlayer caster, final Mob foe, final float amount) {
+	// A fixed number never rolls a crit. The foe glows for a few seconds. A foe an idle strike kills drops no orbs
+	// and pays the owner its share of the experience at once.
+	private static void strike(final ServerPlayer caster, final Mob foe, final float amount, final JobKind kind) {
 		ServerLevel level = (ServerLevel) caster.level();
 		Identifier spell = book("hunters_mark");
 		Vec3 at = foe.getBoundingBox().getCenter();
@@ -791,8 +1120,147 @@ public final class ArcherSkills {
 		if (foe.damageCooldownTime > 0) {
 			foe.damageCooldownTime = 0;
 		}
-		Falcons.swoop(caster, foe);
-		foe.hurtServer(level, RpgBridge.skillSource(caster), amount);
+		foe.addEffect(new MobEffectInstance(MobEffects.GLOWING, PARROT_GLOW_TICKS), caster);
+		if (kind == JobKind.GUARD) {
+			Falcons.swoopGuard(caster, foe);
+		} else {
+			Falcons.swoop(caster, foe);
+		}
+		double xpShare = switch (kind) {
+			case PARROT -> PARROT_XP_SHARE;
+			case GUARD -> FalconGuard.XP_SHARE;
+			default -> 0.0;
+		};
+		ParrotKill kill = xpShare > 0.0 ? new ParrotKill(foe, caster) : null;
+		FALCON_STRIKING.set(Boolean.TRUE);
+		PARROT_KILL.set(kill);
+		try {
+			foe.hurtServer(level, RpgBridge.skillSource(caster), amount);
+		} finally {
+			FALCON_STRIKING.remove();
+			PARROT_KILL.remove();
+		}
+		if (kill != null && kill.reward >= 0) {
+			int share = (int) Math.round(kill.reward * xpShare);
+			caster.giveExperiencePoints(share);
+			Spellbooks.LOGGER.info("[SPELL] event={} caster={} foe={} reward={} share={}",
+				kind == JobKind.GUARD ? "GUARD_KILL" : "PARROT_KILL", caster.getUUID(), foe.getUUID(), kill.reward, share);
+		}
+	}
+
+	// A blow of a player stops the idle falcon for a while. The falcon's own strikes never count as one.
+	private static boolean allowDamage(
+		final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source, final float amount
+	) {
+		if (source.getEntity() instanceof ServerPlayer player && victim != player && FALCON_STRIKING.get() == null) {
+			LAST_BLOW.put(player.getUUID(), clock);
+		}
+		// A shower arrow bounces off its own caster and off anyone the skills help.
+		if (source.getDirectEntity() instanceof AbstractArrow arrow && arrow.entityTags().contains(SHOWER_TAG)
+			&& arrow.getOwner() instanceof LivingEntity owner) {
+			return victim != owner && !SkillTargeting.isAlly(owner, victim);
+		}
+		return true;
+	}
+
+	// The foe an idle falcon strike is about to kill: take its experience now, while it still has its gear, and
+	// spare the world its orbs.
+	private static boolean allowDeath(
+		final LivingEntity victim, final net.minecraft.world.damagesource.DamageSource source, final float amount
+	) {
+		ParrotKill kill = PARROT_KILL.get();
+		if (kill != null && victim == kill.foe && victim.level() instanceof ServerLevel level) {
+			kill.reward = kill.foe.getExperienceReward(level, kill.owner);
+			kill.foe.skipDropExperience();
+		}
+		return true;
+	}
+
+	// The Falcon Guard rests until the archer has struck no blow for five seconds. Then, every two seconds, it strikes the
+	// nearest foe within reach three times. Blitz Beat does not share its timers.
+	private static void tickGuards(final MinecraftServer server, final int now) {
+		if (now % FalconGuard.CHECK_TICKS != 0) {
+			return;
+		}
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			guardIdleCheck(player, now);
+		}
+	}
+
+	/** The chance of the falcon on a blow: the base, plus the Blitz Beat bonus of 1 percent per 5 LUK, at most 1. */
+	static double guardChance(final LivingEntity caster) {
+		double luk = Math.max(0.0, blitzStats.stat(caster, "luk"));
+		return Math.min(1.0, FalconGuard.CHANCE + luk * BLITZ_BEAT_CHANCE_PER_LUK);
+	}
+
+	/** What one Falcon Guard hit deals: the average of the lowest and highest ranged roll, else the book number. */
+	static float guardDamage(final ServerPlayer caster) {
+		double average = RpgBridge.averageAtk(caster, true);
+		return Double.isFinite(average) && average >= 0.0 ? RpgBridge.vanilla((float) average) : SpellNumbers.HUNTERS_MARK.damage();
+	}
+
+	/** A blow of the archer: true when the falcon rolled a strike at the mob that was hit and queued the hits. */
+	static boolean guardOnBlow(final ServerPlayer owner, final Mob foe) {
+		if (!owner.isAlive() || owner.isSpectator() || !FalconGuard.holds(owner) || !FalconGuard.roll(owner, guardChance(owner))) {
+			return false;
+		}
+		queueGuardHits(owner, foe, "BLOW");
+		return true;
+	}
+
+	/** One two-second check of the idle Falcon Guard: true when the archer has rested long enough and a foe is in reach. */
+	static boolean guardIdleCheck(final ServerPlayer player, final int now) {
+		if (!player.isAlive() || player.isSpectator() || !FalconGuard.holds(player)) {
+			return false;
+		}
+		int rested = now - LAST_BLOW.computeIfAbsent(player.getUUID(), key -> now);
+		if (rested < FalconGuard.IDLE_TICKS) {
+			return false;
+		}
+		Mob foe = nearestFoe(player, player, FalconGuard.RANGE);
+		if (foe == null) {
+			return false;
+		}
+		queueGuardHits(player, foe, "IDLE");
+		return true;
+	}
+
+	private static void queueGuardHits(final ServerPlayer player, final Mob foe, final String cause) {
+		float amount = guardDamage(player);
+		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
+		for (int hit = 0; hit < FalconGuard.HITS; hit++) {
+			owe(player, new Job(null, foe.getUUID(), dueIn(1 + hit * BLITZ_BEAT_INTERVAL_TICKS), JobKind.GUARD, plain, amount));
+		}
+		((ServerLevel) player.level()).playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.2F);
+		Spellbooks.LOGGER.info("[SPELL] event=FALCON_GUARD_ATTACK cause={} caster={} foe={} hits={} amount={}",
+			cause, player.getUUID(), foe.getUUID(), FalconGuard.HITS, amount);
+	}
+
+	// The idle falcon: a player with Blitz Beat who has not struck a blow for a while sends the falcon at the nearest
+	// foe within reach, three hits, and then it rests before it picks a foe again.
+	private static void tickParrots(final MinecraftServer server, final int now) {
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			if (!player.isAlive() || player.isSpectator() || !player.hasEffect(SpellStatus.BLITZ_BEAT)) {
+				continue;
+			}
+			UUID id = player.getUUID();
+			int rested = now - LAST_BLOW.computeIfAbsent(id, key -> now);
+			if (rested < PARROT_IDLE_TICKS || now < PARROT_READY.getOrDefault(id, 0)) {
+				continue;
+			}
+			Mob foe = nearestFoe(player, player, PARROT_RANGE);
+			if (foe == null) {
+				continue;
+			}
+			PARROT_READY.put(id, now + PARROT_INTERVAL_TICKS);
+			float amount = strikeDamage(player, bowInHand(player));
+			SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
+			for (int hit = 0; hit < PARROT_HITS; hit++) {
+				owe(player, new Job(null, foe.getUUID(), now + 1 + hit * BLITZ_BEAT_INTERVAL_TICKS, JobKind.PARROT, plain, amount));
+			}
+			((ServerLevel) player.level()).playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.6F);
+			Spellbooks.LOGGER.info("[SPELL] event=PARROT_ATTACK caster={} foe={} hits={} rested={}", id, foe.getUUID(), PARROT_HITS, rested);
+		}
 	}
 
 	// A snare springs on the nearest foe within its reach; true when it did.
@@ -1047,8 +1515,9 @@ public final class ArcherSkills {
 	// ---- the timed jobs ----
 
 	private enum JobKind {
-		RAIN,
 		BLITZ,
+		PARROT,
+		GUARD,
 		BOMBLET
 	}
 
@@ -1059,6 +1528,36 @@ public final class ArcherSkills {
 	}
 
 	private record Shot(ShotKind kind, SpellModifiers.CastModifiers modifiers, int expiresAt) {
+	}
+
+	/** One running Arrow Shower: where its arrows aim, what they are made of, and how many have left. */
+	private static final class Shower {
+		final List<Vec3> spots;
+		final List<ItemStack> ammo;
+		final ItemStack weapon;
+		final int startedAt;
+		final float damage;
+		int loosed;
+
+		Shower(final List<Vec3> spots, final List<ItemStack> ammo, final ItemStack weapon, final int startedAt, final float damage) {
+			this.spots = spots;
+			this.ammo = ammo;
+			this.weapon = weapon;
+			this.startedAt = startedAt;
+			this.damage = damage;
+		}
+	}
+
+	/** The foe an idle falcon strike is hitting, and the experience it carried when it died under that strike. */
+	private static final class ParrotKill {
+		final Mob foe;
+		final ServerPlayer owner;
+		int reward = -1;
+
+		ParrotKill(final Mob foe, final ServerPlayer owner) {
+			this.foe = foe;
+			this.owner = owner;
+		}
 	}
 
 	private record Job(
@@ -1088,6 +1587,9 @@ public final class ArcherSkills {
 		int now = ++clock;
 		SHOTS.entrySet().removeIf(entry -> now >= entry.getValue().expiresAt());
 		tickSnares(server, now);
+		tickShowers(server, now);
+		tickParrots(server, now);
+		tickGuards(server, now);
 		for (Map.Entry<UUID, List<Job>> entry : List.copyOf(JOBS.entrySet())) {
 			ServerPlayer caster = server.getPlayerList().getPlayer(entry.getKey());
 			if (caster == null || !caster.isAlive()) {
@@ -1127,10 +1629,9 @@ public final class ArcherSkills {
 		PULSES_RUN.merge(caster.getUUID(), 1, Integer::sum);
 
 		switch (job.kind()) {
-			case RAIN -> rain(caster, job.at(), job.modifiers());
-			case BLITZ -> {
+			case BLITZ, PARROT, GUARD -> {
 				if (job.foe() != null && ((ServerLevel) caster.level()).getEntity(job.foe()) instanceof Mob foe && foe.isAlive()) {
-					strike(caster, foe, job.amount());
+					strike(caster, foe, job.amount(), job.kind());
 				}
 			}
 			case BOMBLET -> {
@@ -1142,35 +1643,6 @@ public final class ArcherSkills {
 				}
 			}
 		}
-	}
-
-	// One Arrow Rain pulse: a handful of falling arrows over the point, and a hit on everything there.
-	private static ItemStack rain(final ServerPlayer caster, final @Nullable Vec3 point, final SpellModifiers.CastModifiers modifiers) {
-		if (point == null) {
-			return ItemStack.EMPTY;
-		}
-		ServerLevel level = (ServerLevel) caster.level();
-		double radius = SpellNumbers.ARROW_RAIN.radius(modifiers);
-		for (int arrow = 0; arrow < 8; arrow++) {
-			double angle = arrow * (Math.PI * 2.0 / 8.0);
-			double x = point.x + Math.cos(angle) * radius * 0.7;
-			double z = point.z + Math.sin(angle) * radius * 0.7;
-			level.sendParticles(ParticleTypes.FALLING_OBSIDIAN_TEAR, x, point.y + 4.0, z, 2, 0.0, 0.0, 0.0, 0.0);
-		}
-		ItemStack arrow = takeSkillArrow(caster);
-		int color = ArcherVisuals.colorOf(arrow);
-		Identifier spell = book("arrow_rain");
-		ArcherVisuals.ring(level, caster, spell, point.add(0.0, 0.1, 0.0), radius, color, 20);
-		SpellVisuals.particle(level, caster, spell, ParticleTypes.CRIT, point.add(0.0, 2.0, 0.0), 10, radius / 2.0, 0.2);
-		SpellVisuals.sound(level, caster, spell, SoundEvents.ARROW_SHOOT, point, 0.6F, 0.9F);
-		SpellVisuals.sound(level, caster, spell, SoundEvents.AMETHYST_BLOCK_CHIME, point, 0.4F, 1.7F);
-		for (Mob foe : foesAroundPoint(caster, point, radius)) {
-			hit(caster, foe, SpellNumbers.ARROW_RAIN.damage(), modifiers, arrow);
-			Vec3 away = foe.position().subtract(point);
-			shove(foe, away.multiply(1.0, 0.0, 1.0).lengthSqr() < 1.0E-6 ? foe.position().subtract(caster.position()) : away,
-				ARROW_SHOWER_PUSH, ARROW_SHOWER_LIFT);
-		}
-		return arrow;
 	}
 
 	/**

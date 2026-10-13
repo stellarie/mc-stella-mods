@@ -25,11 +25,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The lost castles' grounds: each castle, once generated, is recorded; the first time a player comes within
- * {@link #WAKE_DISTANCE} blocks of it, three to six tower mobs rise in its courtyard, at the lost room's
- * level rule. They rise once and never again.
+ * {@link #WAKE_DISTANCE} blocks of it, three to six tower mobs rise in its yard, the ring on the surface, at
+ * the lost room's level rule. They rise once and never again.
+ * <p>
+ * A castle's spawners raise tower mobs, capped per floor. No mob spawns of itself inside the frame of a
+ * castle's portal.
  * <p>
  * Worldgen threads only queue a castle; the server thread writes the record.
  */
@@ -40,11 +44,10 @@ public final class LostCastles {
 	public static final int MAX_STOCK_ATTEMPTS = MAX_MOBS * 4;
 	public static final int CHECK_TICKS = 20;
 	public static final int SPOT_TRIES = 40;
-	/** What a mob of a storey spawner carries, so the storey cap can count its own mobs. */
+	/** What a mob of a floor spawner carries, so the floor cap can count its own mobs. */
 	public static final String SPAWN_TAG = "mod-stella-tower.lost_castle_spawn";
-	/** The most spawner mobs alive on a ground or a middle storey of a castle, and on the top storey, which holds more turrets. */
-	public static final int STOREY_CAP = 8;
-	public static final int TOP_STOREY_CAP = 10;
+	/** The most spawner mobs alive on one floor of a castle. */
+	public static final int FLOOR_CAP = 8;
 	private static final Queue<LostRoomData.Castle> FOUND = new ConcurrentLinkedQueue<>();
 
 	private LostCastles() {
@@ -62,25 +65,41 @@ public final class LostCastles {
 		});
 	}
 
+	/** The reasons a mob appears of itself: a spawner, the dark or a chunk's making raises it. */
+	private static boolean spawnsOfItself(final EntitySpawnReason reason) {
+		return reason == EntitySpawnReason.SPAWNER || reason == EntitySpawnReason.NATURAL || reason == EntitySpawnReason.CHUNK_GENERATION
+			|| reason == EntitySpawnReason.TRIAL_SPAWNER || reason == EntitySpawnReason.REINFORCEMENT || reason == EntitySpawnReason.JOCKEY
+			|| reason == EntitySpawnReason.PATROL;
+	}
+
 	/**
-	 * Turns a mob that a vanilla spawner has just raised inside a lost castle into a tower mob of the lost
-	 * room's level rule, unless its storey already holds {@link #STOREY_CAP} of them. Any other mob, a mob
-	 * loaded from disk and a mob that is a tower mob already are left alone, so the hook can run twice.
+	 * Refuses a mob that spawns of itself inside the frame of a castle's portal, and turns a mob that a vanilla
+	 * spawner has just raised inside a lost castle into a tower mob of the lost room's level rule, unless its
+	 * floor already holds {@link #FLOOR_CAP} of them. Any other mob, a mob loaded from disk and a mob that is a
+	 * tower mob already are left alone, so the hook can run twice.
 	 */
 	static void onSpawnerMob(final Entity entity, final ServerLevel level) {
-		if (!(entity instanceof Mob mob) || !(entity instanceof EntityLoadData load) || load.isLoadedFromDisk()
-			|| load.spawnReason() != EntitySpawnReason.SPAWNER || TowerMobs.stateOf(mob) != null) {
+		if (!(entity instanceof Mob mob) || !(entity instanceof EntityLoadData load) || load.isLoadedFromDisk() || !spawnsOfItself(load.spawnReason())) {
 			return;
 		}
-		BoundingBox box = castleBoxAt(level, mob.blockPosition());
-		if (box == null) {
+		LostRoomData.Castle castle = castleAt(level, mob.blockPosition());
+		if (castle == null) {
 			return;
 		}
-		int storey = Math.max(0, Math.min(TowerHex.STOREYS - 1, (mob.blockPosition().getY() - box.minY()) / TowerHex.STOREY));
-		int low = box.minY() + TowerHex.floorAt(storey);
-		AABB slab = new AABB(box.minX(), low, box.minZ(), box.maxX() + 1, low + TowerHex.STOREY, box.maxZ() + 1);
+		LostRoomPiece piece = piece(castle);
+		if (piece.portalFrame().isInside(mob.blockPosition())) {
+			mob.discard();
+			return;
+		}
+		if (load.spawnReason() != EntitySpawnReason.SPAWNER || TowerMobs.stateOf(mob) != null) {
+			return;
+		}
+		BoundingBox box = piece.getBoundingBox();
+		int floor = Math.max(0, Math.min(castle.floors() - 1, (mob.blockPosition().getY() - box.minY()) / LostCastleGrid.FLOOR_HEIGHT));
+		int low = box.minY() + floor * LostCastleGrid.FLOOR_HEIGHT;
+		AABB slab = new AABB(box.minX(), low, box.minZ(), box.maxX() + 1, low + LostCastleGrid.FLOOR_HEIGHT, box.maxZ() + 1);
 		int alive = level.getEntitiesOfClass(Mob.class, slab, other -> other != mob && other.isAlive() && other.entityTags().contains(SPAWN_TAG)).size();
-		if (alive >= storeyCap(storey)) {
+		if (alive >= FLOOR_CAP) {
 			mob.discard();
 			return;
 		}
@@ -96,22 +115,14 @@ public final class LostCastles {
 		mob.addTag(SPAWN_TAG);
 	}
 
-	/** The most spawner mobs alive on a storey. */
-	public static int storeyCap(final int storey) {
-		return storey == TowerHex.STOREYS - 1 ? TOP_STOREY_CAP : STOREY_CAP;
-	}
-
-	/** The box of the recorded lost castle that holds a spot, or null. */
-	private static BoundingBox castleBoxAt(final ServerLevel level, final BlockPos at) {
+	/** The recorded lost castle whose box holds a spot, or null. */
+	private static LostRoomData.@Nullable Castle castleAt(final ServerLevel level, final BlockPos at) {
 		for (LostRoomData.Castle castle : LostRoomData.get(level.getServer()).castles()) {
 			BlockPos corner = castle.corner();
-			if (!castle.dimension().equals(level.dimension()) || Math.abs(at.getX() - corner.getX()) > LostRoomPiece.LENGTH
-				|| Math.abs(at.getZ() - corner.getZ()) > LostRoomPiece.LENGTH) {
-				continue;
-			}
-			BoundingBox box = piece(castle).getBoundingBox();
-			if (box.isInside(at)) {
-				return box;
+			boolean near = at.getX() >= corner.getX() && at.getX() < corner.getX() + LostCastleGrid.SIZE
+				&& at.getZ() >= corner.getZ() && at.getZ() < corner.getZ() + LostCastleGrid.SIZE;
+			if (castle.floors() > 0 && near && castle.dimension().equals(level.dimension()) && piece(castle).getBoundingBox().isInside(at)) {
+				return castle;
 			}
 		}
 		return null;
@@ -120,16 +131,17 @@ public final class LostCastles {
 	/** Queues a castle a chunk has just built; any thread. */
 	public static void found(final ResourceKey<Level> dimension, final LostRoomPiece piece) {
 		BoundingBox box = piece.getBoundingBox();
-		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false, piece.variant().ordinal()));
+		FOUND.add(new LostRoomData.Castle(dimension, new BlockPos(box.minX(), box.minY(), box.minZ()), piece.facing(), false, piece.palette().ordinal(),
+			piece.floors(), piece.drop()));
 	}
 
 	/** The castle's piece, rebuilt from its record. */
 	static LostRoomPiece piece(final LostRoomData.Castle castle) {
 		return new LostRoomPiece(castle.corner().getX(), castle.corner().getY(), castle.corner().getZ(), castle.facing(),
-			LostCastleVariant.values()[Math.floorMod(castle.variant(), LostCastleVariant.values().length)]);
+			LostCastlePalette.values()[Math.floorMod(castle.variant(), LostCastlePalette.values().length)], castle.floors(), castle.drop());
 	}
 
-	/** Records the queued castles, then stocks the grounds of each castle a player has come near; the mobs raised. */
+	/** Records the queued castles, then stocks the yard of each castle a player has come near; the mobs raised. */
 	static List<Mob> wake(final MinecraftServer server) {
 		LostRoomData data = LostRoomData.get(server);
 		for (LostRoomData.Castle castle = FOUND.poll(); castle != null; castle = FOUND.poll()) {
@@ -139,6 +151,11 @@ public final class LostCastles {
 		for (LostRoomData.Castle castle : data.unstocked()) {
 			ServerLevel level = server.getLevel(castle.dimension());
 			if (level == null) {
+				continue;
+			}
+			if (castle.floors() == 0) {
+				// Laid before the castles went down: it has no ring to stock.
+				data.stocked(castle);
 				continue;
 			}
 			LostRoomPiece piece = piece(castle);
@@ -153,7 +170,7 @@ public final class LostCastles {
 		return raised;
 	}
 
-	/** Raises three to six mobs in the courtyard, each at the players' average level less five to fifteen more. */
+	/** Raises three to six mobs in the yard, each at the players' average level less five to fifteen more. */
 	static List<Mob> stock(final ServerLevel level, final LostRoomPiece piece, final List<ServerPlayer> players) {
 		RandomSource random = level.getRandom();
 		int count = MIN_MOBS + random.nextInt(MAX_MOBS - MIN_MOBS + 1);
@@ -164,6 +181,7 @@ public final class LostCastles {
 		final RandomSource random, final int count, final Predicate<Mob> allowed) {
 		int average = LostRooms.averageLevel(players);
 		int[] yard = piece.yard();
+		int feetY = piece.surfaceFeet();
 		List<Mob> raised = new ArrayList<>();
 		for (int attempt = 0; attempt < MAX_STOCK_ATTEMPTS && raised.size() < count; attempt++) {
 			int mobLevel = Math.max(0, average + random.nextIntBetweenInclusive(-LostRooms.LEVEL_BELOW, LostRooms.LEVEL_ABOVE));
@@ -172,13 +190,13 @@ public final class LostCastles {
 			if (mob == null) {
 				continue;
 			}
-			BlockPos first = piece.worldPos(yard[0], 1, yard[1]);
+			BlockPos first = piece.worldPos(yard[0], feetY, yard[1]);
 			mob.snapTo(Vec3.atBottomCenterOf(first));
 			mob.finalizeSpawn(level, level.getCurrentDifficultyAt(first), EntitySpawnReason.EVENT, null);
 			TowerMobs.settle(mob);
 			boolean placed = false;
 			for (int spotAttempt = 0; spotAttempt < SPOT_TRIES && !placed; spotAttempt++) {
-				BlockPos feet = piece.worldPos(yard[0] + random.nextInt(yard[2] - yard[0] + 1), 1, yard[1] + random.nextInt(yard[3] - yard[1] + 1));
+				BlockPos feet = piece.worldPos(yard[0] + random.nextInt(yard[2] - yard[0] + 1), feetY, yard[1] + random.nextInt(yard[3] - yard[1] + 1));
 				Vec3 spot = TowerMobs.spotFor(mob, feet);
 				mob.snapTo(spot.x, spot.y, spot.z, random.nextFloat() * 360.0F, 0.0F);
 				placed = level.isLoaded(feet) && TowerMobs.standsFree(level, mob, feet);

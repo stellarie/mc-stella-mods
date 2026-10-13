@@ -11,7 +11,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,7 +20,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.item.component.ItemContainerContents;
-import net.minecraft.world.item.component.ItemLore;
 
 /**
  * The quiver item and the rules for the quiver in the off hand. Its ammunition is the first thing a bow or a
@@ -33,8 +31,7 @@ public final class Quiver {
 	public static final Identifier ID = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "quiver");
 	public static final QuiverItem ITEM = Registry.register(BuiltInRegistries.ITEM, ID, new QuiverItem(new Item.Properties()
 		.setId(ResourceKey.create(Registries.ITEM, ID)).stacksTo(1)
-		.component(DataComponents.LORE, new ItemLore(List.of(Spellbooks.line(
-			Component.translatable("item." + Spellbooks.MOD_ID + ".quiver.effect"), ChatFormatting.GRAY))))));
+		.component(DataComponents.LORE, Spellbooks.lore(Spellbooks.block("quiver", ChatFormatting.GRAY)))));
 
 	/** The copy a draw is working on, by shooter: its source slot is written back when the draw ends. */
 	private static final Map<UUID, Draw> DRAWS = new ConcurrentHashMap<>();

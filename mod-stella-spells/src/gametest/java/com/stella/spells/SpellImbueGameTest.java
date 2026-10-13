@@ -155,6 +155,8 @@ public class SpellImbueGameTest {
 		Mob struck = zombie(helper, 2, 4);
 		Mob beside = zombie(helper, 4, 4);
 		struck.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		// Dragonfall's hit lands with its fire charge; the case lands the charge now.
+		DragonCharge.landNow(player);
 		float besideTaken = beside.getMaxHealth() - beside.getHealth();
 		float expected = 10.0F * (float) SpellImbue.IMBUE_POWER;
 		LOG.info("[SPELLTEST] test=anImbuedAreaSpellLandsAroundTheTarget RESULT besideTaken={} expected={}", besideTaken, expected);

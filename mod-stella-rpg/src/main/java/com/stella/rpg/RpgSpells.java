@@ -24,7 +24,7 @@ public final class RpgSpells {
 		return 1.0;
 	}
 
-	/** The cooldown multiplier. INT and DEX both cut it. */
+	/** The cooldown multiplier of every skill and spell. INT and DEX both cut it. */
 	public static double cooldown(final Player player) {
 		return RpgCurve.cooldownMultiplier(StatBonuses.effective(player, Stat.INT) + StatBonuses.effective(player, Stat.DEX))
 			* JobItems.cooldownFactor(player);
@@ -36,16 +36,19 @@ public final class RpgSpells {
 		return rules.spellBase() * (1.0 + rules.spellGrowth() * (Math.max(1, level) - 1));
 	}
 
-	/** MATK percent as a fraction: INT times the share per point, plus the MATK percent affixes. */
+	/**
+	 * MATK percent as a fraction: INT times the share per point, plus the MATK percent affixes, plus the MATK a
+	 * refined spell book left on its caster.
+	 */
 	public static double matkPercent(final LivingEntity entity) {
-		return matkPercent(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MATK_PCT));
+		return matkPercent(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MATK_PCT)) + BookBuffs.matkBonus(entity);
 	}
 
 	public static double matkPercent(final int intel, final double affixPercent) {
 		return intel * RpgConfigStore.current().magic().matkPerInt() + affixPercent;
 	}
 
-	/** Flat MATK from affixes and book refine, in K units. */
+	/** Flat MATK from affixes, in K units. */
 	public static double matkFlat(final LivingEntity entity) {
 		return Affixes.matkFlat(entity);
 	}

@@ -12,7 +12,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,8 +37,8 @@ import org.slf4j.LoggerFactory;
  */
 public class SpellTooltipGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.tooltip");
-	private static final int EFFECT_LINE = 2;
-	private static final int COOLDOWN_LINE = 3;
+	private static final int EFFECT_LINE = 1;
+	private static final int COOLDOWN_LINE = 2;
 	private static final int DAMAGE_ARG = 0;
 	private static final int HEAL_ARG = 1;
 	private static final int DURATION_ARG = 3;
@@ -111,9 +110,9 @@ public class SpellTooltipGameTest {
 				helper.assertTrue(live.size() == expected, definition.id() + " has " + live.size() + " live lines, not " + expected);
 				if (!numbers.isEmpty()) {
 					String text = live.get(0).getString();
-					helper.assertTrue(live.get(0).getContents() instanceof TranslatableContents contents
-						&& contents.getKey().equals(SpellTooltip.liveEffectKey(definition)), definition.id() + " live line has the wrong key");
-					helper.assertTrue(!text.equals(SpellTooltip.liveEffectKey(definition)) && !text.contains("%"),
+					helper.assertTrue(DescriptionSupport.translatable(live.get(0)).getKey().equals(SpellTooltip.liveEffectKey(definition)),
+						definition.id() + " live line has the wrong key");
+					helper.assertTrue(!text.equals(SpellTooltip.liveEffectKey(definition)) && !text.matches("(?s).*%(\\d+\\$)?s.*"),
 						definition.id() + " live line is untranslated or has an unfilled slot: " + text);
 					shown++;
 				}
@@ -290,8 +289,8 @@ public class SpellTooltipGameTest {
 		List<Component> tooltip = new ArrayList<>(lore);
 		SpellTooltip.apply(null, book, tooltip);
 		helper.assertTrue(tooltip.equals(lore) && tooltip.get(EFFECT_LINE) == lore.get(EFFECT_LINE), "a tooltip with no viewer changed the static lore");
-		helper.assertTrue(tooltip.get(EFFECT_LINE).getContents() instanceof TranslatableContents contents
-			&& contents.getKey().equals("item.mod-stella-spells.spark_shot.effect"), "the static effect line is gone");
+		helper.assertTrue(DescriptionSupport.translatable(tooltip.get(EFFECT_LINE)).getKey().equals("item.mod-stella-spells.spark_shot.desc"),
+			"the static effect line is gone");
 		helper.assertTrue(tooltip.get(COOLDOWN_LINE).getString().contains("3"), "the static cooldown line is gone");
 		helper.succeed();
 	}
@@ -318,8 +317,8 @@ public class SpellTooltipGameTest {
 				helper.assertTrue((tooltip.get(i + 1) != lore.get(i)) == live,
 					"lore line " + i + (live ? " was not replaced" : " was replaced but is not an effect or cooldown line"));
 			}
-			helper.assertTrue(tooltip.get(EFFECT_LINE + 1).getContents() instanceof TranslatableContents effect
-				&& effect.getKey().equals("item.mod-stella-spells.spark_shot.effect_live"), "the effect line is not live");
+			helper.assertTrue(DescriptionSupport.translatable(tooltip.get(EFFECT_LINE + 1)).getKey().equals("item.mod-stella-spells.spark_shot.desc_live"),
+				"the effect line is not live");
 			helper.assertTrue(tooltip.get(COOLDOWN_LINE + 1) != lore.get(COOLDOWN_LINE), "the cooldown line is not live");
 		} finally {
 			leave(helper, players);
@@ -344,8 +343,7 @@ public class SpellTooltipGameTest {
 	}
 
 	private static String argument(final Component line, final int index) {
-		TranslatableContents contents = (TranslatableContents) line.getContents();
-		return (String) contents.getArgs()[index];
+		return (String) DescriptionSupport.translatable(line).getArgs()[index];
 	}
 
 	private static double[] range(final String text) {

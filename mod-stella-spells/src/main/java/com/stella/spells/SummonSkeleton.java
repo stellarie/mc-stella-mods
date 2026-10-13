@@ -47,6 +47,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.RangedBowAttackGoal;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -187,6 +188,9 @@ public final class SummonSkeleton {
 				ServerPlayer master = server.getPlayerList().getPlayer(ownerId);
 				if (skeleton != null && master != null) {
 					pace(skeleton, master);
+					if (skeleton.tickCount % MODE_CHECK_TICKS == 0) {
+						syncMode(skeleton);
+					}
 				}
 			}
 			if (server.getTickCount() % 20 == 0) {
@@ -855,16 +859,162 @@ public final class SummonSkeleton {
 		skeleton.getGoalSelector().addGoal(3, new TrotGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new LootGoal(skeleton));
 		skeleton.getGoalSelector().addGoal(1, new PackCasterGoal(skeleton));
+		MODE_APPLIED.remove(skeleton);
+		syncMode(skeleton);
 	}
 
-	/** Swaps vanilla's fifteen-block bow goal for one that looses at the servant's own reach. */
+	/**
+	 * The ObjectShare key under which the mobs mod publishes a {@code BiConsumer<Mob, String>} that installs the
+	 * combat goals of a role (MELEE, RANGED or MAGIC) on a mob. This mod needs no class of that mod.
+	 */
+	public static final String ROLE_SHARE = "mod-stella-mobs:servant-role";
+	/** Ticks between two looks at the held weapon. */
+	private static final int MODE_CHECK_TICKS = 10;
+	/** The mode each live servant was last given, so a swap is told from a weapon that did not change. */
+	private static final Map<Skeleton, String> MODE_APPLIED = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+	/** The combat mode the held weapon asks for: a bow or crossbow shoots, a staff or book casts, the rest strikes. */
+	static String modeOf(final ItemStack held) {
+		if (held.getItem() instanceof ProjectileWeaponItem) {
+			return "RANGED";
+		}
+		if (StaffPower.isStaff(held) || held.getItem() instanceof SpellbookItem) {
+			return "MAGIC";
+		}
+		return "MELEE";
+	}
+
+	/**
+	 * Gives the servant the combat goals of its held weapon's mode, when the mobs mod is present.
+	 * It runs from the server tick and never from a goal, because it adds and removes goals.
+	 */
+	@SuppressWarnings("unchecked")
+	static void syncMode(final Skeleton skeleton) {
+		if (!(FabricLoader.getInstance().getObjectShare().get(ROLE_SHARE) instanceof java.util.function.BiConsumer<?, ?> install)) {
+			return;
+		}
+		String mode = modeOf(skeleton.getMainHandItem());
+		if (mode.equals(MODE_APPLIED.get(skeleton))) {
+			return;
+		}
+		((java.util.function.BiConsumer<Mob, String>) install).accept(skeleton, mode);
+		MODE_APPLIED.put(skeleton, mode);
+	}
+
+	/**
+	 * Swaps vanilla's bow goal for one that looses at the servant's own reach.
+	 * Vanilla knows only the plain bow, so a modded bow or a crossbow fell back to melee.
+	 */
 	private static void widenBowRange(final Skeleton skeleton) {
 		for (var wrapped : List.copyOf(skeleton.getGoalSelector().getAvailableGoals())) {
 			if (wrapped.getGoal() instanceof RangedBowAttackGoal<?>) {
 				skeleton.getGoalSelector().removeGoal(wrapped.getGoal());
 			}
 		}
-		skeleton.getGoalSelector().addGoal(2, new RangedBowAttackGoal<>(skeleton, 1.0, 20, (float) RANGED_ATTACK_RANGE));
+		skeleton.getGoalSelector().addGoal(2, new ShootGoal(skeleton));
+	}
+
+	/**
+	 * Vanilla's skeleton shot looks for a plain bow only, and fails on an empty weapon otherwise.
+	 * This shot uses the held weapon, so its enchantments still apply.
+	 */
+	static void shoot(final Skeleton skeleton, final LivingEntity target) {
+		ItemStack weapon = skeleton.getMainHandItem();
+		ItemStack ammo = skeleton.getProjectile(weapon);
+		var arrow = net.minecraft.world.entity.projectile.ProjectileUtil.getMobArrow(skeleton, ammo, 1.0F, weapon);
+		double dx = target.getX() - skeleton.getX();
+		double dy = target.getY(1.0 / 3.0) - arrow.getY();
+		double dz = target.getZ() - skeleton.getZ();
+		double flat = Math.sqrt(dx * dx + dz * dz);
+		float spread = 14 - skeleton.level().getDifficulty().getId() * 4;
+		arrow.shoot(dx, dy + flat * 0.2, dz, 1.6F, spread);
+		skeleton.playSound(net.minecraft.sounds.SoundEvents.SKELETON_SHOOT, 1.0F, 1.0F / (skeleton.getRandom().nextFloat() * 0.4F + 0.8F));
+		skeleton.level().addFreshEntity(arrow);
+	}
+
+	/** True when the servant holds any bow or crossbow in its main hand. */
+	static boolean holdsRangedWeapon(final Skeleton skeleton) {
+		return skeleton.getMainHandItem().getItem() instanceof ProjectileWeaponItem;
+	}
+
+	/** Ticks a bow stays drawn before the arrow leaves, as a vanilla skeleton draws it. */
+	static final int BOW_DRAW_TICKS = 20;
+	/** Ticks the servant may lose its foe from sight with the weapon drawn before it lowers it. */
+	private static final int BLIND_TICKS = 20;
+
+	/** Ticks the held weapon needs before it looses: the fixed bow draw, or the crossbow's own charge. */
+	static int drawTicks(final Skeleton skeleton) {
+		ItemStack weapon = skeleton.getMainHandItem();
+		return weapon.getItem() instanceof net.minecraft.world.item.CrossbowItem
+			? net.minecraft.world.item.CrossbowItem.getChargeDuration(weapon, skeleton)
+			: BOW_DRAW_TICKS;
+	}
+
+	/** Shoots with any held bow or crossbow, and keeps the servant out of melee while it does. */
+	static final class ShootGoal extends Goal {
+		private final Skeleton skeleton;
+		private int seen;
+		private int blind;
+
+		ShootGoal(final Skeleton skeleton) {
+			this.skeleton = skeleton;
+			this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
+		}
+
+		@Override
+		public boolean canUse() {
+			LivingEntity target = this.skeleton.getTarget();
+			return target != null && target.isAlive() && holdsRangedWeapon(this.skeleton);
+		}
+
+		@Override
+		public void start() {
+			this.skeleton.setAggressive(true);
+		}
+
+		@Override
+		public void stop() {
+			this.skeleton.stopUsingItem();
+			this.skeleton.setAggressive(false);
+			this.seen = 0;
+			this.blind = 0;
+		}
+
+		@Override
+		public boolean requiresUpdateEveryTick() {
+			return true;
+		}
+
+		@Override
+		public void tick() {
+			LivingEntity target = this.skeleton.getTarget();
+			if (target == null) {
+				return;
+			}
+			this.skeleton.getLookControl().setLookAt(target, 30.0F, 30.0F);
+			boolean sees = this.skeleton.getSensing().hasLineOfSight(target);
+			this.seen = sees ? this.seen + 1 : 0;
+			double reach = RANGED_ATTACK_RANGE * RANGED_ATTACK_RANGE;
+			if (this.skeleton.distanceToSqr(target) > reach || !sees) {
+				this.skeleton.getNavigation().moveTo(target, 1.0);
+			} else {
+				this.skeleton.getNavigation().stop();
+			}
+			if (this.skeleton.isUsingItem()) {
+				this.blind = sees ? 0 : this.blind + 1;
+				if (this.blind > BLIND_TICKS) {
+					this.skeleton.stopUsingItem();
+					this.blind = 0;
+				} else if (sees && this.skeleton.getTicksUsingItem() >= drawTicks(this.skeleton)) {
+					this.skeleton.stopUsingItem();
+					shoot(this.skeleton, target);
+				}
+				return;
+			}
+			if (sees && this.seen >= 5 && this.skeleton.distanceToSqr(target) <= reach) {
+				this.skeleton.startUsingItem(net.minecraft.world.InteractionHand.MAIN_HAND);
+			}
+		}
 	}
 
 	/** Casts combat and support books from the servant's pack without consuming them. */
@@ -942,7 +1092,8 @@ public final class SummonSkeleton {
 			if (striker == null) {
 				return false;
 			}
-			if (striker instanceof Player player && isServant(this.skeleton, player)) {
+			// A player's blow is never answered: the servant fights mobs only.
+			if (striker instanceof Player) {
 				return false;
 			}
 			return !Friends.isFriend(striker);

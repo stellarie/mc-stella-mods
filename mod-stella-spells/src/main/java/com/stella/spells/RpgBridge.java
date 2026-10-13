@@ -69,11 +69,6 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
-		/** The skill cooldown multiplier for a school's stat key; NaN when the RPG mod gives none. */
-		default double skillCooldown(final Player player, final String statKey) {
-			return Double.NaN;
-		}
-
 		/** What the school's stat multiplies a skill's duration by; NaN when the RPG mod gives none. */
 		default double skillDurationMultiplier(final LivingEntity caster, final String statKey) {
 			return Double.NaN;
@@ -92,6 +87,11 @@ public final class RpgBridge {
 		/** The caster floor ATK in K units: the low end of the Atk range, ranged or melee; NaN when the RPG mod gives none. */
 		default double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return Double.NaN;
+		}
+
+		/** The lowest and highest Atk roll in K units, ranged or melee; a NaN pair when the RPG mod gives none. */
+		default double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return NONE_RANGE;
 		}
 
 		/** The sum of the caster six stats, STR AGI VIT DEX INT LUK; NaN when the RPG mod gives none. */
@@ -118,8 +118,6 @@ public final class RpgBridge {
 
 		double heal(LivingEntity caster, double coefficient);
 
-		double cooldown(Player player, String statKey);
-
 		double duration(LivingEntity caster, String statKey);
 
 		@Nullable ItemStack weapon(LivingEntity caster);
@@ -128,6 +126,9 @@ public final class RpgBridge {
 
 		/** The low end of the Atk range, ranged from DEX or melee from STR, in K units; NaN when unknown. */
 		double floorAtk(LivingEntity caster, boolean ranged);
+
+		/** The low and the high end of the Atk range, ranged from DEX or melee from STR, in K units; NaNs when unknown. */
+		double[] atkRange(LivingEntity caster, boolean ranged);
 
 		/** The sum of the six stats; NaN when unknown. */
 		double statTotal(LivingEntity caster);
@@ -151,11 +152,6 @@ public final class RpgBridge {
 		}
 
 		@Override
-		public double cooldown(final Player player, final String statKey) {
-			return Double.NaN;
-		}
-
-		@Override
 		public double duration(final LivingEntity caster, final String statKey) {
 			return Double.NaN;
 		}
@@ -173,6 +169,11 @@ public final class RpgBridge {
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return Double.NaN;
+		}
+
+		@Override
+		public double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return NONE_RANGE;
 		}
 
 		@Override
@@ -219,11 +220,6 @@ public final class RpgBridge {
 		}
 
 		@Override
-		public double skillCooldown(final Player player, final String statKey) {
-			return this.skills.cooldown(player, statKey);
-		}
-
-		@Override
 		public double skillDurationMultiplier(final LivingEntity caster, final String statKey) {
 			return this.skills.duration(caster, statKey);
 		}
@@ -241,6 +237,11 @@ public final class RpgBridge {
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return this.skills.floorAtk(caster, ranged);
+		}
+
+		@Override
+		public double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return this.skills.atkRange(caster, ranged);
 		}
 
 		@Override
@@ -329,6 +330,13 @@ public final class RpgBridge {
 	/** The caster floor ATK in K units, or NaN when the RPG mod gives none. */
 	static double floorAtk(final LivingEntity caster, final boolean ranged) {
 		return stats().floorAtk(caster, ranged);
+	}
+
+	/** The average of the lowest and the highest Atk roll of the caster in K units, or NaN when the RPG mod gives none. */
+	static double averageAtk(final LivingEntity caster, final boolean ranged) {
+		double[] range = stats().atkRange(caster, ranged);
+		return range == null || range.length < 2 || !Double.isFinite(range[0]) || !Double.isFinite(range[1])
+			? Double.NaN : (range[0] + range[1]) / 2.0;
 	}
 
 	/** The bridge bound to the RPG mod itself: its spell numbers and its skill numbers, both by name. */
@@ -436,7 +444,6 @@ public final class RpgBridge {
 		MethodHandle damage = skillDamageHandle(lookup, skills, "physicalDamage");
 		MethodHandle range = skillRangeHandle(lookup, skills, "physicalRange");
 		MethodHandle heal = skillHealHandle(lookup, skills, "skillHeal");
-		MethodHandle cooldown = skillCooldownHandle(lookup, skills, "cooldown");
 		MethodHandle duration = skillStatHandle(lookup, skills, "durationMultiplier");
 		MethodHandle weapon = skillWeaponHandle(lookup, skills, "weapon");
 		MethodHandle source = skillSourceHandle(lookup, skills, "skillSource");
@@ -463,15 +470,6 @@ public final class RpgBridge {
 			public double heal(final LivingEntity caster, final double coefficient) {
 				try {
 					return heal == null ? Double.NaN : (double) heal.invokeExact(caster, coefficient);
-				} catch (Throwable e) {
-					return Double.NaN;
-				}
-			}
-
-			@Override
-			public double cooldown(final Player player, final String statKey) {
-				try {
-					return cooldown == null ? Double.NaN : (double) cooldown.invokeExact(player, statKey);
 				} catch (Throwable e) {
 					return Double.NaN;
 				}
@@ -522,17 +520,23 @@ public final class RpgBridge {
 
 			@Override
 			public double floorAtk(final LivingEntity caster, final boolean farShot) {
+				double[] range = this.atkRange(caster, farShot);
+				return range[0];
+			}
+
+			@Override
+			public double[] atkRange(final LivingEntity caster, final boolean farShot) {
 				MethodHandle preview = farShot ? ranged : melee;
 				if (stat == null || preview == null) {
-					return Double.NaN;
+					return NONE_RANGE;
 				}
 				try {
 					String key = farShot ? School.ARCHER.statKey() : School.FIGHTER.statKey();
 					int points = (int) Math.round((double) stat.invokeExact(caster, key));
 					double[] range = (double[]) preview.invokeExact(caster, points);
-					return range == null || range.length == 0 ? Double.NaN : range[0];
+					return range == null || range.length < 2 ? NONE_RANGE : range;
 				} catch (Throwable e) {
-					return Double.NaN;
+					return NONE_RANGE;
 				}
 			}
 		};
@@ -561,10 +565,6 @@ public final class RpgBridge {
 
 	private static MethodHandle skillHealHandle(final MethodHandles.Lookup lookup, final Class<?> owner, final String name) {
 		return staticHandle(lookup, owner, name, double.class, LivingEntity.class, double.class);
-	}
-
-	private static MethodHandle skillCooldownHandle(final MethodHandles.Lookup lookup, final Class<?> owner, final String name) {
-		return staticHandle(lookup, owner, name, double.class, Player.class, String.class);
 	}
 
 	private static MethodHandle skillStatHandle(final MethodHandles.Lookup lookup, final Class<?> owner, final String name) {
@@ -605,9 +605,9 @@ public final class RpgBridge {
 	}
 
 	/**
-	 * A cast's modifiers once the caster's stats have had their say. A mage book reads Intelligence for both
-	 * its duration and its cooldown; a skill book reads its own school's stat for both, so a fighter's Strength
-	 * shortens a fighter's rest and never a mage's.
+	 * A cast's modifiers once the caster's stats have had their say. Every book, skill or spell, rests by the one
+	 * cooldown multiplier of Intelligence plus Dexterity, applied to the cooldown the book refine cuts left. A mage
+	 * book reads Intelligence for its duration; a skill book reads its own school's stat.
 	 */
 	static SpellModifiers.CastModifiers grow(
 		final Player caster, final String spellId, final SpellModifiers.CastModifiers base, final School school
@@ -621,7 +621,7 @@ public final class RpgBridge {
 		Stats rpg = stats();
 		double power = rpg.power(caster);
 		// Fixed-cooldown spells keep their base cooldown.
-		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : cooldown(caster, rpg, school);
+		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : rpg.cooldown(caster);
 		double duration = durationMultiplier(caster, rpg, school);
 		if (!positive(power) || !positive(cooldown) || (power == 1.0 && cooldown == 1.0 && duration == 1.0)) {
 			return base;
@@ -630,16 +630,8 @@ public final class RpgBridge {
 		return new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * power, base.radiusMultiplier(), base.durationMultiplier() * duration,
 			base.defensiveDurationMultiplier() * duration, base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown)),
-			base.awakened()
+			base.awakened(), base.refineLevel()
 		);
-	}
-
-	private static double cooldown(final Player caster, final Stats rpg, final School school) {
-		if (school == School.MAGE) {
-			return rpg.cooldown(caster);
-		}
-		double skill = rpg.skillCooldown(caster, school.statKey());
-		return positive(skill) ? skill : 1.0;
 	}
 
 	private static double durationMultiplier(final Player caster, final Stats rpg, final School school) {
