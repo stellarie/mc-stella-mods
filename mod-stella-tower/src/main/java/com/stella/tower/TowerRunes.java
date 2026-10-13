@@ -33,7 +33,7 @@ public final class TowerRunes {
 	public static final double SAME = 0.5;
 	public static final double OWN_ELEMENT_BASE = 0.05;
 	public static final double OWN_ELEMENT_CAP = 0.80;
-	public static final double DROP_CHANCE = 0.001;
+	public static final double DROP_CHANCE = 0.005;
 
 	static final EquipmentSlot[] ARMOR_SLOTS ={EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 

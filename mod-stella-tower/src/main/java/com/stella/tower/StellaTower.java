@@ -24,6 +24,7 @@ public final class StellaTower implements ModInitializer {
 		TowerTravel.register();
 		TowerFloors.register();
 		TowerMobs.register();
+		TowerSlimes.register();
 		TowerElites.register();
 		TowerBuffs.register();
 		TowerSafety.register();
