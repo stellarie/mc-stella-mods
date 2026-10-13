@@ -25,7 +25,7 @@ import net.minecraft.world.entity.LivingEntity;
  * The Mage innate. The ward is an absorption shield of (MATK / 100) x {@link #SHIELD_SHARE} of max health. MATK is
  * the value of the Matk line on the stats screen. The ward refills {@link #REFILL_TICKS} ticks after the last hit.
  * When a hit breaks it, each hostile mob within {@link #BURST_RADIUS} blocks takes (MATK / 100) x {@link #BURST_SHARE}
- * of its max health. Small flames circle the feet while the shield holds.
+ * of the max health of the mage, the same base as the shield. Small flames circle the feet while the shield holds.
  * The shield is the absorption of the player. A refill sets the absorption to the shield size and never lowers a
  * larger pool, so a ward neither stacks with the Absorption effect nor erases it.
  */
@@ -119,9 +119,10 @@ public final class ArcaneWard {
 			return;
 		}
 		ServerLevel level = player.level();
+		double damage = matk * BURST_SHARE * player.getMaxHealth();
 		int hurt = 0;
 		for (LivingEntity target : InnateTargets.around(player, BURST_RADIUS)) {
-			if (InnateTargets.hostile(target) && InnateTargets.hurt(player, target, matk * BURST_SHARE)) {
+			if (InnateTargets.hostile(target) && InnateTargets.hurtBy(player, target, damage)) {
 				hurt++;
 			}
 		}

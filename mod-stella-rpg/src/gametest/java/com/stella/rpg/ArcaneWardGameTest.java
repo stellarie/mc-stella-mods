@@ -12,12 +12,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.monster.spider.Spider;
 
 /**
  * The Mage innate: an absorption shield of (MATK / 100) x 10 percent of max health that refills 300 ticks after the
- * last hit. When it breaks, hostile mobs within 3 blocks take (MATK / 100) x 5 percent of their max health.
+ * last hit. When it breaks, hostile mobs within 3 blocks take (MATK / 100) x 5 percent of the max health of the mage.
  */
 public final class ArcaneWardGameTest {
 	private static final int LEVEL = 20;
@@ -103,6 +104,9 @@ public final class ArcaneWardGameTest {
 	public void breakingTheShieldHurtsHostilesWithinThreeBlocksOnly(final GameTestHelper helper) {
 		ServerPlayer mage = mage(helper, INT_POINTS);
 		Spider near = InnateTestSupport.dummy(helper, EntityTypes.SPIDER, 4, 2);
+		// A smaller pool keeps the float steps of the health below the tolerance of the check.
+		near.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1_000.0);
+		near.setHealth(near.getMaxHealth());
 		// Five blocks above the mage, so no wall of the cell is near it.
 		Spider farAway = InnateTestSupport.dummy(helper, EntityTypes.SPIDER, 2, 6, 2);
 		Pig harmless = InnateTestSupport.dummy(helper, EntityTypes.PIG, 1, 2);
@@ -114,7 +118,8 @@ public final class ArcaneWardGameTest {
 			InnateTestSupport.hit(helper, mage, 0.3 * shield);
 			helper.assertTrue(near.getHealth() == near.getMaxHealth(), "a hit that left the shield standing hurt a mob");
 			double matk = matk(mage);
-			double expected = matk * ArcaneWard.BURST_SHARE * near.getMaxHealth();
+			// The base is the mage's max health, the base of the shield. The dummy's pool is far larger, so the bases differ.
+			double expected = matk * ArcaneWard.BURST_SHARE * mage.getMaxHealth();
 			InnateTestSupport.hit(helper, mage, 3.0 * shield);
 			double lost = near.getMaxHealth() - near.getHealth();
 			RpgTestSupport.result("breakingTheShieldHurtsHostilesWithinThreeBlocksOnly",

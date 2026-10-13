@@ -68,7 +68,12 @@ final class InnateTargets {
 	 * next blow of the player nor waits behind the last one.
 	 */
 	static boolean hurt(final ServerPlayer source, final LivingEntity victim, final double share) {
-		float amount = (float) (share * PercentEffects.eliteShare(victim) * victim.getMaxHealth() / RpgScale.k());
+		return hurtBy(source, victim, share * victim.getMaxHealth());
+	}
+
+	/** Hurts the victim by this many health points. An elite or a boss takes the usual quarter of the hit. */
+	static boolean hurtBy(final ServerPlayer source, final LivingEntity victim, final double healthPoints) {
+		float amount = (float) (healthPoints * PercentEffects.eliteShare(victim) / RpgScale.k());
 		if (amount <= 0.0F) {
 			return false;
 		}
