@@ -84,6 +84,7 @@ public class StellaMobs implements ModInitializer {
 		com.stella.mobs.entity.StellaEntities.register();
 		com.stella.mobs.shield.ShieldBlocks.register();
 		ReactiveState.register();
+		com.stella.mobs.behavior.ServantRoles.register();
 		EliteState.register();
 		com.stella.mobs.behavior.WitherState.register();
 		ThreatState.register();
