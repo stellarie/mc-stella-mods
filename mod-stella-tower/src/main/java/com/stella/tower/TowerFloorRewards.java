@@ -196,7 +196,8 @@ public final class TowerFloorRewards {
 	private static @Nullable BlockPos free(final ServerLevel tower, final TowerPlan plan, final int worldX, final int worldZ) {
 		BlockPos origin = plan.origin();
 		int stand = plan.standY(worldX - origin.getX(), worldZ - origin.getZ());
-		if (stand == BiomeDraft.NONE) {
+		// In a hub only the floor is ground: a column that stands higher is its wall's top or a post of the way back.
+		if (stand == BiomeDraft.NONE || stand != 0 && plan.inHub(worldX - origin.getX(), worldZ - origin.getZ())) {
 			return null;
 		}
 		BlockPos feet = new BlockPos(worldX, TowerLayout.BASE_Y + stand, worldZ);

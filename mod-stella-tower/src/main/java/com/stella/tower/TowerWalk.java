@@ -169,6 +169,10 @@ public final class TowerWalk {
 		if (level.getFluidState(pos).is(net.minecraft.tags.FluidTags.LAVA) || state.is(net.minecraft.world.level.block.Blocks.POWDER_SNOW)) {
 			return TALL;
 		}
+		// A player opens a door as they walk into it.
+		if (state.is(net.minecraft.tags.BlockTags.DOORS)) {
+			return OPEN;
+		}
 		VoxelShape shape = state.getCollisionShape(level, pos);
 		if (shape.isEmpty()) {
 			return OPEN;
