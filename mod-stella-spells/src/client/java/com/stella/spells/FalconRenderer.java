@@ -6,14 +6,22 @@ import net.minecraft.client.renderer.entity.ParrotRenderer;
 import net.minecraft.client.renderer.entity.state.ParrotRenderState;
 import net.minecraft.world.entity.animal.parrot.Parrot;
 
-/** The vanilla parrot model, drawn larger, in the grey parrot texture tinted brown. The falcon is not a parrot. */
+/**
+ * The vanilla parrot model, drawn larger, in the grey parrot texture under a tint. The Blitz Beat falcon is brown and
+ * the Falcon Guard falcon is black. The falcon is not a parrot.
+ */
 final class FalconRenderer extends ParrotRenderer {
 	private static final float SIZE = 1.8F;
 	/** ARGB brown over the grey parrot texture. */
-	private static final int TINT = 0xFF8B5A2B;
+	static final int BROWN = 0xFF8B5A2B;
+	/** ARGB near black over the grey parrot texture. */
+	static final int BLACK = 0xFF2A2A2E;
 
-	FalconRenderer(final EntityRendererProvider.Context context) {
+	private final int tint;
+
+	FalconRenderer(final EntityRendererProvider.Context context, final int tint) {
 		super(context);
+		this.tint = tint;
 	}
 
 	@Override
@@ -30,6 +38,6 @@ final class FalconRenderer extends ParrotRenderer {
 
 	@Override
 	protected int getModelTint(final ParrotRenderState state) {
-		return TINT;
+		return this.tint;
 	}
 }

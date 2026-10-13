@@ -94,6 +94,11 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
+		/** The lowest and highest Atk roll in K units, ranged or melee; a NaN pair when the RPG mod gives none. */
+		default double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return NONE_RANGE;
+		}
+
 		/** The sum of the caster six stats, STR AGI VIT DEX INT LUK; NaN when the RPG mod gives none. */
 		default double statTotal(final LivingEntity caster) {
 			return Double.NaN;
@@ -128,6 +133,9 @@ public final class RpgBridge {
 
 		/** The low end of the Atk range, ranged from DEX or melee from STR, in K units; NaN when unknown. */
 		double floorAtk(LivingEntity caster, boolean ranged);
+
+		/** The low and the high end of the Atk range, ranged from DEX or melee from STR, in K units; NaNs when unknown. */
+		double[] atkRange(LivingEntity caster, boolean ranged);
 
 		/** The sum of the six stats; NaN when unknown. */
 		double statTotal(LivingEntity caster);
@@ -173,6 +181,11 @@ public final class RpgBridge {
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return Double.NaN;
+		}
+
+		@Override
+		public double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return NONE_RANGE;
 		}
 
 		@Override
@@ -241,6 +254,11 @@ public final class RpgBridge {
 		@Override
 		public double floorAtk(final LivingEntity caster, final boolean ranged) {
 			return this.skills.floorAtk(caster, ranged);
+		}
+
+		@Override
+		public double[] atkRange(final LivingEntity caster, final boolean ranged) {
+			return this.skills.atkRange(caster, ranged);
 		}
 
 		@Override
@@ -329,6 +347,13 @@ public final class RpgBridge {
 	/** The caster floor ATK in K units, or NaN when the RPG mod gives none. */
 	static double floorAtk(final LivingEntity caster, final boolean ranged) {
 		return stats().floorAtk(caster, ranged);
+	}
+
+	/** The average of the lowest and the highest Atk roll of the caster in K units, or NaN when the RPG mod gives none. */
+	static double averageAtk(final LivingEntity caster, final boolean ranged) {
+		double[] range = stats().atkRange(caster, ranged);
+		return range == null || range.length < 2 || !Double.isFinite(range[0]) || !Double.isFinite(range[1])
+			? Double.NaN : (range[0] + range[1]) / 2.0;
 	}
 
 	/** The bridge bound to the RPG mod itself: its spell numbers and its skill numbers, both by name. */
@@ -522,17 +547,23 @@ public final class RpgBridge {
 
 			@Override
 			public double floorAtk(final LivingEntity caster, final boolean farShot) {
+				double[] range = this.atkRange(caster, farShot);
+				return range[0];
+			}
+
+			@Override
+			public double[] atkRange(final LivingEntity caster, final boolean farShot) {
 				MethodHandle preview = farShot ? ranged : melee;
 				if (stat == null || preview == null) {
-					return Double.NaN;
+					return NONE_RANGE;
 				}
 				try {
 					String key = farShot ? School.ARCHER.statKey() : School.FIGHTER.statKey();
 					int points = (int) Math.round((double) stat.invokeExact(caster, key));
 					double[] range = (double[]) preview.invokeExact(caster, points);
-					return range == null || range.length == 0 ? Double.NaN : range[0];
+					return range == null || range.length < 2 ? NONE_RANGE : range;
 				} catch (Throwable e) {
-					return Double.NaN;
+					return NONE_RANGE;
 				}
 			}
 		};

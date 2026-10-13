@@ -78,7 +78,8 @@
 			"com.stella.spells.BookRefineGameTest",
 			"com.stella.spells.BookSignatureGameTest",
 			"com.stella.spells.DescriptionWidthGameTest",
-			"com.stella.spells.SchoolTooltipGameTest"
+			"com.stella.spells.SchoolTooltipGameTest",
+			"com.stella.spells.FalconGuardGameTest"
 		]
 	},
 	"depends": {

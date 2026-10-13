@@ -225,6 +225,7 @@ public final class ArcherSkills {
 		PARROT_READY.clear();
 		PULSES_RUN.clear();
 		ArcherVisuals.clear();
+		FalconGuard.clear();
 		clock = 0;
 	}
 
@@ -1081,7 +1082,7 @@ public final class ArcherSkills {
 	// One falcon strike: a coloured burst and layered sounds on the foe, then the amount fixed when it was called.
 	// A fixed number never rolls a crit. The foe glows for a few seconds. A foe an idle strike kills drops no orbs
 	// and pays the owner its share of the experience at once.
-	private static void strike(final ServerPlayer caster, final Mob foe, final float amount, final boolean idle) {
+	private static void strike(final ServerPlayer caster, final Mob foe, final float amount, final JobKind kind) {
 		ServerLevel level = (ServerLevel) caster.level();
 		Identifier spell = book("hunters_mark");
 		Vec3 at = foe.getBoundingBox().getCenter();
@@ -1094,8 +1095,17 @@ public final class ArcherSkills {
 			foe.damageCooldownTime = 0;
 		}
 		foe.addEffect(new MobEffectInstance(MobEffects.GLOWING, PARROT_GLOW_TICKS), caster);
-		Falcons.swoop(caster, foe);
-		ParrotKill kill = idle ? new ParrotKill(foe, caster) : null;
+		if (kind == JobKind.GUARD) {
+			Falcons.swoopGuard(caster, foe);
+		} else {
+			Falcons.swoop(caster, foe);
+		}
+		double xpShare = switch (kind) {
+			case PARROT -> PARROT_XP_SHARE;
+			case GUARD -> FalconGuard.XP_SHARE;
+			default -> 0.0;
+		};
+		ParrotKill kill = xpShare > 0.0 ? new ParrotKill(foe, caster) : null;
 		FALCON_STRIKING.set(Boolean.TRUE);
 		PARROT_KILL.set(kill);
 		try {
@@ -1105,10 +1115,10 @@ public final class ArcherSkills {
 			PARROT_KILL.remove();
 		}
 		if (kill != null && kill.reward >= 0) {
-			int share = (int) Math.round(kill.reward * PARROT_XP_SHARE);
+			int share = (int) Math.round(kill.reward * xpShare);
 			caster.giveExperiencePoints(share);
-			Spellbooks.LOGGER.info("[SPELL] event=PARROT_KILL caster={} foe={} reward={} share={}",
-				caster.getUUID(), foe.getUUID(), kill.reward, share);
+			Spellbooks.LOGGER.info("[SPELL] event={} caster={} foe={} reward={} share={}",
+				kind == JobKind.GUARD ? "GUARD_KILL" : "PARROT_KILL", caster.getUUID(), foe.getUUID(), kill.reward, share);
 		}
 	}
 
@@ -1137,6 +1147,42 @@ public final class ArcherSkills {
 			kill.reward = kill.foe.getExperienceReward(level, kill.owner);
 			kill.foe.skipDropExperience();
 		}
+		return true;
+	}
+
+	// The Falcon Guard: every two seconds an archer with the innate has a chance to send the black falcon at the nearest
+	// foe within reach for three hits. No rest is needed, and Blitz Beat does not share its timers.
+	private static void tickGuards(final MinecraftServer server, final int now) {
+		if (now % FalconGuard.CHECK_TICKS != 0) {
+			return;
+		}
+		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+			guardCheck(player);
+		}
+	}
+
+	/** What one Falcon Guard hit deals: the average of the lowest and highest ranged roll, else the book number. */
+	static float guardDamage(final ServerPlayer caster) {
+		double average = RpgBridge.averageAtk(caster, true);
+		return Double.isFinite(average) && average >= 0.0 ? RpgBridge.vanilla((float) average) : SpellNumbers.HUNTERS_MARK.damage();
+	}
+
+	/** One two-second check of the Falcon Guard: true when it rolled a strike and queued the hits. */
+	static boolean guardCheck(final ServerPlayer player) {
+		if (!player.isAlive() || player.isSpectator() || !FalconGuard.holds(player) || !FalconGuard.roll(player)) {
+			return false;
+		}
+		Mob foe = nearestFoe(player, player, FalconGuard.RANGE);
+		if (foe == null) {
+			return false;
+		}
+		float amount = guardDamage(player);
+		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
+		for (int hit = 0; hit < FalconGuard.HITS; hit++) {
+			owe(player, new Job(null, foe.getUUID(), dueIn(1 + hit * BLITZ_BEAT_INTERVAL_TICKS), JobKind.GUARD, plain, amount));
+		}
+		((ServerLevel) player.level()).playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.2F);
+		Spellbooks.LOGGER.info("[SPELL] event=FALCON_GUARD_ATTACK caster={} foe={} hits={} amount={}", player.getUUID(), foe.getUUID(), FalconGuard.HITS, amount);
 		return true;
 	}
 
@@ -1421,6 +1467,7 @@ public final class ArcherSkills {
 	private enum JobKind {
 		BLITZ,
 		PARROT,
+		GUARD,
 		BOMBLET
 	}
 
@@ -1490,6 +1537,7 @@ public final class ArcherSkills {
 		tickSnares(server, now);
 		tickShowers(server, now);
 		tickParrots(server, now);
+		tickGuards(server, now);
 		for (Map.Entry<UUID, List<Job>> entry : List.copyOf(JOBS.entrySet())) {
 			ServerPlayer caster = server.getPlayerList().getPlayer(entry.getKey());
 			if (caster == null || !caster.isAlive()) {
@@ -1529,9 +1577,9 @@ public final class ArcherSkills {
 		PULSES_RUN.merge(caster.getUUID(), 1, Integer::sum);
 
 		switch (job.kind()) {
-			case BLITZ, PARROT -> {
+			case BLITZ, PARROT, GUARD -> {
 				if (job.foe() != null && ((ServerLevel) caster.level()).getEntity(job.foe()) instanceof Mob foe && foe.isAlive()) {
-					strike(caster, foe, job.amount(), job.kind() == JobKind.PARROT);
+					strike(caster, foe, job.amount(), job.kind());
 				}
 			}
 			case BOMBLET -> {

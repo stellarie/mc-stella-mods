@@ -257,6 +257,7 @@
 	"item.mod-stella-spells.summon_wolf": "Summon Wolf Spellbook",
 	"item.mod-stella-spells.summon_wolf.effect": "Tames a wolf to you. It guards you against hostiles within 6 blocks, follows you, and carries the aura of a tamed elite wolf: Speed and Strength for you and your allies, Slowness and Weakness for hostiles. Right-click it with an empty hand to ride it. Its health grows with your stats. Casting again calls it to your side.",
 	"entity.mod-stella-spells.falcon": "Falcon",
+	"entity.mod-stella-spells.guard_falcon": "Guard Falcon",
 	"entity.mod-stella-spells.summoned_wolf": "Summoned Wolf",
 	"effect.mod-stella-spells.vultures_eye": "Vulture's Eye",
 	"item.mod-stella-spells.arrow_crafting": "Arrow Crafting Spellbook",
