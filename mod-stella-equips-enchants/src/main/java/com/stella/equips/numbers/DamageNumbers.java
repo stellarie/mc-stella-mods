@@ -5,7 +5,6 @@ import com.stella.equips.unique.UniqueDispatch;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.function.Function;
@@ -241,9 +240,8 @@ public final class DamageNumbers {
 		return new Transformation(new Vector3f(0.0F, rise, 0.0F), new Quaternionf(), new Vector3f(scale, scale, scale), new Quaternionf());
 	}
 
-	// Whole numbers read bare, and anything else to one decimal.
+	// A hit under one half still shows 1, not 0.
 	static String format(final float amount) {
-		float rounded = Math.round(amount * 10.0F) / 10.0F;
-		return rounded == Math.rint(rounded) ? Integer.toString((int) rounded) : String.format(Locale.ROOT, "%.1f", rounded);
+		return Integer.toString(Math.max(1, Math.round(amount)));
 	}
 }

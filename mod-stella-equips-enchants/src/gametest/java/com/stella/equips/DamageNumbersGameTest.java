@@ -142,7 +142,7 @@ public class DamageNumbersGameTest {
 		List<Shown> shown = SHOWN.getOrDefault(zombie.getUUID(), List.of());
 		helper.assertTrue(shown.size() == 1 && shown.get(0).heal() && shown.get(0).amount() == 2.5F, "a heal showed " + shown);
 		Display.TextDisplay display = shown.get(0).display();
-		helper.assertTrue(display.getText().getString().equals("+2.5") && TextColor.fromLegacyFormat(ChatFormatting.GREEN).equals(display.getText().getStyle().getColor()), "the heal reads " + display.getText());
+		helper.assertTrue(display.getText().getString().equals("+3") && TextColor.fromLegacyFormat(ChatFormatting.GREEN).equals(display.getText().getStyle().getColor()), "the heal reads " + display.getText());
 		LOG.info("[BEHAVIOR] test=aHealShowsAGreenNumber RESULT text={}", display.getText().getString());
 		helper.succeed();
 	}
