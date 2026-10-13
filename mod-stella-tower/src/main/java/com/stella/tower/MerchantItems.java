@@ -1,12 +1,9 @@
 package com.stella.tower;
 
-import java.util.List;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
@@ -54,7 +51,7 @@ public final class MerchantItems {
 	}
 
 	private static ItemLore lore(final String item) {
-		return new ItemLore(List.of(Component.translatable("item.mod-stella-tower." + item + ".desc").withStyle(ChatFormatting.GRAY)));
+		return ItemDescription.block(item);
 	}
 
 	/** Loads the class, which registers everything above, and starts what the items do. */
