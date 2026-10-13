@@ -19,7 +19,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
-import net.minecraft.world.item.component.ItemLore;
 
 /**
  * The Perfect Invisibility Potion's veil. The potion gives vanilla invisibility, which the mobs mod turns into true
@@ -56,8 +55,7 @@ public final class PerfectVeil {
 			new MobEffectInstance(MobEffects.INVISIBILITY, TICKS, 0, false, false, true),
 			new MobEffectInstance(VEIL, TICKS, 0, false, false, false)), Optional.empty()));
 		potion.set(DataComponents.ITEM_NAME, Component.translatable("item.mod-stella-tower.perfect_invisibility").withStyle(ChatFormatting.AQUA));
-		potion.set(ItemDescription.TYPE, new ItemLore(List.of(
-			Component.translatable("item.mod-stella-tower.perfect_invisibility.desc").withStyle(ChatFormatting.GRAY))));
+		potion.set(ItemDescription.TYPE, ItemDescription.block("perfect_invisibility"));
 		return potion;
 	}
 }

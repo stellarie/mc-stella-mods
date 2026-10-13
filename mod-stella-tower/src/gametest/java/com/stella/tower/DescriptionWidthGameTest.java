@@ -5,6 +5,7 @@ import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -107,9 +108,64 @@ public final class DescriptionWidthGameTest {
 		TowerTestSupport.result("descriptionWidthWords", "key=" + key + " tonic=" + tonic + " fireRune=" + sample);
 		helper.assertTrue(rune.contains("x1.5 against Ice") && rune.contains("x0.5 against its own element"),
 			"the rune lost the opposed and same element numbers: " + sample);
-		helper.assertTrue(rune.contains("combusts for 200% of the hit (scales with STR)"), "the fire rune lost its number: " + sample);
-		helper.assertTrue(key.contains("Use it anywhere to go to its floor."), "the floor key lost its first sentence: " + key);
+		helper.assertTrue(rune.contains("combusts for 200% of the hit (STR)"), "the fire rune lost its number: " + sample);
+		helper.assertTrue(key.contains("Requires: none Desc: Goes to its floor."), "the floor key lost its first sentence: " + key);
 		helper.assertTrue(tonic.contains("Heals you in full and grants Regeneration III for 30 seconds."), "the tonic lost its text: " + tonic);
+		helper.succeed();
+	}
+
+	// An item whose lines all state a floor, a rune name or a price has no description to put in a block.
+	private static final java.util.Set<String> STAT_ONLY = java.util.Set.of();
+
+	@GameTest
+	public void everyDescribedItemShowsARequiresAndDescBlock(final GameTestHelper helper) {
+		List<String> problems = new ArrayList<>();
+		int blocks = 0;
+		List<ItemStack> stacks = new ArrayList<>();
+		for (Identifier id : BuiltInRegistries.ITEM.keySet()) {
+			if (MOD_ID.equals(id.getNamespace()) && !STAT_ONLY.contains(id.getPath())) {
+				stacks.add(new ItemStack(BuiltInRegistries.ITEM.getValue(id)));
+			}
+		}
+		for (TowerElement element : TowerElement.values()) {
+			stacks.add(TowerRunes.rune(element, 300));
+		}
+		stacks.add(GhostRunes.apply(new ItemStack(Items.DIAMOND_CHESTPLATE)));
+		stacks.add(GhostRunes.apply(new ItemStack(Items.DIAMOND_SWORD)));
+		stacks.add(FloorKeyItem.forFloor(7));
+		stacks.add(PerfectVeil.potion());
+		RuneStats.pin((entity, stat) -> 1_000);
+		try {
+			for (ItemStack stack : stacks) {
+				List<Component> lines = DescriptionSupport.lines(helper, stack);
+				String owner = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+				if (lines.isEmpty()) {
+					continue;
+				}
+				blocks++;
+				problems.addAll(DescriptionSupport.blockProblems(owner, lines));
+				if (!DescriptionSupport.hasBlock(lines)) {
+					problems.add(owner + " has no Requires and Desc block: " + DescriptionSupport.text(lines));
+				}
+			}
+			for (MerchantGoods.Good good : MerchantGoods.stocked()) {
+				// A good from another mod that tells nothing of itself has only its price on the shelf.
+				if (DescriptionSupport.lines(helper, good.shown().get()).isEmpty()) {
+					continue;
+				}
+				List<Component> lines = DescriptionSupport.lines(helper, MerchantShopMenu.shelf(good));
+				blocks++;
+				problems.addAll(DescriptionSupport.blockProblems("shelf " + good.id(), lines));
+				if (!DescriptionSupport.hasBlock(lines)) {
+					problems.add("shelf " + good.id() + " has no Requires and Desc block: " + DescriptionSupport.text(lines));
+				}
+			}
+		} finally {
+			RuneStats.pin(null);
+		}
+		TowerTestSupport.result("descriptionBlocks", "blocks=" + blocks + " problems=" + problems.size());
+		helper.assertTrue(blocks >= 8, "only " + blocks + " described stacks were checked");
+		helper.assertTrue(problems.isEmpty(), "description blocks out of format: " + problems);
 		helper.succeed();
 	}
 }

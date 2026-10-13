@@ -608,6 +608,19 @@ public record TowerPlan(
 		return false;
 	}
 
+	/** Whether the spot lies in a biome floor's hub: its room and the wall round it. */
+	public boolean inHub(final int x, final int z) {
+		if (this.biome == null) {
+			return false;
+		}
+		for (TowerMaze.Zone zone : this.safeZones) {
+			if (x >= zone.x() - 1 && x <= zone.x() + TowerMaze.SAFE && z >= zone.z() - 1 && z <= zone.z() + TowerMaze.SAFE) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public int hallLow() {
 		return TowerLayout.SIZE / 2 - this.hall / 2;
 	}
@@ -782,11 +795,11 @@ public record TowerPlan(
 	}
 
 	/**
-	 * Floor 1's crafting table, furnace and anvil, in its safe zone, on the row of the zone farthest from the arrival's
-	 * row. A biome floor has no other safe zone, so no other floor has stations.
+	 * The crafting table, furnace and anvil of a floor's hub, in its safe zone, on the row of the zone farthest from the
+	 * arrival's row. A great hall has no hub, so it has no stations.
 	 */
 	private List<Station> biomeStations() {
-		if (this.floor != 1 || this.safeZones.isEmpty()) {
+		if (this.safeZones.isEmpty()) {
 			return List.of();
 		}
 		TowerMaze.Zone zone = this.safeZones.get(0);

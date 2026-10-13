@@ -774,7 +774,7 @@ A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. 
   Def and armor apply to it. `RpgCombat.scaleOutgoing` returns its amount unchanged, because the type is not melee, projectile, or magic.
   The dice are therefore never added twice.
 - A projectile with the entity tag `mod-stella-rpg.fixed_hit` is also returned unchanged: no dice, no status ATK, no crit roll.
-  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the minimum ranged roll of the caster.
+  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the average ranged roll of the caster.
 
 ## Magic model
 
@@ -829,7 +829,7 @@ With `keepInventory` off, a death no longer drops the whole inventory. `keepInve
   `n` is the number of candidate stacks. The pick has no repeats.
 - Items in `#mod-stella-rpg:never_tombstone` are never picked. The tag is empty by default.
 - A death that places a tombstone gives you a Grave Compass when you respawn. It points to the tombstone and lists its
-  coordinates and dimension. A tombstone never takes the compass, so a later death re-aims the compass you carry
+  coordinates and dimension, under a `Requires: none` and `Desc:` block. A tombstone never takes the compass, so a later death re-aims the compass you carry
   instead of giving another.
 - The picked stacks go into a `mod-stella-rpg:tombstone` block. The player keeps every other stack after respawn.
 - Soulbound stashes its items first, so they are never picked. Spell quick-slot items stay with the player.
@@ -927,7 +927,7 @@ A job grants one innate skill. The skill is read from the job each time, so a jo
 
 ### Job items
 
-`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds the lines, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
+`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds a `Requires:` line (held in hand, or the worn slot) and a `Desc:` line, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
 
 | Item | Slot | Base | +7 | +10 | +12 | +15 |
 |---|---|---|---|---|---|---|

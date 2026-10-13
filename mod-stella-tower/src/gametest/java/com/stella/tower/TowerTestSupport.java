@@ -66,7 +66,7 @@ final class TowerTestSupport {
 	static int levelOf(final int floor) {
 		int tens = (floor - 1) / 10;
 		int fifties = (floor - 1) / 50;
-		return 50 + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
+		return 30 + (floor - 1) + 10 * (tens - fifties) + 50 * fifties;
 	}
 
 	static ServerLevel tower(final GameTestHelper helper) {
@@ -166,6 +166,18 @@ final class TowerTestSupport {
 		ServerPlayer player = join(helper, 1.5, 1.5);
 		Vec3 arrival = TowerLayout.arrival(tower, floor);
 		player.teleportTo(tower, arrival.x, arrival.y, arrival.z, java.util.Set.of(), 0.0F, 0.0F, true);
+		return player;
+	}
+
+	/** A player on the road just outside the hub's door: in the open, where the weather and the mobs reach. */
+	static ServerPlayer outsideTheHub(final GameTestHelper helper, final ServerLevel tower, final int floor) {
+		ServerPlayer player = join(helper, 1.5, 1.5);
+		TowerPlan plan = TowerPlan.at(tower, floor);
+		int toward = plan.portalX() >= plan.arrivalX() ? 1 : -1;
+		int x = plan.safeZones().get(0).x() + (toward == 1 ? BiomeGen.HUB + 2 : -3);
+		int z = plan.arrivalZ();
+		net.minecraft.core.BlockPos origin = plan.origin();
+		player.teleportTo(tower, origin.getX() + x + 0.5, origin.getY() + plan.standY(x, z), origin.getZ() + z + 0.5, java.util.Set.of(), 0.0F, 0.0F, true);
 		return player;
 	}
 

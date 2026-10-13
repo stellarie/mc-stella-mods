@@ -22,8 +22,7 @@ built to the older generator stays as it is; a lost room keeps it (see below). O
   biome's features, eight walled nooks for the double chests, a light over every spot a body reaches, and props.
 - Water and lava lie in single basins one block below every other column's feet, held in by the ground beside
   them. The walk counts lava and powder snow as unwalkable (`TowerWalk.classify`).
-- Only floor 1 has a safe zone (8 x 8 round the arrival), and floor 1 holds the crafting table, furnace and anvil
-  in it. Nothing is raised within 16 blocks of the arrival.
+- Every floor but a great hall starts in a hub (see "The hub" below). Nothing is raised within 16 blocks of the arrival.
 
 ### The biomes
 
@@ -52,6 +51,22 @@ each biome roofs in its own stone, two or three kinds in patches three blocks ac
 moss over the forest; packed mud over the marsh; packed ice and snow over the snowstorm; sandstone over the desert; and
 so on). A closed biome keeps the tower's wall for a roof. Each biome has a data biome `tower_<id>` for its fog and air,
 painted over the floor's chunks as it is built (`TowerBiomes`).
+
+### The hub
+
+Every floor but a great hall starts in a closed room round its arrival (`BiomeGen.Work.finishHub`, drawn after the biome's
+features, so none stands in it).
+
+- The room is 8 x 8 blocks and 6 high inside (`BiomeGen.HUB`, `HUB_HEIGHT`), in a wall of deepslate bricks one block thick, with a
+  roof at 6. It is the floor's one safe zone: nothing is raised in it, no mob takes a player in it for a target, and a mob that
+  walks in is sent out (see "Walled safe room" below).
+- 16 sea lanterns sit in the wall, every second block along each side, so every spot inside has a light within reach.
+- One dark oak door stands in the wall toward the portal, on the arrival's line. A walk counts a door as open ground
+  (`TowerWalk.classify`, `BiomeBlocks.DOOR_*`), since a player opens it. The road starts two blocks out from the door.
+- The crafting table, furnace and anvil stand on the row of the room farthest from the arrival (`TowerPlan.biomeStations`).
+- From floor 2 the way back down stands against the back wall, three blocks behind the arrival (`TowerBackPortals`).
+- A closed biome's rock roof is lifted to 7 over the hub, so the hub's own roof is never cut.
+- A great hall keeps its nave, its arrival and no safe zone.
 
 ### Hills and cover
 
@@ -84,7 +99,11 @@ ground past the stair's foot.
 
 ### Levels, bosses, weather
 
-- A mob's level: `50 + (f - 1) + 10 * (t - q) + 50 * q`, `t = (f - 1) / 10`, `q = (f - 1) / 50` (`TowerMobs.levelOf`).
+- A mob's level: `30 + (f - 1) + 10 * (t - q) + 50 * q`, `t = (f - 1) / 10`, `q = (f - 1) / 50` (`TowerMobs.levelOf`).
+  Floor 1 is level 30 and floor 11 is level 50.
+- A floor holds at most `TowerMobs.capOf(f)` mobs at base size: 24 on floor 1, 2 more on each floor, to 72 from floor 25.
+  A larger floor holds that many times its area against the base floor's.
+- The breeze first rises on floor 21: a biome's pool has none at or below floor 20 (`TowerMobs.forFloor`).
   A lost room keeps `LOST_ROOM_FLOOR_OFFSET`.
 - Every 50th floor's boss is the Blaze Sovereign (`TowerBosses`): the tower asks `mod-stella-nether:sovereign-factory`
   in the object share with a tag holding the final `level`, places the mob it gets and adopts it
@@ -92,7 +111,8 @@ ground past the stair's foot.
   Tyrant rises: a blaze three times the size whose hits set its target alight.
 - `TowerWeather`: frost builds up to 140 ticks on a body in the open of the snowstorm (never in boots that vanilla's
   freezing spares); a 3-second gust every 15 seconds slows a body in the desert; both push by at most 0.05.
-- A biome raises its own kinds (`BiomePools`); a hall those of the biome below it.
+- A biome raises its own kinds and the mobs mod's red, white and black slimes (`BiomePools`); a hall those of the biome below it.
+  A white slime keeps five blue escorts, which leave with it when it dies (`TowerSlimes`).
 
 ### Props, lost rooms
 
@@ -706,14 +726,17 @@ Every planned floor is built with a double tower chest at each chest spot of its
 
 ## Runes
 
-- Every tower mob, elite, boss and void shaman drops a rune with chance 0.001. A rune holds one of eight
+- Every tower mob, elite, boss and void shaman drops a rune with chance 0.005 (half a percent). A rune holds one of eight
   elements and the floor it dropped on. An anvil sets it into a weapon or one armor piece for 64 emeralds.
 - The floor sets the tier multiplier only: weapon hits multiply by it, and armor divides tower mob blows
   by it. The signature effects below read the wearer's effective stats, not the floor.
 - Stats come from `mod-stella-rpg` by reflection on `com.stella.rpg.StatBonuses.effective`. Without that
   mod every stat is 0 and each effect stays at its floor. The tooltip reads the stats the server last sent.
-- The tooltip of a rune names the stat each effect scales with. `DescriptionLines` wraps every tooltip line of this mod at
-  24 characters, at a space. Fixed item text sits in the `description` component, which wraps when the tooltip builds.
+- The tooltip of a rune names the stat each effect scales with. A description opens with a `Requires:` line and a `Desc:`
+  line of at most 8 lines in all. For a rune the `Requires:` line is the anvil and the 64 emeralds, and the `Desc:` line holds
+  the weapon effect and the armor effect. The floor and the multipliers follow as stat lines.
+  `DescriptionLines` wraps every tooltip line of this mod at 24 characters, at a space. Fixed item text sits in the
+  `description` component, which wraps when the tooltip builds.
 - Every effect works on any mob in any dimension. Damage a rune deals itself (a combustion, a chain, a
   thorn) triggers no rune effect.
 - Each worn armor piece of an element adds a quarter of the full set value. The caps apply to the sum.

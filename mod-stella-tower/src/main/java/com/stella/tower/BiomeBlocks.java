@@ -2,12 +2,14 @@ package com.stella.tower;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 
 /**
  * The palette of a biome floor: each entry is a block of the world and the way a walking body counts it.
@@ -111,7 +113,11 @@ public final class BiomeBlocks {
 	public static final byte PACKED_MUD = 91;
 	public static final byte GLOWSTONE = 92;
 	public static final byte SHROOMLIGHT = 93;
-	public static final byte COUNT = 94;
+	public static final byte DOOR_EAST_LOWER = 94;
+	public static final byte DOOR_EAST_UPPER = 95;
+	public static final byte DOOR_WEST_LOWER = 96;
+	public static final byte DOOR_WEST_UPPER = 97;
+	public static final byte COUNT = 98;
 
 	private static final BlockState[] STATES = new BlockState[COUNT];
 	private static final byte[] WALK = new byte[COUNT];
@@ -210,9 +216,28 @@ public final class BiomeBlocks {
 		define(PACKED_MUD, Blocks.PACKED_MUD.defaultBlockState(), TowerWalk.SOLID);
 		define(GLOWSTONE, Blocks.GLOWSTONE.defaultBlockState(), TowerWalk.SOLID);
 		define(SHROOMLIGHT, Blocks.SHROOMLIGHT.defaultBlockState(), TowerWalk.SOLID);
+		// A closed door has a collision shape, yet a player opens it: a walk counts the door as open ground.
+		define(DOOR_EAST_LOWER, door(Direction.EAST, DoubleBlockHalf.LOWER), TowerWalk.OPEN);
+		define(DOOR_EAST_UPPER, door(Direction.EAST, DoubleBlockHalf.UPPER), TowerWalk.OPEN);
+		define(DOOR_WEST_LOWER, door(Direction.WEST, DoubleBlockHalf.LOWER), TowerWalk.OPEN);
+		define(DOOR_WEST_UPPER, door(Direction.WEST, DoubleBlockHalf.UPPER), TowerWalk.OPEN);
 	}
 
 	private BiomeBlocks() {
+	}
+
+	private static BlockState door(final Direction facing, final DoubleBlockHalf half) {
+		return Blocks.DARK_OAK_DOOR.defaultBlockState().setValue(DoorBlock.FACING, facing).setValue(DoorBlock.HALF, half);
+	}
+
+	/** The lower half of the hub's door that faces along x, toward {@code facing}. */
+	public static byte doorLower(final Direction facing) {
+		return facing == Direction.EAST ? DOOR_EAST_LOWER : DOOR_WEST_LOWER;
+	}
+
+	/** The upper half of the hub's door that faces along x, toward {@code facing}. */
+	public static byte doorUpper(final Direction facing) {
+		return facing == Direction.EAST ? DOOR_EAST_UPPER : DOOR_WEST_UPPER;
 	}
 
 	private static void define(final byte code, final BlockState state, final byte walk) {
@@ -241,7 +266,8 @@ public final class BiomeBlocks {
 	public static boolean opaque(final byte code) {
 		return switch (code) {
 			case NONE, WATER, FERN, FENCE, LANTERN, HANGING_LANTERN, SOUL_CAMPFIRE, SKULL, SOUL_FIRE, CHAIN, COBBLE_WALL, ANVIL, BARRIER,
-				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM, LAVA, POWDER_SNOW, CACTUS, NETHER_BRICK_FENCE, SOUL_LANTERN -> false;
+				OAK_LEAVES, DARK_OAK_LEAVES, BIRCH_LEAVES, JUNGLE_LEAVES, BROWN_MUSHROOM, RED_MUSHROOM, LAVA, POWDER_SNOW, CACTUS, NETHER_BRICK_FENCE, SOUL_LANTERN,
+				DOOR_EAST_LOWER, DOOR_EAST_UPPER, DOOR_WEST_LOWER, DOOR_WEST_UPPER -> false;
 			default -> true;
 		};
 	}

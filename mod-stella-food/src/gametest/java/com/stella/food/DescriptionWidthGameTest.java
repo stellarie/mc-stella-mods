@@ -53,10 +53,10 @@ public final class DescriptionWidthGameTest {
 		FoodTestLog.track(helper, "theWrappedTooltipKeepsTheDurationsAndTheEffectText");
 		String apple = String.join(" ", DescriptionSupport.text(DescriptionSupport.lines(helper, new ItemStack(Items.APPLE))));
 		String stew = String.join(" ", DescriptionSupport.text(DescriptionSupport.lines(helper, new ItemStack(FoodItems.HUNTER_STEW))));
-		helper.assertTrue(apple.contains("Regeneration I — 2 seconds: Brief regeneration effect."), "apple lost its regeneration line: " + apple);
-		helper.assertTrue(apple.contains("Quick Step — " + FoodBehavior.ORDINARY_TICKS / 1200 + " minutes: Walk 8% faster."),
+		helper.assertTrue(apple.contains("Requires: none Desc: Regeneration I for 2 seconds."), "apple lost its regeneration line: " + apple);
+		helper.assertTrue(apple.contains("Quick Step for " + FoodBehavior.ORDINARY_TICKS / 1200 + " minutes: Walk 8% faster."),
 			"apple lost its buff line: " + apple);
-		helper.assertTrue(stew.contains("Surefooted — " + FoodBehavior.DISH_TICKS / 1200 + " minutes: Take 25% less knockback."),
+		helper.assertTrue(stew.contains("Surefooted for " + FoodBehavior.DISH_TICKS / 1200 + " minutes: Take 25% less knockback."),
 			"the stew lost its buff line: " + stew);
 		helper.succeed();
 	}
@@ -92,5 +92,36 @@ public final class DescriptionWidthGameTest {
 		Identifier id = effect.unwrapKey().orElseThrow().identifier();
 		return DescriptionSupport.withShippedText(() -> Component
 			.translatable("effect." + id.getNamespace() + "." + id.getPath() + ".desc").getString());
+	}
+
+	@GameTest
+	public void everyFoodAndDishShowsARequiresAndDescBlock(final GameTestHelper helper) {
+		FoodTestLog.track(helper, "everyFoodAndDishShowsARequiresAndDescBlock");
+		List<ItemStack> stacks = new ArrayList<>();
+		for (Item food : List.of(Items.BEEF, Items.COD, Items.APPLE, Items.CARROT, Items.BREAD, Items.COOKIE, Items.CAKE,
+			Items.ROTTEN_FLESH, Items.MUSHROOM_STEW)) {
+			stacks.add(new ItemStack(food));
+		}
+		for (Item dish : FoodItems.DISHES) {
+			stacks.add(new ItemStack(dish));
+			ItemStack infused = new ItemStack(dish);
+			infused.set(DataComponents.POTION_CONTENTS, PotionContents.createItemStack(Items.POTION, Potions.STRONG_SWIFTNESS).get(DataComponents.POTION_CONTENTS));
+			infused.set(StellaFood.SEASONING, new Seasoning("dex", 10));
+			stacks.add(infused);
+		}
+		List<String> problems = new ArrayList<>();
+		for (ItemStack stack : stacks) {
+			List<Component> lines = DescriptionSupport.lines(helper, stack);
+			String owner = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+			problems.addAll(DescriptionSupport.blockProblems(owner, lines));
+			if (!DescriptionSupport.hasBlock(lines)) {
+				problems.add(owner + " has no Requires and Desc block: " + DescriptionSupport.text(lines));
+			} else if (!DescriptionLines.isBlockLine(lines.get(0))) {
+				problems.add(owner + " shows a line before the block: " + DescriptionSupport.text(lines));
+			}
+		}
+		StellaFood.LOGGER.info("[BEHAVIOR] test=descriptionBlocks RESULT stacks={} problems={}", stacks.size(), problems.size());
+		helper.assertTrue(problems.isEmpty(), "description blocks out of format: " + problems);
+		helper.succeed();
 	}
 }

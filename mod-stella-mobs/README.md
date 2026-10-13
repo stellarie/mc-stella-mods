@@ -107,7 +107,9 @@ their own arrows.
 - **Retreat:** a target inside the near band makes the archer walk away until it is back in the band.
   The walk follows a path that reaches its end: straight away first, then at wider angles, at 8, 5, and 3 blocks.
   The archer is cornered when no such path exists, or when it moves less than half a block in 20 ticks.
-  A cornered archer rests for 60 ticks and fires. A retreat that runs its 60 tick window rests for 40 ticks.
+  A unit with a bow or a crossbow kites: it walks 3 blocks, stops for one draw and one shot, then walks 3 blocks again
+  while the target stays inside the near edge. The stop lasts one draw (bow) or one charge and hold (crossbow), plus 8 ticks.
+  A cornered archer rests for 60 ticks and fires. Another unit that runs its 60 tick window rests for 40 ticks.
   A retreat that reaches the band does not rest. Every rest counts the archer's own ticks.
 
 ## Ranged reach
@@ -291,8 +293,7 @@ fights these mobs and a developer who tunes them. Each number below is a constan
 
 ### Kite (`KiteGoal`, `StanceBands`, `KeepDistanceGoal`)
 
-- A hurt archer in KITE holds at least 12 blocks from the player. It moves for 30 ticks and rests for 30 ticks,
-  and it shoots in the rests.
+- A hurt archer in KITE holds at least 12 blocks from the player. It retreats in 3 block steps and shoots in each stop.
 - A hurt melee mob in KITE keeps 4 to 8 blocks from a player who looks at it. The player's view cone is 55 degrees
   to each side. When the player looks away, the mob closes in and strikes.
 - A melee mob never stands still for good. After 60 ticks under the gaze, it strikes.

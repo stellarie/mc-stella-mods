@@ -35,9 +35,9 @@ public final class TrainerScreenGameTest {
 	}
 
 	private static final List<Expected> JOBS = List.of(
-		new Expected("archer", "DEX", "AGI", "1.0", "Falcon Guard", List.of("black falcon", "35% chance (plus 1% per 5 LUK)", "strike that mob 3 times", "After 5 seconds without attacking", "every 2 seconds", "average bow roll", "25%")),
+		new Expected("archer", "DEX", "AGI", "1.0", "Falcon Guard", List.of("falcon", "35% on attack (+1% per 5 LUK)", "3 times", "every 2 s once idle 5 s", "Average bow roll", "25% XP")),
 		new Expected("fighter", "STR", "VIT", "1.3", "Double Strike", List.of("25%", "hit twice", "crit", "Nausea", "0.5 seconds")),
-		new Expected("mage", "INT", "DEX", "0.85", "Arcane Ward", List.of("MATK/100 x 10% of your max health", "15 seconds", "breaks", "3 blocks", "MATK/100 x 5% of your max health")),
+		new Expected("mage", "INT", "DEX", "0.85", "Arcane Ward", List.of("MATK/100 x 10% max health", "15 s", "On break", "3 blocks", "MATK/100 x 5% max health")),
 		new Expected("priest", "VIT", "INT", "1.1", "Sanctuary", List.of("3 blocks", "1.5%", "per second", "hostile"))
 	);
 
@@ -84,6 +84,43 @@ public final class TrainerScreenGameTest {
 		return lines;
 	}
 
+	/** What is wrong with the Requires and Desc blocks of an icon: a block starts at a Requires line and holds a Desc line next. */
+	private static List<String> blockProblems(final ItemStack icon) {
+		List<String> problems = new ArrayList<>();
+		List<String> run = new ArrayList<>();
+		List<Component> lore = icon.get(DataComponents.LORE).lines();
+		for (int i = 0; i <= lore.size(); i++) {
+			boolean block = i < lore.size() && DescriptionLines.isBlockLine(lore.get(i));
+			String text = i < lore.size() ? lore.get(i).getString() : "";
+			if (!block || text.startsWith("Requires:")) {
+				checkBlock(run, problems);
+				run = new ArrayList<>();
+			}
+			if (block) {
+				run.add(text);
+			}
+		}
+		return problems;
+	}
+
+	private static void checkBlock(final List<String> block, final List<String> problems) {
+		if (block.isEmpty()) {
+			return;
+		}
+		int desc = -1;
+		for (int i = 0; i < block.size() && desc < 0; i++) {
+			desc = block.get(i).startsWith("Desc:") ? i : desc;
+		}
+		if (!block.get(0).startsWith("Requires:")) {
+			problems.add("a block starts with " + block);
+		} else if (desc < 1) {
+			problems.add("a block has no Desc line after Requires: " + block);
+		}
+		if (block.size() > DescriptionLines.MAX_BLOCK_LINES) {
+			problems.add("a block of " + block.size() + " lines: " + block);
+		}
+	}
+
 	@GameTest(maxTicks = 40, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void eachJobShowsItsDescriptionBonusesAndInnateInShortLines(final GameTestHelper helper) {
 		boolean mine = installShare();
@@ -104,9 +141,15 @@ public final class TrainerScreenGameTest {
 					helper.assertTrue(line.length() <= LINE, job.job() + " shows a line of " + line.length() + " characters: '" + line + "'");
 				}
 				helper.assertTrue(!lines.isEmpty() && !lines.getFirst().isBlank(), job.job() + " opens with no description");
-				descriptions.add(lines.getFirst());
+				helper.assertTrue(lines.getFirst().equals("Requires: level " + RpgJobs.MIN_LEVEL),
+					job.job() + " opens with '" + lines.getFirst() + "', not its Requires line");
+				descriptions.add(lines.stream().filter(line -> line.startsWith("Desc:")).findFirst().orElse(""));
+				String title = Character.toUpperCase(job.job().charAt(0)) + job.job().substring(1);
+				helper.assertTrue(all.contains("Requires: " + title + " job Desc: " + job.innate() + ":"), job.job() + " has no innate block: " + lines);
+				List<String> problems = blockProblems(icon);
+				helper.assertTrue(problems.isEmpty(), job.job() + " has a block out of format: " + problems);
 				String[] needs = {
-					"+2 " + job.main(), "+1 " + job.second(), "per level", "Max health x" + job.health(), "Trial: +5 " + job.main(), "Innate: " + job.innate()
+					"+2 " + job.main(), "+1 " + job.second(), "per level", "Max health x" + job.health(), "Trial: +5 " + job.main()
 				};
 				for (String need : needs) {
 					helper.assertTrue(all.contains(need), job.job() + " does not say '" + need + "': " + lines);
@@ -128,6 +171,23 @@ public final class TrainerScreenGameTest {
 			if (mine) {
 				FabricLoader.getInstance().getObjectShare().remove(RpgJobs.SHARE_KEY);
 			}
+		}
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = 40, padding = PatrolTestSupport.VILLAGE_PADDING)
+	public void theTrialButtonShowsItsRequirementAndRewardInShortLines(final GameTestHelper helper) {
+		ItemStack icon = TrainerMenu.trialIcon(RpgJobs.MIN_LEVEL);
+		List<String> lines = lore(icon);
+		String all = String.join(" ", lines);
+		PatrolTestSupport.result("theTrialButtonShowsItsRequirementAndRewardInShortLines", "lines=" + lines);
+		for (String line : lines) {
+			helper.assertTrue(line.length() <= LINE, "the trial shows a line of " + line.length() + " characters: '" + line + "'");
+		}
+		helper.assertTrue(lines.getFirst().equals("Requires: job, level " + RpgJobs.MIN_LEVEL), "the trial opens with '" + lines.getFirst() + "'");
+		helper.assertTrue(blockProblems(icon).isEmpty(), "the trial block is out of format: " + blockProblems(icon));
+		for (String fact : List.of("Hunt a level " + RpgJobs.MIN_LEVEL + " boss", "128 to 256 blocks", "+5 to your main stat, +1 to the others", "Click to accept")) {
+			helper.assertTrue(all.contains(fact), "the trial does not say '" + fact + "': " + lines);
 		}
 		helper.succeed();
 	}

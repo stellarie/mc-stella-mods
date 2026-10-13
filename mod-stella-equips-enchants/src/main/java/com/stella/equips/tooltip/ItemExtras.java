@@ -14,7 +14,8 @@ public final class ItemExtras {
 
 	public static void append(final ItemStack stack, final Consumer<Component> lines) {
 		if (SlimeHeart.holdsHeart(stack)) {
-			DescriptionLines.add(lines, Component.translatable("tooltip.mod-stella-equips-enchants.slime_heart").withStyle(ChatFormatting.RED));
+			DescriptionLines.addBlock(lines, Component.literal("worn").withStyle(ChatFormatting.WHITE),
+				Component.translatable("tooltip.mod-stella-equips-enchants.slime_heart").withStyle(ChatFormatting.RED));
 		}
 		if (EmeraldBag.isBag(stack)) {
 			DescriptionLines.add(lines, Component.translatable("item.mod-stella-equips-enchants.emerald_bag.count", EmeraldBag.stored(stack))

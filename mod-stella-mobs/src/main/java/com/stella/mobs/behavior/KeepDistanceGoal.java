@@ -4,6 +4,9 @@ import java.util.EnumSet;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -13,6 +16,10 @@ import org.jspecify.annotations.Nullable;
  * band or beyond its far band. It walks away from a close target and toward a far one. It releases when the
  * window expires. An approach also ends the moment the target is inside the far edge, because the weapon goal
  * cannot fire while this goal holds MOVE and LOOK. A retreat ends at the near edge.
+ *
+ * <p>A bow or crossbow unit kites. Its retreat ends after {@link #STEP_BLOCKS} of travel, and the rest that follows
+ * lasts one draw plus {@link #SHOT_MARGIN_TICKS}, so the weapon goal looses one shot. Then a new step starts while the
+ * target is still inside the near edge.
  *
  * <p>A retreat walks a path that reaches its end. A unit is cornered when no such path exists, or when it moves less than
  * {@link #PROGRESS_BLOCKS} in {@link #PROGRESS_TICKS}. A cornered unit stops and rests for {@link #CORNERED_REST_TICKS},
@@ -33,6 +40,10 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	public static final int CORNERED_REST_TICKS = 60;
 	public static final int PROGRESS_TICKS = 20;
 	public static final double PROGRESS_BLOCKS = 0.5;
+	/** A kiting retreat walks this far, then stops to shoot. */
+	public static final double STEP_BLOCKS = 3.0;
+	/** Covers the weapon goal's restart before its draw. */
+	public static final int SHOT_MARGIN_TICKS = 8;
 
 	private static final double SPEED_MODIFIER = 1.2;
 	private static final double ENTRY_DEAD_ZONE = 1.0;
@@ -44,6 +55,8 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	private int ticksToRepath;
 	private boolean retreating;
 	private boolean cornered;
+	private boolean stepped;
+	private @Nullable Vec3 stepFrom;
 	private int progressTick;
 	private @Nullable Vec3 progressFrom;
 
@@ -123,6 +136,11 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 			if (this.cornered) {
 				return false;
 			}
+
+			if (this.stepDone()) {
+				this.stepped = true;
+				return false;
+			}
 		}
 
 		return true;
@@ -133,6 +151,8 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		this.ticksRunning = 0;
 		this.ticksToRepath = 0;
 		this.cornered = false;
+		this.stepped = false;
+		this.stepFrom = this.mob.position();
 		this.progressFrom = null;
 	}
 
@@ -149,6 +169,10 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 	private int restTicks() {
 		if (this.cornered) {
 			return CORNERED_REST_TICKS;
+		}
+
+		if (this.stepped) {
+			return this.shotRestTicks();
 		}
 
 		if (this.ticksRunning < this.windowTicks()) {
@@ -225,6 +249,32 @@ public class KeepDistanceGoal<T extends PathfinderMob> extends Goal {
 		this.progressTick = this.mob.tickCount + PROGRESS_TICKS;
 		this.progressFrom = now;
 		return false;
+	}
+
+	private boolean stepDone() {
+		if (this.stepFrom == null || this.shotRestTicks() <= 0) {
+			return false;
+		}
+
+		Vec3 walked = this.mob.position().subtract(this.stepFrom);
+		return Math.hypot(walked.x, walked.z) >= STEP_BLOCKS;
+	}
+
+	/** One draw of the held bow or crossbow plus a margin, or 0 for a unit with neither. */
+	private int shotRestTicks() {
+		ItemStack crossbow = CrossbowCadenceGoal.holdsCrossbow(this.mob)
+			? (this.mob.getMainHandItem().getItem() instanceof CrossbowItem ? this.mob.getMainHandItem() : this.mob.getOffhandItem())
+			: ItemStack.EMPTY;
+		if (!crossbow.isEmpty()) {
+			// An uncharged bolt needs its charge and then the cadence hold.
+			return CrossbowItem.getChargeDuration(crossbow, this.mob) + CrossbowCadenceGoal.holdTicks(this.mob) + SHOT_MARGIN_TICKS;
+		}
+
+		if (this.mob.getMainHandItem().getItem() instanceof ProjectileWeaponItem) {
+			return SkeletonVolleyGoal.DRAW_TICKS + SHOT_MARGIN_TICKS;
+		}
+
+		return 0;
 	}
 
 	private int windowTicks() {

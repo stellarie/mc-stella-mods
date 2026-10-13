@@ -44,7 +44,9 @@ public final class GhostRunes {
 		ItemComponentTooltipProviderRegistry.addLast(TowerItems.GHOSTED, mark -> (context, lines, flag, components) -> {
 			Equippable equippable = components.get(DataComponents.EQUIPPABLE);
 			boolean chest = equippable != null && equippable.slot() == EquipmentSlot.CHEST;
-			DescriptionLines.add(lines, Component.translatable(chest ? "item.mod-stella-tower.ghosted.chest" : "item.mod-stella-tower.ghosted.weapon").withStyle(ChatFormatting.DARK_AQUA));
+			String key = chest ? "item.mod-stella-tower.ghosted.chest" : "item.mod-stella-tower.ghosted.weapon";
+			DescriptionLines.addBlock(lines, Component.translatable(key + ".requires").withStyle(ChatFormatting.WHITE),
+				Component.translatable(key + ".desc").withStyle(ChatFormatting.DARK_AQUA));
 		});
 	}
 

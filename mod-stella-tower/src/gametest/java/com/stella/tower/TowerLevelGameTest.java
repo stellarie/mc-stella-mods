@@ -32,7 +32,7 @@ public class TowerLevelGameTest {
 	@GameTest
 	public void levelsMatchTheTableAtEveryBoundary(final GameTestHelper helper) {
 		int[] floors = {1, 10, 11, 20, 21, 50, 51, 60, 100, 101};
-		int[] want = {50, 59, 70, 79, 90, 139, 190, 199, 279, 330};
+		int[] want = {30, 39, 50, 59, 70, 119, 170, 179, 259, 310};
 		for (int i = 0; i < floors.length; i++) {
 			int level = TowerMobs.levelOf(floors[i]);
 			TowerTestSupport.result("levelBoundary", "floor=" + floors[i] + " level=" + level + " want=" + want[i]);

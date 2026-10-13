@@ -76,17 +76,18 @@ public class UniqueRefineGameTest {
 		int[] gates = {0, 6, 7, 9, 10, 11, 12, 14, 15};
 		for (int level : gates) {
 			List<Component> lines = UniqueTooltip.lines(UniqueTestKit.stack(def, level));
-			helper.assertTrue(lines.size() == 7, "the tooltip at +" + level + " has " + lines.size() + " lines: " + lines);
-			helper.assertTrue(lines.get(0).getString().equals("Job: " + def.job().title()), "job line: " + lines.get(0).getString());
-			String drops = lines.get(1).getString();
+			helper.assertTrue(lines.size() == 8, "the tooltip at +" + level + " has " + lines.size() + " lines: " + lines);
+			helper.assertTrue(lines.get(0).getString().equals("Requires: " + def.kind().requirement()), "requires line: " + lines.get(0).getString());
+			helper.assertTrue(lines.get(1).getString().equals("Desc: " + def.base()), "desc line: " + lines.get(1).getString());
+			helper.assertTrue(GOLD.equals(lines.get(1).getSiblings().getLast().getStyle().getColor()), "the base text is not gold");
+			helper.assertTrue(lines.get(2).getString().equals("Job: " + def.job().title()), "job line: " + lines.get(2).getString());
+			String drops = lines.get(3).getString();
 			helper.assertTrue(drops.startsWith("Drops from: ") && (drops.contains("Skeleton") || drops.contains("entity.minecraft.skeleton")), "drops line: " + drops);
-			helper.assertTrue(lines.get(2).getString().contains(def.base()), "base line: " + lines.get(2).getString());
-			helper.assertTrue(GOLD.equals(lines.get(2).getStyle().getColor()), "the base line is not gold");
 			String[] texts = {def.plus7(), def.plus10(), def.plus12(), def.plus15()};
 			String[] marks = {"+7", "+10", "+12", "+15"};
 			int[] tiers = {Uniques.PLUS_7, Uniques.PLUS_10, Uniques.PLUS_12, Uniques.PLUS_15};
 			for (int tier = 0; tier < 4; tier++) {
-				Component line = lines.get(3 + tier);
+				Component line = lines.get(4 + tier);
 				String text = line.getString();
 				helper.assertTrue(text.startsWith(marks[tier] + ": ") && text.endsWith(texts[tier]), "tier line " + tier + " at +" + level + ": " + text);
 				boolean active = level >= tiers[tier];
