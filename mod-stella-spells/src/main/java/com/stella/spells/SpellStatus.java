@@ -119,8 +119,9 @@ public final class SpellStatus {
 			return amount;
 		}
 		// A shot that owes a book pays for it here, so the whole hit of that arrow is worth the book's number.
-		float result = amount * ArcherSkills.projectileDamage(victim, source) * ArrowHits.damageFactor(source)
-			* ArcherSkills.vultureFactor(victim, source) * ArcherSkills.showerFactor(source);
+		// A shower arrow replaces the amount with its minimum roll; every factor after that still applies.
+		float result = ArcherSkills.showerDamage(source, amount) * ArcherSkills.projectileDamage(victim, source)
+			* ArrowHits.damageFactor(source) * ArcherSkills.vultureFactor(victim, source);
 		result = victim.hasEffect(ARCANE_WARD) ? absorb(victim, result) : result;
 		// A Guardian Angel shares the blow with its priest here, in the one path every hit takes, so the
 		// shared part is taken before any other effect scales what is left.

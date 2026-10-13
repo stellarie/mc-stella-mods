@@ -101,9 +101,9 @@ public final class MagicModelGameTest {
 		RpgTestSupport.setStat(player, Stat.DEX, 1024);
 		double maxed = RpgSpells.cooldown(player);
 		RpgTestSupport.result("cooldownFromIntAndDex", "both=" + both + " dexOnly=" + dexOnly + " maxed=" + maxed);
-		helper.assertTrue(Math.abs(both - 0.8333333333) < EPSILON, "INT 100 DEX 100 gave " + both);
-		helper.assertTrue(Math.abs(dexOnly - 0.7857142857) < EPSILON, "DEX 300 gave " + dexOnly);
-		helper.assertTrue(Math.abs(maxed - 0.5816993464) < EPSILON && maxed > 0.5, "INT 1024 DEX 1024 gave " + maxed);
+		helper.assertTrue(Math.abs(both - 0.6) < EPSILON, "INT 100 DEX 100 gave " + both);
+		helper.assertTrue(Math.abs(dexOnly - 0.52) < EPSILON, "DEX 300 gave " + dexOnly);
+		helper.assertTrue(Math.abs(maxed - 0.271174) < EPSILON && maxed > 0.2, "INT 1024 DEX 1024 gave " + maxed);
 		helper.succeed();
 	}
 

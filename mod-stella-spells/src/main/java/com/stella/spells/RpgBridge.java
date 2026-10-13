@@ -69,11 +69,6 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
-		/** The skill cooldown multiplier for a school's stat key; NaN when the RPG mod gives none. */
-		default double skillCooldown(final Player player, final String statKey) {
-			return Double.NaN;
-		}
-
 		/** What the school's stat multiplies a skill's duration by; NaN when the RPG mod gives none. */
 		default double skillDurationMultiplier(final LivingEntity caster, final String statKey) {
 			return Double.NaN;
@@ -123,8 +118,6 @@ public final class RpgBridge {
 
 		double heal(LivingEntity caster, double coefficient);
 
-		double cooldown(Player player, String statKey);
-
 		double duration(LivingEntity caster, String statKey);
 
 		@Nullable ItemStack weapon(LivingEntity caster);
@@ -155,11 +148,6 @@ public final class RpgBridge {
 
 		@Override
 		public double heal(final LivingEntity caster, final double coefficient) {
-			return Double.NaN;
-		}
-
-		@Override
-		public double cooldown(final Player player, final String statKey) {
 			return Double.NaN;
 		}
 
@@ -229,11 +217,6 @@ public final class RpgBridge {
 		@Override
 		public double skillHeal(final LivingEntity caster, final double coefficient) {
 			return this.skills.heal(caster, coefficient);
-		}
-
-		@Override
-		public double skillCooldown(final Player player, final String statKey) {
-			return this.skills.cooldown(player, statKey);
 		}
 
 		@Override
@@ -461,7 +444,6 @@ public final class RpgBridge {
 		MethodHandle damage = skillDamageHandle(lookup, skills, "physicalDamage");
 		MethodHandle range = skillRangeHandle(lookup, skills, "physicalRange");
 		MethodHandle heal = skillHealHandle(lookup, skills, "skillHeal");
-		MethodHandle cooldown = skillCooldownHandle(lookup, skills, "cooldown");
 		MethodHandle duration = skillStatHandle(lookup, skills, "durationMultiplier");
 		MethodHandle weapon = skillWeaponHandle(lookup, skills, "weapon");
 		MethodHandle source = skillSourceHandle(lookup, skills, "skillSource");
@@ -488,15 +470,6 @@ public final class RpgBridge {
 			public double heal(final LivingEntity caster, final double coefficient) {
 				try {
 					return heal == null ? Double.NaN : (double) heal.invokeExact(caster, coefficient);
-				} catch (Throwable e) {
-					return Double.NaN;
-				}
-			}
-
-			@Override
-			public double cooldown(final Player player, final String statKey) {
-				try {
-					return cooldown == null ? Double.NaN : (double) cooldown.invokeExact(player, statKey);
 				} catch (Throwable e) {
 					return Double.NaN;
 				}
@@ -594,10 +567,6 @@ public final class RpgBridge {
 		return staticHandle(lookup, owner, name, double.class, LivingEntity.class, double.class);
 	}
 
-	private static MethodHandle skillCooldownHandle(final MethodHandles.Lookup lookup, final Class<?> owner, final String name) {
-		return staticHandle(lookup, owner, name, double.class, Player.class, String.class);
-	}
-
 	private static MethodHandle skillStatHandle(final MethodHandles.Lookup lookup, final Class<?> owner, final String name) {
 		return staticHandle(lookup, owner, name, double.class, LivingEntity.class, String.class);
 	}
@@ -636,9 +605,9 @@ public final class RpgBridge {
 	}
 
 	/**
-	 * A cast's modifiers once the caster's stats have had their say. A mage book reads Intelligence for both
-	 * its duration and its cooldown; a skill book reads its own school's stat for both, so a fighter's Strength
-	 * shortens a fighter's rest and never a mage's.
+	 * A cast's modifiers once the caster's stats have had their say. Every book, skill or spell, rests by the one
+	 * cooldown multiplier of Intelligence plus Dexterity, applied to the cooldown the book refine cuts left. A mage
+	 * book reads Intelligence for its duration; a skill book reads its own school's stat.
 	 */
 	static SpellModifiers.CastModifiers grow(
 		final Player caster, final String spellId, final SpellModifiers.CastModifiers base, final School school
@@ -652,7 +621,7 @@ public final class RpgBridge {
 		Stats rpg = stats();
 		double power = rpg.power(caster);
 		// Fixed-cooldown spells keep their base cooldown.
-		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : cooldown(caster, rpg, school);
+		double cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? 1.0 : rpg.cooldown(caster);
 		double duration = durationMultiplier(caster, rpg, school);
 		if (!positive(power) || !positive(cooldown) || (power == 1.0 && cooldown == 1.0 && duration == 1.0)) {
 			return base;
@@ -663,14 +632,6 @@ public final class RpgBridge {
 			base.defensiveDurationMultiplier() * duration, base.targetRangeBlocks(), Math.max(20, (int) Math.round(base.cooldownTicks() * cooldown)),
 			base.awakened(), base.refineLevel()
 		);
-	}
-
-	private static double cooldown(final Player caster, final Stats rpg, final School school) {
-		if (school == School.MAGE) {
-			return rpg.cooldown(caster);
-		}
-		double skill = rpg.skillCooldown(caster, school.statKey());
-		return positive(skill) ? skill : 1.0;
 	}
 
 	private static double durationMultiplier(final Player caster, final Stats rpg, final School school) {

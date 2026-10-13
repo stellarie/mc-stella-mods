@@ -48,7 +48,7 @@
 	"screen.mod-stella-rpg.tip.damage_taken": "Damage taken -%s%%",
 	"screen.mod-stella-rpg.tip.matk": "Matk +%s%%",
 	"screen.mod-stella-rpg.tip.mres": "Magic resistance %s%%",
-	"screen.mod-stella-rpg.tip.cooldown": "Spell cooldown -%s%%",
+	"screen.mod-stella-rpg.tip.cooldown": "Cooldown -%s%%",
 	"screen.mod-stella-rpg.tip.crit_chance": "Crit chance %s%%",
 	"screen.mod-stella-rpg.tip.crit_damage": "Crit damage x%s",
 	"screen.mod-stella-rpg.result.not_enough_points": "Not enough unspent points.",

@@ -24,6 +24,7 @@ public record RpgConfig(
 	public static final String MOB_AMPLIFIER_KEY = "mob_amplifier";
 	/** The old per-level weight table; mob_stats replaced it. */
 	public static final String RETIRED_MOB_WEIGHTS_KEY = "mob_weights";
+	public static final String RETIRED_COOLDOWN_KEY = "cooldown_reduction";
 	public static final double DEFAULT_MOB_AMPLIFIER = 0.03;
 	public static final String MOB_DICE_SHARE_KEY = "mob_dice_share";
 	/** Mobs roll this share of their STR and DEX dice, so early mob hits stay near vanilla. */
@@ -188,7 +189,6 @@ public record RpgConfig(
 	public enum Effect {
 		ATTACK_SPEED("attack_speed", 1.00, 250),
 		DAMAGE_REDUCTION("damage_reduction", 0.60, 300),
-		COOLDOWN_REDUCTION("cooldown_reduction", 0.50, 400),
 		CRIT_CHANCE("crit_chance", 0.50, 300),
 		CRIT_REDUCTION("crit_reduction", 0.50, 300),
 		DEBUFF_RESISTANCE("debuff_resistance", 0.75, 100);

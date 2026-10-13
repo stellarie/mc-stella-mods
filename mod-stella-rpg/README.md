@@ -224,9 +224,12 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 |---|---|---|---|---|---|
 | Attack speed | AGI | `attack_speed` | 1.00 | 250 | `ADD_MULTIPLIED_BASE` modifier on `ATTACK_SPEED` |
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
-| Cooldown | INT + DEX | `cooldown_reduction` | 0.50 | 400 | `1 - value`, with `s = INT + DEX`; the spells mod applies it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
 | Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
+
+Cooldown is not a config curve. Every skill and spell cooldown is multiplied by `1 - 0.8 * s / (s + 200)`, with `s = INT + DEX`.
+The reduction is 0 at `s` = 0, 40% at 200, about 67% at 1000, and never more than 80%.
+The spells mod applies it. The witch hat perk cuts the cooldown by 10% more.
 
 ## Draw speed
 
@@ -316,7 +319,7 @@ Draw speed is a fixed rule, not a curve. See `Draw speed`.
 |---|---|---|---|---|
 | Attack speed bonus | 0.0000 | 0.0458 | 0.2857 | 0.8038 |
 | Damage taken | 1.0000 | 0.9769 | 0.8500 | 0.5360 |
-| Cooldown | 1.0000 | 0.9846 | 0.9000 | 0.6906 |
+| Cooldown (INT + DEX) | 1.0000 | 0.9547 | 0.7333 | 0.3307 |
 | Crit chance | 0.0000 | 0.0192 | 0.1250 | 0.3867 |
 
 ## Command
@@ -391,7 +394,8 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `crit_reduction` is a curve key like the others. `dex_max_roll`, `int_max_roll`, and `magic_defense` are retired and ignored.
 - `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50 (no longer read),
   `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, `resist_cap` 0.9, `armor_pen_base` 0.25, and `armor_pen_cap` 0.75.
-  A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
+  A bad value logs one error and uses the default.
+- The key `cooldown_reduction` is retired. A file that holds it loads and logs it as ignored. The cooldown curve is fixed.
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
@@ -732,8 +736,9 @@ Only vanilla effects and those of `mod-stella-food` count. An effect that is not
 The class name and every public method below are a contract.
 
 - `RpgSpells.power(player)` returns 1.0. The INT spell power curve is retired, and the `spell_power` config key is ignored.
-- `RpgSpells.cooldown(player)` returns the spell cooldown multiplier `1 - 0.5 * X / (X + 400)`, with `X` = effective INT + DEX.
-  At INT 100 and DEX 100 it is 0.8333. The 20 tick floor belongs to the spells mod.
+- `RpgSpells.cooldown(player)` returns the cooldown multiplier of every skill and spell, `1 - 0.8 * X / (X + 200)`,
+  with `X` = effective INT + DEX, times the witch hat factor. At INT 100 and DEX 100 it is 0.6.
+  The 20 tick floor belongs to the spells mod.
 - `RpgSpells.spellDamage(caster, skillPercent)` returns, in vanilla units, `base(level) * skillPercent / 100 * (1 + MATK%) + flatMATK / K`.
   `MATK%` includes the book MATK buff.
   It multiplies the result by `crit_multiplier` when the LUK crit chance rolls. `RpgSpells.spellHit` is the same without the crit.
@@ -764,12 +769,12 @@ A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. 
   It uses the dice roller of `RpgCombat`. A crit multiplies the hit by `crit_multiplier`.
 - `double skillHeal(LivingEntity caster, double coefficient)` returns `(level + 2 * VIT) * coefficient / k * healingFactor`.
   The level is the experience level of a player, or the threat of a mob.
-- `double cooldown(Player player, String key)` returns `cooldownMultiplier(S + T) * cooldownFactor(player)`.
-  `T` is INT for `"vit"` and AGI for every other key. The floor of the curve applies.
 - `double durationMultiplier(LivingEntity caster, String key)` returns `HpModel.durationMultiplier(S)`, with the cap of the INT one.
 - `DamageSource skillSource(LivingEntity caster)` returns a source of the type `mod-stella-rpg:skill` with the caster as direct and causing entity.
   Def and armor apply to it. `RpgCombat.scaleOutgoing` returns its amount unchanged, because the type is not melee, projectile, or magic.
   The dice are therefore never added twice.
+- A projectile with the entity tag `mod-stella-rpg.fixed_hit` is also returned unchanged: no dice, no status ATK, no crit roll.
+  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the minimum ranged roll of the caster.
 
 ## Magic model
 
