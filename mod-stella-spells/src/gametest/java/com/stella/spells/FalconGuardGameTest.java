@@ -26,10 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The Archer innate, Falcon Guard. A black falcon circles above the archer beside the brown Blitz Beat falcon. Every
- * two seconds it has a 35 percent chance to strike a hostile near the archer three times, each hit the average of the
- * lowest and highest ranged roll. A foe it kills pays the archer 25 percent of its experience. The job comes from the
- * RPG mod's job share, which this class stands in for.
+ * The Archer innate, Falcon Guard. A black falcon circles above the archer beside the brown Blitz Beat falcon. On each
+ * blow of the archer it has a 35 percent chance, plus the Blitz Beat LUK bonus, to strike the mob that was hit three
+ * times. Every two seconds, when the archer has struck no blow for five seconds, it strikes the nearest hostile three
+ * times. Each hit is the average of the lowest and highest ranged roll. A foe it kills pays the archer 25 percent of
+ * its experience. The job comes from the RPG mod's job share, which this class stands in for.
  */
 public class FalconGuardGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.falconguard");
@@ -39,6 +40,10 @@ public class FalconGuardGameTest {
 	private static final double HIGH_ROLL = 60.0;
 	private static final int SAMPLES = 1_500;
 	private static final double HEIGHT_SLACK = 0.1;
+	/** A blow too small to change the case, and a blow big enough to tell from a falcon hit. */
+	private static final float TAP = 0.01F;
+	private static final float BLOW = 3.0F;
+	private static final double LUK_POINTS = 100.0;
 
 	/** A stand-in for the job share of the RPG mod, by player. A player it does not know asks the share that was there. */
 	private static final class Jobs {
@@ -80,26 +85,19 @@ public class FalconGuardGameTest {
 		}
 	};
 
-	/** A source whose first roll is a success and every roll after it is not. */
-	private static final class Once extends LegacyRandomSource {
-		private boolean spent;
-
-		Once() {
-			super(1L);
-		}
-
-		@Override
-		public double nextDouble() {
-			boolean first = !this.spent;
-			this.spent = true;
-			return first ? 0.0 : 0.999;
-		}
-	}
-
+	/** A source whose every roll is a success. */
 	private static final RandomSource ALWAYS = new LegacyRandomSource(1L) {
 		@Override
 		public double nextDouble() {
 			return 0.0;
+		}
+	};
+
+	/** A source whose every roll fails, so a blow calls nothing. */
+	private static final RandomSource NEVER = new LegacyRandomSource(1L) {
+		@Override
+		public double nextDouble() {
+			return 0.999;
 		}
 	};
 
@@ -129,6 +127,13 @@ public class FalconGuardGameTest {
 
 	private static Mob foe(final GameTestHelper helper, final double x, final double z) {
 		return FighterBooksGameTest.foe(helper, x, z);
+	}
+
+	/** One melee blow of the archer at the foe. True when it left hits owed to the falcon or to Blitz Beat. */
+	private static boolean blow(final GameTestHelper helper, final ServerPlayer owner, final Mob foe, final float amount) {
+		foe.damageCooldownTime = 0;
+		foe.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(owner), amount);
+		return ArcherSkills.pulsesOwed(owner) > 0;
 	}
 
 	@GameTest(maxTicks = 130)
@@ -180,67 +185,83 @@ public class FalconGuardGameTest {
 	}
 
 	@GameTest(maxTicks = 40)
-	public void aboutThirtyFivePercentOfTheTwoSecondChecksStrikeAFoeInReachOnly(final GameTestHelper helper) {
+	public void aboutThirtyFivePercentOfBlowsCallTheFalconAndLukRaisesTheChance(final GameTestHelper helper) {
 		ServerPlayer owner = archer(helper);
 		Mob foe = foe(helper, OWNER_X + 3.0, OWNER_Z + 4.0);
-		double reach = foe.position().distanceTo(owner.position());
-		int struck = 0;
+		UUID id = owner.getUUID();
+		int plain = 0;
+		int lucky = 0;
 		int unjobbed = 0;
-		int alone = 0;
+		double plainChance;
+		double luckyChance;
 		try {
-			FalconGuard.setRandom(owner.getUUID(), RandomSource.create(35L));
-			for (int check = 0; check < SAMPLES; check++) {
-				struck += ArcherSkills.guardCheck(owner) ? 1 : 0;
+			plainChance = ArcherSkills.guardChance(owner);
+			FalconGuard.setRandom(id, RandomSource.create(35L));
+			for (int blow = 0; blow < SAMPLES; blow++) {
+				plain += blow(helper, owner, foe, TAP) ? 1 : 0;
 				ArcherSkills.clearFor(owner);
 			}
-			FalconGuard.setRandom(owner.getUUID(), ALWAYS);
-			Jobs.INNATES.put(owner.getUUID(), "none");
-			for (int check = 0; check < SAMPLES / 5; check++) {
-				unjobbed += ArcherSkills.guardCheck(owner) ? 1 : 0;
+			ArcherSkills.setBlitzStats((holder, key) -> holder.getUUID().equals(id) && key.equals("luk") ? LUK_POINTS : 0.0);
+			luckyChance = ArcherSkills.guardChance(owner);
+			FalconGuard.setRandom(id, RandomSource.create(36L));
+			for (int blow = 0; blow < SAMPLES; blow++) {
+				lucky += blow(helper, owner, foe, TAP) ? 1 : 0;
 				ArcherSkills.clearFor(owner);
 			}
-			Jobs.INNATES.put(owner.getUUID(), FalconGuard.INNATE_KEY);
-			foe.discard();
-			for (int check = 0; check < SAMPLES / 5; check++) {
-				alone += ArcherSkills.guardCheck(owner) ? 1 : 0;
+			ArcherSkills.setBlitzStats(null);
+			FalconGuard.setRandom(id, ALWAYS);
+			Jobs.INNATES.put(id, "none");
+			for (int blow = 0; blow < SAMPLES / 5; blow++) {
+				unjobbed += blow(helper, owner, foe, TAP) ? 1 : 0;
 				ArcherSkills.clearFor(owner);
 			}
 		} finally {
+			ArcherSkills.setBlitzStats(null);
 			retire(owner);
+			foe.discard();
 		}
-		double sigma = Math.sqrt(SAMPLES * FalconGuard.CHANCE * (1.0 - FalconGuard.CHANCE));
-		LOG.info("[BEHAVIOR] test=aboutThirtyFivePercentOfTheTwoSecondChecksStrikeAFoeInReachOnly RESULT struck={} of={} chance={} reach={} unjobbed={} alone={}",
-			struck, SAMPLES, FalconGuard.CHANCE, reach, unjobbed, alone);
-		helper.assertTrue(FalconGuard.CHANCE == 0.35 && FalconGuard.CHECK_TICKS == 40 && FalconGuard.HITS == 3 && FalconGuard.XP_SHARE == 0.25,
-			"the falcon numbers drifted from 35 percent, 2 s, 3 hits and 25 percent");
-		helper.assertTrue(reach <= FalconGuard.RANGE, "the foe is not within reach: " + reach);
-		helper.assertTrue(Math.abs(struck - SAMPLES * FalconGuard.CHANCE) <= 3.0 * sigma, "the falcon struck " + struck + " times in " + SAMPLES + " checks");
-		helper.assertTrue(unjobbed == 0, "an archer without the innate, whose every roll succeeds, struck " + unjobbed + " times");
-		helper.assertTrue(alone == 0, "the falcon struck " + alone + " times with no foe in reach");
+		double sigmaPlain = Math.sqrt(SAMPLES * plainChance * (1.0 - plainChance));
+		double sigmaLucky = Math.sqrt(SAMPLES * luckyChance * (1.0 - luckyChance));
+		LOG.info("[BEHAVIOR] test=aboutThirtyFivePercentOfBlowsCallTheFalconAndLukRaisesTheChance RESULT plain={} of={} chance={} lucky={} luckyChance={} unjobbed={}",
+			plain, SAMPLES, plainChance, lucky, luckyChance, unjobbed);
+		helper.assertTrue(FalconGuard.CHANCE == 0.35 && FalconGuard.CHECK_TICKS == 40 && FalconGuard.IDLE_TICKS == 100
+			&& FalconGuard.HITS == 3 && FalconGuard.XP_SHARE == 0.25,
+			"the falcon numbers drifted from 35 percent, 2 s, 5 s idle, 3 hits and 25 percent");
+		helper.assertTrue(ArcherSkills.BLITZ_BEAT_CHANCE_PER_LUK == 0.002, "the LUK bonus drifted from 1 percent per 5 LUK");
+		helper.assertTrue(Math.abs(plainChance - 0.35) < 1e-9 && Math.abs(luckyChance - 0.55) < 1e-9,
+			"the chance is " + plainChance + " and with 100 LUK " + luckyChance + ", not 0.35 and 0.55");
+		helper.assertTrue(Math.abs(plain - SAMPLES * plainChance) <= 3.0 * sigmaPlain, "the falcon came on " + plain + " of " + SAMPLES + " blows");
+		helper.assertTrue(Math.abs(lucky - SAMPLES * luckyChance) <= 3.0 * sigmaLucky,
+			"with 100 LUK the falcon came on " + lucky + " of " + SAMPLES + " blows");
+		helper.assertTrue(unjobbed == 0, "an archer without the innate, whose every roll succeeds, called the falcon " + unjobbed + " times");
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 240)
+	@GameTest(maxTicks = 260)
 	public void eachStrikeIsThreeHitsOfTheAverageRollAndBlitzBeatStillWorksBeside(final GameTestHelper helper) {
 		ServerPlayer owner = archer(helper);
 		Mob foe = foe(helper, OWNER_X + 3.0, OWNER_Z + 4.0);
-		FalconGuard.setRandom(owner.getUUID(), new Once());
 		float average = (float) ((LOW_ROLL + HIGH_ROLL) / 2.0 / RpgBridge.k());
 		float parrot = ArcherSkills.strikeDamage(owner, false);
 		helper.assertTrue(Math.abs(average - parrot) > 1.0F && Math.abs(average - LOW_ROLL / RpgBridge.k()) > 1.0F
 			&& Math.abs(average - HIGH_ROLL / RpgBridge.k()) > 1.0F, "the hit sizes cannot be told apart");
-		// The check runs on the server tick whose clock is a multiple of the check gap. The stand-in covers that tick only.
-		int clock = ArcherSkills.dueIn(0);
-		int wait = Math.floorMod(-(clock + 1), FalconGuard.CHECK_TICKS);
-		long arm = wait == 0 ? FalconGuard.CHECK_TICKS : wait;
-		helper.runAfterDelay(arm, () -> RpgBridge.setStats(ATK));
-		helper.runAfterDelay(arm + 1, () -> RpgBridge.setStats(null));
+		// The stand-in covers the blow only, which is where the falcon fixes the size of its hits.
+		FalconGuard.setRandom(owner.getUUID(), ALWAYS);
+		boolean called;
+		try {
+			RpgBridge.setStats(ATK);
+			called = blow(helper, owner, foe, TAP);
+		} finally {
+			RpgBridge.setStats(null);
+		}
+		FalconGuard.setRandom(owner.getUUID(), NEVER);
+		helper.assertTrue(called, "the blow did not call the falcon");
 		List<Long> hits = new ArrayList<>();
 		List<Float> amounts = new ArrayList<>();
 		float[] last = {foe.getHealth()};
 		boolean[] guardSwooped = {false};
 		boolean[] brownSwoopedFirst = {false};
-		long blitzAt = arm + 25L;
+		long blitzAt = 25L;
 		helper.onEachTick(() -> {
 			float now = foe.getHealth();
 			if (now < last[0]) {
@@ -253,19 +274,31 @@ public class FalconGuardGameTest {
 			guardSwooped[0] |= black != null && black.swooping();
 			brownSwoopedFirst[0] |= brown != null && brown.swooping() && helper.getTick() < blitzAt + ArcherSkills.PARROT_IDLE_TICKS;
 		});
-		helper.runAfterDelay(blitzAt, () -> ArcherSkills.applyBlitzBeat(owner, null, owner.position(), SkillSchoolGameTest.modifiers(owner, false)));
-		helper.runAfterDelay(blitzAt + ArcherSkills.PARROT_IDLE_TICKS + 2L * ArcherSkills.PARROT_INTERVAL_TICKS + 20L, () -> {
+		// The blow starts the five seconds of rest again. Blitz Beat rests only two seconds, so its two idle strikes come
+		// before the falcon could strike, and the window that is read ends first.
+		helper.runAfterDelay(blitzAt, () -> {
+			ArcherSkills.applyBlitzBeat(owner, null, owner.position(), SkillSchoolGameTest.modifiers(owner, false));
+			ArcherSkills.setBlitzRandom(NEVER);
+			try {
+				blow(helper, owner, foe, TAP);
+			} finally {
+				ArcherSkills.setBlitzRandom(null);
+			}
+		});
+		long readAt = blitzAt + FalconGuard.IDLE_TICKS - 2L;
+		helper.runAfterDelay(readAt, () -> {
 			List<Long> guardTicks = new ArrayList<>();
 			int parrotHits = 0;
 			for (int i = 0; i < hits.size(); i++) {
 				if (Math.abs(amounts.get(i) - average) < 0.01F) {
 					guardTicks.add(hits.get(i));
-				} else if (Math.abs(amounts.get(i) - parrot) < 0.01F) {
+				} else if (Math.abs(amounts.get(i) - parrot) < 0.01F && hits.get(i) > blitzAt) {
 					parrotHits++;
 				}
 			}
-			LOG.info("[BEHAVIOR] test=eachStrikeIsThreeHitsOfTheAverageRollAndBlitzBeatStillWorksBeside RESULT average={} parrot={} hits={} amounts={} guard={} parrotHits={} swooped={}",
-				average, parrot, hits, amounts, guardTicks, parrotHits, guardSwooped[0]);
+			LOG.info("[BEHAVIOR] test=eachStrikeIsThreeHitsOfTheAverageRollAndBlitzBeatStillWorksBeside RESULT average={} parrot={} hits={} amounts={} guard={} parrotHits={} swooped={} readAt={}",
+				average, parrot, hits, amounts, guardTicks, parrotHits, guardSwooped[0], readAt);
+			helper.assertTrue(readAt < blitzAt + FalconGuard.IDLE_TICKS, "the read window reaches the idle strikes of the falcon");
 			helper.assertTrue(guardTicks.size() == FalconGuard.HITS, "the falcon landed " + guardTicks.size() + " hits of " + average + ": " + amounts);
 			for (int i = 1; i < guardTicks.size(); i++) {
 				helper.assertTrue(guardTicks.get(i) - guardTicks.get(i - 1) == ArcherSkills.BLITZ_BEAT_INTERVAL_TICKS,
@@ -274,13 +307,87 @@ public class FalconGuardGameTest {
 			helper.assertTrue(guardTicks.getLast() < blitzAt, "the strike came after Blitz Beat was cast, so the two overlap: " + guardTicks);
 			helper.assertTrue(guardSwooped[0], "the black falcon never flew at the foe");
 			helper.assertFalse(brownSwoopedFirst[0], "the brown falcon flew at the foe before Blitz Beat struck");
-			helper.assertTrue(parrotHits >= ArcherSkills.PARROT_HITS, "Blitz Beat landed " + parrotHits + " idle hits of " + parrot + " beside the guard");
+			helper.assertTrue(parrotHits >= 2 * ArcherSkills.PARROT_HITS, "Blitz Beat landed " + parrotHits + " idle hits of " + parrot + " beside the guard");
 			helper.assertTrue(Falcons.guardOf(owner) != null && Falcons.of(owner) != null && Falcons.guardOf(owner) != Falcons.of(owner),
 				"the two falcons do not both stand");
 			foe.discard();
 			retire(owner);
 			helper.succeed();
 		});
+	}
+
+	@GameTest(maxTicks = 460)
+	public void anIdleArcherGetsThreeHitsEveryTwoSecondsOnlyAfterFiveSecondsWithoutABlow(final GameTestHelper helper) {
+		ServerPlayer owner = archer(helper);
+		Mob foe = foe(helper, OWNER_X + 3.0, OWNER_Z + 4.0);
+		FalconGuard.setRandom(owner.getUUID(), NEVER);
+		float guardHit = ArcherSkills.guardDamage(owner);
+		helper.assertTrue(Math.abs(guardHit - BLOW) > 0.5F, "a blow and a falcon hit cannot be told apart");
+		List<Long> hits = new ArrayList<>();
+		long[] firstBlow = {-1};
+		long[] secondBlow = {-1};
+		float[] last = {foe.getHealth()};
+		long[] lastHit = {-1};
+		helper.onEachTick(() -> {
+			long tick = helper.getTick();
+			float now = foe.getHealth();
+			if (now < last[0] && Math.abs((last[0] - now) - guardHit) < 0.01F) {
+				hits.add(tick);
+				lastHit[0] = tick;
+			}
+			last[0] = foe.getHealth();
+			if (tick == 1) {
+				blow(helper, owner, foe, BLOW);
+				firstBlow[0] = tick;
+				last[0] = foe.getHealth();
+			}
+			// A second blow, once two strikes are done and the next one has not begun.
+			if (secondBlow[0] < 0 && hits.size() >= 2 * FalconGuard.HITS && tick - lastHit[0] == 3) {
+				blow(helper, owner, foe, BLOW);
+				secondBlow[0] = tick;
+				last[0] = foe.getHealth();
+			}
+			if (secondBlow[0] > 0 && tick == secondBlow[0] + FalconGuard.IDLE_TICKS + 2L * FalconGuard.CHECK_TICKS + 20L) {
+				List<List<Long>> strikes = strikes(hits);
+				LOG.info("[BEHAVIOR] test=anIdleArcherGetsThreeHitsEveryTwoSecondsOnlyAfterFiveSecondsWithoutABlow RESULT firstBlow={} secondBlow={} hits={} strikes={}",
+					firstBlow[0], secondBlow[0], hits, strikes);
+				long beforeSecond = hits.stream().filter(at -> at < secondBlow[0]).count();
+				helper.assertTrue(!strikes.isEmpty() && strikes.getFirst().getFirst() - firstBlow[0] >= FalconGuard.IDLE_TICKS,
+					"the falcon struck at " + (strikes.isEmpty() ? -1 : strikes.getFirst().getFirst()) + ", " + (strikes.isEmpty() ? -1 : strikes.getFirst().getFirst() - firstBlow[0])
+						+ " ticks after the first blow");
+				for (List<Long> strike : strikes) {
+					helper.assertTrue(strike.size() == FalconGuard.HITS, "a strike landed " + strike.size() + " hits: " + strikes);
+					for (int i = 1; i < strike.size(); i++) {
+						helper.assertTrue(strike.get(i) - strike.get(i - 1) == ArcherSkills.BLITZ_BEAT_INTERVAL_TICKS, "the hits came unevenly: " + strike);
+					}
+				}
+				helper.assertTrue(beforeSecond >= 2 * FalconGuard.HITS, "the idle falcon struck " + beforeSecond + " times before the second blow");
+				for (int i = 1; i < strikes.size(); i++) {
+					long gap = strikes.get(i).getFirst() - strikes.get(i - 1).getFirst();
+					boolean acrossBlow = strikes.get(i - 1).getFirst() < secondBlow[0] && strikes.get(i).getFirst() > secondBlow[0];
+					helper.assertTrue(acrossBlow ? gap >= FalconGuard.IDLE_TICKS : gap == FalconGuard.CHECK_TICKS,
+						"strikes came " + gap + " ticks apart: " + strikes);
+				}
+				long afterSecond = hits.stream().filter(at -> at > secondBlow[0]).findFirst().orElse(-1L);
+				helper.assertTrue(afterSecond >= secondBlow[0] + FalconGuard.IDLE_TICKS,
+					"the falcon struck " + (afterSecond - secondBlow[0]) + " ticks after a blow, not " + FalconGuard.IDLE_TICKS);
+				foe.discard();
+				retire(owner);
+				helper.succeed();
+			}
+		});
+	}
+
+	/** Groups hit ticks into strikes: a gap longer than the hit gap starts a new one. */
+	private static List<List<Long>> strikes(final List<Long> hits) {
+		List<List<Long>> strikes = new ArrayList<>();
+		for (long tick : hits) {
+			if (strikes.isEmpty() || tick - strikes.getLast().getLast() > ArcherSkills.BLITZ_BEAT_INTERVAL_TICKS) {
+				strikes.add(new ArrayList<>());
+			}
+			strikes.getLast().add(tick);
+		}
+		return strikes;
 	}
 
 	@GameTest(maxTicks = 120)
@@ -301,15 +408,16 @@ public class FalconGuardGameTest {
 		int blitzShare = (int) Math.round(reward * ArcherSkills.PARROT_XP_SHARE);
 		int before = owner.totalExperience;
 		AABB foeArea = foe.getBoundingBox().inflate(4.0);
+		// The blow leaves the foe alive, so the falcon makes the kill.
 		FalconGuard.setRandom(owner.getUUID(), ALWAYS);
-		boolean struck = ArcherSkills.guardCheck(owner);
-		FalconGuard.setRandom(owner.getUUID(), null);
+		boolean struck = blow(helper, owner, foe, TAP);
+		FalconGuard.setRandom(owner.getUUID(), NEVER);
 		helper.runAfterDelay(30L, () -> {
 			int gained = owner.totalExperience - before;
 			int orbs = helper.getLevel().getEntitiesOfClass(ExperienceOrb.class, foeArea).size();
 			LOG.info("[BEHAVIOR] test=aFoeTheFalconKillsPaysTwentyFivePercentOfItsExperienceAtOnce RESULT struck={} reward={} expected={} blitzShare={} gained={} orbs={} controlOrbValue={} alive={}",
 				struck, reward, expected, blitzShare, gained, orbs, controlValue, foe.isAlive());
-			helper.assertTrue(struck, "the check queued no strike");
+			helper.assertTrue(struck, "the blow queued no strike");
 			helper.assertTrue(controlValue > 0, "a kill by the owner dropped no experience, so the missing orbs prove nothing");
 			helper.assertTrue(reward > 0 && expected > 0 && expected != blitzShare, "the foe carries no experience that tells 25 percent from 35");
 			helper.assertFalse(foe.isAlive(), "the falcon never killed the foe");
@@ -349,19 +457,24 @@ public class FalconGuardGameTest {
 		Object saved = FabricLoader.getInstance().getObjectShare().get(FalconGuard.JOBS_SHARE);
 		boolean absent;
 		boolean absentStrike;
+		boolean absentIdle;
 		boolean broken;
 		boolean brokenStrike;
 		boolean present;
+		boolean presentStrike;
 		try {
 			FabricLoader.getInstance().getObjectShare().remove(FalconGuard.JOBS_SHARE);
 			absent = FalconGuard.holds(owner);
-			absentStrike = ArcherSkills.guardCheck(owner);
+			absentStrike = blow(helper, owner, foe, TAP);
+			absentIdle = ArcherSkills.guardIdleCheck(owner, ArcherSkills.dueIn(FalconGuard.IDLE_TICKS));
+			ArcherSkills.clearFor(owner);
 			Function<ServerPlayer, String> fails = player -> {
 				throw new IllegalStateException("the job share is broken");
 			};
 			FabricLoader.getInstance().getObjectShare().put(FalconGuard.JOBS_SHARE, Map.of(FalconGuard.INNATE_FUNCTION, fails));
 			broken = FalconGuard.holds(owner);
-			brokenStrike = ArcherSkills.guardCheck(owner);
+			brokenStrike = blow(helper, owner, foe, TAP);
+			ArcherSkills.clearFor(owner);
 		} finally {
 			FabricLoader.getInstance().getObjectShare().remove(FalconGuard.JOBS_SHARE);
 			if (saved != null) {
@@ -369,13 +482,14 @@ public class FalconGuardGameTest {
 			}
 			Jobs.install();
 			present = FalconGuard.holds(owner);
+			presentStrike = blow(helper, owner, foe, TAP);
 			ArcherSkills.clearFor(owner);
 		}
-		LOG.info("[BEHAVIOR] test=withoutTheRpgModTheFalconStaysQuiet RESULT absent={} absentStrike={} broken={} brokenStrike={} restored={}",
-			absent, absentStrike, broken, brokenStrike, present);
-		helper.assertTrue(!absent && !absentStrike, "the innate held, or the falcon struck, with no job share");
+		LOG.info("[BEHAVIOR] test=withoutTheRpgModTheFalconStaysQuiet RESULT absent={} absentStrike={} absentIdle={} broken={} brokenStrike={} restored={} restoredStrike={}",
+			absent, absentStrike, absentIdle, broken, brokenStrike, present, presentStrike);
+		helper.assertTrue(!absent && !absentStrike && !absentIdle, "the innate held, or the falcon struck, with no job share");
 		helper.assertTrue(!broken && !brokenStrike, "the innate held, or the falcon struck, with a job share that fails");
-		helper.assertTrue(present, "the stand-in did not return, so the case proves nothing about a present share");
+		helper.assertTrue(present && presentStrike, "with the stand-in back the innate held " + present + " and the blow called the falcon " + presentStrike);
 		foe.discard();
 		retire(owner);
 		helper.succeed();
@@ -385,7 +499,7 @@ public class FalconGuardGameTest {
 	@GameTest(required = false, maxTicks = 40)
 	public void theBlackFalconLooksRightRequiresManualReview(final GameTestHelper helper) {
 		helper.fail("[MANUAL] choose Archer at the trainer. A larger black parrot circles above your head, opposite the brown Blitz Beat parrot, "
-			+ "and never sits. Every few seconds it may dive at a nearby hostile three times.");
+			+ "and never sits. When you hit a mob it may dive at the mob three times. After five seconds without a hit it dives at the nearest hostile three times every two seconds.");
 	}
 
 	private static Mob ravager(final GameTestHelper helper, final double x, final double z) {

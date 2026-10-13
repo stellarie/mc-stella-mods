@@ -993,6 +993,7 @@ public final class ArcherSkills {
 		if (owner == null) {
 			return;
 		}
+		guardOnBlow(owner, foe);
 		RandomSource override = blitzRandom;
 		int strikes = blitzStrikes(owner, override != null ? override : owner.getRandom());
 		if (strikes <= 0) {
@@ -1150,15 +1151,21 @@ public final class ArcherSkills {
 		return true;
 	}
 
-	// The Falcon Guard: every two seconds an archer with the innate has a chance to send the black falcon at the nearest
-	// foe within reach for three hits. No rest is needed, and Blitz Beat does not share its timers.
+	// The Falcon Guard rests until the archer has struck no blow for five seconds. Then, every two seconds, it strikes the
+	// nearest foe within reach three times. Blitz Beat does not share its timers.
 	private static void tickGuards(final MinecraftServer server, final int now) {
 		if (now % FalconGuard.CHECK_TICKS != 0) {
 			return;
 		}
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			guardCheck(player);
+			guardIdleCheck(player, now);
 		}
+	}
+
+	/** The chance of the falcon on a blow: the base, plus the Blitz Beat bonus of 1 percent per 5 LUK, at most 1. */
+	static double guardChance(final LivingEntity caster) {
+		double luk = Math.max(0.0, blitzStats.stat(caster, "luk"));
+		return Math.min(1.0, FalconGuard.CHANCE + luk * BLITZ_BEAT_CHANCE_PER_LUK);
 	}
 
 	/** What one Falcon Guard hit deals: the average of the lowest and highest ranged roll, else the book number. */
@@ -1167,23 +1174,41 @@ public final class ArcherSkills {
 		return Double.isFinite(average) && average >= 0.0 ? RpgBridge.vanilla((float) average) : SpellNumbers.HUNTERS_MARK.damage();
 	}
 
-	/** One two-second check of the Falcon Guard: true when it rolled a strike and queued the hits. */
-	static boolean guardCheck(final ServerPlayer player) {
-		if (!player.isAlive() || player.isSpectator() || !FalconGuard.holds(player) || !FalconGuard.roll(player)) {
+	/** A blow of the archer: true when the falcon rolled a strike at the mob that was hit and queued the hits. */
+	static boolean guardOnBlow(final ServerPlayer owner, final Mob foe) {
+		if (!owner.isAlive() || owner.isSpectator() || !FalconGuard.holds(owner) || !FalconGuard.roll(owner, guardChance(owner))) {
+			return false;
+		}
+		queueGuardHits(owner, foe, "BLOW");
+		return true;
+	}
+
+	/** One two-second check of the idle Falcon Guard: true when the archer has rested long enough and a foe is in reach. */
+	static boolean guardIdleCheck(final ServerPlayer player, final int now) {
+		if (!player.isAlive() || player.isSpectator() || !FalconGuard.holds(player)) {
+			return false;
+		}
+		int rested = now - LAST_BLOW.computeIfAbsent(player.getUUID(), key -> now);
+		if (rested < FalconGuard.IDLE_TICKS) {
 			return false;
 		}
 		Mob foe = nearestFoe(player, player, FalconGuard.RANGE);
 		if (foe == null) {
 			return false;
 		}
+		queueGuardHits(player, foe, "IDLE");
+		return true;
+	}
+
+	private static void queueGuardHits(final ServerPlayer player, final Mob foe, final String cause) {
 		float amount = guardDamage(player);
 		SpellModifiers.CastModifiers plain = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
 		for (int hit = 0; hit < FalconGuard.HITS; hit++) {
 			owe(player, new Job(null, foe.getUUID(), dueIn(1 + hit * BLITZ_BEAT_INTERVAL_TICKS), JobKind.GUARD, plain, amount));
 		}
 		((ServerLevel) player.level()).playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PHANTOM_FLAP, SoundSource.PLAYERS, 0.8F, 1.2F);
-		Spellbooks.LOGGER.info("[SPELL] event=FALCON_GUARD_ATTACK caster={} foe={} hits={} amount={}", player.getUUID(), foe.getUUID(), FalconGuard.HITS, amount);
-		return true;
+		Spellbooks.LOGGER.info("[SPELL] event=FALCON_GUARD_ATTACK cause={} caster={} foe={} hits={} amount={}",
+			cause, player.getUUID(), foe.getUUID(), FalconGuard.HITS, amount);
 	}
 
 	// The idle falcon: a player with Blitz Beat who has not struck a blow for a while sends the falcon at the nearest

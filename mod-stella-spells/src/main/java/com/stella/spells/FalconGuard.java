@@ -11,9 +11,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Archer innate, Falcon Guard. A black falcon circles above an archer for good, beside the brown Blitz Beat falcon.
- * Every {@link #CHECK_TICKS} ticks it has a {@link #CHANCE} to strike a hostile within {@link #RANGE} blocks of the
- * archer {@link #HITS} times. Each hit is the average of the lowest and highest ranged roll of the archer. A foe it
- * kills pays the archer {@link #XP_SHARE} of its experience.
+ * On each blow of the archer it has a {@link #CHANCE} to strike the mob that was hit {@link #HITS} times. Blitz Beat
+ * adds its LUK bonus to the chance. Every {@link #CHECK_TICKS} ticks, when the archer has not struck a blow for
+ * {@link #IDLE_TICKS} ticks, it strikes the nearest hostile within {@link #RANGE} blocks {@link #HITS} times. Each hit is
+ * the average of the lowest and highest ranged roll of the archer. A foe it kills pays the archer {@link #XP_SHARE} of its
+ * experience.
  * The RPG mod owns the job. This class asks it through the job object share and does nothing when the share is absent.
  */
 final class FalconGuard {
@@ -21,6 +23,7 @@ final class FalconGuard {
 	static final String INNATE_FUNCTION = "innate";
 	static final String INNATE_KEY = "falcon_guard";
 	static final int CHECK_TICKS = 40;
+	static final int IDLE_TICKS = 100;
 	static final double CHANCE = 0.35;
 	static final int HITS = 3;
 	static final double RANGE = 8.0;
@@ -55,9 +58,9 @@ final class FalconGuard {
 		}
 	}
 
-	/** One check: whether the falcon strikes this time. */
-	static boolean roll(final ServerPlayer player) {
-		return RANDOMS.getOrDefault(player.getUUID(), player.getRandom()).nextDouble() < CHANCE;
+	/** One roll against this chance: whether the falcon strikes this time. */
+	static boolean roll(final ServerPlayer player, final double chance) {
+		return RANDOMS.getOrDefault(player.getUUID(), player.getRandom()).nextDouble() < chance;
 	}
 
 	static void clear() {
