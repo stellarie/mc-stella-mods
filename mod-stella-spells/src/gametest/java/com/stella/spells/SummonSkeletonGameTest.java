@@ -378,6 +378,29 @@ public class SummonSkeletonGameTest {
 		});
 	}
 
+	/** A servant with a crossbow, which vanilla does not count as a bow, shoots its foe instead of walking up to it. */
+	@GameTest(maxTicks = 160)
+	public void aServantShootsWithACrossbow(final GameTestHelper helper) {
+		helper.setTime(18_000L);
+		floor(helper);
+		ServerPlayer master = master(helper, 1.5, 1.5);
+		SpellbookItem book = book();
+		master.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(book));
+		SpellCasting.cast(master, book, InteractionHand.MAIN_HAND);
+		Skeleton servant = SummonSkeleton.find(helper.getLevel().getServer(), master.getUUID());
+		servant.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
+		Mob zombie = helper.spawnMob(EntityTypes.ZOMBIE, 7, 1, 7).withNoFreeWill().spawn();
+		zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+		helper.succeedWhen(() -> {
+			var arrows = helper.getLevel().getEntitiesOfClass(net.minecraft.world.entity.projectile.arrow.AbstractArrow.class,
+				servant.getBoundingBox().inflate(32.0), arrow -> arrow.getOwner() == servant);
+			helper.assertTrue(!arrows.isEmpty(), "the servant with a crossbow shot no arrow");
+			LOG.info("[SPELLTEST] test=aServantShootsWithACrossbow RESULT arrows={}", arrows.size());
+			servant.discard();
+			leave(helper, master);
+		});
+	}
+
 	/**
 	 * A servant left in an unloaded chunk cannot be called back, so a new cast raises another. When the old one loads
 	 * again it is retired without dropping a second copy of its saved inventory.
