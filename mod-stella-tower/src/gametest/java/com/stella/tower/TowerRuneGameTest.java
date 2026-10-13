@@ -85,14 +85,14 @@ public class TowerRuneGameTest {
 		helper.succeed();
 	}
 
-	/** Every source drops a rune at one in a thousand: a mob, an elite, a boss and a shaman, by a pinned roll. */
+	/** Every source drops a rune at half a percent: a mob, an elite, a boss and a shaman, by a pinned roll. */
 	@GameTest
-	public void everyRuneSourceDropsAtOneInAThousand(final GameTestHelper helper) {
+	public void everyRuneSourceDropsAtHalfAPercent(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
 		ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
 		double[] chances = {TowerRunes.dropChance(TowerRank.MOB), TowerRunes.dropChance(TowerRank.ELITE), TowerRunes.dropChance(TowerRank.BOSS), TowerShamans.RUNE_CHANCE};
 		int[] dropped = new int[2];
-		double[] rolls = {0.0009, 0.0011};
+		double[] rolls = {0.0045, 0.0055};
 		try {
 			for (int i = 0; i < rolls.length; i++) {
 				TowerRunes.pinDropRoll(rolls[i]);
@@ -112,7 +112,7 @@ public class TowerRuneGameTest {
 		TowerTestSupport.result("runeChances", "chances=" + java.util.Arrays.toString(chances) + " dropped=" + java.util.Arrays.toString(dropped));
 		TowerTestSupport.leave(helper, player);
 		for (double chance : chances) {
-			helper.assertTrue(chance == 0.001, "a rune source drops at " + chance + ", not 0.001");
+			helper.assertTrue(chance == 0.005, "a rune source drops at " + chance + ", not 0.005");
 		}
 		helper.assertTrue(dropped[0] == 1 && dropped[1] == 0, "a roll under the chance dropped " + dropped[0] + " runes and a roll over it " + dropped[1]);
 		helper.succeed();
