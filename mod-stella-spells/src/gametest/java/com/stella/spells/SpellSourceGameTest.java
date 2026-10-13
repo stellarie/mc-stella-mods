@@ -139,6 +139,8 @@ public class SpellSourceGameTest {
 		caster.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
 		SpellCasting.CastResult result = SpellCasting.cast(caster, book, InteractionHand.MAIN_HAND);
 		helper.assertTrue(result == SpellCasting.CastResult.CAST, spell + " did not cast: " + result);
+		// Dragonfall hits when its charge lands; the case reads the hit now.
+		DragonCharge.landNow(caster);
 	}
 
 	private static ServerPlayer caster(final GameTestHelper helper) {

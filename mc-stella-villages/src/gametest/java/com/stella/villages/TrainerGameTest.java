@@ -377,7 +377,8 @@ public final class TrainerGameTest {
 			player.experienceLevel = RpgJobs.MIN_LEVEL - 1;
 			TrainerMenu menu = open(helper, fixture, player);
 			boolean reasonShown = menu.getContainer().getItem(TrainerMenu.INFO_SLOT).is(Items.BARRIER)
-				&& menu.getContainer().getItem(TrainerMenu.INFO_SLOT).get(DataComponents.ITEM_NAME).getString().contains("level " + RpgJobs.MIN_LEVEL);
+				&& menu.getContainer().getItem(TrainerMenu.INFO_SLOT).get(DataComponents.LORE).lines().stream()
+					.anyMatch(line -> line.getString().contains("level " + RpgJobs.MIN_LEVEL));
 			boolean noJobIcons = TrainerMenu.JOB_SLOTS.length == 4 && java.util.Arrays.stream(TrainerMenu.JOB_SLOTS)
 				.allMatch(slot -> menu.getContainer().getItem(slot).is(Items.STAINED_GLASS_PANE.gray()));
 			menu.clicked(TrainerMenu.JOB_SLOTS[0], 0, ContainerInput.PICKUP, player);

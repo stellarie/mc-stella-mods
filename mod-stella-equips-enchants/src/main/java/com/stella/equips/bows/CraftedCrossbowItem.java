@@ -1,6 +1,8 @@
 package com.stella.equips.bows;
 
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.function.Consumer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -45,6 +47,6 @@ public class CraftedCrossbowItem extends CrossbowItem implements CraftedWeapon {
 	public void appendHoverText(final ItemStack stack, final Item.TooltipContext context, final TooltipDisplay display, final Consumer<Component> builder,
 		final TooltipFlag flag) {
 		super.appendHoverText(stack, context, display, builder, flag);
-		builder.accept(CraftedBows.effectText(stack));
+		DescriptionLines.addBlock(builder, Component.literal("crossbow in hand").withStyle(ChatFormatting.WHITE), CraftedBows.effectText(stack));
 	}
 }

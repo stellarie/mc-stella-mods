@@ -150,13 +150,19 @@ public final class SpellCombos {
 		}
 
 		if (combo == FROZEN_METEOR && point != null) {
-			for (Mob hostile : caster.level().getEntitiesOfClass(
-				Mob.class, new AABB(point, point).inflate(FROZEN_METEOR_RADIUS),
-				candidate -> candidate.isAlive() && Friends.isFoe(candidate)
-					&& candidate.position().distanceToSqr(point) <= FROZEN_METEOR_RADIUS * FROZEN_METEOR_RADIUS
-			)) {
-				hostile.damageCooldownTime = 0;
-				hostile.hurtServer(caster.level(), magic, RpgBridge.damage(caster, FROZEN_METEOR_DAMAGE, power));
+			// The meteor is Dragonfall's: its bonus lands with the charge, right after the charge's own hit.
+			Runnable meteor = () -> {
+				for (Mob hostile : caster.level().getEntitiesOfClass(
+					Mob.class, new AABB(point, point).inflate(FROZEN_METEOR_RADIUS),
+					candidate -> candidate.isAlive() && Friends.isFoe(candidate)
+						&& candidate.position().distanceToSqr(point) <= FROZEN_METEOR_RADIUS * FROZEN_METEOR_RADIUS
+				)) {
+					hostile.damageCooldownTime = 0;
+					hostile.hurtServer(caster.level(), magic, RpgBridge.damage(caster, FROZEN_METEOR_DAMAGE, power));
+				}
+			};
+			if (!DragonCharge.thenOnLanding(caster, meteor)) {
+				meteor.run();
 			}
 			return caster;
 		}

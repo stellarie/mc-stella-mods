@@ -64,7 +64,7 @@ public final class TowerGrowth {
 
 	public static void register() {
 		net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry.addLast(TowerItems.ASCENDED, ascended -> (context, lines, flag, components) ->
-			lines.accept(Component.translatable("item.mod-stella-tower.ascended", ascended.level(), ascended.kills()).withStyle(ChatFormatting.GOLD)));
+			DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.ascended", ascended.level(), ascended.kills()).withStyle(ChatFormatting.GOLD)));
 		// A tower mob's death is a kill for what its slayer holds and wears.
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);

@@ -8,12 +8,10 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ItemLore;
 
 /** The crafted arrows, and the table Arrow Crafting reads: one material, one kind, in the order the book prefers. */
 public final class ArrowItems {
@@ -48,8 +46,7 @@ public final class ArrowItems {
 		for (ArrowKind kind : ArrowKind.values()) {
 			Identifier id = Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, kind.path());
 			Item.Properties properties = new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id))
-				.component(DataComponents.LORE, new ItemLore(List.of(Spellbooks.line(
-					Component.translatable("item." + Spellbooks.MOD_ID + "." + kind.path() + ".effect"), ChatFormatting.GRAY))));
+				.component(DataComponents.LORE, Spellbooks.lore(Spellbooks.block(kind.path(), ChatFormatting.GRAY)));
 			items.put(kind, Registry.register(BuiltInRegistries.ITEM, id, new CraftedArrowItem(properties, kind)));
 		}
 		return items;

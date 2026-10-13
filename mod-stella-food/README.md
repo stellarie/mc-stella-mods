@@ -6,6 +6,9 @@ Stella Food adds a cooking station, combined dishes, food buffs, and potion-infu
 
 All edible items can be eaten at full hunger. Every food grants Regeneration I for two seconds.
 Hover over a food to see its food buff, duration, and benefit. Infused dishes also list their potion effects.
+A tooltip opens with a `Requires:` line and a `Desc:` line. A food needs nothing, so it reads `Requires: none`.
+The `Desc:` line gives the Regeneration I and the buff, each with its duration.
+Each tooltip line holds at most 24 characters. `DescriptionLines` splits a longer line at a space.
 
 Ordinary food grants a category buff for five minutes. Unknown foods, including food from other mods, receive Nourished.
 

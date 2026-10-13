@@ -107,7 +107,9 @@ their own arrows.
 - **Retreat:** a target inside the near band makes the archer walk away until it is back in the band.
   The walk follows a path that reaches its end: straight away first, then at wider angles, at 8, 5, and 3 blocks.
   The archer is cornered when no such path exists, or when it moves less than half a block in 20 ticks.
-  A cornered archer rests for 60 ticks and fires. A retreat that runs its 60 tick window rests for 40 ticks.
+  A unit with a bow or a crossbow kites: it walks 3 blocks, stops for one draw and one shot, then walks 3 blocks again
+  while the target stays inside the near edge. The stop lasts one draw (bow) or one charge and hold (crossbow), plus 8 ticks.
+  A cornered archer rests for 60 ticks and fires. Another unit that runs its 60 tick window rests for 40 ticks.
   A retreat that reaches the band does not rest. Every rest counts the archer's own ticks.
 
 ## Ranged reach
@@ -291,8 +293,7 @@ fights these mobs and a developer who tunes them. Each number below is a constan
 
 ### Kite (`KiteGoal`, `StanceBands`, `KeepDistanceGoal`)
 
-- A hurt archer in KITE holds at least 12 blocks from the player. It moves for 30 ticks and rests for 30 ticks,
-  and it shoots in the rests.
+- A hurt archer in KITE holds at least 12 blocks from the player. It retreats in 3 block steps and shoots in each stop.
 - A hurt melee mob in KITE keeps 4 to 8 blocks from a player who looks at it. The player's view cone is 55 degrees
   to each side. When the player looks away, the mob closes in and strikes.
 - A melee mob never stands still for good. After 60 ticks under the gaze, it strikes.
@@ -524,7 +525,8 @@ A placed Shield Generator guards a 33 by 33 by 33 box centered on it, in any dim
 - No hostile mob enters the box. A hostile mob is a mob that implements `Enemy`, bosses and elites included.
   `ShieldSpawnMixin` refuses it at `ServerLevel.addEntity`, which sits under every add path: natural spawn, spawner block, summon, promotion and any other mod's spawn.
 - A mob already inside when the generator is placed stays. It is not read back through the add path.
-- No mob targets a player who stands in the box. A hostile mob inside the box holds no target at all.
+- Aggro across the box edge is refused. A mob outside never targets a player inside.
+  A hostile mob inside never targets anything outside. A mob and a target both inside keep normal aggro.
   `ShieldAggroMixin` gates `setTarget` and `canAttack`, and drops a held target on the next AI step. A skeleton outside the box does not shoot a player inside.
 - Green sparkles mark the 12 edges, to every player within 48 blocks.
 - Any killed mob drops one generator with chance 0.0001 (0.01 percent). A Wither minion, a small Wither and a summoned mob drop none.

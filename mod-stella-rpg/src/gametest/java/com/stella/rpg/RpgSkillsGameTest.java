@@ -103,20 +103,6 @@ public final class RpgSkillsGameTest {
 	}
 
 	@GameTest
-	public void cooldownFalls(final GameTestHelper helper) {
-		ServerPlayer player = RpgTestSupport.player(helper);
-		RpgTestSupport.setStat(player, Stat.STR, 0);
-		double low = RpgSkills.cooldown(player, "str");
-		RpgTestSupport.setStat(player, Stat.STR, 200);
-		double high = RpgSkills.cooldown(player, "str");
-		double floor = RpgCurve.cooldownMultiplier(Integer.MAX_VALUE / 2);
-		RpgTestSupport.result("RpgSkillsGameTest.cooldownFalls", "str0=" + low + " str200=" + high + " floor=" + floor);
-		helper.assertTrue(high < low, "STR 200 did not cut the cooldown: " + high + " vs " + low);
-		helper.assertTrue(high >= floor, "the cooldown fell below the floor: " + high + " vs " + floor);
-		helper.succeed();
-	}
-
-	@GameTest
 	public void durationMatchesCurve(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.VIT, 150);

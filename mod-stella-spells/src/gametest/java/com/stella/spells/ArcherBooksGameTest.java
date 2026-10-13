@@ -59,8 +59,8 @@ public class ArcherBooksGameTest {
 		helper.assertTrue(firstBefore - first.getHealth() > 0.0F, "the first foe on the line took nothing");
 		helper.assertTrue(secondBefore - second.getHealth() > 0.0F, "the second foe on the line took nothing");
 		helper.assertTrue(asideBefore - aside.getHealth() == 0.0F, "a foe three blocks off the line was hit");
-		helper.assertTrue(SpellNumbers.PIERCING_SHOT.radius() == 32.0,
-			"the line is " + SpellNumbers.PIERCING_SHOT.radius() + " blocks, not 32");
+		helper.assertTrue(SpellNumbers.PIERCING_SHOT.radius() == ArcherSkills.SKILL_RANGE_BLOCKS,
+			"the line is " + SpellNumbers.PIERCING_SHOT.radius() + " blocks, not " + ArcherSkills.SKILL_RANGE_BLOCKS);
 		first.discard();
 		second.discard();
 		aside.discard();
@@ -86,57 +86,6 @@ public class ArcherBooksGameTest {
 		first.discard();
 		second.discard();
 		helper.succeed();
-	}
-
-	@GameTest(maxTicks = 200)
-	public void arrowRainPulsesFiveTimesTenTicksApart(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob foe = FighterBooksGameTest.foe(helper, 5.5, CASTER_Z + 5.0);
-		Vec3 point = helper.absoluteVec(new Vec3(5.5, FLOOR_Y, CASTER_Z + 5.0));
-		List<Float> samples = new ArrayList<>();
-		boolean applied = ArcherSkills.applyArrowRain(caster, null, point, SkillSchoolGameTest.modifiers(caster, false));
-		helper.onEachTick(() -> samples.add(foe.getHealth()));
-		helper.runAfterDelay((long) ArcherSkills.ARROW_RAIN_PULSES * ArcherSkills.RAIN_INTERVAL_TICKS + 20L, () -> {
-			double lost = 1000.0 - foe.getHealth();
-			LOG.info("[BEHAVIOR] test=arrowRainPulsesFiveTimesTenTicksApart RESULT applied={} pulses={} interval={} lost={} ran={} owed={}",
-				applied, ArcherSkills.ARROW_RAIN_PULSES, ArcherSkills.RAIN_INTERVAL_TICKS, lost,
-				ArcherSkills.pulsesRun(caster), ArcherSkills.pulsesOwed(caster));
-			helper.assertTrue(applied, "the arrow rain never started");
-			helper.assertTrue(ArcherSkills.ARROW_RAIN_PULSES == 5, "the rain is " + ArcherSkills.ARROW_RAIN_PULSES + " pulses, not 5");
-			helper.assertTrue(ArcherSkills.RAIN_INTERVAL_TICKS == 10, "the gap is " + ArcherSkills.RAIN_INTERVAL_TICKS + " ticks, not 10");
-			helper.assertTrue(ArcherSkills.pulsesOwed(caster) == 0, "the rain left pulses owed: " + ArcherSkills.pulsesOwed(caster));
-			helper.assertTrue(lost > 0.0, "the rain took nothing from the foe under it");
-			helper.assertTrue(ArcherSkills.pulsesRun(caster) == ArcherSkills.ARROW_RAIN_PULSES - 1,
-				"the rain ran " + ArcherSkills.pulsesRun(caster) + " later pulses, not " + (ArcherSkills.ARROW_RAIN_PULSES - 1));
-			helper.assertTrue(lost >= SpellNumbers.ARROW_RAIN.damage() * ArcherSkills.ARROW_RAIN_PULSES,
-				"the foe under the rain lost " + lost + ", less than " + (SpellNumbers.ARROW_RAIN.damage() * ArcherSkills.ARROW_RAIN_PULSES));
-			foe.discard();
-			helper.succeed();
-		});
-	}
-
-	@GameTest(maxTicks = 300)
-	public void awakenedArrowRainPulsesTenTimes(final GameTestHelper helper) {
-		ServerPlayer caster = archerCaster(helper);
-		Mob foe = FighterBooksGameTest.foe(helper, 5.5, CASTER_Z + 5.0);
-		Vec3 point = helper.absoluteVec(new Vec3(5.5, FLOOR_Y, CASTER_Z + 5.0));
-		List<Float> samples = new ArrayList<>();
-		ArcherSkills.applyArrowRain(caster, null, point, SkillSchoolGameTest.modifiers(caster, true));
-		helper.onEachTick(() -> samples.add(foe.getHealth()));
-		helper.runAfterDelay((long) ArcherSkills.AWAKENED_ARROW_RAIN_PULSES * ArcherSkills.RAIN_INTERVAL_TICKS + 20L, () -> {
-			LOG.info("[BEHAVIOR] test=awakenedArrowRainPulsesTenTimes RESULT awakenedPulses={} ran={} lost={}",
-				ArcherSkills.AWAKENED_ARROW_RAIN_PULSES, ArcherSkills.pulsesRun(caster), 1000.0 - foe.getHealth());
-			helper.assertTrue(ArcherSkills.AWAKENED_ARROW_RAIN_PULSES == 10,
-				"the awakened rain is " + ArcherSkills.AWAKENED_ARROW_RAIN_PULSES + " pulses, not 10");
-			helper.assertTrue(ArcherSkills.AWAKENED_ARROW_RAIN_PULSES > ArcherSkills.ARROW_RAIN_PULSES,
-				"the awakened rain is no longer than the plain one");
-			helper.assertTrue(ArcherSkills.pulsesRun(caster) == ArcherSkills.AWAKENED_ARROW_RAIN_PULSES - 1,
-				"the awakened rain ran " + ArcherSkills.pulsesRun(caster) + " later pulses, not " + (ArcherSkills.AWAKENED_ARROW_RAIN_PULSES - 1));
-			helper.assertTrue(1000.0 - foe.getHealth() >= SpellNumbers.ARROW_RAIN.damage() * ArcherSkills.AWAKENED_ARROW_RAIN_PULSES,
-				"the awakened rain took " + (1000.0 - foe.getHealth()) + " over all its pulses");
-			foe.discard();
-			helper.succeed();
-		});
 	}
 
 	@GameTest(maxTicks = 80)

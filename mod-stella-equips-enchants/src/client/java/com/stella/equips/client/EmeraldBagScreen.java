@@ -3,7 +3,6 @@ package com.stella.equips.client;
 import com.stella.equips.bag.EmeraldBag;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -35,15 +34,6 @@ public final class EmeraldBagScreen extends Screen {
 
 	public static void register() {
 		EmeraldBag.setClientOpener(hand -> Minecraft.getInstance().gui.setScreen(new EmeraldBagScreen(hand)));
-		ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
-			if (com.stella.equips.heart.SlimeHeart.holdsHeart(stack)) {
-				lines.add(Component.translatable("tooltip.mod-stella-equips-enchants.slime_heart").withStyle(ChatFormatting.RED));
-			}
-			if (EmeraldBag.isBag(stack)) {
-				lines.add(Component.translatable("item.mod-stella-equips-enchants.emerald_bag.count", EmeraldBag.stored(stack))
-					.withStyle(ChatFormatting.GREEN));
-			}
-		});
 	}
 
 	@Override

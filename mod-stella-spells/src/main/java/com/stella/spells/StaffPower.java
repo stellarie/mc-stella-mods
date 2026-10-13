@@ -73,7 +73,7 @@ public final class StaffPower {
 		int cooldown = SpellbookCatalog.FIXED_COOLDOWN.contains(spellId) ? base.cooldownTicks() : shorten(base.cooldownTicks(), cooldownCut(staff));
 		return new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * powerMultiplier(staff), base.radiusMultiplier(), base.durationMultiplier(),
-			base.defensiveDurationMultiplier(), base.targetRangeBlocks(), cooldown, base.awakened()
+			base.defensiveDurationMultiplier(), base.targetRangeBlocks(), cooldown, base.awakened(), base.refineLevel()
 		);
 	}
 

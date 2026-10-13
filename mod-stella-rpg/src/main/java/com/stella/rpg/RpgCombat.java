@@ -1,6 +1,7 @@
 package com.stella.rpg;
 
 import com.stella.rpg.roll.Affix;
+import com.stella.rpg.job.DoubleStrike;
 import com.stella.rpg.job.JobItems;
 import com.stella.rpg.roll.Affixes;
 import java.util.Map;
@@ -95,7 +96,7 @@ public final class RpgCombat {
 	}
 
 	public static float scaleOutgoing(final LivingEntity victim, final DamageSource source, final float amount) {
-		if (PercentEffects.inFixedHit() || !(source.getEntity() instanceof LivingEntity attacker)
+		if (PercentEffects.inFixedHit() || isFixedHit(source) || !(source.getEntity() instanceof LivingEntity attacker)
 			|| !(attacker instanceof ServerPlayer || attacker instanceof Mob)) {
 			return amount;
 		}
@@ -109,6 +110,9 @@ public final class RpgCombat {
 		Entity direct = source.getDirectEntity();
 		if (isMelee(source)) {
 			double charge = attacker instanceof Player player && swinger == player ? chargeFactor(swingStrength) : 1.0;
+			if (attacker instanceof ServerPlayer fighter && source.is(DamageTypes.PLAYER_ATTACK)) {
+				DoubleStrike.note(fighter, victim, amount, swinger == fighter ? swingStrength : 1.0F);
+			}
 			scaled += dice(attacker, attacker.getMainHandItem(), Stat.STR, false) * charge
 				+ statusAtk(StatBonuses.effective(attacker, Stat.STR));
 		} else if (source.is(DamageTypeTags.IS_PROJECTILE) && direct instanceof Projectile projectile
@@ -143,6 +147,14 @@ public final class RpgCombat {
 			CRIT_VICTIM.set(victim);
 		}
 		return (float) scaled;
+	}
+
+	/** A projectile with this tag deals the amount another mod set: the dice, the status ATK and the crit roll skip it. */
+	public static final String FIXED_HIT_TAG = "mod-stella-rpg.fixed_hit";
+
+	private static boolean isFixedHit(final DamageSource source) {
+		Entity direct = source.getDirectEntity();
+		return direct != null && direct.entityTags().contains(FIXED_HIT_TAG);
 	}
 
 	/** Rolls the dice with the active dice roller, so a test roller applies. */
@@ -264,7 +276,7 @@ public final class RpgCombat {
 
 	public static float scaleIncoming(final LivingEntity entity, final DamageSource source, final float damage) {
 		if (!(entity instanceof ServerPlayer || entity instanceof Mob)
-			|| source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+			|| source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.is(RpgDamageTypes.INNATE)) {
 			return damage;
 		}
 		double reduced = damage * RpgCurve.damageTakenMultiplier(StatBonuses.effective(entity, Stat.VIT));

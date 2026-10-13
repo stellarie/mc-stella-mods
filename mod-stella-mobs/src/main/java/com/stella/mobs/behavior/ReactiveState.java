@@ -31,6 +31,7 @@ public final class ReactiveState {
 	private long nextAllyScanTick;
 	private long nextPlayerCheckTick;
 	private boolean playerNearby;
+	private boolean servant;
 	private int lastDefendedHurtTimestamp;
 	private CombatRole role = CombatRole.MELEE;
 	private double nearDistance;
@@ -76,12 +77,21 @@ public final class ReactiveState {
 	 * clock barely moves, which used to freeze this answer on the first check.
 	 */
 	public boolean playerInRange(final Mob mob) {
+		// A servant fights for its master, so it needs no player in range to hold its band.
+		if (this.servant) {
+			return true;
+		}
+
 		if (mob.tickCount >= this.nextPlayerCheckTick) {
 			this.nextPlayerCheckTick = mob.tickCount + PLAYER_CHECK_INTERVAL_TICKS;
 			this.playerNearby = mob.level().hasNearbyAlivePlayer(mob.getX(), mob.getY(), mob.getZ(), PLAYER_RADIUS);
 		}
 
 		return this.playerNearby;
+	}
+
+	public void setServant(final boolean servant) {
+		this.servant = servant;
 	}
 
 	public boolean isInstalled() {

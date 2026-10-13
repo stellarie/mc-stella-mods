@@ -184,10 +184,12 @@ public final class SpellCasting {
 		Mob target = null;
 		Vec3 point = null;
 		LivingEntity ally = null;
+		// An archer skill reaches a fixed distance, whatever sharpens a mage's sight.
+		int reach = definition.school() == School.ARCHER ? ArcherSkills.SKILL_RANGE_BLOCKS : modifiers.targetRangeBlocks();
 		switch (definition.targetMode()) {
 			case SELF -> point = caster.position();
-			case HOSTILE -> target = findTarget(caster, modifiers.targetRangeBlocks());
-			case BLOCK -> point = findBlockTarget(caster, modifiers.targetRangeBlocks());
+			case HOSTILE -> target = findTarget(caster, reach);
+			case BLOCK -> point = findBlockTarget(caster, reach);
 			case SAFE_TELEPORT -> point = findRiftwalkDestination(caster, modifiers.targetRangeBlocks());
 			case ALLY -> ally = findAlly(caster, modifiers.targetRangeBlocks());
 		}
@@ -218,6 +220,7 @@ public final class SpellCasting {
 		SKIP_COOLDOWN.remove();
 		Awakening.report(definition.id(), modifiers.awakened());
 		boolean completed = false;
+		BookRefine.Pending refine = BookRefine.begin(caster, definition, stack);
 		CastHits.begin(caster, definition.id(), !scroll && !Awakening.isAwakened(stack));
 		CastContext.setAlly(ally);
 		try {
@@ -230,11 +233,15 @@ public final class SpellCasting {
 			boolean skip = SKIP_COOLDOWN.get() != null;
 			SKIP_COOLDOWN.remove();
 			SpellVisuals.play(caster, definition, target, point, departure, modifiers);
+			if (definition.school() == School.ARCHER) {
+				ArcherDraw.play(caster);
+			}
 			if (!skip && !free) {
 				caster.getCooldowns().addCooldown(stack, scroll ? SCROLL_COOLDOWN_TICKS : TowerBridge.cooldown(caster, modifiers.cooldownTicks()));
 			}
 			log(caster, definition, CastResult.CAST, target, modifiers, stack);
 			SpellCombos.afterCast(caster, definition, target, point, modifiers);
+			BookRefine.finish(refine, new RefineCast(caster, definition, target, point, ally, CastHits.victims(), departure, modifiers));
 			// Both landings share one cast credit.
 			if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
 				&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
@@ -497,6 +504,10 @@ public final class SpellCasting {
 		return true;
 	}
 
+	/**
+	 * Dragonfall: a fire charge falls on the spot, and its one hit lands on the tick it does. The hostiles it
+	 * reaches are the ones standing in the radius when the charge lands.
+	 */
 	static boolean applyDragonfall(
 		final ServerPlayer caster, final Mob target, final Vec3 point, final SpellModifiers.CastModifiers modifiers
 	) {
@@ -504,16 +515,26 @@ public final class SpellCasting {
 			return false;
 		}
 
+		ServerLevel level = caster.level();
 		double radius = SpellNumbers.DRAGONFALL.radius(modifiers);
-		for (Mob hostile : caster.level().getEntitiesOfClass(
-			Mob.class,
-			new AABB(point, point).inflate(radius),
-			candidate -> candidate.isAlive()
-				&& Friends.isFoe(candidate)
-				&& candidate.position().distanceToSqr(point) <= radius * radius
-		)) {
-			hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
-		}
+		// The hit lands after the cast ends, so the book's awakening credit is claimed now and paid on the hit.
+		CastHits.PendingCredit credit = CastHits.deferred(caster);
+		DragonCharge.fall(level, caster, point, () -> {
+			boolean struck = false;
+			for (Mob hostile : level.getEntitiesOfClass(
+				Mob.class,
+				new AABB(point, point).inflate(radius),
+				candidate -> candidate.isAlive()
+					&& Friends.isFoe(candidate)
+					&& candidate.position().distanceToSqr(point) <= radius * radius
+			)) {
+				hostile.hurt(spellSource(caster), RpgBridge.damage(caster, SpellNumbers.DRAGONFALL.damage(), modifiers.powerMultiplier()));
+				struck = true;
+			}
+			if (struck && credit != null) {
+				credit.fire(level.getServer());
+			}
+		});
 		return true;
 	}
 

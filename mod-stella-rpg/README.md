@@ -224,9 +224,12 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 |---|---|---|---|---|---|
 | Attack speed | AGI | `attack_speed` | 1.00 | 250 | `ADD_MULTIPLIED_BASE` modifier on `ATTACK_SPEED` |
 | Damage reduction | VIT | `damage_reduction` | 0.60 | 300 | `1 - value` on damage taken |
-| Cooldown | INT + DEX | `cooldown_reduction` | 0.50 | 400 | `1 - value`, with `s = INT + DEX`; the spells mod applies it |
 | Crit chance | LUK | `crit_chance` | 0.50 | 300 | chance per player hit |
 | Crit reduction | LUK | `crit_reduction` | 0.50 | 300 | `1 - value` on a critical hit taken, with the victim's LUK |
+
+Cooldown is not a config curve. Every skill and spell cooldown is multiplied by `1 - 0.8 * s / (s + 200)`, with `s = INT + DEX`.
+The reduction is 0 at `s` = 0, 40% at 200, about 67% at 1000, and never more than 80%.
+The spells mod applies it. The witch hat perk cuts the cooldown by 10% more.
 
 ## Draw speed
 
@@ -316,7 +319,7 @@ Draw speed is a fixed rule, not a curve. See `Draw speed`.
 |---|---|---|---|---|
 | Attack speed bonus | 0.0000 | 0.0458 | 0.2857 | 0.8038 |
 | Damage taken | 1.0000 | 0.9769 | 0.8500 | 0.5360 |
-| Cooldown | 1.0000 | 0.9846 | 0.9000 | 0.6906 |
+| Cooldown (INT + DEX) | 1.0000 | 0.9547 | 0.7333 | 0.3307 |
 | Crit chance | 0.0000 | 0.0192 | 0.1250 | 0.3867 |
 
 ## Command
@@ -391,7 +394,8 @@ The mod writes `config/mod-stella-rpg/stats.json` with the defaults on the first
 - `crit_reduction` is a curve key like the others. `dex_max_roll`, `int_max_roll`, and `magic_defense` are retired and ignored.
 - `magic` holds the magic model numbers: `spell_base` 12, `spell_growth` 0.05, `matk_per_int` 0.01, `mob_percent_per_point` 50 (no longer read),
   `resist_base` 0.25, `resist_span` 0.5, `resist_midpoint` 400, `resist_width` 120, `resist_max_int` 1024, `resist_cap` 0.9, `armor_pen_base` 0.25, and `armor_pen_cap` 0.75.
-  A bad value logs one error and uses the default. A `stats.json` file written before this model keeps its old `cooldown_reduction` until you edit it.
+  A bad value logs one error and uses the default.
+- The key `cooldown_reduction` is retired. A file that holds it loads and logs it as ignored. The cooldown curve is fixed.
 - `health_scale` is a number from 1 to 1000. The default is 15.
 - `mob_stats.{role}.{stat}` holds the mob base stats. The roles are `melee`, `ranged`, and `magic`.
   Each base is a number from 0 to 1024. A bad base uses its default.
@@ -490,6 +494,10 @@ does not tilt.
 `com.stella.rpg.api.HealthScaleShare` puts the `Double` K in the object share `mod-stella-rpg:health-scale`.
 It republishes the value after each config reload.
 
+`com.stella.rpg.api.CritShare` puts a `Function<Object[], Boolean>` in the object share `mod-stella-rpg:is-crit`.
+It takes `{LivingEntity victim, DamageSource source}` and answers `RpgCombat.isCrit`: true while an RPG critical hit
+on the victim is in progress. The damage numbers of `mod-stella-equips-enchants` read it to colour a critical number.
+
 ## Armor sets
 
 `ArmorSets` registers a `StatBonuses.Provider` and a `DefenseBonuses.Provider`.
@@ -536,6 +544,7 @@ The component is saved and synced to the client.
   A rolled weapon in the offhand or a rolled armor piece in the inventory adds 0.
   A mob that holds or wears a rolled item gets the bonus too.
 - The client shows one green line per stat, such as `+3 STR`, and one per affix, such as `+12 Damage` or `+5% Damage`, in the item tooltip.
+  `BonusTooltip.lines` builds the lines. `DescriptionLines` wraps each line at 24 characters, so a long affix line splits at a space.
 - A weapon adds its own dice. See `Dice damage`.
 
 The tier comes from the repair material of the item (`ItemTiers`), so a spear, copper armor, or a modded piece in the vanilla tags needs no list.
@@ -727,9 +736,11 @@ Only vanilla effects and those of `mod-stella-food` count. An effect that is not
 The class name and every public method below are a contract.
 
 - `RpgSpells.power(player)` returns 1.0. The INT spell power curve is retired, and the `spell_power` config key is ignored.
-- `RpgSpells.cooldown(player)` returns the spell cooldown multiplier `1 - 0.5 * X / (X + 400)`, with `X` = effective INT + DEX.
-  At INT 100 and DEX 100 it is 0.8333. The 20 tick floor belongs to the spells mod.
+- `RpgSpells.cooldown(player)` returns the cooldown multiplier of every skill and spell, `1 - 0.8 * X / (X + 200)`,
+  with `X` = effective INT + DEX, times the witch hat factor. At INT 100 and DEX 100 it is 0.6.
+  The 20 tick floor belongs to the spells mod.
 - `RpgSpells.spellDamage(caster, skillPercent)` returns, in vanilla units, `base(level) * skillPercent / 100 * (1 + MATK%) + flatMATK / K`.
+  `MATK%` includes the book MATK buff.
   It multiplies the result by `crit_multiplier` when the LUK crit chance rolls. `RpgSpells.spellHit` is the same without the crit.
   `skillPercent` 150 means 150%. The health scale multiplies the result once.
 - `RpgSpells.matkMin(entity)` and `matkMax(entity)` stay as compatibility helpers. Both return `spellHit(entity, 100) * K`.
@@ -758,17 +769,20 @@ A `key` is a stat key: `"str"`, `"agi"`, `"vit"`, `"dex"`, `"int"`, or `"luk"`. 
   It uses the dice roller of `RpgCombat`. A crit multiplies the hit by `crit_multiplier`.
 - `double skillHeal(LivingEntity caster, double coefficient)` returns `(level + 2 * VIT) * coefficient / k * healingFactor`.
   The level is the experience level of a player, or the threat of a mob.
-- `double cooldown(Player player, String key)` returns `cooldownMultiplier(S + T) * cooldownFactor(player)`.
-  `T` is INT for `"vit"` and AGI for every other key. The floor of the curve applies.
 - `double durationMultiplier(LivingEntity caster, String key)` returns `HpModel.durationMultiplier(S)`, with the cap of the INT one.
 - `DamageSource skillSource(LivingEntity caster)` returns a source of the type `mod-stella-rpg:skill` with the caster as direct and causing entity.
   Def and armor apply to it. `RpgCombat.scaleOutgoing` returns its amount unchanged, because the type is not melee, projectile, or magic.
   The dice are therefore never added twice.
+- A projectile with the entity tag `mod-stella-rpg.fixed_hit` is also returned unchanged: no dice, no status ATK, no crit roll.
+  `mod-stella-spells` tags its Arrow Shower arrows so that each one deals exactly the minimum ranged roll of the caster.
 
 ## Magic model
 
 - `base(level) = 12 * (1 + 0.05 * (level - 1))`, in vanilla units. A mob uses its threat as level. The level is at least 1.
-- `MATK% = INT / 100 + the MATK_PCT affixes`. `flatMATK` is the `MATK_FLAT` affixes plus 12 per refine level of a held spellbook, in K units.
+- `MATK% = INT / 100 + the MATK_PCT affixes + the book MATK buff`. `flatMATK` is the `MATK_FLAT` affixes, in K units.
+  A refined spell book adds nothing to `flatMATK`. The spells mod scales the book instead. A cast of a refined utility book leaves
+  a short MATK buff, which the spells mod publishes under the ObjectShare key `mod-stella-spells:matk-bonus`. The key holds a
+  `ToDoubleFunction<Object>` of the entity, and its value is a fraction. Without that mod the buff is 0.
 - Magic resistance is `min(0.90, 0.25 + 0.50 * T(INT) + the MAGIC_RES_PCT affixes)`.
   `T` is a logistic with midpoint 400 and width 120, scaled so `T(0) = 0` and `T(1024) = 1`.
 - A magic hit keeps `1 - max(0, resistance - penetration)` of its value. Penetration is the `MAGIC_PEN` affix of the attacker's held spellbook.
@@ -815,7 +829,7 @@ With `keepInventory` off, a death no longer drops the whole inventory. `keepInve
   `n` is the number of candidate stacks. The pick has no repeats.
 - Items in `#mod-stella-rpg:never_tombstone` are never picked. The tag is empty by default.
 - A death that places a tombstone gives you a Grave Compass when you respawn. It points to the tombstone and lists its
-  coordinates and dimension. A tombstone never takes the compass, so a later death re-aims the compass you carry
+  coordinates and dimension, under a `Requires: none` and `Desc:` block. A tombstone never takes the compass, so a later death re-aims the compass you carry
   instead of giving another.
 - The picked stacks go into a `mod-stella-rpg:tombstone` block. The player keeps every other stack after respawn.
 - Soulbound stashes its items first, so they are never picked. Spell quick-slot items stay with the player.
@@ -894,10 +908,26 @@ A player chooses one job from level 10. The job is permanent and survives death 
 | `grantItems` | `Function<ServerPlayer, Boolean>`. Gives the item of the job |
 | `grantTrial` | `BiFunction<ServerPlayer, Integer, Boolean>`. False for a repeat, a level that is no trial, or no job |
 | `trialsDone` | `Function<ServerPlayer, Set<Integer>>` |
+| `innate` | `Function<ServerPlayer, String>`. The key of the innate skill of the job: `none`, `falcon_guard`, `double_strike`, `arcane_ward`, or `sanctuary` |
+
+### Job innate skills
+
+A job grants one innate skill. The skill is read from the job each time, so a job change switches it at once. It never expires, and death does not remove it. Nothing is stored apart from the job.
+
+| Job | Innate | Effect |
+|---|---|---|
+| Archer | Falcon Guard | Lives in `mod-stella-spells`, which reads the share function `innate`. A black falcon circles above the archer. On each blow it strikes the target 3 times with chance 35% plus 1% per 5 LUK. Every 2 seconds, after 5 seconds with no blow, it strikes the nearest hostile 3 times. Each strike uses the average of the lowest and highest ranged roll. A kill gives the archer 25% of the mob's experience. It stacks with Blitz Beat |
+| Fighter | Double Strike | `DoubleStrike`. A melee attack that lands has a 25% chance to hit again 4 ticks later with the same raw damage and swing charge. The second hit rolls its own dice and its own crit, gives the target Nausea for 10 ticks, and never starts a third hit or rolls the sword bleed again |
+| Mage | Arcane Ward | `ArcaneWard`. An absorption shield of (MATK / 100) x 10% of max health. MATK is the Matk percent on the stats screen: INT times `matk_per_int` plus the MATK percent of the gear. The ward refills 300 ticks after the last hit. When a hit breaks it, each hostile mob within 3 blocks loses (MATK / 100) x 5% of the max health of the mage, the same base as the shield. Small flames circle the feet while the shield holds. The refill sets the absorption to the shield size and never lowers a larger pool, so the ward neither stacks with the Absorption effect nor erases it. `RpgAbsorptionMixin` raises the maximum absorption to fit the ward |
+| Priest | Sanctuary | `Sanctuary`. Once per second, each player and ally within 3 blocks heals 1.5% of its max health, and each hostile mob within 3 blocks loses 1.5% of its max health. Red and green sparkles mark the radius at the feet |
+
+- An ally is a player, a pet that a player owns, or a mob with the tag `mod-stella-spells.summoned`. A hostile mob is an `Enemy`, or has the tag `mod-stella-ruins.hostile`, and has none of the friend tags `mod-stella-mobs.friendly_patrol`, `mc-stella-villages.patrol`, `mc-stella-villages.village_witch`, `mod-stella-mobs.harmless`, and `mod-stella-spells.summoned`.
+- The Mage and Priest hits use the damage type `mod-stella-rpg:innate`. Its amount is final: armor, effects, enchantments, VIT, and knockback do not change it. An elite or a boss takes the usual quarter of a percent hit (`PercentEffects.eliteShare`).
+- The game tests fix the rollers of the Fighter per attacker (`DoubleStrike.setRoller`, `setRecorder`, `settle`) so parallel cases do not meet.
 
 ### Job items
 
-`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and lore. Perks read the refine level `stella_refine` of the held or worn item.
+`JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds a `Requires:` line (held in hand, or the worn slot) and a `Desc:` line, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
 
 | Item | Slot | Base | +7 | +10 | +12 | +15 |
 |---|---|---|---|---|---|---|

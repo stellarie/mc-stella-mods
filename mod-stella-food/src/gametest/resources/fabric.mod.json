@@ -17,7 +17,8 @@
 			"com.stella.food.PotionStackGameTest",
 			"com.stella.food.CookingStationLootGameTest",
 			"com.stella.food.WellRestedGameTest",
-			"com.stella.food.FoodLootGameTest"
+			"com.stella.food.FoodLootGameTest",
+			"com.stella.food.DescriptionWidthGameTest"
 		]
 	},
 	"depends": {

@@ -56,8 +56,12 @@ public final class RpgCurve {
 		return 1.0 - value(Effect.CRIT_REDUCTION, luk);
 	}
 
-	/** The spell cooldown multiplier for INT plus DEX. */
+	/** The most a cooldown falls, and the INT plus DEX at which it falls half of that. */
+	public static final double COOLDOWN_MAX = 0.80;
+	public static final double COOLDOWN_HALF = 200.0;
+
+	/** The skill and spell cooldown multiplier for INT plus DEX: {@code 1 - 0.8 * s / (s + 200)}. It is fixed in code. */
 	public static double cooldownMultiplier(final int intelAndDex) {
-		return 1.0 - value(Effect.COOLDOWN_REDUCTION, intelAndDex);
+		return 1.0 - saturate(Math.max(0, intelAndDex), COOLDOWN_MAX, COOLDOWN_HALF);
 	}
 }

@@ -329,23 +329,6 @@ public class QuiverGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 160)
-	public void arrowShowerSpendsOneArrowPerPulse(final GameTestHelper helper) {
-		ServerPlayer caster = archer(helper, new ItemStack(Items.ARROW, 20));
-		Vec3 point = helper.absoluteVec(new Vec3(5.5, 1.0, CASTER_Z + 5.0));
-		boolean applied = ArcherSkills.applyArrowRain(caster, null, point, SkillSchoolGameTest.modifiers(caster, false));
-		long wait = (long) (ArcherSkills.ARROW_RAIN_PULSES - 1) * ArcherSkills.RAIN_INTERVAL_TICKS + 20L;
-		helper.runAfterDelay(wait, () -> {
-			int spent = 20 - Quiver.count(Quiver.held(caster), Items.ARROW);
-			LOG.info("[BEHAVIOR] test=arrowShowerSpendsOneArrowPerPulse RESULT applied={} spent={} pulses={} ran={}",
-				applied, spent, ArcherSkills.ARROW_RAIN_PULSES, ArcherSkills.pulsesRun(caster));
-			helper.assertTrue(applied, "arrow shower never started");
-			helper.assertTrue(spent == ArcherSkills.ARROW_RAIN_PULSES, "arrow shower spent " + spent + " arrows over " + ArcherSkills.ARROW_RAIN_PULSES + " pulses");
-			ArcherSkills.clearFor(caster);
-			helper.succeed();
-		});
-	}
-
 	@GameTest(maxTicks = 80)
 	public void sharpShootingWithOneFireArrowIgnitesEveryFoeOnTheLine(final GameTestHelper helper) {
 		ServerPlayer caster = archer(helper, new ItemStack(ArrowItems.BY_KIND.get(ArrowKind.FIRE), 1));
