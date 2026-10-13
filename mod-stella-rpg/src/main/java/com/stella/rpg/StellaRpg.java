@@ -48,6 +48,7 @@ public final class StellaRpg implements ModInitializer {
 		LevelBonus.register();
 		com.stella.rpg.job.Jobs.register();
 		com.stella.rpg.job.JobItems.register();
+		com.stella.rpg.job.JobInnates.register();
 		EffectStats.register();
 		StarterSword.register();
 		OutgoingDamageShare.register();

@@ -160,7 +160,7 @@ public final class JobItems {
 	private static void afterDamage(
 		final LivingEntity victim, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked
 	) {
-		if (blocked || damageTaken <= 0.0F || !source.is(DamageTypes.PLAYER_ATTACK)
+		if (blocked || damageTaken <= 0.0F || DoubleStrike.striking() || !source.is(DamageTypes.PLAYER_ATTACK)
 			|| !(source.getEntity() instanceof ServerPlayer attacker) || source.getDirectEntity() != attacker
 			|| attacker == victim || !victim.isAlive()) {
 			return;

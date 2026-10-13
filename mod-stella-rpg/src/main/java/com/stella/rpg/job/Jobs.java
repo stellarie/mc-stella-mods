@@ -24,7 +24,8 @@ import net.minecraft.world.entity.LivingEntity;
  * counts every level the player has, also the levels before the choice. A boss trial at level 40, 70, 100, and so on
  * adds a fixed bonus once. Another mod reaches this through the object share {@link #SHARE_KEY}, a
  * {@code Map<String, Object>} of functions: {@code get}, {@code choose}, {@code grantItems}, {@code grantTrial},
- * and {@code trialsDone}.
+ * {@code trialsDone}, and {@code innate}, which answers the key of the innate skill of the job, such as
+ * {@code falcon_guard}.
  */
 public final class Jobs implements StatBonuses.Provider {
 	public static final String SHARE_KEY = "mod-stella-rpg:jobs";
@@ -134,6 +135,10 @@ public final class Jobs implements StatBonuses.Provider {
 		Function<ServerPlayer, Boolean> grantItems = Jobs::grantItems;
 		BiFunction<ServerPlayer, Integer, Boolean> grantTrial = (player, level) -> level != null && grantTrial(player, level);
 		Function<ServerPlayer, Set<Integer>> trialsDone = Jobs::trialsDone;
-		return Map.of("get", get, "choose", choose, "grantItems", grantItems, "grantTrial", grantTrial, "trialsDone", trialsDone);
+		Function<ServerPlayer, String> innate = player -> of(player).innate().key();
+		return Map.of(
+			"get", get, "choose", choose, "grantItems", grantItems, "grantTrial", grantTrial, "trialsDone", trialsDone,
+			"innate", innate
+		);
 	}
 }

@@ -903,6 +903,22 @@ A player chooses one job from level 10. The job is permanent and survives death 
 | `grantItems` | `Function<ServerPlayer, Boolean>`. Gives the item of the job |
 | `grantTrial` | `BiFunction<ServerPlayer, Integer, Boolean>`. False for a repeat, a level that is no trial, or no job |
 | `trialsDone` | `Function<ServerPlayer, Set<Integer>>` |
+| `innate` | `Function<ServerPlayer, String>`. The key of the innate skill of the job: `none`, `falcon_guard`, `double_strike`, `arcane_ward`, or `sanctuary` |
+
+### Job innate skills
+
+A job grants one innate skill. The skill is read from the job each time, so a job change switches it at once. It never expires, and death does not remove it. Nothing is stored apart from the job.
+
+| Job | Innate | Effect |
+|---|---|---|
+| Archer | Falcon Guard | Lives in `mod-stella-spells`, which reads the share function `innate`. A black falcon circles above the archer. Every 2 seconds it has a 35% chance to strike a nearby mob 3 times with the average of the lowest and highest ranged roll. A kill gives the archer 25% of the mob's experience. It stacks with Blitz Beat |
+| Fighter | Double Strike | `DoubleStrike`. A melee attack that lands has a 25% chance to hit again 4 ticks later with the same raw damage and swing charge. The second hit rolls its own dice and its own crit, gives the target Nausea for 10 ticks, and never starts a third hit or rolls the sword bleed again |
+| Mage | Arcane Ward | `ArcaneWard`. An absorption shield of (MATK / 100) x 10% of max health. MATK is the Matk percent on the stats screen: INT times `matk_per_int` plus the MATK percent of the gear. The ward refills 300 ticks after the last hit. When a hit breaks it, each hostile mob within 3 blocks loses (MATK / 100) x 5% of its max health. Small flames circle the feet while the shield holds. The refill sets the absorption to the shield size and never lowers a larger pool, so the ward neither stacks with the Absorption effect nor erases it. `RpgAbsorptionMixin` raises the maximum absorption to fit the ward |
+| Priest | Sanctuary | `Sanctuary`. Once per second, each player and ally within 3 blocks heals 1.5% of its max health, and each hostile mob within 3 blocks loses 1.5% of its max health. Red and green sparkles mark the radius at the feet |
+
+- An ally is a player, a pet that a player owns, or a mob with the tag `mod-stella-spells.summoned`. A hostile mob is an `Enemy`, or has the tag `mod-stella-ruins.hostile`, and has none of the friend tags `mod-stella-mobs.friendly_patrol`, `mc-stella-villages.patrol`, `mc-stella-villages.village_witch`, `mod-stella-mobs.harmless`, and `mod-stella-spells.summoned`.
+- The Mage and Priest hits use the damage type `mod-stella-rpg:innate`. Its amount is final: armor, effects, enchantments, VIT, and knockback do not change it. An elite or a boss takes the usual quarter of a percent hit (`PercentEffects.eliteShare`).
+- The game tests fix the rollers of the Fighter per attacker (`DoubleStrike.setRoller`, `setRecorder`, `settle`) so parallel cases do not meet.
 
 ### Job items
 
