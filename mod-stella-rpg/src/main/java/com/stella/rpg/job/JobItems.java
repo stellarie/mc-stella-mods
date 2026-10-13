@@ -1,12 +1,14 @@
 package com.stella.rpg.job;
 
+import com.stella.rpg.DescriptionLines;
+import com.stella.rpg.ItemDescription;
 import com.stella.rpg.RpgCombat;
 import com.stella.rpg.StellaRpg;
 import com.stella.rpg.roll.Affixes;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -54,19 +56,19 @@ public final class JobItems {
 
 	public static final MechanicalBow MECHANICAL_BOW = Registry.register(BuiltInRegistries.ITEM, BOW_KEY, new MechanicalBow(
 		new Item.Properties().setId(BOW_KEY).durability(MechanicalBow.DURABILITY)
-			.component(DataComponents.LORE, lore("mechanical_bow", 2))
+			.component(ItemDescription.TYPE, lore("mechanical_bow"))
 	));
 	public static final Item KNIGHT_SWORD = Registry.register(BuiltInRegistries.ITEM, SWORD_KEY, new Item(
 		new Item.Properties().setId(SWORD_KEY).sword(SWORD_MATERIAL, 3.0F, -2.4F)
-			.component(DataComponents.LORE, lore("knight_sword", 2))
+			.component(ItemDescription.TYPE, lore("knight_sword"))
 	));
 	public static final Item WITCH_HAT = Registry.register(BuiltInRegistries.ITEM, HAT_KEY, new Item(
 		new Item.Properties().setId(HAT_KEY).humanoidArmor(HAT_MATERIAL, ArmorType.HELMET)
-			.component(DataComponents.LORE, lore("witch_hat", 1))
+			.component(ItemDescription.TYPE, lore("witch_hat"))
 	));
 	public static final Item PRIEST_GARBS = Registry.register(BuiltInRegistries.ITEM, GARBS_KEY, new Item(
 		new Item.Properties().setId(GARBS_KEY).humanoidArmor(GARBS_MATERIAL, ArmorType.CHESTPLATE)
-			.component(DataComponents.LORE, lore("priest_garbs", 2))
+			.component(ItemDescription.TYPE, lore("priest_garbs"))
 	));
 
 	private static final RpgCombat.Roller FAIR = (attacker, random, chance) -> chance > 0.0 && random.nextDouble() < chance;
@@ -80,6 +82,7 @@ public final class JobItems {
 	}
 
 	public static void register() {
+		ItemDescription.register();
 		Bleed.register();
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(JobItems::afterDamage);
 		StellaRpg.LOGGER.debug("Registered the job items {}", BuiltInRegistries.ITEM.getKey(MECHANICAL_BOW));
@@ -159,7 +162,7 @@ public final class JobItems {
 	private static void afterDamage(
 		final LivingEntity victim, final DamageSource source, final float baseDamage, final float damageTaken, final boolean blocked
 	) {
-		if (blocked || damageTaken <= 0.0F || !source.is(DamageTypes.PLAYER_ATTACK)
+		if (blocked || damageTaken <= 0.0F || DoubleStrike.striking() || !source.is(DamageTypes.PLAYER_ATTACK)
 			|| !(source.getEntity() instanceof ServerPlayer attacker) || source.getDirectEntity() != attacker
 			|| attacker == victim || !victim.isAlive()) {
 			return;
@@ -252,11 +255,11 @@ public final class JobItems {
 		);
 	}
 
-	private static ItemLore lore(final String item, final int lines) {
-		List<Component> out = new java.util.ArrayList<>();
-		for (int i = 1; i <= lines; i++) {
-			out.add(Component.translatable("item.mod-stella-rpg." + item + ".lore" + i));
-		}
-		return new ItemLore(out);
+	// A Requires line and a Desc line. The description splits when the tooltip builds, so each stays one entry.
+	private static ItemLore lore(final String item) {
+		return new ItemLore(List.of(
+			DescriptionLines.requires(Component.translatable("item.mod-stella-rpg." + item + ".requires").withStyle(ChatFormatting.WHITE)),
+			DescriptionLines.desc(Component.translatable("item.mod-stella-rpg." + item + ".desc").withStyle(ChatFormatting.GRAY))
+		));
 	}
 }

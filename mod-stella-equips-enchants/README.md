@@ -205,12 +205,25 @@ components by id, so this mod needs no link to the rpg mod. Without it, no toolt
 changes. Percent affixes are stored in tenths and show as percent. The rules live in
 `GearCompare`.
 
+**Tooltip width.** Every description line of this mod holds at most 24 characters. `DescriptionLines`
+splits a longer line at a space, for book descriptions, uniques, guardian gear, crafted and merchant
+weapons, the compare lines and the slime heart. Refine, mastery and imbue lines stay whole in the
+lore component, with the style insertion `stella:wrap` on them. `ItemLoreMixin` splits only those
+lines when the tooltip builds. A book description states its numbers and how they rise with level.
+
+**Requires and Desc.** A description opens with a `Requires:` line and a `Desc:` line, at most 8 lines in all. Refine,
+milestone, mastery and imbue lines follow it. For an enchantment the `Requires:` line names the items it applies to.
+It reads the enchantment's own `supported_items` tag, through the lang key
+`description.mod-stella-equips-enchants.requires.<tag>`, so the label cannot drift from the data. For a unique, a
+merchant weapon, a crafted bow and the guardian gear it names the weapon in hand or the slot worn. A unique's job line
+is information only and follows the block.
+
 ## Damage numbers
 
-Each hit an entity takes shows a small white number over it, and each heal a green one with a plus
+Each hit an entity takes shows a small bold white number over it, and each heal a bold green one with a plus
 sign: the health it actually lost or gained, so a hit that Resistance soaks up shows nothing, and a
-hit on golden hearts still counts. The number drifts up by a block and fades over three seconds, then
-goes. It is sent to the players within 32 blocks as a display that never joins the world, so it is
+hit on golden hearts still counts. The number drifts up by a block and fades over five seconds, then
+goes. The number is rounded to the nearest whole point, and never shows below 1. A critical hit shows its number in yellow, 1.3 times larger. The vanilla critical hit of a player counts, and so does an RPG critical hit when `mod-stella-rpg` is present (it publishes `mod-stella-rpg:is-crit`). It is sent to the players within 32 blocks as a display that never joins the world, so it is
 never saved. A player never sees the numbers over their own head. An invisible entity shows no
 number, so a hit never gives its place away, and each entity shows at most one damage number and
 one heal number every 4 ticks, so a mob farm does not flood its viewers.
@@ -245,11 +258,10 @@ silver anvil crafted from nine anvils) opens the anvil window on the Refine tab.
 - The level shows as the first line of the tooltip, like an enchantment, and gives the piece a glint.
   It is not an enchantment, so it takes no enchantment's place and leaves the enchantments unchanged.
   The tooltip lists each special effect the piece has, by name.
-- A **spellbook** of mod-stella-spells refines too. The equips mod finds it by the class name
-  `com.stella.spells.SpellbookItem` and a maximum stack size of 1, so scrolls do not count and
-  there is no dependency on the spells mod. A book refines with amethyst shards at the odds of a
-  grade 3 weapon. It gets no attribute modifier: the level sits in the `stella_refine` custom data
-  for mod-stella-rpg to read. It has no special effects.
+- A **spellbook** of mod-stella-spells does not refine here. The station refuses it. The equips mod finds a
+  book by the class name `com.stella.spells.SpellbookItem` and a maximum stack size of 1, so scrolls do not
+  count and there is no dependency on the spells mod. The spells mod refines its own books in the anvil,
+  with an identical book, and keeps the level in the same `stella_refine` custom data.
 
 Each special effect starts at its level and keeps working at the higher levels, so a +15 piece has the
 effects of +7, +10, +12 and +15. Effects of several armour pieces add up.
@@ -438,7 +450,7 @@ The first unique is the Bonewhisper Bow from the skeleton. Other slices add the 
 Each source given to the `drop-rate` consumer returns an additive bonus, for example 0.25 for +25%.
 
 **Refine.** A unique has no generic refine specials. Durability, the damage or armor per level and the milestone floors
-still apply. The tooltip shows the job, the source mobs, the base effect and one line for each tier. An active tier is gold
+still apply. The tooltip shows the Requires and Desc block for the base effect, the job, the source mobs and one line for each tier. An active tier is gold
 and a locked tier is dark gray.
 
 **Adding a unique.** Call `Uniques.register(new UniqueDef(...))` from a slice class while the mod initializes, add the item to its

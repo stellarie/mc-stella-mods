@@ -75,7 +75,8 @@
 			"com.stella.equips.NetherImbueAnvilGameTest",
 			"com.stella.equips.NetherImbueEffectGameTest",
 			"com.stella.equips.GuardianGearGameTest",
-			"com.stella.equips.MaterialDurabilityGameTest"
+			"com.stella.equips.MaterialDurabilityGameTest",
+			"com.stella.equips.DescriptionWidthGameTest"
 		]
 	}
 }

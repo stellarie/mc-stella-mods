@@ -70,7 +70,17 @@
 			"com.stella.spells.PriestBooksGameTest",
 			"com.stella.spells.UnbrokenVowGameTest",
 			"com.stella.spells.SteadfastPrayerGameTest",
-			"com.stella.spells.CompendiumGameTest"
+			"com.stella.spells.CompendiumGameTest",
+			"com.stella.spells.ArcherReachGameTest",
+			"com.stella.spells.ArrowShowerGameTest",
+			"com.stella.spells.BlitzParrotGameTest",
+			"com.stella.spells.DragonfallChargeGameTest",
+			"com.stella.spells.BookRefineGameTest",
+			"com.stella.spells.BookSignatureGameTest",
+			"com.stella.spells.DescriptionWidthGameTest",
+			"com.stella.spells.SchoolTooltipGameTest",
+			"com.stella.spells.FalconGuardGameTest",
+			"com.stella.spells.CooldownReductionGameTest"
 		]
 	},
 	"depends": {

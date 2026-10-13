@@ -29,6 +29,7 @@ public class BlitzBeatGameTest {
 	private static final double CASTER_X = 1.5;
 	private static final double CASTER_Z = 1.5;
 	private static final int WEAPON_SLOT = 35;
+	private static final double FAR_CORNER = 7.5;
 	private static final float BLOW = 3.0F;
 	private static final int SAMPLES = 4_000;
 	private static final long SEED = 4242L;
@@ -321,8 +322,9 @@ public class BlitzBeatGameTest {
 		return player;
 	}
 
+	// The far corner of the arena: past the idle falcon's reach, and clear of the casters of the cells beside this one.
 	private static Mob foe(final GameTestHelper helper) {
-		return FighterBooksGameTest.foe(helper, CASTER_X, CASTER_Z + 3.0);
+		return FighterBooksGameTest.foe(helper, FAR_CORNER, FAR_CORNER);
 	}
 
 	/** Runs the work with every falcon roll coming up lucky. */

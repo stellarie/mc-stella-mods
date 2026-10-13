@@ -1,7 +1,9 @@
 package com.stella.equips.bows;
 
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.List;
 import java.util.function.Consumer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -81,6 +83,6 @@ public class CraftedBowItem extends BowItem implements CraftedWeapon {
 	public void appendHoverText(final ItemStack stack, final Item.TooltipContext context, final TooltipDisplay display, final Consumer<Component> builder,
 		final TooltipFlag flag) {
 		super.appendHoverText(stack, context, display, builder, flag);
-		builder.accept(CraftedBows.effectText(stack));
+		DescriptionLines.addBlock(builder, Component.literal("bow in hand").withStyle(ChatFormatting.WHITE), CraftedBows.effectText(stack));
 	}
 }

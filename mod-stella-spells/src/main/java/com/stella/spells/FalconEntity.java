@@ -2,6 +2,8 @@ package com.stella.spells;
 
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
@@ -15,16 +17,27 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Blitz Beat falcon. It is a parrot with no mind of its own: the server places it every tick, on the
- * owner shoulder (a player's, or a mob's that holds the buff), or on the way to the foe a strike hit and back. It cannot be hurt, pushed, hit or saved,
- * and it leaves the moment the buff ends or the owner is gone. The client draws it larger and brown.
+ * The Blitz Beat falcon. It is a parrot with no mind of its own: the server places it every tick, in a slow circle
+ * above the head of its owner (a player, or a mob that holds the buff), or on the way to the foe a strike hit and
+ * back. It flies and never sits. It cannot be hurt, pushed, hit or saved, and it leaves the moment the buff ends
+ * or the owner is gone. The client draws it larger and brown.
+ * The Falcon Guard falcon of the Archer innate is the same body of the type {@link SpellEntities#GUARD_FALCON}. It
+ * circles on the far side of the same circle, stays while the owner holds the innate, and the client draws it black.
  */
 public final class FalconEntity extends Parrot {
 	/** How many ticks one swoop takes, out and back. */
 	public static final int SWOOP_TICKS = 8;
-	private static final double PERCH_SIDE = 0.45;
-	private static final double PERCH_HEIGHT = 1.45;
-	private static final double MOB_PERCH_SHARE = 0.8;
+	/** The gap between the owner's head and the falcon, the circle it flies around the owner, and how far it bobs. */
+	public static final double HOVER_CLEARANCE = 0.8;
+	public static final double HOVER_RADIUS = 0.9;
+	public static final double HOVER_BOB = 0.15;
+	/** How many ticks one lap of the circle takes, and one bob. */
+	private static final int ORBIT_TICKS = 50;
+	private static final int BOB_TICKS = 26;
+	/** A mob's falcon flies wider than a player's when the mob is wide. */
+	private static final double MOB_ORBIT_SHARE = 0.75;
+
+	private static final int GUARD_PHASE_TICKS = ORBIT_TICKS / 2;
 
 	private @Nullable UUID ownerId;
 	private boolean ownerIsPlayer;
@@ -35,7 +48,6 @@ public final class FalconEntity extends Parrot {
 		super(type, level);
 		this.setNoAi(true);
 		this.setNoGravity(true);
-		this.setInSittingPose(true);
 	}
 
 	void bind(final LivingEntity owner) {
@@ -56,16 +68,24 @@ public final class FalconEntity extends Parrot {
 	void swoopAt(final Entity foe) {
 		this.swoopTarget = foe.getUUID();
 		this.swoopLeft = SWOOP_TICKS;
-		this.setInSittingPose(false);
 	}
 
-	/** Where the falcon sits when it is perched on this owner: a player at shoulder height, a mob by its size. */
-	static Vec3 perch(final LivingEntity owner) {
-		double yaw = Math.toRadians(owner.getYRot());
-		Vec3 right = new Vec3(-Math.cos(yaw), 0.0, -Math.sin(yaw));
-		double side = owner instanceof Player ? PERCH_SIDE : Math.max(PERCH_SIDE, owner.getBbWidth() * 0.75);
-		double height = owner instanceof Player ? PERCH_HEIGHT : owner.getBbHeight() * MOB_PERCH_SHARE;
-		return owner.position().add(right.scale(side)).add(0.0, height, 0.0);
+	/** True for the black falcon of the Falcon Guard. */
+	public boolean isGuard() {
+		return this.getType() == SpellEntities.GUARD_FALCON;
+	}
+
+	/** Where a guard falcon flies when it is at home: on the far side of the circle from a Blitz Beat falcon of the same age. */
+	static Vec3 guardHover(final LivingEntity owner, final int age) {
+		return hover(owner, age + GUARD_PHASE_TICKS);
+	}
+
+	/** Where the falcon flies when it is at home above this owner, this many ticks into its life. */
+	static Vec3 hover(final LivingEntity owner, final int age) {
+		double angle = age * 2.0 * Math.PI / ORBIT_TICKS;
+		double radius = owner instanceof Player ? HOVER_RADIUS : Math.max(HOVER_RADIUS, owner.getBbWidth() * MOB_ORBIT_SHARE);
+		double bob = HOVER_BOB * Math.sin(age * 2.0 * Math.PI / BOB_TICKS);
+		return owner.position().add(Math.cos(angle) * radius, owner.getBbHeight() + HOVER_CLEARANCE + bob, Math.sin(angle) * radius);
 	}
 
 	// A player owner is found on the player list, so a player who left frees the falcon at once.
@@ -86,30 +106,36 @@ public final class FalconEntity extends Parrot {
 			return;
 		}
 		LivingEntity owner = this.owner(level);
-		if (owner == null || !owner.isAlive() || owner.isSpectator() || owner.level() != level || !owner.hasEffect(SpellStatus.BLITZ_BEAT)) {
+		boolean guard = this.isGuard();
+		boolean kept = guard ? owner instanceof ServerPlayer player && FalconGuard.holds(player)
+			: owner != null && owner.hasEffect(SpellStatus.BLITZ_BEAT);
+		if (owner == null || !owner.isAlive() || owner.isSpectator() || owner.level() != level || !kept) {
 			this.discard();
 			return;
 		}
-		Vec3 perch = perch(owner);
-		Vec3 at = perch;
+		Vec3 home = guard ? guardHover(owner, this.tickCount) : hover(owner, this.tickCount);
+		Vec3 at = home;
+		Vec3 facing = (guard ? guardHover(owner, this.tickCount + 1) : hover(owner, this.tickCount + 1)).subtract(home);
 		if (this.swoopLeft > 0) {
 			Entity foe = this.swoopTarget == null ? null : level.getEntity(this.swoopTarget);
 			double progress = 1.0 - (double) this.swoopLeft / SWOOP_TICKS;
 			double reach = progress < 0.5 ? progress * 2.0 : (1.0 - progress) * 2.0;
 			if (foe != null && foe.isAlive()) {
-				at = perch.lerp(foe.getBoundingBox().getCenter(), reach);
+				Vec3 target = foe.getBoundingBox().getCenter();
+				at = home.lerp(target, reach);
+				facing = target.subtract(home);
 			}
 			this.swoopLeft--;
 			if (this.swoopLeft == 0) {
 				this.swoopTarget = null;
-				this.setInSittingPose(true);
 			}
 		}
 		this.setPos(at.x, at.y, at.z);
-		this.setYRot(owner.getYRot());
-		this.yRotO = this.getYRot();
-		this.yBodyRot = this.getYRot();
-		this.yHeadRot = this.getYRot();
+		float yaw = (float) (Mth.atan2(facing.z, facing.x) * (180.0 / Math.PI)) - 90.0F;
+		this.setYRot(yaw);
+		this.yRotO = yaw;
+		this.yBodyRot = yaw;
+		this.yHeadRot = yaw;
 	}
 
 	@Override

@@ -75,7 +75,7 @@ public final class SpellImbue {
 		@Override
 		public void addToTooltip(final Item.TooltipContext context, final Consumer<Component> lines, final TooltipFlag flag, final DataComponentGetter components) {
 			for (Identifier spell : this.spells) {
-				lines.accept(Component.translatable(
+				DescriptionLines.add(lines, Component.translatable(
 					"spellbook." + Spellbooks.MOD_ID + ".imbued",
 					Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
 				).withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -359,11 +359,12 @@ public final class SpellImbue {
 		SpellModifiers.CastModifiers base = SpellModifiers.resolve(
 			piece, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), definition.baseCooldownTicks()
 		);
+		BookRefine.remember(player, definition.id().getPath(), 0);
 		base = TowerBridge.grow(piece, definition.id().getPath(), base);
 		base = RpgBridge.grow(player, definition.id().getPath(), base, definition.school());
 		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
 			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
-			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks(), base.awakened()
+			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks(), base.awakened(), base.refineLevel()
 		);
 		// The piece's own awakened imbue decides; the cast book's flag never reaches an imbued hit.
 		modifiers = modifiers.withAwakened(definition.id().equals(piece.get(Awakening.AWAKENED_IMBUE)));

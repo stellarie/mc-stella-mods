@@ -1,6 +1,8 @@
 package com.stella.rpg.tomb;
 
+import com.stella.rpg.DescriptionLines;
 import com.stella.rpg.StellaRpg;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
@@ -74,10 +76,11 @@ public final class GraveCompass {
 	private static void aim(final ItemStack compass, final GlobalPos tomb) {
 		compass.set(DataComponents.LODESTONE_TRACKER, new LodestoneTracker(Optional.of(tomb), false));
 		BlockPos pos = tomb.pos();
-		compass.set(DataComponents.LORE, new ItemLore(List.of(
-			Component.literal("Points to your tombstone").withStyle(ChatFormatting.GRAY),
-			Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + " in " + tomb.dimension().identifier().getPath())
-				.withStyle(ChatFormatting.GRAY)
-		)));
+		List<Component> lore = new ArrayList<>();
+		DescriptionLines.addBlock(lore, Component.literal("none").withStyle(ChatFormatting.WHITE),
+			Component.literal("Points to your tombstone.").withStyle(ChatFormatting.GRAY));
+		DescriptionLines.add(lore, Component.literal(pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + " in " + tomb.dimension().identifier().getPath())
+			.withStyle(ChatFormatting.GRAY));
+		compass.set(DataComponents.LORE, new ItemLore(lore));
 	}
 }

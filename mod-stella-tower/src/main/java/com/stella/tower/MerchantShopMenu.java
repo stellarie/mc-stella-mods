@@ -94,8 +94,8 @@ public final class MerchantShopMenu extends ChestMenu {
 		if (own != null) {
 			lines.addAll(own.lines());
 		}
-		lines.add(Component.literal(good.price() + " emeralds").withStyle(ChatFormatting.GOLD));
-		lines.add(Component.literal("Click to buy").withStyle(ChatFormatting.DARK_GRAY));
+		DescriptionLines.add(lines, Component.literal(good.price() + " emeralds").withStyle(ChatFormatting.GOLD));
+		DescriptionLines.add(lines, Component.literal("Click to buy").withStyle(ChatFormatting.DARK_GRAY));
 		icon.set(DataComponents.LORE, new ItemLore(lines));
 		return icon;
 	}

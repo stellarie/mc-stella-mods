@@ -135,7 +135,7 @@ public final class FoodTooltipGameTest {
 			List<Component> lines = stack.getTooltipLines(
 				Item.TooltipContext.of(helper.getLevel().registryAccess()), null, TooltipFlag.NORMAL
 			);
-			return String.join(" | ", lines.stream().map(Component::getString).toList());
+			return String.join(" ", lines.stream().map(Component::getString).toList());
 		} finally {
 			Language.inject(previous);
 		}

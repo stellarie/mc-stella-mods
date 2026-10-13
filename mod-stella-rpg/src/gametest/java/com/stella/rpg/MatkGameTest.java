@@ -44,7 +44,7 @@ public final class MatkGameTest {
 		double percent = RpgSpells.matkPercent(player);
 		double flat = RpgSpells.matkFlat(player);
 		helper.assertTrue(Math.abs(percent - 1.05) < EPSILON, "book MATK percent " + percent);
-		helper.assertTrue(Math.abs(flat - (20.0 + 12.0 * 3)) < EPSILON, "book flat MATK " + flat);
+		helper.assertTrue(Math.abs(flat - 20.0) < EPSILON, "a refined book changed the flat MATK: " + flat);
 
 		ItemStack sword = RpgTestSupport.withAffixes(Items.IRON_SWORD, Map.of("matk_flat", 10));
 		CustomData.update(DataComponents.CUSTOM_DATA, sword, tag -> tag.putInt("stella_refine", 9));
@@ -92,7 +92,7 @@ public final class MatkGameTest {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.INT, 100);
 		helper.assertTrue(RpgSpells.power(player) == 1.0, "power is " + RpgSpells.power(player));
-		helper.assertTrue(Math.abs(RpgSpells.cooldown(player) - 0.9) < 1e-4, "the cooldown curve changed: " + RpgSpells.cooldown(player));
+		helper.assertTrue(Math.abs(RpgSpells.cooldown(player) - 0.7333) < 1e-4, "the cooldown curve changed: " + RpgSpells.cooldown(player));
 
 		Stub stub = new Stub();
 		MobsBridge.setFacts(stub);

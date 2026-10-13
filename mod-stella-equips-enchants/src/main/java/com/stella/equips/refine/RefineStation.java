@@ -81,8 +81,11 @@ public final class RefineStation {
 		}
 		Slot slot = menu.getSlot(0);
 		ItemStack piece = slot.getItem();
+		if (Refine.isSpellbook(piece)) {
+			return refuse(player, Result.NO_PIECE, Component.literal("A spell or skill book refines with an identical book in the second slot"));
+		}
 		if (!Refine.canRefine(piece)) {
-			return refuse(player, Result.NO_PIECE, Component.literal("Put a weapon, a piece of armour, a shield or a spellbook in the first slot"));
+			return refuse(player, Result.NO_PIECE, Component.literal("Put a weapon, a piece of armour or a shield in the first slot"));
 		}
 		int level = Refine.level(piece);
 		if (level >= Refine.MAX_LEVEL) {

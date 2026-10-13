@@ -590,58 +590,48 @@ Every planned floor is built with a double tower chest at each chest spot of its
 ## Lost rooms (`LostRooms`, `LostCastles`)
 
 - A lost castle, `mod-stella-tower:lost_room`, generates in the overworld. The structure set
-  `mod-stella-tower:lost_rooms` spreads castles 24 chunks apart, at least 8, and keeps them 6 chunks
-  (96 blocks: 64 and a footprint) from `minecraft:villages`. A start on water, or on ground that falls more
-  than 6 blocks under the floor, is skipped.
-- The castle stands on the surface: its floor is one block above the highest ground under its 31 by 27
-  frame, read every 3 blocks and at the edges. A foundation of tower wall fills down to the terrain.
-- The castle is an octagon over a 3 by 3 lattice of rooms, three storeys high. Each room is a six-wide
-  path between walls one block thick, 7 high inside. Each outer corner is cut by a diagonal wall two blocks
-  thick, and each corner room keeps 26 of its 36 floor columns. The other five rooms are whole. A maze
-  joins the nine rooms on every storey, with two doors more than it needs. The stair stands in the back
-  middle room and climbs one block at a time. The way in is a breach in the front wall, under two tower
-  lamps, into the front middle room, which is the courtyard.
-- Every storey is an abandoned base. Each of its nine rooms has one theme and no theme repeats on a storey:
-  bedroom, smithy, larder, study, storeroom, barracks, chapel, crypt and armory. A theme is a few props
-  along the walls and in the corners of its room: a bed or two, a furnace, an anvil, a smithing table, a
-  blast furnace, a smoker, barrels, a cauldron, hay, bookshelves, a lectern, candles, crates, pews, an altar,
-  skulls, graves, soul lanterns, grindstones, a fletching table, hanging chains and cobwebs. The crossing of
-  every room and every doorway stay clear. A few candles, skulls, chains, cobwebs, mossy and cracked stone,
-  and gaps in the floor above the first storey are strewn over what is left. Stone decays at random. No
-  lava, fire, magma, cactus, berry bush, powder snow, wither rose or TNT stands in a castle.
-- Clutter is laid over the rest (`LostCastlePlan.clutter`). Every room holds 4 to 10 pieces
-  (`LostCastleHex.CLUTTER_MIN`, `CLUTTER_MAX`), except the yard room on the ground storey and the portal room
-  on the top storey, which hold at most 10. Pieces on the floor are bottom slabs (stone brick, cobblestone,
-  mossy stone brick, oak, spruce), worn carpets, open and closed trapdoors, flower pots, bone blocks, skulls
-  and candles. Pieces under the ceiling are top slabs and cobwebs, which favour the corner columns. Every
-  storey holds at least one floor slab and one ceiling slab. Clutter only uses blocks whose state does not
-  depend on their neighbours. It never stands on a crossing, in a doorway, in the stair lane, in the portal
-  hall, on the yard path, in a turret or chest corner, or before a turret's open face. A ceiling slab never
-  hangs where a chain hangs or where the floor above has a gap.
-- The top storey is lit by candles alone. It has no tower lamps, its soul lanterns are candles, and its
-  growth is moss and not mushrooms. Each room but the portal room holds a lit candle, on the floor or, when
-  the room has no floor left, on a crafting table, a barrel or another prop with a flat top. The portal and its
-  frame keep their own glow. A dark top storey can spawn natural mobs.
-- The blue portal, 1 wide and 2 high and lined with tower frame, stands in the middle room of the top
-  storey, with the workstations beside it: a crafting table with a lit candle, an anvil, a furnace and a
-  chest of tower loot.
-- A castle holds 8 chest blocks: 2 on the first storey, 3 on the second, and 3 on the top, which counts the
-  workstation chest. At least 2 of them are whole double chests. Each chest block holds 15 rolls of tower
-  loot from a random floor up to 100.
-- A castle is the same castle however it is cut into chunks: its floor kinds, themes, chests and ruin come
-  from its seed alone, and nothing is chosen by reading blocks already laid.
-- Each storey hides spawners in turrets: a 2 by 2 pillar of wall in a room's corner, with a vanilla spawner
-  set one block over the floor, and no air against it. A turret is covered by iron bars on one side, or by
-  stone alone with one accent block at its outer corner. The first and second storeys have two turrets
-  each, in two different rooms. The top storey has one in every room but the portal room, 8 in all. A
-  spawner wakes when a player is within 10 blocks, spawns up to 2 mobs within 3 blocks of it every 20 to 50
-  seconds, and lists mobs by its storey's kind and the castle's environment. It never lists a creeper. Its
-  light rule spans every level, because the castle is lit.
-- A mob a spawner raises in a castle is a tower mob of the players' average level less 5 to 15 more, as the
-  courtyard mobs are. It never rolls an elite or a boss. A ground or middle storey holds at most 8 live spawner
-  mobs, and the top storey 10. A player can break a turret to reach its spawner and stop it.
-- The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its courtyard,
-  each at the online players' average level less 5 to 15 more. They never rise again.
+  `mod-stella-tower:lost_rooms` spreads castles 36 chunks apart, at least 8, and keeps them 8 chunks
+  (128 blocks: 64 and the 50-block footprint) from `minecraft:villages`. A start on water, or on ground that
+  rises more than 6 blocks across its 50 by 50 footprint (`LostCastleGrid.MAX_SLOPE`), is skipped, and so is a start
+  with no room for 3 floors above the world's floor.
+- The castle goes down into the ground (`LostCastleGrid`, `LostCastlePlan`, `LostCastleBuilder`). It has 3 to 6
+  floors, drawn from its seed, and each floor is 12 blocks from the one above: a slab and 11 open blocks. The top
+  floor's ceiling lies 2 blocks under the lowest ground of the footprint, so only the ring shows on the surface.
+- Surface: a small ring of ruins, like a small colosseum, 20 blocks across: a yard, a worn bench and a broken
+  wall with four gates (`LostCastleBuilder.ring`). The biome at the ring's middle picks the palette
+  (`LostCastlePalette.of`): snowy and icy biomes give polished diorite with snow, sandy and desert biomes give
+  sandstone on sand, and any other biome gives mossy stone brick with grass, flowers and leaves.
+- Entrance: a stair 2 wide goes down from the ring's middle. Its first steps lie in an open trench between low walls
+  with a soul torch on each side, and past the ring it is a roofed tunnel. It lands on the top floor's south side, 14 to 20
+  blocks lower (`LostRoomPiece.drop`).
+- Each floor is a 3 by 3 lattice of rooms, each 14 blocks wide, between walls 2 blocks thick. A doorway 4 wide and 5
+  high joins two rooms: a walk through all nine, with two doorways more. Every room has a lane across it that
+  doorways open onto, and hiding spots in its four corners: 2 by 2 pillars, whole or broken off, and broken wall
+  segments 4 blocks long and up to 6 high. The outer wall holds recesses: 1 or 2 chest alcoves and 3 empty niches on a floor.
+  Moss, cobwebs, chains, candles, skulls and rubble are strewn over what is left, and a wall block in 14 has worn.
+- Stairs between floors: 2 wide, 12 steps, along an outer wall (`LostCastlePlan.Stair`), with a low wall round the
+  opening. The entrance lands on the south side, so the stair of floor 0 is on the north side, and each floor's stair
+  is on the side opposite the stair above it.
+- Chests: each floor holds 1 or 2 double chests, in outer wall alcoves. Each chest block holds 15 rolls of tower loot
+  from a random floor up to 100.
+- Spawners: each floor, the bottom floor included, hides 2 spawners in its walls: a vanilla spawner in the wall layer
+  next to a room, flush with the wall face, with wall on its other five sides. A spawner wakes when a player is within
+  10 blocks, spawns up to 2 mobs within 3 blocks every 20 to 50 seconds, and lists mobs by its floor's kind and the
+  palette's mob (zombie, stray or husk). It never lists a creeper.
+- A mob a spawner raises in a castle is a tower mob of the players' average level less 5 to 15 more. It never rolls an
+  elite or a boss. A floor holds at most 8 live spawner mobs (`LostCastles.FLOOR_CAP`).
+- The lost room's portal stands on the bottom floor, in the middle room, on a plinth with steps, between a gate of tower
+  frame, two lamp pillars and two soul braziers: the tower portal's look, smaller. Its opening is 2 wide and 2 high; the
+  tower's is 2 by 3. A crafting table, a furnace and an anvil stand beside it. No mob spawns of itself (spawner, the
+  dark, a chunk's making) inside the 4 by 4 by 3 volume round the frame (`LostRoomPiece.portalFrame`).
+- The bottom floor hides a vault in a corner room: a chamber 4 by 4 behind a partition of cracked stone bricks, with one
+  chest, stocked with 27 rolls of the deepest floor's loot.
+- A castle is the same castle however it is cut into chunks: its floors, rooms, chests and ruin come from its seed
+  alone, and nothing is chosen by reading blocks already laid.
+- The first time a player comes within 32 blocks of a castle, 3 to 6 tower mobs rise in its ring, each at the online
+  players' average level less 5 to 15 more. They never rise again.
+- A castle laid before the castles went down keeps its old shape in the world. Its record has no floors, so nothing
+  wakes in it.
 - The castle's portal leads to its own room, an instance in the tower dimension west of the floors.
   No floor's spawning, progress, last floor, or keys reach it. The room is a hundredth floor's boss plan
   moved there: its hall, pyramid, walled safe room, workstations, chests, and twenty traps of every kind.
@@ -653,20 +643,6 @@ Every planned floor is built with a double tower chest at each chest spot of its
 - The boss pays what a floor's boss pays, its rune roll included, but no floor key. Its fall clears the
   room. Nothing respawns: a second entry, before or after the clear, finds the room as it was left.
 
-### Castle variants (`LostCastleVariant`)
-
-The castle's seed chooses one of five environments, each about a fifth of the time. They share one plan and
-differ in stone and in one mob added to every spawner list. The floor is one block above the ground.
-
-- Castle: polished blackstone, with basalt rubble. Adds the husk.
-- Keep: deepslate bricks, with cobbled deepslate rubble. Adds the stray.
-- Maze ward: end stone bricks, with end stone rubble. Adds the spider.
-- Flooded ruin: blackstone, with deepslate rubble. Adds the cave spider.
-- Sunken crypt: mud bricks, with packed mud rubble. Adds the zombie.
-
-A castle saved before this shape keeps the seed it had, so a castle only part generated before an update may
-show seams where its chunks differ.
-
 ### Boss rewards
 
 - Every tower boss slain by a player, on a floor or in a lost room, also drops `128 + 2 x level`
@@ -675,11 +651,14 @@ show seams where its chunks differ.
 
 ### Manual acceptance
 
-- Find a castle in a new world: it stands on the ground, not in it. Approach it and meet its courtyard
-  mobs. Walk all three storeys and check that the rooms read as different places and that the doorways and
-  floors stay clear. Check that the rooms feel cluttered, with slabs here and there, and that the top storey
-  is lit by candles only. Find a turret, see the bars or the accent block, and wait near it for mobs.
+- Find a castle in a new world: a small ring of ruins on the ground, with a stair down at its middle and a soul torch on
+  each side. Find one in a snowy biome and one in a desert and check the stone. Approach it and meet the mobs in the ring.
+- Walk down: the rooms are wide and have pillars, broken walls and alcoves to hide in. Check
+  that the stair to the next floor is on the opposite side to the one you came down by, and that each floor has one or
+  two double chests and two spawners that show one face of a cage in the wall. Find the cracked stone brick wall on the
+  bottom floor, break it, and open the vault.
 - Enter the castle's portal, see the level message, clear the room, and return through the room's portal.
+- Fight a Tower Guardian from outside its arena and check that you have no boss bar there.
 
 ## Travel and rewards (`TowerBackPortals`, `TowerFloorRewards`)
 
@@ -721,6 +700,11 @@ show seams where its chunks differ.
   by it. The signature effects below read the wearer's effective stats, not the floor.
 - Stats come from `mod-stella-rpg` by reflection on `com.stella.rpg.StatBonuses.effective`. Without that
   mod every stat is 0 and each effect stays at its floor. The tooltip reads the stats the server last sent.
+- The tooltip of a rune names the stat each effect scales with. A description opens with a `Requires:` line and a `Desc:`
+  line of at most 8 lines in all. For a rune the `Requires:` line is the anvil and the 64 emeralds, and the `Desc:` line holds
+  the weapon effect and the armor effect. The floor and the multipliers follow as stat lines.
+  `DescriptionLines` wraps every tooltip line of this mod at 24 characters, at a space. Fixed item text sits in the
+  `description` component, which wraps when the tooltip builds.
 - Every effect works on any mob in any dimension. Damage a rune deals itself (a combustion, a chain, a
   thorn) triggers no rune effect.
 - Each worn armor piece of an element adds a quarter of the full set value. The caps apply to the sum.
@@ -779,6 +763,8 @@ A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks 
 - Leash: a guardian takes only players inside the arena (radius 32). Whoever hurts it, wherever they stand, is its target
   for 200 ticks; after that it drops them and walks back to its post. A guardian and its horse never hurt or hunt another
   guardian.
+- Boss bar: each guardian's health bar shows only to players inside its arena. A player who leaves the arena loses the bar
+  on the next check (every 5 ticks), and a player who walks in gets it.
 - Moves (each shows its start first: a sound, particles, a raised bow): blink behind a player 8 blocks or more away and hit;
   a 60 degree fire cone, 6 blocks long; a ground slam, a strip 4 wide and 16 long, with knockback and Nausea for 40 ticks;
   two seconds of invisibility for archer and horse, then a hard shot; an 8-arrow volley, one arrow every 3 ticks, that never calls
@@ -797,7 +783,8 @@ A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks 
 
 - Find the colosseum on a new world. Judge whether it reads as a ruin: seats, columns, gaps, stairs, the platform.
 - Step into the portal and arrive on floor 1. Fight both guardians; watch each move's warning before it lands. Step out of
-  the arena and check that they stay in; hit one from outside and check that it comes for you, then goes home.
+  the arena and check that they stay in and that the boss bar goes; hit one from outside and check that it comes for you,
+  then goes home.
 - Kill both, tame and ride a horse, check the Bone Shield and Skeleton Crown drops, put 128 bones in the chest and watch
   them rise. With the spells mod present, check that the archer's hits call a falcon (the share is tested in the spells
   mod; this mod only hands it the rider).
@@ -908,7 +895,7 @@ it over. `MerchantGoods.ofItem` makes a good of another mod item by id. A price 
 | Tower Rune | 64 | a rune of a random element, of the buyer best floor |
 | Floor Key | 48 | a key to a floor 1 to 5 above the buyer best floor |
 | Ectoplasm Charm | 128 | `EctoplasmCharm`: cheats death once, 10 minutes to recover |
-| Tower Whetstone | 192 | `RefineWard`: the next refine cannot fail |
+| Tower Whetstone | 192 | `RefineWard`: a failed refine becomes a success, and the whetstone is spent |
 | Shield Generator | 192 | `mod-stella-mobs:shield_generator`, by id |
 - The equips mod's six merchant weapons (Soulreaver, Gravecleaver, Wraithstring, Hexbolt, Wraithpike, Archmage's Staff), 640 emeralds each, in stock only with that mod.
 

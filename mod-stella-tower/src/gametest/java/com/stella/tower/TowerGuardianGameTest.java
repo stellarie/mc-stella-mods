@@ -209,6 +209,39 @@ public class TowerGuardianGameTest {
 		});
 	}
 
+	/**
+	 * Catches a boss bar that shows to a player outside the guardian's arena, one that stays on a player who has left it,
+	 * and one that misses a player who walks in: the bar belongs to the arena, not to the nearness of the guardian.
+	 */
+	@GameTest(maxTicks = 700)
+	public void aBossBarShowsOnlyToPlayersInsideTheArena(final GameTestHelper helper) {
+		GuardianRig rig = GuardianRig.build(helper, 30);
+		Guardians.Spawned[] melee = new Guardians.Spawned[1];
+		ServerPlayer[] stays = new ServerPlayer[1];
+		ServerPlayer[] outsider = new ServerPlayer[1];
+		int beyond = GuardianRig.ARENA + 4;
+		rig.ready(() -> {
+			melee[0] = rig.spawn(GuardianKind.MELEE, -11, 0);
+			stays[0] = rig.sturdy(rig.player(4, 0, 90.0F));
+			outsider[0] = rig.sturdy(rig.player(beyond, 0, 90.0F));
+		});
+		rig.after(12L, () -> {
+			GuardianBrain brain = GuardianBrain.of(melee[0].rider());
+			TowerTestSupport.result("bossBarArena", "insideSees=" + brain.bar().getPlayers().contains(stays[0]) + " outsideSees=" + brain.bar().getPlayers().contains(outsider[0]));
+			helper.assertTrue(brain.bar().getPlayers().contains(stays[0]), "a player inside the arena does not see the bar");
+			helper.assertTrue(!brain.bar().getPlayers().contains(outsider[0]), "a player " + (beyond - GuardianRig.ARENA) + " blocks outside the arena sees the bar");
+			rig.move(stays[0], beyond, 0);
+			rig.move(outsider[0], 4, 0);
+		});
+		rig.after(40L, () -> {
+			GuardianBrain brain = GuardianBrain.of(melee[0].rider());
+			TowerTestSupport.result("bossBarArenaSwap", "leaverSees=" + brain.bar().getPlayers().contains(stays[0]) + " entrantSees=" + brain.bar().getPlayers().contains(outsider[0]));
+			helper.assertTrue(!brain.bar().getPlayers().contains(stays[0]), "a player who left the arena still sees the bar");
+			helper.assertTrue(brain.bar().getPlayers().contains(outsider[0]), "a player who walked into the arena does not see the bar");
+			helper.succeed();
+		});
+	}
+
 	// ---------------------------------------------------------------- the arena
 
 	/**

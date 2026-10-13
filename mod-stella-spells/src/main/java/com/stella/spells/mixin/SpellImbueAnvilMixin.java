@@ -1,5 +1,6 @@
 package com.stella.spells.mixin;
 
+import com.stella.spells.BookRefine;
 import com.stella.spells.SpellImbue;
 import com.stella.spells.SpellbookItem;
 import net.minecraft.world.inventory.AnvilMenu;
@@ -11,7 +12,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** A weapon or a Compendium on the left and a spellbook on the right make the imbued piece; the book is used up whole. */
+/**
+ * A weapon or a Compendium on the left and a spellbook on the right make the imbued piece; the book is used up whole.
+ * A spellbook on the left and an identical one on the right make the left book one refine level higher; the right
+ * book is used up whole, and the price is the level the left book reaches.
+ */
 @Mixin(AnvilMenu.class)
 public abstract class SpellImbueAnvilMixin {
 	@Accessor("cost")
@@ -33,6 +38,22 @@ public abstract class SpellImbueAnvilMixin {
 		menu.getSlot(AnvilMenu.RESULT_SLOT).set(result);
 		this.modStellaSpells$setRepairItemCountCost(0);
 		this.modStellaSpells$imbueCost().set(result.isEmpty() ? 0 : SpellImbue.imbueCost(weapon));
+		ci.cancel();
+	}
+
+	@Inject(method = "createResult", at = @At("HEAD"), cancellable = true)
+	private void modStellaSpells$refine(final CallbackInfo ci) {
+		AnvilMenu menu = (AnvilMenu) (Object) this;
+		ItemStack left = menu.getSlot(AnvilMenu.INPUT_SLOT).getItem();
+		ItemStack right = menu.getSlot(AnvilMenu.ADDITIONAL_SLOT).getItem();
+		if (!(left.getItem() instanceof SpellbookItem) || !(right.getItem() instanceof SpellbookItem)) {
+			return;
+		}
+
+		ItemStack result = BookRefine.combine(left, right);
+		menu.getSlot(AnvilMenu.RESULT_SLOT).set(result);
+		this.modStellaSpells$setRepairItemCountCost(0);
+		this.modStellaSpells$imbueCost().set(result.isEmpty() ? 0 : BookRefine.anvilCost(left));
 		ci.cancel();
 	}
 }

@@ -89,6 +89,9 @@ public final class RpgConfigStore {
 		if (root.has(RpgConfig.RETIRED_MOB_WEIGHTS_KEY)) {
 			onError.accept("stats.json key 'mob_weights' was retired; mob_stats replaces it, so it is ignored");
 		}
+		if (root.has(RpgConfig.RETIRED_COOLDOWN_KEY)) {
+			onError.accept("stats.json key 'cooldown_reduction' was retired; the cooldown curve is fixed, so it is ignored");
+		}
 		return new RpgConfig(Map.copyOf(curves), critMultiplier(root, onError), dice(root, onError),
 			mobStats(root, onError), mobAmplifier(root, onError), armorSets(root, onError), weaponRolls(root, onError),
 			healthScale(root, onError), mobDiceShare(root, onError), StatTables.parse(root, onError),

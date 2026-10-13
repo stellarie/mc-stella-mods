@@ -9,6 +9,7 @@
 		"ScholarOrbMixin",
 		"EnchantmentMenuMixin",
 		"ItemStackTooltipMixin",
+		"ItemLoreMixin",
 		"PlayerSoulboundMixin",
 		"LivingEntityHealMixin",
 		"LivingEntityRefineMixin",

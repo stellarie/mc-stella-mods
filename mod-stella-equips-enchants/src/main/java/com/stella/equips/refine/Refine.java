@@ -1,6 +1,7 @@
 package com.stella.equips.refine;
 
 import com.stella.equips.StellaEquips;
+import com.stella.equips.tooltip.DescriptionLines;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -134,8 +135,9 @@ public final class Refine {
 		return !stack.isEmpty() && stack.has(DataComponents.BLOCKS_ATTACKS) && !isArmor(stack) && !isWeapon(stack);
 	}
 
+	/** A weapon, armour or shield that can wear down. A spellbook is not here: it refines in the anvil, by an identical book. */
 	public static boolean canRefine(final ItemStack stack) {
-		return !stack.isEmpty() && (isSpellbook(stack) || stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack) || isShield(stack)));
+		return !stack.isEmpty() && stack.isDamageableItem() && (isWeapon(stack) || isArmor(stack) || isShield(stack));
 	}
 
 	public static int level(final ItemStack stack) {
@@ -350,9 +352,9 @@ public final class Refine {
 		}
 		List<Component> lines = new ArrayList<>();
 		if (level > 0) {
-			lines.add(Component.literal(LORE_PREFIX + level).withStyle(style -> style.withColor(ChatFormatting.AQUA).withItalic(false)));
+			lines.add(DescriptionLines.marked(Component.literal(LORE_PREFIX + level).withStyle(style -> style.withColor(ChatFormatting.AQUA).withItalic(false))));
 			for (String effect : effects(stack, level)) {
-				lines.add(Component.literal(effect).withStyle(style -> style.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false)));
+				lines.add(DescriptionLines.marked(Component.literal(effect).withStyle(style -> style.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false))));
 			}
 		}
 		lines.addAll(kept);

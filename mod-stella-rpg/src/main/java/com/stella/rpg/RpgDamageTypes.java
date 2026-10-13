@@ -7,10 +7,12 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 
-/** The poison tick's own damage type, plus the damage-over-time and environmental type tags. */
+/** The poison tick, skill and innate damage types, plus the damage-over-time and environmental type tags. */
 public final class RpgDamageTypes {
 	public static final ResourceKey<DamageType> POISON = ResourceKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("poison"));
 	public static final ResourceKey<DamageType> SKILL = ResourceKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("skill"));
+	/** The percent hit of a job innate. Its amount is final: armor, effects, enchantments and VIT do not reduce it. */
+	public static final ResourceKey<DamageType> INNATE = ResourceKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("innate"));
 	public static final TagKey<DamageType> NO_HURT_SHAKE = TagKey.create(Registries.DAMAGE_TYPE, StellaRpg.id("no_hurt_shake"));
 
 	/** Damage types that INT defends against, besides magic and indirect magic. Empty by default. */

@@ -33,7 +33,7 @@ public class TowerLostRoomStructureGameTest {
 	/** The villages a castle must keep clear of: the shipped exclusion zone. */
 	public static final String EXCLUDED_SET = "minecraft:villages";
 	/** The chunks the exclusion reaches, so a castle keeps more than a footprint from a village. */
-	public static final int EXCLUDED_CHUNKS = 6;
+	public static final int EXCLUDED_CHUNKS = 8;
 	/** The set's region, big enough that a count over it differs from the arithmetic by under a percent. */
 	public static final int REGION_CHUNKS = 200;
 	/** The data file the set ships in, the only place the spacing is written down. */
