@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -58,6 +59,7 @@ public final class GuardianBrain {
 	private static final int RETARGET_TICKS = 10;
 	private static final double BAR_RADIUS = 80.0;
 	private static final int MELEE_SWING_TICKS = 20;
+	private static final int SHIELD_RAISE_TICKS = 4;
 	private static final int SHOT_TICKS = 40;
 	private static final double SHOOT_RANGE = 30.0;
 	private static final double ARCHER_NEAR = 9.0;
@@ -80,6 +82,7 @@ public final class GuardianBrain {
 	private int ticks;
 	private int nextMoveAt = FIRST_MOVE_TICKS;
 	private int nextBlowAt;
+	private int raiseAt;
 	private @Nullable LivingEntity focus;
 	private @Nullable LivingEntity attacker;
 	private int attackedAt = Integer.MIN_VALUE / 2;
@@ -233,6 +236,7 @@ public final class GuardianBrain {
 			updateBar(level);
 		}
 		trackLobs(level);
+		guard();
 		if (this.focus == null || this.ticks % RETARGET_TICKS == 0 || !attackable(this.focus)) {
 			retarget(level);
 		}
@@ -259,6 +263,22 @@ public final class GuardianBrain {
 		}
 		if (this.move == null) {
 			blow(level, target);
+		}
+	}
+
+	/** The melee guardian keeps its off-hand shield up while it hunts, and lowers it only for a swing. */
+	private void guard() {
+		if (this.kind != GuardianKind.MELEE || !this.rider.getOffhandItem().has(DataComponents.BLOCKS_ATTACKS)) {
+			return;
+		}
+		if (this.focus == null) {
+			if (this.rider.isUsingItem()) {
+				this.rider.stopUsingItem();
+			}
+			return;
+		}
+		if (!this.rider.isUsingItem() && this.ticks >= this.raiseAt) {
+			this.rider.startUsingItem(InteractionHand.OFF_HAND);
 		}
 	}
 
@@ -471,6 +491,8 @@ public final class GuardianBrain {
 
 	/** One swing: the guardian's own melee hit, as any mob deals it. */
 	void strike(final LivingEntity target) {
+		this.rider.stopUsingItem();
+		this.raiseAt = this.ticks + SHIELD_RAISE_TICKS;
 		this.rider.swingForAttack(InteractionHand.MAIN_HAND);
 		this.rider.doHurtTarget(level(), target);
 	}

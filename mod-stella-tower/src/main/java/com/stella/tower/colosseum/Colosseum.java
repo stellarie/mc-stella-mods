@@ -9,7 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The ruined colosseum: one per world, 96 to 256 blocks from the spawn, 32 blocks in radius. Its tiered seats, broken
+ * The ruined colosseum: one per world, 96 to 256 blocks from the spawn (never more than 1024), 32 blocks in radius. Its tiered seats, broken
  * columns and walls ring a sand arena. A raised platform at the middle carries a lit crying obsidian portal to the tower,
  * and an offering chest. Two Tower Guardians keep it.
  * <p>
@@ -21,6 +21,8 @@ public final class Colosseum {
 	public static final int RADIUS = 32;
 	public static final int MIN_FROM_SPAWN = 96;
 	public static final int MAX_FROM_SPAWN = 256;
+	/** The reach of the second pass, when every site in the first band is taken. The hard limit is 1024. */
+	public static final int WIDE_FROM_SPAWN = 1000;
 	public static final int PLATFORM_RADIUS = 6;
 	public static final int PLATFORM_HEIGHT = 4;
 	/** Two stacks of bones raise the guardians again. */
@@ -81,9 +83,20 @@ public final class Colosseum {
 		if (claimed != null) {
 			return new Result(new Layout(claimed), false);
 		}
+		for (int reach : new int[] {MAX_FROM_SPAWN, WIDE_FROM_SPAWN}) {
+			Result result = tryBand(overworld, data, reach);
+			if (result != null) {
+				return result;
+			}
+		}
+		StellaTower.LOGGER.warn("[COLOSSEUM] no site fits near the spawn");
+		return null;
+	}
+
+	private static @Nullable Result tryBand(final ServerLevel overworld, final ColosseumData data, final int reach) {
 		long began = System.nanoTime();
-		List<BlockPos> sites = ColosseumSite.candidates(overworld);
-		StellaTower.LOGGER.info("[COLOSSEUM] {} sites drawn in {} ms", sites.size(), (System.nanoTime() - began) / 1_000_000L);
+		List<BlockPos> sites = ColosseumSite.candidates(overworld, reach);
+		StellaTower.LOGGER.info("[COLOSSEUM] {} sites drawn in {} ms (reach {})", sites.size(), (System.nanoTime() - began) / 1_000_000L, reach);
 		for (BlockPos floor : sites) {
 			Layout layout = new Layout(floor);
 			began = System.nanoTime();
@@ -96,7 +109,6 @@ public final class Colosseum {
 			Guardians.raise(overworld, layout);
 			return new Result(layout, true);
 		}
-		StellaTower.LOGGER.warn("[COLOSSEUM] no site fits near the spawn");
 		return null;
 	}
 
