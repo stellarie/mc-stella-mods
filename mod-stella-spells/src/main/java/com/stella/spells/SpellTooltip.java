@@ -89,13 +89,14 @@ public final class SpellTooltip {
 	}
 
 	/**
-	 * Everything the client adds to a spell item tooltip, in order: the live lines, the refine lines and the
-	 * awakening lines. The client callback calls this one method, so a server test sees the same tooltip.
+	 * Everything the client adds to an item tooltip, in order: the live lines, the refine lines, the
+	 * awakening lines and the imbue lines. The client callback calls this one method, so a server test sees the same tooltip.
 	 */
 	public static void decorate(final @Nullable Player viewer, final ItemStack stack, final List<Component> tooltip) {
 		apply(viewer, stack, tooltip);
 		tooltip.addAll(refineLines(stack));
 		tooltip.addAll(awakeningLines(stack));
+		tooltip.addAll(SpellImbue.tooltipLines(stack));
 		DescriptionLines.wrapMarked(tooltip);
 	}
 

@@ -40,35 +40,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Imbuing grown up: arrows and chestplates take spells too, one piece takes more than one spell at a price
- * that grows fivefold, a right-click on a hostile casts the spell at full strength, the spell enchantments on
+ * Imbuing grown up: arrows and chestplates take spells too, one piece takes more than one spell (the price
+ * cases are in {@link ImbueProcGameTest}), a right-click on a hostile casts the spell at full strength, the spell enchantments on
  * the weapon and the armour strengthen what the weapon casts, and the hotbar shows the spell's cooldown.
  */
 public class ImbueExpansionGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.imbue2");
 	private static final Identifier SPARK_SHOT = Identifier.parse("mod-stella-spells:spark_shot");
 	private static final Identifier FROSTBIND = Identifier.parse("mod-stella-spells:frostbind");
-	private static final Identifier EMBER_BRAND = Identifier.parse("mod-stella-spells:ember_brand");
 	private static final float HIT = 4.0F;
 	private static final Map<UUID, List<Identifier>> CASTS = new ConcurrentHashMap<>();
 
 	static {
 		SpellImbue.setSecondRecorder((player, spell, victim) -> CASTS.computeIfAbsent(player.getUUID(), key -> new CopyOnWriteArrayList<>()).add(spell));
-	}
-
-	@GameTest
-	public void theImbuePriceGrowsFivefoldWithEachSpell(final GameTestHelper helper) {
-		ServerPlayer player = helper.makeMockServerPlayerInLevel();
-		ItemStack once = anvilResult(helper, player, new ItemStack(Items.IRON_SWORD), SPARK_SHOT);
-		int first = lastCost;
-		ItemStack twice = anvilResult(helper, player, once, FROSTBIND);
-		int second = lastCost;
-		ItemStack thrice = anvilResult(helper, player, twice, EMBER_BRAND);
-		int third = lastCost;
-		LOG.info("[SPELLTEST] test=theImbuePriceGrowsFivefoldWithEachSpell RESULT costs={},{},{} spells={}", first, second, third, SpellImbue.spellsOf(thrice));
-		helper.assertTrue(first == SpellImbue.IMBUE_XP_COST && second == SpellImbue.IMBUE_XP_COST * 5 && third == SpellImbue.IMBUE_XP_COST * 25, "the imbues cost " + first + ", " + second + ", " + third);
-		helper.assertTrue(SpellImbue.spellsOf(thrice).equals(List.of(SPARK_SHOT, FROSTBIND, EMBER_BRAND)), "the thrice imbued sword holds " + SpellImbue.spellsOf(thrice));
-		helper.succeed();
 	}
 
 	@GameTest
@@ -203,9 +187,9 @@ public class ImbueExpansionGameTest {
 		helper.succeed();
 	}
 
-	private static int lastCost;
+	static int lastCost;
 
-	private static ItemStack anvilResult(final GameTestHelper helper, final ServerPlayer player, final ItemStack left, final Identifier spell) {
+	static ItemStack anvilResult(final GameTestHelper helper, final ServerPlayer player, final ItemStack left, final Identifier spell) {
 		AnvilMenu anvil = new AnvilMenu(0, player.getInventory(), ContainerLevelAccess.create(helper.getLevel(), helper.absolutePos(net.minecraft.core.BlockPos.ZERO)));
 		anvil.getSlot(AnvilMenu.INPUT_SLOT).set(left.copy());
 		anvil.getSlot(AnvilMenu.ADDITIONAL_SLOT).set(new ItemStack(BuiltInRegistries.ITEM.getValue(spell)));

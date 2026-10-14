@@ -116,11 +116,12 @@ public class SpellImbueGameTest {
 	@GameTest
 	public void theImbuedWeaponNamesItsSpellInTheTooltip(final GameTestHelper helper) {
 		ItemStack sword = imbued(Items.IRON_SWORD, SPARK_SHOT);
-		List<Component> lines = sword.getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL);
-		List<Component> own = new ArrayList<>();
-		sword.get(SpellImbue.IMBUED).addToTooltip(Item.TooltipContext.of(helper.getLevel()), own::add, TooltipFlag.NORMAL, sword);
-		LOG.info("[SPELLTEST] test=theImbuedWeaponNamesItsSpellInTheTooltip RESULT own={} shown={}", own.size(), lines.containsAll(own));
-		helper.assertTrue(!own.isEmpty() && lines.containsAll(own), "the tooltip does not show the imbued spell: " + lines);
+		List<Component> lines = new ArrayList<>(sword.getTooltipLines(Item.TooltipContext.of(helper.getLevel()), null, TooltipFlag.NORMAL));
+		SpellTooltip.decorate(null, sword, lines);
+		List<String> own = DescriptionSupport.text(SpellImbue.tooltipLines(sword));
+		List<String> shown = DescriptionSupport.text(lines);
+		LOG.info("[SPELLTEST] test=theImbuedWeaponNamesItsSpellInTheTooltip RESULT own={} shown={}", own.size(), shown.containsAll(own));
+		helper.assertTrue(!own.isEmpty() && shown.containsAll(own), "the tooltip does not show the imbued spell: " + shown);
 		helper.succeed();
 	}
 

@@ -216,20 +216,23 @@ the right to imbue it. A weapon is any item with its own attack damage: swords, 
 and the like. The book is used up, and its own enchantments do not carry over. Tide Lungs cannot be
 imbued: it is a breath held underwater, not a blow. Nor can Summon Skeleton.
 
-A piece can hold several spells. Each imbue adds one, at five times the price of the last: 5, then 25,
-then 125, and so on, in levels, or in emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
+A piece can hold any number of spells, and never the same spell twice. Each imbue adds one, at the same
+price every time: 5 levels, or 5 emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
 A stack of arrows pays that price once for every 16 arrows it holds.
 
 The spellbooks a later update removed turn into their successors in a saved world: Smite becomes
 Battle Hymn, Skyhook becomes Gravity and Healing Spring becomes Bulwark Hymn, books and scrolls alike.
 
-- **Weapon:** each melee hit casts every imbued spell that is ready, at half power and half duration.
+- **Weapon:** each melee hit gives every imbued book its own roll, with a 10 percent chance plus 1 percent
+  per point of LUK (`mod-stella-rpg`; 0 without it), at most 100 percent. A book that wins its roll and is
+  off cooldown casts at half power and half duration. The books never share a roll.
   Right-click a hostile with the weapon to cast every ready spell at the book's full strength instead.
   A sword, axe or mace shows the spell's cooldown in the hotbar.
-- **Arrows:** an imbued arrow casts its spells on whatever it strikes, at half power.
+- **Arrows:** an imbued arrow casts its spells on whatever it strikes, at half power, every time.
 - **Bow or crossbow:** a bow or a crossbow takes the six archer books that strike a target: Double
-  Strafe, Sharp Shooting, Arrow Shower, Ankle Snare, Arrow Repel and Explosive Arrow. An
-  arrow it looses casts them on the victim at half power. Arrow Shower, Ankle Snare and the
+  Strafe, Sharp Shooting, Arrow Shower, Ankle Snare, Arrow Repel and Explosive Arrow. Each arrow it
+  looses that hits rolls every book as a weapon hit does, and a book that wins casts on the victim
+  at half power. Arrow Shower, Ankle Snare and the
   Explosive Arrow blast centre on the victim. The cast needs no arrow and spends none, and it waits
   out the book's own cooldown. A sword refuses these books, and a bow refuses every other archer book.
 - **Chestplate:** when something strikes the wearer, the chestplate casts its spells on the attacker, at
@@ -238,7 +241,8 @@ Battle Hymn, Skyhook becomes Gravity and Healing Spring becomes Bulwark Hymn, bo
 A hostile spell lands on the target, an area spell around it, and a self spell on the wielder. Riftwalk
 steps behind the target. Each spell then waits out its own cooldown. Potency, Precision and Quickening
 can be put on a weapon at the anvil, and with the helmet and chestplate enchantments they shape the
-weapon's spells as they shape a book's. The tooltip names every imbued spell.
+weapon's spells as they shape a book's. The tooltip shows a Requires and Desc block with the hit rule,
+then names every imbued spell on its own line.
 
 A mob that wields an imbued weapon casts its spell too, when the spell strikes a single foe.
 
