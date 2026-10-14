@@ -249,12 +249,12 @@ Every spider and cave spider, elite and boss included, heals and slows with each
 - The spider heals 10 percent of the damage it deals.
 - The victim gets Slowness I for 100 ticks.
 - A hit that a shield blocks deals no damage, so it does neither.
-- A spider that is not elite or boss no longer places a web.
+- No spider places or casts a web, elite and boss spiders included.
 
 ### Spider signal (`SpiderSignal`)
 
-An elite or boss spider that webs a player calls monsters onto that player.
-The call goes out after the spider casts at least one web.
+A spider that reaches a player caught in a cobweb calls monsters onto that player.
+Spiders place no webs, so the cobweb comes from the world.
 
 - Monsters within 24 blocks of the spider answer, nearest first, up to 6 monsters.
 - A spider calls at most once every 100 of its own ticks.

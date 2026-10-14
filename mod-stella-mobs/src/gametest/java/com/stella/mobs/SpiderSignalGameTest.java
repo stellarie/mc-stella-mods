@@ -3,7 +3,6 @@ package com.stella.mobs;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.behavior.SpiderSignal;
-import com.stella.mobs.behavior.WebCastGoal;
 import com.stella.mobs.gear.GearTier;
 import java.util.ArrayList;
 import java.util.List;
@@ -161,31 +160,6 @@ public class SpiderSignalGameTest {
 			.thenSucceed();
 	}
 
-	@GameTest(maxTicks = MAX_TICKS, padding = MeleeKitFloor.PADDING)
-	public void webCastSignals(final GameTestHelper helper) {
-		MeleeKitFloor scene = MeleeKitFloor.build(helper);
-		ServerPlayer player = scene.player(PLAYER_X, PLAYER_Z);
-		Spider spider = idle(scene.mob(EntityTypes.SPIDER, SPIDER_X, FLOOR_Y, SPIDER_Z));
-		Zombie ally = idle(scene.mob(EntityTypes.ZOMBIE, 14, FLOOR_Y, 18));
-		Elite.mark(spider, GearTier.IRON, 1.0);
-		spider.setTarget(player);
-		WebCastGoal cast = goalOf(spider, WebCastGoal.class);
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(scene.ticking(), "the scene is not ticking yet"))
-			.thenExecute(() -> {
-				scene.clearStrangers(spider, STRANGER_RADIUS);
-				helper.assertTrue(cast.canUse(), "the elite spider does not want to cast at the player");
-				cast.start();
-				List<Signal> signals = SIGNALS.getOrDefault(spider.getUUID(), List.of());
-				String seen = "signals=" + signals.size() + " allyTarget=" + ally.getTarget();
-				helper.assertTrue(signals.size() == 1 && signals.getFirst().accepted().contains(ally), "the web cast sent no signal: " + seen);
-				helper.assertTrue(ally.getTarget() == player, "the ally did not take the webbed player: " + seen);
-				StellaMobs.LOGGER.info("[BEHAVIOR] test={}.webCastSignals RESULT {}", TEST, seen);
-				scene.end();
-			})
-			.thenSucceed();
-	}
 
 	@SuppressWarnings("removal")
 	@GameTest(maxTicks = MAX_TICKS, padding = MeleeKitFloor.PADDING)

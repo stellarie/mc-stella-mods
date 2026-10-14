@@ -7,7 +7,6 @@ import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
 import net.minecraft.world.entity.monster.skeleton.WitherSkeleton;
-import net.minecraft.world.entity.monster.spider.Spider;
 
 /**
  * The boss signature abilities. Every path that makes a boss calls install, so a rolled boss and a boss
@@ -28,10 +27,6 @@ public final class BossAbilities {
 		// A boss skeleton's bow is the shared archer goal, which reads the boss flag for its eighteen-arrow volley.
 		if (mob.getType() == EntityTypes.SKELETON && !alreadyInstalled(mob, SkeletonVolleyGoal.class)) {
 			SkeletonVolleyGoal.install(mob);
-		}
-
-		if (mob instanceof Spider spider && !alreadyInstalled(mob, WebFieldGoal.class)) {
-			mob.getGoalSelector().addGoal(FLAGLESS_PRIORITY, new WebFieldGoal(spider));
 		}
 
 		if (mob instanceof PiglinBrute brute && !alreadyInstalled(mob, WarlordRoarGoal.class)) {

@@ -22,7 +22,7 @@ import com.stella.mobs.behavior.EliteKits;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.RingOfFireGoal;
 import com.stella.mobs.behavior.WarlordRoarGoal;
-import com.stella.mobs.behavior.WebFieldGoal;
+import com.stella.mobs.behavior.WarlordRoarGoal;
 import com.stella.mobs.config.GearConfigParser;
 import com.stella.mobs.config.GearConfigStore;
 import java.util.HashSet;
@@ -189,13 +189,13 @@ public class BossAbilityGameTest {
 	@GameTest(maxTicks = 200)
 	public void aHandBlessedBossCarriesItsAbility(final GameTestHelper helper) {
 		prepare(helper, NO_BOSS);
-		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
-		int copies = BossAbilities.copiesOf(spider, WebFieldGoal.class);
+		var brute = blessed(helper, EntityTypes.PIGLIN_BRUTE, 3, 3, 3);
+		int copies = BossAbilities.copiesOf(brute, WarlordRoarGoal.class);
 
-		result("handBlessedAbility", "boss=" + Bosses.isBoss(spider) + " webGoals=" + copies);
+		result("handBlessedAbility", "boss=" + Bosses.isBoss(brute) + " roarGoals=" + copies);
 
-		helper.assertTrue(Bosses.isBoss(spider), "the hand-promoted mob is not a boss");
-		helper.assertValueEqual(Integer.valueOf(copies), Integer.valueOf(1), "web goals on a hand-promoted boss");
+		helper.assertTrue(Bosses.isBoss(brute), "the hand-promoted mob is not a boss");
+		helper.assertValueEqual(Integer.valueOf(copies), Integer.valueOf(1), "roar goals on a hand-promoted boss");
 		helper.succeed();
 	}
 
@@ -1171,92 +1171,6 @@ public class BossAbilityGameTest {
 		});
 	}
 
-	@GameTest(maxTicks = 200)
-	@SuppressWarnings("removal")
-	public void webFieldFollowsTheSpider(final GameTestHelper helper) {
-		prepare(helper, NO_BOSS);
-		// The spider is anchored to a player it cannot kill, so it
-		// stays on the arena floor, where the field has floor below.
-		ServerPlayer watcher = helper.makeMockServerPlayerInLevel();
-		watcher.getAttribute(Attributes.MAX_HEALTH).setBaseValue(Arena.OPPONENT_HEALTH);
-		watcher.setHealth(Arena.OPPONENT_HEALTH);
-		net.minecraft.world.phys.Vec3 seat = helper.absoluteVec(new net.minecraft.world.phys.Vec3(3.5, 1.0, 5.5));
-		watcher.setPos(seat.x, seat.y, seat.z);
-		Spider spider = blessed(helper, EntityTypes.SPIDER, 3, 3, 3);
-		// The subject's own goal instance, so the clause reads the writes this spider produced rather
-		// than a box over the shared level: a box can miss a field that landed outside it, and it can
-		// never say whether the goal ran at all.
-		WebFieldGoal field = spider.getGoalSelector().getAvailableGoals().stream()
-			.map(WrappedGoal::getGoal)
-			.filter(WebFieldGoal.class::isInstance)
-			.map(WebFieldGoal.class::cast)
-			.findFirst()
-			.orElse(null);
-		int[] floorBefore = new int[1];
-		int[] sampled = new int[1];
-
-		// One probe per 40 ticks: it names the goal's own state and the player check the goal reads, so a
-		// run that writes nothing shows which of the two was false instead of only that the field is absent.
-		helper.onEachTick(() -> {
-			sampled[0]++;
-
-			if (sampled[0] % 40 != 0) {
-				return;
-			}
-
-			boolean running = field != null && spider.getGoalSelector().getAvailableGoals().stream()
-				.anyMatch(wrapped -> wrapped.getGoal() == field && wrapped.isRunning());
-			StellaMobs.LOGGER.info(
-				"[BEHAVIOR] test=bossAbility.webFieldProbe t={} goalPresent={} goalRunning={} writtenNow={}"
-					+ " webs={} spiderAlive={} spiderY={} nearbyPlayer={} players={}",
-				sampled[0], field != null, running, field == null ? -1 : field.written().size(), countWebs(helper),
-				spider.isAlive(), spider.getY(),
-				helper.getLevel().hasNearbyAlivePlayer(spider.getX(), spider.getY(), spider.getZ(), 32.0),
-				helper.getLevel().players().size()
-			);
-		});
-
-		helper.succeedWhen(() -> {
-			if (floorBefore[0] == 0) {
-				floorBefore[0] = countFloor(helper);
-			}
-
-			int webs = countWebs(helper);
-			boolean webbed = helper.getLevel().getBlockState(helper.absolutePos(BlockPos.containing(spider.position())))
-				.is(Blocks.COBWEB);
-			List<BlockPos> written = field == null ? List.of() : field.written();
-			// The assertion is the goal's own product: it wrote at least one tile, and every tile it
-			// recorded holds cobweb now. The arena box is only a bound on the same field.
-			helper.assertFalse(
-				written.isEmpty(),
-				"the boss spider's web goal wrote no cobweb in " + WebFieldGoal.INTERVAL_TICKS + " ticks: present="
-					+ (field != null) + " nearbyPlayer="
-					+ helper.getLevel().hasNearbyAlivePlayer(spider.getX(), spider.getY(), spider.getZ(), 32.0)
-					+ " spiderAlive=" + spider.isAlive() + " spiderY=" + spider.getY()
-			);
-
-			for (BlockPos pos : written) {
-				// written() holds absolute positions, so the world is read directly.
-				helper.assertTrue(
-					helper.getLevel().getBlockState(pos).is(Blocks.COBWEB),
-					"a web the goal recorded is not in the world: " + pos
-				);
-			}
-
-			helper.assertTrue(webs <= ARENA_TILES, "the field grew past the arena: " + webs + " webs");
-			helper.assertFalse(webbed, "the spider is standing in its own web");
-			helper.assertValueEqual(
-				Integer.valueOf(countFloor(helper)), Integer.valueOf(floorBefore[0]), "stone floor blocks left"
-			);
-			result(
-				"webField",
-				"written=" + written.size() + " webs=" + webs + " cap=" + ARENA_TILES + " ownTileWebbed=" + webbed
-					+ " floorIntact=" + (countFloor(helper) == floorBefore[0])
-					+ " griefing=" + helper.getLevel().getGameRules().get(GameRules.MOB_GRIEFING)
-					+ " interval=" + WebFieldGoal.INTERVAL_TICKS
-			);
-		});
-	}
 
 	/** Webs anywhere in the arena, counted from the world and not from the spider's own position. */
 	private static int countWebs(final GameTestHelper helper) {
