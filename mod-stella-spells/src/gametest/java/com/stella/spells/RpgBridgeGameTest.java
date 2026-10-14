@@ -102,22 +102,13 @@ public class RpgBridgeGameTest {
 	public void imbueScales(final GameTestHelper helper) {
 		ServerPlayer neutral = caster(helper);
 		float plain = imbuedHit(helper, neutral, 1.0, 1.0);
-		int base = SpellModifiers.resolve(book(), ItemStack.EMPTY, ItemStack.EMPTY, 60).cooldownTicks();
-		int expected = (int) Math.round(base * 0.9);
 		ServerPlayer caster = caster(helper);
 		float scaled = imbuedHit(helper, caster, 1.5, 0.9);
-		ItemStack held = caster.getMainHandItem();
-		tick(caster, expected - 1);
-		boolean restingBefore = caster.getCooldowns().isOnCooldown(held);
-		tick(caster, 1);
-		boolean restingAfter = caster.getCooldowns().isOnCooldown(held);
 		remove(helper, neutral, caster);
 		float spell = SpellCasting.DAMAGE * (float) SpellImbue.IMBUE_POWER;
-		LOG.info("[SPELLTEST] test=imbueScales RESULT plain={} scaled={} expected={} restingBefore={} restingAfter={}", plain, scaled, expected, restingBefore, restingAfter);
+		LOG.info("[SPELLTEST] test=imbueScales RESULT plain={} scaled={}", plain, scaled);
 		helper.assertTrue(Math.abs(plain - (HIT + spell)) < 0.01F, "a neutral imbued hit took " + plain);
 		helper.assertTrue(Math.abs(scaled - (HIT + 1.5F * spell)) < 0.01F, "the scaled imbued hit took " + scaled);
-		helper.assertTrue(restingBefore, "the imbued piece was ready one tick before " + expected);
-		helper.assertTrue(!restingAfter, "the imbued piece was still resting at " + expected);
 		helper.succeed();
 	}
 

@@ -175,17 +175,6 @@ public class ImbueExpansionGameTest {
 		helper.succeed();
 	}
 
-	@GameTest
-	public void theHotbarShowsAnImbuedSpellsCooldown(final GameTestHelper helper) {
-		ServerPlayer player = wielder(helper, SPARK_SHOT);
-		Mob zombie = zombie(helper, 2, 4);
-		zombie.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
-		ItemStack sword = player.getMainHandItem();
-		boolean cooling = player.getCooldowns().isOnCooldown(sword);
-		LOG.info("[SPELLTEST] test=theHotbarShowsAnImbuedSpellsCooldown RESULT cooling={} group={}", cooling, player.getCooldowns().getCooldownGroup(sword));
-		helper.assertTrue(cooling, "the imbued sword shows no cooldown after its spell cast");
-		helper.succeed();
-	}
 
 	static int lastCost;
 

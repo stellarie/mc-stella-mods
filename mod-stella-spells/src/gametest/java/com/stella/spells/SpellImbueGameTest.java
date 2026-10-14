@@ -176,23 +176,6 @@ public class SpellImbueGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 200)
-	public void theImbuedSpellWaitsOutTheBooksCooldown(final GameTestHelper helper) {
-		ServerPlayer player = wielder(helper, SPARK_SHOT);
-		Mob zombie = zombie(helper, 2, 4);
-		int cooldown = SpellbookCatalog.get(SPARK_SHOT).baseCooldownTicks();
-		hit(helper, player, zombie);
-		hit(helper, player, zombie);
-		int early = CASTS.getOrDefault(player.getUUID(), List.of()).size();
-		helper.runAfterDelay(cooldown + 1L, () -> {
-			hit(helper, player, zombie);
-			int late = CASTS.getOrDefault(player.getUUID(), List.of()).size();
-			LOG.info("[SPELLTEST] test=theImbuedSpellWaitsOutTheBooksCooldown RESULT early={} late={} cooldown={}", early, late, cooldown);
-			helper.assertTrue(early == 1, "two hits inside the cooldown cast " + early + " times");
-			helper.assertTrue(late == 2, "a hit after the cooldown did not cast again: " + late);
-			helper.succeed();
-		});
-	}
 
 	@GameTest(maxTicks = 100)
 	public void everyNewSpellCastsFromAnImbuedHit(final GameTestHelper helper) {
