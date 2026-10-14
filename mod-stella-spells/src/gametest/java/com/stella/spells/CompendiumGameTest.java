@@ -70,7 +70,7 @@ public class CompendiumGameTest {
 		helper.assertTrue(SpellImbue.spellsOf(two).equals(List.of(QUICKSILVER, IRON_SKIN)), "a spell and a skill gave " + SpellImbue.spellsOf(two));
 		helper.assertTrue(SpellImbue.spellsOf(three).equals(List.of(QUICKSILVER, IRON_SKIN, FROSTBIND)), "a third book gave " + SpellImbue.spellsOf(three));
 		helper.assertTrue(repeat.isEmpty(), "the same book twice gave " + repeat);
-		helper.assertTrue(firstCost == SpellImbue.IMBUE_XP_COST && secondCost == SpellImbue.IMBUE_XP_COST * 5, "the fills cost " + firstCost + ", " + secondCost);
+		helper.assertTrue(firstCost == SpellImbue.IMBUE_XP_COST && secondCost == SpellImbue.IMBUE_XP_COST, "the fills cost " + firstCost + ", " + secondCost);
 		helper.succeed();
 	}
 

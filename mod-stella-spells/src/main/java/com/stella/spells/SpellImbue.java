@@ -8,12 +8,9 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
-import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,9 +25,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ProjectileWeaponItem;
-import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
-import net.minecraft.world.item.component.TooltipProvider;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
@@ -43,17 +38,24 @@ import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 
-/** A weapon imbued at an anvil with a spellbook casts that spell, weaker, when it lands a melee hit. */
+/**
+ * A weapon imbued at an anvil with a spellbook may cast that spell, weaker, when it lands a melee hit. A bow or
+ * a crossbow may cast it when its arrow lands. Each imbued book rolls its own chance on each hit.
+ */
 public final class SpellImbue {
-	/** The anvil's price in levels; with the equips mod's anvil it reads as emeralds. */
+	/** The anvil's price in levels for each book; with the equips mod's anvil it reads as emeralds. */
 	public static final int IMBUE_XP_COST = 5;
 	public static final double IMBUE_POWER = 0.5;
 	public static final double IMBUE_DURATION = 0.5;
+	/** The chance that one imbued book casts on a hit, at 0 LUK. */
+	public static final double PROC_BASE_CHANCE = 0.10;
+	/** What each point of LUK adds to that chance. */
+	public static final double PROC_CHANCE_PER_LUK = 0.01;
 	/** How far behind its target an imbued Riftwalk sets the wielder down. */
 	static final double RIFTWALK_STEP_BEHIND = 0.8;
 
 	/** The spells a piece holds, in the order they were imbued; an old single-spell save reads as a list of one. */
-	public record ImbuedSpell(List<Identifier> spells) implements TooltipProvider {
+	public record ImbuedSpell(List<Identifier> spells) {
 		public static final Codec<ImbuedSpell> CODEC = Codec.either(Identifier.CODEC, Identifier.CODEC.listOf()).xmap(
 			either -> either.map(ImbuedSpell::new, list -> new ImbuedSpell(List.copyOf(list))),
 			imbued -> imbued.spells().size() == 1 ? Either.left(imbued.spell()) : Either.right(imbued.spells())
@@ -72,15 +74,39 @@ public final class SpellImbue {
 			return this.spells.get(0);
 		}
 
-		@Override
-		public void addToTooltip(final Item.TooltipContext context, final Consumer<Component> lines, final TooltipFlag flag, final DataComponentGetter components) {
-			for (Identifier spell : this.spells) {
-				DescriptionLines.add(lines, Component.translatable(
-					"spellbook." + Spellbooks.MOD_ID + ".imbued",
-					Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
-				).withStyle(ChatFormatting.LIGHT_PURPLE));
-			}
+	}
+
+	/**
+	 * The tooltip lines of an imbued piece: a Requires and Desc block with the hit rule, then one line per book.
+	 * A Compendium casts what it stores on use and not on a hit, so it shows the books alone.
+	 */
+	public static List<Component> tooltipLines(final ItemStack stack) {
+		List<Identifier> spells = spellsOf(stack);
+		List<Component> lines = new java.util.ArrayList<>();
+		if (spells.isEmpty()) {
+			return lines;
 		}
+		if (!(stack.getItem() instanceof CompendiumItem)) {
+			DescriptionLines.addBlock(
+				lines,
+				Component.translatable("spellbook." + Spellbooks.MOD_ID + ".imbued.requires").withStyle(ChatFormatting.WHITE),
+				Component.translatable(
+					"spellbook." + Spellbooks.MOD_ID + ".imbued.desc",
+					percent(PROC_BASE_CHANCE), percent(PROC_CHANCE_PER_LUK)
+				).withStyle(ChatFormatting.LIGHT_PURPLE)
+			);
+		}
+		for (Identifier spell : spells) {
+			DescriptionLines.add(lines, Component.translatable(
+				"spellbook." + Spellbooks.MOD_ID + ".imbued",
+				Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
+			).withStyle(ChatFormatting.LIGHT_PURPLE));
+		}
+		return lines;
+	}
+
+	private static int percent(final double chance) {
+		return (int) Math.round(chance * 100.0);
 	}
 
 	public static final DataComponentType<ImbuedSpell> IMBUED = Registry.register(
@@ -134,6 +160,9 @@ public final class SpellImbue {
 	private static final MobRecorder SILENT_MOBS = (wielder, spell, victim) -> {
 	};
 	private static volatile MobRecorder mobRecorder = SILENT_MOBS;
+	private static volatile UnbrokenVow.StatSource lukSource = UnbrokenVow::rpgStat;
+	/** Test seam: the roll an imbued book's chance is held against. Null rolls the wielder's own random. */
+	private static volatile java.util.function.DoubleSupplier procRoll;
 
 	private static Identifier id(final String path) {
 		return Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, path);
@@ -141,6 +170,33 @@ public final class SpellImbue {
 
 	public static void setMobRecorder(final MobRecorder newRecorder) {
 		mobRecorder = newRecorder == null ? SILENT_MOBS : newRecorder;
+	}
+
+	/** Test seam: pins the LUK reader. A null source returns to the RPG mod's own stats. */
+	static void setLukSource(final UnbrokenVow.StatSource source) {
+		lukSource = source == null ? UnbrokenVow::rpgStat : source;
+	}
+
+	/** Test seam: pins the roll of an imbued book's chance. A null supplier returns to the wielder's own random. */
+	static void setProcRoll(final java.util.function.DoubleSupplier roll) {
+		procRoll = roll;
+	}
+
+	/** Test seam: forgets the cooldowns of one wielder, so a run of hits is not held back by them. */
+	static void clearCooldowns(final UUID wielder) {
+		READY_AT.remove(wielder);
+	}
+
+	/** The chance that one imbued book casts on a hit: the base plus 1 percent per LUK, at most 1. */
+	public static double procChance(final LivingEntity wielder) {
+		double luk = Math.max(0.0, lukSource.stat(wielder, "luk"));
+		return Math.min(1.0, PROC_BASE_CHANCE + luk * PROC_CHANCE_PER_LUK);
+	}
+
+	private static boolean procs(final ServerPlayer wielder) {
+		java.util.function.DoubleSupplier fixed = procRoll;
+		double roll = fixed == null ? wielder.getRandom().nextDouble() : fixed.getAsDouble();
+		return roll < procChance(wielder);
 	}
 
 	/** A new server's tick counter starts again at zero, so no cooldown outlives the server it was set on. */
@@ -168,7 +224,6 @@ public final class SpellImbue {
 	}
 
 	public static void register() {
-		ItemComponentTooltipProviderRegistry.addAfter(DataComponents.LORE, IMBUED);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(SpellImbue::afterDamage);
 		net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(SpellImbue::onUseEntity);
 		net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(SpellImbue::onServerStopping);
@@ -211,12 +266,9 @@ public final class SpellImbue {
 			.anyMatch(entry -> entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.modifier().id().equals(Item.BASE_ATTACK_DAMAGE_ID));
 	}
 
-	/** The anvil's price: five for the first spell, and five times the last for each spell after. */
+	/** The anvil's price: five for each book, however many the piece holds already. */
 	public static int imbueCost(final ItemStack piece) {
 		int cost = IMBUE_XP_COST;
-		for (int i = 0; i < spellsOf(piece).size(); i++) {
-			cost *= 5;
-		}
 		// A stack of arrows pays once for every sixteen it holds, so a full stack is not one arrow's price.
 		if (piece.is(ItemTags.ARROWS)) {
 			cost *= (piece.getCount() + ARROWS_PER_PRICE - 1) / ARROWS_PER_PRICE;
@@ -292,32 +344,39 @@ public final class SpellImbue {
 		if (!(source.getEntity() instanceof ServerPlayer player) || victim == player || source.is(DamageTypes.INDIRECT_MAGIC)) {
 			return;
 		}
-		// A melee hit casts the spells of the hand that struck; an arrow, the spells of the arrow itself.
+		// A melee hit rolls the spells of the hand that struck; an arrow casts the spells of the arrow itself.
 		ItemStack focus;
+		boolean rolled;
 		if (source.getDirectEntity() == player) {
 			focus = player.getMainHandItem();
 			if (!isWeapon(focus)) {
 				return;
 			}
+			rolled = true;
 		} else if (source.getDirectEntity() instanceof AbstractArrow arrow) {
 			focus = arrow.getPickupItemStackOrigin();
 			castFromBow(player, arrow, victim);
+			rolled = false;
 		} else {
 			return;
 		}
 		for (Identifier spell : spellsOf(focus)) {
-			cast(player, spell, victim, focus, false);
+			if (!rolled || procs(player)) {
+				cast(player, spell, victim, focus, false);
+			}
 		}
 	}
 
-	// The bow or crossbow that loosed the arrow casts its imbued books on the victim.
+	// The bow or crossbow that loosed the arrow rolls each of its imbued books on the victim.
 	private static void castFromBow(final ServerPlayer player, final AbstractArrow arrow, final LivingEntity victim) {
 		ItemStack bow = arrow.getWeaponItem();
 		if (bow == null || !(bow.getItem() instanceof ProjectileWeaponItem)) {
 			return;
 		}
 		for (Identifier spell : spellsOf(bow)) {
-			cast(player, spell, victim, bow, false);
+			if (procs(player)) {
+				cast(player, spell, victim, bow, false);
+			}
 		}
 	}
 

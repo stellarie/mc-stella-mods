@@ -32,6 +32,7 @@
 			"com.stella.spells.TowerBridgeGameTest",
 			"com.stella.spells.ClueBooksGameTest",
 			"com.stella.spells.ImbueExpansionGameTest",
+			"com.stella.spells.ImbueProcGameTest",
 			"com.stella.spells.QuickSlotsDrainGameTest",
 			"com.stella.spells.RpgBridgeGameTest",
 			"com.stella.spells.StaffPowerGameTest",
