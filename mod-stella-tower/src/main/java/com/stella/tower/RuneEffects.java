@@ -68,10 +68,10 @@ public final class RuneEffects {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			if (dealing || blocked || taken <= 0.0F || !(entity.level() instanceof ServerLevel level)
 				|| !(source.getEntity() instanceof ServerPlayer player) || !TowerRunes.struckWith(source)
-				|| TowerRunes.slotOf(source.getWeaponItem()) != TowerRunes.Slot.WEAPON) {
+				|| TowerRunes.slotOf(TowerRunes.weaponOf(source)) != TowerRunes.Slot.WEAPON) {
 				return;
 			}
-			RuneData rune = TowerRunes.runeOf(source.getWeaponItem());
+			RuneData rune = TowerRunes.runeOf(TowerRunes.weaponOf(source));
 			if (rune != null) {
 				afterHit(level, entity, player, rune.element(), taken);
 			}

@@ -38,6 +38,7 @@ public final class TowerRunes {
 	static final EquipmentSlot[] ARMOR_SLOTS ={EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 
 	/** The spells mod's books, which take runes too; empty when that mod is absent. */
+	static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> STAVES = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.Identifier.fromNamespaceAndPath("mod-stella-tower", "staves"));
 	static final net.minecraft.tags.TagKey<net.minecraft.world.item.Item> SPELLBOOKS = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.Identifier.parse("mod-stella-spells:spellbooks"));
 
 	/** What an item takes a rune as. */
@@ -142,7 +143,7 @@ public final class TowerRunes {
 		if (stack.is(SPELLBOOKS)) {
 			return Slot.BOOK;
 		}
-		if (stack.has(DataComponents.WEAPON) || stack.getItem() instanceof ProjectileWeaponItem) {
+		if (stack.has(DataComponents.WEAPON) || stack.is(STAVES) || stack.getItem() instanceof ProjectileWeaponItem) {
 			return Slot.WEAPON;
 		}
 		return null;
@@ -171,7 +172,7 @@ public final class TowerRunes {
 		if (!struckWith(source)) {
 			return amount;
 		}
-		ItemStack weapon = source.getWeaponItem();
+		ItemStack weapon = weaponOf(source);
 		RuneData rune = slotOf(weapon) == Slot.WEAPON ? runeOf(weapon) : null;
 		if (rune == null) {
 			return amount;
@@ -187,9 +188,18 @@ public final class TowerRunes {
 		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
 	}
 
+	/** The weapon behind a blow. A spell hit has none, so a held staff stands in for it. */
+	public static ItemStack weaponOf(final DamageSource source) {
+		ItemStack weapon = source.getWeaponItem();
+		if (weapon == null && source.getEntity() instanceof Player player && player.getMainHandItem().is(STAVES)) {
+			return player.getMainHandItem();
+		}
+		return weapon;
+	}
+
 	/** A blow a player struck with the weapon in hand, not one their thorns or their armor returned. */
 	public static boolean struckWith(final DamageSource source) {
-		return source.getEntity() instanceof Player && source.getWeaponItem() != null && !source.is(net.minecraft.world.damagesource.DamageTypes.THORNS)
+		return source.getEntity() instanceof Player && weaponOf(source) != null && !source.is(net.minecraft.world.damagesource.DamageTypes.THORNS)
 			&& !source.is(RuneEffects.BURST);
 	}
 
