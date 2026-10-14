@@ -929,6 +929,8 @@ A job grants one innate skill. The skill is read from the job each time, so a jo
 
 `JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds a `Requires:` line (held in hand, or the worn slot) and a `Desc:` line, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
 
+`grantItems` also hands out starter books when `mod-stella-spells` is installed. A new archer gets the archer books. A new mage gets Spark Shot, Chainstorm and Ice Lance, found by item id. The books go into the inventory, or drop at the player's feet when it is full. The persistent attachment `mod-stella-rpg:mage_starter_given` marks the gift and survives death, so a second job grant gives no second set. Without the spells mod the mage gets the job item alone and nothing is marked.
+
 | Item | Slot | Base | +7 | +10 | +12 | +15 |
 |---|---|---|---|---|---|---|
 | `mechanical_bow` | Hand | Full draw in 10 ticks, 1000 durability, 25% free arrow | Free arrow 35% | Arrows pierce 1 more target | Full draw in 7 ticks | Free arrow 50%. Every 5th shot fires 3 arrows |

@@ -73,6 +73,7 @@
 			"com.stella.rpg.CritSeamGameTest",
 			"com.stella.rpg.CritShareGameTest",
 			"com.stella.rpg.ArcherGrantGameTest",
+			"com.stella.rpg.MageGrantGameTest",
 			"com.stella.rpg.BonusGrantGameTest",
 			"com.stella.rpg.StatBonusReachGameTest",
 			"com.stella.rpg.CraftSumGameTest",

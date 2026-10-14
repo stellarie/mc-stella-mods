@@ -189,6 +189,8 @@ sound for the game tests.
 
 The Dragonfall fire charge is a vanilla item display, so any client draws it. The spell's one hit, and Frozen Meteor's bonus after it, land on the tick the charge does.
 
+Spark Shot and Ice Lance show a body in flight: a vanilla item display, so any client draws it. Spark Shot sends a fire charge toward the target with a thin trail of flames. Ice Lance sends a packed ice body along the lance line with a thin trail of snowflakes. The body is a picture only. The hit lands on the cast tick, and damage, range, cooldown and targets do not change.
+
 The Blitz Beat falcon, the Falcon Guard falcon and the summoned wolf are entity types this mod registers, with client
 renderers in `src/client`. A client without this mod cannot join a server that has it, so the pack ships the mod to every player.
 

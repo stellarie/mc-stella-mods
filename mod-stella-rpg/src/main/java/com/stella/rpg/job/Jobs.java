@@ -103,8 +103,9 @@ public final class Jobs implements StatBonuses.Provider {
 			return false;
 		}
 		boolean kit = JobItems.grant(player, job);
-		// An archer also gets the starter books.
-		boolean starter = job == Job.ARCHER && SpellsBridge.grantArcherStarter(player);
+		// An archer and a mage also get their starter books.
+		boolean starter = job == Job.ARCHER && SpellsBridge.grantArcherStarter(player)
+			|| job == Job.MAGE && SpellsBridge.grantMageStarter(player);
 		return kit || starter;
 	}
 

@@ -19,6 +19,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /** Each spell draws its own particles where it lands, sent from the server so any client sees them. */
@@ -315,6 +316,7 @@ public final class SpellVisuals {
 				beam(level, caster, spell, visual.primary(), caster.getEyePosition(), center);
 				burst(level, caster, spell, visual.primary(), center, target.getBbWidth());
 				burst(level, caster, spell, visual.secondary(), center, target.getBbWidth());
+				flyBolt(level, caster, spell, center, modifiers);
 				if (radius > 0.0) {
 					animationCenter = target.position();
 					magicCircle(level, caster, spell, circleColor, animationCenter, radius);
@@ -353,6 +355,26 @@ public final class SpellVisuals {
 		}
 		accent(level, caster, spell, visual, animationCenter, departure, 0);
 		scheduleAnimations(level, caster, spell, visual, circleColor, animationCenter, radius);
+	}
+
+	// Spark Shot and Ice Lance show a body in flight. The hit has already landed, so this changes no rule.
+	private static void flyBolt(
+		final ServerLevel level, final ServerPlayer caster, final Identifier spell, final Vec3 center,
+		final SpellModifiers.CastModifiers modifiers
+	) {
+		Vec3 eye = caster.getEyePosition();
+		switch (spell.getPath()) {
+			case "spark_shot" -> SpellBolt.fly(level, caster, spell, Items.FIRE_CHARGE, ParticleTypes.FLAME, eye, center);
+			case "ice_lance" -> {
+				Vec3 toward = center.subtract(eye);
+				if (toward.lengthSqr() > 1.0e-6) {
+					Vec3 end = eye.add(toward.normalize().scale(MoreSpells.ICE_LANCE_RANGE * modifiers.radiusMultiplier()));
+					SpellBolt.fly(level, caster, spell, Items.PACKED_ICE, ParticleTypes.SNOWFLAKE, eye, end);
+				}
+			}
+			default -> {
+			}
+		}
 	}
 
 	/** Twelve bounded points give each spell an effect-specific motion in three phases. */
