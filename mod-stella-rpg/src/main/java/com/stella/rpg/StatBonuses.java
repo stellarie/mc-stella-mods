@@ -2,7 +2,6 @@ package com.stella.rpg;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
@@ -45,7 +44,7 @@ public final class StatBonuses {
 
 	public static int effective(final LivingEntity entity, final Stat stat) {
 		int base;
-		if (entity instanceof ServerPlayer) {
+		if (entity instanceof Player) {
 			base = base(entity, stat);
 		} else if (entity instanceof Mob mob) {
 			base = MobStats.base(mob, stat);

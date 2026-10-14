@@ -71,6 +71,11 @@ public class SpellTooltipGameTest {
 		}
 
 		@Override
+		public double matkHit(final LivingEntity caster, final double skillPercent) {
+			return RpgSpellsStandIn.MATK_MIN * skillPercent / 100.0;
+		}
+
+		@Override
 		public double spellDamage(final LivingEntity caster, final double skillPercent) {
 			double roll = RpgSpellsStandIn.MATK_MIN + this.random.nextDouble() * (RpgSpellsStandIn.MATK_MAX - RpgSpellsStandIn.MATK_MIN);
 			return roll * skillPercent / 100.0 / K;
@@ -142,7 +147,7 @@ public class SpellTooltipGameTest {
 			String damage = argument(SpellTooltip.lines(viewer, book).get(0), DAMAGE_ARG);
 			double[] range = range(damage);
 			LOG.info("[SPELLTEST] test=matchesCast RESULT tooltipDamage={} expected={}-{}", damage, expectedMin, expectedMax);
-			helper.assertTrue(range[0] == expectedMin && range[1] == expectedMax,
+			helper.assertTrue(range[0] == expectedMin && range[1] == expectedMin,
 				"the tooltip shows " + damage + ", not the stand-in bounds " + expectedMin + "-" + expectedMax);
 
 			double lowest = Double.MAX_VALUE;
@@ -151,7 +156,7 @@ public class SpellTooltipGameTest {
 				double taken = castDamage(helper, players, book("spark_shot")) * K;
 				lowest = Math.min(lowest, taken);
 				highest = Math.max(highest, taken);
-				helper.assertTrue(taken >= range[0] - HALF && taken <= range[1] + HALF,
+				helper.assertTrue(taken >= expectedMin - HALF && taken <= expectedMax + HALF,
 					"real cast " + i + " dealt " + taken + " shown, outside the tooltip " + damage);
 			}
 			LOG.info("[SPELLTEST] test=matchesCast RESULT casts={} lowest={} highest={}", CASTS, lowest, highest);
@@ -271,7 +276,8 @@ public class SpellTooltipGameTest {
 			double taken = (before - zombie.getHealth()) * K;
 			LOG.info("[SPELLTEST] test=scroll RESULT result={} tooltip={} realCast={}", result, damage, taken);
 			helper.assertTrue(result == SpellCasting.CastResult.CAST, "the scroll did not cast: " + result);
-			helper.assertTrue(taken >= range[0] - HALF && taken <= range[1] + HALF, "the scroll dealt " + taken + ", outside the tooltip " + damage);
+			double scrollMax = RpgSpellsStandIn.MATK_MAX * SpellNumbers.SPARK_SHOT.damage() * RpgBridge.SKILL_PERCENT_PER_FLAT / 100.0 * POWER;
+			helper.assertTrue(taken >= range[0] - HALF && taken <= scrollMax + HALF, "the scroll dealt " + taken + ", outside the tooltip " + damage);
 		} finally {
 			RpgBridge.setStats(null);
 			FabricLoader.getInstance().getObjectShare().put(SummonSkeleton.HEALTH_SCALE_SHARE, savedScale == null ? Double.valueOf(1.0) : savedScale);

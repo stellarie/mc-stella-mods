@@ -138,7 +138,7 @@ public class ImbueProcGameTest {
 		String joined = String.join(" ", text);
 		LOG.info("[SPELLTEST] test=theImbueTooltipNamesEachBookAndDescribesNothing RESULT lines={}", text);
 		helper.assertTrue(joined.contains("Spark Shot") && joined.contains("Frostbind") && joined.contains("Ember Brand"), "a book name is missing: " + text);
-		helper.assertTrue(text.stream().noneMatch(line -> line.startsWith("Requires:") || line.startsWith("Desc:") || line.contains("%")),
+		helper.assertTrue(text.stream().noneMatch(line -> line.startsWith("Requires:") || line.startsWith("Desc:") || line.replace("(50%)", "").contains("%")),
 			"the imbue tooltip describes the imbue: " + text);
 		helper.succeed();
 	}

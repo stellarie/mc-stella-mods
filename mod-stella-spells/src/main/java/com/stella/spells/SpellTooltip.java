@@ -143,7 +143,7 @@ public final class SpellTooltip {
 		SpellNumbers numbers = SpellNumbers.find(definition.id());
 		if (numbers != null && !numbers.isEmpty()) {
 			live.put(staticEffectKey(definition), DescriptionLines.desc(
-				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, definition.school(), numbers, modifiers)).withStyle(ChatFormatting.AQUA)
+				Component.translatable(liveEffectKey(definition), (Object[]) arguments(viewer, definition.school(), numbers, modifiers, definition.id().getPath())).withStyle(ChatFormatting.AQUA)
 			));
 		}
 		if (book) {
@@ -160,11 +160,17 @@ public final class SpellTooltip {
 	 * 9 extra amplifier. Health and damage are in displayed units, the vanilla number times the health scale.
 	 */
 	static String[] arguments(final Player viewer, final School school, final SpellNumbers numbers, final SpellModifiers.CastModifiers modifiers) {
+		return arguments(viewer, school, numbers, modifiers, "");
+	}
+
+	static String[] arguments(
+		final Player viewer, final School school, final SpellNumbers numbers, final SpellModifiers.CastModifiers modifiers, final String path
+	) {
 		double scale = SummonSkeleton.healthScale();
 		double power = modifiers.powerMultiplier();
 		boolean capped = numbers.capTicks() > 0;
 		return new String[] {
-			damage(viewer, school, numbers.damage(), power, scale),
+			damage(viewer, school, numbers.damage(), power, scale, path),
 			heal(viewer, school, numbers.heal(), power, scale),
 			heal(viewer, school, numbers.allyHeal(), power, scale),
 			numbers.duration().ticks() > 0 ? duration(numbers.durationTicks(modifiers)) : "0",
@@ -179,34 +185,32 @@ public final class SpellTooltip {
 
 	// A range from the caster's lowest to highest roll; the flat number times the power when the RPG mod gives none.
 	// A mage reads its MATK. A fighter and an archer read their own stat. A priest's holy hit reads the heal formula.
-	private static String damage(final Player viewer, final School school, final float flat, final double power, final double scale) {
+	private static String damage(final Player viewer, final School school, final float flat, final double power, final double scale, final String path) {
 		if (flat <= 0.0f) {
 			return "0";
+		}
+		if ("arrow_rain".equals(path)) {
+			double arrow = RpgBridge.averageAtk(viewer, true);
+			if (Double.isFinite(arrow) && arrow >= 0.0) {
+				return number(arrow);
+			}
 		}
 		if (school == School.PRIEST) {
 			return number(RpgBridge.skillHeal(viewer, school, flat, power) * scale);
 		}
 		if (school != School.MAGE) {
 			double[] rolls = RpgBridge.skillDamageRange(viewer, school, flat, power);
-			String lowest = number(rolls[0] * scale);
-			String highest = number(rolls[1] * scale);
+			double factor = school == School.ARCHER ? ArcherSkills.eagleEyeFactor(viewer) * ArcherSkills.quiverDamageFactor(viewer) : 1.0;
+			String lowest = number(rolls[0] * scale * factor);
+			String highest = number(rolls[1] * scale * factor);
 			return lowest.equals(highest) ? lowest : lowest + "-" + highest;
 		}
 		double percent = flat * RpgBridge.SKILL_PERCENT_PER_FLAT;
-		double min = RpgBridge.matkMin(viewer);
-		double max = RpgBridge.matkMax(viewer);
-		if (!(min > 0.0) || !(max > 0.0) || !Double.isFinite(min) || !Double.isFinite(max)) {
+		double hit = RpgBridge.matkHit(viewer, percent);
+		if (!(hit > 0.0) || !Double.isFinite(hit)) {
 			return number(flat * power * scale);
 		}
-		String low = number(shown(min, percent, power, scale));
-		String high = number(shown(max, percent, power, scale));
-		return low.equals(high) ? low : low + "-" + high;
-	}
-
-	// One roll as the cast deals it in vanilla units, then in displayed units.
-	private static double shown(final double matk, final double percent, final double power, final double scale) {
-		double vanilla = matk * percent / PERCENT / scale * power;
-		return vanilla * scale;
+		return number(hit * power);
 	}
 
 	// The school's own heal formula: a mage reads Intelligence, the other schools read Vitality.

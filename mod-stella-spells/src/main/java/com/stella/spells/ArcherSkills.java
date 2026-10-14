@@ -481,7 +481,7 @@ public final class ArcherSkills {
 	}
 
 	/** The share an archer skill hit keeps while the caster's quiver is spectral; 1.0 without it. */
-	static double quiverDamageFactor(final ServerPlayer caster) {
+	static double quiverDamageFactor(final net.minecraft.world.entity.player.Player caster) {
 		MobEffectInstance quiver = caster.getEffect(SpellStatus.SPECTRAL_QUIVER);
 		return quiver == null ? 1.0 : quiver.getAmplifier() >= 1 ? EDGED_QUIVER_DAMAGE_FACTOR : QUIVER_DAMAGE_FACTOR;
 	}
@@ -1401,7 +1401,7 @@ public final class ArcherSkills {
 	}
 
 	/** The share an archer skill hit gains from this caster's Eagle Eye; 1.0 without it. */
-	static double eagleEyeFactor(final ServerPlayer caster) {
+	static double eagleEyeFactor(final net.minecraft.world.entity.player.Player caster) {
 		MobEffectInstance eye = caster.getEffect(SpellStatus.EAGLE_EYE);
 		if (eye == null) {
 			return 1.0;

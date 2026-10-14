@@ -73,6 +73,11 @@ public final class RpgSpells {
 		return spellHit(entity, PERCENT) * RpgScale.k();
 	}
 
+	/** The no-crit hit of a skill percent in K units, as a tooltip shows it. */
+	public static double matkHit(final LivingEntity entity, final double skillPercent) {
+		return spellHit(entity, skillPercent) * RpgScale.k();
+	}
+
 	/** Compatibility: equals {@link #matkMin}, because the model has no roll. */
 	public static double matkMax(final LivingEntity entity) {
 		return matkMin(entity);
