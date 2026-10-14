@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
-import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -32,8 +30,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * What an element does for the tower mob that carries it. Ice chills the players' side around it, Dark
- * hardens with every blow it takes, Holy mends its kin; Fire, Water, Wind and Void mark what they hit, and
+ * drains it, Holy mends its kin; Fire, Water, Wind and Void mark what they hit, and
  * Lightning quickens on the hunt. Every effect is modest, and every one is shown with particles.
+ * <p>
+ * Ice, Dark and Holy are passive auras: they need no attack and no target. Dark and Holy act once a second.
  * <p>
  * The pulse runs every {@link #PULSE_TICKS} ticks over occupied floors only, never over the whole level.
  */
@@ -47,16 +47,15 @@ public final class TowerAuras {
 	/** The spells mod's tag for what its casters summon; a string, so the two mods need not know each other. */
 	public static final String SUMMONED_TAG = "mod-stella-spells.summoned";
 
-	public static final int DARK_STACK_CAP = 10;
-	public static final double DARK_ARMOR_PER_STACK = 1.0;
-	/** A stack is kept this long after the last hit, then one is lost every {@link #DARK_DECAY_TICKS}. */
-	public static final int DARK_HOLD_TICKS = 100;
-	public static final int DARK_DECAY_TICKS = 20;
-	public static final Identifier DARK_ARMOR_ID = StellaTower.id("dark_armor");
+	/** A Dark mob hurts the players' side within this radius by this share of each target's max health, once per interval. */
+	public static final int DARK_INTERVAL_TICKS = 20;
+	public static final double DARK_RADIUS = 6.0;
+	public static final double DARK_DAMAGE_SHARE = 0.01;
 
-	public static final int HOLY_INTERVAL_TICKS = 40;
+	/** A Holy mob mends every tower mob within this radius by this share of each one's max health, once per interval. */
+	public static final int HOLY_INTERVAL_TICKS = 20;
 	public static final double HOLY_RADIUS = 6.0;
-	public static final double HOLY_HEAL_SHARE = 0.02;
+	public static final double HOLY_HEAL_SHARE = 0.01;
 
 	public static final float FIRE_SECONDS = 3.0F;
 	public static final double WATER_KNOCKBACK = 0.4;
@@ -73,12 +72,6 @@ public final class TowerAuras {
 
 	public static volatile @Nullable ParticleSink particleSink;
 
-	/** A Dark mob's armor: the stacks it stood on at its last hit, and when that was. */
-	private record Dark(int stacks, int lastHit) {
-	}
-
-	private static final AttachmentType<Dark> DARK = AttachmentRegistry.create(StellaTower.id("dark_stacks"));
-
 	private TowerAuras() {
 	}
 
@@ -87,11 +80,6 @@ public final class TowerAuras {
 		ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, source, base, taken, blocked) -> {
 			if (blocked || !(entity.level() instanceof ServerLevel level)) {
 				return;
-			}
-			// A hit that lands marks its target even when absorption hearts soak it whole; only a shield stops it.
-			// Dark hardens by damage taken, so a hit that cost nothing adds no stack.
-			if (taken > 0.0F) {
-				struck(level, entity, now(level));
 			}
 			if (source.getEntity() instanceof LivingEntity attacker && attacker != entity && !TowerBuffs.reflecting()) {
 				strike(level, attacker, entity, source);
@@ -110,17 +98,6 @@ public final class TowerAuras {
 	}
 
 	// ---- the hit ----
-
-	/** A hit on a Dark mob: one more stack, on top of what it still holds. */
-	static void struck(final ServerLevel level, final LivingEntity victim, final int now) {
-		if (elementOf(victim) != TowerElement.DARK) {
-			return;
-		}
-		int stacks = Math.min(DARK_STACK_CAP, darkStacks(victim, now) + 1);
-		victim.setAttached(DARK, new Dark(stacks, now));
-		applyDark(victim, stacks);
-		particles(level, ParticleTypes.SQUID_INK, victim, Math.min(stacks, 5));
-	}
 
 	/** What a blow from an elemental tower mob leaves on its target. */
 	static void strike(final ServerLevel level, final LivingEntity attacker, final LivingEntity target, final DamageSource source) {
@@ -186,7 +163,11 @@ public final class TowerAuras {
 		for (Mob mob : mobs) {
 			switch (elementOf(mob)) {
 				case ICE -> chill(tower, floor, mob);
-				case DARK -> refreshDark(tower, mob, now);
+				case DARK -> {
+					if (now % DARK_INTERVAL_TICKS == 0) {
+						drain(tower, floor, mob);
+					}
+				}
 				case HOLY -> {
 					if (now % HOLY_INTERVAL_TICKS == 0) {
 						mend(tower, floor, mob);
@@ -199,8 +180,8 @@ public final class TowerAuras {
 		}
 	}
 
-	/** Whether the mob stands on the players' side, and so feels the cold. */
-	public static boolean chilled(final LivingEntity entity, final int floor) {
+	/** Whether the entity stands on the players' side: the ones the cold and the dark reach. */
+	public static boolean playerSide(final LivingEntity entity, final int floor) {
 		if (!entity.isAlive()) {
 			return false;
 		}
@@ -221,7 +202,7 @@ public final class TowerAuras {
 	static void chill(final ServerLevel tower, final int floor, final Mob source) {
 		AABB box = source.getBoundingBox().inflate(ICE_RADIUS);
 		List<LivingEntity> targets = tower.getEntitiesOfClass(LivingEntity.class, box,
-			entity -> entity.distanceToSqr(source) <= ICE_RADIUS * ICE_RADIUS && chilled(entity, floor));
+			entity -> entity.distanceToSqr(source) <= ICE_RADIUS * ICE_RADIUS && playerSide(entity, floor));
 		for (LivingEntity target : targets) {
 			target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, ICE_SLOW_TICKS, ICE_SLOW_AMPLIFIER, true, false));
 		}
@@ -231,45 +212,21 @@ public final class TowerAuras {
 
 	// ---- dark ----
 
-	/** The stacks a Dark mob holds at the given tick: all of them for the hold, then one every decay step. */
-	public static int darkStacks(final LivingEntity mob, final int now) {
-		Dark dark = mob.getAttached(DARK);
-		if (dark == null) {
-			return 0;
+	/** Hurts every player and ally within reach by a share of its max health, whatever the Dark mob is doing. */
+	static void drain(final ServerLevel tower, final int floor, final Mob source) {
+		AABB box = source.getBoundingBox().inflate(DARK_RADIUS);
+		List<LivingEntity> targets = tower.getEntitiesOfClass(LivingEntity.class, box,
+			entity -> entity.distanceToSqr(source) <= DARK_RADIUS * DARK_RADIUS && playerSide(entity, floor));
+		for (LivingEntity target : targets) {
+			RuneEffects.deal(tower, target, null, (float) (target.getMaxHealth() * DARK_DAMAGE_SHARE));
+			particles(tower, ParticleTypes.SQUID_INK, target, 3);
 		}
-		int idle = Math.max(0, now - dark.lastHit());
-		int lost = idle < DARK_HOLD_TICKS ? 0 : (idle - DARK_HOLD_TICKS) / DARK_DECAY_TICKS + 1;
-		return Math.max(0, dark.stacks() - lost);
-	}
-
-	/** Brings a Dark mob's armor to what it should hold at the given tick. */
-	static void refreshDark(final ServerLevel tower, final LivingEntity mob, final int now) {
-		int stacks = darkStacks(mob, now);
-		applyDark(mob, stacks);
-		if (stacks > 0) {
-			particles(tower, ParticleTypes.SQUID_INK, mob, Math.min(stacks, 5));
-		}
-	}
-
-	private static void applyDark(final LivingEntity mob, final int stacks) {
-		AttributeInstance armor = mob.getAttribute(Attributes.ARMOR);
-		if (armor == null) {
-			return;
-		}
-		AttributeModifier held = armor.getModifier(DARK_ARMOR_ID);
-		double want = stacks * DARK_ARMOR_PER_STACK;
-		if (held != null && held.amount() == want) {
-			return;
-		}
-		armor.removeModifier(DARK_ARMOR_ID);
-		if (stacks > 0) {
-			armor.addTransientModifier(new AttributeModifier(DARK_ARMOR_ID, want, AttributeModifier.Operation.ADD_VALUE));
-		}
+		particles(tower, ParticleTypes.SQUID_INK, source, 4);
 	}
 
 	// ---- holy ----
 
-	/** Mends the Holy mob and every hurt tower mob within reach. */
+	/** Mends the Holy mob and every hurt tower mob within reach, whatever the Holy mob is doing. */
 	static void mend(final ServerLevel tower, final int floor, final Mob healer) {
 		AABB box = healer.getBoundingBox().inflate(HOLY_RADIUS);
 		List<LivingEntity> hurt = new ArrayList<>(tower.getEntitiesOfClass(LivingEntity.class, box,

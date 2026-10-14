@@ -130,7 +130,7 @@ public class TowerGhostPackGameTest {
 		List<Zombie> zombies = new ArrayList<>();
 		for (Vec3 offset : List.of(new Vec3(6.0, 0.0, 0.0), new Vec3(-6.0, 0.0, 2.0), new Vec3(0.0, 0.0, 7.0))) {
 			Zombie zombie = EntityTypes.ZOMBIE.create(tower, EntitySpawnReason.COMMAND);
-			TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
+			TowerMobs.makeTowerMob(zombie, LOW, TowerElement.WIND);
 			zombie.snapTo(middle.add(offset));
 			zombie.setNoAi(true);
 			tower.addFreshEntity(zombie);
