@@ -777,7 +777,7 @@ Every planned floor is built with a double tower chest at each chest spot of its
 
 ## The ruined colosseum and the Tower Guardians (`com.stella.tower.colosseum`)
 
-A world builds one ruined colosseum, once, on its first start, 96 to 256 blocks from its spawn (a second pass reaches 1000 if every nearer site is taken, never more than 1024). Its saved claim
+A world builds one ruined colosseum, once, on its first start, anywhere 96 to 1000 blocks from its spawn (never more than 1024). Its saved claim
 (`ColosseumData`, with the spawn the site was drawn from) keeps a later start from building a second.
 
 - Site (`ColosseumSite`): read from the terrain noise alone, so no chunk is generated to look. Dry ground within 5 blocks of
