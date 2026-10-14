@@ -1,0 +1,18 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"pattern": [
+		" PI",
+		" SP",
+		"S  "
+	],
+	"key": {
+		"P": "minecraft:prismarine_crystals",
+		"I": "minecraft:iron_ingot",
+		"S": "minecraft:stick"
+	},
+	"result": {
+		"id": "mod-stella-equips-enchants:prismarine_staff",
+		"count": 1
+	}
+}

@@ -404,6 +404,7 @@ count.
 - Each worn piece with a heart delays 12.5% of an attack, up to 50% with four pieces. You take the rest at once and the
   delayed part in five equal parts, one each second. The parts are measured after armor and every defense, so the total
   equals the hit without hearts. They can kill.
+- The tooltip of a worn piece shows the heart name only.
 - Only attacks split: hits with a living attacker, including arrows and mob spells. Falls, fire, poison, and thorns do not.
 
 ## Nether star imbue
@@ -527,6 +528,26 @@ The weapon sits in the centre of a shaped recipe. A smithing recipe with the net
 - **Code.** `com.stella.equips.bows`. The catalog is `CraftedBows.DEFS`; the milestone table is `CraftedBows.TABLE`.
 - **Models.** Item definitions, models and textures sit under `assets/mod-stella-equips-enchants`. The bow pull animation steps by
   the unrefined draw time, so a +15 bow reaches its last frame a little after it is fully drawn.
+
+## Craftable staves
+
+A staff has base MATK and no attack damage. Refining it raises its MATK, with a jump at +7, +10, +12 and +15, and each staff has one
+effect that grows at those milestones. The staff carries a `stella_staff` compound in its custom data. `mod-stella-rpg` reads the MATK,
+`cdr`, `crit` and `pen`, and `mod-stella-spells` reads `doublecast`, so no mod needs a class of another. The staff must be in the main hand.
+
+| Staff | Base MATK | Effect (base, then per milestone) | Recipe |
+|---|---|---|---|
+| Amethyst Staff | 44 | Every spell has 10% chance to land twice, +5% | amethyst shard x2, copper ingot, stick x2 |
+| Quartz Staff | 46 | Spell cooldowns 5% shorter, +4% | quartz x2, gold ingot, stick x2 |
+| Emberheart Staff | 50 | Spell crit chance +5%, +4% | blaze rod x2, magma cream, stick x2 |
+| Prismarine Staff | 48 | Spells ignore 5% magic resistance, +5% | prismarine crystals x2, iron ingot, stick x2 |
+
+- **Shape.** Every recipe is shaped: `" XY"`, `" SX"`, `"S  "`. X is the focus (amethyst shard, quartz, blaze rod, prismarine crystals),
+  Y is the second material and S is a stick. The Emberheart Staff uses a blaze rod for the lower X too, as the table lists.
+- **Refine.** A staff refines with iron ingots and keeps no melee refine effect. Refine adds no attack damage.
+- **Code.** `com.stella.equips.staff.Staves`. The icons come from `tools/staff_icons.py`.
+- **Tooltips.** The tooltip of equipment shows the vanilla name of each enchantment and no description. An enchanted book still
+  describes what it holds.
 
 ## Merchant weapons
 

@@ -182,8 +182,8 @@ Right-click the trainer within 8 blocks to open the Job Trainer, a three-row che
   block takes at most 8 lines. The text is in `JobInfo` and repeats the rules of the rpg and spells mods, which this mod
   cannot read. The trial button reads `Requires: job, level N`. Every line of the menu has at most 24 characters
   (`DescriptionLines`).
-- A mage also receives a Spark Shot spellbook and one random spellbook that is not Summon Skeleton. A priest also receives
-  the Mending Word heal book and the Stoneguard buff book. Every book carries the Doublecast enchantment.
+- A mage receives no book from the trainer. `mod-stella-rpg` hands a new mage the Spark Shot, Chainstorm and Ice Lance books and
+  the Mage Staff. A priest also receives the Mending Word heal book and the Stoneguard buff book. Every book carries the Doublecast enchantment.
   The books come from `mod-stella-spells` by item id. Without that mod a job gets its own item only.
 - From level 40, and every 30 levels after (70, 100, and so on), a player with a job sees a boss trial in the menu for the lowest
   trial level the player has reached and the share's `trialsDone` does not list. Accepting it gives a map to a skeleton, spider,

@@ -17,15 +17,15 @@ public final class RpgCurve {
 	}
 
 	public static double damageTakenMultiplier(final int vit) {
-		return 1.0 - value(Effect.DAMAGE_REDUCTION, vit);
+		return 1.0 - Math.min(1.0, value(Effect.DAMAGE_REDUCTION, vit) * StatMilestones.factor(vit));
 	}
 
 	public static double attackSpeedBonus(final int agi) {
-		return value(Effect.ATTACK_SPEED, agi);
+		return value(Effect.ATTACK_SPEED, agi) * StatMilestones.factor(agi);
 	}
 
 	public static double critChance(final int luk) {
-		return value(Effect.CRIT_CHANCE, luk);
+		return value(Effect.CRIT_CHANCE, luk) * StatMilestones.factor(luk);
 	}
 
 	public static double critMultiplier() {
@@ -34,7 +34,7 @@ public final class RpgCurve {
 
 	/** The chance that one physical die rolls its maximum: a share per DEX, at most 100 percent. */
 	public static double dexMaxRollChance(final int dex) {
-		return Math.min(1.0, Math.max(0, dex) * RpgConfigStore.current().scaling().dexMaxRollPerPoint());
+		return Math.min(1.0, Math.max(0, dex) * RpgConfigStore.current().scaling().dexMaxRollPerPoint() * StatMilestones.factor(dex));
 	}
 
 	/** The INT share of magic resistance: base plus the span times the logistic, at most the cap. */

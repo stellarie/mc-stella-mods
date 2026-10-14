@@ -29,16 +29,15 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 
-/** The job items: the grant, the bow, the sword, the hat, the garbs, and their refine perks. */
+/** The job items: the grant, the bow, the sword, the garbs, and their refine perks. */
 public final class JobItemGameTest {
 	private static final float HIT = 4.0F;
-	private static final double SPELL_PERCENT = 100.0;
 
 	@GameTest
 	public void grantGivesTheJobItem(final GameTestHelper helper) {
 		Object[][] cases = {
 			{Job.ARCHER, JobItems.MECHANICAL_BOW}, {Job.FIGHTER, JobItems.KNIGHT_SWORD},
-			{Job.MAGE, JobItems.WITCH_HAT}, {Job.PRIEST, JobItems.PRIEST_GARBS}
+			{Job.MAGE, JobItems.MAGE_STAFF}, {Job.PRIEST, JobItems.PRIEST_GARBS}
 		};
 		for (Object[] row : cases) {
 			ServerPlayer player = RpgTestSupport.player(helper);
@@ -130,24 +129,12 @@ public final class JobItemGameTest {
 	}
 
 	@GameTest
-	public void hatAndGarbs(final GameTestHelper helper) {
-		ServerPlayer caster = RpgTestSupport.player(helper);
-		try {
-			RpgCombat.setRoller((attacker, random, chance) -> false);
-			double bare = RpgSpells.spellDamage(caster, SPELL_PERCENT);
-			caster.setItemSlot(EquipmentSlot.HEAD, new ItemStack(JobItems.WITCH_HAT));
-			double hatted = RpgSpells.spellDamage(caster, SPELL_PERCENT);
-			RpgTestSupport.result("hatAndGarbs", "bare=" + bare + " hat=" + hatted);
-			helper.assertTrue(Math.abs(hatted / bare - 1.25) < 1e-6, "hat ratio " + hatted / bare);
-		} finally {
-			RpgCombat.setRoller(null);
-		}
-
+	public void garbs(final GameTestHelper helper) {
 		ServerPlayer priest = RpgTestSupport.player(helper);
 		ServerPlayer plain = RpgTestSupport.player(helper);
 		priest.setItemSlot(EquipmentSlot.CHEST, new ItemStack(JobItems.PRIEST_GARBS));
 		float undead = undeadShare(helper, priest);
-		RpgTestSupport.result("hatAndGarbs", "undead=" + undead);
+		RpgTestSupport.result("garbs", "undead=" + undead);
 		helper.assertTrue(Math.abs(undead - 0.8F) < 0.001F, "undead damage share " + undead);
 		helper.assertTrue(Math.abs(undeadShare(helper, plain) - 1.0F) < 0.001F, "a player without garbs takes less from undead");
 
@@ -209,18 +196,6 @@ public final class JobItemGameTest {
 		}
 		RpgTestSupport.result("refinePerks", "calm=" + lossCalm + " bleeding=" + lossBleeding);
 		helper.assertTrue(Math.abs(lossBleeding / lossCalm - 1.2) < 0.01, "bleeding ratio " + lossBleeding / lossCalm);
-
-		// hat at +15: 40 percent more spell damage
-		ServerPlayer mage = RpgTestSupport.player(helper);
-		try {
-			RpgCombat.setRoller((attacker, random, chance) -> false);
-			double bare = RpgSpells.spellDamage(mage, SPELL_PERCENT);
-			mage.setItemSlot(EquipmentSlot.HEAD, refined(JobItems.WITCH_HAT, 15));
-			double hatted = RpgSpells.spellDamage(mage, SPELL_PERCENT);
-			helper.assertTrue(Math.abs(hatted / bare - 1.40) < 1e-6, "hat +15 ratio " + hatted / bare);
-		} finally {
-			RpgCombat.setRoller(null);
-		}
 
 		// garbs at +15: 30 percent less from undead, the heal cleanses one effect and grants Regeneration
 		ServerPlayer priest = RpgTestSupport.player(helper);

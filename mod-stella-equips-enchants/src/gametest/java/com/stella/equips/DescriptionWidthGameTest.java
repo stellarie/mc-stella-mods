@@ -151,9 +151,8 @@ public final class DescriptionWidthGameTest {
 		EnchantmentHelper.setEnchantments(sword, several.toImmutable());
 		List<Component> sworded = DescriptionSupport.lines(helper, sword);
 		long requiresLines = DescriptionSupport.text(sworded).stream().filter(line -> line.startsWith("Requires:")).count();
-		problems.addAll(DescriptionSupport.blockProblems("three enchantments", sworded));
-		if (requiresLines != 3) {
-			problems.add("three enchantments show " + requiresLines + " blocks: " + DescriptionSupport.text(sworded));
+		if (requiresLines != 0) {
+			problems.add("equipment with three enchantments shows " + requiresLines + " description blocks: " + DescriptionSupport.text(sworded));
 		}
 		for (Identifier id : BuiltInRegistries.ITEM.keySet()) {
 			if (!MOD_ID.equals(id.getNamespace()) || STAT_ONLY.contains(id.getPath())) {

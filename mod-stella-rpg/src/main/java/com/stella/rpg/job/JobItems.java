@@ -3,12 +3,14 @@ package com.stella.rpg.job;
 import com.stella.rpg.DescriptionLines;
 import com.stella.rpg.ItemDescription;
 import com.stella.rpg.RpgCombat;
+import com.stella.rpg.StaffMatk;
 import com.stella.rpg.StellaRpg;
 import com.stella.rpg.roll.Affixes;
 import java.util.List;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -28,6 +30,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ToolMaterial;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.equipment.ArmorMaterial;
@@ -42,16 +45,17 @@ import net.minecraft.world.item.equipment.EquipmentAssets;
 public final class JobItems {
 	private static final double HEALER_RANGE_SQR = 48.0 * 48.0;
 	private static final int REGEN_TICKS = 60;
+	public static final int STAFF_DURABILITY = 250;
+	public static final int STAFF_MATK = 40;
 
 	private static final ResourceKey<Item> BOW_KEY = key("mechanical_bow");
 	private static final ResourceKey<Item> SWORD_KEY = key("knight_sword");
-	private static final ResourceKey<Item> HAT_KEY = key("witch_hat");
+	private static final ResourceKey<Item> STAFF_KEY = key("mage_staff");
 	private static final ResourceKey<Item> GARBS_KEY = key("priest_garbs");
 
 	private static final ToolMaterial SWORD_MATERIAL = new ToolMaterial(
 		BlockTags.INCORRECT_FOR_IRON_TOOL, 800, 6.0F, 2.0F, 14, ItemTags.IRON_TOOL_MATERIALS
 	);
-	private static final ArmorMaterial HAT_MATERIAL = armorMaterial("witch_hat", 20);
 	private static final ArmorMaterial GARBS_MATERIAL = armorMaterial("priest_garbs", 20);
 
 	public static final MechanicalBow MECHANICAL_BOW = Registry.register(BuiltInRegistries.ITEM, BOW_KEY, new MechanicalBow(
@@ -62,9 +66,11 @@ public final class JobItems {
 		new Item.Properties().setId(SWORD_KEY).sword(SWORD_MATERIAL, 3.0F, -2.4F)
 			.component(ItemDescription.TYPE, lore("knight_sword"))
 	));
-	public static final Item WITCH_HAT = Registry.register(BuiltInRegistries.ITEM, HAT_KEY, new Item(
-		new Item.Properties().setId(HAT_KEY).humanoidArmor(HAT_MATERIAL, ArmorType.HELMET)
-			.component(ItemDescription.TYPE, lore("witch_hat"))
+	/** Iron tier: 40 MATK, and a rise at each refine level and milestone. See {@link StaffMatk}. */
+	public static final Item MAGE_STAFF = Registry.register(BuiltInRegistries.ITEM, STAFF_KEY, new Item(
+		new Item.Properties().setId(STAFF_KEY).durability(STAFF_DURABILITY).repairable(Items.IRON_INGOT).enchantable(14)
+			.component(DataComponents.CUSTOM_DATA, StaffMatk.profile(STAFF_MATK, "none", 0, 0))
+			.component(ItemDescription.TYPE, lore("mage_staff"))
 	));
 	public static final Item PRIEST_GARBS = Registry.register(BuiltInRegistries.ITEM, GARBS_KEY, new Item(
 		new Item.Properties().setId(GARBS_KEY).humanoidArmor(GARBS_MATERIAL, ArmorType.CHESTPLATE)
@@ -102,7 +108,7 @@ public final class JobItems {
 		Item item = switch (job) {
 			case ARCHER -> MECHANICAL_BOW;
 			case FIGHTER -> KNIGHT_SWORD;
-			case MAGE -> WITCH_HAT;
+			case MAGE -> MAGE_STAFF;
 			case PRIEST -> PRIEST_GARBS;
 			case NONE -> null;
 		};
@@ -125,10 +131,6 @@ public final class JobItems {
 
 	private static int sword(final LivingEntity entity) {
 		return refine(entity, EquipmentSlot.MAINHAND, KNIGHT_SWORD);
-	}
-
-	private static int hat(final LivingEntity entity) {
-		return refine(entity, EquipmentSlot.HEAD, WITCH_HAT);
 	}
 
 	private static int garbs(final LivingEntity entity) {
@@ -171,29 +173,6 @@ public final class JobItems {
 		if (refine >= 0 && roll(attacker, JobPerks.swordBleedChance(refine))) {
 			Bleed.apply(victim, JobPerks.swordBleedShare(refine));
 		}
-	}
-
-	// ----- hat -----
-
-	/** The factor on the spell damage of a wearer of the hat. */
-	public static double spellDamageFactor(final LivingEntity caster) {
-		int refine = hat(caster);
-		return refine < 0 ? 1.0 : 1.0 + JobPerks.hatSpellDamage(refine);
-	}
-
-	public static double magicPenetration(final LivingEntity caster) {
-		int refine = hat(caster);
-		return refine < 0 ? 0.0 : JobPerks.hatMagicPenetration(refine);
-	}
-
-	public static double cooldownFactor(final LivingEntity caster) {
-		int refine = hat(caster);
-		return refine < 0 ? 1.0 : JobPerks.hatCooldown(refine);
-	}
-
-	public static double spellCritBonus(final LivingEntity caster) {
-		int refine = hat(caster);
-		return refine < 0 ? 0.0 : JobPerks.hatSpellCrit(refine);
 	}
 
 	// ----- garbs -----

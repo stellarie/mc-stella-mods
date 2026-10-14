@@ -157,7 +157,6 @@
   "block.mod-stella-equips-enchants.refining_anvil": "Refining Anvil",
   "item.mod-stella-equips-enchants.emerald_bag": "Emerald Bag",
   "item.mod-stella-equips-enchants.slime_heart": "Slime Heart",
-  "tooltip.mod-stella-equips-enchants.slime_heart": "Slime Heart: each piece with a heart delays 12.5% of an attack, over 5 seconds",
   "death.attack.mod-stella-equips-enchants.slime_heart": "%1$s was worn down by their slime heart",
   "item.mod-stella-equips-enchants.emerald_bag.count": "Emeralds: %s",
   "screen.mod-stella-equips-enchants.emerald_bag.stored": "In bag: %s",
@@ -235,5 +234,17 @@
   "description.mod-stella-equips-enchants.requires.mod-stella-equips-enchants.enchantable.ore_regeneration": "pickaxe",
   "description.mod-stella-equips-enchants.requires.mod-stella-equips-enchants.enchantable.scholar": "armor, tool, shield or elytra",
   "description.mod-stella-equips-enchants.requires.mod-stella-equips-enchants.enchantable.shakedown": "any weapon, bow or crossbow",
-  "description.mod-stella-equips-enchants.requires.any": "any item"
+  "description.mod-stella-equips-enchants.requires.any": "any item",
+  "item.mod-stella-equips-enchants.amethyst_staff": "Amethyst Staff",
+  "item.mod-stella-equips-enchants.amethyst_staff.requires": "staff in main hand",
+  "item.mod-stella-equips-enchants.amethyst_staff.desc": "MATK 44. Grows with refine, and at +7, +10, +12, +15. Any spell casts twice at 10%, +5% per jump.",
+  "item.mod-stella-equips-enchants.quartz_staff": "Quartz Staff",
+  "item.mod-stella-equips-enchants.quartz_staff.requires": "staff in main hand",
+  "item.mod-stella-equips-enchants.quartz_staff.desc": "MATK 46. Grows with refine, and at +7, +10, +12, +15. Spell cooldown -5%, -4% more per jump.",
+  "item.mod-stella-equips-enchants.emberheart_staff": "Emberheart Staff",
+  "item.mod-stella-equips-enchants.emberheart_staff.requires": "staff in main hand",
+  "item.mod-stella-equips-enchants.emberheart_staff.desc": "MATK 50. Grows with refine, and at +7, +10, +12, +15. Spell crit +5%, +4% more per jump.",
+  "item.mod-stella-equips-enchants.prismarine_staff": "Prismarine Staff",
+  "item.mod-stella-equips-enchants.prismarine_staff.requires": "staff in main hand",
+  "item.mod-stella-equips-enchants.prismarine_staff.desc": "MATK 48. Grows with refine, and at +7, +10, +12, +15. Ignores 5% magic resist, +5% per jump."
 }

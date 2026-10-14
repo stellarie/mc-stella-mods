@@ -139,6 +139,21 @@ public class EnchantmentDescriptionGameTest {
 	}
 
 	@GameTest
+	public void equipmentShowsEnchantmentNamesAndNoDescription(final GameTestHelper helper) {
+		Map<String, String> shipped = shippedDescriptions();
+		ItemStack sword = enchanted(Items.IRON_SWORD, vanillaHolder(helper, "sharpness"), 1);
+		ItemEnchantments.Mutable both = new ItemEnchantments.Mutable(EnchantmentHelper.getEnchantmentsForCrafting(sword));
+		both.set(holder(helper, "bow/marksman"), 1);
+		EnchantmentHelper.setEnchantments(sword, both.toImmutable());
+		List<Component> lines = tooltipWithDescriptions(helper, sword, shipped);
+		List<String> text = lines.stream().map(Component::getString).toList();
+		StellaEquips.LOGGER.info("[BEHAVIOR] test=equipmentTooltipNamesOnly RESULT lines={}", text);
+		helper.assertTrue(text.stream().noneMatch(line -> line.startsWith("Requires:") || line.startsWith("Desc:")), "an enchanted sword shows a description: " + text);
+		helper.assertTrue(text.stream().anyMatch(line -> line.contains("Sharpness")), "the enchantment name is missing: " + text);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void anEnchantmentWithNoDescriptionAddsNoLine(final GameTestHelper helper) {
 		Map<String, String> shipped = shippedDescriptions();
 		ItemStack book = new ItemStack(Items.ENCHANTED_BOOK);

@@ -6,6 +6,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -19,7 +20,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 
 /**
- * Appends a Requires line and a Desc line per enchantment the stack carries, in the
+ * Appends a Requires line and a Desc line per enchantment an enchanted book holds, in the
  * order vanilla renders the names. A missing key adds no lines. The Requires line names the
  * items the enchantment applies to, which it reads from the enchantment's own supported items.
  */
@@ -35,6 +36,10 @@ public final class EnchantmentDescriptions {
 	public static void append(
 		final ItemStack stack, final HolderLookup.Provider registries, final Consumer<Component> lines
 	) {
+		// Equipment shows the vanilla name of each enchantment only. A book still describes what it holds.
+		if (!stack.has(DataComponents.STORED_ENCHANTMENTS)) {
+			return;
+		}
 		ItemEnchantments enchantments = EnchantmentHelper.getEnchantmentsForCrafting(stack);
 		if (enchantments.isEmpty()) {
 			return;

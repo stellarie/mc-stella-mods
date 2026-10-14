@@ -23,8 +23,6 @@ import org.jspecify.annotations.Nullable;
  */
 public final class JobKits {
 	public static final String SPELLS = "mod-stella-spells";
-	public static final Identifier SPARK_SHOT = spells("spark_shot");
-	public static final Identifier SUMMON_SKELETON = spells("summon_skeleton");
 	/** The priest's heal book and buff book. */
 	public static final Identifier HEAL_BOOK = spells("mending_word");
 	public static final Identifier BUFF_BOOK = spells("stoneguard");
@@ -55,14 +53,10 @@ public final class JobKits {
 		return lookup != null ? lookup.apply(id) : BuiltInRegistries.ITEM.getOptional(id);
 	}
 
-	/** The books a job adds: a mage gets Spark Shot and one random book, a priest a heal and a buff. */
+	/** The books a job adds: a priest gets a heal and a buff. A mage gets none, because the rpg mod hands over the starter books. */
 	public static List<ItemStack> books(final ServerLevel level, final String job, final RandomSource random) {
 		List<ItemStack> books = new ArrayList<>();
 		switch (job) {
-			case "mage" -> {
-				add(level, books, item(SPARK_SHOT).orElse(null));
-				add(level, books, randomBook(level, random));
-			}
 			case "priest" -> {
 				add(level, books, item(HEAL_BOOK).orElse(null));
 				add(level, books, item(BUFF_BOOK).orElse(null));
@@ -71,12 +65,6 @@ public final class JobKits {
 			}
 		}
 		return books;
-	}
-
-	private static @Nullable Item randomBook(final ServerLevel level, final RandomSource random) {
-		Item summon = item(SUMMON_SKELETON).orElse(null);
-		List<Item> pool = MissionService.spellBooks(level).stream().filter(book -> book != summon).toList();
-		return pool.isEmpty() ? null : pool.get(random.nextInt(pool.size()));
 	}
 
 	private static void add(final ServerLevel level, final List<ItemStack> books, final @Nullable Item item) {
