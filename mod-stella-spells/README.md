@@ -218,6 +218,8 @@ the right to imbue it. A weapon is any item with its own attack damage: swords, 
 and the like. The book is used up, and its own enchantments do not carry over. Tide Lungs cannot be
 imbued: it is a breath held underwater, not a blow. Nor can Summon Skeleton.
 
+The tooltip of an imbued piece shows the name of each imbued spell and no description.
+
 A piece can hold any number of spells, and never the same spell twice. Each imbue adds one, at the same
 price every time: 5 levels, or 5 emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
 A stack of arrows pays that price once for every 16 arrows it holds.
@@ -595,6 +597,13 @@ the custom data, so neither mod needs the other.
   spell with a fixed cooldown keeps it.
 - **Slot.** Only the main hand counts. A book cast from the off hand takes the bonus while the staff is in the main hand.
 - **Code.** `StaffPower`, called from `RpgBridge.grow` after the stat growth.
+
+### Staff doublecast
+
+A staff with a `stella_staff` compound in its custom data (see `Staff MATK` in `mod-stella-rpg`) can carry the effect `doublecast`.
+In the main hand it gives every spell a chance to land twice, with no Doublecast enchantment needed. The chance is `base` percent plus
+`step` percent for each refine milestone (+7, +10, +12, +15). The Amethyst Staff has 10% and 5% (30% at +15). It adds to the 50% of a
+Doublecast helmet or book, up to 100%. A book-only spell never doublecasts. `StaffPower.doublecastChance` and `SpellCasting`.
 
 ## Build and test
 

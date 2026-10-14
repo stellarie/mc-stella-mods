@@ -1,6 +1,6 @@
 {
 	"model": {
 		"type": "minecraft:model",
-		"model": "mod-stella-rpg:item/witch_hat"
+		"model": "mod-stella-rpg:item/mage_staff"
 	}
 }

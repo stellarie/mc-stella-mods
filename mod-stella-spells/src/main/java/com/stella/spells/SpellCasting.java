@@ -84,6 +84,19 @@ public final class SpellCasting {
 		doublecastRoll = roll == null ? FAIR_DOUBLECAST : roll;
 	}
 
+	/** Whether this cast lands twice: a Doublecast item rolls the usual chance, and a staff adds its own to every spell. */
+	private static boolean doublecasts(final ServerPlayer caster, final ItemStack stack) {
+		double staff = StaffPower.doublecastChance(caster);
+		boolean enchanted = SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack);
+		if (!enchanted && staff <= 0.0) {
+			return false;
+		}
+		if (doublecastRoll != FAIR_DOUBLECAST) {
+			return doublecastRoll.twice(caster);
+		}
+		return caster.getRandom().nextDouble() < Math.min(1.0, (enchanted ? DOUBLECAST_CHANCE : 0.0) + staff);
+	}
+
 	// The second landing: the target's hurt cooldown from the first is set aside, so both hits count.
 	private static boolean landAgain(final ServerPlayer caster, final SpellDefinition definition, final Mob target, final Vec3 point,
 		final SpellModifiers.CastModifiers modifiers) {
@@ -243,8 +256,8 @@ public final class SpellCasting {
 			SpellCombos.afterCast(caster, definition, target, point, modifiers);
 			BookRefine.finish(refine, new RefineCast(caster, definition, target, point, ally, CastHits.victims(), departure, modifiers));
 			// Both landings share one cast credit.
-			if (!skip && SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack) && !Spellbooks.BOOK_ONLY.contains(definition.id())
-				&& (target == null || target.isAlive()) && doublecastRoll.twice(caster)
+			if (!skip && !Spellbooks.BOOK_ONLY.contains(definition.id()) && (target == null || target.isAlive())
+				&& doublecasts(caster, stack)
 				&& landAgain(caster, definition, target, point, modifiers)) {
 				SpellVisuals.play(caster, definition, target, point, caster.position(), modifiers);
 				SpellCombos.afterCast(caster, definition, target, point, modifiers);

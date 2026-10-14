@@ -2,6 +2,7 @@ package com.stella.rpg;
 
 import com.stella.rpg.bag.Bag;
 import com.stella.rpg.job.Job;
+import com.stella.rpg.job.JobItems;
 import com.stella.rpg.job.Jobs;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -42,6 +43,7 @@ public final class MageGrantGameTest {
 		helper.assertTrue(first == STAND_INS.size(), "the mage holds " + first + " books after the job change");
 		helper.assertTrue(second == first, "a second job change gave books: " + first + " then " + second);
 		helper.assertTrue(flagged, "the gift was not recorded");
+		helper.assertTrue(mage.getInventory().contains(stack -> stack.is(JobItems.MAGE_STAFF)), "the mage got no staff");
 		helper.succeed();
 	}
 

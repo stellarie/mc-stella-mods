@@ -130,8 +130,6 @@ public final class DescriptionWidthGameTest {
 		for (TowerElement element : TowerElement.values()) {
 			stacks.add(TowerRunes.rune(element, 300));
 		}
-		stacks.add(GhostRunes.apply(new ItemStack(Items.DIAMOND_CHESTPLATE)));
-		stacks.add(GhostRunes.apply(new ItemStack(Items.DIAMOND_SWORD)));
 		stacks.add(FloorKeyItem.forFloor(7));
 		stacks.add(PerfectVeil.potion());
 		RuneStats.pin((entity, stat) -> 1_000);

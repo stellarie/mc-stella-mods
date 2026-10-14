@@ -51,23 +51,6 @@ public final class JobPerks {
 		return refine >= TIER_4 ? 0.20 : 0.0;
 	}
 
-	public static double hatSpellDamage(final int refine) {
-		return refine >= TIER_4 ? 0.40 : refine >= TIER_1 ? 0.30 : 0.25;
-	}
-
-	public static double hatMagicPenetration(final int refine) {
-		return refine >= TIER_2 ? 0.10 : 0.0;
-	}
-
-	/** The multiplier on spell cooldowns. */
-	public static double hatCooldown(final int refine) {
-		return refine >= TIER_3 ? 0.90 : 1.0;
-	}
-
-	public static double hatSpellCrit(final int refine) {
-		return refine >= TIER_4 ? 0.10 : 0.0;
-	}
-
 	public static double garbsHealing(final int refine) {
 		return refine >= TIER_4 ? 0.75 : refine >= TIER_1 ? 0.60 : 0.50;
 	}

@@ -73,10 +73,8 @@ public final class TrainerGameTest {
 	);
 	/** Stand-ins for the spells mod's books, each a different item. */
 	private static final Map<Identifier, Item> BOOKS = Map.of(
-		JobKits.SPARK_SHOT, Items.BLAZE_ROD,
 		JobKits.HEAL_BOOK, Items.GHAST_TEAR,
-		JobKits.BUFF_BOOK, Items.SHIELD,
-		JobKits.SUMMON_SKELETON, Items.BONE
+		JobKits.BUFF_BOOK, Items.SHIELD
 	);
 	private static final List<Item> BOOK_POOL = List.of(Items.BONE, Items.BLAZE_ROD, Items.GHAST_TEAR, Items.SHIELD, Items.FEATHER, Items.PAPER);
 	/** Test seam: what the trainer said to each player, and each choice and trial request. */
@@ -309,7 +307,7 @@ public final class TrainerGameTest {
 			helper.assertTrue(StandIn.job(mage).equals("mage") && StandIn.job(priest).equals("priest"), "the jobs are " + StandIn.job(mage) + " and " + StandIn.job(priest));
 			helper.assertTrue(StandIn.called(mage, "grantItems") && mage.getInventory().countItem(Items.DIAMOND_HELMET) == 1, "the mage got no job item");
 			helper.assertTrue(priest.getInventory().countItem(Items.IRON_CHESTPLATE) == 1, "the priest got no job item");
-			helper.assertTrue(mageBooks.size() == 2 && mageBooks.contains(Items.BLAZE_ROD) && !mageBooks.contains(Items.BONE), "the mage books are " + mageBooks);
+			helper.assertTrue(mageBooks.isEmpty(), "the mage books are " + mageBooks);
 			helper.assertTrue(priestBooks.size() == 2 && priestBooks.containsAll(List.of(Items.GHAST_TEAR, Items.SHIELD)), "the priest books are " + priestBooks);
 			helper.assertTrue(mage.containerMenu == mage.inventoryMenu, "the menu stayed open after the choice");
 			helper.succeed();
@@ -318,34 +316,11 @@ public final class TrainerGameTest {
 		}
 	}
 
-	@GameTest(dimension = "minecraft:the_nether", maxTicks = 200, padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void mageNeverGetsTheSkeletonBook(final GameTestHelper helper) {
-		ServerLevel level = helper.getLevel();
-		int summons = 0;
-		int drawn = 0;
-		JobKits.setItemLookup(id -> Optional.ofNullable(BOOKS.get(id)));
-		MissionService.setSpellBookPool(BOOK_POOL);
-		try {
-			for (int roll = 0; roll < 200; roll++) {
-				for (ItemStack book : JobKits.books(level, "mage", level.getRandom())) {
-					drawn++;
-					summons += book.is(Items.BONE) ? 1 : 0;
-				}
-			}
-		} finally {
-			JobKits.setItemLookup(null);
-			MissionService.setSpellBookPool(null);
-		}
-		PatrolTestSupport.result("mageNeverGetsTheSkeletonBook", "drawn=" + drawn + " summons=" + summons);
-		helper.assertTrue(drawn == 400 && summons == 0, "drawn " + drawn + " books, " + summons + " were Summon Skeleton");
-		helper.succeed();
-	}
-
 	/** With the spells mod loaded the books are the real ones; without it a job gets its own item only. */
 	@GameTest(maxTicks = 100, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void spellsBridgeLoadedOrAbsent(final GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
-		boolean loaded = BuiltInRegistries.ITEM.containsKey(JobKits.SPARK_SHOT);
+		boolean loaded = BuiltInRegistries.ITEM.containsKey(JobKits.HEAL_BOOK);
 		List<ItemStack> mage = JobKits.books(level, "mage", level.getRandom());
 		List<ItemStack> priest = JobKits.books(level, "priest", level.getRandom());
 		PatrolTestSupport.result("spellsBridgeLoadedOrAbsent", "loaded=" + loaded + " mage=" + mage + " priest=" + priest);
@@ -354,12 +329,10 @@ public final class TrainerGameTest {
 			helper.succeed();
 			return;
 		}
-		Item spark = BuiltInRegistries.ITEM.getValue(JobKits.SPARK_SHOT);
-		helper.assertTrue(mage.size() == 2 && mage.getFirst().is(spark), "the mage books are " + mage);
-		helper.assertTrue(mage.stream().noneMatch(book -> BuiltInRegistries.ITEM.getKey(book.getItem()).equals(JobKits.SUMMON_SKELETON)), "the mage got Summon Skeleton");
+		helper.assertTrue(mage.isEmpty(), "the mage books are " + mage);
 		helper.assertTrue(priest.size() == 2 && BuiltInRegistries.ITEM.getKey(priest.get(0).getItem()).equals(JobKits.HEAL_BOOK)
 			&& BuiltInRegistries.ITEM.getKey(priest.get(1).getItem()).equals(JobKits.BUFF_BOOK), "the priest books are " + priest);
-		for (ItemStack book : List.of(mage.getFirst(), mage.get(1), priest.get(0), priest.get(1))) {
+		for (ItemStack book : List.of(priest.get(0), priest.get(1))) {
 			helper.assertTrue(book.getEnchantments().keySet().stream().anyMatch(holder -> holder.is(JobKits.DOUBLECAST)), "a book lacks Doublecast: " + book);
 		}
 		helper.succeed();

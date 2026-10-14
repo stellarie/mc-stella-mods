@@ -76,37 +76,14 @@ public final class SpellImbue {
 
 	}
 
-	/**
-	 * The tooltip lines of an imbued piece: a Requires and Desc block with the hit rule, then one line per book.
-	 * A Compendium casts what it stores on use and not on a hit, so it shows the books alone.
-	 */
+	/** The tooltip of an imbued piece: the name of each imbued spell, and no description. */
 	public static List<Component> tooltipLines(final ItemStack stack) {
-		List<Identifier> spells = spellsOf(stack);
 		List<Component> lines = new java.util.ArrayList<>();
-		if (spells.isEmpty()) {
-			return lines;
-		}
-		if (!(stack.getItem() instanceof CompendiumItem)) {
-			DescriptionLines.addBlock(
-				lines,
-				Component.translatable("spellbook." + Spellbooks.MOD_ID + ".imbued.requires").withStyle(ChatFormatting.WHITE),
-				Component.translatable(
-					"spellbook." + Spellbooks.MOD_ID + ".imbued.desc",
-					percent(PROC_BASE_CHANCE), percent(PROC_CHANCE_PER_LUK)
-				).withStyle(ChatFormatting.LIGHT_PURPLE)
-			);
-		}
-		for (Identifier spell : spells) {
-			DescriptionLines.add(lines, Component.translatable(
-				"spellbook." + Spellbooks.MOD_ID + ".imbued",
-				Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
-			).withStyle(ChatFormatting.LIGHT_PURPLE));
+		for (Identifier spell : spellsOf(stack)) {
+			DescriptionLines.add(lines, Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
+				.withStyle(ChatFormatting.LIGHT_PURPLE));
 		}
 		return lines;
-	}
-
-	private static int percent(final double chance) {
-		return (int) Math.round(chance * 100.0);
 	}
 
 	public static final DataComponentType<ImbuedSpell> IMBUED = Registry.register(

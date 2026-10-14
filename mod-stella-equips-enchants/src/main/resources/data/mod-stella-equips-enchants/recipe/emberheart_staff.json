@@ -1,0 +1,18 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"category": "equipment",
+	"pattern": [
+		" RM",
+		" SR",
+		"S  "
+	],
+	"key": {
+		"R": "minecraft:blaze_rod",
+		"M": "minecraft:magma_cream",
+		"S": "minecraft:stick"
+	},
+	"result": {
+		"id": "mod-stella-equips-enchants:emberheart_staff",
+		"count": 1
+	}
+}

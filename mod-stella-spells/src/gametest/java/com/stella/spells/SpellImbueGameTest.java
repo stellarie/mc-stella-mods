@@ -122,6 +122,7 @@ public class SpellImbueGameTest {
 		List<String> shown = DescriptionSupport.text(lines);
 		LOG.info("[SPELLTEST] test=theImbuedWeaponNamesItsSpellInTheTooltip RESULT own={} shown={}", own.size(), shown.containsAll(own));
 		helper.assertTrue(!own.isEmpty() && shown.containsAll(own), "the tooltip does not show the imbued spell: " + shown);
+		helper.assertTrue(own.size() == 1 && own.get(0).contains("Spark Shot"), "the imbue added more than the spell name: " + own);
 		helper.succeed();
 	}
 
