@@ -81,6 +81,7 @@ public final class SpellImbue {
 		List<Component> lines = new java.util.ArrayList<>();
 		for (Identifier spell : spellsOf(stack)) {
 			DescriptionLines.add(lines, Component.translatable("item." + spell.getNamespace() + "." + spell.getPath())
+				.append(" (" + Math.round(IMBUE_POWER * 100) + "%)")
 				.withStyle(ChatFormatting.LIGHT_PURPLE));
 		}
 		return lines;

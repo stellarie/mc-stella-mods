@@ -104,6 +104,11 @@ public final class RpgBridge {
 			return Double.NaN;
 		}
 
+		/** The no-crit hit of a skill percent in K units; NaN when the RPG mod gives none. */
+		default double matkHit(final LivingEntity caster, final double skillPercent) {
+			return Double.NaN;
+		}
+
 		/** The highest MATK roll in K units; NaN when the RPG mod gives none. */
 		default double matkMax(final LivingEntity caster) {
 			return Double.NaN;
@@ -255,6 +260,11 @@ public final class RpgBridge {
 		}
 
 		@Override
+		public double matkHit(final LivingEntity caster, final double skillPercent) {
+			return this.spells.matkHit(caster, skillPercent);
+		}
+
+		@Override
 		public double matkMax(final LivingEntity caster) {
 			return this.spells.matkMax(caster);
 		}
@@ -368,6 +378,7 @@ public final class RpgBridge {
 		MethodHandle heal = spellHealHandle(lookup, rpg);
 		MethodHandle matkMin = matkHandle(lookup, rpg, "matkMin");
 		MethodHandle matkMax = matkHandle(lookup, rpg, "matkMax");
+		MethodHandle matkHit = staticHandle(lookup, rpg, "matkHit", double.class, LivingEntity.class, double.class);
 		MethodHandle duration = matkHandle(lookup, rpg, "durationMultiplier");
 		return new Stats() {
 			@Override
@@ -419,6 +430,15 @@ public final class RpgBridge {
 			public double matkMin(final LivingEntity caster) {
 				try {
 					return matkMin == null ? Double.NaN : (double) matkMin.invokeExact(caster);
+				} catch (Throwable e) {
+					return Double.NaN;
+				}
+			}
+
+			@Override
+			public double matkHit(final LivingEntity caster, final double skillPercent) {
+				try {
+					return matkHit == null ? Double.NaN : (double) matkHit.invokeExact(caster, skillPercent);
 				} catch (Throwable e) {
 					return Double.NaN;
 				}
@@ -651,6 +671,11 @@ public final class RpgBridge {
 	/** The lowest MATK roll of the caster in K units, or NaN when the RPG mod gives none. */
 	static double matkMin(final LivingEntity caster) {
 		return stats().matkMin(caster);
+	}
+
+	/** The no-crit hit of a skill percent in K units, or NaN when the RPG mod gives none. */
+	static double matkHit(final LivingEntity caster, final double skillPercent) {
+		return stats().matkHit(caster, skillPercent);
 	}
 
 	/** The highest MATK roll of the caster in K units, or NaN when the RPG mod gives none. */

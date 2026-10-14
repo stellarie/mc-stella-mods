@@ -3,7 +3,11 @@ package com.stella.rpg;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import io.netty.buffer.ByteBuf;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 public record StatSheet(int str, int agi, int vit, int dex, int intel, int luk) {
 	public static final int CEILING = 1024;
@@ -19,9 +23,20 @@ public record StatSheet(int str, int agi, int vit, int dex, int intel, int luk) 
 		VALUE.optionalFieldOf("luk", 0).forGetter(StatSheet::luk)
 	).apply(instance, StatSheet::new));
 
+	private static final StreamCodec<ByteBuf, StatSheet> NETWORK_CODEC = StreamCodec.composite(
+		ByteBufCodecs.VAR_INT, StatSheet::str,
+		ByteBufCodecs.VAR_INT, StatSheet::agi,
+		ByteBufCodecs.VAR_INT, StatSheet::vit,
+		ByteBufCodecs.VAR_INT, StatSheet::dex,
+		ByteBufCodecs.VAR_INT, StatSheet::intel,
+		ByteBufCodecs.VAR_INT, StatSheet::luk,
+		StatSheet::new
+	);
+
 	public static final AttachmentType<StatSheet> ATTACHMENT = AttachmentRegistry.create(
 		StellaRpg.id("stats"),
 		builder -> builder.persistent(CODEC).copyOnDeath()
+			.syncWith(NETWORK_CODEC, AttachmentSyncPredicate.targetOnly())
 	);
 
 	public int get(final Stat stat) {
