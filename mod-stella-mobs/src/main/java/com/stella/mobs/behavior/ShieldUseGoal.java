@@ -4,6 +4,7 @@ import com.stella.mobs.config.CombatRole;
 import java.util.EnumSet;
 import java.util.List;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -32,6 +33,10 @@ import org.jspecify.annotations.Nullable;
  * <p>Every other threat keeps the older mode: hold the shield for 20 ticks, stand still, then rest for 40. That
  * covers a non-player target, a ranged bearer, and an arrow in flight. Every guard timer counts the mob's own ticks,
  * because the level clock barely moves in a game test.
+ *
+ * <p>In every mode the bearer faces its attacker for as long as the shield is up. The attacker is the living mob
+ * that hurt the bearer in the last {@link #ATTACKER_MEMORY_TICKS} ticks, or the shooter of an incoming arrow. Body
+ * and head turn together by at most {@link #FACE_TURN_DEGREES} a tick, so a blow from behind turns the bearer round.
  */
 public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 	public static final double GUARD_RANGE = 16.0;
@@ -40,6 +45,8 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 	public static final int ATTACK_INTERVAL_TICKS = 20;
 	public static final int RIPOSTE_COOLDOWN_TICKS = 20;
 	public static final int RIPOSTE_WINDOW_TICKS = 10;
+	public static final int ATTACKER_MEMORY_TICKS = 60;
+	public static final float FACE_TURN_DEGREES = 45.0F;
 
 	/** Test seam: reports what the guard did. */
 	public interface Recorder {
@@ -189,13 +196,50 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 			return;
 		}
 
-		Entity currentThreat = this.threat;
-		if (currentThreat != null) {
-			this.mob.lookAt(currentThreat, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
-			this.mob.getLookControl().setLookAt(currentThreat, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
+		Entity focus = this.faceAttacker(this.threat);
+		if (focus != null) {
+			this.mob.lookAt(focus, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
+			this.mob.getLookControl().setLookAt(focus, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
 		}
 
 		this.holdTicks--;
+	}
+
+	// Returns what the bearer looks at: its attacker if it has one, else `normal`.
+	// A bearer turns on the spot for an attacker that is not its walk goal.
+	private @Nullable Entity faceAttacker(final @Nullable Entity normal) {
+		LivingEntity attacker = this.attacker(normal);
+		if (attacker == null) {
+			return normal;
+		}
+
+		if (attacker != normal) {
+			this.mob.getNavigation().stop();
+		}
+
+		Vec3 toAttacker = attacker.position().subtract(this.mob.position());
+		float wanted = (float) (Mth.atan2(toAttacker.z, toAttacker.x) * Mth.RAD_TO_DEG) - 90.0F;
+		float yaw = Mth.approachDegrees(this.mob.getYRot(), wanted, FACE_TURN_DEGREES);
+		this.mob.setYRot(yaw);
+		this.mob.setYBodyRot(yaw);
+		this.mob.setYHeadRot(yaw);
+		return attacker;
+	}
+
+	private @Nullable LivingEntity attacker(final @Nullable Entity normal) {
+		LivingEntity hurtBy = this.mob.getLastHurtByMob();
+		if (hurtBy != null
+			&& hurtBy != this.mob
+			&& hurtBy.isAlive()
+			&& this.mob.tickCount - this.mob.getLastHurtByMobTimestamp() <= ATTACKER_MEMORY_TICKS) {
+			return hurtBy;
+		}
+
+		if (normal instanceof AbstractArrow arrow && arrow.getOwner() instanceof LivingEntity shooter && shooter.isAlive()) {
+			return shooter;
+		}
+
+		return null;
 	}
 
 	private void startGuard(final Player player) {
@@ -249,7 +293,8 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 		}
 
 		int now = this.mob.tickCount;
-		this.mob.getLookControl().setLookAt(player, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
+		Entity focus = this.faceAttacker(player);
+		this.mob.getLookControl().setLookAt(focus, LOOK_ROTATION_SPEED, LOOK_ROTATION_SPEED);
 		if (this.raiseNext) {
 			this.raiseNext = false;
 			this.raise();
@@ -257,7 +302,9 @@ public class ShieldUseGoal<T extends PathfinderMob> extends Goal {
 
 		if (now >= this.nextRepathTick) {
 			this.nextRepathTick = now + REPATH_INTERVAL_TICKS;
-			this.mob.getNavigation().moveTo(player, GUARD_SPEED);
+			if (focus == player) {
+				this.mob.getNavigation().moveTo(player, GUARD_SPEED);
+			}
 		}
 
 		if (!this.mob.isWithinMeleeAttackRange(player) || !this.mob.getSensing().hasLineOfSight(player)) {

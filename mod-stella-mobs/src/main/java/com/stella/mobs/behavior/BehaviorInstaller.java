@@ -260,7 +260,7 @@ public final class BehaviorInstaller {
 			WitherPulse.install(witherSkeleton);
 		}
 		installSpiderBrood(mob);
-		installSpiderWebTrap(mob);
+		installSpiderWebCast(mob);
 		installBlazeAttack(mob);
 		// R24: the elite brute's permanent movement, which the shared elite mark alone does not add.
 		PiglinSmash.install(mob);
@@ -270,19 +270,18 @@ public final class BehaviorInstaller {
 		}
 	}
 
-	/** Installs the no-flag Spider web goal. */
-	private static void installSpiderWebTrap(final Mob mob) {
+	/** Installs the no-flag web cast goal of an elite or boss Spider. */
+	private static void installSpiderWebCast(final Mob mob) {
 		if (!(mob instanceof Spider spider)) {
 			return;
 		}
 
 		if (mob.getGoalSelector().getAvailableGoals().stream()
-			.anyMatch(wrapped -> wrapped.getGoal() instanceof SpiderWebTrapGoal)) {
+			.anyMatch(wrapped -> wrapped.getGoal() instanceof WebCastGoal)) {
 			return;
 		}
 
-		mob.getGoalSelector().addGoal(SpiderWebTrapGoal.PRIORITY, new SpiderWebTrapGoal(spider));
-		mob.getGoalSelector().addGoal(SpiderWebTrapGoal.PRIORITY, new WebCastGoal(spider));
+		mob.getGoalSelector().addGoal(WebCastGoal.PRIORITY, new WebCastGoal(spider));
 	}
 
 	private static void installGuardian(final Guardian guardian) {

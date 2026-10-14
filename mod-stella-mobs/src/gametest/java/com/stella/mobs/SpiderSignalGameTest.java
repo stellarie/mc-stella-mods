@@ -3,7 +3,6 @@ package com.stella.mobs;
 import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.RetreatGoal;
 import com.stella.mobs.behavior.SpiderSignal;
-import com.stella.mobs.behavior.SpiderWebTrapGoal;
 import com.stella.mobs.behavior.WebCastGoal;
 import com.stella.mobs.gear.GearTier;
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
- * A spider that webs a player calls the monsters around it onto that player. Every monster here has its AI off,
+ * An elite spider that webs a player calls the monsters around it onto that player. Every monster here has its AI off,
  * so none of them finds the player alone, and a target that one holds came from the signal. The signal goes
  * through the recorder, keyed by the spider so concurrent tests never mix.
  */
@@ -157,45 +156,6 @@ public class SpiderSignalGameTest {
 					"the monsters past the cap never took the target after the cooldown: " + seen
 				);
 				StellaMobs.LOGGER.info("[BEHAVIOR] test={}.signalCapsAtSix RESULT {}", TEST, seen);
-				scene.end();
-			})
-			.thenSucceed();
-	}
-
-	@GameTest(maxTicks = MAX_TICKS, padding = MeleeKitFloor.PADDING)
-	public void webTrapSignals(final GameTestHelper helper) {
-		MeleeKitFloor scene = MeleeKitFloor.build(helper);
-		ServerPlayer player = scene.player(PLAYER_X, PLAYER_Z);
-		Spider spider = idle(scene.mob(EntityTypes.SPIDER, SPIDER_X, FLOOR_Y, SPIDER_Z));
-		Zombie ally = idle(scene.mob(EntityTypes.ZOMBIE, 14, FLOOR_Y, 18));
-		spider.setTarget(player);
-		SpiderWebTrapGoal trap = goalOf(spider, SpiderWebTrapGoal.class);
-
-		helper.startSequence()
-			.thenWaitUntil(() -> helper.assertTrue(scene.ticking(), "the scene is not ticking yet"))
-			.thenExecute(() -> {
-				scene.clearStrangers(spider, STRANGER_RADIUS);
-				helper.assertTrue(trap.canUse(), "the web trap does not want the player in reach");
-				boolean griefing = helper.getLevel().getGameRules().get(GameRules.MOB_GRIEFING);
-				try {
-					helper.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, false, helper.getLevel().getServer());
-					trap.start();
-				} finally {
-					helper.getLevel().getGameRules().set(GameRules.MOB_GRIEFING, griefing, helper.getLevel().getServer());
-				}
-
-				helper.assertTrue(ally.getTarget() == null && !SIGNALS.containsKey(spider.getUUID()), "a spider signalled with no web placed");
-				helper.assertTrue(trap.canUse(), "the web trap lost its turn without placing a web");
-				trap.start();
-				helper.assertTrue(helper.getLevel().getBlockState(player.blockPosition()).is(Blocks.COBWEB), "the web trap placed no web");
-				List<Signal> signals = SIGNALS.getOrDefault(spider.getUUID(), List.of());
-				String seen = "signals=" + signals.size() + " allyTarget=" + ally.getTarget();
-				helper.assertTrue(
-					signals.size() == 1 && signals.getFirst().accepted().equals(List.of(ally)),
-					"the web trap's start sent " + signals.size() + " signals taking " + signals.stream().map(Signal::accepted).toList() + ": " + seen
-				);
-				helper.assertTrue(ally.getTarget() == player, "the ally did not take the webbed player: " + seen);
-				StellaMobs.LOGGER.info("[BEHAVIOR] test={}.webTrapSignals RESULT {}", TEST, seen);
 				scene.end();
 			})
 			.thenSucceed();
