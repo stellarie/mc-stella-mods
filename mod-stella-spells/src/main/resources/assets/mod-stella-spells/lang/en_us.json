@@ -78,6 +78,7 @@
 	"item.mod-stella-spells.dragonfall.desc": "A huge burning fire charge lands on the spot, dealing 10 magic damage to every hostile within 3 blocks.",
 	"item.mod-stella-spells.dragonfall.desc_live": "A huge burning fire charge lands on the spot, dealing %1$s magic damage to every hostile within %6$s blocks.",
 	"tag.item.mod-stella-spells.spellbooks": "Spellbooks",
+	"tag.item.mod-stella-spells.imbuable": "Imbuable Weapons",
 	"spellbook.mod-stella-spells.cooldown": "Cooldown: %s seconds",
 	"spellbook.mod-stella-spells.combo": "Combo: %s, then %s, for %s",
 	"item.mod-stella-spells.spark_shot_scroll": "Spark Shot Scroll",

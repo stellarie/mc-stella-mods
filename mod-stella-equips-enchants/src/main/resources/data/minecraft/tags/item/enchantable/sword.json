@@ -1,0 +1,24 @@
+{
+	"values": [
+		{
+			"id": "mod-stella-equips-enchants:amethyst_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:quartz_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:emberheart_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:prismarine_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-rpg:mage_staff",
+			"required": false
+		}
+	]
+}

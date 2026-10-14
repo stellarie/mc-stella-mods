@@ -10,6 +10,26 @@
 		"#mod-stella-equips-enchants:crafted_bows/crossbows",
 		"mod-stella-equips-enchants:wraithstring",
 		"mod-stella-equips-enchants:hexbolt",
-		"mod-stella-equips-enchants:archmage_staff"
+		"mod-stella-equips-enchants:archmage_staff",
+		{
+			"id": "mod-stella-equips-enchants:amethyst_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:quartz_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:emberheart_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-equips-enchants:prismarine_staff",
+			"required": false
+		},
+		{
+			"id": "mod-stella-rpg:mage_staff",
+			"required": false
+		}
 	]
 }
