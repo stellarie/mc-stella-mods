@@ -164,7 +164,7 @@ public final class RpgCombat {
 
 	/** Rolls a critical hit with the LUK chance of the attacker plus the registered bonuses. A spell uses it. */
 	static boolean rollCrit(final LivingEntity attacker) {
-		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)) + JobItems.spellCritBonus(attacker)
+		double chance = RpgCurve.critChance(StatBonuses.effective(attacker, Stat.LUK)) + StaffMatk.heldEffect(attacker, StaffMatk.CRIT)
 			+ CritBonuses.chanceBonus(attacker);
 		return roller.roll(attacker, attacker.getRandom(), chance);
 	}
@@ -233,7 +233,7 @@ public final class RpgCombat {
 	/** Ragnarok status ATK, in vanilla units: the stat plus the square of a tenth of it, divided by K. */
 	public static double statusAtk(final int stat) {
 		int step = stat / STATUS_STEP;
-		return (stat + step * step) / RpgScale.k();
+		return (stat + step * step) * StatMilestones.factor(stat) / RpgScale.k();
 	}
 
 	/** Damage affixes and Strength add. Weakness subtracts. The result is never below 0. */

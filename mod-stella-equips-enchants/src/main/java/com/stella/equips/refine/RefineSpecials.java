@@ -66,7 +66,7 @@ public final class RefineSpecials {
 	/** The effects a piece has at a level, lowest level first. Empty for a spellbook, a unique and anything unrefined. */
 	public static List<Special> of(final ItemStack stack, final int level) {
 		List<Special> all = new ArrayList<>();
-		if (level <= 0 || stack.isEmpty() || Refine.isSpellbook(stack) || Uniques.def(stack) != null) {
+		if (level <= 0 || stack.isEmpty() || Refine.isSpellbook(stack) || Refine.isStaff(stack) || Uniques.def(stack) != null) {
 			return all;
 		}
 		if (Refine.isArmor(stack)) {

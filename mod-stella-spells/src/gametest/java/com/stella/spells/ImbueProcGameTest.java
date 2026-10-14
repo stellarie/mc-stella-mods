@@ -131,24 +131,15 @@ public class ImbueProcGameTest {
 	}
 
 	@GameTest
-	public void theImbueTooltipIsARequiresAndDescBlockThenOneLinePerBook(final GameTestHelper helper) {
+	public void theImbueTooltipNamesEachBookAndDescribesNothing(final GameTestHelper helper) {
 		ItemStack sword = new ItemStack(Items.IRON_SWORD);
 		sword.set(SpellImbue.IMBUED, new SpellImbue.ImbuedSpell(List.of(SPARK_SHOT, FROSTBIND, EMBER_BRAND)));
-		List<Component> lines = DescriptionSupport.lines(helper, null, sword);
-		List<String> text = DescriptionSupport.text(lines);
-		String percent = Math.round(SpellImbue.PROC_BASE_CHANCE * 100.0) + "%";
-		LOG.info("[SPELLTEST] test=theImbueTooltipIsARequiresAndDescBlockThenOneLinePerBook RESULT lines={}", text);
-		helper.assertTrue(DescriptionSupport.hasBlock(lines) && text.stream().anyMatch(line -> line.startsWith("Requires:")), "the tooltip has no Requires and Desc block: " + text);
-		helper.assertTrue(DescriptionSupport.blockProblems("imbued sword", lines).isEmpty(), "the block is out of format: " + text);
-		helper.assertTrue(DescriptionSupport.tooLong(text).isEmpty(), "lines over " + DescriptionSupport.LIMIT + " characters: " + text);
-		helper.assertTrue(String.join(" ", text).contains(percent), "the tooltip does not state the " + percent + " chance: " + text);
-		helper.assertTrue(text.stream().filter(line -> line.startsWith("Imbued: ")).count() == 3, "the tooltip does not name each book once: " + text);
-		// A Compendium casts on use, never on a hit, so it shows the books and not the hit rule.
-		ItemStack compendium = new ItemStack(Spellbooks.COMPENDIUM);
-		compendium.set(SpellImbue.IMBUED, new SpellImbue.ImbuedSpell(SPARK_SHOT));
-		List<String> stored = DescriptionSupport.text(DescriptionSupport.lines(helper, null, compendium));
-		helper.assertTrue(stored.stream().anyMatch(line -> line.startsWith("Imbued: ")) && !String.join(" ", stored).contains("landed hit"),
-			"the Compendium tooltip shows the hit rule: " + stored);
+		List<String> text = DescriptionSupport.text(DescriptionSupport.lines(helper, null, sword));
+		String joined = String.join(" ", text);
+		LOG.info("[SPELLTEST] test=theImbueTooltipNamesEachBookAndDescribesNothing RESULT lines={}", text);
+		helper.assertTrue(joined.contains("Spark Shot") && joined.contains("Frostbind") && joined.contains("Ember Brand"), "a book name is missing: " + text);
+		helper.assertTrue(text.stream().noneMatch(line -> line.startsWith("Requires:") || line.startsWith("Desc:") || line.contains("%")),
+			"the imbue tooltip describes the imbue: " + text);
 		helper.succeed();
 	}
 

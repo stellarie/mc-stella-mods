@@ -41,13 +41,8 @@ public final class GhostRunes {
 	public static void register() {
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> !evades(entity, source));
 		ServerTickEvents.END_SERVER_TICK.register(GhostRunes::haunt);
-		ItemComponentTooltipProviderRegistry.addLast(TowerItems.GHOSTED, mark -> (context, lines, flag, components) -> {
-			Equippable equippable = components.get(DataComponents.EQUIPPABLE);
-			boolean chest = equippable != null && equippable.slot() == EquipmentSlot.CHEST;
-			String key = chest ? "item.mod-stella-tower.ghosted.chest" : "item.mod-stella-tower.ghosted.weapon";
-			DescriptionLines.addBlock(lines, Component.translatable(key + ".requires").withStyle(ChatFormatting.WHITE),
-				Component.translatable(key + ".desc").withStyle(ChatFormatting.DARK_AQUA));
-		});
+		ItemComponentTooltipProviderRegistry.addLast(TowerItems.GHOSTED, mark -> (context, lines, flag, components) ->
+			lines.accept(Component.translatable("item.mod-stella-tower.ghost_rune").withStyle(ChatFormatting.DARK_AQUA)));
 	}
 
 	/** Whether the gear takes a ghost rune: a chestplate or a weapon, one piece at a time. */

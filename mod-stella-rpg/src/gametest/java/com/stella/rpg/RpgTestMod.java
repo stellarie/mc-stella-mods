@@ -49,6 +49,8 @@ public final class RpgTestMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		// The suite pins exact stat numbers, so it runs without milestones. StatStaffGameTest turns them on.
+		StatMilestones.setBonusPerStep(0.0);
 		for (String name : new String[] {"surefooted", "seasoned_str"}) {
 			Registry.register(BuiltInRegistries.MOB_EFFECT, Identifier.fromNamespaceAndPath("mod-stella-food", name), new StandIn());
 		}

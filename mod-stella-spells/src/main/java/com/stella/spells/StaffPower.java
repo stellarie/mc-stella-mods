@@ -27,6 +27,9 @@ public final class StaffPower {
 	/** The share of the cooldown a staff removes, and what each milestone adds. */
 	public static final double COOLDOWN_BASE = 0.20;
 	public static final double COOLDOWN_PER_MILESTONE = 0.05;
+	/** The staff compound of the RPG mod's staff profile, in custom data. This mod reads the Doublecast effect from it. */
+	public static final String PROFILE_KEY = "stella_staff";
+	public static final String DOUBLECAST_EFFECT = "doublecast";
 	/** The shortest cooldown a staff leaves, as in the rest of the spell pipeline. */
 	private static final int COOLDOWN_FLOOR = 20;
 
@@ -41,6 +44,24 @@ public final class StaffPower {
 	public static int refineLevel(final ItemStack stack) {
 		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
 		return data == null ? 0 : Math.max(0, data.copyTag().getIntOr(REFINE_KEY, 0));
+	}
+
+	/**
+	 * The chance that a cast with the staff in the main hand lands twice, for every spell. A staff names its effect,
+	 * a base percent and a step percent per refine milestone. Zero for another staff or no staff.
+	 */
+	public static double doublecastChance(final Player caster) {
+		CustomData data = caster.getItemBySlot(EquipmentSlot.MAINHAND).get(DataComponents.CUSTOM_DATA);
+		if (data == null) {
+			return 0.0;
+		}
+		var tag = data.copyTag();
+		var profile = tag.getCompoundOrEmpty(PROFILE_KEY);
+		if (!DOUBLECAST_EFFECT.equals(profile.getStringOr("effect", ""))) {
+			return 0.0;
+		}
+		int percent = profile.getIntOr("base", 0) + profile.getIntOr("step", 0) * milestones(Math.max(0, tag.getIntOr(REFINE_KEY, 0)));
+		return Math.min(1.0, percent / 100.0);
 	}
 
 	/** How many milestones a refine level has reached. */

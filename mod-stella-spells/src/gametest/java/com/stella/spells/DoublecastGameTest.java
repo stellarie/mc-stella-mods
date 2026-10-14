@@ -6,7 +6,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -21,6 +23,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -102,6 +105,39 @@ public class DoublecastGameTest {
 		LOG.info("[SPELLTEST] test=aBookAndAHelmetDoNotAddUp RESULT lost={}", lost);
 		helper.assertTrue(Math.abs(lost - 2.0F * SpellCasting.DAMAGE) < 1.0E-4, "a Doublecast book and helmet took " + lost);
 		helper.succeed();
+	}
+
+	@GameTest
+	public void aDoublecastStaffLandsAnySpellTwiceAndRefineRaisesTheChance(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper, false);
+		FORCED.put(caster.getUUID(), true);
+		ItemStack staff = new ItemStack(Items.STICK);
+		staff.set(DataComponents.CUSTOM_DATA, staffProfile());
+		caster.setItemSlot(EquipmentSlot.MAINHAND, staff);
+		double unrefined = StaffPower.doublecastChance(caster);
+		CustomData.update(DataComponents.CUSTOM_DATA, staff, tag -> tag.putInt(StaffPower.REFINE_KEY, 15));
+		double refined = StaffPower.doublecastChance(caster);
+		Mob zombie = target(helper);
+		float before = zombie.getHealth();
+		SpellbookItem book = (SpellbookItem) net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(Identifier.parse("mod-stella-spells:spark_shot"));
+		caster.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(book));
+		SpellCasting.cast(caster, book, InteractionHand.OFF_HAND);
+		float lost = before - zombie.getHealth();
+		helper.getLevel().getServer().getPlayerList().remove(caster);
+		LOG.info("[SPELLTEST] test=aDoublecastStaffLandsAnySpellTwiceAndRefineRaisesTheChance RESULT unrefined={} refined={} lost={}", unrefined, refined, lost);
+		helper.assertTrue(unrefined > 0.0 && refined > unrefined, "staff chance " + unrefined + " then " + refined);
+		helper.assertTrue(Math.abs(lost - 2.0F * SpellCasting.DAMAGE) < 1.0E-4, "a staff doublecast took " + lost);
+		helper.succeed();
+	}
+
+	private static CustomData staffProfile() {
+		CompoundTag staff = new CompoundTag();
+		staff.putString("effect", StaffPower.DOUBLECAST_EFFECT);
+		staff.putInt("base", 10);
+		staff.putInt("step", 5);
+		CompoundTag root = new CompoundTag();
+		root.put(StaffPower.PROFILE_KEY, staff);
+		return CustomData.of(root);
 	}
 
 	private static float castOnce(final GameTestHelper helper, final boolean helmet, final boolean twice) {

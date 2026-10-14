@@ -82,7 +82,7 @@ public final class JobGameTest {
 		int agiGain = StatBonuses.bonus(player, Stat.AGI) - agi;
 		int strGain = StatBonuses.bonus(player, Stat.STR) - str;
 		RpgTestSupport.result("bonusCountsEveryLevel", "dex=" + dexGain + " agi=" + agiGain + " str=" + strGain);
-		helper.assertTrue(dexGain == 60 && agiGain == 30 && strGain == 0, "gains dex=" + dexGain + " agi=" + agiGain + " str=" + strGain);
+		helper.assertTrue(dexGain == 60 + Jobs.CHANGE_BONUS && agiGain == 30 + Jobs.CHANGE_BONUS && strGain == 0, "gains dex=" + dexGain + " agi=" + agiGain + " str=" + strGain);
 
 		player.experienceLevel = 1000;
 		int capped = StatBonuses.bonus(player, Stat.DEX);
@@ -110,7 +110,8 @@ public final class JobGameTest {
 			helper.assertTrue(Jobs.choose(player, entry.getKey()), entry.getKey() + " refused");
 			for (Stat stat : Stat.values()) {
 				int gain = StatBonuses.bonus(player, stat) - before[stat.ordinal()];
-				int want = stat == entry.getValue()[0] ? 40 : stat == entry.getValue()[1] ? 20 : 0;
+				int want = (stat == entry.getValue()[0] ? 40 : stat == entry.getValue()[1] ? 20 : 0)
+					+ (entry.getKey().bonusStats().contains(stat) ? Jobs.CHANGE_BONUS : 0);
 				helper.assertTrue(gain == want, entry.getKey() + " " + stat + " gain " + gain + " want " + want);
 			}
 		}
@@ -173,7 +174,7 @@ public final class JobGameTest {
 		Boolean items = grantItems.apply(player);
 		RpgTestSupport.result("shareWorks", "job=" + get.apply(player) + " trials=" + trialsDone.apply(player) + " items=" + items);
 		helper.assertTrue(Boolean.TRUE.equals(items), "grantItems gave " + items);
-		helper.assertTrue(player.getInventory().contains(stack -> stack.is(com.stella.rpg.job.JobItems.WITCH_HAT)), "the mage got no hat");
+		helper.assertTrue(player.getInventory().contains(stack -> stack.is(com.stella.rpg.job.JobItems.MAGE_STAFF)), "the mage got no staff");
 		helper.succeed();
 	}
 }

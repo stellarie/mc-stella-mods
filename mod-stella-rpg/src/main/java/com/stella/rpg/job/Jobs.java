@@ -20,7 +20,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * The job of a player. A player chooses once, from level {@link #MIN_LEVEL}, and the job is permanent. The stat bonus
+ * The job of a player. A player chooses once, from level {@link #MIN_LEVEL}, and the job is permanent. The first change to a job adds {@link #CHANGE_BONUS} to each of three stats of that job; changing to the same job again adds nothing. The stat bonus
  * counts every level the player has, also the levels before the choice. A boss trial at level 40, 70, 100, and so on
  * adds a fixed bonus once. Another mod reaches this through the object share {@link #SHARE_KEY}, a
  * {@code Map<String, Object>} of functions: {@code get}, {@code choose}, {@code grantItems}, {@code grantTrial},
@@ -34,15 +34,22 @@ public final class Jobs implements StatBonuses.Provider {
 	public static final int TRIAL_STEP = 30;
 	public static final int TRIAL_MAIN_BONUS = 5;
 	public static final int TRIAL_OTHER_BONUS = 1;
+	/** Added once per job, to each of the three stats in {@link Job#bonusStats()}, at the first change to that job. */
+	public static final int CHANGE_BONUS = 3;
 
 	/** The job is saved by key, so a renamed constant cannot break a save. */
-	public record State(Job job, List<Integer> trials) {
-		public static final State EMPTY = new State(Job.NONE, List.of());
+	public record State(Job job, List<Integer> trials, List<String> bonusJobs) {
+		public static final State EMPTY = new State(Job.NONE, List.of(), List.of());
+
+		public State(final Job job, final List<Integer> trials) {
+			this(job, trials, List.of());
+		}
 
 		private static final Codec<Job> JOB = Codec.STRING.xmap(key -> Job.byKey(key).orElse(Job.NONE), Job::key);
 		public static final Codec<State> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			JOB.optionalFieldOf("job", Job.NONE).forGetter(State::job),
-			Codec.INT.listOf().optionalFieldOf("trials", List.of()).forGetter(State::trials)
+			Codec.INT.listOf().optionalFieldOf("trials", List.of()).forGetter(State::trials),
+			Codec.STRING.listOf().optionalFieldOf("bonus_jobs", List.of()).forGetter(State::bonusJobs)
 		).apply(instance, State::new));
 	}
 
@@ -72,7 +79,12 @@ public final class Jobs implements StatBonuses.Provider {
 		if (job == Job.NONE || player.experienceLevel < MIN_LEVEL || of(player) != Job.NONE) {
 			return false;
 		}
-		player.setAttached(ATTACHMENT, new State(job, state(player).trials()));
+		State before = state(player);
+		List<String> bonusJobs = new java.util.ArrayList<>(before.bonusJobs());
+		if (!bonusJobs.contains(job.key())) {
+			bonusJobs.add(job.key());
+		}
+		player.setAttached(ATTACHMENT, new State(job, before.trials(), List.copyOf(bonusJobs)));
 		RpgAttributes.refresh(player);
 		StellaRpg.LOGGER.info("{} chose the job {}", player.getGameProfile().name(), job.key());
 		return true;
@@ -90,7 +102,7 @@ public final class Jobs implements StatBonuses.Provider {
 		}
 		Set<Integer> trials = new TreeSet<>(state.trials());
 		trials.add(level);
-		player.setAttached(ATTACHMENT, new State(state.job(), List.copyOf(trials)));
+		player.setAttached(ATTACHMENT, new State(state.job(), List.copyOf(trials), state.bonusJobs()));
 		RpgAttributes.refresh(player);
 		StellaRpg.LOGGER.info("{} finished the trial {}", player.getGameProfile().name(), level);
 		return true;
@@ -115,14 +127,26 @@ public final class Jobs implements StatBonuses.Provider {
 			return 0;
 		}
 		State state = state(player);
+		long sum = changeBonus(state, stat);
 		if (state.job() == Job.NONE) {
-			return 0;
+			return (int) sum;
 		}
 		long levels = Math.max(0, player.experienceLevel);
-		long sum = levels * state.job().perLevel(stat);
+		sum += levels * state.job().perLevel(stat);
 		int trialBonus = stat == state.job().mainStat() ? TRIAL_MAIN_BONUS : TRIAL_OTHER_BONUS;
 		sum += (long) state.trials().size() * trialBonus;
 		return (int) Math.min(Integer.MAX_VALUE, sum);
+	}
+
+	/** The one-time bonus: 3 for the stat of each job the player ever changed to, once per job. */
+	private static int changeBonus(final State state, final Stat stat) {
+		int sum = 0;
+		for (String key : state.bonusJobs()) {
+			if (Job.byKey(key).map(job -> job.bonusStats().contains(stat)).orElse(false)) {
+				sum += CHANGE_BONUS;
+			}
+		}
+		return sum;
 	}
 
 	private static State state(final ServerPlayer player) {

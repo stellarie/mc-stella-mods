@@ -63,6 +63,20 @@ The stats are STR, AGI, VIT, DEX, INT, and LUK.
   A bonus can be negative. The effective value is base plus bonus, from 0 to 2048, so a curse never takes a stat below 0.
 - Enchantments and effects grant stats. See `Stats from enchantments and effects`.
 
+### Stat milestones
+
+Every 3 points in a stat add 2% to the benefits that stat already gives. The multiplier is `1 + 0.02 * floor(stat / 3)` of the
+effective stat, so 9 STR is 3 milestones and +6%. It scales what the stat does now and adds no new effect. `StatMilestones` holds the rule.
+
+| Stat | Benefit that grows |
+|---|---|
+| STR | Status ATK of a melee hit |
+| DEX | Status ATK of a ranged hit, and the chance that a die rolls its maximum |
+| INT | MATK percent |
+| VIT | Max health from VIT, and the damage reduction |
+| AGI | Attack speed bonus |
+| LUK | Crit chance |
+
 ## Points
 
 - Total points are `12 + experience level`.
@@ -229,7 +243,7 @@ Every effect uses `max * s / (s + half)`, where `s` is the effective stat.
 
 Cooldown is not a config curve. Every skill and spell cooldown is multiplied by `1 - 0.8 * s / (s + 200)`, with `s = INT + DEX`.
 The reduction is 0 at `s` = 0, 40% at 200, about 67% at 1000, and never more than 80%.
-The spells mod applies it. The witch hat perk cuts the cooldown by 10% more.
+The spells mod applies it. A held staff with the `cdr` effect cuts the cooldown by its share more.
 
 ## Draw speed
 
@@ -737,7 +751,7 @@ The class name and every public method below are a contract.
 
 - `RpgSpells.power(player)` returns 1.0. The INT spell power curve is retired, and the `spell_power` config key is ignored.
 - `RpgSpells.cooldown(player)` returns the cooldown multiplier of every skill and spell, `1 - 0.8 * X / (X + 200)`,
-  with `X` = effective INT + DEX, times the witch hat factor. At INT 100 and DEX 100 it is 0.6.
+  with `X` = effective INT + DEX, times the held staff factor `1 - cdr`. At INT 100 and DEX 100 it is 0.6.
   The 20 tick floor belongs to the spells mod.
 - `RpgSpells.spellDamage(caster, skillPercent)` returns, in vanilla units, `base(level) * skillPercent / 100 * (1 + MATK%) + flatMATK / K`.
   `MATK%` includes the book MATK buff.
@@ -886,6 +900,20 @@ The hurt flash and the hurt sound are separate events and stay. Damage is in K u
 
 When a night is skipped, every player still in bed heals to maximum health. `RpgSleepHealMixin` hooks `ServerLevel#wakeUpAllPlayers`, which runs only on a night skip. A player who leaves the bed early does not heal.
 
+## Staff MATK
+
+A staff carries a `stella_staff` compound in its custom data: `matk` (base MATK in K units), `effect`, `base` and `step`.
+`StaffMatk` reads it from the main hand, so any mod can define a staff and this mod needs no class of that mod.
+
+- **MATK.** `matk * (1 + 0.10 * refine + 0.25 * milestones)`, with the milestones at refine +7, +10, +12 and +15. It adds to the flat MATK
+  of `RpgSpells.matkFlat`. The Mage Staff has 40 base MATK, 140 at +15.
+- **Effect.** One effect, `base` percent plus `step` percent for each milestone reached:
+  - `cdr` shortens every spell and skill cooldown (`RpgSpells.cooldown`).
+  - `crit` adds spell crit chance (`RpgCombat.rollCrit`).
+  - `pen` adds magic penetration (`RpgSpells.penetration`).
+  - `doublecast` is read by `mod-stella-spells`.
+- **Staves.** The Mage Staff is the mage starter. The craftable staves come from `mod-stella-equips-enchants`.
+
 ## Jobs
 
 A player chooses one job from level 10. The job is permanent and survives death and a save. The state is the persistent attachment `mod-stella-rpg:job`.
@@ -898,6 +926,15 @@ A player chooses one job from level 10. The job is permanent and survives death 
 | Priest | VIT | INT |
 
 - `Jobs` registers a `StatBonuses` provider. The bonus counts every level the player has, also the levels before the choice. The `StatBonuses` clamp still applies.
+- **Job change bonus.** The first change to a job adds +3 to each of three stats of that job, for good. The attachment keeps the list
+  of jobs that gave it (`bonus_jobs`), so changing to the same job again adds nothing. The bonus shows in the bonus column of the stats tab.
+
+| Job | Bonus stats, +3 each |
+|---|---|
+| Archer | DEX, AGI, LUK |
+| Fighter | STR, VIT, LUK |
+| Mage | INT, DEX, VIT |
+| Priest | VIT, INT, DEX |
 - A boss trial at level 40, 70, 100, and so on adds +5 to the main stat and +1 to each other stat. `Jobs.grantTrial(player, level)` records each trial level once.
 - Another mod reaches the jobs through the object share `mod-stella-rpg:jobs`, a `Map<String, Object>` of functions:
 
@@ -929,16 +966,17 @@ A job grants one innate skill. The skill is read from the job each time, so a jo
 
 `JobItems` registers one item for each job. `grantItems` gives the item of the player's job. Each item has a texture, a lang name, and a description. The `description` component holds a `Requires:` line (held in hand, or the worn slot) and a `Desc:` line, and `DescriptionLines` wraps them at 24 characters when the tooltip builds. Perks read the refine level `stella_refine` of the held or worn item.
 
-`grantItems` also hands out starter books when `mod-stella-spells` is installed. A new archer gets the archer books. A new mage gets Spark Shot, Chainstorm and Ice Lance, found by item id. The books go into the inventory, or drop at the player's feet when it is full. The persistent attachment `mod-stella-rpg:mage_starter_given` marks the gift and survives death, so a second job grant gives no second set. Without the spells mod the mage gets the job item alone and nothing is marked.
+`grantItems` also hands out starter books when `mod-stella-spells` is installed. A new archer gets the archer books. A new mage gets Spark Shot, Chainstorm and Ice Lance, found by item id, and the Mage Staff. No other book is given. The books go into the inventory, or drop at the player's feet when it is full. The persistent attachment `mod-stella-rpg:mage_starter_given` marks the gift and survives death, so a second job grant gives no second set. Without the spells mod the mage gets the job item alone and nothing is marked.
 
 | Item | Slot | Base | +7 | +10 | +12 | +15 |
 |---|---|---|---|---|---|---|
 | `mechanical_bow` | Hand | Full draw in 10 ticks, 1000 durability, 25% free arrow | Free arrow 35% | Arrows pierce 1 more target | Full draw in 7 ticks | Free arrow 50%. Every 5th shot fires 3 arrows |
 | `knight_sword` | Hand | +10% armor penetration, 10% bleed | Bleed 15% | Armor penetration +20% | Bleed 7% per second | +20% damage to a bleeding target |
-| `witch_hat` | Head | +25% spell damage | +30% | Magic penetration +10% | Spell cooldowns -10% | +40% spell damage, +10% spell crit chance |
+| `mage_staff` | Hand | Iron tier, 40 MATK | Extra MATK | Extra MATK | Extra MATK | Extra MATK |
 | `priest_garbs` | Chest | 20% less damage from undead, +50% healing | Healing +60% | Undead damage -30% | Each heal removes one harmful effect | Healing +75%, healed allies get Regeneration I for 3 s |
 
 - The free arrow cannot be picked up in survival.
+- **Staves.** The Mage Staff has base MATK and no attack damage. See `Staff MATK`.
 - A bleed loses 5% of current health each second for 5 seconds. A new bleed refreshes the timer and does not stack. Poison immunity does not stop it.
 - The healing perks use `RpgSpells.spellHeal`. The target perks reach a heal in the same tick, within 48 blocks of that healer.
 - The equips mod refines an item only when it knows the item. It does not know the mechanical bow yet.

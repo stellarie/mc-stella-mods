@@ -94,7 +94,8 @@
 			"com.stella.rpg.DoubleStrikeGameTest",
 			"com.stella.rpg.ArcaneWardGameTest",
 			"com.stella.rpg.SanctuaryGameTest",
-			"com.stella.rpg.CooldownReductionGameTest"
+			"com.stella.rpg.CooldownReductionGameTest",
+			"com.stella.rpg.StatStaffGameTest"
 		]
 	},
 	"depends": {

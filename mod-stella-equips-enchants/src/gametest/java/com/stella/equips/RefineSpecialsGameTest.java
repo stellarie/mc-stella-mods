@@ -658,4 +658,27 @@ public class RefineSpecialsGameTest {
 		hurt(wearer, helper.getLevel().damageSources().mobAttack(attacker), HIT / 2);
 		return new float[] {HIT / 2, attackerBefore - attacker.getHealth()};
 	}
+
+	@GameTest
+	public void aStaffRefinesForMatkAndNeverForAttackDamage(final GameTestHelper helper) {
+		for (com.stella.equips.staff.Staves.StaffDef def : com.stella.equips.staff.Staves.DEFS) {
+			ItemStack staff = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(
+				net.minecraft.resources.Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, def.id())));
+			helper.assertTrue(Refine.canRefine(staff), def.id() + " cannot be refined");
+			helper.assertTrue(!hasAttackDamage(staff), def.id() + " has attack damage before refine");
+			Refine.setLevel(staff, 15);
+			StellaEquips.LOGGER.info("[BEHAVIOR] test=staffRefine RESULT staff={} level={} attackDamage={} specials={}",
+				def.id(), Refine.level(staff), hasAttackDamage(staff), RefineSpecials.of(staff, 15));
+			helper.assertTrue(Refine.level(staff) == 15 && Refine.isStaff(staff), def.id() + " lost its staff profile or its level");
+			helper.assertTrue(!hasAttackDamage(staff), def.id() + " gained attack damage from refine");
+			helper.assertTrue(RefineSpecials.of(staff, 15).isEmpty(), def.id() + " gained a melee refine effect");
+		}
+		helper.succeed();
+	}
+
+	private static boolean hasAttackDamage(final ItemStack stack) {
+		return stack.getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS,
+			net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY).modifiers().stream()
+			.anyMatch(entry -> entry.attribute().equals(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE));
+	}
 }

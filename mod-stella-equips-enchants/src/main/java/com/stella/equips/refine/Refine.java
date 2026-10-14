@@ -114,8 +114,13 @@ public final class Refine {
 		return stack.getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem;
 	}
 
+	/** A staff has base MATK and no attack damage, so refine gives it MATK and no attack damage. */
+	public static boolean isStaff(final ItemStack stack) {
+		return com.stella.equips.staff.Staves.isStaff(stack);
+	}
+
 	public static boolean isWeapon(final ItemStack stack) {
-		return isRanged(stack) || stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
+		return isRanged(stack) || isStaff(stack) || stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY).modifiers().stream()
 			.anyMatch(entry -> entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.modifier().id().equals(Item.BASE_ATTACK_DAMAGE_ID));
 	}
 
@@ -275,7 +280,7 @@ public final class Refine {
 				}
 			} else if (isShield(stack)) {
 				add(builder, Attributes.ARMOR, SHIELD_ARMOR_ID, level * ARMOR_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, EquipmentSlotGroup.HAND);
-			} else if (!isRanged(stack)) {
+			} else if (!isRanged(stack) && !isStaff(stack)) {
 				add(builder, Attributes.ATTACK_DAMAGE, DAMAGE_ID, level * DAMAGE_PER_LEVEL, AttributeModifier.Operation.ADD_VALUE, EquipmentSlotGroup.MAINHAND);
 			}
 		}

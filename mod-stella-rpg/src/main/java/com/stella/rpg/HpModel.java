@@ -35,7 +35,7 @@ public final class HpModel {
 	public static double maxHealth(final int level, final int vit, final Job job) {
 		RpgConfig.HpRules rules = RpgConfigStore.current().hp();
 		double byLevel = rules.base() + rules.perLevel() * Math.max(0, level - 1);
-		return byLevel * (1.0 + rules.vitPercent() * Math.max(0, vit)) * rules.jobFactor(job);
+		return byLevel * (1.0 + rules.vitPercent() * Math.max(0, vit) * StatMilestones.factor(vit)) * rules.jobFactor(job);
 	}
 
 	/** The share of max health that one regeneration beat heals. */
