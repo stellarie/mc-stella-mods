@@ -512,10 +512,12 @@ A book of its own: no scroll copies it and no weapon takes it. Crafted from a bo
 
 ## Mobs that cast
 
-- **Witches** each carry two spells, chosen when they spawn: one to strike with (Spark Shot,
-  Frostbind, Briar Snare, Static Lash, Tidal Push, Wither Seal, Ice Lance, Soul Siphon, Venom Dart,
-  Blinding Flash or Ember Brand) and one to aid their side (Sanctuary, Bulwark Hymn, Tailwind, Battle
-  Hymn, Mending Word or Stoneguard). The strike lands on their target; a heal waits for a hurt ally.
+- **Witches** each carry a kit of strike skills and aid skills, rolled once and kept through saves. An
+  ordinary witch has 1 of each, an elite 2 of each, and a boss 3 of each, never the same skill twice. Strike
+  skills: Spark Shot, Frostbind, Briar Snare, Static Lash, Tidal Push, Wither Seal, Ice Lance, Soul Siphon,
+  Venom Dart, Blinding Flash, Ember Brand or Chainstorm. Aid skills: Sanctuary, Bulwark Hymn, Tailwind,
+  Battle Hymn, Mending Word, Stoneguard or Blink. Strikes land on the target in range. Heals wait for a
+  hurt ally. Stoneguard, Bulwark Hymn and Blink fire below half health or when a foe stands close.
 - **Strays** cast Ice Lance. An elite or boss stray casts Frozen Meteor too, with no combo needed.
 - **Evokers and illusioners** cast Sanctuary over the illagers around them when one is hurt, at most
   once every 20 seconds.

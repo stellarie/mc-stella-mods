@@ -47,11 +47,16 @@ import org.jspecify.annotations.Nullable;
  * witch strikes the village's foes and heals and blesses its friends. Every spell keeps its own cooldown.
  */
 public final class MobSpells {
+	/** A defensive skill that is not a spell: the witch blinks away from a close foe. */
+	public static final String BLINK = "blink";
+	public static final float DEFENSE_HEALTH_SHARE = 0.5F;
+	public static final double CLOSE_FOE_DISTANCE = 5.0;
+	public static final int BLINK_COOLDOWN_TICKS = 160;
 	public static final List<String> OFFENSIVE = List.of(
 		"spark_shot", "frostbind", "briar_snare", "static_lash", "tidal_push", "wither_seal", "ice_lance",
-		"soul_siphon", "venom_dart", "blinding_flash", "ember_brand"
+		"soul_siphon", "venom_dart", "blinding_flash", "ember_brand", "chainstorm"
 	);
-	public static final List<String> SUPPORT = List.of("sanctuary", "bulwark_hymn", "tailwind", "battle_hymn", "mending_word", "stoneguard");
+	public static final List<String> SUPPORT = List.of("sanctuary", "bulwark_hymn", "tailwind", "battle_hymn", "mending_word", "stoneguard", BLINK);
 	public static final List<String> PACK_SUPPORT = List.of("sanctuary", "bulwark_hymn", "tailwind", "battle_hymn",
 		"mending_word", "stoneguard", "phoenix_mantle", "life_bloom", "aegis_of_the_deep", "berserk",
 		"shadow_veil", "purify", "quicksilver");
@@ -124,15 +129,38 @@ public final class MobSpells {
 			return;
 		}
 		if (mob instanceof Witch witch) {
-			if (spellsOf(witch).isEmpty()) {
-				witch.addTag(CAST_TAG_PREFIX + OFFENSIVE.get(witch.getRandom().nextInt(OFFENSIVE.size())));
-				witch.addTag(CAST_TAG_PREFIX + SUPPORT.get(witch.getRandom().nextInt(SUPPORT.size())));
-			}
+			topUpKit(witch);
 			witch.getGoalSelector().addGoal(1, new Caster(witch, false));
 		} else if (mob instanceof Stray stray) {
 			stray.getGoalSelector().addGoal(1, new Caster(stray, false));
 		} else if (mob instanceof Evoker || mob instanceof Illusioner) {
 			mob.getGoalSelector().addGoal(1, new IllagerMend((AbstractIllager) mob));
+		}
+	}
+
+	/** Skills of each kind a witch carries: one, two for an elite, three for a boss. */
+	public static int kitSize(final Mob mob) {
+		AttributeInstance scale = mob.getAttribute(Attributes.SCALE);
+		if (scale != null && scale.getModifier(BOSS_SCALE) != null) {
+			return 3;
+		}
+		return isElite(mob) ? 2 : 1;
+	}
+
+	/** Adds distinct offensive and defensive skills up to the rank's count; never removes one. */
+	public static void topUpKit(final Mob mob) {
+		int size = kitSize(mob);
+		fill(mob, OFFENSIVE, size);
+		fill(mob, SUPPORT, size);
+	}
+
+	private static void fill(final Mob mob, final List<String> pool, final int size) {
+		List<String> have = spellsOf(mob);
+		List<String> free = new ArrayList<>(pool);
+		free.removeAll(have);
+		int owned = (int) have.stream().filter(pool::contains).count();
+		for (int i = owned; i < size && !free.isEmpty(); i++) {
+			mob.addTag(CAST_TAG_PREFIX + free.remove(mob.getRandom().nextInt(free.size())));
 		}
 	}
 
@@ -470,6 +498,9 @@ public final class MobSpells {
 			if (this.ticks % THINK_INTERVAL_TICKS != 0) {
 				return;
 			}
+			if (this.ticks % 200 == 0 && this.mob instanceof Witch) {
+				topUpKit(this.mob);
+			}
 			LivingEntity target = this.mob.getTarget();
 			boolean fighting = target != null && target.isAlive();
 			if (fighting && this.mob.distanceToSqr(target) <= CAST_RANGE * CAST_RANGE && this.mob.getSensing().hasLineOfSight(target)) {
@@ -482,7 +513,19 @@ public final class MobSpells {
 			}
 			for (String spell : supportOf(this.mob)) {
 				boolean healing = "sanctuary".equals(spell) || "mending_word".equals(spell);
-				boolean wanted = healing ? sideIsHurt(this.mob, MoreSpells.SUPPORT_RADIUS) : fighting || this.village && sideIsHurt(this.mob, MoreSpells.SUPPORT_RADIUS);
+				boolean guard = "stoneguard".equals(spell) || "bulwark_hymn".equals(spell);
+				boolean pressed = this.mob.getHealth() < this.mob.getMaxHealth() * DEFENSE_HEALTH_SHARE
+					|| fighting && this.mob.distanceToSqr(target) <= CLOSE_FOE_DISTANCE * CLOSE_FOE_DISTANCE;
+				if (BLINK.equals(spell)) {
+					if (fighting && pressed && this.ready(spell) && blinkNear(this.mob, target,
+						VILLAGE_WITCH_SAFE_MIN_DISTANCE, VILLAGE_WITCH_SAFE_MAX_DISTANCE)) {
+						recorder.cast(this.mob, BLINK, List.of(target));
+						this.readyAt.put(spell, this.ticks + BLINK_COOLDOWN_TICKS);
+						break;
+					}
+					continue;
+				}
+				boolean wanted = guard ? pressed : healing ? sideIsHurt(this.mob, MoreSpells.SUPPORT_RADIUS) : fighting || this.village && sideIsHurt(this.mob, MoreSpells.SUPPORT_RADIUS);
 				if (wanted && this.ready(spell) && support(this.mob, spell)) {
 					this.readyAt.put(spell, this.ticks + cooldownOf(spell));
 					break;
