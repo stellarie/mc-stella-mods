@@ -14,6 +14,8 @@ public final class LearnGoals {
 	static final int TACTIC_PRIORITY = 0;
 	/** Above the vanilla melee goals at rank 2, and level with the mob's own shield, which a tie never preempts. */
 	static final int MELEE_WAIT_PRIORITY = 1;
+	/** Above the distance goal and the melee goals at rank 2. The retreat at rank 0 still preempts a walk. */
+	static final int FORMATION_PRIORITY = 1;
 	/** Below the mobs mod's distance goal at rank 2, so a retreat still wins, and above the bow goal at rank 4. */
 	static final int RANGED_WAIT_PRIORITY = 3;
 
@@ -40,5 +42,7 @@ public final class LearnGoals {
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new InterceptGoal(mob));
 		mob.getGoalSelector().addGoal(MELEE_WAIT_PRIORITY, new DodgeCritGoal(mob));
 		mob.getGoalSelector().addGoal(RANGED_WAIT_PRIORITY, new AnswerRallyGoal(mob, false));
+		// Last of the rank: a tie never preempts, so a tactic of the goals above wins when both want to start.
+		mob.getGoalSelector().addGoal(FORMATION_PRIORITY, new FormationGoal(mob));
 	}
 }

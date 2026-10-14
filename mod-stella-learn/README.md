@@ -61,6 +61,45 @@ needs `mod-stella-mobs` and suggests `mod-stella-spells`. The plan is `docs/plan
   goals outrank any request. A mob in the `RETREAT` stance declines with the reason `survival`, and so does a mob in
   `NORMAL` at 35 percent health or less. A mob in `FIGHT`, `PURSUE` or `KITE` answers at any health.
 
+## Formations, shared sight and friendly fire
+
+**Formations.** Hostile monsters that stand within 32 blocks of each other, directly or through a chain, form a
+formation once three gather. A scan every 10 server ticks builds them again, so a mob that walks into the area joins on
+the next scan and a mob that leaves drops out. A mob with no AI joins as an ally but takes no order. A servant, a village
+friend (tags `mod-stella-mobs.no_behavior`, `mod-stella-mobs.friendly_patrol`, `mc-stella-villages.patrol` and
+`mc-stella-villages.village_witch`), the Wither and the Warden never join. At most 24 members of one formation get a slot.
+
+The slots exist while members hunt a player; the player most of them hunt is the focus. The mobs mod gives the role of
+each member (`MELEE`, `RANGED`, `MAGIC`) through its ObjectShare key. Without the key the held gear decides.
+
+| Member | Slot | What it does |
+|---|---|---|
+| Melee with a blocking item in the off hand | front | Fights where it stands. The shield goal of the mobs mod keeps its shield up |
+| Other melee, 1st, 3rd, ... | striker | With a shield bearer, waits 2.5 blocks behind it. When the bearer stands within 5.5 blocks of the player it strikes for 20 ticks, then falls back for 40. With no bearer it fights where it stands |
+| Other melee, 2nd, 4th, ... | flank | Walks to a point 6 blocks to the side of the line between the player and the formation, then fights |
+| Ranged or magic | back | A shooter nearer the player than the nearest melee unit plus 2 blocks walks to 5 blocks behind that unit, and no farther out than its firing band allows |
+| Any member at 20 percent health or less | fall back | Walks toward the nearest healthier member and stays there, until it has healed to 30 percent. It fights back when the player comes within 2.5 blocks |
+| The nearest healthy ranged member | guard | Stands 2.5 blocks from the fallen-back mob, on the player's side |
+
+A walk starts only within 20 blocks of the player (a fall back needs no player range). A walk that finds no path, or
+that makes no progress for 20 ticks, is dropped for 100 ticks and the mob's own goals take over. A mob that holds a
+callout request is not walked. The goals that wait out a shield, take cover or hold outside a chokepoint share the rank
+of the walk and are asked first, but they do not cut a walk that is already under way short. The standoff goal of the mobs mod yields to a walking mob through the ObjectShare key `mod-stella-mobs:move-override`.
+
+**Shared sight.** A mob sees a player when it could target the player now. Every mob that sees such a mob within 32 blocks,
+with a clear line, knows the player too, and so does every mob that sees one of those, down the chain. A mob that knows
+takes the player as its target when it has no live target of its own, and keeps the spot it was told
+(`SharedSight.seenSpot`). The telling is a callout of type `mod-stella-learn:sight`. It goes through
+`CalloutBoard.deliver`, which has no radius, no cap, no caller rest and no animation, and it holds no request on the receiver.
+A mob with no AI or a live target of its own is left as it is.
+
+**Friendly fire.** A blow from one hostile monster to another still lands. The victim forgets who struck it and drops the
+attacker as a target, so the vanilla retaliation and the ally defence of the mobs mod find nothing to answer. The scan also
+drops any hostile monster that a hostile monster holds as a target. A fight with a servant or a village friend is left alone.
+
+The numbers (32 blocks, 10 ticks, 20 percent, the gaps above) are constants in `Formations`, `FormationGoal` and
+`SharedSight`; they are not in `learn.json`.
+
 ## The callout animation
 
 When a monster calls, a burst of coloured dust rises over its head, a beam of the same dust runs to each mob that
@@ -89,6 +128,10 @@ The mod writes `[BEHAVIOR]` lines to the server log in the format the other mods
 | `learnPolicy REWARD` | An episode ends: what was dealt and taken, the reward, and the value before and after |
 | `learnRally SLOT` / `WALK` / `ARRIVE` / `EXPIRE` | A mob is given a flank slot, walks to it, and arrives or runs out of time |
 | `learnSpells SUPPORT` / `STRIKE` | A mob answers a callout with a spell |
+| `learnFormation JOIN` / `LEAVE` / `SLOT` | A mob joins or leaves a formation, or takes a new slot; `SLOT` gives the role, the kind and the position |
+| `learnFormation WALK` / `ARRIVE` / `STRIKE` / `GIVE_UP` | A mob starts walking to its slot, gets there, starts a strike burst, or drops the walk (`no_path` or `no_progress`) |
+| `learnSight TELL` | A mob that sees a player told others; `newTargets` counts those that took the player as target |
+| `learnFriendlyFire FORGIVE` | A hostile monster dropped another hostile monster as attacker or target |
 
 Learning is happening when `learnHabit RECORD` lines appear for a player and `learnBand SHIFT`, `learnShield WAIT`
 or `learnChoke HOLD` lines follow for mobs fighting them. A weight changed when a `learnBand SHIFT` line shows the

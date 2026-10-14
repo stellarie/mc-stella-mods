@@ -9,4 +9,9 @@ public interface CalloutHandler {
 
 	/** `index` is how many receivers accepted before this one, so a handler can give each its own share. */
 	void perform(Mob mob, ServerPlayer player, Callout callout, int index);
+
+	/** False for a callout that is told once and leaves no request for the mob to hold, so it never blocks another. */
+	default boolean holds() {
+		return true;
+	}
 }
