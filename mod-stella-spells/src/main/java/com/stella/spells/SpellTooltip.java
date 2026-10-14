@@ -110,11 +110,35 @@ public final class SpellTooltip {
 		if (live.isEmpty()) {
 			return;
 		}
+		java.util.Set<String> placed = new java.util.HashSet<>();
 		for (int i = 0; i < tooltip.size(); i++) {
-			Component replacement = live.get(lineKey(tooltip.get(i)));
+			String key = lineKey(tooltip.get(i));
+			Component replacement = live.get(key);
 			if (replacement != null) {
 				tooltip.set(i, replacement);
+				placed.add(key);
 			}
+		}
+		for (Map.Entry<String, Component> entry : live.entrySet()) {
+			if (entry.getKey().endsWith(".desc") && !placed.contains(entry.getKey())) {
+				replaceSplitDesc(tooltip, entry.getValue());
+			}
+		}
+	}
+
+	// Stored lore is split at the width, so its pieces lose the key.
+	private static void replaceSplitDesc(final List<Component> tooltip, final Component replacement) {
+		for (int i = 0; i < tooltip.size(); i++) {
+			if (!tooltip.get(i).getString().startsWith(DescriptionLines.DESC_LABEL)) {
+				continue;
+			}
+			tooltip.set(i, replacement);
+			while (i + 1 < tooltip.size() && DescriptionLines.isBlockLine(tooltip.get(i + 1))
+				&& !tooltip.get(i + 1).getString().startsWith(DescriptionLines.REQUIRES_LABEL)
+				&& !tooltip.get(i + 1).getString().startsWith(DescriptionLines.DESC_LABEL)) {
+				tooltip.remove(i + 1);
+			}
+			return;
 		}
 	}
 
