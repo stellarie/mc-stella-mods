@@ -246,7 +246,8 @@ The class covers the zombie, husk, zombie villager, drowned, and zombified pigli
 
 Every spider and cave spider, elite and boss included, heals and slows with each hit.
 
-- The spider heals 10 percent of the damage it deals.
+- The spider heals 10 percent of the damage it deals. An elite heals 20 percent and a boss 50 percent.
+- An elite spider has endless Speed II, and a boss spider endless Speed IV.
 - The victim gets Slowness I for 100 ticks.
 - A hit that a shield blocks deals no damage, so it does neither.
 - No spider places or casts a web, elite and boss spiders included.
