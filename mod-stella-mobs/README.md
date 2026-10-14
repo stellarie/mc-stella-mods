@@ -134,6 +134,10 @@ Ranged units shoot from up to 24 blocks away, and their shots lead a moving targ
 - **Lead:** a stray, a bogged, an elite stray's sniper arrow, a blaze, a ghast, and a witch aim at where a moving
   target will be when the shot arrives. A player's movement is the movement the client reported.
   A skeleton's burst arrows do not lead yet.
+- **Clearance:** a skeleton, stray, or bogged that has another mob in its line of fire lifts the aim, in steps of
+  2.5 degrees up to 55, until the arrow flies over that mob and still reaches the target. A shot too short to
+  come down again at full speed tries lower speeds, down to 30 percent, so the arrow lobs and hits softer.
+  With no such flight the shot keeps its aim and speed. An elite stray's sniper arrow does not lift.
 - **Limits:** a mob saved before this change keeps the band that `mod-stella-learn` stored for it. Friendly fire
   grows with range. A spell caster from `mod-stella-spells` keeps its own range of 16 blocks.
 
@@ -225,6 +229,9 @@ A creative or spectator player never starts the guard.
 - An axe hit on the raised shield disables it for the axe's time, which is 5 seconds. No strike back follows.
 - A ranged bearer, a non-player target, and an arrow in flight keep the older rule.
   The mob holds the shield for 20 ticks, stands still, then rests for 40 ticks.
+- In every mode the mob faces its attacker for as long as the shield is up. The attacker is the mob or player that
+  hurt it in the last 60 ticks, or the shooter of an arrow in flight.
+  Body and head turn together by up to 45 degrees a tick, so a hit from behind turns the mob round at once.
 
 ### Zombie pursuit (`ZombiePursuit`)
 
@@ -235,10 +242,19 @@ The class covers the zombie, husk, zombie villager, drowned, and zombified pigli
   The drowned keeps its own attack goal, and an elite or hardened zombie already follows an unseen target.
 - The follow range does not change. A larger range would also widen how far a zombie picks a target.
 
+### Spider bite (`SpiderBite`)
+
+Every spider and cave spider, elite and boss included, heals and slows with each hit.
+
+- The spider heals 10 percent of the damage it deals.
+- The victim gets Slowness I for 100 ticks.
+- A hit that a shield blocks deals no damage, so it does neither.
+- A spider that is not elite or boss no longer places a web.
+
 ### Spider signal (`SpiderSignal`)
 
-A spider that webs a player calls monsters onto that player. The call goes out after a web trap web.
-It also goes out after an elite or boss spider casts at least one web.
+An elite or boss spider that webs a player calls monsters onto that player.
+The call goes out after the spider casts at least one web.
 
 - Monsters within 24 blocks of the spider answer, nearest first, up to 6 monsters.
 - A spider calls at most once every 100 of its own ticks.

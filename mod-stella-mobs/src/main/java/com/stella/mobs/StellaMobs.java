@@ -113,6 +113,7 @@ public class StellaMobs implements ModInitializer {
 		ServerLivingEntityEvents.AFTER_DEATH.register(IllusionerKit::afterDeath);
 		ServerEntityEvents.ENTITY_LOAD.register(IllusionerKit::onLoad);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(BroodMother::afterDamage);
+		com.stella.mobs.behavior.SpiderBite.register();
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(Decay::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(ZombieAfflictions::afterDamage);
 		ServerLivingEntityEvents.AFTER_DAMAGE.register(VoidDrag::afterDamage);

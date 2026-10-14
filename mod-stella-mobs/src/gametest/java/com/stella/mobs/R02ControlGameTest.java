@@ -447,18 +447,14 @@ public class R02ControlGameTest {
 		helper.assertTrue("EscapeDecision".equals(resultType),
 			"CreeperEscapeController.apply returns " + resultType + " instead of EscapeDecision");
 		Arena arena = Arena.build(helper, "r02DoesNotAddMoveGoals", NO_GEAR_CONFIG, EntityTypes.SPIDER, 2, 2, false);
-		boolean spiderWebPresent = arena.subject().getGoalSelector().getAvailableGoals().stream()
-			.anyMatch(wrapped -> wrapped.getGoal().getClass().getSimpleName().equals("SpiderWebTrapGoal")
-				&& wrapped.getPriority() == 5 && wrapped.getFlags().isEmpty());
 		long r02MoveGoals = arena.subject().getGoalSelector().getAvailableGoals().stream()
 			.filter(wrapped -> wrapped.getGoal().getClass().getSimpleName().contains("CreeperEscape")
 				&& wrapped.getFlags().contains(net.minecraft.world.entity.ai.goal.Goal.Flag.MOVE))
 			.count();
-		helper.runBeforeTestEnd(() -> arena.log().customResult("STRUCTURE", spiderWebPresent ? "WEB_GOAL_PRESENT" : "WEB_GOAL_MISSING",
+		helper.runBeforeTestEnd(() -> arena.log().customResult("STRUCTURE", "NO_MOVE_GOAL_CHECK",
 			"r02MoveGoals=" + r02MoveGoals));
-		helper.assertTrue(spiderWebPresent, "the no-flag R08 goal is missing from Spider");
 		helper.assertTrue(r02MoveGoals == 0L, "R02 added a MOVE Goal and risked a priority tie");
-		arena.log().customResult("R02", "NO_MOVE_GOAL", "r02MoveGoals=" + r02MoveGoals + " spiderWebFlags=none");
+		arena.log().customResult("R02", "NO_MOVE_GOAL", "r02MoveGoals=" + r02MoveGoals);
 		helper.succeed();
 	}
 

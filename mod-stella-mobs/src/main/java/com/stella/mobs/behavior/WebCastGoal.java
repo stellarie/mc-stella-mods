@@ -22,6 +22,7 @@ import net.minecraft.world.level.gamerules.GameRules;
  * after ten seconds. Flagless, so it never contends with the spider's own movement.
  */
 public class WebCastGoal extends Goal {
+	public static final int PRIORITY = 5;
 	public static final int WEBS = 3;
 	public static final int COOLDOWN_TICKS = 160;
 	public static final double RANGE = 12.0;
