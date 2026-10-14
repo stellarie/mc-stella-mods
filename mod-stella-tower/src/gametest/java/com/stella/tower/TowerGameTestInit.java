@@ -70,6 +70,12 @@ public final class TowerGameTestInit implements ModInitializer {
 			return;
 		}
 		Item.Properties properties = new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id)).stacksTo(1);
+		if (id.equals(BONE_SHIELD)) {
+			properties = properties.component(net.minecraft.core.component.DataComponents.BLOCKS_ATTACKS, new net.minecraft.world.item.component.BlocksAttacks(0.25F, 1.0F,
+				java.util.List.of(new net.minecraft.world.item.component.BlocksAttacks.DamageReduction(90.0F, java.util.Optional.empty(), 0.0F, 1.0F)),
+				new net.minecraft.world.item.component.BlocksAttacks.ItemDamageFunction(3.0F, 1.0F, 1.0F),
+				java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty()));
+		}
 		Registry.register(BuiltInRegistries.ITEM, id, bow ? new BowItem(properties) : new Item(properties));
 	}
 }

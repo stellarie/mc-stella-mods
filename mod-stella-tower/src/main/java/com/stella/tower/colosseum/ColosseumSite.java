@@ -11,7 +11,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 
 /**
- * Where the colosseum stands: a spot 96 to 256 blocks from the world spawn, read from the terrain noise alone, so no chunk
+ * Where the colosseum stands: a spot 96 blocks or more, and at most the given distance, from the world spawn, read from the terrain noise alone, so no chunk
  * is generated to look. Dry and level ground comes first; if too little turns up in the tries, the least bad spots follow
  * and the builder levels them.
  */
@@ -21,7 +21,6 @@ final class ColosseumSite {
 	private static final int FALLBACK_TRIES = 12;
 	/** The spot is drawn inside the band, away from its ends, so rounding never leaves it. */
 	private static final double NEAREST = Colosseum.MIN_FROM_SPAWN + 16.0;
-	private static final double FARTHEST = Colosseum.MAX_FROM_SPAWN - 24.0;
 	private static final int STEP = 16;
 	/** A site this level and dry is taken without looking further. */
 	private static final int LEVEL_ENOUGH = 5;
@@ -42,13 +41,14 @@ final class ColosseumSite {
 	 * The best spots found, flattest and driest first, each the centre column at the floor layer. The search ends once it has
 	 * found {@value #ENOUGH} level dry spots.
 	 */
-	static List<BlockPos> candidates(final ServerLevel level) {
-		List<BlockPos> found = search(level, QUICK_SLOPE, TRIES);
+	static List<BlockPos> candidates(final ServerLevel level, final int maxFromSpawn) {
+		List<BlockPos> found = search(level, QUICK_SLOPE, TRIES, maxFromSpawn);
 		// Steep all round the spawn: take the least bad of a few spots, unscreened, and let the builder level it.
-		return found.isEmpty() ? search(level, Integer.MAX_VALUE, FALLBACK_TRIES) : found;
+		return found.isEmpty() ? search(level, Integer.MAX_VALUE, FALLBACK_TRIES, maxFromSpawn) : found;
 	}
 
-	private static List<BlockPos> search(final ServerLevel level, final int quickSlope, final int tries) {
+	private static List<BlockPos> search(final ServerLevel level, final int quickSlope, final int tries, final int maxFromSpawn) {
+		double farthest = maxFromSpawn - 24.0;
 		ChunkGenerator generator = level.getChunkSource().getGenerator();
 		RandomState randomState = level.getChunkSource().randomState();
 		BlockPos spawn = level.getRespawnData().pos();
@@ -58,7 +58,7 @@ final class ColosseumSite {
 		List<BlockPos> spots = new ArrayList<>();
 		for (int attempt = 0; attempt < tries; attempt++) {
 			double angle = random.nextDouble() * Math.PI * 2.0;
-			double distance = NEAREST + random.nextDouble() * (FARTHEST - NEAREST);
+			double distance = NEAREST + random.nextDouble() * (farthest - NEAREST);
 			int x = spawn.getX() + (int) Math.round(Math.cos(angle) * distance);
 			int z = spawn.getZ() + (int) Math.round(Math.sin(angle) * distance);
 			if (!quickLevel(generator, randomState, level, x, z, quickSlope)) {

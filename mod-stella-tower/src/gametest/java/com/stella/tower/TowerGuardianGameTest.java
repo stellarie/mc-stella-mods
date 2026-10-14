@@ -54,7 +54,7 @@ public class TowerGuardianGameTest {
 	private static final double SPEC_BLINK_DISTANCE = 8.0;
 	private static final double SPEC_VANILLA_HORSE_SPEED = 0.3375;
 	private static final double SPEC_VANILLA_HORSE_JUMP = 1.0;
-	private static final EquipmentSlot[] ARMOUR = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+	private static final EquipmentSlot[] ARMOUR = {EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
 	private static final EquipmentSlot[] KIT = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET,
 		EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
 
@@ -99,6 +99,9 @@ public class TowerGuardianGameTest {
 				wrongKit += melee.rider().getItemBySlot(slot).getItem() == archer.rider().getItemBySlot(slot).getItem()
 					&& BuiltInRegistries.ITEM.getKey(melee.rider().getItemBySlot(slot).getItem()).getPath().startsWith("netherite_") ? 0 : 1;
 			}
+			wrongKit += melee.rider().getItemBySlot(EquipmentSlot.HEAD).is(Items.NETHERITE_HELMET) ? 0 : 1;
+			wrongKit += archer.rider().getItemBySlot(EquipmentSlot.HEAD).is(item(TowerGameTestInit.SKELETON_CROWN)) ? 0 : 1;
+			wrongKit += melee.rider().getOffhandItem().is(item(TowerGameTestInit.BONE_SHIELD)) ? 0 : 1;
 			wrongKit += melee.rider().getMainHandItem().is(Items.NETHERITE_SWORD) ? 0 : 1;
 			wrongKit += archer.rider().getMainHandItem().is(item(TowerGameTestInit.RUDRA_BOW)) ? 0 : 1;
 			int drops = 0;
@@ -126,6 +129,33 @@ public class TowerGuardianGameTest {
 			helper.assertTrue(flat(melee.rider().position(), Vec3.atBottomCenterOf(rig.center.offset(-11, 1, 0))) < 3.0, "the melee guardian is off its post");
 			helper.succeed();
 		});
+	}
+
+	/** Catches a melee guardian whose off-hand shield is never raised, or is raised and does not turn a blow aside. */
+	@GameTest(maxTicks = 700)
+	public void theMeleeGuardianRaisesItsBoneShieldAndBlocksABlow(final GameTestHelper helper) {
+		GuardianRig rig = GuardianRig.build(helper, 40);
+		Guardians.Spawned[] melee = new Guardians.Spawned[1];
+		ServerPlayer[] player = new ServerPlayer[1];
+		boolean[] hit = {false};
+		rig.ready(() -> {
+			melee[0] = rig.spawn(GuardianKind.MELEE, -11, 0);
+			player[0] = rig.sturdy(rig.player(-6, 0, 90.0F));
+		});
+		rig.each(() -> {
+			Mob rider = melee[0] == null ? null : melee[0].rider();
+			if (hit[0] || rider == null || rig.elapsed() < 20L || rider.getItemBlockingWith() == null) {
+				return;
+			}
+			hit[0] = true;
+			float before = rider.getHealth();
+			rider.hurtServer(rig.level, rig.level.damageSources().playerAttack(player[0]), 100.0F);
+			float lost = before - rider.getHealth();
+			TowerTestSupport.result("guardianShield", "lost=" + lost + " of 100");
+			helper.assertTrue(lost < 20.0F, "a raised shield let " + lost + " of 100 damage through");
+			helper.succeed();
+		});
+		rig.after(600L, () -> helper.assertTrue(hit[0], "the melee guardian never raised its shield"));
 	}
 
 	/**

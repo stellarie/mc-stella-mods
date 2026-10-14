@@ -34,12 +34,12 @@ import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The ruined colosseum the world builds once, 96 to 256 blocks from its spawn: its look, its lit portal, its offering chest,
+ * The ruined colosseum the world builds once, at most 1024 blocks from its spawn: its look, its lit portal, its offering chest,
  * and what the chest does. The test world keeps the colosseum its first start built, so a later run reads the same one.
  */
 public class ColosseumGameTest {
 	private static final int SPEC_MIN_FROM_SPAWN = 96;
-	private static final int SPEC_MAX_FROM_SPAWN = 256;
+	private static final int SPEC_MAX_FROM_SPAWN = 1024;
 	private static final int SPEC_RADIUS = 32;
 	private static final int SPEC_BONES = 128;
 
@@ -73,7 +73,7 @@ public class ColosseumGameTest {
 	 * drawn from, which the claim keeps: the harness moves the world spawn to its test grid after the build.
 	 */
 	@GameTest(maxTicks = 100)
-	public void theColosseumStandsBetween96And256BlocksFromTheSpawn(final GameTestHelper helper) {
+	public void theColosseumStandsWithin1024BlocksOfTheSpawn(final GameTestHelper helper) {
 		ServerLevel level = overworld(helper);
 		Colosseum.Layout layout = layout(helper);
 		BlockPos spawn = ColosseumData.get(level).spawn();

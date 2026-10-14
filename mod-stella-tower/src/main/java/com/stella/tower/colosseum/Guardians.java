@@ -186,6 +186,11 @@ public final class Guardians {
 		rider.setItemSlot(EquipmentSlot.FEET, unbreakable(new ItemStack(Items.NETHERITE_BOOTS)));
 		Item weapon = kind == GuardianKind.MELEE ? Items.NETHERITE_SWORD : BuiltInRegistries.ITEM.getOptional(RUDRA_BOW).orElse(Items.BOW);
 		rider.setItemSlot(EquipmentSlot.MAINHAND, unbreakable(new ItemStack(weapon)));
+		if (kind == GuardianKind.RANGED) {
+			BuiltInRegistries.ITEM.getOptional(kind.drop()).ifPresent(crown -> rider.setItemSlot(EquipmentSlot.HEAD, unbreakable(new ItemStack(crown))));
+		} else {
+			BuiltInRegistries.ITEM.getOptional(kind.drop()).ifPresent(shield -> rider.setItemSlot(EquipmentSlot.OFFHAND, unbreakable(new ItemStack(shield))));
+		}
 		for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
 			rider.setDropChance(slot, 0.0F);
 		}
