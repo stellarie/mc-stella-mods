@@ -103,6 +103,22 @@ public class BlazeAttackGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 300)
+	public void aBlazeBehindAWallRisesToAClearLineThenFires(final GameTestHelper helper) {
+		Blaze blaze = blaze(helper, false, false);
+		for (int x = 0; x < 8; x++) {
+			for (int y = 1; y <= 3; y++) {
+				helper.setBlock(new BlockPos(x, y, 4), Blocks.STONE);
+			}
+		}
+		Zombie target = target(helper, blaze);
+		helper.succeedWhen(() -> {
+			helper.assertTrue(blaze.getSensing().hasLineOfSight(target), "the blaze has no clear line to the target yet");
+			helper.assertTrue(!FIRED.getOrDefault(blaze.getUUID(), List.of()).isEmpty(), "the blaze has fired no ball yet");
+			blaze.discard();
+		});
+	}
+
 	@GameTest(maxTicks = 100)
 	public void aBlazeNearItsTargetFiresAnUnsplitBall(final GameTestHelper helper) {
 		Blaze blaze = blaze(helper, false, false);

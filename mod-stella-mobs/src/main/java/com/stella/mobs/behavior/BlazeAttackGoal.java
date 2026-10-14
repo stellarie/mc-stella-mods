@@ -20,7 +20,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.monster.Blaze;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Every blaze fires one fireball on a steady beat, and each ball bursts in an explosion that harms
@@ -39,6 +43,11 @@ public class BlazeAttackGoal extends Goal {
 	/** Living called blazes a boss may have at once, so a long fight cannot fill the sky. */
 	public static final int BOSS_SUMMON_CAP = 3;
 	private static final double SUMMON_SPREAD = 2.0;
+	private static final int SPOT_REFRESH_TICKS = 10;
+	private static final double SPOT_SPEED = 0.08;
+	/** Height changes, tried before any sideways move. */
+	private static final int[] HEIGHT_OFFSETS = {0, 2, -2, 4, -4, 6, -6};
+	private static final double[] SIDE_OFFSETS = {0.0, 3.0, 6.0};
 
 	public interface Recorder {
 		default void fired(final Blaze blaze, final int serverTick) {
@@ -61,6 +70,8 @@ public class BlazeAttackGoal extends Goal {
 
 	private final Blaze blaze;
 	private int cooldown;
+	private @Nullable Vec3 spot;
+	private int spotTicks;
 
 	public BlazeAttackGoal(final Blaze blaze) {
 		this.blaze = blaze;
@@ -139,6 +150,10 @@ public class BlazeAttackGoal extends Goal {
 		boolean sees = this.blaze.getSensing().hasLineOfSight(target);
 		double range = this.blaze.getAttributeValue(Attributes.FOLLOW_RANGE);
 		// Close in when the target is out of sight or out of range, and hold position to fire otherwise.
+		if (!sees && this.reposition(target)) {
+			return;
+		}
+
 		if (!sees || this.blaze.distanceToSqr(target) > range * range) {
 			this.blaze.getNavigation().moveTo(target, 1.0);
 		} else {
@@ -151,6 +166,58 @@ public class BlazeAttackGoal extends Goal {
 
 		this.cooldown = intervalFor(this.blaze);
 		this.fire(target);
+	}
+
+	/** Flies toward an air spot with a clear line to the target. False when no spot is near. */
+	private boolean reposition(final LivingEntity target) {
+		if (this.spot == null || --this.spotTicks <= 0 || !this.clear(this.spot, target)) {
+			this.spot = this.findSpot(target);
+			this.spotTicks = SPOT_REFRESH_TICKS;
+		}
+
+		if (this.spot == null) {
+			return false;
+		}
+
+		this.blaze.getNavigation().stop();
+		Vec3 toSpot = this.spot.subtract(this.blaze.position());
+		if (toSpot.lengthSqr() > 0.04) {
+			Vec3 push = toSpot.normalize().scale(SPOT_SPEED);
+			this.blaze.setDeltaMovement(this.blaze.getDeltaMovement().scale(0.6).add(push));
+		}
+
+		return true;
+	}
+
+	/** Tries other heights first, nearest first, then spots to the side at the same heights. */
+	private @Nullable Vec3 findSpot(final LivingEntity target) {
+		Level level = this.blaze.level();
+		Vec3 base = this.blaze.position();
+		for (int side = 0; side < SIDE_OFFSETS.length; side++) {
+			for (int dy : HEIGHT_OFFSETS) {
+				for (int dir = 0; dir < 8; dir++) {
+					double angle = dir * Math.PI / 4.0;
+					double radius = SIDE_OFFSETS[side];
+					Vec3 spot = base.add(Math.cos(angle) * radius, dy, Math.sin(angle) * radius);
+					if (level.noCollision(this.blaze, this.blaze.getBoundingBox().move(spot.subtract(base))) && this.clear(spot, target)) {
+						return spot;
+					}
+
+					if (radius == 0.0) {
+						break;
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private boolean clear(final Vec3 feet, final LivingEntity target) {
+		Vec3 eye = feet.add(0.0, this.blaze.getEyeHeight(), 0.0);
+		Vec3 end = new Vec3(target.getX(), target.getEyeY(), target.getZ());
+		return this.blaze.level().clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this.blaze)).getType()
+			== HitResult.Type.MISS;
 	}
 
 	private void fire(final LivingEntity target) {
