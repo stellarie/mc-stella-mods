@@ -27,6 +27,9 @@ public final class StellaLearn implements ModInitializer {
 		LearnCommand.register();
 		CalloutKits.register();
 		CalloutSender.register();
+		SharedSight.register();
+		FriendlyFire.register();
+		Formations.register();
 	}
 
 	public static Identifier id(final String path) {

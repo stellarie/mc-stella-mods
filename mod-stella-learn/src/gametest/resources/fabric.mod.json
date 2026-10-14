@@ -28,7 +28,8 @@
 			"com.stella.learn.MovementTacticsGameTest",
 			"com.stella.learn.BanditGameTest",
 			"com.stella.learn.TacticGoalGameTest",
-			"com.stella.learn.ServantModesGameTest"
+			"com.stella.learn.ServantModesGameTest",
+			"com.stella.learn.FormationGameTest"
 		],
 		"main": [
 			"com.stella.learn.LearnTestInit"

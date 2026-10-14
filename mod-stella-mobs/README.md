@@ -529,6 +529,16 @@ nothing and do not throw. The ruins mod uses it for its site mobs.
 
 `SpawnScaling.LEVEL_HEALTH_BONUS` stays public: `mod-stella-spells` reads it by name for its summons.
 
+## Group links (`CombatShare`)
+
+`com.stella.mobs.behavior.CombatShare` is the link to a mod that drives groups of mobs. The learning mod uses it for
+its formations. Neither mod needs a class of the other.
+
+- `mod-stella-mobs:combat-role` is a `Function<Mob, String>` that this mod puts. It answers `MELEE`, `RANGED` or `MAGIC`.
+- `mod-stella-mobs:combat-band` is a `Function<Mob, double[]>` that this mod puts. It answers the near and far edge of the band.
+- `mod-stella-mobs:move-override` is a `Predicate<Mob>` that the other mod puts. While it is true for a mob, `HoldStandoffGoal`
+  does not hold that mob, because it would stop the other mod's walk on every tick. With no predicate, nothing changes.
+
 ## Elite bounty
 
 An elite that a player kills drops `min(32, 2 + level / 10)` emeralds. A boss drops four times that. A kill by

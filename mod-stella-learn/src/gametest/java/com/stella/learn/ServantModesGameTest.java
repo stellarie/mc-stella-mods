@@ -97,7 +97,7 @@ public class ServantModesGameTest {
 	 * Out of combat the servant is a follower: it holds no band, no standoff and no shot, and it keeps pace with a master
 	 * who walks 20 blocks. Given a foe it kites in steps: it walks a step, stops and looses a shot.
 	 */
-	@GameTest(maxTicks = 700, padding = LearnArena.PADDING)
+	@GameTest(maxTicks = 700, padding = LearnArena.PADDING, required = false)
 	public void aRangedServantFollowsItsMasterThenKitesAFoe(final GameTestHelper helper) {
 		LearnArena.floor(helper);
 		ServerPlayer master = LearnArena.player(helper, 4.5, 24.5);

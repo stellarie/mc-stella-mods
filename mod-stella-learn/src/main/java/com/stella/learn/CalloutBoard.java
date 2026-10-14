@@ -89,6 +89,26 @@ public final class CalloutBoard {
 		return answers;
 	}
 
+	/**
+	 * Gives one callout to the named receivers: no radius, no cap, no rest for the caller and no animation. Shared sight
+	 * uses it, because the mobs that must hear are those a chain of sight reached. Each receiver still decides for itself.
+	 */
+	public static List<Answer> deliver(final Mob caller, final ServerPlayer player, final Callout callout, final List<? extends Mob> receivers) {
+		List<Answer> answers = new ArrayList<>();
+		int accepted = 0;
+		for (Mob receiver : receivers) {
+			Answer answer = decide(receiver, player, callout, accepted);
+			if (answer.accepted()) {
+				accepted++;
+			}
+
+			answers.add(answer);
+			LearnLog.debug("learnCallout", "DELIVER", LearnLog.who(caller) + " receiver=" + receiver.getUUID() + " accepted=" + answer.accepted() + " reason=" + answer.reason());
+		}
+
+		return answers;
+	}
+
 	private static void logSend(
 		final Mob caller, final ServerPlayer player, final Callout callout, final LearnConfig config, final List<Answer> answers, final int accepted
 	) {
@@ -116,11 +136,14 @@ public final class CalloutBoard {
 		}
 
 		Active held = active(receiver);
-		if (held != null && held.callout().priority() >= callout.priority()) {
+		if (handler.holds() && held != null && held.callout().priority() >= callout.priority()) {
 			return new Answer(receiver.getUUID(), false, "busier");
 		}
 
-		((AttachmentTarget) receiver).setAttached(ACTIVE, new Active(callout, receiver.tickCount + callout.durationTicks()));
+		if (handler.holds()) {
+			((AttachmentTarget) receiver).setAttached(ACTIVE, new Active(callout, receiver.tickCount + callout.durationTicks()));
+		}
+
 		handler.perform(receiver, player, callout, index);
 		return new Answer(receiver.getUUID(), true, ACCEPTED);
 	}
