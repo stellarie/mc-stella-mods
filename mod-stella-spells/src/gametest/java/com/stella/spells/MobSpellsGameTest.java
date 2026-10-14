@@ -58,6 +58,24 @@ public class MobSpellsGameTest {
 		helper.succeed();
 	}
 
+	@GameTest
+	public void aBossWitchCarriesThreeStrikingAndThreeAidingSpells(final GameTestHelper helper) {
+		floor(helper);
+		Witch witch = mob(helper, EntityTypes.WITCH, 2, 2, List.of());
+		for (String id : List.of("elite_scale", "boss_scale")) {
+			witch.getAttribute(Attributes.SCALE).addPermanentModifier(new AttributeModifier(
+				Identifier.fromNamespaceAndPath("mod-stella-mobs", id), 0.4, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+		}
+		MobSpells.topUpKit(witch);
+		List<String> spells = MobSpells.spellsOf(witch);
+		List<String> striking = spells.stream().filter(MobSpells.OFFENSIVE::contains).toList();
+		List<String> aiding = spells.stream().filter(MobSpells.SUPPORT::contains).toList();
+		LOG.info("[SPELLTEST] test=aBossWitchCarriesThreeStrikingAndThreeAidingSpells RESULT spells={}", spells);
+		helper.assertTrue(striking.size() == 3 && aiding.size() == 3 && spells.size() == 6
+			&& spells.stream().distinct().count() == 6, "the boss witch carries " + spells);
+		helper.succeed();
+	}
+
 	@GameTest(maxTicks = 100)
 	public void aWitchCastsItsSpellAtItsTarget(final GameTestHelper helper) {
 		floor(helper);
