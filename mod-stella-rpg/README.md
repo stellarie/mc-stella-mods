@@ -1046,3 +1046,9 @@ enchantment (`mod-stella-equips-enchants:armor/second_wind`) restores the player
 effect and fire, and grants Resistance V for 2 seconds, a sound, and an action-bar message. Without the enchantment
 nothing is caught. A held totem of undying fires instead. Damage that bypasses invulnerability, such as
 the void or `/kill`, is never caught. The cooldown is saved with the player.
+
+## Staff ATK parity
+
+A staff in the main hand turns its ATK bonuses into MATK of the same size. Flat damage rolls add flat MATK.
+Damage percent rolls add MATK percent. Damage enchantments that need no target, such as Sharpness, add flat MATK.
+A sword, axe or bow adds nothing to MATK. Smite, Bane of Arthropods and Impaling need a target, so they are not mapped.

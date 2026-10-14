@@ -61,6 +61,29 @@ public final class MatkGameTest {
 	}
 
 	@GameTest
+	public void staffEnchantAndRollRaiseMatk(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		var enchants = helper.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+		ItemStack staff = RpgTestSupport.withAffixes(com.stella.rpg.job.JobItems.MAGE_STAFF, Map.of("damage_flat", 10, "damage_pct", 100));
+		staff.enchant(enchants.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 5);
+		ItemStack sword = RpgTestSupport.withAffixes(Items.IRON_SWORD, Map.of("damage_flat", 10, "damage_pct", 100));
+		sword.enchant(enchants.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 5);
+		player.setItemSlot(EquipmentSlot.MAINHAND, sword);
+		double swordFlat = RpgSpells.matkFlat(player);
+		double swordPct = RpgSpells.matkPercent(player);
+		player.setItemSlot(EquipmentSlot.MAINHAND, staff);
+		double staffFlat = RpgSpells.matkFlat(player);
+		double staffPct = RpgSpells.matkPercent(player);
+		helper.assertTrue(swordFlat == 0.0 && swordPct == 0.0,
+			"a sword added MATK: " + swordFlat + " " + swordPct);
+		helper.assertTrue(staffFlat > 10.0 + com.stella.rpg.StaffMatk.heldMatk(player) - EPSILON && staffPct - swordPct > 0.099,
+			"a staff added no MATK: " + staffFlat + " " + staffPct);
+		player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+		RpgTestSupport.result("staffEnchantAndRollRaiseMatk", "staffFlat=" + staffFlat + " staffPct=" + staffPct);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void spellDamageAndHeal(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		float k = RpgScale.kf();

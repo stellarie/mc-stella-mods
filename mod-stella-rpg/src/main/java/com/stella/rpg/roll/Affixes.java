@@ -37,7 +37,16 @@ public final class Affixes {
 		}
 		ItemStack held = entity.getItemBySlot(EquipmentSlot.MAINHAND);
 		Affix.Kind kind = WeaponRolls.kindOf(held);
-		return kind != null && affix.readsOn(kind) ? stored(held, affix, kind) : 0.0;
+		double rolled = kind != null && affix.readsOn(kind) ? stored(held, affix, kind) : 0.0;
+		// A staff turns its ATK rolls into MATK of the same size. Other weapons do not.
+		if (com.stella.rpg.StaffMatk.isStaff(held)) {
+			if (affix == Affix.MATK_FLAT) {
+				rolled += raw(held, Affix.DAMAGE_FLAT);
+			} else if (affix == Affix.MATK_PCT) {
+				rolled += raw(held, Affix.DAMAGE_PCT);
+			}
+		}
+		return rolled;
 	}
 
 	/** Flat MATK from affixes. K units. A book's refine level adds nothing here: the spells mod scales the book itself. */
@@ -81,6 +90,11 @@ public final class Affixes {
 		if (existing == null || existing.amount() != amount) {
 			instance.addOrReplacePermanentModifier(new AttributeModifier(id, amount, operation));
 		}
+	}
+
+	private static double raw(final ItemStack stack, final Affix affix) {
+		Map<String, Integer> rolls = stack.get(WeaponRolls.AFFIX_ROLLS);
+		return rolls == null ? 0.0 : affix.amount(Math.max(0, rolls.getOrDefault(affix.key(), 0)));
 	}
 
 	private static double stored(final ItemStack stack, final Affix affix, final Affix.Kind kind) {
