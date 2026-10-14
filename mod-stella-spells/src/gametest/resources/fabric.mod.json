@@ -7,6 +7,7 @@
 	"entrypoints": {
 		"fabric-gametest": [
 			"com.stella.spells.SparkShotGameTest",
+			"com.stella.spells.SpellBoltGameTest",
 			"com.stella.spells.SpellEnchantmentsGameTest",
 			"com.stella.spells.SpellbookCatalogGameTest",
 			"com.stella.spells.ScrollBookGameTest",

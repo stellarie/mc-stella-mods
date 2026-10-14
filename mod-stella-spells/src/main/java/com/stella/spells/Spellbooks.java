@@ -89,6 +89,7 @@ public final class Spellbooks implements ModInitializer {
 		SpellStorms.register();
 		SpellVisuals.register();
 		DragonCharge.register();
+		SpellBolt.register();
 		SpellImbue.register();
 		SpellTimers.register();
 		BookRefine.register();
