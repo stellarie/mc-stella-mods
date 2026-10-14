@@ -333,7 +333,7 @@ public final class SpellImbue {
 		if (victim instanceof ServerPlayer wearer && source.getEntity() instanceof LivingEntity attacker && attacker != wearer && damage > 0.0F) {
 			ItemStack chest = wearer.getItemBySlot(EquipmentSlot.CHEST);
 			for (Identifier spell : spellsOf(chest)) {
-				cast(wearer, spell, attacker, chest, false);
+				cast(wearer, spell, attacker, chest, false, false);
 			}
 		}
 		if (source.getEntity() instanceof Mob wielder && source.getDirectEntity() == wielder && victim != wielder) {
@@ -361,8 +361,10 @@ public final class SpellImbue {
 			return;
 		}
 		for (Identifier spell : spellsOf(focus)) {
-			if (!rolled || procs(player)) {
-				cast(player, spell, victim, focus, false);
+			if (!rolled) {
+				cast(player, spell, victim, focus, false, false);
+			} else if (procs(player)) {
+				cast(player, spell, victim, focus, false, true);
 			}
 		}
 	}
@@ -375,7 +377,7 @@ public final class SpellImbue {
 		}
 		for (Identifier spell : spellsOf(bow)) {
 			if (procs(player)) {
-				cast(player, spell, victim, bow, false);
+				cast(player, spell, victim, bow, false, true);
 			}
 		}
 	}
@@ -394,7 +396,7 @@ public final class SpellImbue {
 		}
 		boolean cast = false;
 		for (Identifier spell : spellsOf(weapon)) {
-			cast |= cast(caster, spell, target, weapon, true);
+			cast |= cast(caster, spell, target, weapon, true, false);
 		}
 		return cast ? InteractionResult.SUCCESS : InteractionResult.PASS;
 	}
@@ -402,16 +404,18 @@ public final class SpellImbue {
 	/**
 	 * Casts one imbued spell when it is off cooldown; true when it cast. The spell enchantments on the piece
 	 * and on the caster's helmet and chestplate shape it, as they shape a book; an imbued hit then works at
-	 * the imbued strength, and a right-click at full strength.
+	 * the imbued strength, and a right-click at full strength. A won proc roll ignores the cooldown and sets none.
 	 */
-	private static boolean cast(final ServerPlayer player, final Identifier spell, final LivingEntity victim, final ItemStack piece, final boolean full) {
+	private static boolean cast(
+		final ServerPlayer player, final Identifier spell, final LivingEntity victim, final ItemStack piece, final boolean full, final boolean proc
+	) {
 		SpellDefinition definition = SpellbookCatalog.find(spell);
 		if (definition == null) {
 			return false;
 		}
 		int now = player.level().getServer().getTickCount();
 		Map<Identifier, Integer> ready = READY_AT.computeIfAbsent(player.getUUID(), key -> new ConcurrentHashMap<>());
-		if (now < ready.getOrDefault(definition.id(), Integer.MIN_VALUE)) {
+		if (!proc && now < ready.getOrDefault(definition.id(), Integer.MIN_VALUE)) {
 			return false;
 		}
 
@@ -467,9 +471,11 @@ public final class SpellImbue {
 			return false;
 		}
 
-		int cooldown = TowerBridge.cooldown(player, modifiers.cooldownTicks());
-		ready.put(definition.id(), now + cooldown);
-		if (showsCooldown(piece)) {
+		int cooldown = proc ? 0 : TowerBridge.cooldown(player, modifiers.cooldownTicks());
+		if (!proc) {
+			ready.put(definition.id(), now + cooldown);
+		}
+		if (!proc && showsCooldown(piece)) {
 			// A piece imbued before the hotbar showed cooldowns gets its group on its first cast.
 			if (!piece.has(DataComponents.USE_COOLDOWN)) {
 				piece.set(DataComponents.USE_COOLDOWN, new UseCooldown(COOLDOWN_GROUP_SECONDS, java.util.Optional.of(cooldownGroup(definition.id()))));

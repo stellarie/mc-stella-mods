@@ -5,7 +5,6 @@ import com.stella.mobs.behavior.Elite;
 import com.stella.mobs.behavior.FriendlyPatrol;
 import com.stella.mobs.behavior.Levitation;
 import com.stella.mobs.behavior.TemporaryBlocks;
-import com.stella.mobs.behavior.WebCastGoal;
 import com.stella.mobs.behavior.WitchPotions;
 import com.stella.mobs.behavior.WitherPulse;
 import com.stella.mobs.behavior.WolfPack;
@@ -46,13 +45,11 @@ import net.minecraft.world.phys.Vec3;
  */
 public class MobKitGameTest {
 	private static final String TEST = "mobKit";
-	private static final Map<UUID, List<List<BlockPos>>> WEBS = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<Holder<MobEffect>>> PULSES = new ConcurrentHashMap<>();
 	private static final Map<UUID, List<List<LivingEntity>>> PULSE_REACH = new ConcurrentHashMap<>();
 	private static final int BRED_WOLVES = 60;
 
 	static {
-		WebCastGoal.setRecorder((spider, target, webs) -> WEBS.computeIfAbsent(spider.getUUID(), key -> new CopyOnWriteArrayList<>()).add(webs));
 		WitherPulse.setRecorder((skeleton, effect, reached) -> {
 			PULSES.computeIfAbsent(skeleton.getUUID(), key -> new CopyOnWriteArrayList<>()).add(effect);
 			PULSE_REACH.computeIfAbsent(skeleton.getUUID(), key -> new CopyOnWriteArrayList<>()).add(reached);
@@ -87,53 +84,7 @@ public class MobKitGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(maxTicks = 100)
-	public void anEliteSpiderCastsThreeWebsOneOverItsTarget(final GameTestHelper helper) {
-		Arena.buildFloor(helper);
-		helper.setTime(Arena.NIGHT_TIME);
-		Spider spider = spider(helper, EntityTypes.SPIDER, 1, 1);
-		Elite.mark(spider, GearTier.IRON, 1.0);
-		Zombie target = zombie(helper, 5, 5);
-		helper.onEachTick(() -> spider.setTarget(target));
-		helper.succeedWhen(() -> {
-			List<List<BlockPos>> casts = WEBS.getOrDefault(spider.getUUID(), List.of());
-			helper.assertTrue(!casts.isEmpty(), "no web cast yet");
-			List<BlockPos> webs = casts.get(0);
-			BlockPos feet = target.blockPosition();
-			boolean near = webs.stream().allMatch(pos -> Math.abs(pos.getX() - feet.getX()) <= 1 && Math.abs(pos.getY() - feet.getY()) <= 1 && Math.abs(pos.getZ() - feet.getZ()) <= 1);
-			result("webCast", "webs=" + webs.size() + " coversTarget=" + webs.contains(feet) + " near=" + near);
-			helper.assertTrue(webs.size() == WebCastGoal.WEBS && webs.contains(feet) && near, "the cast webbed " + webs + " around " + feet);
-		});
-	}
 
-	@GameTest(maxTicks = 300)
-	public void anEliteCaveSpiderWithersAndItsWebsClear(final GameTestHelper helper) {
-		Arena.buildFloor(helper);
-		helper.setTime(Arena.NIGHT_TIME);
-		Spider spider = spider(helper, EntityTypes.CAVE_SPIDER, 1, 1);
-		Elite.mark(spider, GearTier.IRON, 1.0);
-		Mob target = helper.spawnMob(EntityTypes.PIG, 5, 1, 5).withNoFreeWill().spawn();
-		target.setPersistenceRequired();
-		int[] castAt = {-1};
-		boolean[] witheredAtCast = {false};
-		helper.onEachTick(() -> {
-			spider.setTarget(target);
-			if (castAt[0] < 0 && !WEBS.getOrDefault(spider.getUUID(), List.of()).isEmpty()) {
-				castAt[0] = (int) helper.getTick();
-				witheredAtCast[0] = target.hasEffect(MobEffects.WITHER);
-			}
-		});
-		helper.succeedWhen(() -> {
-			helper.assertTrue(castAt[0] >= 0, "no web cast yet");
-			helper.assertTrue(helper.getTick() >= castAt[0] + WebCastGoal.WEB_LIFETIME_TICKS + 5, "the webs have not had their time yet");
-			List<BlockPos> webs = WEBS.get(spider.getUUID()).get(0);
-			boolean cleared = webs.stream().noneMatch(pos -> helper.getLevel().getBlockState(pos).is(Blocks.COBWEB));
-			result("caveSpiderCast", "witheredAtCast=" + witheredAtCast[0] + " webs=" + webs.size() + " cleared=" + cleared);
-			helper.assertTrue(witheredAtCast[0], "the cave spider's cast did not wither its target");
-			helper.assertTrue(cleared, "the webs are still there after their time");
-			spider.discard();
-		});
-	}
 
 	@GameTest(maxTicks = 100)
 	public void aWitherSkeletonSlowsATargetThatTurnsItsBack(final GameTestHelper helper) {

@@ -158,6 +158,33 @@ public class ImbueProcGameTest {
 		helper.assertTrue(Math.abs(rate - chance) <= NEAR, book.getPath() + " cast on " + procs + " of " + HITS + " hits, not near " + chance);
 	}
 
+	@GameTest(maxTicks = 100)
+	public void fiveWonRollsInARowCastFiveTimesWithNoCooldown(final GameTestHelper helper) {
+		floor(helper);
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setGameMode(GameType.SURVIVAL);
+		Vec3 at = helper.absoluteVec(new Vec3(2.5, 1.0, 2.5));
+		player.setPos(at.x, at.y, at.z);
+		ItemStack sword = new ItemStack(Items.IRON_SWORD);
+		sword.set(SpellImbue.IMBUED, new SpellImbue.ImbuedSpell(List.of(SPARK_SHOT)));
+		player.setItemInHand(InteractionHand.MAIN_HAND, sword);
+		Mob victim = helper.spawnMob(EntityTypes.ZOMBIE, 2, 1, 4).withNoFreeWill().spawn();
+		victim.getAttribute(Attributes.ARMOR).setBaseValue(0.0);
+		int before = casts(player).size();
+		for (int hit = 0; hit < 5; hit++) {
+			victim.setHealth(victim.getMaxHealth());
+			victim.damageCooldownTime = 0;
+			victim.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), HIT);
+		}
+		int cast = casts(player).size() - before;
+		boolean held = player.getCooldowns().isOnCooldown(sword);
+		LOG.info("[SPELLTEST] test=fiveWonRollsInARowCastFiveTimesWithNoCooldown RESULT casts={} cooldown={}", cast, held);
+		helper.assertTrue(cast == 5, "five won rolls cast " + cast + " times");
+		helper.assertTrue(!held, "a proc put the sword on cooldown");
+		victim.discard();
+		helper.succeed();
+	}
+
 	private static Run thousandHits(final GameTestHelper helper, final List<Identifier> books, final double luk) {
 		floor(helper);
 		ServerPlayer player = helper.makeMockServerPlayerInLevel();
