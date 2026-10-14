@@ -54,7 +54,7 @@ public class TowerGhostSquadGameTest {
 
 		Zombie zombie(final Vec3 at, final boolean thinking) {
 			Zombie zombie = EntityTypes.ZOMBIE.create(this.tower, EntitySpawnReason.COMMAND);
-			TowerMobs.makeTowerMob(zombie, LOW, TowerElement.DARK);
+			TowerMobs.makeTowerMob(zombie, LOW, TowerElement.WIND);
 			zombie.snapTo(at);
 			zombie.setNoAi(!thinking);
 			this.tower.addFreshEntity(zombie);
@@ -193,7 +193,7 @@ public class TowerGhostSquadGameTest {
 	private void ghostHurtsATowerMob(final GameTestHelper helper, final EntityType<? extends Mob> kind, final EntityType<? extends Mob> victimType) {
 		Arena arena = Arena.build(helper);
 		Mob victim = victimType.create(arena.tower(), EntitySpawnReason.COMMAND);
-		TowerMobs.makeTowerMob(victim, LOW, TowerElement.DARK);
+		TowerMobs.makeTowerMob(victim, LOW, TowerElement.WIND);
 		victim.snapTo(arena.middle().add(6.0, 0.0, 0.0));
 		victim.setNoAi(true);
 		arena.tower().addFreshEntity(victim);

@@ -24,7 +24,7 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
-/** What each element does for a tower mob: the ice mist, dark armor, holy mending and the on-hit marks. */
+/** What each element does for a tower mob: the ice mist, the dark drain, holy mending and the on-hit marks. */
 public class TowerAuraGameTest {
 	/** Far from the safe zones, which sit by the floor's arrival and its hall. */
 	private static final double AT_X = 40.0;
@@ -300,133 +300,34 @@ public class TowerAuraGameTest {
 
 	// ---- dark ----
 
-	/** Stacks lost this long after the last hit: one at the end of the hold, and one more at each step after. */
-	private static int stepsLost(final int idle) {
-		int lost = 0;
-		while (TowerAuras.DARK_HOLD_TICKS + lost * TowerAuras.DARK_DECAY_TICKS <= idle) {
-			lost++;
+	/** One second of pulses, so the aura acts once whatever the pulse rate. */
+	private static void pulseForASecond(final ServerLevel tower, final int floor, final int from) {
+		for (int at = from; at < from + 20; at += TowerAuras.PULSE_TICKS) {
+			TowerAuras.pulse(tower, floor, at);
 		}
-		return lost;
-	}
-
-	private static double armor(final LivingEntity mob) {
-		return mob.getAttributeValue(Attributes.ARMOR);
 	}
 
 	@GameTest
-	public void darkGainsOneArmorPerHit(final GameTestHelper helper) {
+	public void darkDrainsAPlayerAShareOfMaxHealthEachSecondAndSparesAHostileMob(final GameTestHelper helper) {
 		ServerLevel tower = TowerTestSupport.tower(helper);
 		int floor = freshBuilt(tower);
 		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = stranger(tower, spot(floor, 1, 0));
-		double base = armor(dark);
-		int hits = 3;
-		for (int i = 0; i < hits; i++) {
-			hit(tower, dark, foe, 1.0F);
-		}
-		double gained = armor(dark) - base;
-		TowerTestSupport.result("darkPerHit", "hits=" + hits + " gained=" + gained + " perStack=" + TowerAuras.DARK_ARMOR_PER_STACK);
+		Zombie hostile = stranger(tower, spot(floor, 1, 2));
+		hostile.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100.0);
+		hostile.setHealth(100.0F);
+		ServerPlayer player = playerAt(helper, tower, spot(floor, 2, 0));
+		TowerTestSupport.vulnerable(player);
+		player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40.0);
+		player.setHealth(40.0F);
+		pulseForASecond(tower, floor, TowerAuras.DARK_INTERVAL_TICKS * 3);
+		float playerLoss = 40.0F - player.getHealth();
+		float hostileLoss = 100.0F - hostile.getHealth();
+		TowerTestSupport.result("darkAura", "playerLoss=" + playerLoss + " hostileLoss=" + hostileLoss + " share=" + TowerAuras.DARK_DAMAGE_SHARE);
 		dark.discard();
-		foe.discard();
-		helper.assertTrue(gained == hits * TowerAuras.DARK_ARMOR_PER_STACK, "three hits gave " + gained + " armor");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void darkArmorStopsAtItsCap(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = freshBuilt(tower);
-		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = stranger(tower, spot(floor, 1, 0));
-		double base = armor(dark);
-		for (int i = 0; i < TowerAuras.DARK_STACK_CAP + 5; i++) {
-			hit(tower, dark, foe, 1.0F);
-		}
-		double gained = armor(dark) - base;
-		TowerTestSupport.result("darkCap", "gained=" + gained + " cap=" + TowerAuras.DARK_STACK_CAP);
-		dark.discard();
-		foe.discard();
-		helper.assertTrue(gained == TowerAuras.DARK_STACK_CAP * TowerAuras.DARK_ARMOR_PER_STACK, "armor grew by " + gained + " past the cap");
-		helper.succeed();
-	}
-
-	@GameTest
-	public void darkOnlyGainsArmorForDarkMobs(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = freshBuilt(tower);
-		Zombie wind = towerMob(tower, TowerElement.WIND, spot(floor, 0, 0));
-		Zombie foe = stranger(tower, spot(floor, 1, 0));
-		double base = armor(wind);
-		for (int i = 0; i < 3; i++) {
-			hit(tower, wind, foe, 1.0F);
-		}
-		double gained = armor(wind) - base;
-		TowerTestSupport.result("darkOnlyDark", "windGained=" + gained);
-		wind.discard();
-		foe.discard();
-		helper.assertTrue(gained == 0.0, "a wind mob hardened by " + gained);
-		helper.succeed();
-	}
-
-	/** Held for the hold time after the last hit, then one stack a decay step; the clock is the caller's, since the level's is frozen. */
-	@GameTest
-	public void darkHoldsItsArmorThenDecaysOnePerStep(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = freshBuilt(tower);
-		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = stranger(tower, spot(floor, 1, 0));
-		double base = armor(dark);
-		for (int i = 0; i < TowerAuras.DARK_STACK_CAP; i++) {
-			hit(tower, dark, foe, 1.0F);
-		}
-		// All in this one tick, so the server's own pulse cannot rewrite the armor between the samples.
-		int last = TowerAuras.now(tower);
-		int cap = TowerAuras.DARK_STACK_CAP;
-		List<String> log = new ArrayList<>();
-		int[] offsets = {
-			TowerAuras.DARK_HOLD_TICKS - 1,
-			TowerAuras.DARK_HOLD_TICKS,
-			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS - 1,
-			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS,
-			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS * (cap - 1),
-			TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS * cap + 500
-		};
-		int[] want = new int[offsets.length];
-		for (int i = 0; i < offsets.length; i++) {
-			want[i] = Math.max(0, cap - stepsLost(offsets[i]));
-		}
-		boolean ok = true;
-		for (int i = 0; i < offsets.length; i++) {
-			TowerAuras.pulse(tower, floor, last + offsets[i]);
-			double got = (armor(dark) - base) / TowerAuras.DARK_ARMOR_PER_STACK;
-			log.add("+" + offsets[i] + "=" + got);
-			ok &= got == want[i];
-		}
-		TowerTestSupport.result("darkDecay", "hold=" + TowerAuras.DARK_HOLD_TICKS + " step=" + TowerAuras.DARK_DECAY_TICKS + " samples=" + log);
-		dark.discard();
-		foe.discard();
-		helper.assertTrue(ok, "dark armor by ticks after the last hit: " + log + ", wanted " + java.util.Arrays.toString(want));
-		helper.succeed();
-	}
-
-	@GameTest
-	public void darkHitAfterPartialDecayStacksOnTheRemainder(final GameTestHelper helper) {
-		ServerLevel tower = TowerTestSupport.tower(helper);
-		int floor = freshBuilt(tower);
-		Zombie dark = towerMob(tower, TowerElement.DARK, spot(floor, 0, 0));
-		Zombie foe = stranger(tower, spot(floor, 1, 0));
-		for (int i = 0; i < 4; i++) {
-			hit(tower, dark, foe, 1.0F);
-		}
-		int last = TowerAuras.now(tower);
-		// Two steps into the decay: two of the four stacks are gone.
-		int later = last + TowerAuras.DARK_HOLD_TICKS + TowerAuras.DARK_DECAY_TICKS;
-		int remaining = TowerAuras.darkStacks(dark, later);
-		int expected = 4 - stepsLost(later - last);
-		TowerTestSupport.result("darkRemainder", "remaining=" + remaining);
-		dark.discard();
-		foe.discard();
-		helper.assertTrue(remaining == expected && expected == 2, "four stacks two decay steps on left " + remaining + ", wanted " + expected);
+		hostile.discard();
+		TowerTestSupport.leave(helper, player);
+		helper.assertTrue(Math.abs(playerLoss - 0.4F) < 0.05F, "a 40 health player lost " + playerLoss + " in a second, wanted about 0.4");
+		helper.assertTrue(hostileLoss == 0.0F, "a hostile mob beside the dark mob lost " + hostileLoss);
 		helper.succeed();
 	}
 
@@ -461,6 +362,24 @@ public class TowerAuraGameTest {
 		kin.discard();
 		helper.assertTrue(Math.abs(holyGain - wantSelf) < 0.01F && Math.abs(kinGain - wantKin) < 0.01F,
 			"holy mended self " + holyGain + " and kin " + kinGain + ", wanted " + wantSelf + " and " + wantKin);
+		helper.succeed();
+	}
+
+	@GameTest
+	public void holyMendsAHundredHealthMobByAboutOneEachSecond(final GameTestHelper helper) {
+		ServerLevel tower = TowerTestSupport.tower(helper);
+		int floor = freshBuilt(tower);
+		Zombie holy = towerMob(tower, TowerElement.HOLY, spot(floor, 0, 0));
+		Zombie kin = towerMob(tower, TowerElement.WIND, spot(floor, 2, 0));
+		kin.getAttribute(Attributes.MAX_HEALTH).removeModifiers();
+		kin.getAttribute(Attributes.MAX_HEALTH).setBaseValue(100.0);
+		kin.setHealth(50.0F);
+		pulseForASecond(tower, floor, TowerAuras.HOLY_INTERVAL_TICKS * 3);
+		float gain = kin.getHealth() - 50.0F;
+		TowerTestSupport.result("holyAura", "kinGain=" + gain + " share=" + TowerAuras.HOLY_HEAL_SHARE);
+		holy.discard();
+		kin.discard();
+		helper.assertTrue(Math.abs(gain - 1.0F) < 0.05F, "a 100 health mob gained " + gain + " in a second, wanted about 1");
 		helper.succeed();
 	}
 
@@ -700,7 +619,7 @@ public class TowerAuraGameTest {
 			hurt(mob);
 			mob.setTarget(stranger);
 			List<ParticleOptions> seen = recordFrom(java.util.Set.of(mob, target), () -> {
-				// A pulse for the ambient elements, a hit for the on-hit ones and Dark.
+				// A pulse for the ambient elements, a hit for the on-hit ones.
 				TowerAuras.pulse(tower, floor, TowerAuras.HOLY_INTERVAL_TICKS * 3);
 				hit(tower, target, mob, 1.0F);
 				hit(tower, mob, stranger, 1.0F);
