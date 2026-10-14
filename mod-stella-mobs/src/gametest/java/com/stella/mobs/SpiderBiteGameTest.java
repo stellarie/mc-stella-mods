@@ -57,6 +57,25 @@ public class SpiderBiteGameTest {
 	}
 
 	@GameTest(maxTicks = MAX_TICKS, padding = MeleeKitFloor.PADDING)
+	public void eliteAndBossSpidersStealMoreAndRunFaster(final GameTestHelper helper) {
+		MeleeKitFloor scene = MeleeKitFloor.build(helper);
+		Spider elite = scene.mob(EntityTypes.SPIDER, SPIDER_X, MeleeKitFloor.SPAWN_Y, SPIDER_Z);
+		Spider boss = scene.mob(EntityTypes.SPIDER, SPIDER_X + 4, MeleeKitFloor.SPAWN_Y, SPIDER_Z);
+		com.stella.mobs.behavior.Elite.mark(elite, com.stella.mobs.gear.GearTier.IRON, 1.0);
+		com.stella.mobs.behavior.Bosses.blessAsBoss(boss, helper.getLevel(), 1.0);
+		MobEffectInstance eliteSpeed = elite.getEffect(MobEffects.SPEED);
+		MobEffectInstance bossSpeed = boss.getEffect(MobEffects.SPEED);
+		String seen = "eliteSteal=" + SpiderBite.lifesteal(elite) + " bossSteal=" + SpiderBite.lifesteal(boss)
+			+ " eliteSpeed=" + eliteSpeed + " bossSpeed=" + bossSpeed;
+		StellaMobs.LOGGER.info("[BEHAVIOR] test={}.eliteAndBossSpidersStealMoreAndRunFaster RESULT {}", TEST, seen);
+		helper.assertTrue(SpiderBite.lifesteal(elite) == SpiderBite.ELITE_LIFESTEAL && SpiderBite.lifesteal(boss) == SpiderBite.BOSS_LIFESTEAL, seen);
+		helper.assertTrue(eliteSpeed != null && eliteSpeed.getAmplifier() == 1 && eliteSpeed.isInfiniteDuration(), seen);
+		helper.assertTrue(bossSpeed != null && bossSpeed.getAmplifier() == 3 && bossSpeed.isInfiniteDuration(), seen);
+		scene.end();
+		helper.succeed();
+	}
+
+	@GameTest(maxTicks = MAX_TICKS, padding = MeleeKitFloor.PADDING)
 	public void spiderPlacesNoWebOnAPlayerInReach(final GameTestHelper helper) {
 		MeleeKitFloor scene = MeleeKitFloor.build(helper);
 		ServerPlayer player = scene.player(PLAYER_X, PLAYER_Z);
