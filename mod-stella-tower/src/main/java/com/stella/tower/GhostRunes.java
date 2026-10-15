@@ -67,7 +67,7 @@ public final class GhostRunes {
 	}
 
 	public static boolean isGhosted(final ItemStack gear) {
-		return gear.has(TowerItems.GHOSTED);
+		return gear != null && gear.has(TowerItems.GHOSTED);
 	}
 
 	/** A player wearing a ghost-runed chestplate. */
@@ -97,7 +97,7 @@ public final class GhostRunes {
 
 	/** A blow a player struck with a ghost-runed weapon. */
 	public static boolean ghostBlow(final DamageSource source) {
-		return TowerRunes.struckWith(source) && isGhosted(source.getWeaponItem());
+		return TowerRunes.struckWith(source) && isGhosted(TowerRunes.weaponOf(source));
 	}
 
 	/** Every hostile mob a phased player stands within is slowed. */
