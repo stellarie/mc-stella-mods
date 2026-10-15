@@ -1,0 +1,11 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"ingredients": [
+		"minecraft:paper",
+		"minecraft:ink_sac"
+	],
+	"result": {
+		"id": "mod-stella-spells:memorize_scroll",
+		"count": 2
+	}
+}

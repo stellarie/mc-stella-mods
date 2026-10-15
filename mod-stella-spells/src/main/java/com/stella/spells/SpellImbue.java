@@ -47,6 +47,8 @@ public final class SpellImbue {
 	public static final int IMBUE_XP_COST = 5;
 	public static final double IMBUE_POWER = 0.5;
 	public static final double IMBUE_DURATION = 0.5;
+	/** The power and duration share of a spell that a fully charged staff attack triggers. */
+	public static final double STAFF_STRENGTH = 0.75;
 	/** The chance that one imbued book casts on a hit, at 0 LUK. */
 	public static final double PROC_BASE_CHANCE = 0.10;
 	/** The same chance for a staff's normal attack. */
@@ -123,7 +125,7 @@ public final class SpellImbue {
 		SpellbookCatalog.DEFINITIONS.stream()
 			.filter(definition -> definition.school() == School.ARCHER)
 			.map(SpellDefinition::id),
-		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"), id("summon_wolf"))
+		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"), id("summon_wolf"), id("memorize"), id("soul_vulcan"))
 	).collect(java.util.stream.Collectors.toUnmodifiableSet());
 	/**
 	 * The archer books a bow or a crossbow takes: the ones that strike a target. A self buff or a next-shot
@@ -190,15 +192,19 @@ public final class SpellImbue {
 	/** Test seam: the power multiplier of the latest imbued cast. */
 	static volatile double lastCastPower;
 
-	/** A staff's normal attack hit the victim: each imbued book rolls the staff chance and casts at full strength. */
-	static void onStaffHit(final ServerPlayer player, final LivingEntity victim) {
-		ItemStack staff = player.getMainHandItem();
-		if (MobImbue.casting() || PLAYER_CASTING.get() != null) {
+	/**
+	 * A staff bolt hit the victim. Only a fully charged swing triggers imbued spells. Each book rolls the staff
+	 * chance, or always casts when {@code certain}, and casts at {@link #STAFF_STRENGTH}.
+	 */
+	static void onStaffHit(
+		final ServerPlayer player, final ItemStack staff, final LivingEntity victim, final boolean fullCharge, final boolean certain
+	) {
+		if (!fullCharge || MobImbue.casting() || PLAYER_CASTING.get() != null) {
 			return;
 		}
 		for (Identifier spell : spellsOf(staff)) {
-			if (procs(player, STAFF_PROC_BASE_CHANCE)) {
-				cast(player, spell, victim, staff, true, true);
+			if (certain || procs(player, STAFF_PROC_BASE_CHANCE)) {
+				cast(player, spell, victim, staff, STAFF_STRENGTH, true);
 			}
 		}
 	}
@@ -341,7 +347,7 @@ public final class SpellImbue {
 		if (victim instanceof ServerPlayer wearer && source.getEntity() instanceof LivingEntity attacker && attacker != wearer && damage > 0.0F) {
 			ItemStack chest = wearer.getItemBySlot(EquipmentSlot.CHEST);
 			for (Identifier spell : spellsOf(chest)) {
-				cast(wearer, spell, attacker, chest, false, false);
+				cast(wearer, spell, attacker, chest, IMBUE_POWER, false);
 			}
 		}
 		if (source.getEntity() instanceof Mob wielder && source.getDirectEntity() == wielder && victim != wielder) {
@@ -370,9 +376,9 @@ public final class SpellImbue {
 		}
 		for (Identifier spell : spellsOf(focus)) {
 			if (!rolled) {
-				cast(player, spell, victim, focus, false, false);
+				cast(player, spell, victim, focus, IMBUE_POWER, false);
 			} else if (procs(player)) {
-				cast(player, spell, victim, focus, false, true);
+				cast(player, spell, victim, focus, IMBUE_POWER, true);
 			}
 		}
 	}
@@ -385,7 +391,7 @@ public final class SpellImbue {
 		}
 		for (Identifier spell : spellsOf(bow)) {
 			if (procs(player)) {
-				cast(player, spell, victim, bow, false, true);
+				cast(player, spell, victim, bow, IMBUE_POWER, true);
 			}
 		}
 	}
@@ -404,7 +410,7 @@ public final class SpellImbue {
 		}
 		boolean cast = false;
 		for (Identifier spell : spellsOf(weapon)) {
-			cast |= cast(caster, spell, target, weapon, true, false);
+			cast |= cast(caster, spell, target, weapon, 1.0, false);
 		}
 		return cast ? InteractionResult.SUCCESS : InteractionResult.PASS;
 	}
@@ -412,10 +418,11 @@ public final class SpellImbue {
 	/**
 	 * Casts one imbued spell when it is off cooldown; true when it cast. The spell enchantments on the piece
 	 * and on the caster's helmet and chestplate shape it, as they shape a book; an imbued hit then works at
-	 * the imbued strength, and a right-click at full strength. A won proc roll ignores the cooldown and sets none.
+	 * the given strength of power and duration, and a right-click at full strength. A won proc roll ignores the
+	 * cooldown and sets none.
 	 */
 	private static boolean cast(
-		final ServerPlayer player, final Identifier spell, final LivingEntity victim, final ItemStack piece, final boolean full, final boolean proc
+		final ServerPlayer player, final Identifier spell, final LivingEntity victim, final ItemStack piece, final double strength, final boolean proc
 	) {
 		SpellDefinition definition = SpellbookCatalog.find(spell);
 		if (definition == null) {
@@ -433,9 +440,9 @@ public final class SpellImbue {
 		BookRefine.remember(player, definition.id().getPath(), 0);
 		base = TowerBridge.grow(piece, definition.id().getPath(), base);
 		base = RpgBridge.grow(player, definition.id().getPath(), base, definition.school());
-		SpellModifiers.CastModifiers modifiers = full ? base : new SpellModifiers.CastModifiers(
-			base.powerMultiplier() * IMBUE_POWER, base.radiusMultiplier(), base.durationMultiplier() * IMBUE_DURATION,
-			base.defensiveDurationMultiplier() * IMBUE_DURATION, base.targetRangeBlocks(), base.cooldownTicks(), base.awakened(), base.refineLevel()
+		SpellModifiers.CastModifiers modifiers = strength >= 1.0 ? base : new SpellModifiers.CastModifiers(
+			base.powerMultiplier() * strength, base.radiusMultiplier(), base.durationMultiplier() * strength,
+			base.defensiveDurationMultiplier() * strength, base.targetRangeBlocks(), base.cooldownTicks(), base.awakened(), base.refineLevel()
 		);
 		// The piece's own awakened imbue decides; the cast book's flag never reaches an imbued hit.
 		modifiers = modifiers.withAwakened(definition.id().equals(piece.get(Awakening.AWAKENED_IMBUE)));
@@ -497,8 +504,8 @@ public final class SpellImbue {
 		}
 		SpellVisuals.play(player, definition, target, point, departure, modifiers);
 		Spellbooks.LOGGER.info(
-			"[SPELL] imbued_cast player={} spell={} victim={} piece={} full={} power={} cooldown={}",
-			player.getUUID(), definition.id(), victim.getUUID(), BuiltInRegistries.ITEM.getKey(piece.getItem()), full,
+			"[SPELL] imbued_cast player={} spell={} victim={} piece={} strength={} power={} cooldown={}",
+			player.getUUID(), definition.id(), victim.getUUID(), BuiltInRegistries.ITEM.getKey(piece.getItem()), strength,
 			modifiers.powerMultiplier(), cooldown
 		);
 		recorder.cast(player, definition.id(), victim);

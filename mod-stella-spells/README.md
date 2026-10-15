@@ -355,6 +355,8 @@ The level lives in the `stella_refine` custom data. The equips Refine station re
 | Tailwind | Gale Force | You and allies within 8 blocks gain Jump Boost II and Slow Falling for 20 seconds. |
 | Battle Hymn | War Song | You and allies within 8 blocks gain Regeneration I for 8 seconds and Haste I for 20. |
 | Summon Skeleton | Bone Guard | Your skeleton gains Resistance II and Strength I for 20 seconds. |
+| Memorize | Quick Recall | Gives Haste II for 10 seconds. |
+| Soul Vulcan | Soul Chill | Foes within 5 blocks are slowed for 4 seconds. |
 
 **Fighter**
 
@@ -599,7 +601,12 @@ the custom data, so neither mod needs the other.
   spell with a fixed cooldown keeps it.
 - **Slot.** Only the main hand counts. A book cast from the off hand takes the bonus while the staff is in the main hand.
 - **Code.** `StaffPower`, called from `RpgBridge.grow` after the stat growth.
-- **Swing bolt.** A swing with a staff, even at air, fires an instant bolt up to 24 blocks with Portal particles. It fires only on a swing at air (the punch packet), so a melee hit never double-fires. It deals one no-crit MATK hit (4 without the RPG mod), spares allies and pets, and respects the attack cooldown. Code: `StaffBolt`.
+- **Swing bolt.** A swing with a staff, even at air, fires an instant bolt up to 24 blocks with Portal particles. It fires only on a swing at air (the punch packet), so a melee hit never double-fires. It deals one no-crit MATK hit (4 without the RPG mod) and respects the attack cooldown. Code: `StaffBolt`.
+- **Friendly units.** The bolt passes through villagers, golems, tamed pets, patrol members and team allies. It neither hits nor stops on them. A staff blow on one of them in melee range is a normal vanilla hit, so guards, villagers and golems react.
+- **Imbued spells.** A staff triggers its imbued spells only on a fully charged swing. Each book rolls 20% and casts at 75% power and duration. A swing that lands can cost one Memorize charge.
+- **Charge aura.** The client draws a soul-fire aura at the staff head while the swing is fully charged (`StaffChargeAura`).
+- **Memorize.** The next 10 fully charged staff attacks that hit trigger every imbued spell, with no roll.
+- **Soul Vulcan.** For 1 minute, a staff bolt that hits also fires 5 homing bolts at the target and the foes within 6 blocks of it. Casting it needs a staff in the main hand, so cast the book or scroll from the off hand. Each extra bolt can trigger imbued spells under the charge of its swing.
 
 ### Staff doublecast
 

@@ -84,6 +84,8 @@ public final class StatStaffGameTest {
 			helper.assertTrue(byLevel[level] > byLevel[level - 1], "refine +" + level + " did not raise MATK");
 		}
 		double plainStep = byLevel[6] - byLevel[5];
+		helper.assertTrue(Math.abs(plainStep - (JobItems.STAFF_MATK * StaffMatk.PER_LEVEL + StaffMatk.FLAT_PER_LEVEL)) < EPSILON,
+			"a plain refine level added " + plainStep + " MATK");
 		helper.assertTrue(byLevel[7] - byLevel[6] > plainStep, "the +7 milestone added no extra MATK");
 		for (int milestone : StaffMatk.MILESTONES) {
 			helper.assertTrue(byLevel[milestone] - byLevel[milestone - 1] > plainStep, "no jump at +" + milestone);

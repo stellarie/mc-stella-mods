@@ -196,8 +196,13 @@ public class SpellVisualsGameTest {
 		helper.setTime(18_000L);
 		ServerPlayer player = addPlayer(helper);
 		SpellbookItem book = books(TargetMode.HOSTILE).get(0);
-		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
-		InteractionResult result = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+		// Soul Vulcan reads the staff in the main hand, so its book is cast from the off hand.
+		InteractionHand hand = book.definition().id().getPath().equals("soul_vulcan") ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+		if (hand == InteractionHand.OFF_HAND) {
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BLAZE_ROD));
+		}
+		player.setItemInHand(hand, book.getDefaultInstance());
+		InteractionResult result = book.use(helper.getLevel(), player, hand);
 		helper.assertTrue(result == InteractionResult.PASS, "a cast with nothing to aim at did not fail: " + result);
 		helper.assertTrue(SpellVisualLog.played(player.getUUID()).isEmpty(), "a failed cast played a visual");
 		LOG.info("[SPELLTEST] test=aFailedCastPlaysNoVisual RESULT result={} visuals=0", result);
@@ -478,8 +483,13 @@ public class SpellVisualsGameTest {
 	}
 
 	private static void cast(final GameTestHelper helper, final ServerPlayer player, final SpellbookItem book) {
-		player.setItemInHand(InteractionHand.MAIN_HAND, book.getDefaultInstance());
-		InteractionResult result = book.use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+		// Soul Vulcan reads the staff in the main hand, so its book is cast from the off hand.
+		InteractionHand hand = book.definition().id().getPath().equals("soul_vulcan") ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+		if (hand == InteractionHand.OFF_HAND) {
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BLAZE_ROD));
+		}
+		player.setItemInHand(hand, book.getDefaultInstance());
+		InteractionResult result = book.use(helper.getLevel(), player, hand);
 		helper.assertTrue(result == InteractionResult.SUCCESS, book.definition().id() + " did not cast: " + result
 			+ " armed=" + ArcherSkills.armed(player) + " bow=" + ArcherSkills.hasBowOrCrossbow(player)
 			+ " ammo=" + ArcherSkills.hasAmmo(player));

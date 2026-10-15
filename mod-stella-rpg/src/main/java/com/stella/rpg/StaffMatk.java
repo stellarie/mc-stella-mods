@@ -31,6 +31,8 @@ public final class StaffMatk {
 	public static final double PER_LEVEL = 0.10;
 	/** The share of the base MATK that each refine milestone adds. */
 	public static final double PER_MILESTONE = 0.25;
+	/** Flat MATK that each refine level adds to a percent-growth staff, on top of the percent growth. */
+	public static final int FLAT_PER_LEVEL = 2;
 
 	private StaffMatk() {
 	}
@@ -83,7 +85,7 @@ public final class StaffMatk {
 		if (flatStep > 0) {
 			return staff.getIntOr(MATK, 0) + (double) flatStep * level;
 		}
-		return staff.getIntOr(MATK, 0) * (1.0 + PER_LEVEL * level + PER_MILESTONE * milestones(level));
+		return staff.getIntOr(MATK, 0) * (1.0 + PER_LEVEL * level + PER_MILESTONE * milestones(level)) + (double) FLAT_PER_LEVEL * level;
 	}
 
 	/** The staff MATK plus its no-target damage enchantments, such as Sharpness, in K units. */

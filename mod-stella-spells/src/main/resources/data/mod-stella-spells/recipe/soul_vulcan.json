@@ -1,0 +1,6 @@
+{
+	"type": "minecraft:crafting_shaped",
+	"pattern": ["M M", " B ", "M M"],
+	"key": {"M": "minecraft:soul_sand", "B": "minecraft:book"},
+	"result": {"id": "mod-stella-spells:soul_vulcan", "count": 1}
+}
