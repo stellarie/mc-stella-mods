@@ -632,10 +632,9 @@ public final class RpgConfigStore {
 			return XpCurve.DEFAULT;
 		}
 		JsonObject curve = element.getAsJsonObject();
-		double base = curvePart(curve, "base", XpCurve.DEFAULT.base(), 0.0, onError);
-		double factor = curvePart(curve, "factor", XpCurve.DEFAULT.factor(), 0.0, onError);
-		double exponent = curvePart(curve, "exponent", XpCurve.DEFAULT.exponent(), 0.0, onError);
-		return new XpCurve(base, factor, exponent);
+		double growth = curvePart(curve, "growth", XpCurve.DEFAULT.growth(), 0.0, onError);
+		double step = curvePart(curve, "step", XpCurve.DEFAULT.step(), 1.0, onError);
+		return new XpCurve(growth, step);
 	}
 
 	private static double curvePart(

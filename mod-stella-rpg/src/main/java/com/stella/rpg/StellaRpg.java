@@ -56,6 +56,7 @@ public final class StellaRpg implements ModInitializer {
 		com.stella.rpg.api.BonusGrantShare.register();
 		HealthScaleShare.publish();
 		XpCurveShare.publish();
+		StackSize.register();
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> reloadConfig());
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> reloadConfig());
 		LOGGER.info("{} initialized", MOD_ID);
