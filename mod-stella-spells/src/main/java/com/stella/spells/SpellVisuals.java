@@ -137,6 +137,7 @@ public final class SpellVisuals {
 		visual("summon_skeleton", ParticleTypes.SOUL, ParticleTypes.ASH, 0.0),
 		visual("memorize", ParticleTypes.DRIPPING_DRIPSTONE_WATER, ParticleTypes.END_ROD, 0.0),
 		visual("soul_vulcan", ParticleTypes.DRIPPING_DRIPSTONE_LAVA, ParticleTypes.SOUL_FIRE_FLAME, 0.0),
+		visual("spell_writer", ParticleTypes.PALE_OAK_LEAVES, ParticleTypes.END_ROD, 0.0),
 		visual("cleave", ParticleTypes.DAMAGE_INDICATOR, ParticleTypes.CRIT, 0.0),
 		areaVisual("leap_slam", ParticleTypes.EXPLOSION_EMITTER, ParticleTypes.POOF, FighterSkills.CHARGE_WIDTH + 2.5, 0xB33A3A),
 		areaVisual("whirlwind", ParticleTypes.CLOUD, ParticleTypes.CRIT, FighterSkills.CHARGE_WIDTH + 1.5, 0xB33A3A),
@@ -208,6 +209,7 @@ public final class SpellVisuals {
 		heldColor("summon_skeleton", 0xA9BED8),
 		heldColor("memorize", 0x9B7FE0),
 		heldColor("soul_vulcan", 0x39C6D6),
+		heldColor("spell_writer", 0x2F9B6A),
 		heldColor("cleave", 0xB33A3A),
 		heldColor("shield_bash", 0x8C8C99),
 		heldColor("execute", 0x8E1F1F),
@@ -718,6 +720,7 @@ public final class SpellVisuals {
 			case "summon_skeleton" -> Motif.SUMMON;
 			case "memorize" -> Motif.SIGIL;
 			case "soul_vulcan" -> Motif.SOUL_TETHER;
+			case "spell_writer" -> Motif.SIGIL;
 			case "cleave", "earthsplitter" -> Motif.SPIKE;
 			case "leap_slam", "shield_bash" -> Motif.NOVA;
 			case "whirlwind" -> Motif.VORTEX;

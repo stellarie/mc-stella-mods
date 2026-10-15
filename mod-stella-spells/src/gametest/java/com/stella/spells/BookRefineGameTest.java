@@ -537,7 +537,7 @@ public class BookRefineGameTest {
 		}
 		LOG.info("[BEHAVIOR] test=everyBookHasASignatureWithADistinctShortDescription RESULT books={} signatures={} problems={}",
 			SpellbookCatalog.DEFINITIONS.size(), names.size(), problems);
-		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 83, "the catalog holds " + SpellbookCatalog.DEFINITIONS.size() + " books");
+		helper.assertTrue(SpellbookCatalog.DEFINITIONS.size() == 84, "the catalog holds " + SpellbookCatalog.DEFINITIONS.size() + " books");
 		helper.assertTrue(problems.isEmpty(), "signature problems: " + problems);
 		helper.succeed();
 	}

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The +15 signature of a book. Four books are cast for real and their signature is read in the world. Then every
- * one of the 83 runs its signature in one arena, and a snapshot of the arena must differ afterwards.
+ * one of the 84 runs its signature in one arena, and a snapshot of the arena must differ afterwards.
  */
 public class BookSignatureGameTest {
 	private static final Logger LOG = LoggerFactory.getLogger("mod-stella-spells-test.booksignature");

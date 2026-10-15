@@ -220,8 +220,16 @@ imbued: it is a breath held underwater, not a blow. Nor can Summon Skeleton.
 
 The tooltip of an imbued piece shows the name of each imbued spell and no description.
 
+Spell Writer writes 32 scrolls of the spellbook in your off hand, so cast it from the main hand. It writes
+nothing, and takes no cooldown, when that hand holds no spellbook or a book that has no scroll.
+
+A hostile mob that spawns with a melee weapon has a 5% chance to get one random mob spell imbued on it
+(`MobWeaponImbue`). The roll runs once per mob. The spell casts through the same path as any imbued weapon
+in a mob's hand.
+
 A piece can hold any number of spells, and never the same spell twice. Each imbue adds one, at the same
-price every time: 5 levels, or 5 emeralds when `mod-stella-equips-enchants` runs its emerald anvil.
+price of 5 to the power of the spells the piece holds, plus one: 5, then 25, then 125, as levels, or as emeralds
+when `mod-stella-equips-enchants` runs its emerald anvil.
 A stack of arrows pays that price once for every 16 arrows it holds.
 
 The spellbooks a later update removed turn into their successors in a saved world: Smite becomes
@@ -357,6 +365,7 @@ The level lives in the `stella_refine` custom data. The equips Refine station re
 | Summon Skeleton | Bone Guard | Your skeleton gains Resistance II and Strength I for 20 seconds. |
 | Memorize | Quick Recall | Gives Haste II for 10 seconds. |
 | Soul Vulcan | Soul Chill | Foes within 5 blocks are slowed for 4 seconds. |
+| Spell Writer | Fine Ink | Gives Luck I for 30 seconds. |
 
 **Fighter**
 

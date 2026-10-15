@@ -191,6 +191,8 @@
 	"item.mod-stella-spells.return_scroll.requires": "none",
 	"item.mod-stella-spells.return_scroll.desc": "Read it to return to your respawn point in the Overworld.",
 	"spellbook.mod-stella-spells.fizzle": "Your head spins and the spell fizzles.",
+	"spellbook.mod-stella-spells.needs_offhand_book": "Spell Writer needs a spellbook in your off hand.",
+	"spellbook.mod-stella-spells.no_scroll": "That spellbook has no scroll to write.",
 	"spellbook.mod-stella-spells.needs_staff": "Soul Vulcan needs a staff in your main hand. Cast it from your off hand.",
 	"item.mod-stella-spells.scroll_book": "Scroll Book",
 	"item.mod-stella-spells.scroll_book.requires": "none",
@@ -233,6 +235,11 @@
 	"item.mod-stella-spells.soul_vulcan.desc": "For 1 minute, each staff attack also fires 5 homing bolts at the target and the foes around it. Each bolt can trigger imbued spells.",
 	"item.mod-stella-spells.soul_vulcan.desc_live": "For %4$s, each staff attack also fires %7$s homing bolts at the target and the foes around it. Each bolt can trigger imbued spells.",
 	"item.mod-stella-spells.soul_vulcan_scroll": "Soul Vulcan Scroll",
+	"item.mod-stella-spells.spell_writer": "Spell Writer Spellbook",
+	"item.mod-stella-spells.spell_writer.requires": "spellbook in off hand",
+	"item.mod-stella-spells.spell_writer.desc": "Writes 32 scrolls of the spellbook in your off hand.",
+	"item.mod-stella-spells.spell_writer.desc_live": "Writes %7$s scrolls of the spellbook in your off hand.",
+	"item.mod-stella-spells.spell_writer_scroll": "Spell Writer Scroll",
 	"effect.mod-stella-spells.chilled": "Chilled",
 	"effect.mod-stella-spells.frozen": "Frozen",
 	"effect.mod-stella-spells.soaked": "Soaked",
@@ -664,5 +671,7 @@
 	"spellbook.mod-stella-spells.sig.memorize": "Quick Recall",
 	"spellbook.mod-stella-spells.sig.memorize.text": "Gives Haste II for 10 seconds.",
 	"spellbook.mod-stella-spells.sig.soul_vulcan": "Soul Chill",
-	"spellbook.mod-stella-spells.sig.soul_vulcan.text": "Foes within 5 blocks are slowed for 4 seconds."
+	"spellbook.mod-stella-spells.sig.soul_vulcan.text": "Foes within 5 blocks are slowed for 4 seconds.",
+	"spellbook.mod-stella-spells.sig.spell_writer": "Fine Ink",
+	"spellbook.mod-stella-spells.sig.spell_writer.text": "Gives Luck I for 30 seconds."
 }

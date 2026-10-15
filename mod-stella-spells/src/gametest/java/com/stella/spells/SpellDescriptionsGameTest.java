@@ -56,6 +56,8 @@ public class SpellDescriptionsGameTest {
 				helper.assertTrue(requires.startsWith("Requires: bow or crossbow"), path + " needs a bow or a crossbow: " + requires);
 			} else if (path.equals("shield_bash")) {
 				helper.assertTrue(requires.contains("shield"), "Shield Bash needs a shield: " + requires);
+			} else if (path.equals("spell_writer")) {
+				helper.assertTrue(requires.contains("off hand"), "Spell Writer needs an off-hand book: " + requires);
 			} else if (path.equals("soul_vulcan")) {
 				helper.assertTrue(requires.contains("staff"), "Soul Vulcan needs a staff: " + requires);
 			} else if (path.equals("arrow_crafting")) {

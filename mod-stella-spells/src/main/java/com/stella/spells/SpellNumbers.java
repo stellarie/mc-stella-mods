@@ -110,6 +110,8 @@ public record SpellNumbers(
 	public static final SpellNumbers MEMORIZE = builder("memorize").targets(10).build();
 	/** Soul Vulcan: a minute, the cast does not stretch it; its targets are the extra bolts per staff attack. */
 	public static final SpellNumbers SOUL_VULCAN = builder("soul_vulcan").duration(1200, Scale.FIXED).targets(5).build();
+	/** Spell Writer: its targets are the scrolls one cast writes. */
+	public static final SpellNumbers SPELL_WRITER = builder("spell_writer").targets(32).build();
 
 	// ---- fighter books: damage is flat, and the bridge turns it into the caster's Strength percent. ----
 	/** Cleave's own reach is its radius; its duration is the bleed it leaves. */
