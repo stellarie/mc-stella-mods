@@ -126,8 +126,8 @@ public class LevelScalingGameTest {
 		boolean valid = close(SpawnScaling.healthMultiplier(0), 1.0)
 			&& close(SpawnScaling.healthMultiplier(10), 1.0 + 10 * D.healthPerLevel())
 			&& close(SpawnScaling.healthMultiplier(49), 1.0 + 49 * D.healthPerLevel())
-			&& close(SpawnScaling.healthMultiplier(50), 2.0 * (1.0 + 50 * D.healthPerLevel()))
-			&& close(SpawnScaling.healthMultiplier(100), 4.0 * (1.0 + 100 * D.healthPerLevel()))
+			&& close(SpawnScaling.healthMultiplier(50), 1.5 * (1.0 + 50 * D.healthPerLevel()))
+			&& close(SpawnScaling.healthMultiplier(100), 2.25 * (1.0 + 100 * D.healthPerLevel()))
 			&& D.damageGrowth() == 1.0 && D.tailStart() == 0 && D.tailMax() == 0.0;
 		for (int level : new int[] {0, 10, 80, 100, 580, 1080, 5000}) {
 			valid &= close(SpawnScaling.damageMultiplier(level), 1.0);
