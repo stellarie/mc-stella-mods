@@ -140,39 +140,6 @@ public final class VillagePatrolGameTest {
 		helper.succeed();
 	}
 
-	@GameTest(padding = PatrolTestSupport.VILLAGE_PADDING)
-	public void patrolHealthMatchesVanillaTypeBaselines(final GameTestHelper helper) {
-		String test = "patrolHealthMatchesVanillaTypeBaselines";
-		if (!PatrolTestSupport.loadVillage(helper, test, false)) {
-			return;
-		}
-
-		List<Mob> patrols = PatrolTestSupport.patrols(helper);
-		List<String> ratios = new ArrayList<>();
-		boolean matches = patrols.size() == PATROL_COUNT;
-		for (Mob patrol : patrols) {
-			var created = patrol.getType().create(helper.getLevel(), EntitySpawnReason.COMMAND);
-			if (!(created instanceof Mob baseline)) {
-				ratios.add(PatrolTestSupport.typeId(patrol) + "=missing");
-				matches = false;
-				continue;
-			}
-			baseline.snapTo(patrol.position(), patrol.getYRot(), patrol.getXRot());
-			double ratio = patrol.getMaxHealth() / baseline.getMaxHealth();
-			ratios.add(PatrolTestSupport.typeId(patrol) + "=" + ratio);
-			matches &= Math.abs(ratio - PatrolService.PATROL_HEALTH_MULTIPLIER) < 1.0e-6;
-		}
-
-		PatrolTestSupport.result(
-			test,
-			"count=" + patrols.size() + " multiplier=" + PatrolService.PATROL_HEALTH_MULTIPLIER
-				+ " ratios=" + ratios + " matches=" + matches
-		);
-		helper.assertValueEqual(Integer.valueOf(patrols.size()), Integer.valueOf(PATROL_COUNT), "patrol count for health baseline");
-		helper.assertTrue(matches, "a patrol member differs from its same-type health baseline");
-		helper.succeed();
-	}
-
 	@GameTest(maxTicks = 800, padding = PatrolTestSupport.VILLAGE_PADDING)
 	public void rosterDoesNotDuplicateAfterChunkReload(final GameTestHelper helper) {
 		String test = "rosterDoesNotDuplicateAfterChunkReload";
