@@ -165,7 +165,7 @@ public class LearnLogGameTest {
 		Mob receiver = helper.spawnMob(EntityTypes.ZOMBIE, 24, LearnArena.SPAWN_Y, 36).spawn();
 		String id = receiver.getUUID().toString();
 		LearnArena.whenReady(helper, List.of(player, caller, receiver), () -> {
-			CalloutBoard.send(caller, player, new Callout(Rally.TYPE, caller.getUUID(), player.getUUID(), 1, 300, null), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, new Callout(Rally.TYPE, caller.getUUID(), player.getUUID(), 1, 300, null), LearnConfig.defaults().withCalloutRadius(24.0));
 			helper.assertTrue(!LearnTestInit.linesWith(id, "learnRally SLOT").isEmpty(), "the slot was not logged");
 			String slot = LearnTestInit.linesWith(id, "learnRally SLOT").get(0);
 			helper.assertTrue(slot.contains("index=0") && slot.contains("slot="), "the slot line reads " + slot);
@@ -186,7 +186,7 @@ public class LearnLogGameTest {
 		Mob third = zombie(helper, 28, 28);
 		String callerId = caller.getUUID().toString();
 		LearnArena.whenReady(helper, List.of(player, caller, first, second, third), () -> {
-			LearnConfig config = LearnConfig.defaults().withMaxResponders(1);
+			LearnConfig config = LearnConfig.defaults().withCalloutRadius(24.0).withMaxResponders(1);
 			CalloutBoard.send(caller, player, new Callout(Rally.TYPE, caller.getUUID(), player.getUUID(), 1, 100, null), config);
 			List<String> sends = LearnTestInit.linesWith(callerId, "learnCallout SEND");
 			List<String> answers = LearnTestInit.linesWith(callerId, "learnCallout ANSWER");
@@ -246,7 +246,7 @@ public class LearnLogGameTest {
 		String witchId = witch.getUUID().toString();
 		LearnArena.whenReady(helper, List.of(player, caller, witch), () -> {
 			caller.setHealth(caller.getMaxHealth() / 2.0F);
-			CalloutBoard.send(caller, player, new Callout(CalloutKits.HEAL, caller.getUUID(), player.getUUID(), 1, 100, null), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, new Callout(CalloutKits.HEAL, caller.getUUID(), player.getUUID(), 1, 100, null), LearnConfig.defaults().withCalloutRadius(24.0));
 			List<String> lines = LearnTestInit.linesWith(witchId, "learnCallout EFFECT", "heal");
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aKitEffectLogsWhatItDid RESULT lines={}", lines);
 			helper.assertTrue(lines.size() == 1 && lines.get(0).contains("amount=" + LearnLog.num(CalloutKits.HEAL_AMOUNT)), "the effect lines were " + lines);
@@ -300,9 +300,9 @@ public class LearnLogGameTest {
 	@GameTest(maxTicks = LONG, padding = LearnArena.PADDING)
 	public void loggingCanBeSwitchedOff(final GameTestHelper helper) {
 		String marker = "marker=" + UUID.randomUUID();
-		LearnLog.info(LearnConfig.defaults().withBehaviorLog(false), "learnTest", "MARK", marker);
+		LearnLog.info(LearnConfig.defaults().withCalloutRadius(24.0).withBehaviorLog(false), "learnTest", "MARK", marker);
 		int silent = LearnTestInit.linesWith(marker).size();
-		LearnLog.info(LearnConfig.defaults(), "learnTest", "MARK", marker);
+		LearnLog.info(LearnConfig.defaults().withCalloutRadius(24.0), "learnTest", "MARK", marker);
 		int loud = LearnTestInit.linesWith(marker).size();
 		StellaLearn.LOGGER.info("[BEHAVIOR] test=loggingCanBeSwitchedOff RESULT silent={} loud={}", silent, loud);
 		helper.assertTrue(silent == 0, "a line was written with the log switched off");

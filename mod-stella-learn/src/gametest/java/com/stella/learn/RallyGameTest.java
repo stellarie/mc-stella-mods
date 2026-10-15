@@ -51,7 +51,7 @@ public class RallyGameTest {
 		Mob caller = zombie(helper, 20, 16);
 		Mob receiver = zombie(helper, 24, 42);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, receiver), () -> {
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			Vec3 slot = Rally.slotOf(receiver);
 			helper.assertTrue(slot != null, "the receiver was given no slot");
 			LearnArena.pollUntil(helper, () -> receiver.position().distanceTo(slot) <= ARRIVED, LONG - 40, () -> {
@@ -73,7 +73,7 @@ public class RallyGameTest {
 		Mob caller = zombie(helper, 20, 16);
 		Mob receiver = zombie(helper, 24, 42);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, receiver), () -> {
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			Vec3 slot = Rally.slotOf(receiver);
 			helper.assertTrue(slot != null, "the receiver was given no slot");
 			Vec3 offset = slot.subtract(player.position());
@@ -95,7 +95,7 @@ public class RallyGameTest {
 		Mob first = zombie(helper, 20, 42);
 		Mob second = zombie(helper, 28, 42);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, first, second), () -> {
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			List<Mob> receivers = List.of(first, second);
 			helper.assertTrue(receivers.stream().allMatch(mob -> Rally.slotOf(mob) != null), "a receiver was given no slot");
 			double a = Rally.slotOf(first).subtract(player.position()).x;
@@ -116,7 +116,7 @@ public class RallyGameTest {
 		receiver.setNoAi(true);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, receiver), () -> {
 			helper.assertTrue(receiver.getTarget() == null, "the receiver already had a target, so the case proves nothing");
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aRallyGivesAnIdleMobItsTarget RESULT target={}", receiver.getTarget());
 			helper.assertTrue(receiver.getTarget() == player, "the receiver's target is " + receiver.getTarget());
 			helper.succeed();
@@ -135,7 +135,7 @@ public class RallyGameTest {
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, hurt), () -> {
 			// Set once the mob has loaded: the mobs mod tops a mob's health up when it joins the world.
 			hurt.setHealth(1.0F);
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aMobThatDeclinedIsGivenNoSlot RESULT slot={}", Rally.slotOf(hurt));
 			helper.assertTrue(Rally.slotOf(hurt) == null, "a mob that declined was given a slot");
 			helper.succeed();
@@ -151,7 +151,7 @@ public class RallyGameTest {
 		// The player is the receiver's target from the start, so once the walk ends nothing else pulls it on.
 		LearnArena.keepTargeting(helper, receiver, player);
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, receiver), () -> {
-			CalloutBoard.send(caller, player, rally(caller, player, 5), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 5), LearnConfig.defaults().withCalloutRadius(24.0));
 			Vec3 slot = Rally.slotOf(receiver);
 			helper.assertTrue(slot != null, "the receiver was given no slot");
 			helper.runAfterDelay(60L, () -> {
@@ -175,7 +175,7 @@ public class RallyGameTest {
 		Mob caller = zombie(helper, 20, 16);
 		Mob archer = helper.spawnMob(EntityTypes.SKELETON, 24, LearnArena.SPAWN_Y, 42).spawn();
 		LearnArena.whenReady(helper, java.util.List.of(player, caller, archer), () -> {
-			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, rally(caller, player, 300), LearnConfig.defaults().withCalloutRadius(24.0));
 			Vec3 slot = Rally.slotOf(archer);
 			helper.assertTrue(slot != null, "the archer was given no slot");
 			ReactiveState state = ReactiveState.get(archer);

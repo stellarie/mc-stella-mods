@@ -46,7 +46,7 @@ needs `mod-stella-mobs` and suggests `mod-stella-spells`. The plan is `docs/plan
   hurt zombie against a healthy player. `PURSUE` is a healthy mob after a player at 35 percent health or less. In
   `FIGHT` or `PURSUE` the mob is not offered `SHIELD` or `BACK_OFF`, in any situation. In `RETREAT`, `KITE` and
   `NORMAL` it is offered them as before.
-- **Callouts.** A monster hurt by a player calls. Every monster within 24 blocks of the player is asked, idle or
+- **Callouts.** A monster hurt by a player calls. Every monster within 16 blocks of the player is asked, idle or
   fighting, nearest first. Each one decides for itself, at most 4 accept, and a caller rests 100 ticks between calls.
   What it asks for follows its health and the player's profile:
 

@@ -14,7 +14,7 @@ public record LearnConfig(
 	double moveSaturation, double moveThreshold, int interceptLeadTicks, double critSaturation, double chargeTighten,
 	double rlAlpha, double rlEpsilon, int rlWindowTicks
 ) {
-	public static final double DEFAULT_CALLOUT_RADIUS = 24.0;
+	public static final double DEFAULT_CALLOUT_RADIUS = 16.0;
 	public static final int DEFAULT_MAX_RESPONDERS = 4;
 	public static final int DEFAULT_CALLOUT_COOLDOWN_TICKS = 100;
 	public static final long DEFAULT_PROFILE_HALF_LIFE_TICKS = 6000L;
