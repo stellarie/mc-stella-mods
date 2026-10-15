@@ -43,7 +43,7 @@ public class CalloutKitsGameTest {
 		Mob receiver = spawn(helper, EntityTypes.ZOMBIE, 28, 20);
 		LearnArena.whenReady(helper, List.of(player, caller, decoy, receiver), () -> {
 			receiver.setTarget(decoy);
-			CalloutBoard.send(caller, player, call(CalloutKits.FOCUS, caller, player, null), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, call(CalloutKits.FOCUS, caller, player, null), LearnConfig.defaults().withCalloutRadius(24.0));
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=focusFireSwitchesAnEngagedMobToThePlayer RESULT target={}", receiver.getTarget());
 			helper.assertTrue(receiver.getTarget() == player, "the receiver's target is " + receiver.getTarget());
 			helper.succeed();
@@ -59,7 +59,7 @@ public class CalloutKitsGameTest {
 		LearnArena.keepTargeting(helper, receiver, player);
 		LearnArena.whenReady(helper, List.of(player, caller, receiver), () -> {
 			double before = receiver.distanceTo(player);
-			CalloutBoard.send(caller, player, call(CalloutKits.BACK_OFF, caller, player, null), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, call(CalloutKits.BACK_OFF, caller, player, null), LearnConfig.defaults().withCalloutRadius(24.0));
 			LearnArena.pollUntil(helper, () -> receiver.distanceTo(player) >= CalloutKits.BACK_OFF_DISTANCE - AnswerRallyGoal.ARRIVED - 0.1, 300, () -> {
 				StellaLearn.LOGGER.info(
 					"[BEHAVIOR] test=backOffMovesAMobAwayFromThePlayerThatItWasAttacking RESULT before={} after={}", before, receiver.distanceTo(player)
@@ -79,7 +79,7 @@ public class CalloutKitsGameTest {
 		LearnArena.whenReady(helper, List.of(player, caller, witch), () -> {
 			caller.setHealth(caller.getMaxHealth() / 2.0F);
 			float before = caller.getHealth();
-			CalloutBoard.send(caller, player, call(CalloutKits.HEAL, caller, player, null), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, call(CalloutKits.HEAL, caller, player, null), LearnConfig.defaults().withCalloutRadius(24.0));
 			float gained = caller.getHealth() - before;
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aWitchHealsTheCaller RESULT gained={}", gained);
 			helper.assertTrue(Math.abs(gained - CalloutKits.HEAL_AMOUNT) < 0.01F, "the caller gained " + gained);
@@ -97,7 +97,7 @@ public class CalloutKitsGameTest {
 			caller.setHealth(caller.getMaxHealth() / 2.0F);
 			float before = caller.getHealth();
 			CalloutBoard.Answer answer = answerOf(
-				CalloutBoard.send(caller, player, call(CalloutKits.HEAL, caller, player, null), LearnConfig.defaults()), zombie
+				CalloutBoard.send(caller, player, call(CalloutKits.HEAL, caller, player, null), LearnConfig.defaults().withCalloutRadius(24.0)), zombie
 			);
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aZombieCannotHealAndSaysSo RESULT reason={} gained={}", answer.reason(), caller.getHealth() - before);
 			helper.assertTrue(!answer.accepted() && answer.reason().equals("cannot"), "the zombie answered " + answer);
@@ -114,7 +114,7 @@ public class CalloutKitsGameTest {
 		Mob evoker = spawn(helper, EntityTypes.EVOKER, 28, 20);
 		LearnArena.whenReady(helper, List.of(player, caller, evoker), () -> {
 			helper.assertTrue(!caller.hasEffect(MobEffects.STRENGTH), "the caller was strong already, so the case proves nothing");
-			CalloutBoard.send(caller, player, call(CalloutKits.BUFF, caller, player, STRENGTH), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, call(CalloutKits.BUFF, caller, player, STRENGTH), LearnConfig.defaults().withCalloutRadius(24.0));
 			boolean strong = caller.hasEffect(MobEffects.STRENGTH);
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=anEvokerBuffsTheCallerWithTheNamedEffect RESULT strong={} weak={}", strong, caller.hasEffect(MobEffects.WEAKNESS));
 			helper.assertTrue(strong && !caller.hasEffect(MobEffects.WEAKNESS), "the caller's effects are wrong");
@@ -130,7 +130,7 @@ public class CalloutKitsGameTest {
 		Mob evoker = spawn(helper, EntityTypes.EVOKER, 28, 20);
 		LearnArena.whenReady(helper, List.of(player, caller, evoker), () -> {
 			CalloutBoard.Answer answer = answerOf(CalloutBoard.send(
-				caller, player, call(CalloutKits.BUFF, caller, player, StellaLearn.id("no_such_effect")), LearnConfig.defaults()
+				caller, player, call(CalloutKits.BUFF, caller, player, StellaLearn.id("no_such_effect")), LearnConfig.defaults().withCalloutRadius(24.0)
 			), evoker);
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aBuffNamingNoRealEffectIsDeclined RESULT reason={}", answer.reason());
 			helper.assertTrue(!answer.accepted() && answer.reason().equals("cannot"), "the evoker answered " + answer);
@@ -146,7 +146,7 @@ public class CalloutKitsGameTest {
 		Mob witch = spawn(helper, EntityTypes.WITCH, 32, 24);
 		LearnArena.whenReady(helper, List.of(player, caller, witch), () -> {
 			helper.assertTrue(!player.hasEffect(MobEffects.SLOWNESS), "the player was slow already, so the case proves nothing");
-			CalloutBoard.send(caller, player, call(CalloutKits.DEBUFF, caller, player, SLOWNESS), LearnConfig.defaults());
+			CalloutBoard.send(caller, player, call(CalloutKits.DEBUFF, caller, player, SLOWNESS), LearnConfig.defaults().withCalloutRadius(24.0));
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aWitchDebuffsThePlayerWithinReach RESULT slow={}", player.hasEffect(MobEffects.SLOWNESS));
 			helper.assertTrue(player.hasEffect(MobEffects.SLOWNESS), "the player was not slowed");
 			helper.succeed();
@@ -161,7 +161,7 @@ public class CalloutKitsGameTest {
 		Mob witch = spawn(helper, EntityTypes.WITCH, 24, 44);
 		LearnArena.whenReady(helper, List.of(player, caller, witch), () -> {
 			CalloutBoard.Answer answer = answerOf(
-				CalloutBoard.send(caller, player, call(CalloutKits.DEBUFF, caller, player, SLOWNESS), LearnConfig.defaults()), witch
+				CalloutBoard.send(caller, player, call(CalloutKits.DEBUFF, caller, player, SLOWNESS), LearnConfig.defaults().withCalloutRadius(24.0)), witch
 			);
 			StellaLearn.LOGGER.info("[BEHAVIOR] test=aWitchOutOfReachDoesNotDebuff RESULT reason={} slow={}", answer.reason(), player.hasEffect(MobEffects.SLOWNESS));
 			helper.assertTrue(!answer.accepted() && answer.reason().equals("cannot"), "the witch answered " + answer);

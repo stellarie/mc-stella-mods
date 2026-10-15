@@ -237,7 +237,7 @@ public class MovementTacticsGameTest {
 				flanker.setNoAi(true);
 				LearnArena.whenReady(helper, List.of(flanker), () -> {
 					Rally.slotFor(flanker, kiter, 0);
-					CalloutBoard.send(leader, kiter, new Callout(Rally.TYPE, leader.getUUID(), kiter.getUUID(), 1, 100, null), LearnConfig.defaults());
+					CalloutBoard.send(leader, kiter, new Callout(Rally.TYPE, leader.getUUID(), kiter.getUUID(), 1, 100, null), LearnConfig.defaults().withCalloutRadius(24.0));
 					List<String> slots = LearnTestInit.linesWith(flanker.getUUID().toString(), "learnRally SLOT");
 					helper.assertTrue(slots.size() == 1 && slots.get(0).contains("strafe_bias=-1.00") && slots.get(0).contains("side=left"), "the slot lines were " + slots);
 					StellaLearn.LOGGER.info("[BEHAVIOR] test=anInterceptAndAFlankAreLogged RESULT intercept={} slot={}", intercept, slots.get(0));
