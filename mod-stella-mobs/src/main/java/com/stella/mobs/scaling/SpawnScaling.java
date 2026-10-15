@@ -107,11 +107,15 @@ public final class SpawnScaling {
 		return Math.hypot(mob.getX() - originX, mob.getZ() - originZ);
 	}
 
+	// Huge tower floors overflow the tier power.
+	private static final double MAX_HEALTH_MULTIPLIER = 1.0e9;
+
 	public static double healthMultiplier(final int threatLevel) {
 		ScalingConfig config = ScalingConfigStore.get();
 		int level = Math.max(0, threatLevel);
 		int tiers = level / Math.max(1, config.healthTierStep());
-		return (1.0 + level * config.healthPerLevel()) * Math.pow(config.healthTierFactor(), tiers);
+		double tiered = Math.pow(config.healthTierFactor(), tiers);
+		return Math.min(MAX_HEALTH_MULTIPLIER, (1.0 + level * config.healthPerLevel()) * tiered);
 	}
 
 	/** Compound growth to the tail start, then the tower S-curve on top of it. */
