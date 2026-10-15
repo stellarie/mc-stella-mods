@@ -688,7 +688,12 @@ public class BossAbilityGameTest {
 		prepare(helper, NO_BOSS);
 		Zombie elite = ordinary(helper, EntityTypes.ZOMBIE, 3, 3, 3);
 		Elite.mark(elite, GearTier.DIAMOND, Elite.HEALTH_MULTIPLIER);
-		Mob victim = ordinary(helper, EntityTypes.IRON_GOLEM, 4, 3, 3);
+		Mob victim = EntityTypes.IRON_GOLEM.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+		victim.addTag(StellaMobs.NO_SPAWN_ROLL_TAG);
+		Vec3 at = helper.absoluteVec(new Vec3(4.5, 3.0, 3.5));
+		victim.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		helper.getLevel().addFreshEntity(victim);
+		((net.fabricmc.fabric.api.attachment.v1.AttachmentTarget) victim).removeAttached(EliteState.TYPE);
 		victim.setNoAi(true);
 		boolean landed = elite.doHurtTarget(helper.getLevel(), victim);
 		String seen = afflictions(victim);

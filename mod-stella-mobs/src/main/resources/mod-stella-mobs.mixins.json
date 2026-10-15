@@ -38,7 +38,8 @@
 		"WitherBossInvoker",
 		"WitherMinionLootMixin",
 		"ShieldSpawnMixin",
-		"ShieldAggroMixin"
+		"ShieldAggroMixin",
+		"ElitePoiseMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
