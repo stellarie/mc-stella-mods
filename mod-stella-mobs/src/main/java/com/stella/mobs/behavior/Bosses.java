@@ -46,7 +46,7 @@ public final class Bosses {
 	/** B03: the boss base is twice an elite's, and an elite's multiplier is the shared 2.0. */
 	public static final double ELITE_HEALTH_MULTIPLIER = Elite.HEALTH_MULTIPLIER;
 	/** B08: the boss drop rate. */
-	public static final float DROP_CHANCE = 0.80F;
+	public static final float DROP_CHANCE = 0.05F;
 	/** Legacy boss modifiers remain named so saved mobs can remove them during threat migration. */
 	public static final Identifier LEVEL_HEALTH_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_health");
 	public static final Identifier LEVEL_DAMAGE_ID = Identifier.fromNamespaceAndPath(StellaMobs.MOD_ID, "boss_level_damage");
@@ -208,32 +208,9 @@ public final class Bosses {
 		}
 	}
 
-	/**
-	 * Enchant every enchantment the item accepts, each at its own maximum, skipping any candidate that
-	 * is incompatible with what the item already carries: the filter {@code canEnchant} does not apply.
-	 */
+	/** Two or three random compatible non-curse enchantments at random levels. */
 	public static ItemStack fullyEnchant(final ItemStack stack, final Registry<Enchantment> registry) {
-		if (stack.isEmpty() || stack.get(DataComponents.ENCHANTABLE) == null) {
-			return stack;
-		}
-
-		ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
-
-		for (Holder<Enchantment> candidate : EnchantRoller.poolFor(stack, registry)) {
-			// I2: a curse carries no exclusive set, so this walk always landed it, and a vanishing
-			// piece never drops because Mob's drop path reads PREVENT_EQUIPMENT_DROP.
-			if (candidate.is(EnchantmentTags.CURSE)) {
-				continue;
-			}
-
-			boolean compatible = mutable.keySet().stream().allMatch(held -> Enchantment.areCompatible(held, candidate));
-			if (compatible) {
-				mutable.upgrade(candidate, candidate.value().getMaxLevel());
-			}
-		}
-
-		stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
-		return stack;
+		return EnchantRoller.enchant(stack, net.minecraft.util.RandomSource.create(), registry);
 	}
 
 	/** B02: the guard reads the mob's own chunk and excludes the mob itself. */

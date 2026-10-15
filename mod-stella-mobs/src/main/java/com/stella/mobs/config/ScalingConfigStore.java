@@ -113,7 +113,9 @@ public final class ScalingConfigStore {
 			known.get("xp_gap_min"),
 			known.get("xp_gap_max"),
 			known.get("xp_elite_multiplier"),
-			known.get("xp_nemesis_multiplier")
+			known.get("xp_nemesis_multiplier"),
+			known.get("health_tier_factor"),
+			Math.max(1, (int) Math.round(known.get("health_tier_step")))
 		);
 	}
 
@@ -168,6 +170,8 @@ public final class ScalingConfigStore {
 		map.put("xp_gap_max", value.xpGapMax());
 		map.put("xp_elite_multiplier", value.xpEliteMultiplier());
 		map.put("xp_nemesis_multiplier", value.xpNemesisMultiplier());
+		map.put("health_tier_factor", value.healthTierFactor());
+		map.put("health_tier_step", (double) value.healthTierStep());
 		return map;
 	}
 }

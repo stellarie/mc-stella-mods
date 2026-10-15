@@ -1,9 +1,9 @@
 package com.stella.mobs.gear;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -13,9 +13,13 @@ import net.minecraft.util.Util;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jspecify.annotations.Nullable;
 
 public final class EnchantRoller {
+	public static final int MIN_ENCHANTS = 2;
+	public static final int MAX_ENCHANTS = 3;
 	private static final Map<Item, List<Holder<Enchantment>>> POOLS = new HashMap<>();
 	private static final Object LOCK = new Object();
 	private static @Nullable Registry<Enchantment> cachedRegistry;
@@ -47,14 +51,21 @@ public final class EnchantRoller {
 			return stack;
 		}
 
-		Optional<Holder<Enchantment>> chosen = Util.getRandomSafe(poolFor(stack, registry), random);
-		if (chosen.isEmpty()) {
-			return stack;
+		List<Holder<Enchantment>> pool = new ArrayList<>(poolFor(stack, registry));
+		pool.removeIf(candidate -> candidate.is(EnchantmentTags.CURSE));
+		Util.shuffle(pool, random);
+		int wanted = Mth.nextInt(random, MIN_ENCHANTS, MAX_ENCHANTS);
+		ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+		for (Holder<Enchantment> candidate : pool) {
+			if (mutable.keySet().size() >= wanted) {
+				break;
+			}
+			boolean compatible = mutable.keySet().stream().allMatch(held -> Enchantment.areCompatible(held, candidate));
+			if (compatible) {
+				mutable.set(candidate, Mth.nextInt(random, candidate.value().getMinLevel(), candidate.value().getMaxLevel()));
+			}
 		}
-
-		Holder<Enchantment> enchantment = chosen.get();
-		int level = Mth.nextInt(random, enchantment.value().getMinLevel(), enchantment.value().getMaxLevel());
-		stack.enchant(enchantment, level);
+		stack.set(DataComponents.ENCHANTMENTS, mutable.toImmutable());
 		return stack;
 	}
 

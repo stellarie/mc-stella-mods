@@ -287,8 +287,8 @@ public class OceanBandGameTest {
 				+ " escort=" + com.stella.mobs.behavior.EscortSquad.DROP_CHANCE
 		);
 		helper.assertTrue(
-			Math.abs(OceanBand.CAPTAIN_DROP_CHANCE - 0.20F) < EPSILON,
-			"the captain drop is " + OceanBand.CAPTAIN_DROP_CHANCE + ", not 0.20"
+			Math.abs(OceanBand.CAPTAIN_DROP_CHANCE - 0.15F) < EPSILON,
+			"the captain drop is " + OceanBand.CAPTAIN_DROP_CHANCE + ", not 0.15"
 		);
 		helper.assertTrue(
 			Math.abs(OceanBand.MEMBER_DROP_CHANCE - 0.12F) < EPSILON,
