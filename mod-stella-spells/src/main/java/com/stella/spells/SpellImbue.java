@@ -49,6 +49,8 @@ public final class SpellImbue {
 	public static final double IMBUE_DURATION = 0.5;
 	/** The chance that one imbued book casts on a hit, at 0 LUK. */
 	public static final double PROC_BASE_CHANCE = 0.10;
+	/** The same chance for a staff's normal attack. */
+	public static final double STAFF_PROC_BASE_CHANCE = 0.20;
 	/** What each point of LUK adds to that chance. */
 	public static final double PROC_CHANCE_PER_LUK = 0.01;
 	/** How far behind its target an imbued Riftwalk sets the wielder down. */
@@ -167,14 +169,38 @@ public final class SpellImbue {
 
 	/** The chance that one imbued book casts on a hit: the base plus 1 percent per LUK, at most 1. */
 	public static double procChance(final LivingEntity wielder) {
+		return procChance(wielder, PROC_BASE_CHANCE);
+	}
+
+	static double procChance(final LivingEntity wielder, final double base) {
 		double luk = Math.max(0.0, lukSource.stat(wielder, "luk"));
-		return Math.min(1.0, PROC_BASE_CHANCE + luk * PROC_CHANCE_PER_LUK);
+		return Math.min(1.0, base + luk * PROC_CHANCE_PER_LUK);
 	}
 
 	private static boolean procs(final ServerPlayer wielder) {
+		return procs(wielder, PROC_BASE_CHANCE);
+	}
+
+	private static boolean procs(final ServerPlayer wielder, final double base) {
 		java.util.function.DoubleSupplier fixed = procRoll;
 		double roll = fixed == null ? wielder.getRandom().nextDouble() : fixed.getAsDouble();
-		return roll < procChance(wielder);
+		return roll < procChance(wielder, base);
+	}
+
+	/** Test seam: the power multiplier of the latest imbued cast. */
+	static volatile double lastCastPower;
+
+	/** A staff's normal attack hit the victim: each imbued book rolls the staff chance and casts at full strength. */
+	static void onStaffHit(final ServerPlayer player, final LivingEntity victim) {
+		ItemStack staff = player.getMainHandItem();
+		if (MobImbue.casting() || PLAYER_CASTING.get() != null) {
+			return;
+		}
+		for (Identifier spell : spellsOf(staff)) {
+			if (procs(player, STAFF_PROC_BASE_CHANCE)) {
+				cast(player, spell, victim, staff, true, true);
+			}
+		}
 	}
 
 	/** A new server's tick counter starts again at zero, so no cooldown outlives the server it was set on. */
@@ -413,6 +439,7 @@ public final class SpellImbue {
 		);
 		// The piece's own awakened imbue decides; the cast book's flag never reaches an imbued hit.
 		modifiers = modifiers.withAwakened(definition.id().equals(piece.get(Awakening.AWAKENED_IMBUE)));
+		lastCastPower = modifiers.powerMultiplier();
 		Mob target = null;
 		Vec3 point = null;
 		LivingEntity ally = player;
@@ -443,6 +470,10 @@ public final class SpellImbue {
 		boolean cast;
 		try {
 			cast = definition.effect().apply(player, target, point, modifiers);
+			// The second landing runs inside the casting flag, so it never rolls a proc of its own.
+			if (cast && SpellCasting.doublecasts(player, piece) && SpellCasting.landAgain(player, definition, target, point, modifiers)) {
+				SpellCasting.doublecasts++;
+			}
 		} finally {
 			PLAYER_CASTING.remove();
 			CastContext.setImbuedVictim(null);

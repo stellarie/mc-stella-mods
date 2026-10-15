@@ -111,7 +111,7 @@ public final class MerchantWeapons {
 	private static final float REACH_HITBOX_MARGIN = 0.125F;
 	private static final float REACH_MOB_FACTOR = 0.5F;
 	private static final double STAFF_ATTACK_BONUS = 3.0;
-	private static final double STAFF_ATTACK_SPEED = -2.8;
+	private static final double STAFF_ATTACK_SPEED = -2.4;
 
 	private static final Map<String, Integer> NETHERITE_STATS_SWORD = Map.of("str", 10, "agi", 10, "luk", 10);
 

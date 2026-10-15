@@ -40,6 +40,11 @@ public final class StaffPower {
 		return !stack.isEmpty() && stack.is(MAGE_STAFFS);
 	}
 
+	/** A held item whose normal attack is the staff bolt. */
+	public static boolean firesBolt(final ItemStack stack) {
+		return isStaff(stack) || stack.is(SpellImbue.IMBUABLE);
+	}
+
 	/** The refine level of a stack, or 0 when it carries none. */
 	public static int refineLevel(final ItemStack stack) {
 		CustomData data = stack.get(DataComponents.CUSTOM_DATA);

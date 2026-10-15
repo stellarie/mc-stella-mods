@@ -85,7 +85,7 @@ public final class SpellCasting {
 	}
 
 	/** Whether this cast lands twice: a Doublecast item rolls the usual chance, and a staff adds its own to every spell. */
-	private static boolean doublecasts(final ServerPlayer caster, final ItemStack stack) {
+	static boolean doublecasts(final ServerPlayer caster, final ItemStack stack) {
 		double staff = StaffPower.doublecastChance(caster);
 		boolean enchanted = SpellModifiers.doublecast(caster.getItemBySlot(EquipmentSlot.HEAD), stack);
 		if (!enchanted && staff <= 0.0) {
@@ -98,7 +98,7 @@ public final class SpellCasting {
 	}
 
 	// The second landing: the target's hurt cooldown from the first is set aside, so both hits count.
-	private static boolean landAgain(final ServerPlayer caster, final SpellDefinition definition, final Mob target, final Vec3 point,
+	static boolean landAgain(final ServerPlayer caster, final SpellDefinition definition, final Mob target, final Vec3 point,
 		final SpellModifiers.CastModifiers modifiers) {
 		if (target != null) {
 			target.damageCooldownTime = 0;

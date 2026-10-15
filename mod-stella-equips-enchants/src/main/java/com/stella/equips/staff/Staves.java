@@ -12,10 +12,14 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.component.ItemLore;
 
 /**
@@ -41,6 +45,12 @@ public final class Staves {
 		new StaffDef("prismarine_staff", 48, "pen", 5, 5)
 	);
 
+	/** The attack speed of a vanilla sword, 1.6 per second, so AGI scales every staff alike. */
+	private static final ItemAttributeModifiers SWORD_SPEED = ItemAttributeModifiers.builder()
+		.add(Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_ID, -2.4, AttributeModifier.Operation.ADD_VALUE),
+			EquipmentSlotGroup.MAINHAND)
+		.build();
+
 	private Staves() {
 	}
 
@@ -49,6 +59,7 @@ public final class Staves {
 			ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(StellaEquips.MOD_ID, def.id()));
 			Registry.register(BuiltInRegistries.ITEM, key, new Item(new Item.Properties().setId(key)
 				.durability(DURABILITY).repairable(Items.IRON_INGOT).enchantable(ENCHANTABILITY)
+				.component(DataComponents.ATTRIBUTE_MODIFIERS, SWORD_SPEED)
 				.component(DataComponents.CUSTOM_DATA, profile(def))
 				.component(DataComponents.LORE, lore(def))));
 		}

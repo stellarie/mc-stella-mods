@@ -18,24 +18,43 @@ import net.minecraft.world.phys.Vec3;
 public final class StaffBolt {
 	static final double RANGE = 24.0;
 	static final double FLAT_DAMAGE = 4.0;
-	private static final double READY = 0.9;
 
 	private StaffBolt() {
 	}
 
+	/** A staff never lands a melee blow: the attack becomes the bolt, so no crit and no STR damage apply. */
+	public static void register() {
+		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+			if (level.isClientSide() || !(player instanceof ServerPlayer caster) || !StaffPower.firesBolt(caster.getMainHandItem())) {
+				return net.minecraft.world.InteractionResult.PASS;
+			}
+			onSwing(caster);
+			return net.minecraft.world.InteractionResult.FAIL;
+		});
+	}
+
 	public static void onSwing(final ServerPlayer player) {
-		if (!StaffPower.isStaff(player.getMainHandItem()) && !player.getMainHandItem().is(SpellImbue.IMBUABLE)) {
+		if (!StaffPower.firesBolt(player.getMainHandItem())) {
 			return;
 		}
-		if (player.getAttackStrengthScale(0.0F) < READY) {
-			return;
-		}
+		float charge = player.getAttackStrengthScale(0.0F);
 		player.resetAttackStrengthTicker();
-		fire(player);
+		fire(player, charge);
+	}
+
+	/** Vanilla's damage share of a melee hit at this charge: 0.2 at none, 1 at full. */
+	static double chargeFactor(final float charge) {
+		double c = Math.max(0.0, Math.min(1.0, charge));
+		return 0.2 + c * c * 0.8;
 	}
 
 	/** Fires the bolt; returns the entity hit, or null. */
 	public static LivingEntity fire(final ServerPlayer player) {
+		return fire(player, 1.0F);
+	}
+
+	/** Fires the bolt at a charge; the damage scales by the vanilla charge curve. */
+	public static LivingEntity fire(final ServerPlayer player, final float charge) {
 		ServerLevel level = player.level();
 		Vec3 from = player.getEyePosition();
 		Vec3 look = player.getLookAngle();
@@ -55,7 +74,9 @@ public final class StaffBolt {
 		}
 		double matk = RpgBridge.matkHit(player, 100.0);
 		float amount = Double.isNaN(matk) || matk <= 0 ? (float) FLAT_DAMAGE : RpgBridge.vanilla((float) matk);
+		amount *= (float) chargeFactor(charge);
 		target.hurtServer(level, SpellCasting.spellSource(player), amount);
+		SpellImbue.onStaffHit(player, target);
 		return target;
 	}
 
