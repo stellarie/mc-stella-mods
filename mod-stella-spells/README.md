@@ -599,6 +599,7 @@ the custom data, so neither mod needs the other.
   spell with a fixed cooldown keeps it.
 - **Slot.** Only the main hand counts. A book cast from the off hand takes the bonus while the staff is in the main hand.
 - **Code.** `StaffPower`, called from `RpgBridge.grow` after the stat growth.
+- **Swing bolt.** A swing with a staff, even at air, fires an instant bolt up to 24 blocks with Portal particles. It fires only on a swing at air (the punch packet), so a melee hit never double-fires. It deals one no-crit MATK hit (4 without the RPG mod), spares allies and pets, and respects the attack cooldown. Code: `StaffBolt`.
 
 ### Staff doublecast
 

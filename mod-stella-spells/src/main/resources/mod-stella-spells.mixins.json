@@ -28,7 +28,8 @@
 		"AbstractArrowHitMixin",
 		"QuiverAmmoMixin",
 		"LivingEntityDrawMixin",
-		"AbstractArrowSpeedMixin"
+		"AbstractArrowSpeedMixin",
+		"StaffSwingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
