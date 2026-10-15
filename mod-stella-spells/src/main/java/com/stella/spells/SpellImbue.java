@@ -239,7 +239,7 @@ public final class SpellImbue {
 			|| stack.is(ItemTags.ARROWS) || stack.is(ItemTags.CHEST_ARMOR));
 	}
 
-	private static final net.minecraft.tags.TagKey<Item> IMBUABLE = net.minecraft.tags.TagKey.create(
+	static final net.minecraft.tags.TagKey<Item> IMBUABLE = net.minecraft.tags.TagKey.create(
 		net.minecraft.core.registries.Registries.ITEM,
 		net.minecraft.resources.Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "imbuable"));
 

@@ -25,7 +25,7 @@ public final class StaffBolt {
 	}
 
 	public static void onSwing(final ServerPlayer player) {
-		if (!StaffPower.isStaff(player.getMainHandItem())) {
+		if (!StaffPower.isStaff(player.getMainHandItem()) && !player.getMainHandItem().is(SpellImbue.IMBUABLE)) {
 			return;
 		}
 		if (player.getAttackStrengthScale(0.0F) < READY) {
