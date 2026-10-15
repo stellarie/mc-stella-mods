@@ -350,4 +350,19 @@ public class MerchantGoodsGameTest {
 		helper.assertTrue(listed == 6 && rightPrice == 6 && stockMatches == 6, "weapons listed=" + listed + " price640=" + rightPrice + " stockMatches=" + stockMatches);
 		helper.succeed();
 	}
+
+	/** The Arcane Shortsword and Arcane Bow are on the list at 96 emeralds, far below a merchant weapon, and in stock exactly when the equips mod has them. */
+	@GameTest
+	public void theArcaneShortswordAndBowAreCheapGoodsInStockWhenTheItemsExist(final GameTestHelper helper) {
+		for (String id : new String[] {"arcane_shortsword", "arcane_bow"}) {
+			MerchantGoods.Good good = MerchantGoods.byId(StellaTower.id(id));
+			helper.assertTrue(good != null, id + " is not on the merchant's list");
+			boolean present = net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(
+				net.minecraft.resources.Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", id));
+			TowerTestSupport.result("merchant_" + id, "price=" + good.price() + " stocked=" + good.stocked().getAsBoolean() + " present=" + present);
+			helper.assertTrue(good.price() == 96 && good.price() < MerchantGoods.WEAPON_PRICE, id + " costs " + good.price());
+			helper.assertTrue(good.stocked().getAsBoolean() == present, id + " stock does not follow the item");
+		}
+		helper.succeed();
+	}
 }

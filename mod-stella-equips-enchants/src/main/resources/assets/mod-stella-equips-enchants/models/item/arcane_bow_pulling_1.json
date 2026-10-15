@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/bow",
+	"textures": {
+		"layer0": "mod-stella-equips-enchants:item/arcane_bow_pulling_1"
+	}
+}

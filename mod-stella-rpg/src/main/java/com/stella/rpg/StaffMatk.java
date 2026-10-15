@@ -20,6 +20,8 @@ public final class StaffMatk {
 	public static final String EFFECT = "effect";
 	public static final String BASE = "base";
 	public static final String STEP = "step";
+	/** Optional flat MATK per refine level, K units. A profile that has it skips the percent growth and the milestones. */
+	public static final String MATK_STEP = "matk_step";
 	public static final String CDR = "cdr";
 	public static final String CRIT = "crit";
 	public static final String PEN = "pen";
@@ -40,6 +42,17 @@ public final class StaffMatk {
 		staff.putString(EFFECT, effect);
 		staff.putInt(BASE, basePercent);
 		staff.putInt(STEP, stepPercent);
+		CompoundTag root = new CompoundTag();
+		root.put(KEY, staff);
+		return CustomData.of(root);
+	}
+
+	/** A profile of a weapon with flat MATK that grows by a fixed amount per refine level. */
+	public static CustomData flatProfile(final int matk, final int matkPerLevel) {
+		CompoundTag staff = new CompoundTag();
+		staff.putInt(MATK, matk);
+		staff.putInt(MATK_STEP, matkPerLevel);
+		staff.putString(EFFECT, "none");
 		CompoundTag root = new CompoundTag();
 		root.put(KEY, staff);
 		return CustomData.of(root);
@@ -66,6 +79,10 @@ public final class StaffMatk {
 			return 0.0;
 		}
 		int level = Affixes.refineLevel(stack);
+		int flatStep = staff.getIntOr(MATK_STEP, 0);
+		if (flatStep > 0) {
+			return staff.getIntOr(MATK, 0) + (double) flatStep * level;
+		}
 		return staff.getIntOr(MATK, 0) * (1.0 + PER_LEVEL * level + PER_MILESTONE * milestones(level));
 	}
 

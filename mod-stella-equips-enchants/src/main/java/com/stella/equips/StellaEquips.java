@@ -34,6 +34,8 @@ public class StellaEquips implements ModInitializer {
 		com.stella.equips.bows.CraftedBows.register();
 		com.stella.equips.merchant.MerchantWeapons.register();
 		com.stella.equips.staff.Staves.register();
+		com.stella.equips.merchant.ArcaneShortsword.init();
+		com.stella.equips.merchant.ArcaneBow.init();
 		com.stella.equips.anvil.EmeraldPurse.register();
 		com.stella.equips.enchant.Auras.register();
 		com.stella.equips.enchant.Waveform.register();

@@ -121,4 +121,59 @@ public final class StatStaffGameTest {
 		helper.assertTrue(Math.abs(RpgSpells.matkFlat(player) - StaffMatk.heldMatk(player)) < EPSILON, "spell flat MATK drifted");
 		helper.succeed();
 	}
+
+	/**
+	 * A flat-MATK weapon of the shortsword and bow kind gives 100 MATK plus 5 per refine level in the main hand, and shows it. A
+	 * tagged weapon's melee hit and arrow hit each take exactly 1 health after K, with STR high, a crit forced and Sharpness on;
+	 * an untagged sword in the same fight takes far more.
+	 */
+	@GameTest
+	public void aOneDamageWeaponHitsForOneWhateverTheBuffsAndGivesFlatMatk(final GameTestHelper helper) {
+		net.minecraft.server.level.ServerLevel level = helper.getLevel();
+		ServerPlayer player = RpgTestSupport.player(helper);
+		ItemStack blade = new ItemStack(Items.STICK);
+		blade.set(DataComponents.CUSTOM_DATA, StaffMatk.flatProfile(100, 5));
+		player.setItemSlot(EquipmentSlot.MAINHAND, blade);
+		double plus0 = StaffMatk.heldMatk(player);
+		CustomData.update(DataComponents.CUSTOM_DATA, blade, tag -> tag.putInt("stella_refine", 7));
+		double plus7 = StaffMatk.heldMatk(player);
+		String line = com.stella.rpg.roll.BonusTooltip.lines(blade).get(0).getString();
+		helper.assertTrue(plus0 == 100.0 && plus7 == 135.0, "MATK " + plus0 + " then " + plus7);
+		helper.assertTrue(line.equals("+135 Matk"), "tooltip " + line);
+
+		RpgTestSupport.setStat(player, Stat.STR, 50);
+		RpgTestSupport.setStat(player, Stat.DEX, 50);
+		RpgCombat.setRoller((attacker, random, chance) -> true);
+		try {
+			net.minecraft.world.entity.monster.zombie.Zombie victim = fresh(helper);
+			float full = victim.getHealth();
+			victim.hurtServer(level, level.damageSources().playerAttack(player), 20.0F);
+			float melee = full - victim.getHealth();
+			victim = fresh(helper);
+			full = victim.getHealth();
+			net.minecraft.world.entity.projectile.arrow.Arrow arrow = new net.minecraft.world.entity.projectile.arrow.Arrow(level, player,
+				new ItemStack(Items.ARROW), new ItemStack(Items.STICK));
+			level.addFreshEntity(arrow);
+			victim.hurtServer(level, level.damageSources().arrow(arrow, player), 20.0F);
+			float shot = full - victim.getHealth();
+			victim = fresh(helper);
+			player.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.STONE_SWORD));
+			full = victim.getHealth();
+			victim.hurtServer(level, level.damageSources().playerAttack(player), 20.0F);
+			float control = full - victim.getHealth();
+			RpgTestSupport.result("aOneDamageWeaponHitsForOneWhateverTheBuffsAndGivesFlatMatk", "melee=" + melee + " arrow=" + shot + " control=" + control);
+			helper.assertTrue(melee == 1.0F && shot == 1.0F, "melee " + melee + " arrow " + shot + ", want 1 each");
+			helper.assertTrue(control > 10.0F, "an untagged sword hit for " + control);
+		} finally {
+			RpgCombat.setRoller(null);
+		}
+		helper.succeed();
+	}
+
+	private static net.minecraft.world.entity.monster.zombie.Zombie fresh(final GameTestHelper helper) {
+		net.minecraft.world.entity.monster.zombie.Zombie zombie = helper.spawnWithNoFreeWill(net.minecraft.world.entity.EntityTypes.ZOMBIE, 1, 2, 1);
+		zombie.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(100000.0);
+		zombie.setHealth(zombie.getMaxHealth());
+		return zombie;
+	}
 }
