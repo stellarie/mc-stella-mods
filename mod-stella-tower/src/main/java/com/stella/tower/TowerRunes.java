@@ -188,11 +188,21 @@ public final class TowerRunes {
 		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
 	}
 
+	private static final int RPG_WEAPON_SLOT = 35;
+
 	/** The weapon behind a blow. A spell hit has none, so a held staff stands in for it. */
 	public static ItemStack weaponOf(final DamageSource source) {
 		ItemStack weapon = source.getWeaponItem();
-		if (weapon == null && source.getEntity() instanceof Player player && player.getMainHandItem().is(STAVES)) {
-			return player.getMainHandItem();
+		// The held item stands in as the weapon, so a spell cast from a book reports the book.
+		if ((weapon == null || slotOf(weapon) != Slot.WEAPON) && source.getEntity() instanceof Player player) {
+			if (player.getMainHandItem().is(STAVES)) {
+				return player.getMainHandItem();
+			}
+			// A spell is cast from a held book, so the staff sits in the RPG weapon slot.
+			ItemStack slotted = player.getInventory().getItem(RPG_WEAPON_SLOT);
+			if (slotted.is(STAVES)) {
+				return slotted;
+			}
 		}
 		return weapon;
 	}
