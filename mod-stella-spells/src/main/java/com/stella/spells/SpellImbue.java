@@ -43,8 +43,10 @@ import net.minecraft.world.phys.EntityHitResult;
  * a crossbow may cast it when its arrow lands. Each imbued book rolls its own chance on each hit.
  */
 public final class SpellImbue {
-	/** The anvil's price in levels for each book; with the equips mod's anvil it reads as emeralds. */
+	/** The first imbue's price, and the base each held spell multiplies; with the equips mod's anvil it reads as emeralds. */
 	public static final int IMBUE_XP_COST = 5;
+	/** Keeps the price inside an int however many spells a Compendium holds. */
+	private static final int MAX_COST = 1_000_000_000;
 	public static final double IMBUE_POWER = 0.5;
 	public static final double IMBUE_DURATION = 0.5;
 	/** The power and duration share of a spell that a fully charged staff attack triggers. */
@@ -125,7 +127,7 @@ public final class SpellImbue {
 		SpellbookCatalog.DEFINITIONS.stream()
 			.filter(definition -> definition.school() == School.ARCHER)
 			.map(SpellDefinition::id),
-		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"), id("summon_wolf"), id("memorize"), id("soul_vulcan"))
+		java.util.stream.Stream.of(id("tide_lungs"), id("summon_skeleton"), id("summon_wolf"), id("memorize"), id("soul_vulcan"), id("spell_writer"))
 	).collect(java.util.stream.Collectors.toUnmodifiableSet());
 	/**
 	 * The archer books a bow or a crossbow takes: the ones that strike a target. A self buff or a next-shot
@@ -280,14 +282,17 @@ public final class SpellImbue {
 			.anyMatch(entry -> entry.attribute().equals(Attributes.ATTACK_DAMAGE) && entry.modifier().id().equals(Item.BASE_ATTACK_DAMAGE_ID));
 	}
 
-	/** The anvil's price: five for each book, however many the piece holds already. */
+	/** The anvil's price: 5 to the power of the spells the piece holds, plus one, so 5, 25, 125 and on. */
 	public static int imbueCost(final ItemStack piece) {
-		int cost = IMBUE_XP_COST;
+		long cost = IMBUE_XP_COST;
+		for (int held = spellsOf(piece).size(); held > 0 && cost < MAX_COST; held--) {
+			cost *= IMBUE_XP_COST;
+		}
 		// A stack of arrows pays once for every sixteen it holds, so a full stack is not one arrow's price.
 		if (piece.is(ItemTags.ARROWS)) {
 			cost *= (piece.getCount() + ARROWS_PER_PRICE - 1) / ARROWS_PER_PRICE;
 		}
-		return cost;
+		return (int) Math.min(MAX_COST, cost);
 	}
 
 	/**

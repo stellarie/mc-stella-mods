@@ -56,7 +56,8 @@ public final class SpellbookCatalog {
 		definition("battle_hymn", Items.GLOWSTONE_DUST, 400, 14_423_100, TargetMode.SELF, MoreSpells::applyBattleHymn),
 		definition("summon_skeleton", Items.BONE, SummonSkeleton.COOLDOWN_TICKS, 14_540_253, TargetMode.SELF, SummonSkeleton::apply),
 		definition("memorize", Items.INK_SAC, 600, 10190816, TargetMode.SELF, Memorize::apply),
-		definition("soul_vulcan", Items.SOUL_SAND, 1800, 3786454, TargetMode.SELF, SoulVulcan::apply)
+		definition("soul_vulcan", Items.SOUL_SAND, 1800, 3786454, TargetMode.SELF, SoulVulcan::apply),
+		definition("spell_writer", Items.WRITABLE_BOOK, 2400, 3119978, TargetMode.SELF, SpellWriter::apply)
 	);
 	/** The mage books, then every skill book: registration, scrolls, loot, and tooltips read this one list. */
 	public static final List<SpellDefinition> DEFINITIONS = java.util.stream.Stream.concat(

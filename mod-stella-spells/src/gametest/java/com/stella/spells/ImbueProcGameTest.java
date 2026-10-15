@@ -125,7 +125,7 @@ public class ImbueProcGameTest {
 		ItemStack repeat = ImbueExpansionGameTest.anvilResult(helper, player, piece, SPARK_SHOT);
 		LOG.info("[SPELLTEST] test=aThirdAndAFourthBookImbueAtTheSamePriceAndARepeatDoesNot RESULT costs={} spells={} repeat={}", costs, SpellImbue.spellsOf(piece), repeat);
 		helper.assertTrue(SpellImbue.spellsOf(piece).equals(books), "the sword holds " + SpellImbue.spellsOf(piece));
-		helper.assertTrue(costs.stream().allMatch(cost -> cost == SpellImbue.IMBUE_XP_COST), "the four imbues cost " + costs);
+		helper.assertTrue(costs.equals(List.of(5, 25, 125, 625)), "the four imbues cost " + costs);
 		helper.assertTrue(repeat.isEmpty(), "a book already on the sword imbued again: " + repeat);
 		helper.succeed();
 	}

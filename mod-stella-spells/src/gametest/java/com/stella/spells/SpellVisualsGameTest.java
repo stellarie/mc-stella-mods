@@ -201,6 +201,10 @@ public class SpellVisualsGameTest {
 		if (hand == InteractionHand.OFF_HAND) {
 			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BLAZE_ROD));
 		}
+		// Spell Writer copies the book in the off hand.
+		if (book.definition().id().getPath().equals("spell_writer")) {
+			player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Spellbooks.CATALOG.get(0)));
+		}
 		player.setItemInHand(hand, book.getDefaultInstance());
 		InteractionResult result = book.use(helper.getLevel(), player, hand);
 		helper.assertTrue(result == InteractionResult.PASS, "a cast with nothing to aim at did not fail: " + result);
@@ -487,6 +491,10 @@ public class SpellVisualsGameTest {
 		InteractionHand hand = book.definition().id().getPath().equals("soul_vulcan") ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
 		if (hand == InteractionHand.OFF_HAND) {
 			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BLAZE_ROD));
+		}
+		// Spell Writer copies the book in the off hand.
+		if (book.definition().id().getPath().equals("spell_writer")) {
+			player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Spellbooks.CATALOG.get(0)));
 		}
 		player.setItemInHand(hand, book.getDefaultInstance());
 		InteractionResult result = book.use(helper.getLevel(), player, hand);
