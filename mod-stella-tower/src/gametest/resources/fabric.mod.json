@@ -28,6 +28,7 @@
 			"com.stella.tower.TowerRewardGameTest",
 			"com.stella.tower.TowerGhostGameTest",
 			"com.stella.tower.TowerRuneGameTest",
+			"com.stella.tower.TowerRuneStackGameTest",
 			"com.stella.tower.RuneEffectsGameTest",
 			"com.stella.tower.TowerSafeZoneGameTest",
 			"com.stella.tower.TowerGhostRuneGameTest",

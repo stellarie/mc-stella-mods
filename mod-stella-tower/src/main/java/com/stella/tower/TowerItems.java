@@ -73,8 +73,12 @@ public final class TowerItems {
 	public static final DataComponentType<TowerGrowth.Ascension> ASCENDED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("ascended"),
 		DataComponentType.<TowerGrowth.Ascension>builder().persistent(TowerGrowth.Ascension.CODEC).networkSynchronized(TowerGrowth.Ascension.STREAM_CODEC).build());
 
-	public static final DataComponentType<RuneData> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
-		DataComponentType.<RuneData>builder().persistent(RuneData.CODEC).networkSynchronized(RuneData.STREAM_CODEC).build());
+	/** The runes set into a piece of gear; a weapon holds one per element, other gear one. */
+	public static final DataComponentType<java.util.List<RuneData>> RUNED = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("runed"),
+		DataComponentType.<java.util.List<RuneData>>builder()
+			// A lone rune from before runes stacked still reads.
+			.persistent(Codec.withAlternative(RuneData.CODEC.listOf(), RuneData.CODEC, java.util.List::of))
+			.networkSynchronized(RuneData.STREAM_CODEC.apply(ByteBufCodecs.list())).build());
 	public static final Identifier RUNE_ID = StellaTower.id("rune");
 	public static final RuneItem RUNE = Registry.register(BuiltInRegistries.ITEM, RUNE_ID, new RuneItem(
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, RUNE_ID)).stacksTo(16).rarity(Rarity.EPIC)

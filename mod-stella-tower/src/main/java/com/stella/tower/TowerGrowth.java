@@ -105,8 +105,8 @@ public final class TowerGrowth {
 
 	/** What the item's rune multiplies its flat numbers by: (1 + 99 S(r))^0.7, or 1 with no rune. */
 	public static double runePart(final ItemStack stack) {
-		RuneData rune = TowerRunes.runeOf(stack);
-		return rune == null ? 1.0 : along(rune.floor(), RUNE_EXPONENT);
+		int floor = TowerRunes.runesOf(stack).stream().mapToInt(RuneData::floor).max().orElse(-1);
+		return floor < 0 ? 1.0 : along(floor, RUNE_EXPONENT);
 	}
 
 	/** What the item's ascension multiplies its flat numbers by: (1 + 99 S(a))^0.3. */
@@ -126,11 +126,16 @@ public final class TowerGrowth {
 
 	/** 1 plus 10% + P/10 % when the item's rune is of an element the enchantment or spell belongs to. */
 	public static double resonance(final ItemStack stack, final String id) {
-		RuneData rune = stack.isEmpty() ? null : TowerRunes.runeOf(stack);
-		if (rune == null || !elementsOf(id).contains(rune.element())) {
+		RuneData best = null;
+		for (RuneData rune : TowerRunes.runesOf(stack)) {
+			if (elementsOf(id).contains(rune.element()) && (best == null || rune.floor() > best.floor())) {
+				best = rune;
+			}
+		}
+		if (best == null) {
 			return 1.0;
 		}
-		return 1.0 + RESONANCE_BASE + TowerRunes.power(stack, rune) / 1000.0;
+		return 1.0 + RESONANCE_BASE + TowerRunes.power(stack, best) / 1000.0;
 	}
 
 	/** A spell's cooldown once the player's stored Lightning charges have shortened it, which spends them. */
