@@ -187,6 +187,34 @@ public final class SpawnScaling {
 		return true;
 	}
 
+	/**
+	 * Sets the level of a mob another mod owns, again and again as its level moves. The scaling is the one of
+	 * {@link #applyFixedLevel}, and a change keeps the health fraction. Returns false, and changes nothing, for a bad
+	 * level, a mob without the no-roll tag, a boss, or a mob already at that level.
+	 */
+	public static boolean setLevel(final Mob mob, final int level) {
+		if (mob == null || level < 0 || level > MAX_FIXED_LEVEL || !mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)
+			|| EliteState.hasBossFlag(mob)) {
+			return false;
+		}
+		ThreatState target = new ThreatState(level, 0, 0, 0);
+		if (target.equals(ThreatState.get(mob))) {
+			return false;
+		}
+		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
+		boolean scaledBefore = health != null && health.hasModifier(HEALTH_ID);
+		float fraction = mob.getMaxHealth() <= 0.0F ? 1.0F : mob.getHealth() / mob.getMaxHealth();
+		mob.addTag(LEVEL_APPLIED_TAG);
+		((net.fabricmc.fabric.api.attachment.v1.AttachmentTarget) mob).setAttached(ThreatState.TYPE, target);
+		applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthMultiplier(level) - 1.0);
+		if (!SelfScaled.owned(mob)) {
+			applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, damageMultiplier(level) - 1.0);
+		}
+		float restored = scaledBefore ? Math.max(1.0F, Math.min(mob.getMaxHealth(), fraction * mob.getMaxHealth())) : mob.getMaxHealth();
+		mob.setHealth(restored);
+		return true;
+	}
+
 	private static void apply(final Mob mob, final boolean preserveHealth) {
 		if (mob.entityTags().contains(StellaMobs.NO_SPAWN_ROLL_TAG)) {
 			return;

@@ -37,7 +37,8 @@ public final class GolemElite {
 	/** Idempotent: the mark returns early on an elite, so an iron golem can never be marked twice. */
 	public static void force(final Mob mob) {
 		// G08: a kit that owns its scaling owns its golem too.
-		if (!(mob instanceof IronGolem golem) || Elite.isElite(golem) || SelfScaled.owned(golem)) {
+		if (!(mob instanceof IronGolem golem) || Elite.isElite(golem) || SelfScaled.owned(golem)
+			|| golem.entityTags().contains(StellaMobs.FRIENDLY_LEVEL_TAG)) {
 			return;
 		}
 
