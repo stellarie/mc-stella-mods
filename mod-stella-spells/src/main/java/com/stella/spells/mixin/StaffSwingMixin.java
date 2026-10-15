@@ -16,7 +16,8 @@ public abstract class StaffSwingMixin {
 	@Shadow
 	public ServerPlayer player;
 
-	@Inject(method = "handlePunch", at = @At("TAIL"))
+	// The handler resets the attack charge last.
+	@Inject(method = "handlePunch", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;resetAttackStrengthTicker()V"))
 	private void modStellaSpells$staffBolt(final ServerboundPunchPacket packet, final CallbackInfo ci) {
 		StaffBolt.onSwing(this.player);
 	}
