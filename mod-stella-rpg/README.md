@@ -89,16 +89,20 @@ A death keeps the experience level and the progress bar. The player drops no exp
 
 ## XP curve
 
-The XP needed for the next level is `round(10 + 2.5 x L^1.5)`, where `L` is the current level. It replaces the vanilla curve on the server and the client.
+The XP needed for the next level is the vanilla value up to level 30 (112 at level 30). Above it, the value grows 7% per level, compounding.
+The value doubles at level 50, again at 100, and again at 150. It replaces the vanilla curve on the server and the client.
 
-| Level | XP to next |
-|---|---|
-| 1 | 13 |
-| 10 | 89 |
-| 100 | 2,510 |
-| 1000 | 79,067 |
+| Target level | Total XP, this curve | Total XP, vanilla |
+|---|---|---|
+| 50 | 5,987 | 5,345 |
+| 100 | 358,369 | 30,970 |
+| 150 | 21,118,682 | 79,095 |
 
-The `xp_curve` key in `stats.json` holds `base`, `factor`, and `exponent`. A missing value uses the default. A client with a different config shows a different XP bar.
+The `xp_curve` key in `stats.json` holds `growth` (default 0.07) and `step` (default 2, at least 1). A missing value uses the default. A client with a different config shows a different XP bar.
+
+## Stack size
+
+Every item with a stack size above 1 stacks to 99, the vanilla codec cap. Items that stack to 1 stay at 1.
 
 ## Nausea
 
