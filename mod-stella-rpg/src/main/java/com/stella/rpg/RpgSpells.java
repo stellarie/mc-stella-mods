@@ -36,31 +36,65 @@ public final class RpgSpells {
 		return rules.spellBase() * (1.0 + rules.spellGrowth() * (Math.max(1, level) - 1));
 	}
 
-	/**
-	 * MATK percent as a fraction: INT times the share per point, plus the MATK percent affixes, plus the MATK a
-	 * refined spell book left on its caster.
-	 */
+	/** MATK per INT point, before the INT milestone factor. */
+	public static final double MATK_PER_INT = 3.0;
+	/** Largest player MRES from INT and VIT. */
+	public static final double MRES_MAX = 0.6;
+	/** MRES sigmoid scale: weighted stat 50 gives about 0.35 MRES. */
+	public static final double MRES_SCALE = 37.5;
+	public static final double MRES_INT_WEIGHT = 0.8;
+	public static final double MRES_VIT_WEIGHT = 0.2;
+	/** Largest total MRES, gear and affixes included. */
+	public static final double MRES_CAP = 0.8;
+
+	/** The MATK percent bonus as a fraction: the MATK percent affixes plus the refined spell book buff. */
 	public static double matkPercent(final LivingEntity entity) {
-		return matkPercent(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MATK_PCT)) + BookBuffs.matkBonus(entity);
+		return Affixes.total(entity, Affix.MATK_PCT) + BookBuffs.matkBonus(entity);
 	}
 
-	public static double matkPercent(final int intel, final double affixPercent) {
-		return intel * RpgConfigStore.current().magic().matkPerInt() * StatMilestones.factor(intel) + affixPercent;
+	/** The flat MATK that INT gives, in K units. */
+	public static double matkFromInt(final int intel) {
+		return intel * MATK_PER_INT * StatMilestones.factor(intel);
 	}
 
-	/** Flat MATK from affixes, in K units. */
+	/** The INT percent a mob spell adds. A mob keeps the old percent model. */
+	public static double mobMatkPercent(final LivingEntity entity) {
+		int intel = StatBonuses.effective(entity, Stat.INT);
+		return intel * RpgConfigStore.current().magic().matkPerInt() * StatMilestones.factor(intel)
+			+ Affixes.total(entity, Affix.MATK_PCT);
+	}
+
+	/** Flat MATK from gear and the staff, in K units. INT is not included. */
 	public static double matkFlat(final LivingEntity entity) {
 		return Affixes.matkFlat(entity) + StaffMatk.withEnchants(entity.getMainHandItem());
 	}
 
-	/** Magic resistance as a fraction: the INT curve plus the resistance affixes, at most the cap. */
-	public static double resistance(final LivingEntity entity) {
-		return resistance(StatBonuses.effective(entity, Stat.INT), Affixes.total(entity, Affix.MAGIC_RES_PCT));
+	/** Total MATK in K units: (INT part + flat gear) x (1 + percent bonus). */
+	public static double matk(final LivingEntity entity) {
+		double flat = matkFromInt(StatBonuses.effective(entity, Stat.INT)) + matkFlat(entity);
+		return flat * (1.0 + matkPercent(entity));
 	}
 
+	/** Magic resistance as a fraction. A player uses INT and VIT; a mob keeps the INT curve. */
+	public static double resistance(final LivingEntity entity) {
+		double affix = Affixes.total(entity, Affix.MAGIC_RES_PCT);
+		if (entity instanceof Player) {
+			return resistance(StatBonuses.effective(entity, Stat.INT), StatBonuses.effective(entity, Stat.VIT), affix);
+		}
+		return resistance(StatBonuses.effective(entity, Stat.INT), affix);
+	}
+
+	/** The mob curve: INT only. */
 	public static double resistance(final int intel, final double affixPercent) {
 		double cap = RpgConfigStore.current().magic().resistCap();
 		return Math.min(cap, RpgCurve.magicResistance(intel) + affixPercent);
+	}
+
+	/** The player curve: MAX x (2 / (1 + exp(-w / S)) - 1) for w = 0.8 INT + 0.2 VIT, plus affixes, at most the cap. */
+	public static double resistance(final int intel, final int vit, final double affixPercent) {
+		double weighted = MRES_INT_WEIGHT * intel + MRES_VIT_WEIGHT * vit;
+		double base = MRES_MAX * (2.0 / (1.0 + Math.exp(-weighted / MRES_SCALE)) - 1.0);
+		return Math.min(MRES_CAP, base + affixPercent);
 	}
 
 	/** Magic penetration as a fraction, from the attacker's held book. */
@@ -91,10 +125,9 @@ public final class RpgSpells {
 		return crit ? hit * CritBonuses.critMultiplier(caster) : hit;
 	}
 
-	/** The skill percent (150 is 150%) of the base, times MATK percent, plus flat MATK. No crit. */
+	/** MATK times the skill percent (150 is 150%), in vanilla units. No crit. */
 	public static double spellHit(final LivingEntity caster, final double skillPercent) {
-		double scaled = base(level(caster)) * skillPercent / PERCENT * (1.0 + matkPercent(caster));
-		return scaled + matkFlat(caster) / RpgScale.k();
+		return matk(caster) * skillPercent / PERCENT / RpgScale.k();
 	}
 
 	/** Compatibility: the random source is unused. The crit uses the combat roller. */

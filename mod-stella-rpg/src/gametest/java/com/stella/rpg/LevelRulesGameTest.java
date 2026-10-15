@@ -134,12 +134,12 @@ public final class LevelRulesGameTest {
 		}
 		float afterReroll = RpgCombat.scaleIncoming(victim, spell, 10.0F);
 		RpgTestSupport.result("playerSpellCritIgnoresDefenses", "plain=" + plain + " crit=" + crit + " stranger=" + stranger + " armor=" + armor);
-		helper.assertTrue(Math.abs(plain - 2.5F) < 0.001F, "a plain spell hit took " + plain + " expected 2.5");
-		// A crit skips the 75 percent resistance. The victim's LUK 300 takes a quarter off.
+		helper.assertTrue(Math.abs(plain - 4.0F) < 0.001F, "a plain spell hit took " + plain + " expected 4.0");
+		// A crit skips the 60 percent resistance. The victim's LUK 300 takes a quarter off.
 		helper.assertTrue(Math.abs(crit - 7.5F) < 0.001F, "a spell crit took " + crit + " expected 7.5");
-		helper.assertTrue(Math.abs(stranger - 2.5F) < 0.001F, "a crit of another caster applied: " + stranger);
+		helper.assertTrue(Math.abs(stranger - 4.0F) < 0.001F, "a crit of another caster applied: " + stranger);
 		helper.assertTrue(armor == 1.0, "a spell crit ignored " + armor + " of the armor");
-		helper.assertTrue(Math.abs(afterReroll - 2.5F) < 0.001F, "the crit mark outlived a new plain cast: " + afterReroll);
+		helper.assertTrue(Math.abs(afterReroll - 4.0F) < 0.001F, "the crit mark outlived a new plain cast: " + afterReroll);
 		helper.succeed();
 	}
 

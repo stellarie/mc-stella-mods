@@ -57,7 +57,7 @@ public final class BookBuffGameTest {
 			double huge = RpgSpells.matkPercent(player);
 			RpgTestSupport.result("withNoSpellsModOrAnUnusableAnswerTheBuffIsZero",
 				"absent=" + absent + " broken=" + broken + " nan=" + notANumber + " negative=" + negative + " huge=" + huge);
-			helper.assertTrue(Math.abs(absent - 1.0) < EPSILON, "the bare MATK percent at INT 100 is " + absent);
+			helper.assertTrue(Math.abs(absent) < EPSILON, "the bare MATK percent is " + absent);
 			helper.assertTrue(broken == absent && notANumber == absent && negative == absent, "an unusable answer changed MATK percent");
 			helper.assertTrue(Math.abs(huge - absent - 1.0) < EPSILON, "a huge answer was not capped: " + huge);
 		} finally {

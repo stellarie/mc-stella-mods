@@ -33,7 +33,7 @@ public final class ArcaneWardGameTest {
 	}
 
 	private static double matk(final ServerPlayer player) {
-		return StatBonuses.effective(player, Stat.INT) * RpgConfigStore.current().magic().matkPerInt();
+		return RpgSpells.matkFromInt(StatBonuses.effective(player, Stat.INT)) / 300.0;
 	}
 
 	private static double shield(final ServerPlayer player) {

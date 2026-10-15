@@ -4,8 +4,6 @@ import com.stella.rpg.RpgSpells;
 import com.stella.rpg.Stat;
 import com.stella.rpg.StatBonuses;
 import com.stella.rpg.StellaRpg;
-import com.stella.rpg.roll.Affix;
-import com.stella.rpg.roll.Affixes;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,9 +63,13 @@ public final class ArcaneWard {
 		ServerLifecycleEvents.SERVER_STOPPING.register(server -> STATES.clear());
 	}
 
-	/** MATK divided by 100, as the stats screen shows it: INT and the MATK percent of the gear. */
+	/** MATK per ward unit. 300 MATK equals the old 1.0 (100 INT), so INT 100 keeps its old shield. */
+	private static final double MATK_PER_UNIT = 300.0;
+
+	/** The INT MATK with the percent bonus, divided by {@value #MATK_PER_UNIT}. Flat gear MATK does not count. */
 	public static double matk(final ServerPlayer player) {
-		return RpgSpells.matkPercent(StatBonuses.effective(player, Stat.INT), Affixes.total(player, Affix.MATK_PCT));
+		double fromInt = RpgSpells.matkFromInt(StatBonuses.effective(player, Stat.INT));
+		return fromInt * (1.0 + RpgSpells.matkPercent(player)) / MATK_PER_UNIT;
 	}
 
 	/** The size of the shield in health points, or 0 for a player without the ward. */

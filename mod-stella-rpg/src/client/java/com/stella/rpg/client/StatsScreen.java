@@ -3,7 +3,6 @@ package com.stella.rpg.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.stella.rpg.AttackPreview;
-import com.stella.rpg.BookBuffs;
 import com.stella.rpg.DefPreview;
 import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgConfig;
@@ -297,12 +296,11 @@ public final class StatsScreen extends Screen {
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",
-				percent(this.matkPercent(this.effective(data, Stat.INT)) + BookBuffs.matkBonus(this.minecraft.player)),
-				AttackPreview.number(RpgSpells.matkFlat(this.minecraft.player))
+				AttackPreview.number(this.matk(this.effective(data, Stat.INT)))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.mres",
-				percent(this.resistance(this.effective(data, Stat.INT)))
+				percent(this.resistance(this.effective(data, Stat.INT), this.effective(data, Stat.VIT)))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.mpen",
@@ -331,8 +329,9 @@ public final class StatsScreen extends Screen {
 		}
 	}
 
-	private double matkPercent(final int intel) {
-		return RpgSpells.matkPercent(intel, Affixes.total(this.minecraft.player, Affix.MATK_PCT));
+	private double matk(final int intel) {
+		double flat = RpgSpells.matkFromInt(intel) + RpgSpells.matkFlat(this.minecraft.player);
+		return flat * (1.0 + RpgSpells.matkPercent(this.minecraft.player));
 	}
 
 	private double armorPenetration() {
@@ -340,8 +339,8 @@ public final class StatsScreen extends Screen {
 		return Math.min(rules.armorPenCap(), rules.armorPenBase() + Affixes.total(this.minecraft.player, Affix.ARMOR_PEN));
 	}
 
-	private double resistance(final int intel) {
-		return RpgSpells.resistance(intel, Affixes.total(this.minecraft.player, Affix.MAGIC_RES_PCT));
+	private double resistance(final int intel, final int vit) {
+		return RpgSpells.resistance(intel, vit, Affixes.total(this.minecraft.player, Affix.MAGIC_RES_PCT));
 	}
 
 	private double previewSpeed(final StatsSyncPayload data) {
@@ -385,8 +384,8 @@ public final class StatsScreen extends Screen {
 					percent(1.0 - RpgCurve.cooldownMultiplier(value + this.effective(data, Stat.INT)))));
 			}
 			case INT -> {
-				lines.add(Component.translatable("screen.mod-stella-rpg.tip.matk", percent(this.matkPercent(value))));
-				lines.add(Component.translatable("screen.mod-stella-rpg.tip.mres", percent(this.resistance(value))));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.matk", AttackPreview.number(RpgSpells.matkFromInt(value))));
+				lines.add(Component.translatable("screen.mod-stella-rpg.tip.mres", percent(this.resistance(value, this.effective(data, Stat.VIT)))));
 				lines.add(Component.translatable("screen.mod-stella-rpg.tip.cooldown",
 					percent(1.0 - RpgCurve.cooldownMultiplier(value + this.effective(data, Stat.DEX)))));
 			}
