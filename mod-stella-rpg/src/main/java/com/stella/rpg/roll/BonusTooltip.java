@@ -2,6 +2,7 @@ package com.stella.rpg.roll;
 
 import com.stella.rpg.AttackPreview;
 import com.stella.rpg.DescriptionLines;
+import com.stella.rpg.StaffMatk;
 import com.stella.rpg.Stat;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,10 @@ public final class BonusTooltip {
 	/** The green lines of the rolled bonuses on a stack: the affixes first, then the stats. */
 	public static List<Component> lines(final ItemStack stack) {
 		List<Component> out = new ArrayList<>();
+		if (StaffMatk.isStaff(stack)) {
+			out.add(Component.translatable("tooltip.mod-stella-rpg.staff_matk", AttackPreview.number(StaffMatk.withEnchants(stack)))
+				.withStyle(ChatFormatting.GREEN));
+		}
 		if (!hasBonus(stack)) {
 			return out;
 		}
