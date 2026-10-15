@@ -2,6 +2,7 @@
 
 A Fabric mod for Minecraft 26.3. The server holds all rules. The optional client part adds a stats screen and a health bar HUD.
 Every player and every mob has six stats.
+A mob rolls its stats once: the total is about its level (at least 6), 40% goes to the main stat (STR melee, DEX ranged, INT magic), and the rest spreads at random. Stat milestones apply to mobs too.
 Point allocation and level retention apply to players only.
 Dice damage and stat effects apply to players and mobs.
 

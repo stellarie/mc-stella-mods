@@ -51,6 +51,8 @@ public final class RpgTestMod implements ModInitializer {
 	public void onInitialize() {
 		// The suite pins exact stat numbers, so it runs without milestones. StatStaffGameTest turns them on.
 		StatMilestones.setBonusPerStep(0.0);
+		// Mob stat rolls are random; the suite pins the table. MobRollGameTest turns them on.
+		MobStats.setRandomized(false);
 		for (String name : new String[] {"surefooted", "seasoned_str"}) {
 			Registry.register(BuiltInRegistries.MOB_EFFECT, Identifier.fromNamespaceAndPath("mod-stella-food", name), new StandIn());
 		}
