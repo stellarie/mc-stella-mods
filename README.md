@@ -87,6 +87,7 @@ wants.
   dolphins, in armour, each with a bow or an axe and a helmet. One band in twenty is led by an elite (or
   now and then a boss) with an axe on a very fast dolphin.
 - **Levitation** lasts at most 2 seconds, unless a shulker sent it.
+- **Status resist.** An elite shrugs off three in four harmful effects. A boss is immune to all of them.
 - **Evokers.** An elite evoker opens every fight with its rain of fire: 48 by 48 blocks, a ball every
   second, once per life.
 - **Illusioners.** They freeze, burn and blind nearby players in turn. They split into decoys, and

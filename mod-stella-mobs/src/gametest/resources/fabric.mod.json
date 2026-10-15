@@ -68,6 +68,7 @@
 			"com.stella.mobs.NonMeleeScalingGameTest",
 			"com.stella.mobs.SelfScaledGameTest",
 			"com.stella.mobs.ApplyLevelGameTest",
+			"com.stella.mobs.StatusResistGameTest",
 			"com.stella.mobs.EliteBountyGameTest",
 			"com.stella.mobs.SpawnSafetyGameTest",
 			"com.stella.mobs.SpiderEliteGameTest",

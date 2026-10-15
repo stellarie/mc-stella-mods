@@ -531,6 +531,7 @@ public class SkeletonVolleyGameTest {
 		golem.setHealth(1000.0F);
 		golem.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0);
 		golem.setPersistenceRequired();
+		((net.fabricmc.fabric.api.attachment.v1.AttachmentTarget) golem).removeAttached(com.stella.mobs.behavior.EliteState.TYPE);
 		return golem;
 	}
 
