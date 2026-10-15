@@ -696,4 +696,35 @@ public class MerchantWeaponsGameTest {
 		}
 		helper.succeed();
 	}
+
+	/**
+	 * The Arcane Sword and Arcane Bow are netherite-tier, fire-proof, carry 100 MATK plus 5 per refine level for the RPG mod, and
+	 * are in its one-damage tag. The bow looses an arrow from an empty inventory, uses nothing up, and leaves an arrow that no
+	 * one can pick up.
+	 */
+	@GameTest
+	public void theArcaneSwordAndBowNeedNoAmmoAndCarryFlatMatk(final GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		ServerPlayer archer = holder(helper, 2.5);
+		archer.getInventory().clearContent();
+		ItemStack bow = stack("arcane_bow", 0);
+		ItemStack sword = stack("arcane_shortsword", 0);
+		TagKey<Item> oneDamage = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("mod-stella-rpg", "one_damage_weapons"));
+		for (ItemStack weapon : List.of(bow, sword)) {
+			var tag = weapon.get(DataComponents.CUSTOM_DATA).copyTag().getCompoundOrEmpty("stella_staff");
+			helper.assertTrue(tag.getIntOr("matk", 0) == 100 && tag.getIntOr("matk_step", 0) == 5, weapon + " profile " + tag);
+			helper.assertTrue(weapon.is(oneDamage), weapon + " is not in the one-damage tag");
+			helper.assertTrue(weapon.has(DataComponents.DAMAGE_RESISTANT), weapon + " burns");
+			helper.assertTrue(weapon.getMaxDamage() == net.minecraft.world.item.ToolMaterial.NETHERITE.durability(), weapon + " durability " + weapon.getMaxDamage());
+		}
+		int before = level.getEntitiesOfClass(AbstractArrow.class, archer.getBoundingBox().inflate(16.0)).size();
+		boolean released = bow.getItem().releaseUsing(bow, level, archer, bow.getItem().getUseDuration(bow, archer) - 20);
+		List<AbstractArrow> arrows = level.getEntitiesOfClass(AbstractArrow.class, archer.getBoundingBox().inflate(16.0));
+		boolean inventoryEmpty = archer.getInventory().isEmpty();
+		UniqueTestKit.result("arcaneBow", "released=" + released + " arrows=" + (arrows.size() - before) + " pickup=" + (arrows.isEmpty() ? null : arrows.get(0).pickup));
+		helper.assertTrue(released && arrows.size() - before == 1, "the bow loosed " + (arrows.size() - before) + " arrows with an empty inventory");
+		helper.assertTrue(arrows.get(0).pickup == AbstractArrow.Pickup.DISALLOWED, "the arrow can be picked up");
+		helper.assertTrue(inventoryEmpty, "the shot left something in the inventory");
+		helper.succeed();
+	}
 }

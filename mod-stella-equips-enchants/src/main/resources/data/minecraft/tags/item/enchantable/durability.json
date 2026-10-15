@@ -30,6 +30,7 @@
 		{
 			"id": "mod-stella-rpg:mage_staff",
 			"required": false
-		}
+		},
+		"mod-stella-equips-enchants:arcane_bow"
 	]
 }

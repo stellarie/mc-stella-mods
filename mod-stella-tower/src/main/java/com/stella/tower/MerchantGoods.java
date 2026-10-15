@@ -62,6 +62,12 @@ public final class MerchantGoods {
 	public static final Good TOWER_WHETSTONE = register(Good.fixed(StellaTower.id("tower_whetstone"), 192, () -> new ItemStack(MerchantItems.TOWER_WHETSTONE)));
 	/** The mobs mod's block, by id: a merchant offers it only where that mod is present. */
 	public static final Good SHIELD_GENERATOR = register(ofItem(StellaTower.id("shield_generator"), SHIELD_GENERATOR_ID, 192));
+	/** The equips mod's Arcane Shortsword: a weapon of one damage per hit and 100 MATK, so it costs far less than the six. */
+	public static final Identifier ARCANE_SHORTSWORD_ID = Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", "arcane_shortsword");
+	public static final Good ARCANE_SHORTSWORD = register(ofItem(StellaTower.id("arcane_shortsword"), ARCANE_SHORTSWORD_ID, 96));
+	/** The equips mod's Arcane Bow: no arrows needed, one damage per arrow hit, 100 MATK. */
+	public static final Identifier ARCANE_BOW_ID = Identifier.fromNamespaceAndPath("mod-stella-equips-enchants", "arcane_bow");
+	public static final Good ARCANE_BOW = register(ofItem(StellaTower.id("arcane_bow"), ARCANE_BOW_ID, 96));
 	/** The equips mod's six merchant weapons, ten stacks of emeralds each; absent without that mod. */
 	public static final int WEAPON_PRICE = 640;
 	public static final List<String> WEAPONS = List.of("soulreaver", "gravecleaver", "wraithstring", "hexbolt", "wraithpike", "archmage_staff");

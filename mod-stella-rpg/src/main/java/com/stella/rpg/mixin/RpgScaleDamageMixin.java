@@ -17,8 +17,9 @@ public abstract class RpgScaleDamageMixin {
 		),
 		argsOnly = true
 	)
-	private float stellaRpg$scaleDamage(final float damage) {
-		float scaled = damage * RpgScale.kf();
+	private float stellaRpg$scaleDamage(final float damage, final net.minecraft.server.level.ServerLevel level,
+		final net.minecraft.world.damagesource.DamageSource source) {
+		float scaled = com.stella.rpg.OneDamage.apply(source, damage * RpgScale.kf());
 		com.stella.rpg.DamageLog.noteApplied((LivingEntity) (Object) this, scaled);
 		return scaled;
 	}
