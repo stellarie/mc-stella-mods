@@ -71,8 +71,7 @@ public final class RuneEffects {
 				|| TowerRunes.slotOf(TowerRunes.weaponOf(source)) != TowerRunes.Slot.WEAPON) {
 				return;
 			}
-			RuneData rune = TowerRunes.runeOf(TowerRunes.weaponOf(source));
-			if (rune != null) {
+			for (RuneData rune : TowerRunes.runesOf(TowerRunes.weaponOf(source))) {
 				afterHit(level, entity, player, rune.element(), taken);
 			}
 		});

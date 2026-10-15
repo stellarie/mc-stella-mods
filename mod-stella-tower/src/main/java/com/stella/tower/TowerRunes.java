@@ -49,9 +49,12 @@ public final class TowerRunes {
 
 	public static void register() {
 		// Runed gear names its rune.
-		net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry.addLast(TowerItems.RUNED, rune -> (context, lines, flag, components) ->
-			DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
-				.withStyle(ChatFormatting.BLUE)));
+		net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry.addLast(TowerItems.RUNED, runes -> (context, lines, flag, components) -> {
+			for (RuneData rune : runes) {
+				DescriptionLines.add(lines, Component.translatable("item.mod-stella-tower.runed", Component.literal(rune.element().label()).withStyle(rune.element().color()), rune.floor())
+					.withStyle(ChatFormatting.BLUE));
+			}
+		});
 		ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
 			TowerMobs.State state = TowerMobs.stateOf(entity);
 			// A ghost leaves its own rune, not one of the eight.
@@ -149,19 +152,42 @@ public final class TowerRunes {
 		return null;
 	}
 
-	/** The gear with the rune set into it, replacing any before; empty if the gear takes none. */
+	/**
+	 * The gear with the rune set into it; empty if the gear takes none, or a weapon already holds this
+	 * element at an equal or higher floor. A weapon keeps its other runes; other gear's rune is replaced.
+	 */
 	public static ItemStack apply(final ItemStack gear, final RuneData rune) {
 		// One piece at a time: a rune set into a stack would rune every piece of it.
-		if (slotOf(gear) == null || gear.getCount() != 1) {
+		Slot slot = slotOf(gear);
+		if (slot == null || gear.getCount() != 1) {
 			return ItemStack.EMPTY;
 		}
+		java.util.List<RuneData> held = new java.util.ArrayList<>();
+		if (slot == Slot.WEAPON) {
+			for (RuneData old : runesOf(gear)) {
+				if (old.element() != rune.element()) {
+					held.add(old);
+				} else if (old.floor() >= rune.floor()) {
+					return ItemStack.EMPTY;
+				}
+			}
+		}
+		held.add(rune);
 		ItemStack runed = gear.copy();
-		runed.set(TowerItems.RUNED, rune);
+		runed.set(TowerItems.RUNED, java.util.List.copyOf(held));
 		return runed;
 	}
 
+	/** Every rune the gear holds. */
+	public static java.util.List<RuneData> runesOf(final ItemStack gear) {
+		java.util.List<RuneData> runes = gear.get(TowerItems.RUNED);
+		return runes == null ? java.util.List.of() : runes;
+	}
+
+	/** The gear's first rune, the only one on armor and books. */
 	public static @Nullable RuneData runeOf(final ItemStack gear) {
-		return gear.get(TowerItems.RUNED);
+		java.util.List<RuneData> runes = runesOf(gear);
+		return runes.isEmpty() ? null : runes.get(0);
 	}
 
 	/**
@@ -173,19 +199,24 @@ public final class TowerRunes {
 			return amount;
 		}
 		ItemStack weapon = weaponOf(source);
-		RuneData rune = slotOf(weapon) == Slot.WEAPON ? runeOf(weapon) : null;
-		if (rune == null) {
+		if (slotOf(weapon) != Slot.WEAPON) {
 			return amount;
 		}
-		double added = amount * (weaponMultiplier(rune.floor()) - 1.0);
 		TowerMobs.State state = TowerMobs.stateOf(victim);
-		if (state != null && state.element() == rune.element().opposite()) {
-			added *= OPPOSED;
-		} else if (state != null && state.element() == rune.element() && !VoidGear.isVoid(weapon)) {
-			// Void weapons strike their own element in full.
-			added *= SAME;
+		double added = 0.0;
+		float result = amount;
+		for (RuneData rune : runesOf(weapon)) {
+			double part = amount * (weaponMultiplier(rune.floor()) - 1.0);
+			if (state != null && state.element() == rune.element().opposite()) {
+				part *= OPPOSED;
+			} else if (state != null && state.element() == rune.element() && !VoidGear.isVoid(weapon)) {
+				// Void weapons strike their own element in full.
+				part *= SAME;
+			}
+			added += part;
+			result = RuneEffects.modify(victim, source, result, rune);
 		}
-		return RuneEffects.modify(victim, source, (float) (amount + added), rune);
+		return (float) (result + added);
 	}
 
 	private static final int RPG_WEAPON_SLOT = 35;
