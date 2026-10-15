@@ -18,7 +18,6 @@ import net.minecraft.world.phys.Vec3;
 public final class StaffBolt {
 	static final double RANGE = 24.0;
 	static final double FLAT_DAMAGE = 4.0;
-	private static final double STEP = 0.5;
 	private static final double READY = 0.9;
 
 	private StaffBolt() {
@@ -49,11 +48,8 @@ public final class StaffBolt {
 		if (hit != null) {
 			end = hit.getLocation();
 		}
-		double length = end.subtract(from).length();
-		for (double d = 1.0; d < length; d += STEP) {
-			Vec3 p = from.add(look.scale(d));
-			level.sendParticles(ParticleTypes.PORTAL, p.x, p.y, p.z, 2, 0.05, 0.05, 0.05, 0.1);
-		}
+		SpellBolt.fly(level, player, net.minecraft.resources.Identifier.fromNamespaceAndPath(Spellbooks.MOD_ID, "staff_bolt"),
+			net.minecraft.world.item.Items.SOUL_LANTERN, ParticleTypes.SOUL_FIRE_FLAME, from, end);
 		if (hit == null || !(hit.getEntity() instanceof LivingEntity target)) {
 			return null;
 		}
