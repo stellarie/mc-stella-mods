@@ -4,6 +4,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.animal.golem.AbstractGolem;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
@@ -22,15 +26,26 @@ public final class StaffBolt {
 	private StaffBolt() {
 	}
 
-	/** A staff never lands a melee blow: the attack becomes the bolt, so no crit and no STR damage apply. */
+	/**
+	 * A staff never lands a melee blow on a foe: the attack becomes the bolt, so no crit and no STR damage apply.
+	 * A blow on a friendly unit stays a vanilla melee hit, so guards, villagers and golems react as they should.
+	 */
 	public static void register() {
 		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
-			if (level.isClientSide() || !(player instanceof ServerPlayer caster) || !StaffPower.firesBolt(caster.getMainHandItem())) {
+			if (level.isClientSide() || !(player instanceof ServerPlayer caster) || !StaffPower.firesBolt(caster.getMainHandItem())
+				|| friendly(caster, entity)) {
 				return net.minecraft.world.InteractionResult.PASS;
 			}
 			onSwing(caster);
 			return net.minecraft.world.InteractionResult.FAIL;
 		});
+		SoulVulcan.register();
+		Memorize.register();
+	}
+
+	/** Only a swing at full charge can trigger imbued spells. */
+	public static boolean isFull(final float charge) {
+		return charge >= 1.0F;
 	}
 
 	public static void onSwing(final ServerPlayer player) {
@@ -63,7 +78,7 @@ public final class StaffBolt {
 		Vec3 end = block.getType() == net.minecraft.world.phys.HitResult.Type.MISS ? to : block.getLocation();
 		EntityHitResult hit = ProjectileUtil.getEntityHitResult(level, player, from, end,
 			player.getBoundingBox().expandTowards(end.subtract(from)).inflate(1.0),
-			e -> e instanceof LivingEntity && e.isAlive() && !e.isSpectator() && e.isPickable() && !allied(player, e), 0.3F);
+			e -> e instanceof LivingEntity && e.isAlive() && !e.isSpectator() && e.isPickable() && !friendly(player, e), 0.3F);
 		if (hit != null) {
 			end = hit.getLocation();
 		}
@@ -76,12 +91,20 @@ public final class StaffBolt {
 		float amount = Double.isNaN(matk) || matk <= 0 ? (float) FLAT_DAMAGE : RpgBridge.vanilla((float) matk);
 		amount *= (float) chargeFactor(charge);
 		target.hurtServer(level, SpellCasting.spellSource(player), amount);
-		SpellImbue.onStaffHit(player, target);
+		boolean full = isFull(charge);
+		boolean certain = full && Memorize.spend(player);
+		ItemStack staff = player.getMainHandItem();
+		SpellImbue.onStaffHit(player, staff, target, full, certain);
+		SoulVulcan.follow(player, staff, target, amount, full, certain);
 		return target;
 	}
 
-	private static boolean allied(final ServerPlayer player, final Entity e) {
-		return e == player || player.isAlliedTo(e) || Friends.isFriend(e)
-			|| (e instanceof net.minecraft.world.entity.TamableAnimal pet && pet.isOwnedBy(player));
+	/** A unit that a bolt passes through, and that a staff blow treats as a melee target. */
+	static boolean friendly(final ServerPlayer player, final Entity e) {
+		if (e == player || player.isAlliedTo(e) || Friends.isFriend(e)) {
+			return true;
+		}
+		return !Friends.isFoe(e) && (e instanceof AbstractVillager || e instanceof AbstractGolem
+			|| (e instanceof TamableAnimal pet && pet.isTame()));
 	}
 }

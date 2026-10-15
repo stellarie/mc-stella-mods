@@ -11,7 +11,8 @@
 		],
 		"client": [
 			"com.stella.spells.SpellTooltipClient",
-			"com.stella.spells.SpellEntitiesClient"
+			"com.stella.spells.SpellEntitiesClient",
+			"com.stella.spells.StaffChargeAura"
 		]
 	},
 	"mixins": [

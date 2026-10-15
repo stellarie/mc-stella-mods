@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The +15 signature of each of the 81 books: one effect that belongs to that book alone. A signature runs
+ * The +15 signature of each of the 83 books: one effect that belongs to that book alone. A signature runs
  * once, right after the cast, from the finished cast's own aim point, target and struck foes, and it reads the
  * same stats as the book. The name and the text of each sit in the language file under
  * {@code spellbook.mod-stella-spells.sig.<book>} and {@code ....sig.<book>.text}.
@@ -321,6 +321,12 @@ public final class BookSignatures {
 			if (servant != null) {
 				give(servant, MobEffects.RESISTANCE, 20, 1);
 				give(servant, MobEffects.STRENGTH, 20, 0);
+			}
+		});
+		sig("memorize", c -> give(c.caster(), MobEffects.HASTE, 10, 1));
+		sig("soul_vulcan", c -> {
+			for (Mob foe : c.foesAroundCaster(5.0)) {
+				inflict(c, foe, MobEffects.SLOWNESS, 4, 1);
 			}
 		});
 	}

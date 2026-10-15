@@ -910,8 +910,8 @@ When a night is skipped, every player still in bed heals to maximum health. `Rpg
 A staff carries a `stella_staff` compound in its custom data: `matk` (base MATK in K units), `effect`, `base` and `step`.
 `StaffMatk` reads it from the main hand, so any mod can define a staff and this mod needs no class of that mod.
 
-- **MATK.** `matk * (1 + 0.10 * refine + 0.25 * milestones)`, with the milestones at refine +7, +10, +12 and +15. It adds to the flat MATK
-  of `RpgSpells.matkFlat`. The Mage Staff has 40 base MATK, 140 at +15.
+- **MATK.** `matk * (1 + 0.10 * refine + 0.25 * milestones) + 2 * refine`, with the milestones at refine +7, +10, +12 and +15. It adds to the flat MATK
+  of `RpgSpells.matkFlat`. The Mage Staff has 40 base MATK, 170 at +15. A profile with `matk_step` skips this formula.
 - **Effect.** One effect, `base` percent plus `step` percent for each milestone reached:
   - `cdr` shortens every spell and skill cooldown (`RpgSpells.cooldown`).
   - `crit` adds spell crit chance (`RpgCombat.rollCrit`).

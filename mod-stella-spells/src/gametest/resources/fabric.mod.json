@@ -38,6 +38,7 @@
 			"com.stella.spells.RpgBridgeGameTest",
 			"com.stella.spells.StaffPowerGameTest",
 			"com.stella.spells.StaffNormalAttackGameTest",
+			"com.stella.spells.StaffChargeSpellsGameTest",
 			"com.stella.spells.SpellMatkGameTest",
 			"com.stella.spells.SummonScalingGameTest",
 			"com.stella.spells.SpellTooltipGameTest",

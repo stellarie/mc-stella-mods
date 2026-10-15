@@ -106,6 +106,10 @@ public record SpellNumbers(
 	public static final SpellNumbers TAILWIND = builder("tailwind").radius(8.0).duration(BUFF_TICKS, Scale.FIXED).amplifier(1).build();
 	public static final SpellNumbers BATTLE_HYMN = builder("battle_hymn").radius(8.0).duration(BUFF_TICKS, Scale.FIXED).build();
 	public static final SpellNumbers SUMMON_SKELETON = builder("summon_skeleton").build();
+	/** Memorize: its targets are the fully charged staff attacks it lasts for. */
+	public static final SpellNumbers MEMORIZE = builder("memorize").targets(10).build();
+	/** Soul Vulcan: a minute, the cast does not stretch it; its targets are the extra bolts per staff attack. */
+	public static final SpellNumbers SOUL_VULCAN = builder("soul_vulcan").duration(1200, Scale.FIXED).targets(5).build();
 
 	// ---- fighter books: damage is flat, and the bridge turns it into the caster's Strength percent. ----
 	/** Cleave's own reach is its radius; its duration is the bleed it leaves. */

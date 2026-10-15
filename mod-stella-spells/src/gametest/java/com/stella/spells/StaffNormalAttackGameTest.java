@@ -18,7 +18,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
-/** A staff's normal attack: MATK damage with no crit, and imbued books that proc at 20 percent and full strength. */
+/** A staff's normal attack: MATK damage with no crit, and imbued books that proc at 20 percent and 75 percent strength. */
 public class StaffNormalAttackGameTest {
 	private static final Identifier SPARK_SHOT = Identifier.parse("mod-stella-spells:spark_shot");
 	private static final double MATK_HIT = 7.0;
@@ -80,7 +80,7 @@ public class StaffNormalAttackGameTest {
 	}
 
 	@GameTest(maxTicks = 100)
-	public void aStaffProcsAtTwentyPercentAndFullStrength(final GameTestHelper helper) {
+	public void aStaffProcsAtTwentyPercentAndThreeQuarterStrength(final GameTestHelper helper) {
 		ServerPlayer caster = caster(helper);
 		ItemStack staff = new ItemStack(Items.BLAZE_ROD);
 		staff.set(SpellImbue.IMBUED, new SpellImbue.ImbuedSpell(List.of(SPARK_SHOT)));
@@ -144,9 +144,9 @@ public class StaffNormalAttackGameTest {
 			}
 			helper.assertTrue(belowTen == 1, "a roll of 0.15 cast " + belowTen + " times, the staff chance is 20 percent");
 			helper.assertTrue(aboveTwenty == 0, "a roll of 0.25 still cast " + aboveTwenty + " times");
-			helper.assertTrue(Math.abs(staffPower - StaffPower.powerMultiplier(staff)) < 1.0E-6
+			helper.assertTrue(Math.abs(staffPower - StaffPower.powerMultiplier(staff) * SpellImbue.STAFF_STRENGTH) < 1.0E-6
 				&& Math.abs(swordPower - SpellImbue.IMBUE_POWER) < 1.0E-6,
-				"the staff proc power " + staffPower + " is not full (" + StaffPower.powerMultiplier(staff) + "); the sword proc is " + swordPower);
+				"the staff proc power " + staffPower + " is not 75 percent of " + StaffPower.powerMultiplier(staff) + "; the sword proc is " + swordPower);
 			helper.assertTrue(doubled == 1, "a proc with doublecast at 100 percent landed twice " + doubled + " times extra, not once");
 			helper.getLevel().getServer().getPlayerList().remove(caster);
 			helper.succeed();
