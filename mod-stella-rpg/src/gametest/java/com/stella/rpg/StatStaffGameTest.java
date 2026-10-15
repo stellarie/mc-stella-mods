@@ -106,4 +106,19 @@ public final class StatStaffGameTest {
 		helper.assertTrue(bare < none && refined < bare, "cooldown " + none + " then " + bare + " then " + refined);
 		helper.succeed();
 	}
+
+	@GameTest
+	public void staffTooltipShowsTheMatkASpellUses(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		ItemStack staff = new ItemStack(Items.STICK);
+		staff.set(DataComponents.CUSTOM_DATA, StaffMatk.profile(10, StaffMatk.CRIT, 5, 5));
+		CustomData.update(DataComponents.CUSTOM_DATA, staff, tag -> tag.putInt("stella_refine", 7));
+		player.setItemSlot(EquipmentSlot.MAINHAND, staff);
+		String line = com.stella.rpg.roll.BonusTooltip.lines(staff).get(0).getString();
+		String want = "+" + AttackPreview.number(StaffMatk.heldMatk(player)) + " Matk";
+		RpgTestSupport.result("staffTooltipShowsTheMatkASpellUses", "line=" + line + " want=" + want);
+		helper.assertTrue(line.equals(want), "tooltip " + line + " vs " + want);
+		helper.assertTrue(Math.abs(RpgSpells.matkFlat(player) - StaffMatk.heldMatk(player)) < EPSILON, "spell flat MATK drifted");
+		helper.succeed();
+	}
 }

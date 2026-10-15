@@ -59,6 +59,7 @@
 	"tooltip.mod-stella-rpg.roll": "+%s %s",
 	"tooltip.mod-stella-rpg.affix.damage_flat": "+%s Damage",
 	"tooltip.mod-stella-rpg.affix.damage_pct": "+%s%% Damage",
+	"tooltip.mod-stella-rpg.staff_matk": "+%s Matk",
 	"tooltip.mod-stella-rpg.affix.matk_flat": "+%s Matk",
 	"tooltip.mod-stella-rpg.affix.matk_pct": "+%s%% Matk",
 	"tooltip.mod-stella-rpg.affix.hp_flat": "+%s Max Health",

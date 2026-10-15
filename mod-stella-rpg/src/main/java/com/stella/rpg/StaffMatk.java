@@ -69,6 +69,14 @@ public final class StaffMatk {
 		return staff.getIntOr(MATK, 0) * (1.0 + PER_LEVEL * level + PER_MILESTONE * milestones(level));
 	}
 
+	/** The staff MATK plus its no-target damage enchantments, such as Sharpness, in K units. */
+	public static double withEnchants(final ItemStack stack) {
+		if (!isStaff(stack)) {
+			return 0.0;
+		}
+		return matk(stack) + AttackPreview.withEnchantments(stack, 0.0) * RpgScale.k();
+	}
+
 	/** The fraction an effect gives at the staff's refine level. Zero for another effect or no staff. */
 	public static double effect(final ItemStack stack, final String effect) {
 		CompoundTag staff = compound(stack);

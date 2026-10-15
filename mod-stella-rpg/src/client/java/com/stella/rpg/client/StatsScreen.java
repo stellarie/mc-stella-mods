@@ -3,6 +3,7 @@ package com.stella.rpg.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.stella.rpg.AttackPreview;
+import com.stella.rpg.BookBuffs;
 import com.stella.rpg.DefPreview;
 import com.stella.rpg.PendingStats;
 import com.stella.rpg.RpgConfig;
@@ -296,8 +297,8 @@ public final class StatsScreen extends Screen {
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.matk",
-				percent(this.matkPercent(this.effective(data, Stat.INT))),
-				AttackPreview.number(Affixes.matkFlat(this.minecraft.player))
+				percent(this.matkPercent(this.effective(data, Stat.INT)) + BookBuffs.matkBonus(this.minecraft.player)),
+				AttackPreview.number(RpgSpells.matkFlat(this.minecraft.player))
 			),
 			Component.translatable(
 				"screen.mod-stella-rpg.mres",

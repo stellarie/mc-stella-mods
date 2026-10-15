@@ -50,10 +50,7 @@ public final class RpgSpells {
 
 	/** Flat MATK from affixes, in K units. */
 	public static double matkFlat(final LivingEntity entity) {
-		net.minecraft.world.item.ItemStack held = entity.getMainHandItem();
-		// Damage enchantments that need no target, such as Sharpness, add to a staff as MATK.
-		double enchanted = StaffMatk.isStaff(held) ? AttackPreview.withEnchantments(held, 0.0) * RpgScale.k() : 0.0;
-		return Affixes.matkFlat(entity) + StaffMatk.heldMatk(entity) + enchanted;
+		return Affixes.matkFlat(entity) + StaffMatk.withEnchants(entity.getMainHandItem());
 	}
 
 	/** Magic resistance as a fraction: the INT curve plus the resistance affixes, at most the cap. */
