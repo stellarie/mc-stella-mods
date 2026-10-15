@@ -125,7 +125,9 @@ public class LevelScalingGameTest {
 		// Health is linear; the compounding and S-curve damage terms are off, so damage grows only by the flat term.
 		boolean valid = close(SpawnScaling.healthMultiplier(0), 1.0)
 			&& close(SpawnScaling.healthMultiplier(10), 1.0 + 10 * D.healthPerLevel())
-			&& close(SpawnScaling.healthMultiplier(100), 1.0 + 100 * D.healthPerLevel())
+			&& close(SpawnScaling.healthMultiplier(49), 1.0 + 49 * D.healthPerLevel())
+			&& close(SpawnScaling.healthMultiplier(50), 2.0 * (1.0 + 50 * D.healthPerLevel()))
+			&& close(SpawnScaling.healthMultiplier(100), 4.0 * (1.0 + 100 * D.healthPerLevel()))
 			&& D.damageGrowth() == 1.0 && D.tailStart() == 0 && D.tailMax() == 0.0;
 		for (int level : new int[] {0, 10, 80, 100, 580, 1080, 5000}) {
 			valid &= close(SpawnScaling.damageMultiplier(level), 1.0);

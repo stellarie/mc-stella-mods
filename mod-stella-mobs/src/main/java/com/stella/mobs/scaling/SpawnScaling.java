@@ -108,7 +108,10 @@ public final class SpawnScaling {
 	}
 
 	public static double healthMultiplier(final int threatLevel) {
-		return 1.0 + Math.max(0, threatLevel) * ScalingConfigStore.get().healthPerLevel();
+		ScalingConfig config = ScalingConfigStore.get();
+		int level = Math.max(0, threatLevel);
+		int tiers = level / Math.max(1, config.healthTierStep());
+		return (1.0 + level * config.healthPerLevel()) * Math.pow(config.healthTierFactor(), tiers);
 	}
 
 	/** Compound growth to the tail start, then the tower S-curve on top of it. */

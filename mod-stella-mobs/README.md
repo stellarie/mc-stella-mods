@@ -33,7 +33,7 @@ A mob saved before the altitude and floor fields loads with floor 0. Its altitud
 
 ## Health, damage, piercing, and experience
 
-- **Health:** x(1 + 0.50 x level). An elite has 1.5 times its base health (`Elite.HEALTH_MULTIPLIER`).
+- **Health:** x(1 + 0.50 x level) x 2^floor(level / 50) (`health_tier_factor` 2.0, `health_tier_step` 50). Boss and elite gear carries 2 to 3 enchantments and drops at 5% per piece. An elite has 1.5 times its base health (`Elite.HEALTH_MULTIPLIER`).
 - **Damage:** a hostile hit gains 0.5 vanilla damage per level (`tail_flat_per_level`). The compounding term
   (`damage_growth` 1.0) and the S-curve term (`tail_max` 0) are off by default, so the damage multiplier stays 1.
   Melee reads the attack attribute, and its hit gains the flat term at the hurt call. A hostile mob's other hits

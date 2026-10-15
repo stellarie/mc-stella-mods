@@ -318,10 +318,11 @@ public class BossBehaviourGameTest {
 	}
 
 	@GameTest(maxTicks = 200)
-	public void theBossKitIsFullyEnchantedNetherite(final GameTestHelper helper) {
+	public void theBossKitIsLightlyEnchantedNetheriteWithRareDrops(final GameTestHelper helper) {
 		useConfig(helper, BOSS_MARK);
 		Mob boss = blessedBoss(helper);
 		int minimum = Integer.MAX_VALUE;
+		int maximum = 0;
 		boolean netherite = true;
 		boolean consistent = true;
 		boolean enchanted = true;
@@ -331,6 +332,7 @@ public class BossBehaviourGameTest {
 			netherite &= stack.is(GearTier.NETHERITE.armorFor(slot));
 			int count = stack.getEnchantments().size();
 			minimum = Math.min(minimum, count);
+			maximum = Math.max(maximum, count);
 			enchanted &= count > 0;
 			consistent &= hasNoExclusivePair(stack);
 		}
@@ -345,8 +347,9 @@ public class BossBehaviourGameTest {
 		helper.assertTrue(enchanted, "a boss armour piece carries no enchantment: " + describe(boss));
 		helper.assertTrue(consistent, "the boss armour carries two mutually exclusive enchantments: " + describe(boss));
 		helper.assertTrue(
-			minimum >= 3, "the thinnest boss armour piece carries only " + minimum + " enchantments: " + describe(boss)
+			minimum >= 2 && maximum <= 3, "boss armour enchantment count is " + minimum + ".." + maximum + ": " + describe(boss)
 		);
+		helper.assertTrue(Math.abs(Bosses.DROP_CHANCE - 0.05F) < EPSILON, "the boss drop chance is not 0.05");
 		helper.succeed();
 	}
 
