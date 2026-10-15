@@ -25,11 +25,11 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
  */
 public class TowerLostRoomStructureGameTest {
 	/** The spacing a lost castle set is placed with: one attempt every this many chunks. */
-	public static final int SPACING = 36;
+	public static final int SPACING = 29;
 	/** The least distance two castle attempts keep, under the spacing at separation 8. */
 	public static final int SEPARATION = 8;
-	/** The spacing before oniichan lowered the rate: 24 to 36. Kept only to measure both in one run. */
-	public static final int OLD_SPACING = 24;
+	/** The spacing before the rate rose 1.5 times: 36 to 29. Kept only to measure both in one run. */
+	public static final int OLD_SPACING = 36;
 	/** The villages a castle must keep clear of: the shipped exclusion zone. */
 	public static final String EXCLUDED_SET = "minecraft:villages";
 	/** The chunks the exclusion reaches, so a castle keeps more than a footprint from a village. */
@@ -73,7 +73,7 @@ public class TowerLostRoomStructureGameTest {
 	}
 
 	@GameTest(maxTicks = 20)
-	public void fewerCastlesStandPerThousandChunks(final GameTestHelper helper) {
+	public void moreCastlesStandPerThousandChunks(final GameTestHelper helper) {
 		JsonObject placement = shippedPlacement(helper);
 		int salt = placement.get("salt").getAsInt();
 		RandomSpreadStructurePlacement shipped = new RandomSpreadStructurePlacement(SPACING, SEPARATION, RandomSpreadType.LINEAR, salt);
@@ -88,7 +88,7 @@ public class TowerLostRoomStructureGameTest {
 			+ " shippedSpacing=" + shipped.spacing());
 		helper.assertTrue(shipped.spacing() == SPACING && shipped.separation() == SEPARATION,
 			"the measured set is not the shipped " + SPACING + "/" + SEPARATION);
-		helper.assertTrue(after < before, "the castles are not fewer over the same region: " + before + " at spacing " + OLD_SPACING
+		helper.assertTrue(after > before, "the castles are not more over the same region: " + before + " at spacing " + OLD_SPACING
 			+ ", " + after + " at spacing " + SPACING);
 		helper.assertTrue(after <= 2 * expected, "the castle rate is far above its spacing's share: " + after + " sites over " + chunks
 			+ " chunks, where " + expected + " is the sampled share at spacing " + SPACING);

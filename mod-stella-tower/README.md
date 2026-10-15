@@ -609,7 +609,7 @@ Every planned floor is built with a double tower chest at each chest spot of its
 ## Lost rooms (`LostRooms`, `LostCastles`)
 
 - A lost castle, `mod-stella-tower:lost_room`, generates in the overworld. The structure set
-  `mod-stella-tower:lost_rooms` spreads castles 36 chunks apart, at least 8, and keeps them 8 chunks
+  `mod-stella-tower:lost_rooms` spreads castles 29 chunks apart, at least 8, and keeps them 8 chunks
   (128 blocks: 64 and the 50-block footprint) from `minecraft:villages`. A start on water, or on ground that
   rises more than 3 blocks across its 50 by 50 footprint (`LostCastleGrid.MAX_SLOPE`), is skipped, and so is a start
   with no room for 3 floors above the world's floor.
