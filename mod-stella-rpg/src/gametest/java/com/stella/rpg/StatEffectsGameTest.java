@@ -59,7 +59,7 @@ public final class StatEffectsGameTest {
 		ServerPlayer player = RpgTestSupport.realPlayer(helper);
 		RpgTestSupport.bare(player);
 		RpgTestSupport.setStat(player, Stat.INT, 300);
-		float factor = (float) (1.0 - 0.3898314385112098);
+		float factor = (float) (1.0 - RpgSpells.resistance(300, StatBonuses.effective(player, Stat.VIT), 0.0));
 		float damage = 10.0F;
 		float generic = RpgCombat.scaleIncoming(player, level.damageSources().generic(), damage);
 		float magic = RpgCombat.scaleIncoming(player, level.damageSources().magic(), damage);

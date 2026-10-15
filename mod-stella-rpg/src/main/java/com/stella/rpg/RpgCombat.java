@@ -124,7 +124,7 @@ public final class RpgCombat {
 				return amount;
 			}
 			// The mobs mod already scaled the hit by level; INT adds its percent.
-			double hit = amount * (1.0 + RpgSpells.matkPercent(attacker)) * levelGap((Mob) attacker, victim);
+			double hit = amount * (1.0 + RpgSpells.mobMatkPercent(attacker)) * levelGap((Mob) attacker, victim);
 			if (rollCrit(attacker)) {
 				CRIT_VICTIM.set(victim);
 				hit *= CritBonuses.critMultiplier(attacker);

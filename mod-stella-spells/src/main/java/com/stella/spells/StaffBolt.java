@@ -54,7 +54,7 @@ public final class StaffBolt {
 			return null;
 		}
 		double matk = RpgBridge.matkHit(player, 100.0);
-		float amount = (float) (Double.isNaN(matk) || matk <= 0 ? FLAT_DAMAGE : matk);
+		float amount = Double.isNaN(matk) || matk <= 0 ? (float) FLAT_DAMAGE : RpgBridge.vanilla((float) matk);
 		target.hurtServer(level, SpellCasting.spellSource(player), amount);
 		return target;
 	}

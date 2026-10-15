@@ -34,16 +34,34 @@ public final class MatkGameTest {
 	}
 
 	@GameTest
+	public void flatMatkFromIntAndSaneBoltDamage(final GameTestHelper helper) {
+		ServerPlayer player = RpgTestSupport.player(helper);
+		player.experienceLevel = 1;
+		RpgTestSupport.setStat(player, Stat.INT, 10);
+		int intel = StatBonuses.effective(player, Stat.INT);
+		double bare = RpgSpells.matk(player);
+		helper.assertTrue(intel == 10 && Math.abs(bare - 30.0) < EPSILON, "INT " + intel + " MATK " + bare);
+		double k = RpgScale.k();
+		helper.assertTrue(Math.abs(RpgSpells.spellHit(player, 100.0) * k - bare) < EPSILON, "a 100 percent hit is not MATK x K-consistent");
+		player.setItemSlot(EquipmentSlot.MAINHAND, RpgTestSupport.withAffixes(Items.BOOK, Map.of("matk_pct", 3000)));
+		double bolt = RpgSpells.matkHit(player, 100.0);
+		player.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+		RpgTestSupport.result("flatMatkFromIntAndSaneBoltDamage", "matk=" + bare + " bolt=" + bolt);
+		helper.assertTrue(bolt > bare && bolt < 5.0 * bare, "a +300 percent bolt hit " + bolt + " from MATK " + bare);
+		helper.succeed();
+	}
+
+	@GameTest
 	public void matkPartsFromGear(final GameTestHelper helper) {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		RpgTestSupport.setStat(player, Stat.INT, 100);
-		helper.assertTrue(Math.abs(RpgSpells.matkPercent(player) - 1.0) < EPSILON, "bare MATK percent " + RpgSpells.matkPercent(player));
+		helper.assertTrue(Math.abs(RpgSpells.matkPercent(player)) < EPSILON && Math.abs(RpgSpells.matk(player) - 300.0) < EPSILON, "bare MATK percent " + RpgSpells.matkPercent(player));
 		ItemStack book = RpgTestSupport.withAffixes(Items.BOOK, Map.of("matk_flat", 20, "matk_pct", 50));
 		CustomData.update(DataComponents.CUSTOM_DATA, book, tag -> tag.putInt("stella_refine", 3));
 		player.setItemSlot(EquipmentSlot.MAINHAND, book);
 		double percent = RpgSpells.matkPercent(player);
 		double flat = RpgSpells.matkFlat(player);
-		helper.assertTrue(Math.abs(percent - 1.05) < EPSILON, "book MATK percent " + percent);
+		helper.assertTrue(Math.abs(percent - 0.05) < EPSILON, "book MATK percent " + percent);
 		helper.assertTrue(Math.abs(flat - 20.0) < EPSILON, "a refined book changed the flat MATK: " + flat);
 
 		ItemStack sword = RpgTestSupport.withAffixes(Items.IRON_SWORD, Map.of("matk_flat", 10));
@@ -88,10 +106,10 @@ public final class MatkGameTest {
 		ServerPlayer player = RpgTestSupport.player(helper);
 		float k = RpgScale.kf();
 		player.experienceLevel = 10;
-		// Level 10 adds 3 bonus points, so base 97 makes INT 100.
+		// Level 10 adds 3 bonus points, so base 97 makes INT 100: MATK 300.
 		RpgTestSupport.setStat(player, Stat.INT, 97);
-		// base(10) = 12 x 1.45 = 17.4. No roll, so every cast is the same.
-		double expected = 17.4 * 1.5 * 2.0;
+		// MATK 300 x 150 percent, in vanilla units. No roll, so every cast is the same.
+		double expected = 300.0 * 1.5 / k;
 		RpgCombat.setRoller((attacker, random, chance) -> false);
 		try {
 			for (int i = 0; i < 50; i++) {
@@ -130,11 +148,11 @@ public final class MatkGameTest {
 			float three = spellLoss(helper, caster, 3.0F);
 			stub.threats.put(caster, 41);
 			float strong = spellLoss(helper, caster, 1.0F);
-			// The amount stays; INT 14 adds 14 percent. The bare victim resists 25 percent.
-			double level1 = 1.14 * 0.75;
+			// The amount stays; INT 14 adds 14 percent. The bare victim has no resistance.
+			double level1 = 1.14;
 			int strongInt = MobStats.base(RpgConfig.defaults(), "magic", Stat.INT, 41);
 			// The level 0 victim takes 10 percent more for each 10 threat levels, so 40 levels give 1.4.
-			double level41 = (1.0 + strongInt / 100.0) * 0.75 * 1.4;
+			double level41 = (1.0 + strongInt / 100.0) * 1.4;
 			RpgTestSupport.result("mobSpellsUseThreatAndInt", "one=" + one + " three=" + three + " strong=" + strong);
 			helper.assertTrue(Math.abs(one - level1) < 0.01F, "a 1 point mob spell dealt " + one + " expected " + level1);
 			helper.assertTrue(Math.abs(three - 3.0 * level1) < 0.01F, "a 3 point mob spell dealt " + three);
@@ -162,7 +180,7 @@ public final class MatkGameTest {
 		}
 		RpgTestSupport.result("mobSpellCrits", "plain=" + plain + " crit=" + crit);
 		// A crit ignores the 25 percent magic resistance of the bare victim.
-		helper.assertTrue(Math.abs(crit - plain / 0.75F * RpgCurve.critMultiplier()) < 0.01F, "a mob spell crit dealt " + crit + " against " + plain);
+		helper.assertTrue(Math.abs(crit - plain * RpgCurve.critMultiplier()) < 0.01F, "a mob spell crit dealt " + crit + " against " + plain);
 		float strongPlain;
 		float strongCrit;
 		try {
@@ -173,7 +191,7 @@ public final class MatkGameTest {
 		} finally {
 			RpgCombat.setRoller(null);
 		}
-		helper.assertTrue(Math.abs(strongCrit - strongPlain / 0.25F * RpgCurve.critMultiplier()) < 0.01F,
+		helper.assertTrue(Math.abs(strongCrit - strongPlain / 0.4F * RpgCurve.critMultiplier()) < 0.01F,
 			"a crit on INT 1024 dealt " + strongCrit + " against " + strongPlain);
 		helper.succeed();
 	}
@@ -191,8 +209,8 @@ public final class MatkGameTest {
 			RpgCombat.setRoller(null);
 		}
 		RpgTestSupport.result("summonedSpellPassesThrough", "loss=" + loss);
-		// The amount stays 4, and only the 25 percent magic resistance of the bare victim applies.
-		helper.assertTrue(Math.abs(loss - 3.0F) < 0.01F, "a servant spell dealt " + loss + " expected 3.0");
+		// The amount stays 4, and the bare victim has no magic resistance.
+		helper.assertTrue(Math.abs(loss - 4.0F) < 0.01F, "a servant spell dealt " + loss + " expected 4.0");
 		helper.succeed();
 	}
 

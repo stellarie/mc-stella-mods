@@ -252,13 +252,13 @@ public final class RpgMobStatsGameTest {
 
 	/**
 	 * A mob spell keeps its amount, which the mobs mod scaled by level, times (1 + INT / 100).
-	 * The bare victim has 25 percent magic resistance. The loss is K times the vanilla value.
+	 * The bare victim has no magic resistance. The loss is K times the vanilla value.
 	 */
 	private static void assertSpell(
 		final GameTestHelper helper, final String name, final float loss, final int threat, final int intel
 	) {
 		// A mob spell keeps its level-scaled amount; INT adds its percent.
-		double hit = HIT * (1.0 + intel / 100.0) * 0.75 * gap(threat);
+		double hit = HIT * (1.0 + intel / 100.0) * gap(threat);
 		assertLoss(helper, name, loss, (float) hit);
 	}
 

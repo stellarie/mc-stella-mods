@@ -203,8 +203,8 @@ public final class HealthScaleGameTest {
 				float harm = instantHarm(helper, player, amplifier);
 				float absorption = absorptionGrant(player, amplifier);
 				float expectedHeal = doubling * (float) Math.max(60.0, 0.15 * max);
-				// A bare player resists 25 percent of magic.
-				float expectedHarm = doubling * (float) Math.max(90.0, 0.20 * max) * 0.75F;
+				// A bare player has no magic resistance.
+				float expectedHarm = doubling * (float) Math.max(90.0, 0.20 * max);
 				float expectedAbsorption = (1 + amplifier) * (float) Math.max(60.0, 0.10 * max);
 				log.append("max=").append(max).append(" amp=").append(amplifier).append(" heal=").append(heal)
 					.append(" harm=").append(harm).append(" absorption=").append(absorption).append(' ');
