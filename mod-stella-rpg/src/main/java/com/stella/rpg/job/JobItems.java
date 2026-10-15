@@ -26,6 +26,10 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
@@ -69,6 +73,9 @@ public final class JobItems {
 	/** Iron tier: 40 MATK, and a rise at each refine level and milestone. See {@link StaffMatk}. */
 	public static final Item MAGE_STAFF = Registry.register(BuiltInRegistries.ITEM, STAFF_KEY, new Item(
 		new Item.Properties().setId(STAFF_KEY).durability(STAFF_DURABILITY).repairable(Items.IRON_INGOT).enchantable(14)
+			.component(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.builder().add(
+				Attributes.ATTACK_SPEED, new AttributeModifier(Item.BASE_ATTACK_SPEED_ID, -2.4, AttributeModifier.Operation.ADD_VALUE),
+				EquipmentSlotGroup.MAINHAND).build())
 			.component(DataComponents.CUSTOM_DATA, StaffMatk.profile(STAFF_MATK, "none", 0, 0))
 			.component(ItemDescription.TYPE, lore("mage_staff"))
 	));
