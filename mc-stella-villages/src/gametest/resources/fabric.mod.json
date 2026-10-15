@@ -36,7 +36,8 @@
 			"com.stella.villages.SlayerContractGameTest",
 			"com.stella.villages.TrainerGameTest",
 			"com.stella.villages.TrainerScreenGameTest",
-			"com.stella.villages.PatrolSummonFriendGameTest"
+			"com.stella.villages.PatrolSummonFriendGameTest",
+			"com.stella.villages.NpcScalingGameTest"
 		]
 	},
 	"mixins": [

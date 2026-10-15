@@ -26,6 +26,7 @@ public final class McStellaVillages implements ModInitializer {
 		NemesisState.register();
 		PatrolService.register();
 		DefenderGrowth.register();
+		com.stella.villages.patrol.NpcScaling.register();
 		Conversation.register();
 		MissionService.register();
 		com.stella.villages.item.ApprenticeChestplate.register();

@@ -4,7 +4,6 @@ import com.stella.villages.McStellaVillages;
 import com.stella.mobs.behavior.BehaviorInstaller;
 import com.stella.mobs.behavior.EliteState;
 import com.stella.mobs.behavior.ReactiveState;
-import com.stella.mobs.scaling.SpawnScaling;
 import com.stella.villages.data.VillageWorldData;
 import com.stella.villages.data.VillageWorldData.MemberRecord;
 import com.stella.villages.data.VillageWorldData.ThreatRecord;
@@ -67,7 +66,6 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 public final class PatrolService {
-	public static final double PATROL_HEALTH_MULTIPLIER = 1.5;
 	public static final int PATROL_DETECTION_RANGE = 48;
 	public static final int PATROL_RADIUS = 64;
 	/** The head keeps within this many blocks of its village's bell. */
@@ -450,7 +448,6 @@ public final class PatrolService {
 		}
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
-		stripMobsScaling(mob);
 		logSpawn(village, mob, role);
 		return mob;
 	}
@@ -459,18 +456,6 @@ public final class PatrolService {
 	private static BlockPos trainerAnchor(final ServerLevel level, final VillageRecord village, final BlockPos bell) {
 		Mob head = headFor(level, village.id());
 		return head != null ? head.blockPosition() : bell;
-	}
-
-	private static void stripMobsScaling(final Mob mob) {
-		AttributeInstance health = mob.getAttribute(Attributes.MAX_HEALTH);
-		if (health != null && health.hasModifier(SpawnScaling.HEALTH_ID)) {
-			health.removeModifier(SpawnScaling.HEALTH_ID);
-			mob.setHealth(mob.getMaxHealth());
-		}
-		AttributeInstance damage = mob.getAttribute(Attributes.ATTACK_DAMAGE);
-		if (damage != null && damage.hasModifier(SpawnScaling.DAMAGE_ID)) {
-			damage.removeModifier(SpawnScaling.DAMAGE_ID);
-		}
 	}
 
 	// A standable outdoor spot within the scatter radius of the bell but outside the duke's circle, in a loaded chunk.
@@ -527,11 +512,7 @@ public final class PatrolService {
 	}
 
 	private static void applyPatrolAttributes(final Mob mob) {
-		AttributeInstance maxHealth = mob.getAttribute(Attributes.MAX_HEALTH);
-		if (maxHealth != null) {
-			maxHealth.setBaseValue(maxHealth.getBaseValue() * PATROL_HEALTH_MULTIPLIER);
-			mob.setHealth((float) maxHealth.getValue());
-		}
+		NpcScaling.setBaseHealth(mob);
 
 		AttributeInstance followRange = mob.getAttribute(Attributes.FOLLOW_RANGE);
 		if (followRange != null) {
@@ -664,7 +645,6 @@ public final class PatrolService {
 		}
 
 		ACTIVE_MEMBERS.put(mob.getUUID(), mob);
-		stripMobsScaling(mob);
 		keepOutOfRaids(mob);
 		((MobPatrolAccess) mob).setPatrolMarker(true);
 		mob.addTag(PATROL_TAG);

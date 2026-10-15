@@ -69,6 +69,8 @@ import org.slf4j.LoggerFactory;
 public class StellaMobs implements ModInitializer {
 	/** V4: a mob carrying this entity tag takes none of the spawn-time rolls, so another mod can own its kit. */
 	public static final String NO_SPAWN_ROLL_TAG = "mod-stella-mobs.no_spawn_roll";
+	/** A friendly NPC whose level follows the nearest player. See {@code FriendlyLevels}. */
+	public static final String FRIENDLY_LEVEL_TAG = "mod-stella-mobs.friendly_level";
 	/** A no-roll mob with this tag keeps its own health, but its hits take the level path. */
 	public static final String SELF_SCALED_TAG = "mod-stella-mobs.self_scaled";
 	/** A mob another mod drives entirely, such as the village witch or a summoned skeleton: this mod leaves its goals alone. */
@@ -93,6 +95,7 @@ public class StellaMobs implements ModInitializer {
 		ReadoutRankProvider.register();
 		ThreatLevelProvider.register();
 		com.stella.mobs.api.ApplyLevelProvider.register();
+		com.stella.mobs.api.FriendlyLevelProvider.register();
 		MobRankProvider.register();
 		ContainerLevelProvider.register();
 		EscortSquad.register();
