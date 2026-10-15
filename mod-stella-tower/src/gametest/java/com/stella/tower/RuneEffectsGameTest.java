@@ -371,6 +371,39 @@ public class RuneEffectsGameTest {
 		helper.succeed();
 	}
 
+	/** Holy on a staff heals on spell hits; a held staff stands in for the weapon a magic source lacks. */
+	@GameTest
+	public void holyStaffMagic(final GameTestHelper helper) {
+		withStats(100, () -> {
+			ServerPlayer player = TowerTestSupport.join(helper, 1.5, 1.5);
+			TowerTestSupport.vulnerable(player);
+			player.setItemInHand(InteractionHand.MAIN_HAND, TowerRunes.apply(new ItemStack(Items.BLAZE_ROD), new RuneData(TowerElement.HOLY, FLOOR)));
+			ServerLevel level = helper.getLevel();
+			Zombie target = zombie(helper, 3.5, 3.5);
+			DamageSource[] sources = {level.damageSources().indirectMagic(player, player), level.damageSources().playerAttack(player)};
+			for (DamageSource source : sources) {
+				player.setHealth(10.0F);
+				target.damageCooldownTime = 0;
+				float before = target.getHealth();
+				target.hurtServer(level, source, 10.0F);
+				double healed = player.getHealth() - 10.0;
+				TowerTestSupport.result("holyStaff", source.type().msgId() + " dealt=" + (before - target.getHealth()) + " healed=" + healed);
+				helper.assertTrue(healed > 0.0, "a holy staff heals on " + source.type().msgId() + ", healed " + healed);
+			}
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOOK));
+			player.getInventory().setItem(35, TowerRunes.apply(new ItemStack(Items.BLAZE_ROD), new RuneData(TowerElement.HOLY, FLOOR)));
+			player.setHealth(10.0F);
+			target.damageCooldownTime = 0;
+			target.hurtServer(level, sources[0], 10.0F);
+			double slotHealed = player.getHealth() - 10.0;
+			TowerTestSupport.result("holyStaffSlot", "healed=" + slotHealed);
+			helper.assertTrue(slotHealed > 0.0, "a holy staff in the weapon slot heals on a spell, healed " + slotHealed);
+			target.discard();
+			TowerTestSupport.leave(helper, player);
+		});
+		helper.succeed();
+	}
+
 	/** Dark: STR / 5 percent more against targets below 30 percent health; armor weakens attackers for LUK / 20 seconds. */
 	@GameTest
 	public void dark(final GameTestHelper helper) {
