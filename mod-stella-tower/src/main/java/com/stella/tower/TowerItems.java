@@ -84,6 +84,16 @@ public final class TowerItems {
 		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, RUNE_ID)).stacksTo(16).rarity(Rarity.EPIC)
 	));
 
+	/** The element a rune shard holds. */
+	public static final DataComponentType<TowerElement> SHARD = Registry.register(BuiltInRegistries.DATA_COMPONENT_TYPE, StellaTower.id("shard"),
+		DataComponentType.<TowerElement>builder().persistent(TowerElement.CODEC)
+			.networkSynchronized(ByteBufCodecs.VAR_INT.map(index -> TowerElement.values()[index], Enum::ordinal)).build());
+	public static final Identifier RUNE_SHARD_ID = StellaTower.id("rune_shard");
+	public static final RuneShardItem RUNE_SHARD = Registry.register(BuiltInRegistries.ITEM, RUNE_SHARD_ID, new RuneShardItem(
+		new Item.Properties().setId(ResourceKey.create(Registries.ITEM, RUNE_SHARD_ID)).rarity(Rarity.UNCOMMON)
+			.component(ItemDescription.TYPE, ItemDescription.block("rune_shard"))
+	));
+
 	private TowerItems() {
 	}
 

@@ -106,5 +106,15 @@
   "message.mod-stella-tower.merchant.appears": "A wandering ghost merchant has come to the floor.",
   "message.mod-stella-tower.merchant.tower_only": "The ghost merchant sells its goods only in the tower.",
   "message.mod-stella-tower.merchant.short": "The ghost merchant wants %s emeralds. You carry %s.",
-  "message.mod-stella-tower.merchant.bought": "You bought %s for %s emeralds."
+  "message.mod-stella-tower.merchant.bought": "You bought %s for %s emeralds.",
+  "item.mod-stella-tower.rune_shard": "Rune Shard",
+  "item.mod-stella-tower.rune_shard.of": "%s Rune Shard",
+  "item.mod-stella-tower.rune_shard.requires": "9 of one element",
+  "item.mod-stella-tower.rune_shard.desc": "Craft 9 into a floor 10 rune. Craft a rune with 8 shards of its element for 10 more floors.",
+  "message.mod-stella-tower.merchant.sold": "You sold %s %s for %s emeralds.",
+  "message.mod-stella-tower.merchant.no_buy": "The ghost merchant does not buy that.",
+  "message.mod-stella-tower.merchant.too_little": "The ghost merchant pays nothing for so little. You need at least %s.",
+  "gui.mod-stella-tower.merchant.sell": "Sell ores",
+  "gui.mod-stella-tower.merchant.sell.how": "Click an ore or gem in your inventory to sell the stack.",
+  "gui.mod-stella-tower.merchant.sell.rate": "%s: %s emeralds per %s"
 }

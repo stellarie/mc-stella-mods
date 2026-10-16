@@ -77,7 +77,8 @@
 			"com.stella.tower.TowerGhostSquadGameTest",
 			"com.stella.tower.TowerMerchantGameTest",
 			"com.stella.tower.MerchantGoodsGameTest",
-			"com.stella.tower.DescriptionWidthGameTest"
+			"com.stella.tower.DescriptionWidthGameTest",
+			"com.stella.tower.RuneShardsGameTest"
 		]
 	},
 	"mixins": [

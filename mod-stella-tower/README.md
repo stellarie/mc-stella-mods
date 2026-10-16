@@ -965,3 +965,27 @@ it over. `MerchantGoods.ofItem` makes a good of another mod item by id. A price 
 - Find a merchant (about one floor in ten) and buy from it with emeralds in your pack and in an emerald bag.
 - With the equips mod installed, refine at an anvil with a whetstone in the pack until a roll would fail: it succeeds and the
   whetstone is spent.
+
+## Rune shards and the ore sale (`RuneShards`, `RuneShardRecipe`, `OreSales`)
+
+Mining feeds the tower. The mod adds the Rune Shard item, which holds one element in the `mod-stella-tower:shard` component.
+
+- A player's break of a deepslate ore (a block of a vanilla `minecraft:*_ores` tag whose id has `deepslate`) or of ancient
+  debris leaves one shard of a random element with `RuneShards.DROP_CHANCE` (0.04). A silk touch break, and any break that is
+  not a player's, leaves none. The hook is `LootTableEvents.MODIFY_DROPS`. `RuneShards.pinRoll` is the test seam.
+- `RuneShardRecipe` is a special crafting recipe (`mod-stella-tower:rune_shards`), because it reads components. Nine shards of
+  one element make a floor 10 rune. A rune and eight shards of its element make that rune 10 floors higher, with no cap.
+  A mix of elements makes nothing.
+- The ghost merchant buys raw ores and gems. Click a stack in your own inventory while the shop is open: the whole stack is sold
+  for emeralds, rounded down, and the items that do not make a whole emerald stay with you. The book in the last shop slot lists
+  the rates. The rates are in `OreSales`: coal 64:1; copper (ingot or raw) 32:1; raw iron 16:1; raw gold 12:1; redstone 32:1;
+  lapis 24:1; quartz 24:1; amethyst shard 16:1; diamond 1:2; ancient debris and netherite scrap 1:6. A raw ore block is nine
+  of its item. The sale needs the shop to be in the tower, as buying does. Iron and gold ingots are not bought.
+- Test: `RuneShardsGameTest` (a forced-roll break, with controls for silk touch and a stone ore; the crafting through the recipe
+  manager; the sale of raw iron through the shop menu).
+
+### Manual acceptance (rune shards)
+
+- Mine deepslate ores for a while: about one break in 25 leaves a shard with an element colour. Check the shard icons.
+- Craft 9 shards at a crafting table, then a rune with 8 shards. Check the recipe leaves a floor 10 rune and floor +10.
+- Sell a stack of ores to a merchant by clicking it in your inventory, and read the book in the shop.
