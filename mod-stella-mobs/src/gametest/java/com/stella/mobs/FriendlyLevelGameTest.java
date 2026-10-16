@@ -56,8 +56,8 @@ public class FriendlyLevelGameTest {
 			first, second, firstMultiplier, secondMultiplier, fraction, after);
 		helper.assertTrue(first == 80, "the first level is " + first + ", not the player's 80");
 		helper.assertTrue(second == 150, "the level did not follow the player: " + second);
-		helper.assertTrue(Math.abs(firstMultiplier - SpawnScaling.healthMultiplier(80)) < 1.0e-9, "health multiplier " + firstMultiplier);
-		helper.assertTrue(Math.abs(secondMultiplier - SpawnScaling.healthMultiplier(150)) < 1.0e-9, "health multiplier " + secondMultiplier);
+		helper.assertTrue(Math.abs(firstMultiplier - SpawnScaling.tierMultiplier(80)) < 1.0e-9, "health multiplier " + firstMultiplier);
+		helper.assertTrue(Math.abs(secondMultiplier - SpawnScaling.tierMultiplier(150)) < 1.0e-9, "health multiplier " + secondMultiplier);
 		helper.assertTrue(secondMultiplier > firstMultiplier * 1.5, "no tier spike between 80 and 150");
 		helper.assertTrue(Math.abs(after - fraction) < 0.02F, "the health fraction moved from " + fraction + " to " + after);
 		helper.assertTrue(health != null && golem.entityTags().contains(StellaMobs.FRIENDLY_LEVEL_TAG), "the golem is not marked friendly");

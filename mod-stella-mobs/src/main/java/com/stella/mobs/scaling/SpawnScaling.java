@@ -110,6 +110,12 @@ public final class SpawnScaling {
 	// Huge tower floors overflow the tier power.
 	private static final double MAX_HEALTH_MULTIPLIER = 1.0e9;
 
+	public static double tierMultiplier(final int threatLevel) {
+		ScalingConfig config = ScalingConfigStore.get();
+		int tiers = Math.max(0, threatLevel) / Math.max(1, config.healthTierStep());
+		return Math.min(MAX_HEALTH_MULTIPLIER, Math.pow(config.healthTierFactor(), tiers));
+	}
+
 	public static double healthMultiplier(final int threatLevel) {
 		ScalingConfig config = ScalingConfigStore.get();
 		int level = Math.max(0, threatLevel);
@@ -206,7 +212,9 @@ public final class SpawnScaling {
 		float fraction = mob.getMaxHealth() <= 0.0F ? 1.0F : mob.getHealth() / mob.getMaxHealth();
 		mob.addTag(LEVEL_APPLIED_TAG);
 		((net.fabricmc.fabric.api.attachment.v1.AttachmentTarget) mob).setAttached(ThreatState.TYPE, target);
-		applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthMultiplier(level) - 1.0);
+		// Friendly NPCs carry a flat 10000 base; only the tier spikes apply.
+		double healthScale = mob.entityTags().contains(StellaMobs.FRIENDLY_LEVEL_TAG) ? tierMultiplier(level) : healthMultiplier(level);
+		applyModifier(mob, Attributes.MAX_HEALTH, HEALTH_ID, healthScale - 1.0);
 		if (!SelfScaled.owned(mob)) {
 			applyModifier(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, damageMultiplier(level) - 1.0);
 		}
