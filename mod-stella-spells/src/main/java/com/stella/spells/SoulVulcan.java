@@ -172,7 +172,9 @@ final class SoulVulcan {
 	private static void land(final Bolt bolt) {
 		LivingEntity victim = bolt.target;
 		victim.damageCooldownTime = 0;
-		victim.hurtServer(bolt.level, SpellCasting.spellSource(bolt.owner), bolt.amount);
+		if (victim.hurtServer(bolt.level, SpellCasting.spellSource(bolt.owner), bolt.amount)) {
+			StaffBolt.applyWeaponEnchants(bolt.level, bolt.owner, bolt.staff, victim);
+		}
 		SpellImbue.onStaffHit(bolt.owner, bolt.staff, victim, bolt.full, bolt.certain);
 	}
 }
