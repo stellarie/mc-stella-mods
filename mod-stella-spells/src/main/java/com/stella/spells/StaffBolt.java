@@ -90,13 +90,27 @@ public final class StaffBolt {
 		double matk = RpgBridge.matkHit(player, 100.0);
 		float amount = Double.isNaN(matk) || matk <= 0 ? (float) FLAT_DAMAGE : RpgBridge.vanilla((float) matk);
 		amount *= (float) chargeFactor(charge);
-		target.hurtServer(level, SpellCasting.spellSource(player), amount);
+		if (target.hurtServer(level, SpellCasting.spellSource(player), amount)) {
+			applyWeaponEnchants(level, player, player.getMainHandItem(), target);
+		}
 		boolean full = isFull(charge);
 		boolean certain = full && Memorize.spend(player);
 		ItemStack staff = player.getMainHandItem();
 		SpellImbue.onStaffHit(player, staff, target, full, certain);
 		SoulVulcan.follow(player, staff, target, amount, full, certain);
 		return target;
+	}
+
+	/**
+	 * Runs the staff's on-hit enchant effects, as a melee hit would.
+	 * It calls only the post-attack path, so the sweep and the melee knockback never run.
+	 */
+	static void applyWeaponEnchants(final ServerLevel level, final ServerPlayer player, final ItemStack staff, final LivingEntity target) {
+		if (staff.isEmpty() || !target.isAlive() || staff.getEnchantments().isEmpty()) {
+			return;
+		}
+		net.minecraft.world.item.enchantment.EnchantmentHelper.doPostAttackEffectsWithItemSource(
+			level, target, SpellCasting.spellSource(player), staff);
 	}
 
 	/** A unit that a bolt passes through, and that a staff blow treats as a melee target. */

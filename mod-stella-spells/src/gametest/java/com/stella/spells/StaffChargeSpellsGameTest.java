@@ -146,6 +146,26 @@ public class StaffChargeSpellsGameTest {
 		});
 	}
 
+	@GameTest(maxTicks = 100)
+	public void staffBoltTriggersTheStaffsOnHitEnchant(final GameTestHelper helper) {
+		ServerPlayer caster = caster(helper);
+		ItemStack staff = new ItemStack(Items.BLAZE_ROD);
+		var fireAspect = helper.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+			.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.FIRE_ASPECT);
+		staff.enchant(fireAspect, 2);
+		caster.setItemInHand(InteractionHand.MAIN_HAND, staff);
+		Mob zombie = foe(helper, 2, 6);
+		Mob bystander = foe(helper, 4, 6);
+		helper.runAfterDelay(5L, () -> {
+			helper.assertTrue(!zombie.isOnFire(), "the foe burned before the bolt");
+			LivingEntity struck = StaffBolt.fire(caster, 1.0F);
+			helper.assertTrue(struck == zombie, "the bolt hit " + struck);
+			helper.assertTrue(zombie.isOnFire(), "the bolt did not apply the staff's Fire Aspect");
+			helper.assertTrue(!bystander.isOnFire(), "the enchant reached a foe the bolt did not hit");
+			leave(helper, caster);
+		});
+	}
+
 	private static boolean cast(final String path, final ServerPlayer caster) {
 		SpellModifiers.CastModifiers modifiers = SpellModifiers.resolve(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY);
 		return SpellbookCatalog.get(Identifier.parse("mod-stella-spells:" + path)).effect().apply(caster, null, caster.position(), modifiers);
