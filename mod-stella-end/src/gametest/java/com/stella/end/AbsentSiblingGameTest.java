@@ -107,16 +107,23 @@ public class AbsentSiblingGameTest {
 	public void theXpBridgeDoesNothingWhenTheRpgModIsAbsent(final GameTestHelper helper) {
 		var share = FabricLoader.getInstance().getObjectShare();
 		Object curve = share.remove(XpBridge.CURVE_KEY);
+		Object scale = share.remove(HealthBridge.SCALE_KEY);
 		boolean empty;
+		double flat;
 		try {
 			empty = XpBridge.needFor(120).isEmpty();
+			flat = HealthBridge.scale();
 		} finally {
 			if (curve != null) {
 				share.put(XpBridge.CURVE_KEY, curve);
 			}
+			if (scale != null) {
+				share.put(HealthBridge.SCALE_KEY, scale);
+			}
 		}
-		EndTestSupport.result("absentXp", "empty=" + empty);
+		EndTestSupport.result("absentXp", "empty=" + empty + " healthScale=" + flat);
 		helper.assertTrue(empty, "the xp bridge answered without the rpg mod");
+		helper.assertTrue(flat == 1.0, "the health scale bridge answered " + flat + " without the rpg mod");
 		helper.succeed();
 	}
 
@@ -138,6 +145,7 @@ public class AbsentSiblingGameTest {
 		helper.assertTrue(level == 130, "the claimed mob reads level " + level);
 		helper.assertTrue(plain.getMaxHealth() > vanilla, "the level added no health: " + plain.getMaxHealth());
 		helper.assertTrue(same, "the xp bridge disagrees with the curve it reads");
+		helper.assertTrue(HealthBridge.scale() > 1.0, "the health scale bridge reads " + HealthBridge.scale() + " with the rpg mod present");
 		helper.succeed();
 	}
 }

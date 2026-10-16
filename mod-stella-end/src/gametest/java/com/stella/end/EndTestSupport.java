@@ -13,6 +13,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,11 +46,37 @@ final class EndTestSupport {
 			server.getPlayerList().remove(leftover);
 		}
 		EndGameTestInit.dragonFightRuns = false;
+		// A fight that ran leaves its arena ticket,
+		// nine chunks wide.
+		// An enderman then teleports out of test reach.
+		end.getChunkSource().removeTicketWithRadius(net.minecraft.server.level.TicketType.DRAGON, new net.minecraft.world.level.ChunkPos(0, 0), 9);
 		clearMobs(end);
 		FloorSpawner.reset();
+		EndDragons.reset();
+		UndeadSovereign.reset();
+		UndeadBlazes.reset();
+		SoulCharges.reset();
 		EndCastles.ensureBuilt(end);
+		releaseRing(end);
 		hold(end, EndCastle.min());
+		restoreArena(end);
 		return end;
+	}
+
+	/** The state every slice B test starts from: nobody has died, the door is shut and the arena holds no flame. */
+	private static void restoreArena(final ServerLevel end) {
+		EndState state = EndCastles.state(end);
+		EndCastles.setState(end, new EndState(state.built(), state.clock(), EndState.NEVER, EndState.NEVER, false));
+		CastleBuilder.setExitDoor(end, EndCastles.layout(end), EndCastle.min(), false);
+		int y = EndCastle.standY(EndCastle.FLOORS);
+		for (int x = EndCastle.MIN_X + 1; x < EndCastle.MIN_X + EndCastle.SIZE - 1; x++) {
+			for (int z = EndCastle.MIN_Z + 1; z < EndCastle.MIN_Z + EndCastle.SIZE - 1; z++) {
+				BlockPos at = new BlockPos(x, y, z);
+				if (end.getBlockState(at).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
+					end.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+				}
+			}
+		}
 	}
 
 	/**
@@ -54,8 +85,16 @@ final class EndTestSupport {
 	 */
 	static void clearMobs(final ServerLevel end) {
 		for (Entity entity : List.copyOf(iterate(end))) {
+			if (entity instanceof ServerPlayer) {
+				continue;
+			}
 			if (entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon
-				|| entity.entityTags().stream().anyMatch(tag -> tag.startsWith(EndMobs.FLOOR_TAG))) {
+				|| entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.Fireball
+				|| entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.DragonFireball
+				|| entity instanceof net.minecraft.world.entity.AreaEffectCloud
+				|| entity instanceof net.minecraft.world.entity.item.ItemEntity
+				|| entity instanceof EndCrystal
+				|| entity.entityTags().stream().anyMatch(tag -> tag.startsWith(EndMobs.FLOOR_TAG) || tag.startsWith("mod-stella-end"))) {
 				entity.discard();
 			}
 		}
@@ -71,6 +110,10 @@ final class EndTestSupport {
 		return all;
 	}
 
+	/** The ring of chunks the dragon's tests hold beyond the castle: it flies within forty-eight blocks of the origin. */
+	static final int RING_FROM = -3;
+	static final int RING_TO = 2;
+
 	/** Loads and keeps the four chunks of a castle at a footprint corner: a test player does not move chunk tickets as a real one does. */
 	static void hold(final ServerLevel level, final BlockPos min) {
 		int x0 = min.getX() >> 4;
@@ -83,6 +126,61 @@ final class EndTestSupport {
 		}
 		for (int i = 0; i < 1000 && level.getChunkSource().pollTask(); i++) {
 		}
+		// A saved chunk loads entities after blocks.
+		// An entity added before then is refused.
+		for (int i = 0; i < 20000 && !entitiesLoaded(level, x0, z0, 0, 1); i++) {
+			level.getChunkSource().pollTask();
+		}
+	}
+
+	private static boolean entitiesLoaded(final ServerLevel level, final int x0, final int z0, final int from, final int to) {
+		for (int dx = from; dx <= to; dx++) {
+			for (int dz = from; dz <= to; dz++) {
+				if (!level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.pack(x0 + dx, z0 + dz))) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/** Whether a chunk belongs to the castle's own four, which every test holds. */
+	private static boolean inCastle(final int cx, final int cz) {
+		return cx >= EndCastle.MIN_X >> 4 && cx <= (EndCastle.MIN_X + EndCastle.SIZE - 1) >> 4 && cz >= EndCastle.MIN_Z >> 4 && cz <= (EndCastle.MIN_Z + EndCastle.SIZE - 1) >> 4;
+	}
+
+	/** Holds the ring round the castle too, for a test of something that flies off the roof; an enderman would teleport into it. */
+	static void holdRing(final ServerLevel level) {
+		for (int cx = RING_FROM; cx <= RING_TO; cx++) {
+			for (int cz = RING_FROM; cz <= RING_TO; cz++) {
+				if (!inCastle(cx, cz)) {
+					level.getChunk(cx, cz);
+					level.setChunkForced(cx, cz, true);
+				}
+			}
+		}
+		for (int i = 0; i < 1000 && level.getChunkSource().pollTask(); i++) {
+		}
+		for (int i = 0; i < 20000 && !entitiesLoaded(level, RING_FROM, RING_FROM, 0, RING_TO - RING_FROM); i++) {
+			level.getChunkSource().pollTask();
+		}
+	}
+
+	static void releaseRing(final ServerLevel level) {
+		for (int cx = RING_FROM; cx <= RING_TO; cx++) {
+			for (int cz = RING_FROM; cz <= RING_TO; cz++) {
+				if (!inCastle(cx, cz)) {
+					level.setChunkForced(cx, cz, false);
+				}
+			}
+		}
+	}
+
+	/** Starts a test that has the dragon fly: like {@link #fresh}, and the ring round the castle held loaded. */
+	static ServerLevel freshWide(final GameTestHelper helper) {
+		ServerLevel end = fresh(helper);
+		holdRing(end);
+		return end;
 	}
 
 	static void release(final ServerLevel level, final BlockPos min) {
@@ -93,6 +191,7 @@ final class EndTestSupport {
 				level.setChunkForced(x0 + dx, z0 + dz, false);
 			}
 		}
+		releaseRing(level);
 	}
 
 	/** A player joined through the player list and sent to a spot of a level, so every system that counts players sees them. */
@@ -152,6 +251,66 @@ final class EndTestSupport {
 
 	static BlockState state(final ServerLevel level, final BlockPos min, final int lx, final int y, final int lz) {
 		return level.getBlockState(world(min, lx, y, lz));
+	}
+
+	/** The tag of a stand-in a test hits; it keeps `fresh` from leaving it behind. */
+	static final String DUMMY_TAG = "mod-stella-end-test.dummy";
+
+	/** A zombie that stands still and takes hits: claimed so no sibling rolls it, and as healthy as the attribute allows. */
+	static Zombie dummy(final ServerLevel end, final Vec3 at) {
+		Zombie zombie = EntityTypes.ZOMBIE.create(end, EntitySpawnReason.SPAWNER);
+		LevelBridge.claim(zombie);
+		zombie.addTag(DUMMY_TAG);
+		zombie.setNoAi(true);
+		zombie.setPersistenceRequired();
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1.0E6);
+		zombie.setHealth(zombie.getMaxHealth());
+		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		end.addFreshEntity(zombie);
+		return zombie;
+	}
+
+	/** A dummy that falls and flies when thrown, as a creature with AI on does, yet cannot walk off. */
+	static Zombie mobileDummy(final ServerLevel end, final Vec3 at) {
+		Zombie zombie = EntityTypes.ZOMBIE.create(end, EntitySpawnReason.SPAWNER);
+		LevelBridge.claim(zombie);
+		zombie.addTag(DUMMY_TAG);
+		zombie.setPersistenceRequired();
+		zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1.0E6);
+		zombie.getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(0.0);
+		zombie.setHealth(zombie.getMaxHealth());
+		zombie.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+		end.addFreshEntity(zombie);
+		return zombie;
+	}
+
+	/** A player standing on the deck of the rooftop, a given offset from its middle. */
+	static ServerPlayer joinOnRoof(final GameTestHelper helper, final ServerLevel end, final double dx, final double dz) {
+		return join(helper, end, new Vec3(0.5 + dx, EndCastle.ROOF_Y + 1, 0.5 + dz));
+	}
+
+	/** An end crystal on the pillar of a spike, as the End's generator puts it. Its chunk is held loaded. */
+	static EndCrystal crystal(final ServerLevel end, final int spike) {
+		net.minecraft.world.level.levelgen.feature.EndSpikeFeature.EndSpike pillar = DragonBuffs.spikes(end).get(spike);
+		int cx = pillar.getCenterX() >> 4;
+		int cz = pillar.getCenterZ() >> 4;
+		end.getChunk(cx, cz);
+		end.setChunkForced(cx, cz, true);
+		EndCrystal crystal = EntityTypes.END_CRYSTAL.create(end, EntitySpawnReason.STRUCTURE);
+		crystal.snapTo(pillar.getCenterX() + 0.5, pillar.getHeight() + 1, pillar.getCenterZ() + 0.5, 0.0F, 0.0F);
+		end.addFreshEntity(crystal);
+		return crystal;
+	}
+
+	/** Lets the forced pillar chunks go and clears the fire a crystal sets at its foot. */
+	static void releaseCrystals(final ServerLevel end) {
+		for (net.minecraft.world.level.levelgen.feature.EndSpikeFeature.EndSpike pillar : DragonBuffs.spikes(end)) {
+			end.setChunkForced(pillar.getCenterX() >> 4, pillar.getCenterZ() >> 4, false);
+			BlockPos foot = new BlockPos(pillar.getCenterX(), pillar.getHeight() + 1, pillar.getCenterZ());
+			if (end.getBlockState(foot).getBlock() instanceof net.minecraft.world.level.block.BaseFireBlock) {
+				end.setBlock(foot, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+			}
+		}
 	}
 
 	static void result(final String test, final String outcome) {

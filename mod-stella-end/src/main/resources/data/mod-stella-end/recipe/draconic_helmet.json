@@ -1,0 +1,10 @@
+{
+	"type": "mod-stella-end:draconic_smithing",
+	"template": "mod-stella-end:void_shard",
+	"base": "minecraft:netherite_helmet",
+	"addition": "mod-stella-end:dragon_scale",
+	"addition_count": 5,
+	"result": {
+		"id": "mod-stella-end:draconic_helmet"
+	}
+}

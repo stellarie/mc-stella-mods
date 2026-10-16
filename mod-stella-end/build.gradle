@@ -3,9 +3,12 @@ plugins {
 }
 
 loom {
+	splitEnvironmentSourceSets()
+
 	mods {
 		"mod-stella-end" {
 			sourceSet sourceSets.main
+			sourceSet sourceSets.client
 		}
 	}
 }
@@ -32,6 +35,11 @@ fabricApi {
 		enableClientGameTests = false
 		eula = true
 	}
+}
+
+// The game tests read the equips refine rules directly; the mod itself still reaches no sibling class.
+dependencies {
+	gametestImplementation "com.stella.equips:mod-stella-equips-enchants:${project.version}"
 }
 
 processResources {

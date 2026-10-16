@@ -12,10 +12,16 @@ public final class StellaEnd implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		EndClock.register();
+		EndBlocks.register();
 		EndItems.register();
 		EndCastles.register();
 		FloorSpawner.register();
 		ShulkerKnockback.register();
+		UndeadBlazes.register();
+		SoulCharges.register();
+		UndeadSovereign.register();
+		EndDragons.register();
 		BehaviorLog.info("[END] initialized");
 	}
 

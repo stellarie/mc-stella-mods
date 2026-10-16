@@ -3,5 +3,15 @@
 	"item.mod-stella-end.ender_heart": "Ender Heart",
 	"item.mod-stella-end.shulker_carapace": "Shulker Carapace",
 	"item.mod-stella-end.wither_fang": "Wither Fang",
-	"item.mod-stella-end.void_walker_charm": "Void Walker Charm"
+	"item.mod-stella-end.void_walker_charm": "Void Walker Charm",
+	"item.mod-stella-end.dragon_scale": "Dragon Scale",
+	"item.mod-stella-end.draconic_blade": "Draconic Blade",
+	"item.mod-stella-end.draconic_bow": "Draconic Bow",
+	"item.mod-stella-end.draconic_staff": "Draconic Staff",
+	"item.mod-stella-end.draconic_helmet": "Draconic Helmet",
+	"item.mod-stella-end.draconic_chestplate": "Draconic Chestplate",
+	"item.mod-stella-end.draconic_leggings": "Draconic Leggings",
+	"item.mod-stella-end.draconic_boots": "Draconic Boots",
+	"block.mod-stella-end.soul_flame": "Soul Flame",
+	"entity.mod-stella-end.undead_sovereign": "Undead Blaze Sovereign"
 }

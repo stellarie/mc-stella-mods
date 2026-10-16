@@ -17,6 +17,10 @@
 		"fabric-api": "*"
 	},
 	"mixins": [
-		"mod-stella-end.mixins.json"
+		"mod-stella-end.mixins.json",
+		{
+			"config": "mod-stella-end.client.mixins.json",
+			"environment": "client"
+		}
 	]
 }

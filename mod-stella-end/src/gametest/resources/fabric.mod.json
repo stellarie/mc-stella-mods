@@ -13,7 +13,15 @@
 			"com.stella.end.CastleMobsGameTest",
 			"com.stella.end.ShulkerKnockbackGameTest",
 			"com.stella.end.AbsentSiblingGameTest",
-			"com.stella.end.CastleTreasureGameTest"
+			"com.stella.end.CastleTreasureGameTest",
+			"com.stella.end.SovereignGameTest",
+			"com.stella.end.DragonPassiveGameTest",
+			"com.stella.end.DragonAttackGameTest",
+			"com.stella.end.WyvernGameTest",
+			"com.stella.end.DragonRoostGameTest",
+			"com.stella.end.DragonCrystalGameTest",
+			"com.stella.end.DragonDeathGameTest",
+			"com.stella.end.UltimateGearGameTest"
 		],
 		"main": [
 			"com.stella.end.EndGameTestInit"

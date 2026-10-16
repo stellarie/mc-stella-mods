@@ -1,0 +1,10 @@
+{
+	"type": "mod-stella-end:draconic_smithing",
+	"template": "mod-stella-end:void_shard",
+	"base": "minecraft:netherite_ingot",
+	"addition": "minecraft:dragon_egg",
+	"addition_count": 1,
+	"result": {
+		"id": "mod-stella-end:draconic_bow"
+	}
+}

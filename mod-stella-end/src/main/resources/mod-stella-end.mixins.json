@@ -5,7 +5,12 @@
 	"mixins": [
 		"EndPortalArrivalMixin",
 		"NaturalSpawnerMixin",
-		"ShulkerPeekAccessor"
+		"ShulkerPeekAccessor",
+		"EnderDragonFightAccessor",
+		"LivingEntityDamageMixin",
+		"LivingEntityEffectMixin",
+		"SmithingMenuMixin",
+		"ItemCombinerAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1

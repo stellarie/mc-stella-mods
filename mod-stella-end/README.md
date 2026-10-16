@@ -80,6 +80,69 @@ it. The design is in the blackboard task `stella-end-castle`.
 
 With a sibling absent the bridge does nothing and the mob keeps its vanilla strength.
 
+## Slice B: the Sovereign, the dragon, the ultimate gear
+
+The End keeps its own clock: a tick counter saved with the level. Every timer of hundreds of ticks or more reads it. A
+game test skips time with `EndClock.advance`, because the game clock barely moves in a test.
+
+### The Undead Blaze Sovereign (floor 6)
+
+- A vanilla blaze at level 120. Base health 600, then the mobs scaling, then the rpg health scale. The attribute ceiling
+  of the rpg mod caps the result at 1,000,000.
+- It stands at the arena anchor. Its speed is zero, it has no gravity, and its place is reset every tick.
+- A player who stands in the arena room raises it. Its boss bar shows to players within 48 blocks.
+- Every 20 ticks it sets 8 to 12 soul flames on random floor cells within 10 blocks. A flame burns out after 100 ticks.
+- Every 60 ticks it fires 5 soul charges at players within 48 blocks. A volley needs a player in range.
+- A blow from the Sovereign or from its charge applies wither II for 100 ticks.
+- Every 200 ticks it calls 3 undead blazes, up to 12 alive. The record of identities keeps the count.
+- An undead blaze is a vanilla blaze at level 115, tagged `mod-stella-end.undead`. Its charges fly at half the vanilla
+  fireball speed and apply wither I for 80 ticks. The client draws it grey, from an attachment the server syncs.
+- Its death opens the barrier door to the rest area and stores the time. It rises again after 36,000 ticks and shuts the
+  door behind it.
+
+### The dragon
+
+- The controller keeps the vanilla dragon in the hover phase and sets its place every tick. It is over the rooftop from
+  its first tick, never below the deck, and never past 48 blocks of the origin. Vanilla's phases never run, so the mobs
+  mod's phase redirects stay as they were.
+- Level 150. The dragon is claimed before the mobs mod rolls it.
+- Passive until a player stands on the rooftop. Awake, it circles and picks an attack every 100 ticks. It calms 200 ticks
+  after the roof empties.
+- Swoop: it flies through the nearest player. Everything in its path takes 30 damage and slowness II for 100 ticks.
+- Breath barrage: 12 dragon fireballs, 4 ticks apart, at points on the roof.
+- Dive: it drops onto the roof. Everything within 8 blocks gets an upward velocity of 1.6.
+- Roost: at half health, once, it lands on the portal for 2,400 ticks and takes a quarter of the damage. Every 100 ticks
+  it calls 2 wither skeletons and 2 skeleton archers, up to 12. After the roost the swoop and the dive weigh double.
+- Crystals: the buff of a pillar follows vanilla's spike order. 1 regeneration, 2 damage plus 20 per cent, 3 damage taken
+  minus 15 per cent, 4 speed plus 20 per cent, 5 sixteen barrage shots, 6 knockback resistance, 7 wyvern return in 300
+  ticks, 8 swoop slowness IV, 9 dive fire charges, 10 absorption 40 (times the rpg health scale).
+- Wyverns: four phantoms at scale 3, each ridden by a skeleton in netherite with a netherite sword, level 130. A rider
+  alive means the wyvern has no target. A wyvern whose rider has died hunts the roof. A dead wyvern returns after 600 ticks.
+- Death: one dragon egg and four dragon scales drop beside the portal. The players on the roof share the experience a
+  level 120 kill gives on the rpg curve. The dragon's own side leaves with it. Rooftop spawns stay barred for 36,000
+  ticks. Vanilla's own egg block is not placed.
+- Return: 144,000 ticks after the death, once a player is in the End, or at once when the vanilla crystal summon makes a
+  dragon.
+
+### The ultimate gear
+
+- `dragon_scale`, `draconic_blade`, `draconic_bow`, `draconic_staff`, and `draconic_helmet`, `_chestplate`, `_leggings`,
+  `_boots`. Each is made at a smithing table from a netherite piece, a `void_shard` template and the dragon's spoils.
+- The recipe takes the whole cost: one dragon egg for a weapon, and 5, 8, 7 and 4 scales for the armour. A mixin on the
+  smithing menu takes the extra scales when the result is taken.
+- Blade: 16 attack damage, 1.6 attack speed, and 25 per cent more damage to mobs in the End.
+- Bow: arrows hit twice as hard, and a shot costs no wear. It keeps a durability so refine accepts it.
+- Staff: a magic attack 60 per cent over the strongest equips staff, set in the `stella_staff` data both sibling mods read.
+- Armour: 4, 9, 7 and 4 armour, 5 toughness, 0.15 knockback resistance and 4 health on each piece. All four pieces give
+  immunity to wither and slowness.
+- Refine: every piece passes the equips mod's `canRefine`. The refine tier factor is what that mod makes of the material.
+
+### Sibling bridges (slice B)
+
+| Key | Direction | Use |
+| --- | --- | --- |
+| `mod-stella-rpg:health-scale` | call | states health numbers times the scale |
+
 ## Logging
 
 Behaviour lines go through the mod logger at INFO from the game test source set only. The shipped jar prints none.
@@ -88,3 +151,6 @@ Behaviour lines go through the mod logger at INFO from the game test source set 
 
 - Walk from floor 1 to the rooftop and judge the feel of the rooms, the stairs and the mob density.
 - Open one vault on a floor and read its contents.
+- Fight the Sovereign, then the dragon. Judge the flight, the swoop, the roost and the difficulty.
+- Watch an undead blaze and the Sovereign on a client: both draw grey.
+- Smith one piece of the ultimate gear at a smithing table and refine it at the equips anvil.

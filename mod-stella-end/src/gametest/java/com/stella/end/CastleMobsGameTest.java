@@ -147,6 +147,10 @@ public class CastleMobsGameTest {
 		BlockPos at = EndTestSupport.cellNear(helper, plan, 3, plan.landingX(), plan.landingZ(), 6.0, 12.0);
 		Enderman enderman = (Enderman) EndMobs.spawn(end, 3, EndMobs.Kind.ENDERMAN, at);
 		helper.assertTrue(enderman != null, "the enderman was refused");
+		// With AI on, an enderman teleports at random
+		// out of hunting range.
+		// The retarget then never finds it.
+		enderman.setNoAi(true);
 		// The player looks away from it, and the hunt must not need a stare.
 		player.setYRot(180.0F);
 		boolean onSpawn = enderman.getTarget() == player;
