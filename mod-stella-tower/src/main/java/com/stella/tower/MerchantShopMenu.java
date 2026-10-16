@@ -84,6 +84,23 @@ public final class MerchantShopMenu extends ChestMenu {
 			int index = goodAt(slot);
 			this.getContainer().setItem(slot, index >= 0 ? shelf(this.goods.get(index)) : glass.copy());
 		}
+		// The last slot is glass whenever the goods fit one row, which is the shop as it ships.
+		int last = this.getContainer().getContainerSize() - 1;
+		if (goodAt(last) < 0) {
+			this.getContainer().setItem(last, sellSign());
+		}
+	}
+
+	/** Tells the player how to sell, and what the merchant pays. */
+	static ItemStack sellSign() {
+		ItemStack sign = new ItemStack(Items.BOOK);
+		sign.set(DataComponents.ITEM_NAME, Component.translatable("gui.mod-stella-tower.merchant.sell").withStyle(ChatFormatting.GOLD));
+		List<Component> lines = new ArrayList<>();
+		DescriptionLines.add(lines, Component.translatable("gui.mod-stella-tower.merchant.sell.how").withStyle(ChatFormatting.GRAY));
+		OreSales.rates().forEach((item, rate) -> DescriptionLines.add(lines, Component.translatable("gui.mod-stella-tower.merchant.sell.rate",
+			rate.items(), item.getDefaultInstance().getHoverName(), rate.emeralds()).withStyle(ChatFormatting.DARK_GRAY)));
+		sign.set(DataComponents.LORE, new ItemLore(lines));
+		return sign;
 	}
 
 	/** A good as the shelf shows it: its item, with its price under what the item says of itself. */
@@ -100,12 +117,16 @@ public final class MerchantShopMenu extends ChestMenu {
 		return icon;
 	}
 
-	/** No click moves anything; a click on a good asks the merchant to sell it. */
+	/** No click moves anything; a click on a good asks the merchant to sell it, a click on an ore of yours sells the stack. */
 	@Override
 	public void clicked(final int slot, final int button, final ContainerInput input, final Player player) {
 		int index = goodAt(slot);
-		if (index >= 0 && player instanceof ServerPlayer serverPlayer && (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
-			TowerMerchants.buy(serverPlayer, this.merchant, index);
+		if (player instanceof ServerPlayer serverPlayer && (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE)) {
+			if (index >= 0) {
+				TowerMerchants.buy(serverPlayer, this.merchant, index);
+			} else if (slot >= 0 && slot < this.slots.size() && this.slots.get(slot).container == serverPlayer.getInventory()) {
+				OreSales.sell(serverPlayer, this.merchant, this.slots.get(slot).getContainerSlot());
+			}
 		}
 		// The client predicted a pickup, so it is told the shelf is unchanged.
 		this.show();
