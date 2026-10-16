@@ -20,12 +20,10 @@ public final class CastleTreasure {
 	private CastleTreasure() {
 	}
 
-	/** The loot table of the two random chests of every floor. */
 	public static ResourceKey<LootTable> floorLoot() {
 		return ResourceKey.create(Registries.LOOT_TABLE, StellaEnd.id("chests/castle_floor"));
 	}
 
-	/** The loot table of the vault on a floor. */
 	public static ResourceKey<LootTable> vaultLoot(final int floor) {
 		return ResourceKey.create(Registries.LOOT_TABLE, StellaEnd.id("chests/vault_floor_" + floor));
 	}

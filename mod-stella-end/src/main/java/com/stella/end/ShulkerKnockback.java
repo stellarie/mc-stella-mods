@@ -31,7 +31,6 @@ public final class ShulkerKnockback {
 		});
 	}
 
-	/** Whether the shell is shut: the peek amount is 0. */
 	public static boolean isClosed(final Shulker shulker) {
 		return ((ShulkerPeekAccessor) shulker).stellaEnd$getRawPeekAmount() == 0;
 	}

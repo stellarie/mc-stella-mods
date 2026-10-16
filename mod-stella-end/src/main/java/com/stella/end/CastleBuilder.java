@@ -73,7 +73,6 @@ public final class CastleBuilder {
 		CastleTreasure.place(level, layout, min);
 	}
 
-	/** Shuts or opens the barrier door that bars the way out of floor 6. */
 	public static void setExitDoor(final ServerLevel level, final CastleLayout layout, final BlockPos min, final boolean open) {
 		int slab = EndCastle.slabY(EndCastle.FLOORS);
 		for (CastleLayout.Door door : layout.floor(EndCastle.FLOORS).doors()) {
@@ -135,7 +134,6 @@ public final class CastleBuilder {
 		return plan.doors().stream().anyMatch(door -> door.barrier() && door.contains(x, z));
 	}
 
-	/** The outer wall of a level that holds no floor plan of its own. */
 	private static void perimeter(final ServerLevel level, final BlockPos min, final int slab) {
 		for (int x = 0; x < SIZE; x++) {
 			for (int z = 0; z < SIZE; z++) {

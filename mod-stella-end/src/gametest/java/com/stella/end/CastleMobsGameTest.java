@@ -42,6 +42,7 @@ public class CastleMobsGameTest {
 				bad.append(" floor ").append(floor).append(" share disagrees with the roll");
 			}
 		}
+		EndTestSupport.result("mobsMix", "floorsChecked=" + EndCastle.FLOORS + " bad=" + bad.length());
 		helper.assertTrue(bad.isEmpty(), "spawn mix off the plan (skeleton/enderman/shulker per 1000):" + bad);
 		helper.succeed();
 	}

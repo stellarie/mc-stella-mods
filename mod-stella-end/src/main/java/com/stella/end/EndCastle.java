@@ -13,11 +13,8 @@ public final class EndCastle {
 	public static final int BASE_Y = 64;
 	public static final int MIN_X = -16;
 	public static final int MIN_Z = -16;
-	/** The rest area sits on the level above floor 6. */
 	public static final int REST_Y = BASE_Y + FLOOR_HEIGHT * FLOORS;
-	/** The rooftop deck sits one level above the rest area. */
 	public static final int ROOF_Y = REST_Y + FLOOR_HEIGHT;
-	/** The rest area is a square room, walls included. */
 	public static final int REST_SIZE = 12;
 
 	private EndCastle() {
@@ -28,14 +25,17 @@ public final class EndCastle {
 		return BASE_Y + FLOOR_HEIGHT * (floor - 1);
 	}
 
-	/** The y of a floor's standing feet. */
 	public static int standY(final int floor) {
 		return slabY(floor) + 1;
 	}
 
-	/** The castle's footprint corner with the lowest x and z, at the base of floor 1. */
 	public static BlockPos min() {
 		return new BlockPos(MIN_X, BASE_Y, MIN_Z);
+	}
+
+	/** Where the boss of floor 6 stands: the arena's centre, over the End origin. */
+	public static BlockPos arenaAnchor() {
+		return new BlockPos(0, standY(FLOORS), 0);
 	}
 
 	/** Whether a block lies in the castle's volume: the six floors, the rest level and the deck with its parapet. */

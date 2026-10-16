@@ -197,6 +197,29 @@ public class CastleBuildGameTest {
 			.thenSucceed();
 	}
 
+	@GameTest(environment = "mod-stella-end-test:build_arena", maxTicks = 20)
+	public void theBossAnchorStandsOnOpenGroundAtTheCentreOfTheFloorSixArena(final GameTestHelper helper) {
+		ServerLevel end = EndTestSupport.fresh(helper);
+		BlockPos anchor = EndCastle.arenaAnchor();
+		StringBuilder bad = new StringBuilder();
+		for (int dx = -3; dx <= 3; dx++) {
+			for (int dz = -3; dz <= 3; dz++) {
+				BlockPos feet = anchor.offset(dx, 0, dz);
+				boolean clear = end.getBlockState(feet).isAir() && end.getBlockState(feet.above()).isAir() && end.getBlockState(feet.above(2)).isAir();
+				if (!clear || !end.getBlockState(feet.below()).isFaceSturdy(end, feet.below(), net.minecraft.core.Direction.UP)) {
+					bad.append(" blocked at ").append(feet);
+				}
+			}
+		}
+		int lx = anchor.getX() - EndCastle.MIN_X;
+		int lz = anchor.getZ() - EndCastle.MIN_Z;
+		boolean arena = EndCastles.layout(end).floor(EndCastle.FLOORS).room(lx, lz) == 1;
+		EndTestSupport.result("buildArena", "anchor=" + anchor + " inArena=" + arena + " bad=" + bad.length());
+		helper.assertTrue(arena, "the anchor is not in the arena room");
+		helper.assertTrue(bad.isEmpty(), "the arena centre is not open ground:" + bad);
+		helper.succeed();
+	}
+
 	@GameTest(environment = "mod-stella-end-test:build_top", maxTicks = 20)
 	public void aRestAreaAndARooftopCrownTheSixFloors(final GameTestHelper helper) {
 		// The second castle: vanilla carves the exit portal pit into the real deck once the dragon fight starts.

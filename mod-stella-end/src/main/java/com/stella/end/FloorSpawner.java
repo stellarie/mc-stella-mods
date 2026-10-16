@@ -27,17 +27,11 @@ import org.jspecify.annotations.Nullable;
 public final class FloorSpawner {
 	/** Hostiles a floor holds. The floor witch counts outside this. */
 	public static final int CAP = 24;
-	/** Server ticks between two top-ups. */
 	public static final int INTERVAL = 40;
-	/** Server ticks between two enderman retargets. */
 	public static final int RETARGET_INTERVAL = 100;
-	/** A floor works only while a player stands within this many blocks of it. */
 	public static final int ACTIVE_RANGE = 48;
-	/** An enderman hunts the nearest player within this many blocks. */
 	public static final double HUNT_RANGE = 16.0;
-	/** A spawn keeps this far from every player. */
 	public static final double SAFE_DISTANCE = 10.0;
-	/** Mobs one floor gains in one top-up. */
 	public static final int BATCH = 4;
 	/** The highest floor with a spawner: floor 6 belongs to the boss, which makes its own mobs. */
 	public static final int TOP_FLOOR = EndCastle.FLOORS - 1;
@@ -61,12 +55,10 @@ public final class FloorSpawner {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> reset());
 	}
 
-	/** The live hostiles the spawner recorded on a floor. */
 	public static List<Mob> hostiles(final ServerLevel end, final int floor) {
 		return live(end, HOSTILES.get(floor));
 	}
 
-	/** The floor's live witch, or null. */
 	public static @Nullable Mob witch(final ServerLevel end, final int floor) {
 		List<Mob> witches = live(end, WITCHES.get(floor));
 		return witches.isEmpty() ? null : witches.get(0);
@@ -196,7 +188,6 @@ public final class FloorSpawner {
 		}
 	}
 
-	/** Blocks of clear air a kind needs above its feet. */
 	private static int height(final EndMobs.Kind kind) {
 		return switch (kind) {
 			case WITHER_SKELETON -> 2;

@@ -39,6 +39,7 @@ public class FloorSpawnerGameTest {
 		if (EndLevels.eliteWitchLevel(5) != 117) {
 			bad.append(" the floor 5 elite witch is ").append(EndLevels.eliteWitchLevel(5));
 		}
+		EndTestSupport.result("spawnerLevelsFormula", "floor1=" + EndLevels.floorLevel(1) + " floor6=" + EndLevels.floorLevel(6) + " eliteWitch5=" + EndLevels.eliteWitchLevel(5));
 		helper.assertTrue(bad.isEmpty(), "levels off the plan:" + bad);
 		helper.succeed();
 	}

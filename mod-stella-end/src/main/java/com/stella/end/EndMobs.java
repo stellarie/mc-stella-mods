@@ -21,15 +21,12 @@ import org.jspecify.annotations.Nullable;
 
 /** The castle's mobs: what each floor spawns, and how each one is kitted, levelled and recorded. */
 public final class EndMobs {
-	/** The tag every castle mob carries, with its floor number after it. */
 	public static final String FLOOR_TAG = "mod-stella-end.floor_";
 	public static final String WITCH_TAG = "mod-stella-end.witch";
 	public static final String ELITE_TAG = "mod-stella-end.elite";
 	/** The roll space of {@link #pick}: shares are parts of this. */
 	public static final int ROLLS = 1000;
-	/** The first floor that spawns shulkers. */
 	public static final int FIRST_SHULKER_FLOOR = 3;
-	/** The floor whose witch is elite. */
 	public static final int ELITE_WITCH_FLOOR = 5;
 	/** The elite witch multiplies its total health by two. */
 	private static final Identifier ELITE_HEALTH = StellaEnd.id("elite_witch_health");
@@ -55,7 +52,6 @@ public final class EndMobs {
 		};
 	}
 
-	/** The kind a roll from 0 up to {@link #ROLLS} picks on a floor. */
 	public static Kind pick(final int floor, final int roll) {
 		int skeletons = share(floor, Kind.WITHER_SKELETON);
 		if (roll < skeletons) {
@@ -141,7 +137,6 @@ public final class EndMobs {
 		LevelBridge.apply(mob, level);
 	}
 
-	/** The floor a castle mob belongs to, or 0 for any other entity. */
 	public static int floorOf(final Entity entity) {
 		for (String tag : entity.entityTags()) {
 			if (tag.startsWith(FLOOR_TAG)) {

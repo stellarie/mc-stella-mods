@@ -11,13 +11,9 @@ import net.minecraft.world.entity.ai.goal.Goal;
  * absent. It holds the shield {@link #HOLD_TICKS}, rests {@link #REST_TICKS}, and never raises it in striking reach.
  */
 public final class CastleShieldGoal extends Goal {
-	/** Ticks the shield stays up once raised. */
 	public static final int HOLD_TICKS = 20;
-	/** Ticks between two raises. */
 	public static final int REST_TICKS = 40;
-	/** A target nearer than this is struck, not guarded against. */
 	public static final double MELEE_REACH = 2.5;
-	/** A target farther than this is ignored. */
 	public static final double GUARD_RANGE = 6.0;
 
 	private final Mob mob;

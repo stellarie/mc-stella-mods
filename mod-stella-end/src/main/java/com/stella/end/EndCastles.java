@@ -59,14 +59,14 @@ public final class EndCastles {
 		return cached;
 	}
 
-	/** Builds the castle if the level has none yet. Returns whether it built now. */
 	public static boolean ensureBuilt(final ServerLevel end) {
 		if (state(end).built()) {
 			return false;
 		}
+		long started = System.nanoTime();
 		CastleBuilder.build(end, layout(end), EndCastle.min());
 		setState(end, state(end).withBuilt());
-		BehaviorLog.info("[END] castle built seed={}", end.getSeed());
+		BehaviorLog.info("[END] castle built seed={} millis={}", end.getSeed(), (System.nanoTime() - started) / 1_000_000L);
 		return true;
 	}
 }
